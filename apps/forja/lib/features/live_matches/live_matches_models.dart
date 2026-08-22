@@ -577,7 +577,8 @@ _StreamedMatch _mergeStreamedCatalogPair(_StreamedMatch a, _StreamedMatch b) {
 List<_StreamedMatch> _stripEspnMergedScheduleRows(List<_StreamedMatch> matches) =>
     [
       for (final m in matches)
-        if (!m.isIptvSports && !m.id.startsWith('espn:')) m,
+        if (!m.isIptvSports &&
+            (!m.id.startsWith('espn:') || m.isForjaLive)) m,
     ];
 
 /// One card per event — catalog rows from different Forja Live plugins collapse here.
@@ -2244,6 +2245,7 @@ _StreamedMatch _copyStreamedMatch(
     stremioBaseUrl: m.stremioBaseUrl,
     stremioType: m.stremioType,
     sportMatchGame: sportMatchGame ?? m.sportMatchGame,
+    livePluginId: m.livePluginId,
   );
 }
 

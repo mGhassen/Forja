@@ -18,6 +18,8 @@ String normalizeLiveSportId(String raw) {
     'soccer': 'football',
     'afl': 'australian-football',
     'nfl': 'american-football',
+    'ncaa-football': 'american-football',
+    'college-football': 'american-football',
     'nba': 'basketball',
     'nhl': 'hockey',
     '24-7-streams': '24-7',

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// Home desktop top-bar category (Films vs TV Shows).
 enum ShellHomeCategory { films, tvShows }
@@ -180,17 +181,22 @@ class ShellBus {
 
   static void clearOverlayShellTabId() => _overlayShellTabId = null;
 
-  /// After the overlay stack returns to root, re-select the tab that opened it
-  /// and return focus to the hub page (never the nav rail).
+  /// After the overlay stack returns to root, re-select the tab that opened it.
+  /// TV: restore catalog focus under the hub. Desktop: focus the selected rail tab.
   static void finishOverlayAndRestoreShellTab() {
     final origin = takeOverlayShellTabId();
     if (origin == null || origin.isEmpty) return;
     if (activeShellTabId != origin) {
       requestTab.value = origin;
     }
+    ShellTvFocus.currentNavTabId = origin;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ShellTvFocusCoordinator.unfocusShellNav();
-      ShellTvFocusCoordinator.restoreTabFocusAfterOverlayPop(origin);
+      if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+        ShellTvFocusCoordinator.unfocusShellNav();
+        ShellTvFocusCoordinator.restoreTabFocusAfterOverlayPop(origin);
+        return;
+      }
+      ShellTvFocus.scheduleFocusNavTab(origin);
     });
   }
 

@@ -8,6 +8,8 @@ void main() {
       expect(normalizeLiveSportId('24-7'), '24-7');
       expect(normalizeLiveSportId('Soccer'), 'football');
       expect(normalizeLiveSportId('american-football'), 'american-football');
+      expect(normalizeLiveSportId('NFL'), 'american-football');
+      expect(normalizeLiveSportId('NCAA Football'), 'american-football');
     });
   });
 

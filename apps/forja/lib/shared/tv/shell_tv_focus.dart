@@ -47,13 +47,28 @@ abstract final class ShellTvFocus {
     return false;
   }
 
-  static bool focusCurrentNavTab() {
-    final id = currentNavTabId;
-    if (id == null) return false;
+  static bool focusCurrentNavTab() => focusNavTab(currentNavTabId ?? '');
+
+  static bool focusNavTab(String id) {
+    if (id.isEmpty) return false;
     final node = _navNodes[id];
     if (node == null || !node.canRequestFocus) return false;
+    currentNavTabId = id;
     node.requestFocus();
     return true;
+  }
+
+  /// After overlay pop on desktop: land keyboard focus on the selected rail tab.
+  static void scheduleFocusNavTab(String id, {int maxAttempts = 6}) {
+    if (id.isEmpty) return;
+    void attempt(int n) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (focusNavTab(id)) return;
+        if (n < maxAttempts) attempt(n + 1);
+      });
+    }
+
+    attempt(0);
   }
 
   static FocusNode? navNode(String id) => _navNodes[id];

@@ -169,7 +169,7 @@ mixin _LiveMatchesPlayback
         choices: choices,
         onChoiceSelected: (choice) {
           Navigator.pop(context);
-          unawaited(_openResolvedStreamChoice(choice));
+          unawaited(_openResolvedStreamChoice(choice, allChoices: choices));
         },
       ),
     );
@@ -255,12 +255,30 @@ mixin _LiveMatchesPlayback
     );
   }
 
-  Future<void> _openResolvedStreamChoice(_StreamedStreamChoice choice) async {
+  Future<void> _openResolvedStreamChoice(
+    _StreamedStreamChoice choice, {
+    List<_StreamedStreamChoice>? allChoices,
+  }) async {
     if (_isPpvStreamChoice(choice)) {
       await _openDamiTvStream(_damiTvFromStreamChoice(choice));
       return;
     }
-    await _openStreamedEmbed(choice.catalogMatch, choice.stream);
+    await _openStreamedEmbed(
+      choice.catalogMatch,
+      choice.stream,
+      allChoices: allChoices,
+    );
+  }
+
+  String _streamPickerLabel(_StreamedMatch match, _StreamedStream stream) {
+    final sourceLabel = _StreamedStreamSheet.sourceLabel(stream.source);
+    final title = _StreamedStreamSheet.streamTitle(stream, sourceLabel);
+    if (title.isNotEmpty) return title;
+    if (sourceLabel.isNotEmpty) return sourceLabel;
+    if (match.isForjaLive) {
+      return _liveForjaPluginDisplayName(match.livePluginId);
+    }
+    return 'Stream';
   }
 
   String _streamPlaySubtitle(_StreamedMatch match, _StreamedStream stream) {
@@ -652,6 +670,98 @@ mixin _LiveMatchesPlayback
     sources: const [],
   );
 
+  Future<IptvPlaySource?> _resolveStreamToEnginePlaySource(
+    _StreamedMatch match,
+    _StreamedStream stream,
+  ) async {
+    final embed = stream.embedUrl.trim();
+    if (embed.isEmpty) return null;
+
+    final catalogReferer = match.isForjaLive
+        ? (_forjaLiveCdnReferer(embed) ??
+            _forjaLiveWrapperReferer(embed, pluginId: match.livePluginId))
+        : _streamedReferer;
+    final pickerLabel = _streamPickerLabel(match, stream);
+
+    if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
+      final headers = _liveEmbedStreamHeaders(
+        embed,
+        catalogReferer: match.isForjaLive ? _forjaLiveCdnReferer(embed) : null,
+      );
+      final direct = LiveGoatUnlock.preferDirectEnginePlayback(embed);
+      final playUrl = direct
+          ? embed
+          : await LiveMatchesEngine.proxyPlayUrl(url: embed, headers: headers);
+      if (playUrl == null || playUrl.isEmpty) return null;
+      return IptvPlaySource(
+        url: playUrl,
+        label: pickerLabel,
+        headers: direct ? headers : const {},
+        liveSourceKind: IptvLiveSourceKind.liveEngine,
+      );
+    }
+
+    final pluginId = match.isForjaLive && match.livePluginId.isNotEmpty
+        ? match.livePluginId
+        : 'live-streamed';
+    final result = await LiveMatchesEngine.resolve(
+      pluginId: pluginId,
+      params: {
+        'embedUrl': embed,
+        'url': embed,
+        'source': stream.source,
+        'matchId': stream.id,
+        'stream': stream.streamNo.toString(),
+        'category': match.category,
+        'title': match.title,
+      },
+    );
+    if (result == null || !result.playable) return null;
+
+    final headers = result.headers.isNotEmpty
+        ? result.headers
+        : _liveEmbedStreamHeaders(
+            result.url,
+            catalogReferer: catalogReferer,
+          );
+    final direct = LiveGoatUnlock.preferDirectEnginePlayback(result.url);
+    final playUrl = direct
+        ? result.url
+        : await LiveMatchesEngine.proxyPlayUrl(url: result.url, headers: headers);
+    if (playUrl == null || playUrl.isEmpty) return null;
+
+    final label = result.label.trim().isNotEmpty ? result.label.trim() : pickerLabel;
+    return IptvPlaySource(
+      url: playUrl,
+      label: label,
+      headers: direct ? headers : const {},
+      liveSourceKind: IptvLiveSourceKind.liveEngine,
+    );
+  }
+
+  Future<void> _openEngineNativeSources({
+    required String title,
+    required String subtitle,
+    required List<IptvPlaySource> sources,
+  }) async {
+    if (sources.isEmpty) {
+      LiveMatchesEngine.engineResolveFailed();
+      return;
+    }
+    if (!mounted) return;
+    _releaseLiveMatchesItemFocusIfHeld();
+    await IptvPtPlayerScreen.open(
+      context,
+      IptvPtPlayerScreen(
+        sources: sources,
+        title: title,
+        subtitle: subtitle,
+        engineContext: BuiltInPlayerContext.live,
+        liveSourceKind: IptvLiveSourceKind.liveEngine,
+      ),
+    );
+  }
+
   Future<void> _openEngineNativeStream({
     required String title,
     required String subtitle,
@@ -668,70 +778,67 @@ mixin _LiveMatchesPlayback
       LiveMatchesEngine.engineResolveFailed();
       return;
     }
-    _releaseLiveMatchesItemFocusIfHeld();
-    await IptvPtPlayerScreen.open(
-      context,
-      IptvPtPlayerScreen(
-        sources: [
-          IptvPlaySource(
-            url: playUrl,
-            label: label,
-            headers: direct ? headers : const {},
-            liveSourceKind: IptvLiveSourceKind.liveEngine,
-          ),
-        ],
-        title: title,
-        subtitle: subtitle,
-        engineContext: BuiltInPlayerContext.live,
-        liveSourceKind: IptvLiveSourceKind.liveEngine,
-      ),
+    await _openEngineNativeSources(
+      title: title,
+      subtitle: subtitle,
+      sources: [
+        IptvPlaySource(
+          url: playUrl,
+          label: label,
+          headers: direct ? headers : const {},
+          liveSourceKind: IptvLiveSourceKind.liveEngine,
+        ),
+      ],
     );
   }
 
   Future<bool> _tryEngineStreamedOpen(
     _StreamedMatch match,
-    _StreamedStream stream,
-  ) async {
+    _StreamedStream stream, {
+    List<_StreamedStreamChoice>? allChoices,
+  }) async {
     if (!await LiveMatchesEngine.isEngineResolveMode()) return false;
 
-    final embed = stream.embedUrl.trim();
-    if (embed.isNotEmpty &&
-        RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
-      await _openEngineNativeStream(
-        title: match.title,
-        subtitle: _streamPlaySubtitle(match, stream),
-        url: embed,
-        headers: _liveEmbedStreamHeaders(
-          embed,
-          catalogReferer: match.isForjaLive
-              ? _forjaLiveCdnReferer(embed)
-              : _streamedReferer,
-        ),
-        label: match.isForjaLive ? 'Forja Live' : 'Streamed',
+    final candidates = <_StreamedStreamChoice>[];
+    if (allChoices != null) {
+      for (final choice in allChoices) {
+        if (_isPpvStreamChoice(choice)) continue;
+        if (choice.stream.embedUrl.trim().isEmpty) continue;
+        candidates.add(choice);
+      }
+    }
+    if (candidates.isEmpty) {
+      candidates.add(
+        _StreamedStreamChoice(catalogMatch: match, stream: stream),
       );
-      return true;
     }
 
-    final pluginId = match.isForjaLive && match.livePluginId.isNotEmpty
-        ? match.livePluginId
-        : 'live-streamed';
-    LiveEngineResolveResult? result;
+    final pickedEmbed = stream.embedUrl.trim();
+    final sources = <IptvPlaySource>[];
     final ok = await _runWithCancellableLoading('Resolving stream…', () async {
-      result = await LiveMatchesEngine.resolve(
-        pluginId: pluginId,
-        params: {
-          'embedUrl': embed,
-          'url': embed,
-          'source': stream.source,
-          'matchId': stream.id,
-          'stream': stream.streamNo.toString(),
-          'category': match.category,
-          'title': match.title,
-        },
+      final picked = await _resolveStreamToEnginePlaySource(match, stream);
+      if (picked == null) return;
+      sources.add(picked);
+      final seenUrls = {picked.url};
+
+      final others = candidates.where((c) {
+        return c.stream.embedUrl.trim() != pickedEmbed;
+      }).toList();
+      if (others.isEmpty) return;
+
+      final resolved = await Future.wait(
+        others.map(
+          (c) => _resolveStreamToEnginePlaySource(c.catalogMatch, c.stream),
+        ),
       );
+      for (final src in resolved) {
+        if (src == null || seenUrls.contains(src.url)) continue;
+        seenUrls.add(src.url);
+        sources.add(src);
+      }
     });
     if (!ok) return true;
-    if (result == null || !result!.playable) {
+    if (sources.isEmpty) {
       debugPrint(
         '[LiveMatches] Engine resolve missed — no embed fallback '
         '(${stream.source}/${stream.id})',
@@ -739,26 +846,11 @@ mixin _LiveMatchesPlayback
       LiveMatchesEngine.engineResolveFailed();
       return true;
     }
-    // Engine resolve (GOAT unlock / live-streamed.js) returns CDN headers —
-    // strmd.st tokens validate against embed.st, not streamed.pk.
-    final headers = result!.headers.isNotEmpty
-        ? result!.headers
-        : _liveEmbedStreamHeaders(
-            result!.url,
-            catalogReferer: match.isForjaLive
-                ? (_forjaLiveCdnReferer(stream.embedUrl) ??
-                    _forjaLiveWrapperReferer(
-                      stream.embedUrl,
-                      pluginId: match.livePluginId,
-                    ))
-                : _streamedReferer,
-          );
-    await _openEngineNativeStream(
+
+    await _openEngineNativeSources(
       title: match.title,
       subtitle: _streamPlaySubtitle(match, stream),
-      url: result!.url,
-      headers: headers,
-      label: result!.label.isNotEmpty ? result!.label : 'Streamed',
+      sources: sources,
     );
     return true;
   }
@@ -804,9 +896,16 @@ mixin _LiveMatchesPlayback
 
   Future<void> _openStreamedEmbed(
     _StreamedMatch match,
-    _StreamedStream stream,
-  ) async {
-    if (await _tryEngineStreamedOpen(match, stream)) return;
+    _StreamedStream stream, {
+    List<_StreamedStreamChoice>? allChoices,
+  }) async {
+    if (await _tryEngineStreamedOpen(
+      match,
+      stream,
+      allChoices: allChoices,
+    )) {
+      return;
+    }
 
     final catalogBase = match.isMut
         ? _mutBase

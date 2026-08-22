@@ -976,8 +976,9 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         : active
         ? ForjaShellColors.textSecondary
         : ForjaShellColors.iconMuted;
-    final showLabel =
-        widget.alwaysShowLabel || (policy.scaleOnFocus && _focused);
+    // Desktop: labels type in on hover (_TypewriterLabel). TV: static label on focus.
+    final showLabel = widget.alwaysShowLabel ||
+        (policy.scaleOnFocus && _focused && !policy.scaleOnHover);
     final labelStyle = GoogleFonts.plusJakartaSans(
       color: labelColor,
       fontSize: labelFontSize,

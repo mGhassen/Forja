@@ -207,7 +207,7 @@ void maybePopShellOverlay<T extends Object?>([T? result]) {
     overlay!.pop(result);
     if (overlay.canPop()) {
       ShellTvFocus.discardOverlayReturnFocus();
-    } else {
+    } else if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
       ShellTvFocusCoordinator.unfocusShellNav();
       ShellTvFocus.restoreOverlayReturnFocus();
     }

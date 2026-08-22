@@ -758,13 +758,15 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       if ((this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
         return _buildForjaLiveCatalogProgress();
       }
+      final forjaLive = this as _LiveMatchesForjaLive;
       final emptyMsg = switch (_s._server) {
         _LiveMatchesServer.stremio =>
           'No live Stremio addons — install one in Settings → Sources and enable Live Matches',
         _LiveMatchesServer.iptvSports =>
           'No ESPN games today for your leagues — try Refresh or change leagues in Settings → Forja Sports',
-        _LiveMatchesServer.forjaLive =>
-          'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins',
+        _LiveMatchesServer.forjaLive => forjaLive._showForjaLiveCatalogChrome
+            ? 'No matches for this catalog or sport — try All on both filters, or Refresh'
+            : 'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins',
         _ => 'No streams available',
       };
       return ShellErrorRetryPanel(
