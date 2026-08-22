@@ -395,6 +395,7 @@ class _AsianDramaDetailsScreenState
     final languages = extras?.spokenLanguages ?? const <String>[];
     final companies = extras?.productionCompanies ?? const <String>[];
     return [
+      if (det.title.trim().isNotEmpty) MapEntry('Name', det.title.trim()),
       if (det.releaseDate.isNotEmpty)
         MapEntry('Released', _formatDate(det.releaseDate)),
       if (det.country.isNotEmpty) MapEntry('Country', det.country),

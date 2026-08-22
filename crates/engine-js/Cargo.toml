@@ -12,6 +12,12 @@ tokio = { workspace = true }
 reqwest = { workspace = true }
 base64 = { workspace = true }
 sha2 = { workspace = true }
+aes = { workspace = true }
+aes-gcm = { workspace = true }
+cbc = { workspace = true }
+md-5 = { workspace = true }
+sha1 = "0.10"
+hmac = "0.12"
 flate2 = "1"
 utils = { path = "../utils" }
 kisskh = { path = "../kisskh" }

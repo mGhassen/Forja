@@ -10,7 +10,6 @@ import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/engine_polyfills.dart';
 import 'package:forja/shared/engine/host_resolver.dart';
 import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/engine/onlykdrama_cf_session.dart';
 import 'package:forja/shared/extractors/core/stream_crypto.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
@@ -61,7 +60,6 @@ class EngineRuntime {
 
   /// Stop shared + every live fork (panel close / Cancel / tab switch).
   static void abortAll() {
-    OnlyKDramaCfSession.instance.cancelPending();
     instance.abortPendingWork();
     for (final fork in List<EngineRuntime>.of(_liveForks)) {
       fork.abortPendingWork();
@@ -830,43 +828,6 @@ class EngineRuntime {
       );
       final uri = Uri.parse(url);
 
-      // onlykdrama.shop is Cloudflare-gated — plain HTTP always gets the
-      // interstitial. Route through the Miruro-style headless WebView session.
-      if (OnlyKDramaCfSession.handles(uri)) {
-        debugPrint('[engine] onlykdrama CF fetch $method $url');
-        final hit = await OnlyKDramaCfSession.instance.fetch(
-          url,
-          method: method,
-          headers: headers,
-          body: body.isEmpty ? null : body,
-        );
-        if (gen != _fetchGeneration) {
-          _fetchGens.remove(id);
-          return;
-        }
-        if (hit != null) {
-          var text = hit.body;
-          const maxLen = 1024 * 1024;
-          if (text.length > maxLen) text = text.substring(0, maxLen);
-          envelope = {
-            'ok': hit.status >= 200 && hit.status < 300,
-            'status': hit.status,
-            'statusText': '',
-            'url': hit.url,
-            'body': text,
-            'headers': <String, dynamic>{},
-          };
-        } else {
-          envelope = {
-            'ok': false,
-            'status': 0,
-            'statusText': 'OnlyKDramaCf fetch failed',
-            'url': url,
-            'body': '',
-            'headers': <String, dynamic>{},
-          };
-        }
-      } else {
       final req = http.Request(method, uri);
       req.followRedirects = true;
       req.maxRedirects = 8;
@@ -906,7 +867,6 @@ class EngineRuntime {
         'body': text,
         'headers': respHeaders,
       };
-      }
     } catch (e) {
       if (gen != _fetchGeneration) {
         _fetchGens.remove(id);

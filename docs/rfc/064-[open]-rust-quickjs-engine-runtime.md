@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 5** components · **3 / 9** acceptance |
-| **Current slice** | Per-job task-local cancel; Sources cutover with flutter_js fallback |
+| **Progress** | **4 / 6** components · **5 / 11** acceptance |
+| **Current slice** | CryptoJS + ctx.hop in rust-js; cheerio/host + scrypt PoW still open; manual QA pending |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -23,7 +23,8 @@
 | 2 | R64-C02 | Bridges: `fetch`, timers, `streamDecrypt`, `encodePipe` / `decodePipe`, `solvePow` / scrypt PoW | 🔄 |
 | 3 | R64-C03 | `EngineAsyncJob.engineJsExtract` + per-job task-local cancel token | ✅ |
 | 4 | R64-C04 | Dart `runPluginIsolated` prefers Rust JS; flutter_js fallback | ✅ |
-| 5 | R64-C05 | cheerio / `ctx.hop` / `ctx.host` parity (later) | ⏭️ |
+| 5 | R64-C05 | cheerio / `ctx.host` parity (later) | ⏭️ |
+| 6 | R64-C06 | CryptoJS façade (AES/digest/hmac) + `ctx.hop` nested extract | ✅ |
 
 ---
 
@@ -36,10 +37,12 @@
 | 3 | R64-A03 | `videasy` HotD S1E1 via Rust JS returns streams (or empty) without UI-isolate flutter_js | ⬜ |
 | 4 | R64-A04 | Sources → Forja All with ≥3 chips: no process death while videasy + peer run | ⬜ |
 | 5 | R64-A05 | Cancel / leave details aborts in-flight Rust JS jobs (per-job token; peers unaffected) | ⬜ |
-| 6 | R64-A06 | Plugins needing cheerio/hop keep working via flutter_js fallback until C05 | ⬜ |
+| 6 | R64-A06 | Plugins needing cheerio keep working via flutter_js fallback until C05 | ⬜ |
 | 7 | R64-A07 | ENGINE_BOUNDARY: Nuvio stays host `flutter_js` (D3); only Forja Engine HTTP moves | ✅ |
 | 8 | R64-A08 | Manual macOS: select videasy+vidlink+goated — no `Lost connection` | ⬜ |
 | 9 | R64-A09 | Unit: parallel `scope_job_token` — sibling finish/cancel does not clear peer token | ✅ |
+| 10 | R64-A10 | Unit: CryptoJS AES passphrase encrypt/decrypt round-trip in rust-js | ✅ |
+| 11 | R64-A11 | Unit: `ctx.hop` nested extract returns hop plugin streams | ✅ |
 
 ---
 

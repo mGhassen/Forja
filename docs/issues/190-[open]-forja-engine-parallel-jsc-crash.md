@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 7** fix · **0 / 4** acceptance |
+| **Progress** | **7 / 8** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 5 | I190-T05 | `runPluginIsolated`: cancel / gen bump must not fall through to `flutter_js` fork | ✅ |
 | 6 | I190-T06 | Play closes Sources: always `EngineService.cancelPending` (stop scrapes); `cancelEngineJobs: false` only keeps magnet | ✅ |
 | 7 | I190-T07 | `engine_jobs::cancel_kind(EngineJsExtract)` + FFI — abort Forja extracts without global `request()` / magnet kill | ✅ |
+| 8 | I190-T08 | rust-js CryptoJS façade + `ctx.hop` (vidsrcsbs / multiembed path) | ✅ |
 
 ---
 

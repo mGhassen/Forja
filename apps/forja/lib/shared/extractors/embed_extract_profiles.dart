@@ -31,11 +31,6 @@ abstract final class EmbedExtractProfiles {
   );
 
   static final Map<String, EmbedExtractProfile> catalog = {
-    // CF WebView boot + search + FilePress can exceed the generic 45s.
-    'onlykdrama': EmbedExtractProfile(
-      id: 'onlykdrama',
-      timeout: Duration(seconds: 120),
-    ),
     'vidlink': vidlinkExtractProfile,
     'vixsrc': vixsrcExtractProfile,
     'vidnest': vidnestExtractProfile,

@@ -22,6 +22,7 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
 import 'package:forja/shared/widgets/hub_list_status_hero.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/media_details/media_details.dart';
@@ -343,27 +344,80 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     });
   }
 
+  Movie _playMovieFor(RichMediaDetails? tmdb) {
+    final m = tmdb?.movie;
+    if (m != null && m.id > 0) return m;
+    final a = _data;
+    return Movie(
+      id: -a.id,
+      title: a.displayTitle,
+      posterPath: a.coverUrl,
+      backdropPath: a.heroBackdrop,
+      voteAverage: (a.averageScore ?? 0) / 10.0,
+      releaseDate: a.seasonYear?.toString() ?? '',
+      overview: a.cleanDescription,
+      genres: a.genres,
+      runtime: a.duration ?? 0,
+      mediaType: 'anime',
+      numberOfEpisodes: a.episodes ?? 0,
+    );
+  }
+
+  Future<void> _afterPlayClosed() async {
+    await _refreshProgress();
+    _loadWatchedEpisodes();
+    if (!mounted) return;
+    if (_detailsScrollController.hasClients) {
+      _detailsScrollController.jumpTo(0);
+    }
+    ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
+      _heroPlayFocus,
+      isMounted: () => mounted,
+    );
+  }
+
   void _play(int epNumber, {Duration? startPosition}) {
     HubListFollow.markWatchingOnPlay(_followTarget);
-    openAnimePlayer(
+    unawaited(_playEpisode(epNumber, startPosition: startPosition));
+  }
+
+  Future<void> _playEpisode(int epNumber, {Duration? startPosition}) async {
+    // Movie RFC-063: Forja + Auto + Webstreaming off → race anime plugins.
+    if (await hubEngineAutoPlayEnabled()) {
+      if (!mounted) return;
+      final tmdb = ref.read(animeTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
+      final movie = _playMovieFor(tmdb);
+      final isMovie = (movie.mediaType == 'movie') ||
+          (_data.format ?? '').toUpperCase() == 'MOVIE';
+      final malId = await _service.resolveMalId(_activeId);
+      if (!mounted) return;
+      await runHubEngineAutoPlay(
+        context: context,
+        movie: movie,
+        engineCategory: 'anime',
+        season: isMovie ? null : 1,
+        episode: isMovie ? null : epNumber,
+        anilistId: _activeId,
+        malId: malId,
+        startPosition: startPosition,
+        loadingSubtitle: 'EP $epNumber',
+      );
+      if (!mounted) return;
+      await _afterPlayClosed();
+      return;
+    }
+
+    if (!mounted) return;
+    await openAnimePlayer(
       context,
       anime: _data,
       episodeNumber: epNumber,
       category: _category,
       allEpisodes: _episodes,
       startPosition: startPosition,
-    ).then((_) async {
-      await _refreshProgress();
-      _loadWatchedEpisodes();
-      if (!mounted) return;
-      if (_detailsScrollController.hasClients) {
-        _detailsScrollController.jumpTo(0);
-      }
-      ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
-        _heroPlayFocus,
-        isMounted: () => mounted,
-      );
-    });
+    );
+    if (!mounted) return;
+    await _afterPlayClosed();
   }
 
   void _openCatalogSources(Movie movie) {
@@ -466,6 +520,8 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     final languages = extras?.spokenLanguages ?? const <String>[];
     final companies = extras?.productionCompanies ?? const <String>[];
     return [
+      if (a.displayTitle.trim().isNotEmpty)
+        MapEntry('Name', a.displayTitle.trim()),
       if (a.mainStudio != null && a.mainStudio!.isNotEmpty)
         MapEntry('Studio', a.mainStudio!)
       else if (companies.isNotEmpty)

@@ -650,12 +650,6 @@ class EngineService {
     int? kisskhEpisodeId,
     bool allowHostFallback = true,
   }) async {
-    // onlykdrama.shop needs CF WebView fetch (OnlyKDramaCfSession). Rust
-    // reqwest cannot clear the challenge — force flutter_js host path.
-    if (pluginId == 'onlykdrama') {
-      debugPrint('[engine] onlykdrama — skip rust-js (CF WebView fetch)');
-      return null;
-    }
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return null;
@@ -731,9 +725,24 @@ class EngineService {
       'config': config,
     };
 
+    final hopPayload = <Map<String, Object?>>[];
+    for (final pack in packs) {
+      for (final p in pack.plugins) {
+        if (!p.isHop || !p.enabled) continue;
+        final hopCode = await _loadScript(p);
+        if (hopCode == null || hopCode.isEmpty) continue;
+        hopPayload.add({
+          'id': p.id,
+          'hosts': p.hopHosts,
+          'code': hopCode,
+        });
+      }
+    }
+    if (gen != _extractGeneration) return null;
+
     debugPrint(
       '[engine] ${plugin.id} start (rust-js) tmdb=$tmdbId type=$mediaType '
-      's=$season e=$episode title=$title',
+      's=$season e=$episode title=$title hops=${hopPayload.length}',
     );
     final sw = Stopwatch()..start();
     late final String rawJson;
@@ -744,6 +753,8 @@ class EngineService {
         'ctx': ctx,
         'timeout_ms': timeout.inMilliseconds,
         'allow_host_fallback': allowHostFallback,
+        'hops': hopPayload,
+        'hop_depth': 0,
       });
     } catch (e) {
       debugPrint('[engine] ${plugin.id} rust-js submit failed: $e');

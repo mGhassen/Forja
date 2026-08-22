@@ -5,10 +5,11 @@ use aes_gcm::{
     aead::{Aead, KeyInit},
     Aes128Gcm, Aes256Gcm, Nonce,
 };
-use base64::Engine as _;
 use cbc::{Decryptor as CbcDecryptor, Encryptor as CbcEncryptor};
+use hmac::Mac;
 use md5::{Digest as _, Md5};
-use sha2::{Sha1, Sha256, Sha512};
+use sha1::Sha1;
+use sha2::{Sha256, Sha512};
 
 type Aes128CbcEnc = CbcEncryptor<aes::Aes128>;
 type Aes128CbcDec = CbcDecryptor<aes::Aes128>;
@@ -55,17 +56,7 @@ pub fn hex_to_utf8(hex: &str) -> String {
 }
 
 pub fn digest_hex(algo: &str, data: &str) -> String {
-    let a = algo.to_uppercase();
-    if a.contains("MD5") {
-        return hex_from_bytes(&Md5::digest(data.as_bytes()));
-    }
-    if a.contains("SHA1") || a == "SHA-1" {
-        return hex_from_bytes(&Sha1::digest(data.as_bytes()));
-    }
-    if a.contains("SHA512") {
-        return hex_from_bytes(&Sha512::digest(data.as_bytes()));
-    }
-    hex_from_bytes(&Sha256::digest(data.as_bytes()))
+    digest_hex_bytes(algo, data.as_bytes())
 }
 
 pub fn digest_hex_bytes(algo: &str, data: &[u8]) -> String {
@@ -83,24 +74,23 @@ pub fn digest_hex_bytes(algo: &str, data: &[u8]) -> String {
 }
 
 pub fn hmac_hex(algo: &str, key: &str, data: &str) -> String {
-    use hmac::{Hmac, Mac};
     let a = algo.to_uppercase();
     if a.contains("MD5") {
-        let mut mac = Hmac::<Md5>::new_from_slice(key.as_bytes()).unwrap();
+        let mut mac = <hmac::Hmac<Md5> as Mac>::new_from_slice(key.as_bytes()).unwrap();
         mac.update(data.as_bytes());
         return hex_from_bytes(&mac.finalize().into_bytes());
     }
     if a.contains("SHA1") {
-        let mut mac = Hmac::<Sha1>::new_from_slice(key.as_bytes()).unwrap();
+        let mut mac = <hmac::Hmac<Sha1> as Mac>::new_from_slice(key.as_bytes()).unwrap();
         mac.update(data.as_bytes());
         return hex_from_bytes(&mac.finalize().into_bytes());
     }
     if a.contains("SHA512") {
-        let mut mac = Hmac::<Sha512>::new_from_slice(key.as_bytes()).unwrap();
+        let mut mac = <hmac::Hmac<Sha512> as Mac>::new_from_slice(key.as_bytes()).unwrap();
         mac.update(data.as_bytes());
         return hex_from_bytes(&mac.finalize().into_bytes());
     }
-    let mut mac = Hmac::<Sha256>::new_from_slice(key.as_bytes()).unwrap();
+    let mut mac = <hmac::Hmac<Sha256> as Mac>::new_from_slice(key.as_bytes()).unwrap();
     mac.update(data.as_bytes());
     hex_from_bytes(&mac.finalize().into_bytes())
 }
@@ -142,90 +132,79 @@ fn aes_cbc(
     if iv.len() != 16 {
         return Err("AES-CBC requires a 16-byte IV".into());
     }
-    match key.len() {
-        16 => {
-            if encrypt {
-                let mut buf = data.to_vec();
-                if pkcs7 {
-                    let enc = Aes128CbcEnc::new(key.into(), iv.into());
-                    return Ok(enc.encrypt_padded_vec_mut::<Pkcs7>(&buf));
-                }
-                if buf.len() % 16 != 0 {
-                    return Err("AES-CBC input must be a multiple of 16 bytes".into());
-                }
+    match (key.len(), encrypt, pkcs7) {
+        (16, true, true) => {
+            let enc = Aes128CbcEnc::new(key.into(), iv.into());
+            Ok(enc.encrypt_padded_vec_mut::<Pkcs7>(data))
+        }
+        (16, false, true) => {
+            let mut buf = data.to_vec();
+            Aes128CbcDec::new(key.into(), iv.into())
+                .decrypt_padded_mut::<Pkcs7>(&mut buf)
+                .map(|pt| pt.to_vec())
+                .map_err(|e| e.to_string())
+        }
+        (32, true, true) => {
+            let enc = Aes256CbcEnc::new(key.into(), iv.into());
+            Ok(enc.encrypt_padded_vec_mut::<Pkcs7>(data))
+        }
+        (32, false, true) => {
+            let mut buf = data.to_vec();
+            Aes256CbcDec::new(key.into(), iv.into())
+                .decrypt_padded_mut::<Pkcs7>(&mut buf)
+                .map(|pt| pt.to_vec())
+                .map_err(|e| e.to_string())
+        }
+        (16 | 32, true, false) => {
+            if data.len() % 16 != 0 {
+                return Err("AES-CBC input must be a multiple of 16 bytes".into());
+            }
+            let mut buf = data.to_vec();
+            if key.len() == 16 {
                 let mut enc = Aes128CbcEnc::new(key.into(), iv.into());
                 for chunk in buf.chunks_exact_mut(16) {
                     enc.encrypt_block_mut(chunk.into());
                 }
-                Ok(buf)
             } else {
-                let mut buf = data.to_vec();
-                if pkcs7 {
-                    let dec = Aes128CbcDec::new(key.into(), iv.into());
-                    return dec
-                        .decrypt_padded_vec_mut::<Pkcs7>(&buf)
-                        .map_err(|e| e.to_string());
-                }
-                if buf.len() % 16 != 0 {
-                    return Err("AES-CBC input must be a multiple of 16 bytes".into());
-                }
-                let mut dec = Aes128CbcDec::new(key.into(), iv.into());
-                for chunk in buf.chunks_exact_mut(16) {
-                    dec.decrypt_block_mut(chunk.into());
-                }
-                Ok(buf)
-            }
-        }
-        32 => {
-            if encrypt {
-                let buf = data.to_vec();
-                if pkcs7 {
-                    let enc = Aes256CbcEnc::new(key.into(), iv.into());
-                    return Ok(enc.encrypt_padded_vec_mut::<Pkcs7>(&buf));
-                }
-                let mut buf = data.to_vec();
-                if buf.len() % 16 != 0 {
-                    return Err("AES-CBC input must be a multiple of 16 bytes".into());
-                }
                 let mut enc = Aes256CbcEnc::new(key.into(), iv.into());
                 for chunk in buf.chunks_exact_mut(16) {
                     enc.encrypt_block_mut(chunk.into());
                 }
-                Ok(buf)
+            }
+            Ok(buf)
+        }
+        (16 | 32, false, false) => {
+            if data.len() % 16 != 0 {
+                return Err("AES-CBC input must be a multiple of 16 bytes".into());
+            }
+            let mut buf = data.to_vec();
+            if key.len() == 16 {
+                let mut dec = Aes128CbcDec::new(key.into(), iv.into());
+                for chunk in buf.chunks_exact_mut(16) {
+                    dec.decrypt_block_mut(chunk.into());
+                }
             } else {
-                let mut buf = data.to_vec();
-                if pkcs7 {
-                    let dec = Aes256CbcDec::new(key.into(), iv.into());
-                    return dec
-                        .decrypt_padded_vec_mut::<Pkcs7>(&buf)
-                        .map_err(|e| e.to_string());
-                }
-                if buf.len() % 16 != 0 {
-                    return Err("AES-CBC input must be a multiple of 16 bytes".into());
-                }
                 let mut dec = Aes256CbcDec::new(key.into(), iv.into());
                 for chunk in buf.chunks_exact_mut(16) {
                     dec.decrypt_block_mut(chunk.into());
                 }
-                Ok(buf)
             }
+            Ok(buf)
         }
         _ => Err("AES key must be 16 or 32 bytes".into()),
     }
 }
 
 fn aes_ecb(encrypt: bool, key: &[u8], data: &[u8], pkcs7: bool) -> Result<Vec<u8>, String> {
-    use aes::cipher::{BlockDecrypt, BlockEncrypt, KeyInit};
-    // ECB via manual blocks + optional PKCS7
-    let padded = if encrypt && pkcs7 {
+    use aes::cipher::{BlockDecrypt, BlockEncrypt, KeyInit as AesKeyInit};
+    let mut out = if encrypt && pkcs7 {
         pkcs7_pad(data, 16)
     } else {
         data.to_vec()
     };
-    if padded.len() % 16 != 0 {
+    if out.len() % 16 != 0 {
         return Err("AES-ECB input must be a multiple of 16 bytes".into());
     }
-    let mut out = padded.clone();
     match key.len() {
         16 => {
             let cipher = aes::Aes128::new(key.into());
@@ -256,14 +235,6 @@ fn aes_ecb(encrypt: bool, key: &[u8], data: &[u8], pkcs7: bool) -> Result<Vec<u8
 }
 
 fn aes_gcm(encrypt: bool, key: &[u8], iv: &[u8], data: &[u8]) -> Result<Vec<u8>, String> {
-    if iv.is_empty() {
-        return Err("AES-GCM requires an IV".into());
-    }
-    // aes-gcm crate wants 12-byte nonce typically; CryptoJS/vidrock may use other lengths.
-    // For non-12, use generic AesGcm with custom nonce via aes_gcm::aead::generic_array — 
-    // aes-gcm 0.10 Nonce is typenum U12 only. Fall back to copying Dart: use aes crate + gcm manually?
-    // Workspace uses aes-gcm. For 12-byte IV use it; for other lengths use openssl-style via ctr+ghash is hard.
-    // Vidrock uses 12-byte IV (24 hex chars) from hex.substring(0, 24).
     if iv.len() != 12 {
         return Err(format!("AES-GCM IV must be 12 bytes (got {})", iv.len()));
     }
@@ -311,7 +282,6 @@ fn pkcs7_unpad(data: &[u8], block: usize) -> Result<Vec<u8>, String> {
     Ok(data[..data.len() - pad].to_vec())
 }
 
-/// JSON bridge: `{encrypt,mode,key,iv,data}` → hex or empty on error.
 pub fn aes_bridge_json(payload: &str) -> String {
     let Ok(v) = serde_json::from_str::<serde_json::Value>(payload) else {
         return String::new();
@@ -368,9 +338,14 @@ mod tests {
     fn aes_cbc_roundtrip() {
         let key = "00112233445566778899aabbccddeeff";
         let iv = "0102030405060708090a0b0c0d0e0f10";
-        let pt = utf8_to_hex("hello world!!!!"); // 15 bytes → pad
+        let pt = utf8_to_hex("hello world!!!!");
         let ct = aes_hex(true, "AES-CBC", key, iv, &pt).unwrap();
         let out = aes_hex(false, "AES-CBC", key, iv, &ct).unwrap();
         assert_eq!(hex_to_utf8(&out), "hello world!!!!");
+    }
+
+    #[test]
+    fn digest_md5() {
+        assert_eq!(digest_hex("MD5", ""), "d41d8cd98f00b204e9800998ecf8427e");
     }
 }

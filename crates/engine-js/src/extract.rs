@@ -95,6 +95,14 @@ fn decompress(data: &[u8]) -> Vec<u8> {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct HopScript {
+    pub id: String,
+    #[serde(default)]
+    pub hosts: Vec<String>,
+    pub code: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ExtractRequest {
     pub plugin_id: String,
     pub code: String,
@@ -103,6 +111,12 @@ pub struct ExtractRequest {
     pub timeout_ms: u64,
     #[serde(default)]
     pub allow_host_fallback: bool,
+    /// Hop plugins (`kind: hop`) for `ctx.hop(url)`.
+    #[serde(default)]
+    pub hops: Vec<HopScript>,
+    /// Nesting depth for `ctx.hop` (max 3, same as Dart EngineRuntime).
+    #[serde(default)]
+    pub hop_depth: u32,
 }
 
 fn default_timeout_ms() -> u64 {
@@ -169,11 +183,103 @@ const HOST_JS: &str = r#"
     error: function(){ __native_log('[err] '+[].slice.call(arguments).join(' ')); },
     warn: function(){ __native_log('[warn] '+[].slice.call(arguments).join(' ')); }
   };
+  var _b64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  if (typeof atob === 'undefined') {
+    globalThis.atob = function(input){
+      var str = String(input).replace(/=+$/, '');
+      if (str.length % 4 === 1) throw new Error('InvalidCharacterError');
+      var output = '', bc = 0, bs = 0, buffer, idx = 0;
+      while ((buffer = str.charAt(idx++))) {
+        buffer = _b64Chars.indexOf(buffer);
+        if (buffer === -1) continue;
+        bs = bc % 4 ? bs * 64 + buffer : buffer;
+        if (bc++ % 4) output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6)));
+      }
+      return output;
+    };
+  }
+  if (typeof btoa === 'undefined') {
+    globalThis.btoa = function(input){
+      var str = String(input), output = '', map = _b64Chars, block, charCode, idx = 0;
+      for (; str.charAt(idx | 0) || (map = '=', idx % 1);
+           output += map.charAt(63 & (block >> (8 - (idx % 1) * 8)))) {
+        charCode = str.charCodeAt(idx += 3 / 4);
+        if (charCode > 0xFF) throw new Error('InvalidCharacterError');
+        block = (block << 8) | charCode;
+      }
+      return output;
+    };
+  }
   globalThis.__engineHtml = function(){ throw new Error('UNSUPPORTED:cheerio'); };
-  globalThis.__engineHop = function(){ return Promise.reject(new Error('UNSUPPORTED:hop')); };
+  globalThis.__engineHop = function(url){
+    return __native_hop(String(url == null ? '' : url)).then(function(raw){
+      try { var v = JSON.parse(raw || '[]'); return Array.isArray(v) ? v : []; }
+      catch (e) { return []; }
+    });
+  };
   globalThis.__engineHost = function(){ return Promise.resolve([]); };
 })();
 "#;
+
+const CRYPTO_JS: &str = include_str!("crypto_js_polyfill.js");
+
+fn url_host(url: &str) -> Option<String> {
+    let after = url.trim().split("://").nth(1)?;
+    let hostport = after.split(['/', '?', '#']).next()?;
+    let host = hostport.split('@').next_back()?;
+    let host = host.split(':').next()?;
+    let h = host.trim().to_lowercase();
+    if h.is_empty() {
+        None
+    } else {
+        Some(h)
+    }
+}
+
+fn hop_plugin_for_url<'a>(url: &str, hops: &'a [HopScript]) -> Option<&'a HopScript> {
+    let host = url_host(url)?;
+    for h in hops {
+        for cand in &h.hosts {
+            let n = cand.trim().to_lowercase();
+            if n.is_empty() {
+                continue;
+            }
+            if host == n || host.ends_with(&format!(".{n}")) {
+                return Some(h);
+            }
+        }
+    }
+    None
+}
+
+async fn run_hop(
+    url: String,
+    hops: std::sync::Arc<Vec<HopScript>>,
+    parent_meta: std::sync::Arc<Value>,
+    hop_depth: u32,
+) -> String {
+    if cancelled() || hop_depth >= 3 || url.trim().is_empty() {
+        return "[]".into();
+    }
+    let Some(hop) = hop_plugin_for_url(&url, &hops) else {
+        return "[]".into();
+    };
+    let mut meta = (*parent_meta).clone();
+    if let Some(obj) = meta.as_object_mut() {
+        obj.insert("url".into(), Value::String(url));
+    }
+    let result = Box::pin(extract(ExtractRequest {
+        plugin_id: hop.id.clone(),
+        code: hop.code.clone(),
+        ctx: meta,
+        timeout_ms: 20_000,
+        allow_host_fallback: true,
+        hops: (*hops).clone(),
+        hop_depth: hop_depth + 1,
+    }))
+    .await;
+    serde_json::to_string(&result.streams).unwrap_or_else(|_| "[]".into())
+}
 
 fn fetch_cancelled_json(url: &str) -> String {
     serde_json::json!({
@@ -351,9 +457,11 @@ async fn extract_inner(req: ExtractRequest) -> ExtractResult {
     let code = req.code.clone();
     let meta = req.ctx.clone();
     let plugin_label = plugin_id.clone();
+    let hops = std::sync::Arc::new(req.hops.clone());
+    let hop_depth = req.hop_depth;
 
     let result = async_with!(ctx => |ctx| {
-        run_in_ctx(ctx, plugin_id, code, meta, plugin_label).await
+        run_in_ctx(ctx, plugin_id, code, meta, plugin_label, hops, hop_depth).await
     })
     .await;
 
@@ -383,6 +491,8 @@ async fn run_in_ctx<'js>(
     code: String,
     meta: Value,
     plugin_label: String,
+    hops: std::sync::Arc<Vec<HopScript>>,
+    hop_depth: u32,
 ) -> Result<Vec<Value>, String> {
     let fetch_fn = Function::new(ctx.clone(), Async(native_fetch))
         .map_err(|e| e.to_string())?
@@ -442,6 +552,73 @@ async fn run_in_ctx<'js>(
         .set("__native_log", log_fn)
         .map_err(|e| e.to_string())?;
 
+    ctx.globals()
+        .set(
+            "__native_crypto_aes",
+            Function::new(ctx.clone(), |payload: String| {
+                crate::crypto_host::aes_bridge_json(&payload)
+            })
+            .map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+    ctx.globals()
+        .set(
+            "__native_crypto_digest",
+            Function::new(ctx.clone(), |payload: String| {
+                crate::crypto_host::digest_bridge_json(&payload)
+            })
+            .map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+    ctx.globals()
+        .set(
+            "__native_crypto_hmac",
+            Function::new(ctx.clone(), |payload: String| {
+                crate::crypto_host::hmac_bridge_json(&payload)
+            })
+            .map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+    ctx.globals()
+        .set(
+            "__native_crypto_utf8_to_hex",
+            Function::new(ctx.clone(), |data: String| {
+                crate::crypto_host::utf8_to_hex(&data)
+            })
+            .map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+    ctx.globals()
+        .set(
+            "__native_crypto_hex_to_utf8",
+            Function::new(ctx.clone(), |hex: String| {
+                crate::crypto_host::hex_to_utf8(&hex)
+            })
+            .map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+
+    let hops_for_fn = hops.clone();
+    let meta_for_hop = std::sync::Arc::new(meta.clone());
+    let hop_fn = Function::new(
+        ctx.clone(),
+        Async({
+            let hops_for_fn = hops_for_fn.clone();
+            let meta_for_hop = meta_for_hop.clone();
+            move |url: String| {
+                let hops_for_fn = hops_for_fn.clone();
+                let meta_for_hop = meta_for_hop.clone();
+                async move { run_hop(url, hops_for_fn, meta_for_hop, hop_depth).await }
+            }
+        }),
+    )
+    .map_err(|e| e.to_string())?
+    .with_name("__native_hop")
+    .map_err(|e| e.to_string())?;
+    ctx.globals()
+        .set("__native_hop", hop_fn)
+        .map_err(|e| e.to_string())?;
+
     let set_timeout = Function::new(
         ctx.clone(),
         |ctx: Ctx<'js>, ms: u32, cb: Function<'js>| -> rquickjs::Result<u32> {
@@ -482,6 +659,9 @@ async fn run_in_ctx<'js>(
         .map_err(|e| e.to_string())?;
 
     ctx.eval::<(), _>(HOST_JS)
+        .catch(&ctx)
+        .map_err(|e| e.to_string())?;
+    ctx.eval::<(), _>(CRYPTO_JS)
         .catch(&ctx)
         .map_err(|e| e.to_string())?;
 
@@ -540,7 +720,7 @@ async fn run_in_ctx<'js>(
     html: globalThis.__engineHtml,
     host: globalThis.__engineHost,
     hop: globalThis.__engineHop,
-    crypto: {{
+    crypto: Object.assign({{}}, globalThis.CryptoJS || {{}}, {{
       streamDecrypt: streamDecrypt,
       kisskhKkey: function(episodeId, kind) {{
         return __native_kisskh_kkey((episodeId|0), String(kind == null ? 'video' : kind)) || '';
@@ -559,7 +739,7 @@ async fn run_in_ctx<'js>(
         if (!raw) return null;
         try {{ return JSON.parse(raw); }} catch (e) {{ return null; }}
       }}
-    }},
+    }}),
     streamcrypto: {{ decrypt: streamDecrypt }}
   }};
   var r = await fn(ctx);
@@ -601,11 +781,77 @@ function extract(ctx) {
             ctx: serde_json::json!({ "tmdbId": id, "type": "movie", "title": "x" }),
             timeout_ms: 5_000,
             allow_host_fallback: false,
+            hops: vec![],
+            hop_depth: 0,
         };
         let (a, b) = tokio::join!(extract(mk("a")), extract(mk("b")));
         assert_eq!(a.streams.len(), 1);
         assert_eq!(b.streams.len(), 1);
         assert!(a.error.is_none());
         assert!(b.error.is_none());
+    }
+
+    #[tokio::test]
+    async fn cryptojs_aes_passphrase_roundtrip() {
+        let code = r#"
+function extract(ctx) {
+  var C = ctx.crypto;
+  var enc = C.AES.encrypt('hello-forja', 'secret-key').toString();
+  var dec = C.AES.decrypt(enc, 'secret-key').toString(C.enc.Utf8);
+  return Promise.resolve([{ url: 'https://example.com/' + dec, name: 't' }]);
+}
+"#;
+        let r = extract(ExtractRequest {
+            plugin_id: "crypto".into(),
+            code: code.into(),
+            ctx: serde_json::json!({ "tmdbId": "1", "type": "movie" }),
+            timeout_ms: 5_000,
+            allow_host_fallback: false,
+            hops: vec![],
+            hop_depth: 0,
+        })
+        .await;
+        assert!(r.error.is_none(), "{:?}", r.error);
+        assert_eq!(r.streams.len(), 1);
+        assert_eq!(
+            r.streams[0].get("url").and_then(|u| u.as_str()),
+            Some("https://example.com/hello-forja")
+        );
+    }
+
+    #[tokio::test]
+    async fn hop_nested_extract() {
+        let hop_code = r#"
+function extract(ctx) {
+  return Promise.resolve([{ url: ctx.url + '/hopped', name: 'hop' }]);
+}
+"#;
+        let code = r#"
+function extract(ctx) {
+  return ctx.hop('https://filemoon.sx/e/abc').then(function(rows){
+    return rows;
+  });
+}
+"#;
+        let r = extract(ExtractRequest {
+            plugin_id: "parent".into(),
+            code: code.into(),
+            ctx: serde_json::json!({ "tmdbId": "1", "type": "movie" }),
+            timeout_ms: 10_000,
+            allow_host_fallback: false,
+            hops: vec![HopScript {
+                id: "filemoon".into(),
+                hosts: vec!["filemoon.sx".into()],
+                code: hop_code.into(),
+            }],
+            hop_depth: 0,
+        })
+        .await;
+        assert!(r.error.is_none(), "{:?}", r.error);
+        assert_eq!(r.streams.len(), 1);
+        assert_eq!(
+            r.streams[0].get("url").and_then(|u| u.as_str()),
+            Some("https://filemoon.sx/e/abc/hopped")
+        );
     }
 }
