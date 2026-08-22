@@ -2,6 +2,7 @@
 
 mod crypto_host;
 mod extract;
+mod scrypt_pow;
 mod stream_crypto;
 
 pub use extract::{extract, ExtractRequest, ExtractResult, HopScript};

@@ -210,7 +210,11 @@ const HOST_JS: &str = r#"
       return output;
     };
   }
-  globalThis.__engineHtml = function(){ throw new Error('UNSUPPORTED:cheerio'); };
+  globalThis.__engineHtml = function(html){
+    var c = globalThis.__engineCheerio;
+    if (!c || typeof c.load !== 'function') throw new Error('UNSUPPORTED:cheerio');
+    return c.load(String(html == null ? '' : html));
+  };
   globalThis.__engineHop = function(url){
     return __native_hop(String(url == null ? '' : url)).then(function(raw){
       try { var v = JSON.parse(raw || '[]'); return Array.isArray(v) ? v : []; }
@@ -222,6 +226,27 @@ const HOST_JS: &str = r#"
 "#;
 
 const CRYPTO_JS: &str = include_str!("crypto_js_polyfill.js");
+const CHEERIO_BUNDLE: &str =
+    include_str!("../../../apps/forja/assets/nuvio/cheerio.bundle.js");
+
+fn cheerio_load_js() -> String {
+    format!(
+        r#"(function(){{
+  var module = {{ exports: {{}} }};
+  var exports = module.exports;
+  try {{
+    {bundle}
+    var c = (module.exports && Object.keys(module.exports).length > 0)
+      ? module.exports
+      : (typeof cheerio !== 'undefined' ? cheerio : null);
+    if (c && typeof c.load === 'function') globalThis.__engineCheerio = c;
+  }} catch (e) {{
+    console.error('[engine-js] cheerio load failed: ' + (e && e.message ? e.message : e));
+  }}
+}})();"#,
+        bundle = CHEERIO_BUNDLE
+    )
+}
 
 fn url_host(url: &str) -> Option<String> {
     let after = url.trim().split("://").nth(1)?;
@@ -597,6 +622,15 @@ async fn run_in_ctx<'js>(
             .map_err(|e| e.to_string())?,
         )
         .map_err(|e| e.to_string())?;
+    ctx.globals()
+        .set(
+            "__native_solve_scrypt_pow",
+            Function::new(ctx.clone(), |payload: String| {
+                crate::scrypt_pow::solve_scrypt_pow_json(&payload)
+            })
+            .map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
 
     let hops_for_fn = hops.clone();
     let meta_for_hop = std::sync::Arc::new(meta.clone());
@@ -664,6 +698,9 @@ async fn run_in_ctx<'js>(
     ctx.eval::<(), _>(CRYPTO_JS)
         .catch(&ctx)
         .map_err(|e| e.to_string())?;
+    ctx.eval::<(), _>(cheerio_load_js().as_str())
+        .catch(&ctx)
+        .map_err(|e| format!("cheerio: {e}"))?;
 
     let load = format!(
         r#"(function(){{
@@ -738,6 +775,10 @@ async fn run_in_ctx<'js>(
         var raw = __native_solve_pow(String(challenge||''), difficulty|0, (max==null?5000000:max)|0);
         if (!raw) return null;
         try {{ return JSON.parse(raw); }} catch (e) {{ return null; }}
+      }},
+      solveScryptPow: function(challenge) {{
+        var raw = __native_solve_scrypt_pow(JSON.stringify(challenge == null ? {{}} : challenge));
+        return raw || null;
       }}
     }}),
     streamcrypto: {{ decrypt: streamDecrypt }}
@@ -852,6 +893,34 @@ function extract(ctx) {
         assert_eq!(
             r.streams[0].get("url").and_then(|u| u.as_str()),
             Some("https://filemoon.sx/e/abc/hopped")
+        );
+    }
+
+    #[tokio::test]
+    async fn cheerio_html_select() {
+        let code = r#"
+function extract(ctx) {
+  var $ = ctx.html('<div><a class="btn-success" href="/watch/1">Play</a></div>');
+  var href = $('a.btn-success').first().attr('href');
+  var text = $('a.btn-success').first().text();
+  return Promise.resolve([{ url: 'https://ex.com' + href, name: String(text).trim() }]);
+}
+"#;
+        let r = extract(ExtractRequest {
+            plugin_id: "cheerio".into(),
+            code: code.into(),
+            ctx: serde_json::json!({ "tmdbId": "1", "type": "movie" }),
+            timeout_ms: 30_000,
+            allow_host_fallback: false,
+            hops: vec![],
+            hop_depth: 0,
+        })
+        .await;
+        assert!(r.error.is_none(), "{:?}", r.error);
+        assert_eq!(r.streams.len(), 1);
+        assert_eq!(
+            r.streams[0].get("url").and_then(|u| u.as_str()),
+            Some("https://ex.com/watch/1")
         );
     }
 }

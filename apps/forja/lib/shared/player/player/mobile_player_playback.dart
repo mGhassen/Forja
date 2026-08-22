@@ -443,7 +443,6 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
 
       if (_s._currentSources != null &&
           _s._currentSources!.isNotEmpty &&
-          !isCatalogSourcesMode(widget.activeProvider) &&
           (widget.magnetLink == null || widget.magnetLink!.isEmpty)) {
         _subscribeToStreams();
         var startIndex = sourceStartIndex;
@@ -537,7 +536,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
         if (widget.streamsPrevalidated ||
             (_s._providerPinned && !hostOwnsReload)) {
           await _failPlaybackNoFailover(
-            message: 'Playback failed. Pick another server from Sources.',
+            message: 'Playback failed. Open Sources and choose another stream.',
           );
         } else {
           final recovered = await _reresolveLikeFirstPlay(

@@ -437,8 +437,15 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       // Do not snap Sources chips / session cache to the auto winner — that
       // made reopen show the last-played plugin instead of the user's chips.
       openedPlayer = true;
+      final candidates = await _collectProbedEngineStreams(
+        hit.batch,
+        preferred: hit.stream,
+        max: 3,
+        isAborted: playAborted,
+      );
+      if (playAborted() || candidates.isEmpty) return;
       await _playEngineAutoWinner(
-        hit.stream,
+        candidates,
         startPosition: startPosition,
         loadingDialogContext: loadingDialogContext,
         fadeOutNotifier: fadeOutNotifier,
@@ -626,14 +633,71 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     return null;
   }
 
+  /// Up to [max] HTTP rows from [batch] that still respond (preferred first).
+  Future<List<Map<String, dynamic>>> _collectProbedEngineStreams(
+    List<Map<String, dynamic>> batch, {
+    required Map<String, dynamic> preferred,
+    required int max,
+    required bool Function() isAborted,
+  }) async {
+    final out = <Map<String, dynamic>>[preferred];
+    if (out.length >= max || batch.isEmpty) return out;
+
+    final useDebrid = await _s._settings.useDebridForStreams();
+    final debridService = await _s._settings.getDebridService();
+    if (isAborted()) return out;
+
+    final seenUrls = <String>{};
+    final preferredCheck = classifyStremioStream(
+      preferred,
+      _s._playbackProfile,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    );
+    if (preferredCheck is StremioPlayable) {
+      seenUrls.add(preferredCheck.streamUrl);
+    }
+
+    for (final stream in batch) {
+      if (isAborted() || out.length >= max) break;
+      if (identical(stream, preferred)) continue;
+      final check = classifyStremioStream(
+        stream,
+        _s._playbackProfile,
+        useDebrid: useDebrid,
+        debridService: debridService,
+      );
+      if (check is StremioExternalLink || check is StremioResolveFailure) {
+        continue;
+      }
+      if (check is! StremioPlayable) continue;
+      if (!seenUrls.add(check.streamUrl)) continue;
+      final pid = catalogHttpPlayProviderId(stream);
+      final ok = await probeStreamSourceUrl(
+        check.streamUrl,
+        check.headers,
+        sourceKey: pid,
+      );
+      if (isAborted()) break;
+      if (!ok) {
+        debugPrint('[engine-auto] sibling probe fail $pid — skip');
+        continue;
+      }
+      debugPrint('[engine-auto] sibling probe ok $pid');
+      out.add(stream);
+    }
+    return out;
+  }
+
   Future<void> _playEngineAutoWinner(
-    Map<String, dynamic> stream, {
+    List<Map<String, dynamic>> streams, {
     required Duration? startPosition,
     required BuildContext? loadingDialogContext,
     required ValueNotifier<bool> fadeOutNotifier,
     required bool Function() isAborted,
   }) async {
-    if (isAborted() || !mounted) return;
+    if (isAborted() || !mounted || streams.isEmpty) return;
+    final stream = streams.first;
     final isTv = _s._movie.mediaType == 'tv';
     final stremioId =
         widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId;
@@ -652,23 +716,49 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     );
 
     if (precheck is StremioPlayable) {
-      final proxied = await proxyCatalogHttpStreamIfNeeded(
-        streamUrl: precheck.streamUrl,
-        headers: precheck.headers,
-        stream: stream,
-      );
-      if (isAborted() || !mounted) return;
+      final sources = <StreamSource>[];
+      for (final row in streams) {
+        if (isAborted() || !mounted) return;
+        final check = classifyStremioStream(
+          row,
+          _s._playbackProfile,
+          useDebrid: useDebrid,
+          debridService: debridService,
+        );
+        if (check is! StremioPlayable) continue;
+        final proxied = await proxyCatalogHttpStreamIfNeeded(
+          streamUrl: check.streamUrl,
+          headers: check.headers,
+          stream: row,
+        );
+        if (isAborted() || !mounted) return;
+        final url = proxied.url;
+        sources.add(
+          StreamSource(
+            url: url,
+            title: (row['title'] ?? row['name'] ?? 'Forja').toString(),
+            type: url.contains('.m3u8') ? 'hls' : 'mp4',
+            headers: proxied.headers,
+            providerId: catalogHttpPlayProviderId(row),
+          ),
+        );
+      }
+      if (sources.isEmpty) return;
+      final primary = sources.first;
       final ctx = loadingDialogContext;
       Future<void> openPlayer() => AppRouter.openPlayer(
         context,
-        streamUrl: proxied.url,
+        streamUrl: primary.url,
         title: _s._movie.title,
-        headers: proxied.headers,
+        headers: primary.headers,
         movie: _s._movie,
         selectedSeason: isTv ? _s._selectedSeason : null,
         selectedEpisode: isTv ? _s._selectedEpisode : null,
         startPosition: startPosition,
-        activeProvider: catalogHttpPlayProviderId(stream),
+        activeProvider: primary.providerId ?? catalogHttpPlayProviderId(stream),
+        sources: sources,
+        pinSource: false,
+        streamsPrevalidated: true,
         externalSubtitles: catalogStreamExternalSubtitles(stream),
         stremioId: stremioId,
         stremioAddonBaseUrl: stremioAddonBaseUrl,
