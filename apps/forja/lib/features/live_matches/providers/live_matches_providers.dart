@@ -12,6 +12,8 @@ final liveMatchesPrimaryLoadProvider = FutureProvider.autoDispose
           return _fetchLiveMatchesStreamed();
         case _LiveMatchesServer.mutStreams:
           return _fetchLiveMatchesMut();
+        case _LiveMatchesServer.forjaLive:
+          return _fetchLiveMatchesForjaLive();
         case _LiveMatchesServer.stremio:
           return _fetchLiveMatchesStremio();
         case _LiveMatchesServer.iptvSports:
@@ -40,7 +42,7 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
     _fetchStreamedMatches().catchError((_) => <_StreamedMatch>[]),
   ]);
   final ppvStreams = results[0] as List<_DamiTvStream>;
-  final streamedMatches = results[1] as List<_StreamedMatch>;
+  final rustStreamed = results[1] as List<_StreamedMatch>;
 
   final seenCats = <String>{};
   final cats = <_Sport>[];
@@ -61,7 +63,7 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
   for (final s in ppvStreams) {
     addMatchCat(s.categoryName, isAlwaysOn: s.isAlwaysOn);
   }
-  for (final m in streamedMatches) {
+  for (final m in rustStreamed) {
     addMatchCat(m.category, isAlwaysOn: m.isAlwaysOn);
   }
   cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
@@ -69,7 +71,7 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
   return LiveMatchesPrimaryLoad(
     sports: cats,
     damiTvStreams: ppvStreams,
-    streamedMatches: streamedMatches,
+    streamedMatches: rustStreamed,
   );
 }
 
@@ -136,6 +138,59 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesMut() async {
   }
   cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   return LiveMatchesPrimaryLoad(sports: cats, streamedMatches: matches);
+}
+
+_StreamedMatch _forjaLiveRowToMatch(Map<String, dynamic> j) {
+  final sourcesRaw = j['sources'];
+  final inline = <Map<String, dynamic>>[];
+  final refs = <Map<String, dynamic>>[];
+  if (sourcesRaw is List) {
+    for (final s in sourcesRaw) {
+      if (s is! Map) continue;
+      final m = Map<String, dynamic>.from(s);
+      final url = (m['url'] ?? '').toString();
+      if (url.isNotEmpty) {
+        inline.add({
+          'id': m['id'] ?? '',
+          'streamNo': 1,
+          'language': '',
+          'hd': false,
+          'embedUrl': url,
+          'source': m['source'] ?? '',
+          'viewers': 0,
+        });
+      } else {
+        refs.add(m);
+      }
+    }
+  }
+  final enriched = Map<String, dynamic>.from(j);
+  enriched['sources'] = refs;
+  enriched['streams'] = inline;
+  if (j['homeTeam'] != null && enriched['teams'] == null) {
+    enriched['teams'] = {
+      'home': {'name': j['homeTeam'], 'badge': j['homeBadge'] ?? ''},
+      'away': {'name': j['awayTeam'], 'badge': j['awayBadge'] ?? ''},
+    };
+  }
+  return _StreamedMatch.fromJson(enriched);
+}
+
+Future<List<_StreamedMatch>> _fetchForjaLiveMatches() async {
+  final rows = await LiveMatchesEngine.fetchCatalog();
+  return rows
+      .map(_forjaLiveRowToMatch)
+      .where((m) => m.id.isNotEmpty && m.title.isNotEmpty)
+      .toList();
+}
+
+// Kept for bulk fetch tests / tooling; Live Matches UI uses lazy per-plugin load.
+
+Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesForjaLive() async {
+  return const LiveMatchesPrimaryLoad(
+    sports: [],
+    streamedMatches: [],
+  );
 }
 
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStremio() async {

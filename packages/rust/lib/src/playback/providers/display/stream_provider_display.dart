@@ -1,3 +1,7 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 /// Player-facing labels for built-in web stream providers.
 ///
 /// Settings, extraction, and the in-player Servers menu all use real provider
@@ -130,7 +134,32 @@ class StreamProviderDisplay {
     return _titleCaseId(canonical);
   }
 
-  static String flagForCountry(String code) => _flags[code] ?? '';
+  static String flagForCountry(String code) => _flags[code.trim().toLowerCase()] ?? '';
+
+  /// Windows Segoe UI renders regional-indicator flags as letter pairs (US/DE),
+  /// not colorful flags — use [flagDisplayForCountry] in UI instead.
+  static bool get supportsFlagEmoji {
+    if (kIsWeb) return true;
+    try {
+      return !Platform.isWindows;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  /// Emoji on macOS/Linux/mobile; uppercase language code on Windows.
+  static String flagDisplayForCountry(String code) {
+    final c = code.trim().toLowerCase();
+    if (c.isEmpty) return '';
+    if (supportsFlagEmoji) return flagForCountry(c);
+    if (c == 'multi') return '🌐';
+    return c.toUpperCase();
+  }
+
+  static String flagsDisplayForCodes(Iterable<String> codes) => codes
+      .map(flagDisplayForCountry)
+      .where((f) => f.isNotEmpty)
+      .join(' ');
 
   /// Flags already present in [text] (globe / regional-indicator pairs).
   static List<String> extractFlagEmojis(String text) {
@@ -177,11 +206,11 @@ class StreamProviderDisplay {
   /// Flag emoji string for a stream title — prefers emoji already in the text,
   /// otherwise maps detected language tokens via [flagForCountry].
   static String flagsForText(String text) {
-    final existing = extractFlagEmojis(text);
-    if (existing.isNotEmpty) return existing.join(' ');
-    return languageCodesFromText(
-      text,
-    ).map(flagForCountry).where((f) => f.isNotEmpty).join(' ');
+    if (supportsFlagEmoji) {
+      final existing = extractFlagEmojis(text);
+      if (existing.isNotEmpty) return existing.join(' ');
+    }
+    return flagsDisplayForCodes(languageCodesFromText(text));
   }
 
   /// Server list label — name only (flags belong on stream rows).

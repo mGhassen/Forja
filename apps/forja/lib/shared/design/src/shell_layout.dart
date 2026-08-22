@@ -214,6 +214,12 @@ double shellNavRailIconSize(BuildContext context) =>
 double shellNavRailLabelFontSize(BuildContext context) =>
     ShellTokens.navRailLabelFontSize;
 
+/// Label row height — includes [MediaQuery.textScalerOf] (Windows accessibility).
+double shellNavRailLabelSlotHeight(BuildContext context, [double? baseFontSize]) {
+  final base = baseFontSize ?? ShellTokens.navRailLabelFontSize;
+  return MediaQuery.textScalerOf(context).scale(base);
+}
+
 double shellNavRailProfileAvatarScale(BuildContext context) =>
     ShellScope.metricsOf(context).usesTvDensity
     ? ShellTokens.navRailProfileAvatarScaleTv
@@ -224,9 +230,11 @@ double shellNavRailItemContentHeight(
   BuildContext context, {
   double? iconSize,
   double? labelFontSize,
+  double? labelSlotHeight,
 }) {
   final icon = iconSize ?? shellNavRailIconSize(context);
-  final label = labelFontSize ?? shellNavRailLabelFontSize(context);
+  final label =
+      labelSlotHeight ?? shellNavRailLabelSlotHeight(context, labelFontSize);
   return icon * ShellTokens.navRailIconHoverScale +
       ShellTokens.navRailIconUnderlineGap +
       ShellTokens.shellNavUnderlineHeight +

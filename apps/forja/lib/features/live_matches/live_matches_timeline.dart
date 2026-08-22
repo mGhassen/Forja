@@ -78,8 +78,11 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
         entries.addAll(_s._filteredDamiTv.map(_LiveMatchGridEntry.ppv));
       case _LiveMatchesServer.streamed:
       case _LiveMatchesServer.mutStreams:
+      case _LiveMatchesServer.forjaLive:
       case _LiveMatchesServer.stremio:
-        entries.addAll(_s._filteredStreamed.map(_LiveMatchGridEntry.streamed));
+        entries.addAll(
+          _s._displayStreamedMatches.map(_LiveMatchGridEntry.streamed),
+        );
     }
 
     final byBucket = <int, List<_LiveMatchGridEntry>>{};

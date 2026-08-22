@@ -296,7 +296,8 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
       },
       borderRadius: PlayerPopupTokens.chipRadius,
       scaleOnFocus: 1.0,
-      showFocusBorder: true,
+      showFocusBorder: false,
+      showFocusFill: false,
       onRightEdge: _focusClose,
       child: face,
     );

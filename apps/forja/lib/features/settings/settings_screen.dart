@@ -37,11 +37,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'settings',
       defaultFocus: () => _firstHubFocus,
       enterFromNavFocus: () {
+        if (!ShellScope.metricsOf(context).usesTvDensity) return;
         if (_firstHubFocus.canRequestFocus) {
           _firstHubFocus.requestFocus();
         }
       },
       restoreFocus: () {
+        if (!ShellScope.metricsOf(context).usesTvDensity) return false;
         if (_firstHubFocus.canRequestFocus) {
           _firstHubFocus.requestFocus();
           return true;

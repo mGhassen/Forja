@@ -9,6 +9,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/engine_polyfills.dart';
 import 'package:forja/shared/engine/host_resolver.dart';
+import 'package:forja/shared/engine/live_goat_unlock.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/extractors/core/stream_crypto.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
@@ -300,6 +301,37 @@ class EngineRuntime {
       }
     });
 
+    br('LiveGoatUnlock', (args) async {
+      try {
+        final m = _bridgeMap(args);
+        final slotRaw = m['slot'];
+        final slot = slotRaw is Map
+            ? Map<String, dynamic>.from(slotRaw)
+            : <String, dynamic>{};
+        final url = await LiveGoatUnlock.unlock(
+          slot: slot,
+          goat: (m['goat'] ?? '').toString(),
+          bodyHex: (m['bodyHex'] ?? '').toString(),
+        );
+        return url ?? '';
+      } catch (_) {
+        return '';
+      }
+    });
+
+    br('LiveSniffEmbed', (args) async {
+      try {
+        final m = _bridgeMap(args);
+        final url = await LiveGoatUnlock.sniffEmbed(
+          embedUrl: (m['url'] ?? m['embedUrl'] ?? '').toString(),
+          referer: (m['referer'] ?? '').toString(),
+        );
+        return url ?? '';
+      } catch (_) {
+        return '';
+      }
+    });
+
     br('FetchStart', (args) {
       try {
         if (!_acceptingFetches || _activeExtract <= 0) return null;
@@ -537,6 +569,42 @@ class EngineRuntime {
     });
   }
 
+  Future<List<Map<String, dynamic>>> extractLive({
+    required String pluginId,
+    String? pluginName,
+    required String action,
+    Map<String, dynamic> params = const {},
+    Map<String, dynamic> config = const {},
+    Duration timeout = const Duration(seconds: 45),
+    bool Function()? isCancelled,
+  }) {
+    return _jsLock.run(() async {
+      await _ensureInit();
+      if (isCancelled?.call() == true) return [];
+      if (!_loadedIds.contains(pluginId)) {
+        final code = _pluginCode[pluginId];
+        if (code == null) {
+          throw StateError('engine plugin $pluginId not loaded');
+        }
+        _loadPluginUnlocked(pluginId, code);
+      }
+      return _extractUnlocked(
+        pluginId: pluginId,
+        pluginName: pluginName,
+        tmdbId: '',
+        type: 'live',
+        config: config,
+        timeout: timeout,
+        allowHostFallback: false,
+        isCancelled: isCancelled,
+        extraCtx: {
+          'action': action,
+          ...params,
+        },
+      );
+    });
+  }
+
   Future<List<Map<String, dynamic>>> _extractUnlocked({
     required String pluginId,
     String? pluginName,
@@ -556,6 +624,7 @@ class EngineRuntime {
     required Duration timeout,
     required bool allowHostFallback,
     bool Function()? isCancelled,
+    Map<String, dynamic> extraCtx = const {},
   }) async {
     final rt = _runtime!;
     _extractMovie = movie;
@@ -587,6 +656,7 @@ class EngineRuntime {
         'year': _extractYear,
         'url': _extractUrl,
         'config': config,
+        ...extraCtx,
       });
       final pluginLabel = (pluginName != null && pluginName.trim().isNotEmpty)
           ? pluginName.trim()
@@ -626,6 +696,27 @@ class EngineRuntime {
     year: meta.year,
     url: meta.url || '',
     config: meta.config || {},
+    action: meta.action || '',
+    matchId: meta.matchId || '',
+    source: meta.source || '',
+    stream: meta.stream || '',
+    embedUrl: meta.embedUrl || '',
+    category: meta.category || '',
+    live: {
+      goatUnlock: function(bodyHex, goat, slot) {
+        return sendMessage('LiveGoatUnlock', JSON.stringify({
+          bodyHex: String(bodyHex == null ? '' : bodyHex),
+          goat: String(goat == null ? '' : goat),
+          slot: slot || {}
+        })) || '';
+      },
+      sniffEmbed: function(url, referer) {
+        return sendMessage('LiveSniffEmbed', JSON.stringify({
+          url: String(url == null ? '' : url),
+          referer: String(referer == null ? '' : referer)
+        })) || '';
+      }
+    },
     log: function(msg) {
       console.log('[' + pluginLabel + '] ' + String(msg == null ? '' : msg));
     },

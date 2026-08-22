@@ -190,6 +190,9 @@ class _StreamedMatch {
   /// ESPN game payload for My IPTV stream matching (RFC-062).
   final Map<String, dynamic>? sportMatchGame;
 
+  /// Forja live engine plugin id when [catalog] is `forja_live`.
+  final String livePluginId;
+
   const _StreamedMatch({
     required this.id,
     required this.title,
@@ -208,6 +211,7 @@ class _StreamedMatch {
     this.stremioBaseUrl = '',
     this.stremioType = 'sport',
     this.sportMatchGame,
+    this.livePluginId = '',
   });
 
   bool get isMut => catalog == 'mut' || inlineStreams.isNotEmpty;
@@ -215,6 +219,8 @@ class _StreamedMatch {
   bool get isStremio => stremioBaseUrl.isNotEmpty;
 
   bool get isIptvSports => catalog == 'iptv_sports';
+
+  bool get isForjaLive => catalog == 'forja_live';
 
   factory _StreamedMatch.fromJson(Map<String, dynamic> j) {
     final teams = j['teams'] as Map<String, dynamic>?;
@@ -251,6 +257,10 @@ class _StreamedMatch {
       catalog: (j['catalog'] ?? '').toString(),
       stremioBaseUrl: (j['stremioBaseUrl'] ?? '').toString(),
       stremioType: (j['stremioType'] ?? 'sport').toString(),
+      sportMatchGame: j['sportMatchGame'] is Map
+          ? Map<String, dynamic>.from(j['sportMatchGame'] as Map)
+          : null,
+      livePluginId: (j['pluginId'] ?? j['livePluginId'] ?? '').toString(),
     );
   }
 
@@ -2536,8 +2546,24 @@ enum _LiveMatchesServer {
   ppv,
   streamed,
   mutStreams,
+  forjaLive,
   stremio,
   iptvSports,
+}
+
+const _liveForjaPluginDisplayNames = <String, String>{
+  'live-streamed': 'Streamed',
+  'live-ppv': 'PPV',
+  'live-timstreams': 'TimStreams',
+  'live-streamfree': 'StreamFree',
+  'live-watchfooty': 'WatchFooty',
+  'live-streamic': 'Streamic',
+  'catalog-espn': 'ESPN',
+};
+
+String _liveForjaPluginDisplayName(String pluginId) {
+  if (pluginId.isEmpty) return 'Forja Live';
+  return _liveForjaPluginDisplayNames[pluginId] ?? pluginId;
 }
 
 /// Android TV / leanback: hide embed-only servers (PPV / Streamed / Mut).
@@ -2545,6 +2571,7 @@ List<_LiveMatchesServer> _liveMatchesServersForSurface({required bool tv}) {
   if (tv) {
     return const [
       _LiveMatchesServer.all,
+      _LiveMatchesServer.forjaLive,
       _LiveMatchesServer.stremio,
       _LiveMatchesServer.iptvSports,
     ];
@@ -2572,16 +2599,18 @@ String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
   _LiveMatchesServer.ppv => 'PPV',
   _LiveMatchesServer.streamed => 'Streamed',
   _LiveMatchesServer.mutStreams => 'MutStreams',
+  _LiveMatchesServer.forjaLive => 'Forja Live',
   _LiveMatchesServer.stremio => 'Stremio',
   _LiveMatchesServer.iptvSports => 'Forja Sports',
 };
 
 String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
     switch (server) {
-      _LiveMatchesServer.all => 'PPV · Streamed',
+      _LiveMatchesServer.all => 'PPV · Streamed · Forja Live',
       _LiveMatchesServer.ppv => 'ppv.is',
       _LiveMatchesServer.streamed => 'streamed.pk',
       _LiveMatchesServer.mutStreams => 'mut.st',
+      _LiveMatchesServer.forjaLive => 'Engine live plugins',
       _LiveMatchesServer.stremio => 'Installed live addons',
       _LiveMatchesServer.iptvSports => 'Existing schedule · your Xtream',
     };

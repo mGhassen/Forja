@@ -6,6 +6,7 @@ import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
 import 'package:forja/shared/engine/anime_ids.dart';
 import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/engine/host_resolver.dart';
+import 'package:forja/shared/engine/live_goat_unlock.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/runtime.dart';
 import 'package:forja/shared/extractors/embed_extract_profiles.dart';
@@ -21,6 +22,20 @@ class EngineService {
   static final EngineService instance = EngineService._();
 
   static const bundledSourceUrl = 'asset:providers/engine.json';
+
+  /// Internal `types: catalog` plugins — not shown in Settings toggles.
+  static bool isInternalLiveCatalog(EnginePlugin plugin) => plugin.isLiveCatalog;
+
+  static String catalogFilterId(EnginePlugin catalog) {
+    final providerId = (catalog.config['providerId'] ?? '').toString().trim();
+    if (providerId.startsWith('live-')) return providerId;
+    return catalog.id;
+  }
+
+  static String catalogPluginIdForLiveSport(String liveSportId) {
+    if (!liveSportId.startsWith('live-')) return liveSportId;
+    return 'catalog-${liveSportId.substring('live-'.length)}';
+  }
   static const _legacyBundledSourceUrl = 'asset:engine_js/engine.json';
   static const _assetRoot = 'assets/providers';
   static const _packsKey = 'engine_js_packs_v1';
@@ -87,12 +102,69 @@ class EngineService {
     final packs = await listPacks();
     return [
       for (final p in packs)
-        if (p.plugins.any((pl) => pl.enabled && pl.isExtractable))
+        if (p.plugins.any((pl) => pl.enabled && pl.isVodCatalog))
           p.copyWithPlugins([
             for (final pl in p.plugins)
-              if (pl.isExtractable) pl,
+              if (pl.isVodCatalog) pl,
           ]),
     ];
+  }
+
+  Future<List<EnginePlugin>> listEnabledLivePlugins() async {
+    await ensureBundledInstalled();
+    final out = <EnginePlugin>[];
+    for (final pack in await listPacks()) {
+      for (final p in pack.plugins) {
+        if (p.enabled && p.isLiveSport && p.isHttp) {
+          out.add(p);
+        }
+      }
+    }
+    out.sort((a, b) => a.name.compareTo(b.name));
+    return out;
+  }
+
+  Future<List<EnginePlugin>> listLivePluginsForSettings() async {
+    await ensureBundledInstalled();
+    final out = <EnginePlugin>[];
+    for (final pack in await listPacks()) {
+      for (final p in pack.plugins) {
+        if (p.isLive && p.isHttp) out.add(p);
+      }
+    }
+    out.sort((a, b) => a.name.compareTo(b.name));
+    return out;
+  }
+
+  Future<EnginePlugin?> _pluginById(String id) async {
+    for (final pack in await listPacks()) {
+      for (final p in pack.plugins) {
+        if (p.id == id) return p;
+      }
+    }
+    return null;
+  }
+
+  /// Enabled catalog plugins: paired live_sport toggles + standalone ESPN catalog.
+  Future<List<EnginePlugin>> listEnabledLiveCatalogPlugins() async {
+    await ensureBundledInstalled();
+    final enabledLiveSport = {
+      for (final p in await listEnabledLivePlugins()) p.id,
+    };
+    final out = <EnginePlugin>[];
+    for (final pack in await listPacks()) {
+      for (final p in pack.plugins) {
+        if (!p.isLiveCatalog || !p.isHttp || !p.enabled) continue;
+        final providerId = (p.config['providerId'] ?? '').toString().trim();
+        if (providerId.startsWith('live-')) {
+          if (enabledLiveSport.contains(providerId)) out.add(p);
+        } else {
+          out.add(p);
+        }
+      }
+    }
+    out.sort((a, b) => a.name.compareTo(b.name));
+    return out;
   }
 
   Future<void> _savePacks(List<EnginePack> packs) async {
@@ -562,6 +634,151 @@ class EngineService {
       pluginName: plugin.name,
       streams: streams,
     );
+  }
+
+  /// Live Matches Forja plugins (`providers` / `live_sport` / internal `catalog`).
+  Future<List<Map<String, dynamic>>> runLivePlugin({
+    required String pluginId,
+    required String action,
+    Map<String, dynamic> params = const {},
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
+    final gen = _extractGeneration;
+    final packs = await listPacks();
+    if (gen != _extractGeneration) return [];
+    EnginePlugin? plugin;
+    for (final pack in packs) {
+      for (final p in pack.plugins) {
+        if (p.id == pluginId) {
+          plugin = p;
+          break;
+        }
+      }
+      if (plugin != null) break;
+    }
+    if (plugin == null || !(plugin.isLiveProvider || plugin.isLiveSport)) {
+      return [];
+    }
+    if (!plugin.enabled) return [];
+    final overlay =
+        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+    final config = mergeEngineConfig(plugin.config, overlay);
+    final code = await _loadScript(plugin);
+    if (gen != _extractGeneration || code == null) return [];
+    final rt = EngineRuntime.instance;
+    await _syncHops(packs);
+    if (!rt.isLoaded(plugin.id)) {
+      await rt.loadPlugin(pluginId: plugin.id, code: code);
+    }
+    if (gen != _extractGeneration) return [];
+    final raw = await rt.extractLive(
+      pluginId: plugin.id,
+      pluginName: plugin.name,
+      action: action,
+      params: params,
+      config: config,
+      timeout: timeout,
+      isCancelled: () => gen != _extractGeneration,
+    );
+    if (gen != _extractGeneration) return [];
+    return _postProcessLivePluginRows(raw);
+  }
+
+  /// Run one bundled live catalog plugin (`catalog/*.js`).
+  Future<List<Map<String, dynamic>>> runLiveCatalog({
+    required EnginePlugin catalogPlugin,
+    Map<String, dynamic> extraConfig = const {},
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    if (!catalogPlugin.isLiveCatalog) return [];
+    final gen = _extractGeneration;
+    final packs = await listPacks();
+    if (gen != _extractGeneration) return [];
+
+    final overlay =
+        ProviderRuntimeConfig.instance.engine[catalogPlugin.id] ?? const {};
+    var config = mergeEngineConfig(catalogPlugin.config, overlay);
+
+    final providerId = (catalogPlugin.config['providerId'] ?? '').toString();
+    if (providerId.startsWith('live-')) {
+      final provider = await _pluginById(providerId);
+      if (provider != null) {
+        final providerOverlay =
+            ProviderRuntimeConfig.instance.engine[provider.id] ?? const {};
+        config = mergeEngineConfig(provider.config, config);
+        config = mergeEngineConfig(config, providerOverlay);
+        config['providerId'] = providerId;
+      }
+    }
+
+    if (extraConfig.isNotEmpty) {
+      config = {...config, ...extraConfig};
+    }
+
+    final code = await _loadScript(catalogPlugin);
+    if (gen != _extractGeneration || code == null) return [];
+    final rt = EngineRuntime.instance;
+    await _syncHops(packs);
+    if (!rt.isLoaded(catalogPlugin.id)) {
+      await rt.loadPlugin(pluginId: catalogPlugin.id, code: code);
+    }
+    if (gen != _extractGeneration) return [];
+    final raw = await rt.extractLive(
+      pluginId: catalogPlugin.id,
+      pluginName: catalogPlugin.name,
+      action: 'catalog',
+      config: config,
+      timeout: timeout,
+      isCancelled: () => gen != _extractGeneration,
+    );
+    if (gen != _extractGeneration) return [];
+    return _postProcessLivePluginRows(raw);
+  }
+
+  Future<List<Map<String, dynamic>>> _postProcessLivePluginRows(
+    List<Map<String, dynamic>> raw,
+  ) async {
+    final out = <Map<String, dynamic>>[];
+    for (final row in raw) {
+      if (row['goatPending'] == true) {
+        final slotRaw = row['slot'];
+        final slot = slotRaw is Map
+            ? Map<String, dynamic>.from(slotRaw)
+            : <String, dynamic>{};
+        final url = await LiveGoatUnlock.unlock(
+          slot: slot,
+          goat: (row['goat'] ?? '').toString(),
+          bodyHex: (row['bodyHex'] ?? '').toString(),
+        );
+        if (url == null || url.isEmpty) continue;
+        final headers = <String, dynamic>{};
+        final h = row['headers'];
+        if (h is Map) {
+          h.forEach((k, v) => headers[k.toString()] = v);
+        }
+        out.add({'url': url, 'headers': headers});
+        continue;
+      }
+      if (row['sniffPending'] == true) {
+        final url = await LiveGoatUnlock.sniffEmbed(
+          embedUrl: (row['embedUrl'] ?? row['url'] ?? '').toString(),
+          referer: (row['referer'] ?? '').toString(),
+        );
+        if (url == null || url.isEmpty) continue;
+        final headers = <String, dynamic>{};
+        final h = row['headers'];
+        if (h is Map) {
+          h.forEach((k, v) => headers[k.toString()] = v);
+        }
+        if (headers.isEmpty && row['referer'] != null) {
+          headers['Referer'] = row['referer'].toString();
+        }
+        out.add({'url': url, 'headers': headers});
+        continue;
+      }
+      out.add(row);
+    }
+    return out;
   }
 
   Future<EngineExtractResult?> runPluginIsolated({

@@ -55,7 +55,7 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (!ShellScope.metricsOf(context).usesTvDensity) return;
       final node = widget.reviewOnly ? _confirmFocus : _cancelFocus;
       if (node.canRequestFocus) node.requestFocus();
     });

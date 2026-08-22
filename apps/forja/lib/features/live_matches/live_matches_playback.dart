@@ -3,9 +3,15 @@ part of 'live_matches_screen.dart';
 mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
-  /// Android TV: never offer PPV / Streamed / Mut embed rows — only native.
+  /// Leanback TV: never offer PPV / Streamed / Mut embed rows — only native.
   bool get _tvNativeLiveOnly =>
-      ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+      ShellScope.metricsOf(context).usesTvDensity;
+
+  /// Stremio catalog/stream fallback — All, Stremio, Forja Sports only.
+  bool get _offerStremioPlayFallback =>
+      _s._server == _LiveMatchesServer.all ||
+      _s._server == _LiveMatchesServer.stremio ||
+      _s._server == _LiveMatchesServer.iptvSports;
 
   /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
   Future<bool> _runWithCancellableLoading(
@@ -198,6 +204,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
         unawaited(_playIptvSportsSources(enriched, all, picked));
       },
     );
+    panel.setSearchPhase('Forja Sports');
 
     Future<void> addForja() async {
       try {
@@ -220,6 +227,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     }
 
     Future<void> addStremio() async {
+      if (!_offerStremioPlayFallback) return;
       try {
         final stremio = await _resolveStremioStreamsMatching(enriched);
         if (panel.isDisposed) return;
@@ -242,6 +250,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
     // Serial on TV: parallel Forja Sports (Xtream + EPG) + Stremio OOMs leanback.
     await addForja();
     if (panel.isDisposed) return;
+    panel.setSearchPhase('Stremio');
     await addStremio();
     if (!panel.isDisposed) panel.finishSearching();
   }
@@ -350,6 +359,7 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
         unawaited(_playIptvSportsSources(enriched, all, picked));
       },
     );
+    panel.setSearchPhase('Forja Sports');
 
     try {
       final sources = await _resolveIptvSportsStreams(enriched);
@@ -443,10 +453,132 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
         sources: const [],
       );
 
+  Future<void> _openEngineNativeStream({
+    required String title,
+    required String subtitle,
+    required String url,
+    Map<String, String> headers = const {},
+    String label = 'Live',
+  }) async {
+    final playUrl = await LiveMatchesEngine.proxyPlayUrl(
+      url: url,
+      headers: headers,
+    );
+    if (!mounted) return;
+    if (playUrl == null || playUrl.isEmpty) {
+      LiveMatchesEngine.engineResolveFailed();
+      return;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => IptvPtPlayerScreen(
+          sources: [IptvPlaySource(url: playUrl, label: label)],
+          title: title,
+          subtitle: subtitle,
+          engineContext: BuiltInPlayerContext.live,
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _tryEngineStreamedOpen(
+    _StreamedMatch match,
+    _StreamedStream stream,
+  ) async {
+    if (!await LiveMatchesEngine.isEngineResolveMode()) return false;
+
+    final embed = stream.embedUrl.trim();
+    if (embed.isNotEmpty &&
+        RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
+      await _openEngineNativeStream(
+        title: match.title,
+        subtitle: match.categoryLabel,
+        url: embed,
+        headers: _liveEmbedStreamHeaders(
+          embed,
+          catalogReferer: _streamedReferer,
+        ),
+        label: match.isForjaLive ? 'Forja Live' : 'Streamed',
+      );
+      return true;
+    }
+
+    final pluginId = match.isForjaLive && match.livePluginId.isNotEmpty
+        ? match.livePluginId
+        : 'live-streamed';
+    LiveEngineResolveResult? result;
+    final ok = await _runWithCancellableLoading('Resolving stream…', () async {
+      result = await LiveMatchesEngine.resolve(
+        pluginId: pluginId,
+        params: {
+          'embedUrl': embed,
+          'url': embed,
+          'source': stream.source,
+          'matchId': stream.id,
+          'stream': stream.streamNo.toString(),
+          'category': match.category,
+          'title': match.title,
+        },
+      );
+    });
+    if (!ok) return true;
+    if (result == null || (!result!.playable && result!.embedUrl.isEmpty)) {
+      LiveMatchesEngine.engineResolveFailed();
+      return true;
+    }
+    if (!result!.playable) {
+      LiveMatchesEngine.engineResolveFailed(
+        'Engine could not resolve this stream — switch to Sniff in Settings → Forja Sports',
+      );
+      return true;
+    }
+    await _openEngineNativeStream(
+      title: match.title,
+      subtitle: match.categoryLabel,
+      url: result!.url,
+      headers: result!.headers,
+      label: result!.label.isNotEmpty ? result!.label : 'Streamed',
+    );
+    return true;
+  }
+
+  Future<bool> _tryEnginePpvOpen(_DamiTvStream s) async {
+    if (!await LiveMatchesEngine.isEngineResolveMode()) return false;
+    LiveEngineResolveResult? result;
+    final ok = await _runWithCancellableLoading('Resolving stream…', () async {
+      result = await LiveMatchesEngine.resolve(
+        pluginId: 'live-ppv',
+        params: {
+          'matchId': s.id.toString(),
+          'embedUrl': s.iframe,
+          'iframe': s.iframe,
+          'title': s.name,
+          'category': s.categoryName,
+        },
+      );
+    });
+    if (!ok) return true;
+    if (result == null || !result!.playable) {
+      LiveMatchesEngine.engineResolveFailed();
+      return true;
+    }
+    await _openEngineNativeStream(
+      title: s.name,
+      subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
+      url: result!.url,
+      headers: result!.headers,
+      label: 'PPV',
+    );
+    return true;
+  }
+
   Future<void> _openStreamedEmbed(
     _StreamedMatch match,
     _StreamedStream stream,
   ) async {
+    if (await _tryEngineStreamedOpen(match, stream)) return;
+
     final catalogBase = match.isMut ? _mutBase : _streamedBase;
     final catalogReferer = match.isMut ? _mutReferer : _streamedReferer;
     final embedUrl = await liveEmbedResolveNestedPlayerUrl(
@@ -483,6 +615,8 @@ mixin _LiveMatchesPlayback on ConsumerState<LiveMatchesScreen> {
       return;
     }
     if (!mounted) return;
+
+    if (await _tryEnginePpvOpen(s)) return;
 
     // embedindia feeds only play inside their embed page (ppv.is uses the same
     // iframe). Native mpv cannot reuse the sniffed m3u8 token.

@@ -244,22 +244,28 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen(liveMatchesPrimaryLoadProvider(_s._server), (_, next) {
-      if (!mounted || !(this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible) return;
-      next.when(
-        loading: () {
-          if (!_s._loading) setState(() => _s._loading = true);
-        },
-        error: (e, _) {
-          setState(() {
-            _s._loading = false;
-            _s._error = e.toString();
-          });
-        },
-        data: (this as _LiveMatchesData)._applyPrimaryLoad,
-      );
-    });
-    ref.watch(liveMatchesPrimaryLoadProvider(_s._server));
+    final tabVisible =
+        (this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible;
+    final fetchActive = tabVisible && _s._serverHydrated;
+    if (fetchActive) {
+      ref.listen(liveMatchesPrimaryLoadProvider(_s._server), (_, next) {
+        if (!mounted || !tabVisible) return;
+        next.when(
+          loading: () {
+            if (_s._server == _LiveMatchesServer.forjaLive) return;
+            if (!_s._loading) setState(() => _s._loading = true);
+          },
+          error: (e, _) {
+            setState(() {
+              _s._loading = false;
+              _s._error = e.toString();
+            });
+          },
+          data: (this as _LiveMatchesData)._applyPrimaryLoad,
+        );
+      });
+      ref.watch(liveMatchesPrimaryLoadProvider(_s._server));
+    }
     final iptvCtrl = _s._showIptvPortalTopBar
         ? ref.watch(iptvControllerProvider)
         : null;
@@ -292,6 +298,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(iptvCtrl),
+          if ((this as _LiveMatchesForjaLive)._showForjaLiveCatalogChrome)
+            _buildForjaLivePluginStrip(),
           if (_s._tabController != null && _s._sports.isNotEmpty)
             _buildSportTabs(),
           const SizedBox(height: 2),
@@ -385,6 +393,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       child: Row(
         children: [
           _s._serversTopBarButton(),
+          const SizedBox(width: 8),
+          ExcludeFocus(
+            child: _LiveMatchesResolveModePill(engine: _s._liveEngineResolve),
+          ),
           const Spacer(),
           refresh,
           if (!tvFocus) ...[
@@ -498,10 +510,26 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   }
 
   Widget _buildBody() {
-    if (_s._loading) {
+    if (!_s._serverHydrated) {
       return Center(
         child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
       );
+    }
+    if (_s._loading) {
+      final showPartialCatalog = switch (_s._server) {
+        _LiveMatchesServer.all =>
+            _s._damiTvStreams.isNotEmpty ||
+            _s._streamedMatches.isNotEmpty ||
+            (this as _LiveMatchesForjaLive)._forjaLiveAnyLoading,
+        _ => false,
+      };
+      if (!showPartialCatalog) {
+        return Center(
+          child: CircularProgressIndicator(
+            color: ForjaShellColors.sectionAccent,
+          ),
+        );
+      }
     }
     if (_s._error != null) {
       return ShellErrorRetryPanel(
@@ -522,6 +550,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     if (_s._server == _LiveMatchesServer.ppv) return _buildDamiTvBody();
     if (_s._server == _LiveMatchesServer.streamed ||
         _s._server == _LiveMatchesServer.mutStreams ||
+        _s._server == _LiveMatchesServer.forjaLive ||
         _s._server == _LiveMatchesServer.stremio) {
       return _buildStreamedBody();
     }
@@ -532,6 +561,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   Widget _buildAllBody() {
     final entries = _allGridEntries;
     if (entries.isEmpty) {
+      if ((this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
+        return _buildForjaLiveCatalogProgress();
+      }
       return ShellErrorRetryPanel(
         message: 'No streams available',
         onRetry: _s._load,
@@ -654,14 +686,89 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     };
   }
 
+  Widget _buildForjaLivePluginStrip() {
+    final loads = _s._forjaLivePluginLoads.values.toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
+    if (loads.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        ShellTokens.bodyHorizontalPadding,
+        0,
+        ShellTokens.bodyHorizontalPadding,
+        6,
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            ForjaShellChip(
+              label: 'All',
+              selected: _s._forjaLivePluginFilter == 'all',
+              onTap: () => setState(() => _s._forjaLivePluginFilter = 'all'),
+              accentHover: true,
+              radius: 999,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              fontSize: 12,
+            ),
+            for (final load in loads) ...[
+              const SizedBox(width: 6),
+              ForjaShellChip(
+                label: load.label,
+                selected: _s._forjaLivePluginFilter == load.pluginId,
+                loading: load.loading,
+                onTap: () => setState(
+                  () => _s._forjaLivePluginFilter = load.pluginId,
+                ),
+                accentHover: true,
+                radius: 999,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                fontSize: 12,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForjaLiveCatalogProgress() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
+          const SizedBox(height: 12),
+          Text(
+            'Loading live catalogs…',
+            style: TextStyle(
+              color: ForjaShellColors.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStreamedBody() {
-    final matches = _s._filteredStreamed;
+    final matches = _s._displayStreamedMatches;
     if (matches.isEmpty) {
-      final emptyMsg = _s._server == _LiveMatchesServer.stremio
-          ? 'No live Stremio addons — install one in Settings → Sources and enable Live Matches'
-          : _s._server == _LiveMatchesServer.iptvSports
-              ? 'No ESPN games today for your leagues — try Refresh or change leagues in Settings → Forja Sports'
-              : 'No streams available';
+      if ((this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
+        return _buildForjaLiveCatalogProgress();
+      }
+      final emptyMsg = switch (_s._server) {
+        _LiveMatchesServer.stremio =>
+          'No live Stremio addons — install one in Settings → Sources and enable Live Matches',
+        _LiveMatchesServer.iptvSports =>
+          'No ESPN games today for your leagues — try Refresh or change leagues in Settings → Forja Sports',
+        _LiveMatchesServer.forjaLive =>
+          'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins',
+        _ => 'No streams available',
+      };
       return ShellErrorRetryPanel(
         message: emptyMsg,
         onRetry: _s._load,

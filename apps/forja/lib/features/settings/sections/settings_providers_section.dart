@@ -7,13 +7,13 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:forja/features/settings/providers/stremio_addons_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
+import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr.
@@ -253,7 +253,7 @@ class _SettingsProvidersSectionState
           ),
           if (installedAddons.isNotEmpty) ...[
             const SizedBox(height: 20),
-            const _MiniLabel('Installed addons'),
+            const SettingsEngineMiniLabel('Installed addons'),
             const SizedBox(height: 4),
             ...installedAddons.map((addon) {
               final icon = addon['icon']?.toString().trim() ?? '';
@@ -354,7 +354,7 @@ class _SettingsProvidersSectionState
           ),
           if (nuvioAddons.isNotEmpty) ...[
             const SizedBox(height: 20),
-            const _MiniLabel('Nuvio addons'),
+            const SettingsEngineMiniLabel('Nuvio addons'),
             const SizedBox(height: 4),
             ...nuvioAddons.map(
               (addon) {
@@ -479,66 +479,26 @@ class _SettingsProvidersSectionState
           ),
           if (packs.isNotEmpty) ...[
             const SizedBox(height: 20),
-            const _MiniLabel('Forja plugins'),
+            const SettingsEngineMiniLabel('Forja plugins'),
             const SizedBox(height: 4),
             ...packs.map((pack) {
               final panelPlugins = [
                 for (final p in pack.plugins)
-                  if (p.isHttp) p,
+                  if (p.isVodCatalog) p,
               ];
               if (panelPlugins.isEmpty) return const SizedBox.shrink();
               final builtIn = EngineService.isBundled(pack.sourceUrl);
-              final byGroup = <String, List<EnginePlugin>>{};
-              for (final p in panelPlugins) {
-                byGroup
-                    .putIfAbsent(EngineCategories.groupKey(p), () => [])
-                    .add(p);
-              }
-              final orderedGroups = [
-                for (final key in EngineCategories.groupOrder)
-                  if (byGroup.containsKey(key)) key,
-                for (final key in byGroup.keys)
-                  if (!EngineCategories.groupOrder.contains(key)) key,
-              ];
-              return Theme(
-                data: Theme.of(
-                  context,
-                ).copyWith(dividerColor: Colors.transparent),
-                child: ExpansionTile(
-                  tilePadding: const EdgeInsets.symmetric(horizontal: 2),
-                  childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-                  leading: const Icon(
-                    Icons.bolt_rounded,
-                    color: ForjaShellColors.iconActive,
-                  ),
-                  title: Text(
-                    builtIn ? '${pack.name} (Built-in)' : pack.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: ForjaShellColors.textPrimary,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${panelPlugins.length} plugin${panelPlugins.length == 1 ? '' : 's'} · v${pack.version}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: ForjaShellColors.textSecondary,
-                    ),
-                  ),
-                  trailing: builtIn
-                      ? null
-                      : _AddonRemoveActions(
-                          onRemove: () => _removeEnginePack(pack.sourceUrl),
-                        ),
-                  children: [
-                    _EnginePackGroupedPlugins(
-                      sourceUrl: pack.sourceUrl,
-                      byGroup: byGroup,
-                      orderedGroups: orderedGroups,
-                    ),
-                  ],
-                ),
+              return SettingsEnginePackExpansion(
+                pack: pack,
+                plugins: panelPlugins,
+                groupKey: EngineCategories.groupKey,
+                groupLabel: EngineCategories.groupLabel,
+                groupOrder: EngineCategories.groupOrder,
+                trailing: builtIn
+                    ? null
+                    : _AddonRemoveActions(
+                        onRemove: () => _removeEnginePack(pack.sourceUrl),
+                      ),
               );
             }),
           ],
@@ -655,7 +615,7 @@ class _SettingsProvidersSectionState
             }),
           ),
           const SizedBox(height: 20),
-          const _MiniLabel('Filter by tag'),
+          const SettingsEngineMiniLabel('Filter by tag'),
           const SizedBox(height: 8),
           if (!_prowlarrTagsLoaded) ...[
             Text(
@@ -877,163 +837,6 @@ class _SettingsProvidersSectionState
     } catch (_) {
       // Non-fatal - tags section simply not shown until explicit test
     }
-  }
-}
-
-/// Movie & TV / Anime / Drama as tabs inside a Forja pack ExpansionTile.
-class _EnginePackGroupedPlugins extends StatefulWidget {
-  const _EnginePackGroupedPlugins({
-    required this.sourceUrl,
-    required this.byGroup,
-    required this.orderedGroups,
-  });
-
-  final String sourceUrl;
-  final Map<String, List<EnginePlugin>> byGroup;
-  final List<String> orderedGroups;
-
-  @override
-  State<_EnginePackGroupedPlugins> createState() =>
-      _EnginePackGroupedPluginsState();
-}
-
-class _EnginePackGroupedPluginsState extends State<_EnginePackGroupedPlugins> {
-  late String _group;
-
-  @override
-  void initState() {
-    super.initState();
-    _group = widget.orderedGroups.first;
-  }
-
-  @override
-  void didUpdateWidget(covariant _EnginePackGroupedPlugins oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!widget.orderedGroups.contains(_group)) {
-      _group = widget.orderedGroups.isEmpty
-          ? 'other'
-          : widget.orderedGroups.first;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final plugins = widget.byGroup[_group] ?? const <EnginePlugin>[];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-          child: _EngineCategoryTabStrip(
-            groups: widget.orderedGroups,
-            selected: _group,
-            onChanged: (g) => setState(() => _group = g),
-          ),
-        ),
-        for (final p in plugins)
-          SettingsToggleRow(
-            title: p.name,
-            subtitle: [
-              if (p.description != null && p.description!.isNotEmpty)
-                p.description!,
-              if (p.types.isNotEmpty) p.types.join(', '),
-              p.kind,
-            ].join(' · '),
-            value: p.enabled,
-            onChanged: (val) async {
-              await EngineService.instance.setPluginEnabled(
-                sourceUrl: widget.sourceUrl,
-                pluginId: p.id,
-                enabled: val,
-              );
-            },
-          ),
-      ],
-    );
-  }
-}
-
-class _EngineCategoryTabStrip extends StatelessWidget {
-  const _EngineCategoryTabStrip({
-    required this.groups,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  final List<String> groups;
-  final String selected;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (!tv) {
-      return Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (var i = 0; i < groups.length; i++)
-            ForjaShellChip(
-              label: EngineCategories.groupLabel(groups[i]),
-              selected: selected == groups[i],
-              listIndex: i,
-              onTap: () => onChanged(groups[i]),
-            ),
-        ],
-      );
-    }
-
-    return TvChipStrip(
-      tabId: 'settings',
-      rowId: 'engine-pack-tabs',
-      sortOrder: 0,
-      itemCount: groups.length,
-      resultsRowId: 'engine-pack-row',
-      builder: (context, edgesFor) {
-        return Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (var i = 0; i < groups.length; i++)
-              ForjaShellChip(
-                label: EngineCategories.groupLabel(groups[i]),
-                selected: selected == groups[i],
-                listIndex: i,
-                tvTabId: 'settings',
-                tvRowId: 'engine-pack-tabs',
-                onTap: () => onChanged(groups[i]),
-                onLeftEdge: edgesFor(i).onLeft,
-                onRightEdge: edgesFor(i).onRight,
-                onDownEdge: edgesFor(i).onDown,
-                onUpEdge: edgesFor(i).onUp,
-              ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// Small muted uppercase label used for inline sub-sections.
-class _MiniLabel extends StatelessWidget {
-  const _MiniLabel(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2),
-      child: Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-          color: ForjaShellColors.textSecondary,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1.4,
-        ),
-      ),
-    );
   }
 }
 

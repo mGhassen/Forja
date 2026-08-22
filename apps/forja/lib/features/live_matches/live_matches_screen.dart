@@ -38,6 +38,8 @@ import 'package:forja/features/live_matches/live_embed_nav.dart';
 import 'package:forja/features/live_matches/live_matches_sport_filter.dart';
 import 'package:forja/features/live_matches/live_matches_team_parse.dart';
 import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.dart';
+import 'package:forja/features/live_matches/live_matches_engine.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/live_matches/live_embed_webview_proxy.dart';
 import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_catalog_disk_store.dart';
@@ -58,6 +60,7 @@ part 'live_matches_data.dart';
 part 'live_matches_build.dart';
 part 'live_matches_timeline.dart';
 part 'live_matches_playback.dart';
+part 'live_matches_forja_live.dart';
 part 'providers/live_matches_providers.dart';
 
 class LiveMatchesScreen extends ConsumerStatefulWidget {
@@ -72,6 +75,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
         TickerProviderStateMixin,
         ShellTabRefresh<LiveMatchesScreen>,
         _LiveMatchesData,
+        _LiveMatchesForjaLive,
         _LiveMatchesBuild,
         _LiveMatchesTimeline,
         _LiveMatchesPlayback {
@@ -114,11 +118,17 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   TabController? _tabController;
   _LiveMatchesServer _server = _LiveMatchesServer.all;
+  /// False until [_restoreServerPreference] finishes — avoids fetching All/Stremio before saved server applies.
+  bool _serverHydrated = false;
   List<_DamiTvStream> _damiTvStreams = [];
   List<_StreamedMatch> _streamedMatches = [];
   /// ESPN scoreboard payloads for My IPTV (enrich on play).
   List<Map<String, dynamic>> _espnGames = [];
   String? _lastSyncedIptvPortalKey;
+  bool _liveEngineResolve = false;
+  int _forjaLiveLoadGen = 0;
+  String _forjaLivePluginFilter = 'all';
+  Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
 
   static const _topBarServersIndex = 0;
   /// Used when My IPTV portal chip is hidden (Servers → Refresh → View).
@@ -161,6 +171,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     super.onShellTabHidden();
     _IptvSportsChannelsPanel.dismiss();
     _loadGen++;
+    _forjaLiveLoadGen++;
     _timelineLiveTick?.cancel();
     _timelineLiveTick = null;
   }
@@ -168,6 +179,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   @override
   void onShellTabShown() {
     super.onShellTabShown();
+    unawaited(_refreshLiveResolveMode());
     _syncTimelineLiveTick();
     if (_error != null || (_sports.isEmpty && !_loading)) {
       unawaited(_load());
@@ -266,9 +278,19 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     }
   }
 
+  Future<void> _refreshLiveResolveMode() async {
+    final engine = await SettingsService().isLiveStreamResolveEngine();
+    if (!mounted) return;
+    if (_liveEngineResolve != engine) {
+      setState(() => _liveEngineResolve = engine);
+    }
+  }
+
   Future<void> _restoreServerThenLoad() async {
+    await _refreshLiveResolveMode();
     await _restoreServerPreference();
     if (!mounted) return;
+    setState(() => _serverHydrated = true);
     if (_server == _LiveMatchesServer.iptvSports) {
       final ctrl = ref.read(iptvControllerProvider);
       await ctrl.preparePortalPanel();

@@ -449,7 +449,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
 
   void _landFocusOnFirst() {
     if (!mounted) return;
-    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+    if (!ShellScope.metricsOf(context).usesTvDensity) return;
 
     final scope = FocusScope.of(context);
 
@@ -1889,7 +1889,7 @@ class _SettingsConfirmDialogState extends State<_SettingsConfirmDialog> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (!ShellScope.metricsOf(context).usesTvDensity) return;
       final node = widget.destructive ? _cancelFocus : _confirmFocus;
       if (node.canRequestFocus) node.requestFocus();
     });

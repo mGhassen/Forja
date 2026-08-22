@@ -9,6 +9,11 @@ abstract final class EngineCategories {
   static const anime = 'anime';
   static const drama = 'drama';
 
+  /// Live Matches plugin types (`engine.json`).
+  static const liveCatalog = 'catalog';
+  static const liveProvider = 'providers';
+  static const liveSport = 'live_sport';
+
   static const all = [movie, tv, anime, drama];
 
   static String label(String id) => switch (id) {
@@ -40,6 +45,23 @@ abstract final class EngineCategories {
   };
 
   static const groupOrder = ['movie_tv', movie, tv, anime, drama, 'other'];
+
+  /// Live Matches engine plugins — Settings grouping by `types`.
+  static String liveGroupKey(EnginePlugin plugin) {
+    if (plugin.isLiveCatalog) return liveCatalog;
+    if (plugin.isLiveProvider) return liveProvider;
+    if (plugin.isLiveSport) return liveSport;
+    return 'other';
+  }
+
+  static String liveGroupLabel(String key) => switch (key) {
+    liveProvider => 'Providers',
+    liveSport => 'Live sport',
+    liveCatalog => 'Catalog',
+    _ => 'Other',
+  };
+
+  static const liveGroupOrder = [liveProvider, liveCatalog, liveSport];
 
   /// Default visible categories for the current details media type.
   static Set<String> defaultsForMediaType(String? mediaType) =>

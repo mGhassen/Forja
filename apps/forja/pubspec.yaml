@@ -138,6 +138,8 @@ flutter:
     - assets/nuvio/
     - assets/providers/
     - assets/providers/hops/
+    - assets/providers/live/
+    - assets/providers/catalog/
     - assets/textures/
     - assets/watch_providers/
 

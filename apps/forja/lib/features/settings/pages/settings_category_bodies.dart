@@ -361,7 +361,7 @@ class _SettingsNavigationPageBodyState
   /// Features loads tab rows async — land on the first tab after OK / → enter.
   void _focusFirstTabIfEntered() {
     if (!mounted) return;
-    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+    if (!ShellScope.metricsOf(context).usesTvDensity) return;
     final token = SettingsDetailEnter.tokenOf(context);
     if (token <= 0 || token == _handledEnterToken) return;
     if (!_loaded || _navbarOrder.isEmpty) return;

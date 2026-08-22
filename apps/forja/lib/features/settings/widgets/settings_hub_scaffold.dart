@@ -92,7 +92,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
 
   void _landDetailFocus(int attempt) {
     if (!mounted) return;
-    if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+    if (!ShellScope.metricsOf(context).usesTvDensity) return;
 
     final first = _firstDetailFocusable();
     if (first != null) {

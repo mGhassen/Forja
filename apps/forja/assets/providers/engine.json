@@ -1644,6 +1644,144 @@
         "hanime.tv",
         "hanime.me"
       ]
+    },
+    {
+      "id": "live-streamed",
+      "name": "Streamed",
+      "description": "streamed.pk embed resolve (GOAT / golf)",
+      "entry": "live/live-streamed.js",
+      "types": ["providers"],
+      "kind": "http",
+      "config": {
+        "origin": "https://streamed.pk",
+        "embedOrigin": "https://embed.st"
+      }
+    },
+    {
+      "id": "live-ppv",
+      "name": "PPV",
+      "description": "ppv.is / api.ppv.st schedule and source resolve",
+      "entry": "live/live-ppv.js",
+      "types": ["providers"],
+      "kind": "http",
+      "config": {
+        "webOrigin": "https://ppv.is",
+        "apis": [
+          "https://api.ppv.st/api/streams",
+          "https://api.ppv.cx/api/streams"
+        ]
+      }
+    },
+    {
+      "id": "live-timstreams",
+      "name": "TimStreams",
+      "description": "timstreams.st live schedule",
+      "entry": "live/live-timstreams.js",
+      "types": ["live_sport"],
+      "kind": "http",
+      "config": {
+        "api": "https://timstreams.st/api/live-upcoming"
+      }
+    },
+    {
+      "id": "live-streamfree",
+      "name": "StreamFree",
+      "description": "streamfree.top live schedule",
+      "entry": "live/live-streamfree.js",
+      "types": ["live_sport"],
+      "kind": "http",
+      "config": {
+        "origin": "https://streamfree.top"
+      }
+    },
+    {
+      "id": "live-watchfooty",
+      "name": "WatchFooty",
+      "description": "watchfooty.st live schedule",
+      "entry": "live/live-watchfooty.js",
+      "types": ["live_sport"],
+      "kind": "http"
+    },
+    {
+      "id": "live-streamic",
+      "name": "Streamic",
+      "description": "streamic.live live schedule",
+      "entry": "live/live-streamic.js",
+      "types": ["live_sport"],
+      "kind": "http"
+    },
+    {
+      "id": "catalog-timstreams",
+      "name": "TimStreams",
+      "description": "timstreams.st schedule catalog",
+      "entry": "catalog/timstreams.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "enabled": true,
+      "config": {
+        "providerId": "live-timstreams",
+        "api": "https://timstreams.st/api/live-upcoming"
+      }
+    },
+    {
+      "id": "catalog-streamfree",
+      "name": "StreamFree",
+      "description": "streamfree.top schedule catalog",
+      "entry": "catalog/streamfree.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "enabled": true,
+      "config": {
+        "providerId": "live-streamfree",
+        "origin": "https://streamfree.top"
+      }
+    },
+    {
+      "id": "catalog-watchfooty",
+      "name": "WatchFooty",
+      "description": "watchfooty.st schedule catalog",
+      "entry": "catalog/watchfooty.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "enabled": true,
+      "config": { "providerId": "live-watchfooty" }
+    },
+    {
+      "id": "catalog-streamic",
+      "name": "Streamic",
+      "description": "streamic.live schedule catalog",
+      "entry": "catalog/streamic.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "enabled": true,
+      "config": { "providerId": "live-streamic" }
+    },
+    {
+      "id": "catalog-espn",
+      "name": "ESPN",
+      "description": "ESPN scoreboard schedule catalog",
+      "entry": "catalog/espn.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "enabled": true,
+      "config": {
+        "providerId": "catalog-espn",
+        "leagues": [
+          "NBA",
+          "NFL",
+          "MLB",
+          "NHL",
+          "WNBA",
+          "NCAAMB",
+          "NCAAWB",
+          "NCAAFB",
+          "EPL",
+          "MLS",
+          "LALIGA",
+          "WORLDCUP",
+          "UFC"
+        ]
+      }
     }
   ]
 }

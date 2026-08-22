@@ -558,7 +558,8 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
             ),
             child: content,
           );
-        } else if (widget.showFocusBorder && _isFocused) {
+        } else if (widget.showFocusBorder &&
+            (flatMenuFocus ? chromeActive : _isFocused)) {
           if (flatMenuFocus) {
             content = DecoratedBox(
               decoration: BoxDecoration(

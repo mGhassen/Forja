@@ -108,7 +108,7 @@ class _LanP2pRequiredDialogState extends State<_LanP2pRequiredDialog> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (!ShellScope.metricsOf(context).usesTvDensity) return;
       if (_confirmFocus.canRequestFocus) _confirmFocus.requestFocus();
     });
   }

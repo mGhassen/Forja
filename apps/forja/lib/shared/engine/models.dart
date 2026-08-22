@@ -38,9 +38,21 @@ class EnginePlugin {
   bool get isHost => kind == 'host';
   bool get isHop => kind == 'hop';
 
+  /// Live Matches engine.json `types` (RFC-065).
+  bool get isLiveCatalog => types.contains('catalog');
+  bool get isLiveProvider => types.contains('providers');
+  bool get isLiveSport => types.contains('live_sport');
+
+  /// Any Forja Sports / Live Matches plugin (catalog orchestrator, resolve, sport feeds).
+  bool get isLive =>
+      isLiveCatalog || isLiveProvider || isLiveSport || types.contains('live');
+
   /// Sources chips: HTTP catalog plugins only. Hops are internal; host sniff
   /// stays on green Play (`ctx.host` fallback), not as Forja chips.
   bool get isExtractable => isHttp;
+
+  /// Movie/TV Sources → Forja — not Live Matches plugins.
+  bool get isVodCatalog => isExtractable && !isLive;
 
   List<String> get hopHosts {
     final out = <String>[...hosts];

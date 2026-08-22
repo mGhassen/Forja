@@ -55,6 +55,16 @@ class SettingsService {
       'simple_streaming_resolve_enabled';
   /// STREAMCRYPTO `enc=2` decrypt: `webview` (JS host) | `native` (Dart).
   static const String _streamCryptoDecryptKey = 'streamcrypto_decrypt';
+  /// Live Matches stream resolve: `sniff` (embed WebView) | `engine` (Forja plugins).
+  static const String _liveStreamResolveKey = 'live_stream_resolve';
+  static const String liveStreamResolveSniff = 'sniff';
+  static const String liveStreamResolveEngine = 'engine';
+  static const String liveStreamResolveSniffLabel = 'Sniff (embed player)';
+  static const String liveStreamResolveEngineLabel = 'Engine (native player)';
+  static const Map<String, String> liveStreamResolveOptions = {
+    liveStreamResolveSniffLabel: liveStreamResolveSniff,
+    liveStreamResolveEngineLabel: liveStreamResolveEngine,
+  };
   static const String _crashReportingEnabledKey = 'crash_reporting_enabled';
   static const String _productAnalyticsEnabledKey =
       'product_analytics_enabled';
@@ -690,6 +700,29 @@ class SettingsService {
   Future<void> setStreamCryptoDecrypt(String mode) async => kvSetString(
     _streamCryptoDecryptKey,
     normalizeStreamCryptoDecrypt(mode),
+  );
+
+  static String normalizeLiveStreamResolve(String? raw) {
+    final v = (raw ?? liveStreamResolveSniff).trim().toLowerCase();
+    if (v == liveStreamResolveEngine) return liveStreamResolveEngine;
+    return liveStreamResolveSniff;
+  }
+
+  static String liveStreamResolveLabel(String stored) =>
+      normalizeLiveStreamResolve(stored) == liveStreamResolveEngine
+      ? liveStreamResolveEngineLabel
+      : liveStreamResolveSniffLabel;
+
+  /// Live Matches: Sniff = today’s embed path; Engine = Forja live plugins.
+  Future<String> getLiveStreamResolveMode() async =>
+      normalizeLiveStreamResolve(await kvGetString(_liveStreamResolveKey));
+
+  Future<bool> isLiveStreamResolveEngine() async =>
+      (await getLiveStreamResolveMode()) == liveStreamResolveEngine;
+
+  Future<void> setLiveStreamResolveMode(String mode) async => kvSetString(
+    _liveStreamResolveKey,
+    normalizeLiveStreamResolve(mode),
   );
 
   /// Opt-in crash reporting to Sentry (RFC-043). Default off.

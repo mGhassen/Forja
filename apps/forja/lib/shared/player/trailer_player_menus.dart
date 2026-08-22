@@ -233,10 +233,10 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
   String _flagForLang(String? code) {
     if (code == null || code.trim().isEmpty) return '';
     final raw = code.trim().toLowerCase();
-    final direct = StreamProviderDisplay.flagForCountry(raw);
+    final direct = StreamProviderDisplay.flagDisplayForCountry(raw);
     if (direct.isNotEmpty) return direct;
     final base = raw.split(RegExp(r'[-_]')).first;
-    final fromBase = StreamProviderDisplay.flagForCountry(base);
+    final fromBase = StreamProviderDisplay.flagDisplayForCountry(base);
     if (fromBase.isNotEmpty) return fromBase;
     return StreamProviderDisplay.flagsForText(raw);
   }

@@ -172,10 +172,7 @@ class TorrentReleaseMetadata {
     );
   }
 
-  String get flags => languageCodes
-      .map(StreamProviderDisplay.flagForCountry)
-      .where((f) => f.isNotEmpty)
-      .join(' ');
+  String get flags => StreamProviderDisplay.flagsDisplayForCodes(languageCodes);
 
   List<String> get badgeLabels => [
         if (quality != null) quality!,

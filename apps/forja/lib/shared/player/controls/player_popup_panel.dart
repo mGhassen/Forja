@@ -587,7 +587,8 @@ class _PopupChromeButtonState extends State<_PopupChromeButton> {
                 onTap: widget.onTap,
                 borderRadius: PlayerPopupTokens.chipRadius,
                 scaleOnFocus: 1.0,
-                showFocusBorder: true,
+                showFocusBorder: false,
+                showFocusFill: false,
                 onFocusChange: (f) => setState(() => _focused = f),
                 onHoverChange: mouseHover
                     ? (h) => setState(() => _hovered = h)

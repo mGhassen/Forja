@@ -30,36 +30,37 @@ double _navRailItemSpacingForHeight({
 
 double _navRailItemContentHeight({
   required double iconSize,
-  required double labelFontSize,
+  required double labelSlotHeight,
 }) {
   return iconSize * ShellTokens.navRailIconHoverScale +
       ShellTokens.navRailIconUnderlineGap +
       ShellTokens.shellNavUnderlineHeight +
       ShellTokens.navRailIconLabelGap +
-      labelFontSize;
+      labelSlotHeight;
 }
 
 /// Shrink icons (then spacing) so [itemCount] rail items fit in [maxHeight].
-({double iconSize, double labelFontSize, double itemSpacing}) _navRailFitForHeight({
+({double iconSize, double labelSlotHeight, double itemSpacing}) _navRailFitForHeight({
   required int itemCount,
   required double maxHeight,
   required double preferredIconSize,
-  required double preferredLabelFontSize,
+  required double preferredLabelSlotHeight,
+  required double minLabelSlotHeight,
   required double preferredSpacing,
 }) {
   if (itemCount <= 0) {
     return (
       iconSize: preferredIconSize,
-      labelFontSize: preferredLabelFontSize,
+      labelSlotHeight: preferredLabelSlotHeight,
       itemSpacing: preferredSpacing,
     );
   }
 
   var iconSize = preferredIconSize;
-  var labelFontSize = preferredLabelFontSize;
+  var labelSlotHeight = preferredLabelSlotHeight;
   double contentHeight() => _navRailItemContentHeight(
     iconSize: iconSize,
-    labelFontSize: labelFontSize,
+    labelSlotHeight: labelSlotHeight,
   );
 
   var spacing = _navRailItemSpacingForHeight(
@@ -73,7 +74,7 @@ double _navRailItemContentHeight({
   if (itemCount * contentHeight() <= maxHeight) {
     return (
       iconSize: iconSize,
-      labelFontSize: labelFontSize,
+      labelSlotHeight: labelSlotHeight,
       itemSpacing: spacing,
     );
   }
@@ -86,11 +87,14 @@ double _navRailItemContentHeight({
       ShellTokens.navRailIconLabelGap;
   final perItemBudget = maxHeight / itemCount;
   final iconBudget =
-      (perItemBudget - fixedChrome - preferredLabelFontSize - minSpacing) /
+      (perItemBudget - fixedChrome - preferredLabelSlotHeight - minSpacing) /
       ShellTokens.navRailIconHoverScale;
   iconSize = iconBudget.clamp(minIcon, preferredIconSize);
-  labelFontSize = (preferredLabelFontSize * (iconSize / preferredIconSize))
-      .clamp(9.0, preferredLabelFontSize);
+  labelSlotHeight =
+      (preferredLabelSlotHeight * (iconSize / preferredIconSize)).clamp(
+        minLabelSlotHeight,
+        preferredLabelSlotHeight,
+      );
   spacing = _navRailItemSpacingForHeight(
     itemCount: itemCount,
     maxHeight: maxHeight,
@@ -99,7 +103,7 @@ double _navRailItemContentHeight({
   );
   return (
     iconSize: iconSize,
-    labelFontSize: labelFontSize,
+    labelSlotHeight: labelSlotHeight,
     itemSpacing: spacing,
   );
 }
@@ -301,12 +305,17 @@ class _ShellNavRailState extends State<ShellNavRail> {
         ShellScope.profileOf(context) == ShellProfile.tv;
     final preferredIconSize = shellNavRailIconSize(context);
     final preferredLabelFont = shellNavRailLabelFontSize(context);
+    final preferredLabelSlot = shellNavRailLabelSlotHeight(
+      context,
+      preferredLabelFont,
+    );
+    final minLabelSlot = shellNavRailLabelSlotHeight(context, 9.0);
     final profileAvatarScale = shellNavRailProfileAvatarScale(context);
 
     Widget buildNavColumn({
       required double itemSpacing,
       required double iconSize,
-      required double labelFontSize,
+      required double labelSlotHeight,
     }) {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -325,7 +334,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                   onTap: () => widget.onDestinationSelected(index),
                   itemSpacing: itemSpacing,
                   iconSize: iconSize,
-                  labelFontSize: labelFontSize,
+                  labelSlotHeight: labelSlotHeight,
                   railEngaged: _railEngaged,
                   onFocusChanged: _syncFocusInRail,
                 );
@@ -362,14 +371,14 @@ class _ShellNavRailState extends State<ShellNavRail> {
                       final profileSpacing =
                           isTv ? 4.0 : metrics.navRailItemSpacing;
                       final profileLabelSlot = math.max(
-                        preferredLabelFont,
+                        preferredLabelSlot,
                         LanPresenceMark.railSlotHeight(tv: isTv),
                       );
                       final profileBlockHeight = settingsIndex == null
                           ? 0.0
                           : _navRailItemContentHeight(
                                 iconSize: profileIconSize,
-                                labelFontSize: profileLabelSlot,
+                                labelSlotHeight: profileLabelSlot,
                               ) +
                               profileSpacing;
                       const navPadV = 4.0;
@@ -383,14 +392,15 @@ class _ShellNavRailState extends State<ShellNavRail> {
                         itemCount: _navIds.length,
                         maxHeight: navMaxHeight,
                         preferredIconSize: preferredIconSize,
-                        preferredLabelFontSize: preferredLabelFont,
+                        preferredLabelSlotHeight: preferredLabelSlot,
+                        minLabelSlotHeight: minLabelSlot,
                         preferredSpacing: metrics.navRailItemSpacing,
                       );
 
                       final navColumn = buildNavColumn(
                         itemSpacing: fit.itemSpacing,
                         iconSize: fit.iconSize,
-                        labelFontSize: fit.labelFontSize,
+                        labelSlotHeight: fit.labelSlotHeight,
                       );
 
                       final navArea = isTv
@@ -439,6 +449,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
                                       : null,
                                   iconSize: fit.iconSize,
                                   labelFontSize: preferredLabelFont,
+                                  labelSlotHeight: profileLabelSlot,
                                   alwaysShowLabel: showDesktopProfile,
                                   desaturateCustomIconWhenIdle:
                                       showDesktopProfile,
@@ -728,6 +739,7 @@ class _ShellNavRailItem extends StatefulWidget {
     this.labelPresence = LanPresence.hidden,
     this.iconSize,
     this.labelFontSize,
+    this.labelSlotHeight,
     this.customIconSize,
     this.alwaysShowLabel = false,
     this.desaturateCustomIconWhenIdle = false,
@@ -746,6 +758,7 @@ class _ShellNavRailItem extends StatefulWidget {
   /// Fitted / preferred glyph size for destination icons.
   final double? iconSize;
   final double? labelFontSize;
+  final double? labelSlotHeight;
   final double? customIconSize;
   final bool alwaysShowLabel;
   final bool desaturateCustomIconWhenIdle;
@@ -891,17 +904,19 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final labelFont =
         widget.labelFontSize ?? shellNavRailLabelFontSize(context);
     final tv = ShellScope.metricsOf(context).usesTvDensity;
-    final labelSlot = widget.alwaysShowLabel
-        ? math.max(
-            labelFont,
-            LanPresenceMark.railSlotHeight(tv: tv),
-          )
-        : labelFont;
+    final labelSlot = widget.labelSlotHeight ??
+        (widget.alwaysShowLabel
+            ? math.max(
+                shellNavRailLabelSlotHeight(context, labelFont),
+                LanPresenceMark.railSlotHeight(tv: tv),
+              )
+            : shellNavRailLabelSlotHeight(context, labelFont));
     if (customIconSize == null) {
       return shellNavRailItemContentHeight(
         context,
         iconSize: widget.iconSize,
-        labelFontSize: labelSlot,
+        labelFontSize: labelFont,
+        labelSlotHeight: labelSlot,
       );
     }
     return customIconSize * ShellTokens.navRailIconHoverScale +
@@ -923,12 +938,13 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final tv = ShellScope.metricsOf(context).usesTvDensity;
     final lanShowBar = LanServerService.canRunServer;
     final lanMarkSize = LanPresenceMark.sizeFor(tv: tv);
-    final labelSlotHeight = widget.alwaysShowLabel
-        ? math.max(
-            labelFontSize,
-            LanPresenceMark.railSlotHeight(tv: tv),
-          )
-        : labelFontSize;
+    final labelSlotHeight = widget.labelSlotHeight ??
+        (widget.alwaysShowLabel
+            ? math.max(
+                shellNavRailLabelSlotHeight(context, labelFontSize),
+                LanPresenceMark.railSlotHeight(tv: tv),
+              )
+            : shellNavRailLabelSlotHeight(context, labelFontSize));
     final contentHeight = _contentHeight(context);
     final underlineWidth = shellScaled(context, 24).clamp(14.0, 24.0);
     final destinationAccent =

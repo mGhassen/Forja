@@ -13,6 +13,8 @@ On-device Sports matcher (Sportio-style): the **same** Live Matches schedule as 
 
 ## What you can do
 
+- **Stream resolve** — **Sniff** (embed WebView player, default) or **Engine** (Forja live plugins → native player). Dropdown under **Live stream resolve**; a **Sniff** / **Engine** pill on Live Matches mirrors the choice.
+- **Forja plugins** — same layout as **Settings → Sources → Forja plugins**: built-in pack expansion tile, **Providers** / **Catalog** / **Live sport** tabs, per-plugin toggles with descriptions (Streamed, PPV, TimStreams, ESPN, …).
 - Browse the same sports catalog as All, **merged with ESPN** for the same day (clean home/away for matching; ESPN-only games still appear)
 - Pick the Xtream portal from top-right **Portals** (same IPTV panel)
 - Open a match → right-side panel opens immediately while Forja sniffs your portal; ranked channels appear as they land (logo, short name, category, tier badge) → pick one to play (failover keeps the rest in the player Source menu with the same layout). Re-opening the same match within **30 minutes** reuses the last match result (no second portal search)

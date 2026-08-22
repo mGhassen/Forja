@@ -1178,6 +1178,55 @@ void main() {
       );
     });
 
+    test('engine.json ships live sports plugins separate from VOD Sources', () async {
+      final jsonStr = await rootBundle.loadString(
+        'assets/providers/engine.json',
+      );
+      final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+      final plugins = [
+        for (final p in map['plugins'] as List)
+          EnginePlugin.fromJson(Map<String, dynamic>.from(p as Map)),
+      ];
+      const liveSportIds = [
+        'live-timstreams',
+        'live-streamfree',
+        'live-watchfooty',
+        'live-streamic',
+      ];
+      for (final id in liveSportIds) {
+        final p = plugins.firstWhere((e) => e.id == id);
+        expect(p.isLiveSport, isTrue);
+        expect(p.isVodCatalog, isFalse);
+        expect(p.entry.startsWith('live/'), isTrue);
+      }
+      for (final id in ['live-streamed', 'live-ppv']) {
+        final p = plugins.firstWhere((e) => e.id == id);
+        expect(p.isLiveProvider, isTrue);
+        expect(p.isVodCatalog, isFalse);
+      }
+      const catalogIds = [
+        'catalog-timstreams',
+        'catalog-streamfree',
+        'catalog-watchfooty',
+        'catalog-streamic',
+        'catalog-espn',
+      ];
+      for (final id in catalogIds) {
+        final p = plugins.firstWhere((e) => e.id == id);
+        expect(p.isLiveCatalog, isTrue);
+        expect(p.entry.startsWith('catalog/'), isTrue);
+        expect(p.entry.endsWith('.js'), isTrue);
+      }
+      expect(
+        await rootBundle.loadString('assets/providers/catalog/timstreams.js'),
+        contains('function extract(ctx)'),
+      );
+      expect(
+        await rootBundle.loadString('assets/providers/catalog/espn.js'),
+        contains('LEAGUE_ENDPOINTS'),
+      );
+    });
+
     test('vidnest.js uses the Forja custom-alphabet cipher', () async {
       final src = await rootBundle.loadString('assets/providers/vidnest.js');
       expect(

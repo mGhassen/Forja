@@ -48,7 +48,6 @@ class TorrentSourceTile extends StatelessWidget {
         : null;
     final magnet = result.magnet.trim();
 
-    final flags = meta.flags.trim();
     return _SourceBadgeCard(
       onTap: onPlay,
       progress: progress,
@@ -57,7 +56,7 @@ class TorrentSourceTile extends StatelessWidget {
       title: result.name,
       provider: provider,
       seeders: seedsLabel,
-      flags: flags.isEmpty ? null : flags,
+      languageCodes: meta.languageCodes,
       magnet: magnet.isEmpty ? null : magnet,
       tvItemIndex: tvItemIndex,
       onUpEdge: onUpEdge,
@@ -120,6 +119,7 @@ class WebstreamingSourceTile extends StatelessWidget {
       tvItemIndex: tvItemIndex,
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,
+      languageCodes: meta.languageCodes,
       badges: [
         if (meta.quality != null)
           _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
@@ -277,7 +277,6 @@ class StremioSourceTile extends StatelessWidget {
     final seedsLabel = seedsCount > 0 ? '$seedsCount' : null;
     final provider = addonName != null && showAddonName ? addonName : null;
 
-    final flags = isExternal ? '' : meta.flags.trim();
     return _SourceBadgeCard(
       onTap: onTap,
       progress: progress,
@@ -295,7 +294,7 @@ class StremioSourceTile extends StatelessWidget {
       title: title,
       provider: provider,
       seeders: isExternal ? null : seedsLabel,
-      flags: flags.isEmpty ? null : flags,
+      languageCodes: isExternal ? const [] : meta.languageCodes,
       tvItemIndex: tvItemIndex,
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,
@@ -399,7 +398,7 @@ class _SourceBadgeCard extends StatefulWidget {
     this.accentFill,
     this.provider,
     this.seeders,
-    this.flags,
+    this.languageCodes = const [],
     this.magnet,
     this.tvItemIndex,
     this.onUpEdge,
@@ -417,7 +416,7 @@ class _SourceBadgeCard extends StatefulWidget {
   final Color? accentFill;
   final String? provider;
   final String? seeders;
-  final String? flags;
+  final List<String> languageCodes;
   final String? magnet;
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
@@ -461,7 +460,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         widget.provider != null && widget.provider!.trim().isNotEmpty;
     final hasSeeders =
         widget.seeders != null && widget.seeders!.trim().isNotEmpty;
-    final hasFlags = widget.flags != null && widget.flags!.trim().isNotEmpty;
+    final hasLanguageFlags = widget.languageCodes.isNotEmpty;
     final magnet = widget.magnet;
     final showCopyMagnet = magnet != null && magnet.isNotEmpty && _hovered;
     const seedColor = Color(0xFF22C55E);
@@ -591,21 +590,15 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                           ],
                         ],
                       ),
-                      if (hasFlags || widget.badges.isNotEmpty) ...[
+                      if (hasLanguageFlags || widget.badges.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 6,
                           runSpacing: 6,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            if (hasFlags)
-                              Text(
-                                widget.flags!,
-                                style: TextStyle(
-                                  fontSize: metrics.torrentPanelChipFontSize,
-                                  height: 1.1,
-                                ),
-                              ),
+                            if (hasLanguageFlags)
+                              _LanguageFlagBadges(codes: widget.languageCodes),
                             for (final badge in widget.badges)
                               _SourceMetaBadge(badge: badge),
                           ],
@@ -672,6 +665,44 @@ List<String> _providerLines(String provider) {
       .toList();
   if (parts.length < 2) return [raw];
   return [parts.first, parts.sublist(1).join(' · ')];
+}
+
+class _LanguageFlagBadges extends StatelessWidget {
+  const _LanguageFlagBadges({required this.codes});
+
+  final List<String> codes;
+
+  @override
+  Widget build(BuildContext context) {
+    if (codes.isEmpty) return const SizedBox.shrink();
+    final metrics = ShellScope.metricsOf(context);
+
+    if (StreamProviderDisplay.supportsFlagEmoji) {
+      final flags = StreamProviderDisplay.flagsDisplayForCodes(codes);
+      if (flags.isEmpty) return const SizedBox.shrink();
+      return Text(
+        flags,
+        style: TextStyle(
+          fontSize: metrics.torrentPanelChipFontSize,
+          height: 1.1,
+        ),
+      );
+    }
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final code in codes)
+          if (StreamProviderDisplay.flagDisplayForCountry(code).isNotEmpty)
+            _SourceMetaBadge(
+              badge: _SourceBadgeSpec(
+                StreamProviderDisplay.flagDisplayForCountry(code),
+              ),
+            ),
+      ],
+    );
+  }
 }
 
 class _SourceMetaBadge extends StatelessWidget {

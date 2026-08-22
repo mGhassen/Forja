@@ -101,6 +101,61 @@ class _LiveMatchesServersTopBarButtonState
   }
 }
 
+class _LiveMatchesResolveModePill extends StatelessWidget {
+  const _LiveMatchesResolveModePill({required this.engine});
+
+  final bool engine;
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    final label = engine ? 'Engine' : 'Sniff';
+    final tip = engine
+        ? 'Stream resolve: Engine (native player) — change in Settings → Forja Sports'
+        : 'Stream resolve: Sniff (embed player) — change in Settings → Forja Sports';
+    final bg = engine
+        ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
+        : Colors.white.withValues(alpha: 0.06);
+    final fg = engine
+        ? ForjaShellColors.brandGreen
+        : cinematic.textSecondary;
+    final border = engine
+        ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
+        : ForjaShellColors.borderSubtle.withValues(alpha: 0.55);
+
+    return Tooltip(
+      message: tip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              engine ? Icons.memory_rounded : Icons.travel_explore_rounded,
+              size: 13,
+              color: fg,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: fg,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LiveMatchesRefreshTopBarButton extends StatefulWidget {
   const _LiveMatchesRefreshTopBarButton({
     required this.focusNode,
@@ -206,7 +261,8 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      // Leanback only — desktop opens with mouse; stealing focus breaks hover.
+      if (!ShellScope.metricsOf(context).usesTvDensity) return;
       if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
     });
   }
@@ -307,16 +363,75 @@ class _LiveMatchesServerSheetOption extends StatefulWidget {
 class _LiveMatchesServerSheetOptionState
     extends State<_LiveMatchesServerSheetOption> {
   bool _focused = false;
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
     final selected = widget.server == widget.current;
+    final policy = ShellScope.inputPolicyOf(context);
+    final mouseHover = policy.scaleOnHover;
+    final tvFocus = policy.useFocusableMoodChips;
+    final highlight = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
+    const radius = 12.0;
+
+    final tile = ListTile(
+      leading: Icon(
+        widget.server == _LiveMatchesServer.all
+            ? Icons.grid_view_rounded
+            : Icons.dns_rounded,
+        color: selected ? ForjaShellColors.sectionAccent : Colors.white54,
+      ),
+      title: Text(
+        _liveMatchesServerLabel(widget.server),
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight: highlight || selected
+              ? FontWeight.bold
+              : FontWeight.w600,
+        ),
+      ),
+      subtitle: Text(
+        _liveMatchesServerSubtitle(widget.server),
+        style: const TextStyle(color: Colors.white38, fontSize: 11),
+      ),
+      trailing: selected
+          ? Icon(Icons.check_rounded, color: ForjaShellColors.sectionAccent)
+          : const Icon(Icons.chevron_right, color: Colors.white38),
+    );
+
+    final row = Material(
+      color: highlight ? ForjaShellColors.inkHover : Colors.transparent,
+      borderRadius: BorderRadius.circular(radius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        canRequestFocus: false,
+        onTap: tvFocus ? null : () => widget.onSelected(widget.server),
+        borderRadius: BorderRadius.circular(radius),
+        hoverColor: Colors.transparent,
+        splashColor: ForjaShellColors.inkSplash,
+        child: tile,
+      ),
+    );
+
+    if (!tvFocus) {
+      return shellRoundedInkHost(
+        radius: radius,
+        onTap: () => widget.onSelected(widget.server),
+        child: tile,
+      );
+    }
+
     return shellFocusableTap(
       context: context,
       onTap: () => widget.onSelected(widget.server),
-      borderRadius: 12,
+      borderRadius: radius,
       scaleOnFocus: 1.0,
-      showFocusBorder: true,
+      showFocusBorder: false,
+      showFocusFill: false,
       navLeftAlways: true,
       focusNode: widget.focusNode,
       listIndex: widget.tvItemIndex,
@@ -325,30 +440,8 @@ class _LiveMatchesServerSheetOptionState
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
       onFocusChange: (focused) => setState(() => _focused = focused),
-      child: ListTile(
-        leading: Icon(
-          widget.server == _LiveMatchesServer.all
-              ? Icons.grid_view_rounded
-              : Icons.dns_rounded,
-          color: selected ? ForjaShellColors.sectionAccent : Colors.white54,
-        ),
-        title: Text(
-          _liveMatchesServerLabel(widget.server),
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: _focused || selected
-                ? FontWeight.bold
-                : FontWeight.w600,
-          ),
-        ),
-        subtitle: Text(
-          _liveMatchesServerSubtitle(widget.server),
-          style: const TextStyle(color: Colors.white38, fontSize: 11),
-        ),
-        trailing: selected
-            ? Icon(Icons.check_rounded, color: ForjaShellColors.sectionAccent)
-            : const Icon(Icons.chevron_right, color: Colors.white38),
-      ),
+      onHoverChange: mouseHover ? (hovered) => setState(() => _hovered = hovered) : null,
+      child: row,
     );
   }
 }
@@ -514,6 +607,7 @@ class _LiveMatchCornerBadge extends StatelessWidget {
     required this.live,
     this.color,
     this.top = 8,
+    this.bottom,
     this.left,
     this.right = 8,
   });
@@ -522,6 +616,7 @@ class _LiveMatchCornerBadge extends StatelessWidget {
   final bool live;
   final Color? color;
   final double top;
+  final double? bottom;
   final double? left;
   final double? right;
 
@@ -531,11 +626,15 @@ class _LiveMatchCornerBadge extends StatelessWidget {
     final padH = shellScaled(context, 8).clamp(6.0, 10.0);
     final padV = shellScaled(context, 3).clamp(2.0, 4.0);
     final radius = shellScaled(context, 6).clamp(4.0, 8.0);
-    final inset = shellScaled(context, top).clamp(6.0, 10.0);
+    final verticalInset = shellScaled(
+      context,
+      bottom ?? top,
+    ).clamp(6.0, 10.0);
     final bg = color ?? (live ? Colors.red.shade700 : Colors.black54);
 
     return Positioned(
-      top: inset,
+      top: bottom == null ? verticalInset : null,
+      bottom: bottom,
       left: left,
       right: right,
       child: DecoratedBox(
@@ -569,14 +668,81 @@ class _LiveMatchCornerBadge extends StatelessWidget {
 
 // ─── Forja Sports channel panel (right side, progressive) ────────────────────
 
-/// Funny status copy for Forja Sports channel sniffing.
 abstract final class _IptvSportsPanelCopy {
-  static const sniffing = 'Forja is sniffing the remote…';
-  static const empty = 'Forja came up empty — nothing on deck';
+  static const empty = 'No channels matched this event';
 
-  static String onDeck(int n) {
+  static String searching(String phase) {
+    final p = phase.trim();
+    if (p.isEmpty) return 'Searching channels…';
+    return 'Searching $p…';
+  }
+
+  static String partial(int n, String phase) {
+    final count = n == 1 ? '1 channel' : '$n channels';
+    final p = phase.trim();
+    if (p.isEmpty) return '$count found · still searching…';
+    return '$count found · checking $p…';
+  }
+
+  static String ready(int n) {
     if (n <= 0) return empty;
-    return n == 1 ? '1 channel on deck' : '$n channels on deck';
+    return n == 1 ? '1 channel ready' : '$n channels ready';
+  }
+}
+
+class _IptvSportsPanelLoadingSkeleton extends StatelessWidget {
+  const _IptvSportsPanelLoadingSkeleton({required this.searching});
+
+  final bool searching;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      physics: searching ? null : const NeverScrollableScrollPhysics(),
+      itemCount: 3,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, i) {
+        final fade = 0.55 - (i * 0.12);
+        final tone = Colors.white.withValues(alpha: fade.clamp(0.2, 0.55));
+        return Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: tone,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 12,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: tone,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    height: 10,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      color: tone.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -590,9 +756,18 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
   final String panelTitle;
   final List<IptvPlaySource> sources = [];
   bool searching = true;
+  String searchPhase = '';
   bool _disposed = false;
 
   bool get isDisposed => _disposed;
+
+  void setSearchPhase(String phase) {
+    if (_disposed) return;
+    final next = phase.trim();
+    if (searchPhase == next) return;
+    searchPhase = next;
+    notifyListeners();
+  }
 
   void appendSources(Iterable<IptvPlaySource> next) {
     if (_disposed) return;
@@ -610,6 +785,7 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
     if (_disposed) return;
     if (!searching) return;
     searching = false;
+    searchPhase = '';
     notifyListeners();
   }
 
@@ -756,11 +932,17 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
     final ctrl = widget.controller;
     final sources = ctrl.sources;
     final tv = SourcesPanelTv.isTv(context);
+    final match = ctrl.match;
     final status = ctrl.searching
         ? (sources.isEmpty
-            ? _IptvSportsPanelCopy.sniffing
-            : '${_IptvSportsPanelCopy.onDeck(sources.length)} · still sniffing…')
-        : (sources.isEmpty ? null : _IptvSportsPanelCopy.onDeck(sources.length));
+            ? _IptvSportsPanelCopy.searching(ctrl.searchPhase)
+            : _IptvSportsPanelCopy.partial(sources.length, ctrl.searchPhase))
+        : (sources.isEmpty ? null : _IptvSportsPanelCopy.ready(sources.length));
+
+    final matchMeta = [
+      if (match.categoryLabel.trim().isNotEmpty) match.categoryLabel.trim(),
+      if (match.isLive) 'Live now' else if (match.timeLabel.isNotEmpty) match.timeLabel,
+    ].join(' · ');
 
     final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -784,7 +966,7 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
         ),
         const SizedBox(height: 10),
         Text(
-          ctrl.match.title,
+          match.title,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
@@ -793,8 +975,20 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
             fontWeight: FontWeight.w600,
           ),
         ),
-        if (status != null) ...[
+        if (matchMeta.isNotEmpty) ...[
           const SizedBox(height: 4),
+          Text(
+            matchMeta,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: ForjaShellColors.cinematic.textSecondary,
+              fontSize: 11,
+            ),
+          ),
+        ],
+        if (status != null) ...[
+          const SizedBox(height: 8),
           Row(
             children: [
               if (ctrl.searching) ...[
@@ -824,17 +1018,30 @@ class _IptvSportsChannelsOverlayState extends State<_IptvSportsChannelsOverlay> 
         Expanded(
           child: sources.isEmpty
               ? (ctrl.searching
-                  ? const SizedBox.shrink()
+                  ? _IptvSportsPanelLoadingSkeleton(searching: true)
                   : Align(
-                      alignment: Alignment.topLeft,
+                      alignment: Alignment.topCenter,
                       child: Padding(
-                        padding: const EdgeInsets.only(top: 24),
-                        child: Text(
-                          _IptvSportsPanelCopy.empty,
-                          style: TextStyle(
-                            color: ForjaShellColors.cinematic.textSecondary,
-                            fontSize: 13,
-                          ),
+                        padding: const EdgeInsets.only(top: 32),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.search_off_rounded,
+                              size: 36,
+                              color: ForjaShellColors.cinematic.textSecondary
+                                  .withValues(alpha: 0.45),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _IptvSportsPanelCopy.empty,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: ForjaShellColors.cinematic.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ))
@@ -907,6 +1114,7 @@ class _IptvSportsChannelSheetRow extends StatefulWidget {
 class _IptvSportsChannelSheetRowState
     extends State<_IptvSportsChannelSheetRow> {
   bool _focused = false;
+  bool _hovered = false;
 
   Widget _logo() {
     const size = 40.0;
@@ -956,6 +1164,12 @@ class _IptvSportsChannelSheetRowState
     final src = widget.source;
     final subtitle = src.pickerSubtitle;
     final badge = src.tierBadge;
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
@@ -969,6 +1183,8 @@ class _IptvSportsChannelSheetRowState
       tvZone: ShellTvZone.row,
       onUpEdge: widget.onUpEdge,
       onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange:
+          policy.scaleOnHover ? (hovered) => setState(() => _hovered = hovered) : null,
       child: ListTile(
         leading: _logo(),
         title: Text(
@@ -977,7 +1193,7 @@ class _IptvSportsChannelSheetRowState
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: Colors.white,
-            fontWeight: _focused ? FontWeight.bold : FontWeight.w600,
+            fontWeight: active ? FontWeight.bold : FontWeight.w600,
           ),
         ),
         subtitle: subtitle == null || subtitle.isEmpty
@@ -2709,7 +2925,7 @@ class _MergedMatchStreamSheetState extends State<_MergedMatchStreamSheet> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (!ShellScope.metricsOf(context).usesTvDensity) return;
       if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
     });
   }
@@ -2827,9 +3043,16 @@ class _MergedPpvStreamRow extends StatefulWidget {
 
 class _MergedPpvStreamRowState extends State<_MergedPpvStreamRow> {
   bool _focused = false;
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
@@ -2844,6 +3067,8 @@ class _MergedPpvStreamRowState extends State<_MergedPpvStreamRow> {
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
       onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange:
+          policy.scaleOnHover ? (hovered) => setState(() => _hovered = hovered) : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
         child: Row(
@@ -2864,7 +3089,7 @@ class _MergedPpvStreamRowState extends State<_MergedPpvStreamRow> {
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 14,
-                  fontWeight: _focused ? FontWeight.bold : FontWeight.w600,
+                  fontWeight: active ? FontWeight.bold : FontWeight.w600,
                 ),
               ),
             ),
@@ -2909,7 +3134,7 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (!ShellScope.metricsOf(context).usesTvDensity) return;
       if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
     });
   }
@@ -3027,6 +3252,7 @@ class _StreamedStreamRow extends StatefulWidget {
 
 class _StreamedStreamRowState extends State<_StreamedStreamRow> {
   bool _focused = false;
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -3034,6 +3260,12 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
       if (widget.sourceLabel.isNotEmpty) widget.sourceLabel,
       if (widget.stream.language.isNotEmpty) widget.stream.language,
     ];
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+    );
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
@@ -3048,6 +3280,8 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
       onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange:
+          policy.scaleOnHover ? (hovered) => setState(() => _hovered = hovered) : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
         child: Row(
@@ -3071,7 +3305,7 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 14,
-                      fontWeight: _focused ? FontWeight.bold : FontWeight.w600,
+                      fontWeight: active ? FontWeight.bold : FontWeight.w600,
                     ),
                   ),
                   if (subtitleParts.isNotEmpty) ...[
@@ -3254,6 +3488,15 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
           live: false,
           top: tv ? 6 : 8,
         ),
+      if (m.isForjaLive)
+        _LiveMatchCornerBadge(
+          label: _liveForjaPluginDisplayName(m.livePluginId).toUpperCase(),
+          live: false,
+          color: ForjaShellColors.brandGreen.withValues(alpha: 0.92),
+          bottom: tv ? 6 : 8,
+          right: tv ? 6 : 8,
+          left: null,
+        ),
       if (!hasSources)
         Positioned(
           bottom: 6,
@@ -3359,6 +3602,15 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
             const _LiveMatchCornerBadge(label: '● LIVE', live: true, top: 6)
           else if (m.timeLabel.isNotEmpty)
             _LiveMatchCornerBadge(label: m.timeLabel, live: false, top: 6),
+          if (m.isForjaLive)
+            _LiveMatchCornerBadge(
+              label: _liveForjaPluginDisplayName(m.livePluginId).toUpperCase(),
+              live: false,
+              color: ForjaShellColors.brandGreen.withValues(alpha: 0.92),
+              bottom: 6,
+              right: 6,
+              left: null,
+            ),
         ],
       );
     } else {
@@ -3856,7 +4108,7 @@ class _LiveCancellableLoadingDialogState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (!ShellScope.metricsOf(context).usesTvDensity) return;
       if (_cancelFocus.canRequestFocus) _cancelFocus.requestFocus();
     });
   }

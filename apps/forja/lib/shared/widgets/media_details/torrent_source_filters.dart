@@ -1011,9 +1011,12 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
 }
 
 String _languageChipLabel(String code) {
-  final flag = StreamProviderDisplay.flagForCountry(code);
-  if (flag.isEmpty) return code.toUpperCase();
-  return '$flag ${code.toUpperCase()}';
+  final display = StreamProviderDisplay.flagDisplayForCountry(code);
+  if (display.isEmpty) return code.toUpperCase();
+  if (StreamProviderDisplay.supportsFlagEmoji) {
+    return '$display ${code.toUpperCase()}';
+  }
+  return display;
 }
 
 class TorrentSourceSearchToolbar extends StatefulWidget {

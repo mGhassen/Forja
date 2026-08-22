@@ -209,24 +209,36 @@ mixin _LiveMatchesData
   Future<void> _load() async {
     if (!mounted || !shellTabVisible) return;
     _s._loadGen++;
+    (this as _LiveMatchesForjaLive)._resetForjaLiveCatalogState();
     setState(() {
       _s._loading = true;
       _s._error = null;
       _s._sportFilter = 'all';
       _s._timelineAutoScrolled = false;
+      _s._damiTvStreams = [];
+      _s._streamedMatches = [];
+      _s._espnGames = [];
+      _s._sports = [];
     });
     if (_s._timelineScrollController.hasClients) {
       _s._timelineScrollController.jumpTo(0);
     }
     ref.invalidate(liveMatchesPrimaryLoadProvider(_s._server));
+    if (_s._server == _LiveMatchesServer.forjaLive) {
+      setState(() => _s._loading = false);
+    }
+    if ((this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog) {
+      (this as _LiveMatchesForjaLive)._kickForjaLiveLazyCatalog();
+    }
   }
 
   void _applyPrimaryLoad(LiveMatchesPrimaryLoad load) {
+    final forjaKeep = _s._streamedMatches.where((m) => m.isForjaLive).toList();
     final oldCtrl = _s._tabController;
     setState(() {
       _s._tabController = null;
       _s._damiTvStreams = load.damiTvStreams;
-      _s._streamedMatches = load.streamedMatches;
+      _s._streamedMatches = [...load.streamedMatches, ...forjaKeep];
       _s._espnGames = load.espnGames;
       _s._sports = load.sports;
       _s._loading = false;
@@ -236,15 +248,21 @@ mixin _LiveMatchesData
     });
     oldCtrl?.dispose();
     if (!mounted) return;
-    final cats = load.sports;
-    final newCtrl = TabController(length: cats.length + 1, vsync: _s);
-    newCtrl.addListener(() {
-      if (!newCtrl.indexIsChanging) {
-        final idx = newCtrl.index;
-        _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
-      }
-    });
-    setState(() => _s._tabController = newCtrl);
+    if ((this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog &&
+        (_s._streamedMatches.any((m) => m.isForjaLive) ||
+            _s._damiTvStreams.isNotEmpty)) {
+      (this as _LiveMatchesForjaLive)._rebuildSportTabsFromCurrentMatches();
+    } else {
+      final cats = load.sports;
+      final newCtrl = TabController(length: cats.length + 1, vsync: _s);
+      newCtrl.addListener(() {
+        if (!newCtrl.indexIsChanging) {
+          final idx = newCtrl.index;
+          _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
+        }
+      });
+      setState(() => _s._tabController = newCtrl);
+    }
     if (_s._timelineScrollController.hasClients) {
       _s._timelineScrollController.jumpTo(0);
     }

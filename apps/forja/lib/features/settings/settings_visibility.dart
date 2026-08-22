@@ -107,7 +107,7 @@ class SettingsVisibility {
       playSourceWebstreaming &&
       AccountFeatures.instance.isAdmin;
 
-  /// Trakt / Simkl / MDBlist.
+  /// Simkl for everyone; Trakt / MDBlist rows admin-only.
   bool get showAccounts => vodTab;
 
   /// Trakt login / sync — admin accounts only (`accounts.is_admin`).

@@ -106,11 +106,9 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       SettingsCategoryMeta(
         id: SettingsCategoryId.accounts,
         title: 'Connected services',
-        subtitle: [
-          if (visibility.showTrakt) 'Trakt',
-          'Simkl',
-          if (visibility.showMdblist) 'MDBlist',
-        ].join(', '),
+        subtitle: visibility.showTrakt || visibility.showMdblist
+            ? 'Simkl; Trakt & MDBlist (admin)'
+            : 'Simkl',
         icon: Icons.sync_rounded,
       ),
     if (visibility.showLists)

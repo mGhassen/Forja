@@ -47,7 +47,7 @@ class _ShellErrorRetryPanelState extends State<ShellErrorRetryPanel> {
   void _scheduleRetryFocus() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (!ShellScope.metricsOf(context).usesTvDensity) return;
       if (widget.onRetry == null) return;
       if (_retryFocus.canRequestFocus) {
         _retryFocus.requestFocus();
