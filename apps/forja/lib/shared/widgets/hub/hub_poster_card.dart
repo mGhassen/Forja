@@ -156,17 +156,32 @@ class HubPosterCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (rating != null && rating! > 0)
+              if ((!compact && listTarget != null) ||
+                  (rating != null && rating! > 0))
                 Positioned(
                   top: inset,
+                  left: inset,
                   right: inset,
-                  child: HomeMovieRatingBadge(voteAverage: rating!),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!compact && listTarget != null)
+                        MyListButton.hub(
+                          hubTarget: listTarget!,
+                          excludeFromTvTraversal: true,
+                          iconSize: HomeMovieRatingBadge.extentOf(context),
+                        ),
+                      const Spacer(),
+                      if (rating != null && rating! > 0)
+                        HomeMovieRatingBadge(voteAverage: rating!),
+                    ],
+                  ),
                 ),
               if (badge != null && badge!.isNotEmpty)
                 Positioned(
                   top: inset,
                   left: !compact && listTarget != null
-                      ? inset + shellScaled(context, 26).clamp(20.0, 26.0)
+                      ? inset + HomeMovieRatingBadge.extentOf(context) + 4
                       : inset,
                   child: Container(
                     padding: EdgeInsets.symmetric(
@@ -226,17 +241,6 @@ class HubPosterCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Same top-left bookmark pin as [HomeMovieCard].
-              if (!compact && listTarget != null)
-                Positioned(
-                  top: inset,
-                  left: inset,
-                  child: MyListButton.hub(
-                    hubTarget: listTarget!,
-                    excludeFromTvTraversal: true,
-                    iconSize: shellScaled(context, 18).clamp(12.0, 18.0),
-                  ),
-                ),
             ],
           ),
         ),

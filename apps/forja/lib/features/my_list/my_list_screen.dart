@@ -899,11 +899,20 @@ class _ListPoster extends StatelessWidget {
                 ),
               ),
             ),
-            if (rating > 0)
+            if (pin != null || rating > 0)
               Positioned(
                 top: inset,
+                left: inset,
                 right: inset,
-                child: HomeMovieRatingBadge(voteAverage: rating),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (pin != null) pin,
+                    const Spacer(),
+                    if (rating > 0)
+                      HomeMovieRatingBadge(voteAverage: rating),
+                  ],
+                ),
               ),
             Positioned(
               bottom: inset,
@@ -939,12 +948,6 @@ class _ListPoster extends StatelessWidget {
                 ],
               ),
             ),
-            if (pin != null)
-              Positioned(
-                top: inset,
-                left: inset,
-                child: pin,
-              ),
           ],
         ),
       ),
@@ -970,7 +973,7 @@ Widget? _listPin(
   Map<String, dynamic> item, {
   String? knownStatus,
 }) {
-  final iconSize = shellScaled(context, 18).clamp(12.0, 18.0);
+  final iconSize = HomeMovieRatingBadge.extentOf(context);
   final title = item['title']?.toString() ?? 'Unknown';
   final poster = item['posterPath']?.toString() ?? '';
   final vote = (item['voteAverage'] as num?)?.toDouble() ?? 0;

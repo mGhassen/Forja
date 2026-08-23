@@ -124,11 +124,25 @@ class HomeMovieCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (movie.voteAverage > 0)
+              if (!compact || movie.voteAverage > 0)
                 Positioned(
                   top: inset,
+                  left: inset,
                   right: inset,
-                  child: HomeMovieRatingBadge(voteAverage: movie.voteAverage),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!compact)
+                        MyListButton.movie(
+                          movie: movie,
+                          excludeFromTvTraversal: true,
+                          iconSize: HomeMovieRatingBadge.extentOf(context),
+                        ),
+                      const Spacer(),
+                      if (movie.voteAverage > 0)
+                        HomeMovieRatingBadge(voteAverage: movie.voteAverage),
+                    ],
+                  ),
                 ),
               Positioned(
                 bottom: inset,
@@ -167,16 +181,6 @@ class HomeMovieCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (!compact)
-                Positioned(
-                  top: inset,
-                  left: inset,
-                  child: MyListButton.movie(
-                    movie: movie,
-                    excludeFromTvTraversal: true,
-                    iconSize: shellScaled(context, 18).clamp(12.0, 18.0),
-                  ),
-                ),
             ],
           ),
         ),
@@ -224,6 +228,14 @@ class HomeMovieRatingBadge extends StatelessWidget {
   const HomeMovieRatingBadge({super.key, required this.voteAverage});
 
   final double voteAverage;
+
+  /// Outer height — card pins use this so tops line up with the score pill.
+  static double extentOf(BuildContext context) {
+    final padV = shellScaled(context, 4).clamp(2.0, 4.0);
+    final iconSize = shellScaled(context, 12).clamp(8.0, 12.0);
+    const border = 1.0;
+    return padV * 2 + iconSize + border * 2;
+  }
 
   @override
   Widget build(BuildContext context) {
