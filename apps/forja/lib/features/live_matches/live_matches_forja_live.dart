@@ -133,6 +133,48 @@ mixin _LiveMatchesForjaLive
     _kickForjaLiveLazyCatalog();
   }
 
+  Future<void> _restoreTimeWindowPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = _liveMatchesTimeWindowFromPref(
+      prefs.getString(_LiveMatchesScreenState._timeWindowPreferenceKey),
+    );
+    if (saved == null) return;
+    if (!mounted) return;
+    setState(() {
+      _s._timeWindow = saved;
+      _s._catalogFetchedTimeWindow = saved;
+    });
+  }
+
+  Future<void> _persistTimeWindowPreference(
+    _LiveMatchesTimeWindow window,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _LiveMatchesScreenState._timeWindowPreferenceKey,
+      _liveMatchesTimeWindowPref(window),
+    );
+  }
+
+  void _setTimeWindow(_LiveMatchesTimeWindow window) {
+    if (_s._timeWindow == window) return;
+    final widen = _liveMatchesTimeWindowRank(window) >
+        _liveMatchesTimeWindowRank(_s._catalogFetchedTimeWindow);
+    setState(() => _s._timeWindow = window);
+    unawaited(_persistTimeWindowPreference(window));
+    if (widen) {
+      _refetchCatalogsForWiderTimeWindow(window);
+    } else {
+      _rebuildSportTabsFromCurrentMatches();
+    }
+  }
+
+  void _refetchCatalogsForWiderTimeWindow(_LiveMatchesTimeWindow window) {
+    _resetForjaLiveCatalogState();
+    _s._catalogFetchedTimeWindow = window;
+    _kickForjaLiveLazyCatalog();
+  }
+
   void _ensureForjaLivePluginFilterValid() {
     if (_s._forjaLivePluginFilter == 'all') return;
     if (!_s._forjaLivePluginLoads.containsKey(_s._forjaLivePluginFilter)) {
@@ -310,6 +352,7 @@ mixin _LiveMatchesForjaLive
       if (!genAlive()) return;
       if (catalog.id == 'catalog-ppv') {
         final streams = rows
+            .where((row) => _forjaLiveCatalogRowInWindow(row, _s._timeWindow))
             .map(_damiTvFromPpvCatalogRow)
             .where((s) => s.id.isNotEmpty && s.name.isNotEmpty)
             .toList();
@@ -327,12 +370,9 @@ mixin _LiveMatchesForjaLive
         return;
       }
 
-      final Iterable<Map<String, dynamic>> visibleRows;
-      if (catalog.id == 'catalog-streamed') {
-        visibleRows = rows;
-      } else {
-        visibleRows = rows.where(_forjaLiveCatalogRowVisible);
-      }
+      final Iterable<Map<String, dynamic>> visibleRows = rows.where(
+        (row) => _forjaLiveCatalogRowInWindow(row, _s._timeWindow),
+      );
       final matchRows = visibleRows
           .map(_forjaLiveRowToMatch)
           .where((m) => m.id.isNotEmpty && m.title.isNotEmpty);
@@ -373,6 +413,7 @@ mixin _LiveMatchesForjaLive
 
   Future<void> _loadForjaLiveCatalogLazy() async {
     final gen = _s._forjaLiveLoadGen;
+    _s._catalogFetchedTimeWindow = _s._timeWindow;
     await EngineService.instance.ensureBundledInstalled();
     final catalogPlugins =
         await EngineService.instance.listEnabledLiveCatalogPlugins();

@@ -403,17 +403,114 @@ List<_DamiTvStream> _sortDamiTvLiveFirst(List<_DamiTvStream> items) {
 /// Max Forja Live catalog rows ingested per plugin (safety cap).
 const _kForjaLiveCatalogMaxPerPlugin = 100;
 
-/// Drop stale Forja Live catalog rows before they hit the timeline grid.
-bool _forjaLiveCatalogRowVisible(Map<String, dynamic> row) {
-  final raw = (row['date'] as num?)?.toInt() ?? 0;
-  final now = DateTime.now();
-  final start = now.subtract(const Duration(hours: 3));
-  final end = now.add(const Duration(hours: 24));
-  if (raw <= 0) return row['airing'] == true;
-  final ms = raw >= 1000000000000 ? raw : raw * 1000;
-  final dt = DateTime.fromMillisecondsSinceEpoch(ms);
-  return !dt.isBefore(start) && !dt.isAfter(end);
+enum _LiveMatchesTimeWindow { h1, h3, h6, all }
+
+int _liveMatchesTimeWindowRank(_LiveMatchesTimeWindow window) =>
+    switch (window) {
+      _LiveMatchesTimeWindow.h1 => 1,
+      _LiveMatchesTimeWindow.h3 => 2,
+      _LiveMatchesTimeWindow.h6 => 3,
+      _LiveMatchesTimeWindow.all => 4,
+    };
+
+String _liveMatchesTimeWindowLabel(_LiveMatchesTimeWindow window) =>
+    switch (window) {
+      _LiveMatchesTimeWindow.h1 => '1h',
+      _LiveMatchesTimeWindow.h3 => '3h',
+      _LiveMatchesTimeWindow.h6 => '6h',
+      _LiveMatchesTimeWindow.all => 'All',
+    };
+
+({Duration past, Duration future}) _liveMatchesTimeWindowRange(
+  _LiveMatchesTimeWindow window,
+) =>
+    switch (window) {
+      _LiveMatchesTimeWindow.h1 => (
+        past: const Duration(hours: 1),
+        future: const Duration(hours: 1),
+      ),
+      _LiveMatchesTimeWindow.h3 => (
+        past: const Duration(hours: 3),
+        future: const Duration(hours: 3),
+      ),
+      _LiveMatchesTimeWindow.h6 => (
+        past: const Duration(hours: 3),
+        future: const Duration(hours: 6),
+      ),
+      _LiveMatchesTimeWindow.all => (
+        past: const Duration(hours: 3),
+        future: const Duration(hours: 24),
+      ),
+    };
+
+_LiveMatchesTimeWindow? _liveMatchesTimeWindowFromPref(String? raw) {
+  return switch (raw) {
+    '1h' => _LiveMatchesTimeWindow.h1,
+    '3h' => _LiveMatchesTimeWindow.h3,
+    '6h' => _LiveMatchesTimeWindow.h6,
+    'all' => _LiveMatchesTimeWindow.all,
+    _ => null,
+  };
 }
+
+String _liveMatchesTimeWindowPref(_LiveMatchesTimeWindow window) =>
+    _liveMatchesTimeWindowLabel(window).toLowerCase();
+
+bool _kickoffInTimeWindow({
+  required int epochMs,
+  required _LiveMatchesTimeWindow window,
+  required bool alwaysOn,
+  required bool liveOrAiring,
+}) {
+  if (alwaysOn || liveOrAiring) return true;
+  if (epochMs <= 0) return false;
+  final ms = epochMs >= 1000000000000 ? epochMs : epochMs * 1000;
+  final dt = DateTime.fromMillisecondsSinceEpoch(ms);
+  final now = DateTime.now();
+  final range = _liveMatchesTimeWindowRange(window);
+  return !dt.isBefore(now.subtract(range.past)) &&
+      !dt.isAfter(now.add(range.future));
+}
+
+/// Drop Forja Live catalog rows outside the schedule window before ingest.
+bool _forjaLiveCatalogRowInWindow(
+  Map<String, dynamic> row,
+  _LiveMatchesTimeWindow window,
+) {
+  final raw = (row['date'] as num?)?.toInt() ?? 0;
+  if (raw <= 0) {
+    return row['airing'] == true || row['popular'] == true;
+  }
+  return _kickoffInTimeWindow(
+    epochMs: raw,
+    window: window,
+    alwaysOn: false,
+    liveOrAiring: row['airing'] == true || row['popular'] == true,
+  );
+}
+
+bool _streamedMatchInTimeWindow(
+  _StreamedMatch match,
+  _LiveMatchesTimeWindow window,
+) =>
+    _kickoffInTimeWindow(
+      epochMs: match.dateMs,
+      window: window,
+      alwaysOn: match.isAlwaysOn,
+      liveOrAiring: match.isLive || match.airing,
+    );
+
+bool _damiTvInTimeWindow(_DamiTvStream stream, _LiveMatchesTimeWindow window) =>
+    _kickoffInTimeWindow(
+      epochMs: stream.startsAt > 0 ? stream.startsAt * 1000 : 0,
+      window: window,
+      alwaysOn: stream.isAlwaysOn,
+      liveOrAiring: stream.isLive,
+    );
+
+/// Drop stale Forja Live catalog rows before they hit the timeline grid.
+bool _forjaLiveCatalogRowVisible(Map<String, dynamic> row) =>
+    _forjaLiveCatalogRowInWindow(row, _LiveMatchesTimeWindow.all);
 
 List<_StreamedMatch> _sortStreamedLiveFirst(List<_StreamedMatch> items) {
   final sorted = List<_StreamedMatch>.from(items);

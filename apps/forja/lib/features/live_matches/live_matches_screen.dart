@@ -102,6 +102,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   static const _serverPreferenceKey = 'live_matches_server_v1';
   static const _forjaLiveCatalogFilterPreferenceKey =
       'live_matches_forja_catalog_filter_v1';
+  static const _timeWindowPreferenceKey = 'live_matches_time_window_v1';
   _LiveMatchesView _view = _LiveMatchesView.timeline;
   bool _viewWasToggled = false;
   _TimelineGranularity _timelineGranularity = _TimelineGranularity.h3;
@@ -140,6 +141,10 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   int _forjaLiveLoadGen = 0;
   String _forjaLivePluginFilter = 'all';
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
+  _LiveMatchesTimeWindow _timeWindow = _LiveMatchesTimeWindow.h3;
+
+  /// Widest schedule window already ingested this session (refetch when user widens).
+  _LiveMatchesTimeWindow _catalogFetchedTimeWindow = _LiveMatchesTimeWindow.h3;
 
   /// Settings → Forja Sports **Catalog** toggles changed while this tab was hidden.
   bool _forjaLiveCatalogSettingsDirty = false;
@@ -148,19 +153,35 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   bool get _showIptvPortalTopBar => _server == _LiveMatchesServer.iptvSports;
 
-  /// Catalog button when Forja Live / Sports has enabled engine catalogs.
+  /// Catalog + schedule window on Forja Live / Sports / All.
   bool get _showCatalogTopBar =>
       (_server == _LiveMatchesServer.all ||
           _server == _LiveMatchesServer.forjaLive ||
           _server == _LiveMatchesServer.iptvSports) &&
       _forjaLivePluginLoads.isNotEmpty;
 
+  bool get _showTimeTopBar =>
+      _server == _LiveMatchesServer.all ||
+      _server == _LiveMatchesServer.forjaLive ||
+      _server == _LiveMatchesServer.iptvSports;
+
   int get _topBarCatalogIndex => 1;
 
-  /// Servers → [Catalog] → Refresh → [Portals] → [View].
-  int get _topBarRefreshIndex => _showCatalogTopBar ? 2 : 1;
+  int get _topBarTimeIndex {
+    var index = 1;
+    if (_showCatalogTopBar) index++;
+    return index;
+  }
 
-  int get _topBarPortalIndex => _showCatalogTopBar ? 3 : 2;
+  /// Servers → [Catalog] → [Time] → Refresh → [Portals] → [View].
+  int get _topBarRefreshIndex {
+    var index = 1;
+    if (_showCatalogTopBar) index++;
+    if (_showTimeTopBar) index++;
+    return index;
+  }
+
+  int get _topBarPortalIndex => _topBarRefreshIndex + 1;
 
   int get _topBarViewIndex =>
       _showIptvPortalTopBar ? _topBarPortalIndex + 1 : _topBarRefreshIndex + 1;
@@ -347,8 +368,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   Future<void> _restoreServerThenLoad() async {
     await _restoreServerPreference();
-    await (this as _LiveMatchesForjaLive)
-        ._restoreForjaLiveCatalogFilterPreference();
+    await (this as _LiveMatchesForjaLive)._restoreForjaLiveCatalogFilterPreference();
+    await (this as _LiveMatchesForjaLive)._restoreTimeWindowPreference();
     if (!mounted) return;
     setState(() => _serverHydrated = true);
     if (_server == _LiveMatchesServer.iptvSports) {

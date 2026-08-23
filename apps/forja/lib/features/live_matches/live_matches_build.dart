@@ -192,11 +192,17 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       onDownEdge: edges?.onDown,
       onUpEdge: tvFocus
           ? edges?.onUp
-          : () => _s._focusTopBarItem(
-              _s._showCatalogTopBar
-                  ? _s._topBarCatalogIndex
-                  : _LiveMatchesScreenState._topBarServersIndex,
-            ),
+          : () {
+              if (_s._showTimeTopBar) {
+                _s._focusTopBarItem(_s._topBarTimeIndex);
+              } else if (_s._showCatalogTopBar) {
+                _s._focusTopBarItem(_s._topBarCatalogIndex);
+              } else {
+                _s._focusTopBarItem(
+                  _LiveMatchesScreenState._topBarServersIndex,
+                );
+              }
+            },
     );
   }
 
@@ -379,9 +385,11 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
             onTap: _s._load,
             onDownEdge: _s._topBarDownEdge,
             onLeftEdge: () => _s._focusTopBarItem(
-              _s._showCatalogTopBar
-                  ? _s._topBarCatalogIndex
-                  : _LiveMatchesScreenState._topBarServersIndex,
+              _s._showTimeTopBar
+                  ? _s._topBarTimeIndex
+                  : _s._showCatalogTopBar
+                      ? _s._topBarCatalogIndex
+                      : _LiveMatchesScreenState._topBarServersIndex,
             ),
             onRightEdge: _s._showIptvPortalTopBar
                 ? () => _s._focusTopBarItem(_s._topBarPortalIndex)
@@ -406,6 +414,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
           if (_s._showCatalogTopBar) ...[
             const SizedBox(width: 8),
             _s._catalogTopBarButton(),
+          ],
+          if (_s._showTimeTopBar) ...[
+            const SizedBox(width: 8),
+            _s._timeTopBarButton(),
           ],
           const Spacer(),
           refresh,
@@ -713,10 +725,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         _LiveMatchesServer.stremio =>
           'No live Stremio addons — install one in Settings → Sources and enable Live Matches',
         _LiveMatchesServer.iptvSports => forjaLive._showForjaLiveCatalogChrome
-            ? 'No matches for this catalog or sport — try Catalog → All, or Refresh'
+            ? 'No matches for this catalog, sport, or schedule window — try Catalog → All, a wider time window, or Refresh'
             : 'No Forja Sports matches — enable catalogs in Settings → Forja Sports → Catalog',
         _LiveMatchesServer.forjaLive => forjaLive._showForjaLiveCatalogChrome
-            ? 'No matches for this catalog or sport — try Catalog → All, or Refresh'
+            ? 'No matches for this catalog, sport, or schedule window — try Catalog → All, a wider time window, or Refresh'
             : 'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins',
         _ => 'No streams available',
       };

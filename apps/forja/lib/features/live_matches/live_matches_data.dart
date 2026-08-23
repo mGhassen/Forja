@@ -7,6 +7,7 @@ mixin _LiveMatchesData
   void _focusTopBarItem(int index) {
     if (index == _LiveMatchesScreenState._topBarServersIndex ||
         (_s._showCatalogTopBar && index == _s._topBarCatalogIndex) ||
+        (_s._showTimeTopBar && index == _s._topBarTimeIndex) ||
         (_s._showIptvPortalTopBar && index == _s._topBarPortalIndex)) {
       ShellTvFocusCoordinator.focusRowItem(
         _LiveMatchesScreenState._tabId,
@@ -118,6 +119,24 @@ mixin _LiveMatchesData
     );
   }
 
+  void _openTimeWindowPicker() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF141414),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _LiveMatchesTimeWindowSheet(
+        current: _s._timeWindow,
+        onSelected: (window) {
+          Navigator.pop(context);
+          (this as _LiveMatchesForjaLive)._setTimeWindow(window);
+        },
+      ),
+    );
+  }
+
   Future<void> _toggleIptvPortalPanel() async {
     final ctrl = ref.read(iptvControllerProvider);
     await ctrl.preparePortalPanel();
@@ -143,13 +162,15 @@ mixin _LiveMatchesData
         context,
         listIndex: _LiveMatchesScreenState._topBarServersIndex,
       ),
-      onRightEdge: () => _focusTopBarItem(
-        _s._showCatalogTopBar
-            ? _s._topBarCatalogIndex
-            : _s._topBarRefreshIndex,
-      ),
+      onRightEdge: () => _focusTopBarItem(_s._topBarRightOfServersIndex),
       onDownEdge: _topBarDownEdge,
     );
+  }
+
+  int get _topBarRightOfServersIndex {
+    if (_s._showCatalogTopBar) return _s._topBarCatalogIndex;
+    if (_s._showTimeTopBar) return _s._topBarTimeIndex;
+    return _s._topBarRefreshIndex;
   }
 
   Widget _catalogTopBarButton() {
@@ -161,6 +182,25 @@ mixin _LiveMatchesData
       onTap: _openCatalogPicker,
       onLeftEdge: () =>
           _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex),
+      onRightEdge: () => _focusTopBarItem(
+        _s._showTimeTopBar ? _s._topBarTimeIndex : _s._topBarRefreshIndex,
+      ),
+      onDownEdge: _topBarDownEdge,
+    );
+  }
+
+  Widget _timeTopBarButton() {
+    return _LiveMatchesTopBarActionButton(
+      label: _liveMatchesTimeWindowLabel(_s._timeWindow),
+      icon: Icons.schedule_rounded,
+      accent: true,
+      tvItemIndex: _s._topBarTimeIndex,
+      onTap: _openTimeWindowPicker,
+      onLeftEdge: () => _focusTopBarItem(
+        _s._showCatalogTopBar
+            ? _s._topBarCatalogIndex
+            : _LiveMatchesScreenState._topBarServersIndex,
+      ),
       onRightEdge: () => _focusTopBarItem(_s._topBarRefreshIndex),
       onDownEdge: _topBarDownEdge,
     );
@@ -212,12 +252,21 @@ mixin _LiveMatchesData
       );
       return;
     }
-    _focusTopBarItem(
-      _s._showCatalogTopBar
-          ? _s._topBarCatalogIndex
-          : _LiveMatchesScreenState._topBarServersIndex,
-    );
+    if (_s._showTimeTopBar) {
+      _focusTopBarItem(_s._topBarTimeIndex);
+      return;
+    }
+    if (_s._showCatalogTopBar) {
+      _focusTopBarItem(_s._topBarCatalogIndex);
+      return;
+    }
+    _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex);
   }
+
+  bool get _applyTimeWindowFilter =>
+      _s._server == _LiveMatchesServer.all ||
+      _s._server == _LiveMatchesServer.forjaLive ||
+      _s._server == _LiveMatchesServer.iptvSports;
 
   bool _focusGridItem(int index) {
     final handle = ShellTvFocusCoordinator.rowHandle(
@@ -370,8 +419,8 @@ mixin _LiveMatchesData
     });
   }
 
-  List<_DamiTvStream> get _filteredDamiTv => _sortDamiTvLiveFirst(
-    _s._damiTvStreams
+  List<_DamiTvStream> get _filteredDamiTv {
+    var list = _s._damiTvStreams
         .where(
           (s) => _includeInSportFilter(
             category: s.categoryName,
@@ -379,21 +428,31 @@ mixin _LiveMatchesData
             sportFilter: _s._sportFilter,
           ),
         )
-        .toList(),
-  );
+        .toList();
+    if (_applyTimeWindowFilter) {
+      list = list
+          .where((s) => _damiTvInTimeWindow(s, _s._timeWindow))
+          .toList();
+    }
+    return _sortDamiTvLiveFirst(list);
+  }
 
-  List<_StreamedMatch> get _filteredStreamed => _mergeStreamedCatalogRows(
-    _sortStreamedLiveFirst(
-      _s._streamedMatches
-          .where(
-            (m) => _includeInSportFilter(
-              category: m.category,
-              isAlwaysOn: m.isAlwaysOn,
-              sportFilter: _s._sportFilter,
-            ),
-          )
-          .toList(),
-    ),
-  );
+  List<_StreamedMatch> get _filteredStreamed {
+    var list = _s._streamedMatches
+        .where(
+          (m) => _includeInSportFilter(
+            category: m.category,
+            isAlwaysOn: m.isAlwaysOn,
+            sportFilter: _s._sportFilter,
+          ),
+        )
+        .toList();
+    if (_applyTimeWindowFilter) {
+      list = list
+          .where((m) => _streamedMatchInTimeWindow(m, _s._timeWindow))
+          .toList();
+    }
+    return _mergeStreamedCatalogRows(_sortStreamedLiveFirst(list));
+  }
 
 }

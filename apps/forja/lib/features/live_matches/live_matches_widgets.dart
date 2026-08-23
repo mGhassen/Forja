@@ -665,6 +665,233 @@ class _LiveMatchesCatalogSheetOptionState
   }
 }
 
+// ─── Schedule window picker sheet ───────────────────────────────────────────
+
+class _LiveMatchesTimeWindowSheet extends StatefulWidget {
+  const _LiveMatchesTimeWindowSheet({
+    required this.current,
+    required this.onSelected,
+  });
+
+  final _LiveMatchesTimeWindow current;
+  final ValueChanged<_LiveMatchesTimeWindow> onSelected;
+
+  @override
+  State<_LiveMatchesTimeWindowSheet> createState() =>
+      _LiveMatchesTimeWindowSheetState();
+}
+
+class _LiveMatchesTimeWindowSheetState
+    extends State<_LiveMatchesTimeWindowSheet> {
+  static const _rowId = 'live-time-window-sheet';
+  final FocusNode _firstFocus = FocusNode(
+    debugLabel: 'live-time-window-sheet-first',
+  );
+
+  static const _options = _LiveMatchesTimeWindow.values;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ShellScope.metricsOf(context).usesTvDensity) return;
+      if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _firstFocus.dispose();
+    super.dispose();
+  }
+
+  String _subtitleFor(_LiveMatchesTimeWindow window) {
+    final range = _liveMatchesTimeWindowRange(window);
+    if (window == _LiveMatchesTimeWindow.all) {
+      return 'Live, 24/7, and kickoffs in the next 24 hours';
+    }
+    final futureH = range.future.inHours;
+    return 'Live, 24/7, and kickoffs in the next ${futureH}h';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.55;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final body = Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Schedule window',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'How far ahead to load and show matches:',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              for (var i = 0; i < _options.length; i++)
+                _LiveMatchesTimeWindowSheetOption(
+                  window: _options[i],
+                  selected: _options[i] == widget.current,
+                  subtitle: _subtitleFor(_options[i]),
+                  onSelected: widget.onSelected,
+                  tvItemIndex: i,
+                  tvRowId: _rowId,
+                  focusNode: i == 0 ? _firstFocus : null,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!tv) return body;
+    return TvCatalogRow(
+      tabId: 'live_matches',
+      rowId: _rowId,
+      sortOrder: 0,
+      itemCount: _options.length,
+      orientation: ShellTvRowOrientation.vertical,
+      child: body,
+    );
+  }
+}
+
+class _LiveMatchesTimeWindowSheetOption extends StatefulWidget {
+  const _LiveMatchesTimeWindowSheetOption({
+    required this.window,
+    required this.selected,
+    required this.subtitle,
+    required this.onSelected,
+    this.tvItemIndex,
+    this.tvRowId,
+    this.focusNode,
+  });
+
+  final _LiveMatchesTimeWindow window;
+  final bool selected;
+  final String subtitle;
+  final ValueChanged<_LiveMatchesTimeWindow> onSelected;
+  final int? tvItemIndex;
+  final String? tvRowId;
+  final FocusNode? focusNode;
+
+  @override
+  State<_LiveMatchesTimeWindowSheetOption> createState() =>
+      _LiveMatchesTimeWindowSheetOptionState();
+}
+
+class _LiveMatchesTimeWindowSheetOptionState
+    extends State<_LiveMatchesTimeWindowSheetOption> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    final mouseHover = policy.scaleOnHover;
+    final tvFocus = policy.useFocusableMoodChips;
+    final highlight = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+      context: context,
+    );
+    const radius = 12.0;
+    final label = _liveMatchesTimeWindowLabel(widget.window);
+
+    final tile = ListTile(
+      leading: Icon(
+        Icons.schedule_rounded,
+        color: widget.selected
+            ? ForjaShellColors.sectionAccent
+            : Colors.white54,
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight:
+              highlight || widget.selected ? FontWeight.bold : FontWeight.w600,
+        ),
+      ),
+      subtitle: Text(
+        widget.subtitle,
+        style: const TextStyle(color: Colors.white38, fontSize: 11),
+      ),
+      trailing: widget.selected
+          ? Icon(Icons.check_rounded, color: ForjaShellColors.sectionAccent)
+          : const Icon(Icons.chevron_right, color: Colors.white38),
+    );
+
+    final row = Material(
+      color: highlight ? ForjaShellColors.inkHover : Colors.transparent,
+      borderRadius: BorderRadius.circular(radius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        canRequestFocus: false,
+        onTap: tvFocus ? null : () => widget.onSelected(widget.window),
+        borderRadius: BorderRadius.circular(radius),
+        hoverColor: Colors.transparent,
+        splashColor: ForjaShellColors.inkSplash,
+        child: tile,
+      ),
+    );
+
+    if (!tvFocus) {
+      return shellRoundedInkHost(
+        radius: radius,
+        onTap: () => widget.onSelected(widget.window),
+        child: tile,
+      );
+    }
+
+    return shellFocusableTap(
+      context: context,
+      onTap: () => widget.onSelected(widget.window),
+      borderRadius: radius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      navLeftAlways: true,
+      focusNode: widget.focusNode,
+      listIndex: widget.tvItemIndex,
+      tvTabId: 'live_matches',
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
+      tvZone: ShellTvZone.row,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: mouseHover
+          ? (hovered) => setState(() => _hovered = hovered)
+          : null,
+      child: row,
+    );
+  }
+}
+
 // ─── Chips ────────────────────────────────────────────────────────────────────
 
 class _TeamBadge extends StatelessWidget {
