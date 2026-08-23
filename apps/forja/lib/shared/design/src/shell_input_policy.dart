@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:forja/shared/design/src/shell_keyboard_focus_scope.dart';
+
 /// TV app-root traversal - never use geometry for LEFT/RIGHT (rows trap in widgets).
 class _ShellTvDirectionalFocusAction extends DirectionalFocusAction {
   _ShellTvDirectionalFocusAction();
@@ -75,6 +77,13 @@ class ShellInputPolicy {
   /// TV leanback: snap focus chrome (no 200ms tweens). Weak SoCs stutter
   /// when every D-pad step runs [AnimatedScale] / color / saturation tweens.
   bool get instantFocusChrome => scaleOnFocus && !scaleOnHover;
+
+  /// Whether [focused] should paint D-pad / keyboard focus chrome.
+  bool focusChromeVisible(BuildContext context, {required bool focused}) {
+    if (!scaleOnFocus || !focused) return false;
+    if (instantFocusChrome) return true;
+    return ShellKeyboardFocusScope.chromeVisibleOf(context);
+  }
 
   /// Policy-aware hover OR keyboard focus chrome.
   static bool interactiveActive(
