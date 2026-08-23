@@ -1133,12 +1133,21 @@ class _BrowserViewState extends State<_BrowserView> {
 
           // Remount when search changes so a prior scroll offset doesn't leave
           // the short filtered list floating mid-viewport.
+          final jumpCats = [
+            for (final c in cats)
+              if (!IptvLiveCatalog.isSyntheticId(c.id)) c,
+          ];
           final list = ListLetterJumpScope(
-            enabled: _letterJumpEnabled,
-            itemCount: cats.length,
-            labelAt: (i) =>
-                cats[i].name.isEmpty ? 'Uncategorized' : cats[i].name,
-            onJump: _letterJumpCategory,
+            enabled: _letterJumpEnabled && jumpCats.isNotEmpty,
+            itemCount: jumpCats.length,
+            labelAt: (i) {
+              final name = jumpCats[i].name;
+              return name.isEmpty ? 'Uncategorized' : name;
+            },
+            onJump: (i) {
+              final fullIdx = cats.indexWhere((c) => c.id == jumpCats[i].id);
+              if (fullIdx >= 0) _letterJumpCategory(fullIdx);
+            },
             child: IptvTvScrollbar(
               controller: _categoryScroll,
               child: CustomScrollView(

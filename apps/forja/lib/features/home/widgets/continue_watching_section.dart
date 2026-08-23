@@ -254,6 +254,7 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
         ShellScope.inputPolicyOf(context),
         hovered: _hovered,
         focused: _focused,
+        context: context,
       );
 
   @override

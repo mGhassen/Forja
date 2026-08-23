@@ -40,6 +40,7 @@ class _AnimeContinueWatchingCardState extends State<AnimeContinueWatchingCard> {
         policy,
         hovered: _hovered,
         focused: _focused,
+        context: context,
       );
 
   @override

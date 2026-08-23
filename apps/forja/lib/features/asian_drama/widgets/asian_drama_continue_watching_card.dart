@@ -41,6 +41,7 @@ class _AsianDramaContinueWatchingCardState
         policy,
         hovered: _hovered,
         focused: _focused,
+        context: context,
       );
 
   @override

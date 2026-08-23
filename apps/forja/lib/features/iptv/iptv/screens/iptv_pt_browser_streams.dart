@@ -71,6 +71,7 @@ class _StreamCardState extends State<_StreamCard> {
         ShellScope.inputPolicyOf(context),
         hovered: _hovered,
         focused: _focused,
+        context: context,
       );
 
   void _onHover(bool hovered) {
@@ -471,6 +472,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
         ShellScope.inputPolicyOf(context),
         hovered: _hovered,
         focused: _focused,
+        context: context,
       );
 
   void _onHover(bool hovered) {

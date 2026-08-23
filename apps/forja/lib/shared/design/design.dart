@@ -10,6 +10,7 @@ export 'src/settings_tokens.dart';
 export 'src/shell_profile.dart';
 export 'src/shell_metrics.dart';
 export 'src/shell_input_policy.dart';
+export 'src/shell_keyboard_focus.dart';
 export 'src/shell_platform.dart';
 export 'src/shell_scope.dart';
 export 'src/shell_layout.dart';

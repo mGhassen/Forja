@@ -94,7 +94,15 @@ class ListLetterJumpMatcher {
     for (var i = startAfter + 1; i < itemCount; i++) {
       if (_labelStartsWith(labelAt(i), p)) return i;
     }
-    for (var i = 0; i <= startAfter; i++) {
+
+    // Cycling same letter at the last match — stay put (no wrap to top).
+    if (startAfter >= 0 && _labelStartsWith(labelAt(startAfter), p)) {
+      return startAfter;
+    }
+
+    if (startAfter >= 0) return null;
+
+    for (var i = 0; i < itemCount; i++) {
       if (_labelStartsWith(labelAt(i), p)) return i;
     }
     return null;
@@ -202,6 +210,14 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
     if (index == null) return false;
     widget.onJump(index);
     return true;
+  }
+
+  @override
+  void didUpdateWidget(covariant ListLetterJumpScope oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.itemCount != widget.itemCount) {
+      _matcher.reset();
+    }
   }
 
   @override

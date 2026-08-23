@@ -76,13 +76,18 @@ class ShellInputPolicy {
   /// when every D-pad step runs [AnimatedScale] / color / saturation tweens.
   bool get instantFocusChrome => scaleOnFocus && !scaleOnHover;
 
-  /// Policy-aware hover OR focus - use with [shellFocusableTap] callbacks.
+  /// Policy-aware hover OR keyboard focus chrome.
   static bool interactiveActive(
     ShellInputPolicy policy, {
     required bool hovered,
     required bool focused,
-  }) =>
-      (policy.scaleOnHover && hovered) || (policy.scaleOnFocus && focused);
+    BuildContext? context,
+  }) {
+    final focusChrome = context != null
+        ? policy.focusChromeVisible(context, focused: focused)
+        : (policy.scaleOnFocus && focused && policy.instantFocusChrome);
+    return (policy.scaleOnHover && hovered) || focusChrome;
+  }
 
   /// App-root D-pad / arrow traversal when [wrapAppFocusTraversal] is on.
   static Widget maybeWrapFocusTraversal({required Widget child, required bool enabled}) {

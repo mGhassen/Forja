@@ -1158,6 +1158,7 @@ class _AnimeArabicContinueWatchingCardState
         ShellScope.inputPolicyOf(context),
         hovered: _hovered,
         focused: _focused,
+        context: context,
       );
 
   @override

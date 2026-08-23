@@ -664,6 +664,7 @@ class _SeasonCardState extends State<_SeasonCard> {
       policy,
       hovered: _hovered,
       focused: _focused,
+        context: context,
     );
     final borderColor = widget.selected || active
         ? ForjaShellColors.chipSelectedBorder
@@ -881,6 +882,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       policy,
       hovered: _hovered,
       focused: _focused,
+        context: context,
     );
     final enabled = widget.onTap != null;
     final playEnabled = widget.onPlay != null;

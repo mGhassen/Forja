@@ -33,6 +33,7 @@ bool playerChromeFocusActive(
     policy,
     hovered: hovered,
     focused: focused,
+    context: context,
   );
 }
 

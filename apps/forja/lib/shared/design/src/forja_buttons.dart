@@ -132,27 +132,38 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     super.dispose();
   }
 
-  double _scaleFor(ShellInputPolicy policy) {
+  double _scaleFor(BuildContext context, ShellInputPolicy policy) {
     if (_pressed) return widget.pressScale;
-    if (policy.scaleOnHover && _hover) return widget.hoverScale;
-    if (policy.scaleOnFocus && _focused) return widget.hoverScale;
+    if (ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hover,
+      focused: _focused,
+      context: context,
+    )) {
+      return widget.hoverScale;
+    }
     return 1.0;
   }
 
-  bool _activeFor(ShellInputPolicy policy) =>
-      (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
+  bool _activeFor(BuildContext context, ShellInputPolicy policy) =>
+      ShellInputPolicy.interactiveActive(
+        policy,
+        hovered: _hover,
+        focused: _focused,
+        context: context,
+      );
 
   @override
   Widget build(BuildContext context) {
     final policy = _policy(context);
     final body = AnimatedScale(
-      scale: _scaleFor(policy),
+      scale: _scaleFor(context, policy),
       alignment: widget.scaleAlignment,
       duration: policy.instantFocusChrome
           ? Duration.zero
           : const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
-      child: widget.builder(_activeFor(policy), _pressed),
+      child: widget.builder(_activeFor(context, policy), _pressed),
     );
 
     Widget interactive = MouseRegion(
@@ -350,16 +361,21 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
   ShellInputPolicy _policy(BuildContext context) =>
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
 
-  bool _activeFor(ShellInputPolicy policy) =>
-      (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
+  bool _activeFor(BuildContext context, ShellInputPolicy policy) =>
+      ShellInputPolicy.interactiveActive(
+        policy,
+        hovered: _hover,
+        focused: _focused,
+        context: context,
+      );
 
-  Color _resolveIconColor(ShellInputPolicy policy) {
+  Color _resolveIconColor(BuildContext context, ShellInputPolicy policy) {
     if (widget.color != null) {
-      return _activeFor(policy)
+      return _activeFor(context, policy)
           ? ForjaShellColors.iconHover
           : widget.color!;
     }
-    return _activeFor(policy)
+    return _activeFor(context, policy)
         ? ForjaShellColors.iconHover
         : ForjaShellColors.iconMuted;
   }
@@ -369,16 +385,16 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
     return Colors.white.withValues(alpha: fillAlpha);
   }
 
-  double _scaleFor(ShellInputPolicy policy) {
+  double _scaleFor(BuildContext context, ShellInputPolicy policy) {
     if (_pressed) return widget.pressScale;
-    if (_activeFor(policy)) return widget.hoverScale;
+    if (_activeFor(context, policy)) return widget.hoverScale;
     return 1.0;
   }
 
   @override
   Widget build(BuildContext context) {
     final policy = _policy(context);
-    final showFill = _activeFor(policy) || _pressed;
+    final showFill = _activeFor(context, policy) || _pressed;
 
     Widget button = MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -399,7 +415,7 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
         onTap: widget.onTap,
         behavior: HitTestBehavior.opaque,
         child: AnimatedScale(
-          scale: _scaleFor(policy),
+          scale: _scaleFor(context, policy),
           duration: policy.instantFocusChrome
               ? Duration.zero
               : const Duration(milliseconds: 140),
@@ -417,7 +433,7 @@ class _ForjaPlainIconState extends State<ForjaPlainIcon> {
                     Icon(
                       widget.icon,
                       size: widget.size,
-                      color: _resolveIconColor(policy),
+                      color: _resolveIconColor(context, policy),
                     ),
               ),
             ),

@@ -39,6 +39,7 @@ bool iptvFocusActive(
       ShellScope.inputPolicyOf(context),
       hovered: hovered,
       focused: focused,
+        context: context,
     );
 
 /// TV D-pad focus - green highlight like player chrome controls.

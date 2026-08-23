@@ -391,9 +391,13 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                     ),
                   ),
                 );
+                final policy = ShellScope.inputPolicyOf(context);
+                final wrapped = policy.scaleOnHover && policy.scaleOnFocus
+                    ? ShellKeyboardFocusHost(child: body)
+                    : body;
                 return ShellInputPolicy.maybeWrapFocusTraversal(
-                  enabled: ShellScope.inputPolicyOf(context).wrapAppFocusTraversal,
-                  child: body,
+                  enabled: policy.wrapAppFocusTraversal,
+                  child: wrapped,
                 );
               },
             );

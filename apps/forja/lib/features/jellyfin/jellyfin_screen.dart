@@ -64,6 +64,7 @@ class _JellyfinLandscapeCardState extends State<_JellyfinLandscapeCard> {
         ShellScope.inputPolicyOf(context),
         hovered: _hovered,
         focused: _focused,
+        context: context,
       );
 
   @override

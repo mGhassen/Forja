@@ -474,7 +474,14 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       descendantsAreTraversable: widget.allowNestedFocus,
       onFocusChange: (f) {
         setState(() => _isFocused = f);
-        _updateState(f || (policy.scaleOnHover && _isHovered));
+        _updateState(
+          ShellInputPolicy.interactiveActive(
+            policy,
+            hovered: _isHovered,
+            focused: f,
+            context: context,
+          ),
+        );
         widget.onFocusChange?.call(f);
         if (f) {
           widget.tvMeta?.notifyFocused(_effectiveNode);
@@ -499,13 +506,27 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
           widget.onHoverChange?.call(true);
           if (!policy.scaleOnHover) return;
           setState(() => _isHovered = true);
-          _updateState(true);
+          _updateState(
+            ShellInputPolicy.interactiveActive(
+              policy,
+              hovered: true,
+              focused: _isFocused,
+              context: context,
+            ),
+          );
         },
         onExit: (_) {
           widget.onHoverChange?.call(false);
           if (!policy.scaleOnHover) return;
           setState(() => _isHovered = false);
-          _updateState(_isFocused);
+          _updateState(
+            ShellInputPolicy.interactiveActive(
+              policy,
+              hovered: false,
+              focused: _isFocused,
+              context: context,
+            ),
+          );
         },
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
@@ -520,8 +541,12 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
   Widget _buildFocusedChild(BuildContext context) {
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final chromeActive =
-        _isFocused || (policy.scaleOnHover && _isHovered);
+    final chromeActive = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _isHovered,
+      focused: _isFocused,
+      context: context,
+    );
 
     // Settings rail: green left bar + ink fill (no ring box).
     // Flat menus (scale 1.0): gray fill + thin border.
@@ -566,7 +591,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
             child: content,
           );
         } else if (widget.showFocusBorder &&
-            (flatMenuFocus ? chromeActive : _isFocused)) {
+            (flatMenuFocus ? chromeActive : policy.focusChromeVisible(context, focused: _isFocused))) {
           if (flatMenuFocus) {
             content = DecoratedBox(
               decoration: BoxDecoration(

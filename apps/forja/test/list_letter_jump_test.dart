@@ -29,11 +29,11 @@ void main() {
       expect(jump('f', m), 0);
     });
 
-    test('repeat letter cycles matches', () {
+    test('repeat letter cycles matches without wrapping', () {
       final m = ListLetterJumpMatcher();
       expect(jump('f', m), 0);
       expect(jump('f', m), 1);
-      expect(jump('f', m), 0);
+      expect(jump('f', m), 1);
     });
 
     test('multi-letter prefix within timeout', () {

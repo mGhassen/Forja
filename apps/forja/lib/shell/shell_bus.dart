@@ -182,7 +182,7 @@ class ShellBus {
   static void clearOverlayShellTabId() => _overlayShellTabId = null;
 
   /// After the overlay stack returns to root, re-select the tab that opened it.
-  /// TV: restore catalog focus under the hub. Desktop: focus the selected rail tab.
+  /// TV: restore catalog focus. Desktop: clear stale rail focus (selection only).
   static void finishOverlayAndRestoreShellTab() {
     final origin = takeOverlayShellTabId();
     if (origin == null || origin.isEmpty) return;
@@ -196,7 +196,7 @@ class ShellBus {
         ShellTvFocusCoordinator.restoreTabFocusAfterOverlayPop(origin);
         return;
       }
-      ShellTvFocus.scheduleFocusNavTab(origin);
+      ShellTvFocusCoordinator.unfocusShellNav();
     });
   }
 

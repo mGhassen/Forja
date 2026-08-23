@@ -126,8 +126,12 @@ class _ShellNavMenuButtonState extends State<ShellNavMenuButton> {
   Widget build(BuildContext context) {
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final active =
-        (_hover && policy.scaleOnHover) || (_focused && policy.scaleOnFocus);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hover,
+      focused: _focused,
+      context: context,
+    );
     return Focus(
       onFocusChange: (focused) => setState(() => _focused = focused),
       onKeyEvent: (node, event) {
@@ -860,8 +864,12 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   double _scaleFor(ShellInputPolicy policy) {
     final big = ShellTokens.navRailIconHoverScale;
     final small = ShellTokens.navRailIconIdleScale;
-    final itemActive =
-        (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
+    final itemActive = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hover,
+      focused: _focused,
+      context: context,
+    );
     if (widget.customIconSize != null) {
       if (itemActive) return _pressed ? big * 0.92 : big;
       return 1;
@@ -896,8 +904,13 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     ShellTvFocusCoordinator.handleNavKey(LogicalKeyboardKey.arrowRight);
   }
 
-  bool _activeFor(ShellInputPolicy policy) =>
-      (policy.scaleOnHover && _hover) || (policy.scaleOnFocus && _focused);
+  bool _activeFor(BuildContext context, ShellInputPolicy policy) =>
+      ShellInputPolicy.interactiveActive(
+        policy,
+        hovered: _hover,
+        focused: _focused,
+        context: context,
+      );
 
   /// Fixed footprint: icon + label slot + underline gap - never grows on reveal.
   double _contentHeight(BuildContext context) {
@@ -930,7 +943,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    final active = _activeFor(policy);
+    final active = _activeFor(context, policy);
     final selectedFocused = widget.selected && active;
     final iconSize = widget.iconSize ?? shellNavRailIconSize(context);
     final renderedIconSize = widget.customIconSize ?? iconSize;
@@ -976,9 +989,10 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         : active
         ? ForjaShellColors.textSecondary
         : ForjaShellColors.iconMuted;
-    // Desktop: labels type in on hover (_TypewriterLabel). TV: static label on focus.
+    // Desktop: typewriter on hover. TV: static label when D-pad focus is visible.
     final showLabel = widget.alwaysShowLabel ||
-        (policy.scaleOnFocus && _focused && !policy.scaleOnHover);
+        policy.focusChromeVisible(context, focused: _focused) &&
+            !policy.scaleOnHover;
     final labelStyle = GoogleFonts.plusJakartaSans(
       color: labelColor,
       fontSize: labelFontSize,

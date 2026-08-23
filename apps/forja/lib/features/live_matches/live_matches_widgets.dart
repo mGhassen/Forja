@@ -34,6 +34,7 @@ class _LiveMatchesServersTopBarButtonState
     ShellScope.inputPolicyOf(context),
     hovered: _hovered,
     focused: _focused,
+        context: context,
   );
 
   @override
@@ -185,6 +186,7 @@ class _LiveMatchesRefreshTopBarButtonState
     ShellScope.inputPolicyOf(context),
     hovered: _hovered,
     focused: _focused,
+        context: context,
   );
 
   @override
@@ -382,6 +384,7 @@ class _LiveMatchesServerSheetOptionState
       policy,
       hovered: _hovered,
       focused: _focused,
+        context: context,
     );
     const radius = 12.0;
 
@@ -1279,6 +1282,7 @@ class _IptvSportsChannelSheetRowState
           policy,
           hovered: _hovered,
           focused: _focused,
+        context: context,
         );
         return shellFocusableTap(
           context: context,
@@ -3233,6 +3237,7 @@ class _MergedPpvStreamRowState extends State<_MergedPpvStreamRow> {
       policy,
       hovered: _hovered,
       focused: _focused,
+        context: context,
     );
     return shellFocusableTap(
       context: context,
@@ -3472,6 +3477,7 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
       policy,
       hovered: _hovered,
       focused: _focused,
+        context: context,
     );
     final subtitleParts = <String>[
       if (widget.pendingResolve) 'Resolve on play',
@@ -3677,6 +3683,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
           policy,
           hovered: _hovered,
           focused: _focused,
+        context: context,
         );
 
     final overlays = <Widget>[
@@ -3990,6 +3997,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
           policy,
           hovered: _hovered,
           focused: _focused,
+        context: context,
         );
 
     final overlays = <Widget>[
