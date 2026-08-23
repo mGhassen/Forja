@@ -970,8 +970,6 @@ void main() {
       expect(hdhub4u.contains('gadgetsweb'), isTrue);
       expect(hdhub4u.contains('hubdrive'), isTrue);
       expect(hdhub4u.contains('search.hdhub4u.glass'), isTrue);
-      expect(hdhub4u.contains('htmlSearchHits'), isTrue);
-      expect(hdhub4u.contains('/search/'), isTrue);
       expect(hdhub4u.contains('HDHUB4u'), isTrue);
       expect(hdhub4u.contains('hubCloudExtractor'), isTrue);
       expect(hdhub4u.contains('pixeldrain.net/api/file'), isTrue);

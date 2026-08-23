@@ -1318,8 +1318,12 @@ class _IptvSportsChannelsOverlayState
     if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
   }
 
+  /// Real leanback only — desktop also has [SourcesPanelTv.isTv] true
+  /// (`useFocusableMoodChips`), which would paint row 0 as "selected".
+  bool get _tvLeanback => ShellScope.metricsOf(context).usesTvDensity;
+
   void _claimInitialFocus() {
-    if (_didInitialFocus || !SourcesPanelTv.isTv(context)) return;
+    if (_didInitialFocus || !_tvLeanback) return;
     _didInitialFocus = true;
     final n = widget.controller.sources.length;
     if (n > 0) {
@@ -1335,7 +1339,7 @@ class _IptvSportsChannelsOverlayState
     final firstBatch = _lastSourceCount == 0 && n > 0;
     _lastSourceCount = n;
     setState(() {});
-    if (!SourcesPanelTv.isTv(context)) return;
+    if (!_tvLeanback) return;
     if (firstBatch) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -1355,7 +1359,7 @@ class _IptvSportsChannelsOverlayState
   Widget build(BuildContext context) {
     final ctrl = widget.controller;
     final sources = ctrl.sources;
-    final tv = SourcesPanelTv.isTv(context);
+    final tv = _tvLeanback;
     final match = ctrl.match;
     final showInlineStatus = !ctrl.searching || sources.isNotEmpty;
     final status = !showInlineStatus
