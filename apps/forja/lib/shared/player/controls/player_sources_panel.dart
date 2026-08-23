@@ -373,7 +373,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   bool _showNuvio = false;
   bool _showEngine = false;
   String _kindFilter = 'engine';
-  String _selectedSourceId = TorrentSearchProviders.knaben;
+  String _selectedSourceId = TorrentSearchProviders.noneId;
+  final Map<String, String> _panelSourceIdByKind = {};
   String _searchQuery = '';
   String _sortPreference = 'seeders';
   Set<String> _qualityFilters = {};
@@ -425,6 +426,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   @override
   void dispose() {
+    _savePanelUiCache();
     _searchGen++;
     _stremioGen++;
     _nuvioFetchGen++;
@@ -584,62 +586,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (next != null) _selectedSourceId = next;
   }
 
-  /// Ensure the filtered Stremio / Nuvio list includes the playing row.
+  /// Ensure the filtered Stremio list includes the playing row when a chip is
+  /// already selected — never auto-select providers on open.
   void _selectPlayingProviderIfNeeded() {
     if (_kindFilter == 'stremio') {
-      // Prefer the playing addon only when it already has rows - otherwise
-      // [promoteStremioProviderId] keeps the list stuck on Torrentio 403.
+      if (_selectedSourceId.isEmpty) return;
       _syncStremioProviderSelection();
-      return;
     }
-    if (_kindFilter != 'nuvio' && _kindFilter != 'engine') return;
-    if (_kindFilter == 'engine') {
-      final base = widget.currentAddonBaseUrl;
-      String? pluginId;
-      if (base != null && base.startsWith('engine:')) {
-        pluginId = base.substring('engine:'.length);
-      } else {
-        for (final s in _engineStreams) {
-          if (!_isCurrentStremio(s)) continue;
-          final id = s['_enginePluginId'] as String?;
-          if (id != null && id.isNotEmpty) {
-            pluginId = id;
-            break;
-          }
-          final sBase = s['_addonBaseUrl']?.toString();
-          if (sBase != null && sBase.startsWith('engine:')) {
-            pluginId = sBase.substring('engine:'.length);
-            break;
-          }
-        }
-      }
-      if (pluginId == null || pluginId.isEmpty) return;
-      if (_engineSelectedPluginIds.contains(pluginId)) return;
-      _engineSelectedPluginIds = {..._engineSelectedPluginIds, pluginId};
-      return;
-    }
-    final base = widget.currentAddonBaseUrl;
-    String? scraperId;
-    if (base != null && base.startsWith('nuvio:')) {
-      scraperId = base.substring('nuvio:'.length);
-    } else {
-      for (final s in _nuvioStreams) {
-        if (!_isCurrentStremio(s)) continue;
-        final id = s['_nuvioScraperId'] as String?;
-        if (id != null && id.isNotEmpty) {
-          scraperId = id;
-          break;
-        }
-        final sBase = s['_addonBaseUrl']?.toString();
-        if (sBase != null && sBase.startsWith('nuvio:')) {
-          scraperId = sBase.substring('nuvio:'.length);
-          break;
-        }
-      }
-    }
-    if (scraperId == null || scraperId.isEmpty) return;
-    if (_nuvioSelectedScraperIds.contains(scraperId)) return;
-    _nuvioSelectedScraperIds = {..._nuvioSelectedScraperIds, scraperId};
   }
 
   void _scheduleScrollToCurrent() {
@@ -729,26 +682,41 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final engineOn = await PlaySourceEffective.engine(_settings, lanReady);
     final local = _profile.localTorrentEngine;
     List<NuvioAddon> nuvioAddons = const [];
-    Set<String> nuvioSelected = {};
     if (nuvioOn) {
       try {
         nuvioAddons = await NuvioService.instance.listSourcesPanelAddons();
-        nuvioSelected = await NuvioService.instance
-            .loadSourcesSelectedScraperIds(
-              enabledIds: enabledNuvioScraperIds(nuvioAddons),
-            );
       } catch (_) {}
     }
     if (!mounted) return;
 
     final hasNuvio = nuvioOn && nuvioAddons.isNotEmpty;
     final hasEngine = engineOn;
-    final kind = _resolveInitialKind(
-      hasTorrent: torrentOn,
-      hasStremio: stremioOn,
-      hasNuvio: hasNuvio,
-      hasEngine: hasEngine,
-    );
+
+    List<EnginePack> enginePacks = const [];
+    if (engineOn) {
+      try {
+        enginePacks = await EngineService.instance.listSourcesPanelPacks();
+        _enginePacks = enginePacks;
+      } catch (_) {}
+    }
+    if (!mounted) return;
+
+    final cachedUi = CatalogSourcesSessionCache.readUi(_catalogCacheKey);
+    bool kindAllowed(String k) => switch (k) {
+      'torrents' => torrentOn,
+      'stremio' => stremioOn,
+      'nuvio' => hasNuvio,
+      'engine' => hasEngine,
+      _ => false,
+    };
+    final kind = cachedUi != null && kindAllowed(cachedUi.kindFilter)
+        ? cachedUi.kindFilter
+        : _resolveInitialKind(
+            hasTorrent: torrentOn,
+            hasStremio: stremioOn,
+            hasNuvio: hasNuvio,
+            hasEngine: hasEngine,
+          );
 
     List<Map<String, dynamic>> addons = const [];
     if (stremioOn && kind == 'stremio') {
@@ -760,35 +728,27 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
     final hasStremio = stremioOn && (kind != 'stremio' || addons.isNotEmpty);
 
-    List<EnginePack> enginePacks = const [];
-    Set<String> engineSelected = {};
-    if (engineOn) {
-      try {
-        enginePacks = await EngineService.instance.listSourcesPanelPacks();
-        // Assign before reading [_enginePanelCategory] so anime/drama can be
-        // inferred from the playing engine plugin.
-        _enginePacks = enginePacks;
-        if (kind == 'engine') {
-          final enabledIds = enabledEnginePluginIds(enginePacks);
-          final panelCategory = _enginePanelCategory;
-          final scope = EngineCategories.matchingPluginIds(
-            packs: enginePacks,
-            categories: EngineCategories.defaultsForPanelCategory(panelCategory),
-          );
-          engineSelected = filterEngineSelectedPluginIds(
-            savedIds: EngineCategories.scopeSelectionIfFullAll(
-              selected: await EngineService.instance.loadSourcesSelectedPluginIds(
-                enabledIds: enabledIds,
-                panelCategory: panelCategory,
-                selectAllScopeIds: scope,
-              ),
-              enabledIds: enabledIds,
-              scope: scope,
-            ),
-            enabledIds: scope,
-          );
-        }
-      } catch (_) {}
+    Set<String> nuvioSelected;
+    Set<String> engineSelected;
+    Map<String, String> sourceIdByKind;
+    if (cachedUi != null) {
+      nuvioSelected = filterNuvioSelectedScraperIds(
+        savedIds: cachedUi.nuvioSelectedScraperIds,
+        enabledIds: enabledNuvioScraperIds(nuvioAddons),
+      );
+      engineSelected = filterEngineSelectedPluginIds(
+        savedIds: cachedUi.engineSelectedPluginIds,
+        enabledIds: enabledEnginePluginIds(enginePacks),
+      );
+      sourceIdByKind = Map<String, String>.from(cachedUi.panelSourceIdByKind);
+    } else {
+      nuvioSelected = hasNuvio
+          ? await _loadDefaultNuvioChipSelection(nuvioAddons)
+          : {};
+      engineSelected = hasEngine
+          ? await _loadDefaultEngineChipSelection(enginePacks)
+          : {};
+      sourceIdByKind = {};
     }
     if (!mounted) return;
 
@@ -807,26 +767,23 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _enginePacks = enginePacks;
       _engineSelectedPluginIds = engineSelected;
       _streamAddons = addons;
+      _panelSourceIdByKind
+        ..clear()
+        ..addAll(sourceIdByKind);
       _kindFilter = kind;
-      _selectedSourceId = _sourceIdForKind(kind, addons);
-      if (kind == 'nuvio') {
-        final base = widget.currentAddonBaseUrl;
-        if (base != null && base.startsWith('nuvio:')) {
-          _nuvioSelectedScraperIds = {
-            ..._nuvioSelectedScraperIds,
-            base.substring('nuvio:'.length),
-          };
-        }
+      if (cachedUi != null) {
+        _userPickedKind = cachedUi.userPickedKind;
+        _userPickedStremioProvider = cachedUi.userPickedStremioProvider;
+        _searchQuery = cachedUi.searchQuery;
+        _qualityFilters = Set<String>.from(cachedUi.qualityFilters);
+        _languageFilters = Set<String>.from(cachedUi.languageFilters);
+        _techFilters = Set<String>.from(cachedUi.techFilters);
+        _audioFilters = Set<String>.from(cachedUi.audioFilters);
+        _sizeFilters = Set<String>.from(cachedUi.sizeFilters);
+      } else {
+        _userPickedStremioProvider = false;
       }
-      if (kind == 'engine') {
-        final base = widget.currentAddonBaseUrl;
-        if (base != null && base.startsWith('engine:')) {
-          _engineSelectedPluginIds = {
-            ..._engineSelectedPluginIds,
-            base.substring('engine:'.length),
-          };
-        }
-      }
+      _restorePanelSourceIdForKind(kind);
     });
 
     // Load only the selected kind(s) - no prefetch of other categories.
@@ -856,32 +813,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     try {
       final packs = await EngineService.instance.listSourcesPanelPacks();
       if (!mounted) return;
-      // Packs first so [_enginePanelCategory] can infer anime/drama from the
-      // playing engine plugin before loading chip selection prefs.
       _enginePacks = packs;
-      final enabledIds = enabledEnginePluginIds(packs);
-      final panelCategory = _enginePanelCategory;
-      final scope = EngineCategories.matchingPluginIds(
-        packs: packs,
-        categories: EngineCategories.defaultsForPanelCategory(panelCategory),
-      );
-      final saved = EngineCategories.scopeSelectionIfFullAll(
-        selected: await EngineService.instance.loadSourcesSelectedPluginIds(
-          enabledIds: enabledIds,
-          panelCategory: panelCategory,
-          selectAllScopeIds: scope,
-        ),
-        enabledIds: enabledIds,
-        scope: scope,
-      );
-      if (!mounted) return;
-      setState(() {
-        _enginePacks = packs;
-        _engineSelectedPluginIds = filterEngineSelectedPluginIds(
-          savedIds: saved,
-          enabledIds: scope,
-        );
-      });
+      setState(() => _enginePacks = packs);
     } catch (_) {}
   }
 
@@ -963,7 +896,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             kind: 'stremio',
           );
         }
-        unawaited(_fetchStremioStreams());
+        if (_selectedSourceId.isNotEmpty) {
+          unawaited(_fetchStremioStreams());
+        }
       }),
     );
   }
@@ -1069,18 +1004,78 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   String _sourceIdForKind(String kind, List<Map<String, dynamic>> addons) {
     return switch (kind) {
-      'stremio' =>
-        _preferredStremioAddonBaseUrl(addons) ??
-            (addons.isNotEmpty
-                ? addons.first['baseUrl'] as String
-                : TorrentSearchProviders.allId),
+      'stremio' => '',
       'nuvio' => 'all_nuvio',
       'engine' => 'all_engine',
-      'torrents' => TorrentSearchProviders.defaultChipId(
-        _enabledTorrentProviders,
-      ),
-      _ => TorrentSearchProviders.allId,
+      'torrents' => TorrentSearchProviders.noneId,
+      _ => TorrentSearchProviders.noneId,
     };
+  }
+
+  void _stashPanelSourceIdForKind(String kind) {
+    if (kind.isEmpty) return;
+    _panelSourceIdByKind[kind] = _selectedSourceId;
+  }
+
+  void _restorePanelSourceIdForKind(String kind) {
+    _selectedSourceId =
+        _panelSourceIdByKind[kind] ?? _sourceIdForKind(kind, _streamAddons);
+    if (kind == 'stremio') {
+      _syncStremioProviderSelection();
+    }
+  }
+
+  void _savePanelUiCache() {
+    _stashPanelSourceIdForKind(_kindFilter);
+    CatalogSourcesSessionCache.writeUi(
+      _catalogCacheKey,
+      CatalogSourcesPanelUiState(
+        kindFilter: _kindFilter,
+        selectedSourceId: _selectedSourceId,
+        nuvioSelectedScraperIds: Set<String>.from(_nuvioSelectedScraperIds),
+        engineSelectedPluginIds: Set<String>.from(_engineSelectedPluginIds),
+        userPickedKind: _userPickedKind,
+        userPickedStremioProvider: _userPickedStremioProvider,
+        searchQuery: _searchQuery,
+        qualityFilters: Set<String>.from(_qualityFilters),
+        languageFilters: Set<String>.from(_languageFilters),
+        techFilters: Set<String>.from(_techFilters),
+        audioFilters: Set<String>.from(_audioFilters),
+        sizeFilters: Set<String>.from(_sizeFilters),
+        panelSourceIdByKind: Map<String, String>.from(_panelSourceIdByKind),
+      ),
+    );
+  }
+
+  Future<Set<String>> _loadDefaultNuvioChipSelection(
+    List<NuvioAddon> addons,
+  ) async {
+    if (addons.isEmpty) return {};
+    return NuvioService.instance.loadSourcesSelectedScraperIds(
+      enabledIds: enabledNuvioScraperIds(addons),
+    );
+  }
+
+  Future<Set<String>> _loadDefaultEngineChipSelection(
+    List<EnginePack> packs,
+  ) async {
+    final enabledIds = enabledEnginePluginIds(packs);
+    if (enabledIds.isEmpty) return {};
+    final panelCategory = _enginePanelCategory;
+    final scope = EngineCategories.matchingPluginIds(
+      packs: packs,
+      categories: EngineCategories.defaultsForPanelCategory(panelCategory),
+    );
+    final saved = await EngineService.instance.loadSourcesSelectedPluginIds(
+      enabledIds: enabledIds,
+      panelCategory: panelCategory,
+      selectAllScopeIds: scope,
+    );
+    return EngineCategories.scopeSelectionIfFullAll(
+      selected: saved,
+      enabledIds: enabledIds,
+      scope: scope,
+    );
   }
 
   /// Prefer caller's kind when available; else Forja → Torrents → Stremio → Nuvio.
@@ -1843,6 +1838,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }) async {
     if (!_showsStremio) return;
     if (_streamAddons.isEmpty) return;
+    if (_selectedSourceId.isEmpty) return;
     final imdb = widget.movie.imdbId ?? '';
     if (imdb.isEmpty) {
       setState(() {
@@ -1859,7 +1855,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         break;
       }
     }
-    addon ??= _streamAddons.first;
+    if (addon == null) return;
     final baseUrl = addon['baseUrl'] as String;
     final addonName = addon['name'] ?? 'Unknown';
 
@@ -2334,30 +2330,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (kind == _kindFilter) return;
     _userPickedKind = true;
     setState(() {
+      _stashPanelSourceIdForKind(_kindFilter);
       _abortHiddenKindFetches(kind);
       _kindFilter = kind;
-      _qualityFilters = {};
-      _languageFilters = {};
-      _techFilters = {};
-      _audioFilters = {};
-      _sizeFilters = {};
-      _searchQuery = '';
-      if (kind == 'stremio') {
-        _userPickedStremioProvider = false;
-        _selectedSourceId =
-            _preferredStremioAddonBaseUrl() ?? _defaultStremioSourceId();
-        _syncStremioProviderSelection();
-      } else if (kind == 'nuvio') {
-        _selectedSourceId = 'all_nuvio';
-        _selectPlayingProviderIfNeeded();
-      } else if (kind == 'engine') {
-        _selectedSourceId = 'all_engine';
-        _selectPlayingProviderIfNeeded();
-      } else if (kind == 'torrents') {
-        _selectedSourceId = TorrentSearchProviders.defaultChipId(
-          _enabledTorrentProviders,
-        );
-      }
+      _restorePanelSourceIdForKind(kind);
     });
     _resetListScroll(allowScrollToCurrent: true);
     _ensureVisibleKindsLoaded();
@@ -3095,6 +3071,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final emptyMsg =
           (_showsNuvio && _nuvioSelectedScraperIds.isEmpty) ||
               (_showsEngine && _engineSelectedPluginIds.isEmpty) ||
+              (_showsStremio && _selectedSourceId.isEmpty) ||
               (_showsTorrents &&
                   TorrentSearchProviders.isNoneChip(_selectedSourceId))
           ? 'Select at least one provider'

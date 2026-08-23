@@ -422,6 +422,13 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     w.enabled = url != null &&
         !isLocalTorrentStreamUrl(url) &&
         !isLocalLoopbackPlayUrl(url);
+    if (shouldSkipPostSeekStallArm(
+      target: target,
+      resumeStartPosition: widget.startPosition,
+      playbackConfirmedAt: _playbackConfirmedAt,
+    )) {
+      return;
+    }
     w.noteSeek(target);
   }
   bool _isFetchingSubs = false;

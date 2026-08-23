@@ -2,6 +2,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 
 void main() {
+  test('preferHlsMasterUrl rewrites demuxed child playlists to master', () {
+    const child =
+        'https://moon.peakstorm.top/vd/abc/index-s2160p-v1-a1.m3u8';
+    expect(
+      VideasyExtractor.preferHlsMasterUrl(child),
+      'https://moon.peakstorm.top/vd/abc/master.m3u8',
+    );
+    const nested =
+        'https://moon.peakstorm.top/vd/abc/sd/91/index-s1080p-v1-a1.m3u8';
+    expect(
+      VideasyExtractor.preferHlsMasterUrl(nested),
+      'https://moon.peakstorm.top/vd/abc/master.m3u8',
+    );
+    const master = 'https://moon.peakstorm.top/vd/abc/master.m3u8';
+    expect(VideasyExtractor.preferHlsMasterUrl(master), master);
+  });
+
   test('sources URL double-encodes title via Uri query builder', () {
     final uri = Uri.https(
       'api.speedracelight.com',

@@ -6,6 +6,7 @@ import 'package:forja/shared/playback/playback_stream_guards.dart';
 export 'package:forja/shared/playback/playback_stream_guards.dart'
     show durableStreamCatalogUrl, hlsProxyTargetUrl, streamSourceMatchesPlaying;
 import 'package:forja/shared/playback/provider_runtime_config.dart';
+import 'package:forja/shared/playback/stream_open_pipeline.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
@@ -213,11 +214,17 @@ Map<String, String> resolvePlaybackHttpHeaders(
   // VidNest MovieBox CDN (`*.hakunaymatata.com`): progressive MP4 returns HTTP
   // 429 whenever Referer is set (including self-origin). Browser JWPlayer uses
   // no-referrer - strip Referer/Origin and never derive them from the CDN host.
+  // NetMirror direct (D3adly net27 embed) requires videodownloader.site Referer.
   if (streamUrl != null && _isVidnestMovieBoxCdn(streamUrl)) {
-    out.remove('Referer');
-    out.remove('referer');
-    out.remove('Origin');
-    out.remove('origin');
+    final pidLower = pid?.toLowerCase() ?? '';
+    final netmirror =
+        pidLower == 'engine:netmirror' || pidLower == 'netmirror';
+    if (!netmirror) {
+      out.remove('Referer');
+      out.remove('referer');
+      out.remove('Origin');
+      out.remove('origin');
+    }
   }
 
   // Vidlink mwVault proxy URLs carry upstream headers in query — extra Referer
@@ -535,18 +542,28 @@ Future<String> openPlayerStream(
   /// Cleared after [player.open] so later seeks are not pinned to it.
   Duration? startAt,
 }) async {
-  final openUrl = normalizePlaybackStreamUrl(url);
+  var openUrl = normalizePlaybackStreamUrl(url);
   if (isTorrentStreamUrl(openUrl)) {
     throw Exception(
       'Cannot open magnet/torrent URL directly - resolve to a stream first',
     );
   }
-  final mwVaultProxy = isMwVaultProxyPlayUrl(openUrl);
-  final hdrs = resolvePlaybackHttpHeaders(
-    headers,
+  final proxied1shows = await proxy1showsHlsIfNeeded(
     streamUrl: openUrl,
+    headers: headers ?? const <String, String>{},
     providerId: providerId,
   );
+  openUrl = proxied1shows.url;
+  final catalogForHeaders = hlsProxyTargetUrl(openUrl) ?? openUrl;
+  final mwVaultProxy = isMwVaultProxyPlayUrl(openUrl);
+  final hdrs =
+      isLocalLoopbackPlayUrl(openUrl) && is1showsCdnStreamUrl(catalogForHeaders)
+      ? const <String, String>{}
+      : resolvePlaybackHttpHeaders(
+          headers,
+          streamUrl: catalogForHeaders,
+          providerId: providerId,
+        );
   await applyMediaHttpHeaders(
     player,
     hdrs,
@@ -568,6 +585,79 @@ Future<String> openPlayerStream(
     if (useStart) await _mpvStartAt(player, null);
   }
   return openUrl;
+}
+
+/// Catalog row (Forja / Nuvio / Stremio HTTP) — 1shows proxy + RFC-045 pipeline.
+Future<String?> openCatalogHttpStreamWithPipeline(
+  Player player, {
+  required Map<String, dynamic> stream,
+  required String streamUrl,
+  Map<String, String>? headers,
+  String? providerId,
+  Duration openTimeout = const Duration(seconds: 25),
+}) async {
+  final proxied = await proxyCatalogHttpStreamIfNeeded(
+    streamUrl: streamUrl,
+    headers: headers ?? const <String, String>{},
+    stream: stream,
+  );
+  final playUrl = proxied.url;
+  final playHeaders = proxied.headers;
+  final pid = providerId ?? catalogHttpPlayProviderId(stream);
+  final catalog = (hlsProxyTargetUrl(playUrl) ?? playUrl).trim();
+  final isHls =
+      playUrl.toLowerCase().contains('.m3u8') ||
+      catalog.toLowerCase().contains('.m3u8') ||
+      isLocalLoopbackPlayUrl(playUrl);
+  if (!isHls) {
+    await resetPlayerForOpen(player);
+    return openPlayerStream(
+      player,
+      url: playUrl,
+      headers: playHeaders,
+      providerId: pid,
+    );
+  }
+
+  final pipeline = await StreamOpenPipeline.start(
+    catalogUrl: catalog,
+    headers: playHeaders.isNotEmpty ? playHeaders : headers,
+    providerId: pid,
+  );
+  while (true) {
+    final step = await pipeline.next();
+    if (step == null) return null;
+    await resetPlayerForOpen(player);
+    final openUrl = await openPlayerStream(
+      player,
+      url: step.playUrl,
+      headers: step.headers ?? playHeaders,
+      providerId: pid,
+    );
+    final opened = await waitForMediaOpen(
+      player,
+      streamUrl: openUrl,
+      timeout: openTimeout,
+    );
+    if (!opened) {
+      await player.stop();
+      pipeline.report(StreamOpenStepResult.openFailed);
+      continue;
+    }
+    final decoded = await confirmOpenedStreamVideoDecode(
+      player,
+      openUrl: openUrl,
+      headers: step.headers,
+      providerId: pid,
+    );
+    if (!decoded) {
+      await player.stop();
+      pipeline.report(StreamOpenStepResult.decodeFailed);
+      continue;
+    }
+    pipeline.report(StreamOpenStepResult.success);
+    return openUrl;
+  }
 }
 
 /// Hard-seek if open-at-[target] (mpv `start`) did not land near it.
@@ -749,17 +839,22 @@ Future<({String url, Map<String, String> headers})> proxyCatalogHttpStreamIfNeed
   required Map<String, String> headers,
   required Map<String, dynamic> stream,
 }) async {
-  if (!catalogStreamRequiresSeekProxy(stream)) {
-    return (url: streamUrl, headers: headers);
+  if (catalogStreamRequiresSeekProxy(stream)) {
+    final pid = catalogHttpPlayProviderId(stream);
+    final upstream = resolvePlaybackHttpHeaders(
+      headers,
+      streamUrl: streamUrl,
+      providerId: pid,
+    );
+    final proxied = await start111477Proxy(streamUrl, headers: upstream);
+    return (url: proxied, headers: const <String, String>{});
   }
   final pid = catalogHttpPlayProviderId(stream);
-  final upstream = resolvePlaybackHttpHeaders(
-    headers,
+  return proxy1showsHlsIfNeeded(
     streamUrl: streamUrl,
+    headers: headers,
     providerId: pid,
   );
-  final proxied = await start111477Proxy(streamUrl, headers: upstream);
-  return (url: proxied, headers: const <String, String>{});
 }
 
 bool isTransientTorrentProbeError(String err) {
@@ -1124,6 +1219,9 @@ Future<void> seekPlayerPreservingProgress(
 }
 
 /// True when remount actually resumed — not just opened at 0:00.
+///
+/// [buffering] is ignored when [position] is already near [target] — deep HLS
+/// seeks often sit on the right PTS while segments refill.
 bool remountPlaybackLooksLive({
   required bool playing,
   required bool buffering,
@@ -1131,12 +1229,41 @@ bool remountPlaybackLooksLive({
   required Duration target,
   Duration slop = const Duration(seconds: 12),
 }) {
-  if (!playing || buffering) return false;
+  if (!playing) return false;
   if (target > const Duration(seconds: 5) &&
       position < const Duration(seconds: 2)) {
     return false;
   }
   return position + slop >= target;
+}
+
+/// Post-seek remount wait — deep VOD HLS needs longer than 15s to refill.
+Duration remountResumeTimeoutForSeek(Duration seekTarget) {
+  final extra = (seekTarget.inMinutes ~/ 10) * 10;
+  return Duration(seconds: (15 + extra).clamp(15, 60));
+}
+
+/// Stall timer before post-seek remount — scales with seek depth (issue 184).
+Duration postSeekStallTimeoutForTarget(Duration seekTarget) {
+  final extra = (seekTarget.inMinutes ~/ 10) * 5;
+  return Duration(seconds: (15 + extra).clamp(15, 45));
+}
+
+/// Skip arming remount watchdog when a seek lands on the resume point right
+/// after open — HLS is still prefetching segments at the saved timestamp.
+bool shouldSkipPostSeekStallArm({
+  required Duration target,
+  Duration? resumeStartPosition,
+  DateTime? playbackConfirmedAt,
+  Duration graceAfterOpen = const Duration(seconds: 25),
+  Duration resumeSlop = const Duration(seconds: 20),
+}) {
+  if (resumeStartPosition == null || playbackConfirmedAt == null) return false;
+  if (resumeStartPosition.inSeconds <= 0) return false;
+  if (DateTime.now().difference(playbackConfirmedAt) > graceAfterOpen) {
+    return false;
+  }
+  return (target - resumeStartPosition).abs() <= resumeSlop;
 }
 
 Future<void> _mpvStartAt(Player player, Duration? start) async {
@@ -1165,8 +1292,9 @@ Future<bool> remountPlayerStreamAtPosition(
   Map<String, String>? headers,
   String? providerId,
   required Duration seekTarget,
-  Duration resumeTimeout = const Duration(seconds: 15),
+  Duration? resumeTimeout,
 }) async {
+  final timeout = resumeTimeout ?? remountResumeTimeoutForSeek(seekTarget);
   await resetPlayerForOpen(player);
   final useStart = seekTarget > Duration.zero;
   final openUrl = await openPlayerStream(
@@ -1193,7 +1321,7 @@ Future<bool> remountPlayerStreamAtPosition(
     await player.play();
   }
 
-  final deadline = DateTime.now().add(resumeTimeout);
+  final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
     if (remountPlaybackLooksLive(
       playing: player.state.playing,
@@ -1885,8 +2013,49 @@ bool _isAnimeHlsAdHost(String url) {
   final u = url.toLowerCase();
   return u.contains('ibyteimg.com') ||
       u.contains('byteimg.com') ||
+      u.contains('tiktokcdn.com') ||
       u.contains('p16-ad-') ||
       u.contains('ad-site-i18n');
+}
+
+/// VidRock / Vidzee / WebStreamr 1shows CDN — PNG-wrapped segments; proxy at play.
+bool is1showsCdnStreamUrl(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  return host.contains('1shows.app');
+}
+
+/// Same HLS re-proxy as [WebStreamrService] (local strip=png).
+Future<({String url, Map<String, String> headers})> proxy1showsHlsIfNeeded({
+  required String streamUrl,
+  required Map<String, String> headers,
+  String? providerId,
+}) async {
+  if (!is1showsCdnStreamUrl(streamUrl) || isLocalLoopbackPlayUrl(streamUrl)) {
+    return (url: streamUrl, headers: headers);
+  }
+  final upstream = resolvePlaybackHttpHeaders(
+    headers,
+    streamUrl: streamUrl,
+    providerId: providerId,
+  );
+  final ls = LocalServerService();
+  if (ls.port == 0) await ls.start();
+  if (ls.port == 0) {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await ls.start();
+  }
+  if (ls.port == 0) {
+    if (kDebugMode) {
+      debugPrint(
+        '[Player] 1shows HLS proxy unavailable — opening direct $streamUrl',
+      );
+    }
+    return (url: streamUrl, headers: upstream);
+  }
+  return (
+    url: ls.getHlsProxyUrl(streamUrl, upstream, stripMode: 'png'),
+    headers: const <String, String>{},
+  );
 }
 
 String _joinPlaylistUri(String base, String uri) {
@@ -2132,6 +2301,14 @@ Future<bool> validateStreamSourceForCheck({
     if (url.isEmpty || isUnplayableCachedStreamUrl(url)) return false;
     // Catalog hosts only - loopback is rejected by [isUnplayableCachedStreamUrl].
     return url.contains('://');
+  }
+  // MovieBlast / NetMirror: trust extract — CDN probes false-fail or rate-limit.
+  if (providerId == 'engine:movieblast' ||
+      providerId == 'movieblast' ||
+      providerId == 'engine:netmirror' ||
+      providerId == 'netmirror') {
+    final url = source.url.trim();
+    return url.contains('://') && !isUnplayableCachedStreamUrl(url);
   }
   return probeStreamSourceUrl(source.url, headers, sourceKey: providerId);
 }

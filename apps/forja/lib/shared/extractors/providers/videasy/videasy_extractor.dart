@@ -648,8 +648,9 @@ class VideasyExtractor {
 
     for (final s in srcs) {
       if (s is! Map) continue;
-      final url = (s['url'] ?? s['file'] ?? '').toString();
-      if (url.isEmpty) continue;
+      final rawUrl = (s['url'] ?? s['file'] ?? '').toString();
+      if (rawUrl.isEmpty) continue;
+      final url = preferHlsMasterUrl(rawUrl);
       final quality = (s['quality'] ?? s['label'] ?? s['title'] ?? 'auto')
           .toString();
       if (qualityFilter != null && quality != qualityFilter) continue;
@@ -721,6 +722,25 @@ class VideasyExtractor {
   /// Single-encoded title for [Uri.https]; builder adds second pass (`%2520`).
   static String wingsTitleQueryValue(String title) =>
       Uri.encodeComponent(title);
+
+  /// API often returns demuxed media playlists; open the sibling master instead.
+  @visibleForTesting
+  static String preferHlsMasterUrl(String url) {
+    final u = url.trim();
+    if (!RegExp(r'index-s\d+p-v\d+-a\d+\.m3u8', caseSensitive: false)
+        .hasMatch(u)) {
+      return u;
+    }
+    final withSd = u.replaceFirst(
+      RegExp(r'/sd/\d+/index-s\d+p-v\d+-a\d+\.m3u8', caseSensitive: false),
+      '/master.m3u8',
+    );
+    if (withSd != u) return withSd;
+    return u.replaceFirst(
+      RegExp(r'/index-s\d+p-v\d+-a\d+\.m3u8', caseSensitive: false),
+      '/master.m3u8',
+    );
+  }
 
   @visibleForTesting
   static List<String> mirrorEndpointsForTest() => [

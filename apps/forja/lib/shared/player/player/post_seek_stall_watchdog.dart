@@ -1,16 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/player/player/utils.dart';
 
-/// After a user seek, remount once if playback does not resume:
-/// position never advances past the seek target while **not** buffering
-/// (MediaKit silent freeze).
-///
-/// Does **not** remount during active BUFFERING — remote HLS seek often
-/// needs 10–30s; remount aborts a healthy buffer (Videasy / issue 153).
+/// After a user seek, remount once if playback does not resume near the target
+/// within [stallAfter] — including stuck BUFFERING (issue 184 / Videasy HLS).
 ///
 /// Clears when position advances ≥[progressClear] past the target, or pause.
-/// Does not hop providers — same URL reopen only (issue 184).
+/// Does not hop providers — same URL reopen only.
 class PostSeekStallWatchdog {
   PostSeekStallWatchdog({
     required this.onRemount,
@@ -18,6 +15,7 @@ class PostSeekStallWatchdog {
     this.armWindow = const Duration(seconds: 45),
     this.progressClear = const Duration(seconds: 2),
     this.enabled = true,
+    this.scaleStallWithDepth = true,
   });
 
   /// Return true only when remount actually ran and resumed playback.
@@ -29,6 +27,9 @@ class PostSeekStallWatchdog {
   /// Caller sets false for torrents / local files that should not remount.
   bool enabled;
 
+  /// When true, [noteSeek] uses [postSeekStallTimeoutForTarget] (min 15s deep HLS).
+  final bool scaleStallWithDepth;
+
   Timer? _timer;
   DateTime? _seekAt;
   Duration? _target;
@@ -37,6 +38,7 @@ class PostSeekStallWatchdog {
   bool _playing = true;
   bool _remountedForSeek = false;
   bool _remountInFlight = false;
+  Duration _armedStallAfter = const Duration(seconds: 10);
 
   Duration? get pendingTarget => _target;
   bool get remountInFlight => _remountInFlight;
@@ -54,24 +56,19 @@ class PostSeekStallWatchdog {
     _seekAt = DateTime.now();
     _target = target < Duration.zero ? Duration.zero : target;
     _lastPos = _target!;
+    _armedStallAfter = scaleStallWithDepth
+        ? postSeekStallTimeoutForTarget(_target!)
+        : stallAfter;
     _remountedForSeek = false;
-    if (_playing && !_buffering) _armTimer();
+    if (_playing) _armTimer();
   }
 
   void onBuffering(bool buffering) {
-    final wasBuffering = _buffering;
     _buffering = buffering;
     if (!enabled || _seekAt == null || _remountedForSeek || _remountInFlight) {
       return;
     }
-    if (buffering && _playing) {
-      _timer?.cancel();
-      _timer = null;
-      return;
-    }
-    if (wasBuffering && !buffering && _playing) {
-      _armTimer();
-    }
+    if (_playing && _timer == null) _armTimer();
   }
 
   void onPlaying(bool playing) {
@@ -85,7 +82,7 @@ class PostSeekStallWatchdog {
     if (_seekAt != null &&
         !_remountedForSeek &&
         !_remountInFlight &&
-        !_buffering) {
+        _timer == null) {
       final age = DateTime.now().difference(_seekAt!);
       if (age <= armWindow) _armTimer();
     }
@@ -103,21 +100,19 @@ class PostSeekStallWatchdog {
       _timer = null;
       return;
     }
-    if (!_buffering && _playing && !_remountedForSeek && _timer == null) {
+    if (_playing && !_remountedForSeek && _timer == null) {
       _armTimer();
     }
   }
 
   void _armTimer() {
     if (_timer != null || _remountedForSeek || _remountInFlight) return;
-    if (_buffering) return;
     final target = _target;
     if (target == null || !_playing) return;
-    _timer = Timer(stallAfter, () => unawaited(_fire(target)));
+    _timer = Timer(_armedStallAfter, () => unawaited(_fire(target)));
   }
 
   bool _looksStalled() {
-    if (_buffering) return false;
     final target = _target;
     if (target == null) return false;
     return _lastPos - target < progressClear;
@@ -130,7 +125,7 @@ class PostSeekStallWatchdog {
     if (!_playing || !_looksStalled()) return;
     _remountInFlight = true;
     debugPrint(
-      '[Player] Post-seek silent freeze ≥${stallAfter.inSeconds}s '
+      '[Player] Post-seek stall ≥${_armedStallAfter.inMilliseconds}ms '
       '(buffering=$_buffering pos=${_lastPos.inSeconds}s) — '
       'remount @${target.inSeconds}s',
     );

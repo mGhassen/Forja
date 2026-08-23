@@ -1,6 +1,12 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
   var tmdbKey = cfg.tmdbKey || '1865f43a0549ca50d341dd9ab8b29f49';
+  var embedApi = (cfg.embedApi || 'https://net27.cc/api/embed-tmdb/').replace(/\/?$/, '/');
+  var embedReferer = cfg.embedReferer || 'https://net27.cc/';
+  var playReferer = cfg.playReferer || 'https://videodownloader.site/';
+  var directUa =
+    cfg.directUserAgent ||
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
   var domains = cfg.domains || [
     'aHR0cHM6Ly9tb2JpbGVkZXRlY3RzLmNvbQ==',
     'aHR0cHM6Ly9tb2JpbGVkZXRlY3QuYXBw',
@@ -58,7 +64,90 @@ function extract(ctx) {
     return Object.assign({}, baseHeaders, { Ott: ott }, extra || {});
   }
 
+  function isPlayableLink(url) {
+    if (!url || typeof url !== 'string') return false;
+    var u = url.toLowerCase();
+    return (
+      u.indexOf('.m3u8') >= 0 ||
+      u.indexOf('.mp4') >= 0 ||
+      u.indexOf('.mkv') >= 0 ||
+      u.indexOf('/hls/') >= 0 ||
+      u.indexOf('/resource/') >= 0
+    );
+  }
+
+  function mapCaptions(captions) {
+    var out = [];
+    (captions || []).forEach(function (cap) {
+      if (!cap || !cap.url) return;
+      var url = cap.url;
+      if (url.charAt(0) === '/') url = 'https://net27.cc' + url;
+      out.push({
+        url: url,
+        language: cap.lang || 'en',
+        name: cap.name || cap.lang || 'English',
+      });
+    });
+    return out;
+  }
+
+  // D3adly / All-in-One-Nuvio primary path — net27 embed API (not NewTV).
+  function fetchFromNetflixDirect() {
+    var tmdbId = String(ctx.tmdbId || '').trim();
+    if (!tmdbId) return Promise.resolve([]);
+    var apiUrl =
+      ctx.type !== 'movie'
+        ? embedApi +
+          encodeURIComponent(tmdbId) +
+          '?type=tv&s=' +
+          encodeURIComponent(String(ctx.season || 1)) +
+          '&e=' +
+          encodeURIComponent(String(ctx.episode || 1))
+        : embedApi + encodeURIComponent(tmdbId);
+    return getJson(apiUrl, {
+      Accept: 'application/json, text/plain, */*',
+      Referer: embedReferer,
+      'User-Agent': directUa,
+    })
+      .then(function (data) {
+        if (!data || data.ok !== true) return [];
+        var playHeaders = {
+          Referer: playReferer,
+          'User-Agent': directUa,
+        };
+        var subtitles = mapCaptions(data.captions);
+        var rows = [];
+        if (data.streams && data.streams.length) {
+          data.streams.forEach(function (stream) {
+            if (!stream || !stream.url) return;
+            var q = stream.resolution ? String(stream.resolution) + 'p' : 'Auto';
+            rows.push({
+              url: stream.url,
+              name: 'NetMirror (Netflix) - ' + q,
+              quality: q,
+              headers: playHeaders,
+              subtitles: subtitles.length ? subtitles : undefined,
+            });
+          });
+        } else if (data.mp4) {
+          rows.push({
+            url: data.mp4,
+            name: 'NetMirror (Netflix) - Auto',
+            quality: 'Auto',
+            headers: playHeaders,
+            subtitles: subtitles.length ? subtitles : undefined,
+          });
+        }
+        return rows;
+      })
+      .catch(function () {
+        return [];
+      });
+  }
+
   function resolveApiUrl() {
+    var cached = globalThis.__netmirrorApiBase;
+    if (cached) return Promise.resolve(cached);
     var chain = Promise.resolve('');
     domains.forEach(function (encoded) {
       chain = chain.then(function (resolved) {
@@ -81,7 +170,10 @@ function extract(ctx) {
           });
       });
     });
-    return chain;
+    return chain.then(function (resolved) {
+      if (resolved) globalThis.__netmirrorApiBase = resolved;
+      return resolved;
+    });
   }
 
   function tmdbTitle() {
@@ -103,6 +195,18 @@ function extract(ctx) {
     });
   }
 
+  function parseEpNum(ep) {
+    if (ep.ep) return parseInt(ep.ep, 10);
+    if (ep.epNum) return parseInt(String(ep.epNum).replace('E', ''), 10);
+    return null;
+  }
+
+  function parseSeasonNum(ep, fallback) {
+    if (fallback) return fallback;
+    if (ep.sNum) return parseInt(String(ep.sNum).replace('S', ''), 10);
+    return null;
+  }
+
   function fetchEpisodesPage(apiBase, ott, seasonId, page, seasonNumber) {
     var out = [];
     function walk(pg) {
@@ -120,11 +224,7 @@ function extract(ctx) {
             s:
               seasonNumber ||
               (ep.sNum ? parseInt(String(ep.sNum).replace('S', ''), 10) : null),
-            ep: ep.ep
-              ? parseInt(ep.ep, 10)
-              : ep.epNum
-                ? parseInt(String(ep.epNum).replace('E', ''), 10)
-                : null,
+            ep: parseEpNum(ep),
           });
         });
         if (data.nextPageShow === 1) return walk(pg + 1);
@@ -134,49 +234,51 @@ function extract(ctx) {
     return walk(page);
   }
 
-  function getAllEpisodes(apiBase, ott, contentId, postData) {
-    var episodes = [];
-    var selectedSeasonIdx = postData.season
+  function resolveEpisodeId(apiBase, ott, postData, targetSeason, targetEpisode) {
+    var seasons = postData.season || [];
+    var seasonIdx = Math.max(0, targetSeason - 1);
+    var seasonEntry = seasons[seasonIdx];
+    var seasonId = seasonEntry && seasonEntry.id;
+    if (!seasonId && seasonIdx === 0) seasonId = postData.nextPageSeason;
+    if (!seasonId && seasons.length === 1 && seasons[0].id) {
+      seasonId = seasons[0].id;
+    }
+
+    var activeSeasonNum = null;
+    var selectedIdx = postData.season
       ? postData.season.findIndex(function (s) {
           return s.selected === true;
         })
       : -1;
-    var selectedSeasonId =
-      selectedSeasonIdx >= 0
-        ? postData.season[selectedSeasonIdx].id
-        : postData.nextPageSeason;
-    var selectedSeasonNumber =
-      selectedSeasonIdx >= 0 ? selectedSeasonIdx + 1 : null;
+    if (selectedIdx >= 0) activeSeasonNum = selectedIdx + 1;
+
+    var episodes = [];
     (postData.episodes || []).filter(Boolean).forEach(function (ep) {
-      episodes.push({
+      var row = {
         id: ep.id,
-        s:
-          selectedSeasonNumber ||
-          (ep.sNum ? parseInt(String(ep.sNum).replace('S', ''), 10) : null),
-        ep: ep.ep
-          ? parseInt(ep.ep, 10)
-          : ep.epNum
-            ? parseInt(String(ep.epNum).replace('E', ''), 10)
-            : null,
-      });
+        s: parseSeasonNum(ep, activeSeasonNum || targetSeason),
+        ep: parseEpNum(ep),
+      };
+      if (row.s === targetSeason) episodes.push(row);
     });
-    var tasks = [];
-    if (postData.nextPageShow === 1 && selectedSeasonId) {
-      tasks.push(
-        fetchEpisodesPage(apiBase, ott, selectedSeasonId, 2, selectedSeasonNumber),
-      );
-    }
-    (postData.season || []).forEach(function (season, index) {
-      if (season.id !== selectedSeasonId && season.id) {
-        tasks.push(fetchEpisodesPage(apiBase, ott, season.id, 1, index + 1));
+
+    function findIn(list) {
+      for (var i = 0; i < (list || []).length; i++) {
+        var ep = list[i];
+        if (ep && ep.s === targetSeason && ep.ep === targetEpisode) return ep.id;
       }
-    });
-    return Promise.all(tasks).then(function (groups) {
-      groups.forEach(function (list) {
-        episodes.push.apply(episodes, list || []);
-      });
-      return episodes;
-    });
+      return null;
+    }
+
+    var found = findIn(episodes);
+    if (found) return Promise.resolve(found);
+    if (!seasonId) return Promise.resolve(null);
+
+    return fetchEpisodesPage(apiBase, ott, seasonId, 1, targetSeason).then(
+      function (more) {
+        return findIn(episodes.concat(more || []));
+      },
+    );
   }
 
   function fetchFromPlatform(apiBase, platformKey, title) {
@@ -198,25 +300,22 @@ function extract(ctx) {
         ).then(function (postData) {
           var targetId = contentId;
           if (ctx.type !== 'movie') {
-            return getAllEpisodes(apiBase, ott, contentId, postData).then(
-              function (episodes) {
-                var hit = episodes.filter(function (ep) {
-                  return (
-                    ep &&
-                    ep.s === (ctx.season || 1) &&
-                    ep.ep === (ctx.episode || 1)
-                  );
-                })[0];
-                if (!hit) return [];
-                targetId = hit.id;
-                return getJson(
-                  apiBase +
-                    '/newtv/player.php?id=' +
-                    encodeURIComponent(String(targetId)),
-                  buildHeaders(ott, { Usertoken: '' }),
-                );
-              },
-            );
+            return resolveEpisodeId(
+              apiBase,
+              ott,
+              postData,
+              ctx.season || 1,
+              ctx.episode || 1,
+            ).then(function (episodeId) {
+              if (!episodeId) return [];
+              targetId = episodeId;
+              return getJson(
+                apiBase +
+                  '/newtv/player.php?id=' +
+                  encodeURIComponent(String(targetId)),
+                buildHeaders(ott, { Usertoken: '' }),
+              );
+            });
           }
           var isSeries =
             postData.type === 't' ||
@@ -232,11 +331,11 @@ function extract(ctx) {
         });
       })
       .then(function (response) {
-        // Live NewTV player returns status "ok" or "otp" with video_link set.
         if (
           !response ||
           !response.video_link ||
-          (response.status !== 'ok' && response.status !== 'otp')
+          response.status !== 'ok' ||
+          !isPlayableLink(response.video_link)
         ) {
           return [];
         }
@@ -245,7 +344,9 @@ function extract(ctx) {
             url: response.video_link,
             name: 'NetMirror (' + platformKey + ')',
             quality: 'Auto',
-            headers: { Referer: response.referer || apiBase },
+            headers: Object.assign({}, buildHeaders(ott), {
+              Referer: response.referer || apiBase,
+            }),
           },
         ];
       })
@@ -254,21 +355,37 @@ function extract(ctx) {
       });
   }
 
-  return Promise.all([resolveApiUrl(), tmdbTitle()])
-    .then(function (pair) {
-      var apiBase = pair[0];
-      var title = pair[1] || String(ctx.title || '').trim();
-      if (!apiBase || !title) return [];
-      var chain = Promise.resolve([]);
-      platforms.forEach(function (platformKey) {
-        chain = chain.then(function (rows) {
-          if (rows.length) return rows;
-          return fetchFromPlatform(apiBase, platformKey, title);
+  function fetchViaNewTv() {
+    return Promise.all([resolveApiUrl(), tmdbTitle()])
+      .then(function (pair) {
+        var apiBase = pair[0];
+        var title = pair[1] || String(ctx.title || '').trim();
+        if (!apiBase || !title) return [];
+        var preferred = cfg.preferredPlatform;
+        var ordered = platforms.slice();
+        if (preferred && preferred !== 'all' && ordered.indexOf(preferred) >= 0) {
+          ordered = [preferred].concat(
+            ordered.filter(function (p) {
+              return p !== preferred;
+            }),
+          );
+        }
+        var chain = Promise.resolve([]);
+        ordered.forEach(function (platformKey) {
+          chain = chain.then(function (rows) {
+            if (rows.length) return rows;
+            return fetchFromPlatform(apiBase, platformKey, title);
+          });
         });
+        return chain;
+      })
+      .catch(function () {
+        return [];
       });
-      return chain;
-    })
-    .catch(function () {
-      return [];
-    });
+  }
+
+  return fetchFromNetflixDirect().then(function (rows) {
+    if (rows.length) return rows;
+    return fetchViaNewTv();
+  });
 }

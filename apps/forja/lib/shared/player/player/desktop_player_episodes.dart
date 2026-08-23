@@ -630,23 +630,21 @@ mixin _DesktopPlayerEpisodes
       await _s._configureMpvProperties();
       await resetPlayerForOpen(_s._player);
       final playPid = catalogHttpPlayProviderId(stream);
-      final openedUrl = await openPlayerStream(
-        _s._player,
-        url: resolved.streamUrl,
-        headers: resolved.headers,
+      if (!await validateStreamSourceForCheck(
         providerId: playPid,
-      );
-      if (!mounted || _s._fallbackAborted(switchGen)) return;
-      _s._player.setVolume(_s._volumeNotifier.value);
-
-      final opened = await waitForPlayerStreamOpen(
-        _s._player,
-        streamUrl: openedUrl,
+        source: StreamSource(
+          url: resolved.streamUrl,
+          title: title,
+          type: 'video',
+          headers: resolved.headers,
+        ),
         headers: resolved.headers,
-        providerId: playPid,
-      );
-      if (!mounted || _s._fallbackAborted(switchGen)) return;
-      if (!opened) {
+      )) {
+        if (!mounted || _s._fallbackAborted(switchGen)) return;
+        debugPrint(
+          '[Player] ${catalogStreamKindLabel(stream)} switch probe failed: '
+          '${resolved.streamUrl}',
+        );
         _s._statusController.upsert(
           statusId,
           title,
@@ -655,26 +653,26 @@ mixin _DesktopPlayerEpisodes
         );
         return;
       }
-
-      // Catalog switches must show a frame - buffer/audio alone leaves a
-      // black picture (common on Nuvio HLS when GPU decode stalls).
-      final decoded = await confirmOpenedStreamVideoDecode(
+      final openedUrl = await openCatalogHttpStreamWithPipeline(
         _s._player,
-        openUrl: openedUrl,
+        stream: stream,
+        streamUrl: resolved.streamUrl,
         headers: resolved.headers,
-        force: true,
+        providerId: playPid,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
-      if (!decoded) {
-        debugPrint(
-          '[Player] ${catalogStreamKindLabel(stream)} switch opened without video: $openedUrl',
-        );
-        await _s._player.stop();
+      _s._player.setVolume(_s._volumeNotifier.value);
+
+      if (openedUrl == null) {
         _s._statusController.upsert(
           statusId,
           title,
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
+        );
+        debugPrint(
+          '[Player] ${catalogStreamKindLabel(stream)} switch failed: '
+          '${resolved.streamUrl}',
         );
         return;
       }

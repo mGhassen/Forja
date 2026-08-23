@@ -878,6 +878,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._activeAudioFilters.isNotEmpty &&
           _s._allTorrentResults.isNotEmpty) {
         msg = 'No results match the audio filter';
+      } else if (_panelShowsStremio && _s._selectedSourceId.isEmpty) {
+        msg = 'Select at least one provider';
       } else if (_panelShowsTorrents &&
           TorrentSearchProviders.isNoneChip(_s._selectedSourceId)) {
         msg = 'Select at least one provider';

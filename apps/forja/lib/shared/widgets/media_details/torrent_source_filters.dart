@@ -47,6 +47,7 @@ String? promoteStremioProviderId({
 }) {
   // Explicit chip tap always wins — never steal focus from empty addons.
   if (userPicked) return null;
+  if (!userPicked && currentId.isEmpty) return null;
   if (preferredId != null && preferredId.isNotEmpty) {
     if (loadedIds.contains(preferredId)) {
       return preferredId == currentId ? null : preferredId;

@@ -1100,8 +1100,21 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     }
     if (_s._disposed || !mounted) return false;
     _s._statusController.remove('post-seek-remount');
-    unawaited(_showPlaybackFailureOnWatch(reason: 'post-seek remount stalled'));
-    return false;
+    debugPrint(
+      '[Player] Post-seek remount failed — reopening source @${target.inSeconds}s',
+    );
+    await _initPlayback(
+      sourceStartIndex: _s._currentFallbackSourceIndex,
+      resetEofSession: false,
+      seekOverride: target,
+    );
+    if (_s._disposed || !mounted) return false;
+    return remountPlaybackLooksLive(
+      playing: _s._player.state.playing,
+      buffering: _s._player.state.buffering,
+      position: _s._positionNotifier.value,
+      target: target,
+    );
   }
 
   void _ensurePostSeekStallWatchdog() {

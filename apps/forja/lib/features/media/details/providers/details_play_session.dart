@@ -115,8 +115,11 @@ class DetailsPlaySession {
   bool engineAutoExtractionCancelled = false;
   int engineAutoPlayGen = 0;
 
-  String selectedSourceId = EngineIds.allChip;
+  String selectedSourceId = '';
   String panelKindFilter = EngineIds.kind;
+
+  /// Per-kind Stremio addon / torrent chip id — [selectedSourceId] is active tab only.
+  Map<String, String> panelSourceIdByKind = {};
 
   DetailsResolveStatus get resolveStatus {
     if (isSearching ||

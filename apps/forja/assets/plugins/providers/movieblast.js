@@ -190,7 +190,6 @@ function extract(ctx) {
                     language: v.lang || '',
                     headers: {
                       'Accept-Encoding': 'identity',
-                      Connection: 'Keep-Alive',
                       'Icy-MetaData': '1',
                       Referer: 'MovieBlast',
                       'User-Agent': 'MovieBlast',

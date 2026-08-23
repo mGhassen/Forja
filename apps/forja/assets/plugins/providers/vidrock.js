@@ -28,9 +28,14 @@ function extract(ctx) {
 
   function needsHeaders(name, url) {
     if (name === 'Astra') return true;
-    return /cdn\.vidrock\.store|proxy\.vidrock\.store|hls1\.vdrk\.site|cdn\.niggaflix\.xyz/i.test(
+    return /cdn\.vidrock\.store|proxy\.vidrock\.store|hls1\.vdrk\.site|cdn\.niggaflix\.xyz|1shows\.app|streamrk\.site/i.test(
       url || '',
     );
+  }
+
+  function isAstraPlaylist(url) {
+    return /cdn\.vidrock\.store\/playlist\//i.test(url || '') ||
+      /streamrk\.site\/playlist\//i.test(url || '');
   }
 
   function row(url, name, language) {
@@ -96,7 +101,7 @@ function extract(ctx) {
       var source = data[serverName];
       var url = decryptUrl(source && source.url);
       if (!url) return;
-      if (serverName === 'Astra' && /cdn\.vidrock\.store\/playlist\//i.test(url)) {
+      if (serverName === 'Astra' && isAstraPlaylist(url)) {
         tasks.push(parseAstra(url, serverName));
         return;
       }

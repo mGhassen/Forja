@@ -941,8 +941,9 @@ void main() {
         'assets/plugins/providers/netmirror.js',
       );
       expect(netmirror.contains('checknewtv.php'), isTrue);
-      expect(netmirror.contains('/newtv/player.php'), isTrue);
-      expect(netmirror.contains("status !== 'otp'"), isTrue);
+      expect(netmirror.contains('embed-tmdb'), isTrue);
+      expect(netmirror.contains('videodownloader.site'), isTrue);
+      expect(netmirror.contains('fetchFromNetflixDirect'), isTrue);
       expect(netmirror.contains('mobidetect.art') || netmirror.contains('aHR0cHM6Ly9tb2JpZGV0ZWN0LmFydA=='), isTrue);
 
       final castle = await rootBundle.loadString(
@@ -1217,7 +1218,7 @@ void main() {
       expect(src, contains('mirror.endpoint'));
       expect(src, contains('mirror.name'));
       expect(src, contains('Promise.all'));
-      expect(src, contains('parseM3u8'));
+      expect(src, contains('preferHlsMaster'));
       expect(src, contains('quality:'));
       expect(src, contains('language:'));
       expect(src, contains('ctx.crypto.streamDecrypt'));

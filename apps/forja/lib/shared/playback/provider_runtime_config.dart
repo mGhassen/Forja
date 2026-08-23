@@ -945,6 +945,38 @@ class ProviderRuntimeSnapshot {
     ),
     'watchhentai': AnimePlaybackProfile(probe: AnimeProbeMode.headOrRange),
     'hentaini': AnimePlaybackProfile(probe: AnimeProbeMode.headOrRange),
+    // VidRock / Vidzee 1shows HLS — master-only probe green-lights ad segments.
+    'vidrock': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+      pngStrip: AnimePngStripMode.auto,
+    ),
+    'engine:vidrock': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+      pngStrip: AnimePngStripMode.auto,
+    ),
+    'vidzee': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+      pngStrip: AnimePngStripMode.auto,
+    ),
+    'engine:vidzee': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+      pngStrip: AnimePngStripMode.auto,
+    ),
+    'vidfast': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+      pngStrip: AnimePngStripMode.auto,
+    ),
+    'engine:vidfast': AnimePlaybackProfile(
+      probe: AnimeProbeMode.segmentPoisonSample,
+      pngStrip: AnimePngStripMode.auto,
+    ),
+    // MovieBlast CDN (signed mycdn-mb / cloud-mb): HEAD/Range false-fails in
+    // animeHttp while Nuvio plays the same URL + headers. Trust extract.
+    'engine:movieblast': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
+    'movieblast': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
+    // NetMirror HLS: extra master/segment probes hit imgcdn and trip abuse pages.
+    'engine:netmirror': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
+    'netmirror': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
   };
 
   static ProviderRuntimeSnapshot? tryParse(Object? raw) {

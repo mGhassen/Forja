@@ -173,6 +173,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   /// sideloads) before ready races MergingMediaPeriod / ProgressiveMediaPeriod
   /// and can throw IllegalStateException → player pops (issue 132).
   bool _exoReady = false;
+  DateTime? _playbackConfirmedAt;
   List<Map<String, dynamic>> _externalSubtitles = [];
   final Map<String, String> _externalSubFileCache = {};
   /// Sideloaded Media3 payloads (`url` file://, `lang`, `label`, `sourceUrl`).
@@ -482,6 +483,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         _isBufferingNotifier.value = false;
         _statusController.complete();
         _exoReady = true;
+        _playbackConfirmedAt = DateTime.now();
         if (!_playbackStartedNotified) {
           setState(() => _playbackStartedNotified = true);
           widget.onPlaybackStarted?.call();
@@ -713,6 +715,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _postSeekStall.enabled = url != null &&
         !isLocalTorrentStreamUrl(url) &&
         !isLocalLoopbackPlayUrl(url);
+    if (shouldSkipPostSeekStallArm(
+      target: target,
+      resumeStartPosition: widget.startPosition,
+      playbackConfirmedAt: _playbackConfirmedAt,
+    )) {
+      return;
+    }
     _postSeekStall.noteSeek(target);
   }
 

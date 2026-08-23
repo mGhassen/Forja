@@ -142,6 +142,21 @@ void main() {
       expect(h.containsKey('Origin'), isFalse);
     });
 
+    test('keeps videodownloader Referer for NetMirror MovieBox CDN', () {
+      const url =
+          'https://bcdnxw2.hakunaymatata.com/resource/x.mp4?sign=a&t=1';
+      final h = resolvePlaybackHttpHeaders(
+        {
+          'Referer': 'https://videodownloader.site/',
+          'User-Agent': 'CustomUA',
+        },
+        streamUrl: url,
+        providerId: 'engine:netmirror',
+      );
+      expect(h['Referer'], 'https://videodownloader.site/');
+      expect(h['User-Agent'], 'CustomUA');
+    });
+
     test('strips Referer/Origin for YouTube googlevideo videoplayback', () {
       const url =
           'https://rr1---sn-abc.googlevideo.com/videoplayback?expire=1&sig=abc';

@@ -83,6 +83,19 @@ class WatchHistoryService {
 
     try {
       final list = await getHistory();
+      final existingIdx = list.indexWhere((item) => item['uniqueId'] == uniqueId);
+      if (existingIdx >= 0) {
+        final existing = list[existingIdx];
+        final existingPos = existing['position'];
+        final existingDur = existing['duration'];
+        final updatedAt = existing['updatedAt'] as int? ?? 0;
+        final ageMs = DateTime.now().millisecondsSinceEpoch - updatedAt;
+        if (existingPos == position &&
+            existingDur == duration &&
+            ageMs < 30000) {
+          return;
+        }
+      }
       list.removeWhere((item) => item['uniqueId'] == uniqueId);
       list.insert(0, entry);
       if (list.length > 50) {

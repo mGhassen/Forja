@@ -185,6 +185,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   String get _panelKindFilter => _play.panelKindFilter;
   set _panelKindFilter(String v) => _play.panelKindFilter = v;
+  Map<String, String> get _panelSourceIdByKind => _play.panelSourceIdByKind;
 
   String get _selectedSourceId => _play.selectedSourceId;
   set _selectedSourceId(String v) => _play.selectedSourceId = v;
@@ -673,30 +674,33 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     return _panelShowStremio;
   }
 
-  String _defaultSourceId() {
-    switch (_panelKindFilter) {
+  String _defaultSourceIdForKind(String kind) {
+    switch (kind) {
       case EngineIds.kind:
         if (_panelShowEngine) return EngineIds.allChip;
       case 'torrents':
-        if (_panelShowTorrent) {
-          return TorrentSearchProviders.defaultChipId(_enabledTorrentProviders);
-        }
+        if (_panelShowTorrent) return TorrentSearchProviders.noneId;
       case 'nuvio':
         if (_panelShowNuvio) return 'all_nuvio';
       case 'stremio':
-        if (_panelShowStremio && _streamAddons.isNotEmpty) {
-          return _streamAddons.first['baseUrl'] as String;
-        }
+        if (_panelShowStremio) return '';
     }
-    if (_panelShowEngine) return EngineIds.allChip;
-    if (_panelShowTorrent) {
-      return TorrentSearchProviders.defaultChipId(_enabledTorrentProviders);
+    return TorrentSearchProviders.noneId;
+  }
+
+  String _defaultSourceId() => _defaultSourceIdForKind(_panelKindFilter);
+
+  void _stashPanelSourceIdForKind(String kind) {
+    if (kind.isEmpty) return;
+    _panelSourceIdByKind[kind] = _selectedSourceId;
+  }
+
+  void _restorePanelSourceIdForKind(String kind) {
+    _selectedSourceId =
+        _panelSourceIdByKind[kind] ?? _defaultSourceIdForKind(kind);
+    if (kind == 'stremio') {
+      _applyStremioFilter();
     }
-    if (_panelShowStremio && _streamAddons.isNotEmpty) {
-      return _streamAddons.first['baseUrl'] as String;
-    }
-    if (_panelShowNuvio) return 'all_nuvio';
-    return TorrentSearchProviders.allId;
   }
 
   String _defaultStremioSourceId() {
@@ -842,7 +846,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
               (a) => a['baseUrl']?.toString() == _selectedSourceId,
             )) {
           _userPickedStremioProvider = false;
-          _selectedSourceId = _defaultStremioSourceId();
+          _selectedSourceId = '';
         }
       });
     } catch (_) {}
@@ -886,7 +890,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
             kind: 'stremio',
           );
         }
-        _fetchStremioStreams();
+        if (_selectedSourceId.isNotEmpty) {
+          _fetchStremioStreams();
+        }
       }),
     );
   }
@@ -987,26 +993,11 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   void _onPanelKindFilterChanged(String kind) {
     setState(() {
+      _stashPanelSourceIdForKind(_panelKindFilter);
       _abortHiddenKindFetches(kind);
       _panelKindFilter = kind;
       _errorMessage = null;
-      switch (kind) {
-        case 'torrents':
-          _selectedSourceId = TorrentSearchProviders.defaultChipId(
-            _enabledTorrentProviders,
-          );
-        case 'stremio':
-          _userPickedStremioProvider = false;
-          _selectedSourceId = _defaultStremioSourceId();
-          _syncStremioProviderSelection();
-          _applyStremioFilter();
-        case 'nuvio':
-          _selectedSourceId = 'all_nuvio';
-        case 'engine':
-          _selectedSourceId = EngineIds.allChip;
-        default:
-          _selectedSourceId = TorrentSearchProviders.allId;
-      }
+      _restorePanelSourceIdForKind(kind);
     });
     if (_sourcesListScrollController.hasClients) {
       _sourcesListScrollController.jumpTo(0);
@@ -1018,9 +1009,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (!_hasPanelPlaySources) return;
     _captureSourcesPanelReturnFocus();
     setState(() {
-      _panelKindFilter = _defaultPanelKindFilter();
-      _selectedSourceId = _defaultSourceId();
-      _resetPanelFilters();
+      _syncPanelKindFilterToPlaySources();
       _sourcesPanelOpen = true;
     });
     _ensurePanelSourceLoaded();

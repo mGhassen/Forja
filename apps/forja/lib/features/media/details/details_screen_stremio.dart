@@ -10,17 +10,18 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     try {
       final addons = await NuvioService.instance.listSourcesPanelAddons();
       final enabledIds = enabledNuvioScraperIds(addons);
-      final saved = _s._nuvioSelectionHydrated
-          ? null
-          : await NuvioService.instance.loadSourcesSelectedScraperIds(
-              enabledIds: enabledIds,
-            );
+      Set<String> saved = const {};
+      if (!_s._nuvioSelectionHydrated) {
+        saved = await NuvioService.instance.loadSourcesSelectedScraperIds(
+          enabledIds: enabledIds,
+        );
+      }
       if (!mounted) return;
       setState(() {
         _s._hasNuvioAddons = addons.isNotEmpty;
         _s._nuvioAddons = addons;
         if (!_s._nuvioSelectionHydrated) {
-          _s._nuvioSelectedScraperIds = saved ?? {};
+          _s._nuvioSelectedScraperIds = saved;
           _s._nuvioSelectionHydrated = true;
         } else {
           _s._nuvioSelectedScraperIds = filterNuvioSelectedScraperIds(
@@ -89,6 +90,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     // Lazy: never hit Stremio addons unless the Stremio kind is open.
     if (_s._sourcesPanelOpen && _s._panelKindFilter != 'stremio') return;
     if (_s._streamAddons.isEmpty) return;
+    if (_s._selectedSourceId.isEmpty) return;
 
     Map<String, dynamic>? addon;
     for (final a in _s._streamAddons) {
@@ -97,7 +99,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
         break;
       }
     }
-    addon ??= _s._streamAddons.first;
+    if (addon == null) return;
     final baseUrl = addon['baseUrl'] as String;
     final addonName = addon['name'] ?? 'Unknown';
 

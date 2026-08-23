@@ -9,7 +9,7 @@ axum = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-reqwest = { workspace = true, features = ["stream"] }
+reqwest = { workspace = true, features = ["stream", "cookies"] }
 thiserror = { workspace = true }
 futures-util = "0.3"
 urlencoding = "2"

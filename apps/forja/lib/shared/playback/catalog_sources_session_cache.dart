@@ -1,6 +1,45 @@
+import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:rust/rust.dart';
+
+/// Tab, chip, and toolbar state for catalog Sources (player overlay).
+///
+/// Details keeps this on [DetailsPlaySession] while the route is mounted;
+/// the player writes it here on dismiss so reopening Sources within [ttl]
+/// restores the last tab/chips/filters for the same title/episode.
+@immutable
+class CatalogSourcesPanelUiState {
+  const CatalogSourcesPanelUiState({
+    required this.kindFilter,
+    required this.selectedSourceId,
+    required this.nuvioSelectedScraperIds,
+    required this.engineSelectedPluginIds,
+    this.userPickedKind = false,
+    this.userPickedStremioProvider = false,
+    this.searchQuery = '',
+    this.qualityFilters = const {},
+    this.languageFilters = const {},
+    this.techFilters = const {},
+    this.audioFilters = const {},
+    this.sizeFilters = const {},
+    this.panelSourceIdByKind = const {},
+  });
+
+  final String kindFilter;
+  final String selectedSourceId;
+  final Set<String> nuvioSelectedScraperIds;
+  final Set<String> engineSelectedPluginIds;
+  final bool userPickedKind;
+  final bool userPickedStremioProvider;
+  final String searchQuery;
+  final Set<String> qualityFilters;
+  final Set<String> languageFilters;
+  final Set<String> techFilters;
+  final Set<String> audioFilters;
+  final Set<String> sizeFilters;
+  final Map<String, String> panelSourceIdByKind;
+}
 
 /// In-memory TTL cache for catalog Sources (Torrents / Stremio / Nuvio / Engine).
 ///
@@ -35,6 +74,8 @@ class CatalogSourcesSessionCache {
           Set<String> fetchedPluginIds,
         })
       >{};
+  static final _ui =
+      <String, ({DateTime at, CatalogSourcesPanelUiState state})>{};
 
   /// Stable key - TV always uses 1-based season/episode.
   static String cacheKey({
@@ -188,6 +229,21 @@ class CatalogSourcesSessionCache {
       if (enginePluginHasStreams(id, streams)) id,
   };
 
+  static CatalogSourcesPanelUiState? readUi(String key) {
+    final entry = _ui[key];
+    if (entry == null) return null;
+    if (DateTime.now().difference(entry.at) > ttl) {
+      _ui.remove(key);
+      return null;
+    }
+    return entry.state;
+  }
+
+  static void writeUi(String key, CatalogSourcesPanelUiState state) {
+    _ui[key] = (at: DateTime.now(), state: state);
+    _trim(_ui);
+  }
+
   /// Drop one kind (`torrents` | `stremio` | `nuvio` | `engine`) or all kinds for [key].
   static void invalidate(String key, {String? kind}) {
     switch (kind) {
@@ -204,6 +260,7 @@ class CatalogSourcesSessionCache {
         _stremio.remove(key);
         _nuvio.remove(key);
         _engine.remove(key);
+        _ui.remove(key);
     }
   }
 

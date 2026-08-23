@@ -67,11 +67,16 @@ Future<List<StreamSource>> _buildProbedEnginePlaySources(
       ..['headers'] = proxied.headers;
     if (!await probeSourcesPanelStream(probeRow)) continue;
     final url = proxied.url;
+    final pluginId = row['_enginePluginId']?.toString() ?? '';
+    // MovieBlast progressive is Matroska; labeling mp4 confuses some opens.
+    final type = url.contains('.m3u8')
+        ? 'hls'
+        : (pluginId == 'movieblast' ? 'mkv' : 'mp4');
     sources.add(
       StreamSource(
         url: url,
         title: (row['title'] ?? row['name'] ?? 'Forja').toString(),
-        type: url.contains('.m3u8') ? 'hls' : 'mp4',
+        type: type,
         headers: proxied.headers,
         providerId: catalogHttpPlayProviderId(row),
       ),

@@ -188,9 +188,8 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
 
   void _claimPanelFocus() {
     if (!mounted || !_tv || !widget.sourcesPanelOpen) return;
-    final count = widget.resultCount ?? 0;
-    if (count > 0 && widget.onFocusList != null) {
-      widget.onFocusList!();
+    if (_showProviders) {
+      SourcesPanelTv.focusProvidersItem();
       return;
     }
     SourcesPanelTv.claimFocus(

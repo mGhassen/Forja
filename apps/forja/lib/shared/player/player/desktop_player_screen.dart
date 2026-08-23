@@ -354,6 +354,13 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     w.enabled = url != null &&
         !isLocalTorrentStreamUrl(url) &&
         !isLocalLoopbackPlayUrl(url);
+    if (shouldSkipPostSeekStallArm(
+      target: target,
+      resumeStartPosition: widget.startPosition,
+      playbackConfirmedAt: _playbackConfirmedAt,
+    )) {
+      return;
+    }
     w.noteSeek(target);
   }
 

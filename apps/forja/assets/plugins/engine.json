@@ -60,20 +60,6 @@
       }
     },
     {
-      "id": "goated",
-      "name": "Goated",
-      "entry": "providers/goated.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "api": "https://api.reallyfast.xyz",
-        "origin": "https://goated.cx"
-      }
-    },
-    {
       "id": "vidlink",
       "name": "VidLink",
       "entry": "providers/vidlink.js",
@@ -389,6 +375,20 @@
       }
     },
     {
+      "id": "goated",
+      "name": "Goated",
+      "entry": "providers/goated.js",
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "kind": "http",
+      "config": {
+        "api": "https://api.reallyfast.xyz",
+        "origin": "https://goated.cx"
+      }
+    },
+    {
       "id": "yflix",
       "name": "YFlix",
       "entry": "providers/yflix.js",
@@ -668,6 +668,9 @@
       "kind": "http",
       "config": {
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49",
+        "embedApi": "https://net27.cc/api/embed-tmdb/",
+        "embedReferer": "https://net27.cc/",
+        "playReferer": "https://videodownloader.site/",
         "platforms": [
           "netflix",
           "primevideo",

@@ -3,11 +3,12 @@ import 'package:forja/shared/player/player/post_seek_stall_watchdog.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 void main() {
-  test('does not remount during active buffering after seek', () async {
+  test('remounts after prolonged buffering when position stuck', () async {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
       armWindow: const Duration(seconds: 5),
+      scaleStallWithDepth: false,
       onRemount: (t) async {
         remounts.add(t);
         return true;
@@ -16,10 +17,6 @@ void main() {
 
     w.noteSeek(const Duration(seconds: 100));
     w.onBuffering(true);
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    expect(remounts, isEmpty);
-
-    w.onBuffering(false);
     w.onPosition(const Duration(seconds: 100));
     await Future<void>.delayed(const Duration(milliseconds: 80));
     expect(remounts, [const Duration(seconds: 100)]);
@@ -32,6 +29,7 @@ void main() {
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
       armWindow: const Duration(seconds: 5),
+      scaleStallWithDepth: false,
       onRemount: (t) async {
         remounts.add(t);
         return true;
@@ -62,6 +60,7 @@ void main() {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
+      scaleStallWithDepth: false,
       onRemount: (t) async {
         remounts.add(t);
         return true;
@@ -79,6 +78,7 @@ void main() {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 60),
+      scaleStallWithDepth: false,
       onRemount: (t) async {
         remounts.add(t);
         return true;
@@ -99,6 +99,7 @@ void main() {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
+      scaleStallWithDepth: false,
       onRemount: (t) async {
         remounts.add(t);
         return true;
@@ -117,6 +118,7 @@ void main() {
     var attempt = 0;
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
+      scaleStallWithDepth: false,
       onRemount: (t) async {
         remounts.add(t);
         attempt++;
@@ -151,7 +153,7 @@ void main() {
     );
   });
 
-  test('remountPlaybackLooksLive rejects still buffering', () {
+  test('remountPlaybackLooksLive accepts buffering near target', () {
     expect(
       remountPlaybackLooksLive(
         playing: true,
@@ -159,7 +161,49 @@ void main() {
         position: const Duration(seconds: 4399),
         target: const Duration(seconds: 4399),
       ),
+      isTrue,
+    );
+  });
+
+  test('postSeekStallTimeoutForTarget scales with depth', () {
+    expect(
+      postSeekStallTimeoutForTarget(const Duration(minutes: 5)).inSeconds,
+      15,
+    );
+    expect(
+      postSeekStallTimeoutForTarget(const Duration(minutes: 49)).inSeconds,
+      35,
+    );
+  });
+
+  test('shouldSkipPostSeekStallArm during resume grace', () {
+    final confirmed = DateTime.now().subtract(const Duration(seconds: 5));
+    expect(
+      shouldSkipPostSeekStallArm(
+        target: const Duration(seconds: 2965),
+        resumeStartPosition: const Duration(seconds: 2965),
+        playbackConfirmedAt: confirmed,
+      ),
+      isTrue,
+    );
+    expect(
+      shouldSkipPostSeekStallArm(
+        target: const Duration(seconds: 2990),
+        resumeStartPosition: const Duration(seconds: 2965),
+        playbackConfirmedAt: confirmed,
+      ),
       isFalse,
+    );
+  });
+
+  test('remountResumeTimeoutForSeek scales with depth', () {
+    expect(
+      remountResumeTimeoutForSeek(const Duration(minutes: 5)).inSeconds,
+      15,
+    );
+    expect(
+      remountResumeTimeoutForSeek(const Duration(minutes: 59)).inSeconds,
+      60,
     );
   });
 
