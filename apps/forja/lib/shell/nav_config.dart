@@ -141,7 +141,7 @@ const Map<String, NavDestination> navDestinations = {
     id: 'live_matches',
     icon: Icons.sports_soccer_outlined,
     activeIcon: Icons.sports_soccer_rounded,
-    label: 'Live Matches',
+    label: 'Live Sports',
     iconAsset: 'assets/images/nav/live-matches.png',
   ),
   'iptv': NavDestination(

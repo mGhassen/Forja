@@ -332,12 +332,21 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   }
 
   Future<void> _clampServerIfForjaSportsDisabled({required bool reload}) async {
-    final config = await LiveMatchesIptvSportsConfig.load();
+    final iptvSportsEnabled =
+        (await LiveMatchesIptvSportsConfig.load()).enabled;
+    final stremioLiveEnabled = await _liveMatchesStremioLiveEnabled();
     if (!mounted) return;
-    if (_server != _LiveMatchesServer.iptvSports || config.enabled) return;
-    ref.read(iptvControllerProvider).closePortalPanel();
-    setState(() => _server = _LiveMatchesServer.forjaLive);
-    unawaited(_persistServerPreference(_LiveMatchesServer.forjaLive));
+    final next = _liveMatchesClampServerForSurface(
+      _server,
+      iptvSportsEnabled: iptvSportsEnabled,
+      stremioLiveEnabled: stremioLiveEnabled,
+    );
+    if (next == _server) return;
+    if (_server == _LiveMatchesServer.iptvSports) {
+      ref.read(iptvControllerProvider).closePortalPanel();
+    }
+    setState(() => _server = next);
+    unawaited(_persistServerPreference(next));
     if (reload) await _load();
   }
 
@@ -362,6 +371,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     if (!mounted) return;
     final iptvSportsEnabled =
         (await LiveMatchesIptvSportsConfig.load()).enabled;
+    final stremioLiveEnabled = await _liveMatchesStremioLiveEnabled();
+    if (!mounted) return;
     final raw = prefs.getString(_serverPreferenceKey);
     _LiveMatchesServer? saved;
     if (raw != null) {
@@ -375,8 +386,9 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     final next = _liveMatchesClampServerForSurface(
       saved ?? _server,
       iptvSportsEnabled: iptvSportsEnabled,
+      stremioLiveEnabled: stremioLiveEnabled,
     );
-    // Clamp invalid saved server (hidden All/PPV/Streamed/Mut, disabled Forja Sports, …).
+    // Clamp invalid saved server (hidden All/PPV/Streamed/Mut/Stremio, disabled Forja Sports, …).
     if (saved != null && saved != next) {
       unawaited(_persistServerPreference(next));
     }

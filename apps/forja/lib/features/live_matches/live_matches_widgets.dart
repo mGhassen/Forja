@@ -306,15 +306,17 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
     debugLabel: 'live-server-sheet-first',
   );
   bool _iptvSportsEnabled = false;
+  bool _stremioLiveEnabled = false;
 
   List<_LiveMatchesServer> get _servers => _liveMatchesServersForSurface(
     iptvSportsEnabled: _iptvSportsEnabled,
+    stremioLiveEnabled: _stremioLiveEnabled,
   );
 
   @override
   void initState() {
     super.initState();
-    unawaited(_loadIptvSportsEnabled());
+    unawaited(_loadServerAvailability());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       // Leanback only — desktop opens with mouse; stealing focus breaks hover.
@@ -323,10 +325,14 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
     });
   }
 
-  Future<void> _loadIptvSportsEnabled() async {
-    final config = await LiveMatchesIptvSportsConfig.load();
+  Future<void> _loadServerAvailability() async {
+    final iptv = await LiveMatchesIptvSportsConfig.load();
+    final stremio = await _liveMatchesStremioLiveEnabled();
     if (!mounted) return;
-    setState(() => _iptvSportsEnabled = config.enabled);
+    setState(() {
+      _iptvSportsEnabled = iptv.enabled;
+      _stremioLiveEnabled = stremio;
+    });
   }
 
   @override

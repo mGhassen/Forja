@@ -169,7 +169,7 @@ class HubPosterCard extends StatelessWidget {
                         MyListButton.hub(
                           hubTarget: listTarget!,
                           excludeFromTvTraversal: true,
-                          iconSize: HomeMovieRatingBadge.extentOf(context),
+                          iconSize: shellScaled(context, 18).clamp(12.0, 18.0),
                         ),
                       const Spacer(),
                       if (rating != null && rating! > 0)
@@ -181,7 +181,7 @@ class HubPosterCard extends StatelessWidget {
                 Positioned(
                   top: inset,
                   left: !compact && listTarget != null
-                      ? inset + HomeMovieRatingBadge.extentOf(context) + 4
+                      ? inset + shellScaled(context, 26).clamp(20.0, 26.0)
                       : inset,
                   child: Container(
                     padding: EdgeInsets.symmetric(

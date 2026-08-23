@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Default tab order on every profile:** Home, Asian Drama, Anime, IPTV, Live Matches, My List, and Settings. All are enabled on a fresh install. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Default tab order on every profile:** Home, Asian Drama, Anime, IPTV, Live Sports, My List, and Settings. All are enabled on a fresh install. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 
@@ -12,7 +12,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 ## What you can do
 
-- Tap any tab to switch sections instantly (recently used tabs stay mounted for fast switching; Android TV keeps fewer tabs in memory, and opening the fullscreen player unloads other tabs — keeping the screen under the player — so playback gets max resources). The nav rail stays mounted under root fullscreen players (movies, trailers, Live Matches, IPTV) the same way as the underlay tab. On **Android TV**, details and player opens are an instant cut (no slide) so older sets do not stutter while the new screen loads.
+- Tap any tab to switch sections instantly (recently used tabs stay mounted for fast switching; Android TV keeps fewer tabs in memory, and opening the fullscreen player unloads other tabs — keeping the screen under the player — so playback gets max resources). The nav rail stays mounted under root fullscreen players (movies, trailers, Live Sports, IPTV) the same way as the underlay tab. On **Android TV**, details and player opens are an instant cut (no slide) so older sets do not stutter while the new screen loads.
 - On desktop, the left rail is a **fixed-width** column; the body is inset so content is not hidden under icons
 - On **Home (desktop)**, a **Search** icon then **Films / TV Shows / Categories** menu overlays the hero and slides away as you scroll
 - **Search (desktop)** uses a full-page layout with a left search column — no separate shell search bar
@@ -27,7 +27,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 ## Android TV
 
-- **Nav rail order:** Home, Asian Drama, Anime, IPTV, Live Matches, My List, then the **profile avatar** (same Settings hub as desktop — always last and cannot be hidden)
+- **Nav rail order:** Home, Asian Drama, Anime, IPTV, Live Sports, My List, then the **profile avatar** (same Settings hub as desktop — always last and cannot be hidden)
 - The app **opens on your chosen default tab** (Home unless you change it in Settings); **first focus** lands on that tab’s **nav rail** item (Home by default), not the hero **View details** button
 - **Settings hub:** wide TV uses the desktop-style left category rail + right detail pane; **OK** or **→** enters the detail pane and focuses the first control (detail scroll snaps to the top so titles/section labels stay visible); D-pad moves among detail controls by on-screen position (spatial); text fields focus without opening the keyboard until **OK**; **Back** steps detail → selected category → first category → nav rail (or leaves typing first when a field is being edited)
 - **Account:** cold start (desktop and Android TV) offers Sign in (code or QR via `/connect`) or Continue as guest; after link you pick a profile on Who’s watching?
@@ -39,13 +39,13 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 - **Catalog rows:** LEFT/RIGHT move within the row only (no vertical scroll jump); DOWN/UP move between rows and restore each row’s own last-focused item (not the column from the row you left); last row DOWN stops (no escape to nav)
 - **Hero:** UP from the first row scrolls the hero fully visible and focuses **View details**; LEFT from **View details** focuses the **active** nav tab (not a geometric neighbor)
 - **Home hero (TV):** DOWN from the top menu (Search / Films / TV Shows / Categories) focuses the **hero gallery** (backdrop carousel); **←/→** change the featured title and backdrop image; UP from the gallery returns to the top menu; DOWN from the gallery focuses **View details**; UP from **View details** (and My List) focuses the gallery
-- **Home, Search, Anime, Asian Drama, My List, Settings, IPTV, and Live Matches** use the **same card sizes, spacing, and section layout as desktop**; D-pad focus and coordinator-registered rows/chips are unchanged
+- **Home, Search, Anime, Asian Drama, My List, Settings, IPTV, and Live Sports** use the **same card sizes, spacing, and section layout as desktop**; D-pad focus and coordinator-registered rows/chips are unchanged
 - **Home (TV):** catalog rows and mood chips use the shared `TvFocusGraph` recipes (same D-pad rules: left from first card → nav; mood ↓ → results; ↑ from results → moods)
 - **Anime / Asian Drama (TV):** same `TvFocusGraph` recipes as Home for catalog rows and continue watching; Anime vibe chips match Home mood D-pad
-- **Live Matches / IPTV (TV):** same `TvFocusGraph` recipes — Live Matches sport/CDN chips and card grids; IPTV category rail, stream grid, EPG channel list, portal/M3U lists, and player top/controls via `iptvCatalogRow` (search-field chrome still syncs before focus)
+- **Live Sports / IPTV (TV):** same `TvFocusGraph` recipes — Live Sports sport/CDN chips and card grids; IPTV category rail, stream grid, EPG channel list, portal/M3U lists, and player top/controls via `iptvCatalogRow` (search-field chrome still syncs before focus)
 - **Search (TV):** results use the `TvGrid` recipe (4 columns); trending helpers use a vertical `TvCatalogRow`; first-column Left still jumps to helpers, first-row Up to the search field
 - **My List / Settings / details (TV):** My List posters use `TvGrid`; Settings category rail uses `TvCatalogRow` (detail pane is spatial inside a focus trap — Back exits left); media details cast, trailers, play, and torrent action rows sit in the same focus graph
-- **Live Matches embed / Who’s watching (TV):** embed Back / Play / Mute chrome registers via `TvCatalogRow`; profile chooser uses the shared overlay focus host (spatial D-pad inside the panel)
+- **Live Sports embed / Who’s watching (TV):** embed Back / Play / Mute chrome registers via `TvCatalogRow`; profile chooser uses the shared overlay focus host (spatial D-pad inside the panel)
 - **Anime / Asian Drama hubs:** same browse hero TV focus as Home (gallery **←/→**, then **View details**). Anime D-pad order is **View details → Trending → Continue Watching → Pick your vibe → catalog**; Asian Drama is **View details → Latest Update → Continue Watching → catalog**. **↑** from Continue Watching lands on the bleed row under the hero (Trending / Latest), then View details. Anime vibes use the same circular mood icons as Home (centered on TV); mood posters **↑** return to those vibes; empty Continue Watching is not in the focus graph; **→** from the nav rail restores real page focus (not a blank overlay scope). Open search with **Find** (desktop) or the platform search shortcut — not from the hero chrome
 - Search uses the **two-column desktop layout** on TV (last searches then trending suggestions, focused-result detail pane, fluid results grid); D-pad lands on the **search field** first — **Down** moves to suggestions
 - Phone layout is unchanged — leanback density / launcher still apply only on Android TV
@@ -54,14 +54,14 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 ## Available tabs
 
-Home · My List · Live Matches · IPTV · Anime · Asian Drama · Settings
+Home · My List · Live Sports · IPTV · Anime · Asian Drama · Settings
 
 Search, Discover, Similar, Media Downloader, Magnet, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic, and Arabic are built but temporarily hidden from the shell and Navigation settings.
 
 ## Tips
 
 - Hide tabs you never use to reduce clutter — they can be re-enabled anytime (among the available tabs)
-- Startup follows your profile: Home / My List prefetch TMDB under the logo splash; torrent / Stremio / Nuvio / Forja / Webstreaming engines start **after** splash when those play sources are on **and** you have a VOD tab (Home, Anime, Asian Drama, or My List). IPTV + Live Matches alone skip them. Restored-session cold start paints the logo splash immediately (update check + cloud sync run in the background). After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches).
+- Startup follows your profile: Home / My List prefetch TMDB under the logo splash; torrent / Stremio / Nuvio / Forja / Webstreaming engines start **after** splash when those play sources are on **and** you have a VOD tab (Home, Anime, Asian Drama, or My List). IPTV + Live Sports alone skip them. Restored-session cold start paints the logo splash immediately (update check + cloud sync run in the background). After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches).
 - Movie and series details open on top of the current tab; the player opens full-screen from there
 - On **desktop**, the mouse **Back** side button and **Escape** act like the in-app **Back** control — player first, then details, then in-tab screens. A two-finger trackpad swipe-right on empty page chrome (not over the Sources panel, addon chips, catalog rows, or other horizontal strips) shows a left-edge arrow; when the ring fills completely, Back commits.
 

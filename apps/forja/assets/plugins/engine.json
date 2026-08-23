@@ -1766,7 +1766,7 @@
         "catalog"
       ],
       "kind": "http",
-      "enabled": true,
+      "enabled": false,
       "config": {
         "providerId": "live-timstreams",
         "api": "https://timstreams.st/api/live-upcoming"
@@ -1796,7 +1796,7 @@
         "catalog"
       ],
       "kind": "http",
-      "enabled": true,
+      "enabled": false,
       "config": {
         "providerId": "live-watchfooty"
       }
@@ -1810,7 +1810,7 @@
         "catalog"
       ],
       "kind": "http",
-      "enabled": true,
+      "enabled": false,
       "config": {
         "providerId": "live-streamic"
       }
@@ -1824,7 +1824,7 @@
         "catalog"
       ],
       "kind": "http",
-      "enabled": true,
+      "enabled": false,
       "config": {
         "providerId": "catalog-espn",
         "leagues": [

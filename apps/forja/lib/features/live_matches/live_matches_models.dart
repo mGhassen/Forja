@@ -2910,24 +2910,37 @@ String _liveForjaPluginDisplayName(String pluginId) {
   return _liveForjaPluginDisplayNames[pluginId] ?? pluginId;
 }
 
-/// Server picker order: Forja Live first, Stremio last.
+/// True when an installed Stremio addon is wired to Live and exposes sport catalogs.
+Future<bool> _liveMatchesStremioLiveEnabled() async {
+  final addons =
+      await StremioService().getAddonsForFeature(StremioAddonFeatures.live);
+  for (final addon in addons) {
+    if (StremioService.sportCatalogsForLive(addon).isNotEmpty) return true;
+  }
+  return false;
+}
+
+/// Server picker order: Forja Live first, Stremio last when available.
 /// **All** / PPV / Streamed / MutStreams are hidden from the sheet.
 List<_LiveMatchesServer> _liveMatchesServersForSurface({
   bool iptvSportsEnabled = false,
+  bool stremioLiveEnabled = false,
 }) {
   return [
     _LiveMatchesServer.forjaLive,
     if (iptvSportsEnabled) _LiveMatchesServer.iptvSports,
-    _LiveMatchesServer.stremio,
+    if (stremioLiveEnabled) _LiveMatchesServer.stremio,
   ];
 }
 
 _LiveMatchesServer _liveMatchesClampServerForSurface(
   _LiveMatchesServer server, {
   bool iptvSportsEnabled = false,
+  bool stremioLiveEnabled = false,
 }) {
   final allowed = _liveMatchesServersForSurface(
     iptvSportsEnabled: iptvSportsEnabled,
+    stremioLiveEnabled: stremioLiveEnabled,
   );
   if (allowed.contains(server)) return server;
   return _LiveMatchesServer.forjaLive;

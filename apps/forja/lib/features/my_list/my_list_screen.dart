@@ -973,7 +973,7 @@ Widget? _listPin(
   Map<String, dynamic> item, {
   String? knownStatus,
 }) {
-  final iconSize = HomeMovieRatingBadge.extentOf(context);
+  final iconSize = shellScaled(context, 18).clamp(12.0, 18.0);
   final title = item['title']?.toString() ?? 'Unknown';
   final poster = item['posterPath']?.toString() ?? '';
   final vote = (item['voteAverage'] as num?)?.toDouble() ?? 0;

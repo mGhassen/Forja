@@ -216,10 +216,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     AlignmentGeometry alignment = Alignment.center,
     TvChipEdges Function(int index)? edgesFor,
   }) {
-    // TV: left-align with Servers / card grid. Desktop: center when chips fit.
     final row = Row(
       mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         for (var i = 0; i < itemCount; i++) ...[
           if (i > 0) SizedBox(width: layout.horizontalGap),
@@ -495,7 +494,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
                 itemCount: itemCount,
                 scaleToFit: true,
                 tvFocus: tvFocus,
-                alignment: Alignment.centerLeft,
                 edgesFor: edgesFor,
               ),
             );
@@ -510,20 +508,12 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
             );
           }
 
-          return FocusTraversalGroup(
-            policy: ReadingOrderTraversalPolicy(),
-            child: HorizontalScroller(
-              height: layout.rowHeight,
-              padding: EdgeInsets.zero,
-              itemCount: itemCount,
-              separatorBuilder: (_, _) => SizedBox(width: layout.horizontalGap),
-              itemBuilder: (context, i) => _buildSportCircleItem(
-                layout: layout,
-                index: i,
-                itemCount: itemCount,
-                tvFocus: tvFocus,
-              ),
-            ),
+          // Overflow: scale to fit and keep centered (same as TV / Anime vibes).
+          return _buildCenteredSportCircles(
+            layout: layout,
+            itemCount: itemCount,
+            scaleToFit: true,
+            tvFocus: tvFocus,
           );
         },
       ),

@@ -53,7 +53,8 @@ class _CategorySidebarRow extends StatefulWidget {
   State<_CategorySidebarRow> createState() => _CategorySidebarRowState();
 }
 
-class _CategorySidebarRowState extends State<_CategorySidebarRow> {
+class _CategorySidebarRowState extends State<_CategorySidebarRow>
+    with SingleTickerProviderStateMixin {
   /// Row with pin focus or floating reorder — Back returns here (HardwareKeyboard
   /// steals Focus onKey for goBack).
   static _CategorySidebarRowState? _chromeOwner;
@@ -85,6 +86,11 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
 
   late final FocusNode _rowFocus;
   late final FocusNode _pinFocus;
+  late final AnimationController _holdSunrise;
+
+  /// Local press origin for the expanding hold ring (null = hidden).
+  Offset? _holdOrigin;
+  Offset? _pointerDownGlobal;
 
   static const Duration _okHoldDelay = Duration(seconds: 1);
 
@@ -118,6 +124,12 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   @override
   void initState() {
     super.initState();
+    _holdSunrise = AnimationController(vsync: this)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) {
+          _clearHoldSunrise();
+        }
+      });
     _rowFocus = FocusNode(debugLabel: 'iptv-category-row-${widget.listIndex}');
     _pinFocus = FocusNode(
       debugLabel: 'iptv-category-pin-${widget.listIndex}',
@@ -152,7 +164,11 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
 
   @override
   void dispose() {
-    _cancelOkGestures();
+    _okHoldTimer?.cancel();
+    _okHoldTimer = null;
+    _holdOrigin = null;
+    _pointerDownGlobal = null;
+    _holdSunrise.dispose();
     _releaseChrome();
     // Remount after pin/reorder must not leave parent ExcludeFocus stuck.
     if (_pinFocus.hasFocus || _tvPinRevealed || _floating) {
@@ -162,6 +178,54 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     _pinFocus.dispose();
     _rowFocus.dispose();
     super.dispose();
+  }
+
+  Offset _rowCenterLocal() {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return Offset.zero;
+    return box.size.center(Offset.zero);
+  }
+
+  void _startHoldSunrise(Offset origin, Duration duration) {
+    _holdOrigin = origin;
+    _holdSunrise
+      ..duration = duration
+      ..forward(from: 0);
+    setState(() {});
+  }
+
+  void _clearHoldSunrise() {
+    final had = _holdOrigin != null || _holdSunrise.value > 0;
+    if (!had) return;
+    if (_holdSunrise.isAnimating || _holdSunrise.value > 0) {
+      _holdSunrise.stop();
+      _holdSunrise.value = 0;
+    }
+    _holdOrigin = null;
+    _pointerDownGlobal = null;
+    if (mounted) setState(() {});
+  }
+
+  void _onDesktopHoldPointerDown(PointerDownEvent e) {
+    if (_floating) return;
+    if (e.kind == PointerDeviceKind.mouse && e.buttons != kPrimaryButton) {
+      return;
+    }
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    _pointerDownGlobal = e.position;
+    _startHoldSunrise(
+      box.globalToLocal(e.position),
+      _CategoryReorderDragStartListener._delay,
+    );
+  }
+
+  void _onDesktopHoldPointerMove(PointerMoveEvent e) {
+    final down = _pointerDownGlobal;
+    if (down == null || _holdOrigin == null) return;
+    if ((e.position - down).distance > kTouchSlop) {
+      _clearHoldSunrise();
+    }
   }
 
   void _onPinFocusChanged() {
@@ -234,13 +298,16 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     _okHoldTimer?.cancel();
     _okHoldTimer = null;
     if (clearHoldFired) _okHoldFired = false;
+    _clearHoldSunrise();
   }
 
   void _enterFloating() {
     if (!_canTvReorder || _floating) return;
     // Cancel the timer only — keep _okHoldFired so the OK KeyUp after
     // hold-to-enter is swallowed (otherwise float drops on release).
-    _cancelOkGestures(clearHoldFired: false);
+    // Don't clear sunrise here — timer callback already did (or desktop drag owns it).
+    _okHoldTimer?.cancel();
+    _okHoldTimer = null;
     _tvPinRevealed = false;
     _claimChrome();
     widget.onEnterFloating?.call();
@@ -354,9 +421,11 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
           shellTvIsActivateLogicalKey(event.logicalKey)) {
         _okHoldFired = false;
         _okHoldTimer?.cancel();
+        _startHoldSunrise(_rowCenterLocal(), _okHoldDelay);
         _okHoldTimer = Timer(_okHoldDelay, () {
           if (!mounted) return;
           _okHoldFired = true;
+          _clearHoldSunrise();
           if (_canTvReorder) {
             _enterFloating();
           } else if (_canTvPin) {
@@ -375,6 +444,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
           _okHoldFired = false;
           return KeyEventResult.handled;
         }
+        _clearHoldSunrise();
         _fireOpen();
         return KeyEventResult.handled;
       }
@@ -565,12 +635,91 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     );
 
     final reorderIndex = widget.reorderIndex;
-    if (reorderIndex == null) return row;
-    return _CategoryReorderDragStartListener(
-      index: reorderIndex,
-      child: row,
+    if (reorderIndex != null) {
+      row = Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: _onDesktopHoldPointerDown,
+        onPointerMove: _onDesktopHoldPointerMove,
+        onPointerUp: (_) => _clearHoldSunrise(),
+        onPointerCancel: (_) => _clearHoldSunrise(),
+        child: _CategoryReorderDragStartListener(
+          index: reorderIndex,
+          child: row,
+        ),
+      );
+    }
+
+    if (_holdOrigin == null) return row;
+    return Stack(
+      clipBehavior: Clip.hardEdge,
+      children: [
+        row,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: AnimatedBuilder(
+              animation: _holdSunrise,
+              builder: (context, _) => CustomPaint(
+                painter: _CategoryHoldSunrisePainter(
+                  origin: _holdOrigin!,
+                  progress: _holdSunrise.value,
+                  color: ForjaShellColors.brandGreen,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
+}
+
+/// Expanding circle while holding to reorder / reveal pin (press-point sunrise).
+class _CategoryHoldSunrisePainter extends CustomPainter {
+  _CategoryHoldSunrisePainter({
+    required this.origin,
+    required this.progress,
+    required this.color,
+  });
+
+  final Offset origin;
+  final double progress;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0 || size.isEmpty) return;
+    final t = Curves.easeOut.transform(progress.clamp(0.0, 1.0));
+    var maxR = 0.0;
+    for (final c in <Offset>[
+      Offset.zero,
+      Offset(size.width, 0),
+      Offset(0, size.height),
+      Offset(size.width, size.height),
+    ]) {
+      maxR = math.max(maxR, (c - origin).distance);
+    }
+    if (maxR <= 0) return;
+    final r = maxR * t;
+    canvas.drawCircle(
+      origin,
+      r,
+      Paint()..color = color.withValues(alpha: 0.12 + 0.20 * t),
+    );
+    canvas.drawCircle(
+      origin,
+      r,
+      Paint()
+        ..color = color.withValues(alpha: 0.45 * t)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _CategoryHoldSunrisePainter old) =>
+      old.origin != origin ||
+      old.progress != progress ||
+      old.color != color;
 }
 
 /// Hold ~1.5s before category reorder begins (tap/scroll stay normal).

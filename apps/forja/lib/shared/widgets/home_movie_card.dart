@@ -136,7 +136,7 @@ class HomeMovieCard extends StatelessWidget {
                         MyListButton.movie(
                           movie: movie,
                           excludeFromTvTraversal: true,
-                          iconSize: HomeMovieRatingBadge.extentOf(context),
+                          iconSize: shellScaled(context, 18).clamp(12.0, 18.0),
                         ),
                       const Spacer(),
                       if (movie.voteAverage > 0)
@@ -228,14 +228,6 @@ class HomeMovieRatingBadge extends StatelessWidget {
   const HomeMovieRatingBadge({super.key, required this.voteAverage});
 
   final double voteAverage;
-
-  /// Outer height — card pins use this so tops line up with the score pill.
-  static double extentOf(BuildContext context) {
-    final padV = shellScaled(context, 4).clamp(2.0, 4.0);
-    final iconSize = shellScaled(context, 12).clamp(8.0, 12.0);
-    const border = 1.0;
-    return padV * 2 + iconSize + border * 2;
-  }
 
   @override
   Widget build(BuildContext context) {
