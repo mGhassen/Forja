@@ -319,8 +319,55 @@ class _FlatMenuRow extends StatefulWidget {
 }
 
 class _FlatMenuRowState extends State<_FlatMenuRow> {
+  static const _hoverProbeDelay = Duration(milliseconds: 500);
+
   bool _hovered = false;
   bool _focused = false;
+  Timer? _hoverProbeTimer;
+
+  @override
+  void dispose() {
+    _cancelHoverProbe();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant _FlatMenuRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_shouldScheduleHoverProbe()) {
+      _cancelHoverProbe();
+    }
+  }
+
+  bool _shouldScheduleHoverProbe() {
+    if (widget.onCheck == null || widget.isPlaying) return false;
+    return switch (widget.status) {
+      null || PlayerSourceStatus.unchecked || PlayerSourceStatus.failed => true,
+      PlayerSourceStatus.checking ||
+      PlayerSourceStatus.ready ||
+      PlayerSourceStatus.active =>
+        false,
+    };
+  }
+
+  void _syncHoverProbe(bool active) {
+    if (!active) {
+      _cancelHoverProbe();
+      return;
+    }
+    if (!_shouldScheduleHoverProbe()) return;
+    _cancelHoverProbe();
+    _hoverProbeTimer = Timer(_hoverProbeDelay, () {
+      _hoverProbeTimer = null;
+      if (!mounted || !_shouldScheduleHoverProbe()) return;
+      widget.onCheck?.call();
+    });
+  }
+
+  void _cancelHoverProbe() {
+    _hoverProbeTimer?.cancel();
+    _hoverProbeTimer = null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -356,8 +403,14 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
           );
 
     final row = MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+      onEnter: (_) {
+        setState(() => _hovered = true);
+        _syncHoverProbe(true);
+      },
+      onExit: (_) {
+        setState(() => _hovered = false);
+        _syncHoverProbe(false);
+      },
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -447,8 +500,16 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
       showFocusBorder: false,
       showFocusFill: false,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange: mouseHover ? (h) => setState(() => _hovered = h) : null,
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+        _syncHoverProbe(focused || _hovered);
+      },
+      onHoverChange: mouseHover
+          ? (h) {
+              setState(() => _hovered = h);
+              _syncHoverProbe(h || _focused);
+            }
+          : null,
       child: row,
     );
   }
