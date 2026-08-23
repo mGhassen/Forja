@@ -141,13 +141,16 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   int _forjaLiveLoadGen = 0;
   String _forjaLivePluginFilter = 'all';
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
-  _LiveMatchesTimeWindow _timeWindow = _LiveMatchesTimeWindow.h3;
+  _LiveMatchesTimeWindow _timeWindow = _LiveMatchesTimeWindow.h1;
 
   /// Widest schedule window already ingested this session (refetch when user widens).
-  _LiveMatchesTimeWindow _catalogFetchedTimeWindow = _LiveMatchesTimeWindow.h3;
+  _LiveMatchesTimeWindow _catalogFetchedTimeWindow = _LiveMatchesTimeWindow.h1;
 
   /// Settings → Forja Sports **Catalog** toggles changed while this tab was hidden.
   bool _forjaLiveCatalogSettingsDirty = false;
+
+  /// Prevent stacking Servers / Catalog / Time bottom sheets on double-tap.
+  bool _topBarSheetOpen = false;
 
   static const _topBarServersIndex = 0;
 

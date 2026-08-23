@@ -687,9 +687,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
           onHoverChanged: onHoverChanged,
           tvRowId: tvRowId,
           tvZone: tvZone,
-          playableOverride:
-              (ppv.iframe.isNotEmpty || streamed.sources.isNotEmpty) &&
-              (ppv.isLive || streamed.isLive),
+          playableOverride: ppv.isLive || streamed.isLive,
           onTap: () => _s._openMergedMatch(ppv, streamed),
         ),
     };

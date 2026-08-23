@@ -3193,12 +3193,19 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       },
     );
 
-    final panelList = Container(
-      margin: EdgeInsets.only(
-        left: -ShellTokens.playerSidePanelPadding.left,
-        right: -ShellTokens.playerSidePanelPadding.right,
-      ),
-      child: list,
+    // Bleed past TorrentSourcesPanel horizontal padding (Container forbids
+    // negative margin). Keep header/footer inset; list tiles go edge-to-edge.
+    final hPad = ShellTokens.playerSidePanelPadding;
+    final panelList = LayoutBuilder(
+      builder: (context, constraints) {
+        final bleed = hPad.left + hPad.right;
+        return OverflowBox(
+          alignment: Alignment.center,
+          minWidth: constraints.maxWidth + bleed,
+          maxWidth: constraints.maxWidth + bleed,
+          child: list,
+        );
+      },
     );
 
     if (!tv) return panelList;

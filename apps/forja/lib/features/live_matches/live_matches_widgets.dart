@@ -1,6 +1,6 @@
 part of 'live_matches_screen.dart';
 
-// ─── Top bar: Servers / Catalog (green accent) + Refresh (white on TV focus) ─
+// ─── Top bar: Servers / Catalog / Time (neutral) + Refresh (white on TV focus) ─
 
 class _LiveMatchesTopBarActionButton extends StatefulWidget {
   const _LiveMatchesTopBarActionButton({
@@ -49,7 +49,7 @@ class _LiveMatchesTopBarActionButtonState
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
     final accent = widget.accent;
-    final decoration = _tvFocused
+    final decoration = _tvFocused && accent
         ? iptvFocusButtonDecoration(
             active: _active,
             tvFocused: true,
@@ -61,13 +61,15 @@ class _LiveMatchesTopBarActionButtonState
                 : Colors.white.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(_radius),
             border: Border.all(
-              color: accent
-                  ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
-                  : ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
+              color: _tvFocused
+                  ? Colors.white.withValues(alpha: 0.85)
+                  : accent
+                      ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
+                      : ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
             ),
           );
     final fg = _tvFocused
-        ? ForjaShellColors.brandGreen
+        ? (accent ? ForjaShellColors.brandGreen : Colors.white)
         : accent
             ? ForjaShellColors.brandGreen
             : cinematic.textSecondary;
@@ -708,6 +710,9 @@ class _LiveMatchesTimeWindowSheetState
 
   String _subtitleFor(_LiveMatchesTimeWindow window) {
     final range = _liveMatchesTimeWindowRange(window);
+    if (window == _LiveMatchesTimeWindow.live) {
+      return 'Only live and 24/7 right now';
+    }
     if (window == _LiveMatchesTimeWindow.all) {
       return 'Live, 24/7, and kickoffs in the next 24 hours';
     }
@@ -3437,7 +3442,9 @@ class _MergedMatchStreamSheetState extends State<_MergedMatchStreamSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            '$count ${count == 1 ? 'stream' : 'streams'}',
+            count == 0
+                ? 'No streams available'
+                : '$count ${count == 1 ? 'stream' : 'streams'}',
             style: const TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: 13,
@@ -3670,7 +3677,9 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            '${sorted.length} ${sorted.length == 1 ? 'stream' : 'streams'}',
+            sorted.isEmpty
+                ? 'No streams available'
+                : '${sorted.length} ${sorted.length == 1 ? 'stream' : 'streams'}',
             style: const TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: 13,
@@ -3946,15 +3955,8 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
   @override
   Widget build(BuildContext context) {
     final m = widget.match;
-    final hasSources =
-        m.sources.isNotEmpty ||
-        m.inlineStreams.isNotEmpty ||
-        m.isStremio ||
-        m.isIptvSports ||
-        m.sportMatchGame != null;
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
-    final canPlay =
-        widget.playableOverride ?? (hasSources && m.isLive);
+    final canPlay = widget.playableOverride ?? m.isLive;
     final policy = ShellScope.inputPolicyOf(context);
     final tv = ShellScope.metricsOf(context).usesTvDensity;
     final active =
@@ -3985,29 +3987,6 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
         _LiveMatchCornerBadge(label: '● LIVE', live: true, top: tv ? 6 : 8)
       else if (m.timeLabel.isNotEmpty)
         _LiveMatchCornerBadge(label: m.timeLabel, live: false, top: tv ? 6 : 8),
-      if (!hasSources)
-        Positioned(
-          bottom: 6,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                'Not yet available',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ),
     ];
 
     final Widget card;
@@ -4069,7 +4048,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
       card = _LiveMatchTvCaptionBody(
         active: active,
         title: m.title,
-        subtitle: hasSources ? null : 'Not yet available',
+        subtitle: null,
         visual: visual,
         overlays: [
           if (canPlay)
@@ -4265,9 +4244,8 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
   @override
   Widget build(BuildContext context) {
     final s = widget.stream;
-    final hasIframe = s.iframe.isNotEmpty;
     final hasTeams = s.homeTeam != null && s.awayTeam != null;
-    final canPlay = widget.playableOverride ?? (hasIframe && s.isLive);
+    final canPlay = widget.playableOverride ?? s.isLive;
     final showLive = (widget.playableOverride == true) || s.isLive;
     final policy = ShellScope.inputPolicyOf(context);
     final tv = ShellScope.metricsOf(context).usesTvDensity;
@@ -4324,29 +4302,6 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                     ),
                   ),
                 ],
-              ),
-            ),
-          ),
-        ),
-      if (!tv && !hasIframe)
-        Positioned(
-          bottom: 6,
-          left: 0,
-          right: 0,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                'Not yet available',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w600,
-                ),
               ),
             ),
           ),
@@ -4410,9 +4365,8 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
         );
       }
       final captionBits = <String>[
-        if (!hasIframe) 'Not yet available',
-        if (hasIframe && s.league.isNotEmpty) s.league,
-        if (hasIframe && s.viewers > 0) '${s.viewers} viewers',
+        if (s.league.isNotEmpty) s.league,
+        if (s.viewers > 0) '${s.viewers} viewers',
       ];
       card = _LiveMatchTvCaptionBody(
         active: active,

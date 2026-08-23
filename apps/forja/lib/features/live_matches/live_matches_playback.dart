@@ -84,10 +84,6 @@ mixin _LiveMatchesPlayback
     if (!ok) return;
 
     final hasPpv = ppv.iframe.isNotEmpty;
-    if (!hasPpv && streams.isEmpty) {
-      ForjaToast.info('No streams available for this event');
-      return;
-    }
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF141414),
@@ -126,27 +122,26 @@ mixin _LiveMatchesPlayback
       return;
     }
     final catalogMatches = _streamedMatchesForEvent(match, _s._streamedMatches);
-    if (catalogMatches.isEmpty) {
-      ForjaToast.info('Stream not yet available for this event');
-      return;
-    }
     if (forjaLive && (this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
       ForjaToast.info('Loading Forja Live plugins…');
       return;
     }
 
     final choices = <_StreamedStreamChoice>[];
-    final ok = await _runWithCancellableLoading('Resolving streams…', () async {
-      choices.addAll(await _resolveAllCatalogStreamChoices(catalogMatches));
-    });
-    if (!ok || !mounted) return;
+    if (catalogMatches.isNotEmpty) {
+      final ok = await _runWithCancellableLoading(
+        'Resolving streams…',
+        () async {
+          choices.addAll(await _resolveAllCatalogStreamChoices(catalogMatches));
+        },
+      );
+      if (!ok || !mounted) return;
+    }
 
-    if (choices.isEmpty) {
-      if (!forjaLive && catalogMatches.any((m) => m.sportMatchGame != null)) {
-        await _openIptvSportsMatch(match);
-        return;
-      }
-      ForjaToast.info('No streams available for this event');
+    if (choices.isEmpty &&
+        !forjaLive &&
+        catalogMatches.any((m) => m.sportMatchGame != null)) {
+      await _openIptvSportsMatch(match);
       return;
     }
 
@@ -943,7 +938,7 @@ mixin _LiveMatchesPlayback
       return;
     }
     if (s.iframe.isEmpty) {
-      ForjaToast.info('Stream not yet available for this event');
+      _showResolvedStreamSheet(_streamedMatchFromPpv(s), const []);
       return;
     }
     if (!mounted) return;

@@ -403,10 +403,11 @@ List<_DamiTvStream> _sortDamiTvLiveFirst(List<_DamiTvStream> items) {
 /// Max Forja Live catalog rows ingested per plugin (safety cap).
 const _kForjaLiveCatalogMaxPerPlugin = 100;
 
-enum _LiveMatchesTimeWindow { h1, h3, h6, all }
+enum _LiveMatchesTimeWindow { live, h1, h3, h6, all }
 
 int _liveMatchesTimeWindowRank(_LiveMatchesTimeWindow window) =>
     switch (window) {
+      _LiveMatchesTimeWindow.live => 0,
       _LiveMatchesTimeWindow.h1 => 1,
       _LiveMatchesTimeWindow.h3 => 2,
       _LiveMatchesTimeWindow.h6 => 3,
@@ -415,6 +416,7 @@ int _liveMatchesTimeWindowRank(_LiveMatchesTimeWindow window) =>
 
 String _liveMatchesTimeWindowLabel(_LiveMatchesTimeWindow window) =>
     switch (window) {
+      _LiveMatchesTimeWindow.live => 'Live',
       _LiveMatchesTimeWindow.h1 => '1h',
       _LiveMatchesTimeWindow.h3 => '3h',
       _LiveMatchesTimeWindow.h6 => '6h',
@@ -425,6 +427,10 @@ String _liveMatchesTimeWindowLabel(_LiveMatchesTimeWindow window) =>
   _LiveMatchesTimeWindow window,
 ) =>
     switch (window) {
+      _LiveMatchesTimeWindow.live => (
+        past: Duration.zero,
+        future: Duration.zero,
+      ),
       _LiveMatchesTimeWindow.h1 => (
         past: const Duration(hours: 1),
         future: const Duration(hours: 1),
@@ -445,6 +451,7 @@ String _liveMatchesTimeWindowLabel(_LiveMatchesTimeWindow window) =>
 
 _LiveMatchesTimeWindow? _liveMatchesTimeWindowFromPref(String? raw) {
   return switch (raw) {
+    'live' => _LiveMatchesTimeWindow.live,
     '1h' => _LiveMatchesTimeWindow.h1,
     '3h' => _LiveMatchesTimeWindow.h3,
     '6h' => _LiveMatchesTimeWindow.h6,
@@ -454,7 +461,10 @@ _LiveMatchesTimeWindow? _liveMatchesTimeWindowFromPref(String? raw) {
 }
 
 String _liveMatchesTimeWindowPref(_LiveMatchesTimeWindow window) =>
-    _liveMatchesTimeWindowLabel(window).toLowerCase();
+    switch (window) {
+      _LiveMatchesTimeWindow.live => 'live',
+      _ => _liveMatchesTimeWindowLabel(window).toLowerCase(),
+    };
 
 bool _kickoffInTimeWindow({
   required int epochMs,
@@ -462,6 +472,9 @@ bool _kickoffInTimeWindow({
   required bool alwaysOn,
   required bool liveOrAiring,
 }) {
+  if (window == _LiveMatchesTimeWindow.live) {
+    return alwaysOn || liveOrAiring;
+  }
   if (alwaysOn || liveOrAiring) return true;
   if (epochMs <= 0) return false;
   final ms = epochMs >= 1000000000000 ? epochMs : epochMs * 1000;

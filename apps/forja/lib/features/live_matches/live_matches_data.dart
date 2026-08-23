@@ -76,65 +76,87 @@ mixin _LiveMatchesData
   }
 
   void _openServerPicker() {
+    if (_s._topBarSheetOpen) return;
+    _s._topBarSheetOpen = true;
     unawaited(() async {
-      await _s._clampServerIfForjaSportsDisabled(reload: true);
-      if (!mounted) return;
-      showModalBottomSheet<void>(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: const Color(0xFF141414),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        builder: (_) => _LiveMatchesServerSheet(
-          current: _s._server,
-          onSelected: (server) {
-            Navigator.pop(context);
-            unawaited(_selectServer(server));
-          },
-        ),
-      );
+      try {
+        await _s._clampServerIfForjaSportsDisabled(reload: false);
+        if (!mounted) return;
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: const Color(0xFF141414),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => _LiveMatchesServerSheet(
+            current: _s._server,
+            onSelected: (server) {
+              Navigator.pop(context);
+              unawaited(_selectServer(server));
+            },
+          ),
+        );
+      } finally {
+        _s._topBarSheetOpen = false;
+      }
     }());
   }
 
   void _openCatalogPicker() {
+    if (_s._topBarSheetOpen) return;
     final loads = _s._forjaLivePluginLoads.values.toList()
       ..sort((a, b) => a.label.compareTo(b.label));
     if (loads.isEmpty) return;
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _LiveMatchesCatalogSheet(
-        current: _s._forjaLivePluginFilter,
-        catalogs: loads,
-        onSelected: (filter) {
-          Navigator.pop(context);
-          (this as _LiveMatchesForjaLive)._setForjaLivePluginFilter(filter);
-        },
-      ),
-    );
+    _s._topBarSheetOpen = true;
+    unawaited(() async {
+      try {
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: const Color(0xFF141414),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => _LiveMatchesCatalogSheet(
+            current: _s._forjaLivePluginFilter,
+            catalogs: loads,
+            onSelected: (filter) {
+              Navigator.pop(context);
+              (this as _LiveMatchesForjaLive)._setForjaLivePluginFilter(filter);
+            },
+          ),
+        );
+      } finally {
+        _s._topBarSheetOpen = false;
+      }
+    }());
   }
 
   void _openTimeWindowPicker() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _LiveMatchesTimeWindowSheet(
-        current: _s._timeWindow,
-        onSelected: (window) {
-          Navigator.pop(context);
-          (this as _LiveMatchesForjaLive)._setTimeWindow(window);
-        },
-      ),
-    );
+    if (_s._topBarSheetOpen) return;
+    _s._topBarSheetOpen = true;
+    unawaited(() async {
+      try {
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: const Color(0xFF141414),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => _LiveMatchesTimeWindowSheet(
+            current: _s._timeWindow,
+            onSelected: (window) {
+              Navigator.pop(context);
+              (this as _LiveMatchesForjaLive)._setTimeWindow(window);
+            },
+          ),
+        );
+      } finally {
+        _s._topBarSheetOpen = false;
+      }
+    }());
   }
 
   Future<void> _toggleIptvPortalPanel() async {
@@ -155,7 +177,7 @@ mixin _LiveMatchesData
     return _LiveMatchesTopBarActionButton(
       label: _liveMatchesServerLabel(_s._server),
       icon: Icons.dns_rounded,
-      accent: true,
+      accent: false,
       tvItemIndex: _LiveMatchesScreenState._topBarServersIndex,
       onTap: _openServerPicker,
       onLeftEdge: shellTvNavLeftEdge(
@@ -177,7 +199,7 @@ mixin _LiveMatchesData
     return _LiveMatchesTopBarActionButton(
       label: _catalogTopBarLabel,
       icon: Icons.video_library_rounded,
-      accent: true,
+      accent: false,
       tvItemIndex: _s._topBarCatalogIndex,
       onTap: _openCatalogPicker,
       onLeftEdge: () =>
@@ -193,7 +215,7 @@ mixin _LiveMatchesData
     return _LiveMatchesTopBarActionButton(
       label: _liveMatchesTimeWindowLabel(_s._timeWindow),
       icon: Icons.schedule_rounded,
-      accent: true,
+      accent: false,
       tvItemIndex: _s._topBarTimeIndex,
       onTap: _openTimeWindowPicker,
       onLeftEdge: () => _focusTopBarItem(

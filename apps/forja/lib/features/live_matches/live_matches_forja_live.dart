@@ -48,14 +48,7 @@ mixin _LiveMatchesForjaLive
       _s._forjaLivePluginLoads.values.any((e) => e.loading);
 
   bool _forjaLiveMatchPlayable(_StreamedMatch match) {
-    if (_forjaLiveAnyLoading || !match.isLive) return false;
-    return _streamedMatchesForEvent(match, _s._streamedMatches).any(
-      (m) =>
-          m.sources.isNotEmpty ||
-          m.inlineStreams.isNotEmpty ||
-          m.isStremio ||
-          m.sportMatchGame != null,
-    );
+    return !_forjaLiveAnyLoading && match.isLive;
   }
 
   List<_StreamedMatch> get _displayStreamedMatches {
