@@ -313,16 +313,22 @@ function parseEmbedIndiaUrl(raw) {
   if (!u || !isEmbedIndiaUrl(u)) return null;
   try {
     var url = new URL(u);
-    var em = url.pathname.match(/^\/embed\/([^/]+)\/([^/]+)\/([^/]+)\/?$/);
+    // Sports: /embed/{league}/{date}/{slug}
+    // Events (UFC etc.): /embed/{slug} or /embed/{slug}/{variant}
+    var em = url.pathname.match(/^\/embed\/(.+?)\/?$/);
     if (!em) return null;
+    var path = em[1].replace(/\/+$/, '');
+    if (!path || path.indexOf('..') >= 0) return null;
+    var parts = path.split('/').filter(Boolean);
+    if (!parts.length) return null;
     var gid = url.searchParams.get('gid') || '';
     return {
       origin: url.origin,
-      league: em[1],
-      date: em[2],
-      slug: em[3],
+      league: parts.length >= 3 ? parts[0] : '',
+      date: parts.length >= 3 ? parts[1] : '',
+      slug: parts.length >= 3 ? parts[2] : parts[parts.length - 1],
       gid: gid,
-      path: em[1] + '/' + em[2] + '/' + em[3],
+      path: path,
     };
   } catch (_) {}
   return null;

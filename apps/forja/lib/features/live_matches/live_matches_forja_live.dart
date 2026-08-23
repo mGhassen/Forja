@@ -127,17 +127,8 @@ mixin _LiveMatchesForjaLive
     if (_s._forjaLivePluginFilter == filter) return;
     setState(() => _s._forjaLivePluginFilter = filter);
     unawaited(_persistForjaLiveCatalogFilterPreference(filter));
-    if (_forjaLiveAnyLoading) {
-      EngineService.instance.cancelLiveCatalog();
-      setState(() {
-        _s._forjaLivePluginLoads = {
-          for (final e in _s._forjaLivePluginLoads.entries)
-            e.key: e.value.loading && !e.value.attempted
-                ? e.value.copyWith(loading: false)
-                : e.value,
-        };
-      });
-    }
+    // Do not cancel in-flight catalog scrapes — finished rows stay cached
+    // (`attempted`) so switching chips / All never re-fetches.
     _kickForjaLiveLazyCatalog();
   }
 
@@ -292,37 +283,15 @@ mixin _LiveMatchesForjaLive
     return out;
   }
 
-  void _abortForjaLiveCatalogLoad(String filterId, int gen) {
-    if (!mounted || gen != _s._forjaLiveLoadGen) return;
-    final load = _s._forjaLivePluginLoads[filterId];
-    if (load == null || !load.loading || load.attempted) return;
-    setState(() {
-      _s._forjaLivePluginLoads[filterId] = load.copyWith(loading: false);
-    });
-  }
-
   Future<void> _loadOneForjaLiveCatalog({
     required EnginePlugin catalog,
     required int gen,
   }) async {
     final filterId = EngineService.catalogFilterId(catalog);
-    bool stillWanted() {
-      if (!mounted || gen != _s._forjaLiveLoadGen) return false;
-      final f = _s._forjaLivePluginFilter;
-      return f == 'all' || f == filterId;
-    }
+    bool genAlive() => mounted && gen == _s._forjaLiveLoadGen;
 
-    if (!stillWanted()) {
-      if (mounted && gen == _s._forjaLiveLoadGen) {
-        final load = _s._forjaLivePluginLoads[filterId];
-        if (load != null && load.loading && !load.attempted) {
-          setState(() {
-            _s._forjaLivePluginLoads[filterId] = load.copyWith(loading: false);
-          });
-        }
-      }
-      return;
-    }
+    final load = _s._forjaLivePluginLoads[filterId];
+    if (load == null || load.loading || load.attempted) return;
 
     setState(() {
       _s._forjaLivePluginLoads[filterId] =
@@ -331,18 +300,13 @@ mixin _LiveMatchesForjaLive
 
     try {
       final extraConfig = await _liveCatalogExtraConfig(catalog);
-      if (!stillWanted()) {
-        _abortForjaLiveCatalogLoad(filterId, gen);
-        return;
-      }
+      if (!genAlive()) return;
       final rows = await EngineService.instance.runLiveCatalog(
         catalogPlugin: catalog,
         extraConfig: extraConfig,
       );
-      if (!stillWanted()) {
-        _abortForjaLiveCatalogLoad(filterId, gen);
-        return;
-      }
+      // Always cache on success — chip filter must not discard finished rows.
+      if (!genAlive()) return;
       if (catalog.id == 'catalog-ppv') {
         final streams = rows
             .map(_damiTvFromPpvCatalogRow)
@@ -393,7 +357,7 @@ mixin _LiveMatchesForjaLive
       _rebuildSportTabsFromCurrentMatches();
     } catch (e) {
       debugPrint('[LiveMatches] Forja Live ${catalog.id}: $e');
-      if (!mounted || gen != _s._forjaLiveLoadGen) return;
+      if (!genAlive()) return;
       setState(() {
         _s._forjaLivePluginLoads[filterId] =
             _s._forjaLivePluginLoads[filterId]!.copyWith(
@@ -428,9 +392,10 @@ mixin _LiveMatchesForjaLive
       return;
     }
 
+    // Finish every catalog in [toLoad] even if the chip filter changes mid-loop
+    // so each scrape is cached once (`attempted`) for the session.
     for (final catalog in toLoad) {
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
-      if (_s._forjaLivePluginFilter != filter) return;
       await _loadOneForjaLiveCatalog(catalog: catalog, gen: gen);
     }
 

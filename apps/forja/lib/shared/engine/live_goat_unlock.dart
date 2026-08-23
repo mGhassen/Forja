@@ -219,7 +219,10 @@ class LiveGoatUnlock {
     final embed = embedUrl.trim();
     if (embed.isEmpty) return null;
     final slot = _parseEmbedIndiaSlot(embed);
-    if (slot == null) return null;
+    if (slot == null) {
+      debugPrint('[LiveGasmUnlock] unparseable embedindia url: $embed');
+      return null;
+    }
 
     final origin = (slot['origin'] ?? _embedIndiaOrigin).toString().replaceAll(
       RegExp(r'/+$'),
@@ -247,12 +250,12 @@ class LiveGoatUnlock {
           )
           .timeout(const Duration(seconds: 20));
       if (resp.statusCode < 200 || resp.statusCode >= 300) {
-        debugPrint('[LiveGasmUnlock] /fetch HTTP ${resp.statusCode}');
+        debugPrint('[LiveGasmUnlock] /fetch HTTP ${resp.statusCode} path=$path');
         return null;
       }
       final island = resp.headers['island'] ?? '';
       if (island.isEmpty) {
-        debugPrint('[LiveGasmUnlock] /fetch missing island header');
+        debugPrint('[LiveGasmUnlock] /fetch missing island header path=$path');
         return null;
       }
       final bodyHex = resp.bodyBytes
@@ -263,7 +266,10 @@ class LiveGoatUnlock {
         island: island,
         bodyHex: bodyHex,
       );
-      if (m3u8 == null || m3u8.isEmpty) return null;
+      if (m3u8 == null || m3u8.isEmpty) {
+        debugPrint('[LiveGasmUnlock] unlock returned empty path=$path');
+        return null;
+      }
       return (
         url: m3u8,
         headers: playbackHeadersForEmbedIndia(slot, embedUrl: embed),
@@ -279,13 +285,17 @@ class LiveGoatUnlock {
     required String embedUrl,
   }) async {
     final embed = embedUrl.trim();
-    if (embed.isEmpty) return null;
+    if (embed.isEmpty) {
+      debugPrint('[LiveGasmUnlock] resolvePpv empty embed');
+      return null;
+    }
     if (isEmbedIndiaUrl(embed)) {
       return resolveEmbedIndia(embedUrl: embed);
     }
     if (embed.contains('embed.st')) {
       return resolveStreamed(embedUrl: embed);
     }
+    debugPrint('[LiveGasmUnlock] resolvePpv unsupported host: $embed');
     return null;
   }
 

@@ -146,5 +146,28 @@ void main() {
         isNull,
       );
     });
+
+    test('parses event slug-only embed paths', () {
+      final slot = LiveGoatUnlock.parseEmbedIndiaSlot(
+        'https://embedindia.st/embed/ufc-fight-night-hernandez-vs-rodrigues',
+      );
+      expect(slot, isNotNull);
+      expect(slot!['path'], 'ufc-fight-night-hernandez-vs-rodrigues');
+      expect(slot['slug'], 'ufc-fight-night-hernandez-vs-rodrigues');
+      expect(slot['league'], '');
+      expect(slot['date'], '');
+    });
+
+    test('parses event slug/variant embed paths', () {
+      final slot = LiveGoatUnlock.parseEmbedIndiaSlot(
+        'https://embedindia.st/embed/ufc-fight-night-hernandez-vs-rodrigues/paramount-es',
+      );
+      expect(slot, isNotNull);
+      expect(
+        slot!['path'],
+        'ufc-fight-night-hernandez-vs-rodrigues/paramount-es',
+      );
+      expect(slot['slug'], 'paramount-es');
+    });
   });
 }
