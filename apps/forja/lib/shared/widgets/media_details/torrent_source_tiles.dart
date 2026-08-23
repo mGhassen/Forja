@@ -634,41 +634,16 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                     ),
                                   ),
                                 ),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      widget.title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: cinematic.textPrimary,
-                                        fontSize: titleSize,
-                                        height: 1.25,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ),
-                                  if (showCopyMagnet) ...[
-                                    const SizedBox(width: 4),
-                                    ForjaPlainIcon(
-                                      icon: Icons.content_copy_rounded,
-                                      tooltip: 'Copy magnet',
-                                      size: 15,
-                                      hitSize: 24,
-                                      color: cinematic.textSecondary,
-                                      onTap: () async {
-                                        await Clipboard.setData(
-                                          ClipboardData(text: magnet),
-                                        );
-                                        ForjaToast.success(
-                                          'Magnet copied',
-                                          duration: const Duration(seconds: 2),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ],
+                              Text(
+                                widget.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: cinematic.textPrimary,
+                                  fontSize: titleSize,
+                                  height: 1.25,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                               if (hasLanguageFlags ||
                                   widget.badges.isNotEmpty) ...[
@@ -690,7 +665,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                             ],
                           ),
                         ),
-                        if (hasProvider || hasSeeders) ...[
+                        if (hasProvider || hasSeeders || showCopyMagnet) ...[
                           const SizedBox(width: 8),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 120),
@@ -742,6 +717,26 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                         ),
                                       ),
                                     ],
+                                  ),
+                                ],
+                                if (showCopyMagnet) ...[
+                                  if (hasProvider || hasSeeders)
+                                    const SizedBox(height: 2),
+                                  ForjaPlainIcon(
+                                    icon: Icons.content_copy_rounded,
+                                    tooltip: 'Copy magnet',
+                                    size: 15,
+                                    hitSize: 24,
+                                    color: cinematic.textSecondary,
+                                    onTap: () async {
+                                      await Clipboard.setData(
+                                        ClipboardData(text: magnet),
+                                      );
+                                      ForjaToast.success(
+                                        'Magnet copied',
+                                        duration: const Duration(seconds: 2),
+                                      );
+                                    },
                                   ),
                                 ],
                               ],
