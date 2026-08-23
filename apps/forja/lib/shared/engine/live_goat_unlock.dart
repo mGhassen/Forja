@@ -423,21 +423,22 @@ class LiveGoatUnlock {
     if (!isEmbedIndiaUrl(trimmed)) return null;
     final u = Uri.tryParse(trimmed);
     if (u == null) return null;
-    final em = RegExp(
-      r'^/embed/([^/]+)/([^/]+)/([^/]+)/?$',
-    ).firstMatch(u.path);
+    // Sports: /embed/{league}/{date}/{slug}
+    // Events (UFC etc.): /embed/{slug} or /embed/{slug}/{variant}
+    final em = RegExp(r'^/embed/(.+?)/?$').firstMatch(u.path);
     if (em == null) return null;
-    final league = em.group(1)!;
-    final date = em.group(2)!;
-    final slug = em.group(3)!;
+    final path = em.group(1)!.replaceAll(RegExp(r'/+$'), '');
+    if (path.isEmpty || path.contains('..')) return null;
+    final parts = path.split('/').where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return null;
     final gid = u.queryParameters['gid'] ?? '';
     return {
       'origin': u.origin,
-      'league': league,
-      'date': date,
-      'slug': slug,
+      'league': parts.length >= 3 ? parts[0] : '',
+      'date': parts.length >= 3 ? parts[1] : '',
+      'slug': parts.length >= 3 ? parts[2] : parts.last,
       'gid': gid,
-      'path': '$league/$date/$slug',
+      'path': path,
     };
   }
 
@@ -660,8 +661,8 @@ class LiveGoatUnlock {
         '${_cachedGasmDir!}/node_modules/happy-dom/package.json',
       );
       if (await ready.exists()) {
-        // Always refresh unlock.mjs + wasm — cache used to stick on a broken
-        // script after first npm install (empty {"ok":false,"error":""}).
+        // Always refresh unlock + wasm — cache used to stick on a broken
+        // script after first npm install.
         await _refreshGasmAssets(_cachedGasmDir!);
         return _cachedGasmDir!;
       }
@@ -680,9 +681,19 @@ class LiveGoatUnlock {
       '$_gasmAssetRoot/unlock.mjs',
       File('$dir/unlock.mjs'),
     );
+    // Ref pair (ppv-hls-stream-resolver) — offsets in unlock.mjs match this wasm.
     await _writeAsset(
       '$_gasmAssetRoot/vendor/gasm.wasm',
       File('$dir/vendor/gasm.wasm'),
+    );
+    await _writeAsset(
+      '$_gasmAssetRoot/vendor/gasm.js',
+      File('$dir/vendor/gasm.js'),
+    );
+    // Live embedindia pair (fallback).
+    await _writeAsset(
+      '$_gasmAssetRoot/vendor/gasm-live.wasm',
+      File('$dir/vendor/gasm-live.wasm'),
     );
     await _writeAsset(
       '$_gasmAssetRoot/vendor/gasm-esm.mjs',
@@ -692,7 +703,8 @@ class LiveGoatUnlock {
 
   static Future<void> _prepareGasmDir(String node) async {
     final support = await getApplicationSupportDirectory();
-    final dir = Directory('${support.path}/live-gasm');
+    // v3: pin happy-dom@20.11.6 and drop --prefer-offline (v2 hit ETARGET offline).
+    final dir = Directory('${support.path}/live-gasm-v3');
     await dir.create(recursive: true);
 
     // Always overwrite unlock/wasm from the app bundle (script changes often).
@@ -708,18 +720,19 @@ class LiveGoatUnlock {
       if (npm == null) {
         throw StateError('npm not found (needed once for GASM unlock deps)');
       }
+      // Clean lock from any half-failed prior install.
+      final lock = File('${dir.path}/package-lock.json');
+      if (await lock.exists()) await lock.delete();
       final install = await Process.run(
         npm,
         [
           'install',
-          'happy-dom@17',
-          'big-integer@1.6.52',
           '--no-fund',
           '--no-audit',
-          '--prefer-offline',
+          '--no-package-lock',
         ],
         workingDirectory: dir.path,
-      ).timeout(const Duration(minutes: 2));
+      ).timeout(const Duration(minutes: 3));
       if (install.exitCode != 0) {
         throw StateError(
           'npm install failed: ${install.stderr.toString().trim()}',

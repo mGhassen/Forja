@@ -1,11 +1,38 @@
+/**
+ * Port of sharoon7171/ppv-hls-stream-resolver src/embed/decrypt.js
+ * POST /fetch is done in Dart; this only runs set_stream_jw(island, body)
+ * then scrapes WASM linear memory for the CDN m3u8.
+ */
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Window } from 'happy-dom'
 
 const vendorDir = join(dirname(fileURLToPath(import.meta.url)), 'vendor')
-const wasmBytes = readFileSync(join(vendorDir, 'gasm.wasm'))
-const gasmModuleUrl = pathToFileURL(join(vendorDir, 'gasm-esm.mjs')).href
+const nodeRequire = createRequire(import.meta.url)
+
+/** Prefer ref pair (offsets match decrypt.js). Fall back to live embedindia pair. */
+const PAIRS = [
+  {
+    name: 'ref',
+    js: join(vendorDir, 'gasm.js'),
+    wasm: join(vendorDir, 'gasm.wasm'),
+    applyFlags: true,
+  },
+  {
+    name: 'live',
+    js: join(vendorDir, 'gasm-esm.mjs'),
+    wasm: join(vendorDir, 'gasm-live.wasm'),
+    applyFlags: true,
+  },
+  {
+    name: 'live-noflags',
+    js: join(vendorDir, 'gasm-esm.mjs'),
+    wasm: join(vendorDir, 'gasm-live.wasm'),
+    applyFlags: false,
+  },
+]
 
 function pagePath(slot) {
   return slot.path || `${slot.league}/${slot.date}/${slot.slug}`
@@ -24,7 +51,6 @@ function readVarint(buf, offset) {
   return { value, next: i }
 }
 
-/** Protobuf field 2 string from /fetch body — slug used to pick the right m3u8. */
 function slugFromFetchBody(body) {
   const buf = Buffer.from(body)
   let i = 0
@@ -57,23 +83,30 @@ function extractUrl(memory, slug) {
   return matches[matches.length - 1]
 }
 
-/**
- * Port of sharoon7171/ppv-hls-stream-resolver decrypt:
- * set_stream_jw(island, bodyBytes) then scrape WASM linear memory for CDN m3u8.
- */
-async function crack(slot, island, bodyHex, embedOrigin) {
-  const body = Buffer.from(bodyHex, 'hex')
-  const path = pagePath(slot)
-  const slug = slugFromFetchBody(body)
-  const pageUrl = `${embedOrigin}/embed/${path}${
-    slot.gid ? `?gid=${encodeURIComponent(slot.gid)}` : ''
-  }`
+/** Same linear-memory flags as decrypt.js (tuned for ref gasm.wasm). */
+function applyRefFlags(memory) {
+  const u8 = new Uint8Array(memory.buffer)
+  const dv = new DataView(memory.buffer)
+  if (u8.length <= 1070513) return
+  u8[1070512] = 3
+  u8[1070513] = 1
+  u8[1070488] = 1
+  u8[1070508] = 1
+  dv.setInt32(1070476, -2147483648, true)
+  dv.setInt32(1070472, 0, true)
+  dv.setInt32(1070496, -2147483648, true)
+  dv.setInt32(1070492, 0, true)
+}
 
+async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
+  const wasmBytes = readFileSync(pair.wasm)
   const saved = {
     fetch: globalThis.fetch,
     Request: globalThis.Request,
     Response: globalThis.Response,
+    require: globalThis.require,
     window: globalThis.window,
+    Window: globalThis.Window,
     document: globalThis.document,
     location: globalThis.location,
     self: globalThis.self,
@@ -101,7 +134,14 @@ async function crack(slot, island, bodyHex, embedOrigin) {
     enumerable: false,
   })
 
-  const window = new Window({ url: pageUrl })
+  const window = new Window({
+    url: `${embedOrigin}/embed/${path}`,
+    settings: {
+      disableJavaScriptFileLoading: true,
+      disableJavaScriptEvaluation: false,
+    },
+  })
+
   window.eval = () => undefined
   window.jwplayer = () => jwPlayer
   window.__wasm_jw_player = jwPlayer
@@ -115,28 +155,12 @@ async function crack(slot, island, bodyHex, embedOrigin) {
       ? `${embedOrigin}${url}`
       : url
 
-  const embedFetch = async (input) => {
-    const href =
-      typeof input === 'string'
-        ? input
-        : input?.url != null
-          ? String(input.url)
-          : String(input)
-    if (href.includes('gasm.wasm') || href.endsWith('.wasm')) {
-      return new window.Response(wasmBytes, {
-        status: 200,
-        headers: { 'Content-Type': 'application/wasm' },
-      })
-    }
-    // WASM always re-hits /fetch; feed the already-captured island+body.
-    return new window.Response(body, {
+  // WASM always re-hits /fetch; feed captured island+body (never network).
+  const embedFetch = async () =>
+    new window.Response(body, {
       status: 200,
-      headers: {
-        'content-type': 'application/octet-stream',
-        island,
-      },
+      headers: { 'content-type': 'application/octet-stream', island },
     })
-  }
 
   const BaseRequest = saved.Request
   globalThis.Request = class extends BaseRequest {
@@ -148,13 +172,22 @@ async function crack(slot, island, bodyHex, embedOrigin) {
       super(input, init)
     }
   }
+
   globalThis.fetch = embedFetch
   window.fetch = embedFetch
   window.Request = globalThis.Request
   globalThis.Response = window.Response
+  globalThis.require = (name) => {
+    try {
+      return nodeRequire(name)
+    } catch {
+      return {}
+    }
+  }
 
   Object.assign(globalThis, {
     window,
+    Window,
     document: window.document,
     location: window.location,
     self: window,
@@ -162,46 +195,27 @@ async function crack(slot, island, bodyHex, embedOrigin) {
   })
 
   try {
-    const mod = await import(gasmModuleUrl)
-    const wasm = await mod.default({
-      module_or_path: wasmBytes,
-      fetch: embedFetch,
-    })
+    const mod = await import(`${pathToFileURL(pair.js).href}?t=${Date.now()}`)
+    const wasm = await mod.default({ module_or_path: wasmBytes })
 
-    // Flags used by the public gasm build (same offsets as ppv-hls-stream-resolver).
-    try {
-      const u8 = new Uint8Array(wasm.memory.buffer)
-      const dv = new DataView(wasm.memory.buffer)
-      if (u8.length > 1070513) {
-        u8[1070512] = 3
-        u8[1070513] = 1
-        u8[1070488] = 1
-        u8[1070508] = 1
-        dv.setInt32(1070476, -2147483648, true)
-        dv.setInt32(1070472, 0, true)
-        dv.setInt32(1070496, -2147483648, true)
-        dv.setInt32(1070492, 0, true)
-      }
-    } catch (_) {}
+    if (pair.applyFlags) {
+      try {
+        applyRefFlags(wasm.memory)
+      } catch (_) {}
+    }
 
-    await wasm.init_wasm?.()
-
-    const call = wasm.set_stream_jw(island, new Uint8Array(body))
+    const result = wasm.set_stream_jw(island, new Uint8Array(body))
     await Promise.race([
-      Promise.resolve(call),
+      Promise.resolve(result),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('set_stream_jw timeout')), 15000),
+        setTimeout(() => reject(new Error('timeout')), 15000),
       ),
     ]).catch(() => {})
-
-    try {
-      await wasm.on_unmute?.()
-    } catch (_) {}
 
     const streamUrl = extractUrl(wasm.memory, slug)
     if (!streamUrl) {
       throw new Error(
-        `gasm did not yield m3u8 (slug=${slug || '-'} island=${island.length}B body=${body.length}B)`,
+        `${pair.name}: no m3u8 (slug=${slug || '-'} mem=${wasm.memory.buffer.byteLength})`,
       )
     }
     return streamUrl
@@ -209,7 +223,9 @@ async function crack(slot, island, bodyHex, embedOrigin) {
     globalThis.fetch = saved.fetch
     globalThis.Request = saved.Request
     globalThis.Response = saved.Response
+    globalThis.require = saved.require
     globalThis.window = saved.window
+    globalThis.Window = saved.Window
     globalThis.document = saved.document
     globalThis.location = saved.location
     globalThis.self = saved.self
@@ -217,11 +233,36 @@ async function crack(slot, island, bodyHex, embedOrigin) {
   }
 }
 
+async function crack(slot, island, bodyHex, embedOrigin) {
+  if (!island || !bodyHex) throw new Error('missing island or bodyHex')
+  const body = Buffer.from(bodyHex, 'hex')
+  const path = pagePath(slot)
+  const slug = slugFromFetchBody(body)
+  const errors = []
+
+  for (const pair of PAIRS) {
+    try {
+      readFileSync(pair.js)
+      readFileSync(pair.wasm)
+    } catch (e) {
+      errors.push(`${pair.name}: missing assets (${e.message})`)
+      continue
+    }
+    try {
+      return await decryptWithPair(pair, island, body, embedOrigin, path, slug)
+    } catch (e) {
+      errors.push(String(e?.message || e))
+    }
+  }
+
+  throw new Error(`gasm did not yield m3u8 — ${errors.join(' | ')}`)
+}
+
 const input = JSON.parse(readFileSync(0, 'utf8'))
 crack(
-  input.slot,
-  input.island,
-  input.bodyHex,
+  input.slot || {},
+  input.island || '',
+  input.bodyHex || '',
   input.embedOrigin || 'https://embedindia.st',
 )
   .then((url) => {

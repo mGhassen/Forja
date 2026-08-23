@@ -252,7 +252,14 @@ class _StreamedMatch {
       awayBadge: away?['badge'] as String?,
       sources: (j['sources'] as List? ?? [])
           .map((s) => _StreamedSourceRef.fromJson(s as Map<String, dynamic>))
-          .where((s) => s.source.isNotEmpty && s.id.isNotEmpty)
+          .where(
+            (s) =>
+                s.source.isNotEmpty &&
+                s.id.isNotEmpty &&
+                // streamed.pk lists echo in match metadata but `/api/stream/echo/…`
+                // is empty and the site UI never offers it — hide like the website.
+                s.source.trim().toLowerCase() != 'echo',
+          )
           .toList(),
       inlineStreams: (j['streams'] as List? ?? [])
           .map((s) {
@@ -263,7 +270,11 @@ class _StreamedMatch {
             }
           })
           .whereType<_StreamedStream>()
-          .where((s) => s.embedUrl.isNotEmpty)
+          .where(
+            (s) =>
+                s.embedUrl.isNotEmpty &&
+                s.source.trim().toLowerCase() != 'echo',
+          )
           .toList(),
       catalog: (j['catalog'] ?? '').toString(),
       stremioBaseUrl: (j['stremioBaseUrl'] ?? '').toString(),
@@ -1746,6 +1757,7 @@ List<_StreamedStream> _streamedEmbedFallbackStreams(_StreamedSourceRef sourceRef
   final source = sourceRef.source.trim();
   final id = sourceRef.id.trim();
   if (source.isEmpty || id.isEmpty) return const [];
+  if (source.toLowerCase() == 'echo') return const [];
   return [
     _StreamedStream(
       id: id,
@@ -2792,6 +2804,7 @@ Future<List<_StreamedStream>> _fetchStreamedStreams(
   _StreamedSourceRef sourceRef, {
   bool allowFallback = true,
 }) async {
+  if (sourceRef.source.trim().toLowerCase() == 'echo') return const [];
   try {
     final raw = await runLiveMatchesFetchJson(
       jsonEncode({

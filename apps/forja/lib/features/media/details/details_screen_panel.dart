@@ -950,13 +950,28 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       },
     );
 
+    // Full-bleed list past panel horizontal padding (Container forbids negative margin).
     final panelList = inPanel
-        ? Container(
-            margin: EdgeInsets.only(
-              left: -DetailsTokens.sourcesPanelPadding.left,
-              right: -DetailsTokens.sourcesPanelPadding.right,
-            ),
-            child: list,
+        ? LayoutBuilder(
+            builder: (context, constraints) {
+              final inset = DetailsTokens.sourcesPanelPadding;
+              return SizedBox(
+                width: constraints.maxWidth,
+                height: constraints.maxHeight,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      left: -inset.left,
+                      right: -inset.right,
+                      top: 0,
+                      bottom: 0,
+                      child: list,
+                    ),
+                  ],
+                ),
+              );
+            },
           )
         : list;
 
