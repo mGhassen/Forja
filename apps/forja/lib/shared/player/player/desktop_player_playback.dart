@@ -169,6 +169,7 @@ mixin _DesktopPlayerPlayback
             url: openUrl,
             headers: srcHeaders,
             providerId: source.providerId ?? _s._currentProvider,
+            startAt: seekAfterOpen,
           );
           if (_fallbackAborted(runGen)) return false;
           _s._player.setVolume(_s._volumeNotifier.value);
@@ -264,6 +265,7 @@ mixin _DesktopPlayerPlayback
               // so a direct fallback / re-open keeps Referer.
               headers: step.headers ?? hdrs,
               providerId: pid,
+              startAt: seekAfterOpen,
             );
             if (_fallbackAborted(runGen)) return false;
             _s._player.setVolume(_s._volumeNotifier.value);
@@ -337,14 +339,9 @@ mixin _DesktopPlayerPlayback
           buffered: _s._bufferedNotifier,
         );
         if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
-          final dur = _s._player.state.duration;
-          final nearCredits =
-              dur.inSeconds >= 90 &&
-              seekAfterOpen >= dur - const Duration(seconds: 15);
-          if (!nearCredits) {
-            await _s._player.seek(seekAfterOpen);
-            if (_fallbackAborted(runGen)) return false;
-          }
+          // Open used mpv `start`; hard-seek only if still far from target.
+          await ensureOpenedNearPosition(_s._player, seekAfterOpen);
+          if (_fallbackAborted(runGen)) return false;
           _s._hasInitialSeek = true;
         }
         // Quality menu needs the master — play URL may already be a capped variant.
@@ -408,6 +405,8 @@ mixin _DesktopPlayerPlayback
   Future<void> _initPlayback({
     int sourceStartIndex = 0,
     bool resetEofSession = true,
+    /// Mid-watch Auto / re-init: keep live playhead (else [widget.startPosition]).
+    Duration? seekOverride,
   }) async {
     if (_s._disposed) return;
     if (_s._isInitPlaybackRunning) {
@@ -415,6 +414,7 @@ mixin _DesktopPlayerPlayback
     }
     _s._isInitPlaybackRunning = true;
     final initGen = _s._fallbackGen;
+    final resumeAt = seekOverride ?? widget.startPosition;
     if (resetEofSession) {
       _s._resetEofSessionGuards();
     }
@@ -440,7 +440,7 @@ mixin _DesktopPlayerPlayback
         final played = await _trySourcesFromIndex(
           startIndex,
           chainGen: initGen,
-          seekAfterOpen: widget.startPosition,
+          seekAfterOpen: resumeAt,
         );
         if (played) return;
         if (_fallbackAborted(initGen)) return;
@@ -502,7 +502,7 @@ mixin _DesktopPlayerPlayback
                 final retryPlayed = await _trySourcesFromIndex(
                   0,
                   chainGen: initGen,
-                  seekAfterOpen: widget.startPosition,
+                  seekAfterOpen: resumeAt,
                 );
                 if (retryPlayed) return;
                 if (_fallbackAborted(initGen)) return;
@@ -529,7 +529,7 @@ mixin _DesktopPlayerPlayback
         } else {
           final recovered = await _reresolveLikeFirstPlay(
             chainGen: initGen,
-            seekAfterOpen: widget.startPosition,
+            seekAfterOpen: resumeAt,
           );
           if (!recovered && !_fallbackAborted(initGen)) {
             await _failPlaybackNoFailover(
@@ -595,6 +595,7 @@ mixin _DesktopPlayerPlayback
               url: openUrl,
               headers: widget.headers,
               providerId: _s._currentProvider,
+              startAt: resumeAt,
             );
             if (_fallbackAborted(initGen)) return;
             _s._player.setVolume(_s._volumeNotifier.value);
@@ -619,17 +620,10 @@ mixin _DesktopPlayerPlayback
               position: _s._positionNotifier,
               buffered: _s._bufferedNotifier,
             );
-            final seekAfterOpen = widget.startPosition;
-            if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
-              final dur = _s._player.state.duration;
-              final nearCredits =
-                  dur.inSeconds >= 90 &&
-                  seekAfterOpen >= dur - const Duration(seconds: 15);
-              if (!nearCredits && dur > Duration.zero) {
-                await _s._player.seek(seekAfterOpen);
-                if (_fallbackAborted(initGen)) return;
-              }
-              if (dur > Duration.zero) _s._hasInitialSeek = true;
+            if (resumeAt != null && resumeAt.inSeconds > 0) {
+              await ensureOpenedNearPosition(_s._player, resumeAt);
+              if (_fallbackAborted(initGen)) return;
+              _s._hasInitialSeek = true;
             }
             _s._syncPanelAfterPlaybackConfirmed();
             widget.onPlaybackStarted?.call();
@@ -1831,8 +1825,8 @@ mixin _DesktopPlayerPlayback
       alreadyResolved: true,
     );
 
-    // Resume seeks happen after open (seekAfterOpen / duration listener) so we
-    // can skip near-end positions. Do not set mpv `start` here - that jumps
-    // into credits when history still has a false-finished near-end position.
+    // Resume uses mpv `start` on open (see openPlayerStream.startAt) so HLS
+    // does not play 0:00 then fail a late Range seek. Near-end history is
+    // already filtered to Duration.zero by resumeStartPositionFromProgress.
   }
 }

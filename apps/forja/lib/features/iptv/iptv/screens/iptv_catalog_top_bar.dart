@@ -1353,7 +1353,8 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
   }
 }
 
-/// Shelf tab — active section only: reverse fill/ink; Movies/Series stay muted.
+/// Shelf tab — selected keeps section gradient; reverse only on hover/focus
+/// of that selected tab. Unselected tabs stay muted.
 /// Hover sequence: expand reveals reload after a short delay.
 /// TV: hold OK ~1s reveals reload and fires it (no extra D-pad / OK).
 class _IptvSectionShelfTab extends StatefulWidget {
@@ -1402,7 +1403,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   bool get _tv => iptvUseTvFocus(context);
 
-  /// Hover / D-pad focus — expand + weight only; colors follow [selected].
+  /// Hover / D-pad focus — expand, and reverse colors only if [selected].
   bool get _paintActive =>
       _hover || _focused || _reloadChipFocused || _tvReloadRevealed;
 
@@ -1546,11 +1547,21 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Active section only: reverse (white fill + section ink).
-    // Unselected tabs stay muted — focus/hover does not recolor them.
+    // Selected idle → original section gradient + white ink.
+    // Selected + hover/focus → reverse (white fill + section ink).
+    // Unselected → muted; focus/hover does not recolor them.
     final accent = widget.spec.shelfGradientColors.first;
-    final invert = widget.selected;
-    final ink = invert ? accent : Colors.white60;
+    final invert = widget.selected && _paintActive;
+    final showGradient = widget.selected && !invert;
+
+    final Color ink;
+    if (invert) {
+      ink = accent;
+    } else if (widget.selected) {
+      ink = Colors.white;
+    } else {
+      ink = Colors.white60;
+    }
 
     return MouseRegion(
       onEnter: (_) => _setHover(true),
@@ -1558,8 +1569,26 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
       child: Container(
         height: _kShelfTabHeight,
         decoration: BoxDecoration(
-          color: invert ? Colors.white : Colors.transparent,
+          gradient: showGradient
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: widget.spec.shelfGradientColors,
+                )
+              : null,
+          color: invert
+              ? Colors.white
+              : (showGradient ? null : Colors.transparent),
           borderRadius: _radius,
+          boxShadow: showGradient
+              ? [
+                  BoxShadow(
+                    color: accent.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1604,7 +1633,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                         style: GoogleFonts.plusJakartaSans(
                           color: ink,
                           fontSize: 12.5,
-                          fontWeight: _paintActive || invert
+                          fontWeight: invert || widget.selected
                               ? FontWeight.w800
                               : FontWeight.w500,
                         ),
@@ -1656,7 +1685,11 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                           child: Icon(
                             Icons.refresh_rounded,
                             size: 16,
-                            color: invert ? accent : Colors.white60,
+                            color: invert
+                                ? accent
+                                : (widget.selected || _revealReload
+                                    ? Colors.white.withValues(alpha: 0.95)
+                                    : Colors.white60),
                           ),
                         ),
                       ),

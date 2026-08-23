@@ -531,6 +531,9 @@ Future<String> openPlayerStream(
   required String url,
   Map<String, String>? headers,
   String? providerId,
+  /// MediaKit/mpv: open demuxer at this time (HLS resume / server switch).
+  /// Cleared after [player.open] so later seeks are not pinned to it.
+  Duration? startAt,
 }) async {
   final openUrl = normalizePlaybackStreamUrl(url);
   if (isTorrentStreamUrl(openUrl)) {
@@ -554,11 +557,43 @@ Future<String> openPlayerStream(
       (openUrl.startsWith('http://') || openUrl.startsWith('https://')) &&
       !isLocalTorrentStreamUrl(openUrl) &&
       !isLocalLoopbackPlayUrl(openUrl);
-  // mwVault proxy auth lives in the URL query — do not duplicate via httpHeaders.
-  await player.open(
-    Media(openUrl, httpHeaders: isRemoteHttp && !mwVaultProxy ? hdrs : null),
-  );
+  final useStart = startAt != null && startAt > Duration.zero;
+  if (useStart) await _mpvStartAt(player, startAt);
+  try {
+    // mwVault proxy auth lives in the URL query — do not duplicate via httpHeaders.
+    await player.open(
+      Media(openUrl, httpHeaders: isRemoteHttp && !mwVaultProxy ? hdrs : null),
+    );
+  } finally {
+    if (useStart) await _mpvStartAt(player, null);
+  }
   return openUrl;
+}
+
+/// Hard-seek if open-at-[target] (mpv `start`) did not land near it.
+///
+/// [skipNearCredits] matches history resume: do not jump into the last 15s
+/// when duration is already known (finished / credits poison).
+Future<void> ensureOpenedNearPosition(
+  Player player,
+  Duration? target, {
+  bool skipNearCredits = true,
+}) async {
+  if (target == null || target.inSeconds <= 0) return;
+  final dur = player.state.duration;
+  if (skipNearCredits &&
+      dur.inSeconds >= 90 &&
+      target >= dur - const Duration(seconds: 15)) {
+    return;
+  }
+  final pos = player.state.position;
+  if ((pos - target).abs() <= const Duration(seconds: 5)) return;
+  if (player.platform is NativePlayer) {
+    try {
+      await (player.platform as NativePlayer).setProperty('hr-seek', 'no');
+    } catch (_) {}
+  }
+  await player.seek(target);
 }
 
 /// Avoid opening mpv while a route fade is still covering the player surface.
@@ -1134,36 +1169,26 @@ Future<bool> remountPlayerStreamAtPosition(
 }) async {
   await resetPlayerForOpen(player);
   final useStart = seekTarget > Duration.zero;
-  if (useStart) await _mpvStartAt(player, seekTarget);
-  String? openUrl;
-  var opened = false;
-  try {
-    openUrl = await openPlayerStream(
-      player,
-      url: url,
-      headers: headers,
-      providerId: providerId,
-    );
-    opened = await waitForPlayerStreamOpen(
-      player,
-      streamUrl: openUrl,
-      headers: headers,
-      providerId: providerId,
-    );
-  } finally {
-    await _mpvStartAt(player, null);
-  }
+  final openUrl = await openPlayerStream(
+    player,
+    url: url,
+    headers: headers,
+    providerId: providerId,
+    startAt: useStart ? seekTarget : null,
+  );
+  final opened = await waitForPlayerStreamOpen(
+    player,
+    streamUrl: openUrl,
+    headers: headers,
+    providerId: providerId,
+  );
   if (!opened) return false;
 
-  final pos = player.state.position;
-  if (useStart && (pos - seekTarget).abs() > const Duration(seconds: 5)) {
-    if (player.platform is NativePlayer) {
-      try {
-        await (player.platform as NativePlayer).setProperty('hr-seek', 'no');
-      } catch (_) {}
-    }
-    await player.seek(seekTarget);
-  }
+  await ensureOpenedNearPosition(
+    player,
+    useStart ? seekTarget : null,
+    skipNearCredits: false,
+  );
   if (!player.state.playing) {
     await player.play();
   }

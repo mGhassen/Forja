@@ -197,6 +197,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
           url: streamUrl,
           headers: headers,
           providerId: newProvider,
+          startAt: currentPos.inSeconds > 0 ? currentPos : null,
         );
         if (_s._fallbackAborted(gen)) return null;
 
@@ -240,7 +241,11 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
         }
 
         if (currentPos.inSeconds > 0) {
-          await _s._player.seek(currentPos);
+          await ensureOpenedNearPosition(
+            _s._player,
+            currentPos,
+            skipNearCredits: false,
+          );
         }
         _s._detectHlsQualities(streamUrl, headers);
 

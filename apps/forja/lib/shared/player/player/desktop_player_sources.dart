@@ -511,7 +511,10 @@ mixin _DesktopPlayerSources
         if (played) return;
       }
     }
-    await _s._initPlayback();
+    final keepPos = _s._positionNotifier.value;
+    await _s._initPlayback(
+      seekOverride: keepPos.inSeconds > 0 ? keepPos : null,
+    );
   }
 
   Future<void> _selectAutoSource() async {
@@ -523,7 +526,10 @@ mixin _DesktopPlayerSources
       _s._checkingSourceIndices.clear();
     });
     _notifySourceMenuChanged();
-    await _s._initPlayback();
+    final keepPos = _s._positionNotifier.value;
+    await _s._initPlayback(
+      seekOverride: keepPos.inSeconds > 0 ? keepPos : null,
+    );
   }
 
   Future<
@@ -776,6 +782,7 @@ mixin _DesktopPlayerSources
         url: openUrl,
         headers: headers,
         providerId: resolved.providerId ?? _s._currentProvider,
+        startAt: currentPos.inSeconds > 0 ? currentPos : null,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
 
@@ -839,7 +846,13 @@ mixin _DesktopPlayerSources
       }
 
       _s._detectHlsQualities(openUrl, headers);
-      if (currentPos.inSeconds > 0) await _s._player.seek(currentPos);
+      if (currentPos.inSeconds > 0) {
+        await ensureOpenedNearPosition(
+          _s._player,
+          currentPos,
+          skipNearCredits: false,
+        );
+      }
       syncPlayerProgressNotifiers(
         _s._player,
         duration: _s._durationNotifier,
