@@ -503,6 +503,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           _isBufferingNotifier.value = false;
           _startHideTimer();
           _scrobbleStart();
+          // Parity with MediaKit Video — re-hold on every playing=true so ATV
+          // Ambient/screensaver cannot start mid-watch (issue 201).
+          unawaited(WakelockPlus.enable());
         } else {
           unawaited(_saveProgress());
           _scrobblePause();

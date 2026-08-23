@@ -423,6 +423,14 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
       }
     }
 
+    // One category per KeyDown / KeyRepeat — HoldAccel strides (2/3/…) leave
+    // selected + landed rows looking like dual focus in the same viewport.
+    final navKey = event.logicalKey;
+    if (navKey == LogicalKeyboardKey.arrowUp ||
+        navKey == LogicalKeyboardKey.arrowDown) {
+      ShellTvHoldAccel.reset();
+    }
+
     // Long-press OK → float (reorder) or reveal pin. Short OK → open channels.
     // Normal → is ignored here → onRightEdge opens channels.
     if (_canTvReorder || _canTvPin) {
@@ -525,25 +533,35 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
     final selected = widget.selected;
     final tv = iptvUseTvFocus(context);
     final leanback = iptvLeanbackOnly(context);
-    final highlight = selected || _tvFocused;
-    final emphatic = selected || _active || _tvFocused;
-    final iconColor = _tvFocused || selected
-        ? ForjaShellColors.brandGreen
-        : _active
-            ? Colors.white
-            : ForjaShellColors.textSecondary;
-    final titleColor = _tvFocused
-        ? ForjaShellColors.brandGreen
-        : emphatic
-            ? Colors.white
-            : ForjaShellColors.textSecondary;
     // Desktop drag proxy wraps the row — same brighter green as TV floating.
     final lifted =
         _floating || _IptvCategoryDragProxyScope.isProxy(context);
+    // Focus / hover / lift own the “lit” look. Selected alone = muted open mark
+    // so any jump distance never paints two focus-strength greens in view.
+    final lit = _tvFocused || lifted || _active;
+    final iconColor = _tvFocused || lifted
+        ? ForjaShellColors.brandGreen
+        : _active
+            ? Colors.white
+            : selected
+                ? ForjaShellColors.brandGreen.withValues(alpha: 0.7)
+                : ForjaShellColors.textSecondary;
+    final titleColor = _tvFocused || lifted
+        ? ForjaShellColors.brandGreen
+        : _active
+            ? Colors.white
+            : selected
+                ? Colors.white.withValues(alpha: 0.88)
+                : ForjaShellColors.textSecondary;
+    final leftBar = lifted || _tvFocused
+        ? ForjaShellColors.brandGreen
+        : _active
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
+            : selected
+                ? ForjaShellColors.brandGreen.withValues(alpha: 0.4)
+                : Colors.transparent;
 
-    // Fill only for focus / hover / floating — selected alone keeps the green
-    // left bar so skim ↑/↓ never shows selected + next-focus as two ink fills.
-    // Snap colors (no AnimatedContainer) — 140ms fade left a trail of lit rows.
+    // Fill only for focus / hover / floating. Snap colors — no fade trail.
     final fillColor = lifted
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.28)
         : _tvFocused
@@ -561,11 +579,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
         color: fillColor,
         border: Border(
           left: BorderSide(
-            color: highlight || lifted
-                ? ForjaShellColors.brandGreen
-                : _active
-                    ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
-                    : Colors.transparent,
+            color: leftBar,
             width: 2.5,
           ),
         ),
@@ -596,7 +610,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
                     style: GoogleFonts.plusJakartaSans(
                       color: titleColor,
                       fontSize: widget.compact ? 13 : 14,
-                      fontWeight: emphatic || lifted
+                      fontWeight: lit || selected
                           ? FontWeight.w700
                           : FontWeight.w500,
                     ),

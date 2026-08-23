@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
@@ -63,10 +65,25 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   ShellInputPolicy _policy(BuildContext context) =>
       ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
 
+  void _disposeOwnedNode() {
+    final node = _ownedNode;
+    if (node == null) return;
+    _ownedNode = null;
+    // Unfocus + defer dispose: FocusManager notifies in a microtask; sync
+    // dispose while dirty → "FocusNode was used after being disposed".
+    if (node.hasFocus) {
+      node.unfocus();
+      scheduleMicrotask(node.dispose);
+    } else {
+      node.dispose();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    if (widget.focusNode == null) {
+    // Own a node only when focusable: external node, or onTap without one.
+    if (widget.focusNode == null && widget.onTap != null) {
       _ownedNode = FocusNode(debugLabel: 'forja-interactive');
     }
     _registerTvItemNode();
@@ -81,16 +98,24 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
         node: _nodeFor(oldWidget),
       );
       if (widget.focusNode == null) {
-        _ownedNode ??= FocusNode(debugLabel: 'forja-interactive');
+        // onTap:null + focusNode:null → no Focus widget (inactive hero slides).
+        if (widget.onTap != null) {
+          _ownedNode ??= FocusNode(debugLabel: 'forja-interactive');
+        } else {
+          _disposeOwnedNode();
+        }
       } else {
-        _ownedNode?.dispose();
-        _ownedNode = null;
+        _disposeOwnedNode();
       }
       _registerTvItemNode();
     } else if (oldWidget.tvMeta?.rowId != widget.tvMeta?.rowId ||
         oldWidget.tvMeta?.itemIndex != widget.tvMeta?.itemIndex) {
       _unregisterTvItemNode(oldWidget.tvMeta, node: _nodeFor(oldWidget));
       _registerTvItemNode();
+    } else if (oldWidget.onTap != null &&
+        widget.onTap == null &&
+        widget.focusNode == null) {
+      _disposeOwnedNode();
     }
   }
 
@@ -128,7 +153,7 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
   @override
   void dispose() {
     _unregisterTvItemNode(widget.tvMeta, node: _nodeFor(widget));
-    _ownedNode?.dispose();
+    _disposeOwnedNode();
     super.dispose();
   }
 

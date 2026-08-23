@@ -687,6 +687,7 @@ class ListStatusHeroControl extends StatefulWidget {
     this.tvItemIndexStart = 0,
     this.onUpEdge,
     this.onMenuOpenChanged,
+    this.enabled = true,
   });
 
   final String uniqueId;
@@ -695,6 +696,8 @@ class ListStatusHeroControl extends StatefulWidget {
   final int tvItemIndexStart;
   final VoidCallback? onUpEdge;
   final ValueChanged<bool>? onMenuOpenChanged;
+  /// Inactive hero carousel slides: visual only (no FocusNode / onTap).
+  final bool enabled;
 
   /// Overlay menu is not in the hero focus row.
   static int extraFocusSlots(bool menuOpen) => 0;
@@ -910,7 +913,7 @@ class _ListStatusHeroControlState extends State<ListStatusHeroControl> {
                   size: 20,
                   color: _statusPinColor(status),
                 ),
-                onTap: _busy ? null : _toggle,
+                onTap: (!widget.enabled || _busy) ? null : _toggle,
               ),
             ],
           );
@@ -929,6 +932,7 @@ class MyListHeroStatusPill extends StatelessWidget {
     this.tvItemIndexStart = 0,
     this.onUpEdge,
     this.onMenuOpenChanged,
+    this.enabled = true,
   });
 
   final Movie movie;
@@ -936,6 +940,7 @@ class MyListHeroStatusPill extends StatelessWidget {
   final int tvItemIndexStart;
   final VoidCallback? onUpEdge;
   final ValueChanged<bool>? onMenuOpenChanged;
+  final bool enabled;
 
   Future<bool> _setStatus(BuildContext context, String to) async {
     ProviderContainer? container;
@@ -989,6 +994,7 @@ class MyListHeroStatusPill extends StatelessWidget {
       tvItemIndexStart: tvItemIndexStart,
       onUpEdge: onUpEdge,
       onMenuOpenChanged: onMenuOpenChanged,
+      enabled: enabled,
     );
   }
 }

@@ -12,6 +12,7 @@ class HubListStatusHero extends StatelessWidget {
     this.tvItemIndexStart = 0,
     this.onUpEdge,
     this.onMenuOpenChanged,
+    this.enabled = true,
   });
 
   final HubListFollowTarget target;
@@ -19,6 +20,7 @@ class HubListStatusHero extends StatelessWidget {
   final int tvItemIndexStart;
   final VoidCallback? onUpEdge;
   final ValueChanged<bool>? onMenuOpenChanged;
+  final bool enabled;
 
   static int extraFocusSlots(bool menuOpen) =>
       ListStatusHeroControl.extraFocusSlots(menuOpen);
@@ -40,6 +42,7 @@ class HubListStatusHero extends StatelessWidget {
       tvItemIndexStart: tvItemIndexStart,
       onUpEdge: onUpEdge,
       onMenuOpenChanged: onMenuOpenChanged,
+      enabled: enabled,
     );
   }
 }

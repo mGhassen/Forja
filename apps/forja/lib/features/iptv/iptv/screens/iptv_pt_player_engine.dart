@@ -132,6 +132,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           // Live Exo often reports position 0 forever while frames paint —
           // keep the watchdog heartbeat alive.
           _noteVideoFrame(reason: 'exo playing');
+          // MediaKit Video re-holds wakelock on playing; Exo must too or ATV
+          // Ambient starts after idle (issue 201). Native FLAG is primary.
+          unawaited(WakelockPlus.enable());
         } else if (_s._userPlayWhenReady) {
           _s._readyNotPlayingSince = DateTime.now();
         }

@@ -1012,7 +1012,9 @@ void main() {
         'assets/plugins/providers/dahmermovies.js',
       );
       expect(dahmermovies.contains('a.111477.xyz'), isTrue);
-      expect(dahmermovies.contains('resolveFinalUrl'), isTrue);
+      // CF beacon `/cdn-cgi/challenge-platform/` must not alone abort listings.
+      expect(dahmermovies.contains('challenge-platform|'), isFalse);
+      expect(dahmermovies.contains('you are being rate limited'), isTrue);
 
       final kurage = await rootBundle.loadString(
         'assets/plugins/providers/kurage.js',

@@ -115,7 +115,14 @@ function extract(ctx) {
           '/';
     ctx.log('index ' + encodedUrl);
     return fetchText(encodedUrl).then(function (html) {
-      if (/just a moment|cf-challenge|challenge-platform|error\s*1015|rate limited/i.test(html)) {
+      // Real index pages embed CF beacon `/cdn-cgi/challenge-platform/...` — not a block.
+      // Match crates/proxy index111477: Error 1015 / explicit rate-limit interstitial only.
+      if (
+        html.length < 65536 &&
+        /(?:error\s*(?:code:?\s*)?1015)|you are being rate limited|<title[^>]*>[^<]*just a moment/i.test(
+          html,
+        )
+      ) {
         ctx.log('cloudflare / rate limit on listing');
         return [];
       }

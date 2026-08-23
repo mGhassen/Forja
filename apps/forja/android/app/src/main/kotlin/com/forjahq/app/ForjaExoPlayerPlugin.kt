@@ -12,6 +12,7 @@ import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
+import android.view.WindowManager
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -172,6 +173,7 @@ class ExoPlayerHost(
                 Player.STATE_ENDED -> emit(mapOf("type" to "ended"))
             }
             emitProgress()
+            syncKeepScreenOn()
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -179,6 +181,9 @@ class ExoPlayerHost(
             if (isPlaying) {
                 emit(mapOf("type" to "buffering", "value" to false))
             }
+            // ATV Ambient/screensaver: FLAG_KEEP_SCREEN_ON while playWhenReady
+            // (MediaKit Video re-holds wakelock on playing; Exo did not).
+            syncKeepScreenOn()
         }
 
         override fun onTracksChanged(tracks: Tracks) {
@@ -327,6 +332,8 @@ class ExoPlayerHost(
             }
             existing.playWhenReady = true
             startProgressLoop()
+            // isPlaying may not re-fire when already true — re-assert Ambient lock.
+            syncKeepScreenOn()
             return
         }
 
@@ -422,6 +429,7 @@ class ExoPlayerHost(
         }
         exo.playWhenReady = true
         startProgressLoop()
+        syncKeepScreenOn()
     }
 
     /**
@@ -763,6 +771,7 @@ class ExoPlayerHost(
         // without a MediaCodec release on the main thread (ATV ANR).
         stopProgressLoop()
         clearDisplayFrameRate()
+        applyKeepScreenOn(false)
         try {
             player?.stop()
             player?.clearMediaItems()
@@ -844,6 +853,7 @@ class ExoPlayerHost(
     private fun stopInternal(releasePlayer: Boolean) {
         stopProgressLoop()
         clearDisplayFrameRate()
+        applyKeepScreenOn(false)
         player?.removeListener(listener)
         player?.removeAnalyticsListener(frameHealthListener)
         playerView?.player = null
@@ -857,6 +867,42 @@ class ExoPlayerHost(
         }
         videoAuto = true
         liveSpeedDisabledForUhd = null
+    }
+
+
+    /**
+     * Android TV Ambient Mode starts after ~10m with no user input unless the
+     * foreground window holds [FLAG_KEEP_SCREEN_ON]. MediaKit's Video widget
+     * re-acquires wakelock on every playing=true; Exo only had a one-shot Dart
+     * enable — and PlayerView keepScreenOn inside a PlatformView does not always
+     * propagate. Tie the Activity flag to playWhenReady (issue 201).
+     */
+    private fun syncKeepScreenOn() {
+        val p = player
+        val keep = p != null &&
+            p.playWhenReady &&
+            p.playbackState != Player.STATE_IDLE &&
+            p.playbackState != Player.STATE_ENDED
+        applyKeepScreenOn(keep)
+    }
+
+    private fun applyKeepScreenOn(keep: Boolean) {
+        val activity = activityProvider() ?: return
+        val apply = {
+            activity.window?.let { window ->
+                if (keep) {
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                }
+            }
+            playerView?.keepScreenOn = keep
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            apply()
+        } else {
+            activity.runOnUiThread(apply)
+        }
     }
 
     private fun clearDisplayFrameRate() {

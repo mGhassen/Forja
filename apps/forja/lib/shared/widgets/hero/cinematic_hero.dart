@@ -294,6 +294,17 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     _startHeroTimer();
   }
 
+  /// Unfocus + defer dispose so FocusManager's microtask notify does not hit
+  /// a disposed node (TV D-pad: "FocusNode was used after being disposed").
+  void _disposeFocusNode(FocusNode node) {
+    if (node.hasFocus) {
+      node.unfocus();
+      scheduleMicrotask(node.dispose);
+    } else {
+      node.dispose();
+    }
+  }
+
   @override
   void dispose() {
     if (ShellTvFocus.homeHeroPlay == _tvHeroPlayFocus) {
@@ -309,8 +320,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     }
     _heroTimer?.cancel();
     _heroController.dispose();
-    _tvHeroPlayFocus.dispose();
-    _tvHeroGalleryFocus.dispose();
+    _disposeFocusNode(_tvHeroPlayFocus);
+    _disposeFocusNode(_tvHeroGalleryFocus);
     super.dispose();
   }
 
@@ -1655,18 +1666,23 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final metrics = ShellScope.metricsOf(context);
     final policy = ShellScope.inputPolicyOf(context);
     final tvNav = policy.useFocusableMoodChips;
+    // Inactive PageView slides must not mount focusable controls. Passing
+    // focusNode:null with onTap set makes ForjaInteractive own+dispose a
+    // forja-interactive node on every carousel step → FocusManager crash.
+    final focusable = isActive;
     final tabId = widget.tvTabId;
     final details = HeroPillPlayButton(
       label: 'View details',
       icon: Icons.info_outline_rounded,
       primary: false,
       alwaysShowLabel: true,
-      focusNode: isActive && policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
-      tvTabId: tvNav ? tabId : null,
-      tvRowId: tvNav ? MediaDetailsTv.heroRowId : null,
-      tvItemIndex: tvNav ? 0 : null,
-      onUpEdge: tvNav ? _focusHomeHeroGallery : null,
-      onKeyEvent: isActive && policy.heroPlayAutoFocus
+      focusNode:
+          focusable && policy.heroPlayAutoFocus ? _tvHeroPlayFocus : null,
+      tvTabId: focusable && tvNav ? tabId : null,
+      tvRowId: focusable && tvNav ? MediaDetailsTv.heroRowId : null,
+      tvItemIndex: focusable && tvNav ? 0 : null,
+      onUpEdge: focusable && tvNav ? _focusHomeHeroGallery : null,
+      onKeyEvent: focusable && policy.heroPlayAutoFocus
           ? (node, event) {
               if (!shellTvIsNavigationKey(event)) {
                 return KeyEventResult.ignored;
@@ -1679,27 +1695,31 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               return KeyEventResult.ignored;
             }
           : null,
-      onTap: () {
-        if (heroItem.movie != null) {
-          widget.onOpenDetails?.call(heroItem.movie!);
-        } else {
-          heroItem.onDetails();
-        }
-      },
+      onTap: focusable
+          ? () {
+              if (heroItem.movie != null) {
+                widget.onOpenDetails?.call(heroItem.movie!);
+              } else {
+                heroItem.onDetails();
+              }
+            }
+          : null,
     );
     final listAction = heroItem.movie != null
         ? MyListHeroStatusPill(
             movie: heroItem.movie!,
-            tvTabId: tvNav ? tabId : null,
-            tvItemIndexStart: tvNav ? 1 : 0,
-            onUpEdge: tvNav ? _focusHomeHeroGallery : null,
+            tvTabId: focusable && tvNav ? tabId : null,
+            tvItemIndexStart: focusable && tvNav ? 1 : 0,
+            onUpEdge: focusable && tvNav ? _focusHomeHeroGallery : null,
+            enabled: focusable,
           )
         : heroItem.listTarget != null
             ? HubListStatusHero(
                 target: heroItem.listTarget!,
-                tvTabId: tvNav ? tabId : null,
-                tvItemIndexStart: tvNav ? 1 : 0,
-                onUpEdge: tvNav ? _focusHomeHeroGallery : null,
+                tvTabId: focusable && tvNav ? tabId : null,
+                tvItemIndexStart: focusable && tvNav ? 1 : 0,
+                onUpEdge: focusable && tvNav ? _focusHomeHeroGallery : null,
+                enabled: focusable,
               )
             : null;
     final row = HeroPillActionRow(
@@ -1721,11 +1741,11 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             child: row,
           )
         : row;
-    if (!tvNav) return body;
+    if (!tvNav || !focusable) return body;
     return DetailsHeroTvActionScope(
       tabId: tabId,
       itemCount: listAction != null ? 2 : 1,
-      onFocusUp: isActive ? _focusHomeHeroGallery : null,
+      onFocusUp: _focusHomeHeroGallery,
       child: body,
     );
   }
