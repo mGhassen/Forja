@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 
 void main() {
   test('tv metrics are denser than desktop for leanback', () {
@@ -84,4 +85,41 @@ void main() {
       expect(tvCentered, isTrue);
     },
   );
+
+  testWidgets('browse-only search fields are leanback TV only', (tester) async {
+    late bool desktopBrowse;
+    late bool tvBrowse;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            ShellScope(
+              profile: ShellProfile.desktop,
+              config: shellPlatformConfigFor(ShellProfile.desktop),
+              child: Builder(
+                builder: (context) {
+                  desktopBrowse = shellTvBrowseSearch(context);
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+            ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: Builder(
+                builder: (context) {
+                  tvBrowse = shellTvBrowseSearch(context);
+                  return const SizedBox.shrink();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    expect(desktopBrowse, isFalse);
+    expect(tvBrowse, isTrue);
+  });
 }

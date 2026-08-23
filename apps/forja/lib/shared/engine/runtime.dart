@@ -332,18 +332,6 @@ class EngineRuntime {
       }
     });
 
-    br('LiveSniffPpvEmbed', (args) async {
-      try {
-        final m = _bridgeMap(args);
-        final url = await LiveGoatUnlock.sniffPpvEmbed(
-          embedUrl: (m['url'] ?? m['embedUrl'] ?? '').toString(),
-        );
-        return url ?? '';
-      } catch (_) {
-        return '';
-      }
-    });
-
     br('FetchStart', (args) {
       try {
         if (!_acceptingFetches || _activeExtract <= 0) return null;
@@ -726,11 +714,6 @@ class EngineRuntime {
         return sendMessage('LiveSniffEmbed', JSON.stringify({
           url: String(url == null ? '' : url),
           referer: String(referer == null ? '' : referer)
-        })) || '';
-      },
-      sniffPpvEmbed: function(url) {
-        return sendMessage('LiveSniffPpvEmbed', JSON.stringify({
-          url: String(url == null ? '' : url)
         })) || '';
       }
     },

@@ -5,6 +5,7 @@ class _ForjaLivePluginLoad {
     required this.pluginId,
     required this.label,
     this.loading = false,
+    this.attempted = false,
     this.matchCount = 0,
     this.error,
   });
@@ -12,17 +13,20 @@ class _ForjaLivePluginLoad {
   final String pluginId;
   final String label;
   final bool loading;
+  final bool attempted;
   final int matchCount;
   final String? error;
 
   _ForjaLivePluginLoad copyWith({
     bool? loading,
+    bool? attempted,
     int? matchCount,
     String? error,
   }) => _ForjaLivePluginLoad(
     pluginId: pluginId,
     label: label,
     loading: loading ?? this.loading,
+    attempted: attempted ?? this.attempted,
     matchCount: matchCount ?? this.matchCount,
     error: error,
   );
@@ -123,6 +127,18 @@ mixin _LiveMatchesForjaLive
     if (_s._forjaLivePluginFilter == filter) return;
     setState(() => _s._forjaLivePluginFilter = filter);
     unawaited(_persistForjaLiveCatalogFilterPreference(filter));
+    if (_forjaLiveAnyLoading) {
+      EngineService.instance.cancelLiveCatalog();
+      setState(() {
+        _s._forjaLivePluginLoads = {
+          for (final e in _s._forjaLivePluginLoads.entries)
+            e.key: e.value.loading && !e.value.attempted
+                ? e.value.copyWith(loading: false)
+                : e.value,
+        };
+      });
+    }
+    _kickForjaLiveLazyCatalog();
   }
 
   void _ensureForjaLivePluginFilterValid() {
@@ -139,10 +155,16 @@ mixin _LiveMatchesForjaLive
     unawaited(_loadForjaLiveCatalogLazy());
   }
 
-  void _onEngineCatalogSettingsChanged() {
+  void _applyEngineCatalogSettingsChange({required bool reloadNow}) {
     if (!_usesForjaLiveLazyCatalog) return;
-    if (!(this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible) return;
     _resetForjaLiveCatalogState();
+    if (!reloadNow) {
+      _s._forjaLiveCatalogSettingsDirty = true;
+      if (mounted) setState(() {});
+      return;
+    }
+    _s._forjaLiveCatalogSettingsDirty = false;
+    if (mounted) setState(() {});
     _kickForjaLiveLazyCatalog();
   }
 
@@ -165,10 +187,18 @@ mixin _LiveMatchesForjaLive
     ];
   }
 
+  bool _shouldRunEspnScheduleMerge() {
+    if (_s._forjaLivePluginFilter == 'all') return true;
+    if (_s._forjaLivePluginFilter == 'catalog-espn') return true;
+    final espnLoad = _s._forjaLivePluginLoads['catalog-espn'];
+    return espnLoad?.attempted == true;
+  }
+
   /// Enrich other catalog rows with ESPN teams; ESPN catalog rows load separately.
   Future<void> _applyEspnScheduleMerge() async {
     if (!_usesForjaLiveLazyCatalog) return;
     if (!mounted) return;
+    if (!_shouldRunEspnScheduleMerge()) return;
     if (_s._server == _LiveMatchesServer.forjaLive && _forjaLiveAnyLoading) {
       return;
     }
@@ -204,6 +234,178 @@ mixin _LiveMatchesForjaLive
     return {'leagues': leagues, 'providerId': 'catalog-espn'};
   }
 
+  void _ensureForjaLivePluginLoadsRegistered(List<EnginePlugin> catalogPlugins) {
+    if (catalogPlugins.isEmpty) {
+      if (_s._forjaLivePluginLoads.isNotEmpty) {
+        setState(() => _s._forjaLivePluginLoads = {});
+      }
+      return;
+    }
+    final next = <String, _ForjaLivePluginLoad>{};
+    for (final catalog in catalogPlugins) {
+      final filterId = EngineService.catalogFilterId(catalog);
+      final existing = _s._forjaLivePluginLoads[filterId];
+      next[filterId] = existing ??
+          _ForjaLivePluginLoad(
+            pluginId: filterId,
+            label: catalog.name,
+          );
+    }
+    if (_forjaLivePluginLoadsEqual(next, _s._forjaLivePluginLoads)) return;
+    setState(() => _s._forjaLivePluginLoads = next);
+    _ensureForjaLivePluginFilterValid();
+  }
+
+  bool _forjaLivePluginLoadsEqual(
+    Map<String, _ForjaLivePluginLoad> a,
+    Map<String, _ForjaLivePluginLoad> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (final e in a.entries) {
+      final other = b[e.key];
+      if (other == null ||
+          other.pluginId != e.value.pluginId ||
+          other.label != e.value.label ||
+          other.loading != e.value.loading ||
+          other.attempted != e.value.attempted ||
+          other.matchCount != e.value.matchCount ||
+          other.error != e.value.error) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  List<EnginePlugin> _forjaLiveCatalogsToLoad(
+    List<EnginePlugin> catalogPlugins,
+    String filter,
+  ) {
+    final out = <EnginePlugin>[];
+    for (final catalog in catalogPlugins) {
+      final filterId = EngineService.catalogFilterId(catalog);
+      final load = _s._forjaLivePluginLoads[filterId];
+      if (load == null || load.loading || load.attempted) continue;
+      if (filter == 'all' || filterId == filter) {
+        out.add(catalog);
+      }
+    }
+    return out;
+  }
+
+  void _abortForjaLiveCatalogLoad(String filterId, int gen) {
+    if (!mounted || gen != _s._forjaLiveLoadGen) return;
+    final load = _s._forjaLivePluginLoads[filterId];
+    if (load == null || !load.loading || load.attempted) return;
+    setState(() {
+      _s._forjaLivePluginLoads[filterId] = load.copyWith(loading: false);
+    });
+  }
+
+  Future<void> _loadOneForjaLiveCatalog({
+    required EnginePlugin catalog,
+    required int gen,
+  }) async {
+    final filterId = EngineService.catalogFilterId(catalog);
+    bool stillWanted() {
+      if (!mounted || gen != _s._forjaLiveLoadGen) return false;
+      final f = _s._forjaLivePluginFilter;
+      return f == 'all' || f == filterId;
+    }
+
+    if (!stillWanted()) {
+      if (mounted && gen == _s._forjaLiveLoadGen) {
+        final load = _s._forjaLivePluginLoads[filterId];
+        if (load != null && load.loading && !load.attempted) {
+          setState(() {
+            _s._forjaLivePluginLoads[filterId] = load.copyWith(loading: false);
+          });
+        }
+      }
+      return;
+    }
+
+    setState(() {
+      _s._forjaLivePluginLoads[filterId] =
+          _s._forjaLivePluginLoads[filterId]!.copyWith(loading: true);
+    });
+
+    try {
+      final extraConfig = await _liveCatalogExtraConfig(catalog);
+      if (!stillWanted()) {
+        _abortForjaLiveCatalogLoad(filterId, gen);
+        return;
+      }
+      final rows = await EngineService.instance.runLiveCatalog(
+        catalogPlugin: catalog,
+        extraConfig: extraConfig,
+      );
+      if (!stillWanted()) {
+        _abortForjaLiveCatalogLoad(filterId, gen);
+        return;
+      }
+      if (catalog.id == 'catalog-ppv') {
+        final streams = rows
+            .map(_damiTvFromPpvCatalogRow)
+            .where((s) => s.id.isNotEmpty && s.name.isNotEmpty)
+            .toList();
+        setState(() {
+          _s._damiTvStreams = [..._s._damiTvStreams, ...streams];
+          _s._forjaLivePluginLoads[filterId] =
+              _s._forjaLivePluginLoads[filterId]!.copyWith(
+            loading: false,
+            attempted: true,
+            matchCount: streams.length,
+            error: null,
+          );
+        });
+        _rebuildSportTabsFromCurrentMatches();
+        return;
+      }
+
+      final Iterable<Map<String, dynamic>> visibleRows;
+      if (catalog.id == 'catalog-streamed') {
+        visibleRows = rows;
+      } else {
+        visibleRows = rows.where(_forjaLiveCatalogRowVisible);
+      }
+      final matchRows = visibleRows
+          .map(_forjaLiveRowToMatch)
+          .where((m) => m.id.isNotEmpty && m.title.isNotEmpty);
+      final matches = catalog.id == 'catalog-streamed'
+          ? matchRows.toList()
+          : matchRows.take(_kForjaLiveCatalogMaxPerPlugin).toList();
+      setState(() {
+        _s._streamedMatches = _sortStreamedLiveFirst([
+          ..._s._streamedMatches,
+          ...matches,
+        ]);
+        if (catalog.id == 'catalog-espn') {
+          _syncEspnGamesFromStreamed();
+        }
+        _s._forjaLivePluginLoads[filterId] =
+            _s._forjaLivePluginLoads[filterId]!.copyWith(
+          loading: false,
+          attempted: true,
+          matchCount: matches.length,
+          error: null,
+        );
+      });
+      _rebuildSportTabsFromCurrentMatches();
+    } catch (e) {
+      debugPrint('[LiveMatches] Forja Live ${catalog.id}: $e');
+      if (!mounted || gen != _s._forjaLiveLoadGen) return;
+      setState(() {
+        _s._forjaLivePluginLoads[filterId] =
+            _s._forjaLivePluginLoads[filterId]!.copyWith(
+          loading: false,
+          attempted: true,
+          matchCount: 0,
+          error: '$e',
+        );
+      });
+    }
+  }
+
   Future<void> _loadForjaLiveCatalogLazy() async {
     final gen = _s._forjaLiveLoadGen;
     await EngineService.instance.ensureBundledInstalled();
@@ -211,95 +413,25 @@ mixin _LiveMatchesForjaLive
         await EngineService.instance.listEnabledLiveCatalogPlugins();
     if (!mounted || gen != _s._forjaLiveLoadGen) return;
 
+    _ensureForjaLivePluginLoadsRegistered(catalogPlugins);
+    if (!mounted || gen != _s._forjaLiveLoadGen) return;
+
     if (catalogPlugins.isEmpty) {
-      if (_s._server == _LiveMatchesServer.forjaLive) {
-        setState(() => _s._forjaLivePluginLoads = {});
-      }
       await _applyEspnScheduleMerge();
       return;
     }
 
-    setState(() {
-      _s._forjaLivePluginLoads = {
-        for (final catalog in catalogPlugins)
-          EngineService.catalogFilterId(catalog): _ForjaLivePluginLoad(
-            pluginId: EngineService.catalogFilterId(catalog),
-            label: catalog.name,
-            loading: true,
-          ),
-      };
-    });
-    _ensureForjaLivePluginFilterValid();
+    final filter = _s._forjaLivePluginFilter;
+    final toLoad = _forjaLiveCatalogsToLoad(catalogPlugins, filter);
+    if (toLoad.isEmpty) {
+      await _applyEspnScheduleMerge();
+      return;
+    }
 
-    for (final catalog in catalogPlugins) {
+    for (final catalog in toLoad) {
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
-      final filterId = EngineService.catalogFilterId(catalog);
-      try {
-        final extraConfig = await _liveCatalogExtraConfig(catalog);
-        if (!mounted || gen != _s._forjaLiveLoadGen) return;
-        final rows = await EngineService.instance.runLiveCatalog(
-          catalogPlugin: catalog,
-          extraConfig: extraConfig,
-        );
-        if (!mounted || gen != _s._forjaLiveLoadGen) return;
-        if (catalog.id == 'catalog-ppv') {
-          final streams = rows
-              .map(_damiTvFromPpvCatalogRow)
-              .where((s) => s.id.isNotEmpty && s.name.isNotEmpty)
-              .toList();
-          setState(() {
-            _s._damiTvStreams = [..._s._damiTvStreams, ...streams];
-            _s._forjaLivePluginLoads[filterId] =
-                _s._forjaLivePluginLoads[filterId]!.copyWith(
-              loading: false,
-              matchCount: streams.length,
-              error: null,
-            );
-          });
-          _rebuildSportTabsFromCurrentMatches();
-          continue;
-        }
-
-        final Iterable<Map<String, dynamic>> visibleRows;
-        if (catalog.id == 'catalog-streamed') {
-          visibleRows = rows;
-        } else {
-          visibleRows = rows.where(_forjaLiveCatalogRowVisible);
-        }
-        final matchRows = visibleRows
-            .map(_forjaLiveRowToMatch)
-            .where((m) => m.id.isNotEmpty && m.title.isNotEmpty);
-        final matches = catalog.id == 'catalog-streamed'
-            ? matchRows.toList()
-            : matchRows.take(_kForjaLiveCatalogMaxPerPlugin).toList();
-        setState(() {
-          _s._streamedMatches = _sortStreamedLiveFirst([
-            ..._s._streamedMatches,
-            ...matches,
-          ]);
-          if (catalog.id == 'catalog-espn') {
-            _syncEspnGamesFromStreamed();
-          }
-          _s._forjaLivePluginLoads[filterId] =
-              _s._forjaLivePluginLoads[filterId]!.copyWith(
-            loading: false,
-            matchCount: matches.length,
-            error: null,
-          );
-        });
-        _rebuildSportTabsFromCurrentMatches();
-      } catch (e) {
-        debugPrint('[LiveMatches] Forja Live ${catalog.id}: $e');
-        if (!mounted || gen != _s._forjaLiveLoadGen) return;
-        setState(() {
-          _s._forjaLivePluginLoads[filterId] =
-              _s._forjaLivePluginLoads[filterId]!.copyWith(
-            loading: false,
-            matchCount: 0,
-            error: '$e',
-          );
-        });
-      }
+      if (_s._forjaLivePluginFilter != filter) return;
+      await _loadOneForjaLiveCatalog(catalog: catalog, gen: gen);
     }
 
     if (!mounted || gen != _s._forjaLiveLoadGen) return;

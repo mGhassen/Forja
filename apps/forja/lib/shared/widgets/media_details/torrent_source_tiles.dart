@@ -637,8 +637,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                     ...providerLines.asMap().entries.map((
                                       entry,
                                     ) {
-                                      final isServerLine =
-                                          entry.key == providerLines.length - 1;
+                                      final isServerLine = entry.key == 0;
                                       final dot = isServerLine ? probeDot : null;
                                       return Padding(
                                         padding: EdgeInsets.only(

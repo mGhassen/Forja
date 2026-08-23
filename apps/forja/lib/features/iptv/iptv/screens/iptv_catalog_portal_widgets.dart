@@ -293,8 +293,12 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     }
   }
 
-  /// Trap Left on the portal card - stay in the panel (Back exits to catalog).
-  void _trapLeftEdge() {}
+  /// TV: Left from any portal row → header actions. Up only reaches the header
+  /// from the first row; Left works at any scroll position (stays in panel).
+  void _leftToPortalHeader() {
+    if (!iptvUseTvFocus(context)) return;
+    iptvFocusRowItem('iptv-portal-header');
+  }
 
   /// Action chrome is its own horizontal row (sortOrder 200+) — without
   /// explicit ↑/↓ edges, Down traps on the button instead of the portal list.
@@ -649,7 +653,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       ensureVisibleMode: ShellTvEnsureVisibleMode.off,
       onUpEdge: widget.onUpEdge,
       onDownEdge: widget.onDownEdge,
-      onLeftEdge: _trapLeftEdge,
+      onLeftEdge: _leftToPortalHeader,
       onRightEdge: () {
         if (deleting) return;
         // TV: open chrome on demand (row stays full-width while ↑/↓ scrolling).

@@ -44,15 +44,27 @@ List<Map<String, dynamic>> _engineSiblingRowsForPlay(
   ];
 }
 
-Future<List<StreamSource>> _buildEnginePlaySources(
+/// Classify → proxy → HTTP probe. Hover green uses the same probe but mpv can
+/// still fail — callers must pass [streamsPrevalidated: false] so the player
+/// can hop siblings or re-resolve when open fails.
+Future<List<StreamSource>> _buildProbedEnginePlaySources(
   _DetailsScreenState s,
   List<Map<String, dynamic>> rows, {
   required bool Function() isAborted,
+  Map<String, dynamic>? preferFirst,
 }) async {
   final useDebrid = await s._settings.useDebridForStreams();
   final debridService = await s._settings.getDebridService();
+  var ordered = _sortEngineStreamRows(rows);
+  if (preferFirst != null) {
+    final preferUrl = preferFirst['url']?.toString();
+    ordered = [
+      preferFirst,
+      ...ordered.where((r) => r['url']?.toString() != preferUrl),
+    ];
+  }
   final sources = <StreamSource>[];
-  for (final row in _sortEngineStreamRows(rows)) {
+  for (final row in ordered) {
     if (isAborted() || !s.mounted) break;
     final check = classifyStremioStream(
       row,
@@ -67,6 +79,10 @@ Future<List<StreamSource>> _buildEnginePlaySources(
       stream: row,
     );
     if (isAborted() || !s.mounted) break;
+    final probeRow = Map<String, dynamic>.from(row)
+      ..['url'] = proxied.url
+      ..['headers'] = proxied.headers;
+    if (!await probeSourcesPanelStream(probeRow)) continue;
     final url = proxied.url;
     sources.add(
       StreamSource(
@@ -504,49 +520,11 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         return;
       }
 
-      // Prefer one JS stream per plugin, then fill siblings from batches
-      // (no URL sniff — webstreaming-only). Up to 3 open attempts.
       openedPlayer = true;
-      final candidates = <Map<String, dynamic>>[];
-      final seenUrls = <String>{};
-
-      String? streamUrlOf(Map<String, dynamic> row) {
-        final u = row['url']?.toString().trim();
-        if (u != null && u.isNotEmpty) return u;
-        final ext = row['externalUrl']?.toString().trim();
-        if (ext != null && ext.isNotEmpty) return ext;
-        return null;
-      }
-
-      bool take(Map<String, dynamic> row) {
-        if (candidates.length >= 3) return false;
-        final url = streamUrlOf(row);
-        if (url != null && !seenUrls.add(url)) return false;
-        candidates.add(row);
-        return true;
-      }
-
-      for (final hit in hits) {
-        take(hit.stream);
-      }
-      if (candidates.length < 3) {
-        for (final hit in hits) {
-          if (candidates.length >= 3) break;
-          final more = await _collectEngineStreamsNoSniff(
-            hit.batch,
-            preferred: hit.stream,
-            max: 3 - candidates.length,
-            isAborted: playAborted,
-          );
-          if (playAborted()) return;
-          for (final row in more) {
-            take(row);
-          }
-        }
-      }
-      if (playAborted() || candidates.isEmpty) return;
+      final hit = hits.first;
       await _playEngineAutoWinner(
-        candidates,
+        hit.batch,
+        preferFirst: hit.stream,
         startPosition: startPosition,
         loadingDialogContext: loadingDialogContext,
         fadeOutNotifier: fadeOutNotifier,
@@ -770,60 +748,16 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     return null;
   }
 
-  /// Sibling rows from the same JS batch — classify only, no sniff.
-  Future<List<Map<String, dynamic>>> _collectEngineStreamsNoSniff(
-    List<Map<String, dynamic>> batch, {
-    required Map<String, dynamic> preferred,
-    required int max,
-    required bool Function() isAborted,
-  }) async {
-    final out = <Map<String, dynamic>>[preferred];
-    if (out.length >= max || batch.isEmpty) return out;
-
-    final useDebrid = await _s._settings.useDebridForStreams();
-    final debridService = await _s._settings.getDebridService();
-    if (isAborted()) return out;
-
-    final seenUrls = <String>{};
-    final preferredCheck = classifyStremioStream(
-      preferred,
-      _s._playbackProfile,
-      useDebrid: useDebrid,
-      debridService: debridService,
-    );
-    if (preferredCheck is StremioPlayable) {
-      seenUrls.add(preferredCheck.streamUrl);
-    }
-
-    for (final stream in batch) {
-      if (isAborted() || out.length >= max) break;
-      if (identical(stream, preferred)) continue;
-      final check = classifyStremioStream(
-        stream,
-        _s._playbackProfile,
-        useDebrid: useDebrid,
-        debridService: debridService,
-      );
-      if (check is StremioExternalLink || check is StremioResolveFailure) {
-        continue;
-      }
-      if (check is StremioPlayable) {
-        if (!seenUrls.add(check.streamUrl)) continue;
-      }
-      out.add(stream);
-    }
-    return out;
-  }
-
   Future<void> _playEngineAutoWinner(
     List<Map<String, dynamic>> streams, {
+    Map<String, dynamic>? preferFirst,
     required Duration? startPosition,
     required BuildContext? loadingDialogContext,
     required ValueNotifier<bool> fadeOutNotifier,
     required bool Function() isAborted,
   }) async {
     if (isAborted() || !mounted || streams.isEmpty) return;
-    final stream = streams.first;
+    final stream = preferFirst ?? streams.first;
     final isTv = _s._movie.mediaType == 'tv';
     final stremioId =
         widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId;
@@ -842,10 +776,11 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     );
 
     if (precheck is StremioPlayable) {
-      final sources = await _buildEnginePlaySources(
+      final sources = await _buildProbedEnginePlaySources(
         _s,
-        _sortEngineStreamRows(streams),
+        streams,
         isAborted: isAborted,
+        preferFirst: stream,
       );
       if (sources.isEmpty) return;
       final primary = sources.first;
@@ -862,7 +797,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         activeProvider: primary.providerId ?? catalogHttpPlayProviderId(stream),
         sources: sources,
         pinSource: false,
-        streamsPrevalidated: true,
+        streamsPrevalidated: false,
         externalSubtitles: catalogStreamExternalSubtitles(stream),
         stremioId: stremioId,
         stremioAddonBaseUrl: stremioAddonBaseUrl,

@@ -368,13 +368,13 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
 
   void _syncImeScrollPad({required bool revealFocused}) {
     if (!mounted || !widget.scrollable) return;
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final leanback = ShellScope.inputPolicyOf(context).instantFocusChrome;
     final view = View.of(context);
     final rawIme = view.viewInsets.bottom / view.devicePixelRatio;
     final inheritedIme = MediaQuery.viewInsetsOf(context).bottom;
     var pad = rawIme > inheritedIme ? rawIme : inheritedIme;
     // Android TV leanback IME often reports 0 while covering ~40% of the screen.
-    if (tv && _editingSettingsField && pad < 1) {
+    if (leanback && _editingSettingsField && pad < 1) {
       pad = MediaQuery.sizeOf(context).height * 0.42;
     }
     if ((pad - _imeScrollPad).abs() < 0.5) {
@@ -1458,7 +1458,10 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
   /// clear [_editing] before the target node receives focus.
   bool _focusHandoff = false;
 
-  bool get _tv => ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+  bool get _tv {
+    final policy = ShellScope.inputPolicyOf(context);
+    return policy.useFocusableMoodChips && !policy.scaleOnHover;
+  }
 
   bool get _browseOnly => _tv && !_editing;
 

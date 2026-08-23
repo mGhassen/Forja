@@ -278,12 +278,19 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
       try {
         final enginePluginId = stream['_enginePluginId']?.toString();
         if (enginePluginId != null && enginePluginId.isNotEmpty) {
-          final sources = await _buildEnginePlaySources(
+          final sources = await _buildProbedEnginePlaySources(
             _s,
             _engineSiblingRowsForPlay(_s._engineStreams, stream),
             isAborted: () => !mounted,
+            preferFirst: stream,
           );
-          if (!mounted || sources.isEmpty) return;
+          if (!mounted) return;
+          if (sources.isEmpty) {
+            ForjaToast.info(
+              'No reachable mirrors right now — try another server.',
+            );
+            return;
+          }
           final primary = sources.first;
           await AppRouter.openPlayer(
             context,
@@ -298,7 +305,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
                 primary.providerId ?? catalogHttpPlayProviderId(stream),
             sources: sources,
             pinSource: false,
-            streamsPrevalidated: true,
+            streamsPrevalidated: false,
             externalSubtitles: catalogStreamExternalSubtitles(stream),
             stremioId: stremioId,
             stremioAddonBaseUrl: stremioAddonBaseUrl,

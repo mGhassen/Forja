@@ -141,6 +141,9 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   String _forjaLivePluginFilter = 'all';
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
 
+  /// Settings → Forja Sports **Catalog** toggles changed while this tab was hidden.
+  bool _forjaLiveCatalogSettingsDirty = false;
+
   static const _topBarServersIndex = 0;
 
   /// Used when My IPTV portal chip is hidden (Servers → Refresh → View).
@@ -195,6 +198,13 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     _syncTimelineLiveTick();
     if (_error != null || (_sports.isEmpty && !_loading)) {
       unawaited(_load());
+    } else if (_forjaLiveCatalogSettingsDirty &&
+        (_server == _LiveMatchesServer.all ||
+            _server == _LiveMatchesServer.forjaLive)) {
+      _forjaLiveCatalogSettingsDirty = false;
+      (this as _LiveMatchesForjaLive)._applyEngineCatalogSettingsChange(
+        reloadNow: true,
+      );
     }
   }
 
@@ -237,7 +247,9 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
         _server != _LiveMatchesServer.forjaLive) {
       return;
     }
-    (this as _LiveMatchesForjaLive)._onEngineCatalogSettingsChanged();
+    (this as _LiveMatchesForjaLive)._applyEngineCatalogSettingsChange(
+      reloadNow: (this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible,
+    );
   }
 
   @override
