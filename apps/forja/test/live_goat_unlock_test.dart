@@ -74,7 +74,6 @@ void main() {
     });
   });
 
-
   group('LiveGoatUnlock.preferDirectEnginePlayback', () {
     test('delta and echo media playlists open direct', () {
       expect(
@@ -97,6 +96,54 @@ void main() {
           'https://lb1.strmd.st/secure/tok/rtmp/stream/id/1/playlist.m3u8',
         ),
         isFalse,
+      );
+    });
+  });
+
+  group('LiveGoatUnlock.isEmbedIndiaUrl', () {
+    test('recognizes embedindia host', () {
+      expect(
+        LiveGoatUnlock.isEmbedIndiaUrl(
+          'https://embedindia.st/embed/mlb/2025-08-23/foo?gid=9',
+        ),
+        isTrue,
+      );
+      expect(
+        LiveGoatUnlock.isEmbedIndiaUrl('https://embed.st/embed/admin/x/1'),
+        isFalse,
+      );
+    });
+  });
+
+  group('LiveGoatUnlock.parseEmbedIndiaSlot', () {
+    test('parses league/date/slug/gid path', () {
+      final slot = LiveGoatUnlock.parseEmbedIndiaSlot(
+        'https://embedindia.st/embed/nfl/2025-08-23/chiefs-vs-bills?gid=42',
+      );
+      expect(slot, isNotNull);
+      expect(slot!['league'], 'nfl');
+      expect(slot['date'], '2025-08-23');
+      expect(slot['slug'], 'chiefs-vs-bills');
+      expect(slot['gid'], '42');
+      expect(slot['path'], 'nfl/2025-08-23/chiefs-vs-bills');
+      expect(slot['origin'], 'https://embedindia.st');
+    });
+
+    test('rejects embed.st slots', () {
+      expect(
+        LiveGoatUnlock.parseEmbedIndiaSlot(
+          'https://embed.st/embed/admin/ppv-a-vs-b/1',
+        ),
+        isNull,
+      );
+    });
+
+    test('rejects embed-noads short paths', () {
+      expect(
+        LiveGoatUnlock.parseEmbedIndiaSlot(
+          'https://embedindia.st/embed-noads/rally-tv',
+        ),
+        isNull,
       );
     });
   });

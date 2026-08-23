@@ -37,7 +37,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
   /// When [cancelEngineJobs] is false (closing Sources to start playback),
   /// generations still bump so late UI updates are ignored, and magnet /
   /// torrent resolve stay alive — but Forja scrapes are always aborted via
-  /// [EngineService.cancelPending] (Rust QuickJS kind-cancel + flutter_js
+  /// [EngineService.cancelPending] (Forja EngineJS kind-cancel + flutter_js
   /// forks). The gen gate in [EngineService.runPluginIsolated] prevents
   /// cancel from falling through into a flutter_js stampede.
   ///

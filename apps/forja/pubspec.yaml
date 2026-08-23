@@ -142,6 +142,8 @@ flutter:
     - assets/plugins/live/
     - assets/plugins/live/goat/
     - assets/plugins/live/goat/vendor/
+    - assets/plugins/live/gasm/
+    - assets/plugins/live/gasm/vendor/
     - assets/plugins/catalog/
     - assets/textures/
     - assets/watch_providers/

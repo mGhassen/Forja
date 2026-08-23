@@ -98,7 +98,7 @@ abstract final class Engine {
     RustLib.instance.engineCancelPending();
   }
 
-  /// Abort in-flight Forja QuickJS extracts only — magnet / torrent resolve stay.
+  /// Abort in-flight Forja EngineJS extracts only — magnet / torrent resolve stay.
   static void cancelEngineJsExtracts() {
     if (!isReady) return;
     RustLib.instance.engineCancelJobsOfKind(EngineAsyncJob.engineJsExtract);

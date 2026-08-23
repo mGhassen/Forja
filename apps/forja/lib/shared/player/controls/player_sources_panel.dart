@@ -3108,7 +3108,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final list = ListView.separated(
       controller: _listScrollController,
       primary: false,
-      padding: const EdgeInsets.only(top: 2, bottom: 8),
+      padding: const EdgeInsets.only(bottom: 8),
       itemCount: totalCount,
       separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (context, i) {
@@ -3173,7 +3173,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       },
     );
 
-    if (!tv) return list;
+    final panelList = Container(
+      margin: EdgeInsets.only(
+        left: -ShellTokens.playerSidePanelPadding.left,
+        right: -ShellTokens.playerSidePanelPadding.right,
+      ),
+      child: list,
+    );
+
+    if (!tv) return panelList;
     return TvCatalogRow(
       tabId: SourcesPanelTv.tabId,
       rowId: SourcesPanelTv.listRowId,
@@ -3181,7 +3189,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       itemCount: totalCount,
       orientation: ShellTvRowOrientation.vertical,
       onFocusUp: SourcesPanelTv.focusProvidersItem,
-      child: list,
+      child: panelList,
     );
   }
 }

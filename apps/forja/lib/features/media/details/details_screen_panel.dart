@@ -950,8 +950,18 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       },
     );
 
+    final panelList = inPanel
+        ? Container(
+            margin: EdgeInsets.only(
+              left: -DetailsTokens.sourcesPanelPadding.left,
+              right: -DetailsTokens.sourcesPanelPadding.right,
+            ),
+            child: list,
+          )
+        : list;
+
     if (!inPanel || !SourcesPanelTv.isTv(context)) {
-      return list;
+      return panelList;
     }
     return TvCatalogRow(
       tabId: SourcesPanelTv.tabId,
@@ -960,7 +970,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       itemCount: count,
       orientation: ShellTvRowOrientation.vertical,
       onFocusUp: SourcesPanelTv.focusProvidersItem,
-      child: list,
+      child: panelList,
     );
   }
 }

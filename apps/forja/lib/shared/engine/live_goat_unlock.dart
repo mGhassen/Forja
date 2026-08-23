@@ -8,12 +8,14 @@ import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-/// embed.st GOAT decrypt bridge for live-streamed.js (`ctx.live.goatUnlock`).
+/// Host bridge for `ctx.live.goatUnlock` / `ctx.live.gasmUnlock` — Node WASM decrypt.
 class LiveGoatUnlock {
   LiveGoatUnlock._();
 
   static const _assetRoot = 'assets/plugins/live/goat';
+  static const _gasmAssetRoot = 'assets/plugins/live/gasm';
   static const _embedOrigin = 'https://embed.st';
+  static const _embedIndiaOrigin = 'https://embedindia.st';
   static const _watchfootyReferer = 'https://watchfooty.st/';
   static const _sportsEmbedHosts = ['sportsembed.su', 'spiderembed.top'];
   static const _goatSlotSources = {
@@ -27,10 +29,22 @@ class LiveGoatUnlock {
   static const _ua =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
+  static String? _cachedDir;
+  static Future<void>? _prepareFuture;
+
+  static String? _cachedGasmDir;
+  static Future<void>? _prepareGasmFuture;
+
   static bool isSportsEmbedUrl(String url) {
     final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
     if (host.isEmpty) return false;
     return _sportsEmbedHosts.any((h) => host == h || host.endsWith('.$h'));
+  }
+
+  static bool isEmbedIndiaUrl(String url) {
+    final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+    if (host.isEmpty) return false;
+    return host == 'embedindia.st' || host.endsWith('.embedindia.st');
   }
 
   /// sportsembed.su mirrors embed.st — `/embed/{event}/{slug}/{source}/{n}`.
@@ -68,6 +82,10 @@ class LiveGoatUnlock {
     }
     return ids.map((id) => '$_embedOrigin/embed/admin/$id/$stream');
   }
+
+  @visibleForTesting
+  static Map<String, dynamic>? parseEmbedIndiaSlot(String raw) =>
+      _parseEmbedIndiaSlot(raw);
 
   /// Unlock watchfooty.st sportsembed mirrors to a playable HLS URL.
   static Future<({String url, Map<String, String> headers})?>
@@ -111,8 +129,6 @@ class LiveGoatUnlock {
       },
     );
   }
-  static String? _cachedDir;
-  static Future<void>? _prepareFuture;
 
   /// Native Streamed resolve — bypasses flutter_js (no TextEncoder / fetch bridge).
   static Future<({String url, Map<String, String> headers})?> resolveStreamed({
@@ -185,6 +201,87 @@ class LiveGoatUnlock {
     }
   }
 
+  static Future<({String url, Map<String, String> headers})?> resolveEmbedIndia({
+    required String embedUrl,
+  }) async {
+    final embed = embedUrl.trim();
+    if (embed.isEmpty) return null;
+    final slot = _parseEmbedIndiaSlot(embed);
+    if (slot == null) return null;
+
+    final origin = (slot['origin'] ?? _embedIndiaOrigin).toString().replaceAll(
+      RegExp(r'/+$'),
+      '',
+    );
+    final path = (slot['path'] ?? '').toString();
+    if (path.isEmpty) return null;
+
+    try {
+      final body = _encodeEmbedIndiaFetchBody(
+        (slot['league'] ?? '').toString(),
+        (slot['date'] ?? '').toString(),
+        (slot['slug'] ?? '').toString(),
+        (slot['gid'] ?? '').toString(),
+      );
+      final gid = (slot['gid'] ?? '').toString();
+      final referer = gid.isNotEmpty
+          ? '$origin/embed/$path?gid=${Uri.encodeQueryComponent(gid)}'
+          : '$origin/embed/$path';
+      final resp = await http
+          .post(
+            Uri.parse('$origin/fetch'),
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              'Origin': origin,
+              'Referer': referer,
+              'User-Agent': _ua,
+            },
+            body: body,
+          )
+          .timeout(const Duration(seconds: 20));
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        debugPrint('[LiveGasmUnlock] /fetch HTTP ${resp.statusCode}');
+        return null;
+      }
+      final island = resp.headers['island'] ?? '';
+      if (island.isEmpty) {
+        debugPrint('[LiveGasmUnlock] /fetch missing island header');
+        return null;
+      }
+      final bodyHex = resp.bodyBytes
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      final m3u8 = await unlockGasm(
+        slot: slot,
+        island: island,
+        bodyHex: bodyHex,
+      );
+      if (m3u8 == null || m3u8.isEmpty) return null;
+      return (
+        url: m3u8,
+        headers: playbackHeadersForEmbedIndia(slot, embedUrl: embed),
+      );
+    } catch (e) {
+      debugPrint('[LiveGasmUnlock] native resolve failed: $e');
+      return null;
+    }
+  }
+
+  /// PPV Engine: embed.st GOAT or embedindia.st GASM native unlock.
+  static Future<({String url, Map<String, String> headers})?> resolvePpv({
+    required String embedUrl,
+  }) async {
+    final embed = embedUrl.trim();
+    if (embed.isEmpty) return null;
+    if (isEmbedIndiaUrl(embed)) {
+      return resolveEmbedIndia(embedUrl: embed);
+    }
+    if (embed.contains('embed.st')) {
+      return resolveStreamed(embedUrl: embed);
+    }
+    return null;
+  }
+
   static Map<String, String> _embedHeaders(String? origin) {
     final o = (origin ?? _embedOrigin).replaceAll(RegExp(r'/+$'), '');
     return {'Referer': '$o/', 'Origin': o, 'User-Agent': _ua};
@@ -232,6 +329,24 @@ class LiveGoatUnlock {
     }
   }
 
+  static Map<String, String> playbackHeadersForEmbedIndia(
+    Map<String, dynamic> slot, {
+    String? embedUrl,
+  }) {
+    final origin = (slot['origin'] ?? _embedIndiaOrigin).toString().replaceAll(
+      RegExp(r'/+$'),
+      '',
+    );
+    final path = (slot['path'] ?? '').toString();
+    final gid = (slot['gid'] ?? '').toString();
+    final referer = (embedUrl ?? '').trim().isNotEmpty
+        ? embedUrl!.trim()
+        : gid.isNotEmpty
+        ? '$origin/embed/$path?gid=${Uri.encodeQueryComponent(gid)}'
+        : '$origin/embed/$path';
+    return {'Referer': referer, 'Origin': origin, 'User-Agent': _ua};
+  }
+
   /// Media playlists (`/delta/stream/`, `/echo/stream/`) ship `/m/…` segments
   /// with long signed query strings — open the catalog URL directly with
   /// [httpHeaders] instead of `/hls-proxy` rewrite. Admin master (`/rtmp/stream/`)
@@ -277,6 +392,29 @@ class LiveGoatUnlock {
     return null;
   }
 
+  static Map<String, dynamic>? _parseEmbedIndiaSlot(String raw) {
+    final trimmed = raw.trim();
+    if (!isEmbedIndiaUrl(trimmed)) return null;
+    final u = Uri.tryParse(trimmed);
+    if (u == null) return null;
+    final em = RegExp(
+      r'^/embed/([^/]+)/([^/]+)/([^/]+)/?$',
+    ).firstMatch(u.path);
+    if (em == null) return null;
+    final league = em.group(1)!;
+    final date = em.group(2)!;
+    final slug = em.group(3)!;
+    final gid = u.queryParameters['gid'] ?? '';
+    return {
+      'origin': u.origin,
+      'league': league,
+      'date': date,
+      'slug': slug,
+      'gid': gid,
+      'path': '$league/$date/$slug',
+    };
+  }
+
   static Uint8List _encodeFetchBody(String source, String id, String stream) {
     final out = BytesBuilder();
     void fieldStr(int field, String value) {
@@ -289,6 +427,27 @@ class LiveGoatUnlock {
     fieldStr(1, source);
     fieldStr(2, id);
     fieldStr(3, stream);
+    return out.toBytes();
+  }
+
+  static Uint8List _encodeEmbedIndiaFetchBody(
+    String league,
+    String date,
+    String slug,
+    String gid,
+  ) {
+    final out = BytesBuilder();
+    void fieldStr(int field, String value) {
+      final body = utf8.encode(value);
+      out.addByte((field << 3) | 2);
+      out.add(_varint(body.length));
+      out.add(body);
+    }
+
+    fieldStr(1, league);
+    fieldStr(2, date);
+    fieldStr(3, slug);
+    if (gid.isNotEmpty) fieldStr(4, gid);
     return out.toBytes();
   }
 
@@ -338,6 +497,41 @@ class LiveGoatUnlock {
     return null;
   }
 
+  static Future<String?> unlockGasm({
+    required Map<String, dynamic> slot,
+    required String island,
+    required String bodyHex,
+  }) async {
+    if (island.isEmpty || bodyHex.isEmpty) return null;
+    final path = (slot['path'] ?? '').toString();
+    if (path.isEmpty) return null;
+    final embedOrigin = (slot['origin'] ?? _embedIndiaOrigin).toString();
+    debugPrint(
+      '[LiveGasmUnlock] path=$path island=${island.length} body=${bodyHex.length ~/ 2}B',
+    );
+
+    final node = await _findNodeBinary();
+    if (node != null) {
+      try {
+        final dir = await _ensureGasmDir(node);
+        final url = await _runGasmUnlock(
+          node: node,
+          dir: dir,
+          slot: slot,
+          island: island,
+          bodyHex: bodyHex,
+          embedOrigin: embedOrigin,
+        );
+        if (url != null && url.isNotEmpty) return url;
+      } catch (e) {
+        debugPrint('[LiveGasmUnlock] node unlock failed: $e');
+      }
+    } else {
+      debugPrint('[LiveGasmUnlock] node not found');
+    }
+    return null;
+  }
+
   static Future<String?> sniffEmbed({
     required String embedUrl,
     String? referer,
@@ -358,16 +552,6 @@ class LiveGoatUnlock {
       debugPrint('[LiveSniffEmbed] failed: $e');
       return null;
     }
-  }
-
-  /// PPV Engine: embed.st GOAT only (same native path as Streamed).
-  /// embedindia.st has no Engine unlock — use Sniff mode (WebView handoff).
-  static Future<({String url, Map<String, String> headers})?> resolvePpv({
-    required String embedUrl,
-  }) async {
-    final embed = embedUrl.trim();
-    if (embed.isEmpty || !embed.contains('embed.st')) return null;
-    return resolveStreamed(embedUrl: embed);
   }
 
   static Future<String?> _findNodeBinary() async {
@@ -456,6 +640,75 @@ class LiveGoatUnlock {
     _cachedDir = dir.path;
   }
 
+  static Future<String> _ensureGasmDir(String node) async {
+    if (_cachedGasmDir != null) {
+      final ready = File(
+        '${_cachedGasmDir!}/node_modules/happy-dom/package.json',
+      );
+      if (await ready.exists()) return _cachedGasmDir!;
+    }
+    _prepareGasmFuture ??= _prepareGasmDir(node);
+    await _prepareGasmFuture;
+    final dir = _cachedGasmDir;
+    if (dir == null) {
+      throw StateError('GASM unlock runtime failed to initialize');
+    }
+    return dir;
+  }
+
+  static Future<void> _prepareGasmDir(String node) async {
+    final cached = _cachedGasmDir;
+    if (cached != null) {
+      final ready = File('$cached/node_modules/happy-dom/package.json');
+      if (await ready.exists()) return;
+    }
+
+    final support = await getApplicationSupportDirectory();
+    final dir = Directory('${support.path}/live-gasm');
+    await dir.create(recursive: true);
+
+    await _writeAsset(
+      '$_gasmAssetRoot/unlock.mjs',
+      File('${dir.path}/unlock.mjs'),
+    );
+    await _writeAsset(
+      '$_gasmAssetRoot/package.json',
+      File('${dir.path}/package.json'),
+    );
+    await _writeAsset(
+      '$_gasmAssetRoot/vendor/gasm.wasm',
+      File('${dir.path}/vendor/gasm.wasm'),
+    );
+    await _writeAsset(
+      '$_gasmAssetRoot/vendor/gasm-esm.mjs',
+      File('${dir.path}/vendor/gasm-esm.mjs'),
+    );
+
+    final npm = await _findNpmBinary();
+    if (npm == null) {
+      throw StateError('npm not found (needed once for GASM unlock deps)');
+    }
+    final install = await Process.run(
+      npm,
+      [
+        'install',
+        'happy-dom@17',
+        'big-integer@1.6.52',
+        '--no-fund',
+        '--no-audit',
+        '--prefer-offline',
+      ],
+      workingDirectory: dir.path,
+    ).timeout(const Duration(minutes: 2));
+    if (install.exitCode != 0) {
+      throw StateError(
+        'npm install failed: ${install.stderr.toString().trim()}',
+      );
+    }
+
+    _cachedGasmDir = dir.path;
+  }
+
   static Future<String?> _findNpmBinary() async {
     const candidates = ['npm', '/opt/homebrew/bin/npm', '/usr/local/bin/npm'];
     for (final c in candidates) {
@@ -518,6 +771,47 @@ class LiveGoatUnlock {
       return (decoded['url'] ?? '').toString().trim();
     }
     debugPrint('[LiveGoatUnlock] ${decoded['error']}');
+    return null;
+  }
+
+  static Future<String?> _runGasmUnlock({
+    required String node,
+    required String dir,
+    required Map<String, dynamic> slot,
+    required String island,
+    required String bodyHex,
+    required String embedOrigin,
+  }) async {
+    final payload = jsonEncode({
+      'slot': slot,
+      'island': island,
+      'bodyHex': bodyHex,
+      'embedOrigin': embedOrigin,
+    });
+    final proc = await Process.start(
+      node,
+      ['unlock.mjs'],
+      workingDirectory: dir,
+      runInShell: false,
+    );
+    proc.stdin.write(payload);
+    await proc.stdin.close();
+    final stdoutFuture = proc.stdout.transform(utf8.decoder).join();
+    final stderrFuture = proc.stderr.transform(utf8.decoder).join();
+    final exit = await proc.exitCode.timeout(const Duration(seconds: 45));
+    final stdout = await stdoutFuture;
+    final stderr = await stderrFuture;
+    final raw = stdout.trim();
+    if (exit != 0 || raw.isEmpty) {
+      debugPrint('[LiveGasmUnlock] exit=$exit stdout=$raw stderr=$stderr');
+      return null;
+    }
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) return null;
+    if (decoded['ok'] == true) {
+      return (decoded['url'] ?? '').toString().trim();
+    }
+    debugPrint('[LiveGasmUnlock] ${decoded['error']}');
     return null;
   }
 }

@@ -511,29 +511,16 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     return Colors.white.withValues(alpha: 0.07);
   }
 
-  Widget? _probeStatusDot() {
-    if (widget.onHoverProbe == null) return null;
+  Color _probeLeftBarColor() {
+    if (widget.onHoverProbe == null) return Colors.transparent;
     if (_probeChecking) {
-      return const SizedBox(
-        width: 8,
-        height: 8,
-        child: CircularProgressIndicator(
-          strokeWidth: 1.5,
-          color: Colors.white54,
-        ),
-      );
+      return Colors.white.withValues(alpha: 0.35);
     }
-    if (_probeHealth == null) return null;
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: _probeHealth!
-            ? const Color(0xFF22C55E)
-            : const Color(0xFFEF4444),
-        shape: BoxShape.circle,
-      ),
-    );
+    return switch (_probeHealth) {
+      true => const Color(0xFF22C55E),
+      false => const Color(0xFFEF4444),
+      null => Colors.transparent,
+    };
   }
 
   @override
@@ -553,169 +540,171 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final providerLines = hasProvider
         ? _providerLines(widget.provider!)
         : const <String>[];
-    final probeDot = _probeStatusDot();
-
+    final leftBarColor = _probeLeftBarColor();
     final face = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
       decoration: BoxDecoration(
         color: _backgroundColor(),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _borderColor()),
+        border: Border(
+          top: BorderSide(color: _borderColor()),
+          right: BorderSide(color: _borderColor()),
+          bottom: BorderSide(color: _borderColor()),
+        ),
       ),
       child: Stack(
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(12, padV, 12, padV),
+          IntrinsicHeight(
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (widget.leading != null) ...[
-                  widget.leading!,
-                  const SizedBox(width: 10),
-                ],
+                ColoredBox(
+                  color: leftBarColor,
+                  child: const SizedBox(width: 2.5),
+                ),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (widget.isResumable)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 2),
-                          child: Text(
-                            'RESUME',
-                            style: TextStyle(
-                              color: cinematic.textSecondary,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                        ),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              widget.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: cinematic.textPrimary,
-                                fontSize: titleSize,
-                                height: 1.25,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          if (showCopyMagnet) ...[
-                            const SizedBox(width: 4),
-                            ForjaPlainIcon(
-                              icon: Icons.content_copy_rounded,
-                              tooltip: 'Copy magnet',
-                              size: 15,
-                              hitSize: 24,
-                              color: cinematic.textSecondary,
-                              onTap: () async {
-                                await Clipboard.setData(
-                                  ClipboardData(text: magnet),
-                                );
-                                ForjaToast.success(
-                                  'Magnet copied',
-                                  duration: const Duration(seconds: 2),
-                                );
-                              },
-                            ),
-                          ],
-                          if (hasProvider || hasSeeders) ...[
-                            const SizedBox(width: 8),
-                            ConstrainedBox(
-                              constraints: BoxConstraints(maxWidth: 120),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(12, padV, 12, padV),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (widget.leading != null) ...[
+                          widget.leading!,
+                          const SizedBox(width: 10),
+                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (widget.isResumable)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: Text(
+                                    'RESUME',
+                                    style: TextStyle(
+                                      color: cinematic.textSecondary,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                ),
+                              Row(
                                 children: [
-                                  if (hasProvider)
-                                    ...providerLines.asMap().entries.map((
-                                      entry,
-                                    ) {
-                                      final isServerLine = entry.key == 0;
-                                      final dot = isServerLine ? probeDot : null;
-                                      return Padding(
-                                        padding: EdgeInsets.only(
-                                          top: entry.key == 0 ? 0 : 2,
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            if (dot != null) ...[
-                                              dot,
-                                              const SizedBox(width: 5),
-                                            ],
-                                            Flexible(
-                                              child: Text(
-                                                entry.value,
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                textAlign: TextAlign.right,
-                                                style: TextStyle(
-                                                  color:
-                                                      cinematic.textSecondary,
-                                                  fontSize: metrics
-                                                      .torrentPanelMetaFontSize,
-                                                  fontWeight: FontWeight.w500,
-                                                  height: 1.25,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    }),
-                                  if (hasSeeders) ...[
-                                    if (hasProvider) const SizedBox(height: 2),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.arrow_upward_rounded,
-                                          size:
-                                              metrics.torrentPanelMetaFontSize,
-                                          color: seedColor,
-                                        ),
-                                        const SizedBox(width: 2),
-                                        Text(
-                                          widget.seeders!,
-                                          style: TextStyle(
-                                            color: seedColor,
-                                            fontSize: metrics
-                                                .torrentPanelMetaFontSize,
-                                            fontWeight: FontWeight.w600,
-                                            height: 1.1,
-                                          ),
-                                        ),
-                                      ],
+                                  Expanded(
+                                    child: Text(
+                                      widget.title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: cinematic.textPrimary,
+                                        fontSize: titleSize,
+                                        height: 1.25,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                  if (showCopyMagnet) ...[
+                                    const SizedBox(width: 4),
+                                    ForjaPlainIcon(
+                                      icon: Icons.content_copy_rounded,
+                                      tooltip: 'Copy magnet',
+                                      size: 15,
+                                      hitSize: 24,
+                                      color: cinematic.textSecondary,
+                                      onTap: () async {
+                                        await Clipboard.setData(
+                                          ClipboardData(text: magnet),
+                                        );
+                                        ForjaToast.success(
+                                          'Magnet copied',
+                                          duration: const Duration(seconds: 2),
+                                        );
+                                      },
                                     ),
                                   ],
                                 ],
                               ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      if (hasLanguageFlags || widget.badges.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            if (hasLanguageFlags)
-                              _LanguageFlagBadges(codes: widget.languageCodes),
-                            for (final badge in widget.badges)
-                              _SourceMetaBadge(badge: badge),
-                          ],
+                              if (hasLanguageFlags ||
+                                  widget.badges.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    if (hasLanguageFlags)
+                                      _LanguageFlagBadges(
+                                        codes: widget.languageCodes,
+                                      ),
+                                    for (final badge in widget.badges)
+                                      _SourceMetaBadge(badge: badge),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
+                        if (hasProvider || hasSeeders) ...[
+                          const SizedBox(width: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 120),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                if (hasProvider)
+                                  ...providerLines.asMap().entries.map((
+                                    entry,
+                                  ) {
+                                    return Padding(
+                                      padding: EdgeInsets.only(
+                                        top: entry.key == 0 ? 0 : 2,
+                                      ),
+                                      child: Text(
+                                        entry.value,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                          color: cinematic.textSecondary,
+                                          fontSize:
+                                              metrics.torrentPanelMetaFontSize,
+                                          fontWeight: FontWeight.w500,
+                                          height: 1.25,
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                if (hasSeeders) ...[
+                                  if (hasProvider) const SizedBox(height: 2),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.arrow_upward_rounded,
+                                        size: metrics.torrentPanelMetaFontSize,
+                                        color: seedColor,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        widget.seeders!,
+                                        style: TextStyle(
+                                          color: seedColor,
+                                          fontSize:
+                                              metrics.torrentPanelMetaFontSize,
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.1,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -724,20 +713,15 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
           if (widget.isResumable && widget.progress > 0)
             Positioned(
               bottom: 0,
-              left: 0,
+              left: 2.5,
               right: 0,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(10),
-                ),
-                child: LinearProgressIndicator(
-                  value: widget.progress,
-                  backgroundColor: Colors.transparent,
-                  color: ForjaShellColors.progressFill,
-                  minHeight: 2.5,
-                ),
+              child: LinearProgressIndicator(
+                value: widget.progress,
+                backgroundColor: Colors.transparent,
+                color: ForjaShellColors.progressFill,
+                minHeight: 2.5,
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -761,7 +745,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     return shellFocusableTap(
       context: context,
       onTap: widget.onTap,
-      borderRadius: 10,
+      borderRadius: 0,
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,

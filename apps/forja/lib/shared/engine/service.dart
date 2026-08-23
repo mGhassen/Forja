@@ -412,20 +412,34 @@ class EngineService {
   }
 
   Future<String?> _loadScript(EnginePlugin plugin) async {
+    String? code;
     if (plugin.isLive && plugin.entry.isNotEmpty && isBundled(bundledSourceUrl)) {
       try {
-        return await rootBundle.loadString('$_assetRoot/${plugin.entry}');
+        code = await rootBundle.loadString('$_assetRoot/${plugin.entry}');
       } catch (_) {}
     }
-    final prefs = await _prefs;
-    final cached = prefs.getString(_scriptPrefix + plugin.id);
-    if (cached != null && cached.isNotEmpty) return cached;
-    if (isBundled(bundledSourceUrl) && plugin.entry.isNotEmpty) {
+    if (code == null || code.isEmpty) {
+      final prefs = await _prefs;
+      final cached = prefs.getString(_scriptPrefix + plugin.id);
+      if (cached != null && cached.isNotEmpty) code = cached;
+    }
+    if ((code == null || code.isEmpty) &&
+        isBundled(bundledSourceUrl) &&
+        plugin.entry.isNotEmpty) {
       try {
-        return await rootBundle.loadString('$_assetRoot/${plugin.entry}');
+        code = await rootBundle.loadString('$_assetRoot/${plugin.entry}');
       } catch (_) {}
     }
-    return null;
+    if (code == null || code.isEmpty) return null;
+    if (plugin.entry.startsWith('live/') && !plugin.entry.contains('/goat/')) {
+      try {
+        final shared = await rootBundle.loadString(
+          '$_assetRoot/live/embed-st.js',
+        );
+        code = '$shared\n$code';
+      } catch (_) {}
+    }
+    return code;
   }
 
   Future<EngineExtractResult?> runPlugin({
@@ -788,7 +802,7 @@ class EngineService {
     }
   }
 
-  /// Rust QuickJS live plugin path — null → flutter_js fork fallback.
+  /// Forja EngineJS live plugin path — null → flutter_js fork fallback.
   Future<List<Map<String, dynamic>>?> _runLiveEngineRustJs({
     required EnginePlugin plugin,
     required Map<String, dynamic> config,
@@ -826,7 +840,7 @@ class EngineService {
       'config': config,
     };
 
-    debugPrint('[engine] ${plugin.id} start (rust-js live) action=$action');
+    debugPrint('[engine] ${plugin.id} start (enginejs live) action=$action');
     final sw = Stopwatch()..start();
     late final String rawJson;
     try {
@@ -840,7 +854,7 @@ class EngineService {
         'hop_depth': 0,
       });
     } catch (e) {
-      debugPrint('[engine] ${plugin.id} rust-js live submit failed: $e');
+      debugPrint('[engine] ${plugin.id} enginejs live submit failed: $e');
       return null;
     }
     if (gen != generation()) return null;
@@ -855,12 +869,12 @@ class EngineService {
     }
     if (decoded['unsupported'] == true) {
       debugPrint(
-        '[engine] ${plugin.id} rust-js live unsupported — flutter_js fallback',
+        '[engine] ${plugin.id} enginejs live unsupported — flutter_js fallback',
       );
       return null;
     }
     if (decoded['error'] != null && decoded['streams'] == null) {
-      debugPrint('[engine] ${plugin.id} rust-js live error: ${decoded['error']}');
+      debugPrint('[engine] ${plugin.id} enginejs live error: ${decoded['error']}');
       return null;
     }
 
@@ -872,7 +886,7 @@ class EngineService {
       }
     }
     debugPrint(
-      '[engine] ${plugin.id} done (rust-js live) raw=${rawList.length} '
+      '[engine] ${plugin.id} done (enginejs live) raw=${rawList.length} '
       '${sw.elapsedMilliseconds}ms',
     );
     return rawList;
@@ -928,7 +942,7 @@ class EngineService {
     int? kisskhEpisodeId,
     bool allowHostFallback = true,
   }) async {
-    // RFC-064: Rust QuickJS on tokio (true parallel). Null → flutter_js fork
+    // RFC-064: Forja EngineJS on tokio (true parallel). Null → flutter_js fork
     // only when Rust is unsupported — never after cancelPending gen bump
     // (that stampeded UI-isolate JSC forks mid-play → macOS SIGSEGV).
     final genAtStart = _extractGeneration;
@@ -1090,7 +1104,7 @@ class EngineService {
     if (gen != _extractGeneration) return null;
 
     debugPrint(
-      '[engine] ${plugin.id} start (rust-js) tmdb=$tmdbId type=$mediaType '
+      '[engine] ${plugin.id} start (enginejs) tmdb=$tmdbId type=$mediaType '
       's=$season e=$episode title=$title hops=${hopPayload.length}',
     );
     final sw = Stopwatch()..start();
@@ -1106,7 +1120,7 @@ class EngineService {
         'hop_depth': 0,
       });
     } catch (e) {
-      debugPrint('[engine] ${plugin.id} rust-js submit failed: $e');
+      debugPrint('[engine] ${plugin.id} enginejs submit failed: $e');
       return null;
     }
     if (gen != _extractGeneration) return null;
@@ -1120,17 +1134,17 @@ class EngineService {
       return null;
     }
     if (decoded['error'] != null && decoded['streams'] == null) {
-      debugPrint('[engine] ${plugin.id} rust-js job error: ${decoded['error']}');
+      debugPrint('[engine] ${plugin.id} enginejs job error: ${decoded['error']}');
       return null;
     }
     if (decoded['unsupported'] == true) {
       debugPrint(
-        '[engine] ${plugin.id} rust-js unsupported — flutter_js fallback',
+        '[engine] ${plugin.id} enginejs unsupported — flutter_js fallback',
       );
       return null;
     }
     if (decoded['error'] != null) {
-      debugPrint('[engine] ${plugin.id} rust-js error: ${decoded['error']}');
+      debugPrint('[engine] ${plugin.id} enginejs error: ${decoded['error']}');
       // Soft failure with empty streams still counts as a completed extract
       // when unsupported is not set (e.g. timeout) — avoid double-running.
     }
@@ -1149,7 +1163,7 @@ class EngineService {
         needsHost.isNotEmpty &&
         allowHostFallback &&
         gen == _extractGeneration) {
-      debugPrint('[engine] ${plugin.id} rust-js needs_host=$needsHost');
+      debugPrint('[engine] ${plugin.id} enginejs needs_host=$needsHost');
       final resolvedMovie =
           movie ??
           Movie(
@@ -1180,7 +1194,7 @@ class EngineService {
         if (gen != _extractGeneration) return null;
         if (hostMapped.isNotEmpty) {
           debugPrint(
-            '[engine] ${plugin.id} done (rust-js+host) streams=${hostMapped.length} '
+            '[engine] ${plugin.id} done (enginejs+host) streams=${hostMapped.length} '
             '${sw.elapsedMilliseconds}ms',
           );
           return EngineExtractResult(
@@ -1197,7 +1211,7 @@ class EngineService {
         plugin.id == 'videasy' &&
         movie != null &&
         gen == _extractGeneration) {
-      debugPrint('[engine] videasy rust-js empty — dart API fallback');
+      debugPrint('[engine] videasy enginejs empty — dart API fallback');
       try {
         final extracted = await VideasyExtractor(onLog: debugPrint).extract(
           tmdbId: tmdbId,
@@ -1255,7 +1269,7 @@ class EngineService {
       if (mapped != null) streams.add(mapped);
     }
     debugPrint(
-      '[engine] ${plugin.id} done (rust-js) raw=${effectiveRaw.length} '
+      '[engine] ${plugin.id} done (enginejs) raw=${effectiveRaw.length} '
       'streams=${streams.length} ${sw.elapsedMilliseconds}ms',
     );
     return EngineExtractResult(

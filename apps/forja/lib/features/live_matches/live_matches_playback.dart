@@ -733,7 +733,7 @@ mixin _LiveMatchesPlayback
               embed,
               catalogReferer: match.isForjaLive ? _forjaLiveCdnReferer(embed) : null,
             );
-      final direct = LiveGoatUnlock.preferDirectEnginePlayback(embed);
+      final direct = liveEnginePreferDirectPlayback(embed);
       final playUrl = direct
           ? embed
           : await LiveMatchesEngine.proxyPlayUrl(url: embed, headers: headers);
@@ -774,7 +774,8 @@ mixin _LiveMatchesPlayback
             result.url,
             catalogReferer: catalogReferer,
           );
-    final direct = LiveGoatUnlock.preferDirectEnginePlayback(result.url);
+    final direct =
+        result.directPlayback || liveEnginePreferDirectPlayback(result.url);
     final playUrl = direct
         ? result.url
         : await LiveMatchesEngine.proxyPlayUrl(url: result.url, headers: headers);

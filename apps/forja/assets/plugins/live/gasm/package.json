@@ -1,0 +1,8 @@
+{
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "big-integer": "^1.6.52",
+    "happy-dom": "^17.6.3"
+  }
+}

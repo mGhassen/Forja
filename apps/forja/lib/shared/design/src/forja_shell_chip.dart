@@ -61,17 +61,19 @@ Widget shellRoundedInkHost({
     return Material(
       color: backgroundColor ?? Colors.transparent,
       borderRadius: borderRadius,
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: radius > 0 ? Clip.antiAlias : Clip.none,
       child: decoration != null
           ? Ink(decoration: decoration, child: body)
           : body,
     );
   }
 
+  final clip = radius > 0 ? Clip.antiAlias : Clip.none;
+
   return Material(
     color: backgroundColor ?? Colors.transparent,
     borderRadius: borderRadius,
-    clipBehavior: Clip.antiAlias,
+    clipBehavior: clip,
     child: decoration != null
         ? Ink(
             decoration: decoration,

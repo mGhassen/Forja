@@ -360,7 +360,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
               : null,
           onFiltersDownEdge: _tv ? _focusList : null,
         ),
-        const SizedBox(height: gap),
+        const SizedBox(height: 4),
         if (widget.showCacheLine && widget.cacheRefreshToken != null) ...[
           const SizedBox(height: 4),
           TorrentCacheStorageLine(refreshToken: widget.cacheRefreshToken!),

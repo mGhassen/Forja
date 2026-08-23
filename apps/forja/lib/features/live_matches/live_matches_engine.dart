@@ -113,6 +113,7 @@ class LiveMatchesEngine {
       url: url,
       headers: headers,
       label: (first['name'] ?? first['title'] ?? pluginId).toString(),
+      directPlayback: first['directPlayback'] == true,
     );
   }
 
@@ -142,17 +143,20 @@ class LiveEngineResolveResult {
     this.headers = const {},
     this.label = '',
     this.embedUrl = '',
+    this.directPlayback = false,
   });
 
   factory LiveEngineResolveResult.playable({
     required String url,
     Map<String, String> headers = const {},
     String label = '',
+    bool directPlayback = false,
   }) => LiveEngineResolveResult._(
     playable: true,
     url: url,
     headers: headers,
     label: label,
+    directPlayback: directPlayback,
   );
 
   factory LiveEngineResolveResult.webviewOnly({required String embedUrl}) =>
@@ -163,4 +167,10 @@ class LiveEngineResolveResult {
   final Map<String, String> headers;
   final String label;
   final String embedUrl;
+  final bool directPlayback;
+}
+
+bool liveEnginePreferDirectPlayback(String m3u8Url) {
+  final path = (Uri.tryParse(m3u8Url.trim())?.path ?? '').toLowerCase();
+  return path.contains('/delta/stream/') || path.contains('/echo/stream/');
 }

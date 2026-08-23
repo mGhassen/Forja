@@ -373,7 +373,7 @@ function extract(ctx) {
     }
     if (cheerioOk && tasks.length) return;
 
-    // Rust QuickJS has no cheerio — scrape buttons via regex.
+    // Forja EngineJS has no cheerio — scrape buttons via regex.
     var btnRe =
       /<button[^>]*data-src=["']([^"']+)["'][^>]*>([\s\S]*?)<\/button>/gi;
     var m;

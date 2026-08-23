@@ -319,6 +319,24 @@ class EngineRuntime {
       }
     });
 
+    br('LiveGasmUnlock', (args) async {
+      try {
+        final m = _bridgeMap(args);
+        final slotRaw = m['slot'];
+        final slot = slotRaw is Map
+            ? Map<String, dynamic>.from(slotRaw)
+            : <String, dynamic>{};
+        final url = await LiveGoatUnlock.unlockGasm(
+          slot: slot,
+          island: (m['island'] ?? '').toString(),
+          bodyHex: (m['bodyHex'] ?? '').toString(),
+        );
+        return url ?? '';
+      } catch (_) {
+        return '';
+      }
+    });
+
     br('LiveSniffEmbed', (args) async {
       try {
         final m = _bridgeMap(args);
@@ -707,6 +725,13 @@ class EngineRuntime {
         return sendMessage('LiveGoatUnlock', JSON.stringify({
           bodyHex: String(bodyHex == null ? '' : bodyHex),
           goat: String(goat == null ? '' : goat),
+          slot: slot || {}
+        })) || '';
+      },
+      gasmUnlock: function(bodyHex, island, slot) {
+        return sendMessage('LiveGasmUnlock', JSON.stringify({
+          bodyHex: String(bodyHex == null ? '' : bodyHex),
+          island: String(island == null ? '' : island),
           slot: slot || {}
         })) || '';
       },

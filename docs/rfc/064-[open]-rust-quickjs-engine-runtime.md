@@ -1,4 +1,4 @@
-# RFC-064: Rust QuickJS Engine runtime (Forja Sources)
+# RFC-064: Forja EngineJS runtime (Forja Sources)
 
 **Status:** open  
 **Depends on:** [RFC-060](fixed/060-[fixed]-enginejs-sources-forja-tab.md)  
@@ -25,7 +25,7 @@
 | 4 | R64-C04 | Dart `runPluginIsolated` prefers Rust JS; flutter_js fallback | ✅ |
 | 5 | R64-C05 | `ctx.host` → `needs_host` + Dart `EngineHostResolver` (WebView stays host) | ✅ |
 | 6 | R64-C06 | CryptoJS façade (AES/digest/hmac) + `ctx.hop` nested extract | ✅ |
-| 7 | R64-C07 | cheerio bundle → `ctx.html` in rust-js (lazy on first use) | ✅ |
+| 7 | R64-C07 | cheerio bundle → `ctx.html` in EngineJS (lazy on first use) | ✅ |
 
 ---
 
@@ -42,7 +42,7 @@
 | 7 | R64-A07 | ENGINE_BOUNDARY: Nuvio stays host `flutter_js` (D3); only Forja Engine HTTP moves | ✅ |
 | 8 | R64-A08 | Manual macOS: select videasy+vidlink+goated — no `Lost connection` | ✅ |
 | 9 | R64-A09 | Unit: parallel `scope_job_token` — sibling finish/cancel does not clear peer token | ✅ |
-| 10 | R64-A10 | Unit: CryptoJS AES passphrase encrypt/decrypt round-trip in rust-js | ✅ |
+| 10 | R64-A10 | Unit: CryptoJS AES passphrase encrypt/decrypt round-trip in EngineJS | ✅ |
 | 11 | R64-A11 | Unit: `ctx.hop` nested extract returns hop plugin streams | ✅ |
 | 12 | R64-A12 | Unit: scrypt PoW finds nonce for small params (CineJoy parity) | ✅ |
 | 13 | R64-A13 | Unit: `ctx.html` cheerio select/attr/text | ✅ |
@@ -58,7 +58,7 @@ Sources → Forja runs up to 10 `EngineRuntime.fork()` heaps on the **Flutter UI
 
 ### Goals
 
-1. Run Forja Engine HTTP `extract(ctx)` in **Rust QuickJS**, one runtime per job, on the existing tokio `EngineJobs` pool (true parallel, off UI).
+1. Run Forja Engine HTTP `extract(ctx)` in **Forja EngineJS**, one runtime per job, on the existing tokio `EngineJobs` pool (true parallel, off UI).
 2. Keep plugin JS assets (`assets/providers/*.js`) unchanged.
 3. Do **not** move Nuvio community scrapers (still host C4).
 4. Gradual cutover: Rust first for fetch/crypto plugins; flutter_js fallback when Rust returns unsupported / missing bridge.
