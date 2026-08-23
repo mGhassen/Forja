@@ -118,6 +118,11 @@ class DetailsPlaySession {
   String selectedSourceId = '';
   String panelKindFilter = EngineIds.kind;
 
+  /// Last green-play / panel pick — restores Forja/Nuvio chip on Sources open.
+  String? playingPanelKind;
+  String? playingAddonBaseUrl;
+  String? playingCatalogUrl;
+
   /// Per-kind Stremio addon / torrent chip id — [selectedSourceId] is active tab only.
   Map<String, String> panelSourceIdByKind = {};
 

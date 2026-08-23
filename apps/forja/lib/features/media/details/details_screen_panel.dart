@@ -749,6 +749,10 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       }
     }
     final presentation = stremioTilePresentation(s, isResumable: resumable);
+    final playingCatalog = _s._playingCatalogUrl;
+    final isPlaying = playingCatalog != null &&
+        playingCatalog.isNotEmpty &&
+        catalogStreamRowMatchesPlaying(s, catalogUrl: playingCatalog);
     return StremioSourceTile(
       key: _streamTileKey(s),
       title: title,
@@ -763,7 +767,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       stream: s,
       progress: prog,
       isResumable: resumable,
-      highlightStart: widget.startPosition != null,
+      highlightStart: widget.startPosition != null || isPlaying,
       tvItemIndex: tvItemIndex,
       onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
       onHoverProbe: presentation.isExternal

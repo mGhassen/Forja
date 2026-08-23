@@ -2,9 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 export 'package:forja/shared/playback/playback_stream_guards.dart'
-    show durableStreamCatalogUrl, hlsProxyTargetUrl, streamSourceMatchesPlaying;
+    show
+        catalogStreamRowMatchesPlaying,
+        durableStreamCatalogUrl,
+        hlsProxyTargetUrl,
+        streamSourceMatchesPlaying;
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/playback/stream_open_pipeline.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -793,6 +798,108 @@ String catalogStreamKindLabel(Map<String, dynamic> stream) {
   if (base != null && base.startsWith('engine:')) return 'Forja';
   if (base != null && base.startsWith('nuvio:')) return 'Nuvio';
   return 'Stremio';
+}
+
+String? _torrentIndexerFromSessionCache(String cacheKey, String magnet) {
+  final torrents = CatalogSourcesSessionCache.readTorrents(cacheKey);
+  if (torrents == null) return null;
+  for (final t in torrents) {
+    if (t.magnet != magnet) continue;
+    final src = t.source.trim();
+    if (src.isNotEmpty && src != 'Unknown') return src;
+    return null;
+  }
+  return null;
+}
+
+String? _catalogAddonNameFromSessionCaches(
+  String cacheKey, {
+  required String playUrl,
+  String? catalogUrl,
+}) {
+  final stremio = CatalogSourcesSessionCache.readStremio(cacheKey);
+  final nuvio = CatalogSourcesSessionCache.readNuvio(cacheKey)?.streams;
+  final engine = CatalogSourcesSessionCache.readEngine(cacheKey)?.streams;
+  for (final streams in [stremio, nuvio, engine]) {
+    if (streams == null) continue;
+    for (final stream in streams) {
+      if (!catalogStreamRowMatchesPlaying(
+        stream,
+        playUrl: playUrl,
+        catalogUrl: catalogUrl,
+      )) {
+        continue;
+      }
+      final addonName = stream['_addonName']?.toString().trim();
+      if (addonName != null && addonName.isNotEmpty) return addonName;
+      final base = stream['_addonBaseUrl']?.toString().trim();
+      if (base != null && base.isNotEmpty) {
+        return StreamProviderDisplay.playerLabel(base);
+      }
+    }
+  }
+  return null;
+}
+
+/// Player Sources button label — active scraper/addon or torrent indexer.
+String catalogSourcesButtonLabel({
+  required Movie? movie,
+  required int? season,
+  required int? episode,
+  String? catalogAddonBaseUrl,
+  String? widgetAddonBaseUrl,
+  String? currentProvider,
+  String? activeProvider,
+  String? activeMagnet,
+  String? widgetMagnetLink,
+  String? currentStreamUrl,
+  String? currentPlayingCatalogUrl,
+  String? catalogSourceKind,
+}) {
+  final addon = (catalogAddonBaseUrl ?? widgetAddonBaseUrl)?.trim();
+  if (addon != null && addon.isNotEmpty) {
+    return StreamProviderDisplay.playerLabel(addon);
+  }
+
+  final cacheKey = movie == null
+      ? null
+      : CatalogSourcesSessionCache.cacheKey(
+          mediaId: movie.id,
+          mediaType: movie.mediaType,
+          season: season,
+          episode: episode,
+        );
+
+  if (cacheKey != null) {
+    final magnet = (activeMagnet ?? widgetMagnetLink)?.trim();
+    if (magnet != null && magnet.isNotEmpty) {
+      final indexer = _torrentIndexerFromSessionCache(cacheKey, magnet);
+      if (indexer != null) return indexer;
+    }
+
+    final playUrl = currentStreamUrl?.trim();
+    if (playUrl != null && playUrl.isNotEmpty) {
+      final addonName = _catalogAddonNameFromSessionCaches(
+        cacheKey,
+        playUrl: playUrl,
+        catalogUrl: currentPlayingCatalogUrl,
+      );
+      if (addonName != null) return addonName;
+    }
+  }
+
+  final pid = (currentProvider ?? activeProvider)?.trim();
+  if (pid != null && pid.isNotEmpty) {
+    return StreamProviderDisplay.playerLabel(pid);
+  }
+
+  return switch (catalogSourceKind) {
+    'torrents' => 'Torrent',
+    'nuvio' => 'Nuvio',
+    'engine' => 'Forja',
+    'stremio' => 'Stremio',
+    _ => 'Sources',
+  };
 }
 
 /// `activeProvider` / RFC-044 identity for a Sources HTTP row.

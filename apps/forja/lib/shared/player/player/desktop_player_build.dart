@@ -519,6 +519,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                           PlayerFlatIconButton(
                             icon: Icons.link_rounded,
                             tooltip: 'Sources',
+                            label: _s._catalogSourcesButtonLabel(),
                             onPressed: _s._showTorrentSourcesPanel,
                           ),
                           const SizedBox(width: 2),

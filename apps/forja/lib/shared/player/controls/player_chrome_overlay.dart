@@ -173,22 +173,33 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
           height: widget.size,
           child: widget.label == null
               ? Icon(widget.icon, color: _iconColor, size: widget.iconSize)
-              : Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        widget.icon,
-                        color: _iconColor,
-                        size: widget.iconSize - 2,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        widget.label!,
-                        style: TextStyle(color: _labelColor, fontSize: 13),
-                      ),
-                    ],
+              : ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 148),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          widget.icon,
+                          color: _iconColor,
+                          size: widget.iconSize - 2,
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            widget.label!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _labelColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
         ),

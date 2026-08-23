@@ -159,6 +159,26 @@ String? durableStreamCatalogUrl({
   return null;
 }
 
+/// Whether a Sources-panel Stremio/Nuvio/Engine row matches the active play URL.
+bool catalogStreamRowMatchesPlaying(
+  Map<String, dynamic> stream, {
+  String? playUrl,
+  String? catalogUrl,
+}) {
+  final play = playUrl?.trim() ?? '';
+  final catalog = catalogUrl?.trim() ?? '';
+  final url = stream['url']?.toString().trim() ?? '';
+  final playTarget = play.isEmpty ? '' : (hlsProxyTargetUrl(play) ?? '');
+  final urlTarget = url.isEmpty ? '' : (hlsProxyTargetUrl(url) ?? '');
+
+  bool hit(String a, String b) => a.isNotEmpty && b.isNotEmpty && a == b;
+
+  if (hit(url, play) || hit(url, catalog)) return true;
+  if (hit(url, playTarget) || hit(urlTarget, catalog)) return true;
+  if (hit(urlTarget, playTarget)) return true;
+  return false;
+}
+
 /// Whether [source] is the row currently playing (catalog or play URL).
 bool streamSourceMatchesPlaying(
   StreamSource source, {

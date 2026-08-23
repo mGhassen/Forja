@@ -15,12 +15,14 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
   String? _initialCatalogSourceKind() {
     final base = widget.stremioAddonBaseUrl;
     if (base != null && base.startsWith('nuvio:')) return 'nuvio';
+    if (base != null && base.startsWith('engine:')) return 'engine';
     if (widget.magnetLink != null && widget.magnetLink!.isNotEmpty) {
       return 'torrents';
     }
     final provider = widget.activeProvider;
     if (provider == 'torrent') return 'torrents';
     if (provider == 'stremio_direct') return 'stremio';
+    if (provider != null && provider.startsWith('engine:')) return 'engine';
     return null;
   }
 
@@ -47,6 +49,20 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     }
     return 'Sources';
   }
+
+  String _catalogSourcesButtonLabel() => catalogSourcesButtonLabel(
+        movie: widget.movie,
+        season: widget.selectedSeason,
+        episode: widget.selectedEpisode,
+        catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
+        widgetAddonBaseUrl: widget.stremioAddonBaseUrl,
+        currentProvider: _s._currentProvider,
+        activeProvider: widget.activeProvider,
+        activeMagnet: _s._activeMagnet,
+        widgetMagnetLink: widget.magnetLink,
+        currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
+        catalogSourceKind: _s._catalogSourceKind,
+      );
 
   void _seedSourceSession(List<_ExoSource> ranked) {
     _s._currentProvider = widget.activeProvider;
@@ -385,6 +401,9 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       episode: widget.selectedEpisode,
       currentMagnet: _s._activeMagnet ?? widget.magnetLink,
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
+      currentPlayingCatalogUrl: durableStreamCatalogUrl(
+        playUrl: _s._currentUrl ?? widget.mediaPath,
+      ),
       preferredKind: _s._catalogSourceKind,
       currentAddonBaseUrl:
           _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,

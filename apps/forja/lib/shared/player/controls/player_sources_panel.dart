@@ -60,6 +60,7 @@ class PlayerSourcesPanel {
     int? episode,
     String? currentMagnet,
     String? currentStreamUrl,
+    String? currentPlayingCatalogUrl,
 
     /// `torrents` | `stremio` | `nuvio` - opens on the playing source kind.
     String? preferredKind,
@@ -99,6 +100,7 @@ class PlayerSourcesPanel {
           episode: episode,
           currentMagnet: currentMagnet,
           currentStreamUrl: currentStreamUrl,
+          currentPlayingCatalogUrl: currentPlayingCatalogUrl,
           preferredKind: preferredKind,
           currentAddonBaseUrl: currentAddonBaseUrl,
           anilistId: anilistId,
@@ -130,6 +132,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.episode,
     this.currentMagnet,
     this.currentStreamUrl,
+    this.currentPlayingCatalogUrl,
     this.preferredKind,
     this.currentAddonBaseUrl,
     this.anilistId,
@@ -146,6 +149,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final int? episode;
   final String? currentMagnet;
   final String? currentStreamUrl;
+  final String? currentPlayingCatalogUrl;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
   final int? anilistId;
@@ -194,6 +198,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           episode: widget.episode,
           currentMagnet: widget.currentMagnet,
           currentStreamUrl: widget.currentStreamUrl,
+          currentPlayingCatalogUrl: widget.currentPlayingCatalogUrl,
           preferredKind: widget.preferredKind,
           currentAddonBaseUrl: widget.currentAddonBaseUrl,
           anilistId: widget.anilistId,
@@ -221,6 +226,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.episode,
     this.currentMagnet,
     this.currentStreamUrl,
+    this.currentPlayingCatalogUrl,
     this.preferredKind,
     this.currentAddonBaseUrl,
     this.anilistId,
@@ -236,6 +242,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final int? episode;
   final String? currentMagnet;
   final String? currentStreamUrl;
+  final String? currentPlayingCatalogUrl;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
   final int? anilistId;
@@ -479,8 +486,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   bool _isCurrentStremio(Map<String, dynamic> stream) {
     final playUrl = widget.currentStreamUrl;
     if (playUrl != null && playUrl.isNotEmpty) {
-      final url = stream['url']?.toString();
-      if (url != null && url.isNotEmpty && url == playUrl) return true;
+      if (catalogStreamRowMatchesPlaying(
+        stream,
+        playUrl: playUrl,
+        catalogUrl: widget.currentPlayingCatalogUrl,
+      )) {
+        return true;
+      }
       // Local torrent URL: Torrents tab owns the "playing" highlight via
       // infoHash. Do not mark Torrentio/Stremio/Nuvio rows as current.
       if (isLocalTorrentStreamUrl(playUrl)) return false;
@@ -592,6 +604,22 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (_kindFilter == 'stremio') {
       if (_selectedSourceId.isEmpty) return;
       _syncStremioProviderSelection();
+      return;
+    }
+    final base = widget.currentAddonBaseUrl;
+    if (base == null || base.isEmpty) return;
+    if (_kindFilter == 'engine' && base.startsWith(EngineIds.prefix)) {
+      final pluginId = base.substring(EngineIds.prefix.length);
+      if (pluginId.isEmpty) return;
+      _selectedSourceId = EngineIds.pluginChip(pluginId);
+      _engineSelectedPluginIds = {pluginId};
+      return;
+    }
+    if (_kindFilter == 'nuvio' && base.startsWith('nuvio:')) {
+      final scraperId = base.substring('nuvio:'.length);
+      if (scraperId.isEmpty) return;
+      _selectedSourceId = 'nuvio:$scraperId';
+      _nuvioSelectedScraperIds = {scraperId};
     }
   }
 

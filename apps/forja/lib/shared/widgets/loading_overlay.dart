@@ -526,6 +526,18 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     return names;
   }
 
+  /// Live status from the resolve owner (stream probe, preparing playback, …).
+  /// Shown under the aggregate headline so parallel checks never look frozen.
+  String? get _probeActivityLine {
+    if (!_showProviderProbes) return null;
+    final msg = _message.trim();
+    if (msg.isEmpty) return null;
+    if (msg == _probeStatusHeadline) return null;
+    return msg;
+  }
+
+  bool get _probeWorkActive => _tryingProbes.isNotEmpty;
+
   bool _canManualCheck(StreamProviderProbe probe) {
     if (widget.onManualCheckProvider == null) return false;
     // Allow tapping CHECKING rows so the user can jump to another server
@@ -933,6 +945,25 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
             ),
           ),
         ],
+        if (_probeActivityLine != null) ...[
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              _probeActivityLine!,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.58),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 1.2,
+                fontFamily: 'Poppins',
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         SizedBox(
           width: 220,
@@ -943,7 +974,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
               duration: const Duration(milliseconds: 320),
               curve: Curves.easeOutCubic,
               builder: (context, value, _) => LinearProgressIndicator(
-                value: value > 0 ? value : null,
+                value: _probeWorkActive ? null : (value > 0 ? value : null),
                 minHeight: 3,
                 backgroundColor: Colors.white.withValues(alpha: 0.12),
                 color: AppTheme.primaryColor,
@@ -954,8 +985,8 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         const SizedBox(height: 10),
         Text(
           _probeSkipped > 0
-              ? '$_probeChecked / $_probeTotal CHECKED  ·  $_probeReady UP  ·  $_probeSkipped SKIPPED ON TV'
-              : '$_probeChecked / $_probeTotal CHECKED  ·  $_probeReady UP',
+              ? '$_probeChecked / $_probeTotal CHECKED  ·  ${_tryingProbes.length} ACTIVE  ·  $_probeReady UP  ·  $_probeSkipped SKIPPED ON TV'
+              : '$_probeChecked / $_probeTotal CHECKED  ·  ${_tryingProbes.length} ACTIVE  ·  $_probeReady UP',
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.5),
             fontSize: 11,

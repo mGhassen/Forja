@@ -6,6 +6,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
   String? _initialCatalogSourceKind() {
     final base = widget.stremioAddonBaseUrl;
     if (base != null && base.startsWith('nuvio:')) return 'nuvio';
+    if (base != null && base.startsWith('engine:')) return 'engine';
     // Local magnet session → Torrents tab (even if opened via Stremio/Torrentio).
     if (widget.magnetLink != null && widget.magnetLink!.isNotEmpty) {
       return 'torrents';
@@ -13,6 +14,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
     final provider = widget.activeProvider;
     if (provider == 'torrent') return 'torrents';
     if (provider == 'stremio_direct') return 'stremio';
+    if (provider != null && provider.startsWith('engine:')) return 'engine';
     return null;
   }
 

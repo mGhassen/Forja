@@ -408,6 +408,21 @@ mixin _DesktopPlayerSources
     return 'Stream';
   }
 
+  String _catalogSourcesButtonLabel() => catalogSourcesButtonLabel(
+        movie: widget.movie,
+        season: widget.selectedSeason,
+        episode: widget.selectedEpisode,
+        catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
+        widgetAddonBaseUrl: widget.stremioAddonBaseUrl,
+        currentProvider: _s._currentProvider,
+        activeProvider: widget.activeProvider,
+        activeMagnet: _s._activeMagnet,
+        widgetMagnetLink: widget.magnetLink,
+        currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
+        currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
+        catalogSourceKind: _s._catalogSourceKind,
+      );
+
   bool get _hasStreamPicker {
     // Catalog Sources (magnet / Stremio Direct / Nuvio) already covers switching -
     // don't show the layers server picker alongside it.

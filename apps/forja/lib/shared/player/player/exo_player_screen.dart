@@ -1823,6 +1823,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                                 size: btnSize,
                                 iconSize: iconSz,
                                 tooltip: 'Sources',
+                                label: _catalogSourcesButtonLabel(),
                                 onPressed: () =>
                                     unawaited(_showTorrentSourcesPanel()),
                               ),
@@ -2001,6 +2002,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     size: btnSize,
                     iconSize: iconSz,
                     tooltip: 'Sources',
+                    label: _catalogSourcesButtonLabel(),
                     onPressed: () => unawaited(_showTorrentSourcesPanel()),
                   ),
                 ),

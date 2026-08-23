@@ -35,6 +35,7 @@ Future<List<StreamSource>> _buildProbedEnginePlaySources(
   List<Map<String, dynamic>> rows, {
   required bool Function() isAborted,
   Map<String, dynamic>? preferFirst,
+  ValueNotifier<String>? messageNotifier,
 }) async {
   final useDebrid = await s._settings.useDebridForStreams();
   final debridService = await s._settings.getDebridService();
@@ -47,6 +48,17 @@ Future<List<StreamSource>> _buildProbedEnginePlaySources(
     ];
   }
   final sources = <StreamSource>[];
+  var probeOrdinal = 0;
+  var probeTotal = 0;
+  for (final row in ordered) {
+    final check = classifyStremioStream(
+      row,
+      s._playbackProfile,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    );
+    if (check is StremioPlayable) probeTotal++;
+  }
   for (final row in ordered) {
     if (isAborted() || !s.mounted) break;
     final check = classifyStremioStream(
@@ -56,6 +68,11 @@ Future<List<StreamSource>> _buildProbedEnginePlaySources(
       debridService: debridService,
     );
     if (check is! StremioPlayable) continue;
+    probeOrdinal++;
+    final title = (row['title'] ?? row['name'] ?? 'Stream').toString();
+    messageNotifier?.value = probeTotal > 1
+        ? 'Probing streams ($probeOrdinal/$probeTotal)…'
+        : 'Probing $title…';
     final proxied = await proxyCatalogHttpStreamIfNeeded(
       streamUrl: check.streamUrl,
       headers: check.headers,
@@ -67,6 +84,7 @@ Future<List<StreamSource>> _buildProbedEnginePlaySources(
       ..['headers'] = proxied.headers;
     if (!await probeSourcesPanelStream(probeRow)) continue;
     final url = proxied.url;
+    final catalogUrl = row['url']?.toString() ?? url;
     final pluginId = row['_enginePluginId']?.toString() ?? '';
     // MovieBlast progressive is Matroska; labeling mp4 confuses some opens.
     final type = url.contains('.m3u8')
@@ -79,6 +97,7 @@ Future<List<StreamSource>> _buildProbedEnginePlaySources(
         type: type,
         headers: proxied.headers,
         providerId: catalogHttpPlayProviderId(row),
+        catalogUrl: catalogUrl,
       ),
     );
   }
@@ -511,12 +530,14 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
 
       openedPlayer = true;
       final hit = hits.first;
+      _syncPanelToEngineAutoWinner(hit);
       await _playEngineAutoWinner(
         hit.batch,
         preferFirst: hit.stream,
         startPosition: startPosition,
         loadingDialogContext: loadingDialogContext,
         fadeOutNotifier: fadeOutNotifier,
+        messageNotifier: messageNotifier,
         isAborted: playAborted,
       );
     } finally {
@@ -560,6 +581,28 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     );
   }
 
+  void _syncPanelToEngineAutoWinner(_EngineAutoHit hit) {
+    final catalogUrl = hit.stream['url']?.toString();
+    final base =
+        hit.stream['_addonBaseUrl']?.toString() ??
+        EngineIds.pluginChip(hit.pluginId);
+    void apply() {
+      _s._playingPanelKind = EngineIds.kind;
+      _s._playingAddonBaseUrl = base;
+      _s._playingCatalogUrl = catalogUrl;
+      _s._panelKindFilter = EngineIds.kind;
+      _s._engineSelectedPluginIds = {hit.pluginId};
+      _s._selectedSourceId = EngineIds.pluginChip(hit.pluginId);
+      _s._panelSourceIdByKind[EngineIds.kind] = _s._selectedSourceId;
+    }
+
+    if (mounted) {
+      setState(apply);
+    } else {
+      apply();
+    }
+  }
+
   Future<List<_EngineAutoHit>> _raceEnginePluginsForAuto({
     required List<String> pluginIds,
     required int playGen,
@@ -591,6 +634,18 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
             isPreferred: i == 0,
           ),
       ];
+    }
+
+    void settleProbesAfterWin(String winnerId) {
+      for (final id in pluginIds) {
+        if (statusById[id] == StreamProviderProbeStatus.trying) {
+          statusById[id] = StreamProviderProbeStatus.pending;
+        }
+      }
+      statusById[winnerId] = StreamProviderProbeStatus.success;
+      publishProbes();
+      messageNotifier.value = 'Preparing playback…';
+      EngineService.instance.cancelPending();
     }
 
     late final void Function() fill;
@@ -637,6 +692,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
               streams,
               isAborted: isAborted,
               orSettled: () => completer.isCompleted,
+              messageNotifier: messageNotifier,
+              pluginLabel: _enginePluginLabel(pluginId),
             );
             if (isAborted() || completer.isCompleted) {
               // fall through to finally + fill gate
@@ -654,6 +711,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
                 ),
               );
               if (hits.length >= maxHits && !completer.isCompleted) {
+                settleProbesAfterWin(pluginId);
                 completer.complete(List<_EngineAutoHit>.from(hits));
               }
             }
@@ -696,12 +754,27 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     List<Map<String, dynamic>> streams, {
     required bool Function() isAborted,
     required bool Function() orSettled,
+    ValueNotifier<String>? messageNotifier,
+    String? pluginLabel,
   }) async {
     final useDebrid = await _s._settings.useDebridForStreams();
     final debridService = await _s._settings.getDebridService();
     if (isAborted() || orSettled()) return null;
 
-    for (final stream in _sortEngineStreamRows(streams)) {
+    final ordered = _sortEngineStreamRows(streams);
+    var probeOrdinal = 0;
+    var probeTotal = 0;
+    for (final stream in ordered) {
+      final check = classifyStremioStream(
+        stream,
+        _s._playbackProfile,
+        useDebrid: useDebrid,
+        debridService: debridService,
+      );
+      if (check is StremioPlayable) probeTotal++;
+    }
+
+    for (final stream in ordered) {
       if (isAborted() || orSettled()) return null;
       final check = classifyStremioStream(
         stream,
@@ -713,6 +786,18 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         continue;
       }
       if (check is! StremioPlayable) continue;
+
+      probeOrdinal++;
+      final title = (stream['title'] ?? stream['name'] ?? 'Stream').toString();
+      if (pluginLabel != null) {
+        messageNotifier?.value = probeTotal > 1
+            ? 'Probing $pluginLabel ($probeOrdinal/$probeTotal)…'
+            : 'Probing $pluginLabel…';
+      } else {
+        messageNotifier?.value = probeTotal > 1
+            ? 'Probing streams ($probeOrdinal/$probeTotal)…'
+            : 'Probing $title…';
+      }
 
       final proxied = await proxyCatalogHttpStreamIfNeeded(
         streamUrl: check.streamUrl,
@@ -727,7 +812,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
 
       final ok = await probeSourcesPanelStream(probeRow);
       if (isAborted() || orSettled()) return null;
-      final title = (stream['title'] ?? stream['name'] ?? '').toString();
       if (ok) {
         debugPrint('[engine-auto] probe ok: $title');
         return stream;
@@ -743,9 +827,11 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     required Duration? startPosition,
     required BuildContext? loadingDialogContext,
     required ValueNotifier<bool> fadeOutNotifier,
+    required ValueNotifier<String>? messageNotifier,
     required bool Function() isAborted,
   }) async {
     if (isAborted() || !mounted || streams.isEmpty) return;
+    messageNotifier?.value = 'Preparing playback…';
     final stream = preferFirst ?? streams.first;
     final isTv = _s._movie.mediaType == 'tv';
     final stremioId =
@@ -770,8 +856,10 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         streams,
         isAborted: isAborted,
         preferFirst: stream,
+        messageNotifier: messageNotifier,
       );
       if (sources.isEmpty) return;
+      messageNotifier?.value = 'Opening player…';
       final primary = sources.first;
       final ctx = loadingDialogContext;
       Future<void> openPlayer() => AppRouter.openPlayer(

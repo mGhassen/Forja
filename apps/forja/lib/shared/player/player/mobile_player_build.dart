@@ -722,6 +722,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                 size: btnSize,
                                 iconSize: iconSz,
                                 tooltip: 'Sources',
+                                label: _s._catalogSourcesButtonLabel(),
                                 onPressed: _s._showTorrentSourcesPanel,
                               ),
                             if (hasStreamPicker)
@@ -1024,6 +1025,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                   size: btnSize,
                   iconSize: iconSz,
                   tooltip: 'Sources',
+                  label: _s._catalogSourcesButtonLabel(),
                   onPressed: _s._showTorrentSourcesPanel,
                 ),
               ),

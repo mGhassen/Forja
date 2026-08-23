@@ -14,6 +14,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       episode: widget.selectedEpisode,
       currentMagnet: _s._activeMagnet ?? widget.magnetLink,
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
+      currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
       preferredKind: _s._catalogSourceKind,
       currentAddonBaseUrl:
           _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,

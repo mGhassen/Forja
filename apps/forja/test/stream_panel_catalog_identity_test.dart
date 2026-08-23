@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
+import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 
 void main() {
@@ -36,6 +37,19 @@ void main() {
           playUrl: 'http://127.0.0.1:9/random',
         ),
         isNull,
+      );
+    });
+  });
+
+  group('catalogStreamRowMatchesPlaying', () {
+    test('matches catalog row while play URL is proxy', () {
+      const catalog = 'https://cdn.example/ep.m3u8';
+      final proxy =
+          'http://127.0.0.1:8787/hls-proxy?strip=png&url=${Uri.encodeComponent(catalog)}';
+      final row = {'url': catalog, 'title': 'Stream'};
+      expect(
+        catalogStreamRowMatchesPlaying(row, playUrl: proxy, catalogUrl: catalog),
+        isTrue,
       );
     });
   });
@@ -136,6 +150,43 @@ void main() {
           providerId: 'vidnest_hianime',
         ),
         isFalse,
+      );
+    });
+  });
+
+  group('catalogSourcesButtonLabel', () {
+    final movie = Movie(
+      id: 1,
+      title: 'Test',
+      mediaType: 'movie',
+      overview: '',
+      posterPath: '',
+      backdropPath: '',
+      voteAverage: 0,
+      releaseDate: '',
+    );
+
+    test('uses addon base URL when set', () {
+      expect(
+        catalogSourcesButtonLabel(
+          movie: movie,
+          season: null,
+          episode: null,
+          catalogAddonBaseUrl: 'nuvio:showbox',
+        ),
+        'Showbox',
+      );
+    });
+
+    test('falls back to provider id', () {
+      expect(
+        catalogSourcesButtonLabel(
+          movie: movie,
+          season: null,
+          episode: null,
+          activeProvider: 'stremio_direct',
+        ),
+        'Stremio Direct',
       );
     });
   });

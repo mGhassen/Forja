@@ -190,6 +190,15 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   String get _selectedSourceId => _play.selectedSourceId;
   set _selectedSourceId(String v) => _play.selectedSourceId = v;
 
+  String? get _playingPanelKind => _play.playingPanelKind;
+  set _playingPanelKind(String? v) => _play.playingPanelKind = v;
+
+  String? get _playingAddonBaseUrl => _play.playingAddonBaseUrl;
+  set _playingAddonBaseUrl(String? v) => _play.playingAddonBaseUrl = v;
+
+  String? get _playingCatalogUrl => _play.playingCatalogUrl;
+  set _playingCatalogUrl(String? v) => _play.playingCatalogUrl = v;
+
   List<Map<String, dynamic>> get _streamAddons => _play.streamAddons;
   set _streamAddons(List<Map<String, dynamic>> v) => _play.streamAddons = v;
 
@@ -703,6 +712,43 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     }
   }
 
+  /// After green Play, align Sources tab/chip with the stream that opened.
+  void _focusPanelOnPlayingSource() {
+    final kind = _playingPanelKind;
+    if (kind == null || kind.isEmpty) return;
+    final allowed = <String>{
+      if (_panelShowTorrent) 'torrents',
+      if (_panelShowStremio) 'stremio',
+      if (_panelShowNuvio) 'nuvio',
+      if (_panelShowEngine) EngineIds.kind,
+    };
+    if (!allowed.contains(kind)) return;
+
+    if (_panelKindFilter != kind) {
+      _stashPanelSourceIdForKind(_panelKindFilter);
+      _panelKindFilter = kind;
+      _restorePanelSourceIdForKind(kind);
+    }
+
+    final base = _playingAddonBaseUrl;
+    if (base == null || base.isEmpty) return;
+    if (kind == EngineIds.kind && base.startsWith(EngineIds.prefix)) {
+      final pluginId = base.substring(EngineIds.prefix.length);
+      if (pluginId.isEmpty) return;
+      _selectedSourceId = EngineIds.pluginChip(pluginId);
+      _engineSelectedPluginIds = {pluginId};
+      _panelSourceIdByKind[kind] = _selectedSourceId;
+      return;
+    }
+    if (kind == 'nuvio' && base.startsWith('nuvio:')) {
+      final scraperId = base.substring('nuvio:'.length);
+      if (scraperId.isEmpty) return;
+      _selectedSourceId = 'nuvio:$scraperId';
+      _nuvioSelectedScraperIds = {scraperId};
+      _panelSourceIdByKind[kind] = _selectedSourceId;
+    }
+  }
+
   String _defaultStremioSourceId() {
     if (_streamAddons.isEmpty) return TorrentSearchProviders.allId;
     for (final a in _streamAddons) {
@@ -1010,6 +1056,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _captureSourcesPanelReturnFocus();
     setState(() {
       _syncPanelKindFilterToPlaySources();
+      _focusPanelOnPlayingSource();
       _sourcesPanelOpen = true;
     });
     _ensurePanelSourceLoaded();
