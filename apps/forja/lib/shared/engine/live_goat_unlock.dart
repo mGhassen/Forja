@@ -659,7 +659,12 @@ class LiveGoatUnlock {
       final ready = File(
         '${_cachedGasmDir!}/node_modules/happy-dom/package.json',
       );
-      if (await ready.exists()) return _cachedGasmDir!;
+      if (await ready.exists()) {
+        // Always refresh unlock.mjs + wasm — cache used to stick on a broken
+        // script after first npm install (empty {"ok":false,"error":""}).
+        await _refreshGasmAssets(_cachedGasmDir!);
+        return _cachedGasmDir!;
+      }
     }
     _prepareGasmFuture ??= _prepareGasmDir(node);
     await _prepareGasmFuture;
@@ -670,54 +675,56 @@ class LiveGoatUnlock {
     return dir;
   }
 
-  static Future<void> _prepareGasmDir(String node) async {
-    final cached = _cachedGasmDir;
-    if (cached != null) {
-      final ready = File('$cached/node_modules/happy-dom/package.json');
-      if (await ready.exists()) return;
-    }
+  static Future<void> _refreshGasmAssets(String dir) async {
+    await _writeAsset(
+      '$_gasmAssetRoot/unlock.mjs',
+      File('$dir/unlock.mjs'),
+    );
+    await _writeAsset(
+      '$_gasmAssetRoot/vendor/gasm.wasm',
+      File('$dir/vendor/gasm.wasm'),
+    );
+    await _writeAsset(
+      '$_gasmAssetRoot/vendor/gasm-esm.mjs',
+      File('$dir/vendor/gasm-esm.mjs'),
+    );
+  }
 
+  static Future<void> _prepareGasmDir(String node) async {
     final support = await getApplicationSupportDirectory();
     final dir = Directory('${support.path}/live-gasm');
     await dir.create(recursive: true);
 
-    await _writeAsset(
-      '$_gasmAssetRoot/unlock.mjs',
-      File('${dir.path}/unlock.mjs'),
-    );
+    // Always overwrite unlock/wasm from the app bundle (script changes often).
+    await _refreshGasmAssets(dir.path);
     await _writeAsset(
       '$_gasmAssetRoot/package.json',
       File('${dir.path}/package.json'),
     );
-    await _writeAsset(
-      '$_gasmAssetRoot/vendor/gasm.wasm',
-      File('${dir.path}/vendor/gasm.wasm'),
-    );
-    await _writeAsset(
-      '$_gasmAssetRoot/vendor/gasm-esm.mjs',
-      File('${dir.path}/vendor/gasm-esm.mjs'),
-    );
 
-    final npm = await _findNpmBinary();
-    if (npm == null) {
-      throw StateError('npm not found (needed once for GASM unlock deps)');
-    }
-    final install = await Process.run(
-      npm,
-      [
-        'install',
-        'happy-dom@17',
-        'big-integer@1.6.52',
-        '--no-fund',
-        '--no-audit',
-        '--prefer-offline',
-      ],
-      workingDirectory: dir.path,
-    ).timeout(const Duration(minutes: 2));
-    if (install.exitCode != 0) {
-      throw StateError(
-        'npm install failed: ${install.stderr.toString().trim()}',
-      );
+    final depsReady = File('${dir.path}/node_modules/happy-dom/package.json');
+    if (!await depsReady.exists()) {
+      final npm = await _findNpmBinary();
+      if (npm == null) {
+        throw StateError('npm not found (needed once for GASM unlock deps)');
+      }
+      final install = await Process.run(
+        npm,
+        [
+          'install',
+          'happy-dom@17',
+          'big-integer@1.6.52',
+          '--no-fund',
+          '--no-audit',
+          '--prefer-offline',
+        ],
+        workingDirectory: dir.path,
+      ).timeout(const Duration(minutes: 2));
+      if (install.exitCode != 0) {
+        throw StateError(
+          'npm install failed: ${install.stderr.toString().trim()}',
+        );
+      }
     }
 
     _cachedGasmDir = dir.path;
