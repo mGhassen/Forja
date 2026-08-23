@@ -422,6 +422,7 @@ void main() {
           'kisskh',
           'moviebox',
           '4khdhub',
+          '1shows',
           'hianime',
           'multiembed',
           'kickassanime',
@@ -532,6 +533,14 @@ void main() {
         'https://h5-api.aoneroom.com',
       );
       expect(parsed.firstWhere((p) => p.id == '4khdhub').entry, '4khdhub.js');
+      expect(
+        parsed.firstWhere((p) => p.id == '1shows').entry,
+        'providers/1shows.js',
+      );
+      expect(
+        parsed.firstWhere((p) => p.id == '1shows').config['api'],
+        'https://api.viduki.net',
+      );
       expect(
         parsed.firstWhere((p) => p.id == 'movieblast').entry,
         'movieblast.js',
@@ -872,6 +881,14 @@ void main() {
       expect(fourkhdhub.contains('article h2 a'), isTrue);
       expect(fourkhdhub.contains('.movie-card'), isTrue);
 
+      final oneshows = await rootBundle.loadString(
+        'assets/plugins/providers/1shows.js',
+      );
+      expect(oneshows.contains('api.viduki.net'), isTrue);
+      expect(oneshows.contains('download-token'), isTrue);
+      expect(oneshows.contains('decryptDownload'), isTrue);
+      expect(oneshows.contains('function extract(ctx)'), isTrue);
+
       final movieblast = await rootBundle.loadString(
         'assets/plugins/providers/movieblast.js',
       );
@@ -1108,6 +1125,29 @@ void main() {
       expect(mkissa.contains('client-crypto/v1/bootstrap'), isTrue);
       expect(mkissa.contains('aaReq'), isTrue);
       expect(mkissa.contains('handleWatch'), isTrue);
+    });
+
+    test('1shows plugin is wired in the pack', () async {
+      final jsonStr = await rootBundle.loadString(
+        'assets/plugins/engine.json',
+      );
+      final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+      final plugins = map['plugins'] as List;
+      final oneshows = EnginePlugin.fromJson(
+        Map<String, dynamic>.from(
+          plugins.cast<Map>().firstWhere((p) => p['id'] == '1shows') as Map,
+        ),
+      );
+      expect(oneshows.entry, 'providers/1shows.js');
+      expect(oneshows.config['api'], 'https://api.viduki.net');
+      expect(oneshows.types, containsAll(['movie', 'tv']));
+      final src = await rootBundle.loadString(
+        'assets/plugins/providers/1shows.js',
+      );
+      expect(src.contains('function extract(ctx)'), isTrue);
+      expect(src.contains('download-token'), isTrue);
+      expect(src.contains('decryptDownload'), isTrue);
+      expect(src.contains('api.viduki.net'), isTrue);
     });
 
     test('EnginePlugin host kind resolves hostProviderId', () {
@@ -1387,6 +1427,7 @@ void main() {
         expect(src, contains('/api/tv/'));
         expect(src, contains('/api/movie/'));
         expect(src, contains('parseM3u8Variants'));
+        expect(src, contains('TYPE=AUDIO'));
         expect(src, contains('ctx.config.subs'));
         expect(src, contains('resolveLegacyPage'));
         expect(src, contains('1080p'));

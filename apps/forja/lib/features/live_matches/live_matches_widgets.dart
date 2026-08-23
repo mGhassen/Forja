@@ -49,30 +49,26 @@ class _LiveMatchesTopBarActionButtonState
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
     final accent = widget.accent;
-    final decoration = _tvFocused && accent
-        ? iptvFocusButtonDecoration(
-            active: _active,
-            tvFocused: true,
-            borderRadius: _radius,
-          )
-        : BoxDecoration(
-            color: accent
-                ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
-                : Colors.white.withValues(alpha: 0.06),
-            borderRadius: BorderRadius.circular(_radius),
-            border: Border.all(
-              color: _tvFocused
-                  ? Colors.white.withValues(alpha: 0.85)
-                  : accent
-                      ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
-                      : ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
-            ),
-          );
-    final fg = _tvFocused
-        ? (accent ? ForjaShellColors.brandGreen : Colors.white)
-        : accent
-            ? ForjaShellColors.brandGreen
-            : cinematic.textSecondary;
+    // Idle stays neutral (no green fill). Hover / D-pad focus use the same
+    // IPTV chrome as Portals — `_active` was computed but never painted when
+    // accent was false, so Server / Catalog / Time looked dead on hover.
+    final decoration = iptvFocusButtonDecoration(
+      active: _active,
+      tvFocused: _tvFocused,
+      borderRadius: _radius,
+      subtle: true,
+      idleBg: accent
+          ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
+          : Colors.white.withValues(alpha: 0.06),
+      idleBorder: accent
+          ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
+          : ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
+    );
+    final fg = iptvFocusFg(
+      accent ? ForjaShellColors.brandGreen : cinematic.textSecondary,
+      active: _active,
+      tvFocused: _tvFocused,
+    );
 
     final chip = AnimatedContainer(
       duration: const Duration(milliseconds: 160),
@@ -110,6 +106,7 @@ class _LiveMatchesTopBarActionButtonState
       borderRadius: _radius,
       scaleOnFocus: 1.0,
       suppressInkHover: true,
+      showFocusFill: false,
       listIndex: widget.tvItemIndex,
       tvTabId: _LiveMatchesScreenState._tabId,
       tvRowId: _LiveMatchesScreenState._topBarRowId,
@@ -205,10 +202,14 @@ class _LiveMatchesRefreshTopBarButtonState
 class _LiveMatchesServerSheet extends StatefulWidget {
   const _LiveMatchesServerSheet({
     required this.current,
+    required this.iptvSportsEnabled,
+    required this.stremioLiveEnabled,
     required this.onSelected,
   });
 
   final _LiveMatchesServer current;
+  final bool iptvSportsEnabled;
+  final bool stremioLiveEnabled;
   final ValueChanged<_LiveMatchesServer> onSelected;
 
   @override
@@ -221,33 +222,20 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
   final FocusNode _firstFocus = FocusNode(
     debugLabel: 'live-server-sheet-first',
   );
-  bool _iptvSportsEnabled = false;
-  bool _stremioLiveEnabled = false;
 
   List<_LiveMatchesServer> get _servers => _liveMatchesServersForSurface(
-    iptvSportsEnabled: _iptvSportsEnabled,
-    stremioLiveEnabled: _stremioLiveEnabled,
+    iptvSportsEnabled: widget.iptvSportsEnabled,
+    stremioLiveEnabled: widget.stremioLiveEnabled,
   );
 
   @override
   void initState() {
     super.initState();
-    unawaited(_loadServerAvailability());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       // Leanback only — desktop opens with mouse; stealing focus breaks hover.
       if (!ShellScope.metricsOf(context).usesTvDensity) return;
       if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
-    });
-  }
-
-  Future<void> _loadServerAvailability() async {
-    final iptv = await LiveMatchesIptvSportsConfig.load();
-    final stremio = await _liveMatchesStremioLiveEnabled();
-    if (!mounted) return;
-    setState(() {
-      _iptvSportsEnabled = iptv.enabled;
-      _stremioLiveEnabled = stremio;
     });
   }
 

@@ -195,6 +195,18 @@ function extract(ctx) {
   function rowsFromMaster(masterUrl, embedUrl) {
     var referer = embedUrl || BASE + '/';
     return fetchText(masterUrl, referer).then(function (body) {
+      // Demuxed masters expose TYPE=AUDIO + video-only STREAM-INF rows.
+      // Playing a child playlist drops the audio group → silent video.
+      var hasAltAudio = /#EXT-X-MEDIA:[^\n]*TYPE=AUDIO/i.test(String(body || ''));
+      if (hasAltAudio) {
+        return [
+          {
+            url: masterUrl,
+            name: 'Vixsrc',
+            headers: playHeaders(referer),
+          },
+        ];
+      }
       var variants = parseM3u8Variants(body, masterUrl, referer);
       if (variants.length) return variants;
       return [

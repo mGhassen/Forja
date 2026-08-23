@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 76 / 78** acceptance · **2 ⏭️** manual play QA |
-| **Current slice** | Soft Movie/TV/Anime/Drama chip categories; manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
+| **Progress** | **Complete · 77 / 79** acceptance · **2 ⏭️** manual play QA |
+| **Current slice** | Soft Movie/TV/Anime/Drama chip categories; 1Shows Nuvio port; manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -111,6 +111,7 @@
 | 76 | R60-A76 | Sources → Forja soft-hides off-category chips; Filters → Category can add Movie / TV / Anime / Drama without hard-blocking extract | ✅ |
 | 77 | R60-A77 | Settings → Forja plugins groups toggles by Movie & TV / Anime / Drama | ✅ |
 | 78 | R60-A78 | Bundled PlayIMDb HTTP plugin (`playimdb.js`, vaplayer API, `engine.json` 1.5.9+) | ✅ |
+| 79 | R60-A79 | Bundled 1Shows HTTP plugin (`1shows.js`, viduki download-token + AES-GCM decrypt, HubCloud/direct resolve, `engine.json` 1.5.10+) | ✅ |
 
 ---
 

@@ -9,6 +9,7 @@ class EmbedExtractProfile {
     this.forceDirect = false,
     this.timeout = const Duration(seconds: 60),
     this.deferUntilStrongStream = false,
+    this.preferHlsMaster = false,
     this.rotateServerChips = false,
     this.serverChipLabels = const [],
     this.rotateBeforeComplete = false,
@@ -28,6 +29,10 @@ class EmbedExtractProfile {
 
   /// Wait for a strong `.m3u8`/`.mpd`/etc. before completing (SPA / multi-server).
   final bool deferUntilStrongStream;
+
+  /// Prefer an HLS master/playlist URL over media variants (demuxed audio).
+  /// Holds briefly when only a child playlist was seen so the master can land.
+  final bool preferHlsMaster;
 
   /// Click internal server chips when the default source is stuck loading.
   final bool rotateServerChips;

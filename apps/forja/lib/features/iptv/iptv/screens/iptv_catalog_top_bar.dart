@@ -1353,9 +1353,9 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
   }
 }
 
-/// Shelf tab - section gradient when selected / hovered.
-/// Hover sequence: color paints first, then the tab expands to reveal reload.
-/// TV: hold OK ~1s to reveal reload; → focuses it; leaving the tab hides it.
+/// Shelf tab — active section only: reverse fill/ink; Movies/Series stay muted.
+/// Hover sequence: expand reveals reload after a short delay.
+/// TV: hold OK ~1s reveals reload and fires it (no extra D-pad / OK).
 class _IptvSectionShelfTab extends StatefulWidget {
   const _IptvSectionShelfTab({
     required this.spec,
@@ -1402,7 +1402,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   bool get _tv => iptvUseTvFocus(context);
 
-  /// Section color on mouse hover and D-pad focus (TV included).
+  /// Hover / D-pad focus — expand + weight only; colors follow [selected].
   bool get _paintActive =>
       _hover || _focused || _reloadChipFocused || _tvReloadRevealed;
 
@@ -1503,6 +1503,8 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
           _tvReloadRevealed = true;
           _reloadArmed = true;
         });
+        // Hold OK = reload now; chip still shows briefly for feedback.
+        widget.onReload();
       });
       return KeyEventResult.handled;
     }
@@ -1544,9 +1546,11 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Instant color - AnimatedContainer gradient lerp often lags layout
-    // expand, which made the tab feel like it scaled before tinting.
-    final showColor = widget.selected || _paintActive;
+    // Active section only: reverse (white fill + section ink).
+    // Unselected tabs stay muted — focus/hover does not recolor them.
+    final accent = widget.spec.shelfGradientColors.first;
+    final invert = widget.selected;
+    final ink = invert ? accent : Colors.white60;
 
     return MouseRegion(
       onEnter: (_) => _setHover(true),
@@ -1554,25 +1558,8 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
       child: Container(
         height: _kShelfTabHeight,
         decoration: BoxDecoration(
-          gradient: showColor
-              ? LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: widget.spec.shelfGradientColors,
-                )
-              : null,
-          color: showColor ? null : Colors.transparent,
+          color: invert ? Colors.white : Colors.transparent,
           borderRadius: _radius,
-          boxShadow: widget.selected && showColor
-              ? [
-                  BoxShadow(
-                    color: widget.spec.shelfGradientColors.first
-                        .withValues(alpha: 0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1609,16 +1596,15 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                       Icon(
                         widget.spec.icon,
                         size: 16,
-                        color: showColor ? Colors.white : Colors.white60,
+                        color: ink,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         widget.spec.label,
                         style: GoogleFonts.plusJakartaSans(
-                          color: showColor ? Colors.white : Colors.white60,
+                          color: ink,
                           fontSize: 12.5,
-                          // Extra-bold only on hover / D-pad focus — not selection.
-                          fontWeight: _paintActive
+                          fontWeight: _paintActive || invert
                               ? FontWeight.w800
                               : FontWeight.w500,
                         ),
@@ -1670,9 +1656,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                           child: Icon(
                             Icons.refresh_rounded,
                             size: 16,
-                            color: showColor || _revealReload
-                                ? Colors.white.withValues(alpha: 0.95)
-                                : Colors.white60,
+                            color: invert ? accent : Colors.white60,
                           ),
                         ),
                       ),

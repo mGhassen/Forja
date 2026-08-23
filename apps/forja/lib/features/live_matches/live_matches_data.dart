@@ -80,7 +80,8 @@ mixin _LiveMatchesData
     _s._topBarSheetOpen = true;
     unawaited(() async {
       try {
-        await _s._clampServerIfForjaSportsDisabled(reload: false);
+        final avail =
+            await _s._clampServerIfForjaSportsDisabled(reload: false);
         if (!mounted) return;
         await showModalBottomSheet<void>(
           context: context,
@@ -91,6 +92,8 @@ mixin _LiveMatchesData
           ),
           builder: (_) => _LiveMatchesServerSheet(
             current: _s._server,
+            iptvSportsEnabled: avail.iptvSportsEnabled,
+            stremioLiveEnabled: avail.stremioLiveEnabled,
             onSelected: (server) {
               Navigator.pop(context);
               unawaited(_selectServer(server));

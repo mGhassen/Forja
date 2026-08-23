@@ -42,6 +42,35 @@ void main() {
       );
     });
 
+    test('vixsrc playlist endpoint looks like HLS master', () {
+      expect(
+        StreamExtractor.looksLikeHlsMasterPlaylist(
+          'https://vixsrc.to/playlist/772715?token=abc',
+        ),
+        isTrue,
+      );
+      expect(
+        StreamExtractor.looksLikeHlsMasterPlaylist(
+          'https://cdn.example.com/master.m3u8?token=abc',
+        ),
+        isTrue,
+      );
+      expect(
+        StreamExtractor.looksLikeHlsMasterPlaylist(
+          'https://cdn.example.com/rendition/1080.m3u8?token=abc',
+        ),
+        isFalse,
+      );
+    });
+
+    test('selectBestPlayableUrl prefers master over media variant', () {
+      final pick = StreamExtractor.selectBestPlayableUrl([
+        'https://cdn.example.com/rendition/1080.m3u8?token=abc',
+        'https://vixsrc.to/playlist/772715?token=abc',
+      ]);
+      expect(pick, 'https://vixsrc.to/playlist/772715?token=abc');
+    });
+
     test('accepts VidLove signed /api?d=&internal_token= media proxy', () {
       const url =
           'https://cdn.example.com/api?d=abc123&internal_token=v1.moviebox.x';
@@ -248,6 +277,13 @@ void main() {
       expect(p.deferUntilStrongStream, isTrue);
       expect(p.rotateServerChips, isTrue);
       expect(p.serverChipLabels, containsAll(['alpha', 'blaze']));
+    });
+
+    test('vixsrc prefers HLS master for demuxed audio', () {
+      final p = EmbedExtractProfiles.resolve('vixsrc');
+      expect(p.id, 'vixsrc');
+      expect(p.preferHlsMaster, isTrue);
+      expect(p.deferUntilStrongStream, isTrue);
     });
 
     test('unknown provider falls back without borrowing vidlove policy', () {

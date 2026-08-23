@@ -771,20 +771,18 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       ),
     );
 
-    Widget card = face;
-    if (widget.onHoverProbe != null) {
-      card = MouseRegion(
-        onEnter: (_) {
-          setState(() => _hovered = true);
-          _syncHoverProbe(true);
-        },
-        onExit: (_) {
-          setState(() => _hovered = false);
-          _syncHoverProbe(false);
-        },
-        child: card,
-      );
-    }
+    final card = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) {
+        setState(() => _hovered = true);
+        _syncHoverProbe(true);
+      },
+      onExit: (_) {
+        setState(() => _hovered = false);
+        _syncHoverProbe(false);
+      },
+      child: face,
+    );
 
     final tv = widget.tvItemIndex != null && SourcesPanelTv.isTv(context);
     return shellFocusableTap(
@@ -802,12 +800,10 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onUpEdge: widget.onUpEdge,
       onDownEdge: widget.onDownEdge,
-      onFocusChange: widget.onHoverProbe == null
-          ? (focused) => setState(() => _focused = focused)
-          : (focused) {
-              setState(() => _focused = focused);
-              _syncHoverProbe(focused || _hovered);
-            },
+      onFocusChange: (focused) {
+        setState(() => _focused = focused);
+        _syncHoverProbe(focused || _hovered);
+      },
       child: card,
     );
   }

@@ -14,6 +14,7 @@ class StreamExtractor {
   Completer<ExtractedMedia?>? _completer;
   Timer? _timeoutTimer;
   Timer? _rotateSettleTimer;
+  Timer? _hlsMasterSettleTimer;
   bool _cancelled = false;
   bool _completing = false;
   Future<void>? _cancelInFlight;
@@ -205,7 +206,7 @@ class StreamExtractor {
         .where((u) => !StreamExtractor.isAudioOnlyStreamUrl(u))
         .toList();
     if (fromList.isNotEmpty) {
-      return _selectBestQuality(fromList);
+      return selectBestPlayableUrl(fromList);
     }
     final single = _capturedVideo;
     if (single != null &&
@@ -758,7 +759,7 @@ class StreamExtractor {
       _detectedVideoUrls.add(rUrl);
     }
 
-    _capturedVideo = _selectBestQuality(_detectedVideoUrls);
+    _capturedVideo = selectBestPlayableUrl(_detectedVideoUrls);
     _capturedHeaders ??= _buildHeaders(playbackReferer);
 
     if (_capturedVideo == null) return;
@@ -786,7 +787,19 @@ class StreamExtractor {
         );
         return;
       }
+      if (_profile.preferHlsMaster &&
+          !looksLikeHlsMasterPlaylist(_capturedVideo!)) {
+        _armHlsMasterSettle(playbackReferer);
+        return;
+      }
       _completeWithCaptured(playbackReferer);
+      return;
+    }
+
+    if (_profile.preferHlsMaster &&
+        isDeferredStrongStreamUrl(_capturedVideo!) &&
+        !looksLikeHlsMasterPlaylist(_capturedVideo!)) {
+      _armHlsMasterSettle(playbackReferer);
       return;
     }
 
@@ -941,7 +954,26 @@ class StreamExtractor {
         (lower.contains('playlist') && !lower.contains('webmanifest'));
   }
 
-  String _selectBestQuality(List<String> urls) {
+  /// HLS master / catalog playlist (not a rendition media playlist).
+  ///
+  /// VixSrc uses extensionless `/playlist/{id}` masters; media variants are
+  /// often `*.m3u8`. Preferring `.m3u8` alone drops demuxed audio groups.
+  static bool looksLikeHlsMasterPlaylist(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return false;
+    final lower = trimmed.toLowerCase();
+    final path = Uri.tryParse(trimmed)?.path.toLowerCase() ?? lower;
+    if (path.contains('master.m3u8')) return true;
+    if (RegExp(r'/master/?$').hasMatch(path)) return true;
+    // Extensionless catalog playlist (e.g. vixsrc.to/playlist/772715).
+    if (path.contains('/playlist/') && !lower.contains('.m3u8')) return true;
+    if (path.endsWith('/playlist') && !lower.contains('.m3u8')) return true;
+    return false;
+  }
+
+  /// Pick the best playable URL from [urls] (quality query, then HLS master).
+  @visibleForTesting
+  static String selectBestPlayableUrl(List<String> urls) {
     final playable = urls
         .where(StreamExtractor.isPlayableStreamUrl)
         .where((u) => !StreamExtractor.isAudioOnlyStreamUrl(u))
@@ -968,10 +1000,12 @@ class StreamExtractor {
         orElse: () => '',
       );
       if (match.isNotEmpty) {
-        _log('Selected quality: $quality from ${playable.length} options');
         return match;
       }
     }
+
+    final masters = playable.where(looksLikeHlsMasterPlaylist).toList();
+    if (masters.isNotEmpty) return masters.first;
 
     // Prefer HLS/DASH over progressive when multiple hits exist.
     final hls = playable.where((u) => u.toLowerCase().contains('.m3u8'));
@@ -980,6 +1014,19 @@ class StreamExtractor {
     if (dash.isNotEmpty) return dash.first;
 
     return playable.first;
+  }
+
+  void _armHlsMasterSettle(String referer) {
+    if (_hlsMasterSettleTimer != null) return;
+    _log('Holding for HLS master (preferHlsMaster): $_capturedVideo');
+    _hlsMasterSettleTimer = Timer(const Duration(seconds: 3), () {
+      if (_completer == null || _completer!.isCompleted) return;
+      final best = _bestPlayableCaptured();
+      if (best == null) return;
+      _log('HLS master settle — completing with $best');
+      _capturedVideo = best;
+      _completeWithCaptured(referer);
+    });
   }
 
   void _armRotateSettleIfIdle(String referer) {
@@ -1000,6 +1047,8 @@ class StreamExtractor {
     final completer = _completer;
     if (completer == null || completer.isCompleted) return;
     _completing = true;
+    _hlsMasterSettleTimer?.cancel();
+    _hlsMasterSettleTimer = null;
     unawaited(_finishWithCookies(referer, target: completer));
   }
 
@@ -1743,6 +1792,8 @@ class StreamExtractor {
     _timeoutTimer = null;
     _rotateSettleTimer?.cancel();
     _rotateSettleTimer = null;
+    _hlsMasterSettleTimer?.cancel();
+    _hlsMasterSettleTimer = null;
 
     if (_headlessWebView != null) {
       _log('Disposing headless WebView...');

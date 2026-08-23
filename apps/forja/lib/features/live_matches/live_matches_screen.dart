@@ -350,23 +350,35 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     }
   }
 
-  Future<void> _clampServerIfForjaSportsDisabled({required bool reload}) async {
+  /// Loads Forja Sports / Stremio availability and clamps [_server] if needed.
+  Future<({bool iptvSportsEnabled, bool stremioLiveEnabled})>
+      _clampServerIfForjaSportsDisabled({required bool reload}) async {
     final iptvSportsEnabled =
         (await LiveMatchesIptvSportsConfig.load()).enabled;
     final stremioLiveEnabled = await _liveMatchesStremioLiveEnabled();
-    if (!mounted) return;
+    if (!mounted) {
+      return (
+        iptvSportsEnabled: iptvSportsEnabled,
+        stremioLiveEnabled: stremioLiveEnabled,
+      );
+    }
     final next = _liveMatchesClampServerForSurface(
       _server,
       iptvSportsEnabled: iptvSportsEnabled,
       stremioLiveEnabled: stremioLiveEnabled,
     );
-    if (next == _server) return;
-    if (_server == _LiveMatchesServer.iptvSports) {
-      ref.read(iptvControllerProvider).closePortalPanel();
+    if (next != _server) {
+      if (_server == _LiveMatchesServer.iptvSports) {
+        ref.read(iptvControllerProvider).closePortalPanel();
+      }
+      setState(() => _server = next);
+      unawaited(_persistServerPreference(next));
+      if (reload) await _load();
     }
-    setState(() => _server = next);
-    unawaited(_persistServerPreference(next));
-    if (reload) await _load();
+    return (
+      iptvSportsEnabled: iptvSportsEnabled,
+      stremioLiveEnabled: stremioLiveEnabled,
+    );
   }
 
   Future<void> _restoreServerThenLoad() async {
