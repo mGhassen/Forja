@@ -237,7 +237,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
   Future<bool> _openResolved(
     YoutubeResolvedStreams streams, {
     Duration? resumeAt,
-    /// Quality hot-swap: never trust leftover tracks after reopen on ATV.
+    /// Quality hot-swap: never trust leftover tracks after reopen.
     bool forceAudioAdd = false,
   }) async {
     final player = _s._player;
@@ -247,8 +247,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     final needsExternalAudio = _needsExternalAudio(streams, videoUrl);
     final atv = _atvMediaKit;
 
-    // ATV mediacodec_embed + googlevideo: open() alone often keeps the old
-    // demuxer / tracks. Main player always stop()+wait before source swaps.
+    // Stop first so mediacodec / demuxer drop the prior googlevideo URL.
     try {
       await resetPlayerForOpen(player);
     } catch (e) {
@@ -261,12 +260,10 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       try {
         await platform.setProperty('mute', 'no');
       } catch (_) {}
-      // Clear sticky external audio from a prior adaptive open (muxed path).
       try {
         await platform.setProperty('audio-file', '');
       } catch (_) {}
-      // ATV: bind AAC before open to avoid MediaCodec resync hitch.
-      // Skip on quality switch — force audio-add after open instead.
+      // ATV first open: bind AAC before open. Quality switch always audio-adds.
       if (needsExternalAudio && atv && audioUrl != null && !forceAudioAdd) {
         try {
           await platform.setProperty('audio-file', audioUrl);
@@ -278,19 +275,24 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
 
     await player.setVolume(_s._volume);
     await openPlayerStream(player, url: videoUrl);
-    final opened = await waitForPlayerStreamOpen(
-      player,
-      streamUrl: videoUrl,
-    );
+
+    // Do NOT use waitForPlayerStreamOpen here: stop() abort noise often emits
+    // "HTTP error" / "Failed to open" that settles that waiter false before the
+    // new googlevideo URL is ready (quality switch stuck on muxed 360p).
+    final opened = await _waitTrailerOpenReady(player);
     if (!opened) {
-      debugPrint('[Trailer] stream open did not become ready');
+      debugPrint(
+        '[Trailer] stream open did not become ready '
+        '(playing=${player.state.playing} '
+        'dur=${player.state.duration.inMilliseconds}ms '
+        'vp=${player.state.videoParams.w}x${player.state.videoParams.h})',
+      );
       return false;
     }
 
     if (needsExternalAudio && audioUrl != null && audioUrl.isNotEmpty) {
-      // Desktop: audio-file is unreliable for googlevideo — always audio-add.
-      // ATV first open: audio-add only when audio-file did not attach.
-      // ATV quality switch: always audio-add (stale tracks fooled the wait).
+      // Desktop: always audio-add. ATV first open: only if audio-file missed.
+      // Quality switch: always audio-add (stale tracks after stop).
       final needAudioAdd =
           !atv || forceAudioAdd || !await _waitForSelectableAudio(player);
       if (needAudioAdd) {
@@ -307,6 +309,17 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     }
     await player.play();
     return true;
+  }
+
+  /// Poll readiness only — ignore error stream (stop() abort is not fatal).
+  Future<bool> _waitTrailerOpenReady(Player player) async {
+    if (isMediaOpenReady(player.state)) return true;
+    final deadline = DateTime.now().add(const Duration(seconds: 12));
+    while (DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      if (isMediaOpenReady(player.state)) return true;
+    }
+    return isMediaOpenReady(player.state);
   }
 
   Future<void> _switchQuality(YoutubeQuality quality) async {
@@ -329,10 +342,11 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       qualities: streams.qualities,
       captions: streams.captions,
     );
+    // Always remux AAC after quality swap (desktop + ATV).
     final opened = await _openResolved(
       swapped,
       resumeAt: resumeAt,
-      forceAudioAdd: _atvMediaKit,
+      forceAudioAdd: true,
     );
     if (!mounted) return;
     if (!opened) {
@@ -340,7 +354,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       final recovered = await _openResolved(
         streams,
         resumeAt: resumeAt,
-        forceAudioAdd: _atvMediaKit,
+        forceAudioAdd: true,
       );
       if (mounted) {
         setState(() {
