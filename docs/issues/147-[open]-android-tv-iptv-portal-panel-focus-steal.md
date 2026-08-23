@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 4** acceptance |
+| **Progress** | **7 / 7** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,8 @@
 | 3 | I147-T03 | Skip active-portal / new-portal scroll while a portal row holds focus; compare active index against the filtered list | ✅ |
 | 4 | I147-T04 | ↓ from header returns to the last row reached with ↑/↓ (active portal only on first entry); reset on search change / panel close | ✅ |
 | 5 | I147-T05 | TV ↑/↓: no MouseRegion hover, sync-clear focus chrome, green fill only on the focused row, jump-then-focus (no `.item` ensureVisible) | ✅ |
+| 6 | I147-T06 | ↓ from header retries while scrape list is still empty (first portal mounting) | ✅ |
+| 7 | I147-T07 | Scrape/health notify: skip scroll + restore list focus when `_lastFocusedPortalIndex` set (rebuild focus flicker) | ✅ |
 
 ---
 

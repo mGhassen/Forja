@@ -73,6 +73,9 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       // Portal health probes notify while the user scrolls — never move the
       // viewport out from under a focused row.
       final listFocused = iptvRowHasFocus('portals');
+      // Rebuilds can drop hasFocus for a frame — treat last list index as
+      // "user is browsing" so scrape/health notifies don't scroll or refocus.
+      final userInList = listFocused || _lastFocusedPortalIndex != null;
       final activeKey = widget.ctrl.activePortal?.key;
       final activeIndex = activeKey == null
           ? -1
@@ -80,7 +83,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       // Same active key can move after favorite / deal / scrape sort — keep it
       // in view so header ↓ can focus a mounted row.
       final willScrollActive = activeKey != null &&
-          !listFocused &&
+          !userInList &&
           (activeKey != _scrolledToActiveKey ||
               activeIndex != _scrolledToActiveIndex);
       if (willScrollActive) {
@@ -88,7 +91,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       }
       final added = currentKeys.difference(_knownPortalKeys);
       _knownPortalKeys = currentKeys;
-      if (added.isNotEmpty && _query.trim().isEmpty && !listFocused) {
+      if (added.isNotEmpty && _query.trim().isEmpty && !userInList) {
         // Sorted list puts newest non-favorites first after favorites - scroll
         // to the first newly added key in that order (e.g. scrape hits).
         String? scrollKey;
@@ -106,6 +109,20 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
             (_) => _scrollToPortalKey(key, animate: true),
           );
         }
+      }
+      if (_lastFocusedPortalIndex != null &&
+          !listFocused &&
+          !iptvRowHasFocus('iptv-portal-header') &&
+          _filtered.isNotEmpty) {
+        final idx = _lastFocusedPortalIndex!.clamp(0, _filtered.length - 1);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || !widget.ctrl.portalPanelOpen) return;
+          if (iptvRowHasFocus('portals') ||
+              iptvRowHasFocus('iptv-portal-header')) {
+            return;
+          }
+          _focusPortalAt(idx);
+        });
       }
     } else {
       _knownPortalKeys = currentKeys;
@@ -151,7 +168,6 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   }
 
   void _focusPortalsFromHeader() {
-    if (_filtered.isEmpty) return;
     // onDownEdge always claims the key — must land focus or retry until a
     // portal row is mounted (exact active index often missing after reorder).
     var tries = 0;
@@ -159,7 +175,12 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     void attempt() {
       if (!mounted || !widget.ctrl.portalPanelOpen) return;
       final all = _filtered;
-      if (all.isEmpty) return;
+      if (all.isEmpty) {
+        if (tries++ < 32) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        }
+        return;
+      }
       final index = _portalEntryIndex(all);
       if (ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', index)) {
         _lastFocusedPortalIndex = index;

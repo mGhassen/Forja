@@ -167,15 +167,6 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
     if (!widget.sourcesPanelOpen) {
       _didInitialFocus = false;
     }
-    if (widget.sourcesPanelOpen &&
-        _tv &&
-        (widget.resultCount ?? 0) > 0 &&
-        (oldWidget.resultCount ?? 0) == 0 &&
-        !SourcesPanelTv.hasItemFocus &&
-        !_searchFocus.hasFocus &&
-        !_filtersFocus.hasFocus) {
-      _claimPanelFocus();
-    }
   }
 
   @override

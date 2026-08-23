@@ -907,6 +907,41 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       );
     }
 
+    if (isFetching && count == 0) {
+      const loading = Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white54,
+            ),
+          ),
+        ),
+      );
+      if (!inPanel || !SourcesPanelTv.isTv(context)) return loading;
+      return TvCatalogRow(
+        tabId: SourcesPanelTv.tabId,
+        rowId: SourcesPanelTv.listRowId,
+        sortOrder: SourcesPanelTv.listSort,
+        itemCount: 1,
+        orientation: ShellTvRowOrientation.vertical,
+        onFocusUp: SourcesPanelTv.focusProvidersItem,
+        child: shellFocusableTap(
+          context: context,
+          onTap: () {},
+          listIndex: 0,
+          tvTabId: SourcesPanelTv.tabId,
+          tvRowId: SourcesPanelTv.listRowId,
+          tvItemIndex: 0,
+          ensureVisibleMode: ShellTvEnsureVisibleMode.off,
+          child: loading,
+        ),
+      );
+    }
+
     final showAddonName =
         _panelShowsNuvio ||
         _panelShowsEngine ||

@@ -115,6 +115,21 @@ mixin _LiveMatchesData
   }
 
   void _topBarDownEdge() {
+    if (_s._hasCatalogChips) {
+      final catalog = ShellTvFocusCoordinator.rowHandle(
+        _LiveMatchesScreenState._tabId,
+        _LiveMatchesScreenState._catalogChipRowId,
+      );
+      if (catalog != null && catalog.itemCount > 0) {
+        final idx = catalog.lastFocusedIndex.clamp(0, catalog.itemCount - 1);
+        ShellTvFocusCoordinator.focusRowItem(
+          _LiveMatchesScreenState._tabId,
+          _LiveMatchesScreenState._catalogChipRowId,
+          idx,
+        );
+        return;
+      }
+    }
     if (_s._hasSportChips) {
       final chip = ShellTvFocusCoordinator.rowHandle(
         _LiveMatchesScreenState._tabId,
@@ -133,7 +148,7 @@ mixin _LiveMatchesData
     _restoreLiveMatchesTvFocus();
   }
 
-  /// First grid row ↑ → sport chips → Servers.
+  /// First grid row ↑ → sport chips → catalog chips → Servers.
   VoidCallback? _gridUpEdge(BuildContext context, int index, int crossCount) {
     if (!_s._tvFocus(context) || index ~/ crossCount != 0) return null;
     return _gridFocusUp;
@@ -144,6 +159,13 @@ mixin _LiveMatchesData
       ShellTvFocusCoordinator.focusFromResultsRowUp(
         tabId: _LiveMatchesScreenState._tabId,
         chipRowId: _LiveMatchesScreenState._chipRowId,
+      );
+      return;
+    }
+    if (_s._hasCatalogChips) {
+      ShellTvFocusCoordinator.focusFromResultsRowUp(
+        tabId: _LiveMatchesScreenState._tabId,
+        chipRowId: _LiveMatchesScreenState._catalogChipRowId,
       );
       return;
     }

@@ -23,6 +23,7 @@ import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel_chrome.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// Right-side Sources panel in the player - same shell/chrome/tiles as
@@ -3035,7 +3036,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required int totalCount,
   }) {
     if (_isFetching && totalCount == 0) {
-      return const Center(
+      const loading = Center(
         child: SizedBox(
           width: 28,
           height: 28,
@@ -3043,6 +3044,25 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             strokeWidth: 2,
             color: Colors.white54,
           ),
+        ),
+      );
+      if (!SourcesPanelTv.isTv(context)) return loading;
+      return TvCatalogRow(
+        tabId: SourcesPanelTv.tabId,
+        rowId: SourcesPanelTv.listRowId,
+        sortOrder: SourcesPanelTv.listSort,
+        itemCount: 1,
+        orientation: ShellTvRowOrientation.vertical,
+        onFocusUp: SourcesPanelTv.focusProvidersItem,
+        child: shellFocusableTap(
+          context: context,
+          onTap: () {},
+          listIndex: 0,
+          tvTabId: SourcesPanelTv.tabId,
+          tvRowId: SourcesPanelTv.listRowId,
+          tvItemIndex: 0,
+          ensureVisibleMode: ShellTvEnsureVisibleMode.off,
+          child: loading,
         ),
       );
     }

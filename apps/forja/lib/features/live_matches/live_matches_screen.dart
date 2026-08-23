@@ -84,6 +84,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
         _LiveMatchesPlayback {
   static const _tabId = 'live_matches';
   static const _topBarRowId = 'live-top-bar';
+  static const _catalogChipRowId = 'catalog-chips';
   static const _chipRowId = 'sport-chips';
   static const _gridRowId = 'grid';
   static const _granularityRowId = 'timeline-granularity';
@@ -195,6 +196,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   void onShellTabShown() {
     super.onShellTabShown();
     unawaited(_refreshLiveResolveMode());
+    unawaited(_clampServerIfForjaSportsDisabled(reload: false));
     _syncTimelineLiveTick();
     if (_error != null || (_sports.isEmpty && !_loading)) {
       unawaited(_load());
@@ -327,6 +329,16 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     }
   }
 
+  Future<void> _clampServerIfForjaSportsDisabled({required bool reload}) async {
+    final config = await LiveMatchesIptvSportsConfig.load();
+    if (!mounted) return;
+    if (_server != _LiveMatchesServer.iptvSports || config.enabled) return;
+    ref.read(iptvControllerProvider).closePortalPanel();
+    setState(() => _server = _LiveMatchesServer.forjaLive);
+    unawaited(_persistServerPreference(_LiveMatchesServer.forjaLive));
+    if (reload) await _load();
+  }
+
   Future<void> _restoreServerThenLoad() async {
     await _refreshLiveResolveMode();
     await _restoreServerPreference();
@@ -346,7 +358,6 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   Future<void> _restoreServerPreference() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final iptvSportsEnabled =
         (await LiveMatchesIptvSportsConfig.load()).enabled;
     final raw = prefs.getString(_serverPreferenceKey);
@@ -361,10 +372,9 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     }
     final next = _liveMatchesClampServerForSurface(
       saved ?? _server,
-      tv: tv,
       iptvSportsEnabled: iptvSportsEnabled,
     );
-    // Clamp invalid saved server (hidden All, TV embed-only, disabled Forja Sports, …).
+    // Clamp invalid saved server (hidden All, disabled Forja Sports, …).
     if (saved != null && saved != next) {
       unawaited(_persistServerPreference(next));
     }

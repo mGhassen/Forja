@@ -8,10 +8,20 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
 
   bool get _hasSportChips => _s._tabController != null && _s._sports.isNotEmpty;
 
-  int get _chipSortOrder => 1;
+  bool get _hasCatalogChips =>
+      (this as _LiveMatchesForjaLive)._showForjaLiveCatalogChrome;
+
+  int get _catalogChipSortOrder => 1;
+
+  int get _chipSortOrder {
+    var order = 1;
+    if (_hasCatalogChips) order++;
+    return order;
+  }
 
   int get _gridSortOrder {
     var order = 1;
+    if (_hasCatalogChips) order++;
     if (_hasSportChips) order++;
     return order;
   }
@@ -190,8 +200,11 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       onLeftEdge: edges?.onLeft,
       onRightEdge: edges?.onRight,
       onDownEdge: edges?.onDown,
-      onUpEdge: () =>
-          _s._focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex),
+      onUpEdge: tvFocus
+          ? edges?.onUp
+          : () => _s._focusTopBarItem(
+              _LiveMatchesScreenState._topBarServersIndex,
+            ),
     );
   }
 
@@ -689,35 +702,56 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       ..sort((a, b) => a.label.compareTo(b.label));
     if (loads.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        ShellTokens.bodyHorizontalPadding,
-        0,
-        ShellTokens.bodyHorizontalPadding,
-        6,
-      ),
-      child: SingleChildScrollView(
+    final itemCount = loads.length + 1;
+    final tvFocus = _tvFocus(context);
+    final downRowId = _hasSportChips
+        ? _LiveMatchesScreenState._chipRowId
+        : _LiveMatchesScreenState._gridRowId;
+
+    Widget buildRow(TvChipEdges Function(int index)? edgesFor) {
+      return SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
             ForjaShellChip(
               label: 'All',
               selected: _s._forjaLivePluginFilter == 'all',
-              onTap: () =>
-                  (this as _LiveMatchesForjaLive)._setForjaLivePluginFilter('all'),
+              onTap: () {
+                if (_s._forjaLivePluginFilter != 'all') {
+                  (this as _LiveMatchesForjaLive)
+                      ._setForjaLivePluginFilter('all');
+                } else if (tvFocus) {
+                  edgesFor?.call(0).onSelectAlreadySelected();
+                }
+              },
               accentHover: true,
               radius: 999,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               fontSize: 12,
+              listIndex: 0,
+              tvTabId: tvFocus ? _LiveMatchesScreenState._tabId : null,
+              tvRowId:
+                  tvFocus ? _LiveMatchesScreenState._catalogChipRowId : null,
+              onLeftEdge: edgesFor?.call(0).onLeft,
+              onRightEdge: edgesFor?.call(0).onRight,
+              onUpEdge: edgesFor?.call(0).onUp,
+              onDownEdge: edgesFor?.call(0).onDown,
             ),
-            for (final load in loads) ...[
+            for (var i = 0; i < loads.length; i++) ...[
               const SizedBox(width: 6),
               ForjaShellChip(
-                label: load.label,
-                selected: _s._forjaLivePluginFilter == load.pluginId,
-                loading: load.loading,
-                onTap: () => (this as _LiveMatchesForjaLive)
-                    ._setForjaLivePluginFilter(load.pluginId),
+                label: loads[i].label,
+                selected: _s._forjaLivePluginFilter == loads[i].pluginId,
+                loading: loads[i].loading,
+                onTap: () {
+                  final id = loads[i].pluginId;
+                  if (_s._forjaLivePluginFilter != id) {
+                    (this as _LiveMatchesForjaLive)
+                        ._setForjaLivePluginFilter(id);
+                  } else if (tvFocus) {
+                    edgesFor?.call(i + 1).onSelectAlreadySelected();
+                  }
+                },
                 accentHover: true,
                 radius: 999,
                 padding: const EdgeInsets.symmetric(
@@ -725,11 +759,38 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
                   vertical: 6,
                 ),
                 fontSize: 12,
+                listIndex: i + 1,
+                tvTabId: tvFocus ? _LiveMatchesScreenState._tabId : null,
+                tvRowId:
+                    tvFocus ? _LiveMatchesScreenState._catalogChipRowId : null,
+                onLeftEdge: edgesFor?.call(i + 1).onLeft,
+                onRightEdge: edgesFor?.call(i + 1).onRight,
+                onUpEdge: edgesFor?.call(i + 1).onUp,
+                onDownEdge: edgesFor?.call(i + 1).onDown,
               ),
             ],
           ],
         ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        ShellTokens.bodyHorizontalPadding,
+        0,
+        ShellTokens.bodyHorizontalPadding,
+        6,
       ),
+      child: tvFocus
+          ? TvChipStrip(
+              tabId: _LiveMatchesScreenState._tabId,
+              rowId: _LiveMatchesScreenState._catalogChipRowId,
+              sortOrder: _catalogChipSortOrder,
+              itemCount: itemCount,
+              resultsRowId: downRowId,
+              builder: (context, edgesFor) => buildRow(edgesFor),
+            )
+          : buildRow(null),
     );
   }
 
