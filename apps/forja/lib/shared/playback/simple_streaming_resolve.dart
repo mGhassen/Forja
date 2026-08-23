@@ -110,7 +110,6 @@ abstract final class SimpleStreamingResolve {
         continue;
       }
 
-      final probed = <StreamSource>[];
       for (final source in filtered) {
         if (cancelled()) return null;
         final ok = await validateStreamSourceForCheck(
@@ -125,40 +124,32 @@ abstract final class SimpleStreamingResolve {
           );
           continue;
         }
-        probed.add(source);
-      }
-
-      if (probed.isEmpty) {
-        onProgress?.call(providerId, 'failed');
-        debugPrint('[SimpleResolve] $providerId - no reachable stream');
-        continue;
-      }
-
-      final byUrl = {for (final p in hit.sources) p.url: p};
-      final ranked = <PlayableSource>[
-        for (final s in probed)
-          byUrl[s.url] ??
+        final byUrl = {for (final p in hit.sources) p.url: p};
+        final ranked = <PlayableSource>[
+          byUrl[source.url] ??
               normalizeLegacyStreamSources(
-                sources: [s],
+                sources: [source],
                 providerId: providerId,
                 providerRank: hit.providerRank,
               ).first,
-      ];
+        ];
+        onProgress?.call(providerId, 'success');
+        debugPrint(
+          '[SimpleResolve] $providerId - play ${source.title}',
+        );
+        return PlaybackResolveHit(
+          providerId: providerId,
+          providerRank: hit.providerRank,
+          streamUrl: source.url,
+          audioUrl: hit.audioUrl,
+          headers: source.headers ?? hit.headers,
+          sources: ranked,
+          subtitles: hit.subtitles,
+        );
+      }
 
-      onProgress?.call(providerId, 'success');
-      debugPrint(
-        '[SimpleResolve] $providerId - play ${probed.first.title} '
-        '(${probed.length}/${filtered.length} probed ok)',
-      );
-      return PlaybackResolveHit(
-        providerId: providerId,
-        providerRank: hit.providerRank,
-        streamUrl: probed.first.url,
-        audioUrl: hit.audioUrl,
-        headers: probed.first.headers ?? hit.headers,
-        sources: ranked,
-        subtitles: hit.subtitles,
-      );
+      onProgress?.call(providerId, 'failed');
+      debugPrint('[SimpleResolve] $providerId - no reachable stream');
     }
     return null;
   }

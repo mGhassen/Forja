@@ -201,6 +201,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
             ? cinematic.textPrimary
             : cinematic.textSecondary;
     final borderRadius = BorderRadius.circular(widget.radius);
+    final trackHover = widget.accentHover || widget.onReload != null;
 
     final face = AnimatedContainer(
       duration: tv ? Duration.zero : const Duration(milliseconds: 120),
@@ -287,6 +288,15 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         onFocusChange: widget.accentHover || widget.onReload != null
             ? (focused) => setState(() => _focused = focused)
             : null,
+        onHoverChange: trackHover
+            ? (hovered) => setState(() {
+                  _hovered = hovered;
+                  if (!hovered) {
+                    _busyHovered = false;
+                    _reloadHovered = false;
+                  }
+                })
+            : null,
         child: Material(
           color: Colors.transparent,
           borderRadius: borderRadius,
@@ -303,9 +313,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
       );
     }
 
-    final trackHover =
-        !tv && (widget.accentHover || widget.onReload != null);
-    if (!trackHover) return body;
+    if (!trackHover || tv) return body;
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() {

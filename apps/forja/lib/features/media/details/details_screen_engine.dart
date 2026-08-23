@@ -665,8 +665,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
             statusById[pluginId] = StreamProviderProbeStatus.failed;
             publishProbes();
           } else {
-            // Forja Auto: JS extract only. URL sniff is webstreaming-only.
-            final pick = await _firstPlayableEngineStream(
+            // Probe each JS stream; other plugins keep extracting in parallel.
+            final pick = await _firstProbedEngineStream(
               streams,
               isAborted: isAborted,
               orSettled: () => completer.isCompleted,
@@ -688,8 +688,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
               );
               if (hits.length >= maxHits && !completer.isCompleted) {
                 completer.complete(List<_EngineAutoHit>.from(hits));
-                EngineService.instance.cancelPending();
-                _s._engineFetchGen++;
               }
             }
           }
@@ -725,8 +723,9 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     return result;
   }
 
-  /// First classify-able stream from JS output — no URL sniff (webstreaming-only).
-  Future<Map<String, dynamic>?> _firstPlayableEngineStream(
+  /// Walk sorted JS streams: classify → probe → first reachable wins.
+  /// Other plugin extracts keep running while this probes.
+  Future<Map<String, dynamic>?> _firstProbedEngineStream(
     List<Map<String, dynamic>> streams, {
     required bool Function() isAborted,
     required bool Function() orSettled,
@@ -735,7 +734,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     final debridService = await _s._settings.getDebridService();
     if (isAborted() || orSettled()) return null;
 
-    for (final stream in streams) {
+    for (final stream in _sortEngineStreamRows(streams)) {
       if (isAborted() || orSettled()) return null;
       final check = classifyStremioStream(
         stream,
@@ -746,7 +745,27 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       if (check is StremioExternalLink || check is StremioResolveFailure) {
         continue;
       }
-      return stream;
+      if (check is! StremioPlayable) continue;
+
+      final proxied = await proxyCatalogHttpStreamIfNeeded(
+        streamUrl: check.streamUrl,
+        headers: check.headers,
+        stream: stream,
+      );
+      if (isAborted() || orSettled()) return null;
+
+      final probeRow = Map<String, dynamic>.from(stream)
+        ..['url'] = proxied.url
+        ..['headers'] = proxied.headers;
+
+      final ok = await probeSourcesPanelStream(probeRow);
+      if (isAborted() || orSettled()) return null;
+      final title = (stream['title'] ?? stream['name'] ?? '').toString();
+      if (ok) {
+        debugPrint('[engine-auto] probe ok: $title');
+        return stream;
+      }
+      debugPrint('[engine-auto] probe fail: $title');
     }
     return null;
   }

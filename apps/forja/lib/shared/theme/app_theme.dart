@@ -554,6 +554,9 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     final railFocus = widget.showFocusRail;
     final flatMenuFocus =
         !railFocus && widget.showFocusBorder && widget.scaleOnFocus <= 1.0;
+    final showFocusRing = widget.showFocusBorder &&
+        ((flatMenuFocus && _isHovered && policy.scaleOnHover) ||
+            policy.focusChromeVisible(context, focused: _isFocused));
     // 0 = caller already reserved scale room (e.g. a grid cell).
     final bleed = widget.showFocusBorder &&
             !flatMenuFocus &&
@@ -590,8 +593,7 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
             ),
             child: content,
           );
-        } else if (widget.showFocusBorder &&
-            policy.focusChromeVisible(context, focused: _isFocused)) {
+        } else if (showFocusRing) {
           if (flatMenuFocus) {
             content = DecoratedBox(
               decoration: BoxDecoration(
