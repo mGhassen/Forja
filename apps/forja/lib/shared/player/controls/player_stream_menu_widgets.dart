@@ -483,7 +483,6 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     );
 
     if (!tvFocus) return row;
-    final mouseHover = ShellScope.inputPolicyOf(context).scaleOnHover;
     return shellFocusableTap(
       context: context,
       onTap: () {
@@ -504,12 +503,10 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
         setState(() => _focused = focused);
         _syncHoverProbe(focused || _hovered);
       },
-      onHoverChange: mouseHover
-          ? (h) {
+      onHoverChange: (h) {
               setState(() => _hovered = h);
               _syncHoverProbe(h || _focused);
-            }
-          : null,
+            },
       child: row,
     );
   }

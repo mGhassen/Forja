@@ -14,11 +14,14 @@ class ListLetterJumpMatcher {
   String _prefix = '';
   int _lastMatchIndex = -1;
   Duration? _lastKeyTimeStamp;
+  /// Swallow the second letter after cycling multi-char on the first (FR → F cycles, ignore R).
+  String? _suppressLetter;
 
   void reset() {
     _prefix = '';
     _lastMatchIndex = -1;
     _lastKeyTimeStamp = null;
+    _suppressLetter = null;
   }
 
   /// Returns the next list index to jump to, or null when nothing matches.
@@ -31,6 +34,12 @@ class ListLetterJumpMatcher {
   }) {
     if (itemCount <= 0 || letter.isEmpty) return null;
 
+    if (_suppressLetter != null && letter == _suppressLetter) {
+      _suppressLetter = null;
+      _lastKeyTimeStamp = timeStamp;
+      return _lastMatchIndex >= 0 ? _lastMatchIndex : null;
+    }
+
     final expired = _lastKeyTimeStamp == null ||
         timeStamp - _lastKeyTimeStamp! > bufferTimeout;
 
@@ -39,21 +48,31 @@ class ListLetterJumpMatcher {
         _prefix == letter &&
         _lastMatchIndex >= 0;
 
+    final cycleMultiPrefix = !expired &&
+        _prefix.length > 1 &&
+        _lastMatchIndex >= 0 &&
+        letter == _prefix[0];
+
     if (expired) {
       _prefix = letter;
       _lastMatchIndex = -1;
+      _suppressLetter = null;
     } else if (cycleSameLetter) {
-      // Repeated single letter — next row with that prefix.
+      _suppressLetter = null;
+    } else if (cycleMultiPrefix) {
+      _suppressLetter = _prefix.length > 1 ? _prefix[1] : null;
     } else {
       _prefix += letter;
       _lastMatchIndex = -1;
+      _suppressLetter = null;
     }
 
     _lastKeyTimeStamp = timeStamp;
 
+    final cycling = cycleSameLetter || cycleMultiPrefix;
     final int searchStart;
     final bool wrapBefore;
-    if (cycleSameLetter) {
+    if (cycling) {
       searchStart = _lastMatchIndex;
       wrapBefore = false;
     } else if (expired) {
@@ -70,7 +89,7 @@ class ListLetterJumpMatcher {
       labelAt: labelAt,
       startAfter: searchStart,
       wrapBefore: wrapBefore,
-      stayOnNoNext: cycleSameLetter,
+      stayOnNoNext: cycling,
     );
     if (match == null) return null;
     _lastMatchIndex = match;
@@ -135,14 +154,20 @@ class ListLetterJumpMatcher {
   }
 
   /// Single letter: name starts with that letter (after leading junk).
-  /// Multi-letter: substring anywhere in the label (e.g. `fr` → `EU | FR - live`).
+  /// Multi-letter: token match (`| FR`, `FRANCE`, not `afr` inside `AFRICA`).
   static bool _labelMatches(String label, String prefix) {
     if (prefix.isEmpty) return false;
     if (prefix.length == 1) {
       final normalized = _normalizedLabelStart(label);
       return normalized.isNotEmpty && normalized.startsWith(prefix);
     }
-    return label.trim().toLowerCase().contains(prefix);
+    return _labelContainsToken(label, prefix);
+  }
+
+  static bool _labelContainsToken(String label, String prefix) {
+    final lower = label.trim().toLowerCase();
+    final escaped = RegExp.escape(prefix);
+    return RegExp('(^|[^a-z])$escaped').hasMatch(lower);
   }
 
   static String _normalizedLabelStart(String label) {
@@ -211,8 +236,10 @@ class ListLetterJumpMatcher {
 ///
 /// - Single letter jumps to the first matching row after [anchorIndex]; repeat
 ///   the letter quickly for the next match (no wrap at the end).
-/// - Quick multi-letter typing (e.g. USA, FR) matches a substring anywhere in
-///   the label (`fr` → `EU | FR - live`), not only at the start.
+/// - Quick multi-letter typing (`fr`) matches a token in the label (`EU | FRANCE`,
+///   `EU | FR - live`) — not letters buried inside a word (`AFRICA`).
+/// - Repeat the same multi-letter prefix quickly (`fr` then `f` again) cycles to
+///   the next match.
 class ListLetterJumpScope extends StatefulWidget {
   const ListLetterJumpScope({
     super.key,

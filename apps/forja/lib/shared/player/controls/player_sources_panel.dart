@@ -12,6 +12,7 @@ import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
+import 'package:forja/shared/playback/sources_panel_stream_probe.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -3162,6 +3163,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               highlightStart: isCurrent,
               tvItemIndex: tvIndex,
               onUpEdge: onUp,
+              onHoverProbe: presentation.isExternal
+                  ? null
+                  : () => probeSourcesPanelStream(s),
               onTap: () => _selectStremio(s),
             ),
           ),

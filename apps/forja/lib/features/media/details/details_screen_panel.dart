@@ -766,6 +766,9 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       highlightStart: widget.startPosition != null,
       tvItemIndex: tvItemIndex,
       onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
+      onHoverProbe: presentation.isExternal
+          ? null
+          : () => probeSourcesPanelStream(s),
       onTap: () => _s._playStremioStream(
         s,
         startPosition: resumable

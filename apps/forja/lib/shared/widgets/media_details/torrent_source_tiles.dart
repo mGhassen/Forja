@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
@@ -88,6 +90,7 @@ class WebstreamingSourceTile extends StatelessWidget {
     this.tvItemIndex,
     this.onUpEdge,
     this.onDownEdge,
+    this.onHoverProbe,
   });
 
   final String title;
@@ -100,6 +103,7 @@ class WebstreamingSourceTile extends StatelessWidget {
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final Future<bool> Function()? onHoverProbe;
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +123,7 @@ class WebstreamingSourceTile extends StatelessWidget {
       tvItemIndex: tvItemIndex,
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,
+      onHoverProbe: onHoverProbe,
       languageCodes: meta.languageCodes,
       badges: [
         if (meta.quality != null)
@@ -231,6 +236,7 @@ class StremioSourceTile extends StatelessWidget {
     this.tvItemIndex,
     this.onUpEdge,
     this.onDownEdge,
+    this.onHoverProbe,
   });
 
   final String title;
@@ -250,6 +256,7 @@ class StremioSourceTile extends StatelessWidget {
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final Future<bool> Function()? onHoverProbe;
 
   @override
   Widget build(BuildContext context) {
@@ -298,6 +305,7 @@ class StremioSourceTile extends StatelessWidget {
       tvItemIndex: tvItemIndex,
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,
+      onHoverProbe: isExternal ? null : onHoverProbe,
       badges: isExternal
           ? [
               if (description.trim().isNotEmpty)
@@ -403,6 +411,7 @@ class _SourceBadgeCard extends StatefulWidget {
     this.tvItemIndex,
     this.onUpEdge,
     this.onDownEdge,
+    this.onHoverProbe,
   });
 
   final VoidCallback onTap;
@@ -421,18 +430,73 @@ class _SourceBadgeCard extends StatefulWidget {
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
+  final Future<bool> Function()? onHoverProbe;
 
   @override
   State<_SourceBadgeCard> createState() => _SourceBadgeCardState();
 }
 
 class _SourceBadgeCardState extends State<_SourceBadgeCard> {
+  static const _hoverProbeDelay = Duration(milliseconds: 500);
+
   bool _hovered = false;
   bool _focused = false;
+  bool? _probeHealth;
+  bool _probeChecking = false;
+  int _probeGen = 0;
+  Timer? _hoverProbeTimer;
 
   bool get _hover => _hovered || _focused;
 
+  @override
+  void dispose() {
+    _cancelHoverProbe();
+    super.dispose();
+  }
+
+  bool _shouldScheduleHoverProbe() {
+    if (widget.onHoverProbe == null) return false;
+    if (_probeChecking) return false;
+    if (_probeHealth == true) return false;
+    return true;
+  }
+
+  void _syncHoverProbe(bool active) {
+    if (!active) {
+      _cancelHoverProbe();
+      return;
+    }
+    if (!_shouldScheduleHoverProbe()) return;
+    _cancelHoverProbe();
+    _hoverProbeTimer = Timer(_hoverProbeDelay, () {
+      _hoverProbeTimer = null;
+      if (!mounted || !_shouldScheduleHoverProbe()) return;
+      unawaited(_runHoverProbe());
+    });
+  }
+
+  void _cancelHoverProbe() {
+    _hoverProbeTimer?.cancel();
+    _hoverProbeTimer = null;
+  }
+
+  Future<void> _runHoverProbe() async {
+    final probe = widget.onHoverProbe;
+    if (probe == null) return;
+    final gen = ++_probeGen;
+    setState(() => _probeChecking = true);
+    final ok = await probe();
+    if (!mounted || gen != _probeGen) return;
+    setState(() {
+      _probeChecking = false;
+      _probeHealth = ok;
+    });
+  }
+
   Color _backgroundColor() {
+    if (_probeHealth == false) {
+      return const Color(0xFFEF4444).withValues(alpha: _hover ? 0.11 : 0.08);
+    }
     if (_hover) return ForjaShellColors.chipSelectedBg;
     if (widget.accentFill != null) return widget.accentFill!;
     if (widget.isResumable || widget.highlightStart) {
@@ -442,6 +506,17 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   }
 
   Color _borderColor() {
+    if (widget.onHoverProbe != null) {
+      if (_probeChecking) {
+        return Colors.white.withValues(alpha: _hover ? 0.28 : 0.18);
+      }
+      if (_probeHealth == true) {
+        return const Color(0xFF22C55E).withValues(alpha: _hover ? 0.62 : 0.45);
+      }
+      if (_probeHealth == false) {
+        return const Color(0xFFEF4444).withValues(alpha: _hover ? 0.72 : 0.55);
+      }
+    }
     if (_hover) return ForjaShellColors.chipSelectedBorder;
     if (widget.accentBorder != null) return widget.accentBorder!;
     if (widget.isResumable || widget.highlightStart) {
@@ -627,9 +702,37 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                 ),
               ),
             ),
+          if (_probeChecking)
+            const Positioned(
+              top: 8,
+              right: 8,
+              child: SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white54,
+                ),
+              ),
+            ),
         ],
       ),
     );
+
+    var card = face;
+    if (widget.onHoverProbe != null) {
+      card = MouseRegion(
+        onEnter: (_) {
+          setState(() => _hovered = true);
+          _syncHoverProbe(true);
+        },
+        onExit: (_) {
+          setState(() => _hovered = false);
+          _syncHoverProbe(false);
+        },
+        child: card,
+      );
+    }
 
     final tv = widget.tvItemIndex != null && SourcesPanelTv.isTv(context);
     return shellFocusableTap(
@@ -647,9 +750,13 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onUpEdge: widget.onUpEdge,
       onDownEdge: widget.onDownEdge,
-      onFocusChange: (focused) => setState(() => _focused = focused),
-      onHoverChange: (hovered) => setState(() => _hovered = hovered),
-      child: face,
+      onFocusChange: widget.onHoverProbe == null
+          ? (focused) => setState(() => _focused = focused)
+          : (focused) {
+              setState(() => _focused = focused);
+              _syncHoverProbe(focused || _hovered);
+            },
+      child: card,
     );
   }
 }

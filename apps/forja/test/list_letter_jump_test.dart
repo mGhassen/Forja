@@ -80,6 +80,29 @@ void main() {
       expect(jump('f', m), 0);
     });
 
+    test('multi-letter matches token not buried in word', () {
+      final labels = ['AF | AFRICA', 'EU | FRANCE', 'EU | FR - live'];
+      final m = ListLetterJumpMatcher();
+      expect(
+        m.nextIndices(
+          letters: 'fr',
+          timeStamp: const Duration(milliseconds: 1),
+          itemCount: labels.length,
+          labelAt: (i) => labels[i],
+        ),
+        1,
+      );
+      expect(
+        m.nextIndex(
+          letter: 'f',
+          timeStamp: const Duration(milliseconds: 40),
+          itemCount: labels.length,
+          labelAt: (i) => labels[i],
+        ),
+        2,
+      );
+    });
+
     test('multi-letter matches substring anywhere in label', () {
       final labels = ['Spain', 'EU | FR - live', 'Germany'];
       final m = ListLetterJumpMatcher();
