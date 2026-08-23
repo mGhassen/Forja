@@ -192,12 +192,56 @@ function extract(ctx) {
     return d === 0;
   }
 
+  function utf8Bytes(str) {
+    if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(String(str || ''));
+    var s = String(str || '');
+    var out = [];
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charCodeAt(i);
+      if (c < 0x80) out.push(c);
+      else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 0x3f));
+      else out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 0x3f), 0x80 | (c & 0x3f));
+    }
+    return new Uint8Array(out);
+  }
+
+  function payloadBytes(value) {
+    var s = String(value || '').trim();
+    if (!s) return new Uint8Array(0);
+    if (/^[0-9a-f]+$/i.test(s) && s.length % 2 === 0) return hexToBytes(s);
+    try {
+      var bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+      var out = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    } catch (e) {
+      return utf8Bytes(s);
+    }
+  }
+
   function decryptDownload(payload, token) {
     var key = hexToBytes(downloadKeyHex);
-    var iv = hexToBytes(payload.iv);
-    var ct = hexToBytes(payload.ct);
-    var tag = hexToBytes(payload.tag);
-    var aad = hexToBytes(token);
+    var iv = payloadBytes(payload.iv);
+    var ct = payloadBytes(payload.ct);
+    var tag = payloadBytes(payload.tag);
+    var aadCandidates = [utf8Bytes(token)];
+    try {
+      if (/^[0-9a-f]+$/i.test(String(token || '')) && String(token).length % 2 === 0) {
+        aadCandidates.push(hexToBytes(token));
+      }
+    } catch (e) {}
+    var lastErr = null;
+    for (var ai = 0; ai < aadCandidates.length; ai++) {
+      try {
+        return decryptDownloadWithAad(payload, key, iv, ct, tag, aadCandidates[ai]);
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error('1Shows authentication failed');
+  }
+
+  function decryptDownloadWithAad(payload, key, iv, ct, tag, aad) {
     if (iv.length !== 12 || tag.length !== 16) throw new Error('Unsupported 1Shows AES-GCM payload');
     var rk = expandAes256Key(key);
     var h = aesEncryptBlock(new Uint8Array(16), rk);

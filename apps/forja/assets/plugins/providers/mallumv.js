@@ -761,9 +761,9 @@ function makeHTTPRequest(url, options = {}) {
                 return response.text().then(data => {
                     if (options.parseHTML && data) {
                         var $ = __htmlParse(data);
-                        resolve({ $: $, body: data, statusCode: response.status, headers: Object.fromEntries(response.headers) });
+                        resolve({ $: $, body: data, statusCode: response.status, headers: response.headers });
                     } else {
-                        resolve({ body: data, statusCode: response.status, headers: Object.fromEntries(response.headers) });
+                        resolve({ body: data, statusCode: response.status, headers: response.headers });
                     }
                 });
             })

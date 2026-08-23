@@ -139,11 +139,11 @@ void main() {
       expect(
         enginePluginIdsToRefetchOnAllExpand(
           previousSelectedIds: const {'videasy'},
-          nextSelectedIds: const {'videasy', 'vidlink', 'goated'},
-          fetchedIds: const {'videasy', 'vidlink', 'goated'},
+          nextSelectedIds: const {'videasy', 'vidlink', 'castle'},
+          fetchedIds: const {'videasy', 'vidlink', 'castle'},
           streams: streams,
         ),
-        {'vidlink', 'goated'},
+        {'vidlink', 'castle'},
       );
       expect(
         engineStaleFetchedPluginIds(
@@ -158,15 +158,15 @@ void main() {
     test('full All selection is detected without clearing existing rows', () {
       expect(
         engineFullAllSelected(
-          enabledIds: const {'videasy', 'vidlink', 'goated'},
-          selectedIds: const {'videasy', 'vidlink', 'goated'},
+          enabledIds: const {'videasy', 'vidlink', 'castle'},
+          selectedIds: const {'videasy', 'vidlink', 'castle'},
         ),
         isTrue,
       );
       expect(
         enginePluginIdsToRefetchOnAllExpand(
           previousSelectedIds: const {'videasy'},
-          nextSelectedIds: const {'videasy', 'vidlink', 'goated'},
+          nextSelectedIds: const {'videasy', 'vidlink', 'castle'},
           fetchedIds: const {'videasy'},
           streams: [
             {
@@ -176,7 +176,7 @@ void main() {
             },
           ],
         ),
-        {'vidlink', 'goated'},
+        {'vidlink', 'castle'},
       );
     });
 
@@ -412,7 +412,6 @@ void main() {
           'videasy',
           'vidlink',
           'vixsrc',
-          'dooflix',
           'yflix',
           'vidnest',
           'vidrock',
@@ -424,9 +423,7 @@ void main() {
           'hianime',
           'multiembed',
           'kickassanime',
-          'goated',
           'meowtv',
-          'peachify',
           'playimdb',
           'vidsync',
           'vidup',
@@ -446,8 +443,6 @@ void main() {
           'cinemacity',
           'dahmermovies',
           'kurage',
-          'showbox',
-          'cinevibe',
           'mallumv',
           'animepahe',
           'reanime',
@@ -466,9 +461,7 @@ void main() {
           'animenosub',
           'myflixer',
           'mkissa',
-          'bingebox',
           'primesrc',
-          'uflix',
           'vidnest-anime',
           'hop-doodstream',
           'hop-voe',
@@ -484,7 +477,6 @@ void main() {
         parsed.firstWhere((p) => p.id == 'hop-doodstream').isExtractable,
         isFalse,
       );
-      expect(parsed.firstWhere((p) => p.id == 'mycima').enabled, isFalse);
       expect(parsed.firstWhere((p) => p.id == 'hop-flixcloud').isHop, isTrue);
       expect(
         parsed.firstWhere((p) => p.id == 'hop-flixcloud').isExtractable,
@@ -511,13 +503,7 @@ void main() {
         parsed.firstWhere((p) => p.id == 'multiembed').entry,
         'multiembed.js',
       );
-      expect(parsed.firstWhere((p) => p.id == 'goated').entry, 'goated.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'goated').config['api'],
-        'https://api.reallyfast.xyz',
-      );
       expect(parsed.firstWhere((p) => p.id == 'meowtv').entry, 'meowtv.js');
-      expect(parsed.firstWhere((p) => p.id == 'peachify').entry, 'peachify.js');
       expect(parsed.firstWhere((p) => p.id == 'playimdb').entry, 'playimdb.js');
       expect(
         parsed.firstWhere((p) => p.id == 'playimdb').config['api'],
@@ -528,7 +514,7 @@ void main() {
       expect(parsed.firstWhere((p) => p.id == 'moviebox').entry, 'moviebox.js');
       expect(
         parsed.firstWhere((p) => p.id == 'moviebox').config['api'],
-        'https://h5-api.aoneroom.com',
+        'https://api3.aoneroom.com',
       );
       expect(parsed.firstWhere((p) => p.id == '4khdhub').entry, '4khdhub.js');
       expect(
@@ -625,16 +611,6 @@ void main() {
       expect(
         parsed.firstWhere((p) => p.id == 'kurage').config['base'],
         'https://kurage.live',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'showbox').entry, 'showbox.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'showbox').config['apiBase'],
-        'https://id-mapping-api-showbox-proxy.hf.space/api/media',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'cinevibe').entry, 'cinevibe.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'cinevibe').config['base'],
-        'https://cinevibe.asia',
       );
       expect(parsed.firstWhere((p) => p.id == 'mallumv').entry, 'mallumv.js');
       expect(
@@ -740,14 +716,7 @@ void main() {
         parsed.firstWhere((p) => p.id == 'megaplay').ids,
         containsAll(['anilist', 'mal']),
       );
-      expect(parsed.firstWhere((p) => p.id == 'bingebox').entry, 'embed.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'bingebox').config['origin'],
-        'https://bingebox.ac',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'primesrc').entry, 'embed.js');
-      expect(parsed.firstWhere((p) => p.id == 'uflix').entry, 'embed.js');
-      expect(parsed.firstWhere((p) => p.id == 'mycima').entry, 'catalog.js');
+      expect(parsed.firstWhere((p) => p.id == 'primesrc').entry, 'providers/primesrc.js');
       expect(parsed.firstWhere((p) => p.id == 'mkissa').entry, 'mkissa.js');
       expect(
         parsed.firstWhere((p) => p.id == 'mkissa').config['api'],
@@ -776,7 +745,6 @@ void main() {
         parsed.firstWhere((p) => p.id == 'vidrock').config['aesKey'],
         isNotEmpty,
       );
-      expect(parsed.firstWhere((p) => p.id == 'dooflix').enabled, isTrue);
       expect(
         enabledEnginePluginIds([
           EnginePack(
@@ -843,7 +811,7 @@ void main() {
       expect(kaa.contains('krussdomi.com'), isTrue);
 
       final goated = await rootBundle.loadString(
-        'assets/plugins/providers/goated.js',
+        'assets/plugins/archived/goated.js',
       );
       expect(goated.contains('aesdec.nuvioapp.space'), isFalse);
       expect(goated.contains('/api/resolve'), isTrue);
@@ -865,7 +833,7 @@ void main() {
       expect(meowtv.contains('dec-meowtv'), isTrue);
 
       final peachify = await rootBundle.loadString(
-        'assets/plugins/providers/peachify.js',
+        'assets/plugins/archived/peachify.js',
       );
       expect(peachify.contains('dec-peachify'), isTrue);
 
@@ -1042,13 +1010,13 @@ void main() {
       expect(kurage.contains('/api/trpc/'), isTrue);
 
       final showbox = await rootBundle.loadString(
-        'assets/plugins/providers/showbox.js',
+        'assets/plugins/archived/showbox.js',
       );
       expect(showbox.contains('febbox.com'), isTrue);
       expect(showbox.contains('TripleDES'), isTrue);
 
       final cinevibe = await rootBundle.loadString(
-        'assets/plugins/providers/cinevibe.js',
+        'assets/plugins/archived/cinevibe.js',
       );
       expect(cinevibe.contains('/api/stream/fetch'), isTrue);
       expect(cinevibe.contains('X-CV-Fingerprint'), isTrue);

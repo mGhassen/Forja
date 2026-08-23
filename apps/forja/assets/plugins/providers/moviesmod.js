@@ -165,14 +165,19 @@ function extract(ctx) {
     var info = pair[0];
     var mainUrl = pair[1].replace(/\/$/, '');
     if (!info || !info.title) return [];
-    var q = info.imdbId ? info.imdbId : info.title;
-    if (isTv && ctx.season) q += ' ' + ctx.season;
-    var searchUrl = isTv
-      ? mainUrl + '/search/' + encodeURIComponent(q)
-      : mainUrl + '/search/' + encodeURIComponent(q);
+    var q = info.title;
+    if (isTv && ctx.season) q += ' Season ' + ctx.season;
+    var searchUrl = mainUrl + '/?s=' + encodeURIComponent(q);
     return fetchText(searchUrl).then(function (html) {
       var $ = ctx.html(html);
-      var targetUrl = $('#content_box article > a').first().attr('href');
+      var targetUrl = '';
+      $('article.gridlove-post, article.latestPost, #content_box article').each(function () {
+        if (targetUrl) return;
+        var title = $('h1.sanket, h2.title a', this).text() || $('a', this).attr('title') || '';
+        var href = $('div.entry-image > a, h2.title a, a', this).first().attr('href');
+        if (href && title.toLowerCase().indexOf(info.title.toLowerCase()) >= 0) targetUrl = href;
+      });
+      if (!targetUrl) targetUrl = $('#content_box article > a').first().attr('href');
       if (!targetUrl) return [];
       return fetchText(targetUrl).then(function (pageHtml) {
         var $p = ctx.html(pageHtml);

@@ -89,9 +89,22 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     _registerTvItemNode();
   }
 
+  void _ensureOwnedNodeForOnTap() {
+    if (widget.focusNode != null) return;
+    if (widget.onTap != null) {
+      _ownedNode ??= FocusNode(debugLabel: 'forja-interactive');
+    } else {
+      _disposeOwnedNode();
+    }
+  }
+
   @override
   void didUpdateWidget(covariant ForjaInteractive oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.focusNode == widget.focusNode &&
+        oldWidget.onTap != widget.onTap) {
+      _ensureOwnedNodeForOnTap();
+    }
     if (oldWidget.focusNode != widget.focusNode) {
       _unregisterTvItemNode(
         oldWidget.tvMeta,
@@ -111,11 +124,8 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     } else if (oldWidget.tvMeta?.rowId != widget.tvMeta?.rowId ||
         oldWidget.tvMeta?.itemIndex != widget.tvMeta?.itemIndex) {
       _unregisterTvItemNode(oldWidget.tvMeta, node: _nodeFor(oldWidget));
+      _ensureOwnedNodeForOnTap();
       _registerTvItemNode();
-    } else if (oldWidget.onTap != null &&
-        widget.onTap == null &&
-        widget.focusNode == null) {
-      _disposeOwnedNode();
     }
   }
 

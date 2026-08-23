@@ -11,8 +11,35 @@ function extract(ctx) {
     Referer: base + '/',
   };
   var isTv = ctx.type !== 'movie';
-  var title = String(ctx.title || '').trim();
-  var year = String(ctx.year || '').trim();
+  var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
+
+  function titleMeta() {
+    var title = String(ctx.title || '').trim();
+    var year = String(ctx.year || '').trim();
+    if (title) return Promise.resolve({ title: title, year: year });
+    return ctx
+      .fetch(
+        'https://api.themoviedb.org/3/' +
+          (isTv ? 'tv' : 'movie') +
+          '/' +
+          encodeURIComponent(String(ctx.tmdbId || '')) +
+          '?api_key=' +
+          encodeURIComponent(tmdbKey),
+        { headers: { Accept: 'application/json', 'User-Agent': ua } },
+      )
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        return {
+          title: (isTv ? d.name : d.title) || '',
+          year: String((isTv ? d.first_air_date : d.release_date) || '').substring(0, 4),
+        };
+      });
+  }
+
+  var title = '';
+  var year = '';
 
   function abs(url, from) {
     if (!url) return '';
@@ -222,9 +249,15 @@ function extract(ctx) {
     });
   }
 
-  return search()
+  return titleMeta()
+    .then(function (meta) {
+      title = meta.title;
+      year = meta.year;
+      if (!title) return [];
+      return search();
+    })
     .then(function (matches) {
-      if (!matches.length) return [];
+      if (!matches || !matches.length) return [];
       return extractFromPage(matches[0].url);
     })
     .catch(function () {

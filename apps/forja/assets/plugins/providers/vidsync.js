@@ -14,6 +14,33 @@ function extract(ctx) {
   };
   var tmdbId = String(ctx.tmdbId);
   var isMovie = ctx.type === 'movie';
+  var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
+
+  function mediaMeta() {
+    var title = String(ctx.title || '').trim();
+    var year = String(ctx.year || '').substring(0, 4);
+    if (title) return Promise.resolve({ title: title, year: year });
+    var kind = isMovie ? 'movie' : 'tv';
+    return ctx
+      .fetch(
+        'https://api.themoviedb.org/3/' +
+          kind +
+          '/' +
+          encodeURIComponent(tmdbId) +
+          '?api_key=' +
+          encodeURIComponent(tmdbKey),
+        { headers: { Accept: 'application/json', 'User-Agent': ua } },
+      )
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (d) {
+        return {
+          title: (isMovie ? d.title : d.name) || '',
+          year: String((isMovie ? d.release_date : d.first_air_date) || '').substring(0, 4),
+        };
+      });
+  }
 
   function validate(j) {
     if (!j || j.status !== 200) return null;
@@ -61,55 +88,58 @@ function extract(ctx) {
       var parts = validate(j);
       var token = parts && parts.token;
       if (!token) return [];
-      var hdrs = Object.assign({}, headers, { 'X-Cf-Turnstile': token });
-      var q =
-        'title=' +
-        encodeURIComponent(ctx.title || '').replace(/%20/g, '+') +
-        '&type=' +
-        (isMovie ? 'movie' : 'tv') +
-        '&releaseYear=' +
-        encodeURIComponent(String(ctx.year || '').substring(0, 4)) +
-        '&mediaId=' +
-        encodeURIComponent(tmdbId) +
-        '&season=' +
-        (ctx.season || 1) +
-        '&episode=' +
-        (ctx.episode || 1);
-      var tasks = servers.slice(0, 8).map(function (server) {
-        var name = typeof server === 'string' ? server : server && (server.id || server.name);
-        if (!name) return Promise.resolve([]);
-        var url =
-          origin.replace(/\/$/, '') +
-          '/api/stream/fetch?' +
-          q +
-          '&serverName=' +
-          encodeURIComponent(name);
-        return ctx
-          .fetch(url, { headers: hdrs })
-          .then(function (r) {
-            return r.text();
-          })
-          .then(function (text) {
-            if (!text) return [];
-            return ctx
-              .fetch(enc + '/dec-vidsync', {
-                method: 'POST',
-                headers: Object.assign({}, hdrs, { 'Content-Type': 'application/json' }),
-                body: JSON.stringify({ text: text, id: tmdbId }),
-              })
-              .then(function (r) {
-                return r.json();
-              })
-              .then(function (dj) {
-                return toRows(validate(dj), name);
-              });
-          })
-          .catch(function () {
-            return [];
-          });
-      });
-      return Promise.all(tasks).then(function (groups) {
-        return [].concat.apply([], groups);
+      return mediaMeta().then(function (meta) {
+        if (!meta.title) return [];
+        var hdrs = Object.assign({}, headers, { 'X-Cf-Turnstile': token });
+        var q =
+          'title=' +
+          encodeURIComponent(meta.title).replace(/%20/g, '+') +
+          '&type=' +
+          (isMovie ? 'movie' : 'tv') +
+          '&releaseYear=' +
+          encodeURIComponent(meta.year || '') +
+          '&mediaId=' +
+          encodeURIComponent(tmdbId) +
+          '&season=' +
+          (ctx.season || 1) +
+          '&episode=' +
+          (ctx.episode || 1);
+        var tasks = servers.slice(0, 8).map(function (server) {
+          var name = typeof server === 'string' ? server : server && (server.id || server.name);
+          if (!name) return Promise.resolve([]);
+          var url =
+            origin.replace(/\/$/, '') +
+            '/api/stream/fetch?' +
+            q +
+            '&serverName=' +
+            encodeURIComponent(name);
+          return ctx
+            .fetch(url, { headers: hdrs })
+            .then(function (r) {
+              return r.text();
+            })
+            .then(function (text) {
+              if (!text) return [];
+              return ctx
+                .fetch(enc + '/dec-vidsync', {
+                  method: 'POST',
+                  headers: Object.assign({}, hdrs, { 'Content-Type': 'application/json' }),
+                  body: JSON.stringify({ text: text, id: tmdbId }),
+                })
+                .then(function (r) {
+                  return r.json();
+                })
+                .then(function (dj) {
+                  return toRows(validate(dj), name);
+                });
+            })
+            .catch(function () {
+              return [];
+            });
+        });
+        return Promise.all(tasks).then(function (groups) {
+          return [].concat.apply([], groups);
+        });
       });
     })
     .catch(function () {

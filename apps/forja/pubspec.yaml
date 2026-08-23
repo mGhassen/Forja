@@ -138,6 +138,7 @@ flutter:
     - assets/nuvio/
     - assets/plugins/
     - assets/plugins/providers/
+    - assets/plugins/archived/
     - assets/plugins/providers/hops/
     - assets/plugins/live/
     - assets/plugins/live/goat/

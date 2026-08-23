@@ -304,47 +304,6 @@
       }
     },
     {
-      "id": "peachify",
-      "name": "Peachify",
-      "entry": "providers/peachify.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://peachify.top",
-        "enc": "https://enc-dec.app/api",
-        "servers": [
-          {
-            "label": "Wolf",
-            "path": "air",
-            "api": "https://usa.eat-peach.sbs"
-          },
-          {
-            "label": "Spider",
-            "path": "holly",
-            "api": "https://usa.eat-peach.sbs"
-          },
-          {
-            "label": "Iron",
-            "path": "moviebox",
-            "api": "https://uwu.eat-peach.sbs"
-          },
-          {
-            "label": "Multi",
-            "path": "multi",
-            "api": "https://usa.eat-peach.sbs"
-          },
-          {
-            "label": "Dark",
-            "path": "net",
-            "api": "https://uwu.eat-peach.sbs"
-          }
-        ]
-      }
-    },
-    {
       "id": "playimdb",
       "name": "PlayIMDb",
       "entry": "providers/playimdb.js",
@@ -357,35 +316,6 @@
       "config": {
         "api": "https://streamdata.vaplayer.ru/api.php",
         "origin": "https://nextgencloudfabric.com"
-      }
-    },
-    {
-      "id": "dooflix",
-      "name": "DooFlix",
-      "entry": "providers/dooflix.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "api": "https://panel.watchkaroabhi.com",
-        "key": "qNhKLJiZVyoKdi9NCQGz8CIGrpUijujE",
-        "origin": "https://molop.art/"
-      }
-    },
-    {
-      "id": "goated",
-      "name": "Goated",
-      "entry": "providers/goated.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "api": "https://api.reallyfast.xyz",
-        "origin": "https://goated.cx"
       }
     },
     {
@@ -455,23 +385,8 @@
       ],
       "kind": "http",
       "config": {
-        "api": "https://h5-api.aoneroom.com",
+        "api": "https://api3.aoneroom.com",
         "referer": "https://videodownloader.site/"
-      }
-    },
-    {
-      "id": "showbox",
-      "name": "ShowBox",
-      "entry": "providers/showbox.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "apiBase": "https://id-mapping-api-showbox-proxy.hf.space/api/media",
-        "tmdbKey": "439c478a771f35c05022f9feabcca01c",
-        "uiToken": ""
       }
     },
     {
@@ -811,20 +726,6 @@
       }
     },
     {
-      "id": "cinevibe",
-      "name": "CineVibe",
-      "entry": "providers/cinevibe.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "base": "https://cinevibe.asia",
-        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
-      }
-    },
-    {
       "id": "dahmermovies",
       "name": "DahmerMovies",
       "entry": "providers/dahmermovies.js",
@@ -948,22 +849,6 @@
       }
     },
     {
-      "id": "mycima",
-      "name": "MyCima",
-      "entry": "providers/catalog.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "base": "https://mycima.wecima.watch",
-        "name": "MyCima",
-        "search": "https://mycima.wecima.watch/search/{q}"
-      },
-      "enabled": false
-    },
-    {
       "id": "multiembed",
       "name": "MultiEmbed",
       "entry": "providers/multiembed.js",
@@ -979,26 +864,9 @@
       }
     },
     {
-      "id": "bingebox",
-      "name": "BingeBox",
-      "entry": "providers/embed.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://bingebox.ac",
-        "moviePath": "/embed/movie/{id}",
-        "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "hostId": "bingebox",
-        "name": "BingeBox"
-      }
-    },
-    {
       "id": "primesrc",
       "name": "PrimeSrc",
-      "entry": "providers/embed.js",
+      "entry": "providers/primesrc.js",
       "types": [
         "movie",
         "tv"
@@ -1006,27 +874,7 @@
       "kind": "http",
       "config": {
         "origin": "https://primesrc.me",
-        "moviePath": "/embed/movie/{id}",
-        "tvPath": "/embed/tv/{id}/{s}/{e}",
-        "hostId": "primesrc",
-        "name": "PrimeSrc"
-      }
-    },
-    {
-      "id": "uflix",
-      "name": "UFlix",
-      "entry": "providers/embed.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http",
-      "config": {
-        "origin": "https://uflix.to",
-        "moviePath": "/movie/{id}",
-        "tvPath": "/tv/{id}/{s}/{e}",
-        "hostId": "uflix",
-        "name": "UFlix"
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
