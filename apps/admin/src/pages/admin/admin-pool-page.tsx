@@ -75,6 +75,29 @@ function useDebounced<T>(value: T, ms: number): T {
   return debounced
 }
 
+/** Keep card positions fixed across refetches / status patches (host table still sorts). */
+function freezePortalOrder(
+  prevIds: string[],
+  list: PoolCand[],
+): { ids: string[]; rows: PoolCand[] } {
+  const byId = new Map(list.map((p) => [p.id, p]))
+  const ids: string[] = []
+  const seen = new Set<string>()
+  for (const id of prevIds) {
+    if (byId.has(id) && !seen.has(id)) {
+      ids.push(id)
+      seen.add(id)
+    }
+  }
+  for (const p of list) {
+    if (!seen.has(p.id)) {
+      ids.push(p.id)
+      seen.add(p.id)
+    }
+  }
+  return { ids, rows: ids.map((id) => byId.get(id)!) }
+}
+
 function HostPortals({
   host,
   filters,
@@ -116,10 +139,16 @@ function HostPortals({
 }) {
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(50)
+  const orderIdsRef = useRef<string[]>([])
 
   useEffect(() => {
     setPage(0)
+    orderIdsRef.current = []
   }, [host, filters, pageSize])
+
+  useEffect(() => {
+    orderIdsRef.current = []
+  }, [page])
 
   const portals = useQuery({
     queryKey: [
@@ -139,6 +168,15 @@ function HostPortals({
       }),
   })
 
+  const list = portals.data?.portals
+  const total = portals.data?.total ?? 0
+  const rows = useMemo(() => {
+    const items = list ?? []
+    const frozen = freezePortalOrder(orderIdsRef.current, items)
+    orderIdsRef.current = frozen.ids
+    return frozen.rows
+  }, [list])
+
   if (portals.isLoading) {
     return (
       <p className="border-t border-forja-border px-3 py-3 text-sm text-forja-muted">
@@ -153,8 +191,6 @@ function HostPortals({
       </p>
     )
   }
-  const rows = portals.data?.portals ?? []
-  const total = portals.data?.total ?? 0
   if (total === 0) {
     return (
       <p className="border-t border-forja-border px-3 py-3 text-sm text-forja-muted">
@@ -405,6 +441,28 @@ export function AdminPoolPage() {
     return qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
   }
 
+  /** Hosts may re-sort; portal cards stay put — patch alive in cache, refresh host rows only. */
+  function applyVerifyResults(
+    results: { id: string; alive: boolean }[],
+  ) {
+    if (results.length === 0) return
+    const byId = new Map(results.map((r) => [r.id, r.alive]))
+    qc.setQueriesData<{ portals: PoolCand[]; total: number }>(
+      { queryKey: ['admin', 'pool', 'portals'] },
+      (old) => {
+        if (!old?.portals) return old
+        return {
+          ...old,
+          portals: old.portals.map((p) => {
+            const alive = byId.get(p.id)
+            return alive === undefined ? p : { ...p, alive }
+          }),
+        }
+      },
+    )
+    void qc.invalidateQueries({ queryKey: ['admin', 'pool', 'hosts'] })
+  }
+
   const saveEdit = useMutation({
     mutationFn: async () => {
       if (!editingId) return
@@ -510,6 +568,7 @@ export function AdminPoolPage() {
     let alive = 0
     let dead = 0
     let failed = 0
+    const verified: { id: string; alive: boolean }[] = []
     try {
       for (const id of ids) {
         setCheckingId(id)
@@ -517,6 +576,9 @@ export function AdminPoolPage() {
           const res = await catalogVerify({ candidateId: id })
           alive += res.alive
           dead += res.dead
+          for (const r of res.results) {
+            verified.push({ id: r.id, alive: r.alive })
+          }
         } catch {
           failed++
         }
@@ -526,7 +588,7 @@ export function AdminPoolPage() {
           failed ? ` · ${failed} failed` : ''
         }`,
       )
-      await invalidatePool()
+      applyVerifyResults(verified)
     } catch (e) {
       setActionError(errMessage(e, 'Bulk status check failed'))
     } finally {
@@ -668,7 +730,9 @@ export function AdminPoolPage() {
             }`
           : `Checked ${res.checked}`,
       )
-      await invalidatePool()
+      applyVerifyResults(
+        res.results.map((x) => ({ id: x.id, alive: x.alive })),
+      )
     } catch (e) {
       setActionError(errMessage(e, 'Status check failed'))
     } finally {
@@ -685,7 +749,9 @@ export function AdminPoolPage() {
       setActionInfo(
         `${host}: ${res.alive} alive · ${res.dead} dead · ${res.checked} checked`,
       )
-      await invalidatePool()
+      applyVerifyResults(
+        res.results.map((x) => ({ id: x.id, alive: x.alive })),
+      )
     } catch (e) {
       setActionError(errMessage(e, 'Host status check failed'))
     } finally {

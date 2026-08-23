@@ -72,6 +72,7 @@ SOURCE_DRAFT="$source_draft" TARGET_DRAFT="$target_draft" \
 RELEASED="$released" README="$readme" \
 python3 - <<'PY'
 import os
+import re
 
 version = os.environ["VERSION"]
 codename = os.environ["CODENAME"]
@@ -86,9 +87,25 @@ title = f"# {version} — {codename}" if codename else f"# {version}"
 with open(source_draft, "r", encoding="utf-8") as fh:
     src = fh.read()
 
-# Keep the bullet body: everything from the first horizontal rule onward.
+# Keep the bullet body: prefer everything from the first horizontal rule onward.
+# Older drafts may omit `---` — fall back to the first ### thematic group so we
+# never freeze an empty release when the draft still has bullets.
 idx = src.find("\n---")
-body = src[idx:].lstrip("\n") if idx != -1 else ""
+if idx != -1:
+    body = src[idx:].lstrip("\n")
+    # Rule with no groups yet (fresh empty draft) → empty body
+    if not re.search(r"^### ", body, re.M):
+        body = ""
+else:
+    m = re.search(r"^### ", src, re.M)
+    body = ("---\n\n" + src[m.start():]) if m else ""
+
+has_bullets = bool(re.search(r"(?m)^- \*\*", src))
+if has_bullets and not re.search(r"(?m)^- \*\*", body or ""):
+    raise SystemExit(
+        "changelog_freeze: abort — draft has bullets but freeze body is empty "
+        "(missing --- / ### separator?). Fix the draft and re-run."
+    )
 
 released_lines = [
     title,

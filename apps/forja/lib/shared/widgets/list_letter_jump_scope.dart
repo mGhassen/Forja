@@ -14,6 +14,7 @@ class ListLetterJumpMatcher {
   String _prefix = '';
   int _lastMatchIndex = -1;
   Duration? _lastKeyTimeStamp;
+  DateTime? _lastKeyWallClock;
   /// Swallow the second letter after cycling multi-char on the first (FR → F cycles, ignore R).
   String? _suppressLetter;
 
@@ -21,7 +22,15 @@ class ListLetterJumpMatcher {
     _prefix = '';
     _lastMatchIndex = -1;
     _lastKeyTimeStamp = null;
+    _lastKeyWallClock = null;
     _suppressLetter = null;
+  }
+
+  /// True while a multi-key prefix can still be extended (hover flicker / scroll).
+  bool get isTypingHot {
+    final t = _lastKeyWallClock;
+    if (t == null || _prefix.isEmpty) return false;
+    return DateTime.now().difference(t) <= bufferTimeout;
   }
 
   /// Returns the next list index to jump to, or null when nothing matches.
@@ -75,6 +84,7 @@ class ListLetterJumpMatcher {
     }
 
     _lastKeyTimeStamp = timeStamp;
+    _lastKeyWallClock = DateTime.now();
 
     final cycling = cycleSameLetter || cycleMultiPrefix;
     final int searchStart;
@@ -178,6 +188,11 @@ class ListLetterJumpMatcher {
     if (prefix.length == 1) {
       final normalized = _normalizedLabelStart(label);
       return normalized.isNotEmpty && normalized.startsWith(prefix);
+    }
+    // Channel codes: TF1 / M6 / C8 — alnum run starts with prefix (`tf` → TF1).
+    final alnum = label.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
+    for (final part in alnum.split(' ')) {
+      if (part.isNotEmpty && part.startsWith(prefix)) return true;
     }
     return _labelContainsToken(label, prefix) ||
         _labelContainsSubstring(label, prefix);
@@ -302,31 +317,88 @@ class ListLetterJumpScope extends StatefulWidget {
 }
 
 class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
+  /// Last-hovered scope wins — avoids category+channel both handling keys during
+  /// the exit debounce, and works when a child tile stole focus from [Focus].
+  static _ListLetterJumpScopeState? _active;
+
   final _matcher = ListLetterJumpMatcher();
   final _focusNode = FocusNode(debugLabel: 'list-letter-jump');
   bool _hovered = false;
+  bool _handlerBound = false;
   Timer? _hoverExitTimer;
 
   @override
   void dispose() {
     _hoverExitTimer?.cancel();
+    _unbindHandler();
+    if (_active == this) _active = null;
     _focusNode.dispose();
     super.dispose();
   }
 
-  KeyEventResult _onFocusKey(FocusNode node, KeyEvent event) {
-    if (!_hovered || !widget.enabled) return KeyEventResult.ignored;
-    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+  void _bindHandler() {
+    if (_handlerBound) return;
+    HardwareKeyboard.instance.addHandler(_onHardwareKey);
+    _handlerBound = true;
+  }
+
+  void _unbindHandler() {
+    if (!_handlerBound) return;
+    HardwareKeyboard.instance.removeHandler(_onHardwareKey);
+    _handlerBound = false;
+  }
+
+  void _activate() {
+    _hoverExitTimer?.cancel();
+    _hovered = true;
+    _active = this;
+    _bindHandler();
+    if (widget.enabled && widget.itemCount > 0) {
+      _focusNode.requestFocus();
+    }
+  }
+
+  void _scheduleDeactivate() {
+    _hoverExitTimer?.cancel();
+    _hoverExitTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      _hovered = false;
+      if (_active == this) _active = null;
+      // Keep listening through the type buffer so a scroll jump between `t` and
+      // `f` does not drop the hardware handler / wipe the prefix.
+      if (_matcher.isTypingHot) {
+        _hoverExitTimer = Timer(_matcher.bufferTimeout, () {
+          if (!mounted || _hovered) return;
+          _matcher.reset();
+          _unbindHandler();
+          if (_focusNode.hasFocus) _focusNode.unfocus();
+        });
+        return;
+      }
+      _matcher.reset();
+      _unbindHandler();
+      if (_focusNode.hasFocus) {
+        _focusNode.unfocus();
+      }
+    });
+  }
+
+  bool _onHardwareKey(KeyEvent event) {
+    if (!widget.enabled) return false;
+    final mine = _active == this || (_hovered && _active == null);
+    if (!mine && !_matcher.isTypingHot) return false;
+    if (!_hovered && !_matcher.isTypingHot) return false;
+    if (event is! KeyDownEvent) return false;
 
     final keyboard = HardwareKeyboard.instance;
     if (keyboard.isControlPressed ||
         keyboard.isMetaPressed ||
         keyboard.isAltPressed) {
-      return KeyEventResult.ignored;
+      return false;
     }
 
     final letters = ListLetterJumpMatcher.lettersFromKeyDown(event);
-    if (letters == null || letters.isEmpty) return KeyEventResult.ignored;
+    if (letters == null || letters.isEmpty) return false;
 
     final index = _matcher.nextIndices(
       letters: letters,
@@ -335,9 +407,16 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
       labelAt: widget.labelAt,
       anchorIndex: widget.anchorIndex,
     );
-    if (index == null) return KeyEventResult.ignored;
+    if (index == null) return false;
     widget.onJump(index);
-    return KeyEventResult.handled;
+    return true;
+  }
+
+  KeyEventResult _onFocusKey(FocusNode node, KeyEvent event) {
+    // Prefer the hardware handler while hovered; Focus path is a fallback when
+    // the handler is unbound (e.g. mid-rebuild) but this node still has focus.
+    if (_handlerBound && _active == this) return KeyEventResult.ignored;
+    return _onHardwareKey(event) ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 
   @override
@@ -345,6 +424,10 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.enabled && !widget.enabled) {
       _matcher.reset();
+      _unbindHandler();
+      if (_active == this) _active = null;
+    } else if (!oldWidget.enabled && widget.enabled && _hovered) {
+      _activate();
     }
   }
 
@@ -356,24 +439,8 @@ class _ListLetterJumpScopeState extends State<ListLetterJumpScope> {
       onKeyEvent: _onFocusKey,
       child: MouseRegion(
         hitTestBehavior: HitTestBehavior.translucent,
-        onEnter: (_) {
-          _hoverExitTimer?.cancel();
-          _hovered = true;
-          if (widget.enabled && widget.itemCount > 0) {
-            _focusNode.requestFocus();
-          }
-        },
-        onExit: (_) {
-          _hoverExitTimer?.cancel();
-          _hoverExitTimer = Timer(const Duration(milliseconds: 300), () {
-            if (!mounted) return;
-            _hovered = false;
-            _matcher.reset();
-            if (_focusNode.hasFocus) {
-              _focusNode.unfocus();
-            }
-          });
-        },
+        onEnter: (_) => _activate(),
+        onExit: (_) => _scheduleDeactivate(),
         child: widget.child,
       ),
     );

@@ -459,10 +459,15 @@ class _BrowserViewState extends State<_BrowserView> {
   void _letterJumpStream(int index) {
     final list = _filteredStreams;
     if (index < 0 || index >= list.length) return;
+    // Lazy grid/list: scroll first, then retry focus until the tile exists.
+    var tries = 0;
     void go() {
       if (!mounted) return;
       _scrollStreamsToIndex(index);
-      iptvFocusBrowserStreamAt(index);
+      if (iptvFocusBrowserStreamAt(index)) return;
+      if (tries++ < 12) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => go());
+      }
     }
     go();
     WidgetsBinding.instance.addPostFrameCallback((_) => go());
@@ -473,7 +478,9 @@ class _BrowserViewState extends State<_BrowserView> {
     final cross = _streamCrossAxisCount.clamp(1, 999);
     final row = widget.compact ? index : index ~/ cross;
     final extent = _streamTileExtent + _streamMainGap;
-    final target = (row * extent).clamp(
+    // Grid/list top padding (8) — without it far rows land short of the tile.
+    const topPad = 8.0;
+    final target = (topPad + row * extent).clamp(
       0.0,
       _streamScroll.position.maxScrollExtent,
     );
@@ -1238,21 +1245,27 @@ class _BrowserViewState extends State<_BrowserView> {
         final cross = tv
             ? ((c.maxWidth - hPad + gap) / (cardW + gap)).floor().clamp(1, 24)
             : (c.maxWidth ~/ cardW).clamp(2, 9);
+        final aspect = tv ? cardW / cardH : 0.9;
+        // Must match GridView cell height — not cardH alone (desktop uses 0.9).
+        const padL = 8.0, padR = 12.0;
+        final innerW =
+            (c.maxWidth - padL - padR - gap * (cross - 1)).clamp(1.0, 1e9);
+        final cellH = (innerW / cross) / aspect;
         _streamCrossAxisCount = cross;
-        _streamTileExtent = cardH;
+        _streamTileExtent = cellH;
         _streamMainGap = gap;
         final lastRowStart = ((list.length - 1) ~/ cross) * cross;
         // Fixed column count on TV so D-pad Left/Right match the visual row
         // (MaxCrossAxisExtent can disagree with our focus math and wrap).
         final grid = GridView.builder(
           controller: _streamScroll,
-          padding: EdgeInsets.fromLTRB(8, 8, 12, 12),
+          padding: EdgeInsets.fromLTRB(padL, 8, padR, 12),
           addAutomaticKeepAlives: false,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: cross,
             crossAxisSpacing: gap,
             mainAxisSpacing: gap,
-            childAspectRatio: tv ? cardW / cardH : 0.9,
+            childAspectRatio: aspect,
           ),
           itemCount: list.length,
           itemBuilder: (_, i) {

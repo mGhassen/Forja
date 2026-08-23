@@ -163,5 +163,27 @@ void main() {
       );
       expect(ListLetterJumpMatcher.lettersFromKeyDown(event), 'f');
     });
+
+    test('tf finds TF1 channel codes', () {
+      final labels = [
+        'TMC',
+        'TNT Sport',
+        'France 2',
+        'TF1',
+        'TF1 HD',
+        'FR | TF1 FHD',
+        'M6',
+      ];
+      final m = ListLetterJumpMatcher();
+      expect(
+        m.nextIndices(
+          letters: 'tf',
+          timeStamp: const Duration(milliseconds: 1),
+          itemCount: labels.length,
+          labelAt: (i) => labels[i],
+        ),
+        3,
+      );
+    });
   });
 }
