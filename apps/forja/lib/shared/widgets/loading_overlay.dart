@@ -142,11 +142,17 @@ void dismissLoadingOverlayRoute(BuildContext loadingDialogContext) {
 /// Dispose overlay notifiers after [dismissLoadingOverlayRoute]'s post-frame
 /// remove + [LoadingOverlay.dispose] removeListener - never dispose while the
 /// dialog is still listening (red-screens as "used after being disposed").
+///
+/// Idempotent: cancel + `finally` paths often schedule dispose twice.
 void disposeLoadingOverlayNotifiers(Iterable<ChangeNotifier> notifiers) {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       for (final n in notifiers) {
-        n.dispose();
+        try {
+          n.dispose();
+        } on FlutterError {
+          // Already disposed.
+        }
       }
     });
   });

@@ -2,9 +2,10 @@ function extract(ctx) {
   var cfg = ctx.config || {};
   var site = (cfg.origin || 'https://www.1shows.org').replace(/\/$/, '');
   var api = (cfg.api || 'https://api.viduki.net').replace(/\/$/, '');
+  // AES-256 key from 1Shows public makimaDL.wasm StaticArray (rotates with that asset).
   var downloadKeyHex =
     cfg.downloadKeyHex ||
-    '7a03086357a2147dab4d757e8ed2ff8b5dc8707ee3d473afcb80d97727afa191';
+    '7e82474d94d34f79c91eda37abfe27fb44e515fe8eea8db0a89958b798f745b1';
   var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
   var ua =
     cfg.ua ||

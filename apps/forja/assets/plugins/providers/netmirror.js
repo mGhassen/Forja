@@ -4,8 +4,28 @@ function extract(ctx) {
   var domains = cfg.domains || [
     'aHR0cHM6Ly9tb2JpbGVkZXRlY3RzLmNvbQ==',
     'aHR0cHM6Ly9tb2JpbGVkZXRlY3QuYXBw',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0LmFydA==',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0LmNj',
     'aHR0cHM6Ly9tb2JpZGV0ZWN0LmNsaWNr',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0Lmluaw==',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0LmxpdmU=',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0LnBybw==',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0LnNob3A=',
     'aHR0cHM6Ly9tb2JpZGV0ZWN0LnNpdGU=',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0LnNwYWNl',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0LnN0b3Jl',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0LnZpcA==',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0Lndpa2k=',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0Lnh5eg==',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5hcnQ=',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5jYw==',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5pbmZv',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5pbms=',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5saXZl',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5wcm8=',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5zdG9yZQ==',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy50b3A=',
+    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy54eXo=',
   ];
   var platforms = cfg.platforms || ['netflix', 'primevideo', 'hotstar', 'disney'];
   var platformMap = {
@@ -44,11 +64,17 @@ function extract(ctx) {
       chain = chain.then(function (resolved) {
         if (resolved) return resolved;
         var base = safeAtob(encoded).replace(/\/$/, '');
-        return getJson(base + '/checknewtv.php', Object.assign({}, baseHeaders, {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        }))
+        return getJson(
+          base + '/checknewtv.php',
+          Object.assign({}, baseHeaders, {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          }),
+        )
           .then(function (data) {
-            return data && data.token_hash ? safeAtob(data.token_hash).replace(/\/$/, '') : '';
+            return data && data.token_hash
+              ? safeAtob(data.token_hash).replace(/\/$/, '')
+              : '';
           })
           .catch(function () {
             return '';
@@ -81,14 +107,24 @@ function extract(ctx) {
     var out = [];
     function walk(pg) {
       return getJson(
-        apiBase + '/newtv/episodes.php?id=' + encodeURIComponent(seasonId) + '&page=' + encodeURIComponent(String(pg)),
+        apiBase +
+          '/newtv/episodes.php?id=' +
+          encodeURIComponent(seasonId) +
+          '&page=' +
+          encodeURIComponent(String(pg)),
         buildHeaders(ott),
       ).then(function (data) {
         (data.episodes || []).filter(Boolean).forEach(function (ep) {
           out.push({
             id: ep.id,
-            s: seasonNumber || (ep.sNum ? parseInt(String(ep.sNum).replace('S', ''), 10) : null),
-            ep: ep.ep ? parseInt(ep.ep, 10) : ep.epNum ? parseInt(String(ep.epNum).replace('E', ''), 10) : null,
+            s:
+              seasonNumber ||
+              (ep.sNum ? parseInt(String(ep.sNum).replace('S', ''), 10) : null),
+            ep: ep.ep
+              ? parseInt(ep.ep, 10)
+              : ep.epNum
+                ? parseInt(String(ep.epNum).replace('E', ''), 10)
+                : null,
           });
         });
         if (data.nextPageShow === 1) return walk(pg + 1);
@@ -100,19 +136,35 @@ function extract(ctx) {
 
   function getAllEpisodes(apiBase, ott, contentId, postData) {
     var episodes = [];
-    var selectedSeasonIdx = postData.season ? postData.season.findIndex(function (s) { return s.selected === true; }) : -1;
-    var selectedSeasonId = selectedSeasonIdx >= 0 ? postData.season[selectedSeasonIdx].id : postData.nextPageSeason;
-    var selectedSeasonNumber = selectedSeasonIdx >= 0 ? selectedSeasonIdx + 1 : null;
+    var selectedSeasonIdx = postData.season
+      ? postData.season.findIndex(function (s) {
+          return s.selected === true;
+        })
+      : -1;
+    var selectedSeasonId =
+      selectedSeasonIdx >= 0
+        ? postData.season[selectedSeasonIdx].id
+        : postData.nextPageSeason;
+    var selectedSeasonNumber =
+      selectedSeasonIdx >= 0 ? selectedSeasonIdx + 1 : null;
     (postData.episodes || []).filter(Boolean).forEach(function (ep) {
       episodes.push({
         id: ep.id,
-        s: selectedSeasonNumber || (ep.sNum ? parseInt(String(ep.sNum).replace('S', ''), 10) : null),
-        ep: ep.ep ? parseInt(ep.ep, 10) : ep.epNum ? parseInt(String(ep.epNum).replace('E', ''), 10) : null,
+        s:
+          selectedSeasonNumber ||
+          (ep.sNum ? parseInt(String(ep.sNum).replace('S', ''), 10) : null),
+        ep: ep.ep
+          ? parseInt(ep.ep, 10)
+          : ep.epNum
+            ? parseInt(String(ep.epNum).replace('E', ''), 10)
+            : null,
       });
     });
     var tasks = [];
     if (postData.nextPageShow === 1 && selectedSeasonId) {
-      tasks.push(fetchEpisodesPage(apiBase, ott, selectedSeasonId, 2, selectedSeasonNumber));
+      tasks.push(
+        fetchEpisodesPage(apiBase, ott, selectedSeasonId, 2, selectedSeasonNumber),
+      );
     }
     (postData.season || []).forEach(function (season, index) {
       if (season.id !== selectedSeasonId && season.id) {
@@ -132,36 +184,62 @@ function extract(ctx) {
     return getJson(
       apiBase + '/newtv/search.php?s=' + encodeURIComponent(title),
       buildHeaders(ott),
-    ).then(function (searchData) {
-      if (!searchData.searchResult || !searchData.searchResult.length) return [];
-      var contentId = searchData.searchResult[0].id;
-      return getJson(
-        apiBase + '/newtv/post.php?id=' + encodeURIComponent(String(contentId)),
-        buildHeaders(ott, { Lastep: '', Usertoken: '' }),
-      ).then(function (postData) {
-        var targetId = contentId;
-        if (ctx.type !== 'movie') {
-          return getAllEpisodes(apiBase, ott, contentId, postData).then(function (episodes) {
-            var hit = episodes.filter(function (ep) {
-              return ep && ep.s === (ctx.season || 1) && ep.ep === (ctx.episode || 1);
-            })[0];
-            if (!hit) return [];
-            targetId = hit.id;
-            return getJson(
-              apiBase + '/newtv/player.php?id=' + encodeURIComponent(String(targetId)),
-              buildHeaders(ott, { Usertoken: '' }),
-            );
-          });
+    )
+      .then(function (searchData) {
+        if (!searchData.searchResult || !searchData.searchResult.length) {
+          return [];
         }
-        var isSeries = postData.type === 't' || ((postData.episodes || []).filter(Boolean).length > 0);
-        if (isSeries) return [];
-        targetId = postData.main_id || contentId;
+        var contentId = searchData.searchResult[0].id;
         return getJson(
-          apiBase + '/newtv/player.php?id=' + encodeURIComponent(String(targetId)),
-          buildHeaders(ott, { Usertoken: '' }),
-        );
-      }).then(function (response) {
-        if (!response || response.status !== 'ok' || !response.video_link) return [];
+          apiBase +
+            '/newtv/post.php?id=' +
+            encodeURIComponent(String(contentId)),
+          buildHeaders(ott, { Lastep: '', Usertoken: '' }),
+        ).then(function (postData) {
+          var targetId = contentId;
+          if (ctx.type !== 'movie') {
+            return getAllEpisodes(apiBase, ott, contentId, postData).then(
+              function (episodes) {
+                var hit = episodes.filter(function (ep) {
+                  return (
+                    ep &&
+                    ep.s === (ctx.season || 1) &&
+                    ep.ep === (ctx.episode || 1)
+                  );
+                })[0];
+                if (!hit) return [];
+                targetId = hit.id;
+                return getJson(
+                  apiBase +
+                    '/newtv/player.php?id=' +
+                    encodeURIComponent(String(targetId)),
+                  buildHeaders(ott, { Usertoken: '' }),
+                );
+              },
+            );
+          }
+          var isSeries =
+            postData.type === 't' ||
+            ((postData.episodes || []).filter(Boolean).length > 0);
+          if (isSeries) return [];
+          targetId = postData.main_id || contentId;
+          return getJson(
+            apiBase +
+              '/newtv/player.php?id=' +
+              encodeURIComponent(String(targetId)),
+            buildHeaders(ott, { Usertoken: '' }),
+          );
+        });
+      })
+      .then(function (response) {
+        // Live NewTV player returns status "ok" or "otp" with video_link set.
+        if (
+          !response ||
+          !response.video_link ||
+          (response.status !== 'ok' && response.status !== 'otp')
+        ) {
+          return [];
+        }
         return [
           {
             url: response.video_link,
@@ -170,16 +248,16 @@ function extract(ctx) {
             headers: { Referer: response.referer || apiBase },
           },
         ];
+      })
+      .catch(function () {
+        return [];
       });
-    }).catch(function () {
-      return [];
-    });
   }
 
   return Promise.all([resolveApiUrl(), tmdbTitle()])
     .then(function (pair) {
       var apiBase = pair[0];
-      var title = pair[1];
+      var title = pair[1] || String(ctx.title || '').trim();
       if (!apiBase || !title) return [];
       var chain = Promise.resolve([]);
       platforms.forEach(function (platformKey) {

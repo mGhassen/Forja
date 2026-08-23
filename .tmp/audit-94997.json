@@ -1,0 +1,484 @@
+{
+  "buckets": {
+    "host": 6,
+    "ok": 12,
+    "provider_empty": 29
+  },
+  "episode": 1,
+  "media": "tv",
+  "rows": [
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "-",
+      "id": "videasy",
+      "ms": 7000,
+      "n_streams": 6,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "goated",
+      "ms": 4,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "-",
+      "id": "vidlink",
+      "ms": 476,
+      "n_streams": 1,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "-",
+      "id": "vixsrc",
+      "ms": 800,
+      "n_streams": 1,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "host",
+      "id": "vidnest",
+      "ms": 3145,
+      "n_streams": 6,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "host",
+      "error": null,
+      "flags": "crypto,host",
+      "id": "vidrock",
+      "ms": 25006,
+      "n_streams": 0,
+      "needs_host": "vidrock",
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "crypto",
+      "id": "vidsrcsbs",
+      "ms": 2394,
+      "n_streams": 12,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "-",
+      "id": "vidzee",
+      "ms": 738,
+      "n_streams": 2,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "host",
+      "error": null,
+      "flags": "host",
+      "id": "2embed",
+      "ms": 478,
+      "n_streams": 0,
+      "needs_host": "multiembed",
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "-",
+      "id": "service111477",
+      "ms": 393,
+      "n_streams": 3,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "host",
+      "error": null,
+      "flags": "crypto,host",
+      "id": "hexa",
+      "ms": 896,
+      "n_streams": 0,
+      "needs_host": "hexa",
+      "unsupported": false
+    },
+    {
+      "bucket": "host",
+      "error": null,
+      "flags": "host",
+      "id": "flixcloud",
+      "ms": 5,
+      "n_streams": 0,
+      "needs_host": "flixcloud",
+      "unsupported": false
+    },
+    {
+      "bucket": "host",
+      "error": null,
+      "flags": "host",
+      "id": "vidcore",
+      "ms": 985,
+      "n_streams": 0,
+      "needs_host": "vidcore",
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "cinejoy",
+      "ms": 670,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "-",
+      "id": "meowtv",
+      "ms": 566,
+      "n_streams": 1,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "peachify",
+      "ms": 41,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "-",
+      "id": "playimdb",
+      "ms": 234,
+      "n_streams": 3,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "dooflix",
+      "ms": 176,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "yflix",
+      "ms": 986,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "vidsync",
+      "ms": 90,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "-",
+      "id": "vidup",
+      "ms": 2998,
+      "n_streams": 4,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "moviebox",
+      "ms": 3,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "showbox",
+      "ms": 2,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "-",
+      "id": "4khdhub",
+      "ms": 2391,
+      "n_streams": 22,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "1shows",
+      "ms": 450,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "hdhub4u",
+      "ms": 1279,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "moviesmod",
+      "ms": 372,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "uhdmovies",
+      "ms": 1964,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "streamflix",
+      "ms": 3,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "netmirror",
+      "ms": 2049,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "crypto",
+      "id": "castle",
+      "ms": 669,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "xprime",
+      "ms": 201,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "allmovieland",
+      "ms": 284,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "cinemacity",
+      "ms": 381,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "cinevibe",
+      "ms": 3,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "-",
+      "id": "dahmermovies",
+      "ms": 272,
+      "n_streams": 3,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "dvdplay",
+      "ms": 135,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "kurage",
+      "ms": 559,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "cheerio,redirectManual",
+      "id": "mallumv",
+      "ms": 81,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "crypto",
+      "id": "movieblast",
+      "ms": 6,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "moviesdrive",
+      "ms": 380,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "myflixer",
+      "ms": 25075,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "host",
+      "id": "mycima",
+      "ms": 168,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "host",
+      "error": null,
+      "flags": "host",
+      "id": "multiembed",
+      "ms": 422,
+      "n_streams": 0,
+      "needs_host": "multiembed",
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "bingebox",
+      "ms": 172,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "primesrc",
+      "ms": 272,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "uflix",
+      "ms": 518,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    }
+  ],
+  "season": 1,
+  "timeout_ms": 60000,
+  "tmdb": "94997"
+}

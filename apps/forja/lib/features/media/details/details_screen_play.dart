@@ -272,27 +272,57 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
 
     if (precheck is StremioPlayable) {
       if (!mounted) return;
-      if (_s._sourcesPanelOpen) {
-        _s._closeSourcesPanel(cancelEngineJobs: false);
-      }
-      try {
-        final enginePluginId = stream['_enginePluginId']?.toString();
-        if (enginePluginId != null && enginePluginId.isNotEmpty) {
+      final enginePluginId = stream['_enginePluginId']?.toString();
+      if (enginePluginId != null && enginePluginId.isNotEmpty) {
+        // Probe the tapped row under the loading overlay — closing Sources
+        // alone looked like a no-op while siblings were checked silently.
+        _s._streamCancelled = false;
+        final overlayMessage = ValueNotifier<String>('CHECKING STREAM');
+        final fadeOutNotifier = ValueNotifier(false);
+        final failureNotifier = ValueNotifier<ResolveFailure?>(null);
+        BuildContext? loadingDialogContext;
+        showLoadingOverlayDialog(
+          context,
+          builder: (dialogContext) {
+            loadingDialogContext = dialogContext;
+            return LoadingOverlay(
+              movie: _s._movie,
+              messageNotifier: overlayMessage,
+              fadeOutNotifier: fadeOutNotifier,
+              failureNotifier: failureNotifier,
+              subtitle: _loadingOverlaySubtitle(),
+              onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
+            );
+          },
+        );
+        if (mounted && _s._sourcesPanelOpen) {
+          _s._closeSourcesPanel(cancelEngineJobs: false);
+        }
+        try {
+          // Manual pick: only the row they tapped (not every plugin sibling).
           final sources = await _buildProbedEnginePlaySources(
             _s,
-            _engineSiblingRowsForPlay(_s._engineStreams, stream),
-            isAborted: () => !mounted,
+            [stream],
+            isAborted: () => !mounted || _s._streamCancelled,
             preferFirst: stream,
           );
-          if (!mounted) return;
+          if (!mounted || _s._streamCancelled) {
+            if (mounted) _s._claimTvHeroPlayAfterPlayer();
+            return;
+          }
           if (sources.isEmpty) {
+            final ctx = loadingDialogContext;
+            if (ctx != null && ctx.mounted) {
+              dismissLoadingOverlayRoute(ctx);
+            }
             ForjaToast.info(
-              'No reachable mirrors right now — try another server.',
+              'This file isn’t available — try another source.',
             );
             return;
           }
           final primary = sources.first;
-          await AppRouter.openPlayer(
+          final ctx = loadingDialogContext;
+          Future<void> openPlayer() => AppRouter.openPlayer(
             context,
             streamUrl: primary.url,
             title: _s._movie.title,
@@ -304,16 +334,48 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
             activeProvider:
                 primary.providerId ?? catalogHttpPlayProviderId(stream),
             sources: sources,
-            pinSource: false,
-            streamsPrevalidated: false,
+            pinSource: true,
+            streamsPrevalidated: true,
             externalSubtitles: catalogStreamExternalSubtitles(stream),
             stremioId: stremioId,
             stremioAddonBaseUrl: stremioAddonBaseUrl,
+            fadeTransition: ctx != null,
           );
+          if (ctx != null && ctx.mounted) {
+            await crossfadeLoadingOverlayToPlayer(
+              loadingDialogContext: ctx,
+              fadeOutNotifier: fadeOutNotifier,
+              openPlayer: openPlayer,
+            );
+          } else {
+            await openPlayer();
+          }
           if (mounted) _s._claimTvHeroPlayAfterPlayer();
-          return;
+        } catch (e, st) {
+          debugPrint('[Details] Forja catalog play failed: $e\n$st');
+          final ctx = loadingDialogContext;
+          if (ctx != null && ctx.mounted) {
+            dismissLoadingOverlayRoute(ctx);
+          }
+          if (mounted) {
+            ForjaToast.info(
+              'Couldn\'t start this stream. Try again or pick another source.',
+            );
+          }
+        } finally {
+          disposeLoadingOverlayNotifiers([
+            overlayMessage,
+            fadeOutNotifier,
+            failureNotifier,
+          ]);
         }
+        return;
+      }
 
+      if (_s._sourcesPanelOpen) {
+        _s._closeSourcesPanel(cancelEngineJobs: false);
+      }
+      try {
         final proxied = await proxyCatalogHttpStreamIfNeeded(
           streamUrl: precheck.streamUrl,
           headers: precheck.headers,

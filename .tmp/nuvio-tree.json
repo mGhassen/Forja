@@ -1,0 +1,938 @@
+{
+  "sha": "ed38d1aee0024f56479369c9423fefb278e0b62a",
+  "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/ed38d1aee0024f56479369c9423fefb278e0b62a",
+  "tree": [
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fd5738fe40bc5fb621d5c373d8fa6ea77957cf66",
+      "size": 1553,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/fd5738fe40bc5fb621d5c373d8fa6ea77957cf66"
+    },
+    {
+      "path": "ANIME_SYNC_GUIDE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "101b87d9fdfdab03d3684cdc77f66cbc4e1dbd7f",
+      "size": 3006,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/101b87d9fdfdab03d3684cdc77f66cbc4e1dbd7f"
+    },
+    {
+      "path": "Assets",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "3085545e921a34a09f01eec9891799d5bc1f7ee6",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/3085545e921a34a09f01eec9891799d5bc1f7ee6"
+    },
+    {
+      "path": "Assets/Logo-2.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9ff5dd6e2fe3fb22e538c6cb3700508b9f1020ef",
+      "size": 9540,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/9ff5dd6e2fe3fb22e538c6cb3700508b9f1020ef"
+    },
+    {
+      "path": "Assets/streamflix-1.png",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5db25250f59d7931596fcd2671f3a749bff2822e",
+      "size": 3833,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/5db25250f59d7931596fcd2671f3a749bff2822e"
+    },
+    {
+      "path": "DOCUMENTATION.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "eade09707df144199e0076eabd5be74c88f4572f",
+      "size": 12008,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/eade09707df144199e0076eabd5be74c88f4572f"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f288702d2fa16d3cdf0035b15a9fcbc552cd88e7",
+      "size": 35149,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/f288702d2fa16d3cdf0035b15a9fcbc552cd88e7"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4d0b2a08ba5744a548c6e71907013eb11904befe",
+      "size": 6304,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/4d0b2a08ba5744a548c6e71907013eb11904befe"
+    },
+    {
+      "path": "aesdecryptor",
+      "mode": "160000",
+      "type": "commit",
+      "sha": "ac863a2f3f55cfc92356e43ebf145cd088c45355"
+    },
+    {
+      "path": "build.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "443d1f663d85f2b267252660f61594d9cc075888",
+      "size": 6147,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/443d1f663d85f2b267252660f61594d9cc075888"
+    },
+    {
+      "path": "manifest.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "01959ed321e078f04f2645959860b711c88896de",
+      "size": 15448,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/01959ed321e078f04f2645959860b711c88896de"
+    },
+    {
+      "path": "package-lock.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d3c9f4da12f5cd770075486d2e7ddb377957d447",
+      "size": 73940,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/d3c9f4da12f5cd770075486d2e7ddb377957d447"
+    },
+    {
+      "path": "package.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a4e471adb7428ccdf2a7b55191ea3243b480a429",
+      "size": 633,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/a4e471adb7428ccdf2a7b55191ea3243b480a429"
+    },
+    {
+      "path": "providers",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2956664cdd2d6b716a3e6cd1272767d485a500e0",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/2956664cdd2d6b716a3e6cd1272767d485a500e0"
+    },
+    {
+      "path": "providers/4khdhub.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cf1824d80a5a895a1c3c6447ba6b86803c128a50",
+      "size": 15572,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/cf1824d80a5a895a1c3c6447ba6b86803c128a50"
+    },
+    {
+      "path": "providers/allmovieland.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2d651498d417a3c1a29a28c71992f2d8ff92b896",
+      "size": 11638,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/2d651498d417a3c1a29a28c71992f2d8ff92b896"
+    },
+    {
+      "path": "providers/animekai.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "79109da7d207877e9ecb16752af44eb625c2b12d",
+      "size": 31704,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/79109da7d207877e9ecb16752af44eb625c2b12d"
+    },
+    {
+      "path": "providers/animepahe.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2ad651bf7d563845b42803f102d19cabc2a5def9",
+      "size": 19173,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/2ad651bf7d563845b42803f102d19cabc2a5def9"
+    },
+    {
+      "path": "providers/anizone.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0fad922b37ab458a7526697d058252c841d35ba7",
+      "size": 12503,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/0fad922b37ab458a7526697d058252c841d35ba7"
+    },
+    {
+      "path": "providers/castle.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7b90df73474a5480ff99f0b05b4c60b1371fe370",
+      "size": 19511,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/7b90df73474a5480ff99f0b05b4c60b1371fe370"
+    },
+    {
+      "path": "providers/cinemacity.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a96d6db2ba68c7299425909b16e3994dbdc95570",
+      "size": 11848,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/a96d6db2ba68c7299425909b16e3994dbdc95570"
+    },
+    {
+      "path": "providers/cinevibe.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a437e6c8c0877c2dee05925c0ff260859d79d38c",
+      "size": 16086,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/a437e6c8c0877c2dee05925c0ff260859d79d38c"
+    },
+    {
+      "path": "providers/dahmermovies.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "abfb73dd634b81a852ce41e22151b9382fb01730",
+      "size": 16573,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/abfb73dd634b81a852ce41e22151b9382fb01730"
+    },
+    {
+      "path": "providers/dooflix.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "37d5a22d9ab5881d7d3aaacd750c9d7bb9090308",
+      "size": 3893,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/37d5a22d9ab5881d7d3aaacd750c9d7bb9090308"
+    },
+    {
+      "path": "providers/dvdplay.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2ae19a12835dc45936191ced2252ba500803621b",
+      "size": 43491,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/2ae19a12835dc45936191ced2252ba500803621b"
+    },
+    {
+      "path": "providers/hdhub4u.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "76eecc470b2e1ef5657a1bcb8ccd23cf837eb7a4",
+      "size": 35500,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/76eecc470b2e1ef5657a1bcb8ccd23cf837eb7a4"
+    },
+    {
+      "path": "providers/hianime.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c63d0a7e06eda67f1b7c004c51d4ba7a20476f44",
+      "size": 11451,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/c63d0a7e06eda67f1b7c004c51d4ba7a20476f44"
+    },
+    {
+      "path": "providers/kurage.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d05a52d0f4215fb972ea74f64069183ed5805353",
+      "size": 10387,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/d05a52d0f4215fb972ea74f64069183ed5805353"
+    },
+    {
+      "path": "providers/mallumv.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3456197db11fdb1005bd904cd12bca2b6e7f9bd2",
+      "size": 53353,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/3456197db11fdb1005bd904cd12bca2b6e7f9bd2"
+    },
+    {
+      "path": "providers/movieblast.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7bb19c903d87cb5bfecf4b9b632decf2909cad07",
+      "size": 9879,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/7bb19c903d87cb5bfecf4b9b632decf2909cad07"
+    },
+    {
+      "path": "providers/moviebox.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ba5aeea6675c764ce1375c165d2a1c4100a8a366",
+      "size": 18767,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/ba5aeea6675c764ce1375c165d2a1c4100a8a366"
+    },
+    {
+      "path": "providers/moviesdrive.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8e56d76bcff0d7aa9791079dee64166449907bae",
+      "size": 12670,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/8e56d76bcff0d7aa9791079dee64166449907bae"
+    },
+    {
+      "path": "providers/moviesmod.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d1c70cd199b1e087a55e45bec575a866b9c33190",
+      "size": 13881,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/d1c70cd199b1e087a55e45bec575a866b9c33190"
+    },
+    {
+      "path": "providers/mycima.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9e7df1aff955d5fa47c29cd89f3bd99f0e79bb64",
+      "size": 25164,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/9e7df1aff955d5fa47c29cd89f3bd99f0e79bb64"
+    },
+    {
+      "path": "providers/myflixer-extractor.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b5c93609ed6ff294dc691d36264030d3c4e1678b",
+      "size": 15210,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/b5c93609ed6ff294dc691d36264030d3c4e1678b"
+    },
+    {
+      "path": "providers/netmirror.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7c4b7b47fefafce31e0b427c4fbdc50cf31cadfb",
+      "size": 10531,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/7c4b7b47fefafce31e0b427c4fbdc50cf31cadfb"
+    },
+    {
+      "path": "providers/reanime.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "27ac77c9fc5c17e9f4c36fda0d4236007a5e5341",
+      "size": 37048,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/27ac77c9fc5c17e9f4c36fda0d4236007a5e5341"
+    },
+    {
+      "path": "providers/showbox.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7eb2786b25fa7f1b7c82edfedb1d6be359ff6d2d",
+      "size": 15968,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/7eb2786b25fa7f1b7c82edfedb1d6be359ff6d2d"
+    },
+    {
+      "path": "providers/streamflix.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "67cd5ad236d1c410b141b4330c059a06563153f7",
+      "size": 16201,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/67cd5ad236d1c410b141b4330c059a06563153f7"
+    },
+    {
+      "path": "providers/uhdmovies.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "83e363158351fda8f01b1e1401356f62c89895b2",
+      "size": 16022,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/83e363158351fda8f01b1e1401356f62c89895b2"
+    },
+    {
+      "path": "providers/videasy.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "203ee9e31d54218eeac9fbd832250f31461cc2cc",
+      "size": 22336,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/203ee9e31d54218eeac9fbd832250f31461cc2cc"
+    },
+    {
+      "path": "providers/vidlink.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d397f9a4f2ea54d28351657e2e0f6546b19ae0c7",
+      "size": 16304,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/d397f9a4f2ea54d28351657e2e0f6546b19ae0c7"
+    },
+    {
+      "path": "providers/vidnest-anime.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a01d3b5a5856772c529efe04f0f9b2dbda8c298",
+      "size": 21525,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/6a01d3b5a5856772c529efe04f0f9b2dbda8c298"
+    },
+    {
+      "path": "providers/vidnest.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "498589784f07208d41565052aca74bd8c6432cf7",
+      "size": 21506,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/498589784f07208d41565052aca74bd8c6432cf7"
+    },
+    {
+      "path": "providers/vidrock.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e28c940989c5f6d3a4cfb8eb79d6d471503808f2",
+      "size": 19783,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/e28c940989c5f6d3a4cfb8eb79d6d471503808f2"
+    },
+    {
+      "path": "providers/vixsrc.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5d43389aca0fe7c74b8a4d8d63e50df1b8444612",
+      "size": 8706,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/5d43389aca0fe7c74b8a4d8d63e50df1b8444612"
+    },
+    {
+      "path": "providers/xprime.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "87b613c4103ce2115c46a4bd4a17722f0590d9b2",
+      "size": 36936,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/87b613c4103ce2115c46a4bd4a17722f0590d9b2"
+    },
+    {
+      "path": "providers/yflix.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d5cc8ca404c479f58031f84bf2ecfde510ed975b",
+      "size": 13334,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/d5cc8ca404c479f58031f84bf2ecfde510ed975b"
+    },
+    {
+      "path": "server.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "95e15b9332b59588e699a18a94a5a08774bfc3b9",
+      "size": 2752,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/95e15b9332b59588e699a18a94a5a08774bfc3b9"
+    },
+    {
+      "path": "src",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c7d7d3b58c501464af01e3883bb25e5152d8488c",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/c7d7d3b58c501464af01e3883bb25e5152d8488c"
+    },
+    {
+      "path": "src/allmovieland",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "27ebd2260f3f1c8ece00e69fd2bd00ecddcf1672",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/27ebd2260f3f1c8ece00e69fd2bd00ecddcf1672"
+    },
+    {
+      "path": "src/allmovieland/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f4616c3a0ab433e8314e37340d5a17b9092e4f30",
+      "size": 481,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/f4616c3a0ab433e8314e37340d5a17b9092e4f30"
+    },
+    {
+      "path": "src/allmovieland/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "44e0d0b218514ec9931ce39d59b09abf9d2ae933",
+      "size": 6533,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/44e0d0b218514ec9931ce39d59b09abf9d2ae933"
+    },
+    {
+      "path": "src/allmovieland/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e56a43e00fe7742f336baaf986605ae1a20653a4",
+      "size": 2626,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/e56a43e00fe7742f336baaf986605ae1a20653a4"
+    },
+    {
+      "path": "src/animepahe",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "19a7921ec5cec497c06d1afcc8de71ae0b3f8f39",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/19a7921ec5cec497c06d1afcc8de71ae0b3f8f39"
+    },
+    {
+      "path": "src/animepahe/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "84a02873a48a8636d5d71f3301e17db900ad9e2f",
+      "size": 334,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/84a02873a48a8636d5d71f3301e17db900ad9e2f"
+    },
+    {
+      "path": "src/animepahe/extractors.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dc2d8f04842125075dd130507ad1fa330b696d13",
+      "size": 8680,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/dc2d8f04842125075dd130507ad1fa330b696d13"
+    },
+    {
+      "path": "src/animepahe/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91307726726fda6587bf9d22b02ce7dea3500cff",
+      "size": 8154,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/91307726726fda6587bf9d22b02ce7dea3500cff"
+    },
+    {
+      "path": "src/animepahe/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f0240f6fc662df10b3993272d715727bbcf11456",
+      "size": 2024,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/f0240f6fc662df10b3993272d715727bbcf11456"
+    },
+    {
+      "path": "src/anizone",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2622a52917f5100fedce66ed93b2074e1f972fdb",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/2622a52917f5100fedce66ed93b2074e1f972fdb"
+    },
+    {
+      "path": "src/anizone/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f1d905aff15baf990cc06a3ff047a2cb5413e062",
+      "size": 205,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/f1d905aff15baf990cc06a3ff047a2cb5413e062"
+    },
+    {
+      "path": "src/anizone/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "71df45296ed0bf5b911edf32fcd8288de12ba642",
+      "size": 9437,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/71df45296ed0bf5b911edf32fcd8288de12ba642"
+    },
+    {
+      "path": "src/anizone/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b669af4c4f761573942fca06328ff424a68499dc",
+      "size": 1471,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/b669af4c4f761573942fca06328ff424a68499dc"
+    },
+    {
+      "path": "src/cinemacity",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "264ed570097a211195be24766f59f6d968829557",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/264ed570097a211195be24766f59f6d968829557"
+    },
+    {
+      "path": "src/cinemacity/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0c9372d9fdfcabe02522999135f696c9dc42f34a",
+      "size": 358,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/0c9372d9fdfcabe02522999135f696c9dc42f34a"
+    },
+    {
+      "path": "src/cinemacity/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "729c42d1d383a60e412467b9279cf0086c04ead1",
+      "size": 8808,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/729c42d1d383a60e412467b9279cf0086c04ead1"
+    },
+    {
+      "path": "src/cinemacity/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e7edffac6fd541020e46b4e4bdd8a7b6632d5baf",
+      "size": 1415,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/e7edffac6fd541020e46b4e4bdd8a7b6632d5baf"
+    },
+    {
+      "path": "src/dooflix",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "a2839c9c8972a4b2e74854367af88c063b4d40c5",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/a2839c9c8972a4b2e74854367af88c063b4d40c5"
+    },
+    {
+      "path": "src/dooflix/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f82d0a69bc4254d77da3a15c32caaef8af131284",
+      "size": 293,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/f82d0a69bc4254d77da3a15c32caaef8af131284"
+    },
+    {
+      "path": "src/dooflix/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cdbdeae941c262e46eb2ee47a1173dd141395dbe",
+      "size": 2422,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/cdbdeae941c262e46eb2ee47a1173dd141395dbe"
+    },
+    {
+      "path": "src/hdhub4u",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "076635ce3002d27bb61ed2727449251d98a31446",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/076635ce3002d27bb61ed2727449251d98a31446"
+    },
+    {
+      "path": "src/hdhub4u/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c35b989697c7eb3380bfaccdaceb868605bf1eb",
+      "size": 652,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/4c35b989697c7eb3380bfaccdaceb868605bf1eb"
+    },
+    {
+      "path": "src/hdhub4u/extractors.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7ce74c5a96fd269775daf7f6d8d5ef868ff70491",
+      "size": 14946,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/7ce74c5a96fd269775daf7f6d8d5ef868ff70491"
+    },
+    {
+      "path": "src/hdhub4u/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b8c62ecc964fd8af496b51f2d965eb24b60bded",
+      "size": 8446,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/8b8c62ecc964fd8af496b51f2d965eb24b60bded"
+    },
+    {
+      "path": "src/hdhub4u/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "84ea9f26c5aba2e47204fce3867f6f323835a959",
+      "size": 8752,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/84ea9f26c5aba2e47204fce3867f6f323835a959"
+    },
+    {
+      "path": "src/hianime",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "acfdf9eff57966a137da4d5fe0fba0f4eebf5bd9",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/acfdf9eff57966a137da4d5fe0fba0f4eebf5bd9"
+    },
+    {
+      "path": "src/hianime/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dcff1c815422b8ed961bd683f9e11bbe4f8dd88a",
+      "size": 456,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/dcff1c815422b8ed961bd683f9e11bbe4f8dd88a"
+    },
+    {
+      "path": "src/hianime/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2922813c85ebf5b594a36f0fcc724f7724f8db9e",
+      "size": 7256,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/2922813c85ebf5b594a36f0fcc724f7724f8db9e"
+    },
+    {
+      "path": "src/hianime/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2ef6a52f6d5e365c6d75561b82037f1942bc129c",
+      "size": 1985,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/2ef6a52f6d5e365c6d75561b82037f1942bc129c"
+    },
+    {
+      "path": "src/kurage",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8466ff87094af2c409158f13bf78baf8f64334c5",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/8466ff87094af2c409158f13bf78baf8f64334c5"
+    },
+    {
+      "path": "src/kurage/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7437433b24c99215cb4fa884d63357e9f6e6bcff",
+      "size": 616,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/7437433b24c99215cb4fa884d63357e9f6e6bcff"
+    },
+    {
+      "path": "src/kurage/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4a480c2f58d9f678195123a6eb938f5af062a418",
+      "size": 2889,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/4a480c2f58d9f678195123a6eb938f5af062a418"
+    },
+    {
+      "path": "src/kurage/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "883a81dbca0b11c5458427a485be6cac46c0fa1c",
+      "size": 6721,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/883a81dbca0b11c5458427a485be6cac46c0fa1c"
+    },
+    {
+      "path": "src/movieblast",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "1c0a6ca870243dcdff60a1e493811c3ad63fa27f",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/1c0a6ca870243dcdff60a1e493811c3ad63fa27f"
+    },
+    {
+      "path": "src/movieblast/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fcf5bfc309511c76f2af212f47f1b0cc396d585d",
+      "size": 614,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/fcf5bfc309511c76f2af212f47f1b0cc396d585d"
+    },
+    {
+      "path": "src/movieblast/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "25b2dd210eba8259d968720df87bbd856882c970",
+      "size": 4243,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/25b2dd210eba8259d968720df87bbd856882c970"
+    },
+    {
+      "path": "src/movieblast/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7cecaacecf9c17b8f65c0dd79b5d339060d5bc54",
+      "size": 3661,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/7cecaacecf9c17b8f65c0dd79b5d339060d5bc54"
+    },
+    {
+      "path": "src/moviebox",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "03f73954bfd0954b23844bdf3295d28a8058fcb6",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/03f73954bfd0954b23844bdf3295d28a8058fcb6"
+    },
+    {
+      "path": "src/moviebox/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "283457b3eb31c3a5e19cf5a6fd1e83bebd9d31e7",
+      "size": 936,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/283457b3eb31c3a5e19cf5a6fd1e83bebd9d31e7"
+    },
+    {
+      "path": "src/moviebox/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "403707a13048d29688ca8969f5527273d50f9961",
+      "size": 9558,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/403707a13048d29688ca8969f5527273d50f9961"
+    },
+    {
+      "path": "src/moviebox/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5a6490e162b718b655cdaaec9dfa34f8bc15e1e6",
+      "size": 7655,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/5a6490e162b718b655cdaaec9dfa34f8bc15e1e6"
+    },
+    {
+      "path": "src/moviesdrive",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e28b81d027a231839a6ddce2b2631ed8177059a9",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/e28b81d027a231839a6ddce2b2631ed8177059a9"
+    },
+    {
+      "path": "src/moviesdrive/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "1cb91ea53420e4c21687e433a3ed0a5486f5d90c",
+      "size": 586,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/1cb91ea53420e4c21687e433a3ed0a5486f5d90c"
+    },
+    {
+      "path": "src/moviesdrive/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a3f638cec35c0514849b2782d57e590f6a682d14",
+      "size": 6286,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/a3f638cec35c0514849b2782d57e590f6a682d14"
+    },
+    {
+      "path": "src/moviesdrive/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8fa21df47aa9e1c955d03b3bba71843258f37634",
+      "size": 3778,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/8fa21df47aa9e1c955d03b3bba71843258f37634"
+    },
+    {
+      "path": "src/moviesmod",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "806d68a255d54653fdbd7bcdba254384eb0ebd8c",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/806d68a255d54653fdbd7bcdba254384eb0ebd8c"
+    },
+    {
+      "path": "src/moviesmod/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "411b1576c46437acf1d2ee9d0bc51a46fb2f9097",
+      "size": 749,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/411b1576c46437acf1d2ee9d0bc51a46fb2f9097"
+    },
+    {
+      "path": "src/moviesmod/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "46b4d0dce4a19dda72640ca8df1b4a7aaabb10fe",
+      "size": 4051,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/46b4d0dce4a19dda72640ca8df1b4a7aaabb10fe"
+    },
+    {
+      "path": "src/moviesmod/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a2224ff37a2cea619d0ea64ef25a2965376e1e85",
+      "size": 7250,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/a2224ff37a2cea619d0ea64ef25a2965376e1e85"
+    },
+    {
+      "path": "src/mycima",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "029d8a1e0285d741347a56c576e0145404cef126",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/029d8a1e0285d741347a56c576e0145404cef126"
+    },
+    {
+      "path": "src/mycima/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4c5a0cc46e9ccf68d014e39e464681a81aeda02d",
+      "size": 405,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/4c5a0cc46e9ccf68d014e39e464681a81aeda02d"
+    },
+    {
+      "path": "src/mycima/extractors.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "38e890ee59c683696c85b84772cce276bc4273a3",
+      "size": 10770,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/38e890ee59c683696c85b84772cce276bc4273a3"
+    },
+    {
+      "path": "src/mycima/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b7985581674a4a130f1e0f3ae242d870a201c41c",
+      "size": 7864,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/b7985581674a4a130f1e0f3ae242d870a201c41c"
+    },
+    {
+      "path": "src/mycima/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "693567b053fe712890d38bf708d98c0665dac75f",
+      "size": 4582,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/693567b053fe712890d38bf708d98c0665dac75f"
+    },
+    {
+      "path": "src/netmirror",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "5d7ff42c137f2ea6887752d19540b7cc1ecf0684",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/5d7ff42c137f2ea6887752d19540b7cc1ecf0684"
+    },
+    {
+      "path": "src/netmirror/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4cbf51c9023493b1d8e024649b5594ecd0337850",
+      "size": 3389,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/4cbf51c9023493b1d8e024649b5594ecd0337850"
+    },
+    {
+      "path": "src/netmirror/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2480bd5d2a0a405e0dddede0e0ec95b1ba1ca9bf",
+      "size": 5804,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/2480bd5d2a0a405e0dddede0e0ec95b1ba1ca9bf"
+    },
+    {
+      "path": "src/netmirror/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "5f4bb3e25bec1c86895f51c631c1ee2d45cbf8d0",
+      "size": 1737,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/5f4bb3e25bec1c86895f51c631c1ee2d45cbf8d0"
+    },
+    {
+      "path": "src/reanime",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "03d2ee17ca5c86ff7e89312729eca783bf23aca8",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/03d2ee17ca5c86ff7e89312729eca783bf23aca8"
+    },
+    {
+      "path": "src/reanime/bytes.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b8222aa630b0f5a10ea3b0bf995b06466d437173",
+      "size": 2348,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/b8222aa630b0f5a10ea3b0bf995b06466d437173"
+    },
+    {
+      "path": "src/reanime/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa94b402466fcb1b6ca3d59f1c8a5552577bb062",
+      "size": 739,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/aa94b402466fcb1b6ca3d59f1c8a5552577bb062"
+    },
+    {
+      "path": "src/reanime/crypto.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "01eedae1ccebe750941a392ce5f3d7c0344c9875",
+      "size": 3883,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/01eedae1ccebe750941a392ce5f3d7c0344c9875"
+    },
+    {
+      "path": "src/reanime/flixcloud.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "12d0ede5a35d7f4c0c4e2cbe63796c44f07f96a1",
+      "size": 16381,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/12d0ede5a35d7f4c0c4e2cbe63796c44f07f96a1"
+    },
+    {
+      "path": "src/reanime/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "429750659ed01668801101c17923d3ddf1ec6501",
+      "size": 3941,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/429750659ed01668801101c17923d3ddf1ec6501"
+    },
+    {
+      "path": "src/reanime/reanime.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "274ab32ad890c571f571c36b81ebb0227d8730e3",
+      "size": 14407,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/274ab32ad890c571f571c36b81ebb0227d8730e3"
+    },
+    {
+      "path": "src/uhdmovies",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e2d7db0892c8ee760532845b2998cdee107b74f4",
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/trees/e2d7db0892c8ee760532845b2998cdee107b74f4"
+    },
+    {
+      "path": "src/uhdmovies/constants.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f848b0fa778088bd0fd04dc340a41ba832029a10",
+      "size": 751,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/f848b0fa778088bd0fd04dc340a41ba832029a10"
+    },
+    {
+      "path": "src/uhdmovies/index.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4a54b09eb924f6998ef9881d6c0390a911b9b47a",
+      "size": 5854,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/4a54b09eb924f6998ef9881d6c0390a911b9b47a"
+    },
+    {
+      "path": "src/uhdmovies/utils.js",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8d8c3b54ec0850db87d1ab222b3fcf709a0a82b3",
+      "size": 7299,
+      "url": "https://api.github.com/repos/yoruix/nuvio-providers/git/blobs/8d8c3b54ec0850db87d1ab222b3fcf709a0a82b3"
+    }
+  ],
+  "truncated": false
+}

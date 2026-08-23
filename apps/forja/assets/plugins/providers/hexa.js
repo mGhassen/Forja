@@ -17,10 +17,23 @@ function extract(ctx) {
         (ctx.episode || 1) +
         '/images';
   var CryptoJS = ctx.crypto;
-  var key =
-    CryptoJS && CryptoJS.lib
-      ? CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Hex)
-      : '';
+  // Prefer WordArray.random; fall back so we never host solely because CryptoJS failed.
+  var key = '';
+  try {
+    if (CryptoJS && CryptoJS.lib && CryptoJS.lib.WordArray && CryptoJS.lib.WordArray.random) {
+      key = CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Hex);
+    }
+  } catch (e) {
+    key = '';
+  }
+  if (!key) {
+    var hex = '';
+    for (var i = 0; i < 32; i++) {
+      var h = Math.floor(Math.random() * 256).toString(16);
+      hex += h.length < 2 ? '0' + h : h;
+    }
+    key = hex;
+  }
   var headers = {
     'User-Agent': ua,
     Referer: origin + '/',
@@ -45,8 +58,6 @@ function extract(ctx) {
     }
   }
 
-  if (!key) return ctx.host('hexa');
-
   return ctx
     .fetch(enc + '/enc-hexa', { headers: { 'User-Agent': ua } })
     .then(function (r) {
@@ -54,7 +65,10 @@ function extract(ctx) {
     })
     .then(function (j) {
       var token = (validate(j) || {}).token;
-      if (!token) return null;
+      if (!token) {
+        ctx.error('hexa: no enc token');
+        return null;
+      }
       headers['X-Cap-Token'] = token;
       return ctx.fetch(api + path, { headers: headers }).then(function (r) {
         return r.text();
@@ -94,7 +108,8 @@ function extract(ctx) {
           });
         });
     })
-    .catch(function () {
+    .catch(function (e) {
+      ctx.error(e && e.message ? e.message : e);
       return ctx.host('hexa');
     });
 }

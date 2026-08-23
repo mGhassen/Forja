@@ -204,7 +204,7 @@ Future<void> runHubEngineAutoPlay({
       );
       final retry = await action.future;
       dismissLoading();
-      disposeLoadingOverlayNotifiers(overlayNotifiers());
+      // Notifier dispose: owned by `finally` below.
       if (retry && context.mounted) {
         await runHubEngineAutoPlay(
           context: context,

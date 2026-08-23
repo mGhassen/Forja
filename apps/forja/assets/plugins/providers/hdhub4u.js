@@ -1,7 +1,10 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
   var domain = cfg.base || 'https://new1.hdhub4u.limo';
-  var searchApi = cfg.searchApi || 'https://search.hdhub4u.glass/collections/post/documents/search';
+  // Site search.html proxies Typesense via pingora (glass host is dead / 404).
+  var searchApi =
+    cfg.searchApi ||
+    'https://search.pingora.fyi/collections/post/documents/search';
   var domainsUrl = cfg.domainsUrl || 'https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json';
   var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0';
@@ -123,7 +126,12 @@ function extract(ctx) {
   }
 
   function hubCloudExtractor(url, referer) {
-    var current = url.replace('hubcloud.ink', 'hubcloud.dad');
+    var current = String(url || '').replace(/hubcloud\.(?:ink|lol|cc)/i, 'hubcloud.dad');
+    if (/hubcloud\.cx/i.test(current)) {
+      // keep .cx — drive pages live there now
+    } else if (/hubcloud\./i.test(current) && !/hubcloud\.dad/i.test(current)) {
+      current = current.replace(/hubcloud\.[a-z0-9.-]+/i, 'hubcloud.dad');
+    }
     return fetchText(current, { Referer: referer || url })
       .then(function (html) {
         var $ = ctx.html(html);
@@ -147,32 +155,49 @@ function extract(ctx) {
           })()
           : Promise.resolve(html);
         return fetchNext.then(function (pageData) {
-          var $p = ctx.html(pageData);
-          var size = $p('i#size').text().trim();
-          var header = $p('div.card-header').text().trim();
+          var size = '';
+          var header = '';
+          try {
+            var $p = ctx.html(pageData);
+            size = ($p('i#size').text() || '').trim();
+            header = ($p('div.card-header').text() || '').trim();
+          } catch (e) { }
+          if (!size) {
+            var sm = String(pageData || '').match(/id=["']size["'][^>]*>([^<]+)/i);
+            if (sm) size = sm[1].trim();
+          }
+          if (!header) {
+            var tm = String(pageData || '').match(/<title[^>]*>([^<]+)/i);
+            if (tm) header = tm[1].trim();
+          }
           var qm = header.match(/(\d{3,4})[pP]/);
           var quality = qm ? parseInt(qm[1], 10) : 1080;
           var links = [];
-          $p('a.btn, a').each(function () {
-            var a = $p(this);
-            var href = a.attr('href') || '';
-            var text = a.text().toLowerCase();
-            if (!href || /\/drive\//i.test(href)) return;
-            var label = 'HubCloud';
+          var seen = {};
+          var aRe = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi;
+          var am;
+          while ((am = aRe.exec(pageData)) !== null) {
+            var attrs = am[1] || '';
+            var text = String(am[2] || '').replace(/<[^>]+>/g, ' ').toLowerCase();
+            var hm = attrs.match(/href=["']([^"']+)["']/i);
+            var href = hm ? hm[1] : '';
+            if (!href || seen[href] || /\/drive\//i.test(href)) continue;
+            seen[href] = true;
+            var label = '';
             if (/pixeldrain\.(?:dev|net)\//i.test(href) || /pixelserver/i.test(text)) {
               var pd = href.match(/pixeldrain\.(?:dev|net)\/(?:u|api\/file)\/([A-Za-z0-9]+)/i);
               label = 'HubCloud - PixelServer';
               href = pd
                 ? 'https://pixeldrain.net/api/file/' + pd[1] + '?download='
                 : href;
-            } else if (/r2\.dev/i.test(href)) label = 'Direct R2';
-            else if (/workers\.dev/i.test(href)) label = 'ZipDisk Server';
+            } else if (/r2\.dev/i.test(href) || /download file/i.test(text)) label = 'Direct R2';
+            else if (/workers\.dev/i.test(href) || /zipdisk/i.test(text)) label = 'ZipDisk Server';
             else if (/pixel\.hubcloud\./i.test(href) || /10gbps/i.test(text)) label = 'HubCloud - 10Gbps';
-            else if (/fsl server/i.test(text)) label = 'HubCloud - FSL';
-            else if (/s3 server/i.test(text)) label = 'HubCloud - S3';
             else if (/fslv2/i.test(text)) label = 'HubCloud - FSLv2';
-            else if (/mega server/i.test(text)) label = 'HubCloud - Mega';
-            else if (!/download file|fsl|s3|mega|zipdisk|10gbps|pixelserver/i.test(text)) return;
+            else if (/fsl/i.test(text)) label = 'HubCloud - FSL';
+            else if (/s3/i.test(text)) label = 'HubCloud - S3';
+            else if (/mega/i.test(text)) label = 'HubCloud - Mega';
+            else continue;
             links.push({
               name: label,
               title: header || undefined,
@@ -180,7 +205,7 @@ function extract(ctx) {
               url: href,
               size: size || undefined,
             });
-          });
+          }
           return links;
         });
       }).catch(function () { return []; });
@@ -196,18 +221,19 @@ function extract(ctx) {
       });
     }
     if (/hubcloud/i.test(hostname)) return hubCloudExtractor(url, referer);
-    if (/hubdrive/i.test(hostname)) {
+    if (/hubcdn\.|hubdrive/i.test(hostname)) {
       return fetchText(url, { Referer: referer || url }).then(function (html) {
-        var $ = ctx.html(html);
         var tasks = [];
-        $('a[href*="hubcloud"]').each(function () {
-          var href = $(this).attr('href') || '';
-          if (href) tasks.push(hubCloudExtractor(href, url));
-        });
-        if (!tasks.length) {
-          var m = String(html || '').match(/href=["']([^"']*hubcloud[^"']*)["']/i);
-          if (m && m[1]) tasks.push(hubCloudExtractor(m[1], url));
+        var seen = {};
+        var re = /href=["']([^"']*hubcloud[^"']*)["']/gi;
+        var m;
+        while ((m = re.exec(html)) !== null) {
+          var href = m[1];
+          if (!href || seen[href]) continue;
+          seen[href] = true;
+          tasks.push(hubCloudExtractor(href, url));
         }
+        if (!tasks.length) return [];
         return Promise.all(tasks).then(function (groups) {
           return [].concat.apply([], groups);
         });
@@ -239,15 +265,22 @@ function extract(ctx) {
         var s = String(season);
         var sp = s.padStart(2, '0');
         var tl = String(h.title || '').toLowerCase();
-        return tl.indexOf('season ' + s) >= 0 ||
-          tl.indexOf('s' + s) >= 0 ||
-          tl.indexOf('s' + sp) >= 0;
+        return new RegExp(
+          '(?:season\\s*' + s + '|\\(\\s*s' + sp + '\\s*\\)|\\bs' + sp + '\\b)',
+          'i',
+        ).test(tl);
       });
     });
   }
 
   function typesenseHits(url, currentDomain) {
-    return ctx.fetch(url, { headers: hdrs() }).then(function (r) { return r.json(); })
+    var referer = (currentDomain || domain || '').replace(/\/$/, '') + '/';
+    return ctx
+      .fetch(url, { headers: hdrs({ Referer: referer, Accept: 'application/json' }) })
+      .then(function (r) {
+        if (!r.ok) throw new Error('search HTTP ' + r.status);
+        return r.json();
+      })
       .then(function (d) {
         if (!d || !d.hits) return [];
         return d.hits.map(function (h) {
@@ -263,7 +296,10 @@ function extract(ctx) {
           };
         });
       })
-      .catch(function () { return []; });
+      .catch(function (e) {
+        ctx.error(e && e.message ? e.message : e);
+        return [];
+      });
   }
 
   function collectHubLinks(html, normalized) {
@@ -312,11 +348,12 @@ function extract(ctx) {
     } catch (e) { }
     return fetchText(normalized, { Referer: currentDomain + '/' }).then(function (html) {
       return collectHubLinks(html, normalized).then(function (hubLinks) {
-        var $ = ctx.html(html);
-        var typeRaw = $('h1.page-title span').text().toLowerCase();
-        var isMovie = typeRaw.indexOf('movie') >= 0 || !isTv;
-        var linkHrefs = hubLinks.slice();
+        // Trust ctx.type — page-title cheerio text is noisy (nav chrome) and
+        // wrongly flipping TV → movie drops all episode-tagged rows at the S/E filter.
+        var isMovie = !isTv;
+        var linkHrefs = isMovie ? hubLinks.slice() : [];
         if (isMovie) {
+          var $ = ctx.html(html);
           $('h3 a, h4 a').filter(function () {
             return /480|720|1080|2160|4K/i.test($(this).text());
           }).each(function () { linkHrefs.push({ url: $(this).attr('href'), episode: null }); });
@@ -325,32 +362,42 @@ function extract(ctx) {
             return /hdstream4u|hubstream/i.test(href);
           }).each(function () { linkHrefs.push({ url: $(this).attr('href'), episode: null }); });
         } else {
+          // Prefer regex over cheerio .find — nested <a> inside <h3>E01…</h3>
+          // is often empty with the engine cheerio selection API.
           var episodeMap = {};
-          $('h3, h4').each(function () {
-            var el = $(this);
-            var text = el.text();
-            var epM = text.match(/(?:EPiSODE\s*(\d+)|E(\d+))/i);
-            if (epM) {
-              var epNum = parseInt(epM[1] || epM[2], 10);
-              el.find('a').each(function () {
-                var href = $(this).attr('href') || '';
-                if (!episodeMap[epNum]) episodeMap[epNum] = [];
-                episodeMap[epNum].push(href);
-              });
+          var headingRe = /<(h[34])[^>]*>([\s\S]*?)<\/\1>/gi;
+          var hm;
+          while ((hm = headingRe.exec(html)) !== null) {
+            var inner = hm[2] || '';
+            var text = String(inner).replace(/<[^>]+>/g, ' ');
+            // Require EPiSODE N or E01-style — not "Episode 720p" (false EPiSODE match).
+            var epM = text.match(/\bEPiSODE\s*(\d+)\b/i) || text.match(/\bE(\d{1,3})\b/i);
+            if (!epM) continue;
+            var epNum = parseInt(epM[1], 10);
+            if (!epNum || epNum > 366) continue;
+            if (!episodeMap[epNum]) episodeMap[epNum] = [];
+            var hrefRe = /href=["']([^"']+)["']/gi;
+            var am;
+            while ((am = hrefRe.exec(inner)) !== null) {
+              if (am[1]) episodeMap[epNum].push(am[1]);
             }
-          });
+          }
           Object.keys(episodeMap).forEach(function (ep) {
             episodeMap[ep].forEach(function (u) {
               linkHrefs.push({ url: u, episode: parseInt(ep, 10) });
             });
           });
+          ctx.log('tv episodes mapped=' + Object.keys(episodeMap).length + ' links=' + linkHrefs.length);
         }
-        var unique = {};
-        var filtered = linkHrefs.filter(function (l) {
-          if (!l.url || unique[l.url]) return false;
-          unique[l.url] = true;
-          return true;
+        // Prefer episode-tagged rows. Season pack hubdrive links are collected
+        // first with episode:null — if those win dedupe, the S/E filter drops everything.
+        var byUrl = {};
+        linkHrefs.forEach(function (l) {
+          if (!l || !l.url) return;
+          var prev = byUrl[l.url];
+          if (!prev || (prev.episode == null && l.episode != null)) byUrl[l.url] = l;
         });
+        var filtered = Object.keys(byUrl).map(function (k) { return byUrl[k]; });
         return Promise.all(filtered.map(function (l) {
           return loadExtractor(l.url, normalized).then(function (extracted) {
             return extracted.map(function (e) { return Object.assign({}, e, { episode: l.episode }); });

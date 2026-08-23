@@ -27,23 +27,6 @@ List<Map<String, dynamic>> _sortEngineStreamRows(
   return copy;
 }
 
-List<Map<String, dynamic>> _engineSiblingRowsForPlay(
-  List<Map<String, dynamic>> engineStreams,
-  Map<String, dynamic> stream,
-) {
-  final pluginId = stream['_enginePluginId']?.toString();
-  if (pluginId == null || pluginId.isEmpty) return [stream];
-  final siblings = engineStreams
-      .where((r) => r['_enginePluginId']?.toString() == pluginId)
-      .toList();
-  if (siblings.isEmpty) return [stream];
-  final chosenUrl = stream['url']?.toString();
-  return [
-    stream,
-    ...siblings.where((r) => r['url']?.toString() != chosenUrl),
-  ];
-}
-
 /// Classify → proxy → HTTP probe. Hover green uses the same probe but mpv can
 /// still fail — callers must pass [streamsPrevalidated: false] so the player
 /// can hop siblings or re-resolve when open fails.
@@ -508,7 +491,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         );
         final retry = await action.future;
         dismissLoading();
-        disposeLoadingOverlayNotifiers(overlayNotifiers());
+        // Clear flag before retry so `_startEngineAutoPlayback` isn't a no-op.
+        // Notifier dispose stays in `finally`.
         if (mounted) {
           setState(() => _s._isEngineAutoExtracting = false);
         } else {

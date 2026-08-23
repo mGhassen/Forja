@@ -571,7 +571,7 @@ void main() {
       expect(parsed.firstWhere((p) => p.id == 'hdhub4u').entry, 'hdhub4u.js');
       expect(
         parsed.firstWhere((p) => p.id == 'hdhub4u').config['searchApi'],
-        'https://search.hdhub4u.glass/collections/post/documents/search',
+        'https://search.pingora.fyi/collections/post/documents/search',
       );
       expect(
         parsed.firstWhere((p) => p.id == 'moviesmod').entry,
@@ -916,6 +916,7 @@ void main() {
       );
       expect(movieblast.contains('HmacSHA256'), isTrue);
       expect(movieblast.contains('/api/search/'), isTrue);
+      expect(movieblast.contains('themoviedb.org'), isTrue);
 
       final streamflix = await rootBundle.loadString(
         'assets/plugins/providers/streamflix.js',
@@ -941,6 +942,8 @@ void main() {
       );
       expect(netmirror.contains('checknewtv.php'), isTrue);
       expect(netmirror.contains('/newtv/player.php'), isTrue);
+      expect(netmirror.contains("status !== 'otp'"), isTrue);
+      expect(netmirror.contains('mobidetect.art') || netmirror.contains('aHR0cHM6Ly9tb2JpZGV0ZWN0LmFydA=='), isTrue);
 
       final castle = await rootBundle.loadString(
         'assets/plugins/providers/castle.js',
@@ -969,7 +972,7 @@ void main() {
       expect(hdhub4u.contains('searchByImdb'), isTrue);
       expect(hdhub4u.contains('gadgetsweb'), isTrue);
       expect(hdhub4u.contains('hubdrive'), isTrue);
-      expect(hdhub4u.contains('search.hdhub4u.glass'), isTrue);
+      expect(hdhub4u.contains('search.pingora.fyi'), isTrue);
       expect(hdhub4u.contains('HDHUB4u'), isTrue);
       expect(hdhub4u.contains('hubCloudExtractor'), isTrue);
       expect(hdhub4u.contains('pixeldrain.net/api/file'), isTrue);

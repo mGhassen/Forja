@@ -139,6 +139,9 @@ function extract(ctx) {
 
   function searchMovieId(info) {
     var keyword = info.year ? info.title + ' ' + info.year : info.title;
+    if (isTv && ctx.season) {
+      keyword = info.title + ' Season ' + Number(ctx.season || 1);
+    }
     var url =
       api +
       '/film-api/v1.1.0/movie/searchByKeyword?channel=' +
@@ -154,18 +157,52 @@ function extract(ctx) {
       '&page=1&size=30';
     return fetchDecrypted(url).then(function (j) {
       var rows = unwrapData(j).rows || [];
-      if (!rows.length) return '';
-      var want = String(info.title || '').toLowerCase();
-      var match = rows.filter(function (item) {
+      if (!rows.length && isTv && ctx.season) {
+        // Fall back to bare title if season-qualified search misses.
+        var fallback =
+          api +
+          '/film-api/v1.1.0/movie/searchByKeyword?channel=' +
+          encodeURIComponent(channel) +
+          '&clientType=' +
+          encodeURIComponent(client) +
+          '&keyword=' +
+          encodeURIComponent(info.year ? info.title + ' ' + info.year : info.title) +
+          '&lang=' +
+          encodeURIComponent(lang) +
+          '&mode=1&packageName=' +
+          encodeURIComponent(pkg) +
+          '&page=1&size=30';
+        return fetchDecrypted(fallback).then(function (j2) {
+          return pickSearchRow(unwrapData(j2).rows || [], info);
+        });
+      }
+      return pickSearchRow(rows, info);
+    });
+  }
+
+  function pickSearchRow(rows, info) {
+    if (!rows.length) return '';
+    var want = String(info.title || '').toLowerCase();
+    var seasonHint = isTv && ctx.season ? 'season ' + Number(ctx.season || 1) : '';
+    var match =
+      rows.filter(function (item) {
+        var t = String(item.title || item.name || '').toLowerCase();
+        if (!(t.indexOf(want) >= 0 || want.indexOf(t) >= 0)) return false;
+        if (seasonHint && t.indexOf(seasonHint) < 0 && t.indexOf('s0' + Number(ctx.season || 1)) < 0) {
+          return false;
+        }
+        return true;
+      })[0] ||
+      rows.filter(function (item) {
         var t = String(item.title || item.name || '').toLowerCase();
         return t.indexOf(want) >= 0 || want.indexOf(t) >= 0;
-      })[0] || rows[0];
-      var movieId = String(match.id || match.redirectId || match.redirectIdStr || '');
-      if (movieId && typeof ctx.log === 'function') {
-        ctx.log('Found match: ' + (match.title || match.name || info.title) + ' (id: ' + movieId + ')');
-      }
-      return movieId;
-    });
+      })[0] ||
+      rows[0];
+    var movieId = String(match.id || match.redirectId || match.redirectIdStr || '');
+    if (movieId && typeof ctx.log === 'function') {
+      ctx.log('Found match: ' + (match.title || match.name || info.title) + ' (id: ' + movieId + ')');
+    }
+    return movieId;
   }
 
   function details(movieId) {
@@ -274,40 +311,115 @@ function extract(ctx) {
         return details(movieId).then(function (rawDetails) {
           var currentMovieId = movieId;
           var detailsData = unwrapData(rawDetails);
+          function seasonMovieId(s) {
+            if (!s) return '';
+            return String(
+              s.movieId ||
+                s.redirectId ||
+                s.redirectIdStr ||
+                s.id ||
+                '',
+            );
+          }
+          function pickEpisodes(data) {
+            if (!data) return [];
+            if (Array.isArray(data.episodes) && data.episodes.length) return data.episodes;
+            if (Array.isArray(data.episodeList) && data.episodeList.length) return data.episodeList;
+            if (Array.isArray(data.eps) && data.eps.length) return data.eps;
+            return [];
+          }
           if (isTv) {
-            var seasonHit = (detailsData.seasons || []).filter(function (s) {
-              return s.number === (ctx.season || 1);
+            var wantSeason = Number(ctx.season || 1);
+            var seasons = detailsData.seasons || detailsData.seasonList || [];
+            var seasonHit = seasons.filter(function (s) {
+              return Number(s.number != null ? s.number : s.seasonNumber) === wantSeason;
             })[0];
-            if (seasonHit && seasonHit.movieId && String(seasonHit.movieId) !== String(movieId)) {
-              currentMovieId = String(seasonHit.movieId);
+            // Some titles only list seasons on the parent; episodes live on season movieId.
+            var sid = seasonMovieId(seasonHit);
+            if (sid && sid !== String(movieId)) {
+              currentMovieId = sid;
               return details(currentMovieId).then(function (seasonDetails) {
-                return { info: info, movieId: currentMovieId, detailsData: unwrapData(seasonDetails) };
+                var sd = unwrapData(seasonDetails);
+                return {
+                  info: info,
+                  movieId: currentMovieId,
+                  detailsData: sd,
+                  episodesOverride: pickEpisodes(sd).length
+                    ? pickEpisodes(sd)
+                    : pickEpisodes(seasonHit),
+                };
               });
             }
+            if (seasonHit && pickEpisodes(seasonHit).length) {
+              return {
+                info: info,
+                movieId: currentMovieId,
+                detailsData: detailsData,
+                episodesOverride: pickEpisodes(seasonHit),
+              };
+            }
           }
-          return { info: info, movieId: currentMovieId, detailsData: detailsData };
+          return {
+            info: info,
+            movieId: currentMovieId,
+            detailsData: detailsData,
+            episodesOverride: pickEpisodes(detailsData),
+          };
         });
       });
     })
     .then(function (state) {
       if (!state || !state.detailsData) return [];
-      var seasonNum = ctx.season || 1;
-      var episodeNum = ctx.episode || 1;
-      var episodes = state.detailsData.episodes || [];
+      var seasonNum = Number(ctx.season || 1);
+      var episodeNum = Number(ctx.episode || 1);
+      var episodes = state.episodesOverride || [];
+      if (!episodes.length) {
+        var detailsData = state.detailsData || {};
+        episodes = detailsData.episodes || detailsData.episodeList || detailsData.eps || [];
+      }
+      if (!episodes.length && Array.isArray((state.detailsData || {}).seasons)) {
+        var seasonRow = state.detailsData.seasons.filter(function (s) {
+          return Number(s.number != null ? s.number : s.seasonNumber) === seasonNum;
+        })[0];
+        if (seasonRow) {
+          episodes = seasonRow.episodes || seasonRow.episodeList || seasonRow.eps || [];
+        }
+      }
+      function epNo(e) {
+        if (!e) return NaN;
+        if (e.number != null) return Number(e.number);
+        if (e.episodeNumber != null) return Number(e.episodeNumber);
+        if (e.episode_number != null) return Number(e.episode_number);
+        if (e.ep != null) return Number(e.ep);
+        return NaN;
+      }
       var episodeHit = isTv
-        ? episodes.filter(function (e) { return e.number === episodeNum; })[0]
+        ? episodes.filter(function (e) { return epNo(e) === episodeNum; })[0]
         : episodes[0];
-      if (!episodeHit || !episodeHit.id) {
-        if (typeof ctx.error === 'function') ctx.error('Could not find episode ID');
+      if (!episodeHit || !(episodeHit.id || episodeHit.episodeId)) {
+        if (typeof ctx.error === 'function') {
+          ctx.error(
+            'Could not find episode ID (episodes=' +
+              episodes.length +
+              ' want=S' +
+              seasonNum +
+              'E' +
+              episodeNum +
+              ' sample=' +
+              JSON.stringify(episodes.slice(0, 2)).slice(0, 240) +
+              ')',
+          );
+        }
         return [];
       }
+      var episodeId = episodeHit.id || episodeHit.episodeId;
       var resolution = 2;
       var tracks = (episodeHit && episodeHit.tracks) || [];
       var tasks = tracks
         .filter(function (track) { return track && track.existIndividualVideo && track.languageId; })
         .map(function (track) {
           var langName = track.languageName || track.abbreviate || 'Unknown';
-          return getVideo(state.movieId, episodeHit.id, track.languageId, resolution)
+          return getVideo(state.movieId, episodeId, track.languageId, resolution)
             .then(function (videoData) {
               return mapVideoResponse(videoData, state.info, seasonNum, episodeNum, resolution, '[' + langName + ']');
             })
@@ -318,7 +430,7 @@ function extract(ctx) {
       return Promise.all(tasks).then(function (groups) {
         var out = [].concat.apply([], groups);
         if (out.length) return out;
-        return getVideo(state.movieId, episodeHit.id, '', resolution)
+        return getVideo(state.movieId, episodeId, '', resolution)
           .then(function (videoData) {
             return mapVideoResponse(videoData, state.info, seasonNum, episodeNum, resolution, '[Shared]');
           })

@@ -594,7 +594,7 @@
       "config": {
         "origin": "https://www.1shows.org",
         "api": "https://api.viduki.net",
-        "downloadKeyHex": "7a03086357a2147dab4d757e8ed2ff8b5dc8707ee3d473afcb80d97727afa191",
+        "downloadKeyHex": "7e82474d94d34f79c91eda37abfe27fb44e515fe8eea8db0a89958b798f745b1",
         "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
@@ -609,7 +609,7 @@
       "kind": "http",
       "config": {
         "base": "https://new1.hdhub4u.af",
-        "searchApi": "https://search.hdhub4u.glass/collections/post/documents/search",
+        "searchApi": "https://search.pingora.fyi/collections/post/documents/search",
         "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
         "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
@@ -677,8 +677,28 @@
         "domains": [
           "aHR0cHM6Ly9tb2JpbGVkZXRlY3RzLmNvbQ==",
           "aHR0cHM6Ly9tb2JpbGVkZXRlY3QuYXBw",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0LmFydA==",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0LmNj",
           "aHR0cHM6Ly9tb2JpZGV0ZWN0LmNsaWNr",
-          "aHR0cHM6Ly9tb2JpZGV0ZWN0LnNpdGU="
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0Lmluaw==",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0LmxpdmU=",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0LnBybw==",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0LnNob3A=",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0LnNpdGU=",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0LnNwYWNl",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0LnN0b3Jl",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0LnZpcA==",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0Lndpa2k=",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0Lnh5eg==",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5hcnQ=",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5jYw==",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5pbmZv",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5pbms=",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5saXZl",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5wcm8=",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0cy5zdG9yZQ==",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0cy50b3A=",
+          "aHR0cHM6Ly9tb2JpZGV0ZWN0cy54eXo="
         ]
       }
     },
@@ -872,7 +892,8 @@
         "token": "jdvhhjv255vghhghdhvfch2565656jhdcghfdf",
         "appId": "com.movieblast",
         "signSecret": "GJ8reydarI7Jqat9rvbAJKNQ9gY4DoEQF2H5nfuI1gi",
-        "hash256": "86dc03244adddb3cbedbf0ae36074a736ee293a64774b18e82a6244eafd0df30"
+        "hash256": "86dc03244adddb3cbedbf0ae36074a736ee293a64774b18e82a6244eafd0df30",
+        "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
     {
