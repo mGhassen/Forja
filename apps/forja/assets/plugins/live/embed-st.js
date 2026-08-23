@@ -108,14 +108,7 @@ function playbackHeadersForSlot(slot, cfg) {
   if (source === 'admin') {
     return { Referer: origin + '/', Origin: origin, 'User-Agent': ua() };
   }
-  if (source === 'echo') {
-    return {
-      Referer: 'https://streamed.pk/',
-      Origin: 'https://streamed.pk',
-      'User-Agent': ua(),
-    };
-  }
-  if (source === 'delta' && path) {
+  if ((source === 'delta' || source === 'echo') && path) {
     return {
       Referer: origin + '/embed/' + path,
       Origin: origin,
@@ -335,18 +328,12 @@ function parseEmbedIndiaUrl(raw) {
   return null;
 }
 
-function encodeEmbedIndiaBody(league, date, slug, gid) {
+function encodeEmbedIndiaBody(path) {
   var out = [];
-  function fieldStr(field, value) {
-    var body = utf8BytesAscii(value);
-    out.push((field << 3) | 2);
-    out.push.apply(out, varint(body.length));
-    for (var i = 0; i < body.length; i++) out.push(body[i]);
-  }
-  fieldStr(1, league);
-  fieldStr(2, date);
-  fieldStr(3, slug);
-  if (gid) fieldStr(4, gid);
+  var body = utf8BytesAscii(path);
+  out.push((1 << 3) | 2);
+  out.push.apply(out, varint(body.length));
+  for (var i = 0; i < body.length; i++) out.push(body[i]);
   return out;
 }
 
@@ -365,7 +352,7 @@ async function postEmbedIndiaFetch(ctx, slot, cfg) {
   var gid = String(slot.gid || '');
   var referer =
     origin + '/embed/' + slot.path + (gid ? '?gid=' + encodeURIComponent(gid) : '');
-  var body = encodeEmbedIndiaBody(slot.league, slot.date, slot.slug, gid);
+  var body = encodeEmbedIndiaBody(slot.path);
   var res = await ctx.fetch(origin + '/fetch', {
     method: 'POST',
     headers: {

@@ -17,7 +17,8 @@ function pageUrl(slot, embedOrigin) {
 function mountDom(slot, embedOrigin) {
   const window = new Window({ url: pageUrl(slot, embedOrigin) })
   const doc = window.document
-  doc.body.innerHTML = '<div id="player"></div>'
+  doc.documentElement.innerHTML =
+    '<head></head><body><div id="player"></div></body>'
 
   const jwCfg = { file: null }
   const jwBase = {
@@ -58,6 +59,7 @@ function mountDom(slot, embedOrigin) {
   const NativeResponse = globalThis.Response
   const NativeHeaders = globalThis.Headers
   const NativeUrl = globalThis.URL
+  const WasmResponse = window.Response ?? NativeResponse
 
   globalThis.URL = class extends NativeUrl {
     constructor(input, base) {
@@ -73,40 +75,40 @@ function mountDom(slot, embedOrigin) {
   }
   window.URL = globalThis.URL
   window.Request = globalThis.Request
-  window.Response = NativeResponse
+  window.Response = WasmResponse
   window.Headers = NativeHeaders
 
-  return NativeResponse
+  return { NativeResponse, WasmResponse }
 }
 
-function mockFetch(NativeResponse, embedOrigin, island, body, onM3u8) {
+function mockFetch(WasmResponse, embedOrigin, island, body, onM3u8, islandHeaders) {
   return async (input) => {
     const href = typeof input === 'string' ? input : input?.url ?? String(input)
     if (href.includes('gasm.wasm')) {
-      return new NativeResponse(wasmBytes, {
+      return new WasmResponse(wasmBytes, {
         status: 200,
         headers: { 'Content-Type': 'application/wasm' },
       })
     }
     if (href.includes('/fetch')) {
-      return new NativeResponse(body, {
+      return new WasmResponse(body, {
         status: 200,
-        headers: { island, 'Content-Type': 'application/octet-stream' },
+        headers: islandHeaders,
       })
     }
     if (href.includes('.m3u8')) {
       onM3u8(href)
-      return new NativeResponse('#EXTM3U\n#EXT-X-VERSION:3\n', {
+      return new WasmResponse('#EXTM3U\n#EXT-X-VERSION:3\n', {
         status: 200,
         headers: { 'Content-Type': 'application/vnd.apple.mpegurl' },
       })
     }
-    return new NativeResponse('', { status: 404 })
+    return new WasmResponse('', { status: 404 })
   }
 }
 
-function patchImports(imports, NativeResponse, island, body, onM3u8) {
-  const bg = imports?.['./gasm_bg.js'] ?? imports?.['./locked_bg.js']
+function patchImports(imports, WasmResponse, island, body, onM3u8, islandHeaders) {
+  const bg = imports?.['./wasmgasm_bg.js']
   if (!bg) return
 
   for (const key of Object.keys(bg)) {
@@ -115,23 +117,23 @@ function patchImports(imports, NativeResponse, island, body, onM3u8) {
     bg[key] = (...args) => (orig(...args) ? 1 : 1)
   }
 
-  const fetchKey = Object.keys(bg).find((k) => k.includes('fetch'))
+  const fetchKey = Object.keys(bg).find((k) => k.includes('fetch_e6e8e0'))
   if (!fetchKey) return
 
   bg[fetchKey] = (_win, req) => {
     const href = req?.url ?? ''
     if (href.includes('/fetch')) {
       return Promise.resolve(
-        new NativeResponse(body, {
+        new WasmResponse(body, {
           status: 200,
-          headers: { island, 'Content-Type': 'application/octet-stream' },
+          headers: islandHeaders,
         }),
       )
     }
     if (href.includes('.m3u8')) {
       onM3u8(href)
       return Promise.resolve(
-        new NativeResponse('#EXTM3U\n#EXT-X-VERSION:3\n', {
+        new WasmResponse('#EXTM3U\n#EXT-X-VERSION:3\n', {
           status: 200,
           headers: { 'Content-Type': 'application/vnd.apple.mpegurl' },
         }),
@@ -144,18 +146,22 @@ function patchImports(imports, NativeResponse, island, body, onM3u8) {
 async function crack(slot, island, bodyHex, embedOrigin) {
   let m3u8 = null
   const body = Buffer.from(bodyHex, 'hex')
-  const NativeResponse = mountDom(slot, embedOrigin)
-  const fetchFn = mockFetch(NativeResponse, embedOrigin, island, body, (url) => {
-    m3u8 = url
+  const { WasmResponse } = mountDom(slot, embedOrigin)
+  const islandHeaders = new globalThis.Headers({
+    island,
+    'Content-Type': 'application/octet-stream',
   })
+  const fetchFn = mockFetch(WasmResponse, embedOrigin, island, body, (url) => {
+    m3u8 = url
+  }, islandHeaders)
   globalThis.fetch = fetchFn
 
   const origInstantiate = WebAssembly.instantiate.bind(WebAssembly)
 
   WebAssembly.instantiate = async (source, imports) => {
-    patchImports(imports, NativeResponse, island, body, (url) => {
+    patchImports(imports, WasmResponse, island, body, (url) => {
       m3u8 = url
-    })
+    }, islandHeaders)
     if (!(source instanceof ArrayBuffer) && !ArrayBuffer.isView(source)) {
       source = wasmBytes.buffer.slice(
         wasmBytes.byteOffset,
@@ -178,11 +184,33 @@ async function crack(slot, island, bodyHex, embedOrigin) {
   delete WebAssembly.instantiateStreaming
 
   try {
-    await api.set_stream_jw(slot.league, slot.date, slot.slug)
+    await api.set_stream(slot.league, slot.date, slot.slug)
   } catch (err) {
-    if (!m3u8) throw err
+    if (!m3u8) {
+      try {
+        await api.set_stream_jw(slot.league, slot.date)
+      } catch (inner) {
+        if (!m3u8) throw err
+      }
+    }
   }
-  if (!m3u8) throw new Error('gasm did not yield m3u8')
+  try {
+    await api.on_unmute?.()
+  } catch (_) {}
+  if (!m3u8 && globalThis.__decryptLogs?.length) {
+    const hit = globalThis.__decryptLogs.find((e) =>
+      String(e ?? '').includes('.m3u8'),
+    )
+    if (hit) m3u8 = String(hit)
+  }
+  if (!m3u8) {
+    const logs = globalThis.__decryptLogs
+    const hint =
+      Array.isArray(logs) && logs.length
+        ? ` decryptLogs=${JSON.stringify(logs).slice(0, 240)}`
+        : ''
+    throw new Error(`gasm did not yield m3u8${hint}`)
+  }
   return m3u8
 }
 

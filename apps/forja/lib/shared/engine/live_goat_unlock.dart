@@ -194,7 +194,19 @@ class LiveGoatUnlock {
           .join();
       final m3u8 = await unlock(slot: slot, goat: goat, bodyHex: bodyHex);
       if (m3u8 == null || m3u8.isEmpty) return null;
-      return (url: m3u8, headers: playbackHeadersForSlot(slot));
+
+      final headers = playbackHeadersForSlot(slot);
+      // Echo CDN (`/echo/stream/`) often 500s on Dart/mpv re-GET — don't hand
+      // MediaKit a URL that cannot open natively.
+      if (slotSource == 'echo') {
+        if (!await _probePlayableM3u8(m3u8, headers)) {
+          debugPrint(
+            '[LiveGoatUnlock] echo GOAT m3u8 not native-playable (CDN probe)',
+          );
+          return null;
+        }
+      }
+      return (url: m3u8, headers: headers);
     } catch (e) {
       debugPrint('[LiveGoatUnlock] native resolve failed: $e');
       return null;
@@ -217,12 +229,7 @@ class LiveGoatUnlock {
     if (path.isEmpty) return null;
 
     try {
-      final body = _encodeEmbedIndiaFetchBody(
-        (slot['league'] ?? '').toString(),
-        (slot['date'] ?? '').toString(),
-        (slot['slug'] ?? '').toString(),
-        (slot['gid'] ?? '').toString(),
-      );
+      final body = _encodeEmbedIndiaFetchBody(path);
       final gid = (slot['gid'] ?? '').toString();
       final referer = gid.isNotEmpty
           ? '$origin/embed/$path?gid=${Uri.encodeQueryComponent(gid)}'
@@ -290,8 +297,8 @@ class LiveGoatUnlock {
   /// CDN Referer/Origin for GOAT-unlocked `strmd.st` playback.
   ///
   /// Each streamed.pk [source] validates differently — admin (`rtmp/stream`
-  /// master playlists) must keep embed origin root; echo uses the catalog site;
-  /// delta media playlists use the embed page referer.
+  /// master playlists) must keep embed origin root; delta/echo media playlists
+  /// use the embed page referer (streamed.pk Referer 403s on `strmd.st`).
   static Map<String, String> playbackHeadersForSlot(Map<String, dynamic> slot) {
     final origin = (slot['origin'] ?? _embedOrigin).toString().replaceAll(
       RegExp(r'/+$'),
@@ -302,13 +309,8 @@ class LiveGoatUnlock {
     switch (source) {
       case 'admin':
         return _embedHeaders(origin);
-      case 'echo':
-        return const {
-          'Referer': 'https://streamed.pk/',
-          'Origin': 'https://streamed.pk',
-          'User-Agent': _ua,
-        };
       case 'delta':
+      case 'echo':
         if (path.isNotEmpty) {
           return {
             'Referer': '$origin/embed/$path',
@@ -354,6 +356,30 @@ class LiveGoatUnlock {
   static bool preferDirectEnginePlayback(String m3u8Url) {
     final path = (Uri.tryParse(m3u8Url.trim())?.path ?? '').toLowerCase();
     return path.contains('/delta/stream/') || path.contains('/echo/stream/');
+  }
+
+  static Future<bool> _probePlayableM3u8(
+    String url,
+    Map<String, String> headers,
+  ) async {
+    final target = url.trim();
+    if (target.isEmpty) return false;
+    try {
+      final resp = await http
+          .get(Uri.parse(target), headers: headers)
+          .timeout(const Duration(seconds: 10));
+      if (resp.statusCode < 200 || resp.statusCode >= 400) {
+        debugPrint(
+          '[LiveGoatUnlock] m3u8 probe HTTP ${resp.statusCode} '
+          '${Uri.tryParse(target)?.host ?? target}',
+        );
+        return false;
+      }
+      return resp.body.trimLeft().startsWith('#EXTM3U');
+    } catch (e) {
+      debugPrint('[LiveGoatUnlock] m3u8 probe failed: $e');
+      return false;
+    }
   }
 
   static Map<String, dynamic>? _parseEmbedSlot(
@@ -430,24 +456,12 @@ class LiveGoatUnlock {
     return out.toBytes();
   }
 
-  static Uint8List _encodeEmbedIndiaFetchBody(
-    String league,
-    String date,
-    String slug,
-    String gid,
-  ) {
+  static Uint8List _encodeEmbedIndiaFetchBody(String path) {
     final out = BytesBuilder();
-    void fieldStr(int field, String value) {
-      final body = utf8.encode(value);
-      out.addByte((field << 3) | 2);
-      out.add(_varint(body.length));
-      out.add(body);
-    }
-
-    fieldStr(1, league);
-    fieldStr(2, date);
-    fieldStr(3, slug);
-    if (gid.isNotEmpty) fieldStr(4, gid);
+    final body = utf8.encode(path);
+    out.addByte((1 << 3) | 2);
+    out.add(_varint(body.length));
+    out.add(body);
     return out.toBytes();
   }
 

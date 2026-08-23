@@ -26,14 +26,14 @@ void main() {
       expect(h['Origin'], 'https://embed.st');
     });
 
-    test('echo uses streamed.pk catalog referer', () {
+    test('echo uses embed page referer like delta', () {
       final h = LiveGoatUnlock.playbackHeadersForSlot({
         'origin': 'https://embed.st',
         'source': 'echo',
         'path': 'echo/match-id/1',
       });
-      expect(h['Referer'], 'https://streamed.pk/');
-      expect(h['Origin'], 'https://streamed.pk');
+      expect(h['Referer'], 'https://embed.st/embed/echo/match-id/1');
+      expect(h['Origin'], 'https://embed.st');
     });
   });
 
