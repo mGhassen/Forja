@@ -2265,12 +2265,30 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
 
   /// Category / group only for sports-style sources; host alone otherwise.
   String? _sourceSubtitle(IptvPlaySource src) {
-    final structured = src.pickerSubtitle;
-    if (structured != null && structured.isNotEmpty) return structured;
-    final detail = (src.detail ?? '').trim();
-    if (detail.isNotEmpty) return detail;
-    final host = _sourceHost(src.url);
-    return host.isEmpty ? null : host;
+    return iptvSourcePickerSubtitle(
+      src,
+      liveSourceKind: _s.widget.liveSourceKind,
+      hostFallback: _sourceHost,
+    );
+  }
+
+  PlayerPopupListTile _sourcePickerTile({
+    required IptvPlaySource src,
+    required bool selected,
+    PlayerSourceStatus? status,
+    ValueChanged<bool>? onInteractiveChange,
+    required VoidCallback onTap,
+  }) {
+    return buildIptvSourcePickerTile(
+      src: src,
+      liveSourceKind: _s.widget.liveSourceKind,
+      sourceLogo: _sourceLogo,
+      selected: selected,
+      status: status,
+      trailing: null,
+      onInteractiveChange: onInteractiveChange,
+      onTap: onTap,
+    );
   }
 
   Widget _sourceLogo(IptvPlaySource src) {
@@ -2338,6 +2356,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             ? _IptvSportsSourcePickerList(
                 sources: _s._sources,
                 selectedIndex: _s._sourceIdx,
+                liveSourceKind: _s.widget.liveSourceKind,
                 sourceLogo: _sourceLogo,
                 sourceSubtitle: _sourceSubtitle,
                 onPick: (i) {
@@ -2350,12 +2369,8 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (var i = 0; i < _s._sources.length; i++)
-                    PlayerPopupListTile(
-                      leading: _sourceLogo(_s._sources[i]),
-                      label: _s._sources[i].pickerTitle,
-                      badge: _s._sources[i].tierBadge,
-                      badgeColor: _s._sources[i].tierBadgeColor,
-                      subtitle: _sourceSubtitle(_s._sources[i]),
+                    _sourcePickerTile(
+                      src: _s._sources[i],
                       selected: i == _s._sourceIdx,
                       onTap: () {
                         PlayerPopupPanel.dismiss();
@@ -2373,6 +2388,7 @@ class _IptvSportsSourcePickerList extends StatefulWidget {
   const _IptvSportsSourcePickerList({
     required this.sources,
     required this.selectedIndex,
+    required this.liveSourceKind,
     required this.sourceLogo,
     required this.sourceSubtitle,
     required this.onPick,
@@ -2380,6 +2396,7 @@ class _IptvSportsSourcePickerList extends StatefulWidget {
 
   final List<IptvPlaySource> sources;
   final int selectedIndex;
+  final IptvLiveSourceKind? liveSourceKind;
   final Widget Function(IptvPlaySource src) sourceLogo;
   final String? Function(IptvPlaySource src) sourceSubtitle;
   final ValueChanged<int> onPick;
@@ -2432,12 +2449,10 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
               Builder(
                 builder: (context) {
                   final src = widget.sources[i];
-                  return PlayerPopupListTile(
-                    leading: widget.sourceLogo(src),
-                    label: src.pickerTitle,
-                    badge: src.tierBadge,
-                    badgeColor: src.tierBadgeColor,
-                    subtitle: widget.sourceSubtitle(src),
+                  return buildIptvSourcePickerTile(
+                    src: src,
+                    liveSourceKind: widget.liveSourceKind,
+                    sourceLogo: widget.sourceLogo,
                     selected: i == widget.selectedIndex,
                     status: _statusFor(i, src),
                     onInteractiveChange: (active) => _syncProbe(src, active),
@@ -2450,4 +2465,115 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
       },
     );
   }
+}
+
+bool iptvLiveMatchSourcePicker(
+  IptvLiveSourceKind? sessionKind,
+  IptvPlaySource src,
+) {
+  return sessionKind == IptvLiveSourceKind.liveEngine ||
+      (src.liveProviderBadge ?? '').trim().isNotEmpty;
+}
+
+String? iptvSourcePickerSubtitle(
+  IptvPlaySource src, {
+  required IptvLiveSourceKind? liveSourceKind,
+  required String Function(String url) hostFallback,
+}) {
+  final structured = src.pickerSubtitle;
+  if (structured != null && structured.isNotEmpty) return structured;
+  final detail = (src.detail ?? '').trim();
+  if (detail.isNotEmpty) return detail;
+  if (iptvLiveMatchSourcePicker(liveSourceKind, src)) return null;
+  final host = hostFallback(src.url);
+  return host.isEmpty ? null : host;
+}
+
+Widget iptvLiveSourceLeading(IptvPlaySource src) {
+  const size = 40.0;
+  if (src.liveStreamHd) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: const Text(
+        'HD',
+        style: TextStyle(
+          color: Colors.white70,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.4,
+        ),
+      ),
+    );
+  }
+  return SizedBox(
+    width: size,
+    height: size,
+    child: Icon(
+      Icons.play_circle_outline,
+      color: Colors.white38,
+      size: size * 0.55,
+    ),
+  );
+}
+
+Color? iptvLiveProviderBadgeColor(String? badge) {
+  return switch (badge) {
+    'PPV' => Colors.orange.shade700,
+    _ => null,
+  };
+}
+
+Widget? iptvLiveSourceTrailing(IptvPlaySource src) {
+  if (src.liveViewerCount <= 0) return null;
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Icon(Icons.visibility_outlined, size: 14, color: Colors.white38),
+      const SizedBox(width: 4),
+      Text(
+        '${src.liveViewerCount}',
+        style: const TextStyle(color: Colors.white54, fontSize: 12),
+      ),
+    ],
+  );
+}
+
+PlayerPopupListTile buildIptvSourcePickerTile({
+  required IptvPlaySource src,
+  required IptvLiveSourceKind? liveSourceKind,
+  required Widget Function(IptvPlaySource src) sourceLogo,
+  required bool selected,
+  PlayerSourceStatus? status,
+  Widget? trailing,
+  ValueChanged<bool>? onInteractiveChange,
+  required VoidCallback onTap,
+}) {
+  final live = iptvLiveMatchSourcePicker(liveSourceKind, src);
+  return PlayerPopupListTile(
+    leading: live ? iptvLiveSourceLeading(src) : sourceLogo(src),
+    label: src.pickerTitle,
+    badge: live ? src.liveProviderBadge : src.tierBadge,
+    badgeColor: live
+        ? iptvLiveProviderBadgeColor(src.liveProviderBadge)
+        : src.tierBadgeColor,
+    subtitle: iptvSourcePickerSubtitle(
+      src,
+      liveSourceKind: liveSourceKind,
+      hostFallback: (url) {
+        final host = Uri.tryParse(url)?.host ?? '';
+        return host.isEmpty ? url : host;
+      },
+    ),
+    selected: selected,
+    status: status,
+    trailing: trailing ?? (live ? iptvLiveSourceTrailing(src) : null),
+    onInteractiveChange: onInteractiveChange,
+    onTap: onTap,
+  );
 }

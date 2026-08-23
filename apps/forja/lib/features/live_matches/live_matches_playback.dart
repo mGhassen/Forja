@@ -310,6 +310,24 @@ mixin _LiveMatchesPlayback
     return match.categoryLabel;
   }
 
+  IptvPlaySource _liveEnginePlaySource({
+    required _StreamedMatch match,
+    required _StreamedStream stream,
+    required String url,
+    Map<String, String> headers = const {},
+  }) {
+    return IptvPlaySource(
+      url: url,
+      label: _streamPickerLabel(match, stream),
+      detail: stream.hd ? 'HD' : null,
+      headers: headers,
+      liveSourceKind: IptvLiveSourceKind.liveEngine,
+      liveProviderBadge: _StreamedStreamSheet.serverLabelFor(match),
+      liveViewerCount: stream.viewers,
+      liveStreamHd: stream.hd,
+    );
+  }
+
   Future<List<_StreamedStream>> _forjaLiveStreamsFromSource(
     _StreamedMatch match,
     _StreamedSourceRef source, {
@@ -708,8 +726,6 @@ mixin _LiveMatchesPlayback
         ? (_forjaLiveCdnReferer(embed) ??
               _forjaLiveWrapperReferer(embed, pluginId: match.livePluginId))
         : _streamedReferer;
-    final pickerLabel = _streamPickerLabel(match, stream);
-
     if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
       final headers = isPpv
           ? _ppvEmbedStreamHeaders(embed)
@@ -722,11 +738,11 @@ mixin _LiveMatchesPlayback
           ? embed
           : await LiveMatchesEngine.proxyPlayUrl(url: embed, headers: headers);
       if (playUrl == null || playUrl.isEmpty) return null;
-      return IptvPlaySource(
+      return _liveEnginePlaySource(
+        match: match,
+        stream: stream,
         url: playUrl,
-        label: pickerLabel,
         headers: direct ? headers : const {},
-        liveSourceKind: IptvLiveSourceKind.liveEngine,
       );
     }
 
@@ -764,12 +780,11 @@ mixin _LiveMatchesPlayback
         : await LiveMatchesEngine.proxyPlayUrl(url: result.url, headers: headers);
     if (playUrl == null || playUrl.isEmpty) return null;
 
-    final label = result.label.trim().isNotEmpty ? result.label.trim() : pickerLabel;
-    return IptvPlaySource(
+    return _liveEnginePlaySource(
+      match: match,
+      stream: stream,
       url: playUrl,
-      label: label,
       headers: direct ? headers : const {},
-      liveSourceKind: IptvLiveSourceKind.liveEngine,
     );
   }
 

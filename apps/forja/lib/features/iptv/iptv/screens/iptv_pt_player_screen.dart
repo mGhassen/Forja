@@ -138,6 +138,12 @@ class IptvPlaySource {
   final Map<String, String> headers;
   /// Live Matches: which playback profile applies when this row is active.
   final IptvLiveSourceKind? liveSourceKind;
+  /// Live Matches stream sheet: provider chip (PPV / Streamed / …).
+  final String? liveProviderBadge;
+  /// Live Matches stream sheet: concurrent viewers when known.
+  final int liveViewerCount;
+  /// Live Matches stream sheet: HD quality row.
+  final bool liveStreamHd;
   const IptvPlaySource({
     required this.url,
     required this.label,
@@ -147,6 +153,9 @@ class IptvPlaySource {
     this.epgChannelId,
     this.headers = const {},
     this.liveSourceKind,
+    this.liveProviderBadge,
+    this.liveViewerCount = 0,
+    this.liveStreamHd = false,
   });
 
   /// Channel name for chrome — strips leading `T3 · ` rank prefix.
