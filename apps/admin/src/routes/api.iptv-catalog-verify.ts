@@ -4,7 +4,7 @@ import { authedAdmin } from '@/server/admin-request'
 import { classifyRegion } from '@/server/iptv-catalog/region'
 import {
   createCatalogAdminClient,
-  upsertCatalogCandidate,
+  updateCatalogPortalStatus,
 } from '@/server/iptv-catalog/supabase-admin'
 import type { CatalogPortal } from '@/server/iptv-catalog/types'
 import { verifyPortalStatus } from '@/server/iptv-catalog/verify'
@@ -52,7 +52,7 @@ async function verifyOne(
   const status = await verifyPortalStatus(portal)
   const region = classifyRegion(status.timezone, status.categoryNames)
   const admin = createCatalogAdminClient()
-  await upsertCatalogCandidate(admin, portal, status, region)
+  await updateCatalogPortalStatus(admin, row.id, status, region)
   return {
     id: row.id,
     username: row.username,

@@ -709,3 +709,47 @@ export async function upsertCatalogCandidate(
 ): Promise<void> {
   await upsertCatalogCandidateReturningId(sb, portal, status, region)
 }
+
+/** Manual Pool → Check status: update existing row only — never insert / never force catalog_pool. */
+export async function updateCatalogPortalStatus(
+  sb: SupabaseClient,
+  portalId: string,
+  status: PortalStatus,
+  region: RegionGuess,
+): Promise<void> {
+  const id = portalId.trim()
+  if (!id) throw new Error('portal id required')
+
+  const patch: Record<string, unknown> = {
+    alive: status.alive === true,
+    last_checked_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+  if (status.expiry != null && status.expiry !== '') {
+    patch.expiry = status.expiry
+  }
+  if (status.maxConnections != null && status.maxConnections !== '') {
+    patch.max_connections = status.maxConnections
+  }
+  if (status.timezone != null && status.timezone !== '') {
+    patch.timezone = status.timezone
+  }
+  if (region.primary && region.primary !== 'UNKNOWN') {
+    patch.region_primary = region.primary
+  }
+  if (region.tags.length > 0) {
+    patch.region_tags = region.tags
+  }
+  if (region.confidence > 0) {
+    patch.region_confidence = region.confidence
+  }
+
+  const { data, error } = await sb
+    .from('iptv_portals')
+    .update(patch)
+    .eq('id', id)
+    .select('id')
+    .maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error(`portal not found: ${id}`)
+}
