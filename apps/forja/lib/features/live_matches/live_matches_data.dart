@@ -248,12 +248,17 @@ mixin _LiveMatchesData
   }
 
   void _applyPrimaryLoad(LiveMatchesPrimaryLoad load) {
+    final lazyCatalog =
+        (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog;
     final forjaKeep = _s._streamedMatches.where((m) => m.isForjaLive).toList();
+    final damiKeep = lazyCatalog ? _s._damiTvStreams : const <_DamiTvStream>[];
     final oldCtrl = _s._tabController;
     setState(() {
       _s._tabController = null;
-      _s._damiTvStreams = load.damiTvStreams;
-      _s._streamedMatches = [...load.streamedMatches, ...forjaKeep];
+      _s._damiTvStreams = lazyCatalog ? damiKeep : load.damiTvStreams;
+      _s._streamedMatches = lazyCatalog
+          ? forjaKeep
+          : [...load.streamedMatches, ...forjaKeep];
       _s._espnGames = load.espnGames;
       _s._sports = load.sports;
       _s._loading = false;

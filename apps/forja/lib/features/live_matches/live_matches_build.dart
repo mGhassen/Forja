@@ -236,11 +236,13 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       ),
     );
   }
-  List<_LiveMatchGridEntry> get _allGridEntries =>
-      _mergePpvAndStreamedEntries(
-        ppv: _s._filteredDamiTv,
-        streamed: _s._filteredStreamed,
-      );
+  List<_LiveMatchGridEntry> get _allGridEntries {
+    final sources = (this as _LiveMatchesForjaLive)._catalogFilteredGridSources();
+    return _mergePpvAndStreamedEntries(
+      ppv: sources.ppv,
+      streamed: sources.streamed,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -542,7 +544,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       return _s._buildTimelineBody();
     }
     if (_s._server == _LiveMatchesServer.all ||
-        _s._server == _LiveMatchesServer.iptvSports) {
+        _s._server == _LiveMatchesServer.iptvSports ||
+        (_s._server == _LiveMatchesServer.forjaLive &&
+            (this as _LiveMatchesForjaLive)._showForjaLiveCatalogChrome)) {
       return _buildAllBody();
     }
     if (_s._server == _LiveMatchesServer.ppv) return _buildDamiTvBody();
@@ -633,7 +637,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     String tvRowId = 'grid',
     ShellTvZone tvZone = ShellTvZone.grid,
   }) {
-    final iptv = _s._server == _LiveMatchesServer.iptvSports;
     return switch (entry) {
       _LiveMatchGridEntryPpv(:final stream) => _DamiTvMatchCard(
         stream: stream,
@@ -646,7 +649,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         onHoverChanged: onHoverChanged,
         tvRowId: tvRowId,
         tvZone: tvZone,
-        playableOverride: iptv ? true : null,
         onTap: () => _s._openDamiTvStream(stream),
       ),
       _LiveMatchGridEntryStreamed(:final match) => _StreamedMatchCard(
@@ -660,7 +662,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         onHoverChanged: onHoverChanged,
         tvRowId: tvRowId,
         tvZone: tvZone,
-        playableOverride: iptv ? true : null,
         onTap: () => _s._openStreamedMatch(match),
       ),
       _LiveMatchGridEntryMerged(:final ppv, :final streamed) =>
@@ -675,10 +676,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
           onHoverChanged: onHoverChanged,
           tvRowId: tvRowId,
           tvZone: tvZone,
-          playableOverride: iptv
-              ? true
-              : ((ppv.iframe.isNotEmpty || streamed.sources.isNotEmpty) &&
-                  (ppv.isLive || streamed.isLive)),
+          playableOverride:
+              (ppv.iframe.isNotEmpty || streamed.sources.isNotEmpty) &&
+              (ppv.isLive || streamed.isLive),
           onTap: () => _s._openMergedMatch(ppv, streamed),
         ),
     };

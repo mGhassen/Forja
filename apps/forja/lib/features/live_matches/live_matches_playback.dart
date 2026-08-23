@@ -58,7 +58,7 @@ mixin _LiveMatchesPlayback
     _StreamedMatch streamed,
   ) async {
     if (_s._server == _LiveMatchesServer.iptvSports) {
-      await _openIptvSportsMatch(streamed, ppv: ppv);
+      await _openIptvSportsMatch(streamed);
       return;
     }
     if (_tvNativeLiveOnly) {
@@ -150,7 +150,55 @@ mixin _LiveMatchesPlayback
       return;
     }
 
+    _prependMatchingPpvChoices(match, choices);
     _showResolvedStreamSheet(match, choices);
+  }
+
+  void _prependMatchingPpvChoices(
+    _StreamedMatch match,
+    List<_StreamedStreamChoice> choices,
+  ) {
+    if (choices.any(_isPpvStreamChoice)) return;
+    for (final ppv in _s._damiTvStreams) {
+      if (!_samePpvStreamedMatch(ppv, match) || ppv.iframe.trim().isEmpty) {
+        continue;
+      }
+      choices.insert(0, _ppvStreamChoice(ppv, match));
+      break;
+    }
+  }
+
+  _StreamedStreamChoice _ppvStreamChoice(
+    _DamiTvStream ppv,
+    _StreamedMatch anchor,
+  ) {
+    return _StreamedStreamChoice(
+      catalogMatch: _StreamedMatch(
+        id: 'ppv:${ppv.id}',
+        title: anchor.title.isNotEmpty ? anchor.title : ppv.name,
+        category: ppv.categoryName,
+        dateMs: ppv.startsAt > 0 ? ppv.startsAt * 1000 : anchor.dateMs,
+        poster: ppv.poster.isNotEmpty ? ppv.poster : anchor.poster,
+        popular: false,
+        airing: ppv.isLive,
+        homeTeam: ppv.homeTeam ?? anchor.homeTeam,
+        homeBadge: ppv.homeBadge ?? anchor.homeBadge,
+        awayTeam: ppv.awayTeam ?? anchor.awayTeam,
+        awayBadge: ppv.awayBadge ?? anchor.awayBadge,
+        sources: const [],
+        catalog: 'forja_live',
+        livePluginId: 'live-ppv',
+      ),
+      stream: _StreamedStream(
+        id: ppv.id,
+        streamNo: 1,
+        language: '',
+        hd: false,
+        embedUrl: ppv.iframe,
+        source: 'ppv',
+        viewers: ppv.viewers,
+      ),
+    );
   }
 
   void _showResolvedStreamSheet(
@@ -234,35 +282,10 @@ mixin _LiveMatchesPlayback
     return _ppvEmbedRequiresWebView(choice.stream.embedUrl);
   }
 
-  _DamiTvStream _damiTvFromStreamChoice(_StreamedStreamChoice choice) {
-    final m = choice.catalogMatch;
-    final s = choice.stream;
-    return _DamiTvStream(
-      id: s.id.replaceFirst(RegExp(r'^ppv_'), ''),
-      name: m.title,
-      poster: m.poster,
-      startsAt: m.dateMs > 0 ? m.dateMs ~/ 1000 : 0,
-      endsAt: 0,
-      categoryName: m.category,
-      status: m.airing ? 'live' : '',
-      league: m.categoryLabel,
-      homeTeam: m.homeTeam,
-      homeBadge: m.homeBadge,
-      awayTeam: m.awayTeam,
-      awayBadge: m.awayBadge,
-      viewers: s.viewers,
-      iframe: s.embedUrl,
-    );
-  }
-
   Future<void> _openResolvedStreamChoice(
     _StreamedStreamChoice choice, {
     List<_StreamedStreamChoice>? allChoices,
   }) async {
-    if (_isPpvStreamChoice(choice)) {
-      await _openDamiTvStream(_damiTvFromStreamChoice(choice));
-      return;
-    }
     await _openStreamedEmbed(
       choice.catalogMatch,
       choice.stream,
@@ -546,10 +569,7 @@ mixin _LiveMatchesPlayback
     );
   }
 
-  Future<void> _openIptvSportsMatch(
-    _StreamedMatch match, {
-    _DamiTvStream? ppv,
-  }) async {
+  Future<void> _openIptvSportsMatch(_StreamedMatch match) async {
     if (!mounted) return;
     final iptvCtrl = ref.read(iptvControllerProvider);
     final espnPayload = _findEspnGameForMatch(match, _s._espnGames);
@@ -576,16 +596,9 @@ mixin _LiveMatchesPlayback
         unawaited(_playIptvSportsSources(enriched, all, picked));
       },
     );
+    panel.setSearchPhase('Forja Sports');
 
     try {
-      if (ppv != null && ppv.iframe.trim().isNotEmpty) {
-        panel.setSearchPhase('PPV');
-        final ppvSource = await _resolvePpvToPlaySource(ppv);
-        if (!panel.isDisposed && ppvSource != null) {
-          panel.appendSources([ppvSource]);
-        }
-      }
-      panel.setSearchPhase('Forja Sports');
       await _resolveIptvSportsStreams(
         enriched,
         onPartial: (batch) {
@@ -606,26 +619,6 @@ mixin _LiveMatchesPlayback
     IptvPlaySource picked,
   ) async {
     if (!mounted) return;
-    if (_isPpvEmbedPlaySource(picked)) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => _LiveMatchesEmbedPlayerScreen(
-            embedUrl: picked.url,
-            title: match.title.isNotEmpty ? match.title : picked.label,
-            subtitle: picked.detail ?? 'PPV',
-            badgeLabel: 'PPV',
-          ),
-        ),
-      );
-      return;
-    }
-    final kind = picked.liveSourceKind ?? IptvLiveSourceKind.iptvXtream;
-    final engineContext = switch (kind) {
-      IptvLiveSourceKind.iptvXtream => BuiltInPlayerContext.iptv,
-      IptvLiveSourceKind.stremio ||
-      IptvLiveSourceKind.liveEngine => BuiltInPlayerContext.live,
-    };
     final ordered = <IptvPlaySource>[
       picked,
       for (final s in sources)
@@ -639,70 +632,9 @@ mixin _LiveMatchesPlayback
         subtitle: picked.pickerTitle,
         logoUrl: picked.logoUrl,
         titleTracksSource: true,
-        engineContext: engineContext,
-        liveSourceKind: kind,
+        engineContext: BuiltInPlayerContext.iptv,
+        liveSourceKind: IptvLiveSourceKind.iptvXtream,
       ),
-    );
-  }
-
-  bool _isPpvEmbedPlaySource(IptvPlaySource source) {
-    if (source.liveSourceKind != IptvLiveSourceKind.liveEngine) return false;
-    final url = source.url.trim();
-    if (url.isEmpty) return false;
-    if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(url)) {
-      return false;
-    }
-    return _ppvEmbedRequiresWebView(url);
-  }
-
-  Future<IptvPlaySource?> _resolvePpvToPlaySource(_DamiTvStream s) async {
-    final iframe = s.iframe.trim();
-    if (iframe.isEmpty) return null;
-
-    if (await LiveMatchesEngine.isEngineResolveMode()) {
-      final result = await LiveMatchesEngine.resolve(
-        pluginId: 'live-ppv',
-        params: {
-          'matchId': s.id.toString(),
-          'embedUrl': iframe,
-          'iframe': iframe,
-          'title': s.name,
-          'category': s.categoryName,
-        },
-      );
-      if (result != null && result.playable) {
-        final headers = result.headers.isNotEmpty
-            ? result.headers
-            : (_ppvEmbedRequiresWebView(iframe)
-                  ? _ppvEmbedStreamHeaders(iframe)
-                  : _liveEmbedStreamHeaders(
-                      result.url,
-                      catalogReferer: _ppvReferer,
-                    ));
-        final direct = LiveGoatUnlock.preferDirectEnginePlayback(result.url);
-        final playUrl = direct
-            ? result.url
-            : await LiveMatchesEngine.proxyPlayUrl(
-                url: result.url,
-                headers: headers,
-              );
-        if (playUrl != null && playUrl.isNotEmpty) {
-          return IptvPlaySource(
-            url: playUrl,
-            label: s.name,
-            detail: 'PPV',
-            headers: direct ? headers : const {},
-            liveSourceKind: IptvLiveSourceKind.liveEngine,
-          );
-        }
-      }
-    }
-
-    return IptvPlaySource(
-      url: iframe,
-      label: s.name,
-      detail: 'PPV',
-      liveSourceKind: IptvLiveSourceKind.liveEngine,
     );
   }
 
@@ -742,6 +674,10 @@ mixin _LiveMatchesPlayback
     return '${months[dt.month - 1]} ${dt.day} $time';
   }
 
+  Future<void> _openIptvSportsFromPpv(_DamiTvStream s) async {
+    await _openIptvSportsMatch(_streamedMatchFromPpv(s));
+  }
+
   _StreamedMatch _streamedMatchFromPpv(_DamiTvStream s) => _StreamedMatch(
     id: 'ppv:${s.id}',
     title: s.name,
@@ -764,17 +700,23 @@ mixin _LiveMatchesPlayback
     final embed = stream.embedUrl.trim();
     if (embed.isEmpty) return null;
 
-    final catalogReferer = match.isForjaLive
+    final isPpv = match.livePluginId == 'live-ppv' ||
+        stream.source.trim().toLowerCase() == 'ppv';
+    final catalogReferer = isPpv
+        ? _ppvReferer
+        : match.isForjaLive
         ? (_forjaLiveCdnReferer(embed) ??
-            _forjaLiveWrapperReferer(embed, pluginId: match.livePluginId))
+              _forjaLiveWrapperReferer(embed, pluginId: match.livePluginId))
         : _streamedReferer;
     final pickerLabel = _streamPickerLabel(match, stream);
 
     if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
-      final headers = _liveEmbedStreamHeaders(
-        embed,
-        catalogReferer: match.isForjaLive ? _forjaLiveCdnReferer(embed) : null,
-      );
+      final headers = isPpv
+          ? _ppvEmbedStreamHeaders(embed)
+          : _liveEmbedStreamHeaders(
+              embed,
+              catalogReferer: match.isForjaLive ? _forjaLiveCdnReferer(embed) : null,
+            );
       final direct = LiveGoatUnlock.preferDirectEnginePlayback(embed);
       final playUrl = direct
           ? embed
@@ -788,13 +730,16 @@ mixin _LiveMatchesPlayback
       );
     }
 
-    final pluginId = match.isForjaLive && match.livePluginId.isNotEmpty
+    final pluginId = isPpv
+        ? 'live-ppv'
+        : match.isForjaLive && match.livePluginId.isNotEmpty
         ? match.livePluginId
         : 'live-streamed';
     final result = await LiveMatchesEngine.resolve(
       pluginId: pluginId,
       params: {
         'embedUrl': embed,
+        'iframe': embed,
         'url': embed,
         'source': stream.source,
         'matchId': stream.id,
@@ -807,6 +752,8 @@ mixin _LiveMatchesPlayback
 
     final headers = result.headers.isNotEmpty
         ? result.headers
+        : isPpv
+        ? _ppvEmbedStreamHeaders(embed.isNotEmpty ? embed : result.url)
         : _liveEmbedStreamHeaders(
             result.url,
             catalogReferer: catalogReferer,
@@ -849,36 +796,6 @@ mixin _LiveMatchesPlayback
     );
   }
 
-  Future<void> _openEngineNativeStream({
-    required String title,
-    required String subtitle,
-    required String url,
-    Map<String, String> headers = const {},
-    String label = 'Live',
-  }) async {
-    final direct = LiveGoatUnlock.preferDirectEnginePlayback(url);
-    final playUrl = direct
-        ? url
-        : await LiveMatchesEngine.proxyPlayUrl(url: url, headers: headers);
-    if (!mounted) return;
-    if (playUrl == null || playUrl.isEmpty) {
-      LiveMatchesEngine.engineResolveFailed();
-      return;
-    }
-    await _openEngineNativeSources(
-      title: title,
-      subtitle: subtitle,
-      sources: [
-        IptvPlaySource(
-          url: playUrl,
-          label: label,
-          headers: direct ? headers : const {},
-          liveSourceKind: IptvLiveSourceKind.liveEngine,
-        ),
-      ],
-    );
-  }
-
   Future<bool> _tryEngineStreamedOpen(
     _StreamedMatch match,
     _StreamedStream stream, {
@@ -889,7 +806,6 @@ mixin _LiveMatchesPlayback
     final candidates = <_StreamedStreamChoice>[];
     if (allChoices != null) {
       for (final choice in allChoices) {
-        if (_isPpvStreamChoice(choice)) continue;
         if (choice.stream.embedUrl.trim().isEmpty) continue;
         candidates.add(choice);
       }
@@ -942,45 +858,6 @@ mixin _LiveMatchesPlayback
     return true;
   }
 
-  Future<bool> _tryEnginePpvOpen(_DamiTvStream s) async {
-    if (!await LiveMatchesEngine.isEngineResolveMode()) return false;
-    LiveEngineResolveResult? result;
-    final ok = await _runWithCancellableLoading('Resolving stream…', () async {
-      result = await LiveMatchesEngine.resolve(
-        pluginId: 'live-ppv',
-        params: {
-          'matchId': s.id.toString(),
-          'embedUrl': s.iframe,
-          'iframe': s.iframe,
-          'title': s.name,
-          'category': s.categoryName,
-        },
-      );
-    });
-    if (!ok) return true;
-    if (result == null || !result!.playable) {
-      debugPrint(
-        '[LiveMatches] Engine PPV resolve missed — no embed fallback '
-        '(${s.name})',
-      );
-      LiveMatchesEngine.engineResolveFailed();
-      return true;
-    }
-    final headers = result!.headers.isNotEmpty
-        ? result!.headers
-        : (s.iframe.trim().isNotEmpty
-              ? _ppvEmbedStreamHeaders(s.iframe)
-              : _liveEmbedStreamHeaders(result!.url, catalogReferer: _ppvReferer));
-    await _openEngineNativeStream(
-      title: s.name,
-      subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
-      url: result!.url,
-      headers: headers,
-      label: 'PPV',
-    );
-    return true;
-  }
-
   Future<void> _openStreamedEmbed(
     _StreamedMatch match,
     _StreamedStream stream, {
@@ -991,6 +868,13 @@ mixin _LiveMatchesPlayback
       stream,
       allChoices: allChoices,
     )) {
+      return;
+    }
+
+    final isPpv = match.livePluginId == 'live-ppv' ||
+        stream.source.trim().toLowerCase() == 'ppv';
+    if (isPpv) {
+      LiveMatchesEngine.engineResolveFailed();
       return;
     }
 
@@ -1035,7 +919,7 @@ mixin _LiveMatchesPlayback
 
   Future<void> _openDamiTvStream(_DamiTvStream s) async {
     if (_s._server == _LiveMatchesServer.iptvSports) {
-      await _openIptvSportsMatch(_streamedMatchFromPpv(s), ppv: s);
+      await _openIptvSportsFromPpv(s);
       return;
     }
     if (_tvNativeLiveOnly) {
@@ -1047,20 +931,8 @@ mixin _LiveMatchesPlayback
       return;
     }
     if (!mounted) return;
-
-    if (await _tryEnginePpvOpen(s)) return;
-
-    if (!mounted) return;
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _LiveMatchesEmbedPlayerScreen(
-          embedUrl: s.iframe,
-          title: s.name,
-          subtitle: s.league.isNotEmpty ? s.league : s.categoryName,
-          badgeLabel: 'PPV',
-        ),
-      ),
-    );
+    final anchor = _streamedMatchFromPpv(s);
+    final choice = _ppvStreamChoice(s, anchor);
+    await _openStreamedEmbed(choice.catalogMatch, choice.stream);
   }
 }

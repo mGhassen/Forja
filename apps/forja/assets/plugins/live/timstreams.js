@@ -36,15 +36,19 @@ function pickStream(ev, streamKey) {
   return streams[0];
 }
 
-function resolveUrl(ctx, url) {
+function resolveUrl(ctx, url, name) {
   var ref = embedReferer(url);
   if (/\.m3u8|\.mp4/i.test(url)) {
-    return [{ url: url, headers: { Referer: ref, Origin: ref.replace(/\/$/, ''), 'User-Agent': ua() } }];
+    return {
+      url: url,
+      name: name || 'TimStreams',
+      headers: { Referer: ref, Origin: ref.replace(/\/$/, ''), 'User-Agent': ua() },
+    };
   }
   if (url) {
-    return [{ webviewOnly: true, embedUrl: url, referer: ref }];
+    return { webviewOnly: true, embedUrl: url, referer: ref, name: name || 'TimStreams' };
   }
-  return [];
+  return null;
 }
 
 async function resolveByEvent(ctx, cfg) {
@@ -55,7 +59,8 @@ async function resolveByEvent(ctx, cfg) {
   if (!ev) return [];
   var st = pickStream(ev, String(ctx.matchId || ''));
   if (!st || !st.url) return [];
-  return resolveUrl(ctx, String(st.url));
+  var row = resolveUrl(ctx, String(st.url), String(st.name || 'TimStreams'));
+  return row ? [row] : [];
 }
 
 async function extract(ctx) {
@@ -63,6 +68,9 @@ async function extract(ctx) {
   if (action !== 'resolve') return [];
   var cfg = ctx.config || {};
   var direct = String(ctx.url || ctx.embedUrl || '').trim();
-  if (direct) return resolveUrl(ctx, direct);
+  if (direct) {
+    var row = resolveUrl(ctx, direct, 'TimStreams');
+    return row ? [row] : [];
+  }
   return resolveByEvent(ctx, cfg);
 }

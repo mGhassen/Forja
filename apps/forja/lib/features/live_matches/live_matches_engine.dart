@@ -64,13 +64,27 @@ class LiveMatchesEngine {
       final embed = (params['embedUrl'] ?? params['iframe'] ?? '')
           .toString()
           .trim();
-      if (embed.isNotEmpty) {
+      if (embed.contains('embed.st')) {
         final native = await LiveGoatUnlock.resolveStreamed(embedUrl: embed);
         if (native != null) {
           return LiveEngineResolveResult.playable(
             url: native.url,
             headers: native.headers,
             label: 'PPV',
+          );
+        }
+      }
+    }
+
+    if (pluginId == 'live-watchfooty') {
+      final embed = (params['embedUrl'] ?? params['url'] ?? '').toString().trim();
+      if (embed.isNotEmpty) {
+        final native = await LiveGoatUnlock.resolveWatchfootyEmbed(embedUrl: embed);
+        if (native != null) {
+          return LiveEngineResolveResult.playable(
+            url: native.url,
+            headers: native.headers,
+            label: 'WatchFooty',
           );
         }
       }

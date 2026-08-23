@@ -1246,6 +1246,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     return ListLetterJumpScope(
       enabled: !iptvLeanbackOnly(context),
       itemCount: groups.length,
+      anchorIndex: groups.isEmpty
+          ? -1
+          : _focusedGroupIndex.clamp(0, groups.length - 1),
       labelAt: (i) => groups[i].name,
       onJump: _letterJumpGroup,
       child: IptvTvScrollbar(
@@ -1365,6 +1368,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     return ListLetterJumpScope(
       enabled: !iptvLeanbackOnly(context),
       itemCount: channels.length,
+      anchorIndex: channels.isEmpty
+          ? -1
+          : _focusedChannelIndex.clamp(0, channels.length - 1),
       labelAt: (i) => channels[i].name,
       onJump: _jumpToChannelByLetter,
       child: IptvTvScrollbar(

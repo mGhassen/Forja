@@ -6,21 +6,27 @@ void main() {
   group('ListLetterJumpMatcher', () {
     final labels = ['France', 'Finland', 'USA', 'Uruguay'];
 
-    int? jump(String letter, ListLetterJumpMatcher matcher) {
-      return matcher.nextIndex(
-        letter: letter,
-        timeStamp: const Duration(milliseconds: 1),
-        itemCount: labels.length,
-        labelAt: (i) => labels[i],
-      );
-    }
-
-    int? jumpAt(String letter, ListLetterJumpMatcher matcher, int ms) {
+    int? jump(String letter, ListLetterJumpMatcher matcher, {int ms = 1}) {
       return matcher.nextIndex(
         letter: letter,
         timeStamp: Duration(milliseconds: ms),
         itemCount: labels.length,
         labelAt: (i) => labels[i],
+      );
+    }
+
+    int? jumpAt(
+      String letter,
+      ListLetterJumpMatcher matcher,
+      int ms, {
+      int anchor = -1,
+    }) {
+      return matcher.nextIndex(
+        letter: letter,
+        timeStamp: Duration(milliseconds: ms),
+        itemCount: labels.length,
+        labelAt: (i) => labels[i],
+        anchorIndex: anchor,
       );
     }
 
@@ -32,8 +38,8 @@ void main() {
     test('repeat letter cycles matches without wrapping', () {
       final m = ListLetterJumpMatcher();
       expect(jump('f', m), 0);
-      expect(jump('f', m), 1);
-      expect(jump('f', m), 1);
+      expect(jump('f', m, ms: 2), 1);
+      expect(jump('f', m, ms: 3), 1);
     });
 
     test('multi-letter prefix within timeout', () {
@@ -47,6 +53,11 @@ void main() {
       final m = ListLetterJumpMatcher();
       expect(jumpAt('f', m, 0), 0);
       expect(jumpAt('i', m, 40), 1);
+    });
+
+    test('fresh letter continues after anchor', () {
+      final m = ListLetterJumpMatcher();
+      expect(jumpAt('f', m, 0, anchor: 1), 0);
     });
 
     test('batched letters in one event', () {
@@ -69,7 +80,21 @@ void main() {
       expect(jump('f', m), 0);
     });
 
-    test('letterFromKeyDown uses keyLabel when character is null', () {
+    test('multi-letter matches substring anywhere in label', () {
+      final labels = ['Spain', 'EU | FR - live', 'Germany'];
+      final m = ListLetterJumpMatcher();
+      expect(
+        m.nextIndices(
+          letters: 'fr',
+          timeStamp: const Duration(milliseconds: 1),
+          itemCount: labels.length,
+          labelAt: (i) => labels[i],
+        ),
+        1,
+      );
+    });
+
+    test('lettersFromKeyDown uses logical key when character is null', () {
       final event = KeyDownEvent(
         physicalKey: PhysicalKeyboardKey.keyF,
         logicalKey: LogicalKeyboardKey.keyF,

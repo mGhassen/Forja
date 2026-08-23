@@ -43,7 +43,7 @@ mixin _LiveMatchesForjaLive
       _s._forjaLivePluginLoads.values.any((e) => e.loading);
 
   bool _forjaLiveMatchPlayable(_StreamedMatch match) {
-    if (_forjaLiveAnyLoading) return false;
+    if (_forjaLiveAnyLoading || !match.isLive) return false;
     return _streamedMatchesForEvent(match, _s._streamedMatches).any(
       (m) =>
           m.sources.isNotEmpty ||
@@ -58,8 +58,7 @@ mixin _LiveMatchesForjaLive
     if (_s._server == _LiveMatchesServer.forjaLive) {
       list = list.where((m) => !m.isIptvSports).toList();
     }
-    if (_s._server == _LiveMatchesServer.forjaLive &&
-        _s._forjaLivePluginFilter != 'all') {
+    if (_showForjaLiveCatalogChrome && _s._forjaLivePluginFilter != 'all') {
       list = list
           .where(
             (m) => _streamedMatchesForEvent(m, _s._streamedMatches).any(
@@ -71,10 +70,32 @@ mixin _LiveMatchesForjaLive
     return list;
   }
 
+  ({List<_DamiTvStream> ppv, List<_StreamedMatch> streamed})
+  _catalogFilteredGridSources() {
+    var ppv = (this as _LiveMatchesData)._filteredDamiTv;
+    var streamed = (this as _LiveMatchesData)._filteredStreamed;
+    if (!_showForjaLiveCatalogChrome || _s._forjaLivePluginFilter == 'all') {
+      return (ppv: ppv, streamed: streamed);
+    }
+    final filter = _s._forjaLivePluginFilter;
+    if (filter == 'live-ppv') {
+      return (ppv: ppv, streamed: []);
+    }
+    streamed = streamed
+        .where(
+          (m) => _streamedMatchesForEvent(m, _s._streamedMatches).any(
+            (row) => row.livePluginId == filter,
+          ),
+        )
+        .toList();
+    return (ppv: [], streamed: streamed);
+  }
+
   void _resetForjaLiveCatalogState() {
     EngineService.instance.cancelLiveCatalog();
     _s._forjaLiveLoadGen++;
     _s._forjaLivePluginLoads = {};
+    _s._damiTvStreams = [];
     _s._streamedMatches = _s._streamedMatches
         .where((m) => !m.isForjaLive)
         .toList();
@@ -220,13 +241,37 @@ mixin _LiveMatchesForjaLive
           catalogPlugin: catalog,
           extraConfig: extraConfig,
         );
-        final matches = rows
-            .where(_forjaLiveCatalogRowVisible)
-            .map(_forjaLiveRowToMatch)
-            .where((m) => m.id.isNotEmpty && m.title.isNotEmpty)
-            .take(_kForjaLiveCatalogMaxPerPlugin)
-            .toList();
         if (!mounted || gen != _s._forjaLiveLoadGen) return;
+        if (catalog.id == 'catalog-ppv') {
+          final streams = rows
+              .map(_damiTvFromPpvCatalogRow)
+              .where((s) => s.id.isNotEmpty && s.name.isNotEmpty)
+              .toList();
+          setState(() {
+            _s._damiTvStreams = [..._s._damiTvStreams, ...streams];
+            _s._forjaLivePluginLoads[filterId] =
+                _s._forjaLivePluginLoads[filterId]!.copyWith(
+              loading: false,
+              matchCount: streams.length,
+              error: null,
+            );
+          });
+          _rebuildSportTabsFromCurrentMatches();
+          continue;
+        }
+
+        final Iterable<Map<String, dynamic>> visibleRows;
+        if (catalog.id == 'catalog-streamed') {
+          visibleRows = rows;
+        } else {
+          visibleRows = rows.where(_forjaLiveCatalogRowVisible);
+        }
+        final matchRows = visibleRows
+            .map(_forjaLiveRowToMatch)
+            .where((m) => m.id.isNotEmpty && m.title.isNotEmpty);
+        final matches = catalog.id == 'catalog-streamed'
+            ? matchRows.toList()
+            : matchRows.take(_kForjaLiveCatalogMaxPerPlugin).toList();
         setState(() {
           _s._streamedMatches = _sortStreamedLiveFirst([
             ..._s._streamedMatches,
@@ -242,6 +287,7 @@ mixin _LiveMatchesForjaLive
             error: null,
           );
         });
+        _rebuildSportTabsFromCurrentMatches();
       } catch (e) {
         debugPrint('[LiveMatches] Forja Live ${catalog.id}: $e');
         if (!mounted || gen != _s._forjaLiveLoadGen) return;

@@ -36,7 +36,9 @@ class LiveMatchesPrimaryLoad {
   final List<Map<String, dynamic>> espnGames;
 }
 
-Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
+/// PPV + Streamed schedule for Forja Sports / dedicated server tabs only.
+/// **All** / **Forja Live** load every enabled catalog via lazy chips instead.
+Future<LiveMatchesPrimaryLoad> _fetchPpvStreamedScheduleBase() async {
   final results = await Future.wait([
     _fetchDamiTvStreams().catchError((_) => <_DamiTvStream>[]),
     _fetchStreamedMatches().catchError((_) => <_StreamedMatch>[]),
@@ -73,6 +75,10 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
     damiTvStreams: ppvStreams,
     streamedMatches: rustStreamed,
   );
+}
+
+Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
+  return const LiveMatchesPrimaryLoad(sports: []);
 }
 
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesPpv() async {
@@ -189,7 +195,6 @@ Future<List<_StreamedMatch>> _fetchForjaLiveMatches() async {
 // Kept for bulk fetch tests / tooling; Live Matches UI uses lazy per-plugin load.
 
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesForjaLive() async {
-  // Same PPV · Streamed base as All — engine catalogs + Rust ESPN merge on top.
   return _fetchLiveMatchesAll();
 }
 
@@ -213,7 +218,7 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStremio() async {
 
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesIptvSports() async {
   final results = await Future.wait([
-    _fetchLiveMatchesAll(),
+    _fetchPpvStreamedScheduleBase(),
     _fetchEspnSportMatchGames(),
   ]);
   final all = results[0] as LiveMatchesPrimaryLoad;

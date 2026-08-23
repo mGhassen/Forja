@@ -18,15 +18,42 @@ async function fetchList(ctx, cfg) {
   return Array.isArray(data) ? data : (data.events || data.streams || []);
 }
 
-function resolveUrl(ctx, url) {
+function resolveOne(ctx, url, name) {
   var ref = embedReferer(url);
   if (/\.m3u8/i.test(url)) {
-    return [{ url: url, headers: { Referer: ref, Origin: ref.replace(/\/$/, ''), 'User-Agent': ua() } }];
+    return {
+      url: url,
+      name: name || 'Streamic',
+      headers: { Referer: ref, Origin: ref.replace(/\/$/, ''), 'User-Agent': ua() },
+    };
   }
   if (url) {
-    return [{ webviewOnly: true, embedUrl: url, referer: ref }];
+    return { webviewOnly: true, embedUrl: url, referer: ref, name: name || 'Streamic' };
   }
-  return [];
+  return null;
+}
+
+function collectEmbeds(ctx, m) {
+  var out = [];
+  (m._embeds || []).forEach(function (group) {
+    var lang = String(group.language || '').trim();
+    (group.embeds || []).forEach(function (e) {
+      var url = String(e.embed || e.url || '').trim();
+      if (!url) return;
+      var label = String(e.label || '').trim();
+      var name = lang && label ? lang + ' · ' + label : lang || label || 'Streamic';
+      var row = resolveOne(ctx, url, name);
+      if (row) out.push(row);
+    });
+  });
+  if (!out.length) {
+    var direct = String(m.url || m.link || '').trim();
+    if (direct) {
+      var row = resolveOne(ctx, direct, 'Streamic');
+      if (row) out.push(row);
+    }
+  }
+  return out;
 }
 
 async function resolveByEvent(ctx, cfg) {
@@ -36,7 +63,7 @@ async function resolveByEvent(ctx, cfg) {
   for (var i = 0; i < list.length; i++) {
     var m = list[i];
     if (String(m.id || i) === eventKey) {
-      return resolveUrl(ctx, String(m.url || m.link || ''));
+      return collectEmbeds(ctx, m);
     }
   }
   return [];
@@ -47,6 +74,9 @@ async function extract(ctx) {
   if (action !== 'resolve') return [];
   var cfg = ctx.config || {};
   var direct = String(ctx.url || ctx.embedUrl || '').trim();
-  if (direct) return resolveUrl(ctx, direct);
+  if (direct) {
+    var row = resolveOne(ctx, direct, 'Streamic');
+    return row ? [row] : [];
+  }
   return resolveByEvent(ctx, cfg);
 }

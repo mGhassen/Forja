@@ -164,11 +164,9 @@ class EngineService {
   Future<List<EnginePlugin>> listEnabledLiveCatalogPlugins() async {
     await ensureBundledInstalled();
     final out = <EnginePlugin>[];
-    const serverTabCatalogIds = {'catalog-streamed', 'catalog-ppv'};
     for (final pack in await listPacks()) {
       for (final p in pack.plugins) {
         if (!p.isLiveCatalog || !p.isHttp || !p.enabled) continue;
-        if (serverTabCatalogIds.contains(p.id)) continue;
         out.add(p);
       }
     }
@@ -813,15 +811,18 @@ class EngineService {
       'type': 'live',
       'season': 1,
       'episode': 1,
-      'title': '',
       'year': '',
-      'url': '',
+      ...params,
+      'title': (params['title'] ?? '').toString(),
+      'url': (params['url'] ?? params['embedUrl'] ?? '').toString(),
       'action': action,
-      'matchId': params['matchId'] ?? '',
-      'source': params['source'] ?? '',
-      'stream': params['stream'] ?? '',
-      'embedUrl': params['embedUrl'] ?? params['url'] ?? '',
-      'category': params['category'] ?? '',
+      'matchId': (params['matchId'] ?? '').toString(),
+      'source': (params['source'] ?? '').toString(),
+      'stream': (params['stream'] ?? '').toString(),
+      'eventId': (params['eventId'] ?? '').toString(),
+      'embedUrl': (params['embedUrl'] ?? params['url'] ?? '').toString(),
+      'iframe': (params['iframe'] ?? params['embedUrl'] ?? '').toString(),
+      'category': (params['category'] ?? '').toString(),
       'config': config,
     };
 

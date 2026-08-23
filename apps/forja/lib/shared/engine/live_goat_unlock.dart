@@ -14,8 +14,103 @@ class LiveGoatUnlock {
 
   static const _assetRoot = 'assets/plugins/live/goat';
   static const _embedOrigin = 'https://embed.st';
+  static const _watchfootyReferer = 'https://watchfooty.st/';
+  static const _sportsEmbedHosts = ['sportsembed.su', 'spiderembed.top'];
+  static const _goatSlotSources = {
+    'admin',
+    'delta',
+    'echo',
+    'golf',
+    'ppv',
+    'bravo',
+  };
   static const _ua =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+  static bool isSportsEmbedUrl(String url) {
+    final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+    if (host.isEmpty) return false;
+    return _sportsEmbedHosts.any((h) => host == h || host.endsWith('.$h'));
+  }
+
+  /// sportsembed.su mirrors embed.st — `/embed/{event}/{slug}/{source}/{n}`.
+  static String? embedStUrlFromSportsEmbed(String raw) {
+    final uri = Uri.tryParse(raw.trim());
+    if (uri == null || !isSportsEmbedUrl(raw)) return null;
+    final segs = uri.pathSegments;
+    if (segs.length < 5 || segs.first != 'embed') return null;
+    final slug = segs[2];
+    final source = segs[3].toLowerCase();
+    final stream = segs[4];
+    if (!_goatSlotSources.contains(source)) return null;
+    return '$_embedOrigin/embed/$source/$slug/$stream';
+  }
+
+  /// hd / platinum rows on sportsembed map to admin `ppv-…` slots on embed.st.
+  static Iterable<String> embedStAdminCandidatesFromSportsEmbed(String raw) {
+    final uri = Uri.tryParse(raw.trim());
+    if (uri == null || !isSportsEmbedUrl(raw)) return const [];
+    final segs = uri.pathSegments;
+    if (segs.length < 5 || segs.first != 'embed') return const [];
+    final slug = segs[2];
+    final quality = segs[3].toLowerCase();
+    final stream = segs[4];
+    if (quality != 'hd' && quality != 'platinum') return const [];
+
+    final parts = slug.split('-').where((p) => p.isNotEmpty).toList();
+    if (parts.length < 2) return const [];
+
+    final ids = <String>{'ppv-$slug'};
+    for (var i = 1; i < parts.length; i++) {
+      final home = parts.sublist(0, i).join('-');
+      final away = parts.sublist(i).join('-');
+      ids.add('ppv-$home-vs-$away');
+    }
+    return ids.map((id) => '$_embedOrigin/embed/admin/$id/$stream');
+  }
+
+  /// Unlock watchfooty.st sportsembed mirrors to a playable HLS URL.
+  static Future<({String url, Map<String, String> headers})?>
+  resolveWatchfootyEmbed({required String embedUrl}) async {
+    final embed = embedUrl.trim();
+    if (embed.isEmpty) return null;
+    if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
+      return (
+        url: embed,
+        headers: {
+          'Referer': _watchfootyReferer,
+          'User-Agent': _ua,
+        },
+      );
+    }
+    if (!isSportsEmbedUrl(embed)) return null;
+
+    final mapped = embedStUrlFromSportsEmbed(embed);
+    if (mapped != null) {
+      final unlocked = await resolveStreamed(embedUrl: mapped);
+      if (unlocked != null) return unlocked;
+    }
+
+    for (final candidate in embedStAdminCandidatesFromSportsEmbed(embed)) {
+      final unlocked = await resolveStreamed(embedUrl: candidate);
+      if (unlocked != null) return unlocked;
+    }
+
+    final sniffed = await sniffEmbed(
+      embedUrl: embed,
+      referer: _watchfootyReferer,
+    );
+    if (sniffed == null || sniffed.isEmpty) return null;
+    final origin = Uri.tryParse(embed)?.origin ?? '';
+    return (
+      url: sniffed,
+      headers: {
+        'Referer': embed,
+        if (origin.isNotEmpty) 'Origin': origin,
+        'User-Agent': _ua,
+      },
+    );
+  }
   static String? _cachedDir;
   static Future<void>? _prepareFuture;
 

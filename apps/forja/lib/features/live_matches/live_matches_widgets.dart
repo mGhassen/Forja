@@ -3307,6 +3307,7 @@ class _StreamedStreamSheet extends StatefulWidget {
   }
 
   static String serverLabelFor(_StreamedMatch match) {
+    if (match.livePluginId == 'live-ppv') return 'PPV';
     if (match.isMut) return 'Mut';
     if (match.isForjaLive) {
       return _liveForjaPluginDisplayName(match.livePluginId);
@@ -3670,11 +3671,8 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
         m.isIptvSports ||
         m.sportMatchGame != null;
     final hasTeams = m.homeTeam != null && m.awayTeam != null;
-    // My IPTV: match channels anytime today (pregame feeds exist).
     final canPlay =
-        widget.playableOverride ??
-        (hasSources &&
-            (m.isLive || m.isIptvSports || m.sportMatchGame != null));
+        widget.playableOverride ?? (hasSources && m.isLive);
     final policy = ShellScope.inputPolicyOf(context);
     final tv = ShellScope.metricsOf(context).usesTvDensity;
     final active =

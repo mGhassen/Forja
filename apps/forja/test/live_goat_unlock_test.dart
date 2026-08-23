@@ -37,6 +37,43 @@ void main() {
     });
   });
 
+  group('LiveGoatUnlock.sportsEmbed', () {
+    test('delta sportsembed maps to embed.st slot', () {
+      final mapped = LiveGoatUnlock.embedStUrlFromSportsEmbed(
+        'https://sportsembed.su/embed/761748/live_mls_austin-philadelphia-live-streaming-538781760/delta/1',
+      );
+      expect(
+        mapped,
+        'https://embed.st/embed/delta/live_mls_austin-philadelphia-live-streaming-538781760/1',
+      );
+    });
+
+    test('hd sportsembed builds admin ppv candidates', () {
+      final candidates = LiveGoatUnlock.embedStAdminCandidatesFromSportsEmbed(
+        'https://sportsembed.su/embed/761748/austin-fc-philadelphia-union/hd/1',
+      ).toList();
+      expect(
+        candidates,
+        contains(
+          'https://embed.st/embed/admin/ppv-austin-fc-vs-philadelphia-union/1',
+        ),
+      );
+    });
+
+    test('isSportsEmbedUrl recognizes sportsembed host', () {
+      expect(
+        LiveGoatUnlock.isSportsEmbedUrl(
+          'https://sportsembed.su/embed/1/foo/delta/1',
+        ),
+        isTrue,
+      );
+      expect(
+        LiveGoatUnlock.isSportsEmbedUrl('https://embed.st/embed/delta/x/1'),
+        isFalse,
+      );
+    });
+  });
+
   group('LiveGoatUnlock.preferDirectEnginePlayback', () {
     test('delta and echo media playlists open direct', () {
       expect(

@@ -177,7 +177,6 @@ async function resolvePpv(ctx, cfg) {
       var embedResolved = await resolveEmbedSt(ctx, iframe, cfg);
       if (embedResolved) return embedResolved;
     } catch (_) {}
-    return [{ webviewOnly: true, embedUrl: iframe }];
   }
   return [];
 }

@@ -26,7 +26,8 @@ fn cfg_str(config: &Value, key: &str, default: &str) -> String {
 
 fn norm_category(raw: &str) -> String {
     let s = raw.trim().to_lowercase();
-    if s.contains("football") || s.contains("soccer") {
+    if s.contains("football") || s.contains("soccer") || s.contains("pilkanozna") || s.contains("pilka")
+    {
         return "football".into();
     }
     if s.contains("basket") {
@@ -39,6 +40,33 @@ fn norm_category(raw: &str) -> String {
         return "mma".into();
     }
     s.replace(' ', "-")
+}
+
+fn streamic_catalog_window(ts: i64) -> bool {
+    if ts <= 0 {
+        return false;
+    }
+    let ms = if ts >= 1_000_000_000_000 {
+        ts
+    } else {
+        ts * 1000
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    ms >= now - 24 * 3_600_000 && ms <= now + 7 * 24 * 3_600_000
+}
+
+fn streamic_is_airing(start_time: i64) -> bool {
+    if start_time <= 0 {
+        return false;
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    start_time <= now && start_time >= now - 6 * 3600
 }
 
 fn in_catalog_window(ts: i64, live: bool) -> bool {
@@ -58,6 +86,68 @@ fn in_catalog_window(ts: i64, live: bool) -> bool {
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0);
     ms >= now - 3 * 3_600_000 && ms <= now + 24 * 3_600_000
+}
+
+fn timstreams_genre_category(ev: &Value) -> String {
+    if let Some(id) = ev.get("genre").and_then(|v| v.as_i64()) {
+        let cat = match id {
+            1 => "football",
+            2 => "motorsport",
+            3 | 5 => "mma",
+            4 => "hockey",
+            6 => "tennis",
+            7 => "basketball",
+            8 => "american-football",
+            9 => "baseball",
+            _ => "other",
+        };
+        if cat != "other" {
+            return cat.into();
+        }
+    }
+    let genre = ev
+        .pointer("/genre/name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("other");
+    norm_category(genre)
+}
+
+fn timstreams_event_time(ev: &Value) -> i64 {
+    let Some(raw) = ev.get("time").and_then(|v| v.as_str()) else {
+        return 0;
+    };
+    let (date, time) = match raw.split_once('T') {
+        Some(parts) => parts,
+        None => return 0,
+    };
+    let mut dp = date.split('-');
+    let year: i64 = dp.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let month: i64 = dp.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let day: i64 = dp.next().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let hour: i64 = time.get(0..2).and_then(|s| s.parse().ok()).unwrap_or(0);
+    let minute: i64 = time.get(3..5).and_then(|s| s.parse().ok()).unwrap_or(0);
+    if year <= 0 || !(1..=12).contains(&month) || !(1..=31).contains(&day) {
+        return 0;
+    }
+    let days = (year - 1970) * 365
+        + (year - 1969) / 4
+        - (year - 1901) / 100
+        + (year - 1601) / 400
+        + [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334][(month - 1) as usize]
+        + day
+        - 1;
+    days * 86_400 + hour * 3600 + minute * 60
+}
+
+fn timstreams_is_airing(start_time: i64) -> bool {
+    if start_time <= 0 {
+        return false;
+    }
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+    start_time <= now && start_time >= now - 6 * 3600
 }
 
 fn timstreams(config: &Value) -> Vec<Value> {
@@ -107,18 +197,17 @@ fn timstreams(config: &Value) -> Vec<Value> {
         } else {
             format!("ts_{url}")
         };
-        let genre = ev
-            .pointer("/genre/name")
-            .and_then(|v| v.as_str())
-            .unwrap_or("other");
+        let start_time = timstreams_event_time(ev);
+        let airing = timstreams_is_airing(start_time);
+        let viewers = ev.get("viewers").and_then(|v| v.as_i64()).unwrap_or(0);
         out.push(json!({
             "id": id,
             "title": ev.get("name").and_then(|v| v.as_str()).unwrap_or("TimStreams event"),
-            "category": norm_category(genre),
-            "date": chrono_now_ms(),
-            "poster": "",
-            "popular": ev.get("featured").and_then(|v| v.as_bool()).unwrap_or(false),
-            "airing": false,
+            "category": timstreams_genre_category(ev),
+            "date": if start_time > 0 { start_time } else { chrono_now_ms() },
+            "poster": ev.get("logo").and_then(|v| v.as_str()).unwrap_or(""),
+            "popular": ev.get("featured").and_then(|v| v.as_bool()).unwrap_or(false) || viewers > 100,
+            "airing": airing,
             "sources": sources,
             "catalog": "forja_live",
             "pluginId": plugin_id,
@@ -154,17 +243,29 @@ fn streamic(config: &Value) -> Vec<Value> {
             .cloned()
             .unwrap_or_default()
     };
-    list.iter()
-        .enumerate()
-        .filter_map(|(i, m)| {
+    let mut filtered: Vec<(i64, Value)> = list
+        .into_iter()
+        .filter_map(|m| {
+            let start_time = m.get("startTime").and_then(|v| v.as_i64()).unwrap_or(0);
+            if !streamic_catalog_window(start_time) {
+                return None;
+            }
+            Some((start_time, m))
+        })
+        .collect();
+    filtered.sort_by_key(|(ts, _)| *ts);
+    filtered
+        .into_iter()
+        .take(WATCHFOOTY_MAX)
+        .filter_map(|(start_time, m)| {
             let id = m
                 .get("id")
                 .map(|v| match v {
                     Value::String(s) => s.clone(),
                     Value::Number(n) => n.to_string(),
-                    _ => i.to_string(),
+                    _ => String::new(),
                 })
-                .unwrap_or_else(|| i.to_string());
+                .filter(|s| !s.is_empty())?;
             let title = m
                 .get("title")
                 .or_else(|| m.get("name"))
@@ -175,14 +276,15 @@ fn streamic(config: &Value) -> Vec<Value> {
                 .or_else(|| m.get("category"))
                 .and_then(|v| v.as_str())
                 .unwrap_or("other");
+            let airing = streamic_is_airing(start_time);
             Some(json!({
                 "id": format!("sic_{id}"),
                 "title": title,
-                "category": category.to_lowercase(),
-                "date": chrono_now_ms(),
+                "category": norm_category(category),
+                "date": if start_time > 0 { start_time } else { chrono_now_ms() },
                 "poster": "",
-                "popular": false,
-                "airing": false,
+                "popular": airing,
+                "airing": airing,
                 "sources": [{ "source": "streamic", "id": id }],
                 "catalog": "forja_live",
                 "pluginId": plugin_id,
@@ -359,6 +461,42 @@ mod tests {
     fn norm_category_maps_soccer() {
         assert_eq!(norm_category("Soccer"), "football");
         assert_eq!(norm_category("Premier Football"), "football");
+    }
+
+    #[test]
+    fn norm_category_maps_polish_football() {
+        assert_eq!(norm_category("pilkanozna_wazne"), "football");
+    }
+
+    #[test]
+    fn streamic_catalog_window_accepts_recent_kickoff() {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        assert!(streamic_catalog_window(now - 3600));
+    }
+
+    #[test]
+    fn streamic_is_airing_when_started_recently() {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        assert!(streamic_is_airing(now - 1800));
+        assert!(!streamic_is_airing(now + 3600));
+    }
+
+    #[test]
+    fn timstreams_genre_maps_nfl() {
+        let ev = json!({ "genre": 8, "name": "Saints @ Rams" });
+        assert_eq!(timstreams_genre_category(&ev), "american-football");
+    }
+
+    #[test]
+    fn timstreams_event_time_parses_iso_local() {
+        let ev = json!({ "time": "2026-08-22T18:00" });
+        assert!(timstreams_event_time(&ev) > 0);
     }
 
     #[test]

@@ -420,6 +420,30 @@ class _BrowserViewState extends State<_BrowserView> {
   bool get _letterJumpEnabled =>
       !iptvLeanbackOnly(context) && !_searchOpen && !_tvFloatingReorder;
 
+  int _letterJumpAnchorInJumpList(
+    List<IptvCategory> jumpCats,
+    List<IptvCategory> cats,
+  ) {
+    final handle = ShellTvFocusCoordinator.rowHandle('iptv', 'browser-categories');
+    if (handle != null && handle.itemCount > 0 && cats.isNotEmpty) {
+      final fullIdx = handle.lastFocusedIndex.clamp(0, cats.length - 1);
+      final jumpIdx = jumpCats.indexWhere((c) => c.id == cats[fullIdx].id);
+      if (jumpIdx >= 0) return jumpIdx;
+    }
+    final selected = widget.ctrl.browserSelectedCategoryId;
+    if (selected != null && !IptvLiveCatalog.isSyntheticId(selected)) {
+      final jumpIdx = jumpCats.indexWhere((c) => c.id == selected);
+      if (jumpIdx >= 0) return jumpIdx;
+    }
+    return -1;
+  }
+
+  int _letterJumpStreamAnchor() {
+    final handle = ShellTvFocusCoordinator.rowHandle('iptv', 'browser-streams');
+    if (handle == null || handle.itemCount <= 0) return -1;
+    return handle.lastFocusedIndex.clamp(0, handle.itemCount - 1);
+  }
+
   void _letterJumpCategory(int index) {
     final cats = _filteredCategories;
     if (index < 0 || index >= cats.length) return;
@@ -1140,6 +1164,7 @@ class _BrowserViewState extends State<_BrowserView> {
           final list = ListLetterJumpScope(
             enabled: _letterJumpEnabled && jumpCats.isNotEmpty,
             itemCount: jumpCats.length,
+            anchorIndex: _letterJumpAnchorInJumpList(jumpCats, cats),
             labelAt: (i) {
               final name = jumpCats[i].name;
               return name.isEmpty ? 'Uncategorized' : name;
@@ -1273,6 +1298,7 @@ class _BrowserViewState extends State<_BrowserView> {
           child: ListLetterJumpScope(
             enabled: _letterJumpEnabled,
             itemCount: list.length,
+            anchorIndex: _letterJumpStreamAnchor(),
             labelAt: (i) => list[i].name,
             onJump: _letterJumpStream,
             child: IptvTvScrollbar(controller: _streamScroll, child: scrollable),
@@ -1337,6 +1363,7 @@ class _BrowserViewState extends State<_BrowserView> {
       child: ListLetterJumpScope(
         enabled: _letterJumpEnabled,
         itemCount: list.length,
+        anchorIndex: _letterJumpStreamAnchor(),
         labelAt: (i) => list[i].name,
         onJump: _letterJumpStream,
         child: IptvTvScrollbar(controller: _streamScroll, child: scrollable),
