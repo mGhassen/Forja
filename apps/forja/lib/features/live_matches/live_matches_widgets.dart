@@ -254,7 +254,6 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
   bool _iptvSportsEnabled = false;
 
   List<_LiveMatchesServer> get _servers => _liveMatchesServersForSurface(
-    tv: ShellScope.inputPolicyOf(context).useFocusableMoodChips,
     iptvSportsEnabled: _iptvSportsEnabled,
   );
 

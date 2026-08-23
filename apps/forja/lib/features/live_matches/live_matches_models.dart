@@ -2911,18 +2911,9 @@ String _liveForjaPluginDisplayName(String pluginId) {
 }
 
 /// Server picker order: Forja Live first, Stremio last. **All** is hidden.
-/// Android TV / leanback: also hide embed-only servers (PPV / Streamed / Mut).
 List<_LiveMatchesServer> _liveMatchesServersForSurface({
-  required bool tv,
   bool iptvSportsEnabled = false,
 }) {
-  if (tv) {
-    return [
-      _LiveMatchesServer.forjaLive,
-      if (iptvSportsEnabled) _LiveMatchesServer.iptvSports,
-      _LiveMatchesServer.stremio,
-    ];
-  }
   return [
     _LiveMatchesServer.forjaLive,
     _LiveMatchesServer.ppv,
@@ -2935,11 +2926,9 @@ List<_LiveMatchesServer> _liveMatchesServersForSurface({
 
 _LiveMatchesServer _liveMatchesClampServerForSurface(
   _LiveMatchesServer server, {
-  required bool tv,
   bool iptvSportsEnabled = false,
 }) {
   final allowed = _liveMatchesServersForSurface(
-    tv: tv,
     iptvSportsEnabled: iptvSportsEnabled,
   );
   if (allowed.contains(server)) return server;

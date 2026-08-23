@@ -13,9 +13,9 @@ BoxDecoration shellChipDecoration({
   final Color fill;
   final Color border;
   if (accentHover) {
-    // Tinted green, not solid brand fill. Wins over selected.
+    // Solid brand border — matches IPTV / Live Matches D-pad chips.
     fill = ForjaShellColors.brandGreen.withValues(alpha: 0.14);
-    border = ForjaShellColors.brandGreen.withValues(alpha: 0.5);
+    border = ForjaShellColors.brandGreen;
   } else if (selected) {
     fill = ForjaShellColors.chipSelectedBg;
     border = ForjaShellColors.chipSelectedBorder;
@@ -26,7 +26,10 @@ BoxDecoration shellChipDecoration({
   return BoxDecoration(
     color: fill,
     borderRadius: BorderRadius.circular(radius),
-    border: Border.all(color: border),
+    border: Border.all(
+      color: border,
+      width: accentHover ? 1.5 : 1,
+    ),
   );
 }
 

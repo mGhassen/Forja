@@ -27,6 +27,15 @@ mixin _LiveMatchesData
 
   Future<void> _selectServer(_LiveMatchesServer server) async {
     if (server == _s._server) return;
+    if (server == _LiveMatchesServer.iptvSports) {
+      final config = await LiveMatchesIptvSportsConfig.load();
+      if (!config.enabled) {
+        ForjaToast.info(
+          'Enable Forja Sports in Settings → Forja Sports first',
+        );
+        return;
+      }
+    }
     final leavingIptv = _s._server == _LiveMatchesServer.iptvSports &&
         server != _LiveMatchesServer.iptvSports;
     setState(() => _s._server = server);
@@ -65,21 +74,25 @@ mixin _LiveMatchesData
   }
 
   void _openServerPicker() {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFF141414),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => _LiveMatchesServerSheet(
-        current: _s._server,
-        onSelected: (server) {
-          Navigator.pop(context);
-          unawaited(_selectServer(server));
-        },
-      ),
-    );
+    unawaited(() async {
+      await _s._clampServerIfForjaSportsDisabled(reload: true);
+      if (!mounted) return;
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: const Color(0xFF141414),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (_) => _LiveMatchesServerSheet(
+          current: _s._server,
+          onSelected: (server) {
+            Navigator.pop(context);
+            unawaited(_selectServer(server));
+          },
+        ),
+      );
+    }());
   }
 
   Future<void> _toggleIptvPortalPanel() async {
