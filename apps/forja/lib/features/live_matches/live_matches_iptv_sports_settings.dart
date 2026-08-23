@@ -7,25 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persisted config for Live Matches → Forja Sports (RFC-062).
 class LiveMatchesIptvSportsConfig {
-  const LiveMatchesIptvSportsConfig({
-    this.enabled = false,
-    this.portalKey = '',
-    this.timezone = '',
-    this.leagues = const [],
-    this.sportCategories = const {},
-  });
-
-  final bool enabled;
-  /// [VerifiedPortal.key] of the chosen Xtream portal.
-  /// Empty → fall back to IPTV’s last-selected portal ([resolvePortalKey]).
-  final String portalKey;
-  /// IANA timezone; empty → device local date for ESPN.
-  final String timezone;
-  final List<String> leagues;
-  /// Sport-family / GLOBAL → Xtream live category ids.
-  /// Keys: [sportFamilies] + `GLOBAL` (not per-league).
-  final Map<String, List<String>> sportCategories;
-
   static const prefsKey = 'live_matches_iptv_sports_v1';
 
   static const allLeagues = <String>[
@@ -51,6 +32,25 @@ class LiveMatchesIptvSportsConfig {
     'WORLDCUP',
     'UFC',
   ];
+
+  const LiveMatchesIptvSportsConfig({
+    this.enabled = true,
+    this.portalKey = '',
+    this.timezone = '',
+    this.leagues = allLeagues,
+    this.sportCategories = const {},
+  });
+
+  final bool enabled;
+  /// [VerifiedPortal.key] of the chosen Xtream portal.
+  /// Empty → fall back to IPTV’s last-selected portal ([resolvePortalKey]).
+  final String portalKey;
+  /// IANA timezone; empty → device local date for ESPN.
+  final String timezone;
+  final List<String> leagues;
+  /// Sport-family / GLOBAL → Xtream live category ids.
+  /// Keys: [sportFamilies] + `GLOBAL` (not per-league).
+  final Map<String, List<String>> sportCategories;
 
   static const leagueLabels = <String, String>{
     'NBA': 'NBA',
@@ -340,7 +340,10 @@ class LiveMatchesIptvSportsConfig {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(prefsKey);
     if (raw == null || raw.isEmpty) {
-      return const LiveMatchesIptvSportsConfig();
+      return const LiveMatchesIptvSportsConfig(
+        enabled: true,
+        leagues: allLeagues,
+      );
     }
     try {
       final decoded = jsonDecode(raw);

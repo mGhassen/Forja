@@ -432,7 +432,9 @@ class _StatusPinState extends State<_StatusPin> {
     required VoidCallback? onTap,
     required Widget child,
   }) {
-    if (!policy.useFocusableMoodChips) {
+    // Card overlays: keep the icon flush with the rating badge (no 40×40
+    // focus pad that vertically centers the pin below the score).
+    if (!policy.useFocusableMoodChips || widget.excludeFromTvTraversal) {
       return GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
@@ -617,7 +619,8 @@ class _LegacyTogglePin extends StatelessWidget {
                         : ForjaShellColors.iconMuted)),
         );
 
-        if (!policy.useFocusableMoodChips) {
+        // Card overlays: compact hit target so pin tops align with score badge.
+        if (!policy.useFocusableMoodChips || excludeFromTvTraversal) {
           return GestureDetector(onTap: () => _toggle(context), child: icon);
         }
 

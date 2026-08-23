@@ -108,10 +108,10 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
   Widget build(BuildContext context) {
     final policy =
         ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    final useTvFocus = policy.useFocusableMoodChips;
+    final mouseHover = policy.scaleOnHover;
     final highlighted = widget.selected || _removeFocused;
     // Desktop: same soft fill as recommendation InkWell hover (one row, not split).
-    final showHoverFill = !useTvFocus && _hovered;
+    final showHoverFill = mouseHover && _hovered;
     final color = highlighted
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
@@ -211,7 +211,7 @@ class _RecentSearchHelperTileState extends State<RecentSearchHelperTile> {
       child: row,
     );
 
-    if (!useTvFocus) {
+    if (mouseHover) {
       row = MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),

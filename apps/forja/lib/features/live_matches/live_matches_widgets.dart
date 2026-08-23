@@ -102,23 +102,29 @@ class _LiveMatchesServersTopBarButtonState
   }
 }
 
-class _LiveMatchesResolveModePill extends StatelessWidget {
-  const _LiveMatchesResolveModePill({required this.engine});
+class _LiveMatchesServerModePill extends StatelessWidget {
+  const _LiveMatchesServerModePill({
+    required this.server,
+    required this.engineResolve,
+  });
 
-  final bool engine;
+  final _LiveMatchesServer server;
+  final bool engineResolve;
 
   @override
   Widget build(BuildContext context) {
+    final label = _labelFor(server, engineResolve);
+    if (label == null) return const SizedBox.shrink();
+
     final cinematic = ForjaShellColors.cinematic;
-    final label = engine ? 'Engine' : 'Sniff';
-    final tip = engine
-        ? 'Stream resolve: Engine (native player) — change in Settings → Forja Sports'
-        : 'Stream resolve: Sniff (embed player) — change in Settings → Forja Sports';
-    final bg = engine
+    final accent = _accentFor(server, engineResolve);
+    final tip = _tipFor(server, engineResolve);
+    final icon = _iconFor(server, engineResolve);
+    final bg = accent
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
         : Colors.white.withValues(alpha: 0.06);
-    final fg = engine ? ForjaShellColors.brandGreen : cinematic.textSecondary;
-    final border = engine
+    final fg = accent ? ForjaShellColors.brandGreen : cinematic.textSecondary;
+    final border = accent
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
         : ForjaShellColors.borderSubtle.withValues(alpha: 0.55);
 
@@ -134,11 +140,7 @@ class _LiveMatchesResolveModePill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              engine ? Icons.memory_rounded : Icons.travel_explore_rounded,
-              size: 13,
-              color: fg,
-            ),
+            Icon(icon, size: 13, color: fg),
             const SizedBox(width: 5),
             Text(
               label,
@@ -152,6 +154,58 @@ class _LiveMatchesResolveModePill extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  static String? _labelFor(_LiveMatchesServer server, bool engineResolve) {
+    return switch (server) {
+      _LiveMatchesServer.all => null,
+      _LiveMatchesServer.iptvSports => 'IPTV',
+      _LiveMatchesServer.stremio => 'Stremio',
+      _LiveMatchesServer.forjaLive ||
+      _LiveMatchesServer.ppv ||
+      _LiveMatchesServer.streamed ||
+      _LiveMatchesServer.mutStreams => engineResolve ? 'Engine' : 'Sniff',
+    };
+  }
+
+  static bool _accentFor(_LiveMatchesServer server, bool engineResolve) {
+    return switch (server) {
+      _LiveMatchesServer.iptvSports || _LiveMatchesServer.stremio => true,
+      _LiveMatchesServer.forjaLive ||
+      _LiveMatchesServer.ppv ||
+      _LiveMatchesServer.streamed ||
+      _LiveMatchesServer.mutStreams => engineResolve,
+      _LiveMatchesServer.all => false,
+    };
+  }
+
+  static IconData _iconFor(_LiveMatchesServer server, bool engineResolve) {
+    return switch (server) {
+      _LiveMatchesServer.iptvSports => Icons.live_tv_rounded,
+      _LiveMatchesServer.stremio => Icons.extension_rounded,
+      _LiveMatchesServer.forjaLive ||
+      _LiveMatchesServer.ppv ||
+      _LiveMatchesServer.streamed ||
+      _LiveMatchesServer.mutStreams =>
+        engineResolve ? Icons.memory_rounded : Icons.travel_explore_rounded,
+      _LiveMatchesServer.all => Icons.dns_rounded,
+    };
+  }
+
+  static String _tipFor(_LiveMatchesServer server, bool engineResolve) {
+    return switch (server) {
+      _LiveMatchesServer.iptvSports =>
+        'Stream resolve: IPTV (Xtream portal) — Settings → Forja Sports',
+      _LiveMatchesServer.stremio => 'Stream resolve: Stremio live addons',
+      _LiveMatchesServer.forjaLive ||
+      _LiveMatchesServer.ppv ||
+      _LiveMatchesServer.streamed ||
+      _LiveMatchesServer.mutStreams =>
+        engineResolve
+            ? 'Stream resolve: Engine (native player) — change in Settings → Forja Sports'
+            : 'Stream resolve: Sniff (embed player) — change in Settings → Forja Sports',
+      _LiveMatchesServer.all => '',
+    };
   }
 }
 
@@ -1094,8 +1148,6 @@ class _IptvSportsChannelsOverlayState
                           healthProbe: ctrl.healthProbe,
                           onTap: () => widget.onChannelSelected(sources[i]),
                           tvItemIndex: i,
-                          tvRowId: SourcesPanelTv.listRowId,
-                          tvTabId: SourcesPanelTv.tabId,
                           onUpEdge: i == 0 ? _focusClose : null,
                         );
                       },
@@ -1129,15 +1181,13 @@ class _IptvSportsChannelsOverlayState
   }
 }
 
-class _IptvSportsChannelSheetRow extends StatefulWidget {
+class _IptvSportsChannelSheetRow extends StatelessWidget {
   const _IptvSportsChannelSheetRow({
     required this.source,
     required this.healthProbe,
     this.iptvCtrl,
     required this.onTap,
     this.tvItemIndex,
-    this.tvRowId,
-    this.tvTabId = 'live_matches',
     this.onUpEdge,
   });
 
@@ -1146,73 +1196,44 @@ class _IptvSportsChannelSheetRow extends StatefulWidget {
   final IptvController? iptvCtrl;
   final VoidCallback onTap;
   final int? tvItemIndex;
-  final String? tvRowId;
-  final String tvTabId;
   final VoidCallback? onUpEdge;
 
-  @override
-  State<_IptvSportsChannelSheetRow> createState() =>
-      _IptvSportsChannelSheetRowState();
-}
-
-class _IptvSportsChannelSheetRowState
-    extends State<_IptvSportsChannelSheetRow> {
-  bool _focused = false;
-  bool _hovered = false;
-
   String get _probeKey {
-    final id = (widget.source.streamId ?? '').trim();
-    return id.isEmpty ? widget.source.url : id;
+    final id = (source.streamId ?? '').trim();
+    return id.isEmpty ? source.url : id;
   }
 
-  bool? _healthFor() {
-    final probed = widget.healthProbe.healthFor(_probeKey);
+  Future<bool> _hoverProbe() async {
+    final probed = healthProbe.healthFor(_probeKey);
     if (probed != null) return probed;
-    final id = (widget.source.streamId ?? '').trim();
-    if (id.isNotEmpty && widget.iptvCtrl != null) {
-      return widget.iptvCtrl!.healthFor(id);
+    final id = (source.streamId ?? '').trim();
+    if (id.isNotEmpty && iptvCtrl != null) {
+      final fromCatalog = iptvCtrl!.healthFor(id);
+      if (fromCatalog != null) return fromCatalog;
     }
-    return null;
+    return healthProbe.checkNow(_probeKey, source.url);
   }
 
-  void _syncLiveProbe(bool active) {
-    if (active) {
-      widget.healthProbe.schedule(
-        _probeKey,
-        widget.source.url,
-        onlyThis: iptvUseTvFocus(context),
-      );
-    } else {
-      widget.healthProbe.cancel(_probeKey);
-    }
-  }
-
-  Color _surfaceColor(bool active) =>
-      Colors.white.withValues(alpha: active ? 0.09 : 0.05);
-
-  Color _borderColor(bool active) =>
-      Colors.white.withValues(alpha: active ? 0.18 : 0.08);
-
-  @override
-  void dispose() {
-    widget.healthProbe.cancel(_probeKey);
-    super.dispose();
-  }
-
-  Widget _logo({bool? health}) {
+  Widget _logo(BuildContext context) {
     const size = 40.0;
-    final url = (widget.source.logoUrl ?? '').trim();
-    Widget icon;
+    final url = (source.logoUrl ?? '').trim();
     if (url.isEmpty) {
-      icon = Icon(
-        Icons.tv_rounded,
-        color: ForjaShellColors.sectionAccent,
-        size: size * 0.55,
+      return SizedBox(
+        width: size,
+        height: size,
+        child: Icon(
+          Icons.tv_rounded,
+          color: ForjaShellColors.sectionAccent,
+          size: size * 0.55,
+        ),
       );
-    } else {
-      final dpr = MediaQuery.devicePixelRatioOf(context);
-      final cacheW = (size * dpr).round().clamp(1, 512);
-      icon = Image.network(
+    }
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final cacheW = (size * dpr).round().clamp(1, 512);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Image.network(
         url,
         width: size,
         height: size,
@@ -1232,144 +1253,23 @@ class _IptvSportsChannelSheetRowState
             size: size * 0.55,
           );
         },
-      );
-    }
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Center(child: icon),
-          if (health != null)
-            Positioned(
-              top: -2,
-              right: -2,
-              child: Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: health
-                      ? const Color(0xFF22C55E)
-                      : const Color(0xFFEF4444),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }
 
-  Listenable get _healthListenable {
-    final ctrl = widget.iptvCtrl;
-    if (ctrl == null) return widget.healthProbe;
-    return Listenable.merge([widget.healthProbe, ctrl]);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _healthListenable,
-      builder: (_, _) {
-        final health = _healthFor();
-        final src = widget.source;
-        final subtitle = src.pickerSubtitle;
-        final badge = src.tierBadge;
-        final policy = ShellScope.inputPolicyOf(context);
-        final active = ShellInputPolicy.interactiveActive(
-          policy,
-          hovered: _hovered,
-          focused: _focused,
-        context: context,
-        );
-        return shellFocusableTap(
-          context: context,
-          onTap: widget.onTap,
-          borderRadius: 12,
-          scaleOnFocus: 1.0,
-          showFocusBorder: false,
-          listIndex: widget.tvItemIndex,
-          tvTabId: widget.tvTabId,
-          tvRowId: widget.tvRowId,
-          tvItemIndex: widget.tvItemIndex,
-          tvZone: ShellTvZone.row,
-          onUpEdge: widget.onUpEdge,
-          onFocusChange: (focused) {
-            setState(() => _focused = focused);
-            _syncLiveProbe(focused || _hovered);
-          },
-          onHoverChange: policy.scaleOnHover
-              ? (hovered) {
-                  setState(() => _hovered = hovered);
-                  _syncLiveProbe(hovered || _focused);
-                }
-              : null,
-          child: AnimatedContainer(
-            duration: iptvUseTvFocus(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 150),
-            curve: Curves.easeOutCubic,
-            decoration: BoxDecoration(
-              color: _surfaceColor(active),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _borderColor(active)),
-            ),
-            child: ListTile(
-              leading: _logo(health: health),
-              title: Text(
-                src.pickerTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: active ? FontWeight.bold : FontWeight.w600,
-                ),
-              ),
-              subtitle: subtitle == null || subtitle.isEmpty
-                  ? null
-                  : Text(
-                      subtitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 11,
-                      ),
-                    ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (badge != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            src.tierBadgeColor ??
-                            ForjaShellColors.sectionAccent,
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: Text(
-                        badge,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                  ],
-                  const Icon(Icons.chevron_right, color: Colors.white38),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+    final badge = source.tierBadge;
+    final subtitle = source.pickerSubtitle;
+    return SourcesPanelChannelTile(
+      title: source.pickerTitle,
+      provider: (subtitle == null || subtitle.isEmpty) ? null : subtitle,
+      leading: _logo(context),
+      badges: [if (badge != null) badge],
+      onPlay: onTap,
+      tvItemIndex: tvItemIndex,
+      onUpEdge: onUpEdge,
+      onHoverProbe: _hoverProbe,
     );
   }
 }

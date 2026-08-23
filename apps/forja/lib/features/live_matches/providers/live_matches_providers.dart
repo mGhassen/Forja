@@ -37,46 +37,7 @@ class LiveMatchesPrimaryLoad {
 }
 
 /// PPV + Streamed schedule for dedicated server tabs only.
-/// **Forja Live** loads every enabled catalog via lazy chips instead.
-Future<LiveMatchesPrimaryLoad> _fetchPpvStreamedScheduleBase() async {
-  final results = await Future.wait([
-    _fetchDamiTvStreams().catchError((_) => <_DamiTvStream>[]),
-    _fetchStreamedMatches().catchError((_) => <_StreamedMatch>[]),
-  ]);
-  final ppvStreams = results[0] as List<_DamiTvStream>;
-  final rustStreamed = results[1] as List<_StreamedMatch>;
-
-  final seenCats = <String>{};
-  final cats = <_Sport>[];
-  void addCat(String raw) {
-    final id = _normalizeSportId(raw);
-    if (id.isEmpty || !seenCats.add(id)) return;
-    cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
-  }
-
-  void addMatchCat(String category, {required bool isAlwaysOn}) {
-    if (_is247Item(category: category, isAlwaysOn: isAlwaysOn)) {
-      addCat('24/7');
-    } else {
-      addCat(category);
-    }
-  }
-
-  for (final s in ppvStreams) {
-    addMatchCat(s.categoryName, isAlwaysOn: s.isAlwaysOn);
-  }
-  for (final m in rustStreamed) {
-    addMatchCat(m.category, isAlwaysOn: m.isAlwaysOn);
-  }
-  cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-
-  return LiveMatchesPrimaryLoad(
-    sports: cats,
-    damiTvStreams: ppvStreams,
-    streamedMatches: rustStreamed,
-  );
-}
-
+/// **Forja Live** / **Forja Sports** / **All** load catalogs via lazy chips instead.
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
   return const LiveMatchesPrimaryLoad(sports: []);
 }
@@ -216,43 +177,8 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStremio() async {
   return LiveMatchesPrimaryLoad(sports: cats, streamedMatches: matches);
 }
 
+/// Forja Sports schedule = same enabled Catalog JS as Forja Live / All
+/// (lazy chips in [_LiveMatchesForjaLive]); play still matches Xtream.
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesIptvSports() async {
-  final results = await Future.wait([
-    _fetchPpvStreamedScheduleBase(),
-    _fetchEspnSportMatchGames(),
-  ]);
-  final all = results[0] as LiveMatchesPrimaryLoad;
-  final espn = results[1] as List<Map<String, dynamic>>;
-  final merged = _mergeStreamedWithEspn(all.streamedMatches, espn);
-
-  final seenCats = <String>{};
-  final cats = <_Sport>[];
-  void addCat(String raw) {
-    final id = _normalizeSportId(raw);
-    if (id.isEmpty || !seenCats.add(id)) return;
-    cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
-  }
-
-  for (final s in all.damiTvStreams) {
-    if (_is247Item(category: s.categoryName, isAlwaysOn: s.isAlwaysOn)) {
-      addCat('24/7');
-    } else {
-      addCat(s.categoryName);
-    }
-  }
-  for (final m in merged.streamed) {
-    if (_is247Item(category: m.category, isAlwaysOn: m.isAlwaysOn)) {
-      addCat('24/7');
-    } else {
-      addCat(m.category);
-    }
-  }
-  cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-
-  return LiveMatchesPrimaryLoad(
-    sports: cats,
-    damiTvStreams: all.damiTvStreams,
-    streamedMatches: merged.streamed,
-    espnGames: espn,
-  );
+  return _fetchLiveMatchesAll();
 }

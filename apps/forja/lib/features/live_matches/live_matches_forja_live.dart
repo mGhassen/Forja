@@ -38,7 +38,8 @@ mixin _LiveMatchesForjaLive
 
   bool get _usesForjaLiveLazyCatalog =>
       _s._server == _LiveMatchesServer.all ||
-      _s._server == _LiveMatchesServer.forjaLive;
+      _s._server == _LiveMatchesServer.forjaLive ||
+      _s._server == _LiveMatchesServer.iptvSports;
 
   bool get _showForjaLiveCatalogChrome =>
       _usesForjaLiveLazyCatalog && _s._forjaLivePluginLoads.isNotEmpty;

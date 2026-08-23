@@ -129,8 +129,9 @@ class SettingsVisibility {
   /// IPTV EPG, portals CSV, portal cache clear.
   bool get showIptvSettings => iptvNav;
 
-  /// Settings → Forja Sports (Live Matches Xtream matcher).
-  bool get showIptvSportsSettings => liveMatchesNav && iptvNav;
+  /// Settings → Forja Sports (Live Matches Xtream matcher) — admin only.
+  bool get showIptvSportsSettings =>
+      liveMatchesNav && iptvNav && AccountFeatures.instance.isAdmin;
 
   static Future<SettingsVisibility> resolve([SettingsService? settings]) async {
     final s = settings ?? SettingsService();

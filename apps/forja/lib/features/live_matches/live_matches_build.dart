@@ -267,7 +267,11 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         if (!mounted || !tabVisible) return;
         next.when(
           loading: () {
-            if (_s._server == _LiveMatchesServer.forjaLive) return;
+            if (_s._server == _LiveMatchesServer.forjaLive ||
+                _s._server == _LiveMatchesServer.iptvSports ||
+                _s._server == _LiveMatchesServer.all) {
+              return;
+            }
             if (!_s._loading) setState(() => _s._loading = true);
           },
           error: (e, _) {
@@ -408,10 +412,15 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       child: Row(
         children: [
           _s._serversTopBarButton(),
-          const SizedBox(width: 8),
-          ExcludeFocus(
-            child: _LiveMatchesResolveModePill(engine: _s._liveEngineResolve),
-          ),
+          if (_s._server != _LiveMatchesServer.all) ...[
+            const SizedBox(width: 8),
+            ExcludeFocus(
+              child: _LiveMatchesServerModePill(
+                server: _s._server,
+                engineResolve: _s._liveEngineResolve,
+              ),
+            ),
+          ],
           const Spacer(),
           refresh,
           if (!_liveMatchesLeanbackOnly(context)) ...[
@@ -823,8 +832,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       final emptyMsg = switch (_s._server) {
         _LiveMatchesServer.stremio =>
           'No live Stremio addons — install one in Settings → Sources and enable Live Matches',
-        _LiveMatchesServer.iptvSports =>
-          'No ESPN games today for your leagues — try Refresh or change leagues in Settings → Forja Sports',
+        _LiveMatchesServer.iptvSports => forjaLive._showForjaLiveCatalogChrome
+            ? 'No matches for this catalog or sport — try All on both filters, or Refresh'
+            : 'No Forja Sports matches — enable catalogs in Settings → Forja Sports → Catalog',
         _LiveMatchesServer.forjaLive => forjaLive._showForjaLiveCatalogChrome
             ? 'No matches for this catalog or sport — try All on both filters, or Refresh'
             : 'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins',

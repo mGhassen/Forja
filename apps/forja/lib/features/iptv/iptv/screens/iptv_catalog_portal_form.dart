@@ -1293,9 +1293,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
                   controller: _pasteCtrl,
                   focusNode: _pasteFocus,
                   enabled: !_importingShareCode,
-                  readOnly: iptvUseTvFocus(context) && !_pasteEditing,
+                  readOnly: iptvLeanbackOnly(context) && !_pasteEditing,
                   enableInteractiveSelection:
-                      !iptvUseTvFocus(context) || _pasteEditing,
+                      !iptvLeanbackOnly(context) || _pasteEditing,
                   textAlign: TextAlign.center,
                   textCapitalization: embedded
                       ? TextCapitalization.none
@@ -1416,8 +1416,9 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
   }) {
     final (platform, label) = _kPlatformTabs[index];
     final selected = _platform == platform;
+    final mouse = ShellScope.inputPolicyOf(context).scaleOnHover;
     final focused = tv && _platformTabFocus[index].hasFocus;
-    final hovered = !tv && _tabHoverIndex == index;
+    final hovered = mouse && _tabHoverIndex == index;
     final active = selected || focused || hovered;
     final tabIndex = _indexOfNode(_platformTabFocus[index]);
     final labelIndex = _indexOfNode(_labelFocus);
@@ -1453,18 +1454,23 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
       ),
     );
 
-    if (!tv) {
-      return MouseRegion(
+    Widget child = face;
+    if (mouse) {
+      child = MouseRegion(
         cursor: SystemMouseCursors.click,
         onEnter: (_) => setState(() => _tabHoverIndex = index),
         onExit: (_) {
           if (_tabHoverIndex == index) setState(() => _tabHoverIndex = null);
         },
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _selectPlatform(platform),
-          child: face,
-        ),
+        child: child,
+      );
+    }
+
+    if (!tv) {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _selectPlatform(platform),
+        child: child,
       );
     }
 
@@ -1490,7 +1496,7 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
         if (upTarget >= 0) _focusDialogItem(upTarget);
       },
       onDownEdge: () => _focusDialogItem(labelIndex),
-      child: face,
+      child: child,
     );
   }
 

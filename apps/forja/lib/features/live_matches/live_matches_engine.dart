@@ -1,14 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 
 /// Live Matches engine plugin orchestration (RFC-065).
 class LiveMatchesEngine {
   LiveMatchesEngine._();
 
-  static Future<bool> isEngineResolveMode() async =>
-      SettingsService().isLiveStreamResolveEngine();
+  static Future<bool> isEngineResolveMode() async {
+    if (!AccountFeatures.instance.isAdmin) return true;
+    return SettingsService().isLiveStreamResolveEngine();
+  }
 
   static Future<List<Map<String, dynamic>>> fetchCatalog() async {
     await EngineService.instance.ensureBundledInstalled();

@@ -133,6 +133,7 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
         title: 'Forja Sports',
         subtitle: 'Portal, leagues, Live Matches matching',
         icon: Icons.sports_rounded,
+        adminOnly: true,
       ),
     const SettingsCategoryMeta(
       id: SettingsCategoryId.lan,

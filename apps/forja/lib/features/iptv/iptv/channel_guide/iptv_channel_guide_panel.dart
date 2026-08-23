@@ -574,7 +574,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   void _scheduleHoverEpg(IptvGuideChannel ch) {
-    if (!widget.epgEnabled || iptvUseTvFocus(context)) return;
+    if (!widget.epgEnabled || iptvLeanbackOnly(context)) return;
     _epgHoverTimer?.cancel();
     if (_epgPeekChannelId == ch.id) return;
     _epgHoverTimer = Timer(IptvChannelGuidePanel.epgHoverDelay, () {
@@ -585,7 +585,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
   void _cancelHoverEpg({String? channelId}) {
     _epgHoverTimer?.cancel();
-    if (iptvUseTvFocus(context)) return;
+    if (iptvLeanbackOnly(context)) return;
     if (channelId != null && _epgPeekChannelId != channelId) return;
     _clearEpgPeek();
   }

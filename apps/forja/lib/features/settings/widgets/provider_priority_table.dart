@@ -366,7 +366,8 @@ class _ServerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final policy = ShellScope.inputPolicyOf(context);
+    final leanback = policy.useFocusableMoodChips && !policy.scaleOnHover;
     return Material(
       color: Colors.transparent,
       child: Padding(
@@ -374,7 +375,7 @@ class _ServerRow extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (tv)
+            if (leanback)
               const SizedBox(width: 28, height: 36)
             else
               ReorderableDragStartListener(
@@ -395,7 +396,7 @@ class _ServerRow extends StatelessWidget {
                 onTap: onToggle,
                 borderRadius: 8,
                 scaleOnFocus: ShellTokens.focusActiveScale,
-                showFocusRail: tv,
+                showFocusRail: policy.useFocusableMoodChips,
                 tvTabId: 'settings',
                 tvRowId: 'scoring-row',
                 tvItemIndex: index,

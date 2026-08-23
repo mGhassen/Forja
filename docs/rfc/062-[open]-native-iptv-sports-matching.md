@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **13 / 13** acceptance (Xtream) · **2 / 2** acceptance (ATV EPG cap) · **0 / 3** acceptance (M3U deferred) |
-| **Current slice** | Forja Sports Xtream match + ATV EPG concurrency cap — M3U/XMLTV deferred |
+| **Progress** | **5 / 5** components · **14 / 14** acceptance (Xtream) · **2 / 2** acceptance (ATV EPG cap) · **0 / 3** acceptance (M3U deferred) |
+| **Current slice** | Forja Sports Catalog JS parity + Xtream match — M3U/XMLTV deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -44,6 +44,7 @@
 | 11 | R62-A14 | Play match → sheet lists matched IPTV channels; pick one then native player | ✅ |
 | 12 | R62-A15 | My IPTV catalog = All ∪ ESPN; enrich teams from ESPN; ESPN-only cards playable | ✅ |
 | 13 | R62-A16 | Matched IPTV channels cached 30 min per match+portal (no re-search on re-open) | ✅ |
+| 14 | R62-A19 | Forja Sports schedule = same enabled Catalog JS as Forja Live / All (lazy chips + Settings toggles) | ✅ |
 
 ---
 

@@ -703,9 +703,9 @@ class SettingsService {
   );
 
   static String normalizeLiveStreamResolve(String? raw) {
-    final v = (raw ?? liveStreamResolveSniff).trim().toLowerCase();
-    if (v == liveStreamResolveEngine) return liveStreamResolveEngine;
-    return liveStreamResolveSniff;
+    final v = (raw ?? liveStreamResolveEngine).trim().toLowerCase();
+    if (v == liveStreamResolveSniff) return liveStreamResolveSniff;
+    return liveStreamResolveEngine;
   }
 
   static String liveStreamResolveLabel(String stored) =>
@@ -713,7 +713,7 @@ class SettingsService {
       ? liveStreamResolveEngineLabel
       : liveStreamResolveSniffLabel;
 
-  /// Live Matches: Sniff = today’s embed path; Engine = Forja live plugins.
+  /// Live Matches: Engine = Forja live plugins (default); Sniff = embed WebView (admin).
   Future<String> getLiveStreamResolveMode() async =>
       normalizeLiveStreamResolve(await kvGetString(_liveStreamResolveKey));
 

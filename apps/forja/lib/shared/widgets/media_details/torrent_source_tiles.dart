@@ -141,6 +141,51 @@ class WebstreamingSourceTile extends StatelessWidget {
   }
 }
 
+/// Flat Sources-panel row (left check bar) — movies webstreaming + Forja Sports.
+class SourcesPanelChannelTile extends StatelessWidget {
+  const SourcesPanelChannelTile({
+    super.key,
+    required this.title,
+    required this.onPlay,
+    this.provider,
+    this.leading,
+    this.badges = const [],
+    this.tvItemIndex,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onHoverProbe,
+  });
+
+  final String title;
+  final VoidCallback onPlay;
+  final String? provider;
+  final Widget? leading;
+  final List<String> badges;
+  final int? tvItemIndex;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final Future<bool> Function()? onHoverProbe;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SourceBadgeCard(
+      onTap: onPlay,
+      title: title,
+      provider: provider,
+      leading: leading,
+      tvItemIndex: tvItemIndex,
+      onUpEdge: onUpEdge,
+      onDownEdge: onDownEdge,
+      onHoverProbe: onHoverProbe,
+      badges: [
+        for (final label in badges)
+          if (label.trim().isNotEmpty)
+            _SourceBadgeSpec(label.trim(), tone: _SourceBadgeTone.emphasis),
+      ],
+    );
+  }
+}
+
 /// Multi-file torrent file row - same card as Sources / [WebstreamingSourceTile].
 class TorrentFileSourceTile extends StatelessWidget {
   const TorrentFileSourceTile({

@@ -45,7 +45,7 @@ void main() {
   });
 
   testWidgets(
-    'player centered dialogs key off ShellProfile.tv, not focusable chips',
+    'two-column TV dialogs key off ShellProfile.tv, not focusable chips',
     (tester) async {
       late bool desktopCentered;
       late bool tvCentered;
@@ -79,7 +79,8 @@ void main() {
         ),
       );
 
-      // Desktop shares TV focus chips — must not force centered overlays.
+      // Desktop shares TV focus chips — must not force centered Subtitles.
+      // Sources / Episodes / Source use the side panel on every profile.
       expect(ShellInputPolicy.desktop.useFocusableMoodChips, isTrue);
       expect(desktopCentered, isFalse);
       expect(tvCentered, isTrue);

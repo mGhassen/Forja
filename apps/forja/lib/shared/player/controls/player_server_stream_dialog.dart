@@ -607,68 +607,15 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
 
   @override
   Widget build(BuildContext context) {
-    final tv = playerTvUsesCenteredDialogs(context);
-    if (!tv) {
-      return playerOverlayShell(
-        context: context,
-        isOpen: _open,
-        onClose: widget.onClose,
-        enableBlur: false,
-        child: _buildBody(),
-      );
-    }
-
-    if (!_open) return const SizedBox.shrink();
-    final size = MediaQuery.sizeOf(context);
-    final width = (size.width * 0.88).clamp(560.0, 960.0);
-    final maxHeight = size.height * 0.82;
-
-    // Single TV focus scope; autofocusFirst false — selected server claims via
+    // autofocusFirst false — selected server claims via
     // PlayerPopupListFocusScope + _pinServerFocus (Close must not win first).
-    return TvOverlayScope(
-      onDismiss: widget.onClose,
+    return playerOverlayShell(
+      context: context,
+      isOpen: _open,
+      onClose: widget.onClose,
+      enableBlur: false,
       autofocusFirst: false,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: widget.onClose,
-              behavior: HitTestBehavior.opaque,
-              child: ColoredBox(color: Colors.black.withValues(alpha: 0.62)),
-            ),
-          ),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Material(
-                type: MaterialType.transparency,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: width,
-                    maxHeight: maxHeight,
-                  ),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: PlayerPopupTokens.shellBg,
-                      borderRadius: BorderRadius.circular(
-                        PlayerPopupTokens.shellRadius,
-                      ),
-                      border: Border.all(color: PlayerPopupTokens.border),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(
-                        PlayerPopupTokens.shellRadius,
-                      ),
-                      child: _buildBody(),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      child: _buildBody(),
     );
   }
 }

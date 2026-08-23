@@ -530,7 +530,9 @@ class _SettingsNavigationPageBodyState
       final snap = async.valueOrNull;
       if (snap != null) _hydrate(snap);
     }
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final policy = ShellScope.inputPolicyOf(context);
+    final tv = policy.useFocusableMoodChips;
+    final leanback = tv && !policy.scaleOnHover;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -538,7 +540,7 @@ class _SettingsNavigationPageBodyState
         Padding(
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
-            tv
+            leanback
                 ? 'Show, hide, and reorder navigation tabs. OK toggles a tab; star sets the default menu; ↑/↓ reorder. Settings is always visible.'
                 : 'Show, hide, and reorder navigation tabs. Drag to reorder. Settings is always visible.',
             style: TextStyle(
@@ -584,7 +586,7 @@ class _SettingsNavigationPageBodyState
                     ),
                     // Switch is pointer/desktop; on TV OK on the label toggles.
                     ExcludeFocus(
-                      excluding: tv,
+                      excluding: leanback,
                       child: ForjaSwitch(
                         value: isVisible,
                         scale: ForjaSwitch.settingsScale,
@@ -600,7 +602,7 @@ class _SettingsNavigationPageBodyState
                         },
                       ),
                     ),
-                    if (tv)
+                    if (leanback)
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

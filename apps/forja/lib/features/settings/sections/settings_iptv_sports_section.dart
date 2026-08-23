@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.dart';
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
-import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:rust/rust.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Settings → Forja Sports — Xtream matcher (RFC-062) + live engine plugins (RFC-065).
 class SettingsIptvSportsSection extends StatefulWidget {
@@ -19,11 +19,9 @@ class SettingsIptvSportsSection extends StatefulWidget {
 }
 
 class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
-  final SettingsService _settings = SettingsService();
   LiveMatchesIptvSportsConfig _config = const LiveMatchesIptvSportsConfig();
   bool _loading = true;
   String? _error;
-  String _streamResolveLabel = SettingsService.liveStreamResolveSniffLabel;
   EnginePack? _bundledPack;
   List<EnginePlugin> _liveSourcePlugins = const [];
   List<EnginePlugin> _liveCatalogPlugins = const [];
@@ -53,12 +51,10 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     });
     try {
       final config = await LiveMatchesIptvSportsConfig.load();
-      final mode = await _settings.getLiveStreamResolveMode();
       await _loadLivePlugins();
       if (!mounted) return;
       setState(() {
         _config = config;
-        _streamResolveLabel = SettingsService.liveStreamResolveLabel(mode);
         _loading = false;
       });
     } catch (e) {
@@ -115,6 +111,71 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     await _persist(_config.copyWith(leagues: next));
   }
 
+  Widget _leagueActionButton(
+    BuildContext context, {
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (!tv) {
+      return TextButton(onPressed: onPressed, child: Text(label));
+    }
+    return shellFocusableTap(
+      context: context,
+      onTap: onPressed,
+      scaleOnFocus: 1.0,
+      showFocusRail: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: ForjaShellColors.brandGreen,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _leagueChip(BuildContext context, String league, int index) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final selected = _config.leagues.contains(league);
+    final label =
+        LiveMatchesIptvSportsConfig.leagueLabels[league] ?? league;
+    if (!tv) {
+      return FilterChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => _toggleLeague(league),
+        selectedColor: ForjaShellColors.brandGreen.withValues(alpha: 0.25),
+        checkmarkColor: ForjaShellColors.brandGreen,
+        labelStyle: TextStyle(
+          color: selected
+              ? ForjaShellColors.textPrimary
+              : ForjaShellColors.textSecondary,
+          fontSize: 12,
+        ),
+        side: BorderSide(
+          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+        ),
+        backgroundColor: Colors.transparent,
+      );
+    }
+    return ForjaShellChip(
+      label: label,
+      selected: selected,
+      listIndex: index,
+      fontSize: 12,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      onTap: () => _toggleLeague(league),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -132,26 +193,6 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsGroup(
-          label: 'Live stream resolve',
-          children: [
-            settingsFocusableDropdown(
-              context,
-              'Stream resolve',
-              'Sniff keeps today’s embed WebView player. Engine runs Forja live plugins and opens native playback when a stream URL resolves.',
-              _streamResolveLabel,
-              SettingsService.liveStreamResolveOptions.keys.toList(),
-              (label) async {
-                if (label == null) return;
-                final stored = SettingsService.liveStreamResolveOptions[label];
-                if (stored == null) return;
-                await _settings.setLiveStreamResolveMode(stored);
-                if (!mounted) return;
-                setState(() => _streamResolveLabel = label);
-              },
-            ),
-          ],
-        ),
         if (_bundledPack != null && _liveSourcePlugins.isNotEmpty)
           SettingsGroup(
             label: 'Live plugins',
@@ -188,7 +229,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
                 child: Text(
-                  'Schedule feeds merged into All and Forja Sports name matching.',
+                  'Schedule feeds for Forja Live, All, and Forja Sports (Xtream match).',
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
                     fontSize: 13,
@@ -271,7 +312,9 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
                       ),
                     ),
                   ),
-                  TextButton(
+                  _leagueActionButton(
+                    context,
+                    label: 'All',
                     onPressed: () => _persist(
                       _config.copyWith(
                         leagues: List<String>.from(
@@ -279,12 +322,12 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
                         ),
                       ),
                     ),
-                    child: const Text('All'),
                   ),
-                  TextButton(
+                  _leagueActionButton(
+                    context,
+                    label: 'None',
                     onPressed: () =>
                         _persist(_config.copyWith(leagues: const [])),
-                    child: const Text('None'),
                   ),
                 ],
               ),
@@ -295,30 +338,13 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final league in LiveMatchesIptvSportsConfig.allLeagues)
-                    FilterChip(
-                      label: Text(
-                        LiveMatchesIptvSportsConfig.leagueLabels[league] ??
-                            league,
-                      ),
-                      selected: _config.leagues.contains(league),
-                      onSelected: (_) => _toggleLeague(league),
-                      selectedColor: ForjaShellColors.brandGreen.withValues(
-                        alpha: 0.25,
-                      ),
-                      checkmarkColor: ForjaShellColors.brandGreen,
-                      labelStyle: TextStyle(
-                        color: _config.leagues.contains(league)
-                            ? ForjaShellColors.textPrimary
-                            : ForjaShellColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                      side: BorderSide(
-                        color: ForjaShellColors.borderSubtle.withValues(
-                          alpha: 0.6,
-                        ),
-                      ),
-                      backgroundColor: Colors.transparent,
+                  for (var i = 0;
+                      i < LiveMatchesIptvSportsConfig.allLeagues.length;
+                      i++)
+                    _leagueChip(
+                      context,
+                      LiveMatchesIptvSportsConfig.allLeagues[i],
+                      i,
                     ),
                 ],
               ),

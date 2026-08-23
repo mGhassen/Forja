@@ -33,6 +33,7 @@ import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
+import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/features/live_matches/live_embed_nav.dart';
@@ -137,7 +138,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   /// ESPN scoreboard payloads for My IPTV (enrich on play).
   List<Map<String, dynamic>> _espnGames = [];
   String? _lastSyncedIptvPortalKey;
-  bool _liveEngineResolve = false;
+  bool _liveEngineResolve = true;
   int _forjaLiveLoadGen = 0;
   String _forjaLivePluginFilter = 'all';
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
@@ -202,7 +203,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
       unawaited(_load());
     } else if (_forjaLiveCatalogSettingsDirty &&
         (_server == _LiveMatchesServer.all ||
-            _server == _LiveMatchesServer.forjaLive)) {
+            _server == _LiveMatchesServer.forjaLive ||
+            _server == _LiveMatchesServer.iptvSports)) {
       _forjaLiveCatalogSettingsDirty = false;
       (this as _LiveMatchesForjaLive)._applyEngineCatalogSettingsChange(
         reloadNow: true,

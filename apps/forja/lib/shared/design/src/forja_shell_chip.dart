@@ -148,6 +148,7 @@ class ForjaShellChip extends StatefulWidget {
     this.loading = false,
     this.onCancel,
     this.onReload,
+    this.ensureVisibleMode = ShellTvEnsureVisibleMode.row,
   });
 
   final String label;
@@ -178,6 +179,10 @@ class ForjaShellChip extends StatefulWidget {
 
   /// Idle selected chip: refresh icon re-runs this chip only.
   final VoidCallback? onReload;
+
+  /// Settings / vertical menus: [ShellTvEnsureVisibleMode.item] keeps long pages
+  /// scrolled so bottom chips stay on screen.
+  final ShellTvEnsureVisibleMode ensureVisibleMode;
 
   @override
   State<ForjaShellChip> createState() => _ForjaShellChipState();
@@ -290,6 +295,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         onUpEdge: widget.onUpEdge,
         onLeftEdge: widget.onLeftEdge,
         onRightEdge: widget.onRightEdge,
+        ensureVisibleMode: widget.ensureVisibleMode,
         onFocusChange: widget.accentHover || widget.onReload != null
             ? (focused) => setState(() => _focused = focused)
             : null,

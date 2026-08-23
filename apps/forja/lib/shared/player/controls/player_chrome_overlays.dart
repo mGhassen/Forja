@@ -18,29 +18,23 @@ import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 export 'player_menu_return_focus.dart';
 export 'player_seek_scrub_cancel.dart';
 
-/// True when player chrome should use centered TV dialogs (not side panels).
+/// True when two-column player dialogs (Subtitles) stay centered on TV.
 ///
-/// Keys off [ShellProfile.tv] only — desktop can share TV *input* policy
-/// (D-pad focus) without switching Sources / Episodes to leanback dialogs.
+/// Sources / Episodes / Source always use the right-side panel on every
+/// profile. Keys off [ShellProfile.tv] only — desktop can share TV *input*
+/// policy without forcing this layout.
 bool playerTvUsesCenteredDialogs(BuildContext context) {
   final profile =
       ShellScope.maybeOf(context)?.profile ?? resolveShellProfile(context);
   return profile == ShellProfile.tv;
 }
 
-/// Dialog width / max height for centered player overlays on TV.
-({double width, double maxHeight}) playerTvDialogSize(BuildContext context) {
-  final size = MediaQuery.sizeOf(context);
-  return (
-    width: (size.width * 0.72).clamp(420.0, 640.0),
-    maxHeight: size.height * 0.82,
-  );
-}
-
-/// Side panel on phone/desktop; centered dialog only on [ShellProfile.tv].
+/// Right-side panel shell for player Sources / Episodes / Source / torrent files
+/// — same chrome on phone, desktop, and Android TV.
 ///
-/// [detailsHost] — movies / hub details on TV: frosted right-side panel
-/// (same as [TorrentSourcesPanel] on media details), not player dialogs.
+/// [detailsHost] — movies / hub details: frosted glass over the page
+/// ([enableBlur] true). In-player overlays keep a flat translucent shell
+/// (no BackdropFilter over live video).
 Widget playerOverlayShell({
   required BuildContext context,
   required bool isOpen,
@@ -48,77 +42,25 @@ Widget playerOverlayShell({
   required Widget child,
   bool enableBlur = false,
   bool detailsHost = false,
+  bool autofocusFirst = true,
   Uint8List? frozenFrame,
   EdgeInsets? contentPadding,
 }) {
-  final tv = playerTvUsesCenteredDialogs(context);
-  if (!tv || detailsHost) {
-    return TorrentSourcesPanel(
-      isOpen: isOpen,
-      onClose: onClose,
-      enableBlur: detailsHost ? true : enableBlur,
-      frozenFrame: frozenFrame,
-      contentPadding: contentPadding,
-      absorbHitsWhenClosed: !detailsHost,
-      child: detailsHost
-          ? child
-          : playerSidePanelTvScope(
-              context: context,
-              onClose: onClose,
-              child: child,
-            ),
-    );
-  }
-
-  if (!isOpen) return const SizedBox.shrink();
-
-  final dialog = playerTvDialogSize(context);
-  final padding = contentPadding ??
-      TorrentSourcesPanel.defaultContentPadding(playerOverlay: !enableBlur);
-
-  return TvOverlayScope(
-    onDismiss: onClose,
-    child: Stack(
-      fit: StackFit.expand,
-      children: [
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: onClose,
-            behavior: HitTestBehavior.opaque,
-            child: ColoredBox(color: Colors.black.withValues(alpha: 0.62)),
+  return TorrentSourcesPanel(
+    isOpen: isOpen,
+    onClose: onClose,
+    enableBlur: detailsHost ? true : enableBlur,
+    frozenFrame: frozenFrame,
+    contentPadding: contentPadding,
+    absorbHitsWhenClosed: !detailsHost,
+    child: detailsHost
+        ? child
+        : playerSidePanelTvScope(
+            context: context,
+            onClose: onClose,
+            autofocusFirst: autofocusFirst,
+            child: child,
           ),
-        ),
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Material(
-              type: MaterialType.transparency,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: dialog.width,
-                  maxHeight: dialog.maxHeight,
-                ),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: PlayerPopupTokens.shellBg,
-                    borderRadius: BorderRadius.circular(
-                      PlayerPopupTokens.shellRadius,
-                    ),
-                    border: Border.all(color: PlayerPopupTokens.border),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(
-                      PlayerPopupTokens.shellRadius,
-                    ),
-                    child: Padding(padding: padding, child: child),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
   );
 }
 
@@ -127,9 +69,11 @@ Widget playerSidePanelTvScope({
   required BuildContext context,
   required VoidCallback onClose,
   required Widget child,
+  bool autofocusFirst = true,
 }) {
   return TvOverlayScope(
     onDismiss: onClose,
+    autofocusFirst: autofocusFirst,
     child: child,
   );
 }

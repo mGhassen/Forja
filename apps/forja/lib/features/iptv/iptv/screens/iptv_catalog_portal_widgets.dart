@@ -35,7 +35,7 @@ class _IptvPortalDialogFieldState extends State<_IptvPortalDialogField> {
   FocusOnKeyEventCallback? _previousHandler;
   bool _editing = false;
 
-  bool get _tvBrowse => iptvUseTvFocus(context) && !_editing;
+  bool get _tvBrowse => iptvLeanbackOnly(context) && !_editing;
 
   @override
   void initState() {
@@ -117,13 +117,13 @@ class _IptvPortalDialogFieldState extends State<_IptvPortalDialogField> {
 
   @override
   Widget build(BuildContext context) {
-    final tv = iptvUseTvFocus(context);
+    final leanback = iptvLeanbackOnly(context);
     return TextField(
       controller: widget.controller,
       focusNode: widget.focusNode,
       obscureText: widget.obscureText,
-      readOnly: tv && !_editing,
-      enableInteractiveSelection: !tv || _editing,
+      readOnly: leanback && !_editing,
+      enableInteractiveSelection: !leanback || _editing,
       textInputAction: TextInputAction.done,
       onSubmitted: (_) => widget.onSubmit?.call(),
       style: widget.style,

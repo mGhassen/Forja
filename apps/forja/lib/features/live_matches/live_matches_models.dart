@@ -2953,7 +2953,7 @@ String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
       _LiveMatchesServer.mutStreams => 'mut.st',
       _LiveMatchesServer.forjaLive => 'Engine live plugins',
       _LiveMatchesServer.stremio => 'Installed live addons',
-      _LiveMatchesServer.iptvSports => 'Existing schedule · your Xtream',
+      _LiveMatchesServer.iptvSports => 'Catalog schedule · your Xtream',
     };
 
 sealed class _LiveMatchGridEntry {
