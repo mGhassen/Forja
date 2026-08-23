@@ -1,3 +1,5 @@
+import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
+
 import 'ids.dart';
 
 class EnginePlugin {
@@ -509,10 +511,7 @@ String engineServerLabel({
   }
 
   final stripped = candidate
-      .replaceFirst(
-        RegExp(r'\s*\((SUB|DUB)\)\s*$', caseSensitive: false),
-        '',
-      )
+      .replaceFirst(RegExp(r'\s*\((SUB|DUB)\)\s*$', caseSensitive: false), '')
       .trim();
   if (stripped.toLowerCase() == pluginName.toLowerCase()) {
     return pluginName;
@@ -561,6 +560,18 @@ Map<String, String> engineHeadersFrom(dynamic raw) {
   return headers;
 }
 
+String? engineContainerLabel({
+  String? url,
+  String? title,
+  String? name,
+}) {
+  final blob = '${title ?? ''} ${name ?? ''} ${url ?? ''}'.toUpperCase();
+  if (RegExp(r'(\.MKV\b|\bMKV\b)').hasMatch(blob)) return 'MKV';
+  if (RegExp(r'(\.MP4\b|\bMP4\b)').hasMatch(blob)) return 'MP4';
+  if (RegExp(r'(\.WEBM\b|\bWEBM\b)').hasMatch(blob)) return 'WebM';
+  return null;
+}
+
 /// Maps a plugin/host row onto the Stremio-shaped map Sources tiles parse.
 Map<String, dynamic>? mapEngineStream({
   required Map<String, dynamic> raw,
@@ -575,10 +586,12 @@ Map<String, dynamic>? mapEngineStream({
   final url = (raw['url'] ?? '').toString().trim();
   if (url.isEmpty) return null;
   final headers = engineHeadersFrom(raw['headers']);
+  final rawTitle = (raw['title'] ?? '').toString().trim();
+  final rawName = (raw['name'] ?? '').toString().trim();
   final rawQuality = (raw['quality'] ?? '').toString();
   final quality =
       normalizeEngineQuality(rawQuality) ??
-      engineQualityFromText('${raw['title'] ?? ''} ${raw['name'] ?? ''}');
+      engineQualityFromText('$rawTitle $rawName');
   final language =
       engineLanguageLabel((raw['language'] ?? '').toString()) ??
       engineLanguageLabel(rawQuality);
@@ -586,10 +599,15 @@ Map<String, dynamic>? mapEngineStream({
     final a = (raw['audio'] ?? '').toString().trim();
     return a.isEmpty ? null : a;
   }();
-  final size = () {
-    final s = (raw['size'] ?? '').toString().trim();
-    return s.isEmpty || s.toLowerCase() == 'unknown' ? null : s;
-  }();
+  final size = TorrentReleaseMetadata.resolveSizeLabel(
+    sizeText: (raw['size'] ?? '').toString(),
+    fallbackText: '$rawTitle $rawName',
+  );
+  final container = engineContainerLabel(
+    url: url,
+    title: rawTitle,
+    name: rawName,
+  );
   final displayTitle = engineMediaDisplayTitle(
     title: mediaTitle,
     year: year,
@@ -599,20 +617,29 @@ Map<String, dynamic>? mapEngineStream({
   );
   final server = engineServerLabel(
     pluginName: plugin.name,
-    name: (raw['name'] ?? '').toString(),
-    title: (raw['title'] ?? '').toString(),
+    name: rawName,
+    title: rawTitle,
   );
   final addonName = server == plugin.name
       ? plugin.name
       : '${plugin.name} · $server';
-  final desc = [
+  // Keep card title clean (media SxE year). Stuff release filename / quality /
+  // size / codec tokens into description so Sources badges can parse them —
+  // same chip UI as Torrents, no Nuvio emoji rows.
+  final descParts = <String>[
+    if (rawTitle.isNotEmpty) rawTitle,
     if (quality != null) quality,
+    if (container != null) container,
     if (audio != null) audio,
     if (language != null) language,
-  ].join(' ');
+    if (size != null) size,
+  ];
+  final desc = descParts.join(' ').trim();
   final cardTitle = displayTitle.isNotEmpty
       ? displayTitle
-      : (raw['title'] ?? raw['name'] ?? plugin.name).toString();
+      : (rawTitle.isNotEmpty
+            ? rawTitle.split('\n').first.trim()
+            : (rawName.isNotEmpty ? rawName : plugin.name));
   return {
     'url': url,
     'title': cardTitle,
@@ -621,6 +648,7 @@ Map<String, dynamic>? mapEngineStream({
     if (quality != null) 'quality': quality,
     if (language != null) 'language': language,
     if (size != null) 'size': size,
+    if (container != null) 'container': container,
     if (headers.isNotEmpty) 'headers': headers,
     if (headers.isNotEmpty)
       'behaviorHints': {

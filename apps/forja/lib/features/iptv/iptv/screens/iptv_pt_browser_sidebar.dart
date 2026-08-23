@@ -80,6 +80,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
   bool _focused = false;
   bool _hovered = false;
   bool _okHoldFired = false;
+  bool _disposed = false;
   Timer? _okHoldTimer;
   /// TV: pin chrome after hold-OK when reorder is unavailable.
   bool _tvPinRevealed = false;
@@ -87,9 +88,9 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
   late final FocusNode _rowFocus;
   late final FocusNode _pinFocus;
   late final AnimationController _holdSunrise;
-
-  /// Local press origin for the expanding hold ring (null = hidden).
-  Offset? _holdOrigin;
+  final GlobalKey _cardKey = GlobalKey();
+  /// Hold-ring origin — ValueNotifier so we never setState mid-pointer (kills tap).
+  final ValueNotifier<Offset?> _holdOriginN = ValueNotifier<Offset?>(null);
   Offset? _pointerDownGlobal;
 
   static const Duration _okHoldDelay = Duration(seconds: 1);
@@ -164,10 +165,12 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
 
   @override
   void dispose() {
+    _disposed = true;
     _okHoldTimer?.cancel();
     _okHoldTimer = null;
-    _holdOrigin = null;
     _pointerDownGlobal = null;
+    _holdOriginN.value = null;
+    _holdOriginN.dispose();
     _holdSunrise.dispose();
     _releaseChrome();
     // Remount after pin/reorder must not leave parent ExcludeFocus stuck.
@@ -180,38 +183,43 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
     super.dispose();
   }
 
-  Offset _rowCenterLocal() {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.hasSize) return Offset.zero;
-    return box.size.center(Offset.zero);
-  }
-
   void _startHoldSunrise(Offset origin, Duration duration) {
-    _holdOrigin = origin;
+    if (_disposed) return;
+    _holdOriginN.value = origin;
     _holdSunrise
       ..duration = duration
       ..forward(from: 0);
-    setState(() {});
   }
 
   void _clearHoldSunrise() {
-    final had = _holdOrigin != null || _holdSunrise.value > 0;
+    // PointerUp can hit a disposed Listener after the row unmounts (reorder/exit).
+    if (_disposed) return;
+    final had = _holdOriginN.value != null || _holdSunrise.value > 0;
     if (!had) return;
     if (_holdSunrise.isAnimating || _holdSunrise.value > 0) {
       _holdSunrise.stop();
       _holdSunrise.value = 0;
     }
-    _holdOrigin = null;
+    _holdOriginN.value = null;
     _pointerDownGlobal = null;
-    if (mounted) setState(() {});
+  }
+
+  RenderBox? _cardBox() {
+    return _cardKey.currentContext?.findRenderObject() as RenderBox?;
+  }
+
+  Offset _rowCenterLocal() {
+    final box = _cardBox();
+    if (box == null || !box.hasSize) return Offset.zero;
+    return box.size.center(Offset.zero);
   }
 
   void _onDesktopHoldPointerDown(PointerDownEvent e) {
-    if (_floating) return;
+    if (_disposed || _floating) return;
     if (e.kind == PointerDeviceKind.mouse && e.buttons != kPrimaryButton) {
       return;
     }
-    final box = context.findRenderObject() as RenderBox?;
+    final box = _cardBox();
     if (box == null || !box.hasSize) return;
     _pointerDownGlobal = e.position;
     _startHoldSunrise(
@@ -221,8 +229,9 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
   }
 
   void _onDesktopHoldPointerMove(PointerMoveEvent e) {
+    if (_disposed) return;
     final down = _pointerDownGlobal;
-    if (down == null || _holdOrigin == null) return;
+    if (down == null || _holdOriginN.value == null) return;
     if ((e.position - down).distance > kTouchSlop) {
       _clearHoldSunrise();
     }
@@ -544,14 +553,12 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
                 : Colors.transparent;
 
     Widget rowBody = AnimatedContainer(
+      key: _cardKey,
       duration: leanback ? Duration.zero : const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       width: double.infinity,
       height: widget.compact ? 42 : 46,
-      padding: EdgeInsets.only(
-        left: widget.compact ? 10 : 12,
-        right: widget.compact ? 6 : 8,
-      ),
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
         color: fillColor,
         border: Border(
@@ -565,27 +572,62 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
           ),
         ),
       ),
-      child: Row(
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          if (widget.icon != null) ...[
-            Icon(widget.icon, size: widget.compact ? 18 : 20, color: iconColor),
-            SizedBox(width: widget.compact ? 10 : 12),
-          ],
-          Expanded(
-            child: Text(
-              widget.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.plusJakartaSans(
-                color: titleColor,
-                fontSize: widget.compact ? 13 : 14,
-                fontWeight: emphatic || lifted
-                    ? FontWeight.w700
-                    : FontWeight.w500,
+          Padding(
+            padding: EdgeInsets.only(
+              left: widget.compact ? 10 : 12,
+              right: widget.compact ? 6 : 8,
+            ),
+            child: Row(
+              children: [
+                if (widget.icon != null) ...[
+                  Icon(
+                    widget.icon,
+                    size: widget.compact ? 18 : 20,
+                    color: iconColor,
+                  ),
+                  SizedBox(width: widget.compact ? 10 : 12),
+                ],
+                Expanded(
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: titleColor,
+                      fontSize: widget.compact ? 13 : 14,
+                      fontWeight: emphatic || lifted
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (_showPin) _buildPin(context),
+              ],
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: Listenable.merge([_holdSunrise, _holdOriginN]),
+                builder: (context, _) {
+                  final origin = _holdOriginN.value;
+                  final progress = _holdSunrise.value;
+                  if (origin == null || progress <= 0) {
+                    return const SizedBox.shrink();
+                  }
+                  return CustomPaint(
+                    painter: _CategoryHoldSunrisePainter(
+                      origin: origin,
+                      progress: progress,
+                    ),
+                  );
+                },
               ),
             ),
           ),
-          if (_showPin) _buildPin(context),
         ],
       ),
     );
@@ -635,55 +677,30 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
     );
 
     final reorderIndex = widget.reorderIndex;
-    if (reorderIndex != null) {
-      row = Listener(
-        behavior: HitTestBehavior.translucent,
-        onPointerDown: _onDesktopHoldPointerDown,
-        onPointerMove: _onDesktopHoldPointerMove,
-        onPointerUp: (_) => _clearHoldSunrise(),
-        onPointerCancel: (_) => _clearHoldSunrise(),
-        child: _CategoryReorderDragStartListener(
-          index: reorderIndex,
-          child: row,
-        ),
-      );
-    }
-
-    if (_holdOrigin == null) return row;
-    return Stack(
-      clipBehavior: Clip.hardEdge,
-      children: [
-        row,
-        Positioned.fill(
-          child: IgnorePointer(
-            child: AnimatedBuilder(
-              animation: _holdSunrise,
-              builder: (context, _) => CustomPaint(
-                painter: _CategoryHoldSunrisePainter(
-                  origin: _holdOrigin!,
-                  progress: _holdSunrise.value,
-                  color: ForjaShellColors.brandGreen,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
+    if (reorderIndex == null) return row;
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _onDesktopHoldPointerDown,
+      onPointerMove: _onDesktopHoldPointerMove,
+      onPointerUp: (_) => _clearHoldSunrise(),
+      onPointerCancel: (_) => _clearHoldSunrise(),
+      child: _CategoryReorderDragStartListener(
+        index: reorderIndex,
+        child: row,
+      ),
     );
   }
 }
 
-/// Expanding circle while holding to reorder / reveal pin (press-point sunrise).
+/// Neutral expanding circle clipped inside the category row while holding.
 class _CategoryHoldSunrisePainter extends CustomPainter {
   _CategoryHoldSunrisePainter({
     required this.origin,
     required this.progress,
-    required this.color,
   });
 
   final Offset origin;
   final double progress;
-  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -699,27 +716,16 @@ class _CategoryHoldSunrisePainter extends CustomPainter {
       maxR = math.max(maxR, (c - origin).distance);
     }
     if (maxR <= 0) return;
-    final r = maxR * t;
     canvas.drawCircle(
       origin,
-      r,
-      Paint()..color = color.withValues(alpha: 0.12 + 0.20 * t),
-    );
-    canvas.drawCircle(
-      origin,
-      r,
-      Paint()
-        ..color = color.withValues(alpha: 0.45 * t)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
+      maxR * t,
+      Paint()..color = Colors.white.withValues(alpha: 0.08 + 0.14 * t),
     );
   }
 
   @override
   bool shouldRepaint(covariant _CategoryHoldSunrisePainter old) =>
-      old.origin != origin ||
-      old.progress != progress ||
-      old.color != color;
+      old.origin != origin || old.progress != progress;
 }
 
 /// Hold ~1.5s before category reorder begins (tap/scroll stay normal).

@@ -1353,8 +1353,9 @@ class _IptvCatalogSearchDialogState extends State<_IptvCatalogSearchDialog> {
   }
 }
 
-/// Shelf tab — selected keeps section gradient; reverse only on hover/focus
-/// of that selected tab. Unselected tabs stay muted.
+/// Shelf tab — selected idle keeps section gradient; reverse only when that
+/// selected tab is hovered/focused. Unselected hover/focus uses the normal
+/// section gradient (not reverse).
 /// Hover sequence: expand reveals reload after a short delay.
 /// TV: hold OK ~1s reveals reload and fires it (no extra D-pad / OK).
 class _IptvSectionShelfTab extends StatefulWidget {
@@ -1549,15 +1550,16 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
   Widget build(BuildContext context) {
     // Selected idle → original section gradient + white ink.
     // Selected + hover/focus → reverse (white fill + section ink).
-    // Unselected → muted; focus/hover does not recolor them.
+    // Unselected idle → muted; unselected hover/focus → normal gradient.
     final accent = widget.spec.shelfGradientColors.first;
     final invert = widget.selected && _paintActive;
-    final showGradient = widget.selected && !invert;
+    final showGradient =
+        !invert && (widget.selected || _paintActive);
 
     final Color ink;
     if (invert) {
       ink = accent;
-    } else if (widget.selected) {
+    } else if (showGradient) {
       ink = Colors.white;
     } else {
       ink = Colors.white60;
@@ -1633,7 +1635,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                         style: GoogleFonts.plusJakartaSans(
                           color: ink,
                           fontSize: 12.5,
-                          fontWeight: invert || widget.selected
+                          fontWeight: invert || showGradient
                               ? FontWeight.w800
                               : FontWeight.w500,
                         ),
@@ -1687,7 +1689,7 @@ class _IptvSectionShelfTabState extends State<_IptvSectionShelfTab> {
                             size: 16,
                             color: invert
                                 ? accent
-                                : (widget.selected || _revealReload
+                                : (showGradient || _revealReload
                                     ? Colors.white.withValues(alpha: 0.95)
                                     : Colors.white60),
                           ),

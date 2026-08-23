@@ -36,6 +36,8 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
   /// Row the user last reached with ↑/↓ — ↓ from the header returns here
   /// instead of snapping back to the active portal.
   int? _lastFocusedPortalIndex;
+  /// Mouse/trackpad moved the list — skip auto scroll/focus restore until D-pad.
+  bool _pointerBrowsingList = false;
   late Set<String> _knownPortalKeys;
 
   @override
@@ -75,7 +77,10 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       final listFocused = iptvRowHasFocus('portals');
       // Rebuilds can drop hasFocus for a frame — treat last list index as
       // "user is browsing" so scrape/health notifies don't scroll or refocus.
-      final userInList = listFocused || _lastFocusedPortalIndex != null;
+      // Pointer/trackpad scroll also counts — open-time last index is stale.
+      final userInList = listFocused ||
+          _lastFocusedPortalIndex != null ||
+          _pointerBrowsingList;
       final activeKey = widget.ctrl.activePortal?.key;
       final activeIndex = activeKey == null
           ? -1
@@ -110,8 +115,11 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
           );
         }
       }
+      // Pointer browse left focus on the open-time row — restoring would yank
+      // scroll back to that stale index on every health/scrape notify.
       if (_lastFocusedPortalIndex != null &&
           !listFocused &&
+          !_pointerBrowsingList &&
           !iptvRowHasFocus('iptv-portal-header') &&
           _filtered.isNotEmpty) {
         final idx = _lastFocusedPortalIndex!.clamp(0, _filtered.length - 1);
@@ -130,6 +138,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       _scrolledToActiveKey = null;
       _scrolledToActiveIndex = null;
       _lastFocusedPortalIndex = null;
+      _pointerBrowsingList = false;
     }
   }
 
@@ -214,6 +223,14 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     return iptvActivePortalFocusIndex(widget.ctrl, portals: all);
   }
 
+  /// Trackpad/mouse scroll — do not treat open-time focused row as scroll target.
+  bool _onListScrollNotification(ScrollNotification notification) {
+    if (notification is! UserScrollNotification) return false;
+    if (notification.direction == ScrollDirection.idle) return false;
+    _pointerBrowsingList = true;
+    return false;
+  }
+
   /// D-pad ↑/↓: focus neighbor (or accelerated stride while holding). Jump-then-
   /// retry when the lazy builder has not mounted that row yet.
   void _focusPortalAt(int index) {
@@ -222,6 +239,8 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     if (total <= 0) return;
     final clamped = index.clamp(0, total - 1);
     _lastFocusedPortalIndex = clamped;
+    // D-pad owns scroll again — allow focus restore on later notifies.
+    _pointerBrowsingList = false;
     _jumpPortalListToIndex(clamped);
     if (ShellTvFocusCoordinator.focusRowItemExact('iptv', 'portals', clamped)) {
       return;
@@ -680,38 +699,41 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
       orientation: ShellTvRowOrientation.vertical,
       child: IptvTvScrollbar(
         controller: _listScroll,
-        child: ListView.builder(
-          controller: _listScroll,
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-          itemExtent: _portalRowHeight,
-          // Warm off-screen neighbors so D-pad ↑/↓ usually hits a mounted node.
-          scrollCacheExtent: ScrollCacheExtent.pixels(
-            _portalRowHeight * _scrollCacheRows,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: _onListScrollNotification,
+          child: ListView.builder(
+            controller: _listScroll,
+            padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+            itemExtent: _portalRowHeight,
+            // Warm off-screen neighbors so D-pad ↑/↓ usually hits a mounted node.
+            scrollCacheExtent: ScrollCacheExtent.pixels(
+              _portalRowHeight * _scrollCacheRows,
+            ),
+            addAutomaticKeepAlives: false,
+            itemCount: list.length,
+            itemBuilder: (_, i) {
+              final v = list[i];
+              return RepaintBoundary(
+                key: ValueKey<String>(v.key),
+                child: _PortalHoverTile(
+                  portal: v,
+                  ctrl: ctrl,
+                  isActive: v.key == activeKey,
+                  listIndex: i,
+                  onUpEdge: i == 0
+                      ? () => iptvFocusRowItem(
+                            'iptv-portal-header',
+                            _portalHeaderAddIndex(),
+                          )
+                      : () => _focusPortalAt(i - ShellTvHoldAccel.lastStep),
+                  onDownEdge: i >= last
+                      ? null
+                      : () => _focusPortalAt(i + ShellTvHoldAccel.lastStep),
+                  onEdit: () => _showPortalDialog(context, existing: v),
+                ),
+              );
+            },
           ),
-          addAutomaticKeepAlives: false,
-          itemCount: list.length,
-          itemBuilder: (_, i) {
-            final v = list[i];
-            return RepaintBoundary(
-              key: ValueKey<String>(v.key),
-              child: _PortalHoverTile(
-                portal: v,
-                ctrl: ctrl,
-                isActive: v.key == activeKey,
-                listIndex: i,
-                onUpEdge: i == 0
-                    ? () => iptvFocusRowItem(
-                          'iptv-portal-header',
-                          _portalHeaderAddIndex(),
-                        )
-                    : () => _focusPortalAt(i - ShellTvHoldAccel.lastStep),
-                onDownEdge: i >= last
-                    ? null
-                    : () => _focusPortalAt(i + ShellTvHoldAccel.lastStep),
-                onEdit: () => _showPortalDialog(context, existing: v),
-              ),
-            );
-          },
         ),
       ),
     );

@@ -167,7 +167,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [144-[open]-…](144-[open]-iptv-catalog-stream-health-never-reprobes.md) | IPTV catalog/guide stream health never re-probes | P2 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [145-[open]-…](145-[open]-macos-live-embed-webkit-fullscreen-crash.md) | macOS Live embed WK fullscreen SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [146-[open]-…](146-[open]-macos-pip-settitlebarstyle-sigtrap.md) | Desktop PiP setTitleBarStyle SIGTRAP | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [147-[open]-…](147-[open]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | open | 7/7 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [147-[open]-…](147-[open]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | open | 8/8 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / Classic + stall checkbox | P1 | High | open | 21/21 · A 0/17 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [149-[open]-…](149-[open]-iptv-player-source-picker-dpad.md) | IPTV/Live player source picker has no D-pad; duplicate source control | P2 | Medium | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (display mode match shipped) | P2 | Medium | open | 2/5 · 1⏭️ · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -218,6 +218,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [196-[fixed]-…](fixed/196-[fixed]-desktop-window-size-resets-after-player.md) | Desktop window size resets after player close | P1 | High | fixed | Complete · 3/3 · A 3/3 | — |
 | [197-[open]-…](197-[open]-android-tv-trailer-quality-switch.md) | ATV trailer Quality switch stuck | P1 | High | open | 5/5 · A 0/2 | — |
 | [198-[fixed]-…](fixed/198-[fixed]-mediakit-resume-and-server-switch-starts-at-zero.md) | MediaKit resume / server switch starts at 0 | P1 | High | fixed | Complete · 4/4 · A 0/2 | — |
+| [199-[open]-…](199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md) | ATV IPTV MediaKit silent underrun + Reload engine swap | P1 | High | open | 4/4 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

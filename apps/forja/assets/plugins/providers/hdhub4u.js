@@ -31,7 +31,7 @@ function extract(ctx) {
     var kind = isTv ? 'tv' : 'movie';
     return fetchJson(
       'https://api.themoviedb.org/3/' + kind + '/' + encodeURIComponent(String(ctx.tmdbId || '')) +
-        '?api_key=' + encodeURIComponent(tmdbKey) + '&append_to_response=external_ids',
+      '?api_key=' + encodeURIComponent(tmdbKey) + '&append_to_response=external_ids',
       { Accept: 'application/json', 'User-Agent': ua },
     ).then(function (d) {
       var title = isTv ? d.name : d.title;
@@ -123,30 +123,66 @@ function extract(ctx) {
   }
 
   function hubCloudExtractor(url, referer) {
-    return fetchText(url.replace('hubcloud.ink', 'hubcloud.dad'), { Referer: referer || url })
+    var current = url.replace('hubcloud.ink', 'hubcloud.dad');
+    return fetchText(current, { Referer: referer || url })
       .then(function (html) {
         var $ = ctx.html(html);
-        var size = $('i#size').text().trim();
-        var header = $('div.card-header').text().trim();
-        var qm = header.match(/(\d{3,4})[pP]/);
-        var quality = qm ? parseInt(qm[1], 10) : 1080;
-        var links = [];
-        $('a.btn').each(function () {
-          var a = $(this);
-          var href = a.attr('href') || '';
-          var text = a.text().toLowerCase();
-          if (!href) return;
-          var label = 'HubCloud';
-          if (/r2\.dev/i.test(href)) label = 'Direct R2';
-          else if (/workers\.dev/i.test(href)) label = 'ZipDisk Server';
-          else if (/fsl server/i.test(text)) label = 'HubCloud - FSL';
-          else if (/s3 server/i.test(text)) label = 'HubCloud - S3';
-          else if (/fslv2/i.test(text)) label = 'HubCloud - FSLv2';
-          else if (/mega server/i.test(text)) label = 'HubCloud - Mega';
-          else if (!/download file|fsl|s3|mega|zipdisk|10gbps/i.test(text)) return;
-          links.push({ name: label, quality: quality, url: href, size: size });
+        var nextHref = '';
+        if (current.indexOf('hubcloud.php') < 0) {
+          nextHref = $('#download').attr('href') || '';
+          if (!nextHref) {
+            var m = String(html || '').match(/var url\s*=\s*'([^']*)'/);
+            if (m) nextHref = m[1];
+          }
+        }
+        var fetchNext = nextHref
+          ? (function () {
+              if (!/^https?:/i.test(nextHref)) {
+                try {
+                  var u = new URL(current);
+                  nextHref = u.protocol + '//' + u.hostname + '/' + nextHref.replace(/^\//, '');
+                } catch (e) {}
+              }
+              return fetchText(nextHref, { Referer: current });
+            })()
+          : Promise.resolve(html);
+        return fetchNext.then(function (pageData) {
+          var $p = ctx.html(pageData);
+          var size = $p('i#size').text().trim();
+          var header = $p('div.card-header').text().trim();
+          var qm = header.match(/(\d{3,4})[pP]/);
+          var quality = qm ? parseInt(qm[1], 10) : 1080;
+          var links = [];
+          $p('a.btn, a').each(function () {
+            var a = $p(this);
+            var href = a.attr('href') || '';
+            var text = a.text().toLowerCase();
+            if (!href || /\/drive\//i.test(href)) return;
+            var label = 'HubCloud';
+            if (/pixeldrain\.(?:dev|net)\//i.test(href) || /pixelserver/i.test(text)) {
+              var pd = href.match(/pixeldrain\.(?:dev|net)\/(?:u|api\/file)\/([A-Za-z0-9]+)/i);
+              label = 'HubCloud - PixelServer';
+              href = pd
+                ? 'https://pixeldrain.net/api/file/' + pd[1] + '?download='
+                : href;
+            } else if (/r2\.dev/i.test(href)) label = 'Direct R2';
+            else if (/workers\.dev/i.test(href)) label = 'ZipDisk Server';
+            else if (/pixel\.hubcloud\./i.test(href) || /10gbps/i.test(text)) label = 'HubCloud - 10Gbps';
+            else if (/fsl server/i.test(text)) label = 'HubCloud - FSL';
+            else if (/s3 server/i.test(text)) label = 'HubCloud - S3';
+            else if (/fslv2/i.test(text)) label = 'HubCloud - FSLv2';
+            else if (/mega server/i.test(text)) label = 'HubCloud - Mega';
+            else if (!/download file|fsl|s3|mega|zipdisk|10gbps|pixelserver/i.test(text)) return;
+            links.push({
+              name: label,
+              title: header || undefined,
+              quality: quality,
+              url: href,
+              size: size || undefined,
+            });
+          });
+          return links;
         });
-        return links;
       }).catch(function () { return []; });
   }
 
@@ -273,60 +309,60 @@ function extract(ctx) {
       var du = new URL(currentDomain);
       mu.hostname = du.hostname;
       normalized = mu.toString();
-    } catch (e) {}
+    } catch (e) { }
     return fetchText(normalized, { Referer: currentDomain + '/' }).then(function (html) {
       return collectHubLinks(html, normalized).then(function (hubLinks) {
-      var $ = ctx.html(html);
-      var typeRaw = $('h1.page-title span').text().toLowerCase();
-      var isMovie = typeRaw.indexOf('movie') >= 0 || !isTv;
-      var linkHrefs = hubLinks.slice();
-      if (isMovie) {
-        $('h3 a, h4 a').filter(function () {
-          return /480|720|1080|2160|4K/i.test($(this).text());
-        }).each(function () { linkHrefs.push({ url: $(this).attr('href'), episode: null }); });
-        $('.page-body > div a').filter(function () {
-          var href = $(this).attr('href') || '';
-          return /hdstream4u|hubstream/i.test(href);
-        }).each(function () { linkHrefs.push({ url: $(this).attr('href'), episode: null }); });
-      } else {
-        var episodeMap = {};
-        $('h3, h4').each(function () {
-          var el = $(this);
-          var text = el.text();
-          var epM = text.match(/(?:EPiSODE\s*(\d+)|E(\d+))/i);
-          if (epM) {
-            var epNum = parseInt(epM[1] || epM[2], 10);
-            el.find('a').each(function () {
-              var href = $(this).attr('href') || '';
-              if (!episodeMap[epNum]) episodeMap[epNum] = [];
-              episodeMap[epNum].push(href);
-            });
-          }
-        });
-        Object.keys(episodeMap).forEach(function (ep) {
-          episodeMap[ep].forEach(function (u) {
-            linkHrefs.push({ url: u, episode: parseInt(ep, 10) });
+        var $ = ctx.html(html);
+        var typeRaw = $('h1.page-title span').text().toLowerCase();
+        var isMovie = typeRaw.indexOf('movie') >= 0 || !isTv;
+        var linkHrefs = hubLinks.slice();
+        if (isMovie) {
+          $('h3 a, h4 a').filter(function () {
+            return /480|720|1080|2160|4K/i.test($(this).text());
+          }).each(function () { linkHrefs.push({ url: $(this).attr('href'), episode: null }); });
+          $('.page-body > div a').filter(function () {
+            var href = $(this).attr('href') || '';
+            return /hdstream4u|hubstream/i.test(href);
+          }).each(function () { linkHrefs.push({ url: $(this).attr('href'), episode: null }); });
+        } else {
+          var episodeMap = {};
+          $('h3, h4').each(function () {
+            var el = $(this);
+            var text = el.text();
+            var epM = text.match(/(?:EPiSODE\s*(\d+)|E(\d+))/i);
+            if (epM) {
+              var epNum = parseInt(epM[1] || epM[2], 10);
+              el.find('a').each(function () {
+                var href = $(this).attr('href') || '';
+                if (!episodeMap[epNum]) episodeMap[epNum] = [];
+                episodeMap[epNum].push(href);
+              });
+            }
           });
-        });
-      }
-      var unique = {};
-      var filtered = linkHrefs.filter(function (l) {
-        if (!l.url || unique[l.url]) return false;
-        unique[l.url] = true;
-        return true;
-      });
-      return Promise.all(filtered.map(function (l) {
-        return loadExtractor(l.url, normalized).then(function (extracted) {
-          return extracted.map(function (e) { return Object.assign({}, e, { episode: l.episode }); });
-        });
-      })).then(function (groups) {
-        var seen = {};
-        return [].concat.apply([], groups).filter(function (l) {
-          if (!l.url || l.url.indexOf('.zip') >= 0 || seen[l.url]) return false;
-          seen[l.url] = true;
+          Object.keys(episodeMap).forEach(function (ep) {
+            episodeMap[ep].forEach(function (u) {
+              linkHrefs.push({ url: u, episode: parseInt(ep, 10) });
+            });
+          });
+        }
+        var unique = {};
+        var filtered = linkHrefs.filter(function (l) {
+          if (!l.url || unique[l.url]) return false;
+          unique[l.url] = true;
           return true;
         });
-      });
+        return Promise.all(filtered.map(function (l) {
+          return loadExtractor(l.url, normalized).then(function (extracted) {
+            return extracted.map(function (e) { return Object.assign({}, e, { episode: l.episode }); });
+          });
+        })).then(function (groups) {
+          var seen = {};
+          return [].concat.apply([], groups).filter(function (l) {
+            if (!l.url || l.url.indexOf('.zip') >= 0 || seen[l.url]) return false;
+            seen[l.url] = true;
+            return true;
+          });
+        });
       });
     });
   }
@@ -342,9 +378,9 @@ function extract(ctx) {
     var q = isTv && ctx.season ? info.title + ' Season ' + ctx.season : info.title;
     var searchPromise = info.imdbId
       ? searchByImdb(info.imdbId, ctx.season, currentDomain).then(function (imdbHits) {
-          if (imdbHits.length) return imdbHits;
-          return searchHits(q, currentDomain);
-        })
+        if (imdbHits.length) return imdbHits;
+        return searchHits(q, currentDomain);
+      })
       : searchHits(q, currentDomain);
     return searchPromise.then(function (hits) {
       if (!hits.length) {
@@ -367,6 +403,7 @@ function extract(ctx) {
           return {
             url: l.url,
             name: name,
+            title: l.title || undefined,
             quality: qualityStr(l.quality),
             size: l.size || undefined,
             headers: l.headers || undefined,

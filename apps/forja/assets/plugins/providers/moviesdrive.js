@@ -44,21 +44,36 @@ function extract(ctx) {
         var qm = header.match(/(\d{3,4})[pP]/);
         var quality = qm ? parseInt(qm[1], 10) : 1080;
         var links = [];
-        $p('a.btn').each(function () {
+        $p('a.btn, a').each(function () {
           var a = $p(this);
           var href = a.attr('href') || '';
           var text = a.text().toLowerCase();
-          if (!href) return;
+          if (!href || /\/drive\//i.test(href)) return;
           var label = 'HubCloud';
-          if (/download file|fsl server|s3 server|fslv2|mega server/i.test(text) || /r2\.dev/i.test(href)) {
-            if (/r2\.dev/i.test(href)) label = 'Direct R2';
-            else if (/workers\.dev/i.test(href)) label = 'ZipDisk Server';
-            else if (/fsl server/i.test(text)) label = 'HubCloud - FSL';
-            else if (/s3 server/i.test(text)) label = 'HubCloud - S3';
-            else if (/fslv2/i.test(text)) label = 'HubCloud - FSLv2';
-            else if (/mega server/i.test(text)) label = 'HubCloud - Mega';
-            links.push({ name: label, quality: quality, url: href, size: size });
-          }
+          var keep =
+            /download file|fsl server|s3 server|fslv2|mega server|10gbps|pixelserver/i.test(text) ||
+            /r2\.dev|workers\.dev|pixel\.hubcloud\.|pixeldrain\.(?:dev|net)\//i.test(href);
+          if (!keep) return;
+          if (/pixeldrain\.(?:dev|net)\//i.test(href) || /pixelserver/i.test(text)) {
+            var pd = href.match(/pixeldrain\.(?:dev|net)\/(?:u|api\/file)\/([A-Za-z0-9]+)/i);
+            label = 'HubCloud - PixelServer';
+            href = pd
+              ? 'https://pixeldrain.net/api/file/' + pd[1] + '?download='
+              : href;
+          } else if (/r2\.dev/i.test(href)) label = 'Direct R2';
+          else if (/workers\.dev/i.test(href)) label = 'ZipDisk Server';
+          else if (/pixel\.hubcloud\./i.test(href) || /10gbps/i.test(text)) label = 'HubCloud - 10Gbps';
+          else if (/fsl server/i.test(text)) label = 'HubCloud - FSL';
+          else if (/s3 server/i.test(text)) label = 'HubCloud - S3';
+          else if (/fslv2/i.test(text)) label = 'HubCloud - FSLv2';
+          else if (/mega server/i.test(text)) label = 'HubCloud - Mega';
+          links.push({
+            name: label,
+            title: header || undefined,
+            quality: quality,
+            url: href,
+            size: size || undefined,
+          });
         });
         return links;
       });
@@ -132,7 +147,13 @@ function extract(ctx) {
                 return Promise.all(servers.map(function (server) {
                   return loadExtractor(server, href).then(function (streams) {
                     return streams.map(function (s) {
-                      return { name: 'MoviesDrive ' + s.name, url: s.url, quality: s.quality + 'p' };
+                      return {
+                        name: 'MoviesDrive ' + s.name,
+                        title: s.title || undefined,
+                        url: s.url,
+                        quality: s.quality + 'p',
+                        size: s.size || undefined,
+                      };
                     });
                   });
                 })).then(function (gs) { return [].concat.apply([], gs); });
@@ -161,7 +182,13 @@ function extract(ctx) {
                   return Promise.all(epLinks.map(function (epLink) {
                     return loadExtractor(epLink, nextHref).then(function (streams) {
                       return streams.map(function (s) {
-                        return { name: 'MoviesDrive ' + s.name, url: s.url, quality: s.quality + 'p' };
+                        return {
+                          name: 'MoviesDrive ' + s.name,
+                          title: s.title || undefined,
+                          url: s.url,
+                          quality: s.quality + 'p',
+                          size: s.size || undefined,
+                        };
                       });
                     });
                   })).then(function (gs) { return [].concat.apply([], gs); });

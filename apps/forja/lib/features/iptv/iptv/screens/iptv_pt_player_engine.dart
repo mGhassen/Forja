@@ -613,19 +613,18 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         await p.setProperty('cache-pause', 'no');
         await p.setProperty('cache-pause-initial', 'no');
       } else {
-        // Live: keep playing through CDN HTTP closes while ffmpeg reconnects.
-        // cache-pause=yes turned every socket blip into a hard pause (visible
-        // stop every ~minute). Tiny back-buffer ⇒ underrun freezes (no past
-        // to silently replay) instead of chewing demuxer-max-back-bytes.
-        debugPrint('[IPTV Player] MediaKit cache profile=live (reconnect)');
+        // Live: continuity proxy absorbs CDN HTTP closes before mpv (I148-T21).
+        // cache-pause=yes so underrun pauses + refills (Buffering chrome) instead
+        // of freezing on the last frame with cache-pause=no (silent stall).
+        debugPrint('[IPTV Player] MediaKit cache profile=live (pause-refill)');
         await p.setProperty('cache-secs', '30');
         await p.setProperty('demuxer-readahead-secs', '20');
         await p.setProperty('demuxer-max-bytes', '150000000');
-        // No past cushion — underrun freezes; proxy read-ahead absorbs CDN closes.
-        await p.setProperty('demuxer-max-back-bytes', '0');
+        // Tiny back-buffer — underrun pauses to refill instead of replaying past.
+        await p.setProperty('demuxer-max-back-bytes', '1048576');
         await p.setProperty('audio-buffer', '1.0');
-        await p.setProperty('cache-pause', 'no');
-        await p.setProperty('cache-pause-initial', 'no');
+        await p.setProperty('cache-pause', 'yes');
+        await p.setProperty('cache-pause-initial', 'yes');
       }
 
       await p.setProperty('sub-auto', 'all');
@@ -839,7 +838,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         unawaited(_s._autoSwapEngineForFormatError(msg));
         return;
       }
+      // Live: never auto-swap engines (Reload / empty reopen often throws
+      // "failed to recognize file format" and silently flipped MediaKit→Exo).
       if (!_s._formatEngineSwapped &&
+          !_livePlaybackProfile &&
           _IptvPtPlayerScreenState._isUnrecognizedFormatError(msg)) {
         unawaited(_s._autoSwapEngineForFormatError(msg));
         return;
@@ -1220,7 +1222,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (_s._feedMarkMs != markMs) {
       _s._feedMarkMs = markMs;
       _s._feedAdvancedAt = DateTime.now();
-      if (_mediaKitLiveProfile && _s._playing) {
+      // Do not bump [_lastPosChange] from feed ticks alone — continuity proxy
+      // keepalives look "alive" while the picture is frozen on empty cache.
+      if (_mediaKitLiveProfile &&
+          _s._playing &&
+          _s._cacheAheadSecs >=
+              _IptvPtPlayerScreenState._minHealthyCacheSecs) {
         _s._lastPosChange = DateTime.now();
       }
     }
@@ -1264,7 +1271,14 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
   bool get _playheadRecentlyMoved {
     if (!_s._playing) return false;
-    if (_mediaKitLiveProfile && _networkStillFeeding) return true;
+    // Feed ticks alone are not playhead — empty-cache underrun must still
+    // show Buffering and reopen. Healthy cushion + feed ⇒ still painting.
+    if (_mediaKitLiveProfile &&
+        _networkStillFeeding &&
+        _s._cacheAheadSecs >=
+            _IptvPtPlayerScreenState._minHealthyCacheSecs) {
+      return true;
+    }
     return DateTime.now().difference(_s._lastPosChange) <
         const Duration(seconds: 2);
   }
@@ -1272,6 +1286,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   /// 12s Buffering + frozen playhead + weak cache ⇒ treat as dead for Stable.
   /// Do **not** trip while demuxer still has a healthy ahead cushion — that is
   /// normal `cache-pause` refill (freeze frame + Buffering), not a dead feed.
+  /// Empty cache + feed ticks still counts — proxy keepalives must not block
+  /// the wall forever while the picture stays frozen.
   bool get _bufferingHardWall {
     final since = _s._bufferingSince;
     if (since == null) return false;
@@ -1280,7 +1296,6 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _IptvPtPlayerScreenState._minHealthyCacheSecs) {
       return false;
     }
-    if (_networkStillFeeding) return false;
     return DateTime.now().difference(since) >=
         _IptvPtPlayerScreenState._bufferingHardWallDuration;
   }
@@ -1345,7 +1360,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _IptvPtPlayerScreenState._minHealthyCacheSecs) {
       return true;
     }
-    if (_networkStillFeeding) return true;
+    // Feeding with empty cache is refill-in-progress, not "working" — otherwise
+    // proxy ticks hold recovery forever while the picture stays frozen.
     if (_playheadRecentlyMoved) return true;
     return false;
   }
@@ -1433,17 +1449,35 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
               reason: 'position frozen ${frozenFor.inSeconds}s, cache empty');
           return;
         }
+      } else if (_s._userPlayWhenReady &&
+          _s._playing &&
+          _s._cacheAheadSecs <
+              _IptvPtPlayerScreenState._minHealthyCacheSecs) {
+        // Detector 2b: MediaKit live underrun while still "playing".
+        // cache-pause should flip playing=false; if it does not, show Buffering
+        // and soft-reopen instead of a silent frozen frame.
+        final frozenFor = now.difference(_s._lastPosChange);
+        if (frozenFor > const Duration(milliseconds: 1500)) {
+          _ensureBufferingChrome(now);
+          if (frozenFor >=
+              _IptvPtPlayerScreenState._liveEmptyPauseReopen) {
+            _triggerRecovery(
+              reason: 'live underrun, cache empty',
+            );
+            return;
+          }
+        }
       }
       // Detector 3: silent self-pause.
       // Live Stable + cache-pause: playing=false is normal while refilling.
       // Empty cache → show Buffering, soft-reopen at 5s (no fake "working").
+      // Feed ticks alone must not hold — proxy keepalives fake "alive".
       if (_s._userPlayWhenReady &&
           !_s._playing &&
           _s._readyNotPlayingSince != null) {
         final pausedFor = now.difference(_s._readyNotPlayingSince!);
         if (_livePlaybackProfile && _bufferedRecovery) {
           if (_streamWorking ||
-              _networkStillFeeding ||
               _s._cacheAheadSecs >=
                   _IptvPtPlayerScreenState._minHealthyCacheSecs) {
             if (!_s._buffering) _logHealthyHold('self-pause');

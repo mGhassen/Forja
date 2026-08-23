@@ -397,16 +397,50 @@ function extract(ctx) {
     }
   }
 
+  function pixeldrainDownloadUrl(href) {
+    var m = String(href || '').match(
+      /pixeldrain\.(?:dev|net)\/(?:u|api\/file)\/([A-Za-z0-9]+)/i,
+    );
+    if (m) return appendDownloadQuery('https://pixeldrain.net/api/file/' + m[1]);
+    var userUrl = href.replace('/api/file/', '/u/');
+    return appendDownloadQuery(userUrl.replace('/u/', '/api/file/'));
+  }
+
+  function collectHubCloudLinks($) {
+    var results = [];
+    $('a.btn, a').each(function () {
+      var a = $(this);
+      var text = a.text().trim();
+      var href = a.attr('href') || '';
+      if (!href || isHubCloudDrivePage(href)) return;
+      if (/PixelServer/i.test(text) || /pixeldrain\.(?:dev|net)\//i.test(href)) {
+        results.push({ url: pixeldrainDownloadUrl(href), route: 'Pixeldrain' });
+      } else if (/FSLv2/i.test(text)) {
+        results.push({ url: href, route: 'FSLv2' });
+      } else if (/FSL/i.test(text)) {
+        results.push({ url: href, route: 'FSL' });
+      } else if (/Download File/i.test(text) || /r2\.dev/i.test(href)) {
+        results.push({ url: href, route: 'Direct R2' });
+      } else if (/ZipDisk|Fast Cloud/i.test(text) || /workers\.dev/i.test(href)) {
+        results.push({ url: href, route: 'Fast Cloud' });
+      } else if (/10Gbps/i.test(text) || /pixel\.hubcloud\./i.test(href)) {
+        results.push({ url: href, route: 'HubCloud 10Gbps' });
+      }
+    });
+    return results;
+  }
+
+  // /drive/<id> is the HubCloud entry hop now — follow to hubcloud.php; never emit /drive/.
   function extractHubCloud(hubCloudUrl) {
-    if (isHubCloudDrivePage(hubCloudUrl)) return Promise.resolve([]);
     return fetchText(hubCloudUrl, Object.assign({}, pageHeaders, { Referer: hubCloudUrl }))
       .then(function (page) {
+        var entryHtml = page.html || '';
+        var $entry = ctx.html(entryHtml);
         var linksUrl = '';
-        var redirectUrlMatch = String(page.html || '').match(/var url ?= ?'(.*?)'/);
+        var redirectUrlMatch = String(entryHtml).match(/var url ?= ?'(.*?)'/);
         if (redirectUrlMatch) linksUrl = redirectUrlMatch[1];
         if (!linksUrl) {
-          var $ = ctx.html(page.html);
-          linksUrl = $('#download').attr('href') || '';
+          linksUrl = $entry('#download').attr('href') || '';
           if (linksUrl && !/^https?:/i.test(linksUrl)) {
             try {
               var base = new URL(hubCloudUrl);
@@ -414,35 +448,16 @@ function extract(ctx) {
             } catch (e) {}
           }
         }
-        if (!linksUrl || isHubCloudDrivePage(linksUrl)) return [];
-        return fetchText(linksUrl, Object.assign({}, pageHeaders, { Referer: hubCloudUrl })).then(
-          function (linksPage) {
-            var $ = ctx.html(linksPage.html);
-            var results = [];
-            $('a.btn, a').each(function () {
-              var a = $(this);
-              var text = a.text().trim();
-              var href = a.attr('href') || '';
-              if (!href || isHubCloudDrivePage(href)) return;
-              if (/PixelServer/i.test(text)) {
-                var userUrl = href.replace('/api/file/', '/u/');
-                var apiUrl = userUrl.replace('/u/', '/api/file/');
-                results.push({ url: appendDownloadQuery(apiUrl), route: 'Pixeldrain' });
-              } else if (/FSLv2/i.test(text)) {
-                results.push({ url: href, route: 'FSLv2' });
-              } else if (/FSL/i.test(text)) {
-                results.push({ url: href, route: 'FSL' });
-              } else if (/Download File/i.test(text) || /r2\.dev/i.test(href)) {
-                results.push({ url: href, route: 'Direct R2' });
-              } else if (/ZipDisk|Fast Cloud/i.test(text) || /workers\.dev/i.test(href)) {
-                results.push({ url: href, route: 'Fast Cloud' });
-              } else if (/10Gbps/i.test(text) && /workers\.dev|r2\.dev|\/api\/file\//i.test(href)) {
-                results.push({ url: href, route: 'HubCloud 10Gbps' });
-              }
-            });
-            return results;
-          },
-        );
+        if (linksUrl && isHubCloudDrivePage(linksUrl)) linksUrl = '';
+        var next = linksUrl
+          ? fetchText(linksUrl, Object.assign({}, pageHeaders, { Referer: hubCloudUrl }))
+          : Promise.resolve(page);
+        return next.then(function (linksPage) {
+          var html = linksPage.html != null ? linksPage.html : linksPage;
+          var results = collectHubCloudLinks(ctx.html(html));
+          if (results.length || !linksUrl) return results;
+          return collectHubCloudLinks($entry);
+        });
       })
       .catch(function () {
         return [];
@@ -500,14 +515,13 @@ function extract(ctx) {
     var route = resolved.route || routeName(label, resolved.url);
     var name =
       '1Shows - ' + provider + (route ? ' / ' + route : '') + (quality ? ' ' + quality : '');
-    var title = (label || provider) + (size ? '\n' + size : '');
     return {
       name: name,
-      title: title,
+      title: label || undefined,
       url: resolved.url,
       quality: quality || undefined,
+      size: size || undefined,
       headers: { 'User-Agent': ua, Referer: site + '/' },
-      behaviorHints: { bingeGroup: '1shows-' + provider },
     };
   }
 

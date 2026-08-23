@@ -418,11 +418,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// Playhead, feed, or Exo progress tick moved recently — picture not frozen.
   bool get _videoAdvancing {
     if (!_playing) return false;
-    // MediaKit live (IPTV / Forja Live / Stremio): demuxer position often idle.
+    // MediaKit live: feed ticks alone must not hide Buffering — proxy
+    // keepalives look alive while the picture is frozen on empty cache.
     if (!_exoBackend && !widget.vodPlayback) {
       final feedAt = _feedAdvancedAt;
       if (feedAt != null &&
-          DateTime.now().difference(feedAt) < _networkAliveWindow) {
+          DateTime.now().difference(feedAt) < _networkAliveWindow &&
+          _cacheAheadSecs >= _minHealthyCacheSecs) {
         return true;
       }
     }
@@ -1008,8 +1010,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   }
 
   /// After format / hard-open errors, try the other Android engine once.
+  /// Live never auto-swaps — only the Player menu (or VOD hard-open) may.
   Future<void> _autoSwapEngineForFormatError(String reason) async {
     if (_disposed || _formatEngineSwapped || kIsWeb || !Platform.isAndroid) {
+      return;
+    }
+    if (!widget.vodPlayback) {
+      debugPrint('[IPTV] skip format auto-swap on live ($reason)');
       return;
     }
     _formatEngineSwapped = true;

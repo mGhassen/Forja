@@ -60,7 +60,7 @@ class IptvChannelGuidePanel extends StatefulWidget {
   /// Keep focused row fully inside the viewport (focus bar not clipped).
   static const double listFocusMargin = 8;
   static const double epgPeekWidth = 320;
-  static const double epgPeekGap = 8;
+  static const double epgPeekGap = 12;
   static const Duration epgHoverDelay = Duration(seconds: 1);
 
   @override
@@ -599,39 +599,26 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     setState(() => _epgPeekChannelId = channels[_focusedChannelIndex].id);
   }
 
-  double _panelTopInset(BuildContext context) {
-    if (iptvUseTvFocus(context)) return 0;
-    return DesktopWindowChrome.topInset(context) +
-        IptvChannelGuidePanel.panelVerticalGap;
-  }
-
   double _headerHeightEstimate() {
     final playing = _currentChannel;
     final showChannelMeta = _wide || _step == _GuideStep.channels;
     return (playing != null && showChannelMeta) ? 92.0 : 48.0;
   }
 
-  double _epgPeekTop(BuildContext context) {
+  /// Top offset inside the panel column — centers on the peeked channel row.
+  double _epgPeekTopInPanel(BuildContext context, {required double panelHeight}) {
+    final headerH = _headerHeightEstimate();
+    const cardH = kIptvGuideEpgCardHeightWithNext + 24;
+    final maxTop = (panelHeight - cardH - 8).clamp(headerH, panelHeight);
     final index = _epgPeekChannelIndex;
-    if (index == null) return _panelTopInset(context) + _headerHeightEstimate();
+    if (index == null) return headerH;
     const pad = IptvChannelGuidePanel.channelListPaddingV;
     const extent = IptvChannelGuidePanel.channelRowExtent;
     final scroll =
         _channelScroll.hasClients ? _channelScroll.offset : 0.0;
     final rowCenter = pad + index * extent + extent / 2 - scroll;
-    const cardH = kIptvGuideEpgCardHeightWithNext + 24;
-    final panelTop = _panelTopInset(context);
-    final headerH = _headerHeightEstimate();
-    final screenH = MediaQuery.sizeOf(context).height;
-    final raw = panelTop + headerH + rowCenter - cardH / 2;
-    return raw.clamp(panelTop + headerH, screenH - cardH - 12);
-  }
-
-  double _epgPeekLeft() {
-    final panelWidth = _wide
-        ? IptvChannelGuidePanel.panelWidthWide
-        : IptvChannelGuidePanel.panelWidthNarrow;
-    return panelWidth + IptvChannelGuidePanel.epgPeekGap;
+    final raw = headerH + rowCenter - cardH / 2;
+    return raw.clamp(headerH, maxTop);
   }
 
   bool get _showEpgPeek =>
@@ -901,7 +888,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 left: 0,
                 top: 0,
                 bottom: 0,
-                child: _buildPanelShell(wide: wide, tvRail: true),
+                child: _buildPanelWithEpgPeek(
+                  context,
+                  wide: wide,
+                  tvRail: true,
+                  panelHeight: MediaQuery.sizeOf(context).height,
+                ),
               )
             else if (DesktopWindowChrome.isDesktop)
               // Flush left, dock under window chrome → bottom of the player.
@@ -910,7 +902,16 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 top: DesktopWindowChrome.topInset(context) +
                     IptvChannelGuidePanel.panelVerticalGap,
                 bottom: IptvChannelGuidePanel.panelEdgeGap,
-                child: _buildPanelShell(wide: wide, tvRail: false),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return _buildPanelWithEpgPeek(
+                      context,
+                      wide: wide,
+                      tvRail: false,
+                      panelHeight: constraints.maxHeight,
+                    );
+                  },
+                ),
               )
             else
               Align(
@@ -919,43 +920,71 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                   padding: _panelPadding(context),
                   child: SizedBox(
                     height: _panelHeight(context),
-                    child: _buildPanelShell(wide: wide, tvRail: false),
+                    child: _buildPanelWithEpgPeek(
+                      context,
+                      wide: wide,
+                      tvRail: false,
+                      panelHeight: _panelHeight(context),
+                    ),
                   ),
                 ),
               ),
-            if (_showEpgPeek) _buildEpgPeekOverlay(context, wide: wide),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildEpgPeekOverlay(BuildContext context, {required bool wide}) {
+  /// Panel + optional EPG peek as a Row so the card sits beside the rail,
+  /// never stacked over channel rows.
+  Widget _buildPanelWithEpgPeek(
+    BuildContext context, {
+    required bool wide,
+    required bool tvRail,
+    required double panelHeight,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildPanelShell(wide: wide, tvRail: tvRail),
+        if (_showEpgPeek) ...[
+          const SizedBox(width: IptvChannelGuidePanel.epgPeekGap),
+          Padding(
+            padding: EdgeInsets.only(
+              top: _epgPeekTopInPanel(context, panelHeight: panelHeight),
+            ),
+            child: SizedBox(
+              width: IptvChannelGuidePanel.epgPeekWidth,
+              child: _buildEpgPeekCard(),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildEpgPeekCard() {
     final ch = _epgPeekChannel!;
     final future = _epgFutureFor(ch)!;
-    return Positioned(
-      left: _epgPeekLeft(),
-      top: _epgPeekTop(context),
-      width: IptvChannelGuidePanel.epgPeekWidth,
-      child: IgnorePointer(
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.45),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: IptvGuideEpgCard(
-              key: ValueKey(ch.id),
-              future: future,
-              floating: true,
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: IptvGuideEpgCard(
+            key: ValueKey(ch.id),
+            future: future,
+            floating: true,
           ),
         ),
       ),

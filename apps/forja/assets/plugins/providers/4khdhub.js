@@ -36,11 +36,11 @@ function extract(ctx) {
     var kind = isTv ? 'tv' : 'movie';
     return fetchJson(
       'https://api.themoviedb.org/3/' +
-        kind +
-        '/' +
-        encodeURIComponent(String(ctx.tmdbId || '')) +
-        '?api_key=' +
-        encodeURIComponent(tmdbKey),
+      kind +
+      '/' +
+      encodeURIComponent(String(ctx.tmdbId || '')) +
+      '?api_key=' +
+      encodeURIComponent(tmdbKey),
     ).then(function (data) {
       return {
         title: isTv ? data.name : data.title,
@@ -242,8 +242,46 @@ function extract(ctx) {
     }
   }
 
+  function pixeldrainDownloadUrl(href) {
+    var m = String(href || '').match(
+      /pixeldrain\.(?:dev|net)\/(?:u|api\/file)\/([A-Za-z0-9]+)/i,
+    );
+    if (m) return appendDownloadQuery('https://pixeldrain.net/api/file/' + m[1]);
+    var userUrl = href.replace('/api/file/', '/u/');
+    return appendDownloadQuery(userUrl.replace('/u/', '/api/file/'));
+  }
+
+  function collectHubCloudLinks($, meta) {
+    var results = [];
+    $('a.btn, a').each(function () {
+      var a = $(this);
+      var text = a.text().trim();
+      var href = a.attr('href') || '';
+      if (!href || isHubCloudDrivePage(href)) return;
+      if (/PixelServer/i.test(text) || /pixeldrain\.(?:dev|net)\//i.test(href)) {
+        results.push({
+          source: 'HubCloud (PixelServer)',
+          url: pixeldrainDownloadUrl(href),
+          meta: meta,
+        });
+      } else if (/FSLv2/i.test(text)) {
+        results.push({ source: 'FSLv2', url: href, meta: meta });
+      } else if (/FSL/i.test(text)) {
+        results.push({ source: 'FSL', url: href, meta: meta });
+      } else if (/Download File/i.test(text) || /r2\.dev/i.test(href)) {
+        results.push({ source: 'Direct R2', url: href, meta: meta });
+      } else if (/ZipDisk/i.test(text) || /workers\.dev/i.test(href)) {
+        results.push({ source: 'ZipDisk Server', url: href, meta: meta });
+      } else if (/10Gbps/i.test(text) || /pixel\.hubcloud\./i.test(href)) {
+        results.push({ source: 'HubCloud 10Gbps', url: href, meta: meta });
+      }
+    });
+    return results;
+  }
+
+  // HubCloud entry is often /drive/<id> now — that page is a hop to hubcloud.php,
+  // not a playable URL. Follow it; still never emit /drive/ as a stream.
   function extractHubCloud(hubCloudUrl, baseMeta) {
-    if (isHubCloudDrivePage(hubCloudUrl)) return Promise.resolve([]);
     return fetchText(hubCloudUrl, { Referer: hubCloudUrl })
       .then(function (redirectHtml) {
         var $r = ctx.html(redirectHtml);
@@ -256,11 +294,14 @@ function extract(ctx) {
             try {
               var base = new URL(hubCloudUrl);
               linksUrl = base.protocol + '//' + base.hostname + '/' + linksUrl.replace(/^\//, '');
-            } catch (e) {}
+            } catch (e) { }
           }
         }
-        if (!linksUrl || isHubCloudDrivePage(linksUrl)) return [];
-        return fetchText(linksUrl, { Referer: hubCloudUrl }).then(function (linksHtml) {
+        if (linksUrl && isHubCloudDrivePage(linksUrl)) linksUrl = '';
+        var pageHtml = linksUrl
+          ? fetchText(linksUrl, { Referer: hubCloudUrl })
+          : Promise.resolve(redirectHtml);
+        return pageHtml.then(function (linksHtml) {
           var $ = ctx.html(linksHtml);
           var sizeText = $('#size').text();
           var titleText = $('title').text().trim();
@@ -269,33 +310,10 @@ function extract(ctx) {
             height: baseMeta.height,
             title: titleText || baseMeta.title,
           };
-          var results = [];
-          $('a.btn, a').each(function () {
-            var a = $(this);
-            var text = a.text().trim();
-            var href = a.attr('href') || '';
-            if (!href || isHubCloudDrivePage(href)) return;
-            if (/PixelServer/i.test(text)) {
-              var userUrl = href.replace('/api/file/', '/u/');
-              var apiUrl = userUrl.replace('/u/', '/api/file/');
-              results.push({
-                source: 'HubCloud (PixelServer)',
-                url: appendDownloadQuery(apiUrl),
-                meta: meta,
-              });
-            } else if (/FSLv2/i.test(text)) {
-              results.push({ source: 'FSLv2', url: href, meta: meta });
-            } else if (/FSL/i.test(text)) {
-              results.push({ source: 'FSL', url: href, meta: meta });
-            } else if (/Download File/i.test(text) || /r2\.dev/i.test(href)) {
-              results.push({ source: 'Direct R2', url: href, meta: meta });
-            } else if (/ZipDisk/i.test(text) || /workers\.dev/i.test(href)) {
-              results.push({ source: 'ZipDisk Server', url: href, meta: meta });
-            } else if (/10Gbps/i.test(text) && /workers\.dev|r2\.dev|\/api\/file\//i.test(href)) {
-              results.push({ source: 'HubCloud 10Gbps', url: href, meta: meta });
-            }
-          });
-          return results;
+          var results = collectHubCloudLinks($, meta);
+          if (results.length || !linksUrl) return results;
+          // Links page empty — scrape the entry page buttons as fallback.
+          return collectHubCloudLinks($r, meta);
         });
       })
       .catch(function () {
@@ -341,15 +359,20 @@ function extract(ctx) {
                 if (!result || !result.url) return [];
                 return extractHubCloud(result.url, result.meta).then(function (links) {
                   return links.map(function (link) {
+                    var release =
+                      link.meta.title || result.meta.title || '';
+                    var sizeLabel = formatBytes(link.meta.bytes || 0);
                     return {
                       name:
                         '4KHDHub - ' +
                         link.source +
                         (result.meta.height ? ' ' + result.meta.height + 'p' : ''),
-                      title: (link.meta.title || result.meta.title || '4KHDHub') + '\n' + formatBytes(link.meta.bytes || 0),
+                      title: release || undefined,
                       url: link.url,
-                      quality: result.meta.height ? String(result.meta.height) + 'p' : undefined,
-                      behaviorHints: { bingeGroup: '4khdhub-' + link.source },
+                      quality: result.meta.height
+                        ? String(result.meta.height) + 'p'
+                        : undefined,
+                      size: sizeLabel !== '0 B' ? sizeLabel : undefined,
                     };
                   });
                 });

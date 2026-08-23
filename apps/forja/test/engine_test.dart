@@ -398,9 +398,7 @@ void main() {
 
   group('bundled Forja pack', () {
     test('engine.json lists HTTP chips and hop plugins', () async {
-      final jsonStr = await rootBundle.loadString(
-        'assets/plugins/engine.json',
-      );
+      final jsonStr = await rootBundle.loadString('assets/plugins/engine.json');
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
       final plugins = map['plugins'] as List;
       final parsed = [
@@ -803,7 +801,9 @@ void main() {
       expect(vidrock.contains('/api/'), isTrue);
       expect(vidrock.contains('tv/'), isTrue);
 
-      final hexa = await rootBundle.loadString('assets/plugins/providers/hexa.js');
+      final hexa = await rootBundle.loadString(
+        'assets/plugins/providers/hexa.js',
+      );
       expect(hexa.contains('enc-hexa'), isTrue);
       expect(hexa.contains('X-Api-Key'), isTrue);
       expect(hexa.contains('X-Cap-Token'), isTrue);
@@ -828,7 +828,9 @@ void main() {
       expect(kaa.contains('/api/fsearch'), isTrue);
       expect(kaa.contains('krussdomi.com'), isTrue);
 
-      final goated = await rootBundle.loadString('assets/plugins/providers/goated.js');
+      final goated = await rootBundle.loadString(
+        'assets/plugins/providers/goated.js',
+      );
       expect(goated.contains('aesdec.nuvioapp.space'), isFalse);
       expect(goated.contains('/api/resolve'), isTrue);
       expect(goated.contains('/api/challenge'), isTrue);
@@ -842,7 +844,9 @@ void main() {
       expect(cinejoy.contains('dec-cinejoy'), isTrue);
       expect(cinejoy.contains('solveScryptPow'), isTrue);
 
-      final meowtv = await rootBundle.loadString('assets/plugins/providers/meowtv.js');
+      final meowtv = await rootBundle.loadString(
+        'assets/plugins/providers/meowtv.js',
+      );
       expect(meowtv.contains('/streams/'), isTrue);
       expect(meowtv.contains('dec-meowtv'), isTrue);
 
@@ -863,7 +867,9 @@ void main() {
       expect(vidsync.contains('enc-vidsync'), isTrue);
       expect(vidsync.contains('dec-vidsync'), isTrue);
 
-      final vidup = await rootBundle.loadString('assets/plugins/providers/vidup.js');
+      final vidup = await rootBundle.loadString(
+        'assets/plugins/providers/vidup.js',
+      );
       expect(vidup.contains('enc-vidup'), isTrue);
       expect(vidup.contains('dec-vidup'), isTrue);
 
@@ -880,6 +886,15 @@ void main() {
       expect(fourkhdhub.contains("j['4khdhub']"), isTrue);
       expect(fourkhdhub.contains('article h2 a'), isTrue);
       expect(fourkhdhub.contains('.movie-card'), isTrue);
+      expect(fourkhdhub.contains(r'pixel\.hubcloud'), isTrue);
+      expect(fourkhdhub.contains('pixeldrain.net/api/file/'), isTrue);
+      // /drive/<id> is the HubCloud entry hop — must follow, not bail.
+      expect(
+        fourkhdhub.contains(
+          'if (isHubCloudDrivePage(hubCloudUrl)) return Promise.resolve([])',
+        ),
+        isFalse,
+      );
 
       final oneshows = await rootBundle.loadString(
         'assets/plugins/providers/1shows.js',
@@ -888,6 +903,13 @@ void main() {
       expect(oneshows.contains('download-token'), isTrue);
       expect(oneshows.contains('decryptDownload'), isTrue);
       expect(oneshows.contains('function extract(ctx)'), isTrue);
+      expect(oneshows.contains(r'pixel\.hubcloud'), isTrue);
+      expect(
+        oneshows.contains(
+          'if (isHubCloudDrivePage(hubCloudUrl)) return Promise.resolve([])',
+        ),
+        isFalse,
+      );
 
       final movieblast = await rootBundle.loadString(
         'assets/plugins/providers/movieblast.js',
@@ -901,7 +923,9 @@ void main() {
       expect(streamflix.contains('/data.json'), isTrue);
       expect(streamflix.contains('config-streamflixapp.json'), isTrue);
 
-      final animex = await rootBundle.loadString('assets/plugins/providers/animex.js');
+      final animex = await rootBundle.loadString(
+        'assets/plugins/providers/animex.js',
+      );
       expect(animex.contains('cfg.gql'), isTrue);
       expect(animex.contains('searchAnime'), isTrue);
       expect(animex.contains('/sources'), isTrue);
@@ -918,11 +942,15 @@ void main() {
       expect(netmirror.contains('checknewtv.php'), isTrue);
       expect(netmirror.contains('/newtv/player.php'), isTrue);
 
-      final castle = await rootBundle.loadString('assets/plugins/providers/castle.js');
+      final castle = await rootBundle.loadString(
+        'assets/plugins/providers/castle.js',
+      );
       expect(castle.contains('getSecurityKey'), isTrue);
       expect(castle.contains('film-api/v2.0.1/movie/getVideo2'), isTrue);
 
-      final xprime = await rootBundle.loadString('assets/plugins/providers/xprime.js');
+      final xprime = await rootBundle.loadString(
+        'assets/plugins/providers/xprime.js',
+      );
       expect(xprime.contains('enc-xprime'), isTrue);
       expect(xprime.contains('dec-xprime'), isTrue);
       expect(xprime.contains('backend.xprime.tv'), isTrue);
@@ -986,7 +1014,9 @@ void main() {
       expect(dahmermovies.contains('a.111477.xyz'), isTrue);
       expect(dahmermovies.contains('resolveFinalUrl'), isTrue);
 
-      final kurage = await rootBundle.loadString('assets/plugins/providers/kurage.js');
+      final kurage = await rootBundle.loadString(
+        'assets/plugins/providers/kurage.js',
+      );
       expect(kurage.contains('graphql.anilist.co'), isTrue);
       expect(kurage.contains('/api/trpc/'), isTrue);
 
@@ -1026,17 +1056,23 @@ void main() {
       expect(reanime.contains('flixcloud.cc'), isTrue);
       expect(reanime.contains('ctx.hop'), isTrue);
 
-      final anibd = await rootBundle.loadString('assets/plugins/providers/anibd.js');
+      final anibd = await rootBundle.loadString(
+        'assets/plugins/providers/anibd.js',
+      );
       expect(anibd.contains('api2.php?epid='), isTrue);
       expect(anibd.contains('apilink.php'), isTrue);
       expect(anibd.contains('videoUrl'), isTrue);
 
-      final senshi = await rootBundle.loadString('assets/plugins/providers/senshi.js');
+      final senshi = await rootBundle.loadString(
+        'assets/plugins/providers/senshi.js',
+      );
       expect(senshi.contains('senshi.live'), isTrue);
       expect(senshi.contains('episode-embeds'), isTrue);
       expect(senshi.contains('embedType'), isTrue);
 
-      final kisskh = await rootBundle.loadString('assets/plugins/providers/kisskh.js');
+      final kisskh = await rootBundle.loadString(
+        'assets/plugins/providers/kisskh.js',
+      );
       expect(kisskh.contains('kisskh.co'), isTrue);
       expect(kisskh.contains('tryOnce'), isTrue);
       expect(kisskh.contains('dramaId'), isTrue);
@@ -1081,7 +1117,9 @@ void main() {
       expect(animeheaven.contains('gate.php'), isTrue);
       expect(animeheaven.contains('fastsearch.php'), isTrue);
 
-      final anidao = await rootBundle.loadString('assets/plugins/providers/anidao.js');
+      final anidao = await rootBundle.loadString(
+        'assets/plugins/providers/anidao.js',
+      );
       expect(anidao.contains('anidao.to'), isTrue);
       expect(anidao.contains('data-an-video'), isTrue);
 
@@ -1091,7 +1129,9 @@ void main() {
       expect(aniwaves.contains('aniwaves.ru'), isTrue);
       expect(aniwaves.contains('/ajax/sources'), isTrue);
 
-      final miruro = await rootBundle.loadString('assets/plugins/providers/miruro.js');
+      final miruro = await rootBundle.loadString(
+        'assets/plugins/providers/miruro.js',
+      );
       expect(miruro.contains('api/secure/pipe'), isTrue);
       expect(miruro.contains('decodePipe'), isTrue);
       expect(miruro.contains('x-obfuscated'), isTrue);
@@ -1104,7 +1144,9 @@ void main() {
       expect(megaplay.contains('/stream/ani/'), isTrue);
       expect(megaplay.contains('getSources'), isTrue);
 
-      final vidnest = await rootBundle.loadString('assets/plugins/providers/vidnest.js');
+      final vidnest = await rootBundle.loadString(
+        'assets/plugins/providers/vidnest.js',
+      );
       expect(vidnest.contains('/anime/'), isTrue);
       expect(vidnest.contains("ctx.type === 'anime'"), isTrue);
 
@@ -1120,7 +1162,9 @@ void main() {
       expect(myflixer.contains('/search/'), isTrue);
       expect(myflixer.contains('ctx.hop'), isTrue);
 
-      final mkissa = await rootBundle.loadString('assets/plugins/providers/mkissa.js');
+      final mkissa = await rootBundle.loadString(
+        'assets/plugins/providers/mkissa.js',
+      );
       expect(mkissa.contains('api.mkissa.net'), isTrue);
       expect(mkissa.contains('client-crypto/v1/bootstrap'), isTrue);
       expect(mkissa.contains('aaReq'), isTrue);
@@ -1128,9 +1172,7 @@ void main() {
     });
 
     test('1shows plugin is wired in the pack', () async {
-      final jsonStr = await rootBundle.loadString(
-        'assets/plugins/engine.json',
-      );
+      final jsonStr = await rootBundle.loadString('assets/plugins/engine.json');
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
       final plugins = map['plugins'] as List;
       final oneshows = EnginePlugin.fromJson(
@@ -1162,7 +1204,9 @@ void main() {
     });
 
     test('fans out every player.videasy.to Servers-tab mirror', () async {
-      final src = await rootBundle.loadString('assets/plugins/providers/videasy.js');
+      final src = await rootBundle.loadString(
+        'assets/plugins/providers/videasy.js',
+      );
       expect(src, contains('ctx.config'));
       expect(src, contains('cfg.mirrors'));
       expect(src, contains('mirror.endpoint'));
@@ -1172,9 +1216,7 @@ void main() {
       expect(src, contains('quality:'));
       expect(src, contains('language:'));
       expect(src, contains('ctx.crypto.streamDecrypt'));
-      final jsonStr = await rootBundle.loadString(
-        'assets/plugins/engine.json',
-      );
+      final jsonStr = await rootBundle.loadString('assets/plugins/engine.json');
       final mirrors =
           ((jsonDecode(jsonStr) as Map)['plugins'] as List)
                   .cast<Map>()
@@ -1186,9 +1228,7 @@ void main() {
     });
 
     test('engine.json HTTP plugins ship opaque config bags', () async {
-      final jsonStr = await rootBundle.loadString(
-        'assets/plugins/engine.json',
-      );
+      final jsonStr = await rootBundle.loadString('assets/plugins/engine.json');
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
       final plugins = map['plugins'] as List;
       Map<String, dynamic> plugin(String id) => Map<String, dynamic>.from(
@@ -1202,9 +1242,7 @@ void main() {
     });
 
     test('engine.json tags movie/tv, anime, and drama categories', () async {
-      final jsonStr = await rootBundle.loadString(
-        'assets/plugins/engine.json',
-      );
+      final jsonStr = await rootBundle.loadString('assets/plugins/engine.json');
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
       final plugins = [
         for (final p in map['plugins'] as List)
@@ -1233,10 +1271,9 @@ void main() {
         EngineCategories.panelCategoryFromPlayingPlugin(byId('hianime')),
         EngineCategories.anime,
       );
-      expect(
-        EngineCategories.defaultsForMediaType('movie'),
-        {EngineCategories.movie},
-      );
+      expect(EngineCategories.defaultsForMediaType('movie'), {
+        EngineCategories.movie,
+      });
       expect(
         EngineCategories.panelCategoryFor(
           mediaType: 'tv',
@@ -1270,72 +1307,77 @@ void main() {
       );
     });
 
-    test('engine.json ships live sports plugins separate from VOD Sources', () async {
-      final jsonStr = await rootBundle.loadString(
-        'assets/plugins/engine.json',
-      );
-      final map = jsonDecode(jsonStr) as Map<String, dynamic>;
-      final plugins = [
-        for (final p in map['plugins'] as List)
-          EnginePlugin.fromJson(Map<String, dynamic>.from(p as Map)),
-      ];
-      const liveSportIds = [
-        'live-timstreams',
-        'live-streamfree',
-        'live-watchfooty',
-        'live-streamic',
-      ];
-      for (final id in liveSportIds) {
-        final p = plugins.firstWhere((e) => e.id == id);
-        expect(p.isLiveSport, isTrue);
-        expect(p.isVodCatalog, isFalse);
-        expect(p.entry.startsWith('live/'), isTrue);
-      }
-      for (final id in ['live-streamed', 'live-ppv']) {
-        final p = plugins.firstWhere((e) => e.id == id);
-        expect(p.isLivePlugin, isTrue);
-        expect(p.isVodCatalog, isFalse);
-      }
-      const catalogIds = [
-        'catalog-streamed',
-        'catalog-ppv',
-        'catalog-timstreams',
-        'catalog-streamfree',
-        'catalog-watchfooty',
-        'catalog-streamic',
-        'catalog-espn',
-      ];
-      for (final id in catalogIds) {
-        final p = plugins.firstWhere((e) => e.id == id);
-        expect(p.isLiveCatalog, isTrue);
-        expect(p.entry.startsWith('catalog/'), isTrue);
-        expect(p.entry.endsWith('.js'), isTrue);
-      }
-      expect(
-        await rootBundle.loadString('assets/plugins/catalog/timstreams.js'),
-        contains('function extract(ctx)'),
-      );
-      expect(
-        await rootBundle.loadString('assets/plugins/catalog/streamed.js'),
-        contains('/api/matches/all'),
-      );
-      expect(
-        await rootBundle.loadString('assets/plugins/catalog/ppv.js'),
-        contains('api.ppv.st'),
-      );
-      for (final id in ['live-streamed', 'live-ppv', 'live-timstreams']) {
-        final p = plugins.firstWhere((e) => e.id == id);
-        final src = await rootBundle.loadString('assets/plugins/${p.entry}');
-        expect(src, contains('action !== \'resolve\') return []'));
-      }
-      expect(
-        await rootBundle.loadString('assets/plugins/catalog/espn.js'),
-        contains('LEAGUE_ENDPOINTS'),
-      );
-    });
+    test(
+      'engine.json ships live sports plugins separate from VOD Sources',
+      () async {
+        final jsonStr = await rootBundle.loadString(
+          'assets/plugins/engine.json',
+        );
+        final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+        final plugins = [
+          for (final p in map['plugins'] as List)
+            EnginePlugin.fromJson(Map<String, dynamic>.from(p as Map)),
+        ];
+        const liveSportIds = [
+          'live-timstreams',
+          'live-streamfree',
+          'live-watchfooty',
+          'live-streamic',
+        ];
+        for (final id in liveSportIds) {
+          final p = plugins.firstWhere((e) => e.id == id);
+          expect(p.isLiveSport, isTrue);
+          expect(p.isVodCatalog, isFalse);
+          expect(p.entry.startsWith('live/'), isTrue);
+        }
+        for (final id in ['live-streamed', 'live-ppv']) {
+          final p = plugins.firstWhere((e) => e.id == id);
+          expect(p.isLivePlugin, isTrue);
+          expect(p.isVodCatalog, isFalse);
+        }
+        const catalogIds = [
+          'catalog-streamed',
+          'catalog-ppv',
+          'catalog-timstreams',
+          'catalog-streamfree',
+          'catalog-watchfooty',
+          'catalog-streamic',
+          'catalog-espn',
+        ];
+        for (final id in catalogIds) {
+          final p = plugins.firstWhere((e) => e.id == id);
+          expect(p.isLiveCatalog, isTrue);
+          expect(p.entry.startsWith('catalog/'), isTrue);
+          expect(p.entry.endsWith('.js'), isTrue);
+        }
+        expect(
+          await rootBundle.loadString('assets/plugins/catalog/timstreams.js'),
+          contains('function extract(ctx)'),
+        );
+        expect(
+          await rootBundle.loadString('assets/plugins/catalog/streamed.js'),
+          contains('/api/matches/all'),
+        );
+        expect(
+          await rootBundle.loadString('assets/plugins/catalog/ppv.js'),
+          contains('api.ppv.st'),
+        );
+        for (final id in ['live-streamed', 'live-ppv', 'live-timstreams']) {
+          final p = plugins.firstWhere((e) => e.id == id);
+          final src = await rootBundle.loadString('assets/plugins/${p.entry}');
+          expect(src, contains('action !== \'resolve\') return []'));
+        }
+        expect(
+          await rootBundle.loadString('assets/plugins/catalog/espn.js'),
+          contains('LEAGUE_ENDPOINTS'),
+        );
+      },
+    );
 
     test('vidnest.js uses the Forja custom-alphabet cipher', () async {
-      final src = await rootBundle.loadString('assets/plugins/providers/vidnest.js');
+      final src = await rootBundle.loadString(
+        'assets/plugins/providers/vidnest.js',
+      );
       expect(
         src,
         contains(
@@ -1409,7 +1451,9 @@ void main() {
     test(
       'vidlink requests dash-hevc and keeps MovieBox playlist cookies',
       () async {
-        final src = await rootBundle.loadString('assets/plugins/providers/vidlink.js');
+        final src = await rootBundle.loadString(
+          'assets/plugins/providers/vidlink.js',
+        );
         expect(src, contains('ctx.config'));
         expect(src, contains('X-Playback-Environment'));
         expect(src, contains('dash-hevc'));
@@ -1422,7 +1466,9 @@ void main() {
     test(
       'vixsrc uses API, embed parse, m3u8 variants, and wyzie subs',
       () async {
-        final src = await rootBundle.loadString('assets/plugins/providers/vixsrc.js');
+        final src = await rootBundle.loadString(
+          'assets/plugins/providers/vixsrc.js',
+        );
         expect(src, contains('ctx.config'));
         expect(src, contains('/api/tv/'));
         expect(src, contains('/api/movie/'));
@@ -1537,6 +1583,50 @@ void main() {
       },
     );
 
+    test('folds HubCloud release title into description for badges', () {
+      final mapped = mapEngineStream(
+        raw: {
+          'url': 'https://cdn.example/file.mkv',
+          'name': 'HDHub4u FSL',
+          'title':
+              'Obsession.2026.2160p.BluRay.HEVC.Atmos.HDR.mkv',
+          'quality': '4K',
+          'size': '51.93 GB',
+        },
+        plugin: plugin,
+        mediaTitle: 'Obsession',
+        year: '2026',
+        type: 'movie',
+      )!;
+      expect(mapped['title'], 'Obsession - (2026)');
+      expect(mapped['size'], '51.93 GB');
+      expect(mapped['container'], 'MKV');
+      expect(
+        mapped['description'],
+        contains('Obsession.2026.2160p.BluRay.HEVC.Atmos.HDR.mkv'),
+      );
+      expect(mapped['description'], contains('4K'));
+      expect(mapped['description'], contains('MKV'));
+      expect(mapped['description'], contains('51.93 GB'));
+    });
+
+    test('reads size from release title when size field is missing', () {
+      final mapped = mapEngineStream(
+        raw: {
+          'url': 'https://cdn.example/a.mp4',
+          'name': '4KHDHub',
+          'title': 'Show.2024.1080p.WEB-DL.x264 [14.2 GB]',
+          'quality': '1080p',
+        },
+        plugin: plugin,
+        mediaTitle: 'Show',
+        year: '2024',
+        type: 'movie',
+      )!;
+      expect(mapped['size'], '14.2 GB');
+      expect(mapped['container'], 'MP4');
+    });
+
     test('drops auto/English as quality and maps English to language', () {
       final mapped = mapEngineStream(
         raw: {
@@ -1564,7 +1654,8 @@ void main() {
         year: '2020',
       )!;
       expect(mapped['quality'], '1080p');
-      expect(mapped['description'], '1080p');
+      expect(mapped['description'], contains('Vidlink · 1080p'));
+      expect(mapped['description'], contains('1080p'));
       expect(mapped['_addonName'], 'Videasy · Vidlink');
     });
 
@@ -1609,10 +1700,7 @@ void main() {
 
   group('engineStreamAudioCategory', () {
     test('reads language field and (SUB)/(DUB) in name', () {
-      expect(
-        engineStreamAudioCategory({'language': 'Dub'}),
-        'dub',
-      );
+      expect(engineStreamAudioCategory({'language': 'Dub'}), 'dub');
       expect(
         engineStreamAudioCategory({'name': 'Megaplay [Vidwish] (SUB)'}),
         'sub',

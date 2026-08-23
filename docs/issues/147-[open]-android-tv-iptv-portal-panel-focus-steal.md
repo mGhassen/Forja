@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 4** acceptance |
+| **Progress** | **8 / 8** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 5 | I147-T05 | TV ↑/↓: no MouseRegion hover, sync-clear focus chrome, green fill only on the focused row, jump-then-focus (no `.item` ensureVisible) | ✅ |
 | 6 | I147-T06 | ↓ from header retries while scrape list is still empty (first portal mounting) | ✅ |
 | 7 | I147-T07 | Scrape/health notify: skip scroll + restore list focus when `_lastFocusedPortalIndex` set (rebuild focus flicker) | ✅ |
+| 8 | I147-T08 | Desktop pointer/trackpad scroll: set browsing flag; skip auto scroll-to-active and stale focus restore until D-pad `_focusPortalAt` | ✅ |
 
 ---
 
@@ -37,6 +38,7 @@
 | 2 | I147-A02 | Dwell >2s on a row (status probe runs) — focus and scroll position stay put | ⬜ |
 | 3 | I147-A03 | ↑ from a row to the header, then ↓ — focus returns to that row, not the playing portal | ⬜ |
 | 4 | I147-A04 | Hold ↓ through the Portals list — only the focused row shows a green fill; no desktop hover star/rail on rows you skim past | ⬜ |
+| 5 | I147-A05 | Desktop: open Portals, scroll with mouse/trackpad — list does not jump back to the top / playing portal when status probes notify | ⬜ |
 
 ---
 

@@ -9,6 +9,7 @@ class TorrentReleaseMetadata {
     required this.techTags,
     required this.sourceTags,
     this.videoCodec,
+    this.container,
   });
 
   final String? quality;
@@ -17,18 +18,21 @@ class TorrentReleaseMetadata {
   final List<String> techTags;
   final List<String> sourceTags;
   final String? videoCodec;
+  final String? container;
 
   static const qualityFilters = ['4K', '1080p', '720p', '480p'];
-  static const techFilters = ['HDR', 'DV', 'REMUX', 'WEB-DL', 'WEBRip', 'BluRay', '10bit'];
+  static const techFilters = [
+    'HDR',
+    'DV',
+    'REMUX',
+    'WEB-DL',
+    'WEBRip',
+    'BluRay',
+    '10bit',
+  ];
 
   /// Preset size ranges for Sources filters (multi-select OR).
-  static const sizeFilters = [
-    '<1 GB',
-    '1–3 GB',
-    '3–8 GB',
-    '8–20 GB',
-    '20 GB+',
-  ];
+  static const sizeFilters = ['<1 GB', '1–3 GB', '3–8 GB', '8–20 GB', '20 GB+'];
 
   static const _gb = 1024.0 * 1024.0 * 1024.0;
 
@@ -82,10 +86,7 @@ class TorrentReleaseMetadata {
   /// Display label for source tiles. Never returns a non-size string (avoids
   /// showing truncated titles in the size slot). Prefers [sizeText], then the
   /// first size token in [fallbackText].
-  static String? resolveSizeLabel({
-    String? sizeText,
-    String? fallbackText,
-  }) {
+  static String? resolveSizeLabel({String? sizeText, String? fallbackText}) {
     final primary = sizeText?.trim() ?? '';
     if (primary.isNotEmpty &&
         primary.toLowerCase() != 'unknown' &&
@@ -169,6 +170,7 @@ class TorrentReleaseMetadata {
       techTags: _detectTech(n),
       sourceTags: _detectSource(n),
       videoCodec: _detectCodec(n),
+      container: _detectContainer(n),
     );
   }
 
@@ -176,6 +178,7 @@ class TorrentReleaseMetadata {
 
   List<String> get badgeLabels => [
         if (quality != null) quality!,
+        if (container != null) container!,
         if (videoCodec != null) videoCodec!,
         ...audioTags.take(2),
         ...techTags,
@@ -188,6 +191,7 @@ class TorrentReleaseMetadata {
     final f = flags.trim();
     if (f.isNotEmpty) parts.add(f);
     if (quality != null) parts.add(quality!);
+    if (container != null) parts.add(container!);
     if (videoCodec != null) parts.add(videoCodec!);
     if (audioTags.isNotEmpty) parts.add(audioTags.first);
     for (final t in techTags) {
@@ -254,7 +258,9 @@ class TorrentReleaseMetadata {
       found.add('DD+');
     }
     if (!found.contains('DD+') &&
-        (n.contains(' DD ') || n.contains('AC3') || n.contains('DOLBY DIGITAL'))) {
+        (n.contains(' DD ') ||
+            n.contains('AC3') ||
+            n.contains('DOLBY DIGITAL'))) {
       found.add('DD');
     }
     if (n.contains('AAC')) found.add('AAC');
@@ -265,7 +271,8 @@ class TorrentReleaseMetadata {
   }
 
   static String? _detectQuality(String n) {
-    if (n.contains('2160') || n.contains('4K') || n.contains('UHD')) return '4K';
+    if (n.contains('2160') || n.contains('4K') || n.contains('UHD'))
+      return '4K';
     if (n.contains('1080')) return '1080p';
     if (n.contains('720')) return '720p';
     if (n.contains('480')) return '480p';
@@ -287,9 +294,18 @@ class TorrentReleaseMetadata {
     return null;
   }
 
+  static String? _detectContainer(String n) {
+    if (RegExp(r'(\.MKV\b|\bMKV\b)').hasMatch(n)) return 'MKV';
+    if (RegExp(r'(\.MP4\b|\bMP4\b)').hasMatch(n)) return 'MP4';
+    if (RegExp(r'(\.WEBM\b|\bWEBM\b)').hasMatch(n)) return 'WebM';
+    return null;
+  }
+
   static List<String> _detectTech(String n) {
     final out = <String>[];
-    if (n.contains('DOLBY VISION') || n.contains('DOVI') || n.contains('.DV.')) {
+    if (n.contains('DOLBY VISION') ||
+        n.contains('DOVI') ||
+        n.contains('.DV.')) {
       out.add('DV');
     }
     if (n.contains('HDR10+')) out.add('HDR10+');
@@ -318,13 +334,23 @@ class TorrentReleaseMetadata {
       if (!out.contains(code)) out.add(code);
     }
 
-    if (n.contains('MULTI') || n.contains('DUAL AUDIO') || n.contains('DUAL-AUDIO')) {
+    if (n.contains('MULTI') ||
+        n.contains('DUAL AUDIO') ||
+        n.contains('DUAL-AUDIO')) {
       add('multi');
     }
 
     const patterns = <String, List<String>>{
       'en': ['ENGLISH', ' ENG ', '.ENG.', '[EN]', '-EN-', '.EN.'],
-      'fr': ['FRENCH', 'VOSTFR', 'SUBFRENCH', 'TRUEFRENCH', ' VF ', '.FR.', '[FR]'],
+      'fr': [
+        'FRENCH',
+        'VOSTFR',
+        'SUBFRENCH',
+        'TRUEFRENCH',
+        ' VF ',
+        '.FR.',
+        '[FR]',
+      ],
       'de': ['GERMAN', ' GER ', '.GER.', '[DE]', 'GERMAN DL'],
       'es': ['SPANISH', ' CASTELLAN', ' LATINO', '.ES.', '[ES]'],
       'it': ['ITALIAN', ' ITA ', '.ITA.', '[IT]'],
@@ -368,26 +394,24 @@ List<TorrentResult> filterTorrentResults(
   Set<String> audioFilters = const {},
   Set<String> sizeFilters = const {},
 }) {
-  return results
-      .where((r) {
-        if (!TorrentReleaseMetadata.parse(r.name).matchesFiltersForName(
-          r.name,
-          searchQuery: searchQuery,
-          qualityFilters: qualityFilters,
-          languageFilters: languageFilters,
-          techFilters: techFilters,
-          audioFilters: audioFilters,
-        )) {
-          return false;
-        }
-        return TorrentReleaseMetadata.matchesSizeFilters(
-          r.sizeInBytes > 0
-              ? r.sizeInBytes
-              : TorrentReleaseMetadata.parseSizeBytes(r.size),
-          sizeFilters,
-        );
-      })
-      .toList();
+  return results.where((r) {
+    if (!TorrentReleaseMetadata.parse(r.name).matchesFiltersForName(
+      r.name,
+      searchQuery: searchQuery,
+      qualityFilters: qualityFilters,
+      languageFilters: languageFilters,
+      techFilters: techFilters,
+      audioFilters: audioFilters,
+    )) {
+      return false;
+    }
+    return TorrentReleaseMetadata.matchesSizeFilters(
+      r.sizeInBytes > 0
+          ? r.sizeInBytes
+          : TorrentReleaseMetadata.parseSizeBytes(r.size),
+      sizeFilters,
+    );
+  }).toList();
 }
 
 Set<String> collectSizeRanges(Iterable<double> sizesInBytes) {

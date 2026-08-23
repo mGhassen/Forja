@@ -58,6 +58,8 @@ class PlayerTvKeyScope extends StatefulWidget {
 }
 
 class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
+  bool _ensureFocusScheduled = false;
+
   PlayerTvRemoteKeyHandler get _handler => PlayerTvRemoteKeyHandler(
         onBack: widget.onBack,
         onPlayPause: widget.onPlayPause,
@@ -75,13 +77,15 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_onHardwareKey);
-    if (widget.enabled && !widget.showControls) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
+    FocusManager.instance.addListener(_onGlobalFocusChange);
+    if (widget.enabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _ensureFocus());
     }
   }
 
   @override
   void dispose() {
+    FocusManager.instance.removeListener(_onGlobalFocusChange);
     HardwareKeyboard.instance.removeHandler(_onHardwareKey);
     super.dispose();
   }
@@ -90,17 +94,40 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
   void didUpdateWidget(PlayerTvKeyScope oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.enabled) return;
-    if (oldWidget.showControls && !widget.showControls) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
+    if (oldWidget.showControls != widget.showControls) {
+      _scheduleEnsureFocus();
     }
   }
 
-  void _claimFocus() {
+  void _onGlobalFocusChange() {
+    if (!widget.enabled) return;
+    _scheduleEnsureFocus();
+  }
+
+  void _scheduleEnsureFocus() {
+    if (_ensureFocusScheduled) return;
+    _ensureFocusScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _ensureFocusScheduled = false;
+      _ensureFocus();
+    });
+  }
+
+  /// Chrome visible + empty / video-key focus → Play. Chrome hidden + empty →
+  /// video key node (seek / OK still work after idle hide).
+  void _ensureFocus() {
     if (!mounted || !widget.enabled) return;
-    // Menus (stats, settings, …) own D-pad — do not yank focus when chrome
-    // auto-hides under an open overlay.
+    // Menus (stats, settings, …) own D-pad — do not yank focus under an overlay.
     if (playerChromeOverlayBlocksFocusClaim()) return;
-    if (widget.focusNode.canRequestFocus) {
+    final primary = FocusManager.instance.primaryFocus;
+    final lost = primary == null || !primary.hasFocus;
+    if (widget.showControls) {
+      if (lost || identical(primary, widget.focusNode)) {
+        widget.onFocusPlay();
+      }
+      return;
+    }
+    if (lost && widget.focusNode.canRequestFocus) {
       widget.focusNode.requestFocus();
     }
   }

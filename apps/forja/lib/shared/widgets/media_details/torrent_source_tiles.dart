@@ -68,6 +68,7 @@ class TorrentSourceTile extends StatelessWidget {
           _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
         if (sizeLabel != null)
           _SourceBadgeSpec(sizeLabel, tone: _SourceBadgeTone.size),
+        if (meta.container != null) _SourceBadgeSpec(meta.container!),
         if (meta.videoCodec != null) _SourceBadgeSpec(meta.videoCodec!),
         ...meta.audioTags.take(1).map(_SourceBadgeSpec.new),
         ...meta.techTags.take(2).map(_SourceBadgeSpec.new),
@@ -130,6 +131,7 @@ class WebstreamingSourceTile extends StatelessWidget {
           _SourceBadgeSpec(meta.quality!, tone: _SourceBadgeTone.emphasis),
         if (sizeLabel != null)
           _SourceBadgeSpec(sizeLabel, tone: _SourceBadgeTone.size),
+        if (meta.container != null) _SourceBadgeSpec(meta.container!),
         if (meta.videoCodec != null) _SourceBadgeSpec(meta.videoCodec!),
         ...meta.techTags.take(2).map(_SourceBadgeSpec.new),
         if (subtitle != null &&
@@ -313,6 +315,8 @@ class StremioSourceTile extends StatelessWidget {
             audioTags: [],
             techTags: [],
             sourceTags: [],
+            videoCodec: null,
+            container: null,
           )
         : TorrentReleaseMetadata.parse(blob);
     final sizeLabel = isExternal
@@ -364,6 +368,7 @@ class StremioSourceTile extends StatelessWidget {
                 ),
               if (sizeLabel != null)
                 _SourceBadgeSpec(sizeLabel, tone: _SourceBadgeTone.size),
+              if (meta.container != null) _SourceBadgeSpec(meta.container!),
               if (meta.videoCodec != null) _SourceBadgeSpec(meta.videoCodec!),
               ...meta.audioTags.take(1).map(_SourceBadgeSpec.new),
               ...meta.techTags.take(2).map(_SourceBadgeSpec.new),
@@ -673,9 +678,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 if (hasProvider)
-                                  ...providerLines.asMap().entries.map((
-                                    entry,
-                                  ) {
+                                  ...providerLines.asMap().entries.map((entry) {
                                     return Padding(
                                       padding: EdgeInsets.only(
                                         top: entry.key == 0 ? 0 : 2,
