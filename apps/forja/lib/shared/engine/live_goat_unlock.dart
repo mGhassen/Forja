@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/extractors/core/embed_extract_profile.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -356,6 +357,61 @@ class LiveGoatUnlock {
       return out.isEmpty ? null : out;
     } catch (e) {
       debugPrint('[LiveSniffEmbed] failed: $e');
+      return null;
+    }
+  }
+
+  static bool _isPpvEmbedIndiaHost(String embedUrl) {
+    final host = Uri.tryParse(embedUrl.trim())?.host.toLowerCase() ?? '';
+    return host.contains('embedindia.st');
+  }
+
+  /// PPV embedindia only — top-level load + embed-page Referer (not ppv.is wrapper).
+  /// Do not use for Streamed / embed.st GOAT ([resolveStreamed]).
+  static Future<({String url, Map<String, String> headers})?> resolvePpv({
+    required String embedUrl,
+  }) async {
+    final embed = embedUrl.trim();
+    if (embed.isEmpty) return null;
+
+    if (embed.contains('embed.st')) {
+      return resolveStreamed(embedUrl: embed);
+    }
+    if (!_isPpvEmbedIndiaHost(embed)) return null;
+
+    final sniffed = await sniffPpvEmbed(embedUrl: embed);
+    if (sniffed == null || sniffed.isEmpty) return null;
+    final origin = Uri.tryParse(embed)?.origin ?? 'https://embedindia.st';
+    return (
+      url: sniffed,
+      headers: {
+        'Referer': embed,
+        'Origin': origin,
+        'User-Agent': _ua,
+      },
+    );
+  }
+
+  static Future<String?> sniffPpvEmbed({required String embedUrl}) async {
+    final url = embedUrl.trim();
+    if (url.isEmpty || !_isPpvEmbedIndiaHost(url)) return null;
+    try {
+      const profile = EmbedExtractProfile(
+        id: 'live-ppv',
+        timeout: Duration(seconds: 45),
+        forceDirect: true,
+        acceptProxyPlaylistBodies: true,
+      );
+      final extracted = await StreamExtractor().extract(
+        url,
+        profile: profile,
+        referer: url,
+        timeout: profile.timeout,
+      );
+      final out = extracted?.url.trim() ?? '';
+      return out.isEmpty ? null : out;
+    } catch (e) {
+      debugPrint('[LiveSniffPpvEmbed] failed: $e');
       return null;
     }
   }

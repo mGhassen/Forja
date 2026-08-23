@@ -437,7 +437,7 @@ class _SourceBadgeCard extends StatefulWidget {
 }
 
 class _SourceBadgeCardState extends State<_SourceBadgeCard> {
-  static const _hoverProbeDelay = Duration(milliseconds: 500);
+  static const _hoverProbeDelay = Duration(milliseconds: 1000);
 
   bool _hovered = false;
   bool _focused = false;
@@ -494,9 +494,6 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   }
 
   Color _backgroundColor() {
-    if (_probeHealth == false) {
-      return const Color(0xFFEF4444).withValues(alpha: _hover ? 0.11 : 0.08);
-    }
     if (_hover) return ForjaShellColors.chipSelectedBg;
     if (widget.accentFill != null) return widget.accentFill!;
     if (widget.isResumable || widget.highlightStart) {
@@ -506,23 +503,37 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   }
 
   Color _borderColor() {
-    if (widget.onHoverProbe != null) {
-      if (_probeChecking) {
-        return Colors.white.withValues(alpha: _hover ? 0.28 : 0.18);
-      }
-      if (_probeHealth == true) {
-        return const Color(0xFF22C55E).withValues(alpha: _hover ? 0.62 : 0.45);
-      }
-      if (_probeHealth == false) {
-        return const Color(0xFFEF4444).withValues(alpha: _hover ? 0.72 : 0.55);
-      }
-    }
     if (_hover) return ForjaShellColors.chipSelectedBorder;
     if (widget.accentBorder != null) return widget.accentBorder!;
     if (widget.isResumable || widget.highlightStart) {
       return ForjaShellColors.chipSelectedBorder;
     }
     return Colors.white.withValues(alpha: 0.07);
+  }
+
+  Widget? _probeStatusDot() {
+    if (widget.onHoverProbe == null) return null;
+    if (_probeChecking) {
+      return const SizedBox(
+        width: 8,
+        height: 8,
+        child: CircularProgressIndicator(
+          strokeWidth: 1.5,
+          color: Colors.white54,
+        ),
+      );
+    }
+    if (_probeHealth == null) return null;
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: _probeHealth!
+            ? const Color(0xFF22C55E)
+            : const Color(0xFFEF4444),
+        shape: BoxShape.circle,
+      ),
+    );
   }
 
   @override
@@ -539,6 +550,10 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final magnet = widget.magnet;
     final showCopyMagnet = magnet != null && magnet.isNotEmpty && _hovered;
     const seedColor = Color(0xFF22C55E);
+    final providerLines = hasProvider
+        ? _providerLines(widget.provider!)
+        : const <String>[];
+    final probeDot = _probeStatusDot();
 
     final face = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
@@ -619,21 +634,43 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   if (hasProvider)
-                                    ..._providerLines(widget.provider!).map(
-                                      (line) => Text(
-                                        line,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        textAlign: TextAlign.right,
-                                        style: TextStyle(
-                                          color: cinematic.textSecondary,
-                                          fontSize:
-                                              metrics.torrentPanelMetaFontSize,
-                                          fontWeight: FontWeight.w500,
-                                          height: 1.25,
+                                    ...providerLines.asMap().entries.map((
+                                      entry,
+                                    ) {
+                                      final isServerLine =
+                                          entry.key == providerLines.length - 1;
+                                      final dot = isServerLine ? probeDot : null;
+                                      return Padding(
+                                        padding: EdgeInsets.only(
+                                          top: entry.key == 0 ? 0 : 2,
                                         ),
-                                      ),
-                                    ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            if (dot != null) ...[
+                                              dot,
+                                              const SizedBox(width: 5),
+                                            ],
+                                            Flexible(
+                                              child: Text(
+                                                entry.value,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                textAlign: TextAlign.right,
+                                                style: TextStyle(
+                                                  color:
+                                                      cinematic.textSecondary,
+                                                  fontSize: metrics
+                                                      .torrentPanelMetaFontSize,
+                                                  fontWeight: FontWeight.w500,
+                                                  height: 1.25,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }),
                                   if (hasSeeders) ...[
                                     if (hasProvider) const SizedBox(height: 2),
                                     Row(
@@ -700,21 +737,8 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                   color: ForjaShellColors.progressFill,
                   minHeight: 2.5,
                 ),
-              ),
             ),
-          if (_probeChecking)
-            const Positioned(
-              top: 8,
-              right: 8,
-              child: SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white54,
-                ),
-              ),
-            ),
+          ),
         ],
       ),
     );

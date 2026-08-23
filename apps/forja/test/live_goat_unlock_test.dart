@@ -74,6 +74,17 @@ void main() {
     });
   });
 
+  group('LiveGoatUnlock.ppvSniff', () {
+    test('sniffPpvEmbed ignores non-embedindia hosts', () async {
+      expect(
+        await LiveGoatUnlock.sniffPpvEmbed(
+          embedUrl: 'https://embed.st/embed/delta/foo/1',
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('LiveGoatUnlock.preferDirectEnginePlayback', () {
     test('delta and echo media playlists open direct', () {
       expect(

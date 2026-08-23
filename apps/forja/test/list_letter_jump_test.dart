@@ -80,6 +80,43 @@ void main() {
       expect(jump('f', m), 0);
     });
 
+    test('new multi-char query after prior match (fr then es)', () {
+      final labels = ['EU | FRANCE', 'DEPORTES', 'ESPN HD'];
+      final m = ListLetterJumpMatcher();
+      expect(
+        m.nextIndices(
+          letters: 'fr',
+          timeStamp: const Duration(milliseconds: 1),
+          itemCount: labels.length,
+          labelAt: (i) => labels[i],
+        ),
+        0,
+      );
+      expect(
+        m.nextIndices(
+          letters: 'es',
+          timeStamp: const Duration(milliseconds: 40),
+          itemCount: labels.length,
+          labelAt: (i) => labels[i],
+        ),
+        1,
+      );
+    });
+
+    test('es matches deportes and espn', () {
+      final labels = ['AF | AFRICA', 'DEPORTES', 'ESPN HD'];
+      final m = ListLetterJumpMatcher();
+      expect(
+        m.nextIndices(
+          letters: 'es',
+          timeStamp: const Duration(milliseconds: 1),
+          itemCount: labels.length,
+          labelAt: (i) => labels[i],
+        ),
+        1,
+      );
+    });
+
     test('multi-letter matches token not buried in word', () {
       final labels = ['AF | AFRICA', 'EU | FRANCE', 'EU | FR - live'];
       final m = ListLetterJumpMatcher();

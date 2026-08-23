@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/live_matches/live_embed_nav.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:rust/rust.dart';
@@ -66,34 +65,13 @@ class LiveMatchesEngine {
           .toString()
           .trim();
       if (embed.isNotEmpty) {
-        if (embed.contains('embed.st')) {
-          final native = await LiveGoatUnlock.resolveStreamed(embedUrl: embed);
-          if (native != null) {
-            return LiveEngineResolveResult.playable(
-              url: native.url,
-              headers: native.headers,
-              label: 'PPV',
-            );
-          }
-        }
-        if (liveEmbedRequiresWebViewPlayback(embed)) {
-          final sniffed = await LiveGoatUnlock.sniffEmbed(
-            embedUrl: embed,
-            referer: 'https://ppv.is/',
+        final native = await LiveGoatUnlock.resolvePpv(embedUrl: embed);
+        if (native != null) {
+          return LiveEngineResolveResult.playable(
+            url: native.url,
+            headers: native.headers,
+            label: 'PPV',
           );
-          if (sniffed != null && sniffed.isNotEmpty) {
-            final origin = Uri.tryParse(embed)?.origin ?? 'https://embedindia.st';
-            return LiveEngineResolveResult.playable(
-              url: sniffed,
-              headers: {
-                'Referer': embed,
-                'Origin': origin,
-                'User-Agent':
-                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              },
-              label: 'PPV',
-            );
-          }
         }
       }
     }

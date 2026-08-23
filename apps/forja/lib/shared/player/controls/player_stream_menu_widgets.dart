@@ -319,7 +319,7 @@ class _FlatMenuRow extends StatefulWidget {
 }
 
 class _FlatMenuRowState extends State<_FlatMenuRow> {
-  static const _hoverProbeDelay = Duration(milliseconds: 500);
+  static const _hoverProbeDelay = Duration(milliseconds: 1000);
 
   bool _hovered = false;
   bool _focused = false;
@@ -369,6 +369,37 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
     _hoverProbeTimer = null;
   }
 
+  Widget? _statusDot() {
+    if (widget.onCheck == null) return null;
+    return switch (widget.status) {
+      PlayerSourceStatus.checking => const SizedBox(
+          width: 8,
+          height: 8,
+          child: CircularProgressIndicator(
+            strokeWidth: 1.5,
+            color: Colors.white54,
+          ),
+        ),
+      PlayerSourceStatus.ready || PlayerSourceStatus.active => Container(
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            color: Color(0xFF22C55E),
+            shape: BoxShape.circle,
+          ),
+        ),
+      PlayerSourceStatus.failed => Container(
+          width: 8,
+          height: 8,
+          decoration: const BoxDecoration(
+            color: Color(0xFFEF4444),
+            shape: BoxShape.circle,
+          ),
+        ),
+      _ => null,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final failed = widget.status == PlayerSourceStatus.failed;
@@ -396,11 +427,14 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
             size: 22,
             color: PlayerPopupTokens.accent,
           )
-        : PlayerStreamMenu._streamTrailingGlyph(
-            status: widget.status,
-            isPlaying: widget.isPlaying,
-            mediaPlaying: widget.mediaPlaying,
-          );
+        : widget.isPlaying
+            ? PlayerStreamMenu._streamTrailingGlyph(
+                status: widget.status,
+                isPlaying: true,
+                mediaPlaying: widget.mediaPlaying,
+              )
+            : const SizedBox(width: 28, height: 28);
+    final statusDot = _statusDot();
 
     final row = MouseRegion(
       onEnter: (_) {
@@ -437,6 +471,10 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
                   ),
                 ] else
                   const SizedBox(width: 8),
+                if (statusDot != null) ...[
+                  statusDot,
+                  const SizedBox(width: 6),
+                ],
                 Expanded(
                   child: Text(
                     widget.label,

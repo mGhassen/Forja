@@ -61,6 +61,13 @@ class ListLetterJumpMatcher {
       _suppressLetter = null;
     } else if (cycleMultiPrefix) {
       _suppressLetter = _prefix.length > 1 ? _prefix[1] : null;
+    } else if (!expired &&
+        _prefix.length == 1 &&
+        letter != _prefix) {
+      // Extend to a multi-char prefix (e + s → es).
+      _prefix += letter;
+      _lastMatchIndex = -1;
+      _suppressLetter = null;
     } else {
       _prefix += letter;
       _lastMatchIndex = -1;
@@ -83,7 +90,7 @@ class ListLetterJumpMatcher {
       wrapBefore = false;
     }
 
-    final match = _findMatch(
+    var match = _findMatch(
       prefix: _prefix,
       itemCount: itemCount,
       labelAt: labelAt,
@@ -91,6 +98,18 @@ class ListLetterJumpMatcher {
       wrapBefore: wrapBefore,
       stayOnNoNext: cycling,
     );
+    if (match == null && !cycling && _prefix.length > 1) {
+      // Extended prefix has no match (e.g. fr+e → fre); start fresh on this letter.
+      _prefix = letter;
+      match = _findMatch(
+        prefix: _prefix,
+        itemCount: itemCount,
+        labelAt: labelAt,
+        startAfter: searchStart,
+        wrapBefore: wrapBefore,
+        stayOnNoNext: false,
+      );
+    }
     if (match == null) return null;
     _lastMatchIndex = match;
     return match;
@@ -153,21 +172,39 @@ class ListLetterJumpMatcher {
     return null;
   }
 
-  /// Single letter: name starts with that letter (after leading junk).
-  /// Multi-letter: token match (`| FR`, `FRANCE`, not `afr` inside `AFRICA`).
+  /// Multi-letter: token or substring at a word edge (not `fr` inside `AFRICA`).
   static bool _labelMatches(String label, String prefix) {
     if (prefix.isEmpty) return false;
     if (prefix.length == 1) {
       final normalized = _normalizedLabelStart(label);
       return normalized.isNotEmpty && normalized.startsWith(prefix);
     }
-    return _labelContainsToken(label, prefix);
+    return _labelContainsToken(label, prefix) ||
+        _labelContainsSubstring(label, prefix);
   }
 
   static bool _labelContainsToken(String label, String prefix) {
     final lower = label.trim().toLowerCase();
     final escaped = RegExp.escape(prefix);
     return RegExp('(^|[^a-z])$escaped').hasMatch(lower);
+  }
+
+  /// Substring only when not fully buried inside a word (both sides are letters).
+  static bool _labelContainsSubstring(String label, String prefix) {
+    final lower = label.trim().toLowerCase();
+    var start = 0;
+    while (true) {
+      final idx = lower.indexOf(prefix, start);
+      if (idx < 0) return false;
+      final atStart = idx == 0;
+      final atEnd = idx + prefix.length == lower.length;
+      final beforeLetter =
+          !atStart && RegExp(r'[a-z]').hasMatch(lower[idx - 1]);
+      final afterLetter = !atEnd &&
+          RegExp(r'[a-z]').hasMatch(lower[idx + prefix.length]);
+      if (!beforeLetter || !afterLetter) return true;
+      start = idx + 1;
+    }
   }
 
   static String _normalizedLabelStart(String label) {

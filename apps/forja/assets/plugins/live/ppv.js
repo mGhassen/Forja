@@ -168,22 +168,24 @@ function ppvPlayableUrl(data) {
 async function resolveEmbedIndia(ctx, iframe, cfg) {
   var url = String(iframe || '').trim();
   if (!url || url.indexOf('embedindia') < 0) return null;
-  if (!ctx.live || typeof ctx.live.sniffEmbed !== 'function') return null;
-  var origin = (cfg.webOrigin || 'https://ppv.is').replace(/\/$/, '');
-  var sniffed = await ctx.live.sniffEmbed(url, origin + '/');
-  if (!sniffed) return null;
-  var embedOrigin = '';
-  try {
-    embedOrigin = new URL(url).origin;
-  } catch (_) {}
-  return [{
-    url: String(sniffed),
-    headers: {
-      Referer: url,
-      Origin: embedOrigin,
-      'User-Agent': ua(),
-    },
-  }];
+  if (ctx.live && typeof ctx.live.sniffPpvEmbed === 'function') {
+    var sniffed = await ctx.live.sniffPpvEmbed(url);
+    if (sniffed) {
+      var embedOrigin = '';
+      try {
+        embedOrigin = new URL(url).origin;
+      } catch (_) {}
+      return [{
+        url: String(sniffed),
+        headers: {
+          Referer: url,
+          Origin: embedOrigin,
+          'User-Agent': ua(),
+        },
+      }];
+    }
+  }
+  return null;
 }
 
 async function resolvePpv(ctx, cfg) {
