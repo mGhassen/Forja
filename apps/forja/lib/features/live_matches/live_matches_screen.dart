@@ -196,7 +196,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   void onShellTabShown() {
     super.onShellTabShown();
     unawaited(_refreshLiveResolveMode());
-    unawaited(_clampServerIfForjaSportsDisabled(reload: false));
+    unawaited(_clampServerIfForjaSportsDisabled(reload: true));
     _syncTimelineLiveTick();
     if (_error != null || (_sports.isEmpty && !_loading)) {
       unawaited(_load());
