@@ -243,6 +243,78 @@ const HOST_JS: &str = r#"
       return new Uint8Array(out);
     };
   }
+  if (typeof URLSearchParams === 'undefined') {
+    globalThis.URLSearchParams = function(init){
+      this._params = {};
+      var self = this;
+      if (init && typeof init === 'object' && !Array.isArray(init)) {
+        Object.keys(init).forEach(function(k){ self._params[k] = String(init[k]); });
+      } else if (typeof init === 'string') {
+        String(init).replace(/^\?/, '').split('&').forEach(function(pair){
+          if (!pair) return;
+          var i = pair.indexOf('=');
+          var k = i < 0 ? pair : pair.substring(0, i);
+          var v = i < 0 ? '' : pair.substring(i + 1);
+          try { self._params[decodeURIComponent(k)] = decodeURIComponent(v); }
+          catch (e) { self._params[k] = v; }
+        });
+      }
+    };
+    URLSearchParams.prototype.toString = function(){
+      var self = this;
+      return Object.keys(this._params).map(function(k){
+        return encodeURIComponent(k) + '=' + encodeURIComponent(self._params[k]);
+      }).join('&');
+    };
+    URLSearchParams.prototype.get = function(k){ return Object.prototype.hasOwnProperty.call(this._params, k) ? this._params[k] : null; };
+    URLSearchParams.prototype.set = function(k, v){ this._params[k] = String(v); };
+    URLSearchParams.prototype.append = function(k, v){ this._params[k] = String(v); };
+    URLSearchParams.prototype.has = function(k){ return Object.prototype.hasOwnProperty.call(this._params, k); };
+    URLSearchParams.prototype.delete = function(k){ delete this._params[k]; };
+  }
+  if (typeof URL === 'undefined') {
+    globalThis.URL = function(urlString, base){
+      var fullUrl = String(urlString == null ? '' : urlString);
+      if (base && !/^[a-z][a-z0-9+\-.]*:\/\//i.test(fullUrl)) {
+        var b = typeof base === 'string' ? base : (base && base.href ? base.href : '');
+        if (fullUrl.charAt(0) === '/') {
+          var origin = b.match(/^([a-z][a-z0-9+\-.]*:\/\/[^\/]*)/i);
+          fullUrl = origin ? origin[1] + fullUrl : fullUrl;
+        } else {
+          fullUrl = String(b).replace(/\/[^\/]*$/, '/') + fullUrl;
+        }
+      }
+      var m = fullUrl.match(/^([a-z][a-z0-9+\-.]*:)\/\/([^\/?#]*)([^?#]*)(\?[^#]*)?(#.*)?$/i);
+      if (!m) throw new TypeError('Invalid URL');
+      var hostPart = m[2] || '';
+      var at = hostPart.lastIndexOf('@');
+      if (at >= 0) hostPart = hostPart.substring(at + 1);
+      var hostname = hostPart;
+      var port = '';
+      if (hostPart.charAt(0) === '[') {
+        var end = hostPart.indexOf(']');
+        hostname = end >= 0 ? hostPart.substring(0, end + 1) : hostPart;
+        port = end >= 0 && hostPart.charAt(end + 1) === ':' ? hostPart.substring(end + 2) : '';
+      } else {
+        var colon = hostPart.lastIndexOf(':');
+        if (colon >= 0) {
+          hostname = hostPart.substring(0, colon);
+          port = hostPart.substring(colon + 1);
+        }
+      }
+      this.href = fullUrl;
+      this.protocol = m[1].toLowerCase();
+      this.host = hostPart;
+      this.hostname = hostname;
+      this.port = port;
+      this.pathname = m[3] || '/';
+      this.search = m[4] || '';
+      this.hash = m[5] || '';
+      this.origin = this.protocol + '//' + this.host;
+      this.searchParams = new URLSearchParams(this.search);
+    };
+    URL.prototype.toString = function(){ return this.href; };
+  }
   globalThis.__engineHtml = function(html){
     if (!globalThis.__engineCheerio || typeof globalThis.__engineCheerio.load !== 'function') {
       try { __native_ensure_cheerio(); } catch (e) {}
