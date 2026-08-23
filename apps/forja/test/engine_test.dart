@@ -807,6 +807,7 @@ void main() {
       expect(hexa.contains('enc-hexa'), isTrue);
       expect(hexa.contains('X-Api-Key'), isTrue);
       expect(hexa.contains('X-Cap-Token'), isTrue);
+      expect(hexa.contains('payload.sources'), isTrue);
 
       final vidcore = await rootBundle.loadString(
         'assets/plugins/providers/vidcore.js',
@@ -951,6 +952,7 @@ void main() {
       );
       expect(castle.contains('getSecurityKey'), isTrue);
       expect(castle.contains('film-api/v2.0.1/movie/getVideo2'), isTrue);
+      expect(castle.contains('parseCastleJson'), isTrue);
 
       final xprime = await rootBundle.loadString(
         'assets/plugins/providers/xprime.js',

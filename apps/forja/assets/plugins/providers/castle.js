@@ -67,6 +67,17 @@ function extract(ctx) {
     return trimmed;
   }
 
+  function parseCastleJson(text) {
+    // Castle movie/episode ids exceed JS MAX_SAFE_INTEGER; keep them as strings.
+    var safe = String(text || '').replace(
+      /("(?:id|movieId|redirectId|redirectIdStr|episodeId|languageId)"\s*:\s*)(\d{15,})/g,
+      function (_, prefix, digits) {
+        return prefix + '"' + digits + '"';
+      },
+    );
+    return JSON.parse(safe);
+  }
+
   function decrypt(encryptedB64, securityKeyB64) {
     var suffix = 'T!BgJB';
     var keyMaterial = ctx.crypto.enc.Base64.parse(securityKeyB64).concat(ctx.crypto.enc.Utf8.parse(suffix));
@@ -85,7 +96,7 @@ function extract(ctx) {
       mode: ctx.crypto.mode.CBC,
       padding: ctx.crypto.pad.Pkcs7,
     }).toString(ctx.crypto.enc.Utf8);
-    return out ? JSON.parse(out) : null;
+    return out ? parseCastleJson(out) : null;
   }
 
   function unwrapData(obj) {
@@ -138,10 +149,7 @@ function extract(ctx) {
   }
 
   function searchMovieId(info) {
-    var keyword = info.year ? info.title + ' ' + info.year : info.title;
-    if (isTv && ctx.season) {
-      keyword = info.title + ' Season ' + Number(ctx.season || 1);
-    }
+    var keyword = info.year ? info.year + ' ' + info.title : info.title;
     var url =
       api +
       '/film-api/v1.1.0/movie/searchByKeyword?channel=' +
@@ -157,8 +165,8 @@ function extract(ctx) {
       '&page=1&size=30';
     return fetchDecrypted(url).then(function (j) {
       var rows = unwrapData(j).rows || [];
-      if (!rows.length && isTv && ctx.season) {
-        // Fall back to bare title if season-qualified search misses.
+      if (!rows.length) {
+        var fallbackKeyword = info.title;
         var fallback =
           api +
           '/film-api/v1.1.0/movie/searchByKeyword?channel=' +
@@ -166,7 +174,7 @@ function extract(ctx) {
           '&clientType=' +
           encodeURIComponent(client) +
           '&keyword=' +
-          encodeURIComponent(info.year ? info.title + ' ' + info.year : info.title) +
+          encodeURIComponent(fallbackKeyword) +
           '&lang=' +
           encodeURIComponent(lang) +
           '&mode=1&packageName=' +

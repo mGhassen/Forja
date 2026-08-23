@@ -17,7 +17,6 @@ function extract(ctx) {
         (ctx.episode || 1) +
         '/images';
   var CryptoJS = ctx.crypto;
-  // Prefer WordArray.random; fall back so we never host solely because CryptoJS failed.
   var key = '';
   try {
     if (CryptoJS && CryptoJS.lib && CryptoJS.lib.WordArray && CryptoJS.lib.WordArray.random) {
@@ -34,7 +33,7 @@ function extract(ctx) {
     }
     key = hex;
   }
-  var headers = {
+  var apiHeaders = {
     'User-Agent': ua,
     Referer: origin + '/',
     Accept: 'text/plain',
@@ -47,15 +46,70 @@ function extract(ctx) {
     return j.result;
   }
 
+  function playHeaders(extraReferer) {
+    return {
+      'User-Agent': ua,
+      Referer: extraReferer || origin + '/',
+    };
+  }
+
+  function isDirectStream(url) {
+    return (
+      /\.m3u8|\.mp4|\.mpd/i.test(url) ||
+      /\/playlist\/|\/hls\/|master\.txt/i.test(url)
+    );
+  }
+
   function walk(o, urls) {
     if (!o) return;
     if (typeof o === 'string' && /^https?:/i.test(o)) urls.push(o);
     else if (Array.isArray(o)) o.forEach(function (e) { walk(e, urls); });
     else if (typeof o === 'object') {
-      ['url', 'file', 'src', 'stream', 'link'].forEach(function (k) {
+      ['url', 'file', 'src', 'stream', 'link', 'sources'].forEach(function (k) {
         if (o[k]) walk(o[k], urls);
       });
     }
+  }
+
+  function rowsFromPayload(payload) {
+    var hdrs = playHeaders(payload && payload.referer);
+    if (payload && Array.isArray(payload.sources) && payload.sources.length) {
+      return Promise.resolve(
+        payload.sources
+          .filter(function (s) {
+            return s && s.url;
+          })
+          .map(function (s) {
+            var label = 'Hexa';
+            if (s.server) label += ' ' + s.server;
+            else if (s.quality) label += ' ' + s.quality;
+            return {
+              url: s.url,
+              name: label,
+              quality: s.quality || '',
+              headers: hdrs,
+            };
+          }),
+      );
+    }
+    var urls = [];
+    walk(payload, urls);
+    return Promise.all(
+      urls.map(function (u) {
+        if (isDirectStream(u)) {
+          return Promise.resolve([
+            {
+              url: u,
+              name: 'Hexa',
+              headers: hdrs,
+            },
+          ]);
+        }
+        return ctx.hop(u);
+      }),
+    ).then(function (groups) {
+      return [].concat.apply([], groups);
+    });
   }
 
   return ctx
@@ -69,47 +123,41 @@ function extract(ctx) {
         ctx.error('hexa: no enc token');
         return null;
       }
-      headers['X-Cap-Token'] = token;
-      return ctx.fetch(api + path, { headers: headers }).then(function (r) {
+      apiHeaders['X-Cap-Token'] = token;
+      return ctx.fetch(api + path, { headers: apiHeaders }).then(function (r) {
         return r.text();
       });
     })
     .then(function (encrypted) {
-      if (!encrypted) return ctx.host('hexa');
+      var text = (encrypted || '').trim();
+      if (!text || /^</.test(text)) {
+        ctx.error('hexa: empty or blocked api response');
+        return [];
+      }
       return ctx
         .fetch(enc + '/dec-hexa', {
           method: 'POST',
-          headers: Object.assign({}, headers, { 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ text: encrypted, key: key }),
+          headers: {
+            'User-Agent': ua,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text: text, key: key }),
         })
         .then(function (r) {
           return r.json();
         })
         .then(function (dj) {
           var payload = validate(dj);
-          var urls = [];
-          walk(payload, urls);
-          return Promise.all(
-            urls.map(function (u) {
-              if (/\.m3u8|\.mp4/i.test(u)) {
-                return Promise.resolve([
-                  {
-                    url: u,
-                    name: 'Hexa',
-                    headers: { 'User-Agent': ua, Referer: origin + '/' },
-                  },
-                ]);
-              }
-              return ctx.hop(u);
-            }),
-          ).then(function (groups) {
-            var out = [].concat.apply([], groups);
-            return out.length ? out : ctx.host('hexa');
-          });
+          if (!payload) {
+            ctx.error('hexa: decrypt failed');
+            return [];
+          }
+          return rowsFromPayload(payload);
         });
     })
     .catch(function (e) {
       ctx.error(e && e.message ? e.message : e);
-      return ctx.host('hexa');
+      return [];
     });
 }
