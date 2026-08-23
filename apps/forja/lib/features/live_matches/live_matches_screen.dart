@@ -126,9 +126,9 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   final Set<String> _timelineTvRowIds = {};
 
   TabController? _tabController;
-  _LiveMatchesServer _server = _LiveMatchesServer.all;
+  _LiveMatchesServer _server = _LiveMatchesServer.forjaLive;
 
-  /// False until [_restoreServerPreference] finishes — avoids fetching All/Stremio before saved server applies.
+  /// False until [_restoreServerPreference] finishes — avoids fetching before saved server applies.
   bool _serverHydrated = false;
   List<_DamiTvStream> _damiTvStreams = [];
   List<_StreamedMatch> _streamedMatches = [];
@@ -364,12 +364,12 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
       tv: tv,
       iptvSportsEnabled: iptvSportsEnabled,
     );
-    if (next == _server) return;
-    setState(() => _server = next);
-    // Clamp invalid saved server (TV embed-only, disabled Forja Sports, …).
-    if (saved != next) {
+    // Clamp invalid saved server (hidden All, TV embed-only, disabled Forja Sports, …).
+    if (saved != null && saved != next) {
       unawaited(_persistServerPreference(next));
     }
+    if (next == _server) return;
+    setState(() => _server = next);
   }
 
   Future<void> _persistServerPreference(_LiveMatchesServer server) async {

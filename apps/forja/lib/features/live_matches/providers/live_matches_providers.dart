@@ -36,8 +36,8 @@ class LiveMatchesPrimaryLoad {
   final List<Map<String, dynamic>> espnGames;
 }
 
-/// PPV + Streamed schedule for Forja Sports / dedicated server tabs only.
-/// **All** / **Forja Live** load every enabled catalog via lazy chips instead.
+/// PPV + Streamed schedule for dedicated server tabs only.
+/// **Forja Live** loads every enabled catalog via lazy chips instead.
 Future<LiveMatchesPrimaryLoad> _fetchPpvStreamedScheduleBase() async {
   final results = await Future.wait([
     _fetchDamiTvStreams().catchError((_) => <_DamiTvStream>[]),

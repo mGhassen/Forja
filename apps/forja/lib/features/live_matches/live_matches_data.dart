@@ -222,8 +222,8 @@ mixin _LiveMatchesData
     if (!mounted || !shellTabVisible) return;
     final iptvConfig = await LiveMatchesIptvSportsConfig.load();
     if (_s._server == _LiveMatchesServer.iptvSports && !iptvConfig.enabled) {
-      setState(() => _s._server = _LiveMatchesServer.all);
-      unawaited(_s._persistServerPreference(_LiveMatchesServer.all));
+      setState(() => _s._server = _LiveMatchesServer.forjaLive);
+      unawaited(_s._persistServerPreference(_LiveMatchesServer.forjaLive));
     }
     _s._loadGen++;
     (this as _LiveMatchesForjaLive)._resetForjaLiveCatalogState();
