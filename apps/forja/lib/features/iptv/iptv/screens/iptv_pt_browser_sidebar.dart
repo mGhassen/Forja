@@ -541,21 +541,19 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
     final lifted =
         _floating || _IptvCategoryDragProxyScope.isProxy(context);
 
-    // Leanback: only the focused row paints hover fill — selected alone keeps
-    // the green left bar (open group mark) so ↑/↓ never shows two ink hovers.
-    // Desktop: ink on hover/selection even with D-pad focus enabled.
+    // Fill only for focus / hover / floating — selected alone keeps the green
+    // left bar so skim ↑/↓ never shows selected + next-focus as two ink fills.
+    // Snap colors (no AnimatedContainer) — 140ms fade left a trail of lit rows.
     final fillColor = lifted
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.28)
         : _tvFocused
             ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-            : (!leanback && (selected || _active))
+            : (!leanback && _active)
                 ? ForjaShellColors.inkHover
                 : Colors.transparent;
 
-    Widget rowBody = AnimatedContainer(
+    Widget rowBody = Container(
       key: _cardKey,
-      duration: leanback ? Duration.zero : const Duration(milliseconds: 140),
-      curve: Curves.easeOutCubic,
       width: double.infinity,
       height: widget.compact ? 42 : 46,
       clipBehavior: Clip.hardEdge,
