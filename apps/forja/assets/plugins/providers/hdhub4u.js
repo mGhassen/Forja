@@ -1,6 +1,6 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
-  var domain = cfg.base || 'https://new1.hdhub4u.limo';
+  var domain = cfg.base || 'https://new1.hdhub4u.af';
   var searchApi = cfg.searchApi || 'https://search.hdhub4u.glass/collections/post/documents/search';
   var domainsUrl = cfg.domainsUrl || 'https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json';
   var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
@@ -221,12 +221,66 @@ function extract(ctx) {
     return Promise.resolve([]);
   }
 
+  function isPostUrl(href, currentDomain) {
+    try {
+      var u = new URL(href, currentDomain.replace(/\/$/, '') + '/');
+      var base = new URL(currentDomain.replace(/\/$/, '') + '/');
+      if (u.hostname !== base.hostname) return false;
+      var parts = u.pathname.split('/').filter(Boolean);
+      return parts.length === 1 && parts[0].length > 5 && parts[0].indexOf('-') >= 0;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function htmlSearchHits(query, currentDomain) {
+    var base = currentDomain.replace(/\/$/, '');
+    var url = base + '/search/' + encodeURIComponent(query);
+    ctx.log('html search ' + url);
+    return fetchText(url, { Referer: base + '/' }).then(function (html) {
+      var $ = ctx.html(html);
+      var byUrl = {};
+      $('a[href]').each(function () {
+        var a = $(this);
+        var href = a.attr('href') || '';
+        if (!href || !isPostUrl(href, base)) return;
+        var abs;
+        try {
+          abs = new URL(href, base + '/').href;
+        } catch (e) {
+          return;
+        }
+        var title = String(a.attr('title') || a.text() || '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        var prev = byUrl[abs];
+        if (!prev || title.length > prev.title.length) {
+          var ym = title.match(/\((\d{4})\)|\b(\d{4})\b/);
+          byUrl[abs] = {
+            title: title || abs,
+            url: abs,
+            year: ym ? parseInt(ym[1] || ym[2], 10) : null,
+            imdbId: null,
+          };
+        }
+      });
+      return Object.keys(byUrl).map(function (k) {
+        return byUrl[k];
+      });
+    }).catch(function () {
+      return [];
+    });
+  }
+
   function searchHits(query, currentDomain) {
     var today = new Date().toISOString().split('T')[0];
     var url = searchApi + '?q=' + encodeURIComponent(query) +
       '&query_by=post_title,category&query_by_weights=4,2&sort_by=sort_by_date:desc' +
       '&limit=15&highlight_fields=none&use_cache=true&page=1&analytics_tag=' + today;
-    return typesenseHits(url, currentDomain);
+    return typesenseHits(url, currentDomain).then(function (hits) {
+      if (hits.length) return hits;
+      return htmlSearchHits(query, currentDomain);
+    });
   }
 
   function searchByImdb(imdbId, season, currentDomain) {
@@ -247,14 +301,17 @@ function extract(ctx) {
   }
 
   function typesenseHits(url, currentDomain) {
-    return ctx.fetch(url, { headers: hdrs() }).then(function (r) { return r.json(); })
+    return ctx.fetch(url, { headers: hdrs() }).then(function (r) {
+      if (!r || r.status < 200 || r.status >= 300) return { hits: [] };
+      return r.json().catch(function () { return { hits: [] }; });
+    })
       .then(function (d) {
         if (!d || !d.hits) return [];
         return d.hits.map(function (h) {
           var doc = h.document || {};
           var ym = (doc.post_title || '').match(/\((\d{4})\)|\b(\d{4})\b/);
           var url2 = doc.permalink || '';
-          if (url2.startsWith('/')) url2 = currentDomain + url2;
+          if (url2.startsWith('/')) url2 = currentDomain.replace(/\/$/, '') + url2;
           return {
             title: doc.post_title || '',
             url: url2,

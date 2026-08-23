@@ -46,7 +46,7 @@ pub const ALL_SOURCES: &[SourceDef] = &[
         label: "HDHub4u",
         content_types: &[MediaType::Movie, MediaType::Series],
         country_codes: &["multi", "gu", "hi", "ml", "pa", "ta", "te"],
-        base_url: "https://new1.hdhub4u.limo",
+        base_url: "https://new1.hdhub4u.af",
         priority: 0,
         use_only_with_max_urls_found: None,
     },
@@ -376,7 +376,7 @@ pub fn run_source(
         "movix" => run_movix(&sr, &ids, tmdb_token).unwrap_or_default(),
         "frembed" => run_frembed(&sr, &ids, tmdb_token).unwrap_or_default(),
         "kinoger" => run_kinoger(&sr, &ids, tmdb_token).unwrap_or_default(),
-        "hdhub4u" => run_hdhub4u(&ids).unwrap_or_default(),
+        "hdhub4u" => run_hdhub4u(&ids, tmdb_token).unwrap_or_default(),
         "vegamovies" => run_vegamovies(&ids).unwrap_or_default(),
         "4khdhub" => run_fourkhdhub(&sr, &ids, tmdb_token).unwrap_or_default(),
         "kokoshka" => run_kokoshka(&sr, &ids, tmdb_token).unwrap_or_default(),
@@ -811,39 +811,96 @@ fn find_kinoger_page(keyword: &str, year: i32) -> Option<String> {
         })
 }
 
-fn run_hdhub4u(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
-    let imdb = ids.imdb_id.as_deref()?;
-    // MBG: search.hdhub4u.glass (legacy pingora kept as comment)
-    let search_url = format!(
-        "https://search.hdhub4u.glass/collections/post/documents/search?query_by=imdb_id&q={}",
-        urlencoding_encode(imdb)
-    );
-    let resp = fetch_json(
-        &search_url,
-        &fetch_cfg(Some(&resolved_base("hdhub4u"))),
-    )
-    .ok()?;
-    let hits = resp.get("hits").and_then(|v| v.as_array())?;
-    let mut out = Vec::new();
-    for hit in hits {
-        let doc = hit.get("document")?;
-        if doc.get("imdb_id").and_then(|v| v.as_str()) != Some(imdb) {
-            continue;
+fn run_hdhub4u(ids: &MediaIds, token: Option<&str>) -> Option<Vec<SourceEmbed>> {
+    let base = resolved_base("hdhub4u");
+    let mut pages: Vec<(String, String)> = Vec::new(); // (url, post_title)
+
+    if let Some(imdb) = ids.imdb_id.as_deref() {
+        // Typesense may be dead (404) — ignore and fall through to HTML search.
+        let search_url = format!(
+            "https://search.hdhub4u.glass/collections/post/documents/search?query_by=imdb_id&q={}",
+            urlencoding_encode(imdb)
+        );
+        if let Ok(resp) = fetch_json(&search_url, &fetch_cfg(Some(&base))) {
+            if let Some(hits) = resp.get("hits").and_then(|v| v.as_array()) {
+                for hit in hits {
+                    let Some(doc) = hit.get("document") else { continue };
+                    if doc.get("imdb_id").and_then(|v| v.as_str()) != Some(imdb) {
+                        continue;
+                    }
+                    let post_title = doc
+                        .get("post_title")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if let Some(season) = ids.season {
+                        let s = season.to_string();
+                        let s_pad = format!("{s:02}");
+                        if !post_title.contains(&format!("Season {s}"))
+                            && !post_title.contains(&format!("S{s}"))
+                            && !post_title.contains(&format!("S{s_pad}"))
+                        {
+                            continue;
+                        }
+                    }
+                    let Some(permalink) = doc.get("permalink").and_then(|v| v.as_str()) else {
+                        continue;
+                    };
+                    pages.push((resolve_href(&base, permalink), post_title));
+                }
+            }
         }
-        let post_title = doc.get("post_title").and_then(|v| v.as_str()).unwrap_or("");
+    }
+
+    if pages.is_empty() {
+        let tmdb_id = ids.tmdb_id?;
+        let ny = get_tmdb_name_and_year(tmdb_id, ids.season, None, token).ok()?;
+        let q = if let Some(season) = ids.season {
+            format!("{} Season {season}", ny.name)
+        } else {
+            ny.name.clone()
+        };
+        let search_url = format!(
+            "{}/search/{}",
+            base.trim_end_matches('/'),
+            urlencoding_encode(&q)
+        );
+        let html = fetch_text(&search_url, &fetch_cfg(Some(&base))).ok()?;
+        pages = parse_hdhub4u_search_html(&html, &base);
         if let Some(season) = ids.season {
             let s = season.to_string();
             let s_pad = format!("{s:02}");
-            if !post_title.contains(&format!("Season {s}"))
-                && !post_title.contains(&format!("S{s}"))
-                && !post_title.contains(&format!("S{s_pad}"))
-            {
-                continue;
+            pages.retain(|(_, title)| {
+                title.contains(&format!("Season {s}"))
+                    || title.contains(&format!("S{s}"))
+                    || title.contains(&format!("S{s_pad}"))
+            });
+        }
+        // Prefer English / non-hindi when title search is fuzzy.
+        if pages.len() > 1 {
+            let eng: Vec<_> = pages
+                .iter()
+                .filter(|(_, t)| {
+                    let low = t.to_lowercase();
+                    low.contains("english") && !low.contains("hindi")
+                })
+                .cloned()
+                .collect();
+            if !eng.is_empty() {
+                pages = eng;
             }
         }
-        let permalink = doc.get("permalink").and_then(|v| v.as_str())?;
-        let page_url = resolve_href(&resolved_base("hdhub4u"), permalink);
-        let html = fetch_text(&page_url, &fetch_cfg(Some(&resolved_base("hdhub4u")))).ok()?;
+    }
+
+    if pages.is_empty() {
+        return Some(vec![]);
+    }
+
+    let mut out = Vec::new();
+    for (page_url, _) in pages {
+        let Ok(html) = fetch_text(&page_url, &fetch_cfg(Some(&base))) else {
+            continue;
+        };
         let doc_html = Html::parse_document(&html);
         let mut lang_text = String::new();
         for div in doc_html.select(&Selector::parse("div").unwrap()) {
@@ -859,10 +916,7 @@ fn run_hdhub4u(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
             "referer": page_url,
             "country_codes": ccs,
         }));
-        // Direct hubdrive anchors on the page (older posts).
         out.extend(parse_source_html("hdhub4u", &html, &opts));
-        // Most posts only expose gadgetsweb redirects —
-        // decode → hub-links page → hubdrive embeds.
         for a in doc_html.select(&Selector::parse(r#"a[href*="gadgetsweb"]"#).unwrap()) {
             let Some(href) = a.value().attr("href") else {
                 continue;
@@ -884,6 +938,52 @@ fn run_hdhub4u(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {
         }
     }
     Some(out)
+}
+
+fn parse_hdhub4u_search_html(html: &str, base: &str) -> Vec<(String, String)> {
+    let doc = Html::parse_document(html);
+    let Ok(sel) = Selector::parse("a[href]") else {
+        return Vec::new();
+    };
+    let base_host = url::Url::parse(base)
+        .ok()
+        .and_then(|u| u.host_str().map(|h| h.to_string()));
+    let mut best: HashMap<String, String> = HashMap::new();
+    for a in doc.select(&sel) {
+        let Some(href) = a.value().attr("href") else {
+            continue;
+        };
+        let abs = resolve_href(base, href);
+        let Ok(u) = url::Url::parse(&abs) else {
+            continue;
+        };
+        if let Some(ref bh) = base_host {
+            if u.host_str() != Some(bh.as_str()) {
+                continue;
+            }
+        }
+        let parts: Vec<_> = u
+            .path()
+            .split('/')
+            .filter(|p| !p.is_empty())
+            .collect();
+        if parts.len() != 1 || parts[0].len() <= 5 || !parts[0].contains('-') {
+            continue;
+        }
+        let title_attr = a.value().attr("title").unwrap_or("").trim();
+        let text: String = a.text().collect::<String>();
+        let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+        let title = if title_attr.len() >= text.len() {
+            title_attr.to_string()
+        } else {
+            text
+        };
+        let entry = best.entry(abs).or_default();
+        if title.len() > entry.len() {
+            *entry = title;
+        }
+    }
+    best.into_iter().map(|(url, title)| (url, title)).collect()
 }
 
 fn run_vegamovies(ids: &MediaIds) -> Option<Vec<SourceEmbed>> {

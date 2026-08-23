@@ -608,7 +608,7 @@
       ],
       "kind": "http",
       "config": {
-        "base": "https://new1.hdhub4u.limo",
+        "base": "https://new1.hdhub4u.af",
         "searchApi": "https://search.hdhub4u.glass/collections/post/documents/search",
         "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
         "tmdbKey": "439c478a771f35c05022f9feabcca01c"
