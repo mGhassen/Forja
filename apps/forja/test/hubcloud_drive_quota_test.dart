@@ -73,4 +73,15 @@ void main() {
       'https://misty-queen.workers.dev/live::key/1/b.mkv',
     ]);
   });
+
+  test('hubCloudDriveQuotaExceeded tear-off accepts positional headers', () async {
+    // Regression: named-only headers made dropHubCloudDriveQuotaRows throw
+    // NoSuchMethodError and discard the whole Nuvio scraper batch.
+    Future<bool> Function(String, Map<String, String>?) check =
+        hubCloudDriveQuotaExceeded;
+    expect(
+      await check('https://cdn.example/a.mkv', {'Referer': 'https://x'}),
+      isFalse,
+    );
+  });
 }

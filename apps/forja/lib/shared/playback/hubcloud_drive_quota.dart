@@ -22,10 +22,16 @@ bool isDriveDownloadQuotaBody(String body) {
       lower.contains('download quota for this file has been exceeded');
 }
 
+/// Probe whether a HubCloud Drive-proxy URL is currently Drive-quota blocked.
+///
+/// Second arg is positional (not named) so it matches [dropHubCloudDriveQuotaRows]'s
+/// `quotaCheck` typedef — a named-only tear-off crashes at runtime with
+/// `NoSuchMethodError: Closure call with mismatched arguments` and wipes the
+/// whole Nuvio scraper result (e.g. UHDMovies returned 6 streams then []).
 Future<bool> hubCloudDriveQuotaExceeded(
-  String url, {
+  String url, [
   Map<String, String>? headers,
-}) async {
+]) async {
   if (!isHubCloudDriveProxyUrl(url)) return false;
   try {
     final hdrs = <String, String>{
