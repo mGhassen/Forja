@@ -557,15 +557,17 @@ class _KindTabState extends State<_KindTab> {
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
     final selected = widget.selected;
-    final emphasize = selected || _hovered || _focused;
+    final policy = ShellScope.inputPolicyOf(context);
+    final focusStyled = policy.focusStyled(context, focused: _focused);
+    final emphasize = selected || _hovered || focusStyled;
     final color = selected
         ? cinematic.textPrimary
-        : (_hovered || _focused
+        : (_hovered || focusStyled
               ? cinematic.textPrimary.withValues(alpha: 0.88)
               : cinematic.textSecondary);
     final indicatorColor = selected
         ? ForjaShellColors.brandGreen
-        : (_hovered || _focused
+        : (_hovered || focusStyled
               ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
               : Colors.transparent);
 
@@ -580,7 +582,7 @@ class _KindTabState extends State<_KindTab> {
       ),
       transform: Matrix4.translationValues(
         0,
-        (_hovered || _focused) && !selected ? -0.5 : 0,
+        (_hovered || focusStyled) && !selected ? -0.5 : 0,
         0,
       ),
       transformAlignment: Alignment.center,

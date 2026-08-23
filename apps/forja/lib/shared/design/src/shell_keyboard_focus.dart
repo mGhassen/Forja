@@ -57,10 +57,23 @@ class _ShellKeyboardFocusHostState extends State<ShellKeyboardFocusHost> {
         event.kind != PointerDeviceKind.stylus) {
       return;
     }
-    if (_chromeVisible.value) {
+    final wasKeyboard = _chromeVisible.value;
+    if (wasKeyboard) {
       _chromeVisible.value = false;
+      _releaseKeyboardFocus();
     }
     ShellTvFocusCoordinator.unfocusShellNav();
+  }
+
+  void _releaseKeyboardFocus() {
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus == null) return;
+    final ctx = focus.context;
+    if (ctx != null &&
+        ctx.findAncestorWidgetOfExactType<EditableText>() != null) {
+      return;
+    }
+    focus.unfocus();
   }
 
   @override

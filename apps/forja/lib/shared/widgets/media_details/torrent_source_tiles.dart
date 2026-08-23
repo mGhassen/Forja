@@ -719,7 +719,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       ),
     );
 
-    var card = face;
+    Widget card = face;
     if (widget.onHoverProbe != null) {
       card = MouseRegion(
         onEnter: (_) {

@@ -189,10 +189,11 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
     final selected = widget.selected;
     final policy = ShellScope.inputPolicyOf(context);
     final tv = policy.useFocusableMoodChips;
-    final accent = widget.accentHover && (_hovered || _focused);
+    final focusStyled = policy.focusStyled(context, focused: _focused);
+    final accent = widget.accentHover && (_hovered || focusStyled);
     // Desktop: reload only on chip hover. Touch/TV: always (no hover).
     final showReload = widget.onReload != null &&
-        (!policy.scaleOnHover || _hovered || _focused);
+        (!policy.scaleOnHover || _hovered || focusStyled);
     final cinematic = ForjaShellColors.cinematic;
     final fg = accent
         ? ForjaShellColors.brandGreen

@@ -543,7 +543,11 @@ class _CategoryTabState extends State<_CategoryTab> {
 
   double get _visualTarget {
     if (widget.isActive) return _selectedT;
-    if (_hovered || _focused) return _hoverT;
+    final policy = ShellScope.inputPolicyOf(context);
+    if (_hovered ||
+        policy.focusStyled(context, focused: _focused)) {
+      return _hoverT;
+    }
     return 0;
   }
 
@@ -711,7 +715,9 @@ class _FlatMenuRowState extends State<_FlatMenuRow> {
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
-    final highlight = widget.selected || _hovered || _focused;
+    final policy = ShellScope.inputPolicyOf(context);
+    final focusStyled = policy.focusStyled(context, focused: _focused);
+    final highlight = widget.selected || _hovered || focusStyled;
     final row = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Text(

@@ -133,20 +133,26 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
   bool _hovered = false;
   bool _focused = false;
 
-  bool get _active => widget.selected || _hovered || _focused;
+  bool _active(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    return widget.selected ||
+        _hovered ||
+        policy.focusStyled(context, focused: _focused);
+  }
 
   Widget _circle() {
     final layout = widget.layout;
     final accent = widget.accent;
-    final bgAlpha = widget.selected ? 0.62 : (_active ? 0.42 : 0.22);
+    final active = _active(context);
+    final bgAlpha = widget.selected ? 0.62 : (active ? 0.42 : 0.22);
     final borderColor = widget.selected
         ? accent
-        : _active
+        : active
         ? accent.withValues(alpha: 0.95)
         : accent.withValues(alpha: 0.35);
     final policy = ShellScope.inputPolicyOf(context);
     final scaleOnActive = policy.scaleOnHover;
-    final iconSize = _active ? layout.iconSizeActive : layout.iconSize;
+    final iconSize = active ? layout.iconSizeActive : layout.iconSize;
     final icon = Icon(widget.icon, size: iconSize, color: Colors.white);
 
     return AnimatedContainer(
@@ -162,7 +168,7 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
           color: borderColor,
           width: widget.selected ? 2.5 : 1.5,
         ),
-        boxShadow: _active && scaleOnActive
+        boxShadow: active && scaleOnActive
             ? [
                 BoxShadow(
                   color: accent.withValues(alpha: 0.4),
@@ -173,7 +179,7 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
       ),
       child: scaleOnActive
           ? AnimatedScale(
-              scale: _active ? 1.12 : 1.0,
+              scale: active ? 1.12 : 1.0,
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,
               child: icon,
@@ -184,6 +190,7 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
 
   Widget _content() {
     final layout = widget.layout;
+    final active = _active(context);
     return SizedBox(
       width: layout.itemWidth,
       child: Column(
@@ -197,11 +204,13 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: _active
+              color: active
                   ? Colors.white
                   : Colors.white.withValues(alpha: 0.72),
               fontSize: layout.labelFontSize,
-              fontWeight: widget.selected || _focused
+              fontWeight: widget.selected ||
+                      ShellScope.inputPolicyOf(context)
+                          .focusStyled(context, focused: _focused)
                   ? FontWeight.w700
                   : FontWeight.w600,
               height: 1.15,

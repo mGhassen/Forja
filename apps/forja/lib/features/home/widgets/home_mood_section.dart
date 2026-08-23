@@ -131,19 +131,25 @@ class HomeMoodCircleItemState extends State<HomeMoodCircleItem> {
   bool _hovered = false;
   bool _focused = false;
 
-  bool get _active => widget.selected || _hovered || _focused;
+  bool _active(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    return widget.selected ||
+        _hovered ||
+        policy.focusStyled(context, focused: _focused);
+  }
 
   Widget _circle() {
     final layout = widget.layout;
     final accent = widget.accent;
-    final bgAlpha = widget.selected ? 0.62 : (_active ? 0.42 : 0.22);
+    final active = _active(context);
+    final bgAlpha = widget.selected ? 0.62 : (active ? 0.42 : 0.22);
     final borderColor = widget.selected
         ? accent
-        : _active
+        : active
             ? accent.withValues(alpha: 0.95)
             : accent.withValues(alpha: 0.35);
     final iconSize =
-        _active ? layout.iconSizeActive : layout.iconSize;
+        active ? layout.iconSizeActive : layout.iconSize;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -158,7 +164,7 @@ class HomeMoodCircleItemState extends State<HomeMoodCircleItem> {
           color: borderColor,
           width: widget.selected ? 2.5 : 1.5,
         ),
-        boxShadow: _active
+        boxShadow: active
             ? [
                 BoxShadow(
                   color: accent.withValues(alpha: 0.4),
@@ -168,7 +174,7 @@ class HomeMoodCircleItemState extends State<HomeMoodCircleItem> {
             : null,
       ),
       child: AnimatedScale(
-        scale: _active ? 1.12 : 1.0,
+        scale: active ? 1.12 : 1.0,
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         child: Icon(
@@ -182,6 +188,8 @@ class HomeMoodCircleItemState extends State<HomeMoodCircleItem> {
 
   Widget _content() {
     final layout = widget.layout;
+    final active = _active(context);
+    final policy = ShellScope.inputPolicyOf(context);
     return SizedBox(
       width: layout.itemWidth,
       child: Column(
@@ -195,12 +203,14 @@ class HomeMoodCircleItemState extends State<HomeMoodCircleItem> {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: _active
+              color: active
                   ? Colors.white
                   : Colors.white.withValues(alpha: 0.72),
               fontSize: layout.labelFontSize,
-              fontWeight:
-                  widget.selected || _focused ? FontWeight.w700 : FontWeight.w600,
+              fontWeight: widget.selected ||
+                      policy.focusStyled(context, focused: _focused)
+                  ? FontWeight.w700
+                  : FontWeight.w600,
               height: 1.15,
             ),
           ),

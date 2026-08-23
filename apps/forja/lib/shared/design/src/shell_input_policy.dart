@@ -85,6 +85,10 @@ class ShellInputPolicy {
     return ShellKeyboardFocusScope.chromeVisibleOf(context);
   }
 
+  /// Focus styling on desktop hybrid — ignores mouse/touch focus retention.
+  bool focusStyled(BuildContext context, {required bool focused}) =>
+      focusChromeVisible(context, focused: focused);
+
   /// Policy-aware hover OR keyboard focus chrome.
   static bool interactiveActive(
     ShellInputPolicy policy, {

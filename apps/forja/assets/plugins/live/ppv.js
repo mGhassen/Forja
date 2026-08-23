@@ -139,6 +139,22 @@ async function resolveEmbedSt(ctx, iframe, cfg) {
   }];
 }
 
+function ppvIframeFromDetail(data) {
+  if (!data) return '';
+  var sources = data.sources;
+  if (!Array.isArray(sources)) return '';
+  var picked = '';
+  for (var i = 0; i < sources.length; i++) {
+    var s = sources[i];
+    if (!s) continue;
+    var url = String(s.data || s.url || '').trim();
+    if (!url || !/^https?:/i.test(url)) continue;
+    if (s.default === true) return url;
+    if (!picked) picked = url;
+  }
+  return picked;
+}
+
 function ppvPlayableUrl(data) {
   if (!data) return '';
   var fields = [data.m3u8, data.source, data.vip_mpegts];
@@ -147,6 +163,27 @@ function ppvPlayableUrl(data) {
     if (url && /\.m3u8|\.mp4/i.test(url)) return url;
   }
   return '';
+}
+
+async function resolveEmbedIndia(ctx, iframe, cfg) {
+  var url = String(iframe || '').trim();
+  if (!url || url.indexOf('embedindia') < 0) return null;
+  if (!ctx.live || typeof ctx.live.sniffEmbed !== 'function') return null;
+  var origin = (cfg.webOrigin || 'https://ppv.is').replace(/\/$/, '');
+  var sniffed = await ctx.live.sniffEmbed(url, origin + '/');
+  if (!sniffed) return null;
+  var embedOrigin = '';
+  try {
+    embedOrigin = new URL(url).origin;
+  } catch (_) {}
+  return [{
+    url: String(sniffed),
+    headers: {
+      Referer: url,
+      Origin: embedOrigin,
+      'User-Agent': ua(),
+    },
+  }];
 }
 
 async function resolvePpv(ctx, cfg) {
@@ -169,11 +206,15 @@ async function resolvePpv(ctx, cfg) {
         if (source) {
           return [{ url: source, headers: headers }];
         }
+        var fromDetail = ppvIframeFromDetail(body.data);
+        if (fromDetail) iframe = fromDetail;
       } catch (_) {}
     }
   }
   if (iframe) {
     try {
+      var embedIndia = await resolveEmbedIndia(ctx, iframe, cfg);
+      if (embedIndia) return embedIndia;
       var embedResolved = await resolveEmbedSt(ctx, iframe, cfg);
       if (embedResolved) return embedResolved;
     } catch (_) {}

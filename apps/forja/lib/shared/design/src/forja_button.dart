@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
+import 'package:forja/shared/design/src/shell_input_policy.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -111,7 +112,10 @@ class _ForjaButtonState extends State<ForjaButton> {
         ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ?? false;
     final ownFocus =
         tvFocus || ShellTvLinearFocusScope.activeOf(context);
-    final active = _hovered || _focused;
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final active =
+        _hovered || policy.focusStyled(context, focused: _focused);
     final accent = _accent;
 
     final Color fill;
