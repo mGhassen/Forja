@@ -4113,36 +4113,44 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
                 padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (hasTeams) ...[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _TeamBadge(
-                            badge: _streamedImageUrl(m.homeBadge ?? ''),
-                            name: m.homeTeam!,
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              'VS',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.7),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.5,
+                    Expanded(
+                      child: hasTeams
+                          ? Center(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _TeamBadge(
+                                    badge: _streamedImageUrl(m.homeBadge ?? ''),
+                                    name: m.homeTeam!,
+                                    showName: false,
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    child: Text(
+                                      'VS',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                  _TeamBadge(
+                                    badge: _streamedImageUrl(m.awayBadge ?? ''),
+                                    name: m.awayTeam!,
+                                    showName: false,
+                                  ),
+                                ],
                               ),
-                            ),
-                          ),
-                          _TeamBadge(
-                            badge: _streamedImageUrl(m.awayBadge ?? ''),
-                            name: m.awayTeam!,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                     Text(
                       m.title,
                       maxLines: 2,
@@ -4417,54 +4425,76 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                 padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (hasTeams) ...[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _TeamBadge(badge: s.homeBadge, name: s.homeTeam!),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              'VS',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.7),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1.5,
+                    Expanded(
+                      child: hasTeams
+                          ? Center(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _TeamBadge(
+                                    badge: s.homeBadge,
+                                    name: s.homeTeam!,
+                                    showName: false,
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
+                                    child: Text(
+                                      'VS',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                  _TeamBadge(
+                                    badge: s.awayBadge,
+                                    name: s.awayTeam!,
+                                    showName: false,
+                                  ),
+                                ],
                               ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.only(right: s.viewers > 0 ? 52 : 0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            s.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          _TeamBadge(badge: s.awayBadge, name: s.awayTeam!),
+                          if (s.league.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              s.league,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white54,
+                                fontSize: 9.5,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
-                      const SizedBox(height: 8),
-                    ],
-                    Text(
-                      s.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
                     ),
-                    if (s.league.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        s.league,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white54,
-                          fontSize: 9.5,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
