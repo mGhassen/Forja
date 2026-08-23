@@ -37,7 +37,7 @@ class LiveMatchesPrimaryLoad {
 }
 
 /// PPV + Streamed schedule for dedicated server tabs only.
-/// **Forja Live** / **Forja Sports** / **All** load catalogs via lazy chips instead.
+/// **Forja Live** / **Forja Sports** / **All** load catalogs via the Catalog button instead.
 Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
   return const LiveMatchesPrimaryLoad(sports: []);
 }

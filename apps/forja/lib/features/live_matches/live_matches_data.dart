@@ -6,6 +6,7 @@ mixin _LiveMatchesData
 
   void _focusTopBarItem(int index) {
     if (index == _LiveMatchesScreenState._topBarServersIndex ||
+        (_s._showCatalogTopBar && index == _s._topBarCatalogIndex) ||
         (_s._showIptvPortalTopBar && index == _s._topBarPortalIndex)) {
       ShellTvFocusCoordinator.focusRowItem(
         _LiveMatchesScreenState._tabId,
@@ -95,6 +96,28 @@ mixin _LiveMatchesData
     }());
   }
 
+  void _openCatalogPicker() {
+    final loads = _s._forjaLivePluginLoads.values.toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
+    if (loads.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF141414),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _LiveMatchesCatalogSheet(
+        current: _s._forjaLivePluginFilter,
+        catalogs: loads,
+        onSelected: (filter) {
+          Navigator.pop(context);
+          (this as _LiveMatchesForjaLive)._setForjaLivePluginFilter(filter);
+        },
+      ),
+    );
+  }
+
   Future<void> _toggleIptvPortalPanel() async {
     final ctrl = ref.read(iptvControllerProvider);
     await ctrl.preparePortalPanel();
@@ -102,13 +125,42 @@ mixin _LiveMatchesData
     ctrl.togglePortalPanel();
   }
 
+  String get _catalogTopBarLabel {
+    final filter = _s._forjaLivePluginFilter;
+    if (filter == 'all') return 'All';
+    return _s._forjaLivePluginLoads[filter]?.label ??
+        _liveForjaPluginDisplayName(filter);
+  }
+
   Widget _serversTopBarButton() {
-    return _LiveMatchesServersTopBarButton(
+    return _LiveMatchesTopBarActionButton(
+      label: _liveMatchesServerLabel(_s._server),
+      icon: Icons.dns_rounded,
+      accent: true,
+      tvItemIndex: _LiveMatchesScreenState._topBarServersIndex,
       onTap: _openServerPicker,
       onLeftEdge: shellTvNavLeftEdge(
         context,
         listIndex: _LiveMatchesScreenState._topBarServersIndex,
       ),
+      onRightEdge: () => _focusTopBarItem(
+        _s._showCatalogTopBar
+            ? _s._topBarCatalogIndex
+            : _s._topBarRefreshIndex,
+      ),
+      onDownEdge: _topBarDownEdge,
+    );
+  }
+
+  Widget _catalogTopBarButton() {
+    return _LiveMatchesTopBarActionButton(
+      label: _catalogTopBarLabel,
+      icon: Icons.video_library_rounded,
+      accent: true,
+      tvItemIndex: _s._topBarCatalogIndex,
+      onTap: _openCatalogPicker,
+      onLeftEdge: () =>
+          _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex),
       onRightEdge: () => _focusTopBarItem(_s._topBarRefreshIndex),
       onDownEdge: _topBarDownEdge,
     );
@@ -128,21 +180,6 @@ mixin _LiveMatchesData
   }
 
   void _topBarDownEdge() {
-    if (_s._hasCatalogChips) {
-      final catalog = ShellTvFocusCoordinator.rowHandle(
-        _LiveMatchesScreenState._tabId,
-        _LiveMatchesScreenState._catalogChipRowId,
-      );
-      if (catalog != null && catalog.itemCount > 0) {
-        final idx = catalog.lastFocusedIndex.clamp(0, catalog.itemCount - 1);
-        ShellTvFocusCoordinator.focusRowItem(
-          _LiveMatchesScreenState._tabId,
-          _LiveMatchesScreenState._catalogChipRowId,
-          idx,
-        );
-        return;
-      }
-    }
     if (_s._hasSportChips) {
       final chip = ShellTvFocusCoordinator.rowHandle(
         _LiveMatchesScreenState._tabId,
@@ -161,7 +198,7 @@ mixin _LiveMatchesData
     _restoreLiveMatchesTvFocus();
   }
 
-  /// First grid row ↑ → sport chips → catalog chips → Servers.
+  /// First grid row ↑ → sport chips → Servers / Catalog.
   VoidCallback? _gridUpEdge(BuildContext context, int index, int crossCount) {
     if (!_s._tvFocus(context) || index ~/ crossCount != 0) return null;
     return _gridFocusUp;
@@ -175,14 +212,11 @@ mixin _LiveMatchesData
       );
       return;
     }
-    if (_s._hasCatalogChips) {
-      ShellTvFocusCoordinator.focusFromResultsRowUp(
-        tabId: _LiveMatchesScreenState._tabId,
-        chipRowId: _LiveMatchesScreenState._catalogChipRowId,
-      );
-      return;
-    }
-    _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex);
+    _focusTopBarItem(
+      _s._showCatalogTopBar
+          ? _s._topBarCatalogIndex
+          : _LiveMatchesScreenState._topBarServersIndex,
+    );
   }
 
   bool _focusGridItem(int index) {

@@ -1,27 +1,35 @@
 part of 'live_matches_screen.dart';
 
-// ─── Top bar: Servers (green on TV focus) + Refresh (white on TV focus) ─────
+// ─── Top bar: Servers / Catalog (green accent) + Refresh (white on TV focus) ─
 
-class _LiveMatchesServersTopBarButton extends StatefulWidget {
-  const _LiveMatchesServersTopBarButton({
+class _LiveMatchesTopBarActionButton extends StatefulWidget {
+  const _LiveMatchesTopBarActionButton({
+    required this.label,
+    required this.icon,
     required this.onTap,
+    required this.tvItemIndex,
+    this.accent = true,
     this.onLeftEdge,
     this.onRightEdge,
     this.onDownEdge,
   });
 
+  final String label;
+  final IconData icon;
   final VoidCallback onTap;
+  final int tvItemIndex;
+  final bool accent;
   final VoidCallback? onLeftEdge;
   final VoidCallback? onRightEdge;
   final VoidCallback? onDownEdge;
 
   @override
-  State<_LiveMatchesServersTopBarButton> createState() =>
-      _LiveMatchesServersTopBarButtonState();
+  State<_LiveMatchesTopBarActionButton> createState() =>
+      _LiveMatchesTopBarActionButtonState();
 }
 
-class _LiveMatchesServersTopBarButtonState
-    extends State<_LiveMatchesServersTopBarButton> {
+class _LiveMatchesTopBarActionButtonState
+    extends State<_LiveMatchesTopBarActionButton> {
   static const _radius = 20.0;
   bool _focused = false;
   bool _hovered = false;
@@ -34,22 +42,35 @@ class _LiveMatchesServersTopBarButtonState
     ShellScope.inputPolicyOf(context),
     hovered: _hovered,
     focused: _focused,
-        context: context,
+    context: context,
   );
 
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
+    final accent = widget.accent;
     final decoration = _tvFocused
         ? iptvFocusButtonDecoration(
             active: _active,
             tvFocused: true,
             borderRadius: _radius,
           )
-        : shellChipDecoration(selected: false, radius: _radius);
+        : BoxDecoration(
+            color: accent
+                ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
+                : Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(_radius),
+            border: Border.all(
+              color: accent
+                  ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
+                  : ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
+            ),
+          );
     final fg = _tvFocused
         ? ForjaShellColors.brandGreen
-        : cinematic.textSecondary;
+        : accent
+            ? ForjaShellColors.brandGreen
+            : cinematic.textSecondary;
 
     final chip = AnimatedContainer(
       duration: const Duration(milliseconds: 160),
@@ -59,14 +80,14 @@ class _LiveMatchesServersTopBarButtonState
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.dns_rounded, size: 14, color: fg),
+          Icon(widget.icon, size: 14, color: fg),
           const SizedBox(width: 6),
           Text(
-            'Servers',
+            widget.label,
             style: TextStyle(
               color: fg,
               fontSize: 11.5,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -87,10 +108,10 @@ class _LiveMatchesServersTopBarButtonState
       borderRadius: _radius,
       scaleOnFocus: 1.0,
       suppressInkHover: true,
-      listIndex: _LiveMatchesScreenState._topBarServersIndex,
+      listIndex: widget.tvItemIndex,
       tvTabId: _LiveMatchesScreenState._tabId,
       tvRowId: _LiveMatchesScreenState._topBarRowId,
-      tvItemIndex: _LiveMatchesScreenState._topBarServersIndex,
+      tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.topBar,
       onLeftEdge: widget.onLeftEdge,
       onRightEdge: widget.onRightEdge,
@@ -99,113 +120,6 @@ class _LiveMatchesServersTopBarButtonState
       onHoverChange: (hovered) => setState(() => _hovered = hovered),
       child: chip,
     );
-  }
-}
-
-class _LiveMatchesServerModePill extends StatelessWidget {
-  const _LiveMatchesServerModePill({
-    required this.server,
-    required this.engineResolve,
-  });
-
-  final _LiveMatchesServer server;
-  final bool engineResolve;
-
-  @override
-  Widget build(BuildContext context) {
-    final label = _labelFor(server, engineResolve);
-    if (label == null) return const SizedBox.shrink();
-
-    final cinematic = ForjaShellColors.cinematic;
-    final accent = _accentFor(server, engineResolve);
-    final tip = _tipFor(server, engineResolve);
-    final icon = _iconFor(server, engineResolve);
-    final bg = accent
-        ? ForjaShellColors.brandGreen.withValues(alpha: 0.18)
-        : Colors.white.withValues(alpha: 0.06);
-    final fg = accent ? ForjaShellColors.brandGreen : cinematic.textSecondary;
-    final border = accent
-        ? ForjaShellColors.brandGreen.withValues(alpha: 0.45)
-        : ForjaShellColors.borderSubtle.withValues(alpha: 0.55);
-
-    return Tooltip(
-      message: tip,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 13, color: fg),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: fg,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static String? _labelFor(_LiveMatchesServer server, bool engineResolve) {
-    return switch (server) {
-      _LiveMatchesServer.all => null,
-      _LiveMatchesServer.iptvSports => 'IPTV',
-      _LiveMatchesServer.stremio => 'Stremio',
-      _LiveMatchesServer.forjaLive ||
-      _LiveMatchesServer.ppv ||
-      _LiveMatchesServer.streamed ||
-      _LiveMatchesServer.mutStreams => engineResolve ? 'Engine' : 'Sniff',
-    };
-  }
-
-  static bool _accentFor(_LiveMatchesServer server, bool engineResolve) {
-    return switch (server) {
-      _LiveMatchesServer.iptvSports || _LiveMatchesServer.stremio => true,
-      _LiveMatchesServer.forjaLive ||
-      _LiveMatchesServer.ppv ||
-      _LiveMatchesServer.streamed ||
-      _LiveMatchesServer.mutStreams => engineResolve,
-      _LiveMatchesServer.all => false,
-    };
-  }
-
-  static IconData _iconFor(_LiveMatchesServer server, bool engineResolve) {
-    return switch (server) {
-      _LiveMatchesServer.iptvSports => Icons.live_tv_rounded,
-      _LiveMatchesServer.stremio => Icons.extension_rounded,
-      _LiveMatchesServer.forjaLive ||
-      _LiveMatchesServer.ppv ||
-      _LiveMatchesServer.streamed ||
-      _LiveMatchesServer.mutStreams =>
-        engineResolve ? Icons.memory_rounded : Icons.travel_explore_rounded,
-      _LiveMatchesServer.all => Icons.dns_rounded,
-    };
-  }
-
-  static String _tipFor(_LiveMatchesServer server, bool engineResolve) {
-    return switch (server) {
-      _LiveMatchesServer.iptvSports =>
-        'Stream resolve: IPTV (Xtream portal) — Settings → Forja Sports',
-      _LiveMatchesServer.stremio => 'Stream resolve: Stremio live addons',
-      _LiveMatchesServer.forjaLive ||
-      _LiveMatchesServer.ppv ||
-      _LiveMatchesServer.streamed ||
-      _LiveMatchesServer.mutStreams =>
-        engineResolve
-            ? 'Stream resolve: Engine (native player) — change in Settings → Forja Sports'
-            : 'Stream resolve: Sniff (embed player) — change in Settings → Forja Sports',
-      _LiveMatchesServer.all => '',
-    };
   }
 }
 
@@ -495,6 +409,242 @@ class _LiveMatchesServerSheetOptionState
     return shellFocusableTap(
       context: context,
       onTap: () => widget.onSelected(widget.server),
+      borderRadius: radius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      navLeftAlways: true,
+      focusNode: widget.focusNode,
+      listIndex: widget.tvItemIndex,
+      tvTabId: 'live_matches',
+      tvRowId: widget.tvRowId,
+      tvItemIndex: widget.tvItemIndex,
+      tvZone: ShellTvZone.row,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      onHoverChange: mouseHover
+          ? (hovered) => setState(() => _hovered = hovered)
+          : null,
+      child: row,
+    );
+  }
+}
+
+// ─── Catalog picker sheet ───────────────────────────────────────────────────
+
+class _LiveMatchesCatalogSheet extends StatefulWidget {
+  const _LiveMatchesCatalogSheet({
+    required this.current,
+    required this.catalogs,
+    required this.onSelected,
+  });
+
+  final String current;
+  final List<_ForjaLivePluginLoad> catalogs;
+  final ValueChanged<String> onSelected;
+
+  @override
+  State<_LiveMatchesCatalogSheet> createState() =>
+      _LiveMatchesCatalogSheetState();
+}
+
+class _LiveMatchesCatalogSheetState extends State<_LiveMatchesCatalogSheet> {
+  static const _rowId = 'live-catalog-sheet';
+  final FocusNode _firstFocus = FocusNode(
+    debugLabel: 'live-catalog-sheet-first',
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!ShellScope.metricsOf(context).usesTvDensity) return;
+      if (_firstFocus.canRequestFocus) _firstFocus.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _firstFocus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final options = <({String id, String label, String? subtitle})>[
+      (id: 'all', label: 'All', subtitle: 'Every enabled catalog'),
+      for (final c in widget.catalogs)
+        (
+          id: c.pluginId,
+          label: c.label,
+          subtitle: c.loading
+              ? 'Loading…'
+              : c.attempted
+                  ? '${c.matchCount} match${c.matchCount == 1 ? '' : 'es'}'
+                  : null,
+        ),
+    ];
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final body = Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Catalog',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Filter the schedule by engine catalog:',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              for (var i = 0; i < options.length; i++)
+                _LiveMatchesCatalogSheetOption(
+                  id: options[i].id,
+                  label: options[i].label,
+                  subtitle: options[i].subtitle,
+                  selected: options[i].id == widget.current,
+                  onSelected: widget.onSelected,
+                  tvItemIndex: i,
+                  tvRowId: _rowId,
+                  focusNode: i == 0 ? _firstFocus : null,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!tv) return body;
+    return TvCatalogRow(
+      tabId: 'live_matches',
+      rowId: _rowId,
+      sortOrder: 0,
+      itemCount: options.length,
+      orientation: ShellTvRowOrientation.vertical,
+      child: body,
+    );
+  }
+}
+
+class _LiveMatchesCatalogSheetOption extends StatefulWidget {
+  const _LiveMatchesCatalogSheetOption({
+    required this.id,
+    required this.label,
+    required this.selected,
+    required this.onSelected,
+    this.subtitle,
+    this.tvItemIndex,
+    this.tvRowId,
+    this.focusNode,
+  });
+
+  final String id;
+  final String label;
+  final String? subtitle;
+  final bool selected;
+  final ValueChanged<String> onSelected;
+  final int? tvItemIndex;
+  final String? tvRowId;
+  final FocusNode? focusNode;
+
+  @override
+  State<_LiveMatchesCatalogSheetOption> createState() =>
+      _LiveMatchesCatalogSheetOptionState();
+}
+
+class _LiveMatchesCatalogSheetOptionState
+    extends State<_LiveMatchesCatalogSheetOption> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    final mouseHover = policy.scaleOnHover;
+    final tvFocus = policy.useFocusableMoodChips;
+    final highlight = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+      context: context,
+    );
+    const radius = 12.0;
+
+    final tile = ListTile(
+      leading: Icon(
+        widget.id == 'all'
+            ? Icons.grid_view_rounded
+            : Icons.video_library_rounded,
+        color: widget.selected
+            ? ForjaShellColors.sectionAccent
+            : Colors.white54,
+      ),
+      title: Text(
+        widget.label,
+        style: TextStyle(
+          color: Colors.white,
+          fontWeight:
+              highlight || widget.selected ? FontWeight.bold : FontWeight.w600,
+        ),
+      ),
+      subtitle: widget.subtitle == null
+          ? null
+          : Text(
+              widget.subtitle!,
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+      trailing: widget.selected
+          ? Icon(Icons.check_rounded, color: ForjaShellColors.sectionAccent)
+          : const Icon(Icons.chevron_right, color: Colors.white38),
+    );
+
+    final row = Material(
+      color: highlight ? ForjaShellColors.inkHover : Colors.transparent,
+      borderRadius: BorderRadius.circular(radius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        canRequestFocus: false,
+        onTap: tvFocus ? null : () => widget.onSelected(widget.id),
+        borderRadius: BorderRadius.circular(radius),
+        hoverColor: Colors.transparent,
+        splashColor: ForjaShellColors.inkSplash,
+        child: tile,
+      ),
+    );
+
+    if (!tvFocus) {
+      return shellRoundedInkHost(
+        radius: radius,
+        onTap: () => widget.onSelected(widget.id),
+        child: tile,
+      );
+    }
+
+    return shellFocusableTap(
+      context: context,
+      onTap: () => widget.onSelected(widget.id),
       borderRadius: radius,
       scaleOnFocus: 1.0,
       showFocusBorder: false,

@@ -129,7 +129,7 @@ mixin _LiveMatchesForjaLive
     setState(() => _s._forjaLivePluginFilter = filter);
     unawaited(_persistForjaLiveCatalogFilterPreference(filter));
     // Do not cancel in-flight catalog scrapes — finished rows stay cached
-    // (`attempted`) so switching chips / All never re-fetches.
+    // (`attempted`) so switching catalogs / All never re-fetches.
     _kickForjaLiveLazyCatalog();
   }
 

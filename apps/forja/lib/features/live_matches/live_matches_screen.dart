@@ -85,7 +85,6 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
         _LiveMatchesPlayback {
   static const _tabId = 'live_matches';
   static const _topBarRowId = 'live-top-bar';
-  static const _catalogChipRowId = 'catalog-chips';
   static const _chipRowId = 'sport-chips';
   static const _gridRowId = 'grid';
   static const _granularityRowId = 'timeline-granularity';
@@ -138,7 +137,6 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   /// ESPN scoreboard payloads for My IPTV (enrich on play).
   List<Map<String, dynamic>> _espnGames = [];
   String? _lastSyncedIptvPortalKey;
-  bool _liveEngineResolve = true;
   int _forjaLiveLoadGen = 0;
   String _forjaLivePluginFilter = 'all';
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
@@ -148,18 +146,24 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   static const _topBarServersIndex = 0;
 
-  /// Used when My IPTV portal chip is hidden (Servers → Refresh → View).
-  static const _topBarRefreshIndexBase = 1;
-  static const _topBarViewIndexBase = 2;
-
   bool get _showIptvPortalTopBar => _server == _LiveMatchesServer.iptvSports;
 
-  /// Portals sits top-right (after Refresh), like IPTV.
-  int get _topBarRefreshIndex => _topBarRefreshIndexBase;
+  /// Catalog button when Forja Live / Sports has enabled engine catalogs.
+  bool get _showCatalogTopBar =>
+      (_server == _LiveMatchesServer.all ||
+          _server == _LiveMatchesServer.forjaLive ||
+          _server == _LiveMatchesServer.iptvSports) &&
+      _forjaLivePluginLoads.isNotEmpty;
 
-  int get _topBarPortalIndex => 2;
+  int get _topBarCatalogIndex => 1;
 
-  int get _topBarViewIndex => _showIptvPortalTopBar ? 3 : _topBarViewIndexBase;
+  /// Servers → [Catalog] → Refresh → [Portals] → [View].
+  int get _topBarRefreshIndex => _showCatalogTopBar ? 2 : 1;
+
+  int get _topBarPortalIndex => _showCatalogTopBar ? 3 : 2;
+
+  int get _topBarViewIndex =>
+      _showIptvPortalTopBar ? _topBarPortalIndex + 1 : _topBarRefreshIndex + 1;
 
   final FocusNode _refreshFocusNode = FocusNode(
     debugLabel: 'live-matches-refresh',
@@ -196,7 +200,6 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   @override
   void onShellTabShown() {
     super.onShellTabShown();
-    unawaited(_refreshLiveResolveMode());
     unawaited(_clampServerIfForjaSportsDisabled(reload: true));
     _syncTimelineLiveTick();
     if (_error != null || (_sports.isEmpty && !_loading)) {
@@ -323,14 +326,6 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     }
   }
 
-  Future<void> _refreshLiveResolveMode() async {
-    final engine = await SettingsService().isLiveStreamResolveEngine();
-    if (!mounted) return;
-    if (_liveEngineResolve != engine) {
-      setState(() => _liveEngineResolve = engine);
-    }
-  }
-
   Future<void> _clampServerIfForjaSportsDisabled({required bool reload}) async {
     final iptvSportsEnabled =
         (await LiveMatchesIptvSportsConfig.load()).enabled;
@@ -351,7 +346,6 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   }
 
   Future<void> _restoreServerThenLoad() async {
-    await _refreshLiveResolveMode();
     await _restoreServerPreference();
     await (this as _LiveMatchesForjaLive)
         ._restoreForjaLiveCatalogFilterPreference();

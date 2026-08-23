@@ -8,20 +8,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
 
   bool get _hasSportChips => _s._tabController != null && _s._sports.isNotEmpty;
 
-  bool get _hasCatalogChips =>
-      (this as _LiveMatchesForjaLive)._showForjaLiveCatalogChrome;
-
-  int get _catalogChipSortOrder => 1;
-
-  int get _chipSortOrder {
-    var order = 1;
-    if (_hasCatalogChips) order++;
-    return order;
-  }
+  int get _chipSortOrder => 1;
 
   int get _gridSortOrder {
     var order = 1;
-    if (_hasCatalogChips) order++;
     if (_hasSportChips) order++;
     return order;
   }
@@ -203,7 +193,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       onUpEdge: tvFocus
           ? edges?.onUp
           : () => _s._focusTopBarItem(
-              _LiveMatchesScreenState._topBarServersIndex,
+              _s._showCatalogTopBar
+                  ? _s._topBarCatalogIndex
+                  : _LiveMatchesScreenState._topBarServersIndex,
             ),
     );
   }
@@ -316,8 +308,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(iptvCtrl),
-          if ((this as _LiveMatchesForjaLive)._showForjaLiveCatalogChrome)
-            _buildForjaLivePluginStrip(),
           if (_s._tabController != null && _s._sports.isNotEmpty)
             _buildSportTabs(),
           const SizedBox(height: 2),
@@ -389,7 +379,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
             onTap: _s._load,
             onDownEdge: _s._topBarDownEdge,
             onLeftEdge: () => _s._focusTopBarItem(
-              _LiveMatchesScreenState._topBarServersIndex,
+              _s._showCatalogTopBar
+                  ? _s._topBarCatalogIndex
+                  : _LiveMatchesScreenState._topBarServersIndex,
             ),
             onRightEdge: _s._showIptvPortalTopBar
                 ? () => _s._focusTopBarItem(_s._topBarPortalIndex)
@@ -411,14 +403,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       child: Row(
         children: [
           _s._serversTopBarButton(),
-          if (_s._server != _LiveMatchesServer.all) ...[
+          if (_s._showCatalogTopBar) ...[
             const SizedBox(width: 8),
-            ExcludeFocus(
-              child: _LiveMatchesServerModePill(
-                server: _s._server,
-                engineResolve: _s._liveEngineResolve,
-              ),
-            ),
+            _s._catalogTopBarButton(),
           ],
           const Spacer(),
           refresh,
@@ -696,103 +683,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     };
   }
 
-  Widget _buildForjaLivePluginStrip() {
-    final loads = _s._forjaLivePluginLoads.values.toList()
-      ..sort((a, b) => a.label.compareTo(b.label));
-    if (loads.isEmpty) return const SizedBox.shrink();
-
-    final itemCount = loads.length + 1;
-    final tvFocus = _tvFocus(context);
-    final downRowId = _hasSportChips
-        ? _LiveMatchesScreenState._chipRowId
-        : _LiveMatchesScreenState._gridRowId;
-
-    Widget buildRow(TvChipEdges Function(int index)? edgesFor) {
-      return SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            ForjaShellChip(
-              label: 'All',
-              selected: _s._forjaLivePluginFilter == 'all',
-              onTap: () {
-                if (_s._forjaLivePluginFilter != 'all') {
-                  (this as _LiveMatchesForjaLive)
-                      ._setForjaLivePluginFilter('all');
-                } else if (tvFocus) {
-                  edgesFor?.call(0).onSelectAlreadySelected();
-                }
-              },
-              accentHover: true,
-              radius: 999,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              fontSize: 12,
-              listIndex: 0,
-              tvTabId: tvFocus ? _LiveMatchesScreenState._tabId : null,
-              tvRowId:
-                  tvFocus ? _LiveMatchesScreenState._catalogChipRowId : null,
-              onLeftEdge: edgesFor?.call(0).onLeft,
-              onRightEdge: edgesFor?.call(0).onRight,
-              onUpEdge: edgesFor?.call(0).onUp,
-              onDownEdge: edgesFor?.call(0).onDown,
-            ),
-            for (var i = 0; i < loads.length; i++) ...[
-              const SizedBox(width: 6),
-              ForjaShellChip(
-                label: loads[i].label,
-                selected: _s._forjaLivePluginFilter == loads[i].pluginId,
-                loading: loads[i].loading,
-                onTap: () {
-                  final id = loads[i].pluginId;
-                  if (_s._forjaLivePluginFilter != id) {
-                    (this as _LiveMatchesForjaLive)
-                        ._setForjaLivePluginFilter(id);
-                  } else if (tvFocus) {
-                    edgesFor?.call(i + 1).onSelectAlreadySelected();
-                  }
-                },
-                accentHover: true,
-                radius: 999,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                fontSize: 12,
-                listIndex: i + 1,
-                tvTabId: tvFocus ? _LiveMatchesScreenState._tabId : null,
-                tvRowId:
-                    tvFocus ? _LiveMatchesScreenState._catalogChipRowId : null,
-                onLeftEdge: edgesFor?.call(i + 1).onLeft,
-                onRightEdge: edgesFor?.call(i + 1).onRight,
-                onUpEdge: edgesFor?.call(i + 1).onUp,
-                onDownEdge: edgesFor?.call(i + 1).onDown,
-              ),
-            ],
-          ],
-        ),
-      );
-    }
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        ShellTokens.bodyHorizontalPadding,
-        0,
-        ShellTokens.bodyHorizontalPadding,
-        6,
-      ),
-      child: tvFocus
-          ? TvChipStrip(
-              tabId: _LiveMatchesScreenState._tabId,
-              rowId: _LiveMatchesScreenState._catalogChipRowId,
-              sortOrder: _catalogChipSortOrder,
-              itemCount: itemCount,
-              resultsRowId: downRowId,
-              builder: (context, edgesFor) => buildRow(edgesFor),
-            )
-          : buildRow(null),
-    );
-  }
-
   Widget _buildForjaLiveCatalogProgress() {
     return Center(
       child: Column(
@@ -823,10 +713,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         _LiveMatchesServer.stremio =>
           'No live Stremio addons — install one in Settings → Sources and enable Live Matches',
         _LiveMatchesServer.iptvSports => forjaLive._showForjaLiveCatalogChrome
-            ? 'No matches for this catalog or sport — try All on both filters, or Refresh'
+            ? 'No matches for this catalog or sport — try Catalog → All, or Refresh'
             : 'No Forja Sports matches — enable catalogs in Settings → Forja Sports → Catalog',
         _LiveMatchesServer.forjaLive => forjaLive._showForjaLiveCatalogChrome
-            ? 'No matches for this catalog or sport — try All on both filters, or Refresh'
+            ? 'No matches for this catalog or sport — try Catalog → All, or Refresh'
             : 'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins',
         _ => 'No streams available',
       };
