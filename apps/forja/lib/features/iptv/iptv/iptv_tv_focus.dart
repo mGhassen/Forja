@@ -10,6 +10,11 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 
+/// D-pad / focus-graph surface (leanback **and** desktop hybrid).
+///
+/// Do **not** use this to hide mouse hover chrome (pin-on-hover, portal
+/// action rails, MouseRegion). Desktop hybrid has `useFocusableMoodChips`
+/// too — gate pointer UX with [iptvLeanbackOnly] instead.
 bool iptvUseTvFocus(BuildContext context) {
   final policy = ShellScope.maybeOf(context)?.inputPolicy;
   if (policy != null) return policy.useFocusableMoodChips;
@@ -17,6 +22,9 @@ bool iptvUseTvFocus(BuildContext context) {
 }
 
 /// Leanback TV (no mouse) — not desktop D-pad focus (which also uses mood chips).
+///
+/// Use for: hide pin until hold-OK, skip MouseRegion hover reveal, snap
+/// animations, TV-only autofocus. Desktop hybrid must keep hover.
 bool iptvLeanbackOnly(BuildContext context) {
   final policy = ShellScope.maybeOf(context)?.inputPolicy;
   if (policy != null) {

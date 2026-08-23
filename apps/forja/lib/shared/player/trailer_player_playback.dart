@@ -222,6 +222,8 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
   Future<void> _openResolved(
     YoutubeResolvedStreams streams, {
     Duration? resumeAt,
+    /// Quality hot-swap: never trust leftover tracks after reopen on ATV.
+    bool forceAudioAdd = false,
   }) async {
     final player = _s._player;
     if (player == null) return;
@@ -229,6 +231,14 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     final audioUrl = streams.audioUrl;
     final needsExternalAudio = _needsExternalAudio(streams, videoUrl);
     final atv = _atvMediaKit;
+
+    // ATV mediacodec_embed + googlevideo: open() alone often keeps the old
+    // demuxer / tracks. Main player always stop()+wait before source swaps.
+    try {
+      await resetPlayerForOpen(player);
+    } catch (e) {
+      debugPrint('[Trailer] reset before open failed: $e');
+    }
 
     final platform = player.platform;
     if (platform is NativePlayer) {
@@ -241,7 +251,8 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         await platform.setProperty('audio-file', '');
       } catch (_) {}
       // ATV: bind AAC before open to avoid MediaCodec resync hitch.
-      if (needsExternalAudio && atv && audioUrl != null) {
+      // Skip on quality switch — force audio-add after open instead.
+      if (needsExternalAudio && atv && audioUrl != null && !forceAudioAdd) {
         try {
           await platform.setProperty('audio-file', audioUrl);
         } catch (e) {
@@ -252,12 +263,20 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
 
     await player.setVolume(_s._volume);
     await openPlayerStream(player, url: videoUrl);
+    final opened = await waitForPlayerStreamOpen(
+      player,
+      streamUrl: videoUrl,
+    );
+    if (!opened) {
+      debugPrint('[Trailer] stream open did not become ready');
+    }
 
     if (needsExternalAudio && audioUrl != null && audioUrl.isNotEmpty) {
       // Desktop: audio-file is unreliable for googlevideo — always audio-add.
-      // ATV: only audio-add when audio-file did not attach a track.
+      // ATV first open: audio-add only when audio-file did not attach.
+      // ATV quality switch: always audio-add (stale tracks fooled the wait).
       final needAudioAdd =
-          !atv || !await _waitForSelectableAudio(player);
+          !atv || forceAudioAdd || !await _waitForSelectableAudio(player);
       if (needAudioAdd) {
         try {
           await player.setAudioTrack(AudioTrack.uri(audioUrl));
@@ -292,7 +311,11 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         qualities: streams.qualities,
         captions: streams.captions,
       );
-      await _openResolved(swapped, resumeAt: resumeAt);
+      await _openResolved(
+        swapped,
+        resumeAt: resumeAt,
+        forceAudioAdd: _atvMediaKit,
+      );
       if (!mounted) return;
       setState(() {
         _s._streams = swapped;

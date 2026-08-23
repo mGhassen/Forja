@@ -37,6 +37,15 @@ class EngineService {
     if (!liveSportId.startsWith('live-')) return liveSportId;
     return 'catalog-${liveSportId.substring('live-'.length)}';
   }
+
+  /// Schedule catalogs implemented in `crates/live-matches` (RFC-065).
+  static const _nativeLiveCatalogIds = {
+    'catalog-espn',
+    'catalog-timstreams',
+    'catalog-streamic',
+    'catalog-streamfree',
+    'catalog-watchfooty',
+  };
   static const _legacyBundledSourceUrlProviders = 'asset:providers/engine.json';
   static const _legacyBundledSourceUrl = 'asset:engine_js/engine.json';
   static const _assetRoot = 'assets/plugins';
@@ -705,7 +714,14 @@ class EngineService {
       gen: gen,
       generation: () => _extractGeneration,
     );
-    if (viaRust != null) return _postProcessLivePluginRows(viaRust);
+    if (viaRust != null) {
+      if (viaRust.isNotEmpty) {
+        return _postProcessLivePluginRows(viaRust);
+      }
+      debugPrint(
+        '[engine] ${plugin.id} enginejs live resolve empty — flutter_js fallback',
+      );
+    }
     if (gen != _extractGeneration) return [];
 
     final runtime = EngineRuntime.fork();
@@ -761,6 +777,15 @@ class EngineService {
       config = {...config, ...extraConfig};
     }
 
+    final viaNative = await _runLiveCatalogNativeRust(
+      catalogPlugin: catalogPlugin,
+      config: config,
+      gen: gen,
+      generation: () => _liveCatalogGeneration,
+    );
+    if (viaNative != null) return viaNative;
+    if (gen != _liveCatalogGeneration) return [];
+
     final code = await _loadScript(catalogPlugin);
     if (gen != _liveCatalogGeneration || code == null) return [];
 
@@ -799,6 +824,52 @@ class EngineService {
         _liveCatalogRuntime = null;
       }
       runtime.dispose();
+    }
+  }
+
+  /// Native Rust schedule fetch — `forja_live_catalog` in live-matches.
+  Future<List<Map<String, dynamic>>?> _runLiveCatalogNativeRust({
+    required EnginePlugin catalogPlugin,
+    required Map<String, dynamic> config,
+    required int gen,
+    required int Function() generation,
+  }) async {
+    if (!_nativeLiveCatalogIds.contains(catalogPlugin.id)) return null;
+    if (gen != generation()) return null;
+
+    debugPrint('[engine] ${catalogPlugin.id} start (native catalog)');
+    final sw = Stopwatch()..start();
+    try {
+      final raw = await runLiveMatchesFetchJson(
+        jsonEncode({
+          'action': 'forja_live_catalog',
+          'catalog_id': catalogPlugin.id,
+          'config': config,
+        }),
+      );
+      if (gen != generation()) return null;
+      final parsed = jsonDecode(raw);
+      if (parsed is! Map) return null;
+      if (parsed.containsKey('error')) {
+        debugPrint(
+          '[engine] ${catalogPlugin.id} native catalog error: ${parsed['error']}',
+        );
+        return null;
+      }
+      final items = parsed['items'];
+      if (items is! List) return [];
+      final rows = <Map<String, dynamic>>[];
+      for (final item in items) {
+        if (item is Map) rows.add(Map<String, dynamic>.from(item));
+      }
+      debugPrint(
+        '[engine] ${catalogPlugin.id} done (native catalog) raw=${rows.length} '
+        '${sw.elapsedMilliseconds}ms',
+      );
+      return rows;
+    } catch (e) {
+      debugPrint('[engine] ${catalogPlugin.id} native catalog failed: $e');
+      return null;
     }
   }
 

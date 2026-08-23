@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **6 / 9** acceptance |
+| **Progress** | **3 / 3** components · **6 / 10** acceptance |
 | **Current slice** | Muxed-first + audio-add fallback shipped — audio/device smoke remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -38,6 +38,7 @@
 | 7 | R55-A07 | ATV D-pad: More videos ←/→/OK + ↑ Back; transport/seekbar neighbors; Back arms then exits | ✅ |
 | 8 | R55-A08 | ATV device smoke: trailer D-pad + Back/Exit (`I154-A01`–`A03`) | ⬜ |
 | 9 | R55-A09 | Trailer opens with audible audio (muxed default; adaptive uses audio-add fallback) | ⬜ |
+| 10 | R55-A10 | ATV: Quality menu switches googlevideo height (stop+reopen+audio-add); picture changes (`I197-A01`) | ⬜ |
 
 ---
 
@@ -70,3 +71,4 @@ Replace the fullscreen trailer YouTube iframe (and its 1.35× overscan hack to h
 - [Media details](../features/movies-tv/media-details.md)
 - [Issue 113](../issues/113-[open]-android-tv-trailer-player-white-screen.md) — WebView white screen (fullscreen path superseded)
 - [Issue 154](../issues/154-[open]-android-tv-trailer-player-dpad.md) — ATV D-pad / Back / Exit
+- [Issue 197](../issues/197-[open]-android-tv-trailer-quality-switch.md) — ATV quality switch

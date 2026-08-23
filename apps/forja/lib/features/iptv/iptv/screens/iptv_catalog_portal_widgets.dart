@@ -188,9 +188,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       _confirmYesFocus.hasFocus ||
       _confirmNoFocus.hasFocus;
 
-  /// Desktop: reveal on hover/focus. TV: keep closed while D-pad scrolls the
-  /// list — expand only when action chrome / delete is active so ↑/↓ does not
-  /// reflow every row.
+  /// Desktop: reveal on hover/focus. Leanback: keep closed while D-pad scrolls
+  /// the list — expand only when action chrome / delete is active so ↑/↓ does
+  /// not reflow every row. Desktop hybrid still has D-pad focus but must hover.
   bool get _reveal {
     if (_confirmingDelete || _actionChromeFocused) return true;
     if (_lineHover || (_focused && !_tvListScrollMode)) return true;
@@ -198,7 +198,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   }
 
   bool get _tvListScrollMode =>
-      mounted && iptvUseTvFocus(context);
+      mounted && iptvLeanbackOnly(context);
 
   double get _rowHeight => _rowH;
 
@@ -250,17 +250,17 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   void _onRowFocusChange(bool focused) {
     final ctrl = widget.ctrl;
     final v = widget.portal;
-    final tv = iptvUseTvFocus(context);
+    final leanback = iptvLeanbackOnly(context);
     if (focused) {
       if (!_focused) setState(() => _focused = true);
-      // Desktop hover/focus dismisses NEW. TV: skim ↑/↓ must not — that
+      // Desktop hover/focus dismisses NEW. Leanback: skim ↑/↓ must not — that
       // notifyListeners rebuilds the panel mid-scroll (hover chrome flash).
-      if (!tv && ctrl.isNewPortal(v.key)) {
+      if (!leanback && ctrl.isNewPortal(v.key)) {
         ctrl.markPortalSeen(v.key);
       }
-      // TV: 2s dwell before probe — instant focus probes stutter D-pad scroll
-      // through long lists (notifyListeners rebuilds the IPTV shell).
-      if (tv) {
+      // Leanback: 2s dwell before probe — instant focus probes stutter D-pad
+      // scroll through long lists (notifyListeners rebuilds the IPTV shell).
+      if (leanback) {
         ctrl.schedulePortalHealthCheck(
           v,
           delay: const Duration(seconds: 2),
@@ -274,9 +274,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       ctrl.cancelPortalHealthCheck(v.key);
     }
 
-    // TV: sync-clear like the category rail — deferred clear leaves a ghost
-    // hover fill on the previous row for a frame during ↑/↓.
-    if (tv) {
+    // Leanback: sync-clear like the category rail — deferred clear leaves a
+    // ghost hover fill on the previous row for a frame during ↑/↓.
+    if (leanback) {
       clear();
       return;
     }
@@ -490,26 +490,26 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     final v = widget.portal;
     final isActive = widget.isActive;
     final deleting = ctrl.isDeletingPortal(v.key);
-    final tv = iptvUseTvFocus(context);
+    final leanback = iptvLeanbackOnly(context);
     // Parent AnimatedBuilder(ctrl) already rebuilds on notify — no per-tile
     // ListenableBuilder (that doubled work on every health/status tick).
     final isFav = ctrl.isFavoritePortal(v.key);
     final isNew = ctrl.isNewPortal(v.key);
-    // TV: star only when already favorited or action chrome is open (→).
-    // `_focused` would flash the desktop hover star on every ↑/↓ step.
+    // Leanback: star only when already favorited or action chrome is open (→).
+    // `_focused` would flash the hover star on every ↑/↓ step.
     final showStar =
-        !deleting && (_reveal || isFav || (!tv && _focused));
+        !deleting && (_reveal || isFav || (!leanback && _focused));
     final showNewChrome =
         !deleting && isNew && !_reveal && !_showShareCode;
     final health = ctrl.portalHealthFor(v.key);
     final checking = ctrl.isPortalHealthChecking(v.key);
     final title = v.displayLabel;
-    final railAnim = tv
+    final railAnim = leanback
         ? Duration.zero
         : const Duration(milliseconds: 180);
     final reveal = deleting ? false : _reveal;
 
-    final fillColor = tv && _focused
+    final fillColor = leanback && _focused
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
         : isActive
             ? playerSourceStatusColor(
@@ -558,7 +558,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                           health: health,
                           checking: checking,
                           title: title,
-                          instantStar: tv,
+                          instantStar: leanback,
                           deleting: deleting,
                         ),
                       ),
@@ -596,7 +596,8 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       ),
     );
 
-    if (!tv) {
+    // Desktop hybrid still has D-pad focus — must keep MouseRegion for hover.
+    if (!leanback) {
       tile = MouseRegion(
         onEnter: deleting
             ? null

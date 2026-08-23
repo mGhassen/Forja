@@ -178,7 +178,7 @@ class _StreamCardState extends State<_StreamCard> {
           ),
         );
 
-        if (!iptvUseTvFocus(context) &&
+        if (!iptvLeanbackOnly(context) &&
             widget.stream.kind == 'live' &&
             widget.ctrl.epgEnabled) {
           card = GestureDetector(

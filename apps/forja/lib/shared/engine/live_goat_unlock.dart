@@ -580,11 +580,22 @@ class LiveGoatUnlock {
   }
 
   static Future<String?> _findNodeBinary() async {
-    const candidates = [
-      'node',
-      '/opt/homebrew/bin/node',
-      '/usr/local/bin/node',
-    ];
+    final candidates = <String>['node'];
+    if (Platform.isWindows) {
+      candidates.addAll([
+        r'C:\Program Files\nodejs\node.exe',
+        r'C:\Program Files (x86)\nodejs\node.exe',
+      ]);
+      final local = Platform.environment['LOCALAPPDATA'];
+      if (local != null && local.isNotEmpty) {
+        candidates.add('$local\\Programs\\node\\node.exe');
+      }
+    } else {
+      candidates.addAll([
+        '/opt/homebrew/bin/node',
+        '/usr/local/bin/node',
+      ]);
+    }
     for (final c in candidates) {
       try {
         final result = await Process.run(c, ['--version']);
@@ -592,9 +603,10 @@ class LiveGoatUnlock {
       } catch (_) {}
     }
     try {
-      final which = await Process.run('which', ['node']);
+      final lookup = Platform.isWindows ? 'where.exe' : 'which';
+      final which = await Process.run(lookup, ['node']);
       if (which.exitCode == 0) {
-        final path = which.stdout.toString().trim();
+        final path = which.stdout.toString().trim().split('\n').first.trim();
         if (path.isNotEmpty) return path;
       }
     } catch (_) {}
@@ -754,7 +766,22 @@ class LiveGoatUnlock {
   }
 
   static Future<String?> _findNpmBinary() async {
-    const candidates = ['npm', '/opt/homebrew/bin/npm', '/usr/local/bin/npm'];
+    final candidates = <String>[Platform.isWindows ? 'npm.cmd' : 'npm'];
+    if (Platform.isWindows) {
+      candidates.addAll([
+        r'C:\Program Files\nodejs\npm.cmd',
+        r'C:\Program Files (x86)\nodejs\npm.cmd',
+      ]);
+      final local = Platform.environment['LOCALAPPDATA'];
+      if (local != null && local.isNotEmpty) {
+        candidates.add('$local\\Programs\\node\\npm.cmd');
+      }
+    } else {
+      candidates.addAll([
+        '/opt/homebrew/bin/npm',
+        '/usr/local/bin/npm',
+      ]);
+    }
     for (final c in candidates) {
       try {
         final result = await Process.run(c, ['--version']);
@@ -762,9 +789,10 @@ class LiveGoatUnlock {
       } catch (_) {}
     }
     try {
-      final which = await Process.run('which', ['npm']);
+      final lookup = Platform.isWindows ? 'where.exe' : 'which';
+      final which = await Process.run(lookup, [Platform.isWindows ? 'npm.cmd' : 'npm']);
       if (which.exitCode == 0) {
-        final path = which.stdout.toString().trim();
+        final path = which.stdout.toString().trim().split('\n').first.trim();
         if (path.isNotEmpty) return path;
       }
     } catch (_) {}

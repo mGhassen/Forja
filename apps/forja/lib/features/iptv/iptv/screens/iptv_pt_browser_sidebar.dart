@@ -100,8 +100,9 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
 
   bool get _showPin {
     if (!widget.pinnable || widget.onTogglePin == null) return false;
-    // TV: pin only after hold-OK (float / reveal) — normal browse hides it.
-    if (iptvUseTvFocus(context)) {
+    // Leanback: pin only after hold-OK (float / reveal) — normal browse hides it.
+    // Desktop hybrid must show pin on hover even though D-pad focus is on.
+    if (iptvLeanbackOnly(context)) {
       return _floating || _tvPinRevealed || _pinFocus.hasFocus;
     }
     return widget.pinned || _hovered || _tvFocused;
@@ -383,8 +384,8 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   }
 
   Widget _buildPin(BuildContext context) {
-    final tv = iptvUseTvFocus(context);
-    final pinFocused = tv && _pinFocus.hasFocus;
+    final leanback = iptvLeanbackOnly(context);
+    final pinFocused = leanback && _pinFocus.hasFocus;
     final icon = Icon(
       widget.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
       size: widget.compact ? 16 : 17,
@@ -393,7 +394,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
           : ForjaShellColors.iconMuted,
     );
 
-    if (!tv) {
+    if (!leanback) {
       return Tooltip(
         message: widget.pinned ? 'Unpin category' : 'Pin category',
         waitDuration: const Duration(milliseconds: 400),
@@ -444,6 +445,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
   Widget build(BuildContext context) {
     final selected = widget.selected;
     final tv = iptvUseTvFocus(context);
+    final leanback = iptvLeanbackOnly(context);
     final highlight = selected || _tvFocused;
     final emphatic = selected || _active || _tvFocused;
     final iconColor = _tvFocused || selected
@@ -460,18 +462,19 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
     final lifted =
         _floating || _IptvCategoryDragProxyScope.isProxy(context);
 
-    // TV: only the focused row paints hover fill — selected alone keeps the
-    // green left bar (open group mark) so ↑/↓ never shows two ink hovers.
+    // Leanback: only the focused row paints hover fill — selected alone keeps
+    // the green left bar (open group mark) so ↑/↓ never shows two ink hovers.
+    // Desktop: ink on hover/selection even with D-pad focus enabled.
     final fillColor = lifted
         ? ForjaShellColors.brandGreen.withValues(alpha: 0.28)
         : _tvFocused
             ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
-            : (!tv && (selected || _active))
+            : (!leanback && (selected || _active))
                 ? ForjaShellColors.inkHover
                 : Colors.transparent;
 
     Widget rowBody = AnimatedContainer(
-      duration: tv ? Duration.zero : const Duration(milliseconds: 140),
+      duration: leanback ? Duration.zero : const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       width: double.infinity,
       height: widget.compact ? 42 : 46,
@@ -535,7 +538,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow> {
       tvRowId: 'browser-categories',
       tvItemIndex: widget.listIndex,
       focusNode: _rowFocus,
-      allowNestedFocus: tv && _canTvPin && _showPin,
+      allowNestedFocus: leanback && _canTvPin && _showPin,
       // Vertical list: keepVisible only — never snap the rail to put the row
       // at the top (`.item` does that for Settings labels).
       // Floating / pin chrome: parent freezes scroll — ensureVisible fights it.
