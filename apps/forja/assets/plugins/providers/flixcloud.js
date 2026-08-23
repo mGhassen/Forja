@@ -4,7 +4,6 @@ function extract(ctx) {
   var enc = cfg.enc || 'https://enc-dec.app/api';
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
-  var page = ctx.url || '';
   var headers = { 'User-Agent': ua, Referer: origin + '/' };
 
   function validate(j) {
@@ -12,8 +11,16 @@ function extract(ctx) {
     return j.result;
   }
 
-  if (!page || !/flixcloud\./i.test(page)) {
-    return ctx.host('flixcloud');
+  function pageUrl() {
+    var page = (ctx.url || '').trim();
+    if (!page || !/flixcloud\./i.test(page)) return '';
+    return page;
+  }
+
+  var page = pageUrl();
+  if (!page) {
+    ctx.error('flixcloud: embed url required');
+    return [];
   }
 
   return ctx
@@ -23,14 +30,20 @@ function extract(ctx) {
     })
     .then(function (html) {
       var m = html.match(/type:\s*"data",\s*data:\s*(\{[\s\S]*?\})\s*,\s*uses:/);
-      if (!m) return ctx.host('flixcloud');
+      if (!m) {
+        ctx.error('flixcloud: page data block missing');
+        return [];
+      }
       var data;
       try {
         data = new Function('return (' + m[1] + ')')();
       } catch (e) {
         data = null;
       }
-      if (!data) return ctx.host('flixcloud');
+      if (!data) {
+        ctx.error('flixcloud: page data parse failed');
+        return [];
+      }
       delete data.subtitles;
       return ctx
         .fetch(enc + '/dec-flixcloud?type=token', {
@@ -43,7 +56,10 @@ function extract(ctx) {
         })
         .then(function (j) {
           var token = validate(j);
-          if (!token || !token.token) return ctx.host('flixcloud');
+          if (!token || !token.token) {
+            ctx.error('flixcloud: enc-dec token failed');
+            return [];
+          }
           return ctx
             .fetch(origin + '/api/m3u8/' + token.token, { headers: headers })
             .then(function (r) {
@@ -64,7 +80,10 @@ function extract(ctx) {
                 .then(function (sj) {
                   var resolved = validate(sj);
                   var stream = resolved && resolved.stream;
-                  if (!stream) return ctx.host('flixcloud');
+                  if (!stream) {
+                    ctx.error('flixcloud: stream decrypt empty');
+                    return [];
+                  }
                   return [
                     {
                       url: stream,
@@ -76,7 +95,8 @@ function extract(ctx) {
             });
         });
     })
-    .catch(function () {
-      return ctx.host('flixcloud');
+    .catch(function (e) {
+      ctx.error(e && e.message ? e.message : e);
+      return [];
     });
 }

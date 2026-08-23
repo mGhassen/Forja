@@ -808,12 +808,25 @@ void main() {
       expect(hexa.contains('X-Api-Key'), isTrue);
       expect(hexa.contains('X-Cap-Token'), isTrue);
       expect(hexa.contains('payload.sources'), isTrue);
+      expect(hexa.contains('ctx.host'), isFalse);
 
       final vidcore = await rootBundle.loadString(
         'assets/plugins/providers/vidcore.js',
       );
       expect(vidcore.contains('enc-vidcore'), isTrue);
       expect(vidcore.contains('dec-vidcore'), isTrue);
+      expect(vidcore.contains('ctx.host'), isFalse);
+
+      final flixcloud = await rootBundle.loadString(
+        'assets/plugins/providers/flixcloud.js',
+      );
+      expect(flixcloud.contains('dec-flixcloud'), isTrue);
+      expect(flixcloud.contains('ctx.host'), isFalse);
+
+      final multiembed = await rootBundle.loadString(
+        'assets/plugins/providers/multiembed.js',
+      );
+      expect(multiembed.contains('ctx.host'), isFalse);
 
       final hianime = await rootBundle.loadString(
         'assets/plugins/providers/hianime.js',

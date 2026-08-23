@@ -122,7 +122,7 @@ fn classify(
         return "runtime";
     }
     if needs_host.is_some() {
-        return "host";
+        return "ctx_host";
     }
     "provider_empty"
 }
@@ -303,7 +303,7 @@ async fn main() -> ExitCode {
             code,
             ctx,
             timeout_ms,
-            allow_host_fallback: true,
+            allow_host_fallback: false,
             hops: hops.clone(),
             hop_depth: 0,
         })

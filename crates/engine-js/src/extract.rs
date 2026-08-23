@@ -130,7 +130,7 @@ pub struct ExtractResult {
     pub error: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unsupported: Option<bool>,
-    /// Plugin called `ctx.host(id)` and returned no streams — Dart should sniff.
+    /// Plugin called `ctx.host(id)` with no streams; optional app host fallback may run.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub needs_host: Option<String>,
 }

@@ -1,0 +1,63 @@
+{
+  "buckets": {
+    "ok": 1,
+    "provider_empty": 4
+  },
+  "episode": 1,
+  "media": "tv",
+  "rows": [
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "2embed",
+      "ms": 360,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "ok",
+      "error": null,
+      "flags": "crypto",
+      "id": "hexa",
+      "ms": 795,
+      "n_streams": 4,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "flixcloud",
+      "ms": 117,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "vidcore",
+      "ms": 919,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    },
+    {
+      "bucket": "provider_empty",
+      "error": null,
+      "flags": "-",
+      "id": "multiembed",
+      "ms": 394,
+      "n_streams": 0,
+      "needs_host": null,
+      "unsupported": false
+    }
+  ],
+  "season": 1,
+  "timeout_ms": 60000,
+  "tmdb": "94997"
+}

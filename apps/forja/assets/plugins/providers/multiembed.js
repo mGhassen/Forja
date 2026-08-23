@@ -242,7 +242,10 @@ function extract(ctx) {
     })
     .then(function (html) {
       var servers = parseServers(html);
-      if (!servers.length) return ctx.host('multiembed');
+      if (!servers.length) {
+        ctx.error('multiembed: no embed servers');
+        return [];
+      }
       var order = ['xps', 'swish', 'vesy', 'vcr'];
       var chain = Promise.resolve([]);
       order.forEach(function (type) {
@@ -286,10 +289,12 @@ function extract(ctx) {
           seen[r.url] = true;
           out.push(r);
         });
-        return out.length ? out : ctx.host('multiembed');
+        if (!out.length) ctx.error('multiembed: servers did not resolve');
+        return out;
       });
     })
-    .catch(function () {
-      return ctx.host('multiembed');
+    .catch(function (e) {
+      ctx.error(e && e.message ? e.message : e);
+      return [];
     });
 }

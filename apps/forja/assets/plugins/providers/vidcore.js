@@ -29,7 +29,10 @@ function extract(ctx) {
       var text = (html.match(/\\"(?:en|token)\\":\\"([^\\"]+)\\"/) ||
         html.match(/"(?:en|token)":"([^"]+)"/) ||
         [])[1];
-      if (!text) return ctx.host('vidcore');
+      if (!text) {
+        ctx.error('vidcore: page token missing');
+        return [];
+      }
       return ctx
         .fetch(enc + '/enc-vidcore?text=' + encodeURIComponent(text), { headers: headers })
         .then(function (r) {
@@ -37,7 +40,10 @@ function extract(ctx) {
         })
         .then(function (j) {
           var parts = validate(j);
-          if (!parts) return ctx.host('vidcore');
+          if (!parts) {
+            ctx.error('vidcore: enc-vidcore failed');
+            return [];
+          }
           var hdrs = Object.assign({}, headers, { 'X-CSRF-Token': parts.token || '' });
           return ctx
             .fetch(parts.servers, { method: 'POST', headers: hdrs })
@@ -102,13 +108,15 @@ function extract(ctx) {
                   });
                   return Promise.all(tasks).then(function (groups) {
                     var out = [].concat.apply([], groups);
-                    return out.length ? out : ctx.host('vidcore');
+                    if (!out.length) ctx.error('vidcore: no playable streams');
+                    return out;
                   });
                 });
             });
         });
     })
-    .catch(function () {
-      return ctx.host('vidcore');
+    .catch(function (e) {
+      ctx.error(e && e.message ? e.message : e);
+      return [];
     });
 }
