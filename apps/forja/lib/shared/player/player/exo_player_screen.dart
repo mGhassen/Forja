@@ -1818,11 +1818,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                         Row(
                           children: [
                             if (hasTorrentSources)
-                              PlayerFlatIconButton(
-                                icon: Icons.link_rounded,
+                              PlayerSourcesPanelButton(
                                 size: btnSize,
                                 iconSize: iconSz,
-                                tooltip: 'Sources',
                                 label: _catalogSourcesButtonLabel(),
                                 onPressed: () =>
                                     unawaited(_showTorrentSourcesPanel()),
@@ -1982,7 +1980,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
               if (hasTorrentSources)
                 ordered(
                   6,
-                  PlayerFlatIconButton(
+                  PlayerSourcesPanelButton(
                     tvFocusable: true,
                     focusNode: _transportSourcesFocus,
                     onUpEdge: _focusSeekFromTransport,
@@ -1998,10 +1996,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                         _transportAudioFocus.requestFocus();
                       }
                     },
-                    icon: Icons.link_rounded,
                     size: btnSize,
                     iconSize: iconSz,
-                    tooltip: 'Sources',
                     label: _catalogSourcesButtonLabel(),
                     onPressed: () => unawaited(_showTorrentSourcesPanel()),
                   ),

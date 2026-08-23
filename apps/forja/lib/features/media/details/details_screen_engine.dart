@@ -1,107 +1,32 @@
 part of 'details_screen.dart';
 
-class _EngineAutoHit {
-  const _EngineAutoHit({
+typedef _EngineAutoExtracted = Map<String, List<Map<String, dynamic>>>;
+
+class _EngineAutoPick {
+  const _EngineAutoPick({
     required this.pluginId,
     required this.stream,
-    required this.batch,
   });
 
   final String pluginId;
   final Map<String, dynamic> stream;
-  final List<Map<String, dynamic>> batch;
 }
 
-List<Map<String, dynamic>> _sortEngineStreamRows(
-  List<Map<String, dynamic>> rows,
-) {
-  final copy = List<Map<String, dynamic>>.from(rows);
-  copy.sort((a, b) {
-    final aUrl = a['url']?.toString() ?? '';
-    final bUrl = b['url']?.toString() ?? '';
-    final aBox = isMovieBoxCdnStreamUrl(aUrl);
-    final bBox = isMovieBoxCdnStreamUrl(bUrl);
-    if (aBox != bBox) return aBox ? 1 : -1;
-    return 0;
-  });
-  return copy;
-}
-
-/// Classify → proxy → HTTP probe. Hover green uses the same probe but mpv can
-/// still fail — callers must pass [streamsPrevalidated: false] so the player
-/// can hop siblings or re-resolve when open fails.
 Future<List<StreamSource>> _buildProbedEnginePlaySources(
   _DetailsScreenState s,
   List<Map<String, dynamic>> rows, {
   required bool Function() isAborted,
   Map<String, dynamic>? preferFirst,
   ValueNotifier<String>? messageNotifier,
-}) async {
-  final useDebrid = await s._settings.useDebridForStreams();
-  final debridService = await s._settings.getDebridService();
-  var ordered = _sortEngineStreamRows(rows);
-  if (preferFirst != null) {
-    final preferUrl = preferFirst['url']?.toString();
-    ordered = [
-      preferFirst,
-      ...ordered.where((r) => r['url']?.toString() != preferUrl),
-    ];
-  }
-  final sources = <StreamSource>[];
-  var probeOrdinal = 0;
-  var probeTotal = 0;
-  for (final row in ordered) {
-    final check = classifyStremioStream(
-      row,
-      s._playbackProfile,
-      useDebrid: useDebrid,
-      debridService: debridService,
-    );
-    if (check is StremioPlayable) probeTotal++;
-  }
-  for (final row in ordered) {
-    if (isAborted() || !s.mounted) break;
-    final check = classifyStremioStream(
-      row,
-      s._playbackProfile,
-      useDebrid: useDebrid,
-      debridService: debridService,
-    );
-    if (check is! StremioPlayable) continue;
-    probeOrdinal++;
-    final title = (row['title'] ?? row['name'] ?? 'Stream').toString();
-    messageNotifier?.value = probeTotal > 1
-        ? 'Probing streams ($probeOrdinal/$probeTotal)…'
-        : 'Probing $title…';
-    final proxied = await proxyCatalogHttpStreamIfNeeded(
-      streamUrl: check.streamUrl,
-      headers: check.headers,
-      stream: row,
-    );
-    if (isAborted() || !s.mounted) break;
-    final probeRow = Map<String, dynamic>.from(row)
-      ..['url'] = proxied.url
-      ..['headers'] = proxied.headers;
-    if (!await probeSourcesPanelStream(probeRow)) continue;
-    final url = proxied.url;
-    final catalogUrl = row['url']?.toString() ?? url;
-    final pluginId = row['_enginePluginId']?.toString() ?? '';
-    // MovieBlast progressive is Matroska; labeling mp4 confuses some opens.
-    final type = url.contains('.m3u8')
-        ? 'hls'
-        : (pluginId == 'movieblast' ? 'mkv' : 'mp4');
-    sources.add(
-      StreamSource(
-        url: url,
-        title: (row['title'] ?? row['name'] ?? 'Forja').toString(),
-        type: type,
-        headers: proxied.headers,
-        providerId: catalogHttpPlayProviderId(row),
-        catalogUrl: catalogUrl,
-      ),
-    );
-  }
-  return sources;
+}) {
+  return buildProbedEngineCatalogSources(
+    profile: s._playbackProfile,
+    settings: s._settings,
+    rows: rows,
+    isAborted: () => isAborted() || !s.mounted,
+    preferFirst: preferFirst,
+    messageNotifier: messageNotifier,
+  );
 }
 
 mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
@@ -489,17 +414,60 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       ];
 
       final startPosition = _s._startPositionForAutoPlay(fromRoute: false);
-      final hits = await _raceEnginePluginsForAuto(
+
+      final extracted = await _extractAllEnginePluginsForAuto(
         pluginIds: pluginIds,
-        playGen: playGen,
         probeNotifier: probeNotifier,
         messageNotifier: messageNotifier,
         isAborted: playAborted,
-        maxHits: 1,
       );
       if (playAborted()) return;
 
-      if (hits.isEmpty) {
+      final allRows = [
+        for (final id in pluginIds)
+          ...sortEngineCatalogStreamRows(extracted[id] ?? const []),
+      ];
+
+      messageNotifier.value = 'Checking streams…';
+      final probedSources = await buildProbedEngineCatalogSources(
+        profile: _s._playbackProfile,
+        settings: _s._settings,
+        rows: allRows,
+        isAborted: playAborted,
+        messageNotifier: messageNotifier,
+      );
+      if (playAborted()) return;
+
+      _publishEngineAutoPluginProbes(
+        pluginIds: pluginIds,
+        extracted: extracted,
+        probedSources: probedSources,
+        probeNotifier: probeNotifier,
+      );
+
+      if (probedSources.isEmpty) {
+        final resolveRow = await firstEngineCatalogResolveRow(
+          rows: allRows,
+          profile: _s._playbackProfile,
+          settings: _s._settings,
+        );
+        if (resolveRow != null && !playAborted()) {
+          openedPlayer = true;
+          final pluginId =
+              resolveRow['_enginePluginId']?.toString() ?? pluginIds.first;
+          _syncPanelToEngineAutoPick(
+            _EngineAutoPick(pluginId: pluginId, stream: resolveRow),
+          );
+          await _playEngineAutoResolveRow(
+            resolveRow,
+            startPosition: startPosition,
+            loadingDialogContext: loadingDialogContext,
+            fadeOutNotifier: fadeOutNotifier,
+            isAborted: playAborted,
+          );
+          return;
+        }
+
         final action = Completer<bool>();
         failureNotifier.value = ResolveFailure(
           title: 'Couldn’t start playback',
@@ -515,8 +483,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         );
         final retry = await action.future;
         dismissLoading();
-        // Clear flag before retry so `_startEngineAutoPlayback` isn't a no-op.
-        // Notifier dispose stays in `finally`.
         if (mounted) {
           setState(() => _s._isEngineAutoExtracting = false);
         } else {
@@ -529,11 +495,21 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       }
 
       openedPlayer = true;
-      final hit = hits.first;
-      _syncPanelToEngineAutoWinner(hit);
-      await _playEngineAutoWinner(
-        hit.batch,
-        preferFirst: hit.stream,
+      final primary = probedSources.first;
+      final primaryRow = engineCatalogRowForSource(allRows, primary);
+      final primaryPluginId = primaryRow?['_enginePluginId']?.toString() ??
+          pluginIds.firstWhere(
+            (id) => _probedSourcesIncludePlugin(id, probedSources),
+            orElse: () => pluginIds.first,
+          );
+      if (primaryRow != null) {
+        _syncPanelToEngineAutoPick(
+          _EngineAutoPick(pluginId: primaryPluginId, stream: primaryRow),
+        );
+      }
+      await _playEngineAutoFromProbedSources(
+        sources: probedSources,
+        primaryRow: primaryRow,
         startPosition: startPosition,
         loadingDialogContext: loadingDialogContext,
         fadeOutNotifier: fadeOutNotifier,
@@ -581,18 +557,18 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     );
   }
 
-  void _syncPanelToEngineAutoWinner(_EngineAutoHit hit) {
-    final catalogUrl = hit.stream['url']?.toString();
+  void _syncPanelToEngineAutoPick(_EngineAutoPick pick) {
+    final catalogUrl = pick.stream['url']?.toString();
     final base =
-        hit.stream['_addonBaseUrl']?.toString() ??
-        EngineIds.pluginChip(hit.pluginId);
+        pick.stream['_addonBaseUrl']?.toString() ??
+        EngineIds.pluginChip(pick.pluginId);
     void apply() {
       _s._playingPanelKind = EngineIds.kind;
       _s._playingAddonBaseUrl = base;
       _s._playingCatalogUrl = catalogUrl;
       _s._panelKindFilter = EngineIds.kind;
-      _s._engineSelectedPluginIds = {hit.pluginId};
-      _s._selectedSourceId = EngineIds.pluginChip(hit.pluginId);
+      _s._engineSelectedPluginIds = {pick.pluginId};
+      _s._selectedSourceId = EngineIds.pluginChip(pick.pluginId);
       _s._panelSourceIdByKind[EngineIds.kind] = _s._selectedSourceId;
     }
 
@@ -603,21 +579,74 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     }
   }
 
-  Future<List<_EngineAutoHit>> _raceEnginePluginsForAuto({
+  bool _probedSourcesIncludePlugin(
+    String pluginId,
+    List<StreamSource> sources,
+  ) {
+    for (final source in sources) {
+      final rows = _s._engineStreams.where(
+        (r) => engineStreamBelongsToPlugin(r, pluginId),
+      );
+      for (final row in rows) {
+        final catalog = row['url']?.toString();
+        if (catalog != null &&
+            catalog.isNotEmpty &&
+            source.catalogUrl == catalog) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  void _publishEngineAutoPluginProbes({
     required List<String> pluginIds,
-    required int playGen,
+    required _EngineAutoExtracted extracted,
+    required List<StreamSource> probedSources,
+    required ValueNotifier<List<StreamProviderProbe>> probeNotifier,
+  }) {
+    probeNotifier.value = [
+      for (var i = 0; i < pluginIds.length; i++)
+        StreamProviderProbe(
+          id: pluginIds[i],
+          label: _enginePluginLabel(pluginIds[i]),
+          status: _engineAutoPluginProbeStatus(
+            pluginIds[i],
+            extracted,
+            probedSources,
+          ),
+          isPreferred: i == 0,
+        ),
+    ];
+  }
+
+  StreamProviderProbeStatus _engineAutoPluginProbeStatus(
+    String pluginId,
+    _EngineAutoExtracted extracted,
+    List<StreamSource> probedSources,
+  ) {
+    final streams = extracted[pluginId] ?? const [];
+    if (streams.isEmpty) return StreamProviderProbeStatus.failed;
+    if (_probedSourcesIncludePlugin(pluginId, probedSources)) {
+      return StreamProviderProbeStatus.success;
+    }
+    return StreamProviderProbeStatus.failed;
+  }
+
+  /// Phase 1 — batch extract every enabled plugin (Sources panel pool).
+  Future<_EngineAutoExtracted> _extractAllEnginePluginsForAuto({
+    required List<String> pluginIds,
     required ValueNotifier<List<StreamProviderProbe>> probeNotifier,
     required ValueNotifier<String> messageNotifier,
     required bool Function() isAborted,
-    int maxHits = 1,
   }) async {
     final type = _s._movie.mediaType == 'tv' ? 'tv' : 'movie';
     final year = _s._movie.releaseDate.length >= 4
         ? _s._movie.releaseDate.substring(0, 4)
         : null;
     final limit = engineSourcesBatchLimit(tv: SourcesPanelTv.isTv(context));
-    final hits = <_EngineAutoHit>[];
-    final completer = Completer<List<_EngineAutoHit>>();
+    final results = <String, List<Map<String, dynamic>>>{};
+    final completer = Completer<void>();
     var nextIndex = 0;
     var inFlight = 0;
     final statusById = <String, StreamProviderProbeStatus>{
@@ -634,18 +663,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
             isPreferred: i == 0,
           ),
       ];
-    }
-
-    void settleProbesAfterWin(String winnerId) {
-      for (final id in pluginIds) {
-        if (statusById[id] == StreamProviderProbeStatus.trying) {
-          statusById[id] = StreamProviderProbeStatus.pending;
-        }
-      }
-      statusById[winnerId] = StreamProviderProbeStatus.success;
-      publishProbes();
-      messageNotifier.value = 'Preparing playback…';
-      EngineService.instance.cancelPending();
     }
 
     late final void Function() fill;
@@ -665,7 +682,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       inFlight++;
       statusById[pluginId] = StreamProviderProbeStatus.trying;
       publishProbes();
-      messageNotifier.value = 'Checking ${_enginePluginLabel(pluginId)}…';
+      messageNotifier.value =
+          'Extracting ${_enginePluginLabel(pluginId)}…';
       try {
         final batch = await EngineService.instance.runPluginIsolated(
           pluginId: pluginId,
@@ -678,44 +696,14 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
           movie: _s._movie,
           allowHostFallback: false,
         );
-        // Do not return from try on empty/fail — that skips fill() after finally.
         if (!isAborted() && !completer.isCompleted) {
           final streams = batch?.streams ?? const <Map<String, dynamic>>[];
-          // Same store as Sources panel — Auto is not a separate extract path.
           _mergeEngineAutoResult(pluginId, streams);
-          if (streams.isEmpty) {
-            statusById[pluginId] = StreamProviderProbeStatus.failed;
-            publishProbes();
-          } else {
-            // Probe each JS stream; other plugins keep extracting in parallel.
-            final pick = await _firstProbedEngineStream(
-              streams,
-              isAborted: isAborted,
-              orSettled: () => completer.isCompleted,
-              messageNotifier: messageNotifier,
-              pluginLabel: _enginePluginLabel(pluginId),
-            );
-            if (isAborted() || completer.isCompleted) {
-              // fall through to finally + fill gate
-            } else if (pick == null) {
-              statusById[pluginId] = StreamProviderProbeStatus.failed;
-              publishProbes();
-            } else {
-              statusById[pluginId] = StreamProviderProbeStatus.success;
-              publishProbes();
-              hits.add(
-                _EngineAutoHit(
-                  pluginId: pluginId,
-                  stream: pick,
-                  batch: List<Map<String, dynamic>>.from(streams),
-                ),
-              );
-              if (hits.length >= maxHits && !completer.isCompleted) {
-                settleProbesAfterWin(pluginId);
-                completer.complete(List<_EngineAutoHit>.from(hits));
-              }
-            }
-          }
+          results[pluginId] = List<Map<String, dynamic>>.from(streams);
+          statusById[pluginId] = streams.isEmpty
+              ? StreamProviderProbeStatus.failed
+              : StreamProviderProbeStatus.pending;
+          publishProbes();
         }
       } catch (e) {
         debugPrint('[engine-auto] plugin $pluginId failed: $e');
@@ -728,170 +716,88 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       }
       if (completer.isCompleted) return;
       if (isAborted()) {
-        if (!completer.isCompleted) {
-          completer.complete(List<_EngineAutoHit>.from(hits));
-        }
+        if (!completer.isCompleted) completer.complete();
         return;
       }
       fill();
       if (nextIndex >= pluginIds.length &&
           inFlight == 0 &&
           !completer.isCompleted) {
-        completer.complete(List<_EngineAutoHit>.from(hits));
+        completer.complete();
       }
     };
 
     fill();
-    if (pluginIds.isEmpty) return const <_EngineAutoHit>[];
-    final result = await completer.future;
-    if (isAborted()) return const <_EngineAutoHit>[];
-    return result;
+    if (pluginIds.isEmpty) return results;
+    await completer.future;
+    if (isAborted()) return results;
+    EngineService.instance.cancelPending();
+    return results;
   }
 
-  /// Walk sorted JS streams: classify → probe → first reachable wins.
-  /// Other plugin extracts keep running while this probes.
-  Future<Map<String, dynamic>?> _firstProbedEngineStream(
-    List<Map<String, dynamic>> streams, {
-    required bool Function() isAborted,
-    required bool Function() orSettled,
-    ValueNotifier<String>? messageNotifier,
-    String? pluginLabel,
-  }) async {
-    final useDebrid = await _s._settings.useDebridForStreams();
-    final debridService = await _s._settings.getDebridService();
-    if (isAborted() || orSettled()) return null;
-
-    final ordered = _sortEngineStreamRows(streams);
-    var probeOrdinal = 0;
-    var probeTotal = 0;
-    for (final stream in ordered) {
-      final check = classifyStremioStream(
-        stream,
-        _s._playbackProfile,
-        useDebrid: useDebrid,
-        debridService: debridService,
-      );
-      if (check is StremioPlayable) probeTotal++;
-    }
-
-    for (final stream in ordered) {
-      if (isAborted() || orSettled()) return null;
-      final check = classifyStremioStream(
-        stream,
-        _s._playbackProfile,
-        useDebrid: useDebrid,
-        debridService: debridService,
-      );
-      if (check is StremioExternalLink || check is StremioResolveFailure) {
-        continue;
-      }
-      if (check is! StremioPlayable) continue;
-
-      probeOrdinal++;
-      final title = (stream['title'] ?? stream['name'] ?? 'Stream').toString();
-      if (pluginLabel != null) {
-        messageNotifier?.value = probeTotal > 1
-            ? 'Probing $pluginLabel ($probeOrdinal/$probeTotal)…'
-            : 'Probing $pluginLabel…';
-      } else {
-        messageNotifier?.value = probeTotal > 1
-            ? 'Probing streams ($probeOrdinal/$probeTotal)…'
-            : 'Probing $title…';
-      }
-
-      final proxied = await proxyCatalogHttpStreamIfNeeded(
-        streamUrl: check.streamUrl,
-        headers: check.headers,
-        stream: stream,
-      );
-      if (isAborted() || orSettled()) return null;
-
-      final probeRow = Map<String, dynamic>.from(stream)
-        ..['url'] = proxied.url
-        ..['headers'] = proxied.headers;
-
-      final ok = await probeSourcesPanelStream(probeRow);
-      if (isAborted() || orSettled()) return null;
-      if (ok) {
-        debugPrint('[engine-auto] probe ok: $title');
-        return stream;
-      }
-      debugPrint('[engine-auto] probe fail: $title');
-    }
-    return null;
-  }
-
-  Future<void> _playEngineAutoWinner(
-    List<Map<String, dynamic>> streams, {
-    Map<String, dynamic>? preferFirst,
+  Future<void> _playEngineAutoFromProbedSources({
+    required List<StreamSource> sources,
+    required Map<String, dynamic>? primaryRow,
     required Duration? startPosition,
     required BuildContext? loadingDialogContext,
     required ValueNotifier<bool> fadeOutNotifier,
     required ValueNotifier<String>? messageNotifier,
     required bool Function() isAborted,
   }) async {
-    if (isAborted() || !mounted || streams.isEmpty) return;
-    messageNotifier?.value = 'Preparing playback…';
-    final stream = preferFirst ?? streams.first;
+    if (isAborted() || !mounted || sources.isEmpty) return;
+    messageNotifier?.value = 'Opening player…';
+    final primary = sources.first;
+    final stream = primaryRow ?? <String, dynamic>{};
     final isTv = _s._movie.mediaType == 'tv';
     final stremioId =
         widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId;
     final stremioAddonBaseUrl =
         stream['_addonBaseUrl']?.toString() ?? _s._selectedSourceId;
-
-    final useDebrid = await _s._settings.useDebridForStreams();
-    final debridService = await _s._settings.getDebridService();
-    if (isAborted() || !mounted) return;
-
-    final precheck = classifyStremioStream(
-      stream,
-      _s._playbackProfile,
-      useDebrid: useDebrid,
-      debridService: debridService,
+    final ctx = loadingDialogContext;
+    Future<void> openPlayer() => AppRouter.openPlayer(
+      context,
+      streamUrl: primary.url,
+      title: _s._movie.title,
+      headers: primary.headers,
+      movie: _s._movie,
+      selectedSeason: isTv ? _s._selectedSeason : null,
+      selectedEpisode: isTv ? _s._selectedEpisode : null,
+      startPosition: startPosition,
+      activeProvider:
+          primary.providerId ?? catalogHttpPlayProviderId(stream),
+      sources: sources,
+      pinSource: false,
+      streamsPrevalidated: true,
+      externalSubtitles: catalogStreamExternalSubtitles(stream),
+      stremioId: stremioId,
+      stremioAddonBaseUrl: stremioAddonBaseUrl,
+      fadeTransition: ctx != null,
     );
-
-    if (precheck is StremioPlayable) {
-      final sources = await _buildProbedEnginePlaySources(
-        _s,
-        streams,
-        isAborted: isAborted,
-        preferFirst: stream,
-        messageNotifier: messageNotifier,
+    if (ctx != null && ctx.mounted) {
+      await crossfadeLoadingOverlayToPlayer(
+        loadingDialogContext: ctx,
+        fadeOutNotifier: fadeOutNotifier,
+        openPlayer: openPlayer,
       );
-      if (sources.isEmpty) return;
-      messageNotifier?.value = 'Opening player…';
-      final primary = sources.first;
-      final ctx = loadingDialogContext;
-      Future<void> openPlayer() => AppRouter.openPlayer(
-        context,
-        streamUrl: primary.url,
-        title: _s._movie.title,
-        headers: primary.headers,
-        movie: _s._movie,
-        selectedSeason: isTv ? _s._selectedSeason : null,
-        selectedEpisode: isTv ? _s._selectedEpisode : null,
-        startPosition: startPosition,
-        activeProvider: primary.providerId ?? catalogHttpPlayProviderId(stream),
-        sources: sources,
-        pinSource: false,
-        streamsPrevalidated: false,
-        externalSubtitles: catalogStreamExternalSubtitles(stream),
-        stremioId: stremioId,
-        stremioAddonBaseUrl: stremioAddonBaseUrl,
-        fadeTransition: ctx != null,
-      );
-      if (ctx != null && ctx.mounted) {
-        await crossfadeLoadingOverlayToPlayer(
-          loadingDialogContext: ctx,
-          fadeOutNotifier: fadeOutNotifier,
-          openPlayer: openPlayer,
-        );
-      } else {
-        await openPlayer();
-      }
-      if (mounted) _s._claimTvHeroPlayAfterPlayer();
-      return;
+    } else {
+      await openPlayer();
     }
+    if (mounted) _s._claimTvHeroPlayAfterPlayer();
+  }
+
+  Future<void> _playEngineAutoResolveRow(
+    Map<String, dynamic> stream, {
+    required Duration? startPosition,
+    required BuildContext? loadingDialogContext,
+    required ValueNotifier<bool> fadeOutNotifier,
+    required bool Function() isAborted,
+  }) async {
+    if (isAborted() || !mounted) return;
+    final isTv = _s._movie.mediaType == 'tv';
+    final stremioId =
+        widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId;
+    final stremioAddonBaseUrl =
+        stream['_addonBaseUrl']?.toString() ?? _s._selectedSourceId;
 
     if (!await ensureLanP2pPlayback(context)) return;
     if (isAborted() || !mounted) return;

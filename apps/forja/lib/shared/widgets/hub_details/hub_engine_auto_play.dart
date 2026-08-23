@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
+import 'package:forja/shared/playback/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -13,15 +14,7 @@ import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
-class _HubEngineAutoHit {
-  const _HubEngineAutoHit({
-    required this.pluginId,
-    required this.stream,
-  });
-
-  final String pluginId;
-  final Map<String, dynamic> stream;
-}
+typedef _HubEngineAutoExtracted = Map<String, List<Map<String, dynamic>>>;
 
 /// True when Settings → Playback would run movie-style Forja Auto on green Play
 /// (Forja on + Auto on + Webstreaming off).
@@ -34,11 +27,6 @@ Future<bool> hubEngineAutoPlayEnabled([SettingsService? settings]) async {
 }
 
 /// Movie RFC-063 Forja Auto for hub details (Asian Drama / Anime).
-///
-/// Races enabled Forja HTTP plugins in [engineCategory] (`drama` / `anime`),
-/// takes the first classify-able JS stream (no URL sniff — webstreaming-only),
-/// opens the standard player. Returns after the player closes (or after
-/// cancel / failure UI).
 Future<void> runHubEngineAutoPlay({
   required BuildContext context,
   required Movie movie,
@@ -165,7 +153,9 @@ Future<void> runHubEngineAutoPlay({
     ];
 
     final thisGen = ++playGen;
-    final hit = await _raceHubEnginePlugins(
+    final isAborted = () => aborted() || thisGen != playGen;
+
+    final extracted = await _extractAllHubEnginePlugins(
       pluginIds: pluginIds,
       labelFor: labelFor,
       movie: movie,
@@ -176,18 +166,63 @@ Future<void> runHubEngineAutoPlay({
       kisskhEpisodeId: kisskhEpisodeId,
       anilistId: anilistId,
       malId: malId,
-      settings: settings,
-      profile: profile,
       probeNotifier: probeNotifier,
       messageNotifier: messageNotifier,
-      isAborted: () => aborted() || thisGen != playGen,
+      isAborted: isAborted,
       batchLimit: engineSourcesBatchLimit(
         tv: context.mounted && SourcesPanelTv.isTv(context),
       ),
     );
-    if (aborted() || thisGen != playGen) return;
+    if (isAborted()) return;
 
-    if (hit == null) {
+    final allRows = [
+      for (final id in pluginIds)
+        ...sortEngineCatalogStreamRows(extracted[id] ?? const []),
+    ];
+
+    messageNotifier.value = 'Checking streams…';
+    final probedSources = await buildProbedEngineCatalogSources(
+      profile: profile,
+      settings: settings,
+      rows: allRows,
+      isAborted: isAborted,
+      messageNotifier: messageNotifier,
+    );
+    if (isAborted()) return;
+
+    _publishHubEngineAutoPluginProbes(
+      pluginIds: pluginIds,
+      labelFor: labelFor,
+      extracted: extracted,
+      probedSources: probedSources,
+      probeNotifier: probeNotifier,
+    );
+
+    if (probedSources.isEmpty) {
+      final resolveRow = await firstEngineCatalogResolveRow(
+        rows: allRows,
+        profile: profile,
+        settings: settings,
+      );
+      if (resolveRow != null && !isAborted()) {
+        if (!context.mounted) return;
+        openedPlayer = true;
+        await _playHubEngineResolveRow(
+          context: context,
+          movie: movie,
+          stream: resolveRow,
+          season: season,
+          episode: episode,
+          startPosition: startPosition,
+          settings: settings,
+          profile: profile,
+          loadingDialogContext: loadingDialogContext,
+          fadeOutNotifier: fadeOutNotifier,
+          isAborted: isAborted,
+        );
+        return;
+      }
+
       final action = Completer<bool>();
       failureNotifier.value = ResolveFailure(
         title: 'Couldn’t start playback',
@@ -204,7 +239,6 @@ Future<void> runHubEngineAutoPlay({
       );
       final retry = await action.future;
       dismissLoading();
-      // Notifier dispose: owned by `finally` below.
       if (retry && context.mounted) {
         await runHubEngineAutoPlay(
           context: context,
@@ -225,18 +259,19 @@ Future<void> runHubEngineAutoPlay({
 
     if (!context.mounted) return;
     openedPlayer = true;
-    await _playHubEngineWinner(
+    final primary = probedSources.first;
+    final primaryRow = engineCatalogRowForSource(allRows, primary);
+    await _playHubEngineFromProbedSources(
       context: context,
       movie: movie,
-      stream: hit.stream,
+      sources: probedSources,
+      primaryRow: primaryRow,
       season: season,
       episode: episode,
       startPosition: startPosition,
-      settings: settings,
-      profile: profile,
       loadingDialogContext: loadingDialogContext,
       fadeOutNotifier: fadeOutNotifier,
-      isAborted: () => aborted() || thisGen != playGen,
+      isAborted: isAborted,
     );
   } finally {
     if (!openedPlayer) dismissLoading();
@@ -244,7 +279,61 @@ Future<void> runHubEngineAutoPlay({
   }
 }
 
-Future<_HubEngineAutoHit?> _raceHubEnginePlugins({
+bool _hubProbedSourcesIncludePlugin(
+  String pluginId,
+  List<StreamSource> sources,
+  _HubEngineAutoExtracted extracted,
+) {
+  final rows = extracted[pluginId] ?? const [];
+  for (final source in sources) {
+    for (final row in rows) {
+      final catalog = row['url']?.toString();
+      if (catalog != null &&
+          catalog.isNotEmpty &&
+          source.catalogUrl == catalog) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+void _publishHubEngineAutoPluginProbes({
+  required List<String> pluginIds,
+  required String Function(String) labelFor,
+  required _HubEngineAutoExtracted extracted,
+  required List<StreamSource> probedSources,
+  required ValueNotifier<List<StreamProviderProbe>> probeNotifier,
+}) {
+  probeNotifier.value = [
+    for (var i = 0; i < pluginIds.length; i++)
+      StreamProviderProbe(
+        id: pluginIds[i],
+        label: labelFor(pluginIds[i]),
+        status: _hubEngineAutoPluginProbeStatus(
+          pluginIds[i],
+          extracted,
+          probedSources,
+        ),
+        isPreferred: i == 0,
+      ),
+  ];
+}
+
+StreamProviderProbeStatus _hubEngineAutoPluginProbeStatus(
+  String pluginId,
+  _HubEngineAutoExtracted extracted,
+  List<StreamSource> probedSources,
+) {
+  final streams = extracted[pluginId] ?? const [];
+  if (streams.isEmpty) return StreamProviderProbeStatus.failed;
+  if (_hubProbedSourcesIncludePlugin(pluginId, probedSources, extracted)) {
+    return StreamProviderProbeStatus.success;
+  }
+  return StreamProviderProbeStatus.failed;
+}
+
+Future<_HubEngineAutoExtracted> _extractAllHubEnginePlugins({
   required List<String> pluginIds,
   required String Function(String) labelFor,
   required Movie movie,
@@ -255,8 +344,6 @@ Future<_HubEngineAutoHit?> _raceHubEnginePlugins({
   required int? kisskhEpisodeId,
   required int? anilistId,
   required int? malId,
-  required SettingsService settings,
-  required PlaybackProfile profile,
   required ValueNotifier<List<StreamProviderProbe>> probeNotifier,
   required ValueNotifier<String> messageNotifier,
   required bool Function() isAborted,
@@ -265,18 +352,19 @@ Future<_HubEngineAutoHit?> _raceHubEnginePlugins({
   final year = movie.releaseDate.length >= 4
       ? movie.releaseDate.substring(0, 4)
       : null;
-  final completer = Completer<_HubEngineAutoHit?>();
-  var nextIndex = 0;
-  var inFlight = 0;
-  final statusById = <String, StreamProviderProbeStatus>{
-    for (final id in pluginIds) id: StreamProviderProbeStatus.pending,
-  };
   final cacheKey = CatalogSourcesSessionCache.cacheKey(
     mediaId: movie.id,
     mediaType: movie.mediaType,
     season: season,
     episode: episode,
   );
+  final results = <String, List<Map<String, dynamic>>>{};
+  final completer = Completer<void>();
+  var nextIndex = 0;
+  var inFlight = 0;
+  final statusById = <String, StreamProviderProbeStatus>{
+    for (final id in pluginIds) id: StreamProviderProbeStatus.pending,
+  };
 
   void mergeIntoSourcesPanel(
     String pluginId,
@@ -329,7 +417,7 @@ Future<_HubEngineAutoHit?> _raceHubEnginePlugins({
     inFlight++;
     statusById[pluginId] = StreamProviderProbeStatus.trying;
     publishProbes();
-    messageNotifier.value = 'Checking ${labelFor(pluginId)}…';
+    messageNotifier.value = 'Extracting ${labelFor(pluginId)}…';
     try {
       final batch = await EngineService.instance.runPluginIsolated(
         pluginId: pluginId,
@@ -346,39 +434,14 @@ Future<_HubEngineAutoHit?> _raceHubEnginePlugins({
         kisskhEpisodeId: kisskhEpisodeId,
         allowHostFallback: false,
       );
-      // Do not return from try on empty/fail — that skips fill() after finally.
       if (!isAborted() && !completer.isCompleted) {
         final streams = batch?.streams ?? const <Map<String, dynamic>>[];
-        // Same session cache Sources / player Sources read.
         mergeIntoSourcesPanel(pluginId, streams);
-        if (streams.isEmpty) {
-          statusById[pluginId] = StreamProviderProbeStatus.failed;
-          publishProbes();
-        } else {
-          // Forja Auto: JS extract only. URL sniff is webstreaming-only.
-          final pick = await _firstPlayableEngineStream(
-            streams,
-            settings: settings,
-            profile: profile,
-            isAborted: isAborted,
-            orSettled: () => completer.isCompleted,
-          );
-          if (isAborted() || completer.isCompleted) {
-            // fall through to finally + fill gate
-          } else if (pick == null) {
-            statusById[pluginId] = StreamProviderProbeStatus.failed;
-            publishProbes();
-          } else {
-            statusById[pluginId] = StreamProviderProbeStatus.success;
-            publishProbes();
-            if (!completer.isCompleted) {
-              completer.complete(
-                _HubEngineAutoHit(pluginId: pluginId, stream: pick),
-              );
-              EngineService.instance.cancelPending();
-            }
-          }
-        }
+        results[pluginId] = List<Map<String, dynamic>>.from(streams);
+        statusById[pluginId] = streams.isEmpty
+            ? StreamProviderProbeStatus.failed
+            : StreamProviderProbeStatus.pending;
+        publishProbes();
       }
     } catch (e) {
       debugPrint('[hub-engine-auto] plugin $pluginId failed: $e');
@@ -391,53 +454,74 @@ Future<_HubEngineAutoHit?> _raceHubEnginePlugins({
     }
     if (completer.isCompleted) return;
     if (isAborted()) {
-      if (!completer.isCompleted) completer.complete(null);
+      if (!completer.isCompleted) completer.complete();
       return;
     }
     fill();
     if (nextIndex >= pluginIds.length &&
         inFlight == 0 &&
         !completer.isCompleted) {
-      completer.complete(null);
+      completer.complete();
     }
   };
 
   fill();
-  if (pluginIds.isEmpty) return null;
-  final result = await completer.future;
-  if (isAborted()) return null;
-  return result;
+  if (pluginIds.isEmpty) return results;
+  await completer.future;
+  if (isAborted()) return results;
+  EngineService.instance.cancelPending();
+  return results;
 }
 
-/// First classify-able stream from JS — no URL sniff (webstreaming-only).
-Future<Map<String, dynamic>?> _firstPlayableEngineStream(
-  List<Map<String, dynamic>> streams, {
-  required SettingsService settings,
-  required PlaybackProfile profile,
+Future<void> _playHubEngineFromProbedSources({
+  required BuildContext context,
+  required Movie movie,
+  required List<StreamSource> sources,
+  required Map<String, dynamic>? primaryRow,
+  required int? season,
+  required int? episode,
+  required Duration? startPosition,
+  required BuildContext? loadingDialogContext,
+  required ValueNotifier<bool> fadeOutNotifier,
   required bool Function() isAborted,
-  required bool Function() orSettled,
 }) async {
-  final useDebrid = await settings.useDebridForStreams();
-  final debridService = await settings.getDebridService();
-  if (isAborted() || orSettled()) return null;
-
-  for (final stream in streams) {
-    if (isAborted() || orSettled()) return null;
-    final check = classifyStremioStream(
-      stream,
-      profile,
-      useDebrid: useDebrid,
-      debridService: debridService,
+  if (isAborted() || sources.isEmpty) return;
+  final needsEp = season != null || episode != null;
+  final stream = primaryRow ?? <String, dynamic>{};
+  final stremioId = movie.imdbId;
+  final stremioAddonBaseUrl = stream['_addonBaseUrl']?.toString();
+  final primary = sources.first;
+  final ctx = loadingDialogContext;
+  Future<void> openPlayer() => AppRouter.openPlayer(
+    context,
+    streamUrl: primary.url,
+    title: movie.title,
+    headers: primary.headers,
+    movie: movie,
+    selectedSeason: needsEp ? (season ?? 1) : null,
+    selectedEpisode: needsEp ? (episode ?? 1) : null,
+    startPosition: startPosition,
+    activeProvider: primary.providerId ?? catalogHttpPlayProviderId(stream),
+    sources: sources,
+    pinSource: false,
+    streamsPrevalidated: true,
+    externalSubtitles: catalogStreamExternalSubtitles(stream),
+    stremioId: stremioId,
+    stremioAddonBaseUrl: stremioAddonBaseUrl,
+    fadeTransition: ctx != null,
+  );
+  if (ctx != null && ctx.mounted) {
+    await crossfadeLoadingOverlayToPlayer(
+      loadingDialogContext: ctx,
+      fadeOutNotifier: fadeOutNotifier,
+      openPlayer: openPlayer,
     );
-    if (check is StremioExternalLink || check is StremioResolveFailure) {
-      continue;
-    }
-    return stream;
+  } else {
+    await openPlayer();
   }
-  return null;
 }
 
-Future<void> _playHubEngineWinner({
+Future<void> _playHubEngineResolveRow({
   required BuildContext context,
   required Movie movie,
   required Map<String, dynamic> stream,
@@ -455,53 +539,6 @@ Future<void> _playHubEngineWinner({
   final stremioId = movie.imdbId;
   final stremioAddonBaseUrl = stream['_addonBaseUrl']?.toString();
 
-  final useDebrid = await settings.useDebridForStreams();
-  final debridService = await settings.getDebridService();
-  if (isAborted()) return;
-
-  final precheck = classifyStremioStream(
-    stream,
-    profile,
-    useDebrid: useDebrid,
-    debridService: debridService,
-  );
-
-  if (precheck is StremioPlayable) {
-    final proxied = await proxyCatalogHttpStreamIfNeeded(
-      streamUrl: precheck.streamUrl,
-      headers: precheck.headers,
-      stream: stream,
-    );
-    if (isAborted() || !context.mounted) return;
-    final ctx = loadingDialogContext;
-    Future<void> openPlayer() => AppRouter.openPlayer(
-      context,
-      streamUrl: proxied.url,
-      title: movie.title,
-      headers: proxied.headers,
-      movie: movie,
-      selectedSeason: needsEp ? (season ?? 1) : null,
-      selectedEpisode: needsEp ? (episode ?? 1) : null,
-      startPosition: startPosition,
-      activeProvider: catalogHttpPlayProviderId(stream),
-      externalSubtitles: catalogStreamExternalSubtitles(stream),
-      stremioId: stremioId,
-      stremioAddonBaseUrl: stremioAddonBaseUrl,
-      fadeTransition: ctx != null,
-    );
-    if (ctx != null && ctx.mounted) {
-      await crossfadeLoadingOverlayToPlayer(
-        loadingDialogContext: ctx,
-        fadeOutNotifier: fadeOutNotifier,
-        openPlayer: openPlayer,
-      );
-    } else {
-      await openPlayer();
-    }
-    return;
-  }
-
-  if (!context.mounted || isAborted()) return;
   if (!await ensureLanP2pPlayback(context)) return;
   if (isAborted() || !context.mounted) return;
 

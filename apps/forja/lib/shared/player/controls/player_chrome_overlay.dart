@@ -186,7 +186,8 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
                           size: widget.iconSize - 2,
                         ),
                         const SizedBox(width: 5),
-                        Flexible(
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 110),
                           child: Text(
                             widget.label!,
                             maxLines: 1,
@@ -334,7 +335,8 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
                   size: widget.iconSize,
                 ),
                 const SizedBox(width: 5),
-                Flexible(
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 88),
                   child: Text(
                     widget.label,
                     maxLines: 1,
@@ -394,6 +396,150 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
             child: child,
           );
     return Tooltip(message: 'Source - ${widget.label}', child: button);
+  }
+}
+
+/// Catalog Sources panel opener — link icon + active source name (no chevron).
+class PlayerSourcesPanelButton extends StatefulWidget {
+  const PlayerSourcesPanelButton({
+    super.key,
+    required this.label,
+    this.onPressed,
+    this.onPressedWithContext,
+    this.size = 40,
+    this.iconSize = 20,
+    this.tvFocusable = false,
+    this.focusNode,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onUpEdge,
+    this.onDownEdge,
+  }) : assert(onPressed != null || onPressedWithContext != null);
+
+  final String label;
+  final VoidCallback? onPressed;
+  final ValueChanged<BuildContext>? onPressedWithContext;
+  final double size;
+  final double iconSize;
+  final bool tvFocusable;
+  final FocusNode? focusNode;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+
+  @override
+  State<PlayerSourcesPanelButton> createState() =>
+      _PlayerSourcesPanelButtonState();
+}
+
+class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  bool get _highlight => playerChromeFocusActive(
+    context,
+    tvFocusable: widget.tvFocusable,
+    hovered: _hovered,
+    focused: _focused,
+  );
+
+  bool get _tvFocused =>
+      playerChromeTvFocused(tvFocusable: widget.tvFocusable, focused: _focused);
+
+  @override
+  Widget build(BuildContext context) {
+    final onTap = widget.onPressedWithContext != null
+        ? () => widget.onPressedWithContext!(context)
+        : widget.onPressed;
+    final fgAlpha = _tvFocused
+        ? 1.0
+        : _highlight
+        ? 0.95
+        : 0.88;
+    final iconColor = _tvFocused
+        ? ForjaShellColors.brandGreen
+        : Colors.white.withValues(alpha: 0.92);
+    final shape = playerChromeButtonShape(
+      isCircle: false,
+      tvFocused: _tvFocused,
+    );
+    final child = Material(
+      color: playerChromeBackgroundColor(
+        active: false,
+        highlight: _highlight,
+        tvFocused: _tvFocused,
+      ),
+      shape: shape,
+      child: InkWell(
+        canRequestFocus: false,
+        onTap: widget.tvFocusable ? null : onTap,
+        customBorder: shape,
+        borderRadius: BorderRadius.circular(8),
+        hoverColor: Colors.transparent,
+        splashColor: Colors.white.withValues(alpha: 0.08),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: widget.size, maxWidth: 148),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.link_rounded,
+                  color: iconColor,
+                  size: widget.iconSize,
+                ),
+                const SizedBox(width: 5),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 100),
+                  child: Text(
+                    widget.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: _tvFocused
+                          ? ForjaShellColors.brandGreen
+                          : Colors.white.withValues(alpha: fgAlpha),
+                      fontSize: 12,
+                      fontWeight:
+                          _tvFocused ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    final button = widget.tvFocusable
+        ? FocusableControl(
+            focusNode: widget.focusNode,
+            onTap: onTap,
+            borderRadius: 8,
+            scaleOnFocus: 1.0,
+            onLeftEdge: widget.onLeftEdge,
+            onRightEdge: widget.onRightEdge,
+            onUpEdge: widget.onUpEdge,
+            onDownEdge: widget.onDownEdge,
+            onFocusChange: (focused) => setState(() => _focused = focused),
+            onHoverChange: (hovered) {
+              if (hovered) playerChromeCancelSeekScrubs();
+              setState(() => _hovered = hovered);
+            },
+            child: child,
+          )
+        : MouseRegion(
+            onEnter: (_) {
+              playerChromeCancelSeekScrubs();
+              setState(() => _hovered = true);
+            },
+            onExit: (_) => setState(() => _hovered = false),
+            cursor: SystemMouseCursors.click,
+            child: child,
+          );
+    return Tooltip(message: 'Sources — ${widget.label}', child: button);
   }
 }
 

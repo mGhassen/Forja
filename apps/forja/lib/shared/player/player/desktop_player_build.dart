@@ -516,9 +516,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                     Row(
                       children: [
                         if (hasTorrentSources) ...[
-                          PlayerFlatIconButton(
-                            icon: Icons.link_rounded,
-                            tooltip: 'Sources',
+                          PlayerSourcesPanelButton(
                             label: _s._catalogSourcesButtonLabel(),
                             onPressed: _s._showTorrentSourcesPanel,
                           ),

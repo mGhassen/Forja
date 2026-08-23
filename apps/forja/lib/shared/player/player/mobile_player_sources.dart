@@ -398,20 +398,28 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     return 'Stream';
   }
 
-  String _catalogSourcesButtonLabel() => catalogSourcesButtonLabel(
-        movie: widget.movie,
-        season: widget.selectedSeason,
-        episode: widget.selectedEpisode,
-        catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
-        widgetAddonBaseUrl: widget.stremioAddonBaseUrl,
-        currentProvider: _s._currentProvider,
-        activeProvider: widget.activeProvider,
-        activeMagnet: _s._activeMagnet,
-        widgetMagnetLink: widget.magnetLink,
-        currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
-        currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
-        catalogSourceKind: _s._catalogSourceKind,
-      );
+  String _catalogSourcesButtonLabel() {
+    final key = _s._currentProvider ?? widget.activeProvider;
+    if (key != null &&
+        widget.providers != null &&
+        widget.providers!.containsKey(key)) {
+      return PlayerProviderMenu.snackbarLabel(key, widget.providers![key]);
+    }
+    return catalogSourcesButtonLabel(
+      movie: widget.movie,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+      catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
+      widgetAddonBaseUrl: widget.stremioAddonBaseUrl,
+      currentProvider: _s._currentProvider,
+      activeProvider: widget.activeProvider,
+      activeMagnet: _s._activeMagnet,
+      widgetMagnetLink: widget.magnetLink,
+      currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
+      currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
+      catalogSourceKind: _s._catalogSourceKind,
+    );
+  }
 
   bool get _hasStreamPicker {
     // Catalog Sources (magnet / Stremio Direct / Nuvio) already covers switching -

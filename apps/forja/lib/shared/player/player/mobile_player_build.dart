@@ -717,11 +717,9 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                         Row(
                           children: [
                             if (hasTorrentSources)
-                              PlayerFlatIconButton(
-                                icon: Icons.link_rounded,
+                              PlayerSourcesPanelButton(
                                 size: btnSize,
                                 iconSize: iconSz,
-                                tooltip: 'Sources',
                                 label: _s._catalogSourcesButtonLabel(),
                                 onPressed: _s._showTorrentSourcesPanel,
                               ),
@@ -1015,16 +1013,14 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
             if (hasTorrentSources)
               ordered(
                 8,
-                PlayerFlatIconButton(
+                PlayerSourcesPanelButton(
                   tvFocusable: true,
                   focusNode: _s._transportSourcesFocus,
                   onUpEdge: focusUp,
                   onLeftEdge: _s._focusLeftOfRightTransport,
                   onRightEdge: focusStreamOrAfter,
-                  icon: Icons.link_rounded,
                   size: btnSize,
                   iconSize: iconSz,
-                  tooltip: 'Sources',
                   label: _s._catalogSourcesButtonLabel(),
                   onPressed: _s._showTorrentSourcesPanel,
                 ),

@@ -22,6 +22,7 @@ import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/sources_panel_stream_probe.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
+import 'package:forja/shared/playback/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/player/utils.dart';
