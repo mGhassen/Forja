@@ -216,7 +216,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [194-[fixed]-…](fixed/194-[fixed]-android-tv-forja-sports-source-load-oom.md) | ATV Forja Sports source load OOM / process kill | P1 | High | fixed | Complete · 3/3 · A 1/2 | — |
 | [195-[open]-…](195-[open]-anime-hub-cold-catalog-load.md) | Anime hub cold catalog slow open | P2 | Medium | open | 3/5 · A 0/4 | — |
 | [196-[fixed]-…](fixed/196-[fixed]-desktop-window-size-resets-after-player.md) | Desktop window size resets after player close | P1 | High | fixed | Complete · 3/3 · A 3/3 | — |
-| [197-[open]-…](197-[open]-android-tv-trailer-quality-switch.md) | ATV trailer Quality switch stuck | P1 | High | open | 3/3 · A 0/2 | — |
+| [197-[open]-…](197-[open]-android-tv-trailer-quality-switch.md) | ATV trailer Quality switch stuck | P1 | High | open | 4/4 · A 0/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

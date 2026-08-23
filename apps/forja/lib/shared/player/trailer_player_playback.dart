@@ -165,19 +165,14 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     try {
       await _ensurePlayer();
       if (!mounted || loadId != _s._loadGeneration) return;
-      await _openResolved(streams, resumeAt: resumeAt);
+      final opened = await _openResolved(streams, resumeAt: resumeAt);
       if (!mounted || loadId != _s._loadGeneration) return;
+      if (!opened) throw StateError('trailer stream open failed');
       setState(() {
         _s._streams = streams;
         _s._resolving = false;
         _s._ready = true;
-        final playUrl = streams!.playUrl;
-        _s._selectedQualityHeight = playUrl == null
-            ? null
-            : streams.qualities
-                .where((q) => q.videoUrl == playUrl)
-                .map((q) => q.height)
-                .firstOrNull;
+        _s._selectedQualityHeight = _qualityMenuHeightFor(streams!);
       });
       _s._claimPlayFocus();
       _s._startHideTimer();
@@ -190,6 +185,26 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         _s._resolveError = 'Could not play this trailer';
       });
     }
+  }
+
+  /// Menu highlight for the stream currently open (muxed URL ≠ adaptive URLs).
+  int? _qualityMenuHeightFor(YoutubeResolvedStreams streams) {
+    final playUrl = streams.playUrl;
+    if (playUrl == null) return null;
+    final byUrl = streams.qualities
+        .where((q) => q.videoUrl == playUrl)
+        .map((q) => q.height)
+        .firstOrNull;
+    if (byUrl != null) return byUrl;
+
+    final h = streams.playHeight;
+    if (h == null || streams.qualities.isEmpty) return null;
+    if (streams.qualities.any((q) => q.height == h)) return h;
+    // Muxed height missing from ladder — nearest rung at or below.
+    return streams.qualities
+        .where((q) => q.height <= h)
+        .map((q) => q.height)
+        .firstOrNull;
   }
 
   /// True when [videoUrl] is adaptive video-only (needs [streams.audioUrl]).
@@ -219,14 +234,14 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     }
   }
 
-  Future<void> _openResolved(
+  Future<bool> _openResolved(
     YoutubeResolvedStreams streams, {
     Duration? resumeAt,
     /// Quality hot-swap: never trust leftover tracks after reopen on ATV.
     bool forceAudioAdd = false,
   }) async {
     final player = _s._player;
-    if (player == null) return;
+    if (player == null) return false;
     final videoUrl = streams.playUrl!;
     final audioUrl = streams.audioUrl;
     final needsExternalAudio = _needsExternalAudio(streams, videoUrl);
@@ -242,7 +257,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
 
     final platform = player.platform;
     if (platform is NativePlayer) {
-      if (!await mediaKitPlayerHandleReady(platform)) return;
+      if (!await mediaKitPlayerHandleReady(platform)) return false;
       try {
         await platform.setProperty('mute', 'no');
       } catch (_) {}
@@ -269,6 +284,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     );
     if (!opened) {
       debugPrint('[Trailer] stream open did not become ready');
+      return false;
     }
 
     if (needsExternalAudio && audioUrl != null && audioUrl.isNotEmpty) {
@@ -290,6 +306,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       await player.seek(resumeAt);
     }
     await player.play();
+    return true;
   }
 
   Future<void> _switchQuality(YoutubeQuality quality) async {
@@ -297,36 +314,48 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     final player = _s._player;
     if (streams == null || player == null || !_s._ready) return;
     final resumeAt = _s._position;
+    final prevHeight = _s._selectedQualityHeight;
     setState(() {
       _s._selectedQualityHeight = quality.height;
       _s._ready = false;
     });
-    try {
-      final swapped = YoutubeResolvedStreams(
-        playUrl: quality.videoUrl,
-        audioUrl: streams.audioUrl,
-        title: streams.title,
-        thumbnailUrl: streams.thumbnailUrl,
-        durationSeconds: streams.durationSeconds,
-        qualities: streams.qualities,
-        captions: streams.captions,
-      );
-      await _openResolved(
-        swapped,
+    final swapped = YoutubeResolvedStreams(
+      playUrl: quality.videoUrl,
+      playHeight: quality.height,
+      audioUrl: streams.audioUrl,
+      title: streams.title,
+      thumbnailUrl: streams.thumbnailUrl,
+      durationSeconds: streams.durationSeconds,
+      qualities: streams.qualities,
+      captions: streams.captions,
+    );
+    final opened = await _openResolved(
+      swapped,
+      resumeAt: resumeAt,
+      forceAudioAdd: _atvMediaKit,
+    );
+    if (!mounted) return;
+    if (!opened) {
+      debugPrint('Trailer quality switch failed: open');
+      final recovered = await _openResolved(
+        streams,
         resumeAt: resumeAt,
         forceAudioAdd: _atvMediaKit,
       );
-      if (!mounted) return;
-      setState(() {
-        _s._streams = swapped;
-        _s._ready = true;
-      });
-      if (_s._activeCaptionCode != null) {
-        await _applyCaptionTrack(_s._activeCaptionCode);
+      if (mounted) {
+        setState(() {
+          _s._selectedQualityHeight = prevHeight;
+          _s._ready = recovered;
+        });
       }
-    } catch (e) {
-      debugPrint('Trailer quality switch failed: $e');
-      if (mounted) setState(() => _s._ready = true);
+      return;
+    }
+    setState(() {
+      _s._streams = swapped;
+      _s._ready = true;
+    });
+    if (_s._activeCaptionCode != null) {
+      await _applyCaptionTrack(_s._activeCaptionCode);
     }
   }
 

@@ -145,6 +145,12 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
   bool _tvFocus(BuildContext context) =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
+  /// Leanback TV browse/edit split — not desktop D-pad (which also uses mood chips).
+  bool _leanbackTextInput(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    return policy.useFocusableMoodChips && !policy.scaleOnHover;
+  }
+
   void _focusHelperAtIndex(int index) {
     final count = _helperItemCount();
     if (count == 0) return;
@@ -421,10 +427,10 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
   /// TV: opening Search with no query - browse field, not first recommendation.
   bool _restoreSearchTvFocusIfEmpty() {
     final ctx = _s._focusNode.context;
-    final tv = ctx != null
-        ? ShellScope.inputPolicyOf(ctx).useFocusableMoodChips
+    final leanback = ctx != null
+        ? _leanbackTextInput(ctx)
         : ShellTokens.isAndroidTvDevice;
-    if (!tv) return false;
+    if (!leanback) return false;
     if (_s._query.trim().isNotEmpty) return false;
     _focusSearchFieldBrowse();
     return true;
@@ -448,7 +454,7 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
 
   /// TV: OK / Enter after typing - run pending search and focus first result card.
   void _submitSearchField() {
-    if (!_tvFocus(context)) return;
+    if (!_leanbackTextInput(context)) return;
     if (!_s._searchSubmitArmed) return;
     final query = _s._controller.text.trim();
     if (query.isEmpty) return;
@@ -485,12 +491,16 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
       _focusSearchClose();
       return KeyEventResult.handled;
     }
-    if (shellTvIsActivateKey(event) && _s._searchFieldEditing) {
+    if (_leanbackTextInput(context) &&
+        shellTvIsActivateKey(event) &&
+        _s._searchFieldEditing) {
       // Swallow the twin Select/Enter from the OK that opened editing.
       // Submit comes from IME onSubmitted once armed.
       return KeyEventResult.handled;
     }
-    if (shellTvIsActivateKey(event) && !_s._searchFieldEditing) {
+    if (_leanbackTextInput(context) &&
+        shellTvIsActivateKey(event) &&
+        !_s._searchFieldEditing) {
       _beginSearchFieldEditing();
       return KeyEventResult.handled;
     }

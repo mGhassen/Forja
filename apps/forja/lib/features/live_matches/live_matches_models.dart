@@ -2910,15 +2910,13 @@ String _liveForjaPluginDisplayName(String pluginId) {
   return _liveForjaPluginDisplayNames[pluginId] ?? pluginId;
 }
 
-/// Server picker order: Forja Live first, Stremio last. **All** is hidden.
+/// Server picker order: Forja Live first, Stremio last.
+/// **All** / PPV / Streamed / MutStreams are hidden from the sheet.
 List<_LiveMatchesServer> _liveMatchesServersForSurface({
   bool iptvSportsEnabled = false,
 }) {
   return [
     _LiveMatchesServer.forjaLive,
-    _LiveMatchesServer.ppv,
-    _LiveMatchesServer.streamed,
-    _LiveMatchesServer.mutStreams,
     if (iptvSportsEnabled) _LiveMatchesServer.iptvSports,
     _LiveMatchesServer.stremio,
   ];

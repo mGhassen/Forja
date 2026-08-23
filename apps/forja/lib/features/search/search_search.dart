@@ -131,7 +131,7 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
         _s._gridFocusedIndex = null;
         _s._pendingGridFocusIndex = null;
       });
-      if (_s._tvFocus(context) && _s._focusNode.hasFocus) {
+      if (_s._leanbackTextInput(context) && _s._focusNode.hasFocus) {
         _s._focusSearchFieldBrowse();
       }
       return;
@@ -146,7 +146,7 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
         _s._gridFocusedIndex = null;
       });
       // TV: only persist on OK/submit — debounce would save every IME partial.
-      if (!_s._tvFocus(context) || !_s._searchFieldEditing) {
+      if (!_s._leanbackTextInput(context) || !_s._searchFieldEditing) {
         _recordRecentQuery(trimmed);
       }
       (_s._container ?? ProviderScope.containerOf(context, listen: false))

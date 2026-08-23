@@ -82,30 +82,30 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
       leadingIcon: Icons.hd_outlined,
       anchorContext: anchorContext,
       maxHeight: 360,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        child: qualities.isEmpty
-            ? const Text(
+      child: qualities.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.fromLTRB(12, 12, 12, 14),
+              child: Text(
                 'No quality options for this trailer.',
                 style: TextStyle(color: PlayerPopupTokens.muted, fontSize: 13),
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: qualities.map((q) {
-                  final selected = selectedHeight == q.height;
-                  return PlayerPopupOptionChip(
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+              children: [
+                for (final q in qualities)
+                  PlayerPopupOptionChip(
                     label: q.label,
-                    selected: selected,
+                    selected: selectedHeight == q.height,
                     expanded: true,
                     onTap: () async {
                       PlayerPopupPanel.dismiss();
-                      if (selected) return;
+                      if (selectedHeight == q.height) return;
                       await _s._switchQuality(q);
                     },
-                  );
-                }).toList(),
-              ),
-      ),
+                  ),
+              ],
+            ),
     );
     if (mounted) _s._startHideTimer();
   }
@@ -123,23 +123,20 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
       leadingIcon: Icons.speed_rounded,
       anchorContext: anchorContext,
       maxHeight: 360,
-      child: Padding(
+      child: ListView(
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: _speedRates.map((rate) {
-            final selected = (rate - currentRate).abs() < 0.01;
-            return PlayerPopupOptionChip(
+        children: [
+          for (final rate in _speedRates)
+            PlayerPopupOptionChip(
               label: '${_formatRate(rate)}x',
-              selected: selected,
+              selected: (rate - currentRate).abs() < 0.01,
               expanded: true,
               onTap: () async {
                 PlayerPopupPanel.dismiss();
                 await _s._setRate(rate);
               },
-            );
-          }).toList(),
-        ),
+            ),
+        ],
       ),
     );
     if (mounted) _s._startHideTimer();

@@ -34,6 +34,9 @@ class YoutubeResolvedStreams {
   /// otherwise a video-only adaptive URL that needs [audioUrl].
   final String? playUrl;
 
+  /// Resolution height of [playUrl] (muxed or adaptive pick).
+  final int? playHeight;
+
   /// Separate AAC for video-only URLs in [qualities] (and adaptive [playUrl]).
   /// Null when [playUrl] is muxed-only and no adaptive ladder exists.
   final String? audioUrl;
@@ -50,6 +53,7 @@ class YoutubeResolvedStreams {
 
   const YoutubeResolvedStreams({
     this.playUrl,
+    this.playHeight,
     this.audioUrl,
     this.title,
     this.thumbnailUrl,
@@ -177,6 +181,7 @@ class YoutubeStreamService {
       }
 
       String? playUrl;
+      int? playHeight;
       String? audioUrl;
       final qualities = <YoutubeQuality>[];
       final videoOnly = manifest.videoOnly
@@ -214,11 +219,14 @@ class YoutubeStreamService {
       // mpv audio-file failed to attach). Keep [audioUrl]/[qualities] for HD.
       if (bestMuxed != null) {
         playUrl = bestMuxed;
+        playHeight = bestMuxedStream?.videoResolution.height;
       } else if (qualities.isNotEmpty) {
         final atOrBelow =
             qualities.where((q) => q.height <= maxHeight).toList();
-        playUrl =
-            (atOrBelow.isNotEmpty ? atOrBelow.first : qualities.last).videoUrl;
+        final pick =
+            atOrBelow.isNotEmpty ? atOrBelow.first : qualities.last;
+        playUrl = pick.videoUrl;
+        playHeight = pick.height;
       }
       if (playUrl == null) return null;
 
@@ -260,6 +268,7 @@ class YoutubeStreamService {
 
       return YoutubeResolvedStreams(
         playUrl: playUrl,
+        playHeight: playHeight,
         audioUrl: audioUrl,
         title: title,
         thumbnailUrl: thumb,

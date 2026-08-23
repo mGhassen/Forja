@@ -376,7 +376,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
       saved ?? _server,
       iptvSportsEnabled: iptvSportsEnabled,
     );
-    // Clamp invalid saved server (hidden All, disabled Forja Sports, …).
+    // Clamp invalid saved server (hidden All/PPV/Streamed/Mut, disabled Forja Sports, …).
     if (saved != null && saved != next) {
       unawaited(_persistServerPreference(next));
     }

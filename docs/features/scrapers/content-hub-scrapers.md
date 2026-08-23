@@ -14,7 +14,7 @@ Several Forja tabs don't use TMDB torrents — they scrape dedicated sites for b
 | [Anime Arabic](../hubs/anime-arabic.md) | AnimeSlayer — Arabic-dubbed anime |
 | [Asian Drama](../hubs/asian-drama.md) | KissKH — Asian dramas with subtitles |
 | [Arabic](../hubs/arabic-cinema.md) | Arabic cinema categories and search |
-| [Live Matches](../live/live-matches.md) | PPV (`api.ppv.st`) + [Streamed](https://streamed.pk/docs) + [MutStreams](https://mut.st/) sports feeds |
+| [Live Matches](../live/live-matches.md) | Forja Live catalogs + Stremio sport addons + Forja Sports (Xtream) |
 | [Comics](../reading/comics.md) | Primary catalog + ReadComicsOnline fallback |
 | [Manga](../reading/manga.md) | Manga library search and chapters |
 | [Audiobooks](../reading/audiobooks.md) | Multiple audiobook sources in parallel |

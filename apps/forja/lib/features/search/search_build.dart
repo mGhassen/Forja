@@ -167,8 +167,8 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
   }
 
   Widget _buildSearchField(BuildContext context) {
-    final tvFocus = _s._tvFocus(context);
-    final browseOnly = tvFocus && !_s._searchFieldEditing;
+    final leanbackInput = _s._leanbackTextInput(context);
+    final browseOnly = leanbackInput && !_s._searchFieldEditing;
     const hint = 'Search movies, shows...';
     final hintStyle = TextStyle(
       color: ForjaShellColors.textSecondary.withValues(alpha: 0.7),
@@ -185,12 +185,12 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
         TextField(
           controller: _s._controller,
           focusNode: _s._focusNode,
-          autofocus: !tvFocus,
+          autofocus: !leanbackInput,
           readOnly: browseOnly,
           showCursor: !browseOnly || _s._query.isNotEmpty,
           enableInteractiveSelection: !browseOnly,
           onChanged: _s._onSearchChanged,
-          onTap: tvFocus
+          onTap: leanbackInput
               ? () {
                   if (!_s._searchFieldEditing) _s._beginSearchFieldEditing();
                 }

@@ -142,6 +142,15 @@ void main() {
       expect(h.containsKey('Origin'), isFalse);
     });
 
+    test('strips Referer/Origin for YouTube googlevideo videoplayback', () {
+      const url =
+          'https://rr1---sn-abc.googlevideo.com/videoplayback?expire=1&sig=abc';
+      final h = resolvePlaybackHttpHeaders(null, streamUrl: url);
+      expect(h['User-Agent'], contains('Mozilla/5.0'));
+      expect(h.containsKey('Referer'), isFalse);
+      expect(h.containsKey('Origin'), isFalse);
+    });
+
     test('does not derive Referer from hakunaymatata stream URL', () {
       const url = 'https://sacdn.hakunaymatata.com/dash/x/index_web.mpd?host=y';
       final h = resolvePlaybackHttpHeaders(null, streamUrl: url);

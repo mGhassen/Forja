@@ -42,6 +42,7 @@ import {
   poolHostKey,
   resolvePoolFocusPortalId,
   type PoolCand,
+  type PoolHostsResult,
   type PortalPlatform,
 } from '@/lib/iptv-pool'
 import {
@@ -426,7 +427,8 @@ export function AdminPoolPage() {
         ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     }, 120)
     return () => window.clearTimeout(t)
-  }, [resolvedFocusId, hosts, open, debouncedQ])
+    // Only when focus id / expand / search settle — not on every hosts refetch.
+  }, [resolvedFocusId, open, debouncedQ])
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -441,9 +443,16 @@ export function AdminPoolPage() {
     return qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
   }
 
-  /** Hosts may re-sort; portal cards stay put — patch alive in cache, refresh host rows only. */
+  function aliveDelta(prev: boolean | null | undefined, next: boolean): number {
+    const was = prev === true
+    if (was === next) return 0
+    return next ? 1 : -1
+  }
+
+  /** Patch cards + host Alive counts in place — no refetch / re-sort (keeps scroll). */
   function applyVerifyResults(
     results: { id: string; alive: boolean }[],
+    hostDeltas?: Map<string, number>,
   ) {
     if (results.length === 0) return
     const byId = new Map(results.map((r) => [r.id, r.alive]))
@@ -460,7 +469,21 @@ export function AdminPoolPage() {
         }
       },
     )
-    void qc.invalidateQueries({ queryKey: ['admin', 'pool', 'hosts'] })
+    if (!hostDeltas || hostDeltas.size === 0) return
+    qc.setQueriesData<PoolHostsResult>(
+      { queryKey: ['admin', 'pool', 'hosts'] },
+      (old) => {
+        if (!old?.hosts) return old
+        return {
+          ...old,
+          hosts: old.hosts.map((h) => {
+            const d = hostDeltas.get(poolHostKey(h.host))
+            if (!d) return h
+            return { ...h, alive: Math.max(0, h.alive + d) }
+          }),
+        }
+      },
+    )
   }
 
   const saveEdit = useMutation({
@@ -569,15 +592,22 @@ export function AdminPoolPage() {
     let dead = 0
     let failed = 0
     const verified: { id: string; alive: boolean }[] = []
+    const hostDeltas = new Map<string, number>()
     try {
       for (const id of ids) {
         setCheckingId(id)
+        const prev = selected.get(id)
         try {
           const res = await catalogVerify({ candidateId: id })
           alive += res.alive
           dead += res.dead
           for (const r of res.results) {
             verified.push({ id: r.id, alive: r.alive })
+            if (prev) {
+              const hk = poolHostKey(candidateHost(prev.url))
+              const d = aliveDelta(prev.alive, r.alive)
+              if (d) hostDeltas.set(hk, (hostDeltas.get(hk) ?? 0) + d)
+            }
           }
         } catch {
           failed++
@@ -588,7 +618,7 @@ export function AdminPoolPage() {
           failed ? ` · ${failed} failed` : ''
         }`,
       )
-      applyVerifyResults(verified)
+      applyVerifyResults(verified, hostDeltas)
     } catch (e) {
       setActionError(errMessage(e, 'Bulk status check failed'))
     } finally {
@@ -730,8 +760,14 @@ export function AdminPoolPage() {
             }`
           : `Checked ${res.checked}`,
       )
+      const hostDeltas = new Map<string, number>()
+      if (r) {
+        const d = aliveDelta(c.alive, r.alive)
+        if (d) hostDeltas.set(poolHostKey(candidateHost(c.url)), d)
+      }
       applyVerifyResults(
         res.results.map((x) => ({ id: x.id, alive: x.alive })),
+        hostDeltas,
       )
     } catch (e) {
       setActionError(errMessage(e, 'Status check failed'))
@@ -749,8 +785,24 @@ export function AdminPoolPage() {
       setActionInfo(
         `${host}: ${res.alive} alive · ${res.dead} dead · ${res.checked} checked`,
       )
+      const byId = new Map(res.results.map((x) => [x.id, x.alive]))
+      // Delta from whatever we already showed under this host in cache.
+      let delta = 0
+      const hk = poolHostKey(host)
+      qc.getQueriesData<{ portals: PoolCand[]; total: number }>({
+        queryKey: ['admin', 'pool', 'portals', hk],
+      }).forEach(([, data]) => {
+        for (const p of data?.portals ?? []) {
+          const next = byId.get(p.id)
+          if (next === undefined) continue
+          delta += aliveDelta(p.alive, next)
+        }
+      })
+      const hostDeltas = new Map<string, number>()
+      if (delta) hostDeltas.set(hk, delta)
       applyVerifyResults(
         res.results.map((x) => ({ id: x.id, alive: x.alive })),
+        hostDeltas,
       )
     } catch (e) {
       setActionError(errMessage(e, 'Host status check failed'))

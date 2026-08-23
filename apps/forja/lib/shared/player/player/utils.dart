@@ -259,6 +259,14 @@ Map<String, String> resolvePlaybackHttpHeaders(
     }
   }
 
+  // YouTube googlevideo (ANDROID_VR direct URLs): CDN self-Referer / Origin → 403.
+  if (streamUrl != null && isGooglevideoPlaybackUrl(streamUrl)) {
+    out.remove('Referer');
+    out.remove('referer');
+    out.remove('Origin');
+    out.remove('origin');
+  }
+
   return out;
 }
 
@@ -311,6 +319,12 @@ bool isMovieBoxCdnStreamUrl(String url) {
 }
 
 bool _isVidnestMovieBoxCdn(String url) => isMovieBoxCdnStreamUrl(url);
+
+/// YouTube videoplayback CDN — mpv must not send googlevideo self-Referer.
+bool isGooglevideoPlaybackUrl(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  return host.contains('googlevideo.com');
+}
 
 /// Vidlink mwVault play URLs (mooncase mp / suubmon sacdn) embed upstream
 /// headers in query params — mpv must not add Referer/Origin on top.
