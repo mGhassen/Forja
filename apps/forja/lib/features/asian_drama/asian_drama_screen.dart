@@ -40,12 +40,6 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
         AutomaticKeepAliveClientMixin,
         WidgetsBindingObserver,
         ShellTabRefresh<AsianDramaScreen> {
-  /// KissKH `/Drama/{id}` hero synopsis - kept but off (burns shared IP).
-  static const bool _kissKhHeroSynopsisEnrich = false;
-
-  /// Trial: fill hero overview from TMDB search instead of KissKH details.
-  static const bool _tmdbHeroSynopsisEnrich = true;
-
   final KissKhService _service = KissKhService();
   final ScrollController _scroll = ScrollController();
 
@@ -57,8 +51,8 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
   /// Last provider emission applied to local state (bridge skips [ref.listen]'s
   /// missed initial value when the tab was hidden or already resolved).
   KdramaHomeFeed? _appliedFeed;
-  /// Hero carousel source — decoupled from rail merges so PageView focus nodes
-  /// are not torn down when [asianDramaFeedProvider] appends catalog rows.
+  /// Frozen hero carousel source — same contract as Anime hub: rails must not
+  /// replace these from the parent (hero child owns TMDB synopsis enrich).
   List<KdramaCard> _heroCards = const [];
   bool _loading = true;
   String? _error;
@@ -219,95 +213,6 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
     return done.future;
   }
 
-  Future<void> _enrichFeed(KdramaHomeFeed feed, int gen) async {
-    if (_tmdbHeroSynopsisEnrich) {
-      await _enrichFeedFromTmdb(feed, gen);
-      return;
-    }
-    if (_kissKhHeroSynopsisEnrich) {
-      await _enrichFeedFromKissKh(feed, gen);
-    }
-  }
-
-  /// Kept for later - KissKH list endpoints omit synopsis; this hits
-  /// `/Drama/{id}` per hero card and shares the Play rate-limit bucket.
-  // ignore: unused_element
-  Future<void> _enrichFeedFromKissKh(KdramaHomeFeed feed, int gen) async {
-    try {
-      final hero = _heroCardsFrom(feed);
-      if (hero.any((c) => c.description.trim().isEmpty)) {
-        final withSynopsis = await _service.enrichCardDescriptions(hero);
-        final working = feed.withCardsReplaced(withSynopsis);
-      if (!mounted || !shellTabVisible || gen != _loadGen) return;
-      setState(() {
-        final current = _feed ?? working;
-        _feed = current.withCardsReplaced(withSynopsis);
-        _heroCards = _mergeHeroCards(_heroCards, withSynopsis);
-      });
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _enrichFeedFromTmdb(KdramaHomeFeed feed, int gen) async {
-    try {
-      final hero = _heroCardsFrom(feed);
-      if (hero.every((c) => c.description.trim().isNotEmpty)) return;
-
-      final enriched = await Future.wait(
-        hero.map((card) async {
-          if (card.description.trim().isNotEmpty) return card;
-          final overview = await _tmdbOverviewForKissKhTitle(
-            card.title,
-            year: card.year,
-            kissKhType: card.type,
-            tmdbId: card.tmdbId,
-          );
-          if (overview == null || overview.isEmpty) return card;
-          return card.copyWith(description: overview);
-        }),
-      );
-      if (!mounted || !shellTabVisible || gen != _loadGen) return;
-      setState(() {
-        final current = _feed ?? feed;
-        _feed = current.withCardsReplaced(enriched);
-        _heroCards = _mergeHeroCards(_heroCards, enriched);
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[AsianDrama] TMDB hero synopsis enrich failed: $e');
-      }
-    }
-  }
-
-  /// Best-effort TMDB match for a KissKH title (prefer TV, then year).
-  Future<String?> _tmdbOverviewForKissKhTitle(
-    String title, {
-    String? year,
-    String? kissKhType,
-    int? tmdbId,
-  }) async {
-    if (tmdbId != null && tmdbId > 0) {
-      final preferMovie = KissKhTmdbMatch.preferMovie(kissKhType);
-      final primary = preferMovie ? 'movie' : 'tv';
-      final secondary = preferMovie ? 'tv' : 'movie';
-      for (final mediaType in [primary, secondary]) {
-        try {
-          final rich = await TmdbApi().getRichDetails(tmdbId, mediaType);
-          final overview = rich.movie.overview.trim();
-          if (overview.isNotEmpty) return overview;
-        } catch (_) {}
-      }
-    }
-    final match = await KissKhTmdbMatch.resolve(
-      title: title,
-      year: year,
-      kissKhType: kissKhType,
-    );
-    final overview = match?.overview.trim() ?? '';
-    if (overview.isEmpty) return null;
-    return overview;
-  }
-
   List<KdramaCard> _heroCardsFrom(KdramaHomeFeed feed) {
     if (feed.spotlight.isNotEmpty) return feed.spotlight.take(8).toList();
     if (feed.latest.isNotEmpty) return feed.latest.take(8).toList();
@@ -322,42 +227,21 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
     return true;
   }
 
-  List<KdramaCard> _mergeHeroCards(
-    List<KdramaCard> current,
-    List<KdramaCard> updates,
-  ) {
-    if (updates.isEmpty) return current;
-    final byId = {for (final c in updates) c.id: c};
-    if (current.isEmpty) {
-      return updates.take(8).toList();
-    }
-    return [
-      for (final c in current) byId[c.id] ?? c,
-    ];
-  }
-
-  void _syncHeroCardsFromFeed(KdramaHomeFeed feed) {
-    final incoming = _heroCardsFrom(feed);
-    if (_heroCards.isEmpty || !_sameHeroIds(_heroCards, incoming)) {
-      _heroCards = incoming;
-    }
-  }
-
   void _applyFeedFromProvider(KdramaHomeFeed feed) {
     if (!mounted) return;
-    final hadHero = _heroCards.isNotEmpty;
+    final incomingHero = _heroCardsFrom(feed);
+    final heroChanged =
+        _heroCards.isEmpty || !_sameHeroIds(_heroCards, incomingHero);
     _appliedFeed = feed;
     setState(() {
       _feed = feed;
-      _syncHeroCardsFromFeed(feed);
+      // Same as Anime: freeze hero source across rail fills so TMDB enrich /
+      // PageView focus nodes are not torn down by catalog updates.
+      if (heroChanged) _heroCards = incomingHero;
       _loading = false;
       _error = null;
     });
     markShellTabFresh();
-    unawaited(_enrichFeed(feed, _loadGen));
-    if (!hadHero && _heroCards.isNotEmpty) {
-      _scheduleHeroEnterFocus();
-    }
   }
 
   void _handleFeedAsync(AsyncValue<KdramaHomeFeed> next) {
@@ -375,21 +259,6 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
       },
       data: _applyFeedFromProvider,
     );
-  }
-
-  /// Retry nav → hero when cards arrive after [enterFromNavFocus] ran on shimmer.
-  void _scheduleHeroEnterFocus() {
-    void attempt(int n) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !shellTabVisible) return;
-        if (ShellTvFocus.currentNavTabId != 'asian_drama') return;
-        ShellTvFocusCoordinator.revealHeroForTab('asian_drama');
-        if (ShellTvFocus.focusHomeHeroPlay()) return;
-        if (n < 8) attempt(n + 1);
-      });
-    }
-
-    attempt(0);
   }
 
   void _openDetails(KdramaCard a) {
@@ -667,25 +536,22 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                         )
                       else ...[
                         SliverToBoxAdapter(
-                          child: heroCards.isEmpty
-                              ? homeCinematicHeroShimmer(
-                                  context,
-                                  pageBottomBleed: latestOnHero,
-                                )
-                              : HomeCinematicHero.hub(
-                                  slides: _heroSlides(heroCards),
-                                  tvTabId: 'asian_drama',
-                                  scrollController: _scroll,
-                                  onSearch: _openSearch,
-                                  firstCatalogRowHeight: latestSection == null
-                                      ? null
-                                      : HubCatalogSection.sectionHeight(
-                                          context,
-                                          compactTop: true,
-                                          cardAspect: HubPosterAspect.landscape,
-                                        ),
-                                  pageBottomChild: latestSection,
-                                ),
+                          child: _AsianDramaHubHeroSection(
+                            heroCards: heroCards,
+                            buildSlides: _heroSlides,
+                            tvTabId: 'asian_drama',
+                            scrollController: _scroll,
+                            onSearch: _openSearch,
+                            latestOnHero: latestOnHero,
+                            pageBottomChild: latestSection,
+                            firstCatalogRowHeight: latestSection == null
+                                ? null
+                                : HubCatalogSection.sectionHeight(
+                                    context,
+                                    compactTop: true,
+                                    cardAspect: HubPosterAspect.landscape,
+                                  ),
+                          ),
                         ),
                         if (_continueWatching.isNotEmpty)
                           hubRowSliver(
@@ -856,6 +722,140 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
       cardFromEntry: _cardFromHistoryEntry,
       tvRowOrder: tvRowOrder,
       tvFocusUp: tvFocusUp,
+    );
+  }
+}
+
+/// Hero + TMDB synopsis enrich isolated from the hub scroll view — same
+/// pattern as Anime `_AnimeHubHeroSection`. Catalog D-pad focus must not
+/// drop when synopsis fills in or rails land.
+class _AsianDramaHubHeroSection extends StatefulWidget {
+  const _AsianDramaHubHeroSection({
+    required this.heroCards,
+    required this.buildSlides,
+    required this.tvTabId,
+    required this.scrollController,
+    required this.onSearch,
+    required this.latestOnHero,
+    this.pageBottomChild,
+    this.firstCatalogRowHeight,
+  });
+
+  final List<KdramaCard> heroCards;
+  final List<HubHeroSlide> Function(List<KdramaCard>) buildSlides;
+  final String tvTabId;
+  final ScrollController scrollController;
+  final VoidCallback onSearch;
+  final bool latestOnHero;
+  final Widget? pageBottomChild;
+  final double? firstCatalogRowHeight;
+
+  @override
+  State<_AsianDramaHubHeroSection> createState() =>
+      _AsianDramaHubHeroSectionState();
+}
+
+class _AsianDramaHubHeroSectionState extends State<_AsianDramaHubHeroSection> {
+  List<KdramaCard> _cards = const [];
+  int _enrichGen = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _cards = widget.heroCards;
+    if (_cards.isNotEmpty) {
+      unawaited(_enrichSynopsis(_cards));
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _AsianDramaHubHeroSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_sameHeroIds(oldWidget.heroCards, widget.heroCards)) {
+      setState(() => _cards = widget.heroCards);
+      if (widget.heroCards.isNotEmpty) {
+        unawaited(_enrichSynopsis(widget.heroCards));
+      }
+    }
+  }
+
+  bool _sameHeroIds(List<KdramaCard> a, List<KdramaCard> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
+  }
+
+  Future<void> _enrichSynopsis(List<KdramaCard> cards) async {
+    final gen = ++_enrichGen;
+    if (cards.every((c) => c.description.trim().isNotEmpty)) return;
+    try {
+      final enriched = await Future.wait(
+        cards.map((card) async {
+          if (card.description.trim().isNotEmpty) return card;
+          final overview = await _tmdbOverviewForKissKhTitle(
+            card.title,
+            year: card.year,
+            kissKhType: card.type,
+            tmdbId: card.tmdbId,
+          );
+          if (overview == null || overview.isEmpty) return card;
+          return card.copyWith(description: overview);
+        }),
+      );
+      if (!mounted || gen != _enrichGen) return;
+      setState(() => _cards = enriched);
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AsianDramaHubHero] TMDB synopsis enrich failed: $e');
+      }
+    }
+  }
+
+  Future<String?> _tmdbOverviewForKissKhTitle(
+    String title, {
+    String? year,
+    String? kissKhType,
+    int? tmdbId,
+  }) async {
+    if (tmdbId != null && tmdbId > 0) {
+      final preferMovie = KissKhTmdbMatch.preferMovie(kissKhType);
+      final primary = preferMovie ? 'movie' : 'tv';
+      final secondary = preferMovie ? 'tv' : 'movie';
+      for (final mediaType in [primary, secondary]) {
+        try {
+          final rich = await TmdbApi().getRichDetails(tmdbId, mediaType);
+          final overview = rich.movie.overview.trim();
+          if (overview.isNotEmpty) return overview;
+        } catch (_) {}
+      }
+    }
+    final match = await KissKhTmdbMatch.resolve(
+      title: title,
+      year: year,
+      kissKhType: kissKhType,
+    );
+    final overview = match?.overview.trim() ?? '';
+    if (overview.isEmpty) return null;
+    return overview;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_cards.isEmpty) {
+      return homeCinematicHeroShimmer(
+        context,
+        pageBottomBleed: widget.latestOnHero,
+      );
+    }
+    return HomeCinematicHero.hub(
+      slides: widget.buildSlides(_cards),
+      tvTabId: widget.tvTabId,
+      scrollController: widget.scrollController,
+      onSearch: widget.onSearch,
+      firstCatalogRowHeight: widget.firstCatalogRowHeight,
+      pageBottomChild: widget.pageBottomChild,
     );
   }
 }

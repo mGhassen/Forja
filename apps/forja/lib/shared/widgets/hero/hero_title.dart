@@ -374,8 +374,8 @@ class _HomeHeroTitleSlot extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       placeholder: (_, _) => title,
                       errorWidget: (_, _, _) => title,
-                      fadeInDuration: const Duration(milliseconds: 550),
-                      fadeOutDuration: const Duration(milliseconds: 450),
+                      fadeInDuration: Duration.zero,
+                      fadeOutDuration: Duration.zero,
                     ),
                   ),
                 )

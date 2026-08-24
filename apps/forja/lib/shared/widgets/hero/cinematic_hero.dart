@@ -279,8 +279,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   double? _heroPageViewportWidth;
   bool _searchFocused = false;
   bool _searchHovered = false;
-  /// True while the carousel is mid-swipe (auto or manual).
-  bool _heroCarouselScrolling = false;
 
   void _syncSharedHeroFocusNodes() {
     if (ShellTvFocus.currentNavTabId != widget.tvTabId) return;
@@ -304,20 +302,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       widget.controller?.revealPlayFocus = _revealedHeroPlayFocus;
     }
     _startHeroTimer();
-    _heroController.addListener(_onHeroCarouselTick);
-  }
-
-  void _onHeroCarouselTick() {
-    if (!mounted || !_heroController.hasClients) return;
-    final page = _heroController.page;
-    if (page == null) return;
-    final scrolling = (page - page.roundToDouble()).abs() > 0.001;
-    if (scrolling == _heroCarouselScrolling) return;
-    _heroCarouselScrolling = scrolling;
-    if (scrolling && _tvHeroPlayFocus.hasFocus) {
-      _tvHeroPlayFocus.unfocus();
-    }
-    setState(() {});
   }
 
   /// Unfocus + defer dispose so FocusManager's microtask notify does not hit
@@ -348,7 +332,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       });
     }
     _heroTimer?.cancel();
-    _heroController.removeListener(_onHeroCarouselTick);
     _heroController.dispose();
     _disposeFocusNode(_tvHeroPlayFocus);
     _disposeFocusNode(_tvHeroGalleryFocus);
@@ -533,8 +516,9 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final count = items.length;
     var next = (_heroIndex + delta) % count;
     if (next < 0) next += count;
-    final instant = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    _goToHeroStep(next, items, instant: instant);
+    // Always animate — instant jump made title/buttons look pinned while only
+    // the incoming backdrop appeared to change.
+    _goToHeroStep(next, items);
   }
 
   void _revealedHeroPlayFocus() {
@@ -770,7 +754,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     required double textTop,
     required double textBottomInset,
     required double textColumnWidth,
-    required double solidLeftWidth,
     required Color shellBg,
     required double imageStartFraction,
     required bool pageBleed,
@@ -789,23 +772,21 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         _heroPageViewportWidth = pageW;
 
         return PageView.builder(
-          clipBehavior: Clip.none,
+          clipBehavior: Clip.hardEdge,
           controller: _heroController,
           itemCount: _heroLoopLength,
           onPageChanged: (i) => _onHeroPageChanged(i, items),
           itemBuilder: (context, index) {
             final item = items[index % items.length];
             final slideIndex = index % items.length;
+            // One page = backdrop + gradients + title/actions. Full-bleed image
+            // under the text column so chrome slides with the art (not a fixed
+            // left slab with only the right image moving).
             return Stack(
               fit: StackFit.expand,
-              clipBehavior: Clip.none,
+              clipBehavior: Clip.hardEdge,
               children: [
-                ColoredBox(color: shellBg),
-                Positioned(
-                  left: solidLeftWidth,
-                  top: 0,
-                  right: 0,
-                  bottom: 0,
+                Positioned.fill(
                   child: _buildHeroSlideBackdrop(item, index),
                 ),
                 Positioned.fill(
@@ -1042,7 +1023,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               textTop: textTop,
               textBottomInset: textBottomInset,
               textColumnWidth: textColumnWidth,
-              solidLeftWidth: solidLeftWidth,
               shellBg: shellBg,
               imageStartFraction: imageStartFraction,
               pageBleed: pageBleed,
@@ -1739,9 +1719,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     // Inactive PageView slides must not mount focusable controls. Passing
     // focusNode:null with onTap set makes ForjaInteractive own+dispose a
     // forja-interactive node on every carousel step → FocusManager crash.
-    // During scroll, skip the shared Play node so D-pad focus does not pin
-    // the pill at a fixed screen position while the slide moves underneath.
-    final focusable = isActive && !_heroCarouselScrolling;
+    final focusable = isActive;
     final tabId = widget.tvTabId;
     final details = HeroPillPlayButton(
       label: 'View details',
