@@ -1099,14 +1099,6 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   Widget _buildWideBody() {
-    final groups = widget.guide.groups;
-    final focusedGroupId = groups.isEmpty
-        ? _browseGroupId
-        : groups[_focusedGroupIndex.clamp(0, groups.length - 1)].id;
-    final pendingCommit = iptvUseTvFocus(context) &&
-        _focusColumn == _FocusColumn.groups &&
-        focusedGroupId != _browseGroupId;
-
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1123,29 +1115,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
           child: _panelColumn(
             tint: _channelsTint,
             showDivider: false,
-            child: pendingCommit
-                ? _buildPressOkToOpenGroup()
-                : _buildChannelList(_browseGroupId),
+            // Keep the open group's channels while hovering / D-pad focusing
+            // another category — only click / OK / → swaps the list.
+            child: _buildChannelList(_browseGroupId),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildPressOkToOpenGroup() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Text(
-          'Press OK to open',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.plusJakartaSans(
-            color: Colors.white54,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
     );
   }
 
