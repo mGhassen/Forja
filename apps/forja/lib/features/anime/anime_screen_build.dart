@@ -199,28 +199,15 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                             ),
                             slivers: [
                               SliverToBoxAdapter(
-                                child: FutureBuilder<List<AnimeCard>>(
-                                  future: spotlightFuture,
-                                  builder: (context, snap) {
-                                    if (snap.connectionState ==
-                                            ConnectionState.waiting ||
-                                        !snap.hasData ||
-                                        snap.data!.isEmpty) {
-                                      return homeCinematicHeroShimmer(
-                                        context,
-                                        pageBottomBleed: trendingOnHero,
-                                      );
-                                    }
-                                    return HomeCinematicHero.hub(
-                                      slides: _heroSlides(
-                                        snap.data!.take(5).toList(),
-                                      ),
-                                      tvTabId: 'anime',
-                                      scrollController: _s._scroll,
-                                      onSearch: _s._openSearch,
-                                      pageBottomChild: trendingSection,
-                                    );
-                                  },
+                                child: _AnimeHubHeroSection(
+                                  spotlightFuture: spotlightFuture,
+                                  service: _s._service,
+                                  buildSlides: _heroSlides,
+                                  tvTabId: 'anime',
+                                  scrollController: _s._scroll,
+                                  onSearch: _s._openSearch,
+                                  trendingOnHero: trendingOnHero,
+                                  pageBottomChild: trendingSection,
                                 ),
                               ),
                               if (_s._continueWatching.isNotEmpty)
@@ -643,6 +630,95 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
     return ShellErrorRetryPanel(
       message: _s._error ?? 'Something went wrong',
       onRetry: _s._load,
+    );
+  }
+}
+
+/// Hero + TMDB backdrop enrich isolated from the hub scroll view so catalog
+/// D-pad focus is not dropped when backdrops swap in.
+class _AnimeHubHeroSection extends StatefulWidget {
+  const _AnimeHubHeroSection({
+    required this.spotlightFuture,
+    required this.service,
+    required this.buildSlides,
+    required this.tvTabId,
+    required this.scrollController,
+    required this.onSearch,
+    required this.trendingOnHero,
+    this.pageBottomChild,
+  });
+
+  final Future<List<AnimeCard>> spotlightFuture;
+  final AnimeService service;
+  final List<HubHeroSlide> Function(List<AnimeCard>) buildSlides;
+  final String tvTabId;
+  final ScrollController scrollController;
+  final VoidCallback onSearch;
+  final bool trendingOnHero;
+  final Widget? pageBottomChild;
+
+  @override
+  State<_AnimeHubHeroSection> createState() => _AnimeHubHeroSectionState();
+}
+
+class _AnimeHubHeroSectionState extends State<_AnimeHubHeroSection> {
+  List<AnimeCard>? _cards;
+  int _loadGen = 0;
+  int _enrichGen = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeSpotlight(widget.spotlightFuture);
+  }
+
+  @override
+  void didUpdateWidget(covariant _AnimeHubHeroSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.spotlightFuture, widget.spotlightFuture)) {
+      _subscribeSpotlight(widget.spotlightFuture);
+    }
+  }
+
+  void _subscribeSpotlight(Future<List<AnimeCard>> future) {
+    final gen = ++_loadGen;
+    _cards = null;
+    future.then((list) {
+      if (!mounted || gen != _loadGen || list.isEmpty) return;
+      setState(() => _cards = list);
+      unawaited(_enrichTmdb(list, gen));
+    }).catchError((_) {});
+  }
+
+  Future<void> _enrichTmdb(List<AnimeCard> list, int loadGen) async {
+    final enrichGen = ++_enrichGen;
+    try {
+      final head = list.take(5).toList();
+      final enrichedHead = await widget.service.attachTmdbBackdrops(head);
+      if (!mounted || loadGen != _loadGen || enrichGen != _enrichGen) return;
+      final byId = {for (final c in enrichedHead) c.id: c};
+      final merged = [for (final c in list) byId[c.id] ?? c];
+      setState(() => _cards = merged);
+    } catch (e) {
+      debugPrint('[AnimeHubHero] TMDB enrich failed: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = _cards;
+    if (cards == null || cards.isEmpty) {
+      return homeCinematicHeroShimmer(
+        context,
+        pageBottomBleed: widget.trendingOnHero,
+      );
+    }
+    return HomeCinematicHero.hub(
+      slides: widget.buildSlides(cards.take(5).toList()),
+      tvTabId: widget.tvTabId,
+      scrollController: widget.scrollController,
+      onSearch: widget.onSearch,
+      pageBottomChild: widget.pageBottomChild,
     );
   }
 }

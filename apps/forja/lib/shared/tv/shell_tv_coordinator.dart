@@ -151,7 +151,26 @@ abstract final class ShellTvFocusCoordinator {
     final enter = _tabEnterFocus[tabId];
     if (enter == null) return false;
     enter();
-    return true;
+    return _pageHasFocus();
+  }
+
+  /// OK / click on a nav item: select tab, then land page focus (hero Play, etc.).
+  ///
+  /// Retries across frames when hub heroes are still on shimmer; falls back to
+  /// [restoreTabFocusAfterNav] so focus does not stay on the rail silently.
+  static void enterTabFromNav(String tabId) {
+    void attempt({required int remaining}) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (focusTabEnterFromNav(tabId) && _pageHasFocus()) return;
+        if (remaining > 0) {
+          attempt(remaining: remaining - 1);
+          return;
+        }
+        restoreTabFocusAfterNav(tabId);
+      });
+    }
+
+    attempt(remaining: 6);
   }
 
   // --- Nav order ---

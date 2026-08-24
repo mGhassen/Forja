@@ -279,6 +279,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   double? _heroPageViewportWidth;
   bool _searchFocused = false;
   bool _searchHovered = false;
+  /// True while the carousel is mid-swipe (auto or manual).
+  bool _heroCarouselScrolling = false;
 
   void _syncSharedHeroFocusNodes() {
     if (ShellTvFocus.currentNavTabId != widget.tvTabId) return;
@@ -302,6 +304,20 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       widget.controller?.revealPlayFocus = _revealedHeroPlayFocus;
     }
     _startHeroTimer();
+    _heroController.addListener(_onHeroCarouselTick);
+  }
+
+  void _onHeroCarouselTick() {
+    if (!mounted || !_heroController.hasClients) return;
+    final page = _heroController.page;
+    if (page == null) return;
+    final scrolling = (page - page.roundToDouble()).abs() > 0.001;
+    if (scrolling == _heroCarouselScrolling) return;
+    _heroCarouselScrolling = scrolling;
+    if (scrolling && _tvHeroPlayFocus.hasFocus) {
+      _tvHeroPlayFocus.unfocus();
+    }
+    setState(() {});
   }
 
   /// Unfocus + defer dispose so FocusManager's microtask notify does not hit
@@ -332,6 +348,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       });
     }
     _heroTimer?.cancel();
+    _heroController.removeListener(_onHeroCarouselTick);
     _heroController.dispose();
     _disposeFocusNode(_tvHeroPlayFocus);
     _disposeFocusNode(_tvHeroGalleryFocus);
@@ -772,7 +789,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         _heroPageViewportWidth = pageW;
 
         return PageView.builder(
-          clipBehavior: Clip.hardEdge,
+          clipBehavior: Clip.none,
           controller: _heroController,
           itemCount: _heroLoopLength,
           onPageChanged: (i) => _onHeroPageChanged(i, items),
@@ -1722,7 +1739,9 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     // Inactive PageView slides must not mount focusable controls. Passing
     // focusNode:null with onTap set makes ForjaInteractive own+dispose a
     // forja-interactive node on every carousel step → FocusManager crash.
-    final focusable = isActive;
+    // During scroll, skip the shared Play node so D-pad focus does not pin
+    // the pill at a fixed screen position while the slide moves underneath.
+    final focusable = isActive && !_heroCarouselScrolling;
     final tabId = widget.tvTabId;
     final details = HeroPillPlayButton(
       label: 'View details',

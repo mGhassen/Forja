@@ -26,31 +26,6 @@ mixin _AnimeScreenFeed on ConsumerState<AnimeScreen>, ShellTabRefresh<AnimeScree
     if (mounted) setState(() {});
   }
 
-  /// Hero paints AniList art immediately; TMDB backdrops swap in later.
-  Future<void> _enrichSpotlightTmdb(
-    int gen,
-    Future<List<AnimeCard>> spotlightFuture,
-  ) async {
-    try {
-      final list = await spotlightFuture;
-      if (!mounted || !shellTabVisible || gen != _s._loadGen || list.isEmpty) {
-        return;
-      }
-      final head = list.take(5).toList();
-      final enrichedHead = await _s._service.attachTmdbBackdrops(head);
-      if (!mounted || !shellTabVisible || gen != _s._loadGen) return;
-      final byId = {for (final c in enrichedHead) c.id: c};
-      final merged = [
-        for (final c in list) byId[c.id] ?? c,
-      ];
-      setState(() {
-        _s._spotlightFuture = Future.value(merged);
-      });
-    } catch (e) {
-      debugPrint('[AnimeScreen] spotlight TMDB enrich failed: $e');
-    }
-  }
-
   Future<void> _load() async {
     if (!mounted || !shellTabVisible) return;
     final container = _s._container;

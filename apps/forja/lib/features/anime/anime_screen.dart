@@ -213,7 +213,6 @@ class _AnimeScreenState extends ConsumerState<AnimeScreen>
       _top10Future = load.top10;
       _recentEpisodesFuture = load.recentEpisodes;
     });
-    unawaited(_enrichSpotlightTmdb(gen, spotlight));
     unawaited(_settleCatalog(gen, load));
   }
 
@@ -224,13 +223,17 @@ class _AnimeScreenState extends ConsumerState<AnimeScreen>
         return;
       }
       final hasCatalog = sections.any((s) => s.isNotEmpty);
-      setState(() {
+      if (!hasCatalog) {
+        setState(() {
+          _catalogResolved = true;
+          _error = 'Failed to load anime - check your connection';
+        });
+      } else {
+        // Catalog rows already paint per-section — no parent rebuild (keeps TV focus).
         _catalogResolved = true;
-        _error = hasCatalog
-            ? null
-            : 'Failed to load anime - check your connection';
-      });
-      if (hasCatalog) markShellTabFresh();
+        _error = null;
+        markShellTabFresh();
+      }
     } catch (e) {
       if (!mounted || gen != _loadGen) return;
       setState(() {

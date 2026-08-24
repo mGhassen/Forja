@@ -890,12 +890,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
 
   void _enterPageFromNav() {
     widget.onTap();
-    final tabId = widget.destination.id;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!ShellTvFocusCoordinator.focusTabEnterFromNav(tabId)) {
-        ShellTvFocusCoordinator.restoreTabFocusAfterNav(tabId);
-      }
-    });
+    ShellTvFocusCoordinator.enterTabFromNav(widget.destination.id);
   }
 
   void _returnToActivePage() {

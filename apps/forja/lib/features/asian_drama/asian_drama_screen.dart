@@ -111,6 +111,12 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
   @override
   void onShellTabShown() {
     super.onShellTabShown();
+    if (_feed != null && _error == null) return;
+    final container = _container;
+    if (container != null) {
+      final cached = container.read(asianDramaFeedProvider);
+      if (cached.hasValue) return;
+    }
     if (_feed == null || _error != null) {
       unawaited(_load());
     }
@@ -379,7 +385,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
         if (ShellTvFocus.currentNavTabId != 'asian_drama') return;
         ShellTvFocusCoordinator.revealHeroForTab('asian_drama');
         if (ShellTvFocus.focusHomeHeroPlay()) return;
-        if (n < 3) attempt(n + 1);
+        if (n < 8) attempt(n + 1);
       });
     }
 
@@ -595,7 +601,12 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
       builder: (context, _, _) {
         final fullHero = hubIsFullCinematicHero(context);
         final usesShell = hubUsesShellLayout(context);
-        final latestList = _feed?.latest ?? const <KdramaCard>[];
+        final liveFeed = feedAsync.asData?.value;
+        final displayFeed = _feed ?? liveFeed;
+        final heroCards = _heroCards.isNotEmpty
+            ? _heroCards
+            : (liveFeed != null ? _heroCardsFrom(liveFeed) : const <KdramaCard>[]);
+        final latestList = displayFeed?.latest ?? const <KdramaCard>[];
         final latestOnHero = usesShell && fullHero && latestList.isNotEmpty;
         final latestAsCatalogRow = !latestOnHero && latestList.isNotEmpty;
         final latestOrder = _latestOrder(latestOnHero: latestOnHero);
@@ -637,7 +648,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                       parent: BouncingScrollPhysics(),
                     ),
                     slivers: [
-                      if (_feed == null && _loading)
+                      if (displayFeed == null && _loading)
                         ...homeHubLoadingSlivers(
                           context,
                           heroShimmer: homeCinematicHeroShimmer(
@@ -656,13 +667,13 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                         )
                       else ...[
                         SliverToBoxAdapter(
-                          child: _heroCards.isEmpty
+                          child: heroCards.isEmpty
                               ? homeCinematicHeroShimmer(
                                   context,
                                   pageBottomBleed: latestOnHero,
                                 )
                               : HomeCinematicHero.hub(
-                                  slides: _heroSlides(_heroCards),
+                                  slides: _heroSlides(heroCards),
                                   tvTabId: 'asian_drama',
                                   scrollController: _scroll,
                                   onSearch: _openSearch,
@@ -710,12 +721,12 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                             ),
                             isFirstAfterHero: _continueWatching.isEmpty,
                           ),
-                        if ((_feed?.trending ?? const []).isNotEmpty)
+                        if ((displayFeed?.trending ?? const []).isNotEmpty)
                           hubRowSliver(
                             context,
                             HubCatalogSection<KdramaCard>(
                               title: 'Trending',
-                              items: _feed!.trending,
+                              items: displayFeed!.trending,
                               cardAspect: HubPosterAspect.landscape,
                               tvTabId: 'asian_drama',
                               tvRowId: 'trending',
@@ -729,12 +740,12 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                             ),
                             isFirstAfterHero: false,
                           ),
-                        if ((_feed?.topRated ?? const []).isNotEmpty)
+                        if ((displayFeed?.topRated ?? const []).isNotEmpty)
                           hubRowSliver(
                             context,
                             HubCatalogSection<KdramaCard>(
                               title: 'Top Rated',
-                              items: _feed!.topRated,
+                              items: displayFeed!.topRated,
                               showRank: true,
                               cardAspect: HubPosterAspect.landscape,
                               tvTabId: 'asian_drama',
@@ -750,12 +761,12 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                             ),
                             isFirstAfterHero: false,
                           ),
-                        if ((_feed?.mostViewed ?? const []).isNotEmpty)
+                        if ((displayFeed?.mostViewed ?? const []).isNotEmpty)
                           hubRowSliver(
                             context,
                             HubCatalogSection<KdramaCard>(
                               title: 'Most Viewed',
-                              items: _feed!.mostViewed,
+                              items: displayFeed!.mostViewed,
                               cardAspect: HubPosterAspect.landscape,
                               tvTabId: 'asian_drama',
                               tvRowId: 'most-viewed',
@@ -769,12 +780,12 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                             ),
                             isFirstAfterHero: false,
                           ),
-                        if ((_feed?.anime ?? const []).isNotEmpty)
+                        if ((displayFeed?.anime ?? const []).isNotEmpty)
                           hubRowSliver(
                             context,
                             HubCatalogSection<KdramaCard>(
                               title: 'Anime',
-                              items: _feed!.anime,
+                              items: displayFeed!.anime,
                               cardAspect: HubPosterAspect.landscape,
                               tvTabId: 'asian_drama',
                               tvRowId: 'anime',
@@ -788,12 +799,12 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                             ),
                             isFirstAfterHero: false,
                           ),
-                        if ((_feed?.upcoming ?? const []).isNotEmpty)
+                        if ((displayFeed?.upcoming ?? const []).isNotEmpty)
                           hubRowSliver(
                             context,
                             HubCatalogSection<KdramaCard>(
                               title: 'Upcoming',
-                              items: _feed!.upcoming,
+                              items: displayFeed!.upcoming,
                               cardAspect: HubPosterAspect.landscape,
                               tvTabId: 'asian_drama',
                               tvRowId: 'upcoming',
