@@ -17,10 +17,11 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
     if (!_s._ready) return;
     _s._hideTimer?.cancel();
     if (!_s._showControls) setState(() => _s._showControls = true);
+    await _s._ensureCaptionsLoaded();
+    if (!context.mounted) return;
     final tracks = _s._streams?.captions ?? const <YoutubeCaptionTrack>[];
     final activeCode = _s._activeCaptionCode;
 
-    if (!mounted) return;
     await PlayerPopupPanel.show(
       context: context,
       title: 'Subtitles',

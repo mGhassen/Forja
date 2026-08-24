@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/details_tokens.dart';
 import 'package:forja/shared/design/src/shell_section_title.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
+import 'package:forja/shared/services/youtube_stream_service.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
@@ -12,7 +13,7 @@ import 'package:rust/rust.dart';
 
 const _kTrailerCardWidth = 200.0;
 
-class MediaDetailsTrailersSection extends StatelessWidget {
+class MediaDetailsTrailersSection extends StatefulWidget {
   const MediaDetailsTrailersSection({
     super.key,
     required this.trailers,
@@ -35,13 +36,48 @@ class MediaDetailsTrailersSection extends StatelessWidget {
   final VoidCallback? tvFocusUp;
 
   @override
+  State<MediaDetailsTrailersSection> createState() =>
+      _MediaDetailsTrailersSectionState();
+}
+
+class _MediaDetailsTrailersSectionState
+    extends State<MediaDetailsTrailersSection> {
+  @override
+  void initState() {
+    super.initState();
+    _prefetch();
+  }
+
+  @override
+  void didUpdateWidget(covariant MediaDetailsTrailersSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_sameKeys(oldWidget.trailers, widget.trailers)) {
+      _prefetch();
+    }
+  }
+
+  void _prefetch() {
+    YoutubeStreamService.prefetch(widget.trailers.map((t) => t.key));
+  }
+
+  bool _sameKeys(List<MediaTrailer> a, List<MediaTrailer> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].key != b[i].key) return false;
+    }
+    return true;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final trailers = widget.trailers;
     if (trailers.isEmpty) return const SizedBox.shrink();
 
-    final tabId = tvTabId ?? ShellTvFocus.currentNavTabId;
-    final rowId = tvRowId ?? 'trailers';
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    final rowId = widget.tvRowId ?? 'trailers';
 
-    final outdent = outdentHorizontal;
+    final outdent = widget.outdentHorizontal;
     final useHomeInsets = outdent > 0;
     final homePad = ShellTokens.homeSectionHorizontalPadding;
     // Catalog focus scale (desktop hover / TV focus) needs vertical room on the thumb only.
@@ -76,10 +112,10 @@ class MediaDetailsTrailersSection extends StatelessWidget {
             itemBuilder: (context, index) => _TrailerCard(
               trailers: trailers,
               index: index,
-              movie: movie,
-              languageCode: languageCode,
+              movie: widget.movie,
+              languageCode: widget.languageCode,
               tvTabId: tabId,
-              tvRowId: tvRowId != null ? rowId : null,
+              tvRowId: widget.tvRowId != null ? rowId : null,
             ),
           ),
         ),
@@ -100,14 +136,14 @@ class MediaDetailsTrailersSection extends StatelessWidget {
             },
           );
 
-    if (tabId == null || tvRowId == null) return child;
+    if (tabId == null || widget.tvRowId == null) return child;
 
     return TvCatalogRow(
       tabId: tabId,
       rowId: rowId,
-      sortOrder: tvRowOrder,
+      sortOrder: widget.tvRowOrder,
       itemCount: trailers.length,
-      onFocusUp: tvFocusUp,
+      onFocusUp: widget.tvFocusUp,
       child: child,
     );
   }

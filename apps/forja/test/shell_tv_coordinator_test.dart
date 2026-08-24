@@ -1147,4 +1147,110 @@ void main() {
 
     play.dispose();
   });
+
+  test('row unregister from stale PageView owner keeps active registration', () {
+    const tab = 'home';
+    const row = MediaDetailsTv.heroRowId;
+    final ownerA = Object();
+    final ownerB = Object();
+
+    shellTvRegisterRow(
+      tabId: tab,
+      rowId: row,
+      sortOrder: MediaDetailsTv.heroRowSortOrder,
+      itemCount: 2,
+      owner: ownerA,
+    );
+    // Active slide registers after (or before) the inactive sibling.
+    shellTvRegisterRow(
+      tabId: tab,
+      rowId: row,
+      sortOrder: MediaDetailsTv.heroRowSortOrder,
+      itemCount: 2,
+      owner: ownerB,
+    );
+    // Deactivating slide must not wipe the active owner.
+    shellTvUnregisterRow(tabId: tab, rowId: row, owner: ownerA);
+
+    expect(ShellTvFocusCoordinator.rowHandle(tab, row), isNotNull);
+    expect(ShellTvFocusCoordinator.rowHandle(tab, row)!.itemCount, 2);
+
+    shellTvUnregisterRow(tabId: tab, rowId: row, owner: ownerB);
+    expect(ShellTvFocusCoordinator.rowHandle(tab, row), isNull);
+  });
+
+  testWidgets(
+    'shared hero Play item node survives stale PageView unregister',
+    (tester) async {
+      const tab = 'home';
+      const row = MediaDetailsTv.heroRowId;
+      final play = FocusNode(debugLabel: 'hero-play-shared');
+      final pin = FocusNode(debugLabel: 'hero-pin');
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: play,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: pin,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      ShellTvFocusCoordinator.registerItemNode(
+        tabId: tab,
+        rowId: row,
+        index: 0,
+        node: play,
+      );
+      ShellTvFocusCoordinator.registerItemNode(
+        tabId: tab,
+        rowId: row,
+        index: 1,
+        node: pin,
+      );
+      shellTvRegisterRow(
+        tabId: tab,
+        rowId: row,
+        sortOrder: MediaDetailsTv.heroRowSortOrder,
+        itemCount: 2,
+      );
+
+      // Stale sibling unregisters the shared Play node while it is still
+      // attached to the active slide's Focus widget.
+      ShellTvFocusCoordinator.unregisterItemNode(
+        tabId: tab,
+        rowId: row,
+        index: 0,
+        node: play,
+      );
+      expect(ShellTvFocusCoordinator.itemNode(tab, row, 0), same(play));
+
+      pin.requestFocus();
+      await tester.pump();
+      expect(
+        ShellTvFocusCoordinator.focusAdjacentInRow(
+          tabId: tab,
+          rowId: row,
+          currentIndex: 1,
+          right: false,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(play.hasFocus, isTrue);
+
+      play.dispose();
+      pin.dispose();
+      ShellTvFocusCoordinator.clearTab(tab);
+    },
+  );
 }

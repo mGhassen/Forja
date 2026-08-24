@@ -460,7 +460,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         _s._errorMessage = null;
         _s._nuvioSelectedScraperIds = next;
         if (clearing) {
-          _s._nuvioAbortWork(clearFetched: true);
+          _s._nuvioAbortWork(clearFetched: false);
         }
       });
       unawaited(NuvioService.instance.saveSourcesSelectedScraperIds(next));
@@ -486,25 +486,15 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._nuvioSelectedScraperIds = Set<String>.from(
             _s._nuvioSelectedScraperIds,
           )..remove(scraperId);
-          _s._nuvioStreams = _s._nuvioStreams
-              .whereType<Map<String, dynamic>>()
-              .where((s) => !_nuvioStreamFromScraper(s, scraperId))
-              .toList();
-          _s._nuvioFetchedScraperIds = Set<String>.from(
-            _s._nuvioFetchedScraperIds,
-          )..remove(scraperId);
           _s._nuvioInFlightScraperIds.remove(scraperId);
           if (_s._nuvioSelectedScraperIds.isEmpty) {
-            _s._nuvioAbortWork(clearFetched: true);
+            _s._nuvioAbortWork(clearFetched: false);
           }
         } else {
           _s._nuvioSelectedScraperIds = {
             ..._s._nuvioSelectedScraperIds,
             scraperId,
           };
-          _s._nuvioFetchedScraperIds = Set<String>.from(
-            _s._nuvioFetchedScraperIds,
-          )..remove(scraperId);
         }
       });
       CatalogSourcesSessionCache.writeNuvio(
@@ -517,7 +507,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._nuvioSelectedScraperIds,
         ),
       );
-      if (!wasSelected) {
+      if (!wasSelected && !fetched) {
         unawaited(_s._fetchNextNuvioScraper());
       }
       return;
@@ -560,7 +550,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           )..removeAll(refetch);
         }
         if (clearing) {
-          _s._engineAbortWork(clearFetched: true);
+          _s._engineAbortWork(clearFetched: false);
         }
       });
       unawaited(
@@ -591,25 +581,15 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._engineSelectedPluginIds = Set<String>.from(
             _s._engineSelectedPluginIds,
           )..remove(pluginId);
-          _s._engineStreams = _s._engineStreams
-              .whereType<Map<String, dynamic>>()
-              .where((s) => s['_enginePluginId'] != pluginId)
-              .toList();
-          _s._engineFetchedPluginIds = Set<String>.from(
-            _s._engineFetchedPluginIds,
-          )..remove(pluginId);
           _s._engineInFlightPluginIds.remove(pluginId);
           if (_s._engineSelectedPluginIds.isEmpty) {
-            _s._engineAbortWork(clearFetched: true);
+            _s._engineAbortWork(clearFetched: false);
           }
         } else {
           _s._engineSelectedPluginIds = {
             ..._s._engineSelectedPluginIds,
             pluginId,
           };
-          _s._engineFetchedPluginIds = Set<String>.from(
-            _s._engineFetchedPluginIds,
-          )..remove(pluginId);
         }
       });
       CatalogSourcesSessionCache.writeEngine(
@@ -623,7 +603,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           panelCategory: _s._enginePanelCategory,
         ),
       );
-      if (!wasSelected) {
+      if (!wasSelected && !fetched) {
         unawaited(_s._fetchNextEnginePlugin());
       }
       return;
@@ -708,7 +688,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       result: r,
       progress: prog,
       isResumable: preselected,
-      highlightStart: widget.startPosition != null,
+      highlightStart: preselected,
       tvItemIndex: tvItemIndex,
       onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
       onPlay: () => _s._playTorrent(
@@ -767,7 +747,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       stream: s,
       progress: prog,
       isResumable: resumable,
-      highlightStart: widget.startPosition != null || isPlaying,
+      highlightStart: isPlaying,
       tvItemIndex: tvItemIndex,
       onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
       onHoverProbe: presentation.isExternal

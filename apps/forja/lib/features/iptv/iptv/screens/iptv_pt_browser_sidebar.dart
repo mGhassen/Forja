@@ -88,7 +88,6 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
   late final FocusNode _rowFocus;
   late final FocusNode _pinFocus;
   late final AnimationController _holdSunrise;
-  final GlobalKey _cardKey = GlobalKey();
   /// Hold-ring origin — ValueNotifier so we never setState mid-pointer (kills tap).
   final ValueNotifier<Offset?> _holdOriginN = ValueNotifier<Offset?>(null);
   Offset? _pointerDownGlobal;
@@ -173,14 +172,19 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
     _holdOriginN.dispose();
     _holdSunrise.dispose();
     _releaseChrome();
-    // Remount after pin/reorder must not leave parent ExcludeFocus stuck.
-    if (_pinFocus.hasFocus || _tvPinRevealed || _floating) {
-      widget.onPinFocusChange?.call(false);
-    }
+    // Pin chrome only — floating is parent-owned (`_tvFloatingCategoryId`).
+    // Never sync-notify here: finalizeTree locks the framework (reorder remount).
+    final clearPinChrome = _pinFocus.hasFocus || _tvPinRevealed;
+    final onPinFocusChange = widget.onPinFocusChange;
     _pinFocus.removeListener(_onPinFocusChanged);
     _pinFocus.dispose();
     _rowFocus.dispose();
     super.dispose();
+    if (clearPinChrome && onPinFocusChange != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        onPinFocusChange(false);
+      });
+    }
   }
 
   void _startHoldSunrise(Offset origin, Duration duration) {
@@ -205,7 +209,8 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
   }
 
   RenderBox? _cardBox() {
-    return _cardKey.currentContext?.findRenderObject() as RenderBox?;
+    // No GlobalKey — reorder proxy + list slot would duplicate it.
+    return context.findRenderObject() as RenderBox?;
   }
 
   Offset _rowCenterLocal() {
@@ -571,7 +576,6 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
                 : Colors.transparent;
 
     Widget rowBody = Container(
-      key: _cardKey,
       width: double.infinity,
       height: widget.compact ? 42 : 46,
       clipBehavior: Clip.hardEdge,

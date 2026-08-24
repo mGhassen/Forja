@@ -66,6 +66,7 @@ import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
+import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
@@ -110,6 +111,7 @@ class DesktopPlayerScreen extends ConsumerStatefulWidget {
   final num? hubEpisodeNumber;
   final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
+  final EnginePlaySession? enginePlaySession;
   final Future<void> Function(Duration position, Duration duration)?
   onSaveProgress;
   final Future<void> Function(String sourceUrl, String sourceTitle)?
@@ -149,6 +151,7 @@ class DesktopPlayerScreen extends ConsumerStatefulWidget {
     this.hubEpisodeNumber,
     this.onHubEpisodeSelected,
     this.episodeOverview,
+    this.enginePlaySession,
     this.onSaveProgress,
     this.onSourcePinned,
     this.pinSource = false,

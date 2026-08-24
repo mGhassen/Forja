@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/services/youtube_stream_service.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
@@ -63,6 +64,25 @@ class _MediaDetailsTorrentActionRowState
     extends State<MediaDetailsTorrentActionRow> {
   /// Hero ⋮ menu (Trakt/Simkl) - kept wired; hide until product wants it back.
   static const bool _overflowVisible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _prefetchBestTrailer();
+  }
+
+  @override
+  void didUpdateWidget(covariant MediaDetailsTorrentActionRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.trailers.isEmpty && widget.trailers.isNotEmpty) {
+      _prefetchBestTrailer();
+    }
+  }
+
+  void _prefetchBestTrailer() {
+    if (widget.trailers.isEmpty) return;
+    YoutubeStreamService.prefetch(widget.trailers.map((t) => t.key), limit: 1);
+  }
 
   void _invalidateSimklLists() {
     try {

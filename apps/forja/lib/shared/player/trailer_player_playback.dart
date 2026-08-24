@@ -140,14 +140,14 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       _s._streams = null;
       _s._selectedQualityHeight = null;
       _s._activeCaptionCode = null;
+      _s._captionsFetched = false;
+      _s._captionsLoading = false;
     });
 
     YoutubeResolvedStreams? streams;
     try {
-      streams = await YoutubeStreamService.resolveStreams(
-        videoId,
-        withCaptions: true,
-      );
+      // Lean resolve (no captions / metadata) — captions load when CC opens.
+      streams = await YoutubeStreamService.resolveStreams(videoId);
     } catch (e) {
       debugPrint('Trailer resolve failed: $e');
       streams = null;
@@ -165,14 +165,18 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     try {
       await _ensurePlayer();
       if (!mounted || loadId != _s._loadGeneration) return;
-      final opened = await _openResolved(streams, resumeAt: resumeAt);
+      final opened = await _openResolved(
+        streams,
+        resumeAt: resumeAt,
+        allowMuxedFallback: true,
+      );
       if (!mounted || loadId != _s._loadGeneration) return;
-      if (!opened) throw StateError('trailer stream open failed');
+      if (opened == null) throw StateError('trailer stream open failed');
       setState(() {
-        _s._streams = streams;
+        _s._streams = opened;
         _s._resolving = false;
         _s._ready = true;
-        _s._selectedQualityHeight = _qualityMenuHeightFor(streams!);
+        _s._selectedQualityHeight = _qualityMenuHeightFor(opened);
       });
       _s._claimPlayFocus();
       _s._startHideTimer();
@@ -234,14 +238,18 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     }
   }
 
-  Future<bool> _openResolved(
+  /// Opens [streams]. Returns the streams actually playing (may be muxed
+  /// fallback), or null on failure.
+  Future<YoutubeResolvedStreams?> _openResolved(
     YoutubeResolvedStreams streams, {
     Duration? resumeAt,
     /// Quality hot-swap: never trust leftover tracks after reopen.
     bool forceAudioAdd = false,
+    /// First open only: if adaptive stays silent, fall back to muxed.
+    bool allowMuxedFallback = false,
   }) async {
     final player = _s._player;
-    if (player == null) return false;
+    if (player == null) return null;
     final videoUrl = streams.playUrl!;
     final audioUrl = streams.audioUrl;
     final needsExternalAudio = _needsExternalAudio(streams, videoUrl);
@@ -256,7 +264,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
 
     final platform = player.platform;
     if (platform is NativePlayer) {
-      if (!await mediaKitPlayerHandleReady(platform)) return false;
+      if (!await mediaKitPlayerHandleReady(platform)) return null;
       try {
         await platform.setProperty('mute', 'no');
       } catch (_) {}
@@ -287,7 +295,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         'dur=${player.state.duration.inMilliseconds}ms '
         'vp=${player.state.videoParams.w}x${player.state.videoParams.h})',
       );
-      return false;
+      return null;
     }
 
     if (needsExternalAudio && audioUrl != null && audioUrl.isNotEmpty) {
@@ -302,13 +310,40 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
           debugPrint('[Trailer] audio-add failed: $e');
         }
       }
+      // Adaptive silent → muxed progressive (Debrify fallback).
+      if (allowMuxedFallback &&
+          streams.muxedUrl != null &&
+          streams.muxedUrl!.isNotEmpty &&
+          streams.muxedUrl != videoUrl &&
+          !await _waitForSelectableAudio(player)) {
+        debugPrint('[Trailer] adaptive silent — falling back to muxed');
+        final muxed = YoutubeResolvedStreams(
+          playUrl: streams.muxedUrl,
+          playHeight: streams.muxedHeight,
+          // Keep AAC for later quality switches even though muxed has audio.
+          audioUrl: streams.audioUrl,
+          muxedUrl: streams.muxedUrl,
+          muxedHeight: streams.muxedHeight,
+          title: streams.title,
+          thumbnailUrl: streams.thumbnailUrl,
+          durationSeconds: streams.durationSeconds,
+          qualities: streams.qualities,
+          captions: streams.captions,
+        );
+        return _openResolved(
+          muxed,
+          resumeAt: resumeAt,
+          forceAudioAdd: false,
+          allowMuxedFallback: false,
+        );
+      }
     }
 
     if (resumeAt != null && resumeAt > Duration.zero) {
       await player.seek(resumeAt);
     }
     await player.play();
-    return true;
+    return streams;
   }
 
   /// Poll readiness only — ignore error stream (stop() abort is not fatal).
@@ -332,15 +367,9 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       _s._selectedQualityHeight = quality.height;
       _s._ready = false;
     });
-    final swapped = YoutubeResolvedStreams(
+    final swapped = streams.copyWith(
       playUrl: quality.videoUrl,
       playHeight: quality.height,
-      audioUrl: streams.audioUrl,
-      title: streams.title,
-      thumbnailUrl: streams.thumbnailUrl,
-      durationSeconds: streams.durationSeconds,
-      qualities: streams.qualities,
-      captions: streams.captions,
     );
     // Always remux AAC after quality swap (desktop + ATV).
     final opened = await _openResolved(
@@ -349,7 +378,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       forceAudioAdd: true,
     );
     if (!mounted) return;
-    if (!opened) {
+    if (opened == null) {
       debugPrint('Trailer quality switch failed: open');
       final recovered = await _openResolved(
         streams,
@@ -359,13 +388,14 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       if (mounted) {
         setState(() {
           _s._selectedQualityHeight = prevHeight;
-          _s._ready = recovered;
+          _s._ready = recovered != null;
+          if (recovered != null) _s._streams = recovered;
         });
       }
       return;
     }
     setState(() {
-      _s._streams = swapped;
+      _s._streams = opened;
       _s._ready = true;
     });
     if (_s._activeCaptionCode != null) {
@@ -373,16 +403,39 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     }
   }
 
+  Future<void> _ensureCaptionsLoaded() async {
+    final streams = _s._streams;
+    if (streams == null || _s._captionsFetched || streams.captions.isNotEmpty) {
+      return;
+    }
+    if (_s._captionsLoading) return;
+    _s._captionsLoading = true;
+    try {
+      final captions = await YoutubeStreamService.fetchCaptions(
+        _s._trailer.key,
+      );
+      if (!mounted) return;
+      if (_s._streams == null) return;
+      setState(() {
+        _s._streams = _s._streams!.copyWith(captions: captions);
+        _s._captionsFetched = true;
+      });
+    } finally {
+      _s._captionsLoading = false;
+    }
+  }
+
   Future<void> _applyCaptionTrack(String? languageCode) async {
     final player = _s._player;
-    final streams = _s._streams;
     if (player == null) return;
     if (languageCode == null || languageCode.isEmpty) {
       await player.setSubtitleTrack(SubtitleTrack.no());
       if (mounted) setState(() => _s._activeCaptionCode = null);
       return;
     }
-    final track = streams?.captions
+    await _ensureCaptionsLoaded();
+    if (!mounted) return;
+    final track = _s._streams?.captions
         .where((c) => c.langCode == languageCode)
         .firstOrNull;
     if (track == null) return;

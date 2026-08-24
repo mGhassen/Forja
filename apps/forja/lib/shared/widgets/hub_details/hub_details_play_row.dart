@@ -158,15 +158,16 @@ class HubDetailsPlayRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tv = enabled && tvTabId != null;
     final play = HeroPillPlayButton(
       label: label,
       onTap: enabled ? onPlay : null,
-      focusNode: focusNode,
-      autoFocus: autoFocus,
-      onUpEdge: onUpEdge,
-      tvTabId: tvTabId,
-      tvRowId: tvTabId != null ? MediaDetailsTv.heroRowId : null,
-      tvItemIndex: tvItemIndex,
+      focusNode: enabled ? focusNode : null,
+      autoFocus: enabled && autoFocus,
+      onUpEdge: tv ? onUpEdge : null,
+      tvTabId: tv ? tvTabId : null,
+      tvRowId: tv ? MediaDetailsTv.heroRowId : null,
+      tvItemIndex: tv ? tvItemIndex : null,
     );
     if (onOpenSources == null) return play;
 
@@ -180,10 +181,10 @@ class HubDetailsPlayRow extends StatelessWidget {
           icon: Icons.link_rounded,
           tone: HeroPillPlayTone.streaming,
           onTap: enabled ? onOpenSources : null,
-          onUpEdge: onUpEdge,
-          tvTabId: tvTabId,
-          tvRowId: tvTabId != null ? MediaDetailsTv.heroRowId : null,
-          tvItemIndex: tvSourcesItemIndex,
+          onUpEdge: tv ? onUpEdge : null,
+          tvTabId: tv ? tvTabId : null,
+          tvRowId: tv ? MediaDetailsTv.heroRowId : null,
+          tvItemIndex: tv ? tvSourcesItemIndex : null,
         ),
       ],
     );

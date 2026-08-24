@@ -19,6 +19,8 @@ Automatic at end of episode (when Auto next is on) or via the next-episode promp
 - Toggle **Auto next** in the Episodes panel switch or Settings → Playback
 - Dismiss and stay on credits or exit
 - Use the transport **skip next** icon (when a next episode exists) anytime — that is separate from the floating chip
+- Current episode audio stops as soon as Next / Previous starts loading so it does not keep playing under the loader or overlap the next stream
+- After switching episodes in the player, Back always returns to the details page — not the previous episode
 
 ## Tips
 

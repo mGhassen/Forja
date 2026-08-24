@@ -170,10 +170,9 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   void _ensureSearchFieldFocused({int attempt = 0}) {
     if (!mounted) return;
-    if (!_tvFocus(context)) {
-      if (!_isWideLayout(context)) {
-        _focusNode.requestFocus();
-      }
+    // Desktop (mouse or D-pad): ready to type — same as Search tab.
+    if (!_leanbackTextInput(context)) {
+      _focusSearchFieldBrowse();
       return;
     }
     if (_query.trim().isNotEmpty) return;
@@ -328,6 +327,12 @@ class _HubSearchPageState extends State<HubSearchPage> {
   bool _tvFocus(BuildContext context) =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
+  /// Leanback TV browse/edit split — not desktop D-pad (which also uses mood chips).
+  bool _leanbackTextInput(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    return policy.useFocusableMoodChips && !policy.scaleOnHover;
+  }
+
   void _onSearchChanged(String query) {
     setState(() {
       _query = query;
@@ -343,7 +348,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
         _pendingGridFocusIndex = null;
       });
       _loadRecommendations();
-      if (_tvFocus(context) && _focusNode.hasFocus) {
+      if (_leanbackTextInput(context) && _focusNode.hasFocus) {
         _focusSearchFieldBrowse();
       }
       return;
@@ -354,7 +359,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
       // TV: only persist on OK/submit — debounce would save every IME partial.
       _performSearch(
         trimmed,
-        recordRecent: !_tvFocus(context) || !_searchFieldEditing,
+        recordRecent: !_leanbackTextInput(context) || !_searchFieldEditing,
       );
     });
   }
@@ -394,7 +399,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
   }
 
   void _submitSearchField() {
-    if (!_tvFocus(context)) return;
+    if (!_leanbackTextInput(context)) return;
     if (!_searchSubmitArmed) return;
     final query = _controller.text.trim();
     if (query.isEmpty) return;
@@ -723,10 +728,15 @@ class _HubSearchPageState extends State<HubSearchPage> {
       _focusSearchClose();
       return KeyEventResult.handled;
     }
-    if (shellTvIsActivateKey(event) && _searchFieldEditing) {
+    if (_leanbackTextInput(context) &&
+        shellTvIsActivateKey(event) &&
+        _searchFieldEditing) {
+      // Swallow the twin Select/Enter from the OK that opened editing.
       return KeyEventResult.handled;
     }
-    if (shellTvIsActivateKey(event) && !_searchFieldEditing) {
+    if (_leanbackTextInput(context) &&
+        shellTvIsActivateKey(event) &&
+        !_searchFieldEditing) {
       _beginSearchFieldEditing();
       return KeyEventResult.handled;
     }
@@ -871,8 +881,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
   }
 
   Widget _buildSearchField(BuildContext context) {
-    final tvFocus = _tvFocus(context);
-    final browseOnly = tvFocus && !_searchFieldEditing;
+    final leanbackInput = _leanbackTextInput(context);
+    final browseOnly = leanbackInput && !_searchFieldEditing;
     final hintStyle = TextStyle(
       color: ForjaShellColors.textSecondary.withValues(alpha: 0.7),
       fontSize: 32,
@@ -888,18 +898,18 @@ class _HubSearchPageState extends State<HubSearchPage> {
         TextField(
           controller: _controller,
           focusNode: _focusNode,
-          autofocus: true,
+          autofocus: !leanbackInput,
           readOnly: browseOnly,
           showCursor: !browseOnly || _query.isNotEmpty,
           enableInteractiveSelection: !browseOnly,
           onChanged: _onSearchChanged,
-          onTap: tvFocus
+          onTap: leanbackInput
               ? () {
                   if (!_searchFieldEditing) _beginSearchFieldEditing();
                 }
               : null,
           onSubmitted: (v) {
-            if (_tvFocus(context)) {
+            if (_leanbackTextInput(context)) {
               _submitSearchField();
             } else {
               final trimmed = v.trim();
@@ -908,6 +918,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
               _performSearch(trimmed, recordRecent: true);
             }
           },
+          textInputAction: TextInputAction.search,
           style: TextStyle(
             color: ForjaShellColors.textPrimary,
             fontSize: 32,

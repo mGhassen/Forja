@@ -217,6 +217,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                                       ),
                                       tvTabId: 'anime',
                                       scrollController: _s._scroll,
+                                      onSearch: _s._openSearch,
                                       pageBottomChild: trendingSection,
                                     );
                                   },

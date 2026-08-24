@@ -1124,9 +1124,13 @@ class _BrowserViewState extends State<_BrowserView> {
               onTvFocusChange: (focused) =>
                   _onCategoryTvFocus(cat.id, focused),
               onPinFocusChange: (focused) {
-                if (!mounted) return;
-                if (_tvCategoryPinFocused == focused) return;
-                setState(() => _tvCategoryPinFocused = focused);
+                // May fire from row dispose during reorder — never setState
+                // while the framework is locked in finalizeTree.
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  if (_tvCategoryPinFocused == focused) return;
+                  setState(() => _tvCategoryPinFocused = focused);
+                });
               },
             );
           }

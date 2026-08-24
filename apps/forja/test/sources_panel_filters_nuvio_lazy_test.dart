@@ -310,7 +310,7 @@ void main() {
   });
 
   group('Nuvio scraper cache', () {
-    test('does not stick empty nuvio hits', () {
+    test('keeps empty nuvio fetches so reopen does not re-hit', () {
       const key = 'nuvio-lazy-test';
       CatalogSourcesSessionCache.writeNuvio(
         key,
@@ -318,7 +318,11 @@ void main() {
         fetchedScraperIds: const {'empty-scraper'},
       );
 
-      expect(CatalogSourcesSessionCache.readNuvio(key), isNull);
+      final cached = CatalogSourcesSessionCache.readNuvio(key);
+      expect(cached, isNotNull);
+      expect(cached!.streams, isEmpty);
+      expect(cached.fetchedScraperIds, {'empty-scraper'});
+      CatalogSourcesSessionCache.invalidate(key);
     });
 
     test('keeps fetched scrapers that returned streams', () {
@@ -337,7 +341,7 @@ void main() {
       final cached = CatalogSourcesSessionCache.readNuvio(key);
       expect(cached, isNotNull);
       expect(cached!.streams, isNotEmpty);
-      expect(cached.fetchedScraperIds, {'hit-scraper'});
+      expect(cached.fetchedScraperIds, {'hit-scraper', 'empty-scraper'});
       CatalogSourcesSessionCache.invalidate(key);
     });
   });
@@ -351,14 +355,51 @@ void main() {
   });
 
   group('Engine session cache', () {
-    test('does not stick empty engine hits', () {
+    test('keeps empty engine fetches so reopen does not re-hit', () {
       const key = 'anime:7';
       CatalogSourcesSessionCache.writeEngine(
         key,
         const [],
         fetchedPluginIds: const {'videasy'},
       );
-      expect(CatalogSourcesSessionCache.readEngine(key), isNull);
+      final cached = CatalogSourcesSessionCache.readEngine(key);
+      expect(cached, isNotNull);
+      expect(cached!.streams, isEmpty);
+      expect(cached.fetchedPluginIds, {'videasy'});
+      CatalogSourcesSessionCache.invalidate(key);
+    });
+
+    test('hub cacheKey prefers anilist over TMDB mediaType flip', () {
+      expect(
+        CatalogSourcesSessionCache.cacheKey(
+          mediaId: 999,
+          mediaType: 'tv',
+          season: 1,
+          episode: 3,
+          anilistId: 42,
+          animeAudioCategory: 'sub',
+        ),
+        'anime:42:E3:sub',
+      );
+      expect(
+        CatalogSourcesSessionCache.cacheKey(
+          mediaId: -42,
+          mediaType: 'anime',
+          episode: 3,
+          anilistId: 42,
+          animeAudioCategory: 'sub',
+        ),
+        'anime:42:E3:sub',
+      );
+      expect(
+        CatalogSourcesSessionCache.cacheKey(
+          mediaId: 55,
+          mediaType: 'asian_drama',
+          episode: 2,
+          kisskhId: 88,
+        ),
+        'drama:88:E2',
+      );
     });
   });
 

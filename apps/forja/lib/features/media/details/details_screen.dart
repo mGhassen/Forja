@@ -23,6 +23,7 @@ import 'package:forja/shared/playback/sources_panel_stream_probe.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/engine_catalog_stream_probe.dart';
+import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/player/utils.dart';
@@ -194,9 +195,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   String? get _playingPanelKind => _play.playingPanelKind;
   set _playingPanelKind(String? v) => _play.playingPanelKind = v;
 
-  String? get _playingAddonBaseUrl => _play.playingAddonBaseUrl;
-  set _playingAddonBaseUrl(String? v) => _play.playingAddonBaseUrl = v;
-
   String? get _playingCatalogUrl => _play.playingCatalogUrl;
   set _playingCatalogUrl(String? v) => _play.playingCatalogUrl = v;
 
@@ -325,6 +323,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   Map<String, dynamic>? _lastProgress;
   StreamSubscription<List<Map<String, dynamic>>>? _watchHistorySub;
   bool _sourcesPanelOpen = false;
+  /// Completes when enabled Sources chip metadata (Stremio/Nuvio/Forja) is loaded.
+  Future<void>? _sourcesChromeWarm;
   bool _autoPlayConsumed = false;
   bool _episodePlayPending = false;
   int _selectedSeason = 1;
@@ -642,8 +642,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   bool get _panelShowNuvio =>
       _playSourceNuvio &&
       (_playbackProfile.playSourceNuvio ||
-          (!_playbackProfile.localTorrentEngine && _playSourceNuvio)) &&
-      _hasNuvioAddons;
+          (!_playbackProfile.localTorrentEngine && _playSourceNuvio));
 
   bool get _panelShowEngine =>
       _playSourceEngine &&
@@ -713,7 +712,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     }
   }
 
-  /// After green Play, align Sources tab/chip with the stream that opened.
+  /// After green Play, open Sources on the playing kind tab only.
+  /// Do not narrow Forja / Nuvio multi-select chips to the playing provider —
+  /// that broke All (same as player Sources panel).
   void _focusPanelOnPlayingSource() {
     final kind = _playingPanelKind;
     if (kind == null || kind.isEmpty) return;
@@ -729,24 +730,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _stashPanelSourceIdForKind(_panelKindFilter);
       _panelKindFilter = kind;
       _restorePanelSourceIdForKind(kind);
-    }
-
-    final base = _playingAddonBaseUrl;
-    if (base == null || base.isEmpty) return;
-    if (kind == EngineIds.kind && base.startsWith(EngineIds.prefix)) {
-      final pluginId = base.substring(EngineIds.prefix.length);
-      if (pluginId.isEmpty) return;
-      _selectedSourceId = EngineIds.pluginChip(pluginId);
-      _engineSelectedPluginIds = {pluginId};
-      _panelSourceIdByKind[kind] = _selectedSourceId;
-      return;
-    }
-    if (kind == 'nuvio' && base.startsWith('nuvio:')) {
-      final scraperId = base.substring('nuvio:'.length);
-      if (scraperId.isEmpty) return;
-      _selectedSourceId = 'nuvio:$scraperId';
-      _nuvioSelectedScraperIds = {scraperId};
-      _panelSourceIdByKind[kind] = _selectedSourceId;
     }
   }
 
@@ -1052,15 +1035,50 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _ensurePanelSourceLoaded();
   }
 
+  /// Prefetch Sources chrome (addon/plugin chip lists) for enabled play sources.
+  /// Does not start torrent/stream scrapes — those still wait on kind/chip tap.
+  Future<void> _warmSourcesPanelChrome({bool force = false}) {
+    if (force) _sourcesChromeWarm = null;
+    final existing = _sourcesChromeWarm;
+    if (existing != null) return existing;
+    final future = _warmSourcesPanelChromeBody();
+    _sourcesChromeWarm = future;
+    return future;
+  }
+
+  Future<void> _warmSourcesPanelChromeBody() async {
+    final tasks = <Future<void>>[];
+    if (_playSourceStremio) {
+      tasks.add(
+        _stremio.getAddonsForResource('stream').then(
+          _applyStreamAddons,
+          onError: (_) {},
+        ),
+      );
+    }
+    if (_playSourceNuvio) {
+      tasks.add(_checkAndFetchNuvio());
+    }
+    if (_playSourceEngine) {
+      tasks.add(_checkAndFetchEngine());
+    }
+    if (tasks.isEmpty) return;
+    await Future.wait(tasks);
+  }
+
   void _openSourcesPanel() {
     if (!_hasPanelPlaySources) return;
-    _captureSourcesPanelReturnFocus();
-    setState(() {
-      _syncPanelKindFilterToPlaySources();
-      _focusPanelOnPlayingSource();
-      _sourcesPanelOpen = true;
-    });
-    _ensurePanelSourceLoaded();
+    unawaited(() async {
+      await _warmSourcesPanelChrome();
+      if (!mounted || !_hasPanelPlaySources) return;
+      _captureSourcesPanelReturnFocus();
+      setState(() {
+        _syncPanelKindFilterToPlaySources();
+        _focusPanelOnPlayingSource();
+        _sourcesPanelOpen = true;
+      });
+      _ensurePanelSourceLoaded();
+    }());
   }
 
   /// Close Sources and stop any in-flight Torrents / Stremio / Nuvio fetches.

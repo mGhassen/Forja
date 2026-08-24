@@ -120,7 +120,50 @@ mixin _AnimeScreenFeed on ConsumerState<AnimeScreen>, ShellTabRefresh<AnimeScree
       final episodes = await _s._service.getEpisodes(anime);
       if (!mounted) return;
 
-      openAnimePlayer(
+      // Green Forja Play when Auto is on — same as details, not AnimePlayerScreen.
+      if (await hubEngineAutoPlayEnabled()) {
+        if (!mounted) return;
+        final isMovie = (anime.format ?? '').toUpperCase() == 'MOVIE';
+        final malId = await _s._service.resolveMalId(animeId);
+        if (!mounted) return;
+        await runHubEngineAutoPlay(
+          context: context,
+          movie: Movie(
+            id: -anime.id,
+            title: anime.displayTitle,
+            posterPath: anime.coverUrl,
+            backdropPath: anime.heroBackdrop,
+            voteAverage: (anime.averageScore ?? 0) / 10.0,
+            releaseDate: anime.seasonYear?.toString() ?? '',
+            overview: anime.cleanDescription,
+            genres: anime.genres,
+            runtime: anime.duration ?? 0,
+            mediaType: 'anime',
+            numberOfEpisodes: anime.episodes ?? 0,
+          ),
+          engineCategory: 'anime',
+          season: isMovie ? null : 1,
+          episode: isMovie ? null : epNum,
+          anilistId: animeId,
+          malId: malId,
+          startPosition: startPosition,
+          loadingSubtitle: 'EP $epNum',
+          hubEpisodes: isMovie
+              ? null
+              : [
+                  for (final e in episodes)
+                    PlayerHubEpisode(
+                      number: e.number,
+                      title: e.title,
+                      notShippedYet: !e.aired,
+                    ),
+                ],
+        );
+        if (mounted) await _refreshHistory();
+        return;
+      }
+
+      await openAnimePlayer(
         context,
         anime: anime,
         episodeNumber: epNum,
@@ -128,7 +171,8 @@ mixin _AnimeScreenFeed on ConsumerState<AnimeScreen>, ShellTabRefresh<AnimeScree
         allEpisodes: episodes,
         startPosition: startPosition,
         freshResolve: true,
-      ).then((_) => _refreshHistory());
+      );
+      if (mounted) await _refreshHistory();
     } catch (e) {
       if (!mounted) return;
       ForjaToast.error('Resume failed: $e');
@@ -145,5 +189,12 @@ mixin _AnimeScreenFeed on ConsumerState<AnimeScreen>, ShellTabRefresh<AnimeScree
     setState(() {
       _s._continueWatching.removeWhere((e) => e['animeId'] == animeId);
     });
+  }
+
+  void _openSearch() {
+    pushShellRoute(
+      context,
+      AppRouter.slideShellRoute((_) => const AnimeSearchScreen()),
+    );
   }
 }

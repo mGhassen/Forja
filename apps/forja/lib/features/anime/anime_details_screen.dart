@@ -23,6 +23,7 @@ import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
+import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/widgets/hub_list_status_hero.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/media_details/media_details.dart';
@@ -261,23 +262,25 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
       _heroBackdropUrls = [];
     });
 
-    // Episodes load only after details for this opened season (thumbs + count).
+    // Paint episode rail from seed count immediately — don't wait on AniList
+    // details (streamingEpisodes thumbs) or TMDB. Enrich when details lands.
+    _loadEpisodesForOpenedSeason(seed, gen: gen);
+
     ref.read(animeDetailsProvider(seed.id).future).then((d) async {
       if (!mounted || gen != _loadGen) return;
       final seeded = seed.tmdbBackdropUrl == null
           ? d
           : d.copyWith(tmdbBackdropUrl: seed.tmdbBackdropUrl);
+      setState(() => _full = seeded);
+      _loadEpisodesForOpenedSeason(seeded, gen: gen);
+      _loadHeroBackdropUrls(seeded, gen: gen);
       final enriched = await _service.attachTmdbBackdrop(seeded);
       if (!mounted || gen != _loadGen) return;
       setState(() => _full = enriched);
-      _loadEpisodesForOpenedSeason(enriched, gen: gen);
       _loadHeroBackdropUrls(enriched, gen: gen);
     }).catchError((e) {
       if (mounted && gen == _loadGen && _full == null) {
-        setState(() {
-          _error = 'Failed to load: $e';
-          _episodesLoading = false;
-        });
+        setState(() => _error = 'Failed to load: $e');
       }
     });
 
@@ -416,8 +419,19 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         episode: isMovie ? null : epNumber,
         anilistId: _activeId,
         malId: malId,
+        animeAudioCategory: _category,
         startPosition: startPosition,
         loadingSubtitle: 'EP $epNumber',
+        hubEpisodes: isMovie
+            ? null
+            : [
+                for (final e in _episodes)
+                  PlayerHubEpisode(
+                    number: e.number,
+                    title: e.title,
+                    notShippedYet: !e.aired,
+                  ),
+              ],
       );
       if (!mounted) return;
       await _afterPlayClosed();

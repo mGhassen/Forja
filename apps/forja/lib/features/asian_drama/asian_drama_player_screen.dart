@@ -15,6 +15,7 @@ import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
@@ -673,6 +674,25 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     _probeNotifier.dispose();
     _providerSourcesCache.dispose();
     if (handOff != null && mounted) {
+      if (await hubEngineAutoPlayEnabled()) {
+        final list = handOffList.isNotEmpty ? handOffList : episodes;
+        await runHubEngineAutoPlay(
+          context: context,
+          movie: _hubMovieFromDrama(drama),
+          engineCategory: 'drama',
+          season: 1,
+          episode: handOff.number.round(),
+          kisskhId: drama.id,
+          kisskhEpisodeId: handOff.id,
+          kisskhEpisodeIdByNumber: {
+            for (final e in list) e.number.round(): e.id,
+          },
+          loadingSubtitle: 'EP ${handOff.displayNumber}',
+          hubEpisodes: _hubEpisodesFromDrama(drama, list),
+        );
+        if (mounted && navigator.canPop()) navigator.pop();
+        return;
+      }
       await navigator.pushReplacement(
         AppRouter.fadeRoute(
           (_) => ShellScope.rehost(

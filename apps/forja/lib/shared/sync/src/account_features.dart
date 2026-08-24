@@ -37,7 +37,8 @@ class AccountFeatures {
 
   /// `accounts.is_admin` — experimental / ops toggles in Settings (Webstreaming
   /// play source, WebStreamr hub, Debrid, Lists, Trakt, About Privacy/Developer,
-  /// Simple resolve, …); unlimited IPTV portals.
+  /// Simple resolve, …). Unlimited IPTV portals. Forja Sports Settings is not
+  /// admin-gated.
   bool get isAdmin => _isAdmin;
 
   /// Configured max portals per profile (`features.maxIptvPortals`, default 5).

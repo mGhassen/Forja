@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
@@ -365,6 +366,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   int _stremioGen = 0;
   String? _error;
   bool _pendingScrollToCurrent = true;
+  /// User wheel/drag on the list — cancel auto scroll-to-playing for this open.
+  bool _userDismissedScrollToCurrent = false;
   int _scrollToCurrentAttempts = 0;
 
   /// Once the user taps Torrents / Stremio / Nuvio, never auto-steal the kind
@@ -540,6 +543,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   void _resetListScroll({bool allowScrollToCurrent = false}) {
     _pendingScrollToCurrent = allowScrollToCurrent;
+    _userDismissedScrollToCurrent = false;
     _scrollToCurrentAttempts = 0;
     if (_listScrollController.hasClients) {
       _listScrollController.jumpTo(0);
@@ -549,13 +553,22 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
   }
 
+  /// One-shot scroll to the playing row. Does not re-arm after success — each
+  /// provider batch used to set pending again and yank the list back while
+  /// results were still loading.
   void _requestScrollToCurrent() {
-    if (_listScrollController.hasClients && _listScrollController.offset > 8) {
+    if (_userDismissedScrollToCurrent) {
+      _pendingScrollToCurrent = false;
       return;
     }
-    _pendingScrollToCurrent = true;
-    _scrollToCurrentAttempts = 0;
+    if (!_pendingScrollToCurrent) return;
     _scheduleScrollToCurrent();
+  }
+
+  void _onUserScrolledList() {
+    if (!_pendingScrollToCurrent && !_userDismissedScrollToCurrent) return;
+    _userDismissedScrollToCurrent = true;
+    _pendingScrollToCurrent = false;
   }
 
   /// Playing Stremio addon baseUrl when known (caller + matched stream).
@@ -598,35 +611,22 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (next != null) _selectedSourceId = next;
   }
 
-  /// Ensure the filtered Stremio list includes the playing row when a chip is
-  /// already selected — never auto-select providers on open.
+  /// Stremio: promote off empty addons when a chip is already selected.
+  /// Forja / Nuvio: never rewrite multi-select chip prefs to the playing
+  /// provider — that smashed All down to one chip and re-applied after every
+  /// fetch so All could not stick. Scroll-to-current handles focus instead.
   void _selectPlayingProviderIfNeeded() {
-    if (_kindFilter == 'stremio') {
-      if (_selectedSourceId.isEmpty) return;
-      _syncStremioProviderSelection();
-      return;
-    }
-    final base = widget.currentAddonBaseUrl;
-    if (base == null || base.isEmpty) return;
-    if (_kindFilter == 'engine' && base.startsWith(EngineIds.prefix)) {
-      final pluginId = base.substring(EngineIds.prefix.length);
-      if (pluginId.isEmpty) return;
-      _selectedSourceId = EngineIds.pluginChip(pluginId);
-      _engineSelectedPluginIds = {pluginId};
-      return;
-    }
-    if (_kindFilter == 'nuvio' && base.startsWith('nuvio:')) {
-      final scraperId = base.substring('nuvio:'.length);
-      if (scraperId.isEmpty) return;
-      _selectedSourceId = 'nuvio:$scraperId';
-      _nuvioSelectedScraperIds = {scraperId};
-    }
+    if (_kindFilter != 'stremio') return;
+    if (_selectedSourceId.isEmpty) return;
+    _syncStremioProviderSelection();
   }
 
   void _scheduleScrollToCurrent() {
-    if (!_pendingScrollToCurrent) return;
+    if (!_pendingScrollToCurrent || _userDismissedScrollToCurrent) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_pendingScrollToCurrent) return;
+      if (!mounted || !_pendingScrollToCurrent || _userDismissedScrollToCurrent) {
+        return;
+      }
 
       final torrents = _showsTorrents
           ? _filteredTorrents
@@ -826,6 +826,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     mediaType: widget.movie.mediaType,
     season: widget.season,
     episode: widget.episode,
+    anilistId: widget.anilistId,
+    malId: widget.malId,
+    kisskhId: widget.kisskhId,
+    animeAudioCategory: widget.animeAudioCategory,
   );
 
   /// Hydrate from session TTL cache or fetch - only for the active kind.
@@ -1183,6 +1187,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           beforeNuvio.length != _nuvioSelectedScraperIds.length ||
           !beforeNuvio.containsAll(_nuvioSelectedScraperIds);
       if (needsKind || providerChanged) {
+        if (!_userDismissedScrollToCurrent) {
+          _pendingScrollToCurrent = true;
+          _scrollToCurrentAttempts = 0;
+        }
         setState(() {});
         if (needsKind) _ensureVisibleKindsLoaded();
       }
@@ -2653,7 +2661,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _error = null;
         _nuvioSelectedScraperIds = next;
         if (clearing) {
-          _nuvioAbortWork(clearFetched: true);
+          _nuvioAbortWork(clearFetched: false);
         }
       });
       unawaited(NuvioService.instance.saveSourcesSelectedScraperIds(next));
@@ -2678,20 +2686,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         if (wasSelected) {
           _nuvioSelectedScraperIds = Set<String>.from(_nuvioSelectedScraperIds)
             ..remove(scraperId);
-          _nuvioStreams = _nuvioStreams
-              .whereType<Map<String, dynamic>>()
-              .where((s) => !_nuvioStreamFromScraper(s, scraperId))
-              .toList();
-          _nuvioFetchedScraperIds = Set<String>.from(_nuvioFetchedScraperIds)
-            ..remove(scraperId);
           _nuvioInFlightScraperIds.remove(scraperId);
           if (_nuvioSelectedScraperIds.isEmpty) {
-            _nuvioAbortWork(clearFetched: true);
+            _nuvioAbortWork(clearFetched: false);
           }
         } else {
           _nuvioSelectedScraperIds = {..._nuvioSelectedScraperIds, scraperId};
-          _nuvioFetchedScraperIds = Set<String>.from(_nuvioFetchedScraperIds)
-            ..remove(scraperId);
         }
       });
       CatalogSourcesSessionCache.writeNuvio(
@@ -2704,7 +2704,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           _nuvioSelectedScraperIds,
         ),
       );
-      if (!wasSelected) {
+      if (!wasSelected && !fetched) {
         unawaited(_fetchNextNuvioScraper());
       }
       return;
@@ -2745,7 +2745,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             ..removeAll(refetch);
         }
         if (clearing) {
-          _engineAbortWork(clearFetched: true);
+          // Stop in-flight only — keep streams + fetched so tap All again is free.
+          _engineAbortWork(clearFetched: false);
           DomainStreamProviderResolver.cancelAllPending(
             cancelEngineJobs: false,
           );
@@ -2778,19 +2779,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         if (wasSelected) {
           _engineSelectedPluginIds = Set<String>.from(_engineSelectedPluginIds)
             ..remove(pluginId);
-          _engineStreams = _engineStreams
-              .where((s) => s['_enginePluginId'] != pluginId)
-              .toList();
-          _engineFetchedPluginIds = Set<String>.from(_engineFetchedPluginIds)
-            ..remove(pluginId);
           _engineInFlightPluginIds.remove(pluginId);
           if (_engineSelectedPluginIds.isEmpty) {
-            _engineAbortWork(clearFetched: true);
+            _engineAbortWork(clearFetched: false);
           }
         } else {
           _engineSelectedPluginIds = {..._engineSelectedPluginIds, pluginId};
-          _engineFetchedPluginIds = Set<String>.from(_engineFetchedPluginIds)
-            ..remove(pluginId);
         }
       });
       CatalogSourcesSessionCache.writeEngine(
@@ -2804,7 +2798,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           panelCategory: _enginePanelCategory,
         ),
       );
-      if (!wasSelected) {
+      if (!wasSelected && !fetched) {
         unawaited(_fetchNextEnginePlugin());
       }
       return;
@@ -3130,72 +3124,81 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
 
     final tv = SourcesPanelTv.isTv(context);
-    final list = ListView.separated(
-      controller: _listScrollController,
-      primary: false,
-      padding: const EdgeInsets.only(bottom: 8),
-      itemCount: totalCount,
-      separatorBuilder: (_, _) => const SizedBox(height: 6),
-      itemBuilder: (context, i) {
-        final tvIndex = tv ? i : null;
-        final onUp = i == 0 ? SourcesPanelTv.focusProvidersItem : null;
-        if (i < torrents.length) {
-          final r = torrents[i];
+    final list = NotificationListener<UserScrollNotification>(
+      onNotification: (n) {
+        if (n.direction != ScrollDirection.idle) {
+          _onUserScrolledList();
+        }
+        return false;
+      },
+      child: ListView.separated(
+        controller: _listScrollController,
+        primary: false,
+        padding: const EdgeInsets.only(bottom: 8),
+        itemCount: totalCount,
+        separatorBuilder: (_, _) => const SizedBox(height: 6),
+        itemBuilder: (context, i) {
+          final tvIndex = tv ? i : null;
+          final onUp = i == 0 ? SourcesPanelTv.focusProvidersItem : null;
+          if (i < torrents.length) {
+            final r = torrents[i];
+            final isCurrent = i == currentIndex;
+            return KeyedSubtree(
+              key: ValueKey(r.magnet.isEmpty ? r.name : r.magnet),
+              child: KeyedSubtree(
+                key: isCurrent ? _currentTileKey : null,
+                child: TorrentSourceTile(
+                  result: r,
+                  highlightStart: isCurrent,
+                  tvItemIndex: tvIndex,
+                  onUpEdge: onUp,
+                  onPlay: () => _selectTorrent(r),
+                ),
+              ),
+            );
+          }
+
+          final j = i - torrents.length;
+          final Map<String, dynamic> s;
+          if (j < stremio.length) {
+            s = stremio[j];
+          } else if (j < stremio.length + nuvio.length) {
+            s = nuvio[j - stremio.length];
+          } else {
+            s = engine[j - stremio.length - nuvio.length];
+          }
+          final title =
+              (s['title'] ?? s['name'] ?? 'Unknown Stream').toString();
+          final description = (s['description'] ?? '').toString();
+          final presentation = stremioTilePresentation(s, isResumable: false);
           final isCurrent = i == currentIndex;
           return KeyedSubtree(
-            key: ValueKey(r.magnet.isEmpty ? r.name : r.magnet),
+            key: _playerStreamTileKey(s),
             child: KeyedSubtree(
               key: isCurrent ? _currentTileKey : null,
-              child: TorrentSourceTile(
-                result: r,
+              child: StremioSourceTile(
+                title: title,
+                description: description,
+                leadingIcon: presentation.leadingIcon,
+                leadingColor: presentation.leadingColor,
+                isExternal: presentation.isExternal,
+                addonName: s['_addonName']?.toString(),
+                showAddonName: showAddonName,
+                sizeText: s['size']?.toString(),
+                seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
+                stream: s,
                 highlightStart: isCurrent,
                 tvItemIndex: tvIndex,
                 onUpEdge: onUp,
-                onPlay: () => _selectTorrent(r),
+                onHoverProbe: presentation.isExternal
+                    ? null
+                    : () => probeSourcesPanelStream(s),
+                onTap: () => _selectStremio(s),
               ),
             ),
           );
-        }
-
-        final j = i - torrents.length;
-        final Map<String, dynamic> s;
-        if (j < stremio.length) {
-          s = stremio[j];
-        } else if (j < stremio.length + nuvio.length) {
-          s = nuvio[j - stremio.length];
-        } else {
-          s = engine[j - stremio.length - nuvio.length];
-        }
-        final title = (s['title'] ?? s['name'] ?? 'Unknown Stream').toString();
-        final description = (s['description'] ?? '').toString();
-        final presentation = stremioTilePresentation(s, isResumable: false);
-        final isCurrent = i == currentIndex;
-        return KeyedSubtree(
-          key: _playerStreamTileKey(s),
-          child: KeyedSubtree(
-            key: isCurrent ? _currentTileKey : null,
-            child: StremioSourceTile(
-              title: title,
-              description: description,
-              leadingIcon: presentation.leadingIcon,
-              leadingColor: presentation.leadingColor,
-              isExternal: presentation.isExternal,
-              addonName: s['_addonName']?.toString(),
-              showAddonName: showAddonName,
-              sizeText: s['size']?.toString(),
-              seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
-              stream: s,
-              highlightStart: isCurrent,
-              tvItemIndex: tvIndex,
-              onUpEdge: onUp,
-              onHoverProbe: presentation.isExternal
-                  ? null
-                  : () => probeSourcesPanelStream(s),
-              onTap: () => _selectStremio(s),
-            ),
-          ),
-        );
-      },
+        },
+      ),
     );
 
     // Bleed past TorrentSourcesPanel horizontal padding (Container forbids

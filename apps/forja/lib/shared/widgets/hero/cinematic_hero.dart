@@ -197,7 +197,8 @@ class HomeCinematicHero extends StatefulWidget {
     this.pageBottomChild,
     this.tvTabId = 'home',
     this.firstCatalogRowHeight,
-  })  : slides = null;
+  })  : slides = null,
+        onSearch = null;
 
   const HomeCinematicHero.hub({
     super.key,
@@ -206,6 +207,7 @@ class HomeCinematicHero extends StatefulWidget {
     this.tvTabId = 'anime',
     this.firstCatalogRowHeight,
     this.scrollController,
+    this.onSearch,
   })  : moviesFuture = null,
         compact = false,
         usesShellHomeLayout = true,
@@ -221,6 +223,8 @@ class HomeCinematicHero extends StatefulWidget {
   final Future<void> Function(Movie movie)? onOpenDetails;
   final String tvTabId;
   final double? firstCatalogRowHeight;
+  /// Hub-only (Anime / Asian Drama) — top-right search; Home uses [HomeTopBar].
+  final VoidCallback? onSearch;
 
   /// First catalog row rendered on the extended page backdrop (desktop/TV).
   final Widget? pageBottomChild;
@@ -265,6 +269,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       PageController(initialPage: _heroLoopStart);
   final FocusNode _tvHeroPlayFocus = FocusNode(debugLabel: 'hero-play');
   final FocusNode _tvHeroGalleryFocus = FocusNode(debugLabel: 'hero-gallery');
+  final FocusNode _tvSearchFocus = FocusNode(debugLabel: 'hub-hero-search');
 
   Timer? _heroTimer;
   int _heroIndex = 0;
@@ -272,11 +277,16 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   final Map<String, List<String>> _heroBackdropUrls = {};
   bool _heroHeightSyncScheduled = false;
   double? _heroPageViewportWidth;
+  bool _searchFocused = false;
+  bool _searchHovered = false;
 
   void _syncSharedHeroFocusNodes() {
     if (ShellTvFocus.currentNavTabId != widget.tvTabId) return;
     ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
     ShellTvFocus.homeHeroGallery = _tvHeroGalleryFocus;
+    if (widget.onSearch != null) {
+      ShellTvFocus.hubHeroSearch = _tvSearchFocus;
+    }
   }
 
   @override
@@ -313,6 +323,9 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     if (ShellTvFocus.homeHeroGallery == _tvHeroGalleryFocus) {
       ShellTvFocus.homeHeroGallery = null;
     }
+    if (ShellTvFocus.hubHeroSearch == _tvSearchFocus) {
+      ShellTvFocus.hubHeroSearch = null;
+    }
     if (ShellBus.homeHeroHeight.value != 0 && !_isHub) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ShellBus.homeHeroHeight.value = 0;
@@ -322,6 +335,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     _heroController.dispose();
     _disposeFocusNode(_tvHeroPlayFocus);
     _disposeFocusNode(_tvHeroGalleryFocus);
+    _disposeFocusNode(_tvSearchFocus);
     super.dispose();
   }
 
@@ -468,7 +482,33 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
 
   void _focusHomeHeroMenu() {
     ShellTvFocusCoordinator.revealHeroForTab(widget.tvTabId);
+    if (widget.onSearch != null && ShellTvFocus.focusHubHeroSearch()) return;
     ShellTvFocus.focusHomeMenu();
+  }
+
+  Widget _buildSearchAction({required bool tvNav}) {
+    final icon = ForjaTopBarIcon(
+      icon: Icons.search_rounded,
+      size: shellScaled(context, 30).clamp(20.0, 30.0),
+      hitSize: shellScaled(context, 44).clamp(32.0, 44.0),
+      manageFocus: !tvNav,
+      highlighted: tvNav ? (_searchFocused || _searchHovered) : null,
+      onTap: tvNav ? null : widget.onSearch,
+    );
+    if (!tvNav) return icon;
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onSearch!,
+      borderRadius: shellScaled(context, 22).clamp(14.0, 22.0),
+      scaleOnFocus: ShellTokens.focusActiveScale,
+      focusNode: _tvSearchFocus,
+      tvTabId: widget.tvTabId,
+      tvZone: ShellTvZone.topBar,
+      onDownEdge: ShellTvFocus.focusHomeHeroGallery,
+      onFocusChange: (focused) => setState(() => _searchFocused = focused),
+      onHoverChange: (hovered) => setState(() => _searchHovered = hovered),
+      child: icon,
+    );
   }
 
   void _stepHeroFilm(int delta, List<_HeroItem> items) {
@@ -941,6 +981,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final pageBleed = widget.pageBottomChild != null && !compact;
     final imageHeight = _homeBackdropHeight(context, compact: compact);
     final topBarBleed = _desktopTopBarBleed(context);
+    final searchTop = topBarBleed + ShellTokens.shellHeaderTopPadding;
     final textTop = topBarBleed + homeHeroTextTopInset(context);
     final compactRightInset =
         compact ? metrics.heroCompactRightInset : 48.0;
@@ -1028,6 +1069,14 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               child: IgnorePointer(
                 ignoring: policy.scaleOnHover,
                 child: _buildTvHeroGalleryFocus(items),
+              ),
+            ),
+          if (widget.onSearch != null)
+            Positioned(
+              top: searchTop,
+              right: shellHomeSectionHorizontalPadding(context),
+              child: _buildSearchAction(
+                tvNav: policy.useFocusableMoodChips,
               ),
             ),
           if (pageBleed)
@@ -1565,32 +1614,36 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         children: [
           Flexible(
             fit: FlexFit.loose,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (rating != null) rating,
-                if (year != null) ...[
-                  if (rating != null) SizedBox(width: gap),
-                  Text(
-                    year,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: metaFont,
-                      fontWeight: FontWeight.w500,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (rating != null) rating,
+                  if (year != null) ...[
+                    if (rating != null) SizedBox(width: gap),
+                    Text(
+                      year,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: metaFont,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
+                  ],
+                  if (typeBadge != null) ...[
+                    SizedBox(width: gap),
+                    typeBadge,
+                  ],
+                  if (heroItem.statusChip != null &&
+                      heroItem.statusChip!.isNotEmpty &&
+                      heroItem.statusChip != heroItem.badgeLabel) ...[
+                    SizedBox(width: gap),
+                    _buildHeroMediaTypeBadge(heroItem.statusChip!),
+                  ],
                 ],
-                if (typeBadge != null) ...[
-                  SizedBox(width: gap),
-                  typeBadge,
-                ],
-                if (heroItem.statusChip != null &&
-                    heroItem.statusChip!.isNotEmpty &&
-                    heroItem.statusChip != heroItem.badgeLabel) ...[
-                  SizedBox(width: gap),
-                  _buildHeroMediaTypeBadge(heroItem.statusChip!),
-                ],
-              ],
+              ),
             ),
           ),
           if (heroItem.genres.isNotEmpty) ...[

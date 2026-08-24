@@ -46,6 +46,7 @@ class TvFocusGraph extends InheritedWidget {
     VoidCallback? onFocusUp,
     VoidCallback? onFocusDown,
     ShellTvRowOrientation orientation = ShellTvRowOrientation.horizontal,
+    Object? owner,
   }) {
     shellTvRegisterRow(
       tabId: tabId,
@@ -55,11 +56,12 @@ class TvFocusGraph extends InheritedWidget {
       onFocusUp: onFocusUp,
       onFocusDown: onFocusDown,
       orientation: orientation,
+      owner: owner,
     );
   }
 
-  void unregisterRow(String rowId) {
-    shellTvUnregisterRow(tabId: tabId, rowId: rowId);
+  void unregisterRow(String rowId, {Object? owner}) {
+    shellTvUnregisterRow(tabId: tabId, rowId: rowId, owner: owner);
   }
 
   void updateRowCount({required String rowId, required int itemCount}) {
@@ -175,6 +177,7 @@ class _TvCatalogRowState extends State<TvCatalogRow> {
         onFocusUp: widget.onFocusUp,
         onFocusDown: widget.onFocusDown,
         orientation: widget.orientation,
+        owner: this,
       );
     } else {
       shellTvRegisterRow(
@@ -185,6 +188,7 @@ class _TvCatalogRowState extends State<TvCatalogRow> {
         onFocusUp: widget.onFocusUp,
         onFocusDown: widget.onFocusDown,
         orientation: widget.orientation,
+        owner: this,
       );
     }
     _registeredTabId = tabId;
@@ -195,7 +199,7 @@ class _TvCatalogRowState extends State<TvCatalogRow> {
     final tabId = _registeredTabId;
     final rowId = _registeredRowId;
     if (tabId == null || rowId == null) return;
-    shellTvUnregisterRow(tabId: tabId, rowId: rowId);
+    shellTvUnregisterRow(tabId: tabId, rowId: rowId, owner: this);
     _registeredTabId = null;
     _registeredRowId = null;
   }
@@ -339,6 +343,7 @@ class _TvChipStripState extends State<TvChipStrip> {
       rowId: widget.rowId,
       sortOrder: widget.sortOrder,
       itemCount: widget.itemCount,
+      owner: this,
     );
     _registeredTabId = tabId;
     _registeredRowId = widget.rowId;
@@ -348,7 +353,7 @@ class _TvChipStripState extends State<TvChipStrip> {
     final tabId = _registeredTabId;
     final rowId = _registeredRowId;
     if (tabId == null || rowId == null) return;
-    shellTvUnregisterRow(tabId: tabId, rowId: rowId);
+    shellTvUnregisterRow(tabId: tabId, rowId: rowId, owner: this);
     _registeredTabId = null;
     _registeredRowId = null;
   }
@@ -504,6 +509,7 @@ class _TvGridState extends State<TvGrid> {
         itemCount: widget.itemCount,
         onFocusUp: widget.onFocusUp,
         onFocusDown: widget.onFocusDown,
+        owner: this,
       );
     } else {
       shellTvRegisterRow(
@@ -513,6 +519,7 @@ class _TvGridState extends State<TvGrid> {
         itemCount: widget.itemCount,
         onFocusUp: widget.onFocusUp,
         onFocusDown: widget.onFocusDown,
+        owner: this,
       );
     }
     _registeredTabId = tabId;
@@ -523,7 +530,7 @@ class _TvGridState extends State<TvGrid> {
     final tabId = _registeredTabId;
     final rowId = _registeredRowId;
     if (tabId == null || rowId == null) return;
-    shellTvUnregisterRow(tabId: tabId, rowId: rowId);
+    shellTvUnregisterRow(tabId: tabId, rowId: rowId, owner: this);
     _registeredTabId = null;
     _registeredRowId = null;
   }

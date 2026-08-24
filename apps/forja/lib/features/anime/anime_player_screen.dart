@@ -19,6 +19,7 @@ import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
@@ -1493,6 +1494,23 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
       providerSourcesCache!.dispose();
     }
     if (handOff != null && mounted) {
+      if (await hubEngineAutoPlayEnabled()) {
+        final malId = await _service.resolveMalId(widget.anime.id);
+        if (!mounted) return;
+        await runHubEngineAutoPlay(
+          context: context,
+          movie: _hubMovieFromAnime(widget.anime),
+          engineCategory: 'anime',
+          season: 1,
+          episode: handOff,
+          anilistId: widget.anime.id,
+          malId: malId,
+          loadingSubtitle: 'EP $handOff',
+          hubEpisodes: hubEpisodes,
+        );
+        if (mounted && navigator.canPop()) navigator.pop();
+        return;
+      }
       final existing = ShellScope.maybeOf(context);
       final profile = existing?.profile ?? resolveShellProfile(context);
       final config = existing?.config ?? shellPlatformConfigFor(profile);

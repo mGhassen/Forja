@@ -292,21 +292,21 @@ Set<String> engineStaleFetchedPluginIds({
     if (selectedIds.contains(id) && !enginePluginHasStreams(id, streams)) id,
 };
 
+/// Plugins to fetch when expanding All — only newly selected ids that were
+/// never fetched. Already-fetched empties stay cached (kind/chip reload retries).
+///
+/// [streams] is unused (kept so call sites stay stable).
 Set<String> enginePluginIdsToRefetchOnAllExpand({
   required Set<String> previousSelectedIds,
   required Set<String> nextSelectedIds,
   required Set<String> fetchedIds,
   required Iterable<Map<String, dynamic>> streams,
 }) {
-  final out = nextSelectedIds.difference(previousSelectedIds);
-  out.addAll(
-    engineStaleFetchedPluginIds(
-      fetchedIds: fetchedIds,
-      selectedIds: nextSelectedIds,
-      streams: streams,
-    ),
-  );
-  return out;
+  final newlySelected = nextSelectedIds.difference(previousSelectedIds);
+  return {
+    for (final id in newlySelected)
+      if (!fetchedIds.contains(id)) id,
+  };
 }
 
 bool engineFullAllSelected({

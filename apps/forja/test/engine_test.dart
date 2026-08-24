@@ -128,7 +128,7 @@ void main() {
       );
     });
 
-    test('All expand refetches newly selected and stale empty fetched', () {
+    test('All expand only refetches newly selected never-fetched plugins', () {
       final streams = [
         {
           '_enginePluginId': 'videasy',
@@ -143,7 +143,7 @@ void main() {
           fetchedIds: const {'videasy', 'vidlink', 'castle'},
           streams: streams,
         ),
-        {'vidlink', 'castle'},
+        isEmpty,
       );
       expect(
         engineStaleFetchedPluginIds(

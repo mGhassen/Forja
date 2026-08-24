@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **6 / 10** acceptance |
-| **Current slice** | Muxed-first + audio-add fallback shipped — audio/device smoke remaining |
+| **Progress** | **3 / 3** components · **10 / 15** acceptance |
+| **Current slice** | Adaptive-first (Debrify) + prefetch + deferred captions shipped — device smoke remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -42,6 +42,18 @@
 
 ---
 
+## Acceptance (adaptive-first / Debrify parity)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R55-A11 | Default open is adaptive ≤1080p + AAC (not muxed 360p); muxed only if adaptive silent | ✅ |
+| 2 | R55-A12 | Details trailers row + hero Trailer prefetch resolve (cache hit on open) | ✅ |
+| 3 | R55-A13 | Captions fetched lazily on CC menu (not on critical open path) | ✅ |
+| 4 | R55-A14 | Desktop/TV smoke: open trailer ≥720p when available; Quality changes picture | ⬜ |
+| 5 | R55-A15 | Age-restricted trailers: getManifest tries androidVr + tv (+ sdkless/ios) so racyCheckOk unlocks streams | ✅ |
+
+---
+
 ## Acceptance (ATV D-pad — issue 154)
 
 Shipped under [issue 154](../issues/154-[open]-android-tv-trailer-player-dpad.md) (`I154-T01`–`T04`). Rows above: `R55-A07` code · `R55-A08` device smoke.
@@ -60,10 +72,11 @@ Replace the fullscreen trailer YouTube iframe (and its 1.35× overscan hack to h
 ## Contracts
 
 - Default height cap: **1080p** H.264; VP9 listed above; AV1 excluded
-- Prefer `YoutubeApiClient.androidVr` for googlevideo URLs that open in mpv
-- **Default open:** muxed progressive MP4 when available (baked-in audio); else adaptive video-only + AAC
-- Adaptive HD stays in the quality ladder; desktop always `audio-add` after open; ATV prefers `audio-file` then `audio-add` if no track
-- Resolve off UI isolate; short TTL cache; re-resolve on open / trailer switch
+- Prefer `YoutubeApiClient.androidVr` for googlevideo URLs that open in mpv; also try `tv` / `androidSdkless` / `ios` in the same manifest call (age / racy gate)
+- **Default open:** adaptive video-only ≤1080p + AAC (Debrify); muxed progressive only when adaptive unavailable or audio attach fails
+- Quality ladder is the full adaptive height list; desktop always `audio-add` after open; ATV prefers `audio-file` then `audio-add` if no track
+- Resolve off UI isolate; short TTL cache; prefetch from details trailers / hero Trailer; re-resolve on open / trailer switch
+- Captions fetched lazily when the CC menu opens (not on open)
 - No iframe fallback on resolve failure
 
 ## Related

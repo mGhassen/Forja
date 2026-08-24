@@ -216,7 +216,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [194-[fixed]-…](fixed/194-[fixed]-android-tv-forja-sports-source-load-oom.md) | ATV Forja Sports source load OOM / process kill | P1 | High | fixed | Complete · 3/3 · A 1/2 | — |
 | [195-[open]-…](195-[open]-anime-hub-cold-catalog-load.md) | Anime hub cold catalog slow open | P2 | Medium | open | 3/5 · A 0/4 | — |
 | [196-[fixed]-…](fixed/196-[fixed]-desktop-window-size-resets-after-player.md) | Desktop window size resets after player close | P1 | High | fixed | Complete · 3/3 · A 3/3 | — |
-| [197-[open]-…](197-[open]-android-tv-trailer-quality-switch.md) | ATV trailer Quality switch stuck | P1 | High | open | 5/5 · A 0/2 | — |
+| [197-[open]-…](197-[open]-android-tv-trailer-quality-switch.md) | ATV trailer Quality switch stuck | P1 | High | open | 9/9 · A 0/2 | — |
 | [198-[fixed]-…](fixed/198-[fixed]-mediakit-resume-and-server-switch-starts-at-zero.md) | MediaKit resume / server switch starts at 0 | P1 | High | fixed | Complete · 4/4 · A 0/2 | — |
 | [199-[open]-…](199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md) | ATV IPTV MediaKit silent underrun + Reload engine swap | P1 | High | open | 5/5 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [200-[fixed]-…](fixed/200-[fixed]-android-tv-home-hero-focus-disposed.md) | ATV Home hero loses focus (FocusNode disposed) | P1 | High | fixed | Complete · 3/3 · A 1/2 | — |

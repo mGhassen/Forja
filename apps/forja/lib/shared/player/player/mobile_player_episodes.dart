@@ -108,10 +108,22 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
 
   bool get _isNextEpisodeAvailable =>
       (widget.onNextEpisode != null && widget.hasNextEpisode) ||
+      (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty) ||
       (widget.movie != null &&
-          widget.movie!.mediaType == 'tv' &&
+          _isSeriesMediaType(widget.movie!.mediaType) &&
           widget.selectedSeason != null &&
+          widget.selectedEpisode != null) ||
+      (widget.enginePlaySession?.isHubFlatList == true &&
           widget.selectedEpisode != null);
+
+  bool _isSeriesMediaType(String? mediaType) {
+    final m = (mediaType ?? '').toLowerCase();
+    return m == 'tv' ||
+        m == 'anime' ||
+        m == 'asian_drama' ||
+        m == 'drama' ||
+        m == 'series';
+  }
 
   bool get _showNextEpButton =>
       _isNextEpisodeAvailable &&
@@ -231,6 +243,27 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     _endEpisodeLoading();
   }
 
+  /// Kill audio immediately — resolve/openPlayer can take seconds while this
+  /// route is still mounted, and dispose teardown is fire-and-forget.
+  Future<void> _silenceForEpisodeHandoff() async {
+    if (_s._disposed) return;
+    try {
+      await silenceMediaKitPlayer(_s._player);
+    } catch (_) {}
+  }
+
+  Future<void> _resumeAfterFailedEpisodeHandoff() async {
+    if (_s._disposed || !mounted) return;
+    try {
+      final platform = _s._player.platform;
+      if (platform is NativePlayer) {
+        await restoreMediaKitAudioOutput(platform);
+      }
+      await _s._player.setVolume(_s._mpvVolume);
+      if (!_s._disposed) await _s._player.play();
+    } catch (_) {}
+  }
+
   Future<void> _nextEpisode() async {
     if (!_isNextEpisodeAvailable || _s._isLoadingNextEp) return;
 
@@ -244,9 +277,15 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       );
       try {
         _s._saveWatchHistory();
+        await _silenceForEpisodeHandoff();
         await widget.onNextEpisode!();
-        _endEpisodeLoading();
+        // Success pops this route; only resume if we're still the top route.
+        if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+          await _resumeAfterFailedEpisodeHandoff();
+          _endEpisodeLoading();
+        }
       } catch (e) {
+        await _resumeAfterFailedEpisodeHandoff();
         await _failEpisodeLoading('Could not load the next episode');
       }
       return;
@@ -280,9 +319,14 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       );
       try {
         _s._saveWatchHistory();
+        await _silenceForEpisodeHandoff();
         await widget.onHubEpisodeSelected!(prev);
-        _endEpisodeLoading();
+        if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+          await _resumeAfterFailedEpisodeHandoff();
+          _endEpisodeLoading();
+        }
       } catch (e) {
+        await _resumeAfterFailedEpisodeHandoff();
         await _failEpisodeLoading('Could not load the previous episode');
       }
       return;
@@ -440,6 +484,33 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   Future<({int season, int episode})?> _computeNextEpisode({
     bool silent = false,
   }) async {
+    final hub = widget.hubEpisodes;
+    final hubCurrent = widget.hubEpisodeNumber ?? widget.selectedEpisode;
+    if (hub != null && hub.isNotEmpty && hubCurrent != null) {
+      final idx = hubEpisodeIndex(hub, hubCurrent);
+      if (idx == null || idx >= hub.length - 1) return null;
+      final next = hub[idx + 1];
+      return (season: 1, episode: next.number.round());
+    }
+
+    final session = widget.enginePlaySession;
+    if (session?.isHubFlatList == true && widget.selectedEpisode != null) {
+      final next = widget.selectedEpisode! + 1;
+      final max = widget.movie?.numberOfEpisodes ?? 0;
+      if (max > 0 && next > max) {
+        if (!silent && mounted) {
+          _s._statusController.upsert(
+            'episode',
+            'No more episodes',
+            kind: StatusRouletteKind.info,
+            dismissAfter: const Duration(seconds: 2),
+          );
+        }
+        return null;
+      }
+      return (season: 1, episode: next);
+    }
+
     if (widget.movie == null ||
         widget.selectedSeason == null ||
         widget.selectedEpisode == null) {
@@ -484,6 +555,22 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   }
 
   Future<({int season, int episode})?> _computePreviousEpisode() async {
+    final hub = widget.hubEpisodes;
+    final hubCurrent = widget.hubEpisodeNumber ?? widget.selectedEpisode;
+    if (hub != null && hub.isNotEmpty && hubCurrent != null) {
+      final idx = hubEpisodeIndex(hub, hubCurrent);
+      if (idx == null || idx <= 0) return null;
+      final prev = hub[idx - 1];
+      return (season: 1, episode: prev.number.round());
+    }
+
+    final session = widget.enginePlaySession;
+    if (session?.isHubFlatList == true && widget.selectedEpisode != null) {
+      final prev = widget.selectedEpisode! - 1;
+      if (prev < 1) return null;
+      return (season: 1, episode: prev);
+    }
+
     if (widget.movie == null ||
         widget.selectedSeason == null ||
         widget.selectedEpisode == null) {
@@ -533,7 +620,19 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       return;
     }
 
-    if (widget.movie?.mediaType == 'tv' &&
+    if (widget.enginePlaySession?.isHubFlatList == true &&
+        widget.selectedEpisode != null) {
+      final next = await _computeNextEpisode(silent: true);
+      final prev = await _computePreviousEpisode();
+      if (!mounted) return;
+      setState(() {
+        _s._hasPrevEpisodeAdjacent = prev != null;
+        _s._hasNextEpisodeAdjacent = next != null;
+      });
+      return;
+    }
+
+    if (_isSeriesMediaType(widget.movie?.mediaType) &&
         widget.selectedSeason != null &&
         widget.selectedEpisode != null) {
       final results = await Future.wait([
@@ -558,6 +657,33 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   Future<void> _switchToEpisode(int season, int episode) async {
     if (widget.movie == null) return;
     _s._resetEofSessionGuards();
+    final enginePid = _s._currentProvider ?? widget.activeProvider;
+    if (isEnginePlayerSession(enginePid)) {
+      _s._saveWatchHistory();
+      if (_s._isLoadingNextEp) _endEpisodeLoading();
+      if (!mounted) return;
+      setState(() => _s._isLoadingNextEp = true);
+      await _silenceForEpisodeHandoff();
+      try {
+        debugPrint('[EpSwitch] Engine Auto S${season}E$episode');
+        await switchEpisodeViaEngineAutoPlay(
+          context: context,
+          movie: widget.movie!,
+          season: season,
+          episode: episode,
+          stremioId: widget.stremioId,
+          session: widget.enginePlaySession,
+          hubEpisodes: widget.hubEpisodes,
+        );
+      } finally {
+        if (mounted) {
+          await _resumeAfterFailedEpisodeHandoff();
+          _endEpisodeLoading();
+        }
+      }
+      return;
+    }
+
     _beginEpisodeLoading(
       label: 'Season $season · Episode $episode',
       status: 'Loading episode info…',
@@ -565,6 +691,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     // Let the loading card paint before resolve starts.
     await Future<void>.delayed(Duration.zero);
     if (!mounted) return;
+    await _silenceForEpisodeHandoff();
 
     try {
       debugPrint('[EpSwitch] Playing S${season}E$episode');
@@ -615,27 +742,41 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       if (resolved.magnetLink != null && resolved.magnetLink!.isNotEmpty) {
         TorrentStreamService().retainForExternalHandoff = true;
       }
-      Navigator.of(context, rootNavigator: true).pushReplacement(
-        AppRouter.slideRoute(
-          (_) => PlayerScreen(
-            streamUrl: resolved!.streamUrl,
-            title: nextTitle,
-            headers: catalog ? null : resolved.headers,
-            movie: widget.movie,
-            selectedSeason: season,
-            selectedEpisode: episode,
-            magnetLink: resolved.magnetLink,
-            fileIndex: resolved.fileIndex,
-            activeProvider: resolved.activeProvider,
-            stremioId: widget.stremioId,
-            stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
-            providers: catalog ? null : widget.providers,
-            sources: catalog ? null : resolved.sources,
-          ),
+      // openPlayer (not pushReplacement): clears old player + loading dialogs /
+      // hub host so Back returns to details, not the previous episode.
+      unawaited(
+        AppRouter.openPlayer(
+          context,
+          streamUrl: resolved!.streamUrl,
+          title: nextTitle,
+          headers: catalog ? null : resolved.headers,
+          movie: widget.movie,
+          selectedSeason: season,
+          selectedEpisode: episode,
+          magnetLink: resolved.magnetLink,
+          fileIndex: resolved.fileIndex,
+          activeProvider: resolved.activeProvider,
+          stremioId: widget.stremioId,
+          stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+          providers: catalog ? null : widget.providers,
+          sources: catalog ? null : resolved.sources,
+          enginePlaySession: widget.enginePlaySession,
+          hubEpisodes: widget.hubEpisodes,
+          hubEpisodeNumber: widget.hubEpisodes != null ? episode : null,
+          onNextEpisode: widget.onNextEpisode,
+          hasNextEpisode: widget.hasNextEpisode,
+          onHubEpisodeSelected: widget.onHubEpisodeSelected,
+          onSaveProgress: widget.onSaveProgress,
+          onSourcePinned: widget.onSourcePinned,
+          pinSource: widget.pinSource,
+          sourcesListNotifier: widget.sourcesListNotifier,
+          providerSourcesCache: widget.providerSourcesCache,
+          providerProbesNotifier: widget.providerProbesNotifier,
         ),
       );
     } catch (e) {
       debugPrint('[EpSwitch] Error: $e');
+      await _resumeAfterFailedEpisodeHandoff();
       await _failEpisodeLoading('Could not find a stream for this episode');
     }
   }
@@ -648,26 +789,35 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   }
 
   Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
-    if (widget.hubEpisodes != null &&
-        widget.hubEpisodes!.isNotEmpty &&
-        widget.onHubEpisodeSelected != null) {
+    if (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty) {
       if (!mounted) return;
       PlayerPopupPanel.dismiss();
+      final useHubCallback = widget.onHubEpisodeSelected != null;
       PlayerHubEpisodePanel.show(
         context: context,
         episodes: widget.hubEpisodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         onEpisodeSelected: (ep) async {
-          _beginEpisodeLoading(
-            label: 'Episode ${ep.displayNumber}',
-            status: 'Loading episode info…',
-          );
-          try {
-            await widget.onHubEpisodeSelected!(ep);
-            _endEpisodeLoading();
-          } catch (e) {
-            await _failEpisodeLoading('Could not load this episode');
+          if (useHubCallback) {
+            _beginEpisodeLoading(
+              label: 'Episode ${ep.displayNumber}',
+              status: 'Loading episode info…',
+            );
+            try {
+              _s._saveWatchHistory();
+              await _silenceForEpisodeHandoff();
+              await widget.onHubEpisodeSelected!(ep);
+              if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
+                await _resumeAfterFailedEpisodeHandoff();
+                _endEpisodeLoading();
+              }
+            } catch (e) {
+              await _resumeAfterFailedEpisodeHandoff();
+              await _failEpisodeLoading('Could not load this episode');
+            }
+            return;
           }
+          await _switchToEpisode(1, ep.number.round());
         },
         fallbackBackdropPath: widget.movie?.backdropPath,
         fallbackPosterPath: widget.movie?.posterPath,
@@ -676,7 +826,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     }
     if (!mounted) return;
     final movie = widget.movie;
-    if (movie == null || movie.mediaType != 'tv') return;
+    if (movie == null || !_isSeriesMediaType(movie.mediaType)) return;
     final season = widget.selectedSeason ?? 1;
     final episode = widget.selectedEpisode ?? 1;
     PlayerEpisodeMenu.show(

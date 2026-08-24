@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/external_player_handoff_screen.dart';
@@ -49,6 +50,9 @@ class PlayerScreen extends StatefulWidget {
   final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
 
+  /// Forja Auto session — next/prev reuses [switchEpisodeViaEngineAutoPlay].
+  final EnginePlaySession? enginePlaySession;
+
   /// Optional progress save hook. Called by the inner player when the
   /// watch history should be persisted (lifecycle pause, periodic tick,
   /// player exit). Used by anime / arabic flows that own their own
@@ -92,6 +96,7 @@ class PlayerScreen extends StatefulWidget {
     this.hubEpisodeNumber,
     this.onHubEpisodeSelected,
     this.episodeOverview,
+    this.enginePlaySession,
     this.onSaveProgress,
     this.onSourcePinned,
     this.pinSource = false,
@@ -447,6 +452,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           hubEpisodeNumber: widget.hubEpisodeNumber,
           onHubEpisodeSelected: widget.onHubEpisodeSelected,
           episodeOverview: widget.episodeOverview,
+          enginePlaySession: widget.enginePlaySession,
           providers: widget.providers,
           stremioId: widget.stremioId,
           stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
@@ -483,6 +489,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         hubEpisodeNumber: widget.hubEpisodeNumber,
         onHubEpisodeSelected: widget.onHubEpisodeSelected,
         episodeOverview: widget.episodeOverview,
+          enginePlaySession: widget.enginePlaySession,
         onSaveProgress: widget.onSaveProgress,
         onSourcePinned: widget.onSourcePinned,
         pinSource: widget.pinSource,
@@ -524,6 +531,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           hubEpisodeNumber: widget.hubEpisodeNumber,
           onHubEpisodeSelected: widget.onHubEpisodeSelected,
           episodeOverview: widget.episodeOverview,
+          enginePlaySession: widget.enginePlaySession,
           providers: widget.providers,
           stremioId: widget.stremioId,
           stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
@@ -560,6 +568,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         hubEpisodeNumber: widget.hubEpisodeNumber,
         onHubEpisodeSelected: widget.onHubEpisodeSelected,
         episodeOverview: widget.episodeOverview,
+          enginePlaySession: widget.enginePlaySession,
         onSaveProgress: widget.onSaveProgress,
         onSourcePinned: widget.onSourcePinned,
         pinSource: widget.pinSource,
@@ -600,6 +609,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         hubEpisodeNumber: widget.hubEpisodeNumber,
         onHubEpisodeSelected: widget.onHubEpisodeSelected,
         episodeOverview: widget.episodeOverview,
+          enginePlaySession: widget.enginePlaySession,
         onSaveProgress: widget.onSaveProgress,
         onSourcePinned: widget.onSourcePinned,
         pinSource: widget.pinSource,

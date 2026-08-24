@@ -74,6 +74,8 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   double _playbackRate = 1.0;
   int? _selectedQualityHeight;
   String? _activeCaptionCode;
+  bool _captionsLoading = false;
+  bool _captionsFetched = false;
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   Timer? _hideTimer;

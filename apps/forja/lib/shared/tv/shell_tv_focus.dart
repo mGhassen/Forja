@@ -346,8 +346,8 @@ KeyEventResult shellTvHandleRowArrows({
     }
     final left = tvMeta?.resolveLeftEdge();
     if (left != null) {
-      left();
-      return KeyEventResult.handled;
+      // False (unregistered neighbor) must not swallow — spatial / trap next.
+      return left() ? KeyEventResult.handled : KeyEventResult.ignored;
     }
     if (tvMeta?.zone == ShellTvZone.chipStrip || rowBound) {
       return KeyEventResult.handled;
@@ -388,8 +388,7 @@ KeyEventResult shellTvHandleRowArrows({
     }
     final right = tvMeta?.resolveRightEdge();
     if (right != null) {
-      right();
-      return KeyEventResult.handled;
+      return right() ? KeyEventResult.handled : KeyEventResult.ignored;
     }
     if (tvMeta?.zone == ShellTvZone.chipStrip || rowBound) {
       return KeyEventResult.handled;

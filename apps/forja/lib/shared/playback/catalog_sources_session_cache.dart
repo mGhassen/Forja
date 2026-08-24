@@ -1,6 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:rust/rust.dart';
 
 /// Tab, chip, and toolbar state for catalog Sources (player overlay).
@@ -44,8 +42,10 @@ class CatalogSourcesPanelUiState {
 /// In-memory TTL cache for catalog Sources (Torrents / Stremio / Nuvio / Engine).
 ///
 /// Shared by media-details and the in-player Sources panel so reopening the
-/// panel within [ttl] reuses the last fetch. Empty results and per-provider
-/// misses are never stored — a flaky scraper or dead addon must not block retry.
+/// panel within [ttl] reuses the last fetch. Torrents / Stremio still drop
+/// empty lists (flaky search). Forja / Nuvio keep fetched markers even when a
+/// scraper returned nothing so hub overlay reopen matches movie details RAM
+/// (explicit kind/chip reload still force-refetches).
 class CatalogSourcesSessionCache {
   CatalogSourcesSessionCache._();
 
@@ -77,18 +77,44 @@ class CatalogSourcesSessionCache {
   static final _ui =
       <String, ({DateTime at, CatalogSourcesPanelUiState state})>{};
 
-  /// Stable key - TV always uses 1-based season/episode.
+  /// Stable key for a title/episode Sources session.
+  ///
+  /// Prefer hub ids ([anilistId] / [kisskhId]) so Anime / Asian Drama stay on
+  /// one key when TMDB enrichment flips `movie.id` / `mediaType`. Episode is
+  /// always scoped for hubs; [animeAudioCategory] splits SUB/DUB when set.
   static String cacheKey({
     required int mediaId,
     required String mediaType,
     int? season,
     int? episode,
+    int? anilistId,
+    int? malId,
+    int? kisskhId,
+    String? animeAudioCategory,
   }) {
+    final ep = (episode == null || episode < 1) ? 1 : episode;
+    final audio = (animeAudioCategory ?? '').trim().toLowerCase();
+    final audioSuffix =
+        (audio == 'sub' || audio == 'dub') ? ':$audio' : '';
+
+    final ani = anilistId ?? 0;
+    if (ani > 0) return 'anime:$ani:E$ep$audioSuffix';
+
+    final kiss = kisskhId ?? 0;
+    if (kiss > 0) return 'drama:$kiss:E$ep';
+
+    // Fallback Movie builds use negative AniList / KissKh ids + hub mediaType
+    // before TMDB lands — still episode-scoped (not bare `anime:-id`).
     final type = mediaType == 'series' ? 'tv' : mediaType;
+    if (type == 'anime' || type == 'asian_drama' || type == 'drama') {
+      final s = (season == null || season < 1) ? 1 : season;
+      final mal = malId ?? 0;
+      final malSuffix = mal > 0 ? ':mal$mal' : '';
+      return '$type:$mediaId$malSuffix:S$s:E$ep$audioSuffix';
+    }
     if (type != 'tv') return '$type:$mediaId';
     final s = (season == null || season < 1) ? 1 : season;
-    final e = (episode == null || episode < 1) ? 1 : episode;
-    return '$type:$mediaId:S$s:E$e';
+    return '$type:$mediaId:S$s:E$ep';
   }
 
   static List<TorrentResult>? readTorrents(String key) {
@@ -149,13 +175,13 @@ class CatalogSourcesSessionCache {
       _nuvio.remove(key);
       return null;
     }
-    if (entry.streams.isEmpty) {
+    if (entry.streams.isEmpty && entry.fetchedScraperIds.isEmpty) {
       _nuvio.remove(key);
       return null;
     }
     return (
       streams: [for (final s in entry.streams) Map<String, dynamic>.from(s)],
-      fetchedScraperIds: _nuvioFetchedWithHits(entry.streams, entry.fetchedScraperIds),
+      fetchedScraperIds: Set<String>.from(entry.fetchedScraperIds),
     );
   }
 
@@ -164,7 +190,7 @@ class CatalogSourcesSessionCache {
     List<Map<String, dynamic>> streams, {
     required Set<String> fetchedScraperIds,
   }) {
-    if (streams.isEmpty) {
+    if (streams.isEmpty && fetchedScraperIds.isEmpty) {
       _nuvio.remove(key);
       return;
     }
@@ -172,7 +198,8 @@ class CatalogSourcesSessionCache {
     _nuvio[key] = (
       at: DateTime.now(),
       streams: copied,
-      fetchedScraperIds: _nuvioFetchedWithHits(copied, fetchedScraperIds),
+      // Keep empty-miss markers so reopen does not re-hit every dead scraper.
+      fetchedScraperIds: Set<String>.from(fetchedScraperIds),
     );
     _trim(_nuvio);
   }
@@ -185,13 +212,13 @@ class CatalogSourcesSessionCache {
       _engine.remove(key);
       return null;
     }
-    if (entry.streams.isEmpty) {
+    if (entry.streams.isEmpty && entry.fetchedPluginIds.isEmpty) {
       _engine.remove(key);
       return null;
     }
     return (
       streams: [for (final s in entry.streams) Map<String, dynamic>.from(s)],
-      fetchedPluginIds: _engineFetchedWithHits(entry.streams, entry.fetchedPluginIds),
+      fetchedPluginIds: Set<String>.from(entry.fetchedPluginIds),
     );
   }
 
@@ -200,7 +227,7 @@ class CatalogSourcesSessionCache {
     List<Map<String, dynamic>> streams, {
     required Set<String> fetchedPluginIds,
   }) {
-    if (streams.isEmpty) {
+    if (streams.isEmpty && fetchedPluginIds.isEmpty) {
       _engine.remove(key);
       return;
     }
@@ -208,26 +235,10 @@ class CatalogSourcesSessionCache {
     _engine[key] = (
       at: DateTime.now(),
       streams: copied,
-      fetchedPluginIds: _engineFetchedWithHits(copied, fetchedPluginIds),
+      fetchedPluginIds: Set<String>.from(fetchedPluginIds),
     );
     _trim(_engine);
   }
-
-  static Set<String> _nuvioFetchedWithHits(
-    Iterable<Map<String, dynamic>> streams,
-    Set<String> fetchedScraperIds,
-  ) => {
-    for (final id in fetchedScraperIds)
-      if (streams.any((s) => nuvioStreamBelongsToScraper(s, id))) id,
-  };
-
-  static Set<String> _engineFetchedWithHits(
-    Iterable<Map<String, dynamic>> streams,
-    Set<String> fetchedPluginIds,
-  ) => {
-    for (final id in fetchedPluginIds)
-      if (enginePluginHasStreams(id, streams)) id,
-  };
 
   static CatalogSourcesPanelUiState? readUi(String key) {
     final entry = _ui[key];

@@ -501,40 +501,37 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       .where((p) => p.status == StreamProviderProbeStatus.trying)
       .toList(growable: false);
 
-  /// Probe list is source of truth — never pair last-write `messageNotifier`
-  /// with a single "first trying" label (parallel checks make them disagree).
+  /// Step copy only — server names live in the layers list, not the headline.
   String get _probeStatusHeadline {
-    final trying = _tryingProbes;
-    if (trying.isEmpty) return _message;
-    final probing = _message.toUpperCase().contains('PROBING');
-    final verb = probing ? 'PROBING' : 'CHECKING';
-    if (trying.length == 1) {
-      return '$verb ${trying.single.label.toUpperCase()}…';
+    final msg = _message.trim().toUpperCase();
+    if (msg.contains('OPENING')) return 'OPENING PLAYER…';
+    if (msg.contains('PROBING')) return 'PROBING STREAMS…';
+    if (_tryingProbes.isNotEmpty || msg.contains('CHECKING')) {
+      return 'CHECKING SERVERS…';
     }
-    return '$verb ${trying.length} SOURCES…';
+    if (msg.contains('FINDING') || msg.contains('LOOKING')) {
+      return 'FINDING SERVERS…';
+    }
+    if (msg.isNotEmpty) return msg.endsWith('…') || msg.endsWith('...') ? msg : '$msg…';
+    return 'FINDING SERVERS…';
   }
 
+  /// Short step hint — never provider names (those are in the servers card).
   String? get _probeStatusDetail {
-    final trying = _tryingProbes;
-    if (trying.length <= 1) return null;
-    const maxNames = 3;
-    final names =
-        trying.take(maxNames).map((p) => p.label.toUpperCase()).join(' · ');
-    if (trying.length > maxNames) {
-      return '$names · +${trying.length - maxNames}';
+    final msg = _message.trim().toUpperCase();
+    if (msg.contains('OPENING')) return 'Starting playback';
+    if (msg.contains('PROBING')) return 'Testing which links play';
+    if (_tryingProbes.isNotEmpty || msg.contains('CHECKING')) {
+      return 'Asking servers for streams';
     }
-    return names;
+    if (msg.contains('FINDING') || msg.contains('LOOKING') || msg.isEmpty) {
+      return 'Looking up available providers';
+    }
+    return null;
   }
 
-  /// Live status from the resolve owner (stream probe, preparing playback, …).
-  /// Shown under the aggregate headline so parallel checks never look frozen.
-  String? get _probeActivityLine {
-    if (!_showProviderProbes) return null;
-    final msg = _message.trim();
-    if (msg.isEmpty) return null;
-    if (msg == _probeStatusHeadline) return null;
-    return msg;
-  }
+  /// Probe UI uses headline + detail for steps; skip activity (often duplicated names).
+  String? get _probeActivityLine => null;
 
   bool get _probeWorkActive => _tryingProbes.isNotEmpty;
 

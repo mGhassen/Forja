@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/media/details/details_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
+import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/player/trailer_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -258,6 +260,7 @@ class AppRouter {
     ValueNotifier<List<StreamSource>>? sourcesListNotifier,
     ValueNotifier<Map<String, List<StreamSource>>>? providerSourcesCache,
     ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier,
+    EnginePlaySession? enginePlaySession,
     bool fadeTransition = false,
   }) {
     final routeBuilder = fadeTransition ? fadeRoute<T> : slideRoute<T>;
@@ -268,6 +271,12 @@ class AppRouter {
     final profile = existing?.profile ?? resolveShellProfile(context);
     final config = existing?.config ?? shellPlatformConfigFor(profile);
     final navigator = Navigator.of(context, rootNavigator: true);
+    // In-player next/episode switch calls openPlayer from a player route while a
+    // Forja Auto loading *dialog* sits on top. pushAndRemoveUntil must not stop
+    // on that dialog (or the hub loading host) — otherwise Back returns to the
+    // previous episode instead of details.
+    final replacingPlayer =
+        ModalRoute.of(context)?.settings.name == playerRouteName;
     return navigator.pushAndRemoveUntil<T>(
       routeBuilder(
         (_) => ShellScope(
@@ -306,11 +315,24 @@ class AppRouter {
             sourcesListNotifier: sourcesListNotifier,
             providerSourcesCache: providerSourcesCache,
             providerProbesNotifier: providerProbesNotifier,
+            enginePlaySession: enginePlaySession,
           ),
         ),
         settings: settings,
       ),
-      (route) => route.isFirst || route.settings.name != playerRouteName,
+      (route) {
+        if (route.isFirst) return true;
+        final name = route.settings.name;
+        if (name == playerRouteName) return false;
+        if (name == loadingOverlayRouteName) {
+          // Always strip Auto loading dialogs above the old player.
+          if (route is PopupRoute) return false;
+          // Episode switch from in-player: also strip the hub loading host so
+          // Back lands on details, not the previous episode's resolve screen.
+          if (replacingPlayer) return false;
+        }
+        return true;
+      },
     );
   }
 }

@@ -29,6 +29,7 @@ import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_touch_seekbar.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
+import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
@@ -77,6 +78,7 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
     this.hubEpisodeNumber,
     this.onHubEpisodeSelected,
     this.episodeOverview,
+    this.enginePlaySession,
     this.providers,
     this.stremioId,
     this.stremioAddonBaseUrl,
@@ -106,6 +108,7 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
   final num? hubEpisodeNumber;
   final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
+  final EnginePlaySession? enginePlaySession;
   final Map<String, dynamic>? providers;
   final String? stremioId;
   final String? stremioAddonBaseUrl;
@@ -1026,6 +1029,36 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (season == widget.selectedSeason && episode == widget.selectedEpisode) {
       return;
     }
+    if (isEnginePlayerSession(widget.activeProvider)) {
+      await _saveProgress();
+      _scrobbleStop();
+      if (!mounted) return;
+      setState(() => _loadingNextEp = true);
+      try {
+        await ExoPlayerBridge.stop(_viewId);
+      } catch (_) {}
+      try {
+        debugPrint('[ExoPlayer] Engine Auto S${season}E$episode');
+        await switchEpisodeViaEngineAutoPlay(
+          context: context,
+          movie: widget.movie!,
+          season: season,
+          episode: episode,
+          stremioId: widget.stremioId,
+          session: widget.enginePlaySession,
+          hubEpisodes: widget.hubEpisodes,
+        );
+      } finally {
+        if (mounted) {
+          setState(() {
+            _loadingNextEp = false;
+            _episodeLoadingFailed = false;
+          });
+        }
+      }
+      return;
+    }
+
     setState(() {
       _loadingNextEp = true;
       _episodeLoadingLabel = 'Season $season · Episode $episode';
@@ -1087,23 +1120,31 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         await ExoPlayerBridge.stop(_viewId);
       } catch (_) {}
       if (!mounted) return;
-      Navigator.of(context, rootNavigator: true).pushReplacement(
-        AppRouter.slideRoute(
-          (_) => PlayerScreen(
-            streamUrl: resolved!.streamUrl,
-            title: nextTitle,
-            headers: catalog ? null : resolved.headers,
-            movie: widget.movie,
-            selectedSeason: season,
-            selectedEpisode: episode,
-            magnetLink: resolved.magnetLink,
-            fileIndex: resolved.fileIndex,
-            activeProvider: resolved.activeProvider,
-            stremioId: widget.stremioId,
-            stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
-            providers: catalog ? null : widget.providers,
-            sources: catalog ? null : resolved.sources,
-          ),
+      // openPlayer (not pushReplacement): clears old player + loading dialogs /
+      // hub host so Back returns to details, not the previous episode.
+      unawaited(
+        AppRouter.openPlayer(
+          context,
+          streamUrl: resolved.streamUrl,
+          title: nextTitle,
+          headers: catalog ? null : resolved.headers,
+          movie: widget.movie,
+          selectedSeason: season,
+          selectedEpisode: episode,
+          magnetLink: resolved.magnetLink,
+          fileIndex: resolved.fileIndex,
+          activeProvider: resolved.activeProvider,
+          stremioId: widget.stremioId,
+          stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+          providers: catalog ? null : widget.providers,
+          sources: catalog ? null : resolved.sources,
+          enginePlaySession: widget.enginePlaySession,
+          hubEpisodes: widget.hubEpisodes,
+          hubEpisodeNumber: widget.hubEpisodes != null ? episode : null,
+          onNextEpisode: widget.onNextEpisode,
+          hasNextEpisode: widget.hasNextEpisode,
+          onHubEpisodeSelected: widget.onHubEpisodeSelected,
+          onSaveProgress: widget.onSaveProgress,
         ),
       );
     } catch (e) {
@@ -1420,6 +1461,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       _episodeLoadingFailed = false;
     });
     try {
+      try {
+        await ExoPlayerBridge.stop(_viewId);
+      } catch (_) {}
       await handler();
       if (mounted) {
         setState(() {

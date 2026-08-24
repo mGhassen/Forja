@@ -795,7 +795,7 @@ abstract final class ShellTvFocusCoordinator {
         if (tabId == 'home') {
           return ShellTvFocus.focusHomeSearch() || ShellTvFocus.focusHomeMenu();
         }
-        return _restoreDefault(tabId);
+        return ShellTvFocus.focusHubHeroSearch() || _restoreDefault(tabId);
       case ShellTvZone.chipStrip:
       case ShellTvZone.settings:
         if (memory.node != null && memory.node!.canRequestFocus) {
@@ -831,7 +831,14 @@ abstract final class ShellTvFocusCoordinator {
 
   // --- Row registry ---
 
-  static void registerRow(ShellTvRowHandle handle) {
+  /// Last [TvCatalogRow] (or caller) that registered each row. PageView hero
+  /// slides remount the same rowId in one frame — a deactivating sibling must
+  /// not wipe the active slide's registration.
+  static final Map<String, Object> _rowOwners = {};
+
+  static String _rowOwnerKey(String tabId, String rowId) => '$tabId:$rowId';
+
+  static void registerRow(ShellTvRowHandle handle, {Object? owner}) {
     final list = _rowsByTab.putIfAbsent(handle.tabId, () => []);
     final existing = _rowHandle(handle.tabId, handle.rowId);
     list.removeWhere((r) => r.rowId == handle.rowId);
@@ -851,9 +858,21 @@ abstract final class ShellTvFocusCoordinator {
     list.add(h);
     list.sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     _recomputeRowEdges(handle.tabId);
+    final key = _rowOwnerKey(handle.tabId, handle.rowId);
+    if (owner != null) {
+      _rowOwners[key] = owner;
+    } else {
+      _rowOwners.remove(key);
+    }
   }
 
-  static void unregisterRow(String tabId, String rowId) {
+  static void unregisterRow(String tabId, String rowId, {Object? owner}) {
+    final key = _rowOwnerKey(tabId, rowId);
+    if (owner != null && _rowOwners[key] != owner) {
+      // Newer registrant owns this rowId (e.g. next hero PageView slide).
+      return;
+    }
+    _rowOwners.remove(key);
     final list = _rowsByTab[tabId];
     if (list == null) return;
     list.removeWhere((r) => r.rowId == rowId);
@@ -1188,6 +1207,7 @@ abstract final class ShellTvFocusCoordinator {
     _tabMemory.remove(tabId);
     _rowsByTab.remove(tabId);
     _itemNodes.removeWhere((key, _) => key.startsWith('$tabId:'));
+    _rowOwners.removeWhere((key, _) => key.startsWith('$tabId:'));
     unregisterTabDefaults(tabId);
   }
 
@@ -1214,7 +1234,13 @@ abstract final class ShellTvFocusCoordinator {
     required FocusNode node,
   }) {
     final key = _itemKey(tabId, rowId, index);
-    if (_itemNodes[key] == node) _itemNodes.remove(key);
+    if (_itemNodes[key] != node) return;
+    // Shared FocusNode (home hero Play across PageView slides): a deactivating
+    // sibling must not wipe the active slide's registration of the same node.
+    try {
+      if (node.context != null) return;
+    } catch (_) {}
+    _itemNodes.remove(key);
   }
 
   static FocusNode? itemNode(String tabId, String rowId, int index) =>
@@ -1428,13 +1454,12 @@ class ShellTvFocusMeta {
       return () => true;
     }
     return () {
-      ShellTvFocusCoordinator.focusAdjacentInRow(
+      return ShellTvFocusCoordinator.focusAdjacentInRow(
         tabId: tid,
         rowId: rid,
         currentIndex: idx,
         right: true,
       );
-      return true;
     };
   }
 

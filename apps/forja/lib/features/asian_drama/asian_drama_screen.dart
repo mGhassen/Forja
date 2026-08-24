@@ -15,9 +15,12 @@ import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'asian_drama_details_screen.dart';
 import 'asian_drama_player_screen.dart';
+import 'asian_drama_search_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:rust/rust.dart';
@@ -162,6 +165,13 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
   }
 
   void _onHistoryChanged() => _refreshHistory();
+
+  void _openSearch() {
+    pushShellRoute(
+      context,
+      AppRouter.slideShellRoute((_) => const AsianDramaSearchScreen()),
+    );
+  }
 
   Future<void> _refreshHistory() async {
     try {
@@ -572,6 +582,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                             slides: _heroSlides(_spotlight),
                             tvTabId: 'asian_drama',
                             scrollController: _scroll,
+                            onSearch: _openSearch,
                             firstCatalogRowHeight: latestSection == null
                                 ? null
                                 : HubCatalogSection.sectionHeight(

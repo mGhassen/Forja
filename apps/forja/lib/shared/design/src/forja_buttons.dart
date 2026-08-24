@@ -103,7 +103,10 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.focusNode == widget.focusNode &&
         oldWidget.onTap != widget.onTap) {
+      // Unregister before dispose — owned node may go away when onTap clears.
+      _unregisterTvItemNode(oldWidget.tvMeta, node: _nodeFor(oldWidget));
       _ensureOwnedNodeForOnTap();
+      _registerTvItemNode();
     }
     if (oldWidget.focusNode != widget.focusNode) {
       _unregisterTvItemNode(
@@ -136,11 +139,15 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
       return;
     }
     if (meta.rowId == null || meta.itemIndex == null) return;
+    // Disabled CTA (onTap:null, no focusNode) still carries tvMeta for layout —
+    // nothing to register until a node exists.
+    final node = _nodeFor(widget);
+    if (node == null) return;
     ShellTvFocusCoordinator.registerItemNode(
       tabId: meta.tabId,
       rowId: meta.rowId!,
       index: meta.itemIndex!,
-      node: _effectiveNode,
+      node: node,
     );
   }
 
@@ -190,6 +197,8 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
 
   @override
   Widget build(BuildContext context) {
+    // Belts: hot reload / odd update orders can leave onTap set without a node.
+    if (_wantsFocus) _ensureOwnedNodeForOnTap();
     final policy = _policy(context);
     final body = AnimatedScale(
       scale: _scaleFor(context, policy),

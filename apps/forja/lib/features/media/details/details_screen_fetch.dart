@@ -52,16 +52,13 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
     await _s._playN.loadPlaySources();
     _s._syncPanelKindFilterToPlaySources();
     if (!mounted) return;
+    // Chip lists for enabled play sources — race TMDB; panel open awaits this.
+    unawaited(_s._warmSourcesPanelChrome(force: true));
 
     final stremioItem = widget.stremioItem;
     final bool isCustomId = _s._isCustomStremioItem;
 
     try {
-      // Kick hydrate in background — never await before clearing loading.
-      unawaited(
-        _s._stremio.getAddonsForResource('stream').then(_applyStreamAddons, onError: (_) {}),
-      );
-
       // If this is a custom-ID Stremio item, skip TMDB fetch - we already
       // have all the info we need from the search result.
       if (isCustomId) {
@@ -152,12 +149,7 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
         });
         await _s._hydrateWebstreamingFromCache();
         _s._maybeAutoPlay();
-        // Torrent search + Stremio / Forja streams load only when Sources
-        // opens on that kind. Nuvio addon listing is cheap and needed for
-        // the Nuvio chip; engine packs wait until the Forja tab opens.
-        if (_s._playSourceNuvio) {
-          _s._checkAndFetchNuvio();
-        }
+        // Stream scrapes stay lazy (kind/chip). Chrome metadata warmed above.
       }
     } catch (e) {
       if (mounted) setState(() => _s._isLoading = false);

@@ -219,6 +219,7 @@ void shellTvRegisterRow({
   VoidCallback? onFocusUp,
   VoidCallback? onFocusDown,
   ShellTvRowOrientation orientation = ShellTvRowOrientation.horizontal,
+  Object? owner,
 }) {
   ShellTvFocusCoordinator.registerRow(
     ShellTvRowHandle(
@@ -232,14 +233,16 @@ void shellTvRegisterRow({
       onFocusUp: onFocusUp,
       onFocusDown: onFocusDown,
     ),
+    owner: owner,
   );
 }
 
 void shellTvUnregisterRow({
   required String tabId,
   required String rowId,
+  Object? owner,
 }) {
-  ShellTvFocusCoordinator.unregisterRow(tabId, rowId);
+  ShellTvFocusCoordinator.unregisterRow(tabId, rowId, owner: owner);
 }
 
 void shellTvUpdateRowCount({

@@ -68,6 +68,7 @@ import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
+import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -117,6 +118,7 @@ class MobilePlayerScreen extends ConsumerStatefulWidget {
   final num? hubEpisodeNumber;
   final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
+  final EnginePlaySession? enginePlaySession;
   final Future<void> Function(Duration position, Duration duration)?
   onSaveProgress;
   final Future<void> Function(String sourceUrl, String sourceTitle)?
@@ -157,6 +159,7 @@ class MobilePlayerScreen extends ConsumerStatefulWidget {
     this.hubEpisodeNumber,
     this.onHubEpisodeSelected,
     this.episodeOverview,
+    this.enginePlaySession,
     this.onSaveProgress,
     this.onSourcePinned,
     this.pinSource = false,

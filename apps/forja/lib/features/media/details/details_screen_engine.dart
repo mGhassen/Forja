@@ -1,17 +1,5 @@
 part of 'details_screen.dart';
 
-class _EngineAutoPick {
-  const _EngineAutoPick({
-    required this.pluginId,
-    required this.stream,
-    required this.sources,
-  });
-
-  final String pluginId;
-  final Map<String, dynamic> stream;
-  final List<StreamSource> sources;
-}
-
 Future<List<StreamSource>> _buildProbedEnginePlaySources(
   _DetailsScreenState s,
   List<Map<String, dynamic>> rows, {
@@ -34,11 +22,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
 
   final Set<Future<void>> _enginePoolTasks = {};
   int _enginePoolLimit = kEngineSourcesBatchDesktop;
-
-  /// Green Play hooks into the same Forja panel pool (not a second extractor).
-  void Function()? _engineAutoSyncOverlay;
-  Future<void> Function(String pluginId, List<Map<String, dynamic>> streams)?
-      _engineAutoOnPluginDone;
 
   Future<void> _checkAndFetchEngine() async {
     try {
@@ -103,22 +86,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       }
     }
     return false;
-  }
-
-  void _hydrateEngineStreamsFromSessionCache() {
-    if (_s._engineStreams.isNotEmpty) return;
-    final cached = CatalogSourcesSessionCache.readEngine(_s._catalogCacheKey);
-    if (cached == null) return;
-    void apply() {
-      _s._engineStreams = cached.streams;
-      _s._engineFetchedPluginIds = cached.fetchedPluginIds;
-      _s._errorMessage = null;
-    }
-    if (mounted) {
-      setState(apply);
-    } else {
-      apply();
-    }
   }
 
   List<String> get _pendingEnginePluginIds => [
@@ -212,10 +179,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       fetchedPluginIds: _s._engineFetchedPluginIds,
     );
     final streams = batch?.streams ?? const <Map<String, dynamic>>[];
-    final onDone = _engineAutoOnPluginDone;
-    if (onDone != null) {
-      unawaited(onDone(pluginId, List<Map<String, dynamic>>.from(streams)));
-    } else if (streams.isNotEmpty) {
+    if (streams.isNotEmpty) {
       _s._maybeAutoPlay();
     }
   }
@@ -248,7 +212,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     for (final id in started) {
       _engineLaunchPlugin(pluginId: id, type: type, gen: gen);
     }
-    _engineAutoSyncOverlay?.call();
   }
 
   void _engineLaunchPlugin({
@@ -266,13 +229,9 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         );
       } finally {
         _enginePoolTasks.remove(task);
-        if (!mounted || gen != _s._engineFetchGen) {
-          _engineAutoSyncOverlay?.call();
-          return;
-        }
+        if (!mounted || gen != _s._engineFetchGen) return;
         setState(() => _s._engineInFlightPluginIds.remove(pluginId));
         _engineFillPool(gen: gen, type: type);
-        _engineAutoSyncOverlay?.call();
       }
     }();
     _enginePoolTasks.add(task);
@@ -345,20 +304,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     });
   }
 
-  String _enginePluginLabel(String pluginId) {
-    for (final pack in _s._enginePacks) {
-      for (final p in pack.plugins) {
-        if (p.id == pluginId) {
-          final name = p.name.trim();
-          return name.isNotEmpty ? name : pluginId;
-        }
-      }
-    }
-    return pluginId;
-  }
-
-  /// Green Play: same Forja panel pool as Sources → Forja.
-  /// First plugin that yields a working stream plays; rest cancel.
+  /// Green Play → shared [runEngineAutoPlay] (same as Anime / Asian Drama).
   Future<void> _startEngineAutoPlayback() async {
     if (_s._isEngineAutoExtracting) return;
     if (_s._playSourceWebstreaming) return;
@@ -372,366 +318,71 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     }
     _s._engineAutoExtractionCancelled = false;
 
-    bool playAborted() =>
-        !mounted ||
+    // Stop panel pool — auto uses the shared session-cache race, not a fork.
+    _engineAbortWork();
+    await _checkAndFetchEngine();
+    if (!mounted ||
         playGen != _s._engineAutoPlayGen ||
-        _s._engineAutoExtractionCancelled;
-
-    final fadeOutNotifier = ValueNotifier(false);
-    final messageNotifier = ValueNotifier('Finding Forja servers…');
-    final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
-    final failureNotifier = ValueNotifier<ResolveFailure?>(null);
-    BuildContext? loadingDialogContext;
-    var openedPlayer = false;
-    Completer<_EngineAutoPick?>? hitCompleter;
-
-    List<ChangeNotifier> overlayNotifiers() => [
-      fadeOutNotifier,
-      messageNotifier,
-      failureNotifier,
-      probeNotifier,
-    ];
-
-    void dismissLoading() {
-      final ctx = loadingDialogContext;
-      loadingDialogContext = null;
-      if (ctx != null && ctx.mounted) dismissLoadingOverlayRoute(ctx);
-    }
-
-    void clearAutoHooks() {
-      _engineAutoOnPluginDone = null;
-      _engineAutoSyncOverlay = null;
-    }
-
-    void cancelEngineAutoPlay() {
-      if (playGen != _s._engineAutoPlayGen) return;
-      _s._engineAutoExtractionCancelled = true;
-      clearAutoHooks();
-      _engineAbortWork();
-      final pending = hitCompleter;
-      if (pending != null && !pending.isCompleted) pending.complete(null);
-      dismissLoading();
-      if (mounted) _s._claimTvHeroPlayAfterPlayer();
+        _s._engineAutoExtractionCancelled) {
       if (mounted) {
         setState(() => _s._isEngineAutoExtracting = false);
       } else {
         _s._isEngineAutoExtracting = false;
       }
-    }
-
-    showLoadingOverlayDialog(
-      context,
-      builder: (dialogContext) {
-        loadingDialogContext = dialogContext;
-        return LoadingOverlay(
-          movie: _s._movie,
-          messageNotifier: messageNotifier,
-          providerProbesNotifier: probeNotifier,
-          fadeOutNotifier: fadeOutNotifier,
-          failureNotifier: failureNotifier,
-          subtitle: _s._loadingOverlaySubtitle(),
-          onCancel: cancelEngineAutoPlay,
-        );
-      },
-    );
-    await Future<void>.delayed(Duration.zero);
-    if (playAborted()) {
-      dismissLoading();
-      disposeLoadingOverlayNotifiers(overlayNotifiers());
-      _s._isEngineAutoExtracting = false;
       return;
     }
 
+    final isTv = _s._movie.mediaType == 'tv';
     try {
-      await EngineService.instance.ensureBundledInstalled();
-      if (playAborted()) return;
-      await _checkAndFetchEngine();
-      if (playAborted() || !mounted) return;
-      _hydrateEngineStreamsFromSessionCache();
-      if (playAborted()) return;
-
-      final packs = _s._enginePacks;
-      final pluginIds = _scopedSelectedEnginePluginIds();
-      if (mounted) {
-        setState(() {
-          _s._hasEnginePacks = packs.isNotEmpty;
-        });
-      }
-      if (pluginIds.isEmpty) {
-        final action = Completer<void>();
-        failureNotifier.value = ResolveFailure(
-          title: 'Couldn’t start playback',
-          detail:
-              'No Forja plugins are selected for this title. Open Sources → Forja and turn on providers.',
-          primaryLabel: 'Close',
-          primaryIcon: Icons.close_rounded,
-          onPrimary: () {
-            if (!action.isCompleted) action.complete();
-          },
-        );
-        await action.future;
-        return;
-      }
-
-      final statusById = <String, StreamProviderProbeStatus>{
-        for (final id in pluginIds) id: StreamProviderProbeStatus.pending,
-      };
-      final race = Completer<_EngineAutoPick?>();
-      hitCompleter = race;
-      var probingCount = 0;
-
-      // Panel/session already loaded → never show WAITING for those chips.
-      for (final id in pluginIds) {
-        if (!_s._engineFetchedPluginIds.contains(id)) continue;
-        final hasRows = _s._engineStreams.any(
-          (s) => engineStreamBelongsToPlugin(s, id),
-        );
-        statusById[id] = hasRows
-            ? StreamProviderProbeStatus.trying
-            : StreamProviderProbeStatus.failed;
-      }
-
-      void publishProbes() {
-        probeNotifier.value = [
-          for (var i = 0; i < pluginIds.length; i++)
-            StreamProviderProbe(
-              id: pluginIds[i],
-              label: _enginePluginLabel(pluginIds[i]),
-              status: statusById[pluginIds[i]]!,
-              isPreferred: i == 0,
-            ),
-        ];
-      }
-
-      void syncOverlayFromPool() {
-        if (race.isCompleted) return;
-        for (final id in pluginIds) {
-          final cur = statusById[id]!;
-          if (cur == StreamProviderProbeStatus.success ||
-              cur == StreamProviderProbeStatus.failed) {
-            continue;
+      await runEngineAutoPlay(
+        context: context,
+        movie: _s._movie,
+        engineCategory: _s._enginePanelCategory,
+        season: isTv ? _s._selectedSeason : null,
+        episode: isTv ? _s._selectedEpisode : null,
+        startPosition: _s._startPositionForAutoPlay(fromRoute: false),
+        loadingSubtitle: _s._loadingOverlaySubtitle(),
+        stremioId: widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId,
+        selectedPluginIds: _scopedSelectedEnginePluginIds().toSet(),
+        packs: _s._enginePacks.isNotEmpty ? _s._enginePacks : null,
+        onCacheUpdated: (streams, fetched) {
+          void apply() {
+            _s._engineStreams = streams;
+            _s._engineFetchedPluginIds = fetched;
           }
-          if (_s._engineInFlightPluginIds.contains(id)) {
-            statusById[id] = StreamProviderProbeStatus.trying;
-          } else if (!_s._engineFetchedPluginIds.contains(id)) {
-            statusById[id] = StreamProviderProbeStatus.pending;
-          } else if (cur == StreamProviderProbeStatus.pending) {
-            // Fetched while overlay still said WAITING — promote to CHECKING.
-            final hasRows = _s._engineStreams.any(
-              (s) => engineStreamBelongsToPlugin(s, id),
-            );
-            statusById[id] = hasRows
-                ? StreamProviderProbeStatus.trying
-                : StreamProviderProbeStatus.failed;
+          if (mounted) {
+            setState(apply);
+          } else {
+            apply();
           }
-        }
-        publishProbes();
-      }
-
-      void maybeCompleteEmpty() {
-        if (race.isCompleted || playAborted()) return;
-        final allFetched =
-            pluginIds.every(_s._engineFetchedPluginIds.contains);
-        if (!allFetched || probingCount > 0 || _engineWorkActive) return;
-        race.complete(null);
-      }
-
-      Future<void> onPluginDone(
-        String pluginId,
-        List<Map<String, dynamic>> streams,
-      ) async {
-        if (playAborted() || race.isCompleted) return;
-        if (!pluginIds.contains(pluginId)) return;
-
-        final rows = sortEngineCatalogStreamRows(streams);
-        if (rows.isEmpty) {
-          statusById[pluginId] = StreamProviderProbeStatus.failed;
-          publishProbes();
-          maybeCompleteEmpty();
-          return;
-        }
-
-        probingCount++;
-        statusById[pluginId] = StreamProviderProbeStatus.trying;
-        publishProbes();
-        messageNotifier.value =
-            'Checking ${_enginePluginLabel(pluginId)}…';
-
-        for (final row in rows) {
-          if (playAborted() || race.isCompleted) break;
-          final sources = await _buildProbedEnginePlaySources(
-            _s,
-            [row],
-            isAborted: playAborted,
-            preferFirst: row,
-          );
-          if (sources.isEmpty) continue;
-          statusById[pluginId] = StreamProviderProbeStatus.success;
-          publishProbes();
-          if (!race.isCompleted) {
-            // First UP wins — stop the panel pool.
-            _engineAbortWork();
-            race.complete(
-              _EngineAutoPick(
-                pluginId: pluginId,
-                stream: row,
-                sources: sources,
-              ),
-            );
-          }
-          probingCount--;
-          return;
-        }
-
-        statusById[pluginId] = StreamProviderProbeStatus.failed;
-        publishProbes();
-        probingCount--;
-        maybeCompleteEmpty();
-      }
-
-      _engineAutoSyncOverlay = syncOverlayFromPool;
-      _engineAutoOnPluginDone = onPluginDone;
-      publishProbes();
-
-      // Already in panel/session cache — check first loaded chip immediately.
-      final cachedIds = [
-        for (final id in pluginIds)
-          if (_s._engineFetchedPluginIds.contains(id)) id,
-      ];
-      if (cachedIds.isNotEmpty) {
-        final firstLabel = _enginePluginLabel(cachedIds.first);
-        messageNotifier.value = 'Checking $firstLabel…';
-      }
-      for (final id in cachedIds) {
-        if (playAborted() || race.isCompleted) break;
-        final cached = _s._engineStreams
-            .where((s) => engineStreamBelongsToPlugin(s, id))
-            .map((s) => Map<String, dynamic>.from(s))
-            .toList();
-        await onPluginDone(id, cached);
-      }
-
-      if (!race.isCompleted && !playAborted()) {
-        final pending = [
-          for (final id in pluginIds)
-            if (!_s._engineFetchedPluginIds.contains(id)) id,
-        ];
-        if (pending.isEmpty) {
-          maybeCompleteEmpty();
-        } else {
-          // Same loader Sources → Forja uses.
-          unawaited(() async {
-            await _fetchNextEnginePlugin();
-            while (!playAborted() &&
-                !race.isCompleted &&
-                (_engineWorkActive || probingCount > 0)) {
-              await Future<void>.delayed(const Duration(milliseconds: 40));
-            }
-            maybeCompleteEmpty();
-          }());
-          syncOverlayFromPool();
-        }
-      }
-
-      final hit = playAborted() ? null : await race.future;
-      clearAutoHooks();
-      if (playAborted()) return;
-
-      if (hit != null) {
-        openedPlayer = true;
-        _syncPanelToEngineAutoPick(hit);
-        await _playEngineAutoFromProbedSources(
-          sources: hit.sources,
-          primaryRow: hit.stream,
-          startPosition: _s._startPositionForAutoPlay(fromRoute: false),
-          loadingDialogContext: loadingDialogContext,
-          fadeOutNotifier: fadeOutNotifier,
-          messageNotifier: messageNotifier,
-          isAborted: playAborted,
-        );
-        return;
-      }
-
-      final resolveRow = await firstEngineCatalogResolveRow(
-        rows: [
-          for (final id in pluginIds)
-            ..._s._engineStreams.where(
-              (s) => engineStreamBelongsToPlugin(s, id),
-            ),
-        ],
-        profile: _s._playbackProfile,
-        settings: _s._settings,
-      );
-      if (resolveRow != null && !playAborted()) {
-        openedPlayer = true;
-        final pluginId =
-            resolveRow['_enginePluginId']?.toString() ?? pluginIds.first;
-        _syncPanelToEngineAutoPick(
-          _EngineAutoPick(
-            pluginId: pluginId,
-            stream: resolveRow,
-            sources: const [],
-          ),
-        );
-        await _playEngineAutoResolveRow(
-          resolveRow,
-          startPosition: _s._startPositionForAutoPlay(fromRoute: false),
-          loadingDialogContext: loadingDialogContext,
-          fadeOutNotifier: fadeOutNotifier,
-          isAborted: playAborted,
-        );
-        return;
-      }
-
-      final action = Completer<bool>();
-      failureNotifier.value = ResolveFailure(
-        title: 'Couldn’t start playback',
-        detail:
-            'None of the Forja plugins returned a working stream right now.',
-        primaryLabel: 'Try again',
-        onPrimary: () {
-          if (!action.isCompleted) action.complete(true);
         },
-        secondaryLabel: 'Close',
-        onSecondary: () {
-          if (!action.isCompleted) action.complete(false);
+        onPick: _syncPanelToEngineAutoPick,
+        onCancelUi: () {
+          if (playGen != _s._engineAutoPlayGen) return;
+          _s._engineAutoExtractionCancelled = true;
+          _engineAbortWork();
+          if (mounted) _s._claimTvHeroPlayAfterPlayer();
         },
       );
-      final retry = await action.future;
-      dismissLoading();
-      if (mounted) {
-        setState(() => _s._isEngineAutoExtracting = false);
-      } else {
-        _s._isEngineAutoExtracting = false;
-      }
-      if (retry && mounted) {
-        unawaited(_startEngineAutoPlayback());
-      }
     } finally {
-      clearAutoHooks();
-      if (!openedPlayer) dismissLoading();
-      disposeLoadingOverlayNotifiers(overlayNotifiers());
       if (mounted) {
         setState(() => _s._isEngineAutoExtracting = false);
       } else {
         _s._isEngineAutoExtracting = false;
       }
+      if (mounted) _s._claimTvHeroPlayAfterPlayer();
     }
   }
 
-  void _syncPanelToEngineAutoPick(_EngineAutoPick pick) {
+  void _syncPanelToEngineAutoPick(EngineAutoPlayPick pick) {
     final catalogUrl = pick.stream['url']?.toString();
-    final base =
-        pick.stream['_addonBaseUrl']?.toString() ??
-        EngineIds.pluginChip(pick.pluginId);
     void apply() {
       _s._playingPanelKind = EngineIds.kind;
-      _s._playingAddonBaseUrl = base;
       _s._playingCatalogUrl = catalogUrl;
       _s._panelKindFilter = EngineIds.kind;
-      // Keep chip selection as panel left it — only mark playing row.
-      _s._selectedSourceId = EngineIds.pluginChip(pick.pluginId);
-      _s._panelSourceIdByKind[EngineIds.kind] = _s._selectedSourceId;
+      // Keep Forja multi-select chips as-is — only switch tab + remember catalog.
+      _s._selectedSourceId = EngineIds.allChip;
+      _s._panelSourceIdByKind[EngineIds.kind] = EngineIds.allChip;
     }
 
     if (mounted) {
@@ -739,114 +390,5 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     } else {
       apply();
     }
-  }
-
-  Future<void> _playEngineAutoFromProbedSources({
-    required List<StreamSource> sources,
-    required Map<String, dynamic>? primaryRow,
-    required Duration? startPosition,
-    required BuildContext? loadingDialogContext,
-    required ValueNotifier<bool> fadeOutNotifier,
-    required ValueNotifier<String>? messageNotifier,
-    required bool Function() isAborted,
-  }) async {
-    if (isAborted() || !mounted || sources.isEmpty) return;
-    messageNotifier?.value = 'Opening player…';
-    final primary = sources.first;
-    final stream = primaryRow ?? <String, dynamic>{};
-    final isTv = _s._movie.mediaType == 'tv';
-    final stremioId =
-        widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId;
-    final stremioAddonBaseUrl =
-        stream['_addonBaseUrl']?.toString() ?? _s._selectedSourceId;
-    final ctx = loadingDialogContext;
-    Future<void> openPlayer() => AppRouter.openPlayer(
-      context,
-      streamUrl: primary.url,
-      title: _s._movie.title,
-      headers: primary.headers,
-      movie: _s._movie,
-      selectedSeason: isTv ? _s._selectedSeason : null,
-      selectedEpisode: isTv ? _s._selectedEpisode : null,
-      startPosition: startPosition,
-      activeProvider:
-          primary.providerId ?? catalogHttpPlayProviderId(stream),
-      sources: sources,
-      pinSource: false,
-      streamsPrevalidated: true,
-      externalSubtitles: catalogStreamExternalSubtitles(stream),
-      stremioId: stremioId,
-      stremioAddonBaseUrl: stremioAddonBaseUrl,
-      fadeTransition: ctx != null,
-    );
-    if (ctx != null && ctx.mounted) {
-      await crossfadeLoadingOverlayToPlayer(
-        loadingDialogContext: ctx,
-        fadeOutNotifier: fadeOutNotifier,
-        openPlayer: openPlayer,
-      );
-    } else {
-      await openPlayer();
-    }
-    if (mounted) _s._claimTvHeroPlayAfterPlayer();
-  }
-
-  Future<void> _playEngineAutoResolveRow(
-    Map<String, dynamic> stream, {
-    required Duration? startPosition,
-    required BuildContext? loadingDialogContext,
-    required ValueNotifier<bool> fadeOutNotifier,
-    required bool Function() isAborted,
-  }) async {
-    if (isAborted() || !mounted) return;
-    final isTv = _s._movie.mediaType == 'tv';
-    final stremioId =
-        widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId;
-    final stremioAddonBaseUrl =
-        stream['_addonBaseUrl']?.toString() ?? _s._selectedSourceId;
-
-    if (!await ensureLanP2pPlayback(context)) return;
-    if (isAborted() || !mounted) return;
-    _s._streamCancelled = false;
-
-    final resolved = await resolveStremioStream(
-      stream: stream,
-      profile: _s._playbackProfile,
-      settings: _s._settings,
-      season: isTv ? _s._selectedSeason : null,
-      episode: isTv ? _s._selectedEpisode : null,
-      isCancelled: () => isAborted() || _s._streamCancelled,
-      onStatus: (_) {},
-    );
-    if (isAborted() || !mounted) return;
-    if (resolved is! StremioPlayable) return;
-
-    final ctx = loadingDialogContext;
-    Future<void> openPlayer() => AppRouter.openPlayer(
-      context,
-      streamUrl: resolved.streamUrl,
-      title: _s._movie.title,
-      magnetLink: resolved.magnetLink,
-      movie: _s._movie,
-      selectedSeason: isTv ? _s._selectedSeason : null,
-      selectedEpisode: isTv ? _s._selectedEpisode : null,
-      fileIndex: resolved.fileIndex,
-      startPosition: startPosition,
-      activeProvider: catalogHttpPlayProviderId(stream),
-      externalSubtitles: catalogStreamExternalSubtitles(stream),
-      stremioId: stremioId,
-      stremioAddonBaseUrl: stremioAddonBaseUrl,
-      fadeTransition: ctx != null,
-    );
-    if (ctx != null && ctx.mounted) {
-      await crossfadeLoadingOverlayToPlayer(
-        loadingDialogContext: ctx,
-        fadeOutNotifier: fadeOutNotifier,
-        openPlayer: openPlayer,
-      );
-    } else {
-      await openPlayer();
-    }
-    if (mounted) _s._claimTvHeroPlayAfterPlayer();
   }
 }

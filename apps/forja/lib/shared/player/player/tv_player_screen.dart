@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
+import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/mobile_player_screen.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
@@ -31,6 +32,7 @@ class TvPlayerScreen extends StatelessWidget {
     this.hubEpisodeNumber,
     this.onHubEpisodeSelected,
     this.episodeOverview,
+    this.enginePlaySession,
     this.onSaveProgress,
     this.onSourcePinned,
     this.pinSource = false,
@@ -67,6 +69,7 @@ class TvPlayerScreen extends StatelessWidget {
   final num? hubEpisodeNumber;
   final Future<void> Function(PlayerHubEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
+  final EnginePlaySession? enginePlaySession;
   final Future<void> Function(Duration position, Duration duration)? onSaveProgress;
   final Future<void> Function(String sourceUrl, String sourceTitle)? onSourcePinned;
   final bool pinSource;
@@ -105,6 +108,7 @@ class TvPlayerScreen extends StatelessWidget {
       hubEpisodeNumber: hubEpisodeNumber,
       onHubEpisodeSelected: onHubEpisodeSelected,
       episodeOverview: episodeOverview,
+      enginePlaySession: enginePlaySession,
       onSaveProgress: onSaveProgress,
       onSourcePinned: onSourcePinned,
       pinSource: pinSource,

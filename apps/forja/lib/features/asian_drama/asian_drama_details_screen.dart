@@ -18,6 +18,7 @@ import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
+import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/widgets/hub_list_status_hero.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
@@ -282,8 +283,20 @@ class _AsianDramaDetailsScreenState
         episode: isTv ? ep.number.round() : null,
         kisskhId: det.id,
         kisskhEpisodeId: ep.id,
+        kisskhEpisodeIdByNumber: {
+          for (final e in det.episodes) e.number.round(): e.id,
+        },
         startPosition: startPosition,
         loadingSubtitle: 'EP ${ep.displayNumber}',
+        hubEpisodes: isTv
+            ? [
+                for (final e in det.episodes)
+                  PlayerHubEpisode(
+                    number: e.number,
+                    title: 'Episode ${e.displayNumber}',
+                  ),
+              ]
+            : null,
       );
       if (!mounted) return;
       await _afterPlayClosed();

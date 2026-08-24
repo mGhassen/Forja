@@ -553,7 +553,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                   tvRowId: 'iptv-portal-header',
                   tvItemIndex: searchIndex,
                   tvZone: ShellTvZone.topBar,
-                  onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+                  onUpEdge: iptvFocusPortalTool,
                   onDownEdge: _focusPortalsFromHeader,
                   onRightEdge: () => iptvFocusRowItem(
                     'iptv-portal-header',
@@ -575,7 +575,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                     tvRowId: 'iptv-portal-header',
                     tvItemIndex: scrapeIndex,
                     tvZone: ShellTvZone.topBar,
-                    onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+                    onUpEdge: iptvFocusPortalTool,
                     onDownEdge: _focusPortalsFromHeader,
                     onLeftEdge: () =>
                         iptvFocusRowItem('iptv-portal-header', searchIndex),
@@ -601,7 +601,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                     tvRowId: 'iptv-portal-header',
                     tvItemIndex: dealIndex,
                     tvZone: ShellTvZone.topBar,
-                    onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+                    onUpEdge: iptvFocusPortalTool,
                     onDownEdge: _focusPortalsFromHeader,
                     onLeftEdge: () => iptvFocusRowItem(
                       'iptv-portal-header',
@@ -632,7 +632,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                   tvRowId: 'iptv-portal-header',
                   tvItemIndex: addIndex,
                   tvZone: ShellTvZone.topBar,
-                  onUpEdge: () => iptvFocusRowItem('iptv-top-tools', 1),
+                  onUpEdge: iptvFocusPortalTool,
                   onDownEdge: _focusPortalsFromHeader,
                   onLeftEdge: () => iptvFocusRowItem(
                     'iptv-portal-header',
