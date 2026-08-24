@@ -23,6 +23,7 @@ import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/home_top_bar.dart';
+import 'package:forja/shell/hub_catalog_top_bar.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_find_shortcut.dart';
 import 'package:forja/shell/macos_shell_channel.dart';
@@ -507,9 +508,19 @@ class _MainScreenState extends ConsumerState<MainScreen>
       builder: (shellContext, profile) {
         _shellScopedContext = shellContext;
         final config = shellPlatformConfigFor(profile);
-        final showHomeTopBar = _currentTabId == 'home' &&
-            config.showHomeTopBar &&
+        final showCatalogTopBar = config.showHomeTopBar &&
             !ShellBus.shellOverlayHasPage.value;
+        final Widget? shellTopBar;
+        if (!showCatalogTopBar) {
+          shellTopBar = null;
+        } else {
+          shellTopBar = switch (_currentTabId) {
+            'home' => const HomeTopBar(),
+            'anime' => const AnimeCatalogTopBar(),
+            'asian_drama' => const AsianDramaCatalogTopBar(),
+            _ => null,
+          };
+        }
 
         final shell = ShellFindShortcutScope(
           enabled: profile == ShellProfile.desktop,
@@ -521,7 +532,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             onDestinationSelected: _selectTab,
             tabFor: _tabFor,
             shellHeader: _shellHeader(),
-            shellTopBar: showHomeTopBar ? const HomeTopBar() : null,
+            shellTopBar: shellTopBar,
             // Root fullscreen players (movies, trailers, Live Matches) leave
             // the rail mounted/painted under the opaque route. IPTV sets
             // [ShellBus.maskShellUnderPlayer] so the catalog is not visible

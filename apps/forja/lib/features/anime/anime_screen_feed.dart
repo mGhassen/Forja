@@ -165,11 +165,4 @@ mixin _AnimeScreenFeed on ConsumerState<AnimeScreen>, ShellTabRefresh<AnimeScree
       _s._continueWatching.removeWhere((e) => e['animeId'] == animeId);
     });
   }
-
-  void _openSearch() {
-    pushShellRoute(
-      context,
-      AppRouter.slideShellRoute((_) => const AnimeSearchScreen()),
-    );
-  }
 }

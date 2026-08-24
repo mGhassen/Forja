@@ -135,21 +135,38 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
       });
     }
     // Prefer applied state; fall back to live provider futures for this frame.
-    final spotlightFuture = _s._spotlightFuture ?? catalogLoad.spotlight;
-    final trendingFuture = _s._trendingFuture ?? catalogLoad.trending;
-    final topAiringFuture = _s._topAiringFuture ?? catalogLoad.topAiring;
-    final mostPopularFuture = _s._mostPopularFuture ?? catalogLoad.mostPopular;
-    final mostFavoriteFuture =
+    final rawSpotlight = _s._spotlightFuture ?? catalogLoad.spotlight;
+    final rawTrending = _s._trendingFuture ?? catalogLoad.trending;
+    final rawTopAiring = _s._topAiringFuture ?? catalogLoad.topAiring;
+    final rawMostPopular = _s._mostPopularFuture ?? catalogLoad.mostPopular;
+    final rawMostFavorite =
         _s._mostFavoriteFuture ?? catalogLoad.mostFavorite;
-    final topRatedFuture = _s._topRatedFuture ?? catalogLoad.topRated;
-    final latestCompletedFuture =
+    final rawTopRated = _s._topRatedFuture ?? catalogLoad.topRated;
+    final rawLatestCompleted =
         _s._latestCompletedFuture ?? catalogLoad.latestCompleted;
-    final top10Future = _s._top10Future ?? catalogLoad.top10;
-    final recentEpisodesFuture =
+    final rawTop10 = _s._top10Future ?? catalogLoad.top10;
+    final rawRecentEpisodes =
         _s._recentEpisodesFuture ?? catalogLoad.recentEpisodes;
     return TvFocusGraph(
       tabId: 'anime',
-      child: ValueListenableBuilder<AppThemePreset>(
+      child: ValueListenableBuilder<ShellHomeCategory?>(
+        valueListenable: ShellBus.animeCategory,
+            builder: (context, _, _) {
+          return ValueListenableBuilder<String?>(
+            valueListenable: ShellBus.animeSelectedGenreId,
+            builder: (context, _, _) {
+              final spotlightFuture = filterAnimeFuture(rawSpotlight);
+              final trendingFuture = filterAnimeFuture(rawTrending);
+              final topAiringFuture = filterAnimeFuture(rawTopAiring);
+              final mostPopularFuture = filterAnimeFuture(rawMostPopular);
+              final mostFavoriteFuture = filterAnimeFuture(rawMostFavorite);
+              final topRatedFuture = filterAnimeFuture(rawTopRated);
+              final latestCompletedFuture =
+                  filterAnimeFuture(rawLatestCompleted);
+              final top10Future = filterAnimeFuture(rawTop10);
+              final recentEpisodesFuture =
+                  filterAnimeFuture(rawRecentEpisodes);
+              return ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
         final fullHero = hubIsFullCinematicHero(context);
@@ -184,7 +201,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
               )
             : null;
 
-        return _s._error != null && _s._catalogResolved
+        final body = _s._error != null && _s._catalogResolved
               ? _buildError()
               : RefreshIndicator(
                           color: ForjaShellColors.sectionAccent,
@@ -205,7 +222,6 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                                   buildSlides: _heroSlides,
                                   tvTabId: 'anime',
                                   scrollController: _s._scroll,
-                                  onSearch: _s._openSearch,
                                   trendingOnHero: trendingOnHero,
                                   pageBottomChild: trendingSection,
                                 ),
@@ -375,8 +391,28 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                           ),
                           ),
                         );
+
+        if (!usesShell) {
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              body,
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: AnimeCatalogTopBar(),
+              ),
+            ],
+          );
+        }
+        return body;
       },
-    ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
@@ -562,7 +598,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
       future: future,
       builder: (context, snapshot) {
         final loading = snapshot.connectionState == ConnectionState.waiting;
-        final list = snapshot.data ?? <AnimeCard>[];
+        final list = filterAnimeCards(snapshot.data ?? <AnimeCard>[]);
 
         if (loading || list.isEmpty) {
           if (loading || !snapshot.hasData) {
@@ -643,7 +679,6 @@ class _AnimeHubHeroSection extends StatefulWidget {
     required this.buildSlides,
     required this.tvTabId,
     required this.scrollController,
-    required this.onSearch,
     required this.trendingOnHero,
     this.pageBottomChild,
   });
@@ -653,7 +688,6 @@ class _AnimeHubHeroSection extends StatefulWidget {
   final List<HubHeroSlide> Function(List<AnimeCard>) buildSlides;
   final String tvTabId;
   final ScrollController scrollController;
-  final VoidCallback onSearch;
   final bool trendingOnHero;
   final Widget? pageBottomChild;
 
@@ -717,7 +751,6 @@ class _AnimeHubHeroSectionState extends State<_AnimeHubHeroSection> {
       slides: widget.buildSlides(cards.take(5).toList()),
       tvTabId: widget.tvTabId,
       scrollController: widget.scrollController,
-      onSearch: widget.onSearch,
       pageBottomChild: widget.pageBottomChild,
     );
   }

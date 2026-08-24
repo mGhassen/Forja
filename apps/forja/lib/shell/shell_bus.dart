@@ -20,6 +20,22 @@ class ShellBus {
   static final ValueNotifier<String?> homeSelectedGenreId =
       ValueNotifier<String?>(null);
 
+  /// Films / Series filter for Anime hub (`null` = mixed).
+  static final ValueNotifier<ShellHomeCategory?> animeCategory =
+      ValueNotifier<ShellHomeCategory?>(null);
+
+  /// AniList genre id for Anime Categories menu (`null` = all).
+  static final ValueNotifier<String?> animeSelectedGenreId =
+      ValueNotifier<String?>(null);
+
+  /// Films / Series filter for Asian Drama hub (`null` = mixed).
+  static final ValueNotifier<ShellHomeCategory?> asianDramaCategory =
+      ValueNotifier<ShellHomeCategory?>(null);
+
+  /// KissKH country id for Asian Drama Categories (`null` = all).
+  static final ValueNotifier<String?> asianDramaSelectedCountryId =
+      ValueNotifier<String?>(null);
+
   /// TMDB watch-provider filter for Home (`null` = all providers).
   static final ValueNotifier<int?> selectedWatchProviderId = ValueNotifier(
     null,
@@ -95,9 +111,15 @@ class ShellBus {
   /// Home feed vertical scroll - [HomeTopBar] slides away near [homeHeroHeight].
   static final ValueNotifier<double> homeScrollOffset = ValueNotifier(0);
 
+  /// Anime / Asian Drama hub scroll offsets for catalog top-bar hide.
+  static final ValueNotifier<double> animeScrollOffset = ValueNotifier(0);
+  static final ValueNotifier<double> asianDramaScrollOffset = ValueNotifier(0);
+
   /// Cinematic hero height in px (not the extended page-bleed backdrop).
   /// [HomeCinematicHero] publishes on layout; [HomeTopBar] uses it as the
   /// scroll-hide anchor.
+  static final ValueNotifier<double> animeHeroHeight = ValueNotifier(0);
+  static final ValueNotifier<double> asianDramaHeroHeight = ValueNotifier(0);
   static final ValueNotifier<double> homeHeroHeight = ValueNotifier(0);
 
   /// SearchScreen listens for incoming Stremio search requests.

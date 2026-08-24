@@ -960,6 +960,19 @@ abstract final class ShellTvFocusCoordinator {
     return best;
   }
 
+  /// First catalog/chip row under the hero (skips chrome with sortOrder < 0).
+  static bool focusFirstContentRow(String tabId) {
+    final list = _rowsByTab[tabId];
+    if (list == null || list.isEmpty) return false;
+    for (final row in list) {
+      if (row.sortOrder < 0) continue;
+      if (row.itemCount <= 0) continue;
+      final idx = row.lastFocusedIndex.clamp(0, row.itemCount - 1);
+      if (focusRowItem(tabId, row.rowId, idx)) return true;
+    }
+    return false;
+  }
+
   static bool focusRowItem(String tabId, String rowId, int index) {
     final handle = _rowHandle(tabId, rowId);
     if (handle == null || handle.itemCount <= 0) return false;

@@ -86,6 +86,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [063-[fixed]-…](fixed/063-[fixed]-forja-auto-start-green-play.md) | Forja auto start (green Play) | v1.3 | fixed | Complete · 3/3 · 7/7 | — |
 | [064-[open]-…](064-[open]-rust-quickjs-engine-runtime.md) | Forja EngineJS runtime (Forja Sources) | v1.3 | open | 7/7 · 11/14 | — |
 | [065-[open]-…](065-[open]-live-forja-scrapers.md) | Live sports Forja scrapers | v1.3 | open | 6/6 · 12/14 · WebView GOAT+GASM 🔄 | — |
+| [066-[fixed]-…](fixed/066-[fixed]-hub-catalog-top-bar.md) | Anime & Asian Drama hub catalog top bar | — | fixed | Complete · 4/4 · 8/8 | — |
 
 ## Related
 

@@ -12,16 +12,16 @@ import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 
+import 'package:forja/features/anime/anime_hub_filters.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 import 'package:forja/features/anime/widgets/anime_continue_watching_section.dart';
 import 'anime_details_screen.dart';
 import 'anime_player_screen.dart';
-import 'anime_search_screen.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shell/app_router.dart';
-import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:forja/shell/hub_catalog_top_bar.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
@@ -47,6 +47,7 @@ class _AnimeScreenState extends ConsumerState<AnimeScreen>
   final AnimeService _service = AnimeService();
   final ScrollController _cwScrollController = ScrollController();
   final ScrollController _scroll = ScrollController();
+  bool _shellOffsetSyncScheduled = false;
 
   /// Cached so tab show/refresh can invalidate without inherited lookup
   /// on a deactivated [Visibility] child.
@@ -158,9 +159,23 @@ class _AnimeScreenState extends ConsumerState<AnimeScreen>
   @override
   bool get wantKeepAlive => true;
 
+  void _syncAnimeScrollOffset() {
+    if (_shellOffsetSyncScheduled) return;
+    _shellOffsetSyncScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _shellOffsetSyncScheduled = false;
+      if (!mounted || !_scroll.hasClients) return;
+      final offset = _scroll.offset;
+      if (ShellBus.animeScrollOffset.value != offset) {
+        ShellBus.animeScrollOffset.value = offset;
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    _scroll.addListener(_syncAnimeScrollOffset);
     TvHeroActions.bind(
       'anime',
       defaultFocus: () => ShellTvFocus.homeHeroPlay,
@@ -252,6 +267,9 @@ class _AnimeScreenState extends ConsumerState<AnimeScreen>
     AnimeService.watchHistoryRevision.removeListener(_onHistoryChanged);
     _cwScrollController.dispose();
     _scroll.dispose();
+    if (ShellBus.animeScrollOffset.value != 0) {
+      ShellBus.animeScrollOffset.value = 0;
+    }
     super.dispose();
   }
 

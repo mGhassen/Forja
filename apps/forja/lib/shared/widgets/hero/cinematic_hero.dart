@@ -197,8 +197,7 @@ class HomeCinematicHero extends StatefulWidget {
     this.pageBottomChild,
     this.tvTabId = 'home',
     this.firstCatalogRowHeight,
-  })  : slides = null,
-        onSearch = null;
+  })  : slides = null;
 
   const HomeCinematicHero.hub({
     super.key,
@@ -207,7 +206,6 @@ class HomeCinematicHero extends StatefulWidget {
     this.tvTabId = 'anime',
     this.firstCatalogRowHeight,
     this.scrollController,
-    this.onSearch,
   })  : moviesFuture = null,
         compact = false,
         usesShellHomeLayout = true,
@@ -223,8 +221,6 @@ class HomeCinematicHero extends StatefulWidget {
   final Future<void> Function(Movie movie)? onOpenDetails;
   final String tvTabId;
   final double? firstCatalogRowHeight;
-  /// Hub-only (Anime / Asian Drama) — top-right search; Home uses [HomeTopBar].
-  final VoidCallback? onSearch;
 
   /// First catalog row rendered on the extended page backdrop (desktop/TV).
   final Widget? pageBottomChild;
@@ -269,7 +265,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       PageController(initialPage: _heroLoopStart);
   final FocusNode _tvHeroPlayFocus = FocusNode(debugLabel: 'hero-play');
   final FocusNode _tvHeroGalleryFocus = FocusNode(debugLabel: 'hero-gallery');
-  final FocusNode _tvSearchFocus = FocusNode(debugLabel: 'hub-hero-search');
 
   Timer? _heroTimer;
   int _heroIndex = 0;
@@ -277,16 +272,11 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   final Map<String, List<String>> _heroBackdropUrls = {};
   bool _heroHeightSyncScheduled = false;
   double? _heroPageViewportWidth;
-  bool _searchFocused = false;
-  bool _searchHovered = false;
 
   void _syncSharedHeroFocusNodes() {
     if (ShellTvFocus.currentNavTabId != widget.tvTabId) return;
     ShellTvFocus.homeHeroPlay = _tvHeroPlayFocus;
     ShellTvFocus.homeHeroGallery = _tvHeroGalleryFocus;
-    if (widget.onSearch != null) {
-      ShellTvFocus.hubHeroSearch = _tvSearchFocus;
-    }
   }
 
   @override
@@ -323,19 +313,16 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     if (ShellTvFocus.homeHeroGallery == _tvHeroGalleryFocus) {
       ShellTvFocus.homeHeroGallery = null;
     }
-    if (ShellTvFocus.hubHeroSearch == _tvSearchFocus) {
-      ShellTvFocus.hubHeroSearch = null;
-    }
-    if (ShellBus.homeHeroHeight.value != 0 && !_isHub) {
+    final heightNotifier = _heroHeightNotifier();
+    if (heightNotifier.value != 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ShellBus.homeHeroHeight.value = 0;
+        heightNotifier.value = 0;
       });
     }
     _heroTimer?.cancel();
     _heroController.dispose();
     _disposeFocusNode(_tvHeroPlayFocus);
     _disposeFocusNode(_tvHeroGalleryFocus);
-    _disposeFocusNode(_tvSearchFocus);
     super.dispose();
   }
 
@@ -354,12 +341,10 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     // KeepAlive tabs all mount - only the active tab owns shared nodes.
     _syncSharedHeroFocusNodes();
 
-    if (!_isHub) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _publishHomeHeroHeight();
-      });
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _publishHeroHeight();
+    });
 
     if (_isHub) {
       final slides = widget.slides!;
@@ -434,11 +419,11 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         defaultBottom;
   }
 
-  /// Scroll-hide anchor for [HomeTopBar] - cinematic chrome only.
+  /// Scroll-hide anchor for catalog top bars - cinematic chrome only.
   ///
   /// Must not use the extended page-bleed backdrop height (Featured row), or
   /// the top bar stays visible until nearly a full viewport of scroll.
-  double _homeTopBarHideAnchorHeight(
+  double _topBarHideAnchorHeight(
     BuildContext context, {
     required bool compact,
   }) {
@@ -449,18 +434,30 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     );
   }
 
-  void _publishHomeHeroHeight() {
+  ValueNotifier<double> _heroHeightNotifier() {
+    switch (widget.tvTabId) {
+      case 'anime':
+        return ShellBus.animeHeroHeight;
+      case 'asian_drama':
+        return ShellBus.asianDramaHeroHeight;
+      default:
+        return ShellBus.homeHeroHeight;
+    }
+  }
+
+  void _publishHeroHeight() {
     if (_heroHeightSyncScheduled) return;
     _heroHeightSyncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _heroHeightSyncScheduled = false;
       if (!mounted) return;
-      final height = _homeTopBarHideAnchorHeight(
+      final height = _topBarHideAnchorHeight(
         context,
-        compact: widget.compact,
+        compact: _isHub ? _compact : widget.compact,
       );
-      if (ShellBus.homeHeroHeight.value != height) {
-        ShellBus.homeHeroHeight.value = height;
+      final notifier = _heroHeightNotifier();
+      if (notifier.value != height) {
+        notifier.value = height;
       }
     });
   }
@@ -482,33 +479,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
 
   void _focusHomeHeroMenu() {
     ShellTvFocusCoordinator.revealHeroForTab(widget.tvTabId);
-    if (widget.onSearch != null && ShellTvFocus.focusHubHeroSearch()) return;
     ShellTvFocus.focusHomeMenu();
-  }
-
-  Widget _buildSearchAction({required bool tvNav}) {
-    final icon = ForjaTopBarIcon(
-      icon: Icons.search_rounded,
-      size: shellScaled(context, 30).clamp(20.0, 30.0),
-      hitSize: shellScaled(context, 44).clamp(32.0, 44.0),
-      manageFocus: !tvNav,
-      highlighted: tvNav ? (_searchFocused || _searchHovered) : null,
-      onTap: tvNav ? null : widget.onSearch,
-    );
-    if (!tvNav) return icon;
-    return shellFocusableTap(
-      context: context,
-      onTap: widget.onSearch!,
-      borderRadius: shellScaled(context, 22).clamp(14.0, 22.0),
-      scaleOnFocus: ShellTokens.focusActiveScale,
-      focusNode: _tvSearchFocus,
-      tvTabId: widget.tvTabId,
-      tvZone: ShellTvZone.topBar,
-      onDownEdge: ShellTvFocus.focusHomeHeroGallery,
-      onFocusChange: (focused) => setState(() => _searchFocused = focused),
-      onHoverChange: (hovered) => setState(() => _searchHovered = hovered),
-      child: icon,
-    );
   }
 
   void _stepHeroFilm(int delta, List<_HeroItem> items) {
@@ -961,7 +932,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final pageBleed = widget.pageBottomChild != null && !compact;
     final imageHeight = _homeBackdropHeight(context, compact: compact);
     final topBarBleed = _desktopTopBarBleed(context);
-    final searchTop = topBarBleed + ShellTokens.shellHeaderTopPadding;
     final textTop = topBarBleed + homeHeroTextTopInset(context);
     final compactRightInset =
         compact ? metrics.heroCompactRightInset : 48.0;
@@ -1058,14 +1028,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                 child: _buildTvHeroGalleryFocus(items),
               ),
             ),
-          if (widget.onSearch != null)
-            Positioned(
-              top: searchTop,
-              right: shellHomeSectionHorizontalPadding(context),
-              child: _buildSearchAction(
-                tvNav: policy.useFocusableMoodChips,
-              ),
-            ),
           if (pageBleed)
             Positioned(
               left: 0,
@@ -1120,6 +1082,13 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           );
   }
 
+  void _focusFirstCatalogFromGallery() {
+    final tabId = widget.tvTabId;
+    if (ShellTvFocusCoordinator.focusFirstContentRow(tabId)) return;
+    // No rails yet (loading) — keep a focusable hero landing.
+    _revealedHeroPlayFocus();
+  }
+
   Widget _buildTvHeroGalleryFocus(List<_HeroItem> items) {
     return shellFocusableTap(
       context: context,
@@ -1131,7 +1100,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       onLeftEdge: () => _stepHeroFilm(-1, items),
       onRightEdge: () => _stepHeroFilm(1, items),
       onUpEdge: _focusHomeHeroMenu,
-      onDownEdge: _revealedHeroPlayFocus,
+      // Skip View details — Search ↓ lands on gallery; next ↓ is catalog.
+      onDownEdge: _focusFirstCatalogFromGallery,
       onTap: items.isEmpty
           ? null
           : () {
