@@ -1525,10 +1525,14 @@ class _IptvSportsChannelsOverlayState
                           ),
                         ),
                       ))
-              : Builder(
-                  builder: (context) {
-                    final list = ListView.builder(
+              : LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Same as movie Sources: bleed past panel padding so tiles
+                    // are edge-to-edge with the 8px stack gap.
+                    final inset = DetailsTokens.sourcesPanelPadding;
+                    final list = ListView.separated(
                       itemCount: sources.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (context, i) {
                         return _IptvSportsChannelSheetRow(
                           source: sources[i],
@@ -1540,15 +1544,32 @@ class _IptvSportsChannelsOverlayState
                         );
                       },
                     );
-                    if (!tv) return list;
-                    return TvCatalogRow(
-                      tabId: SourcesPanelTv.tabId,
-                      rowId: SourcesPanelTv.listRowId,
-                      sortOrder: SourcesPanelTv.listSort,
-                      itemCount: sources.length,
-                      orientation: ShellTvRowOrientation.vertical,
-                      onFocusUp: _focusClose,
-                      child: list,
+                    final bled = Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(
+                          left: -inset.left,
+                          right: -inset.right,
+                          top: 0,
+                          bottom: 0,
+                          child: tv
+                              ? TvCatalogRow(
+                                  tabId: SourcesPanelTv.tabId,
+                                  rowId: SourcesPanelTv.listRowId,
+                                  sortOrder: SourcesPanelTv.listSort,
+                                  itemCount: sources.length,
+                                  orientation: ShellTvRowOrientation.vertical,
+                                  onFocusUp: _focusClose,
+                                  child: list,
+                                )
+                              : list,
+                        ),
+                      ],
+                    );
+                    return SizedBox(
+                      width: constraints.maxWidth,
+                      height: constraints.maxHeight,
+                      child: bled,
                     );
                   },
                 ),
@@ -1669,6 +1690,7 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
         onPlay: onTap,
         tvItemIndex: tvItemIndex,
         onUpEdge: onUpEdge,
+        onHoverProbe: _hoverProbe,
       );
     }
     final badge = source.tierBadge;
