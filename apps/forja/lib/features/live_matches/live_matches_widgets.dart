@@ -1586,6 +1586,10 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
 
+  bool get _isLivePluginRow =>
+      source.liveSourceKind == IptvLiveSourceKind.liveEngine ||
+      source.liveSourceKind == IptvLiveSourceKind.stremio;
+
   String get _probeKey {
     final id = (source.streamId ?? '').trim();
     return id.isEmpty ? source.url : id;
@@ -1647,6 +1651,26 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLivePluginRow) {
+      final provider = (source.liveProviderBadge ?? '').trim().isNotEmpty
+          ? source.liveProviderBadge!.trim()
+          : (source.pickerSubtitle ?? '').trim();
+      final hd = source.liveStreamHd ||
+          RegExp(r'\bHD\b', caseSensitive: false)
+              .hasMatch(source.detail ?? '');
+      final viewers = source.liveViewerCount;
+      return SourcesPanelChannelTile(
+        title: source.pickerTitle,
+        provider: provider.isEmpty ? null : provider,
+        badges: [
+          if (hd) 'HD',
+          if (viewers > 0) '$viewers',
+        ],
+        onPlay: onTap,
+        tvItemIndex: tvItemIndex,
+        onUpEdge: onUpEdge,
+      );
+    }
     final badge = source.tierBadge;
     final subtitle = source.pickerSubtitle;
     return SourcesPanelChannelTile(
@@ -3796,15 +3820,10 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
         child: Row(
           children: [
-            if (widget.stream.hd)
-              _QualityChip(label: 'HD')
-            else
-              const Icon(
-                Icons.play_circle_outline,
-                size: 20,
-                color: ForjaShellColors.textSecondary,
-              ),
-            const SizedBox(width: 12),
+            if (widget.stream.hd) ...[
+              _QualityChip(label: 'HD'),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

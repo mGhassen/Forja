@@ -20,7 +20,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I202-T01 | TV `_openStreamedMatch` / merged / PPV: Forja Live → `_openForjaLiveTvSources`, never `_openTvNativeSourcesOnly` | ✅ |
-| 2 | I202-T02 | `_openForjaLiveTvSources`: resolve engine plugin streams into Sources panel; Catalog **PPV** = PPV-only (no cached TimStreams/Streamed); row badge = PPV / plugin name | ✅ |
+| 2 | I202-T02 | `_openForjaLiveTvSources`: list catalog rows in Sources (desktop parity); Catalog **PPV** scoped; unlock on tap (no hide-on-GOAT-fail) | ✅ |
 | 3 | I202-T03 | Panel empty / searching copy supports Forja Live (“No streams available”) | ✅ |
 
 ---

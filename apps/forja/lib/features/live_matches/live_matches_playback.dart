@@ -420,6 +420,9 @@ mixin _LiveMatchesPlayback
 
   /// TV Forja Live: Sources panel with engine plugin streams (not Xtream).
   ///
+  /// Lists catalog rows immediately (same as desktop sheet). Unlock/play happens
+  /// on tap — do not hide rows when GOAT/node unlock fails on Android.
+  ///
   /// Respects Catalog filter: **PPV** → PPV only; a named plugin → that
   /// plugin only; **All** → every catalog row for the event (+ matching PPV).
   Future<void> _openForjaLiveTvSources(
@@ -436,30 +439,26 @@ mixin _LiveMatchesPlayback
     final phase = filter == 'all'
         ? 'Forja Live'
         : _liveForjaPluginDisplayName(filter);
+    final choices = <_StreamedStreamChoice>[];
+
     final panel = _IptvSportsChannelsPanel.show(
       context: context,
       match: match,
       panelTitle: 'Sources',
       emptyMessage: 'No streams available',
-      searchingHint: 'Resolving $phase streams',
+      searchingHint: 'Loading $phase streams',
       onChannelSelected: (picked, all) {
-        unawaited(
-          _openEngineNativeSources(
-            title: match.title,
-            subtitle: picked.pickerTitle,
-            sources: [
-              picked,
-              for (final s in all)
-                if (!identical(s, picked) && s.url != picked.url) s,
-            ],
-          ),
-        );
+        final hit = _forjaLiveTvChoiceForSource(picked, choices);
+        if (hit == null) {
+          LiveMatchesEngine.engineResolveFailed();
+          return;
+        }
+        unawaited(_openResolvedStreamChoice(hit, allChoices: choices));
       },
     );
     panel.setSearchPhase(phase);
 
     try {
-      final choices = <_StreamedStreamChoice>[];
       if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
         choices.add(_ppvStreamChoice(ppvAnchor, match));
       } else if (filter == 'all' || filter == 'live-ppv') {
@@ -481,27 +480,26 @@ mixin _LiveMatchesPlayback
       }
       if (panel.isDisposed) return;
 
+      // List every catalog choice (desktop parity). Do not pre-unlock —
+      // Android has no Node GOAT worker, so unlock-before-list hid Streamed/PPV.
       for (final choice in choices) {
         if (panel.isDisposed) return;
-        final src = await _resolveStreamToEnginePlaySource(
-          choice.catalogMatch,
-          choice.stream,
-        );
-        if (src == null || panel.isDisposed) continue;
+        final stream = choice.stream;
+        final embed = stream.embedUrl.trim();
+        final key = embed.isNotEmpty
+            ? embed
+            : 'pending:${choice.catalogMatch.id}:${stream.id}:${stream.streamNo}';
         final provider =
             _StreamedStreamSheet.serverLabelFor(choice.catalogMatch);
         panel.appendSources([
           IptvPlaySource(
-            url: src.url,
-            label: src.label,
-            detail: _tvNativeSourceDetail(provider, src.detail),
-            logoUrl: src.logoUrl,
-            streamId: src.streamId,
-            headers: src.headers,
+            url: key,
+            label: _streamPickerLabel(choice.catalogMatch, stream),
+            detail: stream.hd ? 'HD' : null,
             liveSourceKind: IptvLiveSourceKind.liveEngine,
             liveProviderBadge: provider,
-            liveViewerCount: src.liveViewerCount,
-            liveStreamHd: src.liveStreamHd,
+            liveViewerCount: stream.viewers,
+            liveStreamHd: stream.hd,
           ),
         ]);
       }
@@ -510,6 +508,26 @@ mixin _LiveMatchesPlayback
     } finally {
       if (!panel.isDisposed) panel.finishSearching();
     }
+  }
+
+  _StreamedStreamChoice? _forjaLiveTvChoiceForSource(
+    IptvPlaySource picked,
+    List<_StreamedStreamChoice> choices,
+  ) {
+    final url = picked.url.trim();
+    for (final c in choices) {
+      final embed = c.stream.embedUrl.trim();
+      if (embed.isNotEmpty && embed == url) return c;
+      final pending =
+          'pending:${c.catalogMatch.id}:${c.stream.id}:${c.stream.streamNo}';
+      if (url == pending) return c;
+    }
+    final label = picked.label.trim();
+    if (label.isEmpty) return null;
+    for (final c in choices) {
+      if (_streamPickerLabel(c.catalogMatch, c.stream) == label) return c;
+    }
+    return null;
   }
 
   /// TV non–Forja Live (All / PPV / Streamed leftover): Forja Sports ∪ Stremio.
