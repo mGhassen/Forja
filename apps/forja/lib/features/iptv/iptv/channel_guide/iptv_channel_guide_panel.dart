@@ -915,21 +915,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   Widget _buildEpgPeekCard() {
     final ch = _epgPeekChannel!;
     final future = _epgFutureFor(ch)!;
-    // Flat card — no blurred BoxShadow saveLayer over/near live video.
+    // Card chrome lives on IptvGuideEpgCard(floating) — no second border here.
     return IgnorePointer(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: IptvGuideEpgCard(
-            key: ValueKey(ch.id),
-            future: future,
-            floating: true,
-          ),
-        ),
+      child: IptvGuideEpgCard(
+        key: ValueKey(ch.id),
+        future: future,
+        floating: true,
       ),
     );
   }
