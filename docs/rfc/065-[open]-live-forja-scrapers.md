@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **12 / 14** acceptance |
-| **Current slice** | Full pack shipped — GOAT WASM unlock on desktop; golf + HTTP providers on all platforms |
+| **Progress** | **6 / 6** components · **12 / 14** acceptance · **0 / 2** Android WebView GOAT |
+| **Current slice** | Desktop Node GOAT shipped — Android/ATV WebView GOAT in progress ([203](../issues/203-[open]-android-tv-goat-webview-unlock.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -46,6 +46,8 @@
 | 12 | R65-A12 | Feature doc + changelog Live & IPTV bullets | ✅ |
 | 13 | R65-A13 | Manual: Engine Streamed admin/echo on desktop | ⏭️ |
 | 14 | R65-A14 | Manual: Engine PPV direct source on live event | ⏭️ |
+| 15 | R65-A15 | Android/ATV: GOAT unlock via off-screen WebView when Node missing | 🔄 |
+| 16 | R65-A16 | Android/ATV: GASM (embedindia) unlock via WebView | ⬜ |
 
 ---
 
@@ -55,10 +57,11 @@ Bundled live `extract(ctx)` plugins (upstream: [live-sport-plugin](https://githu
 
 ### Contract
 
-Live `extract(ctx)` receives `action` (`catalog` \| `resolve`), `matchId`, `source`, `stream`, `embedUrl`, `url`, `title`, `category`, `config`. Returns catalog match rows or `{ url, headers?, webviewOnly? }` stream rows. `ctx.live.goatUnlock(bodyHex, goat, slot)` decrypts embed.st GOAT responses (desktop Node worker; golf path pure HTTP in JS).
+Live `extract(ctx)` receives `action` (`catalog` \| `resolve`), `matchId`, `source`, `stream`, `embedUrl`, `url`, `title`, `category`, `config`. Returns catalog match rows or `{ url, headers?, webviewOnly? }` stream rows. `ctx.live.goatUnlock(bodyHex, goat, slot)` decrypts embed.st GOAT responses (**desktop:** Node worker; **Android/iOS:** off-screen WebView + `lock.wasm`; golf path pure HTTP in JS).
 
 ### Related
 
 - [RFC-060](fixed/060-[fixed]-enginejs-sources-forja-tab.md)
 - [RFC-062](062-[open]-native-iptv-sports-matching.md)
+- [Issue 203](../issues/203-[open]-android-tv-goat-webview-unlock.md) — ATV WebView GOAT
 - [live-matches feature doc](../features/live/live-matches.md)

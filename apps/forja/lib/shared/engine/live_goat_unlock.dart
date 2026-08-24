@@ -4,11 +4,13 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/engine/live_goat_webview_unlock.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
-/// Host bridge for `ctx.live.goatUnlock` / `ctx.live.gasmUnlock` — Node WASM decrypt.
+/// Host bridge for `ctx.live.goatUnlock` / `ctx.live.gasmUnlock` —
+/// desktop Node WASM decrypt, Android/iOS off-screen WebView fallback.
 class LiveGoatUnlock {
   LiveGoatUnlock._();
 
@@ -517,7 +519,19 @@ class LiveGoatUnlock {
         debugPrint('[LiveGoatUnlock] node unlock failed: $e');
       }
     } else {
-      debugPrint('[LiveGoatUnlock] node not found');
+      debugPrint('[LiveGoatUnlock] node not found — trying WebView unlock');
+    }
+
+    try {
+      final url = await LiveGoatWebviewUnlock.instance.unlock(
+        slot: slot,
+        goat: goat,
+        bodyHex: bodyHex,
+        embedOrigin: embedOrigin,
+      );
+      if (url != null && url.isNotEmpty) return url;
+    } catch (e) {
+      debugPrint('[LiveGoatUnlock] webview unlock failed: $e');
     }
     return null;
   }
