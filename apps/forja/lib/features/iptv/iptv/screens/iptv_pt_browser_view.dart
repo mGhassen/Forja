@@ -637,8 +637,9 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   /// While D-pad is on an unopened group, keep logos off the channel pane.
+  /// Leanback only — desktop hybrid hover/focus must keep the open category.
   bool get _tvCategoryPendingCommit {
-    if (!iptvUseTvFocus(context) || !_tvCategoryRailFocused) return false;
+    if (!iptvLeanbackOnly(context) || !_tvCategoryRailFocused) return false;
     final focused = _tvFocusedCategoryId;
     if (focused == null) return false;
     return focused != widget.ctrl.browserSelectedCategoryId;

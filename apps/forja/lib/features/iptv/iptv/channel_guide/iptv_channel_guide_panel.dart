@@ -59,7 +59,7 @@ class IptvChannelGuidePanel extends StatefulWidget {
   static const double groupListPaddingV = 10;
   /// Keep focused row fully inside the viewport (focus bar not clipped).
   static const double listFocusMargin = 8;
-  static const double epgPeekWidth = 320;
+  static const double epgPeekWidth = 480;
   static const double epgPeekGap = 12;
   static const Duration epgHoverDelay = Duration(seconds: 1);
 
@@ -92,6 +92,9 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   bool _allowNewLogos = false;
   final Set<String> _revealedLogoIds = <String>{};
   static const _logoSettleDelay = Duration(milliseconds: 500);
+
+  /// Desktop hover highlight — paint only; does not change focus or channel list.
+  int? _hoveredGroupIndex;
 
   /// Desktop hover / TV → peek: channel id for the side EPG card.
   String? _epgPeekChannelId;
@@ -374,12 +377,13 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     final n = widget.guide.groups.length;
     if (n == 0) return;
     final next = index.clamp(0, n - 1);
-    if (next == _focusedGroupIndex) {
+    if (next == _focusedGroupIndex && _hoveredGroupIndex == null) {
       if (scroll) _scrollFocusedGroupIntoView(animate: animateScroll);
       return;
     }
     // Jump before rebuild so focus chrome never paints off-screen for a frame.
     _focusedGroupIndex = next;
+    _hoveredGroupIndex = null;
     if (scroll) _scrollFocusedGroupIntoView(animate: animateScroll);
     setState(() {});
   }
@@ -598,10 +602,6 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   bool get _wide =>
       MediaQuery.sizeOf(context).width >= IptvChannelGuidePanel.wideBreakpoint;
 
-  double _panelWidthFor(bool wide) => wide
-      ? IptvChannelGuidePanel.panelWidthWide
-      : IptvChannelGuidePanel.panelWidthNarrow;
-
   /// Returns true when the channel list offset actually moved.
   bool _scrollToFocused({bool animate = true, bool groupsOnly = false}) {
     _scrollFocusedGroupIntoView(animate: animate);
@@ -634,8 +634,11 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     if (key == LogicalKeyboardKey.escape ||
         key == LogicalKeyboardKey.goBack) {
       if (_focusColumn == _FocusColumn.epg) {
-        setState(() => _focusColumn = _FocusColumn.channels);
-        _clearEpgPeek();
+        _epgHoverTimer?.cancel();
+        setState(() {
+          _focusColumn = _FocusColumn.channels;
+          _epgPeekChannelId = null;
+        });
         WidgetsBinding.instance.addPostFrameCallback((_) => _claimFocus());
         return KeyEventResult.handled;
       }
@@ -718,24 +721,17 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   String _headerGroupName() {
-    final groups = widget.guide.groups;
-    if (groups.isEmpty) {
-      return widget.guide.groupById(_browseGroupId)?.name ?? 'Uncategorized';
-    }
-    if (_wide && _focusColumn == _FocusColumn.groups) {
-      return groups[_focusedGroupIndex.clamp(0, groups.length - 1)].name;
-    }
-    if (!_wide && _step == _GuideStep.groups) {
-      return groups[_focusedGroupIndex.clamp(0, groups.length - 1)].name;
-    }
     return widget.guide.groupById(_browseGroupId)?.name ?? 'Uncategorized';
   }
 
   void _focusLeft() {
     if (_wide) {
       if (_focusColumn == _FocusColumn.epg) {
-        setState(() => _focusColumn = _FocusColumn.channels);
-        _clearEpgPeek();
+        _epgHoverTimer?.cancel();
+        setState(() {
+          _focusColumn = _FocusColumn.channels;
+          _epgPeekChannelId = null;
+        });
         return;
       }
       if (_focusColumn == _FocusColumn.channels) {
@@ -863,7 +859,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 left: 0,
                 top: 0,
                 bottom: 0,
-                child: _buildPanelShell(wide: wide, tvRail: true),
+                child: _buildPanelWithEpgPeek(wide: wide, tvRail: true),
               )
             else if (DesktopWindowChrome.isDesktop)
               // Flush left, dock under window chrome → bottom of the player.
@@ -872,7 +868,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 top: DesktopWindowChrome.topInset(context) +
                     IptvChannelGuidePanel.panelVerticalGap,
                 bottom: IptvChannelGuidePanel.panelEdgeGap,
-                child: _buildPanelShell(wide: wide, tvRail: false),
+                child: _buildPanelWithEpgPeek(wide: wide, tvRail: false),
               )
             else
               Align(
@@ -881,28 +877,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                   padding: _panelPadding(context),
                   child: SizedBox(
                     height: _panelHeight(context),
-                    child: _buildPanelShell(wide: wide, tvRail: false),
-                  ),
-                ),
-              ),
-            // Fixed center of the video area (right of the rail) — never over
-            // channels and never tracking the hovered row.
-            if (_showEpgPeek)
-              Positioned(
-                left: _panelWidthFor(wide) +
-                    IptvChannelGuidePanel.epgPeekGap,
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: IgnorePointer(
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        maxWidth: IptvChannelGuidePanel.epgPeekWidth,
-                      ),
-                      child: _buildEpgPeekCard(),
-                    ),
+                    child: _buildPanelWithEpgPeek(wide: wide, tvRail: false),
                   ),
                 ),
               ),
@@ -912,26 +887,48 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     );
   }
 
+  /// Rail + optional EPG peek as one Row — peek must NOT be a full-height
+  /// [Positioned] over the live video (show/hide that layer ANRs on ATV/emu).
+  Widget _buildPanelWithEpgPeek({
+    required bool wide,
+    required bool tvRail,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildPanelShell(wide: wide, tvRail: tvRail),
+        if (_showEpgPeek) ...[
+          const SizedBox(width: IptvChannelGuidePanel.epgPeekGap),
+          SizedBox(
+            width: IptvChannelGuidePanel.epgPeekWidth,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildEpgPeekCard(),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildEpgPeekCard() {
     final ch = _epgPeekChannel!;
     final future = _epgFutureFor(ch)!;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+    // Flat card — no blurred BoxShadow saveLayer over/near live video.
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: IptvGuideEpgCard(
+            key: ValueKey(ch.id),
+            future: future,
+            floating: true,
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: IptvGuideEpgCard(
-          key: ValueKey(ch.id),
-          future: future,
-          floating: true,
         ),
       ),
     );
@@ -1217,18 +1214,19 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
           final focused = _focusColumn == _FocusColumn.groups &&
               i == _focusedGroupIndex &&
               (_wide || _step == _GuideStep.groups);
+          final hovered = _hoveredGroupIndex == i;
+          final lit = focused || hovered;
           final hasPlaying = _groupHasPlayingChannel(g.id);
           return MouseRegion(
             onEnter: (_) {
               _cancelHoverEpg();
-              // Hover only highlights in place — never scrolls the list.
-              // Click / OK / → opens the group.
-              final colChanged =
-                  _wide && _focusColumn != _FocusColumn.groups;
-              if (colChanged) {
-                setState(() => _focusColumn = _FocusColumn.groups);
-              }
-              _focusGroupAt(i, scroll: false);
+              // Hover = paint only. Never steal focus column / focused index.
+              if (_hoveredGroupIndex == i) return;
+              setState(() => _hoveredGroupIndex = i);
+            },
+            onExit: (_) {
+              if (_hoveredGroupIndex != i) return;
+              setState(() => _hoveredGroupIndex = null);
             },
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -1236,6 +1234,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 if (_wide) {
                   _focusColumn = _FocusColumn.groups;
                 }
+                _hoveredGroupIndex = null;
                 _selectGroup(g.id);
                 onPick?.call(g.id);
               },
@@ -1245,12 +1244,12 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                 decoration: BoxDecoration(
                   color: selected
                       ? _accent.withValues(alpha: 0.18)
-                      : focused
+                      : lit
                           ? _accent.withValues(alpha: 0.10)
                           : Colors.transparent,
                   border: Border(
                     left: BorderSide(
-                      color: selected || focused
+                      color: selected || lit
                           ? _accent
                           : Colors.transparent,
                       width: 3,
@@ -1265,13 +1264,13 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.plusJakartaSans(
-                          color: focused
+                          color: lit
                               ? _accent
                               : selected
                                   ? Colors.white
                                   : Colors.white60,
                           fontSize: 13,
-                          fontWeight: selected || focused
+                          fontWeight: selected || lit
                               ? FontWeight.w700
                               : FontWeight.w400,
                         ),
