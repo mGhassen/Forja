@@ -63,7 +63,33 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              if (_s._controller != null)
+              if (_s._embedFallback)
+                Positioned.fill(
+                  child: ForjaInAppWebView(
+                    key: ValueKey('trailer-embed-${_s._trailer.key}'),
+                    initialData: InAppWebViewInitialData(
+                      data: youtubeFullscreenTrailerEmbedHtml(
+                        _s._trailer.key,
+                        languageCode: widget.languageCode,
+                      ),
+                      baseUrl: WebUri(kYoutubeEmbedOrigin),
+                      mimeType: 'text/html',
+                      encoding: 'utf-8',
+                    ),
+                    initialSettings: forjaWebViewSettings(
+                      InAppWebViewSettings(
+                        javaScriptEnabled: true,
+                        mediaPlaybackRequiresUserGesture: false,
+                        allowsInlineMediaPlayback: true,
+                        transparentBackground: true,
+                        supportZoom: false,
+                        disableHorizontalScroll: true,
+                        disableVerticalScroll: true,
+                      ),
+                    ),
+                  ),
+                )
+              else if (_s._controller != null)
                 Positioned.fill(
                   child: Video(
                     controller: _s._controller!,
@@ -75,7 +101,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     ),
                   ),
                 ),
-              if (_s._resolving || _s._resolveError != null)
+              if (!_s._embedFallback &&
+                  (_s._resolving || _s._resolveError != null))
                 Positioned.fill(
                   child: ColoredBox(
                     color: Colors.black.withValues(alpha: 0.55),
@@ -89,7 +116,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                     ),
                   ),
                 ),
-              if (!tvFocus)
+              if (!tvFocus && !_s._embedFallback)
                 Positioned.fill(
                   child: GestureDetector(
                     behavior: HitTestBehavior.translucent,
@@ -174,7 +201,87 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
     );
   }
 
+  /// Age-gate embed: YouTube owns transport; we only keep Back / Player / More.
+  Widget _buildEmbedChromeOverlay({required bool tvFocus}) {
+    final top = DesktopWindowChrome.isDesktop
+        ? DesktopWindowChrome.topInset(context) + 6
+        : MediaQuery.paddingOf(context).top + 6;
+    final layers = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        const Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ExcludeFocus(
+            child: PlayerOverlayGradient(isTop: true),
+          ),
+        ),
+        Positioned(
+          top: top,
+          left: 16,
+          child: tvFocus
+              ? FocusTraversalOrder(
+                  order: const NumericFocusOrder(1),
+                  child: PlayerFlatIconButton(
+                    icon: Icons.arrow_back_rounded,
+                    tooltip: 'Back',
+                    tvFocusable: true,
+                    focusNode: _s._backFocus,
+                    onRightEdge: () => _s._playerMenuFocus.requestFocus(),
+                    onPressed: () => unawaited(_s._exitTrailer()),
+                  ),
+                )
+              : PlayerFlatIconButton(
+                  icon: Icons.arrow_back_rounded,
+                  tooltip: 'Back',
+                  onPressed: () => unawaited(_s._exitTrailer()),
+                ),
+        ),
+        Positioned(
+          top: top,
+          right: 16,
+          child: tvFocus
+              ? FocusTraversalOrder(
+                  order: const NumericFocusOrder(1.5),
+                  child: PlayerTopBarActions(
+                    tvFocusable: true,
+                    showPlayer: true,
+                    playerFocusNode: _s._playerMenuFocus,
+                    playerOnLeftEdge: () => _s._backFocus.requestFocus(),
+                    onPlayer: (anchorContext) =>
+                        unawaited(_s._showPlayerMenu(anchorContext)),
+                  ),
+                )
+              : PlayerTopBarActions(
+                  showPlayer: true,
+                  onPlayer: (anchorContext) =>
+                      unawaited(_s._showPlayerMenu(anchorContext)),
+                ),
+        ),
+        if (_s._hasMoreTrailers)
+          Positioned(
+            right: 16,
+            bottom: MediaQuery.paddingOf(context).bottom + 16,
+            child: _buildMoreVideosButton(tvFocus: tvFocus),
+          ),
+      ],
+    );
+    if (!tvFocus) return layers;
+    return SizedBox.expand(
+      child: FocusScope(
+        debugLabel: 'trailer-embed-chrome',
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: layers,
+        ),
+      ),
+    );
+  }
+
   Widget _buildChromeOverlay({required bool tvFocus}) {
+    if (_s._embedFallback) return _buildEmbedChromeOverlay(tvFocus: tvFocus);
+
     final layers = Stack(
       clipBehavior: Clip.none,
       children: [

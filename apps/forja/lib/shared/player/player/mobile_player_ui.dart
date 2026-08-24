@@ -29,12 +29,13 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
           _startHideTimer();
           return;
         }
-        if (widget.tvRemoteEnabled &&
-            playerTvChromeHasFocus(_s._tvKeyFocus)) {
-          _startHideTimer();
-          return;
-        }
         setState(() => _s._showControls = false);
+        if (widget.tvRemoteEnabled) {
+          playerTvClaimVideoKeyFocusAfterHide(
+            _s._tvKeyFocus,
+            mounted: () => mounted,
+          );
+        }
       }
     });
   }

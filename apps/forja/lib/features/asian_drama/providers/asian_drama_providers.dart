@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
@@ -8,13 +10,32 @@ final kissKhServiceProvider = Provider<KissKhService>((ref) => KissKhService());
 
 final tmdbApiProvider = Provider<TmdbApi>((ref) => TmdbApi());
 
-/// Primary KissKH hub feed load.
-final asianDramaFeedProvider =
-    FutureProvider.autoDispose<KdramaHomeFeed>((ref) async {
-  await KissKhService.ensureActiveMirrorFromSettings();
-  final service = ref.watch(kissKhServiceProvider);
-  return service.getHome();
-});
+/// Progressive KissKH hub feed — hero lists first, rails fill in after.
+final asianDramaFeedProvider = AsyncNotifierProvider.autoDispose<
+    AsianDramaFeedNotifier, KdramaHomeFeed>(AsianDramaFeedNotifier.new);
+
+class AsianDramaFeedNotifier
+    extends AutoDisposeAsyncNotifier<KdramaHomeFeed> {
+  @override
+  Future<KdramaHomeFeed> build() async {
+    await KissKhService.ensureActiveMirrorFromSettings();
+    final service = ref.watch(kissKhServiceProvider);
+    final hero = await service.getHomeHero();
+    unawaited(_fillRails(service, hero));
+    return hero;
+  }
+
+  Future<void> _fillRails(KissKhService service, KdramaHomeFeed hero) async {
+    try {
+      final rails = await service.getHomeRails();
+      state = AsyncData(hero.withRails(rails));
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[AsianDrama] home rails load failed: $e');
+      }
+    }
+  }
+}
 
 class AsianDramaDetailsBundle {
   const AsianDramaDetailsBundle({

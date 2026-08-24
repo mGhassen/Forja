@@ -268,20 +268,11 @@ pub fn match_resume_episode(
     episodes.first().cloned()
 }
 
-pub fn get_home() -> Result<KdramaHomeFeed, String> {
-    let paths = [
-        "/DramaList/Show",
-        "/DramaList/LastUpdate?ispc=false",
-        "/DramaList/MostView",
-        "/DramaList/MostSearch?ispc=false",
-        "/DramaList/TopRating?ispc=false",
-        "/DramaList/Upcoming?ispc=false",
-        "/DramaList/Animate?ispc=false",
-    ];
+/// Cap concurrency — list hits share the same client IP as Episode extract
+/// and helped trip KissKH "Too many request."
+const HOME_CONCURRENCY: usize = 2;
 
-    // Cap concurrency — seven parallel list hits share the same client IP as
-    // Episode extract and helped trip KissKH "Too many request."
-    const HOME_CONCURRENCY: usize = 2;
+fn fetch_home_paths(paths: &[&str]) -> Result<Vec<String>, String> {
     let mut results: Vec<String> = Vec::with_capacity(paths.len());
     let mut i = 0;
     while i < paths.len() {
@@ -300,15 +291,59 @@ pub fn get_home() -> Result<KdramaHomeFeed, String> {
             std::thread::sleep(std::time::Duration::from_millis(150));
         }
     }
+    Ok(results)
+}
 
+/// Spotlight + Latest only — enough for hero first paint.
+pub fn get_home_hero() -> Result<KdramaHomeFeed, String> {
+    let paths = [
+        "/DramaList/Show",
+        "/DramaList/LastUpdate?ispc=false",
+    ];
+    let results = fetch_home_paths(&paths)?;
     Ok(KdramaHomeFeed {
         spotlight: parse_card_list(&results[0]),
         latest: parse_card_list(&results[1]),
-        most_viewed: parse_card_list(&results[2]),
-        trending: parse_card_list(&results[3]),
-        top_rated: parse_card_list(&results[4]),
-        upcoming: parse_card_list(&results[5]),
-        anime: parse_card_list(&results[6]),
+        most_viewed: vec![],
+        trending: vec![],
+        top_rated: vec![],
+        upcoming: vec![],
+        anime: vec![],
+    })
+}
+
+/// Remaining hub rails after hero has painted.
+pub fn get_home_rails() -> Result<KdramaHomeFeed, String> {
+    let paths = [
+        "/DramaList/MostView",
+        "/DramaList/MostSearch?ispc=false",
+        "/DramaList/TopRating?ispc=false",
+        "/DramaList/Upcoming?ispc=false",
+        "/DramaList/Animate?ispc=false",
+    ];
+    let results = fetch_home_paths(&paths)?;
+    Ok(KdramaHomeFeed {
+        spotlight: vec![],
+        latest: vec![],
+        most_viewed: parse_card_list(&results[0]),
+        trending: parse_card_list(&results[1]),
+        top_rated: parse_card_list(&results[2]),
+        upcoming: parse_card_list(&results[3]),
+        anime: parse_card_list(&results[4]),
+    })
+}
+
+pub fn get_home() -> Result<KdramaHomeFeed, String> {
+    let hero = get_home_hero()?;
+    let rails = get_home_rails()?;
+    Ok(KdramaHomeFeed {
+        spotlight: hero.spotlight,
+        latest: hero.latest,
+        most_viewed: rails.most_viewed,
+        trending: rails.trending,
+        top_rated: rails.top_rated,
+        upcoming: rails.upcoming,
+        anime: rails.anime,
     })
 }
 

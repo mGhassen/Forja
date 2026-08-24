@@ -133,6 +133,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       _s._ready = false;
       _s._resolving = true;
       _s._resolveError = null;
+      _s._embedFallback = false;
       _s._playing = false;
       _s._ended = false;
       _s._position = Duration.zero;
@@ -155,10 +156,10 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     if (!mounted || loadId != _s._loadGeneration) return;
 
     if (streams == null || !streams.hasPlayable) {
-      setState(() {
-        _s._resolving = false;
-        _s._resolveError = 'Could not load this trailer';
-      });
+      await _activateEmbedFallback(
+        loadId,
+        reason: 'native resolve failed for $videoId',
+      );
       return;
     }
 
@@ -171,7 +172,13 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         allowMuxedFallback: true,
       );
       if (!mounted || loadId != _s._loadGeneration) return;
-      if (opened == null) throw StateError('trailer stream open failed');
+      if (opened == null) {
+        await _activateEmbedFallback(
+          loadId,
+          reason: 'native open failed for $videoId',
+        );
+        return;
+      }
       setState(() {
         _s._streams = opened;
         _s._resolving = false;
@@ -182,13 +189,62 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       _s._startHideTimer();
     } catch (e) {
       debugPrint('Trailer open failed: $e');
-      if (!mounted || loadId != _s._loadGeneration) return;
-      setState(() {
-        _s._resolving = false;
-        _s._ready = false;
-        _s._resolveError = 'Could not play this trailer';
-      });
+      await _activateEmbedFallback(
+        loadId,
+        reason: 'native open error for $videoId',
+      );
     }
+  }
+
+  /// YouTube age-gate / broken googlevideo — iframe (worked pre-native).
+  Future<void> _activateEmbedFallback(int loadId, {String? reason}) async {
+    if (!mounted || loadId != _s._loadGeneration) return;
+    if (reason != null) {
+      debugPrint('[Trailer] $reason — embed WebView fallback');
+    }
+    await _teardownPlayer();
+    if (!mounted || loadId != _s._loadGeneration) return;
+    setState(() {
+      _s._resolving = false;
+      _s._resolveError = null;
+      _s._embedFallback = true;
+      _s._ready = true;
+      _s._playing = true;
+    });
+    _s._claimPlayFocus();
+    _s._startHideTimer();
+  }
+
+  Future<void> _openTrailerGooglevideo(
+    Player player,
+    String videoUrl, {
+    required bool play,
+  }) async {
+    final hdrs = resolvePlaybackHttpHeaders(null, streamUrl: videoUrl);
+    await applyMediaHttpHeaders(
+      player,
+      hdrs,
+      streamUrl: videoUrl,
+      alreadyResolved: true,
+    );
+    final remote =
+        videoUrl.startsWith('http://') || videoUrl.startsWith('https://');
+    await player.open(
+      Media(videoUrl, httpHeaders: remote ? hdrs : null),
+      play: play,
+    );
+  }
+
+  /// Debrify path: demuxer duration / decoded frame before external AAC attach.
+  Future<bool> _waitTrailerDuration(Player player) async {
+    for (var i = 0; i < 100; i++) {
+      final state = player.state;
+      if (state.duration.inMilliseconds > 0) return true;
+      if (hasDecodedVideo(state)) return true;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    final state = player.state;
+    return state.duration.inMilliseconds > 0 || hasDecodedVideo(state);
   }
 
   /// Menu highlight for the stream currently open (muxed URL ≠ adaptive URLs).
@@ -282,6 +338,65 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     }
 
     await player.setVolume(_s._volume);
+
+    if (needsExternalAudio && audioUrl != null && audioUrl.isNotEmpty) {
+      // Debrify: open PAUSED → wait for demuxer → audio-add → play (never
+      // play video-only first — mpv reports playing=true with dur=0 / no frame).
+      await _openTrailerGooglevideo(player, videoUrl, play: false);
+      await _waitTrailerDuration(player);
+
+      final needAudioAdd =
+          !atv || forceAudioAdd || !await _waitForSelectableAudio(player);
+      if (needAudioAdd) {
+        try {
+          await player.setAudioTrack(AudioTrack.uri(audioUrl));
+        } catch (e) {
+          debugPrint('[Trailer] audio-add failed: $e');
+        }
+      }
+
+      if (resumeAt != null && resumeAt > Duration.zero) {
+        await player.seek(resumeAt);
+      }
+      await player.play();
+
+      var opened = await _waitTrailerOpenReady(player);
+      if (!opened) {
+        debugPrint(
+          '[Trailer] adaptive open did not become ready '
+          '(playing=${player.state.playing} '
+          'dur=${player.state.duration.inMilliseconds}ms '
+          'vp=${player.state.videoParams.w}x${player.state.videoParams.h})',
+        );
+        if (allowMuxedFallback &&
+            streams.muxedUrl != null &&
+            streams.muxedUrl!.isNotEmpty &&
+            streams.muxedUrl != videoUrl) {
+          debugPrint('[Trailer] adaptive stuck — falling back to muxed');
+          final muxed = YoutubeResolvedStreams(
+            playUrl: streams.muxedUrl,
+            playHeight: streams.muxedHeight,
+            audioUrl: streams.audioUrl,
+            muxedUrl: streams.muxedUrl,
+            muxedHeight: streams.muxedHeight,
+            title: streams.title,
+            thumbnailUrl: streams.thumbnailUrl,
+            durationSeconds: streams.durationSeconds,
+            qualities: streams.qualities,
+            captions: streams.captions,
+          );
+          return _openResolved(
+            muxed,
+            resumeAt: resumeAt,
+            forceAudioAdd: false,
+            allowMuxedFallback: false,
+          );
+        }
+        return null;
+      }
+      return streams;
+    }
+
     await openPlayerStream(player, url: videoUrl);
 
     // Do NOT use waitForPlayerStreamOpen here: stop() abort noise often emits
@@ -296,47 +411,6 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         'vp=${player.state.videoParams.w}x${player.state.videoParams.h})',
       );
       return null;
-    }
-
-    if (needsExternalAudio && audioUrl != null && audioUrl.isNotEmpty) {
-      // Desktop: always audio-add. ATV first open: only if audio-file missed.
-      // Quality switch: always audio-add (stale tracks after stop).
-      final needAudioAdd =
-          !atv || forceAudioAdd || !await _waitForSelectableAudio(player);
-      if (needAudioAdd) {
-        try {
-          await player.setAudioTrack(AudioTrack.uri(audioUrl));
-        } catch (e) {
-          debugPrint('[Trailer] audio-add failed: $e');
-        }
-      }
-      // Adaptive silent → muxed progressive (Debrify fallback).
-      if (allowMuxedFallback &&
-          streams.muxedUrl != null &&
-          streams.muxedUrl!.isNotEmpty &&
-          streams.muxedUrl != videoUrl &&
-          !await _waitForSelectableAudio(player)) {
-        debugPrint('[Trailer] adaptive silent — falling back to muxed');
-        final muxed = YoutubeResolvedStreams(
-          playUrl: streams.muxedUrl,
-          playHeight: streams.muxedHeight,
-          // Keep AAC for later quality switches even though muxed has audio.
-          audioUrl: streams.audioUrl,
-          muxedUrl: streams.muxedUrl,
-          muxedHeight: streams.muxedHeight,
-          title: streams.title,
-          thumbnailUrl: streams.thumbnailUrl,
-          durationSeconds: streams.durationSeconds,
-          qualities: streams.qualities,
-          captions: streams.captions,
-        );
-        return _openResolved(
-          muxed,
-          resumeAt: resumeAt,
-          forceAudioAdd: false,
-          allowMuxedFallback: false,
-        );
-      }
     }
 
     if (resumeAt != null && resumeAt > Duration.zero) {

@@ -7,7 +7,7 @@ use serde_json::json;
 
 pub use catalog::{
     enrich_card_descriptions, enrich_cards, enrich_home_feed, episode_page_url, explore,
-    get_details, get_home, match_resume_episode,
+    get_details, get_home, get_home_hero, get_home_rails, match_resume_episode,
     parse_card_list, search, slugify, year_from_release, KdramaCard, KdramaDetails, KdramaEpisode,
     KdramaExplorePage, KdramaHomeFeed,
 };
@@ -68,6 +68,14 @@ pub fn catalog_json(request_json: &str) -> String {
 
     match req.action.as_str() {
         "home" => match get_home() {
+            Ok(feed) => catalog::ok_json(&feed),
+            Err(e) => catalog::error_json(&e),
+        },
+        "home_hero" => match get_home_hero() {
+            Ok(feed) => catalog::ok_json(&feed),
+            Err(e) => catalog::error_json(&e),
+        },
+        "home_rails" => match get_home_rails() {
             Ok(feed) => catalog::ok_json(&feed),
             Err(e) => catalog::error_json(&e),
         },

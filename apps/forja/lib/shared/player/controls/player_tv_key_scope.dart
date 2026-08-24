@@ -227,3 +227,17 @@ bool playerTvChromeHasFocus(FocusNode playerKeyNode) {
   }
   return false;
 }
+
+/// After auto-hide, park focus on the video key scope so ←/→ seek still works.
+void playerTvClaimVideoKeyFocusAfterHide(
+  FocusNode playerKeyNode, {
+  required bool Function() mounted,
+}) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!mounted()) return;
+    if (playerChromeOverlayBlocksFocusClaim()) return;
+    if (playerKeyNode.canRequestFocus) {
+      playerKeyNode.requestFocus();
+    }
+  });
+}

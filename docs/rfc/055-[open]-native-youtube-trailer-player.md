@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **10 / 15** acceptance |
+| **Progress** | **3 / 3** components · **11 / 16** acceptance |
 | **Current slice** | Adaptive-first (Debrify) + prefetch + deferred captions shipped — device smoke remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -51,6 +51,7 @@
 | 3 | R55-A13 | Captions fetched lazily on CC menu (not on critical open path) | ✅ |
 | 4 | R55-A14 | Desktop/TV smoke: open trailer ≥720p when available; Quality changes picture | ⬜ |
 | 5 | R55-A15 | Age-restricted trailers: getManifest tries androidVr + tv (+ sdkless/ios) so racyCheckOk unlocks streams | ✅ |
+| 6 | R55-A16 | Age-gate / unplayable native resolve → YouTube embed WebView fallback (no sign-in; Forja +18) | ✅ |
 
 ---
 
@@ -77,7 +78,8 @@ Replace the fullscreen trailer YouTube iframe (and its 1.35× overscan hack to h
 - Quality ladder is the full adaptive height list; desktop always `audio-add` after open; ATV prefers `audio-file` then `audio-add` if no track
 - Resolve off UI isolate; short TTL cache; prefetch from details trailers / hero Trailer; re-resolve on open / trailer switch
 - Captions fetched lazily when the CC menu opens (not on open)
-- No iframe fallback on resolve failure
+- Age / unplayable native resolve → YouTube nocookie embed WebView fallback (Forja +18; no YouTube account)
+- No iframe fallback on resolve failure **except** age/unplayable gate above
 
 ## Related
 

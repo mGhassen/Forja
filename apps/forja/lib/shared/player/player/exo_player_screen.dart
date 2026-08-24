@@ -934,13 +934,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         _startHideTimer();
         return;
       }
-      // D-pad still on chrome — do not strip ExcludeFocus mid-traversal
-      // (leaves focus on Play with no ←/→ neighbors until Select).
-      if (_isTv && playerTvChromeHasFocus(_tvKeyFocus)) {
-        _startHideTimer();
-        return;
-      }
       setState(() => _showControls = false);
+      if (_isTv) {
+        playerTvClaimVideoKeyFocusAfterHide(
+          _tvKeyFocus,
+          mounted: () => mounted,
+        );
+      }
     });
   }
 

@@ -16,11 +16,12 @@ mixin _LiveMatchesPlayback
   /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
   Future<bool> _runWithCancellableLoading(
     String message,
-    Future<void> Function() action,
+    Future<void> Function(void Function(String) setMessage) action,
   ) async {
     if (!mounted) return false;
     var cancelled = false;
     var closingOurselves = false;
+    final messageNotifier = ValueNotifier(message);
     showDialog<void>(
       context: context,
       barrierDismissible: true,
@@ -33,13 +34,15 @@ mixin _LiveMatchesPlayback
           if (didPop && !closingOurselves) cancelled = true;
         },
         child: _LiveCancellableLoadingDialog(
-          message: message,
+          messageListenable: messageNotifier,
           onCancel: () => Navigator.of(ctx).pop(),
         ),
       ),
     );
     try {
-      await action();
+      await action((next) {
+        if (messageNotifier.value != next) messageNotifier.value = next;
+      });
     } finally {
       if (mounted && !cancelled) {
         closingOurselves = true;
@@ -49,6 +52,7 @@ mixin _LiveMatchesPlayback
         final nav = Navigator.of(context, rootNavigator: true);
         if (nav.canPop()) nav.pop();
       }
+      messageNotifier.dispose();
     }
     return !cancelled && mounted;
   }
@@ -73,9 +77,10 @@ mixin _LiveMatchesPlayback
     final streams = <_StreamedStream>[];
     final ok = await _runWithCancellableLoading(
       'Loading PPV and Streamed sources…',
-      () async {
+      (setMessage) async {
         try {
           for (final source in streamed.sources) {
+            setMessage('Loading ${source.source}…');
             streams.addAll(
               await _fetchStreamedStreams(source, allowFallback: false),
             );
@@ -139,9 +144,14 @@ mixin _LiveMatchesPlayback
     final choices = <_StreamedStreamChoice>[];
     if (catalogMatches.isNotEmpty) {
       final ok = await _runWithCancellableLoading(
-        'Resolving streams…',
-        () async {
-          choices.addAll(await _resolveAllCatalogStreamChoices(catalogMatches));
+        'Finding streams…',
+        (setMessage) async {
+          choices.addAll(
+            await _resolveAllCatalogStreamChoices(
+              catalogMatches,
+              onProgress: setMessage,
+            ),
+          );
         },
       );
       if (!ok || !mounted) return;
@@ -228,8 +238,10 @@ mixin _LiveMatchesPlayback
   }
 
   Future<List<_StreamedStreamChoice>> _resolveAllCatalogStreamChoices(
-    List<_StreamedMatch> catalogMatches,
-  ) async {
+    List<_StreamedMatch> catalogMatches, {
+    void Function(String)? onProgress,
+  }) async {
+    onProgress?.call('Finding streams…');
     final out = <_StreamedStreamChoice>[];
     final seenUrls = <String>{};
     final seenRefs = <String>{};
@@ -267,7 +279,15 @@ mixin _LiveMatchesPlayback
       }
     }
 
+    if (jobs.isNotEmpty) {
+      onProgress?.call(
+        jobs.length == 1
+            ? 'Checking source…'
+            : 'Checking ${jobs.length} sources…',
+      );
+    }
     final batches = await Future.wait(jobs);
+    onProgress?.call('Building stream list…');
     for (final batch in batches) {
       for (final choice in batch) {
         final url = choice.stream.embedUrl.trim();
@@ -682,7 +702,10 @@ mixin _LiveMatchesPlayback
   Future<void> _openStremioSportMatch(_StreamedMatch match) async {
     if (!mounted) return;
     final sources = <IptvPlaySource>[];
-    final ok = await _runWithCancellableLoading('Loading streams…', () async {
+    final ok = await _runWithCancellableLoading('Loading streams…', (
+      setMessage,
+    ) async {
+      setMessage('Fetching Stremio sources…');
       sources.addAll(await _stremioPlaySourcesFor(match));
     });
     if (!ok) return;
@@ -697,6 +720,7 @@ mixin _LiveMatchesPlayback
         sources: sources,
         title: match.title,
         subtitle: match.categoryLabel,
+        titleTracksSource: true,
         engineContext: BuiltInPlayerContext.live,
         liveSourceKind: IptvLiveSourceKind.stremio,
       ),
@@ -829,8 +853,9 @@ mixin _LiveMatchesPlayback
 
   Future<IptvPlaySource?> _resolveStreamToEnginePlaySource(
     _StreamedMatch match,
-    _StreamedStream stream,
-  ) async {
+    _StreamedStream stream, {
+    void Function(String)? onProgress,
+  }) async {
     final embed = stream.embedUrl.trim();
     if (embed.isEmpty) return null;
 
@@ -850,6 +875,7 @@ mixin _LiveMatchesPlayback
               catalogReferer: match.isForjaLive ? _forjaLiveCdnReferer(embed) : null,
             );
       final direct = liveEnginePreferDirectPlayback(embed);
+      if (!direct) onProgress?.call('Preparing playback…');
       final playUrl = direct
           ? embed
           : await LiveMatchesEngine.proxyPlayUrl(url: embed, headers: headers);
@@ -862,6 +888,7 @@ mixin _LiveMatchesPlayback
       );
     }
 
+    onProgress?.call('Unlocking source…');
     final pluginId = isPpv
         ? 'live-ppv'
         : match.isForjaLive && match.livePluginId.isNotEmpty
@@ -892,6 +919,7 @@ mixin _LiveMatchesPlayback
           );
     final direct =
         result.directPlayback || liveEnginePreferDirectPlayback(result.url);
+    if (!direct) onProgress?.call('Preparing playback…');
     final playUrl = direct
         ? result.url
         : await LiveMatchesEngine.proxyPlayUrl(url: result.url, headers: headers);
@@ -916,16 +944,78 @@ mixin _LiveMatchesPlayback
     }
     if (!mounted) return;
     _releaseLiveMatchesItemFocusIfHeld();
-    await IptvPtPlayerScreen.open(
-      context,
-      IptvPtPlayerScreen(
-        sources: sources,
-        title: title,
-        subtitle: subtitle,
-        engineContext: BuiltInPlayerContext.live,
-        liveSourceKind: IptvLiveSourceKind.liveEngine,
-      ),
+
+    var playSources = sources;
+    var webViewProxy = false;
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      playSources = await _androidWebViewProxyEngineSources(sources);
+      webViewProxy = playSources.isNotEmpty &&
+          playSources.first.url != sources.first.url;
+    }
+
+    try {
+      if (webViewProxy && PlatformInfo.isAndroidTv) {
+        await PlatformChannel.releaseUnderlayPlatformViewFocus();
+      }
+      if (!mounted) return;
+      await IptvPtPlayerScreen.open(
+        context,
+        IptvPtPlayerScreen(
+          sources: playSources,
+          title: title,
+          subtitle: subtitle,
+          titleTracksSource: true,
+          engineContext: BuiltInPlayerContext.live,
+          liveSourceKind: IptvLiveSourceKind.liveEngine,
+        ),
+      );
+    } finally {
+      if (webViewProxy) {
+        await LiveGoatWebviewUnlock.instance.stopStreamedPlaybackProxy();
+      }
+    }
+  }
+
+  /// Streamed engine resolve on Android: Exo cannot re-GET `strmd.st`.
+  Future<List<IptvPlaySource>> _androidWebViewProxyEngineSources(
+    List<IptvPlaySource> sources,
+  ) async {
+    if (sources.isEmpty) return sources;
+    final first = sources.first;
+    final playUrl = first.url.trim();
+    if (playUrl.isEmpty || playUrl.contains('127.0.0.1')) {
+      return sources;
+    }
+
+    var catalog = playUrl;
+    final uri = Uri.tryParse(playUrl);
+    if (uri != null && uri.path.contains('/hls-proxy')) {
+      catalog = (uri.queryParameters['url'] ?? '').trim();
+    }
+    if (catalog.isEmpty || !catalog.toLowerCase().contains('strmd.st')) {
+      return sources;
+    }
+
+    final local = await LiveGoatWebviewUnlock.instance.prepareStreamedPlaybackUrl(
+      catalog,
     );
+    if (local == null || local.isEmpty) return sources;
+
+    final out = List<IptvPlaySource>.from(sources);
+    out[0] = IptvPlaySource(
+      url: local,
+      label: first.label,
+      detail: first.detail,
+      logoUrl: first.logoUrl,
+      streamId: first.streamId,
+      epgChannelId: first.epgChannelId,
+      headers: const {},
+      liveSourceKind: first.liveSourceKind,
+      liveProviderBadge: first.liveProviderBadge,
+      liveViewerCount: first.liveViewerCount,
+      liveStreamHd: first.liveStreamHd,
+    );
+    return out;
   }
 
   Future<bool> _tryEngineStreamedOpen(
@@ -950,8 +1040,15 @@ mixin _LiveMatchesPlayback
 
     final pickedEmbed = stream.embedUrl.trim();
     final sources = <IptvPlaySource>[];
-    final ok = await _runWithCancellableLoading('Resolving stream…', () async {
-      final picked = await _resolveStreamToEnginePlaySource(match, stream);
+    final ok = await _runWithCancellableLoading('Opening stream…', (
+      setMessage,
+    ) async {
+      setMessage('Unlocking source…');
+      final picked = await _resolveStreamToEnginePlaySource(
+        match,
+        stream,
+        onProgress: setMessage,
+      );
       if (picked == null) return;
       sources.add(picked);
       final seenUrls = {picked.url};
@@ -961,6 +1058,11 @@ mixin _LiveMatchesPlayback
       }).toList();
       if (others.isEmpty) return;
 
+      setMessage(
+        others.length == 1
+            ? 'Loading other server…'
+            : 'Loading other servers…',
+      );
       final resolved = await Future.wait(
         others.map(
           (c) => _resolveStreamToEnginePlaySource(c.catalogMatch, c.stream),

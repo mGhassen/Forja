@@ -17,10 +17,12 @@ import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/services/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/desktop_window_geometry.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:rust/rust.dart';
@@ -67,6 +69,8 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   bool _ready = false;
   bool _resolving = false;
   String? _resolveError;
+  /// Native googlevideo failed (age-gate) — play via YouTube embed WebView.
+  bool _embedFallback = false;
   bool _isFullscreen = false;
   bool _showControls = true;
   double _volume = 100;
@@ -248,11 +252,13 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
         _startHideTimer();
         return;
       }
-      if (_tvFocus && playerTvChromeHasFocus(_tvKeyFocus)) {
-        _startHideTimer();
-        return;
-      }
       setState(() => _showControls = false);
+      if (_tvFocus) {
+        playerTvClaimVideoKeyFocusAfterHide(
+          _tvKeyFocus,
+          mounted: () => mounted,
+        );
+      }
     });
   }
 

@@ -54,6 +54,12 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
   ProviderContainer? _container;
 
   KdramaHomeFeed? _feed;
+  /// Last provider emission applied to local state (bridge skips [ref.listen]'s
+  /// missed initial value when the tab was hidden or already resolved).
+  KdramaHomeFeed? _appliedFeed;
+  /// Hero carousel source — decoupled from rail merges so PageView focus nodes
+  /// are not torn down when [asianDramaFeedProvider] appends catalog rows.
+  List<KdramaCard> _heroCards = const [];
   bool _loading = true;
   String? _error;
   int _loadGen = 0;
@@ -226,8 +232,12 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
       if (hero.any((c) => c.description.trim().isEmpty)) {
         final withSynopsis = await _service.enrichCardDescriptions(hero);
         final working = feed.withCardsReplaced(withSynopsis);
-        if (!mounted || !shellTabVisible || gen != _loadGen) return;
-        setState(() => _feed = working);
+      if (!mounted || !shellTabVisible || gen != _loadGen) return;
+      setState(() {
+        final current = _feed ?? working;
+        _feed = current.withCardsReplaced(withSynopsis);
+        _heroCards = _mergeHeroCards(_heroCards, withSynopsis);
+      });
       }
     } catch (_) {}
   }
@@ -251,7 +261,11 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
         }),
       );
       if (!mounted || !shellTabVisible || gen != _loadGen) return;
-      setState(() => _feed = feed.withCardsReplaced(enriched));
+      setState(() {
+        final current = _feed ?? feed;
+        _feed = current.withCardsReplaced(enriched);
+        _heroCards = _mergeHeroCards(_heroCards, enriched);
+      });
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[AsianDrama] TMDB hero synopsis enrich failed: $e');
@@ -294,10 +308,82 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
     return feed.trending.take(8).toList();
   }
 
-  List<KdramaCard> get _spotlight {
-    final f = _feed;
-    if (f == null) return const [];
-    return _heroCardsFrom(f);
+  bool _sameHeroIds(List<KdramaCard> a, List<KdramaCard> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
+  }
+
+  List<KdramaCard> _mergeHeroCards(
+    List<KdramaCard> current,
+    List<KdramaCard> updates,
+  ) {
+    if (updates.isEmpty) return current;
+    final byId = {for (final c in updates) c.id: c};
+    if (current.isEmpty) {
+      return updates.take(8).toList();
+    }
+    return [
+      for (final c in current) byId[c.id] ?? c,
+    ];
+  }
+
+  void _syncHeroCardsFromFeed(KdramaHomeFeed feed) {
+    final incoming = _heroCardsFrom(feed);
+    if (_heroCards.isEmpty || !_sameHeroIds(_heroCards, incoming)) {
+      _heroCards = incoming;
+    }
+  }
+
+  void _applyFeedFromProvider(KdramaHomeFeed feed) {
+    if (!mounted) return;
+    final hadHero = _heroCards.isNotEmpty;
+    _appliedFeed = feed;
+    setState(() {
+      _feed = feed;
+      _syncHeroCardsFromFeed(feed);
+      _loading = false;
+      _error = null;
+    });
+    markShellTabFresh();
+    unawaited(_enrichFeed(feed, _loadGen));
+    if (!hadHero && _heroCards.isNotEmpty) {
+      _scheduleHeroEnterFocus();
+    }
+  }
+
+  void _handleFeedAsync(AsyncValue<KdramaHomeFeed> next) {
+    next.when(
+      loading: () {
+        if (_feed == null && !_loading) {
+          setState(() => _loading = true);
+        }
+      },
+      error: (e, _) {
+        setState(() {
+          _loading = false;
+          _error = '$e';
+        });
+      },
+      data: _applyFeedFromProvider,
+    );
+  }
+
+  /// Retry nav → hero when cards arrive after [enterFromNavFocus] ran on shimmer.
+  void _scheduleHeroEnterFocus() {
+    void attempt(int n) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !shellTabVisible) return;
+        if (ShellTvFocus.currentNavTabId != 'asian_drama') return;
+        ShellTvFocusCoordinator.revealHeroForTab('asian_drama');
+        if (ShellTvFocus.focusHomeHeroPlay()) return;
+        if (n < 3) attempt(n + 1);
+      });
+    }
+
+    attempt(0);
   }
 
   void _openDetails(KdramaCard a) {
@@ -488,28 +574,20 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
     super.build(context);
     ref.listen(asianDramaFeedProvider, (_, next) {
       if (!mounted || !shellTabVisible) return;
-      next.when(
-        loading: () {
-          if (!_loading) setState(() => _loading = true);
-        },
-        error: (e, _) {
-          setState(() {
-            _loading = false;
-            _error = '$e';
-          });
-        },
-        data: (feed) {
-          setState(() {
-            _feed = feed;
-            _loading = false;
-            _error = null;
-          });
-          markShellTabFresh();
-          unawaited(_enrichFeed(feed, _loadGen));
-        },
-      );
+      _handleFeedAsync(next);
     });
-    ref.watch(asianDramaFeedProvider);
+    final feedAsync = ref.watch(asianDramaFeedProvider);
+    final liveFeed = feedAsync.asData?.value;
+    if (liveFeed != null &&
+        !identical(_appliedFeed, liveFeed) &&
+        shellTabVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !shellTabVisible) return;
+        if (!identical(_appliedFeed, liveFeed)) {
+          _applyFeedFromProvider(liveFeed);
+        }
+      });
+    }
     return TvFocusGraph(
       tabId: 'asian_drama',
       child: ValueListenableBuilder<AppThemePreset>(
@@ -545,7 +623,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
               )
             : null;
 
-        return _error != null && !_loading
+        return _error != null && _feed == null && !_loading
             ? _buildError()
             : RefreshIndicator(
                 color: ForjaShellColors.sectionAccent,
@@ -559,7 +637,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                       parent: BouncingScrollPhysics(),
                     ),
                     slivers: [
-                      if (_loading)
+                      if (_feed == null && _loading)
                         ...homeHubLoadingSlivers(
                           context,
                           heroShimmer: homeCinematicHeroShimmer(
@@ -578,20 +656,25 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                         )
                       else ...[
                         SliverToBoxAdapter(
-                          child: HomeCinematicHero.hub(
-                            slides: _heroSlides(_spotlight),
-                            tvTabId: 'asian_drama',
-                            scrollController: _scroll,
-                            onSearch: _openSearch,
-                            firstCatalogRowHeight: latestSection == null
-                                ? null
-                                : HubCatalogSection.sectionHeight(
-                                    context,
-                                    compactTop: true,
-                                    cardAspect: HubPosterAspect.landscape,
-                                  ),
-                            pageBottomChild: latestSection,
-                          ),
+                          child: _heroCards.isEmpty
+                              ? homeCinematicHeroShimmer(
+                                  context,
+                                  pageBottomBleed: latestOnHero,
+                                )
+                              : HomeCinematicHero.hub(
+                                  slides: _heroSlides(_heroCards),
+                                  tvTabId: 'asian_drama',
+                                  scrollController: _scroll,
+                                  onSearch: _openSearch,
+                                  firstCatalogRowHeight: latestSection == null
+                                      ? null
+                                      : HubCatalogSection.sectionHeight(
+                                          context,
+                                          compactTop: true,
+                                          cardAspect: HubPosterAspect.landscape,
+                                        ),
+                                  pageBottomChild: latestSection,
+                                ),
                         ),
                         if (_continueWatching.isNotEmpty)
                           hubRowSliver(

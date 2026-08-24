@@ -692,14 +692,13 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         _scheduleHideControls();
         return;
       }
-      // D-pad still on a chrome control — do not ExcludeFocus mid-traversal
-      // (same as Exo I130-T05; left focus on Play with dead ←/→).
-      if (iptvUseTvFocus(context) &&
-          playerTvChromeHasFocus(_s._playerTvKeyFocus)) {
-        _scheduleHideControls();
-        return;
-      }
       setState(() => _s._controlsVisible = false);
+      if (iptvUseTvFocus(context)) {
+        playerTvClaimVideoKeyFocusAfterHide(
+          _s._playerTvKeyFocus,
+          mounted: () => mounted,
+        );
+      }
     });
   }
 
@@ -2373,7 +2372,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
   /// the active source, same chrome as the Player / Stats menus.
   void _showSourcePicker({BuildContext? anchorContext}) {
     _scheduleHideControls();
-    final sportsProbe = _s.widget.titleTracksSource;
+    final sportsProbe = iptvUseLiveSportsSourcePicker(_s.widget);
     PlayerPopupPanel.show(
       context: context,
       title: 'Source',
@@ -2405,6 +2404,9 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                     _sourcePickerTile(
                       src: _s._sources[i],
                       selected: i == _s._sourceIdx,
+                      status: i == _s._sourceIdx
+                          ? PlayerSourceStatus.active
+                          : null,
                       onTap: () {
                         PlayerPopupPanel.dismiss();
                         _s._switchSource(i);
@@ -2443,11 +2445,30 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
   final _healthProbe = IptvLazyUrlHealthProbe(
     delay: const Duration(milliseconds: 500),
   );
+  final _rowKeys = <int, GlobalKey>{};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelected());
+  }
 
   @override
   void dispose() {
     _healthProbe.dispose();
     super.dispose();
+  }
+
+  void _scrollToSelected() {
+    if (!mounted) return;
+    final ctx = _rowKeys[widget.selectedIndex]?.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: 0.35,
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+    );
   }
 
   PlayerSourceStatus? _statusFor(int index, IptvPlaySource src) {
@@ -2482,14 +2503,19 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
               Builder(
                 builder: (context) {
                   final src = widget.sources[i];
-                  return buildIptvSourcePickerTile(
-                    src: src,
-                    liveSourceKind: widget.liveSourceKind,
-                    sourceLogo: widget.sourceLogo,
-                    selected: i == widget.selectedIndex,
-                    status: _statusFor(i, src),
-                    onInteractiveChange: (active) => _syncProbe(src, active),
-                    onTap: () => widget.onPick(i),
+                  final rowKey =
+                      _rowKeys.putIfAbsent(i, () => GlobalKey(debugLabel: 'iptv-source-$i'));
+                  return KeyedSubtree(
+                    key: rowKey,
+                    child: buildIptvSourcePickerTile(
+                      src: src,
+                      liveSourceKind: widget.liveSourceKind,
+                      sourceLogo: widget.sourceLogo,
+                      selected: i == widget.selectedIndex,
+                      status: _statusFor(i, src),
+                      onInteractiveChange: (active) => _syncProbe(src, active),
+                      onTap: () => widget.onPick(i),
+                    ),
                   );
                 },
               ),
@@ -2498,6 +2524,10 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
       },
     );
   }
+}
+
+bool iptvUseLiveSportsSourcePicker(IptvPtPlayerScreen screen) {
+  return screen.titleTracksSource || screen.liveSourceKind != null;
 }
 
 bool iptvLiveMatchSourcePicker(

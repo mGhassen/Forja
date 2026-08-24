@@ -3,7 +3,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, ValueNotifier;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -36,11 +36,12 @@ import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/features/live_matches/live_embed_nav.dart';
+import 'package:forja/shared/engine/live_goat_webview_unlock.dart';
 import 'package:forja/features/live_matches/live_matches_sport_filter.dart';
 import 'package:forja/features/live_matches/live_matches_team_parse.dart';
 import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.dart';
 import 'package:forja/features/live_matches/live_matches_engine.dart';
+import 'package:forja/features/live_matches/live_embed_nav.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/features/live_matches/live_embed_webview_proxy.dart';
@@ -356,7 +357,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   /// Loads Forja Sports / Stremio availability and clamps [_server] if needed.
   Future<({bool iptvSportsEnabled, bool stremioLiveEnabled})>
-      _clampServerIfForjaSportsDisabled({required bool reload}) async {
+  _clampServerIfForjaSportsDisabled({required bool reload}) async {
     final iptvSportsEnabled =
         (await LiveMatchesIptvSportsConfig.load()).enabled;
     final stremioLiveEnabled = await _liveMatchesStremioLiveEnabled();
@@ -387,7 +388,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   Future<void> _restoreServerThenLoad() async {
     await _restoreServerPreference();
-    await (this as _LiveMatchesForjaLive)._restoreForjaLiveCatalogFilterPreference();
+    await (this as _LiveMatchesForjaLive)
+        ._restoreForjaLiveCatalogFilterPreference();
     await (this as _LiveMatchesForjaLive)._restoreTimeWindowPreference();
     if (!mounted) return;
     setState(() => _serverHydrated = true);

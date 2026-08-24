@@ -43,29 +43,29 @@ class AnimeCatalogFutures {
     final trending =
         _safeSection(service.getTrending(perPage: 20), 'trending');
 
-    // Kick remaining sections only after trending completes (success or empty).
-    final rest = () async {
-      await trending;
-      return Future.wait([
-        _safeSection(service.getTopAiring(), 'top airing'),
-        _safeSection(service.getMostPopular(), 'most popular'),
-        _safeSection(service.getMostFavorite(), 'most favorite'),
-        _safeSection(service.getTopRated(), 'top rated'),
-        _safeSection(service.getLatestCompleted(), 'latest completed'),
-        _safeSection(service.getRecentEpisodes(), 'recent episodes'),
-      ]);
-    }();
+    // Start remaining rails in parallel with trending so lower rows do not
+    // sit empty until first paint finishes (AniList worker pool queues them).
+    final topAiring = _safeSection(service.getTopAiring(), 'top airing');
+    final mostPopular =
+        _safeSection(service.getMostPopular(), 'most popular');
+    final mostFavorite =
+        _safeSection(service.getMostFavorite(), 'most favorite');
+    final topRated = _safeSection(service.getTopRated(), 'top rated');
+    final latestCompleted =
+        _safeSection(service.getLatestCompleted(), 'latest completed');
+    final recentEpisodes =
+        _safeSection(service.getRecentEpisodes(), 'recent episodes');
 
     return AnimeCatalogFutures._(
       trending: trending,
       spotlight: trending.then(spotlightFromTrending),
       top10: trending.then((t) => t.take(10).toList()),
-      topAiring: rest.then((r) => r[0]),
-      mostPopular: rest.then((r) => r[1]),
-      mostFavorite: rest.then((r) => r[2]),
-      topRated: rest.then((r) => r[3]),
-      latestCompleted: rest.then((r) => r[4]),
-      recentEpisodes: rest.then((r) => r[5]),
+      topAiring: topAiring,
+      mostPopular: mostPopular,
+      mostFavorite: mostFavorite,
+      topRated: topRated,
+      latestCompleted: latestCompleted,
+      recentEpisodes: recentEpisodes,
     );
   }
 
@@ -100,8 +100,7 @@ final animeCatalogFuturesProvider =
   return AnimeCatalogFutures.start(service);
 });
 
-/// Mood / genre row — waits for hub trending so it does not steal AniList
-/// workers from first paint.
+/// Mood / genre row — loads in parallel with hub rails.
 final animeMoodCatalogProvider = FutureProvider.autoDispose
     .family<List<AnimeCard>, String>((ref, moodId) async {
   const moods = <({String id, String? genre})>[
@@ -120,8 +119,7 @@ final animeMoodCatalogProvider = FutureProvider.autoDispose
     (m) => m.id == moodId,
     orElse: () => moods.first,
   );
-  final catalog = ref.watch(animeCatalogFuturesProvider);
-  await catalog.trending;
+  // Mood row starts immediately — do not wait on hub trending.
   final service = ref.watch(animeServiceProvider);
   try {
     return await service.browse(

@@ -293,7 +293,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         final key = next.activePortal?.key;
         if (key == null) return;
         if (key == _s._lastSyncedIptvPortalKey &&
-            prev?.portalPanelOpen == next.portalPanelOpen) {
+            (prev == null || prev.portalPanelOpen == next.portalPanelOpen)) {
           return;
         }
         unawaited(

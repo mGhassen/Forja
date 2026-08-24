@@ -255,6 +255,18 @@ class KissKhService {
     return KdramaHomeFeed.fromEngineJson(decoded);
   }
 
+  /// Spotlight + Latest — paint hub hero before the rest of the rails.
+  Future<KdramaHomeFeed> getHomeHero() async {
+    final decoded = await kisskhCatalog({'action': 'home_hero'});
+    return KdramaHomeFeed.fromEngineJson(decoded);
+  }
+
+  /// Remaining KissKH list rails after [getHomeHero].
+  Future<KdramaHomeFeed> getHomeRails() async {
+    final decoded = await kisskhCatalog({'action': 'home_rails'});
+    return KdramaHomeFeed.fromEngineJson(decoded);
+  }
+
   Future<List<KdramaCard>> search(String query) async {
     final decoded = await kisskhCatalog({'action': 'search', 'query': query});
     return _parseCards(decoded['cards']);
@@ -764,6 +776,19 @@ class KdramaHomeFeed {
       topRated: topRated.map(patch).toList(),
       upcoming: upcoming.map(patch).toList(),
       anime: anime.map(patch).toList(),
+    );
+  }
+
+  /// Overlay rail lists from a [home_rails] response onto a hero feed.
+  KdramaHomeFeed withRails(KdramaHomeFeed rails) {
+    return KdramaHomeFeed(
+      spotlight: spotlight,
+      latest: latest,
+      mostViewed: rails.mostViewed,
+      trending: rails.trending,
+      topRated: rails.topRated,
+      upcoming: rails.upcoming,
+      anime: rails.anime,
     );
   }
 }

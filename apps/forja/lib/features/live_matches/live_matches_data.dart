@@ -4,6 +4,22 @@ mixin _LiveMatchesData
     on ConsumerState<LiveMatchesScreen>, ShellTabRefresh<LiveMatchesScreen> {
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
+  bool get _tvFocusEnabled =>
+      ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+  void _scheduleRestoreServersTopBarFocus() {
+    if (!_tvFocusEnabled) return;
+    void attempt() {
+      if (!mounted) return;
+      _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      attempt();
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    });
+  }
+
   void _focusTopBarItem(int index) {
     if (index == _LiveMatchesScreenState._topBarServersIndex ||
         (_s._showCatalogTopBar && index == _s._topBarCatalogIndex) ||
@@ -48,6 +64,7 @@ mixin _LiveMatchesData
         ForjaToast.info(
           'Enable Forja Sports in Settings → Forja Sports first',
         );
+        _scheduleRestoreServersTopBarFocus();
         return;
       }
     }
@@ -66,8 +83,12 @@ mixin _LiveMatchesData
       // May _load() if portal/leagues actually changed — otherwise keep grid.
       await _syncMyIptvFromActivePortal(ctrl, reload: false);
     }
-    if (keepSchedule) return;
+    if (keepSchedule) {
+      _scheduleRestoreServersTopBarFocus();
+      return;
+    }
     await _load();
+    _scheduleRestoreServersTopBarFocus();
   }
 
   Future<void> _syncMyIptvFromActivePortal(

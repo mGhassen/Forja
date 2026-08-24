@@ -4584,11 +4584,11 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
 /// Blocking load dialog with a Cancel control (Back / barrier also dismiss).
 class _LiveCancellableLoadingDialog extends StatefulWidget {
   const _LiveCancellableLoadingDialog({
-    required this.message,
+    required this.messageListenable,
     required this.onCancel,
   });
 
-  final String message;
+  final ValueNotifier<String> messageListenable;
   final VoidCallback onCancel;
 
   @override
@@ -4635,9 +4635,13 @@ class _LiveCancellableLoadingDialogState
           children: [
             CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
             const SizedBox(height: 16),
-            Text(
-              widget.message,
-              style: const TextStyle(color: ForjaShellColors.textPrimary),
+            ValueListenableBuilder<String>(
+              valueListenable: widget.messageListenable,
+              builder: (_, message, __) => Text(
+                message,
+                style: const TextStyle(color: ForjaShellColors.textPrimary),
+                textAlign: TextAlign.center,
+              ),
             ),
             const SizedBox(height: 18),
             if (tvFocus)
