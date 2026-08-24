@@ -75,7 +75,7 @@
 
 > **Status update (I148-T21).** ffmpeg-in-mpv reconnect could not absorb Xtream socket closes: buffer dumped, VT failed, soft reopen every ~15s. Live MediaKit now opens a **localhost continuity proxy**; mpv never sees upstream EOF. macOS/Linux live forces software decode (Windows already did).
 
-> **Status update (2026-08-23 — [issue 199](199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md)).** With the continuity proxy in place, T20’s `cache-pause=no` left Android TV MediaKit freezing on empty cache with **no Buffering** chrome (proxy keepalives faked “alive”). Issue 199 restores live `cache-pause=yes` for pause-refill, stops feed ticks from hiding Buffering / blocking recovery, and blocks live MediaKit→Exo auto-swap on Reload format errors.
+> **Status update (2026-08-23 — [issue 199](199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md)).** With the continuity proxy in place, T20’s `cache-pause=no` left Android TV MediaKit freezing on empty cache with **no Buffering** chrome (proxy keepalives faked “alive”). Issue 199 first restored `cache-pause=yes` (T01), then **reverted** it (T05) after clockwork ~5–6s micro-freezes on every CDN proxy reopen. Keep T02–T04: no live MediaKit→Exo auto-swap; feed ticks must not fake playhead / hide Buffering.
 
 > **Status update (I148-T20).** Live `cache-pause=yes` made every Xtream HTTP socket close a hard pause (reporter: stop every ~70MB). Reverted to `cache-pause=no` with `demuxer-max-back-bytes=1MiB` (freeze without replay) and `reconnect_delay_max=30` so ffmpeg can bridge closes silently.
 

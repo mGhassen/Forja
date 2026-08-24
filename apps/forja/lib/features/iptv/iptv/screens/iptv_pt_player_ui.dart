@@ -786,27 +786,58 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     return ShellScopeBuilder(builder: (context, _) => _buildPlayer(context));
   }
 
-  Widget _buildPlayer(BuildContext context) {
-    if (!_s._playerReady) {
-      final banner = _s._statusBanner;
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(color: Colors.white54),
-              if (banner != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  banner,
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-              ],
+  /// Cold open / Source / engine switch — full-screen spinner.
+  /// Channel zap with guide open must NOT use this: unmounting the guide
+  /// flashes the rail and resets TV “second OK closes” arm (issue 174).
+  Widget _playerLoadingScaffold() {
+    final banner = _s._statusBanner;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Colors.white54),
+            if (banner != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                banner,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
             ],
-          ),
+          ],
         ),
-      );
+      ),
+    );
+  }
+
+  /// Video slot while ATV reseats under an open guide/search — keep overlays.
+  Widget _playerSwitchingSurface() {
+    final banner = _s._statusBanner;
+    return ColoredBox(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Colors.white54),
+            if (banner != null) ...[
+              const SizedBox(height: 16),
+              Text(
+                banner,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlayer(BuildContext context) {
+    final keepOverlays = _s._guideVisible || _s._searchVisible;
+    if (!_s._playerReady && !keepOverlays) {
+      return _playerLoadingScaffold();
     }
 
     final size = MediaQuery.sizeOf(context);
@@ -910,27 +941,29 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                   Positioned.fill(
                     child: ExcludeFocus(
                       child: RepaintBoundary(
-                        child: _s._exoBackend
-                            ? ExoPlayerView(
-                                viewId: _s._exoViewId!,
-                                // IPTV Exo always TextureView on ATV: physical
-                                // SurfaceView + hybrid composition went audio-only
-                                // black (even cold-open) and the composition-dead
-                                // surface still fires renderedFirstFrame, so the
-                                // watchdog cannot rescue it (issue 133).
-                                allowSurfaceView: false,
-                              )
-                            : Video(
-                                key: ValueKey(_s._videoEpoch),
-                                controller: _s._controller!,
-                                fit: BoxFit.contain,
-                                fill: Colors.black,
-                                controls: NoVideoControls,
-                                subtitleViewConfiguration:
-                                    const SubtitleViewConfiguration(
-                                      visible: false,
-                                    ),
-                              ),
+                        child: !_s._playerReady
+                            ? _playerSwitchingSurface()
+                            : _s._exoBackend
+                                ? ExoPlayerView(
+                                    viewId: _s._exoViewId!,
+                                    // IPTV Exo always TextureView on ATV: physical
+                                    // SurfaceView + hybrid composition went audio-only
+                                    // black (even cold-open) and the composition-dead
+                                    // surface still fires renderedFirstFrame, so the
+                                    // watchdog cannot rescue it (issue 133).
+                                    allowSurfaceView: false,
+                                  )
+                                : Video(
+                                    key: ValueKey(_s._videoEpoch),
+                                    controller: _s._controller!,
+                                    fit: BoxFit.contain,
+                                    fill: Colors.black,
+                                    controls: NoVideoControls,
+                                    subtitleViewConfiguration:
+                                        const SubtitleViewConfiguration(
+                                          visible: false,
+                                        ),
+                                  ),
                       ),
                     ),
                   ),

@@ -194,7 +194,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [171-[open]-…](171-[open]-android-tv-details-focus-after-player.md) | ATV details empty focus after player | P1 | High | open | 3/3 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [172-[open]-…](172-[open]-vsembed-shows-videasy-streams.md) | VSEmbed panel shows Videasy streams | P1 | High | open | 3/3 · A 1/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [173-[open]-…](173-[open]-android-tv-update-dialog-focus-leak.md) | ATV update dialog D-pad under the gate | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [174-[open]-…](174-[open]-android-tv-iptv-source-switch-black-video.md) | ATV IPTV source/channel switch black video | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [174-[open]-…](174-[open]-android-tv-iptv-source-switch-black-video.md) | ATV IPTV source/channel switch black video | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [175-[open]-…](175-[open]-mid-watch-auto-failover.md) | Mid-watch CDN death Auto hop | P1 | High | open | 2/2 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [177-[open]-…](177-[open]-sources-selected-provider-lazy-fetch.md) | Sources: fetch only the selected provider / addon / scraper | P2 | Medium | open | 6/6 · A 0/4 | — |
 | [178-[open]-…](178-[open]-nuvio-empty-first-scraper-hides-streams.md) | Nuvio empty first scraper hides later streams | P2 | Medium | open | 7/7 · A 5/7 | — |
@@ -218,7 +218,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [196-[fixed]-…](fixed/196-[fixed]-desktop-window-size-resets-after-player.md) | Desktop window size resets after player close | P1 | High | fixed | Complete · 3/3 · A 3/3 | — |
 | [197-[open]-…](197-[open]-android-tv-trailer-quality-switch.md) | ATV trailer Quality switch stuck | P1 | High | open | 5/5 · A 0/2 | — |
 | [198-[fixed]-…](fixed/198-[fixed]-mediakit-resume-and-server-switch-starts-at-zero.md) | MediaKit resume / server switch starts at 0 | P1 | High | fixed | Complete · 4/4 · A 0/2 | — |
-| [199-[open]-…](199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md) | ATV IPTV MediaKit silent underrun + Reload engine swap | P1 | High | open | 4/4 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [199-[open]-…](199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md) | ATV IPTV MediaKit silent underrun + Reload engine swap | P1 | High | open | 5/5 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [200-[fixed]-…](fixed/200-[fixed]-android-tv-home-hero-focus-disposed.md) | ATV Home hero loses focus (FocusNode disposed) | P1 | High | fixed | Complete · 3/3 · A 1/2 | — |
 | [201-[open]-…](201-[open]-android-tv-exo-screensaver-during-playback.md) | ATV Exo screensaver / Ambient during playback | P1 | High | open | 3/3 · A 0/2 | — |
 | [202-[fixed]-…](fixed/202-[fixed]-android-tv-forja-live-opens-forja-sports-iptv.md) | ATV Forja Live opens Forja Sports IPTV panel | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |

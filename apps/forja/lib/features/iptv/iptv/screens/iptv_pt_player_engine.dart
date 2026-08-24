@@ -617,17 +617,19 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         await p.setProperty('cache-pause-initial', 'no');
       } else {
         // Live: continuity proxy absorbs CDN HTTP closes before mpv (I148-T21).
-        // cache-pause=yes so underrun pauses + refills (Buffering chrome) instead
-        // of freezing on the last frame with cache-pause=no (silent stall).
-        debugPrint('[IPTV Player] MediaKit cache profile=live (pause-refill)');
+        // cache-pause=yes turned every ~5–6s CDN reopen (3MiB overlap skip) into a
+        // hard micro-pause — clockwork stutter, no Buffering chrome (issue 199).
+        // Play through demuxer cushion; watchdog still shows Buffering + soft-reopen
+        // when cache is truly empty (I199-T03/T04).
+        debugPrint('[IPTV Player] MediaKit cache profile=live (reconnect)');
         await p.setProperty('cache-secs', '30');
         await p.setProperty('demuxer-readahead-secs', '20');
         await p.setProperty('demuxer-max-bytes', '150000000');
-        // Tiny back-buffer — underrun pauses to refill instead of replaying past.
-        await p.setProperty('demuxer-max-back-bytes', '1048576');
+        // No past cushion — underrun freezes; proxy read-ahead absorbs CDN closes.
+        await p.setProperty('demuxer-max-back-bytes', '0');
         await p.setProperty('audio-buffer', '1.0');
-        await p.setProperty('cache-pause', 'yes');
-        await p.setProperty('cache-pause-initial', 'yes');
+        await p.setProperty('cache-pause', 'no');
+        await p.setProperty('cache-pause-initial', 'no');
       }
 
       await p.setProperty('sub-auto', 'all');
@@ -1031,7 +1033,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   /// black until the user switches Player (which already reseats).
   ///
   /// UI: existing `!_playerReady` loading scaffold + status banner — same as
-  /// Player-menu engine switch, not a separate loading route.
+  /// Player-menu engine switch, not a separate loading route. Channel zap with
+  /// the guide open keeps the Stack mounted (switching surface in the video
+  /// slot only) so the rail does not remount (issue 174 T04).
   /// [switchingLabel] overrides the banner (channel name on zap; default =
   /// source/portal label for Source menu + failover).
   Future<void> _reseatAtvPlayerForNewStream({String? switchingLabel}) async {
@@ -1288,7 +1292,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
   /// 12s Buffering + frozen playhead + weak cache ⇒ treat as dead for Stable.
   /// Do **not** trip while demuxer still has a healthy ahead cushion — that is
-  /// normal `cache-pause` refill (freeze frame + Buffering), not a dead feed.
+  /// a normal refill, not a dead feed.
   /// Empty cache + feed ticks still counts — proxy keepalives must not block
   /// the wall forever while the picture stays frozen.
   bool get _bufferingHardWall {
@@ -1457,8 +1461,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           _s._cacheAheadSecs <
               _IptvPtPlayerScreenState._minHealthyCacheSecs) {
         // Detector 2b: MediaKit live underrun while still "playing".
-        // cache-pause should flip playing=false; if it does not, show Buffering
-        // and soft-reopen instead of a silent frozen frame.
+        // With cache-pause=no, underrun can leave playing=true on a frozen
+        // frame — show Buffering and soft-reopen instead of staying silent.
         final frozenFor = now.difference(_s._lastPosChange);
         if (frozenFor > const Duration(milliseconds: 1500)) {
           _ensureBufferingChrome(now);
@@ -1472,9 +1476,9 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         }
       }
       // Detector 3: silent self-pause.
-      // Live Stable + cache-pause: playing=false is normal while refilling.
-      // Empty cache → show Buffering, soft-reopen at 5s (no fake "working").
+      // Live Stable: playing=false with empty cache → Buffering, soft-reopen at 5s.
       // Feed ticks alone must not hold — proxy keepalives fake "alive".
+      // (cache-pause refill path removed in I199-T05 — play-through reconnect.)
       if (_s._userPlayWhenReady &&
           !_s._playing &&
           _s._readyNotPlayingSince != null) {
