@@ -452,14 +452,12 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
     final onTap = widget.onPressedWithContext != null
         ? () => widget.onPressedWithContext!(context)
         : widget.onPressed;
-    final fgAlpha = _tvFocused
-        ? 1.0
-        : _highlight
-        ? 0.95
-        : 0.88;
-    final iconColor = _tvFocused
-        ? ForjaShellColors.brandGreen
-        : Colors.white.withValues(alpha: 0.92);
+    final fg = playerChromeIconColor(
+      enabled: true,
+      active: false,
+      highlight: _highlight,
+      tvFocused: _tvFocused,
+    );
     final shape = playerChromeButtonShape(
       isCircle: false,
       tvFocused: _tvFocused,
@@ -487,7 +485,7 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
               children: [
                 Icon(
                   Icons.link_rounded,
-                  color: iconColor,
+                  color: fg,
                   size: widget.iconSize,
                 ),
                 const SizedBox(width: 5),
@@ -498,9 +496,7 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: _tvFocused
-                          ? ForjaShellColors.brandGreen
-                          : Colors.white.withValues(alpha: fgAlpha),
+                      color: fg,
                       fontSize: 12,
                       fontWeight:
                           _tvFocused ? FontWeight.w600 : FontWeight.w500,

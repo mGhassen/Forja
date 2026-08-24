@@ -1,15 +1,15 @@
 part of 'details_screen.dart';
 
-typedef _EngineAutoExtracted = Map<String, List<Map<String, dynamic>>>;
-
 class _EngineAutoPick {
   const _EngineAutoPick({
     required this.pluginId,
     required this.stream,
+    required this.sources,
   });
 
   final String pluginId;
   final Map<String, dynamic> stream;
+  final List<StreamSource> sources;
 }
 
 Future<List<StreamSource>> _buildProbedEnginePlaySources(
@@ -34,6 +34,11 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
 
   final Set<Future<void>> _enginePoolTasks = {};
   int _enginePoolLimit = kEngineSourcesBatchDesktop;
+
+  /// Green Play hooks into the same Forja panel pool (not a second extractor).
+  void Function()? _engineAutoSyncOverlay;
+  Future<void> Function(String pluginId, List<Map<String, dynamic>> streams)?
+      _engineAutoOnPluginDone;
 
   Future<void> _checkAndFetchEngine() async {
     try {
@@ -206,7 +211,11 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       List<Map<String, dynamic>>.from(_s._engineStreams),
       fetchedPluginIds: _s._engineFetchedPluginIds,
     );
-    if (batch != null && batch.streams.isNotEmpty) {
+    final streams = batch?.streams ?? const <Map<String, dynamic>>[];
+    final onDone = _engineAutoOnPluginDone;
+    if (onDone != null) {
+      unawaited(onDone(pluginId, List<Map<String, dynamic>>.from(streams)));
+    } else if (streams.isNotEmpty) {
       _s._maybeAutoPlay();
     }
   }
@@ -239,6 +248,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     for (final id in started) {
       _engineLaunchPlugin(pluginId: id, type: type, gen: gen);
     }
+    _engineAutoSyncOverlay?.call();
   }
 
   void _engineLaunchPlugin({
@@ -256,9 +266,13 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         );
       } finally {
         _enginePoolTasks.remove(task);
-        if (!mounted || gen != _s._engineFetchGen) return;
+        if (!mounted || gen != _s._engineFetchGen) {
+          _engineAutoSyncOverlay?.call();
+          return;
+        }
         setState(() => _s._engineInFlightPluginIds.remove(pluginId));
         _engineFillPool(gen: gen, type: type);
+        _engineAutoSyncOverlay?.call();
       }
     }();
     _enginePoolTasks.add(task);
@@ -343,7 +357,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     return pluginId;
   }
 
-  /// Green Play when Forja auto start is on and Webstreaming is off.
+  /// Green Play: same Forja panel pool as Sources → Forja.
+  /// First plugin that yields a working stream plays; rest cancel.
   Future<void> _startEngineAutoPlayback() async {
     if (_s._isEngineAutoExtracting) return;
     if (_s._playSourceWebstreaming) return;
@@ -368,6 +383,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     final failureNotifier = ValueNotifier<ResolveFailure?>(null);
     BuildContext? loadingDialogContext;
     var openedPlayer = false;
+    Completer<_EngineAutoPick?>? hitCompleter;
 
     List<ChangeNotifier> overlayNotifiers() => [
       fadeOutNotifier,
@@ -382,11 +398,18 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       if (ctx != null && ctx.mounted) dismissLoadingOverlayRoute(ctx);
     }
 
+    void clearAutoHooks() {
+      _engineAutoOnPluginDone = null;
+      _engineAutoSyncOverlay = null;
+    }
+
     void cancelEngineAutoPlay() {
       if (playGen != _s._engineAutoPlayGen) return;
       _s._engineAutoExtractionCancelled = true;
-      EngineService.instance.cancelPending();
-      _s._engineFetchGen++;
+      clearAutoHooks();
+      _engineAbortWork();
+      final pending = hitCompleter;
+      if (pending != null && !pending.isCompleted) pending.complete(null);
       dismissLoading();
       if (mounted) _s._claimTvHeroPlayAfterPlayer();
       if (mounted) {
@@ -438,7 +461,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         final action = Completer<void>();
         failureNotifier.value = ResolveFailure(
           title: 'Couldn’t start playback',
-          detail: 'No Forja plugins are selected for this title. Open Sources → Forja and turn on providers.',
+          detail:
+              'No Forja plugins are selected for this title. Open Sources → Forja and turn on providers.',
           primaryLabel: 'Close',
           primaryIcon: Icons.close_rounded,
           onPrimary: () {
@@ -449,120 +473,242 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         return;
       }
 
-      probeNotifier.value = [
-        for (var i = 0; i < pluginIds.length; i++)
-          StreamProviderProbe(
-            id: pluginIds[i],
-            label: _enginePluginLabel(pluginIds[i]),
-            status: StreamProviderProbeStatus.pending,
-            isPreferred: i == 0,
-          ),
-      ];
+      final statusById = <String, StreamProviderProbeStatus>{
+        for (final id in pluginIds) id: StreamProviderProbeStatus.pending,
+      };
+      final race = Completer<_EngineAutoPick?>();
+      hitCompleter = race;
+      var probingCount = 0;
 
-      final startPosition = _s._startPositionForAutoPlay(fromRoute: false);
-
-      final extracted = await _extractAllEnginePluginsForAuto(
-        pluginIds: pluginIds,
-        probeNotifier: probeNotifier,
-        messageNotifier: messageNotifier,
-        isAborted: playAborted,
-      );
-      if (playAborted()) return;
-
-      final allRows = [
-        for (final id in pluginIds)
-          ...sortEngineCatalogStreamRows(extracted[id] ?? const []),
-      ];
-
-      messageNotifier.value = 'Checking streams…';
-      final probedSources = await buildProbedEngineCatalogSources(
-        profile: _s._playbackProfile,
-        settings: _s._settings,
-        rows: allRows,
-        isAborted: playAborted,
-        messageNotifier: messageNotifier,
-      );
-      if (playAborted()) return;
-
-      _publishEngineAutoPluginProbes(
-        pluginIds: pluginIds,
-        extracted: extracted,
-        probedSources: probedSources,
-        probeNotifier: probeNotifier,
-      );
-
-      if (probedSources.isEmpty) {
-        final resolveRow = await firstEngineCatalogResolveRow(
-          rows: allRows,
-          profile: _s._playbackProfile,
-          settings: _s._settings,
+      // Panel/session already loaded → never show WAITING for those chips.
+      for (final id in pluginIds) {
+        if (!_s._engineFetchedPluginIds.contains(id)) continue;
+        final hasRows = _s._engineStreams.any(
+          (s) => engineStreamBelongsToPlugin(s, id),
         );
-        if (resolveRow != null && !playAborted()) {
-          openedPlayer = true;
-          final pluginId =
-              resolveRow['_enginePluginId']?.toString() ?? pluginIds.first;
-          _syncPanelToEngineAutoPick(
-            _EngineAutoPick(pluginId: pluginId, stream: resolveRow),
-          );
-          await _playEngineAutoResolveRow(
-            resolveRow,
-            startPosition: startPosition,
-            loadingDialogContext: loadingDialogContext,
-            fadeOutNotifier: fadeOutNotifier,
-            isAborted: playAborted,
-          );
+        statusById[id] = hasRows
+            ? StreamProviderProbeStatus.trying
+            : StreamProviderProbeStatus.failed;
+      }
+
+      void publishProbes() {
+        probeNotifier.value = [
+          for (var i = 0; i < pluginIds.length; i++)
+            StreamProviderProbe(
+              id: pluginIds[i],
+              label: _enginePluginLabel(pluginIds[i]),
+              status: statusById[pluginIds[i]]!,
+              isPreferred: i == 0,
+            ),
+        ];
+      }
+
+      void syncOverlayFromPool() {
+        if (race.isCompleted) return;
+        for (final id in pluginIds) {
+          final cur = statusById[id]!;
+          if (cur == StreamProviderProbeStatus.success ||
+              cur == StreamProviderProbeStatus.failed) {
+            continue;
+          }
+          if (_s._engineInFlightPluginIds.contains(id)) {
+            statusById[id] = StreamProviderProbeStatus.trying;
+          } else if (!_s._engineFetchedPluginIds.contains(id)) {
+            statusById[id] = StreamProviderProbeStatus.pending;
+          } else if (cur == StreamProviderProbeStatus.pending) {
+            // Fetched while overlay still said WAITING — promote to CHECKING.
+            final hasRows = _s._engineStreams.any(
+              (s) => engineStreamBelongsToPlugin(s, id),
+            );
+            statusById[id] = hasRows
+                ? StreamProviderProbeStatus.trying
+                : StreamProviderProbeStatus.failed;
+          }
+        }
+        publishProbes();
+      }
+
+      void maybeCompleteEmpty() {
+        if (race.isCompleted || playAborted()) return;
+        final allFetched =
+            pluginIds.every(_s._engineFetchedPluginIds.contains);
+        if (!allFetched || probingCount > 0 || _engineWorkActive) return;
+        race.complete(null);
+      }
+
+      Future<void> onPluginDone(
+        String pluginId,
+        List<Map<String, dynamic>> streams,
+      ) async {
+        if (playAborted() || race.isCompleted) return;
+        if (!pluginIds.contains(pluginId)) return;
+
+        final rows = sortEngineCatalogStreamRows(streams);
+        if (rows.isEmpty) {
+          statusById[pluginId] = StreamProviderProbeStatus.failed;
+          publishProbes();
+          maybeCompleteEmpty();
           return;
         }
 
-        final action = Completer<bool>();
-        failureNotifier.value = ResolveFailure(
-          title: 'Couldn’t start playback',
-          detail: 'None of the Forja plugins returned a working stream right now.',
-          primaryLabel: 'Try again',
-          onPrimary: () {
-            if (!action.isCompleted) action.complete(true);
-          },
-          secondaryLabel: 'Close',
-          onSecondary: () {
-            if (!action.isCompleted) action.complete(false);
-          },
-        );
-        final retry = await action.future;
-        dismissLoading();
-        if (mounted) {
-          setState(() => _s._isEngineAutoExtracting = false);
+        probingCount++;
+        statusById[pluginId] = StreamProviderProbeStatus.trying;
+        publishProbes();
+        messageNotifier.value =
+            'Checking ${_enginePluginLabel(pluginId)}…';
+
+        for (final row in rows) {
+          if (playAborted() || race.isCompleted) break;
+          final sources = await _buildProbedEnginePlaySources(
+            _s,
+            [row],
+            isAborted: playAborted,
+            preferFirst: row,
+          );
+          if (sources.isEmpty) continue;
+          statusById[pluginId] = StreamProviderProbeStatus.success;
+          publishProbes();
+          if (!race.isCompleted) {
+            // First UP wins — stop the panel pool.
+            _engineAbortWork();
+            race.complete(
+              _EngineAutoPick(
+                pluginId: pluginId,
+                stream: row,
+                sources: sources,
+              ),
+            );
+          }
+          probingCount--;
+          return;
+        }
+
+        statusById[pluginId] = StreamProviderProbeStatus.failed;
+        publishProbes();
+        probingCount--;
+        maybeCompleteEmpty();
+      }
+
+      _engineAutoSyncOverlay = syncOverlayFromPool;
+      _engineAutoOnPluginDone = onPluginDone;
+      publishProbes();
+
+      // Already in panel/session cache — check first loaded chip immediately.
+      final cachedIds = [
+        for (final id in pluginIds)
+          if (_s._engineFetchedPluginIds.contains(id)) id,
+      ];
+      if (cachedIds.isNotEmpty) {
+        final firstLabel = _enginePluginLabel(cachedIds.first);
+        messageNotifier.value = 'Checking $firstLabel…';
+      }
+      for (final id in cachedIds) {
+        if (playAborted() || race.isCompleted) break;
+        final cached = _s._engineStreams
+            .where((s) => engineStreamBelongsToPlugin(s, id))
+            .map((s) => Map<String, dynamic>.from(s))
+            .toList();
+        await onPluginDone(id, cached);
+      }
+
+      if (!race.isCompleted && !playAborted()) {
+        final pending = [
+          for (final id in pluginIds)
+            if (!_s._engineFetchedPluginIds.contains(id)) id,
+        ];
+        if (pending.isEmpty) {
+          maybeCompleteEmpty();
         } else {
-          _s._isEngineAutoExtracting = false;
+          // Same loader Sources → Forja uses.
+          unawaited(() async {
+            await _fetchNextEnginePlugin();
+            while (!playAborted() &&
+                !race.isCompleted &&
+                (_engineWorkActive || probingCount > 0)) {
+              await Future<void>.delayed(const Duration(milliseconds: 40));
+            }
+            maybeCompleteEmpty();
+          }());
+          syncOverlayFromPool();
         }
-        if (retry && mounted) {
-          unawaited(_startEngineAutoPlayback());
-        }
+      }
+
+      final hit = playAborted() ? null : await race.future;
+      clearAutoHooks();
+      if (playAborted()) return;
+
+      if (hit != null) {
+        openedPlayer = true;
+        _syncPanelToEngineAutoPick(hit);
+        await _playEngineAutoFromProbedSources(
+          sources: hit.sources,
+          primaryRow: hit.stream,
+          startPosition: _s._startPositionForAutoPlay(fromRoute: false),
+          loadingDialogContext: loadingDialogContext,
+          fadeOutNotifier: fadeOutNotifier,
+          messageNotifier: messageNotifier,
+          isAborted: playAborted,
+        );
         return;
       }
 
-      openedPlayer = true;
-      final primary = probedSources.first;
-      final primaryRow = engineCatalogRowForSource(allRows, primary);
-      final primaryPluginId = primaryRow?['_enginePluginId']?.toString() ??
-          pluginIds.firstWhere(
-            (id) => _probedSourcesIncludePlugin(id, probedSources),
-            orElse: () => pluginIds.first,
-          );
-      if (primaryRow != null) {
-        _syncPanelToEngineAutoPick(
-          _EngineAutoPick(pluginId: primaryPluginId, stream: primaryRow),
-        );
-      }
-      await _playEngineAutoFromProbedSources(
-        sources: probedSources,
-        primaryRow: primaryRow,
-        startPosition: startPosition,
-        loadingDialogContext: loadingDialogContext,
-        fadeOutNotifier: fadeOutNotifier,
-        messageNotifier: messageNotifier,
-        isAborted: playAborted,
+      final resolveRow = await firstEngineCatalogResolveRow(
+        rows: [
+          for (final id in pluginIds)
+            ..._s._engineStreams.where(
+              (s) => engineStreamBelongsToPlugin(s, id),
+            ),
+        ],
+        profile: _s._playbackProfile,
+        settings: _s._settings,
       );
+      if (resolveRow != null && !playAborted()) {
+        openedPlayer = true;
+        final pluginId =
+            resolveRow['_enginePluginId']?.toString() ?? pluginIds.first;
+        _syncPanelToEngineAutoPick(
+          _EngineAutoPick(
+            pluginId: pluginId,
+            stream: resolveRow,
+            sources: const [],
+          ),
+        );
+        await _playEngineAutoResolveRow(
+          resolveRow,
+          startPosition: _s._startPositionForAutoPlay(fromRoute: false),
+          loadingDialogContext: loadingDialogContext,
+          fadeOutNotifier: fadeOutNotifier,
+          isAborted: playAborted,
+        );
+        return;
+      }
+
+      final action = Completer<bool>();
+      failureNotifier.value = ResolveFailure(
+        title: 'Couldn’t start playback',
+        detail:
+            'None of the Forja plugins returned a working stream right now.',
+        primaryLabel: 'Try again',
+        onPrimary: () {
+          if (!action.isCompleted) action.complete(true);
+        },
+        secondaryLabel: 'Close',
+        onSecondary: () {
+          if (!action.isCompleted) action.complete(false);
+        },
+      );
+      final retry = await action.future;
+      dismissLoading();
+      if (mounted) {
+        setState(() => _s._isEngineAutoExtracting = false);
+      } else {
+        _s._isEngineAutoExtracting = false;
+      }
+      if (retry && mounted) {
+        unawaited(_startEngineAutoPlayback());
+      }
     } finally {
+      clearAutoHooks();
       if (!openedPlayer) dismissLoading();
       disposeLoadingOverlayNotifiers(overlayNotifiers());
       if (mounted) {
@@ -571,34 +717,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         _s._isEngineAutoExtracting = false;
       }
     }
-  }
-
-  /// Push Forja Auto JS output into the same store Sources reads
-  /// (`_engineStreams` + session TTL cache). Same merge as chip extract.
-  void _mergeEngineAutoResult(
-    String pluginId,
-    List<Map<String, dynamic>> streams,
-  ) {
-    void apply() {
-      _s._engineFetchedPluginIds.add(pluginId);
-      _s._engineStreams.removeWhere(
-        (s) => engineStreamBelongsToPlugin(s, pluginId),
-      );
-      if (streams.isNotEmpty) {
-        _s._engineStreams.addAll(streams);
-      }
-    }
-
-    if (mounted) {
-      setState(apply);
-    } else {
-      apply();
-    }
-    CatalogSourcesSessionCache.writeEngine(
-      _s._catalogCacheKey,
-      List<Map<String, dynamic>>.from(_s._engineStreams),
-      fetchedPluginIds: _s._engineFetchedPluginIds,
-    );
   }
 
   void _syncPanelToEngineAutoPick(_EngineAutoPick pick) {
@@ -611,7 +729,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       _s._playingAddonBaseUrl = base;
       _s._playingCatalogUrl = catalogUrl;
       _s._panelKindFilter = EngineIds.kind;
-      _s._engineSelectedPluginIds = {pick.pluginId};
+      // Keep chip selection as panel left it — only mark playing row.
       _s._selectedSourceId = EngineIds.pluginChip(pick.pluginId);
       _s._panelSourceIdByKind[EngineIds.kind] = _s._selectedSourceId;
     }
@@ -621,182 +739,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     } else {
       apply();
     }
-  }
-
-  bool _probedSourcesIncludePlugin(
-    String pluginId,
-    List<StreamSource> sources,
-  ) {
-    for (final source in sources) {
-      final rows = _s._engineStreams.where(
-        (r) => engineStreamBelongsToPlugin(r, pluginId),
-      );
-      for (final row in rows) {
-        final catalog = row['url']?.toString();
-        if (catalog != null &&
-            catalog.isNotEmpty &&
-            source.catalogUrl == catalog) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  void _publishEngineAutoPluginProbes({
-    required List<String> pluginIds,
-    required _EngineAutoExtracted extracted,
-    required List<StreamSource> probedSources,
-    required ValueNotifier<List<StreamProviderProbe>> probeNotifier,
-  }) {
-    probeNotifier.value = [
-      for (var i = 0; i < pluginIds.length; i++)
-        StreamProviderProbe(
-          id: pluginIds[i],
-          label: _enginePluginLabel(pluginIds[i]),
-          status: _engineAutoPluginProbeStatus(
-            pluginIds[i],
-            extracted,
-            probedSources,
-          ),
-          isPreferred: i == 0,
-        ),
-    ];
-  }
-
-  StreamProviderProbeStatus _engineAutoPluginProbeStatus(
-    String pluginId,
-    _EngineAutoExtracted extracted,
-    List<StreamSource> probedSources,
-  ) {
-    final streams = extracted[pluginId] ?? const [];
-    if (streams.isEmpty) return StreamProviderProbeStatus.failed;
-    if (_probedSourcesIncludePlugin(pluginId, probedSources)) {
-      return StreamProviderProbeStatus.success;
-    }
-    return StreamProviderProbeStatus.failed;
-  }
-
-  /// Phase 1 — batch extract scoped panel plugins (same chips as Forja tab).
-  Future<_EngineAutoExtracted> _extractAllEnginePluginsForAuto({
-    required List<String> pluginIds,
-    required ValueNotifier<List<StreamProviderProbe>> probeNotifier,
-    required ValueNotifier<String> messageNotifier,
-    required bool Function() isAborted,
-  }) async {
-    final type = _s._movie.mediaType == 'tv' ? 'tv' : 'movie';
-    final year = _s._movie.releaseDate.length >= 4
-        ? _s._movie.releaseDate.substring(0, 4)
-        : null;
-    final limit = engineSourcesBatchLimit(tv: SourcesPanelTv.isTv(context));
-    final results = <String, List<Map<String, dynamic>>>{};
-    final pending = <String>[];
-    final statusById = <String, StreamProviderProbeStatus>{
-      for (final id in pluginIds) id: StreamProviderProbeStatus.pending,
-    };
-
-    void publishProbes() {
-      probeNotifier.value = [
-        for (var i = 0; i < pluginIds.length; i++)
-          StreamProviderProbe(
-            id: pluginIds[i],
-            label: _enginePluginLabel(pluginIds[i]),
-            status: statusById[pluginIds[i]]!,
-            isPreferred: i == 0,
-          ),
-      ];
-    }
-
-    for (final pluginId in pluginIds) {
-      if (_s._engineFetchedPluginIds.contains(pluginId)) {
-        results[pluginId] = _s._engineStreams
-            .where((s) => engineStreamBelongsToPlugin(s, pluginId))
-            .map((s) => Map<String, dynamic>.from(s))
-            .toList();
-        statusById[pluginId] = results[pluginId]!.isEmpty
-            ? StreamProviderProbeStatus.failed
-            : StreamProviderProbeStatus.pending;
-      } else {
-        pending.add(pluginId);
-      }
-    }
-    publishProbes();
-
-    if (pending.isEmpty) {
-      return results;
-    }
-
-    final completer = Completer<void>();
-    var nextIndex = 0;
-    var inFlight = 0;
-
-    late final void Function() fill;
-    late final Future<void> Function(String pluginId) launch;
-
-    fill = () {
-      while (inFlight < limit &&
-          nextIndex < pending.length &&
-          !completer.isCompleted &&
-          !isAborted()) {
-        final id = pending[nextIndex++];
-        unawaited(launch(id));
-      }
-    };
-
-    launch = (String pluginId) async {
-      inFlight++;
-      statusById[pluginId] = StreamProviderProbeStatus.trying;
-      publishProbes();
-      messageNotifier.value =
-          'Extracting ${_enginePluginLabel(pluginId)}…';
-      try {
-        final batch = await EngineService.instance.runPluginIsolated(
-          pluginId: pluginId,
-          tmdbId: _s._movie.id.toString(),
-          type: type,
-          season: _s._movie.mediaType == 'tv' ? _s._selectedSeason : null,
-          episode: _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
-          title: _s._movie.title,
-          year: year,
-          movie: _s._movie,
-          allowHostFallback: false,
-        );
-        if (!isAborted() && !completer.isCompleted) {
-          final streams = batch?.streams ?? const <Map<String, dynamic>>[];
-          _mergeEngineAutoResult(pluginId, streams);
-          results[pluginId] = List<Map<String, dynamic>>.from(streams);
-          statusById[pluginId] = streams.isEmpty
-              ? StreamProviderProbeStatus.failed
-              : StreamProviderProbeStatus.pending;
-          publishProbes();
-        }
-      } catch (e) {
-        debugPrint('[engine-auto] plugin $pluginId failed: $e');
-        if (!isAborted() && !completer.isCompleted) {
-          statusById[pluginId] = StreamProviderProbeStatus.failed;
-          publishProbes();
-        }
-      } finally {
-        inFlight--;
-      }
-      if (completer.isCompleted) return;
-      if (isAborted()) {
-        if (!completer.isCompleted) completer.complete();
-        return;
-      }
-      fill();
-      if (nextIndex >= pending.length &&
-          inFlight == 0 &&
-          !completer.isCompleted) {
-        completer.complete();
-      }
-    };
-
-    fill();
-    await completer.future;
-    if (isAborted()) return results;
-    EngineService.instance.cancelPending();
-    return results;
   }
 
   Future<void> _playEngineAutoFromProbedSources({
