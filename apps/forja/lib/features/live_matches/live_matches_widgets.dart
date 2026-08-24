@@ -1130,6 +1130,8 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
   _IptvSportsChannelsPanelController({
     required this.match,
     this.panelTitle = 'Forja Sports',
+    this.emptyMessage = _IptvSportsPanelCopy.empty,
+    this.searchingHint = 'Matching channels from your portal',
     this.iptvCtrl,
   }) {
     healthProbe = IptvLazyUrlHealthProbe(
@@ -1141,6 +1143,8 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
 
   final _StreamedMatch match;
   final String panelTitle;
+  final String emptyMessage;
+  final String searchingHint;
   final IptvController? iptvCtrl;
   final List<IptvPlaySource> sources = [];
   late final IptvLazyUrlHealthProbe healthProbe;
@@ -1226,6 +1230,8 @@ class _IptvSportsChannelsPanel {
     required BuildContext context,
     required _StreamedMatch match,
     String panelTitle = 'Forja Sports',
+    String emptyMessage = _IptvSportsPanelCopy.empty,
+    String searchingHint = 'Matching channels from your portal',
     IptvController? iptvCtrl,
     required void Function(IptvPlaySource picked, List<IptvPlaySource> all)
     onChannelSelected,
@@ -1234,6 +1240,8 @@ class _IptvSportsChannelsPanel {
     final controller = _IptvSportsChannelsPanelController(
       match: match,
       panelTitle: panelTitle,
+      emptyMessage: emptyMessage,
+      searchingHint: searchingHint,
       iptvCtrl: iptvCtrl,
     );
     _controller = controller;
@@ -1478,7 +1486,7 @@ class _IptvSportsChannelsOverlayState
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Matching channels from your portal',
+                                ctrl.searchingHint,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color:
@@ -1505,7 +1513,7 @@ class _IptvSportsChannelsOverlayState
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                _IptvSportsPanelCopy.empty,
+                                ctrl.emptyMessage,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color:

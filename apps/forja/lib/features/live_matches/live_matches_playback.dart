@@ -62,6 +62,10 @@ mixin _LiveMatchesPlayback
       return;
     }
     if (_tvNativeLiveOnly) {
+      if (_s._server == _LiveMatchesServer.forjaLive) {
+        await _openForjaLiveTvSources(streamed);
+        return;
+      }
       await _openTvNativeSourcesOnly(streamed);
       return;
     }
@@ -118,6 +122,11 @@ mixin _LiveMatchesPlayback
       return;
     }
     if (_tvNativeLiveOnly) {
+      // Forja Live → plugin streams. Never route to Forja Sports Xtream.
+      if (forjaLive) {
+        await _openForjaLiveTvSources(match);
+        return;
+      }
       await _openTvNativeSourcesOnly(match);
       return;
     }
@@ -409,7 +418,76 @@ mixin _LiveMatchesPlayback
     return out;
   }
 
-  /// TV All (and any PPV/Streamed card path): picker = Forja Sports ∪ Stremio only.
+  /// TV Forja Live: Sources panel with engine plugin streams (not Xtream).
+  Future<void> _openForjaLiveTvSources(_StreamedMatch match) async {
+    if (!mounted) return;
+    if ((this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
+      ForjaToast.info('Loading Forja Live plugins…');
+      return;
+    }
+
+    final panel = _IptvSportsChannelsPanel.show(
+      context: context,
+      match: match,
+      panelTitle: 'Sources',
+      emptyMessage: 'No streams available',
+      searchingHint: 'Resolving Forja Live plugins',
+      onChannelSelected: (picked, all) {
+        unawaited(
+          _openEngineNativeSources(
+            title: match.title,
+            subtitle: picked.pickerTitle,
+            sources: [
+              picked,
+              for (final s in all)
+                if (!identical(s, picked) && s.url != picked.url) s,
+            ],
+          ),
+        );
+      },
+    );
+    panel.setSearchPhase('Forja Live');
+
+    try {
+      final catalogMatches =
+          _streamedMatchesForEvent(match, _s._streamedMatches);
+      final choices = <_StreamedStreamChoice>[];
+      if (catalogMatches.isNotEmpty) {
+        choices.addAll(await _resolveAllCatalogStreamChoices(catalogMatches));
+      }
+      _prependMatchingPpvChoices(match, choices);
+      if (panel.isDisposed) return;
+
+      for (final choice in choices) {
+        if (panel.isDisposed) return;
+        final src = await _resolveStreamToEnginePlaySource(
+          choice.catalogMatch,
+          choice.stream,
+        );
+        if (src == null || panel.isDisposed) continue;
+        panel.appendSources([
+          IptvPlaySource(
+            url: src.url,
+            label: src.label,
+            detail: _tvNativeSourceDetail('Forja Live', src.detail),
+            logoUrl: src.logoUrl,
+            streamId: src.streamId,
+            headers: src.headers,
+            liveSourceKind: IptvLiveSourceKind.liveEngine,
+            liveProviderBadge: src.liveProviderBadge,
+            liveViewerCount: src.liveViewerCount,
+            liveStreamHd: src.liveStreamHd,
+          ),
+        ]);
+      }
+    } catch (e) {
+      debugPrint('[LiveMatches] TV Forja Live resolve error: $e');
+    } finally {
+      if (!panel.isDisposed) panel.finishSearching();
+    }
+  }
+
+  /// TV non–Forja Live (All / PPV / Streamed leftover): Forja Sports ∪ Stremio.
   Future<void> _openTvNativeSourcesOnly(_StreamedMatch match) async {
     if (!mounted) return;
     final ctrl = ref.read(iptvControllerProvider);
@@ -934,6 +1012,10 @@ mixin _LiveMatchesPlayback
       return;
     }
     if (_tvNativeLiveOnly) {
+      if (_s._server == _LiveMatchesServer.forjaLive) {
+        await _openForjaLiveTvSources(_streamedMatchFromPpv(s));
+        return;
+      }
       await _openTvNativeSourcesOnly(_streamedMatchFromPpv(s));
       return;
     }
