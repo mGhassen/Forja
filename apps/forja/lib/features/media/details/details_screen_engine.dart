@@ -75,6 +75,47 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
   List<String> get _orderedEnginePluginIds =>
       orderedEnginePluginIds(_s._enginePacks);
 
+  /// Same plugin row as Forja tab chips (category scope + chip selection).
+  List<String> _scopedSelectedEnginePluginIds() {
+    final cats = _s._effectiveEngineCategories;
+    final selected = _s._engineSelectedPluginIds;
+    return [
+      for (final id in _orderedEnginePluginIds)
+        if (selected.contains(id) && _enginePluginVisibleForAuto(id, cats))
+          id,
+    ];
+  }
+
+  bool _enginePluginVisibleForAuto(String pluginId, Set<String> cats) {
+    for (final pack in _s._enginePacks) {
+      for (final p in pack.plugins) {
+        if (p.id != pluginId) continue;
+        return EngineCategories.pluginChipVisible(
+          plugin: p,
+          visibleCategories: cats,
+          selectedPluginIds: _s._engineSelectedPluginIds,
+        );
+      }
+    }
+    return false;
+  }
+
+  void _hydrateEngineStreamsFromSessionCache() {
+    if (_s._engineStreams.isNotEmpty) return;
+    final cached = CatalogSourcesSessionCache.readEngine(_s._catalogCacheKey);
+    if (cached == null) return;
+    void apply() {
+      _s._engineStreams = cached.streams;
+      _s._engineFetchedPluginIds = cached.fetchedPluginIds;
+      _s._errorMessage = null;
+    }
+    if (mounted) {
+      setState(apply);
+    } else {
+      apply();
+    }
+  }
+
   List<String> get _pendingEnginePluginIds => [
     for (final id in _orderedEnginePluginIds)
       if (_s._engineSelectedPluginIds.contains(id) &&
@@ -381,18 +422,23 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     try {
       await EngineService.instance.ensureBundledInstalled();
       if (playAborted()) return;
-      final packs = await EngineService.instance.listSourcesPanelPacks();
+      await _checkAndFetchEngine();
       if (playAborted() || !mounted) return;
-      final pluginIds = orderedEnginePluginIds(packs);
-      setState(() {
-        _s._enginePacks = packs;
-        _s._hasEnginePacks = pluginIds.isNotEmpty;
-      });
+      _hydrateEngineStreamsFromSessionCache();
+      if (playAborted()) return;
+
+      final packs = _s._enginePacks;
+      final pluginIds = _scopedSelectedEnginePluginIds();
+      if (mounted) {
+        setState(() {
+          _s._hasEnginePacks = packs.isNotEmpty;
+        });
+      }
       if (pluginIds.isEmpty) {
         final action = Completer<void>();
         failureNotifier.value = ResolveFailure(
           title: 'Couldn’t start playback',
-          detail: 'No Forja plugins are enabled. Turn some on in Settings → Forja plugins.',
+          detail: 'No Forja plugins are selected for this title. Open Sources → Forja and turn on providers.',
           primaryLabel: 'Close',
           primaryIcon: Icons.close_rounded,
           onPrimary: () {
@@ -540,8 +586,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       );
       if (streams.isNotEmpty) {
         _s._engineStreams.addAll(streams);
-        // Keep existing chips; ensure this plugin is selected so rows show.
-        _s._engineSelectedPluginIds.add(pluginId);
       }
     }
 
@@ -633,7 +677,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     return StreamProviderProbeStatus.failed;
   }
 
-  /// Phase 1 — batch extract every enabled plugin (Sources panel pool).
+  /// Phase 1 — batch extract scoped panel plugins (same chips as Forja tab).
   Future<_EngineAutoExtracted> _extractAllEnginePluginsForAuto({
     required List<String> pluginIds,
     required ValueNotifier<List<StreamProviderProbe>> probeNotifier,
@@ -646,9 +690,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         : null;
     final limit = engineSourcesBatchLimit(tv: SourcesPanelTv.isTv(context));
     final results = <String, List<Map<String, dynamic>>>{};
-    final completer = Completer<void>();
-    var nextIndex = 0;
-    var inFlight = 0;
+    final pending = <String>[];
     final statusById = <String, StreamProviderProbeStatus>{
       for (final id in pluginIds) id: StreamProviderProbeStatus.pending,
     };
@@ -665,15 +707,38 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       ];
     }
 
+    for (final pluginId in pluginIds) {
+      if (_s._engineFetchedPluginIds.contains(pluginId)) {
+        results[pluginId] = _s._engineStreams
+            .where((s) => engineStreamBelongsToPlugin(s, pluginId))
+            .map((s) => Map<String, dynamic>.from(s))
+            .toList();
+        statusById[pluginId] = results[pluginId]!.isEmpty
+            ? StreamProviderProbeStatus.failed
+            : StreamProviderProbeStatus.pending;
+      } else {
+        pending.add(pluginId);
+      }
+    }
+    publishProbes();
+
+    if (pending.isEmpty) {
+      return results;
+    }
+
+    final completer = Completer<void>();
+    var nextIndex = 0;
+    var inFlight = 0;
+
     late final void Function() fill;
     late final Future<void> Function(String pluginId) launch;
 
     fill = () {
       while (inFlight < limit &&
-          nextIndex < pluginIds.length &&
+          nextIndex < pending.length &&
           !completer.isCompleted &&
           !isAborted()) {
-        final id = pluginIds[nextIndex++];
+        final id = pending[nextIndex++];
         unawaited(launch(id));
       }
     };
@@ -720,7 +785,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         return;
       }
       fill();
-      if (nextIndex >= pluginIds.length &&
+      if (nextIndex >= pending.length &&
           inFlight == 0 &&
           !completer.isCompleted) {
         completer.complete();
@@ -728,7 +793,6 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     };
 
     fill();
-    if (pluginIds.isEmpty) return results;
     await completer.future;
     if (isAborted()) return results;
     EngineService.instance.cancelPending();
