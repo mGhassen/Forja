@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 
@@ -8,9 +9,62 @@ import 'package:rust/rust.dart';
 class LiveMatchesEngine {
   LiveMatchesEngine._();
 
+  static String? _cachedPpvWebOrigin;
+
   static Future<bool> isEngineResolveMode() async {
     if (!AccountFeatures.instance.isAdmin) return true;
     return SettingsService().isLiveStreamResolveEngine();
+  }
+
+  static String _normalizeOrigin(String raw) {
+    var t = raw.trim();
+    while (t.endsWith('/')) {
+      t = t.substring(0, t.length - 1);
+    }
+    return t;
+  }
+
+  static String _refererForOrigin(String origin) {
+    final o = _normalizeOrigin(origin);
+    if (o.isEmpty) return '';
+    return '$o/';
+  }
+
+  /// Merged plugin config (`engine.json` + remote overlay).
+  static Future<Map<String, dynamic>> pluginConfig(String pluginId) async {
+    await EngineService.instance.ensureBundledInstalled();
+    final plugin = await EngineService.instance.pluginById(pluginId);
+    if (plugin == null) return const {};
+    final overlay =
+        ProviderRuntimeConfig.instance.engine[pluginId] ?? const {};
+    return mergeEngineConfig(plugin.config, overlay);
+  }
+
+  /// Site origin from plugin `webOrigin` / `origin` (no trailing slash).
+  static Future<String> pluginWebOrigin(String pluginId) async {
+    final cfg = await pluginConfig(pluginId);
+    final raw = (cfg['webOrigin'] ?? cfg['origin'] ?? '').toString();
+    return _normalizeOrigin(raw);
+  }
+
+  /// PPV catalog site origin — `live-ppv` / `catalog-ppv` config only.
+  static Future<String> ppvWebOrigin() async {
+    final cached = _cachedPpvWebOrigin;
+    if (cached != null && cached.isNotEmpty) return cached;
+    var origin = await pluginWebOrigin('live-ppv');
+    if (origin.isEmpty) origin = await pluginWebOrigin('catalog-ppv');
+    if (origin.isNotEmpty) _cachedPpvWebOrigin = origin;
+    return origin;
+  }
+
+  static Future<String> ppvWebReferer() async =>
+      _refererForOrigin(await ppvWebOrigin());
+
+  /// Sync host label after [ppvWebOrigin] has been resolved once.
+  static String ppvHostLabelCached() {
+    final o = _cachedPpvWebOrigin;
+    if (o == null || o.isEmpty) return 'PPV';
+    return Uri.tryParse(o)?.host ?? 'PPV';
   }
 
   static Future<List<Map<String, dynamic>>> fetchCatalog() async {

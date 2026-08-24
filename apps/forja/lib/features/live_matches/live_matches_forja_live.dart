@@ -344,6 +344,7 @@ mixin _LiveMatchesForjaLive
       // Always cache on success — chip filter must not discard finished rows.
       if (!genAlive()) return;
       if (catalog.id == 'catalog-ppv') {
+        await LiveMatchesEngine.ppvWebOrigin();
         final streams = rows
             .where((row) => _forjaLiveCatalogRowInWindow(row, _s._timeWindow))
             .map(_damiTvFromPpvCatalogRow)

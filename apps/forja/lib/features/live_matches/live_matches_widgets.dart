@@ -1722,8 +1722,8 @@ class _LiveMatchesEmbedPlayerScreen extends StatefulWidget {
     required this.title,
     this.subtitle,
     required this.badgeLabel,
-    this.referer = _ppvReferer,
-    this.origin = 'https://ppv.is',
+    required this.referer,
+    required this.origin,
     this.proxyReferer,
   });
 
@@ -1782,7 +1782,7 @@ class _LiveMatchesEmbedPlayerScreenState
   /// embeds that require a successful open keep working; never shown in UI.
   int? _adWindowId;
 
-  /// Catalog-origin iframe wrapper (`streamed.pk` / `ppv.is`) so
+  /// Catalog-origin iframe wrapper (streamed / PPV plugin webOrigin) so
   /// `document.referrer` matches the website (issue 046). Streamed keeps the
   /// wrapper on Android. PPV embedindia uses top-level load + Referer header
   /// so sniff is same-origin under the cover overlay.

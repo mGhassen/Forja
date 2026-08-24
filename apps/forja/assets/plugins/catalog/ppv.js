@@ -3,7 +3,7 @@ function ua() {
 }
 
 function ppvHeaders(cfg) {
-  var origin = (cfg.webOrigin || 'https://ppv.is').replace(/\/$/, '');
+  var origin = (cfg.webOrigin || 'https://ppv.st').replace(/\/$/, '');
   return {
     Accept: 'application/json',
     Origin: origin,

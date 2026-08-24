@@ -837,7 +837,7 @@ mixin _LiveMatchesPlayback
     final isPpv = match.livePluginId == 'live-ppv' ||
         stream.source.trim().toLowerCase() == 'ppv';
     final catalogReferer = isPpv
-        ? _ppvReferer
+        ? await LiveMatchesEngine.ppvWebReferer()
         : match.isForjaLive
         ? (_forjaLiveCdnReferer(embed) ??
               _forjaLiveWrapperReferer(embed, pluginId: match.livePluginId))

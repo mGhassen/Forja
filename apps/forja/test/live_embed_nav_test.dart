@@ -86,10 +86,10 @@ void main() {
       );
       expect(
         liveEmbedAllowsMainFrameNavigation(
-          url: 'https://ppv.is/',
+          url: 'https://ppv.st/',
           embedUrl: 'https://embedindia.st/x',
           allowEmbedHostAsMainFrame: false,
-          wrapperReferer: 'https://ppv.is/',
+          wrapperReferer: 'https://ppv.st/',
         ),
         isTrue,
       );
@@ -133,7 +133,7 @@ void main() {
           url: 'https://embedindia.st/embed/mlb/x',
           embedUrl: 'https://embedindia.st/embed/mlb/x',
           allowEmbedHostAsMainFrame: false,
-          wrapperReferer: 'https://ppv.is/',
+          wrapperReferer: 'https://ppv.st/',
         ),
         isFalse,
       );
@@ -142,16 +142,16 @@ void main() {
           url: 'https://adscope.gotrackier.com/click?x=1',
           embedUrl: 'https://embedindia.st/embed/mlb/x',
           allowEmbedHostAsMainFrame: false,
-          wrapperReferer: 'https://ppv.is/',
+          wrapperReferer: 'https://ppv.st/',
         ),
         isFalse,
       );
       expect(
         liveEmbedAllowsMainFrameNavigation(
-          url: 'https://ppv.is/',
+          url: 'https://ppv.st/',
           embedUrl: 'https://embedindia.st/embed/mlb/x',
           allowEmbedHostAsMainFrame: false,
-          wrapperReferer: 'https://ppv.is/',
+          wrapperReferer: 'https://ppv.st/',
         ),
         isTrue,
       );

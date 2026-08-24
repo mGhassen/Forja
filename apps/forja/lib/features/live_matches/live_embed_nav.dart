@@ -6,8 +6,8 @@ import 'package:flutter/foundation.dart';
 /// Main-frame navigation policy for the Live Matches embed WebView.
 ///
 /// Wrapper mode loads HTML via `loadData(baseUrl: catalog)` so `document.referrer`
-/// matches streamed.pk / ppv.is. WKWebView reports that catalog **origin root**
-/// (`https://streamed.pk/`, `https://ppv.is/`) as a main-frame navigation.
+/// matches streamed.pk / PPV plugin webOrigin. WKWebView reports that catalog **origin root**
+/// (`https://streamed.pk/`, plugin `webOrigin`) as a main-frame navigation.
 /// Cancelling it leaves a blank white player and can kill the WKWebView process
 /// (`Lost connection to device`). Always allow that root; still cancel deeper
 /// catalog SPA paths and unrelated ad hosts after the wrapper is up.
@@ -75,7 +75,7 @@ bool liveEmbedRequiresWebViewPlayback(String embedUrl) {
 /// `strmd.st`). Android handoff settings are chosen **only** from this kind;
 /// never apply a PPV-only hook to Streamed (or the reverse).
 enum LiveEmbedProviderKind {
-  /// `embedindia.st` under ppv.is
+  /// `embedindia.st` under PPV catalog webOrigin
   ppv,
 
   /// Streamed / embedsports-style under streamed.pk
@@ -145,7 +145,7 @@ class LiveEmbedAndroidHandoffProfile {
 
   final LiveEmbedProviderKind kind;
 
-  /// PPV: load embedindia as the main frame (no ppv.is iframe).
+  /// PPV: load embedindia as the main frame (no catalog-origin iframe).
   /// Streamed: keep catalog `loadData` iframe wrapper (host lock).
   final bool topLevelEmbedLoad;
 

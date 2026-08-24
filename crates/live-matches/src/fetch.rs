@@ -7,11 +7,6 @@ use tokio::runtime::Runtime;
 
 const STREAMED_BASE: &str = "https://streamed.pk";
 const STREAMED_EMBED_ORIGIN: &str = "https://embed.st";
-const PPV_ORIGIN: &str = "https://ppv.is";
-const PPV_STREAM_APIS: &[&str] = &[
-    "https://api.ppv.st/api/streams",
-    "https://api.ppv.cx/api/streams",
-];
 /// Official MutStreams mirrors ([mutgo.link](https://mutgo.link/)). Only hosts
 /// that return JSON for `/api/streams` — `mutstreams.art` / `.su` currently
 /// serve HTML and are omitted.
@@ -31,18 +26,6 @@ static CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
         .build()
         .expect("live-matches http client")
 });
-
-fn ppv_headers() -> HashMap<String, String> {
-    HashMap::from([
-        (
-            "User-Agent".into(),
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36".into(),
-        ),
-        ("Accept".into(), "application/json".into()),
-        ("Origin".into(), PPV_ORIGIN.into()),
-        ("Referer".into(), "https://ppv.is/".into()),
-    ])
-}
 
 fn streamed_headers() -> HashMap<String, String> {
     HashMap::from([
@@ -232,38 +215,6 @@ pub fn streamed_streams(source: &str, id: &str) -> String {
     }
     ok_items(items)
 }
-
-pub fn damitv_streams() -> String {
-    let headers = ppv_headers();
-    for endpoint in PPV_STREAM_APIS {
-        let body = match http_get(endpoint, &headers, 12) {
-            Some(b) => b,
-            None => continue,
-        };
-        let parsed: Value = match serde_json::from_str(&body) {
-            Ok(v) => v,
-            Err(_) => continue,
-        };
-        if parsed.get("success") != Some(&Value::Bool(true)) {
-            continue;
-        }
-        let mut result = Vec::new();
-        if let Some(categories) = parsed.get("streams").and_then(|v| v.as_array()) {
-            for cat in categories {
-                if let Some(streams) = cat.get("streams").and_then(|v| v.as_array()) {
-                    for s in streams {
-                        result.push(s.clone());
-                    }
-                }
-            }
-        }
-        if !result.is_empty() {
-            return ok_items(result);
-        }
-    }
-    ok_items(vec![])
-}
-
 
 fn mut_headers(base: &str) -> HashMap<String, String> {
     let origin = base.trim_end_matches('/');

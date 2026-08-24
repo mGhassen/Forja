@@ -97,7 +97,7 @@ class _DamiTvStream {
     final away = teams?['away'] as Map<String, dynamic>?;
 
     String abs(String path) {
-      if (path.startsWith('/')) return 'https://ppv.is$path';
+      // Relative media paths are rare; catalog rows already ship absolute URLs.
       return path;
     }
 
@@ -780,8 +780,6 @@ const _ua = {
   'User-Agent':
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'application/json',
-  'Origin': 'https://ppv.is',
-  'Referer': 'https://ppv.is/',
 };
 
 /// Shared play-nudge body for embedindia JW / Video.js overlays.
@@ -1114,7 +1112,7 @@ const _dblclickFullscreenJs = r'''
 ''';
 
 /// Wrap the third-party embed in an iframe under [baseUrl] so `document.referrer`
-/// matches the website (streamed.pk / ppv.is). Direct top-level loads of
+/// matches the website (streamed.pk / PPV plugin webOrigin). Direct top-level loads of
 /// embed.st / embedindia break the host lock (same red “Remove sandbox
 /// attributes…” page + UA) and stall behind parser-blocking ads (issue 046).
 ///
@@ -1858,7 +1856,6 @@ const _liveEmbedSniffPollJs = r'''
 })();
 ''';
 
-const _ppvReferer = 'https://ppv.is/';
 const _streamedBase = 'https://streamed.pk';
 const _streamedReferer = 'https://streamed.pk/';
 const _streamedEmbedOrigin = 'https://embed.st';
@@ -2979,6 +2976,8 @@ _DamiTvStream _damiTvFromPpvCatalogRow(Map<String, dynamic> row) {
 
 Future<List<_DamiTvStream>> _fetchDamiTvStreams() async {
   try {
+    // Warm host label cache from plugin config (no hardcoded domain).
+    await LiveMatchesEngine.ppvWebOrigin();
     final list = await LiveMatchesEngine.fetchServerCatalog('catalog-ppv');
     return list
         .map((s) {
@@ -3069,7 +3068,7 @@ String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
 String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
     switch (server) {
       _LiveMatchesServer.all => 'PPV · Streamed · Forja Live',
-      _LiveMatchesServer.ppv => 'ppv.is',
+      _LiveMatchesServer.ppv => LiveMatchesEngine.ppvHostLabelCached(),
       _LiveMatchesServer.streamed => 'streamed.pk',
       _LiveMatchesServer.mutStreams => 'mut.st',
       _LiveMatchesServer.forjaLive => 'Engine live plugins',
