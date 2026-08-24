@@ -276,6 +276,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
               _s._loading = false;
               _s._error = e.toString();
             });
+            (this as _LiveMatchesData)
+                ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
           },
           data: (this as _LiveMatchesData)._applyPrimaryLoad,
         );
@@ -382,7 +384,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         ? _LiveMatchesRefreshTopBarButton(
             focusNode: _s._refreshFocusNode,
             tvItemIndex: _s._topBarRefreshIndex,
-            onTap: _s._load,
+            onTap: _s._onTopBarRefreshPressed,
             onDownEdge: _s._topBarDownEdge,
             onLeftEdge: () => _s._focusTopBarItem(
               _s._showTimeTopBar

@@ -402,6 +402,8 @@ mixin _LiveMatchesForjaLive
           error: '$e',
         );
       });
+      (this as _LiveMatchesData)
+          ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
     }
   }
 
@@ -508,11 +510,17 @@ mixin _LiveMatchesForjaLive
   void _rebuildSportTabsFromCurrentMatches() {
     if (!mounted) return;
     final cats = _sportCategoriesFromCurrentMatches();
-    if (cats.isEmpty) return;
+    if (cats.isEmpty) {
+      (this as _LiveMatchesData)
+          ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
+      return;
+    }
 
     if (_sportCategoryIdsEqual(cats, _s._sports) &&
         _s._tabController != null &&
         _s._tabController!.length == cats.length + 1) {
+      (this as _LiveMatchesData)
+          ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
       return;
     }
 
@@ -542,5 +550,7 @@ mixin _LiveMatchesForjaLive
     });
     _deferTabControllerDispose(oldCtrl);
     _syncNewTabControllerIndex(newCtrl, cats, nextFilter);
+    (this as _LiveMatchesData)
+        ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
   }
 }

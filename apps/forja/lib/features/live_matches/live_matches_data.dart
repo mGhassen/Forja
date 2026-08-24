@@ -362,16 +362,60 @@ mixin _LiveMatchesData
   }
 
   void _releaseLiveMatchesItemFocusIfHeld() {
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary == null) return;
+    // Sport-chip remount disposes chip nodes — only release those.
+    // Keep top-bar Refresh / view toggle through catalog reload.
+    if (identical(primary, _s._refreshFocusNode) ||
+        identical(primary, _s._viewFocusNode)) {
+      return;
+    }
     if (!ShellTvFocusCoordinator.tabHasAttachedFocus(
       _LiveMatchesScreenState._tabId,
     )) {
       return;
     }
-    final primary = FocusManager.instance.primaryFocus;
-    if (primary == null) return;
     try {
       primary.unfocus();
     } catch (_) {}
+  }
+
+  void _onTopBarRefreshPressed() {
+    if (_s._tvFocus(context)) {
+      _s._restoreRefreshFocus = true;
+    }
+    unawaited(_load());
+  }
+
+  bool get _refreshFocusRestoreSettled =>
+      !_s._loading &&
+      (!(this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog ||
+          !(this as _LiveMatchesForjaLive)._forjaLiveAnyLoading);
+
+  void _scheduleRestoreRefreshFocus({bool clearWhenSettled = false}) {
+    if (!_s._restoreRefreshFocus) return;
+    void attempt({required bool clear}) {
+      if (!mounted || !_s._restoreRefreshFocus) return;
+      final node = _s._refreshFocusNode;
+      if (node.canRequestFocus && !node.hasFocus) {
+        node.requestFocus();
+        ShellTvFocusCoordinator.saveFocus(
+          _LiveMatchesScreenState._tabId,
+          ShellTvFocusMemory(zone: ShellTvZone.topBar, node: node),
+        );
+      }
+      if (clear && _refreshFocusRestoreSettled) {
+        _s._restoreRefreshFocus = false;
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      attempt(clear: false);
+      // Beat empty-panel / chip remount autofocus on the next frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        attempt(clear: clearWhenSettled);
+      });
+    });
   }
 
   void _clearTimelineTvRows() {
@@ -398,6 +442,7 @@ mixin _LiveMatchesData
       _s._espnGames = [];
       _s._sports = [];
     });
+    _scheduleRestoreRefreshFocus();
     if (_s._timelineScrollController.hasClients) {
       _s._timelineScrollController.jumpTo(0);
     }
@@ -447,6 +492,7 @@ mixin _LiveMatchesData
       _s._timelineScrollController.jumpTo(0);
     }
     markShellTabFresh();
+    _scheduleRestoreRefreshFocus(clearWhenSettled: true);
     if (_s._server == _LiveMatchesServer.all &&
         (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog) {
       unawaited((this as _LiveMatchesForjaLive)._applyEspnScheduleMerge());

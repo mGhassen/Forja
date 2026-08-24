@@ -196,6 +196,9 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     debugLabel: 'live-matches-view-toggle',
   );
 
+  /// TV: keep D-pad on top-bar Refresh across catalog reload remounts.
+  bool _restoreRefreshFocus = false;
+
   /// Gate first catalog fetch — `ref` is unsafe in [initState].
   bool _didInitialLoad = false;
 
@@ -212,6 +215,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   @override
   void onShellTabHidden() {
     super.onShellTabHidden();
+    _restoreRefreshFocus = false;
     _releaseLiveMatchesItemFocusIfHeld();
     EngineService.instance.cancelLiveCatalog();
     _IptvSportsChannelsPanel.dismiss();
