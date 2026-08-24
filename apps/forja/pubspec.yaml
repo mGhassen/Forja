@@ -146,6 +146,7 @@ flutter:
     - assets/plugins/live/goat/webview/
     - assets/plugins/live/gasm/
     - assets/plugins/live/gasm/vendor/
+    - assets/plugins/live/gasm/webview/
     - assets/plugins/catalog/
     - assets/textures/
     - assets/watch_providers/

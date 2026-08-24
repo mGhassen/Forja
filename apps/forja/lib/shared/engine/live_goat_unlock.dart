@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/live_goat_webview_unlock.dart';
+import 'package:forja/shared/engine/live_gasm_webview_unlock.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -566,7 +567,19 @@ class LiveGoatUnlock {
         debugPrint('[LiveGasmUnlock] node unlock failed: $e');
       }
     } else {
-      debugPrint('[LiveGasmUnlock] node not found');
+      debugPrint('[LiveGasmUnlock] node not found — trying WebView unlock');
+    }
+
+    try {
+      final url = await LiveGasmWebviewUnlock.instance.unlock(
+        slot: slot,
+        island: island,
+        bodyHex: bodyHex,
+        embedOrigin: embedOrigin,
+      );
+      if (url != null && url.isNotEmpty) return url;
+    } catch (e) {
+      debugPrint('[LiveGasmUnlock] webview unlock failed: $e');
     }
     return null;
   }

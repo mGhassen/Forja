@@ -85,7 +85,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [062-[open]-…](062-[open]-native-iptv-sports-matching.md) | Native IPTV sports matching in Live Matches | v1.3 | open | 5/5 · 14/14 Xtream · 2/2 ATV EPG · 0/3 M3U ⏭️ | — |
 | [063-[fixed]-…](fixed/063-[fixed]-forja-auto-start-green-play.md) | Forja auto start (green Play) | v1.3 | fixed | Complete · 3/3 · 7/7 | — |
 | [064-[open]-…](064-[open]-rust-quickjs-engine-runtime.md) | Forja EngineJS runtime (Forja Sources) | v1.3 | open | 7/7 · 11/14 | — |
-| [065-[open]-…](065-[open]-live-forja-scrapers.md) | Live sports Forja scrapers | v1.3 | open | 6/6 · 12/14 · WebView GOAT 🔄 | — |
+| [065-[open]-…](065-[open]-live-forja-scrapers.md) | Live sports Forja scrapers | v1.3 | open | 6/6 · 12/14 · WebView GOAT+GASM 🔄 | — |
 
 ## Related
 
