@@ -27,6 +27,19 @@ mixin _LiveMatchesData
     );
   }
 
+  /// Forja Live / Forja Sports (/ All) share the Catalog JS schedule — only play
+  /// routing differs. Switching among them must not wipe or re-scrape the grid.
+  bool _sharesLiveCatalogSchedule(
+    _LiveMatchesServer a,
+    _LiveMatchesServer b,
+  ) {
+    bool shared(_LiveMatchesServer s) =>
+        s == _LiveMatchesServer.all ||
+        s == _LiveMatchesServer.forjaLive ||
+        s == _LiveMatchesServer.iptvSports;
+    return shared(a) && shared(b);
+  }
+
   Future<void> _selectServer(_LiveMatchesServer server) async {
     if (server == _s._server) return;
     if (server == _LiveMatchesServer.iptvSports) {
@@ -38,7 +51,9 @@ mixin _LiveMatchesData
         return;
       }
     }
-    final leavingIptv = _s._server == _LiveMatchesServer.iptvSports &&
+    final previous = _s._server;
+    final keepSchedule = _sharesLiveCatalogSchedule(previous, server);
+    final leavingIptv = previous == _LiveMatchesServer.iptvSports &&
         server != _LiveMatchesServer.iptvSports;
     setState(() => _s._server = server);
     unawaited(_s._persistServerPreference(server));
@@ -48,8 +63,10 @@ mixin _LiveMatchesData
     if (server == _LiveMatchesServer.iptvSports) {
       final ctrl = ref.read(iptvControllerProvider);
       await ctrl.preparePortalPanel();
+      // May _load() if portal/leagues actually changed — otherwise keep grid.
       await _syncMyIptvFromActivePortal(ctrl, reload: false);
     }
+    if (keepSchedule) return;
     await _load();
   }
 
