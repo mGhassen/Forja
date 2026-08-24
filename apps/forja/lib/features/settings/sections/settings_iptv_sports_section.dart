@@ -143,34 +143,15 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
   }
 
   Widget _leagueChip(BuildContext context, String league, int index) {
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final selected = _config.leagues.contains(league);
     final label =
         LiveMatchesIptvSportsConfig.leagueLabels[league] ?? league;
-    if (!tv) {
-      return FilterChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => _toggleLeague(league),
-        selectedColor: ForjaShellColors.brandGreen.withValues(alpha: 0.25),
-        checkmarkColor: ForjaShellColors.brandGreen,
-        labelStyle: TextStyle(
-          color: selected
-              ? ForjaShellColors.textPrimary
-              : ForjaShellColors.textSecondary,
-          fontSize: 12,
-        ),
-        side: BorderSide(
-          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
-        ),
-        backgroundColor: Colors.transparent,
-      );
-    }
     return ForjaShellChip(
       label: label,
       selected: selected,
       listIndex: index,
       fontSize: 12,
+      accentHover: true,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onTap: () => _toggleLeague(league),
     );
