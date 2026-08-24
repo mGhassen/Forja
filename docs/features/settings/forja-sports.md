@@ -21,7 +21,7 @@ On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS sc
 - Pick the Xtream portal from top-right **Portals** (same IPTV panel)
 - Open a match → right-side panel opens immediately while Forja sniffs your portal; ranked channels appear as they land (logo, short name, category, tier badge) → pick one to play (failover keeps the rest in the player Source menu with the same layout). Re-opening the same match within **30 minutes** reuses the last match result (no second portal search)
 - In-player **programme guide** — with **Settings → Playback → IPTV programme guide (EPG)** on, the native player shows the same floating card as IPTV Live (LIVE / NEXT / LATER, progress bar, description) for the active channel
-- Choose which leagues to match in Settings (admin; on Android TV, D-pad **↓** through league chips scrolls through the last sport)
+- Choose which leagues to match in Settings (admin; on Android TV, D-pad ←/→ between league chips and ↓ through the last sport)
 
 ## Setup
 

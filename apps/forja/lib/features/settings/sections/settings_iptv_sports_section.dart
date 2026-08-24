@@ -7,6 +7,7 @@ import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Settings → Forja Sports — Xtream matcher (RFC-062) + live engine plugins (RFC-065).
@@ -142,7 +143,14 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     );
   }
 
-  Widget _leagueChip(BuildContext context, String league, int index) {
+  static const _leagueChipRowId = 'iptv-sports-leagues';
+
+  Widget _leagueChip(
+    BuildContext context,
+    String league,
+    int index, {
+    TvChipEdges? edges,
+  }) {
     final selected = _config.leagues.contains(league);
     final label =
         LiveMatchesIptvSportsConfig.leagueLabels[league] ?? league;
@@ -152,8 +160,46 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
       listIndex: index,
       fontSize: 12,
       accentHover: true,
+      tvTabId: edges != null ? 'settings' : null,
+      tvRowId: edges != null ? _leagueChipRowId : null,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       onTap: () => _toggleLeague(league),
+      onLeftEdge: edges?.onLeft,
+      onRightEdge: edges?.onRight,
+      onDownEdge: edges?.onDown,
+      onUpEdge: edges?.onUp,
+    );
+  }
+
+  Widget _leagueChipWrap(BuildContext context) {
+    final leagues = LiveMatchesIptvSportsConfig.allLeagues;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (!tv) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (var i = 0; i < leagues.length; i++)
+            _leagueChip(context, leagues[i], i),
+        ],
+      );
+    }
+    return TvChipStrip(
+      tabId: 'settings',
+      rowId: _leagueChipRowId,
+      sortOrder: 80,
+      itemCount: leagues.length,
+      resultsRowId: 'iptv-sports-leagues-end',
+      builder: (context, edgesFor) {
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var i = 0; i < leagues.length; i++)
+              _leagueChip(context, leagues[i], i, edges: edgesFor(i)),
+          ],
+        );
+      },
     );
   }
 
@@ -315,20 +361,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (var i = 0;
-                      i < LiveMatchesIptvSportsConfig.allLeagues.length;
-                      i++)
-                    _leagueChip(
-                      context,
-                      LiveMatchesIptvSportsConfig.allLeagues[i],
-                      i,
-                    ),
-                ],
-              ),
+              child: _leagueChipWrap(context),
             ),
           ],
         ),

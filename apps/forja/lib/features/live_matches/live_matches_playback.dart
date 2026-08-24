@@ -63,7 +63,7 @@ mixin _LiveMatchesPlayback
     }
     if (_tvNativeLiveOnly) {
       if (_s._server == _LiveMatchesServer.forjaLive) {
-        await _openForjaLiveTvSources(streamed);
+        await _openForjaLiveTvSources(streamed, ppvAnchor: ppv);
         return;
       }
       await _openTvNativeSourcesOnly(streamed);
@@ -419,19 +419,29 @@ mixin _LiveMatchesPlayback
   }
 
   /// TV Forja Live: Sources panel with engine plugin streams (not Xtream).
-  Future<void> _openForjaLiveTvSources(_StreamedMatch match) async {
+  ///
+  /// Respects Catalog filter: **PPV** → PPV only; a named plugin → that
+  /// plugin only; **All** → every catalog row for the event (+ matching PPV).
+  Future<void> _openForjaLiveTvSources(
+    _StreamedMatch match, {
+    _DamiTvStream? ppvAnchor,
+  }) async {
     if (!mounted) return;
     if ((this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
       ForjaToast.info('Loading Forja Live plugins…');
       return;
     }
 
+    final filter = _s._forjaLivePluginFilter;
+    final phase = filter == 'all'
+        ? 'Forja Live'
+        : _liveForjaPluginDisplayName(filter);
     final panel = _IptvSportsChannelsPanel.show(
       context: context,
       match: match,
       panelTitle: 'Sources',
       emptyMessage: 'No streams available',
-      searchingHint: 'Resolving Forja Live plugins',
+      searchingHint: 'Resolving $phase streams',
       onChannelSelected: (picked, all) {
         unawaited(
           _openEngineNativeSources(
@@ -446,16 +456,29 @@ mixin _LiveMatchesPlayback
         );
       },
     );
-    panel.setSearchPhase('Forja Live');
+    panel.setSearchPhase(phase);
 
     try {
-      final catalogMatches =
-          _streamedMatchesForEvent(match, _s._streamedMatches);
       final choices = <_StreamedStreamChoice>[];
-      if (catalogMatches.isNotEmpty) {
-        choices.addAll(await _resolveAllCatalogStreamChoices(catalogMatches));
+      if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
+        choices.add(_ppvStreamChoice(ppvAnchor, match));
+      } else if (filter == 'all' || filter == 'live-ppv') {
+        _prependMatchingPpvChoices(match, choices);
       }
-      _prependMatchingPpvChoices(match, choices);
+
+      // Catalog → PPV: never pull TimStreams/Streamed/etc. from the session cache.
+      if (filter != 'live-ppv') {
+        final catalogMatches =
+            _streamedMatchesForEvent(match, _s._streamedMatches);
+        final scoped = filter == 'all'
+            ? catalogMatches
+            : catalogMatches
+                .where((m) => m.livePluginId == filter)
+                .toList();
+        if (scoped.isNotEmpty) {
+          choices.addAll(await _resolveAllCatalogStreamChoices(scoped));
+        }
+      }
       if (panel.isDisposed) return;
 
       for (final choice in choices) {
@@ -465,16 +488,18 @@ mixin _LiveMatchesPlayback
           choice.stream,
         );
         if (src == null || panel.isDisposed) continue;
+        final provider =
+            _StreamedStreamSheet.serverLabelFor(choice.catalogMatch);
         panel.appendSources([
           IptvPlaySource(
             url: src.url,
             label: src.label,
-            detail: _tvNativeSourceDetail('Forja Live', src.detail),
+            detail: _tvNativeSourceDetail(provider, src.detail),
             logoUrl: src.logoUrl,
             streamId: src.streamId,
             headers: src.headers,
             liveSourceKind: IptvLiveSourceKind.liveEngine,
-            liveProviderBadge: src.liveProviderBadge,
+            liveProviderBadge: provider,
             liveViewerCount: src.liveViewerCount,
             liveStreamHd: src.liveStreamHd,
           ),
@@ -1013,7 +1038,10 @@ mixin _LiveMatchesPlayback
     }
     if (_tvNativeLiveOnly) {
       if (_s._server == _LiveMatchesServer.forjaLive) {
-        await _openForjaLiveTvSources(_streamedMatchFromPpv(s));
+        await _openForjaLiveTvSources(
+          _streamedMatchFromPpv(s),
+          ppvAnchor: s,
+        );
         return;
       }
       await _openTvNativeSourcesOnly(_streamedMatchFromPpv(s));
