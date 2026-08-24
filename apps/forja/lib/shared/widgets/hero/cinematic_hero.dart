@@ -516,9 +516,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final count = items.length;
     var next = (_heroIndex + delta) % count;
     if (next < 0) next += count;
-    // Always animate — instant jump made title/buttons look pinned while only
-    // the incoming backdrop appeared to change.
-    _goToHeroStep(next, items);
+    final instant = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    _goToHeroStep(next, items, instant: instant);
   }
 
   void _revealedHeroPlayFocus() {
@@ -747,14 +746,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
 
   Widget _buildHeroPagesCarousel({
     required List<_HeroItem> items,
-    required bool compact,
-    required ShellMetrics metrics,
-    required double desktopTextWidth,
-    required double textLeft,
-    required double textTop,
-    required double textBottomInset,
-    required double textColumnWidth,
     required Color shellBg,
+    required double solidLeftWidth,
     required double imageStartFraction,
     required bool pageBleed,
   }) {
@@ -771,6 +764,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         }
         _heroPageViewportWidth = pageW;
 
+        // Backdrop + gradients only — title / meta / actions stay fixed outside.
         return PageView.builder(
           clipBehavior: Clip.hardEdge,
           controller: _heroController,
@@ -778,15 +772,16 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           onPageChanged: (i) => _onHeroPageChanged(i, items),
           itemBuilder: (context, index) {
             final item = items[index % items.length];
-            final slideIndex = index % items.length;
-            // One page = backdrop + gradients + title/actions. Full-bleed image
-            // under the text column so chrome slides with the art (not a fixed
-            // left slab with only the right image moving).
             return Stack(
               fit: StackFit.expand,
               clipBehavior: Clip.hardEdge,
               children: [
-                Positioned.fill(
+                ColoredBox(color: shellBg),
+                Positioned(
+                  left: solidLeftWidth,
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
                   child: _buildHeroSlideBackdrop(item, index),
                 ),
                 Positioned.fill(
@@ -796,19 +791,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                       imageStartFraction: imageStartFraction,
                       softBottomFade: pageBleed,
                     ),
-                  ),
-                ),
-                Positioned(
-                  left: textLeft,
-                  top: textTop,
-                  bottom: textBottomInset,
-                  width: textColumnWidth,
-                  child: _buildHeroTextSlide(
-                    item: item,
-                    isActive: slideIndex == _heroIndex,
-                    compact: compact,
-                    metrics: metrics,
-                    desktopTextWidth: desktopTextWidth,
                   ),
                 ),
               ],
@@ -1006,6 +988,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final textColumnWidth = compact
         ? MediaQuery.sizeOf(context).width - textLeft - textRight
         : desktopTextWidth;
+    final heroTextItem = items[_heroIndex];
 
     return SizedBox(
       height: imageHeight,
@@ -1016,14 +999,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           Positioned.fill(
             child: _buildHeroPagesCarousel(
               items: items,
-              compact: compact,
-              metrics: metrics,
-              desktopTextWidth: desktopTextWidth,
-              textLeft: textLeft,
-              textTop: textTop,
-              textBottomInset: textBottomInset,
-              textColumnWidth: textColumnWidth,
               shellBg: shellBg,
+              solidLeftWidth: solidLeftWidth,
               imageStartFraction: imageStartFraction,
               pageBleed: pageBleed,
             ),
@@ -1038,6 +1015,19 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                 animation: _heroController,
                 builder: (context, _) => _buildHeroSeamScrim(),
               ),
+            ),
+          ),
+          Positioned(
+            left: textLeft,
+            top: textTop,
+            bottom: textBottomInset,
+            width: textColumnWidth,
+            child: _buildHeroTextSlide(
+              item: heroTextItem,
+              isActive: true,
+              compact: compact,
+              metrics: metrics,
+              desktopTextWidth: desktopTextWidth,
             ),
           ),
           Positioned(
