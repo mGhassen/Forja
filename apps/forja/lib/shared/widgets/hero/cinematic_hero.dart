@@ -272,6 +272,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   final Map<String, List<String>> _heroBackdropUrls = {};
   bool _heroHeightSyncScheduled = false;
   double? _heroPageViewportWidth;
+  List<Movie>? _lastHeroMovies;
 
   void _syncSharedHeroFocusNodes() {
     if (ShellTvFocus.currentNavTabId != widget.tvTabId) return;
@@ -364,17 +365,24 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     return FutureBuilder<List<Movie>>(
       future: widget.moviesFuture,
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+        // Keep last hero while a new future is resolving — never blank the shell.
+        final movies = (snapshot.data != null && snapshot.data!.isNotEmpty)
+            ? snapshot.data!
+            : (_lastHeroMovies ?? const <Movie>[]);
+        if (snapshot.data != null && snapshot.data!.isNotEmpty) {
+          _lastHeroMovies = snapshot.data;
+        }
+        if (movies.isEmpty) {
           return _buildCinematicHeroShimmer(compact: widget.compact);
         }
-        final movies = snapshot.data!.take(5).toList();
+        final shown = movies.take(5).toList();
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            _fetchHeroLogos(movies);
-            _fetchHeroBackdrops(movies);
+            _fetchHeroLogos(shown);
+            _fetchHeroBackdrops(shown);
           }
         });
-        final items = movies
+        final items = shown
             .map((movie) => _HeroItem.fromMovie(movie, _heroSlideUrls(movie)))
             .toList();
         return _buildCinematicHeroBlock(items, compact: widget.compact);

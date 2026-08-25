@@ -237,8 +237,8 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   void _onWatchProviderChanged() {
     if (!mounted || !shellTabVisible) return;
     final scroll = _pinnedHomeScrollOffset();
+    // Providers already watch the watch-provider id — do not invalidate (shell flash).
     _cancelPreviousHomeAsks();
-    _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
     _restoreHomeScroll(scroll);
   }
@@ -246,8 +246,9 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   void _onHomeCategoryChanged() {
     if (!mounted || !shellTabVisible) return;
     final scroll = _pinnedHomeScrollOffset();
+    // Providers already watch Films/TV — invalidate blanks AsyncValue and
+    // looks like a full page reload. Only soft-refresh mood/genre rows.
     _cancelPreviousHomeAsks();
-    _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
     _restoreHomeScroll(scroll);
   }
@@ -255,8 +256,8 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   void _onHomeGenreChanged() {
     if (!mounted || !shellTabVisible) return;
     final scroll = _pinnedHomeScrollOffset();
+    // Providers already watch genre id — soft mood/genre only.
     _cancelPreviousHomeAsks();
-    _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
     _restoreHomeScroll(scroll);
   }
@@ -287,13 +288,6 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
       pin();
       WidgetsBinding.instance.addPostFrameCallback((_) => pin());
     });
-  }
-
-  void _invalidateHomeMainRails() {
-    ref.invalidate(homeTrendingProvider);
-    ref.invalidate(homePopularProvider);
-    ref.invalidate(homeFeaturedProvider);
-    ref.invalidate(homeNowPlayingProvider);
   }
 
   /// Stop Home-scoped network work while another shell tab is selected.

@@ -49,13 +49,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   List<({String id, String label, Future<List<Movie>> future, List<Movie>? pool})>
       _randomCategoryRows = [];
-  /// Last painted TMDB rails — survive invalidate so top-menu flips don't
-  /// skeleton the whole page while the matching fetch is in flight.
+  /// Last painted TMDB rails — survive filter flips so the page stays painted
+  /// until the matching fetch lands (do not re-strip by the new Films/TV filter).
   List<Movie> _railCacheTrending = const [];
   List<Movie> _railCacheFeatured = const [];
   List<Movie> _railCachePopular = const [];
   List<Movie> _railCacheNowPlaying = const [];
   int _genreRowsGen = 0;
+  /// Stable hero Future identity — a new Future.value every build remounts
+  /// FutureBuilder into shimmer.
+  String _heroSlideSig = '';
+  Future<List<Movie>> _heroMoviesFuture = Future.value(const <Movie>[]);
 
   // Trakt personalized sections
   List<Movie> _traktRecommendations = [];

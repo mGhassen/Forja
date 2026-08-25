@@ -13,9 +13,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     final atv = _atvMediaKit;
     final player = MpvExclusiveSession.instance.trackPlayer(
       Player(
-        configuration: const PlayerConfiguration(
-          logLevel: MPVLogLevel.warn,
-        ),
+        configuration: const PlayerConfiguration(logLevel: MPVLogLevel.warn),
       ),
     );
     _s._player = player;
@@ -266,18 +264,14 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
   }
 
   bool _hasSelectableAudio(Player player) {
-    return player.state.tracks.audio.any(
-      (t) => t.id != 'no' && t.id != 'auto',
-    );
+    return player.state.tracks.audio.any((t) => t.id != 'no' && t.id != 'auto');
   }
 
   Future<bool> _waitForSelectableAudio(Player player) async {
     if (_hasSelectableAudio(player)) return true;
     try {
       await player.stream.tracks
-          .firstWhere(
-            (t) => t.audio.any((a) => a.id != 'no' && a.id != 'auto'),
-          )
+          .firstWhere((t) => t.audio.any((a) => a.id != 'no' && a.id != 'auto'))
           .timeout(const Duration(milliseconds: 1500));
       return true;
     } catch (_) {
@@ -290,8 +284,10 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
   Future<YoutubeResolvedStreams?> _openResolved(
     YoutubeResolvedStreams streams, {
     Duration? resumeAt,
+
     /// Quality hot-swap: never trust leftover tracks after reopen.
     bool forceAudioAdd = false,
+
     /// First open only: if adaptive stays silent, fall back to muxed.
     bool allowMuxedFallback = false,
   }) async {
@@ -563,7 +559,11 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         .firstOrNull;
     if (track == null) return;
     await player.setSubtitleTrack(
-      SubtitleTrack.uri(track.url, title: track.langName, language: track.langCode),
+      SubtitleTrack.uri(
+        track.url,
+        title: track.langName,
+        language: track.langCode,
+      ),
     );
     if (mounted) setState(() => _s._activeCaptionCode = languageCode);
   }
@@ -623,8 +623,8 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     final clamped = next < Duration.zero
         ? Duration.zero
         : (_s._duration > Duration.zero && next > _s._duration
-            ? _s._duration
-            : next);
+              ? _s._duration
+              : next);
     await _s._player!.seek(clamped);
   }
 

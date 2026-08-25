@@ -198,15 +198,15 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     final popularAsync = ref.watch(homePopularProvider);
     final nowPlayingAsync = ref.watch(homeNowPlayingProvider);
 
-    final mediaFilter = ref.watch(shellHomeCategoryProvider);
-    final genreId = ref.watch(shellHomeGenreIdProvider);
-    final watchProviderId = ref.watch(shellWatchProviderIdProvider);
-    final filterSig =
-        '${mediaFilter?.name ?? 'all'}|${genreId ?? 'all'}|${watchProviderId ?? 'all'}';
+    // Watch filters so rails rebuild when top menu changes (providers refetch).
+    ref.watch(shellHomeCategoryProvider);
+    ref.watch(shellHomeGenreIdProvider);
+    ref.watch(shellWatchProviderIdProvider);
 
     void remember(AsyncValue<List<Movie>> async, void Function(List<Movie>) save) {
       final v = async.valueOrNull;
-      if (v != null && v.isNotEmpty && !async.isRefreshing) {
+      // Only commit settled data for the active filter — never while refreshing.
+      if (v != null && v.isNotEmpty && !async.isLoading && !async.isRefreshing) {
         save(v);
       }
     }
@@ -217,8 +217,18 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     remember(nowPlayingAsync, (v) => _s._railCacheNowPlaying = v);
 
     List<Movie> poolOf(AsyncValue<List<Movie>> async, List<Movie> cache) {
-      final raw = async.valueOrNull ?? cache;
-      return _s._enforceMediaFilter(raw);
+      final v = async.valueOrNull;
+      // Settled fetch for current filter — paint it.
+      if (v != null &&
+          v.isNotEmpty &&
+          !async.isLoading &&
+          !async.isRefreshing) {
+        return v;
+      }
+      // Keep last painted row as-is while the new Films/TV/genre fetch runs.
+      // Do NOT client-strip by the new filter (movie cache → TV = empty skeleton).
+      if (cache.isNotEmpty) return cache;
+      return v ?? const [];
     }
 
     // Keep last-good posters while providers reload for a new top-menu filter.
@@ -238,27 +248,25 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     final becauseMovies = displays['because'] ?? const <Movie>[];
     final traktRecMovies = displays['trakt-recs'] ?? const <Movie>[];
 
-    // Hero slides must match top-menu Films/TV — filter again client-side.
-    // Always paint immediately from cache/value (no shimmer on menu flips).
+    // Hero: keep shell mounted (stable key). Only swap slide data when the
+    // settled list actually changes — a new Future.value every build flashes shimmer.
     List<Movie> heroSlidesFrom(List<Movie> pool) {
-      final filtered = switch (mediaFilter) {
-        ShellHomeCategory.films =>
-          pool.where((m) => m.mediaType == 'movie'),
-        ShellHomeCategory.tvShows => pool.where(
-            (m) => m.mediaType == 'tv' || m.mediaType == 'series',
-          ),
-        _ => pool,
-      };
-      return filtered.take(kHomeHeroClaimCount).toList();
+      return pool.take(kHomeHeroClaimCount).toList();
     }
 
-    final heroSource =
-        trendingAsync.valueOrNull ?? _s._railCacheTrending;
     final hero = displays['hero'] ?? const <Movie>[];
+    final heroSource = poolOf(trendingAsync, _s._railCacheTrending);
     final heroSlides = heroSlidesFrom(
       hero.isNotEmpty ? hero : heroSource,
     );
-    final heroMoviesFuture = Future<List<Movie>>.value(heroSlides);
+    if (heroSlides.isNotEmpty) {
+      final sig = heroSlides.map((m) => '${m.mediaType}:${m.id}').join(',');
+      if (sig != _s._heroSlideSig) {
+        _s._heroSlideSig = sig;
+        _s._heroMoviesFuture = Future<List<Movie>>.value(List.of(heroSlides));
+      }
+    }
+    final heroMoviesFuture = _s._heroMoviesFuture;
 
     final featuredSection = usesShellHome && fullHero
         ? _claimedRailSection(
@@ -290,7 +298,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
               SliverToBoxAdapter(
                 child: RepaintBoundary(
                   child: HomeCinematicHero(
-                    key: ValueKey('home-hero-$filterSig'),
+                    key: const ValueKey('home-hero'),
                     moviesFuture: heroMoviesFuture,
                     compact: !fullHero,
                     usesShellHomeLayout: usesShellHome,
