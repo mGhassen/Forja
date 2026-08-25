@@ -235,9 +235,14 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     );
   }
 
-  /// Debrify path: demuxer duration / decoded frame before external AAC attach.
-  Future<bool> _waitTrailerDuration(Player player) async {
-    for (var i = 0; i < 100; i++) {
+  /// Demuxer duration / decoded frame before external AAC attach.
+  /// Adaptive googlevideo often never demuxes — keep this short.
+  Future<bool> _waitTrailerDuration(
+    Player player, {
+    Duration timeout = const Duration(milliseconds: 2500),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
       final state = player.state;
       if (state.duration.inMilliseconds > 0) return true;
       if (hasDecodedVideo(state)) return true;
@@ -340,10 +345,24 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     await player.setVolume(_s._volume);
 
     if (needsExternalAudio && audioUrl != null && audioUrl.isNotEmpty) {
-      // Debrify: open PAUSED → wait for demuxer → audio-add → play (never
-      // play video-only first — mpv reports playing=true with dur=0 / no frame).
+      // Open PAUSED → wait for demuxer → audio-add → play. Short timeouts:
+      // desktop adaptive often sits at playing=true / dur=0 / no frame.
       await _openTrailerGooglevideo(player, videoUrl, play: false);
-      await _waitTrailerDuration(player);
+      final demuxed = await _waitTrailerDuration(player);
+      if (!demuxed) {
+        debugPrint(
+          '[Trailer] adaptive demux stalled '
+          '(playing=${player.state.playing} '
+          'dur=${player.state.duration.inMilliseconds}ms '
+          'vp=${player.state.videoParams.w}x${player.state.videoParams.h})',
+        );
+        return _fallbackMuxedOrNull(
+          streams,
+          videoUrl: videoUrl,
+          resumeAt: resumeAt,
+          allowMuxedFallback: allowMuxedFallback,
+        );
+      }
 
       final needAudioAdd =
           !atv || forceAudioAdd || !await _waitForSelectableAudio(player);
@@ -360,7 +379,10 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       }
       await player.play();
 
-      var opened = await _waitTrailerOpenReady(player);
+      final opened = await _waitTrailerOpenReady(
+        player,
+        timeout: const Duration(seconds: 3),
+      );
       if (!opened) {
         debugPrint(
           '[Trailer] adaptive open did not become ready '
@@ -368,31 +390,12 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
           'dur=${player.state.duration.inMilliseconds}ms '
           'vp=${player.state.videoParams.w}x${player.state.videoParams.h})',
         );
-        if (allowMuxedFallback &&
-            streams.muxedUrl != null &&
-            streams.muxedUrl!.isNotEmpty &&
-            streams.muxedUrl != videoUrl) {
-          debugPrint('[Trailer] adaptive stuck — falling back to muxed');
-          final muxed = YoutubeResolvedStreams(
-            playUrl: streams.muxedUrl,
-            playHeight: streams.muxedHeight,
-            audioUrl: streams.audioUrl,
-            muxedUrl: streams.muxedUrl,
-            muxedHeight: streams.muxedHeight,
-            title: streams.title,
-            thumbnailUrl: streams.thumbnailUrl,
-            durationSeconds: streams.durationSeconds,
-            qualities: streams.qualities,
-            captions: streams.captions,
-          );
-          return _openResolved(
-            muxed,
-            resumeAt: resumeAt,
-            forceAudioAdd: false,
-            allowMuxedFallback: false,
-          );
-        }
-        return null;
+        return _fallbackMuxedOrNull(
+          streams,
+          videoUrl: videoUrl,
+          resumeAt: resumeAt,
+          allowMuxedFallback: allowMuxedFallback,
+        );
       }
       return streams;
     }
@@ -420,10 +423,46 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     return streams;
   }
 
+  Future<YoutubeResolvedStreams?> _fallbackMuxedOrNull(
+    YoutubeResolvedStreams streams, {
+    required String videoUrl,
+    Duration? resumeAt,
+    required bool allowMuxedFallback,
+  }) async {
+    if (allowMuxedFallback &&
+        streams.muxedUrl != null &&
+        streams.muxedUrl!.isNotEmpty &&
+        streams.muxedUrl != videoUrl) {
+      debugPrint('[Trailer] adaptive stuck — falling back to muxed');
+      final muxed = YoutubeResolvedStreams(
+        playUrl: streams.muxedUrl,
+        playHeight: streams.muxedHeight,
+        audioUrl: streams.audioUrl,
+        muxedUrl: streams.muxedUrl,
+        muxedHeight: streams.muxedHeight,
+        title: streams.title,
+        thumbnailUrl: streams.thumbnailUrl,
+        durationSeconds: streams.durationSeconds,
+        qualities: streams.qualities,
+        captions: streams.captions,
+      );
+      return _openResolved(
+        muxed,
+        resumeAt: resumeAt,
+        forceAudioAdd: false,
+        allowMuxedFallback: false,
+      );
+    }
+    return null;
+  }
+
   /// Poll readiness only — ignore error stream (stop() abort is not fatal).
-  Future<bool> _waitTrailerOpenReady(Player player) async {
+  Future<bool> _waitTrailerOpenReady(
+    Player player, {
+    Duration timeout = const Duration(seconds: 8),
+  }) async {
     if (isMediaOpenReady(player.state)) return true;
-    final deadline = DateTime.now().add(const Duration(seconds: 12));
+    final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
       await Future<void>.delayed(const Duration(milliseconds: 100));
       if (isMediaOpenReady(player.state)) return true;

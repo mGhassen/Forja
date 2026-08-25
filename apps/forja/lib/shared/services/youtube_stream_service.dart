@@ -31,19 +31,19 @@ class YoutubeQuality {
 
 /// Resolved playable URLs for a single YouTube video.
 class YoutubeResolvedStreams {
-  /// Default open URL. Prefer adaptive video-only ≤ [YoutubeStreamService.defaultMaxHeight]
-  /// paired with [audioUrl]; muxed progressive only when adaptive is unavailable.
+  /// Default open URL. Prefer muxed progressive (A+V) for a fast audible start;
+  /// adaptive video-only lives in [qualities] for the Quality menu.
   final String? playUrl;
 
-  /// Resolution height of [playUrl] (adaptive pick or muxed).
+  /// Resolution height of [playUrl] (muxed or adaptive pick).
   final int? playHeight;
 
-  /// Separate AAC for video-only URLs in [qualities] (and adaptive [playUrl]).
-  /// Null when [playUrl] is muxed-only.
+  /// Separate AAC for video-only URLs in [qualities].
+  /// Null when there is no adaptive ladder.
   final String? audioUrl;
 
-  /// Muxed progressive (A+V) URL — typically ≤360p. Used when adaptive audio
-  /// attach fails on open. Null when YouTube offered no muxed stream.
+  /// Muxed progressive (A+V) URL — typically ≤360p. Same as [playUrl] when
+  /// muxed is the default open. Null when YouTube offered no muxed stream.
   final String? muxedUrl;
 
   final int? muxedHeight;
@@ -135,8 +135,9 @@ class YoutubeStreamService {
   /// Resolve [videoId] into playable URLs.
   ///
   /// Prefer ANDROID_VR client (mpv-friendly googlevideo URLs). Cap default
-  /// quality at [maxHeightOverride] or [defaultMaxHeight]. Captions / metadata
-  /// are opt-in so the trailer critical path stays lean (Debrify ambient path).
+  /// adaptive ladder at [maxHeightOverride] or [defaultMaxHeight]. Default
+  /// [playUrl] is muxed when available (fast audible open). Captions / metadata
+  /// are opt-in so the trailer critical path stays lean.
   static Future<YoutubeResolvedStreams?> resolveStreams(
     String videoId, {
     int? maxHeightOverride,
@@ -336,15 +337,6 @@ class YoutubeStreamService {
           qualities.add(YoutubeQuality(height: h, videoUrl: s.url.toString()));
         }
 
-        // Debrify path: default = highest adaptive ≤ maxHeight (H.264 when
-        // available at that rung). Muxed (~360p) is fallback only.
-        final atOrBelow =
-            qualities.where((q) => q.height <= maxHeight).toList();
-        final pick =
-            atOrBelow.isNotEmpty ? atOrBelow.first : qualities.last;
-        playUrl = pick.videoUrl;
-        playHeight = pick.height;
-
         audioStreams.sort(
           (a, b) =>
               b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond),
@@ -352,10 +344,19 @@ class YoutubeStreamService {
         audioUrl = audioStreams.first.url.toString();
       }
 
-      if (playUrl == null && bestMuxed != null) {
+      // Muxed first (Debrify launch): instant A+V. Adaptive ladder stays in
+      // [qualities] for HD Quality switches — desktop adaptive attach often
+      // stalls (playing=true, dur=0, no frame).
+      if (bestMuxed != null) {
         playUrl = bestMuxed;
         playHeight = bestMuxedHeight;
-        audioUrl = null;
+      } else if (qualities.isNotEmpty) {
+        final atOrBelow =
+            qualities.where((q) => q.height <= maxHeight).toList();
+        final pick =
+            atOrBelow.isNotEmpty ? atOrBelow.first : qualities.last;
+        playUrl = pick.videoUrl;
+        playHeight = pick.height;
       }
       if (playUrl == null) return null;
 

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **11 / 16** acceptance |
-| **Current slice** | Adaptive-first (Debrify) + prefetch + deferred captions shipped — device smoke remaining |
+| **Progress** | **3 / 3** components · **14 / 18** acceptance |
+| **Current slice** | Muxed-first open + fast adaptive fail — device smoke remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -37,7 +37,7 @@
 | 6 | R55-A06 | Desktop / TV smoke: Trailer from details plays contain-fit native video | ⬜ |
 | 7 | R55-A07 | ATV D-pad: More videos ←/→/OK + ↑ Back; transport/seekbar neighbors; Back arms then exits | ✅ |
 | 8 | R55-A08 | ATV device smoke: trailer D-pad + Back/Exit (`I154-A01`–`A03`) | ⬜ |
-| 9 | R55-A09 | Trailer opens with audible audio (muxed default; adaptive uses audio-add fallback) | ⬜ |
+| 9 | R55-A09 | Trailer opens with audible audio (muxed default; adaptive uses audio-add fallback) | ✅ |
 | 10 | R55-A10 | ATV: Quality menu switches googlevideo height (stop+reopen+audio-add); picture changes (`I197-A01`) | ⬜ |
 
 ---
@@ -55,9 +55,18 @@
 
 ---
 
+## Acceptance (muxed-first restore)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R55-A17 | Default open is muxed progressive when available (audible, no adaptive demux wait) | ✅ |
+| 2 | R55-A18 | Adaptive Quality open fails fast (≤~3s demux/ready) then falls back / recovers — no 12s+ hang | ✅ |
+
+---
+
 ## Acceptance (ATV D-pad — issue 154)
 
-Shipped under [issue 154](../issues/154-[open]-android-tv-trailer-player-dpad.md) (`I154-T01`–`T04`). Rows above: `R55-A07` code · `R55-A08` device smoke.
+Shipped under [issue 154](../issues/154-[open]-android-tv-trailer-player-dpad.md) (`I154-T01`–`T04`). Rows above: `R55-A07` code · `R55-A08` device smoke remaining.
 
 ## Summary
 
@@ -74,8 +83,8 @@ Replace the fullscreen trailer YouTube iframe (and its 1.35× overscan hack to h
 
 - Default height cap: **1080p** H.264; VP9 listed above; AV1 excluded
 - Prefer `YoutubeApiClient.androidVr` for googlevideo URLs that open in mpv; also try `tv` / `androidSdkless` / `ios` in the same manifest call (age / racy gate)
-- **Default open:** adaptive video-only ≤1080p + AAC (Debrify); muxed progressive only when adaptive unavailable or audio attach fails
-- Quality ladder is the full adaptive height list; desktop always `audio-add` after open; ATV prefers `audio-file` then `audio-add` if no track
+- **Default open:** muxed progressive when available (fast audible start); adaptive ladder for Quality menu; short adaptive demux/ready timeouts then muxed fallback
+- Quality ladder is the full adaptive height list; desktop always `audio-add` after adaptive open; ATV prefers `audio-file` then `audio-add` if no track
 - Resolve off UI isolate; short TTL cache; prefetch from details trailers / hero Trailer; re-resolve on open / trailer switch
 - Captions fetched lazily when the CC menu opens (not on open)
 - Age / unplayable native resolve → YouTube nocookie embed WebView fallback (Forja +18; no YouTube account)
