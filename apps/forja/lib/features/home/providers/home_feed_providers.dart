@@ -114,6 +114,7 @@ Future<List<Movie>> _fetchMovies({
   int? watchProviderId,
   String sortBy = 'popularity.desc',
   double? minRating,
+  int? minVoteCount,
   String? releaseDateGte,
   String? releaseDateLte,
   int page = 1,
@@ -124,6 +125,7 @@ Future<List<Movie>> _fetchMovies({
     watchProviderId: watchProviderId,
     sortBy: sortBy,
     minRating: minRating,
+    minVoteCount: minVoteCount,
     releaseDateGte: releaseDateGte,
     releaseDateLte: releaseDateLte,
     page: page,
@@ -137,6 +139,7 @@ Future<List<Movie>> _fetchTv({
   int? watchProviderId,
   String sortBy = 'popularity.desc',
   double? minRating,
+  int? minVoteCount,
   String? releaseDateGte,
   String? releaseDateLte,
   int page = 1,
@@ -147,6 +150,7 @@ Future<List<Movie>> _fetchTv({
     watchProviderId: watchProviderId,
     sortBy: sortBy,
     minRating: minRating,
+    minVoteCount: minVoteCount,
     releaseDateGte: releaseDateGte,
     releaseDateLte: releaseDateLte,
     page: page,
@@ -162,6 +166,7 @@ Future<List<Movie>> _fetchMoviesPool({
   int? watchProviderId,
   String sortBy = 'popularity.desc',
   double? minRating,
+  int? minVoteCount,
   String? releaseDateGte,
   String? releaseDateLte,
   List<Movie>? page1Cache,
@@ -179,6 +184,7 @@ Future<List<Movie>> _fetchMoviesPool({
       watchProviderId: watchProviderId,
       sortBy: sortBy,
       minRating: minRating,
+      minVoteCount: minVoteCount,
       releaseDateGte: releaseDateGte,
       releaseDateLte: releaseDateLte,
       page: p,
@@ -195,6 +201,7 @@ Future<List<Movie>> _fetchTvPool({
   int? watchProviderId,
   String sortBy = 'popularity.desc',
   double? minRating,
+  int? minVoteCount,
   String? releaseDateGte,
   String? releaseDateLte,
   bool preserveRankOrder = false,
@@ -210,6 +217,7 @@ Future<List<Movie>> _fetchTvPool({
       watchProviderId: watchProviderId,
       sortBy: sortBy,
       minRating: minRating,
+      minVoteCount: minVoteCount,
       releaseDateGte: releaseDateGte,
       releaseDateLte: releaseDateLte,
       page: p,
@@ -377,43 +385,8 @@ final homeTrendingProvider =
 final homePopularProvider =
     FutureProvider.autoDispose<List<Movie>>((ref) async {
   final ctx = _watchHomeFeedContext(ref);
-  if (ctx.providerId != null) {
-    return _fetchMediaFiltered(
-      filter: ctx.filter,
-      movieFetch: () => _fetchMoviesPool(
-        api: ctx.api,
-        bucket: ctx.bucket,
-        salt: 'popular-m-prov',
-        preserveRankOrder: true,
-        standard: (page) => ctx.api.discoverMovies(
-          watchProviderId: ctx.providerId,
-          sortBy: 'vote_average.desc',
-          minRating: 0,
-          page: page,
-        ),
-        genres: ctx.genres.movie,
-        watchProviderId: ctx.providerId,
-        sortBy: 'vote_average.desc',
-        minRating: 0,
-      ),
-      tvFetch: () => _fetchTvPool(
-        api: ctx.api,
-        bucket: ctx.bucket,
-        salt: 'popular-tv-prov',
-        preserveRankOrder: true,
-        standard: (page) => ctx.api.discoverTvShows(
-          watchProviderId: ctx.providerId,
-          sortBy: 'vote_average.desc',
-          minRating: 0,
-          page: page,
-        ),
-        genres: ctx.genres.tv,
-        watchProviderId: ctx.providerId,
-        sortBy: 'vote_average.desc',
-        minRating: 0,
-      ),
-    );
-  }
+  // Always popularity.desc + vote floor — same contract as TmdbApi.getPopular.
+  // Never vote_average (that is top-rated, not "popular today").
   return _fetchMediaFiltered(
     filter: ctx.filter,
     movieFetch: () => _fetchMoviesPool(
@@ -421,9 +394,18 @@ final homePopularProvider =
       bucket: ctx.bucket,
       salt: 'popular-m',
       preserveRankOrder: true,
-      standard: (page) => ctx.api.getPopular(page: page),
+      standard: (page) => ctx.providerId == null
+          ? ctx.api.getPopular(page: page)
+          : ctx.api.discoverMovies(
+              watchProviderId: ctx.providerId,
+              sortBy: 'popularity.desc',
+              minVoteCount: 100,
+              page: page,
+            ),
       genres: ctx.genres.movie,
-      sortBy: 'vote_average.desc',
+      watchProviderId: ctx.providerId,
+      sortBy: 'popularity.desc',
+      minVoteCount: 100,
       page1Cache: ctx.canUseBootCache ? BootCache.popular : null,
     ),
     tvFetch: () => _fetchTvPool(
@@ -431,9 +413,18 @@ final homePopularProvider =
       bucket: ctx.bucket,
       salt: 'popular-tv',
       preserveRankOrder: true,
-      standard: (page) => ctx.api.getPopularTv(page: page),
+      standard: (page) => ctx.providerId == null
+          ? ctx.api.getPopularTv(page: page)
+          : ctx.api.discoverTvShows(
+              watchProviderId: ctx.providerId,
+              sortBy: 'popularity.desc',
+              minVoteCount: 100,
+              page: page,
+            ),
       genres: ctx.genres.tv,
-      sortBy: 'vote_average.desc',
+      watchProviderId: ctx.providerId,
+      sortBy: 'popularity.desc',
+      minVoteCount: 100,
     ),
   );
 });
