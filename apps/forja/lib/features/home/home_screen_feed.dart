@@ -3,6 +3,17 @@ part of 'home_screen.dart';
 mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> {
   _HomeScreenState get _s => this as _HomeScreenState;
 
+  Future<List<Movie>> _homeDiscoverPool(
+    Future<List<Movie>> Function(int page) fetch, {
+    required String salt,
+  }) {
+    return rotateHomeRailPool(
+      bucket: homeCatalogHourBucket(),
+      salt: salt,
+      fetchPage: fetch,
+    );
+  }
+
   Future<List<Movie>> _fetchCategoryRow(
     ({String id, String label, List<int> movieGenres, List<int> tvGenres})
         category,
@@ -18,6 +29,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
           watchProviderId: providerId,
           page: page,
         ),
+        salt: 'genre-${category.id}-m',
       ),
       tvFetch: () => _homeDiscoverPool(
         (page) => _s._api.discoverTvShows(
@@ -25,18 +37,9 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
           watchProviderId: providerId,
           page: page,
         ),
+        salt: 'genre-${category.id}-tv',
       ),
     );
-  }
-
-  Future<List<Movie>> _homeDiscoverPool(
-    Future<List<Movie>> Function(int page) fetch,
-  ) async {
-    final pages = await Future.wait([
-      for (var p = 1; p <= kHomeRailFetchPages; p++)
-        fetch(p).catchError((_) => <Movie>[]),
-    ]);
-    return mergeHomeRailPages(pages);
   }
 
   void _resetRandomCategoryRows() {
@@ -53,7 +56,8 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
           .where((category) => category.id == selectedGenreId)
           .toList();
     } else {
-      final pool = List.of(homeGenreCategories)..shuffle(math.Random());
+      final pool = List.of(homeGenreCategories)
+        ..shuffle(homeCatalogRandom(homeCatalogHourBucket(), 'genre-row-picks'));
       picked = pool.take(3).toList();
     }
     final epoch = _s._homeFeedEpoch;
@@ -210,6 +214,14 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
     if (!mounted || !shellTabVisible) return;
     _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
+  }
+
+  void _onCatalogHourBucketChanged() {
+    if (!mounted || !shellTabVisible) return;
+    // Providers already rebuild via homeCatalogHourBucketProvider; refresh
+    // mood / genre rows + hero epoch for the new hourly mix.
+    setState(() => _resetHomeCategoryFeeds());
+    _pickBecauseSeed(WatchHistoryService().current);
   }
 
   void _invalidateHomeMainRails() {
@@ -548,6 +560,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
           watchProviderId: providerId,
           page: page,
         ),
+        salt: 'mood-${mood.id}-m',
       ),
       tvFetch: () => _homeDiscoverPool(
         (page) => _s._api.discoverTvShows(
@@ -556,6 +569,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
           watchProviderId: providerId,
           page: page,
         ),
+        salt: 'mood-${mood.id}-tv',
       ),
     ).catchError((_) => <Movie>[]);
   }

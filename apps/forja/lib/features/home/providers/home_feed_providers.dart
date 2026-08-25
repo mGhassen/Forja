@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/app/boot_cache.dart';
+import 'package:forja/features/home/home_catalog_rotate.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/features/home/home_rail_dedupe.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -151,6 +153,8 @@ Future<List<Movie>> _fetchTv({
 Future<List<Movie>> _fetchMoviesPool({
   required TmdbApi api,
   required Future<List<Movie>> Function(int page) standard,
+  required int bucket,
+  required String salt,
   List<int>? genres,
   int? watchProviderId,
   String sortBy = 'popularity.desc',
@@ -158,54 +162,52 @@ Future<List<Movie>> _fetchMoviesPool({
   String? releaseDateGte,
   String? releaseDateLte,
   List<Movie>? page1Cache,
-}) async {
-  Future<List<Movie>> page(int p) => _fetchMovies(
-        api: api,
-        standard: standard,
-        genres: genres,
-        watchProviderId: watchProviderId,
-        sortBy: sortBy,
-        minRating: minRating,
-        releaseDateGte: releaseDateGte,
-        releaseDateLte: releaseDateLte,
-        page: p,
-      ).catchError((_) => <Movie>[]);
-
-  if (page1Cache != null) {
-    return mergeHomeRailPages([page1Cache, await page(2)]);
-  }
-  final pages = await Future.wait([
-    for (var p = 1; p <= kHomeRailFetchPages; p++) page(p),
-  ]);
-  return mergeHomeRailPages(pages);
+}) {
+  return rotateHomeRailPool(
+    bucket: bucket,
+    salt: salt,
+    page1Cache: page1Cache,
+    fetchPage: (p) => _fetchMovies(
+      api: api,
+      standard: standard,
+      genres: genres,
+      watchProviderId: watchProviderId,
+      sortBy: sortBy,
+      minRating: minRating,
+      releaseDateGte: releaseDateGte,
+      releaseDateLte: releaseDateLte,
+      page: p,
+    ),
+  );
 }
 
 Future<List<Movie>> _fetchTvPool({
   required TmdbApi api,
   required Future<List<Movie>> Function(int page) standard,
+  required int bucket,
+  required String salt,
   List<int>? genres,
   int? watchProviderId,
   String sortBy = 'popularity.desc',
   double? minRating,
   String? releaseDateGte,
   String? releaseDateLte,
-}) async {
-  Future<List<Movie>> page(int p) => _fetchTv(
-        api: api,
-        standard: standard,
-        genres: genres,
-        watchProviderId: watchProviderId,
-        sortBy: sortBy,
-        minRating: minRating,
-        releaseDateGte: releaseDateGte,
-        releaseDateLte: releaseDateLte,
-        page: p,
-      ).catchError((_) => <Movie>[]);
-
-  final pages = await Future.wait([
-    for (var p = 1; p <= kHomeRailFetchPages; p++) page(p),
-  ]);
-  return mergeHomeRailPages(pages);
+}) {
+  return rotateHomeRailPool(
+    bucket: bucket,
+    salt: salt,
+    fetchPage: (p) => _fetchTv(
+      api: api,
+      standard: standard,
+      genres: genres,
+      watchProviderId: watchProviderId,
+      sortBy: sortBy,
+      minRating: minRating,
+      releaseDateGte: releaseDateGte,
+      releaseDateLte: releaseDateLte,
+      page: p,
+    ),
+  );
 }
 
 Future<List<Movie>> _fetchMixed(
@@ -252,6 +254,9 @@ HomeFeedContext _watchHomeFeedContext(Ref ref) {
   final filter = ref.watch(shellHomeCategoryProvider);
   final genreId = ref.watch(shellHomeGenreIdProvider);
   final epoch = ref.read(homeFeedRefreshProvider);
+  final bucket = homeCatalogHourBucket();
+  // Re-subscribe when the hour flips so rails pick a new mix without a manual refresh.
+  ref.watch(homeCatalogHourBucketProvider);
   final genres = _genreIds(genreId);
   final canUseBootCache = epoch == 0 &&
       providerId == null &&
@@ -263,7 +268,36 @@ HomeFeedContext _watchHomeFeedContext(Ref ref) {
     filter: filter,
     genres: genres,
     canUseBootCache: canUseBootCache,
+    bucket: bucket,
   );
+}
+
+/// Ticks when the local hour changes so Home rails rotate their mix.
+final homeCatalogHourBucketProvider =
+    NotifierProvider<HomeCatalogHourBucketNotifier, int>(
+  HomeCatalogHourBucketNotifier.new,
+);
+
+class HomeCatalogHourBucketNotifier extends Notifier<int> {
+  Timer? _timer;
+
+  @override
+  int build() {
+    ref.onDispose(() => _timer?.cancel());
+    _scheduleNextTick();
+    return homeCatalogHourBucket();
+  }
+
+  void _scheduleNextTick() {
+    _timer?.cancel();
+    final now = DateTime.now();
+    final nextHour = DateTime(now.year, now.month, now.day, now.hour + 1);
+    final delay = nextHour.difference(now) + const Duration(seconds: 1);
+    _timer = Timer(delay, () {
+      state = homeCatalogHourBucket();
+      _scheduleNextTick();
+    });
+  }
 }
 
 class HomeFeedContext {
@@ -273,6 +307,7 @@ class HomeFeedContext {
     required this.filter,
     required this.genres,
     required this.canUseBootCache,
+    required this.bucket,
   });
 
   final TmdbApi api;
@@ -280,6 +315,7 @@ class HomeFeedContext {
   final ShellHomeCategory? filter;
   final ({List<int>? movie, List<int>? tv}) genres;
   final bool canUseBootCache;
+  final int bucket;
 }
 
 final homeTrendingProvider =
@@ -290,6 +326,8 @@ final homeTrendingProvider =
       filter: ctx.filter,
       movieFetch: () => _fetchMoviesPool(
         api: ctx.api,
+        bucket: ctx.bucket,
+        salt: 'trending-m-prov',
         standard: (page) =>
             ctx.api.discoverMovies(watchProviderId: ctx.providerId, page: page),
         genres: ctx.genres.movie,
@@ -297,6 +335,8 @@ final homeTrendingProvider =
       ),
       tvFetch: () => _fetchTvPool(
         api: ctx.api,
+        bucket: ctx.bucket,
+        salt: 'trending-tv-prov',
         standard: (page) =>
             ctx.api.discoverTvShows(watchProviderId: ctx.providerId, page: page),
         genres: ctx.genres.tv,
@@ -308,12 +348,16 @@ final homeTrendingProvider =
     filter: ctx.filter,
     movieFetch: () => _fetchMoviesPool(
       api: ctx.api,
+      bucket: ctx.bucket,
+      salt: 'trending-m',
       standard: (page) => ctx.api.getTrending(page: page),
       genres: ctx.genres.movie,
       page1Cache: ctx.canUseBootCache ? BootCache.trending : null,
     ),
     tvFetch: () => _fetchTvPool(
       api: ctx.api,
+      bucket: ctx.bucket,
+      salt: 'trending-tv',
       standard: (page) => ctx.api.getTrendingTv(page: page),
       genres: ctx.genres.tv,
     ),
@@ -328,6 +372,8 @@ final homePopularProvider =
       filter: ctx.filter,
       movieFetch: () => _fetchMoviesPool(
         api: ctx.api,
+        bucket: ctx.bucket,
+        salt: 'popular-m-prov',
         standard: (page) => ctx.api.discoverMovies(
           watchProviderId: ctx.providerId,
           sortBy: 'vote_average.desc',
@@ -341,6 +387,8 @@ final homePopularProvider =
       ),
       tvFetch: () => _fetchTvPool(
         api: ctx.api,
+        bucket: ctx.bucket,
+        salt: 'popular-tv-prov',
         standard: (page) => ctx.api.discoverTvShows(
           watchProviderId: ctx.providerId,
           sortBy: 'vote_average.desc',
@@ -358,6 +406,8 @@ final homePopularProvider =
     filter: ctx.filter,
     movieFetch: () => _fetchMoviesPool(
       api: ctx.api,
+      bucket: ctx.bucket,
+      salt: 'popular-m',
       standard: (page) => ctx.api.getPopular(page: page),
       genres: ctx.genres.movie,
       sortBy: 'vote_average.desc',
@@ -365,6 +415,8 @@ final homePopularProvider =
     ),
     tvFetch: () => _fetchTvPool(
       api: ctx.api,
+      bucket: ctx.bucket,
+      salt: 'popular-tv',
       standard: (page) => ctx.api.getPopularTv(page: page),
       genres: ctx.genres.tv,
       sortBy: 'vote_average.desc',
@@ -380,6 +432,8 @@ final homeNowPlayingProvider =
       filter: ctx.filter,
       movieFetch: () => _fetchMoviesPool(
         api: ctx.api,
+        bucket: ctx.bucket,
+        salt: 'now-m-prov',
         standard: (page) => ctx.api.discoverMovies(
           watchProviderId: ctx.providerId,
           sortBy: 'primary_release_date.desc',
@@ -391,6 +445,8 @@ final homeNowPlayingProvider =
       ),
       tvFetch: () => _fetchTvPool(
         api: ctx.api,
+        bucket: ctx.bucket,
+        salt: 'now-tv-prov',
         standard: (page) => ctx.api.discoverTvShows(
           watchProviderId: ctx.providerId,
           sortBy: 'first_air_date.desc',
@@ -406,6 +462,8 @@ final homeNowPlayingProvider =
     filter: ctx.filter,
     movieFetch: () => _fetchMoviesPool(
       api: ctx.api,
+      bucket: ctx.bucket,
+      salt: 'now-m',
       standard: (page) => ctx.api.getNowPlaying(page: page),
       genres: ctx.genres.movie,
       sortBy: 'primary_release_date.desc',
@@ -413,6 +471,8 @@ final homeNowPlayingProvider =
     ),
     tvFetch: () => _fetchTvPool(
       api: ctx.api,
+      bucket: ctx.bucket,
+      salt: 'now-tv',
       standard: (page) => ctx.api.getOnTheAir(page: page),
       genres: ctx.genres.tv,
       sortBy: 'first_air_date.desc',
@@ -429,11 +489,14 @@ final homeFeaturedProvider =
     String? releaseDateGte,
     String? releaseDateLte,
     double? minRating,
+    required String salt,
   }) {
     return _fetchMediaFiltered(
       filter: ctx.filter,
       movieFetch: () => _fetchMoviesPool(
         api: ctx.api,
+        bucket: ctx.bucket,
+        salt: '$salt-m',
         standard: (page) => ctx.api.discoverMovies(
           releaseDateGte: releaseDateGte,
           releaseDateLte: releaseDateLte,
@@ -451,6 +514,8 @@ final homeFeaturedProvider =
       ),
       tvFetch: () => _fetchTvPool(
         api: ctx.api,
+        bucket: ctx.bucket,
+        salt: '$salt-tv',
         standard: (page) => ctx.api.discoverTvShows(
           releaseDateGte: releaseDateGte,
           releaseDateLte: releaseDateLte,
@@ -473,6 +538,7 @@ final homeFeaturedProvider =
     releaseDateGte: range.gte,
     releaseDateLte: range.lte,
     minRating: ctx.providerId != null ? null : 6.0,
+    salt: 'featured-month',
   );
   // Calendar-month (+ optional service/genre) is often thin. Keep new-this-month
   // first, then fill from popular on the same filters so the row stays full.
@@ -481,6 +547,6 @@ final homeFeaturedProvider =
       (ctx.genres.tv != null && ctx.genres.tv!.isNotEmpty);
   if (!needsFill) return month;
   if (month.length >= kHomeRailDisplayCap) return month;
-  final popular = await load();
+  final popular = await load(salt: 'featured-fill');
   return _uniqueMedia(month, popular);
 });

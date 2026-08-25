@@ -176,6 +176,19 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
 
   void _focusFirstHelper() => _focusHelperAtIndex(0);
 
+  void _focusFilterLensFirst() {
+    if (!_s._filtersOpen) return;
+    if (!_s._filterLensFirstFocusNode.canRequestFocus) return;
+    _s._filterLensFirstFocusNode.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      'search',
+      ShellTvFocusMemory(
+        zone: ShellTvZone.row,
+        node: _s._filterLensFirstFocusNode,
+      ),
+    );
+  }
+
   RenderBox? _tvItemRenderBox(String rowId, int index) {
     final node = ShellTvFocusCoordinator.itemNode('search', rowId, index);
     final ctx = node?.context;
@@ -411,7 +424,21 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.arrowDown) {
+      if (_s._filtersOpen) {
+        _focusFilterLensFirst();
+        return KeyEventResult.handled;
+      }
       _focusFilmCardsFromClose();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _searchFilterTuneKeyEvent(FocusNode node, KeyEvent event) {
+    if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown && _s._filtersOpen) {
+      _focusFilterLensFirst();
       return KeyEventResult.handled;
     }
     return KeyEventResult.ignored;
@@ -482,6 +509,10 @@ mixin _SearchTv on ConsumerState<SearchScreen> {
       return KeyEventResult.handled;
     }
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      if (_s._filtersOpen) {
+        _focusFilterLensFirst();
+        return KeyEventResult.handled;
+      }
       if (_helperItemCount() <= 0) return KeyEventResult.ignored;
       _focusFirstHelper();
       return KeyEventResult.handled;

@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **8 / 10** acceptance · **0 / 1** device smoke |
-| **Current slice** | Score / type / filter lens shipped — device smoke still open |
+| **Progress** | **3 / 3** components · **5 / 6** acceptance (1.4.0) · **5 / 5** acceptance (lens) |
+| **Current slice** | Filter lens + ATV scrub arm shipped — structured query device smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -47,6 +47,7 @@
 | 2 | R58-A08 | TMDB discover + multi-search honor min/max score and movie/tv type | ✅ |
 | 3 | R58-A09 | Tune icon opens filter lens; active filters dock as clearable ghost tokens | ✅ |
 | 4 | R58-A10 | Addon search uses remainder only (skips when filters-only) | ✅ |
+| 5 | R58-A11 | ATV score/year: focus browse → OK arm → Left/Right scrub (year ↑/↓ thumb) | ✅ |
 
 ---
 

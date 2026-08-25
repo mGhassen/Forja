@@ -57,6 +57,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                   ? ForjaShellColors.textPrimary
                   : ForjaShellColors.textSecondary,
               tooltip: 'Filters',
+              onKeyEvent: _s._searchFilterTuneKeyEvent,
               onTap: _s._toggleFiltersOpen,
             ),
             if (_s._filters.isActive && !_s._filtersOpen)
@@ -110,6 +111,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                       ? ForjaShellColors.textPrimary
                       : ForjaShellColors.textSecondary,
                   tooltip: 'Filters',
+                  onKeyEvent: _s._searchFilterTuneKeyEvent,
                   onTap: _s._toggleFiltersOpen,
                 ),
                 if (_s._filters.isActive && !_s._filtersOpen)
@@ -150,6 +152,8 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
             filters: _s._filters,
             onFiltersChanged: _s._onFiltersChanged,
             onSubmit: _s._submitFilters,
+            firstFocusNode: _s._filterLensFirstFocusNode,
+            onUpFromFirst: _s._focusSearchFieldBrowse,
           ),
         ),
       ],
@@ -255,6 +259,8 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                                   filters: _s._filters,
                                   onFiltersChanged: _s._onFiltersChanged,
                                   onSubmit: _s._submitFilters,
+                                  firstFocusNode: _s._filterLensFirstFocusNode,
+                                  onUpFromFirst: _s._focusSearchFieldBrowse,
                                 ),
                               )
                             : KeyedSubtree(
@@ -368,6 +374,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                       ? ForjaShellColors.textPrimary
                       : ForjaShellColors.textSecondary,
                   tooltip: 'Filters',
+                  onKeyEvent: _s._searchFilterTuneKeyEvent,
                   onTap: _s._toggleFiltersOpen,
                 ),
                 if (filtersActive && !_s._filtersOpen)
@@ -701,6 +708,8 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               filters: _s._filters,
               onFiltersChanged: _s._onFiltersChanged,
               onSubmit: _s._submitFilters,
+              firstFocusNode: _s._filterLensFirstFocusNode,
+              onUpFromFirst: _s._focusSearchFieldBrowse,
             ),
           ),
           Expanded(child: padded),

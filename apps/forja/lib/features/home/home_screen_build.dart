@@ -39,6 +39,11 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     ref.listen(shellHomeGenreIdProvider, (prev, next) {
       if (prev != next) _s._onHomeGenreChanged();
     });
+    ref.listen(homeCatalogHourBucketProvider, (prev, next) {
+      if (prev != null && prev != next) {
+        _s._onCatalogHourBucketChanged();
+      }
+    });
   }
 
   Map<String, List<Movie>> _claimHomeRailDisplays({

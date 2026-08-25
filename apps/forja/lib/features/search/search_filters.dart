@@ -72,6 +72,16 @@ class SearchFilters {
 
   static const empty = SearchFilters();
 
+  /// Lens / draft defaults: score ≥7.5, year = last 5 calendar years.
+  static SearchFilters get defaults {
+    final y = DateTime.now().year;
+    return SearchFilters(
+      minScore: 7.5,
+      yearStart: y - 5,
+      yearEnd: y,
+    );
+  }
+
   bool get isActive =>
       media != SearchMediaFilter.all ||
       minScore != null ||
@@ -237,15 +247,19 @@ class _SearchFilterToken extends StatelessWidget {
   }
 }
 
-/// Sliding All / Films / Series segment.
+/// Sliding All / Films / Series segment (TV: L/R between options).
 class _SearchTypeSegment extends StatelessWidget {
   const _SearchTypeSegment({
     required this.value,
     required this.onChanged,
+    this.firstFocusNode,
+    this.onUpFromFirst,
   });
 
   final SearchMediaFilter value;
   final ValueChanged<SearchMediaFilter> onChanged;
+  final FocusNode? firstFocusNode;
+  final VoidCallback? onUpFromFirst;
 
   static const _items = [
     (SearchMediaFilter.all, 'All'),
@@ -293,24 +307,36 @@ class _SearchTypeSegment extends StatelessWidget {
               ),
               Row(
                 children: [
-                  for (final item in _items)
+                  for (var i = 0; i < _items.length; i++)
                     Expanded(
-                      child: InkWell(
-                        onTap: () => onChanged(item.$1),
-                        borderRadius: BorderRadius.circular(20),
-                        child: Center(
-                          child: AnimatedDefaultTextStyle(
-                            duration: const Duration(milliseconds: 180),
-                            style: TextStyle(
-                              color: value == item.$1
-                                  ? ForjaShellColors.textPrimary
-                                  : ForjaShellColors.textSecondary,
-                              fontSize: 13,
-                              fontWeight: value == item.$1
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
+                      child: shellFocusableTap(
+                        context: context,
+                        focusNode: i == 0 ? firstFocusNode : null,
+                        onUpEdge: i == 0 ? onUpFromFirst : null,
+                        onLeftEdge: i == 0
+                            ? ShellTvFocusCoordinator.focusActiveNavTab
+                            : null,
+                        listIndex: i,
+                        borderRadius: 20,
+                        scaleOnFocus: 1.0,
+                        showFocusFill: true,
+                        onTap: () => onChanged(_items[i].$1),
+                        child: SizedBox(
+                          height: 36,
+                          child: Center(
+                            child: AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 180),
+                              style: TextStyle(
+                                color: value == _items[i].$1
+                                    ? ForjaShellColors.textPrimary
+                                    : ForjaShellColors.textSecondary,
+                                fontSize: 13,
+                                fontWeight: value == _items[i].$1
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                              ),
+                              child: Text(_items[i].$2),
                             ),
-                            child: Text(item.$2),
                           ),
                         ),
                       ),
@@ -325,8 +351,16 @@ class _SearchTypeSegment extends StatelessWidget {
   }
 }
 
-/// Score track: drag for minimum TMDB vote (≥). Double-tap clears.
-class _SearchScoreArc extends StatelessWidget {
+bool _searchFilterTvLeanback(BuildContext context) {
+  final policy = ShellScope.maybeOf(context)?.inputPolicy;
+  if (policy != null) {
+    return policy.useFocusableMoodChips && !policy.scaleOnHover;
+  }
+  return ShellTokens.isAndroidTvDevice;
+}
+
+/// Score track: drag on desktop; on TV focus then OK to arm, Left/Right to scrub.
+class _SearchScoreArc extends StatefulWidget {
   const _SearchScoreArc({
     required this.value,
     required this.onChanged,
@@ -335,8 +369,22 @@ class _SearchScoreArc extends StatelessWidget {
   final double? value;
   final ValueChanged<double?> onChanged;
 
+  @override
+  State<_SearchScoreArc> createState() => _SearchScoreArcState();
+}
+
+class _SearchScoreArcState extends State<_SearchScoreArc> {
   static const _min = 5.0;
   static const _max = 9.5;
+
+  final FocusNode _focus = FocusNode(debugLabel: 'search-filter-score');
+  bool _armed = false;
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
 
   double _tFromValue(double? v) {
     if (v == null) return 0;
@@ -349,13 +397,57 @@ class _SearchScoreArc extends StatelessWidget {
     return (v * 2).roundToDouble() / 2;
   }
 
+  void _nudge(int dir) {
+    final cur = widget.value ?? (_min - 0.5);
+    final next = ((cur + dir * 0.5) * 2).roundToDouble() / 2;
+    if (next < _min) {
+      widget.onChanged(null);
+      return;
+    }
+    widget.onChanged(next.clamp(_min, _max));
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final tv = _searchFilterTvLeanback(context);
+    if (!tv) return KeyEventResult.ignored;
+
+    if (!_armed) {
+      if (shellTvIsActivateKey(event)) {
+        setState(() => _armed = true);
+        return KeyEventResult.handled;
+      }
+      // Browse: arrows move focus elsewhere.
+      return KeyEventResult.ignored;
+    }
+
+    final key = event.logicalKey;
+    if (shellTvIsActivateKey(event) ||
+        key == LogicalKeyboardKey.escape ||
+        key == LogicalKeyboardKey.goBack) {
+      setState(() => _armed = false);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      _nudge(-1);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      _nudge(1);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final t = _tFromValue(value);
-    final label = value == null
+    final tv = _searchFilterTvLeanback(context);
+    final t = _tFromValue(widget.value);
+    final label = widget.value == null
         ? 'Any score'
-        : '≥ ${value == value!.roundToDouble() ? value!.toInt() : value!.toStringAsFixed(1)}';
-    final warm = value != null && value! >= 8;
+        : '≥ ${widget.value == widget.value!.roundToDouble() ? widget.value!.toInt() : widget.value!.toStringAsFixed(1)}';
+    final warm = widget.value != null && widget.value! >= 8;
+    final focused = _focus.hasFocus;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,7 +464,9 @@ class _SearchScoreArc extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              label,
+              tv && focused && !_armed
+                  ? '$label · OK to adjust'
+                  : (tv && _armed ? '$label · ← → · OK done' : label),
               style: const TextStyle(
                 color: ForjaShellColors.textPrimary,
                 fontSize: 12,
@@ -382,28 +476,67 @@ class _SearchScoreArc extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, c) {
-            final w = c.maxWidth;
-            void setFromDx(double dx) {
-              final nt = (dx / w).clamp(0.0, 1.0);
-              onChanged(_valueFromT(nt));
-            }
-
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapDown: (d) => setFromDx(d.localPosition.dx),
-              onHorizontalDragUpdate: (d) => setFromDx(d.localPosition.dx),
-              onDoubleTap: () => onChanged(null),
-              child: SizedBox(
-                height: 28,
-                child: CustomPaint(
-                  size: Size(w, 28),
-                  painter: _ScoreArcPainter(t: t, warm: warm),
-                ),
-              ),
-            );
+        Focus(
+          focusNode: _focus,
+          onKeyEvent: _onKey,
+          onFocusChange: (f) {
+            if (!f && _armed) setState(() => _armed = false);
+            setState(() {});
           },
+          child: Builder(
+            builder: (context) {
+              return LayoutBuilder(
+                builder: (context, c) {
+                  final w = c.maxWidth;
+                  void setFromDx(double dx) {
+                    final nt = (dx / w).clamp(0.0, 1.0);
+                    widget.onChanged(_valueFromT(nt));
+                  }
+
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: tv
+                        ? () {
+                            _focus.requestFocus();
+                            setState(() => _armed = !_armed);
+                          }
+                        : null,
+                    onTapDown: tv ? null : (d) => setFromDx(d.localPosition.dx),
+                    onHorizontalDragUpdate:
+                        tv ? null : (d) => setFromDx(d.localPosition.dx),
+                    onDoubleTap: () => widget.onChanged(null),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 6,
+                        horizontal: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: _armed
+                              ? ForjaShellColors.textPrimary
+                                  .withValues(alpha: 0.55)
+                              : focused
+                                  ? ForjaShellColors.textPrimary
+                                      .withValues(alpha: 0.3)
+                                  : Colors.transparent,
+                          width: _armed ? 1.5 : 1,
+                        ),
+                      ),
+                      child: SizedBox(
+                        height: 28,
+                        child: CustomPaint(
+                          size: Size(w, 28),
+                          painter: _ScoreArcPainter(t: t, warm: warm),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
         ),
       ],
     );
@@ -448,7 +581,7 @@ class _ScoreArcPainter extends CustomPainter {
       old.t != t || old.warm != warm;
 }
 
-/// Year range timeline scrub. Double-tap clears.
+/// Year range timeline. Desktop: drag. TV: OK to arm, ↑/↓ thumb, ←/→ nudge.
 class _SearchYearTimeline extends StatefulWidget {
   const _SearchYearTimeline({
     required this.start,
@@ -468,15 +601,24 @@ class _SearchYearTimelineState extends State<_SearchYearTimeline> {
   static final int _lo = 1990;
   static final int _hi = DateTime.now().year;
 
+  final FocusNode _focus = FocusNode(debugLabel: 'search-filter-year');
   late double _a;
   late double _b;
   bool _dragging = false;
   bool _dragStart = true;
+  bool _armed = false;
+  bool _editStart = true;
 
   @override
   void initState() {
     super.initState();
     _syncFromWidget();
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
   }
 
   @override
@@ -502,6 +644,8 @@ class _SearchYearTimelineState extends State<_SearchYearTimeline> {
 
   int _year(double t) => (_lo + t * (_hi - _lo)).round();
 
+  double _stepT() => 1.0 / (_hi - _lo);
+
   void _emit() {
     if (_a <= 0.001 && _b >= 0.999) {
       widget.onChanged(null, null);
@@ -510,14 +654,75 @@ class _SearchYearTimelineState extends State<_SearchYearTimeline> {
     widget.onChanged(_year(_a), _year(_b));
   }
 
+  void _nudge(int dir) {
+    setState(() {
+      final step = _stepT() * dir;
+      if (_editStart) {
+        _a = (_a + step).clamp(0.0, _b);
+      } else {
+        _b = (_b + step).clamp(_a, 1.0);
+      }
+    });
+    _emit();
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    final tv = _searchFilterTvLeanback(context);
+    if (!tv) return KeyEventResult.ignored;
+
+    if (!_armed) {
+      if (shellTvIsActivateKey(event)) {
+        setState(() {
+          _armed = true;
+          _editStart = true;
+        });
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    final key = event.logicalKey;
+    if (shellTvIsActivateKey(event) ||
+        key == LogicalKeyboardKey.escape ||
+        key == LogicalKeyboardKey.goBack) {
+      setState(() => _armed = false);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowUp) {
+      setState(() => _editStart = true);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      setState(() => _editStart = false);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      _nudge(-1);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      _nudge(1);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tv = _searchFilterTvLeanback(context);
     final active = widget.start != null && widget.end != null;
     final label = !active
         ? 'Any year'
         : widget.start == widget.end
             ? '${widget.start}'
             : '${widget.start}–${widget.end}';
+    final focused = _focus.hasFocus;
+    final hint = tv && focused && !_armed
+        ? '$label · OK to adjust'
+        : (tv && _armed
+            ? '$label · ${_editStart ? 'start' : 'end'} · ↑↓ thumb · ←→ · OK done'
+            : label);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,63 +738,111 @@ class _SearchYearTimelineState extends State<_SearchYearTimeline> {
               ),
             ),
             const Spacer(),
-            Text(
-              label,
-              style: const TextStyle(
-                color: ForjaShellColors.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+            Flexible(
+              child: Text(
+                hint,
+                textAlign: TextAlign.right,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: ForjaShellColors.textPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, c) {
-            final w = c.maxWidth;
-            return GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onDoubleTap: () {
-                setState(() {
-                  _a = 0;
-                  _b = 1;
-                });
-                widget.onChanged(null, null);
-              },
-              onHorizontalDragStart: (d) {
-                _dragging = true;
-                final t = (d.localPosition.dx / w).clamp(0.0, 1.0);
-                _dragStart = (t - _a).abs() <= (t - _b).abs();
-                setState(() {
-                  if (_dragStart) {
-                    _a = t.clamp(0.0, _b);
-                  } else {
-                    _b = t.clamp(_a, 1.0);
-                  }
-                });
-                _emit();
-              },
-              onHorizontalDragUpdate: (d) {
-                final t = (d.localPosition.dx / w).clamp(0.0, 1.0);
-                setState(() {
-                  if (_dragStart) {
-                    _a = t.clamp(0.0, _b);
-                  } else {
-                    _b = t.clamp(_a, 1.0);
-                  }
-                });
-                _emit();
-              },
-              onHorizontalDragEnd: (_) => _dragging = false,
-              child: SizedBox(
-                height: 32,
-                child: CustomPaint(
-                  size: Size(w, 32),
-                  painter: _YearTimelinePainter(a: _a, b: _b, active: active),
-                ),
-              ),
-            );
+        Focus(
+          focusNode: _focus,
+          onKeyEvent: _onKey,
+          onFocusChange: (f) {
+            if (!f && _armed) setState(() => _armed = false);
+            setState(() {});
           },
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final w = c.maxWidth;
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: tv
+                    ? () {
+                        _focus.requestFocus();
+                        setState(() => _armed = !_armed);
+                      }
+                    : null,
+                onDoubleTap: () {
+                  setState(() {
+                    _a = 0;
+                    _b = 1;
+                  });
+                  widget.onChanged(null, null);
+                },
+                onHorizontalDragStart: tv
+                    ? null
+                    : (d) {
+                        _dragging = true;
+                        final t = (d.localPosition.dx / w).clamp(0.0, 1.0);
+                        _dragStart = (t - _a).abs() <= (t - _b).abs();
+                        setState(() {
+                          if (_dragStart) {
+                            _a = t.clamp(0.0, _b);
+                          } else {
+                            _b = t.clamp(_a, 1.0);
+                          }
+                        });
+                        _emit();
+                      },
+                onHorizontalDragUpdate: tv
+                    ? null
+                    : (d) {
+                        final t = (d.localPosition.dx / w).clamp(0.0, 1.0);
+                        setState(() {
+                          if (_dragStart) {
+                            _a = t.clamp(0.0, _b);
+                          } else {
+                            _b = t.clamp(_a, 1.0);
+                          }
+                        });
+                        _emit();
+                      },
+                onHorizontalDragEnd: tv ? null : (_) => _dragging = false,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 6,
+                    horizontal: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _armed
+                          ? ForjaShellColors.textPrimary.withValues(alpha: 0.55)
+                          : focused
+                              ? ForjaShellColors.textPrimary
+                                  .withValues(alpha: 0.3)
+                              : Colors.transparent,
+                      width: _armed ? 1.5 : 1,
+                    ),
+                  ),
+                  child: SizedBox(
+                    height: 32,
+                    child: CustomPaint(
+                      size: Size(w, 32),
+                      painter: _YearTimelinePainter(
+                        a: _a,
+                        b: _b,
+                        active: active,
+                        highlightStart: _armed && _editStart,
+                        highlightEnd: _armed && !_editStart,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         ),
         const SizedBox(height: 4),
         Row(
@@ -621,11 +874,15 @@ class _YearTimelinePainter extends CustomPainter {
     required this.a,
     required this.b,
     required this.active,
+    this.highlightStart = false,
+    this.highlightEnd = false,
   });
 
   final double a;
   final double b;
   final bool active;
+  final bool highlightStart;
+  final bool highlightEnd;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -646,34 +903,49 @@ class _YearTimelinePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(x0, y), Offset(x1, y), fill);
 
-    for (final x in [x0, x1]) {
+    void drawThumb(double x, {required bool highlight}) {
+      final r = highlight ? 8.0 : 6.0;
       canvas.drawCircle(
         Offset(x, y),
-        6,
+        r,
         Paint()..color = ForjaShellColors.textPrimary,
       );
-      canvas.drawCircle(Offset(x, y), 4, Paint()..color = const Color(0xFF141414));
+      canvas.drawCircle(
+        Offset(x, y),
+        highlight ? 5.0 : 4.0,
+        Paint()..color = const Color(0xFF141414),
+      );
     }
+
+    drawThumb(x0, highlight: highlightStart);
+    drawThumb(x1, highlight: highlightEnd);
   }
 
   @override
   bool shouldRepaint(covariant _YearTimelinePainter old) =>
-      old.a != a || old.b != b || old.active != active;
+      old.a != a ||
+      old.b != b ||
+      old.active != active ||
+      old.highlightStart != highlightStart ||
+      old.highlightEnd != highlightEnd;
 }
 
-/// Expandable filter lens under the search field.
 class _SearchFilterLens extends StatelessWidget {
   const _SearchFilterLens({
     required this.open,
     required this.filters,
     required this.onFiltersChanged,
     required this.onSubmit,
+    this.firstFocusNode,
+    this.onUpFromFirst,
   });
 
   final bool open;
   final SearchFilters filters;
   final ValueChanged<SearchFilters> onFiltersChanged;
   final VoidCallback onSubmit;
+  final FocusNode? firstFocusNode;
+  final VoidCallback? onUpFromFirst;
 
   @override
   Widget build(BuildContext context) {
@@ -695,88 +967,114 @@ class _SearchFilterLens extends StatelessWidget {
                     child: child,
                   ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _SearchTypeSegment(
-                      value: filters.media,
-                      onChanged: (m) =>
-                          onFiltersChanged(filters.copyWith(media: m)),
-                    ),
-                    const SizedBox(height: 14),
-                    _SearchScoreArc(
-                      value: filters.minScore,
-                      onChanged: (v) => onFiltersChanged(
-                        filters.copyWith(
-                          minScore: v,
-                          clearMinScore: v == null,
+                child: FocusTraversalGroup(
+                  policy: OrderedTraversalPolicy(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(1),
+                        child: _SearchTypeSegment(
+                          value: filters.media,
+                          firstFocusNode: firstFocusNode,
+                          onUpFromFirst: onUpFromFirst,
+                          onChanged: (m) =>
+                              onFiltersChanged(filters.copyWith(media: m)),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    _SearchYearTimeline(
-                      start: filters.yearStart,
-                      end: filters.yearEnd,
-                      onChanged: (a, b) => onFiltersChanged(
-                        filters.copyWith(
-                          yearStart: a,
-                          yearEnd: b,
-                          clearYears: a == null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _SearchFilterChipSection(
-                      title: 'Genre',
-                      options: kSearchFilterGenres,
-                      selectedToken: filters.genreToken,
-                      onSelected: (token) => onFiltersChanged(
-                        token == filters.genreToken
-                            ? filters.copyWith(clearGenre: true)
-                            : filters.copyWith(genreToken: token),
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    _SearchFilterChipSection(
-                      title: 'Country',
-                      options: kSearchFilterCountries,
-                      selectedToken: filters.countryToken,
-                      onSelected: (token) => onFiltersChanged(
-                        token == filters.countryToken
-                            ? filters.copyWith(clearCountry: true)
-                            : filters.copyWith(countryToken: token),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        onPressed: onSubmit,
-                        style: TextButton.styleFrom(
-                          foregroundColor: ForjaShellColors.textPrimary,
-                          backgroundColor: Colors.white.withValues(alpha: 0.08),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(
-                              color: ForjaShellColors.textPrimary
-                                  .withValues(alpha: 0.35),
+                      const SizedBox(height: 14),
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(2),
+                        child: _SearchScoreArc(
+                          value: filters.minScore,
+                          onChanged: (v) => onFiltersChanged(
+                            filters.copyWith(
+                              minScore: v,
+                              clearMinScore: v == null,
                             ),
                           ),
                         ),
-                        child: const Text(
-                          'Search',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                      ),
+                      const SizedBox(height: 14),
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(3),
+                        child: _SearchYearTimeline(
+                          start: filters.yearStart,
+                          end: filters.yearEnd,
+                          onChanged: (a, b) => onFiltersChanged(
+                            filters.copyWith(
+                              yearStart: a,
+                              yearEnd: b,
+                              clearYears: a == null,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(4),
+                        child: _SearchFilterChipSection(
+                          title: 'Genre',
+                          options: kSearchFilterGenres,
+                          selectedToken: filters.genreToken,
+                          onSelected: (token) => onFiltersChanged(
+                            token == filters.genreToken
+                                ? filters.copyWith(clearGenre: true)
+                                : filters.copyWith(genreToken: token),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(5),
+                        child: _SearchFilterChipSection(
+                          title: 'Country',
+                          options: kSearchFilterCountries,
+                          selectedToken: filters.countryToken,
+                          onSelected: (token) => onFiltersChanged(
+                            token == filters.countryToken
+                                ? filters.copyWith(clearCountry: true)
+                                : filters.copyWith(countryToken: token),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      FocusTraversalOrder(
+                        order: const NumericFocusOrder(6),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: shellFocusableTap(
+                            context: context,
+                            borderRadius: 20,
+                            scaleOnFocus: 1.02,
+                            onTap: onSubmit,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: ForjaShellColors.textPrimary
+                                      .withValues(alpha: 0.35),
+                                ),
+                              ),
+                              child: const Text(
+                                'Search',
+                                style: TextStyle(
+                                  color: ForjaShellColors.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             )
@@ -816,11 +1114,11 @@ class _SearchFilterChipSection extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final option in options)
+            for (var i = 0; i < options.length; i++)
               _SearchFilterGhostChip(
-                label: option.$1,
-                selected: selectedToken == option.$2,
-                onTap: () => onSelected(option.$2),
+                label: options[i].$1,
+                selected: selectedToken == options[i].$2,
+                onTap: () => onSelected(options[i].$2),
               ),
           ],
         ),
@@ -848,30 +1146,28 @@ class _SearchFilterGhostChip extends StatelessWidget {
     final fg = selected
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        hoverColor: ForjaShellColors.inkHover,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-          decoration: BoxDecoration(
-            color: selected
-                ? Colors.white.withValues(alpha: 0.07)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: border),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: fg,
-              fontSize: 12,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-            ),
+    return shellFocusableTap(
+      context: context,
+      borderRadius: 16,
+      scaleOnFocus: 1.04,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? Colors.white.withValues(alpha: 0.07)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: border),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: fg,
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),

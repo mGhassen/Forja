@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 6 / 6** fix · **5 / 5** acceptance |
+| **Progress** | **Complete · 7 / 7** fix · **6 / 6** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I204-T04 | Unit tests for claim + backfill | ✅ |
 | 5 | I204-T05 | Categories genre mode: independent fill (no cross-rail claim) + Featured month fill | ✅ |
 | 6 | I204-T06 | Top-menu filters invalidate rails + remount hero on filter sig (no stale trending) | ✅ |
+| 7 | I204-T07 | Hourly catalog rotate (page pick + shuffle) for Home rails | ✅ |
 
 ---
 
@@ -37,6 +38,7 @@
 | 3 | I204-A03 | Continue Watching and Trakt upcoming still show their titles even if also claimed elsewhere | ✅ |
 | 4 | I204-A04 | With a Categories genre selected, discovery rails stay populated (full slots), not emptied by claim | ✅ |
 | 5 | I204-A05 | Films / TV Shows / Categories / watch service change the hero carousel to match the filter | ✅ |
+| 6 | I204-A06 | Home discovery mix changes each local hour (stable within the hour) | ✅ |
 
 ---
 
