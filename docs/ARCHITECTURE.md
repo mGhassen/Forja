@@ -2,15 +2,16 @@
 
 Technical architecture reference for the Forja engine and monorepo.
 
-**Status:** v1.0 shipped on macOS. **Phases 1–3 engine migration complete** — [migration index](migration/README.md).
+**Status:** App line **1.4.x** (`kReleaseCodename` = Atarin). **Phases 1–3 engine migration complete** — [migration index](migration/README.md).  
+**Last reviewed:** 2026-08-25 (vs repo HEAD).
 
-**Companion docs:** [DEVELOPMENT.md](DEVELOPMENT.md) (build/run) · [features/README.md](features/README.md) (user guide) · [INVENTORY.md](INVENTORY.md) (as-built facts) · [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) (boundary decisions) · [migration/README.md](migration/README.md) (phases) · [RFC-009](rfc/fixed/009-[fixed]-rust-ffi.md) (FFI spec)
+**Companion docs:** [DEVELOPMENT.md](DEVELOPMENT.md) (build/run) · [features/README.md](features/README.md) (user guide) · [INVENTORY.md](INVENTORY.md) (as-built facts) · [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) (boundary decisions) · [architecture/README.md](architecture/README.md) (UI feature map) · [migration/README.md](migration/README.md) · [RFC-009](rfc/fixed/009-[fixed]-rust-ffi.md) (FFI spec)
 
 ---
 
 ## 1. System overview
 
-Forja is a **GPL-2.0 melos monorepo**: one cross-platform Flutter product (`apps/forja`) backed by a Rust engine (`crates/*`) exposed through FFI. It is a fat-client media hub — movies/TV, IPTV, music, manga, comics, audiobooks, torrents, Stremio addons, Jellyfin, and more.
+Forja is a **GPL-2.0 melos + Cargo monorepo**: one cross-platform Flutter product (`apps/forja`) backed by a Rust engine (`crates/*`) exposed through FFI. A separate web portal (`apps/web`) and admin (`apps/admin`) share auth helpers via `packages/forja-auth` (TypeScript). The Flutter app is a fat-client media hub — movies/TV, IPTV, live matches, anime, Asian drama, torrents, Stremio addons, and more.
 
 **Core principle** ([ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md)):
 
@@ -18,12 +19,13 @@ Forja is a **GPL-2.0 melos monorepo**: one cross-platform Flutter product (`apps
 
 | Concern | Owner |
 |---------|-------|
-| Engine (playback, catalog APIs, storage, proxy, scrape) | `crates/*` |
-| C2 vertical scrape + C3–C5 hosts (WebView, Nuvio, WASM) | `apps/forja` (until ported) |
-| Widgets, navigation, theme, OAuth, **Riverpod host state** ([RFC-047](rfc/047-[open]-riverpod-state-migration.md)) | Host (`apps/forja`) |
-| FFI bridge | `packages/rust` (permanent) |
+| Engine (resolve, catalog APIs, storage, proxy, scrape, LAN server) | `crates/*` |
+| C3–C5 hosts (WebView, Nuvio/`flutter_js`, WASM) | `apps/forja` (permanent) |
+| Widgets, navigation, theme, OAuth UX, **Riverpod host state** ([RFC-047](rfc/047-[open]-riverpod-state-migration.md)) | Host (`apps/forja`) |
+| Dart FFI bridge + thin catalog/playback glue | `packages/rust` (permanent) |
+| Web portal auth (TS) | `packages/forja-auth` + `apps/web` |
 
-### Target end-state
+### Target end-state (Flutter product)
 
 ```mermaid
 flowchart TB
@@ -35,28 +37,28 @@ flowchart TB
   end
   subgraph engine [Engine crates/*]
     FFICrate["crates/ffi libffi"]
-    Domain["utils stream iptv stremio webstreamr scrapers torrent proxy storage catalog"]
+    Domain["domain crates — see §3.1"]
     FFICrate --> Domain
   end
   Flutter --> DartFFI --> FFICrate
 ```
 
-Normalized end state: only `packages/rust` under `packages/`. All engine logic in `crates/*`.
+Normalized Flutter engine path: **`packages/rust` + `crates/*`**. Web/admin are separate surfaces.
 
-### Layer cake (current)
+### Layer cake (Flutter)
 
 ```
-┌─────────────────────────────────────┐
-│  apps/forja — widgets, nav, player  │
-│  C2/C3 vertical hosts, OAuth        │
-├─────────────────────────────────────┤
-│  packages/rust — FFI + thin glue    │
-├─────────────────────────────────────┤
-│  libffi — c_api + stateful engines  │
-├─────────────────────────────────────┤
-│  domain crates — parsers, torrent,  │
-│  proxy, storage, webstreamr, …      │
-└─────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│  apps/forja — widgets, shell, player     │
+│  C3–C5 hosts, OAuth UX, Riverpod         │
+├──────────────────────────────────────────┤
+│  packages/rust — FFI + thin glue         │
+├──────────────────────────────────────────┤
+│  libffi — c_api + jobs + stateful engines│
+├──────────────────────────────────────────┤
+│  domain crates — resolve, catalog,       │
+│  torrent, proxy, LAN, scrapers, …        │
+└──────────────────────────────────────────┘
 ```
 
 ---
@@ -65,33 +67,35 @@ Normalized end state: only `packages/rust` under `packages/`. All engine logic i
 
 ```
 Forja/
-├── apps/forja/          Flutter product (permanent host)
+├── apps/
+│   ├── forja/           Flutter product (permanent host)
+│   ├── web/             Portal (Supabase) — download, account, …
+│   └── admin/           Admin tooling
 ├── packages/
-│   └── rust/            Dart FFI bridge + thin glue (permanent)
-├── crates/              Rust engine workspace
-├── docs/                Architecture, migration, RFCs
+│   ├── rust/            Dart FFI bridge + thin glue (permanent)
+│   └── forja-auth/      Shared TS auth helpers for web
+├── crates/              Rust engine workspace → libffi
+├── docs/                Architecture, migration, RFCs, features
 └── scripts/             build_rust.sh, build_rust_mobile.sh, …
 ```
 
 | Path | Role | Fate |
 |------|------|------|
 | `apps/forja` | Flutter UI + platform host | **Permanent** |
-| `packages/rust` | Dart FFI bridge + parity tests | **Permanent** |
-| ~~`packages/api`~~ | ~~Legacy catalog engine~~ | **Deleted** (P3-03) |
-| `packages/{core,storage,streaming}` | Legacy playback engine | **Deleted** (wave 1) |
+| `apps/web` / `apps/admin` | Web portal / admin | **Permanent** (separate from Flutter engine) |
+| `packages/rust` | Dart FFI bridge + parity tests + thin services | **Permanent** |
+| `packages/forja-auth` | TS auth for web | **Permanent** (web stack) |
+| ~~`packages/api`~~ / ~~`packages/{core,storage,streaming}`~~ | Legacy Dart engines | **Deleted** (waves 1–2) |
 | `crates/*` | Rust engine | **Permanent** |
 
-### Dependency rules
-
-From [RFC-001](rfc/fixed/001-[fixed]-monorepo.md):
+### Dependency rules (Flutter)
 
 ```
-apps/forja → packages/rust only
+apps/forja → packages/rust only (engine)
 packages/rust → never import apps/forja
-apps/forja → rust (Nuvio host in app)
 ```
 
-Cross-feature navigation uses `shell/app_router.dart` and `shell/shell_bus.dart` — features must not import other features' screens directly.
+Cross-feature navigation uses `shell/app_router.dart` and `shell/shell_bus.dart` — features must not import other features' screens directly. See [architecture/README.md](architecture/README.md).
 
 ---
 
@@ -99,24 +103,36 @@ Cross-feature navigation uses `shell/app_router.dart` and `shell/shell_bus.dart`
 
 There is no separate `engine` crate. The engine is the aggregate of domain crates wired through `crates/ffi`, built as **`libffi`** (`cdylib` + `staticlib`).
 
-Default features on `ffi`: `torrent-engine`, `local-proxy`.
+Default features on `ffi`: `torrent-engine`, `local-proxy`, `lan-server`.
 
 ### 3.1 Crate map
 
 Workspace members (`crates/Cargo.toml`):
 
-| Crate | Modules / responsibility | Sync vs async | FFI exposure |
-|-------|-------------------------|---------------|--------------|
-| **`ffi`** | UDL + `c_api.rs` + `engine_proxy` + `engine_torrent` | mixed | all public API |
-| **`utils`** | `episode_matcher`, `torrent_filter`, `js_unpacker`, `hls_parser`, `kisskh_subtitle`, `openssl_crypt` | sync | `*_json`, primitives |
-| **`stream`** | Provider URL templates (VidLink, VixSrc, Vidnest, …) | sync | template builders |
-| **`iptv`** | M3U parse, Xtream JSON, paste.sh decrypt | sync | parse fns |
-| **`stremio`** | Manifest/catalog/meta/streams parse + HTTP GET | blocking reqwest | `stremio_*_json` |
-| **`webstreamr`** | 23 extractors + 21 sources | sync parsers | granular + `get_streams_json` |
-| **`scrapers`** | Knaben / TPB / Uindex HTML → torrent results | async `search_all` | `search_torrents_json` |
-| **`torrent`** | librqbit session + localhost axum stream server | tokio | `torrent_*` |
-| **`proxy`** | axum localhost relay (generic, HLS rewrite, token routes) | tokio | `proxy_*` |
-| **`storage`** | JSON file-backed KV | sync | `storage_*_json` |
+| Crate | Responsibility |
+|-------|----------------|
+| **`ffi`** | C ABI (`c_api.rs`), job runtime (`engine_jobs`), torrent / proxy / LAN / mega / seek111477 engines |
+| **`utils`** | Episode matcher, torrent filter, JS unpacker, HLS parse, kisskh subtitle, cancel tokens, provider runtime |
+| **`stream`** | Playable normalize / select / source order helpers |
+| **`iptv`** | M3U / Xtream / Stalker / Reddit catalog / portal extract / stream probe |
+| **`iptv-worker`** | Standalone IPTV worker binary |
+| **`stremio`** | Manifest/catalog/meta/streams parse + HTTP |
+| **`webstreamr`** | Source/extractor pipeline + `get_streams_json` (HTTP in Rust) |
+| **`scrapers`** | Knaben / TPB / Uindex torrent search |
+| **`torrent`** | librqbit session + localhost axum stream server |
+| **`proxy`** | axum localhost relay (generic, HLS, token, mega, jellyfin, comic, …) |
+| **`lan`** | LAN server, pairing, mDNS browse, torrent history |
+| **`storage`** | JSON file-backed KV |
+| **`tmdb`** / **`trakt`** / **`jellyfin`** / **`anilist`** | Catalog HTTP clients |
+| **`manga`** / **`books`** / **`catalog`** | Vertical scrape/catalog (manga, LibGen, BestSimilar, …) |
+| **`anime`** | Anime extractors, resolve, subtitles, mdblist, introdb, lyrics |
+| **`kisskh`** | Asian Drama catalog + kkey helpers |
+| **`live-matches`** | Live sports catalog / fetch pipelines |
+| **`indexer`** | Jackett / Prowlarr HTTP |
+| **`debrid`** | Real-Debrid, AllDebrid, Premiumize, TorBox, Debrid-Link |
+| **`music`** | Deezer / YouTube music HTTP |
+| **`resolver-engine`** | Provider race, scoring, cache, plugin registry ([ENGINE_BOUNDARY](ENGINE_BOUNDARY.md) D2) |
+| **`engine-js`** | QuickJS-backed extract / StreamCrypto-style jobs |
 
 Vendored patch: `crates/third_party/librqbit-dualstack-sockets` — iOS socket binding fix for librqbit.
 
@@ -125,78 +141,52 @@ Vendored patch: `crates/third_party/librqbit-dualstack-sockets` — iOS socket b
 ```mermaid
 flowchart TB
   subgraph ffi_crate [crates/ffi]
-    UDL[forja.udl]
-  LIB[lib.rs wrappers]
-    CAPI[c_api.rs C exports]
-    EP[engine_proxy.rs]
+    CAPI[c_api.rs]
+    JOBS[engine_jobs.rs]
     ET[engine_torrent.rs]
-    UDL --> LIB
-    LIB --> CAPI
-    LIB --> EP
-    LIB --> ET
+    EP[engine_proxy.rs]
+    EL[engine_lan.rs]
+    CAPI --> JOBS
+    CAPI --> ET & EP & EL
   end
 
   subgraph domain [Domain crates]
-    U[utils]
-    SC[stream]
-    IPTV[iptv]
-    STR[stremio]
+    RE[resolver-engine]
     WS[webstreamr]
-    SCR[scrapers]
     TOR[torrent]
     PRX[proxy]
-    STO[storage]
+    LAN[lan]
+    CAT[tmdb trakt jellyfin anime kisskh …]
   end
 
-  LIB --> U & SC & IPTV & STR & WS & SCR & STO
+  JOBS --> RE & WS & CAT
   ET --> TOR
   EP --> PRX
+  EL --> LAN
 ```
 
-Entry point:
+Entry modules (abbreviated — see `crates/ffi/src/lib.rs`):
 
-```1:27:crates/ffi/src/lib.rs
+```
+mod engine_jobs;
 mod c_api;
-#[cfg(feature = "torrent-engine")]
-mod engine_torrent;
-#[cfg(feature = "local-proxy")]
-mod engine_proxy;
-
-use iptv::m3u;
-use iptv::pastesh;
-use scrapers::{dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html, search_all};
-use stream::list_providers;
-use stremio::{
-    build_resource_url, fetch_get, parse_catalog, parse_manifest, parse_meta, parse_streams,
-    parse_subtitles,
-};
-use utils::{
-    episode_matcher, hls_parser, js_unpacker, kisskh_subtitle, torrent_filter,
-};
-use std::sync::LazyLock;
-use tokio::runtime::Runtime;
-
-uniffi::include_scaffolding!("forja");
-
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-#[allow(dead_code)]
-static RUNTIME: LazyLock<Runtime> =
-    LazyLock::new(|| Runtime::new().expect("ffi tokio runtime"));
+mod engine_torrent;   // feature torrent-engine
+mod engine_proxy;     // feature local-proxy
+mod engine_lan;       // feature lan-server
+mod engine_seek111477;
+mod engine_mega;
 ```
 
-Pattern: `fn foo(...) -> String { domain_crate::foo(...) }` with JSON serialization at the FFI edge. Business logic stays in pure domain crates; `ffi` is glue.
+Pattern: domain crates own logic; `ffi` is glue + job orchestration. Complex calls often go through **`engine_jobs`** (cancelable) rather than raw blocking FFI on the UI isolate.
 
 ### 3.3 FFI boundary — dual surface, one binary
 
-Two FFI paths load the same `libffi` artifact:
-
 | Path | Contract | Consumer | Status |
 |------|----------|----------|--------|
-| **C ABI** | `crates/ffi/src/c_api.rs` — `#[no_mangle] extern "C" ffi_*` | `packages/rust` (`RustLib` + `Engine`) | **Active** |
-| **UniFFI** | `crates/ffi/src/forja.udl` — scaffold only | — | **Deleted** (P3-00) |
+| **C ABI** | `crates/ffi/src/c_api.rs` — `#[no_mangle] extern "C" ffi_*` | `packages/rust` (`Engine`) | **Active** |
+| **UniFFI** | `crates/ffi/src/forja.udl` + scaffolding | — | **Scaffold only** — Dart does **not** bind UniFFI |
 
-Dart does **not** use UniFFI. The C ABI and UDL must be kept in sync manually.
+Dart uses the C ABI exclusively. UDL may still be generated at build time; keep C ABI as the source of truth for new exports.
 
 #### Marshaling contract
 
@@ -205,14 +195,13 @@ Dart does **not** use UniFFI. The C ABI and UDL must be kept in sync manually.
 | Primitives | Direct (`i64`, `bool`, `i32`) |
 | Complex data | **JSON strings** both ways |
 | String memory | `CString::into_raw` out; `ffi_free_string` to release |
-| Errors | Embedded in JSON `{"error":"..."}` or sentinels (`"null"`, `-1`) |
-| Async Rust | Global `LazyLock<Runtime>` in `ffi`; `block_on` from FFI threads |
+| Errors | Embedded in JSON `{"error":"..."}` or sentinels |
+| Async Rust | Global `LazyLock<Runtime>` + job workers; long work off UI via `EngineWorkerPool` / `Isolate.run` |
 
 #### Dart call chain
 
 ```
-App → Engine.init() → RustLib.init()
-  → DynamicLibrary.open("libffi...")
+App → Engine.init() → DynamicLibrary.open("libffi…")
   → lookup("ffi_*") → call → _readString() → ffi_free_string()
 ```
 
@@ -227,45 +216,22 @@ Load paths (`packages/rust/lib/src/library_path.dart`):
 
 Long-lived localhost axum servers run **inside** the `libffi` process — not separate OS processes.
 
-| Subsystem | Rust module | Localhost routes | Lifecycle FFI |
-|-----------|-------------|------------------|---------------|
-| Torrent engine | `engine_torrent.rs` → `torrent` | `GET /torrents/{id}/stream/{file_id}/{*filename}` | `torrent_engine_start` / `stop` |
-| Local proxy | `engine_proxy.rs` → `proxy` | `/health`, `/proxy`, `/hls-proxy`, `/proxy/{token}` | `proxy_start` / `stop` / `register_route` |
+| Subsystem | Rust module | Lifecycle FFI |
+|-----------|-------------|-----------------|
+| Torrent engine | `engine_torrent.rs` → `torrent` | `torrent_engine_start` / `stop` |
+| Local proxy | `engine_proxy.rs` → `proxy` | `proxy_start` / `stop` / `register_route` |
+| LAN server | `engine_lan.rs` → `lan` | `lan_server_start` / `stop`, pairing, browse |
 
-Both subsystems use internal tokio runtimes. The torrent crate runs its own runtime separate from `ffi`'s `RUNTIME`.
-
-#### Proxy route map
-
-```mermaid
-flowchart LR
-  Player[media_kit player]
-  Proxy["LocalProxy axum\n127.0.0.1:P"]
-
-  subgraph routes [Routes]
-    Health["/health"]
-    Generic["/proxy?url=&headers="]
-    HLS["/hls-proxy?url="]
-    Token["/proxy/{token}"]
-  end
-
-  Player --> Proxy
-  Proxy --> Health
-  Proxy --> Generic
-  Proxy --> HLS
-  Proxy --> Token
-  Generic --> Upstream[Upstream CDN]
-  HLS --> Upstream
-  Token --> Upstream
-```
+#### Proxy route map (core)
 
 | Route | Purpose |
 |-------|---------|
-| `/health` | Liveness check |
-| `/proxy?url=&headers=` | Generic upstream fetch — CORS bypass, Range, custom headers |
+| `/health` | Liveness |
+| `/proxy?url=&headers=` | Generic upstream fetch — CORS bypass, Range, headers |
 | `/hls-proxy` | HLS playlist rewrite + PNG-wrapper TS strip |
-| `/proxy/{token}` | Pre-registered upstream URL by token (`proxy_register_route`) |
+| `/proxy/{token}` | Pre-registered upstream by token |
 
-Dart registers token routes, then points the player at `http://127.0.0.1:{port}/proxy/{token}`.
+Additional proxy modules (mega, jellyfin, comic, seek111477, …) live under `crates/proxy`.
 
 ---
 
@@ -273,80 +239,25 @@ Dart registers token routes, then points the player at `http://127.0.0.1:{port}/
 
 ### 4.1 Torrent playback
 
-```mermaid
-sequenceDiagram
-  participant UI as Flutter Player
-  participant FE as Engine
-  participant TOR as crates/torrent
-  participant AX as localhost axum
-  participant RK as librqbit
-  UI->>FE: torrentEngineStart(port)
-  UI->>FE: torrentStreamJson(magnet, S, E)
-  FE->>TOR: add magnet + episode_matcher
-  TOR->>AX: register stream route
-  FE-->>UI: JSON url http://127.0.0.1:P/torrents/...
-  UI->>AX: GET stream bytes
-  AX->>RK: read piece
-  RK-->>AX: bytes
-  AX-->>UI: video stream
-```
-
 1. `TorrentStreamService` starts the engine on a free port.
-2. `torrentStreamJson` adds the magnet, `utils::episode_matcher` picks the file for S/E.
-3. Returns a localhost URL; media_kit never talks to librqbit directly.
+2. `torrentStreamJson` adds the magnet; `utils::episode_matcher` picks the file for S/E.
+3. Returns a localhost URL; the player never talks to librqbit directly.
 
 ### 4.2 Web stream resolution
 
-**Main path (WebStreamr):** `WebStreamrService` builds a JSON request from settings, then one FFI call — `webstreamrGetStreamsJson`. Rust (`crates/webstreamr`) fetches pages via `fetcher.rs` and runs the full source/extractor pipeline. Dart only post-processes URLs (e.g. 1shows.app HLS re-proxy).
+**Main path (WebStreamr):** `WebStreamrService` → one FFI call `webstreamrGetStreamsJson`. Rust (`crates/webstreamr`) fetches + parses. Dart post-processes URLs when needed (e.g. re-proxy).
 
-```mermaid
-flowchart TD
-  UI[Flutter UI]
-  WSS[WebStreamrService]
-  FE[Engine]
-  WS[crates/webstreamr]
-  PRX[crates/proxy]
-  MK[media_kit]
+**Resolver engine:** `crates/resolver-engine` owns provider race / scoring / cache for the unified resolve path; host owns progress/cancel UX and C3–C5 adapters ([ENGINE_BOUNDARY](ENGINE_BOUNDARY.md) D2).
 
-  UI --> WSS
-  WSS -->|request JSON| FE
-  FE -->|webstreamr_get_streams_json| WS
-  WS -->|fetch + parse in Rust| WS
-  WS -->|JSON stream URLs| FE
-  FE --> WSS
-  WSS --> UI
-  UI -->|CORS/headers needed| PRX
-  PRX --> MK
-  UI -->|direct URL| MK
-```
+**Legacy / granular FFI:** Pattern A HTML-in parsers still exist for some call sites; prefer Pattern B (fetch+parse in Rust) for new work.
 
-**Legacy / granular FFI:** `extract_embed_html_json`, `parse_webstreamr_source_html_json`, etc. accept pre-fetched HTML (Pattern A in [INVENTORY.md](INVENTORY.md)). The app’s primary WebStreamr path does not use these for full resolve.
+**Embed providers:** Mix of Rust jobs and host WebView/WASM where required — see [INVENTORY.md](INVENTORY.md) and [architecture/services-map.md](architecture/services-map.md).
 
-**Embed providers (videasy, vidsrc, template):** Mix of Rust (`resolveVidsrcEmbedJson`, template URLs) and host-side WebView/WASM where required — see [INVENTORY.md](INVENTORY.md) §5.
+### 4.3 Provider registry
 
-### 4.3 Provider registry resolve
+Registry: [`packages/rust/lib/src/playback/providers/registry/provider_registry.dart`](../packages/rust/lib/src/playback/providers/registry/provider_registry.dart).
 
-From [RFC-004](rfc/004-[partial]-provider-registry.md). Registry: [`packages/rust/lib/src/playback/providers/registry/provider_registry.dart`](../packages/rust/lib/src/playback/providers/registry/provider_registry.dart).
-
-```mermaid
-flowchart TD
-  Settings[SettingsService\nprovider order + enabled]
-  Resolver[StreamResolver.resolve]
-  Template[Template providers\nstream via FFI]
-  Extractor[Extractor providers\nwebstreamr / vidsrc chain]
-  Stremio[Stremio addon streams\nseparate path]
-  Result[ResolvedStream]
-
-  Settings --> Resolver
-  Resolver --> Template
-  Template -->|fail| Extractor
-  Extractor -->|fail| Stremio
-  Template -->|success| Result
-  Extractor -->|success| Result
-  Stremio -->|success| Result
-```
-
-`getActiveProviders()` respects user order. `resolve(movie, season, episode)` tries providers sequentially; first success wins. Stremio addon streams are separate from the built-in provider grid.
+`getActiveProviders()` respects user order. Resolve tries providers per scoring/order rules; Stremio addon streams remain a related but separate path.
 
 ### 4.4 Storage / prefs
 
@@ -354,61 +265,47 @@ flowchart TD
 Engine.init(storagePath)
   → storage_open(path)           # crates/storage JSON KV
   → kv.dart prefers Rust KV when engine ready
-  → one-time SharedPreferences migration in facade.dart
 ```
 
-Host prefs (`SettingsService`, `kv.dart`, watch history) live in **`packages/rust/lib/src/`** after wave 1.
+Host prefs / settings facades live in **`packages/rust/lib/src/`** (`SettingsService`, `kv.dart`, watch history, …). Secrets / OAuth stay on the host ([ENGINE_BOUNDARY](ENGINE_BOUNDARY.md) D5).
 
 ---
 
-## 5. Legacy engine packages (transitional)
+## 5. Packages (normalized)
 
-See [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md). All engine logic targets `crates/*`.
+| Package | Role |
+|---------|------|
+| `packages/rust` | Dart FFI bridge, thin catalog/playback services, parity tests |
+| `packages/forja-auth` | Shared TypeScript auth for `apps/web` |
 
-| Package | Wave | Status |
-|---------|------|--------|
-| `packages/streaming` | 1 | **Deleted** — playback in `packages/rust/lib/src/playback/` |
-| `packages/storage` | 1 | **Deleted** — prefs in `packages/rust` |
-| `packages/core` | 1 | **Deleted** — DTOs in `packages/rust/lib/src/models/` |
-| ~~`packages/api`~~ | 2 | **Deleted** (P3-03) |
-
-Deleted (engine in Rust): `packages/scrapers`, `packages/webstreamr`, legacy `packages/forja_*`, `streaming`, `storage`, `core`, `api`.
-
-### Package dependency graph (normalized)
+Deleted engine packages: `api`, `scrapers`, `webstreamr`, `streaming`, `storage`, `core`, legacy `forja_*`.
 
 ```mermaid
 flowchart BT
   rust[packages/rust]
   app["apps/forja"] --> rust
   rust --> crates[crates/*]
+  web["apps/web"] --> auth[packages/forja-auth]
 ```
-
-### What survives in `packages/` (normalized)
-
-| Package | Role | Fate |
-|---------|------|------|
-| `packages/rust` | Dart FFI bridge + parity tests | **Permanent** |
 
 ---
 
-## 6. Flutter UI (minimal)
-
-The UI layer is intentionally simple — no Riverpod, Bloc, or go_router.
+## 6. Flutter UI
 
 | Layer | Path | Role |
 |-------|------|------|
-| Bootstrap | `apps/forja/lib/app/bootstrap.dart` | Platform init, `Engine.init()`, service warm-up, splash |
-| Shell | `apps/forja/lib/shell/` | `MainScreen` tab map, `AppRouter`, `ShellBus`, `nav_config` |
-| Features | `apps/forja/lib/features/` | One folder per nav tab (~20 verticals) |
-| Shared | `apps/forja/lib/shared/` | Player (`media_kit`), design tokens, casting stubs |
+| Bootstrap | `apps/forja/lib/app/bootstrap.dart` | Platform init, `Engine.init()`, `ProviderScope`, splash |
+| Shell | `apps/forja/lib/shell/` | `MainScreen`, `AppRouter`, `ShellBus`, `nav_config`, adaptive profiles |
+| Features | `apps/forja/lib/features/` | One folder per vertical (+ `media/` routes) |
+| Shared | `apps/forja/lib/shared/` | Player, design tokens, extractors, Nuvio, telemetry |
 
-**State:** `StatefulWidget` + `setState`, singleton services (`SettingsService`, `StremioService`, `TorrentStreamService`, …), `ValueNotifier` for theme/nav/search.
+**State:** Migrating to **Riverpod** ([RFC-047](rfc/047-[open]-riverpod-state-migration.md)) — `ProviderScope` at bootstrap; many screens still `StatefulWidget` + singleton services (`SettingsService`, …).
 
-**Routing:** `MaterialApp(home: SplashScreen())` — no named routes. Tab switching via `MainScreen` index. Secondary nav via `Navigator.push`. Cross-feature hot paths via `AppRouter.openMovie()` / `openPlayer()`.
+**Routing:** Splash → shell tabs via `MainScreen` / `nav_config`. Secondary nav via `Navigator` + `AppRouter` (`openMovie`, `openPlayer`, …). No go_router.
 
-**Player:** `shared/player/` → media_kit (custom AimesSoft fork). Defers to `Engine` for torrent re-search, proxy URLs, episode matching. Platform split: `mobile_player_screen.dart` / `desktop_player_screen.dart`.
+**Player (host):** `shared/player/` — **media_kit** (desktop + default Android) and **ExoPlayer/Media3** (Android built-in option). TV menus keep both engines available. Defers to `Engine` for torrent / proxy / resolve jobs.
 
-**Nav tabs (19 + settings):** Home · Discover · Similar · Search · My List · Media Downloader · Magnet · Live Matches · IPTV · Audiobooks · Books · Music · Comics · Manga · Jellyfin · Anime · Anime Arabic · Asian Drama · Arabic · Settings.
+**Nav destinations** (`nav_config.dart`): Home · Discover · Similar · Search · My List · Downloader · Magnet · Live Matches · IPTV · Audiobooks · Books · Music · Comics · Manga · Jellyfin · Anime · Anime Arabic · Asian Drama · Arabic · Settings. Product polish scope for TV/active work is a subset — see [forja-feature-scope](../.cursor/rules/forja-feature-scope.mdc) / [forja-tv-scope](../.cursor/rules/forja-tv-scope.mdc).
 
 ---
 
@@ -418,8 +315,7 @@ The UI layer is intentionally simple — no Riverpod, Bloc, or go_router.
 |--------|--------|
 | `./scripts/build_rust.sh` | `crates/target/release/libffi.{dylib,so,dll}` |
 | `./scripts/build_rust_mobile.sh ios` | `apps/forja/ios/Runner/Frameworks/libffi.dylib` |
-| `./scripts/build_rust_mobile.sh android` | `apps/forja/android/app/src/main/jniLibs/arm64-v8a/libffi.so` |
-| `./scripts/build_macos.sh` | `apps/forja/build/macos/.../forja.app` |
+| `./scripts/build_rust_mobile.sh android` | `jniLibs/{arm64-v8a,armeabi-v7a}/libffi.so` |
 
 | Melos command | What |
 |---------------|------|
@@ -434,7 +330,7 @@ The UI layer is intentionally simple — no Riverpod, Bloc, or go_router.
 |----------|------|
 | Desktop dev | `crates/target/release/libffi.*` |
 | macOS bundle | `apps/forja/macos/Runner/Frameworks/libffi.dylib` |
-| Android | `jniLibs/arm64-v8a/libffi.so` |
+| Android | `jniLibs/arm64-v8a` + `armeabi-v7a` |
 | iOS | `ios/Runner/Frameworks/libffi.dylib` |
 
 ### CI workflows
@@ -442,8 +338,8 @@ The UI layer is intentionally simple — no Riverpod, Bloc, or go_router.
 | Workflow | Trigger |
 |----------|---------|
 | `.github/workflows/rust.yml` | PR touching `crates/**` or `packages/rust/**` |
-| `.github/workflows/forja-macos.yml` | macOS releases |
-| `.github/workflows/build.yml` | Manual multi-platform build (optional) |
+| `.github/workflows/release.yml` | Tagged / release builds |
+| `.github/workflows/build.yml` | Manual multi-platform build |
 
 ### Tests
 
@@ -453,32 +349,18 @@ The UI layer is intentionally simple — no Riverpod, Bloc, or go_router.
 | Dart ↔ Rust parity | `packages/rust/test/parity/` | `cd packages/rust && flutter test` |
 | App smoke | `apps/forja/test/engine_smoke_test.dart` | `melos run rust:integration` |
 
-Parity rule: Rust output must match Dart reference for the same fixture before switching a call site.
-
 ---
 
 ## 8. Migration delta (engine lens)
 
-See [02-rust-engine-complete.md](migration/fixed/02-[fixed]-rust-engine-complete.md) and [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md).
+Phases 1–3 are **`fixed`** — see [migration/README.md](migration/README.md).
 
-### Wave 1 — playback engine (Phase 2)
+| Wave | Outcome |
+|------|---------|
+| Wave 1 — playback | scrapers, webstreamr, torrent, proxy, Stremio/IPTV HTTP in Rust; `streaming`/`storage`/`core` deleted |
+| Wave 2 — catalog | TMDB/Trakt/Jellyfin/AniList/anime/kisskh/live-matches/… in `crates/*`; `packages/api` deleted |
 
-| Status | Items |
-|--------|-------|
-| Done | scrapers, webstreamr, forja_*, torrent filter, HLS proxy, *Backend removed, streaming/storage/core/api delete, Stremio/IPTV HTTP, proxy consolidate, P3-04 catalog ports |
-| Open | C2 vertical hosts in `apps/forja`; P2-89 Stremio catalog orchestration |
-
-### Wave 2 — catalog engine (Phase 3) — complete
-
-See [03-engine-catalog.md](migration/fixed/03-[fixed]-engine-catalog.md). C2 vertical scrape remains in host until ported.
-
-### Wave 1 exit gate
-
-[Playback engine exit checklist](migration/fixed/02-[fixed]-rust-engine-complete.md#playback-engine-exit-checklist) — app shippable; starts wave 2.
-
-### Architecture complete
-
-[03-engine-catalog.md exit checklist](migration/fixed/03-[fixed]-engine-catalog.md#exit-checklist) — only `packages/rust` remains.
+**Still host:** C3–C5 (WebView / Nuvio / WASM), player decode, OAuth/secrets, provider-race UX chrome. Some out-of-scope vertical scrape remains Dart until explicitly ported — [services-map.md](architecture/services-map.md).
 
 ---
 
@@ -486,29 +368,29 @@ See [03-engine-catalog.md](migration/fixed/03-[fixed]-engine-catalog.md). C2 ver
 
 | Decision | Rationale |
 |----------|-----------|
-| **Two layers: engine vs host** | All non-platform logic in `crates/*`; Flutter for UI + platform ([ENGINE_BOUNDARY](ENGINE_BOUNDARY.md)) |
+| **Two layers: engine vs host** | Non-platform logic in `crates/*`; Flutter for UI + platform |
 | **JSON as FFI IPC** | Simplicity over zero-copy |
 | **C ABI via `packages/rust`** | Permanent Dart FFI bridge |
-| **FFI Pattern B default** | fetch+parse in Rust; Pattern A (`*_html_json`) legacy only |
-| **No sync FFI on UI thread** | Long resolve → `Isolate.run` (P2-91) |
-| **Host orchestration** | Provider race UX in UI; Rust owns pipelines (webstreamr, torrent search) |
+| **FFI Pattern B default** | fetch+parse in Rust; Pattern A legacy only |
+| **No sync FFI on UI thread** | Long resolve → jobs + `Isolate.run` / `EngineWorkerPool` |
+| **Resolver-engine owns race** | Host owns progress/cancel + C3–C5 adapters (D2) |
 | **WebView / Nuvio / player host-only** | Platform capabilities — never Rust |
-| **Network is not the boundary** | HTTP location is implementation detail inside engine |
-| **Long-lived localhost axum** | Torrent + proxy inside `libffi` |
+| **Network is not the boundary** | HTTP location is an engine implementation detail |
+| **Long-lived localhost axum** | Torrent + proxy (+ LAN) inside `libffi` |
 | **Thin FFI, fat domain** | Logic in pure crates |
 
 ### Anti-patterns
 
-- Dart wrapper calling Rust instead of deleting Dart
+- Dart wrapper calling Rust instead of deleting Dart engine logic
 - Sync FFI on UI thread for resolve/search
 - New Pattern A FFI for engine work
 - New engine logic in Dart
-- `*Backend` hooks (removed P2-86)
+- Hiding a player engine / setting as a “fix” ([no-hide-as-fix](../.cursor/rules/no-hide-as-fix.mdc))
 
 ### Allowed
 
 - Host provider race + loading/cancel UX
-- C2/C3 vertical hosts in `apps/forja` — no new Dart engine logic outside host boundary
+- C3–C5 vertical hosts in `apps/forja`
 - `EngineWorkerPool` / `isolate_runner` for long FFI calls
 
 ---
@@ -517,13 +399,15 @@ See [03-engine-catalog.md](migration/fixed/03-[fixed]-engine-catalog.md). C2 ver
 
 | Doc | Purpose |
 |-----|---------|
-| [INVENTORY.md](INVENTORY.md) | As-built codebase inventory (facts only) |
+| [INVENTORY.md](INVENTORY.md) | As-built codebase inventory |
 | [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) | Host vs engine boundary (locked) |
+| [architecture/README.md](architecture/README.md) | UI architecture index |
+| [architecture/services-map.md](architecture/services-map.md) | Service placement + port status |
+| [architecture/feature-file-map.md](architecture/feature-file-map.md) | Feature god-file inventory |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Build, run, melos scripts |
 | [crates/README.md](../crates/README.md) | Rust build, NDK, iOS patch |
 | [migration/README.md](migration/README.md) | Migration phases 1–3 (`fixed/`) |
-| [migration/fixed/02-[fixed]-rust-engine-complete.md](migration/fixed/02-[fixed]-rust-engine-complete.md) | Playback wave 1 (complete) |
-| [rfc/fixed/001-[fixed]-monorepo.md](rfc/fixed/001-[fixed]-monorepo.md) | Monorepo layout, dependency rules |
+| [rfc/fixed/001-[fixed]-monorepo.md](rfc/fixed/001-[fixed]-monorepo.md) | Monorepo layout |
 | [rfc/004-[partial]-provider-registry.md](rfc/004-[partial]-provider-registry.md) | Stream provider registry |
 | [rfc/fixed/009-[fixed]-rust-ffi.md](rfc/fixed/009-[fixed]-rust-ffi.md) | Rust FFI spec |
-| [rfc/fixed/011-[fixed]-v1.0-mvp.md](rfc/fixed/011-[fixed]-v1.0-mvp.md) | v1.0 scope |
+| [rfc/047-[open]-riverpod-state-migration.md](rfc/047-[open]-riverpod-state-migration.md) | Riverpod migration |

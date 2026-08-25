@@ -292,6 +292,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(SyncService.instance.refreshSession());
         unawaited(SyncDomainBridge.instance.syncFromCloud(force: true));
+        unawaited(Telemetry.syncAnalyticsIdentity());
       });
     }
   }
@@ -322,6 +323,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
     unawaited(SyncService.instance.refreshSession());
     unawaited(SyncDomainBridge.instance.syncFromCloud());
+    unawaited(Telemetry.syncAnalyticsIdentity());
   }
 
   @override
@@ -329,6 +331,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     if (!(Platform.isWindows || Platform.isLinux || Platform.isMacOS)) return;
     unawaited(SyncService.instance.refreshSession());
     unawaited(SyncDomainBridge.instance.syncFromCloud());
+    unawaited(Telemetry.syncAnalyticsIdentity());
   }
 
   @override
@@ -350,6 +353,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
       // Cloud is master — pull full profile_settings (Stremio, nav, …) into
       // local cache, not only account feature flags.
       unawaited(SyncDomainBridge.instance.syncFromCloud());
+      unawaited(Telemetry.syncAnalyticsIdentity());
       return;
     }
     if (state == AppLifecycleState.detached) {

@@ -2,15 +2,23 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:forja/shared/supabase/forja_supabase.dart';
+import 'package:forja/shared/sync/src/account_features.dart';
+import 'package:forja/shared/sync/src/sync_service.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 import 'package:rust/rust.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'client_runtime_props.dart';
 import 'telemetry_scrub.dart';
 
 /// PostHog product analytics + session replay (RFC-043).
 ///
 /// Opt-in via Settings. Replay on wherever the Flutter SDK supports it
 /// (incl. macOS / Android / iOS; Linux/Windows may no-op inside the SDK).
+/// When signed in, [identify] uses `accounts.id` (= auth user id) and sets
+/// person props: member_number (opaque ops id), app_version, platform,
+/// os_version, arch, last_seen_at. Never email.
 abstract final class ProductAnalytics {
   static const String apiKey = String.fromEnvironment('POSTHOG_API_KEY');
 
@@ -22,6 +30,8 @@ abstract final class ProductAnalytics {
       : _hostDefine;
 
   static bool _active = false;
+  static StreamSubscription<AuthState>? _authSub;
+  static String? _identifiedUserId;
 
   static bool get isConfigured => apiKey.isNotEmpty;
 
@@ -45,6 +55,12 @@ abstract final class ProductAnalytics {
     }
   }
 
+  /// Refresh person props (and re-identify if signed in). Safe no-op when off.
+  static Future<void> syncMemberIdentity() async {
+    if (!_active) return;
+    await _syncIdentity();
+  }
+
   static Future<void> track(
     String name, {
     Map<String, Object?>? properties,
@@ -55,6 +71,7 @@ abstract final class ProductAnalytics {
     if (properties != null) {
       for (final e in properties.entries) {
         if (e.value == null) continue;
+        // Person email is never sent (use member_number on identify).
         if (_sensitivePropertyKey(e.key)) continue;
         final v = e.value!;
         props[e.key] = v is String ? scrubText(v) : v;
@@ -91,6 +108,7 @@ abstract final class ProductAnalytics {
         'Product analytics is off - enable it in Settings first',
       );
     }
+    await _syncIdentity();
     await track('analytics_verify');
   }
 
@@ -102,7 +120,10 @@ abstract final class ProductAnalytics {
       _active = false;
       return;
     }
-    if (_active) return;
+    if (_active) {
+      await _syncIdentity();
+      return;
+    }
 
     final config = PostHogConfig(apiKey)
       ..host = host
@@ -116,32 +137,115 @@ abstract final class ProductAnalytics {
 
     await Posthog().setup(config);
     _active = true;
+    _ensureAuthListener();
     unawaited(track('app_start'));
+    unawaited(_syncIdentity());
   }
 
   static Future<void> _stop() async {
+    await _authSub?.cancel();
+    _authSub = null;
+    _identifiedUserId = null;
     if (!_active) return;
     try {
+      await Posthog().reset();
       await Posthog().disable();
       await Posthog().close();
     } catch (_) {}
     _active = false;
   }
 
+  static void _ensureAuthListener() {
+    if (_authSub != null) return;
+    _authSub = SyncService.instance.authChanges.listen((_) {
+      unawaited(_syncIdentity());
+    });
+  }
+
+  static Future<void> _syncIdentity() async {
+    if (!_active) return;
+    try {
+      final props = await ClientRuntimeProps.collect();
+      final session = SyncService.instance.session;
+      final userId = session?.user.id.trim();
+      if (userId != null && userId.isNotEmpty) {
+        final memberNumber = await _resolveMemberNumber(userId);
+        if (memberNumber != null) {
+          props['member_number'] = memberNumber;
+        }
+        await Posthog().identify(
+          userId: userId,
+          userProperties: props,
+        );
+        _identifiedUserId = userId;
+        return;
+      }
+      if (_identifiedUserId != null) {
+        await Posthog().reset();
+        _identifiedUserId = null;
+        // Re-apply runtime props on the fresh anonymous distinct id.
+        await Posthog().setPersonProperties(userPropertiesToSet: props);
+        return;
+      }
+      await Posthog().setPersonProperties(userPropertiesToSet: props);
+    } catch (e) {
+      debugPrint('[ProductAnalytics] sync identity failed: $e');
+    }
+  }
+
+  static Future<int?> _resolveMemberNumber(String userId) async {
+    final cached = AccountFeatures.instance.memberNumber;
+    if (cached != null) return cached;
+    final client = ForjaSupabase.clientOrNull;
+    if (client == null) return null;
+    try {
+      final row = await client
+          .from('accounts')
+          .select('member_number')
+          .eq('id', userId)
+          .maybeSingle();
+      final n = switch (row?['member_number']) {
+        int v => v,
+        num v => v.toInt(),
+        String s => int.tryParse(s),
+        _ => null,
+      };
+      if (n != null) {
+        AccountFeatures.instance.setMemberNumber(n);
+      }
+      return n;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static PostHogEvent? _beforeSend(PostHogEvent event) {
     final props = event.properties;
     if (props == null) return event;
+    _scrubPropertyMap(props);
+    return event;
+  }
+
+  /// Scrub event props + nested `$set` / `$set_once` (identify person bags).
+  static void _scrubPropertyMap(Map<String, Object> props) {
     for (final key in props.keys.toList()) {
       if (_sensitivePropertyKey(key)) {
         props.remove(key);
         continue;
       }
       final v = props[key];
-      if (v is String) {
+      if (v is Map) {
+        final nested = Map<String, Object>.from(
+          v.map((k, val) => MapEntry(k.toString(), val as Object)),
+        );
+        _scrubPropertyMap(nested);
+        props[key] = nested;
+        continue;
+      }
+      if (v is String && !_isPersonEmailKey(key)) {
         props[key] = scrubText(v);
       }
     }
-    return event;
   }
 
   static const Set<String> _allowedEvents = {
@@ -155,7 +259,14 @@ abstract final class ProductAnalytics {
     'play_started',
   };
 
+  /// Person email keys stay blocked everywhere (GDPR — use member_number).
+  static bool _isPersonEmailKey(String key) {
+    final k = key.toLowerCase();
+    return k == 'email' || k == r'$email';
+  }
+
   static bool _sensitivePropertyKey(String key) {
+    if (_isPersonEmailKey(key)) return true;
     final k = key.toLowerCase();
     return k.contains('token') ||
         k.contains('password') ||

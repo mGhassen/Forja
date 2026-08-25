@@ -25,6 +25,7 @@ class AccountFeatures {
   int _iptvCredits = 0;
   bool _isAdmin = false;
   int _maxIptvPortals = defaultMaxIptvPortals;
+  int? _memberNumber;
 
   /// Reddit / Find Portals scrape in the IPTV tab.
   bool get isIptvScrapeEnabled => _iptvScrape;
@@ -34,6 +35,10 @@ class AccountFeatures {
 
   /// Credits for dealing portals from the catalog pool (RFC-040).
   int get iptvCredits => _iptvCredits;
+
+  /// Opaque internal member id (`accounts.member_number`) for ops / PostHog.
+  /// Null when signed out or column not yet available.
+  int? get memberNumber => _memberNumber;
 
   /// `accounts.is_admin` — experimental / ops toggles in Settings (Webstreaming
   /// play source, WebStreamr hub, Debrid, Lists, Trakt, About Privacy/Developer,
@@ -92,17 +97,20 @@ class AccountFeatures {
     Map<String, dynamic>? raw, {
     int? iptvCredits,
     bool? isAdmin,
+    int? memberNumber,
   }) {
     final nextScrape = raw != null && raw['iptvScrape'] == true;
     final nextDeal = raw != null && raw['dealPortal'] == true;
     final nextCredits = (iptvCredits ?? _iptvCredits).clamp(0, 1 << 30);
     final nextAdmin = isAdmin ?? _isAdmin;
     final nextMax = _parseMaxIptvPortals(raw);
+    final nextMember = memberNumber ?? _memberNumber;
     if (nextScrape == _iptvScrape &&
         nextDeal == _dealPortal &&
         nextCredits == _iptvCredits &&
         nextAdmin == _isAdmin &&
-        nextMax == _maxIptvPortals) {
+        nextMax == _maxIptvPortals &&
+        nextMember == _memberNumber) {
       return;
     }
     _iptvScrape = nextScrape;
@@ -110,6 +118,7 @@ class AccountFeatures {
     _iptvCredits = nextCredits;
     _isAdmin = nextAdmin;
     _maxIptvPortals = nextMax;
+    _memberNumber = nextMember;
     revision.value++;
   }
 
@@ -121,13 +130,21 @@ class AccountFeatures {
     revision.value++;
   }
 
+  /// Cache opaque member id without touching feature flags.
+  void setMemberNumber(int? value) {
+    if (value == _memberNumber) return;
+    _memberNumber = value;
+    revision.value++;
+  }
+
   /// Reset to all-off (sign-out / guest). Portal cap returns to default.
   void clear() {
     if (!_iptvScrape &&
         !_dealPortal &&
         _iptvCredits == 0 &&
         !_isAdmin &&
-        _maxIptvPortals == defaultMaxIptvPortals) {
+        _maxIptvPortals == defaultMaxIptvPortals &&
+        _memberNumber == null) {
       return;
     }
     _iptvScrape = false;
@@ -135,6 +152,7 @@ class AccountFeatures {
     _iptvCredits = 0;
     _isAdmin = false;
     _maxIptvPortals = defaultMaxIptvPortals;
+    _memberNumber = null;
     revision.value++;
   }
 }

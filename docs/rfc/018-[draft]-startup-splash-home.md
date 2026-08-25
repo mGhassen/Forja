@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **1 / 5** acceptance (splash / deferred) · **3 / 3** acceptance (catalog lazy load) |
-| **Current slice** | Catalog lazy load shipped — splash + deferred imports still open |
+| **Progress** | **0 / 4** acceptance (splash / deferred) · **1 ⏭️** stagger · **2 / 2** fetch (A08–A09) · **2 ⏭️** viewport lazy |
+| **Current slice** | One TMDB page on open + horizontal page-2 load-more — viewport lazy rails deferred |
 | **Backlog** | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) → deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -22,7 +22,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R18-A01 | No fixed minimum splash delay in bootstrap | ⬜ |
-| 2 | R18-A02 | Home shows hero/trending before secondary rails populate | ✅ |
+| 2 | R18-A02 | Home shows hero/trending before secondary rails populate | ⏭️ |
 | 3 | R18-A03 | Palette not run for off-screen posters in initial build | ⬜ |
 | 4 | R18-A04 | At least 3 features use deferred import | ⬜ |
 | 5 | R18-A05 | No regression in Home content after full load | ⬜ |
@@ -33,9 +33,12 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R18-A06 | Open Home fetches only hero (trending) + Featured; Popular is +1 preload | ✅ |
-| 2 | R18-A07 | Viewport arms each later TMDB rail and preloads only the next rail | ✅ |
+| 1 | R18-A06 | Open Home fetches only hero (trending) + Featured; Popular is +1 preload | ⏭️ |
+| 2 | R18-A07 | Viewport arms each later TMDB rail and preloads only the next rail | ⏭️ |
 | 3 | R18-A08 | One TMDB page per rail · display cap 20 (full page) | ✅ |
+| 4 | R18-A09 | Horizontal near-end loads TMDB page 2 once per discovery row | ✅ |
+
+Viewport-gated rails (R18-A06/A07) caused full-page flash from `VisibilityDetector` + `setState` remounts — reverted. Keep A08 only until a non-flashing stagger lands.
 
 ---
 

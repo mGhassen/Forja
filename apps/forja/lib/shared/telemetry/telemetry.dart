@@ -72,6 +72,10 @@ abstract final class Telemetry {
     );
   }
 
+  /// Refresh PostHog person props / member identify (no-op when analytics off).
+  static Future<void> syncAnalyticsIdentity() =>
+      ProductAnalytics.syncMemberIdentity();
+
   /// Allowlisted product event → PostHog (not Sentry).
   static Future<void> track(
     String name, {

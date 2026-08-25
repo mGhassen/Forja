@@ -131,6 +131,12 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     String? tvRowId,
     int tvRowOrder = 0,
   }) {
+    Future<List<Movie>> Function()? loadMore;
+    final id = tvRowId;
+    if (id != null &&
+        (id == 'popular' || id == 'featured' || id == 'new-releases')) {
+      loadMore = () => _s._loadMoreHomeRail(id);
+    }
     // Cold start only — never skeleton on top-menu filter flips (keep cards).
     if (movies.isEmpty && !async.hasValue) {
       return HomeMovieSection(
@@ -142,6 +148,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
         tvFocusUp: tvFocusUp,
         tvRowId: tvRowId,
         tvRowOrder: tvRowOrder,
+        loadMore: loadMore,
       );
     }
     if (movies.isEmpty) return const SizedBox.shrink();
@@ -154,130 +161,53 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
       compactTop: compactTop,
       showRank: showRank,
       tvFocusUp: tvFocusUp,
+      loadMore: loadMore,
     );
   }
 
-  List<Widget> _randomCategoryRowSlivers(
-    Map<String, List<Movie>> displays, {
-    required bool usesShellHome,
-  }) =>
-      [
+  List<Widget> _randomCategoryRowSlivers(Map<String, List<Movie>> displays) => [
         for (var i = 0; i < _s._randomCategoryRows.length; i++)
           _homeRowSliver(
             () {
               final row = _s._randomCategoryRows[i];
+              final claimed = displays['genre-${row.id}'] ?? const <Movie>[];
               final railId = 'genre-${row.id}';
-              final claimed = displays[railId] ?? const <Movie>[];
-              if (!_s._isRailArmed(railId)) {
-                return _lazyRailGate(
-                  railId: railId,
-                  usesShellHome: usesShellHome,
-                  child: homeLoadingShimmer(
-                    homeMovieRowSkeleton(context, titleWidth: 140),
-                  ),
-                );
-              }
               if (row.pool == null) {
-                return _lazyRailGate(
-                  railId: railId,
-                  usesShellHome: usesShellHome,
-                  child: HomeMovieSection(
-                    key: ValueKey(row.id),
-                    title: row.label,
-                    future: row.future,
-                    onMovieTap: _s._openDetails,
-                    tvRowId: railId,
-                    tvRowOrder: _kGenreRowOrderBase + i,
-                  ),
-                );
-              }
-              if (claimed.isEmpty) return const SizedBox.shrink();
-              return _lazyRailGate(
-                railId: railId,
-                usesShellHome: usesShellHome,
-                child: HomeStaticMovieSection(
-                  key: ValueKey('${row.id}-claimed'),
+                return HomeMovieSection(
+                  key: ValueKey(row.id),
                   title: row.label,
-                  movies: claimed,
+                  future: row.future,
                   onMovieTap: _s._openDetails,
                   tvRowId: railId,
                   tvRowOrder: _kGenreRowOrderBase + i,
-                ),
+                  loadMore: () => _s._loadMoreHomeRail(railId),
+                );
+              }
+              if (claimed.isEmpty) return const SizedBox.shrink();
+              return HomeStaticMovieSection(
+                key: ValueKey('${row.id}-claimed'),
+                title: row.label,
+                movies: claimed,
+                onMovieTap: _s._openDetails,
+                tvRowId: railId,
+                tvRowOrder: _kGenreRowOrderBase + i,
+                loadMore: () => _s._loadMoreHomeRail(railId),
               );
             }(),
             isFirstAfterHero: false,
           ),
       ];
 
-  Widget _lazyRailGate({
-    required String railId,
-    required bool usesShellHome,
-    required Widget child,
-  }) {
-    return VisibilityDetector(
-      key: Key('home-lazy-$railId'),
-      onVisibilityChanged: (info) {
-        if (info.visibleFraction <= 0) return;
-        _s._armRailAndNext(railId, usesShellHome: usesShellHome);
-      },
-      child: child,
-    );
-  }
-
-  Widget _gatedTmdbRail({
-    required String railId,
-    required bool usesShellHome,
-    required bool armed,
-    required Widget Function() buildArmed,
-  }) {
-    final child = armed
-        ? buildArmed()
-        : homeLoadingShimmer(homeMovieRowSkeleton(context, titleWidth: 160));
-    return _lazyRailGate(
-      railId: railId,
-      usesShellHome: usesShellHome,
-      child: child,
-    );
-  }
-
-  AsyncValue<List<Movie>> _watchArmedRail(
-    String railId,
-    ProviderListenable<AsyncValue<List<Movie>>> provider,
-    List<Movie> cache,
-  ) {
-    if (!_s._isRailArmed(railId)) {
-      if (cache.isNotEmpty) return AsyncValue.data(cache);
-      return const AsyncValue<List<Movie>>.loading();
-    }
-    return ref.watch(provider);
-  }
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final usesShellHome = _usesShellHomeLayout(context);
-    _s._ensureBootstrapArms(usesShellHome: usesShellHome);
-    if (_s._isRailArmed('mood') && _s._moodFuture == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _s._kickMoodIfArmed();
-      });
-    }
     _s._syncMainRailFutures();
     _listenHomeFeedSideEffects();
 
     final trendingAsync = ref.watch(homeTrendingProvider);
     final featuredAsync = ref.watch(homeFeaturedProvider);
-    final popularAsync = _watchArmedRail(
-      'popular',
-      homePopularProvider,
-      _s._railCachePopular,
-    );
-    final nowPlayingAsync = _watchArmedRail(
-      'new-releases',
-      homeNowPlayingProvider,
-      _s._railCacheNowPlaying,
-    );
+    final popularAsync = ref.watch(homePopularProvider);
+    final nowPlayingAsync = ref.watch(homeNowPlayingProvider);
 
     // Watch filters so rails rebuild when top menu changes (providers refetch).
     ref.watch(shellHomeCategoryProvider);
@@ -294,12 +224,8 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
 
     remember(trendingAsync, (v) => _s._railCacheTrending = v);
     remember(featuredAsync, (v) => _s._railCacheFeatured = v);
-    if (_s._isRailArmed('popular')) {
-      remember(popularAsync, (v) => _s._railCachePopular = v);
-    }
-    if (_s._isRailArmed('new-releases')) {
-      remember(nowPlayingAsync, (v) => _s._railCacheNowPlaying = v);
-    }
+    remember(popularAsync, (v) => _s._railCachePopular = v);
+    remember(nowPlayingAsync, (v) => _s._railCacheNowPlaying = v);
 
     List<Movie> poolOf(AsyncValue<List<Movie>> async, List<Movie> cache) {
       final v = async.valueOrNull;
@@ -324,6 +250,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
       nowPlaying: poolOf(nowPlayingAsync, _s._railCacheNowPlaying),
     );
 
+    final usesShellHome = _usesShellHomeLayout(context);
     final fullHero = homeIsFullCinematicHero(context);
     final featuredMovies = displays['featured'] ?? const <Movie>[];
     final popularMovies = displays['popular'] ?? const <Movie>[];
@@ -353,19 +280,15 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     final heroMoviesFuture = _s._heroMoviesFuture;
 
     final featuredSection = usesShellHome && fullHero
-        ? _lazyRailGate(
-            railId: 'featured',
-            usesShellHome: usesShellHome,
-            child: _claimedRailSection(
-              title: 'Featured This Month',
-              async: featuredAsync,
-              movies: featuredMovies,
-              fallbackFuture: _s._featuredThisMonthFuture,
-              compactTop: true,
-              tvFocusUp: _s._homeHeroController.revealPlayFocus,
-              tvRowId: 'featured',
-              tvRowOrder: 0,
-            ),
+        ? _claimedRailSection(
+            title: 'Featured This Month',
+            async: featuredAsync,
+            movies: featuredMovies,
+            fallbackFuture: _s._featuredThisMonthFuture,
+            compactTop: true,
+            tvFocusUp: _s._homeHeroController.revealPlayFocus,
+            tvRowId: 'featured',
+            tvRowOrder: 0,
           )
         : null;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -400,25 +323,18 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
 
               if (!usesShellHome)
                 _homeRowSliver(
-                  _lazyRailGate(
-                    railId: 'continue',
-                    usesShellHome: usesShellHome,
-                    child: HomeContinueWatchingSection(compactTop: true),
-                  ),
+                  HomeContinueWatchingSection(compactTop: true),
                   isFirstAfterHero: true,
                 ),
 
               if (!usesShellHome)
                 _homeRowSliver(
-                  _lazyRailGate(
-                    railId: 'featured',
-                    usesShellHome: usesShellHome,
-                    child: _claimedRailSection(
-                      title: 'Featured This Month',
-                      async: featuredAsync,
-                      movies: featuredMovies,
-                      fallbackFuture: _s._featuredThisMonthFuture,
-                    ),
+                  _claimedRailSection(
+                    title: 'Featured This Month',
+                    async: featuredAsync,
+                    movies: featuredMovies,
+                    fallbackFuture: _s._featuredThisMonthFuture,
+                    tvRowId: 'featured',
                   ),
                   isFirstAfterHero: false,
                 ),
@@ -426,79 +342,61 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
               // Narrow desktop (< full cinematic): Featured as a normal row.
               if (usesShellHome && !fullHero)
                 _homeRowSliver(
-                  _lazyRailGate(
-                    railId: 'featured',
-                    usesShellHome: usesShellHome,
-                    child: _claimedRailSection(
-                      title: 'Featured This Month',
-                      async: featuredAsync,
-                      movies: featuredMovies,
-                      fallbackFuture: _s._featuredThisMonthFuture,
-                      compactTop: true,
-                      tvFocusUp: _s._homeHeroController.revealPlayFocus,
-                      tvRowId: 'featured',
-                      tvRowOrder: 0,
-                    ),
+                  _claimedRailSection(
+                    title: 'Featured This Month',
+                    async: featuredAsync,
+                    movies: featuredMovies,
+                    fallbackFuture: _s._featuredThisMonthFuture,
+                    compactTop: true,
+                    tvFocusUp: _s._homeHeroController.revealPlayFocus,
+                    tvRowId: 'featured',
+                    tvRowOrder: 0,
                   ),
                   isFirstAfterHero: true,
                 ),
 
               if (usesShellHome)
                 _homeRowSliver(
-                  _gatedTmdbRail(
-                    railId: 'popular',
-                    usesShellHome: usesShellHome,
-                    armed: _s._isRailArmed('popular'),
-                    buildArmed: () => _claimedRailSection(
-                      title: 'Popular',
-                      async: popularAsync,
-                      movies: popularMovies,
-                      fallbackFuture: _s._popularFuture,
-                      showRank: true,
-                      // First catalog row under hero when Featured is embedded in
-                      // the hero bleed - UP must reach Play, not stop on Featured.
-                      tvFocusUp: featuredSection != null
-                          ? _s._homeHeroController.revealPlayFocus
-                          : null,
-                      tvRowId: 'popular',
-                      tvRowOrder: 1,
-                    ),
+                  _claimedRailSection(
+                    title: 'Popular',
+                    async: popularAsync,
+                    movies: popularMovies,
+                    fallbackFuture: _s._popularFuture,
+                    showRank: true,
+                    // First catalog row under hero when Featured is embedded in
+                    // the hero bleed - UP must reach Play, not stop on Featured.
+                    tvFocusUp: featuredSection != null
+                        ? _s._homeHeroController.revealPlayFocus
+                        : null,
+                    tvRowId: 'popular',
+                    tvRowOrder: 1,
                   ),
                   isFirstAfterHero: featuredSection == null && fullHero,
                 ),
 
               if (usesShellHome)
                 _homeRowSliver(
-                  _lazyRailGate(
-                    railId: 'continue',
-                    usesShellHome: usesShellHome,
-                    child: HomeContinueWatchingSection(
-                      compactTop: false,
-                      tvRowId: 'continue',
-                      tvRowOrder: 2,
-                    ),
+                  HomeContinueWatchingSection(
+                    compactTop: false,
+                    tvRowId: 'continue',
+                    tvRowOrder: 2,
                   ),
                   isFirstAfterHero: false,
                 ),
 
               // Mood / Genre chips - interactive filter
               _homeRowSliver(
-                _gatedTmdbRail(
-                  railId: 'mood',
-                  usesShellHome: usesShellHome,
-                  armed: _s._isRailArmed('mood'),
-                  buildArmed: () => HomeMoodSection(
-                    key: ValueKey('mood-${_s._selectedMood}'),
-                    moods: _HomeScreenState._moods,
-                    selectedId: _s._selectedMood,
-                    onSelect: _s._selectMood,
-                    future: _s._moodPool != null
-                        ? Future<List<Movie>>.value(moodMovies)
-                        : (_s._moodFuture ?? Future.value(const <Movie>[])),
-                    onMovieTap: _s._openDetails,
-                    compactTop: false,
-                    tvRowOrder: 3,
-                  ),
+                HomeMoodSection(
+                  key: ValueKey('mood-${_s._selectedMood}'),
+                  moods: _HomeScreenState._moods,
+                  selectedId: _s._selectedMood,
+                  onSelect: _s._selectMood,
+                  future: _s._moodPool != null
+                      ? Future<List<Movie>>.value(moodMovies)
+                      : _s._moodFuture,
+                  onMovieTap: _s._openDetails,
+                  compactTop: false,
+                  tvRowOrder: 3,
                 ),
                 isFirstAfterHero: false,
               ),
@@ -507,37 +405,29 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
               // (the /recommendations endpoint, not the trash /similar one)
               if (_s._becauseSeed != null && _s._becauseFuture != null)
                 _homeRowSliver(
-                  _lazyRailGate(
-                    railId: 'because',
-                    usesShellHome: usesShellHome,
-                    child: HomeBecauseYouWatchedSection(
-                      seedTitle: (_s._becauseSeed!['title'] as String?) ?? '',
-                      seedPosterPath: (_s._becauseSeed!['posterPath'] as String?) ?? '',
-                      future: _s._becausePool != null
-                          ? Future<List<Movie>>.value(becauseMovies)
-                          : _s._becauseFuture!,
-                      onMovieTap: _s._openDetails,
-                      // Only allow re-rolling when there's actually more than
-                      // one in-progress show to choose between.
-                      onShuffle: _s._becausePoolSize > 1 ? _s._shuffleBecauseSeed : null,
-                    ),
+                  HomeBecauseYouWatchedSection(
+                    seedTitle: (_s._becauseSeed!['title'] as String?) ?? '',
+                    seedPosterPath: (_s._becauseSeed!['posterPath'] as String?) ?? '',
+                    future: _s._becausePool != null
+                        ? Future<List<Movie>>.value(becauseMovies)
+                        : _s._becauseFuture!,
+                    onMovieTap: _s._openDetails,
+                    // Only allow re-rolling when there's actually more than
+                    // one in-progress show to choose between.
+                    onShuffle: _s._becausePoolSize > 1 ? _s._shuffleBecauseSeed : null,
                   ),
                   isFirstAfterHero: false,
                 ),
 
               if (!usesShellHome)
                 _homeRowSliver(
-                  _gatedTmdbRail(
-                    railId: 'popular',
-                    usesShellHome: usesShellHome,
-                    armed: _s._isRailArmed('popular'),
-                    buildArmed: () => _claimedRailSection(
-                      title: 'Popular',
-                      async: popularAsync,
-                      movies: popularMovies,
-                      fallbackFuture: _s._popularFuture,
-                      showRank: true,
-                    ),
+                  _claimedRailSection(
+                    title: 'Popular',
+                    async: popularAsync,
+                    movies: popularMovies,
+                    fallbackFuture: _s._popularFuture,
+                    showRank: true,
+                    tvRowId: 'popular',
                   ),
                   isFirstAfterHero: false,
                 ),
@@ -545,27 +435,19 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
               // Trakt Recommendations
               if (_s._traktRecsLoading)
                 _homeRowSliver(
-                  _lazyRailGate(
-                    railId: 'trakt-recs',
-                    usesShellHome: usesShellHome,
-                    child: homeLoadingShimmer(
-                      homeMovieRowSkeleton(context, titleWidth: 180),
-                    ),
+                  homeLoadingShimmer(
+                    homeMovieRowSkeleton(context, titleWidth: 180),
                   ),
                   isFirstAfterHero: false,
                 )
               else if (traktRecMovies.isNotEmpty)
                 _homeRowSliver(
-                  _lazyRailGate(
-                    railId: 'trakt-recs',
-                    usesShellHome: usesShellHome,
-                    child: HomeStaticMovieSection(
-                      title: 'Recommended for You',
-                      movies: traktRecMovies,
-                      onMovieTap: _s._openDetails,
-                      tvRowId: 'trakt-recs',
-                      tvRowOrder: 11,
-                    ),
+                  HomeStaticMovieSection(
+                    title: 'Recommended for You',
+                    movies: traktRecMovies,
+                    onMovieTap: _s._openDetails,
+                    tvRowId: 'trakt-recs',
+                    tvRowOrder: 11,
                   ),
                   isFirstAfterHero: false,
                 ),
@@ -573,80 +455,56 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
               // Trakt Calendar
               if (_s._traktShowsLoading)
                 _homeRowSliver(
-                  _lazyRailGate(
-                    railId: 'trakt-shows',
-                    usesShellHome: usesShellHome,
-                    child: homeLoadingShimmer(
-                      homeMovieRowSkeleton(context, titleWidth: 170),
-                    ),
+                  homeLoadingShimmer(
+                    homeMovieRowSkeleton(context, titleWidth: 170),
                   ),
                   isFirstAfterHero: false,
                 )
               else if (_s._traktUpcomingShows.isNotEmpty)
                 _homeRowSliver(
-                  _lazyRailGate(
-                    railId: 'trakt-shows',
-                    usesShellHome: usesShellHome,
-                    child: HomeStaticMovieSection(
-                      title: 'Upcoming Schedule',
-                      movies: _s._traktUpcomingShows,
-                      onMovieTap: _s._openDetails,
-                      tvRowId: 'trakt-shows',
-                      tvRowOrder: 12,
-                    ),
+                  HomeStaticMovieSection(
+                    title: 'Upcoming Schedule',
+                    movies: _s._traktUpcomingShows,
+                    onMovieTap: _s._openDetails,
+                    tvRowId: 'trakt-shows',
+                    tvRowOrder: 12,
                   ),
                   isFirstAfterHero: false,
                 ),
 
               if (_s._traktMoviesLoading)
                 _homeRowSliver(
-                  _lazyRailGate(
-                    railId: 'trakt-movies',
-                    usesShellHome: usesShellHome,
-                    child: homeLoadingShimmer(
-                      homeMovieRowSkeleton(context, titleWidth: 160),
-                    ),
+                  homeLoadingShimmer(
+                    homeMovieRowSkeleton(context, titleWidth: 160),
                   ),
                   isFirstAfterHero: false,
                 )
               else if (_s._traktUpcomingMovies.isNotEmpty)
                 _homeRowSliver(
-                  _lazyRailGate(
-                    railId: 'trakt-movies',
-                    usesShellHome: usesShellHome,
-                    child: HomeStaticMovieSection(
-                      title: 'Upcoming Movies',
-                      movies: _s._traktUpcomingMovies,
-                      onMovieTap: _s._openDetails,
-                      tvRowId: 'trakt-movies',
-                      tvRowOrder: 13,
-                    ),
+                  HomeStaticMovieSection(
+                    title: 'Upcoming Movies',
+                    movies: _s._traktUpcomingMovies,
+                    onMovieTap: _s._openDetails,
+                    tvRowId: 'trakt-movies',
+                    tvRowOrder: 13,
                   ),
                   isFirstAfterHero: false,
                 ),
 
               // New Releases
               _homeRowSliver(
-                _gatedTmdbRail(
-                  railId: 'new-releases',
-                  usesShellHome: usesShellHome,
-                  armed: _s._isRailArmed('new-releases'),
-                  buildArmed: () => _claimedRailSection(
-                    title: 'New Releases',
-                    async: nowPlayingAsync,
-                    movies: newReleaseMovies,
-                    fallbackFuture: _s._nowPlayingFuture,
-                    tvRowId: 'new-releases',
-                    tvRowOrder: _kNewReleasesRowOrder,
-                  ),
+                _claimedRailSection(
+                  title: 'New Releases',
+                  async: nowPlayingAsync,
+                  movies: newReleaseMovies,
+                  fallbackFuture: _s._nowPlayingFuture,
+                  tvRowId: 'new-releases',
+                  tvRowOrder: _kNewReleasesRowOrder,
                 ),
                 isFirstAfterHero: false,
               ),
 
-              ..._randomCategoryRowSlivers(
-                displays,
-                usesShellHome: usesShellHome,
-              ),
+              ..._randomCategoryRowSlivers(displays),
 
               SliverToBoxAdapter(
                 child: SizedBox(height: shellTvCatalogScrollBottomGap(context)),

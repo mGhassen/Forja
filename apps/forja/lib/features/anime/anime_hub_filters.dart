@@ -48,6 +48,11 @@ Future<List<AnimeCard>> filterAnimeFuture(Future<List<AnimeCard>> future) {
   );
 }
 
+/// Top-menu Films / Series / Categories — hub rails refetch from AniList.
+bool animeHubFilterActive() =>
+    ShellBus.animeCategory.value != null ||
+    ShellBus.animeSelectedGenreId.value != null;
+
 final shellAnimeCategoryProvider =
     NotifierProvider<ShellAnimeCategoryNotifier, ShellHomeCategory?>(
   ShellAnimeCategoryNotifier.new,

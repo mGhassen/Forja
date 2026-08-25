@@ -43,11 +43,17 @@ import {
   createPortalShare,
   formatShareCode,
 } from '@/lib/iptv-portal-share'
+import {
+  formatClientLabel,
+  formatRelativeSeen,
+  fetchPosthogPersons,
+} from '@/lib/posthog-persons'
 import { useTablePagination } from '@/lib/use-table-pagination'
 import { cn } from '@/lib/utils'
 
 type AccountRow = {
   id: string
+  member_number: number
   email: string | null
   is_admin: boolean
   iptv_credits: number
@@ -292,11 +298,16 @@ export function AdminAccountsPage() {
       return fetchAllRows(async (from, to) => {
         let req = adminDb
           .from('accounts')
-          .select('id, email, is_admin, iptv_credits, features')
+          .select('id, member_number, email, is_admin, iptv_credits, features')
           .order('created_at', { ascending: false })
           .range(from, to)
         if (needle) {
-          req = req.ilike('email', `%${needle}%`)
+          const asNum = Number(needle)
+          if (Number.isInteger(asNum) && asNum > 0) {
+            req = req.eq('member_number', asNum)
+          } else {
+            req = req.ilike('email', `%${needle}%`)
+          }
         }
         const { data, error } = await req
         if (error) throw error
@@ -315,10 +326,22 @@ export function AdminAccountsPage() {
     resetKey: q,
   })
 
+  const pageIds = useMemo(
+    () => paging.pageRows.map((a) => a.id),
+    [paging.pageRows],
+  )
+
   const counts = useQuery({
     queryKey: ['admin', 'account_portal_counts', accountIds],
     queryFn: () => countAssignmentsForAccounts(accountIds),
     enabled: accountIds.length > 0,
+  })
+
+  const posthog = useQuery({
+    queryKey: ['admin', 'posthog_persons', pageIds],
+    queryFn: () => fetchPosthogPersons(pageIds),
+    enabled: pageIds.length > 0,
+    staleTime: 60_000,
   })
 
   const adjustCredits = useMutation({
@@ -340,7 +363,7 @@ export function AdminAccountsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Accounts"
-        description="Credits, feature flags, and per-account portal assignments."
+        description="Credits, feature flags, client runtime from PostHog, and portal assignments."
       />
 
       <div className="relative max-w-md">
@@ -350,7 +373,7 @@ export function AdminAccountsPage() {
         />
         <Input
           className="pl-9"
-          placeholder="Filter by email…"
+          placeholder="Filter by member # or email…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -362,11 +385,28 @@ export function AdminAccountsPage() {
       {adjustCredits.error ? (
         <p className="text-sm text-red-400">{adjustCredits.error.message}</p>
       ) : null}
+      {posthog.data && !posthog.data.configured ? (
+        <p className="text-sm text-forja-muted">
+          Client runtime hidden — set server{' '}
+          <code className="font-mono-ui text-xs">POSTHOG_PERSONAL_API_KEY</code>{' '}
+          + <code className="font-mono-ui text-xs">POSTHOG_PROJECT_ID</code>.
+        </p>
+      ) : null}
+      {posthog.error ? (
+        <p className="text-sm text-amber-300/90">
+          PostHog: {(posthog.error as Error).message}
+        </p>
+      ) : null}
+      {posthog.data?.error ? (
+        <p className="text-sm text-amber-300/90">PostHog: {posthog.data.error}</p>
+      ) : null}
 
       {!list.isLoading && (list.data?.length ?? 0) === 0 ? (
         <EmptyState
           title="No accounts"
-          description={q.trim() ? 'Try another email filter.' : undefined}
+          description={
+            q.trim() ? 'Try another member # or email filter.' : undefined
+          }
         />
       ) : (
         <div className={tableWrapClassName}>
@@ -375,7 +415,11 @@ export function AdminAccountsPage() {
               <thead>
                 <tr>
                   <th className={cn(thClassName, 'w-8')} />
-                  <th className={thClassName}>Email</th>
+                  <th className={cn(thClassName, 'w-24')}>Member #</th>
+                  <th className={thClassName}>Account</th>
+                  <th className={cn(thClassName, 'w-28')}>App</th>
+                  <th className={cn(thClassName, 'w-36')}>Client</th>
+                  <th className={cn(thClassName, 'w-28')}>Last seen</th>
                   <th className={cn(thClassName, 'w-20')}>Portals</th>
                   <th className={cn(thClassName, 'w-44')}>Credits</th>
                   <th className={cn(thClassName, 'min-w-40')}>Features</th>
@@ -390,6 +434,9 @@ export function AdminAccountsPage() {
                   const rowBusy = busyId === a.id
                   const expanded = openId === a.id
                   const portalCount = counts.data?.[a.id] ?? 0
+                  const runtime = posthog.data?.persons[a.id]
+                  const clientLabel = formatClientLabel(runtime)
+                  const seenLabel = formatRelativeSeen(runtime?.lastSeenAt)
                   return (
                     <Fragment key={a.id}>
                       <tr className="border-t border-forja-border/80 hover:bg-white/2">
@@ -412,15 +459,54 @@ export function AdminAccountsPage() {
                             )}
                           </button>
                         </td>
+                        <td
+                          className={cn(
+                            tdClassName,
+                            'font-mono tabular-nums text-forja-muted',
+                          )}
+                        >
+                          {a.member_number}
+                        </td>
                         <td className={tdClassName}>
-                          <span className="font-medium">
-                            {a.email ?? a.id.slice(0, 8)}
-                          </span>
-                          {a.is_admin ? (
-                            <span className="ml-2 inline-flex rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
-                              admin
-                            </span>
-                          ) : null}
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-medium">
+                                {a.email ?? a.id.slice(0, 8)}
+                              </span>
+                              {a.is_admin ? (
+                                <span className="inline-flex rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                                  admin
+                                </span>
+                              ) : null}
+                            </div>
+                            {runtime?.osVersion ? (
+                              <p className="mt-0.5 truncate text-[11px] text-forja-muted">
+                                {runtime.osVersion}
+                              </p>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td
+                          className={cn(
+                            tdClassName,
+                            'font-mono text-xs tabular-nums',
+                          )}
+                        >
+                          {posthog.isLoading && !runtime
+                            ? '…'
+                            : (runtime?.appVersion ?? '—')}
+                        </td>
+                        <td className={cn(tdClassName, 'text-sm')}>
+                          {posthog.isLoading && !runtime ? '…' : clientLabel}
+                        </td>
+                        <td
+                          className={cn(
+                            tdClassName,
+                            'text-sm tabular-nums text-forja-muted',
+                          )}
+                          title={runtime?.lastSeenAt ?? undefined}
+                        >
+                          {posthog.isLoading && !runtime ? '…' : seenLabel}
                         </td>
                         <td
                           className={cn(
@@ -490,7 +576,7 @@ export function AdminAccountsPage() {
                       </tr>
                       {expanded ? (
                         <tr>
-                          <td colSpan={5} className="p-0">
+                          <td colSpan={9} className="p-0">
                             <AccountPortals
                               accountId={a.id}
                               onAssign={() =>

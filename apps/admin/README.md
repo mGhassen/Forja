@@ -13,6 +13,8 @@ pnpm dev   # http://127.0.0.1:4000
 
 Sign in with an account where `accounts.is_admin = true`.
 
+**PostHog on Accounts (optional):** set `POSTHOG_PERSONAL_API_KEY` + `POSTHOG_PROJECT_ID` (personal key with `person:read` / query; not the Flutter capture key). See `.env.example`.
+
 ## Inngest catalog scrape
 
 ```bash
@@ -35,7 +37,7 @@ Needs `SUPABASE_SERVICE_ROLE_KEY` + Inngest keys (see `.env.example`). Inngest t
 |------|------|
 | `/login` | Same auth + captcha as web |
 | `/` | Dashboard |
-| `/accounts` | Credits + feature flags (`iptvScrape`, `dealPortal`, `maxIptvPortals`, …) |
+| `/accounts` | Credits, feature flags, PostHog client runtime (app / platform / last seen) |
 | `/pool` | Catalog candidates |
 | `/scrape` | Scrape run history |
 | `/api/inngest` | Inngest serve (server) |

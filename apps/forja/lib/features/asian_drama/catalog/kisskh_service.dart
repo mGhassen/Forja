@@ -26,6 +26,9 @@ class KissKhService {
     'kisskh.do',
   ];
 
+  /// In-memory filtered hub feeds keyed by `type|country`.
+  static final Map<String, KdramaHomeFeed> _filteredHubMemo = {};
+
   /// Settings / player catalog: id → display label.
   static Map<String, String> get settingsCatalog => {
     for (final host in mirrorHosts) host: mirrorLabel(host),
@@ -310,68 +313,60 @@ class KissKhService {
   }
 
   /// Hub rails for Films / Series / country — explore has type+country; home
-  /// list endpoints do not. Maps explore sorts onto the same row titles.
+  /// list endpoints do not.
+  ///
+  /// **2–3 sequential** list GETs (not a parallel storm): Latest + Popular,
+  /// then Upcoming. Popular is split across Trending / Most Viewed / Top Rated.
+  /// Memoized by `(type, country)` so toggling the same filter is free.
   Future<KdramaHomeFeed> getFilteredHubFeed({
     int type = 0,
     int country = 0,
   }) async {
+    final cacheKey = '$type|$country';
+    final hit = _filteredHubMemo[cacheKey];
+    if (hit != null) return hit;
+
     Future<List<KdramaCard>> page({
       int order = 1,
       int status = 0,
-      int pageNum = 1,
-      int? typeOverride,
     }) async {
       final result = await explore(
-        type: typeOverride ?? type,
+        type: type,
         country: country,
         order: order,
         status: status,
-        page: pageNum,
+        page: 1,
         pageSize: 24,
       );
       return result.items;
     }
 
-    final latestF = page(order: 2);
-    final trendingF = page(order: 1, pageNum: 1);
-    final mostViewedF = page(order: 1, pageNum: 2);
-    final releaseF = page(order: 3);
-    final upcomingF = page(status: 3, order: 2);
-    // Anime is its own KissKH type — only when media filter is All.
-    final animeF = type == 0
-        ? page(typeOverride: 3, order: 1)
-        : Future<List<KdramaCard>>.value(const []);
+    // Sequential — same IP budget as Play; do not Future.wait fan-out.
+    final latest = await page(order: 2);
+    final popular = await page(order: 1);
+    final upcoming = await page(status: 3, order: 2);
 
-    final parts = await Future.wait([
-      latestF,
-      trendingF,
-      mostViewedF,
-      releaseF,
-      upcomingF,
-      animeF,
-    ]);
-    final latest = parts[0];
-    final trending = parts[1];
-    final mostViewed = parts[2];
-    final release = parts[3];
-    final upcoming = parts[4];
-    final anime = parts[5];
-
+    final trending = popular;
+    final mostViewed = popular.length > 8
+        ? [...popular.skip(8), ...popular.take(8)]
+        : popular;
+    final topRated = popular.take(10).toList();
     final spotlight = latest.isNotEmpty
         ? latest.take(8).toList()
         : trending.take(8).toList();
 
-    return KdramaHomeFeed(
+    final feed = KdramaHomeFeed(
       spotlight: spotlight,
       latest: latest,
       trending: trending,
-      topRated: release.isNotEmpty
-          ? release.take(10).toList()
-          : trending.take(10).toList(),
+      topRated: topRated,
       mostViewed: mostViewed,
       upcoming: upcoming,
-      anime: anime,
+      // Anime is a separate KissKH type — never under Films/Series/country.
+      anime: const [],
     );
+    _filteredHubMemo[cacheKey] = feed;
+    return feed;
   }
 
   Future<KdramaDetails> getDetails(int id) async {

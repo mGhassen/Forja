@@ -82,6 +82,12 @@ function bridgeEnv(mode: string) {
     'R2_SECRET_ACCESS_KEY',
     'R2_ENDPOINT',
     'RELEASE_CDN_URL',
+    'POSTHOG_PERSONAL_API_KEY',
+    'POSTHOG_PRIVATE_API_KEY',
+    'POSTHOG_PROJECT_ID',
+    'POSTHOG_PROJECT_API_ID',
+    'POSTHOG_HOST',
+    'POSTHOG_API_HOST',
   ] as const) {
     const v = localEnv[k] || rootEnv[k] || ''
     // Always prefer apps/admin/.env over a stale shell export

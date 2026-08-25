@@ -66,14 +66,4 @@ cd apps/forja && flutter test test/engine_smoke_test.dart
 
 ## Crates
 
-| Crate | Role |
-|-------|------|
-| `ffi` | C ABI entry point |
-| `utils` | episode matcher, torrent filter, unpacker, HLS, kisskh |
-| `stream` | provider URL templates (5 providers) |
-| `iptv` | M3U, Xtream JSON, paste.sh crypto |
-| `stremio` | Stremio manifest/URL/HTTP helpers |
-| `webstreamr` | 23 extractors + 21 sources |
-| `scrapers` | Knaben/TPB/Uindex HTML parsers |
-| `torrent` | librqbit session (desktop FFI) |
-| `proxy` | local HTTP proxy (axum) |
+Full map: [docs/ARCHITECTURE.md §3.1](../docs/ARCHITECTURE.md). Workspace members include `ffi`, domain crates (`webstreamr`, `resolver-engine`, `torrent`, `proxy`, `lan`, `scrapers`, `iptv`, catalog clients, hub scrapers, `debrid`, `indexer`, `engine-js`, …) — see `crates/Cargo.toml`.

@@ -25,6 +25,7 @@ import { Route as ApiIptvCatalogVerifyRouteImport } from './routes/api.iptv-cata
 import { Route as ApiIptvDeepRefReprocessRouteImport } from './routes/api.iptv-deep-ref-reprocess'
 import { Route as ApiIptvPasteBodyRouteImport } from './routes/api.iptv-paste-body'
 import { Route as ApiIptvPromoteBackfillRouteImport } from './routes/api.iptv-promote-backfill'
+import { Route as ApiPosthogPersonsRouteImport } from './routes/api.posthog-persons'
 import { Route as ApiR2DownloadStatsRouteImport } from './routes/api.r2-download-stats'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthLoginMfaRouteImport } from './routes/_auth/login.mfa'
@@ -107,6 +108,11 @@ const ApiIptvPromoteBackfillRoute = ApiIptvPromoteBackfillRouteImport.update({
   path: '/api/iptv-promote-backfill',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPosthogPersonsRoute = ApiPosthogPersonsRouteImport.update({
+  id: '/api/posthog-persons',
+  path: '/api/posthog-persons',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiR2DownloadStatsRoute = ApiR2DownloadStatsRouteImport.update({
   id: '/api/r2-download-stats',
   path: '/api/r2-download-stats',
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
+  '/api/posthog-persons': typeof ApiPosthogPersonsRoute
   '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
+  '/api/posthog-persons': typeof ApiPosthogPersonsRoute
   '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/login/mfa': typeof AuthLoginMfaRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
+  '/api/posthog-persons': typeof ApiPosthogPersonsRoute
   '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_ops/': typeof OpsIndexRoute
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/api/iptv-deep-ref-reprocess'
     | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
+    | '/api/posthog-persons'
     | '/api/r2-download-stats'
     | '/auth/callback'
     | '/login/mfa'
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/api/iptv-deep-ref-reprocess'
     | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
+    | '/api/posthog-persons'
     | '/api/r2-download-stats'
     | '/auth/callback'
     | '/login/mfa'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/api/iptv-deep-ref-reprocess'
     | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
+    | '/api/posthog-persons'
     | '/api/r2-download-stats'
     | '/auth/callback'
     | '/_ops/'
@@ -254,6 +266,7 @@ export interface RootRouteChildren {
   ApiIptvDeepRefReprocessRoute: typeof ApiIptvDeepRefReprocessRoute
   ApiIptvPasteBodyRoute: typeof ApiIptvPasteBodyRoute
   ApiIptvPromoteBackfillRoute: typeof ApiIptvPromoteBackfillRoute
+  ApiPosthogPersonsRoute: typeof ApiPosthogPersonsRoute
   ApiR2DownloadStatsRoute: typeof ApiR2DownloadStatsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
 }
@@ -372,6 +385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIptvPromoteBackfillRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/posthog-persons': {
+      id: '/api/posthog-persons'
+      path: '/api/posthog-persons'
+      fullPath: '/api/posthog-persons'
+      preLoaderRoute: typeof ApiPosthogPersonsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/r2-download-stats': {
       id: '/api/r2-download-stats'
       path: '/api/r2-download-stats'
@@ -449,18 +469,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIptvDeepRefReprocessRoute: ApiIptvDeepRefReprocessRoute,
   ApiIptvPasteBodyRoute: ApiIptvPasteBodyRoute,
   ApiIptvPromoteBackfillRoute: ApiIptvPromoteBackfillRoute,
+  ApiPosthogPersonsRoute: ApiPosthogPersonsRoute,
   ApiR2DownloadStatsRoute: ApiR2DownloadStatsRoute,
   AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

@@ -23,6 +23,8 @@ class HorizontalScroller extends StatefulWidget {
   final ScrollController? controller;
   final Clip clipBehavior;
   final ScrollPhysics? physics;
+  /// Fires while scrolling near the end (caller debounces). ~1 viewport of runway.
+  final VoidCallback? onApproachingEnd;
 
   const HorizontalScroller({
     super.key,
@@ -35,6 +37,7 @@ class HorizontalScroller extends StatefulWidget {
     this.controller,
     this.clipBehavior = Clip.none,
     this.physics,
+    this.onApproachingEnd,
   });
 
   @override
@@ -84,6 +87,15 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
         _canLeft = left;
         _canRight = right;
       });
+    }
+    final onEnd = widget.onApproachingEnd;
+    if (onEnd == null) return;
+    final max = _ctrl.position.maxScrollExtent;
+    if (max <= 0) return;
+    // ~one viewport of cards still ahead — load before the user hits the wall.
+    final runway = (_ctrl.position.viewportDimension * 0.9).clamp(240.0, 900.0);
+    if (_ctrl.offset >= max - runway) {
+      onEnd();
     }
   }
 

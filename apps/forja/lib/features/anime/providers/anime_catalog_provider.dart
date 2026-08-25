@@ -46,18 +46,32 @@ class AnimeCatalogFutures {
     String? format,
     bool excludeMovies = false,
   }) {
-    final trending = _safeSection(
-      service.getTrending(
-        perPage: 20,
+    final hubFiltered = format != null ||
+        excludeMovies ||
+        (genre != null && genre.isNotEmpty);
+
+    // Under Films/Series/Categories, TRENDING_DESC ≈ SCORE_DESC for small
+    // pools — skip Trending (UI hides it) and drive hero/top10 from Top Rated.
+    final topRated = _safeSection(
+      service.getTopRated(
         genre: genre,
         format: format,
         excludeMovies: excludeMovies,
       ),
-      'trending',
+      'top rated',
     );
+    final trending = hubFiltered
+        ? Future<List<AnimeCard>>.value(const [])
+        : _safeSection(
+            service.getTrending(
+              perPage: 20,
+              genre: genre,
+              format: format,
+              excludeMovies: excludeMovies,
+            ),
+            'trending',
+          );
 
-    // Start remaining rails in parallel with trending so lower rows do not
-    // sit empty until first paint finishes (AniList worker pool queues them).
     final topAiring = _safeSection(
       service.getTopAiring(
         genre: genre,
@@ -82,14 +96,6 @@ class AnimeCatalogFutures {
       ),
       'most favorite',
     );
-    final topRated = _safeSection(
-      service.getTopRated(
-        genre: genre,
-        format: format,
-        excludeMovies: excludeMovies,
-      ),
-      'top rated',
-    );
     final latestCompleted = _safeSection(
       service.getLatestCompleted(
         genre: genre,
@@ -107,10 +113,12 @@ class AnimeCatalogFutures {
       'recent episodes',
     );
 
+    final heroSource = hubFiltered ? topRated : trending;
+
     return AnimeCatalogFutures._(
       trending: trending,
-      spotlight: trending.then(spotlightFromTrending),
-      top10: trending.then((t) => t.take(10).toList()),
+      spotlight: heroSource.then(spotlightFromTrending),
+      top10: heroSource.then((t) => t.take(10).toList()),
       topAiring: topAiring,
       mostPopular: mostPopular,
       mostFavorite: mostFavorite,

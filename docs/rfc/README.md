@@ -39,7 +39,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [016-[partial]-…](016-[partial]-lazy-tab-mounting.md) | Lazy tab mounting | v0.8.x | partial | 5/5 mount | [0.8.2](../backlog/done/0.8.2-[done].md) |
 | [024-[partial]-…](024-[partial]-tab-cache-eviction-stale.md) | Tab cache eviction + stale | v0.8.x | partial | 21/22 · 1 ⏭️ | [0.8.2](../backlog/done/0.8.2-[done].md) · [1.0.1](../backlog/1.0.1-[open].md) |
 | [017-[open]-…](017-[open]-deferred-engine-boot.md) | Deferred / profile-gated engine boot | v1.0.1 | open | 0/6 ⏭️ · 8/8 profile-gated · 3/3 switch=intro · 4/4 instant splash | [1.0.1](../backlog/1.0.1-[open].md) · [0.5.0](../backlog/done/0.5.0-[done].md) hist |
-| [018-[draft]-…](018-[draft]-startup-splash-home.md) | Splash + Home perf | v1.0.1 | draft | 1/5 · 3/3 lazy | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) |
+| [018-[draft]-…](018-[draft]-startup-splash-home.md) | Splash + Home perf | v1.0.1 | draft | 0/4 · 2 fetch · 3⏭️ | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) |
 | [019-[draft]-…](019-[draft]-god-file-decomposition.md) | God file splits | v1.0.1 / v1.0.2 | draft | 5/5 | [1.0.1](../backlog/1.0.1-[draft].md) + [1.0.2](../backlog/1.0.2-[draft].md) |
 | [020-[draft]-…](020-[draft]-media-details-routing.md) | Media details routing | v1.0.1 | draft | 3/4 | [RFC-026](026-[draft]-media-details-player-ux.md) |
 | [026-[draft]-…](026-[draft]-media-details-player-ux.md) | Media details & player UX | v1.0.1 | partial | 18/19 · 28/34 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -63,7 +63,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [040-[open]-…](040-[open]-iptv-catalog-ops.md) | IPTV catalog ops (admin + worker + pool + credits) | v1.0.5 | open | 5/5 · 26/28 | [1.0.5](../backlog/1.0.5-[draft].md) |
 | [041-[open]-…](041-[open]-iptv-live-epg-guide.md) | IPTV Live EPG guide view (catalog) | v1.0.6 | open | 4/4 · 0/6 | [1.0.6](../backlog/1.0.6-[draft].md) |
 | [042-[open]-…](042-[open]-unified-auth-system.md) | Unified auth (web + Flutter) | v1.0.7 | open | 5/5 · 13/19 | [1.0.7](../backlog/1.0.7-[draft].md) |
-| [043-[open]-…](043-[open]-crash-reporting-sentry.md) | Crash reporting (Sentry) + product analytics (PostHog) | v1.0 | open | 5/5 · 8/8 · 6/6 · 3/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [043-[open]-…](043-[open]-crash-reporting-sentry.md) | Crash reporting (Sentry) + product analytics (PostHog) | v1.0 | open | 6/6 · 8/8 · 6/6 · 3/3 · 6/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [044-[open]-…](044-[open]-provider-identity-playback.md) | Provider-identity playback (end CDN host chase) | v1.0.1 | open | 11/11 · 21/21 unit · 0/3 manual | [1.0.1](../backlog/1.0.1-[open].md) |
 | [045-[open]-…](045-[open]-stream-open-pipeline.md) | Stream open pipeline middleware | v1.0.1 | open | 6/6 · 6/8 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [046-[open]-…](046-[open]-android-tv-device-link.md) | Android TV device-code / QR account link | v1.0.7 | open | 5/5 · A 0/8 · net 1/1 | [1.0.7](../backlog/1.0.7-[draft].md) |

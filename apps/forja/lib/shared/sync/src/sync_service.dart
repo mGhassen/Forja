@@ -900,23 +900,31 @@ class SyncService {
       try {
         row = await client
             .from('accounts')
-            .select('features, iptv_credits, is_admin')
+            .select('features, iptv_credits, is_admin, member_number')
             .eq('id', userId)
             .maybeSingle();
       } catch (_) {
         try {
           row = await client
               .from('accounts')
-              .select('features, iptv_credits')
+              .select('features, iptv_credits, is_admin')
               .eq('id', userId)
               .maybeSingle();
         } catch (_) {
-          // Column missing until RFC-040 migration is applied.
-          row = await client
-              .from('accounts')
-              .select('features')
-              .eq('id', userId)
-              .maybeSingle();
+          try {
+            row = await client
+                .from('accounts')
+                .select('features, iptv_credits')
+                .eq('id', userId)
+                .maybeSingle();
+          } catch (_) {
+            // Column missing until RFC-040 migration is applied.
+            row = await client
+                .from('accounts')
+                .select('features')
+                .eq('id', userId)
+                .maybeSingle();
+          }
         }
       }
       if (!isAdmin) {
@@ -932,10 +940,17 @@ class SyncService {
         String s => int.tryParse(s) ?? 0,
         _ => 0,
       };
+      final memberNumber = switch (row?['member_number']) {
+        int n => n,
+        num n => n.toInt(),
+        String s => int.tryParse(s),
+        _ => null,
+      };
       AccountFeatures.instance.applyRemote(
         map,
         iptvCredits: credits,
         isAdmin: isAdmin,
+        memberNumber: memberNumber,
       );
       _lastFeaturesPullAt = DateTime.now();
       return map;

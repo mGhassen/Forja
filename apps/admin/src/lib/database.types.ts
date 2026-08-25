@@ -47,6 +47,7 @@ export type Database = {
           features: Json
           id: string
           is_admin: boolean
+          member_number: number
           updated_at: string
           updated_by: string | null
         }
@@ -57,6 +58,7 @@ export type Database = {
           features?: Json
           id: string
           is_admin?: boolean
+          member_number?: number
           updated_at?: string
           updated_by?: string | null
         }
@@ -67,6 +69,7 @@ export type Database = {
           features?: Json
           id?: string
           is_admin?: boolean
+          member_number?: number
           updated_at?: string
           updated_by?: string | null
         }

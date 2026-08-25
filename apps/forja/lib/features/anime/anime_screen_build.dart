@@ -164,14 +164,19 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
       builder: (context, _, _) {
         final fullHero = hubIsFullCinematicHero(context);
         final usesShell = hubUsesShellLayout(context);
-        final trendingOnHero = usesShell && fullHero;
+        // Under Films/Series/Categories, Trending duplicates Top Rated — hide it.
+        final showTrending = !animeHubFilterActive();
+        final trendingOnHero = usesShell && fullHero && showTrending;
         final moodChipsOrder = _moodChipsOrder(trendingOnHero: trendingOnHero);
         final moodResultsOrder =
             _moodResultsOrder(trendingOnHero: trendingOnHero);
         final catalogBase = _catalogRowBase(trendingOnHero: trendingOnHero);
-        // Bleed Trending owns 0; otherwise Trending is the first catalog row.
+        // Bleed Trending owns 0; otherwise Trending is the first catalog row
+        // (when shown). When Trending is hidden, catalog starts at catalogBase.
         final trendingOrder = trendingOnHero ? 0 : catalogBase;
-        final catalogStart = trendingOnHero ? catalogBase : catalogBase + 1;
+        final catalogStart = trendingOnHero
+            ? catalogBase
+            : (showTrending ? catalogBase + 1 : catalogBase);
         void focusHeroPlay() {
           ShellTvFocusCoordinator.revealHeroForTab('anime');
           ShellTvFocus.focusHomeHeroPlay();
@@ -243,7 +248,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                                 ),
                                 isFirstAfterHero: false,
                               ),
-                              if (trendingSection == null)
+                              if (trendingSection == null && showTrending)
                                 hubRowSliver(context,
                                   HubCatalogSection<AnimeCard>(
                                     title: 'Trending Now',
