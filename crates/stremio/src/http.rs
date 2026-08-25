@@ -25,6 +25,17 @@ pub fn fetch_get(url: &str, timeout_secs: u64) -> Result<HttpResponse, String> {
     fetch_get_with_headers(url, timeout_secs, &HashMap::new())
 }
 
+/// TMDB catalog GET — aborts on [utils::engine_cancel::request_catalog]
+/// (Home filter flips) or shutdown; ignores playback [request].
+pub fn fetch_get_catalog(url: &str, timeout_secs: u64) -> Result<HttpResponse, String> {
+    RUNTIME.block_on(async {
+        utils::engine_cancel::with_catalog_cancel(async {
+            fetch_with_headers_async(url, timeout_secs, &HashMap::new(), None).await
+        })
+        .await
+    })
+}
+
 pub fn fetch_get_with_headers(
     url: &str,
     timeout_secs: u64,

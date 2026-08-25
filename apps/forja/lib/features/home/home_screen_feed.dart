@@ -221,11 +221,12 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
     _resetRandomCategoryRows();
   }
 
-  /// Abort in-flight Because scrapes. Mood / genre rows are aborted by
-  /// [_resetHomeCategoryFeeds] (epoch + mood token). TMDB rails drop via
-  /// provider invalidate + [ref.onDispose] guards.
+  /// Abort in-flight Because scrapes + wire-abort in-flight TMDB catalog HTTP.
+  /// Mood / genre rows are aborted by [_resetHomeCategoryFeeds] (epoch + mood
+  /// token). Provider results drop via invalidate + [ref.onDispose] guards.
   void _cancelPreviousHomeAsks() {
     _s._becauseWorkGen++;
+    Engine.cancelPendingTmdb();
   }
 
   Future<void> _reloadHomeFeed() async {
@@ -295,6 +296,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   void _pauseHomeBackgroundWork() {
     _s._homeBgWorkGen++;
     _s._becauseWorkGen++;
+    Engine.cancelPendingTmdb();
     _s._historySeedSub?.cancel();
     _s._historySeedSub = null;
     if (_s._splashDismissedListener != null) {

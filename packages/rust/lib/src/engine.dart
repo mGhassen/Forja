@@ -71,6 +71,10 @@ class RustLib {
 
   void engineCancelPending() => _native.ffi_engine_cancel_pending();
 
+  /// Abort in-flight TMDB catalog HTTP (Home category/genre/provider flips).
+  /// Does not cancel playback resolve / EngineJobs.
+  void engineCancelCatalog() => _native.ffi_engine_cancel_catalog();
+
   /// Cancel EngineJobs of one kind only (e.g. [EngineAsyncJob.engineJsExtract]).
   /// Does not run full [engineCancelPending] — magnet / torrent resolve stay live.
   void engineCancelJobsOfKind(int kind) =>
@@ -787,6 +791,11 @@ final class _FfiNative {
               'ffi_engine_cancel_pending',
             )
             .asFunction(),
+        ffi_engine_cancel_catalog = lib
+            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+              'ffi_engine_cancel_catalog',
+            )
+            .asFunction(),
         ffi_engine_cancel_jobs_of_kind = lib
             .lookup<ffi.NativeFunction<_EngineCancelKindNative>>(
               'ffi_engine_cancel_jobs_of_kind',
@@ -1359,6 +1368,7 @@ final class _FfiNative {
   final void Function(ffi.Pointer<ffi.Char>) ffi_free_string;
   final ffi.Pointer<ffi.Char> Function() ffi_version;
   final void Function() ffi_engine_cancel_pending;
+  final void Function() ffi_engine_cancel_catalog;
   final void Function(int) ffi_engine_cancel_jobs_of_kind;
   final void Function() ffi_engine_prepare_shutdown;
   final void Function() ffi_engine_clear_shutdown;

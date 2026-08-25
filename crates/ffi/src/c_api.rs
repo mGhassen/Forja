@@ -32,6 +32,11 @@ pub extern "C" fn ffi_engine_cancel_pending() {
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_engine_cancel_catalog() {
+    crate::engine_cancel_catalog();
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_engine_cancel_jobs_of_kind(kind: u32) {
     crate::engine_cancel_jobs_of_kind(kind);
 }

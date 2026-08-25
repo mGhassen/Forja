@@ -44,6 +44,11 @@ fn engine_cancel_pending() {
     engine_jobs::cancel_all();
 }
 
+/// Abort in-flight TMDB catalog HTTP (Home filter flips). Playback stays live.
+fn engine_cancel_catalog() {
+    utils::engine_cancel::request_catalog();
+}
+
 /// Abort Forja `EngineJsExtract` jobs only — keeps magnet / torrent resolve alive.
 fn engine_cancel_jobs_of_kind(kind: u32) {
     engine_jobs::cancel_kind(kind);

@@ -98,6 +98,13 @@ abstract final class Engine {
     RustLib.instance.engineCancelPending();
   }
 
+  /// Abort in-flight TMDB catalog HTTP (Home category / genre / provider flips).
+  /// Playback resolve and EngineJobs stay live.
+  static void cancelPendingTmdb() {
+    if (!isReady) return;
+    RustLib.instance.engineCancelCatalog();
+  }
+
   /// Abort in-flight Forja EngineJS extracts only — magnet / torrent resolve stay.
   static void cancelEngineJsExtracts() {
     if (!isReady) return;

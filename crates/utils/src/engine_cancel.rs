@@ -13,6 +13,11 @@ static CANCEL_GENERATION: AtomicU64 = AtomicU64::new(0);
 static SHUTDOWN: AtomicBool = AtomicBool::new(false);
 static SHUTDOWN_NOTIFY: LazyLock<Notify> = LazyLock::new(Notify::new);
 
+/// TMDB / Home catalog refresh — aborts in-flight catalog GETs without
+/// touching playback [request] or sibling EngineJobs (magnet / resolve).
+static CATALOG: LazyLock<Mutex<CancellationToken>> =
+    LazyLock::new(|| Mutex::new(CancellationToken::new()));
+
 // Per tokio task — parallel EngineJobs each keep their own token (Nuvio Job shape).
 // Never share one process-global slot across concurrent extracts.
 tokio::task_local! {
@@ -62,7 +67,20 @@ pub fn request() {
 pub fn request_shutdown() {
     SHUTDOWN.store(true, Ordering::SeqCst);
     SHUTDOWN_NOTIFY.notify_waiters();
+    request_catalog();
     request();
+}
+
+/// Home category / genre / provider flip — abort in-flight TMDB catalog HTTP.
+/// Does **not** cancel playback ROOT or EngineJobs (Play / magnet stay live).
+pub fn request_catalog() {
+    let mut catalog = CATALOG.lock().unwrap();
+    catalog.cancel();
+    *catalog = CancellationToken::new();
+}
+
+fn catalog_child_token() -> CancellationToken {
+    CATALOG.lock().unwrap().child_token()
 }
 
 pub fn is_shutdown_requested() -> bool {
@@ -125,6 +143,25 @@ where
     }
 }
 
+/// TMDB catalog HTTP: ignore playback [request], abort on [request_catalog]
+/// or [request_shutdown].
+pub async fn with_catalog_cancel<F, T>(fut: F) -> Result<T, String>
+where
+    F: std::future::Future<Output = Result<T, String>>,
+{
+    let token = catalog_child_token();
+    let shutdown = SHUTDOWN_NOTIFY.notified();
+    tokio::pin!(shutdown);
+    if is_shutdown_requested() || token.is_cancelled() {
+        return Err(cancelled_message());
+    }
+    tokio::select! {
+        res = fut => res,
+        _ = token.cancelled() => Err(cancelled_message()),
+        _ = &mut shutdown => Err(cancelled_message()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -163,6 +200,32 @@ mod tests {
         let fut = with_shutdown_cancel(async { Ok::<_, String>(42) });
         request();
         assert_eq!(fut.await.unwrap(), 42);
+    }
+
+    #[tokio::test]
+    async fn catalog_cancel_aborts_catalog_path_not_shutdown_only() {
+        let _guard = lock_tests();
+        clear_shutdown();
+        clear_job_token();
+        request_catalog(); // reset catalog root
+        let handle = tokio::spawn(async {
+            with_catalog_cancel(std::future::pending::<Result<i32, String>>()).await
+        });
+        tokio::task::yield_now().await;
+        request_catalog();
+        let err = handle.await.unwrap().unwrap_err();
+        assert_eq!(err, cancelled_message());
+    }
+
+    #[tokio::test]
+    async fn playback_cancel_does_not_abort_catalog_path() {
+        let _guard = lock_tests();
+        clear_shutdown();
+        clear_job_token();
+        request_catalog();
+        let fut = with_catalog_cancel(async { Ok::<_, String>(7) });
+        request();
+        assert_eq!(fut.await.unwrap(), 7);
     }
 
     #[tokio::test]

@@ -1,4 +1,4 @@
-use stremio::fetch_get;
+use stremio::fetch_get_catalog;
 
 pub const BASE_URL: &str = "https://api.themoviedb.org/3";
 
@@ -36,7 +36,7 @@ pub fn get_json(resource_path: &str, timeout_secs: u64) -> String {
         .to_string();
     }
     let url = build_url(resource_path);
-    match fetch_get(&url, timeout_secs) {
+    match fetch_get_catalog(&url, timeout_secs) {
         Ok(resp) if resp.status == 200 => resp.body,
         Ok(resp) => serde_json::json!({
             "error": format!("TMDB HTTP {}", resp.status),
