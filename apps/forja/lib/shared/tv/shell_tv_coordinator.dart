@@ -1182,20 +1182,33 @@ abstract final class ShellTvFocusCoordinator {
         return focusHero(revealFull: true, tabId: tabId);
       }
       // Walk upward past rows whose items are not built / not focusable yet.
+      // When several rows share a sortOrder (e.g. top bar + leaked sheet), try
+      // every sibling — picking only one left ↑ dead after a modal dismiss.
       var cursor = handle.sortOrder;
+      final list = _rowsByTab[tabId] ?? const <ShellTvRowHandle>[];
       while (true) {
         final prev = _prevRow(tabId, cursor);
         if (prev == null) {
           return focusHero(revealFull: true, tabId: tabId);
         }
-        if (prev.sortOrder < 0) {
-          final target = prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
-          if (focusRowItem(tabId, prev.rowId, target)) return true;
-          return focusHero(revealFull: true, tabId: tabId);
+        final prevSort = prev.sortOrder;
+        final atOrder = [
+          for (final row in list)
+            if (row.sortOrder == prevSort) row,
+        ];
+        for (final candidate in atOrder) {
+          if (candidate.sortOrder < 0) {
+            final target =
+                candidate.lastFocusedIndex.clamp(0, candidate.itemCount - 1);
+            if (focusRowItem(tabId, candidate.rowId, target)) return true;
+            return focusHero(revealFull: true, tabId: tabId);
+          }
+          if (candidate.itemCount <= 0) continue;
+          final target =
+              candidate.lastFocusedIndex.clamp(0, candidate.itemCount - 1);
+          if (focusRowItem(tabId, candidate.rowId, target)) return true;
         }
-        final target = prev.lastFocusedIndex.clamp(0, prev.itemCount - 1);
-        if (focusRowItem(tabId, prev.rowId, target)) return true;
-        cursor = prev.sortOrder;
+        cursor = prevSort;
       }
     }
 

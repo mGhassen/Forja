@@ -218,6 +218,9 @@ class _LiveMatchesServerSheet extends StatefulWidget {
 }
 
 class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
+  /// Isolated from the Live Matches tab graph — same sortOrder 0 as the top bar
+  /// would steal sport-chip ↑ after picking Stremio / another server.
+  static const _tvTabId = 'live_matches_server_sheet';
   static const _rowId = 'live-server-sheet';
   final FocusNode _firstFocus = FocusNode(
     debugLabel: 'live-server-sheet-first',
@@ -300,7 +303,7 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
     );
     if (!tv) return body;
     return TvCatalogRow(
-      tabId: 'live_matches',
+      tabId: _tvTabId,
       rowId: _rowId,
       sortOrder: 0,
       itemCount: servers.length,
@@ -406,7 +409,7 @@ class _LiveMatchesServerSheetOptionState
       navLeftAlways: true,
       focusNode: widget.focusNode,
       listIndex: widget.tvItemIndex,
-      tvTabId: 'live_matches',
+      tvTabId: _LiveMatchesServerSheetState._tvTabId,
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
@@ -438,6 +441,7 @@ class _LiveMatchesCatalogSheet extends StatefulWidget {
 }
 
 class _LiveMatchesCatalogSheetState extends State<_LiveMatchesCatalogSheet> {
+  static const _tvTabId = 'live_matches_catalog_sheet';
   static const _rowId = 'live-catalog-sheet';
   final FocusNode _firstFocus = FocusNode(
     debugLabel: 'live-catalog-sheet-first',
@@ -528,7 +532,7 @@ class _LiveMatchesCatalogSheetState extends State<_LiveMatchesCatalogSheet> {
     );
     if (!tv) return body;
     return TvCatalogRow(
-      tabId: 'live_matches',
+      tabId: _tvTabId,
       rowId: _rowId,
       sortOrder: 0,
       itemCount: options.length,
@@ -642,7 +646,7 @@ class _LiveMatchesCatalogSheetOptionState
       navLeftAlways: true,
       focusNode: widget.focusNode,
       listIndex: widget.tvItemIndex,
-      tvTabId: 'live_matches',
+      tvTabId: _LiveMatchesCatalogSheetState._tvTabId,
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
@@ -673,6 +677,7 @@ class _LiveMatchesTimeWindowSheet extends StatefulWidget {
 
 class _LiveMatchesTimeWindowSheetState
     extends State<_LiveMatchesTimeWindowSheet> {
+  static const _tvTabId = 'live_matches_time_sheet';
   static const _rowId = 'live-time-window-sheet';
   final FocusNode _firstFocus = FocusNode(
     debugLabel: 'live-time-window-sheet-first',
@@ -763,7 +768,7 @@ class _LiveMatchesTimeWindowSheetState
     );
     if (!tv) return body;
     return TvCatalogRow(
-      tabId: 'live_matches',
+      tabId: _tvTabId,
       rowId: _rowId,
       sortOrder: 0,
       itemCount: _options.length,
@@ -872,7 +877,7 @@ class _LiveMatchesTimeWindowSheetOptionState
       navLeftAlways: true,
       focusNode: widget.focusNode,
       listIndex: widget.tvItemIndex,
-      tvTabId: 'live_matches',
+      tvTabId: _LiveMatchesTimeWindowSheetState._tvTabId,
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,

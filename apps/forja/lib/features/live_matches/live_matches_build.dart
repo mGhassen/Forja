@@ -190,19 +190,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       onLeftEdge: edges?.onLeft,
       onRightEdge: edges?.onRight,
       onDownEdge: edges?.onDown,
-      onUpEdge: tvFocus
-          ? edges?.onUp
-          : () {
-              if (_s._showTimeTopBar) {
-                _s._focusTopBarItem(_s._topBarTimeIndex);
-              } else if (_s._showCatalogTopBar) {
-                _s._focusTopBarItem(_s._topBarCatalogIndex);
-              } else {
-                _s._focusTopBarItem(
-                  _LiveMatchesScreenState._topBarServersIndex,
-                );
-              }
-            },
+      // Always target live-top-bar — do not use edges.onUp / moveVerticalInTab.
+      // Picker sheets also register at sortOrder 0 on this tab; a generic ↑ can
+      // land on a dead sheet row and swallow the key (Stremio: stuck on sports).
+      onUpEdge: _s._focusFromSportChipsUp,
     );
   }
 

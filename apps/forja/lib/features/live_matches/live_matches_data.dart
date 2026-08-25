@@ -301,6 +301,33 @@ mixin _LiveMatchesData
     _restoreLiveMatchesTvFocus();
   }
 
+  /// Sport chips ↑ → top-bar Servers / Catalog / Time (never a picker sheet row).
+  void _focusFromSportChipsUp() {
+    final top = ShellTvFocusCoordinator.rowHandle(
+      _LiveMatchesScreenState._tabId,
+      _LiveMatchesScreenState._topBarRowId,
+    );
+    if (top != null && top.itemCount > 0) {
+      final idx = top.lastFocusedIndex.clamp(0, top.itemCount - 1);
+      if (ShellTvFocusCoordinator.focusRowItem(
+        _LiveMatchesScreenState._tabId,
+        _LiveMatchesScreenState._topBarRowId,
+        idx,
+      )) {
+        return;
+      }
+    }
+    if (_s._showTimeTopBar) {
+      _focusTopBarItem(_s._topBarTimeIndex);
+      return;
+    }
+    if (_s._showCatalogTopBar) {
+      _focusTopBarItem(_s._topBarCatalogIndex);
+      return;
+    }
+    _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex);
+  }
+
   /// First grid row ↑ → sport chips → Servers / Catalog.
   VoidCallback? _gridUpEdge(BuildContext context, int index, int crossCount) {
     if (!_s._tvFocus(context) || index ~/ crossCount != 0) return null;
