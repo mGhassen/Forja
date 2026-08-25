@@ -394,6 +394,7 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                               ],
                               _CategoryTab(
                                 label: 'Search',
+                                icon: Icons.search_rounded,
                                 isActive: false,
                                 onTap: widget.onSearch,
                                 tvFocus: tvFocus,
@@ -493,6 +494,7 @@ class _CategoryTab extends StatefulWidget {
     required this.isActive,
     required this.onTap,
     required this.tabId,
+    this.icon,
     this.showChevron = false,
     this.tvFocus = false,
     this.listIndex,
@@ -501,6 +503,7 @@ class _CategoryTab extends StatefulWidget {
   });
 
   final String label;
+  final IconData? icon;
   final bool isActive;
   final VoidCallback onTap;
   final String tabId;
@@ -584,6 +587,14 @@ class _CategoryTabState extends State<_CategoryTab> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (widget.icon != null) ...[
+                      Icon(
+                        widget.icon,
+                        size: chevronSize,
+                        color: textColor,
+                      ),
+                      SizedBox(width: shellScaled(context, 6).clamp(4.0, 6.0)),
+                    ],
                     Text(
                       widget.label,
                       style: GoogleFonts.plusJakartaSans(

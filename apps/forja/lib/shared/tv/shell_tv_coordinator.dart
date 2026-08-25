@@ -1173,7 +1173,7 @@ abstract final class ShellTvFocusCoordinator {
     if (handle == null) return false;
 
     if (!down) {
-      // Explicit onFocusUp (e.g. Featured/Popular → Play) skips intermediate rows.
+      // Explicit onFocusUp (e.g. Featured → View details) when set.
       if (handle.onFocusUp != null) {
         handle.onFocusUp!();
         return true;

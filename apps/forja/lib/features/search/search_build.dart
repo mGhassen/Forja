@@ -46,6 +46,16 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               _s._onSearchChanged('');
             },
           ),
+        ForjaPlainIcon(
+          icon: Icons.tune_rounded,
+          size: 22,
+          focusNode: _s._filterFocusNode,
+          color: (_s._filtersOpen || _s._filters.isActive)
+              ? ForjaShellColors.textPrimary
+              : ForjaShellColors.textSecondary,
+          tooltip: 'Filters',
+          onTap: _s._toggleFiltersOpen,
+        ),
         const SizedBox(width: 4),
       ],
     );
@@ -53,16 +63,59 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
 
   Widget buildShellSearchBar() {
     if (_s._isDesktopLayout(context)) return const SizedBox.shrink();
-    return ShellSearchBar(
-      controller: _s._controller,
-      focusNode: _s._focusNode,
-      query: _s._query,
-      onChanged: _s._onSearchChanged,
-      onSubmitted: (_) => _s._submitSearchField(),
-      onClear: () {
-        _s._controller.clear();
-        _s._onSearchChanged('');
-      },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ShellSearchBar(
+                controller: _s._controller,
+                focusNode: _s._focusNode,
+                query: _s._query,
+                onChanged: _s._onSearchChanged,
+                onSubmitted: (_) => _s._submitSearchField(),
+                onClear: () {
+                  _s._controller.clear();
+                  _s._onSearchChanged('');
+                },
+              ),
+            ),
+            ForjaPlainIcon(
+              icon: Icons.tune_rounded,
+              size: 22,
+              focusNode: _s._filterFocusNode,
+              color: (_s._filtersOpen || _s._filters.isActive)
+                  ? ForjaShellColors.textPrimary
+                  : ForjaShellColors.textSecondary,
+              tooltip: 'Filters',
+              onTap: _s._toggleFiltersOpen,
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        if (!_s._filtersOpen && _s._filters.isActive)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final token
+                    in _s._filters.tokenActions(_s._onFiltersChanged))
+                  _SearchFilterToken(label: token.$1, onClear: token.$2),
+              ],
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _SearchFilterLens(
+            open: _s._filtersOpen,
+            filters: _s._filters,
+            onFiltersChanged: _s._onFiltersChanged,
+          ),
+        ),
+      ],
     );
   }
 
@@ -178,61 +231,115 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
     );
     final showBrowsePlaceholder =
         browseOnly && _s._focusNode.hasFocus && _s._query.isEmpty;
+    final filtersActive = _s._filters.isActive;
 
-    return Stack(
-      alignment: Alignment.centerLeft,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          controller: _s._controller,
-          focusNode: _s._focusNode,
-          autofocus: !leanbackInput,
-          readOnly: browseOnly,
-          showCursor: !browseOnly || _s._query.isNotEmpty,
-          enableInteractiveSelection: !browseOnly,
-          onChanged: _s._onSearchChanged,
-          onTap: leanbackInput
-              ? () {
-                  if (!_s._searchFieldEditing) _s._beginSearchFieldEditing();
-                }
-              : null,
-          onSubmitted: (_) => _s._submitSearchField(),
-          textInputAction: TextInputAction.search,
-          style: TextStyle(
-            color: ForjaShellColors.textPrimary,
-            fontSize: 32,
-            fontWeight: FontWeight.w600,
-            height: 1.15,
-          ),
-          cursorColor: ForjaShellColors.textPrimary,
-          cursorHeight: 36,
-          decoration: InputDecoration(
-            hintText: showBrowsePlaceholder ? null : hint,
-            hintStyle: hintStyle,
-            border: InputBorder.none,
-            isDense: true,
-            contentPadding: EdgeInsets.zero,
-            suffixIcon: _s._query.isNotEmpty
-                ? ForjaCloseButton.compact(
-                    tooltip: null,
-                    color: ForjaShellColors.textSecondary,
-                    focusNode: _s._closeFocusNode,
-                    onKeyEvent: _s._searchCloseKeyEvent,
-                    onTap: () {
-                      _s._controller.clear();
-                      _s._onSearchChanged('');
-                      _s._focusSearchFieldBrowse();
-                    },
-                  )
-                : null,
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Stack(
+                alignment: Alignment.centerLeft,
+                children: [
+                  TextField(
+                    controller: _s._controller,
+                    focusNode: _s._focusNode,
+                    autofocus: !leanbackInput,
+                    readOnly: browseOnly,
+                    showCursor: !browseOnly || _s._query.isNotEmpty,
+                    enableInteractiveSelection: !browseOnly,
+                    onChanged: _s._onSearchChanged,
+                    onTap: leanbackInput
+                        ? () {
+                            if (!_s._searchFieldEditing) {
+                              _s._beginSearchFieldEditing();
+                            }
+                          }
+                        : null,
+                    onSubmitted: (_) => _s._submitSearchField(),
+                    textInputAction: TextInputAction.search,
+                    style: TextStyle(
+                      color: ForjaShellColors.textPrimary,
+                      fontSize: 32,
+                      fontWeight: FontWeight.w600,
+                      height: 1.15,
+                    ),
+                    cursorColor: ForjaShellColors.textPrimary,
+                    cursorHeight: 36,
+                    decoration: InputDecoration(
+                      hintText: showBrowsePlaceholder ? null : hint,
+                      hintStyle: hintStyle,
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  if (showBrowsePlaceholder)
+                    TvSearchBrowsePlaceholder(
+                      active: true,
+                      placeholder: hint,
+                      hintStyle: hintStyle,
+                      caretHeight: 36,
+                    ),
+                ],
+              ),
+            ),
+            if (_s._query.isNotEmpty)
+              ForjaCloseButton.compact(
+                tooltip: null,
+                color: ForjaShellColors.textSecondary,
+                focusNode: _s._closeFocusNode,
+                onKeyEvent: _s._searchCloseKeyEvent,
+                onTap: () {
+                  _s._controller.clear();
+                  _s._onSearchChanged('');
+                  _s._focusSearchFieldBrowse();
+                },
+              ),
+            ForjaPlainIcon(
+              icon: Icons.tune_rounded,
+              size: 22,
+              focusNode: _s._filterFocusNode,
+              color: (_s._filtersOpen || filtersActive)
+                  ? ForjaShellColors.textPrimary
+                  : ForjaShellColors.textSecondary,
+              tooltip: 'Filters',
+              onTap: _s._toggleFiltersOpen,
+              child: filtersActive && !_s._filtersOpen
+                  ? Align(
+                      alignment: const Alignment(0.55, -0.55),
+                      child: Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: ForjaShellColors.textPrimary,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
+          ],
         ),
-        if (showBrowsePlaceholder)
-          TvSearchBrowsePlaceholder(
-            active: true,
-            placeholder: hint,
-            hintStyle: hintStyle,
-            caretHeight: 36,
+        if (!_s._filtersOpen && filtersActive)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final token in _s._filters.tokenActions(_s._onFiltersChanged))
+                  _SearchFilterToken(label: token.$1, onClear: token.$2),
+              ],
+            ),
           ),
+        _SearchFilterLens(
+          open: _s._filtersOpen,
+          filters: _s._filters,
+          onFiltersChanged: _s._onFiltersChanged,
+        ),
       ],
     );
   }
@@ -495,12 +602,45 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
       );
     }
 
-    return Padding(
+    final padded = Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: ShellTokens.bodyHorizontalPadding,
       ),
       child: body,
     );
+
+    // Overlay AppBar owns the field; surface the lens under it on phone.
+    if (widget.overlay && (_s._filtersOpen || _s._filters.isActive)) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!_s._filtersOpen && _s._filters.isActive)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final token
+                      in _s._filters.tokenActions(_s._onFiltersChanged))
+                    _SearchFilterToken(label: token.$1, onClear: token.$2),
+                ],
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _SearchFilterLens(
+              open: _s._filtersOpen,
+              filters: _s._filters,
+              onFiltersChanged: _s._onFiltersChanged,
+            ),
+          ),
+          Expanded(child: padded),
+        ],
+      );
+    }
+
+    return padded;
   }
 
   /// Mobile keeps separate Movies / Shows rows; desktop grid uses mixed TMDB order.

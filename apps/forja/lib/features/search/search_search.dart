@@ -85,17 +85,10 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
 
   /// Debounced query change → immediate fetch (TV submit / external).
   void _runSearchNow(String query) {
-    final trimmed = query.trim();
-    if (trimmed.isEmpty) return;
-    setState(() {
-      _s._activeSearchQuery = trimmed;
-      _s._sections = [];
-      _s._isSearching = true;
-      _s._gridFocusedIndex = null;
-    });
-    _recordRecentQuery(trimmed);
-    (_s._container ?? ProviderScope.containerOf(context, listen: false))
-        .invalidate(searchResultsProvider(trimmed));
+    _s._query = query;
+    final effective = _effectiveSearchQuery(query);
+    if (effective.trim().isEmpty) return;
+    _commitSearch(effective, recordRecent: query.trim().isNotEmpty);
   }
 
   void _applyHelperQuery(String title) {
@@ -115,14 +108,14 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
     }
   }
 
-  void _onSearchChanged(String query) {
-    setState(() {
-      _s._query = query;
-      _s._gridFocusedIndex = null;
-    });
-    ShellBus.notifyShellChromeChanged();
-    _s._debounce?.cancel();
-    if (query.trim().isEmpty) {
+
+  String _effectiveSearchQuery([String? typed]) {
+    return composeSearchQuery(typed ?? _s._query, _s._filters);
+  }
+
+  void _commitSearch(String effective, {required bool recordRecent}) {
+    final trimmed = effective.trim();
+    if (trimmed.isEmpty) {
       setState(() {
         _s._sections.clear();
         _s._isSearching = false;
@@ -131,26 +124,59 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
         _s._gridFocusedIndex = null;
         _s._pendingGridFocusIndex = null;
       });
+      return;
+    }
+    setState(() {
+      _s._activeSearchQuery = trimmed;
+      _s._sections = [];
+      _s._isSearching = true;
+      _s._gridFocusedIndex = null;
+    });
+    if (recordRecent) {
+      final typed = _s._query.trim();
+      if (typed.isNotEmpty) _recordRecentQuery(typed);
+    }
+    (_s._container ?? ProviderScope.containerOf(context, listen: false))
+        .invalidate(searchResultsProvider(trimmed));
+  }
+
+  void _onFiltersChanged(SearchFilters next) {
+    setState(() => _s._filters = next);
+    ShellBus.notifyShellChromeChanged();
+    _s._debounce?.cancel();
+    final effective = _effectiveSearchQuery();
+    if (effective.trim().isEmpty) {
+      _commitSearch('', recordRecent: false);
+      return;
+    }
+    _s._debounce = Timer(const Duration(milliseconds: 320), () {
+      _commitSearch(effective, recordRecent: false);
+    });
+  }
+
+  void _toggleFiltersOpen() {
+    setState(() => _s._filtersOpen = !_s._filtersOpen);
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _s._query = query;
+      _s._gridFocusedIndex = null;
+    });
+    ShellBus.notifyShellChromeChanged();
+    _s._debounce?.cancel();
+    final effective = _effectiveSearchQuery(query);
+    if (effective.trim().isEmpty) {
+      _commitSearch('', recordRecent: false);
       if (_s._leanbackTextInput(context) && _s._focusNode.hasFocus) {
         _s._focusSearchFieldBrowse();
       }
       return;
     }
     _s._debounce = Timer(const Duration(milliseconds: 500), () {
-      final trimmed = query.trim();
-      if (trimmed.isEmpty) return;
-      setState(() {
-        _s._activeSearchQuery = trimmed;
-        _s._sections = [];
-        _s._isSearching = true;
-        _s._gridFocusedIndex = null;
-      });
       // TV: only persist on OK/submit — debounce would save every IME partial.
-      if (!_s._leanbackTextInput(context) || !_s._searchFieldEditing) {
-        _recordRecentQuery(trimmed);
-      }
-      (_s._container ?? ProviderScope.containerOf(context, listen: false))
-          .invalidate(searchResultsProvider(trimmed));
+      final record = !_s._leanbackTextInput(context) || !_s._searchFieldEditing;
+      _commitSearch(_effectiveSearchQuery(query), recordRecent: record);
     });
   }
 

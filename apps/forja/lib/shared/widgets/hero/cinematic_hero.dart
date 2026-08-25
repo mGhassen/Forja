@@ -1082,13 +1082,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           );
   }
 
-  void _focusFirstCatalogFromGallery() {
-    final tabId = widget.tvTabId;
-    if (ShellTvFocusCoordinator.focusFirstContentRow(tabId)) return;
-    // No rails yet (loading) — keep a focusable hero landing.
-    _revealedHeroPlayFocus();
-  }
-
   Widget _buildTvHeroGalleryFocus(List<_HeroItem> items) {
     return shellFocusableTap(
       context: context,
@@ -1100,8 +1093,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       onLeftEdge: () => _stepHeroFilm(-1, items),
       onRightEdge: () => _stepHeroFilm(1, items),
       onUpEdge: _focusHomeHeroMenu,
-      // Skip View details — Search ↓ lands on gallery; next ↓ is catalog.
-      onDownEdge: _focusFirstCatalogFromGallery,
+      onDownEdge: _revealedHeroPlayFocus,
       onTap: items.isEmpty
           ? null
           : () {

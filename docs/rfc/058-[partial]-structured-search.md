@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 2** components · **5 / 6** acceptance · **0 / 1** device smoke |
-| **Current slice** | Parser + TMDB structured search wired — device smoke open |
+| **Progress** | **3 / 3** components · **8 / 10** acceptance · **0 / 1** device smoke |
+| **Current slice** | Score / type / filter lens shipped — device smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,6 +22,7 @@
 |--:|----|-------------|--------|
 | 1 | R58-C01 | `parseSearchQuery` — year / range / genre aliases + remainder | ✅ |
 | 2 | R58-C02 | `TmdbApi.searchStructured` + Search tab uses it (addons still raw) | ✅ |
+| 3 | R58-C03 | Search filter lens UI (type segment / score arc / year timeline) + query compose | ✅ |
 
 ---
 
@@ -38,9 +39,20 @@
 
 ---
 
+## Acceptance (score / type / filter lens)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R58-A07 | Query tokens `>8` / `>=8` / `<9` / `8-9` and `films`/`series` parse into score + mediaType | ✅ |
+| 2 | R58-A08 | TMDB discover + multi-search honor min/max score and movie/tv type | ✅ |
+| 3 | R58-A09 | Tune icon opens filter lens; active filters dock as clearable ghost tokens | ✅ |
+| 4 | R58-A10 | Addon search uses remainder only (skips when filters-only) | ✅ |
+
+---
+
 ## Summary
 
-Upgrade Search’s TMDB path from raw `search/multi` to a structured merge: parse year (or range) and genre aliases, resolve leftover text as a person when confident, run discover with those filters, and merge with title multi-search (year-filtered when a year was asked). Stremio addon search still receives the raw query string.
+Upgrade Search’s TMDB path from raw `search/multi` to a structured merge: parse year (or range), genre aliases, score bounds, and media type, resolve leftover text as a person when confident, run discover with those filters, and merge with title multi-search (year/score/type-filtered when asked). A filter lens UI composes the same tokens. Stremio addon search receives the remainder text only (skipped for filters-only queries).
 
 ## Goals
 
@@ -54,4 +66,6 @@ Upgrade Search’s TMDB path from raw `search/multi` to a structured merge: pars
 - Year/range on title multi-hits is a hard filter when present.
 - Genre aliases are exact token/phrase matches (see `search_query_parser.dart`).
 - TV has no Horror genre — horror queries discover movies only.
-- Addon catalogs: unchanged raw `search` param.
+- Score filters use TMDB `vote_average` (discover gte/lte + post-filter).
+- Media type tokens (`films` / `series`) restrict movie vs TV.
+- Addon catalogs: remainder text only; skipped when the query is filters-only.

@@ -206,6 +206,12 @@ class SearchResultsNotifier
     final stremio = StremioService();
     var sections = <SearchResultSection>[];
 
+    final parsed = parseSearchQuery(query);
+    // Addons get title/person text only — score/year/type tokens confuse them.
+    final addonQuery = parsed.remainder.trim().isNotEmpty
+        ? parsed.remainder.trim()
+        : (parsed.hasStructuredFilters ? '' : query);
+
     try {
       final results = await api.searchStructured(query);
       if (_stale(gen, disposed)) return;
@@ -239,7 +245,7 @@ class SearchResultsNotifier
     }
     if (_stale(gen, disposed)) return;
 
-    if (addonProviders.isEmpty) {
+    if (addonProviders.isEmpty || addonQuery.isEmpty) {
       state = state.copyWith(addonsDone: true);
       return;
     }
@@ -268,7 +274,7 @@ class SearchResultsNotifier
               baseUrl: cat['addonBaseUrl'],
               type: cat['catalogType'],
               id: cat['catalogId'],
-              search: query,
+              search: addonQuery,
             );
             if (_stale(gen, disposed)) return;
             for (final r in results) {

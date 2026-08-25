@@ -23,6 +23,7 @@ part 'search_models.dart';
 part 'search_widgets.dart';
 part 'search_search.dart';
 part 'search_tv.dart';
+part 'search_filters.dart';
 part 'search_build.dart';
 
 /// Search tab - RFC-024 R24-A11: query-driven only; no ShellTabRefresh / auto stale refetch.
@@ -72,6 +73,10 @@ class SearchScreenState extends ConsumerState<SearchScreen>
   /// Ignore IME/key submit from the same OK that opened the field.
   /// Android TV OK often delivers both Select and Enter.
   bool _searchSubmitArmed = false;
+
+  SearchFilters _filters = SearchFilters.empty;
+  bool _filtersOpen = false;
+  final FocusNode _filterFocusNode = FocusNode(debugLabel: 'search-filter');
   int _searchEditEpoch = 0;
 
   /// Cached for debounce/invalidate without inherited lookup on inactive elements.
@@ -133,6 +138,7 @@ class SearchScreenState extends ConsumerState<SearchScreen>
     _debounce?.cancel();
     _focusNode.dispose();
     _closeFocusNode.dispose();
+    _filterFocusNode.dispose();
     _firstHelperFocusNode.dispose();
     _helpersScrollController.dispose();
     _resultsScrollController.dispose();

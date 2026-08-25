@@ -258,6 +258,8 @@ class TmdbApi {
             year: singleYear,
             releaseDateGte: singleYear == null ? gte : null,
             releaseDateLte: singleYear == null ? lte : null,
+            minRating: parsed.minScore,
+            maxRating: parsed.maxScore,
           ),
         ),
       );
@@ -272,25 +274,35 @@ class TmdbApi {
             year: singleYear,
             releaseDateGte: singleYear == null ? gte : null,
             releaseDateLte: singleYear == null ? lte : null,
+            minRating: parsed.minScore,
+            maxRating: parsed.maxScore,
           ),
         ),
       );
     }
 
-    if (personId != null || parsed.hasGenre || bounds != null) {
+    final wantMovies =
+        parsed.mediaType == null || parsed.mediaType == 'movie';
+    final wantTv = parsed.mediaType == null || parsed.mediaType == 'tv';
+
+    if (personId != null ||
+        parsed.hasGenre ||
+        bounds != null ||
+        parsed.hasScore ||
+        parsed.hasMediaType) {
       if (parsed.hasGenre) {
-        if (parsed.movieGenreIds.isNotEmpty) {
+        if (wantMovies && parsed.movieGenreIds.isNotEmpty) {
           addMovieDiscover(genres: parsed.movieGenreIds, people: personId);
         }
-        if (parsed.tvGenreIds.isNotEmpty) {
+        if (wantTv && parsed.tvGenreIds.isNotEmpty) {
           addTvDiscover(genres: parsed.tvGenreIds, people: personId);
         }
       } else if (personId != null) {
-        addMovieDiscover(people: personId);
-        addTvDiscover(people: personId);
-      } else if (bounds != null && !parsed.hasPersonCandidate) {
-        addMovieDiscover();
-        addTvDiscover();
+        if (wantMovies) addMovieDiscover(people: personId);
+        if (wantTv) addTvDiscover(people: personId);
+      } else if (!parsed.hasPersonCandidate) {
+        if (wantMovies) addMovieDiscover();
+        if (wantTv) addTvDiscover();
       }
     }
 
@@ -301,24 +313,41 @@ class TmdbApi {
 
     final seen = <String>{};
     final out = <Movie>[];
+    bool passesFilters(Movie m, {required bool applyYearFilter}) {
+      if (applyYearFilter &&
+          bounds != null &&
+          !releaseDateInYearBounds(m.releaseDate, bounds)) {
+        return false;
+      }
+      if (parsed.mediaType != null && m.mediaType != parsed.mediaType) {
+        return false;
+      }
+      if (parsed.minScore != null && m.voteAverage < parsed.minScore!) {
+        return false;
+      }
+      if (parsed.maxScore != null && m.voteAverage > parsed.maxScore!) {
+        return false;
+      }
+      return true;
+    }
+
     void addAll(List<Movie> items, {required bool applyYearFilter}) {
       for (final m in items) {
-        if (applyYearFilter &&
-            bounds != null &&
-            !releaseDateInYearBounds(m.releaseDate, bounds)) {
-          continue;
-        }
+        if (!passesFilters(m, applyYearFilter: applyYearFilter)) continue;
         final key = '${m.mediaType}:${m.id}';
         if (!seen.add(key)) continue;
         out.add(m);
       }
     }
 
+    // Skip multi-search noise when the query is filters-only (no title/person text).
+    final runMulti = parsed.remainder.isNotEmpty || !parsed.hasStructuredFilters;
     for (var i = 0; i < multiFutures.length; i++) {
-      addAll(lists[i], applyYearFilter: bounds != null);
+      if (!runMulti) continue;
+      addAll(lists[i], applyYearFilter: bounds != null || parsed.hasScore || parsed.hasMediaType);
     }
     for (var i = multiFutures.length; i < lists.length; i++) {
-      addAll(lists[i], applyYearFilter: false);
+      addAll(lists[i], applyYearFilter: parsed.hasScore || parsed.hasMediaType);
     }
     return out;
   }
@@ -397,6 +426,7 @@ class TmdbApi {
     String? releaseDateGte,
     String? releaseDateLte,
     double? minRating,
+    double? maxRating,
     int? minVoteCount,
     String? language,
     int? watchProviderId,
@@ -422,6 +452,9 @@ class TmdbApi {
     }
     if (minRating != null) {
       path += '&vote_average.gte=$minRating';
+    }
+    if (maxRating != null) {
+      path += '&vote_average.lte=$maxRating';
     }
     if (minVoteCount != null) {
       path += '&vote_count.gte=$minVoteCount';
@@ -450,6 +483,7 @@ class TmdbApi {
     String? releaseDateGte,
     String? releaseDateLte,
     double? minRating,
+    double? maxRating,
     int? minVoteCount,
     String? language,
     int? watchProviderId,
@@ -488,6 +522,9 @@ class TmdbApi {
       }
       if (minRating != null) {
         path += '&vote_average.gte=$minRating';
+      }
+      if (maxRating != null) {
+        path += '&vote_average.lte=$maxRating';
       }
       if (minVoteCount != null) {
         path += '&vote_count.gte=$minVoteCount';

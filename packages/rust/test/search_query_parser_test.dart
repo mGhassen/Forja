@@ -80,4 +80,36 @@ void main() {
       expect(releaseDateInYearBounds('', (2025, 2025)), isFalse);
     });
   });
+
+  group('score and media type', () {
+    test('score operators and year range', () {
+      final p = parseSearchQuery('>8 <9 2020-2025 films');
+      expect(p.minScore, 8);
+      expect(p.maxScore, 9);
+      expect(p.yearStart, 2020);
+      expect(p.yearEnd, 2025);
+      expect(p.mediaType, 'movie');
+      expect(p.remainder, isEmpty);
+    });
+
+    test('score range 8-9', () {
+      final p = parseSearchQuery('nolan 8-9');
+      expect(p.remainder, 'nolan');
+      expect(p.minScore, 8);
+      expect(p.maxScore, 9);
+    });
+
+    test('series token', () {
+      final p = parseSearchQuery('drama series >=7');
+      expect(p.mediaType, 'tv');
+      expect(p.minScore, 7);
+      expect(p.matchedGenreLabel, 'Drama');
+    });
+
+    test('gte token', () {
+      final p = parseSearchQuery('films >=8.5');
+      expect(p.mediaType, 'movie');
+      expect(p.minScore, 8.5);
+    });
+  });
 }

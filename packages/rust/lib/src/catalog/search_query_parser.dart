@@ -22,10 +22,13 @@ class ParsedSearchQuery {
     this.movieGenreIds = const [],
     this.tvGenreIds = const [],
     this.matchedGenreLabel,
+    this.mediaType,
+    this.minScore,
+    this.maxScore,
   });
 
   final String raw;
-  /// Text left after stripping year/range and genre tokens (person / title).
+  /// Text left after stripping year/range / score / type / genre tokens.
   final String remainder;
   final int? year;
   final int? yearStart;
@@ -33,12 +36,23 @@ class ParsedSearchQuery {
   final List<int> movieGenreIds;
   final List<int> tvGenreIds;
   final String? matchedGenreLabel;
+  /// `movie` | `tv` when the query asked for films/series only.
+  final String? mediaType;
+  final double? minScore;
+  final double? maxScore;
 
   bool get hasYear =>
       year != null || (yearStart != null && yearEnd != null);
 
   bool get hasGenre =>
       movieGenreIds.isNotEmpty || tvGenreIds.isNotEmpty;
+
+  bool get hasScore => minScore != null || maxScore != null;
+
+  bool get hasMediaType => mediaType != null;
+
+  bool get hasStructuredFilters =>
+      hasYear || hasGenre || hasScore || hasMediaType;
 
   bool get hasPersonCandidate => remainder.trim().length >= 2;
 
@@ -210,6 +224,17 @@ final _yearRangeRe = RegExp(
 final _yearRe = RegExp(r'\b((?:19|20)\d{2})\b');
 
 /// Parse [raw] into year/range, optional genre, and remainder text.
+final _scoreOpRe = RegExp(
+  r'(?:^|\s)(>=|<=|>|<)\s*(\d(?:\.\d)?)(?=\s|$)',
+);
+final _scoreRangeRe = RegExp(
+  r'(?:^|\s)(\d(?:\.\d)?)\s*[-–—]\s*(\d(?:\.\d)?)(?=\s|$)',
+);
+final _mediaTypeRe = RegExp(
+  r'(?:^|\s)(films?|movies?|series|shows?|tv)(?=\s|$)',
+  caseSensitive: false,
+);
+
 ParsedSearchQuery parseSearchQuery(String raw) {
   final trimmed = raw.trim();
   if (trimmed.isEmpty) {
@@ -234,6 +259,52 @@ ParsedSearchQuery parseSearchQuery(String raw) {
     }
   }
 
+  working = working.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  double? minScore;
+  double? maxScore;
+  // Collect ops on a padded copy, then strip from [working].
+  final padded = ' $working ';
+  for (final m in _scoreOpRe.allMatches(padded)) {
+    final op = m.group(1)!;
+    final v = double.tryParse(m.group(2)!);
+    if (v == null) continue;
+    // TMDB only exposes gte/lte — treat > / < as inclusive bounds.
+    if (op == '>' || op == '>=') {
+      minScore = minScore == null ? v : (v > minScore! ? v : minScore);
+    } else {
+      maxScore = maxScore == null ? v : (v < maxScore! ? v : maxScore);
+    }
+  }
+  working = working.replaceAll(_scoreOpRe, ' ');
+  working = working.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  // Score range like 8-9 (both ends ≤10) — not a calendar year range.
+  final scoreRange = _scoreRangeRe.firstMatch(' $working ');
+  if (scoreRange != null) {
+    final a = double.tryParse(scoreRange.group(1)!);
+    final b = double.tryParse(scoreRange.group(2)!);
+    if (a != null && b != null && a <= 10 && b <= 10) {
+      final lo = a <= b ? a : b;
+      final hi = a <= b ? b : a;
+      minScore = minScore == null ? lo : (minScore! > lo ? minScore : lo);
+      maxScore = maxScore == null ? hi : (maxScore! < hi ? maxScore : hi);
+      working = (' $working ').replaceFirst(_scoreRangeRe, ' ');
+    }
+  }
+  working = working.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  String? mediaType;
+  final mediaMatch = _mediaTypeRe.firstMatch(' $working ');
+  if (mediaMatch != null) {
+    final tok = mediaMatch.group(1)!.toLowerCase();
+    if (tok.startsWith('film') || tok.startsWith('movie')) {
+      mediaType = 'movie';
+    } else {
+      mediaType = 'tv';
+    }
+    working = (' $working ').replaceFirst(_mediaTypeRe, ' ');
+  }
   working = working.replaceAll(RegExp(r'\s+'), ' ').trim();
 
   List<int> movieGenreIds = const [];
@@ -269,6 +340,9 @@ ParsedSearchQuery parseSearchQuery(String raw) {
     movieGenreIds: movieGenreIds,
     tvGenreIds: tvGenreIds,
     matchedGenreLabel: genreLabel,
+    mediaType: mediaType,
+    minScore: minScore,
+    maxScore: maxScore,
   );
 }
 

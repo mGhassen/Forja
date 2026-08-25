@@ -458,6 +458,7 @@ mixin _LiveMatchesForjaLive
   List<_Sport> _sportCategoriesFromCurrentMatches() {
     final seen = <String>{};
     final cats = <_Sport>[];
+    final applyWindow = (this as _LiveMatchesData)._applyTimeWindowFilter;
 
     void addCat(String raw) {
       final id = _normalizeSportId(raw);
@@ -469,6 +470,7 @@ mixin _LiveMatchesForjaLive
         _s._server == _LiveMatchesServer.forjaLive ||
         _s._server == _LiveMatchesServer.iptvSports) {
       for (final s in _s._damiTvStreams) {
+        if (applyWindow && !_damiTvInTimeWindow(s, _s._timeWindow)) continue;
         if (_is247Item(category: s.categoryName, isAlwaysOn: s.isAlwaysOn)) {
           addCat('24/7');
         } else {
@@ -478,6 +480,9 @@ mixin _LiveMatchesForjaLive
     }
 
     for (final m in _s._streamedMatches) {
+      if (applyWindow && !_streamedMatchInTimeWindow(m, _s._timeWindow)) {
+        continue;
+      }
       if (_is247Item(category: m.category, isAlwaysOn: m.isAlwaysOn)) {
         addCat('24/7');
       } else {

@@ -144,11 +144,6 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
                     future: _s._popularFuture,
                     onMovieTap: _s._openDetails,
                     showRank: true,
-                    // First catalog row under hero when Featured is embedded in
-                    // the hero bleed - UP must reach Play, not stop on Featured.
-                    tvFocusUp: featuredSection != null
-                        ? _s._homeHeroController.revealPlayFocus
-                        : null,
                     tvRowId: 'popular',
                     tvRowOrder: 1,
                   ),
