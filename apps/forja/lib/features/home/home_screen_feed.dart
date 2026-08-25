@@ -196,17 +196,27 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
 
   void _onWatchProviderChanged() {
     if (!mounted || !shellTabVisible) return;
+    _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
   }
 
   void _onHomeCategoryChanged() {
     if (!mounted || !shellTabVisible) return;
+    _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
   }
 
   void _onHomeGenreChanged() {
     if (!mounted || !shellTabVisible) return;
+    _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
+  }
+
+  void _invalidateHomeMainRails() {
+    ref.invalidate(homeTrendingProvider);
+    ref.invalidate(homePopularProvider);
+    ref.invalidate(homeFeaturedProvider);
+    ref.invalidate(homeNowPlayingProvider);
   }
 
   /// Stop Home-scoped network work while another shell tab is selected.

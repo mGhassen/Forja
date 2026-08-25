@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 5 / 5** fix · **4 / 4** acceptance |
+| **Progress** | **Complete · 6 / 6** fix · **5 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,7 @@
 | 3 | I204-T03 | Continue Watching claims without hiding itself; Trakt calendars ignore claim | ✅ |
 | 4 | I204-T04 | Unit tests for claim + backfill | ✅ |
 | 5 | I204-T05 | Categories genre mode: independent fill (no cross-rail claim) + Featured month fill | ✅ |
+| 6 | I204-T06 | Top-menu filters invalidate rails + remount hero on filter sig (no stale trending) | ✅ |
 
 ---
 
@@ -35,6 +36,7 @@
 | 2 | I204-A02 | After a title is removed from a lower rail, another unused title from that rail’s pool fills the slot (row does not shrink for overlap alone) | ✅ |
 | 3 | I204-A03 | Continue Watching and Trakt upcoming still show their titles even if also claimed elsewhere | ✅ |
 | 4 | I204-A04 | With a Categories genre selected, discovery rails stay populated (full slots), not emptied by claim | ✅ |
+| 5 | I204-A05 | Films / TV Shows / Categories / watch service change the hero carousel to match the filter | ✅ |
 
 ---
 

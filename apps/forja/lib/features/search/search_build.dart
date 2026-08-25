@@ -46,15 +46,33 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               _s._onSearchChanged('');
             },
           ),
-        ForjaPlainIcon(
-          icon: Icons.tune_rounded,
-          size: 22,
-          focusNode: _s._filterFocusNode,
-          color: (_s._filtersOpen || _s._filters.isActive)
-              ? ForjaShellColors.textPrimary
-              : ForjaShellColors.textSecondary,
-          tooltip: 'Filters',
-          onTap: _s._toggleFiltersOpen,
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            ForjaPlainIcon(
+              icon: Icons.tune_rounded,
+              size: 24,
+              focusNode: _s._filterFocusNode,
+              color: (_s._filtersOpen || _s._filters.isActive)
+                  ? ForjaShellColors.textPrimary
+                  : ForjaShellColors.textSecondary,
+              tooltip: 'Filters',
+              onTap: _s._toggleFiltersOpen,
+            ),
+            if (_s._filters.isActive && !_s._filtersOpen)
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Container(
+                  width: 7,
+                  height: 7,
+                  decoration: const BoxDecoration(
+                    color: ForjaShellColors.textPrimary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(width: 4),
       ],
@@ -81,15 +99,33 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                 },
               ),
             ),
-            ForjaPlainIcon(
-              icon: Icons.tune_rounded,
-              size: 22,
-              focusNode: _s._filterFocusNode,
-              color: (_s._filtersOpen || _s._filters.isActive)
-                  ? ForjaShellColors.textPrimary
-                  : ForjaShellColors.textSecondary,
-              tooltip: 'Filters',
-              onTap: _s._toggleFiltersOpen,
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                ForjaPlainIcon(
+                  icon: Icons.tune_rounded,
+                  size: 24,
+                  focusNode: _s._filterFocusNode,
+                  color: (_s._filtersOpen || _s._filters.isActive)
+                      ? ForjaShellColors.textPrimary
+                      : ForjaShellColors.textSecondary,
+                  tooltip: 'Filters',
+                  onTap: _s._toggleFiltersOpen,
+                ),
+                if (_s._filters.isActive && !_s._filtersOpen)
+                  Positioned(
+                    right: 4,
+                    top: 4,
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: ForjaShellColors.textPrimary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 8),
           ],
@@ -321,28 +357,33 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                   _s._focusSearchFieldBrowse();
                 },
               ),
-            ForjaPlainIcon(
-              icon: Icons.tune_rounded,
-              size: 22,
-              focusNode: _s._filterFocusNode,
-              color: (_s._filtersOpen || filtersActive)
-                  ? ForjaShellColors.textPrimary
-                  : ForjaShellColors.textSecondary,
-              tooltip: 'Filters',
-              onTap: _s._toggleFiltersOpen,
-              child: filtersActive && !_s._filtersOpen
-                  ? Align(
-                      alignment: const Alignment(0.55, -0.55),
-                      child: Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: ForjaShellColors.textPrimary,
-                          shape: BoxShape.circle,
-                        ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                ForjaPlainIcon(
+                  icon: Icons.tune_rounded,
+                  size: 24,
+                  focusNode: _s._filterFocusNode,
+                  color: (_s._filtersOpen || filtersActive)
+                      ? ForjaShellColors.textPrimary
+                      : ForjaShellColors.textSecondary,
+                  tooltip: 'Filters',
+                  onTap: _s._toggleFiltersOpen,
+                ),
+                if (filtersActive && !_s._filtersOpen)
+                  Positioned(
+                    right: 4,
+                    top: 4,
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: ForjaShellColors.textPrimary,
+                        shape: BoxShape.circle,
                       ),
-                    )
-                  : null,
+                    ),
+                  ),
+              ],
             ),
           ],
         ),

@@ -125,5 +125,14 @@ void main() {
       expect(p.originCountry, 'KR');
       expect(p.mediaType, 'tv');
     });
+
+    test('series + romance has tv genre ids', () {
+      final p = parseSearchQuery('series romance >=8 2020-2023');
+      expect(p.mediaType, 'tv');
+      expect(p.matchedGenreLabel, 'Romance');
+      expect(p.tvGenreIds, isNotEmpty);
+      expect(p.minScore, 8);
+      expect(p.yearBounds, (2020, 2023));
+    });
   });
 }

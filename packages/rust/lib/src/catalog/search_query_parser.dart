@@ -171,19 +171,20 @@ const _genreAliases = <_GenreAlias>[
     aliases: ['history'],
     label: 'History',
     movieIds: [36],
-    tvIds: [],
+    tvIds: [36],
   ),
   _GenreAlias(
     aliases: ['horror'],
     label: 'Horror',
     movieIds: [27],
-    tvIds: [],
+    // TMDB has no dedicated TV Horror genre; many series still carry 27.
+    tvIds: [27],
   ),
   _GenreAlias(
     aliases: ['music', 'musical'],
     label: 'Music',
     movieIds: [10402],
-    tvIds: [],
+    tvIds: [10402],
   ),
   _GenreAlias(
     aliases: ['mystery'],
@@ -195,13 +196,13 @@ const _genreAliases = <_GenreAlias>[
     aliases: ['romance', 'romantic'],
     label: 'Romance',
     movieIds: [10749],
-    tvIds: [],
+    tvIds: [10749],
   ),
   _GenreAlias(
     aliases: ['thriller'],
     label: 'Thriller',
     movieIds: [53],
-    tvIds: [],
+    tvIds: [53],
   ),
   _GenreAlias(
     aliases: ['war'],

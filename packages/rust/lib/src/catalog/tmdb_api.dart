@@ -191,8 +191,10 @@ class TmdbApi {
     return _fetchMap('tv/$tvId/season/$seasonNumber');
   }
 
-  Future<List<Movie>> searchMulti(String query) async {
-    final decoded = await _fetchMap('search/multi?query=${Uri.encodeComponent(query)}');
+  Future<List<Movie>> searchMulti(String query, {int page = 1}) async {
+    final decoded = await _fetchMap(
+      'search/multi?query=${Uri.encodeComponent(query)}&page=$page',
+    );
     return (decoded['results'] as List)
         .where((json) => json['media_type'] == 'movie' || json['media_type'] == 'tv')
         .map((json) => Movie.fromJson(json))
@@ -233,10 +235,12 @@ class TmdbApi {
 
     final multiFutures = <Future<List<Movie>>>[
       safe(() => searchMulti(trimmed)),
+      safe(() => searchMulti(trimmed, page: 2)),
     ];
     if (parsed.remainder.isNotEmpty &&
         parsed.remainder.toLowerCase() != trimmed.toLowerCase()) {
       multiFutures.add(safe(() => searchMulti(parsed.remainder)));
+      multiFutures.add(safe(() => searchMulti(parsed.remainder, page: 2)));
     }
 
     int? personId;
@@ -251,38 +255,48 @@ class TmdbApi {
 
     final discoverFutures = <Future<List<Movie>>>[];
 
+    // TMDB returns 20/page; desktop grid is 4 cols → page1≈5 rows.
+    // Fetch a second page for +5 rows on filter/discover results.
+    const discoverPages = 2;
+
     void addMovieDiscover({List<int>? genres, int? people}) {
-      discoverFutures.add(
-        safe(
-          () => discoverMovies(
-            genres: genres,
-            withPeople: people,
-            year: singleYear,
-            releaseDateGte: singleYear == null ? gte : null,
-            releaseDateLte: singleYear == null ? lte : null,
-            minRating: parsed.minScore,
-            maxRating: parsed.maxScore,
-            withOriginCountry: parsed.originCountry,
+      for (var page = 1; page <= discoverPages; page++) {
+        discoverFutures.add(
+          safe(
+            () => discoverMovies(
+              genres: genres,
+              withPeople: people,
+              year: singleYear,
+              releaseDateGte: singleYear == null ? gte : null,
+              releaseDateLte: singleYear == null ? lte : null,
+              minRating: parsed.minScore,
+              maxRating: parsed.maxScore,
+              withOriginCountry: parsed.originCountry,
+              page: page,
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
 
     void addTvDiscover({List<int>? genres, int? people}) {
-      discoverFutures.add(
-        safe(
-          () => discoverTvShows(
-            genres: genres,
-            withPeople: people,
-            year: singleYear,
-            releaseDateGte: singleYear == null ? gte : null,
-            releaseDateLte: singleYear == null ? lte : null,
-            minRating: parsed.minScore,
-            maxRating: parsed.maxScore,
-            withOriginCountry: parsed.originCountry,
+      for (var page = 1; page <= discoverPages; page++) {
+        discoverFutures.add(
+          safe(
+            () => discoverTvShows(
+              genres: genres,
+              withPeople: people,
+              year: singleYear,
+              releaseDateGte: singleYear == null ? gte : null,
+              releaseDateLte: singleYear == null ? lte : null,
+              minRating: parsed.minScore,
+              maxRating: parsed.maxScore,
+              withOriginCountry: parsed.originCountry,
+              page: page,
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
 
     final wantMovies =
@@ -299,8 +313,15 @@ class TmdbApi {
         if (wantMovies && parsed.movieGenreIds.isNotEmpty) {
           addMovieDiscover(genres: parsed.movieGenreIds, people: personId);
         }
-        if (wantTv && parsed.tvGenreIds.isNotEmpty) {
-          addTvDiscover(genres: parsed.tvGenreIds, people: personId);
+        if (wantTv) {
+          // Movie-only TMDB genres (Romance, Horror, …) still appear on many
+          // series — fall back to movie ids so Series+Romance is not empty.
+          final tvGenres = parsed.tvGenreIds.isNotEmpty
+              ? parsed.tvGenreIds
+              : parsed.movieGenreIds;
+          if (tvGenres.isNotEmpty) {
+            addTvDiscover(genres: tvGenres, people: personId);
+          }
         }
       } else if (personId != null) {
         if (wantMovies) addMovieDiscover(people: personId);

@@ -118,7 +118,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     String? tvRowId,
     int tvRowOrder = 0,
   }) {
-    final loading = async.isLoading && !async.hasValue;
+    final loading = async.isRefreshing || !async.hasValue;
     if (loading) {
       return HomeMovieSection(
         title: title,
@@ -185,11 +185,25 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     final popularAsync = ref.watch(homePopularProvider);
     final nowPlayingAsync = ref.watch(homeNowPlayingProvider);
 
+    final mediaFilter = ref.watch(shellHomeCategoryProvider);
+    final genreId = ref.watch(shellHomeGenreIdProvider);
+    final watchProviderId = ref.watch(shellWatchProviderIdProvider);
+    final filterSig =
+        '${mediaFilter?.name ?? 'all'}|${genreId ?? 'all'}|${watchProviderId ?? 'all'}';
+
     final displays = _claimHomeRailDisplays(
-      trending: trendingAsync.valueOrNull ?? const [],
-      featured: featuredAsync.valueOrNull ?? const [],
-      popular: popularAsync.valueOrNull ?? const [],
-      nowPlaying: nowPlayingAsync.valueOrNull ?? const [],
+      trending: trendingAsync.isRefreshing
+          ? const []
+          : (trendingAsync.valueOrNull ?? const []),
+      featured: featuredAsync.isRefreshing
+          ? const []
+          : (featuredAsync.valueOrNull ?? const []),
+      popular: popularAsync.isRefreshing
+          ? const []
+          : (popularAsync.valueOrNull ?? const []),
+      nowPlaying: nowPlayingAsync.isRefreshing
+          ? const []
+          : (nowPlayingAsync.valueOrNull ?? const []),
     );
 
     final usesShellHome = _usesShellHomeLayout(context);
@@ -200,6 +214,22 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     final moodMovies = displays['mood'] ?? const <Movie>[];
     final becauseMovies = displays['because'] ?? const <Movie>[];
     final traktRecMovies = displays['trakt-recs'] ?? const <Movie>[];
+
+    // Remount + wait for the post-filter fetch. Never paint the previous
+    // filter's trending while AsyncValue is still refreshing.
+    final Future<List<Movie>> heroMoviesFuture;
+    if (trendingAsync.isRefreshing || !trendingAsync.hasValue) {
+      heroMoviesFuture = ref.read(homeTrendingProvider.future).then(
+            (pool) => pool.take(kHomeHeroClaimCount).toList(),
+          );
+    } else {
+      final hero = displays['hero'] ?? const <Movie>[];
+      heroMoviesFuture = Future.value(
+        hero.isNotEmpty
+            ? hero
+            : trendingAsync.requireValue.take(kHomeHeroClaimCount).toList(),
+      );
+    }
 
     final featuredSection = usesShellHome && fullHero
         ? _claimedRailSection(
@@ -231,8 +261,8 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
               SliverToBoxAdapter(
                 child: RepaintBoundary(
                   child: HomeCinematicHero(
-                    key: ValueKey(_s._homeFeedEpoch),
-                    moviesFuture: _s._trendingFuture,
+                    key: ValueKey('home-hero-$filterSig-${_s._homeFeedEpoch}'),
+                    moviesFuture: heroMoviesFuture,
                     compact: !fullHero,
                     usesShellHomeLayout: usesShellHome,
                     scrollController: _s._homeScrollController,

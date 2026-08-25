@@ -65,7 +65,7 @@ Upgrade Search’s TMDB path from raw `search/multi` to a structured merge: pars
 - Person rows are never shown; only movie/tv cards.
 - Year/range on title multi-hits is a hard filter when present.
 - Genre aliases are exact token/phrase matches (see `search_query_parser.dart`).
-- TV has no Horror genre — horror queries discover movies only.
+- Movie-only genre labels (Romance, Horror, Thriller, …) still apply to Series discover via the same genre ids.
 - Score filters use TMDB `vote_average` (discover gte/lte + post-filter).
 - Media type tokens (`films` / `series`) restrict movie vs TV.
 - Addon catalogs: remainder text only; skipped when the query is filters-only.

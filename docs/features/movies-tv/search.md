@@ -33,7 +33,7 @@ Install Stremio addons in **Settings → Providers & Addons** to unlock addon se
 
 - Addon search depends on what each addon exposes — not all addons support search
 - TMDB results open the standard movie/series details flow
-- Genre names are matched as whole words (`horror`, `comedy`, `sci-fi`, …). TMDB has no TV Horror genre — horror queries fill movie results
+- Genre names are matched as whole words (`horror`, `comedy`, `sci-fi`, …). Romance / Horror / Thriller also apply to Series (TMDB tags many shows with those genre ids)
 - A year in the query filters TMDB title hits to that year (or range)
 - Score filters use TMDB `vote_average` (not IMDb). Double-tap the score or year scrub to clear that filter
 
