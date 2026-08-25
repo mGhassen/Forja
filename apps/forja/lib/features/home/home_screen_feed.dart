@@ -12,15 +12,31 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
     final movieGenres = globalGenres.movie ?? category.movieGenres;
     final tvGenres = globalGenres.tv ?? category.tvGenres;
     return _fetchMediaFiltered(
-      movieFetch: () => _s._api.discoverMovies(
-        genres: movieGenres,
-        watchProviderId: providerId,
+      movieFetch: () => _homeDiscoverPool(
+        (page) => _s._api.discoverMovies(
+          genres: movieGenres,
+          watchProviderId: providerId,
+          page: page,
+        ),
       ),
-      tvFetch: () => _s._api.discoverTvShows(
-        genres: tvGenres,
-        watchProviderId: providerId,
+      tvFetch: () => _homeDiscoverPool(
+        (page) => _s._api.discoverTvShows(
+          genres: tvGenres,
+          watchProviderId: providerId,
+          page: page,
+        ),
       ),
     );
+  }
+
+  Future<List<Movie>> _homeDiscoverPool(
+    Future<List<Movie>> Function(int page) fetch,
+  ) async {
+    final pages = await Future.wait([
+      for (var p = 1; p <= kHomeRailFetchPages; p++)
+        fetch(p).catchError((_) => <Movie>[]),
+    ]);
+    return mergeHomeRailPages(pages);
   }
 
   void _resetRandomCategoryRows() {
@@ -40,12 +56,31 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
       final pool = List.of(homeGenreCategories)..shuffle(math.Random());
       picked = pool.take(3).toList();
     }
+    final epoch = _s._homeFeedEpoch;
     _s._randomCategoryRows = [
       for (final category in picked)
         (
           id: category.id,
           label: category.label,
-          future: _fetchCategoryRow(category),
+          future: _fetchCategoryRow(category).then((pool) {
+            if (!mounted || epoch != _s._homeFeedEpoch) return pool;
+            setState(() {
+              _s._randomCategoryRows = [
+                for (final row in _s._randomCategoryRows)
+                  if (row.id == category.id)
+                    (
+                      id: row.id,
+                      label: row.label,
+                      future: row.future,
+                      pool: pool,
+                    )
+                  else
+                    row,
+              ];
+            });
+            return pool;
+          }),
+          pool: null,
         ),
     ];
   }
@@ -140,7 +175,11 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
 
   void _resetHomeCategoryFeeds() {
     _s._homeFeedEpoch++;
-    _s._moodFuture = _loadMoodMovies(_s._selectedMood);
+    _s._moodPool = null;
+    _s._moodFuture = _loadMoodMovies(_s._selectedMood).then((pool) {
+      if (mounted) setState(() => _s._moodPool = pool);
+      return pool;
+    });
     _resetRandomCategoryRows();
   }
 
@@ -291,7 +330,14 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
     setState(() {
       _s._becauseSeed = seed;
       _s._becausePoolSize = pool.length;
-      _s._becauseFuture = _loadBecauseRecsMixed(seed, secondary, workGen);
+      _s._becausePool = null;
+      _s._becauseFuture =
+          _loadBecauseRecsMixed(seed, secondary, workGen).then((movies) {
+        if (mounted && workGen == _s._homeBgWorkGen) {
+          setState(() => _s._becausePool = movies);
+        }
+        return movies;
+      });
     });
     return true;
   }
@@ -485,15 +531,21 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
     final mood = _HomeScreenState._moods.firstWhere((m) => m.id == moodId, orElse: () => _HomeScreenState._moods.first);
     final providerId = _s._watchProviderId;
     return _fetchMediaFiltered(
-      movieFetch: () => _s._api.discoverMovies(
-        genres: mood.movieGenres,
-        minRating: 6.0,
-        watchProviderId: providerId,
+      movieFetch: () => _homeDiscoverPool(
+        (page) => _s._api.discoverMovies(
+          genres: mood.movieGenres,
+          minRating: 6.0,
+          watchProviderId: providerId,
+          page: page,
+        ),
       ),
-      tvFetch: () => _s._api.discoverTvShows(
-        genres: mood.tvGenres,
-        minRating: 6.0,
-        watchProviderId: providerId,
+      tvFetch: () => _homeDiscoverPool(
+        (page) => _s._api.discoverTvShows(
+          genres: mood.tvGenres,
+          minRating: 6.0,
+          watchProviderId: providerId,
+          page: page,
+        ),
       ),
     ).catchError((_) => <Movie>[]);
   }
@@ -502,7 +554,11 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
     if (moodId == _s._selectedMood) return;
     setState(() {
       _s._selectedMood = moodId;
-      _s._moodFuture = _loadMoodMovies(moodId);
+      _s._moodPool = null;
+      _s._moodFuture = _loadMoodMovies(moodId).then((pool) {
+        if (mounted) setState(() => _s._moodPool = pool);
+        return pool;
+      });
     });
   }
 

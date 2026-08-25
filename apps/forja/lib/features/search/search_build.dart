@@ -113,6 +113,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
             open: _s._filtersOpen,
             filters: _s._filters,
             onFiltersChanged: _s._onFiltersChanged,
+            onSubmit: _s._submitFilters,
           ),
         ),
       ],
@@ -203,7 +204,29 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(flex: 3, child: _buildHelpersList(context)),
+                    Expanded(
+                      flex: 3,
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: _s._filtersOpen
+                            ? Align(
+                                key: const ValueKey('search-filter-lens'),
+                                alignment: Alignment.topLeft,
+                                child: _SearchFilterLens(
+                                  open: true,
+                                  filters: _s._filters,
+                                  onFiltersChanged: _s._onFiltersChanged,
+                                  onSubmit: _s._submitFilters,
+                                ),
+                              )
+                            : KeyedSubtree(
+                                key: const ValueKey('search-helpers'),
+                                child: _buildHelpersList(context),
+                              ),
+                      ),
+                    ),
                     const SizedBox(width: ShellTokens.searchColumnGap),
                     Expanded(
                       flex: 7,
@@ -335,11 +358,6 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               ],
             ),
           ),
-        _SearchFilterLens(
-          open: _s._filtersOpen,
-          filters: _s._filters,
-          onFiltersChanged: _s._onFiltersChanged,
-        ),
       ],
     );
   }
@@ -488,10 +506,14 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
     BuildContext context,
     List<_FlatSearchResult> results,
   ) {
-    if (_s._query.isEmpty) {
+    if (_s._activeSearchQuery.trim().isEmpty) {
       return Align(
         alignment: Alignment.topLeft,
-        child: _buildEmpty(hint: 'Start typing to search'),
+        child: _buildEmpty(
+          hint: _s._filtersOpen
+              ? 'Set filters, then tap Search'
+              : 'Start typing to search',
+        ),
       );
     }
     if (results.isEmpty && _s._isSearching) {
@@ -567,8 +589,12 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
     final bottomPad = isWide ? 24.0 : ShellTokens.bottomNavHeight;
 
     Widget body;
-    if (_s._query.isEmpty) {
-      body = _buildEmpty();
+    if (_s._activeSearchQuery.trim().isEmpty) {
+      body = _buildEmpty(
+        hint: _s._filtersOpen
+            ? 'Set filters, then tap Search'
+            : null,
+      );
     } else if (_s._sections.isEmpty && _s._isSearching) {
       body = Center(
         child: CircularProgressIndicator(color: AppTheme.current.primaryColor),
@@ -633,6 +659,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               open: _s._filtersOpen,
               filters: _s._filters,
               onFiltersChanged: _s._onFiltersChanged,
+              onSubmit: _s._submitFilters,
             ),
           ),
           Expanded(child: padded),
@@ -789,7 +816,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
           const SizedBox(height: 16),
           Text(
             hint ??
-                (_s._query.isEmpty
+                (_s._activeSearchQuery.trim().isEmpty
                     ? 'Search for your favorite content'
                     : 'No results found'),
             style: const TextStyle(color: Colors.white38),

@@ -25,10 +25,11 @@ class ParsedSearchQuery {
     this.mediaType,
     this.minScore,
     this.maxScore,
+    this.originCountry,
   });
 
   final String raw;
-  /// Text left after stripping year/range / score / type / genre tokens.
+  /// Text left after stripping year/range / score / type / country / genre tokens.
   final String remainder;
   final int? year;
   final int? yearStart;
@@ -40,6 +41,8 @@ class ParsedSearchQuery {
   final String? mediaType;
   final double? minScore;
   final double? maxScore;
+  /// ISO 3166-1 alpha-2 when a country token was matched.
+  final String? originCountry;
 
   bool get hasYear =>
       year != null || (yearStart != null && yearEnd != null);
@@ -51,8 +54,10 @@ class ParsedSearchQuery {
 
   bool get hasMediaType => mediaType != null;
 
+  bool get hasOriginCountry => originCountry != null;
+
   bool get hasStructuredFilters =>
-      hasYear || hasGenre || hasScore || hasMediaType;
+      hasYear || hasGenre || hasScore || hasMediaType || hasOriginCountry;
 
   bool get hasPersonCandidate => remainder.trim().length >= 2;
 
@@ -235,6 +240,38 @@ final _mediaTypeRe = RegExp(
   caseSensitive: false,
 );
 
+
+class _CountryAlias {
+  const _CountryAlias({required this.aliases, required this.code, required this.label});
+  final List<String> aliases;
+  final String code;
+  final String label;
+}
+
+const _countryAliases = <_CountryAlias>[
+  _CountryAlias(aliases: ['united states', 'usa', 'u.s.', 'u.s.a.', 'america'], code: 'US', label: 'USA'),
+  _CountryAlias(aliases: ['united kingdom', 'uk', 'u.k.', 'britain', 'england'], code: 'GB', label: 'UK'),
+  _CountryAlias(aliases: ['france', 'french'], code: 'FR', label: 'France'),
+  _CountryAlias(aliases: ['germany', 'german'], code: 'DE', label: 'Germany'),
+  _CountryAlias(aliases: ['japan', 'japanese'], code: 'JP', label: 'Japan'),
+  _CountryAlias(aliases: ['south korea', 'korea', 'korean'], code: 'KR', label: 'Korea'),
+  _CountryAlias(aliases: ['india', 'indian', 'bollywood'], code: 'IN', label: 'India'),
+  _CountryAlias(aliases: ['italy', 'italian'], code: 'IT', label: 'Italy'),
+  _CountryAlias(aliases: ['spain', 'spanish'], code: 'ES', label: 'Spain'),
+  _CountryAlias(aliases: ['canada', 'canadian'], code: 'CA', label: 'Canada'),
+  _CountryAlias(aliases: ['australia', 'australian'], code: 'AU', label: 'Australia'),
+  _CountryAlias(aliases: ['china', 'chinese'], code: 'CN', label: 'China'),
+  _CountryAlias(aliases: ['brazil', 'brazilian'], code: 'BR', label: 'Brazil'),
+  _CountryAlias(aliases: ['mexico', 'mexican'], code: 'MX', label: 'Mexico'),
+  _CountryAlias(aliases: ['sweden', 'swedish'], code: 'SE', label: 'Sweden'),
+  _CountryAlias(aliases: ['norway', 'norwegian'], code: 'NO', label: 'Norway'),
+  _CountryAlias(aliases: ['denmark', 'danish'], code: 'DK', label: 'Denmark'),
+  _CountryAlias(aliases: ['turkey', 'turkish'], code: 'TR', label: 'Turkey'),
+  _CountryAlias(aliases: ['hong kong'], code: 'HK', label: 'Hong Kong'),
+  _CountryAlias(aliases: ['taiwan', 'taiwanese'], code: 'TW', label: 'Taiwan'),
+  _CountryAlias(aliases: ['thailand', 'thai'], code: 'TH', label: 'Thailand'),
+];
+
 ParsedSearchQuery parseSearchQuery(String raw) {
   final trimmed = raw.trim();
   if (trimmed.isEmpty) {
@@ -307,6 +344,26 @@ ParsedSearchQuery parseSearchQuery(String raw) {
   }
   working = working.replaceAll(RegExp(r'\s+'), ' ').trim();
 
+  String? originCountry;
+  if (working.isNotEmpty) {
+    final lower = working.toLowerCase();
+    _CountryAlias? best;
+    var bestLen = 0;
+    for (final c in _countryAliases) {
+      for (final alias in c.aliases) {
+        if (alias.length < bestLen) continue;
+        if (!_containsGenreToken(lower, alias)) continue;
+        best = c;
+        bestLen = alias.length;
+      }
+    }
+    if (best != null) {
+      originCountry = best.code;
+      working = _stripGenreToken(working, best.aliases);
+    }
+  }
+  working = working.replaceAll(RegExp(r'\s+'), ' ').trim();
+
   List<int> movieGenreIds = const [];
   List<int> tvGenreIds = const [];
   String? genreLabel;
@@ -343,6 +400,7 @@ ParsedSearchQuery parseSearchQuery(String raw) {
     mediaType: mediaType,
     minScore: minScore,
     maxScore: maxScore,
+    originCountry: originCountry,
   );
 }
 

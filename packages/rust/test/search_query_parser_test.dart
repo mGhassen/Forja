@@ -111,5 +111,19 @@ void main() {
       expect(p.mediaType, 'movie');
       expect(p.minScore, 8.5);
     });
+
+    test('origin country', () {
+      final p = parseSearchQuery('horror japan >=8');
+      expect(p.matchedGenreLabel, 'Horror');
+      expect(p.originCountry, 'JP');
+      expect(p.minScore, 8);
+      expect(p.remainder, isEmpty);
+    });
+
+    test('korea alias', () {
+      final p = parseSearchQuery('korea series');
+      expect(p.originCountry, 'KR');
+      expect(p.mediaType, 'tv');
+    });
   });
 }

@@ -125,6 +125,9 @@ class HomeStaticMovieSection extends StatelessWidget {
   final Function(Movie) onMovieTap;
   final String? tvRowId;
   final int tvRowOrder;
+  final bool compactTop;
+  final bool showRank;
+  final VoidCallback? tvFocusUp;
 
   const HomeStaticMovieSection({
     super.key,
@@ -133,6 +136,9 @@ class HomeStaticMovieSection extends StatelessWidget {
     required this.onMovieTap,
     this.tvRowId,
     this.tvRowOrder = 10,
+    this.compactTop = false,
+    this.showRank = false,
+    this.tvFocusUp,
   });
 
   String get _rowId => tvRowId ?? title;
@@ -140,14 +146,26 @@ class HomeStaticMovieSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (movies.isEmpty) return const SizedBox.shrink();
+    final sectionTop = shellHomeSectionTitleTop(
+      context,
+      compact: compactTop,
+    );
     return TvCatalogRow(
       rowId: _rowId,
       sortOrder: tvRowOrder,
       itemCount: movies.length,
+      onFocusUp: tvFocusUp,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          ShellSectionTitle(title: title),
+          ShellSectionTitle(
+            title: title,
+            padding: shellHomeSectionTitlePadding(
+              context,
+              top: sectionTop,
+            ),
+          ),
           FocusTraversalGroup(
             child: HorizontalScroller(
               height: HomeMovieCard.cardHeight(context),
@@ -155,11 +173,15 @@ class HomeStaticMovieSection extends StatelessWidget {
                 horizontal: shellHomeSectionHorizontalPadding(context),
               ),
               itemCount: movies.length,
-              separatorBuilder: (_, _) =>
-                  SizedBox(width: shellMovieCardRowGap(context)),
+              separatorBuilder: (_, _) => SizedBox(
+                width: showRank
+                    ? shellScaled(context, 6).clamp(3.0, 6.0)
+                    : shellMovieCardRowGap(context),
+              ),
               itemBuilder: (context, index) => HomeMovieCard(
                 movie: movies[index],
                 onTap: () => onMovieTap(movies[index]),
+                rank: showRank ? index + 1 : null,
                 listIndex: index,
                 tvTabId: 'home',
                 tvRowId: _rowId,

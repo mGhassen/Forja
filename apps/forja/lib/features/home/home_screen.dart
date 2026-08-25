@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/home/providers/home_feed_providers.dart';
 import 'package:forja/features/home/providers/home_tracker_providers.dart';
+import 'package:forja/features/home/home_rail_dedupe.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
@@ -46,7 +47,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Future<List<Movie>> _featuredThisMonthFuture = Future.value(const <Movie>[]);
   Future<List<Movie>> _nowPlayingFuture = Future.value(const <Movie>[]);
 
-  List<({String id, String label, Future<List<Movie>> future})>
+  List<({String id, String label, Future<List<Movie>> future, List<Movie>? pool})>
       _randomCategoryRows = [];
   int _homeFeedEpoch = 0;
 
@@ -62,6 +63,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Home refresh / shuffle, then BestSimilar.com recommendations (mapped to TMDB).
   Map<String, dynamic>? _becauseSeed; // raw history item
   Future<List<Movie>>? _becauseFuture;
+  List<Movie>? _becausePool;
   int _becausePoolSize = 0; // unique in-progress shows; controls shuffle button
   StreamSubscription<List<Map<String, dynamic>>>? _historySeedSub;
   /// Invalidates Because-you-watched + Trakt home rails when the tab hides.
@@ -74,6 +76,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   // Mood/genre filter state
   String _selectedMood = 'mind';
   Future<List<Movie>>? _moodFuture;
+  List<Movie>? _moodPool;
 
   // Mood definitions - movie and TV use different TMDB genre IDs.
   static const List<({

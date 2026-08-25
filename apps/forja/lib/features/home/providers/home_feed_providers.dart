@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/app/boot_cache.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
+import 'package:forja/features/home/home_rail_dedupe.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
 
@@ -84,28 +85,14 @@ List<Movie> _enforceMediaFilter(List<Movie> items, ShellHomeCategory? filter) {
 }
 
 List<Movie> _uniqueMedia(List<Movie> primary, List<Movie> extra) {
-  final out = <Movie>[];
-  final seen = <String>{};
-  void add(Movie movie) {
-    final key = '${movie.mediaType}:${movie.id}';
-    if (seen.add(key)) out.add(movie);
-  }
-
-  for (final movie in primary) {
-    add(movie);
-  }
-  for (final movie in extra) {
-    add(movie);
-  }
-  return out;
+  return mergeHomeRailPages([primary, extra]);
 }
 
 List<Movie> _interleaveMedia(List<Movie> movies, List<Movie> tv) {
   final out = <Movie>[];
   final seen = <String>{};
   void add(Movie m) {
-    final key = '${m.mediaType}:${m.id}';
-    if (seen.add(key)) out.add(m);
+    if (seen.add(homeMediaKey(m))) out.add(m);
   }
   final maxLen = math.max(movies.length, tv.length);
   for (var i = 0; i < maxLen; i++) {
@@ -117,15 +104,16 @@ List<Movie> _interleaveMedia(List<Movie> movies, List<Movie> tv) {
 
 Future<List<Movie>> _fetchMovies({
   required TmdbApi api,
-  required Future<List<Movie>> Function() standard,
+  required Future<List<Movie>> Function(int page) standard,
   List<int>? genres,
   int? watchProviderId,
   String sortBy = 'popularity.desc',
   double? minRating,
   String? releaseDateGte,
   String? releaseDateLte,
+  int page = 1,
 }) {
-  if (genres == null || genres.isEmpty) return standard();
+  if (genres == null || genres.isEmpty) return standard(page);
   return api.discoverMovies(
     genres: genres,
     watchProviderId: watchProviderId,
@@ -133,20 +121,22 @@ Future<List<Movie>> _fetchMovies({
     minRating: minRating,
     releaseDateGte: releaseDateGte,
     releaseDateLte: releaseDateLte,
+    page: page,
   );
 }
 
 Future<List<Movie>> _fetchTv({
   required TmdbApi api,
-  required Future<List<Movie>> Function() standard,
+  required Future<List<Movie>> Function(int page) standard,
   List<int>? genres,
   int? watchProviderId,
   String sortBy = 'popularity.desc',
   double? minRating,
   String? releaseDateGte,
   String? releaseDateLte,
+  int page = 1,
 }) {
-  if (genres == null || genres.isEmpty) return standard();
+  if (genres == null || genres.isEmpty) return standard(page);
   return api.discoverTvShows(
     genres: genres,
     watchProviderId: watchProviderId,
@@ -154,21 +144,77 @@ Future<List<Movie>> _fetchTv({
     minRating: minRating,
     releaseDateGte: releaseDateGte,
     releaseDateLte: releaseDateLte,
+    page: page,
   );
+}
+
+Future<List<Movie>> _fetchMoviesPool({
+  required TmdbApi api,
+  required Future<List<Movie>> Function(int page) standard,
+  List<int>? genres,
+  int? watchProviderId,
+  String sortBy = 'popularity.desc',
+  double? minRating,
+  String? releaseDateGte,
+  String? releaseDateLte,
+  List<Movie>? page1Cache,
+}) async {
+  Future<List<Movie>> page(int p) => _fetchMovies(
+        api: api,
+        standard: standard,
+        genres: genres,
+        watchProviderId: watchProviderId,
+        sortBy: sortBy,
+        minRating: minRating,
+        releaseDateGte: releaseDateGte,
+        releaseDateLte: releaseDateLte,
+        page: p,
+      ).catchError((_) => <Movie>[]);
+
+  if (page1Cache != null) {
+    return mergeHomeRailPages([page1Cache, await page(2)]);
+  }
+  final pages = await Future.wait([
+    for (var p = 1; p <= kHomeRailFetchPages; p++) page(p),
+  ]);
+  return mergeHomeRailPages(pages);
+}
+
+Future<List<Movie>> _fetchTvPool({
+  required TmdbApi api,
+  required Future<List<Movie>> Function(int page) standard,
+  List<int>? genres,
+  int? watchProviderId,
+  String sortBy = 'popularity.desc',
+  double? minRating,
+  String? releaseDateGte,
+  String? releaseDateLte,
+}) async {
+  Future<List<Movie>> page(int p) => _fetchTv(
+        api: api,
+        standard: standard,
+        genres: genres,
+        watchProviderId: watchProviderId,
+        sortBy: sortBy,
+        minRating: minRating,
+        releaseDateGte: releaseDateGte,
+        releaseDateLte: releaseDateLte,
+        page: p,
+      ).catchError((_) => <Movie>[]);
+
+  final pages = await Future.wait([
+    for (var p = 1; p <= kHomeRailFetchPages; p++) page(p),
+  ]);
+  return mergeHomeRailPages(pages);
 }
 
 Future<List<Movie>> _fetchMixed(
   Future<List<Movie>> Function() movieFetch,
-  Future<List<Movie>> Function() tvFetch, {
-  List<Movie>? movieCache,
-}) {
-  Future<List<Movie>> safeTv() => tvFetch().catchError((_) => <Movie>[]);
-
-  if (movieCache != null) {
-    return safeTv().then((tv) => _interleaveMedia(movieCache, tv));
-  }
+  Future<List<Movie>> Function() tvFetch,
+) {
   final safeMovie = movieFetch().catchError((_) => <Movie>[]);
-  return Future.wait([safeMovie, safeTv()])
+  final safeTv = tvFetch().catchError((_) => <Movie>[]);
+  return Future.wait([safeMovie, safeTv])
       .then((results) => _interleaveMedia(results[0], results[1]));
 }
 
@@ -176,12 +222,8 @@ Future<List<Movie>> _fetchMediaFiltered({
   required ShellHomeCategory? filter,
   required Future<List<Movie>> Function() movieFetch,
   required Future<List<Movie>> Function() tvFetch,
-  List<Movie>? movieCache,
 }) {
   if (filter == ShellHomeCategory.films) {
-    if (movieCache != null) {
-      return Future.value(_enforceMediaFilter(movieCache, filter));
-    }
     return movieFetch()
         .then((movies) => _enforceMediaFilter(movies, filter))
         .catchError((_) => <Movie>[]);
@@ -191,7 +233,7 @@ Future<List<Movie>> _fetchMediaFiltered({
         .then((movies) => _enforceMediaFilter(movies, filter))
         .catchError((_) => <Movie>[]);
   }
-  return _fetchMixed(movieFetch, tvFetch, movieCache: movieCache);
+  return _fetchMixed(movieFetch, tvFetch);
 }
 
 ({String gte, String lte}) _currentMonthDateRange() {
@@ -246,15 +288,17 @@ final homeTrendingProvider =
   if (ctx.providerId != null) {
     return _fetchMediaFiltered(
       filter: ctx.filter,
-      movieFetch: () => _fetchMovies(
+      movieFetch: () => _fetchMoviesPool(
         api: ctx.api,
-        standard: () => ctx.api.discoverMovies(watchProviderId: ctx.providerId),
+        standard: (page) =>
+            ctx.api.discoverMovies(watchProviderId: ctx.providerId, page: page),
         genres: ctx.genres.movie,
         watchProviderId: ctx.providerId,
       ),
-      tvFetch: () => _fetchTv(
+      tvFetch: () => _fetchTvPool(
         api: ctx.api,
-        standard: () => ctx.api.discoverTvShows(watchProviderId: ctx.providerId),
+        standard: (page) =>
+            ctx.api.discoverTvShows(watchProviderId: ctx.providerId, page: page),
         genres: ctx.genres.tv,
         watchProviderId: ctx.providerId,
       ),
@@ -262,17 +306,17 @@ final homeTrendingProvider =
   }
   return _fetchMediaFiltered(
     filter: ctx.filter,
-    movieFetch: () => _fetchMovies(
+    movieFetch: () => _fetchMoviesPool(
       api: ctx.api,
-      standard: ctx.api.getTrending,
+      standard: (page) => ctx.api.getTrending(page: page),
       genres: ctx.genres.movie,
+      page1Cache: ctx.canUseBootCache ? BootCache.trending : null,
     ),
-    tvFetch: () => _fetchTv(
+    tvFetch: () => _fetchTvPool(
       api: ctx.api,
-      standard: ctx.api.getTrendingTv,
+      standard: (page) => ctx.api.getTrendingTv(page: page),
       genres: ctx.genres.tv,
     ),
-    movieCache: ctx.canUseBootCache ? BootCache.trending : null,
   );
 });
 
@@ -282,24 +326,26 @@ final homePopularProvider =
   if (ctx.providerId != null) {
     return _fetchMediaFiltered(
       filter: ctx.filter,
-      movieFetch: () => _fetchMovies(
+      movieFetch: () => _fetchMoviesPool(
         api: ctx.api,
-        standard: () => ctx.api.discoverMovies(
+        standard: (page) => ctx.api.discoverMovies(
           watchProviderId: ctx.providerId,
           sortBy: 'vote_average.desc',
           minRating: 0,
+          page: page,
         ),
         genres: ctx.genres.movie,
         watchProviderId: ctx.providerId,
         sortBy: 'vote_average.desc',
         minRating: 0,
       ),
-      tvFetch: () => _fetchTv(
+      tvFetch: () => _fetchTvPool(
         api: ctx.api,
-        standard: () => ctx.api.discoverTvShows(
+        standard: (page) => ctx.api.discoverTvShows(
           watchProviderId: ctx.providerId,
           sortBy: 'vote_average.desc',
           minRating: 0,
+          page: page,
         ),
         genres: ctx.genres.tv,
         watchProviderId: ctx.providerId,
@@ -310,19 +356,19 @@ final homePopularProvider =
   }
   return _fetchMediaFiltered(
     filter: ctx.filter,
-    movieFetch: () => _fetchMovies(
+    movieFetch: () => _fetchMoviesPool(
       api: ctx.api,
-      standard: ctx.api.getPopular,
+      standard: (page) => ctx.api.getPopular(page: page),
       genres: ctx.genres.movie,
       sortBy: 'vote_average.desc',
+      page1Cache: ctx.canUseBootCache ? BootCache.popular : null,
     ),
-    tvFetch: () => _fetchTv(
+    tvFetch: () => _fetchTvPool(
       api: ctx.api,
-      standard: ctx.api.getPopularTv,
+      standard: (page) => ctx.api.getPopularTv(page: page),
       genres: ctx.genres.tv,
       sortBy: 'vote_average.desc',
     ),
-    movieCache: ctx.canUseBootCache ? BootCache.popular : null,
   );
 });
 
@@ -332,21 +378,23 @@ final homeNowPlayingProvider =
   if (ctx.providerId != null) {
     return _fetchMediaFiltered(
       filter: ctx.filter,
-      movieFetch: () => _fetchMovies(
+      movieFetch: () => _fetchMoviesPool(
         api: ctx.api,
-        standard: () => ctx.api.discoverMovies(
+        standard: (page) => ctx.api.discoverMovies(
           watchProviderId: ctx.providerId,
           sortBy: 'primary_release_date.desc',
+          page: page,
         ),
         genres: ctx.genres.movie,
         watchProviderId: ctx.providerId,
         sortBy: 'primary_release_date.desc',
       ),
-      tvFetch: () => _fetchTv(
+      tvFetch: () => _fetchTvPool(
         api: ctx.api,
-        standard: () => ctx.api.discoverTvShows(
+        standard: (page) => ctx.api.discoverTvShows(
           watchProviderId: ctx.providerId,
           sortBy: 'first_air_date.desc',
+          page: page,
         ),
         genres: ctx.genres.tv,
         watchProviderId: ctx.providerId,
@@ -356,19 +404,19 @@ final homeNowPlayingProvider =
   }
   return _fetchMediaFiltered(
     filter: ctx.filter,
-    movieFetch: () => _fetchMovies(
+    movieFetch: () => _fetchMoviesPool(
       api: ctx.api,
-      standard: ctx.api.getNowPlaying,
+      standard: (page) => ctx.api.getNowPlaying(page: page),
       genres: ctx.genres.movie,
       sortBy: 'primary_release_date.desc',
+      page1Cache: ctx.canUseBootCache ? BootCache.nowPlaying : null,
     ),
-    tvFetch: () => _fetchTv(
+    tvFetch: () => _fetchTvPool(
       api: ctx.api,
-      standard: ctx.api.getOnTheAir,
+      standard: (page) => ctx.api.getOnTheAir(page: page),
       genres: ctx.genres.tv,
       sortBy: 'first_air_date.desc',
     ),
-    movieCache: ctx.canUseBootCache ? BootCache.nowPlaying : null,
   );
 });
 
@@ -384,14 +432,15 @@ final homeFeaturedProvider =
   }) {
     return _fetchMediaFiltered(
       filter: ctx.filter,
-      movieFetch: () => _fetchMovies(
+      movieFetch: () => _fetchMoviesPool(
         api: ctx.api,
-        standard: () => ctx.api.discoverMovies(
+        standard: (page) => ctx.api.discoverMovies(
           releaseDateGte: releaseDateGte,
           releaseDateLte: releaseDateLte,
           minRating: minRating,
           watchProviderId: ctx.providerId,
           sortBy: 'popularity.desc',
+          page: page,
         ),
         genres: ctx.genres.movie,
         releaseDateGte: releaseDateGte,
@@ -400,14 +449,15 @@ final homeFeaturedProvider =
         watchProviderId: ctx.providerId,
         sortBy: 'popularity.desc',
       ),
-      tvFetch: () => _fetchTv(
+      tvFetch: () => _fetchTvPool(
         api: ctx.api,
-        standard: () => ctx.api.discoverTvShows(
+        standard: (page) => ctx.api.discoverTvShows(
           releaseDateGte: releaseDateGte,
           releaseDateLte: releaseDateLte,
           minRating: minRating,
           watchProviderId: ctx.providerId,
           sortBy: 'popularity.desc',
+          page: page,
         ),
         genres: ctx.genres.tv,
         releaseDateGte: releaseDateGte,

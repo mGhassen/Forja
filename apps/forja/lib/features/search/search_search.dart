@@ -141,17 +141,18 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
   }
 
   void _onFiltersChanged(SearchFilters next) {
+    // Draft only — search runs on Submit in the filter lens.
     setState(() => _s._filters = next);
     ShellBus.notifyShellChromeChanged();
+  }
+
+  void _submitFilters() {
     _s._debounce?.cancel();
     final effective = _effectiveSearchQuery();
-    if (effective.trim().isEmpty) {
-      _commitSearch('', recordRecent: false);
-      return;
+    _commitSearch(effective, recordRecent: false);
+    if (_s._filtersOpen) {
+      setState(() => _s._filtersOpen = false);
     }
-    _s._debounce = Timer(const Duration(milliseconds: 320), () {
-      _commitSearch(effective, recordRecent: false);
-    });
   }
 
   void _toggleFiltersOpen() {

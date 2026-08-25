@@ -37,46 +37,48 @@ class TmdbApi {
   /// Full original quality — only use when absolutely needed.
   static String getOriginalUrl(String path) => 'https://image.tmdb.org/t/p/original$path';
 
-  Future<List<Movie>> getTrending() async {
-    final decoded = await _fetchMap('trending/movie/day');
+  Future<List<Movie>> getTrending({int page = 1}) async {
+    final decoded = await _fetchMap('trending/movie/day?page=$page');
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'movie')).toList();
   }
 
-  Future<List<Movie>> getTrendingTv() async {
-    final decoded = await _fetchMap('trending/tv/day');
+  Future<List<Movie>> getTrendingTv({int page = 1}) async {
+    final decoded = await _fetchMap('trending/tv/day?page=$page');
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'tv')).toList();
   }
 
   /// Website-style popular: discover sorted by popularity with a minimum vote
   /// floor so low-signal titles from raw `/popular` do not dominate the row.
-  Future<List<Movie>> getPopular({String? watchRegion}) {
+  Future<List<Movie>> getPopular({String? watchRegion, int page = 1}) {
     return discoverMovies(
       watchRegion: watchRegion ?? TmdbWatchRegion.current,
       sortBy: 'popularity.desc',
       minVoteCount: 100,
+      page: page,
     );
   }
 
-  Future<List<Movie>> getPopularTv({String? watchRegion}) {
+  Future<List<Movie>> getPopularTv({String? watchRegion, int page = 1}) {
     return discoverTvShows(
       watchRegion: watchRegion ?? TmdbWatchRegion.current,
       sortBy: 'popularity.desc',
       minVoteCount: 100,
+      page: page,
     );
   }
 
-  Future<List<Movie>> getTopRated() async {
-    final decoded = await _fetchMap('movie/top_rated');
+  Future<List<Movie>> getTopRated({int page = 1}) async {
+    final decoded = await _fetchMap('movie/top_rated?page=$page');
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'movie')).toList();
   }
 
-  Future<List<Movie>> getNowPlaying() async {
-    final decoded = await _fetchMap('movie/now_playing');
+  Future<List<Movie>> getNowPlaying({int page = 1}) async {
+    final decoded = await _fetchMap('movie/now_playing?page=$page');
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'movie')).toList();
   }
 
-  Future<List<Movie>> getOnTheAir() async {
-    final decoded = await _fetchMap('tv/on_the_air');
+  Future<List<Movie>> getOnTheAir({int page = 1}) async {
+    final decoded = await _fetchMap('tv/on_the_air?page=$page');
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'tv')).toList();
   }
 
@@ -260,6 +262,7 @@ class TmdbApi {
             releaseDateLte: singleYear == null ? lte : null,
             minRating: parsed.minScore,
             maxRating: parsed.maxScore,
+            withOriginCountry: parsed.originCountry,
           ),
         ),
       );
@@ -276,6 +279,7 @@ class TmdbApi {
             releaseDateLte: singleYear == null ? lte : null,
             minRating: parsed.minScore,
             maxRating: parsed.maxScore,
+            withOriginCountry: parsed.originCountry,
           ),
         ),
       );
@@ -289,7 +293,8 @@ class TmdbApi {
         parsed.hasGenre ||
         bounds != null ||
         parsed.hasScore ||
-        parsed.hasMediaType) {
+        parsed.hasMediaType ||
+        parsed.hasOriginCountry) {
       if (parsed.hasGenre) {
         if (wantMovies && parsed.movieGenreIds.isNotEmpty) {
           addMovieDiscover(genres: parsed.movieGenreIds, people: personId);
@@ -432,6 +437,7 @@ class TmdbApi {
     int? watchProviderId,
     int? withPeople,
     int? withCompanies,
+    String? withOriginCountry,
     String? watchRegion,
     String sortBy = 'popularity.desc',
     int page = 1,
@@ -472,6 +478,9 @@ class TmdbApi {
     if (withCompanies != null) {
       path += '&with_companies=$withCompanies';
     }
+    if (withOriginCountry != null && withOriginCountry.isNotEmpty) {
+      path += '&with_origin_country=$withOriginCountry';
+    }
 
     final decoded = await _fetchMap(path);
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'movie')).toList();
@@ -490,6 +499,7 @@ class TmdbApi {
     int? withPeople,
     int? withCompanies,
     int? withNetworks,
+    String? withOriginCountry,
     String? watchRegion,
     String sortBy = 'popularity.desc',
     int page = 1,
@@ -545,6 +555,9 @@ class TmdbApi {
         path += '&with_networks=$networks';
       } else if (withNetworks != null) {
         path += '&with_networks=$withNetworks';
+      }
+      if (withOriginCountry != null && withOriginCountry.isNotEmpty) {
+        path += '&with_origin_country=$withOriginCountry';
       }
 
       final decoded = await _fetchMap(path);

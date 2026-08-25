@@ -2,6 +2,54 @@ part of 'search_screen.dart';
 
 enum SearchMediaFilter { all, movie, tv }
 
+/// Genre chips → parser aliases (single-select).
+const kSearchFilterGenres = <(String label, String token)>[
+  ('Action', 'action'),
+  ('Adventure', 'adventure'),
+  ('Animation', 'animation'),
+  ('Comedy', 'comedy'),
+  ('Crime', 'crime'),
+  ('Documentary', 'documentary'),
+  ('Drama', 'drama'),
+  ('Family', 'family'),
+  ('Fantasy', 'fantasy'),
+  ('History', 'history'),
+  ('Horror', 'horror'),
+  ('Music', 'music'),
+  ('Mystery', 'mystery'),
+  ('Romance', 'romance'),
+  ('Sci-Fi', 'sci-fi'),
+  ('Thriller', 'thriller'),
+  ('War', 'war'),
+  ('Western', 'western'),
+  ('Kids', 'kids'),
+];
+
+/// Country chips → parser aliases / ISO (single-select).
+const kSearchFilterCountries = <(String label, String token)>[
+  ('USA', 'usa'),
+  ('UK', 'uk'),
+  ('France', 'france'),
+  ('Germany', 'germany'),
+  ('Japan', 'japan'),
+  ('Korea', 'korea'),
+  ('India', 'india'),
+  ('Italy', 'italy'),
+  ('Spain', 'spain'),
+  ('Canada', 'canada'),
+  ('Australia', 'australia'),
+  ('China', 'china'),
+  ('Brazil', 'brazil'),
+  ('Mexico', 'mexico'),
+  ('Sweden', 'sweden'),
+  ('Norway', 'norway'),
+  ('Denmark', 'denmark'),
+  ('Turkey', 'turkey'),
+  ('Hong Kong', 'hong kong'),
+  ('Taiwan', 'taiwan'),
+  ('Thailand', 'thailand'),
+];
+
 /// UI-driven Search filters — composed into the structured query string.
 class SearchFilters {
   const SearchFilters({
@@ -9,33 +57,47 @@ class SearchFilters {
     this.minScore,
     this.yearStart,
     this.yearEnd,
+    this.genreToken,
+    this.countryToken,
   });
 
   final SearchMediaFilter media;
   final double? minScore;
   final int? yearStart;
   final int? yearEnd;
+  /// Parser genre alias, e.g. `horror`.
+  final String? genreToken;
+  /// Parser country alias, e.g. `japan`.
+  final String? countryToken;
 
   static const empty = SearchFilters();
 
   bool get isActive =>
       media != SearchMediaFilter.all ||
       minScore != null ||
-      (yearStart != null && yearEnd != null);
+      (yearStart != null && yearEnd != null) ||
+      genreToken != null ||
+      countryToken != null;
 
   SearchFilters copyWith({
     SearchMediaFilter? media,
     double? minScore,
     int? yearStart,
     int? yearEnd,
+    String? genreToken,
+    String? countryToken,
     bool clearMinScore = false,
     bool clearYears = false,
+    bool clearGenre = false,
+    bool clearCountry = false,
   }) {
     return SearchFilters(
       media: media ?? this.media,
       minScore: clearMinScore ? null : (minScore ?? this.minScore),
       yearStart: clearYears ? null : (yearStart ?? this.yearStart),
       yearEnd: clearYears ? null : (yearEnd ?? this.yearEnd),
+      genreToken: clearGenre ? null : (genreToken ?? this.genreToken),
+      countryToken: clearCountry ? null : (countryToken ?? this.countryToken),
     );
   }
 
@@ -50,6 +112,8 @@ class SearchFilters {
       case SearchMediaFilter.all:
         break;
     }
+    if (genreToken != null) parts.add(genreToken!);
+    if (countryToken != null) parts.add(countryToken!);
     if (minScore != null) {
       final v = minScore!;
       final label =
@@ -79,6 +143,26 @@ class SearchFilters {
       out.add((
         'Series',
         () => apply(copyWith(media: SearchMediaFilter.all)),
+      ));
+    }
+    if (genreToken != null) {
+      final label = kSearchFilterGenres
+          .where((e) => e.$2 == genreToken)
+          .map((e) => e.$1)
+          .firstOrNull;
+      out.add((
+        label ?? genreToken!,
+        () => apply(copyWith(clearGenre: true)),
+      ));
+    }
+    if (countryToken != null) {
+      final label = kSearchFilterCountries
+          .where((e) => e.$2 == countryToken)
+          .map((e) => e.$1)
+          .firstOrNull;
+      out.add((
+        label ?? countryToken!,
+        () => apply(copyWith(clearCountry: true)),
       ));
     }
     if (minScore != null) {
@@ -583,11 +667,13 @@ class _SearchFilterLens extends StatelessWidget {
     required this.open,
     required this.filters,
     required this.onFiltersChanged,
+    required this.onSubmit,
   });
 
   final bool open;
   final SearchFilters filters;
   final ValueChanged<SearchFilters> onFiltersChanged;
+  final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
@@ -639,11 +725,156 @@ class _SearchFilterLens extends StatelessWidget {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    _SearchFilterChipSection(
+                      title: 'Genre',
+                      options: kSearchFilterGenres,
+                      selectedToken: filters.genreToken,
+                      onSelected: (token) => onFiltersChanged(
+                        token == filters.genreToken
+                            ? filters.copyWith(clearGenre: true)
+                            : filters.copyWith(genreToken: token),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _SearchFilterChipSection(
+                      title: 'Country',
+                      options: kSearchFilterCountries,
+                      selectedToken: filters.countryToken,
+                      onSelected: (token) => onFiltersChanged(
+                        token == filters.countryToken
+                            ? filters.copyWith(clearCountry: true)
+                            : filters.copyWith(countryToken: token),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: onSubmit,
+                        style: TextButton.styleFrom(
+                          foregroundColor: ForjaShellColors.textPrimary,
+                          backgroundColor: Colors.white.withValues(alpha: 0.08),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(
+                              color: ForjaShellColors.textPrimary
+                                  .withValues(alpha: 0.35),
+                            ),
+                          ),
+                        ),
+                        child: const Text(
+                          'Search',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             )
           : const SizedBox.shrink(),
+    );
+  }
+}
+
+class _SearchFilterChipSection extends StatelessWidget {
+  const _SearchFilterChipSection({
+    required this.title,
+    required this.options,
+    required this.selectedToken,
+    required this.onSelected,
+  });
+
+  final String title;
+  final List<(String label, String token)> options;
+  final String? selectedToken;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            color: ForjaShellColors.textSecondary,
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final option in options)
+              _SearchFilterGhostChip(
+                label: option.$1,
+                selected: selectedToken == option.$2,
+                onTap: () => onSelected(option.$2),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _SearchFilterGhostChip extends StatelessWidget {
+  const _SearchFilterGhostChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final border = selected
+        ? ForjaShellColors.textPrimary.withValues(alpha: 0.4)
+        : ForjaShellColors.borderSubtle;
+    final fg = selected
+        ? ForjaShellColors.textPrimary
+        : ForjaShellColors.textSecondary;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        hoverColor: ForjaShellColors.inkHover,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected
+                ? Colors.white.withValues(alpha: 0.07)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: border),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
