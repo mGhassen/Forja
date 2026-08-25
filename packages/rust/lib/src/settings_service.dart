@@ -120,7 +120,7 @@ class SettingsService {
   /// IPTV live auto-recovery: `buffered` | `stall` | `classic`.
   static const String _iptvLiveRecoveryModeKey = 'iptv_live_recovery_mode';
   /// Android TV MediaKit: ask the panel for a refresh matching stream fps
-  /// (issue 150). Opt-in — default off so existing installs stay unchanged.
+  /// (issue 150). Default on; Settings toggle is admin-only.
   static const String _iptvMatchDisplayRefreshKey = 'iptv_match_display_refresh';
   static const String _maxPlaybackHeightKey = 'max_playback_height';
   static const String _animeTitleLanguageKey = 'anime_title_language';
@@ -140,10 +140,10 @@ class SettingsService {
     return height > 0 ? '${height}p' : 'Auto (full quality)';
   }
 
-  /// Default = buffer-aware reconnect (shipped in 1.3.170).
+  /// Stable without stall reopen (admin can turn stall off).
   static const String iptvLiveRecoveryBuffered = 'buffered';
   static const String iptvLiveRecoveryClassic = 'classic';
-  /// Stable + reopen when buffering/freeze stalls with no playhead (test).
+  /// Default = Stable + reopen when buffering/freeze stalls with no playhead.
   static const String iptvLiveRecoveryStall = 'stall';
 
   static const String iptvLiveRecoveryStableLabel =
@@ -178,7 +178,7 @@ class SettingsService {
   }
 
   static String normalizeIptvLiveRecoveryMode(String? raw) {
-    final v = (raw ?? iptvLiveRecoveryBuffered).trim().toLowerCase();
+    final v = (raw ?? iptvLiveRecoveryStall).trim().toLowerCase();
     if (v == iptvLiveRecoveryClassic) return iptvLiveRecoveryClassic;
     if (v == iptvLiveRecoveryStall) return iptvLiveRecoveryStall;
     return iptvLiveRecoveryBuffered;
@@ -395,7 +395,7 @@ class SettingsService {
   Future<void> setIptvLiveMaxHeight(int height) async =>
       kvSetInt(_iptvLiveMaxHeightKey, height < 0 ? 0 : height);
 
-  /// IPTV live auto-recovery. Default [iptvLiveRecoveryBuffered] (1.3.170).
+  /// IPTV live auto-recovery. Default [iptvLiveRecoveryStall].
   Future<String> getIptvLiveRecoveryMode() async {
     return normalizeIptvLiveRecoveryMode(
       await kvGetString(_iptvLiveRecoveryModeKey),
@@ -409,9 +409,9 @@ class SettingsService {
     );
   }
 
-  /// Android TV MediaKit IPTV: match panel refresh to stream fps. Default off.
+  /// Android TV MediaKit IPTV: match panel refresh to stream fps. Default on.
   Future<bool> getIptvMatchDisplayRefresh() async =>
-      kvGetBool(_iptvMatchDisplayRefreshKey, fallback: false);
+      kvGetBool(_iptvMatchDisplayRefreshKey, fallback: true);
 
   Future<void> setIptvMatchDisplayRefresh(bool enabled) async =>
       kvSetBool(_iptvMatchDisplayRefreshKey, enabled);
@@ -725,9 +725,9 @@ class SettingsService {
     normalizeLiveStreamResolve(mode),
   );
 
-  /// Opt-in crash reporting to Sentry (RFC-043). Default off.
+  /// Crash reporting to Sentry (RFC-043). Default on; Settings toggle admin-only.
   Future<bool> isCrashReportingEnabled() async =>
-      kvGetBool(_crashReportingEnabledKey, fallback: false);
+      kvGetBool(_crashReportingEnabledKey, fallback: true);
 
   Future<void> setCrashReportingEnabled(bool enabled) async =>
       kvSetBool(_crashReportingEnabledKey, enabled);
@@ -767,9 +767,9 @@ class SettingsService {
   Future<void> setUpdateAutoCheckEnabled(bool enabled) async =>
       kvSetBool(_updateAutoCheckEnabledKey, enabled);
 
-  /// Opt-in product analytics to PostHog (RFC-043). Default off.
+  /// Product analytics to PostHog (RFC-043). Default on; Settings toggle admin-only.
   Future<bool> isProductAnalyticsEnabled() async =>
-      kvGetBool(_productAnalyticsEnabledKey, fallback: false);
+      kvGetBool(_productAnalyticsEnabledKey, fallback: true);
 
   Future<void> setProductAnalyticsEnabled(bool enabled) async =>
       kvSetBool(_productAnalyticsEnabledKey, enabled);

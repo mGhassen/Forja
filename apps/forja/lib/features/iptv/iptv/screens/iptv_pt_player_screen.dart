@@ -606,8 +606,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
   bool _socketTroublePending = false;
 
-  /// [SettingsService.iptvLiveRecoveryBuffered] (default), stall (test), or classic.
-  String _liveRecoveryMode = SettingsService.iptvLiveRecoveryBuffered;
+  /// [SettingsService.iptvLiveRecoveryStall] (default), buffered, or classic.
+  String _liveRecoveryMode = SettingsService.iptvLiveRecoveryStall;
 
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
 

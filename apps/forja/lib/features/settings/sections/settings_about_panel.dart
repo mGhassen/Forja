@@ -97,7 +97,7 @@ class _SettingsCrashReportingRowState
     return SettingsToggleRow(
       title: 'Crash reporting',
       subtitle: Telemetry.isConfigured
-          ? 'Send anonymized crash reports to help fix bugs. Off by default.'
+          ? 'Send anonymized crash reports to help fix bugs. On by default.'
           : 'Unavailable in this build (no Sentry DSN). Preference still saved.',
       value: enabled,
       onChanged: _setCrashReporting,
@@ -139,7 +139,7 @@ class _SettingsProductAnalyticsRowState
     return SettingsToggleRow(
       title: 'Product analytics',
       subtitle: ProductAnalytics.isConfigured
-          ? 'Anonymous usage events + session replay (text/images masked). Off by default.'
+          ? 'Anonymous usage events + session replay (text/images masked). On by default.'
           : 'Unavailable in this build (no PostHog API key). Preference still saved.',
       value: enabled,
       onChanged: _setEnabled,

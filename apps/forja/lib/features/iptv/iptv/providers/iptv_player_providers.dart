@@ -16,7 +16,7 @@ class IptvPlayerBootPrefs {
 
   final double volume;
   final bool epgEnabled;
-  /// [SettingsService.iptvLiveRecoveryBuffered], stall (test), or classic.
+  /// [SettingsService.iptvLiveRecoveryStall] (default), buffered, or classic.
   final String liveRecoveryMode;
 }
 

@@ -1499,12 +1499,16 @@ class ShellTvFocusMeta {
       return () => true;
     }
     return () {
-      return ShellTvFocusCoordinator.focusAdjacentInRow(
+      // Always handled: false must not fall through to spatial focusInDirection
+      // (that leaks into the next catalog row). Left edge already traps at 0.
+      if (handle != null && idx >= handle.itemCount - 1) return true;
+      ShellTvFocusCoordinator.focusAdjacentInRow(
         tabId: tid,
         rowId: rid,
         currentIndex: idx,
         right: true,
       );
+      return true;
     };
   }
 

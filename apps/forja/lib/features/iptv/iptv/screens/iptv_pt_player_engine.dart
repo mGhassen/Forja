@@ -513,7 +513,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   }
 
   /// One HDMI / panel mode switch per open when container fps is known.
-  /// Gated by Settings → IPTV match display refresh (default off).
+  /// Gated by Settings → IPTV match display refresh (default on; admin-only).
   Future<void> _applyAtvMediaKitDisplayFrameRate(NativePlayer p) async {
     if (_s._displayFrameRateApplied) return;
     final enabled = await SettingsService().getIptvMatchDisplayRefresh();

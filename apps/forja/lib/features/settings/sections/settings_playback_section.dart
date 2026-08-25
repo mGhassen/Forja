@@ -521,12 +521,13 @@ class _SettingsPlaybackSectionState
                   );
                 },
               ),
-              if (snap.iptvLiveRecoveryModeLabel ==
-                  SettingsService.iptvLiveRecoveryStableLabel)
+              if (AccountFeatures.instance.isAdmin &&
+                  snap.iptvLiveRecoveryModeLabel ==
+                      SettingsService.iptvLiveRecoveryStableLabel)
                 settingsFocusableToggle(
                   context,
                   'Reopen on buffer stall',
-                  'Stable only (test). When buffering/freeze stalls with no playhead, reconnect even if demuxer still reports cache. Takes effect next time you open the player.',
+                  'Stable only (test). On by default. When buffering/freeze stalls with no playhead, reconnect even if demuxer still reports cache. Takes effect next time you open the player.',
                   snap.iptvLiveRecoveryStallReopen,
                   (val) async {
                     await _settings.setIptvLiveRecoveryMode(
@@ -539,13 +540,15 @@ class _SettingsPlaybackSectionState
                       (s) => s.copyWith(iptvLiveRecoveryStallReopen: val),
                     );
                   },
+                  adminOnly: true,
                 ),
-              if (SettingsService.platformProfile ==
-                  PlatformProfile.androidTv)
+              if (AccountFeatures.instance.isAdmin &&
+                  SettingsService.platformProfile ==
+                      PlatformProfile.androidTv)
                 settingsFocusableToggle(
                   context,
                   'IPTV match display refresh',
-                  'MediaKit only. Off by default. When on, asks the TV to switch refresh rate to match the channel (e.g. 50 Hz for 50 fps) — test for 4K stutter. Brief HDMI blink on open; next open of the player picks it up.',
+                  'MediaKit only. On by default. When on, asks the TV to switch refresh rate to match the channel (e.g. 50 Hz for 50 fps) — test for 4K stutter. Brief HDMI blink on open; next open of the player picks it up.',
                   snap.iptvMatchDisplayRefresh,
                   (val) async {
                     await _settings.setIptvMatchDisplayRefresh(val);
@@ -554,6 +557,7 @@ class _SettingsPlaybackSectionState
                     );
                     schedulePreferencesSyncPush();
                   },
+                  adminOnly: true,
                 ),
             ],
             if (widget.visibility.showPlaySources)

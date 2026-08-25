@@ -16,8 +16,8 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
   dialog opens; if you are already on the latest, you get a success toast; if
   the check fails (no network, bad manifest, missing CDN config), you get an
   **error** toast (Forja does not claim you are up to date when the check failed)
-- Toggle **Crash reporting** under **Privacy** (admin only; off by default) to send anonymized crash reports via Sentry when this build includes a DSN — stream URLs, magnets, and tokens are stripped
-- Toggle **Product analytics** under **Privacy** (admin only; off by default) to send usage events via PostHog with masked session replay. When you are signed in, PostHog links events to your account id (distinct id) and sets person properties: internal member number (not email), app version, platform, OS version, CPU arch, and last seen. Screen names follow real tabs (`home`, `anime`, …) and routes (`media_details`, `player`) — not Flutter’s `/` root.
+- Toggle **Crash reporting** under **Privacy** (admin only; on by default) to send anonymized crash reports via Sentry when this build includes a DSN — stream URLs, magnets, and tokens are stripped
+- Toggle **Product analytics** under **Privacy** (admin only; on by default) to send usage events via PostHog with masked session replay. When you are signed in, PostHog links events to your account id (distinct id) and sets person properties: internal member number (not email), app version, platform, OS version, CPU arch, and last seen. Screen names follow real tabs (`home`, `anime`, …) and routes (`media_details`, `player`) — not Flutter’s `/` root.
 - The **web portal** also sends anonymous PostHog pageviews (and masked session replay) when the deploy has a PostHog key — it does not use the in-app About toggle
 - On **macOS**, toggle **Store secrets in Keychain** under **Privacy** (admin only; off by default — local app file). Turning it on shows an explain dialog first; macOS may then ask for your password once.
 - Accept update prompt when a newer version exists
