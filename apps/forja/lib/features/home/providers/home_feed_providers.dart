@@ -12,6 +12,25 @@ import 'package:rust/rust.dart';
 /// Bumps on pull-to-refresh / shell tab refresh to refetch Home TMDB rails.
 final homeFeedRefreshProvider = StateProvider<int>((ref) => 0);
 
+/// Marks a FutureProvider fetch as discarded when [ref] is disposed
+/// (invalidate / filter rebuild). Call after awaits so stale work stops
+/// chaining and does not win the race against the newer ask.
+bool Function() _homeFeedAlive(Ref ref) {
+  var alive = true;
+  ref.onDispose(() => alive = false);
+  return () => alive;
+}
+
+Future<List<Movie>> _homeFeedIfAlive(
+  bool Function() alive,
+  Future<List<Movie>> Function() run,
+) async {
+  if (!alive()) return const [];
+  final out = await run();
+  if (!alive()) return const [];
+  return out;
+}
+
 final tmdbApiProvider = Provider((ref) => TmdbApi());
 
 final shellWatchProviderIdProvider =
@@ -171,12 +190,14 @@ Future<List<Movie>> _fetchMoviesPool({
   String? releaseDateLte,
   List<Movie>? page1Cache,
   bool preserveRankOrder = false,
+  bool Function()? isCancelled,
 }) {
   return rotateHomeRailPool(
     bucket: bucket,
     salt: salt,
     page1Cache: page1Cache,
     preserveRankOrder: preserveRankOrder,
+    isCancelled: isCancelled,
     fetchPage: (p) => _fetchMovies(
       api: api,
       standard: standard,
@@ -205,11 +226,13 @@ Future<List<Movie>> _fetchTvPool({
   String? releaseDateGte,
   String? releaseDateLte,
   bool preserveRankOrder = false,
+  bool Function()? isCancelled,
 }) {
   return rotateHomeRailPool(
     bucket: bucket,
     salt: salt,
     preserveRankOrder: preserveRankOrder,
+    isCancelled: isCancelled,
     fetchPage: (p) => _fetchTv(
       api: api,
       standard: standard,
@@ -273,8 +296,8 @@ HomeFeedContext _watchHomeFeedContext(Ref ref) {
   final filter = ShellBus.homeCategory.value;
   final genreId = ShellBus.homeSelectedGenreId.value;
   final epoch = ref.read(homeFeedRefreshProvider);
+  // Fixed at open-time hour — do not watch the timer (avoids hourly remount).
   final bucket = homeCatalogHourBucket();
-  ref.watch(homeCatalogHourBucketProvider);
   final genres = _genreIds(genreId);
   final canUseBootCache = epoch == 0 &&
       providerId == null &&
@@ -338,155 +361,181 @@ class HomeFeedContext {
 
 final homeTrendingProvider =
     FutureProvider.autoDispose<List<Movie>>((ref) async {
+  final alive = _homeFeedAlive(ref);
   final ctx = _watchHomeFeedContext(ref);
-  if (ctx.providerId != null) {
+  // Hero source — keep TMDB trending/day (or discover) rank; no hourly shuffle.
+  return _homeFeedIfAlive(alive, () async {
+    if (ctx.providerId != null) {
+      return _fetchMediaFiltered(
+        filter: ctx.filter,
+        movieFetch: () => _fetchMoviesPool(
+          api: ctx.api,
+          bucket: ctx.bucket,
+          salt: 'trending-m-prov',
+          preserveRankOrder: true,
+          isCancelled: () => !alive(),
+          standard: (page) =>
+              ctx.api.discoverMovies(watchProviderId: ctx.providerId, page: page),
+          genres: ctx.genres.movie,
+          watchProviderId: ctx.providerId,
+        ),
+        tvFetch: () => _fetchTvPool(
+          api: ctx.api,
+          bucket: ctx.bucket,
+          salt: 'trending-tv-prov',
+          preserveRankOrder: true,
+          isCancelled: () => !alive(),
+          standard: (page) =>
+              ctx.api.discoverTvShows(watchProviderId: ctx.providerId, page: page),
+          genres: ctx.genres.tv,
+          watchProviderId: ctx.providerId,
+        ),
+      );
+    }
     return _fetchMediaFiltered(
       filter: ctx.filter,
       movieFetch: () => _fetchMoviesPool(
         api: ctx.api,
         bucket: ctx.bucket,
-        salt: 'trending-m-prov',
-        standard: (page) =>
-            ctx.api.discoverMovies(watchProviderId: ctx.providerId, page: page),
+        salt: 'trending-m',
+        preserveRankOrder: true,
+        isCancelled: () => !alive(),
+        standard: (page) => ctx.api.getTrending(page: page),
         genres: ctx.genres.movie,
-        watchProviderId: ctx.providerId,
+        page1Cache: ctx.canUseBootCache ? BootCache.trending : null,
       ),
       tvFetch: () => _fetchTvPool(
         api: ctx.api,
         bucket: ctx.bucket,
-        salt: 'trending-tv-prov',
-        standard: (page) =>
-            ctx.api.discoverTvShows(watchProviderId: ctx.providerId, page: page),
+        salt: 'trending-tv',
+        preserveRankOrder: true,
+        isCancelled: () => !alive(),
+        standard: (page) => ctx.api.getTrendingTv(page: page),
         genres: ctx.genres.tv,
-        watchProviderId: ctx.providerId,
       ),
     );
-  }
-  return _fetchMediaFiltered(
-    filter: ctx.filter,
-    movieFetch: () => _fetchMoviesPool(
-      api: ctx.api,
-      bucket: ctx.bucket,
-      salt: 'trending-m',
-      standard: (page) => ctx.api.getTrending(page: page),
-      genres: ctx.genres.movie,
-      page1Cache: ctx.canUseBootCache ? BootCache.trending : null,
-    ),
-    tvFetch: () => _fetchTvPool(
-      api: ctx.api,
-      bucket: ctx.bucket,
-      salt: 'trending-tv',
-      standard: (page) => ctx.api.getTrendingTv(page: page),
-      genres: ctx.genres.tv,
-    ),
-  );
+  });
 });
 
 final homePopularProvider =
     FutureProvider.autoDispose<List<Movie>>((ref) async {
+  final alive = _homeFeedAlive(ref);
   final ctx = _watchHomeFeedContext(ref);
   // Always popularity.desc + vote floor — same contract as TmdbApi.getPopular.
   // Never vote_average (that is top-rated, not "popular today").
-  return _fetchMediaFiltered(
-    filter: ctx.filter,
-    movieFetch: () => _fetchMoviesPool(
-      api: ctx.api,
-      bucket: ctx.bucket,
-      salt: 'popular-m',
-      preserveRankOrder: true,
-      standard: (page) => ctx.providerId == null
-          ? ctx.api.getPopular(page: page)
-          : ctx.api.discoverMovies(
-              watchProviderId: ctx.providerId,
-              sortBy: 'popularity.desc',
-              minVoteCount: 100,
-              page: page,
-            ),
-      genres: ctx.genres.movie,
-      watchProviderId: ctx.providerId,
-      sortBy: 'popularity.desc',
-      minVoteCount: 100,
-      page1Cache: ctx.canUseBootCache ? BootCache.popular : null,
-    ),
-    tvFetch: () => _fetchTvPool(
-      api: ctx.api,
-      bucket: ctx.bucket,
-      salt: 'popular-tv',
-      preserveRankOrder: true,
-      standard: (page) => ctx.providerId == null
-          ? ctx.api.getPopularTv(page: page)
-          : ctx.api.discoverTvShows(
-              watchProviderId: ctx.providerId,
-              sortBy: 'popularity.desc',
-              minVoteCount: 100,
-              page: page,
-            ),
-      genres: ctx.genres.tv,
-      watchProviderId: ctx.providerId,
-      sortBy: 'popularity.desc',
-      minVoteCount: 100,
+  return _homeFeedIfAlive(
+    alive,
+    () => _fetchMediaFiltered(
+      filter: ctx.filter,
+      movieFetch: () => _fetchMoviesPool(
+        api: ctx.api,
+        bucket: ctx.bucket,
+        salt: 'popular-m',
+        preserveRankOrder: true,
+        isCancelled: () => !alive(),
+        standard: (page) => ctx.providerId == null
+            ? ctx.api.getPopular(page: page)
+            : ctx.api.discoverMovies(
+                watchProviderId: ctx.providerId,
+                sortBy: 'popularity.desc',
+                minVoteCount: 100,
+                page: page,
+              ),
+        genres: ctx.genres.movie,
+        watchProviderId: ctx.providerId,
+        sortBy: 'popularity.desc',
+        minVoteCount: 100,
+        page1Cache: ctx.canUseBootCache ? BootCache.popular : null,
+      ),
+      tvFetch: () => _fetchTvPool(
+        api: ctx.api,
+        bucket: ctx.bucket,
+        salt: 'popular-tv',
+        preserveRankOrder: true,
+        isCancelled: () => !alive(),
+        standard: (page) => ctx.providerId == null
+            ? ctx.api.getPopularTv(page: page)
+            : ctx.api.discoverTvShows(
+                watchProviderId: ctx.providerId,
+                sortBy: 'popularity.desc',
+                minVoteCount: 100,
+                page: page,
+              ),
+        genres: ctx.genres.tv,
+        watchProviderId: ctx.providerId,
+        sortBy: 'popularity.desc',
+        minVoteCount: 100,
+      ),
     ),
   );
 });
 
 final homeNowPlayingProvider =
     FutureProvider.autoDispose<List<Movie>>((ref) async {
+  final alive = _homeFeedAlive(ref);
   final ctx = _watchHomeFeedContext(ref);
-  if (ctx.providerId != null) {
+  return _homeFeedIfAlive(alive, () async {
+    if (ctx.providerId != null) {
+      return _fetchMediaFiltered(
+        filter: ctx.filter,
+        movieFetch: () => _fetchMoviesPool(
+          api: ctx.api,
+          bucket: ctx.bucket,
+          salt: 'now-m-prov',
+          isCancelled: () => !alive(),
+          standard: (page) => ctx.api.discoverMovies(
+            watchProviderId: ctx.providerId,
+            sortBy: 'primary_release_date.desc',
+            page: page,
+          ),
+          genres: ctx.genres.movie,
+          watchProviderId: ctx.providerId,
+          sortBy: 'primary_release_date.desc',
+        ),
+        tvFetch: () => _fetchTvPool(
+          api: ctx.api,
+          bucket: ctx.bucket,
+          salt: 'now-tv-prov',
+          isCancelled: () => !alive(),
+          standard: (page) => ctx.api.discoverTvShows(
+            watchProviderId: ctx.providerId,
+            sortBy: 'first_air_date.desc',
+            page: page,
+          ),
+          genres: ctx.genres.tv,
+          watchProviderId: ctx.providerId,
+          sortBy: 'first_air_date.desc',
+        ),
+      );
+    }
     return _fetchMediaFiltered(
       filter: ctx.filter,
       movieFetch: () => _fetchMoviesPool(
         api: ctx.api,
         bucket: ctx.bucket,
-        salt: 'now-m-prov',
-        standard: (page) => ctx.api.discoverMovies(
-          watchProviderId: ctx.providerId,
-          sortBy: 'primary_release_date.desc',
-          page: page,
-        ),
+        salt: 'now-m',
+        isCancelled: () => !alive(),
+        standard: (page) => ctx.api.getNowPlaying(page: page),
         genres: ctx.genres.movie,
-        watchProviderId: ctx.providerId,
         sortBy: 'primary_release_date.desc',
+        page1Cache: ctx.canUseBootCache ? BootCache.nowPlaying : null,
       ),
       tvFetch: () => _fetchTvPool(
         api: ctx.api,
         bucket: ctx.bucket,
-        salt: 'now-tv-prov',
-        standard: (page) => ctx.api.discoverTvShows(
-          watchProviderId: ctx.providerId,
-          sortBy: 'first_air_date.desc',
-          page: page,
-        ),
+        salt: 'now-tv',
+        isCancelled: () => !alive(),
+        standard: (page) => ctx.api.getOnTheAir(page: page),
         genres: ctx.genres.tv,
-        watchProviderId: ctx.providerId,
         sortBy: 'first_air_date.desc',
       ),
     );
-  }
-  return _fetchMediaFiltered(
-    filter: ctx.filter,
-    movieFetch: () => _fetchMoviesPool(
-      api: ctx.api,
-      bucket: ctx.bucket,
-      salt: 'now-m',
-      standard: (page) => ctx.api.getNowPlaying(page: page),
-      genres: ctx.genres.movie,
-      sortBy: 'primary_release_date.desc',
-      page1Cache: ctx.canUseBootCache ? BootCache.nowPlaying : null,
-    ),
-    tvFetch: () => _fetchTvPool(
-      api: ctx.api,
-      bucket: ctx.bucket,
-      salt: 'now-tv',
-      standard: (page) => ctx.api.getOnTheAir(page: page),
-      genres: ctx.genres.tv,
-      sortBy: 'first_air_date.desc',
-    ),
-  );
+  });
 });
 
 final homeFeaturedProvider =
     FutureProvider.autoDispose<List<Movie>>((ref) async {
+  final alive = _homeFeedAlive(ref);
   final ctx = _watchHomeFeedContext(ref);
   final range = _currentMonthDateRange();
 
@@ -502,6 +551,7 @@ final homeFeaturedProvider =
         api: ctx.api,
         bucket: ctx.bucket,
         salt: '$salt-m',
+        isCancelled: () => !alive(),
         standard: (page) => ctx.api.discoverMovies(
           releaseDateGte: releaseDateGte,
           releaseDateLte: releaseDateLte,
@@ -521,6 +571,7 @@ final homeFeaturedProvider =
         api: ctx.api,
         bucket: ctx.bucket,
         salt: '$salt-tv',
+        isCancelled: () => !alive(),
         standard: (page) => ctx.api.discoverTvShows(
           releaseDateGte: releaseDateGte,
           releaseDateLte: releaseDateLte,
@@ -539,19 +590,23 @@ final homeFeaturedProvider =
     );
   }
 
-  final month = await load(
-    releaseDateGte: range.gte,
-    releaseDateLte: range.lte,
-    minRating: ctx.providerId != null ? null : 6.0,
-    salt: 'featured-month',
-  );
-  // Calendar-month (+ optional service/genre) is often thin. Keep new-this-month
-  // first, then fill from popular on the same filters so the row stays full.
-  final needsFill = ctx.providerId != null ||
-      (ctx.genres.movie != null && ctx.genres.movie!.isNotEmpty) ||
-      (ctx.genres.tv != null && ctx.genres.tv!.isNotEmpty);
-  if (!needsFill) return month;
-  if (month.length >= kHomeRailDisplayCap) return month;
-  final popular = await load(salt: 'featured-fill');
-  return _uniqueMedia(month, popular);
+  return _homeFeedIfAlive(alive, () async {
+    final month = await load(
+      releaseDateGte: range.gte,
+      releaseDateLte: range.lte,
+      minRating: ctx.providerId != null ? null : 6.0,
+      salt: 'featured-month',
+    );
+    if (!alive()) return const [];
+    // Calendar-month (+ optional service/genre) is often thin. Keep new-this-month
+    // first, then fill from popular on the same filters so the row stays full.
+    final needsFill = ctx.providerId != null ||
+        (ctx.genres.movie != null && ctx.genres.movie!.isNotEmpty) ||
+        (ctx.genres.tv != null && ctx.genres.tv!.isNotEmpty);
+    if (!needsFill) return month;
+    if (month.length >= kHomeRailDisplayCap) return month;
+    final popular = await load(salt: 'featured-fill');
+    if (!alive()) return const [];
+    return _uniqueMedia(month, popular);
+  });
 });

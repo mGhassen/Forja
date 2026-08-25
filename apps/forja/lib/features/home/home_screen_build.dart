@@ -39,11 +39,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     ref.listen(shellHomeGenreIdProvider, (prev, next) {
       if (prev != next) _s._onHomeGenreChanged();
     });
-    ref.listen(homeCatalogHourBucketProvider, (prev, next) {
-      if (prev != null && prev != next) {
-        _s._onCatalogHourBucketChanged();
-      }
-    });
+    // Hourly catalog remount disabled for now.
   }
 
   Map<String, List<Movie>> _claimHomeRailDisplays({
@@ -135,8 +131,8 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     String? tvRowId,
     int tvRowOrder = 0,
   }) {
-    final loading = async.isRefreshing || !async.hasValue;
-    if (loading) {
+    // Cold start only — never skeleton on top-menu filter flips (keep cards).
+    if (movies.isEmpty && !async.hasValue) {
       return HomeMovieSection(
         title: title,
         future: fallbackFuture,
@@ -169,7 +165,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
               final claimed = displays['genre-${row.id}'] ?? const <Movie>[];
               if (row.pool == null) {
                 return HomeMovieSection(
-                  key: ValueKey('${row.id}-${_s._homeFeedEpoch}'),
+                  key: ValueKey(row.id),
                   title: row.label,
                   future: row.future,
                   onMovieTap: _s._openDetails,
@@ -179,7 +175,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
               }
               if (claimed.isEmpty) return const SizedBox.shrink();
               return HomeStaticMovieSection(
-                key: ValueKey('${row.id}-${_s._homeFeedEpoch}-claimed'),
+                key: ValueKey('${row.id}-claimed'),
                 title: row.label,
                 movies: claimed,
                 onMovieTap: _s._openDetails,
@@ -208,19 +204,29 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     final filterSig =
         '${mediaFilter?.name ?? 'all'}|${genreId ?? 'all'}|${watchProviderId ?? 'all'}';
 
+    void remember(AsyncValue<List<Movie>> async, void Function(List<Movie>) save) {
+      final v = async.valueOrNull;
+      if (v != null && v.isNotEmpty && !async.isRefreshing) {
+        save(v);
+      }
+    }
+
+    remember(trendingAsync, (v) => _s._railCacheTrending = v);
+    remember(featuredAsync, (v) => _s._railCacheFeatured = v);
+    remember(popularAsync, (v) => _s._railCachePopular = v);
+    remember(nowPlayingAsync, (v) => _s._railCacheNowPlaying = v);
+
+    List<Movie> poolOf(AsyncValue<List<Movie>> async, List<Movie> cache) {
+      final raw = async.valueOrNull ?? cache;
+      return _s._enforceMediaFilter(raw);
+    }
+
+    // Keep last-good posters while providers reload for a new top-menu filter.
     final displays = _claimHomeRailDisplays(
-      trending: trendingAsync.isRefreshing
-          ? const []
-          : (trendingAsync.valueOrNull ?? const []),
-      featured: featuredAsync.isRefreshing
-          ? const []
-          : (featuredAsync.valueOrNull ?? const []),
-      popular: popularAsync.isRefreshing
-          ? const []
-          : (popularAsync.valueOrNull ?? const []),
-      nowPlaying: nowPlayingAsync.isRefreshing
-          ? const []
-          : (nowPlayingAsync.valueOrNull ?? const []),
+      trending: poolOf(trendingAsync, _s._railCacheTrending),
+      featured: poolOf(featuredAsync, _s._railCacheFeatured),
+      popular: poolOf(popularAsync, _s._railCachePopular),
+      nowPlaying: poolOf(nowPlayingAsync, _s._railCacheNowPlaying),
     );
 
     final usesShellHome = _usesShellHomeLayout(context);
@@ -232,9 +238,8 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     final becauseMovies = displays['because'] ?? const <Movie>[];
     final traktRecMovies = displays['trakt-recs'] ?? const <Movie>[];
 
-    // Remount + wait for the post-filter fetch. Never paint the previous
-    // filter's trending while AsyncValue is still refreshing.
     // Hero slides must match top-menu Films/TV — filter again client-side.
+    // Always paint immediately from cache/value (no shimmer on menu flips).
     List<Movie> heroSlidesFrom(List<Movie> pool) {
       final filtered = switch (mediaFilter) {
         ShellHomeCategory.films =>
@@ -247,16 +252,13 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
       return filtered.take(kHomeHeroClaimCount).toList();
     }
 
-    final Future<List<Movie>> heroMoviesFuture;
-    if (trendingAsync.isRefreshing || !trendingAsync.hasValue) {
-      heroMoviesFuture = ref.read(homeTrendingProvider.future).then(heroSlidesFrom);
-    } else {
-      final hero = displays['hero'] ?? const <Movie>[];
-      final slides = heroSlidesFrom(
-        hero.isNotEmpty ? hero : trendingAsync.requireValue,
-      );
-      heroMoviesFuture = Future.value(slides);
-    }
+    final heroSource =
+        trendingAsync.valueOrNull ?? _s._railCacheTrending;
+    final hero = displays['hero'] ?? const <Movie>[];
+    final heroSlides = heroSlidesFrom(
+      hero.isNotEmpty ? hero : heroSource,
+    );
+    final heroMoviesFuture = Future<List<Movie>>.value(heroSlides);
 
     final featuredSection = usesShellHome && fullHero
         ? _claimedRailSection(
@@ -288,7 +290,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
               SliverToBoxAdapter(
                 child: RepaintBoundary(
                   child: HomeCinematicHero(
-                    key: ValueKey('home-hero-$filterSig-${_s._homeFeedEpoch}'),
+                    key: ValueKey('home-hero-$filterSig'),
                     moviesFuture: heroMoviesFuture,
                     compact: !fullHero,
                     usesShellHomeLayout: usesShellHome,
@@ -365,7 +367,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
               // Mood / Genre chips - interactive filter
               _homeRowSliver(
                 HomeMoodSection(
-                  key: ValueKey('mood-${_s._selectedMood}-${_s._moodReloadToken}'),
+                  key: ValueKey('mood-${_s._selectedMood}'),
                   moods: _HomeScreenState._moods,
                   selectedId: _s._selectedMood,
                   onSelect: _s._selectMood,

@@ -60,33 +60,61 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
         ..shuffle(homeCatalogRandom(homeCatalogHourBucket(), 'genre-row-picks'));
       picked = pool.take(3).toList();
     }
-    final epoch = _s._homeFeedEpoch;
-    _s._randomCategoryRows = [
-      for (final category in picked)
-        (
-          id: category.id,
-          label: category.label,
-          future: _fetchCategoryRow(category).then((pool) {
-            if (!mounted || epoch != _s._homeFeedEpoch) return pool;
-            setState(() {
-              _s._randomCategoryRows = [
-                for (final row in _s._randomCategoryRows)
-                  if (row.id == category.id)
-                    (
-                      id: row.id,
-                      label: row.label,
-                      future: row.future,
-                      pool: pool,
-                    )
-                  else
-                    row,
-              ];
-            });
-            return pool;
-          }),
-          pool: null,
-        ),
+    final gen = ++_s._genreRowsGen;
+    final cold = _s._randomCategoryRows.isEmpty;
+
+    Future<void> apply(List<List<Movie>> pools) async {
+      if (!mounted || gen != _s._genreRowsGen) return;
+      setState(() {
+        _s._randomCategoryRows = [
+          for (var i = 0; i < picked.length; i++)
+            (
+              id: picked[i].id,
+              label: picked[i].label,
+              future: Future<List<Movie>>.value(pools[i]),
+              pool: pools[i],
+            ),
+        ];
+      });
+    }
+
+    final fetches = [
+      for (final category in picked) _fetchCategoryRow(category),
     ];
+
+    if (cold) {
+      // First paint only — no prior posters to keep.
+      _s._randomCategoryRows = [
+        for (var i = 0; i < picked.length; i++)
+          (
+            id: picked[i].id,
+            label: picked[i].label,
+            future: fetches[i].then((pool) {
+              if (!mounted || gen != _s._genreRowsGen) return pool;
+              setState(() {
+                _s._randomCategoryRows = [
+                  for (final row in _s._randomCategoryRows)
+                    if (row.id == picked[i].id)
+                      (
+                        id: row.id,
+                        label: row.label,
+                        future: row.future,
+                        pool: pool,
+                      )
+                    else
+                      row,
+                ];
+              });
+              return pool;
+            }),
+            pool: null,
+          ),
+      ];
+      return;
+    }
+
+    // Keep current genre rows on screen; swap when the new set is ready.
+    Future.wait(fetches).then(apply);
   }
 
   List<Movie> _enforceMediaFilter(List<Movie> items) {
@@ -181,8 +209,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   }
 
   void _resetHomeCategoryFeeds() {
-    _s._homeFeedEpoch++;
-    _s._moodPool = null;
+    // Soft refresh — keep mood / genre posters until the new pools land.
     final token = ++_s._moodReloadToken;
     _s._moodFuture =
         _loadMoodMovies(_s._selectedMood, reloadToken: token).then((pool) {
@@ -194,20 +221,23 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
     _resetRandomCategoryRows();
   }
 
+  /// Abort in-flight Because scrapes. Mood / genre rows are aborted by
+  /// [_resetHomeCategoryFeeds] (epoch + mood token). TMDB rails drop via
+  /// provider invalidate + [ref.onDispose] guards.
+  void _cancelPreviousHomeAsks() {
+    _s._becauseWorkGen++;
+  }
+
   Future<void> _reloadHomeFeed() async {
-    if (!mounted) return;
-    refreshHomeFeed(ref);
-    ref.invalidate(homeTraktRecommendationsProvider);
-    ref.invalidate(homeTraktUpcomingShowsProvider);
-    ref.invalidate(homeTraktUpcomingMoviesProvider);
-    setState(() => _resetHomeCategoryFeeds());
-    // Re-roll "Because you watched" on every Home refresh.
-    _pickBecauseSeed(WatchHistoryService().current);
+    // Disabled for now — pull / tab reselect was remounting every rail +
+    // re-rolling Because and stacking TMDB work. Filter flips still refetch.
+    return;
   }
 
   void _onWatchProviderChanged() {
     if (!mounted || !shellTabVisible) return;
     final scroll = _pinnedHomeScrollOffset();
+    _cancelPreviousHomeAsks();
     _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
     _restoreHomeScroll(scroll);
@@ -216,6 +246,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   void _onHomeCategoryChanged() {
     if (!mounted || !shellTabVisible) return;
     final scroll = _pinnedHomeScrollOffset();
+    _cancelPreviousHomeAsks();
     _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
     _restoreHomeScroll(scroll);
@@ -224,6 +255,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   void _onHomeGenreChanged() {
     if (!mounted || !shellTabVisible) return;
     final scroll = _pinnedHomeScrollOffset();
+    _cancelPreviousHomeAsks();
     _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
     _restoreHomeScroll(scroll);
@@ -257,14 +289,6 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
     });
   }
 
-  void _onCatalogHourBucketChanged() {
-    if (!mounted || !shellTabVisible) return;
-    // Providers already rebuild via homeCatalogHourBucketProvider; refresh
-    // mood / genre rows + hero epoch for the new hourly mix.
-    setState(() => _resetHomeCategoryFeeds());
-    _pickBecauseSeed(WatchHistoryService().current);
-  }
-
   void _invalidateHomeMainRails() {
     ref.invalidate(homeTrendingProvider);
     ref.invalidate(homePopularProvider);
@@ -276,6 +300,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   /// Keep-alive leaves [mounted] true — generation bumps abort in-flight loops.
   void _pauseHomeBackgroundWork() {
     _s._homeBgWorkGen++;
+    _s._becauseWorkGen++;
     _s._historySeedSub?.cancel();
     _s._historySeedSub = null;
     if (_s._splashDismissedListener != null) {
@@ -389,14 +414,15 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
 
     final seed = candidates[math.Random().nextInt(candidates.length)];
     final secondary = _pickOppositeSeed(pool, seed);
-    final workGen = _s._homeBgWorkGen;
+    // Abort in-flight bestsimilar / TMDB resolve storms from prior picks.
+    final workGen = ++_s._becauseWorkGen;
     setState(() {
       _s._becauseSeed = seed;
       _s._becausePoolSize = pool.length;
-      _s._becausePool = null;
+      // Keep last posters until the new fetch lands (don't blank the row).
       _s._becauseFuture =
           _loadBecauseRecsMixed(seed, secondary, workGen).then((movies) {
-        if (mounted && workGen == _s._homeBgWorkGen) {
+        if (mounted && workGen == _s._becauseWorkGen) {
           setState(() => _s._becausePool = movies);
         }
         return movies;
@@ -420,7 +446,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
       _loadBecauseRecs(primary, workGen),
       _loadBecauseRecs(secondary, workGen),
     ]);
-    if (!mounted || workGen != _s._homeBgWorkGen) return const [];
+    if (!mounted || workGen != _s._becauseWorkGen) return const [];
     return _interleaveMedia(results[0], results[1]);
   }
 
@@ -442,7 +468,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
     try {
       // 1) Autocomplete on bestsimilar; pick the closest hit (forgiving).
       final hits = await BestSimilarScraper.autocomplete(title);
-      if (!mounted || workGen != _s._homeBgWorkGen) return const [];
+      if (!mounted || workGen != _s._becauseWorkGen) return const [];
       debugPrint('[BecauseYouWatched] autocomplete hits=${hits.length}');
       if (hits.isEmpty) return const [];
 
@@ -464,7 +490,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
       // 2) Detail page → similar items.
       final details =
           await BestSimilarScraper.fetchDetails(id: hit.id, slug: hit.slug);
-      if (!mounted || workGen != _s._homeBgWorkGen) return const [];
+      if (!mounted || workGen != _s._becauseWorkGen) return const [];
       if (details == null || details.similar.isEmpty) {
         debugPrint('[BecauseYouWatched] no similar items returned');
         return const [];
@@ -474,10 +500,10 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
       // 3) Resolve each BS item to a TMDB Movie (parallel) - relaxed threshold
       //    so we don't drop everything when the year is unknown.
       final lookups = details.similar.map((it) async {
-        if (workGen != _s._homeBgWorkGen) return null;
+        if (workGen != _s._becauseWorkGen) return null;
         try {
           final hits = await _s._api.searchMulti(it.title);
-          if (workGen != _s._homeBgWorkGen) return null;
+          if (workGen != _s._becauseWorkGen) return null;
           if (hits.isEmpty) return null;
           Movie? best;
           var bestScore = -1;
@@ -513,7 +539,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
         }
       });
       final resolved = await Future.wait(lookups);
-      if (!mounted || workGen != _s._homeBgWorkGen) return const [];
+      if (!mounted || workGen != _s._becauseWorkGen) return const [];
 
       // 4) Sort by bestsimilar similarity % (desc), drop dupes & nulls.
       //    Items without a percentage fall to the bottom.

@@ -53,4 +53,20 @@ void main() {
     expect(homeCatalogHourBucket(t), 2026082514);
     expect(homeCatalogHourBucket(t.add(const Duration(hours: 1))), 2026082515);
   });
+
+  test('rotateHomeRailPool stops when cancelled', () async {
+    var calls = 0;
+    final out = await rotateHomeRailPool(
+      bucket: 1,
+      salt: 'x',
+      preserveRankOrder: true,
+      isCancelled: () => true,
+      fetchPage: (p) async {
+        calls++;
+        return [_m(p)];
+      },
+    );
+    expect(out, isEmpty);
+    expect(calls, 0);
+  });
 }

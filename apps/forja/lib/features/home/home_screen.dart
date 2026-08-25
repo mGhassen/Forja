@@ -49,7 +49,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   List<({String id, String label, Future<List<Movie>> future, List<Movie>? pool})>
       _randomCategoryRows = [];
-  int _homeFeedEpoch = 0;
+  /// Last painted TMDB rails — survive invalidate so top-menu flips don't
+  /// skeleton the whole page while the matching fetch is in flight.
+  List<Movie> _railCacheTrending = const [];
+  List<Movie> _railCacheFeatured = const [];
+  List<Movie> _railCachePopular = const [];
+  List<Movie> _railCacheNowPlaying = const [];
+  int _genreRowsGen = 0;
 
   // Trakt personalized sections
   List<Movie> _traktRecommendations = [];
@@ -68,6 +74,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   StreamSubscription<List<Map<String, dynamic>>>? _historySeedSub;
   /// Invalidates Because-you-watched + Trakt home rails when the tab hides.
   int _homeBgWorkGen = 0;
+  /// Cancels in-flight BestSimilar resolves without aborting Trakt home loads.
+  int _becauseWorkGen = 0;
   bool _postSplashWorkStarted = false;
   VoidCallback? _splashDismissedListener;
 
