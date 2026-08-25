@@ -474,10 +474,13 @@ final homeFeaturedProvider =
     releaseDateLte: range.lte,
     minRating: ctx.providerId != null ? null : 6.0,
   );
-  if (ctx.providerId == null) return month;
-  // Calendar-month + service is often a handful of titles. Keep new-this-month
-  // first, then fill from popular on that service.
-  if (month.length >= 8) return month;
+  // Calendar-month (+ optional service/genre) is often thin. Keep new-this-month
+  // first, then fill from popular on the same filters so the row stays full.
+  final needsFill = ctx.providerId != null ||
+      (ctx.genres.movie != null && ctx.genres.movie!.isNotEmpty) ||
+      (ctx.genres.tv != null && ctx.genres.tv!.isNotEmpty);
+  if (!needsFill) return month;
+  if (month.length >= kHomeRailDisplayCap) return month;
   final popular = await load();
   return _uniqueMedia(month, popular);
 });

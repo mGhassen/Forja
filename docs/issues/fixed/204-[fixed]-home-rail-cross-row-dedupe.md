@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 4 / 4** fix · **3 / 3** acceptance |
+| **Progress** | **Complete · 5 / 5** fix · **4 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I204-T02 | Over-fetch 2 TMDB pages per rail and backfill to display cap | ✅ |
 | 3 | I204-T03 | Continue Watching claims without hiding itself; Trakt calendars ignore claim | ✅ |
 | 4 | I204-T04 | Unit tests for claim + backfill | ✅ |
+| 5 | I204-T05 | Categories genre mode: independent fill (no cross-rail claim) + Featured month fill | ✅ |
 
 ---
 
@@ -33,6 +34,7 @@
 | 1 | I204-A01 | A title in the hero does not reappear in Featured / Popular / lower discovery rails | ✅ |
 | 2 | I204-A02 | After a title is removed from a lower rail, another unused title from that rail’s pool fills the slot (row does not shrink for overlap alone) | ✅ |
 | 3 | I204-A03 | Continue Watching and Trakt upcoming still show their titles even if also claimed elsewhere | ✅ |
+| 4 | I204-A04 | With a Categories genre selected, discovery rails stay populated (full slots), not emptied by claim | ✅ |
 
 ---
 

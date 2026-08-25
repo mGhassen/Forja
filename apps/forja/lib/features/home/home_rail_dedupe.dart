@@ -98,6 +98,22 @@ Map<String, List<Movie>> claimHomeRails(Iterable<HomeRailSpec> rails) {
   return out;
 }
 
+/// No cross-rail claim — each rail takes up to [HomeRailSpec.cap] from its own
+/// pool. Used when Categories forces every rail onto the same genre discover.
+Map<String, List<Movie>> fillHomeRailsIndependently(
+  Iterable<HomeRailSpec> rails,
+) {
+  final out = <String, List<Movie>>{};
+  for (final rail in rails) {
+    if (rail.keysOnly != null) {
+      out[rail.id] = const [];
+      continue;
+    }
+    out[rail.id] = rail.pool.take(rail.cap).toList();
+  }
+  return out;
+}
+
 /// Merge page results preserving first-seen order.
 List<Movie> mergeHomeRailPages(List<List<Movie>> pages) {
   final out = <Movie>[];

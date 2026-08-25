@@ -47,6 +47,31 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     required List<Movie> popular,
     required List<Movie> nowPlaying,
   }) {
+    // Global Categories filter makes every TMDB rail the same discover soup —
+    // exclusive claim starves lower rows. Each rail fills its own slots.
+    if (ShellBus.homeSelectedGenreId.value != null) {
+      return fillHomeRailsIndependently([
+        HomeRailSpec(
+          id: 'hero',
+          pool: trending,
+          cap: kHomeHeroClaimCount,
+        ),
+        HomeRailSpec(id: 'featured', pool: featured),
+        HomeRailSpec(id: 'popular', pool: popular),
+        HomeRailSpec(id: 'mood', pool: _s._moodPool ?? const []),
+        HomeRailSpec(id: 'because', pool: _s._becausePool ?? const []),
+        HomeRailSpec(id: 'trakt-recs', pool: _s._traktRecommendations),
+        HomeRailSpec(id: 'trakt-shows', pool: _s._traktUpcomingShows),
+        HomeRailSpec(id: 'trakt-movies', pool: _s._traktUpcomingMovies),
+        HomeRailSpec(id: 'new-releases', pool: nowPlaying),
+        for (final row in _s._randomCategoryRows)
+          HomeRailSpec(
+            id: 'genre-${row.id}',
+            pool: row.pool ?? const [],
+          ),
+      ]);
+    }
+
     return claimHomeRails([
       HomeRailSpec(
         id: 'hero',

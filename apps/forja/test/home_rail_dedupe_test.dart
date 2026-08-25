@@ -60,6 +60,17 @@ void main() {
     expect(displays['popular']!.map((m) => m.id), [1, 2]);
   });
 
+  test('independent fill keeps full slots per rail (genre mode)', () {
+    final pool = [_m(1), _m(2), _m(3), _m(4)];
+    final displays = fillHomeRailsIndependently([
+      HomeRailSpec(id: 'hero', pool: pool, cap: 2),
+      HomeRailSpec(id: 'popular', pool: pool, cap: 3),
+    ]);
+
+    expect(displays['hero']!.map((m) => m.id), [1, 2]);
+    expect(displays['popular']!.map((m) => m.id), [1, 2, 3]);
+  });
+
   test('mergeHomeRailPages keeps first-seen order', () {
     final merged = mergeHomeRailPages([
       [_m(1), _m(2)],
