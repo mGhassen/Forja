@@ -5,7 +5,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/features/asian_drama/asian_drama_country_categories.dart';
 import 'package:forja/features/asian_drama/asian_drama_hub_filters.dart';
 import 'package:forja/features/asian_drama/providers/asian_drama_providers.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
@@ -63,10 +62,9 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
   List<Map<String, dynamic>> _continueWatching = [];
   int? _resumingDramaId;
 
-  /// Country Categories browse (explore API) — replaces rails when set.
-  List<KdramaCard>? _countryBrowse;
-  bool _countryBrowseLoading = false;
-  int _countryBrowseGen = 0;
+  /// Filtered hub (Films / Series / country) — same row shape as home feed.
+  KdramaHomeFeed? _filteredFeed;
+  int _filteredFeedGen = 0;
 
   /// TV D-pad order must match visual stack.
   /// Full hero: Latest (bleed) → Continue → catalog.
@@ -138,31 +136,34 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
 
   void _onHubFilterChanged() {
     if (!mounted) return;
-    _syncCountryBrowse();
+    _syncFilteredHub();
     setState(() {});
   }
 
-  void _syncCountryBrowse() {
+  void _syncFilteredHub() {
     final country = asianDramaActiveCountryCode();
-    if (country == null) {
-      _countryBrowse = null;
-      _countryBrowseLoading = false;
-      _countryBrowseGen++;
+    final mediaFilter = ShellBus.asianDramaCategory.value;
+    if (country == null && mediaFilter == null) {
+      _filteredFeed = null;
+      _filteredFeedGen++;
+      // Restore frozen hero from the unfiltered home feed.
+      final base = _feed;
+      if (base != null) {
+        _heroCards = _heroCardsFrom(base);
+      }
       return;
     }
-    final gen = ++_countryBrowseGen;
+    final gen = ++_filteredFeedGen;
     final type = asianDramaExploreTypeCode();
-    setState(() => _countryBrowseLoading = true);
     unawaited(() async {
-      final page = await _service.explore(
+      final feed = await _service.getFilteredHubFeed(
         type: type,
-        country: country,
-        page: 1,
+        country: country ?? 0,
       );
-      if (!mounted || gen != _countryBrowseGen) return;
+      if (!mounted || gen != _filteredFeedGen) return;
       setState(() {
-        _countryBrowse = page.items;
-        _countryBrowseLoading = false;
+        _filteredFeed = feed;
+        _heroCards = _heroCardsFrom(feed);
       });
     }());
   }
@@ -289,7 +290,10 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
       _feed = feed;
       // Same as Anime: freeze hero source across rail fills so TMDB enrich /
       // PageView focus nodes are not torn down by catalog updates.
-      if (heroChanged) _heroCards = incomingHero;
+      // When Films/Series/country is active, hero comes from the filtered feed.
+      if (!asianDramaHubFilterActive() && heroChanged) {
+        _heroCards = incomingHero;
+      }
       _loading = false;
       _error = null;
     });
@@ -523,40 +527,31 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
         final fullHero = hubIsFullCinematicHero(context);
         final usesShell = hubUsesShellLayout(context);
         final liveFeed = feedAsync.asData?.value;
-        final displayFeed = _feed ?? liveFeed;
-        final countryActive = asianDramaActiveCountryCode() != null;
-        final countryLabel =
-            asianDramaCountryLabel(ShellBus.asianDramaSelectedCountryId.value);
+        final filterActive = asianDramaHubFilterActive();
+        final displayFeed = filterActive
+            ? (_filteredFeed ?? _feed ?? liveFeed)
+            : (_feed ?? liveFeed);
         final rawHero = _heroCards.isNotEmpty
             ? _heroCards
-            : (liveFeed != null
-                ? _heroCardsFrom(liveFeed)
+            : (displayFeed != null
+                ? _heroCardsFrom(displayFeed)
                 : const <KdramaCard>[]);
-        final heroCards = countryActive && (_countryBrowse?.isNotEmpty ?? false)
-            ? filterDramaCardsByMedia(_countryBrowse!).take(5).toList()
-            : filterDramaCardsByMedia(rawHero);
-        final latestList = filterDramaCardsByMedia(
-          displayFeed?.latest ?? const <KdramaCard>[],
-        );
-        final trendingList = filterDramaCardsByMedia(
-          displayFeed?.trending ?? const <KdramaCard>[],
-        );
-        final topRatedList = filterDramaCardsByMedia(
-          displayFeed?.topRated ?? const <KdramaCard>[],
-        );
-        final mostViewedList = filterDramaCardsByMedia(
-          displayFeed?.mostViewed ?? const <KdramaCard>[],
-        );
-        final animeList = filterDramaCardsByMedia(
-          displayFeed?.anime ?? const <KdramaCard>[],
-        );
-        final upcomingList = filterDramaCardsByMedia(
-          displayFeed?.upcoming ?? const <KdramaCard>[],
-        );
+        final heroCards = rawHero;
+        // Server-filtered explore feed already matches Films/Series/country —
+        // never client-strip (list payloads often omit `type`).
+        final latestList = displayFeed?.latest ?? const <KdramaCard>[];
+        final trendingList = displayFeed?.trending ?? const <KdramaCard>[];
+        final topRatedList = displayFeed?.topRated ?? const <KdramaCard>[];
+        final mostViewedList = displayFeed?.mostViewed ?? const <KdramaCard>[];
+        // Anime is its own KissKH type — hide under Films / Series (and don't
+        // flash the unfiltered Anime rail while the filtered feed loads).
+        final animeList = asianDramaExploreTypeCode() == 0
+            ? (displayFeed?.anime ?? const <KdramaCard>[])
+            : const <KdramaCard>[];
+        final upcomingList = displayFeed?.upcoming ?? const <KdramaCard>[];
         final latestOnHero =
-            !countryActive && usesShell && fullHero && latestList.isNotEmpty;
-        final latestAsCatalogRow =
-            !countryActive && !latestOnHero && latestList.isNotEmpty;
+            usesShell && fullHero && latestList.isNotEmpty;
+        final latestAsCatalogRow = !latestOnHero && latestList.isNotEmpty;
         final latestOrder = _latestOrder(latestOnHero: latestOnHero);
         final catalogBase = _catalogRowBase(
           latestOnHero: latestOnHero,
@@ -642,57 +637,6 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                             ),
                             isFirstAfterHero: latestSection == null,
                           ),
-                        if (countryActive) ...[
-                          if (_countryBrowseLoading)
-                            hubRowSliver(
-                              context,
-                              homeLoadingShimmer(
-                                SizedBox(
-                                  height: HubPosterCard.cardHeight(
-                                    context,
-                                    aspect: HubPosterAspect.landscape,
-                                  ),
-                                  child: ListView.separated(
-                                    scrollDirection: Axis.horizontal,
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal:
-                                          shellHomeSectionHorizontalPadding(
-                                        context,
-                                      ),
-                                    ),
-                                    itemCount: 5,
-                                    separatorBuilder: (_, _) => SizedBox(
-                                      width: shellMovieCardRowGap(context),
-                                    ),
-                                    itemBuilder: (_, _) =>
-                                        homeCardSkeleton(context),
-                                  ),
-                                ),
-                              ),
-                              isFirstAfterHero: _continueWatching.isEmpty,
-                            )
-                          else if ((_countryBrowse ?? const []).isNotEmpty)
-                            hubRowSliver(
-                              context,
-                              HubCatalogSection<KdramaCard>(
-                                title: countryLabel ?? 'Browse',
-                                items: _countryBrowse!,
-                                cardAspect: HubPosterAspect.landscape,
-                                tvTabId: 'asian_drama',
-                                tvRowId: 'country-browse',
-                                tvRowOrder: catalogBase,
-                                cardBuilder: (context, card, index) =>
-                                    _dramaPosterCard(
-                                  card,
-                                  listIndex: index,
-                                  tvRowId: 'country-browse',
-                                ),
-                              ),
-                              isFirstAfterHero: _continueWatching.isEmpty,
-                            ),
-                        ] else ...[
                         if (latestAsCatalogRow)
                           hubRowSliver(
                             context,
@@ -810,7 +754,6 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                             ),
                             isFirstAfterHero: false,
                           ),
-                        ],
                       ],
                       SliverToBoxAdapter(
                         child: SizedBox(

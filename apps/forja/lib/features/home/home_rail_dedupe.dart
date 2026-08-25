@@ -1,13 +1,14 @@
 import 'package:rust/rust.dart';
 
 /// How many posters a discovery rail aims to show after claim + backfill.
+/// Matches one TMDB page (~20) so horizontal scroll uses the page we already fetched.
 const kHomeRailDisplayCap = 20;
 
 /// Hero carousel length — only these trending titles are claimed from the pool.
 const kHomeHeroClaimCount = 5;
 
-/// TMDB pages to fetch per rail so dedupe can refill without shrinking the row.
-const kHomeRailFetchPages = 2;
+/// TMDB pages to fetch per rail (one page ≈ 20 titles — enough to fill [kHomeRailDisplayCap]).
+const kHomeRailFetchPages = 1;
 
 String homeMediaKey(Movie movie) => '${movie.mediaType}:${movie.id}';
 

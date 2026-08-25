@@ -309,6 +309,71 @@ class KissKhService {
     }
   }
 
+  /// Hub rails for Films / Series / country — explore has type+country; home
+  /// list endpoints do not. Maps explore sorts onto the same row titles.
+  Future<KdramaHomeFeed> getFilteredHubFeed({
+    int type = 0,
+    int country = 0,
+  }) async {
+    Future<List<KdramaCard>> page({
+      int order = 1,
+      int status = 0,
+      int pageNum = 1,
+      int? typeOverride,
+    }) async {
+      final result = await explore(
+        type: typeOverride ?? type,
+        country: country,
+        order: order,
+        status: status,
+        page: pageNum,
+        pageSize: 24,
+      );
+      return result.items;
+    }
+
+    final latestF = page(order: 2);
+    final trendingF = page(order: 1, pageNum: 1);
+    final mostViewedF = page(order: 1, pageNum: 2);
+    final releaseF = page(order: 3);
+    final upcomingF = page(status: 3, order: 2);
+    // Anime is its own KissKH type — only when media filter is All.
+    final animeF = type == 0
+        ? page(typeOverride: 3, order: 1)
+        : Future<List<KdramaCard>>.value(const []);
+
+    final parts = await Future.wait([
+      latestF,
+      trendingF,
+      mostViewedF,
+      releaseF,
+      upcomingF,
+      animeF,
+    ]);
+    final latest = parts[0];
+    final trending = parts[1];
+    final mostViewed = parts[2];
+    final release = parts[3];
+    final upcoming = parts[4];
+    final anime = parts[5];
+
+    final spotlight = latest.isNotEmpty
+        ? latest.take(8).toList()
+        : trending.take(8).toList();
+
+    return KdramaHomeFeed(
+      spotlight: spotlight,
+      latest: latest,
+      trending: trending,
+      topRated: release.isNotEmpty
+          ? release.take(10).toList()
+          : trending.take(10).toList(),
+      mostViewed: mostViewed,
+      upcoming: upcoming,
+      anime: anime,
+    );
+  }
+
   Future<KdramaDetails> getDetails(int id) async {
     final decoded = await kisskhCatalog({'action': 'details', 'id': id});
     return KdramaDetails.fromEngineJson(decoded);

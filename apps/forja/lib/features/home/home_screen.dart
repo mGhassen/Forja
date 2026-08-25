@@ -24,6 +24,7 @@ import 'package:forja/features/home/widgets/home_mood_section.dart';
 import 'package:forja/features/home/widgets/home_movie_section.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
 
 
@@ -55,6 +56,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   List<Movie> _railCacheFeatured = const [];
   List<Movie> _railCachePopular = const [];
   List<Movie> _railCacheNowPlaying = const [];
+  /// Rails allowed to hit TMDB / start row fetches. Hero + Featured (+ Popular
+  /// preload on shell) start armed; the rest arm on viewport (+1 lookahead).
+  final Set<String> _armedRails = {'trending', 'featured'};
+  final Set<String> _genreFetchStarted = {};
+  bool _bootstrapArmsDone = false;
   int _genreRowsGen = 0;
   /// Stable hero Future identity — a new Future.value every build remounts
   /// FutureBuilder into shimmer.
@@ -201,14 +207,70 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
 
 
+  bool _isRailArmed(String id) => _armedRails.contains(id);
+
+  void _ensureBootstrapArms({required bool usesShellHome}) {
+    if (_bootstrapArmsDone) return;
+    _bootstrapArmsDone = true;
+    // +1 lookahead after Featured (first painted catalog row).
+    if (usesShellHome) {
+      _armedRails.add('popular');
+    } else {
+      _armedRails.add('mood');
+    }
+  }
+
+  /// Visual order of lazy TMDB catalog rails — overlays (CW / Because / Trakt)
+  /// stay out so an empty Continue Watching row cannot stall mood / New Releases.
+  List<String> _homeLazyRailChain({required bool usesShellHome}) {
+    if (usesShellHome) {
+      return [
+        'featured',
+        'popular',
+        'mood',
+        'new-releases',
+        for (final row in _randomCategoryRows) 'genre-${row.id}',
+      ];
+    }
+    return [
+      'featured',
+      'mood',
+      'popular',
+      'new-releases',
+      for (final row in _randomCategoryRows) 'genre-${row.id}',
+    ];
+  }
+
+  void _armRailAndNext(String id, {required bool usesShellHome}) {
+    final chain = _homeLazyRailChain(usesShellHome: usesShellHome);
+    final i = chain.indexOf(id);
+    final next = (i >= 0 && i + 1 < chain.length) ? chain[i + 1] : null;
+    if (_armedRails.contains(id) &&
+        (next == null || _armedRails.contains(next))) {
+      return;
+    }
+    final kicks = <String>[];
+    setState(() {
+      if (_armedRails.add(id)) kicks.add(id);
+      if (next != null && _armedRails.add(next)) kicks.add(next);
+    });
+    for (final k in kicks) {
+      _onRailArmed(k);
+    }
+  }
+
   void _syncMainRailFutures() {
     ref.watch(homeTrendingProvider);
-    ref.watch(homePopularProvider);
     ref.watch(homeFeaturedProvider);
-    ref.watch(homeNowPlayingProvider);
-    _popularFuture = ref.read(homePopularProvider.future);
     _featuredThisMonthFuture = ref.read(homeFeaturedProvider.future);
-    _nowPlayingFuture = ref.read(homeNowPlayingProvider.future);
+    if (_isRailArmed('popular')) {
+      ref.watch(homePopularProvider);
+      _popularFuture = ref.read(homePopularProvider.future);
+    }
+    if (_isRailArmed('new-releases')) {
+      ref.watch(homeNowPlayingProvider);
+      _nowPlayingFuture = ref.read(homeNowPlayingProvider.future);
+    }
   }
 
   void _syncHomeScrollOffset() {

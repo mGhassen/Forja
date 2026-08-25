@@ -61,60 +61,105 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
       picked = pool.take(3).toList();
     }
     final gen = ++_s._genreRowsGen;
-    final cold = _s._randomCategoryRows.isEmpty;
 
-    Future<void> apply(List<List<Movie>> pools) async {
-      if (!mounted || gen != _s._genreRowsGen) return;
-      setState(() {
-        _s._randomCategoryRows = [
-          for (var i = 0; i < picked.length; i++)
-            (
-              id: picked[i].id,
-              label: picked[i].label,
-              future: Future<List<Movie>>.value(pools[i]),
-              pool: pools[i],
-            ),
-        ];
-      });
-    }
+    // Drop prior genre arms — new picks get a fresh visibility chain.
+    _s._armedRails.removeWhere((id) => id.startsWith('genre-'));
+    _s._genreFetchStarted.clear();
 
-    final fetches = [
-      for (final category in picked) _fetchCategoryRow(category),
+    _s._randomCategoryRows = [
+      for (final category in picked)
+        (
+          id: category.id,
+          label: category.label,
+          // Placeholder until the rail is armed (viewport / +1 preload).
+          future: Future<List<Movie>>.value(const []),
+          pool: null,
+        ),
     ];
 
-    if (cold) {
-      // First paint only — no prior posters to keep.
-      _s._randomCategoryRows = [
-        for (var i = 0; i < picked.length; i++)
-          (
-            id: picked[i].id,
-            label: picked[i].label,
-            future: fetches[i].then((pool) {
-              if (!mounted || gen != _s._genreRowsGen) return pool;
-              setState(() {
-                _s._randomCategoryRows = [
-                  for (final row in _s._randomCategoryRows)
-                    if (row.id == picked[i].id)
-                      (
-                        id: row.id,
-                        label: row.label,
-                        future: row.future,
-                        pool: pool,
-                      )
-                    else
-                      row,
-                ];
-              });
-              return pool;
-            }),
-            pool: null,
-          ),
-      ];
+    // If New Releases already armed, kick the first genre as +1.
+    if (_s._isRailArmed('new-releases') && picked.isNotEmpty) {
+      _s._armedRails.add('genre-${picked.first.id}');
+      _kickGenreRowIfArmed(picked.first.id, gen: gen, notify: false);
+    }
+  }
+
+  void _onRailArmed(String id) {
+    if (id == 'mood') {
+      _kickMoodIfArmed();
       return;
     }
+    if (id.startsWith('genre-')) {
+      _kickGenreRowIfArmed(id.substring('genre-'.length));
+    }
+  }
 
-    // Keep current genre rows on screen; swap when the new set is ready.
-    Future.wait(fetches).then(apply);
+  void _kickMoodIfArmed() {
+    if (!_s._isRailArmed('mood')) return;
+    if (_s._moodFuture != null) return;
+    final token = ++_s._moodReloadToken;
+    _s._moodFuture =
+        _loadMoodMovies(_s._selectedMood, reloadToken: token).then((pool) {
+      if (mounted && _s._moodReloadToken == token) {
+        setState(() => _s._moodPool = pool);
+      }
+      return pool;
+    });
+    if (mounted) setState(() {});
+  }
+
+  void _kickGenreRowIfArmed(
+    String categoryId, {
+    int? gen,
+    bool notify = true,
+  }) {
+    final railId = 'genre-$categoryId';
+    if (!_s._isRailArmed(railId)) return;
+    if (!_s._genreFetchStarted.add(categoryId)) return;
+    final rowIndex =
+        _s._randomCategoryRows.indexWhere((row) => row.id == categoryId);
+    if (rowIndex < 0) {
+      _s._genreFetchStarted.remove(categoryId);
+      return;
+    }
+    final match = homeGenreCategories.where((c) => c.id == categoryId);
+    if (match.isEmpty) {
+      _s._genreFetchStarted.remove(categoryId);
+      return;
+    }
+    final cat = match.first;
+    final workGen = gen ?? _s._genreRowsGen;
+    final fetch = _fetchCategoryRow(cat).then((pool) {
+      if (!mounted || workGen != _s._genreRowsGen) return pool;
+      setState(() {
+        _s._randomCategoryRows = [
+          for (final r in _s._randomCategoryRows)
+            if (r.id == categoryId)
+              (
+                id: r.id,
+                label: r.label,
+                future: Future<List<Movie>>.value(pool),
+                pool: pool,
+              )
+            else
+              r,
+        ];
+      });
+      return pool;
+    });
+    _s._randomCategoryRows = [
+      for (final r in _s._randomCategoryRows)
+        if (r.id == categoryId)
+          (
+            id: r.id,
+            label: r.label,
+            future: fetch,
+            pool: null,
+          )
+        else
+          r,
+    ];
+    if (notify && mounted) setState(() {});
   }
 
   List<Movie> _enforceMediaFilter(List<Movie> items) {
@@ -210,14 +255,20 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
 
   void _resetHomeCategoryFeeds() {
     // Soft refresh — keep mood / genre posters until the new pools land.
-    final token = ++_s._moodReloadToken;
-    _s._moodFuture =
-        _loadMoodMovies(_s._selectedMood, reloadToken: token).then((pool) {
-      if (mounted && _s._moodReloadToken == token) {
-        setState(() => _s._moodPool = pool);
-      }
-      return pool;
-    });
+    if (_s._isRailArmed('mood')) {
+      final token = ++_s._moodReloadToken;
+      _s._moodPool = null;
+      _s._moodFuture =
+          _loadMoodMovies(_s._selectedMood, reloadToken: token).then((pool) {
+        if (mounted && _s._moodReloadToken == token) {
+          setState(() => _s._moodPool = pool);
+        }
+        return pool;
+      });
+    } else {
+      _s._moodFuture = null;
+      _s._moodPool = null;
+    }
     _resetRandomCategoryRows();
   }
 

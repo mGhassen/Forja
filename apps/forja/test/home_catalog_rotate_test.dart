@@ -23,8 +23,8 @@ void main() {
     final b = homeCatalogFetchPages(homeCatalogRandom(2026082515, 'popular-m'));
     // Not guaranteed different, but salts diverge enough that collision is rare
     // for this fixed pair — assert page count + range instead if equal.
-    expect(a.length, 2);
-    expect(b.length, 2);
+    expect(a.length, 1);
+    expect(b.length, 1);
     expect(a.every((p) => p >= 1 && p <= 5), isTrue);
     expect(b.every((p) => p >= 1 && p <= 5), isTrue);
     if (a.join() == b.join()) {
