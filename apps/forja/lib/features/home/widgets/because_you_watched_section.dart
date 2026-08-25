@@ -2,6 +2,7 @@
 
 import 'package:forja/features/home/widgets/home_widget_imports.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
+
 class HomeBecauseYouWatchedSection extends StatefulWidget {
   final String seedTitle;
   final String seedPosterPath;
@@ -18,14 +19,60 @@ class HomeBecauseYouWatchedSection extends StatefulWidget {
   });
 
   @override
-  State<HomeBecauseYouWatchedSection> createState() => HomeBecauseYouWatchedSectionState();
+  State<HomeBecauseYouWatchedSection> createState() =>
+      HomeBecauseYouWatchedSectionState();
 }
 
-class HomeBecauseYouWatchedSectionState extends State<HomeBecauseYouWatchedSection> {
+class HomeBecauseYouWatchedSectionState
+    extends State<HomeBecauseYouWatchedSection> {
+  // Mood chips=3, mood results=4 → shuffle → cards → Trakt (11+).
+  static const _shuffleRowId = 'because-shuffle';
+  static const _shuffleRowOrder = 5;
   static const _rowId = 'because-watched';
-  static const _rowOrder = 14;
+  static const _rowOrder = 6;
 
-  Widget _buildHeader() {
+  Widget _buildShuffleControl(BuildContext context) {
+    final onShuffle = widget.onShuffle;
+    if (onShuffle == null) return const SizedBox.shrink();
+
+    if (tvFocusGraphShouldRegister(context)) {
+      // Own focus row so ↓ from mood cards lands here before the poster rail.
+      return TvCatalogRow(
+        rowId: _shuffleRowId,
+        sortOrder: _shuffleRowOrder,
+        itemCount: 1,
+        child: shellFocusableTap(
+          context: context,
+          onTap: onShuffle,
+          borderRadius: 20,
+          listIndex: 0,
+          navLeftAlways: true,
+          tvTabId: 'home',
+          tvRowId: _shuffleRowId,
+          tvItemIndex: 0,
+          child: SizedBox(
+            width: 36,
+            height: 36,
+            child: Center(
+              child: Icon(
+                Icons.shuffle_rounded,
+                size: 24,
+                color: ForjaShellColors.iconMuted,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ForjaPlainIcon(
+      icon: Icons.shuffle_rounded,
+      tooltip: 'Pick a different show',
+      onTap: onShuffle,
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
     final posterUrl = widget.seedPosterPath.isNotEmpty
         ? TmdbApi.getImageUrl(widget.seedPosterPath)
         : '';
@@ -87,12 +134,7 @@ class HomeBecauseYouWatchedSectionState extends State<HomeBecauseYouWatchedSecti
               ],
             ),
           ),
-          if (widget.onShuffle != null)
-            ForjaPlainIcon(
-              icon: Icons.shuffle_rounded,
-              tooltip: 'Pick a different show',
-              onTap: widget.onShuffle,
-            ),
+          _buildShuffleControl(context),
         ],
       ),
     );
@@ -131,18 +173,18 @@ class HomeBecauseYouWatchedSectionState extends State<HomeBecauseYouWatchedSecti
         if (!loading && movies.isEmpty) return const SizedBox.shrink();
 
         final count = movies.length.clamp(0, 25);
-        return TvCatalogRow(
-          rowId: _rowId,
-          sortOrder: _rowOrder,
-          itemCount: loading ? 0 : count,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              if (loading)
-                _buildCardSkeletonRow()
-              else
-                FocusTraversalGroup(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(context),
+            if (loading)
+              _buildCardSkeletonRow()
+            else
+              TvCatalogRow(
+                rowId: _rowId,
+                sortOrder: _rowOrder,
+                itemCount: count,
+                child: FocusTraversalGroup(
                   child: HorizontalScroller(
                     height: HomeMovieCard.cardHeight(context),
                     padding: EdgeInsets.symmetric(
@@ -160,8 +202,8 @@ class HomeBecauseYouWatchedSectionState extends State<HomeBecauseYouWatchedSecti
                     ),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         );
       },
     );

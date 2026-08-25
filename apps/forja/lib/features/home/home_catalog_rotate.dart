@@ -38,9 +38,13 @@ Future<List<Movie>> rotateHomeRailPool({
   required String salt,
   required Future<List<Movie>> Function(int page) fetchPage,
   List<Movie>? page1Cache,
+  /// Popular / ranked rankings stay TMDB order (no random pages / shuffle).
+  bool preserveRankOrder = false,
 }) async {
   final rng = homeCatalogRandom(bucket, salt);
-  final pageNums = homeCatalogFetchPages(rng);
+  final pageNums = preserveRankOrder
+      ? List<int>.generate(kHomeRailFetchPages, (i) => i + 1)
+      : homeCatalogFetchPages(rng);
 
   Future<List<Movie>> one(int p) =>
       fetchPage(p).catchError((_) => <Movie>[]);
@@ -52,7 +56,6 @@ Future<List<Movie>> rotateHomeRailPool({
         if (p == 1) Future.value(page1Cache) else one(p),
     ]);
   } else if (page1Cache != null) {
-    // Boot cache is page 1; still pull the rotated pages and merge.
     chunks = [
       page1Cache,
       ...await Future.wait([for (final p in pageNums) one(p)]),
@@ -61,5 +64,7 @@ Future<List<Movie>> rotateHomeRailPool({
     chunks = await Future.wait([for (final p in pageNums) one(p)]);
   }
 
-  return shuffleHomeRailPool(mergeHomeRailPages(chunks), rng);
+  final merged = mergeHomeRailPages(chunks);
+  if (preserveRankOrder) return merged;
+  return shuffleHomeRailPool(merged, rng);
 }

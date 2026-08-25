@@ -232,14 +232,15 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
 
     if (!mounted) return;
     setState(() => _categoriesOpen = false);
-    if (picked == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _categoriesTabFocus.canRequestFocus) {
-          _categoriesTabFocus.requestFocus();
-        }
-      });
-      return;
-    }
+    // Always return focus to the Categories tab. Otherwise after the dialog
+    // pops, focus lands on a remounted catalog card and ensureVisible scrolls
+    // the Home page to the middle.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _categoriesTabFocus.canRequestFocus) {
+        _categoriesTabFocus.requestFocus();
+      }
+    });
+    if (picked == null) return;
 
     final next = picked == catalogAllCategoriesSentinel ? null : picked;
     if (next != widget.selectedCategoryId.value) {

@@ -78,19 +78,31 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
     }
 
     return claimHomeRails([
+      // Hero follows top-menu Films/TV/genre via filtered trending — not stripped
+      // by Popular claim (Popular stays ranked; hero stays filter-true).
       HomeRailSpec(
         id: 'hero',
         pool: trending,
         cap: kHomeHeroClaimCount,
+        mode: HomeRailClaimMode.overlayClaim,
+      ),
+      // Popular is today's ranked list — never strip / backfill from claim.
+      HomeRailSpec(
+        id: 'popular',
+        pool: popular,
+        mode: HomeRailClaimMode.overlayClaim,
       ),
       HomeRailSpec(id: 'featured', pool: featured),
-      HomeRailSpec(id: 'popular', pool: popular),
+      HomeRailSpec(
+        id: 'mood',
+        pool: _s._moodPool ?? const [],
+        mode: HomeRailClaimMode.overlayClaim,
+      ),
       HomeRailSpec(
         id: 'continue',
         keysOnly: homeContinueWatchingKeys(WatchHistoryService().current),
         mode: HomeRailClaimMode.overlayClaim,
       ),
-      HomeRailSpec(id: 'mood', pool: _s._moodPool ?? const []),
       HomeRailSpec(id: 'because', pool: _s._becausePool ?? const []),
       HomeRailSpec(id: 'trakt-recs', pool: _s._traktRecommendations),
       HomeRailSpec(
@@ -222,18 +234,28 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
 
     // Remount + wait for the post-filter fetch. Never paint the previous
     // filter's trending while AsyncValue is still refreshing.
+    // Hero slides must match top-menu Films/TV — filter again client-side.
+    List<Movie> heroSlidesFrom(List<Movie> pool) {
+      final filtered = switch (mediaFilter) {
+        ShellHomeCategory.films =>
+          pool.where((m) => m.mediaType == 'movie'),
+        ShellHomeCategory.tvShows => pool.where(
+            (m) => m.mediaType == 'tv' || m.mediaType == 'series',
+          ),
+        _ => pool,
+      };
+      return filtered.take(kHomeHeroClaimCount).toList();
+    }
+
     final Future<List<Movie>> heroMoviesFuture;
     if (trendingAsync.isRefreshing || !trendingAsync.hasValue) {
-      heroMoviesFuture = ref.read(homeTrendingProvider.future).then(
-            (pool) => pool.take(kHomeHeroClaimCount).toList(),
-          );
+      heroMoviesFuture = ref.read(homeTrendingProvider.future).then(heroSlidesFrom);
     } else {
       final hero = displays['hero'] ?? const <Movie>[];
-      heroMoviesFuture = Future.value(
-        hero.isNotEmpty
-            ? hero
-            : trendingAsync.requireValue.take(kHomeHeroClaimCount).toList(),
+      final slides = heroSlidesFrom(
+        hero.isNotEmpty ? hero : trendingAsync.requireValue,
       );
+      heroMoviesFuture = Future.value(slides);
     }
 
     final featuredSection = usesShellHome && fullHero
@@ -343,6 +365,7 @@ mixin _HomeScreenBuild on ConsumerState<HomeScreen> {
               // Mood / Genre chips - interactive filter
               _homeRowSliver(
                 HomeMoodSection(
+                  key: ValueKey('mood-${_s._selectedMood}-${_s._moodReloadToken}'),
                   moods: _HomeScreenState._moods,
                   selectedId: _s._selectedMood,
                   onSelect: _s._selectMood,

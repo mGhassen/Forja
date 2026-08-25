@@ -278,6 +278,7 @@ class HomeMoodSection extends StatefulWidget {
   final int tvRowOrder;
 
   const HomeMoodSection({
+    super.key,
     required this.moods,
     required this.selectedId,
     required this.onSelect,
@@ -293,6 +294,16 @@ class HomeMoodSection extends StatefulWidget {
 
 class HomeMoodSectionState extends State<HomeMoodSection> {
   List<Movie>? _cachedResults;
+
+  @override
+  void didUpdateWidget(covariant HomeMoodSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Mood click must not keep painting the previous mood's posters.
+    if (oldWidget.selectedId != widget.selectedId ||
+        oldWidget.future != widget.future) {
+      _cachedResults = null;
+    }
+  }
 
   Widget _moodCircleItem({
     required BuildContext context,
@@ -322,9 +333,9 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
       tvTabId: 'home',
       tvRowId: 'mood-chips',
       onTap: () {
-        if (m.id != selectedId) {
-          onSelect(m.id);
-        } else if (edges != null) {
+        // Every tap reloads a fresh mood mix (including re-tapping the same mood).
+        onSelect(m.id);
+        if (m.id == selectedId && edges != null) {
           edges.onSelectAlreadySelected();
         }
       },
@@ -484,13 +495,15 @@ class HomeMoodSectionState extends State<HomeMoodSection> {
           builder: (context, snap) {
             final waiting =
                 future == null || snap.connectionState == ConnectionState.waiting;
-            if (snap.hasData && snap.data!.isNotEmpty) {
-              _cachedResults = snap.data;
+            if (!waiting && snap.hasData) {
+              _cachedResults =
+                  snap.data!.isNotEmpty ? snap.data : _cachedResults;
             }
-            final movies = waiting && _cachedResults != null
-                ? _cachedResults!
-                : (snap.data ?? const <Movie>[]);
-            final loading = waiting && _cachedResults == null;
+            // Never keep previous mood posters while the new mood is loading.
+            final movies = waiting
+                ? const <Movie>[]
+                : (snap.data ?? _cachedResults ?? const <Movie>[]);
+            final loading = waiting;
 
             if (loading) {
               return homeLoadingShimmer(

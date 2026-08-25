@@ -78,10 +78,13 @@ void refreshHomeFeed(WidgetRef ref) {
 
 List<Movie> _enforceMediaFilter(List<Movie> items, ShellHomeCategory? filter) {
   if (filter == ShellHomeCategory.films) {
-    return items.where((movie) => movie.mediaType != 'tv').toList();
+    return items.where((movie) => movie.mediaType == 'movie').toList();
   }
   if (filter == ShellHomeCategory.tvShows) {
-    return items.where((movie) => movie.mediaType == 'tv').toList();
+    return items
+        .where((movie) =>
+            movie.mediaType == 'tv' || movie.mediaType == 'series')
+        .toList();
   }
   return items;
 }
@@ -162,11 +165,13 @@ Future<List<Movie>> _fetchMoviesPool({
   String? releaseDateGte,
   String? releaseDateLte,
   List<Movie>? page1Cache,
+  bool preserveRankOrder = false,
 }) {
   return rotateHomeRailPool(
     bucket: bucket,
     salt: salt,
     page1Cache: page1Cache,
+    preserveRankOrder: preserveRankOrder,
     fetchPage: (p) => _fetchMovies(
       api: api,
       standard: standard,
@@ -192,10 +197,12 @@ Future<List<Movie>> _fetchTvPool({
   double? minRating,
   String? releaseDateGte,
   String? releaseDateLte,
+  bool preserveRankOrder = false,
 }) {
   return rotateHomeRailPool(
     bucket: bucket,
     salt: salt,
+    preserveRankOrder: preserveRankOrder,
     fetchPage: (p) => _fetchTv(
       api: api,
       standard: standard,
@@ -251,11 +258,14 @@ Future<List<Movie>> _fetchMediaFiltered({
 HomeFeedContext _watchHomeFeedContext(Ref ref) {
   ref.watch(homeFeedRefreshProvider);
   final providerId = ref.watch(shellWatchProviderIdProvider);
-  final filter = ref.watch(shellHomeCategoryProvider);
-  final genreId = ref.watch(shellHomeGenreIdProvider);
+  // Watch notifier for rebuilds; read ShellBus as source of truth so a lagged
+  // notifier frame cannot fetch the unfiltered mix after Films/TV is tapped.
+  ref.watch(shellHomeCategoryProvider);
+  ref.watch(shellHomeGenreIdProvider);
+  final filter = ShellBus.homeCategory.value;
+  final genreId = ShellBus.homeSelectedGenreId.value;
   final epoch = ref.read(homeFeedRefreshProvider);
   final bucket = homeCatalogHourBucket();
-  // Re-subscribe when the hour flips so rails pick a new mix without a manual refresh.
   ref.watch(homeCatalogHourBucketProvider);
   final genres = _genreIds(genreId);
   final canUseBootCache = epoch == 0 &&
@@ -374,6 +384,7 @@ final homePopularProvider =
         api: ctx.api,
         bucket: ctx.bucket,
         salt: 'popular-m-prov',
+        preserveRankOrder: true,
         standard: (page) => ctx.api.discoverMovies(
           watchProviderId: ctx.providerId,
           sortBy: 'vote_average.desc',
@@ -389,6 +400,7 @@ final homePopularProvider =
         api: ctx.api,
         bucket: ctx.bucket,
         salt: 'popular-tv-prov',
+        preserveRankOrder: true,
         standard: (page) => ctx.api.discoverTvShows(
           watchProviderId: ctx.providerId,
           sortBy: 'vote_average.desc',
@@ -408,6 +420,7 @@ final homePopularProvider =
       api: ctx.api,
       bucket: ctx.bucket,
       salt: 'popular-m',
+      preserveRankOrder: true,
       standard: (page) => ctx.api.getPopular(page: page),
       genres: ctx.genres.movie,
       sortBy: 'vote_average.desc',
@@ -417,6 +430,7 @@ final homePopularProvider =
       api: ctx.api,
       bucket: ctx.bucket,
       salt: 'popular-tv',
+      preserveRankOrder: true,
       standard: (page) => ctx.api.getPopularTv(page: page),
       genres: ctx.genres.tv,
       sortBy: 'vote_average.desc',

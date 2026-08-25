@@ -43,7 +43,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   final TmdbApi _api = TmdbApi();
   final ScrollController _homeScrollController = ScrollController();
   final HomeHeroController _homeHeroController = HomeHeroController();
-  Future<List<Movie>> _trendingFuture = Future.value(const <Movie>[]);
   Future<List<Movie>> _popularFuture = Future.value(const <Movie>[]);
   Future<List<Movie>> _featuredThisMonthFuture = Future.value(const <Movie>[]);
   Future<List<Movie>> _nowPlayingFuture = Future.value(const <Movie>[]);
@@ -78,6 +77,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   String _selectedMood = 'mind';
   Future<List<Movie>>? _moodFuture;
   List<Movie>? _moodPool;
+  /// Bumps on every mood tap so each click fetches a fresh rotate mix.
+  int _moodReloadToken = 0;
 
   // Mood definitions - movie and TV use different TMDB genre IDs.
   static const List<({
@@ -193,7 +194,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     ref.watch(homePopularProvider);
     ref.watch(homeFeaturedProvider);
     ref.watch(homeNowPlayingProvider);
-    _trendingFuture = ref.read(homeTrendingProvider.future);
     _popularFuture = ref.read(homePopularProvider.future);
     _featuredThisMonthFuture = ref.read(homeFeaturedProvider.future);
     _nowPlayingFuture = ref.read(homeNowPlayingProvider.future);

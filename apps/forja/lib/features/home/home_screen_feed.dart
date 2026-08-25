@@ -92,10 +92,13 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   List<Movie> _enforceMediaFilter(List<Movie> items) {
     final filter = _s._mediaFilter;
     if (filter == ShellHomeCategory.films) {
-      return items.where((movie) => movie.mediaType != 'tv').toList();
+      return items.where((movie) => movie.mediaType == 'movie').toList();
     }
     if (filter == ShellHomeCategory.tvShows) {
-      return items.where((movie) => movie.mediaType == 'tv').toList();
+      return items
+          .where((movie) =>
+              movie.mediaType == 'tv' || movie.mediaType == 'series')
+          .toList();
     }
     return items;
   }
@@ -180,8 +183,12 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   void _resetHomeCategoryFeeds() {
     _s._homeFeedEpoch++;
     _s._moodPool = null;
-    _s._moodFuture = _loadMoodMovies(_s._selectedMood).then((pool) {
-      if (mounted) setState(() => _s._moodPool = pool);
+    final token = ++_s._moodReloadToken;
+    _s._moodFuture =
+        _loadMoodMovies(_s._selectedMood, reloadToken: token).then((pool) {
+      if (mounted && _s._moodReloadToken == token) {
+        setState(() => _s._moodPool = pool);
+      }
       return pool;
     });
     _resetRandomCategoryRows();
@@ -200,20 +207,54 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
 
   void _onWatchProviderChanged() {
     if (!mounted || !shellTabVisible) return;
+    final scroll = _pinnedHomeScrollOffset();
     _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
+    _restoreHomeScroll(scroll);
   }
 
   void _onHomeCategoryChanged() {
     if (!mounted || !shellTabVisible) return;
+    final scroll = _pinnedHomeScrollOffset();
     _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
+    _restoreHomeScroll(scroll);
   }
 
   void _onHomeGenreChanged() {
     if (!mounted || !shellTabVisible) return;
+    final scroll = _pinnedHomeScrollOffset();
     _invalidateHomeMainRails();
     setState(() => _resetHomeCategoryFeeds());
+    _restoreHomeScroll(scroll);
+  }
+
+  double _pinnedHomeScrollOffset() {
+    final c = _s._homeScrollController;
+    if (!c.hasClients) return 0;
+    return c.offset;
+  }
+
+  void _restoreHomeScroll(double offset) {
+    void pin() {
+      if (!mounted) return;
+      final c = _s._homeScrollController;
+      if (!c.hasClients) return;
+      final target = offset.clamp(
+        c.position.minScrollExtent,
+        c.position.maxScrollExtent,
+      );
+      if ((c.offset - target).abs() > 0.5) {
+        c.jumpTo(target);
+      }
+    }
+
+    // FocusableControl.ensureVisible may run on the next frame after remount —
+    // pin twice so we win over a mid-page focus steal.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      pin();
+      WidgetsBinding.instance.addPostFrameCallback((_) => pin());
+    });
   }
 
   void _onCatalogHourBucketChanged() {
@@ -549,9 +590,10 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
   }
 
 
-  Future<List<Movie>> _loadMoodMovies(String moodId) async {
+  Future<List<Movie>> _loadMoodMovies(String moodId, {required int reloadToken}) async {
     final mood = _HomeScreenState._moods.firstWhere((m) => m.id == moodId, orElse: () => _HomeScreenState._moods.first);
     final providerId = _s._watchProviderId;
+    final salt = 'mood-${mood.id}-$reloadToken';
     return _fetchMediaFiltered(
       movieFetch: () => _homeDiscoverPool(
         (page) => _s._api.discoverMovies(
@@ -560,7 +602,7 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
           watchProviderId: providerId,
           page: page,
         ),
-        salt: 'mood-${mood.id}-m',
+        salt: '$salt-m',
       ),
       tvFetch: () => _homeDiscoverPool(
         (page) => _s._api.discoverTvShows(
@@ -569,18 +611,21 @@ mixin _HomeScreenFeed on ConsumerState<HomeScreen>, ShellTabRefresh<HomeScreen> 
           watchProviderId: providerId,
           page: page,
         ),
-        salt: 'mood-${mood.id}-tv',
+        salt: '$salt-tv',
       ),
     ).catchError((_) => <Movie>[]);
   }
 
   void _selectMood(String moodId) {
-    if (moodId == _s._selectedMood) return;
+    final token = _s._moodReloadToken + 1;
     setState(() {
       _s._selectedMood = moodId;
+      _s._moodReloadToken = token;
       _s._moodPool = null;
-      _s._moodFuture = _loadMoodMovies(moodId).then((pool) {
-        if (mounted) setState(() => _s._moodPool = pool);
+      _s._moodFuture = _loadMoodMovies(moodId, reloadToken: token).then((pool) {
+        if (mounted && _s._moodReloadToken == token) {
+          setState(() => _s._moodPool = pool);
+        }
         return pool;
       });
     });

@@ -60,6 +60,22 @@ void main() {
     expect(displays['popular']!.map((m) => m.id), [1, 2]);
   });
 
+  test('popular overlayClaim keeps ranked list despite earlier claims', () {
+    final displays = claimHomeRails([
+      HomeRailSpec(id: 'hero', pool: [_m(1), _m(2)], cap: 2),
+      HomeRailSpec(
+        id: 'popular',
+        pool: [_m(1), _m(2), _m(3), _m(4)],
+        cap: 3,
+        mode: HomeRailClaimMode.overlayClaim,
+      ),
+      HomeRailSpec(id: 'mood', pool: [_m(1), _m(3), _m(5)], cap: 2),
+    ]);
+
+    expect(displays['popular']!.map((m) => m.id), [1, 2, 3]);
+    expect(displays['mood']!.map((m) => m.id), [5]);
+  });
+
   test('independent fill keeps full slots per rail (genre mode)', () {
     final pool = [_m(1), _m(2), _m(3), _m(4)];
     final displays = fillHomeRailsIndependently([
