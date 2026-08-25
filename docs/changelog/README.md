@@ -21,12 +21,13 @@ Changelogs track **releases** (git tags), not individual commits. The draft file
 
 | File | Codename | Since tag | Status |
 |------|----------|-----------|--------|
-| [1.4.x-[draft].md](1.4.x-[draft].md) | Atarin | v1.4.128 | drafting |
+| [1.4.x-[draft].md](1.4.x-[draft].md) | Atarin | v1.4.153 | drafting |
 
 ## Released
 
 | Version | Codename | File |
 |---------|----------|------|
+| 1.4.153 | Atarin | [done/1.4.153-[released].md](done/1.4.153-[released].md) |
 | 1.4.128 | Atarin | [done/1.4.128-[released].md](done/1.4.128-[released].md) |
 | 1.4.81 | Atarin | [done/1.4.81-[released].md](done/1.4.81-[released].md) |
 | 1.4.44 | Atarin | [done/1.4.44-[released].md](done/1.4.44-[released].md) |
