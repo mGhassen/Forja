@@ -60,7 +60,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R55-A17 | Default open is muxed progressive when available (audible, no adaptive demux wait) | ✅ |
-| 2 | R55-A18 | Adaptive Quality: open playing + audio-add (no pause-demux abort); fail → recover/muxed | ✅ |
+| 2 | R55-A18 | Adaptive Quality: androidVr-only resolve (no multi-client merge) + forceRefresh + open/play audio-add | ✅ |
 
 ---
 
@@ -82,10 +82,10 @@ Replace the fullscreen trailer YouTube iframe (and its 1.35× overscan hack to h
 ## Contracts
 
 - Default height cap: **1080p** H.264; VP9 listed above; AV1 excluded
-- Prefer `YoutubeApiClient.androidVr` for googlevideo URLs that open in mpv; also try `tv` / `androidSdkless` / `ios` in the same manifest call (age / racy gate)
-- **Default open:** muxed progressive when available (fast audible start); adaptive ladder for Quality menu; short adaptive demux/ready timeouts then muxed fallback
+- Prefer `YoutubeApiClient.androidVr` alone for the manifest (mpv-friendly URLs). On failure try `tv` / `androidSdkless` / `ios` / library default **one client at a time** — never merge multiple clients’ streams in one getManifest call
+- **Default open:** muxed progressive when available (fast audible start); adaptive ladder for Quality menu; Quality re-resolves with `forceRefresh` before switching
 - Quality ladder is the full adaptive height list; desktop always `audio-add` after adaptive open; ATV prefers `audio-file` then `audio-add` if no track
-- Resolve off UI isolate; short TTL cache; prefetch from details trailers / hero Trailer; re-resolve on open / trailer switch
+- Resolve off UI isolate; short TTL cache; prefetch from details trailers / hero Trailer; trailer open and Quality always force-refresh
 - Captions fetched lazily when the CC menu opens (not on open)
 - Age / unplayable native resolve → YouTube nocookie embed WebView fallback (Forja +18; no YouTube account)
 - No iframe fallback on resolve failure **except** age/unplayable gate above

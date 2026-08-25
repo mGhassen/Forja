@@ -1054,8 +1054,64 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     await _initPlayback(sourceStartIndex: idx);
   }
 
+  /// Mid-watch fatal: remount same URL after connectivity returns, then hop / Retry.
+  Future<void> _onMidWatchFatal(String err) async {
+    if (_s._disposed || !mounted || _s._hasError) return;
+    if (await _tryNetworkRemount(err)) return;
+    await _showPlaybackFailureOnWatch(reason: err);
+  }
+
+  Future<bool> _tryNetworkRemount(String err) async {
+    if (_s._disposed ||
+        !mounted ||
+        _s._networkRemountInFlight ||
+        _s._isInitPlaybackRunning ||
+        _s._hasError) {
+      return false;
+    }
+    if (!shouldAttemptNetworkRemount(err)) return false;
+    final url = _s._currentQualityUrl ?? _s._currentUrl;
+    if (url == null ||
+        isLocalTorrentStreamUrl(url) ||
+        isLocalLoopbackPlayUrl(url)) {
+      return false;
+    }
+
+    _s._networkRemountInFlight = true;
+    final resumeAt = _s._positionNotifier.value;
+    _s._statusController.upsert(
+      'network-remount',
+      'Reconnecting…',
+      kind: StatusRouletteKind.loading,
+    );
+    debugPrint(
+      '[Player] Network remount @${resumeAt.inSeconds}s ($err)',
+    );
+    try {
+      final ok = await attemptNetworkPlaybackRemount(
+        isCancelled: () => _s._disposed || !mounted || _s._hasError,
+        remount: () => _remountCurrentStreamAt(
+          resumeAt,
+          allowFallbackInit: false,
+        ),
+      );
+      if (ok) {
+        _s._statusController.complete();
+        debugPrint('[Player] Network remount resumed');
+        return true;
+      }
+      _s._statusController.remove('network-remount');
+      return false;
+    } finally {
+      _s._networkRemountInFlight = false;
+    }
+  }
+
   /// Same URL reopen at [target] after post-seek silent freeze (issue 184).
-  Future<bool> _remountCurrentStreamAt(Duration target) async {
+  Future<bool> _remountCurrentStreamAt(
+    Duration target, {
+    bool allowFallbackInit = true,
+  }) async {
     if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return false;
     final url = _s._currentQualityUrl ?? _s._currentUrl;
     if (url == null ||
@@ -1100,6 +1156,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     }
     if (_s._disposed || !mounted) return false;
     _s._statusController.remove('post-seek-remount');
+    if (!allowFallbackInit) return false;
     debugPrint(
       '[Player] Post-seek remount failed — reopening source @${target.inSeconds}s',
     );
@@ -1567,12 +1624,16 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       if (!isFatalPlayerOpenError(err)) return;
       if (_s._hasError) return;
       if (_s._isInitPlaybackRunning) {
+        if (_s._networkRemountInFlight) {
+          debugPrint('[Player] Open failed during network remount ($err)');
+          return;
+        }
         // Drop stale extract during probe only — retry uses fresh extract.
         unawaited(_invalidateWebstreamingCacheForCurrent());
         debugPrint('[Player] Open failed during probe - hopping ($err)');
         return;
       }
-      unawaited(_showPlaybackFailureOnWatch(reason: err));
+      unawaited(_onMidWatchFatal(err));
     });
 
     _s._logSub = _s._player.stream.log.listen((l) {
@@ -1866,6 +1927,17 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       // Cap from Settings → Max stream quality (Auto = soft ~5 Mbps).
       final maxH = await SettingsService().getMaxPlaybackHeight();
       await safeSet('hls-bitrate', hlsBitrateForMaxPlaybackHeight(maxH));
+
+      // Brief socket blips — remount path covers longer offline (issue 205).
+      await safeSet(
+        'stream-lavf-o',
+        'reconnect=1,'
+            'reconnect_at_eof=1,'
+            'reconnect_streamed=1,'
+            'reconnect_delay_max=15,'
+            'reconnect_on_network_error=1,'
+            'reconnect_on_http_error=4xx\\,5xx',
+      );
     }
 
     // We supply our own URL - no yt-dlp needed.

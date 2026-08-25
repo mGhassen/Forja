@@ -40,6 +40,7 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'utils.dart';
 import 'package:forja/shared/player/controls/player_menus.dart';
 import 'playback_recovery.dart';
+import 'network_playback_recovery.dart';
 import 'post_seek_stall_watchdog.dart';
 import 'playable_source_bridge.dart';
 import 'package:forja/shared/services/pip_service.dart';
@@ -366,6 +367,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   final Map<String, PlayerSourceStatus> _urlCheckStatuses = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   bool _isInitPlaybackRunning = false;
+  bool _networkRemountInFlight = false;
   bool _playbackConfirmed = false;
   DateTime? _playbackConfirmedAt;
   /// First confirm of this episode session (survives source switches).

@@ -147,8 +147,11 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
 
     YoutubeResolvedStreams? streams;
     try {
-      // Lean resolve (no captions / metadata) — captions load when CC opens.
-      streams = await YoutubeStreamService.resolveStreams(videoId);
+      // Fresh URLs — cache/prefetch can hold HEADed adaptive links that 403.
+      streams = await YoutubeStreamService.resolveStreams(
+        videoId,
+        forceRefresh: true,
+      );
     } catch (e) {
       debugPrint('Trailer resolve failed: $e');
       streams = null;
@@ -352,11 +355,14 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         timeout: const Duration(seconds: 8),
       );
       if (!opened) {
+        final uri = Uri.tryParse(videoUrl);
+        final itag = uri?.queryParameters['itag'];
         debugPrint(
           '[Trailer] adaptive open did not become ready '
           '(playing=${player.state.playing} '
           'dur=${player.state.duration.inMilliseconds}ms '
-          'vp=${player.state.videoParams.w}x${player.state.videoParams.h})',
+          'vp=${player.state.videoParams.w}x${player.state.videoParams.h} '
+          'itag=$itag host=${uri?.host})',
         );
         return _fallbackMuxedOrNull(
           streams,
@@ -448,11 +454,47 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       _s._selectedQualityHeight = quality.height;
       _s._ready = false;
     });
-    final swapped = streams.copyWith(
-      playUrl: quality.videoUrl,
-      playHeight: quality.height,
+
+    // Re-resolve so adaptive itags are fresh androidVr URLs (not a merged
+    // multi-client ladder / expired prefetch cache).
+    YoutubeResolvedStreams? fresh;
+    try {
+      fresh = await YoutubeStreamService.resolveStreams(
+        _s._trailer.key,
+        forceRefresh: true,
+      );
+    } catch (e) {
+      debugPrint('[Trailer] quality re-resolve failed: $e');
+    }
+    if (!mounted) return;
+
+    final ladder = fresh ?? streams;
+    final match = ladder.qualities
+        .where((q) => q.height == quality.height)
+        .firstOrNull;
+    if (match == null || ladder.audioUrl == null || ladder.audioUrl!.isEmpty) {
+      debugPrint(
+        '[Trailer] quality ${quality.height}p missing after re-resolve',
+      );
+      final recovered = await _openResolved(
+        streams,
+        resumeAt: resumeAt,
+        forceAudioAdd: true,
+      );
+      if (mounted) {
+        setState(() {
+          _s._selectedQualityHeight = prevHeight;
+          _s._ready = recovered != null;
+          if (recovered != null) _s._streams = recovered;
+        });
+      }
+      return;
+    }
+
+    final swapped = ladder.copyWith(
+      playUrl: match.videoUrl,
+      playHeight: match.height,
     );
-    // Always remux AAC after quality swap (desktop + ATV).
     final opened = await _openResolved(
       swapped,
       resumeAt: resumeAt,

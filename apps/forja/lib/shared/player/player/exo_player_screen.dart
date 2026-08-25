@@ -35,6 +35,7 @@ import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/player/exo/exo_player_menus.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
+import 'package:forja/shared/player/player/network_playback_recovery.dart';
 import 'package:forja/shared/player/player/post_seek_stall_watchdog.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/player/player/utils.dart';
@@ -162,6 +163,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   String _errorMessage = '';
   bool _playbackStartedNotified = false;
   bool _opening = false;
+  bool _networkRemountInFlight = false;
   bool _startPositionApplied = false;
   bool _loadingNextEp = false;
   String _episodeLoadingLabel = 'Next episode';
@@ -446,6 +448,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   Future<void> _failCurrentSource(String message) async {
+    if (_playbackStartedNotified) {
+      if (await _tryNetworkRemount(message)) return;
+    }
     if (_sourceIndex < _sources.length) {
       PlaybackSelection.recordFailedUrl(_sources[_sourceIndex].url);
       _statusController.upsert(
@@ -470,6 +475,49 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     });
     if (!_playbackStartedNotified) {
       widget.onAllSourcesExhausted?.call();
+    }
+  }
+
+  Future<bool> _tryNetworkRemount(String err) async {
+    if (_disposed ||
+        !mounted ||
+        _networkRemountInFlight ||
+        _opening ||
+        _hasError) {
+      return false;
+    }
+    if (!shouldAttemptNetworkRemount(err)) return false;
+    if (_sources.isEmpty) return false;
+    final source = _sources[_sourceIndex];
+    if (isLocalTorrentStreamUrl(source.url) ||
+        isLocalLoopbackPlayUrl(source.url)) {
+      return false;
+    }
+
+    _networkRemountInFlight = true;
+    final resumeAt = _position;
+    _statusController.upsert(
+      'network-remount',
+      'Reconnecting…',
+      kind: StatusRouletteKind.loading,
+    );
+    debugPrint(
+      '[ExoPlayer] Network remount @${resumeAt.inSeconds}s ($err)',
+    );
+    try {
+      final ok = await attemptNetworkPlaybackRemount(
+        isCancelled: () => _disposed || !mounted || _hasError,
+        remount: () => _remountCurrentStreamAt(resumeAt),
+      );
+      if (ok) {
+        _statusController.complete();
+        debugPrint('[ExoPlayer] Network remount resumed');
+        return true;
+      }
+      _statusController.remove('network-remount');
+      return false;
+    } finally {
+      _networkRemountInFlight = false;
     }
   }
 

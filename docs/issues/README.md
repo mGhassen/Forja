@@ -224,6 +224,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [202-[fixed]-…](fixed/202-[fixed]-android-tv-forja-live-opens-forja-sports-iptv.md) | ATV Forja Live opens Forja Sports IPTV panel | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [203-[open]-…](203-[open]-android-tv-goat-webview-unlock.md) | ATV/Android GOAT+GASM unlock via off-screen WebView | P1 | High | open | 3/4 · A 0/3 | — |
 | [204-[fixed]-…](fixed/204-[fixed]-home-rail-cross-row-dedupe.md) | Home rails dedupe + backfill across rows | P2 | Medium | fixed | Complete · 7/7 · A 6/6 | — |
+| [205-[open]-…](205-[open]-mid-watch-network-drop-remount.md) | Mid-watch network drop → remount (not Failed/Retry) | P1 | High | open | 5/5 · A 0/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

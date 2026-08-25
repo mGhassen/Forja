@@ -138,11 +138,15 @@ class YoutubeStreamService {
   /// adaptive ladder at [maxHeightOverride] or [defaultMaxHeight]. Default
   /// [playUrl] is muxed when available (fast audible open). Captions / metadata
   /// are opt-in so the trailer critical path stays lean.
+  ///
+  /// Pass [forceRefresh] on open / Quality switch — googlevideo URLs expire and
+  /// the resolve cache must not reuse a poisoned/HEADed ladder.
   static Future<YoutubeResolvedStreams?> resolveStreams(
     String videoId, {
     int? maxHeightOverride,
     bool withCaptions = false,
     bool withMetadata = false,
+    bool forceRefresh = false,
   }) {
     final key = _resolveKey(
       videoId,
@@ -150,13 +154,19 @@ class YoutubeStreamService {
       withCaptions: withCaptions,
       withMetadata: withMetadata,
     );
-    final cached = _resolveCache[key];
-    if (cached != null &&
-        DateTime.now().difference(cached.at) < _resolveCacheTtl) {
-      return Future.value(cached.streams);
+    if (forceRefresh) {
+      _resolveCache.remove(key);
+      // Drop any in-flight resolve for this key so we do not await a stale one.
+      _resolveInFlight.remove(key);
+    } else {
+      final cached = _resolveCache[key];
+      if (cached != null &&
+          DateTime.now().difference(cached.at) < _resolveCacheTtl) {
+        return Future.value(cached.streams);
+      }
+      final inFlight = _resolveInFlight[key];
+      if (inFlight != null) return inFlight;
     }
-    final inFlight = _resolveInFlight[key];
-    if (inFlight != null) return inFlight;
     final future = _resolveUncached(
       videoId,
       maxHeightOverride: maxHeightOverride,
@@ -270,25 +280,38 @@ class YoutubeStreamService {
   ) async {
     final yt = yt_explode.YoutubeExplode();
     try {
-      // androidVr = mpv-friendly googlevideo URLs.
-      // tv = age / racy restricted (contentCheckOk + racyCheckOk).
-      // Pass all in one call so a failed client does not abort the rest —
-      // ytClients: [androidVr] alone throws on age-gate and never tries TV.
-      yt_explode.StreamManifest manifest;
-      try {
-        manifest = await yt.videos.streamsClient.getManifest(
-          videoId,
-          // ios is `static final`, not const — list cannot be const.
-          ytClients: [
-            yt_explode.YoutubeApiClient.androidVr,
-            yt_explode.YoutubeApiClient.tv,
-            yt_explode.YoutubeApiClient.androidSdkless,
-            yt_explode.YoutubeApiClient.ios,
-          ],
-        );
-      } catch (_) {
-        // Last resort: library default (androidSdkless → auto TV retry).
-        manifest = await yt.videos.streamsClient.getManifest(videoId);
+      // ONE client per attempt — never pass multiple ytClients in one call.
+      // youtube_explode merges every client's streams; mixing androidVr video
+      // with tv/ios audio yields googlevideo URLs that open as playing=true
+      // with dur=0 / no frames (Quality stuck on muxed 360p).
+      yt_explode.StreamManifest? manifest;
+      final clientAttempts = <List<yt_explode.YoutubeApiClient>?>[
+        [yt_explode.YoutubeApiClient.androidVr],
+        [yt_explode.YoutubeApiClient.tv],
+        [yt_explode.YoutubeApiClient.androidSdkless],
+        [yt_explode.YoutubeApiClient.ios],
+        null, // library default
+      ];
+      Object? lastError;
+      for (final clients in clientAttempts) {
+        try {
+          final m = clients == null
+              ? await yt.videos.streamsClient.getManifest(videoId)
+              : await yt.videos.streamsClient.getManifest(
+                  videoId,
+                  ytClients: clients,
+                );
+          if (m.muxed.isNotEmpty || m.videoOnly.isNotEmpty) {
+            manifest = m;
+            break;
+          }
+        } catch (e) {
+          lastError = e;
+        }
+      }
+      if (manifest == null) {
+        throw lastError ??
+            StateError('No YouTube streams for $videoId');
       }
 
       final muxed = manifest.muxed.toList()
