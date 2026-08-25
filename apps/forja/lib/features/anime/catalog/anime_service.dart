@@ -258,37 +258,142 @@ class AnimeService {
     return withBackdrop(results);
   }
 
-  Future<List<AnimeCard>> getTrending({int perPage = 20}) =>
-      _list(sort: 'TRENDING_DESC', perPage: perPage);
+  Future<List<AnimeCard>> getTrending({
+    int perPage = 20,
+    String? genre,
+    String? format,
+    bool excludeMovies = false,
+  }) =>
+      _list(
+        sort: 'TRENDING_DESC',
+        perPage: perPage,
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      );
 
-  Future<List<AnimeCard>> getTopAiring({int perPage = 20}) =>
-      _list(sort: 'POPULARITY_DESC', perPage: perPage, extraFilter: 'status: RELEASING');
+  Future<List<AnimeCard>> getTopAiring({
+    int perPage = 20,
+    String? genre,
+    String? format,
+    bool excludeMovies = false,
+  }) =>
+      _list(
+        sort: 'POPULARITY_DESC',
+        perPage: perPage,
+        extraFilter: 'status: RELEASING',
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      );
 
-  Future<List<AnimeCard>> getMostPopular({int perPage = 20}) =>
-      _list(sort: 'POPULARITY_DESC', perPage: perPage);
+  Future<List<AnimeCard>> getMostPopular({
+    int perPage = 20,
+    String? genre,
+    String? format,
+    bool excludeMovies = false,
+  }) =>
+      _list(
+        sort: 'POPULARITY_DESC',
+        perPage: perPage,
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      );
 
-  Future<List<AnimeCard>> getMostFavorite({int perPage = 20}) =>
-      _list(sort: 'FAVOURITES_DESC', perPage: perPage);
+  Future<List<AnimeCard>> getMostFavorite({
+    int perPage = 20,
+    String? genre,
+    String? format,
+    bool excludeMovies = false,
+  }) =>
+      _list(
+        sort: 'FAVOURITES_DESC',
+        perPage: perPage,
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      );
 
-  Future<List<AnimeCard>> getLatestCompleted({int perPage = 20}) =>
-      _list(sort: 'END_DATE_DESC', perPage: perPage, extraFilter: 'status: FINISHED');
+  Future<List<AnimeCard>> getLatestCompleted({
+    int perPage = 20,
+    String? genre,
+    String? format,
+    bool excludeMovies = false,
+  }) =>
+      _list(
+        sort: 'END_DATE_DESC',
+        perPage: perPage,
+        extraFilter: 'status: FINISHED',
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      );
 
-  Future<List<AnimeCard>> getTopRated({int perPage = 20}) =>
-      _list(sort: 'SCORE_DESC', perPage: perPage);
+  Future<List<AnimeCard>> getTopRated({
+    int perPage = 20,
+    String? genre,
+    String? format,
+    bool excludeMovies = false,
+  }) =>
+      _list(
+        sort: 'SCORE_DESC',
+        perPage: perPage,
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      );
 
-  Future<List<AnimeCard>> getTop10Today({int perPage = 10}) =>
-      _list(sort: 'TRENDING_DESC', perPage: perPage);
+  Future<List<AnimeCard>> getTop10Today({
+    int perPage = 10,
+    String? genre,
+    String? format,
+    bool excludeMovies = false,
+  }) =>
+      _list(
+        sort: 'TRENDING_DESC',
+        perPage: perPage,
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      );
 
-  Future<List<AnimeCard>> getRecentEpisodes({int perPage = 20}) =>
-      _list(sort: 'UPDATED_AT_DESC', perPage: perPage, extraFilter: 'status: RELEASING');
+  Future<List<AnimeCard>> getRecentEpisodes({
+    int perPage = 20,
+    String? genre,
+    String? format,
+    bool excludeMovies = false,
+  }) =>
+      _list(
+        sort: 'UPDATED_AT_DESC',
+        perPage: perPage,
+        extraFilter: 'status: RELEASING',
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      );
 
   Future<List<AnimeCard>> _list({
     required String sort,
     int page = 1,
     int perPage = 20,
     String extraFilter = '',
+    String? genre,
+    String? format,
+    bool excludeMovies = false,
   }) async {
-    final filter = extraFilter.isNotEmpty ? ', $extraFilter' : '';
+    final parts = <String>[];
+    if (extraFilter.isNotEmpty) parts.add(extraFilter);
+    if (genre != null && genre.isNotEmpty) {
+      parts.add('genre_in: ["$genre"]');
+    }
+    if (format != null && format.isNotEmpty) {
+      parts.add('format: $format');
+    }
+    if (excludeMovies) {
+      parts.add('format_not_in: [MOVIE]');
+    }
+    final filter = parts.isEmpty ? '' : ', ${parts.join(', ')}';
     final q = '''
       query (\$page: Int, \$perPage: Int) {
         Page(page: \$page, perPage: \$perPage) {
@@ -698,6 +803,7 @@ class AnimeService {
     int? year,
     String? season,
     String? format,
+    bool excludeMovies = false,
     String? status,
     String sort = 'POPULARITY_DESC',
     int page = 1,
@@ -708,6 +814,7 @@ class AnimeService {
     if (year != null) filters.add('seasonYear: $year');
     if (season != null && season.isNotEmpty) filters.add('season: $season');
     if (format != null && format.isNotEmpty) filters.add('format: $format');
+    if (excludeMovies) filters.add('format_not_in: [MOVIE]');
     if (status != null && status.isNotEmpty) filters.add('status: $status');
     final extra = filters.isNotEmpty ? ', ${filters.join(', ')}' : '';
 

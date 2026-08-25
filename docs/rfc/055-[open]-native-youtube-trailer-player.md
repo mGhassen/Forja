@@ -60,7 +60,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R55-A17 | Default open is muxed progressive when available (audible, no adaptive demux wait) | ✅ |
-| 2 | R55-A18 | Adaptive Quality open fails fast (≤~3s demux/ready) then falls back / recovers — no 12s+ hang | ✅ |
+| 2 | R55-A18 | Adaptive Quality: open playing + audio-add (no pause-demux abort); fail → recover/muxed | ✅ |
 
 ---
 

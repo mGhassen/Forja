@@ -147,26 +147,19 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
     final rawTop10 = _s._top10Future ?? catalogLoad.top10;
     final rawRecentEpisodes =
         _s._recentEpisodesFuture ?? catalogLoad.recentEpisodes;
+    // Server-filtered via animeCatalogFuturesProvider (Films/Series/Categories).
+    final spotlightFuture = rawSpotlight;
+    final trendingFuture = rawTrending;
+    final topAiringFuture = rawTopAiring;
+    final mostPopularFuture = rawMostPopular;
+    final mostFavoriteFuture = rawMostFavorite;
+    final topRatedFuture = rawTopRated;
+    final latestCompletedFuture = rawLatestCompleted;
+    final top10Future = rawTop10;
+    final recentEpisodesFuture = rawRecentEpisodes;
     return TvFocusGraph(
       tabId: 'anime',
-      child: ValueListenableBuilder<ShellHomeCategory?>(
-        valueListenable: ShellBus.animeCategory,
-            builder: (context, _, _) {
-          return ValueListenableBuilder<String?>(
-            valueListenable: ShellBus.animeSelectedGenreId,
-            builder: (context, _, _) {
-              final spotlightFuture = filterAnimeFuture(rawSpotlight);
-              final trendingFuture = filterAnimeFuture(rawTrending);
-              final topAiringFuture = filterAnimeFuture(rawTopAiring);
-              final mostPopularFuture = filterAnimeFuture(rawMostPopular);
-              final mostFavoriteFuture = filterAnimeFuture(rawMostFavorite);
-              final topRatedFuture = filterAnimeFuture(rawTopRated);
-              final latestCompletedFuture =
-                  filterAnimeFuture(rawLatestCompleted);
-              final top10Future = filterAnimeFuture(rawTop10);
-              final recentEpisodesFuture =
-                  filterAnimeFuture(rawRecentEpisodes);
-              return ValueListenableBuilder<AppThemePreset>(
+      child: ValueListenableBuilder<AppThemePreset>(
       valueListenable: AppTheme.themeNotifier,
       builder: (context, _, _) {
         final fullHero = hubIsFullCinematicHero(context);
@@ -408,11 +401,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
         }
         return body;
       },
-              );
-            },
-          );
-        },
-      ),
+    ),
     );
   }
 
@@ -598,7 +587,7 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
       future: future,
       builder: (context, snapshot) {
         final loading = snapshot.connectionState == ConnectionState.waiting;
-        final list = filterAnimeCards(snapshot.data ?? <AnimeCard>[]);
+        final list = snapshot.data ?? <AnimeCard>[];
 
         if (loading || list.isEmpty) {
           if (loading || !snapshot.hasData) {

@@ -235,23 +235,6 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     );
   }
 
-  /// Demuxer duration / decoded frame before external AAC attach.
-  /// Adaptive googlevideo often never demuxes — keep this short.
-  Future<bool> _waitTrailerDuration(
-    Player player, {
-    Duration timeout = const Duration(milliseconds: 2500),
-  }) async {
-    final deadline = DateTime.now().add(timeout);
-    while (DateTime.now().isBefore(deadline)) {
-      final state = player.state;
-      if (state.duration.inMilliseconds > 0) return true;
-      if (hasDecodedVideo(state)) return true;
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-    }
-    final state = player.state;
-    return state.duration.inMilliseconds > 0 || hasDecodedVideo(state);
-  }
-
   /// Menu highlight for the stream currently open (muxed URL ≠ adaptive URLs).
   int? _qualityMenuHeightFor(YoutubeResolvedStreams streams) {
     final playUrl = streams.playUrl;
@@ -345,24 +328,10 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     await player.setVolume(_s._volume);
 
     if (needsExternalAudio && audioUrl != null && audioUrl.isNotEmpty) {
-      // Open PAUSED → wait for demuxer → audio-add → play. Short timeouts:
-      // desktop adaptive often sits at playing=true / dur=0 / no frame.
-      await _openTrailerGooglevideo(player, videoUrl, play: false);
-      final demuxed = await _waitTrailerDuration(player);
-      if (!demuxed) {
-        debugPrint(
-          '[Trailer] adaptive demux stalled '
-          '(playing=${player.state.playing} '
-          'dur=${player.state.duration.inMilliseconds}ms '
-          'vp=${player.state.videoParams.w}x${player.state.videoParams.h})',
-        );
-        return _fallbackMuxedOrNull(
-          streams,
-          videoUrl: videoUrl,
-          resumeAt: resumeAt,
-          allowMuxedFallback: allowMuxedFallback,
-        );
-      }
+      // Debrify trailer / pre-regression path: open playing, then audio-add.
+      // Do NOT open paused and wait for demux — googlevideo often stays at
+      // dur=0 / vp=null while paused, which aborted Quality at 360p.
+      await _openTrailerGooglevideo(player, videoUrl, play: true);
 
       final needAudioAdd =
           !atv || forceAudioAdd || !await _waitForSelectableAudio(player);
@@ -377,11 +346,10 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       if (resumeAt != null && resumeAt > Duration.zero) {
         await player.seek(resumeAt);
       }
-      await player.play();
 
       final opened = await _waitTrailerOpenReady(
         player,
-        timeout: const Duration(seconds: 3),
+        timeout: const Duration(seconds: 8),
       );
       if (!opened) {
         debugPrint(
@@ -638,9 +606,8 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     _s._cancelAutoNext(rebuild: false);
     setState(() {
       _s._currentIndex = index;
-      // Keep the More videos picker on the trailer just started — chevrons
-      // alone advance the preview (do not jump to "next" on play).
-      _s._pickerIndex = index;
+      // Always preview the next trailer (wraps to first on the last).
+      _s._pickerIndex = _s._pickerIndexAfter(index);
       _s._autoNextSecondsLeft = null;
       _s._playing = false;
       _s._ended = false;

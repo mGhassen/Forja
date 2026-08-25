@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/anime/anime_hub_filters.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
 
 List<AnimeCard> spotlightFromTrending(List<AnimeCard> trending) {
@@ -39,22 +40,72 @@ class AnimeCatalogFutures {
     required this.recentEpisodes,
   });
 
-  factory AnimeCatalogFutures.start(AnimeService service) {
-    final trending =
-        _safeSection(service.getTrending(perPage: 20), 'trending');
+  factory AnimeCatalogFutures.start(
+    AnimeService service, {
+    String? genre,
+    String? format,
+    bool excludeMovies = false,
+  }) {
+    final trending = _safeSection(
+      service.getTrending(
+        perPage: 20,
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      ),
+      'trending',
+    );
 
     // Start remaining rails in parallel with trending so lower rows do not
     // sit empty until first paint finishes (AniList worker pool queues them).
-    final topAiring = _safeSection(service.getTopAiring(), 'top airing');
-    final mostPopular =
-        _safeSection(service.getMostPopular(), 'most popular');
-    final mostFavorite =
-        _safeSection(service.getMostFavorite(), 'most favorite');
-    final topRated = _safeSection(service.getTopRated(), 'top rated');
-    final latestCompleted =
-        _safeSection(service.getLatestCompleted(), 'latest completed');
-    final recentEpisodes =
-        _safeSection(service.getRecentEpisodes(), 'recent episodes');
+    final topAiring = _safeSection(
+      service.getTopAiring(
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      ),
+      'top airing',
+    );
+    final mostPopular = _safeSection(
+      service.getMostPopular(
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      ),
+      'most popular',
+    );
+    final mostFavorite = _safeSection(
+      service.getMostFavorite(
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      ),
+      'most favorite',
+    );
+    final topRated = _safeSection(
+      service.getTopRated(
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      ),
+      'top rated',
+    );
+    final latestCompleted = _safeSection(
+      service.getLatestCompleted(
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      ),
+      'latest completed',
+    );
+    final recentEpisodes = _safeSection(
+      service.getRecentEpisodes(
+        genre: genre,
+        format: format,
+        excludeMovies: excludeMovies,
+      ),
+      'recent episodes',
+    );
 
     return AnimeCatalogFutures._(
       trending: trending,
@@ -94,15 +145,25 @@ class AnimeCatalogFutures {
 final animeServiceProvider = Provider<AnimeService>((ref) => AnimeService());
 
 /// Sync provider: creates in-flight futures immediately (no await gate).
+/// Rebuilds when Anime top-menu Films / Series / Categories change.
 final animeCatalogFuturesProvider =
     Provider.autoDispose<AnimeCatalogFutures>((ref) {
+  ref.watch(shellAnimeCategoryProvider);
+  ref.watch(shellAnimeGenreIdProvider);
+  final filters = animeHubListFilters();
   final service = ref.watch(animeServiceProvider);
-  return AnimeCatalogFutures.start(service);
+  return AnimeCatalogFutures.start(
+    service,
+    genre: filters.genre,
+    format: filters.format,
+    excludeMovies: filters.excludeMovies,
+  );
 });
 
 /// Mood / genre row — loads in parallel with hub rails.
 final animeMoodCatalogProvider = FutureProvider.autoDispose
     .family<List<AnimeCard>, String>((ref, moodId) async {
+  ref.watch(shellAnimeCategoryProvider);
   const moods = <({String id, String? genre})>[
     (id: 'shonen', genre: 'Action'),
     (id: 'romance', genre: 'Romance'),
@@ -119,13 +180,16 @@ final animeMoodCatalogProvider = FutureProvider.autoDispose
     (m) => m.id == moodId,
     orElse: () => moods.first,
   );
-  // Mood row starts immediately — do not wait on hub trending.
+  final hub = animeHubListFilters();
+  // Mood picks its own genre; still honor Films / Series from the top menu.
   final service = ref.watch(animeServiceProvider);
   try {
     return await service.browse(
       genre: mood.genre,
       sort: 'TRENDING_DESC',
       perPage: 20,
+      format: hub.format,
+      excludeMovies: hub.excludeMovies,
     );
   } catch (e) {
     debugPrint('[AnimeCatalog] mood load failed: $e');

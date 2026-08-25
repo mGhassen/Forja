@@ -74,7 +74,7 @@ class SearchScreenState extends ConsumerState<SearchScreen>
   /// Android TV OK often delivers both Select and Enter.
   bool _searchSubmitArmed = false;
 
-  SearchFilters _filters = SearchFilters.defaults;
+  SearchFilters _filters = SearchFilters.empty;
   bool _filtersOpen = false;
   final FocusNode _filterFocusNode = FocusNode(debugLabel: 'search-filter');
   /// First control in the open filter lens (All type chip) — Down from field.

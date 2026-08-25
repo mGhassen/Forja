@@ -72,16 +72,6 @@ class SearchFilters {
 
   static const empty = SearchFilters();
 
-  /// Lens / draft defaults: score ≥7.5, year = last 5 calendar years.
-  static SearchFilters get defaults {
-    final y = DateTime.now().year;
-    return SearchFilters(
-      minScore: 7.5,
-      yearStart: y - 5,
-      yearEnd: y,
-    );
-  }
-
   bool get isActive =>
       media != SearchMediaFilter.all ||
       minScore != null ||
