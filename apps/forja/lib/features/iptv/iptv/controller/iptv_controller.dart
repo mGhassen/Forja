@@ -737,16 +737,38 @@ class IptvController extends ChangeNotifier
     unawaited(_softReloadPortalsFromStore());
   }
 
-  /// Pull portals/favorites from [IptvStore] after an external CSV import.
+  /// Pull portals/favorites from [IptvStore] after an external CSV import /
+  /// cloud assignment pull. Skips work when inventory is unchanged; never
+  /// reloads the active Live/Movies catalog.
   Future<void> _softReloadPortalsFromStore() async {
     final stored = await IptvStore.load();
     if (_disposed) return;
     final favorites = await IptvStore.loadFavorites();
     if (_disposed) return;
+
+    final beforeKeys = verified.map((v) => v.key).toSet();
+    final knownKeys = stored.map((v) => v.key).toSet();
+    final favSame = _favoritePortals.length == favorites.length &&
+        _favoritePortals.containsAll(favorites);
+    var labelChanged = false;
+    if (beforeKeys.length == knownKeys.length &&
+        beforeKeys.containsAll(knownKeys) &&
+        favSame) {
+      final byKey = {for (final v in verified) v.key: v};
+      for (final v in stored) {
+        final prev = byKey[v.key];
+        if (prev != null && prev.label != v.label) {
+          labelChanged = true;
+          break;
+        }
+      }
+      if (!labelChanged) return;
+    }
+
+    final addedKeys = knownKeys.difference(beforeKeys);
     _favoritePortals
       ..clear()
       ..addAll(favorites);
-    final knownKeys = stored.map((v) => v.key).toSet();
     for (final key in _portalRecencyKeys.toList()) {
       if (!knownKeys.contains(key)) _portalRecencyKeys.remove(key);
     }
@@ -755,6 +777,9 @@ class IptvController extends ChangeNotifier
           !_favoritePortals.contains(v.key)) {
         _portalRecencyKeys.add(v.key);
       }
+    }
+    for (final key in addedKeys) {
+      _registerPortalAdded(key);
     }
     verified = _sortPortals(stored);
     _verifiedKeys
@@ -768,10 +793,15 @@ class IptvController extends ChangeNotifier
       if (_disposed) return;
     } else if (active != null) {
       for (final v in verified) {
-        if (v.key == active.key) {
+        if (v.key != active.key) continue;
+        // Keep the live object when credentials + probes match — avoids
+        // bouncing health / catalog off a re-pull of the same portal.
+        if (active.label != v.label ||
+            active.portal.password != v.portal.password ||
+            !active.sameAccountFields(v)) {
           activePortal = v;
-          break;
         }
+        break;
       }
     }
     notifyListeners();
@@ -931,8 +961,11 @@ class IptvController extends ChangeNotifier
   }
 
   void togglePortalPanel() {
-    portalPanelOpen = !portalPanelOpen;
-    notifyListeners();
+    if (portalPanelOpen) {
+      closePortalPanel();
+    } else {
+      openPortalPanel();
+    }
   }
 
   void openPortalPanel() {
@@ -940,6 +973,7 @@ class IptvController extends ChangeNotifier
       portalPanelOpen = true;
       notifyListeners();
     }
+    unawaited(preparePortalPanel());
   }
 
   void closePortalPanel() {
@@ -949,21 +983,50 @@ class IptvController extends ChangeNotifier
     }
   }
 
+  DateTime? _lastPortalPanelPullAt;
+  Future<void>? _portalPanelPrepareInflight;
+
   /// Load portal list + active portal pointer for the side panel without
-  /// hydrating a full Live/Movies catalog (used by Live Matches → My IPTV).
+  /// hydrating a full Live/Movies catalog. Pulls only *new* cloud
+  /// assignments (existing local probes stay put).
   Future<void> preparePortalPanel() async {
-    await _softReloadPortalsFromStore();
-    if (_disposed) return;
-    if (activePortal != null) return;
-    final lastKey = await IptvStore.loadLastPortalKey();
-    if (_disposed || lastKey == null) return;
-    for (final v in verified) {
-      if (v.key == lastKey) {
-        activePortal = v;
-        notifyListeners();
-        return;
+    final inflight = _portalPanelPrepareInflight;
+    if (inflight != null) return inflight;
+
+    late final Future<void> run;
+    run = () async {
+      try {
+        if (SyncService.instance.isSignedIn) {
+          final now = DateTime.now();
+          final recent = _lastPortalPanelPullAt != null &&
+              now.difference(_lastPortalPanelPullAt!) <
+                  const Duration(seconds: 3);
+          if (!recent) {
+            _lastPortalPanelPullAt = now;
+            await SyncDomainBridge.instance.pullIptvPortalsFromCloud();
+          }
+        }
+        if (_disposed) return;
+        await _softReloadPortalsFromStore();
+        if (_disposed) return;
+        if (activePortal != null) return;
+        final lastKey = await IptvStore.loadLastPortalKey();
+        if (_disposed || lastKey == null) return;
+        for (final v in verified) {
+          if (v.key == lastKey) {
+            activePortal = v;
+            notifyListeners();
+            return;
+          }
+        }
+      } finally {
+        if (identical(_portalPanelPrepareInflight, run)) {
+          _portalPanelPrepareInflight = null;
+        }
       }
-    }
+    }();
+    _portalPanelPrepareInflight = run;
+    return run;
   }
 
   Future<void> requestSection(IptvSection section) async {

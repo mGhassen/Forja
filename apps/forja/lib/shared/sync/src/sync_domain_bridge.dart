@@ -224,8 +224,10 @@ class SyncDomainBridge {
     }
   }
 
-  /// Pull cloud portal assignments into local IPTV store (after deal / remote edit).
-  /// Returns `false` when the pull failed and local inventory was left unchanged.
+  /// Pull cloud portal assignments into local IPTV store (after deal / remote
+  /// edit / portal panel open). Merges: keeps existing local probe fields,
+  /// appends new assignments, drops unassigned. Notifies only when inventory
+  /// actually changed. Returns `false` when the pull failed and local was kept.
   Future<bool> pullIptvPortalsFromCloud() async {
     if (!SyncService.instance.isSignedIn) return false;
     return _pullAndApplyUserIptvPortals();
@@ -655,6 +657,13 @@ class SyncDomainBridge {
       debugPrint('[Sync] pullUserIptvPortals failed (local kept): $e');
       return false;
     }
+    final local = await IptvStore.load();
+    final localByKey = {for (final v in local) v.key: v};
+    final localFav = await IptvStore.loadFavorites();
+
+    // Cloud is master for *which* portals are assigned. Existing local rows
+    // keep probe fields (name / seats / expiry) — only append new keys and
+    // drop unassigned; never wipe local account probes on a re-pull.
     final portals = <VerifiedPortal>[];
     final favoriteKeys = <String>{};
     for (final row in rows) {
@@ -664,30 +673,61 @@ class SyncDomainBridge {
       final url = g['url'] as String? ?? '';
       final username = g['username'] as String? ?? '';
       final password = g['password'] as String? ?? '';
-      final verified = VerifiedPortal(
-        portal: IptvPortal(
-          url: url,
-          username: username,
-          password: password,
-          source: g['source'] as String? ?? '',
-          platform: IptvPortalPlatform.fromString(g['platform'] as String?),
-        ),
-        // Per-profile label from user_iptv_portals.portal_name
-        label: (row['portal_name'] as String?)?.trim() ?? '',
-        // Device-local Xtream probe name (not stored in cloud).
-        name: '',
-        expiry: g['expiry'] as String? ?? '',
-        maxConnections: g['max_connections'] as String? ?? '1',
-        activeConnections: '0',
+      final cloudLabel = (row['portal_name'] as String?)?.trim() ?? '';
+      final cloudPortal = IptvPortal(
+        url: url,
+        username: username,
+        password: password,
+        source: g['source'] as String? ?? '',
+        platform: IptvPortalPlatform.fromString(g['platform'] as String?),
       );
-      portals.add(verified);
+      final key = cloudPortal.key;
+      final existing = localByKey[key];
+      if (existing != null) {
+        portals.add(
+          cloudLabel.isNotEmpty && cloudLabel != existing.label
+              ? existing.withLabel(cloudLabel)
+              : existing,
+        );
+      } else {
+        portals.add(
+          VerifiedPortal(
+            portal: cloudPortal,
+            label: cloudLabel,
+            name: '',
+            expiry: g['expiry'] as String? ?? '',
+            maxConnections: g['max_connections'] as String? ?? '1',
+            activeConnections: '0',
+          ),
+        );
+      }
       if (row['favorite'] == true) {
-        favoriteKeys.add(verified.portal.key);
+        favoriteKeys.add(key);
       }
     }
+
+    final localKeys = local.map((v) => v.key).toSet();
+    final nextKeys = portals.map((v) => v.key).toSet();
+    final keysSame =
+        localKeys.length == nextKeys.length && localKeys.containsAll(nextKeys);
+    final favSame = localFav.length == favoriteKeys.length &&
+        localFav.containsAll(favoriteKeys);
+    var labelChanged = false;
+    if (keysSame) {
+      for (final p in portals) {
+        final prev = localByKey[p.key];
+        if (prev != null && prev.label != p.label) {
+          labelChanged = true;
+          break;
+        }
+      }
+    }
+    if (keysSame && favSame && !labelChanged) return true;
+
     // Cloud → local cache only; never schedule a push that could race-wipe.
     await IptvStore.save(portals, scheduleSync: false);
     await IptvStore.saveFavorites(favoriteKeys, scheduleSync: false);
+    IptvStore.notifyListChanged();
     return true;
   }
 

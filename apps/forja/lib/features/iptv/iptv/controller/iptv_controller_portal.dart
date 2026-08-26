@@ -704,7 +704,6 @@ mixin _IptvControllerPortal on ChangeNotifier {
     }
     _c.statusText = 'Dealing $dealCount portals ($region)…';
     notifyListeners();
-    final beforeKeys = _c.verified.map((v) => v.key).toSet();
     try {
       final ids = await SyncService.instance.dealIptvPortals(
         profileId: profile.id,
@@ -715,14 +714,9 @@ mixin _IptvControllerPortal on ChangeNotifier {
       final pulled =
           await SyncDomainBridge.instance.pullIptvPortalsFromCloud();
       if (pulled) {
+        // Soft-reload (via notify or explicit) appends new keys only —
+        // existing probes / active catalog stay put.
         await _c._softReloadPortalsFromStore();
-        // Same session-new chrome as scrape (accent + NEW badge until hover).
-        for (final v in _c.verified) {
-          if (!beforeKeys.contains(v.key)) {
-            _c._registerPortalAdded(v.key);
-          }
-        }
-        _c.verified = _c._sortPortals(_c.verified);
       }
       final n = ids.length;
       if (!pulled && n > 0) {
