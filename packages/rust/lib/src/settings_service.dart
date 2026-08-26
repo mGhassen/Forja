@@ -770,7 +770,7 @@ class SettingsService {
   Future<void> setUpdateAutoCheckEnabled(bool enabled) async =>
       kvSetBool(_updateAutoCheckEnabledKey, enabled);
 
-  /// Product analytics to PostHog (RFC-043). Default on; Settings toggle admin-only.
+  /// Product analytics to PostHog (RFC-043). Default on; Settings → About for everyone.
   Future<bool> isProductAnalyticsEnabled() async =>
       kvGetBool(_productAnalyticsEnabledKey, fallback: true);
 

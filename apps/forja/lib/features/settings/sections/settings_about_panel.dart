@@ -143,7 +143,6 @@ class _SettingsProductAnalyticsRowState
           : 'Unavailable in this build (no PostHog API key). Preference still saved.',
       value: enabled,
       onChanged: _setEnabled,
-      adminOnly: true,
     );
   }
 

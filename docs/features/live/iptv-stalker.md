@@ -20,7 +20,7 @@ The IPTV tab supports **Stalker / Ministra** portals alongside Xtream and M3U. Y
 - Play in the IPTV player — channel guide and search work for live
 - Use the portal with **Live Matches → Forja Sports** (name/EPG match; stream link created when you pick a channel)
 - Sync Stalker portals to your signed-in profile (same as Xtream)
-- See subscription end date on the portal card when the portal reports it (`get_profile` `exp_date`, or a date stuffed in `phone` on some panels)
+- See subscription end date on the portal card when known (scrape/manual or `get_profile` `exp_date` / date-like `phone`); if a status probe returns no date, a known date stays with a trailing `*` instead of flipping to **Ends: Unknown**
 
 ## Setup
 
@@ -37,7 +37,7 @@ Forja tries the common middleware paths automatically (`portal.php`, `server/loa
 - Deal / Find Portals still focus on Xtream pool portals; add Stalker manually for now
 - MACs are stored like usernames; keep share codes and CSV exports private
 - First open can take a moment on flaky portals (Cloudflare 520 / origin 502) — Forja retries handshake and catalog fetch automatically before showing an error
-- Not every portal returns an end date — those show Ends: Unknown
+- Not every portal returns an end date — those show **Ends: Unknown**; a trailing `*` means the date came from scrape/manual and login did not confirm it
 
 ## Related
 

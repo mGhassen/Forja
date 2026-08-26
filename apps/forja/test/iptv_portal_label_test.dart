@@ -65,6 +65,60 @@ void main() {
       expect(labeled.expiry, '1 Jan 2030');
       expect(labeled.maxConnections, '2');
     });
+
+    test('withAccountFrom keeps known expiry with * when probe is Unknown', () {
+      const v = VerifiedPortal(
+        portal: portal,
+        name: 'api_user',
+        expiry: '16 Feb 2027',
+        maxConnections: '1',
+        activeConnections: '0',
+      );
+      const fresh = VerifiedPortal(
+        portal: portal,
+        name: 'api_user',
+        expiry: 'Unknown',
+        maxConnections: '1',
+        activeConnections: '0',
+      );
+      expect(v.withAccountFrom(fresh).expiry, '16 Feb 2027*');
+      expect(v.withAccountFrom(fresh).withAccountFrom(fresh).expiry, '16 Feb 2027*');
+    });
+
+    test('withAccountFrom replaces starred expiry when probe returns a date', () {
+      const v = VerifiedPortal(
+        portal: portal,
+        name: 'api_user',
+        expiry: '16 Feb 2027*',
+        maxConnections: '1',
+        activeConnections: '0',
+      );
+      const fresh = VerifiedPortal(
+        portal: portal,
+        name: 'api_user',
+        expiry: '01 Mar 2028',
+        maxConnections: '1',
+        activeConnections: '0',
+      );
+      expect(v.withAccountFrom(fresh).expiry, '01 Mar 2028');
+    });
+  });
+
+  group('IptvPortalExpiry.mergeOnProbe', () {
+    test('does not wipe a known date with Unknown', () {
+      expect(
+        IptvPortalExpiry.mergeOnProbe('16 Feb 2027', 'Unknown'),
+        '16 Feb 2027*',
+      );
+    });
+
+    test('parse still reads starred dates', () {
+      final d = IptvPortalExpiry.parse('16 Feb 2027*');
+      expect(d, isNotNull);
+      expect(d!.year, 2027);
+      expect(d.month, 2);
+      expect(d.day, 16);
+    });
   });
 
   test('IptvStore round-trip preserves label', () async {

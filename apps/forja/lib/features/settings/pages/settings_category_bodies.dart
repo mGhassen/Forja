@@ -759,15 +759,16 @@ class SettingsAboutPageBody extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsGroup(label: 'Updates', children: const [SettingsAboutPanel()]),
-        if (isAdmin)
-          SettingsGroup(
-            label: 'Privacy',
-            children: [
+        SettingsGroup(
+          label: 'Privacy',
+          children: [
+            const SettingsProductAnalyticsRow(),
+            if (isAdmin) ...[
               const SettingsCrashReportingRow(),
-              const SettingsProductAnalyticsRow(),
               if (Platform.isMacOS) const SettingsMacOsKeychainRow(),
             ],
-          ),
+          ],
+        ),
         if (showSplashPreview)
           SettingsGroup(
             label: 'Developer',

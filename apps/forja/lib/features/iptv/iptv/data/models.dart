@@ -84,9 +84,24 @@ abstract final class IptvPortalExpiry {
     'december': 12,
   };
 
+  /// True when [raw] is empty / `Unknown` (trailing `*` from an unverified keep ignored).
+  static bool isUnknown(String? raw) {
+    final bare = (raw ?? '').trim().replaceFirst(RegExp(r'\*+$'), '').trim();
+    return bare.isEmpty || bare.toLowerCase() == 'unknown';
+  }
+
+  /// Probe merge: real API date wins; never wipe a known date with `Unknown`.
+  /// Kept scrape/manual dates get a trailing `*` when login could not confirm.
+  static String mergeOnProbe(String current, String fresh) {
+    if (!isUnknown(fresh)) return format(fresh);
+    if (isUnknown(current)) return 'Unknown';
+    final base = current.trim().replaceFirst(RegExp(r'\*+$'), '').trim();
+    return '$base*';
+  }
+
   /// Normalize raw Xtream/Stalker/scrape expiry to `dd MMM yyyy`, or `Unknown`.
   static String format(String? raw) {
-    final s = (raw ?? '').trim();
+    final s = (raw ?? '').trim().replaceFirst(RegExp(r'\*+$'), '').trim();
     if (s.isEmpty || s.toLowerCase() == 'unknown') return 'Unknown';
     final d = parse(s);
     if (d == null) {
@@ -99,7 +114,7 @@ abstract final class IptvPortalExpiry {
   }
 
   static DateTime? parse(String? raw) {
-    final s = (raw ?? '').trim();
+    final s = (raw ?? '').trim().replaceFirst(RegExp(r'\*+$'), '').trim();
     if (s.isEmpty || s.toLowerCase() == 'unknown') return null;
 
     if (RegExp(r'^\d+$').hasMatch(s)) {
@@ -312,11 +327,12 @@ class VerifiedPortal {
       );
 
   /// Keep credentials + user [label]; refresh account fields from a login probe.
+  /// Stalker/scrape dates are kept (with `*`) when login returns no expiry.
   VerifiedPortal withAccountFrom(VerifiedPortal fresh) => VerifiedPortal(
         portal: portal,
         label: label,
         name: fresh.name,
-        expiry: fresh.expiry,
+        expiry: IptvPortalExpiry.mergeOnProbe(expiry, fresh.expiry),
         maxConnections: fresh.maxConnections,
         activeConnections: fresh.activeConnections,
       );
