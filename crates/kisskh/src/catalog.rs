@@ -313,11 +313,13 @@ pub fn get_home_hero() -> Result<KdramaHomeFeed, String> {
 }
 
 /// Remaining hub rails after hero has painted.
+///
+/// `top_rated` is intentionally empty — KissKH `/DramaList/TopRating` is
+/// Hollywood-heavy. Asian Drama hub fills **Popular** from TMDB instead.
 pub fn get_home_rails() -> Result<KdramaHomeFeed, String> {
     let paths = [
         "/DramaList/MostView",
         "/DramaList/MostSearch?ispc=false",
-        "/DramaList/TopRating?ispc=false",
         "/DramaList/Upcoming?ispc=false",
         "/DramaList/Animate?ispc=false",
     ];
@@ -327,9 +329,9 @@ pub fn get_home_rails() -> Result<KdramaHomeFeed, String> {
         latest: vec![],
         most_viewed: parse_card_list(&results[0]),
         trending: parse_card_list(&results[1]),
-        top_rated: parse_card_list(&results[2]),
-        upcoming: parse_card_list(&results[3]),
-        anime: parse_card_list(&results[4]),
+        top_rated: vec![],
+        upcoming: parse_card_list(&results[2]),
+        anime: parse_card_list(&results[3]),
     })
 }
 

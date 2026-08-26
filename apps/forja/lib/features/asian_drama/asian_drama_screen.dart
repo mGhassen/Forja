@@ -19,6 +19,7 @@ import 'asian_drama_player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/hub_catalog_top_bar.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
@@ -259,6 +260,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
           _error = null;
         });
         container.invalidate(asianDramaFeedProvider);
+        container.invalidate(asianDramaPopularTodayProvider);
       } finally {
         if (!done.isCompleted) done.complete();
       }
@@ -319,6 +321,40 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
 
   void _openDetails(KdramaCard a) {
     openAsianDramaDetails(context, a).then((_) => _refreshHistory());
+  }
+
+  void _openTmdbDetails(Movie movie) {
+    AppRouter.openDetails(context, movie: movie);
+  }
+
+  HubPosterCard _tmdbPosterCard(
+    Movie movie, {
+    int? rank,
+    int? listIndex,
+    String? tvRowId,
+  }) {
+    final backdrop = movie.backdropPath.trim();
+    final poster = movie.posterPath.trim();
+    final imageUrl = backdrop.isNotEmpty
+        ? (backdrop.startsWith('http')
+            ? backdrop
+            : TmdbApi.getBackdropUrl(backdrop))
+        : (poster.startsWith('http') ? poster : TmdbApi.getImageUrl(poster));
+    final year = movie.releaseDate.length >= 4
+        ? movie.releaseDate.substring(0, 4)
+        : null;
+    return HubPosterCard(
+      imageUrl: imageUrl,
+      title: movie.title,
+      subtitle: year,
+      rating: movie.voteAverage > 0 ? movie.voteAverage : null,
+      rank: rank,
+      listIndex: listIndex,
+      tvTabId: 'asian_drama',
+      tvRowId: tvRowId,
+      aspect: HubPosterAspect.landscape,
+      onTap: () => _openTmdbDetails(movie),
+    );
   }
 
   Future<void> _resumeWatch(Map<String, dynamic> entry) async {
@@ -508,6 +544,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
       _handleFeedAsync(next);
     });
     final feedAsync = ref.watch(asianDramaFeedProvider);
+    final popularAsync = ref.watch(asianDramaPopularTodayProvider);
     final liveFeed = feedAsync.asData?.value;
     if (liveFeed != null &&
         !identical(_appliedFeed, liveFeed) &&
@@ -541,7 +578,8 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
         // never client-strip (list payloads often omit `type`).
         final latestList = displayFeed?.latest ?? const <KdramaCard>[];
         final trendingList = displayFeed?.trending ?? const <KdramaCard>[];
-        final topRatedList = displayFeed?.topRated ?? const <KdramaCard>[];
+        final popularList =
+            popularAsync.asData?.value ?? const <Movie>[];
         final mostViewedList = displayFeed?.mostViewed ?? const <KdramaCard>[];
         // Anime is its own KissKH type — hide under Films / Series (and don't
         // flash the unfiltered Anime rail while the filtered feed loads).
@@ -676,23 +714,23 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
                             ),
                             isFirstAfterHero: false,
                           ),
-                        if (topRatedList.isNotEmpty)
+                        if (popularList.isNotEmpty)
                           hubRowSliver(
                             context,
-                            HubCatalogSection<KdramaCard>(
-                              title: 'Top Rated',
-                              items: topRatedList,
+                            HubCatalogSection<Movie>(
+                              title: 'Popular',
+                              items: popularList,
                               showRank: true,
                               cardAspect: HubPosterAspect.landscape,
                               tvTabId: 'asian_drama',
-                              tvRowId: 'top-rated',
+                              tvRowId: 'popular',
                               tvRowOrder: catalogBase + 1,
-                              cardBuilder: (context, card, index) =>
-                                  _dramaPosterCard(
-                                    card,
+                              cardBuilder: (context, movie, index) =>
+                                  _tmdbPosterCard(
+                                    movie,
                                     rank: index + 1,
                                     listIndex: index,
-                                    tvRowId: 'top-rated',
+                                    tvRowId: 'popular',
                                   ),
                             ),
                             isFirstAfterHero: false,

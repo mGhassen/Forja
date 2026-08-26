@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 3** acceptance |
+| **Progress** | **6 / 6** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 3 | I207-T03 | Cancel delayed live-edge `drop-buffers` on recovery/open/dispose; proxy empty reconnect no longer drop-buffers | ✅ |
 | 4 | I207-T04 | Stop faking `_lastPosChange` on buffering-clear (made format fail look healthy) | ✅ |
 | 5 | I207-T05 | MediaKit live: pulse playhead from `estimated-vf-fps` / `video-bitrate` — Stalker/TS with cache=0 no longer false underrun reopen every ~5s | ✅ |
+| 6 | I207-T06 | Stalker: fresh `create_link` on every open; after 2 hard format fails mark stream dead (red) + stop recovery thrash | ✅ |
 
 ---
 
@@ -35,6 +36,7 @@
 | 1 | I207-A01 | macOS: flaky Xtream live channel that EOFs / “Failed to recognize file format” reconnects or shows offline banner — **no** `Lost connection to device` | ⬜ |
 | 2 | I207-A02 | Healthy live channel still plays through CDN upstream EOF without reconnect thrash or process death | ⬜ |
 | 3 | I207-A03 | macOS Stalker live: channel paints without `live underrun, cache empty` soft-reopen loop while picture is up | ⬜ |
+| 4 | I207-A04 | Dead Stalker channel (90-byte / format fail): fresh create_link on reopen; after 2 hard fails → **Stream offline** + catalog red; Reload retries | ⬜ |
 
 ---
 

@@ -10,6 +10,13 @@ final kissKhServiceProvider = Provider<KissKhService>((ref) => KissKhService());
 
 final tmdbApiProvider = Provider<TmdbApi>((ref) => TmdbApi());
 
+/// TMDB trending/popular Asian TV for the hub **Popular** row (not KissKH).
+final asianDramaPopularTodayProvider =
+    FutureProvider.autoDispose<List<Movie>>((ref) async {
+  final tmdb = ref.watch(tmdbApiProvider);
+  return tmdb.getPopularAsianTvToday(limit: 20);
+});
+
 /// Progressive KissKH hub feed — hero lists first, rails fill in after.
 final asianDramaFeedProvider = AsyncNotifierProvider.autoDispose<
     AsianDramaFeedNotifier, KdramaHomeFeed>(AsianDramaFeedNotifier.new);

@@ -941,8 +941,6 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // reopen can race a dead demuxer — escalate hard after early attempts.
       if (_livePlaybackProfile && iptvIsHardOpenFail(msg)) {
         _invalidatePendingLiveEdgeSnaps();
-        _noteStalkerHardOpenFail();
-        if (_giveUpDeadStalkerStream()) return;
         unawaited(_triggerRecovery(
           reason: 'error: $msg',
           forceHard: _s._retryAttempt >= 1,
@@ -1713,6 +1711,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     }
     // Cancel delayed drop-buffers / seek so they cannot race stop+open.
     _invalidatePendingLiveEdgeSnaps();
+    if (!userInitiated && iptvIsHardOpenFail(reason)) {
+      _noteStalkerHardOpenFail();
+      if (_giveUpDeadStalkerStream()) return;
+    }
     _recoveryInFlight = true;
     _s._lastRecoveryAt = now;
     _s._streamSeekable = false;
@@ -2092,11 +2094,18 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         IptvPlaySource(
           url: url,
           label: label,
+          logoUrl: ch.logoUrl,
+          streamId: ch.xtreamStream?.streamId,
+          epgChannelId: (ch.xtreamStream?.epgChannelId ?? '').isEmpty
+              ? null
+              : ch.xtreamStream!.epgChannelId,
           liveSourceKind: _s.widget.liveSourceKind,
         ),
       ];
       _s._sourceIdx = 0;
       _s._retryAttempt = 0;
+      _s._stalkerHardFailCount = 0;
+      _s._userPlayWhenReady = true;
       _s._title = ch.name;
       _s._logoUrl = ch.logoUrl;
       _s._subtitle = groupName;

@@ -47,6 +47,56 @@ class TmdbApi {
     return (decoded['results'] as List).map((json) => Movie.fromJson(json, mediaType: 'tv')).toList();
   }
 
+  /// KissKH hub countries (excl. US/Hollywood): KR / CN+TW+HK / JP / TH / PH.
+  static const asianDramaOriginalLanguages = {
+    'ko',
+    'ja',
+    'zh',
+    'th',
+    'tl',
+  };
+
+  /// Today's trending TV filtered to Asian Drama languages, backfilled from
+  /// discover popularity when trending is thin. Used by Asian Drama → Popular.
+  Future<List<Movie>> getPopularAsianTvToday({int limit = 20}) async {
+    final seen = <int>{};
+    final out = <Movie>[];
+
+    void take(Map<String, dynamic> json) {
+      final ol =
+          (json['original_language'] as String?)?.trim().toLowerCase() ?? '';
+      if (!asianDramaOriginalLanguages.contains(ol)) return;
+      final m = Movie.fromJson(json, mediaType: 'tv');
+      if (m.id <= 0 || !seen.add(m.id)) return;
+      if (m.posterPath.isEmpty && m.backdropPath.isEmpty) return;
+      out.add(m);
+    }
+
+    for (var page = 1; page <= 3 && out.length < limit; page++) {
+      final decoded = await _fetchMap('trending/tv/day?page=$page');
+      for (final raw in decoded['results'] as List? ?? const []) {
+        if (raw is! Map) continue;
+        take(Map<String, dynamic>.from(raw));
+        if (out.length >= limit) break;
+      }
+    }
+
+    if (out.length < limit) {
+      final langs = asianDramaOriginalLanguages.join('|');
+      final decoded = await _fetchMap(
+        'discover/tv?page=1&sort_by=popularity.desc'
+        '&with_original_language=$langs&vote_count.gte=50',
+      );
+      for (final raw in decoded['results'] as List? ?? const []) {
+        if (raw is! Map) continue;
+        take(Map<String, dynamic>.from(raw));
+        if (out.length >= limit) break;
+      }
+    }
+
+    return out.take(limit).toList();
+  }
+
   /// Website-style popular: discover sorted by popularity with a minimum vote
   /// floor so low-signal titles from raw `/popular` do not dominate the row.
   Future<List<Movie>> getPopular({String? watchRegion, int page = 1}) {

@@ -274,17 +274,19 @@ class EngineService {
         for (final p in pack.plugins)
           p.copyWith(enabled: enabledById[p.id] ?? p.enabled),
       ]);
-      if (bundledPackUnchanged(previous, pack)) {
-        await _syncHops([pack]);
-        return;
-      }
     }
     final prefs = await _prefs;
+    // Always refresh script bodies from assets — engine.json meta can be
+    // unchanged while providers/*.js were edited (otherwise prefs keep stale JS).
     for (final plugin in pack.plugins) {
       if (plugin.entry.isEmpty) continue;
       if (!plugin.isHttp && !plugin.isHop) continue;
       final code = await rootBundle.loadString('$_assetRoot/${plugin.entry}');
       await prefs.setString(_scriptPrefix + plugin.id, code);
+    }
+    if (previous != null && bundledPackUnchanged(previous, pack)) {
+      await _syncHops([pack]);
+      return;
     }
     all.removeWhere((a) => isBundled(a.sourceUrl));
     all.insert(0, pack);
@@ -431,7 +433,10 @@ class EngineService {
 
   Future<String?> _loadScript(EnginePlugin plugin) async {
     String? code;
-    if (plugin.isLive && plugin.entry.isNotEmpty && isBundled(bundledSourceUrl)) {
+    // Prefer asset when the entry exists in the bundle so editing
+    // assets/plugins/providers/*.js applies without a prefs wipe.
+    // Remotely installed scripts (not in the asset bundle) fall through to prefs.
+    if (plugin.entry.isNotEmpty) {
       try {
         code = await rootBundle.loadString('$_assetRoot/${plugin.entry}');
       } catch (_) {}
@@ -440,13 +445,6 @@ class EngineService {
       final prefs = await _prefs;
       final cached = prefs.getString(_scriptPrefix + plugin.id);
       if (cached != null && cached.isNotEmpty) code = cached;
-    }
-    if ((code == null || code.isEmpty) &&
-        isBundled(bundledSourceUrl) &&
-        plugin.entry.isNotEmpty) {
-      try {
-        code = await rootBundle.loadString('$_assetRoot/${plugin.entry}');
-      } catch (_) {}
     }
     if (code == null || code.isEmpty) return null;
     if (plugin.entry.startsWith('live/') && !plugin.entry.contains('/goat/')) {

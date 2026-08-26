@@ -318,7 +318,8 @@ class KissKhService {
   /// list endpoints do not.
   ///
   /// **2–3 sequential** list GETs (not a parallel storm): Latest + Popular,
-  /// then Upcoming. Popular is split across Trending / Most Viewed / Top Rated.
+  /// then Upcoming. Popular explore is split across Trending / Most Viewed.
+  /// **Popular** (ranked) on the hub is TMDB Asian TV today — not KissKH.
   /// Memoized by `(type, country)` so toggling the same filter is free.
   Future<KdramaHomeFeed> getFilteredHubFeed({
     int type = 0,
@@ -352,7 +353,6 @@ class KissKhService {
     final mostViewed = popular.length > 8
         ? [...popular.skip(8), ...popular.take(8)]
         : popular;
-    final topRated = popular.take(10).toList();
     final spotlight = latest.isNotEmpty
         ? latest.take(8).toList()
         : trending.take(8).toList();
@@ -361,7 +361,7 @@ class KissKhService {
       spotlight: spotlight,
       latest: latest,
       trending: trending,
-      topRated: topRated,
+      topRated: const [],
       mostViewed: mostViewed,
       upcoming: upcoming,
       // Anime is a separate KissKH type — never under Films/Series/country.

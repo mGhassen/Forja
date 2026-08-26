@@ -166,6 +166,14 @@ function extract(ctx) {
     return fetchJson(episodePath(id, true))
       .then(function (res) {
         var api = res.json;
+        var tp = api.ThirdParty || api.thirdParty;
+        ctx.log(
+          'kisskh episode payload Video=' +
+            typeof api.Video +
+            ' ThirdParty=' +
+            (tp == null ? 'null' : typeof tp) +
+            (Array.isArray(tp) ? '[]' + tp.length : ''),
+        );
         var hasVideo =
           api.Video ||
           api.video ||
