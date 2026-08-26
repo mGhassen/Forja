@@ -10,6 +10,7 @@ set -euo pipefail
 #
 # On minor / major (same process as opening a new arc — not patch-only):
 #   - kReleaseCodename from docs/backlog runway
+#   - macOS PRODUCT_CODENAME (CFBundleVersion / PostHog $app_build)
 #   - runway status emojis (previous arc ✅, new arc 🔄)
 #
 # Prints new semver to stdout (for CI: echo "version=$NEW" >> "$GITHUB_OUTPUT").
@@ -20,6 +21,7 @@ BUMP="${1:-patch}"
 PUBSPEC="$ROOT/apps/forja/pubspec.yaml"
 SETUP_ISS="$ROOT/installer/windows/setup.iss"
 VERSION_DART="$ROOT/apps/forja/lib/shared/services/app_version.dart"
+MACOS_APPINFO="$ROOT/apps/forja/macos/Runner/Configs/AppInfo.xcconfig"
 BACKLOG_README="$ROOT/docs/backlog/README.md"
 
 current="$(grep '^version:' "$PUBSPEC" | sed 's/version: *//')"
@@ -69,12 +71,12 @@ fi
 
 # Minor/major: same arc-open work every time (codename + runway). Patch skips.
 if [[ "$BUMP" == "minor" || "$BUMP" == "major" ]]; then
-  if [[ ! -f "$VERSION_DART" || ! -f "$BACKLOG_README" ]]; then
-    echo "bump_version: error — missing app_version.dart or backlog README for arc bump" >&2
+  if [[ ! -f "$VERSION_DART" || ! -f "$BACKLOG_README" || ! -f "$MACOS_APPINFO" ]]; then
+    echo "bump_version: error — missing app_version.dart, AppInfo.xcconfig, or backlog README for arc bump" >&2
     exit 1
   fi
 
-  python3 - "$BACKLOG_README" "$VERSION_DART" \
+  python3 - "$BACKLOG_README" "$VERSION_DART" "$MACOS_APPINFO" \
     "${prev_major}.${prev_minor}" "${major}.${minor}" <<'PY'
 import re
 import sys
@@ -82,8 +84,9 @@ from pathlib import Path
 
 readme_path = Path(sys.argv[1])
 dart_path = Path(sys.argv[2])
-prev_arc = sys.argv[3]
-new_arc = sys.argv[4]
+macos_appinfo_path = Path(sys.argv[3])
+prev_arc = sys.argv[4]
+new_arc = sys.argv[5]
 
 readme = readme_path.read_text(encoding="utf-8")
 
@@ -119,6 +122,19 @@ if n != 1:
     raise SystemExit("bump_version: could not update kReleaseCodename in app_version.dart")
 dart_path.write_text(dart_new, encoding="utf-8")
 print(f"bump_version: kReleaseCodename → {codename}", file=sys.stderr)
+
+macos = macos_appinfo_path.read_text(encoding="utf-8")
+macos_new, n = re.subn(
+    r"^PRODUCT_CODENAME = .*$",
+    f"PRODUCT_CODENAME = {codename}",
+    macos,
+    count=1,
+    flags=re.M,
+)
+if n != 1:
+    raise SystemExit("bump_version: could not update PRODUCT_CODENAME in AppInfo.xcconfig")
+macos_appinfo_path.write_text(macos_new, encoding="utf-8")
+print(f"bump_version: PRODUCT_CODENAME → {codename}", file=sys.stderr)
 
 # Previous shipping arc → done; new arc → in progress (same as opening a minor manually).
 readme = set_status(readme, prev_arc, "✅")

@@ -82,7 +82,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [059-[fixed]-…](fixed/059-[fixed]-hub-list-follow.md) | Anime & Asian Drama list follow | v1.4 | fixed | Complete · 4/4 · 8/8 | [1.4.0](../backlog/1.4.0-[draft].md) |
 | [060-[fixed]-…](fixed/060-[fixed]-enginejs-sources-forja-tab.md) | engineJS + Sources Forja tab | v1.3 | fixed | Complete · 77/79 · 2 ⏭️ | — |
 | [061-[fixed]-…](fixed/061-[fixed]-engine-scraper-upstream-parity.md) | Engine scraper upstream parity | v1.3 | fixed | Complete · 4/4 · 10/12 · 2 ⏭️ | — |
-| [062-[open]-…](062-[open]-native-iptv-sports-matching.md) | Native IPTV sports matching in Live Matches | v1.3 | open | 6/6 · 14/14 Xtream · 2/2 ATV · 4/4 Stalker · 1/1 EPG pad · 0/3 M3U ⏭️ | — |
+| [062-[open]-…](062-[open]-native-iptv-sports-matching.md) | Native IPTV sports matching in Live Matches | v1.3 | open | 6/6 · 14/14 Xtream · 2/2 ATV · 4/4 Stalker · 1/1 EPG pad · 1/1 Mag ch_id · 0/3 M3U ⏭️ | — |
 | [063-[fixed]-…](fixed/063-[fixed]-forja-auto-start-green-play.md) | Forja auto start (green Play) | v1.3 | fixed | Complete · 3/3 · 7/7 | — |
 | [064-[open]-…](064-[open]-rust-quickjs-engine-runtime.md) | Forja EngineJS runtime (Forja Sources) | v1.3 | open | 7/7 · 11/14 | — |
 | [065-[open]-…](065-[open]-live-forja-scrapers.md) | Live sports Forja scrapers | v1.3 | open | 6/6 · 14/18 · WebView GOAT+GASM 🔄 | — |

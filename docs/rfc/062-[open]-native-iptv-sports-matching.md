@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **14 / 14** acceptance (Xtream) · **2 / 2** acceptance (ATV EPG cap) · **4 / 4** acceptance (Stalker) · **1 / 1** acceptance (EPG prefilter pad) · **0 / 3** acceptance (M3U deferred) |
-| **Current slice** | EPG prefilter pads to ≤120 when name hits are thin — M3U/XMLTV deferred |
+| **Progress** | **6 / 6** components · **14 / 14** acceptance (Xtream) · **2 / 2** acceptance (ATV EPG cap) · **4 / 4** acceptance (Stalker) · **1 / 1** acceptance (EPG prefilter pad) · **1 / 1** acceptance (Stalker ch_id) · **0 / 3** acceptance (M3U deferred) |
+| **Current slice** | Stalker Mag EPG id resolution for Forja Sports — M3U/XMLTV deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -74,6 +74,14 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R62-A24 | Team games: name/cat prefilter empty or thin → still short-EPG up to ≤120 category channels (pad after name hits); event games keep empty-prefilter skip; unit tests | ✅ |
+
+---
+
+## Acceptance (Stalker Mag ch_id)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R62-A25 | Forja Sports Stalker EPG uses Mag `ch_id` (`epg_channel_id`, else digits from cmd / `stream=`) — same as IPTV Live; unit tests | ✅ |
 
 ---
 

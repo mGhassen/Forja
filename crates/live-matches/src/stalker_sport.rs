@@ -113,12 +113,56 @@ fn absolutize_logo(base: &str, logo: &str) -> String {
     format!("{}/{}", base, logo.trim_start_matches('/'))
 }
 
+/// Mag ITV `ch_id` for EPG — same rules as Dart `IptvClient.stalkerChannelId`.
+/// Never the bare create_link `cmd` URL.
+fn stalker_channel_id(stream_id: &str, epg_channel_id: &str) -> String {
+    let epg = epg_channel_id.trim();
+    if !epg.is_empty() {
+        return epg.to_string();
+    }
+    let id = stream_id.trim();
+    if id.is_empty() {
+        return String::new();
+    }
+    if id.chars().all(|c| c.is_ascii_digit()) {
+        return id.to_string();
+    }
+    // `?stream=42` / `&stream=42` in Xtream-UI-style Stalker cmds.
+    for needle in ["?stream=", "&stream="] {
+        if let Some(i) = id.find(needle) {
+            let rest = &id[i + needle.len()..];
+            let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
+            if !digits.is_empty() {
+                return digits;
+            }
+        }
+    }
+    // Last run of ≥3 digits (typical Mag ch_id).
+    let mut last = String::new();
+    let mut cur = String::new();
+    for c in id.chars() {
+        if c.is_ascii_digit() {
+            cur.push(c);
+        } else {
+            if cur.len() >= 3 {
+                last = cur.clone();
+            }
+            cur.clear();
+        }
+    }
+    if cur.len() >= 3 {
+        last = cur;
+    }
+    last
+}
+
 fn skeleton_candidate(portal_url: &str, s: &Value, cats: &HashMap<String, String>) -> Option<Candidate> {
     let stream_id = field_str(s, &["stream_id"]);
     if stream_id.is_empty() {
         return None;
     }
-    let epg_channel_id = field_str(s, &["epg_channel_id"]);
+    let raw_epg = field_str(s, &["epg_channel_id"]);
+    let epg_channel_id = stalker_channel_id(&stream_id, &raw_epg);
     let name = field_str(s, &["name"]);
     let logo = absolutize_logo(
         portal_url,
@@ -276,9 +320,8 @@ async fn fill_epg_async(
         let Some(c) = candidates.get(idx) else {
             continue;
         };
-        let channel_id = if !c.epg_channel_id.is_empty() {
-            c.epg_channel_id.clone()
-        } else {
+        let channel_id = stalker_channel_id(&c.stream_id, &c.epg_channel_id);
+        if channel_id.is_empty() {
             continue;
         };
         let url = url.to_string();
@@ -374,6 +417,35 @@ mod tests {
         assert_eq!(c.stream_id, "ffmpeg http://x/stream/42");
         assert_eq!(c.epg_channel_id, "42");
         assert_eq!(c.category_label, "Sports");
+    }
+
+    #[test]
+    fn stalker_channel_id_prefers_epg_then_cmd_digits() {
+        assert_eq!(stalker_channel_id("cmd", "99"), "99");
+        assert_eq!(stalker_channel_id("42", ""), "42");
+        assert_eq!(
+            stalker_channel_id("ffmpeg http://x/play/live.php?stream=77&ext=ts", ""),
+            "77"
+        );
+        assert_eq!(
+            stalker_channel_id("ffmpeg http://portal/c/stream/12345", ""),
+            "12345"
+        );
+        assert_eq!(stalker_channel_id("no-digits-here", ""), "");
+    }
+
+    #[test]
+    fn skeleton_fills_epg_id_from_cmd_when_missing() {
+        let s = json!({
+            "stream_id": "ffmpeg http://x/play/live.php?username=u&password=p&stream=88&ext=.ts",
+            "epg_channel_id": "",
+            "name": "beIN",
+            "category_id": "5",
+        });
+        let mut cats = HashMap::new();
+        cats.insert("5".into(), "Sports".into());
+        let c = skeleton_candidate("http://portal.example/c/", &s, &cats).expect("cand");
+        assert_eq!(c.epg_channel_id, "88");
     }
 
     #[test]
