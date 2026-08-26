@@ -91,9 +91,10 @@ class DetailsPlaySession {
   Set<String> nuvioSelectedScraperIds = {};
   bool nuvioSelectionHydrated = false;
 
-  /// Sources chip row: All is an exclusive mode (only All lit). Leaving All
-  /// (tap a scraper) clears this even when one scraper remains visible.
+  /// Sources chip row: All is exclusive load mode; provider chips are view
+  /// filters while All is on (do not change fetch selection).
   bool nuvioAllMode = false;
+  Set<String> nuvioViewFilterScraperIds = {};
 
   List<Map<String, dynamic>> engineStreams = [];
   bool isEngineFetching = false;
@@ -107,6 +108,10 @@ class DetailsPlaySession {
 
   /// Same contract as [nuvioAllMode] for Forja plugin chips.
   bool engineAllMode = false;
+  Set<String> engineViewFilterPluginIds = {};
+
+  /// Torrents All chip: filter merged results without re-searching.
+  Set<String> torrentViewFilterProviderIds = {};
 
   final Map<String, dynamic> webstreamingProviders = {
     ...StreamProviders.providers,

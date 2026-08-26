@@ -96,15 +96,23 @@ List<SourcesPanelProviderOption> torrentProviderChipOptions({
   ];
 }
 
-/// Torrents chip selected chrome — All lights only the All chip (builtins
-/// stay dark so one tap filters). Jackett / Prowlarr stay exclusive.
+/// Torrents chip selected chrome — All group vs provider group.
 bool torrentProviderChipSelected({
   required String optionId,
   required String selectedSourceId,
+  Set<String> viewFilterProviderIds = const {},
 }) {
   if (TorrentSearchProviders.isNoneChip(selectedSourceId)) return false;
+  final allOn = TorrentSearchProviders.isAllChip(selectedSourceId);
+  if (optionId == TorrentSearchProviders.allId) return allOn;
+  if (allOn) return viewFilterProviderIds.contains(optionId);
   return selectedSourceId == optionId;
 }
+
+bool sourcesPanelOptionIsAllChip(String optionId) =>
+    optionId == TorrentSearchProviders.allId ||
+    optionId == 'all_nuvio' ||
+    optionId == EngineIds.allChip;
 
 const kTorrentAudioTags = [
   'Atmos',
@@ -471,6 +479,9 @@ class TorrentSourceChips extends StatefulWidget {
     this.engineSelectedPluginIds = const {},
     this.nuvioAllMode,
     this.engineAllMode,
+    this.nuvioViewFilterScraperIds = const {},
+    this.engineViewFilterPluginIds = const {},
+    this.torrentViewFilterProviderIds = const {},
     this.loadingChipIds = const {},
     required this.onChipTap,
     this.onChipCancel,
@@ -487,6 +498,9 @@ class TorrentSourceChips extends StatefulWidget {
   /// When non-null, drives All-chip chrome instead of inferring from selection.
   final bool? nuvioAllMode;
   final bool? engineAllMode;
+  final Set<String> nuvioViewFilterScraperIds;
+  final Set<String> engineViewFilterPluginIds;
+  final Set<String> torrentViewFilterProviderIds;
   final Set<String> loadingChipIds;
   final ValueChanged<String> onChipTap;
 
@@ -528,30 +542,24 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
     if (option.id == 'all_nuvio' || option.id.startsWith('nuvio:')) {
       return nuvioProviderChipSelected(
         optionId: option.id,
+        allMode: widget.nuvioAllMode ?? false,
         selectedScraperIds: widget.nuvioSelectedScraperIds,
-        visibleScraperIds: [
-          for (final o in widget.options)
-            if (o.id.startsWith('nuvio:')) o.id.substring('nuvio:'.length),
-        ],
-        allMode: widget.nuvioAllMode,
+        viewFilterScraperIds: widget.nuvioViewFilterScraperIds,
       );
     }
     if (option.id == EngineIds.allChip ||
         option.id.startsWith(EngineIds.prefix)) {
       return engineProviderChipSelected(
         optionId: option.id,
+        allMode: widget.engineAllMode ?? false,
         selectedPluginIds: widget.engineSelectedPluginIds,
-        visiblePluginIds: [
-          for (final o in widget.options)
-            if (o.id.startsWith(EngineIds.prefix))
-              o.id.substring(EngineIds.prefix.length),
-        ],
-        allMode: widget.engineAllMode,
+        viewFilterPluginIds: widget.engineViewFilterPluginIds,
       );
     }
     return torrentProviderChipSelected(
       optionId: option.id,
       selectedSourceId: widget.selectedSourceId,
+      viewFilterProviderIds: widget.torrentViewFilterProviderIds,
     );
   }
 
@@ -577,7 +585,16 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    for (var i = 0; i < widget.options.length; i++)
+                    for (var i = 0; i < widget.options.length; i++) ...[
+                      if (i == 1 && sourcesPanelOptionIsAllChip(widget.options[0].id))
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: Container(
+                            width: 1,
+                            height: 22,
+                            color: ForjaShellColors.cinematic.borderSubtle,
+                          ),
+                        ),
                       Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: ForjaShellChip(
@@ -618,6 +635,7 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
                           tvRowId: widget.tvRowId,
                         ),
                       ),
+                    ],
                   ],
                 ),
               ),

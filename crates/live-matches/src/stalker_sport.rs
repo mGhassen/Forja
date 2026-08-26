@@ -18,6 +18,7 @@ use crate::sport_match::{self, Candidate, MatchGame};
 const LIVE_CACHE_TTL: Duration = Duration::from_secs(120);
 const EPG_CONCURRENCY: usize = 12;
 const MAX_EPG_FETCHES: usize = 120;
+const SHORT_EPG_LIMIT: u32 = 8;
 
 struct PortalLiveCacheEntry {
     streams: Vec<Value>,
@@ -244,6 +245,22 @@ struct EpgBits {
     start_timestamp: Option<f64>,
 }
 
+fn filter_live_streams(streams: &[Value], category_ids: &[String]) -> Vec<Value> {
+    if category_ids.is_empty() {
+        return streams.to_vec();
+    }
+    let filtered: Vec<Value> = streams
+        .iter()
+        .filter(|s| stream_in_categories(s, category_ids))
+        .cloned()
+        .collect();
+    if filtered.is_empty() && !streams.is_empty() {
+        streams.to_vec()
+    } else {
+        filtered
+    }
+}
+
 async fn fetch_short_epg_async(url: &str, mac: &str, serial: &str, channel_id: &str) -> EpgBits {
     if channel_id.trim().is_empty() {
         return EpgBits {
@@ -257,7 +274,7 @@ async fn fetch_short_epg_async(url: &str, mac: &str, serial: &str, channel_id: &
         "username": mac,
         "password": serial,
         "channel_id": channel_id,
-        "limit": 1,
+        "limit": SHORT_EPG_LIMIT,
         "timeout_secs": 15,
     });
     let raw = iptv::stalker_client::request_json_async(&req.to_string()).await;
@@ -281,21 +298,30 @@ async fn fetch_short_epg_async(url: &str, mac: &str, serial: &str, channel_id: &
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
-    let Some(entry) = listings.first() else {
+    if listings.is_empty() {
         return EpgBits {
             text: String::new(),
             start_timestamp: None,
         };
-    };
-    let title = field_str(entry, &["title"]);
-    let description = field_str(entry, &["description"]);
-    let text = format!("{title} {description}").trim().to_string();
-    let start_timestamp = entry
-        .get("start_timestamp")
-        .and_then(|v| match v {
-            Value::Number(n) => n.as_f64(),
-            Value::String(s) => s.parse::<f64>().ok(),
-            _ => None,
+    }
+    let mut parts = Vec::new();
+    for entry in listings.iter().take(SHORT_EPG_LIMIT as usize) {
+        let title = field_str(entry, &["title", "name", "progname"]);
+        let description = field_str(entry, &["description", "descr", "desc", "short_description"]);
+        let chunk = format!("{title} {description}").trim().to_string();
+        if !chunk.is_empty() {
+            parts.push(chunk);
+        }
+    }
+    let text = parts.join(" ");
+    let start_timestamp = listings
+        .first()
+        .and_then(|entry| {
+            entry.get("start_timestamp").and_then(|v| match v {
+                Value::Number(n) => n.as_f64(),
+                Value::String(s) => s.parse::<f64>().ok(),
+                _ => None,
+            })
         })
         .filter(|n| n.is_finite());
     EpgBits {
@@ -365,10 +391,7 @@ pub fn sport_match_streams(
         Ok(v) => v,
         Err(e) => return json!({ "error": e }).to_string(),
     };
-    let filtered: Vec<Value> = streams
-        .into_iter()
-        .filter(|s| stream_in_categories(s, category_ids))
-        .collect();
+    let filtered = filter_live_streams(&streams, category_ids);
 
     let mut candidates: Vec<Candidate> = filtered
         .iter()

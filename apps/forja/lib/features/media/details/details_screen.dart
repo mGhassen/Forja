@@ -246,6 +246,10 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   bool get _nuvioAllMode => _play.nuvioAllMode;
   set _nuvioAllMode(bool v) => _play.nuvioAllMode = v;
 
+  Set<String> get _nuvioViewFilterScraperIds => _play.nuvioViewFilterScraperIds;
+  set _nuvioViewFilterScraperIds(Set<String> v) =>
+      _play.nuvioViewFilterScraperIds = v;
+
   bool get _nuvioSelectionHydrated => _play.nuvioSelectionHydrated;
   set _nuvioSelectionHydrated(bool v) => _play.nuvioSelectionHydrated = v;
 
@@ -278,6 +282,15 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   bool get _engineAllMode => _play.engineAllMode;
   set _engineAllMode(bool v) => _play.engineAllMode = v;
+
+  Set<String> get _engineViewFilterPluginIds => _play.engineViewFilterPluginIds;
+  set _engineViewFilterPluginIds(Set<String> v) =>
+      _play.engineViewFilterPluginIds = v;
+
+  Set<String> get _torrentViewFilterProviderIds =>
+      _play.torrentViewFilterProviderIds;
+  set _torrentViewFilterProviderIds(Set<String> v) =>
+      _play.torrentViewFilterProviderIds = v;
 
   /// Soft-cancel while in-flight — discard late plugin/scraper results.
   final Set<String> _engineDiscardPluginIds = {};
@@ -737,6 +750,33 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     }
   }
 
+  void _savePanelUiCache() {
+    _stashPanelSourceIdForKind(_panelKindFilter);
+    CatalogSourcesSessionCache.writeUi(
+      _catalogCacheKey,
+      CatalogSourcesPanelUiState(
+        kindFilter: _panelKindFilter,
+        selectedSourceId: _selectedSourceId,
+        nuvioSelectedScraperIds: Set<String>.from(_nuvioSelectedScraperIds),
+        engineSelectedPluginIds: Set<String>.from(_engineSelectedPluginIds),
+        nuvioAllMode: _nuvioAllMode,
+        engineAllMode: _engineAllMode,
+        nuvioViewFilterScraperIds: Set<String>.from(_nuvioViewFilterScraperIds),
+        engineViewFilterPluginIds: Set<String>.from(_engineViewFilterPluginIds),
+        torrentViewFilterProviderIds:
+            Set<String>.from(_torrentViewFilterProviderIds),
+        userPickedStremioProvider: _userPickedStremioProvider,
+        searchQuery: _sourceSearchQuery,
+        qualityFilters: Set<String>.from(_activeQualityFilters),
+        languageFilters: Set<String>.from(_activeLanguageFilters),
+        techFilters: Set<String>.from(_activeTechFilters),
+        audioFilters: Set<String>.from(_activeAudioFilters),
+        sizeFilters: Set<String>.from(_activeSizeFilters),
+        panelSourceIdByKind: Map<String, String>.from(_panelSourceIdByKind),
+      ),
+    );
+  }
+
   /// After green Play, open Sources on the playing kind tab only.
   /// Do not narrow Forja / Nuvio multi-select chips to the playing provider —
   /// that broke All (same as player Sources panel).
@@ -1124,6 +1164,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _cancelActiveSourceFetch(cancelEngineJobs: cancelEngineJobs);
     if (_sourcesPanelOpen && mounted) {
       setState(() => _sourcesPanelOpen = false);
+      _savePanelUiCache();
       if (restoreTvPlayFocus) {
         _restoreTvFocusAfterSourcesPanel();
       } else {

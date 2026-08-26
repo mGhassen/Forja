@@ -53,6 +53,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
             enabledIds: scope.isNotEmpty ? scope : enabledIds,
             selectedIds: _s._engineSelectedPluginIds,
           );
+          _s._engineViewFilterPluginIds = {};
           _s._engineSelectionHydrated = true;
         } else {
           _s._engineSelectedPluginIds = filterEngineSelectedPluginIds(
@@ -64,6 +65,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
               enabledIds: scope.isNotEmpty ? scope : enabledIds,
               selectedIds: _s._engineSelectedPluginIds,
             );
+            if (!_s._engineAllMode) _s._engineViewFilterPluginIds = {};
           }
         }
       });

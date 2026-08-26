@@ -168,42 +168,28 @@ Set<String> nextNuvioSelectedAfterAllTap({
   return alreadyAll ? <String>{} : Set<String>.from(enabledIds);
 }
 
-/// Tap a scraper chip: from All mode → solo that scraper; otherwise toggle.
+/// Tap a scraper chip when not in All mode — toggle load selection.
 Set<String> nextNuvioSelectedAfterScraperTap({
   required Set<String> selectedIds,
-  required Set<String> enabledIds,
   required String scraperId,
-  bool? allMode,
 }) {
-  final inAll = allMode ??
-      nuvioFullAllSelected(enabledIds: enabledIds, selectedIds: selectedIds);
-  if (inAll) {
-    return {scraperId};
-  }
   if (selectedIds.contains(scraperId)) {
     return Set<String>.from(selectedIds)..remove(scraperId);
   }
   return {...selectedIds, scraperId};
 }
 
-/// All chip only when [allMode] — individuals stay dark under All so one tap
-/// filters without deselecting the rest.
+/// All group vs provider group — [allMode] + [viewFilterScraperIds] (empty = all).
 bool nuvioProviderChipSelected({
   required String optionId,
+  required bool allMode,
   required Set<String> selectedScraperIds,
-  required Iterable<String> visibleScraperIds,
-  bool? allMode,
+  required Set<String> viewFilterScraperIds,
 }) {
-  final visible = visibleScraperIds.toSet();
-  final fullAll = allMode ??
-      nuvioFullAllSelected(
-        enabledIds: visible,
-        selectedIds: selectedScraperIds,
-      );
-  if (optionId == 'all_nuvio') return fullAll;
+  if (optionId == 'all_nuvio') return allMode;
   if (!optionId.startsWith('nuvio:')) return false;
   final scraperId = optionId.substring('nuvio:'.length);
-  if (fullAll) return false;
+  if (allMode) return viewFilterScraperIds.contains(scraperId);
   return selectedScraperIds.contains(scraperId);
 }
 
@@ -218,6 +204,20 @@ bool nuvioFullAllSelected({
   required Set<String> enabledIds,
   required Set<String> selectedIds,
 }) => enabledIds.isNotEmpty && enabledIds.every(selectedIds.contains);
+
+/// Scrapers to fetch when expanding All — only newly selected ids that were
+/// never fetched.
+Set<String> nuvioScraperIdsToRefetchOnAllExpand({
+  required Set<String> previousSelectedIds,
+  required Set<String> nextSelectedIds,
+  required Set<String> fetchedIds,
+}) {
+  final newlySelected = nextSelectedIds.difference(previousSelectedIds);
+  return {
+    for (final id in newlySelected)
+      if (!fetchedIds.contains(id)) id,
+  };
+}
 
 /// Drop stale saved ids that are no longer enabled / installed.
 Set<String> filterNuvioSelectedScraperIds({

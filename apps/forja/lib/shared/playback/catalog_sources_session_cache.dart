@@ -13,6 +13,11 @@ class CatalogSourcesPanelUiState {
     required this.selectedSourceId,
     required this.nuvioSelectedScraperIds,
     required this.engineSelectedPluginIds,
+    this.nuvioAllMode,
+    this.engineAllMode,
+    this.nuvioViewFilterScraperIds = const {},
+    this.engineViewFilterPluginIds = const {},
+    this.torrentViewFilterProviderIds = const {},
     this.userPickedKind = false,
     this.userPickedStremioProvider = false,
     this.searchQuery = '',
@@ -28,6 +33,12 @@ class CatalogSourcesPanelUiState {
   final String selectedSourceId;
   final Set<String> nuvioSelectedScraperIds;
   final Set<String> engineSelectedPluginIds;
+  /// When null, readers infer All from a full chip selection (legacy caches).
+  final bool? nuvioAllMode;
+  final bool? engineAllMode;
+  final Set<String> nuvioViewFilterScraperIds;
+  final Set<String> engineViewFilterPluginIds;
+  final Set<String> torrentViewFilterProviderIds;
   final bool userPickedKind;
   final bool userPickedStremioProvider;
   final String searchQuery;
@@ -253,6 +264,45 @@ class CatalogSourcesSessionCache {
   static void writeUi(String key, CatalogSourcesPanelUiState state) {
     _ui[key] = (at: DateTime.now(), state: state);
     _trim(_ui);
+  }
+
+  /// Restores stream rows + fetched markers when RAM was cleared but TTL cache remains.
+  static bool hydrateEngineIfEmpty({
+    required String key,
+    required List<Map<String, dynamic>> currentStreams,
+    required void Function(
+      List<Map<String, dynamic>> streams,
+      Set<String> fetchedPluginIds,
+    )
+    apply,
+  }) {
+    if (currentStreams.isNotEmpty) return false;
+    final cached = readEngine(key);
+    if (cached == null) return false;
+    apply(
+      [for (final s in cached.streams) Map<String, dynamic>.from(s)],
+      Set<String>.from(cached.fetchedPluginIds),
+    );
+    return true;
+  }
+
+  static bool hydrateNuvioIfEmpty({
+    required String key,
+    required List<Map<String, dynamic>> currentStreams,
+    required void Function(
+      List<Map<String, dynamic>> streams,
+      Set<String> fetchedScraperIds,
+    )
+    apply,
+  }) {
+    if (currentStreams.isNotEmpty) return false;
+    final cached = readNuvio(key);
+    if (cached == null) return false;
+    apply(
+      [for (final s in cached.streams) Map<String, dynamic>.from(s)],
+      Set<String>.from(cached.fetchedScraperIds),
+    );
+    return true;
   }
 
   /// Drop one kind (`torrents` | `stremio` | `nuvio` | `engine`) or all kinds for [key].

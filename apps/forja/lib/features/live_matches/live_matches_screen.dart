@@ -142,6 +142,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   List<Map<String, dynamic>> _espnGames = [];
   String? _lastSyncedIptvPortalKey;
   int _forjaLiveLoadGen = 0;
+  int _iptvSportsPlayGen = 0;
   String _forjaLivePluginFilter = 'all';
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
   _LiveMatchesScheduleStatus _scheduleStatus = _LiveMatchesScheduleStatus.both;

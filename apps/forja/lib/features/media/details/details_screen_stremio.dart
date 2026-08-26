@@ -26,6 +26,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
             enabledIds: enabledIds,
             selectedIds: saved,
           );
+          _s._nuvioViewFilterScraperIds = {};
           _s._nuvioSelectionHydrated = true;
         } else {
           _s._nuvioSelectedScraperIds = filterNuvioSelectedScraperIds(
@@ -37,6 +38,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
               enabledIds: enabledIds,
               selectedIds: _s._nuvioSelectedScraperIds,
             );
+            if (!_s._nuvioAllMode) _s._nuvioViewFilterScraperIds = {};
           }
         }
       });

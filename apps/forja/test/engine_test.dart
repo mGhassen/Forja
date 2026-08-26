@@ -131,14 +131,6 @@ void main() {
     test('plugin tap from full All solos that plugin; otherwise toggles', () {
       expect(
         nextEngineSelectedAfterPluginTap(
-          selectedIds: const {'videasy', 'other'},
-          enabledIds: const {'videasy', 'other'},
-          pluginId: 'videasy',
-        ),
-        {'videasy'},
-      );
-      expect(
-        nextEngineSelectedAfterPluginTap(
           selectedIds: const {'videasy'},
           enabledIds: const {'videasy', 'other'},
           pluginId: 'other',
@@ -155,66 +147,41 @@ void main() {
       );
     });
 
-    test('All chrome lights only All, not every plugin chip', () {
-      const selected = {'videasy', 'other'};
-      const visible = ['videasy', 'other'];
+    test('All chrome: multi-select view filters under All', () {
       expect(
         engineProviderChipSelected(
           optionId: EngineIds.allChip,
-          selectedPluginIds: selected,
-          visiblePluginIds: visible,
           allMode: true,
+          selectedPluginIds: const {'videasy', 'other', 'third'},
+          viewFilterPluginIds: const {'videasy', 'other'},
         ),
         isTrue,
       );
       expect(
         engineProviderChipSelected(
           optionId: EngineIds.pluginChip('videasy'),
-          selectedPluginIds: selected,
-          visiblePluginIds: visible,
           allMode: true,
+          selectedPluginIds: const {'videasy', 'other', 'third'},
+          viewFilterPluginIds: const {'videasy', 'other'},
+        ),
+        isTrue,
+      );
+      expect(
+        engineProviderChipSelected(
+          optionId: EngineIds.pluginChip('third'),
+          allMode: true,
+          selectedPluginIds: const {'videasy', 'other', 'third'},
+          viewFilterPluginIds: const {'videasy', 'other'},
         ),
         isFalse,
       );
       expect(
-        engineProviderChipSelected(
-          optionId: EngineIds.pluginChip('videasy'),
-          selectedPluginIds: const {'videasy'},
-          visiblePluginIds: visible,
-          allMode: false,
-        ),
-        isTrue,
-      );
-      // Solo must not keep All lit when only one chip remains visible.
-      expect(
-        engineProviderChipSelected(
-          optionId: EngineIds.allChip,
-          selectedPluginIds: const {'videasy'},
-          visiblePluginIds: const ['videasy'],
-          allMode: false,
-        ),
-        isFalse,
+        toggleSourcesPanelViewFilter(const {'videasy'}, 'other'),
+        {'videasy', 'other'},
       );
       expect(
-        engineProviderChipSelected(
-          optionId: EngineIds.pluginChip('videasy'),
-          selectedPluginIds: const {'videasy'},
-          visiblePluginIds: const ['videasy'],
-          allMode: false,
-        ),
-        isTrue,
-      );
-    });
-
-    test('plugin tap with allMode solos even when selection was full', () {
-      expect(
-        nextEngineSelectedAfterPluginTap(
-          selectedIds: const {'videasy', 'other'},
-          enabledIds: const {'videasy', 'other'},
-          pluginId: 'videasy',
-          allMode: true,
-        ),
-        {'videasy'},
+        toggleSourcesPanelViewFilter(const {'videasy', 'other'}, 'videasy'),
+        {'other'},
       );
     });
 

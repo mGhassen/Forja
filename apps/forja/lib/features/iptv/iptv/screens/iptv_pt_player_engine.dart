@@ -377,11 +377,16 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (_liveSourceKindFor(src) != IptvLiveSourceKind.iptvStalker) {
       return src;
     }
-    final portal = _s.widget.channelGuide?.xtreamPortal?.portal;
+    var portal = _s.widget.channelGuide?.xtreamPortal?.portal;
     final cmd = (src.streamId ?? '').trim();
-    if (portal == null || cmd.isEmpty) {
-      return src;
+    if (cmd.isEmpty) return src;
+    if (portal == null) {
+      if (_s._sportsPortal == null) {
+        await _s._initSportsEpgCache();
+      }
+      portal = _s._sportsPortal?.portal;
     }
+    if (portal == null) return src;
     try {
       final fresh = await IptvClient.createLink(
         portal,

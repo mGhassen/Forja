@@ -91,6 +91,40 @@ async fn handle(request_json: &str) -> Result<Value, String> {
     }
 }
 
+fn xtream_auth_field(info: &Value, key: &str) -> String {
+    info.get(key)
+        .map(|v| match v {
+            Value::String(s) => s.clone(),
+            Value::Number(n) => n.to_string(),
+            _ => v.to_string().trim_matches('"').to_string(),
+        })
+        .unwrap_or_default()
+}
+
+/// Xtream login is OK only when auth=1 or status=Active — not merely when user_info exists.
+fn xtream_user_auth_ok(info: &Value) -> bool {
+    let auth = xtream_auth_field(info, "auth");
+    let status = xtream_auth_field(info, "status").to_ascii_lowercase();
+    auth == "1" || status == "active"
+}
+
+/// Catalog endpoints sometimes return `{"user_info":{"auth":0}}` instead of arrays.
+fn reject_xtream_auth_body(body: &str) -> Result<(), String> {
+    let Ok(root) = serde_json::from_str::<Value>(body) else {
+        return Ok(());
+    };
+    if root.is_array() {
+        return Ok(());
+    }
+    let Some(info) = root.get("user_info") else {
+        return Ok(());
+    };
+    if xtream_user_auth_ok(info) {
+        return Ok(());
+    }
+    Err("auth_failed".into())
+}
+
 async fn login(api: &str, timeout: Duration) -> Result<Value, String> {
     let body = http_get(api, timeout).await?;
     let root: Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
@@ -98,21 +132,7 @@ async fn login(api: &str, timeout: Duration) -> Result<Value, String> {
         .get("user_info")
         .cloned()
         .unwrap_or_else(|| root.clone());
-    let auth = info
-        .get("auth")
-        .map(|v| match v {
-            Value::String(s) => s.clone(),
-            Value::Number(n) => n.to_string(),
-            _ => v.to_string().trim_matches('"').to_string(),
-        })
-        .unwrap_or_default();
-    let status = info
-        .get("status")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
-        .to_ascii_lowercase();
-    let ok = auth == "1" || status == "active" || root.get("user_info").is_some();
-    if !ok {
+    if !xtream_user_auth_ok(&info) {
         return Err("auth_failed".into());
     }
     Ok(json!({ "user_info": info }))
@@ -131,8 +151,12 @@ async fn catalog(api: &str, section: &str, timeout: Duration) -> Result<Value, S
         http_get(&cats_url, timeout),
         http_get(&streams_url, timeout),
     );
-    let cats = parse_categories_rows(&cats_body?).unwrap_or_default();
-    let streams = parse_streams_rows(&streams_body?, section).unwrap_or_default();
+    let cats_body = cats_body?;
+    let streams_body = streams_body?;
+    reject_xtream_auth_body(&cats_body)?;
+    reject_xtream_auth_body(&streams_body)?;
+    let cats = parse_categories_rows(&cats_body).map_err(|e| e.to_string())?;
+    let streams = parse_streams_rows(&streams_body, section).map_err(|e| e.to_string())?;
     let cats = merge_orphan_categories(cats, &streams);
     Ok(json!({
         "categories": cats,
@@ -148,7 +172,8 @@ async fn categories_only(api: &str, section: &str, timeout: Duration) -> Result<
         XtreamSection::Series => "get_series_categories",
     };
     let body = http_get(&format!("{api}&action={cat_action}"), timeout).await?;
-    let cats = parse_categories_rows(&body).unwrap_or_default();
+    reject_xtream_auth_body(&body)?;
+    let cats = parse_categories_rows(&body).map_err(|e| e.to_string())?;
     Ok(json!({ "categories": cats }))
 }
 
@@ -170,7 +195,8 @@ async fn streams(
         url.push_str(&urlencoding::encode(category_id));
     }
     let body = http_get(&url, timeout).await?;
-    let rows = parse_streams_rows(&body, section).unwrap_or_default();
+    reject_xtream_auth_body(&body)?;
+    let rows = parse_streams_rows(&body, section).map_err(|e| e.to_string())?;
     Ok(json!({ "streams": rows }))
 }
 
@@ -283,5 +309,32 @@ mod tests {
     #[test]
     fn transport_mapper_keeps_plain_errors() {
         assert_eq!(map_transport_message("invalid_section", false), "invalid_section");
+    }
+
+    #[test]
+    fn auth_zero_user_info_is_not_ok() {
+        let info: Value = json!({ "auth": 0 });
+        assert!(!xtream_user_auth_ok(&info));
+    }
+
+    #[test]
+    fn auth_one_user_info_is_ok() {
+        let info: Value = json!({ "auth": 1 });
+        assert!(xtream_user_auth_ok(&info));
+    }
+
+    #[test]
+    fn active_status_is_ok_without_auth_one() {
+        let info: Value = json!({ "auth": 0, "status": "Active" });
+        assert!(xtream_user_auth_ok(&info));
+    }
+
+    #[test]
+    fn reject_auth_object_from_catalog_body() {
+        assert_eq!(
+            reject_xtream_auth_body(r#"{"user_info":{"auth":0}}"#),
+            Err("auth_failed".into())
+        );
+        assert!(reject_xtream_auth_body("[]").is_ok());
     }
 }

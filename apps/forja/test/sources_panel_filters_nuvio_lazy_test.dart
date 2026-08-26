@@ -106,19 +106,10 @@ void main() {
       );
     });
 
-    test('scraper tap from full All solos that scraper; otherwise toggles', () {
-      expect(
-        nextNuvioSelectedAfterScraperTap(
-          selectedIds: const {'a', 'b'},
-          enabledIds: const {'a', 'b'},
-          scraperId: 'a',
-        ),
-        {'a'},
-      );
+    test('scraper tap toggles load selection when not in All mode', () {
       expect(
         nextNuvioSelectedAfterScraperTap(
           selectedIds: const {'a'},
-          enabledIds: const {'a', 'b'},
           scraperId: 'b',
         ),
         {'a', 'b'},
@@ -126,49 +117,28 @@ void main() {
       expect(
         nextNuvioSelectedAfterScraperTap(
           selectedIds: const {'a', 'b'},
-          enabledIds: const {'a', 'b', 'c'},
           scraperId: 'a',
         ),
         {'b'},
       );
     });
 
-    test('All chrome lights only All, not every scraper chip', () {
-      const selected = {'a', 'b'};
-      const visible = ['a', 'b'];
+    test('All chrome: multi-select view filters under All', () {
       expect(
         nuvioProviderChipSelected(
-          optionId: 'all_nuvio',
-          selectedScraperIds: selected,
-          visibleScraperIds: visible,
+          optionId: 'nuvio:a',
           allMode: true,
+          selectedScraperIds: const {'a', 'b', 'c'},
+          viewFilterScraperIds: const {'a', 'b'},
         ),
         isTrue,
       );
       expect(
         nuvioProviderChipSelected(
-          optionId: 'nuvio:a',
-          selectedScraperIds: selected,
-          visibleScraperIds: visible,
+          optionId: 'nuvio:c',
           allMode: true,
-        ),
-        isFalse,
-      );
-      expect(
-        nuvioProviderChipSelected(
-          optionId: 'nuvio:a',
-          selectedScraperIds: const {'a'},
-          visibleScraperIds: visible,
-          allMode: false,
-        ),
-        isTrue,
-      );
-      expect(
-        nuvioProviderChipSelected(
-          optionId: 'all_nuvio',
-          selectedScraperIds: const {'a'},
-          visibleScraperIds: const ['a'],
-          allMode: false,
+          selectedScraperIds: const {'a', 'b', 'c'},
+          viewFilterScraperIds: const {'a', 'b'},
         ),
         isFalse,
       );
@@ -378,6 +348,17 @@ void main() {
   });
 
   group('Nuvio scraper cache', () {
+    test('All expand only refetches newly selected never-fetched scrapers', () {
+      expect(
+        nuvioScraperIdsToRefetchOnAllExpand(
+          previousSelectedIds: const {'a'},
+          nextSelectedIds: const {'a', 'b', 'c'},
+          fetchedIds: const {'a', 'b'},
+        ),
+        {'c'},
+      );
+    });
+
     test('keeps empty nuvio fetches so reopen does not re-hit', () {
       const key = 'nuvio-lazy-test';
       CatalogSourcesSessionCache.writeNuvio(
@@ -434,6 +415,36 @@ void main() {
       expect(cached, isNotNull);
       expect(cached!.streams, isEmpty);
       expect(cached.fetchedPluginIds, {'videasy'});
+      CatalogSourcesSessionCache.invalidate(key);
+    });
+
+    test('hydrateEngineIfEmpty restores TTL rows when RAM was cleared', () {
+      const key = 'movie:99';
+      CatalogSourcesSessionCache.writeEngine(
+        key,
+        [
+          {
+            'url': 'https://example.com/a.m3u8',
+            '_enginePluginId': 'videasy',
+          },
+        ],
+        fetchedPluginIds: const {'videasy', 'other'},
+      );
+      var streams = <Map<String, dynamic>>[];
+      var fetched = <String>{};
+      expect(
+        CatalogSourcesSessionCache.hydrateEngineIfEmpty(
+          key: key,
+          currentStreams: streams,
+          apply: (s, f) {
+            streams = s;
+            fetched = f;
+          },
+        ),
+        isTrue,
+      );
+      expect(streams, isNotEmpty);
+      expect(fetched, {'videasy', 'other'});
       CatalogSourcesSessionCache.invalidate(key);
     });
 
@@ -509,53 +520,23 @@ void main() {
     expect(options.first.label, 'All');
   });
 
-  test('torrent All lights only All, not every builtin chip', () {
+  test('torrent All: multi-select view filters', () {
     expect(
       torrentProviderChipSelected(
-        optionId: TorrentSearchProviders.allId,
+        optionId: TorrentSearchProviders.yts,
         selectedSourceId: TorrentSearchProviders.allId,
+        viewFilterProviderIds: {
+          TorrentSearchProviders.yts,
+          TorrentSearchProviders.knaben,
+        },
       ),
       isTrue,
     );
     expect(
       torrentProviderChipSelected(
-        optionId: TorrentSearchProviders.yts,
-        selectedSourceId: TorrentSearchProviders.allId,
-      ),
-      isFalse,
-    );
-    expect(
-      torrentProviderChipSelected(
-        optionId: 'jackett',
-        selectedSourceId: TorrentSearchProviders.allId,
-      ),
-      isFalse,
-    );
-    expect(
-      torrentProviderChipSelected(
-        optionId: TorrentSearchProviders.knaben,
-        selectedSourceId: TorrentSearchProviders.yts,
-      ),
-      isFalse,
-    );
-    expect(
-      torrentProviderChipSelected(
         optionId: TorrentSearchProviders.allId,
-        selectedSourceId: TorrentSearchProviders.noneId,
-      ),
-      isFalse,
-    );
-    expect(
-      torrentProviderChipSelected(
-        optionId: TorrentSearchProviders.yts,
-        selectedSourceId: TorrentSearchProviders.noneId,
-      ),
-      isFalse,
-    );
-    expect(
-      torrentProviderChipSelected(
-        optionId: TorrentSearchProviders.yts,
-        selectedSourceId: TorrentSearchProviders.yts,
+        selectedSourceId: TorrentSearchProviders.allId,
+        viewFilterProviderIds: {TorrentSearchProviders.yts},
       ),
       isTrue,
     );

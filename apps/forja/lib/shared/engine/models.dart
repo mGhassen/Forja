@@ -270,47 +270,40 @@ Set<String> nextEngineSelectedAfterAllTap({
   return allOn ? <String>{} : Set<String>.from(enabledIds);
 }
 
-/// Tap a plugin chip: from All mode → solo that plugin; otherwise toggle.
+/// Tap a plugin chip when not in All mode — toggle load selection.
 Set<String> nextEngineSelectedAfterPluginTap({
   required Set<String> selectedIds,
   required Set<String> enabledIds,
   required String pluginId,
-  bool? allMode,
 }) {
-  final inAll = allMode ??
-      engineFullAllSelected(
-        enabledIds: enabledIds,
-        selectedIds: selectedIds,
-      );
-  if (inAll) {
-    return {pluginId};
-  }
   if (selectedIds.contains(pluginId)) {
     return Set<String>.from(selectedIds)..remove(pluginId);
   }
   return {...selectedIds, pluginId};
 }
 
-/// All chip only when [allMode] — individuals stay dark under All so one tap
-/// filters without deselecting the rest. [allMode] is explicit so soloing to a
-/// single visible chip does not keep All lit.
+/// All group vs provider group — [allMode] + [viewFilterPluginIds] (empty = all).
 bool engineProviderChipSelected({
   required String optionId,
+  required bool allMode,
   required Set<String> selectedPluginIds,
-  required Iterable<String> visiblePluginIds,
-  bool? allMode,
+  required Set<String> viewFilterPluginIds,
 }) {
-  final visible = visiblePluginIds.toSet();
-  final fullAll = allMode ??
-      engineFullAllSelected(
-        enabledIds: visible,
-        selectedIds: selectedPluginIds,
-      );
-  if (optionId == EngineIds.allChip) return fullAll;
+  if (optionId == EngineIds.allChip) return allMode;
   final pluginId = EngineIds.pluginIdFromChip(optionId);
   if (pluginId == null) return false;
-  if (fullAll) return false;
+  if (allMode) return viewFilterPluginIds.contains(pluginId);
   return selectedPluginIds.contains(pluginId);
+}
+
+Set<String> toggleSourcesPanelViewFilter(
+  Set<String> current,
+  String id,
+) {
+  if (current.contains(id)) {
+    return Set<String>.from(current)..remove(id);
+  }
+  return {...current, id};
 }
 
 bool engineStreamBelongsToPlugin(Map<String, dynamic> stream, String pluginId) {

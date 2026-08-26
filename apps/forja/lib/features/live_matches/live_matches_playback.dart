@@ -804,6 +804,7 @@ mixin _LiveMatchesPlayback
     IptvPlaySource picked,
   ) async {
     if (!mounted) return;
+    final gen = ++_s._iptvSportsPlayGen;
     final ordered = <IptvPlaySource>[
       picked,
       for (final s in sources)
@@ -812,11 +813,16 @@ mixin _LiveMatchesPlayback
             (s.url.isEmpty || s.url != picked.url))
           s,
     ];
-    final resolved = await _resolveIptvSportsPlayUrls(ordered);
-    if (!mounted || resolved.isEmpty) {
-      if (mounted) {
-        ForjaToast.info('Could not open channel');
-      }
+    var resolved = <IptvPlaySource>[];
+    final ok = await _runWithCancellableLoading('Opening channel…', (
+      setMessage,
+    ) async {
+      setMessage('Creating stream link…');
+      resolved = await _resolveIptvSportsPlayUrls(ordered);
+    });
+    if (!ok || !mounted || gen != _s._iptvSportsPlayGen) return;
+    if (resolved.isEmpty) {
+      ForjaToast.info('Could not open channel');
       return;
     }
     final kind = resolved.first.liveSourceKind ?? IptvLiveSourceKind.iptvXtream;
@@ -834,7 +840,8 @@ mixin _LiveMatchesPlayback
     );
   }
 
-  /// Stalker: create_link at play (expiring). Xtream: pass through static URLs.
+  /// Stalker: create_link only the picked channel before open. Sibling channels
+  /// keep [streamId] so the player can mint failover / reconnect links.
   Future<List<IptvPlaySource>> _resolveIptvSportsPlayUrls(
     List<IptvPlaySource> sources,
   ) async {
@@ -863,31 +870,52 @@ mixin _LiveMatchesPlayback
     }
 
     final out = <IptvPlaySource>[];
+    var minted = false;
     for (final s in sources) {
       final cmd = (s.streamId ?? '').trim();
+      final stalkerRow = s.liveSourceKind == IptvLiveSourceKind.iptvStalker ||
+          (s.url.trim().isEmpty && cmd.isNotEmpty);
+      if (!stalkerRow) {
+        if (s.url.trim().isNotEmpty) out.add(s);
+        continue;
+      }
       if (cmd.isEmpty) {
         if (s.url.trim().isNotEmpty) out.add(s);
         continue;
       }
-      final url = await IptvClient.createLink(
-        portal.portal,
-        cmd: cmd,
-        section: 'live',
-      );
-      if (url == null || url.isEmpty) {
-        debugPrint('[LiveMatches] Stalker create_link failed for $cmd');
-        continue;
+      if (!minted) {
+        final url = await IptvClient.createLink(
+          portal.portal,
+          cmd: cmd,
+          section: 'live',
+        );
+        if (url == null || url.isEmpty) {
+          debugPrint('[LiveMatches] Stalker create_link failed for $cmd');
+          continue;
+        }
+        minted = true;
+        out.add(IptvPlaySource(
+          url: url,
+          label: s.label,
+          detail: s.detail,
+          logoUrl: s.logoUrl,
+          streamId: s.streamId,
+          epgChannelId: s.epgChannelId,
+          headers: s.headers,
+          liveSourceKind: IptvLiveSourceKind.iptvStalker,
+        ));
+      } else {
+        out.add(IptvPlaySource(
+          url: '',
+          label: s.label,
+          detail: s.detail,
+          logoUrl: s.logoUrl,
+          streamId: s.streamId,
+          epgChannelId: s.epgChannelId,
+          headers: s.headers,
+          liveSourceKind: IptvLiveSourceKind.iptvStalker,
+        ));
       }
-      out.add(IptvPlaySource(
-        url: url,
-        label: s.label,
-        detail: s.detail,
-        logoUrl: s.logoUrl,
-        streamId: s.streamId,
-        epgChannelId: s.epgChannelId,
-        headers: s.headers,
-        liveSourceKind: IptvLiveSourceKind.iptvStalker,
-      ));
     }
     return out;
   }

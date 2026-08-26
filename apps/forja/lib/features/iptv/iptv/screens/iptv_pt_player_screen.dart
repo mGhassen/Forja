@@ -530,6 +530,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   late String _selectedGroupId;
   late String _currentChannelId;
   IptvGuideEpgCache? _epgCache;
+  /// Armed Forja Sports portal — Stalker create_link without channelGuide.
+  VerifiedPortal? _sportsPortal;
 
   // Watchdog state
   Timer? _watchdog;
@@ -1190,12 +1192,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
         break;
       }
     }
-    if (portal == null ||
-        !portal.portal.platform.supportsEpg ||
-        _disposed ||
-        !mounted) {
-      return;
-    }
+    if (portal == null || _disposed || !mounted) return;
+    _sportsPortal = portal;
+    if (!portal.portal.platform.supportsEpg) return;
     setState(() => _epgCache = IptvGuideEpgCache(portal!));
   }
 

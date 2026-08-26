@@ -35,7 +35,7 @@ On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS sc
 - Portal is only in Live Matches / IPTV Portals (not Settings)
 - Matching tokenizes the event title, teams, and sport chip, then scores **channel name**, **folder/genre name**, and **short EPG** (no hardcoded venue/sport alias lists). For team sports, name hits are preferred for EPG lookups; if few/none mention the teams, Forja still short-EPGs up to **120** channels in your mapped folders so programme titles on ESPN / beIN / etc. can match
 - Channel match results are remembered for **30 minutes** per match and portal when channels were found (app restart clears them); **no channels** is retried on the next open
-- **Stalker:** matched rows keep the channel cmd (not a play URL). Forja calls `create_link` when you pick a channel — links expire, so they are not cached as durable URLs. Short EPG matching uses the Mag channel id (`epg_channel_id`, or digits from the cmd) — same as IPTV Live
+- **Stalker:** matched rows keep the channel cmd (not a play URL). Forja calls `create_link` only for the channel you pick (failover channels mint on switch) — links expire, so they are not cached as durable URLs. Short EPG matching uses the Mag channel id (`epg_channel_id`, or digits from the cmd) — same as IPTV Live
 - No channels on deck after retry means the portal had no channel name/EPG hit for that game
 - Live Matches stream resolve uses **Engine** (native player) by default on **Forja Live**; the mode pill next to **Servers** shows **Sniff** or **Engine** there (switch in Settings → Forja Sports). **Forja Sports** shows **IPTV**; **Stremio** shows **Stremio**.
 

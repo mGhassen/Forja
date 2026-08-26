@@ -317,6 +317,33 @@ fn matches_team_side(text_lower: &str, team: &str, tokens: &[String]) -> bool {
     tokens.iter().any(|k| text_has_token(text_lower, k))
 }
 
+/// EPG titles shorten names (`Newcastle v West Brom`) — looser than channel-name match.
+fn matches_team_in_epg(text_lower: &str, team: &str, tokens: &[String]) -> bool {
+    if matches_team_side(text_lower, team, tokens) {
+        return true;
+    }
+    let team_lower = team.trim().to_lowercase();
+    let words: Vec<&str> = team_lower
+        .split_whitespace()
+        .filter(|w| !w.is_empty())
+        .collect();
+    for w in &words {
+        if w.len() >= 4 && !is_generic_team_token(w) && text_has_token(text_lower, w) {
+            return true;
+        }
+    }
+    if words.len() >= 2 {
+        let w1 = words[1];
+        if w1.len() >= 4 {
+            let short = format!("{} {}", words[0], &w1[..4.min(w1.len())]);
+            if text_lower.contains(&short) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 fn has_4k(text_lower: &str) -> bool {
     text_has_token(text_lower, "4k")
 }
@@ -589,8 +616,8 @@ pub fn match_streams(
 
         let home_in_name = matches_team_side(&name, &game.home_team, &home_tokens);
         let away_in_name = matches_team_side(&name, &game.away_team, &away_tokens);
-        let home_in_desc = matches_team_side(&description, &game.home_team, &home_tokens);
-        let away_in_desc = matches_team_side(&description, &game.away_team, &away_tokens);
+        let home_in_desc = matches_team_in_epg(&description, &game.home_team, &home_tokens);
+        let away_in_desc = matches_team_in_epg(&description, &game.away_team, &away_tokens);
         let home_in_cat = matches_team_side(&cat, &game.home_team, &home_tokens);
         let away_in_cat = matches_team_side(&cat, &game.away_team, &away_tokens);
         let both_in_either = (home_in_name || home_in_desc || home_in_cat)
@@ -1052,6 +1079,28 @@ mod tests {
             hits[0].get("name").and_then(|v| v.as_str()),
             Some("TNA+ PPV HD")
         );
+    }
+
+    #[test]
+    fn epg_shorthand_matches_soccer_fixtures() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "homeTeam": "Newcastle United",
+            "awayTeam": "West Bromwich Albion",
+            "title": "Newcastle United vs West Bromwich Albion",
+            "dateMs": 1_700_000_000_000i64
+        }));
+        let cands = vec![Candidate {
+            name: "Sky Sports Main Event".into(),
+            description: "Newcastle v West Brom".into(),
+            start_timestamp: None,
+            stream_url: String::new(),
+            category_label: "Sports".into(),
+            logo: String::new(),
+            stream_id: "cmd://1".into(),
+            epg_channel_id: "1".into(),
+        }];
+        let hits = match_streams(&g, &cands, &[]);
+        assert_eq!(hits.len(), 1, "short EPG titles must match both sides");
     }
 
     #[test]
