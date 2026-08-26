@@ -203,6 +203,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   late final ValueNotifier<Map<String, List<StreamSource>>>
       _ownedProviderSourcesCache;
   bool _historySaved = false;
+  Timer? _progressSaveTimer;
   bool _hasError = false;
   String _errorMessage = '';
 
@@ -522,6 +523,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     _tvKeyFocus.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
+    _progressSaveTimer?.cancel();
     _indicatorHideTimer?.cancel();
     _trackAutoSelectTimer?.cancel();
     _trackAutoSelectTimer = null;

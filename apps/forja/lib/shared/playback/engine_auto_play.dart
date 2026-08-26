@@ -5,6 +5,7 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/engine_catalog_stream_probe.dart';
+import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/utils.dart';
@@ -712,27 +713,44 @@ Future<void> _playFromProbedSources({
   final stremioAddonBaseUrl = stream['_addonBaseUrl']?.toString();
   final primary = sources.first;
   final ctx = loadingDialogContext;
-  Future<void> openPlayer() => AppRouter.openPlayer(
-    context,
-    streamUrl: primary.url,
-    title: movie.title,
-    headers: primary.headers,
+  final epNum = hubEpisodeNumber ?? episode;
+  final onSaveProgress = hubEngineSaveProgressCallback(
+    session: enginePlaySession,
     movie: movie,
-    selectedSeason: needsEp ? (season ?? 1) : null,
-    selectedEpisode: needsEp ? (episode ?? 1) : null,
-    startPosition: startPosition,
-    activeProvider: primary.providerId ?? catalogHttpPlayProviderId(stream),
-    sources: sources,
-    pinSource: false,
-    streamsPrevalidated: true,
-    externalSubtitles: catalogStreamExternalSubtitles(stream),
-    stremioId: stremioId,
-    stremioAddonBaseUrl: stremioAddonBaseUrl,
-    enginePlaySession: enginePlaySession,
+    episodeNumber: epNum,
     hubEpisodes: hubEpisodes,
-    hubEpisodeNumber: hubEpisodeNumber ?? episode,
-    fadeTransition: ctx != null,
   );
+  Future<void> openPlayer() async {
+    await seedHubEngineWatchHistory(
+      session: enginePlaySession,
+      movie: movie,
+      episodeNumber: epNum,
+      hubEpisodes: hubEpisodes,
+    );
+    if (isAborted()) return;
+    await AppRouter.openPlayer(
+      context,
+      streamUrl: primary.url,
+      title: movie.title,
+      headers: primary.headers,
+      movie: movie,
+      selectedSeason: needsEp ? (season ?? 1) : null,
+      selectedEpisode: needsEp ? (episode ?? 1) : null,
+      startPosition: startPosition,
+      activeProvider: primary.providerId ?? catalogHttpPlayProviderId(stream),
+      sources: sources,
+      pinSource: false,
+      streamsPrevalidated: true,
+      externalSubtitles: catalogStreamExternalSubtitles(stream),
+      stremioId: stremioId,
+      stremioAddonBaseUrl: stremioAddonBaseUrl,
+      enginePlaySession: enginePlaySession,
+      hubEpisodes: hubEpisodes,
+      hubEpisodeNumber: epNum,
+      onSaveProgress: onSaveProgress,
+      fadeTransition: ctx != null,
+    );
+  }
   if (ctx != null && ctx.mounted) {
     await crossfadeLoadingOverlayToPlayer(
       loadingDialogContext: ctx,
@@ -781,25 +799,42 @@ Future<void> _playResolveRow({
   if (resolved is! StremioPlayable) return;
 
   final ctx = loadingDialogContext;
-  Future<void> openPlayer() => AppRouter.openPlayer(
-    context,
-    streamUrl: resolved.streamUrl,
-    title: movie.title,
-    magnetLink: resolved.magnetLink,
+  final epNum = hubEpisodeNumber ?? episode;
+  final onSaveProgress = hubEngineSaveProgressCallback(
+    session: enginePlaySession,
     movie: movie,
-    selectedSeason: needsEp ? (season ?? 1) : null,
-    selectedEpisode: needsEp ? (episode ?? 1) : null,
-    fileIndex: resolved.fileIndex,
-    startPosition: startPosition,
-    activeProvider: catalogHttpPlayProviderId(stream),
-    externalSubtitles: catalogStreamExternalSubtitles(stream),
-    stremioId: stremioId,
-    stremioAddonBaseUrl: stremioAddonBaseUrl,
-    enginePlaySession: enginePlaySession,
+    episodeNumber: epNum,
     hubEpisodes: hubEpisodes,
-    hubEpisodeNumber: hubEpisodeNumber ?? episode,
-    fadeTransition: ctx != null,
   );
+  Future<void> openPlayer() async {
+    await seedHubEngineWatchHistory(
+      session: enginePlaySession,
+      movie: movie,
+      episodeNumber: epNum,
+      hubEpisodes: hubEpisodes,
+    );
+    if (isAborted()) return;
+    await AppRouter.openPlayer(
+      context,
+      streamUrl: resolved.streamUrl,
+      title: movie.title,
+      magnetLink: resolved.magnetLink,
+      movie: movie,
+      selectedSeason: needsEp ? (season ?? 1) : null,
+      selectedEpisode: needsEp ? (episode ?? 1) : null,
+      fileIndex: resolved.fileIndex,
+      startPosition: startPosition,
+      activeProvider: catalogHttpPlayProviderId(stream),
+      externalSubtitles: catalogStreamExternalSubtitles(stream),
+      stremioId: stremioId,
+      stremioAddonBaseUrl: stremioAddonBaseUrl,
+      enginePlaySession: enginePlaySession,
+      hubEpisodes: hubEpisodes,
+      hubEpisodeNumber: epNum,
+      onSaveProgress: onSaveProgress,
+      fadeTransition: ctx != null,
+    );
+  }
   if (ctx != null && ctx.mounted) {
     await crossfadeLoadingOverlayToPlayer(
       loadingDialogContext: ctx,

@@ -108,6 +108,10 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
 
     // ── Lifecycle Observer ───────────────────────────────────────────────
     WidgetsBinding.instance.addObserver(_s);
+    _s._progressSaveTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (_s._disposed || !_s._isPlayingNotifier.value) return;
+      _s._saveWatchHistory(isBgPause: true);
+    });
 
     _s._loadHeroMetadata();
     unawaited(_s._refreshAdjacentEpisodeFlags());
