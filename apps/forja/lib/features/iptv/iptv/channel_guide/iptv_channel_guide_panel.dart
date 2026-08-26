@@ -14,6 +14,7 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/list_letter_jump_scope.dart';
+import 'package:forja/shared/widgets/forja_network_image.dart';
 
 enum _GuideStep { groups, channels }
 enum _FocusColumn { groups, channels, epg }
@@ -1538,20 +1539,16 @@ class _ChannelLogo extends StatelessWidget {
     return SizedBox(
       width: width,
       height: height,
-      child: Image.network(
-        url,
+      child: ForjaNetworkImage(
+        url: url,
         width: width,
         height: height,
         fit: BoxFit.contain,
         alignment: Alignment.center,
-        cacheWidth: cacheW,
+        memCacheWidth: cacheW,
         filterQuality: tv ? FilterQuality.low : FilterQuality.medium,
-        gaplessPlayback: true,
-        errorBuilder: (_, _, _) => _placeholder(),
-        loadingBuilder: (ctx, child, prog) {
-          if (prog == null) return child;
-          return _placeholder();
-        },
+        placeholder: _placeholder(),
+        error: _placeholder(),
       ),
     );
   }

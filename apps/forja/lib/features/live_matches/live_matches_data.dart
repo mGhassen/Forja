@@ -212,11 +212,8 @@ mixin _LiveMatchesData
     }());
   }
 
-  Future<void> _toggleIptvPortalPanel() async {
-    final ctrl = ref.read(iptvControllerProvider);
-    await ctrl.preparePortalPanel();
-    if (!mounted) return;
-    ctrl.togglePortalPanel();
+  void _toggleIptvPortalPanel() {
+    ref.read(iptvControllerProvider).togglePortalPanel();
   }
 
   String get _catalogTopBarLabel {
@@ -287,7 +284,7 @@ mixin _LiveMatchesData
   Widget _iptvPortalTopBarButton(IptvController ctrl) {
     return IptvPortalsTopBarButton(
       ctrl: ctrl,
-      onTogglePanel: () => unawaited(_toggleIptvPortalPanel()),
+      onTogglePanel: _toggleIptvPortalPanel,
       tvTabId: _LiveMatchesScreenState._tabId,
       tvRowId: _LiveMatchesScreenState._topBarRowId,
       tvItemIndex: _s._topBarPortalIndex,

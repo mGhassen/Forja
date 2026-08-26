@@ -7,6 +7,7 @@ import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
+import 'package:forja/shared/widgets/forja_network_image.dart';
 import 'package:forja/shared/design/design.dart';
 
 class IptvChannelSearchOverlay extends StatefulWidget {
@@ -600,20 +601,16 @@ class _ChannelLogo extends StatelessWidget {
     return SizedBox(
       width: width,
       height: height,
-      child: Image.network(
-        url,
+      child: ForjaNetworkImage(
+        url: url,
         width: width,
         height: height,
         fit: BoxFit.contain,
         alignment: Alignment.center,
-        cacheWidth: cacheW,
+        memCacheWidth: cacheW,
         filterQuality: tv ? FilterQuality.low : FilterQuality.medium,
-        gaplessPlayback: true,
-        errorBuilder: (_, _, _) => _placeholder(),
-        loadingBuilder: (ctx, child, prog) {
-          if (prog == null) return child;
-          return _placeholder();
-        },
+        placeholder: _placeholder(),
+        error: _placeholder(),
       ),
     );
   }

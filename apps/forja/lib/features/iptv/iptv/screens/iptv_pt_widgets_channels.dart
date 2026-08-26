@@ -679,11 +679,11 @@ class _ChannelHitCard extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.03),
                             child: Padding(
                               padding: const EdgeInsets.all(6),
-                              child: Image.network(
-                                hit.stream.icon,
+                              child: ForjaNetworkImage(
+                                url: hit.stream.icon,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, _, _) =>
-                                    const _StreamPlaceholder(),
+                                error: const _StreamPlaceholder(),
+                                placeholder: const _StreamPlaceholder(),
                               ),
                             ),
                           ),

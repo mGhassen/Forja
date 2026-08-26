@@ -9,6 +9,7 @@ import 'package:forja/features/iptv/iptv/widgets/iptv_live_favorite_button.dart'
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/widgets/forja_network_image.dart';
 
 /// Pure layout maths for the Live catalog EPG timeline.
 class IptvEpgTimeline {
@@ -518,12 +519,12 @@ class _ChannelCellState extends State<_ChannelCell> {
                 if (stream.icon.isNotEmpty)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(5),
-                    child: Image.network(
-                      stream.icon,
+                    child: ForjaNetworkImage(
+                      url: stream.icon,
                       width: 34,
                       height: 34,
                       fit: BoxFit.contain,
-                      errorBuilder: (_, error, stackTrace) => const SizedBox(
+                      error: const SizedBox(
                         width: 34,
                         height: 34,
                         child: Icon(

@@ -1402,11 +1402,10 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
               SizedBox(
                 width: 36,
                 height: 36,
-                child: Image.network(
-                  _s._logoUrl!.trim(),
+                child: ForjaNetworkImage(
+                  url: _s._logoUrl!.trim(),
                   fit: BoxFit.contain,
-                  gaplessPlayback: true,
-                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                  error: const SizedBox.shrink(),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1484,12 +1483,12 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final size = compact ? 56.0 : 72.0;
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        _s._logoUrl!,
+      child: ForjaNetworkImage(
+        url: _s._logoUrl!,
         width: size,
         height: size,
         fit: BoxFit.contain,
-        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+        error: const SizedBox.shrink(),
       ),
     );
   }
@@ -2342,28 +2341,24 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     return SizedBox(
       width: size,
       height: size,
-      child: Image.network(
-        url,
+      child: ForjaNetworkImage(
+        url: url,
         width: size,
         height: size,
         fit: BoxFit.contain,
         alignment: Alignment.center,
-        cacheWidth: cacheW,
+        memCacheWidth: cacheW,
         filterQuality: FilterQuality.medium,
-        gaplessPlayback: true,
-        errorBuilder: (_, _, _) => Icon(
+        error: Icon(
           Icons.live_tv_rounded,
           color: Colors.white38,
           size: size * 0.55,
         ),
-        loadingBuilder: (ctx, child, prog) {
-          if (prog == null) return child;
-          return Icon(
-            Icons.live_tv_rounded,
-            color: Colors.white24,
-            size: size * 0.55,
-          );
-        },
+        placeholder: Icon(
+          Icons.live_tv_rounded,
+          color: Colors.white24,
+          size: size * 0.55,
+        ),
       ),
     );
   }

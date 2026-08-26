@@ -23,6 +23,7 @@ import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_search_bar.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
+import 'package:forja/shared/widgets/forja_network_image.dart';
 import 'package:forja/shared/widgets/list_letter_jump_scope.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';

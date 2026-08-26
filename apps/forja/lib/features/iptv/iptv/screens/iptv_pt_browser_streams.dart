@@ -931,18 +931,15 @@ Widget _streamIconThumb({
   if (icon.isEmpty) {
     return const SizedBox.expand(child: _StreamPlaceholder());
   }
-  final image = Image.network(
-    icon,
+  final image = ForjaNetworkImage(
+    url: icon,
     fit: contain ? BoxFit.contain : BoxFit.cover,
     alignment: Alignment.center,
-    gaplessPlayback: true,
-    cacheWidth: cacheWidth,
-    // Only cacheWidth — setting both forces a stretched decode (deformed logos).
+    memCacheWidth: cacheWidth,
     filterQuality:
         cacheWidth != null ? FilterQuality.low : FilterQuality.medium,
-    errorBuilder: (_, _, _) => const _StreamPlaceholder(),
-    loadingBuilder: (_, child, p) =>
-        p == null ? child : const _StreamPlaceholder(),
+    placeholder: const _StreamPlaceholder(),
+    error: const _StreamPlaceholder(),
   );
   if (!contain) return SizedBox.expand(child: image);
   return Padding(

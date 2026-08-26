@@ -57,6 +57,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
+import 'package:forja/shared/widgets/forja_network_image.dart';
 import 'package:forja/shared/widgets/desktop_window_geometry.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
