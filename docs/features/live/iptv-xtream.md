@@ -69,7 +69,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 - Programme guide is optional — turn off **IPTV programme guide (EPG)** under Settings → Playback if you want zero EPG network requests
 - **Deal** is available only when your signed-in account has `dealPortal` enabled (default off). It spends **1 credit** for up to **5** alive portals from the shared catalog pool (weighted lottery — less-dealt / recently checked hosts preferred, diverse hosts when possible; region `ANY`), and never more than your remaining portal slots. Credits are granted by admins; balance shows in Portals and on web **Account → IPTV** only when Deal is unlocked.
 - Each profile may hold up to **5** portals by default (`features.maxIptvPortals`). Operators can raise that number per account in Features; **admin** accounts are unlimited. Add / import / scrape / Deal stop at the limit and show a toast.
-- Portal quality varies — timeouts usually mean provider or network issues
+- Portal quality varies — timeouts / “Could not reach portal” usually mean the host is down, DNS/ISP blocked, or the URL/port is wrong (not bad credentials; those show as login failed)
 - Clear stale alive checks / channel scan hits / **cached catalogs** from **Settings → Data & backup → IPTV portal cache** (portals and favorites stay; next IPTV open re-fetches catalogs)
 - Export or import portals as CSV from **Settings → Data & backup → IPTV portals** when the IPTV tab is visible (same format as the web remote settings page; includes `platform`; import adds only portals that are not already saved)
 - Series VOD uses the same player as live with seek support when the stream allows — the VOD seek bar uses Forja brand green for the played fill and thumb

@@ -119,6 +119,36 @@ class IptvClient {
   /// sheet must use the same limit so they share one cache entry.
   static const shortEpgLimit = 8;
 
+  /// Map engine / transport noise to a safe UI string (no request URLs /
+  /// credentials). Matches Rust `format_transport_err`.
+  static String formatEngineError(Object? raw) {
+    final s = raw?.toString().trim() ?? '';
+    if (s.isEmpty) return 'Could not load catalog';
+    final lower = s.toLowerCase();
+    if (lower.contains('auth_failed')) {
+      return 'Login failed — check username and password';
+    }
+    if (lower.contains('error sending request') ||
+        lower.contains('timed out') ||
+        lower.contains('timeout') ||
+        lower.contains('connection refused') ||
+        lower.contains('connection reset') ||
+        lower.contains('dns') ||
+        lower.contains('network is unreachable') ||
+        lower.contains('certificate') ||
+        lower.contains('tls') ||
+        lower.contains('ssl') ||
+        lower.contains('player_api') ||
+        s.contains('://') ||
+        lower.contains('could not reach portal')) {
+      return 'Could not reach portal — check URL or network';
+    }
+    if (RegExp(r'^HTTP \d{3}$').hasMatch(s)) {
+      return 'Portal returned $s';
+    }
+    return s;
+  }
+
   /// Large Live lineups (20k+ streams) need headroom for download + parse.
   static int _catalogTimeoutSecs(IptvSection kind) => switch (kind) {
         IptvSection.live => 90,
@@ -228,7 +258,7 @@ class IptvClient {
       return IptvCatalogFetch(
         categories: const [],
         streams: const [],
-        error: root['error'].toString(),
+        error: formatEngineError(root['error']),
       );
     }
     return IptvCatalogFetch(

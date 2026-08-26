@@ -92,7 +92,7 @@ mixin _IptvControllerLive on ChangeNotifier {
     try {
       _c.episodes = await IptvClient.seriesEpisodes(p.portal, s.streamId);
     } catch (e) {
-      _c.error = '$e';
+      _c.error = IptvClient.formatEngineError(e);
     } finally {
       _c.isLoading = false;
       notifyListeners();

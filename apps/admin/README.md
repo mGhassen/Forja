@@ -13,7 +13,7 @@ pnpm dev   # http://127.0.0.1:4000
 
 Sign in with an account where `accounts.is_admin = true`.
 
-**PostHog on Accounts (optional):** set `POSTHOG_PERSONAL_API_KEY` + `POSTHOG_PROJECT_ID` (personal key with `person:read` / query; `POSTHOG_PROJECT_ID` may be numeric or the project `phc_…` token — resolved server-side). See `.env.example`.
+**PostHog on Accounts (optional):** set `POSTHOG_PERSONAL_API_KEY` + `POSTHOG_PROJECT_ID` (personal key with `person:read` / query; `POSTHOG_PROJECT_ID` may be numeric or project `phc_…` — resolved via project-scoped `?token=`). See `.env.example`.
 
 ## Inngest catalog scrape
 

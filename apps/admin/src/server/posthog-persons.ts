@@ -75,7 +75,10 @@ function isNumericProjectId(ref: string): boolean {
 
 /**
  * PostHog REST paths need the numeric project id.
- * Env may be that id, or the project API token (`phc_…`) — resolve via /api/projects/.
+ *
+ * Env may be that id, or the project API token (`phc_…`).
+ * Scoped personal keys cannot hit GET /api/projects/ (org list) — resolve via a
+ * project-based GET with ?token=phc_… (PostHog overrides path id from the token).
  */
 async function resolveNumericProjectId(env: PosthogEnv): Promise<string> {
   const ref = env.projectRef
@@ -84,28 +87,26 @@ async function resolveNumericProjectId(env: PosthogEnv): Promise<string> {
   const cached = resolvedProjectIds.get(ref)
   if (cached) return cached
 
-  const res = await fetch(`${env.host}/api/projects/`, {
+  // Path id is a placeholder; ?token= selects the real project (GET-only token parse).
+  const url = new URL(`${env.host}/api/projects/0/`)
+  url.searchParams.set('token', ref)
+  const res = await fetch(url, {
     headers: { Authorization: `Bearer ${env.apiKey}` },
   })
   const json = (await res.json().catch(() => ({}))) as {
-    results?: Array<{ id?: number | string; api_token?: string }>
+    id?: number | string
     detail?: string
     error?: string
   }
   if (!res.ok) {
     throw new Error(
-      json.error || json.detail || `PostHog projects list ${res.status}`,
+      json.error || json.detail || `PostHog project resolve ${res.status}`,
     )
   }
-
-  const projects = json.results ?? []
-  const match = projects.find((p) => p.api_token === ref)
-  if (match?.id == null) {
-    throw new Error(
-      'POSTHOG_PROJECT_ID phc_… not found in PostHog projects for this personal key',
-    )
+  if (json.id == null) {
+    throw new Error('POSTHOG_PROJECT_ID phc_… did not resolve to a project id')
   }
-  const numeric = String(match.id)
+  const numeric = String(json.id)
   resolvedProjectIds.set(ref, numeric)
   return numeric
 }

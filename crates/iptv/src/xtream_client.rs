@@ -202,12 +202,42 @@ async fn http_get(url: &str, timeout: Duration) -> Result<String, String> {
         .header("Accept", "application/json,*/*")
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(format_transport_err)?;
     let status = resp.status().as_u16();
     if !(200..300).contains(&status) {
         return Err(format!("HTTP {status}"));
     }
-    resp.text().await.map_err(|e| e.to_string())
+    resp.text().await.map_err(format_transport_err)
+}
+
+/// User-facing transport errors — never echo the request URL (credentials in query).
+fn format_transport_err(err: reqwest::Error) -> String {
+    map_transport_message(&err.to_string(), err.is_timeout() || err.is_connect())
+}
+
+fn map_transport_message(raw: &str, force_unreachable: bool) -> String {
+    const MSG: &str = "Could not reach portal — check URL or network";
+    if force_unreachable {
+        return MSG.into();
+    }
+    let lower = raw.to_ascii_lowercase();
+    if lower.contains("error sending request")
+        || lower.contains("timed out")
+        || lower.contains("timeout")
+        || lower.contains("connection")
+        || lower.contains("dns")
+        || lower.contains("name or service not known")
+        || lower.contains("nodename nor servname")
+        || lower.contains("network is unreachable")
+        || lower.contains("certificate")
+        || lower.contains("tls")
+        || lower.contains("ssl")
+        || raw.contains("://")
+        || lower.contains("player_api")
+    {
+        return MSG.into();
+    }
+    raw.to_string()
 }
 
 #[cfg(test)]
@@ -239,5 +269,19 @@ mod tests {
         );
         let v: Value = serde_json::from_str(&out).unwrap();
         assert!(v.get("error").is_some());
+    }
+
+    #[test]
+    fn transport_mapper_hides_credential_urls() {
+        let raw = "error sending request for url (http://x/player_api.php?username=a&password=b): dns error";
+        let msg = map_transport_message(raw, false);
+        assert_eq!(msg, "Could not reach portal — check URL or network");
+        assert!(!msg.contains("password"));
+        assert!(!msg.contains("://"));
+    }
+
+    #[test]
+    fn transport_mapper_keeps_plain_errors() {
+        assert_eq!(map_transport_message("invalid_section", false), "invalid_section");
     }
 }

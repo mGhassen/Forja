@@ -340,7 +340,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     } catch (e) {
       if (loadId != _c._catalogLoadId) return;
       if (_c.activePortal?.key != p.key || _c.activeSection != section) return;
-      _c.error = '$e';
+      _c.error = IptvClient.formatEngineError(e);
       if (section == IptvSection.live) {
         _c.categories = IptvLiveCatalog.withPins(const []);
         _c.browserSelectedCategoryId = _defaultCategoryId(_c.categories);
