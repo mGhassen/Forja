@@ -21,6 +21,12 @@ Future<void> runHubEngineAutoPlay({
   int? malId,
   String? animeAudioCategory,
   Duration? startPosition,
+  /// Resume: re-extract this plugin first (from watch history `sourceId`).
+  String? preferredPluginId,
+
+  /// Resume: last play URL from watch history — probed before re-extract.
+  String? savedStreamUrl,
+
   String? loadingSubtitle,
   List<PlayerHubEpisode>? hubEpisodes,
 }) {
@@ -40,6 +46,8 @@ Future<void> runHubEngineAutoPlay({
     malId: malId,
     animeAudioCategory: animeAudioCategory,
     startPosition: startPosition,
+    preferredPluginId: preferredPluginId,
+    savedStreamUrl: savedStreamUrl,
     loadingSubtitle: loadingSubtitle,
     hubEpisodes: hubEpisodes,
     hubEpisodeNumber: episode,

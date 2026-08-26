@@ -611,6 +611,11 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
     switch (method) {
       case 'stream':
+        if (isEngineSavedProgress(progress) && _playSourceEngine) {
+          await _startEngineAutoPlayback(fromEngineResume: true);
+          if (mounted) _claimTvHeroPlayAfterPlayer();
+          return true;
+        }
         if (!_playSourceWebstreaming) return false;
         if (_webstreamingStreams.isNotEmpty) {
           await _playWebstreamingStream(

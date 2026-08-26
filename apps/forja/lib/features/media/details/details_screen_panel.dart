@@ -804,20 +804,32 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     double prog = 0;
     var resumable = false;
     if (_s._lastProgress != null) {
-      final String? sid = s['infoHash'] != null
-          ? 'magnet:?xt=urn:btih:${s['infoHash']}'
-          : s['url'];
-      if (sid != null) {
-        final hs = _s._lastProgress!['sourceId'] as String;
-        final match = s['infoHash'] != null
-            ? _s._getHash(hs) == _s._getHash(sid)
-            : hs == sid;
-        if (match) {
-          final pos = watchHistoryInt(_s._lastProgress!['position']);
-          final dur = watchHistoryInt(_s._lastProgress!['duration']);
-          if (dur > 0) {
-            prog = (pos / dur).clamp(0.0, 1.0);
-            resumable = true;
+      final hs = _s._lastProgress!['sourceId'] as String? ?? '';
+      final enginePlugin = s['_enginePluginId']?.toString();
+      if (enginePlugin != null &&
+          enginePlugin.isNotEmpty &&
+          hs == EngineIds.pluginChip(enginePlugin)) {
+        final pos = watchHistoryInt(_s._lastProgress!['position']);
+        final dur = watchHistoryInt(_s._lastProgress!['duration']);
+        if (dur > 0) {
+          prog = (pos / dur).clamp(0.0, 1.0);
+          resumable = WatchProgressBar.isResumable(pos, dur);
+        }
+      } else {
+        final String? sid = s['infoHash'] != null
+            ? 'magnet:?xt=urn:btih:${s['infoHash']}'
+            : s['url'];
+        if (sid != null) {
+          final match = s['infoHash'] != null
+              ? _s._getHash(hs) == _s._getHash(sid)
+              : hs == sid;
+          if (match) {
+            final pos = watchHistoryInt(_s._lastProgress!['position']);
+            final dur = watchHistoryInt(_s._lastProgress!['duration']);
+            if (dur > 0) {
+              prog = (pos / dur).clamp(0.0, 1.0);
+              resumable = true;
+            }
           }
         }
       }
@@ -849,10 +861,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           : () => probeSourcesPanelStream(s),
       onTap: () => _s._playStremioStream(
         s,
-        startPosition: resumable
-            ? Duration(
-                milliseconds: watchHistoryInt(_s._lastProgress!['position']),
-              )
+        startPosition: resumable && _s._lastProgress != null
+            ? resumeStartPositionFromProgress(_s._lastProgress!)
             : widget.startPosition,
       ),
     );

@@ -5,6 +5,7 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/engine_catalog_stream_probe.dart';
+import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -58,6 +59,16 @@ class EnginePlaySession {
 /// Current player session came from Forja Engine (`engine:<pluginId>`).
 bool isEnginePlayerSession(String? providerId) =>
     providerId != null && providerId.startsWith(EngineIds.prefix);
+
+/// Watch-history `sourceId` when last play was Sources → Forja (`engine:vidlink`).
+String? enginePluginIdFromProgress(Map<String, dynamic>? progress) {
+  if (progress == null) return null;
+  final sourceId = progress['sourceId'] as String? ?? '';
+  return EngineIds.pluginIdFromChip(sourceId);
+}
+
+bool isEngineSavedProgress(Map<String, dynamic>? progress) =>
+    enginePluginIdFromProgress(progress) != null;
 
 /// In-player next/prev / Episodes pick while on a Forja Engine session —
 /// same race + loading overlay as green Play / Sources → Forja.
@@ -128,6 +139,12 @@ Future<void> runEngineAutoPlay({
   EnginePlaySession? enginePlaySession,
   List<PlayerHubEpisode>? hubEpisodes,
   num? hubEpisodeNumber,
+
+  /// Resume: re-extract this plugin first (from watch history `sourceId`).
+  String? preferredPluginId,
+
+  /// Resume: last play URL from watch history — probed before re-extract.
+  String? savedStreamUrl,
 
   /// When set (movie details chips), race only these. Null → same prefs as panel.
   Set<String>? selectedPluginIds,
@@ -283,12 +300,25 @@ Future<void> runEngineAutoPlay({
           );
 
     final orderedIds = orderedEnginePluginIds(loadedPacks);
-    final pluginIds = [
+    var pluginIds = [
       for (final id in orderedIds)
         if (selected.contains(id) &&
             _pluginVisible(loadedPacks, id, category, selected))
           id,
     ];
+
+    final pinPlugin = preferredPluginId?.trim();
+    final resumeAt = startPosition;
+    var pinActive = pinPlugin != null &&
+        pinPlugin.isNotEmpty &&
+        resumeAt != null &&
+        resumeAt > Duration.zero;
+    if (pinActive && !pluginIds.contains(pinPlugin)) {
+      pinActive = false;
+    }
+    if (pinActive) {
+      pluginIds = [pinPlugin!, ...pluginIds.where((id) => id != pinPlugin)];
+    }
 
     String labelFor(String pluginId) {
       for (final pack in loadedPacks) {
@@ -316,6 +346,32 @@ Future<void> runEngineAutoPlay({
       );
       await action.future;
       return;
+    }
+
+    if (pinActive) {
+      final savedUrl = savedStreamUrl?.trim() ?? '';
+      if (savedUrl.isNotEmpty &&
+          !isUnplayableCachedStreamUrl(savedUrl) &&
+          !isTorrentStreamUrl(savedUrl) &&
+          await probeStreamSourceUrl(savedUrl, null)) {
+        if (!aborted()) {
+          openedPlayer = true;
+          final isTv = movie.mediaType == 'tv';
+          await AppRouter.openPlayer(
+            context,
+            streamUrl: savedUrl,
+            title: movie.title,
+            movie: movie,
+            selectedSeason: isTv ? (season ?? 1) : null,
+            selectedEpisode: isTv ? (episode ?? 1) : null,
+            startPosition: resumeAt,
+            activeProvider: EngineIds.pluginChip(pinPlugin!),
+            pinSource: true,
+            fadeTransition: loadingDialogContext != null,
+          );
+          return;
+        }
+      }
     }
 
     final cached = CatalogSourcesSessionCache.readEngine(cacheKey);
@@ -353,7 +409,9 @@ Future<void> runEngineAutoPlay({
             id: pluginIds[i],
             label: labelFor(pluginIds[i]),
             status: statusById[pluginIds[i]]!,
-            isPreferred: i == 0,
+            isPreferred: pinActive
+                ? pluginIds[i] == pinPlugin
+                : i == 0,
           ),
       ];
     }
@@ -401,6 +459,9 @@ Future<void> runEngineAutoPlay({
       if (rows.isEmpty) {
         statusById[pluginId] = StreamProviderProbeStatus.failed;
         publishProbes();
+        if (pinActive && pluginId == pinPlugin) {
+          pinActive = false;
+        }
         maybeCompleteEmpty();
         return;
       }
@@ -438,6 +499,9 @@ Future<void> runEngineAutoPlay({
 
       statusById[pluginId] = StreamProviderProbeStatus.failed;
       publishProbes();
+      if (pinActive && pluginId == pinPlugin) {
+        pinActive = false;
+      }
       probingCount--;
       maybeCompleteEmpty();
     }
@@ -487,9 +551,10 @@ Future<void> runEngineAutoPlay({
       if (playAborted() || gen != fetchGen || race.isCompleted) return;
       final slots = poolLimit - inFlight.length;
       if (slots <= 0) return;
+      final raceIds = pinActive ? [pinPlugin!] : pluginIds;
       final next = nextEnginePluginBatch(
-        orderedIds: pluginIds,
-        selectedIds: pluginIds.toSet(),
+        orderedIds: raceIds,
+        selectedIds: raceIds.toSet(),
         fetchedIds: {...fetchedIds, ...inFlight},
         limit: slots,
       );
@@ -518,7 +583,7 @@ Future<void> runEngineAutoPlay({
     publishProbes();
 
     final cachedIds = [
-      for (final id in pluginIds)
+      for (final id in (pinActive ? [pinPlugin!] : pluginIds))
         if (fetchedIds.contains(id)) id,
     ];
     if (cachedIds.isNotEmpty) {
@@ -533,26 +598,40 @@ Future<void> runEngineAutoPlay({
       await onPluginDone(id, cachedRows);
     }
 
-    if (!race.isCompleted && !playAborted()) {
-      final pending = [
-        for (final id in pluginIds)
-          if (!fetchedIds.contains(id)) id,
-      ];
-      if (pending.isEmpty) {
-        maybeCompleteEmpty();
-      } else {
-        poolLimit = engineSourcesBatchLimit(
-          tv: context.mounted && SourcesPanelTv.isTv(context),
-        );
+    if (pinActive && !race.isCompleted && !playAborted() && pinPlugin != null) {
+      if (!fetchedIds.contains(pinPlugin) && !inFlight.contains(pinPlugin)) {
         final gen = ++fetchGen;
+        inFlight.add(pinPlugin);
+        try {
+          await runAndApply(pinPlugin, gen);
+        } finally {
+          inFlight.remove(pinPlugin);
+        }
+      }
+    }
+
+    if (!race.isCompleted && !playAborted()) {
+      poolLimit = engineSourcesBatchLimit(
+        tv: context.mounted && SourcesPanelTv.isTv(context),
+      );
+      var gen = ++fetchGen;
+      fillPool(gen);
+      while (!playAborted() &&
+          !race.isCompleted &&
+          (workActive() || probingCount > 0)) {
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+      }
+      if (pinActive && !race.isCompleted && !playAborted()) {
+        pinActive = false;
+        gen = ++fetchGen;
         fillPool(gen);
         while (!playAborted() &&
             !race.isCompleted &&
             (workActive() || probingCount > 0)) {
           await Future<void>.delayed(const Duration(milliseconds: 40));
         }
-        maybeCompleteEmpty();
       }
+      maybeCompleteEmpty();
     }
 
     final hit = playAborted() ? null : await race.future;
@@ -650,6 +729,8 @@ Future<void> runEngineAutoPlay({
         startPosition: startPosition,
         loadingSubtitle: loadingSubtitle,
         stremioId: stremioId,
+        preferredPluginId: preferredPluginId,
+        savedStreamUrl: savedStreamUrl,
         selectedPluginIds: selectedPluginIds,
         packs: packs,
         onCacheUpdated: onCacheUpdated,

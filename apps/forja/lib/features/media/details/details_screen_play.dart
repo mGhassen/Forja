@@ -109,6 +109,11 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
 
     if (savedMethod == 'stream') {
       final sourceId = progress?['sourceId'] as String? ?? '';
+      if (isEngineSavedProgress(progress) && _s._playSourceEngine) {
+        _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
+        unawaited(_s._startEngineAutoPlayback(fromEngineResume: true));
+        return;
+      }
       if (_s._playSourceWebstreaming && isWebStreamProviderId(sourceId)) {
         if (_s._isWebstreamingOnlyExtracting) return;
         _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);

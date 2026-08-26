@@ -25,6 +25,10 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
     if (mounted) await _startWebstreamingOnlyPlayback();
   }
   void _onPlayStreamingPressed() {
+    if (isEngineSavedProgress(_s._lastProgress) && _s._playSourceEngine) {
+      unawaited(_s._startEngineAutoPlayback(fromEngineResume: true));
+      return;
+    }
     // 3A: Webstreaming owns green Play when both are on.
     if (_s._playSourceWebstreaming) {
       unawaited(_playWebstreamingFromDetails());

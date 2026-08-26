@@ -317,10 +317,14 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
   }
 
   /// Green Play → shared [runEngineAutoPlay] (same as Anime / Asian Drama).
-  Future<void> _startEngineAutoPlayback() async {
+  Future<void> _startEngineAutoPlayback({bool fromEngineResume = false}) async {
     if (_s._isEngineAutoExtracting) return;
-    if (_s._playSourceWebstreaming) return;
-    if (!_s._playSourceEngine || !_s._playSourceEngineAutoStart) return;
+    if (!fromEngineResume && _s._playSourceWebstreaming) return;
+    if (!fromEngineResume &&
+        (!_s._playSourceEngine || !_s._playSourceEngineAutoStart)) {
+      return;
+    }
+    if (fromEngineResume && !_s._playSourceEngine) return;
 
     final playGen = ++_s._engineAutoPlayGen;
     if (mounted) {
@@ -345,6 +349,16 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     }
 
     final isTv = _s._movie.mediaType == 'tv';
+    final progress = _s._lastProgress;
+    final resumePos = fromEngineResume
+        ? (widget.startPosition ??
+            (progress != null
+                ? resumeStartPositionFromProgress(progress)
+                : null))
+        : _s._startPositionForAutoPlay(fromRoute: false);
+    final pinPlugin = resumePos != null && resumePos > Duration.zero
+        ? enginePluginIdFromProgress(progress)
+        : null;
     try {
       await runEngineAutoPlay(
         context: context,
@@ -352,7 +366,9 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         engineCategory: _s._enginePanelCategory,
         season: isTv ? _s._selectedSeason : null,
         episode: isTv ? _s._selectedEpisode : null,
-        startPosition: _s._startPositionForAutoPlay(fromRoute: false),
+        startPosition: resumePos,
+        preferredPluginId: pinPlugin,
+        savedStreamUrl: progress?['streamUrl'] as String?,
         loadingSubtitle: _s._loadingOverlaySubtitle(),
         stremioId: widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId,
         selectedPluginIds: _scopedSelectedEnginePluginIds().toSet(),
