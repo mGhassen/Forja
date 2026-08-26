@@ -98,7 +98,13 @@ mixin _LiveMatchesData
     final p = ctrl.activePortal;
     if (p == null) return;
     if (p.portal.platform != IptvPortalPlatform.xtream) {
-      ForjaToast.info('Forja Sports needs an Xtream portal');
+      // Record the key so IPTV controller noise (channel select, health, …)
+      // does not re-toast for the same non-Xtream portal.
+      final alreadyWarned = _s._lastSyncedIptvPortalKey == p.key;
+      _s._lastSyncedIptvPortalKey = p.key;
+      if (!alreadyWarned) {
+        ForjaToast.info('Forja Sports needs an Xtream portal');
+      }
       return;
     }
     final before = await LiveMatchesIptvSportsConfig.load();

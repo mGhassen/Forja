@@ -280,7 +280,13 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         : null;
     if (iptvCtrl != null) {
       ref.listen(iptvControllerProvider, (prev, next) {
-        if (!_s._showIptvPortalTopBar || !mounted) return;
+        // Use live shellTabVisible — hide does not rebuild, so closed-over
+        // tabVisible from build would stay true on the IPTV tab.
+        if (!_s._showIptvPortalTopBar ||
+            !mounted ||
+            !(this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible) {
+          return;
+        }
         final key = next.activePortal?.key;
         if (key == null) return;
         if (key == _s._lastSyncedIptvPortalKey &&
