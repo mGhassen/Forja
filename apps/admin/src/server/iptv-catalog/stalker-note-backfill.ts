@@ -17,57 +17,113 @@ function hitExpires(hit: DeepRefPortalHit): {
   return { expiry, note }
 }
 
-export type StalkerNoteBackfillResult = {
+function needsNoteOrExpiry(expiry: unknown, note: unknown): boolean {
+  return !(
+    scrapeExpiresNote(expiry as string | null) &&
+    scrapeExpiresNote(note as string | null)
+  )
+}
+
+export type StalkerNoteChunkResult = {
   deepRefs: number
+  fetchOk: number
+  fetchFailed: number
   junctionsPatched: number
   portalsPatched: number
-  fetchFailed: number
+  /** Ids claimed this chunk (incl. fetch fails) — exclude on next claim. */
+  claimedIds: string[]
   done: boolean
 }
 
-/**
- * Re-fetch paste for deep refs that have Stalker hits missing expiry/note.
- * Patches junction + linked iptv_portals only — does not replace portal rows.
- */
-export async function backfillStalkerNotesChunk(
+/** Distinct deep refs with Stalker hits missing expiry/note + paste/base64. */
+export async function countStalkerNoteBackfillPending(
   sb: SupabaseClient,
-  opts?: { limit?: number },
-): Promise<StalkerNoteBackfillResult> {
-  const limit = Math.min(80, Math.max(1, Math.floor(opts?.limit ?? 25)))
-
-  const { data: needRows, error: needErr } = await sb
+): Promise<number> {
+  const { data, error } = await sb
     .from('iptv_scrape_deep_ref_portals')
     .select(
       'deep_ref_id, expiry, note, iptv_scrape_deep_refs!inner(paste_url, base64)',
     )
     .eq('platform', 'stalker')
     .or('expiry.is.null,note.is.null')
-    .limit(limit * 60)
-  if (needErr) throw needErr
+  if (error) throw error
 
-  const deepRefIds: string[] = []
   const seen = new Set<string>()
-  for (const row of needRows ?? []) {
+  for (const row of data ?? []) {
+    if (!needsNoteOrExpiry(row.expiry, row.note)) continue
     const id = String(row.deep_ref_id ?? '').trim()
     if (!id || seen.has(id)) continue
-    const hasExpiry = Boolean(scrapeExpiresNote(row.expiry as string | null))
-    const hasNote = Boolean(scrapeExpiresNote(row.note as string | null))
-    if (hasExpiry && hasNote) continue
     const parent = row.iptv_scrape_deep_refs as unknown as {
       paste_url?: string | null
       base64?: string | null
     } | null
-    const pasteUrl = String(parent?.paste_url ?? '').trim()
-    const b64 = String(parent?.base64 ?? '').trim()
-    if (!pasteUrl && !b64) continue
+    if (
+      !String(parent?.paste_url ?? '').trim() &&
+      !String(parent?.base64 ?? '').trim()
+    ) {
+      continue
+    }
     seen.add(id)
-    deepRefIds.push(id)
-    if (deepRefIds.length >= limit) break
   }
+  return seen.size
+}
 
+/**
+ * Next deep_ref ids that still need note/expiry backfill.
+ * [excludeIds] = already tried this run (incl. paste failures).
+ */
+export async function claimStalkerNoteDeepRefIds(
+  sb: SupabaseClient,
+  take: number,
+  excludeIds: string[] = [],
+): Promise<string[]> {
+  const want = Math.max(0, Math.floor(take))
+  if (want === 0) return []
+  const exclude = new Set(excludeIds.map((id) => id.trim()).filter(Boolean))
+
+  const { data, error } = await sb
+    .from('iptv_scrape_deep_ref_portals')
+    .select(
+      'deep_ref_id, expiry, note, created_at, iptv_scrape_deep_refs!inner(paste_url, base64)',
+    )
+    .eq('platform', 'stalker')
+    .or('expiry.is.null,note.is.null')
+    .order('created_at', { ascending: true })
+    .limit(Math.max(want * 40, 200))
+  if (error) throw error
+
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const row of data ?? []) {
+    if (!needsNoteOrExpiry(row.expiry, row.note)) continue
+    const id = String(row.deep_ref_id ?? '').trim()
+    if (!id || seen.has(id) || exclude.has(id)) continue
+    const parent = row.iptv_scrape_deep_refs as unknown as {
+      paste_url?: string | null
+      base64?: string | null
+    } | null
+    if (
+      !String(parent?.paste_url ?? '').trim() &&
+      !String(parent?.base64 ?? '').trim()
+    ) {
+      continue
+    }
+    seen.add(id)
+    out.push(id)
+    if (out.length >= want) break
+  }
+  return out
+}
+
+/** Re-fetch paste + patch Stalker expiry/note on junction + linked pool rows. */
+export async function processStalkerNoteDeepRefChunk(
+  sb: SupabaseClient,
+  deepRefIds: string[],
+): Promise<StalkerNoteChunkResult> {
+  let fetchOk = 0
+  let fetchFailed = 0
   let junctionsPatched = 0
   let portalsPatched = 0
-  let fetchFailed = 0
 
   for (const deepRefId of deepRefIds) {
     const row = await getDeepRefRowById(sb, deepRefId)
@@ -78,8 +134,12 @@ export async function backfillStalkerNotesChunk(
       fetchFailed++
       continue
     }
+    fetchOk++
 
-    const byKey = new Map<string, { expiry: string | null; note: string | null }>()
+    const byKey = new Map<
+      string,
+      { expiry: string | null; note: string | null }
+    >()
     for (const hit of processed.ref.portals ?? []) {
       if (hit.platform !== 'stalker') continue
       const { expiry, note } = hitExpires(hit)
@@ -158,9 +218,33 @@ export async function backfillStalkerNotesChunk(
 
   return {
     deepRefs: deepRefIds.length,
+    fetchOk,
+    fetchFailed,
     junctionsPatched,
     portalsPatched,
-    fetchFailed,
-    done: deepRefIds.length < limit,
+    claimedIds: deepRefIds,
+    done: deepRefIds.length === 0,
   }
+}
+
+/** @deprecated Prefer Inngest note-backfill job — sync one chunk only. */
+export async function backfillStalkerNotesChunk(
+  sb: SupabaseClient,
+  opts?: { limit?: number },
+): Promise<StalkerNoteChunkResult> {
+  const limit = Math.min(80, Math.max(1, Math.floor(opts?.limit ?? 25)))
+  const ids = await claimStalkerNoteDeepRefIds(sb, limit)
+  if (ids.length === 0) {
+    return {
+      deepRefs: 0,
+      fetchOk: 0,
+      fetchFailed: 0,
+      junctionsPatched: 0,
+      portalsPatched: 0,
+      claimedIds: [],
+      done: true,
+    }
+  }
+  const result = await processStalkerNoteDeepRefChunk(sb, ids)
+  return { ...result, done: ids.length < limit }
 }

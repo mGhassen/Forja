@@ -48,7 +48,7 @@
 | 14 | R65-A14 | Manual: Engine PPV direct source on live event | ⏭️ |
 | 15 | R65-A15 | Android/ATV: GOAT unlock via off-screen WebView when Node missing | 🔄 |
 | 16 | R65-A16 | Android/ATV: GASM (embedindia) unlock via WebView | 🔄 |
-| 17 | R65-A17 | WatchFooty catalog: `/matches/all` live+upcoming, real sport, absolute posters | ✅ |
+| 17 | R65-A17 | WatchFooty catalog: live-with-streams + upcoming `pre` (site Live parity), posters, real sport | ✅ |
 | 18 | R65-A18 | WatchFooty Engine: sportsembed `/api/get` + stream-lock.wasm unlock (no raw HTML / sniff hang) | ✅ |
 
 ---

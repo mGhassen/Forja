@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -198,27 +199,10 @@ class LiveGoatUnlock {
     if (mid.isEmpty) return const [];
 
     try {
-      final resp = await http
-          .get(
-            Uri.parse('https://api.watchfooty.st/api/v1/match/$mid'),
-            headers: {'User-Agent': _ua, 'Accept': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 20));
-      if (resp.statusCode < 200 || resp.statusCode >= 300) {
-        debugPrint('[LiveSportsEmbed] match HTTP ${resp.statusCode}');
-        return const [];
-      }
-      final decoded = jsonDecode(resp.body);
-      final match = decoded is List
-          ? (decoded.isNotEmpty ? decoded.first : null)
-          : decoded;
-      if (match is! Map) return const [];
-      final streams = match['streams'];
-      if (streams is! List || streams.isEmpty) return const [];
+      final streams = await _watchfootyMatchStreams(mid);
+      if (streams.isEmpty) return const [];
 
-      final ordered = List<Map<String, dynamic>>.from(
-        streams.whereType<Map>().map((e) => Map<String, dynamic>.from(e)),
-      );
+      final ordered = List<Map<String, dynamic>>.from(streams);
       ordered.sort((a, b) {
         final sa = (a['source'] ?? '').toString().toLowerCase();
         final sb = (b['source'] ?? '').toString().toLowerCase();
@@ -227,13 +211,16 @@ class LiveGoatUnlock {
         final pa = ia < 0 ? 99 : ia;
         final pb = ib < 0 ? 99 : ib;
         if (pa != pb) return pa.compareTo(pb);
-        return (a['url'] ?? '').toString().compareTo((b['url'] ?? '').toString());
+        return (a['url'] ?? '')
+            .toString()
+            .compareTo((b['url'] ?? '').toString());
       });
 
       final out = <({String url, String name, Map<String, String> headers})>[];
+      final seenEmbeds = <String>{};
       for (final s in ordered) {
         final embed = (s['url'] ?? '').toString().trim();
-        if (embed.isEmpty) continue;
+        if (embed.isEmpty || !seenEmbeds.add(embed)) continue;
         final unlocked = await resolveWatchfootyEmbed(embedUrl: embed);
         if (unlocked == null) continue;
         final source = (s['source'] ?? '').toString().trim();
@@ -244,14 +231,71 @@ class LiveGoatUnlock {
           if (quality.isNotEmpty) quality,
         ].join(' ');
         out.add((url: unlocked.url, name: label, headers: unlocked.headers));
-        // Cap so Engine UI stays snappy — delta/hd usually enough.
-        if (out.length >= 6) break;
+        // One good HLS is enough to open the player; extras just delay.
+        if (out.length >= 2) break;
       }
       return out;
     } catch (e) {
       debugPrint('[LiveSportsEmbed] match resolve failed: $e');
       return const [];
     }
+  }
+
+  /// Prefer `/matches/live` (fast, often already has `streams`) over the slow
+  /// `/match/{id}` detail (~15–20s+).
+  static Future<List<Map<String, dynamic>>> _watchfootyMatchStreams(
+    String mid,
+  ) async {
+    try {
+      final liveResp = await http
+          .get(
+            Uri.parse('https://api.watchfooty.st/api/v1/matches/live'),
+            headers: {'User-Agent': _ua, 'Accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 12));
+      if (liveResp.statusCode >= 200 && liveResp.statusCode < 300) {
+        final decoded = jsonDecode(liveResp.body);
+        if (decoded is List) {
+          for (final row in decoded) {
+            if (row is! Map) continue;
+            final id = (row['matchId'] ?? '').toString();
+            if (id != mid) continue;
+            final streams = row['streams'];
+            if (streams is List && streams.isNotEmpty) {
+              return [
+                for (final s in streams)
+                  if (s is Map) Map<String, dynamic>.from(s),
+              ];
+            }
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[LiveSportsEmbed] live list lookup failed: $e');
+    }
+
+    final resp = await http
+        .get(
+          Uri.parse('https://api.watchfooty.st/api/v1/match/$mid'),
+          headers: {'User-Agent': _ua, 'Accept': 'application/json'},
+        )
+        .timeout(const Duration(seconds: 45));
+    if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      debugPrint('[LiveSportsEmbed] match HTTP ${resp.statusCode}');
+      return const [];
+    }
+    final decoded = jsonDecode(resp.body);
+    final match = decoded is List
+        ? (decoded.isNotEmpty ? decoded.first : null)
+        : decoded;
+    if (match is! Map) return const [];
+    final streams = match['streams'];
+    if (streams is! List || streams.isEmpty) return const [];
+    return [
+      for (final s in streams)
+        if (s is Map) Map<String, dynamic>.from(s),
+    ];
   }
 
   @visibleForTesting
@@ -528,7 +572,7 @@ class LiveGoatUnlock {
     try {
       final resp = await http
           .get(Uri.parse(target), headers: headers)
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 5));
       if (resp.statusCode < 200 || resp.statusCode >= 400) {
         debugPrint(
           '[LiveGoatUnlock] m3u8 probe HTTP ${resp.statusCode} '
@@ -1034,7 +1078,14 @@ class LiveGoatUnlock {
     await proc.stdin.close();
     final stdoutFuture = proc.stdout.transform(utf8.decoder).join();
     final stderrFuture = proc.stderr.transform(utf8.decoder).join();
-    final exit = await proc.exitCode.timeout(const Duration(seconds: 45));
+    late final int exit;
+    try {
+      exit = await proc.exitCode.timeout(const Duration(seconds: 20));
+    } on TimeoutException {
+      proc.kill(ProcessSignal.sigkill);
+      debugPrint('[LiveSportsEmbed] unlock.mjs timed out');
+      return null;
+    }
     final stdout = await stdoutFuture;
     final stderr = await stderrFuture;
     final raw = stdout.trim();

@@ -8,6 +8,7 @@ use crate::fetch::{http_get_catalog, ok_items};
 const BROWSER_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 const WATCHFOOTY_MAX: usize = 120;
 const WATCHFOOTY_API_ORIGIN: &str = "https://api.watchfooty.st";
+const WATCHFOOTY_LIVE_API: &str = "https://api.watchfooty.st/api/v1/matches/live";
 const WATCHFOOTY_CATALOG_API: &str = "https://api.watchfooty.st/api/v1/matches/all";
 
 fn browser_headers() -> std::collections::HashMap<String, String> {
@@ -381,30 +382,125 @@ fn watchfooty_norm_sport(raw: &str) -> String {
     s.replace(' ', "-")
 }
 
-fn watchfooty(config: &Value) -> Vec<Value> {
-    let plugin_id = cfg_str(config, "providerId", "live-watchfooty");
-    let api = cfg_str(config, "api", WATCHFOOTY_CATALOG_API);
-    let body = match http_get_catalog(&api, &browser_headers(), 20) {
+fn watchfooty_has_streams(item: &Value) -> bool {
+    item.get("streams")
+        .and_then(|v| v.as_array())
+        .map(|a| !a.is_empty())
+        .unwrap_or(false)
+}
+
+fn watchfooty_row(plugin_id: &str, ts: i64, airing: bool, item: &Value) -> Option<Value> {
+    let mid = item.get("matchId")?;
+    let mid_s = match mid {
+        Value::String(s) => s.clone(),
+        Value::Number(n) => n.to_string(),
+        _ => return None,
+    };
+    let home = item
+        .pointer("/teams/home/name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Home");
+    let away = item
+        .pointer("/teams/away/name")
+        .and_then(|v| v.as_str())
+        .unwrap_or("Away");
+    let title = item
+        .get("title")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| format!("{home} vs {away}"));
+    let sport = item
+        .get("sport")
+        .and_then(|v| v.as_str())
+        .unwrap_or("football");
+    let poster = item
+        .get("poster")
+        .and_then(|v| v.as_str())
+        .map(watchfooty_abs_url)
+        .unwrap_or_default();
+    let date = if ts > 0 { ts } else { chrono_now_ms() };
+    Some(json!({
+        "id": format!("wf_{mid_s}"),
+        "title": title,
+        "category": watchfooty_norm_sport(sport),
+        "date": date,
+        "poster": poster,
+        // Site "Live only" ≈ status in/live AND has stream links.
+        "popular": airing,
+        "airing": airing,
+        "sources": [{ "source": "watchfooty", "id": mid_s }],
+        "catalog": "forja_live",
+        "pluginId": plugin_id,
+    }))
+}
+
+fn watchfooty_fetch_array(url: &str) -> Vec<Value> {
+    let body = match http_get_catalog(url, &browser_headers(), 20) {
         Some(b) => b,
         None => return vec![],
     };
-    let list: Vec<Value> = match serde_json::from_str(&body) {
+    match serde_json::from_str(&body) {
         Ok(Value::Array(arr)) => arr,
-        _ => return vec![],
-    };
-    let mut filtered: Vec<(i64, bool, Value)> = list
-        .into_iter()
-        .filter_map(|item| {
+        _ => vec![],
+    }
+}
+
+fn watchfooty(config: &Value) -> Vec<Value> {
+    let plugin_id = cfg_str(config, "providerId", "live-watchfooty");
+    // Optional override still hits a single list; default merges live+upcoming.
+    let api_override = config
+        .get("api")
+        .and_then(|v| v.as_str())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
+    let mut by_id: std::collections::BTreeMap<String, (i64, bool, Value)> =
+        std::collections::BTreeMap::new();
+
+    let live_url = api_override
+        .clone()
+        .unwrap_or_else(|| WATCHFOOTY_LIVE_API.to_string());
+    for item in watchfooty_fetch_array(&live_url) {
+        let status = item.get("status").and_then(|v| v.as_str()).unwrap_or("");
+        let status_live = status == "in" || status == "live";
+        // Mirror site: stream-less "in" rows stay off the Live board.
+        let airing = status_live && watchfooty_has_streams(&item);
+        if !status_live {
+            continue;
+        }
+        if !airing {
+            continue;
+        }
+        let ts = item.get("timestamp").and_then(|v| v.as_i64()).unwrap_or(0);
+        let mid = match item.get("matchId") {
+            Some(Value::String(s)) => s.clone(),
+            Some(Value::Number(n)) => n.to_string(),
+            _ => continue,
+        };
+        by_id.insert(mid, (ts, true, item));
+    }
+
+    if api_override.is_none() {
+        for item in watchfooty_fetch_array(WATCHFOOTY_CATALOG_API) {
             let status = item.get("status").and_then(|v| v.as_str()).unwrap_or("");
-            let live = status == "in" || status == "live";
-            let ts = item.get("timestamp").and_then(|v| v.as_i64()).unwrap_or(0);
-            if !in_catalog_window(ts, live) {
-                return None;
+            // Upcoming only — post/finished inflate fake LIVE via UI heuristics.
+            if status != "pre" {
+                continue;
             }
-            Some((ts, live, item))
-        })
-        .collect();
-    // Live first, then kickoff time.
+            let ts = item.get("timestamp").and_then(|v| v.as_i64()).unwrap_or(0);
+            if !in_catalog_window(ts, false) {
+                continue;
+            }
+            let mid = match item.get("matchId") {
+                Some(Value::String(s)) => s.clone(),
+                Some(Value::Number(n)) => n.to_string(),
+                _ => continue,
+            };
+            by_id.entry(mid).or_insert((ts, false, item));
+        }
+    }
+
+    let mut filtered: Vec<(i64, bool, Value)> = by_id.into_values().collect();
     filtered.sort_by(|a, b| match (a.1, b.1) {
         (true, false) => std::cmp::Ordering::Less,
         (false, true) => std::cmp::Ordering::Greater,
@@ -413,49 +509,7 @@ fn watchfooty(config: &Value) -> Vec<Value> {
     filtered
         .into_iter()
         .take(WATCHFOOTY_MAX)
-        .filter_map(|(ts, live, item)| {
-            let mid = item.get("matchId")?;
-            let mid_s = match mid {
-                Value::String(s) => s.clone(),
-                Value::Number(n) => n.to_string(),
-                _ => return None,
-            };
-            let home = item
-                .pointer("/teams/home/name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Home");
-            let away = item
-                .pointer("/teams/away/name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Away");
-            let title = item
-                .get("title")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string())
-                .unwrap_or_else(|| format!("{home} vs {away}"));
-            let sport = item
-                .get("sport")
-                .and_then(|v| v.as_str())
-                .unwrap_or("football");
-            let poster = item
-                .get("poster")
-                .and_then(|v| v.as_str())
-                .map(watchfooty_abs_url)
-                .unwrap_or_default();
-            let date = if ts > 0 { ts } else { chrono_now_ms() };
-            Some(json!({
-                "id": format!("wf_{mid_s}"),
-                "title": title,
-                "category": watchfooty_norm_sport(sport),
-                "date": date,
-                "poster": poster,
-                "popular": live,
-                "airing": live,
-                "sources": [{ "source": "watchfooty", "id": mid_s }],
-                "catalog": "forja_live",
-                "pluginId": plugin_id,
-            }))
-        })
+        .filter_map(|(ts, airing, item)| watchfooty_row(&plugin_id, ts, airing, &item))
         .collect()
 }
 

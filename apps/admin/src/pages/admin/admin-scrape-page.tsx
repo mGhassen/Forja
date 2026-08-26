@@ -41,6 +41,7 @@ import { runDurationLabel } from '@/lib/ops-overview'
 import {
   SCRAPE_RUNS_KEY,
   fetchScrapeRuns,
+  isOpsBackfillRun,
   isPromoteBackfillRun,
   markRunsStoppedInCache,
   prependOptimisticRun,
@@ -281,7 +282,7 @@ export function AdminScrapePage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 space-y-3">
             <PanelLabel>
-              {latest && isPromoteBackfillRun(latest)
+              {latest && isOpsBackfillRun(latest)
                 ? 'Current backfill'
                 : 'Current run'}
             </PanelLabel>
@@ -301,7 +302,9 @@ export function AdminScrapePage() {
                     'grid grid-cols-2 gap-2 sm:grid-cols-3',
                     isPromoteBackfillRun(latest)
                       ? 'lg:grid-cols-4'
-                      : 'lg:grid-cols-9',
+                      : isOpsBackfillRun(latest)
+                        ? 'lg:grid-cols-5'
+                        : 'lg:grid-cols-9',
                   )}
                 >
                   {scrapeRunMetricChips(latest).map((c) => (
@@ -574,8 +577,9 @@ export function AdminScrapePage() {
             <ExternalLink className="size-3.5" />
           </a>
           <p className="mt-3 font-mono-ui text-[11px] leading-relaxed text-forja-muted">
-            iptv-catalog-scrape · iptv-promote-backfill · scrape-reddit-page-* ·
-            fetch-paste-* · upsert-candidates-* · promote-backfill-*
+            iptv-catalog-scrape · iptv-promote-backfill · iptv-stalker-note-backfill ·
+            scrape-reddit-page-* · fetch-paste-* · upsert-candidates-* ·
+            promote-backfill-* · stalker-note-backfill-*
           </p>
           {isInngestLocalUi ? (
             <pre className="mt-4 overflow-x-auto rounded-xl border border-forja-border bg-black/25 p-3 font-mono-ui text-[11px] text-forja-muted">

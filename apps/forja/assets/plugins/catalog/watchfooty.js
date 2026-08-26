@@ -4,7 +4,8 @@ function ua() {
 
 var CATALOG_MAX = 120;
 var API_ORIGIN = 'https://api.watchfooty.st';
-var CATALOG_API = API_ORIGIN + '/api/v1/matches/all';
+var LIVE_API = API_ORIGIN + '/api/v1/matches/live';
+var ALL_API = API_ORIGIN + '/api/v1/matches/all';
 
 function inCatalogWindow(ts, live) {
   if (live) return true;
@@ -32,50 +33,76 @@ function normSport(raw) {
   return s.replace(/\s+/g, '-');
 }
 
+function hasStreams(item) {
+  return Array.isArray(item.streams) && item.streams.length > 0;
+}
+
+function toRow(pluginId, item, airing) {
+  var mid = item.matchId;
+  var title =
+    item.title ||
+    ((item.teams && item.teams.home && item.teams.home.name) || 'Home') +
+      ' vs ' +
+      ((item.teams && item.teams.away && item.teams.away.name) || 'Away');
+  return {
+    id: 'wf_' + mid,
+    title: title,
+    category: normSport(item.sport),
+    date: item.timestamp ? Number(item.timestamp) : Date.now(),
+    poster: absUrl(item.poster),
+    popular: airing,
+    airing: airing,
+    sources: [{ source: 'watchfooty', id: String(mid) }],
+    catalog: 'forja_live',
+    pluginId: pluginId,
+  };
+}
+
+async function fetchList(ctx, url) {
+  var res = await ctx.fetch(url, { headers: { 'User-Agent': ua() } });
+  if (!res.ok) return [];
+  var list = await res.json();
+  return Array.isArray(list) ? list : [];
+}
+
 async function extract(ctx) {
   var action = String(ctx.action || 'catalog');
   if (action !== 'catalog') return [];
 
   var cfg = ctx.config || {};
   var pluginId = String(cfg.providerId || 'live-watchfooty');
-  var api = cfg.api || CATALOG_API;
-  var listRes = await ctx.fetch(api, { headers: { 'User-Agent': ua() } });
-  if (!listRes.ok) return [];
-  var list = await listRes.json();
-  if (!Array.isArray(list)) return [];
-  return list
-    .filter(function (item) {
-      var live = item.status === 'in' || item.status === 'live';
-      return inCatalogWindow(item.timestamp ? Number(item.timestamp) : 0, live);
+  var byId = {};
+
+  // Site "Live only" ≈ /matches/live rows that actually have stream links.
+  var liveList = await fetchList(ctx, cfg.api || LIVE_API);
+  for (var i = 0; i < liveList.length; i++) {
+    var item = liveList[i];
+    var statusLive = item.status === 'in' || item.status === 'live';
+    if (!statusLive || !hasStreams(item)) continue;
+    byId[String(item.matchId)] = toRow(pluginId, item, true);
+  }
+
+  // Upcoming schedule (pre only) — skip post/finished so UI doesn't fake LIVE.
+  if (!cfg.api) {
+    var allList = await fetchList(ctx, ALL_API);
+    for (var j = 0; j < allList.length; j++) {
+      var u = allList[j];
+      if (u.status !== 'pre') continue;
+      if (!inCatalogWindow(u.timestamp ? Number(u.timestamp) : 0, false)) continue;
+      var id = String(u.matchId);
+      if (!byId[id]) byId[id] = toRow(pluginId, u, false);
+    }
+  }
+
+  return Object.keys(byId)
+    .map(function (k) {
+      return byId[k];
     })
     .sort(function (a, b) {
-      var liveA = a.status === 'in' || a.status === 'live' ? 0 : 1;
-      var liveB = b.status === 'in' || b.status === 'live' ? 0 : 1;
+      var liveA = a.airing ? 0 : 1;
+      var liveB = b.airing ? 0 : 1;
       if (liveA !== liveB) return liveA - liveB;
-      var ta = Number(a.timestamp || 0);
-      var tb = Number(b.timestamp || 0);
-      return ta - tb;
+      return Number(a.date || 0) - Number(b.date || 0);
     })
-    .slice(0, CATALOG_MAX)
-    .map(function (item) {
-      var mid = item.matchId;
-      var title =
-        item.title ||
-        ((item.teams && item.teams.home && item.teams.home.name) || 'Home') +
-          ' vs ' +
-          ((item.teams && item.teams.away && item.teams.away.name) || 'Away');
-      var live = item.status === 'in' || item.status === 'live';
-      return {
-        id: 'wf_' + mid,
-        title: title,
-        category: normSport(item.sport),
-        date: item.timestamp ? Number(item.timestamp) : Date.now(),
-        poster: absUrl(item.poster),
-        popular: live,
-        airing: live,
-        sources: [{ source: 'watchfooty', id: String(mid) }],
-        catalog: 'forja_live',
-        pluginId: pluginId,
-      };
-    });
+    .slice(0, CATALOG_MAX);
 }

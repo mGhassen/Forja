@@ -10,6 +10,7 @@ export const SCRAPE_RUN_SELECT =
   'id, started_at, finished_at, status, source, posts_seen, l1_extract_count, deep_ref_count, l2_fetch_ok, l2_fetch_fail, l2_extract_count, unparsed_count, candidates_upserted, alive_count, error'
 
 export const PROMOTE_BACKFILL_SOURCE = 'promote-backfill'
+export const STALKER_NOTE_BACKFILL_SOURCE = 'stalker-note-backfill'
 
 export type ScrapeRunRow = {
   id: string
@@ -35,8 +36,21 @@ export function isPromoteBackfillRun(run: {
   return run.source === PROMOTE_BACKFILL_SOURCE
 }
 
+export function isStalkerNoteBackfillRun(run: {
+  source?: string | null
+}): boolean {
+  return run.source === STALKER_NOTE_BACKFILL_SOURCE
+}
+
+export function isOpsBackfillRun(run: {
+  source?: string | null
+}): boolean {
+  return isPromoteBackfillRun(run) || isStalkerNoteBackfillRun(run)
+}
+
 export function scrapeSourceLabel(source?: string | null): string {
   if (source === PROMOTE_BACKFILL_SOURCE) return 'backfill'
+  if (source === STALKER_NOTE_BACKFILL_SOURCE) return 'note backfill'
   const s = source?.trim()
   return s || '—'
 }
@@ -44,6 +58,9 @@ export function scrapeSourceLabel(source?: string | null): string {
 export function scrapeRunFunnelLine(run: ScrapeRunRow): string {
   if (isPromoteBackfillRun(run)) {
     return `claimed ${run.l1_extract_count} · upserted ${run.candidates_upserted} · already ${run.alive_count} · skipped ${run.unparsed_count ?? 0}`
+  }
+  if (isStalkerNoteBackfillRun(run)) {
+    return `deep ${run.deep_ref_count} · paste ${run.l2_fetch_ok}/${run.l2_fetch_fail} · junctions ${run.l2_extract_count} · portals ${run.candidates_upserted}`
   }
   return `new ${run.posts_seen} · portals ${run.l1_extract_count} · deep ${run.deep_ref_count} · L2 ${run.l2_fetch_ok}/${run.l2_fetch_fail} · unparsed ${run.unparsed_count ?? 0} · upserted ${run.candidates_upserted}`
 }
@@ -57,6 +74,15 @@ export function scrapeRunMetricChips(
       { label: 'Promoted', value: run.candidates_upserted },
       { label: 'Already in DB', value: run.alive_count },
       { label: 'Skipped', value: run.unparsed_count ?? 0 },
+    ]
+  }
+  if (isStalkerNoteBackfillRun(run)) {
+    return [
+      { label: 'Deep refs', value: run.deep_ref_count },
+      { label: 'Paste ok', value: run.l2_fetch_ok },
+      { label: 'Paste fail', value: run.l2_fetch_fail },
+      { label: 'Junctions', value: run.l2_extract_count },
+      { label: 'Portals', value: run.candidates_upserted },
     ]
   }
   return [

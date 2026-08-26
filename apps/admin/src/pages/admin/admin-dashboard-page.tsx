@@ -23,6 +23,7 @@ import {
 import { formatAdminDateTime } from '@/lib/iptv-portal-expiry'
 import { humanizeScrapeCron } from '@/lib/scrape-cron'
 import {
+  isOpsBackfillRun,
   isPromoteBackfillRun,
   scrapeRunMetricChips,
   scrapeSourceLabel,
@@ -97,7 +98,7 @@ export function AdminDashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel tone="accent">
           <PanelLabel>
-            {latest && isPromoteBackfillRun(latest)
+            {latest && isOpsBackfillRun(latest)
               ? 'Latest backfill'
               : 'Latest run'}
           </PanelLabel>

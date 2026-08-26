@@ -315,7 +315,7 @@ export type PromoteBackfillOptions = {
   chunkSize: number
 }
 
-/** Promote stranded deep_ref_portals (portal_id null) into the pool via Inngest. */
+/** Ops backfill limit dialog (promote or stalker notes) via Inngest. */
 export function PromoteBackfillDialog({
   open,
   busy,
@@ -323,6 +323,8 @@ export function PromoteBackfillDialog({
   pendingLoading,
   onClose,
   onConfirm,
+  title = 'Backfill promote?',
+  description,
 }: {
   open: boolean
   busy?: boolean
@@ -330,6 +332,8 @@ export function PromoteBackfillDialog({
   pendingLoading?: boolean
   onClose: () => void
   onConfirm: (opts: PromoteBackfillOptions) => void
+  title?: string
+  description?: ReactNode
 }) {
   const [limit, setLimit] = useState(1000)
   const [custom, setCustom] = useState('')
@@ -373,6 +377,21 @@ export function PromoteBackfillDialog({
       ? 'Counting…'
       : pending.toLocaleString()
 
+  const body =
+    description ?? (
+      <>
+        Upserts eligible deep-ref hits with{' '}
+        <code className="font-mono-ui text-forja-text">portal_id</code> null
+        into the pool (no paste re-fetch). Chunks of {BACKFILL_CHUNK} via
+        Inngest — progress shows on this page and the Scrape runs table.
+        Eligible pending:{' '}
+        <span className="font-semibold tabular-nums text-forja-text">
+          {pendingLabel}
+        </span>
+        .
+      </>
+    )
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -393,7 +412,7 @@ export function PromoteBackfillDialog({
             id="promote-backfill-title"
             className="text-sm font-semibold text-forja-text"
           >
-            Backfill promote?
+            {title}
           </h2>
           <Button
             type="button"
@@ -407,17 +426,7 @@ export function PromoteBackfillDialog({
             <X className="size-4" />
           </Button>
         </div>
-        <p className="mb-4 text-sm leading-relaxed text-forja-muted">
-          Upserts eligible deep-ref hits with{' '}
-          <code className="font-mono-ui text-forja-text">portal_id</code> null
-          into the pool (no paste re-fetch). Chunks of {BACKFILL_CHUNK} via
-          Inngest — progress shows on this page and the Scrape runs table.
-          Eligible pending:{' '}
-          <span className="font-semibold tabular-nums text-forja-text">
-            {pendingLabel}
-          </span>
-          .
-        </p>
+        <p className="mb-4 text-sm leading-relaxed text-forja-muted">{body}</p>
         <div className="mb-2 text-[11px] font-medium uppercase tracking-wide text-forja-muted">
           Limit this run
         </div>
