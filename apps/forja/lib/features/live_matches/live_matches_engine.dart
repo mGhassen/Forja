@@ -134,14 +134,39 @@ class LiveMatchesEngine {
     }
 
     if (pluginId == 'live-watchfooty') {
-      final embed = (params['embedUrl'] ?? params['url'] ?? '').toString().trim();
+      final embed =
+          (params['embedUrl'] ?? params['url'] ?? params['iframe'] ?? '')
+              .toString()
+              .trim();
       if (embed.isNotEmpty) {
-        final native = await LiveGoatUnlock.resolveWatchfootyEmbed(embedUrl: embed);
+        final native = await LiveGoatUnlock.resolveWatchfootyEmbed(
+          embedUrl: embed,
+        );
         if (native != null) {
           return LiveEngineResolveResult.playable(
             url: native.url,
             headers: native.headers,
             label: 'WatchFooty',
+            directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(
+              native.url,
+            ),
+          );
+        }
+      }
+
+      final mid = (params['matchId'] ?? params['eventId'] ?? '')
+          .toString()
+          .trim()
+          .replaceFirst(RegExp(r'^wf_'), '');
+      if (mid.isNotEmpty) {
+        final rows = await LiveGoatUnlock.resolveWatchfootyMatch(matchId: mid);
+        if (rows.isNotEmpty) {
+          final first = rows.first;
+          return LiveEngineResolveResult.playable(
+            url: first.url,
+            headers: first.headers,
+            label: first.name,
+            directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(first.url),
           );
         }
       }

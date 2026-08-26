@@ -39,6 +39,7 @@ import {
   fetchPoolHostPortals,
   fetchPoolHosts,
   fetchPoolPortalById,
+  fetchPoolPortalStatusByIds,
   poolHostKey,
   resolvePoolFocusPortalId,
   type PoolCand,
@@ -460,36 +461,41 @@ export function AdminPoolPage() {
     }[],
     hostDeltas?: Map<string, number>,
   ) {
-    if (results.length === 0) return
-    const byId = new Map(results.map((r) => [r.id, r]))
-    qc.setQueriesData<{ portals: PoolCand[]; total: number }>(
-      { queryKey: ['admin', 'pool', 'portals'] },
-      (old) => {
-        if (!old?.portals) return old
-        return {
-          ...old,
-          portals: old.portals.map((p) => {
-            const r = byId.get(p.id)
+    if (results.length > 0) {
+      const byId = new Map(results.map((r) => [String(r.id), r]))
+      qc.setQueriesData<{ portals: PoolCand[]; total: number }>(
+        { queryKey: ['admin', 'pool', 'portals'] },
+        (old) => {
+          if (!old?.portals) return old
+          let touched = false
+          const portals = old.portals.map((p) => {
+            const r = byId.get(String(p.id))
             if (!r) return p
+            touched = true
             return {
               ...p,
               alive: r.alive,
-              ...(r.expiry != null && r.expiry !== ''
-                ? { expiry: r.expiry }
-                : {}),
-              ...(r.max_connections != null && r.max_connections !== ''
-                ? { max_connections: r.max_connections }
-                : {}),
-              ...(r.region != null &&
-              r.region !== '' &&
-              r.region !== 'UNKNOWN'
-                ? { region_primary: r.region }
-                : {}),
+              expiry:
+                r.expiry != null && String(r.expiry).trim() !== ''
+                  ? String(r.expiry)
+                  : p.expiry,
+              max_connections:
+                r.max_connections != null &&
+                String(r.max_connections).trim() !== ''
+                  ? String(r.max_connections)
+                  : p.max_connections,
+              region_primary:
+                r.region != null &&
+                r.region !== '' &&
+                r.region !== 'UNKNOWN'
+                  ? r.region
+                  : p.region_primary,
             }
-          }),
-        }
-      },
-    )
+          })
+          return touched ? { ...old, portals } : old
+        },
+      )
+    }
     if (!hostDeltas || hostDeltas.size === 0) return
     qc.setQueriesData<PoolHostsResult>(
       { queryKey: ['admin', 'pool', 'hosts'] },
@@ -504,6 +510,24 @@ export function AdminPoolPage() {
           }),
         }
       },
+    )
+  }
+
+  /** Re-read written rows from Supabase — source of truth for Ends / Max after check. */
+  async function applyVerifiedFromDb(
+    ids: string[],
+    hostDeltas?: Map<string, number>,
+  ) {
+    const fresh = await fetchPoolPortalStatusByIds(ids)
+    applyVerifyResults(
+      fresh.map((p) => ({
+        id: p.id,
+        alive: p.alive === true,
+        expiry: p.expiry,
+        max_connections: p.max_connections,
+        region: p.region_primary,
+      })),
+      hostDeltas,
     )
   }
 
@@ -651,7 +675,10 @@ export function AdminPoolPage() {
           failed ? ` · ${failed} failed` : ''
         }`,
       )
-      applyVerifyResults(verified, hostDeltas)
+      await applyVerifiedFromDb(
+        verified.map((v) => v.id),
+        hostDeltas,
+      )
     } catch (e) {
       setActionError(errMessage(e, 'Bulk status check failed'))
     } finally {
@@ -798,14 +825,8 @@ export function AdminPoolPage() {
         const d = aliveDelta(c.alive, r.alive)
         if (d) hostDeltas.set(poolHostKey(candidateHost(c.url)), d)
       }
-      applyVerifyResults(
-        res.results.map((x) => ({
-          id: x.id,
-          alive: x.alive,
-          expiry: x.expiry,
-          max_connections: x.max_connections,
-          region: x.region,
-        })),
+      await applyVerifiedFromDb(
+        res.results.map((x) => x.id),
         hostDeltas,
       )
     } catch (e) {
@@ -824,7 +845,7 @@ export function AdminPoolPage() {
       setActionInfo(
         `${host}: ${res.alive} alive · ${res.dead} dead · ${res.checked} checked`,
       )
-      const byId = new Map(res.results.map((x) => [x.id, x.alive]))
+      const byId = new Map(res.results.map((x) => [String(x.id), x.alive]))
       // Delta from whatever we already showed under this host in cache.
       let delta = 0
       const hk = poolHostKey(host)
@@ -832,21 +853,15 @@ export function AdminPoolPage() {
         queryKey: ['admin', 'pool', 'portals', hk],
       }).forEach(([, data]) => {
         for (const p of data?.portals ?? []) {
-          const next = byId.get(p.id)
+          const next = byId.get(String(p.id))
           if (next === undefined) continue
           delta += aliveDelta(p.alive, next)
         }
       })
       const hostDeltas = new Map<string, number>()
       if (delta) hostDeltas.set(hk, delta)
-      applyVerifyResults(
-        res.results.map((x) => ({
-          id: x.id,
-          alive: x.alive,
-          expiry: x.expiry,
-          max_connections: x.max_connections,
-          region: x.region,
-        })),
+      await applyVerifiedFromDb(
+        res.results.map((x) => x.id),
         hostDeltas,
       )
     } catch (e) {

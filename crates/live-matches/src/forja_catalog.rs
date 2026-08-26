@@ -6,7 +6,9 @@ use crate::espn;
 use crate::fetch::{http_get_catalog, ok_items};
 
 const BROWSER_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-const WATCHFOOTY_MAX: usize = 80;
+const WATCHFOOTY_MAX: usize = 120;
+const WATCHFOOTY_API_ORIGIN: &str = "https://api.watchfooty.st";
+const WATCHFOOTY_CATALOG_API: &str = "https://api.watchfooty.st/api/v1/matches/all";
 
 fn browser_headers() -> std::collections::HashMap<String, String> {
     std::collections::HashMap::from([
@@ -350,13 +352,38 @@ fn streamfree(config: &Value) -> Vec<Value> {
     out
 }
 
+fn watchfooty_abs_url(path: &str) -> String {
+    let p = path.trim();
+    if p.is_empty() {
+        return String::new();
+    }
+    if p.starts_with("http://") || p.starts_with("https://") {
+        return p.to_string();
+    }
+    if p.starts_with('/') {
+        format!("{WATCHFOOTY_API_ORIGIN}{p}")
+    } else {
+        format!("{WATCHFOOTY_API_ORIGIN}/{p}")
+    }
+}
+
+fn watchfooty_norm_sport(raw: &str) -> String {
+    let s = raw.trim().to_lowercase();
+    if s.is_empty() {
+        return "football".into();
+    }
+    if s.contains("soccer") {
+        return "football".into();
+    }
+    if s.contains("american") && s.contains("football") {
+        return "american-football".into();
+    }
+    s.replace(' ', "-")
+}
+
 fn watchfooty(config: &Value) -> Vec<Value> {
     let plugin_id = cfg_str(config, "providerId", "live-watchfooty");
-    let api = cfg_str(
-        config,
-        "api",
-        "https://api.watchfooty.st/api/v1/matches/football",
-    );
+    let api = cfg_str(config, "api", WATCHFOOTY_CATALOG_API);
     let body = match http_get_catalog(&api, &browser_headers(), 20) {
         Some(b) => b,
         None => return vec![],
@@ -365,7 +392,7 @@ fn watchfooty(config: &Value) -> Vec<Value> {
         Ok(Value::Array(arr)) => arr,
         _ => return vec![],
     };
-    let mut filtered: Vec<(i64, Value)> = list
+    let mut filtered: Vec<(i64, bool, Value)> = list
         .into_iter()
         .filter_map(|item| {
             let status = item.get("status").and_then(|v| v.as_str()).unwrap_or("");
@@ -374,14 +401,19 @@ fn watchfooty(config: &Value) -> Vec<Value> {
             if !in_catalog_window(ts, live) {
                 return None;
             }
-            Some((ts, item))
+            Some((ts, live, item))
         })
         .collect();
-    filtered.sort_by_key(|(ts, _)| *ts);
+    // Live first, then kickoff time.
+    filtered.sort_by(|a, b| match (a.1, b.1) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.0.cmp(&b.0),
+    });
     filtered
         .into_iter()
         .take(WATCHFOOTY_MAX)
-        .filter_map(|(ts, item)| {
+        .filter_map(|(ts, live, item)| {
             let mid = item.get("matchId")?;
             let mid_s = match mid {
                 Value::String(s) => s.clone(),
@@ -400,19 +432,23 @@ fn watchfooty(config: &Value) -> Vec<Value> {
                 .get("title")
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string())
-                .unwrap_or_else(|| format!("{away} vs {home}"));
-            let live = item
-                .get("status")
+                .unwrap_or_else(|| format!("{home} vs {away}"));
+            let sport = item
+                .get("sport")
                 .and_then(|v| v.as_str())
-                .map(|s| s == "in" || s == "live")
-                .unwrap_or(false);
+                .unwrap_or("football");
+            let poster = item
+                .get("poster")
+                .and_then(|v| v.as_str())
+                .map(watchfooty_abs_url)
+                .unwrap_or_default();
             let date = if ts > 0 { ts } else { chrono_now_ms() };
             Some(json!({
                 "id": format!("wf_{mid_s}"),
                 "title": title,
-                "category": "football",
+                "category": watchfooty_norm_sport(sport),
                 "date": date,
-                "poster": "",
+                "poster": poster,
                 "popular": live,
                 "airing": live,
                 "sources": [{ "source": "watchfooty", "id": mid_s }],

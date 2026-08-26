@@ -710,13 +710,21 @@ export async function upsertCatalogCandidate(
   await upsertCatalogCandidateReturningId(sb, portal, status, region)
 }
 
+export type CatalogPortalStatusRow = {
+  id: string
+  alive: boolean | null
+  expiry: string | null
+  max_connections: string | null
+  region_primary: string | null
+}
+
 /** Manual Pool → Check status: update existing row only — never insert / never force catalog_pool. */
 export async function updateCatalogPortalStatus(
   sb: SupabaseClient,
   portalId: string,
   status: PortalStatus,
   region: RegionGuess,
-): Promise<void> {
+): Promise<CatalogPortalStatusRow> {
   const id = portalId.trim()
   if (!id) throw new Error('portal id required')
 
@@ -748,8 +756,15 @@ export async function updateCatalogPortalStatus(
     .from('iptv_portals')
     .update(patch)
     .eq('id', id)
-    .select('id')
+    .select('id, alive, expiry, max_connections, region_primary')
     .maybeSingle()
   if (error) throw error
   if (!data) throw new Error(`portal not found: ${id}`)
+  return {
+    id: String(data.id),
+    alive: (data.alive as boolean | null) ?? null,
+    expiry: (data.expiry as string | null) ?? null,
+    max_connections: (data.max_connections as string | null) ?? null,
+    region_primary: (data.region_primary as string | null) ?? null,
+  }
 }

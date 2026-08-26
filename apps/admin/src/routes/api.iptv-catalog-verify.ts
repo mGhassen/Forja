@@ -17,6 +17,7 @@ type CandRow = {
   id: string
   url: string
   username: string
+  platform: string | null
 }
 
 async function decryptPassword(
@@ -45,24 +46,32 @@ async function verifyOne(
   error: string | null
 }> {
   const password = await decryptPassword(sb, row.id)
+  const platform =
+    row.platform === 'stalker' ||
+    row.platform === 'm3u' ||
+    row.platform === 'xtream'
+      ? row.platform
+      : undefined
   const portal: CatalogPortal = {
     url: row.url,
     username: row.username,
     password,
     source: 'catalog',
+    platform,
   }
   const status = await verifyPortalStatus(portal)
   const region = classifyRegion(status.timezone, status.categoryNames)
   const admin = createCatalogAdminClient()
-  await updateCatalogPortalStatus(admin, row.id, status, region)
+  // Prefer post-update DB row so UI matches what was actually written.
+  const saved = await updateCatalogPortalStatus(admin, row.id, status, region)
   return {
-    id: row.id,
+    id: saved.id,
     username: row.username,
-    alive: status.alive === true,
+    alive: saved.alive === true,
     status: status.status,
-    region: region.primary,
-    expiry: status.expiry ?? null,
-    max_connections: status.maxConnections ?? null,
+    region: saved.region_primary || region.primary,
+    expiry: saved.expiry,
+    max_connections: saved.max_connections,
     error: status.error ?? null,
   }
 }
@@ -95,7 +104,7 @@ export const Route = createFileRoute('/api/iptv-catalog-verify')({
             // Any portal by id (pool or assigned-only) — admin ops.
             const { data, error } = await sb
               .from('iptv_portals')
-              .select('id, url, username')
+              .select('id, url, username, platform')
               .eq('id', candidateId)
               .maybeSingle()
             if (error) return json({ error: error.message }, 500)
@@ -105,7 +114,7 @@ export const Route = createFileRoute('/api/iptv-catalog-verify')({
             const hostKey = host.toLowerCase()
             const { data, error } = await sb
               .from('iptv_portals')
-              .select('id, url, username')
+              .select('id, url, username, platform')
               .eq('url_host', hostKey)
               .order('updated_at', { ascending: false })
               .limit(40)

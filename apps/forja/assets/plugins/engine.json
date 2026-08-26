@@ -1678,7 +1678,7 @@
     {
       "id": "catalog-watchfooty",
       "name": "WatchFooty",
-      "description": "watchfooty.st schedule catalog",
+      "description": "watchfooty.st all-sports schedule (+ posters)",
       "entry": "catalog/watchfooty.js",
       "types": [
         "catalog"

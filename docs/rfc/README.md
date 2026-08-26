@@ -60,7 +60,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [037-[open]-…](037-[open]-web-portal-i18n.md) | Web portal French + Arabic i18n | v1.0.4 | open | 0/4 · 0/8 · 1 ⏭️ | [1.0.4](../backlog/1.0.4-[draft].md) |
 | [038-[open]-…](038-[open]-simple-streaming-resolve.md) | Simple streaming resolve (experimental) | v1.0.1 | open | 3/3 · 6/10 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [039-[fixed]-…](fixed/039-[fixed]-remote-provider-runtime-config.md) | Remote provider runtime config | v1.0.1 | fixed | Complete · 7/7 · 12/12 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [040-[open]-…](040-[open]-iptv-catalog-ops.md) | IPTV catalog ops (admin + worker + pool + credits) | v1.0.5 | open | 5/5 · 26/28 | [1.0.5](../backlog/1.0.5-[draft].md) |
+| [040-[open]-…](040-[open]-iptv-catalog-ops.md) | IPTV catalog ops (admin + worker + pool + credits) | v1.0.5 | open | 5/5 · 27/29 | [1.0.5](../backlog/1.0.5-[draft].md) |
 | [041-[open]-…](041-[open]-iptv-live-epg-guide.md) | IPTV Live EPG guide view (catalog) | v1.0.6 | open | 4/4 · 0/6 | [1.0.6](../backlog/1.0.6-[draft].md) |
 | [042-[open]-…](042-[open]-unified-auth-system.md) | Unified auth (web + Flutter) | v1.0.7 | open | 5/5 · 13/19 | [1.0.7](../backlog/1.0.7-[draft].md) |
 | [043-[open]-…](043-[open]-crash-reporting-sentry.md) | Crash reporting (Sentry) + product analytics (PostHog) | v1.0 | open | 6/6 · 8/8 · 6/6 · 3/3 · 6/6 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -85,7 +85,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [062-[open]-…](062-[open]-native-iptv-sports-matching.md) | Native IPTV sports matching in Live Matches | v1.3 | open | 5/5 · 14/14 Xtream · 2/2 ATV EPG · 0/3 M3U ⏭️ | — |
 | [063-[fixed]-…](fixed/063-[fixed]-forja-auto-start-green-play.md) | Forja auto start (green Play) | v1.3 | fixed | Complete · 3/3 · 7/7 | — |
 | [064-[open]-…](064-[open]-rust-quickjs-engine-runtime.md) | Forja EngineJS runtime (Forja Sources) | v1.3 | open | 7/7 · 11/14 | — |
-| [065-[open]-…](065-[open]-live-forja-scrapers.md) | Live sports Forja scrapers | v1.3 | open | 6/6 · 12/14 · WebView GOAT+GASM 🔄 | — |
+| [065-[open]-…](065-[open]-live-forja-scrapers.md) | Live sports Forja scrapers | v1.3 | open | 6/6 · 14/18 · WebView GOAT+GASM 🔄 | — |
 | [066-[fixed]-…](fixed/066-[fixed]-hub-catalog-top-bar.md) | Anime & Asian Drama hub catalog top bar | — | fixed | Complete · 4/4 · 8/8 | — |
 
 ## Related

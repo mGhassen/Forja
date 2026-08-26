@@ -172,14 +172,15 @@ export async function fetchPoolHostPortals(
   }
 }
 
+const POOL_PORTAL_COLS =
+  'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, catalog_pool, platform, updated_at, created_at, last_scraped_at'
+
 export async function fetchPoolPortalById(
   id: string,
 ): Promise<PoolCand | null> {
   const { data, error } = await adminDb
     .from('iptv_portals')
-    .select(
-      'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, catalog_pool, platform, updated_at, created_at, last_scraped_at',
-    )
+    .select(POOL_PORTAL_COLS)
     .eq('id', id)
     .maybeSingle()
   if (error) throw new Error(errMessage(error, 'Portal fetch failed'))
@@ -188,6 +189,36 @@ export async function fetchPoolPortalById(
     data as Omit<PoolCand, 'deep_ref_id'>,
   ])
   return withRef ?? null
+}
+
+/** Post-verify hydrate — expiry/seats from DB (skip deep_ref; cache keeps it). */
+export async function fetchPoolPortalStatusByIds(
+  ids: string[],
+): Promise<
+  Pick<
+    PoolCand,
+    'id' | 'alive' | 'expiry' | 'max_connections' | 'region_primary'
+  >[]
+> {
+  const uniq = [...new Set(ids.map((id) => id.trim()).filter(Boolean))]
+  if (uniq.length === 0) return []
+  const { data, error } = await adminDb
+    .from('iptv_portals')
+    .select('id, alive, expiry, max_connections, region_primary')
+    .in('id', uniq)
+  if (error) throw new Error(errMessage(error, 'Portal status fetch failed'))
+  return (data ?? []).map((row) => ({
+    id: String((row as { id: string }).id),
+    alive: (row as { alive: boolean | null }).alive,
+    expiry: ((row as { expiry?: string | null }).expiry as string | null) ?? null,
+    max_connections:
+      ((row as { max_connections?: string | null }).max_connections as
+        | string
+        | null) ?? null,
+    region_primary: String(
+      (row as { region_primary?: string }).region_primary ?? 'UNKNOWN',
+    ),
+  }))
 }
 
 /** Resolve deep-ref → pool focus when portal_id is stale/orphaned. */

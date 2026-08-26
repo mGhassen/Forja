@@ -337,6 +337,18 @@ class EngineRuntime {
       }
     });
 
+    br('LiveSportsEmbedUnlock', (args) async {
+      try {
+        final m = _bridgeMap(args);
+        final url = await LiveGoatUnlock.resolveSportsEmbed(
+          embedUrl: (m['embedUrl'] ?? m['url'] ?? '').toString(),
+        );
+        return url?.url ?? '';
+      } catch (_) {
+        return '';
+      }
+    });
+
     br('LiveSniffEmbed', (args) async {
       try {
         final m = _bridgeMap(args);
@@ -733,6 +745,11 @@ class EngineRuntime {
           bodyHex: String(bodyHex == null ? '' : bodyHex),
           island: String(island == null ? '' : island),
           slot: slot || {}
+        })) || '';
+      },
+      sportsEmbedUnlock: function(embedUrl) {
+        return sendMessage('LiveSportsEmbedUnlock', JSON.stringify({
+          embedUrl: String(embedUrl == null ? '' : embedUrl)
         })) || '';
       },
       sniffEmbed: function(url, referer) {

@@ -1949,6 +1949,9 @@ String _forjaLiveWrapperReferer(String embedUrl, {String pluginId = ''}) {
 String? _forjaLiveCdnReferer(String embedUrl) {
   final uri = Uri.tryParse(embedUrl.trim());
   if (uri == null || uri.host.isEmpty) return null;
+  final host = uri.host.toLowerCase();
+  // WatchFooty HLS (`lb*.wfty.st`) validates Referer against sportsembed.
+  if (host.contains('wfty.st')) return 'https://sportsembed.su/';
   return '${uri.origin}/';
 }
 

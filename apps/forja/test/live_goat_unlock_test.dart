@@ -72,6 +72,31 @@ void main() {
         isFalse,
       );
     });
+
+    test('parseSportsEmbedSlot reads match/slug/category/stream', () {
+      final slot = LiveGoatUnlock.parseSportsEmbedSlot(
+        'https://sportsembed.su/embed/401816669/atlanta-braves-los-angeles-dodgers/regular/2',
+      );
+      expect(slot, isNotNull);
+      expect(slot!['matchId'], '401816669');
+      expect(slot['slug'], 'atlanta-braves-los-angeles-dodgers');
+      expect(slot['category'], 'regular');
+      expect(slot['stream'], '2');
+      expect(
+        slot['path'],
+        '401816669/atlanta-braves-los-angeles-dodgers/regular/2',
+      );
+      expect(slot['origin'], 'https://sportsembed.su');
+    });
+
+    test('parseSportsEmbedSlot rejects non-sportsembed', () {
+      expect(
+        LiveGoatUnlock.parseSportsEmbedSlot(
+          'https://embed.st/embed/delta/foo/1',
+        ),
+        isNull,
+      );
+    });
   });
 
   group('LiveGoatUnlock.preferDirectEnginePlayback', () {
@@ -85,6 +110,15 @@ void main() {
       expect(
         LiveGoatUnlock.preferDirectEnginePlayback(
           'https://lb1.strmd.st/secure/tok/echo/stream/bar/1/playlist.m3u8',
+        ),
+        isTrue,
+      );
+    });
+
+    test('watchfooty wfty.st playlists open direct', () {
+      expect(
+        LiveGoatUnlock.preferDirectEnginePlayback(
+          'https://lb5.wfty.st/secure/tok/delta/live_foo/1/465/playlist.m3u8',
         ),
         isTrue,
       );

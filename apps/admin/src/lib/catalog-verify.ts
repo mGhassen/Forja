@@ -20,7 +20,7 @@ export type VerifyResponse = {
   error?: string
 }
 
-/** Manual player_api check for one candidate or every portal on a host. */
+/** Manual alive check (Xtream player_api / Stalker handshake / M3U fetch). */
 export async function catalogVerify(body: {
   candidateId?: string
   host?: string

@@ -17,9 +17,11 @@ class LiveGoatUnlock {
 
   static const _assetRoot = 'assets/plugins/live/goat';
   static const _gasmAssetRoot = 'assets/plugins/live/gasm';
+  static const _sportsEmbedAssetRoot = 'assets/plugins/live/sportsembed';
   static const _embedOrigin = 'https://embed.st';
   static const _embedIndiaOrigin = 'https://embedindia.st';
   static const _watchfootyReferer = 'https://watchfooty.st/';
+  static const _sportsEmbedOrigin = 'https://sportsembed.su';
   static const _sportsEmbedHosts = ['sportsembed.su', 'spiderembed.top'];
   static const _goatSlotSources = {
     'admin',
@@ -29,6 +31,17 @@ class LiveGoatUnlock {
     'ppv',
     'bravo',
   };
+  /// Prefer delta (GOAT-compatible) then denser sportsembed qualities.
+  static const _watchfootySourcePriority = [
+    'delta',
+    'echo',
+    'hd',
+    'sigma',
+    'pro',
+    'platinum',
+    'deluxe',
+    'regular',
+  ];
   static const _ua =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
@@ -37,6 +50,9 @@ class LiveGoatUnlock {
 
   static String? _cachedGasmDir;
   static Future<void>? _prepareGasmFuture;
+
+  static String? _cachedSportsEmbedDir;
+  static Future<void>? _prepareSportsEmbedFuture;
 
   static bool isSportsEmbedUrl(String url) {
     final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
@@ -91,6 +107,10 @@ class LiveGoatUnlock {
       _parseEmbedIndiaSlot(raw);
 
   /// Unlock watchfooty.st sportsembed mirrors to a playable HLS URL.
+  ///
+  /// Primary path: sportsembed `POST /api/get` + stream-lock.wasm (Node).
+  /// Fallback: map delta/echo slots onto embed.st GOAT. Never returns an HTML
+  /// embed URL — callers must not hand sportsembed pages to the IPTV player.
   static Future<({String url, Map<String, String> headers})?>
   resolveWatchfootyEmbed({required String embedUrl}) async {
     final embed = embedUrl.trim();
@@ -106,6 +126,9 @@ class LiveGoatUnlock {
     }
     if (!isSportsEmbedUrl(embed)) return null;
 
+    final sports = await resolveSportsEmbed(embedUrl: embed);
+    if (sports != null) return sports;
+
     final mapped = embedStUrlFromSportsEmbed(embed);
     if (mapped != null) {
       final unlocked = await resolveStreamed(embedUrl: mapped);
@@ -117,20 +140,135 @@ class LiveGoatUnlock {
       if (unlocked != null) return unlocked;
     }
 
-    final sniffed = await sniffEmbed(
-      embedUrl: embed,
-      referer: _watchfootyReferer,
-    );
-    if (sniffed == null || sniffed.isEmpty) return null;
-    final origin = Uri.tryParse(embed)?.origin ?? '';
-    return (
-      url: sniffed,
-      headers: {
-        'Referer': embed,
-        if (origin.isNotEmpty) 'Origin': origin,
-        'User-Agent': _ua,
-      },
-    );
+    return null;
+  }
+
+  /// sportsembed.su client handshake → plaintext HLS URL.
+  static Future<({String url, Map<String, String> headers})?> resolveSportsEmbed({
+    required String embedUrl,
+  }) async {
+    final embed = embedUrl.trim();
+    if (embed.isEmpty || !isSportsEmbedUrl(embed)) return null;
+    final slot = parseSportsEmbedSlot(embed);
+    if (slot == null) {
+      debugPrint('[LiveSportsEmbed] unparseable embed: $embed');
+      return null;
+    }
+
+    final node = await _findNodeBinary();
+    if (node == null) {
+      debugPrint('[LiveSportsEmbed] node not found — sportsembed unlock skipped');
+      return null;
+    }
+
+    try {
+      final dir = await _ensureSportsEmbedDir();
+      final result = await _runSportsEmbedUnlock(
+        node: node,
+        dir: dir,
+        embedUrl: embed,
+      );
+      if (result == null || result.isEmpty) return null;
+      final origin = (slot['origin'] ?? _sportsEmbedOrigin).toString();
+      final path = (slot['path'] ?? '').toString();
+      return (
+        url: result,
+        headers: {
+          'Referer': path.isNotEmpty ? '$origin/embed/$path' : '$origin/',
+          'Origin': origin,
+          'User-Agent': _ua,
+        },
+      );
+    } catch (e) {
+      debugPrint('[LiveSportsEmbed] unlock failed: $e');
+      return null;
+    }
+  }
+
+  /// Fetch WatchFooty match streams and unlock playable HLS rows (delta first).
+  static Future<List<({String url, String name, Map<String, String> headers})>>
+  resolveWatchfootyMatch({required String matchId}) async {
+    final mid = matchId.trim().replaceFirst(RegExp(r'^wf_'), '');
+    if (mid.isEmpty) return const [];
+
+    try {
+      final resp = await http
+          .get(
+            Uri.parse('https://api.watchfooty.st/api/v1/match/$mid'),
+            headers: {'User-Agent': _ua, 'Accept': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 20));
+      if (resp.statusCode < 200 || resp.statusCode >= 300) {
+        debugPrint('[LiveSportsEmbed] match HTTP ${resp.statusCode}');
+        return const [];
+      }
+      final decoded = jsonDecode(resp.body);
+      final match = decoded is List
+          ? (decoded.isNotEmpty ? decoded.first : null)
+          : decoded;
+      if (match is! Map) return const [];
+      final streams = match['streams'];
+      if (streams is! List || streams.isEmpty) return const [];
+
+      final ordered = List<Map<String, dynamic>>.from(
+        streams.whereType<Map>().map((e) => Map<String, dynamic>.from(e)),
+      );
+      ordered.sort((a, b) {
+        final sa = (a['source'] ?? '').toString().toLowerCase();
+        final sb = (b['source'] ?? '').toString().toLowerCase();
+        final ia = _watchfootySourcePriority.indexOf(sa);
+        final ib = _watchfootySourcePriority.indexOf(sb);
+        final pa = ia < 0 ? 99 : ia;
+        final pb = ib < 0 ? 99 : ib;
+        if (pa != pb) return pa.compareTo(pb);
+        return (a['url'] ?? '').toString().compareTo((b['url'] ?? '').toString());
+      });
+
+      final out = <({String url, String name, Map<String, String> headers})>[];
+      for (final s in ordered) {
+        final embed = (s['url'] ?? '').toString().trim();
+        if (embed.isEmpty) continue;
+        final unlocked = await resolveWatchfootyEmbed(embedUrl: embed);
+        if (unlocked == null) continue;
+        final source = (s['source'] ?? '').toString().trim();
+        final quality = (s['quality'] ?? '').toString().trim();
+        final label = [
+          'WatchFooty',
+          if (source.isNotEmpty) source,
+          if (quality.isNotEmpty) quality,
+        ].join(' ');
+        out.add((url: unlocked.url, name: label, headers: unlocked.headers));
+        // Cap so Engine UI stays snappy — delta/hd usually enough.
+        if (out.length >= 6) break;
+      }
+      return out;
+    } catch (e) {
+      debugPrint('[LiveSportsEmbed] match resolve failed: $e');
+      return const [];
+    }
+  }
+
+  @visibleForTesting
+  static Map<String, dynamic>? parseSportsEmbedSlot(String raw) {
+    final uri = Uri.tryParse(raw.trim());
+    if (uri == null || !isSportsEmbedUrl(raw)) return null;
+    final segs = uri.pathSegments;
+    if (segs.length < 5 || segs.first != 'embed') return null;
+    final matchId = segs[1];
+    final slug = segs[2];
+    final category = segs[3];
+    final stream = segs[4];
+    if (matchId.isEmpty || slug.isEmpty || category.isEmpty || stream.isEmpty) {
+      return null;
+    }
+    return {
+      'origin': uri.origin,
+      'matchId': matchId,
+      'slug': slug,
+      'category': category,
+      'stream': stream,
+      'path': '$matchId/$slug/$category/$stream',
+    };
   }
 
   /// Native Streamed resolve — bypasses flutter_js (no TextEncoder / fetch bridge).
@@ -367,7 +505,11 @@ class LiveGoatUnlock {
   /// [httpHeaders] instead of `/hls-proxy` rewrite. Admin master (`/rtmp/stream/`)
   /// stays on the proxy path.
   static bool preferDirectEnginePlayback(String m3u8Url) {
-    final path = (Uri.tryParse(m3u8Url.trim())?.path ?? '').toLowerCase();
+    final uri = Uri.tryParse(m3u8Url.trim());
+    if (uri == null) return false;
+    final path = uri.path.toLowerCase();
+    final host = uri.host.toLowerCase();
+    if (host.contains('wfty.st')) return true;
     return path.contains('/delta/stream/') || path.contains('/echo/stream/');
   }
 
@@ -830,6 +972,77 @@ class LiveGoatUnlock {
     await out.parent.create(recursive: true);
     final data = await rootBundle.load(assetPath);
     await out.writeAsBytes(data.buffer.asUint8List(), flush: true);
+  }
+
+  static Future<String> _ensureSportsEmbedDir() async {
+    if (_cachedSportsEmbedDir != null) {
+      final ready = File(
+        '${_cachedSportsEmbedDir!}/vendor/stream-lock.wasm',
+      );
+      if (await ready.exists()) {
+        await _refreshSportsEmbedAssets(_cachedSportsEmbedDir!);
+        return _cachedSportsEmbedDir!;
+      }
+    }
+    _prepareSportsEmbedFuture ??= _prepareSportsEmbedDir();
+    await _prepareSportsEmbedFuture;
+    final dir = _cachedSportsEmbedDir;
+    if (dir == null) {
+      throw StateError('sportsembed unlock runtime failed to initialize');
+    }
+    return dir;
+  }
+
+  static Future<void> _refreshSportsEmbedAssets(String dir) async {
+    await _writeAsset(
+      '$_sportsEmbedAssetRoot/unlock.mjs',
+      File('$dir/unlock.mjs'),
+    );
+    await _writeAsset(
+      '$_sportsEmbedAssetRoot/vendor/stream-lock.wasm',
+      File('$dir/vendor/stream-lock.wasm'),
+    );
+  }
+
+  static Future<void> _prepareSportsEmbedDir() async {
+    final support = await getApplicationSupportDirectory();
+    final dir = Directory('${support.path}/live-sportsembed');
+    await dir.create(recursive: true);
+    await _refreshSportsEmbedAssets(dir.path);
+    _cachedSportsEmbedDir = dir.path;
+  }
+
+  static Future<String?> _runSportsEmbedUnlock({
+    required String node,
+    required String dir,
+    required String embedUrl,
+  }) async {
+    final payload = jsonEncode({'embedUrl': embedUrl.trim()});
+    final proc = await Process.start(
+      node,
+      ['unlock.mjs'],
+      workingDirectory: dir,
+      runInShell: false,
+    );
+    proc.stdin.write(payload);
+    await proc.stdin.close();
+    final stdoutFuture = proc.stdout.transform(utf8.decoder).join();
+    final stderrFuture = proc.stderr.transform(utf8.decoder).join();
+    final exit = await proc.exitCode.timeout(const Duration(seconds: 45));
+    final stdout = await stdoutFuture;
+    final stderr = await stderrFuture;
+    final raw = stdout.trim();
+    if (raw.isEmpty) {
+      debugPrint('[LiveSportsEmbed] exit=$exit stderr=$stderr');
+      return null;
+    }
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) return null;
+    if (decoded['ok'] == true) {
+      return (decoded['url'] ?? '').toString().trim();
+    }
+    debugPrint('[LiveSportsEmbed] ${decoded['error']}');
+    return null;
   }
 
   static Future<String?> _runNodeUnlock({

@@ -147,6 +147,8 @@ flutter:
     - assets/plugins/live/gasm/
     - assets/plugins/live/gasm/vendor/
     - assets/plugins/live/gasm/webview/
+    - assets/plugins/live/sportsembed/
+    - assets/plugins/live/sportsembed/vendor/
     - assets/plugins/catalog/
     - assets/textures/
     - assets/watch_providers/

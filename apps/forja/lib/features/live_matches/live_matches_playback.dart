@@ -370,6 +370,31 @@ mixin _LiveMatchesPlayback
       if (rows.isNotEmpty) return rows;
     }
 
+    if (pluginId == 'live-watchfooty') {
+      final mid = source.id.trim().replaceFirst(RegExp(r'^wf_'), '');
+      if (mid.isNotEmpty) {
+        final unlocked = await LiveGoatUnlock.resolveWatchfootyMatch(
+          matchId: mid,
+        );
+        if (unlocked.isNotEmpty) {
+          return [
+            for (var i = 0; i < unlocked.length; i++)
+              _StreamedStream(
+                id: source.id,
+                streamNo: i + 1,
+                language: '',
+                hd: unlocked[i].name.toLowerCase().contains('hd') ||
+                    unlocked[i].name.toLowerCase().contains('fhd'),
+                embedUrl: unlocked[i].url,
+                source: unlocked[i].name.toLowerCase(),
+                viewers: 0,
+              ),
+          ];
+        }
+      }
+      return [];
+    }
+
     final rows = await EngineService.instance.runLivePlugin(
       pluginId: pluginId,
       action: 'resolve',

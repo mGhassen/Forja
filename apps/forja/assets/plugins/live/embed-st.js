@@ -127,9 +127,13 @@ function playbackHeadersForSlot(slot, cfg) {
 
 function preferDirectPlayback(m3u8Url) {
   var path = '';
+  var host = '';
   try {
-    path = new URL(String(m3u8Url || '')).pathname.toLowerCase();
+    var u = new URL(String(m3u8Url || ''));
+    path = u.pathname.toLowerCase();
+    host = u.host.toLowerCase();
   } catch (_) {}
+  if (host.indexOf('wfty.st') >= 0) return true;
   return path.indexOf('/delta/stream/') >= 0 || path.indexOf('/echo/stream/') >= 0;
 }
 

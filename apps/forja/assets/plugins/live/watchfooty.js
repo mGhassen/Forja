@@ -1,4 +1,21 @@
 var WATCHFOOTY_REFERER = 'https://watchfooty.st/';
+var WATCHFOOTY_SOURCE_PRIORITY = {
+  delta: 0,
+  echo: 1,
+  hd: 2,
+  sigma: 3,
+  pro: 4,
+  platinum: 5,
+  deluxe: 6,
+  regular: 7,
+};
+
+function watchfootySourceRank(source) {
+  var key = String(source || '').toLowerCase();
+  return Object.prototype.hasOwnProperty.call(WATCHFOOTY_SOURCE_PRIORITY, key)
+    ? WATCHFOOTY_SOURCE_PRIORITY[key]
+    : 99;
+}
 
 async function resolveWatchfootyEmbed(ctx, embed) {
   var url = String(embed || '').trim();
@@ -16,6 +33,29 @@ async function resolveWatchfootyEmbed(ctx, embed) {
 
   if (!isSportsEmbedUrl(url)) return [];
 
+  if (ctx.live && typeof ctx.live.sportsEmbedUnlock === 'function') {
+    try {
+      var unlockedUrl = await ctx.live.sportsEmbedUnlock(url);
+      if (unlockedUrl) {
+        var origin = '';
+        try {
+          origin = new URL(url).origin;
+        } catch (_) {}
+        return [
+          {
+            url: String(unlockedUrl),
+            headers: {
+              Referer: url,
+              Origin: origin || 'https://sportsembed.su',
+              'User-Agent': ua(),
+            },
+            directPlayback: preferDirectPlayback(unlockedUrl),
+          },
+        ];
+      }
+    } catch (_) {}
+  }
+
   var mapped = embedStUrlFromSportsEmbed(url);
   if (mapped) {
     try {
@@ -32,27 +72,6 @@ async function resolveWatchfootyEmbed(ctx, embed) {
     } catch (_) {}
   }
 
-  if (ctx.live && typeof ctx.live.sniffEmbed === 'function') {
-    var sniffed = await ctx.live.sniffEmbed(url, WATCHFOOTY_REFERER);
-    if (sniffed) {
-      var origin = '';
-      try {
-        origin = new URL(url).origin;
-      } catch (_) {}
-      return [
-        {
-          url: sniffed,
-          headers: {
-            Referer: url,
-            Origin: origin,
-            'User-Agent': ua(),
-          },
-          directPlayback: preferDirectPlayback(sniffed),
-        },
-      ];
-    }
-  }
-
   return [];
 }
 
@@ -63,30 +82,31 @@ async function resolveWatchfootyMatch(ctx, mid) {
   if (!res.ok) return [];
   var data = await res.json();
   var match = Array.isArray(data) ? data[0] : data;
+  var streams = ((match && match.streams) || []).slice();
+  streams.sort(function (a, b) {
+    return watchfootySourceRank(a && a.source) - watchfootySourceRank(b && b.source);
+  });
+
   var out = [];
-  var streams = (match && match.streams) || [];
   for (var i = 0; i < streams.length; i++) {
     var s = streams[i];
     if (!s || !s.url) continue;
     var embed = String(s.url).trim();
     var resolved = await resolveWatchfootyEmbed(ctx, embed);
-    if (resolved.length) {
-      for (var j = 0; j < resolved.length; j++) {
-        var row = resolved[j];
-        out.push({
-          url: row.url,
-          name: 'WatchFooty ' + (out.length + 1),
-          headers: row.headers || { Referer: WATCHFOOTY_REFERER, 'User-Agent': ua() },
-          directPlayback: row.directPlayback === true,
-        });
-      }
-      continue;
+    if (!resolved.length) continue;
+    for (var j = 0; j < resolved.length; j++) {
+      var row = resolved[j];
+      var label = 'WatchFooty';
+      if (s.source) label += ' ' + s.source;
+      if (s.quality) label += ' ' + s.quality;
+      out.push({
+        url: row.url,
+        name: label,
+        headers: row.headers || { Referer: WATCHFOOTY_REFERER, 'User-Agent': ua() },
+        directPlayback: row.directPlayback === true,
+      });
     }
-    out.push({
-      url: embed,
-      name: 'WatchFooty ' + (i + 1),
-      headers: { Referer: WATCHFOOTY_REFERER, 'User-Agent': ua() },
-    });
+    if (out.length >= 6) break;
   }
   return out;
 }

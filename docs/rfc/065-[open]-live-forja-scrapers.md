@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **12 / 14** acceptance · **2 / 2** Android WebView unlock 🔄 |
-| **Current slice** | Android/ATV WebView GOAT + GASM (PPV) — smoke pending ([203](../issues/203-[open]-android-tv-goat-webview-unlock.md)) |
+| **Progress** | **6 / 6** components · **14 / 18** acceptance · **2 / 2** Android WebView unlock 🔄 |
+| **Current slice** | WatchFooty catalog/all-sports + sportsembed unlock; Android/ATV WebView GOAT + GASM smoke pending ([203](../issues/203-[open]-android-tv-goat-webview-unlock.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -48,6 +48,8 @@
 | 14 | R65-A14 | Manual: Engine PPV direct source on live event | ⏭️ |
 | 15 | R65-A15 | Android/ATV: GOAT unlock via off-screen WebView when Node missing | 🔄 |
 | 16 | R65-A16 | Android/ATV: GASM (embedindia) unlock via WebView | 🔄 |
+| 17 | R65-A17 | WatchFooty catalog: `/matches/all` live+upcoming, real sport, absolute posters | ✅ |
+| 18 | R65-A18 | WatchFooty Engine: sportsembed `/api/get` + stream-lock.wasm unlock (no raw HTML / sniff hang) | ✅ |
 
 ---
 
@@ -57,7 +59,7 @@ Bundled live `extract(ctx)` plugins (upstream: [live-sport-plugin](https://githu
 
 ### Contract
 
-Live `extract(ctx)` receives `action` (`catalog` \| `resolve`), `matchId`, `source`, `stream`, `embedUrl`, `url`, `title`, `category`, `config`. Returns catalog match rows or `{ url, headers?, webviewOnly? }` stream rows. `ctx.live.goatUnlock(bodyHex, goat, slot)` decrypts embed.st GOAT responses (**desktop:** Node worker; **Android/iOS:** off-screen WebView + `lock.wasm`; golf path pure HTTP in JS). `ctx.live.gasmUnlock(bodyHex, island, slot)` decrypts embedindia.st GASM (**desktop:** Node; **Android/iOS:** off-screen WebView + `gasm.wasm`).
+Live `extract(ctx)` receives `action` (`catalog` \| `resolve`), `matchId`, `source`, `stream`, `embedUrl`, `url`, `title`, `category`, `config`. Returns catalog match rows or `{ url, headers?, webviewOnly? }` stream rows. `ctx.live.goatUnlock(bodyHex, goat, slot)` decrypts embed.st GOAT responses (**desktop:** Node worker; **Android/iOS:** off-screen WebView + `lock.wasm`; golf path pure HTTP in JS). `ctx.live.gasmUnlock(bodyHex, island, slot)` decrypts embedindia.st GASM (**desktop:** Node; **Android/iOS:** off-screen WebView + `gasm.wasm`). `ctx.live.sportsEmbedUnlock(embedUrl)` unlocks sportsembed.su WatchFooty mirrors (**desktop:** Node + `stream-lock.wasm`).
 
 ### Related
 
