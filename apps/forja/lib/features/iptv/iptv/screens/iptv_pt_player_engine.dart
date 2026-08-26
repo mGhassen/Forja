@@ -250,6 +250,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     }
     if (wasCold) {
       debugPrint('[IPTV] video alive ($reason)');
+      _resetStalkerHardFails();
     }
     _syncPlaybackBannerVisibility();
   }
@@ -299,6 +300,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   }
 
   Future<void> _engineOpenSource(IptvPlaySource src) async {
+    src = await _refreshStalkerPlayUrl(src);
     if (_s._exoBackend) {
       // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
       final live = iptvExoUrlLooksLive(src.url);
@@ -367,6 +369,78 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     // Re-apply after every open/recreate - media_kit resets to 100, and
     // mute is volume=0 in Dart state only.
     _engineSetVolume(_s._volume);
+  }
+
+  /// Stalker create_link URLs are one-shot / short-lived. Mint a fresh link
+  /// before every open when we still have the portal + cmd (streamId).
+  Future<IptvPlaySource> _refreshStalkerPlayUrl(IptvPlaySource src) async {
+    if (_liveSourceKindFor(src) != IptvLiveSourceKind.iptvStalker) {
+      return src;
+    }
+    final portal = _s.widget.channelGuide?.xtreamPortal?.portal;
+    final cmd = (src.streamId ?? '').trim();
+    if (portal == null || cmd.isEmpty) {
+      return src;
+    }
+    try {
+      final fresh = await IptvClient.createLink(
+        portal,
+        cmd: cmd,
+        section: 'live',
+      );
+      if (fresh == null || fresh.isEmpty) {
+        debugPrint('[IPTV] stalker create_link empty for cmd=$cmd');
+        return src;
+      }
+      if (fresh == src.url) return src;
+      debugPrint('[IPTV] stalker create_link refreshed');
+      final updated = src.copyWith(url: fresh);
+      final i = _s._sourceIdx;
+      if (i >= 0 && i < _s._sources.length) {
+        _s._sources = List<IptvPlaySource>.from(_s._sources)..[i] = updated;
+      }
+      return updated;
+    } catch (e) {
+      debugPrint('[IPTV] stalker create_link failed: $e');
+      return src;
+    }
+  }
+
+  void _noteStalkerHardOpenFail() {
+    if (_s._sources.isEmpty) return;
+    if (_liveSourceKindFor(_s._sources[_s._sourceIdx]) !=
+        IptvLiveSourceKind.iptvStalker) {
+      return;
+    }
+    _s._stalkerHardFailCount++;
+  }
+
+  /// After repeated create_link + format fails, stop thrashing and mark red.
+  bool _giveUpDeadStalkerStream() {
+    if (_s._sources.isEmpty) return false;
+    if (_s._stalkerHardFailCount < 2) return false;
+    if (_liveSourceKindFor(_s._sources[_s._sourceIdx]) !=
+        IptvLiveSourceKind.iptvStalker) {
+      return false;
+    }
+    final id = (_s._sources[_s._sourceIdx].streamId ?? _s._currentChannelId)
+        .trim();
+    if (id.isNotEmpty) {
+      _s.widget.onStreamDead?.call(id);
+    }
+    debugPrint(
+      '[IPTV] stalker stream dead after ${_s._stalkerHardFailCount} '
+      'hard fails — stopping recovery',
+    );
+    _s._userPlayWhenReady = false;
+    if (mounted) {
+      setState(() => _s._statusBanner = 'Stream offline');
+    }
+    return true;
+  }
+
+  void _resetStalkerHardFails() {
+    _s._stalkerHardFailCount = 0;
   }
 
   /// CDN socket reopened — play through demuxer cushion when possible.
@@ -867,6 +941,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       // reopen can race a dead demuxer — escalate hard after early attempts.
       if (_livePlaybackProfile && iptvIsHardOpenFail(msg)) {
         _invalidatePendingLiveEdgeSnaps();
+        _noteStalkerHardOpenFail();
+        if (_giveUpDeadStalkerStream()) return;
         unawaited(_triggerRecovery(
           reason: 'error: $msg',
           forceHard: _s._retryAttempt >= 1,
@@ -1115,6 +1191,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   /// ladder — the same path the watchdog would take on a stalled feed.
   Future<void> _reloadCurrent() async {
     _s._retryAttempt = 0;
+    _resetStalkerHardFails();
+    _s._userPlayWhenReady = true;
     // Classic (1.3.114): soft reopen only — no mid-stream drop-buffers.
     if (!_bufferedRecovery) {
       await _openCurrent();
@@ -1596,6 +1674,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     bool userInitiated = false,
   }) async {
     if (_s._disposed || _recoveryInFlight) return;
+    if (_giveUpDeadStalkerStream()) return;
     // Stable cache/feed hold is live-only — VOD must not skip recovery after a
     // false "video alive" / open fail (issue 163). Hard format/open death
     // must never be held as "working".

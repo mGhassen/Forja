@@ -101,15 +101,35 @@ function extract(ctx) {
     return tryAt(0);
   }
 
+  // API returns ThirdParty as array, string URL, or single {src|url} object.
+  function thirdPartyUrls(api) {
+    var raw = api && (api.ThirdParty || api.thirdParty);
+    if (raw == null || raw === '') return [];
+    if (typeof raw === 'string') {
+      return /^https?:/i.test(raw) ? [raw] : [];
+    }
+    if (Array.isArray(raw)) {
+      return raw
+        .map(function (e) {
+          return e && (e.src || e.url);
+        })
+        .filter(Boolean);
+    }
+    if (typeof raw === 'object') {
+      var u = raw.src || raw.url;
+      return u ? [u] : [];
+    }
+    return [];
+  }
+
   function rowsFromEpisode(api, origin) {
     if (!api || typeof api !== 'object') return Promise.resolve([]);
     var urls = [];
     ['Video', 'video', 'VideoUrl', 'videoUrl'].forEach(function (k) {
       if (api[k] && /^https?:/i.test(String(api[k]))) urls.push(String(api[k]));
     });
-    (api.ThirdParty || api.thirdParty || []).forEach(function (e) {
-      var u = e && (e.src || e.url);
-      if (u) urls.push(u);
+    thirdPartyUrls(api).forEach(function (u) {
+      urls.push(u);
     });
     return Promise.all(
       urls.map(function (u) {
@@ -151,7 +171,7 @@ function extract(ctx) {
           api.video ||
           api.VideoUrl ||
           api.videoUrl ||
-          (api.ThirdParty || api.thirdParty || []).length > 0;
+          thirdPartyUrls(api).length > 0;
         if (!hasVideo) {
           ctx.log('kisskh episode JSON has no Video/ThirdParty');
           return [];

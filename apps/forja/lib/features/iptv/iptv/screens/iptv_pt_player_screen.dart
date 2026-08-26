@@ -169,6 +169,34 @@ class IptvPlaySource {
     this.liveStreamHd = false,
   });
 
+  IptvPlaySource copyWith({
+    String? url,
+    String? label,
+    String? detail,
+    String? logoUrl,
+    String? streamId,
+    String? epgChannelId,
+    Map<String, String>? headers,
+    IptvLiveSourceKind? liveSourceKind,
+    String? liveProviderBadge,
+    int? liveViewerCount,
+    bool? liveStreamHd,
+  }) {
+    return IptvPlaySource(
+      url: url ?? this.url,
+      label: label ?? this.label,
+      detail: detail ?? this.detail,
+      logoUrl: logoUrl ?? this.logoUrl,
+      streamId: streamId ?? this.streamId,
+      epgChannelId: epgChannelId ?? this.epgChannelId,
+      headers: headers ?? this.headers,
+      liveSourceKind: liveSourceKind ?? this.liveSourceKind,
+      liveProviderBadge: liveProviderBadge ?? this.liveProviderBadge,
+      liveViewerCount: liveViewerCount ?? this.liveViewerCount,
+      liveStreamHd: liveStreamHd ?? this.liveStreamHd,
+    );
+  }
+
   /// Channel name for chrome — strips leading `T3 · ` rank prefix.
   String get chromeTitle {
     final t = label.replaceFirst(RegExp(r'^T\d+\s*·\s*'), '').trim();
@@ -223,6 +251,8 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   final IptvChannelGuide? channelGuide;
   /// Fired when the in-player guide tunes a different Xtream channel.
   final ValueChanged<IptvStream>? onChannelChanged;
+  /// Catalog stream marked dead (Stalker create_link / format fail) → red status.
+  final ValueChanged<String>? onStreamDead;
   /// Which surface preference to read/write (default IPTV).
   final BuiltInPlayerContext engineContext;
   /// When set on Android, boot with this engine for this session only.
@@ -256,6 +286,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     this.logoUrl,
     this.channelGuide,
     this.onChannelChanged,
+    this.onStreamDead,
     this.engineContext = BuiltInPlayerContext.iptv,
     this.forceBuiltInEngine,
     this.vodPlayback = false,
@@ -280,6 +311,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     IptvPortalPlatform? portalPlatform,
     IptvChannelGuide? channelGuide,
     ValueChanged<IptvStream>? onChannelChanged,
+    ValueChanged<String>? onStreamDead,
     BuiltInPlayerContext? engineContext,
     BuiltInPlayerEngine? forceBuiltInEngine,
   }) {
@@ -293,6 +325,10 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
         IptvPlaySource(
           url: url,
           label: portalName ?? 'Source 1',
+          logoUrl: stream.icon.isEmpty ? null : stream.icon,
+          streamId: stream.streamId,
+          epgChannelId:
+              stream.epgChannelId.isEmpty ? null : stream.epgChannelId,
           liveSourceKind: kind,
         ),
       ],
@@ -301,6 +337,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
       logoUrl: stream.icon.isEmpty ? null : stream.icon,
       channelGuide: channelGuide,
       onChannelChanged: onChannelChanged,
+      onStreamDead: onStreamDead,
       // Movies/Series share Settings → Movies; Live keeps IPTV.
       engineContext: engineContext ??
           (vod ? BuiltInPlayerContext.vod : BuiltInPlayerContext.iptv),
@@ -557,6 +594,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   DateTime? _lastRecoveryAt;
   /// Bumped to cancel in-flight delayed live-edge snaps (recovery / reopen race).
   int _liveEdgeSnapEpoch = 0;
+  /// Stalker: consecutive hard format/open fails after fresh create_link.
+  int _stalkerHardFailCount = 0;
   /// One-shot Exo ↔ MediaKit swap after unrecognized-format errors.
   bool _formatEngineSwapped = false;
   // When the user explicitly paused (play-after-pause rejoins live edge).

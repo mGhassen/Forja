@@ -25,13 +25,13 @@ class DetailsPlaySources {
     required this.webstreaming,
   });
 
-  /// First paint before prefs hydrate — matches platform defaults (Forja only).
+  /// First paint before prefs hydrate — matches platform defaults (Forja + Auto).
   const DetailsPlaySources.pending()
       : torrent = false,
         stremio = false,
         nuvio = false,
         engine = true,
-        engineAutoStart = false,
+        engineAutoStart = true,
         webstreaming = false;
 
   final bool torrent;

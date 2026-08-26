@@ -634,10 +634,10 @@ class SettingsService {
   }
 
   /// When Forja is on and Webstreaming is off: green Play races all enabled
-  /// Forja HTTP plugins and opens the first stream. Default off (Sources only).
+  /// Forja HTTP plugins and opens the first stream. Default on.
   Future<bool> isPlaySourceEngineAutoStartEnabled() async => kvGetBool(
     _playSourceEngineAutoStartKey,
-    fallback: false,
+    fallback: true,
   );
 
   Future<void> setPlaySourceEngineAutoStartEnabled(bool enabled) async {

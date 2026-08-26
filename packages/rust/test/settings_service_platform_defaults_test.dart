@@ -54,6 +54,7 @@ void main() {
       expect(await service.isPlaySourceStremioEnabled(), isFalse);
       expect(await service.isPlaySourceNuvioEnabled(), isFalse);
       expect(await service.isPlaySourceEngineEnabled(), isTrue);
+      expect(await service.isPlaySourceEngineAutoStartEnabled(), isTrue);
   });
 
   test(

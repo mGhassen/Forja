@@ -92,7 +92,7 @@ class SyncDomainBridge {
       'play_source_stremio_enabled': defaults.playSourceStremio,
       'play_source_nuvio_enabled': defaults.playSourceNuvio,
       'play_source_webstreaming_enabled': defaults.playSourceWebstreaming,
-      'play_source_engine_auto_start': false,
+      'play_source_engine_auto_start': true,
       'preferred_audio_lang': 'None',
       'preferred_subtitle_lang': 'English',
       'avoid_unsupported_audio': true,

@@ -1527,6 +1527,7 @@ class _BrowserViewState extends State<_BrowserView> {
         portalPlatform: p.portal.platform,
         channelGuide: channelGuide,
         onChannelChanged: (next) => focusStream = next,
+        onStreamDead: ctrl.markStreamDead,
       ),
     );
     if (!mounted) return;
