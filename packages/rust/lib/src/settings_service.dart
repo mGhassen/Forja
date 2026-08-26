@@ -15,6 +15,9 @@ class SettingsService {
   factory SettingsService() => _instance;
   SettingsService._internal();
 
+  bool? _cachedUseDebridForStreams;
+  String? _cachedDebridService;
+
   static PlatformProfile _platformProfile = PlatformProfile.phone;
 
   static PlatformProfile get platformProfile => _platformProfile;
@@ -1100,17 +1103,47 @@ class SettingsService {
     await setEnabledTorrentProviders(current);
   }
 
-  Future<bool> useDebridForStreams() async =>
-      kvGetBool(_useDebridKey, fallback: false);
+  Future<bool> useDebridForStreams() async => useDebridForStreamsSync();
 
-  Future<void> setUseDebridForStreams(bool enabled) async =>
-      kvSetBool(_useDebridKey, enabled);
+  /// Sync — storage is sync under the hood; memoized after first read.
+  bool useDebridForStreamsSync() {
+    final cached = _cachedUseDebridForStreams;
+    if (cached != null) return cached;
+    final v = kvGetBoolSync(_useDebridKey, fallback: false);
+    _cachedUseDebridForStreams = v;
+    return v;
+  }
 
-  Future<String> getDebridService() async =>
-      await kvGetString(_debridServiceKey) ?? 'None';
+  Future<void> setUseDebridForStreams(bool enabled) async {
+    _cachedUseDebridForStreams = enabled;
+    await kvSetBool(_useDebridKey, enabled);
+  }
 
-  Future<void> setDebridService(String service) async =>
-      kvSetString(_debridServiceKey, service);
+  Future<String> getDebridService() async {
+    // Off → no service read.
+    if (!useDebridForStreamsSync()) return 'None';
+    return getDebridServiceSync();
+  }
+
+  String getDebridServiceSync() {
+    final cached = _cachedDebridService;
+    if (cached != null) return cached;
+    final v = kvGetStringSync(_debridServiceKey) ?? 'None';
+    _cachedDebridService = v;
+    return v;
+  }
+
+  /// Play-path snapshot: when debrid is off, skips the service key entirely.
+  ({bool useDebrid, String service}) debridPlaybackPrefs() {
+    final use = useDebridForStreamsSync();
+    if (!use) return (useDebrid: false, service: 'None');
+    return (useDebrid: true, service: getDebridServiceSync());
+  }
+
+  Future<void> setDebridService(String service) async {
+    _cachedDebridService = service;
+    await kvSetString(_debridServiceKey, service);
+  }
 
   Future<String> getExternalPlayer() async =>
       await kvGetString(_externalPlayerKey) ?? 'Built-in Player';

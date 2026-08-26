@@ -2852,8 +2852,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     setState(() => _sourcePickInFlight = true);
     try {
+      final debrid = SettingsService().debridPlaybackPrefs();
       // ATV: pair/offline dialog first. Do not dismiss or start local resolve.
-      if (!await ensureLanP2pPlayback(context)) return;
+      if (!await ensureLanP2pPlayback(
+        context,
+        useDebrid: debrid.useDebrid,
+        debridService: debrid.service,
+      )) {
+        return;
+      }
       if (!mounted) return;
       // Close without cancelling engine jobs - resolve starts immediately and
       // dispose must not abort the new torrentStream (see [dismiss]).
@@ -2872,18 +2879,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     setState(() => _sourcePickInFlight = true);
     try {
-      final settings = SettingsService();
-      final useDebrid = await settings.useDebridForStreams();
-      final debridService = await settings.getDebridService();
-      if (!mounted) return;
+      final debrid = SettingsService().debridPlaybackPrefs();
       final precheck = classifyStremioStream(
         stream,
         PlatformPlayback.capabilities,
-        useDebrid: useDebrid,
-        debridService: debridService,
+        useDebrid: debrid.useDebrid,
+        debridService: debrid.service,
       );
       if (precheck == null) {
-        if (!await ensureLanP2pPlayback(context)) return;
+        if (!await ensureLanP2pPlayback(
+          context,
+          useDebrid: debrid.useDebrid,
+          debridService: debrid.service,
+        )) {
+          return;
+        }
         if (!mounted) return;
       }
       PlayerSourcesPanel.dismiss(cancelEngine: false);

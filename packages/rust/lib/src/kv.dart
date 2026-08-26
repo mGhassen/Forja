@@ -6,6 +6,10 @@ Future<bool> kvHasKey(String key) async {
 }
 
 Future<String?> kvGetString(String key) async {
+  return kvGetStringSync(key);
+}
+
+String? kvGetStringSync(String key) {
   if (!Engine.isReady) return null;
   final v = Engine.storageRead(key);
   return v is String ? v : null;
@@ -17,6 +21,10 @@ Future<void> kvSetString(String key, String value) async {
 }
 
 Future<bool> kvGetBool(String key, {required bool fallback}) async {
+  return kvGetBoolSync(key, fallback: fallback);
+}
+
+bool kvGetBoolSync(String key, {required bool fallback}) {
   if (!Engine.isReady) return fallback;
   return Engine.storageReadBool(key, fallback: fallback);
 }

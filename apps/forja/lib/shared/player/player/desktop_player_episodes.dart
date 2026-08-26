@@ -720,14 +720,12 @@ mixin _DesktopPlayerEpisodes
   }
 
   Future<void> _switchStremioSource(Map<String, dynamic> stream) async {
-    final settings = SettingsService();
-    final useDebrid = await settings.useDebridForStreams();
-    final debridService = await settings.getDebridService();
+    final debrid = SettingsService().debridPlaybackPrefs();
     final precheck = classifyStremioStream(
       stream,
       PlatformPlayback.capabilities,
-      useDebrid: useDebrid,
-      debridService: debridService,
+      useDebrid: debrid.useDebrid,
+      debridService: debrid.service,
     );
     // Magnets / infoHash need engine resolve - keep current video + loading
     // card, replace the player only when the new stream is ready.
@@ -892,10 +890,17 @@ mixin _DesktopPlayerEpisodes
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
     // Supersede a prior episode/magnet loading card — never silent-return
     // after Sources already dismissed.
-    final settings = SettingsService();
-    final useDebrid = await settings.useDebridForStreams();
+    final debrid = SettingsService().debridPlaybackPrefs();
+    final useDebrid = debrid.useDebrid;
+    final debridService = debrid.service;
     if (!mounted) return;
-    if (!await ensureLanP2pPlayback(context)) return;
+    if (!await ensureLanP2pPlayback(
+      context,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    )) {
+      return;
+    }
     if (!mounted) return;
     final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
         .toString();
@@ -907,7 +912,6 @@ mixin _DesktopPlayerEpisodes
     if (!mounted) return;
 
     try {
-      final debridService = await settings.getDebridService();
       _setEpisodeLoadingStatus(
         playbackResolveLabel(
           useDebrid: useDebrid,
@@ -974,10 +978,17 @@ mixin _DesktopPlayerEpisodes
   Future<void> _switchTorrentSource(TorrentResult result) async {
     // Supersede a prior episode/magnet loading card — never silent-return
     // after Sources already dismissed.
-    final settings = SettingsService();
-    final useDebrid = await settings.useDebridForStreams();
+    final debrid = SettingsService().debridPlaybackPrefs();
+    final useDebrid = debrid.useDebrid;
+    final debridService = debrid.service;
     if (!mounted) return;
-    if (!await ensureLanP2pPlayback(context)) return;
+    if (!await ensureLanP2pPlayback(
+      context,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    )) {
+      return;
+    }
     if (!mounted) return;
     // Keep current video playing with the loading card while the new magnet
     // resolves in the background. Only replace the player when the stream is
@@ -990,7 +1001,6 @@ mixin _DesktopPlayerEpisodes
     if (!mounted) return;
 
     try {
-      final debridService = await settings.getDebridService();
       final localEngine = PlatformPlayback.capabilities.localTorrentEngine;
       _setEpisodeLoadingStatus(
         playbackResolveLabel(

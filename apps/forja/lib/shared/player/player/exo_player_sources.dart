@@ -433,14 +433,12 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
   }
 
   Future<void> _switchStremioSource(Map<String, dynamic> stream) async {
-    final settings = SettingsService();
-    final useDebrid = await settings.useDebridForStreams();
-    final debridService = await settings.getDebridService();
+    final debrid = SettingsService().debridPlaybackPrefs();
     final precheck = classifyStremioStream(
       stream,
       PlatformPlayback.capabilities,
-      useDebrid: useDebrid,
-      debridService: debridService,
+      useDebrid: debrid.useDebrid,
+      debridService: debrid.service,
     );
     if (precheck == null) {
       await _switchStremioMagnetSource(stream);
@@ -552,10 +550,17 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
     // Supersede a prior episode/magnet loading card — never silent-return
     // after Sources already dismissed.
-    final settings = SettingsService();
-    final useDebrid = await settings.useDebridForStreams();
+    final debrid = SettingsService().debridPlaybackPrefs();
+    final useDebrid = debrid.useDebrid;
+    final debridService = debrid.service;
     if (!mounted) return;
-    if (!await ensureLanP2pPlayback(context)) return;
+    if (!await ensureLanP2pPlayback(
+      context,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    )) {
+      return;
+    }
     if (!mounted) return;
     final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
         .toString();
@@ -567,7 +572,6 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     if (!mounted) return;
 
     try {
-      final debridService = await settings.getDebridService();
       _s._setEpisodeLoadingStatus(
         playbackResolveLabel(
           useDebrid: useDebrid,
@@ -633,10 +637,17 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
   Future<void> _switchTorrentSource(TorrentResult result) async {
     // Supersede a prior episode/magnet loading card — never silent-return
     // after Sources already dismissed.
-    final settings = SettingsService();
-    final useDebrid = await settings.useDebridForStreams();
+    final debrid = SettingsService().debridPlaybackPrefs();
+    final useDebrid = debrid.useDebrid;
+    final debridService = debrid.service;
     if (!mounted) return;
-    if (!await ensureLanP2pPlayback(context)) return;
+    if (!await ensureLanP2pPlayback(
+      context,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    )) {
+      return;
+    }
     if (!mounted) return;
     _s._beginEpisodeLoading(
       label: result.name,
@@ -646,7 +657,6 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     if (!mounted) return;
 
     try {
-      final debridService = await settings.getDebridService();
       _s._setEpisodeLoadingStatus(
         playbackResolveLabel(
           useDebrid: useDebrid,
