@@ -128,7 +128,7 @@ class IptvController extends ChangeNotifier
   IptvStream? activeMovie;
 
   bool isLoading = false;
-  /// Shelf loads use [isLoading] spinner (one shelf at a time).
+  /// Shelf loads use the center catalog ticker ([catalogLoadStyle.verbose]).
   IptvCatalogLoadStyle catalogLoadStyle = IptvCatalogLoadStyle.none;
   IptvCatalogLoadStep? catalogLoadStep;
   IptvCatalogLoadProgress catalogLoadProgress = IptvCatalogLoadProgress.empty;

@@ -897,16 +897,15 @@ class _BrowserViewState extends State<_BrowserView> {
           ),
         Expanded(
           child: switch (ctrl.catalogLoadStyle) {
-            IptvCatalogLoadStyle.verbose => _IptvCatalogProgressPanel(
-              step: ctrl.catalogLoadStep,
-              progress: ctrl.catalogLoadProgress,
+            IptvCatalogLoadStyle.verbose => _IptvCatalogLoadingTicker(
+              section: ctrl.activeSection ?? IptvSection.live,
+              step: ctrl.catalogLoadStep ?? IptvCatalogLoadStep.cache,
             ),
             IptvCatalogLoadStyle.none =>
               ctrl.isLoading
-                  ? Center(
-                      child: CircularProgressIndicator(
-                        color: IptvShellStyle.accent,
-                      ),
+                  ? _IptvCatalogLoadingTicker(
+                      section: ctrl.activeSection ?? IptvSection.live,
+                      step: IptvCatalogLoadStep.catalog,
                     )
                   : _buildContent(),
           },
@@ -1534,56 +1533,58 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 }
 
-class _IptvCatalogProgressPanel extends StatelessWidget {
-  const _IptvCatalogProgressPanel({required this.step, required this.progress});
+/// Center catalog loading ticker — one shelf at a time with step copy.
+class _IptvCatalogLoadingTicker extends StatelessWidget {
+  const _IptvCatalogLoadingTicker({
+    required this.section,
+    required this.step,
+  });
 
-  final IptvCatalogLoadStep? step;
-  final IptvCatalogLoadProgress progress;
+  final IptvSection section;
+  final IptvCatalogLoadStep step;
 
-  static String _fmt(int n) {
-    if (n <= 0) return '-';
-    final s = n.toString();
-    final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      final fromEnd = s.length - i;
-      if (i > 0 && fromEnd % 3 == 0) buf.write(',');
-      buf.write(s[i]);
-    }
-    return buf.toString();
-  }
+  String get _title => switch (section) {
+        IptvSection.live => 'Loading channels',
+        IptvSection.vod => 'Loading movies',
+        IptvSection.series => 'Loading series',
+      };
 
-  bool _done(IptvCatalogLoadStep row) {
-    if (progress.finished) return true;
-    const order = [
-      IptvCatalogLoadStep.categories,
-      IptvCatalogLoadStep.channels,
-      IptvCatalogLoadStep.movies,
-      IptvCatalogLoadStep.series,
-      IptvCatalogLoadStep.finished,
-    ];
-    final cur = step == null ? -1 : order.indexOf(step!);
-    final idx = order.indexOf(row);
-    if (cur < 0 || idx < 0) return false;
-    return idx < cur;
-  }
-
-  bool _active(IptvCatalogLoadStep row) => !progress.finished && step == row;
+  String get _detail => switch (step) {
+        IptvCatalogLoadStep.cache => 'Checking device cache…',
+        IptvCatalogLoadStep.catalog => switch (section) {
+            IptvSection.live =>
+              'Fetching categories and channels from your portal…',
+            IptvSection.vod =>
+              'Fetching categories and movies from your portal…',
+            IptvSection.series =>
+              'Fetching categories and series from your portal…',
+          },
+        IptvCatalogLoadStep.liveLists =>
+          'Loading favorites and watched channels…',
+        IptvCatalogLoadStep.finished => 'Almost ready…',
+      };
 
   @override
   Widget build(BuildContext context) {
-    final fraction = progress.fraction.clamp(0.0, 1.0);
-    final pct = (fraction * 100).round();
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 380),
+        constraints: const BoxConstraints(maxWidth: 360),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              SizedBox(
+                width: 36,
+                height: 36,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  color: IptvShellStyle.accent,
+                ),
+              ),
+              const SizedBox(height: 20),
               Text(
-                progress.finished ? 'Finished' : 'Loading catalog',
+                _title,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
@@ -1592,11 +1593,9 @@ class _IptvCatalogProgressPanel extends StatelessWidget {
                   letterSpacing: -0.2,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
-                progress.finished
-                    ? 'Live, Movies, and Series are ready'
-                    : 'Fetching categories and streams from your portal',
+                _detail,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white54,
@@ -1604,145 +1603,10 @@ class _IptvCatalogProgressPanel extends StatelessWidget {
                   height: 1.35,
                 ),
               ),
-              const SizedBox(height: 22),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: SizedBox(
-                  height: 6,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      const ColoredBox(color: Color(0x22FFFFFF)),
-                      FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: fraction,
-                        child: ColoredBox(
-                          color: progress.finished
-                              ? ForjaShellColors.brandGreen
-                              : IptvShellStyle.accent,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                progress.finished ? '100%' : '$pct%',
-                textAlign: TextAlign.right,
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white38,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 18),
-              _countRow(
-                label: 'Categories',
-                count: progress.categoryCount,
-                done: _done(IptvCatalogLoadStep.categories),
-                active: _active(IptvCatalogLoadStep.categories),
-              ),
-              const SizedBox(height: 12),
-              _countRow(
-                label: 'Channels',
-                count: progress.channelCount,
-                done: _done(IptvCatalogLoadStep.channels),
-                active: _active(IptvCatalogLoadStep.channels),
-              ),
-              const SizedBox(height: 12),
-              _countRow(
-                label: 'Movies',
-                count: progress.movieCount,
-                done: _done(IptvCatalogLoadStep.movies),
-                active: _active(IptvCatalogLoadStep.movies),
-              ),
-              const SizedBox(height: 12),
-              _countRow(
-                label: 'Series',
-                count: progress.seriesCount,
-                done: _done(IptvCatalogLoadStep.series),
-                active: _active(IptvCatalogLoadStep.series),
-              ),
-              if (progress.finished) ...[
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.check_circle_rounded,
-                      size: 18,
-                      color: ForjaShellColors.brandGreen,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'All set',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: ForjaShellColors.brandGreen,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
       ),
     );
   }
-
-  Widget _countRow({
-    required String label,
-    required int count,
-    required bool done,
-    required bool active,
-  }) {
-    final color = done
-        ? ForjaShellColors.brandGreen
-        : active
-        ? Colors.white
-        : Colors.white38;
-    return Row(
-      children: [
-        SizedBox(
-          width: 22,
-          height: 22,
-          child: done
-              ? Icon(Icons.check_rounded, size: 18, color: color)
-              : active
-              ? Padding(
-                  padding: const EdgeInsets.all(2),
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: IptvShellStyle.accent,
-                  ),
-                )
-              : Icon(Icons.circle_outlined, size: 15, color: color),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              color: color,
-              fontSize: 14,
-              fontWeight: active || done ? FontWeight.w600 : FontWeight.w500,
-            ),
-          ),
-        ),
-        Text(
-          active && count <= 0 ? '…' : _fmt(count),
-          style: GoogleFonts.plusJakartaSans(
-            color: color,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            fontFeatures: const [FontFeature.tabularFigures()],
-          ),
-        ),
-      ],
-    );
-  }
 }
-

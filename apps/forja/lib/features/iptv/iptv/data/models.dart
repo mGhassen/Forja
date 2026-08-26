@@ -390,19 +390,24 @@ enum IptvSection { live, vod, series }
 
 /// How the browser shows catalog fetch progress.
 enum IptvCatalogLoadStyle {
-  /// Idle / cache hit applied instantly. Reload uses [IptvController.isLoading] spinner.
+  /// Idle / cache hit applied instantly.
   none,
 
-  /// Cold portal/shelf load - progress bar + live counts.
+  /// Cold portal/shelf load — center ticker with step copy.
   verbose,
 }
 
 /// Active step while [IptvCatalogLoadStyle.verbose] is showing.
 enum IptvCatalogLoadStep {
-  categories,
-  channels,
-  movies,
-  series,
+  /// Reading on-device shelf cache.
+  cache,
+
+  /// Network catalog (categories + streams) for the active shelf only.
+  catalog,
+
+  /// Live-only: favorites / watched / pins from local store.
+  liveLists,
+
   finished,
 }
 

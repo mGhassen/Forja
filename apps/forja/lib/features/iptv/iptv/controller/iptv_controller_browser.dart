@@ -192,15 +192,15 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     );
   }
 
-  /// Spinner + empty pane before any await so health/store notifies cannot
+  /// Center ticker + empty pane before any await so health/store notifies cannot
   /// paint the Reload / "Failed to load" empty state mid-open.
   void _armCatalogLoading(IptvSection section) {
     _c.activeSection = section;
     _c.view = IptvView.browser;
     _c.isLoading = true;
     _c.error = null;
-    _c.catalogLoadStyle = IptvCatalogLoadStyle.none;
-    _c.catalogLoadStep = null;
+    _c.catalogLoadStyle = IptvCatalogLoadStyle.verbose;
+    _c.catalogLoadStep = IptvCatalogLoadStep.cache;
     _c.catalogLoadProgress = IptvCatalogLoadProgress.empty;
     _c.categories = const [];
     _c.browserAllStreams = const [];
@@ -217,6 +217,16 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _c._epgCache.clear();
     _c._guideEpgCache.clear();
     IptvClient.clearStalkerEpgCache();
+    notifyListeners();
+  }
+
+  void _setCatalogLoadStep(IptvCatalogLoadStep step) {
+    if (_c.catalogLoadStep == step &&
+        _c.catalogLoadStyle == IptvCatalogLoadStyle.verbose) {
+      return;
+    }
+    _c.catalogLoadStyle = IptvCatalogLoadStyle.verbose;
+    _c.catalogLoadStep = step;
     notifyListeners();
   }
 
@@ -248,6 +258,8 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     // cannot paint empty+error while streams are still [].
     final loadId = ++_c._catalogLoadId;
     _armCatalogLoading(section);
+    // Reload skips disk hydrate — jump straight to portal fetch copy.
+    if (force) _setCatalogLoadStep(IptvCatalogLoadStep.catalog);
 
     if (!force) {
       await _hydratePortalFromDisk(p.key);
@@ -270,6 +282,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       late final List<IptvCategory> cats;
       late final List<IptvStream> streams;
 
+      _setCatalogLoadStep(IptvCatalogLoadStep.catalog);
       final snap = await IptvClient.catalog(p.portal, section);
       if (loadId != _c._catalogLoadId) return;
       if (_c.activePortal?.key != p.key || _c.activeSection != section) {
@@ -299,6 +312,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       }
 
       if (section == IptvSection.live) {
+        _setCatalogLoadStep(IptvCatalogLoadStep.liveLists);
         final key = IptvAliveStore.portalKey(p.portal);
         _c.liveOnly = await IptvAliveStore.loadLiveOnly(key);
         if (loadId != _c._catalogLoadId) return;
