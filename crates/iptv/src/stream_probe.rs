@@ -30,19 +30,19 @@ pub fn probe_stream_alive(url: &str, timeout_secs: u64) -> Result<bool, String> 
             .redirect(reqwest::redirect::Policy::limited(8))
             .build()
             .map_err(|e| e.to_string())?;
-        let range_end = MAX_BYTES.saturating_sub(1);
+        // No Range — live / Stalker CDNs often reject Range (403/416/empty)
+        // while a normal GET plays fine in the player.
         let resp = client
             .get(url)
             .header("User-Agent", UA)
             .header("Accept", "*/*")
             .header("Connection", "keep-alive")
-            .header("Range", format!("bytes=0-{range_end}"))
             .send()
             .await
             .map_err(|e| e.to_string())?;
 
         let code = resp.status().as_u16();
-        if code != 206 && !(200..300).contains(&code) {
+        if !(200..300).contains(&code) {
             return Ok(false);
         }
 
@@ -58,9 +58,6 @@ pub fn probe_stream_alive(url: &str, timeout_secs: u64) -> Result<bool, String> 
             .and_then(|v| v.to_str().ok())
             .and_then(|s| s.parse::<i64>().ok())
             .unwrap_or(-1);
-        if is_dead_content_type(&ct) {
-            return Ok(false);
-        }
 
         let mut buf = Vec::new();
         let mut stream = resp.bytes_stream();
@@ -79,36 +76,19 @@ pub fn probe_stream_alive(url: &str, timeout_secs: u64) -> Result<bool, String> 
             }
         }
 
-        let is_m3u8 = ct.contains("mpegurl") || url.to_ascii_lowercase().contains(".m3u8");
-        if is_m3u8 {
-            let head_len = buf.len().min(1024);
-            let head = String::from_utf8_lossy(&buf[..head_len]);
-            return Ok(head.contains("#EXTM3U"));
+        // HLS: CT, URL suffix, or body — many Stalker links omit `.m3u8` and
+        // serve `text/plain` / `application/octet-stream`.
+        if looks_like_playlist(&ct, url, &buf) {
+            return Ok(playlist_has_extm3u(&buf));
         }
-        if ended && buf.len() < MIN_BYTES {
-            return Ok(false);
-        }
-        if (1..=5_000_000).contains(&cl) {
+
+        if is_error_page_content_type(&ct) {
             return Ok(false);
         }
 
-        if !buf.is_empty() && buf[0] == 0x47 {
-            let mut valid_ts = true;
-            let mut checked_packets = 0usize;
-            let mut i = 0usize;
-            while i + 188 <= buf.len() && checked_packets < 10 {
-                if buf[i] != 0x47 {
-                    valid_ts = false;
-                    break;
-                }
-                checked_packets += 1;
-                i += 188;
-            }
-            if valid_ts && checked_packets >= 3 {
-                return Ok(true);
-            }
+        if ts_packets_ok(&buf) {
+            return Ok(true);
         }
-
         if buf.len() >= 8 && &buf[4..8] == b"ftyp" {
             return Ok(true);
         }
@@ -118,15 +98,50 @@ pub fn probe_stream_alive(url: &str, timeout_secs: u64) -> Result<bool, String> 
         if buf.len() >= 32 * 1024 {
             return Ok(true);
         }
+
+        // Finite small body with no media signature → stub / error file.
+        if ended && (1..=5_000_000).contains(&cl) {
+            return Ok(false);
+        }
+        if ended && buf.len() < MIN_BYTES {
+            return Ok(false);
+        }
         Ok(false)
     })
 }
 
-fn is_dead_content_type(ct: &str) -> bool {
-    ct.contains("text/html")
-        || ct.contains("application/json")
-        || ct.contains("text/xml")
-        || ct.contains("text/plain")
+fn looks_like_playlist(ct: &str, url: &str, buf: &[u8]) -> bool {
+    ct.contains("mpegurl")
+        || url.to_ascii_lowercase().contains(".m3u8")
+        || playlist_has_extm3u(buf)
+}
+
+fn playlist_has_extm3u(buf: &[u8]) -> bool {
+    let head_len = buf.len().min(1024);
+    let head = String::from_utf8_lossy(&buf[..head_len]);
+    let trimmed = head.trim_start();
+    trimmed.starts_with("#EXTM3U") || trimmed.contains("#EXTM3U")
+}
+
+/// HTML / JSON / XML error pages. Not `text/plain` — playlists often use that.
+fn is_error_page_content_type(ct: &str) -> bool {
+    ct.contains("text/html") || ct.contains("application/json") || ct.contains("text/xml")
+}
+
+fn ts_packets_ok(buf: &[u8]) -> bool {
+    if buf.is_empty() || buf[0] != 0x47 {
+        return false;
+    }
+    let mut checked = 0usize;
+    let mut i = 0usize;
+    while i + 188 <= buf.len() && checked < 10 {
+        if buf[i] != 0x47 {
+            return false;
+        }
+        checked += 1;
+        i += 188;
+    }
+    checked >= 3
 }
 
 fn has_video_signature(buf: &[u8]) -> bool {
@@ -177,11 +192,26 @@ mod tests {
     #[test]
     fn detects_m3u8_head() {
         assert!(has_video_signature(b"#EXTM3U\n"));
+        assert!(playlist_has_extm3u(b"#EXTM3U\n#EXTINF:1,\nseg.ts\n"));
+    }
+
+    #[test]
+    fn playlist_from_text_plain_body() {
+        let body = b"#EXTM3U\n#EXT-X-VERSION:3\n";
+        assert!(looks_like_playlist("text/plain", "http://cdn/play/token", body));
+        assert!(playlist_has_extm3u(body));
+    }
+
+    #[test]
+    fn text_plain_without_playlist_not_media_ct() {
+        assert!(!is_error_page_content_type("text/plain"));
+        assert!(is_error_page_content_type("text/html"));
     }
 
     #[test]
     fn detects_ts_sync() {
         let buf = vec![0x47; 600];
         assert!(has_video_signature(&buf));
+        assert!(ts_packets_ok(&buf));
     }
 }

@@ -18,13 +18,10 @@ export type PosthogPersonsResult = {
 
 type PosthogEnv = {
   apiKey: string
-  /** Raw env: numeric id or project API token (`phc_…`). */
+  /** Numeric project id, or project API token (`phc_…`). */
   projectRef: string
   host: string
 }
-
-/** process-lifetime cache: phc_/numeric → numeric project id string */
-const resolvedProjectIds = new Map<string, string>()
 
 function posthogEnv(): PosthogEnv | null {
   const apiKey =
@@ -40,8 +37,7 @@ function posthogEnv(): PosthogEnv | null {
     process.env.POSTHOG_HOST?.trim() ||
     process.env.POSTHOG_API_HOST?.trim() ||
     'https://us.i.posthog.com'
-  const host = hostRaw.replace(/\/$/, '')
-  return { apiKey, projectRef, host }
+  return { apiKey, projectRef, host: hostRaw.replace(/\/$/, '') }
 }
 
 function strProp(v: unknown): string | null {
@@ -74,41 +70,16 @@ function isNumericProjectId(ref: string): boolean {
 }
 
 /**
- * PostHog REST paths need the numeric project id.
- *
- * Env may be that id, or the project API token (`phc_…`).
- * Scoped personal keys cannot hit GET /api/projects/ (org list) — resolve via a
- * project-based GET with ?token=phc_… (PostHog overrides path id from the token).
+ * Path + optional project token.
+ * - digits → `/api/projects/{id}/…`
+ * - `phc_…` → `/api/projects/0/…?token=phc_…` (PostHog resolves team from token;
+ *   works with project-scoped personal keys; do NOT strip `phc_` — that is not an id)
  */
-async function resolveNumericProjectId(env: PosthogEnv): Promise<string> {
-  const ref = env.projectRef
-  if (isNumericProjectId(ref)) return ref
-
-  const cached = resolvedProjectIds.get(ref)
-  if (cached) return cached
-
-  // Path id is a placeholder; ?token= selects the real project (GET-only token parse).
-  const url = new URL(`${env.host}/api/projects/0/`)
-  url.searchParams.set('token', ref)
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${env.apiKey}` },
-  })
-  const json = (await res.json().catch(() => ({}))) as {
-    id?: number | string
-    detail?: string
-    error?: string
+function projectRoute(env: PosthogEnv): { pathId: string; token: string | null } {
+  if (isNumericProjectId(env.projectRef)) {
+    return { pathId: env.projectRef, token: null }
   }
-  if (!res.ok) {
-    throw new Error(
-      json.error || json.detail || `PostHog project resolve ${res.status}`,
-    )
-  }
-  if (json.id == null) {
-    throw new Error('POSTHOG_PROJECT_ID phc_… did not resolve to a project id')
-  }
-  const numeric = String(json.id)
-  resolvedProjectIds.set(ref, numeric)
-  return numeric
+  return { pathId: '0', token: env.projectRef }
 }
 
 function runtimeFromProperties(
@@ -126,11 +97,10 @@ function runtimeFromProperties(
   }
 }
 
-type ResolvedEnv = PosthogEnv & { projectId: string }
-
-/** HogQL batch: map distinct_id → runtime props. */
+/** HogQL batch — only when we have a numeric project id (POST can't pass ?token). */
 async function fetchViaHogQl(
-  env: ResolvedEnv,
+  env: PosthogEnv,
+  pathId: string,
   ids: string[],
 ): Promise<Record<string, PosthogPersonRuntime>> {
   const list = ids.map((id) => `'${id}'`).join(', ')
@@ -149,7 +119,7 @@ LIMIT ${Math.min(ids.length * 4, 500)}
 `.trim()
 
   const res = await fetch(
-    `${env.host}/api/projects/${encodeURIComponent(env.projectId)}/query/`,
+    `${env.host}/api/projects/${encodeURIComponent(pathId)}/query/`,
     {
       method: 'POST',
       headers: {
@@ -192,9 +162,11 @@ LIMIT ${Math.min(ids.length * 4, 500)}
   return out
 }
 
-/** Fallback: one persons list call per distinct_id (capped concurrency). */
+/** Persons list — GET supports ?token=phc_… (project-scoped personal keys). */
 async function fetchViaPersonsApi(
-  env: ResolvedEnv,
+  env: PosthogEnv,
+  pathId: string,
+  token: string | null,
   ids: string[],
 ): Promise<Record<string, PosthogPersonRuntime>> {
   const out: Record<string, PosthogPersonRuntime> = {}
@@ -207,9 +179,10 @@ async function fetchViaPersonsApi(
       const i = cursor++
       const id = ids[i]!
       const url = new URL(
-        `${env.host}/api/projects/${encodeURIComponent(env.projectId)}/persons/`,
+        `${env.host}/api/projects/${encodeURIComponent(pathId)}/persons/`,
       )
       url.searchParams.set('distinct_id', id)
+      if (token) url.searchParams.set('token', token)
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${env.apiKey}` },
       })
@@ -261,18 +234,24 @@ export async function fetchPosthogPersonsByDistinctIds(
     return { configured: true, persons: {} }
   }
 
-  try {
-    const projectId = await resolveNumericProjectId(env)
-    const resolved: ResolvedEnv = { ...env, projectId }
+  const { pathId, token } = projectRoute(env)
 
+  try {
     let persons: Record<string, PosthogPersonRuntime>
     let hogErr: string | null = null
-    try {
-      persons = await fetchViaHogQl(resolved, ids)
-    } catch (e) {
-      hogErr = e instanceof Error ? e.message : 'HogQL failed'
-      persons = await fetchViaPersonsApi(resolved, ids)
+
+    // HogQL needs a real numeric path id (POST body token is ignored by PostHog).
+    if (!token) {
+      try {
+        persons = await fetchViaHogQl(env, pathId, ids)
+      } catch (e) {
+        hogErr = e instanceof Error ? e.message : 'HogQL failed'
+        persons = await fetchViaPersonsApi(env, pathId, token, ids)
+      }
+    } else {
+      persons = await fetchViaPersonsApi(env, pathId, token, ids)
     }
+
     return {
       configured: true,
       persons,

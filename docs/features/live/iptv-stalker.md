@@ -32,6 +32,7 @@ Forja tries the common middleware paths automatically (`portal.php`, `server/loa
 
 ## Tips
 
+- Live channel green/red borders follow a real open (same idea as play) — if a channel plays, hover should not stay red after you update the app
 - Hot-restart after an engine update so Stalker EPG is loaded; guide ids are taken from `stream=` in the play cmd when needed (no catalog reload required)
 - Not every Stalker panel ships EPG — empty NOW/NEXT means the portal returned no listings
 - Deal / Find Portals still focus on Xtream pool portals; add Stalker manually for now
