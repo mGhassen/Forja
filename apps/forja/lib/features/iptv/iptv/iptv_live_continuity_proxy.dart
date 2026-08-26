@@ -155,7 +155,9 @@ class IptvLiveContinuityProxy {
     } catch (e) {
       debugPrint('[IPTV Proxy] client gone: $e');
     } finally {
-      _closed = true;
+      // Do NOT set [_closed] here — that flag is only for [stop].
+      // mpv disconnect / soft reopen races a new [start] generation; marking
+      // closed kills the fresh producer → empty loopback → format fail → crash.
       _wakeWaiters();
       try {
         await res.close();

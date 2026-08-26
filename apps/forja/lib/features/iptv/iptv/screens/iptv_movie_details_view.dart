@@ -228,6 +228,7 @@ class _IptvMovieDetailsScreenState
           url: url,
           stream: widget.movie,
           portalName: widget.portal.displayLabel,
+          portalPlatform: widget.portal.portal.platform,
         ),
       );
     } finally {

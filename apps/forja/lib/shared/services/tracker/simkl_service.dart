@@ -62,6 +62,14 @@ class SimklService {
 
   // ── Secure Storage Keys ────────────────────────────────────────────────
   static const String _keyAccessToken = 'simkl_access_token';
+  static const String _keyLastActivity = 'simkl_last_activity';
+  static const String _keyLastSyncMs = 'simkl_last_sync_ms';
+
+  /// Max synthetic continue-watching seeds per background sync (newest first).
+  static const int _resumeImportCap = 20;
+
+  /// Skip background fullSync if we synced this recently (Simkl guidance).
+  static const Duration _minSyncInterval = Duration(minutes: 15);
 
   // ── Runtime state ──────────────────────────────────────────────────────
   Future<String?> _secureRead(String key) =>
@@ -135,6 +143,8 @@ class SimklService {
   /// Log out - delete stored token.
   Future<void> logout() async {
     await _secureDelete(_keyAccessToken);
+    await _secureDelete(_keyLastActivity);
+    await _secureDelete(_keyLastSyncMs);
     _initialSyncDone = false;
     _syncInProgress = null;
     debugPrint('[Simkl] Logged out.');
@@ -145,6 +155,8 @@ class SimklService {
     if (statusCode == 401) {
       debugPrint('[Simkl] 401 Unauthorized - token revoked, clearing auth');
       _secureDelete(_keyAccessToken);
+      _secureDelete(_keyLastActivity);
+      _secureDelete(_keyLastSyncMs);
       _initialSyncDone = false;
     }
   }
@@ -672,23 +684,49 @@ class SimklService {
       final loggedIn = await isLoggedIn();
       if (!loggedIn) return;
 
+      if (!force && await _syncedRecently()) {
+        _initialSyncDone = true;
+        debugPrint('[Simkl] Synced recently, skipping');
+        return;
+      }
+
       debugPrint('[Simkl] Starting smart sync...');
       final activities = await _getLastActivities();
       final lastAll = activities?['all']?.toString() ?? '';
-
-      final savedAll = await _secureRead('simkl_last_activity');
+      final savedAll = await _secureRead(_keyLastActivity);
 
       int moviesImported = 0, watchingImported = 0, episodesImported = 0;
 
       if (force || savedAll != lastAll) {
-        // List buckets only via explicit Sync Now / connect chooser — never
-        // silent overwrite of local My List from background fullSync.
-        watchingImported = await importWatchingProgress();
-        moviesImported = await importCompletedMovies();
-        episodesImported = await importWatchedEpisodes();
-        if (lastAll.isNotEmpty) await _secureWrite('simkl_last_activity', lastAll);
+        // First connect / force = full library. Later stamp bumps = date_from
+        // delta. List buckets stay Sync Now / connect only.
+        final dateFrom = (!force &&
+                savedAll != null &&
+                savedAll.isNotEmpty &&
+                savedAll != lastAll)
+            ? savedAll
+            : null;
+        if (dateFrom != null) {
+          debugPrint('[Simkl] Delta sync from $dateFrom');
+        } else {
+          debugPrint('[Simkl] Full library sync');
+        }
+        watchingImported = await importWatchingProgress(dateFrom: dateFrom);
+        moviesImported = await importCompletedMovies(dateFrom: dateFrom);
+        episodesImported = await importWatchedEpisodes(dateFrom: dateFrom);
+        if (lastAll.isNotEmpty) {
+          await _secureWrite(_keyLastActivity, lastAll);
+        }
+        await _secureWrite(
+          _keyLastSyncMs,
+          DateTime.now().millisecondsSinceEpoch.toString(),
+        );
       } else {
         debugPrint('[Simkl] No activity changes, skipping sync');
+        await _secureWrite(
+          _keyLastSyncMs,
+          DateTime.now().millisecondsSinceEpoch.toString(),
+        );
       }
 
       _initialSyncDone = true;
@@ -700,6 +738,14 @@ class SimklService {
       _syncInProgress = null;
       completer.complete();
     }
+  }
+
+  Future<bool> _syncedRecently() async {
+    final raw = await _secureRead(_keyLastSyncMs);
+    final lastMs = int.tryParse(raw ?? '') ?? 0;
+    if (lastMs <= 0) return false;
+    return DateTime.now().millisecondsSinceEpoch - lastMs <
+        _minSyncInterval.inMilliseconds;
   }
 
   /// Push local My List buckets to Simkl with each item's real [listStatus].
@@ -786,6 +832,7 @@ class SimklService {
     final moviesImported = await importCompletedMovies();
     final episodesImported = await importWatchedEpisodes();
     final episodesExported = await exportWatchedEpisodes();
+    await _markSyncComplete();
     return SimklSyncResult(
       watchlistImported: 0,
       watchlistExported: 0,
@@ -794,6 +841,19 @@ class SimklService {
       episodesImported: episodesImported,
       episodesExported: episodesExported,
     );
+  }
+
+  Future<void> _markSyncComplete() async {
+    final activities = await _getLastActivities();
+    final lastAll = activities?['all']?.toString() ?? '';
+    if (lastAll.isNotEmpty) {
+      await _secureWrite(_keyLastActivity, lastAll);
+    }
+    await _secureWrite(
+      _keyLastSyncMs,
+      DateTime.now().millisecondsSinceEpoch.toString(),
+    );
+    _initialSyncDone = true;
   }
 
   /// Movies + shows + anime for one status. Simkl `all-items` has no page param.
@@ -820,11 +880,14 @@ class SimklService {
   // ═══════════════════════════════════════════════════════════════════════
 
   /// Import completed TV + anime episodes into local watched marks.
-  Future<int> importWatchedEpisodes() async {
+  Future<int> importWatchedEpisodes({String? dateFrom}) async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
-    const q = '?extended=full&include_all_episodes=yes&episode_watched_at=yes';
+    final q = _withDateFrom(
+      '?extended=full&include_all_episodes=yes&episode_watched_at=yes',
+      dateFrom,
+    );
     var imported = 0;
     try {
       for (final item in await _allItems(token, 'shows', status: 'completed', query: q)) {
@@ -841,27 +904,32 @@ class SimklService {
   }
 
   /// Completed movies → local watch history (finished, so Home CW hides them).
-  Future<int> importCompletedMovies() async {
+  Future<int> importCompletedMovies({String? dateFrom}) async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
     var imported = 0;
     try {
-      for (final item in await _allItems(token, 'movies', status: 'completed')) {
+      for (final item in await _allItems(
+        token,
+        'movies',
+        status: 'completed',
+        query: _withDateFrom('', dateFrom),
+      )) {
         final movie = _media(item);
         final ids = _ids(movie);
         final tmdbId = _asInt(ids['tmdb']);
         if (tmdbId == null) continue;
         if (await WatchHistoryService().getProgress(tmdbId) != null) continue;
 
-        final info = await _fetchTmdbInfo(tmdbId, 'movie');
-        final durationMs = info['runtimeMs'] as int;
+        final art = await _resolveArt(tmdbId, 'movie', movie);
+        final durationMs = art.durationMs;
         await WatchHistoryService().saveProgress(
           tmdbId: tmdbId,
           imdbId: ids['imdb']?.toString(),
           title: movie['title']?.toString() ?? 'Unknown',
-          posterPath: info['poster'] as String,
-          backdropPath: info['backdrop'] as String,
+          posterPath: art.poster,
+          backdropPath: art.backdrop,
           method: 'simkl_import',
           sourceId: 'simkl',
           position: durationMs,
@@ -878,20 +946,49 @@ class SimklService {
   }
 
   /// In-progress Simkl watching → Home / Anime continue watching.
-  Future<int> importWatchingProgress() async {
+  ///
+  /// Episode marks apply to every returned row. Synthetic CW resumes are
+  /// newest-first and capped — Home only shows a short row.
+  Future<int> importWatchingProgress({String? dateFrom}) async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
-    const q = '?extended=full&next_watch_info=yes&episode_watched_at=yes';
+    final q = _withDateFrom(
+      '?extended=full&next_watch_info=yes&episode_watched_at=yes',
+      dateFrom,
+    );
     var imported = 0;
     try {
-      for (final item in await _allItems(token, 'shows', status: 'watching', query: q)) {
+      final shows =
+          await _allItems(token, 'shows', status: 'watching', query: q);
+      final anime =
+          await _allItems(token, 'anime', status: 'watching', query: q);
+
+      for (final item in shows) {
         await _markShowEpisodes(item);
-        imported += await _importShowResume(item);
       }
-      for (final item in await _allItems(token, 'anime', status: 'watching', query: q)) {
+      for (final item in anime) {
         await _markAnimeEpisodes(item);
-        imported += await _importAnimeResume(item);
+      }
+
+      final candidates = <({Map<String, dynamic> item, bool anime, DateTime? at})>[
+        for (final item in shows)
+          (item: item, anime: false, at: _parseSimklTime(item['last_watched_at'])),
+        for (final item in anime)
+          (item: item, anime: true, at: _parseSimklTime(item['last_watched_at'])),
+      ];
+      candidates.sort((a, b) {
+        final am = a.at?.millisecondsSinceEpoch ?? 0;
+        final bm = b.at?.millisecondsSinceEpoch ?? 0;
+        return bm.compareTo(am);
+      });
+
+      for (final c in candidates) {
+        if (imported >= _resumeImportCap) break;
+        final n = c.anime
+            ? await _importAnimeResume(c.item)
+            : await _importShowResume(c.item);
+        imported += n;
       }
       debugPrint('[Simkl] Imported $imported watching resume items');
     } catch (e) {
@@ -1154,15 +1251,15 @@ class SimklService {
     );
     if (existing != null) return 0;
 
-    final info = await _fetchTmdbInfo(tmdbId, 'tv');
-    final durationMs = info['runtimeMs'] as int;
+    final art = await _resolveArt(tmdbId, 'tv', media);
+    final durationMs = art.durationMs;
     final positionMs = (durationMs * 0.05).round().clamp(1, durationMs - 1);
     await WatchHistoryService().saveProgress(
       tmdbId: tmdbId,
       imdbId: ids['imdb']?.toString(),
       title: media['title']?.toString() ?? 'Unknown',
-      posterPath: info['poster'] as String,
-      backdropPath: info['backdrop'] as String,
+      posterPath: art.poster,
+      backdropPath: art.backdrop,
       method: 'simkl_import',
       sourceId: 'simkl',
       position: positionMs,
@@ -1221,6 +1318,51 @@ class SimklService {
       debugPrint('[Simkl] TMDB info fetch failed for $tmdbId: $e');
     }
     return {'poster': '', 'backdrop': '', 'runtimeMs': 6000000};
+  }
+
+  /// Prefer Simkl poster + runtime; TMDB only when art or duration is missing.
+  Future<({String poster, String backdrop, int durationMs})> _resolveArt(
+    int tmdbId,
+    String mediaType,
+    Map<String, dynamic> media,
+  ) async {
+    var poster = _simklPosterUrl(media['poster']?.toString());
+    final runtimeMin = _asInt(media['runtime']);
+    var durationMs =
+        (runtimeMin != null && runtimeMin > 0) ? runtimeMin * 60000 : 0;
+    var backdrop = '';
+
+    if (poster.isEmpty || durationMs <= 0) {
+      final info = await _fetchTmdbInfo(tmdbId, mediaType);
+      if (poster.isEmpty) poster = info['poster'] as String? ?? '';
+      backdrop = info['backdrop'] as String? ?? '';
+      if (durationMs <= 0) {
+        durationMs = info['runtimeMs'] as int? ?? 6000000;
+      }
+    }
+    if (durationMs <= 0) durationMs = 6000000;
+    return (poster: poster, backdrop: backdrop, durationMs: durationMs);
+  }
+
+  String _simklPosterUrl(String? poster) {
+    if (poster == null || poster.isEmpty) return '';
+    if (poster.startsWith('http')) return poster;
+    return 'https://simkl.in/posters/${poster}_c.jpg';
+  }
+
+  DateTime? _parseSimklTime(dynamic raw) {
+    final s = raw?.toString();
+    if (s == null || s.isEmpty) return null;
+    return DateTime.tryParse(s);
+  }
+
+  /// Append `date_from` for continuous sync. Empty [query] → `?date_from=…`.
+  String _withDateFrom(String query, String? dateFrom) {
+    if (dateFrom == null || dateFrom.isEmpty) return query;
+    final enc = Uri.encodeQueryComponent(dateFrom);
+    if (query.isEmpty) return '?date_from=$enc';
+    final sep = query.contains('?') ? '&' : '?';
+    return '$query${sep}date_from=$enc';
   }
 
   Future<bool> _scrobble(

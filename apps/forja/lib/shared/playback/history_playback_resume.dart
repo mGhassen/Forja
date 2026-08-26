@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
+import 'package:forja/shared/playback/engine_auto_play.dart';
+import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/playback/playback_service.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
@@ -422,6 +425,46 @@ Future<void> _openDetailsFallback(
   );
 }
 
+/// Same contract as details green Play / Resume when Webstreaming is off:
+/// Forja Auto if enabled, otherwise open details (Sources).
+Future<void> _resumeLikeGreenPlay(
+  BuildContext context, {
+  required Map<String, dynamic> item,
+  required Movie movie,
+  required Duration startPosition,
+}) async {
+  if (await engineAutoPlayEnabled()) {
+    if (!context.mounted) return;
+    final isTv = movie.mediaType == 'tv';
+    final season = item['season'] as int?;
+    final episode = item['episode'] as int?;
+    final s = isTv ? (season ?? 1) : null;
+    final e = isTv ? (episode ?? 1) : null;
+    await runEngineAutoPlay(
+      context: context,
+      movie: movie,
+      engineCategory:
+          EngineCategories.panelCategoryFor(mediaType: movie.mediaType),
+      season: s,
+      episode: e,
+      startPosition: startPosition,
+      stremioId: movie.imdbId,
+      loadingSubtitle: s != null && e != null
+          ? 'S${s.toString().padLeft(2, '0')}E${e.toString().padLeft(2, '0')}'
+          : null,
+    );
+    return;
+  }
+  if (!context.mounted) return;
+  await _openDetailsFallback(
+    context,
+    item: item,
+    movie: movie,
+    startPosition: startPosition,
+    autoPlay: true,
+  );
+}
+
 /// Details-screen fallback when direct resume fails.
 Future<bool> resumeSavedWebStreamProvider({
   required BuildContext context,
@@ -515,7 +558,9 @@ Future<void> resumePlaybackFromHistory(
         return;
       case 'stream':
         final sourceId = item['sourceId'] as String? ?? '';
-        if (isWebStreamProviderId(sourceId)) {
+        // Green Play owns web sniff only while Webstreaming is on.
+        if (await PlaySourceEffective.webstreaming() &&
+            isWebStreamProviderId(sourceId)) {
           final ok = await _resumeWebStreamProvider(
             context,
             item: item,
@@ -524,40 +569,40 @@ Future<void> resumePlaybackFromHistory(
             startPosition: startPos,
           );
           if (!ok && context.mounted) {
-            await _openDetailsFallback(
+            await _resumeLikeGreenPlay(
               context,
               item: item,
               movie: movie,
               startPosition: startPos,
-              autoPlay: true,
             );
           }
           return;
         }
         if (context.mounted) {
-          await _openDetailsFallback(
+          await _resumeLikeGreenPlay(
             context,
             item: item,
             movie: movie,
             startPosition: startPos,
-            autoPlay: true,
           );
         }
         return;
       case 'amri':
-        final ok = await _resumeAmriStream(
-          context,
-          item: item,
-          movie: movie,
-          startPosition: startPos,
-        );
-        if (!ok && context.mounted) {
-          await _openDetailsFallback(
+        if (await PlaySourceEffective.webstreaming()) {
+          final ok = await _resumeAmriStream(
             context,
             item: item,
             movie: movie,
             startPosition: startPos,
-            autoPlay: true,
+          );
+          if (ok || !context.mounted) return;
+        }
+        if (context.mounted) {
+          await _resumeLikeGreenPlay(
+            context,
+            item: item,
+            movie: movie,
+            startPosition: startPos,
           );
         }
         return;

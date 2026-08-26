@@ -77,7 +77,7 @@ bool iptvExoUrlLooksLive(String url) {
 enum IptvLiveSourceKind {
   /// IPTV Live tab + Forja Sports Xtream channels (TS continuity proxy).
   iptvXtream,
-  /// Forja Sports Stalker channels (create_link; no continuity proxy).
+  /// IPTV Live / Forja Sports Stalker (create_link; no continuity proxy).
   iptvStalker,
   /// Live Matches Stremio addon streams (direct HLS / lavf reconnect).
   stremio,
@@ -85,6 +85,15 @@ enum IptvLiveSourceKind {
   liveEngine;
 
   bool get useContinuityProxy => this == IptvLiveSourceKind.iptvXtream;
+}
+
+/// IPTV catalog / Forja Sports: Stalker create_link stays direct; Xtream/M3U use TS proxy.
+@visibleForTesting
+IptvLiveSourceKind iptvLiveSourceKindForPortal(IptvPortalPlatform platform) {
+  return switch (platform) {
+    IptvPortalPlatform.stalker => IptvLiveSourceKind.iptvStalker,
+    _ => IptvLiveSourceKind.iptvXtream,
+  };
 }
 
 /// Hard open failure (MediaKit / Exo) — VOD can swap engines once.
@@ -262,21 +271,31 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     this.liveSourceKind,
   });
 
-  /// Convenience: build for a single Xtream stream.
+  /// Convenience: build for a single catalog stream (Xtream / Stalker / M3U).
   factory IptvPtPlayerScreen.singleStream({
     Key? key,
     required String url,
     required IptvStream stream,
     String? portalName,
+    IptvPortalPlatform? portalPlatform,
     IptvChannelGuide? channelGuide,
     ValueChanged<IptvStream>? onChannelChanged,
     BuiltInPlayerContext? engineContext,
     BuiltInPlayerEngine? forceBuiltInEngine,
   }) {
     final vod = stream.kind == 'vod' || stream.kind == 'series';
+    final kind = vod || portalPlatform == null
+        ? null
+        : iptvLiveSourceKindForPortal(portalPlatform);
     return IptvPtPlayerScreen(
       key: key,
-      sources: [IptvPlaySource(url: url, label: portalName ?? 'Source 1')],
+      sources: [
+        IptvPlaySource(
+          url: url,
+          label: portalName ?? 'Source 1',
+          liveSourceKind: kind,
+        ),
+      ],
       title: stream.name,
       subtitle: portalName,
       logoUrl: stream.icon.isEmpty ? null : stream.icon,
@@ -289,6 +308,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
       vodPlayback: vod,
       onlineSubtitles: vod,
       subtitleSearchTitle: stream.name,
+      liveSourceKind: kind,
     );
   }
 
@@ -299,23 +319,26 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     required String title,
     String? logoUrl,
     BuiltInPlayerContext engineContext = BuiltInPlayerContext.iptv,
-  }) =>
-      IptvPtPlayerScreen(
-        key: key,
-        title: title,
-        logoUrl: logoUrl,
-        engineContext: engineContext,
-        sources: hits
-            .asMap()
-            .entries
-            .map(
-              (e) => IptvPlaySource(
-                url: e.value.streamUrl,
-                label: e.value.portal.displayLabel,
-              ),
-            )
-            .toList(),
-      );
+  }) {
+    final kinds = hits
+        .map((h) => iptvLiveSourceKindForPortal(h.portal.portal.platform))
+        .toList();
+    return IptvPtPlayerScreen(
+      key: key,
+      title: title,
+      logoUrl: logoUrl,
+      engineContext: engineContext,
+      liveSourceKind: kinds.isEmpty ? null : kinds.first,
+      sources: [
+        for (var i = 0; i < hits.length; i++)
+          IptvPlaySource(
+            url: hits[i].streamUrl,
+            label: hits[i].portal.displayLabel,
+            liveSourceKind: kinds[i],
+          ),
+      ],
+    );
+  }
 
   /// Root-navigator push — same full-window cover + Back slide as movies.
   /// Masks the shell underlay (no catalog peek during the slide) without
@@ -532,6 +555,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   // Retry state
   int _retryAttempt = 0;
   DateTime? _lastRecoveryAt;
+  /// Bumped to cancel in-flight delayed live-edge snaps (recovery / reopen race).
+  int _liveEdgeSnapEpoch = 0;
   /// One-shot Exo ↔ MediaKit swap after unrecognized-format errors.
   bool _formatEngineSwapped = false;
   // When the user explicitly paused (play-after-pause rejoins live edge).

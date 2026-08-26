@@ -136,7 +136,8 @@ class _PortalFormDialogState extends State<_PortalFormDialog> {
     super.initState();
     final e = widget.existing;
     _platform = e?.portal.platform ?? IptvPortalPlatform.xtream;
-    _labelCtrl = TextEditingController(text: e?.label ?? '');
+    // Match the panel card: prefer user label, else account name / username.
+    _labelCtrl = TextEditingController(text: e?.displayLabel ?? '');
     _urlCtrl = TextEditingController(text: e?.portal.url ?? '');
     final initialUser = e?.portal.username ?? '';
     _userCtrl = TextEditingController(

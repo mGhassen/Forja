@@ -374,7 +374,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   /// when cache is already empty (nothing left to play through).
   void _onProxyUpstreamReconnected() {
     unawaited(() async {
-      if (_s._disposed || _s._exoBackend) return;
+      if (_s._disposed || _s._exoBackend || _recoveryInFlight) return;
+      if (!_s._playerAlive) return;
       _armTransientHwDecodeIgnore();
       try {
         final p = _s._player?.platform;
@@ -400,20 +401,25 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
             '[IPTV Proxy] play-through reconnect '
             '(cache=${cacheSecs.toStringAsFixed(1)}s — no drop-buffers)',
           );
-        } else {
-          await p.command(['drop-buffers']);
+        } else if (_playbackStarted && _s._playerAlive && !_recoveryInFlight) {
+          // Empty cushion: let watchdog soft-reopen. drop-buffers on a demuxer
+          // that already failed format probe can native-crash (macOS).
           debugPrint(
-            '[IPTV Proxy] drop-buffers on reconnect '
-            '(cache=${cacheSecs.toStringAsFixed(1)}s empty)',
+            '[IPTV Proxy] empty cache on reconnect — leave to watchdog '
+            '(cache=${cacheSecs.toStringAsFixed(1)}s, no drop-buffers)',
           );
         }
-        if (_s._userPlayWhenReady && !_s._playing) {
+        if (_s._userPlayWhenReady && !_s._playing && !_recoveryInFlight) {
           await _enginePlay();
         }
       } catch (e) {
         debugPrint('[IPTV Proxy] reconnect handoff failed: $e');
       }
     }());
+  }
+
+  void _invalidatePendingLiveEdgeSnaps() {
+    _s._liveEdgeSnapEpoch++;
   }
 
   /// Desktop MediaKit: restore ao/mute after exit-path silence and pick a real
@@ -816,9 +822,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         // never let the 12s wall (or reconnect 1/8) fire — spinner forever,
         // then MediaCodec ANR. Watchdog finalizes after [_bufferingClearHold].
         _s._bufferingClearAt ??= DateTime.now();
-        if (_s._playing) {
-          _s._lastPosChange = DateTime.now();
-        }
+        // Do not fake [_lastPosChange] here — that made empty-cache format
+        // fails look "working" and skipped recovery until native crash.
         if (!_playbackStarted && _livePlaybackProfile) {
           _noteVideoFrame(reason: 'buffering done');
           return;
@@ -856,6 +861,16 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           lower.contains('connection reset')) {
         // Cache/feed gate inside recovery — do not reopen if still working.
         _noteSocketTrouble(msg);
+        return;
+      }
+      // Hard open/format death: always reopen (never "healthy hold"). Soft
+      // reopen can race a dead demuxer — escalate hard after early attempts.
+      if (_livePlaybackProfile && iptvIsHardOpenFail(msg)) {
+        _invalidatePendingLiveEdgeSnaps();
+        unawaited(_triggerRecovery(
+          reason: 'error: $msg',
+          forceHard: _s._retryAttempt >= 1,
+        ));
         return;
       }
       _triggerRecovery(reason: 'error: $msg');
@@ -990,6 +1005,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
       }
       final src = _s._sources[_s._sourceIdx];
       _playbackStarted = false;
+      _invalidatePendingLiveEdgeSnaps();
       _s._exoSurfaceFallback?.resetForNewOpen();
       // Soft path: silent connect (buffering chrome only). Hard ATV reseat
       // already set "Switching to …" on the loading scaffold.
@@ -1148,8 +1164,11 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     // Classic: seekable-only open snap (1.3.114). Never force drop-buffers.
     final allowForce = _bufferedRecovery && force;
     if (!allowForce && !_s._streamSeekable) return;
+    final epoch = _s._liveEdgeSnapEpoch;
     Future.delayed(const Duration(milliseconds: 700), () async {
       if (!mounted || _s._disposed) return;
+      if (_s._liveEdgeSnapEpoch != epoch) return;
+      if (_recoveryInFlight || !_s._playerAlive) return;
       if (!allowForce && !_s._streamSeekable) return;
       try {
         final p = _s._player?.platform;
@@ -1160,6 +1179,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         // jump to the live edge of the DVR window.
         _armTransientHwDecodeIgnore();
         await p.command(['drop-buffers']);
+        if (_s._liveEdgeSnapEpoch != epoch || _recoveryInFlight) return;
         if (_s._streamSeekable) {
           await p.command(['seek', '99999', 'absolute']);
         }
@@ -1196,6 +1216,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         if (t != null && t.isFinite) {
           _noteFeedProgress((t * 1000).round());
         }
+        // Live playhead often sticks at 0 and demuxer-cache-duration at 0
+        // while frames still paint (Stalker / pure TS). Without this, detector
+        // 2b soft-reopens every ~5s and kills a working picture.
+        if (_mediaKitLiveProfile && _s._playing) {
+          await _sampleLiveFramePulse(p);
+        }
       } catch (_) {
       } finally {
         _s._cacheProbeInFlight = false;
@@ -1203,6 +1229,34 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     }().timeout(const Duration(seconds: 4), onTimeout: () {
       _s._cacheProbeInFlight = false;
     }));
+  }
+
+  /// Bump playhead-alive when mpv is still emitting frames / bitrate.
+  Future<void> _sampleLiveFramePulse(NativePlayer p) async {
+    try {
+      final fpsRaw = await p.getProperty('estimated-vf-fps');
+      final fps = double.tryParse(fpsRaw.toString());
+      if (fps != null && fps.isFinite && fps >= 1.0) {
+        _noteLivePaintPulse();
+        return;
+      }
+    } catch (_) {}
+    try {
+      final brRaw = await p.getProperty('video-bitrate');
+      final br = double.tryParse(brRaw.toString());
+      if (br != null && br.isFinite && br > 0) {
+        _noteLivePaintPulse();
+      }
+    } catch (_) {}
+  }
+
+  void _noteLivePaintPulse() {
+    _playbackStarted = true;
+    _s._lastPosChange = DateTime.now();
+    if (_s._lastPos == Duration.zero) {
+      _s._lastPos = const Duration(milliseconds: 1);
+    }
+    _syncPlaybackBannerVisibility();
   }
 
   /// Accept only plausible ahead values (see [_maxSaneCacheAheadSecs]).
@@ -1367,8 +1421,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         _IptvPtPlayerScreenState._minHealthyCacheSecs) {
       return true;
     }
-    // Feeding with empty cache is refill-in-progress, not "working" — otherwise
-    // proxy ticks hold recovery forever while the picture stays frozen.
+    // Playhead / frame probe recently advanced — painting even if demuxer
+    // cache reports 0 (common on live MPEG-TS / Stalker create_link).
     if (_playheadRecentlyMoved) return true;
     return false;
   }
@@ -1463,6 +1517,10 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         // Detector 2b: MediaKit live underrun while still "playing".
         // With cache-pause=no, underrun can leave playing=true on a frozen
         // frame — show Buffering and soft-reopen instead of staying silent.
+        // Skip when frames/playhead recently pulsed (cache=0 is normal on TS).
+        if (_streamWorking || _playheadRecentlyMoved) {
+          return;
+        }
         final frozenFor = now.difference(_s._lastPosChange);
         if (frozenFor > const Duration(milliseconds: 1500)) {
           _ensureBufferingChrome(now);
@@ -1539,11 +1597,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   }) async {
     if (_s._disposed || _recoveryInFlight) return;
     // Stable cache/feed hold is live-only — VOD must not skip recovery after a
-    // false "video alive" / open fail (issue 163).
+    // false "video alive" / open fail (issue 163). Hard format/open death
+    // must never be held as "working".
     if (!userInitiated &&
         _livePlaybackProfile &&
         _playbackStarted &&
-        _streamWorking) {
+        _streamWorking &&
+        !iptvIsHardOpenFail(reason)) {
       _logHealthyHold(reason);
       return;
     }
@@ -1572,6 +1632,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
             const Duration(milliseconds: 1500)) {
       return;
     }
+    // Cancel delayed drop-buffers / seek so they cannot race stop+open.
+    _invalidatePendingLiveEdgeSnaps();
     _recoveryInFlight = true;
     _s._lastRecoveryAt = now;
     _s._streamSeekable = false;
@@ -1858,6 +1920,7 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   }
 
   Future<void> _disposePlayer() async {
+    _invalidatePendingLiveEdgeSnaps();
     if (_s._exoBackend) {
       await _s._exoEventSub?.cancel();
       _s._exoEventSub = null;
@@ -1946,7 +2009,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     setState(() {
       _s._currentChannelId = ch.id;
       _s._selectedGroupId = ch.groupId;
-      _s._sources = [IptvPlaySource(url: url, label: label)];
+      _s._sources = [
+        IptvPlaySource(
+          url: url,
+          label: label,
+          liveSourceKind: _s.widget.liveSourceKind,
+        ),
+      ];
       _s._sourceIdx = 0;
       _s._retryAttempt = 0;
       _s._title = ch.name;

@@ -1524,6 +1524,7 @@ class _BrowserViewState extends State<_BrowserView> {
         url: url,
         stream: s,
         portalName: p.displayLabel,
+        portalPlatform: p.portal.platform,
         channelGuide: channelGuide,
         onChannelChanged: (next) => focusStream = next,
       ),

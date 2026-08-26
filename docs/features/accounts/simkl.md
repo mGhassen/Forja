@@ -26,7 +26,7 @@ Simkl is the tracker everyone can connect. Log in via PIN and sync what you watc
 - Clearing progress (trash next to Resume) removes Simkl watched history so the title leaves Completed
 - Import completed movies into local watch history
 - Import completed TV + anime episodes as watched marks (anime uses AniList ids)
-- Import in-progress watching into continue watching
+- Import in-progress watching into continue watching (background sync seeds at most ~20 newest missing resumes; Sync Now still does a full history pass)
 - Export local watched episodes back to Simkl
 - Log out
 
@@ -43,6 +43,7 @@ The app must be built with `SIMKL_CLIENT_ID` (repo-root `.env` for local `flutte
 
 - While connected, My List shows Simkl for movies/TV/anime; Asian Drama / unmatched hub titles can still appear from local
 - Background sync no longer silently overwrites local list buckets — only your chooser does
+- After the first sync, background history sync only pulls what changed since the last Simkl activity stamp (`date_from`), and skips entirely for ~15 minutes after a successful sync
 - [Trakt](trakt.md) is admin-only and needs its own API app
 - Not all Trakt features (calendars, lists UI) are duplicated for Simkl
 

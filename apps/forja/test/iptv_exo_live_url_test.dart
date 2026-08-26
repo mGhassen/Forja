@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
 
 void main() {
@@ -44,6 +45,21 @@ void main() {
       expect(IptvLiveSourceKind.stremio.useContinuityProxy, isFalse);
       expect(IptvLiveSourceKind.liveEngine.useContinuityProxy, isFalse);
       expect(IptvLiveSourceKind.iptvStalker.useContinuityProxy, isFalse);
+    });
+
+    test('portal platform maps to live source kind', () {
+      expect(
+        iptvLiveSourceKindForPortal(IptvPortalPlatform.stalker),
+        IptvLiveSourceKind.iptvStalker,
+      );
+      expect(
+        iptvLiveSourceKindForPortal(IptvPortalPlatform.xtream),
+        IptvLiveSourceKind.iptvXtream,
+      );
+      expect(
+        iptvLiveSourceKindForPortal(IptvPortalPlatform.m3u),
+        IptvLiveSourceKind.iptvXtream,
+      );
     });
   });
 

@@ -37,7 +37,7 @@ Tap **Home** in the navigation bar (first tab by default).
 
 - On **desktop**, drag-select the hero title text to copy it (logo titles are images). Long text titles shrink and wrap up to **3 lines** so they don’t clip into the meta row.
 - Continue watching updates automatically when you watch movies or series
-- Hover a continue watching card (desktop) to scale it and show a play button; hover the play button to turn it brand-green, float it upward, and pulse the icon — click to resume from the last torrent or web source
+- Hover a continue watching card (desktop) to scale it and show a play button; hover the play button to turn it brand-green, float it upward, and pulse the icon — click resumes like details green Play (respects Webstreaming / Forja Auto settings)
 - Dismiss an item from continue watching from the details screen or Home
 
 ## Related

@@ -109,12 +109,21 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
 
     if (savedMethod == 'stream') {
       final sourceId = progress?['sourceId'] as String? ?? '';
-      if (_s._playSourceWebstreaming) {
+      if (_s._playSourceWebstreaming && isWebStreamProviderId(sourceId)) {
         if (_s._isWebstreamingOnlyExtracting) return;
         _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
         unawaited(
           _s._resumeContinueWatchingWebStream(sourceId, fromRoute: fromRoute),
         );
+        return;
+      }
+      // Webstreaming off (or last source was Forja/engine): same as green Play.
+      if (fromRoute &&
+          !_s._playSourceWebstreaming &&
+          _s._playSourceEngine &&
+          _s._playSourceEngineAutoStart) {
+        _consumeAutoPlayFlags(fromRoute: true, fromEpisode: fromEpisode);
+        unawaited(_s._startEngineAutoPlayback());
         return;
       }
     }
