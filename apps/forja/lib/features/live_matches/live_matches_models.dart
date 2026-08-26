@@ -316,8 +316,8 @@ class _StreamedMatch {
 
   bool get isLive {
     if (isAlwaysOn || airing) return true;
-    // WatchFooty sets airing from status+streams (site parity). Don't fake LIVE
-    // for every kickoff in the last 6h — that showed stream-less tennis as live.
+    // WatchFooty sets airing from API status (incl. stream-less). Don't fake
+    // LIVE for every kickoff in the last 6h.
     if (livePluginId == 'live-watchfooty') return false;
 
     if (dateMs <= 0) return false;

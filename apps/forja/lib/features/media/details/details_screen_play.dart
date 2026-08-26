@@ -620,151 +620,197 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
   }
 
   void _playTorrent(TorrentResult result, {Duration? startPosition}) async {
+    if (!_s._tryLockPlaybackLaunch()) return;
     debugPrint('[Details] play torrent title=${result.name}');
     // Reset before any await so a stale cancel from a prior overlay cannot
     // abort this play after settings load.
     _s._streamCancelled = false;
 
-    final useDebrid = await _s._settings.useDebridForStreams();
-    final debridService = await _s._settings.getDebridService();
-    if (!mounted || _s._streamCancelled) return;
-    if (!await ensureLanP2pPlayback(context)) return;
-    if (!mounted || _s._streamCancelled) return;
+    try {
+      final useDebrid = await _s._settings.useDebridForStreams();
+      final debridService = await _s._settings.getDebridService();
+      if (!mounted || _s._streamCancelled) return;
+      if (!await ensureLanP2pPlayback(context)) return;
+      if (!mounted || _s._streamCancelled) return;
 
-    final overlayMessage = ValueNotifier<String>(
-      playbackResolveLabel(useDebrid: useDebrid, debridService: debridService),
-    );
-    final fadeOutNotifier = ValueNotifier(false);
-    final failureNotifier = ValueNotifier<ResolveFailure?>(null);
-    BuildContext? loadingDialogContext;
-    var cleanedUp = false;
-    final sourceHint = playbackSourceHint(
-      useDebrid: useDebrid,
-      debridService: debridService,
-    );
+      final overlayMessage = ValueNotifier<String>(
+        playbackResolveLabel(
+          useDebrid: useDebrid,
+          debridService: debridService,
+        ),
+      );
+      final fadeOutNotifier = ValueNotifier(false);
+      final failureNotifier = ValueNotifier<ResolveFailure?>(null);
+      BuildContext? loadingDialogContext;
+      var cleanedUp = false;
+      final sourceHint = playbackSourceHint(
+        useDebrid: useDebrid,
+        debridService: debridService,
+      );
 
-    void cleanupNotifiers() {
-      if (cleanedUp) return;
-      cleanedUp = true;
-      disposeLoadingOverlayNotifiers([
-        overlayMessage,
-        fadeOutNotifier,
-        failureNotifier,
-      ]);
-    }
-
-    void popLoading() {
-      final ctx = loadingDialogContext;
-      loadingDialogContext = null;
-      if (ctx != null && ctx.mounted) {
-        dismissLoadingOverlayRoute(ctx);
+      void cleanupNotifiers() {
+        if (cleanedUp) return;
+        cleanedUp = true;
+        disposeLoadingOverlayNotifiers([
+          overlayMessage,
+          fadeOutNotifier,
+          failureNotifier,
+        ]);
       }
-    }
 
-    Future<void> fail(String message) async {
-      debugPrint('[Torrent] $message');
+      void popLoading() {
+        final ctx = loadingDialogContext;
+        loadingDialogContext = null;
+        if (ctx != null && ctx.mounted) {
+          dismissLoadingOverlayRoute(ctx);
+        }
+      }
+
+      Future<void> fail(String message) async {
+        debugPrint('[Torrent] $message');
+        if (!mounted || _s._streamCancelled) {
+          popLoading();
+          cleanupNotifiers();
+          return;
+        }
+        final action = Completer<void>();
+        failureNotifier.value = ResolveFailure(
+          title: 'Couldn’t start playback',
+          detail: _friendlyResolveDetail(message),
+          primaryLabel: 'Close',
+          primaryIcon: Icons.close_rounded,
+          onPrimary: () {
+            if (!action.isCompleted) action.complete();
+          },
+        );
+        await action.future;
+        popLoading();
+        cleanupNotifiers();
+      }
+
+      // Show loading BEFORE closing Sources - closing the panel mid-tap disposes
+      // gesture routes under the pointer (pointer_router asserts) and can dismiss
+      // the new overlay / cancel the resolve with no logs.
+      showLoadingOverlayDialog(
+        context,
+        builder: (dialogContext) {
+          loadingDialogContext = dialogContext;
+          return LoadingOverlay(
+            movie: _s._movie,
+            messageNotifier: overlayMessage,
+            fadeOutNotifier: fadeOutNotifier,
+            failureNotifier: failureNotifier,
+            subtitle: _loadingOverlaySubtitle(sourceHint: sourceHint),
+            onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
+          );
+        },
+      );
+
+      if (mounted && _s._sourcesPanelOpen) {
+        _s._closeSourcesPanel(cancelEngineJobs: false);
+      }
+      // Let the loading route paint before heavy resolve work.
+      await Future<void>.delayed(Duration.zero);
       if (!mounted || _s._streamCancelled) {
         popLoading();
         cleanupNotifiers();
         return;
       }
-      final action = Completer<void>();
-      failureNotifier.value = ResolveFailure(
-        title: 'Couldn’t start playback',
-        detail: _friendlyResolveDetail(message),
-        primaryLabel: 'Close',
-        primaryIcon: Icons.close_rounded,
-        onPrimary: () {
-          if (!action.isCompleted) action.complete();
-        },
-      );
-      await action.future;
-      popLoading();
-      cleanupNotifiers();
-    }
 
-    // Show loading BEFORE closing Sources - closing the panel mid-tap disposes
-    // gesture routes under the pointer (pointer_router asserts) and can dismiss
-    // the new overlay / cancel the resolve with no logs.
-    showLoadingOverlayDialog(
-      context,
-      builder: (dialogContext) {
-        loadingDialogContext = dialogContext;
-        return LoadingOverlay(
-          movie: _s._movie,
-          messageNotifier: overlayMessage,
-          fadeOutNotifier: fadeOutNotifier,
-          failureNotifier: failureNotifier,
-          subtitle: _loadingOverlaySubtitle(sourceHint: sourceHint),
-          onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
+      String? resolvedUrl;
+      var magnetLink = result.magnet;
+      int? resolvedFileIndex;
+
+      try {
+        if (!magnetLink.startsWith('magnet:')) {
+          overlayMessage.value = 'Resolving download link...';
+          final resolved = await _s._linkResolver.resolve(magnetLink);
+          if (_s._streamCancelled) {
+            popLoading();
+            cleanupNotifiers();
+            return;
+          }
+          if (resolved.isMagnet) {
+            magnetLink = resolved.link;
+          } else if (resolved.torrentBytes != null) {
+            await fail(
+              'Torrent file downloads not yet supported. Please use magnet links.',
+            );
+            return;
+          } else {
+            await fail('Could not resolve a magnet link for this torrent.');
+            return;
+          }
+        }
+
+        overlayMessage.value = playbackResolveLabel(
+          useDebrid: useDebrid,
+          debridService: debridService,
         );
-      },
-    );
 
-    if (mounted && _s._sourcesPanelOpen) {
-      _s._closeSourcesPanel(cancelEngineJobs: false);
-    }
-    // Let the loading route paint before heavy resolve work.
-    await Future<void>.delayed(Duration.zero);
-    if (!mounted || _s._streamCancelled) {
-      popLoading();
-      cleanupNotifiers();
-      return;
-    }
+        debugPrint(
+          '[Torrent] resolving magnet '
+          'debrid=$useDebrid service=$debridService '
+          'localEngine=${_s._playbackProfile.localTorrentEngine}',
+        );
 
-    String? resolvedUrl;
-    var magnetLink = result.magnet;
-    int? resolvedFileIndex;
-
-    try {
-      if (!magnetLink.startsWith('magnet:')) {
-        overlayMessage.value = 'Resolving download link...';
-        final resolved = await _s._linkResolver.resolve(magnetLink);
+        final isTv = _s._movie.mediaType == 'tv';
+        final playback = await resolveMagnetForPlayback(
+          magnet: magnetLink,
+          useDebrid: useDebrid,
+          debridService: debridService,
+          localTorrentEngine: _s._playbackProfile.localTorrentEngine,
+          season: isTv ? _s._selectedSeason : null,
+          episode: isTv ? _s._selectedEpisode : null,
+          onStatus: (status) {
+            if (!_s._streamCancelled) overlayMessage.value = status;
+          },
+        );
         if (_s._streamCancelled) {
+          if (playback != null) {
+            LanClientService.instance.releaseLanTorrentIfNeeded(
+              playUrl: playback.url,
+              magnet: magnetLink,
+            );
+          } else if (!_s._playbackProfile.localTorrentEngine) {
+            LanClientService.instance.releaseLanTorrentAfterCancel(
+              magnet: magnetLink,
+            );
+          }
           popLoading();
           cleanupNotifiers();
           return;
         }
-        if (resolved.isMagnet) {
-          magnetLink = resolved.link;
-        } else if (resolved.torrentBytes != null) {
-          await fail(
-            'Torrent file downloads not yet supported. Please use magnet links.',
-          );
-          return;
-        } else {
-          await fail('Could not resolve a magnet link for this torrent.');
+        if (playback == null || playback.url.isEmpty) {
+          await fail('Torrent stream failed to start.');
           return;
         }
+        resolvedUrl = playback.url;
+        resolvedFileIndex = playback.fileIndex;
+        debugPrint('[Torrent] Playing via ${playback.sourceLabel}');
+      } catch (e, st) {
+        debugPrint('[Torrent] Stream error: $e\n$st');
+        if (_s._streamCancelled) {
+          if (!_s._playbackProfile.localTorrentEngine) {
+            LanClientService.instance.releaseLanTorrentAfterCancel(
+              magnet: magnetLink,
+            );
+          }
+          popLoading();
+          cleanupNotifiers();
+          return;
+        }
+        final message = e is DebridAuthException
+            ? e.toString()
+            : debridUserMessage(e, debridService);
+        await fail(message);
+        return;
       }
 
-      overlayMessage.value = playbackResolveLabel(
-        useDebrid: useDebrid,
-        debridService: debridService,
-      );
-
-      debugPrint(
-        '[Torrent] resolving magnet '
-        'debrid=$useDebrid service=$debridService '
-        'localEngine=${_s._playbackProfile.localTorrentEngine}',
-      );
-
-      final isTv = _s._movie.mediaType == 'tv';
-      final playback = await resolveMagnetForPlayback(
-        magnet: magnetLink,
-        useDebrid: useDebrid,
-        debridService: debridService,
-        localTorrentEngine: _s._playbackProfile.localTorrentEngine,
-        season: isTv ? _s._selectedSeason : null,
-        episode: isTv ? _s._selectedEpisode : null,
-        onStatus: (status) {
-          if (!_s._streamCancelled) overlayMessage.value = status;
-        },
-      );
-      if (_s._streamCancelled) {
-        if (playback != null) {
+      if (!mounted || _s._streamCancelled) {
+        if (resolvedUrl != null) {
           LanClientService.instance.releaseLanTorrentIfNeeded(
-            playUrl: playback.url,
+            playUrl: resolvedUrl!,
             magnet: magnetLink,
           );
         } else if (!_s._playbackProfile.localTorrentEngine) {
@@ -776,74 +822,36 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         cleanupNotifiers();
         return;
       }
-      if (playback == null || playback.url.isEmpty) {
+
+      final dialogContext = loadingDialogContext;
+      if (dialogContext == null) {
         await fail('Torrent stream failed to start.');
         return;
       }
-      resolvedUrl = playback.url;
-      resolvedFileIndex = playback.fileIndex;
-      debugPrint('[Torrent] Playing via ${playback.sourceLabel}');
-    } catch (e, st) {
-      debugPrint('[Torrent] Stream error: $e\n$st');
-      if (_s._streamCancelled) {
-        if (!_s._playbackProfile.localTorrentEngine) {
-          LanClientService.instance.releaseLanTorrentAfterCancel(
-            magnet: magnetLink,
-          );
-        }
-        popLoading();
-        cleanupNotifiers();
-        return;
-      }
-      final message = e is DebridAuthException
-          ? e.toString()
-          : debridUserMessage(e, debridService);
-      await fail(message);
-      return;
-    }
 
-    if (!mounted || _s._streamCancelled) {
-      if (resolvedUrl != null) {
-        LanClientService.instance.releaseLanTorrentIfNeeded(
-          playUrl: resolvedUrl!,
-          magnet: magnetLink,
-        );
-      } else if (!_s._playbackProfile.localTorrentEngine) {
-        LanClientService.instance.releaseLanTorrentAfterCancel(
-          magnet: magnetLink,
-        );
-      }
-      popLoading();
+      await crossfadeLoadingOverlayToPlayer(
+        loadingDialogContext: dialogContext,
+        fadeOutNotifier: fadeOutNotifier,
+        openPlayer: () => AppRouter.openPlayer(
+          context,
+          streamUrl: resolvedUrl!,
+          title: _s._movie.title,
+          magnetLink: magnetLink,
+          movie: _s._movie,
+          selectedSeason:
+              _s._movie.mediaType == 'tv' ? _s._selectedSeason : null,
+          selectedEpisode:
+              _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
+          fileIndex: resolvedFileIndex,
+          startPosition: startPosition,
+          activeProvider: 'torrent',
+          fadeTransition: true,
+        ),
+      );
+      if (mounted) _s._claimTvHeroPlayAfterPlayer();
       cleanupNotifiers();
-      return;
+    } finally {
+      _s._unlockPlaybackLaunch();
     }
-
-    final dialogContext = loadingDialogContext;
-    if (dialogContext == null) {
-      await fail('Torrent stream failed to start.');
-      return;
-    }
-
-    await crossfadeLoadingOverlayToPlayer(
-      loadingDialogContext: dialogContext,
-      fadeOutNotifier: fadeOutNotifier,
-      openPlayer: () => AppRouter.openPlayer(
-        context,
-        streamUrl: resolvedUrl!,
-        title: _s._movie.title,
-        magnetLink: magnetLink,
-        movie: _s._movie,
-        selectedSeason:
-            _s._movie.mediaType == 'tv' ? _s._selectedSeason : null,
-        selectedEpisode:
-            _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
-        fileIndex: resolvedFileIndex,
-        startPosition: startPosition,
-        activeProvider: 'torrent',
-        fadeTransition: true,
-      ),
-    );
-    if (mounted) _s._claimTvHeroPlayAfterPlayer();
-    cleanupNotifiers();
   }
 }

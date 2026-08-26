@@ -138,6 +138,12 @@ mixin _LiveMatchesForjaLive
       _s._scheduleHorizon = saved.horizon;
       _s._catalogFetchedHorizon = saved.horizon;
     });
+    unawaited(
+      _persistSchedulePreference(
+        status: saved.status,
+        horizon: saved.horizon,
+      ),
+    );
   }
 
   Future<void> _persistSchedulePreference({

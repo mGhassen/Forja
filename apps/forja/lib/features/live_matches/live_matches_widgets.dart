@@ -749,7 +749,68 @@ class _LiveMatchesScheduleSheetState extends State<_LiveMatchesScheduleSheet> {
   Widget build(BuildContext context) {
     final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final body = Padding(
+
+    Widget statusSection = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < _statusOptions.length; i++)
+          _LiveMatchesScheduleSheetOption(
+            label: _liveMatchesScheduleStatusLabel(_statusOptions[i]),
+            subtitle: _statusSubtitle(_statusOptions[i]),
+            selected: _statusOptions[i] == _status,
+            icon: Icons.sensors_rounded,
+            onSelected: () => _pickStatus(_statusOptions[i]),
+            tvTabId: _tvTabId,
+            tvRowId: _statusRowId,
+            tvItemIndex: i,
+            focusNode: i == 0 ? _firstFocus : null,
+          ),
+      ],
+    );
+    if (tv) {
+      statusSection = TvCatalogRow(
+        tabId: _tvTabId,
+        rowId: _statusRowId,
+        sortOrder: 0,
+        itemCount: _statusOptions.length,
+        orientation: ShellTvRowOrientation.vertical,
+        child: statusSection,
+      );
+    }
+
+    Widget? horizonSection;
+    if (_showHorizon) {
+      horizonSection = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (var i = 0; i < _horizonOptions.length; i++)
+            _LiveMatchesScheduleSheetOption(
+              label: _liveMatchesScheduleHorizonLabel(_horizonOptions[i]),
+              subtitle: _horizonSubtitle(_horizonOptions[i]),
+              selected: _horizonOptions[i] == _horizon,
+              icon: Icons.schedule_rounded,
+              onSelected: () => _pickHorizon(_horizonOptions[i]),
+              tvTabId: _tvTabId,
+              tvRowId: _horizonRowId,
+              tvItemIndex: i,
+            ),
+        ],
+      );
+      if (tv) {
+        horizonSection = TvCatalogRow(
+          tabId: _tvTabId,
+          rowId: _horizonRowId,
+          sortOrder: 1,
+          itemCount: _horizonOptions.length,
+          orientation: ShellTvRowOrientation.vertical,
+          child: horizonSection,
+        );
+      }
+    }
+
+    return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: maxHeight),
@@ -792,19 +853,8 @@ class _LiveMatchesScheduleSheetState extends State<_LiveMatchesScheduleSheet> {
                 ),
               ),
               const SizedBox(height: 8),
-              for (var i = 0; i < _statusOptions.length; i++)
-                _LiveMatchesScheduleSheetOption(
-                  label: _liveMatchesScheduleStatusLabel(_statusOptions[i]),
-                  subtitle: _statusSubtitle(_statusOptions[i]),
-                  selected: _statusOptions[i] == _status,
-                  icon: Icons.sensors_rounded,
-                  onSelected: () => _pickStatus(_statusOptions[i]),
-                  tvTabId: _tvTabId,
-                  tvRowId: _statusRowId,
-                  tvItemIndex: i,
-                  focusNode: i == 0 ? _firstFocus : null,
-                ),
-              if (_showHorizon) ...[
+              statusSection,
+              if (horizonSection != null) ...[
                 const SizedBox(height: 16),
                 const Text(
                   'Horizon',
@@ -815,46 +865,12 @@ class _LiveMatchesScheduleSheetState extends State<_LiveMatchesScheduleSheet> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                for (var i = 0; i < _horizonOptions.length; i++)
-                  _LiveMatchesScheduleSheetOption(
-                    label: _liveMatchesScheduleHorizonLabel(_horizonOptions[i]),
-                    subtitle: _horizonSubtitle(_horizonOptions[i]),
-                    selected: _horizonOptions[i] == _horizon,
-                    icon: Icons.schedule_rounded,
-                    onSelected: () => _pickHorizon(_horizonOptions[i]),
-                    tvTabId: _tvTabId,
-                    tvRowId: _horizonRowId,
-                    tvItemIndex: i,
-                  ),
+                horizonSection,
               ],
             ],
           ),
         ),
       ),
-    );
-    if (!tv) return body;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TvCatalogRow(
-          tabId: _tvTabId,
-          rowId: _statusRowId,
-          sortOrder: 0,
-          itemCount: _statusOptions.length,
-          orientation: ShellTvRowOrientation.vertical,
-          child: const SizedBox.shrink(),
-        ),
-        if (_showHorizon)
-          TvCatalogRow(
-            tabId: _tvTabId,
-            rowId: _horizonRowId,
-            sortOrder: 1,
-            itemCount: _horizonOptions.length,
-            orientation: ShellTvRowOrientation.vertical,
-            child: const SizedBox.shrink(),
-          ),
-        body,
-      ],
     );
   }
 }

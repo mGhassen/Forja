@@ -362,6 +362,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   bool _searching = false;
   bool _stremioFetching = false;
+  /// Blocks further taps while a source row is handing off to playback.
+  bool _sourcePickInFlight = false;
   int _searchGen = 0;
   int _stremioGen = 0;
   String? _error;
@@ -2843,40 +2845,52 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   Future<void> _selectTorrent(TorrentResult result) async {
+    if (_sourcePickInFlight) return;
     if (_isCurrentMagnet(result.magnet)) {
       widget.onClose();
       return;
     }
-    // ATV: pair/offline dialog first. Do not dismiss or start local resolve.
-    if (!await ensureLanP2pPlayback(context)) return;
-    if (!mounted) return;
-    // Close without cancelling engine jobs - resolve starts immediately and
-    // dispose must not abort the new torrentStream (see [dismiss]).
-    PlayerSourcesPanel.dismiss(cancelEngine: false);
-    await widget.onTorrentSelected(result);
+    setState(() => _sourcePickInFlight = true);
+    try {
+      // ATV: pair/offline dialog first. Do not dismiss or start local resolve.
+      if (!await ensureLanP2pPlayback(context)) return;
+      if (!mounted) return;
+      // Close without cancelling engine jobs - resolve starts immediately and
+      // dispose must not abort the new torrentStream (see [dismiss]).
+      PlayerSourcesPanel.dismiss(cancelEngine: false);
+      await widget.onTorrentSelected(result);
+    } finally {
+      if (mounted) setState(() => _sourcePickInFlight = false);
+    }
   }
 
   Future<void> _selectStremio(Map<String, dynamic> stream) async {
+    if (_sourcePickInFlight) return;
     if (_isCurrentStremio(stream)) {
       widget.onClose();
       return;
     }
-    final settings = SettingsService();
-    final useDebrid = await settings.useDebridForStreams();
-    final debridService = await settings.getDebridService();
-    if (!mounted) return;
-    final precheck = classifyStremioStream(
-      stream,
-      PlatformPlayback.capabilities,
-      useDebrid: useDebrid,
-      debridService: debridService,
-    );
-    if (precheck == null) {
-      if (!await ensureLanP2pPlayback(context)) return;
+    setState(() => _sourcePickInFlight = true);
+    try {
+      final settings = SettingsService();
+      final useDebrid = await settings.useDebridForStreams();
+      final debridService = await settings.getDebridService();
       if (!mounted) return;
+      final precheck = classifyStremioStream(
+        stream,
+        PlatformPlayback.capabilities,
+        useDebrid: useDebrid,
+        debridService: debridService,
+      );
+      if (precheck == null) {
+        if (!await ensureLanP2pPlayback(context)) return;
+        if (!mounted) return;
+      }
+      PlayerSourcesPanel.dismiss(cancelEngine: false);
+      await widget.onStremioSelected(stream);
+    } finally {
+      if (mounted) setState(() => _sourcePickInFlight = false);
     }
-    PlayerSourcesPanel.dismiss(cancelEngine: false);
-    await widget.onStremioSelected(stream);
   }
 
   String? get _episodeLabel {
@@ -2899,7 +2913,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final totalCount =
         torrents.length + stremio.length + nuvio.length + engine.length;
 
-    return Column(
+    final body = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TorrentSourcesPanelChrome(
@@ -3009,6 +3023,32 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           resultCount: totalCount,
         ),
       ],
+    );
+
+    if (!_sourcePickInFlight) return body;
+
+    return AbsorbPointer(
+      absorbing: true,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Positioned.fill(child: body),
+          const ModalBarrier(
+            dismissible: false,
+            color: Color(0x66000000),
+          ),
+          const Center(
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white54,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
