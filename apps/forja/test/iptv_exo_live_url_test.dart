@@ -40,9 +40,10 @@ void main() {
       expect(IptvLiveSourceKind.iptvXtream.useContinuityProxy, isTrue);
     });
 
-    test('stremio and liveEngine open directly', () {
+    test('stremio, liveEngine, and iptvStalker open directly', () {
       expect(IptvLiveSourceKind.stremio.useContinuityProxy, isFalse);
       expect(IptvLiveSourceKind.liveEngine.useContinuityProxy, isFalse);
+      expect(IptvLiveSourceKind.iptvStalker.useContinuityProxy, isFalse);
     });
   });
 

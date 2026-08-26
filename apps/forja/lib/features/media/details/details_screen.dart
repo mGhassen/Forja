@@ -353,10 +353,29 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   // Stream resolution cancellation
   bool _streamCancelled = false;
 
+  /// Blocks taps on details/Sources after a source row is chosen until the
+  /// loading overlay or player takes over (settings/debrid awaits used to
+  /// leave a clickable gap).
+  bool _playbackLaunchInFlight = false;
+
+  bool _tryLockPlaybackLaunch() {
+    if (_playbackLaunchInFlight) return false;
+    _playbackLaunchInFlight = true;
+    if (mounted) setState(() {});
+    return true;
+  }
+
+  void _unlockPlaybackLaunch() {
+    if (!_playbackLaunchInFlight) return;
+    _playbackLaunchInFlight = false;
+    if (mounted) setState(() {});
+  }
+
   void _dismissStreamLoadingDialog(BuildContext dialogContext) {
     _streamCancelled = true;
     Engine.cancelPendingResolve();
     dismissLoadingOverlayRoute(dialogContext);
+    _unlockPlaybackLaunch();
     _claimTvHeroPlayAfterPlayer();
   }
 

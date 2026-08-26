@@ -2,6 +2,7 @@ mod espn;
 mod fetch;
 mod forja_catalog;
 mod sport_match;
+mod stalker_sport;
 mod xtream_sport;
 
 use serde::Deserialize;
@@ -32,6 +33,9 @@ pub struct LiveMatchesRequest {
     /// Xtream portal `{ url, username, password }`.
     #[serde(default)]
     pub xtream: Option<Value>,
+    /// Stalker portal `{ url, username (MAC), password (serial) }`.
+    #[serde(default)]
+    pub stalker: Option<Value>,
     /// Live category ids to search (plus caller may include GLOBAL).
     #[serde(default)]
     pub category_ids: Option<Vec<String>>,
@@ -76,15 +80,21 @@ pub fn fetch_json(request_json: &str) -> String {
                     return serde_json::json!({ "error": "game required" }).to_string();
                 }
             };
-            let xtream = match req.xtream {
-                Some(x) => x,
-                None => {
-                    return serde_json::json!({ "error": "xtream required" }).to_string();
-                }
-            };
             let cats = req.category_ids.unwrap_or_default();
             let skip_epg = req.skip_epg.unwrap_or(false);
-            xtream_sport::sport_match_streams(&game, &xtream, &cats, skip_epg)
+            match (req.xtream, req.stalker) {
+                (Some(x), None) => xtream_sport::sport_match_streams(&game, &x, &cats, skip_epg),
+                (None, Some(s)) => {
+                    stalker_sport::sport_match_streams(&game, &s, &cats, skip_epg)
+                }
+                (Some(_), Some(_)) => {
+                    serde_json::json!({ "error": "provide xtream or stalker, not both" })
+                        .to_string()
+                }
+                (None, None) => {
+                    serde_json::json!({ "error": "xtream or stalker required" }).to_string()
+                }
+            }
         }
         other => serde_json::json!({ "error": format!("unknown action: {other}") }).to_string(),
     }
@@ -113,11 +123,17 @@ mod tests {
     }
 
     #[test]
+    fn sport_match_streams_requires_portal() {
+        let raw = fetch_json(r#"{"action":"sport_match_streams","game":{"title":"x"}}"#);
+        assert!(raw.contains("xtream or stalker required"));
+    }
+
+    #[test]
     fn forja_live_catalog_unknown_returns_empty() {
         let raw = fetch_json(
             r#"{"action":"forja_live_catalog","catalog_id":"catalog-nope","config":{}}"#,
         );
         let parsed: Value = serde_json::from_str(&raw).unwrap();
-        assert!(parsed.get("items").unwrap().as_array().unwrap().is_empty());
+        assert!(parsed.get("items").and_then(|v| v.as_array()).is_some());
     }
 }

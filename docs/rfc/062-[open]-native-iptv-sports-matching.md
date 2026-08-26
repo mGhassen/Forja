@@ -1,15 +1,15 @@
 # RFC-062: Native IPTV sports matching in Live Matches
 
 **Status:** open  
-**Depends on:** [051](051-[open]-iptv-multi-protocol-portals.md) (Xtream portals)  
+**Depends on:** [051](051-[open]-iptv-multi-protocol-portals.md) (Xtream portals + Stalker EPG)  
 **Area:** Live Matches / IPTV
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **14 / 14** acceptance (Xtream) · **2 / 2** acceptance (ATV EPG cap) · **0 / 3** acceptance (M3U deferred) |
-| **Current slice** | Forja Sports Catalog JS parity + Xtream match — M3U/XMLTV deferred |
+| **Progress** | **6 / 6** components · **14 / 14** acceptance (Xtream) · **2 / 2** acceptance (ATV EPG cap) · **4 / 4** acceptance (Stalker) · **0 / 3** acceptance (M3U deferred) |
+| **Current slice** | Forja Sports Xtream + Stalker match — M3U/XMLTV deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -24,6 +24,7 @@
 | 3 | R62-C03 | Xtream candidate pipeline (live streams + short EPG) | ✅ |
 | 4 | R62-C04 | Settings: portal, timezone, leagues, per-league category map | ✅ |
 | 5 | R62-C05 | Live Matches **My IPTV** server + native HLS playback | ✅ |
+| 6 | R62-C06 | Stalker candidate pipeline (catalog + MAG short EPG; deferred create_link) | ✅ |
 
 ---
 
@@ -57,6 +58,17 @@
 
 ---
 
+## Acceptance (Stalker slice)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R62-A20 | Arm / sync Forja Sports with Xtream **or** Stalker portal (toast + gates) | ✅ |
+| 2 | R62-A21 | `sport_match_streams` Stalker path: live catalog + MAG short EPG; emit cmd + `epg_channel_id`, empty URL | ✅ |
+| 3 | R62-A22 | Play: deferred `create_link` at channel pick; no durable URL cache; in-player MAG EPG | ✅ |
+| 4 | R62-A23 | Feature doc + changelog for Stalker Forja Sports | ✅ |
+
+---
+
 ## Acceptance (M3U / XMLTV — deferred)
 
 | # | ID | Description | Status |
@@ -76,17 +88,18 @@ Sportio does not provide streams — it bridges ESPN's public scoreboard with th
 ### Goals
 
 - ESPN schedule for configured leagues (timezone-aware "today")
-- Reuse saved Xtream portal + live category mapping
+- Reuse saved Xtream **or Stalker** portal + live category mapping
 - Port Sportio tier logic faithfully (word-boundary, nicknames, foreign-team exclusion)
-- Play matched `.m3u8` in `IptvPtPlayerScreen`
+- Play matched streams in `IptvPtPlayerScreen` (Xtream static URLs; Stalker `create_link` at play)
 
-### Non-goals (Xtream slice)
+### Non-goals (Xtream / Stalker slices)
 
 - Self-hosted Sportio / Stremio `sports` type fix
 - SVG matchup art generator
 - M3U XMLTV programme parse (R62-A09–A11)
 - Multi-portal cascade
 - Cloud sync of sport-match settings
+- Eager Stalker `create_link` during match (links expire)
 
 ### Contracts
 
@@ -95,7 +108,7 @@ Sportio does not provide streams — it bridges ESPN's public scoreboard with th
 | Action | Input | Output |
 |--------|-------|--------|
 | `sport_match_games` | `leagues[]`, `date` (YYYYMMDD) | `{ items: [game…] }` |
-| `sport_match_streams` | game fields + `xtream` + `category_ids[]` | `{ items: [stream…] }` ranked by tier |
+| `sport_match_streams` | game fields + (`xtream` **or** `stalker`) + `category_ids[]` | `{ items: [stream…] }` ranked by tier |
 
 **Settings key:** `live_matches_iptv_sports_v1` — `{ enabled, portalKey, timezone, leagues, sportCategories }`.
 

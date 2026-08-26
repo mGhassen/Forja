@@ -128,43 +128,58 @@ mixin _LiveMatchesForjaLive
 
   Future<void> _restoreTimeWindowPreference() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = _liveMatchesTimeWindowFromPref(
-      prefs.getString(_LiveMatchesScreenState._timeWindowPreferenceKey),
-    );
+    final raw = prefs.getString(_LiveMatchesScreenState._schedulePreferenceKey) ??
+        prefs.getString(_LiveMatchesScreenState._timeWindowPreferenceKeyLegacy);
+    final saved = _liveMatchesScheduleFromPref(raw);
     if (saved == null) return;
     if (!mounted) return;
     setState(() {
-      _s._timeWindow = saved;
-      _s._catalogFetchedTimeWindow = saved;
+      _s._scheduleStatus = saved.status;
+      _s._scheduleHorizon = saved.horizon;
+      _s._catalogFetchedHorizon = saved.horizon;
     });
   }
 
-  Future<void> _persistTimeWindowPreference(
-    _LiveMatchesTimeWindow window,
-  ) async {
+  Future<void> _persistSchedulePreference({
+    required _LiveMatchesScheduleStatus status,
+    required _LiveMatchesScheduleHorizon horizon,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      _LiveMatchesScreenState._timeWindowPreferenceKey,
-      _liveMatchesTimeWindowPref(window),
+      _LiveMatchesScreenState._schedulePreferenceKey,
+      _liveMatchesSchedulePref(status: status, horizon: horizon),
     );
   }
 
-  void _setTimeWindow(_LiveMatchesTimeWindow window) {
-    if (_s._timeWindow == window) return;
-    final widen = _liveMatchesTimeWindowRank(window) >
-        _liveMatchesTimeWindowRank(_s._catalogFetchedTimeWindow);
-    setState(() => _s._timeWindow = window);
-    unawaited(_persistTimeWindowPreference(window));
+  void _setScheduleFilter({
+    _LiveMatchesScheduleStatus? status,
+    _LiveMatchesScheduleHorizon? horizon,
+  }) {
+    final nextStatus = status ?? _s._scheduleStatus;
+    final nextHorizon = horizon ?? _s._scheduleHorizon;
+    if (nextStatus == _s._scheduleStatus &&
+        nextHorizon == _s._scheduleHorizon) {
+      return;
+    }
+    final widen = _liveMatchesScheduleHorizonRank(nextHorizon) >
+        _liveMatchesScheduleHorizonRank(_s._catalogFetchedHorizon);
+    setState(() {
+      _s._scheduleStatus = nextStatus;
+      _s._scheduleHorizon = nextHorizon;
+    });
+    unawaited(
+      _persistSchedulePreference(status: nextStatus, horizon: nextHorizon),
+    );
     if (widen) {
-      _refetchCatalogsForWiderTimeWindow(window);
+      _refetchCatalogsForWiderHorizon(nextHorizon);
     } else {
       _rebuildSportTabsFromCurrentMatches();
     }
   }
 
-  void _refetchCatalogsForWiderTimeWindow(_LiveMatchesTimeWindow window) {
+  void _refetchCatalogsForWiderHorizon(_LiveMatchesScheduleHorizon horizon) {
     _resetForjaLiveCatalogState();
-    _s._catalogFetchedTimeWindow = window;
+    _s._catalogFetchedHorizon = horizon;
     _kickForjaLiveLazyCatalog();
   }
 
@@ -346,7 +361,8 @@ mixin _LiveMatchesForjaLive
       if (catalog.id == 'catalog-ppv') {
         await LiveMatchesEngine.ppvWebOrigin();
         final streams = rows
-            .where((row) => _forjaLiveCatalogRowInWindow(row, _s._timeWindow))
+            .where((row) =>
+                _forjaLiveCatalogRowInHorizon(row, _s._scheduleHorizon))
             .map(_damiTvFromPpvCatalogRow)
             .where((s) => s.id.isNotEmpty && s.name.isNotEmpty)
             .toList();
@@ -365,7 +381,7 @@ mixin _LiveMatchesForjaLive
       }
 
       final Iterable<Map<String, dynamic>> visibleRows = rows.where(
-        (row) => _forjaLiveCatalogRowInWindow(row, _s._timeWindow),
+        (row) => _forjaLiveCatalogRowInHorizon(row, _s._scheduleHorizon),
       );
       final matchRows = visibleRows
           .map(_forjaLiveRowToMatch)
@@ -409,7 +425,7 @@ mixin _LiveMatchesForjaLive
 
   Future<void> _loadForjaLiveCatalogLazy() async {
     final gen = _s._forjaLiveLoadGen;
-    _s._catalogFetchedTimeWindow = _s._timeWindow;
+    _s._catalogFetchedHorizon = _s._scheduleHorizon;
     await EngineService.instance.ensureBundledInstalled();
     final catalogPlugins =
         await EngineService.instance.listEnabledLiveCatalogPlugins();
@@ -470,7 +486,14 @@ mixin _LiveMatchesForjaLive
         _s._server == _LiveMatchesServer.forjaLive ||
         _s._server == _LiveMatchesServer.iptvSports) {
       for (final s in _s._damiTvStreams) {
-        if (applyWindow && !_damiTvInTimeWindow(s, _s._timeWindow)) continue;
+        if (applyWindow &&
+            !_damiTvInScheduleFilter(
+              s,
+              status: _s._scheduleStatus,
+              horizon: _s._scheduleHorizon,
+            )) {
+          continue;
+        }
         if (_is247Item(category: s.categoryName, isAlwaysOn: s.isAlwaysOn)) {
           addCat('24/7');
         } else {
@@ -480,7 +503,12 @@ mixin _LiveMatchesForjaLive
     }
 
     for (final m in _s._streamedMatches) {
-      if (applyWindow && !_streamedMatchInTimeWindow(m, _s._timeWindow)) {
+      if (applyWindow &&
+          !_streamedMatchInScheduleFilter(
+            m,
+            status: _s._scheduleStatus,
+            horizon: _s._scheduleHorizon,
+          )) {
         continue;
       }
       if (_is247Item(category: m.category, isAlwaysOn: m.isAlwaysOn)) {

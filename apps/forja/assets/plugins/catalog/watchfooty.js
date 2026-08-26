@@ -33,10 +33,6 @@ function normSport(raw) {
   return s.replace(/\s+/g, '-');
 }
 
-function hasStreams(item) {
-  return Array.isArray(item.streams) && item.streams.length > 0;
-}
-
 function toRow(pluginId, item, airing) {
   var mid = item.matchId;
   var title =
@@ -73,16 +69,16 @@ async function extract(ctx) {
   var pluginId = String(cfg.providerId || 'live-watchfooty');
   var byId = {};
 
-  // Site "Live only" ≈ /matches/live rows that actually have stream links.
+  // Keep stream-less airing rows — Status → Airing shows them; play may still fail.
   var liveList = await fetchList(ctx, cfg.api || LIVE_API);
   for (var i = 0; i < liveList.length; i++) {
     var item = liveList[i];
     var statusLive = item.status === 'in' || item.status === 'live';
-    if (!statusLive || !hasStreams(item)) continue;
+    if (!statusLive) continue;
     byId[String(item.matchId)] = toRow(pluginId, item, true);
   }
 
-  // Upcoming schedule (pre only) — skip post/finished so UI doesn't fake LIVE.
+  // Upcoming schedule (pre only) — skip post/finished.
   if (!cfg.api) {
     var allList = await fetchList(ctx, ALL_API);
     for (var j = 0; j < allList.length; j++) {

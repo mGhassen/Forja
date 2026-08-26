@@ -628,6 +628,9 @@ class IptvController extends ChangeNotifier
     liveBrowseLayout = layout;
     notifyListeners();
     await IptvStore.saveLiveBrowseLayout(layout);
+    if (layout == IptvLiveBrowseLayout.guide) {
+      _primeStalkerGuideBulk();
+    }
   }
 
   bool get epgEnabled => _epgEnabled;
@@ -656,11 +659,30 @@ class IptvController extends ChangeNotifier
     final n = now ?? DateTime.now();
     final flooredMinute = n.minute >= 30 ? 30 : 0;
     final anchor = DateTime(n.year, n.month, n.day, n.hour, flooredMinute);
-    final start = anchor.subtract(Duration(minutes: (guideHoursBehind * 60).round()));
+    final start =
+        anchor.subtract(Duration(minutes: (guideHoursBehind * 60).round()));
     final end = start.add(
       Duration(minutes: ((guideHoursBehind + guideHoursAhead) * 60).round()),
     );
     return (start: start, end: end);
+  }
+
+  /// Mag period dump in the background; when ready, refresh guide rows.
+  void _primeStalkerGuideBulk() {
+    final p = activePortal;
+    if (p == null ||
+        p.platform != IptvPortalPlatform.stalker ||
+        !_epgEnabled ||
+        IptvClient.stalkerBulkReady(p.portal)) {
+      return;
+    }
+    unawaited(() async {
+      await IptvClient.primeStalkerGuideEpg(p.portal);
+      if (_disposed) return;
+      if (activePortal?.key != p.key) return;
+      _guideEpgCache.clear();
+      notifyListeners();
+    }());
   }
 
   /// Ensures guide listings for [s] are fetched (once). Stable Future for
@@ -678,13 +700,15 @@ class IptvController extends ChangeNotifier
     return _guideEpgCache.putIfAbsent(cacheKey, () async {
       final window = guideWindow();
       if (p.platform == IptvPortalPlatform.stalker) {
+        // Short Mag EPG paints in ~1s; bulk upgrades the timeline later.
+        _primeStalkerGuideBulk();
         return IptvClient.simpleDataTable(
           p.portal,
           s.streamId,
           epgChannelId: s.epgChannelId,
           windowStart: window.start,
           windowEnd: window.end,
-          timeout: const Duration(seconds: 90),
+          timeout: const Duration(seconds: 8),
         );
       }
       if (s.streamId.isNotEmpty) {

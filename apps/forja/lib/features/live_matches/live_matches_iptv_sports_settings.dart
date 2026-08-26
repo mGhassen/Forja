@@ -42,7 +42,7 @@ class LiveMatchesIptvSportsConfig {
   });
 
   final bool enabled;
-  /// [VerifiedPortal.key] of the chosen Xtream portal.
+  /// [VerifiedPortal.key] of the chosen Xtream/Stalker portal.
   /// Empty → fall back to IPTV’s last-selected portal ([resolvePortalKey]).
   final String portalKey;
   /// IANA timezone; empty → device local date for ESPN.
@@ -221,7 +221,7 @@ class LiveMatchesIptvSportsConfig {
     return true;
   }
 
-  /// Configured override, else IPTV’s last-selected **Xtream** portal.
+  /// Configured override, else IPTV’s last-selected Xtream/Stalker portal.
   static Future<String> resolvePortalKey([
     LiveMatchesIptvSportsConfig? config,
   ]) async {
@@ -231,8 +231,7 @@ class LiveMatchesIptvSportsConfig {
     if (last == null || last.isEmpty) return '';
     final portals = await IptvStore.load();
     for (final p in portals) {
-      if (p.key == last &&
-          p.portal.platform == IptvPortalPlatform.xtream) {
+      if (p.key == last && p.portal.platform.supportsForjaSports) {
         return last;
       }
     }

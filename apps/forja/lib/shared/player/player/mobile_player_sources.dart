@@ -418,6 +418,10 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
       catalogSourceKind: _s._catalogSourceKind,
+      anilistId: widget.enginePlaySession?.anilistId,
+      malId: widget.enginePlaySession?.malId,
+      kisskhId: widget.enginePlaySession?.kisskhId,
+      animeAudioCategory: widget.enginePlaySession?.animeAudioCategory,
     );
   }
 

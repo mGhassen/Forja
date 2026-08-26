@@ -33,6 +33,7 @@ class EnginePlaySession {
     this.malId,
     this.kisskhId,
     this.kisskhEpisodeIdByNumber = const {},
+    this.animeAudioCategory,
   });
 
   /// `movie` | `tv` | `anime` | `drama` — same as [runEngineAutoPlay] category.
@@ -43,6 +44,9 @@ class EnginePlaySession {
 
   /// KissKh display episode number → episode id (drama next/prev).
   final Map<int, int> kisskhEpisodeIdByNumber;
+
+  /// Anime hub SUB/DUB — same session-cache key as green Play / Sources.
+  final String? animeAudioCategory;
 
   bool get isHubFlatList =>
       category == EngineCategories.anime || category == EngineCategories.drama;
@@ -78,6 +82,7 @@ Future<void> switchEpisodeViaEngineAutoPlay({
     malId: s?.malId,
     kisskhId: s?.kisskhId,
     kisskhEpisodeId: s?.kisskhEpisodeIdFor(episode),
+    animeAudioCategory: s?.animeAudioCategory,
     stremioId: stremioId ?? movie.imdbId,
     loadingSubtitle: s?.isHubFlatList == true
         ? 'EP $episode'
@@ -151,6 +156,7 @@ Future<void> runEngineAutoPlay({
         kisskhEpisodeIdByNumber: {
           if (kisskhEpisodeId != null && episode != null) episode: kisskhEpisodeId,
         },
+        animeAudioCategory: animeAudioCategory,
       );
   final resolveType = _engineResolveType(category, movie);
   final cacheKey = CatalogSourcesSessionCache.cacheKey(

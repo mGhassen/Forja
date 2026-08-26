@@ -97,13 +97,13 @@ mixin _LiveMatchesData
   }) async {
     final p = ctrl.activePortal;
     if (p == null) return;
-    if (p.portal.platform != IptvPortalPlatform.xtream) {
+    if (!p.portal.platform.supportsForjaSports) {
       // Record the key so IPTV controller noise (channel select, health, …)
-      // does not re-toast for the same non-Xtream portal.
+      // does not re-toast for the same unsupported portal.
       final alreadyWarned = _s._lastSyncedIptvPortalKey == p.key;
       _s._lastSyncedIptvPortalKey = p.key;
       if (!alreadyWarned) {
-        ForjaToast.info('Forja Sports needs an Xtream portal');
+        ForjaToast.info('Forja Sports needs an Xtream or Stalker portal');
       }
       return;
     }
@@ -192,11 +192,17 @@ mixin _LiveMatchesData
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          builder: (_) => _LiveMatchesTimeWindowSheet(
-            current: _s._timeWindow,
-            onSelected: (window) {
-              Navigator.pop(context);
-              (this as _LiveMatchesForjaLive)._setTimeWindow(window);
+          builder: (_) => _LiveMatchesScheduleSheet(
+            status: _s._scheduleStatus,
+            horizon: _s._scheduleHorizon,
+            onChanged: ({
+              _LiveMatchesScheduleStatus? status,
+              _LiveMatchesScheduleHorizon? horizon,
+            }) {
+              (this as _LiveMatchesForjaLive)._setScheduleFilter(
+                status: status,
+                horizon: horizon,
+              );
             },
           ),
         );
@@ -260,7 +266,10 @@ mixin _LiveMatchesData
 
   Widget _timeTopBarButton() {
     return _LiveMatchesTopBarActionButton(
-      label: _liveMatchesTimeWindowLabel(_s._timeWindow),
+      label: _liveMatchesScheduleChipLabel(
+        status: _s._scheduleStatus,
+        horizon: _s._scheduleHorizon,
+      ),
       icon: Icons.schedule_rounded,
       accent: false,
       tvItemIndex: _s._topBarTimeIndex,
@@ -573,7 +582,13 @@ mixin _LiveMatchesData
         .toList();
     if (_applyTimeWindowFilter) {
       list = list
-          .where((s) => _damiTvInTimeWindow(s, _s._timeWindow))
+          .where(
+            (s) => _damiTvInScheduleFilter(
+              s,
+              status: _s._scheduleStatus,
+              horizon: _s._scheduleHorizon,
+            ),
+          )
           .toList();
     }
     return _sortDamiTvLiveFirst(list);
@@ -591,7 +606,13 @@ mixin _LiveMatchesData
         .toList();
     if (_applyTimeWindowFilter) {
       list = list
-          .where((m) => _streamedMatchInTimeWindow(m, _s._timeWindow))
+          .where(
+            (m) => _streamedMatchInScheduleFilter(
+              m,
+              status: _s._scheduleStatus,
+              horizon: _s._scheduleHorizon,
+            ),
+          )
           .toList();
     }
     return _mergeStreamedCatalogRows(_sortStreamedLiveFirst(list));

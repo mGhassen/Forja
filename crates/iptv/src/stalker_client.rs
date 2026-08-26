@@ -494,10 +494,10 @@ impl Session {
         self.epg_table(ch, 72, timeout).await
     }
 
-    /// Full guide listings via Mag `get_epg_info&period=` (short EPG is only
-    /// a handful of near-now rows). When [channel_id] is set, returns that
-    /// channel's rows as `epg_listings`. When empty, returns the whole map as
-    /// `channels: { "<ch_id>": [ listings... ] }` for session caching.
+    /// Full guide listings via Mag `get_epg_info&period=`. When [channel_id]
+    /// is set, returns that channel as `epg_listings`. When empty, returns the
+    /// raw Mag `data` map (host parses per channel — avoid converting 7k rows
+    /// in Rust before the first paint).
     async fn epg_table(
         &self,
         channel_id: &str,
@@ -505,7 +505,7 @@ impl Session {
         timeout: Duration,
     ) -> Result<Value, String> {
         let hours = if period == 0 {
-            72
+            48
         } else {
             period.clamp(6, 168)
         };
@@ -518,15 +518,14 @@ impl Session {
             let listings = parse_stalker_epg(&js, ch);
             return Ok(json!({ "epg_listings": listings }));
         }
-        let map = extract_stalker_epg_channel_map(&js);
-        let mut channels = serde_json::Map::new();
-        for (id, items) in map {
-            let listings = parse_stalker_epg(&Value::Array(items), &id);
-            if !listings.is_empty() {
-                channels.insert(id, Value::Array(listings));
-            }
+        // Pass Mag's channel→rows map through unparsed.
+        if let Some(data) = js.get("data").filter(|v| v.is_object()) {
+            return Ok(json!({ "data": data }));
         }
-        Ok(json!({ "channels": channels }))
+        if js.is_object() {
+            return Ok(json!({ "data": js }));
+        }
+        Ok(json!({ "data": {} }))
     }
 
     async fn fetch_categories(
@@ -1296,25 +1295,6 @@ fn extract_stalker_epg_items(js: &Value, channel_id: &str) -> Vec<Value> {
         }
     }
     Vec::new()
-}
-
-fn extract_stalker_epg_channel_map(js: &Value) -> Vec<(String, Vec<Value>)> {
-    let mut out = Vec::new();
-    let Some(obj) = js.as_object() else {
-        return out;
-    };
-    let map = obj
-        .get("data")
-        .and_then(|v| v.as_object())
-        .unwrap_or(obj);
-    for (k, v) in map {
-        if let Some(arr) = v.as_array() {
-            if !arr.is_empty() {
-                out.push((k.clone(), arr.clone()));
-            }
-        }
-    }
-    out
 }
 
 fn stalker_epg_ts(o: &serde_json::Map<String, Value>, keys: &[&str]) -> Option<i64> {

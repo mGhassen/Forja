@@ -11,6 +11,7 @@ reqwest = { workspace = true }
 tokio = { workspace = true }
 utils = { path = "../utils" }
 base64 = { workspace = true }
+iptv = { path = "../iptv" }
 
 [dev-dependencies]
 serde_json = { workspace = true }

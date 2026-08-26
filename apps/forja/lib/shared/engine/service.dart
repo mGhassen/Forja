@@ -72,11 +72,20 @@ class EngineService {
   Future<SharedPreferences> get _prefs async => SharedPreferences.getInstance();
 
   void cancelPending() {
-    _extractGeneration++;
+    abortInFlightExtracts();
     cancelLiveCatalog();
-    EngineRuntime.abortAll();
     // Kind-scoped: do not call Engine.cancelPendingResolve (kills magnet).
     Engine.cancelEngineJsExtracts();
+  }
+
+  /// Bump extract gen + abort UI-isolate `flutter_js` forks.
+  ///
+  /// Call before [Engine.cancelPendingResolve] from host cancel paths that
+  /// only ROOT-cancel Rust jobs — otherwise EngineJS `"cancelled"` returns
+  /// `null` and [runPluginIsolated] stampedes JSC (macOS SIGSEGV).
+  void abortInFlightExtracts() {
+    _extractGeneration++;
+    EngineRuntime.abortAll();
   }
 
   /// Abort in-flight Forja Live catalog scrapes (tab hide / server switch).
@@ -718,6 +727,8 @@ class EngineService {
       if (viaRust.isNotEmpty) {
         return _postProcessLivePluginRows(viaRust);
       }
+      // Cancel may have emptied the list after gen bump — never stampede JSC.
+      if (gen != _extractGeneration) return [];
       debugPrint(
         '[engine] ${plugin.id} enginejs live resolve empty — flutter_js fallback',
       );
@@ -945,7 +956,16 @@ class EngineService {
       return null;
     }
     if (decoded['error'] != null && decoded['streams'] == null) {
-      debugPrint('[engine] ${plugin.id} enginejs live error: ${decoded['error']}');
+      final err = decoded['error'].toString();
+      debugPrint('[engine] ${plugin.id} enginejs live error: $err');
+      if (err == 'cancelled') {
+        // ROOT cancel may not have bumped Dart gen; do it here so the
+        // caller skips flutter_js (null alone would stampede JSC).
+        if (gen == generation()) {
+          abortInFlightExtracts();
+        }
+        return null;
+      }
       return null;
     }
 
@@ -1205,7 +1225,17 @@ class EngineService {
       return null;
     }
     if (decoded['error'] != null && decoded['streams'] == null) {
-      debugPrint('[engine] ${plugin.id} enginejs job error: ${decoded['error']}');
+      final err = decoded['error'].toString();
+      debugPrint('[engine] ${plugin.id} enginejs job error: $err');
+      // ROOT cancelPendingResolve can abort EngineJS without Dart gen bump.
+      // Returning null → runPluginIsolated forks flutter_js → JSC SIGSEGV.
+      if (err == 'cancelled') {
+        return EngineExtractResult(
+          pluginId: plugin.id,
+          pluginName: plugin.name,
+          streams: const [],
+        );
+      }
       return null;
     }
     if (decoded['unsupported'] == true) {

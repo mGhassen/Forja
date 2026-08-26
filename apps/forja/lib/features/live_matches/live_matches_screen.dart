@@ -103,7 +103,9 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   static const _serverPreferenceKey = 'live_matches_server_v1';
   static const _forjaLiveCatalogFilterPreferenceKey =
       'live_matches_forja_catalog_filter_v1';
-  static const _timeWindowPreferenceKey = 'live_matches_time_window_v1';
+  static const _schedulePreferenceKey = 'live_matches_schedule_v2';
+  /// Legacy single-axis pref — migrated once into [_schedulePreferenceKey].
+  static const _timeWindowPreferenceKeyLegacy = 'live_matches_time_window_v1';
   _LiveMatchesView _view = _LiveMatchesView.timeline;
   bool _viewWasToggled = false;
   _TimelineGranularity _timelineGranularity = _TimelineGranularity.h3;
@@ -142,10 +144,12 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   int _forjaLiveLoadGen = 0;
   String _forjaLivePluginFilter = 'all';
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
-  _LiveMatchesTimeWindow _timeWindow = _LiveMatchesTimeWindow.h1;
+  _LiveMatchesScheduleStatus _scheduleStatus = _LiveMatchesScheduleStatus.both;
+  _LiveMatchesScheduleHorizon _scheduleHorizon = _LiveMatchesScheduleHorizon.h1;
 
-  /// Widest schedule window already ingested this session (refetch when user widens).
-  _LiveMatchesTimeWindow _catalogFetchedTimeWindow = _LiveMatchesTimeWindow.h1;
+  /// Widest horizon already ingested this session (refetch when user widens).
+  _LiveMatchesScheduleHorizon _catalogFetchedHorizon =
+      _LiveMatchesScheduleHorizon.h1;
 
   /// Settings → Forja Sports **Catalog** toggles changed while this tab was hidden.
   bool _forjaLiveCatalogSettingsDirty = false;

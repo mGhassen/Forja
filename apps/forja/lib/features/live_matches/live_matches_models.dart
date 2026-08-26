@@ -406,127 +406,211 @@ List<_DamiTvStream> _sortDamiTvLiveFirst(List<_DamiTvStream> items) {
 /// Max Forja Live catalog rows ingested per plugin (safety cap).
 const _kForjaLiveCatalogMaxPerPlugin = 100;
 
-enum _LiveMatchesTimeWindow { live, h1, h3, h6, all }
+/// Status axis of the schedule sheet (airing vs upcoming).
+enum _LiveMatchesScheduleStatus { airing, upcoming, both }
 
-int _liveMatchesTimeWindowRank(_LiveMatchesTimeWindow window) =>
-    switch (window) {
-      _LiveMatchesTimeWindow.live => 0,
-      _LiveMatchesTimeWindow.h1 => 1,
-      _LiveMatchesTimeWindow.h3 => 2,
-      _LiveMatchesTimeWindow.h6 => 3,
-      _LiveMatchesTimeWindow.all => 4,
+/// How far ahead to ingest / show upcoming kickoffs.
+enum _LiveMatchesScheduleHorizon { h1, h3, h6, h24 }
+
+int _liveMatchesScheduleHorizonRank(_LiveMatchesScheduleHorizon horizon) =>
+    switch (horizon) {
+      _LiveMatchesScheduleHorizon.h1 => 1,
+      _LiveMatchesScheduleHorizon.h3 => 2,
+      _LiveMatchesScheduleHorizon.h6 => 3,
+      _LiveMatchesScheduleHorizon.h24 => 4,
     };
 
-String _liveMatchesTimeWindowLabel(_LiveMatchesTimeWindow window) =>
-    switch (window) {
-      _LiveMatchesTimeWindow.live => 'Live',
-      _LiveMatchesTimeWindow.h1 => '1h',
-      _LiveMatchesTimeWindow.h3 => '3h',
-      _LiveMatchesTimeWindow.h6 => '6h',
-      _LiveMatchesTimeWindow.all => 'All',
+String _liveMatchesScheduleHorizonLabel(_LiveMatchesScheduleHorizon horizon) =>
+    switch (horizon) {
+      _LiveMatchesScheduleHorizon.h1 => '1h',
+      _LiveMatchesScheduleHorizon.h3 => '3h',
+      _LiveMatchesScheduleHorizon.h6 => '6h',
+      _LiveMatchesScheduleHorizon.h24 => '24h',
     };
 
-({Duration past, Duration future}) _liveMatchesTimeWindowRange(
-  _LiveMatchesTimeWindow window,
+String _liveMatchesScheduleStatusLabel(_LiveMatchesScheduleStatus status) =>
+    switch (status) {
+      _LiveMatchesScheduleStatus.airing => 'Airing',
+      _LiveMatchesScheduleStatus.upcoming => 'Upcoming',
+      _LiveMatchesScheduleStatus.both => 'Airing + upcoming',
+    };
+
+/// Top-bar chip: Airing · Next · 3h · 1h (both+1h).
+String _liveMatchesScheduleChipLabel({
+  required _LiveMatchesScheduleStatus status,
+  required _LiveMatchesScheduleHorizon horizon,
+}) {
+  final h = _liveMatchesScheduleHorizonLabel(horizon);
+  return switch (status) {
+    _LiveMatchesScheduleStatus.airing => 'Airing',
+    _LiveMatchesScheduleStatus.upcoming => 'Next · $h',
+    _LiveMatchesScheduleStatus.both => h,
+  };
+}
+
+({Duration past, Duration future}) _liveMatchesScheduleHorizonRange(
+  _LiveMatchesScheduleHorizon horizon,
 ) =>
-    switch (window) {
-      _LiveMatchesTimeWindow.live => (
-        past: Duration.zero,
-        future: Duration.zero,
-      ),
-      _LiveMatchesTimeWindow.h1 => (
+    switch (horizon) {
+      _LiveMatchesScheduleHorizon.h1 => (
         past: const Duration(hours: 1),
         future: const Duration(hours: 1),
       ),
-      _LiveMatchesTimeWindow.h3 => (
+      _LiveMatchesScheduleHorizon.h3 => (
         past: const Duration(hours: 3),
         future: const Duration(hours: 3),
       ),
-      _LiveMatchesTimeWindow.h6 => (
+      _LiveMatchesScheduleHorizon.h6 => (
         past: const Duration(hours: 3),
         future: const Duration(hours: 6),
       ),
-      _LiveMatchesTimeWindow.all => (
+      _LiveMatchesScheduleHorizon.h24 => (
         past: const Duration(hours: 3),
         future: const Duration(hours: 24),
       ),
     };
 
-_LiveMatchesTimeWindow? _liveMatchesTimeWindowFromPref(String? raw) {
+_LiveMatchesScheduleHorizon? _liveMatchesScheduleHorizonFromPref(String? raw) {
   return switch (raw) {
-    'live' => _LiveMatchesTimeWindow.live,
-    '1h' => _LiveMatchesTimeWindow.h1,
-    '3h' => _LiveMatchesTimeWindow.h3,
-    '6h' => _LiveMatchesTimeWindow.h6,
-    'all' => _LiveMatchesTimeWindow.all,
+    '1h' => _LiveMatchesScheduleHorizon.h1,
+    '3h' => _LiveMatchesScheduleHorizon.h3,
+    '6h' => _LiveMatchesScheduleHorizon.h6,
+    '24h' || 'all' => _LiveMatchesScheduleHorizon.h24,
     _ => null,
   };
 }
 
-String _liveMatchesTimeWindowPref(_LiveMatchesTimeWindow window) =>
-    switch (window) {
-      _LiveMatchesTimeWindow.live => 'live',
-      _ => _liveMatchesTimeWindowLabel(window).toLowerCase(),
-    };
+_LiveMatchesScheduleStatus? _liveMatchesScheduleStatusFromPref(String? raw) {
+  return switch (raw) {
+    'airing' || 'live' => _LiveMatchesScheduleStatus.airing,
+    'upcoming' => _LiveMatchesScheduleStatus.upcoming,
+    'both' => _LiveMatchesScheduleStatus.both,
+    _ => null,
+  };
+}
 
-bool _kickoffInTimeWindow({
+/// Pref format: `status|horizon` (e.g. `both|1h`). Migrates v1 `live|1h|…`.
+({_LiveMatchesScheduleStatus status, _LiveMatchesScheduleHorizon horizon})?
+    _liveMatchesScheduleFromPref(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  final parts = raw.split('|');
+  if (parts.length == 2) {
+    final status = _liveMatchesScheduleStatusFromPref(parts[0]);
+    final horizon = _liveMatchesScheduleHorizonFromPref(parts[1]);
+    if (status != null && horizon != null) {
+      return (status: status, horizon: horizon);
+    }
+  }
+  // v1 single-token prefs
+  return switch (raw) {
+    'live' => (
+        status: _LiveMatchesScheduleStatus.airing,
+        horizon: _LiveMatchesScheduleHorizon.h1,
+      ),
+    '1h' => (
+        status: _LiveMatchesScheduleStatus.both,
+        horizon: _LiveMatchesScheduleHorizon.h1,
+      ),
+    '3h' => (
+        status: _LiveMatchesScheduleStatus.both,
+        horizon: _LiveMatchesScheduleHorizon.h3,
+      ),
+    '6h' => (
+        status: _LiveMatchesScheduleStatus.both,
+        horizon: _LiveMatchesScheduleHorizon.h6,
+      ),
+    'all' => (
+        status: _LiveMatchesScheduleStatus.both,
+        horizon: _LiveMatchesScheduleHorizon.h24,
+      ),
+    _ => null,
+  };
+}
+
+String _liveMatchesSchedulePref({
+  required _LiveMatchesScheduleStatus status,
+  required _LiveMatchesScheduleHorizon horizon,
+}) =>
+    '${switch (status) {
+      _LiveMatchesScheduleStatus.airing => 'airing',
+      _LiveMatchesScheduleStatus.upcoming => 'upcoming',
+      _LiveMatchesScheduleStatus.both => 'both',
+    }}|${_liveMatchesScheduleHorizonLabel(horizon).toLowerCase()}';
+
+bool _kickoffInScheduleFilter({
   required int epochMs,
-  required _LiveMatchesTimeWindow window,
+  required _LiveMatchesScheduleStatus status,
+  required _LiveMatchesScheduleHorizon horizon,
   required bool alwaysOn,
   required bool liveOrAiring,
 }) {
-  if (window == _LiveMatchesTimeWindow.live) {
-    return alwaysOn || liveOrAiring;
+  final isLiveNow = alwaysOn || liveOrAiring;
+  switch (status) {
+    case _LiveMatchesScheduleStatus.airing:
+      return isLiveNow;
+    case _LiveMatchesScheduleStatus.upcoming:
+      if (isLiveNow) return false;
+      break;
+    case _LiveMatchesScheduleStatus.both:
+      if (isLiveNow) return true;
+      break;
   }
-  if (alwaysOn || liveOrAiring) return true;
   if (epochMs <= 0) return false;
   final ms = epochMs >= 1000000000000 ? epochMs : epochMs * 1000;
   final dt = DateTime.fromMillisecondsSinceEpoch(ms);
   final now = DateTime.now();
-  final range = _liveMatchesTimeWindowRange(window);
+  final range = _liveMatchesScheduleHorizonRange(horizon);
   return !dt.isBefore(now.subtract(range.past)) &&
       !dt.isAfter(now.add(range.future));
 }
 
-/// Drop Forja Live catalog rows outside the schedule window before ingest.
-bool _forjaLiveCatalogRowInWindow(
+/// Catalog ingest uses horizon as both (cache upcoming for status switches).
+bool _forjaLiveCatalogRowInHorizon(
   Map<String, dynamic> row,
-  _LiveMatchesTimeWindow window,
+  _LiveMatchesScheduleHorizon horizon,
 ) {
   final raw = (row['date'] as num?)?.toInt() ?? 0;
   if (raw <= 0) {
     return row['airing'] == true || row['popular'] == true;
   }
-  return _kickoffInTimeWindow(
+  return _kickoffInScheduleFilter(
     epochMs: raw,
-    window: window,
+    status: _LiveMatchesScheduleStatus.both,
+    horizon: horizon,
     alwaysOn: false,
     liveOrAiring: row['airing'] == true || row['popular'] == true,
   );
 }
 
-bool _streamedMatchInTimeWindow(
-  _StreamedMatch match,
-  _LiveMatchesTimeWindow window,
-) =>
-    _kickoffInTimeWindow(
+bool _streamedMatchInScheduleFilter(
+  _StreamedMatch match, {
+  required _LiveMatchesScheduleStatus status,
+  required _LiveMatchesScheduleHorizon horizon,
+}) =>
+    _kickoffInScheduleFilter(
       epochMs: match.dateMs,
-      window: window,
+      status: status,
+      horizon: horizon,
       alwaysOn: match.isAlwaysOn,
       liveOrAiring: match.isLive || match.airing,
     );
 
-bool _damiTvInTimeWindow(_DamiTvStream stream, _LiveMatchesTimeWindow window) =>
-    _kickoffInTimeWindow(
+bool _damiTvInScheduleFilter(
+  _DamiTvStream stream, {
+  required _LiveMatchesScheduleStatus status,
+  required _LiveMatchesScheduleHorizon horizon,
+}) =>
+    _kickoffInScheduleFilter(
       epochMs: stream.startsAt > 0 ? stream.startsAt * 1000 : 0,
-      window: window,
+      status: status,
+      horizon: horizon,
       alwaysOn: stream.isAlwaysOn,
       liveOrAiring: stream.isLive,
     );
 
 /// Drop stale Forja Live catalog rows before they hit the timeline grid.
 bool _forjaLiveCatalogRowVisible(Map<String, dynamic> row) =>
-    _forjaLiveCatalogRowInWindow(row, _LiveMatchesTimeWindow.all);
+    _forjaLiveCatalogRowInHorizon(row, _LiveMatchesScheduleHorizon.h24);
 
 List<_StreamedMatch> _sortStreamedLiveFirst(List<_StreamedMatch> items) {
   final sorted = List<_StreamedMatch>.from(items);
@@ -2614,8 +2698,7 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
       break;
     }
   }
-  if (portal == null ||
-      portal.portal.platform != IptvPortalPlatform.xtream) {
+  if (portal == null || !portal.portal.platform.supportsForjaSports) {
     return [];
   }
   final sport = (game['sport'] ?? match.category).toString();
@@ -2640,27 +2723,45 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   final inflight = _iptvSportsStreamsInFlight[cacheKey];
   if (inflight != null) return inflight;
 
-  final xtream = portal;
+  final armedPortal = portal;
   final future = () async {
     try {
+      final p = armedPortal.portal;
+      final Map<String, dynamic> portalCreds;
+      if (p.platform == IptvPortalPlatform.stalker) {
+        portalCreds = {
+          'stalker': {
+            'url': p.url,
+            'username': p.username,
+            'password': p.password,
+          },
+        };
+      } else {
+        portalCreds = {
+          'xtream': {
+            'url': p.url,
+            'username': p.username,
+            'password': p.password,
+          },
+        };
+      }
       final requestBase = {
         'action': 'sport_match_streams',
         'game': game,
-        'xtream': {
-          'url': xtream.portal.url,
-          'username': xtream.portal.username,
-          'password': xtream.portal.password,
-        },
+        ...portalCreds,
         'category_ids': categoryIds,
       };
 
-      final seenUrls = <String>{};
+      final seenKeys = <String>{};
       void emitPartial(List<IptvPlaySource> batch) {
         if (onPartial == null || batch.isEmpty) return;
         final fresh = <IptvPlaySource>[];
         for (final s in batch) {
+          final id = (s.streamId ?? '').trim();
           final url = s.url.trim();
-          if (url.isEmpty || !seenUrls.add(url)) continue;
+          final key = id.isNotEmpty ? 'id:$id' : 'url:$url';
+          if (id.isEmpty && url.isEmpty) continue;
+          if (!seenKeys.add(key)) continue;
           fresh.add(s);
         }
         if (fresh.isNotEmpty) onPartial(fresh);
@@ -2674,8 +2775,9 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
         if (!fastParsed.containsKey('error')) {
           final fast = _parseSportMatchStreamItems(
             fastParsed['items'] as List? ?? [],
+            platform: p.platform,
           );
-          emitPartial(_ensureIptvSportsUrls(fast, xtream));
+          emitPartial(_ensureIptvSportsUrls(fast, armedPortal));
         }
       }
 
@@ -2687,9 +2789,12 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
         );
         return <IptvPlaySource>[];
       }
-      final out = _parseSportMatchStreamItems(parsed['items'] as List? ?? []);
+      final out = _parseSportMatchStreamItems(
+        parsed['items'] as List? ?? [],
+        platform: p.platform,
+      );
       final enriched = await _ensureIptvSportsLogos(out, portalKey);
-      final normalized = _ensureIptvSportsUrls(enriched, xtream);
+      final normalized = _ensureIptvSportsUrls(enriched, armedPortal);
       emitPartial(normalized);
       _iptvSportsStreamsCachePut(cacheKey, normalized);
       return normalized;
@@ -2702,18 +2807,32 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   return future;
 }
 
-List<IptvPlaySource> _parseSportMatchStreamItems(List<dynamic> list) {
+List<IptvPlaySource> _parseSportMatchStreamItems(
+  List<dynamic> list, {
+  IptvPortalPlatform platform = IptvPortalPlatform.xtream,
+}) {
+  final kind = switch (platform) {
+    IptvPortalPlatform.stalker => IptvLiveSourceKind.iptvStalker,
+    _ => IptvLiveSourceKind.iptvXtream,
+  };
   final out = <IptvPlaySource>[];
   for (final s in list) {
     if (s is! Map) continue;
     final url = s['url']?.toString().trim() ?? '';
-    if (url.isEmpty) continue;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      continue;
+    final streamId = (s['stream_id'] ?? s['streamId'] ?? '').toString().trim();
+    final epgChannelId =
+        (s['epg_channel_id'] ?? s['epgChannelId'] ?? '').toString().trim();
+    // Xtream needs http(s) URL; Stalker may ship empty URL + cmd stream_id.
+    if (platform == IptvPortalPlatform.stalker) {
+      if (streamId.isEmpty) continue;
+    } else {
+      if (url.isEmpty) continue;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        continue;
+      }
     }
     final channel = (s['name'] ?? 'Stream').toString().trim();
     final category = (s['title'] ?? '').toString().trim();
-    final streamId = (s['stream_id'] ?? s['streamId'] ?? '').toString().trim();
     final logo = (s['logo'] ?? s['stream_icon'] ?? s['cover'] ?? '')
         .toString()
         .trim();
@@ -2726,13 +2845,15 @@ List<IptvPlaySource> _parseSportMatchStreamItems(List<dynamic> list) {
       detail: category.isEmpty ? null : category,
       logoUrl: logo.isEmpty ? null : logo,
       streamId: streamId.isEmpty ? null : streamId,
-      liveSourceKind: IptvLiveSourceKind.iptvXtream,
+      epgChannelId: epgChannelId.isEmpty ? null : epgChannelId,
+      liveSourceKind: kind,
     ));
   }
   return out;
 }
 
 /// Rebuild Xtream play URLs the same way as IPTV Live (`…/live/u/p/id.ts`).
+/// Stalker keeps empty URL until create_link at play.
 List<IptvPlaySource> _ensureIptvSportsUrls(
   List<IptvPlaySource> sources,
   VerifiedPortal portal,

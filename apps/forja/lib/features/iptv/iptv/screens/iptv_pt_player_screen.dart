@@ -77,6 +77,8 @@ bool iptvExoUrlLooksLive(String url) {
 enum IptvLiveSourceKind {
   /// IPTV Live tab + Forja Sports Xtream channels (TS continuity proxy).
   iptvXtream,
+  /// Forja Sports Stalker channels (create_link; no continuity proxy).
+  iptvStalker,
   /// Live Matches Stremio addon streams (direct HLS / lavf reconnect).
   stremio,
   /// Forja Live / PPV / Streamed engine plugins (direct open + plugin headers).
@@ -719,7 +721,8 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     if (portal != null) {
       _epgCache = IptvGuideEpgCache(portal);
     } else if (widget.titleTracksSource &&
-        widget.liveSourceKind == IptvLiveSourceKind.iptvXtream) {
+        (widget.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
+            widget.liveSourceKind == IptvLiveSourceKind.iptvStalker)) {
       unawaited(_initSportsEpgCache());
     }
     WidgetsBinding.instance.addObserver(this);
@@ -1110,7 +1113,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     }
   }
 
-  /// Forja Sports: resolve the armed Xtream portal for in-player short EPG.
+  /// Forja Sports: resolve the armed Xtream/Stalker portal for in-player short EPG.
   Future<void> _initSportsEpgCache() async {
     final config = await LiveMatchesIptvSportsConfig.load();
     final armed = await config.resolveForFetch();
@@ -1124,7 +1127,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       }
     }
     if (portal == null ||
-        portal.portal.platform != IptvPortalPlatform.xtream ||
+        !portal.portal.platform.supportsEpg ||
         _disposed ||
         !mounted) {
       return;

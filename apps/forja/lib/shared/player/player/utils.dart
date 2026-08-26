@@ -855,6 +855,10 @@ String catalogSourcesButtonLabel({
   String? currentStreamUrl,
   String? currentPlayingCatalogUrl,
   String? catalogSourceKind,
+  int? anilistId,
+  int? malId,
+  int? kisskhId,
+  String? animeAudioCategory,
 }) {
   final addon = (catalogAddonBaseUrl ?? widgetAddonBaseUrl)?.trim();
   if (addon != null && addon.isNotEmpty) {
@@ -868,6 +872,10 @@ String catalogSourcesButtonLabel({
           mediaType: movie.mediaType,
           season: season,
           episode: episode,
+          anilistId: anilistId,
+          malId: malId,
+          kisskhId: kisskhId,
+          animeAudioCategory: animeAudioCategory,
         );
 
   if (cacheKey != null) {

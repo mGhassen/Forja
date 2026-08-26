@@ -49,6 +49,7 @@ Future<void> runHubEngineAutoPlay({
       malId: malId,
       kisskhId: kisskhId,
       kisskhEpisodeIdByNumber: mergedKisskh,
+      animeAudioCategory: animeAudioCategory,
     ),
   );
 }

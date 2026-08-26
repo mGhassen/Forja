@@ -382,13 +382,6 @@ fn watchfooty_norm_sport(raw: &str) -> String {
     s.replace(' ', "-")
 }
 
-fn watchfooty_has_streams(item: &Value) -> bool {
-    item.get("streams")
-        .and_then(|v| v.as_array())
-        .map(|a| !a.is_empty())
-        .unwrap_or(false)
-}
-
 fn watchfooty_row(plugin_id: &str, ts: i64, airing: bool, item: &Value) -> Option<Value> {
     let mid = item.get("matchId")?;
     let mid_s = match mid {
@@ -425,7 +418,8 @@ fn watchfooty_row(plugin_id: &str, ts: i64, airing: bool, item: &Value) -> Optio
         "category": watchfooty_norm_sport(sport),
         "date": date,
         "poster": poster,
-        // Site "Live only" ≈ status in/live AND has stream links.
+        // Site Live board often hides stream-less rows; we keep them as airing
+        // so Status → Airing can still show catalog lives.
         "popular": airing,
         "airing": airing,
         "sources": [{ "source": "watchfooty", "id": mid_s }],
@@ -463,14 +457,10 @@ fn watchfooty(config: &Value) -> Vec<Value> {
     for item in watchfooty_fetch_array(&live_url) {
         let status = item.get("status").and_then(|v| v.as_str()).unwrap_or("");
         let status_live = status == "in" || status == "live";
-        // Mirror site: stream-less "in" rows stay off the Live board.
-        let airing = status_live && watchfooty_has_streams(&item);
         if !status_live {
             continue;
         }
-        if !airing {
-            continue;
-        }
+        // Keep stream-less airing rows — UI Status filter chooses visibility.
         let ts = item.get("timestamp").and_then(|v| v.as_i64()).unwrap_or(0);
         let mid = match item.get("matchId") {
             Some(Value::String(s)) => s.clone(),

@@ -230,6 +230,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
     Map<String, dynamic> stream, {
     Duration? startPosition,
   }) async {
+    if (!_s._tryLockPlaybackLaunch()) return;
     final kind = catalogStreamKindLabel(stream);
     debugPrint(
       '[Details] play $kind stream '
@@ -243,286 +244,291 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         stream['_addonBaseUrl']?.toString() ?? _s._selectedSourceId;
     final isTv = _s._movie.mediaType == 'tv';
 
-    final useDebrid = await _s._settings.useDebridForStreams();
-    final debridService = await _s._settings.getDebridService();
-    final precheck = classifyStremioStream(
-      stream,
-      _s._playbackProfile,
-      useDebrid: useDebrid,
-      debridService: debridService,
-    );
-
-    if (precheck is StremioExternalLink) {
-      if (mounted && _s._sourcesPanelOpen) {
-        _s._closeSourcesPanel(cancelEngineJobs: false);
-      }
-      await _handleExternalUrl(
-        precheck.externalUrl,
-        addonBaseUrl: stremioAddonBaseUrl,
-      );
-      return;
-    }
-
-    if (precheck is StremioResolveFailure) {
-      if (mounted) {
-        ForjaToast.info(precheck.message);
-      }
-      return;
-    }
-
-    if (precheck is StremioPlayable) {
+    try {
+      final useDebrid = await _s._settings.useDebridForStreams();
+      final debridService = await _s._settings.getDebridService();
       if (!mounted) return;
-      final enginePluginId = stream['_enginePluginId']?.toString();
-      if (enginePluginId != null && enginePluginId.isNotEmpty) {
-        // Probe the tapped row under the loading overlay — closing Sources
-        // alone looked like a no-op while siblings were checked silently.
-        _s._streamCancelled = false;
-        final overlayMessage = ValueNotifier<String>('CHECKING STREAM');
-        final fadeOutNotifier = ValueNotifier(false);
-        final failureNotifier = ValueNotifier<ResolveFailure?>(null);
-        BuildContext? loadingDialogContext;
-        showLoadingOverlayDialog(
-          context,
-          builder: (dialogContext) {
-            loadingDialogContext = dialogContext;
-            return LoadingOverlay(
-              movie: _s._movie,
-              messageNotifier: overlayMessage,
-              fadeOutNotifier: fadeOutNotifier,
-              failureNotifier: failureNotifier,
-              subtitle: _loadingOverlaySubtitle(),
-              onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
-            );
-          },
-        );
+      final precheck = classifyStremioStream(
+        stream,
+        _s._playbackProfile,
+        useDebrid: useDebrid,
+        debridService: debridService,
+      );
+
+      if (precheck is StremioExternalLink) {
         if (mounted && _s._sourcesPanelOpen) {
           _s._closeSourcesPanel(cancelEngineJobs: false);
         }
-        try {
-          // Manual pick: only the row they tapped (not every plugin sibling).
-          final sources = await _buildProbedEnginePlaySources(
-            _s,
-            [stream],
-            isAborted: () => !mounted || _s._streamCancelled,
-            preferFirst: stream,
-          );
-          if (!mounted || _s._streamCancelled) {
-            if (mounted) _s._claimTvHeroPlayAfterPlayer();
-            return;
-          }
-          if (sources.isEmpty) {
-            final ctx = loadingDialogContext;
-            if (ctx != null && ctx.mounted) {
-              dismissLoadingOverlayRoute(ctx);
-            }
-            ForjaToast.info(
-              'This file isn’t available — try another source.',
-            );
-            return;
-          }
-          final primary = sources.first;
-          final ctx = loadingDialogContext;
-          Future<void> openPlayer() => AppRouter.openPlayer(
-            context,
-            streamUrl: primary.url,
-            title: _s._movie.title,
-            headers: primary.headers,
-            movie: _s._movie,
-            selectedSeason: isTv ? _s._selectedSeason : null,
-            selectedEpisode: isTv ? _s._selectedEpisode : null,
-            startPosition: startPosition,
-            activeProvider:
-                primary.providerId ?? catalogHttpPlayProviderId(stream),
-            sources: sources,
-            pinSource: true,
-            streamsPrevalidated: true,
-            externalSubtitles: catalogStreamExternalSubtitles(stream),
-            stremioId: stremioId,
-            stremioAddonBaseUrl: stremioAddonBaseUrl,
-            fadeTransition: ctx != null,
-          );
-          if (ctx != null && ctx.mounted) {
-            await crossfadeLoadingOverlayToPlayer(
-              loadingDialogContext: ctx,
-              fadeOutNotifier: fadeOutNotifier,
-              openPlayer: openPlayer,
-            );
-          } else {
-            await openPlayer();
-          }
-          if (mounted) _s._claimTvHeroPlayAfterPlayer();
-        } catch (e, st) {
-          debugPrint('[Details] Forja catalog play failed: $e\n$st');
-          final ctx = loadingDialogContext;
-          if (ctx != null && ctx.mounted) {
-            dismissLoadingOverlayRoute(ctx);
-          }
-          if (mounted) {
-            ForjaToast.info(
-              'Couldn\'t start this stream. Try again or pick another source.',
-            );
-          }
-        } finally {
-          disposeLoadingOverlayNotifiers([
-            overlayMessage,
-            fadeOutNotifier,
-            failureNotifier,
-          ]);
+        await _handleExternalUrl(
+          precheck.externalUrl,
+          addonBaseUrl: stremioAddonBaseUrl,
+        );
+        return;
+      }
+
+      if (precheck is StremioResolveFailure) {
+        if (mounted) {
+          ForjaToast.info(precheck.message);
         }
         return;
       }
 
-      if (_s._sourcesPanelOpen) {
-        _s._closeSourcesPanel(cancelEngineJobs: false);
-      }
-      try {
-        final proxied = await proxyCatalogHttpStreamIfNeeded(
-          streamUrl: precheck.streamUrl,
-          headers: precheck.headers,
-          stream: stream,
-        );
+      if (precheck is StremioPlayable) {
         if (!mounted) return;
-        await AppRouter.openPlayer(
-          context,
-          streamUrl: proxied.url,
-          title: _s._movie.title,
-          headers: proxied.headers,
-          movie: _s._movie,
-          selectedSeason: isTv ? _s._selectedSeason : null,
-          selectedEpisode: isTv ? _s._selectedEpisode : null,
-          startPosition: startPosition,
-          activeProvider: catalogHttpPlayProviderId(stream),
-          externalSubtitles: catalogStreamExternalSubtitles(stream),
-          stremioId: stremioId,
-          stremioAddonBaseUrl: stremioAddonBaseUrl,
-        );
-        if (mounted) _s._claimTvHeroPlayAfterPlayer();
-      } catch (e, st) {
-        debugPrint('[Details] Forja catalog play failed: $e\n$st');
-        if (mounted) {
-          ForjaToast.info(
-            'Couldn\'t start this stream. Try again or pick another source.',
-          );
-        }
-      }
-      return;
-    }
-
-    if (!mounted) return;
-    if (!await ensureLanP2pPlayback(context)) return;
-    if (!mounted) return;
-    _s._streamCancelled = false;
-    final overlayMessage = ValueNotifier<String>(
-      stremioResolveLoadingMessage(
-        profile: _s._playbackProfile,
-        useDebrid: useDebrid,
-        debridService: debridService,
-      ),
-    );
-    final fadeOutNotifier = ValueNotifier(false);
-    final failureNotifier = ValueNotifier<ResolveFailure?>(null);
-    BuildContext? loadingDialogContext;
-    showLoadingOverlayDialog(
-      context,
-      builder: (dialogContext) {
-        loadingDialogContext = dialogContext;
-        return LoadingOverlay(
-          movie: _s._movie,
-          messageNotifier: overlayMessage,
-          fadeOutNotifier: fadeOutNotifier,
-          failureNotifier: failureNotifier,
-          subtitle: _loadingOverlaySubtitle(
-            sourceHint: playbackSourceHint(
-              useDebrid: useDebrid,
-              debridService: debridService,
-            ),
-          ),
-          onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
-        );
-      },
-    );
-    if (mounted && _s._sourcesPanelOpen) {
-      _s._closeSourcesPanel(cancelEngineJobs: false);
-    }
-
-    final resolved = await resolveStremioStream(
-      stream: stream,
-      profile: _s._playbackProfile,
-      settings: _s._settings,
-      season: isTv ? _s._selectedSeason : null,
-      episode: isTv ? _s._selectedEpisode : null,
-      isCancelled: () => !mounted || _s._streamCancelled,
-      onStatus: (status) {
-        if (!_s._streamCancelled) overlayMessage.value = status;
-      },
-    );
-
-    if (_s._streamCancelled) {
-      disposeLoadingOverlayNotifiers([
-        overlayMessage,
-        fadeOutNotifier,
-        failureNotifier,
-      ]);
-      if (mounted) _s._claimTvHeroPlayAfterPlayer();
-      return;
-    }
-
-    if (resolved is StremioPlayable && mounted) {
-      final dialogContext = loadingDialogContext;
-      if (dialogContext != null) {
-        await crossfadeLoadingOverlayToPlayer(
-          loadingDialogContext: dialogContext,
-          fadeOutNotifier: fadeOutNotifier,
-          openPlayer: () => AppRouter.openPlayer(
+        final enginePluginId = stream['_enginePluginId']?.toString();
+        if (enginePluginId != null && enginePluginId.isNotEmpty) {
+          // Probe the tapped row under the loading overlay — closing Sources
+          // alone looked like a no-op while siblings were checked silently.
+          _s._streamCancelled = false;
+          final overlayMessage = ValueNotifier<String>('CHECKING STREAM');
+          final fadeOutNotifier = ValueNotifier(false);
+          final failureNotifier = ValueNotifier<ResolveFailure?>(null);
+          BuildContext? loadingDialogContext;
+          showLoadingOverlayDialog(
             context,
-            streamUrl: resolved.streamUrl,
+            builder: (dialogContext) {
+              loadingDialogContext = dialogContext;
+              return LoadingOverlay(
+                movie: _s._movie,
+                messageNotifier: overlayMessage,
+                fadeOutNotifier: fadeOutNotifier,
+                failureNotifier: failureNotifier,
+                subtitle: _loadingOverlaySubtitle(),
+                onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
+              );
+            },
+          );
+          if (mounted && _s._sourcesPanelOpen) {
+            _s._closeSourcesPanel(cancelEngineJobs: false);
+          }
+          try {
+            // Manual pick: only the row they tapped (not every plugin sibling).
+            final sources = await _buildProbedEnginePlaySources(
+              _s,
+              [stream],
+              isAborted: () => !mounted || _s._streamCancelled,
+              preferFirst: stream,
+            );
+            if (!mounted || _s._streamCancelled) {
+              if (mounted) _s._claimTvHeroPlayAfterPlayer();
+              return;
+            }
+            if (sources.isEmpty) {
+              final ctx = loadingDialogContext;
+              if (ctx != null && ctx.mounted) {
+                dismissLoadingOverlayRoute(ctx);
+              }
+              ForjaToast.info(
+                'This file isn’t available — try another source.',
+              );
+              return;
+            }
+            final primary = sources.first;
+            final ctx = loadingDialogContext;
+            Future<void> openPlayer() => AppRouter.openPlayer(
+              context,
+              streamUrl: primary.url,
+              title: _s._movie.title,
+              headers: primary.headers,
+              movie: _s._movie,
+              selectedSeason: isTv ? _s._selectedSeason : null,
+              selectedEpisode: isTv ? _s._selectedEpisode : null,
+              startPosition: startPosition,
+              activeProvider:
+                  primary.providerId ?? catalogHttpPlayProviderId(stream),
+              sources: sources,
+              pinSource: true,
+              streamsPrevalidated: true,
+              externalSubtitles: catalogStreamExternalSubtitles(stream),
+              stremioId: stremioId,
+              stremioAddonBaseUrl: stremioAddonBaseUrl,
+              fadeTransition: ctx != null,
+            );
+            if (ctx != null && ctx.mounted) {
+              await crossfadeLoadingOverlayToPlayer(
+                loadingDialogContext: ctx,
+                fadeOutNotifier: fadeOutNotifier,
+                openPlayer: openPlayer,
+              );
+            } else {
+              await openPlayer();
+            }
+            if (mounted) _s._claimTvHeroPlayAfterPlayer();
+          } catch (e, st) {
+            debugPrint('[Details] Forja catalog play failed: $e\n$st');
+            final ctx = loadingDialogContext;
+            if (ctx != null && ctx.mounted) {
+              dismissLoadingOverlayRoute(ctx);
+            }
+            if (mounted) {
+              ForjaToast.info(
+                'Couldn\'t start this stream. Try again or pick another source.',
+              );
+            }
+          } finally {
+            disposeLoadingOverlayNotifiers([
+              overlayMessage,
+              fadeOutNotifier,
+              failureNotifier,
+            ]);
+          }
+          return;
+        }
+
+        if (_s._sourcesPanelOpen) {
+          _s._closeSourcesPanel(cancelEngineJobs: false);
+        }
+        try {
+          final proxied = await proxyCatalogHttpStreamIfNeeded(
+            streamUrl: precheck.streamUrl,
+            headers: precheck.headers,
+            stream: stream,
+          );
+          if (!mounted) return;
+          await AppRouter.openPlayer(
+            context,
+            streamUrl: proxied.url,
             title: _s._movie.title,
-            magnetLink: resolved.magnetLink,
+            headers: proxied.headers,
             movie: _s._movie,
             selectedSeason: isTv ? _s._selectedSeason : null,
             selectedEpisode: isTv ? _s._selectedEpisode : null,
-            fileIndex: resolved.fileIndex,
             startPosition: startPosition,
             activeProvider: catalogHttpPlayProviderId(stream),
             externalSubtitles: catalogStreamExternalSubtitles(stream),
             stremioId: stremioId,
             stremioAddonBaseUrl: stremioAddonBaseUrl,
-            fadeTransition: true,
-          ),
-        );
-        if (mounted) _s._claimTvHeroPlayAfterPlayer();
+          );
+          if (mounted) _s._claimTvHeroPlayAfterPlayer();
+        } catch (e, st) {
+          debugPrint('[Details] Forja catalog play failed: $e\n$st');
+          if (mounted) {
+            ForjaToast.info(
+              'Couldn\'t start this stream. Try again or pick another source.',
+            );
+          }
+        }
+        return;
       }
-    } else if (resolved is StremioResolveFailure &&
-        resolved.error != StremioPlaybackError.cancelled &&
-        mounted &&
-        loadingDialogContext != null &&
-        loadingDialogContext!.mounted) {
-      final action = Completer<void>();
-      failureNotifier.value = ResolveFailure(
-        title: 'Couldn’t start playback',
-        detail: _friendlyResolveDetail(resolved.message),
-        primaryLabel: 'Close',
-        primaryIcon: Icons.close_rounded,
-        onPrimary: () {
-          if (!action.isCompleted) action.complete();
+
+      if (!mounted) return;
+      if (!await ensureLanP2pPlayback(context)) return;
+      if (!mounted) return;
+      _s._streamCancelled = false;
+      final overlayMessage = ValueNotifier<String>(
+        stremioResolveLoadingMessage(
+          profile: _s._playbackProfile,
+          useDebrid: useDebrid,
+          debridService: debridService,
+        ),
+      );
+      final fadeOutNotifier = ValueNotifier(false);
+      final failureNotifier = ValueNotifier<ResolveFailure?>(null);
+      BuildContext? loadingDialogContext;
+      showLoadingOverlayDialog(
+        context,
+        builder: (dialogContext) {
+          loadingDialogContext = dialogContext;
+          return LoadingOverlay(
+            movie: _s._movie,
+            messageNotifier: overlayMessage,
+            fadeOutNotifier: fadeOutNotifier,
+            failureNotifier: failureNotifier,
+            subtitle: _loadingOverlaySubtitle(
+              sourceHint: playbackSourceHint(
+                useDebrid: useDebrid,
+                debridService: debridService,
+              ),
+            ),
+            onCancel: () => _s._dismissStreamLoadingDialog(dialogContext),
+          );
         },
       );
-      await action.future;
-      if (loadingDialogContext != null &&
+      if (mounted && _s._sourcesPanelOpen) {
+        _s._closeSourcesPanel(cancelEngineJobs: false);
+      }
+
+      final resolved = await resolveStremioStream(
+        stream: stream,
+        profile: _s._playbackProfile,
+        settings: _s._settings,
+        season: isTv ? _s._selectedSeason : null,
+        episode: isTv ? _s._selectedEpisode : null,
+        isCancelled: () => !mounted || _s._streamCancelled,
+        onStatus: (status) {
+          if (!_s._streamCancelled) overlayMessage.value = status;
+        },
+      );
+
+      if (_s._streamCancelled) {
+        disposeLoadingOverlayNotifiers([
+          overlayMessage,
+          fadeOutNotifier,
+          failureNotifier,
+        ]);
+        if (mounted) _s._claimTvHeroPlayAfterPlayer();
+        return;
+      }
+
+      if (resolved is StremioPlayable && mounted) {
+        final dialogContext = loadingDialogContext;
+        if (dialogContext != null) {
+          await crossfadeLoadingOverlayToPlayer(
+            loadingDialogContext: dialogContext,
+            fadeOutNotifier: fadeOutNotifier,
+            openPlayer: () => AppRouter.openPlayer(
+              context,
+              streamUrl: resolved.streamUrl,
+              title: _s._movie.title,
+              magnetLink: resolved.magnetLink,
+              movie: _s._movie,
+              selectedSeason: isTv ? _s._selectedSeason : null,
+              selectedEpisode: isTv ? _s._selectedEpisode : null,
+              fileIndex: resolved.fileIndex,
+              startPosition: startPosition,
+              activeProvider: catalogHttpPlayProviderId(stream),
+              externalSubtitles: catalogStreamExternalSubtitles(stream),
+              stremioId: stremioId,
+              stremioAddonBaseUrl: stremioAddonBaseUrl,
+              fadeTransition: true,
+            ),
+          );
+          if (mounted) _s._claimTvHeroPlayAfterPlayer();
+        }
+      } else if (resolved is StremioResolveFailure &&
+          resolved.error != StremioPlaybackError.cancelled &&
+          mounted &&
+          loadingDialogContext != null &&
+          loadingDialogContext!.mounted) {
+        final action = Completer<void>();
+        failureNotifier.value = ResolveFailure(
+          title: 'Couldn’t start playback',
+          detail: _friendlyResolveDetail(resolved.message),
+          primaryLabel: 'Close',
+          primaryIcon: Icons.close_rounded,
+          onPrimary: () {
+            if (!action.isCompleted) action.complete();
+          },
+        );
+        await action.future;
+        if (loadingDialogContext != null &&
+            loadingDialogContext!.mounted &&
+            Navigator.of(loadingDialogContext!).canPop()) {
+          Navigator.of(loadingDialogContext!).pop();
+        }
+      } else if (loadingDialogContext != null &&
           loadingDialogContext!.mounted &&
           Navigator.of(loadingDialogContext!).canPop()) {
         Navigator.of(loadingDialogContext!).pop();
       }
-    } else if (loadingDialogContext != null &&
-        loadingDialogContext!.mounted &&
-        Navigator.of(loadingDialogContext!).canPop()) {
-      Navigator.of(loadingDialogContext!).pop();
+      disposeLoadingOverlayNotifiers([
+        overlayMessage,
+        fadeOutNotifier,
+        failureNotifier,
+      ]);
+    } finally {
+      _s._unlockPlaybackLaunch();
     }
-    disposeLoadingOverlayNotifiers([
-      overlayMessage,
-      fadeOutNotifier,
-      failureNotifier,
-    ]);
   }
 
   String _friendlyResolveDetail(String raw) {

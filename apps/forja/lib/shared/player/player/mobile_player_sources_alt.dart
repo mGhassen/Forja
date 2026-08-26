@@ -7,17 +7,25 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     final movie = widget.movie;
     if (movie == null) return;
     _s._hideTimer?.cancel();
+    final session = widget.enginePlaySession;
+    final ep = widget.selectedEpisode;
     PlayerSourcesPanel.show(
       context: context,
       movie: movie,
       season: widget.selectedSeason,
-      episode: widget.selectedEpisode,
+      episode: ep,
       currentMagnet: _s._activeMagnet ?? widget.magnetLink,
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
       preferredKind: _s._catalogSourceKind,
       currentAddonBaseUrl:
           _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,
+      anilistId: session?.anilistId,
+      malId: session?.malId,
+      kisskhId: session?.kisskhId,
+      kisskhEpisodeId: ep != null ? session?.kisskhEpisodeIdFor(ep) : null,
+      engineCategory: session?.category,
+      animeAudioCategory: session?.animeAudioCategory,
       onTorrentSelected: _switchTorrentSource,
       onStremioSelected: _switchStremioSource,
     );

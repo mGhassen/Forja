@@ -292,7 +292,31 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
       ),
     );
 
-    return scaffold;
+    if (!_s._playbackLaunchInFlight) return scaffold;
+
+    return AbsorbPointer(
+      absorbing: true,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          scaffold,
+          const ModalBarrier(
+            dismissible: false,
+            color: Color(0x89000000),
+          ),
+          const Center(
+            child: SizedBox(
+              width: 28,
+              height: 28,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white54,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

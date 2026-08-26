@@ -210,6 +210,9 @@ enum IptvPortalPlatform {
 
   /// Xtream `player_api` EPG and Stalker `get_short_epg` / `get_epg_info`.
   bool get supportsEpg => this == xtream || this == stalker;
+
+  /// Forja Sports matcher (static Xtream URLs or Stalker cmd + MAG EPG).
+  bool get supportsForjaSports => this == xtream || this == stalker;
 }
 
 /// Raw scraped Xtream-Codes portal credentials (unverified).

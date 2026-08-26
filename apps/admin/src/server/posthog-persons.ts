@@ -18,26 +18,30 @@ export type PosthogPersonsResult = {
 
 type PosthogEnv = {
   apiKey: string
-  projectId: string
+  /** Raw env: numeric id or project API token (`phc_…`). */
+  projectRef: string
   host: string
 }
+
+/** process-lifetime cache: phc_/numeric → numeric project id string */
+const resolvedProjectIds = new Map<string, string>()
 
 function posthogEnv(): PosthogEnv | null {
   const apiKey =
     process.env.POSTHOG_PERSONAL_API_KEY?.trim() ||
     process.env.POSTHOG_PRIVATE_API_KEY?.trim() ||
     ''
-  const projectId =
+  const projectRef =
     process.env.POSTHOG_PROJECT_ID?.trim() ||
     process.env.POSTHOG_PROJECT_API_ID?.trim() ||
     ''
-  if (!apiKey || !projectId) return null
+  if (!apiKey || !projectRef) return null
   const hostRaw =
     process.env.POSTHOG_HOST?.trim() ||
     process.env.POSTHOG_API_HOST?.trim() ||
     'https://us.i.posthog.com'
   const host = hostRaw.replace(/\/$/, '')
-  return { apiKey, projectId, host }
+  return { apiKey, projectRef, host }
 }
 
 function strProp(v: unknown): string | null {
@@ -65,6 +69,47 @@ function isUuid(id: string): boolean {
   )
 }
 
+function isNumericProjectId(ref: string): boolean {
+  return /^\d+$/.test(ref)
+}
+
+/**
+ * PostHog REST paths need the numeric project id.
+ * Env may be that id, or the project API token (`phc_…`) — resolve via /api/projects/.
+ */
+async function resolveNumericProjectId(env: PosthogEnv): Promise<string> {
+  const ref = env.projectRef
+  if (isNumericProjectId(ref)) return ref
+
+  const cached = resolvedProjectIds.get(ref)
+  if (cached) return cached
+
+  const res = await fetch(`${env.host}/api/projects/`, {
+    headers: { Authorization: `Bearer ${env.apiKey}` },
+  })
+  const json = (await res.json().catch(() => ({}))) as {
+    results?: Array<{ id?: number | string; api_token?: string }>
+    detail?: string
+    error?: string
+  }
+  if (!res.ok) {
+    throw new Error(
+      json.error || json.detail || `PostHog projects list ${res.status}`,
+    )
+  }
+
+  const projects = json.results ?? []
+  const match = projects.find((p) => p.api_token === ref)
+  if (match?.id == null) {
+    throw new Error(
+      'POSTHOG_PROJECT_ID phc_… not found in PostHog projects for this personal key',
+    )
+  }
+  const numeric = String(match.id)
+  resolvedProjectIds.set(ref, numeric)
+  return numeric
+}
+
 function runtimeFromProperties(
   distinctId: string,
   props: Record<string, unknown>,
@@ -80,9 +125,11 @@ function runtimeFromProperties(
   }
 }
 
+type ResolvedEnv = PosthogEnv & { projectId: string }
+
 /** HogQL batch: map distinct_id → runtime props. */
 async function fetchViaHogQl(
-  env: PosthogEnv,
+  env: ResolvedEnv,
   ids: string[],
 ): Promise<Record<string, PosthogPersonRuntime>> {
   const list = ids.map((id) => `'${id}'`).join(', ')
@@ -146,12 +193,13 @@ LIMIT ${Math.min(ids.length * 4, 500)}
 
 /** Fallback: one persons list call per distinct_id (capped concurrency). */
 async function fetchViaPersonsApi(
-  env: PosthogEnv,
+  env: ResolvedEnv,
   ids: string[],
 ): Promise<Record<string, PosthogPersonRuntime>> {
   const out: Record<string, PosthogPersonRuntime> = {}
   const concurrency = 6
   let cursor = 0
+  let lastErr: string | null = null
 
   async function worker() {
     while (cursor < ids.length) {
@@ -164,7 +212,14 @@ async function fetchViaPersonsApi(
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${env.apiKey}` },
       })
-      if (!res.ok) continue
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          detail?: string
+          error?: string
+        }
+        lastErr = body.error || body.detail || `PostHog persons ${res.status}`
+        continue
+      }
       const json = (await res.json().catch(() => ({}))) as {
         results?: Array<{
           distinct_ids?: string[]
@@ -180,6 +235,9 @@ async function fetchViaPersonsApi(
   await Promise.all(
     Array.from({ length: Math.min(concurrency, ids.length) }, () => worker()),
   )
+  if (Object.keys(out).length === 0 && lastErr) {
+    throw new Error(lastErr)
+  }
   return out
 }
 
@@ -203,13 +261,24 @@ export async function fetchPosthogPersonsByDistinctIds(
   }
 
   try {
+    const projectId = await resolveNumericProjectId(env)
+    const resolved: ResolvedEnv = { ...env, projectId }
+
     let persons: Record<string, PosthogPersonRuntime>
+    let hogErr: string | null = null
     try {
-      persons = await fetchViaHogQl(env, ids)
-    } catch {
-      persons = await fetchViaPersonsApi(env, ids)
+      persons = await fetchViaHogQl(resolved, ids)
+    } catch (e) {
+      hogErr = e instanceof Error ? e.message : 'HogQL failed'
+      persons = await fetchViaPersonsApi(resolved, ids)
     }
-    return { configured: true, persons }
+    return {
+      configured: true,
+      persons,
+      ...(hogErr && Object.keys(persons).length === 0
+        ? { error: hogErr }
+        : {}),
+    }
   } catch (e) {
     return {
       configured: true,

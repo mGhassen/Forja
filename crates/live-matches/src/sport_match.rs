@@ -5,16 +5,20 @@
 
 use serde_json::{json, Value};
 
-/// Normalized IPTV candidate (Xtream or M3U).
+/// Normalized IPTV candidate (Xtream / Stalker / M3U).
 #[derive(Debug, Clone)]
 pub struct Candidate {
     pub name: String,
     pub description: String,
     pub start_timestamp: Option<f64>,
+    /// Empty for Stalker (create_link deferred to play).
     pub stream_url: String,
     pub category_label: String,
     pub logo: String,
+    /// Xtream stream_id or Stalker create_link `cmd`.
     pub stream_id: String,
+    /// MAG `ch_id` for short EPG (Stalker); often empty on Xtream.
+    pub epg_channel_id: String,
 }
 
 /// Game fields used for matching.
@@ -485,11 +489,19 @@ fn sort_tiers_by_kickoff(game: &MatchGame, tiers: &mut [Vec<(usize, Option<f64>)
 
 fn flatten_tiers(tiers: &[Vec<(usize, Option<f64>)>; 4], candidates: &[Candidate]) -> Vec<Value> {
     let mut out = Vec::new();
-    let mut seen_urls = std::collections::HashSet::new();
+    let mut seen_ids = std::collections::HashSet::new();
     for (tier_idx, tier) in tiers.iter().enumerate() {
         for (idx, _) in tier {
             let s = &candidates[*idx];
-            if s.stream_url.is_empty() || !seen_urls.insert(s.stream_url.clone()) {
+            // Prefer stream_id dedupe (Stalker has empty URL until create_link).
+            let key = if !s.stream_id.is_empty() {
+                s.stream_id.clone()
+            } else if !s.stream_url.is_empty() {
+                s.stream_url.clone()
+            } else {
+                continue;
+            };
+            if !seen_ids.insert(key) {
                 continue;
             }
             out.push(json!({
@@ -498,6 +510,7 @@ fn flatten_tiers(tiers: &[Vec<(usize, Option<f64>)>; 4], candidates: &[Candidate
                 "url": s.stream_url,
                 "tier": tier_idx + 1,
                 "stream_id": s.stream_id,
+                "epg_channel_id": s.epg_channel_id,
                 "logo": s.logo,
             }));
         }
@@ -644,6 +657,7 @@ mod tests {
             category_label: "MLB".into(),
             logo: String::new(),
             stream_id: "1".into(),
+            epg_channel_id: String::new(),
         }];
         let hits = match_streams(&g, &cands, &league);
         assert!(hits.is_empty(), "Reds channel must not match Red Sox game");
@@ -660,6 +674,7 @@ mod tests {
             category_label: "MLB".into(),
             logo: "https://x/logo.png".into(),
             stream_id: "42".into(),
+            epg_channel_id: String::new(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);
@@ -682,6 +697,7 @@ mod tests {
             category_label: "MLB".into(),
             logo: String::new(),
             stream_id: "1".into(),
+            epg_channel_id: String::new(),
         }];
         let hits = match_streams(&g, &cands, &league);
         assert!(hits.is_empty());
@@ -698,6 +714,7 @@ mod tests {
             category_label: "".into(),
             logo: String::new(),
             stream_id: "1".into(),
+            epg_channel_id: String::new(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);
@@ -717,6 +734,7 @@ mod tests {
                 category_label: "News".into(),
                 logo: String::new(),
                 stream_id: format!("{i}"),
+                epg_channel_id: String::new(),
             });
         }
         cands[50].name = "Red Sox vs Blue Jays".into();
@@ -738,6 +756,7 @@ mod tests {
             category_label: "".into(),
             logo: String::new(),
             stream_id: "1".into(),
+            epg_channel_id: String::new(),
         }];
         assert_eq!(indices_for_epg(&g, &cands, 120), vec![0]);
     }
@@ -754,6 +773,7 @@ mod tests {
                 category_label: "Motorsport".into(),
                 logo: String::new(),
                 stream_id: "1".into(),
+                epg_channel_id: String::new(),
             },
             Candidate {
                 name: "CNN News".into(),
@@ -763,6 +783,7 @@ mod tests {
                 category_label: "News".into(),
                 logo: String::new(),
                 stream_id: "2".into(),
+                epg_channel_id: String::new(),
             },
         ];
         let hits = match_streams(&g, &cands, &[]);
@@ -784,6 +805,7 @@ mod tests {
             category_label: "Motorsport".into(),
             logo: String::new(),
             stream_id: "1".into(),
+            epg_channel_id: String::new(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1, "sport folder + channel name must match");
@@ -804,6 +826,7 @@ mod tests {
             category_label: "Racing".into(),
             logo: String::new(),
             stream_id: "1".into(),
+            epg_channel_id: String::new(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);
@@ -820,6 +843,7 @@ mod tests {
             category_label: "PPV Sports".into(),
             logo: String::new(),
             stream_id: "1".into(),
+            epg_channel_id: String::new(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);
@@ -843,6 +867,7 @@ mod tests {
             category_label: "Football PPV".into(),
             logo: String::new(),
             stream_id: "1".into(),
+            epg_channel_id: String::new(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);
@@ -881,6 +906,7 @@ mod tests {
             category_label: "UK Football".into(),
             logo: String::new(),
             stream_id: "7".into(),
+            epg_channel_id: String::new(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert!(hits.is_empty(), "wrong EPG fixture must not match: {:?}", hits);
@@ -904,6 +930,7 @@ mod tests {
             category_label: "UK Football".into(),
             logo: String::new(),
             stream_id: "7".into(),
+            epg_channel_id: String::new(),
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert!(hits.is_empty());
@@ -938,6 +965,7 @@ mod tests {
                 category_label: "LIVE · Football".into(),
                 logo: String::new(),
                 stream_id: format!("{i}"),
+                epg_channel_id: String::new(),
             });
         }
         let hits = match_streams(&g, &cands, &[]);
@@ -960,6 +988,7 @@ mod tests {
                 category_label: "LIVE · Football".into(),
                 logo: String::new(),
                 stream_id: "1".into(),
+                epg_channel_id: String::new(),
             },
             Candidate {
                 name: "TNA+ PPV HD".into(),
@@ -969,6 +998,7 @@ mod tests {
                 category_label: "Wrestling".into(),
                 logo: String::new(),
                 stream_id: "2".into(),
+                epg_channel_id: String::new(),
             },
         ];
         let hits = match_streams(&g, &cands, &[]);
@@ -995,6 +1025,7 @@ mod tests {
                 category_label: "LIVE · Football".into(),
                 logo: String::new(),
                 stream_id: format!("{i}"),
+                epg_channel_id: String::new(),
             })
             .collect();
         let idxs = indices_for_epg(&g, &cands, 120);

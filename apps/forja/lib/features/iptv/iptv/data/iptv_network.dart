@@ -456,17 +456,35 @@ class IptvClient {
     final List arr = root is Map<String, dynamic>
         ? (root['epg_listings'] as List? ?? const [])
         : (root is List ? root : const []);
+    return _parseEpgListingsList(arr);
+  }
+
+  static List<EpgEntry> _parseEpgListingsList(List arr) {
     final out = <EpgEntry>[];
     for (final e in arr) {
-      if (e is! Map<String, dynamic>) continue;
-      final start = _parseEpgTs(e['start_timestamp']) ?? _parseEpgTs(e['start']);
-      final stop = _parseEpgTs(e['stop_timestamp']) ??
-          _parseEpgTs(e['end']) ??
-          _parseEpgTs(e['stop']);
+      if (e is! Map) continue;
+      final m = Map<String, dynamic>.from(e);
+      final start = _parseEpgTs(m['start_timestamp']) ??
+          _parseEpgTs(m['start']) ??
+          _parseEpgTs(m['time']) ??
+          _parseEpgTs(m['from']);
+      final stop = _parseEpgTs(m['stop_timestamp']) ??
+          _parseEpgTs(m['end']) ??
+          _parseEpgTs(m['stop']) ??
+          _parseEpgTs(m['time_to']) ??
+          _parseEpgTs(m['to']);
       if (start == null || stop == null) continue;
+      final title = m['title']?.toString() ??
+          m['name']?.toString() ??
+          m['progname']?.toString() ??
+          '';
+      final description = m['description']?.toString() ??
+          m['descr']?.toString() ??
+          m['desc']?.toString() ??
+          '';
       out.add(EpgEntry(
-        title: _decodeXtreamField(e['title']?.toString() ?? ''),
-        description: _decodeXtreamField(e['description']?.toString() ?? ''),
+        title: _decodeXtreamField(title),
+        description: _decodeXtreamField(description),
         start: start,
         stop: stop,
       ));
@@ -476,7 +494,6 @@ class IptvClient {
       if (byStart != 0) return byStart;
       return b.stop.compareTo(a.stop);
     });
-    // Panels often repeat the same programme (or near-identical rows).
     final deduped = <EpgEntry>[];
     for (final e in out) {
       if (!e.stop.isAfter(e.start)) continue;
@@ -623,46 +640,94 @@ class IptvClient {
     return const [];
   }
 
-  /// Mag `get_epg_info&period=` dump, parsed once per portal for the guide.
-  static final Map<String, Future<Map<String, List<EpgEntry>>>> _stalkerBulkEpg =
-      {};
+  /// Mag `get_epg_info&period=` raw channel→rows map (parsed per channel on demand).
+  static final Map<String, Future<Map<String, List>>> _stalkerBulkRaw = {};
 
-  static void clearStalkerEpgCache() => _stalkerBulkEpg.clear();
+  /// Completed Mag dumps (same keys as [_stalkerBulkRaw]).
+  static final Map<String, Map<String, List>> _stalkerBulkRawDone = {};
 
-  static Future<Map<String, List<EpgEntry>>> _stalkerBulkGuideEpg(
+  /// Parsed channel listings carved from [_stalkerBulkRawDone].
+  static final Map<String, Map<String, List<EpgEntry>>> _stalkerBulkParsed = {};
+
+  static void clearStalkerEpgCache() {
+    _stalkerBulkRaw.clear();
+    _stalkerBulkRawDone.clear();
+    _stalkerBulkParsed.clear();
+  }
+
+  static String _stalkerBulkKey(IptvPortal p) =>
+      '${p.platform.wire}|${p.url}|${p.username}';
+
+  /// True once the Mag period dump finished (may be empty).
+  static bool stalkerBulkReady(IptvPortal p) =>
+      _stalkerBulkRawDone.containsKey(_stalkerBulkKey(p));
+
+  /// Kick the Mag period dump without awaiting guide paint.
+  static Future<void> primeStalkerGuideEpg(
+    IptvPortal p, {
+    Duration timeout = const Duration(seconds: 90),
+  }) =>
+      _stalkerBulkRawMap(p, timeout: timeout).then((_) {});
+
+  static Future<Map<String, List>> _stalkerBulkRawMap(
     IptvPortal p, {
     Duration timeout = const Duration(seconds: 90),
   }) {
-    final key = '${p.platform.wire}|${p.url}|${p.username}';
-    return _stalkerBulkEpg.putIfAbsent(key, () async {
+    final key = _stalkerBulkKey(p);
+    return _stalkerBulkRaw.putIfAbsent(key, () async {
       final root = await _xtreamRequestRaw(_portalBody(
         p,
         action: 'epg_bulk',
         timeoutSecs: timeout.inSeconds.clamp(15, 180),
-        period: 72,
+        period: 48,
       ));
-      if (root == null || root.containsKey('error')) {
-        return const <String, List<EpgEntry>>{};
-      }
-      final channels = root['channels'];
-      if (channels is! Map) return const <String, List<EpgEntry>>{};
-      final out = <String, List<EpgEntry>>{};
-      for (final e in channels.entries) {
-        final id = e.key.toString();
-        final raw = e.value;
-        if (raw is! List) continue;
-        try {
-          out[id] = _parseEpgListings(jsonEncode({'epg_listings': raw}));
-        } catch (_) {
-          // skip bad channel
+      final out = <String, List>{};
+      if (root != null && !root.containsKey('error')) {
+        final data = root['data'];
+        if (data is Map) {
+          for (final e in data.entries) {
+            final rows = e.value;
+            if (rows is List && rows.isNotEmpty) {
+              out[e.key.toString()] = rows;
+            }
+          }
+        } else {
+          final channels = root['channels'];
+          if (channels is Map) {
+            for (final e in channels.entries) {
+              final rows = e.value;
+              if (rows is List && rows.isNotEmpty) {
+                out[e.key.toString()] = rows;
+              }
+            }
+          }
         }
       }
+      _stalkerBulkRawDone[key] = out;
+      _stalkerBulkParsed[key] = {};
       return out;
     });
   }
 
+  static List<EpgEntry> _stalkerBulkListings(IptvPortal p, String ch) {
+    final key = _stalkerBulkKey(p);
+    final parsed = _stalkerBulkParsed[key];
+    final map = _stalkerBulkRawDone[key];
+    if (parsed == null || map == null) return const [];
+    final hit = parsed[ch];
+    if (hit != null) return hit;
+    final rows = map[ch];
+    if (rows == null || rows.isEmpty) {
+      parsed[ch] = const [];
+      return const [];
+    }
+    final listings = _parseEpgListingsList(rows);
+    parsed[ch] = listings;
+    return listings;
+  }
+
   /// Full EPG table for one live stream (`get_simple_data_table` on Xtream,
-  /// Stalker bulk `get_epg_info&period=` — short EPG is only a few near-now rows).
+  /// Stalker: short Mag EPG immediately, Mag period dump when ready).
   /// Optionally keep only programmes overlapping `[windowStart, windowEnd]`.
   static Future<List<EpgEntry>> simpleDataTable(
     IptvPortal p,
@@ -679,20 +744,25 @@ class IptvClient {
         epgChannelId: epgChannelId,
       );
       if (ch.isEmpty) return const [];
-      try {
-        final bulk = await _stalkerBulkGuideEpg(
-          p,
-          timeout: timeout > const Duration(seconds: 30)
-              ? timeout
-              : const Duration(seconds: 90),
-        );
-        final all = bulk[ch] ?? const <EpgEntry>[];
+      List<EpgEntry> slice(List<EpgEntry> all) {
         if (windowStart == null || windowEnd == null) return all;
         return all
             .where(
               (e) => e.stop.isAfter(windowStart) && e.start.isBefore(windowEnd),
             )
             .toList(growable: false);
+      }
+
+      // Bulk already warm → use it (longer timeline than short EPG).
+      if (stalkerBulkReady(p)) {
+        final bulk = _stalkerBulkListings(p, ch);
+        if (bulk.isNotEmpty) return slice(bulk);
+      }
+
+      // Paint fast with short EPG; host primes bulk separately then refreshes.
+      try {
+        final short = await shortEpg(p, ch, limit: shortEpgLimit, timeout: timeout);
+        return slice(short);
       } catch (_) {
         return const [];
       }

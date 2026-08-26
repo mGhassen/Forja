@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** fix · **3 / 4** acceptance |
+| **Progress** | **10 / 10** fix · **3 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,7 @@
 | 7 | I190-T07 | `engine_jobs::cancel_kind(EngineJsExtract)` + FFI — abort Forja extracts without global `request()` / magnet kill | ✅ |
 | 8 | I190-T08 | EngineJS CryptoJS façade + `ctx.hop` (vidsrcsbs / multiembed path) | ✅ |
 | 9 | I190-T09 | EngineJS `needs_host` → Dart `EngineHostResolver` (no flutter_js re-run) | ✅ |
+| 10 | I190-T10 | Host `cancelAllPending(cancelEngineJobs)` bumps extract gen + abort; EngineJS `"cancelled"` never → flutter_js | ✅ |
 
 ---
 
@@ -50,6 +51,8 @@
 
 **Root (play stampede, 2026-08-21):** Play called `_cancelActiveSourceFetch(cancelEngineJobs: false)` but still ran `EngineService.cancelPending()` → `_extractGeneration++`. In-flight `_runHttpPluginRustJs` returned `null` on gen mismatch; `runPluginIsolated` treated that as “unsupported” and forked N× `flutter_js` mid-mpv. Log signature: `(enginejs)` then after Play bare `start` + `[ep] drop`.
 
+**Root (play/Sources cancel, 2026-08-26):** `HostProviderAdapter.cancelAllPending(cancelEngineJobs: true)` called `Engine.cancelPendingResolve()` only — ROOT aborted EngineJS tokens **without** Dart `_extractGeneration++`. Jobs returned `"cancelled"` → `_runHttpPluginRustJs` returned `null` → `runPluginIsolated` forked flutter_js mid-mpv → main-thread `JSValueToStringCopy` SIGSEGV. Log: probe fail → `enginejs job error: cancelled` → bare `[engine] X start` (no `(enginejs)`) → Lost connection.
+
 **Root (post Forja EngineJS):** `EngineJobs` attached every job to one process-global cancel slot (`JOB_TOKEN_GLOBAL`). Peer finish/`clear_job_token` and peer `attach` overwrote Videasy’s token mid-`/seed` fetch — empty under All, fine alone. NuvioMobile keeps cancel on the parent coroutine `Job` tree, not a shared global AbortSignal.
 
 **Root fix:** [RFC-064](../rfc/064-[open]-rust-quickjs-engine-runtime.md) — Forja EngineJS per extract on tokio + `scope_job_token` task-local cancel (NuvioMobile shape). Nuvio host scrapers unchanged. **Plus** never map cancel-null → `flutter_js`; Play aborts Forja extracts via kind-scoped cancel (not full `cancel_all` / ROOT `request()`).
@@ -57,3 +60,5 @@
 **Shipped for I190-T03:** `utils::engine_cancel::scope_job_token` + `EngineJobs.submit` wraps each job; `engine-js` `native_fetch` / `extract` `select!` on that token only.
 
 **Shipped for I190-T05 / T06 / T07:** `runPluginIsolated` gen gate; Play always `cancelPending` (scrapes stop); `cancel_kind(EngineJsExtract)` + `Engine.cancelEngineJsExtracts` so magnet resolve survives.
+
+**Shipped for I190-T10:** `abortInFlightExtracts` from host cancel; HTTP EngineJS `"cancelled"` → empty result (not null); live cancelled bumps gen before null.

@@ -69,6 +69,10 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       widgetMagnetLink: widget.magnetLink,
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       catalogSourceKind: _s._catalogSourceKind,
+      anilistId: widget.enginePlaySession?.anilistId,
+      malId: widget.enginePlaySession?.malId,
+      kisskhId: widget.enginePlaySession?.kisskhId,
+      animeAudioCategory: widget.enginePlaySession?.animeAudioCategory,
     );
   }
 
@@ -402,11 +406,13 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     final movie = widget.movie;
     if (movie == null) return;
     _s._hideTimer?.cancel();
+    final session = widget.enginePlaySession;
+    final ep = widget.selectedEpisode;
     await PlayerSourcesPanel.show(
       context: context,
       movie: movie,
       season: widget.selectedSeason,
-      episode: widget.selectedEpisode,
+      episode: ep,
       currentMagnet: _s._activeMagnet ?? widget.magnetLink,
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       currentPlayingCatalogUrl: durableStreamCatalogUrl(
@@ -415,6 +421,12 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       preferredKind: _s._catalogSourceKind,
       currentAddonBaseUrl:
           _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,
+      anilistId: session?.anilistId,
+      malId: session?.malId,
+      kisskhId: session?.kisskhId,
+      kisskhEpisodeId: ep != null ? session?.kisskhEpisodeIdFor(ep) : null,
+      engineCategory: session?.category,
+      animeAudioCategory: session?.animeAudioCategory,
       onTorrentSelected: _switchTorrentSource,
       onStremioSelected: _switchStremioSource,
     );

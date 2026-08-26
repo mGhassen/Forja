@@ -294,6 +294,7 @@ fn skeleton_candidate(
     // Match crates/iptv Xtream live rows — always `.ts`, not API `container_extension`.
     let ext = "ts";
     let label = category_label_for(s, cats);
+    let epg_channel_id = field_str(s, &["epg_channel_id"]);
     Some(Candidate {
         name,
         description: String::new(),
@@ -302,6 +303,7 @@ fn skeleton_candidate(
         category_label: label,
         logo,
         stream_id,
+        epg_channel_id,
     })
 }
 

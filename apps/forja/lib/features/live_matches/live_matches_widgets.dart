@@ -661,33 +661,44 @@ class _LiveMatchesCatalogSheetOptionState
 
 // ─── Schedule window picker sheet ───────────────────────────────────────────
 
-class _LiveMatchesTimeWindowSheet extends StatefulWidget {
-  const _LiveMatchesTimeWindowSheet({
-    required this.current,
-    required this.onSelected,
+class _LiveMatchesScheduleSheet extends StatefulWidget {
+  const _LiveMatchesScheduleSheet({
+    required this.status,
+    required this.horizon,
+    required this.onChanged,
   });
 
-  final _LiveMatchesTimeWindow current;
-  final ValueChanged<_LiveMatchesTimeWindow> onSelected;
+  final _LiveMatchesScheduleStatus status;
+  final _LiveMatchesScheduleHorizon horizon;
+  final void Function({
+    _LiveMatchesScheduleStatus? status,
+    _LiveMatchesScheduleHorizon? horizon,
+  }) onChanged;
 
   @override
-  State<_LiveMatchesTimeWindowSheet> createState() =>
-      _LiveMatchesTimeWindowSheetState();
+  State<_LiveMatchesScheduleSheet> createState() =>
+      _LiveMatchesScheduleSheetState();
 }
 
-class _LiveMatchesTimeWindowSheetState
-    extends State<_LiveMatchesTimeWindowSheet> {
-  static const _tvTabId = 'live_matches_time_sheet';
-  static const _rowId = 'live-time-window-sheet';
+class _LiveMatchesScheduleSheetState extends State<_LiveMatchesScheduleSheet> {
+  static const _tvTabId = 'live_matches_schedule_sheet';
+  static const _statusRowId = 'live-schedule-status';
+  static const _horizonRowId = 'live-schedule-horizon';
   final FocusNode _firstFocus = FocusNode(
-    debugLabel: 'live-time-window-sheet-first',
+    debugLabel: 'live-schedule-sheet-first',
   );
 
-  static const _options = _LiveMatchesTimeWindow.values;
+  late _LiveMatchesScheduleStatus _status;
+  late _LiveMatchesScheduleHorizon _horizon;
+
+  static const _statusOptions = _LiveMatchesScheduleStatus.values;
+  static const _horizonOptions = _LiveMatchesScheduleHorizon.values;
 
   @override
   void initState() {
     super.initState();
+    _status = widget.status;
+    _horizon = widget.horizon;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (!ShellScope.metricsOf(context).usesTvDensity) return;
@@ -696,26 +707,47 @@ class _LiveMatchesTimeWindowSheetState
   }
 
   @override
+  void didUpdateWidget(covariant _LiveMatchesScheduleSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.status != widget.status) _status = widget.status;
+    if (oldWidget.horizon != widget.horizon) _horizon = widget.horizon;
+  }
+
+  @override
   void dispose() {
     _firstFocus.dispose();
     super.dispose();
   }
 
-  String _subtitleFor(_LiveMatchesTimeWindow window) {
-    final range = _liveMatchesTimeWindowRange(window);
-    if (window == _LiveMatchesTimeWindow.live) {
-      return 'Only live and 24/7 right now';
-    }
-    if (window == _LiveMatchesTimeWindow.all) {
-      return 'Live, 24/7, and kickoffs in the next 24 hours';
-    }
-    final futureH = range.future.inHours;
-    return 'Live, 24/7, and kickoffs in the next ${futureH}h';
+  bool get _showHorizon => _status != _LiveMatchesScheduleStatus.airing;
+
+  String _statusSubtitle(_LiveMatchesScheduleStatus status) => switch (status) {
+        _LiveMatchesScheduleStatus.airing =>
+          'In-play and 24/7 — including rows without streams yet',
+        _LiveMatchesScheduleStatus.upcoming =>
+          'Not started yet, within the horizon below',
+        _LiveMatchesScheduleStatus.both =>
+          'Airing + 24/7, plus upcoming within the horizon',
+      };
+
+  String _horizonSubtitle(_LiveMatchesScheduleHorizon horizon) {
+    final futureH = _liveMatchesScheduleHorizonRange(horizon).future.inHours;
+    return 'Upcoming kickoffs in the next ${futureH}h';
+  }
+
+  void _pickStatus(_LiveMatchesScheduleStatus status) {
+    setState(() => _status = status);
+    widget.onChanged(status: status);
+  }
+
+  void _pickHorizon(_LiveMatchesScheduleHorizon horizon) {
+    setState(() => _horizon = horizon);
+    widget.onChanged(horizon: horizon);
   }
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.sizeOf(context).height * 0.55;
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final body = Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
@@ -738,7 +770,7 @@ class _LiveMatchesTimeWindowSheetState
               ),
               const SizedBox(height: 20),
               const Text(
-                'Schedule window',
+                'Schedule',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -747,63 +779,116 @@ class _LiveMatchesTimeWindowSheetState
               ),
               const SizedBox(height: 6),
               const Text(
-                'How far ahead to load and show matches:',
+                'What to show, and how far ahead to load upcoming:',
                 style: TextStyle(color: Colors.white54, fontSize: 13),
               ),
-              const SizedBox(height: 16),
-              for (var i = 0; i < _options.length; i++)
-                _LiveMatchesTimeWindowSheetOption(
-                  window: _options[i],
-                  selected: _options[i] == widget.current,
-                  subtitle: _subtitleFor(_options[i]),
-                  onSelected: widget.onSelected,
+              const SizedBox(height: 18),
+              const Text(
+                'Status',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              for (var i = 0; i < _statusOptions.length; i++)
+                _LiveMatchesScheduleSheetOption(
+                  label: _liveMatchesScheduleStatusLabel(_statusOptions[i]),
+                  subtitle: _statusSubtitle(_statusOptions[i]),
+                  selected: _statusOptions[i] == _status,
+                  icon: Icons.sensors_rounded,
+                  onSelected: () => _pickStatus(_statusOptions[i]),
+                  tvTabId: _tvTabId,
+                  tvRowId: _statusRowId,
                   tvItemIndex: i,
-                  tvRowId: _rowId,
                   focusNode: i == 0 ? _firstFocus : null,
                 ),
+              if (_showHorizon) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Horizon',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                for (var i = 0; i < _horizonOptions.length; i++)
+                  _LiveMatchesScheduleSheetOption(
+                    label: _liveMatchesScheduleHorizonLabel(_horizonOptions[i]),
+                    subtitle: _horizonSubtitle(_horizonOptions[i]),
+                    selected: _horizonOptions[i] == _horizon,
+                    icon: Icons.schedule_rounded,
+                    onSelected: () => _pickHorizon(_horizonOptions[i]),
+                    tvTabId: _tvTabId,
+                    tvRowId: _horizonRowId,
+                    tvItemIndex: i,
+                  ),
+              ],
             ],
           ),
         ),
       ),
     );
     if (!tv) return body;
-    return TvCatalogRow(
-      tabId: _tvTabId,
-      rowId: _rowId,
-      sortOrder: 0,
-      itemCount: _options.length,
-      orientation: ShellTvRowOrientation.vertical,
-      child: body,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TvCatalogRow(
+          tabId: _tvTabId,
+          rowId: _statusRowId,
+          sortOrder: 0,
+          itemCount: _statusOptions.length,
+          orientation: ShellTvRowOrientation.vertical,
+          child: const SizedBox.shrink(),
+        ),
+        if (_showHorizon)
+          TvCatalogRow(
+            tabId: _tvTabId,
+            rowId: _horizonRowId,
+            sortOrder: 1,
+            itemCount: _horizonOptions.length,
+            orientation: ShellTvRowOrientation.vertical,
+            child: const SizedBox.shrink(),
+          ),
+        body,
+      ],
     );
   }
 }
 
-class _LiveMatchesTimeWindowSheetOption extends StatefulWidget {
-  const _LiveMatchesTimeWindowSheetOption({
-    required this.window,
-    required this.selected,
+class _LiveMatchesScheduleSheetOption extends StatefulWidget {
+  const _LiveMatchesScheduleSheetOption({
+    required this.label,
     required this.subtitle,
+    required this.selected,
+    required this.icon,
     required this.onSelected,
+    required this.tvTabId,
     this.tvItemIndex,
     this.tvRowId,
     this.focusNode,
   });
 
-  final _LiveMatchesTimeWindow window;
-  final bool selected;
+  final String label;
   final String subtitle;
-  final ValueChanged<_LiveMatchesTimeWindow> onSelected;
+  final bool selected;
+  final IconData icon;
+  final VoidCallback onSelected;
+  final String tvTabId;
   final int? tvItemIndex;
   final String? tvRowId;
   final FocusNode? focusNode;
 
   @override
-  State<_LiveMatchesTimeWindowSheetOption> createState() =>
-      _LiveMatchesTimeWindowSheetOptionState();
+  State<_LiveMatchesScheduleSheetOption> createState() =>
+      _LiveMatchesScheduleSheetOptionState();
 }
 
-class _LiveMatchesTimeWindowSheetOptionState
-    extends State<_LiveMatchesTimeWindowSheetOption> {
+class _LiveMatchesScheduleSheetOptionState
+    extends State<_LiveMatchesScheduleSheetOption> {
   bool _focused = false;
   bool _hovered = false;
 
@@ -819,17 +904,16 @@ class _LiveMatchesTimeWindowSheetOptionState
       context: context,
     );
     const radius = 12.0;
-    final label = _liveMatchesTimeWindowLabel(widget.window);
 
     final tile = ListTile(
       leading: Icon(
-        Icons.schedule_rounded,
+        widget.icon,
         color: widget.selected
             ? ForjaShellColors.sectionAccent
             : Colors.white54,
       ),
       title: Text(
-        label,
+        widget.label,
         style: TextStyle(
           color: Colors.white,
           fontWeight:
@@ -851,7 +935,7 @@ class _LiveMatchesTimeWindowSheetOptionState
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         canRequestFocus: false,
-        onTap: tvFocus ? null : () => widget.onSelected(widget.window),
+        onTap: tvFocus ? null : widget.onSelected,
         borderRadius: BorderRadius.circular(radius),
         hoverColor: Colors.transparent,
         splashColor: ForjaShellColors.inkSplash,
@@ -862,14 +946,14 @@ class _LiveMatchesTimeWindowSheetOptionState
     if (!tvFocus) {
       return shellRoundedInkHost(
         radius: radius,
-        onTap: () => widget.onSelected(widget.window),
+        onTap: widget.onSelected,
         child: tile,
       );
     }
 
     return shellFocusableTap(
       context: context,
-      onTap: () => widget.onSelected(widget.window),
+      onTap: widget.onSelected,
       borderRadius: radius,
       scaleOnFocus: 1.0,
       showFocusBorder: false,
@@ -877,7 +961,7 @@ class _LiveMatchesTimeWindowSheetOptionState
       navLeftAlways: true,
       focusNode: widget.focusNode,
       listIndex: widget.tvItemIndex,
-      tvTabId: _LiveMatchesTimeWindowSheetState._tvTabId,
+      tvTabId: widget.tvTabId,
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
@@ -1200,10 +1284,23 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
 
   void appendSources(Iterable<IptvPlaySource> next) {
     if (_disposed) return;
-    final seen = {for (final s in sources) s.url};
+    final seen = <String>{
+      for (final s in sources)
+        () {
+          final id = (s.streamId ?? '').trim();
+          if (id.isNotEmpty) return 'id:$id';
+          final url = s.url.trim();
+          return url.isEmpty ? '' : 'url:$url';
+        }(),
+    }..remove('');
     var added = false;
     for (final s in next) {
-      if (s.url.trim().isEmpty || !seen.add(s.url)) continue;
+      final id = (s.streamId ?? '').trim();
+      final url = s.url.trim();
+      final key = id.isNotEmpty
+          ? 'id:$id'
+          : (url.isEmpty ? '' : 'url:$url');
+      if (key.isEmpty || !seen.add(key)) continue;
       sources.add(s);
       added = true;
     }
@@ -1626,6 +1723,8 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
       final fromCatalog = iptvCtrl!.healthFor(id);
       if (fromCatalog != null) return fromCatalog;
     }
+    // Stalker sports rows have no durable URL until create_link at play.
+    if (source.url.trim().isEmpty) return true;
     return healthProbe.checkNow(_probeKey, source.url);
   }
 

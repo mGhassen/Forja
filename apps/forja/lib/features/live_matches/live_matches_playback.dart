@@ -580,7 +580,7 @@ mixin _LiveMatchesPlayback
     if (!mounted) return;
     final ctrl = ref.read(iptvControllerProvider);
     final portal = ctrl.activePortal;
-    if (portal != null && portal.portal.platform == IptvPortalPlatform.xtream) {
+    if (portal != null && portal.portal.platform.supportsForjaSports) {
       await LiveMatchesIptvSportsConfig.ensureArmed(portalKey: portal.key);
     } else {
       await LiveMatchesIptvSportsConfig.ensureArmed();
@@ -628,8 +628,10 @@ mixin _LiveMatchesPlayback
                   detail: _tvNativeSourceDetail('Forja Sports', s.detail),
                   logoUrl: s.logoUrl,
                   streamId: s.streamId,
+                  epgChannelId: s.epgChannelId,
                   headers: s.headers,
-                  liveSourceKind: IptvLiveSourceKind.iptvXtream,
+                  liveSourceKind:
+                      s.liveSourceKind ?? IptvLiveSourceKind.iptvXtream,
                 ),
             ]);
           },
@@ -805,20 +807,89 @@ mixin _LiveMatchesPlayback
     final ordered = <IptvPlaySource>[
       picked,
       for (final s in sources)
-        if (!identical(s, picked) && s.url != picked.url) s,
+        if (!identical(s, picked) &&
+            (s.streamId ?? '').trim() != (picked.streamId ?? '').trim() &&
+            (s.url.isEmpty || s.url != picked.url))
+          s,
     ];
+    final resolved = await _resolveIptvSportsPlayUrls(ordered);
+    if (!mounted || resolved.isEmpty) {
+      if (mounted) {
+        ForjaToast.info('Could not open channel');
+      }
+      return;
+    }
+    final kind = resolved.first.liveSourceKind ?? IptvLiveSourceKind.iptvXtream;
     await IptvPtPlayerScreen.open(
       context,
       IptvPtPlayerScreen(
-        sources: ordered,
+        sources: resolved,
         title: _iptvSportsMatchChromeTitle(match),
-        subtitle: picked.pickerTitle,
-        logoUrl: picked.logoUrl,
+        subtitle: resolved.first.pickerTitle,
+        logoUrl: resolved.first.logoUrl,
         titleTracksSource: true,
         engineContext: BuiltInPlayerContext.iptv,
-        liveSourceKind: IptvLiveSourceKind.iptvXtream,
+        liveSourceKind: kind,
       ),
     );
+  }
+
+  /// Stalker: create_link at play (expiring). Xtream: pass through static URLs.
+  Future<List<IptvPlaySource>> _resolveIptvSportsPlayUrls(
+    List<IptvPlaySource> sources,
+  ) async {
+    if (sources.isEmpty) return sources;
+    final needsLink = sources.any(
+      (s) =>
+          s.liveSourceKind == IptvLiveSourceKind.iptvStalker ||
+          (s.url.trim().isEmpty && (s.streamId ?? '').trim().isNotEmpty),
+    );
+    if (!needsLink) return sources;
+
+    final config = await LiveMatchesIptvSportsConfig.load();
+    final armed = await config.resolveForFetch();
+    if (armed == null) return [];
+    final portals = await IptvStore.load();
+    VerifiedPortal? portal;
+    for (final p in portals) {
+      if (p.key == armed.portalKey) {
+        portal = p;
+        break;
+      }
+    }
+    if (portal == null ||
+        portal.portal.platform != IptvPortalPlatform.stalker) {
+      return sources.where((s) => s.url.trim().isNotEmpty).toList();
+    }
+
+    final out = <IptvPlaySource>[];
+    for (final s in sources) {
+      final cmd = (s.streamId ?? '').trim();
+      if (cmd.isEmpty) {
+        if (s.url.trim().isNotEmpty) out.add(s);
+        continue;
+      }
+      final url = await IptvClient.createLink(
+        portal.portal,
+        cmd: cmd,
+        section: 'live',
+      );
+      if (url == null || url.isEmpty) {
+        debugPrint('[LiveMatches] Stalker create_link failed for $cmd');
+        continue;
+      }
+      out.add(IptvPlaySource(
+        url: url,
+        label: s.label,
+        detail: s.detail,
+        logoUrl: s.logoUrl,
+        streamId: s.streamId,
+        epgChannelId: s.epgChannelId,
+        headers: s.headers,
+        liveSourceKind: IptvLiveSourceKind.iptvStalker,
+      ));
+    }
+    return out;
   }
 
   /// Match first, kickoff time when known — channel sits in the subtitle.

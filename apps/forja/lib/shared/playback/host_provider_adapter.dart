@@ -11,6 +11,7 @@ import 'package:forja/shared/extractors/providers/vidsrcsbs/profile.dart';
 import 'package:forja/shared/extractors/providers/vidsrcsbs/vidsrcsbs_extractor.dart';
 import 'package:forja/shared/extractors/providers/kisskh/kisskh_extractor.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/engine/service.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/webview/atv_webview_guard.dart';
 import 'package:rust/rust.dart';
@@ -357,6 +358,9 @@ abstract final class HostProviderAdapter {
     VidsrcsbsExtractor.cancelPending();
     NuvioService.instance.cancelPending();
     if (cancelEngineJobs) {
+      // Gen bump + abort flutter_js BEFORE ROOT cancel — otherwise EngineJS
+      // "cancelled" maps to null and runPluginIsolated forks JSC mid-play.
+      EngineService.instance.abortInFlightExtracts();
       Engine.cancelPendingResolve();
     }
     unawaited(_extractor.cancel());
