@@ -13,6 +13,14 @@ mixin _LiveMatchesPlayback
       _s._server == _LiveMatchesServer.stremio ||
       _s._server == _LiveMatchesServer.iptvSports;
 
+  VoidCallback _iptvSportsPanelDismissCancel() => () {
+    _s._iptvSportsSearchGen++;
+    Engine.cancelLiveMatchesFetch();
+  };
+
+  bool _iptvSportsSearchStale(int searchGen) =>
+      searchGen != _s._iptvSportsSearchGen;
+
   /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
   Future<bool> _runWithCancellableLoading(
     String message,
@@ -492,6 +500,7 @@ mixin _LiveMatchesPlayback
       panelTitle: 'Sources',
       emptyMessage: 'No streams available',
       searchingHint: 'Loading $phase streams',
+      cancelInFlightSearch: _iptvSportsPanelDismissCancel(),
       onChannelSelected: (picked, all) {
         final hit = _forjaLiveTvChoiceForSource(picked, choices);
         if (hit == null) {
@@ -502,6 +511,7 @@ mixin _LiveMatchesPlayback
       },
     );
     panel.setSearchPhase(phase);
+    final searchGen = _s._iptvSportsSearchGen;
 
     try {
       if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
@@ -523,12 +533,12 @@ mixin _LiveMatchesPlayback
           choices.addAll(await _resolveAllCatalogStreamChoices(scoped));
         }
       }
-      if (panel.isDisposed) return;
+      if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
 
       // List every catalog choice (desktop parity). Do not pre-unlock —
       // Android has no Node GOAT worker, so unlock-before-list hid Streamed/PPV.
       for (final choice in choices) {
-        if (panel.isDisposed) return;
+        if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
         final stream = choice.stream;
         final embed = stream.embedUrl.trim();
         final key = embed.isNotEmpty
@@ -608,11 +618,13 @@ mixin _LiveMatchesPlayback
       match: enriched,
       panelTitle: 'Sources',
       iptvCtrl: ctrl,
+      cancelInFlightSearch: _iptvSportsPanelDismissCancel(),
       onChannelSelected: (picked, all) {
         unawaited(_playIptvSportsSources(enriched, all, picked));
       },
     );
     panel.setSearchPhase('Forja Sports');
+    final searchGen = _s._iptvSportsSearchGen;
 
     Future<void> addForja() async {
       try {
@@ -643,9 +655,10 @@ mixin _LiveMatchesPlayback
 
     Future<void> addStremio() async {
       if (!_offerStremioPlayFallback) return;
+      if (_iptvSportsSearchStale(searchGen)) return;
       try {
         final stremio = await _resolveStremioStreamsMatching(enriched);
-        if (panel.isDisposed) return;
+        if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
         panel.appendSources([
           for (final s in stremio)
             IptvPlaySource(
@@ -665,10 +678,12 @@ mixin _LiveMatchesPlayback
 
     // Serial on TV: parallel Forja Sports (Xtream + EPG) + Stremio OOMs leanback.
     await addForja();
-    if (panel.isDisposed) return;
+    if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
     panel.setSearchPhase('Stremio');
     await addStremio();
-    if (!panel.isDisposed) panel.finishSearching();
+    if (!panel.isDisposed && !_iptvSportsSearchStale(searchGen)) {
+      panel.finishSearching();
+    }
   }
 
   String _tvNativeSourceDetail(String server, String? detail) {
@@ -777,11 +792,13 @@ mixin _LiveMatchesPlayback
       context: context,
       match: enriched,
       iptvCtrl: iptvCtrl,
+      cancelInFlightSearch: _iptvSportsPanelDismissCancel(),
       onChannelSelected: (picked, all) {
         unawaited(_playIptvSportsSources(enriched, all, picked));
       },
     );
     panel.setSearchPhase('Forja Sports');
+    final searchGen = _s._iptvSportsSearchGen;
 
     try {
       await _resolveIptvSportsStreams(
@@ -794,7 +811,9 @@ mixin _LiveMatchesPlayback
     } catch (e) {
       debugPrint('[LiveMatches] IPTV sports resolve error: $e');
     } finally {
-      if (!panel.isDisposed) panel.finishSearching();
+      if (!panel.isDisposed && !_iptvSportsSearchStale(searchGen)) {
+        panel.finishSearching();
+      }
     }
   }
 

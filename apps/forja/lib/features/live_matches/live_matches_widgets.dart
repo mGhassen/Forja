@@ -1343,6 +1343,7 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
 class _IptvSportsChannelsPanel {
   static OverlayEntry? _entry;
   static _IptvSportsChannelsPanelController? _controller;
+  static VoidCallback? _cancelInFlightSearch;
 
   static _IptvSportsChannelsPanelController show({
     required BuildContext context,
@@ -1351,6 +1352,7 @@ class _IptvSportsChannelsPanel {
     String emptyMessage = _IptvSportsPanelCopy.empty,
     String searchingHint = 'Matching channels from your portal',
     IptvController? iptvCtrl,
+    VoidCallback? cancelInFlightSearch,
     required void Function(IptvPlaySource picked, List<IptvPlaySource> all)
     onChannelSelected,
   }) {
@@ -1363,6 +1365,7 @@ class _IptvSportsChannelsPanel {
       iptvCtrl: iptvCtrl,
     );
     _controller = controller;
+    _cancelInFlightSearch = cancelInFlightSearch;
     final overlay = Overlay.of(context);
     _entry = OverlayEntry(
       builder: (_) => _IptvSportsChannelsOverlay(
@@ -1382,9 +1385,12 @@ class _IptvSportsChannelsPanel {
   static void dismiss() {
     final wasShowing = _entry != null;
     final ctrl = _controller;
+    final cancelSearch = _cancelInFlightSearch;
+    _cancelInFlightSearch = null;
     _entry?.remove();
     _entry = null;
     _controller = null;
+    cancelSearch?.call();
     // Overlay State drops its listener on unmount; dispose after that frame.
     if (ctrl != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

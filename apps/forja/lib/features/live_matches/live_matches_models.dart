@@ -2669,6 +2669,9 @@ List<IptvPlaySource>? _iptvSportsStreamsCacheGet(String key) {
   return List<IptvPlaySource>.from(hit.sources);
 }
 
+bool _liveMatchesJsonCancelled(Map<String, dynamic> parsed) =>
+    (parsed['error'] ?? '').toString() == 'cancelled';
+
 void _iptvSportsStreamsCachePut(String key, List<IptvPlaySource> sources) {
   if (sources.isEmpty) return;
   _iptvSportsStreamsCache[key] = _IptvSportsStreamsCacheEntry(
@@ -2777,6 +2780,9 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
           jsonEncode({...requestBase, 'skip_epg': true}),
         );
         final fastParsed = jsonDecode(fastRaw) as Map<String, dynamic>;
+        if (_liveMatchesJsonCancelled(fastParsed)) {
+          return <IptvPlaySource>[];
+        }
         if (!fastParsed.containsKey('error')) {
           final fast = _parseSportMatchStreamItems(
             fastParsed['items'] as List? ?? [],
@@ -2789,9 +2795,11 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
       final raw = await runLiveMatchesFetchJson(jsonEncode(requestBase));
       final parsed = jsonDecode(raw) as Map<String, dynamic>;
       if (parsed.containsKey('error')) {
-        debugPrint(
-          '[LiveMatches] IPTV sports streams error: ${parsed['error']}',
-        );
+        if (!_liveMatchesJsonCancelled(parsed)) {
+          debugPrint(
+            '[LiveMatches] IPTV sports streams error: ${parsed['error']}',
+          );
+        }
         return <IptvPlaySource>[];
       }
       final out = _parseSportMatchStreamItems(
