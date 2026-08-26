@@ -123,6 +123,8 @@ abstract final class ProviderProfiles {
         'kisskh.ovh',
         'kisskh.la',
         'kisskh.do',
+        'kisskh.is',
+        'kisskh.id',
       ],
       SourceDomain.asianDrama,
       start: 99,

@@ -534,6 +534,15 @@ function cardBlockForUser(cleaned: string, username: string): string {
   return cut >= 0 ? hit.slice(0, cut) : hit
 }
 
+/** Pool card Note — scrape expires string (skip empty / Unknown). */
+export function scrapeExpiresNote(
+  expiry: string | null | undefined,
+): string | null {
+  const s = (expiry ?? '').trim()
+  if (!s || s.toLowerCase() === 'unknown') return null
+  return s
+}
+
 function mergePortalMeta(
   base: ExtractedPortal,
   patch: Partial<ExtractedPortal>,
@@ -543,6 +552,7 @@ function mergePortalMeta(
     type: base.type || patch.type || '',
     output: base.output || patch.output || '',
     expiry: base.expiry ?? patch.expiry ?? null,
+    note: base.note ?? patch.note ?? null,
     maxConnections: base.maxConnections ?? patch.maxConnections ?? null,
     timezone: base.timezone ?? patch.timezone ?? null,
     allowedOutputs: base.allowedOutputs ?? patch.allowedOutputs ?? null,
@@ -559,10 +569,17 @@ function put(
   acc: Map<string, ExtractedPortal>,
   portal: ExtractedPortal,
 ) {
-  const key = `${portal.platform}|${portalKey(portal)}|${portal.type}|${portal.output}`
+  const withNote: ExtractedPortal =
+    portal.platform === 'stalker'
+      ? {
+          ...portal,
+          note: portal.note ?? scrapeExpiresNote(portal.expiry),
+        }
+      : portal
+  const key = `${withNote.platform}|${portalKey(withNote)}|${withNote.type}|${withNote.output}`
   const prev = acc.get(key)
-  if (!prev) acc.set(key, portal)
-  else acc.set(key, mergePortalMeta(prev, portal))
+  if (!prev) acc.set(key, withNote)
+  else acc.set(key, mergePortalMeta(prev, withNote))
 }
 
 function finalizeXtreamOrM3u(

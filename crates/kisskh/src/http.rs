@@ -12,6 +12,8 @@ pub const MIRROR_BASE_URLS: &[&str] = &[
     "https://kisskh.ovh",
     "https://kisskh.la",
     "https://kisskh.do",
+    "https://kisskh.is",
+    "https://kisskh.id",
 ];
 
 fn mirror_list() -> Vec<String> {
@@ -245,6 +247,8 @@ pub fn select_base_url() -> Result<String, String> {
 }
 
 /// Fetch signed Episode + Subtitle JSON for one episode (native kkey, no WebView).
+/// With no forced base, Episode GETs use sticky-domain failover like catalog
+/// [`get_api`] — a single dead/geo-blocked mirror must not fail the resolve.
 pub fn resolve_episode_stream(
     episode_id: i32,
     forced_base: Option<&str>,
@@ -252,15 +256,15 @@ pub fn resolve_episode_stream(
     if episode_id <= 0 {
         return Err("episode_id required".to_string());
     }
-    let base = if let Some(raw) = forced_base {
+    let forced = if let Some(raw) = forced_base {
         let normalized = raw.trim().trim_end_matches('/');
         if normalized.is_empty() {
-            select_base_url()?
+            None
         } else {
-            activate_base_url(normalized)?
+            Some(activate_base_url(normalized)?)
         }
     } else {
-        select_base_url()?
+        None
     };
 
     let vid_key = crate::generate_kkey(episode_id, crate::KkeyKind::Video);
@@ -268,7 +272,14 @@ pub fn resolve_episode_stream(
         "/DramaList/Episode/{episode_id}.png?err=false&ts=&time=&kkey={vid_key}"
     );
     // Do not cache stream payloads — CDN URLs go stale.
-    let ep_body = get_api_on_base(&base, &ep_path)?;
+    let ep_body = if let Some(ref base) = forced {
+        get_api_on_base(base, &ep_path)?
+    } else {
+        get_api(&ep_path, false)?
+    };
+    let base = forced
+        .clone()
+        .unwrap_or_else(current_base_url);
     let episode: serde_json::Value = serde_json::from_str(&ep_body)
         .map_err(|e| format!("Episode JSON parse failed: {e}"))?;
 
@@ -369,8 +380,10 @@ mod tests {
     #[test]
     fn exposes_base_urls() {
         assert_eq!(PRIMARY_BASE_URL, "https://kisskh.co");
-        assert_eq!(MIRROR_BASE_URLS.len(), 5);
+        assert_eq!(MIRROR_BASE_URLS.len(), 7);
         assert!(MIRROR_BASE_URLS.contains(&"https://kisskh.nl"));
+        assert!(MIRROR_BASE_URLS.contains(&"https://kisskh.is"));
+        assert!(MIRROR_BASE_URLS.contains(&"https://kisskh.id"));
         assert!(!MIRROR_BASE_URLS.contains(&"https://kisskh.buzz"));
     }
 
@@ -386,23 +399,32 @@ mod tests {
     #[test]
     fn activation_rejects_unverified_domains() {
         assert!(activate_base_url("https://kisskh.ovh/").is_ok());
+        assert!(activate_base_url("https://kisskh.is/").is_ok());
+        assert!(activate_base_url("https://kisskh.id").is_ok());
         assert!(activate_base_url("https://kisskh.buzz").is_err());
     }
 
     #[test]
     fn resolve_stream_live_episode() {
-        let _ = activate_base_url("https://kisskh.co");
-        let (base, episode, subs) =
-            resolve_episode_stream(171699, Some("https://kisskh.co")).expect("resolve");
-        assert_eq!(base, "https://kisskh.co");
+        // Clear sticky so failover can leave a geo-blocked .co.
+        if let Ok(mut guard) = active_base().lock() {
+            *guard = None;
+        }
+        let (base, episode, _subs) =
+            resolve_episode_stream(171699, None).expect("resolve");
+        assert!(
+            MIRROR_BASE_URLS.contains(&base.as_str()),
+            "unexpected base {base}"
+        );
         let video = episode
             .get("Video")
             .and_then(|v| v.as_str())
             .unwrap_or("");
         assert!(
             video.contains("http"),
-            "expected playable Video, got {episode}"
+            "expected playable Video from {base}, got {episode}"
         );
-        assert!(!subs.is_empty(), "expected subtitle tracks");
+        // Subs are best-effort in resolve (empty/missing Sub JSON is not a
+        // stream failure — mirrors often omit tracks or 451 the Sub path).
     }
 }

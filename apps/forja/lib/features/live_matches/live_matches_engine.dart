@@ -253,6 +253,5 @@ class LiveEngineResolveResult {
 }
 
 bool liveEnginePreferDirectPlayback(String m3u8Url) {
-  final path = (Uri.tryParse(m3u8Url.trim())?.path ?? '').toLowerCase();
-  return path.contains('/delta/stream/') || path.contains('/echo/stream/');
+  return LiveGoatUnlock.preferDirectEnginePlayback(m3u8Url);
 }

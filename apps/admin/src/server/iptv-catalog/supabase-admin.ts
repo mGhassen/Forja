@@ -306,6 +306,7 @@ export async function insertScrapeDeepRefPortalsBulk(
       was_existing: false,
       portal_id: null as string | null,
       expiry: hit.expiry ?? null,
+      note: hit.note ?? null,
       max_connections: hit.maxConnections ?? null,
       timezone: hit.timezone ?? null,
       region_primary: hit.regionPrimary ?? null,
@@ -363,6 +364,7 @@ export async function linkScrapeDeepRefPortals(
         platform: hit.platform,
         postId: ref.postId,
         expiry: hit.expiry ?? null,
+        note: hit.note ?? null,
         maxConnections: hit.maxConnections ?? null,
         timezone: hit.timezone ?? null,
         regionPrimary: hit.regionPrimary,
@@ -400,6 +402,7 @@ export async function linkScrapeDeepRefPortals(
       was_existing: wasExisting,
       portal_id: portalId,
       expiry: hit.expiry ?? null,
+      note: hit.note ?? null,
       max_connections: hit.maxConnections ?? null,
       timezone: hit.timezone ?? null,
       region_primary: hit.regionPrimary ?? null,
@@ -468,6 +471,7 @@ type DeepRefPortalPromoteRow = {
   paste_url: string
   post_id: string
   expiry: string | null
+  note: string | null
   maxConnections: string | null
   timezone: string | null
   regionPrimary: string | null
@@ -484,7 +488,7 @@ export async function getDeepRefPortalsForPromote(
   const { data, error } = await sb
     .from('iptv_scrape_deep_ref_portals')
     .select(
-      'id, url, username, password, platform, type, output, expiry, max_connections, timezone, region_primary, region_tags, region_confidence, iptv_scrape_deep_refs!inner(post_id, paste_url)',
+      'id, url, username, password, platform, type, output, expiry, note, max_connections, timezone, region_primary, region_tags, region_confidence, iptv_scrape_deep_refs!inner(post_id, paste_url)',
     )
     .in('id', portalRowIds)
   if (error) throw error
@@ -514,6 +518,7 @@ export async function getDeepRefPortalsForPromote(
       paste_url: String(parent?.paste_url ?? ''),
       post_id: String(parent?.post_id ?? ''),
       expiry: row.expiry != null ? String(row.expiry) : null,
+      note: row.note != null ? String(row.note) : null,
       maxConnections:
         row.max_connections != null ? String(row.max_connections) : null,
       timezone: row.timezone != null ? String(row.timezone) : null,
@@ -550,6 +555,7 @@ export async function promoteDeepRefPortalRow(
     platform: row.platform,
     postId: row.post_id || undefined,
     expiry: row.expiry,
+    note: row.note,
     maxConnections: row.maxConnections,
     timezone: row.timezone,
     regionPrimary: row.regionPrimary ?? undefined,
@@ -696,6 +702,7 @@ async function upsertCatalogCandidateReturningId(
     p_region_tags: region.tags,
     p_region_confidence: region.confidence,
     p_platform: portal.platform ?? 'xtream',
+    p_note: portal.note ?? null,
   })
   if (error) throw error
   return data as string

@@ -830,6 +830,8 @@ class ProviderRuntimeSnapshot {
           'https://kisskh.ovh',
           'https://kisskh.la',
           'https://kisskh.do',
+          'https://kisskh.is',
+          'https://kisskh.id',
         ],
         // Legacy host→Referer fallback when providerId is unknown (RFC-044).
         // Anime opens with providerId use playbackPolicyFor and ignore these.

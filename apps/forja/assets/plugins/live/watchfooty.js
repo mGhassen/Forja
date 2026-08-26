@@ -2,11 +2,11 @@ var WATCHFOOTY_REFERER = 'https://watchfooty.st/';
 var WATCHFOOTY_SOURCE_PRIORITY = {
   delta: 0,
   echo: 1,
-  hd: 2,
-  sigma: 3,
-  pro: 4,
-  platinum: 5,
-  deluxe: 6,
+  sigma: 2,
+  pro: 3,
+  platinum: 4,
+  deluxe: 5,
+  hd: 6,
   regular: 7,
 };
 

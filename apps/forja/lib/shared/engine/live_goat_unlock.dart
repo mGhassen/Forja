@@ -35,11 +35,11 @@ class LiveGoatUnlock {
   static const _watchfootySourcePriority = [
     'delta',
     'echo',
-    'hd',
     'sigma',
     'pro',
     'platinum',
     'deluxe',
+    'hd',
     'regular',
   ];
   static const _ua =
@@ -171,14 +171,20 @@ class LiveGoatUnlock {
       if (result == null || result.isEmpty) return null;
       final origin = (slot['origin'] ?? _sportsEmbedOrigin).toString();
       final path = (slot['path'] ?? '').toString();
-      return (
-        url: result,
-        headers: {
-          'Referer': path.isNotEmpty ? '$origin/embed/$path' : '$origin/',
-          'Origin': origin,
-          'User-Agent': _ua,
-        },
-      );
+      final headers = <String, String>{
+        'Referer': path.isNotEmpty ? '$origin/embed/$path' : '$origin/',
+        'Origin': origin,
+        'User-Agent': _ua,
+      };
+      // regular/hd often decrypt to a URL that then 500s on the CDN — skip those.
+      if (!await _probePlayableM3u8(result, headers)) {
+        debugPrint(
+          '[LiveSportsEmbed] CDN m3u8 not playable '
+          '${Uri.tryParse(result)?.host ?? result}',
+        );
+        return null;
+      }
+      return (url: result, headers: headers);
     } catch (e) {
       debugPrint('[LiveSportsEmbed] unlock failed: $e');
       return null;

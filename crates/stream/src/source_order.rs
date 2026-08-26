@@ -120,6 +120,8 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "kisskh.ovh" => 97,
             "kisskh.la" => 96,
             "kisskh.do" => 95,
+            "kisskh.is" => 94,
+            "kisskh.id" => 93,
             _ => fallback_score(id, domain),
         },
         SourceDomain::Iptv => match id {
@@ -212,6 +214,8 @@ fn known_profile(id: &str, domain: SourceDomain) -> bool {
             | ("kisskh.ovh", SourceDomain::AsianDrama)
             | ("kisskh.la", SourceDomain::AsianDrama)
             | ("kisskh.do", SourceDomain::AsianDrama)
+            | ("kisskh.is", SourceDomain::AsianDrama)
+            | ("kisskh.id", SourceDomain::AsianDrama)
             | ("xtream", SourceDomain::Iptv)
             | ("m3u", SourceDomain::Iptv)
             | ("stalker", SourceDomain::Iptv)

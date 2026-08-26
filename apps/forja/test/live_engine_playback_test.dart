@@ -18,6 +18,15 @@ void main() {
       );
     });
 
+    test('watchfooty wfty.st playlists open direct', () {
+      expect(
+        liveEnginePreferDirectPlayback(
+          'https://lb5.wfty.st/secure/tok/delta/live_foo/1/465/playlist.m3u8',
+        ),
+        isTrue,
+      );
+    });
+
     test('admin rtmp master stays on hls-proxy', () {
       expect(
         liveEnginePreferDirectPlayback(

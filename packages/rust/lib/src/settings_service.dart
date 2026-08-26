@@ -973,6 +973,8 @@ class SettingsService {
     'kisskh.ovh',
     'kisskh.la',
     'kisskh.do',
+    'kisskh.is',
+    'kisskh.id',
   ];
 
   /// Full KissKH mirror list order (Settings UI). Enabled subset drives playback.

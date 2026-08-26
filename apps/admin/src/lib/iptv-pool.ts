@@ -8,6 +8,8 @@ export type PoolCand = {
   username: string
   alive: boolean | null
   expiry: string | null
+  /** Scrape note expires (Stalker paste). */
+  note: string | null
   max_connections: string | null
   region_primary: string
   dealt_count: number
@@ -173,7 +175,7 @@ export async function fetchPoolHostPortals(
 }
 
 const POOL_PORTAL_COLS =
-  'id, url, username, alive, expiry, max_connections, region_primary, dealt_count, catalog_pool, platform, updated_at, created_at, last_scraped_at'
+  'id, url, username, alive, expiry, note, max_connections, region_primary, dealt_count, catalog_pool, platform, updated_at, created_at, last_scraped_at'
 
 export async function fetchPoolPortalById(
   id: string,

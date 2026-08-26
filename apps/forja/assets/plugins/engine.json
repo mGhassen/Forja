@@ -199,7 +199,16 @@
       ],
       "kind": "http",
       "config": {
-        "origin": "https://kisskh.co"
+        "origin": "https://kisskh.co",
+        "mirrors": [
+          "https://kisskh.co",
+          "https://kisskh.nl",
+          "https://kisskh.ovh",
+          "https://kisskh.la",
+          "https://kisskh.do",
+          "https://kisskh.is",
+          "https://kisskh.id"
+        ]
       }
     },
     {

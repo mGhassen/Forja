@@ -1,14 +1,34 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
-  var origin = (cfg.origin || 'https://kisskh.co').replace(/\/$/, '');
-  var tmdbId = String(ctx.tmdbId || '');
-  var title = String(ctx.title || '');
+  var defaultMirrors = [
+    'https://kisskh.co',
+    'https://kisskh.nl',
+    'https://kisskh.ovh',
+    'https://kisskh.la',
+    'https://kisskh.do',
+    'https://kisskh.is',
+    'https://kisskh.id',
+  ];
+  var mirrors = (Array.isArray(cfg.mirrors) && cfg.mirrors.length
+    ? cfg.mirrors
+    : defaultMirrors
+  ).map(function (m) {
+    return String(m).replace(/\/$/, '');
+  });
+  var preferred = (cfg.origin || mirrors[0] || 'https://kisskh.co').replace(/\/$/, '');
+  var ordered = [preferred].concat(
+    mirrors.filter(function (m) {
+      return m && m !== preferred;
+    }),
+  );
+  var sticky = null;
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
-  var headers = { 'User-Agent': ua, Accept: 'application/json', Referer: origin + '/' };
   // Hub Sources injects KissKh drama/episode ids — Search never returns tmdbID.
   var episodeId = cfg.episodeId || ctx.config.episodeId;
   var dramaId = cfg.dramaId || ctx.config.dramaId;
+  var tmdbId = String(ctx.tmdbId || '');
+  var title = String(ctx.title || '');
   ctx.log(
     'kisskh start dramaId=' +
       (dramaId || '') +
@@ -18,11 +38,70 @@ function extract(ctx) {
       title +
       ' ep=' +
       (ctx.episode || 1) +
+      ' mirrors=' +
+      ordered.length +
       ' hasKkey=' +
       !!(ctx.crypto && ctx.crypto.kisskhKkey),
   );
 
-  function rowsFromEpisode(api) {
+  function headersFor(origin) {
+    return { 'User-Agent': ua, Accept: 'application/json', Referer: origin + '/' };
+  }
+
+  function playHeaders(origin) {
+    return { 'User-Agent': ua, Referer: origin + '/', Origin: origin };
+  }
+
+  function mirrorOrder() {
+    if (!sticky) return ordered;
+    return [sticky].concat(
+      ordered.filter(function (m) {
+        return m !== sticky;
+      }),
+    );
+  }
+
+  function fetchJson(path) {
+    var list = mirrorOrder();
+    function tryAt(i) {
+      if (i >= list.length) return Promise.reject(new Error('KissKh mirrors failed'));
+      var origin = list[i];
+      return ctx
+        .fetch(origin + path, { headers: headersFor(origin) })
+        .then(function (r) {
+          return r.text().then(function (body) {
+            var trimmed = String(body || '').trim();
+            if (!r.ok) {
+              ctx.log('kisskh HTTP ' + r.status + ' @ ' + origin);
+              return tryAt(i + 1);
+            }
+            if (!trimmed || trimmed.charAt(0) === '<') {
+              ctx.log('kisskh HTML shell @ ' + origin);
+              return tryAt(i + 1);
+            }
+            try {
+              sticky = origin;
+              return { origin: origin, json: JSON.parse(trimmed) };
+            } catch (e) {
+              ctx.log('kisskh JSON parse fail @ ' + origin);
+              return tryAt(i + 1);
+            }
+          });
+        })
+        .catch(function (e) {
+          ctx.log(
+            'kisskh fetch error @ ' +
+              origin +
+              ': ' +
+              (e && e.message ? e.message : e),
+          );
+          return tryAt(i + 1);
+        });
+    }
+    return tryAt(0);
+  }
+
+  function rowsFromEpisode(api, origin) {
     if (!api || typeof api !== 'object') return Promise.resolve([]);
     var urls = [];
     ['Video', 'video', 'VideoUrl', 'videoUrl'].forEach(function (k) {
@@ -39,7 +118,7 @@ function extract(ctx) {
             {
               url: u,
               name: 'KissKh',
-              headers: { 'User-Agent': ua, Referer: origin + '/', Origin: origin },
+              headers: playHeaders(origin),
             },
           ]);
         }
@@ -50,63 +129,42 @@ function extract(ctx) {
     });
   }
 
-  function episodeUrl(id, withKkey) {
+  function episodePath(id, withKkey) {
     var q = '.png?err=false&ts=&time=';
     if (withKkey && ctx.crypto && ctx.crypto.kisskhKkey) {
       q += '&kkey=' + encodeURIComponent(ctx.crypto.kisskhKkey(id, 'video'));
     }
-    return origin + '/api/DramaList/Episode/' + id + q;
+    return '/api/DramaList/Episode/' + id + q;
   }
 
   function fetchEpisode(id) {
-    function tryOnce(withKkey) {
-      if (withKkey && !(ctx.crypto && ctx.crypto.kisskhKkey)) {
-        ctx.log('kisskh kkey missing — Episode API will return SPA HTML');
-        return Promise.resolve([]);
-      }
-      return ctx
-        .fetch(episodeUrl(id, withKkey), { headers: headers })
-        .then(function (r) {
-          return r.text().then(function (body) {
-            var trimmed = String(body || '').trim();
-            if (!r.ok) {
-              ctx.log('kisskh episode HTTP ' + r.status + ' kkey=' + !!withKkey);
-              return null;
-            }
-            // Without kkey, kisskh.co serves the SPA shell (200 + HTML).
-            if (!trimmed || trimmed.charAt(0) === '<') {
-              ctx.log('kisskh episode HTML shell (need kkey) kkey=' + !!withKkey);
-              return null;
-            }
-            try {
-              return JSON.parse(trimmed);
-            } catch (e) {
-              ctx.log('kisskh episode JSON parse fail kkey=' + !!withKkey);
-              return null;
-            }
-          });
-        })
-        .then(function (api) {
-          if (!api) return [];
-          var hasVideo =
-            (api.Video || api.video || api.VideoUrl || api.videoUrl) ||
-            ((api.ThirdParty || api.thirdParty || []).length > 0);
-          if (!hasVideo) {
-            ctx.log('kisskh episode JSON has no Video/ThirdParty');
-            return [];
-          }
-          return rowsFromEpisode(api);
-        })
-        .catch(function (e) {
-          ctx.log('kisskh episode error: ' + (e && e.message ? e.message : e));
-          return [];
-        });
+    if (!(ctx.crypto && ctx.crypto.kisskhKkey)) {
+      ctx.log('kisskh kkey missing — Episode API will return SPA HTML');
+      return Promise.resolve([]);
     }
     // API requires consumet kkey; bare GET returns HTML.
-    return tryOnce(true);
+    return fetchJson(episodePath(id, true))
+      .then(function (res) {
+        var api = res.json;
+        var hasVideo =
+          api.Video ||
+          api.video ||
+          api.VideoUrl ||
+          api.videoUrl ||
+          (api.ThirdParty || api.thirdParty || []).length > 0;
+        if (!hasVideo) {
+          ctx.log('kisskh episode JSON has no Video/ThirdParty');
+          return [];
+        }
+        return rowsFromEpisode(api, res.origin);
+      })
+      .catch(function (e) {
+        ctx.log('kisskh episode error: ' + (e && e.message ? e.message : e));
+        return [];
+      });
   }
 
-  function episodeFromDrama(drama) {
+  function episodeFromDrama(drama, origin) {
     var eps = drama.episodes || drama.Episodes || [];
     var want = Number(ctx.episode || 1);
     var ep =
@@ -114,35 +172,35 @@ function extract(ctx) {
         return Number(e.number || e.Number) === want;
       }) || eps[0];
     if (!ep) return [];
+    sticky = origin;
     return fetchEpisode(ep.id || ep.Id);
   }
 
   function fetchDrama(id) {
-    return ctx
-      .fetch(origin + '/api/DramaList/Drama/' + id + '?isq=false', { headers: headers })
-      .then(function (r) {
-        return r.json();
+    return fetchJson('/api/DramaList/Drama/' + id + '?isq=false')
+      .then(function (res) {
+        return episodeFromDrama(res.json, res.origin);
       })
-      .then(episodeFromDrama);
+      .catch(function () {
+        return [];
+      });
   }
 
-  if (episodeId) return fetchEpisode(episodeId).catch(function () { return []; });
-  if (dramaId) return fetchDrama(dramaId).catch(function () { return []; });
+  if (episodeId) return fetchEpisode(episodeId);
+  if (dramaId) return fetchDrama(dramaId);
 
   var q = encodeURIComponent(title);
   if (!q) return Promise.resolve([]);
-  return ctx
-    .fetch(origin + '/api/DramaList/Search?q=' + q + '&type=0', { headers: headers })
-    .then(function (r) {
-      return r.json();
-    })
-    .then(function (list) {
+  return fetchJson('/api/DramaList/Search?q=' + q + '&type=0')
+    .then(function (res) {
+      var list = res.json;
       var hit =
         (Array.isArray(list) ? list : []).find(function (d) {
           return String(d.tmdbID || d.tmdbId || '') === tmdbId;
         }) ||
         (Array.isArray(list) ? list[0] : null);
       if (!hit) return [];
+      sticky = res.origin;
       return fetchDrama(hit.id);
     })
     .catch(function () {

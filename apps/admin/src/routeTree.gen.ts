@@ -25,6 +25,7 @@ import { Route as ApiIptvCatalogVerifyRouteImport } from './routes/api.iptv-cata
 import { Route as ApiIptvDeepRefReprocessRouteImport } from './routes/api.iptv-deep-ref-reprocess'
 import { Route as ApiIptvPasteBodyRouteImport } from './routes/api.iptv-paste-body'
 import { Route as ApiIptvPromoteBackfillRouteImport } from './routes/api.iptv-promote-backfill'
+import { Route as ApiIptvStalkerNoteBackfillRouteImport } from './routes/api.iptv-stalker-note-backfill'
 import { Route as ApiPosthogPersonsRouteImport } from './routes/api.posthog-persons'
 import { Route as ApiR2DownloadStatsRouteImport } from './routes/api.r2-download-stats'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -108,6 +109,12 @@ const ApiIptvPromoteBackfillRoute = ApiIptvPromoteBackfillRouteImport.update({
   path: '/api/iptv-promote-backfill',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiIptvStalkerNoteBackfillRoute =
+  ApiIptvStalkerNoteBackfillRouteImport.update({
+    id: '/api/iptv-stalker-note-backfill',
+    path: '/api/iptv-stalker-note-backfill',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPosthogPersonsRoute = ApiPosthogPersonsRouteImport.update({
   id: '/api/posthog-persons',
   path: '/api/posthog-persons',
@@ -144,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
+  '/api/iptv-stalker-note-backfill': typeof ApiIptvStalkerNoteBackfillRoute
   '/api/posthog-persons': typeof ApiPosthogPersonsRoute
   '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -164,6 +172,7 @@ export interface FileRoutesByTo {
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
+  '/api/iptv-stalker-note-backfill': typeof ApiIptvStalkerNoteBackfillRoute
   '/api/posthog-persons': typeof ApiPosthogPersonsRoute
   '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -186,6 +195,7 @@ export interface FileRoutesById {
   '/api/iptv-deep-ref-reprocess': typeof ApiIptvDeepRefReprocessRoute
   '/api/iptv-paste-body': typeof ApiIptvPasteBodyRoute
   '/api/iptv-promote-backfill': typeof ApiIptvPromoteBackfillRoute
+  '/api/iptv-stalker-note-backfill': typeof ApiIptvStalkerNoteBackfillRoute
   '/api/posthog-persons': typeof ApiPosthogPersonsRoute
   '/api/r2-download-stats': typeof ApiR2DownloadStatsRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -209,6 +219,7 @@ export interface FileRouteTypes {
     | '/api/iptv-deep-ref-reprocess'
     | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
+    | '/api/iptv-stalker-note-backfill'
     | '/api/posthog-persons'
     | '/api/r2-download-stats'
     | '/auth/callback'
@@ -229,6 +240,7 @@ export interface FileRouteTypes {
     | '/api/iptv-deep-ref-reprocess'
     | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
+    | '/api/iptv-stalker-note-backfill'
     | '/api/posthog-persons'
     | '/api/r2-download-stats'
     | '/auth/callback'
@@ -250,6 +262,7 @@ export interface FileRouteTypes {
     | '/api/iptv-deep-ref-reprocess'
     | '/api/iptv-paste-body'
     | '/api/iptv-promote-backfill'
+    | '/api/iptv-stalker-note-backfill'
     | '/api/posthog-persons'
     | '/api/r2-download-stats'
     | '/auth/callback'
@@ -266,6 +279,7 @@ export interface RootRouteChildren {
   ApiIptvDeepRefReprocessRoute: typeof ApiIptvDeepRefReprocessRoute
   ApiIptvPasteBodyRoute: typeof ApiIptvPasteBodyRoute
   ApiIptvPromoteBackfillRoute: typeof ApiIptvPromoteBackfillRoute
+  ApiIptvStalkerNoteBackfillRoute: typeof ApiIptvStalkerNoteBackfillRoute
   ApiPosthogPersonsRoute: typeof ApiPosthogPersonsRoute
   ApiR2DownloadStatsRoute: typeof ApiR2DownloadStatsRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -385,6 +399,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIptvPromoteBackfillRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/iptv-stalker-note-backfill': {
+      id: '/api/iptv-stalker-note-backfill'
+      path: '/api/iptv-stalker-note-backfill'
+      fullPath: '/api/iptv-stalker-note-backfill'
+      preLoaderRoute: typeof ApiIptvStalkerNoteBackfillRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/posthog-persons': {
       id: '/api/posthog-persons'
       path: '/api/posthog-persons'
@@ -469,6 +490,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIptvDeepRefReprocessRoute: ApiIptvDeepRefReprocessRoute,
   ApiIptvPasteBodyRoute: ApiIptvPasteBodyRoute,
   ApiIptvPromoteBackfillRoute: ApiIptvPromoteBackfillRoute,
+  ApiIptvStalkerNoteBackfillRoute: ApiIptvStalkerNoteBackfillRoute,
   ApiPosthogPersonsRoute: ApiPosthogPersonsRoute,
   ApiR2DownloadStatsRoute: ApiR2DownloadStatsRoute,
   AuthCallbackRoute: AuthCallbackRoute,

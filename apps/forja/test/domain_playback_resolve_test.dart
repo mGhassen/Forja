@@ -28,6 +28,8 @@ void main() {
           'kisskh.ovh',
           'kisskh.la',
           'kisskh.do',
+          'kisskh.is',
+          'kisskh.id',
         ],
         settingsOrder: const ['kisskh.co'],
       );
@@ -37,6 +39,8 @@ void main() {
         'kisskh.ovh',
         'kisskh.la',
         'kisskh.do',
+        'kisskh.is',
+        'kisskh.id',
       ]);
       expect(order.orderedIds.first, 'kisskh.co');
       expect(order.rows.every((r) => r.supported), isTrue);

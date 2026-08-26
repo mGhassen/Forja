@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/select'
 import { adminDb } from '@/lib/admin-db'
 import { catalogVerify } from '@/lib/catalog-verify'
+import { stalkerNoteBackfill } from '@/lib/stalker-note-backfill'
 import {
   candidateHost,
   fetchPoolHostPortals,
@@ -291,6 +292,7 @@ export function AdminPoolPage() {
   const [selected, setSelected] = useState<Map<string, PoolCand>>(() => new Map())
   const [bulkBusy, setBulkBusy] = useState(false)
   const [confirmBulkRemove, setConfirmBulkRemove] = useState(false)
+  const [noteBackfillBusy, setNoteBackfillBusy] = useState(false)
 
   const filters = useMemo(
     () => ({
@@ -871,15 +873,55 @@ export function AdminPoolPage() {
     }
   }
 
+  async function runStalkerNoteBackfill() {
+    setActionError(null)
+    setActionInfo(null)
+    setNoteBackfillBusy(true)
+    let rounds = 0
+    let junctions = 0
+    let portals = 0
+    let fetchesFailed = 0
+    try {
+      for (;;) {
+        const res = await stalkerNoteBackfill({ limit: 25 })
+        rounds += 1
+        junctions += res.junctionsPatched
+        portals += res.portalsPatched
+        fetchesFailed += res.fetchFailed
+        if (res.done || res.deepRefs === 0 || rounds >= 40) break
+      }
+      await qc.invalidateQueries({ queryKey: ['admin', 'pool'] })
+      setActionInfo(
+        `Stalker note backfill: ${junctions} junction · ${portals} portal` +
+          (fetchesFailed ? ` · ${fetchesFailed} paste fetch fail` : ''),
+      )
+    } catch (e) {
+      setActionError(errMessage(e, 'Stalker note backfill failed'))
+    } finally {
+      setNoteBackfillBusy(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Pool"
         description="All portals, grouped by host. Filter deal inventory vs the rest. Check status, assign, or remove from the deal pool."
         actions={
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/scrape">Scrape control</Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={noteBackfillBusy}
+              onClick={() => void runStalkerNoteBackfill()}
+            >
+              {noteBackfillBusy ? 'Backfilling notes…' : 'Backfill stalker notes'}
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/scrape">Scrape control</Link>
+            </Button>
+          </div>
         }
       />
 

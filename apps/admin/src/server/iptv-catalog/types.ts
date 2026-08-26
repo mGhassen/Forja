@@ -9,6 +9,11 @@ export type CatalogPortal = {
   postId?: string
   /** From note card / get.php — filled on scrape upsert (alive stays null). */
   expiry?: string | null
+  /**
+   * Scrape note expires (Stalker paste). Copied to iptv_portals.note;
+   * Check status does not overwrite.
+   */
+  note?: string | null
   maxConnections?: string | null
   timezone?: string | null
   regionPrimary?: string
@@ -31,6 +36,8 @@ export type DeepRefPortalHit = {
   username: string
   password: string
   expiry?: string | null
+  /** Scrape note expires — same as CatalogPortal.note. */
+  note?: string | null
   maxConnections?: string | null
   timezone?: string | null
   regionPrimary?: string
@@ -66,6 +73,7 @@ export function dedupeDeepRefPortalHits(
           ? hit.password
           : prev.password,
       expiry: prev.expiry ?? hit.expiry ?? null,
+      note: prev.note ?? hit.note ?? null,
       maxConnections: prev.maxConnections ?? hit.maxConnections ?? null,
       timezone: prev.timezone ?? hit.timezone ?? null,
       regionPrimary: prev.regionPrimary ?? hit.regionPrimary,

@@ -38,6 +38,8 @@ class StreamProviderDisplay {
     'kisskh.ovh': 'kisskh.ovh',
     'kisskh.la': 'kisskh.la',
     'kisskh.do': 'kisskh.do',
+    'kisskh.is': 'kisskh.is',
+    'kisskh.id': 'kisskh.id',
     'torrent': 'Torrent',
   };
 

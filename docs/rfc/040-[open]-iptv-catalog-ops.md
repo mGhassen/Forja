@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **27 / 29** acceptance (dealPortal flag; AI deferred; Stalker verify shipped) |
-| **Current slice** | Issue 142 — portal provenance trim; acceptance QA open |
+| **Progress** | **5 / 5** components · **28 / 30** acceptance (dealPortal flag; AI deferred; Stalker note/expiry) |
+| **Current slice** | Stalker pool Note (scrape expires) + paste backfill |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -60,6 +60,7 @@
 | 27 | R40-A27 | Collect all Reddit pages into DB stubs, then process pending deep_refs (paste/extract) | ✅ |
 | 28 | R40-A28 | `iptv_portals` product-only: drop `post_id` + `layer`; scrape lineage via deep_ref_portals | ✅ |
 | 29 | R40-A29 | Admin Pool Check status: Stalker handshake + get_profile (not player_api); M3U playlist probe | ✅ |
+| 30 | R40-A30 | Stalker scrape expires → `note` + `expiry`; Pool card Note line; paste backfill for missing | ✅ |
 
 ---
 

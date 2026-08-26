@@ -1,4 +1,4 @@
-import { CalendarDays, Users } from 'lucide-react'
+import { CalendarDays, StickyNote, Users } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
@@ -13,6 +13,8 @@ export type IptvPortalCardData = {
   url: string
   alive: boolean | null
   expiry?: string | null
+  /** Scrape note expires (Stalker paste). */
+  note?: string | null
   max_connections?: string | null
   catalog_pool?: boolean
   deep_ref_id?: string | null
@@ -99,6 +101,7 @@ export function IptvPortalCardBody({
   const seats = seatsTone(portal.max_connections)
   const status = aliveTone(portal.alive)
   const inPool = portal.catalog_pool === true
+  const note = (portal.note ?? '').trim()
 
   return (
     <div className="min-w-0 flex-1 space-y-1">
@@ -111,6 +114,14 @@ export function IptvPortalCardBody({
         <CalendarDays className="size-3 shrink-0" />
         <span className="truncate">{expiry.label}</span>
       </p>
+      {note ? (
+        <p className="flex items-center gap-1.5 text-[11px] text-forja-muted">
+          <StickyNote className="size-3 shrink-0" />
+          <span className="truncate" title={note}>
+            Note: {note}
+          </span>
+        </p>
+      ) : null}
       <p className="flex min-w-0 items-center gap-2">
         <span
           className={cn(

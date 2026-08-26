@@ -24,6 +24,8 @@ class KissKhService {
     'kisskh.ovh',
     'kisskh.la',
     'kisskh.do',
+    'kisskh.is',
+    'kisskh.id',
   ];
 
   /// In-memory filtered hub feeds keyed by `type|country`.
