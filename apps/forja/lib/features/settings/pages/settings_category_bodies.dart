@@ -762,11 +762,9 @@ class SettingsAboutPageBody extends ConsumerWidget {
         SettingsGroup(
           label: 'Privacy',
           children: [
+            const SettingsCrashReportingRow(),
             const SettingsProductAnalyticsRow(),
-            if (isAdmin) ...[
-              const SettingsCrashReportingRow(),
-              if (Platform.isMacOS) const SettingsMacOsKeychainRow(),
-            ],
+            if (isAdmin && Platform.isMacOS) const SettingsMacOsKeychainRow(),
           ],
         ),
         if (showSplashPreview)

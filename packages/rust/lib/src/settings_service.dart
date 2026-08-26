@@ -728,7 +728,7 @@ class SettingsService {
     normalizeLiveStreamResolve(mode),
   );
 
-  /// Crash reporting to Sentry (RFC-043). Default on; Settings toggle admin-only.
+  /// Crash reporting to Sentry (RFC-043). Default on; Settings → About for everyone.
   Future<bool> isCrashReportingEnabled() async =>
       kvGetBool(_crashReportingEnabledKey, fallback: true);
 

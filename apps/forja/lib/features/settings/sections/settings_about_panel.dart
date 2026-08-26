@@ -97,11 +97,10 @@ class _SettingsCrashReportingRowState
     return SettingsToggleRow(
       title: 'Crash reporting',
       subtitle: Telemetry.isConfigured
-          ? 'Send anonymized crash reports to help fix bugs. On by default.'
-          : 'Unavailable in this build (no Sentry DSN). Preference still saved.',
+          ? 'Sends crash details so we can fix bugs. No passwords or stream links. On by default.'
+          : 'Not available in this build. Your choice is still saved.',
       value: enabled,
       onChanged: _setCrashReporting,
-      adminOnly: true,
     );
   }
 
@@ -110,9 +109,7 @@ class _SettingsCrashReportingRowState
     ref.invalidate(crashReportingEnabledProvider);
     if (!mounted) return;
     if (value && !Telemetry.isConfigured) {
-      ForjaToast.info(
-        'Crash reporting will activate once this build includes a Sentry DSN.',
-      );
+      ForjaToast.info('Crash reporting is not available in this build yet.');
     } else if (value && Telemetry.isActive) {
       ForjaToast.success('Crash reporting on');
     } else if (!value) {
@@ -139,8 +136,8 @@ class _SettingsProductAnalyticsRowState
     return SettingsToggleRow(
       title: 'Product analytics',
       subtitle: ProductAnalytics.isConfigured
-          ? 'Anonymous usage events + session replay (text/images masked). On by default.'
-          : 'Unavailable in this build (no PostHog API key). Preference still saved.',
+          ? 'Shares how you use Forja so we can improve it. On by default.'
+          : 'Not available in this build. Your choice is still saved.',
       value: enabled,
       onChanged: _setEnabled,
     );
@@ -151,9 +148,7 @@ class _SettingsProductAnalyticsRowState
     ref.invalidate(productAnalyticsEnabledProvider);
     if (!mounted) return;
     if (value && !ProductAnalytics.isConfigured) {
-      ForjaToast.info(
-        'Analytics will activate once this build includes a PostHog API key.',
-      );
+      ForjaToast.info('Product analytics is not available in this build yet.');
     } else if (value && ProductAnalytics.isActive) {
       ForjaToast.success('Product analytics on');
     } else if (!value) {
