@@ -532,6 +532,10 @@ class LiveGoatUnlock {
     }
   }
 
+  /// CDN Referer for unlocked `*.indianservers.st` playlists.
+  ///
+  /// Use the embed **path** only — `?gid=` on Referer makes nginx 403 the
+  /// master m3u8. Unlock `/fetch` still sends gid; playback must not.
   static Map<String, String> playbackHeadersForEmbedIndia(
     Map<String, dynamic> slot, {
     String? embedUrl,
@@ -541,12 +545,18 @@ class LiveGoatUnlock {
       '',
     );
     final path = (slot['path'] ?? '').toString();
-    final gid = (slot['gid'] ?? '').toString();
-    final referer = (embedUrl ?? '').trim().isNotEmpty
-        ? embedUrl!.trim()
-        : gid.isNotEmpty
-        ? '$origin/embed/$path?gid=${Uri.encodeQueryComponent(gid)}'
-        : '$origin/embed/$path';
+    final fromEmbed = (embedUrl ?? '').trim();
+    String referer;
+    if (fromEmbed.isNotEmpty) {
+      final u = Uri.tryParse(fromEmbed);
+      referer = (u != null && u.hasScheme && u.path.isNotEmpty)
+          ? '$origin${u.path}'
+          : (path.isNotEmpty ? '$origin/embed/$path' : '$origin/');
+    } else if (path.isNotEmpty) {
+      referer = '$origin/embed/$path';
+    } else {
+      referer = '$origin/';
+    }
     return {'Referer': referer, 'Origin': origin, 'User-Agent': _ua};
   }
 

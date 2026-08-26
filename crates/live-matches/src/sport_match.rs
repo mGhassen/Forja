@@ -388,6 +388,12 @@ impl EventScore {
 }
 
 /// Pick at most `max` candidate indices to fetch short EPG for.
+///
+/// Prefers channels whose **name/category** already hint at the match.
+/// For **team** games, pads up to `max` with the rest of the (category-filtered)
+/// set so programme titles on ESPN / beIN / etc. can match when channel names
+/// omit the teams. For **event** games (wrestling, F1, …), an empty name/sport
+/// prefilter still returns nothing — avoids blind EPG scans of unrelated folders.
 pub fn indices_for_epg(game: &MatchGame, candidates: &[Candidate], max: usize) -> Vec<usize> {
     if max == 0 || candidates.is_empty() {
         return vec![];
@@ -408,11 +414,30 @@ pub fn indices_for_epg(game: &MatchGame, candidates: &[Candidate], max: usize) -
         }
     }
     scored.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-    if scored.is_empty() {
-        return vec![];
+
+    let mut out = Vec::with_capacity(max);
+    let mut taken = std::collections::HashSet::with_capacity(max);
+    for (i, _) in scored.into_iter().take(max) {
+        out.push(i);
+        taken.insert(i);
     }
-    scored.truncate(max);
-    scored.into_iter().map(|(i, _)| i).collect()
+
+    if !game.is_team_game() {
+        return out;
+    }
+
+    // Team games: fill remaining EPG budget so network channels can match via EPG.
+    if out.len() < max {
+        for i in 0..candidates.len() {
+            if out.len() >= max {
+                break;
+            }
+            if taken.insert(i) {
+                out.push(i);
+            }
+        }
+    }
+    out
 }
 
 fn team_prefilter_rank(game: &MatchGame, c: &Candidate) -> i32 {
@@ -741,8 +766,28 @@ mod tests {
         cands[50].category_label = "MLB".into();
 
         let idxs = indices_for_epg(&g, &cands, 10);
-        assert_eq!(idxs.len(), 1, "only channels that score for this game");
+        assert_eq!(idxs.len(), 10, "name hits first, then pad to EPG cap");
         assert_eq!(idxs[0], 50);
+    }
+
+    #[test]
+    fn epg_indices_empty_name_prefilter_pads_to_cap() {
+        let g = game();
+        let mut cands = Vec::new();
+        for i in 0..200 {
+            cands.push(Candidate {
+                name: format!("ESPN {i}"),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: format!("https://x/{i}.m3u8"),
+                category_label: "Sports".into(),
+                logo: String::new(),
+                stream_id: format!("{i}"),
+                epg_channel_id: String::new(),
+            });
+        }
+        let idxs = indices_for_epg(&g, &cands, 10);
+        assert_eq!(idxs, (0..10).collect::<Vec<_>>());
     }
 
     #[test]

@@ -149,6 +149,32 @@ void main() {
     });
   });
 
+  group('LiveGoatUnlock.playbackHeadersForEmbedIndia', () {
+    test('strips gid from Referer (CDN 403s with query)', () {
+      final slot = LiveGoatUnlock.parseEmbedIndiaSlot(
+        'https://embedindia.st/embed/nfl/2025-08-23/chiefs-vs-bills?gid=42',
+      )!;
+      final h = LiveGoatUnlock.playbackHeadersForEmbedIndia(
+        slot,
+        embedUrl:
+            'https://embedindia.st/embed/nfl/2025-08-23/chiefs-vs-bills?gid=42',
+      );
+      expect(
+        h['Referer'],
+        'https://embedindia.st/embed/nfl/2025-08-23/chiefs-vs-bills',
+      );
+      expect(h['Origin'], 'https://embedindia.st');
+    });
+
+    test('path-only when embedUrl omitted', () {
+      final slot = LiveGoatUnlock.parseEmbedIndiaSlot(
+        'https://embedindia.st/embed/mlb/2025-08-23/foo?gid=9',
+      )!;
+      final h = LiveGoatUnlock.playbackHeadersForEmbedIndia(slot);
+      expect(h['Referer'], 'https://embedindia.st/embed/mlb/2025-08-23/foo');
+    });
+  });
+
   group('LiveGoatUnlock.parseEmbedIndiaSlot', () {
     test('parses league/date/slug/gid path', () {
       final slot = LiveGoatUnlock.parseEmbedIndiaSlot(

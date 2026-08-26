@@ -278,6 +278,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<Map<String, dynamic>> _nuvioStreams = [];
   List<NuvioAddon> _nuvioAddons = [];
   Set<String> _nuvioSelectedScraperIds = {};
+  bool _nuvioAllMode = false;
   Set<String> _nuvioFetchedScraperIds = {};
   /// Soft-cancelled while in-flight — discard late results.
   final Set<String> _nuvioDiscardScraperIds = {};
@@ -290,6 +291,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<Map<String, dynamic>> _engineStreams = [];
   List<EnginePack> _enginePacks = [];
   Set<String> _engineSelectedPluginIds = {};
+  bool _engineAllMode = false;
   Set<String> _engineFetchedPluginIds = {};
   /// Soft-cancelled while in-flight — discard late results without abortAll.
   final Set<String> _engineDiscardPluginIds = {};
@@ -794,8 +796,24 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _showEngine = hasEngine;
       _nuvioAddons = nuvioAddons;
       _nuvioSelectedScraperIds = nuvioSelected;
+      _nuvioAllMode = nuvioFullAllSelected(
+        enabledIds: enabledNuvioScraperIds(nuvioAddons),
+        selectedIds: nuvioSelected,
+      );
       _enginePacks = enginePacks;
       _engineSelectedPluginIds = engineSelected;
+      final engineScope = EngineCategories.matchingPluginIds(
+        packs: enginePacks,
+        categories: EngineCategories.defaultsForPanelCategory(
+          _enginePanelCategory,
+        ),
+      );
+      _engineAllMode = engineFullAllSelected(
+        enabledIds: engineScope.isNotEmpty
+            ? engineScope
+            : enabledEnginePluginIds(enginePacks),
+        selectedIds: engineSelected,
+      );
       _streamAddons = addons;
       _panelSourceIdByKind
         ..clear()
@@ -2662,6 +2680,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _selectedSourceId = 'all_nuvio';
         _error = null;
         _nuvioSelectedScraperIds = next;
+        _nuvioAllMode = !clearing;
         if (clearing) {
           _nuvioAbortWork(clearFetched: false);
         }
@@ -2676,13 +2695,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final scraperId = id.substring('nuvio:'.length);
       final enabled = enabledNuvioScraperIds(_nuvioAddons);
       final prev = _nuvioSelectedScraperIds;
-      final fullAll = nuvioFullAllSelected(
-        enabledIds: enabled,
-        selectedIds: prev,
-      );
+      final allMode = _nuvioAllMode ||
+          nuvioFullAllSelected(enabledIds: enabled, selectedIds: prev);
       final wasSelected = prev.contains(scraperId);
       final fetched = _nuvioFetchedScraperIds.contains(scraperId);
-      if (!fullAll &&
+      if (!allMode &&
           wasSelected &&
           !fetched &&
           !_nuvioInFlightScraperIds.contains(scraperId)) {
@@ -2693,11 +2710,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         selectedIds: prev,
         enabledIds: enabled,
         scraperId: scraperId,
+        allMode: allMode,
       );
       setState(() {
         _selectedSourceId = 'all_nuvio';
         _error = null;
         _nuvioSelectedScraperIds = next;
+        _nuvioAllMode = false;
         _nuvioInFlightScraperIds.removeWhere((id) => !next.contains(id));
         if (next.isEmpty) {
           _nuvioAbortWork(clearFetched: false);
@@ -2749,6 +2768,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _selectedSourceId = 'all_engine';
         _error = null;
         _engineSelectedPluginIds = next;
+        _engineAllMode = !clearing;
         if (refetch.isNotEmpty) {
           _engineFetchedPluginIds = Set<String>.from(_engineFetchedPluginIds)
             ..removeAll(refetch);
@@ -2786,13 +2806,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             ))
               s.id,
       };
-      final fullAll = engineFullAllSelected(
-        enabledIds: visible,
-        selectedIds: selected,
-      );
+      final allMode = _engineAllMode ||
+          engineFullAllSelected(enabledIds: visible, selectedIds: selected);
       final wasSelected = selected.contains(pluginId);
       final fetched = _engineFetchedPluginIds.contains(pluginId);
-      if (!fullAll &&
+      if (!allMode &&
           wasSelected &&
           !fetched &&
           !_engineInFlightPluginIds.contains(pluginId)) {
@@ -2803,11 +2821,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         selectedIds: selected,
         enabledIds: visible,
         pluginId: pluginId,
+        allMode: allMode,
       );
       setState(() {
         _selectedSourceId = 'all_engine';
         _error = null;
         _engineSelectedPluginIds = next;
+        _engineAllMode = false;
         _engineInFlightPluginIds.removeWhere((id) => !next.contains(id));
         if (next.isEmpty) {
           _engineAbortWork(clearFetched: false);
@@ -2985,6 +3005,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           selectedSourceId: _selectedSourceId,
           nuvioSelectedScraperIds: _nuvioSelectedScraperIds,
           engineSelectedPluginIds: _engineSelectedPluginIds,
+          nuvioAllMode: _nuvioAllMode,
+          engineAllMode: _engineAllMode,
           loadingChipIds: _loadingChipIds,
           onProviderTap: _onChipTap,
           onProviderCancel: _onChipCancel,

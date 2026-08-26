@@ -459,6 +459,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         _s._selectedSourceId = 'all_nuvio';
         _s._errorMessage = null;
         _s._nuvioSelectedScraperIds = next;
+        _s._nuvioAllMode = !clearing;
         if (clearing) {
           _s._nuvioAbortWork(clearFetched: false);
         }
@@ -473,13 +474,11 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       final scraperId = id.substring('nuvio:'.length);
       final enabled = enabledNuvioScraperIds(_s._nuvioAddons);
       final prev = _s._nuvioSelectedScraperIds;
-      final fullAll = nuvioFullAllSelected(
-        enabledIds: enabled,
-        selectedIds: prev,
-      );
+      final allMode = _s._nuvioAllMode ||
+          nuvioFullAllSelected(enabledIds: enabled, selectedIds: prev);
       final wasSelected = prev.contains(scraperId);
       final fetched = _s._nuvioFetchedScraperIds.contains(scraperId);
-      if (!fullAll &&
+      if (!allMode &&
           wasSelected &&
           !fetched &&
           !_s._nuvioInFlightScraperIds.contains(scraperId)) {
@@ -490,11 +489,13 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         selectedIds: prev,
         enabledIds: enabled,
         scraperId: scraperId,
+        allMode: allMode,
       );
       setState(() {
         _s._selectedSourceId = 'all_nuvio';
         _s._errorMessage = null;
         _s._nuvioSelectedScraperIds = next;
+        _s._nuvioAllMode = false;
         _s._nuvioInFlightScraperIds.removeWhere((id) => !next.contains(id));
         if (next.isEmpty) {
           _s._nuvioAbortWork(clearFetched: false);
@@ -547,6 +548,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         _s._selectedSourceId = EngineIds.allChip;
         _s._errorMessage = null;
         _s._engineSelectedPluginIds = next;
+        _s._engineAllMode = !clearing;
         if (refetch.isNotEmpty) {
           _s._engineFetchedPluginIds = Set<String>.from(
             _s._engineFetchedPluginIds,
@@ -581,13 +583,11 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
             ))
               s.id,
       };
-      final fullAll = engineFullAllSelected(
-        enabledIds: visible,
-        selectedIds: selected,
-      );
+      final allMode = _s._engineAllMode ||
+          engineFullAllSelected(enabledIds: visible, selectedIds: selected);
       final wasSelected = selected.contains(pluginId);
       final fetched = _s._engineFetchedPluginIds.contains(pluginId);
-      if (!fullAll &&
+      if (!allMode &&
           wasSelected &&
           !fetched &&
           !_s._engineInFlightPluginIds.contains(pluginId)) {
@@ -598,11 +598,13 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         selectedIds: selected,
         enabledIds: visible,
         pluginId: pluginId,
+        allMode: allMode,
       );
       setState(() {
         _s._selectedSourceId = EngineIds.allChip;
         _s._errorMessage = null;
         _s._engineSelectedPluginIds = next;
+        _s._engineAllMode = false;
         _s._engineInFlightPluginIds.removeWhere((id) => !next.contains(id));
         if (next.isEmpty) {
           _s._engineAbortWork(clearFetched: false);

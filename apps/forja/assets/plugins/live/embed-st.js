@@ -348,11 +348,20 @@ function encodeEmbedIndiaBody(path) {
 }
 
 function playbackHeadersForEmbedIndia(slot, embedUrl) {
+  // Path only — ?gid= on Referer 403s *.indianservers.st (nginx). Unlock /fetch still uses gid.
   var origin = (slot.origin || embedIndiaOrigin({})).replace(/\/$/, '');
-  var referer = String(embedUrl || '').trim();
-  if (!referer) {
-    var gid = String(slot.gid || '');
-    referer = origin + '/embed/' + slot.path + (gid ? '?gid=' + encodeURIComponent(gid) : '');
+  var path = String(slot.path || '');
+  var fromEmbed = String(embedUrl || '').trim();
+  var referer;
+  if (fromEmbed) {
+    try {
+      var u = new URL(fromEmbed);
+      referer = origin + u.pathname;
+    } catch (_) {
+      referer = path ? origin + '/embed/' + path : origin + '/';
+    }
+  } else {
+    referer = path ? origin + '/embed/' + path : origin + '/';
   }
   return { Referer: referer, Origin: origin, 'User-Agent': ua() };
 }

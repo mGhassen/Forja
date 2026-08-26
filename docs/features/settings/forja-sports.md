@@ -33,7 +33,7 @@ On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS sc
 
 - Catalog = same enabled Catalog JS as Forja Live / All, plus ESPN enrichment when that catalog is on — ESPN supplies team names for portal match; the catalog grid drives the cards
 - Portal is only in Live Matches / IPTV Portals (not Settings)
-- Matching tokenizes the event title, teams, and sport chip, then scores **channel name**, **folder/genre name**, and **short EPG** (no hardcoded venue/sport alias lists)
+- Matching tokenizes the event title, teams, and sport chip, then scores **channel name**, **folder/genre name**, and **short EPG** (no hardcoded venue/sport alias lists). For team sports, name hits are preferred for EPG lookups; if few/none mention the teams, Forja still short-EPGs up to **120** channels in your mapped folders so programme titles on ESPN / beIN / etc. can match
 - Channel match results are remembered for **30 minutes** per match and portal when channels were found (app restart clears them); **no channels** is retried on the next open
 - **Stalker:** matched rows keep the channel cmd (not a play URL). Forja calls `create_link` when you pick a channel — links expire, so they are not cached as durable URLs
 - No channels on deck after retry means the portal had no channel name/EPG hit for that game

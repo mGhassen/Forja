@@ -469,6 +469,8 @@ class TorrentSourceChips extends StatefulWidget {
     required this.selectedSourceId,
     required this.nuvioSelectedScraperIds,
     this.engineSelectedPluginIds = const {},
+    this.nuvioAllMode,
+    this.engineAllMode,
     this.loadingChipIds = const {},
     required this.onChipTap,
     this.onChipCancel,
@@ -481,6 +483,10 @@ class TorrentSourceChips extends StatefulWidget {
   final String selectedSourceId;
   final Set<String> nuvioSelectedScraperIds;
   final Set<String> engineSelectedPluginIds;
+
+  /// When non-null, drives All-chip chrome instead of inferring from selection.
+  final bool? nuvioAllMode;
+  final bool? engineAllMode;
   final Set<String> loadingChipIds;
   final ValueChanged<String> onChipTap;
 
@@ -527,6 +533,7 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
           for (final o in widget.options)
             if (o.id.startsWith('nuvio:')) o.id.substring('nuvio:'.length),
         ],
+        allMode: widget.nuvioAllMode,
       );
     }
     if (option.id == EngineIds.allChip ||
@@ -539,6 +546,7 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
             if (o.id.startsWith(EngineIds.prefix))
               o.id.substring(EngineIds.prefix.length),
         ],
+        allMode: widget.engineAllMode,
       );
     }
     return torrentProviderChipSelected(

@@ -163,6 +163,7 @@ void main() {
           optionId: EngineIds.allChip,
           selectedPluginIds: selected,
           visiblePluginIds: visible,
+          allMode: true,
         ),
         isTrue,
       );
@@ -171,6 +172,7 @@ void main() {
           optionId: EngineIds.pluginChip('videasy'),
           selectedPluginIds: selected,
           visiblePluginIds: visible,
+          allMode: true,
         ),
         isFalse,
       );
@@ -179,8 +181,40 @@ void main() {
           optionId: EngineIds.pluginChip('videasy'),
           selectedPluginIds: const {'videasy'},
           visiblePluginIds: visible,
+          allMode: false,
         ),
         isTrue,
+      );
+      // Solo must not keep All lit when only one chip remains visible.
+      expect(
+        engineProviderChipSelected(
+          optionId: EngineIds.allChip,
+          selectedPluginIds: const {'videasy'},
+          visiblePluginIds: const ['videasy'],
+          allMode: false,
+        ),
+        isFalse,
+      );
+      expect(
+        engineProviderChipSelected(
+          optionId: EngineIds.pluginChip('videasy'),
+          selectedPluginIds: const {'videasy'},
+          visiblePluginIds: const ['videasy'],
+          allMode: false,
+        ),
+        isTrue,
+      );
+    });
+
+    test('plugin tap with allMode solos even when selection was full', () {
+      expect(
+        nextEngineSelectedAfterPluginTap(
+          selectedIds: const {'videasy', 'other'},
+          enabledIds: const {'videasy', 'other'},
+          pluginId: 'videasy',
+          allMode: true,
+        ),
+        {'videasy'},
       );
     });
 

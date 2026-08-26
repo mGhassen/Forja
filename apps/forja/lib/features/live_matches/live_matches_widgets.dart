@@ -2396,7 +2396,7 @@ class _LiveMatchesEmbedPlayerScreenState
     final cdnReferer = widget.proxyReferer;
     switch (_androidProfile.kind) {
       case LiveEmbedProviderKind.ppv:
-        // Always full embedindia URL — catalog-only Referer 403s the CDN.
+        // Full embed path (not origin-only); strips ?gid= — see _ppvEmbedStreamHeaders.
         return _ppvEmbedStreamHeaders(widget.embedUrl);
       case LiveEmbedProviderKind.streamed:
         if (cdnReferer != null && cdnReferer.isNotEmpty) {

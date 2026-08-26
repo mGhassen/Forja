@@ -168,13 +168,16 @@ Set<String> nextNuvioSelectedAfterAllTap({
   return alreadyAll ? <String>{} : Set<String>.from(enabledIds);
 }
 
-/// Tap a scraper chip: from full All → solo that scraper; otherwise toggle.
+/// Tap a scraper chip: from All mode → solo that scraper; otherwise toggle.
 Set<String> nextNuvioSelectedAfterScraperTap({
   required Set<String> selectedIds,
   required Set<String> enabledIds,
   required String scraperId,
+  bool? allMode,
 }) {
-  if (nuvioFullAllSelected(enabledIds: enabledIds, selectedIds: selectedIds)) {
+  final inAll = allMode ??
+      nuvioFullAllSelected(enabledIds: enabledIds, selectedIds: selectedIds);
+  if (inAll) {
     return {scraperId};
   }
   if (selectedIds.contains(scraperId)) {
@@ -183,18 +186,20 @@ Set<String> nextNuvioSelectedAfterScraperTap({
   return {...selectedIds, scraperId};
 }
 
-/// All chip only when every enabled scraper is selected; individuals stay dark
-/// under All so one tap can filter without deselecting the rest.
+/// All chip only when [allMode] — individuals stay dark under All so one tap
+/// filters without deselecting the rest.
 bool nuvioProviderChipSelected({
   required String optionId,
   required Set<String> selectedScraperIds,
   required Iterable<String> visibleScraperIds,
+  bool? allMode,
 }) {
   final visible = visibleScraperIds.toSet();
-  final fullAll = nuvioFullAllSelected(
-    enabledIds: visible,
-    selectedIds: selectedScraperIds,
-  );
+  final fullAll = allMode ??
+      nuvioFullAllSelected(
+        enabledIds: visible,
+        selectedIds: selectedScraperIds,
+      );
   if (optionId == 'all_nuvio') return fullAll;
   if (!optionId.startsWith('nuvio:')) return false;
   final scraperId = optionId.substring('nuvio:'.length);

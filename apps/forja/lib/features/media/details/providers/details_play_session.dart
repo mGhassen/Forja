@@ -91,6 +91,10 @@ class DetailsPlaySession {
   Set<String> nuvioSelectedScraperIds = {};
   bool nuvioSelectionHydrated = false;
 
+  /// Sources chip row: All is an exclusive mode (only All lit). Leaving All
+  /// (tap a scraper) clears this even when one scraper remains visible.
+  bool nuvioAllMode = false;
+
   List<Map<String, dynamic>> engineStreams = [];
   bool isEngineFetching = false;
   bool hasEnginePacks = false;
@@ -100,6 +104,9 @@ class DetailsPlaySession {
   List<EnginePack> enginePacks = [];
   Set<String> engineSelectedPluginIds = {};
   bool engineSelectionHydrated = false;
+
+  /// Same contract as [nuvioAllMode] for Forja plugin chips.
+  bool engineAllMode = false;
 
   final Map<String, dynamic> webstreamingProviders = {
     ...StreamProviders.providers,

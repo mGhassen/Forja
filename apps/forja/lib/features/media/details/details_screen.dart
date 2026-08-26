@@ -243,6 +243,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   set _nuvioSelectedScraperIds(Set<String> v) =>
       _play.nuvioSelectedScraperIds = v;
 
+  bool get _nuvioAllMode => _play.nuvioAllMode;
+  set _nuvioAllMode(bool v) => _play.nuvioAllMode = v;
+
   bool get _nuvioSelectionHydrated => _play.nuvioSelectionHydrated;
   set _nuvioSelectionHydrated(bool v) => _play.nuvioSelectionHydrated = v;
 
@@ -272,6 +275,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   Set<String> get _engineSelectedPluginIds => _play.engineSelectedPluginIds;
   set _engineSelectedPluginIds(Set<String> v) =>
       _play.engineSelectedPluginIds = v;
+
+  bool get _engineAllMode => _play.engineAllMode;
+  set _engineAllMode(bool v) => _play.engineAllMode = v;
 
   /// Soft-cancel while in-flight — discard late plugin/scraper results.
   final Set<String> _engineDiscardPluginIds = {};

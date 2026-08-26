@@ -141,6 +141,7 @@ void main() {
           optionId: 'all_nuvio',
           selectedScraperIds: selected,
           visibleScraperIds: visible,
+          allMode: true,
         ),
         isTrue,
       );
@@ -149,6 +150,7 @@ void main() {
           optionId: 'nuvio:a',
           selectedScraperIds: selected,
           visibleScraperIds: visible,
+          allMode: true,
         ),
         isFalse,
       );
@@ -157,8 +159,18 @@ void main() {
           optionId: 'nuvio:a',
           selectedScraperIds: const {'a'},
           visibleScraperIds: visible,
+          allMode: false,
         ),
         isTrue,
+      );
+      expect(
+        nuvioProviderChipSelected(
+          optionId: 'all_nuvio',
+          selectedScraperIds: const {'a'},
+          visibleScraperIds: const ['a'],
+          allMode: false,
+        ),
+        isFalse,
       );
     });
 

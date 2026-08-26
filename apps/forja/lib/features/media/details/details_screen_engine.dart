@@ -49,12 +49,22 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
             enabledIds: enabledIds,
             scope: scope,
           );
+          _s._engineAllMode = engineFullAllSelected(
+            enabledIds: scope.isNotEmpty ? scope : enabledIds,
+            selectedIds: _s._engineSelectedPluginIds,
+          );
           _s._engineSelectionHydrated = true;
         } else {
           _s._engineSelectedPluginIds = filterEngineSelectedPluginIds(
             savedIds: _s._engineSelectedPluginIds,
             enabledIds: enabledIds,
           );
+          if (_s._engineAllMode) {
+            _s._engineAllMode = engineFullAllSelected(
+              enabledIds: scope.isNotEmpty ? scope : enabledIds,
+              selectedIds: _s._engineSelectedPluginIds,
+            );
+          }
         }
       });
     } catch (_) {}

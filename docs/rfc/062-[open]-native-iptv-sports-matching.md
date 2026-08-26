@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **14 / 14** acceptance (Xtream) · **2 / 2** acceptance (ATV EPG cap) · **4 / 4** acceptance (Stalker) · **0 / 3** acceptance (M3U deferred) |
-| **Current slice** | Forja Sports Xtream + Stalker match — M3U/XMLTV deferred |
+| **Progress** | **6 / 6** components · **14 / 14** acceptance (Xtream) · **2 / 2** acceptance (ATV EPG cap) · **4 / 4** acceptance (Stalker) · **1 / 1** acceptance (EPG prefilter pad) · **0 / 3** acceptance (M3U deferred) |
+| **Current slice** | EPG prefilter pads to ≤120 when name hits are thin — M3U/XMLTV deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -66,6 +66,14 @@
 | 2 | R62-A21 | `sport_match_streams` Stalker path: live catalog + MAG short EPG; emit cmd + `epg_channel_id`, empty URL | ✅ |
 | 3 | R62-A22 | Play: deferred `create_link` at channel pick; no durable URL cache; in-player MAG EPG | ✅ |
 | 4 | R62-A23 | Feature doc + changelog for Stalker Forja Sports | ✅ |
+
+---
+
+## Acceptance (EPG prefilter pad)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R62-A24 | Team games: name/cat prefilter empty or thin → still short-EPG up to ≤120 category channels (pad after name hits); event games keep empty-prefilter skip; unit tests | ✅ |
 
 ---
 

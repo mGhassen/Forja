@@ -22,12 +22,22 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
         _s._nuvioAddons = addons;
         if (!_s._nuvioSelectionHydrated) {
           _s._nuvioSelectedScraperIds = saved;
+          _s._nuvioAllMode = nuvioFullAllSelected(
+            enabledIds: enabledIds,
+            selectedIds: saved,
+          );
           _s._nuvioSelectionHydrated = true;
         } else {
           _s._nuvioSelectedScraperIds = filterNuvioSelectedScraperIds(
             savedIds: _s._nuvioSelectedScraperIds,
             enabledIds: enabledIds,
           );
+          if (_s._nuvioAllMode) {
+            _s._nuvioAllMode = nuvioFullAllSelected(
+              enabledIds: enabledIds,
+              selectedIds: _s._nuvioSelectedScraperIds,
+            );
+          }
         }
       });
     } catch (_) {}

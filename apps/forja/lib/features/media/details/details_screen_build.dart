@@ -444,6 +444,8 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
           selectedSourceId: _s._selectedSourceId,
           nuvioSelectedScraperIds: _s._nuvioSelectedScraperIds,
           engineSelectedPluginIds: _s._engineSelectedPluginIds,
+          nuvioAllMode: _s._nuvioAllMode,
+          engineAllMode: _s._engineAllMode,
           loadingChipIds: _s._loadingChipIds(),
           onProviderTap: _s._onSourceChipTap,
           onProviderCancel: _s._onSourceChipCancel,

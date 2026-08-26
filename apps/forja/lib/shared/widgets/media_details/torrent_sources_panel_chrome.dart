@@ -40,6 +40,8 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
     this.selectedSourceId,
     this.nuvioSelectedScraperIds = const {},
     this.engineSelectedPluginIds = const {},
+    this.nuvioAllMode,
+    this.engineAllMode,
     this.loadingChipIds = const {},
     this.onProviderTap,
     this.onProviderCancel,
@@ -91,6 +93,8 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
   final String? selectedSourceId;
   final Set<String> nuvioSelectedScraperIds;
   final Set<String> engineSelectedPluginIds;
+  final bool? nuvioAllMode;
+  final bool? engineAllMode;
   final Set<String> loadingChipIds;
   final ValueChanged<String>? onProviderTap;
   final ValueChanged<String>? onProviderCancel;
@@ -265,6 +269,8 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
         selectedSourceId: widget.selectedSourceId ?? '',
         nuvioSelectedScraperIds: widget.nuvioSelectedScraperIds,
         engineSelectedPluginIds: widget.engineSelectedPluginIds,
+        nuvioAllMode: widget.nuvioAllMode,
+        engineAllMode: widget.engineAllMode,
         loadingChipIds: widget.loadingChipIds,
         onChipTap: widget.onProviderTap!,
         onChipCancel: widget.onProviderCancel,

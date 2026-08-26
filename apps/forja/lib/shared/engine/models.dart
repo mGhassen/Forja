@@ -270,16 +270,19 @@ Set<String> nextEngineSelectedAfterAllTap({
   return allOn ? <String>{} : Set<String>.from(enabledIds);
 }
 
-/// Tap a plugin chip: from full All → solo that plugin; otherwise toggle.
+/// Tap a plugin chip: from All mode → solo that plugin; otherwise toggle.
 Set<String> nextEngineSelectedAfterPluginTap({
   required Set<String> selectedIds,
   required Set<String> enabledIds,
   required String pluginId,
+  bool? allMode,
 }) {
-  if (engineFullAllSelected(
-    enabledIds: enabledIds,
-    selectedIds: selectedIds,
-  )) {
+  final inAll = allMode ??
+      engineFullAllSelected(
+        enabledIds: enabledIds,
+        selectedIds: selectedIds,
+      );
+  if (inAll) {
     return {pluginId};
   }
   if (selectedIds.contains(pluginId)) {
@@ -288,18 +291,21 @@ Set<String> nextEngineSelectedAfterPluginTap({
   return {...selectedIds, pluginId};
 }
 
-/// All chip only when every enabled plugin is selected; individuals stay dark
-/// under All so one tap can filter without deselecting the rest.
+/// All chip only when [allMode] — individuals stay dark under All so one tap
+/// filters without deselecting the rest. [allMode] is explicit so soloing to a
+/// single visible chip does not keep All lit.
 bool engineProviderChipSelected({
   required String optionId,
   required Set<String> selectedPluginIds,
   required Iterable<String> visiblePluginIds,
+  bool? allMode,
 }) {
-  final visible = visiblePluginIds.toList(growable: false);
-  final fullAll = engineFullAllSelected(
-    enabledIds: visible.toSet(),
-    selectedIds: selectedPluginIds,
-  );
+  final visible = visiblePluginIds.toSet();
+  final fullAll = allMode ??
+      engineFullAllSelected(
+        enabledIds: visible,
+        selectedIds: selectedPluginIds,
+      );
   if (optionId == EngineIds.allChip) return fullAll;
   final pluginId = EngineIds.pluginIdFromChip(optionId);
   if (pluginId == null) return false;

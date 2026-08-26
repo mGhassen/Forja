@@ -1980,10 +1980,15 @@ bool _ppvEmbedRequiresWebView(String embedUrl) =>
     liveEmbedRequiresWebViewPlayback(embedUrl);
 
 Map<String, String> _ppvEmbedStreamHeaders(String embedUrl) {
-  final origin = Uri.tryParse(embedUrl)?.origin ?? 'https://embedindia.st';
+  final uri = Uri.tryParse(embedUrl.trim());
+  final origin = uri?.origin ?? 'https://embedindia.st';
+  // Path only — `?gid=` on Referer 403s `*.indianservers.st` (nginx).
+  final referer = (uri != null && uri.hasScheme && uri.path.isNotEmpty)
+      ? '$origin${uri.path}'
+      : embedUrl.trim();
   return {
     'User-Agent': _ua['User-Agent']!,
-    'Referer': embedUrl,
+    'Referer': referer,
     'Origin': origin,
   };
 }
