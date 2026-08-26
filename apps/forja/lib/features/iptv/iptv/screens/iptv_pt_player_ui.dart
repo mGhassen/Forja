@@ -2621,10 +2621,10 @@ PlayerPopupListTile buildIptvSourcePickerTile({
   return PlayerPopupListTile(
     leading: live ? iptvLiveSourceLeading(src) : sourceLogo(src),
     label: src.pickerTitle,
-    badge: live ? src.liveProviderBadge : src.tierBadge,
+    badge: live ? src.liveProviderBadge : null,
     badgeColor: live
         ? iptvLiveProviderBadgeColor(src.liveProviderBadge)
-        : src.tierBadgeColor,
+        : null,
     subtitle: iptvSourcePickerSubtitle(
       src,
       liveSourceKind: liveSourceKind,

@@ -1831,14 +1831,13 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
         onUpEdge: onUpEdge,
       );
     }
-    final badge = source.tierBadge;
     final subtitle = source.pickerSubtitle;
     return SourcesPanelChannelTile(
       title: source.pickerTitle,
       provider: (subtitle == null || subtitle.isEmpty) ? null : subtitle,
       leading: _logo(context),
       footer: _epgFooter(),
-      badges: [if (badge != null) badge],
+      badges: const [],
       onPlay: onTap,
       tvItemIndex: tvItemIndex,
       onUpEdge: onUpEdge,

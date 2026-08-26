@@ -7,6 +7,27 @@ import 'package:forja/shared/widgets/stream_provider_probe.dart';
 
 enum StatusRouletteKind { loading, success, failed, info }
 
+/// RFC-045 open pipeline progress (shown even when [pinSource] hides source rows).
+const kStreamOpenStatusId = 'stream-open';
+
+enum StreamOpenStatusStage { checking, preparing }
+
+String streamOpenStatusLabel(StreamOpenStatusStage stage) => switch (stage) {
+      StreamOpenStatusStage.checking => 'Checking stream…',
+      StreamOpenStatusStage.preparing => 'Preparing stream…',
+    };
+
+void upsertStreamOpenStatus(
+  PlayerStatusController controller,
+  StreamOpenStatusStage stage,
+) {
+  controller.upsert(
+    kStreamOpenStatusId,
+    streamOpenStatusLabel(stage),
+    kind: StatusRouletteKind.loading,
+  );
+}
+
 class StatusRouletteEntry {
   const StatusRouletteEntry({
     required this.id,
@@ -142,6 +163,7 @@ bool playerStatusOverlayVisible(
 bool isStatusRouletteEntry(StatusRouletteEntry entry) {
   if (entry.id == 'buffering') return true;
   if (entry.id == 'playback-failed') return true;
+  if (entry.id == kStreamOpenStatusId) return true;
   if (entry.id.startsWith('source-')) return true;
   if (entry.id.startsWith('provider-')) return true;
   if (entry.id == 'episode-switch') return true;

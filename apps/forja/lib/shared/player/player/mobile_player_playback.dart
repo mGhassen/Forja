@@ -248,6 +248,10 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             streamUrl: catalogUrl,
             providerId: pid,
           );
+          upsertStreamOpenStatus(
+            _s._statusController,
+            StreamOpenStatusStage.checking,
+          );
           final pipeline = await StreamOpenPipeline.start(
             catalogUrl: catalogUrl,
             headers: hdrs,
@@ -259,6 +263,10 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             final step = await pipeline.next();
             if (step == null) break;
 
+            upsertStreamOpenStatus(
+              _s._statusController,
+              StreamOpenStatusStage.preparing,
+            );
             await resetPlayerForOpen(_s._player);
             openUrl = await openPlayerStream(
               _s._player,
@@ -322,6 +330,12 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
           }
           if (!branchOk) {
             debugPrint('[OpenPipeline] all branches failed source $i');
+            _s._statusController.upsert(
+              kStreamOpenStatusId,
+              'Stream failed',
+              kind: StatusRouletteKind.failed,
+              dismissAfter: const Duration(milliseconds: 1200),
+            );
             _s._statusController.upsert(
               'source-$i',
               source.title,

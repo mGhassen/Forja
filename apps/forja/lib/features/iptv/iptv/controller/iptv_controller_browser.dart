@@ -651,7 +651,8 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
   bool? portalHealthFor(String key) => portalHealth[key];
 
-  /// Hover/focus probe - skips when a fresh cache entry exists.
+  /// Hover/focus probe — last dot stays painted until the new result lands;
+  /// every dwell re-probes so a transient red flips back on re-hover/focus.
   /// [delay] defaults to short hover debounce; TV panel rows use a longer dwell.
   void schedulePortalHealthCheck(
     VerifiedPortal v, {
@@ -659,7 +660,6 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   }) {
     final key = v.key;
     if (key.isEmpty) return;
-    if (portalHealth.containsKey(key)) return;
     if (_portalHealthInFlight.contains(key)) return;
     _portalHealthDebounce[key]?.cancel();
     _portalHealthDebounce[key] = Timer(delay, () {
@@ -668,11 +668,10 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     });
   }
 
-  /// Probe when a portal becomes active (select / restore). Cache hit = no-op.
+  /// Probe when a portal becomes active (select / restore).
   void ensurePortalHealth(VerifiedPortal v) {
     final key = v.key;
     if (key.isEmpty) return;
-    if (portalHealth.containsKey(key)) return;
     if (_portalHealthInFlight.contains(key)) return;
     cancelPortalHealthCheck(key);
     unawaited(_runPortalHealthCheck(v));
@@ -698,7 +697,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _portalHealthDebounce.remove(key);
   }
 
-  void _setPortalHealth(String key, bool ok) {
+  /// Write [portalHealth]; returns true when the painted dot changed.
+  bool _recordPortalHealth(String key, bool ok) {
+    final prev = portalHealth[key];
     portalHealth[key] = ok;
     _portalHealthExpiry[key]?.cancel();
     _portalHealthExpiry[key] = Timer(_portalHealthTtl, () {
@@ -710,7 +711,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         unawaited(_runPortalHealthCheck(active));
       }
     });
-    notifyListeners();
+    return prev != ok;
   }
 
   void _cancelAllPortalHealthTimers() {
@@ -726,7 +727,6 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
   Future<void> _runPortalHealthCheck(VerifiedPortal v) async {
     final key = v.key;
-    if (portalHealth.containsKey(key)) return;
     if (!_portalHealthInFlight.add(key)) return;
     notifyListeners();
     try {
@@ -736,12 +736,12 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       );
       if (fresh != null) {
         await _mergePortalAccountInfo(v, fresh);
-        _setPortalHealth(key, true);
+        if (_recordPortalHealth(key, true)) notifyListeners();
       } else {
-        _setPortalHealth(key, false);
+        if (_recordPortalHealth(key, false)) notifyListeners();
       }
     } catch (_) {
-      _setPortalHealth(key, false);
+      if (_recordPortalHealth(key, false)) notifyListeners();
     } finally {
       _portalHealthInFlight.remove(key);
       notifyListeners();

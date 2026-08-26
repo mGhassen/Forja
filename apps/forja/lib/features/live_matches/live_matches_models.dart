@@ -2841,9 +2841,8 @@ List<IptvPlaySource> _parseSportMatchStreamItems(
     final logo = (s['logo'] ?? s['stream_icon'] ?? s['cover'] ?? '')
         .toString()
         .trim();
-    final tier = s['tier'];
     final name = channel.isEmpty ? 'Stream' : channel;
-    final label = tier is num ? 'T$tier · $name' : name;
+    final label = name;
     out.add(IptvPlaySource(
       url: url,
       label: label,
