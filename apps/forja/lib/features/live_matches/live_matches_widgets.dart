@@ -1726,6 +1726,28 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
       source.liveSourceKind == IptvLiveSourceKind.liveEngine ||
       source.liveSourceKind == IptvLiveSourceKind.stremio;
 
+  IptvStream? get _epgStream {
+    final streamId = (source.streamId ?? '').trim();
+    final epgId = (source.epgChannelId ?? '').trim();
+    if (streamId.isEmpty && epgId.isEmpty) return null;
+    return IptvStream(
+      streamId: streamId,
+      name: source.chromeTitle,
+      icon: source.logoUrl ?? '',
+      categoryId: '',
+      containerExt: 'ts',
+      kind: 'live',
+      epgChannelId: epgId,
+    );
+  }
+
+  Widget? _epgFooter() {
+    final ctrl = iptvCtrl;
+    final stream = _epgStream;
+    if (ctrl == null || stream == null) return null;
+    return _IptvSportsEpgNowRow(stream: stream, ctrl: ctrl);
+  }
+
   String get _probeKey {
     final id = (source.streamId ?? '').trim();
     return id.isEmpty ? source.url : id;
@@ -1815,11 +1837,66 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
       title: source.pickerTitle,
       provider: (subtitle == null || subtitle.isEmpty) ? null : subtitle,
       leading: _logo(context),
+      footer: _epgFooter(),
       badges: [if (badge != null) badge],
       onPlay: onTap,
       tvItemIndex: tvItemIndex,
       onUpEdge: onUpEdge,
       onHoverProbe: _hoverProbe,
+    );
+  }
+}
+
+class _IptvSportsEpgNowRow extends StatelessWidget {
+  const _IptvSportsEpgNowRow({required this.stream, required this.ctrl});
+
+  final IptvStream stream;
+  final IptvController ctrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<EpgEntry>>(
+      future: ctrl.epgFor(stream),
+      builder: (_, snap) {
+        final data = snap.data;
+        if (data == null || data.isEmpty) return const SizedBox.shrink();
+        final now = data.firstWhere((e) => e.isNow, orElse: () => data.first);
+        return Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: now.isNow
+                    ? const Color(0xFFEF4444)
+                    : IptvShellStyle.accent.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(
+                now.isNow ? 'NOW' : 'NEXT',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                now.title.isEmpty ? '-' : now.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textSecondary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

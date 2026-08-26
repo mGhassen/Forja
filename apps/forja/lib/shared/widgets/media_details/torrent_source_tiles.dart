@@ -151,6 +151,7 @@ class SourcesPanelChannelTile extends StatelessWidget {
     required this.onPlay,
     this.provider,
     this.leading,
+    this.footer,
     this.badges = const [],
     this.tvItemIndex,
     this.onUpEdge,
@@ -162,6 +163,7 @@ class SourcesPanelChannelTile extends StatelessWidget {
   final VoidCallback onPlay;
   final String? provider;
   final Widget? leading;
+  final Widget? footer;
   final List<String> badges;
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
@@ -175,6 +177,7 @@ class SourcesPanelChannelTile extends StatelessWidget {
       title: title,
       provider: provider,
       leading: leading,
+      footer: footer,
       tvItemIndex: tvItemIndex,
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,
@@ -452,6 +455,7 @@ class _SourceBadgeCard extends StatefulWidget {
     this.isResumable = false,
     this.highlightStart = false,
     this.leading,
+    this.footer,
     this.accentBorder,
     this.accentFill,
     this.provider,
@@ -471,6 +475,7 @@ class _SourceBadgeCard extends StatefulWidget {
   final bool isResumable;
   final bool highlightStart;
   final Widget? leading;
+  final Widget? footer;
   final Color? accentBorder;
   final Color? accentFill;
   final String? provider;
@@ -666,6 +671,10 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                       _SourceMetaBadge(badge: badge),
                                   ],
                                 ),
+                              ],
+                              if (widget.footer != null) ...[
+                                const SizedBox(height: 4),
+                                widget.footer!,
                               ],
                             ],
                           ),
