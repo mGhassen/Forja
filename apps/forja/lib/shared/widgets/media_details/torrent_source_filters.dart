@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
+import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
@@ -95,16 +96,14 @@ List<SourcesPanelProviderOption> torrentProviderChipOptions({
   ];
 }
 
-/// Torrents chip selected chrome — All lights every builtin provider chip
-/// (Nuvio All does the same). Jackett / Prowlarr stay exclusive.
+/// Torrents chip selected chrome — All lights only the All chip (builtins
+/// stay dark so one tap filters). Jackett / Prowlarr stay exclusive.
 bool torrentProviderChipSelected({
   required String optionId,
   required String selectedSourceId,
 }) {
   if (TorrentSearchProviders.isNoneChip(selectedSourceId)) return false;
-  if (selectedSourceId == optionId) return true;
-  final allSelected = TorrentSearchProviders.isAllChip(selectedSourceId);
-  return allSelected && TorrentSearchProviders.isBuiltin(optionId);
+  return selectedSourceId == optionId;
 }
 
 const kTorrentAudioTags = [
@@ -520,30 +519,26 @@ class _TorrentSourceChipsState extends State<TorrentSourceChips> {
   }
 
   bool _chipSelected(SourcesPanelProviderOption option) {
-    if (option.id == 'all_nuvio') {
-      final scraperIds = [
-        for (final o in widget.options)
-          if (o.id.startsWith('nuvio:')) o.id.substring('nuvio:'.length),
-      ];
-      return scraperIds.isNotEmpty &&
-          scraperIds.every(widget.nuvioSelectedScraperIds.contains);
-    }
-    if (option.id.startsWith('nuvio:')) {
-      return widget.nuvioSelectedScraperIds.contains(
-        option.id.substring('nuvio:'.length),
+    if (option.id == 'all_nuvio' || option.id.startsWith('nuvio:')) {
+      return nuvioProviderChipSelected(
+        optionId: option.id,
+        selectedScraperIds: widget.nuvioSelectedScraperIds,
+        visibleScraperIds: [
+          for (final o in widget.options)
+            if (o.id.startsWith('nuvio:')) o.id.substring('nuvio:'.length),
+        ],
       );
     }
-    if (option.id == 'all_engine') {
-      final pluginIds = [
-        for (final o in widget.options)
-          if (o.id.startsWith('engine:')) o.id.substring('engine:'.length),
-      ];
-      return pluginIds.isNotEmpty &&
-          pluginIds.every(widget.engineSelectedPluginIds.contains);
-    }
-    if (option.id.startsWith('engine:')) {
-      return widget.engineSelectedPluginIds.contains(
-        option.id.substring('engine:'.length),
+    if (option.id == EngineIds.allChip ||
+        option.id.startsWith(EngineIds.prefix)) {
+      return engineProviderChipSelected(
+        optionId: option.id,
+        selectedPluginIds: widget.engineSelectedPluginIds,
+        visiblePluginIds: [
+          for (final o in widget.options)
+            if (o.id.startsWith(EngineIds.prefix))
+              o.id.substring(EngineIds.prefix.length),
+        ],
       );
     }
     return torrentProviderChipSelected(

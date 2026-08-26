@@ -106,6 +106,62 @@ void main() {
       );
     });
 
+    test('scraper tap from full All solos that scraper; otherwise toggles', () {
+      expect(
+        nextNuvioSelectedAfterScraperTap(
+          selectedIds: const {'a', 'b'},
+          enabledIds: const {'a', 'b'},
+          scraperId: 'a',
+        ),
+        {'a'},
+      );
+      expect(
+        nextNuvioSelectedAfterScraperTap(
+          selectedIds: const {'a'},
+          enabledIds: const {'a', 'b'},
+          scraperId: 'b',
+        ),
+        {'a', 'b'},
+      );
+      expect(
+        nextNuvioSelectedAfterScraperTap(
+          selectedIds: const {'a', 'b'},
+          enabledIds: const {'a', 'b', 'c'},
+          scraperId: 'a',
+        ),
+        {'b'},
+      );
+    });
+
+    test('All chrome lights only All, not every scraper chip', () {
+      const selected = {'a', 'b'};
+      const visible = ['a', 'b'];
+      expect(
+        nuvioProviderChipSelected(
+          optionId: 'all_nuvio',
+          selectedScraperIds: selected,
+          visibleScraperIds: visible,
+        ),
+        isTrue,
+      );
+      expect(
+        nuvioProviderChipSelected(
+          optionId: 'nuvio:a',
+          selectedScraperIds: selected,
+          visibleScraperIds: visible,
+        ),
+        isFalse,
+      );
+      expect(
+        nuvioProviderChipSelected(
+          optionId: 'nuvio:a',
+          selectedScraperIds: const {'a'},
+          visibleScraperIds: visible,
+        ),
+        isTrue,
+      );
+    });
+
     test('walks remaining selected scrapers until the set is exhausted', () {
       expect(
         shouldContinueNuvioScraperWalk(
@@ -441,7 +497,7 @@ void main() {
     expect(options.first.label, 'All');
   });
 
-  test('torrent All selects every builtin chip, not Jackett', () {
+  test('torrent All lights only All, not every builtin chip', () {
     expect(
       torrentProviderChipSelected(
         optionId: TorrentSearchProviders.allId,
@@ -454,7 +510,7 @@ void main() {
         optionId: TorrentSearchProviders.yts,
         selectedSourceId: TorrentSearchProviders.allId,
       ),
-      isTrue,
+      isFalse,
     );
     expect(
       torrentProviderChipSelected(
@@ -483,6 +539,13 @@ void main() {
         selectedSourceId: TorrentSearchProviders.noneId,
       ),
       isFalse,
+    );
+    expect(
+      torrentProviderChipSelected(
+        optionId: TorrentSearchProviders.yts,
+        selectedSourceId: TorrentSearchProviders.yts,
+      ),
+      isTrue,
     );
   });
 }

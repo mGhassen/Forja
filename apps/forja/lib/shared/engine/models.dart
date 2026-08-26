@@ -270,6 +270,43 @@ Set<String> nextEngineSelectedAfterAllTap({
   return allOn ? <String>{} : Set<String>.from(enabledIds);
 }
 
+/// Tap a plugin chip: from full All → solo that plugin; otherwise toggle.
+Set<String> nextEngineSelectedAfterPluginTap({
+  required Set<String> selectedIds,
+  required Set<String> enabledIds,
+  required String pluginId,
+}) {
+  if (engineFullAllSelected(
+    enabledIds: enabledIds,
+    selectedIds: selectedIds,
+  )) {
+    return {pluginId};
+  }
+  if (selectedIds.contains(pluginId)) {
+    return Set<String>.from(selectedIds)..remove(pluginId);
+  }
+  return {...selectedIds, pluginId};
+}
+
+/// All chip only when every enabled plugin is selected; individuals stay dark
+/// under All so one tap can filter without deselecting the rest.
+bool engineProviderChipSelected({
+  required String optionId,
+  required Set<String> selectedPluginIds,
+  required Iterable<String> visiblePluginIds,
+}) {
+  final visible = visiblePluginIds.toList(growable: false);
+  final fullAll = engineFullAllSelected(
+    enabledIds: visible.toSet(),
+    selectedIds: selectedPluginIds,
+  );
+  if (optionId == EngineIds.allChip) return fullAll;
+  final pluginId = EngineIds.pluginIdFromChip(optionId);
+  if (pluginId == null) return false;
+  if (fullAll) return false;
+  return selectedPluginIds.contains(pluginId);
+}
+
 bool engineStreamBelongsToPlugin(Map<String, dynamic> stream, String pluginId) {
   final id = stream['_enginePluginId'] as String?;
   if (id == pluginId) return true;

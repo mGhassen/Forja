@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/asian_drama/asian_drama_hub_filters.dart';
+import 'package:forja/features/asian_drama/asian_drama_country_categories.dart';
 import 'package:forja/features/asian_drama/providers/asian_drama_providers.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_tmdb_match.dart';
@@ -172,6 +173,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
   @override
   void initState() {
     super.initState();
+    asianDramaSanitizeCountrySelection();
     _scroll.addListener(_syncAsianDramaScrollOffset);
     ShellBus.asianDramaCategory.addListener(_onHubFilterChanged);
     ShellBus.asianDramaSelectedCountryId.addListener(_onHubFilterChanged);

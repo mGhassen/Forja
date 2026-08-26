@@ -168,6 +168,40 @@ Set<String> nextNuvioSelectedAfterAllTap({
   return alreadyAll ? <String>{} : Set<String>.from(enabledIds);
 }
 
+/// Tap a scraper chip: from full All → solo that scraper; otherwise toggle.
+Set<String> nextNuvioSelectedAfterScraperTap({
+  required Set<String> selectedIds,
+  required Set<String> enabledIds,
+  required String scraperId,
+}) {
+  if (nuvioFullAllSelected(enabledIds: enabledIds, selectedIds: selectedIds)) {
+    return {scraperId};
+  }
+  if (selectedIds.contains(scraperId)) {
+    return Set<String>.from(selectedIds)..remove(scraperId);
+  }
+  return {...selectedIds, scraperId};
+}
+
+/// All chip only when every enabled scraper is selected; individuals stay dark
+/// under All so one tap can filter without deselecting the rest.
+bool nuvioProviderChipSelected({
+  required String optionId,
+  required Set<String> selectedScraperIds,
+  required Iterable<String> visibleScraperIds,
+}) {
+  final visible = visibleScraperIds.toSet();
+  final fullAll = nuvioFullAllSelected(
+    enabledIds: visible,
+    selectedIds: selectedScraperIds,
+  );
+  if (optionId == 'all_nuvio') return fullAll;
+  if (!optionId.startsWith('nuvio:')) return false;
+  final scraperId = optionId.substring('nuvio:'.length);
+  if (fullAll) return false;
+  return selectedScraperIds.contains(scraperId);
+}
+
 /// Enabled scraper ids from Sources-panel addons (order not significant).
 Set<String> enabledNuvioScraperIds(Iterable<NuvioAddon> addons) => {
   for (final addon in addons)

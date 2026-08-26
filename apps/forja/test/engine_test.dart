@@ -128,6 +128,62 @@ void main() {
       );
     });
 
+    test('plugin tap from full All solos that plugin; otherwise toggles', () {
+      expect(
+        nextEngineSelectedAfterPluginTap(
+          selectedIds: const {'videasy', 'other'},
+          enabledIds: const {'videasy', 'other'},
+          pluginId: 'videasy',
+        ),
+        {'videasy'},
+      );
+      expect(
+        nextEngineSelectedAfterPluginTap(
+          selectedIds: const {'videasy'},
+          enabledIds: const {'videasy', 'other'},
+          pluginId: 'other',
+        ),
+        {'videasy', 'other'},
+      );
+      expect(
+        nextEngineSelectedAfterPluginTap(
+          selectedIds: const {'videasy', 'other'},
+          enabledIds: const {'videasy', 'other', 'third'},
+          pluginId: 'videasy',
+        ),
+        {'other'},
+      );
+    });
+
+    test('All chrome lights only All, not every plugin chip', () {
+      const selected = {'videasy', 'other'};
+      const visible = ['videasy', 'other'];
+      expect(
+        engineProviderChipSelected(
+          optionId: EngineIds.allChip,
+          selectedPluginIds: selected,
+          visiblePluginIds: visible,
+        ),
+        isTrue,
+      );
+      expect(
+        engineProviderChipSelected(
+          optionId: EngineIds.pluginChip('videasy'),
+          selectedPluginIds: selected,
+          visiblePluginIds: visible,
+        ),
+        isFalse,
+      );
+      expect(
+        engineProviderChipSelected(
+          optionId: EngineIds.pluginChip('videasy'),
+          selectedPluginIds: const {'videasy'},
+          visiblePluginIds: visible,
+        ),
+        isTrue,
+      );
+    });
+
     test('All expand only refetches newly selected never-fetched plugins', () {
       final streams = [
         {

@@ -2674,26 +2674,33 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
-      final wasSelected = _nuvioSelectedScraperIds.contains(scraperId);
+      final enabled = enabledNuvioScraperIds(_nuvioAddons);
+      final prev = _nuvioSelectedScraperIds;
+      final fullAll = nuvioFullAllSelected(
+        enabledIds: enabled,
+        selectedIds: prev,
+      );
+      final wasSelected = prev.contains(scraperId);
       final fetched = _nuvioFetchedScraperIds.contains(scraperId);
-      if (wasSelected &&
+      if (!fullAll &&
+          wasSelected &&
           !fetched &&
           !_nuvioInFlightScraperIds.contains(scraperId)) {
         unawaited(_fetchNextNuvioScraper());
         return;
       }
+      final next = nextNuvioSelectedAfterScraperTap(
+        selectedIds: prev,
+        enabledIds: enabled,
+        scraperId: scraperId,
+      );
       setState(() {
         _selectedSourceId = 'all_nuvio';
         _error = null;
-        if (wasSelected) {
-          _nuvioSelectedScraperIds = Set<String>.from(_nuvioSelectedScraperIds)
-            ..remove(scraperId);
-          _nuvioInFlightScraperIds.remove(scraperId);
-          if (_nuvioSelectedScraperIds.isEmpty) {
-            _nuvioAbortWork(clearFetched: false);
-          }
-        } else {
-          _nuvioSelectedScraperIds = {..._nuvioSelectedScraperIds, scraperId};
+        _nuvioSelectedScraperIds = next;
+        _nuvioInFlightScraperIds.removeWhere((id) => !next.contains(id));
+        if (next.isEmpty) {
+          _nuvioAbortWork(clearFetched: false);
         }
       });
       CatalogSourcesSessionCache.writeNuvio(
@@ -2706,7 +2713,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           _nuvioSelectedScraperIds,
         ),
       );
-      if (!wasSelected && !fetched) {
+      if (next.contains(scraperId) && !fetched) {
         unawaited(_fetchNextNuvioScraper());
       }
       return;
@@ -2767,26 +2774,43 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     if (id.startsWith('engine:')) {
       final pluginId = id.substring('engine:'.length);
-      final wasSelected = _engineSelectedPluginIds.contains(pluginId);
+      final cats = _effectiveEngineCategories;
+      final selected = _engineSelectedPluginIds;
+      final visible = <String>{
+        for (final a in _enginePacks)
+          for (final s in a.plugins)
+            if (EngineCategories.pluginChipVisible(
+              plugin: s,
+              visibleCategories: cats,
+              selectedPluginIds: selected,
+            ))
+              s.id,
+      };
+      final fullAll = engineFullAllSelected(
+        enabledIds: visible,
+        selectedIds: selected,
+      );
+      final wasSelected = selected.contains(pluginId);
       final fetched = _engineFetchedPluginIds.contains(pluginId);
-      if (wasSelected &&
+      if (!fullAll &&
+          wasSelected &&
           !fetched &&
           !_engineInFlightPluginIds.contains(pluginId)) {
         unawaited(_fetchNextEnginePlugin());
         return;
       }
+      final next = nextEngineSelectedAfterPluginTap(
+        selectedIds: selected,
+        enabledIds: visible,
+        pluginId: pluginId,
+      );
       setState(() {
         _selectedSourceId = 'all_engine';
         _error = null;
-        if (wasSelected) {
-          _engineSelectedPluginIds = Set<String>.from(_engineSelectedPluginIds)
-            ..remove(pluginId);
-          _engineInFlightPluginIds.remove(pluginId);
-          if (_engineSelectedPluginIds.isEmpty) {
-            _engineAbortWork(clearFetched: false);
-          }
-        } else {
-          _engineSelectedPluginIds = {..._engineSelectedPluginIds, pluginId};
+        _engineSelectedPluginIds = next;
+        _engineInFlightPluginIds.removeWhere((id) => !next.contains(id));
+        if (next.isEmpty) {
+          _engineAbortWork(clearFetched: false);
         }
       });
       CatalogSourcesSessionCache.writeEngine(
@@ -2800,7 +2824,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           panelCategory: _enginePanelCategory,
         ),
       );
-      if (!wasSelected && !fetched) {
+      if (next.contains(pluginId) && !fetched) {
         unawaited(_fetchNextEnginePlugin());
       }
       return;

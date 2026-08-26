@@ -1,10 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
-import 'package:forja/shared/playback/engine_auto_play.dart';
-import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/playback/playback_service.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
@@ -425,46 +421,6 @@ Future<void> _openDetailsFallback(
   );
 }
 
-/// Same contract as details green Play / Resume when Webstreaming is off:
-/// Forja Auto if enabled, otherwise open details (Sources).
-Future<void> _resumeLikeGreenPlay(
-  BuildContext context, {
-  required Map<String, dynamic> item,
-  required Movie movie,
-  required Duration startPosition,
-}) async {
-  if (await engineAutoPlayEnabled()) {
-    if (!context.mounted) return;
-    final isTv = movie.mediaType == 'tv';
-    final season = item['season'] as int?;
-    final episode = item['episode'] as int?;
-    final s = isTv ? (season ?? 1) : null;
-    final e = isTv ? (episode ?? 1) : null;
-    await runEngineAutoPlay(
-      context: context,
-      movie: movie,
-      engineCategory:
-          EngineCategories.panelCategoryFor(mediaType: movie.mediaType),
-      season: s,
-      episode: e,
-      startPosition: startPosition,
-      stremioId: movie.imdbId,
-      loadingSubtitle: s != null && e != null
-          ? 'S${s.toString().padLeft(2, '0')}E${e.toString().padLeft(2, '0')}'
-          : null,
-    );
-    return;
-  }
-  if (!context.mounted) return;
-  await _openDetailsFallback(
-    context,
-    item: item,
-    movie: movie,
-    startPosition: startPosition,
-    autoPlay: true,
-  );
-}
-
 /// Details-screen fallback when direct resume fails.
 Future<bool> resumeSavedWebStreamProvider({
   required BuildContext context,
@@ -532,109 +488,45 @@ Future<bool> resumeSavedStremioDirectStream({
   );
 }
 
-/// Resumes or replays a title from a watch-history entry (Continue Watching, hero Watch Now).
+/// Resumes or replays a title from a watch-history entry (Home Continue Watching).
+///
+/// Always opens **details** first (then auto-plays when applicable) so Back from
+/// the player lands on that title — never straight onto Home.
 Future<void> resumePlaybackFromHistory(
   BuildContext context,
   Map<String, dynamic> item,
 ) async {
   try {
-    final method = item['method'] as String;
+    final method = item['method'] as String?;
     final movie = movieFromWatchHistory(item);
-    // ≥90% (incl. false early-EOF “finished”) must restart from 0 - raw
+    // ≥85% (incl. false early-EOF “finished”) must restart from 0 - raw
     // position seeks into credits and looks like play is broken.
     final startPos = resumeStartPositionFromProgress(item);
+    if (!context.mounted) return;
 
     switch (method) {
       case 'torrent':
-        final ok = await _resumeTorrentStream(
-          context,
-          item: item,
-          movie: movie,
-          startPosition: startPos,
-        );
-        if (!ok && context.mounted) {
-          ForjaToast.error('Failed to load video');
-        }
-        return;
       case 'stream':
-        final sourceId = item['sourceId'] as String? ?? '';
-        // Green Play owns web sniff only while Webstreaming is on.
-        if (await PlaySourceEffective.webstreaming() &&
-            isWebStreamProviderId(sourceId)) {
-          final ok = await _resumeWebStreamProvider(
-            context,
-            item: item,
-            movie: movie,
-            providerId: sourceId,
-            startPosition: startPos,
-          );
-          if (!ok && context.mounted) {
-            await _resumeLikeGreenPlay(
-              context,
-              item: item,
-              movie: movie,
-              startPosition: startPos,
-            );
-          }
-          return;
-        }
-        if (context.mounted) {
-          await _resumeLikeGreenPlay(
-            context,
-            item: item,
-            movie: movie,
-            startPosition: startPos,
-          );
-        }
-        return;
       case 'amri':
-        if (await PlaySourceEffective.webstreaming()) {
-          final ok = await _resumeAmriStream(
-            context,
-            item: item,
-            movie: movie,
-            startPosition: startPos,
-          );
-          if (ok || !context.mounted) return;
-        }
-        if (context.mounted) {
-          await _resumeLikeGreenPlay(
-            context,
-            item: item,
-            movie: movie,
-            startPosition: startPos,
-          );
-        }
-        return;
       case 'stremio_direct':
-        final ok = await _resumeStremioDirectStream(
+        await _openDetailsFallback(
           context,
           item: item,
           movie: movie,
           startPosition: startPos,
+          autoPlay: true,
         );
-        if (!ok && context.mounted) {
-          await _openDetailsFallback(
-            context,
-            item: item,
-            movie: movie,
-            startPosition: startPos,
-            autoPlay: true,
-          );
-        }
         return;
       case 'trakt_import':
-        if (context.mounted) {
-          await _openDetailsFallback(
-            context,
-            item: item,
-            movie: movie,
-            startPosition: startPos,
-          );
-        }
+        await _openDetailsFallback(
+          context,
+          item: item,
+          movie: movie,
+          startPosition: startPos,
+        );
         return;
       default:
-        if (context.mounted) ForjaToast.error('Failed to load video');
+        ForjaToast.error('Failed to load video');
     }
   } catch (e) {
     debugPrint('[Resume] Error: $e');

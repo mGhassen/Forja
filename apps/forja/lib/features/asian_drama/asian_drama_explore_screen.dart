@@ -175,13 +175,15 @@ class _AsianDramaExploreScreenState extends State<AsianDramaExploreScreen> {
           _filterButton(
             icon: Icons.public_rounded,
             label: 'Region',
-            value: KissKhExploreFilters.countries[_country],
+            value: KissKhExploreFilters.countryLabel(_country),
             onTap: () => _pickFilter(
               title: 'Region',
-              options: KissKhExploreFilters.countries,
-              current: _country,
+              options: [
+                for (final o in KissKhExploreFilters.countryOptions) o.label,
+              ],
+              current: KissKhExploreFilters.countryOptionIndex(_country) ?? 0,
               onPick: (v) {
-                _country = v;
+                _country = KissKhExploreFilters.countryOptions[v].code;
                 _reload();
               },
             ),

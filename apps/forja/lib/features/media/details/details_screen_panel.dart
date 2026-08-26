@@ -471,30 +471,33 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     }
     if (id.startsWith('nuvio:')) {
       final scraperId = id.substring('nuvio:'.length);
-      final wasSelected = _s._nuvioSelectedScraperIds.contains(scraperId);
+      final enabled = enabledNuvioScraperIds(_s._nuvioAddons);
+      final prev = _s._nuvioSelectedScraperIds;
+      final fullAll = nuvioFullAllSelected(
+        enabledIds: enabled,
+        selectedIds: prev,
+      );
+      final wasSelected = prev.contains(scraperId);
       final fetched = _s._nuvioFetchedScraperIds.contains(scraperId);
-      if (wasSelected &&
+      if (!fullAll &&
+          wasSelected &&
           !fetched &&
           !_s._nuvioInFlightScraperIds.contains(scraperId)) {
         unawaited(_s._fetchNextNuvioScraper());
         return;
       }
+      final next = nextNuvioSelectedAfterScraperTap(
+        selectedIds: prev,
+        enabledIds: enabled,
+        scraperId: scraperId,
+      );
       setState(() {
         _s._selectedSourceId = 'all_nuvio';
         _s._errorMessage = null;
-        if (wasSelected) {
-          _s._nuvioSelectedScraperIds = Set<String>.from(
-            _s._nuvioSelectedScraperIds,
-          )..remove(scraperId);
-          _s._nuvioInFlightScraperIds.remove(scraperId);
-          if (_s._nuvioSelectedScraperIds.isEmpty) {
-            _s._nuvioAbortWork(clearFetched: false);
-          }
-        } else {
-          _s._nuvioSelectedScraperIds = {
-            ..._s._nuvioSelectedScraperIds,
-            scraperId,
-          };
+        _s._nuvioSelectedScraperIds = next;
+        _s._nuvioInFlightScraperIds.removeWhere((id) => !next.contains(id));
+        if (next.isEmpty) {
+          _s._nuvioAbortWork(clearFetched: false);
         }
       });
       CatalogSourcesSessionCache.writeNuvio(
@@ -507,7 +510,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._nuvioSelectedScraperIds,
         ),
       );
-      if (!wasSelected && !fetched) {
+      if (next.contains(scraperId) && !fetched) {
         unawaited(_s._fetchNextNuvioScraper());
       }
       return;
@@ -566,30 +569,43 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     }
     if (id.startsWith(EngineIds.prefix)) {
       final pluginId = id.substring(EngineIds.prefix.length);
-      final wasSelected = _s._engineSelectedPluginIds.contains(pluginId);
+      final cats = _s._effectiveEngineCategories;
+      final selected = _s._engineSelectedPluginIds;
+      final visible = <String>{
+        for (final a in _s._enginePacks)
+          for (final s in a.plugins)
+            if (EngineCategories.pluginChipVisible(
+              plugin: s,
+              visibleCategories: cats,
+              selectedPluginIds: selected,
+            ))
+              s.id,
+      };
+      final fullAll = engineFullAllSelected(
+        enabledIds: visible,
+        selectedIds: selected,
+      );
+      final wasSelected = selected.contains(pluginId);
       final fetched = _s._engineFetchedPluginIds.contains(pluginId);
-      if (wasSelected &&
+      if (!fullAll &&
+          wasSelected &&
           !fetched &&
           !_s._engineInFlightPluginIds.contains(pluginId)) {
         unawaited(_s._fetchNextEnginePlugin());
         return;
       }
+      final next = nextEngineSelectedAfterPluginTap(
+        selectedIds: selected,
+        enabledIds: visible,
+        pluginId: pluginId,
+      );
       setState(() {
         _s._selectedSourceId = EngineIds.allChip;
         _s._errorMessage = null;
-        if (wasSelected) {
-          _s._engineSelectedPluginIds = Set<String>.from(
-            _s._engineSelectedPluginIds,
-          )..remove(pluginId);
-          _s._engineInFlightPluginIds.remove(pluginId);
-          if (_s._engineSelectedPluginIds.isEmpty) {
-            _s._engineAbortWork(clearFetched: false);
-          }
-        } else {
-          _s._engineSelectedPluginIds = {
-            ..._s._engineSelectedPluginIds,
-            pluginId,
-          };
+        _s._engineSelectedPluginIds = next;
+        _s._engineInFlightPluginIds.removeWhere((id) => !next.contains(id));
+        if (next.isEmpty) {
+          _s._engineAbortWork(clearFetched: false);
         }
       });
       CatalogSourcesSessionCache.writeEngine(
@@ -603,7 +619,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           panelCategory: _s._enginePanelCategory,
         ),
       );
-      if (!wasSelected && !fetched) {
+      if (next.contains(pluginId) && !fetched) {
         unawaited(_s._fetchNextEnginePlugin());
       }
       return;

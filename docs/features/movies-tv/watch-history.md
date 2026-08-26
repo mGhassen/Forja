@@ -13,9 +13,9 @@ Forja saves playback position locally when you watch movies or TV episodes. **Co
 
 ## What you can do
 
-- Resume from Continue Watching using the **same path as details green Play / Resume** for current Settings → Playback: Webstreaming on → web extract (cache then resolve); Webstreaming off + Forja Auto → Forja plugin race (no sniff); otherwise open details / Sources. Torrent / Stremio Direct resumes still use the saved magnet or addon when that was the last method
+- Resume from Continue Watching by opening that title’s **details** first, then the **same path as details green Play / Resume** for current Settings → Playback: Webstreaming on → web extract (cache then resolve); Webstreaming off + Forja Auto → Forja plugin race (no sniff); otherwise Sources. Torrent / Stremio Direct resumes still use the saved magnet or addon when that was the last method. **Back** from the player returns to that details page
 - See progress on the details hero (Resume + bar) and on continue watching cards — updates when you leave the player without leaving details
-- Hover a continue watching card (desktop) to scale it and show a play button; hover the play button to turn it brand-green, float it upward, and pulse the icon — click to resume like green Play
+- Hover a continue watching card (desktop) to scale it and show a play button; hover the play button to turn it brand-green, float it upward, and pulse the icon — click opens details then resumes
 - Dismiss entries from continue watching
 - Episodes auto-mark **watched** when you reach **85%** (right-click still toggles); TV / anime / Asian Drama details show series progress (`N of T · %` or **Completed**)
 - Movies show **Watched** with a check on details when finished (≥85%)

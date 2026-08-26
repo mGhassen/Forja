@@ -279,12 +279,13 @@ class KissKhService {
 
   /// Browse the global catalog with filters. Backs the Explore screen.
   ///
-  /// Filter codes (kisskh.ovh / kisskh.co Angular SPA):
+  /// Filter codes (kisskh.co `/DramaList/List`, verified against drama.country):
   ///   type:    0=All, 1=TVSeries, 2=Movie, 3=Anime, 4=Hollywood
   ///   sub:     0=All, 1=English, 2=Khmer, 3=Indonesian, 4=Malay,
   ///            5=Thai, 6=Arabic
-  ///   country: 0=All, 1=South Korea, 2=Chinese, 3=United States,
-  ///            4=Thailand, 5=Philippine, 6=Japanese, 7=Hong Kong, 8=Taiwan
+  ///   country: 0=All, 1=Chinese, 2=South Korea, 3=Japan, 4=Hong Kong,
+  ///            5=Thailand, 6=United States (omitted in UI), 7=Taiwan,
+  ///            8=Philippines, 9=Indonesia
   ///   status:  0=All, 1=Ongoing, 2=Completed, 3=Upcoming
   ///   order:   1=Popular, 2=Last Update, 3=Release Date
   Future<KdramaExplorePage> explore({
@@ -1010,17 +1011,33 @@ class KissKhExploreFilters {
     'Thai',
     'Arabic',
   ];
-  static const List<String> countries = [
-    'All',
-    'South Korea',
-    'Chinese',
-    'United States',
-    'Thailand',
-    'Philippine',
-    'Japanese',
-    'Hong Kong',
-    'Taiwan',
+  /// Explore region chips / hub Categories. Codes match KissKH `country=`;
+  /// United States (6) is omitted from the UI.
+  static const List<({int code, String label})> countryOptions = [
+    (code: 0, label: 'All'),
+    (code: 1, label: 'Chinese'),
+    (code: 2, label: 'South Korea'),
+    (code: 3, label: 'Japan'),
+    (code: 4, label: 'Hong Kong'),
+    (code: 5, label: 'Thailand'),
+    (code: 7, label: 'Taiwan'),
+    (code: 8, label: 'Philippines'),
+    (code: 9, label: 'Indonesia'),
   ];
+
+  static String countryLabel(int code) {
+    for (final o in countryOptions) {
+      if (o.code == code) return o.label;
+    }
+    return 'All';
+  }
+
+  static int? countryOptionIndex(int code) {
+    for (var i = 0; i < countryOptions.length; i++) {
+      if (countryOptions[i].code == code) return i;
+    }
+    return null;
+  }
   static const List<String> statuses = [
     'All',
     'Ongoing',
