@@ -451,11 +451,17 @@ export function AdminPoolPage() {
 
   /** Patch cards + host Alive counts in place — no refetch / re-sort (keeps scroll). */
   function applyVerifyResults(
-    results: { id: string; alive: boolean }[],
+    results: {
+      id: string
+      alive: boolean
+      expiry?: string | null
+      max_connections?: string | null
+      region?: string | null
+    }[],
     hostDeltas?: Map<string, number>,
   ) {
     if (results.length === 0) return
-    const byId = new Map(results.map((r) => [r.id, r.alive]))
+    const byId = new Map(results.map((r) => [r.id, r]))
     qc.setQueriesData<{ portals: PoolCand[]; total: number }>(
       { queryKey: ['admin', 'pool', 'portals'] },
       (old) => {
@@ -463,8 +469,23 @@ export function AdminPoolPage() {
         return {
           ...old,
           portals: old.portals.map((p) => {
-            const alive = byId.get(p.id)
-            return alive === undefined ? p : { ...p, alive }
+            const r = byId.get(p.id)
+            if (!r) return p
+            return {
+              ...p,
+              alive: r.alive,
+              ...(r.expiry != null && r.expiry !== ''
+                ? { expiry: r.expiry }
+                : {}),
+              ...(r.max_connections != null && r.max_connections !== ''
+                ? { max_connections: r.max_connections }
+                : {}),
+              ...(r.region != null &&
+              r.region !== '' &&
+              r.region !== 'UNKNOWN'
+                ? { region_primary: r.region }
+                : {}),
+            }
           }),
         }
       },
@@ -591,7 +612,13 @@ export function AdminPoolPage() {
     let alive = 0
     let dead = 0
     let failed = 0
-    const verified: { id: string; alive: boolean }[] = []
+    const verified: {
+      id: string
+      alive: boolean
+      expiry: string | null
+      max_connections: string | null
+      region: string
+    }[] = []
     const hostDeltas = new Map<string, number>()
     try {
       for (const id of ids) {
@@ -602,7 +629,13 @@ export function AdminPoolPage() {
           alive += res.alive
           dead += res.dead
           for (const r of res.results) {
-            verified.push({ id: r.id, alive: r.alive })
+            verified.push({
+              id: r.id,
+              alive: r.alive,
+              expiry: r.expiry,
+              max_connections: r.max_connections,
+              region: r.region,
+            })
             if (prev) {
               const hk = poolHostKey(candidateHost(prev.url))
               const d = aliveDelta(prev.alive, r.alive)
@@ -766,7 +799,13 @@ export function AdminPoolPage() {
         if (d) hostDeltas.set(poolHostKey(candidateHost(c.url)), d)
       }
       applyVerifyResults(
-        res.results.map((x) => ({ id: x.id, alive: x.alive })),
+        res.results.map((x) => ({
+          id: x.id,
+          alive: x.alive,
+          expiry: x.expiry,
+          max_connections: x.max_connections,
+          region: x.region,
+        })),
         hostDeltas,
       )
     } catch (e) {
@@ -801,7 +840,13 @@ export function AdminPoolPage() {
       const hostDeltas = new Map<string, number>()
       if (delta) hostDeltas.set(hk, delta)
       applyVerifyResults(
-        res.results.map((x) => ({ id: x.id, alive: x.alive })),
+        res.results.map((x) => ({
+          id: x.id,
+          alive: x.alive,
+          expiry: x.expiry,
+          max_connections: x.max_connections,
+          region: x.region,
+        })),
         hostDeltas,
       )
     } catch (e) {

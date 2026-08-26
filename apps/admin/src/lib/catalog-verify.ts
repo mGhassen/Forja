@@ -6,6 +6,8 @@ export type VerifyResult = {
   alive: boolean
   status: string
   region: string
+  expiry: string | null
+  max_connections: string | null
   error: string | null
 }
 

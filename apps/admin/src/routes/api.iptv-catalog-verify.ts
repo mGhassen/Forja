@@ -40,6 +40,8 @@ async function verifyOne(
   alive: boolean
   status: string
   region: string
+  expiry: string | null
+  max_connections: string | null
   error: string | null
 }> {
   const password = await decryptPassword(sb, row.id)
@@ -59,6 +61,8 @@ async function verifyOne(
     alive: status.alive === true,
     status: status.status,
     region: region.primary,
+    expiry: status.expiry ?? null,
+    max_connections: status.maxConnections ?? null,
     error: status.error ?? null,
   }
 }
@@ -123,6 +127,8 @@ export const Route = createFileRoute('/api/iptv-catalog-verify')({
                 alive: false,
                 status: 'error',
                 region: 'UNKNOWN',
+                expiry: null,
+                max_connections: null,
                 error: e instanceof Error ? e.message : 'verify failed',
               })
             }
