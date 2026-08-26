@@ -66,6 +66,15 @@ struct StalkerRequest {
     /// Raw `cmd` from get_ordered_list for create_link.
     #[serde(default)]
     cmd: String,
+    /// Numeric ITV channel id (`ch_id`) for EPG — not the create_link cmd.
+    #[serde(default)]
+    channel_id: String,
+    /// `get_short_epg` size; 0 → default 8.
+    #[serde(default)]
+    limit: u32,
+    /// Bulk `get_epg_info` period in hours (guide). 0 → default 72.
+    #[serde(default)]
+    period: u32,
     #[serde(default)]
     timeout_secs: u64,
 }
@@ -150,6 +159,16 @@ async fn handle(request_json: &str) -> Result<Value, String> {
         }
         "series_episodes" => session.series_episodes(&req.series_id, timeout).await,
         "create_link" => session.create_link(&req.cmd, &req.section, timeout).await,
+        "epg" | "short_epg" => {
+            session
+                .epg(&req.channel_id, req.limit, timeout)
+                .await
+        }
+        "epg_table" | "epg_bulk" => {
+            session
+                .epg_table(&req.channel_id, req.period, timeout)
+                .await
+        }
         other => Err(format!("unknown action: {other}")),
     }
 }
@@ -444,6 +463,70 @@ impl Session {
                 .await?
         };
         Ok(json!({ "streams": streams }))
+    }
+
+    /// Per-channel EPG — `get_short_epg` first, then `get_epg_info` fallback.
+    /// Returns Xtream-shaped `{ epg_listings: [...] }` for the Dart parser.
+    async fn epg(
+        &self,
+        channel_id: &str,
+        limit: u32,
+        timeout: Duration,
+    ) -> Result<Value, String> {
+        let ch = channel_id.trim();
+        if ch.is_empty() {
+            return Ok(json!({ "epg_listings": [] }));
+        }
+        let size = if limit == 0 { 8 } else { limit.clamp(1, 128) };
+        let ch_enc = urlencoding::encode(ch);
+
+        let short_q = format!(
+            "type=itv&action=get_short_epg&ch_id={ch_enc}&size={size}&JsHttpRequest=1-xml"
+        );
+        if let Ok(js) = self.get_js(&short_q, timeout).await {
+            let listings = parse_stalker_epg(&js, ch);
+            if !listings.is_empty() {
+                return Ok(json!({ "epg_listings": listings }));
+            }
+        }
+
+        // Fall through to the period table (still per-channel extract).
+        self.epg_table(ch, 72, timeout).await
+    }
+
+    /// Full guide listings via Mag `get_epg_info&period=` (short EPG is only
+    /// a handful of near-now rows). When [channel_id] is set, returns that
+    /// channel's rows as `epg_listings`. When empty, returns the whole map as
+    /// `channels: { "<ch_id>": [ listings... ] }` for session caching.
+    async fn epg_table(
+        &self,
+        channel_id: &str,
+        period: u32,
+        timeout: Duration,
+    ) -> Result<Value, String> {
+        let hours = if period == 0 {
+            72
+        } else {
+            period.clamp(6, 168)
+        };
+        let bulk_q = format!(
+            "type=itv&action=get_epg_info&period={hours}&JsHttpRequest=1-xml"
+        );
+        let js = self.get_js(&bulk_q, timeout).await?;
+        let ch = channel_id.trim();
+        if !ch.is_empty() {
+            let listings = parse_stalker_epg(&js, ch);
+            return Ok(json!({ "epg_listings": listings }));
+        }
+        let map = extract_stalker_epg_channel_map(&js);
+        let mut channels = serde_json::Map::new();
+        for (id, items) in map {
+            let listings = parse_stalker_epg(&Value::Array(items), &id);
+            if !listings.is_empty() {
+                channels.insert(id, Value::Array(listings));
+            }
+        }
+        Ok(json!({ "channels": channels }))
     }
 
     async fn fetch_categories(
@@ -1059,7 +1142,12 @@ fn parse_stalker_streams(js: &Value, section: XtreamSection) -> Vec<XtreamStream
             };
             let cmd = field_string(o, "cmd");
             // Prefer cmd as stream_id for create_link; fall back to numeric id.
-            let stream_id = if cmd.is_empty() { id } else { cmd.clone() };
+            // Keep the numeric ITV id in epg_channel_id for get_short_epg.
+            let stream_id = if cmd.is_empty() {
+                id.clone()
+            } else {
+                cmd.clone()
+            };
             Some(XtreamStreamRow {
                 stream_id,
                 name,
@@ -1070,7 +1158,7 @@ fn parse_stalker_streams(js: &Value, section: XtreamSection) -> Vec<XtreamStream
                     XtreamSection::Vod => "mp4".into(),
                     XtreamSection::Series => String::new(),
                 },
-                epg_channel_id: String::new(),
+                epg_channel_id: id,
                 kind: match section {
                     XtreamSection::Live => "live",
                     XtreamSection::Vod => "vod",
@@ -1080,6 +1168,212 @@ fn parse_stalker_streams(js: &Value, section: XtreamSection) -> Vec<XtreamStream
             })
         })
         .collect()
+}
+
+/// Normalize Stalker EPG payloads into Xtream-shaped listing objects.
+fn parse_stalker_epg(js: &Value, channel_id: &str) -> Vec<Value> {
+    let items = extract_stalker_epg_items(js, channel_id);
+    let mut out = Vec::with_capacity(items.len());
+    for item in items {
+        let Some(o) = item.as_object() else { continue };
+        let title = {
+            let t = field_string(o, "name");
+            if !t.is_empty() {
+                t
+            } else {
+                let t = field_string(o, "title");
+                if !t.is_empty() {
+                    t
+                } else {
+                    field_string(o, "progname")
+                }
+            }
+        };
+        let description = {
+            let d = field_string(o, "descr");
+            if !d.is_empty() {
+                d
+            } else {
+                let d = field_string(o, "description");
+                if !d.is_empty() {
+                    d
+                } else {
+                    let d = field_string(o, "desc");
+                    if !d.is_empty() {
+                        d
+                    } else {
+                        field_string(o, "short_description")
+                    }
+                }
+            }
+        };
+        // Prefer real epochs — Mag `time` is often `YYYY-MM-DD HH:MM:SS`.
+        let start_epoch =
+            stalker_epg_ts(o, &["start_timestamp", "from", "start", "time"]);
+        let mut stop_epoch =
+            stalker_epg_ts(o, &["stop_timestamp", "to", "end", "stop", "time_to"]);
+        if stop_epoch.is_none() {
+            if let (Some(s), Some(dur)) = (start_epoch, stalker_epg_duration(o)) {
+                stop_epoch = Some(s + dur);
+            }
+        }
+
+        let start_str = stalker_epg_time_str(o, &["time", "start_time", "correct", "start"]);
+        let stop_str = stalker_epg_time_str(o, &["time_to", "end_time", "stop", "end"]);
+
+        let mut listing = json!({
+            "title": title,
+            "description": description,
+        });
+        let obj = listing.as_object_mut().unwrap();
+        match (start_epoch, stop_epoch) {
+            (Some(start), Some(stop)) if stop > start => {
+                obj.insert("start_timestamp".into(), json!(start.to_string()));
+                obj.insert("stop_timestamp".into(), json!(stop.to_string()));
+            }
+            _ => match (start_str, stop_str) {
+                (Some(start), Some(stop)) if start != stop => {
+                    // Wall-clock strings — Dart parses as local (Mag convention).
+                    obj.insert("start".into(), json!(start));
+                    obj.insert("stop".into(), json!(stop));
+                }
+                (Some(start), None) => {
+                    if let Some(dur) = stalker_epg_duration(o) {
+                        // Keep start string; Dart needs stop — fall back to epoch math
+                        // only when start was also numeric (handled above).
+                        let _ = (start, dur);
+                    }
+                    continue;
+                }
+                _ => continue,
+            },
+        }
+        out.push(listing);
+    }
+    out.sort_by(|a, b| {
+        let sa = epg_sort_key(a);
+        let sb = epg_sort_key(b);
+        sa.cmp(&sb)
+    });
+    out
+}
+
+fn epg_sort_key(v: &Value) -> String {
+    v.get("start_timestamp")
+        .and_then(|x| x.as_str())
+        .or_else(|| v.get("start").and_then(|x| x.as_str()))
+        .unwrap_or("")
+        .to_string()
+}
+
+fn extract_stalker_epg_items(js: &Value, channel_id: &str) -> Vec<Value> {
+    if let Some(arr) = js.as_array() {
+        return arr.clone();
+    }
+    let Some(obj) = js.as_object() else {
+        return Vec::new();
+    };
+    if let Some(arr) = obj.get("epg").and_then(|v| v.as_array()) {
+        return arr.clone();
+    }
+    // `get_epg_info` often wraps a channel→rows map in `data`.
+    if let Some(data) = obj.get("data") {
+        if let Some(arr) = data.as_array() {
+            return arr.clone();
+        }
+        if let Some(map) = data.as_object() {
+            if !channel_id.is_empty() {
+                if let Some(arr) = map.get(channel_id).and_then(|v| v.as_array()) {
+                    return arr.clone();
+                }
+            }
+        }
+    }
+    // Bulk map at root: `{ "<ch_id>": [ ... ], ... }`
+    if !channel_id.is_empty() {
+        if let Some(arr) = obj.get(channel_id).and_then(|v| v.as_array()) {
+            return arr.clone();
+        }
+    }
+    Vec::new()
+}
+
+fn extract_stalker_epg_channel_map(js: &Value) -> Vec<(String, Vec<Value>)> {
+    let mut out = Vec::new();
+    let Some(obj) = js.as_object() else {
+        return out;
+    };
+    let map = obj
+        .get("data")
+        .and_then(|v| v.as_object())
+        .unwrap_or(obj);
+    for (k, v) in map {
+        if let Some(arr) = v.as_array() {
+            if !arr.is_empty() {
+                out.push((k.clone(), arr.clone()));
+            }
+        }
+    }
+    out
+}
+
+fn stalker_epg_ts(o: &serde_json::Map<String, Value>, keys: &[&str]) -> Option<i64> {
+    for key in keys {
+        let Some(v) = o.get(*key) else { continue };
+        if let Some(n) = v.as_i64() {
+            return Some(normalize_epoch(n));
+        }
+        if let Some(n) = v.as_u64() {
+            return Some(normalize_epoch(n as i64));
+        }
+        if let Some(s) = v.as_str() {
+            let t = s.trim();
+            if let Ok(n) = t.parse::<i64>() {
+                return Some(normalize_epoch(n));
+            }
+        }
+    }
+    None
+}
+
+fn stalker_epg_time_str(o: &serde_json::Map<String, Value>, keys: &[&str]) -> Option<String> {
+    for key in keys {
+        let s = field_string(o, key);
+        let t = s.trim();
+        if t.is_empty() {
+            continue;
+        }
+        // Skip pure epochs — those go through stalker_epg_ts.
+        if t.chars().all(|c| c.is_ascii_digit()) {
+            continue;
+        }
+        if t.contains('-') || t.contains(':') {
+            return Some(t.to_string());
+        }
+    }
+    None
+}
+
+fn stalker_epg_duration(o: &serde_json::Map<String, Value>) -> Option<i64> {
+    for key in ["duration", "prog_duration", "length"] {
+        let Some(v) = o.get(key) else { continue };
+        let n = v
+            .as_i64()
+            .or_else(|| v.as_u64().map(|u| u as i64))
+            .or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()))?;
+        if n > 0 && n < 86_400 {
+            return Some(n);
+        }
+    }
+    None
+}
+
+fn normalize_epoch(n: i64) -> i64 {
+    if n > 10_000_000_000 {
+        n / 1000
+    } else {
+        n
+    }
 }
 
 fn parse_stalker_episodes(js: &Value) -> Vec<ParsedSeriesEpisode> {
@@ -1199,6 +1493,110 @@ mod tests {
         let cats = parse_stalker_categories(&js);
         assert_eq!(cats.len(), 1);
         assert_eq!(cats[0].name, "News");
+    }
+
+    #[test]
+    fn live_stream_keeps_numeric_epg_channel_id() {
+        let js = json!({
+            "data": [{
+                "id": "42",
+                "name": "BBC",
+                "cmd": "ffmpeg http://cdn/live.ts",
+                "tv_genre_id": "1",
+                "logo": "http://i"
+            }]
+        });
+        let rows = parse_stalker_streams(&js, XtreamSection::Live);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].stream_id, "ffmpeg http://cdn/live.ts");
+        assert_eq!(rows[0].epg_channel_id, "42");
+    }
+
+    #[test]
+    fn parse_short_epg_array() {
+        let js = json!([
+            {
+                "name": "News at Ten",
+                "descr": "Tonight",
+                "start_timestamp": 1_700_000_000i64,
+                "stop_timestamp": 1_700_003_600i64
+            }
+        ]);
+        let listings = parse_stalker_epg(&js, "42");
+        assert_eq!(listings.len(), 1);
+        assert_eq!(listings[0]["title"], "News at Ten");
+        assert_eq!(listings[0]["description"], "Tonight");
+        assert_eq!(listings[0]["start_timestamp"], "1700000000");
+        assert_eq!(listings[0]["stop_timestamp"], "1700003600");
+    }
+
+    #[test]
+    fn parse_mag_time_strings() {
+        let js = json!([{
+            "name": "Petits plats",
+            "descr": "Recettes",
+            "time": "2026-08-26 10:45:00",
+            "time_to": "2026-08-26 10:50:00",
+            "duration": 300
+        }]);
+        let listings = parse_stalker_epg(&js, "526153");
+        assert_eq!(listings.len(), 1);
+        assert_eq!(listings[0]["title"], "Petits plats");
+        assert_eq!(listings[0]["start"], "2026-08-26 10:45:00");
+        assert_eq!(listings[0]["stop"], "2026-08-26 10:50:00");
+    }
+
+    #[test]
+    fn parse_epg_info_data_map_by_channel() {
+        let js = json!({
+            "data": {
+                "526153": [{
+                    "name": "TF1 Now",
+                    "start_timestamp": 1_700_000_000i64,
+                    "stop_timestamp": 1_700_003_600i64
+                }],
+                "99": [{
+                    "name": "Other",
+                    "start_timestamp": 1_700_000_000i64,
+                    "stop_timestamp": 1_700_001_800i64
+                }]
+            }
+        });
+        let listings = parse_stalker_epg(&js, "526153");
+        assert_eq!(listings.len(), 1);
+        assert_eq!(listings[0]["title"], "TF1 Now");
+    }
+
+    #[test]
+    fn parse_bulk_epg_keyed_by_channel() {
+        let js = json!({
+            "42": [{
+                "title": "Match",
+                "start_timestamp": "1700000000",
+                "duration": 7200
+            }],
+            "99": [{
+                "title": "Other",
+                "start_timestamp": "1700000000",
+                "duration": 3600
+            }]
+        });
+        let listings = parse_stalker_epg(&js, "42");
+        assert_eq!(listings.len(), 1);
+        assert_eq!(listings[0]["title"], "Match");
+        assert_eq!(listings[0]["stop_timestamp"], "1700007200");
+    }
+
+    #[test]
+    fn parse_epg_ms_epoch_normalizes() {
+        let js = json!([{
+            "name": "Late",
+            "from": 1_700_000_000_000i64,
+            "to": 1_700_003_600_000i64
+        }]);
+        let listings = parse_stalker_epg(&js, "");
+        assert_eq!(listings[0]["start_timestamp"], "1700000000");
+        assert_eq!(listings[0]["stop_timestamp"], "1700003600");
     }
 
     #[test]

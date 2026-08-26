@@ -178,6 +178,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     cancelAllLazyChecks();
     _c._epgCache.clear();
     _c._guideEpgCache.clear();
+    IptvClient.clearStalkerEpgCache();
     _c.liveOnly = false;
     _c.aliveStreamIds = const {};
     _c.aliveCheckedAt = null;
@@ -215,6 +216,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     cancelAllLazyChecks();
     _c._epgCache.clear();
     _c._guideEpgCache.clear();
+    IptvClient.clearStalkerEpgCache();
     notifyListeners();
   }
 

@@ -646,6 +646,7 @@ class IptvController extends ChangeNotifier
       _epgCache.clear();
       _hitEpgCache.clear();
       _guideEpgCache.clear();
+      IptvClient.clearStalkerEpgCache();
     }
     notifyListeners();
   }
@@ -667,9 +668,7 @@ class IptvController extends ChangeNotifier
   Future<List<EpgEntry>> guideEpgFor(IptvStream s) {
     if (!_epgEnabled) return Future.value(const []);
     final p = activePortal;
-    if (p == null ||
-        s.kind != 'live' ||
-        p.platform != IptvPortalPlatform.xtream) {
+    if (p == null || s.kind != 'live' || !p.platform.supportsEpg) {
       return Future.value(const []);
     }
     if (s.streamId.isEmpty && s.epgChannelId.isEmpty) {
@@ -678,6 +677,16 @@ class IptvController extends ChangeNotifier
     final cacheKey = s.streamId.isEmpty ? s.epgChannelId : s.streamId;
     return _guideEpgCache.putIfAbsent(cacheKey, () async {
       final window = guideWindow();
+      if (p.platform == IptvPortalPlatform.stalker) {
+        return IptvClient.simpleDataTable(
+          p.portal,
+          s.streamId,
+          epgChannelId: s.epgChannelId,
+          windowStart: window.start,
+          windowEnd: window.end,
+          timeout: const Duration(seconds: 90),
+        );
+      }
       if (s.streamId.isNotEmpty) {
         final rows = await IptvClient.simpleDataTable(
           p.portal,
@@ -754,9 +763,7 @@ class IptvController extends ChangeNotifier
   }) {
     if (!_epgEnabled) return Future.value(const []);
     final p = activePortal;
-    if (p == null ||
-        s.kind != 'live' ||
-        p.platform != IptvPortalPlatform.xtream) {
+    if (p == null || s.kind != 'live' || !p.platform.supportsEpg) {
       return Future.value(const []);
     }
     if (s.streamId.isEmpty && s.epgChannelId.isEmpty) {
@@ -789,8 +796,7 @@ class IptvController extends ChangeNotifier
     int limit = IptvClient.shortEpgLimit,
   }) {
     if (!_epgEnabled) return Future.value(const []);
-    if (h.stream.kind != 'live' ||
-        h.portal.platform != IptvPortalPlatform.xtream) {
+    if (h.stream.kind != 'live' || !h.portal.platform.supportsEpg) {
       return Future.value(const []);
     }
     final streamId = h.stream.streamId;

@@ -1,6 +1,6 @@
 # IPTV — Stalker
 
-> Connect Stalker / Ministra portals (MAC) — live TV, movies, and series.
+> Connect Stalker / Ministra portals (MAC) — live TV, movies, series, and EPG.
 
 ## What it is
 
@@ -16,6 +16,7 @@ The IPTV tab supports **Stalker / Ministra** portals alongside Xtream and M3U. Y
 - Tap the dice icon next to the portal name field for a random name
 - Tap **Generate** next to the MAC field for a random MAG-style MAC if your provider issues portal access by any MAC
 - Browse **Live**, **Movies**, and **Series** like Xtream — movies and series open the same Home-style details overlay (portal first; TMDB layers in when matched — logo, production card, Cast/Crew/Trailers; series also get episodes; Android TV D-pad matches movie details)
+- View programme guide (EPG) when the portal provides it — Live cards show **NOW** / **NEXT**, long-press opens the programme sheet, the in-player guide peeks listings, and the desktop Live **EPG** grid uses the same data (same Settings toggle as Xtream)
 - Play in the IPTV player — channel guide and search work for live
 - Sync Stalker portals to your signed-in profile (same as Xtream)
 - See subscription end date on the portal card when the portal reports it (`get_profile` `exp_date`, or a date stuffed in `phone` on some panels)
@@ -30,7 +31,8 @@ Forja tries the common middleware paths automatically (`portal.php`, `server/loa
 
 ## Tips
 
-- Programme guide (EPG) for Stalker is not wired yet — Live cards skip Xtream EPG calls
+- Hot-restart after an engine update so Stalker EPG is loaded; guide ids are taken from `stream=` in the play cmd when needed (no catalog reload required)
+- Not every Stalker panel ships EPG — empty NOW/NEXT means the portal returned no listings
 - Deal / Find Portals still focus on Xtream pool portals; add Stalker manually for now
 - MACs are stored like usernames; keep share codes and CSV exports private
 - First open can take a moment on flaky portals (Cloudflare 520 / origin 502) — Forja retries handshake and catalog fetch automatically before showing an error

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **18 / 19** acceptance (R51-A12 / R40-A12 after migration apply) |
-| **Current slice** | Lume parity slice shipped (Stalker core + UX, M3U improvements) — apply `iptv_portals_platform` migration to unlock cloud `platform` |
+| **Progress** | **7 / 7** components · **18 / 19** acceptance (multi-protocol) · **7 / 7** Lume parity · **3 / 3** Stalker EPG |
+| **Current slice** | Stalker EPG wired — apply `iptv_portals_platform` migration still unlocks cloud `platform` (R51-A12) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -25,6 +25,7 @@
 | 4 | R51-C04 | Host: `IptvPortalPlatform`, unified form, controller resolve | ✅ |
 | 5 | R51-C05 | Migrate device-local M3U → portals; retire side playlists screen | ✅ |
 | 6 | R51-C06 | Host: Generate MAC (Stalker) + local-file picker (M3U) in Add Portal | ✅ |
+| 7 | R51-C07 | Rust Stalker EPG (`get_short_epg` / `get_epg_info`) + host wiring | ✅ |
 
 ---
 
@@ -61,6 +62,16 @@
 
 ---
 
+## Acceptance (Stalker EPG)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 20 | R51-A20 | Live catalog stores Stalker numeric `ch_id` as `epg_channel_id` (create_link `cmd` stays `stream_id`) | ✅ |
+| 21 | R51-A21 | Stalker short EPG via MAG `get_short_epg` → `get_epg_info` fallback; cards / long-press / in-player guide | ✅ |
+| 22 | R51-A22 | Stalker Live EPG guide grid uses the same listings (session-cached); M3U still skips EPG | ✅ |
+
+---
+
 ## Summary
 
 Forja IPTV today is Xtream-first in the main catalog, with M3U on a device-local side screen and Stalker only in admin scrape. This RFC makes **Xtream / M3U / Stalker** first-class portal types in one catalog browser, cloud-synced, with Rust Pattern B clients for Stalker and M3U fetch.
@@ -71,11 +82,12 @@ Forja IPTV today is Xtream-first in the main catalog, with M3U on a device-local
 2. One browser UX; shelf chips platform-aware (M3U = Live only).
 3. Stalker Live + VOD + Series with `create_link` resolve.
 4. Cloud sync for all three platforms via `iptv_portals.platform`.
+5. Stalker programme guide parity with Xtream EPG surfaces (cards, sheet, in-player, Live guide).
 
 ## Out of scope
 
 - Admin Deal/scrape assigning Stalker/M3U into user profiles
-- Stalker/M3U EPG parity with Xtream guide
+- M3U XMLTV EPG parity with Xtream / Stalker guide
 - Per-platform portal slot limits
 
 ## Related

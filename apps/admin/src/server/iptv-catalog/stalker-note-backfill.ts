@@ -24,6 +24,41 @@ function needsNoteOrExpiry(expiry: unknown, note: unknown): boolean {
   )
 }
 
+/**
+ * SQL prefilter for missing scrape expires.
+ * Must include '' / Unknown — `is.null` alone under-counted (~7 vs tens of thousands).
+ */
+const MISSING_EXPIRES_OR =
+  'expiry.is.null,expiry.eq.,expiry.ilike.unknown,note.is.null,note.eq.,note.ilike.unknown'
+
+type DeepRefParent = {
+  paste_url?: string | null
+  base64?: string | null
+} | null
+
+function parentHasPasteOrBase64(parent: DeepRefParent): boolean {
+  return (
+    Boolean(String(parent?.paste_url ?? '').trim()) ||
+    Boolean(String(parent?.base64 ?? '').trim())
+  )
+}
+
+/** Eligible deep_ref id, or null if this junction row does not qualify. */
+function eligibleDeepRefId(row: {
+  deep_ref_id?: unknown
+  expiry?: unknown
+  note?: unknown
+  iptv_scrape_deep_refs?: unknown
+}): string | null {
+  if (!needsNoteOrExpiry(row.expiry, row.note)) return null
+  const id = String(row.deep_ref_id ?? '').trim()
+  if (!id) return null
+  if (!parentHasPasteOrBase64(row.iptv_scrape_deep_refs as DeepRefParent)) {
+    return null
+  }
+  return id
+}
+
 export type StalkerNoteChunkResult = {
   deepRefs: number
   fetchOk: number
@@ -35,35 +70,36 @@ export type StalkerNoteChunkResult = {
   done: boolean
 }
 
-/** Distinct deep refs with Stalker hits missing expiry/note + paste/base64. */
+/**
+ * Distinct deep refs with Stalker hits missing expiry/note + paste/base64.
+ * Paged — PostgREST max_rows would otherwise cap the count (~1000 junctions → tiny distinct set).
+ */
 export async function countStalkerNoteBackfillPending(
   sb: SupabaseClient,
 ): Promise<number> {
-  const { data, error } = await sb
-    .from('iptv_scrape_deep_ref_portals')
-    .select(
-      'deep_ref_id, expiry, note, iptv_scrape_deep_refs!inner(paste_url, base64)',
-    )
-    .eq('platform', 'stalker')
-    .or('expiry.is.null,note.is.null')
-  if (error) throw error
-
+  const pageSize = 500
+  let offset = 0
   const seen = new Set<string>()
-  for (const row of data ?? []) {
-    if (!needsNoteOrExpiry(row.expiry, row.note)) continue
-    const id = String(row.deep_ref_id ?? '').trim()
-    if (!id || seen.has(id)) continue
-    const parent = row.iptv_scrape_deep_refs as unknown as {
-      paste_url?: string | null
-      base64?: string | null
-    } | null
-    if (
-      !String(parent?.paste_url ?? '').trim() &&
-      !String(parent?.base64 ?? '').trim()
-    ) {
-      continue
+  for (;;) {
+    const to = offset + pageSize - 1
+    const { data, error } = await sb
+      .from('iptv_scrape_deep_ref_portals')
+      .select(
+        'deep_ref_id, expiry, note, iptv_scrape_deep_refs!inner(paste_url, base64)',
+      )
+      .eq('platform', 'stalker')
+      .or(MISSING_EXPIRES_OR)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(offset, to)
+    if (error) throw error
+    if (!data?.length) break
+    for (const row of data) {
+      const id = eligibleDeepRefId(row)
+      if (id) seen.add(id)
     }
-    seen.add(id)
+    if (data.length < pageSize) break
+    offset += pageSize
   }
   return seen.size
 }
@@ -71,6 +107,7 @@ export async function countStalkerNoteBackfillPending(
 /**
  * Next deep_ref ids that still need note/expiry backfill.
  * [excludeIds] = already tried this run (incl. paste failures).
+ * Pages until [take] distinct ids or the stalker set is exhausted.
  */
 export async function claimStalkerNoteDeepRefIds(
   sb: SupabaseClient,
@@ -81,36 +118,35 @@ export async function claimStalkerNoteDeepRefIds(
   if (want === 0) return []
   const exclude = new Set(excludeIds.map((id) => id.trim()).filter(Boolean))
 
-  const { data, error } = await sb
-    .from('iptv_scrape_deep_ref_portals')
-    .select(
-      'deep_ref_id, expiry, note, created_at, iptv_scrape_deep_refs!inner(paste_url, base64)',
-    )
-    .eq('platform', 'stalker')
-    .or('expiry.is.null,note.is.null')
-    .order('created_at', { ascending: true })
-    .limit(Math.max(want * 40, 200))
-  if (error) throw error
-
+  const pageSize = Math.max(want * 4, 200)
+  let offset = 0
   const out: string[] = []
   const seen = new Set<string>()
-  for (const row of data ?? []) {
-    if (!needsNoteOrExpiry(row.expiry, row.note)) continue
-    const id = String(row.deep_ref_id ?? '').trim()
-    if (!id || seen.has(id) || exclude.has(id)) continue
-    const parent = row.iptv_scrape_deep_refs as unknown as {
-      paste_url?: string | null
-      base64?: string | null
-    } | null
-    if (
-      !String(parent?.paste_url ?? '').trim() &&
-      !String(parent?.base64 ?? '').trim()
-    ) {
-      continue
+
+  while (out.length < want) {
+    const to = offset + pageSize - 1
+    const { data, error } = await sb
+      .from('iptv_scrape_deep_ref_portals')
+      .select(
+        'deep_ref_id, expiry, note, created_at, iptv_scrape_deep_refs!inner(paste_url, base64)',
+      )
+      .eq('platform', 'stalker')
+      .or(MISSING_EXPIRES_OR)
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(offset, to)
+    if (error) throw error
+    if (!data?.length) break
+
+    for (const row of data) {
+      const id = eligibleDeepRefId(row)
+      if (!id || seen.has(id) || exclude.has(id)) continue
+      seen.add(id)
+      out.push(id)
+      if (out.length >= want) return out
     }
-    seen.add(id)
-    out.push(id)
-    if (out.length >= want) break
+    if (data.length < pageSize) break
+    offset += pageSize
   }
   return out
 }

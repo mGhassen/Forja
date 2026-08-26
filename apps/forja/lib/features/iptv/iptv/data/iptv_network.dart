@@ -67,8 +67,7 @@ class IptvCatalogFetch {
   final String? error;
 
   /// XMLTV guide URL the portal embedded (M3U `url-tvg` / `x-tvg-url`).
-  /// Not persisted yet — surfaced for future EPG wiring (RFC-051 out of
-  /// scope item: "Stalker/M3U EPG parity").
+  /// Surfaced for future M3U XMLTV wiring; Stalker uses MAG EPG instead.
   final String? epgUrl;
 
   bool get ok => error == null;
@@ -143,6 +142,9 @@ class IptvClient {
     String? categoryId,
     String? seriesId,
     String? cmd,
+    String? channelId,
+    int? limit,
+    int? period,
   }) =>
       {
         'action': action,
@@ -156,6 +158,9 @@ class IptvClient {
         if (categoryId != null) 'category_id': categoryId,
         if (seriesId != null) 'series_id': seriesId,
         if (cmd != null && cmd.isNotEmpty) 'cmd': cmd,
+        if (channelId != null && channelId.isNotEmpty) 'channel_id': channelId,
+        if (limit != null) 'limit': limit,
+        if (period != null) 'period': period,
       };
 
   static Future<String?> _httpGet(String url, {Duration? timeout}) =>
@@ -495,6 +500,9 @@ class IptvClient {
     required Duration timeout,
   }) async {
     if (streamId.isEmpty) return const [];
+    if (p.platform == IptvPortalPlatform.stalker) {
+      return _stalkerEpgOnce(p, streamId, limit: limit, timeout: timeout);
+    }
     final url = '${p.url}/player_api.php?username=${_enc(p.username)}'
         '&password=${_enc(p.password)}'
         '&action=get_short_epg&stream_id=${_enc(streamId)}&limit=$limit';
@@ -507,8 +515,52 @@ class IptvClient {
     }
   }
 
+  /// Stalker ITV channel id for EPG — never the bare create_link `cmd` URL.
+  ///
+  /// Prefers [epgChannelId]; else a pure-numeric [streamId]; else `stream=`
+  /// (or trailing digits) embedded in Xtream-UI-style Stalker `cmd` URLs so
+  /// catalogs cached before `epg_channel_id` was filled still resolve.
+  static String stalkerChannelId({
+    required String streamId,
+    required String epgChannelId,
+  }) {
+    final epg = epgChannelId.trim();
+    if (epg.isNotEmpty) return epg;
+    final id = streamId.trim();
+    if (id.isEmpty) return '';
+    if (RegExp(r'^\d+$').hasMatch(id)) return id;
+    final streamParam = RegExp(r'[?&]stream=(\d+)').firstMatch(id)?.group(1);
+    if (streamParam != null && streamParam.isNotEmpty) return streamParam;
+    final digits = RegExp(r'(\d{3,})').allMatches(id).map((m) => m.group(1)!);
+    if (digits.isNotEmpty) return digits.last;
+    return '';
+  }
+
+  static Future<List<EpgEntry>?> _stalkerEpgOnce(
+    IptvPortal p,
+    String channelId, {
+    required int limit,
+    required Duration timeout,
+  }) async {
+    if (channelId.isEmpty) return const [];
+    final root = await _xtreamRequestRaw(_portalBody(
+      p,
+      action: 'epg',
+      timeoutSecs: timeout.inSeconds.clamp(1, 60),
+      channelId: channelId,
+      limit: limit,
+    ));
+    if (root == null || root.containsKey('error')) return null;
+    try {
+      return _parseEpgListings(jsonEncode(root));
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Fetches the next [limit] EPG programmes for [streamId] via Xtream's
-  /// `get_short_epg`. Empty list = the panel has no listings.
+  /// `get_short_epg` or Stalker `get_short_epg` / `get_epg_info`. Empty list
+  /// = the panel has no listings.
   ///
   /// HTTP / parse failures retry once, then throw so callers can avoid
   /// caching a sticky miss. Xtream encodes `title` and `description` as
@@ -519,6 +571,7 @@ class IptvClient {
     int limit = shortEpgLimit,
     Duration timeout = const Duration(seconds: 6),
   }) async {
+    if (p.platform == IptvPortalPlatform.m3u) return const [];
     final first = await _shortEpgOnce(
       p,
       streamId,
@@ -537,12 +590,22 @@ class IptvClient {
   }
 
   /// `get_short_epg` by stream id, then `epg_channel_id` if that is empty.
+  /// Stalker prefers numeric `epg_channel_id` (ITV `ch_id`) over create_link cmd.
   static Future<List<EpgEntry>> shortEpgForStream(
     IptvPortal p, {
     required String streamId,
     required String epgChannelId,
     int limit = shortEpgLimit,
   }) async {
+    if (p.platform == IptvPortalPlatform.m3u) return const [];
+    if (p.platform == IptvPortalPlatform.stalker) {
+      final ch = stalkerChannelId(
+        streamId: streamId,
+        epgChannelId: epgChannelId,
+      );
+      if (ch.isEmpty) return const [];
+      return shortEpg(p, ch, limit: limit);
+    }
     Object? lastFail;
     if (streamId.isNotEmpty) {
       try {
@@ -560,7 +623,46 @@ class IptvClient {
     return const [];
   }
 
-  /// Full EPG table for one live stream (`get_simple_data_table`).
+  /// Mag `get_epg_info&period=` dump, parsed once per portal for the guide.
+  static final Map<String, Future<Map<String, List<EpgEntry>>>> _stalkerBulkEpg =
+      {};
+
+  static void clearStalkerEpgCache() => _stalkerBulkEpg.clear();
+
+  static Future<Map<String, List<EpgEntry>>> _stalkerBulkGuideEpg(
+    IptvPortal p, {
+    Duration timeout = const Duration(seconds: 90),
+  }) {
+    final key = '${p.platform.wire}|${p.url}|${p.username}';
+    return _stalkerBulkEpg.putIfAbsent(key, () async {
+      final root = await _xtreamRequestRaw(_portalBody(
+        p,
+        action: 'epg_bulk',
+        timeoutSecs: timeout.inSeconds.clamp(15, 180),
+        period: 72,
+      ));
+      if (root == null || root.containsKey('error')) {
+        return const <String, List<EpgEntry>>{};
+      }
+      final channels = root['channels'];
+      if (channels is! Map) return const <String, List<EpgEntry>>{};
+      final out = <String, List<EpgEntry>>{};
+      for (final e in channels.entries) {
+        final id = e.key.toString();
+        final raw = e.value;
+        if (raw is! List) continue;
+        try {
+          out[id] = _parseEpgListings(jsonEncode({'epg_listings': raw}));
+        } catch (_) {
+          // skip bad channel
+        }
+      }
+      return out;
+    });
+  }
+
+  /// Full EPG table for one live stream (`get_simple_data_table` on Xtream,
+  /// Stalker bulk `get_epg_info&period=` — short EPG is only a few near-now rows).
   /// Optionally keep only programmes overlapping `[windowStart, windowEnd]`.
   static Future<List<EpgEntry>> simpleDataTable(
     IptvPortal p,
@@ -568,7 +670,33 @@ class IptvClient {
     DateTime? windowStart,
     DateTime? windowEnd,
     Duration timeout = const Duration(seconds: 18),
+    String epgChannelId = '',
   }) async {
+    if (p.platform == IptvPortalPlatform.m3u) return const [];
+    if (p.platform == IptvPortalPlatform.stalker) {
+      final ch = stalkerChannelId(
+        streamId: streamId,
+        epgChannelId: epgChannelId,
+      );
+      if (ch.isEmpty) return const [];
+      try {
+        final bulk = await _stalkerBulkGuideEpg(
+          p,
+          timeout: timeout > const Duration(seconds: 30)
+              ? timeout
+              : const Duration(seconds: 90),
+        );
+        final all = bulk[ch] ?? const <EpgEntry>[];
+        if (windowStart == null || windowEnd == null) return all;
+        return all
+            .where(
+              (e) => e.stop.isAfter(windowStart) && e.start.isBefore(windowEnd),
+            )
+            .toList(growable: false);
+      } catch (_) {
+        return const [];
+      }
+    }
     if (streamId.isEmpty) return const [];
     final url = '${p.url}/player_api.php?username=${_enc(p.username)}'
         '&password=${_enc(p.password)}'

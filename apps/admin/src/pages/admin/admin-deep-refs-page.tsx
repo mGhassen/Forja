@@ -1249,13 +1249,14 @@ export function AdminDeepRefsPage() {
               then writes <code className="font-mono-ui text-forja-text">note</code>{' '}
               + <code className="font-mono-ui text-forja-text">expiry</code> on
               junction / pool rows. Live counters: Deep refs · Paste ok/fail ·
-              Junctions · Portals. Eligible pending:{' '}
+              Junctions · Portals. Eligible deep refs:{' '}
               <span className="font-semibold tabular-nums text-forja-text">
                 {backfillPendingLoading || backfillPending == null
                   ? 'Counting…'
                   : backfillPending.toLocaleString()}
               </span>
-              .
+              {' '}
+              (pastes with Stalker hits missing note/expiry — not total deep refs).
             </>
           ) : undefined
         }

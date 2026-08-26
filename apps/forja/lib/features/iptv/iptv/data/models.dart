@@ -207,6 +207,9 @@ enum IptvPortalPlatform {
   String get wire => name;
 
   bool get supportsVodSeries => this == xtream || this == stalker;
+
+  /// Xtream `player_api` EPG and Stalker `get_short_epg` / `get_epg_info`.
+  bool get supportsEpg => this == xtream || this == stalker;
 }
 
 /// Raw scraped Xtream-Codes portal credentials (unverified).
@@ -481,9 +484,8 @@ class IptvStream {
   final String categoryId;
   final String containerExt;
   final String kind;
-  /// Xtream `epg_channel_id` - empty when the panel doesn't ship EPG for this
-  /// channel. We don't actually need it for `get_short_epg` (that endpoint is
-  /// indexed by stream_id) but it's a useful "has EPG?" hint to skip cards.
+  /// Numeric ITV / Xtream EPG channel id. Stalker stores `ch_id` here while
+  /// [streamId] may be the create_link `cmd`. Empty when the panel has no EPG.
   final String epgChannelId;
 
   const IptvStream({
