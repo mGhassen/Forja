@@ -478,19 +478,12 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     return !_videoAdvancing;
   }
 
-  /// Playhead, feed, or Exo progress tick moved recently — picture not frozen.
+  /// Playhead or real frame pulse moved recently — picture not frozen.
+  ///
+  /// MediaKit live must not treat demuxer feed / healthy cache as painting —
+  /// VO can freeze with ~30s cache while proxy keepalives still advance.
   bool get _videoAdvancing {
     if (!_playing) return false;
-    // MediaKit live: feed ticks alone must not hide Buffering — proxy
-    // keepalives look alive while the picture is frozen on empty cache.
-    if (!_exoBackend && !widget.vodPlayback) {
-      final feedAt = _feedAdvancedAt;
-      if (feedAt != null &&
-          DateTime.now().difference(feedAt) < _networkAliveWindow &&
-          _cacheAheadSecs >= _minHealthyCacheSecs) {
-        return true;
-      }
-    }
     return DateTime.now().difference(_lastPosChange) <
         const Duration(milliseconds: 1500);
   }

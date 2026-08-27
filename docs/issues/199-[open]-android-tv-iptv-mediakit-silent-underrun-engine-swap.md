@@ -10,8 +10,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 5** acceptance |
-| **Current slice** | `cache-pause=no` restored for proxy reconnect cadence — ATV MediaKit live smoke outstanding |
+| **Progress** | **8 / 8** fix · **0 / 6** acceptance |
+| **Current slice** | VO freeze with healthy demuxer cache — paint-gated recovery shipped; ATV smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,9 @@
 | 3 | I199-T03 | Feed / proxy ticks must not fake playhead or hide **Buffering…** when demuxer cache is empty (`_videoAdvancing`, `_playheadRecentlyMoved`, `_noteFeedProgress`, `_streamWorking`) | ✅ |
 | 4 | I199-T04 | Watchdog: MediaKit live underrun while still “playing” shows Buffering and soft-reopens; self-pause hold no longer treats feed-only as healthy | ✅ |
 | 5 | I199-T05 | Revert live `cache-pause=no` + `demuxer-max-back-bytes=0` — T01 pause-refill caused clockwork ~5–6s micro-freezes on every CDN proxy reopen (3MiB overlap skip); keep T02–T04 | ✅ |
+| 6 | I199-T06 | Stop equating healthy demuxer cache + feed with painting (`_playheadRecentlyMoved`, `_videoAdvancing`, `_noteFeedProgress`) — VO can freeze with ~30s cache | ✅ |
+| 7 | I199-T07 | Paint pulse = `estimated-vf-fps` only (drop `video-bitrate` fake); sample fps outside demuxer probe lock | ✅ |
+| 8 | I199-T08 | Detector 2b: MediaKit live soft-reopen on paint stall even when cache is healthy; `_streamWorking` requires recent paint for MediaKit live | ✅ |
 
 ---
 
@@ -38,21 +41,25 @@
 | 3 | I199-A03 | Healthy live channel still plays without reconnect thrash from proxy keepalives (no false “dead” every few seconds) | ⬜ |
 | 4 | I199-A04 | IPTV Movies/Series (VOD) format hard-open can still one-shot swap engines | ⬜ |
 | 5 | I199-A05 | Android TV MediaKit live: no clockwork ~5–6s micro-freeze on healthy channels (CDN reopen play-through) | ⬜ |
+| 6 | I199-A06 | Android TV MediaKit live: frozen picture with demuxer cache still ~30s shows **Buffering…** and soft-reconnects within ~5–8s — does not sit on last frame forever | ⬜ |
 
 ---
 
 ## Summary
 
-**Symptom:** On Android TV IPTV with MediaKit, a live channel could stall with empty cache and **no Buffering banner**. **Reload** sometimes restarted on **ExoPlayer** without the user changing the engine.
+**Symptom:** On Android TV IPTV with MediaKit, a live channel could stall with empty cache and **no Buffering banner**. **Reload** sometimes restarted on **ExoPlayer** without the user changing the engine. Later report: same silent **frozen frame while demuxer cache stays ~30s** and the feed is still healthy.
 
 **Root cause:**
 
 1. Live MediaKit used `cache-pause=no` ([I148-T20](148-[open]-iptv-live-edge-snap-reconnect-loop.md)) so underrun kept “playing” on a frozen frame instead of pausing to refill.
-2. Continuity-proxy / demuxer feed ticks marked the stream “alive”, so the Buffering chrome gate and Stable recovery treated a frozen picture as healthy.
+2. Continuity-proxy / demuxer feed ticks marked the stream “alive”, so the Buffering chrome gate and Stable recovery treated a frozen picture as healthy — including when cache was **full** (healthy cushion + feed ⇒ `_playheadRecentlyMoved` / `_streamWorking`).
 3. MediaKit “failed to recognize file format” after Reload / empty reopen auto-swapped to Exo on **live** (no live/VOD gate).
+4. Detector 2b only ran when cache was empty, so a `mediacodec_embed` VO stall with a full demuxer never soft-reopened.
 
 **Fix (T02–T04):** Never auto-swap engines on live, and stop counting empty-cache feed ticks as playhead / healthy so watchdog Buffering + soft-reopen still work.
 
 **Regression (T01 → T05):** T01’s `cache-pause=yes` turned every continuity-proxy CDN reopen (~5–6s on chatty Xtream panels, while skipping 3MiB overlap) into a hard micro-pause — stutter on **every** live stream with no Buffering banner. T05 restores live `cache-pause=no` / `demuxer-max-back-bytes=0` (play through demuxer cushion); T03/T04 remain the empty-cache chrome path.
+
+**VO freeze with full cache (T06–T08):** Alive = recent position tick or `estimated-vf-fps ≥ 1` only. MediaKit live `_streamWorking` requires that pulse. Detector 2b soft-reopens after ~5s paint stall even when `demuxer-cache-duration` is still ~30s.
 
 **Related:** [issue 148](148-[open]-iptv-live-edge-snap-reconnect-loop.md) · [issue 128](128-[open]-android-tv-iptv-mediakit-exit-anr.md) (Reload ANR watch)

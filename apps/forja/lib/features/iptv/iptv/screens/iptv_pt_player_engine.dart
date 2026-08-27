@@ -1280,8 +1280,14 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
   /// spike this into hours; those samples are discarded so Stable recovery
   /// does not treat a dead socket as "working".
   void _sampleDemuxerProgress() {
-    if (!_bufferedRecovery) return;
-    if (_s._exoBackend || _s._cacheProbeInFlight) return;
+    if (_s._exoBackend) return;
+    // Frame pulse is independent of the demuxer probe lock — a slow
+    // demuxer-cache-duration getProperty must not starve estimated-vf-fps
+    // and trip a false VO-freeze reopen.
+    if (_mediaKitLiveProfile && _s._playing) {
+      unawaited(_sampleLiveFramePulse());
+    }
+    if (!_bufferedRecovery || _s._cacheProbeInFlight) return;
     final p = _s._player?.platform;
     if (p is! NativePlayer) return;
     _s._cacheProbeInFlight = true;
@@ -1297,12 +1303,6 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
         if (t != null && t.isFinite) {
           _noteFeedProgress((t * 1000).round());
         }
-        // Live playhead often sticks at 0 and demuxer-cache-duration at 0
-        // while frames still paint (Stalker / pure TS). Without this, detector
-        // 2b soft-reopens every ~5s and kills a working picture.
-        if (_mediaKitLiveProfile && _s._playing) {
-          await _sampleLiveFramePulse(p);
-        }
       } catch (_) {
       } finally {
         _s._cacheProbeInFlight = false;
@@ -1312,20 +1312,17 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     }));
   }
 
-  /// Bump playhead-alive when mpv is still emitting frames / bitrate.
-  Future<void> _sampleLiveFramePulse(NativePlayer p) async {
+  /// Bump playhead-alive only when mpv is still emitting frames.
+  ///
+  /// Do **not** use `video-bitrate` — it can stay >0 on a frozen VO while
+  /// demuxer cache is full (ATV MediaKit silent freeze with ~30s cache).
+  Future<void> _sampleLiveFramePulse() async {
+    final p = _s._player?.platform;
+    if (p is! NativePlayer) return;
     try {
       final fpsRaw = await p.getProperty('estimated-vf-fps');
       final fps = double.tryParse(fpsRaw.toString());
       if (fps != null && fps.isFinite && fps >= 1.0) {
-        _noteLivePaintPulse();
-        return;
-      }
-    } catch (_) {}
-    try {
-      final brRaw = await p.getProperty('video-bitrate');
-      final br = double.tryParse(brRaw.toString());
-      if (br != null && br.isFinite && br > 0) {
         _noteLivePaintPulse();
       }
     } catch (_) {}
@@ -1364,14 +1361,8 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (_s._feedMarkMs != markMs) {
       _s._feedMarkMs = markMs;
       _s._feedAdvancedAt = DateTime.now();
-      // Do not bump [_lastPosChange] from feed ticks alone — continuity proxy
-      // keepalives look "alive" while the picture is frozen on empty cache.
-      if (_mediaKitLiveProfile &&
-          _s._playing &&
-          _s._cacheAheadSecs >=
-              _IptvPtPlayerScreenState._minHealthyCacheSecs) {
-        _s._lastPosChange = DateTime.now();
-      }
+      // Never bump [_lastPosChange] from feed ticks — demuxer / proxy
+      // keepalives advance while mediacodec_embed holds a frozen frame.
     }
     // Exo often reports absolute buffered end; ahead ≈ buffered - position.
     if (positionMs != null && markMs > positionMs) {
@@ -1413,29 +1404,24 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
 
   bool get _playheadRecentlyMoved {
     if (!_s._playing) return false;
-    // Feed ticks alone are not playhead — empty-cache underrun must still
-    // show Buffering and reopen. Healthy cushion + feed ⇒ still painting.
-    if (_mediaKitLiveProfile &&
-        _networkStillFeeding &&
-        _s._cacheAheadSecs >=
-            _IptvPtPlayerScreenState._minHealthyCacheSecs) {
-      return true;
-    }
+    // Position ticks and/or estimated-vf-fps pulse only — never demuxer
+    // cache / feed. VO can freeze with a full 30s cushion on ATV MediaKit.
     return DateTime.now().difference(_s._lastPosChange) <
         const Duration(seconds: 2);
   }
 
-  /// 12s Buffering + frozen playhead + weak cache ⇒ treat as dead for Stable.
-  /// Do **not** trip while demuxer still has a healthy ahead cushion — that is
-  /// a normal refill, not a dead feed.
-  /// Empty cache + feed ticks still counts — proxy keepalives must not block
-  /// the wall forever while the picture stays frozen.
+  /// 12s Buffering + frozen paint ⇒ treat as dead.
+  ///
+  /// MediaKit live: do not require empty cache — demuxer can stay full while
+  /// mediacodec_embed holds the last frame. Exo / VOD still need weak cache
+  /// so a normal refill with a healthy cushion is not forced to reopen.
   bool get _bufferingHardWall {
     final since = _s._bufferingSince;
     if (since == null) return false;
     if (_playheadRecentlyMoved) return false;
-    if (_s._cacheAheadSecs >=
-        _IptvPtPlayerScreenState._minHealthyCacheSecs) {
+    if (!_mediaKitLiveProfile &&
+        _s._cacheAheadSecs >=
+            _IptvPtPlayerScreenState._minHealthyCacheSecs) {
       return false;
     }
     return DateTime.now().difference(since) >=
@@ -1498,12 +1484,15 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
     if (!_bufferedRecovery) return false;
     if (_stallWithoutPlayhead) return false;
     if (_bufferingHardWall) return false;
+    // MediaKit live: demuxer cushion ≠ painting. Require a recent playhead /
+    // estimated-vf-fps pulse (Stalker / TS playhead often sits at 0).
+    if (_mediaKitLiveProfile) {
+      return _playheadRecentlyMoved;
+    }
     if (_s._cacheAheadSecs >=
         _IptvPtPlayerScreenState._minHealthyCacheSecs) {
       return true;
     }
-    // Playhead / frame probe recently advanced — painting even if demuxer
-    // cache reports 0 (common on live MPEG-TS / Stalker create_link).
     if (_playheadRecentlyMoved) return true;
     return false;
   }
@@ -1591,15 +1580,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
               reason: 'position frozen ${frozenFor.inSeconds}s, cache empty');
           return;
         }
-      } else if (_s._userPlayWhenReady &&
-          _s._playing &&
-          _s._cacheAheadSecs <
-              _IptvPtPlayerScreenState._minHealthyCacheSecs) {
-        // Detector 2b: MediaKit live underrun while still "playing".
-        // With cache-pause=no, underrun can leave playing=true on a frozen
-        // frame — show Buffering and soft-reopen instead of staying silent.
-        // Skip when frames/playhead recently pulsed (cache=0 is normal on TS).
-        if (_streamWorking || _playheadRecentlyMoved) {
+      } else if (_s._userPlayWhenReady && _s._playing) {
+        // Detector 2b: MediaKit live paint stall while still "playing".
+        // Fires on empty-cache underrun AND on VO freeze with a full demuxer
+        // cushion (ATV mediacodec_embed holds last frame; cache stays ~30s).
+        // Alive signal is estimated-vf-fps / position — not feed or cache.
+        if (_playheadRecentlyMoved) {
           return;
         }
         final frozenFor = now.difference(_s._lastPosChange);
@@ -1607,8 +1593,13 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           _ensureBufferingChrome(now);
           if (frozenFor >=
               _IptvPtPlayerScreenState._liveEmptyPauseReopen) {
+            final empty = _s._cacheAheadSecs <
+                _IptvPtPlayerScreenState._minHealthyCacheSecs;
             _triggerRecovery(
-              reason: 'live underrun, cache empty',
+              reason: empty
+                  ? 'live underrun, cache empty'
+                  : 'live vo freeze, paint stalled '
+                      '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
             );
             return;
           }
@@ -1623,7 +1614,12 @@ mixin _IptvPtPlayerEngine on ConsumerState<IptvPtPlayerScreen> {
           _s._readyNotPlayingSince != null) {
         final pausedFor = now.difference(_s._readyNotPlayingSince!);
         if (_livePlaybackProfile && _bufferedRecovery) {
-          if (_streamWorking ||
+          // MediaKit live: healthy demuxer alone is not "working" (VO freeze).
+          if (_streamWorking) {
+            if (!_s._buffering) _logHealthyHold('self-pause');
+            return;
+          }
+          if (!_mediaKitLiveProfile &&
               _s._cacheAheadSecs >=
                   _IptvPtPlayerScreenState._minHealthyCacheSecs) {
             if (!_s._buffering) _logHealthyHold('self-pause');

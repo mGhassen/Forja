@@ -24,7 +24,7 @@ pub struct LiveMatchesRequest {
     /// Engine catalog plugin id (`catalog-espn`, `catalog-timstreams`, …).
     #[serde(default)]
     pub catalog_id: Option<String>,
-    /// Plugin config blob for [forja_live_catalog].
+    /// Plugin config blob for `forja_live_catalog` (unused; native catalog stub).
     #[serde(default)]
     pub config: Option<Value>,
     /// Game object for `sport_match_streams`.
