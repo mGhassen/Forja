@@ -10,18 +10,37 @@ import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
+import 'package:http/io_client.dart';
 import 'package:rust/rust.dart';
 
+/// Fetch a pack file relative to [EngineService.officialManifestUrl]
+/// (`FORJA_HQ_MANIFEST_URL` dart-define / `.env`).
+///
+/// Clears [HttpOverrides] for the request so [TestWidgetsFlutterBinding]'s
+/// stub client (always 400) is not used.
 Future<String> loadForjaHqFile(String relativePath) async {
-  for (final root in const [
-    '../../forjahq-plugin/',
-    '../forjahq-plugin/',
-    'forjahq-plugin/',
-  ]) {
-    final file = File('$root$relativePath');
-    if (await file.exists()) return file.readAsString();
+  final manifestUrl = EngineService.officialManifestUrl;
+  final slash = manifestUrl.lastIndexOf('/');
+  if (slash < 0) {
+    throw StateError('invalid FORJA_HQ_MANIFEST_URL: $manifestUrl');
   }
-  throw StateError('forjahq-plugin file not found: $relativePath');
+  final uri = Uri.parse('${manifestUrl.substring(0, slash + 1)}$relativePath');
+  final previous = HttpOverrides.current;
+  HttpOverrides.global = null;
+  try {
+    final client = IOClient(HttpClient());
+    try {
+      final res = await client.get(uri);
+      if (res.statusCode != 200) {
+        throw StateError('ForjaHQ pack fetch ${res.statusCode}: $uri');
+      }
+      return res.body;
+    } finally {
+      client.close();
+    }
+  } finally {
+    HttpOverrides.global = previous;
+  }
 }
 
 

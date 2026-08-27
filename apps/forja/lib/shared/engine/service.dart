@@ -21,9 +21,11 @@ class EngineService {
   EngineService._();
   static final EngineService instance = EngineService._();
 
-  /// Official ForjaHQ manifest (remote — not bundled in the APK).
-  static const officialManifestUrl =
-      'https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/manifest.json';
+  /// Official ForjaHQ manifest URL from `FORJA_HQ_MANIFEST_URL`
+  /// (`--dart-define` / repo-root `.env`). Empty when unset — no baked-in host.
+  static const officialManifestUrl = String.fromEnvironment(
+    'FORJA_HQ_MANIFEST_URL',
+  );
 
   /// @deprecated Use [officialManifestUrl]. Legacy asset packs only.
   static const bundledSourceUrl = officialManifestUrl;
@@ -51,8 +53,6 @@ class EngineService {
   /// Legacy unscoped selection (migrated into `…_movie` once).
   static const _legacySelectedKey = 'engine_js_sources_selected_ids';
   static const _selectedKeyPrefix = 'engine_js_sources_selected_ids_';
-  static const _selectAllDefaultKey = 'engine_js_sources_select_all_default';
-
   static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
 
   /// Last auto-install failure for ForjaHQ (null = ok / never failed).
@@ -70,8 +70,11 @@ class EngineService {
   static bool isOfficialPack(String sourceUrl) => sourceUrl == officialManifestUrl;
 
   /// Legacy name — official ForjaHQ remote pack.
-  static bool isBundled(String sourceUrl) =>
-      isOfficialPack(sourceUrl) ||
+  static bool isBundled(String sourceUrl) => isOfficialPack(sourceUrl);
+
+  /// Old APK-bundled pack URLs — purge on read; remote only.
+  static bool isLegacyAssetPack(String sourceUrl) =>
+      sourceUrl.startsWith('asset:') ||
       sourceUrl == _legacyAssetBundledSourceUrl ||
       sourceUrl == _legacyBundledSourceUrlProviders ||
       sourceUrl == _legacyBundledSourceUrl;
@@ -208,6 +211,13 @@ class EngineService {
   /// Failures are sticky — no silent re-fetch / log spam until [force] or a
   /// successful [install] of the official URL. UI reads [officialInstallError].
   Future<void> ensureOfficialInstalled({bool force = false}) async {
+    if (officialManifestUrl.trim().isEmpty) {
+      _officialInstallFailed = true;
+      officialInstallError.value =
+          'FORJA_HQ_MANIFEST_URL missing — set in .env / dart-define';
+      changeNotifier.value++;
+      return;
+    }
     final packs = await _listPacksRaw();
     if (packs.any((p) => p.sourceUrl == officialManifestUrl)) {
       _clearOfficialInstallError();
@@ -250,6 +260,11 @@ class EngineService {
 
   /// Settings Retry — rethrows so the UI can toast.
   Future<void> retryOfficialInstall() async {
+    if (officialManifestUrl.trim().isEmpty) {
+      throw Exception(
+        'FORJA_HQ_MANIFEST_URL missing — set in .env / dart-define',
+      );
+    }
     _officialInstallFailed = false;
     officialInstallError.value = null;
     await install(officialManifestUrl);
@@ -266,13 +281,36 @@ class EngineService {
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! List) return [];
-      return [
+      final packs = [
         for (final e in decoded)
           if (e is Map) EnginePack.fromStored(Map<String, dynamic>.from(e)),
       ];
+      return _purgeLegacyAssetPacks(packs);
     } catch (_) {
       return [];
     }
+  }
+
+  /// Drop APK-era `asset:…` packs so Settings only shows remote installs.
+  Future<List<EnginePack>> _purgeLegacyAssetPacks(List<EnginePack> packs) async {
+    final keep = <EnginePack>[];
+    final victims = <EnginePack>[];
+    for (final p in packs) {
+      if (isLegacyAssetPack(p.sourceUrl) || p.bundled) {
+        victims.add(p);
+      } else {
+        keep.add(p);
+      }
+    }
+    if (victims.isEmpty) return packs;
+    final prefs = await _prefs;
+    for (final pack in victims) {
+      for (final p in pack.plugins) {
+        await prefs.remove(_scriptPrefix + p.id);
+      }
+    }
+    await _savePacks(keep);
+    return keep;
   }
 
   String _resolveScriptUrl(String manifestUrl, String filename) {
@@ -404,16 +442,6 @@ class EngineService {
     await _savePacks(next);
   }
 
-  Future<bool> isSourcesSelectAllDefault() async {
-    final prefs = await _prefs;
-    return prefs.getBool(_selectAllDefaultKey) ?? true;
-  }
-
-  Future<void> setSourcesSelectAllDefault(bool value) async {
-    final prefs = await _prefs;
-    await prefs.setBool(_selectAllDefaultKey, value);
-  }
-
   static String _selectedPrefsKey(String panelCategory) =>
       '$_selectedKeyPrefix$panelCategory';
 
@@ -423,8 +451,8 @@ class EngineService {
     /// movie | tv | anime | drama — separate chip memory per Sources panel.
     required String panelCategory,
 
-    /// When prefs have no saved selection and Select All by default is on,
-    /// select this subset instead of every enabled plugin (soft categories).
+    /// When prefs have no saved selection, select this subset instead of
+    /// every enabled plugin (soft categories).
     Set<String>? selectAllScopeIds,
   }) async {
     final prefs = await _prefs;
@@ -440,8 +468,6 @@ class EngineService {
       }
     }
     if (raw == null) {
-      final selectAll = await isSourcesSelectAllDefault();
-      if (!selectAll) return {};
       final scope = selectAllScopeIds ?? enabledIds;
       return {
         for (final id in scope)

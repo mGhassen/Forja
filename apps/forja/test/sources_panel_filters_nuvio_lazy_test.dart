@@ -243,15 +243,6 @@ void main() {
       );
       expect(
         resolveNuvioSelectedScraperIds(
-          selectionSaved: false,
-          savedIds: const [],
-          enabledIds: const {'allanime', 'Cineby'},
-          selectAllDefault: false,
-        ),
-        isEmpty,
-      );
-      expect(
-        resolveNuvioSelectedScraperIds(
           selectionSaved: true,
           savedIds: const [],
           enabledIds: const {'allanime', 'Cineby'},

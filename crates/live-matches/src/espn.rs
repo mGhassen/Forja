@@ -653,7 +653,7 @@ fn game_to_catalog_row(game: &Value, plugin_id: &str) -> Option<Value> {
     }))
 }
 
-/// Forja Live `catalog-espn` rows — mirrors `assets/plugins/catalog/espn.js`.
+/// Forja Live `catalog-espn` rows — mirrors the remote pack `catalog/espn.js` schedule shape.
 pub fn forja_live_catalog_rows(
     leagues: &[String],
     date_yyyymmdd: Option<&str>,

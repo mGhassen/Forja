@@ -1,9 +1,9 @@
 //! Batch-audit Forja HTTP movie/TV plugins via engine-js.
 //!
-//!   cargo run -p engine-js --bin audit-engine-plugins -- \
-//!     --tmdb=94997 --media=tv --season=1 --episode=1
+//!   ./scripts/audit-engine-plugins.sh --tmdb=94997 --media=tv --season=1 --episode=1
 //!
-//! Or: ./scripts/audit-engine-plugins.sh --tmdb=94997 --media=tv --season=1 --episode=1
+//! Pack source: `FORJA_HQ_MANIFEST_URL` (repo `.env`) by default.
+//! Optional: `--manifest-url=URL` or `--assets=DIR` (local override).
 
 use std::collections::BTreeSet;
 use std::env;
@@ -79,27 +79,92 @@ impl Flags {
     }
 }
 
+enum PackSource {
+    Remote { manifest_url: String, base: String },
+    Local(PathBuf),
+}
+
+impl PackSource {
+    fn label(&self) -> String {
+        match self {
+            Self::Remote { manifest_url, .. } => manifest_url.clone(),
+            Self::Local(dir) => dir.display().to_string(),
+        }
+    }
+
+    async fn load_manifest(&self, client: &reqwest::Client) -> Result<String, String> {
+        match self {
+            Self::Remote { manifest_url, .. } => fetch_text(client, manifest_url).await,
+            Self::Local(dir) => {
+                let path = dir.join("manifest.json");
+                fs::read_to_string(&path)
+                    .map_err(|e| format!("failed to read {}: {e}", path.display()))
+            }
+        }
+    }
+
+    async fn load_entry(
+        &self,
+        client: &reqwest::Client,
+        entry: &str,
+    ) -> Option<String> {
+        if entry.is_empty() {
+            return None;
+        }
+        match self {
+            Self::Remote { base, .. } => {
+                fetch_text(client, &format!("{base}{entry}")).await.ok()
+            }
+            Self::Local(dir) => read_entry_local(dir, entry),
+        }
+    }
+}
+
+fn env_manifest_url() -> Result<String, String> {
+    env::var("FORJA_HQ_MANIFEST_URL")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .ok_or_else(|| {
+            "FORJA_HQ_MANIFEST_URL missing — set in repo-root .env (or pass --manifest-url / --assets)"
+                .into()
+        })
+}
+
+fn pack_base(manifest_url: &str) -> String {
+    match manifest_url.rsplit_once('/') {
+        Some((base, _)) => format!("{base}/"),
+        None => format!("{manifest_url}/"),
+    }
+}
+
+async fn fetch_text(client: &reqwest::Client, url: &str) -> Result<String, String> {
+    let resp = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("GET {url}: {e}"))?;
+    if !resp.status().is_success() {
+        return Err(format!("HTTP {} for {url}", resp.status()));
+    }
+    resp.text()
+        .await
+        .map_err(|e| format!("body {url}: {e}"))
+}
+
 fn usage() {
     eprintln!(
         "audit-engine-plugins — Forja engine-js provider matrix\n\
          \n\
          Usage:\n\
-           audit-engine-plugins [--tmdb=ID] [--media=tv|movie] [--season=N] [--episode=N]\n\
-                                [--timeout-ms=N] [--plugin=ID]... [--json] [--assets=DIR]\n\
+           audit-engine-plugins [--tmdb=ID] [--media=tv|movie] [--season=N]\n\
+                                [--episode=N] [--timeout-ms=N] [--plugin=ID]... [--json]\n\
+                                [--manifest-url=URL] [--assets=DIR]\n\
          \n\
-         Defaults: tmdb=94997 media=tv season=1 episode=1 timeout-ms=60000\n\
-         Assets default: <repo>/forjahq-plugin\n"
+         Pack: FORJA_HQ_MANIFEST_URL (repo .env) by default.\n\
+         --manifest-url overrides env; --assets=DIR uses a local pack folder instead.\n\
+         Defaults: tmdb=94997 media=tv season=1 episode=1 timeout-ms=60000\n"
     );
-}
-
-fn repo_root() -> PathBuf {
-    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    // crates/engine-js → crates → repo
-    manifest
-        .parent()
-        .and_then(|p| p.parent())
-        .map(|p| p.to_path_buf())
-        .unwrap_or(manifest)
 }
 
 fn classify(
@@ -143,6 +208,7 @@ async fn main() -> ExitCode {
     let mut json_out = false;
     let mut only: BTreeSet<String> = BTreeSet::new();
     let mut assets: Option<PathBuf> = None;
+    let mut manifest_url_arg: Option<String> = None;
 
     let mut i = 0;
     while i < args.len() {
@@ -179,6 +245,11 @@ async fn main() -> ExitCode {
             if let Some(v) = args.get(i) {
                 only.insert(v.clone());
             }
+        } else if let Some(v) = a.strip_prefix("--manifest-url=") {
+            manifest_url_arg = Some(v.to_string());
+        } else if a == "--manifest-url" {
+            i += 1;
+            manifest_url_arg = args.get(i).cloned();
         } else if let Some(v) = a.strip_prefix("--assets=") {
             assets = Some(PathBuf::from(v));
         } else if a == "--assets" {
@@ -194,38 +265,61 @@ async fn main() -> ExitCode {
         i += 1;
     }
 
-    let assets_dir = assets.unwrap_or_else(|| {
-        repo_root().join("forjahq-plugin")
-    });
-    let manifest_path = assets_dir.join("manifest.json");
-    let raw = match fs::read_to_string(&manifest_path) {
+    let pack = if let Some(dir) = assets {
+        PackSource::Local(dir)
+    } else if let Some(manifest_url) = manifest_url_arg {
+        let base = pack_base(&manifest_url);
+        PackSource::Remote { manifest_url, base }
+    } else {
+        match env_manifest_url() {
+            Ok(manifest_url) => {
+                let base = pack_base(&manifest_url);
+                PackSource::Remote { manifest_url, base }
+            }
+            Err(e) => {
+                eprintln!("{e}");
+                usage();
+                return ExitCode::FAILURE;
+            }
+        }
+    };
+
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("http client: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    let raw = match pack.load_manifest(&client).await {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("failed to read {}: {e}", manifest_path.display());
+            eprintln!("{e}");
             return ExitCode::FAILURE;
         }
     };
     let manifest: Manifest = match serde_json::from_str(&raw) {
         Ok(m) => m,
         Err(e) => {
-            eprintln!("invalid engine.json: {e}");
+            eprintln!("invalid manifest.json: {e}");
             return ExitCode::FAILURE;
         }
     };
 
-    let hops: Vec<HopScript> = manifest
-        .plugins
-        .iter()
-        .filter(|p| p.kind == "hop")
-        .filter_map(|p| {
-            let code = read_entry(&assets_dir, &p.entry)?;
-            Some(HopScript {
+    let mut hops: Vec<HopScript> = Vec::new();
+    for p in manifest.plugins.iter().filter(|p| p.kind == "hop") {
+        if let Some(code) = pack.load_entry(&client, &p.entry).await {
+            hops.push(HopScript {
                 id: p.id.clone(),
                 hosts: p.hosts.clone(),
                 code,
-            })
-        })
-        .collect();
+            });
+        }
+    }
 
     let targets: Vec<&ManifestPlugin> = manifest
         .plugins
@@ -242,10 +336,10 @@ async fn main() -> ExitCode {
 
     eprintln!(
         "audit-engine-plugins tmdb={tmdb} media={media} S{season}E{episode} \
-         plugins={} hops={} timeout_ms={timeout_ms} assets={}",
+         plugins={} hops={} timeout_ms={timeout_ms} pack={}",
         targets.len(),
         hops.len(),
-        assets_dir.display()
+        pack.label()
     );
 
     let mut rows: Vec<Value> = Vec::new();
@@ -261,7 +355,7 @@ async fn main() -> ExitCode {
     }
 
     for plugin in targets {
-        let code = match read_entry(&assets_dir, &plugin.entry) {
+        let code = match pack.load_entry(&client, &plugin.entry).await {
             Some(c) => c,
             None => {
                 let bucket = "runtime";
@@ -340,6 +434,7 @@ async fn main() -> ExitCode {
                 "season": season,
                 "episode": episode,
                 "timeout_ms": timeout_ms,
+                "pack": pack.label(),
                 "rows": rows,
                 "buckets": bucket_counts,
             }))
@@ -370,12 +465,8 @@ async fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn read_entry(assets: &Path, entry: &str) -> Option<String> {
-    if entry.is_empty() {
-        return None;
-    }
-    let path = assets.join(entry);
-    fs::read_to_string(path).ok()
+fn read_entry_local(assets: &Path, entry: &str) -> Option<String> {
+    fs::read_to_string(assets.join(entry)).ok()
 }
 
 fn print_row(row: &Value, json_out: bool) {

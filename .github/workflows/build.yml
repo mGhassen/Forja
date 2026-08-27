@@ -31,6 +31,7 @@ env:
   POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
   POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
   SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+  FORJA_HQ_MANIFEST_URL: ${{ vars.FORJA_HQ_MANIFEST_URL || secrets.FORJA_HQ_MANIFEST_URL }}
 
 jobs:
   validate_config:
@@ -41,6 +42,10 @@ jobs:
         run: |
           if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_PUBLISHABLE_KEY" ]]; then
             echo "::error::Set SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or legacy SUPABASE_ANON_KEY) repository secrets."
+            exit 1
+          fi
+          if [[ -z "$FORJA_HQ_MANIFEST_URL" ]]; then
+            echo "::error::Set FORJA_HQ_MANIFEST_URL repository variable (or secret) to the ForjaHQ pack manifest URL."
             exit 1
           fi
           if [[ -z "$FORJA_WEB_URL" ]]; then
@@ -84,7 +89,8 @@ jobs:
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
-            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=FORJA_HQ_MANIFEST_URL="$FORJA_HQ_MANIFEST_URL"
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
       - uses: actions/upload-artifact@v4
@@ -119,7 +125,8 @@ jobs:
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
-            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=FORJA_HQ_MANIFEST_URL="$FORJA_HQ_MANIFEST_URL"
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
       - uses: actions/upload-artifact@v4
@@ -153,7 +160,8 @@ jobs:
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
-            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=FORJA_HQ_MANIFEST_URL="$FORJA_HQ_MANIFEST_URL"
       - shell: bash
         run: ./scripts/embed_rust_in_release_output.sh windows
       - shell: bash
@@ -194,7 +202,8 @@ jobs:
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
-            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=FORJA_HQ_MANIFEST_URL="$FORJA_HQ_MANIFEST_URL"
       - run: ./scripts/embed_rust_in_release_output.sh linux
       - run: ./scripts/verify_installer_payload.sh linux
       - uses: actions/upload-artifact@v4
@@ -238,7 +247,8 @@ jobs:
             --dart-define=SENTRY_DSN="$SENTRY_DSN" \
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
-            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID"
+            --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
+            --dart-define=FORJA_HQ_MANIFEST_URL="$FORJA_HQ_MANIFEST_URL"
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Android

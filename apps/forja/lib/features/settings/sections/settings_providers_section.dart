@@ -6,7 +6,6 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/providers/stremio_addons_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
-import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
@@ -38,10 +37,8 @@ class _SettingsProvidersSectionState
   final TextEditingController _addonController = TextEditingController();
   final TextEditingController _nuvioController = TextEditingController();
   bool _nuvioInstalling = false;
-  bool _nuvioSelectAllDefault = true;
   final TextEditingController _engineController = TextEditingController();
   bool _engineInstalling = false;
-  bool _engineSelectAllDefault = true;
 
   final TextEditingController _jackettUrlController = TextEditingController();
   final TextEditingController _jackettApiKeyController = TextEditingController();
@@ -56,25 +53,6 @@ class _SettingsProvidersSectionState
   Set<int> _prowlarrSelectedTagIds = {};
   bool _prowlarrTagsLoaded = false;
   bool _indexersHydrated = false;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_hydrateNuvioSelectAllDefault());
-    unawaited(_hydrateEngineSelectAllDefault());
-  }
-
-  Future<void> _hydrateNuvioSelectAllDefault() async {
-    final v = await NuvioService.instance.isSourcesSelectAllDefault();
-    if (!mounted) return;
-    setState(() => _nuvioSelectAllDefault = v);
-  }
-
-  Future<void> _hydrateEngineSelectAllDefault() async {
-    final v = await EngineService.instance.isSourcesSelectAllDefault();
-    if (!mounted) return;
-    setState(() => _engineSelectAllDefault = v);
-  }
 
   @override
   void dispose() {
@@ -141,16 +119,6 @@ class _SettingsProvidersSectionState
           SettingsGroup(
             label: 'Nuvio addons',
             children: [
-              settingsFocusableToggle(
-                context,
-                'Select All by default',
-                'Open Sources → Nuvio with every enabled scraper selected. Off starts with none — pick chips in the panel.',
-                _nuvioSelectAllDefault,
-                (val) async {
-                  setState(() => _nuvioSelectAllDefault = val);
-                  await NuvioService.instance.setSourcesSelectAllDefault(val);
-                },
-              ),
               _buildNuvioAddonSection(nuvioAddons),
             ],
           ),
@@ -158,16 +126,6 @@ class _SettingsProvidersSectionState
           SettingsGroup(
             label: 'Forja plugins',
             children: [
-              settingsFocusableToggle(
-                context,
-                'Select All by default',
-                'Open Sources → Forja with every enabled plugin selected. Off starts with none — pick chips in the panel.',
-                _engineSelectAllDefault,
-                (val) async {
-                  setState(() => _engineSelectAllDefault = val);
-                  await EngineService.instance.setSourcesSelectAllDefault(val);
-                },
-              ),
               _buildEnginePackSection(enginePacks),
             ],
           ),

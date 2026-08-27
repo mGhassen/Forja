@@ -228,17 +228,13 @@ Set<String> filterNuvioSelectedScraperIds({
     if (enabledIds.contains(id)) id,
 };
 
-/// Missing chip selection → [selectAllDefault] ? all enabled : none.
-/// Empty saved list is explicit none.
+/// Missing chip selection → all enabled. Empty saved list is explicit none.
 Set<String> resolveNuvioSelectedScraperIds({
   required bool selectionSaved,
   required Iterable<String> savedIds,
   required Set<String> enabledIds,
-  bool selectAllDefault = true,
 }) {
-  if (!selectionSaved) {
-    return selectAllDefault ? {...enabledIds} : <String>{};
-  }
+  if (!selectionSaved) return {...enabledIds};
   return filterNuvioSelectedScraperIds(
     savedIds: savedIds,
     enabledIds: enabledIds,
@@ -308,8 +304,6 @@ class NuvioService {
   /// Sources → Nuvio chip selection (device KV, same store as addons).
   static const String _sourcesSelectedKey =
       'nuvio_sources_selected_scrapers_v1';
-  static const String _selectAllDefaultKey =
-      'nuvio_sources_select_all_default_v1';
 
   /// Manifest URLs that ship with the app. Persisted like any other addon so
   /// Settings and Sources share one list (scrapers toggleable / not ghosted).
@@ -496,14 +490,12 @@ class NuvioService {
     required Set<String> enabledIds,
   }) async {
     await _ensureAddonsInKv();
-    final selectAllDefault = await isSourcesSelectAllDefault();
     final selectionSaved = await kvHasKey(_sourcesSelectedKey);
     if (!selectionSaved) {
       final ids = resolveNuvioSelectedScraperIds(
         selectionSaved: false,
         savedIds: const [],
         enabledIds: enabledIds,
-        selectAllDefault: selectAllDefault,
       );
       if (ids.isNotEmpty) {
         await saveSourcesSelectedScraperIds(ids);
@@ -518,7 +510,6 @@ class NuvioService {
       selectionSaved: true,
       savedIds: saved,
       enabledIds: enabledIds,
-      selectAllDefault: selectAllDefault,
     );
   }
 
@@ -526,25 +517,6 @@ class NuvioService {
     await _ensureAddonsInKv();
     final sorted = ids.toList()..sort();
     await kvSetStringList(_sourcesSelectedKey, sorted);
-  }
-
-  Future<bool> isSourcesSelectAllDefault() async {
-    await _ensureAddonsInKv();
-    return kvGetBool(_selectAllDefaultKey, fallback: true);
-  }
-
-  /// Settings toggle. On → select every enabled scraper. Off → none selected.
-  Future<void> setSourcesSelectAllDefault(bool selectAll) async {
-    await _ensureAddonsInKv();
-    await kvSetBool(_selectAllDefaultKey, selectAll);
-    if (selectAll) {
-      final enabled = enabledNuvioScraperIds(await listSourcesPanelAddons());
-      if (enabled.isNotEmpty) {
-        await saveSourcesSelectedScraperIds(enabled);
-      }
-    } else {
-      await saveSourcesSelectedScraperIds({});
-    }
   }
 
   /// Offline fallback when [ensureBundledInstalled] cannot reach the network.
