@@ -60,15 +60,15 @@ class ProfileEngineWarm {
 
       if (needs.playSourceEngine) {
         final install = EngineService.instance
-            .ensureBundledInstalled()
+            .ensureOfficialInstalled()
             .catchError((Object e) {
-          debugPrint('[Init] engine bundled install error (non-fatal): $e');
+          debugPrint('[Init] ForjaHQ install error (non-fatal): $e');
         });
         if (startPlaySources) {
-          debugPrint('[Init] engine bundled install (post-splash await)');
+          debugPrint('[Init] ForjaHQ install (post-splash await)');
           await install;
         } else {
-          debugPrint('[Init] engine bundled install (splash background)');
+          debugPrint('[Init] ForjaHQ install (splash background)');
           unawaited(install);
         }
       } else {

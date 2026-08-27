@@ -217,7 +217,7 @@ mixin _LiveMatchesForjaLive
   }
 
   Future<bool> _isEspnCatalogEnabled() async {
-    await EngineService.instance.ensureBundledInstalled();
+    await EngineService.instance.ensureOfficialInstalled();
     final packs = await EngineService.instance.listPacks();
     for (final pack in packs) {
       for (final p in pack.plugins) {
@@ -432,7 +432,7 @@ mixin _LiveMatchesForjaLive
   Future<void> _loadForjaLiveCatalogLazy() async {
     final gen = _s._forjaLiveLoadGen;
     _s._catalogFetchedHorizon = _s._scheduleHorizon;
-    await EngineService.instance.ensureBundledInstalled();
+    await EngineService.instance.ensureOfficialInstalled();
     final catalogPlugins =
         await EngineService.instance.listEnabledLiveCatalogPlugins();
     if (!mounted || gen != _s._forjaLiveLoadGen) return;

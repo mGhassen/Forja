@@ -23,7 +23,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
   LiveMatchesIptvSportsConfig _config = const LiveMatchesIptvSportsConfig();
   bool _loading = true;
   String? _error;
-  EnginePack? _bundledPack;
+  EnginePack? _primaryPack;
   List<EnginePlugin> _liveSourcePlugins = const [];
   List<EnginePlugin> _liveCatalogPlugins = const [];
 
@@ -84,7 +84,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
           );
     if (!mounted) return;
     setState(() {
-      _bundledPack = primary;
+      _primaryPack = primary;
       _liveSourcePlugins = [
         for (final p in live)
           if (!p.isLiveCatalog) p,
@@ -219,7 +219,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_bundledPack != null && _liveSourcePlugins.isNotEmpty)
+        if (_primaryPack != null && _liveSourcePlugins.isNotEmpty)
           SettingsGroup(
             label: 'Live plugins',
             children: [
@@ -238,7 +238,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
                 child: SettingsEnginePackExpansion(
-                  pack: _bundledPack!,
+                  pack: _primaryPack!,
                   plugins: _liveSourcePlugins,
                   groupKey: EngineCategories.liveSourceGroupKey,
                   groupLabel: EngineCategories.liveSourceGroupLabel,
@@ -248,7 +248,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
               ),
             ],
           ),
-        if (_bundledPack != null && _liveCatalogPlugins.isNotEmpty)
+        if (_primaryPack != null && _liveCatalogPlugins.isNotEmpty)
           SettingsGroup(
             label: 'Catalog',
             children: [
@@ -266,7 +266,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
                 child: SettingsEnginePluginToggleList(
-                  sourceUrl: _bundledPack!.sourceUrl,
+                  sourceUrl: _primaryPack!.sourceUrl,
                   plugins: _liveCatalogPlugins,
                 ),
               ),

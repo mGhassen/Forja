@@ -38,7 +38,7 @@
 | 5 | R67-A05 | Settings Live Forja plugins list entries from all installed packs | ✅ |
 | 6 | R67-A06 | `engine_test.dart` reads pack via path helper; audit CLI requires `--assets=DIR` (no baked pack path) | ✅ |
 | 7 | R67-A07 | Feature docs + changelog describe remote ForjaHQ pack | ✅ |
-| 8 | R67-A08 | Legacy `ensureBundledInstalled` aliases official install | ✅ |
+| 8 | R67-A08 | Call sites use `ensureOfficialInstalled` (no `ensureBundledInstalled` alias) | ✅ |
 | 9 | R67-A09 | ForjaHQ pack removable like other manifests | ✅ |
 | 10 | R67-A10 | `manifest.json` schema unchanged (`schema`, `name`, `version`, `plugins[]`) | ✅ |
 

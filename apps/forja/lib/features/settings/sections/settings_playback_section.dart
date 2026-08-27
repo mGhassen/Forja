@@ -174,7 +174,7 @@ class _SettingsPlaybackSectionState
                     schedulePreferencesSyncPush();
                     if (val) {
                       unawaited(
-                        EngineService.instance.ensureBundledInstalled(),
+                        EngineService.instance.ensureOfficialInstalled(),
                       );
                     }
                   },

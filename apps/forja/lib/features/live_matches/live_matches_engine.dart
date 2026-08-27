@@ -30,9 +30,9 @@ class LiveMatchesEngine {
     return '$o/';
   }
 
-  /// Merged plugin config (`engine.json` + remote overlay).
+  /// Merged plugin config (manifest + remote overlay).
   static Future<Map<String, dynamic>> pluginConfig(String pluginId) async {
-    await EngineService.instance.ensureBundledInstalled();
+    await EngineService.instance.ensureOfficialInstalled();
     final plugin = await EngineService.instance.pluginById(pluginId);
     if (plugin == null) return const {};
     final overlay =
@@ -68,7 +68,7 @@ class LiveMatchesEngine {
   }
 
   static Future<List<Map<String, dynamic>>> fetchCatalog() async {
-    await EngineService.instance.ensureBundledInstalled();
+    await EngineService.instance.ensureOfficialInstalled();
     final catalogPlugins =
         await EngineService.instance.listEnabledLiveCatalogPlugins();
     if (catalogPlugins.isEmpty) return [];
@@ -91,7 +91,7 @@ class LiveMatchesEngine {
   static Future<List<Map<String, dynamic>>> fetchServerCatalog(
     String catalogId,
   ) async {
-    await EngineService.instance.ensureBundledInstalled();
+    await EngineService.instance.ensureOfficialInstalled();
     final plugin = await EngineService.instance.pluginById(catalogId);
     if (plugin == null || !plugin.isLiveCatalog) return [];
     return EngineService.instance.runLiveCatalog(catalogPlugin: plugin);

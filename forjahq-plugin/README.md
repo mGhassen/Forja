@@ -25,7 +25,7 @@ https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/manifest.js
 | `live/` | Live resolve + shared `embed-st.js` |
 | `catalog/` | Live schedule catalogs |
 
-Each `plugins[]` entry points at a relative `entry` JS file. One manifest, many providers.
+Each `plugins[]` entry points at a relative `entry` JS file. Optional `prelude` is another relative JS file the host prepends at load (e.g. shared live helpers). One manifest, many providers.
 
 ## Host-only (not in this pack)
 

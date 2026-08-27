@@ -27,9 +27,6 @@ class EngineService {
     'FORJA_HQ_MANIFEST_URL',
   );
 
-  /// @deprecated Use [officialManifestUrl]. Legacy asset packs only.
-  static const bundledSourceUrl = officialManifestUrl;
-
   /// Internal `types: catalog` plugins — not shown in Settings toggles.
   static bool isInternalLiveCatalog(EnginePlugin plugin) => plugin.isLiveCatalog;
 
@@ -47,9 +44,9 @@ class EngineService {
   static const _legacyBundledSourceUrlProviders = 'asset:providers/engine.json';
   static const _legacyBundledSourceUrl = 'asset:engine_js/engine.json';
   static const _legacyAssetBundledSourceUrl = 'asset:plugins/engine.json';
-  static const _embedStScriptKey = 'engine_js_script___embed_st__';
   static const _packsKey = 'engine_js_packs_v1';
   static const _scriptPrefix = 'engine_js_script_';
+  static const _preludePrefix = 'engine_js_prelude_';
   /// Legacy unscoped selection (migrated into `…_movie` once).
   static const _legacySelectedKey = 'engine_js_sources_selected_ids';
   static const _selectedKeyPrefix = 'engine_js_sources_selected_ids_';
@@ -70,9 +67,6 @@ class EngineService {
   final Set<String> _scriptRepairAttempted = {};
 
   static bool isOfficialPack(String sourceUrl) => sourceUrl == officialManifestUrl;
-
-  /// Legacy name — official ForjaHQ remote pack.
-  static bool isBundled(String sourceUrl) => isOfficialPack(sourceUrl);
 
   /// Old APK-bundled pack URLs — purge on read; remote only.
   static bool isLegacyAssetPack(String sourceUrl) =>
@@ -275,9 +269,6 @@ class EngineService {
     _clearOfficialInstallError();
   }
 
-  /// @deprecated Use [ensureOfficialInstalled].
-  Future<void> ensureBundledInstalled() => ensureOfficialInstalled();
-
   Future<List<EnginePack>> _listPacksRaw() async {
     final prefs = await _prefs;
     final raw = prefs.getString(_packsKey);
@@ -335,7 +326,14 @@ class EngineService {
         if (p.entry.isEmpty) continue;
         if (!p.isHttp && !p.isHop) continue;
         final cached = prefs.getString(_scriptPrefix + p.id);
-        if (cached == null || cached.isEmpty) missing.add(p);
+        if (cached == null || cached.isEmpty) {
+          missing.add(p);
+          continue;
+        }
+        if (p.prelude.isNotEmpty) {
+          final pre = prefs.getString(_preludePrefsKey(p.prelude));
+          if (pre == null || pre.isEmpty) missing.add(p);
+        }
       }
       if (missing.isEmpty) continue;
       _scriptRepairAttempted.add(pack.sourceUrl);
@@ -365,14 +363,8 @@ class EngineService {
     await _syncHopsForRuntime(EngineRuntime.instance, packs);
   }
 
-  Future<void> _cacheEmbedStScript(String manifestUrl) async {
-    final prefs = await _prefs;
-    final url = _resolveScriptUrl(manifestUrl, 'live/embed-st.js');
-    final sr = await http.get(Uri.parse(url));
-    if (sr.statusCode == 200 && sr.body.isNotEmpty) {
-      await prefs.setString(_embedStScriptKey, sr.body);
-    }
-  }
+  static String _preludePrefsKey(String preludeEntry) =>
+      '$_preludePrefix${Uri.encodeComponent(preludeEntry)}';
 
   Future<EnginePack> install(String manifestUrl) async {
     final resp = await http.get(Uri.parse(manifestUrl));
@@ -404,6 +396,19 @@ class EngineService {
     }
     final prefs = await _prefs;
     final missing = <String>[];
+    final preludesNeeded = <String>{
+      for (final p in pack.plugins)
+        if (p.prelude.isNotEmpty) p.prelude,
+    };
+    for (final prelude in preludesNeeded) {
+      final preludeUrl = _resolveScriptUrl(manifestUrl, prelude);
+      final pr = await http.get(Uri.parse(preludeUrl));
+      if (pr.statusCode != 200 || pr.body.isEmpty) {
+        missing.add('prelude:$prelude');
+        continue;
+      }
+      await prefs.setString(_preludePrefsKey(prelude), pr.body);
+    }
     for (final plugin in pack.plugins) {
       if (plugin.entry.isEmpty) continue;
       if (!plugin.isHttp && !plugin.isHop) continue;
@@ -419,14 +424,6 @@ class EngineService {
       throw Exception(
         'manifest install failed — missing scripts: ${missing.join(', ')}',
       );
-    }
-    final hasLive = pack.plugins.any((p) => p.entry.startsWith('live/'));
-    if (hasLive) {
-      try {
-        await _cacheEmbedStScript(manifestUrl);
-      } catch (e) {
-        debugPrint('[engine] embed-st.js fetch failed: $e');
-      }
     }
     all.removeWhere((a) => a.sourceUrl == manifestUrl);
     all.add(pack);
@@ -453,11 +450,20 @@ class EngineService {
       for (final pack in all)
         for (final p in pack.plugins) p.id,
     };
+    final retainedPreludes = <String>{
+      for (final pack in all)
+        for (final p in pack.plugins)
+          if (p.prelude.isNotEmpty) p.prelude,
+    };
     final prefs = await _prefs;
     for (final pack in victim) {
       for (final p in pack.plugins) {
-        if (retainedIds.contains(p.id)) continue;
-        await prefs.remove(_scriptPrefix + p.id);
+        if (!retainedIds.contains(p.id)) {
+          await prefs.remove(_scriptPrefix + p.id);
+        }
+        if (p.prelude.isNotEmpty && !retainedPreludes.contains(p.prelude)) {
+          await prefs.remove(_preludePrefsKey(p.prelude));
+        }
       }
     }
     await _savePacks(all);
@@ -548,8 +554,9 @@ class EngineService {
     final cached = prefs.getString(_scriptPrefix + plugin.id);
     if (cached == null || cached.isEmpty) return null;
     var code = cached;
-    if (plugin.entry.startsWith('live/') && !plugin.entry.contains('/goat/')) {
-      final shared = prefs.getString(_embedStScriptKey);
+    final prelude = plugin.prelude.trim();
+    if (prelude.isNotEmpty) {
+      final shared = prefs.getString(_preludePrefsKey(prelude));
       if (shared != null && shared.isNotEmpty) {
         code = '$shared\n$code';
       }

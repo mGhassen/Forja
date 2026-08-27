@@ -296,7 +296,7 @@ Future<void> runEngineAutoPlay({
   }
 
   try {
-    await EngineService.instance.ensureBundledInstalled();
+    await EngineService.instance.ensureOfficialInstalled();
     if (aborted()) return;
 
     final loadedPacks =

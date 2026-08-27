@@ -15,6 +15,7 @@ class EnginePlugin {
     this.hosts = const [],
     this.enabled = true,
     this.config = const {},
+    this.prelude = '',
   });
 
   final String id;
@@ -35,6 +36,10 @@ class EnginePlugin {
   final List<String> hosts;
   final bool enabled;
   final Map<String, dynamic> config;
+
+  /// Optional shared JS fetched relative to the manifest and prepended at load.
+  /// Declared by the pack (`prelude`) — host does not hardcode pack paths.
+  final String prelude;
 
   bool get isHttp => kind == 'http';
   bool get isHost => kind == 'host';
@@ -79,6 +84,9 @@ class EnginePlugin {
     if (id.isEmpty) {
       throw const FormatException('engine plugin missing id');
     }
+    final config = engineConfigMap(j['config']);
+    final preludeRaw = (j['prelude'] as String?)?.trim() ?? '';
+    final preludeFromConfig = config['prelude']?.toString().trim() ?? '';
     return EnginePlugin(
       id: id,
       name: (j['name'] as String?)?.trim().isNotEmpty == true
@@ -102,7 +110,8 @@ class EnginePlugin {
       hostId: (j['hostId'] as String?)?.trim(),
       hosts: _stringList(j['hosts']),
       enabled: (j['enabled'] as bool?) ?? true,
-      config: engineConfigMap(j['config']),
+      config: config,
+      prelude: preludeRaw.isNotEmpty ? preludeRaw : preludeFromConfig,
     );
   }
 
@@ -118,6 +127,7 @@ class EnginePlugin {
     if (hosts.isNotEmpty) 'hosts': hosts,
     'enabled': enabled,
     if (config.isNotEmpty) 'config': config,
+    if (prelude.isNotEmpty) 'prelude': prelude,
   };
 
   EnginePlugin copyWith({bool? enabled}) => EnginePlugin(
@@ -132,6 +142,7 @@ class EnginePlugin {
     hosts: hosts,
     enabled: enabled ?? this.enabled,
     config: config,
+    prelude: prelude,
   );
 }
 

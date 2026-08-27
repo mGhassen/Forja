@@ -1554,7 +1554,8 @@
       "config": {
         "origin": "https://streamed.pk",
         "embedOrigin": "https://embed.st"
-      }
+      },
+      "prelude": "live/embed-st.js"
     },
     {
       "id": "live-ppv",
@@ -1571,7 +1572,8 @@
           "https://api.ppv.st/api/streams",
           "https://api.ppv.cx/api/streams"
         ]
-      }
+      },
+      "prelude": "live/embed-st.js"
     },
     {
       "id": "live-timstreams",
@@ -1584,7 +1586,8 @@
       "kind": "http",
       "config": {
         "api": "https://timstreams.st/api/live-upcoming"
-      }
+      },
+      "prelude": "live/embed-st.js"
     },
     {
       "id": "live-streamfree",
@@ -1597,7 +1600,8 @@
       "kind": "http",
       "config": {
         "origin": "https://streamfree.top"
-      }
+      },
+      "prelude": "live/embed-st.js"
     },
     {
       "id": "live-watchfooty",
@@ -1607,7 +1611,8 @@
       "types": [
         "live_sport"
       ],
-      "kind": "http"
+      "kind": "http",
+      "prelude": "live/embed-st.js"
     },
     {
       "id": "live-streamic",
@@ -1617,7 +1622,8 @@
       "types": [
         "live_sport"
       ],
-      "kind": "http"
+      "kind": "http",
+      "prelude": "live/embed-st.js"
     },
     {
       "id": "catalog-streamed",
