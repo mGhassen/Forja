@@ -12,6 +12,10 @@
 .swiftpm/
 migrate_working_dir/
 
+# Local scratch / probe dumps (never ship)
+.tmp/
+.tmp_hls/
+
 # IntelliJ related
 *.iml
 *.ipr
