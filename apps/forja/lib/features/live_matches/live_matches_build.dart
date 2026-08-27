@@ -302,10 +302,20 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       });
     }
 
-    final body = _buildBody();
-    final stackedBody = iptvCtrl == null
-        ? body
-        : _buildIptvPortalStack(context, iptvCtrl, body);
+    // Content below header (sport tabs + grid). Portal panel stacks on top of
+    // this so it starts under the portal button and covers categories.
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_s._tabController != null && _s._sports.isNotEmpty)
+          _buildSportTabs(),
+        const SizedBox(height: 2),
+        Expanded(child: _buildBody()),
+      ],
+    );
+    final belowHeader = iptvCtrl == null
+        ? content
+        : _buildIptvPortalStack(context, iptvCtrl, content);
 
     return TvFocusGraph(
       tabId: _LiveMatchesScreenState._tabId,
@@ -313,10 +323,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(iptvCtrl),
-          if (_s._tabController != null && _s._sports.isNotEmpty)
-            _buildSportTabs(),
-          const SizedBox(height: 2),
-          Expanded(child: stackedBody),
+          Expanded(child: belowHeader),
         ],
       ),
     );
@@ -325,14 +332,14 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   Widget _buildIptvPortalStack(
     BuildContext context,
     IptvController ctrl,
-    Widget body,
+    Widget content,
   ) {
     const panelWidth = 380.0;
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final useSidePanel = wide || ShellTokens.isAndroidTvDevice;
     return Stack(
       children: [
-        body,
+        content,
         if (ctrl.portalPanelOpen && useSidePanel)
           Positioned(
             top: 0,
