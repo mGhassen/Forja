@@ -861,9 +861,9 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
   }
 }
 
-/// Hero + TMDB synopsis enrich isolated from the hub scroll view — same
+/// Hero + TMDB id/synopsis enrich isolated from the hub scroll view — same
 /// pattern as Anime `_AnimeHubHeroSection`. Catalog D-pad focus must not
-/// drop when synopsis fills in or rails land.
+/// drop when logos/synopsis fill in or rails land.
 class _AsianDramaHubHeroSection extends StatefulWidget {
   const _AsianDramaHubHeroSection({
     required this.heroCards,
@@ -897,7 +897,7 @@ class _AsianDramaHubHeroSectionState extends State<_AsianDramaHubHeroSection> {
     super.initState();
     _cards = widget.heroCards;
     if (_cards.isNotEmpty) {
-      unawaited(_enrichSynopsis(_cards));
+      unawaited(_enrichTmdb(_cards));
     }
   }
 
@@ -907,7 +907,7 @@ class _AsianDramaHubHeroSectionState extends State<_AsianDramaHubHeroSection> {
     if (!_sameHeroIds(oldWidget.heroCards, widget.heroCards)) {
       setState(() => _cards = widget.heroCards);
       if (widget.heroCards.isNotEmpty) {
-        unawaited(_enrichSynopsis(widget.heroCards));
+        unawaited(_enrichTmdb(widget.heroCards));
       }
     }
   }
@@ -920,58 +920,63 @@ class _AsianDramaHubHeroSectionState extends State<_AsianDramaHubHeroSection> {
     return true;
   }
 
-  Future<void> _enrichSynopsis(List<KdramaCard> cards) async {
+  /// KissKH lists often omit `tmdb_id`; hub logos need it on [HubHeroSlide].
+  Future<void> _enrichTmdb(List<KdramaCard> cards) async {
     final gen = ++_enrichGen;
-    if (cards.every((c) => c.description.trim().isNotEmpty)) return;
+    final needsWork = cards.any(
+      (c) =>
+          (c.tmdbId == null || c.tmdbId! <= 0) ||
+          c.description.trim().isEmpty,
+    );
+    if (!needsWork) return;
     try {
-      final enriched = await Future.wait(
-        cards.map((card) async {
-          if (card.description.trim().isNotEmpty) return card;
-          final overview = await _tmdbOverviewForKissKhTitle(
-            card.title,
-            year: card.year,
-            kissKhType: card.type,
-            tmdbId: card.tmdbId,
-          );
-          if (overview == null || overview.isEmpty) return card;
-          return card.copyWith(description: overview);
-        }),
-      );
+      final enriched = await Future.wait(cards.map(_enrichHeroCard));
       if (!mounted || gen != _enrichGen) return;
       setState(() => _cards = enriched);
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[AsianDramaHubHero] TMDB synopsis enrich failed: $e');
+        debugPrint('[AsianDramaHubHero] TMDB enrich failed: $e');
       }
     }
   }
 
-  Future<String?> _tmdbOverviewForKissKhTitle(
-    String title, {
-    String? year,
-    String? kissKhType,
-    int? tmdbId,
-  }) async {
-    if (tmdbId != null && tmdbId > 0) {
-      final preferMovie = KissKhTmdbMatch.preferMovie(kissKhType);
-      final primary = preferMovie ? 'movie' : 'tv';
-      final secondary = preferMovie ? 'tv' : 'movie';
-      for (final mediaType in [primary, secondary]) {
-        try {
-          final rich = await TmdbApi().getRichDetails(tmdbId, mediaType);
-          final overview = rich.movie.overview.trim();
-          if (overview.isNotEmpty) return overview;
-        } catch (_) {}
-      }
+  Future<KdramaCard> _enrichHeroCard(KdramaCard card) async {
+    final needId = card.tmdbId == null || card.tmdbId! <= 0;
+    final needOverview = card.description.trim().isEmpty;
+    if (!needId && !needOverview) return card;
+
+    if (!needId) {
+      final overview = await _overviewFromTmdbId(card.tmdbId!, card.type);
+      if (overview == null || overview.isEmpty) return card;
+      return card.copyWith(description: overview);
     }
+
     final match = await KissKhTmdbMatch.resolve(
-      title: title,
-      year: year,
-      kissKhType: kissKhType,
+      title: card.title,
+      year: card.year,
+      kissKhType: card.type,
     );
-    final overview = match?.overview.trim() ?? '';
-    if (overview.isEmpty) return null;
-    return overview;
+    if (match == null) return card;
+    final overview = match.overview.trim();
+    return card.copyWith(
+      tmdbId: match.id,
+      description:
+          needOverview && overview.isNotEmpty ? overview : card.description,
+    );
+  }
+
+  Future<String?> _overviewFromTmdbId(int tmdbId, String? kissKhType) async {
+    final preferMovie = KissKhTmdbMatch.preferMovie(kissKhType);
+    final primary = preferMovie ? 'movie' : 'tv';
+    final secondary = preferMovie ? 'tv' : 'movie';
+    for (final mediaType in [primary, secondary]) {
+      try {
+        final rich = await TmdbApi().getRichDetails(tmdbId, mediaType);
+        final overview = rich.movie.overview.trim();
+        if (overview.isNotEmpty) return overview;
+      } catch (_) {}
+    }
+    return null;
   }
 
   @override
