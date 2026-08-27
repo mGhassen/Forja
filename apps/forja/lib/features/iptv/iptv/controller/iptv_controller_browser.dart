@@ -152,12 +152,12 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   }
 
 
-  void _applyCachedSnap(
+  Future<void> _applyCachedSnap(
     VerifiedPortal p,
     IptvSection section,
     _CatalogSnap cached, {
     required bool persistSection,
-  }) {
+  }) async {
     _c.activePortal = p;
     _c.activeSection = section;
     _c.view = IptvView.browser;
@@ -169,6 +169,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _c.categories = _withoutAllCategory(cached.categories);
     _c.browserAllStreams = cached.streams;
     _c.browserSelectedCategoryId = _defaultCategoryId(_c.categories);
+    _c.browserHighlightedStreamId = null;
     _c.browserSearch = '';
     _c.browserSearchOpen = false;
     _c._browserSearchFilterActive = false;
@@ -182,6 +183,25 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _c.liveOnly = false;
     _c.aliveStreamIds = const {};
     _c.aliveCheckedAt = null;
+    if (section == IptvSection.live) {
+      final key = IptvAliveStore.portalKey(p.portal);
+      final lastCat = await IptvLiveChannelListsStore.loadLastCategory(key);
+      final lastCh = await IptvLiveChannelListsStore.loadLastChannel(key);
+      if (_c.activePortal?.key != p.key || _c.activeSection != section) {
+        return;
+      }
+      // Pins may be missing on older cache snaps — restore needs them first.
+      if (!_c.categories.any((c) => c.id == IptvLiveCatalog.favoritesId)) {
+        final api = _c.categories
+            .where((c) => !IptvLiveCatalog.isPinnedId(c.id))
+            .toList();
+        _c.categories = IptvLiveCatalog.withPins(api);
+      }
+      _applyRestoredLiveBrowseSelection(
+        categoryId: lastCat,
+        streamId: lastCh,
+      );
+    }
     notifyListeners();
     unawaited(
       _hydrateLiveSectionPrefs(
@@ -205,6 +225,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _c.categories = const [];
     _c.browserAllStreams = const [];
     _c.browserSelectedCategoryId = null;
+    _c.browserHighlightedStreamId = null;
     _c.browserSearch = '';
     _c.browserSearchOpen = false;
     _c._browserSearchFilterActive = false;
@@ -248,7 +269,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
           _c._catalogCache.remove(cacheKey);
         } else {
           ++_c._catalogLoadId;
-          _applyCachedSnap(p, section, mem, persistSection: persistSection);
+          await _applyCachedSnap(p, section, mem, persistSection: persistSection);
           return;
         }
       }
@@ -273,7 +294,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
     // Disk hydrate filled the shelf → apply without network.
     if (!force && cached != null) {
-      _applyCachedSnap(p, section, cached, persistSection: persistSection);
+      await _applyCachedSnap(p, section, cached, persistSection: persistSection);
       return;
     }
 
@@ -363,18 +384,37 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       if (loadId == _c._catalogLoadId &&
           _c.activePortal?.key == p.key &&
           _c.activeSection == section) {
-        _c.isLoading = false;
-        _c.catalogLoadStyle = IptvCatalogLoadStyle.none;
-        _c.catalogLoadStep = null;
-        _c.catalogLoadProgress = IptvCatalogLoadProgress.empty;
-        notifyListeners();
-        unawaited(
-          _hydrateLiveSectionPrefs(
-            portal: p,
-            section: section,
-            persistSection: persistSection,
-          ),
-        );
+        if (section == IptvSection.live) {
+          final key = IptvAliveStore.portalKey(p.portal);
+          final lastCat =
+              await IptvLiveChannelListsStore.loadLastCategory(key);
+          final lastCh =
+              await IptvLiveChannelListsStore.loadLastChannel(key);
+          if (loadId == _c._catalogLoadId &&
+              _c.activePortal?.key == p.key &&
+              _c.activeSection == section) {
+            _applyRestoredLiveBrowseSelection(
+              categoryId: lastCat,
+              streamId: lastCh,
+            );
+          }
+        }
+        if (loadId == _c._catalogLoadId &&
+            _c.activePortal?.key == p.key &&
+            _c.activeSection == section) {
+          _c.isLoading = false;
+          _c.catalogLoadStyle = IptvCatalogLoadStyle.none;
+          _c.catalogLoadStep = null;
+          _c.catalogLoadProgress = IptvCatalogLoadProgress.empty;
+          notifyListeners();
+          unawaited(
+            _hydrateLiveSectionPrefs(
+              portal: p,
+              section: section,
+              persistSection: persistSection,
+            ),
+          );
+        }
       }
     }
   }
@@ -427,6 +467,8 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       final liveOnlyPref = await IptvAliveStore.loadLiveOnly(key);
       final alive = await IptvAliveStore.load(key);
       await _loadLiveChannelLists(key);
+      final lastCat = await IptvLiveChannelListsStore.loadLastCategory(key);
+      final lastCh = await IptvLiveChannelListsStore.loadLastChannel(key);
       if (_c.activePortal?.key != portal.key || _c.activeSection != section) {
         return;
       }
@@ -454,6 +496,10 @@ mixin _IptvControllerBrowser on ChangeNotifier {
           ),
         );
       }
+      _applyRestoredLiveBrowseSelection(
+        categoryId: lastCat,
+        streamId: lastCh,
+      );
     } else {
       if (_c.activePortal?.key != portal.key || _c.activeSection != section) {
         return;
@@ -465,6 +511,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       _c.liveWatchedIds = const [];
       _c.livePinnedCategoryIds = const [];
       _c.liveCategoryOrderIds = const [];
+      _c.browserHighlightedStreamId = null;
     }
     if (persistSection) {
       await IptvStore.saveLastSection(section);
@@ -473,6 +520,23 @@ mixin _IptvControllerBrowser on ChangeNotifier {
       return;
     }
     notifyListeners();
+  }
+
+  /// Apply last category (must exist) + last played channel highlight.
+  void _applyRestoredLiveBrowseSelection({
+    required String? categoryId,
+    required String? streamId,
+  }) {
+    if (categoryId != null &&
+        categoryId.isNotEmpty &&
+        _c.categories.any((c) => c.id == categoryId)) {
+      _c.browserSelectedCategoryId = categoryId;
+    } else if (_c.browserSelectedCategoryId == null ||
+        !_c.categories.any((c) => c.id == _c.browserSelectedCategoryId)) {
+      _c.browserSelectedCategoryId = _defaultCategoryId(_c.categories);
+    }
+    _c.browserHighlightedStreamId =
+        (streamId != null && streamId.isNotEmpty) ? streamId : null;
   }
 
   void _invalidatePortalCatalogCache(String portalKey) {
@@ -781,6 +845,17 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _c.browserSelectedCategoryId = id;
     _c._commitBrowserSearchCategory(id);
     notifyListeners();
+    unawaited(_persistLiveBrowserCategory(id));
+  }
+
+  Future<void> _persistLiveBrowserCategory(String categoryId) async {
+    if (categoryId.isEmpty || _c.activeSection != IptvSection.live) return;
+    final p = _c.activePortal;
+    if (p == null) return;
+    await IptvLiveChannelListsStore.saveLastCategory(
+      IptvAliveStore.portalKey(p.portal),
+      categoryId,
+    );
   }
 
   /// While searching, playing a channel commits its real category for clear.

@@ -38,6 +38,7 @@ class _StreamCard extends StatefulWidget {
   final IptvController ctrl;
   final VoidCallback onTap;
   final bool showLogo;
+  final bool highlighted;
   final VoidCallback? onTvFocusGained;
   final int? gridIndex;
   final int? gridColumns;
@@ -50,6 +51,7 @@ class _StreamCard extends StatefulWidget {
     required this.ctrl,
     required this.onTap,
     this.showLogo = true,
+    this.highlighted = false,
     this.onTvFocusGained,
     this.gridIndex,
     this.gridColumns,
@@ -114,7 +116,10 @@ class _StreamCardState extends State<_StreamCard> {
     return Colors.white.withValues(alpha: active ? 0.09 : 0.05);
   }
 
-  Color _borderColor(bool active, bool? health) {
+  Color _borderColor(bool active, bool? health, {required bool highlighted}) {
+    if (highlighted && !active) {
+      return ForjaShellColors.chipSelectedBorder;
+    }
     if (!_streamHealthEnabled(widget.stream) || health == null) {
       return Colors.white.withValues(alpha: active ? 0.18 : 0.08);
     }
@@ -144,6 +149,7 @@ class _StreamCardState extends State<_StreamCard> {
             ? widget.ctrl.healthFor(widget.stream.streamId)
             : null;
         final active = _active(context);
+        final highlighted = widget.highlighted;
         final tv = ShellScope.metricsOf(context).usesTvDensity;
         final column = tv
             ? _buildTvPosterBody(context, health: health, active: active)
@@ -153,11 +159,19 @@ class _StreamCardState extends State<_StreamCard> {
           duration: tv ? Duration.zero : const Duration(milliseconds: 150),
           curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
-            color: tv ? Colors.transparent : _surfaceColor(active, health),
+            color: tv
+                ? Colors.transparent
+                : _surfaceColor(active || highlighted, health),
             borderRadius: BorderRadius.circular(radius),
-            border: tv && !active
+            border: tv && !active && !highlighted
                 ? Border.all(color: Colors.transparent)
-                : Border.all(color: _borderColor(active, health)),
+                : Border.all(
+                    color: _borderColor(
+                      active,
+                      health,
+                      highlighted: highlighted,
+                    ),
+                  ),
           ),
           child: iptvTap(
             context: context,
@@ -440,6 +454,7 @@ class _StreamRowTile extends StatefulWidget {
     required this.categoryName,
     required this.onTap,
     this.showLogo = true,
+    this.highlighted = false,
     this.onTvFocusGained,
     this.listIndex,
     this.onLeftEdge,
@@ -453,6 +468,7 @@ class _StreamRowTile extends StatefulWidget {
   final String categoryName;
   final VoidCallback onTap;
   final bool showLogo;
+  final bool highlighted;
   final VoidCallback? onTvFocusGained;
   final int? listIndex;
   final VoidCallback? onLeftEdge;
@@ -515,7 +531,10 @@ class _StreamRowTileState extends State<_StreamRowTile> {
     return Colors.white.withValues(alpha: active ? 0.09 : 0.05);
   }
 
-  Color _borderColor(bool active, bool? health) {
+  Color _borderColor(bool active, bool? health, {required bool highlighted}) {
+    if (highlighted && !active) {
+      return ForjaShellColors.chipSelectedBorder;
+    }
     if (!_streamHealthEnabled(widget.stream) || health == null) {
       return Colors.white.withValues(alpha: active ? 0.18 : 0.08);
     }
@@ -533,6 +552,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
             ? widget.ctrl.healthFor(widget.stream.streamId)
             : null;
         final active = _active(context);
+        final highlighted = widget.highlighted;
         final tile = Padding(
           padding: EdgeInsets.zero,
           child: AnimatedContainer(
@@ -541,9 +561,15 @@ class _StreamRowTileState extends State<_StreamRowTile> {
                 : const Duration(milliseconds: 150),
             curve: Curves.easeOutCubic,
             decoration: BoxDecoration(
-              color: _surfaceColor(active, health),
+              color: _surfaceColor(active || highlighted, health),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: _borderColor(active, health)),
+              border: Border.all(
+                color: _borderColor(
+                  active,
+                  health,
+                  highlighted: highlighted,
+                ),
+              ),
             ),
             child: iptvTap(
               context: context,

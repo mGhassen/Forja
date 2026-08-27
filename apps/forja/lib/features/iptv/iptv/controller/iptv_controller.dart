@@ -169,6 +169,9 @@ class IptvController extends ChangeNotifier
       );
 
   String? browserSelectedCategoryId;
+
+  /// Last played Live stream id — highlight/scroll in catalog (no autoplay).
+  String? browserHighlightedStreamId;
   String browserSearch = '';
   bool browserSearchOpen = false;
 
@@ -384,6 +387,21 @@ class IptvController extends ChangeNotifier
       streamId,
     );
     notifyListeners();
+  }
+
+  /// Persist last played Live channel for catalog restore (highlight only).
+  Future<void> rememberLivePlayedChannel(String streamId) async {
+    if (streamId.isEmpty || activeSection != IptvSection.live) return;
+    final p = activePortal;
+    if (p == null) return;
+    if (browserHighlightedStreamId != streamId) {
+      browserHighlightedStreamId = streamId;
+      notifyListeners();
+    }
+    await IptvLiveChannelListsStore.saveLastChannel(
+      IptvAliveStore.portalKey(p.portal),
+      streamId,
+    );
   }
 
   /// Order: Favorites · Already watched · custom order / pins · remaining.

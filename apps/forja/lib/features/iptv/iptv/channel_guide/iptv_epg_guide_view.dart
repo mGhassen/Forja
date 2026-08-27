@@ -79,11 +79,13 @@ class IptvEpgGuideView extends StatefulWidget {
     required this.ctrl,
     required this.streams,
     required this.onPlay,
+    this.highlightStreamId,
   });
 
   final IptvController ctrl;
   final List<IptvStream> streams;
   final ValueChanged<IptvStream> onPlay;
+  final String? highlightStreamId;
 
   @override
   State<IptvEpgGuideView> createState() => _IptvEpgGuideViewState();
@@ -222,7 +224,22 @@ class _IptvEpgGuideViewState extends State<IptvEpgGuideView> {
     if (_hRuler.hasClients) {
       _hRuler.jumpTo(target.clamp(0.0, _hRuler.position.maxScrollExtent));
     }
+    _scrollToHighlightedChannel();
     _syncVisibleSlice();
+  }
+
+  void _scrollToHighlightedChannel() {
+    final id = widget.highlightStreamId;
+    if (id == null || id.isEmpty) return;
+    final idx = widget.streams.indexWhere((s) => s.streamId == id);
+    if (idx < 0 || !_vChannels.hasClients) return;
+    final target = (idx * _rowH).clamp(0.0, _vChannels.position.maxScrollExtent);
+    _syncingV = true;
+    _vChannels.jumpTo(target);
+    if (_vGrid.hasClients) {
+      _vGrid.jumpTo(target.clamp(0.0, _vGrid.position.maxScrollExtent));
+    }
+    _syncingV = false;
   }
 
   /// Tile only programmes overlapping [sliceStart, sliceEnd] - not the full day.
@@ -381,6 +398,8 @@ class _IptvEpgGuideViewState extends State<IptvEpgGuideView> {
                         stream: streams[i],
                         ctrl: widget.ctrl,
                         listIndex: i,
+                        highlighted: streams[i].streamId ==
+                            widget.highlightStreamId,
                         onTap: () => widget.onPlay(streams[i]),
                       ),
                     );
@@ -467,12 +486,14 @@ class _ChannelCell extends StatefulWidget {
     required this.ctrl,
     required this.onTap,
     this.listIndex,
+    this.highlighted = false,
   });
 
   final IptvStream stream;
   final IptvController ctrl;
   final VoidCallback onTap;
   final int? listIndex;
+  final bool highlighted;
 
   @override
   State<_ChannelCell> createState() => _ChannelCellState();
@@ -486,6 +507,7 @@ class _ChannelCellState extends State<_ChannelCell> {
   Widget build(BuildContext context) {
     final stream = widget.stream;
     final active = _hovered || _focused;
+    final selected = widget.highlighted && !active;
     return iptvTap(
       context: context,
       onTap: widget.onTap,
@@ -502,12 +524,16 @@ class _ChannelCellState extends State<_ChannelCell> {
             decoration: BoxDecoration(
               color: active
                   ? ForjaShellColors.inkHover
-                  : Colors.transparent,
+                  : selected
+                      ? ForjaShellColors.chipSelectedBg
+                      : Colors.transparent,
               border: Border(
                 left: BorderSide(
                   color: active
                       ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
-                      : Colors.transparent,
+                      : selected
+                          ? ForjaShellColors.chipSelectedBorder
+                          : Colors.transparent,
                   width: 2.5,
                 ),
                 right: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
@@ -552,11 +578,13 @@ class _ChannelCellState extends State<_ChannelCell> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.plusJakartaSans(
-                      color: active
+                      color: active || selected
                           ? Colors.white
                           : ForjaShellColors.textSecondary,
                       fontSize: 13,
-                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: active || selected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                       height: 1.2,
                     ),
                   ),

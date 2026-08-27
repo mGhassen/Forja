@@ -19,6 +19,7 @@ class _CategorySidebarRow extends StatefulWidget {
     this.onTvReorderUp,
     this.onTvReorderDown,
     this.onUpEdge,
+    this.onDownEdge,
     this.onRightEdge,
     this.onTvFocusChange,
     this.onPinFocusChange,
@@ -43,6 +44,7 @@ class _CategorySidebarRow extends StatefulWidget {
   final VoidCallback? onTvReorderUp;
   final VoidCallback? onTvReorderDown;
   final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
   final VoidCallback? onRightEdge;
   /// TV: report focus so the channel pane can stay lazy until OK / →.
   final ValueChanged<bool>? onTvFocusChange;
@@ -428,16 +430,9 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
       }
     }
 
-    // One category per KeyDown / KeyRepeat — HoldAccel strides (2/3/…) leave
-    // selected + landed rows looking like dual focus in the same viewport.
-    final navKey = event.logicalKey;
-    if (navKey == LogicalKeyboardKey.arrowUp ||
-        navKey == LogicalKeyboardKey.arrowDown) {
-      ShellTvHoldAccel.reset();
-    }
-
     // Long-press OK → float (reorder) or reveal pin. Short OK → open channels.
     // Normal → is ignored here → onRightEdge opens channels.
+    // ↑/↓ stay ignored so FocusableControl can HoldAccel + parent jump-focus.
     if (_canTvReorder || _canTvPin) {
       if (event is KeyDownEvent &&
           shellTvIsActivateLogicalKey(event.logicalKey)) {
@@ -675,6 +670,7 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
           : ShellTvEnsureVisibleMode.row,
       onKeyEvent: tv ? _onRowKey : null,
       onUpEdge: widget.onUpEdge,
+      onDownEdge: widget.onDownEdge,
       onRightEdge: () {
         _cancelOkGestures();
         if (_floating || _tvPinRevealed) {

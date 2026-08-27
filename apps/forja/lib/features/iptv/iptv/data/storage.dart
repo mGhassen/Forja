@@ -495,7 +495,7 @@ class IptvChannelFavoritesStore {
 }
 
 /// Device-local Live catalog favorites, watched channels, pinned groups,
-/// and full category order.
+/// full category order, and last browse selection (category click / channel play).
 /// Keyed by portal `url|username|password` (same as [IptvAliveStore]).
 class IptvLiveChannelListsStore {
   static String _favKey(String portalKey) => 'pt_iptv_live_fav_$portalKey';
@@ -505,6 +505,10 @@ class IptvLiveChannelListsStore {
       'pt_iptv_live_pinned_cats_$portalKey';
   static String _categoryOrderKey(String portalKey) =>
       'pt_iptv_live_cat_order_$portalKey';
+  static String _lastCategoryKey(String portalKey) =>
+      'pt_iptv_live_last_cat_$portalKey';
+  static String _lastChannelKey(String portalKey) =>
+      'pt_iptv_live_last_ch_$portalKey';
 
   static Future<Set<String>> loadFavorites(String portalKey) async {
     final prefs = await SharedPreferences.getInstance();
@@ -575,5 +579,39 @@ class IptvLiveChannelListsStore {
   ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList(_categoryOrderKey(portalKey), categoryIds);
+  }
+
+  /// Last Live category the user committed (sidebar click / OK).
+  static Future<String?> loadLastCategory(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString(_lastCategoryKey(portalKey));
+    if (id == null || id.isEmpty) return null;
+    return id;
+  }
+
+  static Future<void> saveLastCategory(
+    String portalKey,
+    String categoryId,
+  ) async {
+    if (categoryId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastCategoryKey(portalKey), categoryId);
+  }
+
+  /// Last Live channel the user actually played (not mere tap/focus).
+  static Future<String?> loadLastChannel(String portalKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString(_lastChannelKey(portalKey));
+    if (id == null || id.isEmpty) return null;
+    return id;
+  }
+
+  static Future<void> saveLastChannel(
+    String portalKey,
+    String streamId,
+  ) async {
+    if (streamId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastChannelKey(portalKey), streamId);
   }
 }

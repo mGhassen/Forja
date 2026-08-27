@@ -40,6 +40,9 @@ class _BrowserViewState extends State<_BrowserView> {
   bool _didRequestReloadFocus = false;
   bool _wasLoading = false;
   bool _wasPortalPanelOpen = false;
+  /// Portal+section identity — re-land focus/scroll when the shelf changes
+  /// without a loading flash (session cache).
+  String? _landedCatalogKey;
   String _lastBrowserSearch = '';
   /// TV category rail focus — channel pane stays on the last OK/→ group until
   /// this matches [IptvController.browserSelectedCategoryId].
@@ -333,6 +336,7 @@ class _BrowserViewState extends State<_BrowserView> {
     final finishedLoad = _wasLoading && !loading;
     if (loading) {
       _didRequestReloadFocus = false;
+      _landedCatalogKey = null;
     }
     _wasLoading = loading;
     final panelOpen = widget.ctrl.portalPanelOpen;
@@ -345,6 +349,14 @@ class _BrowserViewState extends State<_BrowserView> {
         !widget.ctrl.canReorderLiveCategories) {
       _setTvFloatingCategory(null);
     }
+    final catalogKey = widget.ctrl.activePortal == null
+        ? null
+        : '${widget.ctrl.activePortal!.key}|${widget.ctrl.activeSection?.name}';
+    final shelfLanded = !loading &&
+        catalogKey != null &&
+        catalogKey != _landedCatalogKey &&
+        (widget.ctrl.categories.isNotEmpty ||
+            widget.ctrl.browserAllStreams.isNotEmpty);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (clearedSearch) {
@@ -363,9 +375,10 @@ class _BrowserViewState extends State<_BrowserView> {
       }
       if (widget.ctrl.portalPanelOpen) return;
       if (loading) return;
-      if (finishedLoad || !_didInitialFocus) {
+      if (finishedLoad || !_didInitialFocus || shelfLanded) {
         if (widget.ctrl.categories.isNotEmpty ||
             widget.ctrl.browserAllStreams.isNotEmpty) {
+          if (catalogKey != null) _landedCatalogKey = catalogKey;
           _focusCatalogGroup();
         }
       }
@@ -566,12 +579,34 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   void _focusCatalogGroup() {
-    if (!iptvFocusFirstPortalGroup(widget.ctrl)) {
+    // Land on the open (restored) category — not first pinned/portal group.
+    if (!iptvFocusBrowserCategories(widget.ctrl)) {
       if (widget.ctrl.browserSidebarCategories.isEmpty) {
         iptvFocusRowItem('browser-streams', 0);
       }
     }
     _didInitialFocus = true;
+    _scrollCategorySidebarToSelected();
+    _scrollToHighlightedStream();
+  }
+
+  /// Jump the channel grid/list to the last-played stream (highlight only).
+  void _scrollToHighlightedStream() {
+    final id = widget.ctrl.browserHighlightedStreamId;
+    if (id == null || id.isEmpty) return;
+    final list = _filteredStreams;
+    final idx = list.indexWhere((x) => x.streamId == id);
+    if (idx < 0) return;
+    var tries = 0;
+    void go() {
+      if (!mounted) return;
+      _scrollStreamsToIndex(idx);
+      if (tries++ < 8) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => go());
+      }
+    }
+    go();
+    WidgetsBinding.instance.addPostFrameCallback((_) => go());
   }
 
   /// Commit a category for the channel pane. On TV, OK / → also moves focus
@@ -602,6 +637,61 @@ class _BrowserViewState extends State<_BrowserView> {
     });
   }
 
+  /// Jump so [index] is mountable, then focus — HoldAccel strides skip past
+  /// the lazy window otherwise and the green fill trails the key-repeat.
+  void _focusCategoryAt(int index) {
+    final cats = _filteredCategories;
+    if (cats.isEmpty) return;
+    final clamped = index.clamp(0, cats.length - 1);
+    _jumpCategoryListToIndex(clamped);
+    if (ShellTvFocusCoordinator.focusRowItemExact(
+      'iptv',
+      'browser-categories',
+      clamped,
+    )) {
+      return;
+    }
+    var tries = 0;
+    void attempt() {
+      if (!mounted) return;
+      _jumpCategoryListToIndex(clamped);
+      if (ShellTvFocusCoordinator.focusRowItemExact(
+        'iptv',
+        'browser-categories',
+        clamped,
+      )) {
+        return;
+      }
+      if (tries++ < 12) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+  }
+
+  /// Instant keep-visible jump (same idea as the Portals panel).
+  void _jumpCategoryListToIndex(int index) {
+    if (!_categoryScroll.hasClients || index < 0) return;
+    final rowH = _categoryRowExtent(widget.compact);
+    final position = _categoryScroll.position;
+    final viewport = position.viewportDimension;
+    if (viewport <= 0) return;
+    final itemTop = _categoryListPadV + index * rowH;
+    final itemBottom = itemTop + rowH;
+    final viewTop = position.pixels;
+    final viewBottom = viewTop + viewport;
+    final margin = rowH * 2;
+    double? target;
+    if (itemTop < viewTop + margin) {
+      target = itemTop - margin;
+    } else if (itemBottom > viewBottom - margin) {
+      target = itemBottom - viewport + margin;
+    }
+    if (target == null) return;
+    _categoryScroll.jumpTo(target.clamp(0.0, position.maxScrollExtent));
+  }
+
   void _onCategoryTvFocus(String categoryId, bool focused) {
     if (!iptvUseTvFocus(context)) return;
     // Floating reorder: ignore neighbor focus flicker from list rebuilds.
@@ -612,28 +702,41 @@ class _BrowserViewState extends State<_BrowserView> {
       }
       return;
     }
-    final selected = widget.ctrl.browserSelectedCategoryId;
-    final wasPending = _tvCategoryRailFocused &&
-        _tvFocusedCategoryId != null &&
-        _tvFocusedCategoryId != selected;
 
-    if (focused) {
-      final nowPending = categoryId != selected;
-      // Holding ↑/↓ across unopened groups: pane already shows "Press OK" —
-      // skip full browser rebuild (was fighting fixed-extent scroll).
-      if (wasPending && nowPending && _tvCategoryRailFocused) {
-        _tvFocusedCategoryId = categoryId;
-        return;
-      }
-      setState(() {
-        _tvFocusedCategoryId = categoryId;
-        _tvCategoryRailFocused = true;
+    if (!focused) {
+      // Blur races ahead of the next category's focus callback. Clearing
+      // `_tvCategoryRailFocused` here forced a full browser rebuild on every
+      // ↑/↓ (green fill lagged the scroll). Defer — only leave rail mode if
+      // nothing else claimed this category id.
+      if (_tvFocusedCategoryId != categoryId) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (_tvFocusedCategoryId != categoryId) return;
+        if (!_tvCategoryRailFocused) return;
+        setState(() => _tvCategoryRailFocused = false);
       });
       return;
     }
 
-    if (_tvFocusedCategoryId != categoryId) return;
-    setState(() => _tvCategoryRailFocused = false);
+    final selected = widget.ctrl.browserSelectedCategoryId;
+    final nowPending = categoryId != selected;
+    final alreadyPendingRail = _tvCategoryRailFocused &&
+        _tvFocusedCategoryId != null &&
+        _tvFocusedCategoryId != selected;
+
+    // Holding ↑/↓ across unopened groups: pane already shows "Press OK" —
+    // skip full browser rebuild (was fighting fixed-extent scroll).
+    if (alreadyPendingRail && nowPending) {
+      _tvFocusedCategoryId = categoryId;
+      return;
+    }
+    if (_tvFocusedCategoryId == categoryId && _tvCategoryRailFocused) {
+      return;
+    }
+    setState(() {
+      _tvFocusedCategoryId = categoryId;
+      _tvCategoryRailFocused = true;
+    });
   }
 
   /// While D-pad is on an unopened group, keep logos off the channel pane.
@@ -1026,6 +1129,7 @@ class _BrowserViewState extends State<_BrowserView> {
         ),
         ctrl: ctrl,
         streams: list,
+        highlightStreamId: ctrl.browserHighlightedStreamId,
         onPlay: _onStreamTap,
       );
     }
@@ -1116,7 +1220,12 @@ class _BrowserViewState extends State<_BrowserView> {
                       'iptv-sections',
                       iptvActiveSectionShelfIndex(ctrl),
                     )
-                  : null,
+                  : () => _focusCategoryAt(
+                      listIndex - ShellTvHoldAccel.lastStep,
+                    ),
+              onDownEdge: () => _focusCategoryAt(
+                listIndex + ShellTvHoldAccel.lastStep,
+              ),
               // → opens channels when not pinnable (pinnable uses → for pin).
               onRightEdge: () =>
                   _commitBrowserCategory(cat.id, enterStreams: true),
@@ -1278,6 +1387,8 @@ class _BrowserViewState extends State<_BrowserView> {
             return _StreamCard(
               stream: stream,
               ctrl: widget.ctrl,
+              highlighted:
+                  stream.streamId == widget.ctrl.browserHighlightedStreamId,
               showLogo: _streamShowLogo(stream),
               onTvFocusGained: _bumpChannelLogoSettle,
               gridIndex: i,
@@ -1349,6 +1460,7 @@ class _BrowserViewState extends State<_BrowserView> {
           stream: stream,
           ctrl: ctrl,
           categoryName: categoryNames[stream.categoryId] ?? '',
+          highlighted: stream.streamId == ctrl.browserHighlightedStreamId,
           listIndex: i,
           showLogo: _streamShowLogo(stream),
           onTvFocusGained: _bumpChannelLogoSettle,
@@ -1509,6 +1621,9 @@ class _BrowserViewState extends State<_BrowserView> {
       ForjaToast.error('Could not open stream');
       return;
     }
+    if (s.kind == 'live') {
+      unawaited(ctrl.rememberLivePlayedChannel(s.streamId));
+    }
     final channelGuide = s.kind == 'live'
         ? IptvChannelGuide.fromXtreamLive(
             portal: p,
@@ -1526,7 +1641,10 @@ class _BrowserViewState extends State<_BrowserView> {
         portalName: p.displayLabel,
         portalPlatform: p.portal.platform,
         channelGuide: channelGuide,
-        onChannelChanged: (next) => focusStream = next,
+        onChannelChanged: (next) {
+          focusStream = next;
+          unawaited(ctrl.rememberLivePlayedChannel(next.streamId));
+        },
         onStreamDead: ctrl.markStreamDead,
       ),
     );
