@@ -1008,16 +1008,22 @@ class _PlayerPopupHeaderChipState extends State<PlayerPopupHeaderChip> {
     final mouseHover = input.mouseHover;
     final selected = widget.selected;
     final highlight = _hovered || _focused;
-    final bg = highlight || selected
+    // Green chrome is reserved for the active choice (Off / File selected).
+    // Hover / TV focus uses neutral white tint so it is not confused with selected.
+    final bg = selected
         ? PlayerPopupTokens.accentFill
+        : highlight
+        ? Colors.white.withValues(alpha: 0.06)
         : Colors.transparent;
-    final border = highlight
-        ? PlayerPopupTokens.accent
-        : selected
-        ? PlayerPopupTokens.accentBorder
+    final border = selected
+        ? (highlight ? PlayerPopupTokens.accent : PlayerPopupTokens.accentBorder)
+        : highlight
+        ? Colors.white.withValues(alpha: 0.28)
         : PlayerPopupTokens.border;
-    final fg = highlight || selected
+    final fg = selected
         ? PlayerPopupTokens.accent
+        : highlight
+        ? Colors.white.withValues(alpha: 0.85)
         : PlayerPopupTokens.muted;
     final face = Container(
       height: 28,

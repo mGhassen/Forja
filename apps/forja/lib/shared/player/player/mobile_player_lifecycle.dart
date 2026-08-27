@@ -738,7 +738,14 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       _saveAnimeWatchPosition(pos, dur);
     }
 
-    if (widget.movie == null || widget.hubEpisodes != null) return;
+    if (widget.movie == null || !usesHomeWatchHistory(
+          movie: widget.movie,
+          hubEpisodes: widget.hubEpisodes,
+          onSaveProgress: widget.onSaveProgress,
+          enginePlaySession: widget.enginePlaySession,
+        )) {
+      return;
+    }
     if (pos > 10000 && dur > 0) {
       final isTorrent = widget.magnetLink != null;
       final isStremioDirect = widget.activeProvider == 'stremio_direct';

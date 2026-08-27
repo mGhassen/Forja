@@ -129,7 +129,10 @@ class SubtitleApi {
         if (episode != null) 'episode': episode,
       });
     } catch (e) {
-      debugPrint('Wyzie error: $e');
+      debugPrint(
+        'Wyzie error: $e '
+        '(tmdbId=$tmdbId season=$season episode=$episode)',
+      );
       return [];
     }
   }

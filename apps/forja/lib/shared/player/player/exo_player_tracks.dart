@@ -142,6 +142,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
 
   Future<void> _fetchSubtitles() async {
     final jellyfinSubs = widget.externalSubtitles ?? [];
+    _s._providerExternalSubUrls = providerExternalSubtitleUrls(jellyfinSubs);
     if (jellyfinSubs.isNotEmpty) {
       if (mounted) {
         setState(
@@ -152,9 +153,6 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       }
     }
 
-    // Anime / Asian Drama use negative hub ids — Wyzie/Levrx need TMDB > 0
-    // (skipped inside SubtitleApi), but title scrapers still run. Always merge
-    // provider sideloads with online results in the picker.
     final movie = widget.movie;
     final title = movie?.title.trim() ?? '';
     final tmdbId = (movie != null && movie.id > 0) ? movie.id : 0;
@@ -204,6 +202,14 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     if (_s._disposed || !mounted || _s._preferredSubtitleApplied) return;
     if (preferred == 'None' || preferred.isEmpty) return;
 
+    // Manual pick from the subtitle dialog — do not override with auto-pick.
+    final manualUrl = _s._selectedExternalSubUrl;
+    if (manualUrl != null &&
+        _s._sideloadedSubtitles.any((e) => e['sourceUrl'] == manualUrl)) {
+      _s._preferredSubtitleApplied = true;
+      return;
+    }
+
     // Already on a matching Media3 text track (embedded or previous sideload).
     if (_s._tracks.text.any(
           (t) =>
@@ -219,9 +225,18 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       return;
     }
 
+    final subsForAuto = externalSubtitlesForAutoPick(
+      all: _s._externalSubtitles,
+      providerUrls: _s._providerExternalSubUrls,
+      restrictScraped: restrictScrapedSubtitleAutoPick(
+        mediaType: widget.movie?.mediaType,
+        engineCategory: widget.enginePlaySession?.category,
+      ),
+    );
+
     final pick = pickExternalSubtitleWithFallback(
       preferred,
-      _s._externalSubtitles,
+      subsForAuto,
     );
     if (pick == null) return;
     final pickUrl = pick['url']?.toString();

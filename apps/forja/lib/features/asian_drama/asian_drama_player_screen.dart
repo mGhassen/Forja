@@ -15,6 +15,8 @@ import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/playback/hub_drama_player_episodes.dart';
+import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
@@ -23,38 +25,20 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
-Movie _hubMovieFromDrama(KdramaCard drama, {String overview = ''}) => Movie(
-  id: -drama.id,
-  title: drama.title,
-  posterPath: drama.cover,
-  backdropPath: drama.cover,
-  voteAverage: 0,
-  releaseDate: '',
-  overview: overview,
-  mediaType: 'asian_drama',
-  numberOfEpisodes: drama.episodesCount,
-);
-
-String? _dramaEpisodeThumbnail(String cover) {
-  final value = cover.trim();
-  return value.isNotEmpty ? value : null;
-}
-
-List<PlayerHubEpisode> _hubEpisodesFromDrama(
-  KdramaCard drama,
-  List<KdramaEpisode> episodes,
-) {
-  final thumb = _dramaEpisodeThumbnail(drama.cover);
-  return episodes
-      .map(
-        (e) => PlayerHubEpisode(
-          number: e.number,
-          title: 'Episode ${e.displayNumber}',
-          thumbnailUrl: thumb,
-        ),
-      )
-      .toList();
-}
+Movie _hubMovieFromDrama(KdramaCard drama, {String overview = ''}) =>
+    movieWithResolvedHubArt(
+      Movie(
+        id: -drama.id,
+        title: drama.title,
+        posterPath: drama.cover,
+        backdropPath: drama.cover,
+        voteAverage: 0,
+        releaseDate: '',
+        overview: overview,
+        mediaType: 'asian_drama',
+        numberOfEpisodes: drama.episodesCount,
+      ),
+    );
 
 Map<String, dynamic> _kissKhProvidersForEpisode({
   required KdramaCard drama,
@@ -502,16 +486,24 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     final sources = _kissKhSources(stream, activeMirror);
     final subs = stream.subtitles;
 
-    final drama = _resolvedDrama ?? widget.drama;
+    var drama = _resolvedDrama ?? widget.drama;
     final episode = _resolvedEpisode ?? widget.episode;
     var episodes = _resolvedEpisodes;
     var overview = _resolvedOverview;
-    if (episodes.isEmpty) {
-      try {
-        final det = await _service.getDetails(drama.id);
-        episodes = det.episodes;
-        overview = det.description;
-      } catch (_) {}
+    KdramaDetails? kissDetails;
+    try {
+      kissDetails = await _service.getDetails(drama.id);
+      drama = kissDetails.toCard();
+      episodes = kissDetails.episodes;
+      overview = kissDetails.description;
+    } catch (_) {
+      if (episodes.isEmpty) {
+        try {
+          final det = await _service.getDetails(drama.id);
+          episodes = det.episodes;
+          overview = det.description;
+        } catch (_) {}
+      }
     }
 
     await _service.recordWatch(
@@ -536,7 +528,15 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
       }
     }
     final hasNext = episodes.isEmpty ? true : nextFromList != null;
-    final hubEpisodes = _hubEpisodesFromDrama(drama, episodes);
+    final hubEpisodes =
+        (await ensureDramaHubEpisodes(
+          kisskhId: drama.id,
+          hubEpisodes: null,
+          kissDetails: kissDetails,
+          liveEpisodeCount:
+              episodes.isNotEmpty ? episodes.length : drama.episodesCount,
+        )) ??
+        const <PlayerHubEpisode>[];
 
     if (!mounted) return;
     final navigator = Navigator.of(context, rootNavigator: true);
@@ -618,8 +618,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           position: pos,
           duration: dur,
         );
-        final index = episodes.indexWhere((e) => e.id == episode.id);
-        final epKey = index >= 0 ? index + 1 : episode.number.toInt();
+        final epKey = episode.pickerKey;
         await EpisodeWatchedService().markWatchedIfFinished(
           mediaId: drama.id,
           season: 1,
@@ -688,7 +687,12 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
             for (final e in list) e.number.round(): e.id,
           },
           loadingSubtitle: 'EP ${handOff.displayNumber}',
-          hubEpisodes: _hubEpisodesFromDrama(drama, list),
+          hubEpisodes: (await ensureDramaHubEpisodes(
+                kisskhId: drama.id,
+                hubEpisodes: null,
+                liveEpisodeCount: list.isNotEmpty ? list.length : drama.episodesCount,
+              )) ??
+              const <PlayerHubEpisode>[],
         );
         if (mounted && navigator.canPop()) navigator.pop();
         return;

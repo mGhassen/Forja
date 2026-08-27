@@ -982,8 +982,8 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         const SizedBox(height: 10),
         Text(
           _probeSkipped > 0
-              ? '$_probeChecked / $_probeTotal CHECKED  ·  ${_tryingProbes.length} ACTIVE  ·  $_probeReady UP  ·  $_probeSkipped SKIPPED ON TV'
-              : '$_probeChecked / $_probeTotal CHECKED  ·  ${_tryingProbes.length} ACTIVE  ·  $_probeReady UP',
+              ? '$_probeChecked / $_probeTotal CHECKED  ·  $_probeReady UP  ·  $_probeSkipped SKIPPED ON TV'
+              : '$_probeChecked / $_probeTotal CHECKED  ·  $_probeReady UP',
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.5),
             fontSize: 11,

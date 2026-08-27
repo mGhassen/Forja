@@ -1583,6 +1583,7 @@ void main() {
             'url': 'https://sub.example/en.vtt',
             'language': 'en',
             'name': 'English',
+            'display': 'English',
           },
         ],
       );

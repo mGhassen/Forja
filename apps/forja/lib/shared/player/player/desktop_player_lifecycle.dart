@@ -587,7 +587,12 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
       _saveAnimeWatchPosition(pos, dur);
     }
 
-    if (widget.movie == null || widget.hubEpisodes != null) {
+    if (!usesHomeWatchHistory(
+      movie: widget.movie,
+      hubEpisodes: widget.hubEpisodes,
+      onSaveProgress: widget.onSaveProgress,
+      enginePlaySession: widget.enginePlaySession,
+    )) {
       if (!isBgPause) _s._historySaved = true;
       return;
     }

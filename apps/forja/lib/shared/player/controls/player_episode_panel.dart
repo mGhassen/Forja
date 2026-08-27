@@ -1324,37 +1324,21 @@ class _EpisodeRow extends StatelessWidget {
   }
 
   static String? _resolvedThumbnail(dynamic thumbnail) {
-    final value = thumbnail?.toString().trim();
-    if (value == null || value.isEmpty || value == 'null') return null;
-    return value;
+    return resolveHubEpisodeArtUrl(thumbnail?.toString(), still: true);
   }
 
   static String? _resolvedShowArt(String? backdropPath, String? posterPath) {
-    final backdrop = backdropPath?.trim();
-    if (backdrop != null && backdrop.isNotEmpty) {
-      return backdrop.startsWith('http')
-          ? backdrop
-          : TmdbApi.getBackdropUrl(backdrop);
-    }
-    final poster = posterPath?.trim();
-    if (poster != null && poster.isNotEmpty) {
-      return poster.startsWith('http') ? poster : TmdbApi.getImageUrl(poster);
-    }
-    return null;
+    return resolveHubEpisodeArtUrl(
+      backdropPath?.trim().isNotEmpty == true ? backdropPath : posterPath,
+    );
   }
 
   List<Widget> _thumbLayers({
     required String? stillUrl,
     required String? backdropUrl,
   }) {
-    String? resolvedStill;
-    if (stillUrl != null) {
-      resolvedStill =
-          stillUrl.startsWith('http') ? stillUrl : TmdbApi.getStillUrl(stillUrl);
-    }
-
     if (dateNotShippedYet) {
-      final imageUrl = backdropUrl ?? resolvedStill;
+      final imageUrl = backdropUrl ?? stillUrl;
       return [
         if (imageUrl != null)
           CachedNetworkImage(
@@ -1368,10 +1352,11 @@ class _EpisodeRow extends StatelessWidget {
       ];
     }
 
-    if (resolvedStill != null) {
+    final imageUrl = stillUrl ?? backdropUrl;
+    if (imageUrl != null) {
       return [
         CachedNetworkImage(
-          imageUrl: resolvedStill,
+          imageUrl: imageUrl,
           fit: BoxFit.cover,
           errorWidget: (_, _, _) => _thumbFallback(),
         ),

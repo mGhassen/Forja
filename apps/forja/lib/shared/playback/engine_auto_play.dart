@@ -6,6 +6,7 @@ import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
+import 'package:forja/shared/playback/hub_drama_player_episodes.dart';
 import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -103,6 +104,29 @@ Future<void> switchEpisodeViaEngineAutoPlay({
     hubEpisodes: hubEpisodes,
     hubEpisodeNumber: episode,
   );
+}
+
+Future<void> Function(PlayerHubEpisode episode)? _hubEngineEpisodePicker({
+  required BuildContext context,
+  required Movie movie,
+  required EnginePlaySession? session,
+  required List<PlayerHubEpisode>? hubEpisodes,
+  int? season,
+}) {
+  if (session == null || hubEpisodes == null || hubEpisodes.isEmpty) {
+    return null;
+  }
+  return (ep) async {
+    if (!context.mounted) return;
+    await switchEpisodeViaEngineAutoPlay(
+      context: context,
+      movie: movie,
+      season: season ?? 1,
+      episode: ep.number.round(),
+      session: session,
+      hubEpisodes: hubEpisodes,
+    );
+  };
 }
 
 class EngineAutoPlayPick {
@@ -390,16 +414,17 @@ Future<void> runEngineAutoPlay({
     final race = Completer<EngineAutoPlayPick?>();
     hitCompleter = race;
     var probingCount = 0;
+    final probingIds = <String>{};
     final thisGen = ++playGen;
     bool playAborted() => aborted() || thisGen != playGen;
 
-    // Panel/session already loaded → never show WAITING for those chips.
+    // Session cache: empty fetches are terminal; rows stay pending until probed.
     for (final id in pluginIds) {
       if (!fetchedIds.contains(id)) continue;
       final hasRows = streams.any((s) => engineStreamBelongsToPlugin(s, id));
-      statusById[id] = hasRows
-          ? StreamProviderProbeStatus.trying
-          : StreamProviderProbeStatus.failed;
+      if (!hasRows) {
+        statusById[id] = StreamProviderProbeStatus.failed;
+      }
     }
 
     void publishProbes() {
@@ -426,15 +451,15 @@ Future<void> runEngineAutoPlay({
             cur == StreamProviderProbeStatus.failed) {
           continue;
         }
-        if (inFlight.contains(id)) {
+        if (inFlight.contains(id) || probingIds.contains(id)) {
           statusById[id] = StreamProviderProbeStatus.trying;
         } else if (!fetchedIds.contains(id)) {
           statusById[id] = StreamProviderProbeStatus.pending;
-        } else if (cur == StreamProviderProbeStatus.pending) {
+        } else {
           final hasRows =
               streams.any((s) => engineStreamBelongsToPlugin(s, id));
           statusById[id] = hasRows
-              ? StreamProviderProbeStatus.trying
+              ? StreamProviderProbeStatus.pending
               : StreamProviderProbeStatus.failed;
         }
       }
@@ -466,44 +491,48 @@ Future<void> runEngineAutoPlay({
         return;
       }
 
+      probingIds.add(pluginId);
       probingCount++;
       statusById[pluginId] = StreamProviderProbeStatus.trying;
       publishProbes();
       messageNotifier.value = 'Checking servers…';
 
-      for (final row in rows) {
-        if (playAborted() || race.isCompleted) break;
-        final probed = await buildProbedEngineCatalogSources(
-          profile: profile,
-          settings: settings,
-          rows: [row],
-          isAborted: playAborted,
-          preferFirst: row,
-        );
-        if (probed.isEmpty) continue;
-        statusById[pluginId] = StreamProviderProbeStatus.success;
-        publishProbes();
-        if (!race.isCompleted) {
-          abortPool();
-          race.complete(
-            EngineAutoPlayPick(
-              pluginId: pluginId,
-              stream: row,
-              sources: probed,
-            ),
+      try {
+        for (final row in rows) {
+          if (playAborted() || race.isCompleted) break;
+          final probed = await buildProbedEngineCatalogSources(
+            profile: profile,
+            settings: settings,
+            rows: [row],
+            isAborted: playAborted,
+            preferFirst: row,
           );
+          if (probed.isEmpty) continue;
+          statusById[pluginId] = StreamProviderProbeStatus.success;
+          publishProbes();
+          if (!race.isCompleted) {
+            abortPool();
+            race.complete(
+              EngineAutoPlayPick(
+                pluginId: pluginId,
+                stream: row,
+                sources: probed,
+              ),
+            );
+          }
+          return;
         }
-        probingCount--;
-        return;
-      }
 
-      statusById[pluginId] = StreamProviderProbeStatus.failed;
-      publishProbes();
-      if (pinActive && pluginId == pinPlugin) {
-        pinActive = false;
+        statusById[pluginId] = StreamProviderProbeStatus.failed;
+        publishProbes();
+        if (pinActive && pluginId == pinPlugin) {
+          pinActive = false;
+        }
+        maybeCompleteEmpty();
+      } finally {
+        probingIds.remove(pluginId);
+        probingCount--;
       }
-      probingCount--;
-      maybeCompleteEmpty();
     }
 
     Future<void> runAndApply(String pluginId, int gen) async {
@@ -795,26 +824,40 @@ Future<void> _playFromProbedSources({
   final primary = sources.first;
   final ctx = loadingDialogContext;
   final epNum = hubEpisodeNumber ?? episode;
+  final playMovie = movieWithResolvedHubArt(movie);
+  final playHubEpisodes = await ensureDramaHubEpisodes(
+    kisskhId: enginePlaySession?.kisskhId,
+    hubEpisodes: hubEpisodes,
+    tmdbTvId: playMovie.id > 0 ? playMovie.id : null,
+    liveEpisodeCount: playMovie.numberOfEpisodes,
+  );
   final onSaveProgress = hubEngineSaveProgressCallback(
     session: enginePlaySession,
-    movie: movie,
+    movie: playMovie,
     episodeNumber: epNum,
-    hubEpisodes: hubEpisodes,
+    hubEpisodes: playHubEpisodes,
+  );
+  final onHubEpisodeSelected = _hubEngineEpisodePicker(
+    context: context,
+    movie: playMovie,
+    session: enginePlaySession,
+    hubEpisodes: playHubEpisodes,
+    season: season,
   );
   Future<void> openPlayer() async {
     await seedHubEngineWatchHistory(
       session: enginePlaySession,
-      movie: movie,
+      movie: playMovie,
       episodeNumber: epNum,
-      hubEpisodes: hubEpisodes,
+      hubEpisodes: playHubEpisodes,
     );
     if (isAborted()) return;
     await AppRouter.openPlayer(
       context,
       streamUrl: primary.url,
-      title: movie.title,
+      title: playMovie.title,
       headers: primary.headers,
-      movie: movie,
+      movie: playMovie,
       selectedSeason: needsEp ? (season ?? 1) : null,
       selectedEpisode: needsEp ? (episode ?? 1) : null,
       startPosition: startPosition,
@@ -826,8 +869,9 @@ Future<void> _playFromProbedSources({
       stremioId: stremioId,
       stremioAddonBaseUrl: stremioAddonBaseUrl,
       enginePlaySession: enginePlaySession,
-      hubEpisodes: hubEpisodes,
+      hubEpisodes: playHubEpisodes,
       hubEpisodeNumber: epNum,
+      onHubEpisodeSelected: onHubEpisodeSelected,
       onSaveProgress: onSaveProgress,
       fadeTransition: ctx != null,
     );
@@ -881,26 +925,40 @@ Future<void> _playResolveRow({
 
   final ctx = loadingDialogContext;
   final epNum = hubEpisodeNumber ?? episode;
+  final playMovie = movieWithResolvedHubArt(movie);
+  final playHubEpisodes = await ensureDramaHubEpisodes(
+    kisskhId: enginePlaySession?.kisskhId,
+    hubEpisodes: hubEpisodes,
+    tmdbTvId: playMovie.id > 0 ? playMovie.id : null,
+    liveEpisodeCount: playMovie.numberOfEpisodes,
+  );
   final onSaveProgress = hubEngineSaveProgressCallback(
     session: enginePlaySession,
-    movie: movie,
+    movie: playMovie,
     episodeNumber: epNum,
-    hubEpisodes: hubEpisodes,
+    hubEpisodes: playHubEpisodes,
+  );
+  final onHubEpisodeSelected = _hubEngineEpisodePicker(
+    context: context,
+    movie: playMovie,
+    session: enginePlaySession,
+    hubEpisodes: playHubEpisodes,
+    season: season,
   );
   Future<void> openPlayer() async {
     await seedHubEngineWatchHistory(
       session: enginePlaySession,
-      movie: movie,
+      movie: playMovie,
       episodeNumber: epNum,
-      hubEpisodes: hubEpisodes,
+      hubEpisodes: playHubEpisodes,
     );
     if (isAborted()) return;
     await AppRouter.openPlayer(
       context,
       streamUrl: resolved.streamUrl,
-      title: movie.title,
+      title: playMovie.title,
       magnetLink: resolved.magnetLink,
-      movie: movie,
+      movie: playMovie,
       selectedSeason: needsEp ? (season ?? 1) : null,
       selectedEpisode: needsEp ? (episode ?? 1) : null,
       fileIndex: resolved.fileIndex,
@@ -910,8 +968,9 @@ Future<void> _playResolveRow({
       stremioId: stremioId,
       stremioAddonBaseUrl: stremioAddonBaseUrl,
       enginePlaySession: enginePlaySession,
-      hubEpisodes: hubEpisodes,
+      hubEpisodes: playHubEpisodes,
       hubEpisodeNumber: epNum,
+      onHubEpisodeSelected: onHubEpisodeSelected,
       onSaveProgress: onSaveProgress,
       fadeTransition: ctx != null,
     );

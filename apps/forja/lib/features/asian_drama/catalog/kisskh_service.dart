@@ -107,6 +107,17 @@ class KissKhService {
     return uri.replace(host: 'image.tmdb.org').toString();
   }
 
+  /// KissKH CDN URLs, TMDB `/path.jpg` keys, and legacy bare paths → loadable URL.
+  static String resolveCoverUrl(String raw) {
+    final value = normalizeCoverUrl(raw.trim());
+    if (value.isEmpty) return value;
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+    if (value.startsWith('/')) return TmdbApi.getImageUrl(value);
+    return value;
+  }
+
   /// Ask the Rust catalog engine to race API-compatible mirrors. The returned
   /// order keeps the first healthy mirror first and excludes unrelated sites
   /// that happen to use the KissKh name.
@@ -485,9 +496,20 @@ class KissKhService {
   }
 
   // ─── Watch history (continue watching) ──────────────────────────
-  static const String _historyKey = 'kisskh_history_v1';
+  static const String historyKey = 'asian_history';
+  static const String _legacyHistoryKey = 'kisskh_history_v1';
 
   static final ValueNotifier<int> watchHistoryRevision = ValueNotifier<int>(0);
+
+  Future<List<String>> _historyRaw(SharedPreferences p) async {
+    final current = p.getStringList(historyKey);
+    if (current != null && current.isNotEmpty) return current;
+    final legacy = p.getStringList(_legacyHistoryKey);
+    if (legacy == null || legacy.isEmpty) return const [];
+    await p.setStringList(historyKey, legacy);
+    await p.remove(_legacyHistoryKey);
+    return legacy;
+  }
 
   Future<void> recordWatch({
     required KdramaCard drama,
@@ -499,7 +521,7 @@ class KissKhService {
     Duration? duration,
   }) async {
     final p = await SharedPreferences.getInstance();
-    final list = p.getStringList(_historyKey) ?? [];
+    final list = [...await _historyRaw(p)];
     list.removeWhere((e) {
       try {
         return jsonDecode(e)['id'] == drama.id;
@@ -512,7 +534,7 @@ class KissKhService {
       jsonEncode({
         'id': drama.id,
         'title': drama.title,
-        'cover': drama.cover,
+        'cover': resolveCoverUrl(drama.cover),
         'episodeNumber': episodeNumber,
         if (episodeId != null && episodeId > 0) 'episodeId': episodeId,
         'totalEpisodes': totalEpisodes,
@@ -532,7 +554,7 @@ class KissKhService {
       }),
     );
     if (list.length > 50) list.removeRange(50, list.length);
-    await p.setStringList(_historyKey, list);
+    await p.setStringList(historyKey, list);
     watchHistoryRevision.value++;
   }
 
@@ -587,7 +609,7 @@ class KissKhService {
 
   Future<List<Map<String, dynamic>>> getWatchHistory() async {
     final p = await SharedPreferences.getInstance();
-    final list = p.getStringList(_historyKey) ?? [];
+    final list = await _historyRaw(p);
     final out = <Map<String, dynamic>>[];
     for (final raw in list) {
       try {
@@ -607,7 +629,7 @@ class KissKhService {
 
   Future<void> removeFromHistory(int id) async {
     final p = await SharedPreferences.getInstance();
-    final list = p.getStringList(_historyKey) ?? [];
+    final list = [...await _historyRaw(p)];
     list.removeWhere((e) {
       try {
         return jsonDecode(e)['id'] == id;
@@ -615,13 +637,14 @@ class KissKhService {
         return true;
       }
     });
-    await p.setStringList(_historyKey, list);
+    await p.setStringList(historyKey, list);
     watchHistoryRevision.value++;
   }
 
   Future<void> clearWatchHistory() async {
     final p = await SharedPreferences.getInstance();
-    await p.remove(_historyKey);
+    await p.remove(historyKey);
+    await p.remove(_legacyHistoryKey);
     watchHistoryRevision.value++;
   }
 }
@@ -961,6 +984,12 @@ class KdramaEpisode {
   String get displayNumber {
     if (number == number.truncateToDouble()) return number.toInt().toString();
     return number.toString();
+  }
+
+  /// Picker / watched / progress keys — KissKH episode number, not list index.
+  int get pickerKey {
+    if (number == number.truncateToDouble()) return number.toInt();
+    return (number * 100).round();
   }
 }
 

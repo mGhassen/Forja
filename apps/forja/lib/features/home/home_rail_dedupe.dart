@@ -1,3 +1,4 @@
+import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:rust/rust.dart';
 
 /// How many posters a discovery rail aims to show after claim + backfill.
@@ -23,6 +24,7 @@ Set<String> homeContinueWatchingKeys(
 ) {
   final keys = <String>{};
   for (final item in history) {
+    if (!isHomeTabWatchHistoryEntry(item)) continue;
     final id = item['tmdbId'];
     if (id is! int) continue;
     final mediaType = item['mediaType']?.toString() ??

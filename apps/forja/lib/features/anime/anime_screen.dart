@@ -296,6 +296,7 @@ class _AnimeScreenState extends ConsumerState<AnimeScreen>
   @override
   void onShellTabShown() {
     super.onShellTabShown();
+    unawaited(_refreshHistory());
     if (!_catalogResolved || _error != null) {
       unawaited(_load());
     }

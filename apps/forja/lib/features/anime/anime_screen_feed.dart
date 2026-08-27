@@ -12,8 +12,16 @@ mixin _AnimeScreenFeed on ConsumerState<AnimeScreen>, ShellTabRefresh<AnimeScree
     try {
       final list = await _s._service.getWatchHistory();
       if (!mounted) return;
+      final inProgress = list
+          .where((e) {
+            final pos = (e['positionMs'] as num?)?.toInt() ?? 0;
+            final dur = (e['durationMs'] as num?)?.toInt() ?? 0;
+            return isInProgressResume(pos, dur);
+          })
+          .take(10)
+          .toList();
       setState(() {
-        _s._continueWatching = list.take(10).toList();
+        _s._continueWatching = inProgress;
         _s._historyResolved = true;
       });
     } catch (_) {

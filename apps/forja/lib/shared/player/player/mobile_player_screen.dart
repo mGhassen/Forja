@@ -70,6 +70,7 @@ import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
+import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -326,6 +327,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
 
   // ── Subtitles ─────────────────────────────────────────────────────────────
   List<Map<String, dynamic>> _externalSubtitles = [];
+  Set<String> _providerExternalSubUrls = {};
 
   /// When true, the current subtitle is ASS/SSA or an image-based format (PGS/VobSub).
   /// mpv renders it directly on the video frame, so the custom Flutter overlay is hidden.

@@ -201,17 +201,11 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
 
         final body = _s._error != null && _s._catalogResolved
               ? _buildError()
-              : RefreshIndicator(
-                          color: ForjaShellColors.sectionAccent,
-                          backgroundColor: AppTheme.bgCard,
-                          onRefresh: _s._load,
-                          child: ColoredBox(
+              : ColoredBox(
                             color: AppTheme.bgDark,
                             child: CustomScrollView(
                             controller: _s._scroll,
-                            physics: const AlwaysScrollableScrollPhysics(
-                              parent: BouncingScrollPhysics(),
-                            ),
+                            physics: const BouncingScrollPhysics(),
                             slivers: [
                               SliverToBoxAdapter(
                                 child: _AnimeHubHeroSection(
@@ -386,7 +380,6 @@ mixin _AnimeScreenBuild on ConsumerState<AnimeScreen> {
                                 ),
                               ),
                             ],
-                          ),
                           ),
                         );
 

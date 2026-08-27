@@ -1,5 +1,4 @@
 /**
- * Port of sharoon7171/ppv-hls-stream-resolver src/embed/decrypt.js
  * POST /fetch is done in Dart; this only runs set_stream_jw(island, body)
  * then scrapes WASM linear memory for the CDN m3u8.
  */
@@ -113,15 +112,15 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
     jwplayer: globalThis.jwplayer,
   }
 
-  const jwEngine = { destroy() {} }
+  const jwEngine = { destroy() { } }
   const jwPlayer = {
     remove() {
       return jwEngine
     },
-    setup() {},
-    on() {},
-    load() {},
-    play() {},
+    setup() { },
+    on() { },
+    load() { },
+    play() { },
     getPlaylistItem: () => ({}),
     getState: () => 'idle',
   }
@@ -148,7 +147,7 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
   window.__wasm_jw_engine = jwEngine
   window.__wasm_player = { core: { mediaControl: { volume: 0 } } }
   window.__wasm_p2p_config = {}
-  window.P2PEngineHls = class {}
+  window.P2PEngineHls = class { }
 
   const resolveEmbedUrl = (url) =>
     typeof url === 'string' && url.startsWith('/')
@@ -201,7 +200,7 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
     if (pair.applyFlags) {
       try {
         applyRefFlags(wasm.memory)
-      } catch (_) {}
+      } catch (_) { }
     }
 
     const result = wasm.set_stream_jw(island, new Uint8Array(body))
@@ -210,7 +209,7 @@ async function decryptWithPair(pair, island, body, embedOrigin, path, slug) {
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('timeout')), 15000),
       ),
-    ]).catch(() => {})
+    ]).catch(() => { })
 
     const streamUrl = extractUrl(wasm.memory, slug)
     if (!streamUrl) {

@@ -74,6 +74,9 @@ class ShellInputPolicy {
 
   bool get isInteractiveActive => scaleOnHover || scaleOnFocus;
 
+  /// Leanback TV remote policy — not desktop hybrid (which also has mood chips).
+  bool get leanbackOnly => useFocusableMoodChips && !scaleOnHover;
+
   /// TV leanback: snap focus chrome (no 200ms tweens). Weak SoCs stutter
   /// when every D-pad step runs [AnimatedScale] / color / saturation tweens.
   bool get instantFocusChrome => scaleOnFocus && !scaleOnHover;

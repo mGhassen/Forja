@@ -1,5 +1,6 @@
 // Asian Drama continue-watching card - extracted from asian_drama_screen.dart.
 
+import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/asian_drama/widgets/asian_drama_widget_imports.dart';
 
 class AsianDramaContinueWatchingCard extends StatefulWidget {
@@ -47,7 +48,9 @@ class _AsianDramaContinueWatchingCardState
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    final cover = widget.entry['cover'] as String?;
+    final cover = KissKhService.resolveCoverUrl(
+      widget.entry['cover'] as String? ?? '',
+    );
     final title = widget.entry['title'] as String? ?? '';
     final epNum = (widget.entry['episodeNumber'] as num?)?.toDouble() ?? 1.0;
     final totalEps = (widget.entry['totalEpisodes'] as num?)?.toInt() ?? 0;
@@ -104,7 +107,7 @@ class _AsianDramaContinueWatchingCardState
               children: [
                 ColoredBox(
                   color: AppTheme.bgDark,
-                  child: cover != null && cover.isNotEmpty
+                  child: cover.isNotEmpty
                       ? CachedNetworkImage(
                           imageUrl: cover,
                           fit: BoxFit.cover,

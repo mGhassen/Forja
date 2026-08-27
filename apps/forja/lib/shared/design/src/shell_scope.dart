@@ -76,7 +76,7 @@ class _ShellScopeBuilderState extends State<ShellScopeBuilder> {
     super.didChangeDependencies();
     final profile = resolveShellProfile(context);
     ShellTvFocusCoordinator.tvBackPolicyEnabled =
-        shellPlatformConfigFor(profile).inputPolicy.useFocusableMoodChips;
+        shellPlatformConfigFor(profile).inputPolicy.leanbackOnly;
   }
 
   @override

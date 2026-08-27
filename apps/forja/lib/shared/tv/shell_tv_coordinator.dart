@@ -222,9 +222,8 @@ abstract final class ShellTvFocusCoordinator {
   /// Remote Exit (Escape) is separate — [handleShellExitKey].
   /// Returns true when consumed.
   ///
-  /// Set [tvBackPolicyEnabled] from [ShellScaffold] when TV input policy is
-  /// active - same signal as shell nav rail / D-pad focus (not
-  /// [ShellTokens.isAndroidTvDevice] alone).
+  /// Set [tvBackPolicyEnabled] from [ShellScaffold] when leanback TV policy is
+  /// active ([ShellInputPolicy.leanbackOnly] — not desktop hybrid D-pad focus).
   static bool tvBackPolicyEnabled = false;
 
   static DateTime? _lastBackHandledAt;

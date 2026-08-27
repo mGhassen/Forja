@@ -112,6 +112,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
   @override
   void onShellTabShown() {
     super.onShellTabShown();
+    unawaited(_refreshHistory());
     if (_feed != null && _error == null) return;
     final container = _container;
     if (container != null) {
@@ -239,7 +240,15 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
     try {
       final list = await _service.getWatchHistory();
       if (!mounted) return;
-      setState(() => _continueWatching = list.take(10).toList());
+      final inProgress = list
+          .where((e) {
+            final pos = (e['positionMs'] as num?)?.toInt() ?? 0;
+            final dur = (e['durationMs'] as num?)?.toInt() ?? 0;
+            return isInProgressResume(pos, dur);
+          })
+          .take(10)
+          .toList();
+      setState(() => _continueWatching = inProgress);
     } catch (_) {}
   }
 
@@ -451,7 +460,7 @@ class _AsianDramaScreenState extends ConsumerState<AsianDramaScreen>
     return KdramaCard(
       id: (entry['id'] as num).toInt(),
       title: entry['title'] as String? ?? '',
-      cover: KissKhService.normalizeCoverUrl(entry['cover'] as String? ?? ''),
+      cover: KissKhService.resolveCoverUrl(entry['cover'] as String? ?? ''),
     );
   }
 

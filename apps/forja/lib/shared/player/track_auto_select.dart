@@ -196,6 +196,51 @@ Map<String, dynamic>? pickExternalSubtitleWithFallback(
   return null;
 }
 
+/// Anime / Asian Drama hub — TMDB season/episode often disagree with hub
+/// numbering; scraped subs (SubtitleCat, Wyzie, …) frequently mismatch.
+bool restrictScrapedSubtitleAutoPick({
+  String? mediaType,
+  String? engineCategory,
+}) =>
+    mediaType == 'asian_drama' ||
+    mediaType == 'anime' ||
+    engineCategory == 'drama' ||
+    engineCategory == 'anime';
+
+Set<String> providerExternalSubtitleUrls(
+  Iterable<Map<String, dynamic>> subs,
+) {
+  return {
+    for (final s in subs)
+      if ((s['url'] ?? '').toString().trim().isNotEmpty)
+        (s['url'] ?? '').toString(),
+  };
+}
+
+/// Auto-pick pool — hub playback trusts provider sideloads + TMDB-backed
+/// Wyzie/Levrx; skips SubtitleCat/Mysubs (loose title search → wrong film).
+List<Map<String, dynamic>> externalSubtitlesForAutoPick({
+  required List<Map<String, dynamic>> all,
+  required Set<String> providerUrls,
+  required bool restrictScraped,
+}) {
+  if (!restrictScraped) return all;
+  final out = <Map<String, dynamic>>[];
+  for (final s in all) {
+    final url = (s['url'] ?? '').toString();
+    if (url.isEmpty) continue;
+    if (providerUrls.contains(url)) {
+      out.add(s);
+      continue;
+    }
+    final source = (s['sourceName'] ?? '').toString().toLowerCase();
+    if (source == 'wyzie' || source == 'levrx') {
+      out.add(s);
+    }
+  }
+  return out;
+}
+
 /// Embedded track match: preferred, then English.
 SubtitleTrack? pickEmbeddedSubtitleWithFallback({
   required String preferredLang,

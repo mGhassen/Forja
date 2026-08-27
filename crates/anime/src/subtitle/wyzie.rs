@@ -20,7 +20,20 @@ pub fn fetch(tmdb_id: i64, season: Option<i32>, episode: Option<i32>) -> Result<
     }
     let resp = http::fetch_with_retries("GET", &url, &Default::default(), None, None, false, 15, 0)?;
     if resp.status != 200 {
-        return Err(format!("wyzie HTTP {}", resp.status));
+        let se = match (season, episode) {
+            (Some(s), Some(e)) => format!(" season={s} episode={e}"),
+            _ => String::new(),
+        };
+        let body_snip: String = resp.body.chars().take(200).collect();
+        return Err(format!(
+            "wyzie HTTP {} (tmdb_id={tmdb_id}{se}){body}",
+            resp.status,
+            body = if body_snip.is_empty() {
+                String::new()
+            } else {
+                format!(" — {body_snip}")
+            }
+        ));
     }
     let data: Vec<Value> = serde_json::from_str(&resp.body).map_err(|e| e.to_string())?;
     let mut totals = std::collections::HashMap::new();

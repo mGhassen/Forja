@@ -138,10 +138,11 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
   late final List<_SubGroup> _groups;
   final FocusNode _closeFocus = FocusNode(debugLabel: 'subtitle-dialog-close');
 
-  bool get _textOff =>
-      widget.tracks.textOff ||
-      (widget.tracks.text.every((t) => !t.selected) &&
-          widget.selectedExternalSubUrl == null);
+  bool get _textOff {
+    if (widget.selectedExternalSubUrl != null) return false;
+    if (widget.tracks.text.any((t) => t.selected)) return false;
+    return widget.tracks.textOff;
+  }
 
   bool get _hideLoadFile =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips ||
@@ -362,7 +363,11 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
       );
     }
 
-    if (widget.isFetchingSubs) {
+    final langKey = group.langKey;
+    final embedded = _byLangEmbedded[langKey] ?? const <ExoTrackInfo>[];
+    final online = _byLangOnline[langKey] ?? const <Map<String, dynamic>>[];
+
+    if (widget.isFetchingSubs && embedded.isEmpty && online.isEmpty) {
       return const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -385,9 +390,6 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
       );
     }
 
-    final langKey = group.langKey;
-    final embedded = _byLangEmbedded[langKey] ?? const <ExoTrackInfo>[];
-    final online = _byLangOnline[langKey] ?? const <Map<String, dynamic>>[];
     if (embedded.isEmpty && online.isEmpty) {
       return const Center(
         child: Text(

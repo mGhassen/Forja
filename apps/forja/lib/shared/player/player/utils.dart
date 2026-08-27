@@ -927,14 +927,16 @@ List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
     if (item is! Map) continue;
     final url = item['url']?.toString().trim() ?? '';
     if (url.isEmpty) continue;
+    final name =
+        item['name']?.toString() ??
+        item['language']?.toString() ??
+        'Subtitle';
     out.add({
       'url': url,
       'language':
           item['language']?.toString() ?? item['lang']?.toString() ?? 'en',
-      'name':
-          item['name']?.toString() ??
-          item['language']?.toString() ??
-          'Subtitle',
+      'name': name,
+      'display': name,
     });
   }
   return out.isEmpty ? null : out;

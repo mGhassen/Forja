@@ -1728,13 +1728,24 @@ class AnimeService {
   }
 
   // ─── Watch history (continue watching) ──────────────────────────
-  static const _historyKey = 'enma_history_v1';
+  static const historyKey = 'anime_history';
+  static const _legacyHistoryKey = 'enma_history_v1';
 
   /// Bumped whenever the watch history changes (record / remove).
   /// UI surfaces (AnimeScreen) listen to this to refresh without
   /// needing to be in the foreground or pop a route.
   static final ValueNotifier<int> watchHistoryRevision =
       ValueNotifier<int>(0);
+
+  Future<List<String>> _historyRaw(SharedPreferences p) async {
+    final current = p.getStringList(historyKey);
+    if (current != null && current.isNotEmpty) return current;
+    final legacy = p.getStringList(_legacyHistoryKey);
+    if (legacy == null || legacy.isEmpty) return const [];
+    await p.setStringList(historyKey, legacy);
+    await p.remove(_legacyHistoryKey);
+    return legacy;
+  }
 
   Future<void> recordWatch({
     required AnimeCard anime,
@@ -1744,7 +1755,7 @@ class AnimeService {
     Duration? duration,
   }) async {
     final p = await SharedPreferences.getInstance();
-    final list = p.getStringList(_historyKey) ?? [];
+    final list = [...await _historyRaw(p)];
     list.removeWhere((e) => jsonDecode(e)['animeId'] == anime.id);
     list.insert(
       0,
@@ -1759,13 +1770,13 @@ class AnimeService {
       }),
     );
     if (list.length > 50) list.removeRange(50, list.length);
-    await p.setStringList(_historyKey, list);
+    await p.setStringList(historyKey, list);
     watchHistoryRevision.value++;
   }
 
   Future<List<Map<String, dynamic>>> getWatchHistory() async {
     final p = await SharedPreferences.getInstance();
-    final list = p.getStringList(_historyKey) ?? [];
+    final list = await _historyRaw(p);
     return list
         .map((e) => jsonDecode(e) as Map<String, dynamic>)
         .toList(growable: false);
@@ -1779,16 +1790,17 @@ class AnimeService {
 
   Future<void> removeFromHistory(int animeId) async {
     final p = await SharedPreferences.getInstance();
-    final list = p.getStringList(_historyKey) ?? [];
+    final list = [...await _historyRaw(p)];
     list.removeWhere((e) => jsonDecode(e)['animeId'] == animeId);
-    await p.setStringList(_historyKey, list);
+    await p.setStringList(historyKey, list);
     watchHistoryRevision.value++;
   }
 
   /// Clear anime continue watching.
   Future<void> clearWatchHistory() async {
     final p = await SharedPreferences.getInstance();
-    await p.remove(_historyKey);
+    await p.remove(historyKey);
+    await p.remove(_legacyHistoryKey);
     await p.remove('anime_watch_history');
     watchHistoryRevision.value++;
   }

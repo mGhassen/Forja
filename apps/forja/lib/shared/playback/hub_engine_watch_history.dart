@@ -6,6 +6,128 @@ import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:rust/rust.dart';
 
+/// Hub tab media types — never written to Home [`watch_history`].
+bool isHubTabMediaType(String? mediaType) {
+  switch (mediaType) {
+    case 'asian_drama':
+    case 'anime':
+      return true;
+    default:
+      return false;
+  }
+}
+
+/// True when episodic hub rows use season/episode (not plain `tv` only).
+bool hubMediaIsEpisodic(Movie movie) {
+  switch (movie.mediaType) {
+    case 'tv':
+    case 'asian_drama':
+    case 'anime':
+      return true;
+    default:
+      return false;
+  }
+}
+
+/// Home Continue Watching pool — excludes hub-tab rows that leaked before enforcement.
+bool isHomeTabWatchHistoryEntry(Map<String, dynamic> item) {
+  if (isHubTabMediaType(item['mediaType'] as String?)) return false;
+  if (watchHistoryInt(item['tmdbId'], -1) < 0) return false;
+  return true;
+}
+
+/// Whether this player session should persist to Home [`watch_history`].
+bool usesHomeWatchHistory({
+  required Movie? movie,
+  List<PlayerHubEpisode>? hubEpisodes,
+  Future<void> Function(Duration position, Duration duration)? onSaveProgress,
+  EnginePlaySession? enginePlaySession,
+}) {
+  if (movie == null) return false;
+  if (hubEpisodes != null) return false;
+  if (onSaveProgress != null) return false;
+  if (enginePlaySession != null && hubEngineNeedsWatchHistory(enginePlaySession)) {
+    return false;
+  }
+  if (isHubTabMediaType(movie.mediaType)) return false;
+  if (movie.id < 0) return false;
+  return true;
+}
+
+/// Hooks for catalog Sources opened from anime / Asian Drama details.
+class HubCatalogPlayHooks {
+  const HubCatalogPlayHooks({
+    this.session,
+    this.episodeNumber,
+    this.onSaveProgress,
+  });
+
+  const HubCatalogPlayHooks.none()
+      : session = null,
+        episodeNumber = null,
+        onSaveProgress = null;
+
+  final EnginePlaySession? session;
+  final num? episodeNumber;
+  final Future<void> Function(Duration position, Duration duration)?
+      onSaveProgress;
+
+  Future<void> seedInitial({required Movie movie}) async {
+    await seedHubEngineWatchHistory(
+      session: session,
+      movie: movie,
+      episodeNumber: episodeNumber,
+    );
+  }
+}
+
+HubCatalogPlayHooks buildHubCatalogPlayHooks({
+  required Movie movie,
+  int? season,
+  int? episode,
+  int? kisskhId,
+  int? kisskhEpisodeId,
+  int? anilistId,
+  int? malId,
+  String? engineCategory,
+  String? animeAudioCategory,
+}) {
+  final category = engineCategory ??
+      (kisskhId != null
+          ? EngineCategories.drama
+          : anilistId != null
+              ? EngineCategories.anime
+              : null);
+  if (category == null || (kisskhId == null && anilistId == null)) {
+    return const HubCatalogPlayHooks.none();
+  }
+
+  final ep = episode ?? (hubMediaIsEpisodic(movie) ? (season ?? 1) : null);
+  final session = EnginePlaySession(
+    category: category,
+    anilistId: anilistId,
+    malId: malId,
+    kisskhId: kisskhId,
+    kisskhEpisodeIdByNumber: kisskhEpisodeId != null && ep != null
+        ? {ep: kisskhEpisodeId}
+        : const {},
+    animeAudioCategory: animeAudioCategory,
+  );
+  if (!hubEngineNeedsWatchHistory(session)) {
+    return const HubCatalogPlayHooks.none();
+  }
+
+  return HubCatalogPlayHooks(
+    session: session,
+    episodeNumber: ep,
+    onSaveProgress: hubEngineSaveProgressCallback(
+      session: session,
+      movie: movie,
+      episodeNumber: ep,
+    ),
+  );
+}
+
 bool hubEngineNeedsWatchHistory(EnginePlaySession? session) {
   if (session == null) return false;
   return session.category == EngineCategories.anime ||
@@ -33,11 +155,21 @@ KdramaCard _dramaCardFromHub(Movie movie, int kisskhId) {
   return KdramaCard(
     id: kisskhId,
     title: movie.title,
-    cover: KissKhService.normalizeCoverUrl(movie.posterPath),
+    cover: KissKhService.resolveCoverUrl(movie.posterPath),
     episodesCount: movie.numberOfEpisodes,
   );
 }
 
+/// TMDB poster/backdrop keys saved on hub [Movie] rows must be full URLs in player UI.
+Movie movieWithResolvedHubArt(Movie movie) {
+  final poster = KissKhService.resolveCoverUrl(movie.posterPath);
+  final backdropRaw =
+      movie.backdropPath.trim().isNotEmpty ? movie.backdropPath : movie.posterPath;
+  return movie.copyWith(
+    posterPath: poster,
+    backdropPath: KissKhService.resolveCoverUrl(backdropRaw),
+  );
+}
 List<KdramaEpisode> _dramaEpisodesFromHub(
   List<PlayerHubEpisode>? hubEpisodes,
   EnginePlaySession session,

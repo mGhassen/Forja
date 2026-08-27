@@ -5,6 +5,7 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
+import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -37,7 +38,7 @@ bool hubHasCatalogPanelSources(SettingsPlaybackSnapshot? snap) {
 }
 
 /// Opens the same Torrents / Stremio / Nuvio / Forja Sources panel as movies/TV,
-/// then plays the picked row via the standard player (not hub Miruro/KissKH).
+/// then plays the picked row. Hub details stamp tab-local CW, not Home history.
 Future<void> openHubCatalogSources({
   required BuildContext context,
   required Movie movie,
@@ -54,6 +55,17 @@ Future<void> openHubCatalogSources({
   /// Anime hub SUB/DUB — filters Forja/Nuvio rows when set (`sub` | `dub`).
   String? animeAudioCategory,
 }) {
+  final hooks = buildHubCatalogPlayHooks(
+    movie: movie,
+    season: season,
+    episode: episode,
+    kisskhId: kisskhId,
+    kisskhEpisodeId: kisskhEpisodeId,
+    anilistId: anilistId,
+    malId: malId,
+    engineCategory: engineCategory,
+    animeAudioCategory: animeAudioCategory,
+  );
   return PlayerSourcesPanel.show(
     context: context,
     movie: movie,
@@ -72,6 +84,7 @@ Future<void> openHubCatalogSources({
       result: result,
       season: season,
       episode: episode,
+      hooks: hooks,
     ),
     onStremioSelected: (stream) => _playStremio(
       context: context,
@@ -79,8 +92,22 @@ Future<void> openHubCatalogSources({
       stream: stream,
       season: season,
       episode: episode,
+      hooks: hooks,
     ),
   );
+}
+
+Future<void> _openHubCatalogPlayer({
+  required BuildContext context,
+  required Movie movie,
+  required HubCatalogPlayHooks hooks,
+  required int? season,
+  required int? episode,
+  required Future<void> Function() open,
+}) async {
+  await hooks.seedInitial(movie: movie);
+  if (!context.mounted) return;
+  await open();
 }
 
 Future<void> _playTorrent({
@@ -89,6 +116,7 @@ Future<void> _playTorrent({
   required TorrentResult result,
   int? season,
   int? episode,
+  required HubCatalogPlayHooks hooks,
 }) async {
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
@@ -195,14 +223,14 @@ Future<void> _playTorrent({
       debridService: debridService,
     );
 
-    final isTv = movie.mediaType == 'tv';
+    final episodic = hubMediaIsEpisodic(movie);
     final playback = await resolveMagnetForPlayback(
       magnet: magnetLink,
       useDebrid: useDebrid,
       debridService: debridService,
       localTorrentEngine: profile.localTorrentEngine,
-      season: isTv ? (season ?? 1) : null,
-      episode: isTv ? (episode ?? 1) : null,
+      season: episodic ? (season ?? 1) : null,
+      episode: episodic ? (episode ?? 1) : null,
       onStatus: (status) {
         if (!cancelled) overlayMessage.value = status;
       },
@@ -262,21 +290,31 @@ Future<void> _playTorrent({
     return;
   }
 
-  final isTv = movie.mediaType == 'tv';
+  final episodic = hubMediaIsEpisodic(movie);
   await crossfadeLoadingOverlayToPlayer(
     loadingDialogContext: dialogContext,
     fadeOutNotifier: fadeOutNotifier,
-    openPlayer: () => AppRouter.openPlayer(
-      context,
-      streamUrl: playUrl,
-      title: movie.title,
-      magnetLink: magnetLink,
+    openPlayer: () => _openHubCatalogPlayer(
+      context: context,
       movie: movie,
-      selectedSeason: isTv ? (season ?? 1) : null,
-      selectedEpisode: isTv ? (episode ?? 1) : null,
-      fileIndex: resolvedFileIndex,
-      activeProvider: 'torrent',
-      fadeTransition: true,
+      hooks: hooks,
+      season: season,
+      episode: episode,
+      open: () => AppRouter.openPlayer(
+        context,
+        streamUrl: playUrl,
+        title: movie.title,
+        magnetLink: magnetLink,
+        movie: movie,
+        selectedSeason: episodic ? (season ?? 1) : null,
+        selectedEpisode: episodic ? (episode ?? 1) : null,
+        fileIndex: resolvedFileIndex,
+        activeProvider: 'torrent',
+        enginePlaySession: hooks.session,
+        onSaveProgress: hooks.onSaveProgress,
+        hubEpisodeNumber: hooks.episodeNumber,
+        fadeTransition: true,
+      ),
     ),
   );
   cleanup();
@@ -288,6 +326,7 @@ Future<void> _playStremio({
   required Map<String, dynamic> stream,
   int? season,
   int? episode,
+  required HubCatalogPlayHooks hooks,
 }) async {
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
@@ -295,7 +334,7 @@ Future<void> _playStremio({
   final debridService = await settings.getDebridService();
   if (!context.mounted) return;
 
-  final isTv = movie.mediaType == 'tv';
+  final episodic = hubMediaIsEpisodic(movie);
   final stremioId = movie.imdbId;
   final stremioAddonBaseUrl = stream['_addonBaseUrl']?.toString();
 
@@ -319,18 +358,28 @@ Future<void> _playStremio({
         stream: stream,
       );
       if (!context.mounted) return;
-      await AppRouter.openPlayer(
-        context,
-        streamUrl: proxied.url,
-        title: movie.title,
-        headers: proxied.headers,
+      await _openHubCatalogPlayer(
+        context: context,
         movie: movie,
-        selectedSeason: isTv ? (season ?? 1) : null,
-        selectedEpisode: isTv ? (episode ?? 1) : null,
-        activeProvider: catalogHttpPlayProviderId(stream),
-        externalSubtitles: catalogStreamExternalSubtitles(stream),
-        stremioId: stremioId,
-        stremioAddonBaseUrl: stremioAddonBaseUrl,
+        hooks: hooks,
+        season: season,
+        episode: episode,
+        open: () => AppRouter.openPlayer(
+          context,
+          streamUrl: proxied.url,
+          title: movie.title,
+          headers: proxied.headers,
+          movie: movie,
+          selectedSeason: episodic ? (season ?? 1) : null,
+          selectedEpisode: episodic ? (episode ?? 1) : null,
+          activeProvider: catalogHttpPlayProviderId(stream),
+          externalSubtitles: catalogStreamExternalSubtitles(stream),
+          stremioId: stremioId,
+          stremioAddonBaseUrl: stremioAddonBaseUrl,
+          enginePlaySession: hooks.session,
+          onSaveProgress: hooks.onSaveProgress,
+          hubEpisodeNumber: hooks.episodeNumber,
+        ),
       );
     } catch (_) {
       if (context.mounted) {
@@ -383,8 +432,8 @@ Future<void> _playStremio({
     stream: stream,
     profile: profile,
     settings: settings,
-    season: isTv ? (season ?? 1) : null,
-    episode: isTv ? (episode ?? 1) : null,
+    season: episodic ? (season ?? 1) : null,
+    episode: episodic ? (episode ?? 1) : null,
     isCancelled: () => cancelled || !context.mounted,
     onStatus: (status) {
       if (!cancelled) overlayMessage.value = status;
@@ -404,20 +453,30 @@ Future<void> _playStremio({
     await crossfadeLoadingOverlayToPlayer(
       loadingDialogContext: loadingDialogContext!,
       fadeOutNotifier: fadeOutNotifier,
-      openPlayer: () => AppRouter.openPlayer(
-        context,
-        streamUrl: resolved.streamUrl,
-        title: movie.title,
-        magnetLink: resolved.magnetLink,
+      openPlayer: () => _openHubCatalogPlayer(
+        context: context,
         movie: movie,
-        selectedSeason: isTv ? (season ?? 1) : null,
-        selectedEpisode: isTv ? (episode ?? 1) : null,
-        fileIndex: resolved.fileIndex,
-        activeProvider: catalogHttpPlayProviderId(stream),
-        externalSubtitles: catalogStreamExternalSubtitles(stream),
-        stremioId: stremioId,
-        stremioAddonBaseUrl: stremioAddonBaseUrl,
-        fadeTransition: true,
+        hooks: hooks,
+        season: season,
+        episode: episode,
+        open: () => AppRouter.openPlayer(
+          context,
+          streamUrl: resolved.streamUrl,
+          title: movie.title,
+          magnetLink: resolved.magnetLink,
+          movie: movie,
+          selectedSeason: episodic ? (season ?? 1) : null,
+          selectedEpisode: episodic ? (episode ?? 1) : null,
+          fileIndex: resolved.fileIndex,
+          activeProvider: catalogHttpPlayProviderId(stream),
+          externalSubtitles: catalogStreamExternalSubtitles(stream),
+          stremioId: stremioId,
+          stremioAddonBaseUrl: stremioAddonBaseUrl,
+          enginePlaySession: hooks.session,
+          onSaveProgress: hooks.onSaveProgress,
+          hubEpisodeNumber: hooks.episodeNumber,
+          fadeTransition: true,
+        ),
       ),
     );
   } else if (resolved is StremioResolveFailure &&

@@ -17,8 +17,9 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/playback/hub_drama_player_episodes.dart';
+import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
-import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/widgets/hub_list_status_hero.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
@@ -162,7 +163,9 @@ class _AsianDramaDetailsScreenState
       setState(() {
         _progress = p;
         final ep = (p?['episodeNumber'] as num?)?.toInt();
-        if (ep != null && ep > 0) _selectedEpisode = ep;
+        if (ep != null) {
+          _selectedEpisode = ep;
+        }
       });
     } catch (_) {}
   }
@@ -183,8 +186,12 @@ class _AsianDramaDetailsScreenState
         _details = det;
         _progress = p;
         _loading = false;
-        final ep = (p?['episodeNumber'] as num?)?.toInt();
-        if (ep != null && ep > 0) _selectedEpisode = ep;
+        final resumeEp = (p?['episodeNumber'] as num?)?.toInt();
+        if (resumeEp != null) {
+          _selectedEpisode = resumeEp;
+        } else if (det.episodes.isNotEmpty) {
+          _selectedEpisode = det.episodes.first.pickerKey;
+        }
       });
     } catch (e) {
       if (attempt == 0) {
@@ -229,18 +236,20 @@ class _AsianDramaDetailsScreenState
   Movie _playMovieFor(KdramaDetails det, RichMediaDetails? tmdb) {
     final m = tmdb?.movie;
     if (m != null && m.id > 0) {
-      return m.copyWith(mediaType: 'asian_drama');
+      return movieWithResolvedHubArt(m.copyWith(mediaType: 'asian_drama'));
     }
-    return Movie(
-      id: -det.id,
-      title: det.title,
-      posterPath: det.cover,
-      backdropPath: det.cover,
-      voteAverage: 0,
-      releaseDate: det.year ?? '',
-      overview: det.description,
-      mediaType: 'asian_drama',
-      numberOfEpisodes: det.episodes.length,
+    return movieWithResolvedHubArt(
+      Movie(
+        id: -det.id,
+        title: det.title,
+        posterPath: det.cover,
+        backdropPath: det.cover,
+        voteAverage: 0,
+        releaseDate: det.year ?? '',
+        overview: det.description,
+        mediaType: 'asian_drama',
+        numberOfEpisodes: det.episodes.length,
+      ),
     );
   }
 
@@ -262,13 +271,22 @@ class _AsianDramaDetailsScreenState
     final enrich =
         ref.read(asianDramaTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
     HubListFollow.markWatchingOnPlay(_followTarget(det, enrich?.rich));
-    unawaited(_playEpisode(det, ep, enrich?.rich, startPosition: startPosition));
+    unawaited(_playEpisode(
+      det,
+      ep,
+      enrich?.rich,
+      episodeStills: enrich?.episodeStills ?? const {},
+      episodeMeta: enrich?.episodeMeta ?? const {},
+      startPosition: startPosition,
+    ));
   }
 
   Future<void> _playEpisode(
     KdramaDetails det,
     KdramaEpisode ep,
     RichMediaDetails? tmdb, {
+    Map<int, String> episodeStills = const {},
+    Map<int, Map<String, dynamic>> episodeMeta = const {},
     Duration? startPosition,
   }) async {
     // Movie RFC-063: Forja + Auto + Webstreaming off → race drama plugins.
@@ -289,13 +307,11 @@ class _AsianDramaDetailsScreenState
         startPosition: startPosition,
         loadingSubtitle: 'EP ${ep.displayNumber}',
         hubEpisodes: isTv
-            ? [
-                for (final e in det.episodes)
-                  PlayerHubEpisode(
-                    number: e.number,
-                    title: 'Episode ${e.displayNumber}',
-                  ),
-              ]
+            ? dramaHubEpisodesFromDetails(
+                det,
+                stills: episodeStills,
+                meta: episodeMeta,
+              )
             : null,
       );
       if (!mounted) return;
@@ -542,19 +558,18 @@ class _AsianDramaDetailsScreenState
     required Map<int, String> stills,
     required Map<int, Map<String, dynamic>> meta,
   }) {
-    // Picker selection keys are 1-based list indices (sorted KissKH order).
-    final pickerNum = index + 1;
+    final pickerKey = ep.pickerKey;
     final kissNum = ep.number == ep.number.truncateToDouble()
         ? ep.number.toInt()
         : null;
-    final tmdbMeta = meta[kissNum] ?? meta[pickerNum] ?? const {};
-    final still = stills[kissNum ?? -1] ?? stills[pickerNum] ?? '';
+    final tmdbMeta = meta[kissNum] ?? meta[pickerKey] ?? const {};
+    final still = stills[kissNum ?? -1] ?? stills[pickerKey] ?? '';
     final tmdbName = (tmdbMeta['name'] as String?)?.trim() ?? '';
     final overview = (tmdbMeta['overview'] as String?)?.trim() ?? '';
     final runtime = (tmdbMeta['runtime'] as int?) ?? 0;
     final aired = (tmdbMeta['aired'] as String?)?.trim() ?? '';
     return {
-      'episode_number': pickerNum,
+      'episode_number': pickerKey,
       'name': tmdbName.isNotEmpty
           ? tmdbName
           : 'Episode ${ep.displayNumber}',
@@ -566,7 +581,7 @@ class _AsianDramaDetailsScreenState
   }
 
   Map<int, KdramaEpisode> _episodeLookup(KdramaDetails det) {
-    return {for (var i = 0; i < det.episodes.length; i++) i + 1: det.episodes[i]};
+    return {for (final ep in det.episodes) ep.pickerKey: ep};
   }
 
   Map<String, Map<String, dynamic>> _episodeProgressMap() {
@@ -579,7 +594,10 @@ class _AsianDramaDetailsScreenState
     final pos = (p['positionMs'] as num?)?.toInt() ?? 0;
     final dur = (p['durationMs'] as num?)?.toInt() ?? 0;
     return {
-      'S1_E${index + 1}': {'position': pos, 'duration': dur},
+      'S1_E${_details!.episodes[index].pickerKey}': {
+        'position': pos,
+        'duration': dur,
+      },
     };
   }
 

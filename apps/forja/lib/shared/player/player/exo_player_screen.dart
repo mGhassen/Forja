@@ -180,6 +180,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _exoReady = false;
   DateTime? _playbackConfirmedAt;
   List<Map<String, dynamic>> _externalSubtitles = [];
+  Set<String> _providerExternalSubUrls = {};
   final Map<String, String> _externalSubFileCache = {};
   /// Sideloaded Media3 payloads (`url` file://, `lang`, `label`, `sourceUrl`).
   List<Map<String, String>> _sideloadedSubtitles = [];

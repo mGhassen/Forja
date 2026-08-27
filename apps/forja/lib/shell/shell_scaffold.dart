@@ -66,7 +66,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
-    ShellTvFocusCoordinator.tvBackPolicyEnabled = policy.useFocusableMoodChips;
+    ShellTvFocusCoordinator.tvBackPolicyEnabled = policy.leanbackOnly;
     if (policy.useFocusableMoodChips &&
         widget.visibleIds.isNotEmpty &&
         widget.selectedIndex < widget.visibleIds.length) {

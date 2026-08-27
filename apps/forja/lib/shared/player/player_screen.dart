@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
+import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/external_player_handoff_screen.dart';
@@ -232,6 +233,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }) async {
     final movie = widget.movie;
     if (movie == null || position.inMilliseconds < 5000) return;
+    if (!usesHomeWatchHistory(
+      movie: movie,
+      hubEpisodes: widget.hubEpisodes,
+      onSaveProgress: widget.onSaveProgress,
+      enginePlaySession: widget.enginePlaySession,
+    )) {
+      return;
+    }
     final url = streamUrl ?? _externalStreamUrl ?? _sessionStreamUrl;
     if (url.isEmpty) return;
     final provider = activeProvider ?? _sessionActiveProvider;

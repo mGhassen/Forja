@@ -125,6 +125,7 @@ mixin _DesktopPlayerTracks
   Future<void> _fetchSubtitles() async {
     // Pre-populate with Jellyfin / hub-provided subtitles if present.
     final jellyfinSubs = widget.externalSubtitles ?? [];
+    _s._providerExternalSubUrls = providerExternalSubtitleUrls(jellyfinSubs);
     if (jellyfinSubs.isNotEmpty) {
       if (mounted) {
         setState(
@@ -135,9 +136,6 @@ mixin _DesktopPlayerTracks
       }
     }
 
-    // Anime / Asian Drama use negative hub ids — Wyzie/Levrx need TMDB > 0
-    // (skipped inside SubtitleApi), but title scrapers still run. Always merge
-    // provider sideloads with online results in the picker.
     final movie = widget.movie;
     final title = movie?.title.trim() ?? '';
     final tmdbId = (movie != null && movie.id > 0) ? movie.id : 0;
@@ -221,20 +219,30 @@ mixin _DesktopPlayerTracks
 
     if (_activeSubtitleMatchesPreferred(preferred)) return;
 
+    final subsForAuto = externalSubtitlesForAutoPick(
+      all: _s._externalSubtitles,
+      providerUrls: _s._providerExternalSubUrls,
+      restrictScraped: restrictScrapedSubtitleAutoPick(
+        mediaType: widget.movie?.mediaType,
+        engineCategory: widget.enginePlaySession?.category,
+      ),
+    );
+
     final preferredPick = pickExternalSubtitleForLanguage(
       preferred,
-      _s._externalSubtitles,
+      subsForAuto,
     );
 
     // UI shows a selection but mpv was wiped by media open → must reload.
     final uiSelected = _s._selectedExternalSubUrl;
-    if (uiSelected != null && _playerHasActiveSubtitle() && !forcePlayerApply) {
-      if (preferredPick == null) return;
-      if (uiSelected == preferredPick['url']) return;
-      debugPrint(
-        '[DesktopPlayer] auto subtitle → ${preferredPick['display'] ?? preferredPick['language']}',
-      );
-      await _loadOnlineSubtitle(preferredPick);
+    if (uiSelected != null && !forcePlayerApply) {
+      if (_playerHasActiveSubtitle()) return;
+      for (final s in _s._externalSubtitles) {
+        if (s['url']?.toString() == uiSelected) {
+          await _loadOnlineSubtitle(s);
+          return;
+        }
+      }
       return;
     }
 
@@ -244,7 +252,7 @@ mixin _DesktopPlayerTracks
             ? null
             : pickExternalSubtitleForLanguage(
                 'English',
-                _s._externalSubtitles,
+                subsForAuto,
               ));
     if (pick == null) return;
 

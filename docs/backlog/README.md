@@ -50,11 +50,20 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | Minor | Codename | 
 |-------|----------|
 | **1.0** ✅ | **Bab Souika** | 
-| **1.1** 🔄 | **Mrabet** | 
+| **1.1** ✅ | **Mrabet** | 
 | **1.2** ✅ | **Dabaghin** | 
 | **1.3** ✅ | **Elblat** | 
 | **1.4** 🔄 | **Atarin** | 
 | **1.5** ⬜ | **Berka** | 
+| **1.6** ⬜ | **Serrajine** | 
+| **1.7** ⬜ | **Leffa** | 
+| **1.8** ⬜ | **Belghajia** | 
+| **1.9** ⬜ | **Sabbaghine** | 
+| **1.10** ⬜ | **Grana** | 
+| **1.11** ⬜ | **Haddadine** | 
+| **1.12** ⬜ | **Bechmak** | 
+| **1.13** ⬜ | **Nhas** | 
+| **1.14** ⬜ | **Trouk** | 
 
 ### v2 — Diwan
 

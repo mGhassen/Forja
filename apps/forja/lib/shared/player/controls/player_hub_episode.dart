@@ -1,3 +1,19 @@
+import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:rust/rust.dart';
+
+/// KissKH CDN URLs and TMDB `/path.jpg` keys → loadable image URL.
+String? resolveHubEpisodeArtUrl(String? raw, {bool still = false}) {
+  final value = raw?.trim();
+  if (value == null || value.isEmpty || value == 'null') return null;
+  if (value.startsWith('http://') || value.startsWith('https://')) {
+    return KissKhService.normalizeCoverUrl(value);
+  }
+  if (value.startsWith('/')) {
+    return still ? TmdbApi.getStillUrl(value) : TmdbApi.getImageUrl(value);
+  }
+  return KissKhService.resolveCoverUrl(value);
+}
+
 /// Flat episode list for hub players (anime, Asian drama) - no TMDB seasons.
 class PlayerHubEpisode {
   final num number;

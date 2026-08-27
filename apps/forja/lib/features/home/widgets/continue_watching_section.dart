@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:forja/features/home/widgets/home_widget_imports.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
+import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
@@ -155,13 +156,18 @@ class HomeContinueWatchingSectionState extends State<HomeContinueWatchingSection
         if (raw.isEmpty) {
           return const SizedBox.shrink();
         }
-        if (_resolvedBackdrops.length < raw.length) {
-          _resolveMissingBackdrops(raw);
+        final homeOnly =
+            raw.where(isHomeTabWatchHistoryEntry).toList(growable: false);
+        if (homeOnly.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        if (_resolvedBackdrops.length < homeOnly.length) {
+          _resolveMissingBackdrops(homeOnly);
         }
         // Deduplicate by tmdbId for shows - keep only the latest episode per show
         final seen = <dynamic>{};
         final history = <Map<String, dynamic>>[];
-        for (final item in raw) {
+        for (final item in homeOnly) {
           final key = (item['mediaType'] == 'tv' || item['season'] != null)
               ? item['tmdbId']
               : item['uniqueId'];

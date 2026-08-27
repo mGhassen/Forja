@@ -29,7 +29,9 @@ void main() {
     expect(ShellInputPolicy.desktop.scaleOnFocus, isTrue);
     expect(ShellInputPolicy.desktop.wrapAppFocusTraversal, isTrue);
     expect(ShellInputPolicy.desktop.useFocusableMoodChips, isTrue);
-    expect(ShellInputPolicy.desktop.kenBurnsBackdrop, isTrue);
+    expect(ShellInputPolicy.desktop.leanbackOnly, isFalse);
+    expect(ShellInputPolicy.tv.leanbackOnly, isTrue);
+    expect(ShellInputPolicy.mobile.leanbackOnly, isFalse);
     expect(ShellInputPolicy.desktop.instantFocusChrome, isFalse);
     expect(ShellInputPolicy.tv.scaleOnHover, isFalse);
     expect(ShellInputPolicy.tv.scaleOnFocus, isTrue);

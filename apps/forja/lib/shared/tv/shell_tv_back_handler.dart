@@ -28,11 +28,11 @@ abstract final class ShellTvBackHandler {
       return true;
     }
     if (key == LogicalKeyboardKey.escape) {
-      if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
-        ShellTvFocusCoordinator.handleShellExitKey();
-        return true;
+      if (!ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+        // Desktop/mobile: [BackNavigationScope] Shortcuts own Escape → back nav.
+        return false;
       }
-      ShellTvFocusCoordinator.handleShellBackKey();
+      ShellTvFocusCoordinator.handleShellExitKey();
       return true;
     }
     return false;
