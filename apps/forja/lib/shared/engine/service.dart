@@ -66,6 +66,8 @@ class EngineService {
   Future<void>? _officialEnsureFuture;
   /// Prevents spam retries + log spam after first auto-install failure.
   bool _officialInstallFailed = false;
+  /// Source URLs already attempted for missing-script repair this session.
+  final Set<String> _scriptRepairAttempted = {};
 
   static bool isOfficialPack(String sourceUrl) => sourceUrl == officialManifestUrl;
 
@@ -133,6 +135,8 @@ class EngineService {
 
   Future<List<EnginePack>> listPacks() async {
     await ensureOfficialInstalled();
+    final packs = await _listPacksRaw();
+    await _repairMissingScripts(packs);
     return _listPacksRaw();
   }
 
@@ -292,6 +296,8 @@ class EngineService {
   }
 
   /// Drop APK-era `asset:…` packs so Settings only shows remote installs.
+  /// Never delete script prefs for plugin ids still owned by a kept pack —
+  /// legacy + remote share ids (`videasy`, …); wiping them orphaned the remote.
   Future<List<EnginePack>> _purgeLegacyAssetPacks(List<EnginePack> packs) async {
     final keep = <EnginePack>[];
     final victims = <EnginePack>[];
@@ -303,14 +309,45 @@ class EngineService {
       }
     }
     if (victims.isEmpty) return packs;
+    final retainedIds = <String>{
+      for (final pack in keep)
+        for (final p in pack.plugins) p.id,
+    };
     final prefs = await _prefs;
     for (final pack in victims) {
       for (final p in pack.plugins) {
+        if (retainedIds.contains(p.id)) continue;
         await prefs.remove(_scriptPrefix + p.id);
       }
     }
     await _savePacks(keep);
     return keep;
+  }
+
+  /// Re-fetch any missing script bodies for installed remote packs.
+  Future<void> _repairMissingScripts(List<EnginePack> packs) async {
+    final prefs = await _prefs;
+    for (final pack in packs) {
+      if (isLegacyAssetPack(pack.sourceUrl)) continue;
+      if (_scriptRepairAttempted.contains(pack.sourceUrl)) continue;
+      final missing = <EnginePlugin>[];
+      for (final p in pack.plugins) {
+        if (p.entry.isEmpty) continue;
+        if (!p.isHttp && !p.isHop) continue;
+        final cached = prefs.getString(_scriptPrefix + p.id);
+        if (cached == null || cached.isEmpty) missing.add(p);
+      }
+      if (missing.isEmpty) continue;
+      _scriptRepairAttempted.add(pack.sourceUrl);
+      debugPrint(
+        '[engine] repairing ${missing.length} missing scripts for ${pack.name}',
+      );
+      try {
+        await install(pack.sourceUrl);
+      } catch (e) {
+        debugPrint('[engine] repair failed for ${pack.sourceUrl}: $e');
+      }
+    }
   }
 
   String _resolveScriptUrl(String manifestUrl, String filename) {
@@ -398,6 +435,7 @@ class EngineService {
     if (manifestUrl == officialManifestUrl) {
       _clearOfficialInstallError();
     }
+    _scriptRepairAttempted.remove(manifestUrl);
     return pack;
   }
 
@@ -411,9 +449,14 @@ class EngineService {
     final all = await _listPacksRaw();
     final victim = all.where((a) => a.sourceUrl == sourceUrl).toList();
     all.removeWhere((a) => a.sourceUrl == sourceUrl);
+    final retainedIds = <String>{
+      for (final pack in all)
+        for (final p in pack.plugins) p.id,
+    };
     final prefs = await _prefs;
     for (final pack in victim) {
       for (final p in pack.plugins) {
+        if (retainedIds.contains(p.id)) continue;
         await prefs.remove(_scriptPrefix + p.id);
       }
     }
@@ -467,14 +510,26 @@ class EngineService {
         raw = legacy;
       }
     }
-    if (raw == null) {
+    if (raw == null || raw.isEmpty) {
       final scope = selectAllScopeIds ?? enabledIds;
       return {
         for (final id in scope)
           if (enabledIds.contains(id)) id,
       };
     }
-    return filterEngineSelectedPluginIds(savedIds: raw, enabledIds: enabledIds);
+    final filtered = filterEngineSelectedPluginIds(
+      savedIds: raw,
+      enabledIds: enabledIds,
+    );
+    // Stale prefs after pack swap (legacy → remote) can filter to empty.
+    if (filtered.isEmpty && enabledIds.isNotEmpty) {
+      final scope = selectAllScopeIds ?? enabledIds;
+      return {
+        for (final id in scope)
+          if (enabledIds.contains(id)) id,
+      };
+    }
+    return filtered;
   }
 
   Future<void> saveSourcesSelectedPluginIds(
@@ -538,10 +593,11 @@ class EngineService {
       await _syncHopsForRuntime(rt, packs);
     }
     if (plugin == null || !plugin.enabled || !plugin.isExtractable) return null;
+    final active = plugin;
     // Soft categories only — Sources filter hides chips; selected plugins always run.
     final mediaType = _normalizeEngineMediaType(type);
 
-    if (plugin.isHost) {
+    if (active.isHost) {
       final resolvedMovie =
           movie ??
           Movie(
@@ -554,7 +610,7 @@ class EngineService {
             mediaType: mediaType,
           );
       final hostStreams = await EngineHostResolver.resolve(
-        plugin: plugin,
+        plugin: active,
         movie: resolvedMovie,
         season: season ?? 1,
         episode: episode ?? 1,
@@ -562,29 +618,45 @@ class EngineService {
       );
       if (gen != _extractGeneration) return null;
       return EngineExtractResult(
-        pluginId: plugin.id,
-        pluginName: plugin.name,
+        pluginId: active.id,
+        pluginName: active.name,
         streams: hostStreams,
       );
     }
 
     final overlay =
-        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+        ProviderRuntimeConfig.instance.engine[active.id] ?? const {};
     final config = engineConfigWithKissKhIds(
-      mergeEngineConfig(plugin.config, overlay),
-      pluginId: plugin.id,
+      mergeEngineConfig(active.config, overlay),
+      pluginId: active.id,
       kisskhId: kisskhId,
       kisskhEpisodeId: kisskhEpisodeId,
     );
-    final code = await _loadScript(plugin);
-    if (gen != _extractGeneration || code == null) return null;
-    if (!rt.isLoaded(plugin.id)) {
-      await rt.loadPlugin(pluginId: plugin.id, code: code);
+    var code = await _loadScript(active);
+    if (gen != _extractGeneration) return null;
+    if (code == null || code.isEmpty) {
+      debugPrint('[engine] ${active.id} missing script — repairing pack');
+      for (final pack in packs) {
+        if (pack.plugins.any((p) => p.id == active.id)) {
+          _scriptRepairAttempted.remove(pack.sourceUrl);
+          await _repairMissingScripts([pack]);
+          break;
+        }
+      }
+      code = await _loadScript(active);
+      if (gen != _extractGeneration) return null;
+      if (code == null || code.isEmpty) {
+        debugPrint('[engine] ${active.id} still missing script after repair');
+        return null;
+      }
+    }
+    if (!rt.isLoaded(active.id)) {
+      await rt.loadPlugin(pluginId: active.id, code: code);
     }
     if (gen != _extractGeneration) return null;
     EngineAnimeIdBundle? animeIds;
-    if (EngineAnimeIds.pluginNeedsResolve(plugin)) {
-      final kinds = EngineAnimeIds.requiredKinds(plugin);
+    if (EngineAnimeIds.pluginNeedsResolve(active)) {
+      final kinds = EngineAnimeIds.requiredKinds(active);
       final haveMal =
           !kinds.contains('mal') || (malId != null && malId > 0);
       final haveAnilist =
@@ -615,7 +687,7 @@ class EngineService {
     final resolvedAnilist = animeIds?.anilistId ?? anilistId;
     final resolvedImdb = animeIds?.imdbId ?? movie?.imdbId;
     debugPrint(
-      '[engine] ${plugin.id} start tmdb=$tmdbId type=$mediaType '
+      '[engine] ${active.id} start tmdb=$tmdbId type=$mediaType '
       's=$season e=$episode title=$title'
       '${resolvedMal != null ? ' mal=$resolvedMal' : ''}'
       '${resolvedAnilist != null ? ' anilist=$resolvedAnilist' : ''}'
@@ -623,8 +695,8 @@ class EngineService {
     );
     final sw = Stopwatch()..start();
     final raw = await rt.extract(
-      pluginId: plugin.id,
-      pluginName: plugin.name,
+      pluginId: active.id,
+      pluginName: active.name,
       tmdbId: tmdbId,
       imdbId: resolvedImdb,
       malId: resolvedMal,
@@ -640,20 +712,20 @@ class EngineService {
       // HTTP miss → ctx.host sniff (90s VidFast/VidRock). Default 30s
       // returned [] while HLS was already on the wire.
       timeout:
-          EmbedExtractProfiles.resolve(plugin.id).timeout +
+          EmbedExtractProfiles.resolve(active.id).timeout +
           const Duration(seconds: 30),
       allowHostFallback: allowHostFallback,
       isCancelled: () => gen != _extractGeneration,
     );
     if (gen != _extractGeneration) {
-      debugPrint('[engine] ${plugin.id} cancelled after ${sw.elapsedMilliseconds}ms');
+      debugPrint('[engine] ${active.id} cancelled after ${sw.elapsedMilliseconds}ms');
       return null;
     }
     var rawList = raw;
     // JS path under parallel All-walk often hangs on stalled HTTP bodies.
     // Dart VideasyExtractor has hard per-fetch timeouts — use it when JS is empty.
     if (rawList.isEmpty &&
-        plugin.id == 'videasy' &&
+        active.id == 'videasy' &&
         movie != null &&
         gen == _extractGeneration) {
       debugPrint('[engine] videasy JS empty — dart API fallback');
@@ -690,14 +762,14 @@ class EngineService {
     }
     if (rawList.isEmpty && gen == _extractGeneration) {
       rawList = await _animeEngineFallbacks(
-        pluginId: plugin.id,
+        pluginId: active.id,
         anilistId: resolvedAnilist,
         episode: animeIds?.mappedEpisode ?? episode ?? 1,
         isCancelled: () => gen != _extractGeneration,
       );
     }
     if (gen != _extractGeneration) {
-      debugPrint('[engine] ${plugin.id} cancelled after ${sw.elapsedMilliseconds}ms');
+      debugPrint('[engine] ${active.id} cancelled after ${sw.elapsedMilliseconds}ms');
       return null;
     }
     final streams = <Map<String, dynamic>>[];
@@ -716,12 +788,12 @@ class EngineService {
       if (mapped != null) streams.add(mapped);
     }
     debugPrint(
-      '[engine] ${plugin.id} done raw=${rawList.length} streams=${streams.length} '
+      '[engine] ${active.id} done raw=${rawList.length} streams=${streams.length} '
       '${sw.elapsedMilliseconds}ms',
     );
     return EngineExtractResult(
-      pluginId: plugin.id,
-      pluginName: plugin.name,
+      pluginId: active.id,
+      pluginName: active.name,
       streams: streams,
     );
   }
