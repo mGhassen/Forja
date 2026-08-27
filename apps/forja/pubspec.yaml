@@ -136,11 +136,6 @@ flutter:
     - assets/fonts/
     - assets/videasy/
     - assets/nuvio/
-    - assets/plugins/
-    - assets/plugins/providers/
-    - assets/plugins/archived/
-    - assets/plugins/providers/hops/
-    - assets/plugins/live/
     - assets/plugins/live/goat/
     - assets/plugins/live/goat/vendor/
     - assets/plugins/live/goat/webview/
@@ -149,7 +144,6 @@ flutter:
     - assets/plugins/live/gasm/webview/
     - assets/plugins/live/sportsembed/
     - assets/plugins/live/sportsembed/vendor/
-    - assets/plugins/catalog/
     - assets/textures/
     - assets/watch_providers/
 

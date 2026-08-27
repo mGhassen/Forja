@@ -58,6 +58,8 @@ class SyncService {
   static const _refreshTimeout = Duration(seconds: 12);
   /// Refresh access JWT when less than this remains before expiry.
   static const _accessTokenRefreshSkew = Duration(minutes: 5);
+  /// PostgREST rejects a just-minted JWT when Auth `iat` is ahead of API now.
+  static const _jwtIatSkewRetryDelay = Duration(milliseconds: 1200);
   DateTime? _lastRefreshAttempt;
   DateTime? _lastFeaturesPullAt;
   Future<Map<String, dynamic>>? _featuresPullInFlight;
@@ -181,9 +183,26 @@ class SyncService {
     return current != null && !current.isExpired;
   }
 
+  static String _jwtErrorBlob(Object? error) {
+    if (error == null) return '';
+    if (error is SyncProfileFetchException) return _jwtErrorBlob(error.cause);
+    if (error is PostgrestException) {
+      return '${error.code} ${error.message} ${error.details}';
+    }
+    return error.toString();
+  }
+
+  /// PostgREST `PGRST303` / `JWT issued at future` — Auth clock is ahead of API.
+  /// Force-refresh makes this worse (newer `iat`). Retry the same token instead.
+  static bool isJwtIssuedAtFutureError(Object? error) {
+    return _jwtErrorBlob(error).toLowerCase().contains('issued at future');
+  }
+
   /// PostgREST / gotrue rejected the access JWT as expired (PGRST303).
+  /// Does not include [isJwtIssuedAtFutureError] — that is the opposite skew.
   static bool isJwtExpiredError(Object? error) {
     if (error == null) return false;
+    if (isJwtIssuedAtFutureError(error)) return false;
     if (error is PostgrestException) {
       final code = error.code?.toUpperCase() ?? '';
       if (code == 'PGRST303') return true;
@@ -195,6 +214,18 @@ class SyncService {
     }
     final s = error.toString().toLowerCase();
     return s.contains('jwt expired') || s.contains('pgrst303');
+  }
+
+  /// One retry of [run] after Auth/API `iat` skew. Does not mint a new JWT.
+  static Future<T> retryAfterJwtIatSkew<T>(Future<T> Function() run) async {
+    try {
+      return await run();
+    } catch (e) {
+      if (!isJwtIssuedAtFutureError(e)) rethrow;
+      debugPrint('[Sync] JWT iat in the future — retry same token');
+      await Future<void>.delayed(_jwtIatSkewRetryDelay);
+      return run();
+    }
   }
 
   /// Starts a desktop timer that refreshes the session while the app stays open
@@ -555,11 +586,13 @@ class SyncService {
           'Session expired and could not refresh. Sign out and sign in again.',
         );
       }
-      final rows = await client
-          .from('profiles')
-          .select('id, name, color, avatar_key, created_at')
-          .eq('account_id', userId)
-          .order('created_at');
+      final rows = await retryAfterJwtIatSkew(
+        () => client
+            .from('profiles')
+            .select('id, name, color, avatar_key, created_at')
+            .eq('account_id', userId)
+            .order('created_at'),
+      );
       return [
         for (final raw in rows as List)
           SyncProfile(
@@ -830,12 +863,14 @@ class SyncService {
     if (profile == null) return null;
 
     try {
-      final row = await client
-          .from('profile_settings')
-          .select('payload, updated_at')
-          .eq('account_id', userId)
-          .eq('profile_id', profile.id)
-          .maybeSingle();
+      final row = await retryAfterJwtIatSkew(
+        () => client
+            .from('profile_settings')
+            .select('payload, updated_at')
+            .eq('account_id', userId)
+            .eq('profile_id', profile.id)
+            .maybeSingle(),
+      );
       if (row == null) return null;
       final payload = row['payload'];
       if (payload is Map) {
@@ -892,7 +927,8 @@ class SyncService {
       try {
         final rpc = await client.rpc('is_admin');
         isAdmin = rpc == true;
-      } catch (_) {
+      } catch (e) {
+        if (isJwtIssuedAtFutureError(e) || isJwtExpiredError(e)) rethrow;
         // Fall through to accounts.is_admin column.
       }
 
@@ -903,21 +939,24 @@ class SyncService {
             .select('features, iptv_credits, is_admin, member_number')
             .eq('id', userId)
             .maybeSingle();
-      } catch (_) {
+      } catch (e) {
+        if (isJwtIssuedAtFutureError(e) || isJwtExpiredError(e)) rethrow;
         try {
           row = await client
               .from('accounts')
               .select('features, iptv_credits, is_admin')
               .eq('id', userId)
               .maybeSingle();
-        } catch (_) {
+        } catch (e2) {
+          if (isJwtIssuedAtFutureError(e2) || isJwtExpiredError(e2)) rethrow;
           try {
             row = await client
                 .from('accounts')
                 .select('features, iptv_credits')
                 .eq('id', userId)
                 .maybeSingle();
-          } catch (_) {
+          } catch (e3) {
+            if (isJwtIssuedAtFutureError(e3) || isJwtExpiredError(e3)) rethrow;
             // Column missing until RFC-040 migration is applied.
             row = await client
                 .from('accounts')
@@ -957,7 +996,7 @@ class SyncService {
     }
 
     try {
-      return await pullOnce(forceRefresh: false);
+      return await retryAfterJwtIatSkew(() => pullOnce(forceRefresh: false));
     } catch (e) {
       if (isJwtExpiredError(e)) {
         debugPrint(

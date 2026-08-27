@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt_explode;
 
 /// One closed-caption track as a direct WebVTT URL.
@@ -23,27 +24,30 @@ class YoutubeCaptionTrack {
 class YoutubeQuality {
   final int height;
   final String videoUrl;
+  final int contentLength;
 
-  const YoutubeQuality({required this.height, required this.videoUrl});
+  const YoutubeQuality({
+    required this.height,
+    required this.videoUrl,
+    this.contentLength = 0,
+  });
 
   String get label => '${height}p';
 }
 
 /// Resolved playable URLs for a single YouTube video.
 class YoutubeResolvedStreams {
-  /// Default open URL. Prefer muxed progressive (A+V) for a fast audible start;
-  /// adaptive video-only lives in [qualities] for the Quality menu.
+  /// Adaptive video-only (itag 137 = 1080p AVC) or muxed progressive fallback.
   final String? playUrl;
 
-  /// Resolution height of [playUrl] (muxed or adaptive pick).
   final int? playHeight;
 
-  /// Separate AAC for video-only URLs in [qualities].
-  /// Null when there is no adaptive ladder.
+  /// AAC (itag 140). Bound via mpv `audio-file` before open. Null if muxed.
   final String? audioUrl;
 
-  /// Muxed progressive (A+V) URL — typically ≤360p. Same as [playUrl] when
-  /// muxed is the default open. Null when YouTube offered no muxed stream.
+  final int audioContentLength;
+
+  /// Muxed progressive (A+V) — typically ≤360p. Fallback when adaptive stalls.
   final String? muxedUrl;
 
   final int? muxedHeight;
@@ -52,16 +56,16 @@ class YoutubeResolvedStreams {
   final String? thumbnailUrl;
   final int? durationSeconds;
 
-  /// Video-only qualities (highest first). H.264 ≤1080p + VP9 above; no AV1.
+  /// Video-only heights, highest first. AVC preferred at a given height; no AV1.
   final List<YoutubeQuality> qualities;
 
-  /// WebVTT caption tracks (empty when none / not fetched yet).
   final List<YoutubeCaptionTrack> captions;
 
   const YoutubeResolvedStreams({
     this.playUrl,
     this.playHeight,
     this.audioUrl,
+    this.audioContentLength = 0,
     this.muxedUrl,
     this.muxedHeight,
     this.title,
@@ -77,6 +81,7 @@ class YoutubeResolvedStreams {
     String? playUrl,
     int? playHeight,
     String? audioUrl,
+    int? audioContentLength,
     String? muxedUrl,
     int? muxedHeight,
     String? title,
@@ -89,6 +94,7 @@ class YoutubeResolvedStreams {
       playUrl: playUrl ?? this.playUrl,
       playHeight: playHeight ?? this.playHeight,
       audioUrl: audioUrl ?? this.audioUrl,
+      audioContentLength: audioContentLength ?? this.audioContentLength,
       muxedUrl: muxedUrl ?? this.muxedUrl,
       muxedHeight: muxedHeight ?? this.muxedHeight,
       title: title ?? this.title,
@@ -106,9 +112,37 @@ class _ResolvedCacheEntry {
   const _ResolvedCacheEntry(this.streams, this.at);
 }
 
-/// Resolve YouTube video ids to googlevideo URLs (Debrify path).
-///
-/// No search / InnerTube — stream extraction only via youtube_explode.
+({String? url, int? height}) _bestProgressiveMuxed(
+  yt_explode.StreamManifest manifest,
+) {
+  final muxed = manifest.muxed.toList()
+    ..sort(
+      (a, b) => b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond),
+    );
+  final muxedMp4 = muxed.where((s) => s.container.name.toLowerCase() == 'mp4');
+  final best = muxedMp4.isNotEmpty
+      ? muxedMp4.first
+      : (muxed.isNotEmpty ? muxed.first : null);
+  return (url: best?.url.toString(), height: best?.videoResolution.height);
+}
+
+/// explode getManifest HEADs streams.first (itag 137) → 403 and drops the client.
+class _SkipHeadYoutubeClient extends yt_explode.YoutubeHttpClient {
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (request.method == 'HEAD') {
+      return http.StreamedResponse(
+        const Stream<List<int>>.empty(),
+        200,
+        contentLength: 1,
+        request: request,
+      );
+    }
+    return super.send(request);
+  }
+}
+
+/// Resolve YouTube video ids to googlevideo DASH (video + AAC).
 class YoutubeStreamService {
   YoutubeStreamService._();
 
@@ -121,7 +155,6 @@ class YoutubeStreamService {
   static final Map<String, Future<List<YoutubeCaptionTrack>>> _captionsInFlight =
       {};
 
-  /// Warm the resolve cache for upcoming trailer opens (no captions / metadata).
   static void prefetch(Iterable<String> videoIds, {int limit = 3}) {
     var n = 0;
     for (final id in videoIds) {
@@ -132,15 +165,7 @@ class YoutubeStreamService {
     }
   }
 
-  /// Resolve [videoId] into playable URLs.
-  ///
-  /// Prefer ANDROID_VR client (mpv-friendly googlevideo URLs). Cap default
-  /// adaptive ladder at [maxHeightOverride] or [defaultMaxHeight]. Default
-  /// [playUrl] is muxed when available (fast audible open). Captions / metadata
-  /// are opt-in so the trailer critical path stays lean.
-  ///
-  /// Pass [forceRefresh] on open / Quality switch — googlevideo URLs expire and
-  /// the resolve cache must not reuse a poisoned/HEADed ladder.
+  /// Adaptive ≤[maxHeightOverride] (itag 137 + AAC). TV first, then sdkless/ios.
   static Future<YoutubeResolvedStreams?> resolveStreams(
     String videoId, {
     int? maxHeightOverride,
@@ -156,7 +181,6 @@ class YoutubeStreamService {
     );
     if (forceRefresh) {
       _resolveCache.remove(key);
-      // Drop any in-flight resolve for this key so we do not await a stale one.
       _resolveInFlight.remove(key);
     } else {
       final cached = _resolveCache[key];
@@ -177,7 +201,6 @@ class YoutubeStreamService {
     return future.whenComplete(() => _resolveInFlight.remove(key));
   }
 
-  /// Fetch WebVTT captions only (trailer CC menu). Does not re-extract streams.
   static Future<List<YoutubeCaptionTrack>> fetchCaptions(String videoId) {
     final inFlight = _captionsInFlight[videoId];
     if (inFlight != null) return inFlight;
@@ -228,9 +251,9 @@ class YoutubeStreamService {
         )] = _ResolvedCacheEntry(streams, DateTime.now());
       }
       return streams;
-    } catch (e) {
-      debugPrint('YoutubeStreamService: resolve failed for $videoId — $e');
-      return null;
+    } catch (e, st) {
+      debugPrint('YoutubeStreamService: resolve failed for $videoId — $e\n$st');
+      rethrow;
     }
   }
 
@@ -250,6 +273,182 @@ class YoutubeStreamService {
   ) async {
     final yt = yt_explode.YoutubeExplode();
     try {
+      return await _captionsOnYt(yt, videoId);
+    } finally {
+      try {
+        yt.close();
+      } catch (_) {}
+    }
+  }
+
+  static Future<YoutubeResolvedStreams?> _resolveStreamsBlocking(
+    String videoId,
+    int maxHeight,
+    bool withCaptions,
+    bool withMetadata,
+  ) async {
+    final http = _SkipHeadYoutubeClient();
+    final yt = yt_explode.YoutubeExplode(httpClient: http);
+    try {
+      final resolved = await _tryAdaptive(yt, videoId, maxHeight);
+      if (resolved == null || !resolved.hasPlayable) return null;
+      if (!withMetadata && !withCaptions) return resolved;
+
+      String? title = resolved.title;
+      String? thumb = resolved.thumbnailUrl;
+      int? duration = resolved.durationSeconds;
+      var captions = resolved.captions;
+      await Future.wait([
+        () async {
+          if (!withMetadata) return;
+          try {
+            final video = await yt.videos.get(videoId);
+            title = video.title;
+            thumb = video.thumbnails.highResUrl;
+            duration = video.duration?.inSeconds;
+          } catch (_) {}
+        }(),
+        () async {
+          if (!withCaptions) return;
+          captions = await _captionsOnYt(yt, videoId);
+        }(),
+      ]);
+      return resolved.copyWith(
+        title: title,
+        thumbnailUrl: thumb,
+        durationSeconds: duration,
+        captions: captions,
+      );
+    } finally {
+      try {
+        yt.close();
+      } catch (_) {}
+    }
+  }
+
+  static Future<YoutubeResolvedStreams?> _tryAdaptive(
+    yt_explode.YoutubeExplode yt,
+    String videoId,
+    int maxHeight,
+  ) async {
+    yt_explode.StreamManifest? manifest;
+    final clientAttempts = <List<yt_explode.YoutubeApiClient>?>[
+      [yt_explode.YoutubeApiClient.tv],
+      [yt_explode.YoutubeApiClient.androidSdkless],
+      [yt_explode.YoutubeApiClient.ios],
+      null,
+    ];
+    Object? lastError;
+    for (final clients in clientAttempts) {
+      try {
+        final m = clients == null
+            ? await yt.videos.streamsClient.getManifest(videoId)
+            : await yt.videos.streamsClient.getManifest(
+                videoId,
+                ytClients: clients,
+              );
+        if (m.muxed.isNotEmpty || m.videoOnly.isNotEmpty) {
+          manifest = m;
+          break;
+        }
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    if (manifest == null) {
+      throw lastError ?? StateError('No YouTube streams for $videoId');
+    }
+
+    final muxed = _bestProgressiveMuxed(manifest);
+    final bestMuxed = muxed.url;
+    final bestMuxedHeight = muxed.height;
+
+    bool isAvc(String c) => c.toLowerCase().contains('avc');
+    bool isVp9(String c) {
+      final l = c.toLowerCase();
+      return l.contains('vp9') || l.contains('vp09');
+    }
+
+    String? playUrl;
+    int? playHeight;
+    String? audioUrl;
+    final qualities = <YoutubeQuality>[];
+    final videoOnly = manifest.videoOnly
+        .where((s) {
+          final c = s.videoCodec.toLowerCase();
+          if (c.contains('av01') || c.contains('av1')) return false;
+          return isAvc(s.videoCodec) || isVp9(s.videoCodec);
+        })
+        .toList();
+    final audioMp4 = manifest.audioOnly
+        .where((s) => s.container.name.toLowerCase() == 'mp4')
+        .toList();
+    final audio140 = audioMp4.where((s) => s.tag == 140).toList();
+    final audioStreams = audio140.isNotEmpty ? audio140 : audioMp4;
+    if (videoOnly.isNotEmpty && audioStreams.isNotEmpty) {
+      videoOnly.sort((a, b) {
+        final byHeight =
+            b.videoResolution.height.compareTo(a.videoResolution.height);
+        if (byHeight != 0) return byHeight;
+        final aAvc = isAvc(a.videoCodec);
+        final bAvc = isAvc(b.videoCodec);
+        if (aAvc == bAvc) return 0;
+        return aAvc ? -1 : 1;
+      });
+
+      final seenHeights = <int>{};
+      for (final s in videoOnly) {
+        final h = s.videoResolution.height;
+        if (!seenHeights.add(h)) continue;
+        qualities.add(
+          YoutubeQuality(
+            height: h,
+            videoUrl: s.url.toString(),
+            contentLength: s.size.totalBytes,
+          ),
+        );
+      }
+
+      audioStreams.sort(
+        (a, b) => b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond),
+      );
+      audioUrl = audioStreams.first.url.toString();
+    }
+
+    if (qualities.isNotEmpty && audioUrl != null) {
+      final atOrBelow = qualities.where((q) => q.height <= maxHeight).toList();
+      final pick = atOrBelow.isNotEmpty ? atOrBelow.first : qualities.first;
+      playUrl = pick.videoUrl;
+      playHeight = pick.height;
+      // Isolate.run — debugPrint often never reaches the Flutter console.
+      print(
+        'YoutubeStreamService: DASH ${pick.height}p + AAC '
+        '(${qualities.length} rungs, muxed=${bestMuxedHeight ?? 0}p)',
+      );
+    } else if (bestMuxed != null) {
+      playUrl = bestMuxed;
+      playHeight = bestMuxedHeight;
+    }
+    if (playUrl == null) return null;
+
+    return YoutubeResolvedStreams(
+      playUrl: playUrl,
+      playHeight: playHeight,
+      audioUrl: audioUrl,
+      audioContentLength: audioUrl == null
+          ? 0
+          : (audioStreams.isNotEmpty ? audioStreams.first.size.totalBytes : 0),
+      muxedUrl: bestMuxed,
+      muxedHeight: bestMuxedHeight,
+      qualities: qualities,
+    );
+  }
+
+  static Future<List<YoutubeCaptionTrack>> _captionsOnYt(
+    yt_explode.YoutubeExplode yt,
+    String videoId,
+  ) async {
+    try {
       final ccManifest = await yt.videos.closedCaptions.getManifest(
         videoId,
         formats: const [yt_explode.ClosedCaptionFormat.vtt],
@@ -265,179 +464,8 @@ class YoutubeStreamService {
             isAutoGenerated: t.isAutoGenerated,
           ),
       ];
-    } finally {
-      try {
-        yt.close();
-      } catch (_) {}
-    }
-  }
-
-  static Future<YoutubeResolvedStreams?> _resolveStreamsBlocking(
-    String videoId,
-    int maxHeight,
-    bool withCaptions,
-    bool withMetadata,
-  ) async {
-    final yt = yt_explode.YoutubeExplode();
-    try {
-      // ONE client per attempt — never pass multiple ytClients in one call.
-      // youtube_explode merges every client's streams; mixing androidVr video
-      // with tv/ios audio yields googlevideo URLs that open as playing=true
-      // with dur=0 / no frames (Quality stuck on muxed 360p).
-      yt_explode.StreamManifest? manifest;
-      final clientAttempts = <List<yt_explode.YoutubeApiClient>?>[
-        [yt_explode.YoutubeApiClient.androidVr],
-        [yt_explode.YoutubeApiClient.tv],
-        [yt_explode.YoutubeApiClient.androidSdkless],
-        [yt_explode.YoutubeApiClient.ios],
-        null, // library default
-      ];
-      Object? lastError;
-      for (final clients in clientAttempts) {
-        try {
-          final m = clients == null
-              ? await yt.videos.streamsClient.getManifest(videoId)
-              : await yt.videos.streamsClient.getManifest(
-                  videoId,
-                  ytClients: clients,
-                );
-          if (m.muxed.isNotEmpty || m.videoOnly.isNotEmpty) {
-            manifest = m;
-            break;
-          }
-        } catch (e) {
-          lastError = e;
-        }
-      }
-      if (manifest == null) {
-        throw lastError ??
-            StateError('No YouTube streams for $videoId');
-      }
-
-      final muxed = manifest.muxed.toList()
-        ..sort(
-          (a, b) =>
-              b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond),
-        );
-      final muxedMp4 =
-          muxed.where((s) => s.container.name.toLowerCase() == 'mp4');
-      final bestMuxedStream =
-          muxedMp4.isNotEmpty ? muxedMp4.first : (muxed.isNotEmpty ? muxed.first : null);
-      final bestMuxed = bestMuxedStream?.url.toString();
-      final bestMuxedHeight = bestMuxedStream?.videoResolution.height;
-
-      bool isAvc(String c) => c.toLowerCase().contains('avc');
-      bool isVp9(String c) {
-        final l = c.toLowerCase();
-        return l.contains('vp9') || l.contains('vp09');
-      }
-
-      String? playUrl;
-      int? playHeight;
-      String? audioUrl;
-      final qualities = <YoutubeQuality>[];
-      final videoOnly = manifest.videoOnly
-          .where((s) => isAvc(s.videoCodec) || isVp9(s.videoCodec))
-          .toList();
-      final audioStreams = manifest.audioOnly
-          .where((s) => s.container.name.toLowerCase() == 'mp4')
-          .toList();
-      if (videoOnly.isNotEmpty && audioStreams.isNotEmpty) {
-        videoOnly.sort((a, b) {
-          final byHeight =
-              b.videoResolution.height.compareTo(a.videoResolution.height);
-          if (byHeight != 0) return byHeight;
-          final aAvc = isAvc(a.videoCodec);
-          final bAvc = isAvc(b.videoCodec);
-          if (aAvc == bAvc) return 0;
-          return aAvc ? -1 : 1;
-        });
-
-        final seenHeights = <int>{};
-        for (final s in videoOnly) {
-          final h = s.videoResolution.height;
-          if (!seenHeights.add(h)) continue;
-          qualities.add(YoutubeQuality(height: h, videoUrl: s.url.toString()));
-        }
-
-        audioStreams.sort(
-          (a, b) =>
-              b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond),
-        );
-        audioUrl = audioStreams.first.url.toString();
-      }
-
-      // Muxed first (Debrify launch): instant A+V. Adaptive ladder stays in
-      // [qualities] for HD Quality switches — desktop adaptive attach often
-      // stalls (playing=true, dur=0, no frame).
-      if (bestMuxed != null) {
-        playUrl = bestMuxed;
-        playHeight = bestMuxedHeight;
-      } else if (qualities.isNotEmpty) {
-        final atOrBelow =
-            qualities.where((q) => q.height <= maxHeight).toList();
-        final pick =
-            atOrBelow.isNotEmpty ? atOrBelow.first : qualities.last;
-        playUrl = pick.videoUrl;
-        playHeight = pick.height;
-      }
-      if (playUrl == null) return null;
-
-      String? title;
-      String? thumb;
-      int? duration;
-      final captions = <YoutubeCaptionTrack>[];
-      if (withMetadata || withCaptions) {
-        await Future.wait([
-          () async {
-            if (!withMetadata) return;
-            try {
-              final video = await yt.videos.get(videoId);
-              title = video.title;
-              thumb = video.thumbnails.highResUrl;
-              duration = video.duration?.inSeconds;
-            } catch (_) {}
-          }(),
-          () async {
-            if (!withCaptions) return;
-            try {
-              final ccManifest = await yt.videos.closedCaptions.getManifest(
-                videoId,
-                formats: const [yt_explode.ClosedCaptionFormat.vtt],
-              );
-              for (final t in ccManifest.tracks) {
-                captions.add(
-                  YoutubeCaptionTrack(
-                    url: t.url.toString(),
-                    langCode: t.language.code,
-                    langName: t.language.name.isNotEmpty
-                        ? t.language.name
-                        : t.language.code,
-                    isAutoGenerated: t.isAutoGenerated,
-                  ),
-                );
-              }
-            } catch (_) {}
-          }(),
-        ]);
-      }
-
-      return YoutubeResolvedStreams(
-        playUrl: playUrl,
-        playHeight: playHeight,
-        audioUrl: audioUrl,
-        muxedUrl: bestMuxed,
-        muxedHeight: bestMuxedHeight,
-        title: title,
-        thumbnailUrl: thumb,
-        durationSeconds: duration,
-        qualities: qualities,
-        captions: captions,
-      );
-    } finally {
-      try {
-        yt.close();
-      } catch (_) {}
+    } catch (_) {
+      return const [];
     }
   }
 }

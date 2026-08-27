@@ -68,24 +68,23 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
   }
 
   Future<void> _loadLivePlugins() async {
-    await EngineService.instance.ensureBundledInstalled();
+    await EngineService.instance.ensureOfficialInstalled();
     final packs = await EngineService.instance.listPacks();
-    EnginePack? bundled;
-    for (final pack in packs) {
-      if (EngineService.isBundled(pack.sourceUrl)) {
-        bundled = pack;
-        break;
-      }
-    }
-    final live = bundled == null
-        ? const <EnginePlugin>[]
-        : [
-            for (final p in bundled.plugins)
-              if (p.isLive && p.isHttp) p,
-          ];
+    final live = <EnginePlugin>[
+      for (final pack in packs)
+        for (final p in pack.plugins)
+          if (p.isLive && p.isHttp) p,
+    ];
+    live.sort((a, b) => a.name.compareTo(b.name));
+    final primary = packs.isEmpty
+        ? null
+        : packs.firstWhere(
+            (p) => EngineService.isOfficialPack(p.sourceUrl),
+            orElse: () => packs.first,
+          );
     if (!mounted) return;
     setState(() {
-      _bundledPack = bundled;
+      _bundledPack = primary;
       _liveSourcePlugins = [
         for (final p in live)
           if (!p.isLiveCatalog) p,

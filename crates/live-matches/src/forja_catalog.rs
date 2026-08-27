@@ -520,17 +520,9 @@ fn espn(config: &Value) -> Vec<Value> {
 }
 
 /// Fetch one Forja Live catalog plugin by engine id (`catalog-*`).
-pub fn fetch_catalog(catalog_id: &str, config: &Value) -> String {
-    let id = catalog_id.trim();
-    let items = match id {
-        "catalog-espn" => espn(config),
-        "catalog-timstreams" => timstreams(config),
-        "catalog-streamic" => streamic(config),
-        "catalog-streamfree" => streamfree(config),
-        "catalog-watchfooty" => watchfooty(config),
-        _ => vec![],
-    };
-    ok_items(items)
+/// Catalog rows are fetched via engine JS only — native arms removed (RFC-066).
+pub fn fetch_catalog(_catalog_id: &str, _config: &Value) -> String {
+    ok_items(vec![])
 }
 
 #[cfg(test)]

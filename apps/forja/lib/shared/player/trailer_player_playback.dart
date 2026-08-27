@@ -113,6 +113,9 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     _s._positionSub = null;
     _s._durationSub = null;
     _s._completedSub = null;
+    final proxy = _s._dashProxy;
+    _s._dashProxy = null;
+    await proxy?.stop();
     final player = _s._player;
     _s._player = null;
     _s._controller = null;
@@ -144,22 +147,31 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     });
 
     YoutubeResolvedStreams? streams;
+    Object? resolveErr;
     try {
-      // Fresh URLs — cache/prefetch can hold HEADed adaptive links that 403.
-      streams = await YoutubeStreamService.resolveStreams(
-        videoId,
-        forceRefresh: true,
-      );
+      streams = await YoutubeStreamService.resolveStreams(videoId);
     } catch (e) {
       debugPrint('Trailer resolve failed: $e');
+      resolveErr = e;
       streams = null;
     }
     if (!mounted || loadId != _s._loadGeneration) return;
 
     if (streams == null || !streams.hasPlayable) {
-      await _activateEmbedFallback(
+      debugPrint(
+        '[Trailer] resolve empty null=${streams == null} '
+        'playUrl=${streams?.playUrl} err=$resolveErr',
+      );
+      if (_isYoutubeAgeGate(resolveErr)) {
+        await _activateEmbedFallback(
+          loadId,
+          reason: 'age-gate for $videoId',
+        );
+        return;
+      }
+      await _failNative(
         loadId,
-        reason: 'native resolve failed for $videoId',
+        'Could not load this trailer',
       );
       return;
     }
@@ -174,9 +186,9 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       );
       if (!mounted || loadId != _s._loadGeneration) return;
       if (opened == null) {
-        await _activateEmbedFallback(
+        await _failNative(
           loadId,
-          reason: 'native open failed for $videoId',
+          'Could not play this trailer',
         );
         return;
       }
@@ -190,14 +202,38 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       _s._startHideTimer();
     } catch (e) {
       debugPrint('Trailer open failed: $e');
-      await _activateEmbedFallback(
-        loadId,
-        reason: 'native open error for $videoId',
-      );
+      if (_isYoutubeAgeGate(e)) {
+        await _activateEmbedFallback(
+          loadId,
+          reason: 'age-gate open for $videoId',
+        );
+        return;
+      }
+      await _failNative(loadId, 'Could not play this trailer');
     }
   }
 
-  /// YouTube age-gate / broken googlevideo — iframe (worked pre-native).
+  bool _isYoutubeAgeGate(Object? error) {
+    if (error == null) return false;
+    final s = error.toString().toLowerCase();
+    return s.contains('sign in to confirm') ||
+        s.contains('confirm your age') ||
+        s.contains('age-restricted') ||
+        s.contains('agerestricted');
+  }
+
+  Future<void> _failNative(int loadId, String message) async {
+    if (!mounted || loadId != _s._loadGeneration) return;
+    debugPrint('[Trailer] $message');
+    setState(() {
+      _s._resolving = false;
+      _s._resolveError = message;
+      _s._embedFallback = false;
+      _s._ready = false;
+    });
+  }
+
+  /// Age-gate only — iframe. GVS 403 is not an age-gate.
   Future<void> _activateEmbedFallback(int loadId, {String? reason}) async {
     if (!mounted || loadId != _s._loadGeneration) return;
     if (reason != null) {
@@ -221,6 +257,11 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     String videoUrl, {
     required bool play,
   }) async {
+    final loopback = videoUrl.contains('127.0.0.1');
+    if (loopback) {
+      await player.open(Media(videoUrl), play: play);
+      return;
+    }
     final hdrs = resolvePlaybackHttpHeaders(null, streamUrl: videoUrl);
     await applyMediaHttpHeaders(
       player,
@@ -236,6 +277,16 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     );
   }
 
+  Future<void> _attachTrailerAac(Player player, String audioUrl) async {
+    final platform = player.platform;
+    if (platform is! NativePlayer) return;
+    try {
+      await platform.command(['audio-add', audioUrl, 'select']);
+    } catch (e) {
+      debugPrint('[Trailer] audio-add failed: $e');
+    }
+  }
+
   /// Menu highlight for the stream currently open (muxed URL ≠ adaptive URLs).
   int? _qualityMenuHeightFor(YoutubeResolvedStreams streams) {
     final playUrl = streams.playUrl;
@@ -249,7 +300,6 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     final h = streams.playHeight;
     if (h == null || streams.qualities.isEmpty) return null;
     if (streams.qualities.any((q) => q.height == h)) return h;
-    // Muxed height missing from ladder — nearest rung at or below.
     return streams.qualities
         .where((q) => q.height <= h)
         .map((q) => q.height)
@@ -263,32 +313,11 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     return streams.qualities.any((q) => q.videoUrl == videoUrl);
   }
 
-  bool _hasSelectableAudio(Player player) {
-    return player.state.tracks.audio.any((t) => t.id != 'no' && t.id != 'auto');
-  }
-
-  Future<bool> _waitForSelectableAudio(Player player) async {
-    if (_hasSelectableAudio(player)) return true;
-    try {
-      await player.stream.tracks
-          .firstWhere((t) => t.audio.any((a) => a.id != 'no' && a.id != 'auto'))
-          .timeout(const Duration(milliseconds: 1500));
-      return true;
-    } catch (_) {
-      return _hasSelectableAudio(player);
-    }
-  }
-
   /// Opens [streams]. Returns the streams actually playing (may be muxed
   /// fallback), or null on failure.
   Future<YoutubeResolvedStreams?> _openResolved(
     YoutubeResolvedStreams streams, {
     Duration? resumeAt,
-
-    /// Quality hot-swap: never trust leftover tracks after reopen.
-    bool forceAudioAdd = false,
-
-    /// First open only: if adaptive stays silent, fall back to muxed.
     bool allowMuxedFallback = false,
   }) async {
     final player = _s._player;
@@ -296,9 +325,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     final videoUrl = streams.playUrl!;
     final audioUrl = streams.audioUrl;
     final needsExternalAudio = _needsExternalAudio(streams, videoUrl);
-    final atv = _atvMediaKit;
 
-    // Stop first so mediacodec / demuxer drop the prior googlevideo URL.
     try {
       await resetPlayerForOpen(player);
     } catch (e) {
@@ -311,36 +338,51 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       try {
         await platform.setProperty('mute', 'no');
       } catch (_) {}
-      try {
-        await platform.setProperty('audio-file', '');
-      } catch (_) {}
-      // ATV first open: bind AAC before open. Quality switch always audio-adds.
-      if (needsExternalAudio && atv && audioUrl != null && !forceAudioAdd) {
-        try {
-          await platform.setProperty('audio-file', audioUrl);
-        } catch (e) {
-          debugPrint('[Trailer] audio-file bind failed: $e');
-        }
-      }
     }
 
     await player.setVolume(_s._volume);
 
     if (needsExternalAudio && audioUrl != null && audioUrl.isNotEmpty) {
-      // Debrify trailer / pre-regression path: open playing, then audio-add.
-      // Do NOT open paused and wait for demux — googlevideo often stays at
-      // dur=0 / vp=null while paused, which aborted Quality at 360p.
-      await _openTrailerGooglevideo(player, videoUrl, play: true);
-
-      final needAudioAdd =
-          !atv || forceAudioAdd || !await _waitForSelectableAudio(player);
-      if (needAudioAdd) {
-        try {
-          await player.setAudioTrack(AudioTrack.uri(audioUrl));
-        } catch (e) {
-          debugPrint('[Trailer] audio-add failed: $e');
-        }
+      await _s._dashProxy?.stop();
+      final proxy = YoutubeDashProxy();
+      _s._dashProxy = proxy;
+      final videoUri = Uri.parse(videoUrl);
+      final audioUri = Uri.parse(audioUrl);
+      final videoBytes = streams.qualities
+              .where((q) => q.videoUrl == videoUrl)
+              .map((q) => q.contentLength)
+              .firstOrNull ??
+          0;
+      try {
+        await proxy.start(
+          videoUrl: videoUri,
+          audioUrl: audioUri,
+          videoBytes: videoBytes,
+          audioBytes: streams.audioContentLength,
+        );
+      } catch (e) {
+        debugPrint('[Trailer] dash proxy start failed: $e');
+        await proxy.stop();
+        _s._dashProxy = null;
+        return _fallbackMuxedOrNull(
+          streams,
+          videoUrl: videoUrl,
+          resumeAt: resumeAt,
+          allowMuxedFallback: allowMuxedFallback,
+        );
       }
+      final openUrl = proxy.videoLocalUrl;
+      if (openUrl == null || openUrl.isEmpty) {
+        await proxy.stop();
+        _s._dashProxy = null;
+        return _fallbackMuxedOrNull(
+          streams,
+          videoUrl: videoUrl,
+          resumeAt: resumeAt,
+          allowMuxedFallback: allowMuxedFallback,
+        );
+      }
+      await _openTrailerGooglevideo(player, openUrl, play: true);
 
       if (resumeAt != null && resumeAt > Duration.zero) {
         await player.seek(resumeAt);
@@ -367,14 +409,15 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
           allowMuxedFallback: allowMuxedFallback,
         );
       }
+      final aac = _s._dashProxy?.audioLocalUrl;
+      if (aac != null && aac.isNotEmpty) {
+        await _attachTrailerAac(player, aac);
+      }
       return streams;
     }
 
     await openPlayerStream(player, url: videoUrl);
 
-    // Do NOT use waitForPlayerStreamOpen here: stop() abort noise often emits
-    // "HTTP error" / "Failed to open" that settles that waiter false before the
-    // new googlevideo URL is ready (quality switch stuck on muxed 360p).
     final opened = await _waitTrailerOpenReady(player);
     if (!opened) {
       debugPrint(
@@ -393,6 +436,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
     return streams;
   }
 
+
   Future<YoutubeResolvedStreams?> _fallbackMuxedOrNull(
     YoutubeResolvedStreams streams, {
     required String videoUrl,
@@ -403,11 +447,11 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         streams.muxedUrl != null &&
         streams.muxedUrl!.isNotEmpty &&
         streams.muxedUrl != videoUrl) {
-      debugPrint('[Trailer] adaptive stuck — falling back to muxed');
+      debugPrint('[Trailer] DASH GVS blocked — muxed ${streams.muxedHeight}p');
       final muxed = YoutubeResolvedStreams(
         playUrl: streams.muxedUrl,
         playHeight: streams.muxedHeight,
-        audioUrl: streams.audioUrl,
+        audioUrl: null,
         muxedUrl: streams.muxedUrl,
         muxedHeight: streams.muxedHeight,
         title: streams.title,
@@ -419,7 +463,6 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       return _openResolved(
         muxed,
         resumeAt: resumeAt,
-        forceAudioAdd: false,
         allowMuxedFallback: false,
       );
     }
@@ -451,31 +494,16 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       _s._ready = false;
     });
 
-    // Re-resolve so adaptive itags are fresh androidVr URLs (not a merged
-    // multi-client ladder / expired prefetch cache).
-    YoutubeResolvedStreams? fresh;
-    try {
-      fresh = await YoutubeStreamService.resolveStreams(
-        _s._trailer.key,
-        forceRefresh: true,
-      );
-    } catch (e) {
-      debugPrint('[Trailer] quality re-resolve failed: $e');
-    }
-    if (!mounted) return;
-
-    final ladder = fresh ?? streams;
-    final match = ladder.qualities
+    final match = streams.qualities
         .where((q) => q.height == quality.height)
         .firstOrNull;
-    if (match == null || ladder.audioUrl == null || ladder.audioUrl!.isEmpty) {
+    if (match == null || streams.audioUrl == null || streams.audioUrl!.isEmpty) {
       debugPrint(
-        '[Trailer] quality ${quality.height}p missing after re-resolve',
+        '[Trailer] quality ${quality.height}p missing from resolve',
       );
       final recovered = await _openResolved(
         streams,
         resumeAt: resumeAt,
-        forceAudioAdd: true,
       );
       if (mounted) {
         setState(() {
@@ -487,14 +515,13 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       return;
     }
 
-    final swapped = ladder.copyWith(
+    final swapped = streams.copyWith(
       playUrl: match.videoUrl,
       playHeight: match.height,
     );
     final opened = await _openResolved(
       swapped,
       resumeAt: resumeAt,
-      forceAudioAdd: true,
     );
     if (!mounted) return;
     if (opened == null) {
@@ -502,7 +529,6 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       final recovered = await _openResolved(
         streams,
         resumeAt: resumeAt,
-        forceAudioAdd: true,
       );
       if (mounted) {
         setState(() {

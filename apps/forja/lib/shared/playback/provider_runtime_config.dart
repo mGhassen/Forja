@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
+import 'package:forja/shared/sync/src/sync_service.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -289,11 +290,13 @@ class ProviderRuntimeConfig {
       await ForjaSupabase.ensureInitialized();
       final client = ForjaSupabase.clientOrNull;
       if (client == null) return;
-      final row = await client
-          .from('provider_runtime_config')
-          .select('schema_version, config')
-          .eq('id', 1)
-          .maybeSingle();
+      final row = await SyncService.retryAfterJwtIatSkew(
+        () => client
+            .from('provider_runtime_config')
+            .select('schema_version, config')
+            .eq('id', 1)
+            .maybeSingle(),
+      );
       if (row == null) return;
       final config = row['config'];
       if (config is! Map) return;

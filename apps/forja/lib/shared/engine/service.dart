@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
 import 'package:forja/shared/engine/anime_ids.dart';
 import 'package:forja/shared/engine/categories.dart';
@@ -22,7 +21,12 @@ class EngineService {
   EngineService._();
   static final EngineService instance = EngineService._();
 
-  static const bundledSourceUrl = 'asset:plugins/engine.json';
+  /// Official ForjaHQ manifest (remote — not bundled in the APK).
+  static const officialManifestUrl =
+      'https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/manifest.json';
+
+  /// @deprecated Use [officialManifestUrl]. Legacy asset packs only.
+  static const bundledSourceUrl = officialManifestUrl;
 
   /// Internal `types: catalog` plugins — not shown in Settings toggles.
   static bool isInternalLiveCatalog(EnginePlugin plugin) => plugin.isLiveCatalog;
@@ -38,17 +42,10 @@ class EngineService {
     return 'catalog-${liveSportId.substring('live-'.length)}';
   }
 
-  /// Schedule catalogs implemented in `crates/live-matches` (RFC-065).
-  static const _nativeLiveCatalogIds = {
-    'catalog-espn',
-    'catalog-timstreams',
-    'catalog-streamic',
-    'catalog-streamfree',
-    'catalog-watchfooty',
-  };
   static const _legacyBundledSourceUrlProviders = 'asset:providers/engine.json';
   static const _legacyBundledSourceUrl = 'asset:engine_js/engine.json';
-  static const _assetRoot = 'assets/plugins';
+  static const _legacyAssetBundledSourceUrl = 'asset:plugins/engine.json';
+  static const _embedStScriptKey = 'engine_js_script___embed_st__';
   static const _packsKey = 'engine_js_packs_v1';
   static const _scriptPrefix = 'engine_js_script_';
   /// Legacy unscoped selection (migrated into `…_movie` once).
@@ -58,14 +55,24 @@ class EngineService {
 
   static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
 
+  /// Last auto-install failure for ForjaHQ (null = ok / never failed).
+  /// Sticky until [ensureOfficialInstalled] succeeds or [force] retry.
+  static final ValueNotifier<String?> officialInstallError =
+      ValueNotifier<String?>(null);
+
   int _extractGeneration = 0;
   int _liveCatalogGeneration = 0;
   EngineRuntime? _liveCatalogRuntime;
-  Future<void>? _bundledEnsureFuture;
-  bool _bundledReady = false;
+  Future<void>? _officialEnsureFuture;
+  /// Prevents spam retries + log spam after first auto-install failure.
+  bool _officialInstallFailed = false;
 
+  static bool isOfficialPack(String sourceUrl) => sourceUrl == officialManifestUrl;
+
+  /// Legacy name — official ForjaHQ remote pack.
   static bool isBundled(String sourceUrl) =>
-      sourceUrl == bundledSourceUrl ||
+      isOfficialPack(sourceUrl) ||
+      sourceUrl == _legacyAssetBundledSourceUrl ||
       sourceUrl == _legacyBundledSourceUrlProviders ||
       sourceUrl == _legacyBundledSourceUrl;
 
@@ -122,12 +129,7 @@ class EngineService {
   }
 
   Future<List<EnginePack>> listPacks() async {
-    final cached = await _listPacksRaw();
-    if (cached.isNotEmpty) {
-      unawaited(ensureBundledInstalled());
-      return cached;
-    }
-    await ensureBundledInstalled();
+    await ensureOfficialInstalled();
     return _listPacksRaw();
   }
 
@@ -144,7 +146,7 @@ class EngineService {
   }
 
   Future<List<EnginePlugin>> listEnabledLivePlugins() async {
-    await ensureBundledInstalled();
+    await ensureOfficialInstalled();
     final out = <EnginePlugin>[];
     for (final pack in await listPacks()) {
       for (final p in pack.plugins) {
@@ -158,7 +160,7 @@ class EngineService {
   }
 
   Future<List<EnginePlugin>> listLivePluginsForSettings() async {
-    await ensureBundledInstalled();
+    await ensureOfficialInstalled();
     final out = <EnginePlugin>[];
     for (final pack in await listPacks()) {
       for (final p in pack.plugins) {
@@ -180,7 +182,7 @@ class EngineService {
 
   /// Enabled schedule catalogs — Settings → Forja Sports → **Catalog** toggles only.
   Future<List<EnginePlugin>> listEnabledLiveCatalogPlugins() async {
-    await ensureBundledInstalled();
+    await ensureOfficialInstalled();
     final out = <EnginePlugin>[];
     for (final pack in await listPacks()) {
       for (final p in pack.plugins) {
@@ -201,20 +203,61 @@ class EngineService {
     changeNotifier.value++;
   }
 
-  Future<void> ensureBundledInstalled() async {
-    if (_bundledReady) return;
-    _bundledEnsureFuture ??= () async {
+  /// First boot: install ForjaHQ from [officialManifestUrl] when missing.
+  ///
+  /// Failures are sticky — no silent re-fetch / log spam until [force] or a
+  /// successful [install] of the official URL. UI reads [officialInstallError].
+  Future<void> ensureOfficialInstalled({bool force = false}) async {
+    final packs = await _listPacksRaw();
+    if (packs.any((p) => p.sourceUrl == officialManifestUrl)) {
+      _clearOfficialInstallError();
+      return;
+    }
+    if (!force && _officialInstallFailed) return;
+    if (_officialEnsureFuture != null) {
+      await _officialEnsureFuture;
+      return;
+    }
+    final run = () async {
       try {
-        await _installBundled();
-        _bundledReady = true;
+        await install(officialManifestUrl);
+        _clearOfficialInstallError();
       } catch (e) {
-        debugPrint('[engine] bundled ensure failed: $e');
-      } finally {
-        _bundledEnsureFuture = null;
+        _officialInstallFailed = true;
+        final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+        officialInstallError.value = msg;
+        changeNotifier.value++;
+        debugPrint('[engine] ForjaHQ install failed: $msg');
       }
     }();
-    await _bundledEnsureFuture;
+    _officialEnsureFuture = run;
+    try {
+      await run;
+    } finally {
+      if (identical(_officialEnsureFuture, run)) {
+        _officialEnsureFuture = null;
+      }
+    }
   }
+
+  void _clearOfficialInstallError() {
+    _officialInstallFailed = false;
+    if (officialInstallError.value != null) {
+      officialInstallError.value = null;
+      changeNotifier.value++;
+    }
+  }
+
+  /// Settings Retry — rethrows so the UI can toast.
+  Future<void> retryOfficialInstall() async {
+    _officialInstallFailed = false;
+    officialInstallError.value = null;
+    await install(officialManifestUrl);
+    _clearOfficialInstallError();
+  }
+
+  /// @deprecated Use [ensureOfficialInstalled].
+  Future<void> ensureBundledInstalled() => ensureOfficialInstalled();
 
   Future<List<EnginePack>> _listPacksRaw() async {
     final prefs = await _prefs;
@@ -232,72 +275,6 @@ class EngineService {
     }
   }
 
-  static bool bundledPackUnchanged(EnginePack previous, EnginePack current) {
-    if (previous.sourceUrl != bundledSourceUrl ||
-        previous.version != current.version ||
-        previous.plugins.length != current.plugins.length) {
-      return false;
-    }
-    for (var i = 0; i < current.plugins.length; i++) {
-      final prev = previous.plugins[i];
-      final cur = current.plugins[i];
-      if (prev.id != cur.id ||
-          prev.entry != cur.entry ||
-          prev.kind != cur.kind ||
-          jsonEncode(prev.config) != jsonEncode(cur.config) ||
-          jsonEncode(prev.hosts) != jsonEncode(cur.hosts)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  Future<void> _installBundled() async {
-    final jsonStr = await rootBundle.loadString('$_assetRoot/engine.json');
-    final map = jsonDecode(jsonStr) as Map<String, dynamic>;
-    var pack = EnginePack.fromJson(
-      map,
-      sourceUrl: bundledSourceUrl,
-      bundled: true,
-    );
-    final all = await _listPacksRaw();
-    EnginePack? previous;
-    for (final a in all) {
-      if (isBundled(a.sourceUrl)) {
-        previous = a;
-        break;
-      }
-    }
-    if (previous != null) {
-      final enabledById = {for (final p in previous.plugins) p.id: p.enabled};
-      pack = pack.copyWithPlugins([
-        for (final p in pack.plugins)
-          p.copyWith(enabled: enabledById[p.id] ?? p.enabled),
-      ]);
-    }
-    final prefs = await _prefs;
-    // Always refresh script bodies from assets — engine.json meta can be
-    // unchanged while providers/*.js were edited (otherwise prefs keep stale JS).
-    for (final plugin in pack.plugins) {
-      if (plugin.entry.isEmpty) continue;
-      if (!plugin.isHttp && !plugin.isHop) continue;
-      final code = await rootBundle.loadString('$_assetRoot/${plugin.entry}');
-      await prefs.setString(_scriptPrefix + plugin.id, code);
-    }
-    if (previous != null && bundledPackUnchanged(previous, pack)) {
-      await _syncHops([pack]);
-      return;
-    }
-    all.removeWhere((a) => isBundled(a.sourceUrl));
-    all.insert(0, pack);
-    await _savePacks(all);
-    await _syncHops([pack]);
-  }
-
-  Future<void> _syncHops(List<EnginePack> packs) async {
-    await _syncHopsForRuntime(EngineRuntime.instance, packs);
-  }
-
   String _resolveScriptUrl(String manifestUrl, String filename) {
     final mu = Uri.parse(manifestUrl);
     if (filename.startsWith('http://') || filename.startsWith('https://')) {
@@ -309,36 +286,90 @@ class EngineService {
     return mu.replace(path: path).toString();
   }
 
+  Future<void> _syncHops(List<EnginePack> packs) async {
+    await _syncHopsForRuntime(EngineRuntime.instance, packs);
+  }
+
+  Future<void> _cacheEmbedStScript(String manifestUrl) async {
+    final prefs = await _prefs;
+    final url = _resolveScriptUrl(manifestUrl, 'live/embed-st.js');
+    final sr = await http.get(Uri.parse(url));
+    if (sr.statusCode == 200 && sr.body.isNotEmpty) {
+      await prefs.setString(_embedStScriptKey, sr.body);
+    }
+  }
+
   Future<EnginePack> install(String manifestUrl) async {
     final resp = await http.get(Uri.parse(manifestUrl));
     if (resp.statusCode != 200) {
-      throw Exception('engine.json HTTP ${resp.statusCode}');
+      throw Exception('manifest HTTP ${resp.statusCode}');
     }
     final map = jsonDecode(resp.body) as Map<String, dynamic>;
-    var pack = EnginePack.fromJson(map, sourceUrl: manifestUrl);
-    final prefs = await _prefs;
-    for (final plugin in pack.plugins) {
-      if (plugin.entry.isEmpty) continue;
-      try {
-        final scriptUrl = _resolveScriptUrl(manifestUrl, plugin.entry);
-        final sr = await http.get(Uri.parse(scriptUrl));
-        if (sr.statusCode == 200 && sr.body.isNotEmpty) {
-          await prefs.setString(_scriptPrefix + plugin.id, sr.body);
-        }
-      } catch (e) {
-        debugPrint('[engine] script fetch failed (${plugin.id}): $e');
-      }
+    final schema = map['schema'];
+    if (schema != null && schema != 1) {
+      throw Exception('unsupported manifest schema: $schema');
     }
     final all = await _listPacksRaw();
+    EnginePack? previous;
+    for (final p in all) {
+      if (p.sourceUrl == manifestUrl) {
+        previous = p;
+        break;
+      }
+    }
+    final enabledById = previous == null
+        ? null
+        : {for (final p in previous.plugins) p.id: p.enabled};
+    var pack = EnginePack.fromJson(map, sourceUrl: manifestUrl);
+    if (enabledById != null) {
+      pack = pack.copyWithPlugins([
+        for (final p in pack.plugins)
+          p.copyWith(enabled: enabledById[p.id] ?? p.enabled),
+      ]);
+    }
+    final prefs = await _prefs;
+    final missing = <String>[];
+    for (final plugin in pack.plugins) {
+      if (plugin.entry.isEmpty) continue;
+      if (!plugin.isHttp && !plugin.isHop) continue;
+      final scriptUrl = _resolveScriptUrl(manifestUrl, plugin.entry);
+      final sr = await http.get(Uri.parse(scriptUrl));
+      if (sr.statusCode != 200 || sr.body.isEmpty) {
+        missing.add(plugin.id);
+        continue;
+      }
+      await prefs.setString(_scriptPrefix + plugin.id, sr.body);
+    }
+    if (missing.isNotEmpty) {
+      throw Exception(
+        'manifest install failed — missing scripts: ${missing.join(', ')}',
+      );
+    }
+    final hasLive = pack.plugins.any((p) => p.entry.startsWith('live/'));
+    if (hasLive) {
+      try {
+        await _cacheEmbedStScript(manifestUrl);
+      } catch (e) {
+        debugPrint('[engine] embed-st.js fetch failed: $e');
+      }
+    }
     all.removeWhere((a) => a.sourceUrl == manifestUrl);
     all.add(pack);
     await _savePacks(all);
     await _syncHops(all);
+    if (manifestUrl == officialManifestUrl) {
+      _clearOfficialInstallError();
+    }
     return pack;
   }
 
+  Future<EnginePack> refresh(String manifestUrl) => install(manifestUrl);
+
+  Future<EnginePack> installManifestUrl(String manifestUrl) => install(manifestUrl);
+
+  Future<EnginePack> refreshManifestUrl(String manifestUrl) =>
+      refresh(manifestUrl);
   Future<void> removePack(String sourceUrl) async {
-    if (isBundled(sourceUrl)) return;
     final all = await _listPacksRaw();
     final victim = all.where((a) => a.sourceUrl == sourceUrl).toList();
     all.removeWhere((a) => a.sourceUrl == sourceUrl);
@@ -432,28 +463,15 @@ class EngineService {
   }
 
   Future<String?> _loadScript(EnginePlugin plugin) async {
-    String? code;
-    // Prefer asset when the entry exists in the bundle so editing
-    // assets/plugins/providers/*.js applies without a prefs wipe.
-    // Remotely installed scripts (not in the asset bundle) fall through to prefs.
-    if (plugin.entry.isNotEmpty) {
-      try {
-        code = await rootBundle.loadString('$_assetRoot/${plugin.entry}');
-      } catch (_) {}
-    }
-    if (code == null || code.isEmpty) {
-      final prefs = await _prefs;
-      final cached = prefs.getString(_scriptPrefix + plugin.id);
-      if (cached != null && cached.isNotEmpty) code = cached;
-    }
-    if (code == null || code.isEmpty) return null;
+    final prefs = await _prefs;
+    final cached = prefs.getString(_scriptPrefix + plugin.id);
+    if (cached == null || cached.isEmpty) return null;
+    var code = cached;
     if (plugin.entry.startsWith('live/') && !plugin.entry.contains('/goat/')) {
-      try {
-        final shared = await rootBundle.loadString(
-          '$_assetRoot/live/embed-st.js',
-        );
+      final shared = prefs.getString(_embedStScriptKey);
+      if (shared != null && shared.isNotEmpty) {
         code = '$shared\n$code';
-      } catch (_) {}
+      }
     }
     return code;
   }
@@ -786,15 +804,6 @@ class EngineService {
       config = {...config, ...extraConfig};
     }
 
-    final viaNative = await _runLiveCatalogNativeRust(
-      catalogPlugin: catalogPlugin,
-      config: config,
-      gen: gen,
-      generation: () => _liveCatalogGeneration,
-    );
-    if (viaNative != null) return viaNative;
-    if (gen != _liveCatalogGeneration) return [];
-
     final code = await _loadScript(catalogPlugin);
     if (gen != _liveCatalogGeneration || code == null) return [];
 
@@ -833,52 +842,6 @@ class EngineService {
         _liveCatalogRuntime = null;
       }
       runtime.dispose();
-    }
-  }
-
-  /// Native Rust schedule fetch — `forja_live_catalog` in live-matches.
-  Future<List<Map<String, dynamic>>?> _runLiveCatalogNativeRust({
-    required EnginePlugin catalogPlugin,
-    required Map<String, dynamic> config,
-    required int gen,
-    required int Function() generation,
-  }) async {
-    if (!_nativeLiveCatalogIds.contains(catalogPlugin.id)) return null;
-    if (gen != generation()) return null;
-
-    debugPrint('[engine] ${catalogPlugin.id} start (native catalog)');
-    final sw = Stopwatch()..start();
-    try {
-      final raw = await runLiveMatchesFetchJson(
-        jsonEncode({
-          'action': 'forja_live_catalog',
-          'catalog_id': catalogPlugin.id,
-          'config': config,
-        }),
-      );
-      if (gen != generation()) return null;
-      final parsed = jsonDecode(raw);
-      if (parsed is! Map) return null;
-      if (parsed.containsKey('error')) {
-        debugPrint(
-          '[engine] ${catalogPlugin.id} native catalog error: ${parsed['error']}',
-        );
-        return null;
-      }
-      final items = parsed['items'];
-      if (items is! List) return [];
-      final rows = <Map<String, dynamic>>[];
-      for (final item in items) {
-        if (item is Map) rows.add(Map<String, dynamic>.from(item));
-      }
-      debugPrint(
-        '[engine] ${catalogPlugin.id} done (native catalog) raw=${rows.length} '
-        '${sw.elapsedMilliseconds}ms',
-      );
-      return rows;
-    } catch (e) {
-      debugPrint('[engine] ${catalogPlugin.id} native catalog failed: $e');
-      return null;
     }
   }
 

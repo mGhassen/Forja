@@ -13,7 +13,7 @@ async fn main() {
         .parent()
         .unwrap()
         .to_path_buf();
-    let assets = root.join("apps/forja/assets/plugins");
+    let assets = root.join("forjahq-plugin");
     let manifest: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(assets.join("engine.json")).unwrap()).unwrap();
     let plugin = manifest["plugins"]

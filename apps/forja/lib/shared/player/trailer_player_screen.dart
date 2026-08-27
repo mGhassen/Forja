@@ -14,6 +14,7 @@ import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
+import 'package:forja/shared/services/youtube_dash_proxy.dart';
 import 'package:forja/shared/services/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -56,6 +57,7 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   Player? _player;
   VideoController? _controller;
   YoutubeResolvedStreams? _streams;
+  YoutubeDashProxy? _dashProxy;
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration>? _durationSub;

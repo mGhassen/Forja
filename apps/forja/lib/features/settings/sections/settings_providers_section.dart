@@ -459,15 +459,42 @@ class _SettingsProvidersSectionState
   }
 
   Widget _buildEnginePackSection(List<EnginePack> packs) {
+    final installError = EngineService.officialInstallError.value;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (packs.isEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
+              child: Text(
+                installError == null
+                    ? 'No plugins installed. ForjaHQ installs on first launch, or paste a manifest URL below.'
+                    : 'ForjaHQ could not install: $installError',
+                style: TextStyle(
+                  color: installError == null
+                      ? ForjaShellColors.textSecondary.withValues(alpha: 0.9)
+                      : const Color(0xFFF87171),
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            if (installError != null) ...[
+              SettingsFilledButton(
+                label: 'Retry ForjaHQ',
+                icon: Icons.refresh_rounded,
+                busy: _engineInstalling,
+                onPressed: _retryOfficialEnginePack,
+              ),
+              const SizedBox(height: 12),
+            ],
+          ],
           SettingsTextField(
             controller: _engineController,
-            label: 'Install engine.json',
-            hint: 'https://.../engine.json',
+            label: 'Add plugin',
+            hint: 'https://.../manifest.json',
             onSubmitted: (_) => _installEnginePack(),
           ),
           const SizedBox(height: 14),
@@ -479,7 +506,7 @@ class _SettingsProvidersSectionState
           ),
           if (packs.isNotEmpty) ...[
             const SizedBox(height: 20),
-            const SettingsEngineMiniLabel('Forja plugins'),
+            const SettingsEngineMiniLabel('Installed plugins'),
             const SizedBox(height: 4),
             ...packs.map((pack) {
               final panelPlugins = [
@@ -487,24 +514,54 @@ class _SettingsProvidersSectionState
                   if (p.isVodCatalog) p,
               ];
               if (panelPlugins.isEmpty) return const SizedBox.shrink();
-              final builtIn = EngineService.isBundled(pack.sourceUrl);
+              final official = EngineService.isOfficialPack(pack.sourceUrl);
               return SettingsEnginePackExpansion(
                 pack: pack,
                 plugins: panelPlugins,
                 groupKey: EngineCategories.groupKey,
                 groupLabel: EngineCategories.groupLabel,
                 groupOrder: EngineCategories.groupOrder,
-                trailing: builtIn
-                    ? null
-                    : _AddonRemoveActions(
-                        onRemove: () => _removeEnginePack(pack.sourceUrl),
-                      ),
+                trailing: _EnginePackActions(
+                  onRefresh: () => _refreshEnginePack(pack.sourceUrl),
+                  onRemove: () => _removeEnginePack(pack.sourceUrl),
+                  showOfficialBadge: official,
+                ),
               );
             }),
           ],
         ],
       ),
     );
+  }
+
+  Future<void> _retryOfficialEnginePack() async {
+    setState(() => _engineInstalling = true);
+    try {
+      await EngineService.instance.retryOfficialInstall();
+      if (!mounted) return;
+      ForjaToast.success('ForjaHQ installed');
+    } catch (e) {
+      if (!mounted) return;
+      ForjaToast.error('ForjaHQ install failed: $e');
+    } finally {
+      if (mounted) setState(() => _engineInstalling = false);
+    }
+  }
+
+  Future<void> _refreshEnginePack(String sourceUrl) async {
+    setState(() => _engineInstalling = true);
+    try {
+      final pack = await EngineService.instance.refresh(sourceUrl);
+      if (!mounted) return;
+      ForjaToast.success(
+        'Refreshed ${pack.name} v${pack.version}',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ForjaToast.error('Refresh failed: $e');
+    } finally {
+      if (mounted) setState(() => _engineInstalling = false);
+    }
   }
 
   Future<void> _installEnginePack() async {
@@ -527,15 +584,10 @@ class _SettingsProvidersSectionState
   }
 
   Future<void> _removeEnginePack(String sourceUrl) async {
-    if (EngineService.isBundled(sourceUrl)) {
-      if (!mounted) return;
-      ForjaToast.error('Built-in Forja pack cannot be removed');
-      return;
-    }
     try {
       await EngineService.instance.removePack(sourceUrl);
       if (!mounted) return;
-      ForjaToast.success('Forja pack removed');
+      ForjaToast.success('Plugin pack removed');
     } catch (e) {
       if (!mounted) return;
       ForjaToast.error('$e');
@@ -909,6 +961,46 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Refresh + remove for an installed engine plugin pack.
+class _EnginePackActions extends StatelessWidget {
+  const _EnginePackActions({
+    required this.onRefresh,
+    required this.onRemove,
+    this.showOfficialBadge = false,
+  });
+
+  final VoidCallback onRefresh;
+  final Future<void> Function() onRemove;
+  final bool showOfficialBadge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (showOfficialBadge)
+          Padding(
+            padding: const EdgeInsets.only(right: 4),
+            child: Text(
+              'Official',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: ForjaShellColors.brandGreen.withValues(alpha: 0.9),
+              ),
+            ),
+          ),
+        IconButton(
+          tooltip: 'Refresh',
+          icon: const Icon(Icons.refresh_rounded, size: 20),
+          onPressed: onRefresh,
+        ),
+        _AddonRemoveActions(onRemove: onRemove),
+      ],
     );
   }
 }

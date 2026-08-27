@@ -81,7 +81,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
       groupKey: groupKey,
       groupOrder: groupOrder,
     );
-    final builtIn = EngineService.isBundled(pack.sourceUrl);
+    final official = EngineService.isOfficialPack(pack.sourceUrl);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -100,7 +100,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
               color: ForjaShellColors.iconActive,
             ),
             title: Text(
-              builtIn ? '${pack.name} (Built-in)' : pack.name,
+              official ? '${pack.name} (ForjaHQ)' : pack.name,
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 14,

@@ -173,6 +173,15 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   Logger.root.onRecord.listen((e) {
     // youtube_explode spam: countdown every tick while a token is cached
     if (e.message.contains('Access token expires in')) return;
+    // explode retry() dumps VideoUnplayableException 5× with async stacks.
+    // Bot-check is the message; the stacks are not a Flutter crash.
+    if (e.loggerName.startsWith('YoutubeExplode')) return;
+    // supabase_flutter logs PostgREST failures via this logger before the
+    // caller catch; iat-skew is retried with the same token (SyncService).
+    if (SyncService.isJwtIssuedAtFutureError(e.message) ||
+        SyncService.isJwtIssuedAtFutureError(e.error)) {
+      return;
+    }
     debugPrint('[YT] ${e.message}');
     if (e.error != null) {
       debugPrint('[YT ERROR] ${e.error}');

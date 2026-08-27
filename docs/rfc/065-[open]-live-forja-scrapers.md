@@ -2,7 +2,7 @@
 
 **Status:** open  
 **Depends on:** [RFC-060](fixed/060-[fixed]-enginejs-sources-forja-tab.md)  
-**Area:** `apps/forja/assets/providers/live/`, Live Matches, Settings
+**Area:** `forjahq-plugin/`, Live Matches, Settings
 
 ## Status at a glance
 
@@ -33,7 +33,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R65-A01 | Settings → Live **Stream resolve** defaults Sniff; Engine runs plugins | ✅ |
-| 2 | R65-A02 | Settings → **Live Forja plugins** enable list (bundled live entries only) | ✅ |
+| 2 | R65-A02 | Settings → **Live Forja plugins** enable list (installed pack live entries) | ✅ |
 | 3 | R65-A03 | Movie Sources → Forja ignores `types: live` plugins | ✅ |
 | 4 | R65-A04 | Live Matches **Forja Live** server lists enabled plugin catalogs | ✅ |
 | 5 | R65-A05 | **All** merges Rust PPV/Streamed with Forja Live rows | ✅ |
@@ -41,7 +41,7 @@
 | 7 | R65-A07 | Engine resolve: PPV direct `source` / detail API when playable | ✅ |
 | 8 | R65-A08 | Engine fail → toast only (no silent sniff fallback) | ✅ |
 | 9 | R65-A09 | Sniff mode unchanged (embed WebView / existing sniff) | ✅ |
-| 10 | R65-A10 | Bundled plugins: streamed, ppv, timstreams, streamfree, watchfooty, streamic (removed dead strims24, sportyhunter, ntv) | ✅ |
+| 10 | R65-A10 | ForjaHQ live plugins: streamed, ppv, timstreams, streamfree, watchfooty, streamic (removed dead strims24, sportyhunter, ntv) | ✅ |
 | 11 | R65-A11 | `engine_test.dart` covers live plugin entries | ✅ |
 | 12 | R65-A12 | Feature doc + changelog Live & IPTV bullets | ✅ |
 | 13 | R65-A13 | Manual: Engine Streamed admin/echo on desktop | ⏭️ |

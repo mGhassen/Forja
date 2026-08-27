@@ -88,7 +88,7 @@ fn usage() {
                                 [--timeout-ms=N] [--plugin=ID]... [--json] [--assets=DIR]\n\
          \n\
          Defaults: tmdb=94997 media=tv season=1 episode=1 timeout-ms=60000\n\
-         Assets default: <repo>/apps/forja/assets/plugins\n"
+         Assets default: <repo>/forjahq-plugin\n"
     );
 }
 
@@ -195,9 +195,9 @@ async fn main() -> ExitCode {
     }
 
     let assets_dir = assets.unwrap_or_else(|| {
-        repo_root().join("apps/forja/assets/plugins")
+        repo_root().join("forjahq-plugin")
     });
-    let manifest_path = assets_dir.join("engine.json");
+    let manifest_path = assets_dir.join("manifest.json");
     let raw = match fs::read_to_string(&manifest_path) {
         Ok(s) => s,
         Err(e) => {

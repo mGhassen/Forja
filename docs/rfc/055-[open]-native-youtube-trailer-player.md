@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **14 / 18** acceptance |
-| **Current slice** | Muxed-first open + fast adaptive fail — device smoke remaining |
+| **Progress** | **7 / 7** components · **34 / 40** acceptance |
+| **Current slice** | One resolve; proxy pipes those GVS URLs — smoke remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,6 +22,10 @@
 | 1 | R55-C01 | `YoutubeStreamService.resolveStreams` (youtube_explode, ANDROID_VR, isolate) | ✅ |
 | 2 | R55-C02 | `TrailerPlayerScreen` plays via media_kit `BoxFit.contain` (no iframe / overscan) | ✅ |
 | 3 | R55-C03 | Quality / captions / rate menus wired to resolved streams + media_kit | ✅ |
+| 4 | R55-C04 | HLS-first resolve (Safari/iOS muxed m3u8) + googlevideo fallback | ✅ |
+| 5 | R55-C05 | DASH itag 137 + AAC: `audio-file` before open (no post-open audio-add); HLS path removed | ✅ |
+| 6 | R55-C06 | Desktop: spawn yt-dlp ≥2026 (download official binary if needed); play local A+V files | ✅ |
+| 7 | R55-C07 | Loopback `/v`+`/a`: C# `range=` windows, stream to mpv (no full-file download, no yt-dlp) | ✅ |
 
 ---
 
@@ -64,6 +68,49 @@
 
 ---
 
+## Acceptance (HLS-first)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R55-A19 | Default open is Safari/iOS HLS muxed variant ≤1080p when YouTube offers HLS (not progressive 360p) | ✅ |
+| 2 | R55-A20 | Quality switch reopens an HLS variant URL (no audio-add) | ✅ |
+| 3 | R55-A21 | No HLS / HLS open fail → existing androidVr muxed/adaptive googlevideo (then embed) | ✅ |
+| 4 | R55-A22 | Desktop/TV smoke: trailer ≥720p when YouTube HLS has it; Quality changes picture | ⬜ |
+| 5 | R55-A23 | Default googlevideo open is adaptive ≤1080 (AVC preferred), not muxed 360p | ✅ |
+
+---
+
+## Acceptance (DASH audio-file)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R55-A24 | Adaptive open binds AAC via mpv `audio-file` **before** `player.open` (no `setAudioTrack` after) | ✅ |
+| 2 | R55-A25 | Desktop/TV smoke: trailer opens ≥720p with audio; Quality changes picture | ⬜ |
+
+---
+
+## Acceptance (yt-dlp GVS)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R55-A26 | Googlevideo bytes: Innertube UA (not Chrome), `identity` encoding, 10 MiB sequential Range clamped to clen-1; explode `get()` not used | ✅ |
+| 2 | R55-A27 | Proxy walks tv / safari / mweb / ios / androidVr / sdkless / android / mediaConnect / default until AAC GVS returns 206 (not sdkless-first silent 1080p) | ✅ |
+| 3 | R55-A28 | GVS/open 403 → Retry / Open in YouTube (not embed WebView); embed only for age-gate | ✅ |
+| 4 | R55-A29 | Desktop: yt-dlp ≥2026 downloads adaptive ≤1080 + AAC (own Range/n-sig/POT); media_kit opens the files. Android/iOS keep explode proxy | ✅ |
+| 5 | R55-A30 | Adaptive play is loopback stream: query `range=` 9898989 windows (C# MediaStream); mpv opens `/v` and `audio-add /a`; no yt-dlp file download | ✅ |
+| 6 | R55-A31 | Never whole-file GVS GET; probe window 2; HTTP Range fallback on 403 so AAC/itag 140 is not silent | ✅ |
+| 7 | R55-A32 | Proxy ignores isolate ANDROID googlevideo URLs; walks tv/safari until A+V windows 206 | ✅ |
+| 8 | R55-A33 | Hostless/cipher-empty stream URIs skip that client; walk continues (no `GET ?range=` throw) | ✅ |
+| 9 | R55-A34 | Adaptive bytes via explode `streamsClient.get(StreamInfo)` (no custom GVS); muxed 360p is not a fallback | ✅ |
+| 10 | R55-A35 | Safari/WEB n-sig via explode ejs on flutter_js (no Deno binary); loopback `get()` those streams | ✅ |
+| 11 | R55-A36 | GVS bytes are C# query `range=` + matching UA; dart `get()` remanifest ANDROID is not used (AAC was silent) | ✅ |
+| 12 | R55-A37 | C# throttled window is `from+(9898989-1)` even past clen (do not clamp itag 140 to whole file) | ✅ |
+| 13 | R55-A38 | AAC fetched first (~2 MB) then `/a` from memory; video GVS after (no parallel A+V) | ✅ |
+| 14 | R55-A39 | AAC GVS 403 retries clamped query + HTTP Range then next client (trailer swap must not die) | ✅ |
+| 15 | R55-A40 | Proxy does not `getManifest`; pipes isolate video+audio URLs (one C# `range=` window). Muxed last-resort if AAC 403 | ✅ |
+
+---
+
 ## Acceptance (ATV D-pad — issue 154)
 
 Shipped under [issue 154](../issues/154-[open]-android-tv-trailer-player-dpad.md) (`I154-T01`–`T04`). Rows above: `R55-A07` code · `R55-A08` device smoke remaining.
@@ -82,10 +129,10 @@ Replace the fullscreen trailer YouTube iframe (and its 1.35× overscan hack to h
 ## Contracts
 
 - Default height cap: **1080p** H.264; VP9 listed above; AV1 excluded
-- Prefer `YoutubeApiClient.androidVr` alone for the manifest (mpv-friendly URLs). On failure try `tv` / `androidSdkless` / `ios` / library default **one client at a time** — never merge multiple clients’ streams in one getManifest call
-- **Default open:** muxed progressive when available (fast audible start); adaptive ladder for Quality menu; Quality re-resolves with `forceRefresh` before switching
-- Quality ladder is the full adaptive height list; desktop always `audio-add` after adaptive open; ATV prefers `audio-file` then `audio-add` if no track
-- Resolve off UI isolate; short TTL cache; prefetch from details trailers / hero Trailer; trailer open and Quality always force-refresh
+- **Default open:** adaptive ≤1080 + AAC from the **one** isolate resolve (TV-first). Loopback pipes those googlevideo URLs — no second WEB/iOS/VR `getManifest` (that bot-checks and 403s AAC). AAC fetched first. If that GVS 403s, muxed progressive (≤360p) so the trailer still starts.
+- Quality ladder is adaptive googlevideo heights from that resolve; Quality reopens another height from the cache (no re-resolve)
+- explode `getManifest` HEAD probe is skipped (itag 137/271 403 used to drop the whole client)
+- Resolve off UI isolate; short TTL cache; prefetch from details trailers / hero Trailer
 - Captions fetched lazily when the CC menu opens (not on open)
 - Age / unplayable native resolve → YouTube nocookie embed WebView fallback (Forja +18; no YouTube account)
 - No iframe fallback on resolve failure **except** age/unplayable gate above
