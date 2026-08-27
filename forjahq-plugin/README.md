@@ -19,7 +19,7 @@ https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/manifest.js
 
 | Path | Role |
 |------|------|
-| `manifest.json` | Pack metadata + `plugins[]` provider entries |
+| `manifest.json` | Pack metadata (`id`, `version`) + `plugins[]` provider entries |
 | `providers/` | VOD / anime / drama scrapers |
 | `providers/hops/` | File-host hop resolvers |
 | `live/` | Live resolve + shared `embed-st.js` |

@@ -172,22 +172,23 @@ String? hopPluginIdForUrl(String url, Iterable<EnginePlugin> plugins) {
 class EnginePack {
   EnginePack({
     required this.sourceUrl,
+    required this.packId,
     required this.name,
     required this.version,
     required this.plugins,
-    this.bundled = false,
   });
 
   final String sourceUrl;
+
+  /// Stable pack identity from manifest `id` (not the install URL).
+  final String packId;
   final String name;
   final String version;
   final List<EnginePlugin> plugins;
-  final bool bundled;
 
   factory EnginePack.fromJson(
     Map<String, dynamic> j, {
     required String sourceUrl,
-    bool bundled = false,
   }) {
     final pluginsRaw = j['plugins'];
     final List<EnginePlugin> plugins;
@@ -196,51 +197,100 @@ class EnginePack {
         for (final raw in pluginsRaw)
           if (raw is Map) EnginePlugin.fromJson(Map<String, dynamic>.from(raw)),
       ];
-    } else if ((j['id'] ?? '').toString().trim().isNotEmpty) {
+    } else if ((j['id'] ?? '').toString().trim().isNotEmpty &&
+        j['plugins'] == null) {
+      // Single-plugin root manifest (legacy shape).
       plugins = [EnginePlugin.fromJson(j)];
     } else {
       plugins = const [];
     }
     if (plugins.isEmpty) {
-      throw const FormatException('engine.json has no plugins');
+      throw const FormatException('manifest has no plugins');
     }
+    final packIdRaw = (j['id'] as String?)?.trim() ?? '';
+    final name = (j['name'] as String?)?.trim().isNotEmpty == true
+        ? (j['name'] as String).trim()
+        : plugins.first.name;
     return EnginePack(
       sourceUrl: sourceUrl,
-      name: (j['name'] as String?)?.trim().isNotEmpty == true
-          ? (j['name'] as String).trim()
-          : plugins.first.name,
+      packId: packIdRaw.isNotEmpty
+          ? packIdRaw
+          : EnginePack.packIdFromSourceUrl(sourceUrl),
+      name: name,
       version: (j['version'] as String?)?.trim() ?? '0.0.0',
       plugins: plugins,
-      bundled: bundled,
     );
+  }
+
+  /// Derive a stable packId when the manifest omits `id`.
+  static String packIdFromSourceUrl(String sourceUrl) =>
+      'pack-${urlHash(sourceUrl)}';
+
+  /// Short stable hash of a source URL (prefs key segment).
+  static String urlHash(String sourceUrl) {
+    var h = 2166136261;
+    for (final c in sourceUrl.codeUnits) {
+      h ^= c;
+      h = (h * 16777619) & 0xffffffff;
+    }
+    return h.toRadixString(16).padLeft(8, '0');
   }
 
   Map<String, dynamic> toJson() => {
     'sourceUrl': sourceUrl,
+    'packId': packId,
     'name': name,
     'version': version,
-    'bundled': bundled,
     'plugins': [for (final p in plugins) p.toJson()],
   };
 
-  factory EnginePack.fromStored(Map<String, dynamic> j) => EnginePack(
-    sourceUrl: (j['sourceUrl'] as String?) ?? '',
-    name: (j['name'] as String?) ?? 'Engine',
-    version: (j['version'] as String?) ?? '0.0.0',
-    bundled: j['bundled'] == true,
-    plugins: [
-      for (final raw in (j['plugins'] as List? ?? const []))
-        if (raw is Map) EnginePlugin.fromJson(Map<String, dynamic>.from(raw)),
-    ],
-  );
+  factory EnginePack.fromStored(Map<String, dynamic> j) {
+    final sourceUrl = (j['sourceUrl'] as String?) ?? '';
+    final packIdRaw = (j['packId'] as String?)?.trim() ?? '';
+    return EnginePack(
+      sourceUrl: sourceUrl,
+      packId: packIdRaw.isNotEmpty
+          ? packIdRaw
+          : packIdFromSourceUrl(sourceUrl),
+      name: (j['name'] as String?) ?? 'Engine',
+      version: (j['version'] as String?) ?? '0.0.0',
+      plugins: [
+        for (final raw in (j['plugins'] as List? ?? const []))
+          if (raw is Map) EnginePlugin.fromJson(Map<String, dynamic>.from(raw)),
+      ],
+    );
+  }
 
   EnginePack copyWithPlugins(List<EnginePlugin> next) => EnginePack(
     sourceUrl: sourceUrl,
+    packId: packId,
     name: name,
     version: version,
     plugins: next,
-    bundled: bundled,
   );
+}
+
+/// Compare semver-ish `a.b.c` strings. Returns negative if [a] < [b].
+int compareEngineSemver(String a, String b) {
+  List<int> parts(String s) {
+    final out = <int>[];
+    for (final p in s.trim().split('.')) {
+      final n = int.tryParse(p.replaceAll(RegExp(r'[^0-9].*$'), '')) ?? 0;
+      out.add(n);
+    }
+    while (out.length < 3) {
+      out.add(0);
+    }
+    return out.take(3).toList();
+  }
+
+  final pa = parts(a);
+  final pb = parts(b);
+  for (var i = 0; i < 3; i++) {
+    final c = pa[i].compareTo(pb[i]);
+    if (c != 0) return c;
+  }
+  return 0;
 }
 
 class EngineExtractResult {

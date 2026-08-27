@@ -10,8 +10,11 @@ import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
+import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
+import 'package:http/testing.dart';
 import 'package:rust/rust.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Fetch a pack file relative to [EngineService.officialManifestUrl]
 /// (`FORJA_HQ_MANIFEST_URL` dart-define / `.env`).
@@ -51,7 +54,8 @@ void main() {
     test('reads a multi-plugin pack', () {
       final pack = EnginePack.fromJson({
         'schema': 1,
-        'name': 'Forja',
+        'id': 'forjahq',
+        'name': 'ForjaHQ',
         'version': '1.0.0',
         'plugins': [
           {
@@ -64,6 +68,7 @@ void main() {
         ],
       }, sourceUrl: 'https://example.com/manifest.json');
       expect(pack.plugins, hasLength(1));
+      expect(pack.packId, 'forjahq');
       expect(pack.plugins.first.id, 'videasy');
       expect(pack.plugins.first.isHttp, isTrue);
       expect(enabledEnginePluginIds([pack]), {'videasy'});
@@ -80,6 +85,7 @@ void main() {
       }, sourceUrl: 'https://example.com/engine.json');
       expect(pack.plugins.single.id, 'videasy');
       expect(pack.name, 'Videasy');
+      expect(pack.packId, 'videasy');
     });
 
     test('skips sniff plugins from enabled ids', () {
@@ -90,8 +96,194 @@ void main() {
         ],
       }, sourceUrl: 'asset:x');
       expect(enabledEnginePluginIds([pack]), {'http-one'});
+      expect(pack.packId, startsWith('pack-'));
+    });
+  });
+
+  group('PluginRegistry keys and semver', () {
+    test('urlHash is stable and pack-scoped script keys differ by URL', () {
+      const a = 'https://a.example/manifest.json';
+      const b = 'https://b.example/manifest.json';
+      expect(PluginRegistry.urlHash(a), PluginRegistry.urlHash(a));
+      expect(PluginRegistry.urlHash(a), isNot(PluginRegistry.urlHash(b)));
+      expect(
+        PluginRegistry.scriptPrefsKey(a, 'videasy'),
+        isNot(PluginRegistry.scriptPrefsKey(b, 'videasy')),
+      );
+      expect(
+        PluginRegistry.scriptPrefsKey(a, 'videasy'),
+        startsWith('engine_js_script_v2_'),
+      );
     });
 
+    test('compareEngineSemver orders major.minor.patch', () {
+      expect(compareEngineSemver('1.5.11', '1.5.12'), lessThan(0));
+      expect(compareEngineSemver('1.5.12', '1.5.11'), greaterThan(0));
+      expect(compareEngineSemver('1.5.11', '1.5.11'), 0);
+      expect(compareEngineSemver('2.0.0', '1.9.9'), greaterThan(0));
+    });
+  });
+
+  group('PluginRegistry install', () {
+    late PluginRegistry registry;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      registry = PluginRegistry.instance;
+      registry.debugHttpClient = null;
+    });
+
+    tearDown(() {
+      registry.debugHttpClient = null;
+    });
+
+    test('migrates v1 unscoped scripts to pack-scoped v2 keys', () async {
+      const url = 'https://example.com/pack/manifest.json';
+      final v1Pack = {
+        'sourceUrl': url,
+        'name': 'Community',
+        'version': '1.0.0',
+        'plugins': [
+          {
+            'id': 'videasy',
+            'name': 'Videasy',
+            'entry': 'videasy.js',
+            'kind': 'http',
+            'enabled': true,
+          },
+        ],
+      };
+      SharedPreferences.setMockInitialValues({
+        'engine_js_packs_v1': jsonEncode([v1Pack]),
+        'engine_js_script_videasy': '/* v1 body */',
+      });
+      final packs = await registry.listPacksRaw();
+      expect(packs, hasLength(1));
+      expect(packs.first.packId, startsWith('pack-'));
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('engine_js_packs_v1'), isNull);
+      expect(
+        prefs.getString(PluginRegistry.scriptPrefsKey(url, 'videasy')),
+        '/* v1 body */',
+      );
+      expect(prefs.getString('engine_js_script_videasy'), isNull);
+      expect(prefs.getBool('engine_js_packs_v2_migrated'), isTrue);
+    });
+
+    test('refuses plugin id collision across packs', () async {
+      const urlA = 'https://a.example/manifest.json';
+      const urlB = 'https://b.example/manifest.json';
+      SharedPreferences.setMockInitialValues({
+        'engine_js_packs_v2': jsonEncode([
+          {
+            'sourceUrl': urlA,
+            'packId': 'pack-a',
+            'name': 'A',
+            'version': '1.0.0',
+            'plugins': [
+              {
+                'id': 'videasy',
+                'name': 'Videasy',
+                'entry': 'a.js',
+                'kind': 'http',
+                'enabled': true,
+              },
+            ],
+          },
+        ]),
+        'engine_js_packs_v2_migrated': true,
+      });
+      registry.debugHttpClient = MockClient((req) async {
+        if (req.url.toString() == urlB) {
+          return http.Response(
+            jsonEncode({
+              'schema': 1,
+              'id': 'pack-b',
+              'name': 'B',
+              'version': '1.0.0',
+              'plugins': [
+                {
+                  'id': 'videasy',
+                  'name': 'Videasy',
+                  'entry': 'b.js',
+                  'kind': 'http',
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        return http.Response('not found', 404);
+      });
+      expect(
+        () => registry.install(urlB),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('already installed'),
+          ),
+        ),
+      );
+    });
+
+    test('transactional install writes nothing when a script fetch fails',
+        () async {
+      const url = 'https://tx.example/manifest.json';
+      SharedPreferences.setMockInitialValues({
+        'engine_js_packs_v2_migrated': true,
+      });
+      registry.debugHttpClient = MockClient((req) async {
+        final u = req.url.toString();
+        if (u == url) {
+          return http.Response(
+            jsonEncode({
+              'schema': 1,
+              'id': 'tx',
+              'name': 'Tx',
+              'version': '1.0.0',
+              'plugins': [
+                {
+                  'id': 'ok',
+                  'name': 'Ok',
+                  'entry': 'ok.js',
+                  'kind': 'http',
+                },
+                {
+                  'id': 'bad',
+                  'name': 'Bad',
+                  'entry': 'bad.js',
+                  'kind': 'http',
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (u.endsWith('ok.js')) {
+          return http.Response('export default 1', 200);
+        }
+        return http.Response('', 404);
+      });
+      await expectLater(
+        registry.install(url),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('missing scripts'),
+          ),
+        ),
+      );
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('engine_js_packs_v2'), isNull);
+      expect(
+        prefs.getString(PluginRegistry.scriptPrefsKey(url, 'ok')),
+        isNull,
+      );
+    });
   });
 
   group('engine chips', () {
@@ -803,6 +995,7 @@ void main() {
         enabledEnginePluginIds([
           EnginePack(
             sourceUrl: 'asset:x',
+            packId: 'test',
             name: 'Forja',
             version: '1',
             plugins: parsed,

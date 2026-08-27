@@ -8,12 +8,12 @@ import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/engine/host_resolver.dart';
 import 'package:forja/shared/engine/live_goat_unlock.dart';
 import 'package:forja/shared/engine/models.dart';
+import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime.dart';
 import 'package:forja/shared/extractors/embed_extract_profiles.dart';
 import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
-import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -21,13 +21,9 @@ class EngineService {
   EngineService._();
   static final EngineService instance = EngineService._();
 
-  /// Official ForjaHQ manifest URL from `FORJA_HQ_MANIFEST_URL`
-  /// (`--dart-define` / repo-root `.env`). Empty when unset — no baked-in host.
-  static const officialManifestUrl = String.fromEnvironment(
-    'FORJA_HQ_MANIFEST_URL',
-  );
+  /// Official ForjaHQ manifest URL — see [PluginRegistry.officialManifestUrl].
+  static const officialManifestUrl = PluginRegistry.officialManifestUrl;
 
-  /// Internal `types: catalog` plugins — not shown in Settings toggles.
   static bool isInternalLiveCatalog(EnginePlugin plugin) => plugin.isLiveCatalog;
 
   static String catalogFilterId(EnginePlugin catalog) {
@@ -41,60 +37,37 @@ class EngineService {
     return 'catalog-${liveSportId.substring('live-'.length)}';
   }
 
-  static const _legacyBundledSourceUrlProviders = 'asset:providers/engine.json';
-  static const _legacyBundledSourceUrl = 'asset:engine_js/engine.json';
-  static const _legacyAssetBundledSourceUrl = 'asset:plugins/engine.json';
-  static const _packsKey = 'engine_js_packs_v1';
-  static const _scriptPrefix = 'engine_js_script_';
-  static const _preludePrefix = 'engine_js_prelude_';
   /// Legacy unscoped selection (migrated into `…_movie` once).
   static const _legacySelectedKey = 'engine_js_sources_selected_ids';
   static const _selectedKeyPrefix = 'engine_js_sources_selected_ids_';
-  static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
 
-  /// Last auto-install failure for ForjaHQ (null = ok / never failed).
-  /// Sticky until [ensureOfficialInstalled] succeeds or [force] retry.
-  static final ValueNotifier<String?> officialInstallError =
-      ValueNotifier<String?>(null);
+  static ValueNotifier<int> get changeNotifier => PluginRegistry.changeNotifier;
+  static ValueNotifier<String?> get officialInstallError =>
+      PluginRegistry.officialInstallError;
 
   int _extractGeneration = 0;
   int _liveCatalogGeneration = 0;
   EngineRuntime? _liveCatalogRuntime;
-  Future<void>? _officialEnsureFuture;
-  /// Prevents spam retries + log spam after first auto-install failure.
-  bool _officialInstallFailed = false;
-  /// Source URLs already attempted for missing-script repair this session.
-  final Set<String> _scriptRepairAttempted = {};
 
-  static bool isOfficialPack(String sourceUrl) => sourceUrl == officialManifestUrl;
+  static bool isOfficialPack(String sourceUrl) =>
+      PluginRegistry.isOfficialPack(sourceUrl);
 
-  /// Old APK-bundled pack URLs — purge on read; remote only.
   static bool isLegacyAssetPack(String sourceUrl) =>
-      sourceUrl.startsWith('asset:') ||
-      sourceUrl == _legacyAssetBundledSourceUrl ||
-      sourceUrl == _legacyBundledSourceUrlProviders ||
-      sourceUrl == _legacyBundledSourceUrl;
+      PluginRegistry.isLegacyAssetPack(sourceUrl);
 
   Future<SharedPreferences> get _prefs async => SharedPreferences.getInstance();
 
   void cancelPending() {
     abortInFlightExtracts();
     cancelLiveCatalog();
-    // Kind-scoped: do not call Engine.cancelPendingResolve (kills magnet).
     Engine.cancelEngineJsExtracts();
   }
 
-  /// Bump extract gen + abort UI-isolate `flutter_js` forks.
-  ///
-  /// Call before [Engine.cancelPendingResolve] from host cancel paths that
-  /// only ROOT-cancel Rust jobs — otherwise EngineJS `"cancelled"` returns
-  /// `null` and [runPluginIsolated] stampedes JSC (macOS SIGSEGV).
   void abortInFlightExtracts() {
     _extractGeneration++;
     EngineRuntime.abortAll();
   }
 
-  /// Abort in-flight Forja Live catalog scrapes (tab hide / server switch).
   void cancelLiveCatalog() {
     _liveCatalogGeneration++;
     _abortLiveCatalogRuntime();
@@ -119,20 +92,18 @@ class EngineService {
           if (p.isHop) p,
     ];
     runtime.registerHops(hops);
-    for (final p in hops) {
-      final code = await _loadScript(p);
-      if (code != null && code.isNotEmpty) {
-        runtime.stashPluginCode(p.id, code);
+    for (final pack in packs) {
+      for (final p in pack.plugins) {
+        if (!p.isHop) continue;
+        final code = await _loadScript(p, sourceUrl: pack.sourceUrl);
+        if (code != null && code.isNotEmpty) {
+          runtime.stashPluginCode(p.id, code);
+        }
       }
     }
   }
 
-  Future<List<EnginePack>> listPacks() async {
-    await ensureOfficialInstalled();
-    final packs = await _listPacksRaw();
-    await _repairMissingScripts(packs);
-    return _listPacksRaw();
-  }
+  Future<List<EnginePack>> listPacks() => PluginRegistry.instance.listPacks();
 
   Future<List<EnginePack>> listSourcesPanelPacks() async {
     final packs = await listPacks();
@@ -181,7 +152,6 @@ class EngineService {
     return null;
   }
 
-  /// Enabled schedule catalogs — Settings → Forja Sports → **Catalog** toggles only.
   Future<List<EnginePlugin>> listEnabledLiveCatalogPlugins() async {
     await ensureOfficialInstalled();
     final out = <EnginePlugin>[];
@@ -195,319 +165,51 @@ class EngineService {
     return out;
   }
 
-  Future<void> _savePacks(List<EnginePack> packs) async {
-    final prefs = await _prefs;
-    await prefs.setString(
-      _packsKey,
-      jsonEncode([for (final p in packs) p.toJson()]),
-    );
-    changeNotifier.value++;
-  }
+  Future<void> ensureOfficialInstalled({bool force = false}) =>
+      PluginRegistry.instance.ensureOfficialInstalled(force: force);
 
-  /// First boot: install ForjaHQ from [officialManifestUrl] when missing.
-  ///
-  /// Failures are sticky — no silent re-fetch / log spam until [force] or a
-  /// successful [install] of the official URL. UI reads [officialInstallError].
-  Future<void> ensureOfficialInstalled({bool force = false}) async {
-    if (officialManifestUrl.trim().isEmpty) {
-      _officialInstallFailed = true;
-      officialInstallError.value =
-          'FORJA_HQ_MANIFEST_URL missing — set in .env / dart-define';
-      changeNotifier.value++;
-      return;
-    }
-    final packs = await _listPacksRaw();
-    if (packs.any((p) => p.sourceUrl == officialManifestUrl)) {
-      _clearOfficialInstallError();
-      return;
-    }
-    if (!force && _officialInstallFailed) return;
-    if (_officialEnsureFuture != null) {
-      await _officialEnsureFuture;
-      return;
-    }
-    final run = () async {
-      try {
-        await install(officialManifestUrl);
-        _clearOfficialInstallError();
-      } catch (e) {
-        _officialInstallFailed = true;
-        final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
-        officialInstallError.value = msg;
-        changeNotifier.value++;
-        debugPrint('[engine] ForjaHQ install failed: $msg');
-      }
-    }();
-    _officialEnsureFuture = run;
-    try {
-      await run;
-    } finally {
-      if (identical(_officialEnsureFuture, run)) {
-        _officialEnsureFuture = null;
-      }
-    }
-  }
-
-  void _clearOfficialInstallError() {
-    _officialInstallFailed = false;
-    if (officialInstallError.value != null) {
-      officialInstallError.value = null;
-      changeNotifier.value++;
-    }
-  }
-
-  /// Settings Retry — rethrows so the UI can toast.
-  Future<void> retryOfficialInstall() async {
-    if (officialManifestUrl.trim().isEmpty) {
-      throw Exception(
-        'FORJA_HQ_MANIFEST_URL missing — set in .env / dart-define',
-      );
-    }
-    _officialInstallFailed = false;
-    officialInstallError.value = null;
-    await install(officialManifestUrl);
-    _clearOfficialInstallError();
-  }
-
-  Future<List<EnginePack>> _listPacksRaw() async {
-    final prefs = await _prefs;
-    final raw = prefs.getString(_packsKey);
-    if (raw == null || raw.isEmpty) return [];
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return [];
-      final packs = [
-        for (final e in decoded)
-          if (e is Map) EnginePack.fromStored(Map<String, dynamic>.from(e)),
-      ];
-      return _purgeLegacyAssetPacks(packs);
-    } catch (_) {
-      return [];
-    }
-  }
-
-  /// Drop APK-era `asset:…` packs so Settings only shows remote installs.
-  /// Never delete script prefs for plugin ids still owned by a kept pack —
-  /// legacy + remote share ids (`videasy`, …); wiping them orphaned the remote.
-  Future<List<EnginePack>> _purgeLegacyAssetPacks(List<EnginePack> packs) async {
-    final keep = <EnginePack>[];
-    final victims = <EnginePack>[];
-    for (final p in packs) {
-      if (isLegacyAssetPack(p.sourceUrl) || p.bundled) {
-        victims.add(p);
-      } else {
-        keep.add(p);
-      }
-    }
-    if (victims.isEmpty) return packs;
-    final retainedIds = <String>{
-      for (final pack in keep)
-        for (final p in pack.plugins) p.id,
-    };
-    final prefs = await _prefs;
-    for (final pack in victims) {
-      for (final p in pack.plugins) {
-        if (retainedIds.contains(p.id)) continue;
-        await prefs.remove(_scriptPrefix + p.id);
-      }
-    }
-    await _savePacks(keep);
-    return keep;
-  }
-
-  /// Re-fetch any missing script bodies for installed remote packs.
-  Future<void> _repairMissingScripts(List<EnginePack> packs) async {
-    final prefs = await _prefs;
-    for (final pack in packs) {
-      if (isLegacyAssetPack(pack.sourceUrl)) continue;
-      if (_scriptRepairAttempted.contains(pack.sourceUrl)) continue;
-      final missing = <EnginePlugin>[];
-      for (final p in pack.plugins) {
-        if (p.entry.isEmpty) continue;
-        if (!p.isHttp && !p.isHop) continue;
-        final cached = prefs.getString(_scriptPrefix + p.id);
-        if (cached == null || cached.isEmpty) {
-          missing.add(p);
-          continue;
-        }
-        if (p.prelude.isNotEmpty) {
-          final pre = prefs.getString(_preludePrefsKey(p.prelude));
-          if (pre == null || pre.isEmpty) missing.add(p);
-        }
-      }
-      if (missing.isEmpty) continue;
-      _scriptRepairAttempted.add(pack.sourceUrl);
-      debugPrint(
-        '[engine] repairing ${missing.length} missing scripts for ${pack.name}',
-      );
-      try {
-        await install(pack.sourceUrl);
-      } catch (e) {
-        debugPrint('[engine] repair failed for ${pack.sourceUrl}: $e');
-      }
-    }
-  }
-
-  String _resolveScriptUrl(String manifestUrl, String filename) {
-    final mu = Uri.parse(manifestUrl);
-    if (filename.startsWith('http://') || filename.startsWith('https://')) {
-      return filename;
-    }
-    final path = mu.path.endsWith('/')
-        ? '${mu.path}$filename'
-        : '${mu.path.substring(0, mu.path.lastIndexOf('/') + 1)}$filename';
-    return mu.replace(path: path).toString();
-  }
-
-  Future<void> _syncHops(List<EnginePack> packs) async {
-    await _syncHopsForRuntime(EngineRuntime.instance, packs);
-  }
-
-  static String _preludePrefsKey(String preludeEntry) =>
-      '$_preludePrefix${Uri.encodeComponent(preludeEntry)}';
+  Future<void> retryOfficialInstall() =>
+      PluginRegistry.instance.retryOfficialInstall();
 
   Future<EnginePack> install(String manifestUrl) async {
-    final resp = await http.get(Uri.parse(manifestUrl));
-    if (resp.statusCode != 200) {
-      throw Exception('manifest HTTP ${resp.statusCode}');
-    }
-    final map = jsonDecode(resp.body) as Map<String, dynamic>;
-    final schema = map['schema'];
-    if (schema != null && schema != 1) {
-      throw Exception('unsupported manifest schema: $schema');
-    }
-    final all = await _listPacksRaw();
-    EnginePack? previous;
-    for (final p in all) {
-      if (p.sourceUrl == manifestUrl) {
-        previous = p;
-        break;
-      }
-    }
-    final enabledById = previous == null
-        ? null
-        : {for (final p in previous.plugins) p.id: p.enabled};
-    var pack = EnginePack.fromJson(map, sourceUrl: manifestUrl);
-    if (enabledById != null) {
-      pack = pack.copyWithPlugins([
-        for (final p in pack.plugins)
-          p.copyWith(enabled: enabledById[p.id] ?? p.enabled),
-      ]);
-    }
-    final prefs = await _prefs;
-    final missing = <String>[];
-    final preludesNeeded = <String>{
-      for (final p in pack.plugins)
-        if (p.prelude.isNotEmpty) p.prelude,
-    };
-    for (final prelude in preludesNeeded) {
-      final preludeUrl = _resolveScriptUrl(manifestUrl, prelude);
-      final pr = await http.get(Uri.parse(preludeUrl));
-      if (pr.statusCode != 200 || pr.body.isEmpty) {
-        missing.add('prelude:$prelude');
-        continue;
-      }
-      await prefs.setString(_preludePrefsKey(prelude), pr.body);
-    }
-    for (final plugin in pack.plugins) {
-      if (plugin.entry.isEmpty) continue;
-      if (!plugin.isHttp && !plugin.isHop) continue;
-      final scriptUrl = _resolveScriptUrl(manifestUrl, plugin.entry);
-      final sr = await http.get(Uri.parse(scriptUrl));
-      if (sr.statusCode != 200 || sr.body.isEmpty) {
-        missing.add(plugin.id);
-        continue;
-      }
-      await prefs.setString(_scriptPrefix + plugin.id, sr.body);
-    }
-    if (missing.isNotEmpty) {
-      throw Exception(
-        'manifest install failed — missing scripts: ${missing.join(', ')}',
-      );
-    }
-    all.removeWhere((a) => a.sourceUrl == manifestUrl);
-    all.add(pack);
-    await _savePacks(all);
-    await _syncHops(all);
-    if (manifestUrl == officialManifestUrl) {
-      _clearOfficialInstallError();
-    }
-    _scriptRepairAttempted.remove(manifestUrl);
+    final pack = await PluginRegistry.instance.install(manifestUrl);
+    await _syncHops(await PluginRegistry.instance.listPacksRaw());
     return pack;
   }
 
   Future<EnginePack> refresh(String manifestUrl) => install(manifestUrl);
 
-  Future<EnginePack> installManifestUrl(String manifestUrl) => install(manifestUrl);
+  Future<EnginePack> installManifestUrl(String manifestUrl) =>
+      install(manifestUrl);
 
   Future<EnginePack> refreshManifestUrl(String manifestUrl) =>
       refresh(manifestUrl);
-  Future<void> removePack(String sourceUrl) async {
-    final all = await _listPacksRaw();
-    final victim = all.where((a) => a.sourceUrl == sourceUrl).toList();
-    all.removeWhere((a) => a.sourceUrl == sourceUrl);
-    final retainedIds = <String>{
-      for (final pack in all)
-        for (final p in pack.plugins) p.id,
-    };
-    final retainedPreludes = <String>{
-      for (final pack in all)
-        for (final p in pack.plugins)
-          if (p.prelude.isNotEmpty) p.prelude,
-    };
-    final prefs = await _prefs;
-    for (final pack in victim) {
-      for (final p in pack.plugins) {
-        if (!retainedIds.contains(p.id)) {
-          await prefs.remove(_scriptPrefix + p.id);
-        }
-        if (p.prelude.isNotEmpty && !retainedPreludes.contains(p.prelude)) {
-          await prefs.remove(_preludePrefsKey(p.prelude));
-        }
-      }
-    }
-    await _savePacks(all);
-  }
+
+  Future<void> removePack(String sourceUrl) =>
+      PluginRegistry.instance.removePack(sourceUrl);
 
   Future<void> setPluginEnabled({
     required String sourceUrl,
     required String pluginId,
     required bool enabled,
-  }) async {
-    final all = await _listPacksRaw();
-    final next = <EnginePack>[];
-    for (final pack in all) {
-      if (pack.sourceUrl != sourceUrl) {
-        next.add(pack);
-        continue;
-      }
-      next.add(
-        pack.copyWithPlugins([
-          for (final p in pack.plugins)
-            p.id == pluginId ? p.copyWith(enabled: enabled) : p,
-        ]),
+  }) =>
+      PluginRegistry.instance.setPluginEnabled(
+        sourceUrl: sourceUrl,
+        pluginId: pluginId,
+        enabled: enabled,
       );
-    }
-    await _savePacks(next);
-  }
 
   static String _selectedPrefsKey(String panelCategory) =>
       '$_selectedKeyPrefix$panelCategory';
 
   Future<Set<String>> loadSourcesSelectedPluginIds({
     required Set<String> enabledIds,
-
-    /// movie | tv | anime | drama — separate chip memory per Sources panel.
     required String panelCategory,
-
-    /// When prefs have no saved selection, select this subset instead of
-    /// every enabled plugin (soft categories).
     Set<String>? selectAllScopeIds,
   }) async {
     final prefs = await _prefs;
     final key = _selectedPrefsKey(panelCategory);
     var raw = prefs.getStringList(key);
-    // One-shot: old global list → movie bucket only.
     if (raw == null && panelCategory == EngineCategories.movie) {
       final legacy = prefs.getStringList(_legacySelectedKey);
       if (legacy != null) {
@@ -527,7 +229,6 @@ class EngineService {
       savedIds: raw,
       enabledIds: enabledIds,
     );
-    // Stale prefs after pack swap (legacy → remote) can filter to empty.
     if (filtered.isEmpty && enabledIds.isNotEmpty) {
       final scope = selectAllScopeIds ?? enabledIds;
       return {
@@ -549,19 +250,27 @@ class EngineService {
     );
   }
 
-  Future<String?> _loadScript(EnginePlugin plugin) async {
-    final prefs = await _prefs;
-    final cached = prefs.getString(_scriptPrefix + plugin.id);
-    if (cached == null || cached.isEmpty) return null;
-    var code = cached;
-    final prelude = plugin.prelude.trim();
-    if (prelude.isNotEmpty) {
-      final shared = prefs.getString(_preludePrefsKey(prelude));
-      if (shared != null && shared.isNotEmpty) {
-        code = '$shared\n$code';
-      }
+  Future<void> _syncHops(List<EnginePack> packs) async {
+    await _syncHopsForRuntime(EngineRuntime.instance, packs);
+  }
+
+  Future<String?> _loadScript(
+    EnginePlugin plugin, {
+    String? sourceUrl,
+  }) async {
+    var url = sourceUrl;
+    if (url == null || url.isEmpty) {
+      final found = await PluginRegistry.instance.findPlugin(plugin.id);
+      if (found == null) return null;
+      return PluginRegistry.instance.loadScript(
+        sourceUrl: found.pack.sourceUrl,
+        plugin: found.plugin,
+      );
     }
-    return code;
+    return PluginRegistry.instance.loadScript(
+      sourceUrl: url,
+      plugin: plugin,
+    );
   }
 
   Future<EngineExtractResult?> runPlugin({
@@ -645,8 +354,11 @@ class EngineService {
       debugPrint('[engine] ${active.id} missing script — repairing pack');
       for (final pack in packs) {
         if (pack.plugins.any((p) => p.id == active.id)) {
-          _scriptRepairAttempted.remove(pack.sourceUrl);
-          await _repairMissingScripts([pack]);
+          try {
+            await PluginRegistry.instance.install(pack.sourceUrl);
+          } catch (e) {
+            debugPrint('[engine] repair install failed: $e');
+          }
           break;
         }
       }

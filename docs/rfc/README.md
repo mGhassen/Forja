@@ -88,6 +88,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [065-[open]-…](065-[open]-live-forja-scrapers.md) | Live sports Forja scrapers | v1.3 | open | 6/6 · 14/18 · WebView GOAT+GASM 🔄 | — |
 | [066-[fixed]-…](fixed/066-[fixed]-hub-catalog-top-bar.md) | Anime & Asian Drama hub catalog top bar | — | fixed | Complete · 4/4 · 8/8 | — |
 | [067-[fixed]-…](fixed/067-[fixed]-forjahq-remote-plugin-pack.md) | ForjaHQ remote plugin pack (engine JS shell) | v1.4 | fixed | Complete · 5/5 · 10/10 | — |
+| [068-[fixed]-…](fixed/068-[fixed]-engine-plugin-registry.md) | Engine PluginRegistry (pack-scoped install) | v1.4 | fixed | Complete · 5/5 · 10/10 | — |
 
 ## Related
 
