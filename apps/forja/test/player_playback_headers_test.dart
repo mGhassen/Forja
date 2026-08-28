@@ -473,6 +473,30 @@ void main() {
       expect(h['Origin'], 'https://player.videasy.to');
     });
 
+    test('vidsrcsbs peakstorm uses videasy Referer not vidsrc.sbs', () {
+      const url =
+          'https://moon.peakstorm.top/vd/abc/index-s1080p-v1-a1.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        {'Referer': 'https://player.videasy.to/'},
+        streamUrl: url,
+        providerId: 'vidsrcsbs',
+      );
+      expect(h['Referer'], 'https://player.videasy.to/');
+      expect(h['Origin'], 'https://player.videasy.to');
+    });
+
+    test('engine:vidsrcsbs peakstorm uses videasy Referer', () {
+      const url =
+          'https://moon.peakstorm.top/vd/abc/master.m3u8';
+      final h = resolvePlaybackHttpHeaders(
+        null,
+        streamUrl: url,
+        providerId: 'engine:vidsrcsbs',
+      );
+      expect(h['Referer'], 'https://player.videasy.to/');
+      expect(h['Origin'], 'https://player.videasy.to');
+    });
+
     test('forces megaplay Referer for watching.onl anime CDN', () {
       const url =
           'https://fxpy7.watching.onl/anime/abc/master.m3u8';

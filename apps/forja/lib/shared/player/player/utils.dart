@@ -138,7 +138,17 @@ Map<String, String> resolvePlaybackHttpHeaders(
 
   final cfg = ProviderRuntimeConfig.instance;
   final pid = providerId?.trim();
-  final policy = cfg.playbackPolicyFor(pid);
+  final catalogForMatchEarly = streamUrl != null && isLocalLoopbackPlayUrl(streamUrl)
+      ? (hlsProxyTargetUrl(streamUrl) ?? streamUrl)
+      : streamUrl;
+  // VidSrc.sbs nested STREAMCRYPTO mirrors land on Videasy CDNs (peakstorm).
+  // Those rows keep vidsrcsbs / engine:vidsrcsbs identity but must open with
+  // player.videasy.to Referer — vidsrc.sbs gets 403 on the CDN.
+  var policy = cfg.playbackPolicyFor(pid);
+  if (catalogForMatchEarly != null &&
+      isVideasyCdnStreamUrl(catalogForMatchEarly)) {
+    policy = cfg.playbackPolicyFor('videasy') ?? policy;
+  }
   final banSelf = cfg.bansCdnSelfReferer(pid);
   // Movie/TV VidNest CDNs (lamda/delta/alfa/…) reject forced vidnest.fun
   // Referer; web uses no-referrer. Keep extractor/API headers only — do not
@@ -146,9 +156,7 @@ Map<String, String> resolvePlaybackHttpHeaders(
   final pidLower = pid?.toLowerCase() ?? '';
   final vidnestMovieTv =
       pidLower == 'vidnest' || pidLower == 'engine:vidnest';
-  final catalogForMatch = streamUrl != null && isLocalLoopbackPlayUrl(streamUrl)
-      ? (hlsProxyTargetUrl(streamUrl) ?? streamUrl)
-      : streamUrl;
+  final catalogForMatch = catalogForMatchEarly;
 
   final referer = take('Referer', 'referer');
   if (referer != null && referer.isNotEmpty) {
@@ -321,6 +329,13 @@ bool _isVidsrcCloudStreamPl(String url) {
   if (!path.contains('/pl/')) return false;
   if (!path.contains('.m3u8')) return false;
   return uri.queryParameters.containsKey('token');
+}
+
+/// Videasy / wings CDN (peakstorm, …) — requires player.videasy.to Referer.
+bool isVideasyCdnStreamUrl(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host.contains('peakstorm');
 }
 
 /// VidNest Gama/MovieBox (and related) CDN - rejects any Referer with HTTP 429.

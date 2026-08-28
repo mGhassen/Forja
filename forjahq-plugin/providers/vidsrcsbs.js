@@ -88,6 +88,14 @@ function extract(ctx) {
     return b64url(CryptoJS.AES.encrypt(JSON.stringify(payload), nxshaKey).toString());
   }
 
+  function preferHlsMaster(url) {
+    var u = String(url || '');
+    if (!/index-s\d+p-v\d+-a\d+\.m3u8/i.test(u)) return u;
+    var withSd = u.replace(/\/sd\/\d+\/index-s\d+p-v\d+-a\d+\.m3u8/i, '/master.m3u8');
+    if (withSd !== u) return withSd;
+    return u.replace(/\/index-s\d+p-v\d+-a\d+\.m3u8/i, '/master.m3u8');
+  }
+
   function nxshaDecode(hash) {
     if (!hash) return null;
     var text = CryptoJS.AES.decrypt(fromB64url(hash), nxshaKey).toString(CryptoJS.enc.Utf8);
@@ -229,7 +237,7 @@ function extract(ctx) {
             var srcs = (json && json.sources) || [];
             return srcs
               .map(function (s) {
-                var url = (s.url || s.file || '').toString();
+                var url = preferHlsMaster((s.url || s.file || '').toString());
                 if (!url) return null;
                 return {
                   url: url,

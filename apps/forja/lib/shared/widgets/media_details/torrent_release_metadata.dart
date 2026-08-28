@@ -36,8 +36,17 @@ class TorrentReleaseMetadata {
 
   static const _gb = 1024.0 * 1024.0 * 1024.0;
 
+  /// Video sources below this are bogus scraper noise (e.g. 4096 → "4 KB").
+  static const _minDisplaySizeBytes = 1024 * 1024;
+
+  // Kilobytes require kb/kib — bare "k" false-matches "4K" resolution tags.
   static final _sizeToken = RegExp(
-    r'(\d+(?:\.\d+)?)\s*(tib|tb|t|gib|gb|g|mib|mb|m|kib|kb|k)\b',
+    r'(\d+(?:\.\d+)?)\s*(tib|tb|t|gib|gb|g|mib|mb|m|kib|kb)\b',
+    caseSensitive: false,
+  );
+
+  static final _qualitySizeFalsePositive = RegExp(
+    r'^(4K|UHD|2160P|\d{3,4}P)$',
     caseSensitive: false,
   );
 
@@ -59,7 +68,7 @@ class TorrentReleaseMetadata {
     if (unit.startsWith('mi') || unit == 'm' || unit == 'mb') {
       return value * 1024 * 1024;
     }
-    if (unit.startsWith('ki') || unit == 'k' || unit == 'kb') {
+    if (unit.startsWith('ki') || unit == 'kb') {
       return value * 1024;
     }
     return value;
@@ -75,7 +84,7 @@ class TorrentReleaseMetadata {
       normalized = 'GB';
     } else if (unit.startsWith('mi') || unit == 'm' || unit == 'mb') {
       normalized = 'MB';
-    } else if (unit.startsWith('ki') || unit == 'k' || unit == 'kb') {
+    } else if (unit.startsWith('ki') || unit == 'kb') {
       normalized = 'KB';
     } else {
       normalized = unit.toUpperCase();
@@ -83,28 +92,39 @@ class TorrentReleaseMetadata {
     return '$value $normalized';
   }
 
+  static bool _isDisplayableSizeBytes(double bytes) =>
+      bytes >= _minDisplaySizeBytes;
+
+  static String? _labelFromSizeMatchIfDisplayable(RegExpMatch match) {
+    final bytes = parseSizeBytes(match.group(0)!);
+    if (!_isDisplayableSizeBytes(bytes)) return null;
+    return _labelFromSizeMatch(match);
+  }
+
   /// Display label for source tiles. Never returns a non-size string (avoids
   /// showing truncated titles in the size slot). Prefers [sizeText], then the
-  /// first size token in [fallbackText].
+  /// first size token in [fallbackText]. Omits impossible video sizes (< 1 MB).
   static String? resolveSizeLabel({String? sizeText, String? fallbackText}) {
     final primary = sizeText?.trim() ?? '';
     if (primary.isNotEmpty &&
         primary.toLowerCase() != 'unknown' &&
         primary != '0') {
+      if (_qualitySizeFalsePositive.hasMatch(primary)) return null;
       final match = _sizeToken.firstMatch(primary);
-      if (match != null) return _labelFromSizeMatch(match);
+      if (match != null) return _labelFromSizeMatchIfDisplayable(match);
       // Raw byte count from scrapers / Torrentio behaviorHints.videoSize.
       final asBytes = double.tryParse(primary.replaceAll(',', ''));
-      if (asBytes != null && asBytes > 1024) {
+      if (asBytes != null && _isDisplayableSizeBytes(asBytes)) {
         return formatBytes(asBytes);
       }
-      if (parseSizeBytes(primary) > 0) return primary;
+      final parsed = parseSizeBytes(primary);
+      if (_isDisplayableSizeBytes(parsed)) return primary;
     }
     final fallback = fallbackText?.trim() ?? '';
     if (fallback.isEmpty) return null;
     final match = _sizeToken.firstMatch(fallback);
     if (match == null) return null;
-    return _labelFromSizeMatch(match);
+    return _labelFromSizeMatchIfDisplayable(match);
   }
 
   /// Human size for scraper / Stremio byte counts (`1234567890` → `1.15 GB`).
