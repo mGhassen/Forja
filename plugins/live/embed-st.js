@@ -134,6 +134,7 @@ function preferDirectPlayback(m3u8Url) {
     host = u.host.toLowerCase();
   } catch (_) {}
   if (host.indexOf('wfty.st') >= 0) return true;
+  if (host.indexOf('indianservers.st') >= 0) return true;
   return path.indexOf('/delta/stream/') >= 0 || path.indexOf('/echo/stream/') >= 0;
 }
 

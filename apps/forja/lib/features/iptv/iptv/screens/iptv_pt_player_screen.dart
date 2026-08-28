@@ -490,7 +490,12 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   Duration _buffered = Duration.zero;
   bool _isSeeking = false;
   double _seekPreview = 0.0;
-  bool get _isVod => _duration.inSeconds > 1;
+  /// Catalog VOD, or live with a real DVR window — not mpv's ~2–6s HLS artifact.
+  bool get _isVod {
+    if (widget.vodPlayback) return _duration.inSeconds > 1;
+    if (_duration.inSeconds <= 6) return false;
+    return _duration.inSeconds > 1;
+  }
 
   /// Live vs Movies/Series chrome (tracks / episodes / engine persist).
   IptvPlayerChromeProfile get _chrome =>

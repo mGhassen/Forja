@@ -128,6 +128,9 @@ class LiveMatchesEngine {
             url: native.url,
             headers: native.headers,
             label: 'PPV',
+            directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(
+              native.url,
+            ),
           );
         }
       }

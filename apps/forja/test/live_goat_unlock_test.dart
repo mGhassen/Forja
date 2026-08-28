@@ -124,6 +124,15 @@ void main() {
       );
     });
 
+    test('ppv indianservers playlists open direct', () {
+      expect(
+        LiveGoatUnlock.preferDirectEnginePlayback(
+          'https://lb3.indianservers.st/secure/tok/fiba-africa/index.m3u8',
+        ),
+        isTrue,
+      );
+    });
+
     test('admin rtmp master stays on hls-proxy', () {
       expect(
         LiveGoatUnlock.preferDirectEnginePlayback(

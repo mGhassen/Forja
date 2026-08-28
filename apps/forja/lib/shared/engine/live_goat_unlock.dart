@@ -423,52 +423,119 @@ class LiveGoatUnlock {
     if (path.isEmpty) return null;
 
     try {
-      final body = _encodeEmbedIndiaFetchBody(path);
-      final gid = (slot['gid'] ?? '').toString();
-      final referer = gid.isNotEmpty
-          ? '$origin/embed/$path?gid=${Uri.encodeQueryComponent(gid)}'
-          : '$origin/embed/$path';
-      final resp = await http
-          .post(
-            Uri.parse('$origin/fetch'),
-            headers: {
-              'Content-Type': 'application/octet-stream',
-              'Origin': origin,
-              'Referer': referer,
-              'User-Agent': _ua,
-            },
-            body: body,
-          )
-          .timeout(const Duration(seconds: 20));
-      if (resp.statusCode < 200 || resp.statusCode >= 300) {
-        debugPrint('[LiveGasmUnlock] /fetch HTTP ${resp.statusCode} path=$path');
-        return null;
-      }
-      final island = resp.headers['island'] ?? '';
-      if (island.isEmpty) {
-        debugPrint('[LiveGasmUnlock] /fetch missing island header path=$path');
-        return null;
-      }
-      final bodyHex = resp.bodyBytes
-          .map((b) => b.toRadixString(16).padLeft(2, '0'))
-          .join();
+      final fetched = await _postEmbedIndiaFetch(
+        origin: origin,
+        path: path,
+        gid: (slot['gid'] ?? '').toString(),
+      ).timeout(const Duration(seconds: 20));
+      if (fetched == null) return null;
       final m3u8 = await unlockGasm(
         slot: slot,
-        island: island,
-        bodyHex: bodyHex,
+        island: fetched.island,
+        bodyHex: fetched.bodyHex,
       );
       if (m3u8 == null || m3u8.isEmpty) {
         debugPrint('[LiveGasmUnlock] unlock returned empty path=$path');
         return null;
       }
-      return (
-        url: m3u8,
-        headers: playbackHeadersForEmbedIndia(slot, embedUrl: embed),
-      );
+      final headers = playbackHeadersForEmbedIndia(slot, embedUrl: embed);
+      if (fetched.cookie != null && fetched.cookie!.isNotEmpty) {
+        headers['Cookie'] = fetched.cookie!;
+      }
+      return (url: m3u8, headers: headers);
     } catch (e) {
       debugPrint('[LiveGasmUnlock] native resolve failed: $e');
       return null;
     }
+  }
+
+  /// Embed page warm-up + `/fetch` on one [HttpClient] jar — CDN tokens
+  /// without WebView cookie harvest.
+  static Future<({String island, String bodyHex, String? cookie})?>
+  _postEmbedIndiaFetch({
+    required String origin,
+    required String path,
+    required String gid,
+  }) async {
+    final referer = gid.isNotEmpty
+        ? '$origin/embed/$path?gid=${Uri.encodeQueryComponent(gid)}'
+        : '$origin/embed/$path';
+    final client = HttpClient();
+    client.userAgent = _ua;
+    try {
+      final embedUri = Uri.parse(referer);
+      final embedReq = await client.getUrl(embedUri);
+      embedReq.headers.set('Accept', 'text/html,application/xhtml+xml,*/*');
+      final embedResp = await embedReq.close();
+      if (embedResp.statusCode >= 400) {
+        debugPrint(
+          '[LiveGasmUnlock] embed warm HTTP ${embedResp.statusCode} path=$path',
+        );
+      }
+      await consolidateHttpClientResponseBytes(embedResp);
+      var cookies = _mergeSetCookieHeaders(null, embedResp.headers);
+
+      final fetchUri = Uri.parse('$origin/fetch');
+      final fetchReq = await client.postUrl(fetchUri);
+      fetchReq.headers.set('Content-Type', 'application/octet-stream');
+      fetchReq.headers.set('Origin', origin);
+      fetchReq.headers.set('Referer', referer);
+      fetchReq.headers.set('Accept', '*/*');
+      if (cookies != null && cookies.isNotEmpty) {
+        fetchReq.headers.set('Cookie', cookies);
+      }
+      fetchReq.add(_encodeEmbedIndiaFetchBody(path));
+      final fetchResp = await fetchReq.close();
+      if (fetchResp.statusCode < 200 || fetchResp.statusCode >= 300) {
+        debugPrint(
+          '[LiveGasmUnlock] /fetch HTTP ${fetchResp.statusCode} path=$path',
+        );
+        return null;
+      }
+      cookies = _mergeSetCookieHeaders(cookies, fetchResp.headers);
+      final island = fetchResp.headers.value('island') ?? '';
+      if (island.isEmpty) {
+        debugPrint('[LiveGasmUnlock] /fetch missing island header path=$path');
+        return null;
+      }
+      final bodyBytes = await consolidateHttpClientResponseBytes(fetchResp);
+      final bodyHex = bodyBytes
+          .map((b) => b.toRadixString(16).padLeft(2, '0'))
+          .join();
+      return (island: island, bodyHex: bodyHex, cookie: cookies);
+    } on TimeoutException {
+      debugPrint('[LiveGasmUnlock] /fetch timeout path=$path');
+      return null;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  static String? _mergeSetCookieHeaders(
+    String? existing,
+    HttpHeaders headers,
+  ) {
+    final jar = <String, String>{};
+    if (existing != null && existing.isNotEmpty) {
+      for (final part in existing.split(';')) {
+        final trimmed = part.trim();
+        if (trimmed.isEmpty) continue;
+        final eq = trimmed.indexOf('=');
+        if (eq <= 0) continue;
+        jar[trimmed.substring(0, eq).trim()] = trimmed.substring(eq + 1).trim();
+      }
+    }
+    headers.forEach((name, values) {
+      if (name.toLowerCase() != 'set-cookie') return;
+      for (final raw in values) {
+        final first = raw.split(';').first.trim();
+        final eq = first.indexOf('=');
+        if (eq <= 0) continue;
+        jar[first.substring(0, eq).trim()] = first.substring(eq + 1).trim();
+      }
+    });
+    if (jar.isEmpty) return existing;
+    return jar.entries.map((e) => '${e.key}=${e.value}').join('; ');
   }
 
   /// PPV Engine: embed.st GOAT or embedindia.st GASM native unlock.
@@ -570,6 +637,9 @@ class LiveGoatUnlock {
     final path = uri.path.toLowerCase();
     final host = uri.host.toLowerCase();
     if (host.contains('wfty.st')) return true;
+    // PPV embedindia CDN — signed `/secure/…/index.m3u8` segments 403 when
+    // hls-proxy rewrites query strings; open direct with Referer/Cookie.
+    if (host.contains('indianservers.st')) return true;
     return path.contains('/delta/stream/') || path.contains('/echo/stream/');
   }
 
