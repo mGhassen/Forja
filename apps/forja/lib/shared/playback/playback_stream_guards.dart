@@ -8,6 +8,29 @@ import 'package:forja/shared/extractors/providers/vidsrcwin/profile.dart';
 import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:rust/rust.dart';
 
+/// Videasy / wings CDN (peakstorm, …) — requires player.videasy.to Referer.
+bool isVideasyCdnStreamUrl(String url) {
+  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+  if (host.isEmpty) return false;
+  return host.contains('peakstorm');
+}
+
+/// Same peakstorm target whether the row is demuxed child or master playlist.
+bool playbackUrlsEquivalent(String a, String b) {
+  final x = a.trim();
+  final y = b.trim();
+  if (x.isEmpty || y.isEmpty) return false;
+  if (x == y) return true;
+  if (isVideasyCdnStreamUrl(x) || isVideasyCdnStreamUrl(y)) {
+    return VideasyExtractor.preferHlsMasterUrl(x) ==
+        VideasyExtractor.preferHlsMasterUrl(y);
+  }
+  return false;
+}
+
+bool _urlsMatchForPlayback(String a, String b) =>
+    (a.isNotEmpty && b.isNotEmpty && a == b) || playbackUrlsEquivalent(a, b);
+
 /// True for built-in webstreaming extractors (Videasy, VidSrc, …).
 ///
 /// [StreamProviderDisplay] labels also cover playback *modes* (`stremio_direct`,
@@ -171,7 +194,7 @@ bool catalogStreamRowMatchesPlaying(
   final playTarget = play.isEmpty ? '' : (hlsProxyTargetUrl(play) ?? '');
   final urlTarget = url.isEmpty ? '' : (hlsProxyTargetUrl(url) ?? '');
 
-  bool hit(String a, String b) => a.isNotEmpty && b.isNotEmpty && a == b;
+  bool hit(String a, String b) => _urlsMatchForPlayback(a, b);
 
   if (hit(url, play) || hit(url, catalog)) return true;
   if (hit(url, playTarget) || hit(urlTarget, catalog)) return true;
@@ -192,7 +215,7 @@ bool streamSourceMatchesPlaying(
   final playTarget = play.isEmpty ? '' : (hlsProxyTargetUrl(play) ?? '');
   final urlTarget = url.isEmpty ? '' : (hlsProxyTargetUrl(url) ?? '');
 
-  bool hit(String a, String b) => a.isNotEmpty && b.isNotEmpty && a == b;
+  bool hit(String a, String b) => _urlsMatchForPlayback(a, b);
 
   // Direct / catalog identity.
   if (hit(url, play) || hit(url, catalog)) return true;

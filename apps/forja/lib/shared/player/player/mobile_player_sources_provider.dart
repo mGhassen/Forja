@@ -136,7 +136,10 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
       _s._currentProvider = newProvider;
     }
 
-    final currentPos = _s._positionNotifier.value;
+    final currentPos = switchResumePosition(
+      uiPosition: _s._positionNotifier.value,
+      playerPosition: _s._player.state.position,
+    );
     final provider = widget.providers![newProvider];
     final providerLabel = PlayerProviderMenu.snackbarLabel(
       newProvider,
@@ -247,6 +250,12 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
             skipNearCredits: false,
           );
         }
+        syncPlayerProgressNotifiers(
+          _s._player,
+          duration: _s._durationNotifier,
+          position: _s._positionNotifier,
+          buffered: _s._bufferedNotifier,
+        );
         _s._detectHlsQualities(streamUrl, headers);
 
         setState(() {
@@ -268,6 +277,20 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
             _s._current111477FileUrl = _s._currentSources!.first.url;
           }
         });
+        if (_s._durationNotifier.value <= Duration.zero &&
+            sourceExpectsDuration(streamUrl, type: sources?.first.type)) {
+          await waitForSeekableDuration(
+            _s._player,
+            timeout: const Duration(seconds: 8),
+          );
+          if (_s._fallbackAborted(gen)) return null;
+          syncPlayerProgressNotifiers(
+            _s._player,
+            duration: _s._durationNotifier,
+            position: _s._positionNotifier,
+            buffered: _s._bufferedNotifier,
+          );
+        }
 
         _s._statusController.complete();
         _s._markSourceActive(0);

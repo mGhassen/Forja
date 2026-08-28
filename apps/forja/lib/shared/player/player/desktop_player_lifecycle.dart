@@ -45,7 +45,9 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
     } else {
       _s._currentSources = widget.sources == null
           ? null
-          : dedupeStreamSources(widget.sources!);
+          : dedupeStreamSources(
+              normalizeStreamSourcesPlayUrls(widget.sources!),
+            );
       if (_s._currentProvider != null &&
           _s._currentSources != null &&
           _s._currentSources!.isNotEmpty) {
@@ -79,7 +81,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
         _hydrateSessionCacheFromDisk(),
       ]),
     );
-    _s._currentUrl = widget.mediaPath;
+    _s._currentUrl = normalizePlaybackStreamUrl(widget.mediaPath);
     // Seed catalog URL so pinSource sync starts on the chosen stream, not [0].
     if (widget.magnetLink == null || widget.magnetLink!.isEmpty) {
       _s._currentPlayingCatalogUrl = widget.mediaPath;

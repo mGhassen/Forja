@@ -54,7 +54,9 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     } else {
       _s._currentSources = widget.sources == null
           ? null
-          : dedupeStreamSources(widget.sources!);
+          : dedupeStreamSources(
+              normalizeStreamSourcesPlayUrls(widget.sources!),
+            );
       if (_s._currentProvider != null &&
           _s._currentSources != null &&
           _s._currentSources!.isNotEmpty) {
@@ -86,7 +88,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
         _hydrateSessionCacheFromDisk(),
       ]),
     );
-    _s._currentUrl = widget.mediaPath;
+    _s._currentUrl = normalizePlaybackStreamUrl(widget.mediaPath);
     if (widget.magnetLink == null || widget.magnetLink!.isEmpty) {
       _s._currentPlayingCatalogUrl = widget.mediaPath;
     }

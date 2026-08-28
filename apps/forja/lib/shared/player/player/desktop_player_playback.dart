@@ -1115,6 +1115,12 @@ mixin _DesktopPlayerPlayback
         isLocalLoopbackPlayUrl(url)) {
       return false;
     }
+    final qualityLocked =
+        isHlsQualityLocked(_s._currentQualityUrl, _s._hlsMasterUrl);
+    final playUrl = remountPlaybackStreamUrl(
+      url,
+      qualityLocked: qualityLocked,
+    );
     final src = _s._currentSources != null &&
             _s._currentFallbackSourceIndex < _s._currentSources!.length
         ? _s._currentSources![_s._currentFallbackSourceIndex]
@@ -1127,18 +1133,21 @@ mixin _DesktopPlayerPlayback
       'Reconnecting…',
       kind: StatusRouletteKind.loading,
     );
-    debugPrint('[Player] Post-seek remount open @${target.inSeconds}s: $url');
+    debugPrint(
+      '[Player] Post-seek remount open @${target.inSeconds}s: $playUrl',
+    );
     try {
       final ok = await remountPlayerStreamAtPosition(
         _s._player,
-        url: url,
+        url: playUrl,
         headers: headers,
         providerId: pid,
         seekTarget: target,
+        preserveHlsVariant: qualityLocked,
       );
       if (_s._disposed || !mounted) return false;
       if (ok) {
-        _s._currentUrl = url;
+        _s._currentUrl = playUrl;
         _s._positionNotifier.value = target;
         _s._statusController.complete();
         debugPrint('[Player] Post-seek remount resumed @${target.inSeconds}s');

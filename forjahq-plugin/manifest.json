@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq",
   "name": "ForjaHQ",
-  "version": "1.5.15",
+  "version": "1.5.16",
   "plugins": [
     {
       "id": "videasy",
@@ -466,6 +466,7 @@
           "https://animepahe.ru",
           "https://animepahe.com"
         ],
+        "proxy": "https://animepaheproxy.phisheranimepahe.workers.dev/?url=",
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },

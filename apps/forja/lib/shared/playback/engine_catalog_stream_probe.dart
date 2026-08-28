@@ -82,13 +82,15 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
         ? 'hls'
         : (pluginId == 'movieblast' ? 'mkv' : 'mp4');
     sources.add(
-      StreamSource(
-        url: url,
-        title: (row['title'] ?? row['name'] ?? 'Forja').toString(),
-        type: type,
-        headers: proxied.headers,
-        providerId: catalogHttpPlayProviderId(row),
-        catalogUrl: catalogUrl,
+      normalizeStreamSourcePlayUrl(
+        StreamSource(
+          url: url,
+          title: (row['title'] ?? row['name'] ?? 'Forja').toString(),
+          type: type,
+          headers: proxied.headers,
+          providerId: catalogHttpPlayProviderId(row),
+          catalogUrl: catalogUrl,
+        ),
       ),
     );
   }

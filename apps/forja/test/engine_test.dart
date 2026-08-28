@@ -878,7 +878,7 @@ void main() {
       );
       expect(
         parsed.firstWhere((p) => p.id == 'animepahe').config['proxy'],
-        isNull,
+        'https://animepaheproxy.phisheranimepahe.workers.dev/?url=',
       );
       expect(parsed.firstWhere((p) => p.id == 'reanime').entry, 'providers/reanime.js');
       expect(
@@ -1214,7 +1214,8 @@ void main() {
 
       final animepahe = await loadForjaHqFile('providers/animepahe.js');
       expect(animepahe.contains('isBlockedBody'), isTrue);
-      expect(animepahe.contains('phisheranimepahe'), isFalse);
+      expect(animepahe.contains('phisheranimepahe'), isTrue);
+      expect(animepahe.contains('api?m=links'), isTrue);
       expect(animepahe.contains('extractKwik'), isTrue);
       expect(animepahe.contains('kwik.si'), isTrue);
       expect(animepahe.contains('id-mapping-api-malid'), isTrue);

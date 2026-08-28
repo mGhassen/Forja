@@ -4,6 +4,8 @@ function extract(ctx) {
     ? cfg.mirrors.map(function (m) { return String(m).replace(/\/$/, ''); })
     : ['https://animepahe.pw', 'https://animepahe.ru', 'https://animepahe.com'];
   var base = (cfg.base || mirrors[0] || 'https://animepahe.pw').replace(/\/$/, '');
+  var proxy =
+    cfg.proxy || 'https://animepaheproxy.phisheranimepahe.workers.dev/?url=';
   var tmdbKey = cfg.tmdbKey || '1865f43a0549ca50d341dd9ab8b29f49';
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
   var hdrs = { 'User-Agent': ua, Cookie: '__ddg2_=1234567890', Referer: base + '/' };
@@ -26,14 +28,30 @@ function extract(ctx) {
           return String(m).replace(/\/$/, '') + url;
         });
 
-    function tryDirect(target, idx) {
+    function directOne(target) {
+      var origin = (String(target).match(/^https?:\/\/[^/]+/) || [base])[0];
+      var reqHdrs = Object.assign({}, hdrs, { Referer: origin + '/' });
+      return ctx.fetch(target, { headers: reqHdrs }).then(function (r) {
+        return r.text().then(function (text) {
+          if (isBlockedBody(text)) throw new Error('blocked');
+          if (!isAbs) {
+            base = origin;
+            hdrs.Referer = origin + '/';
+          }
+          return text;
+        });
+      });
+    }
+
+    function proxyOne(target) {
+      if (!proxy) return Promise.resolve('');
       var origin = (String(target).match(/^https?:\/\/[^/]+/) || [base])[0];
       var reqHdrs = Object.assign({}, hdrs, { Referer: origin + '/' });
       return ctx
-        .fetch(target, { headers: reqHdrs })
+        .fetch(proxy + encodeURIComponent(target), { headers: reqHdrs })
         .then(function (r) {
           return r.text().then(function (text) {
-            if (isBlockedBody(text)) throw new Error('blocked');
+            if (isBlockedBody(text)) return '';
             if (!isAbs) {
               base = origin;
               hdrs.Referer = origin + '/';
@@ -42,12 +60,26 @@ function extract(ctx) {
           });
         })
         .catch(function () {
-          if (idx + 1 < candidates.length) return tryDirect(candidates[idx + 1], idx + 1);
           return '';
         });
     }
 
-    return tryDirect(candidates[0], 0);
+    function directWalk(i) {
+      if (i >= candidates.length) {
+        function proxyWalk(j) {
+          if (j >= candidates.length) return Promise.resolve('');
+          return proxyOne(candidates[j]).then(function (t) {
+            return t || proxyWalk(j + 1);
+          });
+        }
+        return proxyWalk(0);
+      }
+      return directOne(candidates[i]).catch(function () {
+        return directWalk(i + 1);
+      });
+    }
+
+    return directWalk(0);
   }
 
   function fetchJson(url) {
@@ -447,15 +479,46 @@ function extract(ctx) {
     }
   }
 
-  function playStreams(animeSession, episodeSessionId) {
-    return fetchText('/play/' + animeSession + '/' + episodeSessionId).then(function (html) {
+  function sortStreams(streams) {
+    var order = { '1080p': 3, '720p': 2, '360p': 1 };
+    return streams.sort(function (a, b) {
+      return (order[b.quality] || 0) - (order[a.quality] || 0);
+    });
+  }
+
+  function streamsFromLinksApi(episodeSessionId) {
+    return fetchJson('/api?m=links&id=' + episodeSessionId + '&p=kwik').then(function (res) {
+      if (!res || !res.data || !res.data.length) return [];
       var streams = [];
       var tasks = [];
-      collectFromHtml(html, streams, tasks);
+      (res.data || []).forEach(function (item) {
+        var keys = Object.keys(item || {});
+        for (var ki = 0; ki < keys.length; ki++) {
+          var qKey = keys[ki];
+          var entry = item[qKey];
+          if (!entry || !entry.kwik) continue;
+          var q = /^\d+$/.test(String(qKey)) ? String(qKey) + 'p' : qualityFromText(qKey);
+          var audio = String(entry.audio || '').toLowerCase();
+          var type =
+            audio === 'eng' || audio === 'english' || audio.indexOf('eng') >= 0 ? 'Dub' : 'Sub';
+          pushKwik(tasks, streams, entry.kwik, q, type);
+        }
+      });
       return Promise.all(tasks).then(function () {
-        var order = { '1080p': 3, '720p': 2, '360p': 1 };
-        return streams.sort(function (a, b) {
-          return (order[b.quality] || 0) - (order[a.quality] || 0);
+        return streams;
+      });
+    });
+  }
+
+  function playStreams(animeSession, episodeSessionId) {
+    return streamsFromLinksApi(episodeSessionId).then(function (fromApi) {
+      if (fromApi.length) return sortStreams(fromApi);
+      return fetchText('/play/' + animeSession + '/' + episodeSessionId).then(function (html) {
+        var streams = [];
+        var tasks = [];
+        collectFromHtml(html, streams, tasks);
+        return Promise.all(tasks).then(function () {
+          return sortStreams(streams);
         });
       });
     });

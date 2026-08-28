@@ -94,6 +94,41 @@ void main() {
       );
     });
 
+    test('peakstorm child play URL matches master catalog row', () {
+      const child =
+          'https://moon.peakstorm.top/vd/x/index-s1080p-v1-a1.m3u8';
+      const master = 'https://moon.peakstorm.top/vd/x/master.m3u8';
+      final row = StreamSource(
+        url: master,
+        title: 'Stream',
+        type: 'hls',
+        catalogUrl: child,
+      );
+      expect(
+        streamSourceMatchesPlaying(row, playUrl: child, catalogUrl: child),
+        isTrue,
+      );
+    });
+
+    test('normalizePlaybackStreamUrl preserves locked HLS variant', () {
+      const variant =
+          'https://moon.peakstorm.top/vd/x/sd/11/index-s2160p-v1-a1.m3u8';
+      const master = 'https://moon.peakstorm.top/vd/x/master.m3u8';
+      expect(normalizePlaybackStreamUrl(variant), master);
+      expect(
+        normalizePlaybackStreamUrl(variant, preserveHlsVariant: true),
+        variant,
+      );
+      expect(
+        remountPlaybackStreamUrl(variant, qualityLocked: true),
+        variant,
+      );
+      expect(
+        remountPlaybackStreamUrl(variant, qualityLocked: false),
+        master,
+      );
+    });
+
     test('does not invent match on unrelated row', () {
       final row = StreamSource(
         url: 'https://cdn.example/other.m3u8',

@@ -472,6 +472,7 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
   Future<void> _switchQuality(HlsQuality q) async {
     final pos = _s._positionNotifier.value;
     final switchGen = ++_s._fallbackGen;
+    _s._postSeekStall?.cancelPending();
     _s._isInitPlaybackRunning = true;
     _s._currentQualityUrl = q.url;
     if (mounted) {
@@ -479,17 +480,19 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
         _s._hasError = false;
       });
     }
+    final lockVariant = !q.isAuto;
     try {
-      await openPlayerStream(
+      final openUrl = await openPlayerStream(
         _s._player,
         url: q.url,
         headers: _s._hlsMasterHeaders,
         startAt: pos.inSeconds > 0 ? pos : null,
+        preserveHlsVariant: lockVariant,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       final opened = await waitForPlayerStreamOpen(
         _s._player,
-        streamUrl: q.url,
+        streamUrl: openUrl,
         headers: _s._hlsMasterHeaders,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
@@ -497,7 +500,7 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
         debugPrint('[Player] HLS quality switch failed to open: ${q.url}');
         return;
       }
-      if (pos.inSeconds > 0) {
+      if (!lockVariant && pos.inSeconds > 0) {
         await ensureOpenedNearPosition(
           _s._player,
           pos,

@@ -176,6 +176,22 @@ void main() {
     );
   });
 
+  test('cancelPending clears armed seek before quality switch', () async {
+    var remounts = 0;
+    final w = PostSeekStallWatchdog(
+      onRemount: (_) async {
+        remounts++;
+        return true;
+      },
+      stallAfter: const Duration(milliseconds: 50),
+    );
+    w.noteSeek(const Duration(seconds: 60));
+    w.cancelPending();
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(remounts, 0);
+    w.dispose();
+  });
+
   test('shouldSkipPostSeekStallArm during resume grace', () {
     final confirmed = DateTime.now().subtract(const Duration(seconds: 5));
     expect(

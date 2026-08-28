@@ -48,6 +48,16 @@ class PostSeekStallWatchdog {
     _timer = null;
   }
 
+  /// Drop a pending remount (quality switch, provider hop, …).
+  void cancelPending() {
+    _timer?.cancel();
+    _timer = null;
+    _seekAt = null;
+    _target = null;
+    _remountedForSeek = false;
+    _remountInFlight = false;
+  }
+
   /// Call from every user-facing seek (±10s, scrub, D-pad).
   void noteSeek(Duration target) {
     if (!enabled) return;

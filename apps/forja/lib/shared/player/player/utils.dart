@@ -9,6 +9,8 @@ export 'package:forja/shared/playback/playback_stream_guards.dart'
         catalogStreamRowMatchesPlaying,
         durableStreamCatalogUrl,
         hlsProxyTargetUrl,
+        isVideasyCdnStreamUrl,
+        playbackUrlsEquivalent,
         streamSourceMatchesPlaying;
 import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
@@ -98,18 +100,39 @@ final _trailingMediaSlash = RegExp(
 /// Peakstorm / Videasy HLS often resolves to demuxed `index-s1080p-v1-a1.m3u8`
 /// child playlists — seek stalls on those; open sibling `master.m3u8` instead
 /// (extract-time rewrite can miss cached rows).
-String normalizePlaybackStreamUrl(String url) {
+///
+/// When [preserveHlsVariant] is true (manual Quality pick / locked remount),
+/// keep the demuxed variant URL — rewriting to master drops the quality lock.
+String normalizePlaybackStreamUrl(
+  String url, {
+  bool preserveHlsVariant = false,
+}) {
   final trimmed = url.trim();
   if (trimmed.isEmpty) return trimmed;
   var out = trimmed;
   if (_trailingMediaSlash.hasMatch(out)) {
     out = out.replaceFirst(RegExp(r'/+$'), '');
   }
-  if (isVideasyCdnStreamUrl(out)) {
+  if (!preserveHlsVariant && isVideasyCdnStreamUrl(out)) {
     out = VideasyExtractor.preferHlsMasterUrl(out);
   }
   return out;
 }
+
+/// Play URL for [source] — peakstorm child playlists → master.m3u8.
+StreamSource normalizeStreamSourcePlayUrl(StreamSource source) {
+  final raw = source.url.trim();
+  final play = normalizePlaybackStreamUrl(raw);
+  if (play == raw) return source;
+  final catalog = source.catalogUrl?.trim();
+  return source.copyWith(
+    url: play,
+    catalogUrl: (catalog != null && catalog.isNotEmpty) ? catalog : raw,
+  );
+}
+
+List<StreamSource> normalizeStreamSourcesPlayUrls(List<StreamSource> sources) =>
+    sources.map(normalizeStreamSourcePlayUrl).toList();
 
 /// Headers for every network open: extractor headers + guaranteed browser UA.
 ///
@@ -340,13 +363,6 @@ bool _isVidsrcCloudStreamPl(String url) {
   return uri.queryParameters.containsKey('token');
 }
 
-/// Videasy / wings CDN (peakstorm, …) — requires player.videasy.to Referer.
-bool isVideasyCdnStreamUrl(String url) {
-  final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
-  if (host.isEmpty) return false;
-  return host.contains('peakstorm');
-}
-
 /// VidNest Gama/MovieBox (and related) CDN - rejects any Referer with HTTP 429.
 bool isMovieBoxCdnStreamUrl(String url) {
   final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
@@ -570,8 +586,13 @@ Future<String> openPlayerStream(
   /// MediaKit/mpv: open demuxer at this time (HLS resume / server switch).
   /// Cleared after [player.open] so later seeks are not pinned to it.
   Duration? startAt,
+  /// Keep peakstorm demuxed variant URLs (manual Quality menu selection).
+  bool preserveHlsVariant = false,
 }) async {
-  var openUrl = normalizePlaybackStreamUrl(url);
+  var openUrl = normalizePlaybackStreamUrl(
+    url,
+    preserveHlsVariant: preserveHlsVariant,
+  );
   if (isTorrentStreamUrl(openUrl)) {
     throw Exception(
       'Cannot open magnet/torrent URL directly - resolve to a stream first',
@@ -782,6 +803,8 @@ bool isIgnorablePlayerError(String err) {
   return lower.contains('subtitle') ||
       lower.contains('sub-add') ||
       lower.contains('external file') ||
+      lower.contains("expected '='") ||
+      lower.contains('expected =') ||
       lower.contains('.srt') ||
       lower.contains('.vtt') ||
       lower.contains('.ass') ||
@@ -1132,6 +1155,16 @@ void syncPlayerProgressNotifiers(
   buffered.value = player.state.buffer;
 }
 
+/// Playhead to carry across provider/source switches (UI notifier or live mpv).
+Duration switchResumePosition({
+  required Duration uiPosition,
+  required Duration playerPosition,
+}) {
+  if (uiPosition.inSeconds > 0) return uiPosition;
+  if (playerPosition.inSeconds > 0) return playerPosition;
+  return Duration.zero;
+}
+
 /// Seekbar buffer-end from mpv `demuxer-cache-duration` (seconds ahead).
 ///
 /// `stream.buffer` is `demuxer-cache-time` (absolute PTS) and often stays at
@@ -1434,6 +1467,7 @@ Future<bool> remountPlayerStreamAtPosition(
   String? providerId,
   required Duration seekTarget,
   Duration? resumeTimeout,
+  bool preserveHlsVariant = false,
 }) async {
   final timeout = resumeTimeout ?? remountResumeTimeoutForSeek(seekTarget);
   await resetPlayerForOpen(player);
@@ -1444,6 +1478,7 @@ Future<bool> remountPlayerStreamAtPosition(
     headers: headers,
     providerId: providerId,
     startAt: useStart ? seekTarget : null,
+    preserveHlsVariant: preserveHlsVariant,
   );
   final opened = await waitForPlayerStreamOpen(
     player,
@@ -1854,6 +1889,16 @@ bool isHlsQualityAuto(String? currentQualityUrl, String? masterUrl) {
   if (masterUrl == null || currentQualityUrl == null) return false;
   return currentQualityUrl == masterUrl;
 }
+
+bool isHlsQualityLocked(String? currentQualityUrl, String? masterUrl) =>
+    !isHlsQualityAuto(currentQualityUrl, masterUrl);
+
+/// Normalize for remount / reopen — keep locked variant URLs on peakstorm HLS.
+String remountPlaybackStreamUrl(
+  String url, {
+  required bool qualityLocked,
+}) =>
+    normalizePlaybackStreamUrl(url, preserveHlsVariant: qualityLocked);
 
 HlsQuality? matchActiveHlsVariant(
   List<HlsQuality> qualities,

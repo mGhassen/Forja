@@ -737,7 +737,10 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     });
     _markSourceChecking(targetIndex);
 
-    final currentPos = _s._positionNotifier.value;
+    final currentPos = switchResumePosition(
+      uiPosition: _s._positionNotifier.value,
+      playerPosition: _s._player.state.position,
+    );
     final statusId = 'source-switch-$targetIndex';
     final resolvePid = source.providerId ?? source.title;
     ref.read(playerResolveStatusProvider.notifier).setLoading(resolvePid);
