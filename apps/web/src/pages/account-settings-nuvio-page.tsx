@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
+import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SettingsSection } from '@/components/settings-section'
-import { useServerDraft } from '@/hooks/use-server-draft'
+import { useCommitDraft } from '@/hooks/use-commit-draft'
 import { useNuvioSetting } from '@/hooks/use-user-setting'
 import {
   emptyNuvioPayload,
@@ -19,39 +20,38 @@ function nuvioFromServer(value: unknown): NuvioPayload {
 }
 
 export function AccountSettingsNuvioPage() {
-  const { data, profileId, isLoading, save, isSaving, saveError } =
-    useNuvioSetting()
-  const [draft, setDraft] = useServerDraft(
+  const { data, profileId, isLoading, save } = useNuvioSetting()
+  const {
+    draft,
+    commit,
+    controlsLocked,
+    isSaving,
+    savedFlash,
+    saveError,
+  } = useCommitDraft({
     profileId,
-    data?.updated_at,
-    Boolean(data) && !isLoading,
-    data?.payload,
-    nuvioFromServer,
-    emptyNuvioPayload,
-  )
+    updatedAt: data?.updated_at,
+    isReady: Boolean(data) && !isLoading,
+    serverValue: data?.payload,
+    mapServer: nuvioFromServer,
+    makeEmpty: emptyNuvioPayload,
+    save,
+  })
   const [url, setUrl] = useState('')
-  const [savedFlash, setSavedFlash] = useState(false)
-  const controlsLocked = !profileId || (isLoading && !data)
 
   const addAddon = () => {
     const manifestUrl = url.trim()
     if (!manifestUrl) return
     if (draft.addons.some((a) => a.manifestUrl === manifestUrl)) return
     const row: NuvioAddonRow = { manifestUrl, name: manifestUrl }
-    setDraft((prev) => ({ addons: [...prev.addons, row] }))
+    void commit((prev) => ({ addons: [...prev.addons, row] }))
     setUrl('')
   }
 
   const removeAddon = (manifestUrl: string) => {
-    setDraft((prev) => ({
+    void commit((prev) => ({
       addons: prev.addons.filter((a) => a.manifestUrl !== manifestUrl),
     }))
-  }
-
-  const handleSave = async () => {
-    await save(draft)
-    setSavedFlash(true)
-    window.setTimeout(() => setSavedFlash(false), 2500)
   }
 
   return (
@@ -59,19 +59,11 @@ export function AccountSettingsNuvioPage() {
       title="Nuvio addons"
       description="Manifest URLs for Nuvio scrapers. The app installs these on sync — same list as Settings → Providers & Addons → Nuvio."
       footer={
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => void handleSave()} disabled={controlsLocked || isSaving}>
-            {isSaving ? 'Saving…' : 'Save changes'}
-          </Button>
-          {savedFlash ? (
-            <span className="text-sm text-forja-green">Saved - open Forja to sync.</span>
-          ) : null}
-          {saveError ? (
-            <span className="text-sm text-red-300">
-              {saveError instanceof Error ? saveError.message : 'Save failed'}
-            </span>
-          ) : null}
-        </div>
+        <SettingsAutosaveFooter
+          isSaving={isSaving}
+          savedFlash={savedFlash}
+          error={saveError}
+        />
       }
     >
       <SettingsSection
@@ -99,7 +91,7 @@ export function AccountSettingsNuvioPage() {
                   size="sm"
                   className="text-red-300 hover:text-red-200"
                   onClick={() => removeAddon(addon.manifestUrl)}
-                  disabled={controlsLocked}
+                  disabled={controlsLocked || isSaving}
                 >
                   <Trash2 className="size-4" />
                 </Button>
@@ -115,14 +107,14 @@ export function AccountSettingsNuvioPage() {
             placeholder="https://…/manifest.json"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            disabled={controlsLocked}
+            disabled={controlsLocked || isSaving}
           />
         </div>
         <Button
           type="button"
           variant="secondary"
           onClick={addAddon}
-          disabled={controlsLocked}
+          disabled={controlsLocked || isSaving || !url.trim()}
         >
           Add addon
         </Button>

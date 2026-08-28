@@ -671,14 +671,18 @@ class PluginRegistry {
     Iterable<Map<String, dynamic>> rows, {
     bool removeMissingUserPacks = true,
   }) async {
-    final remote = <String, String?>{};
+    final remote = <String, ({String? name, String? version})>{};
     for (final raw in rows) {
       final url = (raw['manifestUrl'] as String?)?.trim() ?? '';
       if (url.isEmpty || isOfficialPack(url) || isLegacyAssetPack(url)) {
         continue;
       }
       final name = (raw['name'] as String?)?.trim();
-      remote[url] = (name != null && name.isNotEmpty) ? name : null;
+      final version = (raw['version'] as String?)?.trim();
+      remote[url] = (
+        name: (name != null && name.isNotEmpty) ? name : null,
+        version: (version != null && version.isNotEmpty) ? version : null,
+      );
     }
 
     final all = await listPacksRaw();
@@ -696,7 +700,8 @@ class PluginRegistry {
         changed = true;
         continue;
       }
-      final leanName = remote[pack.sourceUrl];
+      final lean = remote[pack.sourceUrl];
+      final leanName = lean?.name;
       if (leanName != null &&
           pack.plugins.isEmpty &&
           pack.name != leanName) {
@@ -705,7 +710,7 @@ class PluginRegistry {
             sourceUrl: pack.sourceUrl,
             packId: pack.packId,
             name: leanName,
-            version: pack.version,
+            version: lean?.version ?? pack.version,
             plugins: pack.plugins,
           ),
         );
@@ -722,8 +727,8 @@ class PluginRegistry {
         EnginePack(
           sourceUrl: entry.key,
           packId: EnginePack.packIdFromSourceUrl(entry.key),
-          name: entry.value ?? 'Forja pack',
-          version: '0.0.0',
+          name: entry.value.name ?? 'Forja pack',
+          version: entry.value.version ?? '0.0.0',
           plugins: const [],
         ),
       );

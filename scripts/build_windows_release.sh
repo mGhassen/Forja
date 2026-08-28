@@ -33,6 +33,12 @@ case "$(uname -s)" in
     ;;
 esac
 
+# Preserve pack URLs already set by release_local (github mode) — .env must not
+# overwrite with local /Users/… paths.
+_prev_hq_providers="${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}"
+_prev_hq_live="${FORJA_HQ_LIVE_MANIFEST_URL:-}"
+_prev_hq_catalog="${FORJA_HQ_CATALOG_MANIFEST_URL:-}"
+
 if [[ -f "$ROOT/.env" ]]; then
   set -a
   # shellcheck disable=SC1091
@@ -43,11 +49,20 @@ if [[ -z "${SUPABASE_PUBLISHABLE_KEY:-}" && -n "${SUPABASE_ANON_KEY:-}" ]]; then
   SUPABASE_PUBLISHABLE_KEY="$SUPABASE_ANON_KEY"
 fi
 
+[[ -n "$_prev_hq_providers" ]] && FORJA_HQ_PROVIDERS_MANIFEST_URL="$_prev_hq_providers"
+[[ -n "$_prev_hq_live" ]] && FORJA_HQ_LIVE_MANIFEST_URL="$_prev_hq_live"
+[[ -n "$_prev_hq_catalog" ]] && FORJA_HQ_CATALOG_MANIFEST_URL="$_prev_hq_catalog"
+unset _prev_hq_providers _prev_hq_live _prev_hq_catalog
+
 [[ -n "${SUPABASE_URL:-}" ]] || die "SUPABASE_URL missing"
 [[ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]] || die "SUPABASE_PUBLISHABLE_KEY missing"
 [[ -n "${RELEASE_CDN_URL:-}" ]] || die "RELEASE_CDN_URL missing"
 [[ -n "${FORJA_WEB_URL:-}" ]] || die "FORJA_WEB_URL missing"
 [[ -n "${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}" && -n "${FORJA_HQ_LIVE_MANIFEST_URL:-}" && -n "${FORJA_HQ_CATALOG_MANIFEST_URL:-}" ]] || die "FORJA_HQ_PROVIDERS/LIVE/CATALOG_MANIFEST_URL missing"
+case "${FORJA_HQ_PROVIDERS_MANIFEST_URL}" in
+  https://*) ;;
+  *) die "FORJA_HQ_*_MANIFEST_URL must be https:// for release (got local path?)" ;;
+esac
 
 command -v flutter >/dev/null || die "flutter not on PATH"
 command -v cargo >/dev/null || die "cargo/rust not on PATH"

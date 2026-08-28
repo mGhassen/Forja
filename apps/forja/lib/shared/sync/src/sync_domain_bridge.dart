@@ -580,6 +580,8 @@ class SyncDomainBridge {
       final row = <String, dynamic>{'manifestUrl': manifestUrl};
       final name = pack.name.trim();
       if (name.isNotEmpty) row['name'] = name;
+      final version = pack.version.trim();
+      if (version.isNotEmpty) row['version'] = version;
       lean.add(row);
     }
     return lean.isEmpty ? {} : {'packs': lean};

@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
+import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SettingsSection } from '@/components/settings-section'
-import { useServerDraft } from '@/hooks/use-server-draft'
+import { useCommitDraft } from '@/hooks/use-commit-draft'
 import { useStremioSetting } from '@/hooks/use-user-setting'
 import {
   emptyStremioPayload,
@@ -33,19 +34,24 @@ function toggleFeature(
 }
 
 export function AccountSettingsStremioPage() {
-  const { data, profileId, isLoading, save, isSaving, saveError } =
-    useStremioSetting()
-  const [draft, setDraft] = useServerDraft(
+  const { data, profileId, isLoading, save } = useStremioSetting()
+  const {
+    draft,
+    commit,
+    controlsLocked,
+    isSaving,
+    savedFlash,
+    saveError,
+  } = useCommitDraft({
     profileId,
-    data?.updated_at,
-    Boolean(data) && !isLoading,
-    data?.payload,
-    stremioFromServer,
-    emptyStremioPayload,
-  )
+    updatedAt: data?.updated_at,
+    isReady: Boolean(data) && !isLoading,
+    serverValue: data?.payload,
+    mapServer: stremioFromServer,
+    makeEmpty: emptyStremioPayload,
+    save,
+  })
   const [url, setUrl] = useState('')
-  const [savedFlash, setSavedFlash] = useState(false)
-  const controlsLocked = !profileId || (isLoading && !data)
 
   const addAddon = () => {
     const baseUrl = url.trim()
@@ -56,18 +62,18 @@ export function AccountSettingsStremioPage() {
       name: baseUrl,
       features: ['vod'],
     }
-    setDraft((prev) => ({ addons: [...prev.addons, row] }))
+    void commit((prev) => ({ addons: [...prev.addons, row] }))
     setUrl('')
   }
 
   const removeAddon = (baseUrl: string) => {
-    setDraft((prev) => ({
+    void commit((prev) => ({
       addons: prev.addons.filter((a) => a.baseUrl !== baseUrl),
     }))
   }
 
   const setFeature = (baseUrl: string, feature: 'vod' | 'live') => {
-    setDraft((prev) => ({
+    void commit((prev) => ({
       addons: prev.addons.map((a) =>
         a.baseUrl === baseUrl
           ? { ...a, features: toggleFeature(a.features, feature) }
@@ -76,30 +82,16 @@ export function AccountSettingsStremioPage() {
     }))
   }
 
-  const handleSave = async () => {
-    await save(draft)
-    setSavedFlash(true)
-    window.setTimeout(() => setSavedFlash(false), 2500)
-  }
-
   return (
     <AccountSettingsShell
       title="Stremio addons"
       description="Manifest URLs for Stremio addons. Assign each to Sources and/or Live Matches — same list as Settings → Sources in the app."
       footer={
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => void handleSave()} disabled={controlsLocked || isSaving}>
-            {isSaving ? 'Saving…' : 'Save changes'}
-          </Button>
-          {savedFlash ? (
-            <span className="text-sm text-forja-green">Saved - open Forja to sync.</span>
-          ) : null}
-          {saveError ? (
-            <span className="text-sm text-red-300">
-              {saveError instanceof Error ? saveError.message : 'Save failed'}
-            </span>
-          ) : null}
-        </div>
+        <SettingsAutosaveFooter
+          isSaving={isSaving}
+          savedFlash={savedFlash}
+          error={saveError}
+        />
       }
     >
       <SettingsSection
@@ -134,7 +126,7 @@ export function AccountSettingsStremioPage() {
                             <button
                               key={id}
                               type="button"
-                              disabled={controlsLocked}
+                              disabled={controlsLocked || isSaving}
                               onClick={() => setFeature(addon.baseUrl, id)}
                               className={cn(
                                 'rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors',
@@ -155,7 +147,7 @@ export function AccountSettingsStremioPage() {
                       size="sm"
                       className="self-end text-red-300 hover:text-red-200 sm:self-center"
                       onClick={() => removeAddon(addon.baseUrl)}
-                      disabled={controlsLocked}
+                      disabled={controlsLocked || isSaving}
                     >
                       <Trash2 className="size-4" />
                     </Button>
@@ -172,14 +164,14 @@ export function AccountSettingsStremioPage() {
               placeholder="https://…/manifest.json"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              disabled={controlsLocked}
+              disabled={controlsLocked || isSaving}
             />
           </div>
           <Button
             type="button"
             variant="secondary"
             onClick={addAddon}
-            disabled={controlsLocked}
+            disabled={controlsLocked || isSaving || !url.trim()}
           >
             Add addon
           </Button>

@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { ChevronDown, ChevronUp, Lock, Star } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
+import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { SettingsSection } from '@/components/settings-section'
-import { Button } from '@/components/ui/button'
-import { useServerDraft } from '@/hooks/use-server-draft'
+import { useCommitDraft } from '@/hooks/use-commit-draft'
 import { useNavigationSetting } from '@/hooks/use-user-setting'
 import {
   DEFAULT_NAV_TAB,
@@ -50,8 +50,6 @@ function navigationFromServer(value: unknown): NavDraft {
 }
 
 function emptyNavDraft(): NavDraft {
-  // Placeholder while the profile row loads — do not paint every tab checked
-  // (emptyNavigationPayload defaults), or the UI flashes all-on then real subset.
   return {
     order: [...DEFAULT_NAV_VISIBLE_IDS],
     visible: new Set(),
@@ -60,18 +58,24 @@ function emptyNavDraft(): NavDraft {
 }
 
 export function AccountSettingsNavigationPage() {
-  const { data, profileId, isLoading, save, isSaving, saveError } =
-    useNavigationSetting()
-  const [draft, setDraft] = useServerDraft(
+  const { data, profileId, isLoading, save } = useNavigationSetting()
+  const {
+    draft,
+    commit,
+    controlsLocked,
+    isSaving,
+    savedFlash,
+    saveError,
+  } = useCommitDraft({
     profileId,
-    data?.updated_at,
-    Boolean(data) && !isLoading,
-    data?.payload,
-    navigationFromServer,
-    emptyNavDraft,
-  )
-  const [savedFlash, setSavedFlash] = useState(false)
-  const controlsLocked = !profileId || (isLoading && !data)
+    updatedAt: data?.updated_at,
+    isReady: Boolean(data) && !isLoading,
+    serverValue: data?.payload,
+    mapServer: navigationFromServer,
+    makeEmpty: emptyNavDraft,
+    save,
+    toPayload: payloadFromDraft,
+  })
 
   const startupOptions = useMemo(() => {
     const opts = draft.order.filter((id) => draft.visible.has(id))
@@ -80,7 +84,7 @@ export function AccountSettingsNavigationPage() {
   }, [draft.order, draft.visible])
 
   const move = (index: number, dir: -1 | 1) => {
-    setDraft((prev) => {
+    void commit((prev) => {
       const next = [...prev.order]
       const target = index + dir
       if (target < 0 || target >= next.length) return prev
@@ -90,16 +94,12 @@ export function AccountSettingsNavigationPage() {
   }
 
   const setVisible = (id: string, on: boolean) => {
-    setDraft((prev) => {
+    void commit((prev) => {
       const visible = new Set(prev.visible)
       if (on) visible.add(id)
       else visible.delete(id)
       let defaultTab = prev.defaultTab
-      if (
-        !on &&
-        defaultTab === id &&
-        defaultTab !== 'settings'
-      ) {
+      if (!on && defaultTab === id && defaultTab !== 'settings') {
         const still = prev.order.filter((x) => visible.has(x))
         defaultTab = still.includes(DEFAULT_NAV_TAB)
           ? DEFAULT_NAV_TAB
@@ -109,30 +109,16 @@ export function AccountSettingsNavigationPage() {
     })
   }
 
-  const handleSave = async () => {
-    await save(payloadFromDraft(draft))
-    setSavedFlash(true)
-    window.setTimeout(() => setSavedFlash(false), 2500)
-  }
-
   return (
     <AccountSettingsShell
       title="Features"
       description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Matches Settings → Features in the app."
       footer={
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => void handleSave()} disabled={controlsLocked || isSaving}>
-            {isSaving ? 'Saving…' : 'Save changes'}
-          </Button>
-          {savedFlash ? (
-            <span className="text-sm text-forja-green">Saved - open Forja to sync.</span>
-          ) : null}
-          {saveError ? (
-            <span className="text-sm text-red-300">
-              {saveError instanceof Error ? saveError.message : 'Save failed'}
-            </span>
-          ) : null}
-        </div>
+        <SettingsAutosaveFooter
+          isSaving={isSaving}
+          savedFlash={savedFlash}
+          error={saveError}
+        />
       }
     >
       <SettingsSection
@@ -152,7 +138,7 @@ export function AccountSettingsNavigationPage() {
                   <button
                     type="button"
                     aria-label={`Move ${labelFor(id)} up`}
-                    disabled={controlsLocked || index === 0}
+                    disabled={controlsLocked || isSaving || index === 0}
                     onClick={() => move(index, -1)}
                     className="text-forja-muted hover:text-forja-text disabled:opacity-30"
                   >
@@ -161,7 +147,11 @@ export function AccountSettingsNavigationPage() {
                   <button
                     type="button"
                     aria-label={`Move ${labelFor(id)} down`}
-                    disabled={controlsLocked || index === draft.order.length - 1}
+                    disabled={
+                      controlsLocked ||
+                      isSaving ||
+                      index === draft.order.length - 1
+                    }
                     onClick={() => move(index, 1)}
                     className="text-forja-muted hover:text-forja-text disabled:opacity-30"
                   >
@@ -183,9 +173,9 @@ export function AccountSettingsNavigationPage() {
                       ? `${labelFor(id)} is default tab`
                       : `Set ${labelFor(id)} as default tab`
                   }
-                  disabled={controlsLocked || !on}
+                  disabled={controlsLocked || isSaving || !on}
                   onClick={() =>
-                    setDraft((prev) => ({ ...prev, defaultTab: id }))
+                    void commit((prev) => ({ ...prev, defaultTab: id }))
                   }
                   className={cn(
                     'shrink-0 disabled:opacity-30',
@@ -202,7 +192,7 @@ export function AccountSettingsNavigationPage() {
                   role="switch"
                   aria-checked={on}
                   aria-label={`Show ${labelFor(id)}`}
-                  disabled={controlsLocked}
+                  disabled={controlsLocked || isSaving}
                   onClick={() => setVisible(id, !on)}
                   className={cn(
                     'group relative h-6 w-11 shrink-0 appearance-none rounded-full border-0 p-0 transition-colors active:scale-100 active:filter-none disabled:cursor-not-allowed disabled:opacity-60',
@@ -231,9 +221,9 @@ export function AccountSettingsNavigationPage() {
                   ? 'Settings is default tab'
                   : 'Set Settings as default tab'
               }
-              disabled={controlsLocked}
+              disabled={controlsLocked || isSaving}
               onClick={() =>
-                setDraft((prev) => ({ ...prev, defaultTab: 'settings' }))
+                void commit((prev) => ({ ...prev, defaultTab: 'settings' }))
               }
               className={cn(
                 'shrink-0',
@@ -267,9 +257,9 @@ export function AccountSettingsNavigationPage() {
                 ? draft.defaultTab
                 : (startupOptions[0] ?? DEFAULT_NAV_TAB)
             }
-            disabled={controlsLocked}
+            disabled={controlsLocked || isSaving}
             onChange={(e) =>
-              setDraft((prev) => ({ ...prev, defaultTab: e.target.value }))
+              void commit((prev) => ({ ...prev, defaultTab: e.target.value }))
             }
           >
             {startupOptions.map((id) => (

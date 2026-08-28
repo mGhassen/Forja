@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { AccountSettingsShell } from '@/components/account-settings-shell'
+import { SettingsAutosaveFooter } from '@/components/settings-autosave-footer'
 import { SettingsSection } from '@/components/settings-section'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -279,29 +280,46 @@ export function AccountSettingsIptvPage() {
     [filteredPortals, portalPage],
   )
 
+  const persistPortals = async (portals: IptvPortalRow[]) => {
+    setDraft({ portals })
+    setHydrateError(null)
+    try {
+      await portalsHook.replaceAll(
+        portals.map((portal) => ({
+          url: portal.url,
+          username: portal.username,
+          password: portal.password,
+          source: portal.source,
+          expiry: portal.expiry,
+          maxConnections: portal.max,
+          platform: portal.platform ?? 'xtream',
+          portalName: portal.portalName?.trim() || portal.username,
+          favorite: portal.favorite === true,
+        })),
+      )
+      setSavedFlash(true)
+      window.setTimeout(() => setSavedFlash(false), 2000)
+    } catch {
+      // portalsHook.saveError surfaces in footer
+    }
+  }
+
   const toggleFavorite = (row: IptvPortalRow) => {
     const id = rowIdentity(row)
-    setDraft((prev) => ({
-      ...prev,
-      portals: prev.portals.map((p) =>
-        rowIdentity(p) === id ? { ...p, favorite: !p.favorite } : p,
-      ),
-    }))
+    const next = draft.portals.map((p) =>
+      rowIdentity(p) === id ? { ...p, favorite: !p.favorite } : p,
+    )
+    void persistPortals(next)
   }
 
   const upsertPortal = (row: IptvPortalRow, replaceKey?: string | null) => {
     const key = rowIdentity(row)
-    setDraft((prev) => {
-      const without = prev.portals.filter((p) => {
-        const pk = rowIdentity(p)
-        if (replaceKey && pk === replaceKey) return false
-        return pk !== key
-      })
-      return {
-        ...prev,
-        portals: [...without, row],
-      }
+    const without = draft.portals.filter((p) => {
+      const pk = rowIdentity(p)
+      if (replaceKey && pk === replaceKey) return false
+      return pk !== key
     })
+    void persistPortals([...without, row])
   }
 
   const addPortalManual = () => {
@@ -352,10 +370,8 @@ export function AccountSettingsIptvPage() {
   }
 
   const removePortal = (key: string) => {
-    setDraft((prev) => ({
-      ...prev,
-      portals: prev.portals.filter((p) => rowIdentity(p) !== key),
-    }))
+    const next = draft.portals.filter((p) => rowIdentity(p) !== key)
+    void persistPortals(next)
     if (editingKey === key) {
       setEditingKey(null)
       setPortalForm({ url: '', username: '', password: '', portalName: '' })
@@ -369,24 +385,6 @@ export function AccountSettingsIptvPage() {
     )
     const csv = portalsToCsv(sortedPortals, favorites)
     downloadTextFile(iptvPortalsCsvFilename(), csv)
-  }
-
-  const handleSave = async () => {
-    await portalsHook.replaceAll(
-      draft.portals.map((portal) => ({
-        url: portal.url,
-        username: portal.username,
-        password: portal.password,
-        source: portal.source,
-        expiry: portal.expiry,
-        maxConnections: portal.max,
-        platform: portal.platform ?? 'xtream',
-        portalName: portal.portalName?.trim() || portal.username,
-        favorite: portal.favorite === true,
-      })),
-    )
-    setSavedFlash(true)
-    window.setTimeout(() => setSavedFlash(false), 2500)
   }
 
   const copyShare = async (portal: IptvPortalRow) => {
@@ -421,25 +419,20 @@ export function AccountSettingsIptvPage() {
   return (
     <AccountSettingsShell
       footer={
-        <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => void handleSave()} disabled={isLoading || isSaving}>
-            {isSaving ? 'Saving…' : 'Save changes'}
-          </Button>
-          {savedFlash ? (
-            <span className="text-sm text-forja-green">Saved - open Forja to sync.</span>
-          ) : null}
-          {saveError ? (
-            <span className="text-sm text-red-300">
-              {saveError instanceof Error ? saveError.message : 'Save failed'}
-            </span>
-          ) : null}
-          {hydrateError ? (
-            <span className="text-sm text-red-300">{hydrateError}</span>
-          ) : null}
-          {shareError && !addOpen ? (
-            <span className="text-sm text-red-300">{shareError}</span>
-          ) : null}
-        </div>
+        <SettingsAutosaveFooter
+          isSaving={isSaving}
+          savedFlash={savedFlash}
+          error={
+            saveError instanceof Error
+              ? saveError
+              : hydrateError
+          }
+          extra={
+            shareError && !addOpen ? (
+              <span className="text-red-300">{shareError}</span>
+            ) : null
+          }
+        />
       }
     >
       <div className="mb-8 space-y-3">

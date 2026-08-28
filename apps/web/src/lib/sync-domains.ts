@@ -139,6 +139,7 @@ export type NuvioPayload = {
 export type ForjaPackRow = {
   manifestUrl: string
   name?: string
+  version?: string
 }
 
 export type ForjaPayload = {
@@ -426,7 +427,9 @@ function compactForja(s: ForjaPayload | undefined): ForjaPayload | undefined {
       if (!manifestUrl) return null
       const row: ForjaPackRow = { manifestUrl }
       const name = a.name?.trim()
-      if (name) row.name = name
+      if (name && name !== manifestUrl) row.name = name
+      const version = a.version?.trim()
+      if (version) row.version = version
       return row
     })
     .filter((a): a is ForjaPackRow => a != null)
