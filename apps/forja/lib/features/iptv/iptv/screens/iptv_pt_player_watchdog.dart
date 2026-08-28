@@ -4,7 +4,10 @@ part of 'iptv_pt_player_screen.dart';
 // ignore_for_file: unused_element
 
 mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
-  Future<void> _triggerRecovery({required String reason, bool forceHard = false});
+  Future<void> _triggerRecovery({
+    required String reason,
+    bool forceHard = false,
+  });
   bool get _livePlaybackProfile;
   void _syncPlaybackBannerVisibility();
 
@@ -28,25 +31,30 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
     if (p is! NativePlayer) return;
     _s._cacheProbeInFlight = true;
     _s._lastDemuxerSampleAt = DateTime.now();
-    unawaited(() async {
-      try {
-        final aheadRaw = await p.getProperty('demuxer-cache-duration');
-        final ahead = double.tryParse(aheadRaw.toString());
-        if (ahead != null && ahead.isFinite && ahead >= 0) {
-          _applyCacheAheadSample(ahead, source: 'demuxer-cache-duration');
+    unawaited(
+      () async {
+        try {
+          final aheadRaw = await p.getProperty('demuxer-cache-duration');
+          final ahead = double.tryParse(aheadRaw.toString());
+          if (ahead != null && ahead.isFinite && ahead >= 0) {
+            _applyCacheAheadSample(ahead, source: 'demuxer-cache-duration');
+          }
+          final timeRaw = await p.getProperty('demuxer-cache-time');
+          final t = double.tryParse(timeRaw.toString());
+          if (t != null && t.isFinite) {
+            _noteFeedProgress((t * 1000).round());
+          }
+        } catch (_) {
+        } finally {
+          _s._cacheProbeInFlight = false;
         }
-        final timeRaw = await p.getProperty('demuxer-cache-time');
-        final t = double.tryParse(timeRaw.toString());
-        if (t != null && t.isFinite) {
-          _noteFeedProgress((t * 1000).round());
-        }
-      } catch (_) {
-      } finally {
-        _s._cacheProbeInFlight = false;
-      }
-    }().timeout(const Duration(seconds: 4), onTimeout: () {
-      _s._cacheProbeInFlight = false;
-    }));
+      }().timeout(
+        const Duration(seconds: 4),
+        onTimeout: () {
+          _s._cacheProbeInFlight = false;
+        },
+      ),
+    );
   }
 
   bool _shouldSampleDemuxerCache() {
@@ -122,8 +130,7 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
         return;
       }
       if (drops > _s._stallFrameDropBaseline + 2 &&
-          _s._cacheAheadSecs >=
-              _IptvPtPlayerScreenState._minHealthyCacheSecs) {
+          _s._cacheAheadSecs >= _IptvPtPlayerScreenState._minHealthyCacheSecs) {
         _s._livePaintMissStreak = 2;
       }
     } catch (_) {}
@@ -204,8 +211,7 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
 
   /// Live Matches / Forja Live on MediaKit — playhead often stuck at 0 while
   /// HLS paints; do not treat idle position as a frozen feed.
-  bool get _mediaKitLiveProfile =>
-      _livePlaybackProfile && !_s._exoBackend;
+  bool get _mediaKitLiveProfile => _livePlaybackProfile && !_s._exoBackend;
 
   bool get _playheadRecentlyMoved {
     if (!_s._playing) return false;
@@ -225,8 +231,7 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
     if (since == null) return false;
     if (_playheadRecentlyMoved) return false;
     if (!_mediaKitLiveProfile &&
-        _s._cacheAheadSecs >=
-            _IptvPtPlayerScreenState._minHealthyCacheSecs) {
+        _s._cacheAheadSecs >= _IptvPtPlayerScreenState._minHealthyCacheSecs) {
       return false;
     }
     return DateTime.now().difference(since) >=
@@ -296,8 +301,7 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
     if (_mediaKitLiveProfile) {
       return _playheadRecentlyMoved;
     }
-    if (_s._cacheAheadSecs >=
-        _IptvPtPlayerScreenState._minHealthyCacheSecs) {
+    if (_s._cacheAheadSecs >= _IptvPtPlayerScreenState._minHealthyCacheSecs) {
       return true;
     }
     if (_playheadRecentlyMoved) return true;
@@ -338,14 +342,14 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
           now.difference(_s._lastPosChange) <
               const Duration(milliseconds: 1500) &&
           _s._lastRecoveryAt != null &&
-          now.difference(_s._lastRecoveryAt!) >
-              const Duration(seconds: 2)) {
+          now.difference(_s._lastRecoveryAt!) > const Duration(seconds: 2)) {
         if (mounted) setState(() => _s._statusBanner = null);
       }
 
       if (_s._retryAttempt > 0 &&
           _s._playing &&
-          now.difference(_s._lastPosChange) < const Duration(milliseconds: 1500) &&
+          now.difference(_s._lastPosChange) <
+              const Duration(milliseconds: 1500) &&
           _s._lastRecoveryAt != null &&
           now.difference(_s._lastRecoveryAt!) >
               _IptvPtPlayerScreenState._healthyStreakNeeded) {
@@ -371,8 +375,10 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
           return;
         }
         _triggerRecovery(
-            reason: 'buffering ${now.difference(_s._bufferingSince!).inSeconds}s, '
-                'cache empty');
+          reason:
+              'buffering ${now.difference(_s._bufferingSince!).inSeconds}s, '
+              'cache empty',
+        );
         return;
       }
       // Detector 2: position frozen — Exo/VOD only. MediaKit live playhead is
@@ -387,7 +393,8 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
             return;
           }
           _triggerRecovery(
-              reason: 'position frozen ${frozenFor.inSeconds}s, cache empty');
+            reason: 'position frozen ${frozenFor.inSeconds}s, cache empty',
+          );
           return;
         }
       } else if (_s._userPlayWhenReady && _s._playing) {
@@ -402,16 +409,16 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
         final frozenFor = now.difference(_s._lastPosChange);
         if (frozenFor > const Duration(milliseconds: 1500)) {
           _ensureBufferingChrome(now);
-          if (frozenFor >=
-              _IptvPtPlayerScreenState._liveEmptyPauseReopen) {
+          if (frozenFor >= _IptvPtPlayerScreenState._liveEmptyPauseReopen) {
             if (_s._livePaintMissStreak < 2) return;
-            final empty = _s._cacheAheadSecs <
+            final empty =
+                _s._cacheAheadSecs <
                 _IptvPtPlayerScreenState._minHealthyCacheSecs;
             _triggerRecovery(
               reason: empty
                   ? 'live underrun, cache empty'
                   : 'live vo freeze, paint stalled '
-                      '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
+                        '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
             );
             return;
           }
@@ -438,26 +445,24 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
             return;
           }
           _ensureBufferingChrome(now);
-          if (pausedFor <
-              _IptvPtPlayerScreenState._liveEmptyPauseReopen) {
+          if (pausedFor < _IptvPtPlayerScreenState._liveEmptyPauseReopen) {
             if (pausedFor.inMilliseconds < 1200) {
               _logHold('self-pause refill', healthy: false);
             }
             return;
           }
-          _triggerRecovery(
-            reason: 'silent self-pause, cache empty',
-          );
+          _triggerRecovery(reason: 'silent self-pause, cache empty');
           return;
         }
-        if (!_s._buffering &&
-            pausedFor > const Duration(milliseconds: 3000)) {
+        if (!_s._buffering && pausedFor > const Duration(milliseconds: 3000)) {
           if (_streamWorking) {
             _logHealthyHold('self-pause');
             return;
           }
           _triggerRecovery(
-              reason: 'silent self-pause, cache empty', forceHard: true);
+            reason: 'silent self-pause, cache empty',
+            forceHard: true,
+          );
           return;
         }
       }
@@ -466,10 +471,8 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
           !_playbackStarted &&
           _s._lastPos == Duration.zero &&
           now.difference(_s._openedAt) > const Duration(seconds: 30)) {
-        _triggerRecovery(
-            reason: 'no first frame after 30s', forceHard: true);
+        _triggerRecovery(reason: 'no first frame after 30s', forceHard: true);
       }
     });
   }
-
 }

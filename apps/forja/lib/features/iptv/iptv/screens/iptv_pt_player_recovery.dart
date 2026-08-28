@@ -4,15 +4,8 @@ part of 'iptv_pt_player_screen.dart';
 // ignore_for_file: unused_element
 
 mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
-  Future<void> _openCurrent({
-    bool hardRecreate = false,
-    String? switchingLabel,
-    bool refreshLiveEngine = false,
-  });
-  Future<void> _engineOpenSource(
-    IptvPlaySource src, {
-    bool refreshLiveEngine = false,
-  });
+  Future<void> _openCurrent({bool hardRecreate = false});
+  Future<void> _engineOpenSource(IptvPlaySource src);
   Future<void> _probeStreamCapabilities();
   bool _giveUpDeadStalkerStream();
   void _initPlayerInstances();
@@ -121,9 +114,10 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
     _s._lastRecoveryAt = now;
     _s._streamSeekable = false;
     debugPrint(
-        '[IPTV Watchdog] recovery (#${_s._retryAttempt + 1}, hard=$forceHard'
-        '${userInitiated ? ', user' : ''}): $reason '
-        '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)');
+      '[IPTV Watchdog] recovery (#${_s._retryAttempt + 1}, hard=$forceHard'
+      '${userInitiated ? ', user' : ''}): $reason '
+      '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
+    );
 
     try {
       if (_s._disposed) return;
@@ -138,13 +132,12 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         _s._retryAttempt = 0;
         _s._syncTitleToActiveSource();
         if (mounted) {
-          setState(() => _s._statusBanner =
-              'Switching to ${_s._sources[_s._sourceIdx].pickerTitle}…');
+          setState(
+            () => _s._statusBanner =
+                'Switching to ${_s._sources[_s._sourceIdx].pickerTitle}…',
+          );
         }
-        await _openCurrent(
-          hardRecreate: _atvHardReseatStreams,
-          refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
-        );
+        await _openCurrent(hardRecreate: _atvHardReseatStreams);
         return;
       }
 
@@ -155,13 +148,12 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
           _s._retryAttempt = 0;
           _s._syncTitleToActiveSource();
           if (mounted) {
-            setState(() =>
-                _s._statusBanner = 'Switching to ${_s._sources[_s._sourceIdx].label}…');
+            setState(
+              () => _s._statusBanner =
+                  'Switching to ${_s._sources[_s._sourceIdx].label}…',
+            );
           }
-          await _openCurrent(
-          hardRecreate: _atvHardReseatStreams,
-          refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
-        );
+          await _openCurrent(hardRecreate: _atvHardReseatStreams);
           return;
         }
         // Movies/series: stop after the ladder (no forever cold-retry).
@@ -175,8 +167,10 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         // streams come back. Wipe the player completely and try again on a
         // long interval so we're not hammering a dead endpoint.
         if (mounted) {
-          setState(() => _s._statusBanner =
-              'Stream offline - retrying every ${_IptvPtPlayerScreenState._coldRetryInterval.inSeconds}s…');
+          setState(
+            () => _s._statusBanner =
+                'Stream offline - retrying every ${_IptvPtPlayerScreenState._coldRetryInterval.inSeconds}s…',
+          );
         }
         await Future.delayed(_IptvPtPlayerScreenState._coldRetryInterval);
         if (_s._disposed) return;
@@ -189,10 +183,7 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         _s._retryAttempt = 0;
         if (_s._disposed || (!_s._exoBackend && !_s._playerAlive)) return;
         try {
-          await _engineOpenSource(
-            _s._sources[_s._sourceIdx],
-            refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
-          );
+          await _engineOpenSource(_s._sources[_s._sourceIdx]);
         } catch (e) {
           debugPrint('[IPTV] cold-retry open failed: $e');
         }
@@ -209,12 +200,17 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
       }
 
       _s._retryAttempt++;
-      final delayIdx = (_s._retryAttempt - 1).clamp(0, _s._backoffMs.length - 1);
+      final delayIdx = (_s._retryAttempt - 1).clamp(
+        0,
+        _s._backoffMs.length - 1,
+      );
       final delay = _s._backoffMs[delayIdx];
       // Show what we're doing so the user isn't staring at a frozen spinner.
       if (mounted) {
-        setState(() => _s._statusBanner =
-            'Reconnecting\u2026 (attempt ${_s._retryAttempt}/${_IptvPtPlayerScreenState._maxRetries})');
+        setState(
+          () => _s._statusBanner =
+              'Reconnecting\u2026 (attempt ${_s._retryAttempt}/${_IptvPtPlayerScreenState._maxRetries})',
+        );
       }
 
       await Future.delayed(Duration(milliseconds: delay));
@@ -223,7 +219,8 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
       // Hard recreate is expensive and fragile on Windows (unbounded mpv
       // dispose - issue 062) and ANRs ATV (issue 128). Prefer soft reopen for
       // early stalls; only recreate after several soft failures.
-      final allowHardRecreate = forceHard &&
+      final allowHardRecreate =
+          forceHard &&
           _s._retryAttempt > 2 &&
           (!_s._windowsSoftwareDecode || _s._retryAttempt > 4);
       // Busy live mpv: Player.open / stop ANRs ATV (issue 128 T08). Snap first;
@@ -252,10 +249,7 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         }
         try {
           if (!await _recreatePlayer()) return;
-          await _engineOpenSource(
-            _s._sources[_s._sourceIdx],
-            refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
-          );
+          await _engineOpenSource(_s._sources[_s._sourceIdx]);
           if (mounted) setState(() {});
         } catch (e) {
           debugPrint('[IPTV] VO-freeze recreate failed: $e');
@@ -279,10 +273,7 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
       } else if (allowHardRecreate || (atvMkLive && _s._retryAttempt > 2)) {
         try {
           if (!await _recreatePlayer()) return;
-          await _engineOpenSource(
-            _s._sources[_s._sourceIdx],
-            refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
-          );
+          await _engineOpenSource(_s._sources[_s._sourceIdx]);
           if (mounted) setState(() {});
         } catch (e) {
           debugPrint('[IPTV] hard recreate failed: $e');
@@ -291,10 +282,7 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         // Soft reopen — never seek(0) on live (anchors to DVR start / spam).
         // forceHard on attempt 1–2 also soft-reopens (ATV ANR if we recreate).
         try {
-          await _engineOpenSource(
-            _s._sources[_s._sourceIdx],
-            refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
-          );
+          await _engineOpenSource(_s._sources[_s._sourceIdx]);
           await _enginePlay();
         } catch (_) {}
       } else if (_s._retryAttempt <= 4) {
@@ -306,18 +294,12 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
           }
         } catch (_) {}
         try {
-          await _engineOpenSource(
-            _s._sources[_s._sourceIdx],
-            refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
-          );
+          await _engineOpenSource(_s._sources[_s._sourceIdx]);
         } catch (_) {}
       } else {
         try {
           if (!await _recreatePlayer()) return;
-          await _engineOpenSource(
-            _s._sources[_s._sourceIdx],
-            refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
-          );
+          await _engineOpenSource(_s._sources[_s._sourceIdx]);
           if (mounted) setState(() {});
         } catch (e) {
           debugPrint('[IPTV] recreate failed: $e');

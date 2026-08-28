@@ -60,12 +60,22 @@ function extract(ctx) {
     });
   }
 
-  function findToken(db) {
+  function seasonEpisodeKeys() {
+    return {
+      season: String(isMovie ? 1 : ctx.season || 1),
+      episode: String(isMovie ? 1 : ctx.mappedEpisode || ctx.episode || 1),
+    };
+  }
+
+  function findEpisode(db) {
     var episodes = (db && db.episodes) || {};
-    var season = String(isMovie ? 1 : ctx.season || 1);
-    var episode = String(isMovie ? 1 : ctx.mappedEpisode || ctx.episode || 1);
-    var seasonMap = episodes[season] || episodes[1] || {};
-    var ep = seasonMap[episode] || seasonMap[1];
+    var keys = seasonEpisodeKeys();
+    var seasonMap = episodes[keys.season] || episodes[1] || {};
+    return seasonMap[keys.episode] || seasonMap[1] || null;
+  }
+
+  function findToken(db) {
+    var ep = findEpisode(db);
     return ep && (ep.token || ep.eid) ? ep.token || ep.eid : null;
   }
 
@@ -116,6 +126,66 @@ function extract(ctx) {
     return getJson(q).then(pickDbEntry);
   }
 
+  function languageLabel(kind) {
+    if (kind === 'dub') return 'Dub';
+    if (kind === 'softsub') return 'Softsub';
+    return 'Sub';
+  }
+
+  function streamsFromDbSources(db, ep) {
+    var mirrors = (db.info && db.info.mirrors) || {};
+    var megaupMirrors = mirrors.megaup || [];
+    var sources = ep && ep.sources;
+    if (!sources || !megaupMirrors.length) return Promise.resolve([]);
+
+    var tasks = [];
+    Object.keys(sources).forEach(function (kind) {
+      var group = sources[kind] || {};
+      Object.keys(group).forEach(function (serverKey) {
+        if (serverKey === 'skip') return;
+        var media = group[serverKey];
+        if (!media || typeof media !== 'string') return;
+        var path = media.charAt(0) === '/' ? media.slice(1) : media;
+        megaupMirrors.forEach(function (mirror) {
+          var base = String(mirror).replace(/\/$/, '');
+          var url = base + '/' + path;
+          tasks.push(
+            ctx
+              .hop(url)
+              .then(function (rows) {
+                return (rows || []).map(function (row) {
+                  return {
+                    url: row.url,
+                    name: row.name || 'AnimeKai ' + kind + ' ' + serverKey,
+                    language: languageLabel(kind),
+                    headers: row.headers || HEADERS,
+                  };
+                });
+              })
+              .catch(function () {
+                return [];
+              }),
+          );
+        });
+      });
+    });
+
+    return Promise.all(tasks).then(function (groups) {
+      var out = [];
+      var seen = {};
+      for (var i = 0; i < groups.length; i++) {
+        var rows = groups[i] || [];
+        for (var j = 0; j < rows.length; j++) {
+          var row = rows[j];
+          if (!row.url || seen[row.url]) continue;
+          seen[row.url] = true;
+          out.push(row);
+        }
+      }
+      return out;
+    });
+  }
+
   function ajaxBases(db) {
     var bases = [{ origin: String(cfg.origin).replace(/\/$/, ''), ajax: String(AJAX).replace(/\/$/, '') }];
     var mirrors = db && db.info && db.info.mirrors && db.info.mirrors.animekai;
@@ -143,83 +213,96 @@ function extract(ctx) {
     return tryAt(0);
   }
 
+  function streamsFromAjax(db, epToken) {
+    return encrypt(epToken)
+      .then(function (encToken) {
+        return getJsonAjax('/links/list?token=' + epToken + '&_=' + encToken, db);
+      })
+      .then(function (serversResp) {
+        return parseHtml(serversResp.result);
+      })
+      .then(function (servers) {
+        var tasks = [];
+        Object.keys(servers || {}).forEach(function (kind) {
+          var group = servers[kind] || {};
+          Object.keys(group).forEach(function (key) {
+            var lid = group[key] && group[key].lid;
+            if (!lid) return;
+            tasks.push(
+              encrypt(lid)
+                .then(function (encLid) {
+                  return getJsonAjax('/links/view?id=' + lid + '&_=' + encLid, db);
+                })
+                .then(function (embedResp) {
+                  return decrypt(embedResp.result);
+                })
+                .then(function (decrypted) {
+                  var urls = [];
+                  walk(decrypted, urls);
+                  return Promise.all(
+                    urls.map(function (u) {
+                      if (/\.m3u8|\.mp4/i.test(u)) {
+                        return Promise.resolve([
+                          {
+                            url: u,
+                            name: 'AnimeKai ' + kind,
+                            headers: HEADERS,
+                          },
+                        ]);
+                      }
+                      return ctx.hop(u);
+                    }),
+                  ).then(function (g) {
+                    return [].concat.apply([], g);
+                  });
+                })
+                .catch(function () {
+                  return [];
+                }),
+            );
+          });
+        });
+        return Promise.all(tasks).then(function (groups) {
+          return [].concat.apply([], groups);
+        });
+      });
+  }
+
   if (!title && !ctx.tmdbId && !malId && !anilistId) return [];
 
   return lookup()
     .then(function (db) {
       if (!db) return [];
-      var info = db.info || {};
-      var contentId = info.kai_id || db.kai_id || db.id || db.content_id;
-      var token = findToken(db);
-      var start = token
-        ? Promise.resolve(token)
-        : contentId
-          ? encrypt(contentId).then(function (encId) {
-              return getJsonAjax('/episodes/list?ani_id=' + contentId + '&_=' + encId, db);
-            }).then(function (resp) {
-              return parseHtml(resp.result);
-            }).then(function (episodes) {
-              var season = String(isMovie ? 1 : ctx.season || 1);
-              var episode = String(isMovie ? 1 : ctx.mappedEpisode || ctx.episode || 1);
-              var ep = ((episodes || {})[season] || {})[episode];
-              return ep && ep.token;
-            })
-          : Promise.resolve(null);
-      return start.then(function (epToken) {
-        if (!epToken) return [];
-        return encrypt(epToken)
-          .then(function (encToken) {
-            return getJsonAjax('/links/list?token=' + epToken + '&_=' + encToken, db);
-          })
-          .then(function (serversResp) {
-            return parseHtml(serversResp.result);
-          })
-          .then(function (servers) {
-            var tasks = [];
-            Object.keys(servers || {}).forEach(function (kind) {
-              var group = servers[kind] || {};
-              Object.keys(group).forEach(function (key) {
-                var lid = group[key] && group[key].lid;
-                if (!lid) return;
-                tasks.push(
-                  encrypt(lid)
-                    .then(function (encLid) {
-                      return getJsonAjax('/links/view?id=' + lid + '&_=' + encLid, db);
-                    })
-                    .then(function (embedResp) {
-                      return decrypt(embedResp.result);
-                    })
-                    .then(function (decrypted) {
-                      var urls = [];
-                      walk(decrypted, urls);
-                      return Promise.all(
-                        urls.map(function (u) {
-                          if (/\.m3u8|\.mp4/i.test(u)) {
-                            return Promise.resolve([
-                              {
-                                url: u,
-                                name: 'AnimeKai ' + kind,
-                                headers: HEADERS,
-                              },
-                            ]);
-                          }
-                          return ctx.hop(u);
-                        }),
-                      ).then(function (g) {
-                        return [].concat.apply([], g);
-                      });
-                    })
-                    .catch(function () {
-                      return [];
-                    }),
-                );
-              });
-            });
-            return Promise.all(tasks).then(function (groups) {
-              var out = [].concat.apply([], groups);
-              return out.length ? out : [];
-            });
-          });
+      var ep = findEpisode(db);
+      if (!ep) return [];
+
+      return streamsFromDbSources(db, ep).then(function (dbStreams) {
+        if (dbStreams.length) return dbStreams;
+
+        var info = db.info || {};
+        var contentId = info.kai_id || db.kai_id || db.id || db.content_id;
+        var token = ep.token || ep.eid || null;
+        var start = token
+          ? Promise.resolve(token)
+          : contentId
+            ? encrypt(contentId)
+                .then(function (encId) {
+                  return getJsonAjax('/episodes/list?ani_id=' + contentId + '&_=' + encId, db);
+                })
+                .then(function (resp) {
+                  return parseHtml(resp.result);
+                })
+                .then(function (episodes) {
+                  var keys = seasonEpisodeKeys();
+                  var row = ((episodes || {})[keys.season] || {})[keys.episode];
+                  return row && row.token;
+                })
+            : Promise.resolve(null);
+
+        return start.then(function (epToken) {
+          if (!epToken) return [];
+          return streamsFromAjax(db, epToken);
+        });
       });
     })
     .catch(function () {

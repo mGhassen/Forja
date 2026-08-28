@@ -968,7 +968,7 @@ void main() {
         parsed.firstWhere((p) => p.id == 'animepahe').entry,
         'animepahe.js',
       );
-      expect(await loadForjaHqFile('providers/animepahe.js'), contains('https://animepaheproxy.phisheranimepahe.workers.dev/?url='));
+      expect(await loadForjaHqFile('providers/animepahe.js'), isNot(contains('engine-fetch')));
       expect(parsed.firstWhere((p) => p.id == 'reanime').entry, 'reanime.js');
       expect(await loadForjaHqFile('providers/reanime.js'), contains('https://reanime.to'));
       expect(parsed.firstWhere((p) => p.id == 'anibd').entry, 'anibd.js');
@@ -1254,9 +1254,8 @@ void main() {
 
       final animepahe = await loadForjaHqFile('providers/animepahe.js');
       expect(animepahe.contains('isBlockedBody'), isTrue);
-      expect(animepahe.contains('preferProxy'), isTrue);
-      expect(animepahe.contains('useProxy'), isTrue);
-      expect(animepahe.contains('phisheranimepahe'), isTrue);
+      expect(animepahe.contains('directWalk'), isTrue);
+      expect(animepahe, isNot(contains('proxyWalk')));
       expect(animepahe.contains('findSessionByTitles'), isTrue);
       expect(animepahe.contains('jikanTitles'), isTrue);
       expect(animepahe.contains('targetPaheEp'), isTrue);

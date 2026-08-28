@@ -7,12 +7,19 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   Future<void> _applyMpvTunables();
   Future<void> _tuneAtvMediaKitAfterOpen();
   Future<void> _tuneDesktopMediaKitAfterOpen();
-  Future<void> _applyStreamLavfReconnect(NativePlayer p, {required bool continuityProxy});
+  Future<void> _applyStreamLavfReconnect(
+    NativePlayer p, {
+    required bool continuityProxy,
+  });
   int _continuityProxyMaxQueueBytes();
   void _onProxyUpstreamReconnected();
   void _startWatchdog();
   void _noteFeedProgress(int markMs, {int? positionMs});
-  Future<void> _triggerRecovery({required String reason, bool forceHard = false, bool userInitiated = false});
+  Future<void> _triggerRecovery({
+    required String reason,
+    bool forceHard = false,
+    bool userInitiated = false,
+  });
   void _armTransientHwDecodeIgnore();
   Future<void> _disposePlayer();
   Future<void> _forceSoftwareDecode();
@@ -43,9 +50,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       configuration: VideoControllerConfiguration(
         vo: atv ? 'mediacodec_embed' : null,
         enableHardwareAcceleration: atv || !_useSoftwareDecode,
-        hwdec: atv
-            ? 'mediacodec'
-            : (_useSoftwareDecode ? 'no' : 'auto-safe'),
+        hwdec: atv ? 'mediacodec' : (_useSoftwareDecode ? 'no' : 'auto-safe'),
         // Avoid blank video when the surface attaches before mpv negotiates
         // dimensions (common on Android / ATV emulators).
         androidAttachSurfaceAfterVideoParameters: false,
@@ -80,7 +85,9 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       enabled: false,
       onFallback: _reopenAfterExoSurfaceFallback,
     );
-    _s._exoEventSub = ExoPlayerBridge.eventsFor(_s._exoViewId!).listen(_onExoEvent);
+    _s._exoEventSub = ExoPlayerBridge.eventsFor(
+      _s._exoViewId!,
+    ).listen(_onExoEvent);
     if (mounted) setState(() => _s._playerReady = true);
     // Let ExoPlayerView attach before open() - same frame-delay as ExoPlayerScreen.
     await Future<void>.delayed(Duration.zero);
@@ -98,10 +105,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     await WidgetsBinding.instance.endOfFrame;
     if (_s._disposed || !mounted) return;
     try {
-      await _engineOpenSource(
-        _s._sources[_s._sourceIdx],
-        refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
-      );
+      await _engineOpenSource(_s._sources[_s._sourceIdx]);
       if (pos > Duration.zero && _s._streamSeekable) {
         await ExoPlayerBridge.seekTo(_s._exoViewId!, pos);
       }
@@ -139,8 +143,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         break;
       case 'playing':
         final playing = event['value'] == true;
-        if (playing != _s._playing ||
-            (playing && _s._statusBanner != null)) {
+        if (playing != _s._playing || (playing && _s._statusBanner != null)) {
           setState(() {
             _s._playing = playing;
             if (playing &&
@@ -186,16 +189,14 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         // Straight off the event: `_buffered` is only assigned when duration > 0.
         _noteFeedProgress(bufMs, positionMs: posMs);
         final pos = Duration(milliseconds: posMs);
-        final durChanged =
-            durMs > 0 && durMs != _s._duration.inMilliseconds;
+        final durChanged = durMs > 0 && durMs != _s._duration.inMilliseconds;
         final posChanged = !_s._isSeeking && pos != _s._position;
         if (posChanged || durChanged) {
           if (durMs > 0) {
             // Rebuild when chrome is up, PiP scrubber is shown, or duration
             // first arrives so the VOD seekbar mounts (do not gate duration on
             // position — Exo often reports duration while still at 0:00).
-            final needUi =
-                _s._controlsVisible || _s._isPipMode || durChanged;
+            final needUi = _s._controlsVisible || _s._isPipMode || durChanged;
             if (needUi) {
               setState(() {
                 if (posChanged) _s._position = pos;
@@ -261,7 +262,6 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     }
   }
 
-
   /// Live IPTV (especially Exo) often keeps demuxer position at 0 while video
   /// paints. Mark the stream alive so detector 4 does not hard-recreate after
   /// 30s and ANR the ATV process.
@@ -323,16 +323,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     }
   }
 
-  Future<void> _engineOpenSource(
-    IptvPlaySource src, {
-    bool refreshLiveEngine = false,
-  }) async {
-    if (refreshLiveEngine) {
-      final refreshed = await _refreshLiveEngineSource(src);
-      if (refreshed != null) {
-        src = refreshed;
-      }
-    }
+  Future<void> _engineOpenSource(IptvPlaySource src) async {
     src = await _refreshStalkerPlayUrl(src);
     if (_s._exoBackend) {
       // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
@@ -397,9 +388,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       } else {
         await _s._liveContinuityProxy?.stop();
         debugPrint('[IPTV Player] direct open ($kind)');
-        await player.open(
-          Media(playUrl, httpHeaders: headers),
-        );
+        await player.open(Media(playUrl, httpHeaders: headers));
         final np = player.platform;
         if (np is NativePlayer && _livePlaybackProfile) {
           await _applyStreamLavfReconnect(np, continuityProxy: false);
@@ -672,10 +661,12 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       // reopen can race a dead demuxer — escalate hard after early attempts.
       if (_livePlaybackProfile && iptvIsHardOpenFail(msg)) {
         _invalidatePendingLiveEdgeSnaps();
-        unawaited(_triggerRecovery(
-          reason: 'error: $msg',
-          forceHard: _s._retryAttempt >= 1,
-        ));
+        unawaited(
+          _triggerRecovery(
+            reason: 'error: $msg',
+            forceHard: _s._retryAttempt >= 1,
+          ),
+        );
         return;
       }
       _triggerRecovery(reason: 'error: $msg');
@@ -743,8 +734,10 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     if (_s._socketTroublePending) return;
     _s._socketTroublePending = true;
     final openedAt = _s._openedAt;
-    debugPrint('[IPTV Player] socket trouble ($what) - '
-        'allowing ${_IptvPtPlayerScreenState._ffmpegReconnectGrace.inSeconds}s');
+    debugPrint(
+      '[IPTV Player] socket trouble ($what) - '
+      'allowing ${_IptvPtPlayerScreenState._ffmpegReconnectGrace.inSeconds}s',
+    );
     Future.delayed(_IptvPtPlayerScreenState._ffmpegReconnectGrace, () async {
       _s._socketTroublePending = false;
       if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
@@ -754,7 +747,9 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         return;
       }
       await _triggerRecovery(
-          reason: 'socket dead, cache empty: $what', forceHard: true);
+        reason: 'socket dead, cache empty: $what',
+        forceHard: true,
+      );
     });
   }
 
@@ -780,36 +775,12 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     }
   }
 
-
   bool get _atvHardReseatStreams =>
       !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
-
-  Future<IptvPlaySource?> _refreshLiveEngineSource(IptvPlaySource src) async {
-    if (!src.canRefreshLiveEngine) return null;
-    final pluginId = src.liveEnginePluginId!.trim();
-    final params = src.liveEngineResolveParams!;
-    debugPrint('[IPTV Player] re-unlock live engine ($pluginId)');
-    try {
-      final play = await LiveMatchesEngine.resolveToPlayUrl(
-        pluginId: pluginId,
-        params: params,
-      );
-      if (play == null || play.url.trim().isEmpty) return null;
-      final updated = src.copyWith(url: play.url, headers: play.headers);
-      if (_s._sourceIdx >= 0 && _s._sourceIdx < _s._sources.length) {
-        _s._sources[_s._sourceIdx] = updated;
-      }
-      return updated;
-    } catch (e) {
-      debugPrint('[IPTV Player] live engine re-unlock failed: $e');
-      return null;
-    }
-  }
 
   Future<void> _openCurrent({
     bool hardRecreate = false,
     String? switchingLabel,
-    bool refreshLiveEngine = false,
   }) async {
     // Serialize opens — Player-menu switch sets _playerReady before the first
     // open finishes; a second open (reload) on a busy mpv ANRs ATV.
@@ -836,10 +807,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       // Soft path: silent connect (buffering chrome only). Hard ATV reseat
       // already set "Switching to …" on the loading scaffold.
       try {
-        await _engineOpenSource(
-          src,
-          refreshLiveEngine: refreshLiveEngine,
-        );
+        await _engineOpenSource(src);
         if (_s._disposed || epoch != _openEpoch) return;
         _s._userPlayWhenReady = true;
         _s._pausedAt = null;
@@ -848,16 +816,17 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         _s._openedAt = DateTime.now();
         _s._playbackBannerSnapshot = null;
         _resetDemuxerProbe();
-        unawaited(_probeStreamCapabilities().then((_) {
-          if (mounted && _livePlaybackProfile) _scheduleJumpToLive();
-        }));
+        unawaited(
+          _probeStreamCapabilities().then((_) {
+            if (mounted && _livePlaybackProfile) _scheduleJumpToLive();
+          }),
+        );
         // Clear banner after a short successful run (do not require !_buffering —
         // Exo live prefetch used to keep isLoading true and leave reconnect UI up).
         Future.delayed(const Duration(seconds: 2), () {
           if (!mounted || epoch != _openEpoch) return;
           if (_s._statusBanner == null) return;
-          if (_s._playing &&
-              (_s._lastPos > Duration.zero || !_s._buffering)) {
+          if (_s._playing && (_s._lastPos > Duration.zero || !_s._buffering)) {
             setState(() => _s._statusBanner = null);
           }
         });
@@ -888,8 +857,8 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     final label = (trimmed != null && trimmed.isNotEmpty)
         ? trimmed
         : (_s._sources.isNotEmpty
-            ? _s._sources[_s._sourceIdx].label
-            : 'stream');
+              ? _s._sources[_s._sourceIdx].label
+              : 'stream');
     if (mounted) {
       setState(() {
         _s._playerReady = false;
@@ -916,8 +885,9 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         enabled: false,
         onFallback: _reopenAfterExoSurfaceFallback,
       );
-      _s._exoEventSub =
-          ExoPlayerBridge.eventsFor(_s._exoViewId!).listen(_onExoEvent);
+      _s._exoEventSub = ExoPlayerBridge.eventsFor(
+        _s._exoViewId!,
+      ).listen(_onExoEvent);
       if (mounted) setState(() => _s._playerReady = true);
       await Future<void>.delayed(Duration.zero);
       return;
@@ -948,9 +918,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     _s._userPlayWhenReady = true;
     // Classic (1.3.114): soft reopen only — no mid-stream drop-buffers.
     if (!_bufferedRecovery) {
-      await _openCurrent(
-        refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
-      );
+      await _openCurrent();
       return;
     }
     if (!_s._exoBackend && _s._playerAlive && _livePlaybackProfile) {
@@ -964,9 +932,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       await _escalateReloadIfStalled();
       return;
     }
-    await _openCurrent(
-      refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
-    );
+    await _openCurrent();
   }
 
   /// The live-edge flush cannot revive a feed whose socket is gone. Give it a
@@ -978,7 +944,9 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     if (!mounted || _s._disposed || !_s._playerAlive) return;
     if (!_s._userPlayWhenReady) return;
     if (_s._playing && _s._lastPos != before) return;
-    debugPrint('[IPTV Player] manual reload did not restore frames - reopening');
+    debugPrint(
+      '[IPTV Player] manual reload did not restore frames - reopening',
+    );
     await _triggerRecovery(
       reason: 'manual reload stalled',
       forceHard: true,
@@ -1014,10 +982,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         _s._logoUrl = logo;
       }
     });
-    await _openCurrent(
-      hardRecreate: _atvHardReseatStreams,
-      refreshLiveEngine: _s._sources[idx].canRefreshLiveEngine,
-    );
+    await _openCurrent(hardRecreate: _atvHardReseatStreams);
   }
 
   Future<void> _switchChannel(IptvGuideChannel ch) async {

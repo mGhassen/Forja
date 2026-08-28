@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-providers",
   "name": "ForjaHQ Providers",
-  "version": "1.5.21",
+  "version": "1.5.23",
   "plugins": [
     {
       "id": "videasy",
@@ -854,7 +854,8 @@
       "hosts": [
         "megaup.cc",
         "megaup.live",
-        "megaup.net"
+        "megaup.net",
+        "megaup.nl"
       ],
       "config": {
         "dec": "dec-mega",

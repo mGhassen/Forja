@@ -7,7 +7,6 @@ var SPECS = {
     "https://animepahe.su",
     "https://animepahe.ru"
   ],
-  "proxy": "https://animepaheproxy.phisheranimepahe.workers.dev/?url=",
   "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
 };
 
@@ -17,7 +16,6 @@ function extract(ctx) {
     return String(m).replace(/\/$/, '');
   });
   var base = String(cfg.base || mirrors[0] || '').replace(/\/$/, '');
-  var proxy = cfg.proxy;
   var tmdbKey = cfg.tmdbKey;
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
   var hdrs = { 'User-Agent': ua, Cookie: '__ddg2_=1234567890', Referer: base + '/' };
@@ -38,8 +36,6 @@ function extract(ctx) {
 
   function fetchText(url, options) {
     options = options || {};
-    // Nuvio default: AnimePahe host traffic goes through the CF proxy first.
-    var preferProxy = options.useProxy !== false;
     var isAbs = /^https?:/i.test(url);
     var candidates = isAbs
       ? [url]
@@ -63,27 +59,6 @@ function extract(ctx) {
       });
     }
 
-    function proxyOne(target) {
-      if (!proxy) return Promise.resolve('');
-      var origin = (String(target).match(/^https?:\/\/[^/]+/) || [base])[0];
-      var reqHdrs = Object.assign({}, hdrs, { Referer: origin + '/' });
-      return ctx
-        .fetch(proxy + encodeURIComponent(target), { headers: reqHdrs })
-        .then(function (r) {
-          return r.text().then(function (text) {
-            if (isBlockedBody(text)) return '';
-            if (!isAbs) {
-              base = origin;
-              hdrs.Referer = origin + '/';
-            }
-            return text;
-          });
-        })
-        .catch(function () {
-          return '';
-        });
-    }
-
     function directWalk(i) {
       if (i >= candidates.length) return Promise.resolve('');
       return directOne(candidates[i]).catch(function () {
@@ -91,18 +66,6 @@ function extract(ctx) {
       });
     }
 
-    function proxyWalk(j) {
-      if (j >= candidates.length) return Promise.resolve('');
-      return proxyOne(candidates[j]).then(function (t) {
-        return t || proxyWalk(j + 1);
-      });
-    }
-
-    if (preferProxy && proxy) {
-      return proxyWalk(0).then(function (t) {
-        return t || directWalk(0);
-      });
-    }
     return directWalk(0);
   }
 

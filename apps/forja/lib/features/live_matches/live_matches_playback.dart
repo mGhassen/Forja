@@ -348,8 +348,6 @@ mixin _LiveMatchesPlayback
     required _StreamedStream stream,
     required String url,
     Map<String, String> headers = const {},
-    required String pluginId,
-    required Map<String, String> resolveParams,
   }) {
     return IptvPlaySource(
       url: url,
@@ -360,29 +358,7 @@ mixin _LiveMatchesPlayback
       liveProviderBadge: _StreamedStreamSheet.serverLabelFor(match),
       liveViewerCount: stream.viewers,
       liveStreamHd: stream.hd,
-      liveEnginePluginId: pluginId,
-      liveEngineResolveParams: resolveParams,
     );
-  }
-
-  Map<String, String> _liveEngineResolveParams({
-    required _StreamedMatch match,
-    required _StreamedStream stream,
-    required String embed,
-    String? catalogReferer,
-  }) {
-    return {
-      'embedUrl': embed,
-      'iframe': embed,
-      'url': embed,
-      'source': stream.source,
-      'matchId': stream.id,
-      'stream': stream.streamNo.toString(),
-      'category': match.category,
-      'title': match.title,
-      if (catalogReferer != null && catalogReferer.isNotEmpty)
-        'catalogReferer': catalogReferer,
-    };
   }
 
   Future<List<_StreamedStream>> _forjaLiveStreamsFromSource(
@@ -1035,17 +1011,6 @@ mixin _LiveMatchesPlayback
         ? (_forjaLiveCdnReferer(embed) ??
               _forjaLiveWrapperReferer(embed, pluginId: match.livePluginId))
         : _streamedReferer;
-    final pluginId = isPpv
-        ? 'live-ppv'
-        : match.isForjaLive && match.livePluginId.isNotEmpty
-        ? match.livePluginId
-        : 'live-streamed';
-    final resolveParams = _liveEngineResolveParams(
-      match: match,
-      stream: stream,
-      embed: embed,
-      catalogReferer: isPpv ? null : catalogReferer,
-    );
     if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
       final headers = isPpv
           ? _ppvEmbedStreamHeaders(embed)
@@ -1064,15 +1029,27 @@ mixin _LiveMatchesPlayback
         stream: stream,
         url: playUrl,
         headers: direct ? headers : const {},
-        pluginId: pluginId,
-        resolveParams: resolveParams,
       );
     }
 
     onProgress?.call('Unlocking source…');
+    final pluginId = isPpv
+        ? 'live-ppv'
+        : match.isForjaLive && match.livePluginId.isNotEmpty
+        ? match.livePluginId
+        : 'live-streamed';
     final result = await LiveMatchesEngine.resolve(
       pluginId: pluginId,
-      params: resolveParams,
+      params: {
+        'embedUrl': embed,
+        'iframe': embed,
+        'url': embed,
+        'source': stream.source,
+        'matchId': stream.id,
+        'stream': stream.streamNo.toString(),
+        'category': match.category,
+        'title': match.title,
+      },
     );
     if (result == null || !result.playable) return null;
 
@@ -1097,8 +1074,6 @@ mixin _LiveMatchesPlayback
       stream: stream,
       url: playUrl,
       headers: direct ? headers : const {},
-      pluginId: pluginId,
-      resolveParams: resolveParams,
     );
   }
 
