@@ -98,7 +98,10 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     await WidgetsBinding.instance.endOfFrame;
     if (_s._disposed || !mounted) return;
     try {
-      await _engineOpenSource(_s._sources[_s._sourceIdx]);
+      await _engineOpenSource(
+        _s._sources[_s._sourceIdx],
+        refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
+      );
       if (pos > Duration.zero && _s._streamSeekable) {
         await ExoPlayerBridge.seekTo(_s._exoViewId!, pos);
       }
@@ -320,7 +323,16 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     }
   }
 
-  Future<void> _engineOpenSource(IptvPlaySource src) async {
+  Future<void> _engineOpenSource(
+    IptvPlaySource src, {
+    bool refreshLiveEngine = false,
+  }) async {
+    if (refreshLiveEngine) {
+      final refreshed = await _refreshLiveEngineSource(src);
+      if (refreshed != null) {
+        src = refreshed;
+      }
+    }
     src = await _refreshStalkerPlayUrl(src);
     if (_s._exoBackend) {
       // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
@@ -772,9 +784,32 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   bool get _atvHardReseatStreams =>
       !kIsWeb && Platform.isAndroid && PlatformInfo.isAndroidTv;
 
+  Future<IptvPlaySource?> _refreshLiveEngineSource(IptvPlaySource src) async {
+    if (!src.canRefreshLiveEngine) return null;
+    final pluginId = src.liveEnginePluginId!.trim();
+    final params = src.liveEngineResolveParams!;
+    debugPrint('[IPTV Player] re-unlock live engine ($pluginId)');
+    try {
+      final play = await LiveMatchesEngine.resolveToPlayUrl(
+        pluginId: pluginId,
+        params: params,
+      );
+      if (play == null || play.url.trim().isEmpty) return null;
+      final updated = src.copyWith(url: play.url, headers: play.headers);
+      if (_s._sourceIdx >= 0 && _s._sourceIdx < _s._sources.length) {
+        _s._sources[_s._sourceIdx] = updated;
+      }
+      return updated;
+    } catch (e) {
+      debugPrint('[IPTV Player] live engine re-unlock failed: $e');
+      return null;
+    }
+  }
+
   Future<void> _openCurrent({
     bool hardRecreate = false,
     String? switchingLabel,
+    bool refreshLiveEngine = false,
   }) async {
     // Serialize opens — Player-menu switch sets _playerReady before the first
     // open finishes; a second open (reload) on a busy mpv ANRs ATV.
@@ -801,7 +836,10 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       // Soft path: silent connect (buffering chrome only). Hard ATV reseat
       // already set "Switching to …" on the loading scaffold.
       try {
-        await _engineOpenSource(src);
+        await _engineOpenSource(
+          src,
+          refreshLiveEngine: refreshLiveEngine,
+        );
         if (_s._disposed || epoch != _openEpoch) return;
         _s._userPlayWhenReady = true;
         _s._pausedAt = null;
@@ -910,7 +948,9 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
     _s._userPlayWhenReady = true;
     // Classic (1.3.114): soft reopen only — no mid-stream drop-buffers.
     if (!_bufferedRecovery) {
-      await _openCurrent();
+      await _openCurrent(
+        refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
+      );
       return;
     }
     if (!_s._exoBackend && _s._playerAlive && _livePlaybackProfile) {
@@ -924,7 +964,9 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       await _escalateReloadIfStalled();
       return;
     }
-    await _openCurrent();
+    await _openCurrent(
+      refreshLiveEngine: _s._sources[_s._sourceIdx].canRefreshLiveEngine,
+    );
   }
 
   /// The live-edge flush cannot revive a feed whose socket is gone. Give it a
@@ -972,7 +1014,10 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
         _s._logoUrl = logo;
       }
     });
-    await _openCurrent(hardRecreate: _atvHardReseatStreams);
+    await _openCurrent(
+      hardRecreate: _atvHardReseatStreams,
+      refreshLiveEngine: _s._sources[idx].canRefreshLiveEngine,
+    );
   }
 
   Future<void> _switchChannel(IptvGuideChannel ch) async {

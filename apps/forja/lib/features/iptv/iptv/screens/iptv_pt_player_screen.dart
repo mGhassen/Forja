@@ -33,6 +33,7 @@ import 'package:forja/features/iptv/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/iptv/providers/iptv_player_providers.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_player_chrome_profile.dart';
+import 'package:forja/features/live_matches/live_matches_engine.dart';
 import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
@@ -76,6 +77,22 @@ bool iptvExoUrlLooksLive(String url) {
   final lower = url.toLowerCase();
   if (lower.contains('/movie/') || lower.contains('/series/')) return false;
   return true;
+}
+
+/// Short HLS sliding windows must not flip Live Matches into VOD chrome.
+@visibleForTesting
+bool iptvPlayerDurationLooksVod({
+  required bool vodPlayback,
+  required BuiltInPlayerContext engineContext,
+  required IptvLiveSourceKind? liveSourceKind,
+  required Duration duration,
+}) {
+  if (vodPlayback) return duration.inSeconds > 1;
+  if (engineContext == BuiltInPlayerContext.live ||
+      liveSourceKind == IptvLiveSourceKind.liveEngine) {
+    return false;
+  }
+  return duration.inSeconds > 1;
 }
 
 /// Live native playback profile — one MediaKit/Exo config per surface type,
@@ -161,6 +178,9 @@ class IptvPlaySource {
   final int liveViewerCount;
   /// Live Matches stream sheet: HD quality row.
   final bool liveStreamHd;
+  /// Live Matches engine unlock — re-run on recovery when the CDN token expires.
+  final String? liveEnginePluginId;
+  final Map<String, String>? liveEngineResolveParams;
   const IptvPlaySource({
     required this.url,
     required this.label,
@@ -173,7 +193,14 @@ class IptvPlaySource {
     this.liveProviderBadge,
     this.liveViewerCount = 0,
     this.liveStreamHd = false,
+    this.liveEnginePluginId,
+    this.liveEngineResolveParams,
   });
+
+  bool get canRefreshLiveEngine =>
+      (liveEnginePluginId ?? '').isNotEmpty &&
+      liveEngineResolveParams != null &&
+      liveEngineResolveParams!.isNotEmpty;
 
   IptvPlaySource copyWith({
     String? url,
@@ -187,6 +214,8 @@ class IptvPlaySource {
     String? liveProviderBadge,
     int? liveViewerCount,
     bool? liveStreamHd,
+    String? liveEnginePluginId,
+    Map<String, String>? liveEngineResolveParams,
   }) {
     return IptvPlaySource(
       url: url ?? this.url,
@@ -200,6 +229,9 @@ class IptvPlaySource {
       liveProviderBadge: liveProviderBadge ?? this.liveProviderBadge,
       liveViewerCount: liveViewerCount ?? this.liveViewerCount,
       liveStreamHd: liveStreamHd ?? this.liveStreamHd,
+      liveEnginePluginId: liveEnginePluginId ?? this.liveEnginePluginId,
+      liveEngineResolveParams:
+          liveEngineResolveParams ?? this.liveEngineResolveParams,
     );
   }
 
@@ -465,7 +497,13 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   Duration _buffered = Duration.zero;
   bool _isSeeking = false;
   double _seekPreview = 0.0;
-  bool get _isVod => _duration.inSeconds > 1;
+  bool get _isVod => iptvPlayerDurationLooksVod(
+        vodPlayback: widget.vodPlayback,
+        engineContext: widget.engineContext,
+        liveSourceKind:
+            _sources.isEmpty ? widget.liveSourceKind : _sources[_sourceIdx].liveSourceKind ?? widget.liveSourceKind,
+        duration: _duration,
+      );
 
   /// Live vs Movies/Series chrome (tracks / episodes / engine persist).
   IptvPlayerChromeProfile get _chrome =>
