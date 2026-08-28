@@ -4,7 +4,6 @@ function extract(ctx) {
     ? cfg.mirrors.map(function (m) { return String(m).replace(/\/$/, ''); })
     : ['https://animepahe.pw', 'https://animepahe.ru', 'https://animepahe.com'];
   var base = (cfg.base || mirrors[0] || 'https://animepahe.pw').replace(/\/$/, '');
-  var proxy = cfg.proxy || 'https://animepaheproxy.phisheranimepahe.workers.dev/?url=';
   var tmdbKey = cfg.tmdbKey || '1865f43a0549ca50d341dd9ab8b29f49';
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36';
   var hdrs = { 'User-Agent': ua, Cookie: '__ddg2_=1234567890', Referer: base + '/' };
@@ -12,31 +11,53 @@ function extract(ctx) {
   var isEpisodic = ctx.type !== 'movie';
   var kwikOrigin = 'https://kwik.si';
 
-  function fetchText(url, useProxy) {
-    var finalUrl = /^https?:/i.test(url) ? url : base + url;
-    if (useProxy === true) {
-      return ctx.fetch(proxy + encodeURIComponent(finalUrl), { headers: hdrs }).then(function (r) {
-        return r.text();
-      });
+  function isBlockedBody(text) {
+    if (text == null || text === '') return true;
+    var s = String(text).trim();
+    if (s.charAt(0) === '{' || s.charAt(0) === '[') return false;
+    return /Just a moment|cdn-cgi|challenge-platform|__ddg/i.test(s);
+  }
+
+  function fetchText(url) {
+    var isAbs = /^https?:/i.test(url);
+    var candidates = isAbs
+      ? [url]
+      : mirrors.map(function (m) {
+          return String(m).replace(/\/$/, '') + url;
+        });
+
+    function tryDirect(target, idx) {
+      var origin = (String(target).match(/^https?:\/\/[^/]+/) || [base])[0];
+      var reqHdrs = Object.assign({}, hdrs, { Referer: origin + '/' });
+      return ctx
+        .fetch(target, { headers: reqHdrs })
+        .then(function (r) {
+          return r.text().then(function (text) {
+            if (isBlockedBody(text)) throw new Error('blocked');
+            if (!isAbs) {
+              base = origin;
+              hdrs.Referer = origin + '/';
+            }
+            return text;
+          });
+        })
+        .catch(function () {
+          if (idx + 1 < candidates.length) return tryDirect(candidates[idx + 1], idx + 1);
+          return '';
+        });
     }
-    return ctx
-      .fetch(finalUrl, { headers: hdrs })
-      .then(function (r) {
-        if (r.ok) return r.text();
-        return ctx.fetch(proxy + encodeURIComponent(finalUrl), { headers: hdrs }).then(function (r2) {
-          return r2.text();
-        });
-      })
-      .catch(function () {
-        return ctx.fetch(proxy + encodeURIComponent(finalUrl), { headers: hdrs }).then(function (r) {
-          return r.text();
-        });
-      });
+
+    return tryDirect(candidates[0], 0);
   }
 
   function fetchJson(url) {
     return fetchText(url).then(function (t) {
-      return JSON.parse(t);
+      if (!t || isBlockedBody(t)) return null;
+      try {
+        return JSON.parse(t);
+      } catch (e) {
+        return null;
+      }
     });
   }
 

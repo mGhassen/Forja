@@ -20,6 +20,7 @@ https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/manifest.js
 | Path | Role |
 |------|------|
 | `manifest.json` | Pack metadata (`id`, `version`) + `plugins[]` provider entries |
+| `domains.json` | Forja-owned mirror registry for Indian movie/TV plugins (MoviesMod, HDHub4u, …) |
 | `providers/` | VOD / anime / drama scrapers |
 | `providers/hops/` | File-host hop resolvers |
 | `live/` | Live resolve + shared `embed-st.js` |

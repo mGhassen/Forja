@@ -5,7 +5,9 @@ function extract(ctx) {
   var searchApi =
     cfg.searchApi ||
     'https://search.pingora.fyi/collections/post/documents/search';
-  var domainsUrl = cfg.domainsUrl || 'https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json';
+  var domainsUrl =
+    cfg.domainsUrl ||
+    'https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json';
   var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0';
   var isTv = ctx.type !== 'movie';

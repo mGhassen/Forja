@@ -3,7 +3,7 @@ function extract(ctx) {
   var domain = cfg.base || 'https://4khdhub.link';
   var domainsUrl =
     cfg.domainsUrl ||
-    'https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json';
+    'https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json';
   var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';

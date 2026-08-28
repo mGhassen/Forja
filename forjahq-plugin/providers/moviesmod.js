@@ -1,7 +1,9 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
   var fallback = cfg.base || 'https://moviesmod.cc';
-  var domainsUrl = cfg.domainsUrl || 'https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json';
+  var domainsUrl =
+    cfg.domainsUrl ||
+    'https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json';
   var tmdbKey = cfg.tmdbKey || '1865f43a0549ca50d341dd9ab8b29f49';
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   var hdrs = { 'User-Agent': ua, Accept: 'text/html,application/xhtml+xml,*/*', 'Accept-Language': 'en-US,en;q=0.9', Connection: 'keep-alive' };

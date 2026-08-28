@@ -482,7 +482,7 @@ class EngineService {
     if (rawList.isEmpty && gen == _extractGeneration) {
       rawList = await _animeEngineFallbacks(
         pluginId: active.id,
-        anilistId: resolvedAnilist,
+        animeIds: animeIds,
         episode: animeIds?.mappedEpisode ?? episode ?? 1,
         isCancelled: () => gen != _extractGeneration,
       );
@@ -1125,7 +1125,7 @@ class EngineService {
     if (effectiveRaw.isEmpty && gen == _extractGeneration) {
       effectiveRaw = await _animeEngineFallbacks(
         pluginId: plugin.id,
-        anilistId: animeIds?.anilistId ?? anilistId,
+        animeIds: animeIds,
         episode: animeIds?.mappedEpisode ?? episode ?? 1,
         isCancelled: () => gen != _extractGeneration,
       );
@@ -1175,12 +1175,48 @@ class EngineService {
   /// When JS HTTP is empty (CF / wrong paths), reuse Rust+WebView anime extractors.
   Future<List<Map<String, dynamic>>> _animeEngineFallbacks({
     required String pluginId,
-    required int? anilistId,
+    EngineAnimeIdBundle? animeIds,
     required int episode,
     required bool Function() isCancelled,
   }) async {
-    final al = anilistId ?? 0;
+    var al = animeIds?.anilistId ?? 0;
+    if (al <= 0 && (animeIds?.malId ?? 0) > 0) {
+      al = await EngineAnimeIds.anilistFromMal(animeIds!.malId!) ?? 0;
+    }
     if (al <= 0 || isCancelled()) return const [];
+
+    if (pluginId == 'animepahe') {
+      debugPrint('[engine] animepahe JS empty — miruro kiwi CF pipe fallback');
+      final out = <Map<String, dynamic>>[];
+      for (final cat in ['sub', 'dub']) {
+        if (isCancelled()) return out;
+        try {
+          final resolved = await miruroResolveWithCfFallback(
+            anilistId: al,
+            episodeNumber: episode,
+            category: cat,
+            provider: 'kiwi',
+            fetchPipeViaWebView: MiruroPipeSession.instance.get,
+          );
+          final label = miruroUpstreamSources['kiwi'] ?? 'AnimePahe';
+          for (final s in resolved.streams) {
+            if (s.url.trim().isEmpty) continue;
+            out.add({
+              'url': s.url,
+              'name': '$label ${cat.toUpperCase()}',
+              'language': cat == 'dub' ? 'Dub' : 'Sub',
+              'headers': {
+                if (s.referer.isNotEmpty) 'Referer': s.referer,
+                if (s.origin.isNotEmpty) 'Origin': s.origin,
+              },
+            });
+          }
+        } catch (e) {
+          debugPrint('[engine] animepahe dart fallback $cat: $e');
+        }
+      }
+      return out;
+    }
 
     if (pluginId == 'miruro') {
       debugPrint('[engine] miruro JS empty — dart CF pipe fallback');

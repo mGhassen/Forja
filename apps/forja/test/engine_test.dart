@@ -798,7 +798,7 @@ void main() {
       );
       expect(
         parsed.firstWhere((p) => p.id == '4khdhub').config['domainsUrl'],
-        'https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json',
+        'https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json',
       );
       expect(parsed.firstWhere((p) => p.id == 'hdhub4u').entry, 'providers/hdhub4u.js');
       expect(
@@ -869,7 +869,7 @@ void main() {
       );
       expect(
         parsed.firstWhere((p) => p.id == 'animepahe').config['proxy'],
-        'https://animepaheproxy.phisheranimepahe.workers.dev/?url=',
+        isNull,
       );
       expect(parsed.firstWhere((p) => p.id == 'reanime').entry, 'providers/reanime.js');
       expect(
@@ -1204,7 +1204,8 @@ void main() {
       expect(mallumv.contains('function extract(ctx)'), isTrue);
 
       final animepahe = await loadForjaHqFile('providers/animepahe.js');
-      expect(animepahe.contains('animepaheproxy'), isTrue);
+      expect(animepahe.contains('isBlockedBody'), isTrue);
+      expect(animepahe.contains('phisheranimepahe'), isFalse);
       expect(animepahe.contains('extractKwik'), isTrue);
       expect(animepahe.contains('kwik.si'), isTrue);
       expect(animepahe.contains('id-mapping-api-malid'), isTrue);

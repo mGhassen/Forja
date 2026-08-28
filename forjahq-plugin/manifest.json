@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq",
   "name": "ForjaHQ",
-  "version": "1.5.11",
+  "version": "1.5.14",
   "plugins": [
     {
       "id": "videasy",
@@ -466,7 +466,6 @@
           "https://animepahe.ru",
           "https://animepahe.com"
         ],
-        "proxy": "https://animepaheproxy.phisheranimepahe.workers.dev/?url=",
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
@@ -503,7 +502,7 @@
       "config": {
         "base": "https://4khdhub.link",
         "name": "4KHDHub",
-        "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
+        "domainsUrl": "https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json",
         "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
@@ -535,7 +534,7 @@
       "config": {
         "base": "https://new1.hdhub4u.af",
         "searchApi": "https://search.pingora.fyi/collections/post/documents/search",
-        "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
+        "domainsUrl": "https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json",
         "tmdbKey": "439c478a771f35c05022f9feabcca01c"
       }
     },
@@ -550,7 +549,7 @@
       "kind": "http",
       "config": {
         "base": "https://moviesmod.cc",
-        "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
+        "domainsUrl": "https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json",
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
@@ -565,7 +564,7 @@
       "kind": "http",
       "config": {
         "base": "https://uhdmovies.pink",
-        "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
+        "domainsUrl": "https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json",
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
@@ -821,7 +820,7 @@
       "kind": "http",
       "config": {
         "base": "https://new3.moviesdrives.my",
-        "domainsUrl": "https://raw.githubusercontent.com/phisher98/TVVVV/refs/heads/main/domains.json",
+        "domainsUrl": "https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json",
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
       }
     },
