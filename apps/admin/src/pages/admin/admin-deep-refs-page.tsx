@@ -212,7 +212,7 @@ function DeepRefPortalsTable({ portals }: { portals: DeepRefPortalRow[] }) {
                 <td className="px-3 py-2 font-mono-ui text-xs">
                   {p.output || '—'}
                 </td>
-                <td className="max-w-[160px] truncate px-3 py-2 font-mono-ui text-xs">
+                <td className="max-w-40 truncate px-3 py-2 font-mono-ui text-xs">
                   {p.portal_id ? (
                     <Link
                       to="/pool"
@@ -331,7 +331,7 @@ function PasteBodyContent({
       )
     }
     return (
-      <pre className="font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
+      <pre className="font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap wrap-break-word">
         {pasteQuery.data}
       </pre>
     )
@@ -351,7 +351,7 @@ function PasteBodyContent({
       <p className="text-[11px] font-medium uppercase tracking-wide text-forja-muted">
         Decoded base64
       </p>
-      <pre className="font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap break-words">
+      <pre className="font-mono-ui text-[11px] leading-relaxed text-forja-muted whitespace-pre-wrap wrap-break-word">
         {decoded}
       </pre>
     </div>
@@ -414,7 +414,7 @@ function PasteSidePanel({
 
   return (
     <aside
-      className="relative sticky top-0 flex h-dvh shrink-0 flex-col border-l border-forja-border bg-forja-bg"
+      className="sticky top-0 flex h-dvh shrink-0 flex-col border-l border-forja-border bg-forja-bg"
       style={{ width }}
       aria-label="Paste body panel"
     >
@@ -980,7 +980,7 @@ export function AdminDeepRefsPage() {
               value={statusFilter}
               onValueChange={(v) => setStatusFilter(v as FilterStatus)}
             >
-              <SelectTrigger className="w-[11rem]">
+              <SelectTrigger className="w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -1049,17 +1049,17 @@ export function AdminDeepRefsPage() {
                         <tr
                           id={`deep-ref-${r.id}`}
                           className={cn(
-                            'border-t border-forja-border/80 transition-colors hover:bg-white/[0.02]',
-                            open && 'bg-forja-green/[0.04]',
-                            pasteOpen && 'bg-forja-green/[0.06]',
+                            'border-t border-forja-border/80 transition-colors hover:bg-white/2',
+                            open && 'bg-forja-green/4',
+                            pasteOpen && 'bg-forja-green/6',
                             focusRefId === r.id &&
-                              'bg-forja-green/[0.08] ring-1 ring-inset ring-forja-green/35',
+                              'bg-forja-green/8 ring-1 ring-inset ring-forja-green/35',
                           )}
                         >
                           <td className={tdClassName}>
                             <button
                               type="button"
-                              className="inline-flex size-7 items-center justify-center rounded-md text-forja-muted hover:bg-white/[0.06] hover:text-forja-text"
+                              className="inline-flex size-7 items-center justify-center rounded-md text-forja-muted hover:bg-white/6 hover:text-forja-text"
                               onClick={() => setOpenId(open ? null : r.id)}
                               aria-expanded={open}
                               aria-label={open ? 'Collapse' : 'Expand'}
@@ -1089,7 +1089,7 @@ export function AdminDeepRefsPage() {
                           >
                             {r.post_id}
                           </td>
-                          <td className={cn(tdClassName, 'max-w-[280px]')}>
+                          <td className={cn(tdClassName, 'max-w-70')}>
                             <div className="truncate font-mono-ui text-xs">
                               {r.paste_url || '—'}
                             </div>
