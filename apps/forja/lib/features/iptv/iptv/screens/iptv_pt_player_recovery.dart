@@ -1,16 +1,15 @@
 part of 'iptv_pt_player_screen.dart';
 
+// Implementations satisfy abstracts on sibling player mixins.
+// ignore_for_file: unused_element
+
 mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
-  Future<void> _openCurrent({bool hardRecreate = false, String? switchingLabel});
+  Future<void> _openCurrent({bool hardRecreate = false});
   Future<void> _engineOpenSource(IptvPlaySource src);
   Future<void> _probeStreamCapabilities();
   bool _giveUpDeadStalkerStream();
   void _initPlayerInstances();
   Future<void> _applyMpvTunables();
-  void _startWatchdog();
-  void _noteFeedProgress(int markMs, {int? positionMs});
-  void _syncPlaybackBannerVisibility();
-  void _logHold(String reason, {required bool healthy});
   Future<void> _enginePlay();
   void _armTransientHwDecodeIgnore();
   void _logHealthyHold(String reason);
@@ -19,6 +18,7 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
   bool get _livePlaybackProfile;
   bool get _bufferedRecovery;
   bool get _atvHardReseatStreams;
+  bool get _playheadRecentlyMoved;
   void _noteStalkerHardOpenFail();
   void _invalidatePendingLiveEdgeSnaps();
 

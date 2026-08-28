@@ -166,7 +166,7 @@ export function AccountSettingsPlaybackPage() {
             <select
               id="max-quality"
               className="h-9 min-w-40 border border-forja-border bg-forja-surface px-3 text-sm"
-              value={String(draft.max_playback_height ?? 0)}
+              value={String(draft.max_playback_height ?? 2160)}
               disabled={controlsLocked}
               onChange={(e) =>
                 setDraft((prev) => ({

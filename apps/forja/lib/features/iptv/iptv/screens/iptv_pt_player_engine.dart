@@ -1,5 +1,8 @@
 part of 'iptv_pt_player_screen.dart';
 
+// Implementations satisfy abstracts on sibling player mixins.
+// ignore_for_file: unused_element
+
 mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   Future<void> _applyMpvTunables();
   Future<void> _tuneAtvMediaKitAfterOpen();
@@ -15,11 +18,11 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   Future<void> _forceSoftwareDecode();
   Future<void> _releaseEngineForHotSwap();
   void _logHealthyHold(String reason);
+  void _logHold(String reason, {required bool healthy});
   void _resetDemuxerProbe();
   void _scheduleJumpToLive({bool force = false});
   void _invalidatePendingLiveEdgeSnaps();
   bool get _streamWorking;
-  bool get _mediaKitLiveProfile;
   bool get _bufferedRecovery;
 
   bool get _useSoftwareDecode =>

@@ -1,8 +1,12 @@
 part of 'iptv_pt_player_screen.dart';
 
+// Implementations satisfy abstracts on sibling player mixins.
+// ignore_for_file: unused_element
+
 mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
-  Future<void> _triggerRecovery({required String reason, bool forceHard = false, bool userInitiated = false});
+  Future<void> _triggerRecovery({required String reason, bool forceHard = false});
   bool get _livePlaybackProfile;
+  void _syncPlaybackBannerVisibility();
 
   /// Sample cache health every watchdog tick (MediaKit).
   ///

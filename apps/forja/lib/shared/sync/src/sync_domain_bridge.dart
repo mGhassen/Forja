@@ -100,7 +100,7 @@ class SyncDomainBridge {
       'auto_skip_intro': false,
       'content_warnings': true,
       'iptv_epg_enabled': defaults.iptvEpgEnabled,
-      'max_playback_height': 0,
+      'max_playback_height': 2160,
     });
     await _settings.setNavbarConfig(
       List<String>.from(defaults.visibleNavIds),

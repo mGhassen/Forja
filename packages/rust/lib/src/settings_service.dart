@@ -418,7 +418,7 @@ class SettingsService {
       kvSetBool(_iptvMatchDisplayRefreshKey, enabled);
 
   Future<int> getMaxPlaybackHeight() async =>
-      await kvGetInt(_maxPlaybackHeightKey, fallback: 0);
+      await kvGetInt(_maxPlaybackHeightKey, fallback: 2160);
 
   Future<void> setMaxPlaybackHeight(int height) async =>
       kvSetInt(_maxPlaybackHeightKey, height);

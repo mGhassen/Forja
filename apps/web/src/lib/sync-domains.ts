@@ -346,7 +346,7 @@ export function emptyPreferencesPayload(): Required<PreferencesPayload> {
     auto_next_episode: true,
     auto_skip_intro: false,
     iptv_epg_enabled: true,
-    max_playback_height: 0,
+    max_playback_height: 2160,
   }
 }
 

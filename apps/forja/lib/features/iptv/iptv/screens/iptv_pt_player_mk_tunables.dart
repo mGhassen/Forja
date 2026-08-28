@@ -1,9 +1,13 @@
 part of 'iptv_pt_player_screen.dart';
 
+// Implementations satisfy abstracts on sibling player mixins.
+// ignore_for_file: unused_element
+
 mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
   void _engineSetVolume(double volume);
   Future<void> _applyStreamLavfReconnect(NativePlayer p, {required bool continuityProxy});
   bool get _livePlaybackProfile;
+  bool get _useSoftwareDecode;
 
   Future<void> _tuneDesktopMediaKitAfterOpen() async {
     if (_s._disposed || _s._exoBackend || _s._atvMediaKit) return;
