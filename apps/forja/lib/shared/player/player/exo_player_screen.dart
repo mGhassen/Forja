@@ -42,6 +42,7 @@ import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
+import 'package:forja/shared/services/list_follow_from_watched.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -640,6 +641,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
     );
+    unawaited(ListFollowFromWatched.markMovieWatchingOnPlay(movie));
   }
 
   void _scrobblePause() {
@@ -685,8 +687,20 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   Future<void> _saveProgress() async {
-    if (widget.onSaveProgress == null || _duration.inMilliseconds <= 0) return;
-    await widget.onSaveProgress!(_position, _duration);
+    if (_duration.inMilliseconds <= 0) return;
+    if (widget.onSaveProgress != null) {
+      await widget.onSaveProgress!(_position, _duration);
+    }
+    final movie = widget.movie;
+    if (movie != null && movie.mediaType == 'movie') {
+      unawaited(
+        ListFollowFromWatched.markMovieCompletedIfFinished(
+          movie,
+          positionMs: _position.inMilliseconds,
+          durationMs: _duration.inMilliseconds,
+        ),
+      );
+    }
   }
 
   @override

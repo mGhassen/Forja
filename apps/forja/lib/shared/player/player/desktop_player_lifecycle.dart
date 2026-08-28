@@ -194,6 +194,9 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        unawaited(
+          ListFollowFromWatched.markMovieWatchingOnPlay(widget.movie!),
+        );
       }
       _fetchIntroDbTimestamps();
     });
@@ -664,6 +667,14 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
             movie: widget.movie!,
           );
         }());
+      } else if (widget.movie!.mediaType == 'movie') {
+        unawaited(
+          ListFollowFromWatched.markMovieCompletedIfFinished(
+            widget.movie!,
+            positionMs: pos,
+            durationMs: dur,
+          ),
+        );
       }
       // Heartbeat / pause / lifecycle keep writing; only exit latches.
       if (!isBgPause) {

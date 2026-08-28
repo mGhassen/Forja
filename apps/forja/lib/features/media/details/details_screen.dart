@@ -568,6 +568,19 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       episode: _movie.mediaType == 'tv' ? _selectedEpisode : null,
     );
     if (mounted) setState(() => _lastProgress = progress);
+    if (mounted && _movie.mediaType == 'movie') {
+      ProviderContainer? container;
+      try {
+        container = ProviderScope.containerOf(context, listen: false);
+      } catch (_) {}
+      unawaited(
+        ListFollowFromWatched.reconcileMovieFromProgress(
+          _movie,
+          progress: progress,
+          container: container,
+        ),
+      );
+    }
   }
 
   Future<void> _refreshProgressFromHistory() async {

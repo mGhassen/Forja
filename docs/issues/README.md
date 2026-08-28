@@ -230,6 +230,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [208-[fixed]-…](fixed/208-[fixed]-iptv-stalker-misclassified-as-xtream-proxy.md) | Stalker live mis-tagged as Xtream proxy | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [209-[fixed]-…](fixed/209-[fixed]-forja-sports-stalker-create-link-all-channels.md) | Forja Sports Stalker mints all channel links before open | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [210-[open]-…](210-[open]-episode-watched-list-simkl-follow.md) | Episode watched → My List / Simkl list buckets | P2 | Medium | open | 5/6 · A 0/4 | — |
+| [211-[open]-…](211-[open]-movie-play-list-simkl-follow.md) | Movie play → My List / Simkl Watching / Completed | P2 | Medium | open | 4/5 · A 0/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

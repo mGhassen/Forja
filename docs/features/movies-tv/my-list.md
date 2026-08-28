@@ -16,6 +16,7 @@ Tap **My List** in the navigation bar.
 - Switch **Plan to Watch / Watching / On Hold / Completed / Dropped** — local uses the same buckets; with Simkl, the open tab loads from Simkl. Change status from the card bookmark on desktop/mobile (same menu as Home); on Android TV use details / hero
 - Open a title — on **TV**, entering the tab focuses **Films**. **↓** goes to status then the grid; **←/→** stay on that row; **←** from Films or the first poster column returns to the nav rail
 - Add or move a title from details **+** or a poster bookmark (same five statuses, with or without Simkl) — movies/TV, Anime, and Asian Drama. Click the active status again to remove it; the card leaves that tab right away (local status wins over a slow Simkl refresh)
+- Playing a **movie** adds it as **Watching** (or upgrades Plan to Watch). Finishing ≥85% moves it to **Completed**. TV / Anime / Asian Drama still follow episode watched marks for those buckets
 - Asian Drama titles sit under **TV Shows**. Unmatched KissKH titles stay local and still show while Simkl is connected
 - Disconnect Simkl and the local buckets are still there
 

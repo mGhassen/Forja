@@ -5,13 +5,15 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:rust/rust.dart';
 
-/// Bumps My List + Simkl list buckets from episode watched marks.
+/// Bumps My List + Simkl list buckets from episode watched marks / movie play.
 ///
 /// History sync stays in [syncEpisodeWatchedToTrackers] /
 /// [HubListFollow.syncEpisodeWatched]. This only moves list status:
 /// - first mark (or Plan to Watch) → Watching
 /// - all episodes marked → Completed
 /// - unmark while Completed → Watching
+/// - movie play (new / Plan to Watch) → Watching
+/// - movie ≥ [watchFinishedThreshold] → Completed
 class ListFollowFromWatched {
   ListFollowFromWatched._();
 
@@ -109,6 +111,61 @@ class ListFollowFromWatched {
       episodeNowWatched: watchedCount >= totalEpisodes || watchedCount == 1,
       container: container,
     );
+  }
+
+  /// Movie play start — same rules as [HubListFollow.markWatchingOnPlay].
+  static Future<void> markMovieWatchingOnPlay(
+    Movie movie, {
+    ProviderContainer? container,
+  }) async {
+    if (movie.mediaType != 'movie') return;
+    await MyListService().ensureLoaded();
+    final uid = MyListService.movieId(movie.id, movie.mediaType);
+    if (MyListService().contains(uid)) {
+      final status = MyListService().statusOf(uid);
+      if (status != 'plantowatch') return;
+    }
+    await _setTmdbStatus(movie, 'watching', container: container);
+  }
+
+  /// Movie reached finished threshold — set Completed (local + Simkl).
+  static Future<void> markMovieCompletedIfFinished(
+    Movie movie, {
+    required int positionMs,
+    required int durationMs,
+    ProviderContainer? container,
+  }) async {
+    if (movie.mediaType != 'movie') return;
+    if (!isWatchFinished(positionMs, durationMs)) return;
+    await MyListService().ensureLoaded();
+    final uid = MyListService.movieId(movie.id, movie.mediaType);
+    if (MyListService().contains(uid) &&
+        MyListService().statusOf(uid) == 'completed') {
+      return;
+    }
+    await _setTmdbStatus(movie, 'completed', container: container);
+  }
+
+  /// Details open with saved progress — pin catches up without re-play.
+  static Future<void> reconcileMovieFromProgress(
+    Movie movie, {
+    required Map<String, dynamic>? progress,
+    ProviderContainer? container,
+  }) async {
+    if (movie.mediaType != 'movie' || progress == null) return;
+    final pos = watchHistoryInt(progress['position']);
+    final dur = watchHistoryInt(progress['duration']);
+    if (dur <= 0 || pos < 10000) return;
+    if (isWatchFinished(pos, dur)) {
+      await markMovieCompletedIfFinished(
+        movie,
+        positionMs: pos,
+        durationMs: dur,
+        container: container,
+      );
+    } else {
+      await markMovieWatchingOnPlay(movie, container: container);
+    }
   }
 
   static Future<bool> _setTmdbStatus(

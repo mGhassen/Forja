@@ -280,6 +280,9 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
+        unawaited(
+          ListFollowFromWatched.markMovieWatchingOnPlay(widget.movie!),
+        );
       }
       // Fetch skip segments from IntroDB
       _fetchIntroDbTimestamps();
@@ -814,6 +817,14 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
             movie: widget.movie!,
           );
         }());
+      } else if (widget.movie!.mediaType == 'movie') {
+        unawaited(
+          ListFollowFromWatched.markMovieCompletedIfFinished(
+            widget.movie!,
+            positionMs: pos,
+            durationMs: dur,
+          ),
+        );
       }
 
       if (!isBgPause) {
