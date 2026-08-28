@@ -143,46 +143,79 @@ class SettingsService {
     return height > 0 ? '${height}p' : 'Auto (full quality)';
   }
 
-  /// Stable without stall reopen (admin can turn stall off).
+  /// Stable without stall reopen — hold while demuxer cushion / paint is alive.
   static const String iptvLiveRecoveryBuffered = 'buffered';
   static const String iptvLiveRecoveryClassic = 'classic';
-  /// Default = Stable + reopen when buffering/freeze stalls with no playhead.
+  /// Stable + reopen when buffering/freeze stalls with no playhead (manual).
   static const String iptvLiveRecoveryStall = 'stall';
+  /// Default — player picks buffer-aware policy (no stall reopen).
+  static const String iptvLiveRecoveryAuto = 'auto';
 
+  static const String iptvLiveRecoveryAutoLabel = 'Auto';
   static const String iptvLiveRecoveryStableLabel = 'Stable — buffer-aware';
   static const String iptvLiveRecoveryClassicLabel = 'Classic — stall timers';
 
-  /// Policy dropdown only — stall reopen is a separate Stable toggle.
+  /// Policy dropdown — Auto | Stable | Classic. Stall reopen is Stable-only.
   static const Map<String, String> iptvLiveRecoveryModeOptions = {
+    iptvLiveRecoveryAutoLabel: iptvLiveRecoveryAuto,
     iptvLiveRecoveryStableLabel: iptvLiveRecoveryBuffered,
     iptvLiveRecoveryClassicLabel: iptvLiveRecoveryClassic,
   };
 
-  /// Policy label for Settings dropdown (`stall` maps to Stable).
+  /// Policy label for Settings dropdown (`stall` / `buffered` → Stable).
   static String iptvLiveRecoveryModeLabel(String stored) {
-    if (normalizeIptvLiveRecoveryMode(stored) == iptvLiveRecoveryClassic) {
-      return iptvLiveRecoveryClassicLabel;
-    }
+    final n = normalizeIptvLiveRecoveryMode(stored);
+    if (n == iptvLiveRecoveryAuto) return iptvLiveRecoveryAutoLabel;
+    if (n == iptvLiveRecoveryClassic) return iptvLiveRecoveryClassicLabel;
     return iptvLiveRecoveryStableLabel;
   }
 
   static bool iptvLiveRecoveryStallReopen(String stored) =>
       normalizeIptvLiveRecoveryMode(stored) == iptvLiveRecoveryStall;
 
+  static bool iptvLiveRecoveryIsAuto(String stored) =>
+      normalizeIptvLiveRecoveryMode(stored) == iptvLiveRecoveryAuto;
+
   static String composeIptvLiveRecoveryMode({
     required bool classic,
     required bool stallReopen,
+    bool auto = false,
   }) {
+    if (auto) return iptvLiveRecoveryAuto;
     if (classic) return iptvLiveRecoveryClassic;
     if (stallReopen) return iptvLiveRecoveryStall;
     return iptvLiveRecoveryBuffered;
   }
 
   static String normalizeIptvLiveRecoveryMode(String? raw) {
-    final v = (raw ?? iptvLiveRecoveryStall).trim().toLowerCase();
+    if (raw == null || raw.trim().isEmpty) return iptvLiveRecoveryAuto;
+    final v = raw.trim().toLowerCase();
+    if (v == iptvLiveRecoveryAuto) return iptvLiveRecoveryAuto;
     if (v == iptvLiveRecoveryClassic) return iptvLiveRecoveryClassic;
     if (v == iptvLiveRecoveryStall) return iptvLiveRecoveryStall;
-    return iptvLiveRecoveryBuffered;
+    if (v == iptvLiveRecoveryBuffered) return iptvLiveRecoveryBuffered;
+    return iptvLiveRecoveryAuto;
+  }
+
+  /// Resolve Settings value for the current live open.
+  ///
+  /// Auto → Stable without stall reopen for every source. Continuity-proxy /
+  /// paint detectors handle CDN hiccups and VO freeze; stall reopen false-
+  /// triggers on Stalker (playhead often idle at 0) and kills demuxer cushion.
+  static String resolveIptvLiveRecoveryMode(
+    String stored, {
+    String? liveSourceKind,
+  }) {
+    final n = normalizeIptvLiveRecoveryMode(stored);
+    if (n != iptvLiveRecoveryAuto) return n;
+    switch (liveSourceKind) {
+      case 'iptvXtream':
+      case 'iptvStalker':
+      case 'stremio':
+      case 'liveEngine':
+      default:
+        return iptvLiveRecoveryBuffered;
+    }
   }
 
   /// Anime catalog display language (AniList). Default romaji.
@@ -396,7 +429,7 @@ class SettingsService {
   Future<void> setIptvLiveMaxHeight(int height) async =>
       kvSetInt(_iptvLiveMaxHeightKey, height < 0 ? 0 : height);
 
-  /// IPTV live auto-recovery. Default [iptvLiveRecoveryStall].
+  /// IPTV live auto-recovery. Default [iptvLiveRecoveryAuto].
   Future<String> getIptvLiveRecoveryMode() async {
     return normalizeIptvLiveRecoveryMode(
       await kvGetString(_iptvLiveRecoveryModeKey),

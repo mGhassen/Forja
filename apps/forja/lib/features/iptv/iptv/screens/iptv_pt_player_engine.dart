@@ -325,6 +325,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
 
   Future<void> _engineOpenSource(IptvPlaySource src) async {
     src = await _refreshStalkerPlayUrl(src);
+    _s._applyLiveRecoveryModeForCurrentSource(src: src);
     if (_s._exoBackend) {
       // Soft reopen on the Kotlin side — do not stop+release before open (ANR).
       final live = iptvExoUrlLooksLive(src.url);

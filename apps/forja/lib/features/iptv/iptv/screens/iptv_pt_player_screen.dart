@@ -728,8 +728,24 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
 
   bool _socketTroublePending = false;
 
-  /// [SettingsService.iptvLiveRecoveryStall] (default), buffered, or classic.
-  String _liveRecoveryMode = SettingsService.iptvLiveRecoveryStall;
+  /// Settings raw mode ([SettingsService.iptvLiveRecoveryAuto] default).
+  /// Watchdog uses [_liveRecoveryMode] after Auto resolve.
+  String _liveRecoveryModeSetting = SettingsService.iptvLiveRecoveryAuto;
+
+  /// Effective recovery policy for this open (Auto → buffered, etc.).
+  String _liveRecoveryMode = SettingsService.iptvLiveRecoveryBuffered;
+
+  void _applyLiveRecoveryModeForCurrentSource({IptvPlaySource? src}) {
+    final active = src ??
+        (_sources.isEmpty
+            ? null
+            : _sources[_sourceIdx.clamp(0, _sources.length - 1)]);
+    final kind = active?.liveSourceKind ?? widget.liveSourceKind;
+    _liveRecoveryMode = SettingsService.resolveIptvLiveRecoveryMode(
+      _liveRecoveryModeSetting,
+      liveSourceKind: kind?.name,
+    );
+  }
 
   /// Last decoded height / bitrate — cache tiers and proxy queue (ATV live).
   int _lastVideoHeight = 0;
@@ -1001,8 +1017,12 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _volume = prefs.volume;
     _volumeBeforeMute = prefs.volume > 0 ? prefs.volume : 100.0;
     _muted = prefs.volume == 0;
-    _liveRecoveryMode = prefs.liveRecoveryMode;
-    debugPrint('[IPTV Player] live recovery mode=$_liveRecoveryMode');
+    _liveRecoveryModeSetting = prefs.liveRecoveryMode;
+    _applyLiveRecoveryModeForCurrentSource();
+    debugPrint(
+      '[IPTV Player] live recovery setting=$_liveRecoveryModeSetting '
+      'effective=$_liveRecoveryMode',
+    );
     try {
       final subPrefs = await ref.read(playerSubtitlePrefsProvider(true).future);
       if (!_disposed && mounted) {

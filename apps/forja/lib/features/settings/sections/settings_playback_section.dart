@@ -499,24 +499,29 @@ class _SettingsPlaybackSectionState
               settingsFocusableDropdown(
                 context,
                 'IPTV live recovery',
-                'How live channels reconnect. Stable (default) only reconnects when the live buffer is empty, so healthy channels keep playing through CDN hiccups. Classic reconnects on freeze timers even if buffer still looks full. Takes effect next time you open the player.',
+                'How live channels reconnect. Auto (default) keeps the buffer and only reconnects when it is empty — works for Xtream and Stalker without changing per channel. Stable lets you tune stall reopen. Classic reconnects on freeze timers. Takes effect next time you open the player.',
                 snap.iptvLiveRecoveryModeLabel,
                 SettingsService.iptvLiveRecoveryModeOptions.keys.toList(),
                 (val) async {
                   if (val == null) return;
-                  final classic =
-                      val == SettingsService.iptvLiveRecoveryClassicLabel;
-                  final mode = SettingsService.composeIptvLiveRecoveryMode(
-                    classic: classic,
-                    stallReopen:
-                        classic ? false : snap.iptvLiveRecoveryStallReopen,
-                  );
+                  final String mode;
+                  if (val == SettingsService.iptvLiveRecoveryAutoLabel) {
+                    mode = SettingsService.iptvLiveRecoveryAuto;
+                  } else if (val ==
+                      SettingsService.iptvLiveRecoveryClassicLabel) {
+                    mode = SettingsService.iptvLiveRecoveryClassic;
+                  } else {
+                    mode = SettingsService.composeIptvLiveRecoveryMode(
+                      classic: false,
+                      stallReopen: snap.iptvLiveRecoveryStallReopen,
+                    );
+                  }
                   await _settings.setIptvLiveRecoveryMode(mode);
                   await _playback.patch(
                     (s) => s.copyWith(
                       iptvLiveRecoveryModeLabel: val,
                       iptvLiveRecoveryStallReopen:
-                          classic ? false : s.iptvLiveRecoveryStallReopen,
+                          SettingsService.iptvLiveRecoveryStallReopen(mode),
                     ),
                   );
                 },
@@ -526,7 +531,7 @@ class _SettingsPlaybackSectionState
                 settingsFocusableToggle(
                   context,
                   'Reopen on buffer stall',
-                  'Stable only. On by default. If the picture freezes or Buffering sticks with no playback progress, reconnect even when the demuxer still reports cache. Takes effect next time you open the player.',
+                  'Stable only. Off by default under Auto. If the picture freezes or Buffering sticks with no playback progress, reconnect even when the demuxer still reports cache. Can kill a healthy buffer on Stalker — leave off unless you need it. Takes effect next time you open the player.',
                   snap.iptvLiveRecoveryStallReopen,
                   (val) async {
                     await _settings.setIptvLiveRecoveryMode(
