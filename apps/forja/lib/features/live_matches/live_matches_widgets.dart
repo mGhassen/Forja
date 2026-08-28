@@ -4123,13 +4123,14 @@ class _LiveMatchCardTitleStack extends StatelessWidget {
       padding: EdgeInsets.only(right: rightPadding),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (schedule != null && schedule!.isNotEmpty) ...[
             Text(
               schedule!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.left,
               style: const TextStyle(
                 color: Colors.white54,
                 fontSize: 10,
@@ -4142,7 +4143,7 @@ class _LiveMatchCardTitleStack extends StatelessWidget {
             title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
+            textAlign: TextAlign.left,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 12,
@@ -4155,7 +4156,7 @@ class _LiveMatchCardTitleStack extends StatelessWidget {
               secondary!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
+              textAlign: TextAlign.left,
               style: const TextStyle(
                 color: Colors.white54,
                 fontSize: 9.5,

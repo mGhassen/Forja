@@ -26,6 +26,7 @@ import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/widgets/hub_list_status_hero.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
+import 'package:forja/shared/services/list_follow_from_watched.dart';
 import 'package:forja/shared/widgets/media_details/media_details.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
@@ -522,6 +523,20 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     );
     HubListFollow.syncEpisodeWatched(_followTarget, episode: episode, watched: watched);
     await _loadWatchedEpisodes();
+    final total = _episodes.isNotEmpty
+        ? _episodes.length
+        : (_data.episodes ?? 0);
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(context, listen: false);
+    } catch (_) {}
+    await ListFollowFromWatched.applyHub(
+      target: _followTarget,
+      watchedCount: _watchedEpisodes.length,
+      totalEpisodes: total,
+      episodeNowWatched: watched,
+      container: container,
+    );
   }
 
   Widget? _seriesProgressWidget() {

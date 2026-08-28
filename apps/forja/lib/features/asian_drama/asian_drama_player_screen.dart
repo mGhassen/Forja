@@ -14,6 +14,7 @@ import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
+import 'package:forja/shared/services/list_follow_from_watched.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/playback/hub_drama_player_episodes.dart';
 import 'package:forja/shared/playback/hub_engine_watch_history.dart';
@@ -626,17 +627,27 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
           positionMs: pos.inMilliseconds,
           durationMs: dur.inMilliseconds,
           catalog: EpisodeWatchedService.catalogKisskh,
-        ).then((marked) {
+        ).then((marked) async {
           if (!marked) return;
+          final target = HubListFollowTarget.drama(
+            kisskhId: drama.id,
+            title: drama.title,
+            posterPath: drama.cover,
+            releaseDate: drama.year ?? '',
+            kissKhType: drama.type,
+          );
           HubListFollow.syncEpisodeWatched(
-            HubListFollowTarget.drama(
-              kisskhId: drama.id,
-              title: drama.title,
-              posterPath: drama.cover,
-              releaseDate: drama.year ?? '',
-              kissKhType: drama.type,
-            ),
+            target,
             episode: epKey,
+          );
+          final total = episodes.isNotEmpty
+              ? episodes.length
+              : episode.number.toInt();
+          await ListFollowFromWatched.applyHubAfterAutoMark(
+            target: target,
+            mediaId: drama.id,
+            catalog: EpisodeWatchedService.catalogKisskh,
+            totalEpisodes: total,
           );
         });
       },

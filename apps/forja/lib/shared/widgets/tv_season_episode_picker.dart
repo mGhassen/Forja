@@ -924,6 +924,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
         curve: Curves.easeOutCubic,
         child: GestureDetector(
           onSecondaryTap: enabled ? widget.onToggleWatched : null,
+          onDoubleTap: enabled ? widget.onToggleWatched : null,
           behavior: HitTestBehavior.opaque,
           child: SizedBox(
             width: _EpisodeCard.cardWidth,

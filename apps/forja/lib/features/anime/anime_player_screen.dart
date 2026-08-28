@@ -16,6 +16,7 @@ import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
+import 'package:forja/shared/services/list_follow_from_watched.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -1329,15 +1330,23 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
           positionMs: pos.inMilliseconds,
           durationMs: dur.inMilliseconds,
           catalog: EpisodeWatchedService.catalogAnilist,
-        ).then((marked) {
+        ).then((marked) async {
           if (!marked) return;
+          final target = HubListFollowTarget.anime(
+            anilistId: widget.anime.id,
+            title: widget.anime.displayTitle,
+            posterPath: widget.anime.coverUrl,
+          );
           HubListFollow.syncEpisodeWatched(
-            HubListFollowTarget.anime(
-              anilistId: widget.anime.id,
-              title: widget.anime.displayTitle,
-              posterPath: widget.anime.coverUrl,
-            ),
+            target,
             episode: widget.episodeNumber,
+          );
+          final total = widget.anime.episodes ?? widget.episodeNumber;
+          await ListFollowFromWatched.applyHubAfterAutoMark(
+            target: target,
+            mediaId: widget.anime.id,
+            catalog: EpisodeWatchedService.catalogAnilist,
+            totalEpisodes: total,
           );
         });
       },

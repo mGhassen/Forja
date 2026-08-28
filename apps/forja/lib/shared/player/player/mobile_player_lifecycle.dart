@@ -801,15 +801,19 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       final season = widget.selectedSeason;
       final episode = widget.selectedEpisode;
       if (season != null && episode != null) {
-        unawaited(
-          EpisodeWatchedService().markWatchedIfFinished(
+        unawaited(() async {
+          final marked = await EpisodeWatchedService().markWatchedIfFinished(
             mediaId: widget.movie!.id,
             season: season,
             episode: episode,
             positionMs: pos,
             durationMs: dur,
-          ),
-        );
+          );
+          if (!marked) return;
+          await ListFollowFromWatched.applyTmdbAfterAutoMark(
+            movie: widget.movie!,
+          );
+        }());
       }
 
       if (!isBgPause) {

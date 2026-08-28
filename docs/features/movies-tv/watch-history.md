@@ -17,7 +17,7 @@ Forja saves playback position locally when you watch movies or TV episodes. **Co
 - See progress on the details hero (Resume + bar) and on continue watching cards — updates when you leave the player without leaving details
 - Hover a continue watching card (desktop) to scale it and show a play button; hover the play button to turn it brand-green, float it upward, and pulse the icon — click opens details then resumes
 - Dismiss entries from continue watching
-- Episodes auto-mark **watched** when you reach **85%** (right-click still toggles); TV / anime / Asian Drama details show series progress (`N of T · %` or **Completed**)
+- Episodes auto-mark **watched** when you reach **85%** (right-click or double-click still toggles); TV / anime / Asian Drama details show series progress (`N of T · %` or **Completed**). Those marks also bump My List / Simkl to **Watching**, or **Completed** when every episode is marked
 - Movies show **Watched** with a check on details when finished (≥85%)
 - Clear all continue watching (and watched marks) from **Settings → [Data & backup](../settings/cache-data.md)**
 

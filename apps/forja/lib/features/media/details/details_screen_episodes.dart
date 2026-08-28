@@ -148,6 +148,22 @@ mixin _DetailsScreenEpisodes on ConsumerState<DetailsScreen> {
   Future<void> _toggleEpisodeWatched(int season, int episode) async {
     await _s._episodeWatchedService.toggle(_s._movie.id, season, episode);
     await _loadWatchedEpisodes();
+    final watched = await _s._episodeWatchedService.isWatched(
+      _s._movie.id,
+      season,
+      episode,
+    );
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(_s.context, listen: false);
+    } catch (_) {}
+    await ListFollowFromWatched.applyTmdb(
+      movie: _s._movie,
+      watchedCount: _s._watchedEpisodes.length,
+      totalEpisodes: _s._movie.numberOfEpisodes,
+      episodeNowWatched: watched,
+      container: container,
+    );
   }
   Future<void> _fetchSeason(int seasonNumber) async {
     setState(() => _s._isLoadingSeason = true);

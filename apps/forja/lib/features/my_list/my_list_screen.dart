@@ -553,7 +553,12 @@ class _KindTabState extends State<_KindTab> {
 
   double get _visualTarget {
     if (widget.isActive) return _selectedT;
-    if (_hovered || _focused) return _hoverT;
+    final policy = ShellScope.inputPolicyOf(context);
+    // Desktop hybrid keeps keyboard focus on Films after mouse taps Anime —
+    // only paint hover chrome when focus chrome is actually visible.
+    if (_hovered || policy.focusStyled(context, focused: _focused)) {
+      return _hoverT;
+    }
     return 0;
   }
 
@@ -776,7 +781,9 @@ class _StatusTabFocusState extends State<_StatusTabFocus> {
 
   @override
   Widget build(BuildContext context) {
-    final emphasize = widget.selected || _focused;
+    final policy = ShellScope.inputPolicyOf(context);
+    final emphasize = widget.selected ||
+        policy.focusStyled(context, focused: _focused);
     final label = Text(
       widget.label,
       textAlign: TextAlign.center,

@@ -22,6 +22,7 @@ import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
 import 'package:forja/shared/widgets/hub_list_status_hero.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
+import 'package:forja/shared/services/list_follow_from_watched.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/media_details/media_details.dart';
@@ -399,11 +400,27 @@ class _AsianDramaDetailsScreenState
     if (det != null) {
       final enrich =
           ref.read(asianDramaTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
+      final target = _followTarget(det, enrich?.rich);
       HubListFollow.syncEpisodeWatched(
-        _followTarget(det, enrich?.rich),
+        target,
         episode: episode,
         watched: watched,
       );
+      await _loadWatchedEpisodes();
+      final total =
+          det.episodes.isNotEmpty ? det.episodes.length : det.episodesCount;
+      ProviderContainer? container;
+      try {
+        container = ProviderScope.containerOf(context, listen: false);
+      } catch (_) {}
+      await ListFollowFromWatched.applyHub(
+        target: target,
+        watchedCount: _watchedEpisodes.length,
+        totalEpisodes: total,
+        episodeNowWatched: watched,
+        container: container,
+      );
+      return;
     }
     await _loadWatchedEpisodes();
   }

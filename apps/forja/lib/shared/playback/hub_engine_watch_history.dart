@@ -4,6 +4,7 @@ import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
+import 'package:forja/shared/services/list_follow_from_watched.dart';
 import 'package:rust/rust.dart';
 
 /// Hub tab media types — never written to Home [`watch_history`].
@@ -249,15 +250,22 @@ hubEngineSaveProgressCallback({
             durationMs: dur.inMilliseconds,
             catalog: EpisodeWatchedService.catalogAnilist,
           )
-          .then((marked) {
+          .then((marked) async {
             if (!marked) return;
+            final target = HubListFollowTarget.anime(
+              anilistId: anime.id,
+              title: anime.displayTitle,
+              posterPath: anime.coverUrl,
+            );
             HubListFollow.syncEpisodeWatched(
-              HubListFollowTarget.anime(
-                anilistId: anime.id,
-                title: anime.displayTitle,
-                posterPath: anime.coverUrl,
-              ),
+              target,
               episode: ep,
+            );
+            await ListFollowFromWatched.applyHubAfterAutoMark(
+              target: target,
+              mediaId: anime.id,
+              catalog: EpisodeWatchedService.catalogAnilist,
+              totalEpisodes: anime.episodes ?? ep,
             );
           });
     };
@@ -293,17 +301,24 @@ hubEngineSaveProgressCallback({
             durationMs: dur.inMilliseconds,
             catalog: EpisodeWatchedService.catalogKisskh,
           )
-          .then((marked) {
+          .then((marked) async {
             if (!marked) return;
+            final target = HubListFollowTarget.drama(
+              kisskhId: drama.id,
+              title: drama.title,
+              posterPath: drama.cover,
+              releaseDate: drama.year ?? '',
+              kissKhType: drama.type,
+            );
             HubListFollow.syncEpisodeWatched(
-              HubListFollowTarget.drama(
-                kisskhId: drama.id,
-                title: drama.title,
-                posterPath: drama.cover,
-                releaseDate: drama.year ?? '',
-                kissKhType: drama.type,
-              ),
+              target,
               episode: epKey,
+            );
+            await ListFollowFromWatched.applyHubAfterAutoMark(
+              target: target,
+              mediaId: drama.id,
+              catalog: EpisodeWatchedService.catalogKisskh,
+              totalEpisodes: episodes.isNotEmpty ? episodes.length : ep,
             );
           });
     };
