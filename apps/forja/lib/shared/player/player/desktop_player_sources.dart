@@ -244,6 +244,8 @@ mixin _DesktopPlayerSources
     }
     _s._trackAutoSelectTimer?.cancel();
     _s._trackAutoSelectTimer = null;
+    _s._embeddedSubtitleAutoTimer?.cancel();
+    _s._embeddedSubtitleAutoTimer = null;
     PlayerSubtitleSettingsDialog.dismissIfShowing();
     PlayerStreamMenu.dismiss();
     PlayerPopupPanel.dismiss();
@@ -797,7 +799,7 @@ mixin _DesktopPlayerSources
       _s._markPlaybackConfirmed(false);
 
       // Validated - stop the prior stream before opening the new one.
-      _s._autoTracksAppliedForSource = false;
+      _s._resetTrackAutoSelectForSource();
       _s._durationNotifier.value = Duration.zero;
       _s._positionNotifier.value = Duration.zero;
       _s._bufferedNotifier.value = Duration.zero;

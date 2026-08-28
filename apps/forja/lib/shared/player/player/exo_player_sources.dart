@@ -360,7 +360,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       final caps = exoVodCapsForMaxPlaybackHeight(maxH);
       await ExoPlayerBridge.open(
         viewId: _s._viewId,
-        url: openUrl,
+        url: normalizePlaybackStreamUrl(openUrl),
         headers: headers,
         startPosition: resumeAt.inSeconds > 0 ? resumeAt : Duration.zero,
         subtitles: prepared
@@ -725,7 +725,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     final caps = exoVodCapsForMaxPlaybackHeight(maxH);
     await ExoPlayerBridge.open(
       viewId: _s._viewId,
-      url: url,
+      url: normalizePlaybackStreamUrl(url),
       headers: headers,
       startPosition: resumeAt.inSeconds > 0 ? resumeAt : Duration.zero,
       subtitles: prepared

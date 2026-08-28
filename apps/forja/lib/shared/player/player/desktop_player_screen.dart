@@ -228,9 +228,12 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   /// Deferred track/subtitle auto-select - cancel on exit so it cannot
   /// touch State after the route is gone.
   Timer? _trackAutoSelectTimer;
+  Timer? _embeddedSubtitleAutoTimer;
   PlaybackRecovery? _playbackRecovery;
   PostSeekStallWatchdog? _postSeekStall;
   bool _autoTracksAppliedForSource = false;
+  bool _embeddedSubtitleAutoApplied = false;
+  bool _userPickedExternalSubtitle = false;
   // ── Value Notifiers (rebuild only what's needed, no full setState) ────────
   final ValueNotifier<Duration> _positionNotifier = ValueNotifier(
     Duration.zero,
@@ -317,6 +320,16 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     _abortiveCompletedLatched = false;
     _sessionFirstConfirmedAt = null;
     _seekAwayFromEofAt = null;
+  }
+
+  void _resetTrackAutoSelectForSource() {
+    _autoTracksAppliedForSource = false;
+    _embeddedSubtitleAutoApplied = false;
+    _userPickedExternalSubtitle = false;
+    _trackAutoSelectTimer?.cancel();
+    _trackAutoSelectTimer = null;
+    _embeddedSubtitleAutoTimer?.cancel();
+    _embeddedSubtitleAutoTimer = null;
   }
 
   void _markPlaybackConfirmed(bool confirmed) {
@@ -418,6 +431,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     _progressSaveTimer?.cancel();
     _trackAutoSelectTimer?.cancel();
     _trackAutoSelectTimer = null;
+    _embeddedSubtitleAutoTimer?.cancel();
+    _embeddedSubtitleAutoTimer = null;
     _pipSub?.cancel();
     PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
     _torrentStatsSub?.cancel();

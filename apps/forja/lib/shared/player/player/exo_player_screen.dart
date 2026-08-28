@@ -350,7 +350,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       await ExoPlayerBridge.stop(_viewId);
       await ExoPlayerBridge.open(
         viewId: _viewId,
-        url: source.url,
+        url: normalizePlaybackStreamUrl(source.url),
         headers: source.headers,
         startPosition: pos,
         subtitles: subs,
@@ -423,7 +423,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       final caps = exoVodCapsForMaxPlaybackHeight(maxH);
       await ExoPlayerBridge.open(
         viewId: _viewId,
-        url: source.url,
+        url: normalizePlaybackStreamUrl(source.url),
         headers: source.headers,
         startPosition: start,
         subtitles: subs,
@@ -801,7 +801,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           .toList();
       await ExoPlayerBridge.open(
         viewId: _viewId,
-        url: source.url,
+        url: normalizePlaybackStreamUrl(source.url),
         headers: source.headers,
         startPosition: target,
         subtitles: subs,

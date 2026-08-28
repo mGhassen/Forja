@@ -90,7 +90,7 @@ mixin _DesktopPlayerPlayback
       }
 
       try {
-        _s._autoTracksAppliedForSource = false;
+        _s._resetTrackAutoSelectForSource();
         _s._durationNotifier.value = Duration.zero;
         _s._positionNotifier.value = Duration.zero;
         _s._bufferedNotifier.value = Duration.zero;
@@ -1407,7 +1407,7 @@ mixin _DesktopPlayerPlayback
     _s._tracksSub?.cancel();
     _s._logSub?.cancel();
     _s._logSub?.cancel();
-    _s._autoTracksAppliedForSource = false;
+    _s._resetTrackAutoSelectForSource();
 
     _s._playbackRecovery = PlaybackRecovery(
       player: _s._player,
@@ -1690,16 +1690,43 @@ mixin _DesktopPlayerPlayback
     });
 
     _s._tracksSub = _s._player.stream.tracks.listen((tracks) {
-      if (_s._disposed || _s._autoTracksAppliedForSource) return;
-      final hasAudio = tracks.audio.any((t) => t.id != 'no' && t.id != 'auto');
-      if (!hasAudio) return;
-      _s._autoTracksAppliedForSource = true;
-      _s._trackAutoSelectTimer?.cancel();
-      _s._trackAutoSelectTimer = Timer(const Duration(milliseconds: 600), () {
-        _s._trackAutoSelectTimer = null;
-        unawaited(_applyTrackAutoSelect());
-      });
+      if (_s._disposed) return;
+      final hasAudio =
+          tracks.audio.any((t) => t.id != 'no' && t.id != 'auto');
+      if (!_s._autoTracksAppliedForSource && hasAudio) {
+        _s._autoTracksAppliedForSource = true;
+        _s._trackAutoSelectTimer?.cancel();
+        _s._trackAutoSelectTimer = Timer(const Duration(milliseconds: 600), () {
+          _s._trackAutoSelectTimer = null;
+          unawaited(_applyTrackAutoSelect());
+        });
+      }
+      _scheduleEmbeddedSubtitleAuto(tracks);
     });
+  }
+
+  void _scheduleEmbeddedSubtitleAuto(Tracks tracks) {
+    if (_s._disposed ||
+        _s._embeddedSubtitleAutoApplied ||
+        _s._userPickedExternalSubtitle) {
+      return;
+    }
+    if (embeddedSubtitleTracks(tracks.subtitle).isEmpty) return;
+    _s._embeddedSubtitleAutoTimer?.cancel();
+    _s._embeddedSubtitleAutoTimer = Timer(const Duration(milliseconds: 200), () {
+      _s._embeddedSubtitleAutoTimer = null;
+      if (_s._disposed ||
+          _s._embeddedSubtitleAutoApplied ||
+          _s._userPickedExternalSubtitle) {
+        return;
+      }
+      unawaited(_applyLateEmbeddedSubtitle());
+    });
+  }
+
+  Future<void> _applyLateEmbeddedSubtitle() async {
+    if (_s._disposed || !mounted) return;
+    await _s._applyAutoSubtitle();
   }
 
   Future<void> _applyTrackAutoSelect() async {
@@ -1740,7 +1767,7 @@ mixin _DesktopPlayerPlayback
   Future<void> _recoverAudioTrack() async {
     if (_s._disposed || _s._audioPinned) return;
     try {
-      _s._autoTracksAppliedForSource = false;
+      _s._resetTrackAutoSelectForSource();
       await _applyTrackAutoSelect();
     } catch (e) {
       debugPrint('[DesktopPlayer] audio recovery failed: $e');

@@ -1112,33 +1112,38 @@ mixin _DesktopPlayerEpisodes
     final settings = SettingsService();
     final preferred = await settings.getPreferredSubtitleLanguage();
     if (_s._disposed || !mounted) return;
-    final embedded = _s._player.state.tracks.subtitle
-        .where(
-          (t) => t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'),
-        )
-        .toList();
+    final embedded =
+        embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
+    if (embedded.isEmpty) return;
 
     if (preferred != 'None' && preferred.isNotEmpty) {
       final track = pickEmbeddedSubtitleWithFallback(
         preferredLang: preferred,
         tracks: embedded,
       );
-      if (track == null) return;
+      if (track == null) {
+        _s._embeddedSubtitleAutoApplied = true;
+        return;
+      }
       await _s._player.setSubtitleTrack(track);
       if (_s._disposed || !mounted) return;
       _s._updateSubVisibility(track);
       if (mounted) setState(() => _s._selectedExternalSubUrl = null);
+      _s._embeddedSubtitleAutoApplied = true;
       return;
     }
 
     // No preferred language - only pick first embedded when Auto subtitles is on.
-    if (_s._subtitlePinned) return;
-    if (embedded.isEmpty) return;
+    if (_s._subtitlePinned) {
+      _s._embeddedSubtitleAutoApplied = true;
+      return;
+    }
     final track = embedded.first;
     await _s._player.setSubtitleTrack(track);
     if (_s._disposed || !mounted) return;
     _s._updateSubVisibility(track);
     if (mounted) setState(() => _s._selectedExternalSubUrl = null);
+    _s._embeddedSubtitleAutoApplied = true;
   }
 
   Future<void> _loadPlayerAutoSettings() async {
@@ -1224,7 +1229,7 @@ mixin _DesktopPlayerEpisodes
                       await settings.setPlayerAutoAudio(true);
                       setState(() => _s._audioPinned = false);
                       setPage(() {});
-                      _s._autoTracksAppliedForSource = false;
+                      _s._resetTrackAutoSelectForSource();
                       await _s._applyTrackAutoSelect();
                     } else {
                       await settings.setPlayerAutoAudio(false);
@@ -1592,7 +1597,7 @@ mixin _DesktopPlayerEpisodes
 
       if (_s._fallbackAborted(gen)) return null;
       if (streamUrl != null && streamUrl.isNotEmpty) {
-        _s._autoTracksAppliedForSource = false;
+        _s._resetTrackAutoSelectForSource();
         _s._durationNotifier.value = Duration.zero;
         _s._positionNotifier.value = Duration.zero;
         _s._bufferedNotifier.value = Duration.zero;

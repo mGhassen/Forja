@@ -147,23 +147,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     return collectSizeRanges(sizes);
   }
 
-  double _streamSizeBytes(Map<String, dynamic> s) {
-    final label = TorrentReleaseMetadata.resolveStreamSizeLabel(s);
-    if (label != null) {
-      final bytes = TorrentReleaseMetadata.parseSizeBytes(label);
-      if (bytes > 0) return bytes;
-    }
-    final hints = s['behaviorHints'];
-    if (hints is Map) {
-      final videoSize = hints['videoSize'] ?? hints['video_size'];
-      if (videoSize is num && videoSize > 0) return videoSize.toDouble();
-      final parsed = double.tryParse(videoSize?.toString() ?? '');
-      if (parsed != null && parsed > 0) return parsed;
-    }
-    final blob =
-        '${s['title'] ?? s['name'] ?? ''} ${s['description'] ?? ''} ${s['size'] ?? ''}';
-    return TorrentReleaseMetadata.parseSizeBytes(blob);
-  }
+  double _streamSizeBytes(Map<String, dynamic> s) =>
+      TorrentReleaseMetadata.streamSizeBytesForFilters(s);
 
   bool _matchesPanelFilters(String name) =>
       TorrentReleaseMetadata.parse(name).matchesFiltersForName(

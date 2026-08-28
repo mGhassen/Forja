@@ -163,6 +163,13 @@ class TorrentReleaseMetadata {
     return resolveSizeLabel(fallbackText: blob);
   }
 
+  /// Bytes for size filters — same rules as [resolveStreamSizeLabel]; bogus → `0`.
+  static double streamSizeBytesForFilters(Map<String, dynamic> stream) {
+    final label = resolveStreamSizeLabel(stream);
+    if (label == null) return 0;
+    return parseSizeBytes(label);
+  }
+
   static String? sizeRangeForBytes(double bytes) {
     if (bytes <= 0) return null;
     final gb = bytes / _gb;

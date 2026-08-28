@@ -15,7 +15,14 @@ mixin _DesktopPlayerTracks
   //  ONLINE SUBTITLE LOADER (download → temp file → SubtitleTrack.uri)
   // ─────────────────────────────────────────────────────────────────────────
 
-  Future<void> _loadOnlineSubtitle(Map<String, dynamic> s) async {
+  Future<void> _loadOnlineSubtitle(
+    Map<String, dynamic> s, {
+    bool userInitiated = false,
+  }) async {
+    if (userInitiated) {
+      _s._userPickedExternalSubtitle = true;
+      _s._embeddedSubtitleAutoApplied = true;
+    }
     final url = (s['url'] ?? '').toString();
     if (url.isEmpty) return;
     final isTranslated =
@@ -286,10 +293,12 @@ mixin _DesktopPlayerTracks
       onExternalUrlChanged: (url) =>
           setState(() => _s._selectedExternalSubUrl = url),
       onNativeSubtitleChanged: (v) => setState(() => _s._isNativeSubtitle = v),
-      loadOnlineSubtitle: _loadOnlineSubtitle,
+      loadOnlineSubtitle: (s) => _loadOnlineSubtitle(s, userInitiated: true),
       onSubtitleSettings: _showSubtitleSettings,
       onSubtitleSelected:
           ({required bool off, String? language, String? title}) {
+            _s._embeddedSubtitleAutoApplied = true;
+            if (!off) _s._userPickedExternalSubtitle = false;
             unawaited(
               _rememberSubtitlePreference(
                 off: off,

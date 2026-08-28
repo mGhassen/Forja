@@ -21,12 +21,11 @@ void main() {
         isNull,
       );
       expect(
-        TorrentReleaseMetadata.resolveStreamSizeLabel({
+        TorrentReleaseMetadata.streamSizeBytesForFilters({
           'title': 'Reacher S1E1',
-          'description': '1080p',
           'behaviorHints': {'videoSize': 4096},
         }),
-        isNull,
+        0,
       );
     });
 

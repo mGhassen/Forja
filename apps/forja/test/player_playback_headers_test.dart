@@ -31,6 +31,21 @@ void main() {
         'https://cdn.example/path/',
       );
     });
+
+    test('peakstorm demuxed child rewrites to master at open', () {
+      expect(
+        normalizePlaybackStreamUrl(
+          'https://moon.peakstorm.top/vd/x/index-s1080p-v1-a1.m3u8',
+        ),
+        'https://moon.peakstorm.top/vd/x/master.m3u8',
+      );
+      expect(
+        normalizePlaybackStreamUrl(
+          'https://moon.peakstorm.top/vd/x/master.m3u8',
+        ),
+        'https://moon.peakstorm.top/vd/x/master.m3u8',
+      );
+    });
   });
 
   group('resolvePlaybackHttpHeaders', () {

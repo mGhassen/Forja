@@ -10,6 +10,7 @@ export 'package:forja/shared/playback/playback_stream_guards.dart'
         durableStreamCatalogUrl,
         hlsProxyTargetUrl,
         streamSourceMatchesPlaying;
+import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/playback/stream_open_pipeline.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -93,13 +94,21 @@ final _trailingMediaSlash = RegExp(
 );
 
 /// Strip CDN junk like `…/file.mp4/` that browsers forgive and demuxers reject.
+///
+/// Peakstorm / Videasy HLS often resolves to demuxed `index-s1080p-v1-a1.m3u8`
+/// child playlists — seek stalls on those; open sibling `master.m3u8` instead
+/// (extract-time rewrite can miss cached rows).
 String normalizePlaybackStreamUrl(String url) {
   final trimmed = url.trim();
   if (trimmed.isEmpty) return trimmed;
-  if (_trailingMediaSlash.hasMatch(trimmed)) {
-    return trimmed.replaceFirst(RegExp(r'/+$'), '');
+  var out = trimmed;
+  if (_trailingMediaSlash.hasMatch(out)) {
+    out = out.replaceFirst(RegExp(r'/+$'), '');
   }
-  return trimmed;
+  if (isVideasyCdnStreamUrl(out)) {
+    out = VideasyExtractor.preferHlsMasterUrl(out);
+  }
+  return out;
 }
 
 /// Headers for every network open: extractor headers + guaranteed browser UA.
@@ -1809,6 +1818,16 @@ SubtitleTrack? findSubtitleTrack(List<SubtitleTrack> tracks, String id) {
     if (track.id == id) return track;
   }
   return null;
+}
+
+/// Embedded (in-stream) subtitle tracks — excludes Off/auto and sideloaded URIs.
+List<SubtitleTrack> embeddedSubtitleTracks(Iterable<SubtitleTrack> tracks) {
+  return tracks
+      .where(
+        (t) =>
+            t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'),
+      )
+      .toList();
 }
 
 Future<AudioTrack?> resolveActiveAudioTrack(Player player) async {

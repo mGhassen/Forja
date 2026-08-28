@@ -187,7 +187,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
 
       if (_s._fallbackAborted(gen)) return null;
       if (streamUrl != null && streamUrl.isNotEmpty) {
-        _s._autoTracksAppliedForSource = false;
+        _s._resetTrackAutoSelectForSource();
         _s._durationNotifier.value = Duration.zero;
         _s._positionNotifier.value = Duration.zero;
         _s._bufferedNotifier.value = Duration.zero;

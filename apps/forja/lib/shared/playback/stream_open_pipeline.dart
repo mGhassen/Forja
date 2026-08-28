@@ -79,7 +79,9 @@ class StreamOpenPipeline {
     @visibleForTesting
     String Function(String url, Map<String, String> headers)? buildStripProxy,
   }) async {
-    final catalog = (hlsProxyTargetUrl(catalogUrl) ?? catalogUrl).trim();
+    final catalog = normalizePlaybackStreamUrl(
+      (hlsProxyTargetUrl(catalogUrl) ?? catalogUrl).trim(),
+    );
     final hdrs = resolvePlaybackHttpHeaders(
       headers,
       streamUrl: catalog,
