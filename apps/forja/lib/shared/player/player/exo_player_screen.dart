@@ -210,6 +210,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   int _sourceIndex = 0;
   String? _currentProvider;
   String? _currentUrl;
+  String? _currentPlayingCatalogUrl;
   String? _activeMagnet;
   String? _catalogSourceKind;
   String? _catalogAddonBaseUrl;
@@ -264,6 +265,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _activeMagnet = widget.magnetLink;
     _catalogAddonBaseUrl = widget.stremioAddonBaseUrl;
     _catalogSourceKind = _initialCatalogSourceKind();
+    _currentPlayingCatalogUrl = widget.mediaPath;
     if (widget.audioUrl != null && widget.audioUrl!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;

@@ -528,6 +528,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   /// Single scroll target in merged lists - torrent row wins over Stremio when
   /// both share the same infoHash (Torrentio mirrors the active magnet).
+  ///
+  /// When the play CDN is listed under another Forja plugin (shared mirror)
+  /// but chrome/provider is still `engine:vidsrcsbs`, fall back to the first
+  /// row stamped with that plugin so the panel keeps a selection.
   int? _currentItemIndex(
     List<TorrentResult> torrents,
     List<Map<String, dynamic>> stremio, {
@@ -548,6 +552,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final engineOffset = nuvioOffset + nuvio.length;
     for (var i = 0; i < engine.length; i++) {
       if (_isCurrentStremio(engine[i])) return engineOffset + i;
+    }
+    final want = _playingEnginePluginId;
+    if (want != null && want.isNotEmpty) {
+      for (var i = 0; i < engine.length; i++) {
+        final s = engine[i];
+        final plugin = s['_enginePluginId']?.toString().trim() ?? '';
+        final base = s['_addonBaseUrl']?.toString().trim() ?? '';
+        if (plugin == want || base == 'engine:$want') {
+          return engineOffset + i;
+        }
+      }
     }
     return null;
   }

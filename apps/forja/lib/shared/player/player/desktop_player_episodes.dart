@@ -841,6 +841,11 @@ mixin _DesktopPlayerEpisodes
 
       setState(() {
         _s._currentUrl = resolved.streamUrl;
+        _s._currentPlayingCatalogUrl = durableStreamCatalogUrl(
+              catalogUrl: stream['url']?.toString(),
+              playUrl: resolved.streamUrl,
+            ) ??
+            resolved.streamUrl;
         _s._activeMagnet = resolved.magnetLink;
         _s._hasError = false;
         _s._currentSources = null;

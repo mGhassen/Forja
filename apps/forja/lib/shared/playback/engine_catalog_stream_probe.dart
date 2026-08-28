@@ -78,7 +78,7 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
     final url = proxied.url;
     final catalogUrl = row['url']?.toString() ?? url;
     final pluginId = row['_enginePluginId']?.toString() ?? '';
-    final type = url.contains('.m3u8')
+    final type = urlLooksLikeHls(url)
         ? 'hls'
         : (pluginId == 'movieblast' ? 'mkv' : 'mp4');
     sources.add(

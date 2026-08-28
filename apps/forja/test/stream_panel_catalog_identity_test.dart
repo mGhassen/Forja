@@ -83,6 +83,53 @@ void main() {
       );
     });
 
+    test('matches via addonBaseUrl when enginePluginId missing on row', () {
+      const dash = 'https://sacdn.hakunaymatata.com/dash/x/index.mpd';
+      final row = {
+        'url': dash,
+        '_addonBaseUrl': 'engine:vidsrcsbs',
+      };
+      expect(
+        catalogStreamRowMatchesPlaying(
+          row,
+          playUrl: dash,
+          playingEnginePluginId: 'vidsrcsbs',
+        ),
+        isTrue,
+      );
+    });
+
+    test('catalogUrl identity beats foreign shared CDN play URL', () {
+      const catalog = 'https://vidsrcsbs.example/mirror-a.m3u8';
+      const sharedCdn = 'https://sacdn.hakunaymatata.com/dash/x/index.mpd';
+      final vidsrcsbs = {
+        'url': catalog,
+        '_enginePluginId': 'vidsrcsbs',
+      };
+      final vidlink = {
+        'url': sharedCdn,
+        '_enginePluginId': 'vidlink',
+      };
+      expect(
+        catalogStreamRowMatchesPlaying(
+          vidsrcsbs,
+          playUrl: sharedCdn,
+          catalogUrl: catalog,
+          playingEnginePluginId: 'vidsrcsbs',
+        ),
+        isTrue,
+      );
+      expect(
+        catalogStreamRowMatchesPlaying(
+          vidlink,
+          playUrl: sharedCdn,
+          catalogUrl: catalog,
+          playingEnginePluginId: 'vidsrcsbs',
+        ),
+        isFalse,
+      );
+    });
+
     test('enginePluginIdFromCatalogBase parses engine chip', () {
       expect(
         enginePluginIdFromCatalogBase('engine:vidsrcsbs'),

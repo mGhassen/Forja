@@ -671,9 +671,8 @@ Future<String?> openCatalogHttpStreamWithPipeline(
   final playHeaders = proxied.headers;
   final pid = providerId ?? catalogHttpPlayProviderId(stream);
   final catalog = (hlsProxyTargetUrl(playUrl) ?? playUrl).trim();
-  final isHls =
-      playUrl.toLowerCase().contains('.m3u8') ||
-      catalog.toLowerCase().contains('.m3u8') ||
+  final isHls = urlLooksLikeHls(playUrl) ||
+      urlLooksLikeHls(catalog) ||
       isLocalLoopbackPlayUrl(playUrl);
   if (!isHls) {
     await resetPlayerForOpen(player);
@@ -1070,6 +1069,28 @@ bool isMediaOpenReady(PlayerState state) {
   return false;
 }
 
+/// True when [url] is HLS (`.m3u8`, `/hls-proxy`, or extensionless `/playlist/`).
+///
+/// VixSrc masters are `vixsrc.to/playlist/{id}?token=` — no `.m3u8`. Exo already
+/// forces `APPLICATION_M3U8` for those; MediaKit/OpenPipeline must match.
+bool urlLooksLikeHls(String url) {
+  final trimmed = url.trim();
+  if (trimmed.isEmpty) return false;
+  final lower = trimmed.toLowerCase();
+  if (lower.contains('.m3u8') || lower.contains('m3u8=')) return true;
+  if (lower.contains('/hls-proxy')) return true;
+  final nested = Uri.tryParse(trimmed)?.queryParameters['url']?.toLowerCase();
+  if (nested != null && nested.isNotEmpty && urlLooksLikeHls(nested)) {
+    return true;
+  }
+  final path = Uri.tryParse(trimmed)?.path.toLowerCase() ?? lower;
+  // Extensionless catalog playlist (e.g. vixsrc.to/playlist/772715).
+  if (path.contains('/playlist/') || path.endsWith('/playlist')) {
+    return !lower.contains('webmanifest');
+  }
+  return false;
+}
+
 bool sourceExpectsDuration(String url, {String? type}) {
   final normalizedType = type?.toLowerCase() ?? '';
   if (normalizedType == 'hls' ||
@@ -1078,9 +1099,9 @@ bool sourceExpectsDuration(String url, {String? type}) {
       normalizedType == 'dash') {
     return true;
   }
+  if (urlLooksLikeHls(url)) return true;
   final lower = url.toLowerCase();
-  return lower.contains('.m3u8') ||
-      lower.contains('.mp4') ||
+  return lower.contains('.mp4') ||
       lower.contains('.mkv') ||
       lower.contains('.webm') ||
       lower.contains('.mpd');
@@ -1108,8 +1129,8 @@ bool sourceRequiresVideoDecode(String url, {String? type}) {
   if (isLocalTorrentStreamUrl(url)) return true;
   final normalizedType = type?.toLowerCase() ?? '';
   if (normalizedType == 'hls' || normalizedType == 'dash') return true;
-  final lower = url.toLowerCase();
-  return lower.contains('.m3u8') || lower.contains('.mpd');
+  if (urlLooksLikeHls(url)) return true;
+  return url.toLowerCase().contains('.mpd');
 }
 
 Duration videoDecodeTimeoutForUrl(String url) {
@@ -2465,18 +2486,18 @@ Future<bool> probeStreamSourceUrl(
       case AnimeProbeMode.skip:
         return true;
       case AnimeProbeMode.masterOnly:
-        if (catalog.contains('.m3u8') ||
+        if (urlLooksLikeHls(catalog) ||
             catalog.toLowerCase().contains('/api/proxy') ||
-            normalized.contains('/hls-proxy')) {
+            urlLooksLikeHls(normalized)) {
           return _probeHlsMasterOnly(catalog, hdrs);
         }
         return _probeHeadOrRange(catalog, hdrs);
       case AnimeProbeMode.headOrRange:
         return _probeHeadOrRange(catalog, hdrs);
       case AnimeProbeMode.segmentPoisonSample:
-        if (catalog.contains('.m3u8') ||
+        if (urlLooksLikeHls(catalog) ||
             catalog.toLowerCase().contains('/api/proxy') ||
-            normalized.contains('/hls-proxy')) {
+            urlLooksLikeHls(normalized)) {
           if (!await hlsMediaSegmentsLookPlayable(catalog, hdrs)) {
             debugPrint(
               '[Player] HLS media poison/ad segments - reject $catalog '
@@ -2491,9 +2512,9 @@ Future<bool> probeStreamSourceUrl(
   }
 
   try {
-    if (catalog.contains('.m3u8') ||
+    if (urlLooksLikeHls(catalog) ||
         catalog.toLowerCase().contains('/api/proxy') ||
-        normalized.contains('/hls-proxy')) {
+        urlLooksLikeHls(normalized)) {
       // Legacy (no sourceKey): keep segment sample for movie/misc HLS.
       if (!await hlsMediaSegmentsLookPlayable(catalog, hdrs)) {
         debugPrint('[Player] HLS media poison/ad segments - reject $catalog');

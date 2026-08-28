@@ -92,7 +92,7 @@ class StreamOpenPipeline {
         .pngStrip;
 
     final lower = catalog.toLowerCase();
-    final isHls = lower.contains('.m3u8');
+    final isHls = urlLooksLikeHls(catalog);
     final isProgressive = !isHls &&
         (lower.contains('.mp4') ||
             lower.contains('.mkv') ||

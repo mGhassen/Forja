@@ -1149,13 +1149,18 @@ mixin _DesktopPlayerPlayback
       if (ok) {
         _s._currentUrl = playUrl;
         _s._positionNotifier.value = target;
-        final durable = durableStreamCatalogUrl(
-          catalogUrl: _s._currentPlayingCatalogUrl,
-          sourceUrl: src?.catalogUrl ?? src?.url,
-          playUrl: playUrl,
-        );
-        if (durable != null && durable.isNotEmpty) {
-          _s._currentPlayingCatalogUrl = durable;
+        // Keep original catalog identity — remount play URL is often a shared
+        // CDN that would steal the Sources highlight to another plugin.
+        final prior = _s._currentPlayingCatalogUrl?.trim();
+        if (prior == null || prior.isEmpty) {
+          final durable = durableStreamCatalogUrl(
+            catalogUrl: src?.catalogUrl,
+            sourceUrl: src?.url,
+            playUrl: playUrl,
+          );
+          if (durable != null && durable.isNotEmpty) {
+            _s._currentPlayingCatalogUrl = durable;
+          }
         }
         _s._statusController.complete();
         _s._notifySourceMenuChanged();

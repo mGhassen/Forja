@@ -107,5 +107,19 @@ void main() {
       expect(await pipe.next(), isNull);
     });
 
+    test('vixsrc extensionless /playlist/ is HLS → plainMedia + direct',
+        () async {
+      final pipe = await StreamOpenPipeline.start(
+        catalogUrl:
+            'https://vixsrc.to/playlist/174559?b=1&token=abc&expires=1&h=1',
+        providerId: 'engine:vixsrc',
+      );
+      expect(pipe.isHls, isTrue);
+      expect(pipe.mediaClass, StreamMediaClass.plainMedia);
+      expect((await pipe.next())?.action, StreamOpenAction.openDirect);
+      pipe.report(StreamOpenStepResult.openFailed);
+      // never pngStrip — no strip re-branch
+      expect(await pipe.next(), isNull);
+    });
   });
 }

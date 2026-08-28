@@ -239,7 +239,13 @@ bool catalogStreamRowMatchesPlaying(
   final want = playingEnginePluginId?.trim();
   if (want == null || want.isEmpty) return true;
   final rowPlugin = stream['_enginePluginId']?.toString().trim() ?? '';
-  return rowPlugin == want;
+  if (rowPlugin == want) return true;
+  // Some rows only stamp `_addonBaseUrl` (engine:vidsrcsbs).
+  final base = stream['_addonBaseUrl']?.toString().trim() ?? '';
+  if (base == 'engine:$want') return true;
+  // Shared CDN under another plugin — do not steal the highlight.
+  if (rowPlugin.isNotEmpty || base.startsWith('engine:')) return false;
+  return false;
 }
 
 /// Whether [source] is the row currently playing (catalog or play URL).

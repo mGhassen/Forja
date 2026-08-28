@@ -413,9 +413,10 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       episode: ep,
       currentMagnet: _s._activeMagnet ?? widget.magnetLink,
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
-      currentPlayingCatalogUrl: durableStreamCatalogUrl(
-        playUrl: _s._currentUrl ?? widget.mediaPath,
-      ),
+      currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl ??
+          durableStreamCatalogUrl(
+            playUrl: _s._currentUrl ?? widget.mediaPath,
+          ),
       preferredKind: _s._catalogSourceKind,
       currentAddonBaseUrl: catalogAddonBaseForPlaying(
         catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
@@ -508,6 +509,11 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
 
       setState(() {
         _s._currentUrl = resolved.streamUrl;
+        _s._currentPlayingCatalogUrl = durableStreamCatalogUrl(
+              catalogUrl: stream['url']?.toString(),
+              playUrl: resolved.streamUrl,
+            ) ??
+            resolved.streamUrl;
         _s._activeMagnet = resolved.magnetLink;
         _s._hasError = false;
         _s._currentSources = null;

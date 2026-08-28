@@ -325,6 +325,18 @@ void main() {
         isFalse,
       );
     });
+
+    test('vixsrc extensionless /playlist/ requires decode even when typed mp4',
+        () {
+      const url =
+          'https://vixsrc.to/playlist/174559?b=1&token=abc&expires=1&h=1';
+      expect(urlLooksLikeHls(url), isTrue);
+      expect(sourceRequiresVideoDecode(url, type: 'mp4'), isTrue);
+      expect(
+        sourceRequiresSeekableDurationBeforeConfirm(url, type: 'mp4'),
+        isFalse,
+      );
+    });
   });
 
   group('sourceRequiresSeekableDurationBeforeConfirm', () {
