@@ -77,6 +77,40 @@ class ListFollowFromWatched {
     await HubListFollow.setStatus(target, to, container: container);
   }
 
+  /// Same watched/total math as details hero progress — keeps the pin in sync.
+  static Future<void> reconcileHub({
+    required HubListFollowTarget target,
+    required int watchedCount,
+    required int totalEpisodes,
+    ProviderContainer? container,
+  }) async {
+    if (totalEpisodes <= 0 || watchedCount <= 0) return;
+    await applyHub(
+      target: target,
+      watchedCount: watchedCount,
+      totalEpisodes: totalEpisodes,
+      episodeNowWatched: watchedCount >= totalEpisodes || watchedCount == 1,
+      container: container,
+    );
+  }
+
+  static Future<void> reconcileTmdb({
+    required Movie movie,
+    required int watchedCount,
+    required int totalEpisodes,
+    ProviderContainer? container,
+  }) async {
+    if (movie.mediaType != 'tv') return;
+    if (totalEpisodes <= 0 || watchedCount <= 0) return;
+    await applyTmdb(
+      movie: movie,
+      watchedCount: watchedCount,
+      totalEpisodes: totalEpisodes,
+      episodeNowWatched: watchedCount >= totalEpisodes || watchedCount == 1,
+      container: container,
+    );
+  }
+
   static Future<bool> _setTmdbStatus(
     Movie movie,
     String to, {

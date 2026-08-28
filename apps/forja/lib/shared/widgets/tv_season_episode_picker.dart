@@ -18,6 +18,10 @@ import 'package:rust/rust.dart';
 typedef SeasonSelectCallback = void Function(int season);
 typedef EpisodeSelectCallback = void Function(int episode);
 typedef EpisodeWatchedToggle = void Function(int season, int episode);
+typedef SeasonWatchedToggle = Future<void> Function(
+  int season,
+  List<int> episodes,
+);
 
 class TvSeasonEpisodePicker extends StatefulWidget {
   const TvSeasonEpisodePicker({
@@ -33,6 +37,7 @@ class TvSeasonEpisodePicker extends StatefulWidget {
     required this.onSeasonSelected,
     required this.onEpisodeSelected,
     required this.onToggleWatched,
+    this.onSeasonToggleWatched,
     this.onEpisodePlay,
     this.onEpisodeFocused,
     this.seasonPosters = const {},
@@ -65,6 +70,7 @@ class TvSeasonEpisodePicker extends StatefulWidget {
   final SeasonSelectCallback onSeasonSelected;
   final EpisodeSelectCallback onEpisodeSelected;
   final EpisodeWatchedToggle onToggleWatched;
+  final SeasonWatchedToggle? onSeasonToggleWatched;
   final EpisodeSelectCallback? onEpisodePlay;
   final EpisodeSelectCallback? onEpisodeFocused;
   final Map<int, String> seasonPosters;
@@ -198,6 +204,34 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     return [];
   }
 
+  List<dynamic> _rawEpisodesForSeason(int season) {
+    if (widget.customEpisodesBySeason != null) {
+      return widget.customEpisodesBySeason![season] ?? [];
+    }
+    if (widget.seasonData == null) return [];
+    if (widget.selectedSeason == season) return _episodes;
+    final bySeason = widget.seasonData!['episodesBySeason'];
+    if (bySeason is Map) {
+      return bySeason[season] as List? ?? [];
+    }
+    if (widget.seasonData!['season_number'] == season &&
+        widget.seasonData!['episodes'] != null) {
+      return widget.seasonData!['episodes'] as List;
+    }
+    return [];
+  }
+
+  List<int> _episodeNumbersForSeason(int season) {
+    final out = <int>[];
+    for (final raw in _rawEpisodesForSeason(season)) {
+      if (raw is! Map) continue;
+      final ep = Map<String, dynamic>.from(raw);
+      if (episodeAirDateInfo(ep).notShippedYet) continue;
+      out.add(_episodeNumberAt(ep));
+    }
+    return out;
+  }
+
   List<dynamic> get _sortedEpisodes {
     final episodes = List<dynamic>.from(_episodes);
     episodes.sort((a, b) {
@@ -300,6 +334,12 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
             setState(() => _episodeChunk = 0);
             widget.onSeasonSelected(season);
           },
+          onDoubleTap: widget.onSeasonToggleWatched == null
+              ? null
+              : () => widget.onSeasonToggleWatched!(
+                    season,
+                    _episodeNumbersForSeason(season),
+                  ),
           onLeftEdge: shellTvNavLeftEdge(context, listIndex: i),
           tvTabId: tabId,
           tvRowId: widget.tvSeasonRowId != null ? _seasonRowId : null,
@@ -626,6 +666,7 @@ class _SeasonCard extends StatefulWidget {
     required this.selected,
     required this.posterUrl,
     this.onTap,
+    this.onDoubleTap,
     this.onLeftEdge,
     this.tvTabId,
     this.tvRowId,
@@ -636,6 +677,7 @@ class _SeasonCard extends StatefulWidget {
   final bool selected;
   final String? posterUrl;
   final VoidCallback? onTap;
+  final VoidCallback? onDoubleTap;
   final VoidCallback? onLeftEdge;
   final String? tvTabId;
   final String? tvRowId;
@@ -694,10 +736,14 @@ class _SeasonCardState extends State<_SeasonCard> {
         scale: scale,
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOutCubic,
-        child: SizedBox(
-          width: _SeasonCard.cardWidth,
-          height: _SeasonCard.cardHeight,
-          child: Stack(
+        child: GestureDetector(
+          onSecondaryTap: widget.onDoubleTap,
+          onDoubleTap: widget.onDoubleTap,
+          behavior: HitTestBehavior.opaque,
+          child: SizedBox(
+            width: _SeasonCard.cardWidth,
+            height: _SeasonCard.cardHeight,
+            child: Stack(
             fit: StackFit.expand,
             children: [
               ClipRRect(
@@ -768,6 +814,7 @@ class _SeasonCardState extends State<_SeasonCard> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );

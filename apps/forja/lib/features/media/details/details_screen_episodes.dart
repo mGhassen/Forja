@@ -132,6 +132,7 @@ mixin _DetailsScreenEpisodes on ConsumerState<DetailsScreen> {
       onEpisodePlay: _onEpisodePlay,
       onEpisodeFocused: _highlightEpisode,
       onToggleWatched: _toggleEpisodeWatched,
+      onSeasonToggleWatched: _toggleSeasonWatched,
       tvTabId: MediaDetailsTv.tabId,
       tvSeasonRowId: 'seasons',
       tvEpisodeRowId: 'episodes',
@@ -143,27 +144,69 @@ mixin _DetailsScreenEpisodes on ConsumerState<DetailsScreen> {
   Future<void> _loadWatchedEpisodes() async {
     final set = await _s._episodeWatchedService.getWatchedSet(_s._movie.id);
     if (mounted) setState(() => _s._watchedEpisodes = set);
+    if (mounted) await _reconcileListStatusFromWatched();
+  }
+
+  Future<void> _reconcileListStatusFromWatched() async {
+    if (_s._movie.mediaType != 'tv') return;
+    final total = _s._movie.numberOfEpisodes;
+    if (total <= 0 || _s._watchedEpisodes.isEmpty) return;
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(_s.context, listen: false);
+    } catch (_) {}
+    await ListFollowFromWatched.reconcileTmdb(
+      movie: _s._movie,
+      watchedCount: _s._watchedEpisodes.length,
+      totalEpisodes: total,
+      container: container,
+    );
   }
 
   Future<void> _toggleEpisodeWatched(int season, int episode) async {
     await _s._episodeWatchedService.toggle(_s._movie.id, season, episode);
     await _loadWatchedEpisodes();
-    final watched = await _s._episodeWatchedService.isWatched(
+  }
+
+  Future<void> _toggleSeasonWatched(int season, List<int> episodes) async {
+    var epNums = episodes;
+    if (epNums.isEmpty) {
+      epNums = await _episodeNumbersForSeason(season);
+    }
+    if (epNums.isEmpty) return;
+
+    await _s._episodeWatchedService.toggleSeason(
       _s._movie.id,
       season,
-      episode,
+      epNums,
     );
-    ProviderContainer? container;
-    try {
-      container = ProviderScope.containerOf(_s.context, listen: false);
-    } catch (_) {}
-    await ListFollowFromWatched.applyTmdb(
-      movie: _s._movie,
-      watchedCount: _s._watchedEpisodes.length,
-      totalEpisodes: _s._movie.numberOfEpisodes,
-      episodeNowWatched: watched,
-      container: container,
-    );
+    if (!mounted) return;
+    await _loadWatchedEpisodes();
+  }
+
+  Future<List<int>> _episodeNumbersForSeason(int season) async {
+    List episodes = [];
+    if (_s._seasonData != null &&
+        (_s._seasonData!['season_number'] as int? ?? _s._selectedSeason) ==
+            season &&
+        _s._seasonData!['episodes'] != null) {
+      episodes = _s._seasonData!['episodes'] as List;
+    } else {
+      try {
+        final data =
+            await _s._api.getTvSeasonDetails(_s._movie.id, season);
+        episodes = data['episodes'] as List? ?? [];
+      } catch (_) {
+        return [];
+      }
+    }
+    return [
+      for (final raw in episodes)
+        if (raw is Map &&
+            !episodeAirDateInfo(Map<String, dynamic>.from(raw))
+                .notShippedYet)
+          (raw['episode_number'] ?? raw['episode']) as int,
+    ];
   }
   Future<void> _fetchSeason(int seasonNumber) async {
     setState(() => _s._isLoadingSeason = true);

@@ -358,6 +358,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
           _selectedEpisode = _episodes.first.number;
         }
       });
+      unawaited(_reconcileListStatusFromWatched());
     }).catchError((_) {
       if (mounted && gen == _loadGen) {
         setState(() => _episodesLoading = false);
@@ -506,6 +507,26 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
     if (!mounted) return;
     if (gen != null && gen != _loadGen) return;
     setState(() => _watchedEpisodes = set);
+    if (id == _activeId) {
+      await _reconcileListStatusFromWatched();
+    }
+  }
+
+  Future<void> _reconcileListStatusFromWatched() async {
+    final fromEpisodes = _episodes.length;
+    final fromCard = _data.episodes ?? 0;
+    final total = fromEpisodes > 0 ? fromEpisodes : fromCard;
+    if (total <= 0 || _watchedEpisodes.isEmpty) return;
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(context, listen: false);
+    } catch (_) {}
+    await ListFollowFromWatched.reconcileHub(
+      target: _followTarget,
+      watchedCount: _watchedEpisodes.length,
+      totalEpisodes: total,
+      container: container,
+    );
   }
 
   Future<void> _toggleEpisodeWatched(int season, int episode) async {
@@ -521,22 +542,89 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
       episode,
       catalog: EpisodeWatchedService.catalogAnilist,
     );
-    HubListFollow.syncEpisodeWatched(_followTarget, episode: episode, watched: watched);
     await _loadWatchedEpisodes();
-    final total = _episodes.isNotEmpty
-        ? _episodes.length
-        : (_data.episodes ?? 0);
-    ProviderContainer? container;
-    try {
-      container = ProviderScope.containerOf(context, listen: false);
-    } catch (_) {}
-    await ListFollowFromWatched.applyHub(
-      target: _followTarget,
-      watchedCount: _watchedEpisodes.length,
-      totalEpisodes: total,
-      episodeNowWatched: watched,
-      container: container,
+    unawaited(
+      HubListFollow.syncEpisodeWatched(
+        _followTarget,
+        episode: episode,
+        watched: watched,
+      ),
     );
+  }
+
+  Future<void> _toggleSeasonWatched(int season, List<int> episodes) async {
+    var epNums = episodes;
+    final mediaId = _mediaIdForSeason(season);
+    final target = _followTargetForSeason(season);
+
+    if (epNums.isEmpty) {
+      final card = _seasons.length > 1 &&
+              season >= 1 &&
+              season <= _seasons.length
+          ? _seasons[season - 1]
+          : _data;
+      try {
+        final eps = await _service.getEpisodes(card);
+        epNums = eps.map((e) => e.number.toInt()).toList();
+      } catch (_) {
+        return;
+      }
+    }
+    if (epNums.isEmpty) return;
+
+    final watched = await _episodeWatchedService.toggleSeason(
+      mediaId,
+      1,
+      epNums,
+      catalog: EpisodeWatchedService.catalogAnilist,
+    );
+    if (!mounted) return;
+    if (mediaId == _activeId) {
+      await _loadWatchedEpisodes();
+    } else {
+      final watchedCount = (await _episodeWatchedService.getWatchedSet(
+        mediaId,
+        catalog: EpisodeWatchedService.catalogAnilist,
+      ))
+          .length;
+      final total = epNums.length;
+      ProviderContainer? container;
+      try {
+        container = ProviderScope.containerOf(context, listen: false);
+      } catch (_) {}
+      await ListFollowFromWatched.reconcileHub(
+        target: target,
+        watchedCount: watchedCount,
+        totalEpisodes: total,
+        container: container,
+      );
+    }
+    unawaited(
+      HubListFollow.syncSeasonWatched(
+        target,
+        episodes: epNums,
+        watched: watched,
+      ),
+    );
+  }
+
+  int _mediaIdForSeason(int season) {
+    if (_seasons.length > 1 && season >= 1 && season <= _seasons.length) {
+      return _seasons[season - 1].id;
+    }
+    return _activeId;
+  }
+
+  HubListFollowTarget _followTargetForSeason(int season) {
+    if (_seasons.length > 1 && season >= 1 && season <= _seasons.length) {
+      final s = _seasons[season - 1];
+      return HubListFollowTarget.anime(
+        anilistId: s.id,
+        title: s.displayTitle,
+        posterPath: s.coverUrl,
+      );
+    }
+    return _followTarget;
   }
 
   Widget? _seriesProgressWidget() {
@@ -871,6 +959,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
                       _playSelected();
                     },
               onToggleWatched: _toggleEpisodeWatched,
+              onSeasonToggleWatched: _toggleSeasonWatched,
               tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
               tvSeasonRowId: 'seasons',
               tvEpisodeRowId: 'episodes',

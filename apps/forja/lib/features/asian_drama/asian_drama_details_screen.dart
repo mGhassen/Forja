@@ -381,6 +381,28 @@ class _AsianDramaDetailsScreenState
       catalog: EpisodeWatchedService.catalogKisskh,
     );
     if (mounted) setState(() => _watchedEpisodes = set);
+    if (mounted) await _reconcileListStatusFromWatched();
+  }
+
+  Future<void> _reconcileListStatusFromWatched() async {
+    final det = _details;
+    if (det == null) return;
+    final fromEpisodes = det.episodes.length;
+    final fromCard = det.episodesCount;
+    final total = fromEpisodes > 0 ? fromEpisodes : fromCard;
+    if (total <= 0 || _watchedEpisodes.isEmpty) return;
+    final enrich =
+        ref.read(asianDramaTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(context, listen: false);
+    } catch (_) {}
+    await ListFollowFromWatched.reconcileHub(
+      target: _followTarget(det, enrich?.rich),
+      watchedCount: _watchedEpisodes.length,
+      totalEpisodes: total,
+      container: container,
+    );
   }
 
   Future<void> _toggleEpisodeWatched(int season, int episode) async {
@@ -400,29 +422,48 @@ class _AsianDramaDetailsScreenState
     if (det != null) {
       final enrich =
           ref.read(asianDramaTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
-      final target = _followTarget(det, enrich?.rich);
-      HubListFollow.syncEpisodeWatched(
-        target,
-        episode: episode,
-        watched: watched,
+      unawaited(
+        HubListFollow.syncEpisodeWatched(
+          _followTarget(det, enrich?.rich),
+          episode: episode,
+          watched: watched,
+        ),
       );
-      await _loadWatchedEpisodes();
-      final total =
-          det.episodes.isNotEmpty ? det.episodes.length : det.episodesCount;
-      ProviderContainer? container;
-      try {
-        container = ProviderScope.containerOf(context, listen: false);
-      } catch (_) {}
-      await ListFollowFromWatched.applyHub(
-        target: target,
-        watchedCount: _watchedEpisodes.length,
-        totalEpisodes: total,
-        episodeNowWatched: watched,
-        container: container,
-      );
-      return;
     }
     await _loadWatchedEpisodes();
+  }
+
+  Future<void> _toggleSeasonWatched(int season, List<int> episodes) async {
+    var epNums = episodes;
+    final det = _details;
+    if (det == null) return;
+
+    if (epNums.isEmpty) {
+      epNums = [
+        for (var i = 1; i <= det.episodes.length; i++) i,
+      ];
+    }
+    if (epNums.isEmpty) return;
+
+    final enrich =
+        ref.read(asianDramaTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
+    final target = _followTarget(det, enrich?.rich);
+
+    final watched = await _episodeWatchedService.toggleSeason(
+      widget.drama.id,
+      season,
+      epNums,
+      catalog: EpisodeWatchedService.catalogKisskh,
+    );
+    if (!mounted) return;
+    await _loadWatchedEpisodes();
+    unawaited(
+      HubListFollow.syncSeasonWatched(
+        target,
+        episodes: epNums,
+        watched: watched,
+      ),
+    );
   }
 
   Widget? _seriesProgressWidget(KdramaDetails det) {
@@ -800,6 +841,7 @@ class _AsianDramaDetailsScreenState
                       _playSelected();
                     },
               onToggleWatched: _toggleEpisodeWatched,
+              onSeasonToggleWatched: _toggleSeasonWatched,
               tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
               tvSeasonRowId: 'seasons',
               tvEpisodeRowId: 'episodes',

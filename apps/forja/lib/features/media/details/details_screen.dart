@@ -39,6 +39,7 @@ import 'package:forja/shared/widgets/media_details_hero.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
 import 'package:forja/shared/services/list_follow_from_watched.dart';
+import 'package:forja/shared/widgets/episode_air_date.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shell/app_router.dart';

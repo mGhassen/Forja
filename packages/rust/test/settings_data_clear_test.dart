@@ -29,6 +29,26 @@ void main() {
     expect(await svc.isWatched(1, 1, 1), isFalse);
   });
 
+  test('EpisodeWatchedService.toggleSeason marks then clears season', () async {
+    final svc = EpisodeWatchedService();
+    var synced = 0;
+    svc.syncHandler = (_, _, _, watched) {
+      if (watched) synced++;
+    };
+
+    final marked = await svc.toggleSeason(99, 1, [1, 2, 3]);
+    expect(marked, isTrue);
+    expect(await svc.isWatched(99, 1, 1), isTrue);
+    expect(await svc.isWatched(99, 1, 3), isTrue);
+    expect(synced, 3);
+
+    synced = 0;
+    final cleared = await svc.toggleSeason(99, 1, [1, 2, 3]);
+    expect(cleared, isFalse);
+    expect(await svc.isWatched(99, 1, 2), isFalse);
+    expect(synced, 0);
+  });
+
   test('EpisodeWatchedService catalog keys stay namespaced', () async {
     final svc = EpisodeWatchedService();
     var synced = 0;

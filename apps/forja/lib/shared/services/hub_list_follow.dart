@@ -181,7 +181,16 @@ class HubListFollow {
     required int episode,
     bool watched = true,
   }) async {
-    if (!await SimklService().isLoggedIn()) return;
+    await syncSeasonWatched(raw, episodes: [episode], watched: watched);
+  }
+
+  /// Batch Simkl/Trakt history for many episodes (one Simkl payload per show).
+  static Future<void> syncSeasonWatched(
+    HubListFollowTarget raw, {
+    required List<int> episodes,
+    bool watched = true,
+  }) async {
+    if (episodes.isEmpty) return;
     var t = raw;
     if (t.mediaType == 'asian_drama' && t.tmdbId == null) {
       final stored = MyListService().itemOf(t.uniqueId);
@@ -195,10 +204,11 @@ class HubListFollow {
     }
 
     if (t.mediaType == 'anime' && t.anilistId != null) {
+      if (!await SimklService().isLoggedIn()) return;
       final item = {
         'ids': {'anilist': t.anilistId},
         'episodes': [
-          {'number': episode},
+          for (final n in episodes) {'number': n},
         ],
       };
       if (watched) {
@@ -212,9 +222,8 @@ class HubListFollow {
     if (t.tmdbId == null) return;
     final mt = t.tmdbMediaType ?? 'tv';
     if (mt == 'movie') {
-      final hist = {
-        'ids': {'tmdb': t.tmdbId},
-      };
+      if (!await SimklService().isLoggedIn()) return;
+      final hist = {'ids': {'tmdb': t.tmdbId}};
       if (watched) {
         await SimklService().addToHistory(movies: [hist]);
       } else {
@@ -222,7 +231,28 @@ class HubListFollow {
       }
       return;
     }
-    syncEpisodeWatchedToTrackers(t.tmdbId!, 1, episode, watched);
+
+    if (await SimklService().isLoggedIn()) {
+      final show = {
+        'ids': {'tmdb': t.tmdbId},
+        'seasons': [
+          {
+            'number': 1,
+            'episodes': [
+              for (final n in episodes) {'number': n},
+            ],
+          },
+        ],
+      };
+      if (watched) {
+        await SimklService().addToHistory(shows: [show]);
+      } else {
+        await SimklService().removeFromHistory(shows: [show]);
+      }
+    }
+    for (final ep in episodes) {
+      syncEpisodeWatchedToTrackers(t.tmdbId!, 1, ep, watched);
+    }
   }
 
   static Future<void> clearProgress(HubListFollowTarget raw) async {

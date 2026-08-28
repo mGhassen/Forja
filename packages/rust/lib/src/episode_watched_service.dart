@@ -117,6 +117,36 @@ class EpisodeWatchedService {
     }
   }
 
+  /// Mark or unmark every [episodes] entry in one save. If all are already
+  /// watched, clears them; otherwise marks all watched. Returns the new state.
+  Future<bool> toggleSeason(
+    int mediaId,
+    int season,
+    List<int> episodes, {
+    String? catalog,
+  }) async {
+    if (episodes.isEmpty) return false;
+    final map = await _load();
+    final allWatched = episodes.every(
+      (e) => map[_id(mediaId, season, e, catalog: catalog)] == true,
+    );
+    final watched = !allWatched;
+    for (final e in episodes) {
+      map[_id(mediaId, season, e, catalog: catalog)] = watched;
+    }
+    await _save();
+    debugPrint(
+      '[EpisodeWatched] Season $season ${watched ? "marked" : "unmarked"} '
+      '${episodes.length} episodes',
+    );
+    if (catalog == null || catalog.isEmpty) {
+      for (final e in episodes) {
+        _syncEpisodeState(mediaId, season, e, watched);
+      }
+    }
+    return watched;
+  }
+
   /// Auto-mark when playback hits [watchFinishedThreshold]. No-op if already
   /// watched. Manual unwatch sticks until the next ≥threshold save.
   Future<bool> markWatchedIfFinished({
