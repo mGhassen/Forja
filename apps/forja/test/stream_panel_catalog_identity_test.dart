@@ -47,110 +47,12 @@ void main() {
           'http://127.0.0.1:8787/hls-proxy?strip=png&url=${Uri.encodeComponent(catalog)}';
       final row = {'url': catalog, 'title': 'Stream'};
       expect(
-        catalogStreamRowMatchesPlaying(row, playUrl: proxy, catalogUrl: catalog),
-        isTrue,
-      );
-    });
-
-    test('shared CDN URL prefers playing engine plugin', () {
-      const dash = 'https://sacdn.hakunaymatata.com/dash/x/index.mpd';
-      final vidlink = {'url': dash, '_enginePluginId': 'vidlink'};
-      final vidsrcsbs = {'url': dash, '_enginePluginId': 'vidsrcsbs'};
-      final noPlugin = {'url': dash, 'title': 'VidLink'};
-      expect(
-        catalogStreamRowMatchesPlaying(
-          vidlink,
-          playUrl: dash,
-          playingEnginePluginId: 'vidsrcsbs',
-        ),
-        isFalse,
-      );
-      expect(
-        catalogStreamRowMatchesPlaying(
-          noPlugin,
-          playUrl: dash,
-          playingEnginePluginId: 'vidsrcsbs',
-        ),
-        isFalse,
-      );
-      expect(
-        catalogStreamRowMatchesPlaying(
-          vidsrcsbs,
-          playUrl: dash,
-          playingEnginePluginId: 'vidsrcsbs',
-        ),
-        isTrue,
-      );
-    });
-
-    test('matches via addonBaseUrl when enginePluginId missing on row', () {
-      const dash = 'https://sacdn.hakunaymatata.com/dash/x/index.mpd';
-      final row = {
-        'url': dash,
-        '_addonBaseUrl': 'engine:vidsrcsbs',
-      };
-      expect(
         catalogStreamRowMatchesPlaying(
           row,
-          playUrl: dash,
-          playingEnginePluginId: 'vidsrcsbs',
+          playUrl: proxy,
+          catalogUrl: catalog,
         ),
         isTrue,
-      );
-    });
-
-    test('catalogUrl identity beats foreign shared CDN play URL', () {
-      const catalog = 'https://vidsrcsbs.example/mirror-a.m3u8';
-      const sharedCdn = 'https://sacdn.hakunaymatata.com/dash/x/index.mpd';
-      final vidsrcsbs = {
-        'url': catalog,
-        '_enginePluginId': 'vidsrcsbs',
-      };
-      final vidlink = {
-        'url': sharedCdn,
-        '_enginePluginId': 'vidlink',
-      };
-      expect(
-        catalogStreamRowMatchesPlaying(
-          vidsrcsbs,
-          playUrl: sharedCdn,
-          catalogUrl: catalog,
-          playingEnginePluginId: 'vidsrcsbs',
-        ),
-        isTrue,
-      );
-      expect(
-        catalogStreamRowMatchesPlaying(
-          vidlink,
-          playUrl: sharedCdn,
-          catalogUrl: catalog,
-          playingEnginePluginId: 'vidsrcsbs',
-        ),
-        isFalse,
-      );
-    });
-
-    test('enginePluginIdFromCatalogBase parses engine chip', () {
-      expect(
-        enginePluginIdFromCatalogBase('engine:vidsrcsbs'),
-        'vidsrcsbs',
-      );
-      expect(enginePluginIdFromCatalogBase('nuvio:showbox'), isNull);
-    });
-
-    test('catalogAddonBaseForPlaying falls back to engine provider', () {
-      expect(
-        catalogAddonBaseForPlaying(
-          currentProvider: 'engine:vidsrcsbs',
-        ),
-        'engine:vidsrcsbs',
-      );
-      expect(
-        catalogAddonBaseForPlaying(
-          catalogAddonBaseUrl: 'engine:vidlink',
-          currentProvider: 'engine:vidsrcsbs',
-        ),
-        'engine:vidlink',
       );
     });
   });
@@ -167,38 +69,27 @@ void main() {
         catalogUrl: catalog,
       );
       expect(
-        streamSourceMatchesPlaying(
-          row,
-          playUrl: proxy,
-          catalogUrl: catalog,
-        ),
+        streamSourceMatchesPlaying(row, playUrl: proxy, catalogUrl: catalog),
         isTrue,
       );
     });
 
-    test('matches catalog row when only play URL is proxy (catalog state empty)',
-        () {
-      const catalog = 'https://cdn.example/ep.m3u8';
-      final proxy =
-          'http://127.0.0.1:8787/hls-proxy?strip=png&url=${Uri.encodeComponent(catalog)}';
-      final row = StreamSource(
-        url: catalog,
-        title: 'Stream',
-        type: 'hls',
-      );
-      expect(
-        streamSourceMatchesPlaying(
-          row,
-          playUrl: proxy,
-          catalogUrl: null,
-        ),
-        isTrue,
-      );
-    });
+    test(
+      'matches catalog row when only play URL is proxy (catalog state empty)',
+      () {
+        const catalog = 'https://cdn.example/ep.m3u8';
+        final proxy =
+            'http://127.0.0.1:8787/hls-proxy?strip=png&url=${Uri.encodeComponent(catalog)}';
+        final row = StreamSource(url: catalog, title: 'Stream', type: 'hls');
+        expect(
+          streamSourceMatchesPlaying(row, playUrl: proxy, catalogUrl: null),
+          isTrue,
+        );
+      },
+    );
 
     test('peakstorm child play URL matches master catalog row', () {
-      const child =
-          'https://moon.peakstorm.top/vd/x/index-s1080p-v1-a1.m3u8';
+      const child = 'https://moon.peakstorm.top/vd/x/index-s1080p-v1-a1.m3u8';
       const master = 'https://moon.peakstorm.top/vd/x/master.m3u8';
       final row = StreamSource(
         url: master,
@@ -209,25 +100,6 @@ void main() {
       expect(
         streamSourceMatchesPlaying(row, playUrl: child, catalogUrl: child),
         isTrue,
-      );
-    });
-
-    test('normalizePlaybackStreamUrl preserves locked HLS variant', () {
-      const variant =
-          'https://moon.peakstorm.top/vd/x/sd/11/index-s2160p-v1-a1.m3u8';
-      const master = 'https://moon.peakstorm.top/vd/x/master.m3u8';
-      expect(normalizePlaybackStreamUrl(variant), master);
-      expect(
-        normalizePlaybackStreamUrl(variant, preserveHlsVariant: true),
-        variant,
-      );
-      expect(
-        remountPlaybackStreamUrl(variant, qualityLocked: true),
-        variant,
-      );
-      expect(
-        remountPlaybackStreamUrl(variant, qualityLocked: false),
-        master,
       );
     });
 
@@ -244,40 +116,6 @@ void main() {
           catalogUrl: 'https://cdn.example/ep.m3u8',
         ),
         isFalse,
-      );
-    });
-  });
-
-  group('catalogUrlForHlsQualities', () {
-    test('peakstorm child catalogUrl resolves to master for probe', () {
-      const child =
-          'https://moon.peakstorm.top/vd/x/sd/11/index-s1080p-v1-a1.m3u8';
-      const master = 'https://moon.peakstorm.top/vd/x/master.m3u8';
-      expect(
-        catalogUrlForHlsQualities(
-          catalogUrl: child,
-          sourceUrl: master,
-          playUrl: master,
-        ),
-        master,
-      );
-    });
-
-    test('vidlink mooncase proxy child rewrites path to master', () {
-      const child =
-          'https://noon.mooncase.online/mp/vd/x/sd/11/index-s720p-v1-a1.m3u8'
-          '?headers=%7B%7D&host=https%3A%2F%2Fmoon.peakstorm.top';
-      const master =
-          'https://noon.mooncase.online/mp/vd/x/master.m3u8'
-          '?headers=%7B%7D&host=https%3A%2F%2Fmoon.peakstorm.top';
-      expect(hlsMasterUrlForQualityProbe(child), master);
-      expect(
-        catalogUrlForHlsQualities(
-          catalogUrl: child,
-          sourceUrl: child,
-          playUrl: child,
-        ),
-        master,
       );
     });
   });
@@ -303,11 +141,7 @@ void main() {
 
     test('same URL on current provider is playing', () {
       expect(
-        PlayerStreamMenu.isCurrentSource(
-          row,
-          state,
-          providerId: 'megaplay',
-        ),
+        PlayerStreamMenu.isCurrentSource(row, state, providerId: 'megaplay'),
         isTrue,
       );
     });

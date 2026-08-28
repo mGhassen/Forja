@@ -419,6 +419,7 @@ mixin _DesktopPlayerPlayback
   Future<void> _initPlayback({
     int sourceStartIndex = 0,
     bool resetEofSession = true,
+
     /// Mid-watch Auto / re-init: keep live playhead (else [widget.startPosition]).
     Duration? seekOverride,
   }) async {
@@ -1012,8 +1013,7 @@ mixin _DesktopPlayerPlayback
       });
 
       final nextIdx = failedIdx + 1;
-      if (_s._currentSources != null &&
-          nextIdx < _s._currentSources!.length) {
+      if (_s._currentSources != null && nextIdx < _s._currentSources!.length) {
         final played = await _trySourcesFromIndex(
           nextIdx,
           chainGen: chainGen,
@@ -1080,16 +1080,12 @@ mixin _DesktopPlayerPlayback
       'Reconnecting…',
       kind: StatusRouletteKind.loading,
     );
-    debugPrint(
-      '[Player] Network remount @${resumeAt.inSeconds}s ($err)',
-    );
+    debugPrint('[Player] Network remount @${resumeAt.inSeconds}s ($err)');
     try {
       final ok = await attemptNetworkPlaybackRemount(
         isCancelled: () => _s._disposed || !mounted || _s._hasError,
-        remount: () => _remountCurrentStreamAt(
-          resumeAt,
-          allowFallbackInit: false,
-        ),
+        remount: () =>
+            _remountCurrentStreamAt(resumeAt, allowFallbackInit: false),
       );
       if (ok) {
         _s._statusController.complete();
@@ -1115,13 +1111,9 @@ mixin _DesktopPlayerPlayback
         isLocalLoopbackPlayUrl(url)) {
       return false;
     }
-    final qualityLocked =
-        isHlsQualityLocked(_s._currentQualityUrl, _s._hlsMasterUrl);
-    final playUrl = remountPlaybackStreamUrl(
-      url,
-      qualityLocked: qualityLocked,
-    );
-    final src = _s._currentSources != null &&
+    final playUrl = normalizePlaybackStreamUrl(url);
+    final src =
+        _s._currentSources != null &&
             _s._currentFallbackSourceIndex < _s._currentSources!.length
         ? _s._currentSources![_s._currentFallbackSourceIndex]
         : null;
@@ -1143,27 +1135,12 @@ mixin _DesktopPlayerPlayback
         headers: headers,
         providerId: pid,
         seekTarget: target,
-        preserveHlsVariant: qualityLocked,
       );
       if (_s._disposed || !mounted) return false;
       if (ok) {
         _s._currentUrl = playUrl;
         _s._positionNotifier.value = target;
-        // Keep original catalog identity — remount play URL is often a shared
-        // CDN that would steal the Sources highlight to another plugin.
-        final prior = _s._currentPlayingCatalogUrl?.trim();
-        if (prior == null || prior.isEmpty) {
-          final durable = durableStreamCatalogUrl(
-            catalogUrl: src?.catalogUrl,
-            sourceUrl: src?.url,
-            playUrl: playUrl,
-          );
-          if (durable != null && durable.isNotEmpty) {
-            _s._currentPlayingCatalogUrl = durable;
-          }
-        }
         _s._statusController.complete();
-        _s._notifySourceMenuChanged();
         debugPrint('[Player] Post-seek remount resumed @${target.inSeconds}s');
         return true;
       }
@@ -1196,16 +1173,6 @@ mixin _DesktopPlayerPlayback
   void _ensurePostSeekStallWatchdog() {
     _s._postSeekStall ??= PostSeekStallWatchdog(
       onRemount: _remountCurrentStreamAt,
-      onStallSuspected: (target) {
-        if (_s._disposed || !mounted || _s._postSeekStall!.remountInFlight) {
-          return;
-        }
-        _s._statusController.upsert(
-          'post-seek-remount',
-          'Reconnecting…',
-          kind: StatusRouletteKind.loading,
-        );
-      },
     );
   }
 
@@ -1724,8 +1691,7 @@ mixin _DesktopPlayerPlayback
 
     _s._tracksSub = _s._player.stream.tracks.listen((tracks) {
       if (_s._disposed) return;
-      final hasAudio =
-          tracks.audio.any((t) => t.id != 'no' && t.id != 'auto');
+      final hasAudio = tracks.audio.any((t) => t.id != 'no' && t.id != 'auto');
       if (!_s._autoTracksAppliedForSource && hasAudio) {
         _s._autoTracksAppliedForSource = true;
         _s._trackAutoSelectTimer?.cancel();
@@ -1746,15 +1712,18 @@ mixin _DesktopPlayerPlayback
     }
     if (embeddedSubtitleTracks(tracks.subtitle).isEmpty) return;
     _s._embeddedSubtitleAutoTimer?.cancel();
-    _s._embeddedSubtitleAutoTimer = Timer(const Duration(milliseconds: 200), () {
-      _s._embeddedSubtitleAutoTimer = null;
-      if (_s._disposed ||
-          _s._embeddedSubtitleAutoApplied ||
-          _s._userPickedExternalSubtitle) {
-        return;
-      }
-      unawaited(_applyLateEmbeddedSubtitle());
-    });
+    _s._embeddedSubtitleAutoTimer = Timer(
+      const Duration(milliseconds: 200),
+      () {
+        _s._embeddedSubtitleAutoTimer = null;
+        if (_s._disposed ||
+            _s._embeddedSubtitleAutoApplied ||
+            _s._userPickedExternalSubtitle) {
+          return;
+        }
+        unawaited(_applyLateEmbeddedSubtitle());
+      },
+    );
   }
 
   Future<void> _applyLateEmbeddedSubtitle() async {

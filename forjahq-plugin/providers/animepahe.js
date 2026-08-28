@@ -2,8 +2,14 @@ function extract(ctx) {
   var cfg = ctx.config || {};
   var mirrors = Array.isArray(cfg.mirrors) && cfg.mirrors.length
     ? cfg.mirrors.map(function (m) { return String(m).replace(/\/$/, ''); })
-    : ['https://animepahe.pw', 'https://animepahe.ru', 'https://animepahe.com'];
-  var base = (cfg.base || mirrors[0] || 'https://animepahe.pw').replace(/\/$/, '');
+    : [
+        'https://animepahe.su',
+        'https://animepahe.pw',
+        'https://animepahe.ru',
+        'https://animepahe.com',
+        'https://animepahe.org',
+      ];
+  var base = (cfg.base || mirrors[0] || 'https://animepahe.su').replace(/\/$/, '');
   var proxy =
     cfg.proxy || 'https://animepaheproxy.phisheranimepahe.workers.dev/?url=';
   var tmdbKey = cfg.tmdbKey || '1865f43a0549ca50d341dd9ab8b29f49';
@@ -17,7 +23,11 @@ function extract(ctx) {
     if (text == null || text === '') return true;
     var s = String(text).trim();
     if (s.charAt(0) === '{' || s.charAt(0) === '[') return false;
-    return /Just a moment|cdn-cgi|challenge-platform|__ddg/i.test(s);
+    return (
+      /Just a moment|cdn-cgi|challenge-platform|__ddg|Attention Required|cf-browser-verification|noindex,\s*noarchive|ddos|Enable JavaScript and cookies/i.test(
+        s,
+      ) || /^<!--\s*\d+\s*-->/.test(s) || /^<!DOCTYPE/i.test(s) || /^<html/i.test(s)
+    );
   }
 
   function fetchText(url) {
@@ -354,11 +364,44 @@ function extract(ctx) {
     var out = [t];
     var short = t.split(':')[0].trim();
     if (short && short !== t && short.length >= 4) out.push(short);
-    var words = t.split(/\s+/);
+    var words = t.replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim().split(' ');
     if (words.length > 5) out.push(words.slice(0, 5).join(' '));
+    // Aniyomi-style trailing window (last 4 / last 3 words)
+    if (words.length > 4) out.push(words.slice(-4).join(' '));
+    if (words.length > 3) out.push(words.slice(-3).join(' '));
     return out.filter(function (q, i, a) {
       return q && a.indexOf(q) === i;
     });
+  }
+
+  function jikanTitles(malId) {
+    if (!malId) return Promise.resolve([]);
+    return ctx
+      .fetch('https://api.jikan.moe/v4/anime/' + malId, {
+        headers: { Accept: 'application/json' },
+      })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        var d = j && j.data;
+        if (!d) return [];
+        var out = [];
+        function push(v) {
+          v = String(v || '').trim();
+          if (v && out.indexOf(v) < 0) out.push(v);
+        }
+        push(d.title);
+        push(d.title_english);
+        push(d.title_japanese);
+        (d.titles || []).forEach(function (row) {
+          push(row && row.title);
+        });
+        return out;
+      })
+      .catch(function () {
+        return [];
+      });
   }
 
   function searchAnime(query) {
@@ -378,17 +421,24 @@ function extract(ctx) {
       });
   }
 
-  function pickSession(results, title, malId) {
+  function pickSession(results, titles, malId) {
     if (!results || !results.length) return Promise.resolve(null);
-    var want = normTitle(title);
+    var wants = (titles || []).map(normTitle).filter(Boolean);
     var i;
-    for (i = 0; i < results.length; i++) {
-      if (normTitle(results[i].title) === want) return Promise.resolve(results[i].session);
+    var j;
+    for (j = 0; j < wants.length; j++) {
+      for (i = 0; i < results.length; i++) {
+        if (normTitle(results[i].title) === wants[j]) {
+          return Promise.resolve(results[i].session);
+        }
+      }
     }
-    for (i = 0; i < results.length; i++) {
-      var got = normTitle(results[i].title);
-      if (got.indexOf(want) >= 0 || want.indexOf(got) >= 0) {
-        return Promise.resolve(results[i].session);
+    for (j = 0; j < wants.length; j++) {
+      for (i = 0; i < results.length; i++) {
+        var got = normTitle(results[i].title);
+        if (got.indexOf(wants[j]) >= 0 || wants[j].indexOf(got) >= 0) {
+          return Promise.resolve(results[i].session);
+        }
       }
     }
     if (malId) {
@@ -399,15 +449,20 @@ function extract(ctx) {
         return sessions.find(Boolean) || null;
       });
     }
-    return Promise.resolve(results[0].session);
+    return Promise.resolve(null);
   }
 
-  function findSessionByTitle(title, malId) {
-    var queries = searchQueries(title);
+  function findSessionByTitles(titles, malId) {
+    var queries = [];
+    (titles || []).forEach(function (t) {
+      searchQueries(t).forEach(function (q) {
+        if (q && queries.indexOf(q) < 0) queries.push(q);
+      });
+    });
     function walk(i) {
       if (i >= queries.length) return Promise.resolve(null);
       return searchAnime(queries[i]).then(function (results) {
-        return pickSession(results, title, malId).then(function (session) {
+        return pickSession(results, titles, malId).then(function (session) {
           return session || walk(i + 1);
         });
       });
@@ -626,8 +681,10 @@ function extract(ctx) {
     var title = String(ctx.title || '').trim();
     var mal = Number(ctx.malId) || 0;
 
-    function pipeline(searchTitle, malId) {
-      return findSessionByTitle(searchTitle, malId).then(function (animeSession) {
+    function pipeline(titles, malId) {
+      var list = (titles || []).filter(Boolean);
+      if (!list.length) return Promise.resolve([]);
+      return findSessionByTitles(list, malId).then(function (animeSession) {
         if (!animeSession) return [];
         return releaseSession(animeSession, ep).then(function (epSess) {
           if (!epSess) return [];
@@ -636,16 +693,31 @@ function extract(ctx) {
       });
     }
 
-    if (title) {
-      return pipeline(title, mal > 0 ? mal : 0).catch(function () {
+    function withMalTitles(seedTitles, malId) {
+      if (!malId) return pipeline(seedTitles, 0);
+      return jikanTitles(malId).then(function (jt) {
+        var merged = [];
+        seedTitles.concat(jt).forEach(function (t) {
+          t = String(t || '').trim();
+          if (t && merged.indexOf(t) < 0) merged.push(t);
+        });
+        return pipeline(merged, malId);
+      });
+    }
+
+    if (title || mal > 0) {
+      return withMalTitles(title ? [title] : [], mal > 0 ? mal : 0).catch(function () {
         return [];
       });
     }
 
     return resolveMal()
       .then(function (info) {
-        if (!info || !info.title) return [];
-        return pipeline(info.title, info.malId || 0);
+        if (!info) return [];
+        return withMalTitles(
+          info.title ? [info.title] : [],
+          info.malId || 0,
+        );
       })
       .catch(function () {
         return [];

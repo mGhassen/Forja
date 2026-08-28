@@ -6,10 +6,8 @@ import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 export 'package:forja/shared/playback/playback_stream_guards.dart'
     show
-        catalogAddonBaseForPlaying,
         catalogStreamRowMatchesPlaying,
         durableStreamCatalogUrl,
-        enginePluginIdFromCatalogBase,
         hlsProxyTargetUrl,
         isVideasyCdnStreamUrl,
         playbackUrlsEquivalent,
@@ -31,29 +29,15 @@ const kDefaultStreamUserAgent =
 const kHlsBitrateAutoSoftCeiling = '5000000';
 const kExoBitrateAutoSoftCeiling = 5_000_000;
 
-/// Sibling `master.m3u8` for demuxed `index-s1080p-v1-a1.m3u8` (peakstorm /
-/// Videasy). Host-agnostic — VidLink wraps the same path in mooncase `/mp/`.
-String hlsMasterUrlForQualityProbe(String url) {
-  final trimmed = url.trim();
-  if (trimmed.isEmpty) return trimmed;
-  return VideasyExtractor.preferHlsMasterUrl(trimmed);
-}
-
 /// Prefer catalog/master URL for the quality menu when play opened a media playlist.
 String catalogUrlForHlsQualities({
   String? catalogUrl,
   required String sourceUrl,
   required String playUrl,
 }) {
-  String? firstM3u8;
-  for (final raw in [catalogUrl, sourceUrl, playUrl]) {
-    final u = (raw ?? '').trim();
-    if (!u.toLowerCase().contains('.m3u8')) continue;
-    firstM3u8 ??= u;
-    final probed = hlsMasterUrlForQualityProbe(u);
-    if (probed.toLowerCase().contains('master.m3u8')) return probed;
-  }
-  if (firstM3u8 != null) return hlsMasterUrlForQualityProbe(firstM3u8);
+  final catalog = (catalogUrl ?? '').trim();
+  if (catalog.toLowerCase().contains('.m3u8')) return catalog;
+  if (sourceUrl.toLowerCase().contains('.m3u8')) return sourceUrl;
   return playUrl;
 }
 
@@ -116,20 +100,14 @@ final _trailingMediaSlash = RegExp(
 /// Peakstorm / Videasy HLS often resolves to demuxed `index-s1080p-v1-a1.m3u8`
 /// child playlists — seek stalls on those; open sibling `master.m3u8` instead
 /// (extract-time rewrite can miss cached rows).
-///
-/// When [preserveHlsVariant] is true (manual Quality pick / locked remount),
-/// keep the demuxed variant URL — rewriting to master drops the quality lock.
-String normalizePlaybackStreamUrl(
-  String url, {
-  bool preserveHlsVariant = false,
-}) {
+String normalizePlaybackStreamUrl(String url) {
   final trimmed = url.trim();
   if (trimmed.isEmpty) return trimmed;
   var out = trimmed;
   if (_trailingMediaSlash.hasMatch(out)) {
     out = out.replaceFirst(RegExp(r'/+$'), '');
   }
-  if (!preserveHlsVariant && isVideasyCdnStreamUrl(out)) {
+  if (isVideasyCdnStreamUrl(out)) {
     out = VideasyExtractor.preferHlsMasterUrl(out);
   }
   return out;
@@ -186,7 +164,8 @@ Map<String, String> resolvePlaybackHttpHeaders(
 
   final cfg = ProviderRuntimeConfig.instance;
   final pid = providerId?.trim();
-  final catalogForMatchEarly = streamUrl != null && isLocalLoopbackPlayUrl(streamUrl)
+  final catalogForMatchEarly =
+      streamUrl != null && isLocalLoopbackPlayUrl(streamUrl)
       ? (hlsProxyTargetUrl(streamUrl) ?? streamUrl)
       : streamUrl;
   // VidSrc.sbs nested STREAMCRYPTO mirrors land on Videasy CDNs (peakstorm).
@@ -202,8 +181,7 @@ Map<String, String> resolvePlaybackHttpHeaders(
   // Referer; web uses no-referrer. Keep extractor/API headers only — do not
   // invent policy Referer. Anime `vidnest:*` still uses policy below.
   final pidLower = pid?.toLowerCase() ?? '';
-  final vidnestMovieTv =
-      pidLower == 'vidnest' || pidLower == 'engine:vidnest';
+  final vidnestMovieTv = pidLower == 'vidnest' || pidLower == 'engine:vidnest';
   final catalogForMatch = catalogForMatchEarly;
 
   final referer = take('Referer', 'referer');
@@ -278,8 +256,7 @@ Map<String, String> resolvePlaybackHttpHeaders(
   // NetMirror direct (D3adly net27 embed) requires videodownloader.site Referer.
   if (streamUrl != null && _isVidnestMovieBoxCdn(streamUrl)) {
     final pidLower = pid?.toLowerCase() ?? '';
-    final netmirror =
-        pidLower == 'engine:netmirror' || pidLower == 'netmirror';
+    final netmirror = pidLower == 'engine:netmirror' || pidLower == 'netmirror';
     if (!netmirror) {
       out.remove('Referer');
       out.remove('referer');
@@ -599,16 +576,12 @@ Future<String> openPlayerStream(
   required String url,
   Map<String, String>? headers,
   String? providerId,
+
   /// MediaKit/mpv: open demuxer at this time (HLS resume / server switch).
   /// Cleared after [player.open] so later seeks are not pinned to it.
   Duration? startAt,
-  /// Keep peakstorm demuxed variant URLs (manual Quality menu selection).
-  bool preserveHlsVariant = false,
 }) async {
-  var openUrl = normalizePlaybackStreamUrl(
-    url,
-    preserveHlsVariant: preserveHlsVariant,
-  );
+  var openUrl = normalizePlaybackStreamUrl(url);
   if (isTorrentStreamUrl(openUrl)) {
     throw Exception(
       'Cannot open magnet/torrent URL directly - resolve to a stream first',
@@ -671,8 +644,9 @@ Future<String?> openCatalogHttpStreamWithPipeline(
   final playHeaders = proxied.headers;
   final pid = providerId ?? catalogHttpPlayProviderId(stream);
   final catalog = (hlsProxyTargetUrl(playUrl) ?? playUrl).trim();
-  final isHls = urlLooksLikeHls(playUrl) ||
-      urlLooksLikeHls(catalog) ||
+  final isHls =
+      playUrl.toLowerCase().contains('.m3u8') ||
+      catalog.toLowerCase().contains('.m3u8') ||
       isLocalLoopbackPlayUrl(playUrl);
   if (!isHls) {
     await resetPlayerForOpen(player);
@@ -878,7 +852,6 @@ String? _catalogAddonNameFromSessionCaches(
   String cacheKey, {
   required String playUrl,
   String? catalogUrl,
-  String? playingEnginePluginId,
 }) {
   final stremio = CatalogSourcesSessionCache.readStremio(cacheKey);
   final nuvio = CatalogSourcesSessionCache.readNuvio(cacheKey)?.streams;
@@ -890,7 +863,6 @@ String? _catalogAddonNameFromSessionCaches(
         stream,
         playUrl: playUrl,
         catalogUrl: catalogUrl,
-        playingEnginePluginId: playingEnginePluginId,
       )) {
         continue;
       }
@@ -955,13 +927,6 @@ String catalogSourcesButtonLabel({
         cacheKey,
         playUrl: playUrl,
         catalogUrl: currentPlayingCatalogUrl,
-        playingEnginePluginId: enginePluginIdFromCatalogBase(
-          catalogAddonBaseForPlaying(
-            catalogAddonBaseUrl: catalogAddonBaseUrl,
-            widgetAddonBaseUrl: widgetAddonBaseUrl,
-            currentProvider: currentProvider ?? activeProvider,
-          ),
-        ),
       );
       if (addonName != null) return addonName;
     }
@@ -999,9 +964,7 @@ List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
     final url = item['url']?.toString().trim() ?? '';
     if (url.isEmpty) continue;
     final name =
-        item['name']?.toString() ??
-        item['language']?.toString() ??
-        'Subtitle';
+        item['name']?.toString() ?? item['language']?.toString() ?? 'Subtitle';
     out.add({
       'url': url,
       'language':
@@ -1022,7 +985,8 @@ bool catalogStreamRequiresSeekProxy(Map<String, dynamic> stream) {
 }
 
 /// Rewrites catalog HTTP streams that cannot be opened directly (111477).
-Future<({String url, Map<String, String> headers})> proxyCatalogHttpStreamIfNeeded({
+Future<({String url, Map<String, String> headers})>
+proxyCatalogHttpStreamIfNeeded({
   required String streamUrl,
   required Map<String, String> headers,
   required Map<String, dynamic> stream,
@@ -1069,28 +1033,6 @@ bool isMediaOpenReady(PlayerState state) {
   return false;
 }
 
-/// True when [url] is HLS (`.m3u8`, `/hls-proxy`, or extensionless `/playlist/`).
-///
-/// VixSrc masters are `vixsrc.to/playlist/{id}?token=` — no `.m3u8`. Exo already
-/// forces `APPLICATION_M3U8` for those; MediaKit/OpenPipeline must match.
-bool urlLooksLikeHls(String url) {
-  final trimmed = url.trim();
-  if (trimmed.isEmpty) return false;
-  final lower = trimmed.toLowerCase();
-  if (lower.contains('.m3u8') || lower.contains('m3u8=')) return true;
-  if (lower.contains('/hls-proxy')) return true;
-  final nested = Uri.tryParse(trimmed)?.queryParameters['url']?.toLowerCase();
-  if (nested != null && nested.isNotEmpty && urlLooksLikeHls(nested)) {
-    return true;
-  }
-  final path = Uri.tryParse(trimmed)?.path.toLowerCase() ?? lower;
-  // Extensionless catalog playlist (e.g. vixsrc.to/playlist/772715).
-  if (path.contains('/playlist/') || path.endsWith('/playlist')) {
-    return !lower.contains('webmanifest');
-  }
-  return false;
-}
-
 bool sourceExpectsDuration(String url, {String? type}) {
   final normalizedType = type?.toLowerCase() ?? '';
   if (normalizedType == 'hls' ||
@@ -1099,9 +1041,9 @@ bool sourceExpectsDuration(String url, {String? type}) {
       normalizedType == 'dash') {
     return true;
   }
-  if (urlLooksLikeHls(url)) return true;
   final lower = url.toLowerCase();
-  return lower.contains('.mp4') ||
+  return lower.contains('.m3u8') ||
+      lower.contains('.mp4') ||
       lower.contains('.mkv') ||
       lower.contains('.webm') ||
       lower.contains('.mpd');
@@ -1129,8 +1071,8 @@ bool sourceRequiresVideoDecode(String url, {String? type}) {
   if (isLocalTorrentStreamUrl(url)) return true;
   final normalizedType = type?.toLowerCase() ?? '';
   if (normalizedType == 'hls' || normalizedType == 'dash') return true;
-  if (urlLooksLikeHls(url)) return true;
-  return url.toLowerCase().contains('.mpd');
+  final lower = url.toLowerCase();
+  return lower.contains('.m3u8') || lower.contains('.mpd');
 }
 
 Duration videoDecodeTimeoutForUrl(String url) {
@@ -1201,16 +1143,6 @@ void syncPlayerProgressNotifiers(
   buffered.value = player.state.buffer;
 }
 
-/// Playhead to carry across provider/source switches (UI notifier or live mpv).
-Duration switchResumePosition({
-  required Duration uiPosition,
-  required Duration playerPosition,
-}) {
-  if (uiPosition.inSeconds > 0) return uiPosition;
-  if (playerPosition.inSeconds > 0) return playerPosition;
-  return Duration.zero;
-}
-
 /// Seekbar buffer-end from mpv `demuxer-cache-duration` (seconds ahead).
 ///
 /// `stream.buffer` is `demuxer-cache-time` (absolute PTS) and often stays at
@@ -1222,8 +1154,7 @@ Duration? bufferedEndFromCacheAhead({
   Duration cacheTime = Duration.zero,
 }) {
   if (!aheadSecs.isFinite || aheadSecs < 0) return null;
-  var fromAhead = position +
-      Duration(milliseconds: (aheadSecs * 1000).round());
+  var fromAhead = position + Duration(milliseconds: (aheadSecs * 1000).round());
   if (duration > Duration.zero && fromAhead > duration) {
     fromAhead = duration;
   }
@@ -1465,8 +1396,8 @@ Duration remountResumeTimeoutForSeek(Duration seekTarget) {
 
 /// Stall timer before post-seek remount — scales with seek depth (issue 184).
 Duration postSeekStallTimeoutForTarget(Duration seekTarget) {
-  final extra = (seekTarget.inMinutes ~/ 10) * 3;
-  return Duration(seconds: (8 + extra).clamp(8, 28));
+  final extra = (seekTarget.inMinutes ~/ 10) * 5;
+  return Duration(seconds: (15 + extra).clamp(15, 45));
 }
 
 /// Skip arming remount watchdog when a seek lands on the resume point right
@@ -1513,7 +1444,6 @@ Future<bool> remountPlayerStreamAtPosition(
   String? providerId,
   required Duration seekTarget,
   Duration? resumeTimeout,
-  bool preserveHlsVariant = false,
 }) async {
   final timeout = resumeTimeout ?? remountResumeTimeoutForSeek(seekTarget);
   await resetPlayerForOpen(player);
@@ -1524,7 +1454,6 @@ Future<bool> remountPlayerStreamAtPosition(
     headers: headers,
     providerId: providerId,
     startAt: useStart ? seekTarget : null,
-    preserveHlsVariant: preserveHlsVariant,
   );
   final opened = await waitForPlayerStreamOpen(
     player,
@@ -1796,7 +1725,11 @@ bool _sameTrackText(String a, String? b) {
   return a.trim().toLowerCase() == b.trim().toLowerCase();
 }
 
-bool _titleIsLanguageOnly(String title, String languageLabel, String? language) {
+bool _titleIsLanguageOnly(
+  String title,
+  String languageLabel,
+  String? language,
+) {
   if (_sameTrackText(title, languageLabel) || _sameTrackText(title, language)) {
     return true;
   }
@@ -1904,10 +1837,7 @@ SubtitleTrack? findSubtitleTrack(List<SubtitleTrack> tracks, String id) {
 /// Embedded (in-stream) subtitle tracks — excludes Off/auto and sideloaded URIs.
 List<SubtitleTrack> embeddedSubtitleTracks(Iterable<SubtitleTrack> tracks) {
   return tracks
-      .where(
-        (t) =>
-            t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'),
-      )
+      .where((t) => t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'))
       .toList();
 }
 
@@ -1935,16 +1865,6 @@ bool isHlsQualityAuto(String? currentQualityUrl, String? masterUrl) {
   if (masterUrl == null || currentQualityUrl == null) return false;
   return currentQualityUrl == masterUrl;
 }
-
-bool isHlsQualityLocked(String? currentQualityUrl, String? masterUrl) =>
-    !isHlsQualityAuto(currentQualityUrl, masterUrl);
-
-/// Normalize for remount / reopen — keep locked variant URLs on peakstorm HLS.
-String remountPlaybackStreamUrl(
-  String url, {
-  required bool qualityLocked,
-}) =>
-    normalizePlaybackStreamUrl(url, preserveHlsVariant: qualityLocked);
 
 HlsQuality? matchActiveHlsVariant(
   List<HlsQuality> qualities,
@@ -2486,18 +2406,18 @@ Future<bool> probeStreamSourceUrl(
       case AnimeProbeMode.skip:
         return true;
       case AnimeProbeMode.masterOnly:
-        if (urlLooksLikeHls(catalog) ||
+        if (catalog.contains('.m3u8') ||
             catalog.toLowerCase().contains('/api/proxy') ||
-            urlLooksLikeHls(normalized)) {
+            normalized.contains('/hls-proxy')) {
           return _probeHlsMasterOnly(catalog, hdrs);
         }
         return _probeHeadOrRange(catalog, hdrs);
       case AnimeProbeMode.headOrRange:
         return _probeHeadOrRange(catalog, hdrs);
       case AnimeProbeMode.segmentPoisonSample:
-        if (urlLooksLikeHls(catalog) ||
+        if (catalog.contains('.m3u8') ||
             catalog.toLowerCase().contains('/api/proxy') ||
-            urlLooksLikeHls(normalized)) {
+            normalized.contains('/hls-proxy')) {
           if (!await hlsMediaSegmentsLookPlayable(catalog, hdrs)) {
             debugPrint(
               '[Player] HLS media poison/ad segments - reject $catalog '
@@ -2512,9 +2432,9 @@ Future<bool> probeStreamSourceUrl(
   }
 
   try {
-    if (urlLooksLikeHls(catalog) ||
+    if (catalog.contains('.m3u8') ||
         catalog.toLowerCase().contains('/api/proxy') ||
-        urlLooksLikeHls(normalized)) {
+        normalized.contains('/hls-proxy')) {
       // Legacy (no sourceKey): keep segment sample for movie/misc HLS.
       if (!await hlsMediaSegmentsLookPlayable(catalog, hdrs)) {
         debugPrint('[Player] HLS media poison/ad segments - reject $catalog');

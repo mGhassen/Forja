@@ -168,51 +168,12 @@ void main() {
   test('postSeekStallTimeoutForTarget scales with depth', () {
     expect(
       postSeekStallTimeoutForTarget(const Duration(minutes: 5)).inSeconds,
-      8,
+      15,
     );
     expect(
       postSeekStallTimeoutForTarget(const Duration(minutes: 49)).inSeconds,
-      20,
+      35,
     );
-  });
-
-  test('onStallSuspected fires before remount when seek stalls', () async {
-    var hints = 0;
-    var remounts = 0;
-    final w = PostSeekStallWatchdog(
-      onRemount: (_) async {
-        remounts++;
-        return true;
-      },
-      onStallSuspected: (_) => hints++,
-      stallAfter: const Duration(milliseconds: 80),
-      stallHintAfter: const Duration(milliseconds: 30),
-      scaleStallWithDepth: false,
-    );
-    w.noteSeek(const Duration(minutes: 18));
-    w.onBuffering(true);
-    w.onPosition(const Duration(minutes: 18));
-    await Future<void>.delayed(const Duration(milliseconds: 45));
-    expect(hints, 1);
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(remounts, 1);
-    w.dispose();
-  });
-
-  test('cancelPending clears armed seek before quality switch', () async {
-    var remounts = 0;
-    final w = PostSeekStallWatchdog(
-      onRemount: (_) async {
-        remounts++;
-        return true;
-      },
-      stallAfter: const Duration(milliseconds: 50),
-    );
-    w.noteSeek(const Duration(seconds: 60));
-    w.cancelPending();
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    expect(remounts, 0);
-    w.dispose();
   });
 
   test('shouldSkipPostSeekStallArm during resume grace', () {

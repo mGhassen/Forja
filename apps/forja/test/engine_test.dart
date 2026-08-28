@@ -902,7 +902,7 @@ void main() {
       );
       expect(
         parsed.firstWhere((p) => p.id == 'animepahe').config['base'],
-        'https://animepahe.pw',
+        'https://animepahe.su',
       );
       expect(
         parsed.firstWhere((p) => p.id == 'animeheaven').entry,
@@ -1215,7 +1215,8 @@ void main() {
       final animepahe = await loadForjaHqFile('providers/animepahe.js');
       expect(animepahe.contains('isBlockedBody'), isTrue);
       expect(animepahe.contains('phisheranimepahe'), isTrue);
-      expect(animepahe.contains('findSessionByTitle'), isTrue);
+      expect(animepahe.contains('findSessionByTitles'), isTrue);
+      expect(animepahe.contains('jikanTitles'), isTrue);
       expect(animepahe.contains('releaseSession'), isTrue);
       expect(animepahe.contains('extractKwik'), isTrue);
       expect(animepahe.contains('kwik.si'), isTrue);

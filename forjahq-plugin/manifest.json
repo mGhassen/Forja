@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq",
   "name": "ForjaHQ",
-  "version": "1.5.17",
+  "version": "1.5.18",
   "plugins": [
     {
       "id": "videasy",
@@ -460,11 +460,13 @@
       ],
       "kind": "http",
       "config": {
-        "base": "https://animepahe.pw",
+        "base": "https://animepahe.su",
         "mirrors": [
+          "https://animepahe.su",
           "https://animepahe.pw",
           "https://animepahe.ru",
-          "https://animepahe.com"
+          "https://animepahe.com",
+          "https://animepahe.org"
         ],
         "proxy": "https://animepaheproxy.phisheranimepahe.workers.dev/?url=",
         "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"

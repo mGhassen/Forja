@@ -538,10 +538,30 @@ class PluginRegistry {
   }
 
   /// Load plugin JS (+ optional prelude) for [plugin] from [sourceUrl] pack.
+  /// Local checkout packs always read from disk so JS edits apply without reinstall.
   Future<String?> loadScript({
     required String sourceUrl,
     required EnginePlugin plugin,
   }) async {
+    final localManifest = _asLocalFile(sourceUrl);
+    if (localManifest != null) {
+      if (plugin.entry.isEmpty) return null;
+      final scriptPath = resolveScriptUrl(sourceUrl, plugin.entry);
+      final scriptFile = File(scriptPath);
+      if (!scriptFile.existsSync()) return null;
+      var code = await scriptFile.readAsString();
+      final prelude = plugin.prelude.trim();
+      if (prelude.isNotEmpty) {
+        final preludePath = resolveScriptUrl(sourceUrl, prelude);
+        final preludeFile = File(preludePath);
+        if (preludeFile.existsSync()) {
+          final shared = await preludeFile.readAsString();
+          if (shared.isNotEmpty) code = '$shared\n$code';
+        }
+      }
+      return code;
+    }
+
     final prefs = await _prefs;
     final cached = prefs.getString(scriptPrefsKey(sourceUrl, plugin.id));
     if (cached == null || cached.isEmpty) return null;

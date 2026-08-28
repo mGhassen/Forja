@@ -257,10 +257,7 @@ mixin _DesktopPlayerTracks
         preferredPick ??
         (preferred == 'English'
             ? null
-            : pickExternalSubtitleForLanguage(
-                'English',
-                subsForAuto,
-              ));
+            : pickExternalSubtitleForLanguage('English', subsForAuto));
     if (pick == null) return;
 
     // Prefer the already-chosen URL when forcing re-apply after open.
@@ -452,24 +449,23 @@ mixin _DesktopPlayerTracks
   /// Probe [url] as a master HLS playlist. Populates the quality notifier
   /// when 2+ variants are present, otherwise clears it (hiding the gear).
   void _detectHlsQualities(String url, Map<String, String>? headers) {
-    final probe = hlsMasterUrlForQualityProbe(url);
-    _s._currentQualityUrl = probe;
-    if (!probe.contains('.m3u8')) {
+    _s._currentQualityUrl = url;
+    if (!url.contains('.m3u8')) {
       _s._hlsMasterUrl = null;
       _s._hlsMasterHeaders = null;
       _s._hlsQualitiesNotifier.value = null;
       return;
     }
     final existing = _s._hlsQualitiesNotifier.value;
-    if (existing != null && existing.any((q) => q.url == probe)) return;
+    if (existing != null && existing.any((q) => q.url == url)) return;
 
-    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: probe);
-    _s._hlsMasterUrl = probe;
+    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
+    _s._hlsMasterUrl = url;
     _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;
-    fetchHlsQualities(probe, headers: resolved).then((qs) {
+    fetchHlsQualities(url, headers: resolved).then((qs) {
       if (_s._disposed) return;
-      if (_s._hlsMasterUrl != probe) return;
+      if (_s._hlsMasterUrl != url) return;
       _s._hlsQualitiesNotifier.value = qs;
     });
   }
@@ -492,7 +488,6 @@ mixin _DesktopPlayerTracks
   Future<void> _switchQuality(HlsQuality q) async {
     final pos = _s._positionNotifier.value;
     final switchGen = ++_s._fallbackGen;
-    _s._postSeekStall?.cancelPending();
     _s._isInitPlaybackRunning = true;
     _s._currentQualityUrl = q.url;
     if (mounted) {
@@ -500,19 +495,17 @@ mixin _DesktopPlayerTracks
         _s._hasError = false;
       });
     }
-    final lockVariant = !q.isAuto;
     try {
-      final openUrl = await openPlayerStream(
+      await openPlayerStream(
         _s._player,
         url: q.url,
         headers: _s._hlsMasterHeaders,
         startAt: pos.inSeconds > 0 ? pos : null,
-        preserveHlsVariant: lockVariant,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
       final opened = await waitForPlayerStreamOpen(
         _s._player,
-        streamUrl: openUrl,
+        streamUrl: q.url,
         headers: _s._hlsMasterHeaders,
       );
       if (!mounted || _s._fallbackAborted(switchGen)) return;
@@ -520,13 +513,8 @@ mixin _DesktopPlayerTracks
         debugPrint('[Player] HLS quality switch failed to open: ${q.url}');
         return;
       }
-      // Demuxed variant playlists stall on hr-seek; mpv `start` already set.
-      if (!lockVariant && pos.inSeconds > 0) {
-        await ensureOpenedNearPosition(
-          _s._player,
-          pos,
-          skipNearCredits: false,
-        );
+      if (pos.inSeconds > 0) {
+        await ensureOpenedNearPosition(_s._player, pos, skipNearCredits: false);
       }
     } finally {
       if (switchGen == _s._fallbackGen) {

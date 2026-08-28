@@ -925,7 +925,11 @@ class EngineService {
 
     debugPrint(
       '[engine] ${plugin.id} start (enginejs) tmdb=$tmdbId type=$mediaType '
-      's=$season e=$episode title=$title hops=${hopPayload.length}',
+      's=$season e=$episode title=$title hops=${hopPayload.length}'
+      '${(animeIds?.malId ?? malId) != null ? ' mal=${animeIds?.malId ?? malId}' : ''}'
+      '${(animeIds?.anilistId ?? anilistId) != null ? ' anilist=${animeIds?.anilistId ?? anilistId}' : ''}'
+      '${(animeIds?.imdbId ?? movie?.imdbId)?.isNotEmpty == true ? ' imdb=${animeIds?.imdbId ?? movie?.imdbId}' : ''}'
+      ' mappedEp=${animeIds?.mappedEpisode ?? episode ?? 1}',
     );
     final sw = Stopwatch()..start();
     late final String rawJson;
