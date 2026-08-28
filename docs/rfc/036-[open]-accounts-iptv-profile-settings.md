@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 8** components · **21 / 31** acceptance (account `features` + IPTV scrape flag; web VIP banner when scrape on; web navigation settings; no default profile on signup; M3U out of profile_settings; max 5 profiles; max IPTV portals per profile; new-profile defaults no prior-profile bleed; profile_settings cloud-master merge) |
-| **Current slice** | Max IPTV portals per profile (`features.maxIptvPortals`, default 5; admin unlimited; admin Features dialog setter) |
+| **Progress** | **3 / 8** components · **22 / 32** acceptance (account `features` + IPTV scrape flag; web VIP banner when scrape on; web navigation settings; no default profile on signup; M3U out of profile_settings; max 5 profiles; max IPTV portals per profile; new-profile defaults no prior-profile bleed; profile_settings cloud-master merge; web Forja plugins) |
+| **Current slice** | Web + Flutter `connectedServices.forja` pack manifest sync |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -72,6 +72,7 @@
 | 29 | R36-A29 | `accounts.features.maxIptvPortals` (omit when default 5); DB trigger + deal/assign/replace enforce per profile; `is_admin` unlimited | ✅ |
 | 30 | R36-A30 | Admin Features dialog + `admin_set_max_iptv_portals` set per-account max in features JSON (1–500) | ✅ |
 | 31 | R36-A31 | Flutter + web IPTV hide/block Add (and clamp scrape/deal/import) at portal limit | ✅ |
+| 32 | R36-A32 | Web Profile → Forja plugins + `connectedServices.forja` pack URLs; Flutter push/pull (official ForjaHQ packs stay app-local) | ✅ |
 
 ---
 
@@ -98,6 +99,7 @@ On write, clients call compact helpers:
 - **Portal assignments are not in settings JSON** — see `user_iptv_portals`
 - **Playback** is stored in full (including `play_source_torrent_enabled` / `stremio` / `webstreaming`)
 - **Navigation** (`visibleIds`, `defaultTab`) is stored when set
+- **`connectedServices.forja`** stores community plugin pack `{ packs: [{ manifestUrl, name? }] }` — official ForjaHQ packs stay app-local
 
 ## Account features
 

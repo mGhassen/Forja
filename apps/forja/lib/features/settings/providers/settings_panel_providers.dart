@@ -574,13 +574,13 @@ class EnginePacksNotifier extends AsyncNotifier<List<EnginePack>> {
     void listener() => ref.invalidateSelf();
     n.addListener(listener);
     ref.onDispose(() => n.removeListener(listener));
-    return EngineService.instance.listPacks();
+    return EngineService.instance.listUserPacks();
   }
 
   Future<void> reload() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(
-      () => EngineService.instance.listPacks(),
+      () => EngineService.instance.listUserPacks(),
     );
   }
 }

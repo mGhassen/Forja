@@ -661,4 +661,110 @@ class PluginRegistry {
     }
     return null;
   }
+
+  Future<void>? _hydrateLeanInFlight;
+
+  /// Sync / cloud lean rows — URL (+ optional name) only. **No network.**
+  /// Full packs land via [hydrateLeanInstalled] on first Settings/Sources use.
+  /// Official ForjaHQ packs are never removed.
+  Future<void> applyLeanManifestUrls(
+    Iterable<Map<String, dynamic>> rows, {
+    bool removeMissingUserPacks = true,
+  }) async {
+    final remote = <String, String?>{};
+    for (final raw in rows) {
+      final url = (raw['manifestUrl'] as String?)?.trim() ?? '';
+      if (url.isEmpty || isOfficialPack(url) || isLegacyAssetPack(url)) {
+        continue;
+      }
+      final name = (raw['name'] as String?)?.trim();
+      remote[url] = (name != null && name.isNotEmpty) ? name : null;
+    }
+
+    final all = await listPacksRaw();
+    final next = <EnginePack>[];
+    final victims = <EnginePack>[];
+    var changed = false;
+
+    for (final pack in all) {
+      if (isOfficialPack(pack.sourceUrl) || isLegacyAssetPack(pack.sourceUrl)) {
+        next.add(pack);
+        continue;
+      }
+      if (removeMissingUserPacks && !remote.containsKey(pack.sourceUrl)) {
+        victims.add(pack);
+        changed = true;
+        continue;
+      }
+      final leanName = remote[pack.sourceUrl];
+      if (leanName != null &&
+          pack.plugins.isEmpty &&
+          pack.name != leanName) {
+        next.add(
+          EnginePack(
+            sourceUrl: pack.sourceUrl,
+            packId: pack.packId,
+            name: leanName,
+            version: pack.version,
+            plugins: pack.plugins,
+          ),
+        );
+        changed = true;
+      } else {
+        next.add(pack);
+      }
+    }
+
+    final present = next.map((p) => p.sourceUrl).toSet();
+    for (final entry in remote.entries) {
+      if (present.contains(entry.key)) continue;
+      next.add(
+        EnginePack(
+          sourceUrl: entry.key,
+          packId: EnginePack.packIdFromSourceUrl(entry.key),
+          name: entry.value ?? 'Forja pack',
+          version: '0.0.0',
+          plugins: const [],
+        ),
+      );
+      changed = true;
+    }
+
+    if (!changed) return;
+
+    final prefs = await _prefs;
+    for (final pack in victims) {
+      for (final p in pack.plugins) {
+        await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
+        if (p.prelude.isNotEmpty) {
+          await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
+        }
+      }
+    }
+    await _savePacks(next);
+  }
+
+  /// Fetch manifests for lean stubs (`plugins` empty). Idempotent.
+  Future<void> hydrateLeanInstalled() {
+    return _hydrateLeanInFlight ??= _hydrateLeanInstalledImpl().whenComplete(
+      () {
+        _hydrateLeanInFlight = null;
+      },
+    );
+  }
+
+  Future<void> _hydrateLeanInstalledImpl() async {
+    final all = await listPacksRaw();
+    for (final pack in all) {
+      if (pack.plugins.isNotEmpty) continue;
+      if (isLegacyAssetPack(pack.sourceUrl)) continue;
+      try {
+        await install(pack.sourceUrl);
+      } catch (e) {
+        debugPrint(
+          '[engine] lean hydrate failed (${pack.sourceUrl}): $e',
+        );
+      }
+    }
+  }
 }

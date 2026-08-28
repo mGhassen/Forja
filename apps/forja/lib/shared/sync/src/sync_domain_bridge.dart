@@ -5,6 +5,7 @@ import 'package:forja/features/iptv/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/iptv/data/models.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
 import 'package:rust/rust.dart';
@@ -26,6 +27,7 @@ class SyncDomainBridge {
   static const _domainPreferences = 'preferences';
   static const _domainStremio = 'stremio';
   static const _domainNuvio = 'nuvio';
+  static const _domainForja = 'forja';
   static const _domainNavigation = 'navigation';
 
   final _settings = SettingsService();
@@ -53,6 +55,7 @@ class SyncDomainBridge {
       pushIptvIfLocalEmpty: false,
       allowEmptyStremioWipe: pending.contains(_domainStremio),
       allowEmptyNuvioWipe: pending.contains(_domainNuvio),
+      allowEmptyForjaWipe: pending.contains(_domainForja),
       overlayDomains: pending,
     );
   }
@@ -124,6 +127,15 @@ class SyncDomainBridge {
       } catch (_) {}
     }
 
+    final packs = await EngineService.instance.listPacks();
+    for (final pack in packs) {
+      if (EngineService.isOfficialPack(pack.sourceUrl)) continue;
+      if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
+      try {
+        await EngineService.instance.removePack(pack.sourceUrl);
+      } catch (_) {}
+    }
+
     if (clearIptv) {
       // Local cache only - never schedule a cloud push from a wipe.
       await IptvStore.save(const [], scheduleSync: false);
@@ -168,6 +180,7 @@ class SyncDomainBridge {
             pushIptvIfLocalEmpty: false,
             allowEmptyStremioWipe: pending.contains(_domainStremio),
             allowEmptyNuvioWipe: pending.contains(_domainNuvio),
+            allowEmptyForjaWipe: pending.contains(_domainForja),
             // Only flush domains that were pending — never overlay stale
             // navigation / playback from an unrelated edit (issue 126).
             overlayDomains: pending,
@@ -242,8 +255,9 @@ class SyncDomainBridge {
   ///   cannot rewrite cloud navigation (issue 126). Navigation shrink from a
   ///   thin device cache is refused unless `_domainNavigation` is in the
   ///   overlay set (Settings → Features).
-  /// - Empty local Stremio/Nuvio never deletes cloud unless
-  ///   [allowEmptyStremioWipe] / [allowEmptyNuvioWipe] (that domain's edit).
+  /// - Empty local Stremio/Nuvio/Forja never deletes cloud unless
+  ///   [allowEmptyStremioWipe] / [allowEmptyNuvioWipe] / [allowEmptyForjaWipe]
+  ///   (that domain's edit).
   /// - Empty IPTV cache never deletes assignments unless [allowEmptyIptvWipe].
   /// - Local IPTV shorter than cloud never replaces unless [allowIptvShrink]
   ///   (intentional delete) or [allowEmptyIptvWipe] (clear-all).
@@ -255,12 +269,14 @@ class SyncDomainBridge {
     bool allowIptvShrink = false,
     bool allowEmptyStremioWipe = false,
     bool allowEmptyNuvioWipe = false,
+    bool allowEmptyForjaWipe = false,
     Set<String>? overlayDomains,
   }) async {
     if (!SyncService.instance.isSignedIn) return;
     final payload = await _buildMergedCloudPayload(
       allowEmptyStremioWipe: allowEmptyStremioWipe,
       allowEmptyNuvioWipe: allowEmptyNuvioWipe,
+      allowEmptyForjaWipe: allowEmptyForjaWipe,
       overlayDomains: overlayDomains,
     );
     if (payload == null) {
@@ -313,6 +329,7 @@ class SyncDomainBridge {
           allowIptvShrink: false,
           allowEmptyStremioWipe: domain == _domainStremio,
           allowEmptyNuvioWipe: domain == _domainNuvio,
+          allowEmptyForjaWipe: domain == _domainForja,
           overlayDomains: {domain},
         ),
       );
@@ -347,9 +364,11 @@ class SyncDomainBridge {
 
     final stremio = await _exportStremioCompact();
     final nuvio = await _exportNuvioCompact();
+    final forja = await _exportForjaCompact();
     final connected = <String, dynamic>{};
     if (stremio.isNotEmpty) connected['stremio'] = stremio;
     if (nuvio.isNotEmpty) connected['nuvio'] = nuvio;
+    if (forja.isNotEmpty) connected['forja'] = forja;
     if (connected.isNotEmpty) out['connectedServices'] = connected;
 
     final navigation = await _exportNavigationCompact();
@@ -366,10 +385,11 @@ class SyncDomainBridge {
   /// (would replace cloud with a local-only payload).
   ///
   /// [overlayDomains] null overlays every lean domain. Otherwise only the
-  /// listed domains (preferences → playback, navigation, stremio, nuvio).
+  /// listed domains (preferences → playback, navigation, stremio, nuvio, forja).
   Future<Map<String, dynamic>?> _buildMergedCloudPayload({
     required bool allowEmptyStremioWipe,
     required bool allowEmptyNuvioWipe,
+    required bool allowEmptyForjaWipe,
     Set<String>? overlayDomains,
   }) async {
     final Map<String, dynamic> remote;
@@ -389,6 +409,7 @@ class SyncDomainBridge {
     final overlayStremio =
         overlayAll || overlayDomains.contains(_domainStremio);
     final overlayNuvio = overlayAll || overlayDomains.contains(_domainNuvio);
+    final overlayForja = overlayAll || overlayDomains.contains(_domainForja);
 
     if (overlayPlayback) {
       final playback = local['playback'];
@@ -445,6 +466,14 @@ class SyncDomainBridge {
       }
     }
 
+    if (overlayForja) {
+      if (localConnected.containsKey('forja')) {
+        connected['forja'] = localConnected['forja'];
+      } else if (allowEmptyForjaWipe) {
+        connected.remove('forja');
+      }
+    }
+
     if (connected.isNotEmpty) {
       next['connectedServices'] = connected;
     } else {
@@ -485,6 +514,10 @@ class SyncDomainBridge {
       final nuvio = connected['nuvio'];
       if (nuvio is Map) {
         await importNuvio(Map<String, dynamic>.from(nuvio));
+      }
+      final forja = connected['forja'];
+      if (forja is Map) {
+        await importForja(Map<String, dynamic>.from(forja));
       }
     }
 
@@ -533,6 +566,23 @@ class SyncDomainBridge {
       lean.add(row);
     }
     return lean.isEmpty ? {} : {'addons': lean};
+  }
+
+  Future<Map<String, dynamic>> _exportForjaCompact() async {
+    final packs = await EngineService.instance.listPacks();
+    if (packs.isEmpty) return {};
+    final lean = <Map<String, dynamic>>[];
+    for (final pack in packs) {
+      final manifestUrl = pack.sourceUrl.trim();
+      if (manifestUrl.isEmpty) continue;
+      if (EngineService.isOfficialPack(manifestUrl)) continue;
+      if (PluginRegistry.isLegacyAssetPack(manifestUrl)) continue;
+      final row = <String, dynamic>{'manifestUrl': manifestUrl};
+      final name = pack.name.trim();
+      if (name.isNotEmpty) row['name'] = name;
+      lean.add(row);
+    }
+    return lean.isEmpty ? {} : {'packs': lean};
   }
 
   Future<Map<String, dynamic>> _exportNavigationCompact() async {
@@ -959,6 +1009,22 @@ class SyncDomainBridge {
     ];
     await NuvioService.instance.applyLeanManifestUrls(rows);
   }
+
+  Future<Map<String, dynamic>> exportForja() async {
+    return _exportForjaCompact();
+  }
+
+  /// Apply cloud lean rows (`manifestUrl` + optional name). **No network** —
+  /// [PluginRegistry.hydrateLeanInstalled] fills packs on first Settings use.
+  /// Official ForjaHQ packs are never removed.
+  Future<void> importForja(Map<String, dynamic> payload) async {
+    final packs = payload['packs'] as List? ?? const [];
+    final rows = <Map<String, dynamic>>[
+      for (final raw in packs)
+        if (raw is Map) Map<String, dynamic>.from(raw),
+    ];
+    await EngineService.instance.applyLeanManifestUrls(rows);
+  }
 }
 
 void scheduleIptvSyncPush() =>
@@ -976,6 +1042,9 @@ void scheduleStremioSyncPush() =>
 
 void scheduleNuvioSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainNuvio);
+
+void scheduleForjaSyncPush() =>
+    SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainForja);
 
 void scheduleNavigationSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainNavigation);

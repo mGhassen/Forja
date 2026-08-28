@@ -812,6 +812,8 @@ class SyncService {
           connected['stremio'] = e.value;
         case 'nuvio':
           connected['nuvio'] = e.value;
+        case 'forja':
+          connected['forja'] = e.value;
         case 'navigation':
           merged['navigation'] = e.value;
         case 'iptv':
@@ -1045,6 +1047,12 @@ class SyncService {
       if (connected['nuvio'] is Map) {
         out['nuvio'] = {
           'payload': connected['nuvio'],
+          'updated_at': null,
+        };
+      }
+      if (connected['forja'] is Map) {
+        out['forja'] = {
+          'payload': connected['forja'],
           'updated_at': null,
         };
       }

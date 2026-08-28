@@ -4,6 +4,7 @@ import type {
   PreferencesPayload,
   StremioPayload,
   NuvioPayload,
+  ForjaPayload,
   NavigationPayload,
 } from '@/lib/sync-domains'
 
@@ -85,6 +86,34 @@ export function useNuvioSetting() {
         connectedServices: {
           ...settings.data?.payload.connectedServices,
           nuvio: payload,
+        },
+      })
+    },
+  }
+}
+
+export function useForjaSetting() {
+  const settings = useProfileSettings()
+  const data = useMemo(
+    () =>
+      settings.data
+        ? {
+            payload: settings.data.payload.connectedServices?.forja ?? {
+              packs: [],
+            },
+            updated_at: settings.data.updated_at,
+          }
+        : undefined,
+    [settings.data],
+  )
+  return {
+    ...settings,
+    data,
+    save: async (payload: ForjaPayload) => {
+      await settings.patch({
+        connectedServices: {
+          ...settings.data?.payload.connectedServices,
+          forja: payload,
         },
       })
     },

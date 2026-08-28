@@ -136,11 +136,21 @@ export type NuvioPayload = {
   addons: NuvioAddonRow[]
 }
 
+export type ForjaPackRow = {
+  manifestUrl: string
+  name?: string
+}
+
+export type ForjaPayload = {
+  packs: ForjaPackRow[]
+}
+
 export type ConnectedServicesPayload = {
   /** @deprecated Provider order is device-local — never write to cloud. */
   providers?: ProvidersPayload
   stremio?: StremioPayload
   nuvio?: NuvioPayload
+  forja?: ForjaPayload
 }
 
 export type NavigationPayload = {
@@ -253,7 +263,7 @@ export const AUDIO_LANGUAGE_OPTIONS = [
 ] as const
 
 export type RemoteSettingSection = {
-  key: keyof ProfileSettingsPayload | 'stremio' | 'nuvio' | 'iptv'
+  key: keyof ProfileSettingsPayload | 'stremio' | 'nuvio' | 'forja' | 'iptv'
   title: string
   description: string
   href: string
@@ -281,6 +291,12 @@ export const REMOTE_SETTING_SECTIONS: RemoteSettingSection[] = [
     href: '/account/settings/navigation',
   },
   {
+    key: 'forja',
+    title: 'Forja plugins',
+    description: 'Engine plugin pack manifest URLs installed on your account.',
+    href: '/account/settings/forja',
+  },
+  {
     key: 'stremio',
     title: 'Stremio addons',
     description: 'Addon manifest URLs installed on your account.',
@@ -300,6 +316,7 @@ export function emptyProfileSettingsPayload(): ProfileSettingsPayload {
     connectedServices: {
       stremio: emptyStremioPayload(),
       nuvio: emptyNuvioPayload(),
+      forja: emptyForjaPayload(),
     },
     navigation: emptyNavigationPayload(),
   }
@@ -358,6 +375,10 @@ export function emptyNuvioPayload(): NuvioPayload {
   return { addons: [] }
 }
 
+export function emptyForjaPayload(): ForjaPayload {
+  return { packs: [] }
+}
+
 /** Persist full playback prefs (incl. play_source_* modes) — never strip to empty. */
 function compactPlayback(p: PreferencesPayload | undefined): PreferencesPayload | undefined {
   if (!p) return undefined
@@ -397,6 +418,21 @@ function compactNuvio(s: NuvioPayload | undefined): NuvioPayload | undefined {
   return addons.length ? { addons } : undefined
 }
 
+function compactForja(s: ForjaPayload | undefined): ForjaPayload | undefined {
+  if (!s?.packs?.length) return undefined
+  const packs = s.packs
+    .map((a) => {
+      const manifestUrl = a.manifestUrl?.trim()
+      if (!manifestUrl) return null
+      const row: ForjaPackRow = { manifestUrl }
+      const name = a.name?.trim()
+      if (name) row.name = name
+      return row
+    })
+    .filter((a): a is ForjaPackRow => a != null)
+  return packs.length ? { packs } : undefined
+}
+
 function compactNavigation(n: NavigationPayload | undefined): NavigationPayload | undefined {
   if (!n) return undefined
   const normalized = normalizeNavigationPayload(n)
@@ -407,7 +443,7 @@ function compactNavigation(n: NavigationPayload | undefined): NavigationPayload 
   return out
 }
 
-/** Compact before DB write: full playback; stremio/nuvio under connectedServices.
+/** Compact before DB write: full playback; stremio/nuvio/forja under connectedServices.
  * Provider order is device-local — never persist. Never write iptv (portals/M3U). */
 export function compactProfileSettingsPayload(
   full: ProfileSettingsPayload,
@@ -415,11 +451,13 @@ export function compactProfileSettingsPayload(
   const playback = compactPlayback(full.playback)
   const stremio = compactStremio(full.connectedServices?.stremio)
   const nuvio = compactNuvio(full.connectedServices?.nuvio)
+  const forja = compactForja(full.connectedServices?.forja)
   const navigation = compactNavigation(full.navigation)
 
   const connectedServices: ConnectedServicesPayload = {}
   if (stremio) connectedServices.stremio = stremio
   if (nuvio) connectedServices.nuvio = nuvio
+  if (forja) connectedServices.forja = forja
 
   const out: ProfileSettingsPayload = {}
   if (playback) out.playback = playback
@@ -445,12 +483,15 @@ export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPaylo
   const nuvio = {
     addons: p.connectedServices?.nuvio?.addons ?? [],
   }
+  const forja = {
+    packs: p.connectedServices?.forja?.packs ?? [],
+  }
 
   void p.films
 
   return {
     playback: { ...base.playback, ...p.playback },
-    connectedServices: { stremio, nuvio },
+    connectedServices: { stremio, nuvio, forja },
     navigation: normalizeNavigationPayload(p.navigation),
   }
 }

@@ -113,7 +113,17 @@ class EngineService {
 
   Future<List<EnginePack>> listPacks() => PluginRegistry.instance.listPacks();
 
+  /// Settings list — hydrate lean cloud stubs first (Nuvio parity).
+  Future<List<EnginePack>> listUserPacks() async {
+    await PluginRegistry.instance.hydrateLeanInstalled();
+    return listPacks();
+  }
+
+  Future<void> applyLeanManifestUrls(Iterable<Map<String, dynamic>> rows) =>
+      PluginRegistry.instance.applyLeanManifestUrls(rows);
+
   Future<List<EnginePack>> listSourcesPanelPacks() async {
+    await PluginRegistry.instance.hydrateLeanInstalled();
     final packs = await listPacks();
     return [
       for (final p in packs)

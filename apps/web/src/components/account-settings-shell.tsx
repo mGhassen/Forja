@@ -8,6 +8,7 @@ import {
   LayoutList,
   LogOut,
   MonitorSmartphone,
+  Package,
   PlayCircle,
   Puzzle,
   Radio,
@@ -47,6 +48,12 @@ const profileCategoriesBase = [
     title: 'Features',
     subtitle: 'Tabs and default menu',
     icon: LayoutList,
+  },
+  {
+    href: '/account/settings/forja',
+    title: 'Forja plugins',
+    subtitle: 'Synced pack manifests',
+    icon: Package,
   },
   {
     href: '/account/settings/stremio',

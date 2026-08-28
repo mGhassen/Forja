@@ -72,6 +72,8 @@ export function useProfileSettings() {
             current.connectedServices?.stremio,
           nuvio:
             patch.connectedServices?.nuvio ?? current.connectedServices?.nuvio,
+          forja:
+            patch.connectedServices?.forja ?? current.connectedServices?.forja,
         },
         navigation: patch.navigation
           ? { ...current.navigation, ...patch.navigation }

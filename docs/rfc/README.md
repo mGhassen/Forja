@@ -56,7 +56,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [033-[open]-…](033-[open]-settings-ux-redesign.md) | Settings category-hub UX | v1.0.2 | open | 8/8 · 10/10 hub · 6/6 visibility · 3/3 TV detail | [1.0.1](../backlog/1.0.1-[open].md) · [1.0.2](../backlog/1.0.2-[draft].md) |
 | [034-[partial]-…](034-[partial]-web-portal-landing.md) | Web portal + landing + Flutter APIs | v1.0.4 | partial | 6/6 · 11/11 · 3/3 · 3/3 · 1/1 · 7/7 reset+confirm · 6/7 passkeys · 0/1 mobile ⏭️ | [1.0.2](../backlog/1.0.2-[draft].md) · [1.0.4](../backlog/1.0.4-[draft].md) |
 | [035-[draft]-…](035-[draft]-design-system-controls.md) | Design-system controls consolidation | — | draft | 0/4 · 0/6 | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
-| [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 3/8 · 21/31 | [1.0.2](../backlog/1.0.2-[draft].md) |
+| [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 3/8 · 22/32 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [037-[open]-…](037-[open]-web-portal-i18n.md) | Web portal French + Arabic i18n | v1.0.4 | open | 0/4 · 0/8 · 1 ⏭️ | [1.0.4](../backlog/1.0.4-[draft].md) |
 | [038-[open]-…](038-[open]-simple-streaming-resolve.md) | Simple streaming resolve (experimental) | v1.0.1 | open | 3/3 · 6/10 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [039-[fixed]-…](fixed/039-[fixed]-remote-provider-runtime-config.md) | Remote provider runtime config | v1.0.1 | fixed | Complete · 7/7 · 12/12 | [1.0.1](../backlog/1.0.1-[open].md) |

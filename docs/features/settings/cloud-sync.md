@@ -59,6 +59,7 @@ Per profile:
 | **`profile_settings` → Playback** | Full prefs: torrent / Stremio / Nuvio / webstreaming play sources, Simple resolve, auto next/skip intro, IPTV EPG, preferred audio / subtitle, max quality, anime title language |
 | **`profile_settings` → Features** | Visible shell tabs and default tab — editable on web under **Profile → Features** |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs |
+| **`profile_settings` → Forja** | Community Forja plugin pack manifest URLs (official ForjaHQ packs auto-install in the app) |
 | **`profile_settings` → Nuvio** | Installed Nuvio scraper manifest URLs |
 
 ## What stays local

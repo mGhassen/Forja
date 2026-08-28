@@ -530,6 +530,7 @@ class _SettingsProvidersSectionState
       final pack = await EngineService.instance.install(url);
       if (!mounted) return;
       _engineController.clear();
+      scheduleForjaSyncPush();
       ForjaToast.success(
         'Installed ${pack.name} (${pack.plugins.length} plugins)',
       );
@@ -545,6 +546,7 @@ class _SettingsProvidersSectionState
     try {
       await EngineService.instance.removePack(sourceUrl);
       if (!mounted) return;
+      scheduleForjaSyncPush();
       ForjaToast.success('Plugin pack removed');
     } catch (e) {
       if (!mounted) return;
