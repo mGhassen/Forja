@@ -493,6 +493,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return magnet.toLowerCase().startsWith('magnet:');
   }
 
+  String? get _playingEnginePluginId =>
+      enginePluginIdFromCatalogBase(widget.currentAddonBaseUrl);
+
   bool _isCurrentStremio(Map<String, dynamic> stream) {
     final playUrl = widget.currentStreamUrl;
     if (playUrl != null && playUrl.isNotEmpty) {
@@ -500,6 +503,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         stream,
         playUrl: playUrl,
         catalogUrl: widget.currentPlayingCatalogUrl,
+        playingEnginePluginId: _playingEnginePluginId,
       )) {
         return true;
       }

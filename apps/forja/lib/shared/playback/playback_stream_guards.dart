@@ -182,11 +182,41 @@ String? durableStreamCatalogUrl({
   return null;
 }
 
+/// Engine chip from catalog session (`engine:vidsrcsbs` → `vidsrcsbs`).
+String? enginePluginIdFromCatalogBase(String? catalogAddonBaseUrl) {
+  final base = catalogAddonBaseUrl?.trim() ?? '';
+  if (!base.startsWith('engine:')) return null;
+  final id = base.substring('engine:'.length).trim();
+  return id.isEmpty ? null : id;
+}
+
+/// Sources-panel identity for the playing session.
+///
+/// Prefer stored catalog addon (`engine:vidsrcsbs`) over a later URL match.
+/// After post-seek remount the play URL is often a shared CDN, so falling
+/// back to [currentProvider] keeps Forja rows on the plugin that opened.
+String? catalogAddonBaseForPlaying({
+  String? catalogAddonBaseUrl,
+  String? widgetAddonBaseUrl,
+  String? currentProvider,
+}) {
+  final addon = (catalogAddonBaseUrl ?? widgetAddonBaseUrl)?.trim();
+  if (addon != null && addon.isNotEmpty) return addon;
+  final pid = currentProvider?.trim() ?? '';
+  if (pid.startsWith('engine:') || pid.startsWith('nuvio:')) return pid;
+  return null;
+}
+
 /// Whether a Sources-panel Stremio/Nuvio/Engine row matches the active play URL.
+///
+/// When [playingEnginePluginId] is set, rows with a different
+/// `_enginePluginId` are rejected even if the CDN URL matches (VidLink vs
+/// VidSrc.sbs mirrors often share the same hakunaymatata / peakstorm URL).
 bool catalogStreamRowMatchesPlaying(
   Map<String, dynamic> stream, {
   String? playUrl,
   String? catalogUrl,
+  String? playingEnginePluginId,
 }) {
   final play = playUrl?.trim() ?? '';
   final catalog = catalogUrl?.trim() ?? '';
@@ -196,10 +226,20 @@ bool catalogStreamRowMatchesPlaying(
 
   bool hit(String a, String b) => _urlsMatchForPlayback(a, b);
 
-  if (hit(url, play) || hit(url, catalog)) return true;
-  if (hit(url, playTarget) || hit(urlTarget, catalog)) return true;
-  if (hit(urlTarget, playTarget)) return true;
-  return false;
+  var urlMatch = false;
+  if (hit(url, play) || hit(url, catalog)) {
+    urlMatch = true;
+  } else if (hit(url, playTarget) || hit(urlTarget, catalog)) {
+    urlMatch = true;
+  } else if (hit(urlTarget, playTarget)) {
+    urlMatch = true;
+  }
+  if (!urlMatch) return false;
+
+  final want = playingEnginePluginId?.trim();
+  if (want == null || want.isEmpty) return true;
+  final rowPlugin = stream['_enginePluginId']?.toString().trim() ?? '';
+  return rowPlugin == want;
 }
 
 /// Whether [source] is the row currently playing (catalog or play URL).

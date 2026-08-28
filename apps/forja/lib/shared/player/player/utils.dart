@@ -6,8 +6,10 @@ import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 export 'package:forja/shared/playback/playback_stream_guards.dart'
     show
+        catalogAddonBaseForPlaying,
         catalogStreamRowMatchesPlaying,
         durableStreamCatalogUrl,
+        enginePluginIdFromCatalogBase,
         hlsProxyTargetUrl,
         isVideasyCdnStreamUrl,
         playbackUrlsEquivalent,
@@ -29,15 +31,29 @@ const kDefaultStreamUserAgent =
 const kHlsBitrateAutoSoftCeiling = '5000000';
 const kExoBitrateAutoSoftCeiling = 5_000_000;
 
+/// Sibling `master.m3u8` for demuxed `index-s1080p-v1-a1.m3u8` (peakstorm /
+/// Videasy). Host-agnostic — VidLink wraps the same path in mooncase `/mp/`.
+String hlsMasterUrlForQualityProbe(String url) {
+  final trimmed = url.trim();
+  if (trimmed.isEmpty) return trimmed;
+  return VideasyExtractor.preferHlsMasterUrl(trimmed);
+}
+
 /// Prefer catalog/master URL for the quality menu when play opened a media playlist.
 String catalogUrlForHlsQualities({
   String? catalogUrl,
   required String sourceUrl,
   required String playUrl,
 }) {
-  final catalog = (catalogUrl ?? '').trim();
-  if (catalog.toLowerCase().contains('.m3u8')) return catalog;
-  if (sourceUrl.toLowerCase().contains('.m3u8')) return sourceUrl;
+  String? firstM3u8;
+  for (final raw in [catalogUrl, sourceUrl, playUrl]) {
+    final u = (raw ?? '').trim();
+    if (!u.toLowerCase().contains('.m3u8')) continue;
+    firstM3u8 ??= u;
+    final probed = hlsMasterUrlForQualityProbe(u);
+    if (probed.toLowerCase().contains('master.m3u8')) return probed;
+  }
+  if (firstM3u8 != null) return hlsMasterUrlForQualityProbe(firstM3u8);
   return playUrl;
 }
 
@@ -863,6 +879,7 @@ String? _catalogAddonNameFromSessionCaches(
   String cacheKey, {
   required String playUrl,
   String? catalogUrl,
+  String? playingEnginePluginId,
 }) {
   final stremio = CatalogSourcesSessionCache.readStremio(cacheKey);
   final nuvio = CatalogSourcesSessionCache.readNuvio(cacheKey)?.streams;
@@ -874,6 +891,7 @@ String? _catalogAddonNameFromSessionCaches(
         stream,
         playUrl: playUrl,
         catalogUrl: catalogUrl,
+        playingEnginePluginId: playingEnginePluginId,
       )) {
         continue;
       }
@@ -938,6 +956,13 @@ String catalogSourcesButtonLabel({
         cacheKey,
         playUrl: playUrl,
         catalogUrl: currentPlayingCatalogUrl,
+        playingEnginePluginId: enginePluginIdFromCatalogBase(
+          catalogAddonBaseForPlaying(
+            catalogAddonBaseUrl: catalogAddonBaseUrl,
+            widgetAddonBaseUrl: widgetAddonBaseUrl,
+            currentProvider: currentProvider ?? activeProvider,
+          ),
+        ),
       );
       if (addonName != null) return addonName;
     }
@@ -1419,8 +1444,8 @@ Duration remountResumeTimeoutForSeek(Duration seekTarget) {
 
 /// Stall timer before post-seek remount — scales with seek depth (issue 184).
 Duration postSeekStallTimeoutForTarget(Duration seekTarget) {
-  final extra = (seekTarget.inMinutes ~/ 10) * 5;
-  return Duration(seconds: (15 + extra).clamp(15, 45));
+  final extra = (seekTarget.inMinutes ~/ 10) * 3;
+  return Duration(seconds: (8 + extra).clamp(8, 28));
 }
 
 /// Skip arming remount watchdog when a seek lands on the resume point right

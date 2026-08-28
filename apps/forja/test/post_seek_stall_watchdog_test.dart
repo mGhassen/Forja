@@ -168,12 +168,35 @@ void main() {
   test('postSeekStallTimeoutForTarget scales with depth', () {
     expect(
       postSeekStallTimeoutForTarget(const Duration(minutes: 5)).inSeconds,
-      15,
+      8,
     );
     expect(
       postSeekStallTimeoutForTarget(const Duration(minutes: 49)).inSeconds,
-      35,
+      20,
     );
+  });
+
+  test('onStallSuspected fires before remount when seek stalls', () async {
+    var hints = 0;
+    var remounts = 0;
+    final w = PostSeekStallWatchdog(
+      onRemount: (_) async {
+        remounts++;
+        return true;
+      },
+      onStallSuspected: (_) => hints++,
+      stallAfter: const Duration(milliseconds: 80),
+      stallHintAfter: const Duration(milliseconds: 30),
+      scaleStallWithDepth: false,
+    );
+    w.noteSeek(const Duration(minutes: 18));
+    w.onBuffering(true);
+    w.onPosition(const Duration(minutes: 18));
+    await Future<void>.delayed(const Duration(milliseconds: 45));
+    expect(hints, 1);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(remounts, 1);
+    w.dispose();
   });
 
   test('cancelPending clears armed seek before quality switch', () async {

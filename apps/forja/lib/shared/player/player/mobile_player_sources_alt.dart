@@ -18,8 +18,11 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
       preferredKind: _s._catalogSourceKind,
-      currentAddonBaseUrl:
-          _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,
+      currentAddonBaseUrl: catalogAddonBaseForPlaying(
+        catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
+        widgetAddonBaseUrl: widget.stremioAddonBaseUrl,
+        currentProvider: _s._currentProvider,
+      ),
       anilistId: session?.anilistId,
       malId: session?.malId,
       kisskhId: session?.kisskhId,
@@ -157,7 +160,11 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
             isLocalTorrentStreamUrl(resolved.streamUrl);
         _s._catalogSourceKind = localTorrent
             ? 'torrents'
-            : ((base != null && base.startsWith('nuvio:')) ? 'nuvio' : 'stremio');
+            : ((base != null && base.startsWith('nuvio:'))
+                ? 'nuvio'
+                : (base != null && base.startsWith('engine:'))
+                    ? 'engine'
+                    : 'stremio');
         _s._currentProvider = catalogHttpPlayProviderId(stream);
       });
       _s._markPlaybackConfirmed(true);

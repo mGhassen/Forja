@@ -1149,7 +1149,16 @@ mixin _DesktopPlayerPlayback
       if (ok) {
         _s._currentUrl = playUrl;
         _s._positionNotifier.value = target;
+        final durable = durableStreamCatalogUrl(
+          catalogUrl: _s._currentPlayingCatalogUrl,
+          sourceUrl: src?.catalogUrl ?? src?.url,
+          playUrl: playUrl,
+        );
+        if (durable != null && durable.isNotEmpty) {
+          _s._currentPlayingCatalogUrl = durable;
+        }
         _s._statusController.complete();
+        _s._notifySourceMenuChanged();
         debugPrint('[Player] Post-seek remount resumed @${target.inSeconds}s');
         return true;
       }
@@ -1182,6 +1191,16 @@ mixin _DesktopPlayerPlayback
   void _ensurePostSeekStallWatchdog() {
     _s._postSeekStall ??= PostSeekStallWatchdog(
       onRemount: _remountCurrentStreamAt,
+      onStallSuspected: (target) {
+        if (_s._disposed || !mounted || _s._postSeekStall!.remountInFlight) {
+          return;
+        }
+        _s._statusController.upsert(
+          'post-seek-remount',
+          'Reconnecting…',
+          kind: StatusRouletteKind.loading,
+        );
+      },
     );
   }
 

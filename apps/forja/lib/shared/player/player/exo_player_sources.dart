@@ -417,8 +417,11 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         playUrl: _s._currentUrl ?? widget.mediaPath,
       ),
       preferredKind: _s._catalogSourceKind,
-      currentAddonBaseUrl:
-          _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,
+      currentAddonBaseUrl: catalogAddonBaseForPlaying(
+        catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
+        widgetAddonBaseUrl: widget.stremioAddonBaseUrl,
+        currentProvider: _s._currentProvider,
+      ),
       anilistId: session?.anilistId,
       malId: session?.malId,
       kisskhId: session?.kisskhId,
@@ -518,7 +521,9 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
             ? 'torrents'
             : ((base != null && base.startsWith('nuvio:'))
                 ? 'nuvio'
-                : 'stremio');
+                : (base != null && base.startsWith('engine:'))
+                    ? 'engine'
+                    : 'stremio');
         _s._currentProvider = catalogHttpPlayProviderId(stream);
       });
       _s._statusController.complete();

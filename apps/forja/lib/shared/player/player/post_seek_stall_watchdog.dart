@@ -11,26 +11,35 @@ import 'package:forja/shared/player/player/utils.dart';
 class PostSeekStallWatchdog {
   PostSeekStallWatchdog({
     required this.onRemount,
+    this.onStallSuspected,
     this.stallAfter = const Duration(seconds: 10),
     this.armWindow = const Duration(seconds: 45),
     this.progressClear = const Duration(seconds: 2),
+    this.stallHintAfter = const Duration(seconds: 3),
     this.enabled = true,
     this.scaleStallWithDepth = true,
   });
 
   /// Return true only when remount actually ran and resumed playback.
   final Future<bool> Function(Duration seekTarget) onRemount;
+
+  /// Optional early UI (e.g. Reconnecting…) while the stall timer runs.
+  final void Function(Duration seekTarget)? onStallSuspected;
   final Duration stallAfter;
   final Duration armWindow;
   final Duration progressClear;
 
+  /// Show [onStallSuspected] after seek when still stalled + buffering.
+  final Duration stallHintAfter;
+
   /// Caller sets false for torrents / local files that should not remount.
   bool enabled;
 
-  /// When true, [noteSeek] uses [postSeekStallTimeoutForTarget] (min 15s deep HLS).
+  /// When true, [noteSeek] uses [postSeekStallTimeoutForTarget] (min 8s deep HLS).
   final bool scaleStallWithDepth;
 
   Timer? _timer;
+  Timer? _hintTimer;
   DateTime? _seekAt;
   Duration? _target;
   Duration _lastPos = Duration.zero;
@@ -46,12 +55,16 @@ class PostSeekStallWatchdog {
   void dispose() {
     _timer?.cancel();
     _timer = null;
+    _hintTimer?.cancel();
+    _hintTimer = null;
   }
 
   /// Drop a pending remount (quality switch, provider hop, …).
   void cancelPending() {
     _timer?.cancel();
     _timer = null;
+    _hintTimer?.cancel();
+    _hintTimer = null;
     _seekAt = null;
     _target = null;
     _remountedForSeek = false;
@@ -63,6 +76,8 @@ class PostSeekStallWatchdog {
     if (!enabled) return;
     _timer?.cancel();
     _timer = null;
+    _hintTimer?.cancel();
+    _hintTimer = null;
     _seekAt = DateTime.now();
     _target = target < Duration.zero ? Duration.zero : target;
     _lastPos = _target!;
@@ -108,6 +123,8 @@ class PostSeekStallWatchdog {
       _seekAt = null;
       _timer?.cancel();
       _timer = null;
+      _hintTimer?.cancel();
+      _hintTimer = null;
       return;
     }
     if (_playing && !_remountedForSeek && _timer == null) {
@@ -120,6 +137,25 @@ class PostSeekStallWatchdog {
     final target = _target;
     if (target == null || !_playing) return;
     _timer = Timer(_armedStallAfter, () => unawaited(_fire(target)));
+    _armHintTimer(target);
+  }
+
+  void _armHintTimer(Duration target) {
+    _hintTimer?.cancel();
+    _hintTimer = null;
+    final hint = onStallSuspected;
+    if (hint == null || _remountedForSeek || _remountInFlight) return;
+    _hintTimer = Timer(stallHintAfter, () {
+      if (!enabled ||
+          _remountedForSeek ||
+          _remountInFlight ||
+          _seekAt == null ||
+          !_playing ||
+          !_looksStalled()) {
+        return;
+      }
+      hint(target);
+    });
   }
 
   bool _looksStalled() {
@@ -131,6 +167,8 @@ class PostSeekStallWatchdog {
   Future<void> _fire(Duration target) async {
     _timer?.cancel();
     _timer = null;
+    _hintTimer?.cancel();
+    _hintTimer = null;
     if (!enabled || _remountedForSeek || _remountInFlight) return;
     if (!_playing || !_looksStalled()) return;
     _remountInFlight = true;

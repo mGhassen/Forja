@@ -146,6 +146,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   );
   late final PostSeekStallWatchdog _postSeekStall = PostSeekStallWatchdog(
     onRemount: _remountCurrentStreamAt,
+    onStallSuspected: (_) {
+      if (_disposed || !mounted || _postSeekStall.remountInFlight) return;
+      _statusController.upsert(
+        'post-seek-remount',
+        'Reconnecting…',
+        kind: StatusRouletteKind.loading,
+      );
+    },
   );
 
   bool _disposed = false;
@@ -799,10 +807,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
             },
           )
           .toList();
+      final playUrl = normalizePlaybackStreamUrl(source.url);
+      final headers = resolvePlaybackHttpHeaders(
+        source.headers,
+        streamUrl: playUrl,
+        providerId: widget.activeProvider,
+      );
       await ExoPlayerBridge.open(
         viewId: _viewId,
-        url: normalizePlaybackStreamUrl(source.url),
-        headers: source.headers,
+        url: playUrl,
+        headers: headers,
         startPosition: target,
         subtitles: subs,
         maxVideoHeight: caps.maxVideoHeight,

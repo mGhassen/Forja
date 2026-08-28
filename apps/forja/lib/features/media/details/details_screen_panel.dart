@@ -745,34 +745,34 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     );
   }
 
+  /// Episode-level Continue Watching — same pos for every Sources row.
+  ({double progress, bool resumable}) _episodeResumeProgress() {
+    final progress = _s._lastProgress;
+    if (progress == null) return (progress: 0, resumable: false);
+    final pos = watchHistoryInt(progress['position']);
+    final dur = watchHistoryInt(progress['duration']);
+    if (dur <= 0) return (progress: 0, resumable: false);
+    final resumable = WatchProgressBar.isResumable(pos, dur);
+    if (!resumable) return (progress: 0, resumable: false);
+    return (progress: (pos / dur).clamp(0.0, 1.0), resumable: true);
+  }
+
   Widget _torrentTileFor(TorrentResult r, {int? tvItemIndex}) {
-    double prog = 0;
-    var preselected = false;
-    if (_s._lastProgress != null && _s._lastProgress!['method'] == 'torrent') {
-      if (_s._getHash(r.magnet) == _s._getHash(_s._lastProgress!['sourceId'])) {
-        preselected = true;
-        final pos = (_s._lastProgress!['position'] != null)
-            ? watchHistoryInt(_s._lastProgress!['position'])
-            : 0;
-        final dur = (_s._lastProgress!['duration'] != null)
-            ? watchHistoryInt(_s._lastProgress!['duration'])
-            : 0;
-        if (dur > 0) {
-          prog = (pos / dur).clamp(0.0, 1.0);
-        }
-      }
-    }
+    final resume = _episodeResumeProgress();
+    final lastWasThisTorrent = _s._lastProgress != null &&
+        _s._lastProgress!['method'] == 'torrent' &&
+        _s._getHash(r.magnet) == _s._getHash(_s._lastProgress!['sourceId']);
     return TorrentSourceTile(
       key: ValueKey(r.magnet.isEmpty ? r.name : r.magnet),
       result: r,
-      progress: prog,
-      isResumable: preselected,
-      highlightStart: preselected,
+      progress: resume.progress,
+      isResumable: resume.resumable,
+      highlightStart: lastWasThisTorrent,
       tvItemIndex: tvItemIndex,
       onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
       onPlay: () => _s._playTorrent(
         r,
-        startPosition: preselected
+        startPosition: resume.resumable && _s._lastProgress != null
             ? resumeStartPositionFromProgress(_s._lastProgress!)
             : widget.startPosition,
       ),
@@ -786,40 +786,9 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
   }) {
     final title = s['title'] ?? s['name'] ?? 'Unknown Stream';
     final description = s['description'] ?? '';
-    double prog = 0;
-    var resumable = false;
-    if (_s._lastProgress != null) {
-      final hs = _s._lastProgress!['sourceId'] as String? ?? '';
-      final enginePlugin = s['_enginePluginId']?.toString();
-      if (enginePlugin != null &&
-          enginePlugin.isNotEmpty &&
-          hs == EngineIds.pluginChip(enginePlugin)) {
-        final pos = watchHistoryInt(_s._lastProgress!['position']);
-        final dur = watchHistoryInt(_s._lastProgress!['duration']);
-        if (dur > 0) {
-          prog = (pos / dur).clamp(0.0, 1.0);
-          resumable = WatchProgressBar.isResumable(pos, dur);
-        }
-      } else {
-        final String? sid = s['infoHash'] != null
-            ? 'magnet:?xt=urn:btih:${s['infoHash']}'
-            : s['url'];
-        if (sid != null) {
-          final match = s['infoHash'] != null
-              ? _s._getHash(hs) == _s._getHash(sid)
-              : hs == sid;
-          if (match) {
-            final pos = watchHistoryInt(_s._lastProgress!['position']);
-            final dur = watchHistoryInt(_s._lastProgress!['duration']);
-            if (dur > 0) {
-              prog = (pos / dur).clamp(0.0, 1.0);
-              resumable = true;
-            }
-          }
-        }
-      }
-    }
-    final presentation = stremioTilePresentation(s, isResumable: resumable);
+    final resume = _episodeResumeProgress();
+    final presentation =
+        stremioTilePresentation(s, isResumable: resume.resumable);
     final playingCatalog = _s._playingCatalogUrl;
     final isPlaying = playingCatalog != null &&
         playingCatalog.isNotEmpty &&
@@ -836,8 +805,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       sizeText: s['size']?.toString(),
       seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
       stream: s,
-      progress: prog,
-      isResumable: resumable,
+      progress: resume.progress,
+      isResumable: resume.resumable,
       highlightStart: isPlaying,
       tvItemIndex: tvItemIndex,
       onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
@@ -846,7 +815,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           : () => probeSourcesPanelStream(s),
       onTap: () => _s._playStremioStream(
         s,
-        startPosition: resumable && _s._lastProgress != null
+        startPosition: resume.resumable && _s._lastProgress != null
             ? resumeStartPositionFromProgress(_s._lastProgress!)
             : widget.startPosition,
       ),

@@ -425,27 +425,24 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
   /// Probe [url] as a master HLS playlist. Populates the quality notifier
   /// when 2+ variants are present, otherwise clears it (hiding the gear).
   void _detectHlsQualities(String url, Map<String, String>? headers) {
-    _s._currentQualityUrl = url;
-    if (!url.contains('.m3u8')) {
+    final probe = hlsMasterUrlForQualityProbe(url);
+    _s._currentQualityUrl = probe;
+    if (!probe.contains('.m3u8')) {
       _s._hlsMasterUrl = null;
       _s._hlsMasterHeaders = null;
       _s._hlsQualitiesNotifier.value = null;
       return;
     }
-    // If the user just picked a variant from the same master, keep the list.
     final existing = _s._hlsQualitiesNotifier.value;
-    if (existing != null && existing.any((q) => q.url == url)) return;
+    if (existing != null && existing.any((q) => q.url == probe)) return;
 
-    // New stream - clear any prior quality state immediately so the gear
-    // doesn't expose stale variants while the new master loads.
-    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
-    _s._hlsMasterUrl = url;
+    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: probe);
+    _s._hlsMasterUrl = probe;
     _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;
-    fetchHlsQualities(url, headers: resolved).then((qs) {
+    fetchHlsQualities(probe, headers: resolved).then((qs) {
       if (_s._disposed) return;
-      // Only apply if a newer URL didn't take over while we were fetching.
-      if (_s._hlsMasterUrl != url) return;
+      if (_s._hlsMasterUrl != probe) return;
       _s._hlsQualitiesNotifier.value = qs;
     });
   }

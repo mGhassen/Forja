@@ -51,6 +51,61 @@ void main() {
         isTrue,
       );
     });
+
+    test('shared CDN URL prefers playing engine plugin', () {
+      const dash = 'https://sacdn.hakunaymatata.com/dash/x/index.mpd';
+      final vidlink = {'url': dash, '_enginePluginId': 'vidlink'};
+      final vidsrcsbs = {'url': dash, '_enginePluginId': 'vidsrcsbs'};
+      final noPlugin = {'url': dash, 'title': 'VidLink'};
+      expect(
+        catalogStreamRowMatchesPlaying(
+          vidlink,
+          playUrl: dash,
+          playingEnginePluginId: 'vidsrcsbs',
+        ),
+        isFalse,
+      );
+      expect(
+        catalogStreamRowMatchesPlaying(
+          noPlugin,
+          playUrl: dash,
+          playingEnginePluginId: 'vidsrcsbs',
+        ),
+        isFalse,
+      );
+      expect(
+        catalogStreamRowMatchesPlaying(
+          vidsrcsbs,
+          playUrl: dash,
+          playingEnginePluginId: 'vidsrcsbs',
+        ),
+        isTrue,
+      );
+    });
+
+    test('enginePluginIdFromCatalogBase parses engine chip', () {
+      expect(
+        enginePluginIdFromCatalogBase('engine:vidsrcsbs'),
+        'vidsrcsbs',
+      );
+      expect(enginePluginIdFromCatalogBase('nuvio:showbox'), isNull);
+    });
+
+    test('catalogAddonBaseForPlaying falls back to engine provider', () {
+      expect(
+        catalogAddonBaseForPlaying(
+          currentProvider: 'engine:vidsrcsbs',
+        ),
+        'engine:vidsrcsbs',
+      );
+      expect(
+        catalogAddonBaseForPlaying(
+          catalogAddonBaseUrl: 'engine:vidlink',
+          currentProvider: 'engine:vidsrcsbs',
+        ),
+        'engine:vidlink',
+      );
+    });
   });
 
   group('streamSourceMatchesPlaying', () {
@@ -142,6 +197,40 @@ void main() {
           catalogUrl: 'https://cdn.example/ep.m3u8',
         ),
         isFalse,
+      );
+    });
+  });
+
+  group('catalogUrlForHlsQualities', () {
+    test('peakstorm child catalogUrl resolves to master for probe', () {
+      const child =
+          'https://moon.peakstorm.top/vd/x/sd/11/index-s1080p-v1-a1.m3u8';
+      const master = 'https://moon.peakstorm.top/vd/x/master.m3u8';
+      expect(
+        catalogUrlForHlsQualities(
+          catalogUrl: child,
+          sourceUrl: master,
+          playUrl: master,
+        ),
+        master,
+      );
+    });
+
+    test('vidlink mooncase proxy child rewrites path to master', () {
+      const child =
+          'https://noon.mooncase.online/mp/vd/x/sd/11/index-s720p-v1-a1.m3u8'
+          '?headers=%7B%7D&host=https%3A%2F%2Fmoon.peakstorm.top';
+      const master =
+          'https://noon.mooncase.online/mp/vd/x/master.m3u8'
+          '?headers=%7B%7D&host=https%3A%2F%2Fmoon.peakstorm.top';
+      expect(hlsMasterUrlForQualityProbe(child), master);
+      expect(
+        catalogUrlForHlsQualities(
+          catalogUrl: child,
+          sourceUrl: child,
+          playUrl: child,
+        ),
+        master,
       );
     });
   });

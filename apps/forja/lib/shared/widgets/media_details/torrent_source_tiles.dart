@@ -551,7 +551,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   Color _backgroundColor() {
     if (_hover) return ForjaShellColors.chipSelectedBg;
     if (widget.accentFill != null) return widget.accentFill!;
-    if (widget.isResumable || widget.highlightStart) {
+    if (widget.highlightStart) {
       return ForjaShellColors.chipSelectedBg;
     }
     return Colors.white.withValues(alpha: 0.04);
@@ -560,7 +560,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   Color _borderColor() {
     if (_hover) return ForjaShellColors.chipSelectedBorder;
     if (widget.accentBorder != null) return widget.accentBorder!;
-    if (widget.isResumable || widget.highlightStart) {
+    if (widget.highlightStart) {
       return ForjaShellColors.chipSelectedBorder;
     }
     return Colors.white.withValues(alpha: 0.07);

@@ -452,23 +452,24 @@ mixin _DesktopPlayerTracks
   /// Probe [url] as a master HLS playlist. Populates the quality notifier
   /// when 2+ variants are present, otherwise clears it (hiding the gear).
   void _detectHlsQualities(String url, Map<String, String>? headers) {
-    _s._currentQualityUrl = url;
-    if (!url.contains('.m3u8')) {
+    final probe = hlsMasterUrlForQualityProbe(url);
+    _s._currentQualityUrl = probe;
+    if (!probe.contains('.m3u8')) {
       _s._hlsMasterUrl = null;
       _s._hlsMasterHeaders = null;
       _s._hlsQualitiesNotifier.value = null;
       return;
     }
     final existing = _s._hlsQualitiesNotifier.value;
-    if (existing != null && existing.any((q) => q.url == url)) return;
+    if (existing != null && existing.any((q) => q.url == probe)) return;
 
-    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
-    _s._hlsMasterUrl = url;
+    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: probe);
+    _s._hlsMasterUrl = probe;
     _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;
-    fetchHlsQualities(url, headers: resolved).then((qs) {
+    fetchHlsQualities(probe, headers: resolved).then((qs) {
       if (_s._disposed) return;
-      if (_s._hlsMasterUrl != url) return;
+      if (_s._hlsMasterUrl != probe) return;
       _s._hlsQualitiesNotifier.value = qs;
     });
   }
