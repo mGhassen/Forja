@@ -26,6 +26,32 @@ String _timelineGranularityLabel(_TimelineGranularity g) => switch (g) {
   _TimelineGranularity.h3 => '3h',
 };
 
+String _liveMatchClockHm(DateTime dt) =>
+    '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+/// Card caption above the title — `18:00 – 20:00` or kickoff-only when no end.
+String _liveMatchScheduleLabel({
+  int startsAtSec = 0,
+  int endsAtSec = 0,
+  int dateMs = 0,
+  bool alwaysOn = false,
+}) {
+  if (alwaysOn) return '';
+  if (startsAtSec > 0) {
+    final start = DateTime.fromMillisecondsSinceEpoch(startsAtSec * 1000);
+    final startLabel = _liveMatchClockHm(start);
+    if (endsAtSec > startsAtSec) {
+      final end = DateTime.fromMillisecondsSinceEpoch(endsAtSec * 1000);
+      return '$startLabel – ${_liveMatchClockHm(end)}';
+    }
+    return startLabel;
+  }
+  if (dateMs > 0) {
+    return _liveMatchClockHm(DateTime.fromMillisecondsSinceEpoch(dateMs));
+  }
+  return '';
+}
+
 class _Sport {
   final String id;
   final String name;
@@ -102,11 +128,18 @@ class _DamiTvStream {
 
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     if (startsAt > now) {
-      final dt = DateTime.fromMillisecondsSinceEpoch(startsAt * 1000);
-      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      return _liveMatchClockHm(
+        DateTime.fromMillisecondsSinceEpoch(startsAt * 1000),
+      );
     }
     return '';
   }
+
+  String get scheduleLabel => _liveMatchScheduleLabel(
+    startsAtSec: startsAt,
+    endsAtSec: endsAt,
+    alwaysOn: isAlwaysOn,
+  );
 
   bool get isLive => ppvStreamIsLive(
     isAlwaysOn: isAlwaysOn,
@@ -273,10 +306,15 @@ class _StreamedMatch {
     final dt = DateTime.fromMillisecondsSinceEpoch(dateMs);
     final now = DateTime.now();
     if (dt.isAfter(now)) {
-      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      return _liveMatchClockHm(dt);
     }
     return '';
   }
+
+  String get scheduleLabel => _liveMatchScheduleLabel(
+    dateMs: dateMs,
+    alwaysOn: isAlwaysOn,
+  );
 
   bool get isLive {
     if (isAlwaysOn || airing) return true;

@@ -1058,6 +1058,7 @@ class _LiveMatchTvCaptionBody extends StatelessWidget {
     required this.active,
     required this.visual,
     required this.title,
+    this.schedule,
     this.subtitle,
     this.overlays = const [],
   });
@@ -1065,6 +1066,7 @@ class _LiveMatchTvCaptionBody extends StatelessWidget {
   final bool active;
   final Widget visual;
   final String title;
+  final String? schedule;
   final String? subtitle;
   final List<Widget> overlays;
 
@@ -1107,6 +1109,20 @@ class _LiveMatchTvCaptionBody extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        if (schedule != null && schedule!.isNotEmpty) ...[
+                          Text(
+                            schedule!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: (titleSize - 1).clamp(9.0, 11.0),
+                              height: 1.1,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                        ],
                         Text(
                           title,
                           maxLines: subtitle == null ? 2 : 1,
@@ -4088,6 +4104,70 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
   }
 }
 
+class _LiveMatchCardTitleStack extends StatelessWidget {
+  const _LiveMatchCardTitleStack({
+    required this.title,
+    this.schedule,
+    this.secondary,
+    this.rightPadding = 0,
+  });
+
+  final String title;
+  final String? schedule;
+  final String? secondary;
+  final double rightPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(right: rightPadding),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (schedule != null && schedule!.isNotEmpty) ...[
+            Text(
+              schedule!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 3),
+          ],
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          if (secondary != null && secondary!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              secondary!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 9.5,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _LiveStreamProviderBadge extends StatelessWidget {
   const _LiveStreamProviderBadge({required this.label});
 
@@ -4282,6 +4362,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
       card = _LiveMatchTvCaptionBody(
         active: active,
         title: m.title,
+        schedule: m.scheduleLabel.isEmpty ? null : m.scheduleLabel,
         subtitle: null,
         visual: visual,
         overlays: [
@@ -4397,16 +4478,9 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
                             )
                           : const SizedBox.shrink(),
                     ),
-                    Text(
-                      m.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    _LiveMatchCardTitleStack(
+                      title: m.title,
+                      schedule: m.scheduleLabel.isEmpty ? null : m.scheduleLabel,
                     ),
                   ],
                 ),
@@ -4613,6 +4687,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       card = _LiveMatchTvCaptionBody(
         active: active,
         title: s.name,
+        schedule: s.scheduleLabel.isEmpty ? null : s.scheduleLabel,
         subtitle: captionBits.isEmpty ? null : captionBits.join(' · '),
         visual: visual,
         overlays: overlays,
@@ -4709,37 +4784,11 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                             )
                           : const SizedBox.shrink(),
                     ),
-                    Padding(
-                      padding: EdgeInsets.only(right: s.viewers > 0 ? 52 : 0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            s.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (s.league.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              s.league,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white54,
-                                fontSize: 9.5,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
+                    _LiveMatchCardTitleStack(
+                      title: s.name,
+                      schedule: s.scheduleLabel.isEmpty ? null : s.scheduleLabel,
+                      secondary: s.league.isEmpty ? null : s.league,
+                      rightPadding: s.viewers > 0 ? 52 : 0,
                     ),
                   ],
                 ),
