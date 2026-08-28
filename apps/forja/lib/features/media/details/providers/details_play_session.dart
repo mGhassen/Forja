@@ -97,6 +97,8 @@ class DetailsPlaySession {
 
   List<Map<String, dynamic>> engineStreams = [];
   bool isEngineFetching = false;
+  /// Packs/scripts still installing — Forja tab spinner only; other kinds stay live.
+  bool enginePacksLoading = false;
   bool hasEnginePacks = false;
   Set<String> engineFetchedPluginIds = {};
   int engineFetchGen = 0;

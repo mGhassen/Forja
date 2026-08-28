@@ -5,6 +5,10 @@ Usage:
   R2_ACCOUNT_ID=… R2_ACCESS_KEY_ID=… R2_SECRET_ACCESS_KEY=… \\
     ./scripts/upload_release_to_r2.py <version> <asset-dir>
 
+  # Patch AFTVnews codes into manifests after APKs are already on CDN:
+  FORJA_DOWNLOADER_CODES=arm64=…,armeabi-v7a=… \\
+    ./scripts/upload_release_to_r2.py --patch-downloader-codes <version>
+
 Optional env:
   R2_BUCKET=forja-releases
   R2_ENDPOINT=https://{account}.r2.cloudflarestorage.com
@@ -58,6 +62,8 @@ Optional env:
   FORJA_DOWNLOADER_CODES=arm64=482913,armeabi-v7a=482914
     AFTVnews Downloader short codes for Android TV APKs (go.aftvnews.com).
     Merged into platforms.android_tv.downloader_codes by arch; website shows them.
+    Prefer --patch-downloader-codes after upload (interactive release_local does this).
+    Set before <version> <asset-dir> only for headless/CI one-shot uploads.
 
 Within a platform, incoming assets replace only the same architecture
 (arm64 / x86_64 / …). Other arches already in latest/ are kept — a one-arch
@@ -559,6 +565,46 @@ def merge_downloader_codes(
     }
 
 
+def atv_arch_keys(entry: dict) -> set[str]:
+    """Architecture slots present on an android_tv platform entry."""
+    arches = entry.get("arches")
+    if isinstance(arches, dict) and arches:
+        return {a for a in arches if isinstance(a, str) and a.strip()}
+    assets = entry.get("assets")
+    if isinstance(assets, list):
+        return {detect_arch(n) for n in assets if isinstance(n, str) and n.strip()}
+    return set()
+
+
+def apply_downloader_codes_to_atv_entry(
+    entry: dict,
+    codes: dict[str, str],
+) -> tuple[dict, dict[str, str]]:
+    """
+    Merge incoming codes into platforms.android_tv.downloader_codes.
+
+    Incoming wins per arch; other arches keep prior codes. Returns
+    (updated_entry, applied_codes_for_present_arches).
+    """
+    present = atv_arch_keys(entry)
+    applied = {a: c for a, c in codes.items() if a in present}
+    merged = normalize_downloader_codes(entry.get("downloader_codes"))
+    merged.update(applied)
+    merged = {a: c for a, c in merged.items() if a in present}
+    out = dict(entry)
+    if merged:
+        out["downloader_codes"] = {
+            arch: merged[arch]
+            for arch in sorted(merged, key=lambda a: (_ARCH_ORDER.get(a, 50), a))
+        }
+    else:
+        out.pop("downloader_codes", None)
+    return out, {
+        arch: applied[arch]
+        for arch in sorted(applied, key=lambda a: (_ARCH_ORDER.get(a, 50), a))
+    }
+
+
 def _normalize_platform_entry(
     entry: dict,
     *,
@@ -758,7 +804,8 @@ def merge_platform_manifest(
                 if arch not in codes:
                     print(
                         f"::warning::No Downloader code for {key}/{arch} — "
-                        "set FORJA_DOWNLOADER_CODES or re-run release_local publish"
+                        "set FORJA_DOWNLOADER_CODES and run "
+                        "--patch-downloader-codes, or pass codes on upload"
                     )
         platforms[key] = platform_entry
 
@@ -1005,13 +1052,8 @@ def human_size(n: int) -> str:
     return f"{n:.1f} GiB"
 
 
-def main() -> None:
-    if len(sys.argv) != 3:
-        die("Usage: upload_release_to_r2.py <version> <asset-dir>")
-
-    version = sys.argv[1].lstrip("v")
-    asset_dir = Path(sys.argv[2])
-    keep = max(1, int(os.environ.get("RELEASE_STORAGE_KEEP", "3")))
+def r2_config() -> tuple[str, str, str, str]:
+    """Return (endpoint, bucket, access_key, secret_key)."""
     bucket = os.environ.get("R2_BUCKET", "forja-releases")
     account_id = os.environ.get("R2_ACCOUNT_ID", _DEFAULT_R2_ACCOUNT_ID).strip()
     access_key = os.environ.get("R2_ACCESS_KEY_ID", "").strip()
@@ -1024,7 +1066,189 @@ def main() -> None:
         die("R2_ACCOUNT_ID is required.")
     if not endpoint:
         endpoint = f"https://{account_id}.r2.cloudflarestorage.com"
-    endpoint = endpoint.rstrip("/")
+    return endpoint.rstrip("/"), bucket, access_key, secret_key
+
+
+def put_json_object(
+    *,
+    endpoint: str,
+    bucket: str,
+    key: str,
+    payload: dict,
+    access_key: str,
+    secret_key: str,
+) -> None:
+    body = (json.dumps(payload, indent=2) + "\n").encode("utf-8")
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
+        tmp.write(body)
+        tmp_path = Path(tmp.name)
+    try:
+        print(f"Uploading {key} → s3://{bucket}/{key}")
+        put_object(
+            endpoint=endpoint,
+            bucket=bucket,
+            key=key,
+            path=tmp_path,
+            access_key=access_key,
+            secret_key=secret_key,
+            content_type="application/json; charset=utf-8",
+        )
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def load_manifest_json(
+    *,
+    endpoint: str,
+    bucket: str,
+    key: str,
+    access_key: str,
+    secret_key: str,
+) -> dict | None:
+    raw = get_object_bytes(
+        endpoint=endpoint,
+        bucket=bucket,
+        key=key,
+        access_key=access_key,
+        secret_key=secret_key,
+    )
+    if not raw:
+        return None
+    try:
+        decoded = json.loads(raw.decode("utf-8"))
+    except json.JSONDecodeError:
+        print(f"::warning::{key} is not valid JSON; treating as missing.")
+        return None
+    return decoded if isinstance(decoded, dict) else None
+
+
+def patch_downloader_codes(version: str) -> None:
+    """
+    Merge FORJA_DOWNLOADER_CODES into latest/ + v{version}/ manifests.
+
+    APKs must already be on CDN — interactive release_local prompts after upload.
+    """
+    version = version.lstrip("v")
+    codes = parse_downloader_codes_env(os.environ.get("FORJA_DOWNLOADER_CODES"))
+    if not codes:
+        die(
+            "FORJA_DOWNLOADER_CODES required "
+            "(e.g. arm64=482913,armeabi-v7a=482914)"
+        )
+
+    endpoint, bucket, access_key, secret_key = r2_config()
+    prefix = f"v{version}"
+    latest_key = "latest/manifest.json"
+    version_key = f"{prefix}/manifest.json"
+
+    latest = load_manifest_json(
+        endpoint=endpoint,
+        bucket=bucket,
+        key=latest_key,
+        access_key=access_key,
+        secret_key=secret_key,
+    )
+    if not latest:
+        die(f"{latest_key} missing — upload Android TV APKs before patching codes")
+
+    platforms = latest.get("platforms")
+    if not isinstance(platforms, dict):
+        die(f"{latest_key} has no platforms object")
+    atv = platforms.get("android_tv")
+    if not isinstance(atv, dict):
+        die(f"{latest_key} has no android_tv platform — upload APKs first")
+
+    present = atv_arch_keys(atv)
+    unused = sorted(a for a in codes if a not in present)
+    if unused:
+        print(
+            "::warning::Downloader codes for arches not in latest android_tv "
+            f"(ignored): {', '.join(unused)}"
+        )
+    updated_atv, applied = apply_downloader_codes_to_atv_entry(atv, codes)
+    if not applied:
+        die(
+            "No Downloader codes matched android_tv arches in latest/manifest.json "
+            f"(present: {', '.join(sorted(present)) or 'none'})"
+        )
+    platforms = dict(platforms)
+    platforms["android_tv"] = updated_atv
+    latest = dict(latest)
+    latest["platforms"] = platforms
+    put_json_object(
+        endpoint=endpoint,
+        bucket=bucket,
+        key=latest_key,
+        payload=latest,
+        access_key=access_key,
+        secret_key=secret_key,
+    )
+
+    version_manifest = load_manifest_json(
+        endpoint=endpoint,
+        bucket=bucket,
+        key=version_key,
+        access_key=access_key,
+        secret_key=secret_key,
+    )
+    if version_manifest:
+        v_platforms = version_manifest.get("platforms")
+        if isinstance(v_platforms, dict):
+            v_atv = v_platforms.get("android_tv")
+            if isinstance(v_atv, dict):
+                v_updated, v_applied = apply_downloader_codes_to_atv_entry(v_atv, codes)
+                if v_applied:
+                    v_platforms = dict(v_platforms)
+                    v_platforms["android_tv"] = v_updated
+                    version_manifest = dict(version_manifest)
+                    version_manifest["platforms"] = v_platforms
+                    put_json_object(
+                        endpoint=endpoint,
+                        bucket=bucket,
+                        key=version_key,
+                        payload=version_manifest,
+                        access_key=access_key,
+                        secret_key=secret_key,
+                    )
+                else:
+                    print(
+                        f"::warning::{version_key} android_tv has no matching arches "
+                        "for these codes — latest/ updated only"
+                    )
+            else:
+                print(
+                    f"::warning::{version_key} has no android_tv — latest/ updated only"
+                )
+        else:
+            print(f"::warning::{version_key} has no platforms — latest/ updated only")
+    else:
+        print(f"::warning::{version_key} missing — latest/ updated only")
+
+    print(
+        "Patched downloader_codes: "
+        + ", ".join(f"{a}={c}" for a, c in applied.items())
+    )
+
+
+def main() -> None:
+    if len(sys.argv) >= 2 and sys.argv[1] == "--patch-downloader-codes":
+        if len(sys.argv) != 3:
+            die(
+                "Usage: upload_release_to_r2.py --patch-downloader-codes <version>"
+            )
+        patch_downloader_codes(sys.argv[2])
+        return
+
+    if len(sys.argv) != 3:
+        die(
+            "Usage: upload_release_to_r2.py <version> <asset-dir>\n"
+            "       upload_release_to_r2.py --patch-downloader-codes <version>"
+        )
+
+    version = sys.argv[1].lstrip("v")
+    asset_dir = Path(sys.argv[2])
+    keep = max(1, int(os.environ.get("RELEASE_STORAGE_KEEP", "3")))
+    endpoint, bucket, access_key, secret_key = r2_config()
 
     if not asset_dir.is_dir():
         die(f"Asset directory not found: {asset_dir}")
@@ -1079,6 +1303,8 @@ def main() -> None:
         die("No assets mapped to a known platform (windows/macos/linux/android_tv).")
 
     # AFTVnews Downloader codes → platforms.android_tv.downloader_codes (website).
+    # Headless/CI: set FORJA_DOWNLOADER_CODES before upload. Interactive release_local
+    # uploads first, then --patch-downloader-codes.
     env_codes = parse_downloader_codes_env(os.environ.get("FORJA_DOWNLOADER_CODES"))
     if env_codes:
         atv = incoming_platforms.get("android_tv")
@@ -1108,21 +1334,13 @@ def main() -> None:
                     + ", ".join(f"{a}={c}" for a, c in atv["downloader_codes"].items())
                 )
 
-    existing_raw = get_object_bytes(
+    existing_manifest = load_manifest_json(
         endpoint=endpoint,
         bucket=bucket,
         key="latest/manifest.json",
         access_key=access_key,
         secret_key=secret_key,
     )
-    existing_manifest: dict | None = None
-    if existing_raw:
-        try:
-            decoded = json.loads(existing_raw.decode("utf-8"))
-            if isinstance(decoded, dict):
-                existing_manifest = decoded
-        except json.JSONDecodeError:
-            print("::warning::Existing latest/manifest.json is not valid JSON; replacing.")
 
     merged = merge_platform_manifest(
         existing_manifest,
@@ -1138,27 +1356,22 @@ def main() -> None:
         "platforms": incoming_platforms,
     }
 
-    def write_manifest(key: str, payload: dict) -> None:
-        body = (json.dumps(payload, indent=2) + "\n").encode("utf-8")
-        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tmp:
-            tmp.write(body)
-            tmp_path = Path(tmp.name)
-        try:
-            print(f"Uploading {key} → s3://{bucket}/{key}")
-            put_object(
-                endpoint=endpoint,
-                bucket=bucket,
-                key=key,
-                path=tmp_path,
-                access_key=access_key,
-                secret_key=secret_key,
-                content_type="application/json; charset=utf-8",
-            )
-        finally:
-            tmp_path.unlink(missing_ok=True)
-
-    write_manifest("latest/manifest.json", merged)
-    write_manifest(f"{prefix}/manifest.json", version_manifest)
+    put_json_object(
+        endpoint=endpoint,
+        bucket=bucket,
+        key="latest/manifest.json",
+        payload=merged,
+        access_key=access_key,
+        secret_key=secret_key,
+    )
+    put_json_object(
+        endpoint=endpoint,
+        bucket=bucket,
+        key=f"{prefix}/manifest.json",
+        payload=version_manifest,
+        access_key=access_key,
+        secret_key=secret_key,
+    )
 
     # Permanent notes archive — never pruned with installer retention.
     upload_changelog_archive(

@@ -254,6 +254,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   bool get _isEngineFetching => _play.isEngineFetching;
   set _isEngineFetching(bool v) => _play.isEngineFetching = v;
 
+  bool get _enginePacksLoading => _play.enginePacksLoading;
+  set _enginePacksLoading(bool v) => _play.enginePacksLoading = v;
+
   bool get _hasEnginePacks => _play.hasEnginePacks;
   set _hasEnginePacks(bool v) => _play.hasEnginePacks = v;
 
@@ -1121,17 +1124,27 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   void _openSourcesPanel() {
     if (!_hasPanelPlaySources) return;
-    unawaited(() async {
-      await _warmSourcesPanelChrome();
-      if (!mounted || !_hasPanelPlaySources) return;
-      _captureSourcesPanelReturnFocus();
-      setState(() {
-        _syncPanelKindFilterToPlaySources();
-        _focusPanelOnPlayingSource();
-        _sourcesPanelOpen = true;
-      });
-      _ensurePanelSourceLoaded();
-    }());
+    // Open immediately — never await chrome/hydrate on the tap path (lean pack
+    // installs can hang on network and made white Play look dead).
+    _captureSourcesPanelReturnFocus();
+    setState(() {
+      _syncPanelKindFilterToPlaySources();
+      _focusPanelOnPlayingSource();
+      _sourcesPanelOpen = true;
+      // Forja-only spinner until packs land — Torrents/Stremio/Nuvio stay live.
+      if (_playSourceEngine &&
+          (!_engineSelectionHydrated || !_hasEnginePacks)) {
+        _enginePacksLoading = true;
+      }
+    });
+    _ensurePanelSourceLoaded();
+    unawaited(
+      _warmSourcesPanelChrome().then((_) {
+        if (!mounted || !_sourcesPanelOpen) return;
+        setState(() {});
+        _ensurePanelSourceLoaded();
+      }),
+    );
   }
 
   /// Close Sources and stop any in-flight Torrents / Stremio / Nuvio fetches.

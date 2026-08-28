@@ -24,9 +24,23 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
   int _enginePoolLimit = kEngineSourcesBatchDesktop;
 
   Future<void> _checkAndFetchEngine() async {
+    final showPackSpinner = !_s._engineSelectionHydrated || !_s._hasEnginePacks;
+    if (showPackSpinner && mounted) {
+      setState(() => _s._enginePacksLoading = true);
+    }
     try {
-      final packs = await EngineService.instance.listSourcesPanelPacks();
-      final enabledIds = enabledEnginePluginIds(packs);
+      var packs = await EngineService.instance.listSourcesPanelPacks();
+      var enabledIds = enabledEnginePluginIds(packs);
+      // Cold install — wait so Forja can leave the loading state. Cached packs
+      // paint chips now; version refresh stays in the background.
+      if (enabledIds.isEmpty) {
+        await EngineService.instance.ensureOfficialInstalled();
+        if (!mounted) return;
+        packs = await EngineService.instance.listSourcesPanelPacks();
+        enabledIds = enabledEnginePluginIds(packs);
+      } else {
+        unawaited(EngineService.instance.ensureOfficialInstalled());
+      }
       final panelCategory = _s._enginePanelCategory;
       final scope = EngineCategories.matchingPluginIds(
         packs: packs,
@@ -43,6 +57,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
       setState(() {
         _s._hasEnginePacks = enabledIds.isNotEmpty;
         _s._enginePacks = packs;
+        _s._enginePacksLoading = false;
         if (!_s._engineSelectionHydrated) {
           _s._engineSelectedPluginIds = EngineCategories.scopeSelectionIfFullAll(
             selected: saved ?? {},
@@ -69,7 +84,9 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
           }
         }
       });
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _s._enginePacksLoading = false);
+    }
   }
 
   List<String> get _orderedEnginePluginIds =>
@@ -336,7 +353,9 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
 
     // Stop panel pool — auto uses the shared session-cache race, not a fork.
     _engineAbortWork();
-    await _checkAndFetchEngine();
+    // Do not await pack chrome here — lean hydrate can block with no overlay
+    // and leave Play stuck in extracting (both hero pills dead).
+    unawaited(_checkAndFetchEngine());
     if (!mounted ||
         playGen != _s._engineAutoPlayGen ||
         _s._engineAutoExtractionCancelled) {
@@ -359,6 +378,8 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     final pinPlugin = resumePos != null && resumePos > Duration.zero
         ? enginePluginIdFromProgress(progress)
         : null;
+    final packsReady =
+        _s._enginePacks.isNotEmpty && _s._engineSelectionHydrated;
     try {
       await runEngineAutoPlay(
         context: context,
@@ -371,8 +392,10 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         savedStreamUrl: progress?['streamUrl'] as String?,
         loadingSubtitle: _s._loadingOverlaySubtitle(),
         stremioId: widget.stremioItem?['id']?.toString() ?? _s._movie.imdbId,
-        selectedPluginIds: _scopedSelectedEnginePluginIds().toSet(),
-        packs: _s._enginePacks.isNotEmpty ? _s._enginePacks : null,
+        // Empty set ≠ null: null lets autoplay load prefs after packs hydrate.
+        selectedPluginIds:
+            packsReady ? _scopedSelectedEnginePluginIds().toSet() : null,
+        packs: packsReady ? _s._enginePacks : null,
         onCacheUpdated: (streams, fetched) {
           void apply() {
             _s._engineStreams = streams;

@@ -426,7 +426,7 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
               (_s._panelKindFilter == 'stremio' && _s._isStremioFetching) ||
               (_s._panelKindFilter == 'nuvio' && _s._isNuvioFetching) ||
               (_s._panelKindFilter == EngineIds.kind &&
-                  _s._isEngineFetching),
+                  (_s._isEngineFetching || _s._enginePacksLoading)),
           onCancelFetch: _s._cancelActiveSourceFetch,
           providerOptions: _s._providerOptions(),
           selectedSourceId: _s._selectedSourceId,

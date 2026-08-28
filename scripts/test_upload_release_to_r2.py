@@ -6,6 +6,7 @@ from __future__ import annotations
 import unittest
 
 from upload_release_to_r2 import (
+    apply_downloader_codes_to_atv_entry,
     detect_arch,
     detect_platform,
     merge_assets_by_arch,
@@ -365,6 +366,34 @@ class DownloaderCodesTest(unittest.TestCase):
             {"arm64": "555"},
         )
         self.assertEqual(merged["platforms"]["macos"]["version"], "1.3.2")
+
+    def test_apply_codes_merges_and_keeps_siblings(self) -> None:
+        entry = {
+            "version": "1.4.238",
+            "assets": [
+                "Forja-1.4.238-android-tv-arm64.apk",
+                "Forja-1.4.200-android-tv-armeabi-v7a.apk",
+            ],
+            "arches": {
+                "arm64": {
+                    "version": "1.4.238",
+                    "filename": "Forja-1.4.238-android-tv-arm64.apk",
+                },
+                "armeabi-v7a": {
+                    "version": "1.4.200",
+                    "filename": "Forja-1.4.200-android-tv-armeabi-v7a.apk",
+                },
+            },
+            "downloader_codes": {"armeabi-v7a": "111"},
+        }
+        updated, applied = apply_downloader_codes_to_atv_entry(
+            entry, {"arm64": "222", "x86": "999"}
+        )
+        self.assertEqual(applied, {"arm64": "222"})
+        self.assertEqual(
+            updated["downloader_codes"],
+            {"arm64": "222", "armeabi-v7a": "111"},
+        )
 
 
 if __name__ == "__main__":

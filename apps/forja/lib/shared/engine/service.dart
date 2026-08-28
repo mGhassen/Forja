@@ -123,7 +123,8 @@ class EngineService {
       PluginRegistry.instance.applyLeanManifestUrls(rows);
 
   Future<List<EnginePack>> listSourcesPanelPacks() async {
-    await PluginRegistry.instance.hydrateLeanInstalled();
+    // Lean stub installs are network-bound — never block Play/Sources on them.
+    unawaited(PluginRegistry.instance.hydrateLeanInstalled());
     final packs = await listPacks();
     return [
       for (final p in packs)

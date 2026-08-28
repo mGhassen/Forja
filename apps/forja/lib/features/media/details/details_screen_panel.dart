@@ -931,7 +931,8 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         (_panelShowsTorrents && _s._isSearching) ||
         (_panelShowsStremio && _s._isStremioFetching) ||
         (_panelShowsNuvio && _s._isNuvioFetching) ||
-        (_panelShowsEngine && _s._isEngineFetching);
+        (_panelShowsEngine &&
+            (_s._isEngineFetching || _s._enginePacksLoading));
 
     // Never replace a multi-addon result set with a sticky provider error.
     if (_s._errorMessage != null && count == 0 && !isFetching) {

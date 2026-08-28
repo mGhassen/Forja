@@ -299,6 +299,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   final Set<String> _engineDiscardPluginIds = {};
   Set<String>? _engineVisibleCategories;
   bool _engineFetching = false;
+  /// Official pack install still running — Forja tab only; other kinds stay live.
+  bool _enginePacksLoading = false;
   int _engineFetchGen = 0;
   final Set<String> _engineInFlightPluginIds = {};
   final Set<Future<void>> _enginePoolTasks = {};
@@ -747,11 +749,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final hasEngine = engineOn;
 
     List<EnginePack> enginePacks = const [];
+    var enginePacksLoading = false;
     if (engineOn) {
       try {
         enginePacks = await EngineService.instance.listSourcesPanelPacks();
-        _enginePacks = enginePacks;
       } catch (_) {}
+      // Cold install can take a long time — paint Torrents/Stremio/Nuvio now
+      // and let Forja show its own loading state.
+      if (enabledEnginePluginIds(enginePacks).isEmpty) {
+        enginePacksLoading = true;
+      }
     }
     if (!mounted) return;
 
@@ -827,6 +834,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           ? Set<String>.from(cachedUi.nuvioViewFilterScraperIds)
           : {};
       _enginePacks = enginePacks;
+      _enginePacksLoading = enginePacksLoading;
       _engineSelectedPluginIds = engineSelected;
       final engineScope = EngineCategories.matchingPluginIds(
         packs: enginePacks,
@@ -895,12 +903,55 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   Future<void> _ensureEngineMetadata() async {
     if (!_showEngine) return;
+    final needInstall = enabledEnginePluginIds(_enginePacks).isEmpty;
+    if (needInstall && mounted) {
+      setState(() => _enginePacksLoading = true);
+    }
     try {
-      final packs = await EngineService.instance.listSourcesPanelPacks();
+      var packs = await EngineService.instance.listSourcesPanelPacks();
+      var enabledIds = enabledEnginePluginIds(packs);
+      if (enabledIds.isEmpty) {
+        await EngineService.instance.ensureOfficialInstalled();
+        if (!mounted) return;
+        packs = await EngineService.instance.listSourcesPanelPacks();
+        enabledIds = enabledEnginePluginIds(packs);
+      } else {
+        unawaited(EngineService.instance.ensureOfficialInstalled());
+      }
       if (!mounted) return;
-      _enginePacks = packs;
-      setState(() => _enginePacks = packs);
-    } catch (_) {}
+
+      Set<String> selected = filterEngineSelectedPluginIds(
+        savedIds: _engineSelectedPluginIds,
+        enabledIds: enabledIds,
+      );
+      if (selected.isEmpty && enabledIds.isNotEmpty) {
+        selected = await _loadDefaultEngineChipSelection(packs);
+      }
+      if (!mounted) return;
+      final engineScope = EngineCategories.matchingPluginIds(
+        packs: packs,
+        categories: EngineCategories.defaultsForPanelCategory(
+          _enginePanelCategory,
+        ),
+      );
+      setState(() {
+        _enginePacks = packs;
+        _enginePacksLoading = false;
+        _engineSelectedPluginIds = selected;
+        if (_engineAllMode ||
+            engineFullAllSelected(
+              enabledIds: engineScope.isNotEmpty ? engineScope : enabledIds,
+              selectedIds: selected,
+            )) {
+          _engineAllMode = engineFullAllSelected(
+            enabledIds: engineScope.isNotEmpty ? engineScope : enabledIds,
+            selectedIds: selected,
+          );
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => _enginePacksLoading = false);
+    }
   }
 
   void _ensureTorrentsLoaded({bool force = false}) {
@@ -1588,7 +1639,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       (_showsTorrents && _searching) ||
       (_showsStremio && _stremioFetching) ||
       (_showsNuvio && _nuvioFetching) ||
-      (_showsEngine && _engineFetching);
+      (_showsEngine && (_engineFetching || _enginePacksLoading));
 
   void _abortTorrentSearch() {
     if (!_searching) return;

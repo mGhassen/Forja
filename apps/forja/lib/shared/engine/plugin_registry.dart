@@ -95,7 +95,10 @@ class PluginRegistry {
       }
       return file.readAsString();
     }
-    final resp = await _httpGet(Uri.parse(url));
+    final resp = await _httpGet(Uri.parse(url)).timeout(
+      const Duration(seconds: 20),
+      onTimeout: () => throw TimeoutException('plugin fetch $url'),
+    );
     if (resp.statusCode != 200) {
       throw Exception('HTTP ${resp.statusCode}');
     }
