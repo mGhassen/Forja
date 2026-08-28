@@ -148,7 +148,7 @@ class SettingsService {
   static const String iptvLiveRecoveryClassic = 'classic';
   /// Stable + reopen when buffering/freeze stalls with no playhead (manual).
   static const String iptvLiveRecoveryStall = 'stall';
-  /// Default — player picks buffer-aware policy (no stall reopen).
+  /// Default — player manages stall reopen per live source kind.
   static const String iptvLiveRecoveryAuto = 'auto';
 
   static const String iptvLiveRecoveryAutoLabel = 'Auto';
@@ -199,9 +199,11 @@ class SettingsService {
 
   /// Resolve Settings value for the current live open.
   ///
-  /// Auto → Stable without stall reopen for every source. Continuity-proxy /
-  /// paint detectors handle CDN hiccups and VO freeze; stall reopen false-
-  /// triggers on Stalker (playhead often idle at 0) and kills demuxer cushion.
+  /// Auto **manages stall** per source:
+  /// - Xtream (continuity proxy): Stable + stall reopen — VO freeze can leave
+  ///   a full demuxer while the picture is dead on ATV MediaKit.
+  /// - Stalker / Stremio / liveEngine: Stable without stall — playhead often
+  ///   sits at 0 and stall reopen false-triggers, wiping a healthy cushion.
   static String resolveIptvLiveRecoveryMode(
     String stored, {
     String? liveSourceKind,
@@ -210,10 +212,13 @@ class SettingsService {
     if (n != iptvLiveRecoveryAuto) return n;
     switch (liveSourceKind) {
       case 'iptvXtream':
+        return iptvLiveRecoveryStall;
       case 'iptvStalker':
       case 'stremio':
       case 'liveEngine':
+        return iptvLiveRecoveryBuffered;
       default:
+        // Untagged open — prefer cushion hold (Stalker mis-tag was issue 208).
         return iptvLiveRecoveryBuffered;
     }
   }

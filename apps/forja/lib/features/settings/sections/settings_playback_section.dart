@@ -499,7 +499,7 @@ class _SettingsPlaybackSectionState
               settingsFocusableDropdown(
                 context,
                 'IPTV live recovery',
-                'How live channels reconnect. Auto (default) keeps the buffer and only reconnects when it is empty — works for Xtream and Stalker without changing per channel. Stable lets you tune stall reopen. Classic reconnects on freeze timers. Takes effect next time you open the player.',
+                'How live channels reconnect. Auto (default) picks the policy per source — stall reopen for Xtream, buffer hold without stall for Stalker / Forja Live / Stremio — so you do not change settings per channel. Stable lets you force one policy. Classic reconnects on freeze timers. Takes effect next time you open the player.',
                 snap.iptvLiveRecoveryModeLabel,
                 SettingsService.iptvLiveRecoveryModeOptions.keys.toList(),
                 (val) async {
