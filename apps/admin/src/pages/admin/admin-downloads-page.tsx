@@ -198,7 +198,7 @@ export function AdminDownloadsPage() {
                     {loading || busy ? '…' : formatCount(count)}
                   </p>
                   <div className="mt-2">
-                    <div className="h-1 overflow-hidden rounded-full bg-white/[0.08]">
+                    <div className="h-1 overflow-hidden rounded-full bg-white/8">
                       <div
                         className={cn('h-full rounded-full', PLATFORM_BAR[p.id])}
                         style={{ width: `${share}%` }}
@@ -263,7 +263,7 @@ export function AdminDownloadsPage() {
                           <span className="font-mono text-sm text-forja-text">
                             {versionLabel(row.version)}
                           </span>
-                          <div className="hidden h-1 max-w-[72px] flex-1 overflow-hidden rounded-full bg-white/[0.06] md:block">
+                          <div className="hidden h-1 max-w-18 flex-1 overflow-hidden rounded-full bg-white/6 md:block">
                             <div
                               className="h-full rounded-full bg-forja-green/60"
                               style={{

@@ -639,8 +639,8 @@ export function AdminScrapePage() {
                   <tr
                     key={r.id}
                     className={cn(
-                      'border-t border-forja-border/80 transition-colors hover:bg-white/[0.02]',
-                      r.status === 'running' && 'bg-amber-400/[0.04]',
+                      'border-t border-forja-border/80 transition-colors hover:bg-white/2',
+                      r.status === 'running' && 'bg-amber-400/4',
                     )}
                   >
                     <td className={cn(tdClassName, 'whitespace-nowrap text-xs')}>
@@ -694,7 +694,7 @@ export function AdminScrapePage() {
                     <td
                       className={cn(
                         tdClassName,
-                        'max-w-[180px] truncate text-xs text-red-400',
+                        'max-w-45 truncate text-xs text-red-400',
                       )}
                       title={r.error ?? undefined}
                     >

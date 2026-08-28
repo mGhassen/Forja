@@ -117,7 +117,7 @@ export function AccountSettingsStremioPage() {
                 return (
                   <li
                     key={addon.baseUrl}
-                    className="flex min-h-[58px] flex-col gap-3 px-0.5 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex min-h-14.5 flex-col gap-3 px-0.5 py-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
                       <p className="font-medium">{addon.name || 'Addon'}</p>

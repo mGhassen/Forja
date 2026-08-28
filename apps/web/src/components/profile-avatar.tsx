@@ -93,7 +93,7 @@ export function ProfileAvatar({
       role="img"
       aria-label={`${name} avatar`}
       className={cn(
-        'relative block aspect-square overflow-hidden rounded-[4px] bg-[#171717]',
+        'relative block aspect-square overflow-hidden rounded-sm bg-[#171717]',
         className,
       )}
     >
