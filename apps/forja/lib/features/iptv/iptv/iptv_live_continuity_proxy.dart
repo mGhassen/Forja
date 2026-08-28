@@ -30,11 +30,10 @@ class IptvLiveContinuityProxy {
   int _queuedBytes = 0;
   Completer<void>? _waitData;
 
-  /// ~8–12s at typical IPTV bitrates — absorb reconnect without underrun.
-  static const int _maxQueueBytes = 12 * 1024 * 1024;
-
   /// Fresh GET usually overlaps the last seconds we already sent.
   static const int _reconnectSkipBytes = 3 * 1024 * 1024;
+
+  int _maxQueueBytes = 12 * 1024 * 1024;
 
   Uri? get localUri {
     final p = _server?.port;
@@ -45,9 +44,11 @@ class IptvLiveContinuityProxy {
   Future<Uri> start({
     required String upstreamUrl,
     required Map<String, String> headers,
+    int maxQueueBytes = 12 * 1024 * 1024,
   }) async {
     await stop();
     _closed = false;
+    _maxQueueBytes = maxQueueBytes.clamp(4 * 1024 * 1024, 20 * 1024 * 1024);
     _upstream = upstreamUrl;
     _headers = Map<String, String>.from(headers);
     _client = HttpClient()
@@ -62,7 +63,7 @@ class IptvLiveContinuityProxy {
       onError: (Object e) => debugPrint('[IPTV Proxy] server error: $e'),
     );
     final uri = localUri!;
-    debugPrint('[IPTV Proxy] $uri ← $upstreamUrl');
+    debugPrint('[IPTV Proxy] $uri ← $upstreamUrl (queue=${_maxQueueBytes >> 20}MiB)');
     return uri;
   }
 

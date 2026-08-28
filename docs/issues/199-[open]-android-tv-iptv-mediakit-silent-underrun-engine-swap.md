@@ -3,15 +3,15 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** IPTV live player (Android TV, MediaKit) · `iptv_pt_player_engine.dart` · `iptv_pt_player_screen.dart`  
+**Area:** IPTV live player (Android TV, MediaKit) · `iptv_pt_player_engine*.dart` · `iptv_pt_player_screen.dart`  
 **Reported:** 2026-08-23
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 6** acceptance |
-| **Current slice** | VO freeze with healthy demuxer cache — paint-gated recovery shipped; ATV smoke outstanding |
+| **Progress** | **13 / 13** fix · **0 / 7** acceptance |
+| **Current slice** | ATV perf + engine part split shipped — device smoke outstanding |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,6 +29,11 @@
 | 6 | I199-T06 | Stop equating healthy demuxer cache + feed with painting (`_playheadRecentlyMoved`, `_videoAdvancing`, `_noteFeedProgress`) — VO can freeze with ~30s cache | ✅ |
 | 7 | I199-T07 | Paint pulse = `estimated-vf-fps` only (drop `video-bitrate` fake); sample fps outside demuxer probe lock | ✅ |
 | 8 | I199-T08 | Detector 2b: MediaKit live soft-reopen on paint stall even when cache is healthy; `_streamWorking` requires recent paint for MediaKit live | ✅ |
+| 9 | I199-T09 | Continuity-proxy open: disable lavf `reconnect_*` on loopback — proxy owns CDN closes | ✅ |
+| 10 | I199-T10 | VO-freeze: one live-edge snap then `_recreatePlayer` if paint still dead (not snap-only ladder) | ✅ |
+| 11 | I199-T11 | Paint stall: 2 consecutive `estimated-vf-fps` misses; `frame-drop-count` secondary for false-neg | ✅ |
+| 12 | I199-T12 | Adaptive demuxer/fps `getProperty` rate when healthy; Buffering chrome setState debounce | ✅ |
+| 13 | I199-T13 | Engine split into tunables/proxy/watchdog/recovery `part of` files (move-only) | ✅ |
 
 ---
 
@@ -42,6 +47,7 @@
 | 4 | I199-A04 | IPTV Movies/Series (VOD) format hard-open can still one-shot swap engines | ⬜ |
 | 5 | I199-A05 | Android TV MediaKit live: no clockwork ~5–6s micro-freeze on healthy channels (CDN reopen play-through) | ⬜ |
 | 6 | I199-A06 | Android TV MediaKit live: frozen picture with demuxer cache still ~30s shows **Buffering…** and soft-reconnects within ~5–8s — does not sit on last frame forever | ⬜ |
+| 7 | I199-A07 | Android TV MediaKit live: VO-freeze path runs one snap then recreate — does not loop snap-only | ⬜ |
 
 ---
 
@@ -62,4 +68,10 @@
 
 **VO freeze with full cache (T06–T08):** Alive = recent position tick or `estimated-vf-fps ≥ 1` only. MediaKit live `_streamWorking` requires that pulse. Detector 2b soft-reopens after ~5s paint stall even when `demuxer-cache-duration` is still ~30s.
 
-**Related:** [issue 148](148-[open]-iptv-live-edge-snap-reconnect-loop.md) · [issue 128](128-[open]-android-tv-iptv-mediakit-exit-anr.md) (Reload ANR watch)
+**ATV perf slice (T09–T12):** Height/bitrate live cache tiers + 32 MiB Player buffer on ATV live ([163](163-[open]-android-tv-iptv-vod-live-profile.md) VOD guard); lavf reconnect off on continuity-proxy; VO-freeze one snap → recreate; adaptive watchdog probes. No cheap mid-stream VO reset in media_kit — full Player recreate after snap (documented in T10).
+
+**Engine organization (T13):** Move-only split — `_IptvPtPlayerEngineCore` + `iptv_pt_player_mk_tunables.dart` / `live_proxy` / `watchdog` / `recovery` / orchestration `engine`. Shared fields on Core; cross-calls via abstract stubs on sibling mixins. No behavior change.
+
+**Device smoke (acceptance A01–A07, I150-A01–A04, I128 regression):** Not run in CI — mark acceptance ✅ only after Android TV box verification.
+
+**Related:** [issue 148](148-[open]-iptv-live-edge-snap-reconnect-loop.md) · [issue 128](128-[open]-android-tv-iptv-mediakit-exit-anr.md) (Reload ANR watch) · [issue 150](150-[open]-atv-iptv-4k-mediakit-stutter.md) (cache tiers I150-T05)

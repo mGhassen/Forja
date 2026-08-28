@@ -499,7 +499,7 @@ class _SettingsPlaybackSectionState
               settingsFocusableDropdown(
                 context,
                 'IPTV live recovery',
-                'How live channels reconnect. Stable (default) waits until the buffer is empty — same as 1.3.170. Classic reconnects on stall timers like 1.3.114. Takes effect next time you open the player.',
+                'How live channels reconnect. Stable (default) only reconnects when the live buffer is empty, so healthy channels keep playing through CDN hiccups. Classic reconnects on freeze timers even if buffer still looks full. Takes effect next time you open the player.',
                 snap.iptvLiveRecoveryModeLabel,
                 SettingsService.iptvLiveRecoveryModeOptions.keys.toList(),
                 (val) async {
@@ -521,13 +521,12 @@ class _SettingsPlaybackSectionState
                   );
                 },
               ),
-              if (AccountFeatures.instance.isAdmin &&
-                  snap.iptvLiveRecoveryModeLabel ==
-                      SettingsService.iptvLiveRecoveryStableLabel)
+              if (snap.iptvLiveRecoveryModeLabel ==
+                  SettingsService.iptvLiveRecoveryStableLabel)
                 settingsFocusableToggle(
                   context,
                   'Reopen on buffer stall',
-                  'Stable only (test). On by default. When buffering/freeze stalls with no playhead, reconnect even if demuxer still reports cache. Takes effect next time you open the player.',
+                  'Stable only. On by default. If the picture freezes or Buffering sticks with no playback progress, reconnect even when the demuxer still reports cache. Takes effect next time you open the player.',
                   snap.iptvLiveRecoveryStallReopen,
                   (val) async {
                     await _settings.setIptvLiveRecoveryMode(
@@ -540,7 +539,6 @@ class _SettingsPlaybackSectionState
                       (s) => s.copyWith(iptvLiveRecoveryStallReopen: val),
                     );
                   },
-                  adminOnly: true,
                 ),
               if (AccountFeatures.instance.isAdmin &&
                   SettingsService.platformProfile ==

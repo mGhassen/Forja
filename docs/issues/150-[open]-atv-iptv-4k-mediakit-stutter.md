@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 5** investigation · **1** ⏭️ · **0 / 4** acceptance |
-| **Current slice** | Display mode match for MediaKit shipped — device smoke still open |
+| **Progress** | **3 / 5** investigation · **1** ⏭️ · **0 / 4** acceptance |
+| **Current slice** | Height/bitrate live cache tiers shipped (I150-T05) — device smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -24,8 +24,8 @@
 | 2 | I150-T02 | Capture a stutter session on the box; classify against the decision table below | ⬜ |
 | 3 | I150-T03 | A/B `framedrop=decoder` vs `framedrop=vo` on UHD with audio verified (must not regress `I138-A03`) — **`framedrop=decoder` removed in [issue 155](155-[open]-android-tv-iptv-4k-mediakit-crash.md)** (crash path); re-open only if stutter remains with `vo` | ⏭️ |
 | 4 | I150-T04 | A/B `video-sync=audio` vs `display-resample` on UHD once audio is known good — **do not re-enable `audio` without crash smoke (`I155-A01`)**; known-good is `display-resample` | ⬜ |
-| 5 | I150-T05 | Bitrate-aware cache sizing if `demuxer-max-bytes` is the binding limit at 4K | ⬜ |
-| 6 | I150-T06 | ATV MediaKit IPTV: opt-in Settings **IPTV match display refresh** (default off); when on, read `container-fps` and call `ForjaDisplayFrameRate`; clear on exit / hot-swap; keep `framedrop=vo` | ✅ |
+| 5 | I150-T05 | Bitrate-aware cache sizing if `demuxer-max-bytes` is the binding limit at 4K | ✅ |
+| 6 | I150-T06 | ATV MediaKit IPTV: Settings **IPTV match display refresh** (default **on**; admin toggle to disable); when on, read `container-fps` and call display mode match; clear on exit / hot-swap; keep `framedrop=vo` | ✅ |
 
 ---
 
@@ -47,19 +47,17 @@ non-fluid. HD/FHD on the same box and the same portal are smooth. A common
 report is **stats FPS = 50** while motion feels slower — that is **50 fps
 content on a fixed 60 Hz panel** (uneven cadence), not a lying counter.
 
-## Fix shipped — display mode match behind opt-in (I150-T06)
+## Fix shipped — display mode match (I150-T06)
 
-MediaKit paints via `mediacodec_embed` into Flutter — it never got the Exo-only
-`ForjaDisplayFrameRate` window switch. After open, IPTV MediaKit can read
-`container-fps` and ask the TV for a refresh that divides cleanly (e.g. 50 Hz
-for a 50 fps channel). Clears when leaving the player or hot-swapping engines.
-Keeps `video-sync=display-resample` + `framedrop=vo` (no I138 `framedrop=decoder`).
+MediaKit paints via `mediacodec_embed` into Flutter — it never got the Exo-only display frame-rate window switch. After open, IPTV MediaKit can read `container-fps` and ask the TV for a refresh that divides cleanly (e.g. 50 Hz for a 50 fps channel). Clears when leaving the player or hot-swapping engines. Keeps `video-sync=display-resample` + `framedrop=vo` (no I138 `framedrop=decoder`).
 
-**Default off** — Settings → Playback → **IPTV match display refresh** (Android TV
-only). Existing installs keep prior behavior until the toggle is on.
+**Default on** — Settings → Playback → **IPTV match display refresh** (Android TV, admin-only toggle to disable). Existing installs get match unless disabled.
 
-Requires the set to expose a matching mode at the current resolution; otherwise
-no-op (log: `no clean display mode`).
+Requires the set to expose a matching mode at the current resolution; otherwise no-op (log: display frame-rate match failed).
+
+## Fix shipped — height/bitrate live cache tiers (I150-T05)
+
+ATV MediaKit **live** uses a 32 MiB Player buffer (demuxer owns readahead). After decode height is known: HD 48 MiB / 15 s, FHD 96 MiB / 20 s, UHD 150 MiB / 30 s; bitrate can bump one tier when byte cap would bind. VOD never inherits live fat profile ([163](163-[open]-android-tv-iptv-vod-live-profile.md)). Cold open still uses UHD-safe defaults until height probes.
 
 ## Suspected cause — the UHD path traded smoothness for audio (historical)
 

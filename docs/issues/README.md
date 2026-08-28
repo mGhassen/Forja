@@ -170,7 +170,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [147-[open]-…](147-[open]-android-tv-iptv-portal-panel-focus-steal.md) | ATV Portals panel focus steal to active portal | P2 | Medium | open | 8/8 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [148-[open]-…](148-[open]-iptv-live-edge-snap-reconnect-loop.md) | IPTV reconnect — Stable / Classic + stall checkbox | P1 | High | open | 21/21 · A 0/17 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [149-[open]-…](149-[open]-iptv-player-source-picker-dpad.md) | IPTV/Live player source picker has no D-pad; duplicate source control | P2 | Medium | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (display mode match shipped) | P2 | Medium | open | 2/5 · 1⏭️ · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [150-[open]-…](150-[open]-atv-iptv-4k-mediakit-stutter.md) | ATV IPTV MediaKit: 4K live stutters (display mode match + cache tiers) | P2 | Medium | open | 3/5 · 1⏭️ · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [151-[open]-…](151-[open]-android-tv-exo-vod-stutter-no-cache.md) | ATV movie player (Exo VOD): 24fps judder + no back buffer / disk cache | P2 | Medium | open | 6/6 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [152-[open]-…](152-[open]-android-tv-mediakit-quieter-than-exo.md) | ATV MediaKit plays quieter than ExoPlayer at the same level | P2 | Medium | open | 3/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [153-[open]-…](153-[open]-kisskh-hls-4k-indefinite-buffer.md) | KissKh HLS: first frame then indefinite BUFFERING (4K ladder) | P1 | High | open | 11/11 · A 0/2 · 2⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -218,7 +218,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [196-[fixed]-…](fixed/196-[fixed]-desktop-window-size-resets-after-player.md) | Desktop window size resets after player close | P1 | High | fixed | Complete · 3/3 · A 3/3 | — |
 | [197-[open]-…](197-[open]-android-tv-trailer-quality-switch.md) | ATV trailer Quality switch stuck | P1 | High | open | 9/9 · A 0/2 | — |
 | [198-[fixed]-…](fixed/198-[fixed]-mediakit-resume-and-server-switch-starts-at-zero.md) | MediaKit resume / server switch starts at 0 | P1 | High | fixed | Complete · 4/4 · A 0/2 | — |
-| [199-[open]-…](199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md) | ATV IPTV MediaKit silent underrun + Reload engine swap | P1 | High | open | 5/5 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [199-[open]-…](199-[open]-android-tv-iptv-mediakit-silent-underrun-engine-swap.md) | ATV IPTV MediaKit silent underrun + Reload engine swap | P1 | High | open | 13/13 fix · A 0/7 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [200-[fixed]-…](fixed/200-[fixed]-android-tv-home-hero-focus-disposed.md) | ATV Home hero loses focus (FocusNode disposed) | P1 | High | fixed | Complete · 3/3 · A 1/2 | — |
 | [201-[open]-…](201-[open]-android-tv-exo-screensaver-during-playback.md) | ATV Exo screensaver / Ambient during playback | P1 | High | open | 3/3 · A 0/2 | — |
 | [202-[fixed]-…](fixed/202-[fixed]-android-tv-forja-live-opens-forja-sports-iptv.md) | ATV Forja Live opens Forja Sports IPTV panel | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |

@@ -149,10 +149,8 @@ class SettingsService {
   /// Default = Stable + reopen when buffering/freeze stalls with no playhead.
   static const String iptvLiveRecoveryStall = 'stall';
 
-  static const String iptvLiveRecoveryStableLabel =
-      'Stable — buffer-aware (1.3.170)';
-  static const String iptvLiveRecoveryClassicLabel =
-      'Classic — stall timers (1.3.114)';
+  static const String iptvLiveRecoveryStableLabel = 'Stable — buffer-aware';
+  static const String iptvLiveRecoveryClassicLabel = 'Classic — stall timers';
 
   /// Policy dropdown only — stall reopen is a separate Stable toggle.
   static const Map<String, String> iptvLiveRecoveryModeOptions = {

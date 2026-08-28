@@ -62,6 +62,11 @@ import 'package:forja/shared/widgets/desktop_window_geometry.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 
+part 'iptv_pt_player_engine_core.dart';
+part 'iptv_pt_player_mk_tunables.dart';
+part 'iptv_pt_player_live_proxy.dart';
+part 'iptv_pt_player_watchdog.dart';
+part 'iptv_pt_player_recovery.dart';
 part 'iptv_pt_player_engine.dart';
 part 'iptv_pt_player_ui.dart';
 
@@ -403,7 +408,15 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
 }
 
 class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
-    with WidgetsBindingObserver, _IptvPtPlayerEngine, _IptvPtPlayerUi {
+    with
+        WidgetsBindingObserver,
+        _IptvPtPlayerEngineCore,
+        _IptvPtPlayerMkTunables,
+        _IptvPtPlayerLiveProxy,
+        _IptvPtPlayerWatchdog,
+        _IptvPtPlayerRecovery,
+        _IptvPtPlayerEngine,
+        _IptvPtPlayerUi {
   static int _nextExoViewId = 1;
 
   /// When true, IPTV uses Media3 ExoPlayer; otherwise media_kit.
@@ -671,7 +684,31 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// [SettingsService.iptvLiveRecoveryStall] (default), buffered, or classic.
   String _liveRecoveryMode = SettingsService.iptvLiveRecoveryStall;
 
+  /// Last decoded height / bitrate — cache tiers and proxy queue (ATV live).
+  int _lastVideoHeight = 0;
+  int _lastVideoBitrate = 0;
+  bool _liveCacheTierApplied = false;
+
+  /// Paint stall detection (MediaKit live — I199 / perf plan).
+  int _livePaintMissStreak = 0;
+  bool _voFreezeSnapAttempted = false;
+  DateTime? _lastDemuxerSampleAt;
+  int _stallFrameDropBaseline = -1;
+  DateTime? _stallPaintWatchSince;
+
   static const _ua = 'VLC/3.0.20 LibVLC/3.0.20';
+
+  /// ATV MediaKit live uses a smaller Player buffer — demuxer owns readahead.
+  PlayerConfiguration get _mediaKitPlayerConfiguration {
+    if (_atvMediaKit && !widget.vodPlayback) {
+      return const PlayerConfiguration(
+        bufferSize: 32 * 1024 * 1024,
+        logLevel: MPVLogLevel.warn,
+        libass: true,
+      );
+    }
+    return _playerConfiguration;
+  }
 
   static bool _isBenignMpvError(String msg) {
     final lower = msg.toLowerCase();
