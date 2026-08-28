@@ -120,8 +120,11 @@ class SettingsService {
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
   /// IPTV live Exo only: 0 = full portal quality (default). Never auto-cap.
   static const String _iptvLiveMaxHeightKey = 'iptv_live_max_height';
-  /// IPTV live auto-recovery: `buffered` | `stall` | `classic`.
+  /// IPTV live auto-recovery: `auto` | `buffered` | `stall` | `classic`.
   static const String _iptvLiveRecoveryModeKey = 'iptv_live_recovery_mode';
+  /// One-shot: old default `stall` (and unset) → `auto` for all installs.
+  static const String _iptvLiveRecoveryMigratedToAutoKey =
+      'iptv_live_recovery_migrated_auto_v1';
   /// Android TV MediaKit: ask the panel for a refresh matching stream fps
   /// (issue 150). Default on; Settings toggle is admin-only.
   static const String _iptvMatchDisplayRefreshKey = 'iptv_match_display_refresh';
@@ -435,10 +438,28 @@ class SettingsService {
       kvSetInt(_iptvLiveMaxHeightKey, height < 0 ? 0 : height);
 
   /// IPTV live auto-recovery. Default [iptvLiveRecoveryAuto].
+  ///
+  /// One-shot upgrade: previous default was `stall`. Promote unset / `stall`
+  /// to `auto` once so every install gets source-aware stall management.
+  /// After that, an explicit Stable + stall choice is kept.
   Future<String> getIptvLiveRecoveryMode() async {
+    await _migrateIptvLiveRecoveryToAutoIfNeeded();
     return normalizeIptvLiveRecoveryMode(
       await kvGetString(_iptvLiveRecoveryModeKey),
     );
+  }
+
+  Future<void> _migrateIptvLiveRecoveryToAutoIfNeeded() async {
+    if (await kvGetBool(_iptvLiveRecoveryMigratedToAutoKey, fallback: false)) {
+      return;
+    }
+    final raw = (await kvGetString(_iptvLiveRecoveryModeKey) ?? '')
+        .trim()
+        .toLowerCase();
+    if (raw.isEmpty || raw == iptvLiveRecoveryStall) {
+      await kvSetString(_iptvLiveRecoveryModeKey, iptvLiveRecoveryAuto);
+    }
+    await kvSetBool(_iptvLiveRecoveryMigratedToAutoKey, true);
   }
 
   Future<void> setIptvLiveRecoveryMode(String mode) async {
