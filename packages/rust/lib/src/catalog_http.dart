@@ -25,7 +25,7 @@ Future<AnimeHttpResult> animeHttp(
     'headers_json': jsonEncode(headers),
     'timeout_secs': timeoutSecs,
     'max_retries': maxRetries,
-    if (body != null) 'body': body,
+    'body': ?body,
     if (bodyBytes != null) 'body_base64': base64Encode(bodyBytes),
   };
   final raw = await runAnimeRequestJson(jsonEncode(payload));

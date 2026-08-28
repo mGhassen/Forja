@@ -34,6 +34,7 @@ class _ForjaLivePluginLoad {
 
 mixin _LiveMatchesForjaLive
     on ConsumerState<LiveMatchesScreen>, _LiveMatchesData {
+  @override
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   bool get _usesForjaLiveLazyCatalog =>

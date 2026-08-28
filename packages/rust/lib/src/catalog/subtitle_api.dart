@@ -125,8 +125,8 @@ class SubtitleApi {
       return await subtitleEntries({
         'action': 'wyzie_fetch',
         'tmdb_id': tmdbId,
-        if (season != null) 'season': season,
-        if (episode != null) 'episode': episode,
+        'season': ?season,
+        'episode': ?episode,
       });
     } catch (e) {
       debugPrint(
@@ -144,8 +144,8 @@ class SubtitleApi {
       return await subtitleEntries({
         'action': 'levrx_fetch',
         'tmdb_id': tmdbId,
-        if (season != null) 'season': season,
-        if (episode != null) 'episode': episode,
+        'season': ?season,
+        'episode': ?episode,
       });
     } catch (e) {
       debugPrint('Levrx error: $e');

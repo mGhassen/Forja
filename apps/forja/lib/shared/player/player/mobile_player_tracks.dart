@@ -468,7 +468,6 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     if (mounted) {
       setState(() {
         _s._hasError = false;
-        _s._errorMessage = '';
       });
     }
     try {

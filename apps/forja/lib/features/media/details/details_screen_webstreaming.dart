@@ -296,9 +296,11 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
         return;
       }
 
+      if (!mounted) return;
+      final resumeCtx = loadingDialogContext;
       if (await _tryResumeWebStreamFromWatchHistory(
         startPosition,
-        loadingDialogContext: loadingDialogContext,
+        loadingDialogContext: resumeCtx?.mounted == true ? resumeCtx : null,
         fadeOutNotifier: fadeOutNotifier,
         onOpenedPlayer: () => openedPlayer = true,
         isAborted: playAborted,
@@ -307,13 +309,15 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
       }
 
       if (playAborted()) return;
+      if (!mounted) return;
 
       // Keep the same overlay — fill probes in place (no dismiss → re-show).
       handedToExtraction = true;
+      final extractionCtx = loadingDialogContext;
       await _runWebstreamingOnlyExtraction(
         startPosition: startPosition,
         playGen: playGen,
-        loadingDialogContext: loadingDialogContext,
+        loadingDialogContext: extractionCtx?.mounted == true ? extractionCtx : null,
         fadeOutNotifier: fadeOutNotifier,
         messageNotifier: messageNotifier,
         probeNotifier: probeNotifier,
@@ -522,9 +526,20 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
     bindManualProviderCheck(requestManualProviderCheck);
     messageNotifier.value = 'Finding servers…';
 
+    final overlayCtx = dialogContext;
     await WidgetsBinding.instance.endOfFrame;
-    if (playAborted() || !mounted) {
-      abandonSharedOverlay(dialogContext);
+    if (playAborted() || overlayCtx?.mounted != true) {
+      bindManualProviderCheck(null);
+      if (overlayCtx != null && overlayCtx.mounted) {
+        dismissLoadingOverlayRoute(overlayCtx);
+      }
+      onLoadingDialogContextChanged(null);
+      if (mounted) {
+        setState(() => _s._isWebstreamingOnlyExtracting = false);
+      } else {
+        _s._isWebstreamingOnlyExtracting = false;
+      }
+      disposeLoadingOverlayNotifiers(allNotifiers());
       dialogContext = null;
       liveNotifiersDisposed = true;
       overlayNotifiersDisposed = true;
@@ -683,7 +698,7 @@ mixin _DetailsScreenWebstreaming on ConsumerState<DetailsScreen> {
         final preferred = preferredProvider;
         prepareProbesForPreferred(preferred);
 
-        final cancelled = () => playAborted() || switchingManualProvider;
+        bool cancelled() => playAborted() || switchingManualProvider;
 
         hit = useSimpleResolve
             ? await SimpleStreamingResolve.resolve(

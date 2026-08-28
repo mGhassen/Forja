@@ -156,7 +156,10 @@ SentryEvent? scrubEvent(SentryEvent event, Hint hint) {
   if (exceptions != null) {
     scrubbedExceptions = [
       for (final ex in exceptions)
-        ex.value == null ? ex : ex.copyWith(value: scrubText(ex.value!)),
+        if (ex.value == null)
+          ex
+        else
+          (ex..value = scrubText(ex.value!)),
     ];
   }
 
@@ -175,17 +178,15 @@ SentryEvent? scrubEvent(SentryEvent event, Hint hint) {
     final req = event.request!;
     final headers = Map<String, String>.from(req.headers);
     headers.removeWhere((k, _) => sensitiveHeader(k));
-    scrubbedRequest = req.copyWith(
-      url: req.url == null ? null : scrubUrl(req.url!),
-      headers: headers,
-    );
+    req.url = req.url == null ? null : scrubUrl(req.url!);
+    req.headers = headers;
+    scrubbedRequest = req;
   }
 
-  return event.copyWith(
-    exceptions: scrubbedExceptions,
-    message: scrubbedMessage,
-    request: scrubbedRequest,
-  );
+  event.exceptions = scrubbedExceptions;
+  event.message = scrubbedMessage;
+  event.request = scrubbedRequest;
+  return event;
 }
 
 Breadcrumb? scrubBreadcrumb(Breadcrumb? breadcrumb, Hint hint) {
@@ -204,9 +205,8 @@ Breadcrumb? scrubBreadcrumb(Breadcrumb? breadcrumb, Hint hint) {
       }
     }
   }
-  return breadcrumb.copyWith(
-    message:
-        breadcrumb.message == null ? null : scrubText(breadcrumb.message!),
-    data: data,
-  );
+  return breadcrumb
+    ..message =
+        breadcrumb.message == null ? null : scrubText(breadcrumb.message!)
+    ..data = data;
 }

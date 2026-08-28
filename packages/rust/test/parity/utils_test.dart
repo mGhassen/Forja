@@ -1,6 +1,5 @@
 import '../helpers/parity_backends.dart';
 import 'package:rust/rust.dart';
-import 'package:rust/rust.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

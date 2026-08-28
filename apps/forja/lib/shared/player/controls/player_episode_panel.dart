@@ -228,13 +228,11 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
     final list = _visibleEpisodes;
     if (list.isEmpty) return;
     var index = preferIndex;
-    if (index == null) {
-      index = list.indexWhere(
+    index ??= list.indexWhere(
         (ep) =>
             _selectedSeason == widget.currentSeason &&
             (ep['episode_number'] as int? ?? 0) == widget.currentEpisode,
       );
-    }
     if (index < 0) index = 0;
     var tries = 0;
     void attempt() {

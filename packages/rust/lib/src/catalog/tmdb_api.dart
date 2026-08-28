@@ -1,10 +1,6 @@
 import 'dart:convert';
 
 import 'package:rust/rust.dart';
-import '../models/media_details_extras.dart';
-import '../models/watch_provider.dart';
-import 'search_query_parser.dart';
-import 'tmdb_watch_provider_family.dart';
 
 class TmdbApi {
   static const String _imageBaseUrl = 'https://image.tmdb.org/t/p/w500';

@@ -197,8 +197,8 @@ abstract final class Engine {
       'query': query,
       'enabled': enabled,
       if (imdbId != null && imdbId.isNotEmpty) 'imdb_id': imdbId,
-      if (season != null) 'season': season,
-      if (episode != null) 'episode': episode,
+      'season': ?season,
+      'episode': ?episode,
     };
     final json = await runSearchTorrentsJson(jsonEncode(request));
     return (jsonDecode(json) as List)

@@ -18,7 +18,7 @@ mixin _TrailerPlayerMenus on State<TrailerPlayerScreen> {
     _s._hideTimer?.cancel();
     if (!_s._showControls) setState(() => _s._showControls = true);
     await _s._ensureCaptionsLoaded();
-    if (!context.mounted) return;
+    if (!mounted || !anchorContext.mounted) return;
     final tracks = _s._streams?.captions ?? const <YoutubeCaptionTrack>[];
     final activeCode = _s._activeCaptionCode;
 

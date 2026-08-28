@@ -512,7 +512,7 @@ mixin _LiveMatchesData
     }
   }
 
-  void _applyPrimaryLoad(LiveMatchesPrimaryLoad load) {
+  void _applyPrimaryLoad(_LiveMatchesPrimaryLoad load) {
     final lazyCatalog =
         (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog;
     final forjaKeep = _s._streamedMatches.where((m) => m.isForjaLive).toList();

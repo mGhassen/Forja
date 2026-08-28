@@ -33,10 +33,10 @@ class SubtitleCatService {
       return await subtitleEntries({
         'action': 'subtitlecat_fetch',
         'title': title,
-        if (year != null) 'year': year,
-        if (season != null) 'season': season,
-        if (episode != null) 'episode': episode,
-        if (translateBaseUrl != null) 'translate_base_url': translateBaseUrl,
+        'year': ?year,
+        'season': ?season,
+        'episode': ?episode,
+        'translate_base_url': ?translateBaseUrl,
         'max_results': maxResults,
       });
     } catch (_) {

@@ -664,6 +664,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       if (!mounted) return;
       setState(() => _s._isLoadingNextEp = true);
       await _silenceForEpisodeHandoff();
+      if (!mounted) return;
       try {
         debugPrint('[EpSwitch] Engine Auto S${season}E$episode');
         await switchEpisodeViaEngineAutoPlay(
@@ -747,7 +748,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       unawaited(
         AppRouter.openPlayer(
           context,
-          streamUrl: resolved!.streamUrl,
+          streamUrl: resolved.streamUrl,
           title: nextTitle,
           headers: catalog ? null : resolved.headers,
           movie: widget.movie,

@@ -510,6 +510,7 @@ mixin _DesktopPlayerEpisodes
       if (!mounted) return;
       setState(() => _s._isLoadingNextEp = true);
       await _silenceForEpisodeHandoff();
+      if (!mounted) return;
       try {
         debugPrint('[EpSwitch] Engine Auto S${season}E$episode');
         await switchEpisodeViaEngineAutoPlay(
@@ -599,7 +600,7 @@ mixin _DesktopPlayerEpisodes
       unawaited(
         AppRouter.openPlayer(
           context,
-          streamUrl: resolved!.streamUrl,
+          streamUrl: resolved.streamUrl,
           title: nextTitle,
           headers: catalog ? null : resolved.headers,
           movie: widget.movie,
@@ -743,7 +744,6 @@ mixin _DesktopPlayerEpisodes
     final statusId = 'source-stremio-${stream.hashCode}';
     setState(() {
       _s._hasError = false;
-      _s._errorMessage = '';
     });
     _s._markPlaybackConfirmed(false);
     _s._statusController.upsert(
@@ -840,7 +840,6 @@ mixin _DesktopPlayerEpisodes
         _s._currentUrl = resolved.streamUrl;
         _s._activeMagnet = resolved.magnetLink;
         _s._hasError = false;
-        _s._errorMessage = '';
         _s._currentSources = null;
         final base = stream['_addonBaseUrl']?.toString();
         _s._catalogAddonBaseUrl = base;
@@ -1667,7 +1666,6 @@ mixin _DesktopPlayerEpisodes
           _s._failedSourceIndices.clear();
           _s._checkingSourceIndices.clear();
           _s._hasError = false;
-          _s._errorMessage = '';
           _s._markPlaybackConfirmed(true);
           if (newProvider == 'service111477' &&
               _s._currentSources != null &&

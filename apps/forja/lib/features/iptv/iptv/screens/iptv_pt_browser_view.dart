@@ -965,7 +965,7 @@ class _BrowserViewState extends State<_BrowserView> {
               ),
               if (ctrl.activeSection != null) ...[
                 IptvIconAction(
-                  tooltip: 'Reload ${_sectionTitle}',
+                  tooltip: 'Reload $_sectionTitle',
                   onPressed: ctrl.isLoading
                       ? null
                       : () => ctrl.reloadSection(ctrl.activeSection!),

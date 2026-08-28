@@ -15,9 +15,9 @@ class MysubsService {
       return await subtitleEntries({
         'action': 'mysubs_fetch',
         'title': title,
-        if (year != null) 'year': year,
-        if (season != null) 'season': season,
-        if (episode != null) 'episode': episode,
+        'year': ?year,
+        'season': ?season,
+        'episode': ?episode,
       });
     } catch (_) {
       return [];

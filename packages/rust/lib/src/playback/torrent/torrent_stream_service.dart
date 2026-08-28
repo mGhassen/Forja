@@ -4,9 +4,6 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
-import '../../engine_jobs.dart';
-import '../platform/playback_profile.dart';
-import '../domain/torrent_engine_backend.dart';
 
 /// Rich torrent statistics object.
 class TorrentStats {

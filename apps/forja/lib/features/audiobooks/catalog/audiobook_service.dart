@@ -126,7 +126,7 @@ class AudiobookService {
   Map<String, String> _htmlHeaders([String? referer]) {
     return {
       'User-Agent': _userAgent,
-      if (referer != null) 'Referer': referer,
+      'Referer': ?referer,
     };
   }
 
@@ -318,28 +318,6 @@ class AudiobookService {
       return bookList;
     } catch (e) {
       debugPrint('AudiobookService Error (searchAudiobooks): $e');
-    }
-    return [];
-  }
-
-  Future<List<Audiobook>> _searchTokybook(String query) async {
-    try {
-      final payload = {
-        "query": query,
-        "offset": 0,
-        "limit": 20,
-        "userIdentity": _getUserIdentity()
-      };
-
-      final response = await animeHttp('POST', '$_baseUrl/search/instant', headers: _getHeaders(), body: json.encode(payload), maxRetries: 0);
-
-      if (response.status == 200) {
-        final data = json.decode(response.body);
-        final List items = data['content'] ?? [];
-        return items.map((json) => Audiobook.fromJson(json)).toList();
-      }
-    } catch (e) {
-      debugPrint('AudiobookService Error (_searchTokybook): $e');
     }
     return [];
   }

@@ -1149,18 +1149,14 @@ class _LiveMatchCornerBadge extends StatelessWidget {
   const _LiveMatchCornerBadge({
     required this.label,
     required this.live,
-    this.color,
     this.top = 8,
-    this.bottom,
     this.left,
     this.right = 8,
   });
 
   final String label;
   final bool live;
-  final Color? color;
   final double top;
-  final double? bottom;
   final double? left;
   final double? right;
 
@@ -1170,12 +1166,11 @@ class _LiveMatchCornerBadge extends StatelessWidget {
     final padH = shellScaled(context, 8).clamp(6.0, 10.0);
     final padV = shellScaled(context, 3).clamp(2.0, 4.0);
     final radius = shellScaled(context, 6).clamp(4.0, 8.0);
-    final verticalInset = shellScaled(context, bottom ?? top).clamp(6.0, 10.0);
-    final bg = color ?? (live ? Colors.red.shade700 : Colors.black54);
+    final verticalInset = shellScaled(context, top).clamp(6.0, 10.0);
+    final bg = live ? Colors.red.shade700 : Colors.black54;
 
     return Positioned(
-      top: bottom == null ? verticalInset : null,
-      bottom: bottom,
+      top: verticalInset,
       left: left,
       right: right,
       child: DecoratedBox(
@@ -4839,7 +4834,7 @@ class _LiveCancellableLoadingDialogState
             const SizedBox(height: 16),
             ValueListenableBuilder<String>(
               valueListenable: widget.messageListenable,
-              builder: (_, message, __) => Text(
+              builder: (_, message, _) => Text(
                 message,
                 style: const TextStyle(color: ForjaShellColors.textPrimary),
                 textAlign: TextAlign.center,

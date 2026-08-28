@@ -44,7 +44,7 @@ class ProwlarrService {
       'base_url': baseUrl,
       'api_key': apiKey,
       'query': query,
-      if (indexerIds != null) 'indexer_ids': indexerIds,
+      'indexer_ids': ?indexerIds,
     });
     final results = decoded['results'] as List<dynamic>? ?? [];
     return results

@@ -2,10 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
-import '../../../webstreamr_settings.dart';
 import 'package:rust/rust.dart';
 
-import '../../proxy/local_server_service.dart';
 
 /// Resolves WebStreamr streams via the Rust engine (no Dart webstreamr package).
 class WebStreamrService {

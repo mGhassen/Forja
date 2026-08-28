@@ -1577,7 +1577,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (rating != null) rating,
+                  ?rating,
                   if (year != null) ...[
                     if (rating != null) SizedBox(width: gap),
                     Text(
@@ -1629,7 +1629,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         runSpacing: 6,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          if (rating != null) rating,
+          ?rating,
           if (year != null)
             Text(
               year,
@@ -1639,7 +1639,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-          if (typeBadge != null) typeBadge,
+          ?typeBadge,
           if (heroItem.statusChip != null &&
               heroItem.statusChip!.isNotEmpty &&
               heroItem.statusChip != heroItem.badgeLabel)

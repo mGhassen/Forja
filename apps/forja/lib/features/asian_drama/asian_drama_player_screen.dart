@@ -674,7 +674,15 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
     _providerSourcesCache.dispose();
     if (handOff != null && mounted) {
       if (await hubEngineAutoPlayEnabled()) {
+        if (!mounted) return;
         final list = handOffList.isNotEmpty ? handOffList : episodes;
+        final hubEpisodes = (await ensureDramaHubEpisodes(
+              kisskhId: drama.id,
+              hubEpisodes: null,
+              liveEpisodeCount: list.isNotEmpty ? list.length : drama.episodesCount,
+            )) ??
+            const <PlayerHubEpisode>[];
+        if (!mounted) return;
         await runHubEngineAutoPlay(
           context: context,
           movie: _hubMovieFromDrama(drama),
@@ -687,12 +695,7 @@ class _AsianDramaPlayerScreenState extends State<AsianDramaPlayerScreen> {
             for (final e in list) e.number.round(): e.id,
           },
           loadingSubtitle: 'EP ${handOff.displayNumber}',
-          hubEpisodes: (await ensureDramaHubEpisodes(
-                kisskhId: drama.id,
-                hubEpisodes: null,
-                liveEpisodeCount: list.isNotEmpty ? list.length : drama.episodesCount,
-              )) ??
-              const <PlayerHubEpisode>[],
+          hubEpisodes: hubEpisodes,
         );
         if (mounted && navigator.canPop()) navigator.pop();
         return;

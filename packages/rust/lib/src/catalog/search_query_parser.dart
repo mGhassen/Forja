@@ -309,9 +309,9 @@ ParsedSearchQuery parseSearchQuery(String raw) {
     if (v == null) continue;
     // TMDB only exposes gte/lte — treat > / < as inclusive bounds.
     if (op == '>' || op == '>=') {
-      minScore = minScore == null ? v : (v > minScore! ? v : minScore);
+      minScore = minScore == null ? v : (v > minScore ? v : minScore);
     } else {
-      maxScore = maxScore == null ? v : (v < maxScore! ? v : maxScore);
+      maxScore = maxScore == null ? v : (v < maxScore ? v : maxScore);
     }
   }
   working = working.replaceAll(_scoreOpRe, ' ');
@@ -325,8 +325,8 @@ ParsedSearchQuery parseSearchQuery(String raw) {
     if (a != null && b != null && a <= 10 && b <= 10) {
       final lo = a <= b ? a : b;
       final hi = a <= b ? b : a;
-      minScore = minScore == null ? lo : (minScore! > lo ? minScore : lo);
-      maxScore = maxScore == null ? hi : (maxScore! < hi ? maxScore : hi);
+      minScore = minScore == null ? lo : (minScore > lo ? minScore : lo);
+      maxScore = maxScore == null ? hi : (maxScore < hi ? maxScore : hi);
       working = (' $working ').replaceFirst(_scoreRangeRe, ' ');
     }
   }

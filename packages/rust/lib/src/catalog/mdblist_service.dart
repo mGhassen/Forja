@@ -134,9 +134,9 @@ class MdblistService {
         'action': 'mdblist_remove_from_list',
         'api_key': apiKey,
         'list_id': listId,
-        if (imdbId != null) 'imdb_id': imdbId,
-        if (tmdbId != null) 'tmdb_id': tmdbId,
-        if (mediaType != null) 'media_type': mediaType,
+        'imdb_id': ?imdbId,
+        'tmdb_id': ?tmdbId,
+        'media_type': ?mediaType,
       });
       return decoded['ok'] == true;
     } catch (e) {

@@ -6,7 +6,6 @@ import 'package:forja/features/media/details/providers/details_providers.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
-import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 

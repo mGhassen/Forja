@@ -241,10 +241,10 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
         );
       } finally {
         _enginePoolTasks.remove(task);
-        if (!mounted || gen != _s._engineFetchGen) return;
-        setState(() => _s._engineInFlightPluginIds.remove(pluginId));
-        _engineFillPool(gen: gen, type: type);
       }
+      if (!mounted || gen != _s._engineFetchGen) return;
+      setState(() => _s._engineInFlightPluginIds.remove(pluginId));
+      _engineFillPool(gen: gen, type: type);
     }();
     _enginePoolTasks.add(task);
   }

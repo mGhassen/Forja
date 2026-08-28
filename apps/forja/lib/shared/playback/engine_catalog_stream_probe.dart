@@ -62,7 +62,6 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
     );
     if (check is! StremioPlayable) continue;
     probeOrdinal++;
-    final title = (row['title'] ?? row['name'] ?? 'Stream').toString();
     messageNotifier?.value = probeTotal > 1
         ? 'Probing streams ($probeOrdinal/$probeTotal)…'
         : 'Probing streams…';

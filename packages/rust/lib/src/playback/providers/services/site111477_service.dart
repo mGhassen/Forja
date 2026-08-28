@@ -36,7 +36,7 @@ class Site111477Service {
     return site111477IndexRequest({
       'action': 'find_movie_sources',
       'title': title,
-      if (year != null) 'year': year,
+      'year': ?year,
       'cache_dir': cacheDir,
     });
   }

@@ -22,7 +22,7 @@ Widget _wrapShellHost({
   );
 }
 
-ShellHost _host({Size? size}) {
+ShellHost _host() {
   return ShellHost(
     visibleIds: const ['home', 'search', 'settings'],
     selectedIndex: 0,

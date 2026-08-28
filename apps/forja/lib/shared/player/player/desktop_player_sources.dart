@@ -524,7 +524,6 @@ mixin _DesktopPlayerSources
           _s._failedSourceIndices.clear();
           _s._checkingSourceIndices.clear();
           _s._hasError = false;
-          _s._errorMessage = '';
           if (hit.providerId == 'service111477' &&
               hit.streamSources.isNotEmpty) {
             _s._current111477FileUrl = hit.streamSources.first.url;
@@ -736,7 +735,6 @@ mixin _DesktopPlayerSources
     _s._isInitPlaybackRunning = true;
     setState(() {
       _s._hasError = false;
-      _s._errorMessage = '';
     });
     _markSourceChecking(targetIndex);
 
@@ -852,7 +850,6 @@ mixin _DesktopPlayerSources
             (_s._currentSources?.length ?? 1) - 1,
           );
           _s._hasError = false;
-          _s._errorMessage = '';
         });
       } else {
         if (_s._currentSources != null &&
@@ -868,7 +865,6 @@ mixin _DesktopPlayerSources
             (_s._currentSources?.length ?? 1) - 1,
           );
           _s._hasError = false;
-          _s._errorMessage = '';
         });
       }
 

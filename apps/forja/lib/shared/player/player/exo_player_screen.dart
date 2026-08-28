@@ -160,7 +160,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   /// ATV: hide dead MediaCodec texture after veille while still paused (issue 182).
   bool _coverDeadSurface = false;
   bool _hasError = false;
-  String _errorMessage = '';
   bool _playbackStartedNotified = false;
   bool _opening = false;
   bool _networkRemountInFlight = false;
@@ -378,7 +377,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _surfaceFallback.resetForNewOpen();
     setState(() {
       _hasError = false;
-      _errorMessage = '';
     });
     final source = _sources[_sourceIndex];
     _statusController.upsert(
@@ -469,9 +467,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (!mounted) return;
     setState(() {
       _hasError = true;
-      _errorMessage = _playbackStartedNotified
-          ? 'Playback stopped. Tap Retry to reload this server.'
-          : message;
       _showControls = true;
     });
     if (!_playbackStartedNotified) {
@@ -1086,6 +1081,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       try {
         await ExoPlayerBridge.stop(_viewId);
       } catch (_) {}
+      if (!mounted) return;
       try {
         debugPrint('[ExoPlayer] Engine Auto S${season}E$episode');
         await switchEpisodeViaEngineAutoPlay(
@@ -1215,7 +1211,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   Future<void> _showAudioMenu(BuildContext anchorContext) async {
     final tracks = await _refreshTracks();
-    if (!mounted) return;
+    if (!mounted || !anchorContext.mounted) return;
     await ExoPlayerMenus.showAudio(
       context: context,
       tracks: tracks,
@@ -1231,7 +1227,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   Future<void> _showSubtitlesMenu(BuildContext anchorContext) async {
     final tracks = await _refreshTracks();
-    if (!mounted) return;
+    if (!mounted || !anchorContext.mounted) return;
     await ExoPlayerMenus.showSubtitles(
       context: context,
       tracks: tracks,
@@ -1410,7 +1406,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   Future<void> _showQualityMenu(BuildContext anchorContext) async {
     final tracks = await _refreshTracks();
-    if (!mounted) return;
+    if (!mounted || !anchorContext.mounted) return;
     await ExoPlayerMenus.showQuality(
       context: context,
       tracks: tracks,
@@ -1654,7 +1650,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                             onRetry: () {
                               setState(() {
                                 _hasError = false;
-                                _errorMessage = '';
                               });
                               unawaited(_openCurrentSource());
                             },
@@ -1720,7 +1715,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                           onRetry: () {
                             setState(() {
                               _hasError = false;
-                              _errorMessage = '';
                             });
                             unawaited(_openCurrentSource());
                           },

@@ -285,7 +285,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   final Set<String> _nuvioDiscardScraperIds = {};
   bool _nuvioFetching = false;
   int _nuvioFetchGen = 0;
-  Set<String> _nuvioInFlightScraperIds = {};
+  final Set<String> _nuvioInFlightScraperIds = {};
   final Set<Future<void>> _nuvioPoolTasks = {};
   int _nuvioPoolLimit = kNuvioScraperBatchDesktop;
 
@@ -300,7 +300,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   Set<String>? _engineVisibleCategories;
   bool _engineFetching = false;
   int _engineFetchGen = 0;
-  Set<String> _engineInFlightPluginIds = {};
+  final Set<String> _engineInFlightPluginIds = {};
   final Set<Future<void>> _enginePoolTasks = {};
   int _enginePoolLimit = kEngineSourcesBatchDesktop;
 
@@ -1167,15 +1167,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (hasStremio) return 'stremio';
     if (hasNuvio) return 'nuvio';
     return 'torrents';
-  }
-
-  String _defaultStremioSourceId() {
-    if (_streamAddons.isEmpty) return TorrentSearchProviders.allId;
-    for (final a in _streamAddons) {
-      final base = a['baseUrl'] as String?;
-      if (base != null && _loadedAddonBaseUrls.contains(base)) return base;
-    }
-    return _streamAddons.first['baseUrl'] as String;
   }
 
   String? _effectivePreferredKind() {
@@ -2154,10 +2145,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         );
       } finally {
         _nuvioPoolTasks.remove(task);
-        if (!mounted || gen != _nuvioFetchGen) return;
-        setState(() => _nuvioInFlightScraperIds.remove(scraperId));
-        _nuvioFillPool(gen: gen, type: type);
       }
+      if (!mounted || gen != _nuvioFetchGen) return;
+      setState(() => _nuvioInFlightScraperIds.remove(scraperId));
+      _nuvioFillPool(gen: gen, type: type);
     }();
     _nuvioPoolTasks.add(task);
   }
@@ -2355,10 +2346,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         );
       } finally {
         _enginePoolTasks.remove(task);
-        if (!mounted || gen != _engineFetchGen) return;
-        setState(() => _engineInFlightPluginIds.remove(pluginId));
-        _engineFillPool(gen: gen, type: type);
       }
+      if (!mounted || gen != _engineFetchGen) return;
+      setState(() => _engineInFlightPluginIds.remove(pluginId));
+      _engineFillPool(gen: gen, type: type);
     }();
     _enginePoolTasks.add(task);
   }

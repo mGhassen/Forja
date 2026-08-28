@@ -77,7 +77,7 @@ void main() {
         catalogUrl: 'https://cdn.example/x/master.m3u8',
         providerId: 'megaplay',
         mediaClassOverride: StreamMediaClass.pngWrapTs,
-        buildStripProxy: (_, __) => '',
+        buildStripProxy: (_, _) => '',
       );
       final a = await pipe.next();
       expect(a?.action, StreamOpenAction.openDirect);

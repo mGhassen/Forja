@@ -77,18 +77,6 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
     return null;
   }
 
-  String _pickDirector(List<Map<String, String>> crew) {
-    for (final c in crew) {
-      final job = (c['job'] ?? '').toLowerCase();
-      if (job.contains('director')) return c['name'] ?? '';
-    }
-    for (final c in crew) {
-      final job = (c['job'] ?? '').toLowerCase();
-      if (job.contains('creator')) return c['name'] ?? '';
-    }
-    return '';
-  }
-
   Widget _buildHeroActionRow() {
     final progress = _s._lastProgress;
     final pos = watchHistoryInt(progress?['position']);

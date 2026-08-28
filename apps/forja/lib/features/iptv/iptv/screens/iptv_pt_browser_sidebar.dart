@@ -777,7 +777,7 @@ class _IptvCategoryDragProxyScope extends InheritedWidget {
 Widget _iptvCategoryReorderProxy(
   Widget child,
   int _,
-  Animation<double> __,
+  Animation<double> _,
 ) {
   return _IptvCategoryDragProxyScope(child: child);
 }

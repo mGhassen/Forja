@@ -242,7 +242,7 @@ class DesktopBrowserAuth {
         return result;
       } finally {
         timer.cancel();
-        if (retainForFocus && server != null && sub != null) {
+        if (retainForFocus) {
           final retainedServer = server;
           final retainedSub = sub;
           server = null;
@@ -255,7 +255,7 @@ class DesktopBrowserAuth {
             ),
           );
         } else {
-          await sub?.cancel();
+          await sub.cancel();
           sub = null;
         }
       }

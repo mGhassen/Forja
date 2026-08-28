@@ -14,8 +14,6 @@ import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
-import 'package:forja/shared/player/controls/player_stream_menu.dart';
-import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -177,12 +175,6 @@ List<_AnimeResolvedHit>? _hitsFromJson(List<Map<String, dynamic>>? raw) {
     ));
   }
   return out.isEmpty ? null : out;
-}
-
-String _animeStreamSourceTitle(AnimeEmbed embed, AnimeStreamResult direct) {
-  final tag = direct.streamLabel?.trim();
-  if (tag != null && tag.isNotEmpty) return tag;
-  return 'Stream';
 }
 
 List<StreamSource> _hitsToStreamSources(List<_AnimeResolvedHit> hits) =>
@@ -364,60 +356,6 @@ class AnimePlayerScreen extends StatefulWidget {
 
   @override
   State<AnimePlayerScreen> createState() => _AnimePlayerScreenState();
-}
-
-String _langCodeFromLabel(String label) {
-  final l = label.trim().toLowerCase();
-  if (l.isEmpty) return 'und';
-  if (RegExp(r'^[a-z]{2,3}([-_][a-z0-9]+)?$').hasMatch(l)) return l;
-  const map = <String, String>{
-    'english': 'en',
-    'arabic': 'ar',
-    'spanish': 'es',
-    'spanish - latin america': 'es',
-    'spanish (latin america)': 'es',
-    'spanish (spain)': 'es',
-    'european spanish': 'es',
-    'french': 'fr',
-    'german': 'de',
-    'italian': 'it',
-    'portuguese': 'pt',
-    'portuguese - brazilian': 'pt-br',
-    'portuguese (brazil)': 'pt-br',
-    'brazilian portuguese': 'pt-br',
-    'russian': 'ru',
-    'turkish': 'tr',
-    'dutch': 'nl',
-    'polish': 'pl',
-    'japanese': 'ja',
-    'korean': 'ko',
-    'chinese': 'zh',
-    'chinese - simplified': 'zh-cn',
-    'chinese - traditional': 'zh-tw',
-    'simplified chinese': 'zh-cn',
-    'traditional chinese': 'zh-tw',
-    'hindi': 'hi',
-    'indonesian': 'id',
-    'thai': 'th',
-    'vietnamese': 'vi',
-    'swedish': 'sv',
-    'danish': 'da',
-    'norwegian': 'no',
-    'finnish': 'fi',
-    'czech': 'cs',
-    'greek': 'el',
-    'hebrew': 'he',
-    'romanian': 'ro',
-    'hungarian': 'hu',
-    'ukrainian': 'uk',
-    'malay': 'ms',
-    'filipino': 'tl',
-    'tagalog': 'tl',
-  };
-  if (map.containsKey(l)) return map[l]!;
-  final stripped = l.replaceAll(RegExp(r'\s*\(.*\)\s*$'), '').trim();
-  if (stripped != l && map.containsKey(stripped)) return map[stripped]!;
-  return l;
 }
 
 String _decodeEpisodeTitle(String title) => title
@@ -1491,7 +1429,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
     if (ownsProviderCache) {
       liveProviderCache.dispose();
     } else {
-      providerSourcesCache!.dispose();
+      providerSourcesCache.dispose();
     }
     if (handOff != null && mounted) {
       if (await hubEngineAutoPlayEnabled()) {
@@ -1511,6 +1449,7 @@ class _AnimePlayerScreenState extends State<AnimePlayerScreen> {
         if (mounted && navigator.canPop()) navigator.pop();
         return;
       }
+      if (!mounted) return;
       final existing = ShellScope.maybeOf(context);
       final profile = existing?.profile ?? resolveShellProfile(context);
       final config = existing?.config ?? shellPlatformConfigFor(profile);

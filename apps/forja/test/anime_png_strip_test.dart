@@ -211,7 +211,7 @@ void main() {
           providerId: 'megaplay',
         ),
         sourceKey: 'megaplay',
-        segmentLooksPngWrapped: (_, __) async => false,
+        segmentLooksPngWrapped: (_, _) async => false,
         buildStripProxy: (u, _) =>
             'http://127.0.0.1:9/hls-proxy?url=$u&strip=png',
       );
@@ -229,7 +229,7 @@ void main() {
           catalogUrl: catalog,
         ),
         sourceKey: 'megaplay',
-        segmentLooksPngWrapped: (_, __) async => true,
+        segmentLooksPngWrapped: (_, _) async => true,
         buildStripProxy: (u, _) =>
             'http://127.0.0.1:9/hls-proxy?url=${Uri.encodeComponent(u)}&strip=png',
       );
@@ -249,7 +249,7 @@ void main() {
           providerId: 'vidnest:animepahe',
         ),
         sourceKey: 'vidnest:animepahe',
-        segmentLooksPngWrapped: (_, __) async => true,
+        segmentLooksPngWrapped: (_, _) async => true,
         buildStripProxy: (u, _) =>
             'http://127.0.0.1:9/hls-proxy?url=$u&strip=png',
       );

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rust/rust.dart';
-import 'package:rust/src/playback/resolver/resolver_engine_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

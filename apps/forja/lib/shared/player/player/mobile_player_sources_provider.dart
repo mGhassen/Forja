@@ -261,7 +261,6 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
           _s._failedSourceIndices.clear();
           _s._checkingSourceIndices.clear();
           _s._hasError = false;
-          _s._errorMessage = '';
           _s._markPlaybackConfirmed(true);
           if (newProvider == 'service111477' &&
               _s._currentSources != null &&

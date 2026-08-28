@@ -907,7 +907,7 @@ class _ListPoster extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (pin != null) pin,
+                    ?pin,
                     const Spacer(),
                     if (rating > 0)
                       HomeMovieRatingBadge(voteAverage: rating),

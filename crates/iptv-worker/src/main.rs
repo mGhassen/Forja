@@ -70,7 +70,7 @@ struct OpsPage {
 struct PortalMeta {
     portal: ScrapedPortal,
     layer: &'static str,
-    post_id: Option<String>,
+    _post_id: Option<String>,
 }
 
 #[tokio::main]
@@ -156,7 +156,7 @@ async fn scrape(
                         portals.entry(key).or_insert(PortalMeta {
                             portal: sp,
                             layer: "l1",
-                            post_id: Some(post_id.clone()),
+                            _post_id: Some(post_id.clone()),
                         });
                     }
                 }
@@ -169,7 +169,7 @@ async fn scrape(
             portals.entry(key).or_insert(PortalMeta {
                 portal: p,
                 layer: "l2",
-                post_id: None,
+                _post_id: None,
             });
         }
 

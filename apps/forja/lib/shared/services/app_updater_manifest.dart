@@ -2,6 +2,7 @@
 ///
 /// Supports per-platform latest (partial releases keep other platforms),
 /// per-arch `arches` maps, and the legacy flat `{ version, assets }` shape.
+library;
 import 'package:forja/shared/services/app_updater_release_notes.dart';
 
 class PlatformUpdateTarget {

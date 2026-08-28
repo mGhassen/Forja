@@ -243,7 +243,6 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     _s._opening = true;
     setState(() {
       _s._hasError = false;
-      _s._errorMessage = '';
     });
     final resumeAt = _s._position;
     final statusId = 'source-switch-$index';
@@ -335,7 +334,6 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         };
         _s._currentUrl = openUrl;
         _s._hasError = false;
-        _s._errorMessage = '';
         _s._sources = [
           for (final s in sessionSources)
             _ExoSource(
@@ -451,7 +449,6 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     _s._opening = true;
     setState(() {
       _s._hasError = false;
-      _s._errorMessage = '';
     });
     final statusId = 'source-stremio-${stream.hashCode}';
     _s._statusController.upsert(
@@ -510,7 +507,6 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         _s._currentUrl = resolved.streamUrl;
         _s._activeMagnet = resolved.magnetLink;
         _s._hasError = false;
-        _s._errorMessage = '';
         _s._currentSources = null;
         final base = stream['_addonBaseUrl']?.toString();
         _s._catalogAddonBaseUrl = base;

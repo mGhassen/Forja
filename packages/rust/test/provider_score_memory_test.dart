@@ -7,7 +7,6 @@ void main() {
 
   final movie = ProviderScoreScope.movie(tmdbId: 550);
   final tv = ProviderScoreScope.tv(tmdbId: 1399, season: 1, episode: 3);
-  final anime = ProviderScoreScope.anime(anilistId: 21, episode: 12);
 
   group('ProviderScoreMemory scoped scoring', () {
     test('settings base is 0 per title', () {

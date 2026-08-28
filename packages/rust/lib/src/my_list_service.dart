@@ -135,12 +135,12 @@ class MyListService {
       'releaseDate': releaseDate,
       'source': mediaType,
       'listStatus': listStatus,
-      if (anilistId != null) 'anilistId': anilistId,
-      if (kisskhId != null) 'kisskhId': kisskhId,
-      if (tmdbId != null) 'tmdbId': tmdbId,
-      if (tmdbMediaType != null) 'tmdbMediaType': tmdbMediaType,
-      if (imdbId != null) 'imdbId': imdbId,
-      if (kissKhType != null) 'kissKhType': kissKhType,
+      'anilistId': ?anilistId,
+      'kisskhId': ?kisskhId,
+      'tmdbId': ?tmdbId,
+      'tmdbMediaType': ?tmdbMediaType,
+      'imdbId': ?imdbId,
+      'kissKhType': ?kissKhType,
       'addedAt': idx >= 0
           ? _items[idx]['addedAt']
           : DateTime.now().millisecondsSinceEpoch,

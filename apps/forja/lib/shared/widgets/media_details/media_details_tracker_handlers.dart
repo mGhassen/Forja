@@ -252,7 +252,7 @@ class MediaDetailsTrackerHandlers {
     }
 
     final lists = await TraktService().getUserLists();
-    if (!mounted || lists.isEmpty) {
+    if (!context.mounted || lists.isEmpty) {
       if (mounted) {
         ForjaToast.warning(
           'No Trakt lists found. Create one in Lists screen.',

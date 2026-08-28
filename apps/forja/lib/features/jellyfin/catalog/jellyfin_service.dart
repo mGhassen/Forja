@@ -287,7 +287,7 @@ class JellyfinService {
       'authorization': authHeaderValue,
       'timeout_secs': timeout.inSeconds,
       'max_retries': maxRetries,
-      if (body != null) 'body': body,
+      'body': ?body,
     };
 
     final raw = await runJellyfinRequestJson(json.encode(payload));

@@ -10,18 +10,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
-import 'package:forja/shared/extractors/providers/vidsrc/vidsrc_extractor.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
-import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
-import 'package:forja/shared/playback/playback_service.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/player_source_resolve.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
@@ -206,7 +202,6 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   bool _historySaved = false;
   Timer? _progressSaveTimer;
   bool _hasError = false;
-  String _errorMessage = '';
 
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;

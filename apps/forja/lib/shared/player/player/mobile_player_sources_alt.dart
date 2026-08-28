@@ -55,7 +55,6 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     final statusId = 'source-stremio-${stream.hashCode}';
     setState(() {
       _s._hasError = false;
-      _s._errorMessage = '';
     });
     _s._markPlaybackConfirmed(false);
     _s._statusController.upsert(statusId, title, kind: StatusRouletteKind.loading);
@@ -149,7 +148,6 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         _s._currentUrl = resolved.streamUrl;
         _s._activeMagnet = resolved.magnetLink;
         _s._hasError = false;
-        _s._errorMessage = '';
         _s._currentSources = null;
         final base = stream['_addonBaseUrl']?.toString();
         _s._catalogAddonBaseUrl = base;

@@ -1,4 +1,3 @@
-import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 
 /// Bridges legacy [StreamSource] lists with [PlayableSource] metadata in the player.

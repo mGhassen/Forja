@@ -177,9 +177,9 @@ class TorrentReleaseMetadata {
   String get flags => StreamProviderDisplay.flagsDisplayForCodes(languageCodes);
 
   List<String> get badgeLabels => [
-        if (quality != null) quality!,
-        if (container != null) container!,
-        if (videoCodec != null) videoCodec!,
+        ?quality,
+        ?container,
+        ?videoCodec,
         ...audioTags.take(2),
         ...techTags,
         ...sourceTags.take(1),
@@ -271,8 +271,9 @@ class TorrentReleaseMetadata {
   }
 
   static String? _detectQuality(String n) {
-    if (n.contains('2160') || n.contains('4K') || n.contains('UHD'))
+    if (n.contains('2160') || n.contains('4K') || n.contains('UHD')) {
       return '4K';
+    }
     if (n.contains('1080')) return '1080p';
     if (n.contains('720')) return '720p';
     if (n.contains('480')) return '480p';

@@ -184,13 +184,13 @@ class IptvClient {
         'password': p.password,
         'timeout_secs': timeoutSecs,
         if (p.userAgent.isNotEmpty) 'user_agent': p.userAgent,
-        if (section != null) 'section': section,
-        if (categoryId != null) 'category_id': categoryId,
-        if (seriesId != null) 'series_id': seriesId,
+        'section': ?section,
+        'category_id': ?categoryId,
+        'series_id': ?seriesId,
         if (cmd != null && cmd.isNotEmpty) 'cmd': cmd,
         if (channelId != null && channelId.isNotEmpty) 'channel_id': channelId,
-        if (limit != null) 'limit': limit,
-        if (period != null) 'period': period,
+        'limit': ?limit,
+        'period': ?period,
       };
 
   static Future<String?> _httpGet(String url, {Duration? timeout}) =>

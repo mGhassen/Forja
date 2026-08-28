@@ -487,7 +487,6 @@ mixin _DesktopPlayerTracks
     if (mounted) {
       setState(() {
         _s._hasError = false;
-        _s._errorMessage = '';
       });
     }
     try {

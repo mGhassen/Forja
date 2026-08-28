@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 
-import '../subtitle_http.dart';
 
 /// KissKh encrypted subtitle fetch + decrypt via `anime/subtitle/kisskh`.
 /// Temp file write stays in host (path_provider).

@@ -172,7 +172,7 @@ class VideasyExtractor {
     }
 
     final gen = _generation;
-    final cancelled = () =>
+    bool cancelled() =>
         (isCancelled?.call() ?? false) || gen != _generation;
 
     final decryptMode = await SettingsService().getStreamCryptoDecrypt();

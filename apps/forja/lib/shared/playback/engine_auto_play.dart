@@ -379,6 +379,7 @@ Future<void> runEngineAutoPlay({
           !isTorrentStreamUrl(savedUrl) &&
           await probeStreamSourceUrl(savedUrl, null)) {
         if (!aborted()) {
+          if (!context.mounted) return;
           openedPlayer = true;
           final isTv = movie.mediaType == 'tv';
           await AppRouter.openPlayer(
@@ -667,6 +668,7 @@ Future<void> runEngineAutoPlay({
     if (playAborted()) return;
 
     if (hit != null) {
+      if (!context.mounted) return;
       openedPlayer = true;
       onPick?.call(hit);
       await _playFromProbedSources(
@@ -698,6 +700,7 @@ Future<void> runEngineAutoPlay({
       settings: settings,
     );
     if (resolveRow != null && !playAborted()) {
+      if (!context.mounted) return;
       openedPlayer = true;
       final pluginId =
           resolveRow['_enginePluginId']?.toString() ?? pluginIds.first;
@@ -831,6 +834,7 @@ Future<void> _playFromProbedSources({
     tmdbTvId: playMovie.id > 0 ? playMovie.id : null,
     liveEpisodeCount: playMovie.numberOfEpisodes,
   );
+  if (!context.mounted) return;
   final onSaveProgress = hubEngineSaveProgressCallback(
     session: enginePlaySession,
     movie: playMovie,
@@ -851,7 +855,7 @@ Future<void> _playFromProbedSources({
       episodeNumber: epNum,
       hubEpisodes: playHubEpisodes,
     );
-    if (isAborted()) return;
+    if (isAborted() || !context.mounted) return;
     await AppRouter.openPlayer(
       context,
       streamUrl: primary.url,
@@ -932,6 +936,7 @@ Future<void> _playResolveRow({
     tmdbTvId: playMovie.id > 0 ? playMovie.id : null,
     liveEpisodeCount: playMovie.numberOfEpisodes,
   );
+  if (!context.mounted) return;
   final onSaveProgress = hubEngineSaveProgressCallback(
     session: enginePlaySession,
     movie: playMovie,
@@ -952,7 +957,7 @@ Future<void> _playResolveRow({
       episodeNumber: epNum,
       hubEpisodes: playHubEpisodes,
     );
-    if (isAborted()) return;
+    if (isAborted() || !context.mounted) return;
     await AppRouter.openPlayer(
       context,
       streamUrl: resolved.streamUrl,

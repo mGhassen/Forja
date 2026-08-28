@@ -3,7 +3,6 @@ mod parse;
 
 use serde::Deserialize;
 use serde_json::json;
-use urlencoding::encode;
 
 pub use parse::{BookEditionDetails, BookResult, DownloadLink};
 
@@ -22,10 +21,8 @@ struct CatalogRequest {
 }
 
 fn search_url(query: &str) -> String {
-    format!(
-        "{BASE_URL}/index.php?req={}&curtab=f",
-        encode(query.trim())
-    )
+    let encoded = urlencoding::encode(query.trim());
+    format!("{BASE_URL}/index.php?req={encoded}&curtab=f")
 }
 
 pub fn search(query: &str) -> Result<Vec<BookResult>, String> {

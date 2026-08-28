@@ -13,6 +13,6 @@ const p2embedExtractProfile = EmbedExtractProfile(
   deferUntilStrongStream: true,
   rotateServerChips: true,
   // Empty labels → generic "Server N" / class heuristics in StreamExtractor.
-  serverChipLabels: const [],
+  serverChipLabels: [],
   cdnHostsPreferEmbedReferer: ['streamsrcs', '2embed'],
 );

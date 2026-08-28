@@ -1400,8 +1400,8 @@ class TraktService {
       'method': method,
       'path': path,
       'timeout_secs': timeoutSecs,
-      if (accessToken != null) 'access_token': accessToken,
-      if (body != null) 'body': body,
+      'access_token': ?accessToken,
+      'body': ?body,
     };
     final raw = await runTraktRequestJson(json.encode(payload));
     final decoded = json.decode(raw) as Map<String, dynamic>;

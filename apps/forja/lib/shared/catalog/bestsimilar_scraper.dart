@@ -157,7 +157,7 @@ class BestSimilarScraper {
       final decoded = await catalogCore({
         'action': 'find_best',
         'title': title,
-        if (year != null) 'year': year,
+        'year': ?year,
         'is_tv': isTv,
       });
       final hit = decoded['hit'];

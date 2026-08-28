@@ -373,8 +373,9 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       final apiKey = await _s._settings.getJackettApiKey();
       if (!mounted || gen != _s._torrentSearchGen) return;
 
-      if (baseUrl == null || apiKey == null)
+      if (baseUrl == null || apiKey == null) {
         throw Exception('Jackett configuration missing');
+      }
 
       if (_s._movie.mediaType == 'tv') {
         final s = _s._selectedSeason.toString().padLeft(2, '0');
@@ -480,8 +481,9 @@ mixin _DetailsScreenTorrent on ConsumerState<DetailsScreen> {
       final apiKey = await _s._settings.getProwlarrApiKey();
       if (!mounted || gen != _s._torrentSearchGen) return;
 
-      if (baseUrl == null || apiKey == null)
+      if (baseUrl == null || apiKey == null) {
         throw Exception('Prowlarr configuration missing');
+      }
 
       final tagIds = await _s._settings.getProwlarrTagIds();
       if (!mounted || gen != _s._torrentSearchGen) return;

@@ -14,7 +14,7 @@ class HomeContinueWatchingSection extends StatefulWidget {
   final String? tvRowId;
   final int tvRowOrder;
 
-  const HomeContinueWatchingSection({
+  const HomeContinueWatchingSection({super.key, 
     this.compactTop = false,
     this.tvRowId,
     this.tvRowOrder = 2,
@@ -231,7 +231,7 @@ class HomeHistoryCard extends StatefulWidget {
   final int listIndex;
   final String? tvRowId;
 
-  const HomeHistoryCard({
+  const HomeHistoryCard({super.key, 
     required this.item,
     this.resolvedBackdropPath,
     required this.onTap,

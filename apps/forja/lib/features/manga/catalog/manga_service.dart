@@ -129,7 +129,7 @@ class MangaService {
       final decoded = await mangaCatalog({
         'action': 'browse',
         'page': page,
-        if (tag != null) 'tag': tag,
+        'tag': ?tag,
         'allow_adult': allowAdult,
       });
       return ((decoded['items'] as List?) ?? const [])

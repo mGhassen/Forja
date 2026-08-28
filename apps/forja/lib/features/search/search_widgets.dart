@@ -212,7 +212,7 @@ class _SearchCard extends StatelessWidget {
         : null;
     final meta = [
       if (year != null && year.isNotEmpty) year,
-      if (kind != null) kind,
+      ?kind,
     ].join(' • ');
 
     return shellFocusableTap(

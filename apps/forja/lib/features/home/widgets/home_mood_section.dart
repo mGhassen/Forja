@@ -93,7 +93,7 @@ class HomeMoodCircleLayout {
 
 /// Circular mood picker - layout matches details **Main Characters** cast row.
 class HomeMoodCircleItem extends StatefulWidget {
-  const HomeMoodCircleItem({
+  const HomeMoodCircleItem({super.key, 
     required this.layout,
     required this.label,
     required this.icon,

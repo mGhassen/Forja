@@ -159,8 +159,8 @@ class DebridApi {
       'service': service,
       'api_key': apiKey,
       'magnet': magnet,
-      if (season != null) 'season': season,
-      if (episode != null) 'episode': episode,
+      'season': ?season,
+      'episode': ?episode,
     });
     return parseDebridFiles(decoded);
   }

@@ -438,7 +438,6 @@ mixin _DesktopPlayerPlayback
     try {
       setState(() {
         _s._hasError = false;
-        _s._errorMessage = '';
         _s._showControls = true;
       });
 
@@ -577,7 +576,6 @@ mixin _DesktopPlayerPlayback
               setState(() {
                 _s._hasError = true;
                 _s._showControls = true;
-                _s._errorMessage = 'Torrent stream failed to open.';
               });
             }
             await _failPlaybackNoFailover(
@@ -653,9 +651,6 @@ mixin _DesktopPlayerPlayback
                 setState(() {
                   _s._hasError = true;
                   _s._showControls = true;
-                  _s._errorMessage = isTorrent
-                      ? 'Torrent stream failed to open.'
-                      : 'Playback failed.';
                 });
               }
               if (_s._providerPinned) {
@@ -798,7 +793,6 @@ mixin _DesktopPlayerPlayback
             _s._failedSourceIndices.clear();
             _s._checkingSourceIndices.clear();
             _s._hasError = false;
-            _s._errorMessage = '';
           });
           final played = await _trySourcesFromIndex(
             0,
@@ -854,7 +848,6 @@ mixin _DesktopPlayerPlayback
           _s._failedSourceIndices.clear();
           _s._checkingSourceIndices.clear();
           _s._hasError = false;
-          _s._errorMessage = '';
         });
         return _trySourcesFromIndex(
           0,
@@ -932,7 +925,6 @@ mixin _DesktopPlayerPlayback
         _s._failedSourceIndices.clear();
         _s._checkingSourceIndices.clear();
         _s._hasError = false;
-        _s._errorMessage = '';
       });
       return _trySourcesFromIndex(
         0,
@@ -982,7 +974,6 @@ mixin _DesktopPlayerPlayback
       setState(() {
         _s._hasError = true;
         _s._showControls = true;
-        _s._errorMessage = 'Playback stopped. Tap Retry to reload this server.';
       });
       return;
     }
@@ -1017,7 +1008,6 @@ mixin _DesktopPlayerPlayback
       );
       setState(() {
         _s._hasError = false;
-        _s._errorMessage = '';
         _s._showControls = true;
       });
 
@@ -1209,7 +1199,6 @@ mixin _DesktopPlayerPlayback
     setState(() {
       _s._hasError = true;
       _s._showControls = true;
-      _s._errorMessage = message;
     });
     await _invalidateWebstreamingCacheForCurrent();
   }
@@ -1224,7 +1213,6 @@ mixin _DesktopPlayerPlayback
       setState(() {
         _s._hasError = true;
         _s._showControls = true;
-        _s._errorMessage = 'All sources and providers failed.';
       });
       _notifyAllSourcesExhausted();
       return;
@@ -1255,8 +1243,6 @@ mixin _DesktopPlayerPlayback
       setState(() {
         _s._hasError = true;
         _s._showControls = true;
-        _s._errorMessage =
-            'Could not find any working stream from any provider.';
       });
       _notifyAllSourcesExhausted();
       await _invalidateWebstreamingCacheForCurrent();
@@ -1366,7 +1352,6 @@ mixin _DesktopPlayerPlayback
           _s._failedSourceIndices.clear();
           _s._checkingSourceIndices.clear();
           _s._hasError = false;
-          _s._errorMessage = '';
           if (newProvider == 'service111477' && resolvedSources.isNotEmpty) {
             _s._current111477FileUrl = resolvedSources.first.url;
           }

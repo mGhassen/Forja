@@ -63,10 +63,10 @@ class _DamiTvStream {
   final String categoryName;
   final String status;
   final String league;
-  final String? homeTeam;
-  final String? homeBadge;
-  final String? awayTeam;
-  final String? awayBadge;
+  final String? homeTeam = null;
+  final String? homeBadge = null;
+  final String? awayTeam = null;
+  final String? awayBadge = null;
   final int viewers;
   final String iframe;
 
@@ -82,46 +82,10 @@ class _DamiTvStream {
     required this.categoryName,
     required this.status,
     required this.league,
-    this.homeTeam,
-    this.homeBadge,
-    this.awayTeam,
-    this.awayBadge,
     required this.viewers,
     required this.iframe,
     this.alwaysLive = false,
   });
-
-  factory _DamiTvStream.fromJson(Map<String, dynamic> j) {
-    final teams = j['teams'] as Map<String, dynamic>?;
-    final home = teams?['home'] as Map<String, dynamic>?;
-    final away = teams?['away'] as Map<String, dynamic>?;
-
-    String abs(String path) {
-      // Relative media paths are rare; catalog rows already ship absolute URLs.
-      return path;
-    }
-
-    final league = (j['league'] ?? j['tag'] ?? j['source_tag'] ?? '')
-        .toString();
-
-    return _DamiTvStream(
-      id: (j['id'] ?? '').toString(),
-      name: (j['name'] ?? '').toString(),
-      poster: abs((j['poster'] ?? '').toString()),
-      startsAt: (j['starts_at'] as num?)?.toInt() ?? 0,
-      endsAt: (j['ends_at'] as num?)?.toInt() ?? 0,
-      categoryName: (j['category_name'] ?? '').toString(),
-      status: (j['status'] ?? '').toString(),
-      league: league,
-      homeTeam: home?['name'] as String?,
-      homeBadge: abs((home?['badge'] ?? '').toString()),
-      awayTeam: away?['name'] as String?,
-      awayBadge: abs((away?['badge'] ?? '').toString()),
-      viewers: parsePpvViewers(j['viewers']),
-      iframe: (j['iframe'] ?? '').toString(),
-      alwaysLive: parsePpvAlwaysLive(j['always_live']),
-    );
-  }
 
   /// Playable 24/7 channel - PPV often leaves expired `starts_at`/`ends_at`
   /// while setting `always_live` (and/or category `24/7 Streams`).
@@ -607,10 +571,6 @@ bool _damiTvInScheduleFilter(
       alwaysOn: stream.isAlwaysOn,
       liveOrAiring: stream.isLive,
     );
-
-/// Drop stale Forja Live catalog rows before they hit the timeline grid.
-bool _forjaLiveCatalogRowVisible(Map<String, dynamic> row) =>
-    _forjaLiveCatalogRowInHorizon(row, _LiveMatchesScheduleHorizon.h24);
 
 List<_StreamedMatch> _sortStreamedLiveFirst(List<_StreamedMatch> items) {
   final sorted = List<_StreamedMatch>.from(items);

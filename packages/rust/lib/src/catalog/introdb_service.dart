@@ -70,9 +70,9 @@ class IntroDbService {
       final decoded = await metadataRequest({
         'action': 'introdb_timestamps',
         'tmdb_id': tmdbId,
-        if (season != null) 'season': season,
-        if (episode != null) 'episode': episode,
-        if (imdbId != null) 'imdb_id': imdbId,
+        'season': ?season,
+        'episode': ?episode,
+        'imdb_id': ?imdbId,
       });
       final data = decoded['data'];
       if (data == null) return null;

@@ -1303,7 +1303,7 @@ void main() {
       final plugins = map['plugins'] as List;
       final oneshows = EnginePlugin.fromJson(
         Map<String, dynamic>.from(
-          plugins.cast<Map>().firstWhere((p) => p['id'] == '1shows') as Map,
+          plugins.cast<Map>().firstWhere((p) => p['id'] == '1shows'),
         ),
       );
       expect(oneshows.entry, 'providers/1shows.js');

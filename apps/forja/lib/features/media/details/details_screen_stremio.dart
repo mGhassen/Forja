@@ -332,10 +332,10 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
         );
       } finally {
         _nuvioPoolTasks.remove(task);
-        if (!mounted || gen != _s._nuvioFetchGen) return;
-        setState(() => _s._nuvioInFlightScraperIds.remove(scraperId));
-        _nuvioFillPool(gen: gen, type: type);
       }
+      if (!mounted || gen != _s._nuvioFetchGen) return;
+      setState(() => _s._nuvioInFlightScraperIds.remove(scraperId));
+      _nuvioFillPool(gen: gen, type: type);
     }();
     _nuvioPoolTasks.add(task);
   }
@@ -520,8 +520,9 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
         id: customId,
       );
       debugPrint('[CustomIdStreams] Got ${streams.length} streams');
-      if (streams.isNotEmpty)
+      if (streams.isNotEmpty) {
         debugPrint('[CustomIdStreams] First stream: ${streams.first}');
+      }
       if (!mounted || gen != _s._stremioFetchGen) return;
       final tagged = _s._filterStremioStreams(
         streams.map((s) {

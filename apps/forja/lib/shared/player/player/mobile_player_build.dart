@@ -672,18 +672,14 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                               btnSize: btnSize,
                               iconSz: iconSz,
                             ),
-                            if (_s._buildTransportPrevEpisodeButton(
+                            ?_s._buildTransportPrevEpisodeButton(
                                   btnSize: btnSize,
                                   iconSz: iconSz,
-                                )
-                                case final prevEp?)
-                              prevEp,
-                            if (_s._buildTransportNextEpisodeButton(
+                                ),
+                            ?_s._buildTransportNextEpisodeButton(
                                   btnSize: btnSize,
                                   iconSz: iconSz,
-                                )
-                                case final nextEp?)
-                              nextEp,
+                                ),
                             PlayerVolumeControl(
                               volume: _s._volume,
                               maxVolume: 150,

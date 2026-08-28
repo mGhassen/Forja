@@ -396,7 +396,7 @@ class StatusRouletteView extends StatelessWidget {
                     clipBehavior: Clip.hardEdge,
                     children: [
                       ...previousChildren,
-                      if (current != null) current,
+                      ?current,
                     ],
                   ),
                   transitionBuilder: (child, animation) {

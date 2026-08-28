@@ -725,11 +725,11 @@ Map<String, dynamic>? mapEngineStream({
   // same chip UI as Torrents, no Nuvio emoji rows.
   final descParts = <String>[
     if (rawTitle.isNotEmpty) rawTitle,
-    if (quality != null) quality,
-    if (container != null) container,
-    if (audio != null) audio,
-    if (language != null) language,
-    if (size != null) size,
+    ?quality,
+    ?container,
+    ?audio,
+    ?language,
+    ?size,
   ];
   final desc = descParts.join(' ').trim();
   final cardTitle = displayTitle.isNotEmpty
@@ -742,10 +742,10 @@ Map<String, dynamic>? mapEngineStream({
     'title': cardTitle,
     'name': addonName,
     if (desc.isNotEmpty) 'description': desc,
-    if (quality != null) 'quality': quality,
-    if (language != null) 'language': language,
-    if (size != null) 'size': size,
-    if (container != null) 'container': container,
+    'quality': ?quality,
+    'language': ?language,
+    'size': ?size,
+    'container': ?container,
     if (headers.isNotEmpty) 'headers': headers,
     if (headers.isNotEmpty)
       'behaviorHints': {

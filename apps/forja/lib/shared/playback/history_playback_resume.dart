@@ -55,6 +55,7 @@ Future<void> _openResolvedStreamPlayer(
         ).then(playableSourcesToStreamSources)
       : null;
 
+  if (!context.mounted) return;
   await AppRouter.openPlayer(
     context,
     streamUrl: resolved.streamUrl,
@@ -152,6 +153,7 @@ Future<bool> _resumeWebStreamProvider(
         ),
       );
     }
+    if (!context.mounted) return false;
     await AppRouter.openPlayer(
       context,
       streamUrl: savedStreamUrl,
@@ -184,6 +186,7 @@ Future<bool> _resumeWebStreamProvider(
     cacheKey,
     WebstreamingCacheHit(providerId: providerId, sources: sources),
   );
+  if (!context.mounted) return false;
   await _openResolvedStreamPlayer(
     context,
     movie: movie,
@@ -373,6 +376,7 @@ Future<bool> _resumeTorrentStream(
     providerId: 'torrent',
   );
 
+  if (!context.mounted) return false;
   await AppRouter.openPlayer(
     context,
     streamUrl: ranked.first.url,

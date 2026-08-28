@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../helpers/rust_engine.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rust/rust.dart';
 
@@ -16,9 +17,9 @@ void main() {
       'enabled_sources': ['vidsrc'],
     });
     final raw = await runWebstreamrGetStreamsJson(req);
-    print('vidsrc-only: $raw');
+    debugPrint('vidsrc-only: $raw');
     final arr = jsonDecode(raw) as List;
-    print('count=${arr.length}');
+    debugPrint('count=${arr.length}');
   }, timeout: const Timeout(Duration(minutes: 2)));
 
   test('resolve_vidsrc_embed direct', () async {
@@ -29,6 +30,6 @@ void main() {
       'episode': 1,
     });
     final raw = await runResolveVidsrcEmbedJson(req);
-    print('direct vidsrc: $raw');
+    debugPrint('direct vidsrc: $raw');
   }, timeout: const Timeout(Duration(minutes: 2)));
 }

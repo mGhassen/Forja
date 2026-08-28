@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/media/details/providers/details_providers.dart';
 import 'package:forja/features/media/details/providers/details_play_session.dart';
-import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
@@ -35,13 +33,8 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/widgets/movie_atmosphere.dart';
 import 'package:forja/shared/widgets/media_details/media_details.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
-import 'package:forja/shared/widgets/media_details/media_details_torrent_action_row.dart';
-import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
-import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
-import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/watch_progress_bar.dart';
 import 'package:forja/shared/widgets/watch_series_progress.dart';
-import 'package:forja/shared/widgets/media_details/torrent_sources_panel_chrome.dart';
 import 'package:forja/shared/widgets/media_details_hero.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
@@ -270,8 +263,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   set _engineFetchGen(int v) => _play.engineFetchGen = v;
 
   Set<String> get _engineInFlightPluginIds => _play.engineInFlightPluginIds;
-  set _engineInFlightPluginIds(Set<String> v) =>
-      _play.engineInFlightPluginIds = v;
 
   List<EnginePack> get _enginePacks => _play.enginePacks;
   set _enginePacks(List<EnginePack> v) => _play.enginePacks = v;
@@ -520,8 +511,9 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _play = _playN.session;
     _movie = widget.movie;
     if (widget.initialSeason != null) _selectedSeason = widget.initialSeason!;
-    if (widget.initialEpisode != null)
+    if (widget.initialEpisode != null) {
       _selectedEpisode = widget.initialEpisode!;
+    }
     // Start atmosphere color extraction
     final url = (_movie.posterPath.isNotEmpty
         ? _movie.posterPath
@@ -581,21 +573,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (!mounted) return;
     if (_movie.mediaType == 'tv') {
       await _loadEpisodeProgressForSeason(_selectedSeason);
-    }
-  }
-
-  void _applyPanelFilterForSavedMethod(String? method) {
-    switch (method) {
-      case 'torrent':
-        if (_panelShowTorrent) _panelKindFilter = 'torrents';
-      case 'stremio_direct':
-        if (_panelShowStremio) {
-          _panelKindFilter = 'stremio';
-        } else if (_panelShowTorrent) {
-          _panelKindFilter = 'torrents';
-        }
-      default:
-        _panelKindFilter = _defaultPanelKindFilter();
     }
   }
 
@@ -801,15 +778,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _panelKindFilter = kind;
       _restorePanelSourceIdForKind(kind);
     }
-  }
-
-  String _defaultStremioSourceId() {
-    if (_streamAddons.isEmpty) return TorrentSearchProviders.allId;
-    for (final a in _streamAddons) {
-      final base = a['baseUrl'] as String?;
-      if (base != null && _loadedAddonBaseUrls.contains(base)) return base;
-    }
-    return _streamAddons.first['baseUrl'] as String;
   }
 
   List<String> get _stremioAddonBaseUrlsInOrder => [

@@ -562,7 +562,7 @@ abstract final class HostProviderAdapter {
         'url': url,
         'title': 'Primary',
         'container': _typeFromUrl(url),
-        if (headers != null) 'headers': headers,
+        'headers': ?headers,
         if (providerId != null && providerId.isNotEmpty)
           'providerId': providerId,
       },

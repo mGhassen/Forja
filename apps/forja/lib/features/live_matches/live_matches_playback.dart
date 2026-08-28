@@ -2,6 +2,7 @@ part of 'live_matches_screen.dart';
 
 mixin _LiveMatchesPlayback
     on ConsumerState<LiveMatchesScreen>, _LiveMatchesData {
+  @override
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   /// Leanback TV: never offer PPV / Streamed / Mut embed rows — only native.
@@ -98,7 +99,7 @@ mixin _LiveMatchesPlayback
         }
       },
     );
-    if (!ok) return;
+    if (!ok || !mounted) return;
 
     final hasPpv = ppv.iframe.isNotEmpty;
     showModalBottomSheet<void>(

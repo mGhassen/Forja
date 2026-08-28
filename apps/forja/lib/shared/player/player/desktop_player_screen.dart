@@ -22,12 +22,8 @@ import 'post_seek_stall_watchdog.dart';
 import 'playable_source_bridge.dart';
 
 import 'package:rust/rust.dart';
-import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
-import 'package:forja/shared/extractors/providers/vidsrc/vidsrc_extractor.dart';
-import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
-import 'package:forja/shared/playback/playback_service.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/player_source_resolve.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
@@ -197,7 +193,6 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   bool _historySaved = false;
   Timer? _progressSaveTimer;
   bool _hasError = false;
-  String _errorMessage = '';
 
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;

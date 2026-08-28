@@ -10,7 +10,7 @@ class HomeBecauseYouWatchedSection extends StatefulWidget {
   final Function(Movie) onMovieTap;
   final VoidCallback? onShuffle;
 
-  const HomeBecauseYouWatchedSection({
+  const HomeBecauseYouWatchedSection({super.key, 
     required this.seedTitle,
     required this.seedPosterPath,
     required this.future,

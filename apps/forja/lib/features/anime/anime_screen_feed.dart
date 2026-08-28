@@ -146,6 +146,7 @@ mixin _AnimeScreenFeed on ConsumerState<AnimeScreen>, ShellTabRefresh<AnimeScree
         return;
       }
 
+      if (!mounted) return;
       await openAnimePlayer(
         context,
         anime: anime,

@@ -156,8 +156,8 @@ Future<List<AnimeExtractorStreamResult>> miruroExtractAllStreams({
     'episode_number': episodeNumber,
     'category': category,
     'provider': provider,
-    if (webviewBody != null) 'webview_body': webviewBody,
-    if (webviewXObfuscated != null) 'webview_x_obfuscated': webviewXObfuscated,
+    'webview_body': ?webviewBody,
+    'webview_x_obfuscated': ?webviewXObfuscated,
   });
   final streams = decoded['streams'];
   if (streams is! List) return const [];
@@ -190,9 +190,9 @@ Future<MiruroRustResolve> miruroResolveWithCfFallback({
       'episode_number': episodeNumber,
       'category': category,
       'provider': provider,
-      if (webviewBody != null) 'webview_body': webviewBody,
-      if (webviewXObf != null) 'webview_x_obfuscated': webviewXObf,
-      if (webviewPipePath != null) 'webview_pipe_path': webviewPipePath,
+      'webview_body': ?webviewBody,
+      'webview_x_obfuscated': ?webviewXObf,
+      'webview_pipe_path': ?webviewPipePath,
     });
   }
 

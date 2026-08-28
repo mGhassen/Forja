@@ -493,26 +493,29 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
 
       if (resolved is StremioPlayable && mounted) {
         final dialogContext = loadingDialogContext;
-        if (dialogContext != null) {
+        if (dialogContext != null && dialogContext.mounted) {
           await crossfadeLoadingOverlayToPlayer(
             loadingDialogContext: dialogContext,
             fadeOutNotifier: fadeOutNotifier,
-            openPlayer: () => AppRouter.openPlayer(
-              context,
-              streamUrl: resolved.streamUrl,
-              title: _s._movie.title,
-              magnetLink: resolved.magnetLink,
-              movie: _s._movie,
-              selectedSeason: isTv ? _s._selectedSeason : null,
-              selectedEpisode: isTv ? _s._selectedEpisode : null,
-              fileIndex: resolved.fileIndex,
-              startPosition: startPosition,
-              activeProvider: catalogHttpPlayProviderId(stream),
-              externalSubtitles: catalogStreamExternalSubtitles(stream),
-              stremioId: stremioId,
-              stremioAddonBaseUrl: stremioAddonBaseUrl,
-              fadeTransition: true,
-            ),
+            openPlayer: () async {
+              if (!mounted) return;
+              await AppRouter.openPlayer(
+                context,
+                streamUrl: resolved.streamUrl,
+                title: _s._movie.title,
+                magnetLink: resolved.magnetLink,
+                movie: _s._movie,
+                selectedSeason: isTv ? _s._selectedSeason : null,
+                selectedEpisode: isTv ? _s._selectedEpisode : null,
+                fileIndex: resolved.fileIndex,
+                startPosition: startPosition,
+                activeProvider: catalogHttpPlayProviderId(stream),
+                externalSubtitles: catalogStreamExternalSubtitles(stream),
+                stremioId: stremioId,
+                stremioAddonBaseUrl: stremioAddonBaseUrl,
+                fadeTransition: true,
+              );
+            },
           );
           if (mounted) _s._claimTvHeroPlayAfterPlayer();
         }
@@ -745,7 +748,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         return;
       }
 
-      String? resolvedUrl;
+      late final String resolvedUrl;
       var magnetLink = result.magnet;
       int? resolvedFileIndex;
 
@@ -836,23 +839,17 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
       }
 
       if (!mounted || _s._streamCancelled) {
-        if (resolvedUrl != null) {
-          LanClientService.instance.releaseLanTorrentIfNeeded(
-            playUrl: resolvedUrl!,
-            magnet: magnetLink,
-          );
-        } else if (!_s._playbackProfile.localTorrentEngine) {
-          LanClientService.instance.releaseLanTorrentAfterCancel(
-            magnet: magnetLink,
-          );
-        }
+        LanClientService.instance.releaseLanTorrentIfNeeded(
+          playUrl: resolvedUrl,
+          magnet: magnetLink,
+        );
         popLoading();
         cleanupNotifiers();
         return;
       }
 
       final dialogContext = loadingDialogContext;
-      if (dialogContext == null) {
+      if (dialogContext == null || !dialogContext.mounted) {
         await fail('Torrent stream failed to start.');
         return;
       }
@@ -860,21 +857,24 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
       await crossfadeLoadingOverlayToPlayer(
         loadingDialogContext: dialogContext,
         fadeOutNotifier: fadeOutNotifier,
-        openPlayer: () => AppRouter.openPlayer(
-          context,
-          streamUrl: resolvedUrl!,
-          title: _s._movie.title,
-          magnetLink: magnetLink,
-          movie: _s._movie,
-          selectedSeason:
-              _s._movie.mediaType == 'tv' ? _s._selectedSeason : null,
-          selectedEpisode:
-              _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
-          fileIndex: resolvedFileIndex,
-          startPosition: startPosition,
-          activeProvider: 'torrent',
-          fadeTransition: true,
-        ),
+        openPlayer: () async {
+          if (!mounted) return;
+          await AppRouter.openPlayer(
+            context,
+            streamUrl: resolvedUrl,
+            title: _s._movie.title,
+            magnetLink: magnetLink,
+            movie: _s._movie,
+            selectedSeason:
+                _s._movie.mediaType == 'tv' ? _s._selectedSeason : null,
+            selectedEpisode:
+                _s._movie.mediaType == 'tv' ? _s._selectedEpisode : null,
+            fileIndex: resolvedFileIndex,
+            startPosition: startPosition,
+            activeProvider: 'torrent',
+            fadeTransition: true,
+          );
+        },
       );
       if (mounted) _s._claimTvHeroPlayAfterPlayer();
       cleanupNotifiers();

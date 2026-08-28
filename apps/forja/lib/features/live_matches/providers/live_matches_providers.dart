@@ -2,7 +2,7 @@ part of '../live_matches_screen.dart';
 
 /// Primary match-list fetch keyed by server mode.
 final liveMatchesPrimaryLoadProvider = FutureProvider.autoDispose
-    .family<LiveMatchesPrimaryLoad, _LiveMatchesServer>((ref, server) async {
+    .family<_LiveMatchesPrimaryLoad, _LiveMatchesServer>((ref, server) async {
       switch (server) {
         case _LiveMatchesServer.all:
           return _fetchLiveMatchesAll();
@@ -21,8 +21,8 @@ final liveMatchesPrimaryLoadProvider = FutureProvider.autoDispose
       }
     });
 
-class LiveMatchesPrimaryLoad {
-  const LiveMatchesPrimaryLoad({
+class _LiveMatchesPrimaryLoad {
+  const _LiveMatchesPrimaryLoad({
     required this.sports,
     this.damiTvStreams = const [],
     this.streamedMatches = const [],
@@ -38,11 +38,11 @@ class LiveMatchesPrimaryLoad {
 
 /// PPV + Streamed schedule for dedicated server tabs only.
 /// **Forja Live** / **Forja Sports** / **All** load catalogs via the Catalog button instead.
-Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
-  return const LiveMatchesPrimaryLoad(sports: []);
+Future<_LiveMatchesPrimaryLoad> _fetchLiveMatchesAll() async {
+  return const _LiveMatchesPrimaryLoad(sports: [], espnGames: []);
 }
 
-Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesPpv() async {
+Future<_LiveMatchesPrimaryLoad> _fetchLiveMatchesPpv() async {
   final streams = await _fetchDamiTvStreams();
   final seenCats = <String>{};
   final cats = <_Sport>[];
@@ -54,10 +54,14 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesPpv() async {
     if (id.isEmpty || !seenCats.add(id)) continue;
     cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
   }
-  return LiveMatchesPrimaryLoad(sports: cats, damiTvStreams: streams);
+  return _LiveMatchesPrimaryLoad(
+    sports: cats,
+    damiTvStreams: streams,
+    espnGames: const [],
+  );
 }
 
-Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStreamed() async {
+Future<_LiveMatchesPrimaryLoad> _fetchLiveMatchesStreamed() async {
   final results = await Future.wait([
     _fetchStreamedSports(),
     _fetchStreamedMatches(),
@@ -86,10 +90,14 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStreamed() async {
   }
   cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
 
-  return LiveMatchesPrimaryLoad(sports: cats, streamedMatches: matches);
+  return _LiveMatchesPrimaryLoad(
+    sports: cats,
+    streamedMatches: matches,
+    espnGames: const [],
+  );
 }
 
-Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesMut() async {
+Future<_LiveMatchesPrimaryLoad> _fetchLiveMatchesMut() async {
   final matches = await _fetchMutMatches();
   final seen = <String>{};
   final cats = <_Sport>[];
@@ -104,7 +112,11 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesMut() async {
     cats.add(const _Sport(id: '24-7', name: '24/7'));
   }
   cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-  return LiveMatchesPrimaryLoad(sports: cats, streamedMatches: matches);
+  return _LiveMatchesPrimaryLoad(
+    sports: cats,
+    streamedMatches: matches,
+    espnGames: const [],
+  );
 }
 
 _StreamedMatch _forjaLiveRowToMatch(Map<String, dynamic> j) {
@@ -143,23 +155,13 @@ _StreamedMatch _forjaLiveRowToMatch(Map<String, dynamic> j) {
   return _StreamedMatch.fromJson(enriched);
 }
 
-Future<List<_StreamedMatch>> _fetchForjaLiveMatches() async {
-  final rows = await LiveMatchesEngine.fetchCatalog();
-  return rows
-      .where(_forjaLiveCatalogRowVisible)
-      .map(_forjaLiveRowToMatch)
-      .where((m) => m.id.isNotEmpty && m.title.isNotEmpty)
-      .take(_kForjaLiveCatalogMaxPerPlugin)
-      .toList();
-}
-
 // Kept for bulk fetch tests / tooling; Live Matches UI uses lazy per-plugin load.
 
-Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesForjaLive() async {
+Future<_LiveMatchesPrimaryLoad> _fetchLiveMatchesForjaLive() async {
   return _fetchLiveMatchesAll();
 }
 
-Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStremio() async {
+Future<_LiveMatchesPrimaryLoad> _fetchLiveMatchesStremio() async {
   final matches = await _fetchStremioSportMatches();
   final seen = <String>{};
   final cats = <_Sport>[];
@@ -174,11 +176,15 @@ Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesStremio() async {
     cats.add(const _Sport(id: '24-7', name: '24/7'));
   }
   cats.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-  return LiveMatchesPrimaryLoad(sports: cats, streamedMatches: matches);
+  return _LiveMatchesPrimaryLoad(
+    sports: cats,
+    streamedMatches: matches,
+    espnGames: const [],
+  );
 }
 
 /// Forja Sports schedule = same enabled Catalog JS as Forja Live / All
 /// (lazy chips in [_LiveMatchesForjaLive]); play still matches Xtream.
-Future<LiveMatchesPrimaryLoad> _fetchLiveMatchesIptvSports() async {
+Future<_LiveMatchesPrimaryLoad> _fetchLiveMatchesIptvSports() async {
   return _fetchLiveMatchesAll();
 }
