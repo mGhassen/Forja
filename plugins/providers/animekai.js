@@ -18,9 +18,13 @@ function extract(ctx) {
   var AJAX = cfg.ajax;
   var isMovie = ctx.type === 'movie';
   var title = String(ctx.title || '');
+  var malId = Number(ctx.malId) || 0;
+  var anilistId = Number(ctx.anilistId) || 0;
 
-  function getJson(url) {
-    return ctx.fetch(url, { headers: HEADERS }).then(function (r) {
+  function getJson(url, extraHeaders) {
+    return ctx.fetch(url, {
+      headers: Object.assign({}, HEADERS, extraHeaders || {}),
+    }).then(function (r) {
       return r.json();
     });
   }
@@ -59,7 +63,7 @@ function extract(ctx) {
   function findToken(db) {
     var episodes = (db && db.episodes) || {};
     var season = String(isMovie ? 1 : ctx.season || 1);
-    var episode = String(isMovie ? 1 : ctx.episode || 1);
+    var episode = String(isMovie ? 1 : ctx.mappedEpisode || ctx.episode || 1);
     var seasonMap = episodes[season] || episodes[1] || {};
     var ep = seasonMap[episode] || seasonMap[1];
     return ep && (ep.token || ep.eid) ? ep.token || ep.eid : null;
@@ -76,7 +80,32 @@ function extract(ctx) {
     }
   }
 
+  function pickDbEntry(results) {
+    if (!results) return null;
+    var list = Array.isArray(results) ? results : [results];
+    if (!list.length) return null;
+    if (malId > 0) {
+      for (var i = 0; i < list.length; i++) {
+        var info = list[i] && list[i].info;
+        if (info && String(info.mal_id) === String(malId)) return list[i];
+      }
+    }
+    if (anilistId > 0) {
+      for (var j = 0; j < list.length; j++) {
+        var info2 = list[j] && list[j].info;
+        if (info2 && String(info2.anilist_id) === String(anilistId)) return list[j];
+      }
+    }
+    return list[0];
+  }
+
   function lookup() {
+    if (malId > 0) {
+      return getJson(DB + '/find?mal_id=' + malId).then(pickDbEntry);
+    }
+    if (anilistId > 0) {
+      return getJson(DB + '/find?anilist_id=' + anilistId).then(pickDbEntry);
+    }
     var q =
       DB +
       '/search?query=' +
@@ -84,27 +113,54 @@ function extract(ctx) {
       '&type=' +
       (isMovie ? 'movie' : 'tv') +
       (ctx.year ? '&year=' + ctx.year : '');
-    return getJson(q).then(function (results) {
-      return Array.isArray(results) && results.length ? results[0] : (results && results[0]) || results;
-    });
+    return getJson(q).then(pickDbEntry);
   }
 
-  if (!title && !ctx.tmdbId) return [];
+  function ajaxBases(db) {
+    var bases = [{ origin: String(cfg.origin).replace(/\/$/, ''), ajax: String(AJAX).replace(/\/$/, '') }];
+    var mirrors = db && db.info && db.info.mirrors && db.info.mirrors.animekai;
+    if (Array.isArray(mirrors)) {
+      mirrors.forEach(function (u) {
+        var origin = String(u).replace(/\/$/, '');
+        var ajax = origin + '/ajax';
+        if (!bases.some(function (b) { return b.ajax === ajax; })) {
+          bases.push({ origin: origin, ajax: ajax });
+        }
+      });
+    }
+    return bases;
+  }
+
+  function getJsonAjax(path, db) {
+    var bases = ajaxBases(db);
+    function tryAt(i) {
+      if (i >= bases.length) return Promise.reject(new Error('ajax'));
+      var b = bases[i];
+      return getJson(b.ajax + path, { Referer: b.origin + '/' }).catch(function () {
+        return tryAt(i + 1);
+      });
+    }
+    return tryAt(0);
+  }
+
+  if (!title && !ctx.tmdbId && !malId && !anilistId) return [];
 
   return lookup()
     .then(function (db) {
-      var contentId = db && (db.kai_id || db.id || db.content_id);
+      if (!db) return [];
+      var info = db.info || {};
+      var contentId = info.kai_id || db.kai_id || db.id || db.content_id;
       var token = findToken(db);
       var start = token
         ? Promise.resolve(token)
         : contentId
           ? encrypt(contentId).then(function (encId) {
-              return getJson(AJAX + '/episodes/list?ani_id=' + contentId + '&_=' + encId);
+              return getJsonAjax('/episodes/list?ani_id=' + contentId + '&_=' + encId, db);
             }).then(function (resp) {
               return parseHtml(resp.result);
             }).then(function (episodes) {
               var season = String(isMovie ? 1 : ctx.season || 1);
-              var episode = String(isMovie ? 1 : ctx.episode || 1);
+              var episode = String(isMovie ? 1 : ctx.mappedEpisode || ctx.episode || 1);
               var ep = ((episodes || {})[season] || {})[episode];
               return ep && ep.token;
             })
@@ -113,7 +169,7 @@ function extract(ctx) {
         if (!epToken) return [];
         return encrypt(epToken)
           .then(function (encToken) {
-            return getJson(AJAX + '/links/list?token=' + epToken + '&_=' + encToken);
+            return getJsonAjax('/links/list?token=' + epToken + '&_=' + encToken, db);
           })
           .then(function (serversResp) {
             return parseHtml(serversResp.result);
@@ -128,7 +184,7 @@ function extract(ctx) {
                 tasks.push(
                   encrypt(lid)
                     .then(function (encLid) {
-                      return getJson(AJAX + '/links/view?id=' + lid + '&_=' + encLid);
+                      return getJsonAjax('/links/view?id=' + lid + '&_=' + encLid, db);
                     })
                     .then(function (embedResp) {
                       return decrypt(embedResp.result);
