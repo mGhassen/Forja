@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { defineApiRoute } from '@/lib/api-route'
 import { fetchPasteBody } from '@/server/iptv-catalog/reddit'
 import { authedAdmin } from '@/server/admin-request'
 
@@ -27,10 +27,8 @@ function isAllowedPasteUrl(url: string): boolean {
   }
 }
 
-export const Route = createFileRoute('/api/iptv-paste-body')({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
+export const Route = defineApiRoute('/api/iptv-paste-body', {
+  POST: async ({ request }) => {
         try {
           const gate = await authedAdmin(request)
           if ('error' in gate && gate.error) return gate.error
@@ -54,6 +52,4 @@ export const Route = createFileRoute('/api/iptv-paste-body')({
           )
         }
       },
-    },
-  },
 })

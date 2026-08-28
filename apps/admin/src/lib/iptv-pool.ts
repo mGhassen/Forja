@@ -209,7 +209,13 @@ export async function fetchPoolPortalStatusByIds(
     .select('id, alive, expiry, max_connections, region_primary')
     .in('id', uniq)
   if (error) throw new Error(errMessage(error, 'Portal status fetch failed'))
-  return (data ?? []).map((row) => ({
+  return (data ?? []).map((row: {
+    id: string
+    alive: boolean | null
+    expiry?: string | null
+    max_connections?: string | null
+    region_primary?: string
+  }) => ({
     id: String((row as { id: string }).id),
     alive: (row as { alive: boolean | null }).alive,
     expiry: ((row as { expiry?: string | null }).expiry as string | null) ?? null,

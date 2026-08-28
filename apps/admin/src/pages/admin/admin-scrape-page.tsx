@@ -49,13 +49,10 @@ import {
   scrapeRunMetricChips,
   scrapeSourceLabel,
   subscribeScrapeRuns,
-  type ScrapeRunRow,
 } from '@/lib/scrape-runs'
 import { formatAdminDateTime } from '@/lib/iptv-portal-expiry'
 import { cn } from '@/lib/utils'
 import { useTablePagination } from '@/lib/use-table-pagination'
-
-type Run = ScrapeRunRow
 
 export function AdminScrapePage() {
   const qc = useQueryClient()

@@ -3,8 +3,6 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 use serde_json::{json, Value};
-use urlencoding::encode;
-
 use crate::http;
 
 const BASE: &str = "https://my-subs.co";
@@ -133,7 +131,8 @@ fn resolve_versions_path(
     season: Option<i32>,
     episode: Option<i32>,
 ) -> Result<Option<String>, String> {
-    let search_url = format!("{BASE}/search.php?key={}", encode(title));
+    let encoded = urlencoding::encode(title);
+    let search_url = format!("{BASE}/search.php?key={encoded}");
     let resp = http::fetch_with_retries("GET", &search_url, &HDRS, None, None, false, 15, 0)?;
     if resp.status != 200 {
         return Ok(None);
@@ -245,7 +244,8 @@ fn resolve_gate(entry: &Value) -> Option<Value> {
     let dl = if real_path.starts_with("http") {
         real_path
     } else {
-        format!("{BASE}{real_path}")
+        let path = real_path;
+        format!("{BASE}{path}")
     };
     Some(json!({
         "url": dl,
@@ -289,7 +289,7 @@ fn title_case(s: &str) -> String {
         Some(first) => {
             let upper: String = first.to_uppercase().collect();
             let rest: String = chars.collect::<String>().to_lowercase();
-            format!("{upper}{rest}")
+            upper + &rest
         }
     }
 }

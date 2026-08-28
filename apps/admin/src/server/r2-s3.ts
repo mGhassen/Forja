@@ -36,6 +36,13 @@ function requireS3Creds() {
   return c
 }
 
+function bufferSource(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer
+}
+
 async function hmac(key: BufferSource, msg: string): Promise<ArrayBuffer> {
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
@@ -47,9 +54,13 @@ async function hmac(key: BufferSource, msg: string): Promise<ArrayBuffer> {
   return crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(msg))
 }
 
-async function sha256Hex(data: BufferSource | string): Promise<string> {
+async function sha256Hex(data: BufferSource | string | Uint8Array): Promise<string> {
   const bytes =
-    typeof data === 'string' ? new TextEncoder().encode(data) : data
+    typeof data === 'string'
+      ? new TextEncoder().encode(data)
+      : data instanceof Uint8Array
+        ? bufferSource(data)
+        : data
   const dig = await crypto.subtle.digest('SHA-256', bytes)
   return [...new Uint8Array(dig)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
@@ -190,7 +201,7 @@ export async function r2PutObject(
   const res = await fetch(`${endpoint}${canonicalUri}`, {
     method: 'PUT',
     headers,
-    body: bytes,
+    body: bufferSource(bytes),
   })
   if (!res.ok) {
     const text = await res.text().catch(() => '')

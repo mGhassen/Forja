@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { serve } from 'inngest/remix'
 import { inngest } from '@/inngest/client'
 import { functions } from '@/inngest/functions'
+import { defineApiRoute } from '@/lib/api-route'
 
 /** Custom domain — *.vercel.app is Deployment-Protected (Inngest gets 401). */
 const PROD_SERVE_ORIGIN = 'https://admin.forjahq.xyz'
@@ -28,15 +28,10 @@ const handler = serve({
   functions,
   serveOrigin: resolveServeOrigin(),
   streaming: false,
-  defaultMaxRuntime: 45_000,
 })
 
-export const Route = createFileRoute('/api/inngest')({
-  server: {
-    handlers: {
-      GET: async ({ request }) => handler({ request }),
-      POST: async ({ request }) => handler({ request }),
-      PUT: async ({ request }) => handler({ request }),
-    },
-  },
+export const Route = defineApiRoute('/api/inngest', {
+  GET: ({ request }) => handler({ request }),
+  POST: ({ request }) => handler({ request }),
+  PUT: ({ request }) => handler({ request }),
 })

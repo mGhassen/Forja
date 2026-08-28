@@ -190,10 +190,11 @@ export const iptvCatalogScrape = inngest.createFunction(
     let hitWatermark = false
 
     for (let s = 0; s < skipPages; s++) {
-      const pageAfter = after
-      const skipped = await step.run(`skip-reddit-page-${s}`, async () => {
-        return advanceCatalogListing(pageAfter)
-      })
+      const pageAfter: string | null = after
+      const skipped: { nextAfter: string | null; subreddit: string } =
+        await step.run(`skip-reddit-page-${s}`, async () => {
+          return advanceCatalogListing(pageAfter)
+        })
       after = skipped.nextAfter
       if (!after) break
     }

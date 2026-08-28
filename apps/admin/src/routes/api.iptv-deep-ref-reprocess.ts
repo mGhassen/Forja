@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { defineApiRoute } from '@/lib/api-route'
 import { authedAdmin } from '@/server/admin-request'
 import { processDeepRefRow } from '@/server/iptv-catalog/reddit'
 import {
@@ -13,10 +13,8 @@ function json(data: unknown, status = 200) {
   return Response.json(data, { status })
 }
 
-export const Route = createFileRoute('/api/iptv-deep-ref-reprocess')({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
+export const Route = defineApiRoute('/api/iptv-deep-ref-reprocess', {
+  POST: async ({ request }) => {
         try {
           const gate = await authedAdmin(request)
           if ('error' in gate && gate.error) return gate.error
@@ -141,6 +139,4 @@ export const Route = createFileRoute('/api/iptv-deep-ref-reprocess')({
           )
         }
       },
-    },
-  },
 })

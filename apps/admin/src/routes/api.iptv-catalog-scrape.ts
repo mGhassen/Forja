@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { defineApiRoute } from '@/lib/api-route'
 import { sendInngestEvent } from '@/inngest/send-event'
 import { authedAdmin } from '@/server/admin-request'
 
@@ -6,10 +6,8 @@ function json(data: unknown, status = 200) {
   return Response.json(data, { status })
 }
 
-export const Route = createFileRoute('/api/iptv-catalog-scrape')({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
+export const Route = defineApiRoute('/api/iptv-catalog-scrape', {
+  POST: async ({ request }) => {
         try {
           const gate = await authedAdmin(request)
           if ('error' in gate && gate.error) return gate.error
@@ -172,6 +170,4 @@ export const Route = createFileRoute('/api/iptv-catalog-scrape')({
           return json({ error: message }, 502)
         }
       },
-    },
-  },
 })

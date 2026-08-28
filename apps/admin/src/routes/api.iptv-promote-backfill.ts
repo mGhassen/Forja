@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { defineApiRoute } from '@/lib/api-route'
 import { sendInngestEvent, syncInngestApp } from '@/inngest/send-event'
 import { authedAdmin } from '@/server/admin-request'
 import {
@@ -14,10 +14,8 @@ const MAX_LIMIT = 20_000
 const DEFAULT_CHUNK = 25
 const PROMOTE_BACKFILL_SOURCE = 'promote-backfill'
 
-export const Route = createFileRoute('/api/iptv-promote-backfill')({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
+export const Route = defineApiRoute('/api/iptv-promote-backfill', {
+  POST: async ({ request }) => {
         try {
           const gate = await authedAdmin(request)
           if ('error' in gate && gate.error) return gate.error
@@ -160,6 +158,4 @@ export const Route = createFileRoute('/api/iptv-promote-backfill')({
           return json({ error: message }, 502)
         }
       },
-    },
-  },
 })

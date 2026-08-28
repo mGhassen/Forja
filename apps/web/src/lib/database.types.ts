@@ -46,6 +46,7 @@ export type Database = {
           email: string | null
           features: Json
           id: string
+          iptv_credits: number
           is_admin: boolean
           member_number: number
           updated_at: string
@@ -57,6 +58,7 @@ export type Database = {
           email?: string | null
           features?: Json
           id: string
+          iptv_credits?: number
           is_admin?: boolean
           member_number?: number
           updated_at?: string
@@ -68,6 +70,7 @@ export type Database = {
           email?: string | null
           features?: Json
           id?: string
+          iptv_credits?: number
           is_admin?: boolean
           member_number?: number
           updated_at?: string
@@ -454,6 +457,14 @@ export type Database = {
           p_user_id: string
         }
         Returns: number
+      }
+      replace_user_iptv_portals: {
+        Args: {
+          p_allow_shrink?: boolean
+          p_assignments: Json
+          p_profile_id: string
+        }
+        Returns: undefined
       }
       upsert_iptv_portal: {
         Args: {
@@ -1059,5 +1070,6 @@ export const Constants = {
 } as const
 
 export type IptvPortal = Database['public']['Tables']['iptv_portals']['Row']
+export type Profile = Database['public']['Tables']['profiles']['Row']
 export type UserIptvPortal =
   Database['public']['Tables']['user_iptv_portals']['Row']

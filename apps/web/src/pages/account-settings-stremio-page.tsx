@@ -111,7 +111,9 @@ export function AccountSettingsStremioPage() {
           ) : (
             <ul className="divide-y divide-forja-border">
               {draft.addons.map((addon) => {
-                const features = addon.features?.length ? addon.features : (['vod'] as const)
+                const features: Array<'vod' | 'live'> = addon.features?.length
+                  ? [...addon.features]
+                  : ['vod']
                 return (
                   <li
                     key={addon.baseUrl}

@@ -868,7 +868,7 @@ function enrichPortalsFromCards(
           : fileMeta.region.confidence,
       // Credentialed rows stay xtream/stalker — never flip to m3u from a
       // note header that says "M3U" (that's usually Allowed Outputs / get.php).
-      platform: p.platform === 'stalker' ? 'stalker' : 'xtream',
+      platform: p.platform === 'm3u' ? 'm3u' : 'xtream',
     })
     acc.delete(key)
     put(acc, next)

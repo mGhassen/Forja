@@ -58,12 +58,12 @@ export const PROFILE_AVATAR_CATEGORIES = [
   },
 ] as const
 
-type ProfileAvatarCategory = (typeof PROFILE_AVATAR_CATEGORIES)[number]
-type ProfileAvatarDefinition = ProfileAvatarCategory['avatars'][number]
+type ProfileAvatarDefinition = (typeof PROFILE_AVATAR_CATEGORIES)[number]['avatars'][number]
 
-export const PROFILE_AVATARS = PROFILE_AVATAR_CATEGORIES.flatMap(
-  (category) => category.avatars,
-)
+export const PROFILE_AVATARS: readonly ProfileAvatarDefinition[] =
+  PROFILE_AVATAR_CATEGORIES.flatMap((category) =>
+    category.avatars as unknown as ProfileAvatarDefinition[],
+  )
 
 export type ProfileAvatarKey = ProfileAvatarDefinition['key']
 

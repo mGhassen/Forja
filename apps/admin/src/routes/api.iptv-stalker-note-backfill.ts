@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { defineApiRoute } from '@/lib/api-route'
 import { sendInngestEvent, syncInngestApp } from '@/inngest/send-event'
 import { STALKER_NOTE_BACKFILL_SOURCE } from '@/inngest/functions/iptv-stalker-note-backfill'
 import { authedAdmin } from '@/server/admin-request'
@@ -12,10 +12,8 @@ function json(data: unknown, status = 200) {
 const MAX_LIMIT = 20_000
 const DEFAULT_CHUNK = 15
 
-export const Route = createFileRoute('/api/iptv-stalker-note-backfill')({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
+export const Route = defineApiRoute('/api/iptv-stalker-note-backfill', {
+  POST: async ({ request }) => {
         try {
           const gate = await authedAdmin(request)
           if ('error' in gate && gate.error) return gate.error
@@ -158,6 +156,4 @@ export const Route = createFileRoute('/api/iptv-stalker-note-backfill')({
           return json({ error: message }, 502)
         }
       },
-    },
-  },
 })

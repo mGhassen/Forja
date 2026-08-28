@@ -51,9 +51,16 @@ function base64UrlToBytes(value: string): Uint8Array {
   return out
 }
 
+function bufferSource(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(
+    bytes.byteOffset,
+    bytes.byteOffset + bytes.byteLength,
+  ) as ArrayBuffer
+}
+
 async function embeddedKey(): Promise<CryptoKey> {
   const raw = await sha256(KEY_MATERIAL)
-  return crypto.subtle.importKey('raw', raw, { name: 'AES-CBC' }, false, [
+  return crypto.subtle.importKey('raw', bufferSource(raw), { name: 'AES-CBC' }, false, [
     'encrypt',
     'decrypt',
   ])

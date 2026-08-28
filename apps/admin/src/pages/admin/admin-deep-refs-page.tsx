@@ -122,7 +122,7 @@ function deepRefLastAt(r: DeepRefRow): string {
 type FilterStatus = 'all' | 'recheck' | 'ok' | 'has_portals' | 'existing_only'
 
 async function fetchDeepRefs(): Promise<DeepRefRow[]> {
-  const rows = await fetchAllRows(async (from, to) => {
+  const rows = await fetchAllRows<DeepRefRow>(async (from, to) => {
     const { data, error } = await adminDb
       .from('iptv_scrape_deep_refs')
       .select(
@@ -149,7 +149,7 @@ async function fetchDeepRefs(): Promise<DeepRefRow[]> {
         .order('id', { ascending: false })
         .range(from, to)
       if (retry.error) throw retry.error
-      return (retry.data ?? []).map((r) => ({
+      return (retry.data ?? []).map((r: Omit<DeepRefRow, 'updated_at'>) => ({
         ...(r as Omit<DeepRefRow, 'updated_at'>),
         updated_at: null,
       }))

@@ -113,9 +113,9 @@ export async function upsertIptvPortal(args: {
     p_url: args.url,
     p_username: args.username,
     p_password: args.password,
-    p_source: args.source ?? null,
-    p_expiry: args.expiry ?? null,
-    p_max_connections: args.maxConnections ?? null,
+    p_source: args.source ?? undefined,
+    p_expiry: args.expiry ?? undefined,
+    p_max_connections: args.maxConnections ?? undefined,
     p_platform: args.platform ?? 'xtream',
   })
   if (error) throw error

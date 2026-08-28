@@ -168,6 +168,7 @@ export async function upsertScrapeDeepRef(
     error = retry.error
   }
   if (error) throw error
+  if (!data) throw new Error('deep ref upsert returned no row')
   const deepRefId = data.id as string
 
   if (linkPortals) {

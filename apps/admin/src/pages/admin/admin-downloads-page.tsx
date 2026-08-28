@@ -151,7 +151,7 @@ export function AdminDownloadsPage() {
         <p className="text-xs text-forja-green">
           {backfill.isSuccess
             ? `Backfill wrote ${backfill.data.daysWritten?.length ?? 0} day(s) · ${formatCount(backfill.data.total)} total`
-            : `Rolled up yesterday · ${formatCount(rollup.data.total)} total`}
+            : `Rolled up yesterday · ${formatCount(rollup.data?.total ?? 0)} total`}
         </p>
       ) : null}
 

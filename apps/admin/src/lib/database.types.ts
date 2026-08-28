@@ -46,6 +46,7 @@ export type Database = {
           email: string | null
           features: Json
           id: string
+          iptv_credits: number
           is_admin: boolean
           member_number: number
           updated_at: string
@@ -57,6 +58,7 @@ export type Database = {
           email?: string | null
           features?: Json
           id: string
+          iptv_credits?: number
           is_admin?: boolean
           member_number?: number
           updated_at?: string
@@ -68,6 +70,7 @@ export type Database = {
           email?: string | null
           features?: Json
           id?: string
+          iptv_credits?: number
           is_admin?: boolean
           member_number?: number
           updated_at?: string
