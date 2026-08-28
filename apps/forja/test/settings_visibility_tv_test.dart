@@ -48,7 +48,7 @@ void main() {
     await LanPrefs.instance.clearServer();
   });
 
-  test('Android TV unpaired honors stored torrent/Stremio/Nuvio; hub stays lean',
+  test('Android TV unpaired honors stored torrent/Stremio/Nuvio; Sources on',
       () async {
     PlatformPlayback.override = PlaybackProfile.androidTv;
     SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
@@ -71,13 +71,14 @@ void main() {
     expect(v.playSourceTorrent, isTrue);
     expect(v.playSourceStremio, isTrue);
     expect(v.playSourceNuvio, isTrue);
-    expect(v.playSourceWebstreaming, isTrue);
+    // Stored on, but effective Webstreaming stays off without admin.
+    expect(v.playSourceWebstreaming, isFalse);
     expect(v.showPlaySourceTorrentToggle, isTrue);
     expect(v.showPlaySourceStremioToggle, isTrue);
     expect(v.showPlaySourceNuvioToggle, isTrue);
     expect(v.lanPlaySourcesEditable, isTrue);
     expect(v.showProviderScoring, isFalse);
-    expect(v.showSourcesCategory, isFalse);
+    expect(v.showSourcesCategory, isTrue);
     expect(v.showWebstreamr, isFalse);
     expect(v.showLists, isFalse);
     expect(v.showDataCategory, isFalse);
@@ -87,7 +88,7 @@ void main() {
     expect(v.showMdblist, isFalse);
 
     final ids = settingsCategories(v).map((c) => c.id).toSet();
-    expect(ids.contains(SettingsCategoryId.sources), isFalse);
+    expect(ids.contains(SettingsCategoryId.sources), isTrue);
     expect(ids.contains(SettingsCategoryId.webstreamr), isFalse);
     expect(ids.contains(SettingsCategoryId.lists), isFalse);
     expect(ids.contains(SettingsCategoryId.data), isFalse);
@@ -127,7 +128,7 @@ void main() {
     expect(v.playSourceTorrent, isTrue);
     expect(v.playSourceStremio, isFalse);
     expect(v.playSourceNuvio, isTrue);
-    expect(v.showSourcesCategory, isFalse);
+    expect(v.showSourcesCategory, isTrue);
     expect(v.showDebrid, isFalse);
 
     expect(await PlaySourceEffective.torrent(service), isTrue);
@@ -135,7 +136,7 @@ void main() {
     expect(await PlaySourceEffective.nuvio(service), isTrue);
   });
 
-  test('Android TV paired + offline keeps play sources; hub stays lean',
+  test('Android TV paired + offline keeps play sources; Sources on',
       () async {
     PlatformPlayback.override = PlaybackProfile.androidTv;
     SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
@@ -161,7 +162,7 @@ void main() {
     expect(v.playSourceTorrent, isTrue);
     expect(v.playSourceStremio, isTrue);
     expect(v.playSourceNuvio, isTrue);
-    expect(v.showSourcesCategory, isFalse);
+    expect(v.showSourcesCategory, isTrue);
     expect(v.showDebrid, isFalse);
 
     expect(await service.isPlaySourceTorrentStored(), isTrue);

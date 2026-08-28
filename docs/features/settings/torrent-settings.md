@@ -17,7 +17,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 - Set **sort preference** (e.g. seeders high to low)
 - Set **disk cache** size (1–16 GB) — oldest idle torrent files are deleted when over this cap; the title you are playing is never removed — on **TV**, focus the slider and use **Left/Right**
 - Set **connection limit** for the torrent engine — same D-pad nudge on **TV**
-- Install **Stremio** / **Nuvio** addons, **Forja** manifest packs, and configure Jackett / Prowlarr when those play sources are on (**Settings → Sources** is never on Android TV — use phone/desktop or cloud sync)
+- Install **Stremio** / **Nuvio** addons, **Forja** manifest packs, and configure Jackett / Prowlarr when those play sources are on
 - Manage **Forja plugins** — first open of Sources → Forja selects enabled plugins for the current media category (Movie on movies, TV on series); Anime / Drama plugins stay available from Filters → Category. Expand a pack and use tabs **Movie & TV** / **Anime** / **Drama** (one list at a time). **ForjaHQ Providers / Live / Catalog** auto-install on first launch and refresh when a remote version is newer; paste another `manifest.json` URL under **Add plugin** for community packs (same plugin id in two packs is refused). Use **Refresh** / **Remove** per pack. Scripts are cached per pack so packs do not overwrite each other. Each HTTP plugin keeps API bases, mirrors, proxies, and keys in a **SPECS** block inside its script (not in the pack manifest). The manifest stays identity/routing (`id`, `entry`, `types`, `hosts`, …); a small `config` bag remains only when one script serves multiple plugins (e.g. anime server lists, hop decrypt names) or a live catalog needs `providerId`. **Admin → Providers** remote JSON can still overlay `engine.<pluginId>` keys at runtime (nested maps merge; mirror lists replace) without reinstalling the pack. **Videasy** probes every [player.videasy.to](https://player.videasy.to) server (Yoru, Cypher, Breach, Neon, Vyse, Killjoy, Fade, Omen, Raze) and lists each hit as its own row. When a mirror only returns an HLS master, Forja expands it into 1080p / 720p / 480p rows (same card as Nuvio: title + episode + year, quality badges when the playlist has them).
 
 ## Tips
@@ -26,7 +26,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 - Disable providers you don’t use to speed up search. Rows still appear as each remaining provider returns — a slow one no longer holds the list empty.
 - Lower the disk cache size on phones or small SSDs if space is tight
 - Sort by seeders for fastest starts on [torrent playback](../playback/torrent-playback.md)
-- On **Android TV**, Sources / WebStreamr / Lists / Data & backup / Debrid stay hidden; configure server order and torrent tools on phone or desktop
+- On **Android TV**, **WebStreamr**, **Lists**, **Data & backup**, and **Debrid** stay hidden; **Server reliability** stays phone/desktop (admin). Configure torrents / Stremio / Nuvio / Forja under **Settings → Sources** on the TV the same as phone/desktop
 
 ## Related
 

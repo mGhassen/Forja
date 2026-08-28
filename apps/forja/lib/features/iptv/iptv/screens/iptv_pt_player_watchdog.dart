@@ -223,14 +223,14 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
 
   /// 12s Buffering + frozen paint ⇒ treat as dead.
   ///
-  /// MediaKit live: do not require empty cache — demuxer can stay full while
-  /// mediacodec_embed holds the last frame. Exo / VOD still need weak cache
-  /// so a normal refill with a healthy cushion is not forced to reopen.
+  /// Stall ON (Xtream Auto): ignore healthy demuxer — VO can freeze with a
+  /// full cushion on ATV MediaKit.
+  /// Stall OFF (Stalker Auto): healthy cushion still blocks the hard wall.
   bool get _bufferingHardWall {
     final since = _s._bufferingSince;
     if (since == null) return false;
     if (_playheadRecentlyMoved) return false;
-    if (!_mediaKitLiveProfile &&
+    if ((!_mediaKitLiveProfile || !_stallReopenRecovery) &&
         _s._cacheAheadSecs >= _IptvPtPlayerScreenState._minHealthyCacheSecs) {
       return false;
     }
@@ -296,10 +296,17 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
     if (!_bufferedRecovery) return false;
     if (_stallWithoutPlayhead) return false;
     if (_bufferingHardWall) return false;
-    // MediaKit live: demuxer cushion ≠ painting. Require a recent playhead /
-    // estimated-vf-fps pulse (Stalker / TS playhead often sits at 0).
+    // MediaKit live + stall ON: paint/playhead only (VO freeze with full cache).
+    // Stall OFF (Stalker Auto): healthy demuxer still counts — playhead often
+    // sits at 0 while TS paints; ignoring cache made Auto feel like stall ON.
     if (_mediaKitLiveProfile) {
-      return _playheadRecentlyMoved;
+      if (_playheadRecentlyMoved) return true;
+      if (!_stallReopenRecovery &&
+          _s._cacheAheadSecs >=
+              _IptvPtPlayerScreenState._minHealthyCacheSecs) {
+        return true;
+      }
+      return false;
     }
     if (_s._cacheAheadSecs >= _IptvPtPlayerScreenState._minHealthyCacheSecs) {
       return true;
@@ -399,9 +406,9 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
         }
       } else if (_s._userPlayWhenReady && _s._playing) {
         // Detector 2b: MediaKit live paint stall while still "playing".
-        // Fires on empty-cache underrun AND on VO freeze with a full demuxer
-        // cushion (ATV mediacodec_embed holds last frame; cache stays ~30s).
-        // Alive signal is estimated-vf-fps / position — not feed or cache.
+        // Stall ON: also reopen on VO freeze with a full demuxer cushion.
+        // Stall OFF (Stalker Auto): only empty-cache underrun — do not wipe a
+        // healthy cushion when playhead sits at 0.
         if (_playheadRecentlyMoved) {
           _s._livePaintMissStreak = 0;
           return;
@@ -414,6 +421,10 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
             final empty =
                 _s._cacheAheadSecs <
                 _IptvPtPlayerScreenState._minHealthyCacheSecs;
+            if (!empty && !_stallReopenRecovery) {
+              _logHealthyHold('paint idle, cache hold');
+              return;
+            }
             _triggerRecovery(
               reason: empty
                   ? 'live underrun, cache empty'
@@ -433,12 +444,12 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
           _s._readyNotPlayingSince != null) {
         final pausedFor = now.difference(_s._readyNotPlayingSince!);
         if (_livePlaybackProfile && _bufferedRecovery) {
-          // MediaKit live: healthy demuxer alone is not "working" (VO freeze).
           if (_streamWorking) {
             if (!_s._buffering) _logHealthyHold('self-pause');
             return;
           }
-          if (!_mediaKitLiveProfile &&
+          // Stall OFF: healthy demuxer still holds (MediaKit Stalker included).
+          if (!_stallReopenRecovery &&
               _s._cacheAheadSecs >=
                   _IptvPtPlayerScreenState._minHealthyCacheSecs) {
             if (!_s._buffering) _logHealthyHold('self-pause');

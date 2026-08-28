@@ -8,8 +8,8 @@ import 'package:rust/rust.dart';
 ///
 /// VOD tabs ([BootNeeds.vodNavIds]) gate movie/series Settings the same way boot
 /// gates engines. IPTV-only / Live-only profiles keep Profile, Playback (IPTV +
-/// player), Navigation, About. Android TV also hides Sources, WebStreamr, Lists,
-/// and Data & backup (lean leanback Settings). WebStreamr Settings is admin-only.
+/// player), Navigation, About. Android TV hides WebStreamr, Lists, and Data &
+/// backup (lean leanback Settings). WebStreamr Settings is admin-only.
 class SettingsVisibility {
   const SettingsVisibility({
     required this.playSourceTorrent,
@@ -59,7 +59,7 @@ class SettingsVisibility {
       playSourceTorrent &&
       PlatformPlayback.capabilities.builtinTorrentSearch;
 
-  /// Nuvio scrapers (own play source). Settings Sources hub stays hidden on ATV.
+  /// Nuvio scrapers (own play source).
   bool get showNuvio => vodTab && playSourceNuvio;
 
   /// Forja plugins (Sources → Forja).
@@ -71,17 +71,16 @@ class SettingsVisibility {
 
   /// Settings → Sources hub tile (torrent / Stremio / Nuvio / server reliability).
   ///
-  /// Never on Android TV — phone/desktop only. Torrent / Stremio / Nuvio stay
-  /// gated by [resolve] platform caps as well.
+  /// Torrent / Stremio / Nuvio stay gated by [resolve] platform caps as well.
+  /// Server reliability ([showProviderScoring]) stays admin + phone/desktop.
   bool get showSourcesCategory =>
-      !_isAndroidTv &&
-      ((vodTab &&
-              (playSourceTorrent ||
-                  playSourceStremio ||
-                  playSourceNuvio ||
-                  playSourceEngine ||
-                  playSourceWebstreaming)) ||
-          liveMatchesNav);
+      (vodTab &&
+          (playSourceTorrent ||
+              playSourceStremio ||
+              playSourceNuvio ||
+              playSourceEngine ||
+              playSourceWebstreaming)) ||
+      liveMatchesNav;
 
   /// Debrid serves torrent + Stremio hashes (+ Nuvio magnets).
   /// Lean Android TV Settings keep Debrid off (desktop relay only).

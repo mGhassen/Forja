@@ -122,9 +122,10 @@ class SettingsService {
   static const String _iptvLiveMaxHeightKey = 'iptv_live_max_height';
   /// IPTV live auto-recovery: `auto` | `buffered` | `stall` | `classic`.
   static const String _iptvLiveRecoveryModeKey = 'iptv_live_recovery_mode';
-  /// One-shot: old default `stall` (and unset) → `auto` for all installs.
+  /// One-shot: old defaults (`stall` / unset / `buffered`) → `auto`.
+  /// v2 also covers installs that v1 left on `buffered` after marking migrated.
   static const String _iptvLiveRecoveryMigratedToAutoKey =
-      'iptv_live_recovery_migrated_auto_v1';
+      'iptv_live_recovery_migrated_auto_v2';
   /// Android TV MediaKit: ask the panel for a refresh matching stream fps
   /// (issue 150). Default on; Settings toggle is admin-only.
   static const String _iptvMatchDisplayRefreshKey = 'iptv_match_display_refresh';
@@ -439,9 +440,10 @@ class SettingsService {
 
   /// IPTV live auto-recovery. Default [iptvLiveRecoveryAuto].
   ///
-  /// One-shot upgrade: previous default was `stall`. Promote unset / `stall`
-  /// to `auto` once so every install gets source-aware stall management.
-  /// After that, an explicit Stable + stall choice is kept.
+  /// One-shot upgrade to Auto: unset, old default `stall`, and `buffered`
+  /// (Stable without stall — often from turning stall off under the old UI).
+  /// Classic is left alone. After migrate, an explicit Stable / stall choice
+  /// is kept.
   Future<String> getIptvLiveRecoveryMode() async {
     await _migrateIptvLiveRecoveryToAutoIfNeeded();
     return normalizeIptvLiveRecoveryMode(
@@ -456,7 +458,8 @@ class SettingsService {
     final raw = (await kvGetString(_iptvLiveRecoveryModeKey) ?? '')
         .trim()
         .toLowerCase();
-    if (raw.isEmpty || raw == iptvLiveRecoveryStall) {
+    // Promote unset / stall / buffered. Leave Classic and Auto alone.
+    if (raw != iptvLiveRecoveryClassic && raw != iptvLiveRecoveryAuto) {
       await kvSetString(_iptvLiveRecoveryModeKey, iptvLiveRecoveryAuto);
     }
     await kvSetBool(_iptvLiveRecoveryMigratedToAutoKey, true);

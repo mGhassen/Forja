@@ -745,6 +745,10 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       _liveRecoveryModeSetting,
       liveSourceKind: kind?.name,
     );
+    debugPrint(
+      '[IPTV Player] live recovery kind=${kind?.name ?? "null"} '
+      'setting=$_liveRecoveryModeSetting effective=$_liveRecoveryMode',
+    );
   }
 
   /// Last decoded height / bitrate — cache tiers and proxy queue (ATV live).
@@ -1019,10 +1023,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _muted = prefs.volume == 0;
     _liveRecoveryModeSetting = prefs.liveRecoveryMode;
     _applyLiveRecoveryModeForCurrentSource();
-    debugPrint(
-      '[IPTV Player] live recovery setting=$_liveRecoveryModeSetting '
-      'effective=$_liveRecoveryMode',
-    );
     try {
       final subPrefs = await ref.read(playerSubtitlePrefsProvider(true).future);
       if (!_disposed && mounted) {
