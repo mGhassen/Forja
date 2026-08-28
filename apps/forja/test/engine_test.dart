@@ -23,6 +23,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// stub client (always 400) is not used.
 Future<String> loadForjaHqFile(String relativePath) async {
   final manifestUrl = EngineService.officialManifestUrl;
+  final scriptUrl =
+      PluginRegistry.instance.resolveScriptUrl(manifestUrl, relativePath);
+  if (!scriptUrl.startsWith('http://') && !scriptUrl.startsWith('https://')) {
+    final file = File(scriptUrl);
+    if (!file.existsSync()) {
+      throw StateError('ForjaHQ pack file missing: ${file.path}');
+    }
+    return file.readAsStringSync();
+  }
   final slash = manifestUrl.lastIndexOf('/');
   if (slash < 0) {
     throw StateError('invalid FORJA_HQ_MANIFEST_URL: $manifestUrl');
@@ -1504,7 +1513,23 @@ void main() {
         ),
       );
       expect(src, contains('decryptCipher'));
-      expect(src, contains('ctx.host(\'vidnest\')'));
+      expect(src.contains('ctx.host'), isFalse);
+    });
+
+    test('HTTP provider plugins never call ctx.host (no WebView sniff fallback)', () async {
+      final manifest =
+          jsonDecode(await loadForjaHqFile('manifest.json')) as Map<String, dynamic>;
+      final plugins = (manifest['plugins'] as List).cast<Map<String, dynamic>>();
+      var checked = 0;
+      for (final plugin in plugins) {
+        final entry = (plugin['entry'] ?? '').toString();
+        if (!entry.startsWith('providers/') || entry.contains('/hops/')) continue;
+        if ((plugin['kind'] ?? 'http').toString() != 'http') continue;
+        final src = await loadForjaHqFile(entry);
+        expect(src.contains('ctx.host'), isFalse, reason: entry);
+        checked++;
+      }
+      expect(checked, greaterThan(0));
     });
 
     test('hop scripts export extract(ctx) and use ctx.url', () async {

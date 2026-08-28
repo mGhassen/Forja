@@ -220,8 +220,6 @@ abstract final class EngineAnimeIds {
     }
   }
 
-  static Future<int?> anilistFromMal(int malId) => _anilistFromMal(malId);
-
   static Future<int?> _anilistFromMal(int malId) async {
     try {
       final uri = Uri.parse('$armBase/ids').replace(

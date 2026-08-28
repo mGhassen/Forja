@@ -1,6 +1,6 @@
 function extract(ctx) {
   var cfg = ctx.config || {};
-  var domain = cfg.base || 'https://4khdhub.link';
+  var domain = cfg.base || 'https://4khdhub.one';
   var domainsUrl =
     cfg.domainsUrl ||
     'https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json';
@@ -56,6 +56,61 @@ function extract(ctx) {
       .replace(/[^a-z0-9\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  function stripLeadingThe(title) {
+    return String(title || '').replace(/^the\s+/, '').trim();
+  }
+
+  function titleDistance(cardTitle, name) {
+    var left = normalizeTitle(name);
+    var right = normalizeTitle(cardTitle);
+    var strict = levenshtein(left, right);
+    var relaxed = levenshtein(stripLeadingThe(left), stripLeadingThe(right));
+    return {
+      best: Math.min(strict, relaxed),
+      strict: strict,
+      relaxed: relaxed,
+    };
+  }
+
+  function cardFormats(card, $) {
+    var formats = [];
+    card.find('.movie-card-format').each(function () {
+      formats.push($(this).text().trim());
+    });
+    return formats;
+  }
+
+  function hasCardFormat(formats, target) {
+    for (var i = 0; i < formats.length; i++) {
+      if (formats[i] === target) return true;
+    }
+    return false;
+  }
+
+  function isDocumentaryCard(formats) {
+    for (var i = 0; i < formats.length; i++) {
+      if (/^documentary$/i.test(formats[i])) return true;
+    }
+    return false;
+  }
+
+  function searchQueries(name, year) {
+    var queries = [name];
+    if (year) queries.push(name + ' ' + year);
+    var stripped = String(name || '').replace(/^the\s+/i, '').trim();
+    if (stripped && stripped !== name) {
+      queries.push(stripped);
+      if (year) queries.push(stripped + ' ' + year);
+    }
+    var seen = {};
+    return queries.filter(function (q) {
+      var key = q.toLowerCase();
+      if (seen[key]) return false;
+      seen[key] = true;
+      return !!q;
+    });
   }
 
   function levenshtein(a, b) {
@@ -128,48 +183,75 @@ function extract(ctx) {
       });
   }
 
+  function resolveHref(href, baseUrl) {
+    if (!href) return null;
+    return /^https?:/i.test(href) ? href : baseUrl + (href.charAt(0) === '/' ? '' : '/') + href;
+  }
+
   function fetchPageUrl(name, year) {
     return latestDomain().then(function (baseUrl) {
-      return fetchText(baseUrl + '/?s=' + encodeURIComponent(name)).then(function (html) {
-        var articleMatch = findArticleMatch(html, baseUrl, name);
-        if (articleMatch) return articleMatch;
-        return findMovieCardMatch(html, baseUrl, name, year);
-      });
+      var queries = searchQueries(name, year);
+      function tryQuery(index) {
+        if (index >= queries.length) return null;
+        return fetchText(baseUrl + '/?s=' + encodeURIComponent(queries[index])).then(function (html) {
+          var articleMatch = findArticleMatch(html, baseUrl, name, year);
+          if (articleMatch) return articleMatch;
+          var cardMatch = findMovieCardMatch(html, baseUrl, name, year);
+          if (cardMatch) return cardMatch;
+          return tryQuery(index + 1);
+        });
+      }
+      return tryQuery(0);
     });
   }
 
   function findMovieCardMatch(html, baseUrl, name, year) {
     var $ = ctx.html(html);
     var targetType = isTv ? 'Series' : 'Movies';
-    var matches = [];
+    var best = null;
+    var bestScore = 999;
     $('.movie-card').each(function () {
       var card = $(this);
-      if (!card.find('.movie-card-format:contains("' + targetType + '")').length) return;
+      var formats = cardFormats(card, $);
+      if (!hasCardFormat(formats, targetType)) return;
+      if (!isTv && isDocumentaryCard(formats)) return;
       var metaYear = parseInt(card.find('.movie-card-meta').text(), 10);
-      if (!metaYear || Math.abs(metaYear - year) > 1) return;
+      if (!metaYear || !year) return;
+      var yearDiff = Math.abs(metaYear - year);
+      if (yearDiff > 1) return;
       var cardTitle = card.find('.movie-card-title').text().trim();
-      if (levenshtein(normalizeTitle(cardTitle), normalizeTitle(name)) >= 4) return;
-      var href = card.attr('href') || card.find('a').attr('href') || '';
-      if (href) matches.push(/^https?:/i.test(href) ? href : baseUrl + (href.charAt(0) === '/' ? '' : '/') + href);
+      var dist = titleDistance(cardTitle, name);
+      if (dist.best >= 4) return;
+      if (dist.strict >= 4 && yearDiff > 0) return;
+      var score = dist.best * 10 + yearDiff;
+      if (score >= bestScore) return;
+      var href = resolveHref(card.attr('href') || card.find('a').attr('href') || '', baseUrl);
+      if (!href) return;
+      bestScore = score;
+      best = href;
     });
-    return matches[0] || null;
+    return best;
   }
 
-  function findArticleMatch(html, baseUrl, name) {
+  function findArticleMatch(html, baseUrl, name, year) {
     var $ = ctx.html(html);
     var best = null;
-    var bestDist = 999;
+    var bestScore = 999;
     $('article h2 a').each(function () {
       var title = $(this).text().trim();
-      var dist = levenshtein(normalizeTitle(title), normalizeTitle(name));
-      if (dist >= 4) return;
-      if (dist < bestDist) {
-        bestDist = dist;
-        var href = $(this).attr('href') || '';
-        if (href) {
-          best = /^https?:/i.test(href) ? href : baseUrl + (href.charAt(0) === '/' ? '' : '/') + href;
-        }
-      }
+      var dist = titleDistance(title, name);
+      if (dist.best >= 4) return;
+      var yearDiff = 0;
+      var yearMatch = title.match(/\((\d{4})\)/);
+      if (year && yearMatch) yearDiff = Math.abs(parseInt(yearMatch[1], 10) - year);
+      if (yearDiff > 1) return;
+      if (dist.strict >= 4 && yearDiff > 0) return;
+      var score = dist.best * 10 + yearDiff;
+      if (score >= bestScore) return;
+      var href = resolveHref($(this).attr('href') || '', baseUrl);
+      if (!href) return;
+      bestScore = score;
+      best = href;
     });
     return best;
   }

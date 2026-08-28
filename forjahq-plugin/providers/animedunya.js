@@ -110,10 +110,10 @@ function extract(ctx) {
 
   return resolveMal()
     .then(function (mal) {
-      if (!mal) return ctx.host('animedunya');
+      if (!mal) return [];
       return fetchText(base + '/en/play/' + mal + '/' + epNum).then(function (html) {
         var streamData = extractStream(html);
-        if (!streamData || !streamData.source) return ctx.host('animedunya');
+        if (!streamData || !streamData.source) return [];
         var subtitles = (streamData.subtitles || []).map(function (s) {
           return { url: s.src, lang: s.srclang || s.label || 'en' };
         });
@@ -129,6 +129,6 @@ function extract(ctx) {
       });
     })
     .catch(function () {
-      return ctx.host('animedunya');
+      return [];
     });
 }

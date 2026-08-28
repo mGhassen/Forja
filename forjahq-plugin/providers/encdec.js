@@ -3,8 +3,7 @@ function extract(ctx) {
   var origin = cfg.origin;
   var enc = cfg.enc || 'https://enc-dec.app/api';
   var slug = cfg.slug;
-  var hostId = cfg.hostId;
-  if (!origin || !slug) return hostId ? ctx.host(hostId) : Promise.resolve([]);
+  if (!origin || !slug) return Promise.resolve([]);
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
   var tmdbId = String(ctx.tmdbId);
@@ -46,7 +45,7 @@ function extract(ctx) {
       }),
     ).then(function (groups) {
       var out = [].concat.apply([], groups);
-      return out.length ? out : hostId ? ctx.host(hostId) : [];
+      return out.length ? out : [];
     });
   }
 
@@ -66,10 +65,10 @@ function extract(ctx) {
         if (embeds.length) {
           return Promise.all(embeds.slice(0, 6).map(function (u) { return ctx.hop(u); })).then(function (g) {
             var out = [].concat.apply([], g);
-            return out.length ? out : hostId ? ctx.host(hostId) : [];
+            return out.length ? out : [];
           });
         }
-        return hostId ? ctx.host(hostId) : [];
+        return [];
       }
       return ctx
         .fetch(enc + '/enc-' + slug + '?text=' + encodeURIComponent(text), { headers: headers })
@@ -81,6 +80,6 @@ function extract(ctx) {
         });
     })
     .catch(function () {
-      return hostId ? ctx.host(hostId) : [];
+      return [];
     });
 }

@@ -175,20 +175,20 @@ function extract(ctx) {
 
   return resolveMal()
     .then(function (mal) {
-      if (!mal) return ctx.host('anibd');
+      if (!mal) return [];
       return resolveAnilist(mal).then(function (alId) {
-        if (!alId) return ctx.host('anibd');
+        if (!alId) return [];
         return streamsFor(alId, 'sub', epNum)
           .then(function (sub) {
             if (sub.length) return sub;
             return streamsFor(alId, 'dub', epNum);
           })
           .then(function (rows) {
-            return rows.length ? rows : ctx.host('anibd');
+            return rows.length ? rows : [];
           });
       });
     })
     .catch(function () {
-      return ctx.host('anibd');
+      return [];
     });
 }

@@ -199,7 +199,7 @@ function extract(ctx) {
   if (isAnime) {
     return animeExtract().then(function (out) {
       if (out.length) return out;
-      return ctx.host('vidnest');
+      return [];
     });
   }
 
@@ -246,6 +246,6 @@ function extract(ctx) {
       });
       return out;
     }
-    return ctx.host('vidnest');
+    return [];
   });
 }

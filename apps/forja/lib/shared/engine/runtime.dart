@@ -562,7 +562,7 @@ class EngineRuntime {
     Movie? movie,
     String? url,
     Duration timeout = const Duration(seconds: 30),
-    bool allowHostFallback = true,
+    bool allowHostFallback = false,
     bool Function()? isCancelled,
   }) {
     return _jsLock.run(() async {
@@ -1135,7 +1135,7 @@ class EngineRuntime {
         url: url,
         movie: savedMovie,
         timeout: const Duration(seconds: 20),
-        allowHostFallback: true,
+        allowHostFallback: false,
         isCancelled: () => gen != _fetchGeneration,
       );
     } catch (e) {

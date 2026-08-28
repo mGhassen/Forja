@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models.dart';
@@ -49,6 +50,32 @@ class PluginRegistry {
     final c = debugHttpClient;
     if (c != null) return c.get(uri);
     return http.get(uri);
+  }
+
+  static File? _asLocalFile(String url) {
+    final t = url.trim();
+    if (t.isEmpty) return null;
+    if (t.startsWith('file://')) return File.fromUri(Uri.parse(t));
+    if (t.startsWith('/')) return File(t);
+    if (Platform.isWindows && RegExp(r'^[A-Za-z]:\\').hasMatch(t)) {
+      return File(t);
+    }
+    return null;
+  }
+
+  Future<String> _fetchText(String url) async {
+    final file = _asLocalFile(url);
+    if (file != null) {
+      if (!await file.exists()) {
+        throw Exception('file not found: ${file.path}');
+      }
+      return file.readAsString();
+    }
+    final resp = await _httpGet(Uri.parse(url));
+    if (resp.statusCode != 200) {
+      throw Exception('HTTP ${resp.statusCode}');
+    }
+    return resp.body;
   }
 
   static bool isOfficialPack(String sourceUrl) =>
@@ -239,10 +266,15 @@ class PluginRegistry {
   }
 
   String resolveScriptUrl(String manifestUrl, String filename) {
-    final mu = Uri.parse(manifestUrl);
     if (filename.startsWith('http://') || filename.startsWith('https://')) {
       return filename;
     }
+    final manifestFile = _asLocalFile(manifestUrl);
+    if (manifestFile != null) {
+      final rel = filename.replaceAll('/', Platform.pathSeparator);
+      return '${manifestFile.parent.path}${Platform.pathSeparator}$rel';
+    }
+    final mu = Uri.parse(manifestUrl);
     final path = mu.path.endsWith('/')
         ? '${mu.path}$filename'
         : '${mu.path.substring(0, mu.path.lastIndexOf('/') + 1)}$filename';
@@ -304,9 +336,8 @@ class PluginRegistry {
 
   Future<void> _maybeRefreshOfficialIfNewer(EnginePack local) async {
     try {
-      final resp = await _httpGet(Uri.parse(officialManifestUrl));
-      if (resp.statusCode != 200) return;
-      final map = jsonDecode(resp.body);
+      final body = await _fetchText(officialManifestUrl);
+      final map = jsonDecode(body);
       if (map is! Map) return;
       final remoteVer = (map['version'] as String?)?.trim() ?? '';
       if (remoteVer.isEmpty) return;
@@ -343,11 +374,8 @@ class PluginRegistry {
 
   /// Transactional install: fetch all bodies, then write prefs.
   Future<EnginePack> install(String manifestUrl) async {
-    final resp = await _httpGet(Uri.parse(manifestUrl));
-    if (resp.statusCode != 200) {
-      throw Exception('manifest HTTP ${resp.statusCode}');
-    }
-    final map = jsonDecode(resp.body) as Map<String, dynamic>;
+    final body = await _fetchText(manifestUrl);
+    final map = jsonDecode(body) as Map<String, dynamic>;
     final schema = map['schema'];
     if (schema != null && schema != 1) {
       throw Exception('unsupported manifest schema: $schema');
@@ -395,23 +423,31 @@ class PluginRegistry {
     };
     for (final prelude in preludesNeeded) {
       final preludeUrl = resolveScriptUrl(manifestUrl, prelude);
-      final pr = await _httpGet(Uri.parse(preludeUrl));
-      if (pr.statusCode != 200 || pr.body.isEmpty) {
+      try {
+        final text = await _fetchText(preludeUrl);
+        if (text.isEmpty) {
+          missing.add('prelude:$prelude');
+          continue;
+        }
+        preludes[prelude] = text;
+      } catch (_) {
         missing.add('prelude:$prelude');
-        continue;
       }
-      preludes[prelude] = pr.body;
     }
     for (final plugin in pack.plugins) {
       if (plugin.entry.isEmpty) continue;
       if (!plugin.isHttp && !plugin.isHop) continue;
       final scriptUrl = resolveScriptUrl(manifestUrl, plugin.entry);
-      final sr = await _httpGet(Uri.parse(scriptUrl));
-      if (sr.statusCode != 200 || sr.body.isEmpty) {
+      try {
+        final text = await _fetchText(scriptUrl);
+        if (text.isEmpty) {
+          missing.add(plugin.id);
+          continue;
+        }
+        scripts[plugin.id] = text;
+      } catch (_) {
         missing.add(plugin.id);
-        continue;
       }
-      scripts[plugin.id] = sr.body;
     }
     if (missing.isNotEmpty) {
       throw Exception(

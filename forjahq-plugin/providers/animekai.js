@@ -82,7 +82,7 @@ function extract(ctx) {
     });
   }
 
-  if (!title && !ctx.tmdbId) return ctx.host('animekai');
+  if (!title && !ctx.tmdbId) return [];
 
   return lookup()
     .then(function (db) {
@@ -103,7 +103,7 @@ function extract(ctx) {
             })
           : Promise.resolve(null);
       return start.then(function (epToken) {
-        if (!epToken) return ctx.host('animekai');
+        if (!epToken) return [];
         return encrypt(epToken)
           .then(function (encToken) {
             return getJson(AJAX + '/links/list?token=' + epToken + '&_=' + encToken);
@@ -154,12 +154,12 @@ function extract(ctx) {
             });
             return Promise.all(tasks).then(function (groups) {
               var out = [].concat.apply([], groups);
-              return out.length ? out : ctx.host('animekai');
+              return out.length ? out : [];
             });
           });
       });
     })
     .catch(function () {
-      return ctx.host('animekai');
+      return [];
     });
 }

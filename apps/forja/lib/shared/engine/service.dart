@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/anime/catalog/miruro_pipe_session.dart';
 import 'package:forja/shared/engine/anime_ids.dart';
 import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/engine/host_resolver.dart';
@@ -11,7 +10,6 @@ import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime.dart';
 import 'package:forja/shared/extractors/embed_extract_profiles.dart';
-import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:rust/rust.dart';
@@ -286,7 +284,7 @@ class EngineService {
     int? anilistId,
     int? kisskhId,
     int? kisskhEpisodeId,
-    bool allowHostFallback = true,
+    bool allowHostFallback = false,
     EngineRuntime? runtime,
   }) async {
     final gen = _extractGeneration;
@@ -428,8 +426,7 @@ class EngineService {
       year: year,
       config: config,
       movie: movie,
-      // HTTP miss → ctx.host sniff (90s VidFast/VidRock). Default 30s
-      // returned [] while HLS was already on the wire.
+      // HTTP plugins: extract(ctx) only — no host / WebView / Dart extract fallbacks.
       timeout:
           EmbedExtractProfiles.resolve(active.id).timeout +
           const Duration(seconds: 30),
@@ -441,52 +438,6 @@ class EngineService {
       return null;
     }
     var rawList = raw;
-    // JS path under parallel All-walk often hangs on stalled HTTP bodies.
-    // Dart VideasyExtractor has hard per-fetch timeouts — use it when JS is empty.
-    if (rawList.isEmpty &&
-        active.id == 'videasy' &&
-        movie != null &&
-        gen == _extractGeneration) {
-      debugPrint('[engine] videasy JS empty — dart API fallback');
-      try {
-        final extracted = await VideasyExtractor(onLog: debugPrint).extract(
-          tmdbId: tmdbId,
-          isMovie: mediaType != 'tv',
-          title: title ?? movie.title,
-          year: VideasyExtractor.yearFromReleaseDate(
-            year != null ? '$year-01-01' : movie.releaseDate,
-          ),
-          imdbId: animeIds?.imdbId ?? movie.imdbId,
-          season: mediaType == 'tv' ? season : null,
-          episode: mediaType == 'tv' ? episode : null,
-          totalSeasons: mediaType == 'tv' ? movie.numberOfSeasons : null,
-          isCancelled: () => gen != _extractGeneration,
-        );
-        if (extracted != null && extracted.sources != null) {
-          rawList = [
-            for (final s in extracted.sources!)
-              if (s.url.trim().isNotEmpty)
-                {
-                  'url': s.url,
-                  'name': s.title.isNotEmpty ? s.title : 'Videasy',
-                  'quality': s.title,
-                  if (s.headers != null && s.headers!.isNotEmpty)
-                    'headers': s.headers,
-                },
-          ];
-        }
-      } catch (e) {
-        debugPrint('[engine] videasy dart fallback failed: $e');
-      }
-    }
-    if (rawList.isEmpty && gen == _extractGeneration) {
-      rawList = await _animeEngineFallbacks(
-        pluginId: active.id,
-        animeIds: animeIds,
-        episode: animeIds?.mappedEpisode ?? episode ?? 1,
-        isCancelled: () => gen != _extractGeneration,
-      );
-    }
     if (gen != _extractGeneration) {
       debugPrint('[engine] ${active.id} cancelled after ${sw.elapsedMilliseconds}ms');
       return null;
@@ -809,7 +760,7 @@ class EngineService {
     int? anilistId,
     int? kisskhId,
     int? kisskhEpisodeId,
-    bool allowHostFallback = true,
+    bool allowHostFallback = false,
   }) async {
     // RFC-064: Forja EngineJS on tokio (true parallel). Null → flutter_js fork
     // only when Rust is unsupported — never after cancelPending gen bump
@@ -880,7 +831,7 @@ class EngineService {
     int? anilistId,
     int? kisskhId,
     int? kisskhEpisodeId,
-    bool allowHostFallback = true,
+    bool allowHostFallback = false,
   }) async {
     final gen = _extractGeneration;
     final packs = await listPacks();
@@ -1086,50 +1037,6 @@ class EngineService {
         debugPrint('[engine] ${plugin.id} host fallback failed: $e');
       }
     }
-    if (effectiveRaw.isEmpty &&
-        plugin.id == 'videasy' &&
-        movie != null &&
-        gen == _extractGeneration) {
-      debugPrint('[engine] videasy enginejs empty — dart API fallback');
-      try {
-        final extracted = await VideasyExtractor(onLog: debugPrint).extract(
-          tmdbId: tmdbId,
-          isMovie: mediaType != 'tv',
-          title: title ?? movie.title,
-          year: VideasyExtractor.yearFromReleaseDate(
-            year != null ? '$year-01-01' : movie.releaseDate,
-          ),
-          imdbId: animeIds?.imdbId ?? movie.imdbId,
-          season: mediaType == 'tv' ? season : null,
-          episode: mediaType == 'tv' ? episode : null,
-          totalSeasons: mediaType == 'tv' ? movie.numberOfSeasons : null,
-          isCancelled: () => gen != _extractGeneration,
-        );
-        if (extracted?.sources != null) {
-          effectiveRaw = [
-            for (final s in extracted!.sources!)
-              if (s.url.trim().isNotEmpty)
-                {
-                  'url': s.url,
-                  'name': s.title.isNotEmpty ? s.title : 'Videasy',
-                  'quality': s.title,
-                  if (s.headers != null && s.headers!.isNotEmpty)
-                    'headers': s.headers,
-                },
-          ];
-        }
-      } catch (e) {
-        debugPrint('[engine] videasy dart fallback failed: $e');
-      }
-    }
-    if (effectiveRaw.isEmpty && gen == _extractGeneration) {
-      effectiveRaw = await _animeEngineFallbacks(
-        pluginId: plugin.id,
-        animeIds: animeIds,
-        episode: animeIds?.mappedEpisode ?? episode ?? 1,
-        isCancelled: () => gen != _extractGeneration,
-      );
-    }
     if (gen != _extractGeneration) return null;
 
     final streams = <Map<String, dynamic>>[];
@@ -1170,136 +1077,5 @@ class EngineService {
   static String _tmdbResolveMediaType(String mediaType) {
     if (mediaType == 'anime' || mediaType == 'drama') return 'tv';
     return mediaType;
-  }
-
-  /// When JS HTTP is empty (CF / wrong paths), reuse Rust+WebView anime extractors.
-  Future<List<Map<String, dynamic>>> _animeEngineFallbacks({
-    required String pluginId,
-    EngineAnimeIdBundle? animeIds,
-    required int episode,
-    required bool Function() isCancelled,
-  }) async {
-    var al = animeIds?.anilistId ?? 0;
-    if (al <= 0 && (animeIds?.malId ?? 0) > 0) {
-      al = await EngineAnimeIds.anilistFromMal(animeIds!.malId!) ?? 0;
-    }
-    if (al <= 0 || isCancelled()) return const [];
-
-    if (pluginId == 'animepahe') {
-      debugPrint('[engine] animepahe JS empty — miruro kiwi CF pipe fallback');
-      final out = <Map<String, dynamic>>[];
-      for (final cat in ['sub', 'dub']) {
-        if (isCancelled()) return out;
-        try {
-          final resolved = await miruroResolveWithCfFallback(
-            anilistId: al,
-            episodeNumber: episode,
-            category: cat,
-            provider: 'kiwi',
-            fetchPipeViaWebView: MiruroPipeSession.instance.get,
-          );
-          final label = miruroUpstreamSources['kiwi'] ?? 'AnimePahe';
-          for (final s in resolved.streams) {
-            if (s.url.trim().isEmpty) continue;
-            out.add({
-              'url': s.url,
-              'name': '$label ${cat.toUpperCase()}',
-              'language': cat == 'dub' ? 'Dub' : 'Sub',
-              'headers': {
-                if (s.referer.isNotEmpty) 'Referer': s.referer,
-                if (s.origin.isNotEmpty) 'Origin': s.origin,
-              },
-            });
-          }
-        } catch (e) {
-          debugPrint('[engine] animepahe dart fallback $cat: $e');
-        }
-      }
-      return out;
-    }
-
-    if (pluginId == 'miruro') {
-      debugPrint('[engine] miruro JS empty — dart CF pipe fallback');
-      const providers = ['bee', 'kiwi', 'zoro', 'bonk', 'ally', 'moo', 'hop', 'bun'];
-      final tasks = <Future<List<Map<String, dynamic>>>>[];
-      for (final cat in ['sub', 'dub']) {
-        for (final prov in providers) {
-          tasks.add(() async {
-            if (isCancelled()) return const <Map<String, dynamic>>[];
-            try {
-              final resolved = await miruroResolveWithCfFallback(
-                anilistId: al,
-                episodeNumber: episode,
-                category: cat,
-                provider: prov,
-                fetchPipeViaWebView: MiruroPipeSession.instance.get,
-              );
-              final label = miruroUpstreamSources[prov] ?? prov;
-              return [
-                for (final s in resolved.streams)
-                  if (s.url.trim().isNotEmpty)
-                    {
-                      'url': s.url,
-                      'name': 'Miruro $label ${cat.toUpperCase()}',
-                      'language': cat == 'dub' ? 'Dub' : 'Sub',
-                      'headers': {
-                        if (s.referer.isNotEmpty) 'Referer': s.referer,
-                        if (s.origin.isNotEmpty) 'Origin': s.origin,
-                      },
-                    },
-              ];
-            } catch (e) {
-              debugPrint('[engine] miruro dart fallback $prov/$cat: $e');
-              return const <Map<String, dynamic>>[];
-            }
-          }());
-        }
-      }
-      final groups = await Future.wait(tasks);
-      final seen = <String>{};
-      final out = <Map<String, dynamic>>[];
-      for (final rows in groups) {
-        for (final r in rows) {
-          final u = (r['url'] ?? '').toString();
-          if (u.isEmpty || !seen.add(u)) continue;
-          out.add(r);
-        }
-      }
-      return out;
-    }
-
-    if (pluginId == 'vidnest-anime') {
-      debugPrint('[engine] vidnest-anime JS empty — dart API fallback');
-      final out = <Map<String, dynamic>>[];
-      for (final prov in vidnestKnownProviders) {
-        for (final cat in ['sub', 'dub']) {
-          if (isCancelled()) return out;
-          try {
-            final res = await vidnestExtractWithProvider(
-              anilistId: al,
-              episodeNumber: episode,
-              category: cat,
-              provider: prov,
-            );
-            if (res == null || res.url.trim().isEmpty) continue;
-            out.add({
-              'url': res.url,
-              'name':
-                  '${vidnestUpstreamLabels[prov] ?? prov} (${cat.toUpperCase()})',
-              'language': cat == 'dub' ? 'Dub' : 'Sub',
-              'headers': {
-                if (res.referer.isNotEmpty) 'Referer': res.referer,
-                if (res.origin.isNotEmpty) 'Origin': res.origin,
-              },
-            });
-          } catch (e) {
-            debugPrint('[engine] vidnest-anime dart fallback $prov/$cat: $e');
-          }
-        }
-      }
-      return out;
-    }
-
-    return const [];
   }
 }

@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq",
   "name": "ForjaHQ",
-  "version": "1.5.14",
+  "version": "1.5.15",
   "plugins": [
     {
       "id": "videasy",
@@ -500,7 +500,7 @@
       ],
       "kind": "http",
       "config": {
-        "base": "https://4khdhub.link",
+        "base": "https://4khdhub.one",
         "name": "4KHDHub",
         "domainsUrl": "https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json",
         "tmdbKey": "439c478a771f35c05022f9feabcca01c"

@@ -155,9 +155,9 @@ function extract(ctx) {
 
   return resolveMal()
     .then(function (mal) {
-      if (!mal) return ctx.host('senshi');
+      if (!mal) return [];
       return fetchEmbeds(mal, epNum).then(function (embeds) {
-        if (!embeds.length) return ctx.host('senshi');
+        if (!embeds.length) return [];
         return rowsFromEmbeds(embeds, 'sub').then(function (sub) {
           if (sub.length) return sub;
           return rowsFromEmbeds(embeds, 'dub').then(function (dub) {
@@ -168,9 +168,9 @@ function extract(ctx) {
       });
     })
     .then(function (rows) {
-      return rows && rows.length ? rows : ctx.host('senshi');
+      return rows && rows.length ? rows : [];
     })
     .catch(function () {
-      return ctx.host('senshi');
+      return [];
     });
 }

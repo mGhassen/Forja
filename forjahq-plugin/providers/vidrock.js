@@ -112,7 +112,7 @@ function extract(ctx) {
     });
   }
 
-  if (!aesKey) return ctx.host('vidrock');
+  if (!aesKey) return [];
 
   return ctx
     .fetch(origin.replace(/\/$/, '') + '/api/' + path, { headers: headers })
@@ -136,9 +136,9 @@ function extract(ctx) {
         seen[r.url] = true;
         out.push(r);
       });
-      return out.length ? out : ctx.host('vidrock');
+      return out.length ? out : [];
     })
     .catch(function () {
-      return ctx.host('vidrock');
+      return [];
     });
 }

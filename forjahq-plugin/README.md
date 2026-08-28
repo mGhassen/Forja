@@ -7,7 +7,15 @@ Official engine JS provider pack for [Forja](https://github.com/mGhassen/Forja) 
 1. Open **Settings → Sources → Forja**
 2. Paste the manifest URL (or use the built-in ForjaHQ URL on first launch)
 
-The URL is **`FORJA_HQ_MANIFEST_URL`** in repo-root `.env` (see `.env.example`) — required; the app does not bake a host. Example:
+The URL is **`FORJA_HQ_MANIFEST_URL`** in repo-root `.env` (see `.env.example`) — required; the app does not bake a host.
+
+**Local dev:** point at your checkout (absolute path or `file://`):
+
+```
+/Users/you/Forja/forjahq-plugin/manifest.json
+```
+
+**CI / release:** remote raw URL, e.g.:
 
 ```
 https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/manifest.json

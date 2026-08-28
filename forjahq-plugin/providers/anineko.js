@@ -202,9 +202,9 @@ function extract(ctx) {
       });
     })
     .then(function (rows) {
-      return rows && rows.length ? rows : ctx.host('anineko');
+      return rows && rows.length ? rows : [];
     })
     .catch(function () {
-      return ctx.host('anineko');
+      return [];
     });
 }

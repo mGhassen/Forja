@@ -230,9 +230,9 @@ function extract(ctx) {
       });
     })
     .then(function (rows) {
-      return rows && rows.length ? rows : ctx.host('animegg');
+      return rows && rows.length ? rows : [];
     })
     .catch(function () {
-      return ctx.host('animegg');
+      return [];
     });
 }

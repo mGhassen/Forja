@@ -80,7 +80,7 @@ function extract(ctx) {
 
   return malId()
     .then(function (mal) {
-      if (!mal) return ctx.host('2dhive');
+      if (!mal) return [];
       var referer = base + '/episode?anime=' + mal + '&ep_num=' + epNum;
       var mega = 'https://megaplay.buzz/stream/mal/' + mal + '/' + epNum + '/' + audio;
       return Promise.all([
@@ -133,11 +133,11 @@ function extract(ctx) {
           }),
         ).then(function (groups) {
           var out = rows.concat.apply(rows, groups || []);
-          return out.length ? out : ctx.host('2dhive');
+          return out.length ? out : [];
         });
       });
     })
     .catch(function () {
-      return ctx.host('2dhive');
+      return [];
     });
 }

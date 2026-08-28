@@ -68,15 +68,15 @@ function extract(ctx) {
     );
   }
 
-  if (!title) return ctx.host('kickassanime');
+  if (!title) return [];
 
   return search()
     .then(function (results) {
       var show = pick(results);
-      if (!show || !show.slug) return ctx.host('kickassanime');
+      if (!show || !show.slug) return [];
       return getJson(base + '/api/show/' + show.slug).then(function (info) {
         return Promise.resolve(episodeSlug(show.slug, info)).then(function (full) {
-          if (!full) return ctx.host('kickassanime');
+          if (!full) return [];
           return getJson(base + '/api/show/' + show.slug + '/episode/' + full).then(function (ep) {
             var servers = Array.isArray(ep && ep.servers) ? ep.servers : [];
             var rows = [];
@@ -90,12 +90,12 @@ function extract(ctx) {
                 headers: { 'User-Agent': ua, Referer: 'https://krussdomi.com/' },
               });
             });
-            return rows.length ? rows : ctx.host('kickassanime');
+            return rows.length ? rows : [];
           });
         });
       });
     })
     .catch(function () {
-      return ctx.host('kickassanime');
+      return [];
     });
 }

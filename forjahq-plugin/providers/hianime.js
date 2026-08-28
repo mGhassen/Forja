@@ -212,7 +212,7 @@ function extract(ctx) {
     .then(function (mapped) {
       var mal = mapped && mapped.mal ? mapped.mal : mapped;
       var ep = mapped && mapped.ep ? mapped.ep : episode;
-      if (!mal) return ctx.host('hianime');
+      if (!mal) return [];
       return Promise.all([scrapeType(mal, ep, 'sub'), scrapeType(mal, ep, 'dub')]).then(function (
         groups,
       ) {
@@ -223,10 +223,10 @@ function extract(ctx) {
           seen[r.url] = true;
           out.push(r);
         });
-        return out.length ? out : ctx.host('hianime');
+        return out.length ? out : [];
       });
     })
     .catch(function () {
-      return ctx.host('hianime');
+      return [];
     });
 }
