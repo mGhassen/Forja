@@ -138,7 +138,7 @@ export function AccountSettingsPlaybackPage() {
             disabled={controlsLocked}
           />
 
-          <div className="flex min-h-[66px] items-center justify-between gap-5 px-0.5 py-3">
+          <div className="flex min-h-16.5 items-center justify-between gap-5 px-0.5 py-3">
             <Label htmlFor="audio-lang" className="text-sm font-medium">
               Preferred audio language
             </Label>
@@ -159,7 +159,7 @@ export function AccountSettingsPlaybackPage() {
             </select>
           </div>
 
-          <div className="flex min-h-[66px] items-center justify-between gap-5 px-0.5 py-3">
+          <div className="flex min-h-16.5 items-center justify-between gap-5 px-0.5 py-3">
             <Label htmlFor="max-quality" className="text-sm font-medium">
               Max stream quality
             </Label>
