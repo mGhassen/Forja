@@ -706,7 +706,7 @@ require_build_env() {
   [[ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]] || die "SUPABASE_PUBLISHABLE_KEY missing (set in .env)"
   [[ -n "${RELEASE_CDN_URL:-}" ]] || die "RELEASE_CDN_URL missing (set in .env)"
   [[ -n "${FORJA_WEB_URL:-}" ]] || die "FORJA_WEB_URL missing (set in .env)"
-  [[ -n "${FORJA_HQ_MANIFEST_URL:-}" ]] || die "FORJA_HQ_MANIFEST_URL missing (set in .env)"
+  [[ -n "${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}" && -n "${FORJA_HQ_LIVE_MANIFEST_URL:-}" && -n "${FORJA_HQ_CATALOG_MANIFEST_URL:-}" ]] || die "FORJA_HQ_PROVIDERS/LIVE/CATALOG_MANIFEST_URL missing (set in .env)"
   case "$FORJA_WEB_URL" in
     http://127.0.0.1:*|http://localhost:*|https://127.0.0.1:*|https://localhost:*)
       die "FORJA_WEB_URL must be the public portal URL, not localhost"
@@ -1157,7 +1157,7 @@ build_macos() {
       --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
       --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
       --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
-      --dart-define=FORJA_HQ_MANIFEST_URL="${FORJA_HQ_MANIFEST_URL}"
+      --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="${FORJA_HQ_PROVIDERS_MANIFEST_URL}" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="${FORJA_HQ_LIVE_MANIFEST_URL}" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="${FORJA_HQ_CATALOG_MANIFEST_URL}"
   )
   echo "==> Ad-hoc codesign"
   ./scripts/codesign_macos_adhoc.sh
@@ -1275,7 +1275,7 @@ build_android_tv() {
       --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
       --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
       --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
-      --dart-define=FORJA_HQ_MANIFEST_URL="${FORJA_HQ_MANIFEST_URL}" \
+      --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="${FORJA_HQ_PROVIDERS_MANIFEST_URL}" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="${FORJA_HQ_LIVE_MANIFEST_URL}" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="${FORJA_HQ_CATALOG_MANIFEST_URL}" \
       -PFORJA_KEYSTORE_PATH="$keystore" \
       -PFORJA_KEYSTORE_PASSWORD="${FORJA_KEYSTORE_PASSWORD}" \
       -PFORJA_KEY_ALIAS="$key_alias" \

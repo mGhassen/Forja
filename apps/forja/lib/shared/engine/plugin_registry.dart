@@ -14,10 +14,33 @@ class PluginRegistry {
   PluginRegistry._();
   static final PluginRegistry instance = PluginRegistry._();
 
-  /// Official ForjaHQ manifest URL from `FORJA_HQ_MANIFEST_URL`.
-  static const officialManifestUrl = String.fromEnvironment(
-    'FORJA_HQ_MANIFEST_URL',
+  /// Official ForjaHQ Providers pack (`FORJA_HQ_PROVIDERS_MANIFEST_URL`).
+  static const officialProvidersManifestUrl = String.fromEnvironment(
+    'FORJA_HQ_PROVIDERS_MANIFEST_URL',
   );
+
+  /// Official ForjaHQ Live pack (`FORJA_HQ_LIVE_MANIFEST_URL`).
+  static const officialLiveManifestUrl = String.fromEnvironment(
+    'FORJA_HQ_LIVE_MANIFEST_URL',
+  );
+
+  /// Official ForjaHQ Catalog pack (`FORJA_HQ_CATALOG_MANIFEST_URL`).
+  static const officialCatalogManifestUrl = String.fromEnvironment(
+    'FORJA_HQ_CATALOG_MANIFEST_URL',
+  );
+
+  /// All configured official pack URLs (providers, live, catalog).
+  static List<String> get officialManifestUrls => [
+        for (final u in [
+          officialProvidersManifestUrl,
+          officialLiveManifestUrl,
+          officialCatalogManifestUrl,
+        ])
+          if (u.trim().isNotEmpty) u.trim(),
+      ];
+
+  /// @Deprecated Use [officialProvidersManifestUrl] or [officialManifestUrls].
+  static const officialManifestUrl = officialProvidersManifestUrl;
 
   static const _packsKeyV1 = 'engine_js_packs_v1';
   static const _packsKeyV2 = 'engine_js_packs_v2';
@@ -26,6 +49,7 @@ class PluginRegistry {
   static const _scriptPrefixV2 = 'engine_js_script_v2_';
   static const _preludePrefixV2 = 'engine_js_prelude_v2_';
   static const _migratedKey = 'engine_js_packs_v2_migrated';
+  static const _legacyMonolithWipedKey = 'engine_js_legacy_forjahq_wiped';
 
   static const _legacyBundledSourceUrlProviders = 'asset:providers/engine.json';
   static const _legacyBundledSourceUrl = 'asset:engine_js/engine.json';
@@ -79,7 +103,9 @@ class PluginRegistry {
   }
 
   static bool isOfficialPack(String sourceUrl) =>
-      sourceUrl == officialManifestUrl;
+      officialManifestUrls.contains(sourceUrl);
+
+  static bool isLegacyMonolithPack(EnginePack pack) => pack.packId == 'forjahq';
 
   static bool isLegacyAssetPack(String sourceUrl) =>
       sourceUrl.startsWith('asset:') ||
@@ -109,6 +135,7 @@ class PluginRegistry {
 
   Future<List<EnginePack>> listPacksRaw() async {
     await _migrateV1IfNeeded();
+    await _wipeLegacyMonolithIfNeeded();
     final prefs = await _prefs;
     final raw = prefs.getString(_packsKeyV2);
     if (raw == null || raw.isEmpty) return [];
@@ -123,6 +150,53 @@ class PluginRegistry {
     } catch (_) {
       return [];
     }
+  }
+
+  /// Remove the pre-split single ForjaHQ pack so the three packs can install.
+  Future<void> _wipeLegacyMonolithIfNeeded() async {
+    final prefs = await _prefs;
+    if (prefs.getBool(_legacyMonolithWipedKey) == true) return;
+    final raw = prefs.getString(_packsKeyV2);
+    if (raw == null || raw.isEmpty) {
+      await prefs.setBool(_legacyMonolithWipedKey, true);
+      return;
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        await prefs.setBool(_legacyMonolithWipedKey, true);
+        return;
+      }
+      final packs = [
+        for (final e in decoded)
+          if (e is Map) EnginePack.fromStored(Map<String, dynamic>.from(e)),
+      ];
+      final victims = packs.where(isLegacyMonolithPack).toList();
+      if (victims.isEmpty) {
+        await prefs.setBool(_legacyMonolithWipedKey, true);
+        return;
+      }
+      for (final pack in victims) {
+        for (final p in pack.plugins) {
+          await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
+          if (p.prelude.isNotEmpty) {
+            await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
+          }
+        }
+      }
+      final keep = packs.where((p) => !isLegacyMonolithPack(p)).toList();
+      await prefs.setString(
+        _packsKeyV2,
+        jsonEncode([for (final p in keep) p.toJson()]),
+      );
+      notifyChanged();
+      debugPrint(
+        '[engine] wiped ${victims.length} legacy ForjaHQ monolith pack(s)',
+      );
+    } catch (e) {
+      debugPrint('[engine] legacy ForjaHQ wipe failed: $e');
+    }
+    await prefs.setBool(_legacyMonolithWipedKey, true);
   }
 
   Future<List<EnginePack>> listPacks() async {
@@ -281,29 +355,14 @@ class PluginRegistry {
     return mu.replace(path: path).toString();
   }
 
-  /// First boot / ensure: install or refresh ForjaHQ when version is newer.
+  /// First boot / ensure: install or refresh each official pack when needed.
   Future<void> ensureOfficialInstalled({bool force = false}) async {
-    if (officialManifestUrl.trim().isEmpty) {
+    final urls = officialManifestUrls;
+    if (urls.length < 3) {
       _officialInstallFailed = true;
       officialInstallError.value =
-          'FORJA_HQ_MANIFEST_URL missing — set in .env / dart-define';
+          'FORJA_HQ_PROVIDERS/LIVE/CATALOG_MANIFEST_URL missing — set in .env / dart-define';
       notifyChanged();
-      return;
-    }
-    final packs = await listPacksRaw();
-    EnginePack? local;
-    for (final p in packs) {
-      if (p.sourceUrl == officialManifestUrl) {
-        local = p;
-        break;
-      }
-    }
-    if (local != null && !force) {
-      _clearOfficialInstallError();
-      if (!_officialUpdateChecked) {
-        _officialUpdateChecked = true;
-        await _maybeRefreshOfficialIfNewer(local);
-      }
       return;
     }
     if (!force && _officialInstallFailed) return;
@@ -313,9 +372,18 @@ class PluginRegistry {
     }
     final run = () async {
       try {
-        await install(officialManifestUrl);
-        _clearOfficialInstallError();
+        final packs = await listPacksRaw();
+        final byUrl = {for (final p in packs) p.sourceUrl: p};
+        for (final url in urls) {
+          final local = byUrl[url];
+          if (local == null || force) {
+            await install(url);
+          } else if (!_officialUpdateChecked) {
+            await _maybeRefreshOfficialIfNewer(url, local);
+          }
+        }
         _officialUpdateChecked = true;
+        _clearOfficialInstallError();
       } catch (e) {
         _officialInstallFailed = true;
         final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
@@ -334,20 +402,23 @@ class PluginRegistry {
     }
   }
 
-  Future<void> _maybeRefreshOfficialIfNewer(EnginePack local) async {
+  Future<void> _maybeRefreshOfficialIfNewer(
+    String manifestUrl,
+    EnginePack local,
+  ) async {
     try {
-      final body = await _fetchText(officialManifestUrl);
+      final body = await _fetchText(manifestUrl);
       final map = jsonDecode(body);
       if (map is! Map) return;
       final remoteVer = (map['version'] as String?)?.trim() ?? '';
       if (remoteVer.isEmpty) return;
       if (compareEngineSemver(remoteVer, local.version) <= 0) return;
       debugPrint(
-        '[engine] ForjaHQ $remoteVer > ${local.version} — refreshing',
+        '[engine] ${local.name} $remoteVer > ${local.version} — refreshing',
       );
-      await install(officialManifestUrl);
+      await install(manifestUrl);
     } catch (e) {
-      debugPrint('[engine] ForjaHQ version check failed: $e');
+      debugPrint('[engine] ${local.name} version check failed: $e');
     }
   }
 
@@ -360,15 +431,18 @@ class PluginRegistry {
   }
 
   Future<void> retryOfficialInstall() async {
-    if (officialManifestUrl.trim().isEmpty) {
+    final urls = officialManifestUrls;
+    if (urls.length < 3) {
       throw Exception(
-        'FORJA_HQ_MANIFEST_URL missing — set in .env / dart-define',
+        'FORJA_HQ_PROVIDERS/LIVE/CATALOG_MANIFEST_URL missing — set in .env / dart-define',
       );
     }
     _officialInstallFailed = false;
     officialInstallError.value = null;
     _officialUpdateChecked = false;
-    await install(officialManifestUrl);
+    for (final url in urls) {
+      await install(url);
+    }
     _clearOfficialInstallError();
   }
 
@@ -490,7 +564,7 @@ class PluginRegistry {
     all.removeWhere((a) => a.sourceUrl == manifestUrl);
     all.add(pack);
     await _savePacks(all);
-    if (manifestUrl == officialManifestUrl) {
+    if (isOfficialPack(manifestUrl)) {
       _clearOfficialInstallError();
     }
     _scriptRepairAttempted.remove(manifestUrl);

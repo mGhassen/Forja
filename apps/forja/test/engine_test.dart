@@ -16,35 +16,69 @@ import 'package:http/testing.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Fetch a pack file relative to [EngineService.officialManifestUrl]
-/// (`FORJA_HQ_MANIFEST_URL` dart-define / `.env`).
+/// True when official pack dart-defines are set (from `.env` / CI).
+/// Pack content is remote — tests must not assume a checkout path.
+bool get forjaHqPackEnvReady =>
+    PluginRegistry.officialManifestUrls.length >= 3;
+
+/// Fetch a file relative to the configured official pack URLs
+/// (`FORJA_HQ_{PROVIDERS,LIVE,CATALOG}_MANIFEST_URL`).
 ///
-/// Clears [HttpOverrides] for the request so [TestWidgetsFlutterBinding]'s
-/// stub client (always 400) is not used.
+/// Call only when [forjaHqPackEnvReady]. Clears [HttpOverrides] so
+/// [TestWidgetsFlutterBinding]'s stub client is not used.
 Future<String> loadForjaHqFile(String relativePath) async {
-  final manifestUrl = EngineService.officialManifestUrl;
+  if (!forjaHqPackEnvReady) {
+    throw StateError(
+      'FORJA_HQ_{PROVIDERS,LIVE,CATALOG}_MANIFEST_URL not set',
+    );
+  }
+  late final String manifestUrl;
+  late final String entry;
+  if (relativePath == 'manifest.json' ||
+      relativePath == 'providers/manifest.json') {
+    manifestUrl = EngineService.officialProvidersManifestUrl;
+    entry = 'manifest.json';
+  } else if (relativePath == 'live/manifest.json') {
+    manifestUrl = EngineService.officialLiveManifestUrl;
+    entry = 'manifest.json';
+  } else if (relativePath == 'catalog/manifest.json') {
+    manifestUrl = EngineService.officialCatalogManifestUrl;
+    entry = 'manifest.json';
+  } else if (relativePath.startsWith('providers/')) {
+    manifestUrl = EngineService.officialProvidersManifestUrl;
+    entry = relativePath.substring('providers/'.length);
+  } else if (relativePath.startsWith('live/')) {
+    manifestUrl = EngineService.officialLiveManifestUrl;
+    entry = relativePath.substring('live/'.length);
+  } else if (relativePath.startsWith('catalog/')) {
+    manifestUrl = EngineService.officialCatalogManifestUrl;
+    entry = relativePath.substring('catalog/'.length);
+  } else if (relativePath.startsWith('archived/')) {
+    manifestUrl = EngineService.officialProvidersManifestUrl;
+    entry = '../archived/${relativePath.substring('archived/'.length)}';
+  } else if (relativePath == 'domains.json') {
+    manifestUrl = EngineService.officialProvidersManifestUrl;
+    entry = '../domains.json';
+  } else {
+    throw StateError('unknown pack-relative path: $relativePath');
+  }
   final scriptUrl =
-      PluginRegistry.instance.resolveScriptUrl(manifestUrl, relativePath);
+      PluginRegistry.instance.resolveScriptUrl(manifestUrl, entry);
   if (!scriptUrl.startsWith('http://') && !scriptUrl.startsWith('https://')) {
     final file = File(scriptUrl);
     if (!file.existsSync()) {
-      throw StateError('ForjaHQ pack file missing: ${file.path}');
+      throw StateError('pack file missing: ${file.path}');
     }
     return file.readAsStringSync();
   }
-  final slash = manifestUrl.lastIndexOf('/');
-  if (slash < 0) {
-    throw StateError('invalid FORJA_HQ_MANIFEST_URL: $manifestUrl');
-  }
-  final uri = Uri.parse('${manifestUrl.substring(0, slash + 1)}$relativePath');
   final previous = HttpOverrides.current;
   HttpOverrides.global = null;
   try {
     final client = IOClient(HttpClient());
     try {
-      final res = await client.get(uri);
+      final res = await client.get(Uri.parse(scriptUrl));
       if (res.statusCode != 200) {
-        throw StateError('ForjaHQ pack fetch ${res.statusCode}: $uri');
+        throw StateError('pack fetch ${res.statusCode}: $scriptUrl');
       }
       return res.body;
     } finally {
@@ -55,6 +89,21 @@ Future<String> loadForjaHqFile(String relativePath) async {
   }
 }
 
+Future<List<EnginePlugin>> loadAllForjaHqPlugins() async {
+  final out = <EnginePlugin>[];
+  for (final path in [
+    'providers/manifest.json',
+    'live/manifest.json',
+    'catalog/manifest.json',
+  ]) {
+    final map =
+        jsonDecode(await loadForjaHqFile(path)) as Map<String, dynamic>;
+    for (final raw in map['plugins'] as List) {
+      out.add(EnginePlugin.fromJson(Map<String, dynamic>.from(raw as Map)));
+    }
+  }
+  return out;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -130,6 +179,45 @@ void main() {
       expect(compareEngineSemver('1.5.12', '1.5.11'), greaterThan(0));
       expect(compareEngineSemver('1.5.11', '1.5.11'), 0);
       expect(compareEngineSemver('2.0.0', '1.9.9'), greaterThan(0));
+    });
+
+    test('isLegacyMonolithPack detects old forjahq pack id', () {
+      expect(
+        PluginRegistry.isLegacyMonolithPack(
+          EnginePack(
+            sourceUrl: 'https://example.com/whatever/manifest.json',
+            packId: 'forjahq',
+            name: 'ForjaHQ',
+            version: '1.5.0',
+            plugins: [
+              EnginePlugin.fromJson({
+                'id': 'videasy',
+                'entry': 'videasy.js',
+                'kind': 'http',
+              }),
+            ],
+          ),
+        ),
+        isTrue,
+      );
+      expect(
+        PluginRegistry.isLegacyMonolithPack(
+          EnginePack(
+            sourceUrl: 'https://example.com/plugins/providers/manifest.json',
+            packId: 'forjahq-providers',
+            name: 'ForjaHQ Providers',
+            version: '1.5.21',
+            plugins: [
+              EnginePlugin.fromJson({
+                'id': 'videasy',
+                'entry': 'videasy.js',
+                'kind': 'http',
+              }),
+            ],
+          ),
+        ),
+        isFalse,
+      );
     });
   });
 
@@ -651,15 +739,67 @@ void main() {
     });
   });
 
-  group('ForjaHQ pack', () {
+  group('EnginePlugin / mergeEngineConfig', () {
+    test('host kind resolves hostProviderId', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'vidsrc',
+        'name': 'VSEmbed',
+        'kind': 'host',
+      });
+      expect(plugin.isHost, isTrue);
+      expect(plugin.isExtractable, isFalse);
+      expect(plugin.hostProviderId, 'vidsrc');
+    });
+
+    test('config parses and persists', () {
+      final plugin = EnginePlugin.fromJson({
+        'id': 'videasy',
+        'name': 'Videasy',
+        'entry': 'videasy.js',
+        'config': {
+          'api': 'https://api.example',
+          'mirrors': [
+            {'endpoint': 'cdn', 'name': 'Yoru'},
+          ],
+        },
+      });
+      expect(plugin.config['api'], 'https://api.example');
+      expect(plugin.config['mirrors'], isA<List>());
+      expect(plugin.toJson()['config'], isNotNull);
+    });
+
+    test('mergeEngineConfig deep-merges maps and replaces lists', () {
+      final merged = mergeEngineConfig(
+        {
+          'api': 'https://base.example',
+          'origin': 'https://player.example',
+          'mirrors': [
+            {'endpoint': 'cdn', 'name': 'A'},
+          ],
+          'nested': {'a': 1, 'b': 2},
+        },
+        {
+          'api': 'https://overlay.example',
+          'mirrors': [
+            {'endpoint': 'vsrc', 'name': 'B'},
+          ],
+          'nested': {'b': 9, 'c': 3},
+        },
+      );
+      expect(merged['api'], 'https://overlay.example');
+      expect(merged['origin'], 'https://player.example');
+      expect(merged['mirrors'], [
+        {'endpoint': 'vsrc', 'name': 'B'},
+      ]);
+      expect(merged['nested'], {'a': 1, 'b': 9, 'c': 3});
+    });
+  });
+
+  group(
+    'ForjaHQ pack',
+    () {
     test('manifest.json lists HTTP chips and hop plugins', () async {
-      final jsonStr = await loadForjaHqFile('manifest.json');
-      final map = jsonDecode(jsonStr) as Map<String, dynamic>;
-      final plugins = map['plugins'] as List;
-      final parsed = [
-        for (final p in plugins)
-          EnginePlugin.fromJson(Map<String, dynamic>.from(p as Map)),
-      ];
+      final parsed = await loadAllForjaHqPlugins();
       final ids = [for (final p in parsed) p.id];
       expect(
         ids,
@@ -737,228 +877,138 @@ void main() {
         parsed.firstWhere((p) => p.id == 'hop-flixcloud').isExtractable,
         isFalse,
       );
-      expect(parsed.firstWhere((p) => p.id == 'vidrock').entry, 'providers/vidrock.js');
-      expect(parsed.firstWhere((p) => p.id == 'vidzee').entry, 'providers/vidzee.js');
-      expect(parsed.firstWhere((p) => p.id == '2embed').entry, 'providers/multiembed.js');
+      expect(parsed.firstWhere((p) => p.id == 'vidrock').entry, 'vidrock.js');
+      expect(parsed.firstWhere((p) => p.id == 'vidzee').entry, 'vidzee.js');
+      expect(parsed.firstWhere((p) => p.id == '2embed').entry, 'multiembed.js');
       expect(
         parsed.firstWhere((p) => p.id == 'service111477').entry,
-        'providers/dahmermovies.js',
+        'dahmermovies.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'vidsrcsbs').config['nxshaOrigin'],
-        'https://web.nxsha.app',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'hexa').entry, 'providers/hexa.js');
-      expect(parsed.firstWhere((p) => p.id == 'hianime').entry, 'providers/hianime.js');
+      expect(await loadForjaHqFile('providers/vidsrcsbs.js'), contains('https://web.nxsha.app'));
+      expect(parsed.firstWhere((p) => p.id == 'hexa').entry, 'hexa.js');
+      expect(parsed.firstWhere((p) => p.id == 'hianime').entry, 'hianime.js');
       expect(
         parsed.firstWhere((p) => p.id == 'kickassanime').entry,
-        'providers/kickassanime.js',
+        'kickassanime.js',
       );
       expect(
         parsed.firstWhere((p) => p.id == 'multiembed').entry,
-        'providers/multiembed.js',
+        'multiembed.js',
       );
-      expect(parsed.firstWhere((p) => p.id == 'meowtv').entry, 'providers/meowtv.js');
-      expect(parsed.firstWhere((p) => p.id == 'playimdb').entry, 'providers/playimdb.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'playimdb').config['api'],
-        'https://streamdata.vaplayer.ru/api.php',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'vidsync').entry, 'providers/vidsync.js');
-      expect(parsed.firstWhere((p) => p.id == 'vidup').entry, 'providers/vidup.js');
-      expect(parsed.firstWhere((p) => p.id == 'moviebox').entry, 'providers/moviebox.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'moviebox').config['api'],
-        'https://api3.aoneroom.com',
-      );
-      expect(parsed.firstWhere((p) => p.id == '4khdhub').entry, 'providers/4khdhub.js');
+      expect(parsed.firstWhere((p) => p.id == 'meowtv').entry, 'meowtv.js');
+      expect(parsed.firstWhere((p) => p.id == 'playimdb').entry, 'playimdb.js');
+      expect(await loadForjaHqFile('providers/playimdb.js'), contains('https://streamdata.vaplayer.ru/api.php'));
+      expect(parsed.firstWhere((p) => p.id == 'vidsync').entry, 'vidsync.js');
+      expect(parsed.firstWhere((p) => p.id == 'vidup').entry, 'vidup.js');
+      expect(parsed.firstWhere((p) => p.id == 'moviebox').entry, 'moviebox.js');
+      expect(await loadForjaHqFile('providers/moviebox.js'), contains('https://api3.aoneroom.com'));
+      expect(parsed.firstWhere((p) => p.id == '4khdhub').entry, '4khdhub.js');
       expect(
         parsed.firstWhere((p) => p.id == '1shows').entry,
-        'providers/1shows.js',
+        '1shows.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == '1shows').config['api'],
-        'https://api.viduki.net',
-      );
+      expect(await loadForjaHqFile('providers/1shows.js'), contains('https://api.viduki.net'));
       expect(
         parsed.firstWhere((p) => p.id == 'movieblast').entry,
-        'providers/movieblast.js',
+        'movieblast.js',
       );
       expect(
         parsed.firstWhere((p) => p.id == 'streamflix').entry,
-        'providers/streamflix.js',
+        'streamflix.js',
       );
-      expect(parsed.firstWhere((p) => p.id == 'animex').entry, 'providers/animex.js');
-      expect(parsed.firstWhere((p) => p.id == 'anizone').entry, 'providers/anizone.js');
+      expect(parsed.firstWhere((p) => p.id == 'animex').entry, 'animex.js');
+      expect(parsed.firstWhere((p) => p.id == 'anizone').entry, 'anizone.js');
       expect(
         parsed.firstWhere((p) => p.id == 'netmirror').entry,
-        'providers/netmirror.js',
+        'netmirror.js',
       );
-      expect(parsed.firstWhere((p) => p.id == 'castle').entry, 'providers/castle.js');
-      expect(parsed.firstWhere((p) => p.id == 'xprime').entry, 'providers/xprime.js');
-      expect(parsed.firstWhere((p) => p.id == 'dvdplay').entry, 'providers/dvdplay.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'xprime').config['backend'],
-        'https://backend.xprime.tv',
-      );
-      expect(
-        parsed.firstWhere((p) => p.id == 'dvdplay').config['searchBase'],
-        'https://dvdplay.xyz/search.php?q=',
-      );
-      expect(
-        parsed.firstWhere((p) => p.id == '4khdhub').config['domainsUrl'],
-        'https://raw.githubusercontent.com/mGhassen/Forja/main/forjahq-plugin/domains.json',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'hdhub4u').entry, 'providers/hdhub4u.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'hdhub4u').config['searchApi'],
-        'https://search.pingora.fyi/collections/post/documents/search',
-      );
+      expect(parsed.firstWhere((p) => p.id == 'castle').entry, 'castle.js');
+      expect(parsed.firstWhere((p) => p.id == 'xprime').entry, 'xprime.js');
+      expect(parsed.firstWhere((p) => p.id == 'dvdplay').entry, 'dvdplay.js');
+      expect(await loadForjaHqFile('providers/xprime.js'), contains('https://backend.xprime.tv'));
+      expect(await loadForjaHqFile('providers/dvdplay.js'), contains('https://dvdplay.xyz/search.php?q='));
+      expect(await loadForjaHqFile('providers/4khdhub.js'), contains('domains.json'));
+      expect(parsed.firstWhere((p) => p.id == 'hdhub4u').entry, 'hdhub4u.js');
+      expect(await loadForjaHqFile('providers/hdhub4u.js'), contains('https://search.pingora.fyi/collections/post/documents/search'));
       expect(
         parsed.firstWhere((p) => p.id == 'moviesmod').entry,
-        'providers/moviesmod.js',
+        'moviesmod.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'moviesmod').config['base'],
-        'https://moviesmod.cc',
-      );
+      expect(await loadForjaHqFile('providers/moviesmod.js'), contains('https://moviesmod.cc'));
       expect(
         parsed.firstWhere((p) => p.id == 'uhdmovies').entry,
-        'providers/uhdmovies.js',
+        'uhdmovies.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'uhdmovies').config['base'],
-        'https://uhdmovies.pink',
-      );
+      expect(await loadForjaHqFile('providers/uhdmovies.js'), contains('https://uhdmovies.pink'));
       expect(
         parsed.firstWhere((p) => p.id == 'allmovieland').entry,
-        'providers/allmovieland.js',
+        'allmovieland.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'allmovieland').config['base'],
-        'https://allmovieland.one',
-      );
+      expect(await loadForjaHqFile('providers/allmovieland.js'), contains('https://allmovieland.one'));
       expect(
         parsed.firstWhere((p) => p.id == 'moviesdrive').entry,
-        'providers/moviesdrive.js',
+        'moviesdrive.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'moviesdrive').config['base'],
-        'https://new3.moviesdrives.my',
-      );
+      expect(await loadForjaHqFile('providers/moviesdrive.js'), contains('https://new3.moviesdrives.my'));
       expect(
         parsed.firstWhere((p) => p.id == 'cinemacity').entry,
-        'providers/cinemacity.js',
+        'cinemacity.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'cinemacity').config['base'],
-        'https://cinemacity.cc',
-      );
+      expect(await loadForjaHqFile('providers/cinemacity.js'), contains('https://cinemacity.cc'));
       expect(
         parsed.firstWhere((p) => p.id == 'dahmermovies').entry,
-        'providers/dahmermovies.js',
+        'dahmermovies.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'dahmermovies').config['api'],
-        'https://a.111477.xyz',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'kurage').entry, 'providers/kurage.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'kurage').config['base'],
-        'https://kurage.live',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'mallumv').entry, 'providers/mallumv.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'mallumv').config['base'],
-        'https://mallumv.gay',
-      );
+      expect(await loadForjaHqFile('providers/dahmermovies.js'), contains('https://a.111477.xyz'));
+      expect(parsed.firstWhere((p) => p.id == 'kurage').entry, 'kurage.js');
+      expect(await loadForjaHqFile('providers/kurage.js'), contains('https://kurage.live'));
+      expect(parsed.firstWhere((p) => p.id == 'mallumv').entry, 'mallumv.js');
+      expect(await loadForjaHqFile('providers/mallumv.js'), contains('https://mallumv.gay'));
       expect(
         parsed.firstWhere((p) => p.id == 'animepahe').entry,
-        'providers/animepahe.js',
+        'animepahe.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'animepahe').config['proxy'],
-        'https://animepaheproxy.phisheranimepahe.workers.dev/?url=',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'reanime').entry, 'providers/reanime.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'reanime').config['base'],
-        'https://reanime.to',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'anibd').entry, 'providers/anibd.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'anibd').config['api'],
-        'https://epeng.animeapps.top',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'senshi').entry, 'providers/senshi.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'senshi').config['base'],
-        'https://senshi.live',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'kisskh').entry, 'providers/kisskh.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'kisskh').config['origin'],
-        'https://kisskh.co',
-      );
-      expect(
-        parsed.firstWhere((p) => p.id == 'animepahe').config['base'],
-        'https://animepahe.su',
-      );
+      expect(await loadForjaHqFile('providers/animepahe.js'), contains('https://animepaheproxy.phisheranimepahe.workers.dev/?url='));
+      expect(parsed.firstWhere((p) => p.id == 'reanime').entry, 'reanime.js');
+      expect(await loadForjaHqFile('providers/reanime.js'), contains('https://reanime.to'));
+      expect(parsed.firstWhere((p) => p.id == 'anibd').entry, 'anibd.js');
+      expect(await loadForjaHqFile('providers/anibd.js'), contains('https://epeng.animeapps.top'));
+      expect(parsed.firstWhere((p) => p.id == 'senshi').entry, 'senshi.js');
+      expect(await loadForjaHqFile('providers/senshi.js'), contains('https://senshi.live'));
+      expect(parsed.firstWhere((p) => p.id == 'kisskh').entry, 'kisskh.js');
+      expect(await loadForjaHqFile('providers/kisskh.js'), contains('https://kisskh.co'));
+      expect(await loadForjaHqFile('providers/animepahe.js'), contains('https://animepahe.su'));
       expect(
         parsed.firstWhere((p) => p.id == 'animeheaven').entry,
-        'providers/animeheaven.js',
+        'animeheaven.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'animeheaven').config['base'],
-        'https://animeheaven.me',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'anidao').entry, 'providers/anidao.js');
-      expect(parsed.firstWhere((p) => p.id == 'aniwaves').entry, 'providers/aniwaves.js');
-      expect(parsed.firstWhere((p) => p.id == 'miruro').entry, 'providers/miruro.js');
+      expect(await loadForjaHqFile('providers/animeheaven.js'), contains('https://animeheaven.me'));
+      expect(parsed.firstWhere((p) => p.id == 'anidao').entry, 'anidao.js');
+      expect(parsed.firstWhere((p) => p.id == 'aniwaves').entry, 'aniwaves.js');
+      expect(parsed.firstWhere((p) => p.id == 'miruro').entry, 'miruro.js');
       expect(
         parsed.firstWhere((p) => p.id == 'animedunya').entry,
-        'providers/animedunya.js',
+        'animedunya.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'animedunya').config['base'],
-        'https://anime-dunya.com',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'anineko').entry, 'providers/anineko.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'anineko').config['base'],
-        'https://anineko.to',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'animegg').entry, 'providers/animegg.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'animegg').config['base'],
-        'https://www.animegg.org',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'anidbapp').entry, 'providers/anidbapp.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'anidbapp').config['base'],
-        'https://anidb.app',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'anikoto').entry, 'providers/anikoto.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'anikoto').config['base'],
-        'https://anikototv.to',
-      );
+      expect(await loadForjaHqFile('providers/animedunya.js'), contains('https://anime-dunya.com'));
+      expect(parsed.firstWhere((p) => p.id == 'anineko').entry, 'anineko.js');
+      expect(await loadForjaHqFile('providers/anineko.js'), contains('https://anineko.to'));
+      expect(parsed.firstWhere((p) => p.id == 'animegg').entry, 'animegg.js');
+      expect(await loadForjaHqFile('providers/animegg.js'), contains('https://www.animegg.org'));
+      expect(parsed.firstWhere((p) => p.id == 'anidbapp').entry, 'anidbapp.js');
+      expect(await loadForjaHqFile('providers/anidbapp.js'), contains('https://anidb.app'));
+      expect(parsed.firstWhere((p) => p.id == 'anikoto').entry, 'anikoto.js');
+      expect(await loadForjaHqFile('providers/anikoto.js'), contains('https://anikototv.to'));
       expect(
         parsed.firstWhere((p) => p.id == 'animenosub').entry,
-        'providers/animenosub.js',
+        'animenosub.js',
       );
-      expect(
-        parsed.firstWhere((p) => p.id == 'animenosub').config['base'],
-        'https://animenosub.to',
-      );
-      expect(parsed.firstWhere((p) => p.id == 'myflixer').entry, 'providers/myflixer.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'myflixer').config['base'],
-        'https://myflixer.to',
-      );
+      expect(await loadForjaHqFile('providers/animenosub.js'), contains('https://animenosub.to'));
+      expect(parsed.firstWhere((p) => p.id == 'myflixer').entry, 'myflixer.js');
+      expect(await loadForjaHqFile('providers/myflixer.js'), contains('https://myflixer.to'));
       expect(
         parsed.firstWhere((p) => p.id == 'vidnest-anime').entry,
-        'providers/vidnest.js',
+        'vidnest.js',
       );
       expect(
         (parsed.firstWhere((p) => p.id == 'vidnest-anime').config['servers']
@@ -966,40 +1016,30 @@ void main() {
             .length,
         greaterThan(0),
       );
-      expect(parsed.firstWhere((p) => p.id == 'megaplay').entry, 'providers/megaplay.js');
+      // Provider defaults live in SPECS inside the script; manifest config is
+      // only for shared-entry overrides (servers/dec) and catalog providerId.
+      expect(parsed.firstWhere((p) => p.id == 'animepahe').config, isEmpty);
+      expect(parsed.firstWhere((p) => p.id == 'videasy').config, isEmpty);
+      expect(
+        await loadForjaHqFile('providers/animepahe.js'),
+        contains('var SPECS ='),
+      );
+      expect(parsed.firstWhere((p) => p.id == 'megaplay').entry, 'megaplay.js');
       expect(
         parsed.firstWhere((p) => p.id == 'megaplay').ids,
         containsAll(['anilist', 'mal']),
       );
-      expect(parsed.firstWhere((p) => p.id == 'primesrc').entry, 'providers/primesrc.js');
-      expect(parsed.firstWhere((p) => p.id == 'mkissa').entry, 'providers/mkissa.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'mkissa').config['api'],
-        'https://api.mkissa.net',
-      );
-      expect(
-        parsed.firstWhere((p) => p.id == 'mkissa').config['referer'],
-        'https://mkissa.to',
-      );
+      expect(parsed.firstWhere((p) => p.id == 'primesrc').entry, 'primesrc.js');
+      expect(parsed.firstWhere((p) => p.id == 'mkissa').entry, 'mkissa.js');
+      expect(await loadForjaHqFile('providers/mkissa.js'), contains('https://api.mkissa.net'));
+      expect(await loadForjaHqFile('providers/mkissa.js'), contains('https://mkissa.to'));
       expect(parsed.firstWhere((p) => p.id == 'hop-abyss').isHop, isTrue);
       expect(parsed.firstWhere((p) => p.id == 'hop-megaup').isHop, isTrue);
-      expect(parsed.firstWhere((p) => p.id == 'cinejoy').entry, 'providers/cinejoy.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'cinejoy').config['origin'],
-        'https://cinejoy.to',
-      );
-      expect(
-        parsed.firstWhere((p) => p.id == 'cinejoy').config['api'],
-        'https://api.shegu.st',
-      );
-      expect(
-        parsed.firstWhere((p) => p.id == 'vidrock').config['origin'],
-        'https://vidrock.ru',
-      );
-      expect(
-        parsed.firstWhere((p) => p.id == 'vidrock').config['aesKey'],
-        isNotEmpty,
-      );
+      expect(parsed.firstWhere((p) => p.id == 'cinejoy').entry, 'cinejoy.js');
+      expect(await loadForjaHqFile('providers/cinejoy.js'), contains('https://cinejoy.to'));
+      expect(await loadForjaHqFile('providers/cinejoy.js'), contains('https://api.shegu.st'));
+      expect(await loadForjaHqFile('providers/vidrock.js'), contains('https://vidrock.ru'));
+      expect(await loadForjaHqFile('providers/vidrock.js'), contains('"aesKey"'));
       expect(
         enabledEnginePluginIds([
           EnginePack(
@@ -1214,9 +1254,12 @@ void main() {
 
       final animepahe = await loadForjaHqFile('providers/animepahe.js');
       expect(animepahe.contains('isBlockedBody'), isTrue);
+      expect(animepahe.contains('preferProxy'), isTrue);
+      expect(animepahe.contains('useProxy'), isTrue);
       expect(animepahe.contains('phisheranimepahe'), isTrue);
       expect(animepahe.contains('findSessionByTitles'), isTrue);
       expect(animepahe.contains('jikanTitles'), isTrue);
+      expect(animepahe.contains('targetPaheEp'), isTrue);
       expect(animepahe.contains('releaseSession'), isTrue);
       expect(animepahe.contains('extractKwik'), isTrue);
       expect(animepahe.contains('kwik.si'), isTrue);
@@ -1319,25 +1362,14 @@ void main() {
           plugins.cast<Map>().firstWhere((p) => p['id'] == '1shows'),
         ),
       );
-      expect(oneshows.entry, 'providers/1shows.js');
-      expect(oneshows.config['api'], 'https://api.viduki.net');
+      expect(oneshows.entry, '1shows.js');
+      expect(await loadForjaHqFile('providers/1shows.js'), contains('https://api.viduki.net'));
       expect(oneshows.types, containsAll(['movie', 'tv']));
       final src = await loadForjaHqFile('providers/1shows.js');
       expect(src.contains('function extract(ctx)'), isTrue);
       expect(src.contains('download-token'), isTrue);
       expect(src.contains('decryptDownload'), isTrue);
       expect(src.contains('api.viduki.net'), isTrue);
-    });
-
-    test('EnginePlugin host kind resolves hostProviderId', () {
-      final plugin = EnginePlugin.fromJson({
-        'id': 'vidsrc',
-        'name': 'VSEmbed',
-        'kind': 'host',
-      });
-      expect(plugin.isHost, isTrue);
-      expect(plugin.isExtractable, isFalse);
-      expect(plugin.hostProviderId, 'vidsrc');
     });
 
     test('fans out every player.videasy.to Servers-tab mirror', () async {
@@ -1351,29 +1383,27 @@ void main() {
       expect(src, contains('quality:'));
       expect(src, contains('language:'));
       expect(src, contains('ctx.crypto.streamDecrypt'));
-      final jsonStr = await loadForjaHqFile('manifest.json');
-      final mirrors =
-          ((jsonDecode(jsonStr) as Map)['plugins'] as List)
-                  .cast<Map>()
-                  .firstWhere((p) => p['id'] == 'videasy')['config']['mirrors']
-              as List;
-      expect(mirrors.map((m) => m['endpoint']), contains('cdn'));
-      expect(mirrors.map((m) => m['name']), contains('Yoru'));
-      expect(mirrors.map((m) => m['name']), contains('Raze'));
+      expect(src, contains('var SPECS ='));
+      expect(src, contains('"endpoint": "cdn"'));
+      expect(src, contains('"name": "Yoru"'));
+      expect(src, contains('"name": "Raze"'));
     });
 
-    test('engine.json HTTP plugins ship opaque config bags', () async {
+    test('HTTP plugins keep defaults in SPECS; shared-entry config stays in manifest',
+        () async {
       final jsonStr = await loadForjaHqFile('manifest.json');
       final map = jsonDecode(jsonStr) as Map<String, dynamic>;
       final plugins = map['plugins'] as List;
       Map<String, dynamic> plugin(String id) => Map<String, dynamic>.from(
         plugins.firstWhere((p) => (p as Map)['id'] == id) as Map,
       );
-      expect(plugin('videasy')['config'], isNotNull);
-      expect(plugin('videasy')['config']['mirrors'], isA<List>());
-      expect(plugin('vidlink')['config']['api'], isNotEmpty);
-      expect(plugin('vixsrc')['config']['base'], isNotEmpty);
-      expect(plugin('vixsrc')['config']['subs'], isNotEmpty);
+      expect(plugin('videasy')['config'], isNull);
+      expect(plugin('vidlink')['config'], isNull);
+      expect(plugin('vixsrc')['config'], isNull);
+      expect(plugin('vidnest-anime')['config']['servers'], isA<List>());
+      expect(await loadForjaHqFile('providers/videasy.js'), contains('var SPECS ='));
+      expect(await loadForjaHqFile('providers/vidlink.js'), contains('var SPECS ='));
+      expect(await loadForjaHqFile('providers/vixsrc.js'), contains('var SPECS ='));
     });
 
     test('engine.json tags movie/tv, anime, and drama categories', () async {
@@ -1445,12 +1475,7 @@ void main() {
     test(
       'engine.json ships live sports plugins separate from VOD Sources',
       () async {
-        final jsonStr = await loadForjaHqFile('manifest.json');
-        final map = jsonDecode(jsonStr) as Map<String, dynamic>;
-        final plugins = [
-          for (final p in map['plugins'] as List)
-            EnginePlugin.fromJson(Map<String, dynamic>.from(p as Map)),
-        ];
+        final plugins = await loadAllForjaHqPlugins();
         const liveSportIds = [
           'live-timstreams',
           'live-streamfree',
@@ -1461,7 +1486,7 @@ void main() {
           final p = plugins.firstWhere((e) => e.id == id);
           expect(p.isLiveSport, isTrue);
           expect(p.isVodCatalog, isFalse);
-          expect(p.entry.startsWith('live/'), isTrue);
+          expect(p.entry.endsWith('.js'), isTrue);
         }
         for (final id in ['live-streamed', 'live-ppv']) {
           final p = plugins.firstWhere((e) => e.id == id);
@@ -1480,7 +1505,6 @@ void main() {
         for (final id in catalogIds) {
           final p = plugins.firstWhere((e) => e.id == id);
           expect(p.isLiveCatalog, isTrue);
-          expect(p.entry.startsWith('catalog/'), isTrue);
           expect(p.entry.endsWith('.js'), isTrue);
         }
         expect(
@@ -1497,7 +1521,7 @@ void main() {
         );
         for (final id in ['live-streamed', 'live-ppv', 'live-timstreams']) {
           final p = plugins.firstWhere((e) => e.id == id);
-          final src = await loadForjaHqFile(p.entry);
+          final src = await loadForjaHqFile('live/${p.entry}');
           expect(src, contains('action !== \'resolve\') return []'));
         }
         expect(
@@ -1526,9 +1550,9 @@ void main() {
       var checked = 0;
       for (final plugin in plugins) {
         final entry = (plugin['entry'] ?? '').toString();
-        if (!entry.startsWith('providers/') || entry.contains('/hops/')) continue;
+        if (entry.isEmpty || entry.startsWith('hops/')) continue;
         if ((plugin['kind'] ?? 'http').toString() != 'http') continue;
-        final src = await loadForjaHqFile(entry);
+        final src = await loadForjaHqFile('providers/$entry');
         expect(src.contains('ctx.host'), isFalse, reason: entry);
         checked++;
       }
@@ -1548,49 +1572,6 @@ void main() {
         expect(src, contains('function extract(ctx)'));
         expect(src, contains('ctx.url'));
       }
-    });
-
-    test('EnginePlugin.config parses and persists', () {
-      final plugin = EnginePlugin.fromJson({
-        'id': 'videasy',
-        'name': 'Videasy',
-        'entry': 'videasy.js',
-        'config': {
-          'api': 'https://api.example',
-          'mirrors': [
-            {'endpoint': 'cdn', 'name': 'Yoru'},
-          ],
-        },
-      });
-      expect(plugin.config['api'], 'https://api.example');
-      expect(plugin.config['mirrors'], isA<List>());
-      expect(plugin.toJson()['config'], isNotNull);
-    });
-
-    test('mergeEngineConfig deep-merges maps and replaces lists', () {
-      final merged = mergeEngineConfig(
-        {
-          'api': 'https://base.example',
-          'origin': 'https://player.example',
-          'mirrors': [
-            {'endpoint': 'cdn', 'name': 'A'},
-          ],
-          'nested': {'a': 1, 'b': 2},
-        },
-        {
-          'api': 'https://overlay.example',
-          'mirrors': [
-            {'endpoint': 'vsrc', 'name': 'B'},
-          ],
-          'nested': {'b': 9, 'c': 3},
-        },
-      );
-      expect(merged['api'], 'https://overlay.example');
-      expect(merged['origin'], 'https://player.example');
-      expect(merged['mirrors'], [
-        {'endpoint': 'vsrc', 'name': 'B'},
-      ]);
-      expect(merged['nested'], {'a': 1, 'b': 9, 'c': 3});
     });
 
     test(
@@ -1622,7 +1603,12 @@ void main() {
         expect(src, contains('CODECS='));
       },
     );
-  });
+  },
+    skip: forjaHqPackEnvReady
+        ? false
+        : 'Set FORJA_HQ_{PROVIDERS,LIVE,CATALOG}_MANIFEST_URL '
+            '(e.g. --dart-define-from-file=.env)',
+  );
 
   group('catalog Vidlink proxy', () {
     test(

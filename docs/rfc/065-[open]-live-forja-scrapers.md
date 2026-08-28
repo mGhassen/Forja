@@ -2,7 +2,7 @@
 
 **Status:** open  
 **Depends on:** [RFC-060](fixed/060-[fixed]-enginejs-sources-forja-tab.md)  
-**Area:** `forjahq-plugin/`, Live Matches, Settings
+**Area:** `plugins/`, Live Matches, Settings
 
 ## Status at a glance
 

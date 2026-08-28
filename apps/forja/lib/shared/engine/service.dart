@@ -19,7 +19,17 @@ class EngineService {
   EngineService._();
   static final EngineService instance = EngineService._();
 
-  /// Official ForjaHQ manifest URL — see [PluginRegistry.officialManifestUrl].
+  /// Official ForjaHQ Providers pack URL — see [PluginRegistry.officialProvidersManifestUrl].
+  static const officialProvidersManifestUrl =
+      PluginRegistry.officialProvidersManifestUrl;
+  static const officialLiveManifestUrl =
+      PluginRegistry.officialLiveManifestUrl;
+  static const officialCatalogManifestUrl =
+      PluginRegistry.officialCatalogManifestUrl;
+  static List<String> get officialManifestUrls =>
+      PluginRegistry.officialManifestUrls;
+
+  /// @Deprecated Prefer [officialProvidersManifestUrl].
   static const officialManifestUrl = PluginRegistry.officialManifestUrl;
 
   static bool isInternalLiveCatalog(EnginePlugin plugin) => plugin.isLiveCatalog;

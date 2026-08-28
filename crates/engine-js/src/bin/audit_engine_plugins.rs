@@ -2,7 +2,7 @@
 //!
 //!   ./scripts/audit-engine-plugins.sh --tmdb=94997 --media=tv --season=1 --episode=1
 //!
-//! Pack source: `FORJA_HQ_MANIFEST_URL` (repo `.env`) by default.
+//! Pack source: `FORJA_HQ_PROVIDERS_MANIFEST_URL` (repo `.env`) by default.
 //! Optional: `--manifest-url=URL` or `--assets=DIR` (local override).
 
 use std::collections::BTreeSet;
@@ -121,12 +121,12 @@ impl PackSource {
 }
 
 fn env_manifest_url() -> Result<String, String> {
-    env::var("FORJA_HQ_MANIFEST_URL")
+    env::var("FORJA_HQ_PROVIDERS_MANIFEST_URL")
         .ok()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .ok_or_else(|| {
-            "FORJA_HQ_MANIFEST_URL missing — set in repo-root .env (or pass --manifest-url / --assets)"
+            "FORJA_HQ_PROVIDERS_MANIFEST_URL missing — set in repo-root .env (or pass --manifest-url / --assets)"
                 .into()
         })
 }
@@ -161,7 +161,7 @@ fn usage() {
                                 [--episode=N] [--timeout-ms=N] [--plugin=ID]... [--json]\n\
                                 [--manifest-url=URL] [--assets=DIR]\n\
          \n\
-         Pack: FORJA_HQ_MANIFEST_URL (repo .env) by default.\n\
+         Pack: FORJA_HQ_PROVIDERS_MANIFEST_URL (repo .env) by default.\n\
          --manifest-url overrides env; --assets=DIR uses a local pack folder instead.\n\
          Defaults: tmdb=94997 media=tv season=1 episode=1 timeout-ms=60000\n"
     );

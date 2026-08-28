@@ -5,7 +5,7 @@
 #   ./scripts/audit-engine-plugins.sh --json --plugin=hdhub4u
 #   ./scripts/audit-engine-plugins.sh --assets=DIR   # optional local pack override
 #
-# Pack URL: FORJA_HQ_MANIFEST_URL from repo-root .env (or process env).
+# Pack URL: FORJA_HQ_PROVIDERS_MANIFEST_URL from repo-root .env (or process env).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if [[ -f "$ROOT/.env" ]]; then

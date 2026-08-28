@@ -47,7 +47,7 @@ fi
 [[ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]] || die "SUPABASE_PUBLISHABLE_KEY missing"
 [[ -n "${RELEASE_CDN_URL:-}" ]] || die "RELEASE_CDN_URL missing"
 [[ -n "${FORJA_WEB_URL:-}" ]] || die "FORJA_WEB_URL missing"
-[[ -n "${FORJA_HQ_MANIFEST_URL:-}" ]] || die "FORJA_HQ_MANIFEST_URL missing"
+[[ -n "${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}" && -n "${FORJA_HQ_LIVE_MANIFEST_URL:-}" && -n "${FORJA_HQ_CATALOG_MANIFEST_URL:-}" ]] || die "FORJA_HQ_PROVIDERS/LIVE/CATALOG_MANIFEST_URL missing"
 
 command -v flutter >/dev/null || die "flutter not on PATH"
 command -v cargo >/dev/null || die "cargo/rust not on PATH"
@@ -69,7 +69,7 @@ echo "==> Flutter Windows ($VERSION)"
     --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
     --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
     --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
-    --dart-define=FORJA_HQ_MANIFEST_URL="${FORJA_HQ_MANIFEST_URL}"
+    --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="${FORJA_HQ_PROVIDERS_MANIFEST_URL}" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="${FORJA_HQ_LIVE_MANIFEST_URL}" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="${FORJA_HQ_CATALOG_MANIFEST_URL}"
 )
 
 echo "==> Embed Rust + MSVC CRT + verify"

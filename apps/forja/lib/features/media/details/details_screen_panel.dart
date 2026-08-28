@@ -745,34 +745,74 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     );
   }
 
-  /// Episode-level Continue Watching — same pos for every Sources row.
-  ({double progress, bool resumable}) _episodeResumeProgress() {
+  /// Resume paint for one Sources row — magnet / stream URL identity only.
+  /// Never paints every row of a plugin from `engine:…` sourceId alone.
+  ({double progress, bool resumable}) _resumeForStreamRow(
+    Map<String, dynamic> s,
+  ) {
     final progress = _s._lastProgress;
     if (progress == null) return (progress: 0, resumable: false);
     final pos = watchHistoryInt(progress['position']);
     final dur = watchHistoryInt(progress['duration']);
-    if (dur <= 0) return (progress: 0, resumable: false);
-    final resumable = WatchProgressBar.isResumable(pos, dur);
-    if (!resumable) return (progress: 0, resumable: false);
+    if (dur <= 0 || !WatchProgressBar.isResumable(pos, dur)) {
+      return (progress: 0, resumable: false);
+    }
+    final hs = progress['sourceId'] as String? ?? '';
+    final savedUrl = (progress['streamUrl'] as String?)?.trim() ?? '';
+    final historyPlugin = EngineIds.pluginIdFromChip(hs);
+
+    var matched = false;
+    if (historyPlugin != null) {
+      // Plugin chip alone used to light every mirror — require saved stream URL.
+      matched = savedUrl.isNotEmpty &&
+          catalogStreamRowMatchesPlaying(
+            s,
+            playUrl: savedUrl,
+            catalogUrl: savedUrl,
+            playingEnginePluginId: historyPlugin,
+          );
+    } else if (s['infoHash'] != null) {
+      matched = _s._getHash(hs) ==
+          _s._getHash('magnet:?xt=urn:btih:${s['infoHash']}');
+    } else if (savedUrl.isNotEmpty) {
+      matched = catalogStreamRowMatchesPlaying(
+        s,
+        playUrl: savedUrl,
+        catalogUrl: savedUrl,
+      );
+    } else {
+      final url = s['url']?.toString();
+      matched = url != null && hs == url;
+    }
+
+    if (!matched) return (progress: 0, resumable: false);
     return (progress: (pos / dur).clamp(0.0, 1.0), resumable: true);
   }
 
   Widget _torrentTileFor(TorrentResult r, {int? tvItemIndex}) {
-    final resume = _episodeResumeProgress();
-    final lastWasThisTorrent = _s._lastProgress != null &&
-        _s._lastProgress!['method'] == 'torrent' &&
-        _s._getHash(r.magnet) == _s._getHash(_s._lastProgress!['sourceId']);
+    double prog = 0;
+    var preselected = false;
+    if (_s._lastProgress != null && _s._lastProgress!['method'] == 'torrent') {
+      if (_s._getHash(r.magnet) == _s._getHash(_s._lastProgress!['sourceId'])) {
+        preselected = true;
+        final pos = watchHistoryInt(_s._lastProgress!['position']);
+        final dur = watchHistoryInt(_s._lastProgress!['duration']);
+        if (dur > 0) {
+          prog = (pos / dur).clamp(0.0, 1.0);
+        }
+      }
+    }
     return TorrentSourceTile(
       key: ValueKey(r.magnet.isEmpty ? r.name : r.magnet),
       result: r,
-      progress: resume.progress,
-      isResumable: resume.resumable,
-      highlightStart: lastWasThisTorrent,
+      progress: prog,
+      isResumable: preselected,
+      highlightStart: false,
       tvItemIndex: tvItemIndex,
       onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
       onPlay: () => _s._playTorrent(
         r,
-        startPosition: resume.resumable && _s._lastProgress != null
+        startPosition: preselected
             ? resumeStartPositionFromProgress(_s._lastProgress!)
             : widget.startPosition,
       ),
@@ -786,7 +826,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
   }) {
     final title = s['title'] ?? s['name'] ?? 'Unknown Stream';
     final description = s['description'] ?? '';
-    final resume = _episodeResumeProgress();
+    final resume = _resumeForStreamRow(s);
     final presentation =
         stremioTilePresentation(s, isResumable: resume.resumable);
     final playingCatalog = _s._playingCatalogUrl;

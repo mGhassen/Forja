@@ -146,14 +146,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   );
   late final PostSeekStallWatchdog _postSeekStall = PostSeekStallWatchdog(
     onRemount: _remountCurrentStreamAt,
-    onStallSuspected: (_) {
-      if (_disposed || !mounted || _postSeekStall.remountInFlight) return;
-      _statusController.upsert(
-        'post-seek-remount',
-        'Reconnecting…',
-        kind: StatusRouletteKind.loading,
-      );
-    },
   );
 
   bool _disposed = false;

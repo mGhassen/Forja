@@ -6,8 +6,10 @@ import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 export 'package:forja/shared/playback/playback_stream_guards.dart'
     show
+        catalogAddonBaseForPlaying,
         catalogStreamRowMatchesPlaying,
         durableStreamCatalogUrl,
+        enginePluginIdFromCatalogBase,
         hlsProxyTargetUrl,
         isVideasyCdnStreamUrl,
         playbackUrlsEquivalent,
@@ -644,9 +646,8 @@ Future<String?> openCatalogHttpStreamWithPipeline(
   final playHeaders = proxied.headers;
   final pid = providerId ?? catalogHttpPlayProviderId(stream);
   final catalog = (hlsProxyTargetUrl(playUrl) ?? playUrl).trim();
-  final isHls =
-      playUrl.toLowerCase().contains('.m3u8') ||
-      catalog.toLowerCase().contains('.m3u8') ||
+  final isHls = urlLooksLikeHls(playUrl) ||
+      urlLooksLikeHls(catalog) ||
       isLocalLoopbackPlayUrl(playUrl);
   if (!isHls) {
     await resetPlayerForOpen(player);
@@ -1033,6 +1034,28 @@ bool isMediaOpenReady(PlayerState state) {
   return false;
 }
 
+/// True when [url] is HLS (`.m3u8`, `/hls-proxy`, or extensionless `/playlist/`).
+///
+/// VixSrc masters are `vixsrc.to/playlist/{id}?token=` — no `.m3u8`. Exo already
+/// forces `APPLICATION_M3U8` for those; MediaKit/OpenPipeline must match.
+bool urlLooksLikeHls(String url) {
+  final trimmed = url.trim();
+  if (trimmed.isEmpty) return false;
+  final lower = trimmed.toLowerCase();
+  if (lower.contains('.m3u8') || lower.contains('m3u8=')) return true;
+  if (lower.contains('/hls-proxy')) return true;
+  final nested = Uri.tryParse(trimmed)?.queryParameters['url']?.toLowerCase();
+  if (nested != null && nested.isNotEmpty && urlLooksLikeHls(nested)) {
+    return true;
+  }
+  final path = Uri.tryParse(trimmed)?.path.toLowerCase() ?? lower;
+  // Extensionless catalog playlist (e.g. vixsrc.to/playlist/772715).
+  if (path.contains('/playlist/') || path.endsWith('/playlist')) {
+    return !lower.contains('webmanifest');
+  }
+  return false;
+}
+
 bool sourceExpectsDuration(String url, {String? type}) {
   final normalizedType = type?.toLowerCase() ?? '';
   if (normalizedType == 'hls' ||
@@ -1041,9 +1064,9 @@ bool sourceExpectsDuration(String url, {String? type}) {
       normalizedType == 'dash') {
     return true;
   }
+  if (urlLooksLikeHls(url)) return true;
   final lower = url.toLowerCase();
-  return lower.contains('.m3u8') ||
-      lower.contains('.mp4') ||
+  return lower.contains('.mp4') ||
       lower.contains('.mkv') ||
       lower.contains('.webm') ||
       lower.contains('.mpd');
@@ -1071,8 +1094,8 @@ bool sourceRequiresVideoDecode(String url, {String? type}) {
   if (isLocalTorrentStreamUrl(url)) return true;
   final normalizedType = type?.toLowerCase() ?? '';
   if (normalizedType == 'hls' || normalizedType == 'dash') return true;
-  final lower = url.toLowerCase();
-  return lower.contains('.m3u8') || lower.contains('.mpd');
+  if (urlLooksLikeHls(url)) return true;
+  return url.toLowerCase().contains('.mpd');
 }
 
 Duration videoDecodeTimeoutForUrl(String url) {
@@ -1141,6 +1164,16 @@ void syncPlayerProgressNotifiers(
   duration.value = player.state.duration;
   position.value = player.state.position;
   buffered.value = player.state.buffer;
+}
+
+/// Playhead to carry across provider/source switches (UI notifier or live mpv).
+Duration switchResumePosition({
+  required Duration uiPosition,
+  required Duration playerPosition,
+}) {
+  if (uiPosition.inSeconds > 0) return uiPosition;
+  if (playerPosition.inSeconds > 0) return playerPosition;
+  return Duration.zero;
 }
 
 /// Seekbar buffer-end from mpv `demuxer-cache-duration` (seconds ahead).

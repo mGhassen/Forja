@@ -63,4 +63,5 @@ Webstreaming green Play, torrent, Nuvio, Stremio, IPTV — unchanged.
 - [RFC-060](fixed/060-[fixed]-enginejs-sources-forja-tab.md) — Sources Forja tab
 - [RFC-065](065-[open]-live-forja-scrapers.md) — live plugins (now remote)
 - [RFC-068](068-[fixed]-engine-plugin-registry.md) — PluginRegistry / pack-scoped install
-- [forjahq-plugin/README.md](../../../forjahq-plugin/README.md)
+- [forjahq-plugin/README.md](../../../plugins/README.md) (now `plugins/`)
+- [RFC-069](069-[fixed]-official-plugins-split.md) — split into providers / live / catalog packs

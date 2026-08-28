@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 77 / 79** acceptance · **2 ⏭️** manual play QA |
-| **Current slice** | Soft Movie/TV/Anime/Drama chip categories; 1Shows Nuvio port; manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
+| **Progress** | **Complete · 78 / 80** acceptance · **2 ⏭️** manual play QA |
+| **Current slice** | Soft Movie/TV/Anime/Drama chip categories; provider SPECS in scripts; manual play rows deferred to [Issue 188](../issues/188-[draft]-forja-engine-play-manual-qa.md) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -112,6 +112,7 @@
 | 77 | R60-A77 | Settings → Forja plugins groups toggles by Movie & TV / Anime / Drama | ✅ |
 | 78 | R60-A78 | Bundled PlayIMDb HTTP plugin (`playimdb.js`, vaplayer API, `engine.json` 1.5.9+) | ✅ |
 | 79 | R60-A79 | Bundled 1Shows HTTP plugin (`1shows.js`, viduki download-token + AES-GCM decrypt, HubCloud/direct resolve, `engine.json` 1.5.10+) | ✅ |
+| 80 | R60-A80 | ForjaHQ provider defaults (mirrors, proxies, bases, keys) live in per-script `SPECS` merged with opaque `ctx.config`; manifest `config` only for shared-entry overrides and catalog `providerId` (`manifest.json` 1.5.19+) | ✅ |
 
 ---
 
@@ -121,7 +122,7 @@ Parallel plugin stack next to Nuvio and green Play. The engine host is `lib/shar
 
 ## Contract
 
-`engine.json` is a pack (one or more plugins) or a single plugin at the root. JS entry exports `extract(ctx)` (or `globalThis.extract`). Host injects `tmdbId`, `imdbId`, `type`, `season`, `episode`, `title`, `year`, `url` (hops), opaque `config` (`engine.json` ∪ remote `provider_runtime_config.engine[id]`), `fetch`, `crypto` / `html` / `host` / `hop`. `streamcrypto.decrypt` remains an alias of `crypto.streamDecrypt`.
+`engine.json` is a pack (one or more plugins) or a single plugin at the root. JS entry exports `extract(ctx)` (or `globalThis.extract`). Host injects `tmdbId`, `imdbId`, `type`, `season`, `episode`, `title`, `year`, `url` (hops), opaque `config` (pack `config` ∪ remote `provider_runtime_config.engine[id]`), `fetch`, `crypto` / `html` / `host` / `hop`. Provider scripts own defaults in a top-level `SPECS` object and merge with `Object.assign({}, SPECS, ctx.config)`. `streamcrypto.decrypt` remains an alias of `crypto.streamDecrypt`.
 
 Kind `http` runs `extract(ctx)` in QuickJS. Kind `host` still exists for `ctx.host(id)` (JS calling a built-in sniff/API extractor). Kind `hop` is internal file-host JS (`doodstream`, `voe`, …): not a Sources chip; HTTP plugins call `ctx.hop(url)` when they land on an embed host. **Sources → Forja** and **Settings → Forja plugins** list HTTP plugins only. Sniff servers stay on green Play. Play ids: `engine:<pluginId>`.
 

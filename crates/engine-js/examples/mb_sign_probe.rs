@@ -5,12 +5,12 @@ use std::env;
 use std::time::Instant;
 
 fn manifest_url() -> String {
-    env::var("FORJA_HQ_MANIFEST_URL")
+    env::var("FORJA_HQ_PROVIDERS_MANIFEST_URL")
         .ok()
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| {
-            eprintln!("FORJA_HQ_MANIFEST_URL missing — set in repo-root .env");
+            eprintln!("FORJA_HQ_PROVIDERS_MANIFEST_URL missing — set in repo-root .env");
             std::process::exit(2);
         })
 }
@@ -42,7 +42,7 @@ async fn main() {
         || env::args().nth(1).as_deref() == Some("--help")
     {
         eprintln!("usage: mb_sign_probe");
-        eprintln!("  Requires FORJA_HQ_MANIFEST_URL (repo-root .env).");
+        eprintln!("  Requires FORJA_HQ_PROVIDERS_MANIFEST_URL (repo-root .env).");
         std::process::exit(0);
     }
 

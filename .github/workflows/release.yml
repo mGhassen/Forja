@@ -89,7 +89,9 @@ env:
   POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
   POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
   SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
-  FORJA_HQ_MANIFEST_URL: ${{ vars.FORJA_HQ_MANIFEST_URL || secrets.FORJA_HQ_MANIFEST_URL }}
+  FORJA_HQ_PROVIDERS_MANIFEST_URL: ${{ vars.FORJA_HQ_PROVIDERS_MANIFEST_URL || secrets.FORJA_HQ_PROVIDERS_MANIFEST_URL }}
+  FORJA_HQ_LIVE_MANIFEST_URL: ${{ vars.FORJA_HQ_LIVE_MANIFEST_URL || secrets.FORJA_HQ_LIVE_MANIFEST_URL }}
+  FORJA_HQ_CATALOG_MANIFEST_URL: ${{ vars.FORJA_HQ_CATALOG_MANIFEST_URL || secrets.FORJA_HQ_CATALOG_MANIFEST_URL }}
 
 jobs:
   resolve_version:
@@ -112,8 +114,8 @@ jobs:
             echo "::error::Set RELEASE_CDN_URL repository secret to the public R2 base URL (custom domain or pub-*.r2.dev)."
             exit 1
           fi
-          if [[ -z "$FORJA_HQ_MANIFEST_URL" ]]; then
-            echo "::error::Set FORJA_HQ_MANIFEST_URL repository variable (or secret) to the ForjaHQ pack manifest URL."
+                    if [[ -z "$FORJA_HQ_PROVIDERS_MANIFEST_URL" || -z "$FORJA_HQ_LIVE_MANIFEST_URL" || -z "$FORJA_HQ_CATALOG_MANIFEST_URL" ]]; then
+            echo "::error::Set FORJA_HQ_PROVIDERS/LIVE/CATALOG_MANIFEST_URL repository variables (or secrets)."
             exit 1
           fi
           if [[ -z "$FORJA_WEB_URL" ]]; then
@@ -342,7 +344,7 @@ jobs:
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
-            --dart-define=FORJA_HQ_MANIFEST_URL="$FORJA_HQ_MANIFEST_URL" \
+            --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="$FORJA_HQ_PROVIDERS_MANIFEST_URL" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="$FORJA_HQ_LIVE_MANIFEST_URL" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="$FORJA_HQ_CATALOG_MANIFEST_URL" \
 
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
@@ -413,7 +415,7 @@ jobs:
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
-            --dart-define=FORJA_HQ_MANIFEST_URL="$FORJA_HQ_MANIFEST_URL" \
+            --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="$FORJA_HQ_PROVIDERS_MANIFEST_URL" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="$FORJA_HQ_LIVE_MANIFEST_URL" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="$FORJA_HQ_CATALOG_MANIFEST_URL" \
 
       - name: Ad-hoc codesign app bundle
         run: ./scripts/codesign_macos_adhoc.sh
@@ -483,7 +485,7 @@ jobs:
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
-            --dart-define=FORJA_HQ_MANIFEST_URL="$FORJA_HQ_MANIFEST_URL" \
+            --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="$FORJA_HQ_PROVIDERS_MANIFEST_URL" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="$FORJA_HQ_LIVE_MANIFEST_URL" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="$FORJA_HQ_CATALOG_MANIFEST_URL" \
 
       - name: Embed Rust in release output
         shell: bash
@@ -577,7 +579,7 @@ jobs:
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
-            --dart-define=FORJA_HQ_MANIFEST_URL="$FORJA_HQ_MANIFEST_URL" \
+            --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="$FORJA_HQ_PROVIDERS_MANIFEST_URL" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="$FORJA_HQ_LIVE_MANIFEST_URL" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="$FORJA_HQ_CATALOG_MANIFEST_URL" \
 
       - name: Embed Rust in release output
         run: ./scripts/embed_rust_in_release_output.sh linux
@@ -712,7 +714,7 @@ jobs:
             --dart-define=POSTHOG_API_KEY="$POSTHOG_API_KEY" \
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
-            --dart-define=FORJA_HQ_MANIFEST_URL="$FORJA_HQ_MANIFEST_URL" \
+            --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="$FORJA_HQ_PROVIDERS_MANIFEST_URL" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="$FORJA_HQ_LIVE_MANIFEST_URL" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="$FORJA_HQ_CATALOG_MANIFEST_URL" \
             -PFORJA_KEYSTORE_PATH="${{ github.workspace }}/apps/forja/android/release.keystore" \
             -PFORJA_KEYSTORE_PASSWORD="${{ secrets.FORJA_KEYSTORE_PASSWORD }}" \
             -PFORJA_KEY_ALIAS="${FORJA_KEY_ALIAS:-forja}" \

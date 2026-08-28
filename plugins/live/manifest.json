@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "id": "forjahq-live",
+  "name": "ForjaHQ Live",
+  "version": "1.5.21",
+  "plugins": [
+    {
+      "id": "live-streamed",
+      "name": "Streamed",
+      "description": "streamed.pk stream resolve (GOAT / golf)",
+      "entry": "streamed.js",
+      "types": [
+        "plugins"
+      ],
+      "kind": "http",
+      "prelude": "embed-st.js"
+    },
+    {
+      "id": "live-ppv",
+      "name": "PPV",
+      "description": "ppv.st / api.ppv.st stream resolve",
+      "entry": "ppv.js",
+      "types": [
+        "plugins"
+      ],
+      "kind": "http",
+      "prelude": "embed-st.js"
+    },
+    {
+      "id": "live-timstreams",
+      "name": "TimStreams",
+      "description": "timstreams.st stream resolve",
+      "entry": "timstreams.js",
+      "types": [
+        "live_sport"
+      ],
+      "kind": "http",
+      "prelude": "embed-st.js"
+    },
+    {
+      "id": "live-streamfree",
+      "name": "StreamFree",
+      "description": "streamfree.top stream resolve",
+      "entry": "streamfree.js",
+      "types": [
+        "live_sport"
+      ],
+      "kind": "http",
+      "prelude": "embed-st.js"
+    },
+    {
+      "id": "live-watchfooty",
+      "name": "WatchFooty",
+      "description": "watchfooty.st stream resolve",
+      "entry": "watchfooty.js",
+      "types": [
+        "live_sport"
+      ],
+      "kind": "http",
+      "prelude": "embed-st.js"
+    },
+    {
+      "id": "live-streamic",
+      "name": "Streamic",
+      "description": "streamic.live stream resolve",
+      "entry": "streamic.js",
+      "types": [
+        "live_sport"
+      ],
+      "kind": "http",
+      "prelude": "embed-st.js"
+    }
+  ]
+}
