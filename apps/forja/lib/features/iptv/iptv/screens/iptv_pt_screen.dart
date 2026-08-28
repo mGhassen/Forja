@@ -97,6 +97,8 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
       final ctrl = ref.read(iptvControllerProvider);
       _navListenerCtrl = ctrl;
       ctrl.addListener(_syncShellNav);
+      // Browser view owns enter/restore/pageBack (scroll + last channel focus).
+      // Keep a fallback until the catalog shell mounts.
       TvHeroActions.bind(
         'iptv',
         restoreFocus: () => iptvRestoreCatalogFocus(ctrl),

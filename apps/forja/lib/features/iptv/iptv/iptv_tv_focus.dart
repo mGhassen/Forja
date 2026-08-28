@@ -300,7 +300,8 @@ VoidCallback iptvStreamUpEdge(
 }
 
 /// Restore IPTV catalog focus when returning from the nav rail (RIGHT / Enter).
-/// Prefers the last focused channel or group — not always the first category.
+/// Prefers last focused channel/group, else the selected category (Favorites /
+/// Already watched included) — never first portal group only.
 bool iptvRestoreCatalogFocus(IptvController ctrl, {int? portalIndex}) {
   final mem = ShellTvFocusCoordinator.memoryFor('iptv');
   if (mem != null &&
@@ -310,6 +311,7 @@ bool iptvRestoreCatalogFocus(IptvController ctrl, {int? portalIndex}) {
     if (iptvFocusRowItem(mem.rowId!, mem.itemIndex)) return true;
   }
   if (iptvFocusRowItem('browser-streams')) return true;
+  if (iptvFocusBrowserCategories(ctrl)) return true;
   if (iptvFocusFirstPortalGroup(ctrl)) return true;
   if (iptvFocusRowItem('iptv-sections', 0)) return true;
   if (iptvFocusRowItem('iptv-top-tools', 0)) return true;
@@ -361,13 +363,15 @@ bool _iptvMemoryRowIs(String rowId) {
   return mem?.rowId == rowId;
 }
 
-/// Nav Enter on IPTV - land on the first portal group once catalog is ready.
+/// Nav Enter on IPTV — last selected category (incl. Favorites / Already
+/// watched). Browser view rebinds this to also scroll + focus the last channel.
 void iptvEnterFromNav(IptvController ctrl) {
   if (ctrl.activePortal == null) {
     iptvFocusRowItem('iptv-open-portal', 0);
     return;
   }
-  if (!ctrl.isLoading) {
+  if (ctrl.isLoading) return;
+  if (!iptvFocusBrowserCategories(ctrl)) {
     iptvFocusFirstPortalGroup(ctrl);
   }
 }

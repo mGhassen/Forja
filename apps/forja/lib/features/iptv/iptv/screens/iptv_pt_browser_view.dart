@@ -43,6 +43,8 @@ class _BrowserViewState extends State<_BrowserView> {
   /// Portal+section identity — re-land focus/scroll when the shelf changes
   /// without a loading flash (session cache).
   String? _landedCatalogKey;
+  /// Last highlight we scrolled/focused — re-land after Favorites/Watched hydrate.
+  String? _landedHighlightId;
   String _lastBrowserSearch = '';
   /// TV category rail focus — channel pane stays on the last OK/→ group until
   /// this matches [IptvController.browserSelectedCategoryId].
@@ -69,12 +71,24 @@ class _BrowserViewState extends State<_BrowserView> {
     _wasPortalPanelOpen = widget.ctrl.portalPanelOpen;
     widget.ctrl.addListener(_onCtrlChanged);
     _streamScroll.addListener(_onStreamScrollForLogos);
-    // Prefer this pageBack (scrolls the category rail) over the screen default.
-    TvHeroActions.bind(
-      'iptv',
-      pageBack: _handleCatalogPageBack,
-    );
+    // Own nav enter / restore so we scroll + focus last category/channel.
+    // Re-bind post-frame: IptvPtScreen's init callback would otherwise overwrite.
+    void bindNav() {
+      TvHeroActions.bind(
+        'iptv',
+        pageBack: _handleCatalogPageBack,
+        enterFromNavFocus: _enterFromNav,
+        restoreFocus: () {
+          _landRestoredCatalog();
+          return true;
+        },
+      );
+    }
+
+    bindNav();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      bindNav();
       _syncInitialFocus();
       if (!mounted) return;
       if (iptvUseTvFocus(context)) {
@@ -337,6 +351,7 @@ class _BrowserViewState extends State<_BrowserView> {
     if (loading) {
       _didRequestReloadFocus = false;
       _landedCatalogKey = null;
+      _landedHighlightId = null;
     }
     _wasLoading = loading;
     final panelOpen = widget.ctrl.portalPanelOpen;
@@ -375,7 +390,12 @@ class _BrowserViewState extends State<_BrowserView> {
       }
       if (widget.ctrl.portalPanelOpen) return;
       if (loading) return;
-      if (finishedLoad || !_didInitialFocus || shelfLanded) {
+      final highlightId = widget.ctrl.browserHighlightedStreamId;
+      final highlightReady = highlightId != null &&
+          highlightId.isNotEmpty &&
+          highlightId != _landedHighlightId &&
+          _filteredStreams.any((x) => x.streamId == highlightId);
+      if (finishedLoad || !_didInitialFocus || shelfLanded || highlightReady) {
         if (widget.ctrl.categories.isNotEmpty ||
             widget.ctrl.browserAllStreams.isNotEmpty) {
           if (catalogKey != null) _landedCatalogKey = catalogKey;
@@ -568,8 +588,18 @@ class _BrowserViewState extends State<_BrowserView> {
     if (_needsPortal) {
       _focusOpenPortalButton();
     } else if (!widget.ctrl.isLoading) {
-      _focusCatalogGroup();
+      _landRestoredCatalog();
     }
+  }
+
+  void _enterFromNav() {
+    if (!mounted) return;
+    if (_needsPortal) {
+      _focusOpenPortalButton();
+      return;
+    }
+    if (widget.ctrl.isLoading) return;
+    _landRestoredCatalog();
   }
 
   void _focusOpenPortalButton() {
@@ -578,36 +608,84 @@ class _BrowserViewState extends State<_BrowserView> {
     _didInitialFocus = false;
   }
 
-  void _focusCatalogGroup() {
-    // Land on the open (restored) category — not first pinned/portal group.
+  /// Select + scroll last category; if a last-played channel is in the list,
+  /// scroll and focus it (no autoplay). Favorites / Already watched included.
+  void _landRestoredCatalog() {
+    if (!mounted || _needsPortal || widget.ctrl.isLoading) return;
+    // Don't steal catalog focus/scroll while the player overlay owns the page.
+    if (ShellBus.playerSurfaceActive.value ||
+        ShellBus.shellOverlayHasPage.value) {
+      return;
+    }
+    _didInitialFocus = true;
+    final selected = widget.ctrl.browserSelectedCategoryId;
+    final highlightId = widget.ctrl.browserHighlightedStreamId;
+    final list = _filteredStreams;
+    final channelIdx = (highlightId != null && highlightId.isNotEmpty)
+        ? list.indexWhere((x) => x.streamId == highlightId)
+        : -1;
+    final focusChannel = channelIdx >= 0;
+
+    if (iptvUseTvFocus(context) && selected != null) {
+      setState(() {
+        _tvFocusedCategoryId = selected;
+        _tvCategoryRailFocused = !focusChannel;
+      });
+    }
+    _scrollCategorySidebarToSelected();
+
+    if (focusChannel) {
+      _landedHighlightId = highlightId;
+      _scrollAndFocusStreamAt(channelIdx);
+      return;
+    }
+    _landedHighlightId = null;
+    if (!iptvUseTvFocus(context)) return;
     if (!iptvFocusBrowserCategories(widget.ctrl)) {
       if (widget.ctrl.browserSidebarCategories.isEmpty) {
         iptvFocusRowItem('browser-streams', 0);
       }
     }
-    _didInitialFocus = true;
-    _scrollCategorySidebarToSelected();
-    _scrollToHighlightedStream();
   }
 
-  /// Jump the channel grid/list to the last-played stream (highlight only).
-  void _scrollToHighlightedStream() {
-    final id = widget.ctrl.browserHighlightedStreamId;
-    if (id == null || id.isEmpty) return;
-    final list = _filteredStreams;
-    final idx = list.indexWhere((x) => x.streamId == id);
-    if (idx < 0) return;
+  /// Scroll lazy grid/list then focus the tile — highlight only, no play.
+  void _scrollAndFocusStreamAt(int index) {
+    if (index < 0) return;
+    final tv = iptvUseTvFocus(context);
     var tries = 0;
-    void go() {
+    var scrolledFor = -1;
+    void attempt() {
       if (!mounted) return;
-      _scrollStreamsToIndex(idx);
-      if (tries++ < 8) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => go());
+      if (ShellBus.shellOverlayHasPage.value ||
+          ShellBus.playerSurfaceActive.value) {
+        if (tries++ < 24) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        }
+        return;
+      }
+      if (scrolledFor != index) {
+        _scrollStreamsToIndex(index);
+        scrolledFor = index;
+        tries++;
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        return;
+      }
+      if (!tv) return;
+      if (iptvFocusBrowserStreamAt(index)) return;
+      scrolledFor = -1;
+      if (tries++ < 24) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      } else {
+        iptvFocusBrowserCategories(widget.ctrl);
       }
     }
-    go();
-    WidgetsBinding.instance.addPostFrameCallback((_) => go());
+
+    attempt();
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
+
+  /// Alias used by panel-close / load paths.
+  void _focusCatalogGroup() => _landRestoredCatalog();
 
   /// Commit a category for the channel pane. On TV, OK / → also moves focus
   /// into streams; ↑/↓ alone must not call this (avoids logo thrash).
