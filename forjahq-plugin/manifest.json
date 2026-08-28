@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq",
   "name": "ForjaHQ",
-  "version": "1.5.16",
+  "version": "1.5.17",
   "plugins": [
     {
       "id": "videasy",

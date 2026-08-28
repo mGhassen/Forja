@@ -173,6 +173,8 @@ function extract(ctx) {
             pos = closeParen + 2;
           }
         }
+        var plyr = kwikFromPlyrSplit(html, kwikUrl);
+        if (plyr) return plyr;
         return null;
       })
       .catch(function () {
@@ -338,45 +340,140 @@ function extract(ctx) {
       });
   }
 
-  function findSession(title, malId) {
-    return fetchJson('/api?m=search&l=8&q=' + encodeURIComponent(title)).then(function (res) {
-      var data = (res && res.data) || [];
-      var tasks = data.slice(0, 5).map(function (item) {
-        return fetchText('/anime/' + item.session)
-          .then(function (html) {
-            return html.indexOf('myanimelist.net/anime/' + malId) >= 0 ? item.session : null;
-          })
-          .catch(function () {
-            return null;
-          });
+  function normTitle(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function searchQueries(title) {
+    var t = String(title || '').trim();
+    if (!t) return [];
+    var out = [t];
+    var short = t.split(':')[0].trim();
+    if (short && short !== t && short.length >= 4) out.push(short);
+    var words = t.split(/\s+/);
+    if (words.length > 5) out.push(words.slice(0, 5).join(' '));
+    return out.filter(function (q, i, a) {
+      return q && a.indexOf(q) === i;
+    });
+  }
+
+  function searchAnime(query) {
+    return fetchJson('/api?m=search&q=' + encodeURIComponent(query)).then(function (res) {
+      return (res && res.data) || [];
+    });
+  }
+
+  function verifySessionMal(session, malId) {
+    if (!session || !malId) return Promise.resolve(null);
+    return fetchText('/anime/' + session)
+      .then(function (html) {
+        return html.indexOf('myanimelist.net/anime/' + malId) >= 0 ? session : null;
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  function pickSession(results, title, malId) {
+    if (!results || !results.length) return Promise.resolve(null);
+    var want = normTitle(title);
+    var i;
+    for (i = 0; i < results.length; i++) {
+      if (normTitle(results[i].title) === want) return Promise.resolve(results[i].session);
+    }
+    for (i = 0; i < results.length; i++) {
+      var got = normTitle(results[i].title);
+      if (got.indexOf(want) >= 0 || want.indexOf(got) >= 0) {
+        return Promise.resolve(results[i].session);
+      }
+    }
+    if (malId) {
+      var tasks = results.slice(0, 8).map(function (item) {
+        return verifySessionMal(item.session, malId);
       });
       return Promise.all(tasks).then(function (sessions) {
         return sessions.find(Boolean) || null;
       });
+    }
+    return Promise.resolve(results[0].session);
+  }
+
+  function findSessionByTitle(title, malId) {
+    var queries = searchQueries(title);
+    function walk(i) {
+      if (i >= queries.length) return Promise.resolve(null);
+      return searchAnime(queries[i]).then(function (results) {
+        return pickSession(results, title, malId).then(function (session) {
+          return session || walk(i + 1);
+        });
+      });
+    }
+    return walk(0);
+  }
+
+  // xenmods AnimepaheAPI.get_release pagination
+  function releaseSession(animeSession, episode) {
+    var ep = Math.floor(Number(episode) || 1);
+    return fetchJson('/api?m=release&id=' + animeSession + '&sort=episode_asc').then(function (first) {
+      if (!first || !first.data || !first.data.length) return null;
+      if (ep > (first.total || 0)) return null;
+      if ((first.last_page || 1) === 1) {
+        var single = (first.data || []).find(function (file) {
+          return Math.floor(file.episode) === ep;
+        });
+        return single ? single.session : null;
+      }
+      var page = Math.ceil((ep * (first.last_page || 1)) / (first.total || 1)) || 1;
+      return fetchJson(
+        '/api?m=release&id=' + animeSession + '&sort=episode_asc&page=' + page,
+      ).then(function (resp) {
+        var hit = (resp && resp.data ? resp.data : []).find(function (file) {
+          return Math.floor(file.episode) === ep;
+        });
+        return hit ? hit.session : null;
+      });
     });
   }
 
-  function episodeSession(animeSession, mappedEp) {
-    return fetchJson('/api?m=release&id=' + animeSession + '&sort=episode_asc&page=1').then(
-      function (first) {
-        var epStart = Math.floor(((first.data || [])[0] || {}).episode || 1);
-        var perPage = first.per_page || 30;
-        var targetEp = epStart - 1 + mappedEp;
-        var page = Math.ceil(mappedEp / perPage) || 1;
-        return fetchJson(
-          '/api?m=release&id=' + animeSession + '&sort=episode_asc&page=' + page,
-        ).then(function (pageData) {
-          var found = (pageData.data || []).find(function (e) {
-            return Math.floor(e.episode) == targetEp;
-          });
-          if (found) return found.session;
-          var fallback = (first.data || []).find(function (e) {
-            return Math.floor(e.episode) == targetEp;
-          });
-          return fallback ? fallback.session : null;
-        });
-      },
-    );
+  function kwikFromPlyrSplit(html, kwikUrl) {
+    try {
+      var scripts = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi) || [];
+      for (var si = 0; si < scripts.length; si++) {
+        if (scripts[si].indexOf('Plyr') < 0 || scripts[si].indexOf('.split') < 0) continue;
+        var body = scripts[si].replace(/^<script[^>]*>/i, '').replace(/<\/script>$/i, '');
+        var part = body.split('Plyr')[1].split('.split')[0];
+        var bits = part.split('|');
+        if (bits.length < 10) continue;
+        var origin = (kwikUrl.match(/^https?:\/\/[^/]+/) || [kwikOrigin])[0];
+        var m3u8 =
+          'https://' +
+          bits[bits.length - 2] +
+          '-' +
+          bits[bits.length - 3] +
+          '.' +
+          bits[bits.length - 4] +
+          '.' +
+          bits[bits.length - 5] +
+          '.' +
+          bits[bits.length - 6] +
+          '/hls/' +
+          bits[bits.length - 8] +
+          '/' +
+          bits[bits.length - 9] +
+          '/' +
+          bits[bits.length - 10] +
+          '/owo.m3u8';
+        return {
+          m3u8: m3u8,
+          headers: { Referer: origin + '/', Origin: origin, 'User-Agent': ua },
+        };
+      }
+    } catch (e) {}
+    return null;
   }
 
   function collectFromHtml(html, streams, tasks) {
@@ -525,18 +622,30 @@ function extract(ctx) {
   }
 
   function resolveEpisodic() {
+    var ep = Number(ctx.mappedEpisode || ctx.episode || 1) || 1;
+    var title = String(ctx.title || '').trim();
+    var mal = Number(ctx.malId) || 0;
+
+    function pipeline(searchTitle, malId) {
+      return findSessionByTitle(searchTitle, malId).then(function (animeSession) {
+        if (!animeSession) return [];
+        return releaseSession(animeSession, ep).then(function (epSess) {
+          if (!epSess) return [];
+          return playStreams(animeSession, epSess);
+        });
+      });
+    }
+
+    if (title) {
+      return pipeline(title, mal > 0 ? mal : 0).catch(function () {
+        return [];
+      });
+    }
+
     return resolveMal()
       .then(function (info) {
-        if (!info || !info.malId) return [];
-        var title = info.title || String(ctx.title || '');
-        if (!title) return [];
-        return findSession(title, info.malId).then(function (animeSession) {
-          if (!animeSession) return [];
-          return episodeSession(animeSession, info.mappedEp).then(function (epSess) {
-            if (!epSess) return [];
-            return playStreams(animeSession, epSess);
-          });
-        });
+        if (!info || !info.title) return [];
+        return pipeline(info.title, info.malId || 0);
       })
       .catch(function () {
         return [];
@@ -561,7 +670,7 @@ function extract(ctx) {
       return fetchJson('/api?m=search&l=8&q=' + encodeURIComponent(title)).then(function (res) {
         var first = ((res && res.data) || [])[0];
         if (!first || first.title.toLowerCase() !== title.toLowerCase()) return [];
-        return episodeSession(first.session, 1).then(function (epSess) {
+        return releaseSession(first.session, 1).then(function (epSess) {
           if (!epSess) return [];
           return playStreams(first.session, epSess);
         });

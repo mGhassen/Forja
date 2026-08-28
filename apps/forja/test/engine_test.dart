@@ -1215,7 +1215,8 @@ void main() {
       final animepahe = await loadForjaHqFile('providers/animepahe.js');
       expect(animepahe.contains('isBlockedBody'), isTrue);
       expect(animepahe.contains('phisheranimepahe'), isTrue);
-      expect(animepahe.contains('api?m=links'), isTrue);
+      expect(animepahe.contains('findSessionByTitle'), isTrue);
+      expect(animepahe.contains('releaseSession'), isTrue);
       expect(animepahe.contains('extractKwik'), isTrue);
       expect(animepahe.contains('kwik.si'), isTrue);
       expect(animepahe.contains('id-mapping-api-malid'), isTrue);
