@@ -89,9 +89,9 @@ class _DamiTvStream {
   final String categoryName;
   final String status;
   final String league;
-  final String? homeTeam = null;
+  final String? homeTeam;
   final String? homeBadge = null;
-  final String? awayTeam = null;
+  final String? awayTeam;
   final String? awayBadge = null;
   final int viewers;
   final String iframe;
@@ -110,6 +110,8 @@ class _DamiTvStream {
     required this.league,
     required this.viewers,
     required this.iframe,
+    this.homeTeam,
+    this.awayTeam,
     this.alwaysLive = false,
   });
 
@@ -238,19 +240,25 @@ class _StreamedMatch {
     final teams = j['teams'] as Map<String, dynamic>?;
     final home = teams?['home'] as Map<String, dynamic>?;
     final away = teams?['away'] as Map<String, dynamic>?;
+    final title = (j['title'] ?? '').toString();
+    final (parsedHome, parsedAway) = resolveLiveMatchTeams(
+      homeTeam: home?['name'] as String?,
+      awayTeam: away?['name'] as String?,
+      title: title,
+    );
 
     return _StreamedMatch(
       id: (j['id'] ?? '').toString(),
-      title: (j['title'] ?? '').toString(),
+      title: title,
       category: (j['category'] ?? '').toString(),
       dateMs: (j['date'] as num?)?.toInt() ?? 0,
       poster: (j['poster'] ?? '').toString(),
       popular: j['popular'] == true,
       airing: j['airing'] == true,
       viewers: parsePpvViewers(j['viewers']),
-      homeTeam: home?['name'] as String?,
+      homeTeam: parsedHome.isEmpty ? null : parsedHome,
       homeBadge: home?['badge'] as String?,
-      awayTeam: away?['name'] as String?,
+      awayTeam: parsedAway.isEmpty ? null : parsedAway,
       awayBadge: away?['badge'] as String?,
       sources: (j['sources'] as List? ?? [])
           .map((s) => _StreamedSourceRef.fromJson(s as Map<String, dynamic>))
@@ -700,7 +708,12 @@ String _matchTextKey(String raw) {
                 token.isNotEmpty &&
                 token != 'fc' &&
                 token != 'sc' &&
-                token != 'w',
+                token != 'w' &&
+                // Drop fixture connectors so `X at Y` / `Y vs X` title keys match.
+                token != 'at' &&
+                token != 'vs' &&
+                token != 'versus' &&
+                token != 'v',
           )
           .toList()
         ..sort();
@@ -714,6 +727,19 @@ String? _teamPairKey(String? home, String? away) {
   return teams.join('|');
 }
 
+String? _teamPairKeyFromCatalog({
+  String? homeTeam,
+  String? awayTeam,
+  required String title,
+}) {
+  final (home, away) = resolveLiveMatchTeams(
+    homeTeam: homeTeam,
+    awayTeam: awayTeam,
+    title: title,
+  );
+  return _teamPairKey(home, away);
+}
+
 bool _samePpvStreamedMatch(_DamiTvStream ppv, _StreamedMatch streamed) {
   if (ppv.isAlwaysOn || streamed.isAlwaysOn) return false;
   if (ppv.startsAt <= 0 || streamed.dateMs <= 0) return false;
@@ -725,8 +751,16 @@ bool _samePpvStreamedMatch(_DamiTvStream ppv, _StreamedMatch streamed) {
   final deltaMs = (ppv.startsAt * 1000 - streamed.dateMs).abs();
   if (deltaMs > const Duration(minutes: 30).inMilliseconds) return false;
 
-  final ppvTeams = _teamPairKey(ppv.homeTeam, ppv.awayTeam);
-  final streamedTeams = _teamPairKey(streamed.homeTeam, streamed.awayTeam);
+  final ppvTeams = _teamPairKeyFromCatalog(
+    homeTeam: ppv.homeTeam,
+    awayTeam: ppv.awayTeam,
+    title: ppv.name,
+  );
+  final streamedTeams = _teamPairKeyFromCatalog(
+    homeTeam: streamed.homeTeam,
+    awayTeam: streamed.awayTeam,
+    title: streamed.title,
+  );
   if (ppvTeams != null && streamedTeams != null) {
     return ppvTeams == streamedTeams;
   }
@@ -745,7 +779,11 @@ List<_StreamedMatch> _streamedMatchesForEvent(
 
 /// Stable key for caching resolved stream-viewer totals on the grid card.
 String _liveEventViewerKey(_StreamedMatch match) {
-  final teams = _teamPairKey(match.homeTeam, match.awayTeam);
+  final teams = _teamPairKeyFromCatalog(
+    homeTeam: match.homeTeam,
+    awayTeam: match.awayTeam,
+    title: match.title,
+  );
   if (teams != null) return 't:$teams';
   final title = _matchTextKey(match.title);
   if (title.isNotEmpty && match.dateMs > 0) {
@@ -756,7 +794,11 @@ String _liveEventViewerKey(_StreamedMatch match) {
 }
 
 String _liveEventViewerKeyFromPpv(_DamiTvStream ppv) {
-  final teams = _teamPairKey(ppv.homeTeam, ppv.awayTeam);
+  final teams = _teamPairKeyFromCatalog(
+    homeTeam: ppv.homeTeam,
+    awayTeam: ppv.awayTeam,
+    title: ppv.name,
+  );
   if (teams != null) return 't:$teams';
   final title = _matchTextKey(ppv.name);
   if (title.isNotEmpty && ppv.startsAt > 0) {
@@ -869,8 +911,16 @@ List<_StreamedMatch> _mergeStreamedCatalogRows(List<_StreamedMatch> matches) {
 /// Cross-catalog match for TV native picker (All card → Stremio addon event).
 bool _sameStreamedEvent(_StreamedMatch a, _StreamedMatch b) {
   if (a.isAlwaysOn || b.isAlwaysOn) return false;
-  final teamsA = _teamPairKey(a.homeTeam, a.awayTeam);
-  final teamsB = _teamPairKey(b.homeTeam, b.awayTeam);
+  final teamsA = _teamPairKeyFromCatalog(
+    homeTeam: a.homeTeam,
+    awayTeam: a.awayTeam,
+    title: a.title,
+  );
+  final teamsB = _teamPairKeyFromCatalog(
+    homeTeam: b.homeTeam,
+    awayTeam: b.awayTeam,
+    title: b.title,
+  );
   if (teamsA != null && teamsB != null) return teamsA == teamsB;
   final titleA = _matchTextKey(a.title);
   final titleB = _matchTextKey(b.title);
@@ -2541,13 +2591,11 @@ bool _sameCatalogEventAsEspn({
   final espnMs = (espn['dateMs'] as num?)?.toInt() ?? 0;
   if (!_kickoffClose(dateMs, espnMs)) return false;
 
-  var home = (homeTeam ?? '').trim();
-  var away = (awayTeam ?? '').trim();
-  if (home.isEmpty || away.isEmpty) {
-    final parsed = parseLiveMatchTeamsFromTitle(title);
-    if (home.isEmpty) home = parsed.$1;
-    if (away.isEmpty) away = parsed.$2;
-  }
+  final (home, away) = resolveLiveMatchTeams(
+    homeTeam: homeTeam,
+    awayTeam: awayTeam,
+    title: title,
+  );
   if (_teamPairsMatch(home, away, espn)) return true;
 
   final espnTitle = _matchTextKey((espn['title'] ?? espn['name'] ?? '').toString());
@@ -2583,13 +2631,11 @@ bool _sameCatalogEventAsEspn({
   }
 
   Map<String, dynamic>? matchEspnForRow(_StreamedMatch m) {
-    var home = (m.homeTeam ?? '').trim();
-    var away = (m.awayTeam ?? '').trim();
-    if (home.isEmpty || away.isEmpty) {
-      final parsed = parseLiveMatchTeamsFromTitle(m.title);
-      if (home.isEmpty) home = parsed.$1;
-      if (away.isEmpty) away = parsed.$2;
-    }
+    final (home, away) = resolveLiveMatchTeams(
+      homeTeam: m.homeTeam,
+      awayTeam: m.awayTeam,
+      title: m.title,
+    );
     final pair = _teamPairKey(home, away);
     Map<String, dynamic>? g;
     if (pair != null) g = byPair.remove(pair);
@@ -3060,13 +3106,11 @@ Future<List<IptvPlaySource>> _ensureIptvSportsLogos(
 
 /// Build matcher payload from a Live Matches card (PPV / Streamed / CDN).
 Map<String, dynamic> _sportMatchGamePayloadFromMatch(_StreamedMatch match) {
-  var home = (match.homeTeam ?? '').trim();
-  var away = (match.awayTeam ?? '').trim();
-  if (home.isEmpty || away.isEmpty) {
-    final parsed = parseLiveMatchTeamsFromTitle(match.title);
-    if (home.isEmpty) home = parsed.$1;
-    if (away.isEmpty) away = parsed.$2;
-  }
+  final (home, away) = resolveLiveMatchTeams(
+    homeTeam: match.homeTeam,
+    awayTeam: match.awayTeam,
+    title: match.title,
+  );
   String nick(String team) {
     final bits = team.split(RegExp(r'\s+')).where((s) => s.isNotEmpty);
     return bits.isEmpty ? '' : bits.last;
@@ -3143,15 +3187,19 @@ _DamiTvStream _damiTvFromPpvCatalogRow(Map<String, dynamic> row) {
       .replaceFirst(RegExp(r'^ppv_'), '');
   final categoryName = (row['category_name'] ?? row['category'] ?? '')
       .toString();
+  final name = (row['title'] ?? '').toString();
+  final (home, away) = resolveLiveMatchTeams(title: name);
   return _DamiTvStream(
     id: rawId,
-    name: (row['title'] ?? '').toString(),
+    name: name,
     poster: (row['poster'] ?? '').toString(),
     startsAt: (row['starts_at'] as num?)?.toInt() ?? 0,
     endsAt: (row['ends_at'] as num?)?.toInt() ?? 0,
     categoryName: categoryName,
     status: row['airing'] == true ? 'live' : '',
     league: '',
+    homeTeam: home.isEmpty ? null : home,
+    awayTeam: away.isEmpty ? null : away,
     viewers: parsePpvViewers(row['viewers']),
     iframe: (row['iframe'] ?? src['iframe'] ?? '').toString(),
     alwaysLive: row['always_live'] == true,

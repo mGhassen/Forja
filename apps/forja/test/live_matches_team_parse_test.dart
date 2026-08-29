@@ -34,5 +34,34 @@ void main() {
       );
       expect(parseLiveMatchTeamsFromTitle('NFL Network'), ('', ''));
     });
+
+    test('at and vs reverse to the same home/away', () {
+      final at = parseLiveMatchTeamsFromTitle(
+        'Houston Texans at Carolina Panthers',
+      );
+      final vs = parseLiveMatchTeamsFromTitle(
+        'Carolina Panthers vs Houston Texans',
+      );
+      expect(at, ('Carolina Panthers', 'Houston Texans'));
+      expect(vs, at);
+    });
+
+    test('resolveLiveMatchTeams fills from title when structured empty', () {
+      final (home, away) = resolveLiveMatchTeams(
+        title: 'Houston Texans at Carolina Panthers',
+      );
+      expect(home, 'Carolina Panthers');
+      expect(away, 'Houston Texans');
+    });
+
+    test('resolveLiveMatchTeams keeps structured teams', () {
+      final (home, away) = resolveLiveMatchTeams(
+        homeTeam: 'Home FC',
+        awayTeam: 'Away FC',
+        title: 'Ignored at Title',
+      );
+      expect(home, 'Home FC');
+      expect(away, 'Away FC');
+    });
   });
 }
