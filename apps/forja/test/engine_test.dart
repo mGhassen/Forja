@@ -325,7 +325,7 @@ void main() {
       );
     });
 
-    test('disableShadowOfficialPacks turns off GitHub forjahq-providers',
+    test('applyOfficialKeepSet disables GitHub and enables local keep URL',
         () async {
       const github =
           'https://raw.githubusercontent.com/example/Forja/main/plugins/providers/manifest.json';
@@ -337,6 +337,23 @@ void main() {
             'packId': 'forjahq-providers',
             'name': 'ForjaHQ Providers',
             'version': '1.0.0',
+            'enabled': true,
+            'plugins': [
+              {
+                'id': 'videasy',
+                'name': 'Videasy',
+                'entry': 'videasy.js',
+                'kind': 'http',
+                'enabled': true,
+              },
+            ],
+          },
+          {
+            'sourceUrl': local,
+            'packId': 'forjahq-providers',
+            'name': 'ForjaHQ Providers',
+            'version': '1.0.0',
+            'enabled': false,
             'plugins': [
               {
                 'id': 'videasy',
@@ -358,30 +375,30 @@ void main() {
         'engine_js_packs_v2_migrated': true,
         'engine_js_legacy_forjahq_wiped': true,
       });
-      await registry.disableShadowOfficialPacks([local]);
+      await registry.applyOfficialKeepSet([local]);
       final packs = await registry.listPacksRaw();
-      expect(packs.any((p) => p.sourceUrl == github), isTrue);
-      final githubPack = packs.firstWhere((p) => p.sourceUrl == github);
-      expect(githubPack.enabled, isFalse);
-      expect(githubPack.plugins.any((p) => p.enabled), isTrue);
+      expect(packs.firstWhere((p) => p.sourceUrl == github).enabled, isFalse);
+      expect(packs.firstWhere((p) => p.sourceUrl == local).enabled, isTrue);
       expect(
         packs.any((p) => p.sourceUrl == 'https://community.example/manifest.json'),
         isTrue,
       );
     });
 
-    test('isShadowingOfficialManifestUrl detects GitHub ForjaHQ paths', () {
+    test('forjaHqSlot detects providers/live/catalog paths', () {
       expect(
-        PluginRegistry.isShadowingOfficialManifestUrl(
+        PluginRegistry.forjaHqSlot(
           'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/providers/manifest.json',
         ),
-        isTrue,
+        'providers',
       );
       expect(
-        PluginRegistry.isShadowingOfficialManifestUrl(
-          'https://community.example/manifest.json',
-        ),
-        isFalse,
+        PluginRegistry.forjaHqSlot('/Users/x/Forja/plugins/live/manifest.json'),
+        'live',
+      );
+      expect(
+        PluginRegistry.forjaHqSlot('https://community.example/manifest.json'),
+        isNull,
       );
     });
 
