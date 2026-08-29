@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **8 / 8** Sentry · **6 / 6** PostHog (app) · **3 / 3** PostHog (web) · **6 / 6** PostHog member identity · **0 / 0** deferred |
-| **Current slice** | App PostHog identify by `accounts.id` + runtime person props |
+| **Progress** | **6 / 6** components · **8 / 8** Sentry · **7 / 7** PostHog (app) · **4 / 4** PostHog (web) · **6 / 6** PostHog member identity · **0 / 0** deferred |
+| **Current slice** | Session replay disabled — events/pageviews only |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -53,6 +53,7 @@
 | 4 | R43-A12 | Settings → About Product analytics toggle + debug Verify PostHog | ✅ |
 | 5 | R43-A13 | CI dart-defines `POSTHOG_API_KEY` / `POSTHOG_HOST`; feature doc + changelog | ✅ |
 | 6 | R43-A14 | No Sentry Session Replay (product replay is PostHog) | ✅ |
+| 7 | R43-A24 | Session replay disabled in Flutter app; allowlisted events only when opted in | ✅ |
 
 ---
 
@@ -63,6 +64,7 @@
 | 1 | R43-A15 | Empty `VITE_POSTHOG_KEY` → portal SDK never starts (no network) | ✅ |
 | 2 | R43-A16 | Configured key → SPA `$pageview` on route changes; session replay masks inputs/text; no email identify | ✅ |
 | 3 | R43-A17 | Env docs (`apps/web` + root bridge) + feature/changelog | ✅ |
+| 4 | R43-A25 | Web portal session recording disabled; SPA pageviews remain when key configured | ✅ |
 
 ---
 
@@ -81,7 +83,7 @@
 
 ## Summary
 
-**Sentry** = crashes / Issues (Flutter). **PostHog** = product events + session replay (Flutter opt-in; web when key configured). Flutter dual **opt-in** toggles (default off). Strict scrubbing — no stream URLs, magnets, cookies, JWTs. When product analytics is on and the user is signed in, PostHog Persons are keyed by **account id**, with runtime version/platform props plus opaque **`member_number`** (not email). Admin Accounts joins Supabase rows to PostHog person props (server-side personal API key).
+**Sentry** = crashes / Issues (Flutter). **PostHog** = product events (Flutter opt-in; web pageviews when key configured). Session replay was shipped then disabled — replays did not surface reliably in PostHog. Flutter dual **opt-in** toggles (default off). Strict scrubbing — no stream URLs, magnets, cookies, JWTs. When product analytics is on and the user is signed in, PostHog Persons are keyed by **account id**, with runtime version/platform props plus opaque **`member_number`** (not email). Admin Accounts joins Supabase rows to PostHog person props (server-side personal API key).
 
 **Out of scope:** Sentry Logs dump, Sentry Replay, identify-by-email (email as distinct id or person prop), Supabase `client_runtimes` inventory table.
 

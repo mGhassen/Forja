@@ -96,10 +96,7 @@ export const posthogBrowserOptions: Partial<PostHogConfig> = {
   // Loud in local DEV so Network/console make it obvious the SDK started.
   debug: Boolean(import.meta.env.DEV),
   persistence: 'localStorage+cookie',
-  session_recording: {
-    maskAllInputs: true,
-    maskTextSelector: '*',
-  },
+  disable_session_recording: true,
   before_send: (event) => {
     if (!event) return event
     if (event.properties) {

@@ -12,10 +12,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'client_runtime_props.dart';
 import 'telemetry_scrub.dart';
 
-/// PostHog product analytics + session replay (RFC-043).
+/// PostHog product analytics (RFC-043).
 ///
-/// Opt-in via Settings. Replay on wherever the Flutter SDK supports it
-/// (incl. macOS / Android / iOS; Linux/Windows may no-op inside the SDK).
+/// Opt-in via Settings. Allowlisted events only — session replay off.
 /// When signed in, [identify] uses `accounts.id` (= auth user id) and sets
 /// person props: member_number (opaque ops id), app_version, platform,
 /// os_version, arch, last_seen_at. Never email.
@@ -129,11 +128,8 @@ abstract final class ProductAnalytics {
       ..host = host
       ..debug = kDebugMode
       ..captureApplicationLifecycleEvents = true
-      ..sessionReplay = true
+      ..sessionReplay = false
       ..beforeSend = [_beforeSend];
-
-    config.sessionReplayConfig.maskAllTexts = true;
-    config.sessionReplayConfig.maskAllImages = true;
 
     await Posthog().setup(config);
     _active = true;

@@ -37,7 +37,6 @@ Forja checks for newer builds from the release CDN on Cloudflare R2 (`latest/man
 ## Tips
 
 - **Crash reporting** and **Product analytics** are under About → Privacy for every account (both on by default). Keychain and debug Developer rows stay **admin**-only. Local builds without reporting keys keep the toggles but send nothing
-- Enable **Record user sessions** in PostHog project settings for session replay
 - Web portal analytics needs its own `VITE_POSTHOG_KEY` (separate PostHog project from the app); empty key means the site never loads PostHog
 - Published releases (CI on forjahq): `./scripts/release_ci.sh` or `melos run release` — searchable tag list locally (needs `gh` CLI)
 - After **New version** on forjahq, CI pushes the `chore: release` commit + tag to origin (`mGhassen/Forja`) when repo secret `ORIGIN_SYNC_TOKEN` is set (optional variable `ORIGIN_SYNC_REPO`). Fallback: `./scripts/release_local.sh sync-from`

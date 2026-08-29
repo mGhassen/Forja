@@ -420,8 +420,6 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
             return content;
           },
         );
-        // PostHog replay root (no-op on desktop; required on Android/iOS).
-        app = PostHogWidget(child: app);
         if (_isDesktop) {
           app = ExcludeSemantics(child: app);
         }

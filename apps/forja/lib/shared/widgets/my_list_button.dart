@@ -478,18 +478,27 @@ class _StatusRowState extends State<_StatusRow> {
   bool _hovered = false;
   bool _focused = false;
 
-  bool get _active => _hovered || _focused;
+  bool _active(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    return ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: _hovered,
+      focused: _focused,
+      context: context,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final accent = _active
+    final active = _active(context);
+    final accent = active
         ? widget.statusColor
         : (widget.selected ? widget.statusColor : Colors.white);
     final row = AnimatedContainer(
       duration: const Duration(milliseconds: 120),
       curve: Curves.easeOut,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      color: _active
+      color: active
           ? widget.statusColor.withValues(alpha: 0.12)
           : Colors.transparent,
       child: Row(
@@ -500,7 +509,7 @@ class _StatusRowState extends State<_StatusRow> {
             widget.label,
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
-              fontWeight: widget.selected || _active
+              fontWeight: widget.selected || active
                   ? FontWeight.w700
                   : FontWeight.w500,
               color: accent,
