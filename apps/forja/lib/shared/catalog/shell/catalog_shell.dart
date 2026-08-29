@@ -134,8 +134,7 @@ class _CatalogShellState extends State<CatalogShell>
         _loading = false;
         _widgets = const [];
         _error =
-            'This hub plugin is off. Enable it under Settings → Sources → Forja (Hubs). '
-            'To hide the tab, use Settings → Features.';
+            'This hub plugin is off. Enable it under Settings → Sources → Forja (Hubs).';
       });
       return;
     }
@@ -288,9 +287,11 @@ class _CatalogShellState extends State<CatalogShell>
       openCatalogMetaItem(context, pluginId: widget.pluginId, item: item);
 
   HubListFollowTarget? _listTarget(CatalogMetaItem item) {
-    switch (item.type) {
+    final open = item.open;
+    if (open == null) return null;
+    switch (open.surface) {
       case 'anime':
-        final id = item.numericId('anilist');
+        final id = open.idInt;
         if (id == null) return null;
         return HubListFollowTarget.anime(
           anilistId: id,
@@ -300,7 +301,7 @@ class _CatalogShellState extends State<CatalogShell>
           releaseDate: item.releaseInfo,
         );
       case 'drama':
-        final id = item.numericId('kisskh');
+        final id = open.idInt;
         if (id == null) return null;
         return HubListFollowTarget.drama(
           kisskhId: id,
@@ -322,16 +323,17 @@ class _CatalogShellState extends State<CatalogShell>
     final status = (item.status ?? '').trim();
     final isUpcoming = status.toUpperCase() == 'NOT_YET_RELEASED';
     final useAniBanner =
-        item.type == 'anime' &&
+        item.open?.surface == 'anime' &&
         item.bannerImage.isNotEmpty &&
         item.background == item.bannerImage;
     final yearBit = item.releaseInfo.isEmpty
         ? null
         : item.releaseInfo.split(' • ').first;
-    // Anime / drama: keep KissKH·AniList open + listTarget. Never set [movie]
+    // Hub-native surfaces: keep pack open + listTarget. Never set [movie]
     // — hub hero has onOpenDetails=null, so a TMDB Movie made View details a
     // silent no-op after spotlight enrich.
-    final hubNative = item.type == 'anime' || item.type == 'drama';
+    final surface = item.open?.surface;
+    final hubNative = surface == 'anime' || surface == 'drama' || surface == 'arabic';
     final movie = hubNative ? null : catalogMetaToMovie(item);
     return HubHeroSlide(
       id: item.id,

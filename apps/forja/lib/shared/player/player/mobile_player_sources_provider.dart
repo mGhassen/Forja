@@ -220,6 +220,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
               kind: StatusRouletteKind.failed,
               dismissAfter: const Duration(seconds: 2),
             );
+            setState(() => _s._hasError = true);
           }
           return null;
         }
@@ -239,6 +240,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
               kind: StatusRouletteKind.failed,
               dismissAfter: const Duration(seconds: 2),
             );
+            setState(() => _s._hasError = true);
           }
           return null;
         }
@@ -320,6 +322,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
             kind: StatusRouletteKind.failed,
             dismissAfter: const Duration(seconds: 2),
           );
+          setState(() => _s._hasError = true);
         }
       }
     } catch (e) {
@@ -330,6 +333,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );
+        setState(() => _s._hasError = true);
       }
     }
     return null;

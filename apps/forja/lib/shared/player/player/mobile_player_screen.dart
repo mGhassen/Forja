@@ -27,7 +27,7 @@ import 'package:forja/shared/playback/stream_open_strategy.dart';
 import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
-import 'package:forja/shared/extractors/providers/arabic/arabic_service.dart';
+import 'package:forja/shared/extractors/core/embed_stream_resolve.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';

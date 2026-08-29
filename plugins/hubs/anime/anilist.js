@@ -131,7 +131,9 @@ function anilistMeta(m) {
     releaseInfo: anilistCardMeta(m),
     genres: Array.isArray(m.genres) ? m.genres : [],
     ids: ids,
+    open: { surface: 'anime', id: String(m.id) },
   };
+  if (m.idMal) meta.open.mal = String(m.idMal);
   if (m.averageScore) meta.rating = Number(m.averageScore) / 10;
   if (m.format) meta.badge = String(m.format).replace(/_/g, ' ');
   if (m.status) meta.status = String(m.status);
@@ -218,10 +220,6 @@ function anilistPage(ctx, cfg, params) {
       }
     }
     if (Number(spec.limit) > 0) out = out.slice(0, Number(spec.limit));
-    // Hero spotlight: pack-owned TMDB enrich via shared host/kit (not Dart).
-    if (railId === 'spotlight') {
-      return hubEnrichTmdb(ctx, out, 5);
-    }
     return out;
   });
 }

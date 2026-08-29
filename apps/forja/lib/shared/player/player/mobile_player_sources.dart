@@ -389,10 +389,16 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     }
     final sources = _s._currentSources;
     if (sources != null && sources.isNotEmpty) {
+      final idx = _s._currentFallbackSourceIndex;
+      if (idx >= 0 && idx < sources.length) return sources[idx].title;
       final current = sources.firstWhere(
         (s) => _s._currentProvider == 'service111477'
             ? s.url == _s._current111477FileUrl
-            : s.url == _s._currentUrl,
+            : streamSourceMatchesPlaying(
+                s,
+                playUrl: _s._currentUrl,
+                catalogUrl: _s._currentPlayingCatalogUrl,
+              ),
         orElse: () => sources.first,
       );
       return current.title;
@@ -576,7 +582,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     }
 
     if (pid == 'arabic' && source.type == 'arabic_embed') {
-      final result = await ArabicService.extractStreamUrl(source.url);
+      final result = await EmbedStreamResolve.resolve(source.url);
       if (result == null) return null;
       openUrl = result.url;
       headers = result.headers;
@@ -732,10 +738,22 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     // Fence stop/open so the error listener does not bump _fallbackGen and
     // abort this switch (same as _initPlayback).
     _s._isInitPlaybackRunning = true;
+    // Claim chrome / panel selection immediately — keep it on failure
+    // (do not snap back to the previously playing row).
+    _s._markPlaybackConfirmed(false);
     setState(() {
       _s._hasError = false;
+      _s._currentFallbackSourceIndex = targetIndex.clamp(
+        0,
+        (_s._currentSources?.length ?? 1) - 1,
+      );
+      _s._currentPlayingCatalogUrl = source.catalogUrl ?? source.url;
+      if (_s._currentProvider == 'service111477') {
+        _s._current111477FileUrl = source.url;
+      }
     });
     _markSourceChecking(targetIndex);
+    _notifySourceMenuChanged();
 
     final currentPos = switchResumePosition(
       uiPosition: _s._positionNotifier.value,
@@ -762,6 +780,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         dismissAfter: const Duration(seconds: 2),
       );
       _markSourceFailed(targetIndex);
+      setState(() => _s._hasError = true);
       unawaited(_recordStreamPlayFailure(_s._currentProvider ?? ''));
     }
 

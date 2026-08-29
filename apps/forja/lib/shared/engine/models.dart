@@ -20,6 +20,7 @@ class EnginePlugin {
     this.kit,
     this.capabilities = const [],
     this.nav,
+    this.enrich,
   });
 
   final String id;
@@ -56,6 +57,10 @@ class EnginePlugin {
 
   /// Nav contribution — parsed by `CatalogNavSpec.fromPluginNav`.
   final Map<String, dynamic>? nav;
+
+  /// Optional companion catalog plugin id for post-rail / post-details enrich.
+  /// Source plugins stay data-only; host pipes `items` / `meta` through this.
+  final String? enrich;
 
   bool get isHttp => kind == 'http';
   bool get isHost => kind == 'host';
@@ -143,6 +148,9 @@ class EnginePlugin {
       kit: _asPluginInt(j['kit']),
       capabilities: _stringList(j['capabilities']),
       nav: j['nav'] is Map ? Map<String, dynamic>.from(j['nav'] as Map) : null,
+      enrich: (j['enrich'] as String?)?.trim().isNotEmpty == true
+          ? (j['enrich'] as String).trim()
+          : null,
     );
   }
 
@@ -163,6 +171,7 @@ class EnginePlugin {
     if (kit != null) 'kit': kit,
     if (capabilities.isNotEmpty) 'capabilities': capabilities,
     if (nav != null) 'nav': nav,
+    if (enrich != null && enrich!.isNotEmpty) 'enrich': enrich,
   };
 
   EnginePlugin copyWith({bool? enabled}) => EnginePlugin(
@@ -182,6 +191,7 @@ class EnginePlugin {
     kit: kit,
     capabilities: capabilities,
     nav: nav,
+    enrich: enrich,
   );
 }
 

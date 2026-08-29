@@ -1,28 +1,55 @@
-import 'package:flutter/material.dart';
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:forja/features/arabic/arabic_player_screen.dart';
+import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/extractors/providers/arabic/arabic_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
-import 'arabic_player_screen.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+Future<T?> openArabicDetails<T>(
+  BuildContext context, {
+  required String pluginId,
+  required CatalogMetaItem item,
+}) {
+  return pushShellRoute<T>(
+    context,
+    AppRouter.slideShellRoute(
+      (_) => ArabicDetailsScreen(pluginId: pluginId, item: item),
+      settings: const RouteSettings(name: 'arabic_details'),
+    ),
+    shellTabId: 'arabic',
+  );
+}
 
 class ArabicDetailsScreen extends StatefulWidget {
-  final ArabicShow show;
+  const ArabicDetailsScreen({
+    super.key,
+    required this.pluginId,
+    required this.item,
+  });
 
-  const ArabicDetailsScreen({super.key, required this.show});
+  final String pluginId;
+  final CatalogMetaItem item;
 
   @override
   State<ArabicDetailsScreen> createState() => _ArabicDetailsScreenState();
 }
 
 class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
-  final ArabicService _service = ArabicService();
+  static const _likedKey = 'liked_arabic';
+
   final ScrollController _scrollController = ScrollController();
   final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'arabic-details-play');
 
-  ArabicShowDetail? _detail;
+  CatalogMetaItem? _detail;
   bool _isLoading = true;
   bool _isLiked = false;
   int _selectedSeason = 0;
@@ -50,41 +77,114 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
     );
   }
 
+  /// Opaque pack params — forward `open` extras; never branch on scraper ids.
+  Map<String, dynamic> _detailsParams() {
+    final params = <String, dynamic>{'id': widget.item.id};
+    final open = widget.item.open;
+    if (open == null) return params;
+    for (final e in open.toJson().entries) {
+      if (e.key == 'surface') continue;
+      params[e.key] = e.value;
+    }
+    params['id'] = widget.item.id;
+    return params;
+  }
+
   Future<void> _loadDetails() async {
-    final ArabicShowDetail detail;
-    if (widget.show.source == 'dimatoon') {
-      detail = await _service.getDimaToonDetails(widget.show.url);
-    } else if (widget.show.source == 'brstej') {
-      detail = await _service.getBrstejDetails(widget.show.id);
-    } else {
-      detail = await _service.getShowDetails(widget.show.id);
-    }
-    if (mounted) {
-      setState(() {
-        _detail = detail;
-        _isLoading = false;
-      });
-    }
+    final env = await CatalogRuntime.instance.run(
+      pluginId: widget.pluginId,
+      action: 'details',
+      params: _detailsParams(),
+    );
+    if (!mounted) return;
+    final meta = env.ok ? env.meta : null;
+    setState(() {
+      _detail = meta ??
+          widget.item.copyWith(
+            description: widget.item.description,
+          );
+      _isLoading = false;
+    });
   }
 
   Future<void> _loadLikedStatus() async {
-    final liked = await _service.isLiked(widget.show.id);
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_likedKey) ?? [];
+    final liked = list.any((e) {
+      try {
+        return (jsonDecode(e) as Map)['id'] == widget.item.id;
+      } catch (_) {
+        return false;
+      }
+    });
     if (mounted) setState(() => _isLiked = liked);
   }
 
   Future<void> _toggleLike() async {
-    await _service.toggleLike(widget.show);
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_likedKey) ?? [];
+    final idx = list.indexWhere((e) {
+      try {
+        return (jsonDecode(e) as Map)['id'] == widget.item.id;
+      } catch (_) {
+        return false;
+      }
+    });
+    if (idx >= 0) {
+      list.removeAt(idx);
+    } else {
+      list.insert(
+        0,
+        jsonEncode({
+          'id': widget.item.id,
+          'title': _title,
+          'poster': _poster,
+        }),
+      );
+    }
+    await prefs.setStringList(_likedKey, list);
     _loadLikedStatus();
   }
 
-  void _playEpisode(ArabicEpisode episode) {
+  String get _title => _detail?.name.isNotEmpty == true
+      ? _detail!.name
+      : widget.item.name;
+
+  String get _poster {
+    final p = _detail?.poster ?? '';
+    if (p.isNotEmpty) return p;
+    return widget.item.poster;
+  }
+
+  List<int> get _seasonNumbers {
+    final videos = _detail?.videos ?? const <CatalogVideo>[];
+    final set = <int>{};
+    for (final v in videos) {
+      set.add(v.season ?? 1);
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  List<CatalogVideo> get _seasonVideos {
+    final videos = _detail?.videos ?? const <CatalogVideo>[];
+    final seasons = _seasonNumbers;
+    if (seasons.isEmpty) return const [];
+    final season = seasons[_selectedSeason.clamp(0, seasons.length - 1)];
+    return [
+      for (final v in videos)
+        if ((v.season ?? 1) == season) v,
+    ];
+  }
+
+  void _playEpisode(CatalogVideo episode) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ArabicPlayerScreen(
+          pluginId: widget.pluginId,
           videoId: episode.id,
-          title: episode.title,
-          source: widget.show.source,
+          title: episode.title.isNotEmpty ? episode.title : _title,
         ),
       ),
     );
@@ -108,16 +208,19 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
                 children: [
                   _buildShowInfo(),
                   const SizedBox(height: 24),
-                  if (_detail?.description.isNotEmpty == true) ...[
+                  if ((_detail?.description ?? '').isNotEmpty) ...[
                     _buildDescription(),
                     const SizedBox(height: 24),
                   ],
                   if (_isLoading)
                     const Center(
-                      child: CircularProgressIndicator(color: AppTheme.primaryColor),
+                      child: CircularProgressIndicator(
+                        color: AppTheme.primaryColor,
+                      ),
                     )
-                  else if (_detail != null && _detail!.seasons.isNotEmpty) ...[
-                    if (_detail!.seasons.length > 1) _buildSeasonTabs(),
+                  else if (_seasonVideos.isNotEmpty ||
+                      (_detail?.videos.isNotEmpty ?? false)) ...[
+                    if (_seasonNumbers.length > 1) _buildSeasonTabs(),
                     const SizedBox(height: 16),
                     _buildEpisodesList(),
                   ] else
@@ -148,10 +251,12 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
   }
 
   Widget _buildAppBar() {
-    final poster = _detail?.poster ?? widget.show.poster;
+    final poster = _poster;
     return SliverAppBar(
       expandedHeight:
-          MediaQuery.of(context).orientation == Orientation.landscape ? 200 : 300,
+          MediaQuery.of(context).orientation == Orientation.landscape
+              ? 200
+              : 300,
       pinned: true,
       backgroundColor: AppTheme.bgDark,
       iconTheme: const IconThemeData(color: Colors.white),
@@ -195,7 +300,6 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
   }
 
   Widget _buildShowInfo() {
-    final title = _detail?.title ?? widget.show.title;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -204,18 +308,24 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
           child: SizedBox(
             width: 100,
             height: 140,
-            child: widget.show.poster.isNotEmpty
+            child: widget.item.poster.isNotEmpty
                 ? CachedNetworkImage(
-                    imageUrl: widget.show.poster,
+                    imageUrl: widget.item.poster,
                     fit: BoxFit.cover,
                     errorWidget: (_, _, _) => Container(
                       color: Colors.white.withValues(alpha: 0.05),
-                      child: const Icon(Icons.movie_outlined, color: Colors.white24),
+                      child: const Icon(
+                        Icons.movie_outlined,
+                        color: Colors.white24,
+                      ),
                     ),
                   )
                 : Container(
                     color: Colors.white.withValues(alpha: 0.05),
-                    child: const Icon(Icons.movie_outlined, color: Colors.white24),
+                    child: const Icon(
+                      Icons.movie_outlined,
+                      color: Colors.white24,
+                    ),
                   ),
           ),
         ),
@@ -225,7 +335,7 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                title,
+                _title,
                 textDirection: TextDirection.rtl,
                 style: const TextStyle(
                   color: Colors.white,
@@ -234,9 +344,9 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              if (_detail != null && _detail!.seasons.isNotEmpty)
+              if (_seasonNumbers.isNotEmpty)
                 Text(
-                  '${_detail!.seasons.length} مواسم',
+                  '${_seasonNumbers.length} مواسم',
                   textDirection: TextDirection.rtl,
                   style: const TextStyle(color: Colors.white54, fontSize: 14),
                 ),
@@ -272,13 +382,14 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
   }
 
   Widget _buildSeasonTabs() {
+    final seasons = _seasonNumbers;
     final tv = _tvNav;
     if (tv) {
       shellTvRegisterRow(
         tabId: MediaDetailsTv.tabId,
         rowId: 'seasons',
         sortOrder: 0,
-        itemCount: _detail!.seasons.length,
+        itemCount: seasons.length,
         onFocusUp: _revealedDetailsHeroPlayFocus,
       );
     }
@@ -290,9 +401,9 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           reverse: true,
-          itemCount: _detail!.seasons.length,
+          itemCount: seasons.length,
           itemBuilder: (context, index) {
-            final season = _detail!.seasons[index];
+            final season = seasons[index];
             final isSelected = _selectedSeason == index;
             final chip = Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
@@ -306,7 +417,7 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
                 ),
               ),
               child: Text(
-                'الموسم ${season.number}',
+                'الموسم $season',
                 textDirection: TextDirection.rtl,
                 style: TextStyle(
                   color: isSelected ? AppTheme.primaryColor : Colors.white54,
@@ -340,13 +451,8 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
   }
 
   Widget _buildEpisodesList() {
-    if (_detail == null || _detail!.seasons.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final season = _detail!.seasons[_selectedSeason];
-    final episodes = season.episodes;
-    final hasSeasons = _detail!.seasons.length > 1;
+    final episodes = _seasonVideos;
+    final hasSeasons = _seasonNumbers.length > 1;
     final tv = _tvNav;
 
     if (episodes.isEmpty) {
@@ -385,7 +491,8 @@ class _ArabicDetailsScreenState extends State<ArabicDetailsScreen> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: episodes.length,
-          separatorBuilder: (_, _) => const Divider(color: Colors.white10, height: 1),
+          separatorBuilder: (_, _) =>
+              const Divider(color: Colors.white10, height: 1),
           itemBuilder: (context, index) {
             final episode = episodes[index];
             return _EpisodeTile(
@@ -411,7 +518,7 @@ class _EpisodeTile extends StatelessWidget {
     this.tvItemIndex,
   });
 
-  final ArabicEpisode episode;
+  final CatalogVideo episode;
   final VoidCallback onTap;
   final String? tvTabId;
   final String? tvRowId;
@@ -437,20 +544,20 @@ class _EpisodeTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          if (episode.poster.isNotEmpty)
+          if (episode.thumbnail.isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: SizedBox(
                 width: 80,
                 height: 50,
                 child: CachedNetworkImage(
-                  imageUrl: episode.poster,
+                  imageUrl: episode.thumbnail,
                   fit: BoxFit.cover,
                   errorWidget: (_, _, _) => Container(color: Colors.white10),
                 ),
               ),
             ),
-          if (episode.poster.isNotEmpty) const SizedBox(width: 12),
+          if (episode.thumbnail.isNotEmpty) const SizedBox(width: 12),
           Expanded(
             child: Text(
               episode.title,

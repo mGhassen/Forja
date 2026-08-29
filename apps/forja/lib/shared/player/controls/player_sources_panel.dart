@@ -386,11 +386,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   /// move off an empty/failed addon (Torrentio 403) onto one with results.
   bool _userPickedStremioProvider = false;
 
-  bool _showTorrents = true;
-  bool _showStremio = false;
-  bool _showNuvio = false;
-  bool _showEngine = false;
-  String _kindFilter = 'engine';
+  /// Optimistic first paint from platform caps — `_bootstrap` refines from
+  /// prefs. Defaults used to be Torrents-only (`_showEngine = false`) so the
+  /// panel flashed empty kind chrome until async hydrate finished.
+  late bool _showTorrents = _profile.playSourceTorrent;
+  late bool _showStremio = _profile.playSourceStremio;
+  late bool _showNuvio = _profile.playSourceNuvio;
+  late bool _showEngine = _profile.playSourceEngine;
+  late String _kindFilter;
   String _selectedSourceId = TorrentSearchProviders.noneId;
   Set<String> _torrentViewFilterProviderIds = {};
   final Map<String, String> _panelSourceIdByKind = {};
@@ -417,7 +420,85 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   @override
   void initState() {
     super.initState();
-    _bootstrap();
+    _seedOptimisticChrome();
+    unawaited(_bootstrap());
+  }
+
+  /// Sync first frame: kind tabs + session UI/stream cache. No prefs awaits.
+  void _seedOptimisticChrome() {
+    final cachedUi = CatalogSourcesSessionCache.readUi(_catalogCacheKey);
+    bool kindAllowed(String k) => switch (k) {
+      'torrents' => _showTorrents,
+      'stremio' => _showStremio,
+      'nuvio' => _showNuvio,
+      'engine' => _showEngine,
+      _ => false,
+    };
+    if (cachedUi != null && kindAllowed(cachedUi.kindFilter)) {
+      _kindFilter = cachedUi.kindFilter;
+      _userPickedKind = cachedUi.userPickedKind;
+      _userPickedStremioProvider = cachedUi.userPickedStremioProvider;
+      _searchQuery = cachedUi.searchQuery;
+      _qualityFilters = Set<String>.from(cachedUi.qualityFilters);
+      _languageFilters = Set<String>.from(cachedUi.languageFilters);
+      _techFilters = Set<String>.from(cachedUi.techFilters);
+      _audioFilters = Set<String>.from(cachedUi.audioFilters);
+      _sizeFilters = Set<String>.from(cachedUi.sizeFilters);
+      _nuvioSelectedScraperIds = Set<String>.from(
+        cachedUi.nuvioSelectedScraperIds,
+      );
+      _engineSelectedPluginIds = Set<String>.from(
+        cachedUi.engineSelectedPluginIds,
+      );
+      _nuvioViewFilterScraperIds = Set<String>.from(
+        cachedUi.nuvioViewFilterScraperIds,
+      );
+      _engineViewFilterPluginIds = Set<String>.from(
+        cachedUi.engineViewFilterPluginIds,
+      );
+      _torrentViewFilterProviderIds = Set<String>.from(
+        cachedUi.torrentViewFilterProviderIds,
+      );
+      if (cachedUi.nuvioAllMode != null) {
+        _nuvioAllMode = cachedUi.nuvioAllMode!;
+      }
+      if (cachedUi.engineAllMode != null) {
+        _engineAllMode = cachedUi.engineAllMode!;
+      }
+      _panelSourceIdByKind
+        ..clear()
+        ..addAll(cachedUi.panelSourceIdByKind);
+      _restorePanelSourceIdForKind(_kindFilter);
+    } else {
+      _kindFilter = _resolveInitialKind(
+        hasTorrent: _showTorrents,
+        hasStremio: _showStremio,
+        hasNuvio: _showNuvio,
+        hasEngine: _showEngine,
+      );
+    }
+
+    // Paint cached rows immediately (chips still wait on pack/addon lists).
+    switch (_kindFilter) {
+      case 'engine':
+        final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
+        if (cached != null) {
+          _engineStreams = cached.streams;
+          _engineFetchedPluginIds = cached.fetchedPluginIds;
+        }
+      case 'nuvio':
+        final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
+        if (cached != null) {
+          _nuvioStreams = cached.streams;
+          _nuvioFetchedScraperIds = cached.fetchedScraperIds;
+        }
+      case 'stremio':
+        final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
+        if (cached != null) _stremioStreams = cached;
+      case 'torrents':
+        final cached = CatalogSourcesSessionCache.readTorrents(_catalogCacheKey);
+        if (cached != null) _results = cached;
+    }
   }
 
   @override
@@ -727,6 +808,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   Future<void> _bootstrap() async {
+    // Prefetch packs while prefs/LAN resolve — chips land with the second paint.
+    final packsFut = EngineService.instance.listSourcesPanelPacks().then(
+      (p) => p,
+      onError: (_) => <EnginePack>[],
+    );
+
     final sort = await _settings.getSortPreference();
     final jackett = await _settings.isJackettConfigured();
     final prowlarr = await _settings.isProwlarrConfigured();
@@ -737,6 +824,37 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final nuvioOn = await PlaySourceEffective.nuvio(_settings, lanReady);
     final engineOn = await PlaySourceEffective.engine(_settings, lanReady);
     final local = _profile.localTorrentEngine;
+    if (!mounted) return;
+
+    // Paint kind tabs as soon as effective flags are known — before addon/pack
+    // lists. Caps already seeded first frame; this corrects prefs/LAN.
+    setState(() {
+      _sortPreference = sort;
+      _jackettConfigured = jackett;
+      _prowlarrConfigured = prowlarr;
+      _enabledTorrentProviders = enabledProviders;
+      _localTorrentEngine = local;
+      _showTorrents = torrentOn;
+      _showStremio = stremioOn;
+      _showNuvio = nuvioOn;
+      _showEngine = engineOn;
+      bool kindAllowed(String k) => switch (k) {
+        'torrents' => torrentOn,
+        'stremio' => stremioOn,
+        'nuvio' => nuvioOn,
+        'engine' => engineOn,
+        _ => false,
+      };
+      if (!kindAllowed(_kindFilter)) {
+        _kindFilter = _resolveInitialKind(
+          hasTorrent: torrentOn,
+          hasStremio: stremioOn,
+          hasNuvio: nuvioOn,
+          hasEngine: engineOn,
+        );
+      }
+    });
+
     List<NuvioAddon> nuvioAddons = const [];
     if (nuvioOn) {
       try {
@@ -751,9 +869,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     List<EnginePack> enginePacks = const [];
     var enginePacksLoading = false;
     if (engineOn) {
-      try {
-        enginePacks = await EngineService.instance.listSourcesPanelPacks();
-      } catch (_) {}
+      enginePacks = await packsFut;
       // Cold install can take a long time — paint Torrents/Stremio/Nuvio now
       // and let Forja show its own loading state.
       if (enabledEnginePluginIds(enginePacks).isEmpty) {
@@ -770,14 +886,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       'engine' => hasEngine,
       _ => false,
     };
-    final kind = cachedUi != null && kindAllowed(cachedUi.kindFilter)
-        ? cachedUi.kindFilter
-        : _resolveInitialKind(
-            hasTorrent: torrentOn,
-            hasStremio: stremioOn,
-            hasNuvio: hasNuvio,
-            hasEngine: hasEngine,
-          );
+    // Prefer already-seeded kind when still allowed; else cache / default.
+    final kind = kindAllowed(_kindFilter)
+        ? _kindFilter
+        : (cachedUi != null && kindAllowed(cachedUi.kindFilter)
+            ? cachedUi.kindFilter
+            : _resolveInitialKind(
+                hasTorrent: torrentOn,
+                hasStremio: stremioOn,
+                hasNuvio: hasNuvio,
+                hasEngine: hasEngine,
+              ));
 
     List<Map<String, dynamic>> addons = const [];
     if (stremioOn && kind == 'stremio') {
@@ -811,14 +930,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           : {};
       sourceIdByKind = {};
     }
+    // Seeded selection can be empty while packs were still loading — fall back.
+    if (hasEngine &&
+        engineSelected.isEmpty &&
+        enabledEnginePluginIds(enginePacks).isNotEmpty) {
+      engineSelected = await _loadDefaultEngineChipSelection(enginePacks);
+    }
     if (!mounted) return;
 
     setState(() {
-      _sortPreference = sort;
-      _jackettConfigured = jackett;
-      _prowlarrConfigured = prowlarr;
-      _enabledTorrentProviders = enabledProviders;
-      _localTorrentEngine = local;
       _showTorrents = torrentOn;
       _showStremio = hasStremio;
       _showNuvio = hasNuvio;
@@ -832,7 +952,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           );
       _nuvioViewFilterScraperIds = cachedUi != null
           ? Set<String>.from(cachedUi.nuvioViewFilterScraperIds)
-          : {};
+          : _nuvioViewFilterScraperIds;
       _enginePacks = enginePacks;
       _enginePacksLoading = enginePacksLoading;
       _engineSelectedPluginIds = engineSelected;
@@ -851,10 +971,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           );
       _engineViewFilterPluginIds = cachedUi != null
           ? Set<String>.from(cachedUi.engineViewFilterPluginIds)
-          : {};
+          : _engineViewFilterPluginIds;
       _torrentViewFilterProviderIds = cachedUi != null
           ? Set<String>.from(cachedUi.torrentViewFilterProviderIds)
-          : {};
+          : _torrentViewFilterProviderIds;
       _streamAddons = addons;
       _panelSourceIdByKind
         ..clear()
@@ -869,8 +989,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _techFilters = Set<String>.from(cachedUi.techFilters);
         _audioFilters = Set<String>.from(cachedUi.audioFilters);
         _sizeFilters = Set<String>.from(cachedUi.sizeFilters);
-      } else {
-        _userPickedStremioProvider = false;
       }
       _restorePanelSourceIdForKind(kind);
     });

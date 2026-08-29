@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/models.dart';
+import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/service.dart';
 
 import 'cache.dart';
@@ -86,7 +88,7 @@ class CatalogRuntime {
       );
     }
 
-    final envelope = parseEnvelope(raw);
+    var envelope = parseEnvelope(raw);
     if (envelope == null) {
       if (entry != null) return _cachedEnvelope(action, entry);
       return CatalogEnvelope.failure(
@@ -115,6 +117,15 @@ class CatalogRuntime {
       return envelope;
     }
 
+    envelope = await _pipeEnrich(
+      sourcePluginId: pluginId,
+      action: action,
+      params: params,
+      auth: auth,
+      envelope: envelope,
+      timeout: timeout,
+    );
+
     final data = envelope.data;
     if (data != null) {
       CatalogCache.instance.put(
@@ -125,6 +136,80 @@ class CatalogRuntime {
       );
     }
     return envelope;
+  }
+
+  /// After a source catalog answers `rail` / `details`, optionally run the
+  /// companion enrich plugin declared as `EnginePlugin.enrich`.
+  Future<CatalogEnvelope> _pipeEnrich({
+    required String sourcePluginId,
+    required String action,
+    required Map<String, dynamic> params,
+    Map<String, dynamic>? auth,
+    required CatalogEnvelope envelope,
+    required Duration timeout,
+  }) async {
+    if (action == 'enrich') return envelope;
+    if (action != 'rail' && action != 'details') return envelope;
+    if (!envelope.ok) return envelope;
+
+    final source = await _resolvePlugin(sourcePluginId);
+    final enrichId = source?.enrich?.trim() ?? '';
+    if (enrichId.isEmpty || enrichId == sourcePluginId) return envelope;
+
+    final data = envelope.data;
+    if (data == null) return envelope;
+
+    final enrichParams = <String, dynamic>{...params};
+    if (action == 'rail') {
+      final items = data['items'];
+      if (items is! List || items.isEmpty) return envelope;
+      enrichParams['items'] = items;
+    } else {
+      final meta = data['meta'];
+      if (meta is! Map) return envelope;
+      enrichParams['meta'] = Map<String, dynamic>.from(meta);
+    }
+
+    final raw = await EngineService.instance.runCatalog(
+      pluginId: enrichId,
+      action: 'enrich',
+      params: enrichParams,
+      auth: auth,
+      timeout: timeout,
+    );
+    if (raw == null) {
+      debugPrint('[catalog] $sourcePluginId enrich via $enrichId skipped (no answer)');
+      return envelope;
+    }
+    final enriched = parseEnvelope(raw);
+    if (enriched == null || !enriched.ok || enriched.data == null) {
+      debugPrint(
+        '[catalog] $sourcePluginId enrich via $enrichId failed — keeping source',
+      );
+      return envelope;
+    }
+
+    final merged = Map<String, dynamic>.from(data);
+    if (action == 'rail') {
+      final items = enriched.data!['items'];
+      if (items is List) merged['items'] = items;
+    } else {
+      final meta = enriched.data!['meta'];
+      if (meta is Map) merged['meta'] = Map<String, dynamic>.from(meta);
+    }
+    return CatalogEnvelope(
+      ok: true,
+      action: action,
+      kit: envelope.kit,
+      protocol: envelope.protocol,
+      data: merged,
+      cache: envelope.cache,
+    );
+  }
+
+  Future<EnginePlugin?> _resolvePlugin(String pluginId) async {
+    final packs = await EngineService.instance.listPacks();
+    return PluginRegistry.packPluginFromPacks(packs, pluginId)?.plugin;
   }
 
   void _reviveInBackground({

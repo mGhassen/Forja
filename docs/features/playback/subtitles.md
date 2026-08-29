@@ -18,10 +18,13 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 - Adjust sync delay if dialogue is early/late (MediaKit). On **Android TV**, focus **−** / **+**, tap **OK** for 0.1s steps, or **hold OK** to accelerate the longer you press
 - Use advanced ASS/SSA rendering for styled subs (MediaKit)
 - **Preferred language sticks across episodes** — picking French (or any category) remembers it; the next episode auto-selects the same language when available, otherwise **English**. **Off** clears the preference
+- **Auto-select prefers in-stream** — when the stream already has subtitle tracks, those are chosen first (preferred language, else English, else the first muxed track). Online / scraped subs auto-load only if the stream has none; you can still pick them manually
 
 ## Tips
 
 - In-stream and online tracks share one language folder (English, Français, …) — open the folder to see both (In-stream rows first)
+- Auto-play picks an in-stream row when the stream has any; online results stay in the list for manual pick
+- On **Android TV**, opening Subtitles lands focus on the active language/track (or **Off** when subs are off)
 - **File** in the Subtitles header loads a local subtitle file; it is hidden on Android TV
 - Anime / Asian Drama still search by title (SubtitleCat / MySubs); Wyzie needs a real TMDB id (movies / TV)
 - Subtitle search works best when the title and year match TMDB metadata

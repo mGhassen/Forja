@@ -218,6 +218,12 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     if (_s._disposed || !mounted) return;
     if (preferred == 'None' || preferred.isEmpty) return;
 
+    // In-stream wins auto-select — only sideload when the stream has none
+    // (unless the user already picked an online track to re-apply).
+    final embedded =
+        embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
+    if (embedded.isNotEmpty && !_s._userPickedExternalSubtitle) return;
+
     if (_activeSubtitleMatchesPreferred(preferred)) return;
 
     final subsForAuto = externalSubtitlesForAutoPick(

@@ -181,6 +181,7 @@ class PluginRegistry {
 
   static bool isOfficialPack(String sourceUrl) {
     if (officialManifestUrls.contains(sourceUrl)) return true;
+    if (optionalOfficialManifestUrls.contains(sourceUrl)) return true;
     if (!forcePluginEnv &&
         instance._cloudOfficialBySlot.values.contains(sourceUrl)) {
       return true;

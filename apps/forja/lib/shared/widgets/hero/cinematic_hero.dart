@@ -15,6 +15,7 @@ import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/features/asian_drama/catalog/kisskh_tmdb_match.dart';
 import 'package:forja/shared/catalog/hub_tmdb_enrich_cache.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
@@ -675,8 +676,9 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             ? 'tv'
             : slide.tmdbMediaType.trim();
         if (tmdbId == null || tmdbId <= 0) {
+          final year = (slide.year ?? '').trim();
           final matchKey =
-              'hubHeroMatch:${slide.title.trim().toLowerCase()}|$mediaType';
+              'hubHeroMatch:${slide.title.trim().toLowerCase()}|$mediaType|$year';
           ({int id, String mediaType})? hit;
           if (HubTmdbEnrichCache.contains(matchKey)) {
             final c = HubTmdbEnrichCache.get<(int, String)?>(matchKey);
@@ -684,6 +686,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           } else {
             hit = await _matchHubTitle(
               slide.title,
+              year: year.isEmpty ? null : year,
               preferMovie: mediaType == 'movie',
             );
             HubTmdbEnrichCache.put(
@@ -696,6 +699,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             setState(() {
               if (needsLogo) _heroLogos[id] = '';
               if (needsOverview) _heroOverviews[id] = '';
+              // Mark attempted so we don't re-fetch every frame.
+              if (needsBackdrop) _heroBackdropUrls[id] = const [];
             });
             continue;
           }
@@ -707,12 +712,13 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         if (HubTmdbEnrichCache.contains(detailsKey)) {
           details = HubTmdbEnrichCache.get<Movie>(detailsKey);
         } else if (needsOverview || needsBackdrop) {
-          try {
-            details = mediaType == 'movie'
-                ? await _api.getMovieDetails(tmdbId)
-                : await _api.getTvDetails(tmdbId);
-            HubTmdbEnrichCache.put(detailsKey, details);
-          } catch (_) {}
+          details = await _hubHeroDetails(tmdbId, mediaType);
+          if (details != null) {
+            mediaType = details.mediaType == 'movie' || details.mediaType == 'tv'
+                ? details.mediaType
+                : mediaType;
+            HubTmdbEnrichCache.put('hubHeroDetails:$tmdbId:$mediaType', details);
+          }
         }
         if (needsLogo) {
           final cachedLogoKey = 'hubHeroLogo:$tmdbId:$mediaType';
@@ -750,10 +756,19 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                 final url = path.startsWith('http')
                     ? path
                     : TmdbApi.getBackdropUrl(path);
-                if (url.isNotEmpty) _heroBackdropUrls[id] = [url];
+                if (url.isNotEmpty) {
+                  _heroBackdropUrls[id] = [url];
+                } else {
+                  _heroBackdropUrls[id] = const [];
+                }
+              } else {
+                _heroBackdropUrls[id] = const [];
               }
             }
           });
+        } else if (needsBackdrop && details == null) {
+          if (!mounted) return;
+          setState(() => _heroBackdropUrls[id] = const []);
         }
       } finally {
         _hubEnrichInflight.remove(id);
@@ -761,31 +776,37 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     }
   }
 
+  /// Same scorer as Asian Drama details — not first-with-backdrop.
   Future<({int id, String mediaType})?> _matchHubTitle(
     String title, {
     required bool preferMovie,
+    String? year,
   }) async {
-    final q = title.trim();
-    if (q.isEmpty) return null;
-    try {
-      final primary = preferMovie
-          ? await _api.searchMovies(q)
-          : await _api.searchTvShows(q);
-      final secondary = preferMovie
-          ? await _api.searchTvShows(q)
-          : await _api.searchMovies(q);
-      Movie? pick(List<Movie> list) {
-        for (final m in list) {
-          if (m.backdropPath.trim().isNotEmpty) return m;
-        }
-        return list.isEmpty ? null : list.first;
-      }
-      final hit = pick(primary) ?? pick(secondary);
-      if (hit == null || hit.id <= 0) return null;
-      return (id: hit.id, mediaType: hit.mediaType);
-    } catch (_) {
-      return null;
+    final match = await KissKhTmdbMatch.resolve(
+      title: title,
+      year: year,
+      kissKhType: preferMovie ? 'movie' : 'tv',
+      tmdb: _api,
+    );
+    if (match == null || match.id <= 0) return null;
+    final mt = match.mediaType == 'movie' || match.mediaType == 'tv'
+        ? match.mediaType
+        : (preferMovie ? 'movie' : 'tv');
+    return (id: match.id, mediaType: mt);
+  }
+
+  Future<Movie?> _hubHeroDetails(int tmdbId, String preferType) async {
+    final primary = preferType == 'movie' ? 'movie' : 'tv';
+    final secondary = primary == 'movie' ? 'tv' : 'movie';
+    for (final media in [primary, secondary]) {
+      try {
+        final m = media == 'movie'
+            ? await _api.getMovieDetails(tmdbId)
+            : await _api.getTvDetails(tmdbId);
+        if (m.id > 0) return m;
+      } catch (_) {}
     }
+    return null;
   }
 
   String _overviewFor(_HeroItem item) {

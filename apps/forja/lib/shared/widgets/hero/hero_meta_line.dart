@@ -60,6 +60,11 @@ class _DetailsMetaLine extends StatelessWidget {
     if (movie.releaseDate.length >= 4) {
       items.add(_metaText(movie.releaseDate.substring(0, 4)));
     }
+    if (movie.mediaType == 'tv') {
+      items.add(const _HeroMediaTypeBadge('SERIES'));
+    } else if (movie.mediaType == 'movie') {
+      items.add(const _HeroMediaTypeBadge('FILM'));
+    }
     final runtime = HeroMetaLine.formatRuntime(movie.runtime);
     if (runtime.isNotEmpty) items.add(_metaText(runtime));
     final cert = certification?.trim();

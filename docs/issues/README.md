@@ -124,7 +124,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [100-[open]-…](100-[open]-anime-details-cast-recs-trailers.md) | Anime details cast / recs / trailers | P2 | Medium | open | 5/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [101-[open]-…](101-[open]-player-back-lands-on-loading.md) | Player Back lands on stream loading | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [102-[open]-…](102-[open]-android-tv-exoplayer-tiled-frames.md) | Android TV ExoPlayer tiled / shifted frames | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [103-[open]-…](103-[open]-android-tv-anime-details-hero-focus.md) | Android TV anime details hero + focus chrome | P1 | High | open | 4/4 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [103-[open]-…](103-[open]-android-tv-anime-details-hero-focus.md) | Android TV anime details hero + focus chrome | P1 | High | open | 5/5 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [104-[open]-…](104-[open]-android-tv-live-matches-embed-dpad.md) | Android TV Live Matches embed Play/Back/player D-pad | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [105-[open]-…](105-[open]-exoplayer-sources-dialog-missing.md) | ExoPlayer Sources button / 2-column dialog | P1 | High | open | 4/4 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [106-[open]-…](106-[open]-desktop-session-profile-chrome-desync.md) | Long-idle session / profile chrome desync | P1 | High | open | 6/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -231,6 +231,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [209-[fixed]-…](fixed/209-[fixed]-forja-sports-stalker-create-link-all-channels.md) | Forja Sports Stalker mints all channel links before open | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [210-[open]-…](210-[open]-episode-watched-list-simkl-follow.md) | Episode watched → My List / Simkl list buckets | P2 | Medium | open | 5/6 · A 0/4 | — |
 | [211-[open]-…](211-[open]-movie-play-list-simkl-follow.md) | Movie play → My List / Simkl Watching / Completed | P2 | Medium | open | 4/5 · A 0/3 | — |
+| [212-[open]-…](212-[open]-android-tv-sources-filters-dpad-wrap.md) | ATV Sources Filters D-pad stuck per Wrap line | P1 | High | open | 2/2 · A 0/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

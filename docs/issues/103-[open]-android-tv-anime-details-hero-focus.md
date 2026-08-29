@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 4** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I103-T02 | Episode cards show focus border (selected \|\| focused), no scale | ✅ |
 | 3 | I103-T03 | Anime details TV row sortOrder after seasons+episodes (no Related collision) | ✅ |
 | 4 | I103-T04 | Trailer cards: same catalog focus as posters on desktop + TV (`showFocusBorder`, bleed for 200px thumb) | ✅ |
+| 5 | I103-T05 | Details/hub hero budget: keep meta row (type / cert / ★) before dropping synopsis | ✅ |
 
 ---
 
@@ -34,6 +35,7 @@
 | 2 | I103-A02 | Focusing an episode shows a thumb border (same language as seasons) | ⬜ |
 | 3 | I103-A03 | Multi-season anime: D-pad ↓ from episodes lands on Related (no jump/skip) | ⬜ |
 | 4 | I103-A04 | Android TV: focused trailer shows the same white focus ring as poster cards | ⬜ |
+| 5 | I103-A05 | Android TV details hero shows type + cert + ★ when data exists (meta before synopsis) | ⬜ |
 
 ---
 

@@ -4,6 +4,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
@@ -1793,10 +1794,16 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     required VoidCallback onTap,
   }) {
     final metrics = ShellScope.metricsOf(context);
+    final tv = SourcesPanelTv.isTv(context);
     return ForjaShellChip(
       label: label,
       selected: selected,
       onTap: onTap,
+      // TV: green focus chrome (chips otherwise paint no focus ring).
+      accentHover: tv,
+      ensureVisibleMode: tv
+          ? ShellTvEnsureVisibleMode.item
+          : ShellTvEnsureVisibleMode.row,
       radius: 16,
       padding: EdgeInsets.symmetric(
         horizontal: metrics.torrentPanelChipHorizontalPadding,
@@ -1890,9 +1897,12 @@ class _TorrentFiltersSidePanelState extends State<_TorrentFiltersSidePanel> {
     );
     // Keep Positioned as OverlayEntry root — wrap only the panel body.
     if (widget.claimTvFocus) {
+      // Reading-order ←/→ so Wrap chip rows continue to the next line
+      // (spatial focusInDirection dead-ends at the end of each run).
       panel = TvOverlayScope(
         onDismiss: widget.onClose,
         autofocusFirst: true,
+        linear: true,
         debugLabel: 'sources-filters-tv',
         child: panel,
       );

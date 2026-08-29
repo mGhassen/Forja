@@ -133,7 +133,7 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 | `MangaService` | 453 → ~250 | `manga` | Parse weebcentral HTML (fetch+parse in Rust) | ✅ |
 | `BooksService` | 245 → ~90 | `books` | Libgen-style HTML scrape | ✅ |
 | `BestSimilarScraper` | 454 → ~230 | `catalog` | Autocomplete JSON + detail HTML parse | ✅ |
-| `ArabicService` | 1365 | `arabic` (new) | Port PACKER/HTTP paths; keep `StreamExtractor` fallback as host adapter | ⏭️ |
+| `ArabicService` | — | deleted | Scrapers moved to `plugins/hubs/arabic`; host uses `EmbedStreamResolve` for embeds only | ✅ |
 | `AnimeArabicService` + `AnimeArabicExtractor` | 1242 | `anime-arabic` (new) | Browse/scrape parse → Rust; iframe/WebView paths → host | ⏭️ |
 | `AudiobookService` + `audiobook_scrapers` | 1328 | `audiobook` (new) | Multi-platform HTML/API scrape | ⏭️ |
 | `ComicsService` + scrapers | 1020 | extend `crates/proxy/comic` or `comics` | `ReadComicsOnlineScraper`, `ComicPageExtractor` | ⏭️ |
@@ -223,7 +223,7 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 |-----------|------|------------|---------------|
 | `StreamExtractor` | `shared/extractors/core/stream_extractor.dart` | C3 WebView embed sniff | ❌ Host unless crypto reversed |
 | `AmriExtractor` | `shared/extractors/providers/amri/amri_extractor.dart` | C3 WebView | ❌ Host |
-| `ArabicService` | `shared/extractors/providers/arabic/arabic_service.dart` | C2 multi-site scrape | 🔄 Port HTML parse to engine; keep WebView paths on host |
+| Arabic hub pack | `plugins/hubs/arabic` | C2 multi-site scrape in pack JS | ✅ Host: thin UI + `EmbedStreamResolve` |
 | `NuvioService` / `NuvioScraper` | `shared/nuvio/nuvio_service.dart` | C4 `flutter_js` | ❌ Permanent host |
 | `VideasyExtractor` | `shared/extractors/providers/videasy/videasy_extractor.dart` | C5 WASM | ❌ WASM host in Dart |
 | Per-provider profiles | `shared/extractors/providers/<id>/` | HostRequired sniff policy | ❌ Host |
@@ -260,7 +260,7 @@ Each hub owns **vertical browse + stream orchestration** for its tab. Metadata f
 | `BooksService` | `books/catalog/` | `books` | — | ✅ |
 | `BestSimilarScraper` | `shared/catalog/` | `catalog` | TMDB poster enrichment in home/similar screens | ✅ |
 | `AnimeArabicService` | `anime_arabic/catalog/` | Mega proxy (Rust) | `AnimeArabicExtractor` (iframe scrape) | Port parse → engine where possible |
-| `ArabicService` | `shared/extractors/` (used by `arabic/`) | — | Multi-site C2 + WebView fallback | ⬜ `arabic` |
+| Arabic hub | `plugins/hubs/arabic` | pack JS | thin details/player + embed resolve | ✅ pack owns scrape |
 | `ComicsService` + `ReadComicsOnlineScraper` | `comics/catalog/` | — | C2 scrape | Port → engine |
 | `BooksService` | `books/catalog/` | — | C2 scrape | Port → engine |
 | `AudiobookService` | `audiobooks/catalog/` | Platform APIs partial Rust | Scrape orchestration | Port → engine |

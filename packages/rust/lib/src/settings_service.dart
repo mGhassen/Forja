@@ -1565,6 +1565,29 @@ class SettingsService {
     }
   }
 
+  /// Drop hub tabs whose pack/plugin is off from the visible navbar.
+  ///
+  /// [knownHubIds] = all catalog hub tab ids the shell knows about.
+  /// [activeHubIds] = hubs currently contributed by an enabled pack+plugin.
+  Future<void> syncActiveHubNavIds({
+    required Set<String> activeHubIds,
+    required Set<String> knownHubIds,
+  }) async {
+    if (!await kvHasKey(_navbarConfigKey)) return;
+    final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
+    final next = raw
+        .where((id) => !knownHubIds.contains(id) || activeHubIds.contains(id))
+        .toList();
+    if (listEquals(raw, next)) return;
+    await kvSetStringList(_navbarConfigKey, next);
+    final defaultTab = await getDefaultNavTab();
+    if (knownHubIds.contains(defaultTab) && !activeHubIds.contains(defaultTab)) {
+      final fallback = next.isNotEmpty ? next.first : 'home';
+      await kvSetString(_defaultNavTabKey, fallback);
+    }
+    navbarChangeNotifier.value++;
+  }
+
   /// One-shot migration for schema v2: indexer API keys → secure storage.
   Future<void> ensureCanonicalSettingsMigrated() async {
     if (await kvHasKey(_settingsSchemaKey)) return;

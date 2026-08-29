@@ -153,6 +153,22 @@ class CatalogEnvelope {
     ];
   }
 
+  CatalogMetaItem? get meta {
+    final raw = data?['meta'];
+    if (raw is! Map) return null;
+    return CatalogMetaItem.fromJson(Map<String, dynamic>.from(raw));
+  }
+
+  /// Pack `stream` action rows: `{ name, url, type: direct|embed }`.
+  List<CatalogStream> get streams {
+    final raw = data?['streams'];
+    if (raw is! List) return const [];
+    return [
+      for (final e in raw)
+        if (e is Map) CatalogStream.fromJson(Map<String, dynamic>.from(e)),
+    ];
+  }
+
   factory CatalogEnvelope.failure(
     CatalogErrorCode code, {
     String message = '',
@@ -202,6 +218,106 @@ CatalogEnvelope? parseEnvelope(dynamic raw) {
   return null;
 }
 
+/// Host detail route declared by a hub pack on each openable meta.
+///
+/// Host switches only on [surface] — never on pack/scraper id keys.
+class CatalogOpen {
+  const CatalogOpen({
+    required this.surface,
+    required this.id,
+    this.extras = const {},
+  });
+
+  /// Host surface: `anime` | `drama` | `tmdb` | `arabic` (feature routes).
+  final String surface;
+  /// Opaque id for that surface (string form of int or remote key).
+  final String id;
+  final Map<String, dynamic> extras;
+
+  int? get idInt => int.tryParse(id);
+
+  String? extraString(String key) {
+    final v = extras[key];
+    if (v == null) return null;
+    final s = v.toString().trim();
+    return s.isEmpty ? null : s;
+  }
+
+  bool extraBool(String key) {
+    final v = extras[key];
+    if (v is bool) return v;
+    if (v == null) return false;
+    final s = v.toString().toLowerCase();
+    return s == 'true' || s == '1';
+  }
+
+  static CatalogOpen? fromJson(dynamic raw) {
+    if (raw is! Map) return null;
+    final m = Map<String, dynamic>.from(raw);
+    final surface = (m['surface'] ?? m['route'] ?? '').toString().trim();
+    final id = (m['id'] ?? '').toString().trim();
+    if (surface.isEmpty || id.isEmpty) return null;
+    final extras = Map<String, dynamic>.from(m)
+      ..remove('surface')
+      ..remove('route')
+      ..remove('id');
+    return CatalogOpen(surface: surface, id: id, extras: extras);
+  }
+
+  Map<String, dynamic> toJson() => {
+        'surface': surface,
+        'id': id,
+        ...extras,
+      };
+}
+
+/// Episode / playable unit on hub `details` meta (`videos[]`).
+class CatalogVideo {
+  const CatalogVideo({
+    required this.id,
+    required this.title,
+    this.season,
+    this.episode,
+    this.thumbnail = '',
+  });
+
+  final String id;
+  final String title;
+  final int? season;
+  final int? episode;
+  final String thumbnail;
+
+  factory CatalogVideo.fromJson(Map<String, dynamic> j) => CatalogVideo(
+        id: (j['id'] ?? '').toString(),
+        title: (j['title'] ?? '').toString(),
+        season: (j['season'] as num?)?.toInt(),
+        episode: (j['episode'] as num?)?.toInt(),
+        thumbnail: (j['thumbnail'] ?? j['poster'] ?? '').toString(),
+      );
+}
+
+/// One row from hub `stream` action.
+class CatalogStream {
+  const CatalogStream({
+    required this.url,
+    this.name = '',
+    this.type = 'embed',
+  });
+
+  final String url;
+  final String name;
+  /// `direct` (mp4/hls) or `embed` (needs [EmbedStreamResolve]).
+  final String type;
+
+  bool get isDirect => type == 'direct' || type == 'hls' || type == 'mp4';
+
+  factory CatalogStream.fromJson(Map<String, dynamic> j) => CatalogStream(
+        url: (j['url'] ?? '').toString(),
+        name: (j['name'] ?? j['title'] ?? '').toString(),
+        type: (j['type'] ?? 'embed').toString(),
+      );
+}
+
 class CatalogMetaItem {
   const CatalogMetaItem({
     required this.id,
@@ -220,6 +336,8 @@ class CatalogMetaItem {
     this.tmdbMediaType,
     this.ids = const {},
     this.listTarget,
+    this.open,
+    this.videos = const [],
   });
 
   final String id;
@@ -232,15 +350,19 @@ class CatalogMetaItem {
   final String releaseInfo;
   final List<String> genres;
   final String? badge;
-  /// AniList / hub status wire (`RELEASING`, `NOT_YET_RELEASED`, …).
+  /// Hub status wire (`RELEASING`, `NOT_YET_RELEASED`, …).
   final String? status;
   final int? episodes;
-  /// Ultrawide AniList banner — hero uses `fitWidth` when set (pre-cutover).
+  /// Ultrawide banner — hero uses `fitWidth` when set (pre-cutover).
   final String bannerImage;
   /// Pack/kit TMDB media hint (`movie` / `tv`) from enrich.
   final String? tmdbMediaType;
   final Map<String, dynamic> ids;
   final Map<String, dynamic>? listTarget;
+  /// Pack-declared host open route. Prefer over guessing from [ids] keys.
+  final CatalogOpen? open;
+  /// Pack-owned episode list from `details` (opaque video ids for `stream`).
+  final List<CatalogVideo> videos;
 
   String? get idNamespace {
     final i = id.indexOf(':');
@@ -248,11 +370,12 @@ class CatalogMetaItem {
     return id.substring(0, i);
   }
 
+  /// Host id scheme lookup (e.g. `tmdb`). Do not use pack scraper keys here.
   int? numericId(String scheme) {
     final fromMap = ids[scheme];
     if (fromMap is num) return fromMap.toInt();
     if (fromMap != null) return int.tryParse(fromMap.toString());
-    // tmdb:movie:603 or anilist:21
+    // tmdb:movie:603
     final parts = id.split(':');
     if (parts.isEmpty) return null;
     if (parts.first != scheme && !(scheme == 'tmdb' && parts.first == 'tmdb')) {
@@ -267,6 +390,7 @@ class CatalogMetaItem {
 
   factory CatalogMetaItem.fromJson(Map<String, dynamic> j) {
     final genresRaw = j['genres'];
+    final videosRaw = j['videos'];
     return CatalogMetaItem(
       id: (j['id'] ?? '').toString(),
       type: (j['type'] ?? 'movie').toString(),
@@ -290,6 +414,14 @@ class CatalogMetaItem {
       listTarget: j['listTarget'] is Map
           ? Map<String, dynamic>.from(j['listTarget'] as Map)
           : null,
+      open: CatalogOpen.fromJson(j['open']),
+      videos: videosRaw is List
+          ? [
+              for (final e in videosRaw)
+                if (e is Map)
+                  CatalogVideo.fromJson(Map<String, dynamic>.from(e)),
+            ]
+          : const [],
     );
   }
 
@@ -311,7 +443,46 @@ class CatalogMetaItem {
           'tmdbMediaType': tmdbMediaType,
         if (ids.isNotEmpty) 'ids': ids,
         if (listTarget != null) 'listTarget': listTarget,
+        if (open != null) 'open': open!.toJson(),
+        if (videos.isNotEmpty)
+          'videos': [
+            for (final v in videos)
+              {
+                'id': v.id,
+                'title': v.title,
+                if (v.season != null) 'season': v.season,
+                if (v.episode != null) 'episode': v.episode,
+                if (v.thumbnail.isNotEmpty) 'thumbnail': v.thumbnail,
+              },
+          ],
       };
+
+  CatalogMetaItem copyWith({
+    String? name,
+    String? poster,
+    String? description,
+    List<CatalogVideo>? videos,
+  }) =>
+      CatalogMetaItem(
+        id: id,
+        type: type,
+        name: name ?? this.name,
+        poster: poster ?? this.poster,
+        background: background,
+        description: description ?? this.description,
+        rating: rating,
+        releaseInfo: releaseInfo,
+        genres: genres,
+        badge: badge,
+        status: status,
+        episodes: episodes,
+        bannerImage: bannerImage,
+        tmdbMediaType: tmdbMediaType,
+        ids: ids,
+        listTarget: listTarget,
+        open: open,
+        videos: videos ?? this.videos,
+      );
 }
 
 class CatalogFilterAst {

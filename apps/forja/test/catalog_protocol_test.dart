@@ -364,8 +364,21 @@ void main() {
       };
       expect(
         byId.keys,
-        containsAll(['tmdb', 'anilist', 'kisskh-hub', 'arabic-hub']),
+        containsAll([
+          'tmdb',
+          'anilist',
+          'anime-enrich-tmdb',
+          'kisskh-hub',
+          'enrich-tmdb',
+          'arabic-hub',
+        ]),
       );
+      expect(byId['anilist']!.enrich, 'anime-enrich-tmdb');
+      expect(byId['kisskh-hub']!.enrich, 'enrich-tmdb');
+      expect(byId['anime-enrich-tmdb']!.hasCapability('enrich'), isTrue);
+      expect(byId['anime-enrich-tmdb']!.hasCapability('nav'), isFalse);
+      expect(byId['enrich-tmdb']!.hasCapability('enrich'), isTrue);
+      expect(byId['enrich-tmdb']!.hasCapability('nav'), isFalse);
 
       for (final plugin in byId.values) {
         expect(plugin.isHubCatalog, isTrue, reason: plugin.id);
@@ -374,13 +387,24 @@ void main() {
         expect(plugin.kit, hostKitVersion, reason: plugin.id);
         expect(plugin.protocol, hostProtocolVersion, reason: plugin.id);
         expect(plugin.prelude, '_kit.js', reason: plugin.id);
+        if (plugin.hasCapability('enrich') && !plugin.hasCapability('nav')) {
+          continue;
+        }
         expect(plugin.hasCapability('nav'), isTrue, reason: plugin.id);
       }
 
       expect(File('../../plugins/hubs/home/tmdb.js').existsSync(), isTrue);
       expect(File('../../plugins/hubs/anime/anilist.js').existsSync(), isTrue);
       expect(
+        File('../../plugins/hubs/anime/enrich_tmdb.js').existsSync(),
+        isTrue,
+      );
+      expect(
         File('../../plugins/hubs/asian_drama/kisskh.js').existsSync(),
+        isTrue,
+      );
+      expect(
+        File('../../plugins/hubs/asian_drama/enrich_tmdb.js').existsSync(),
         isTrue,
       );
     });
@@ -388,11 +412,12 @@ void main() {
     test('nav specs map plugins onto hub tabs', () {
       final specs = [
         for (final p in loadAllHubPlugins())
-          CatalogNavSpec.fromPluginNav(
-            p.nav,
-            pluginId: p.id,
-            fallbackLabel: p.name,
-          )!,
+          if (p.nav != null)
+            CatalogNavSpec.fromPluginNav(
+              p.nav,
+              pluginId: p.id,
+              fallbackLabel: p.name,
+            )!,
       ];
       final byTab = {for (final s in specs) s.tabId: s};
       expect(byTab['home']!.pluginId, 'tmdb');
@@ -423,11 +448,12 @@ void main() {
     test('nav icons use forja://asset ids, not Flutter assets/ paths', () {
       final specs = [
         for (final p in loadAllHubPlugins())
-          CatalogNavSpec.fromPluginNav(
-            p.nav,
-            pluginId: p.id,
-            fallbackLabel: p.name,
-          )!,
+          if (p.nav != null)
+            CatalogNavSpec.fromPluginNav(
+              p.nav,
+              pluginId: p.id,
+              fallbackLabel: p.name,
+            )!,
       ];
       final byTab = {for (final s in specs) s.tabId: s};
 
@@ -504,20 +530,22 @@ void main() {
 
     test('plugin json round-trips the catalog fields', () {
       final plugin = EnginePlugin.fromJson({
-        'id': 'anilist',
-        'name': 'Anime',
-        'entry': 'anilist.js',
+        'id': 'kisskh-hub',
+        'name': 'Asian Drama',
+        'entry': 'kisskh.js',
         'kind': 'catalog',
         'protocol': 1,
         'kit': 1,
         'capabilities': ['nav', 'rail'],
-        'nav': {'tabId': 'anime', 'label': 'Anime', 'order': 20},
+        'nav': {'tabId': 'asian_drama', 'label': 'Asian Drama', 'order': 30},
+        'enrich': 'enrich-tmdb',
       });
       final again = EnginePlugin.fromJson(plugin.toJson());
       expect(again.isHubCatalog, isTrue);
       expect(again.capabilities, ['nav', 'rail']);
-      expect(again.nav!['tabId'], 'anime');
-      expect(again.copyWith(enabled: false).nav!['tabId'], 'anime');
+      expect(again.nav!['tabId'], 'asian_drama');
+      expect(again.enrich, 'enrich-tmdb');
+      expect(again.copyWith(enabled: false).enrich, 'enrich-tmdb');
     });
   });
 }

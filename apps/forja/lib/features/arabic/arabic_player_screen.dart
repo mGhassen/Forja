@@ -1,27 +1,29 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/extractors/providers/arabic/arabic_service.dart';
-import 'package:rust/rust.dart';
+import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/runtime.dart';
+import 'package:forja/shared/extractors/core/embed_stream_resolve.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:rust/rust.dart';
 
+/// Loads pack `stream` for an opaque video id, then opens [PlayerScreen].
 class ArabicPlayerScreen extends StatefulWidget {
-  final String videoId;
-  final String title;
-  final String source; // 'larozaa' or 'dimatoon'
-
   const ArabicPlayerScreen({
     super.key,
+    required this.pluginId,
     required this.videoId,
     required this.title,
-    this.source = 'larozaa',
   });
+
+  final String pluginId;
+  final String videoId;
+  final String title;
 
   @override
   State<ArabicPlayerScreen> createState() => _ArabicPlayerScreenState();
 }
 
 class _ArabicPlayerScreenState extends State<ArabicPlayerScreen> {
-  final ArabicService _service = ArabicService();
   bool _loading = true;
   String _status = 'جاري تحميل السيرفرات...';
 
@@ -37,37 +39,15 @@ class _ArabicPlayerScreenState extends State<ArabicPlayerScreen> {
       _status = 'جاري تحميل السيرفرات...';
     });
 
-    // DimaToon: direct MP4 from episode page
-    if (widget.source == 'dimatoon') {
-      final mp4Url = await _service.getDimaToonVideoUrl(widget.videoId);
-      if (mp4Url != null && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PlayerScreen(
-              streamUrl: mp4Url,
-              title: widget.title,
-              activeProvider: 'arabic',
-            ),
-          ),
-        );
-        return;
-      }
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _status = 'فشل استخراج الرابط';
-        });
-      }
-      return;
-    }
-
-    final servers = widget.source == 'brstej'
-        ? await _service.getBrstejServers(widget.videoId)
-        : await _service.getServers(widget.videoId);
+    final env = await CatalogRuntime.instance.run(
+      pluginId: widget.pluginId,
+      action: 'stream',
+      params: {'id': widget.videoId},
+      forceRefresh: true,
+    );
     if (!mounted) return;
 
-    if (servers.isEmpty) {
+    if (!env.ok || env.streams.isEmpty) {
       setState(() {
         _loading = false;
         _status = 'لا توجد سيرفرات';
@@ -75,38 +55,72 @@ class _ArabicPlayerScreenState extends State<ArabicPlayerScreen> {
       return;
     }
 
-    // Prioritize reliable servers (vidmoly) to the front
+    final streams = List<CatalogStream>.from(env.streams);
     const priorityHosts = ['vidmoly'];
-    servers.sort((a, b) {
-      final aPri = priorityHosts.any((h) => a.embedUrl.contains(h)) ? 0 : 1;
-      final bPri = priorityHosts.any((h) => b.embedUrl.contains(h)) ? 0 : 1;
+    streams.sort((a, b) {
+      final aPri = priorityHosts.any((h) => a.url.contains(h)) ? 0 : 1;
+      final bPri = priorityHosts.any((h) => b.url.contains(h)) ? 0 : 1;
       return aPri.compareTo(bPri);
     });
 
-    // Try each server until one works
-    for (int i = 0; i < servers.length; i++) {
+    for (var i = 0; i < streams.length; i++) {
       if (!mounted) return;
-      final server = servers[i];
+      final server = streams[i];
       setState(() {
-        _status = 'جاري استخراج الرابط من ${server.name}... (${i + 1}/${servers.length})';
+        _status =
+            'جاري استخراج الرابط من ${server.name.isEmpty ? 'سيرفر' : server.name}... (${i + 1}/${streams.length})';
       });
 
-      final result = await ArabicService.extractStreamUrl(server.embedUrl);
+      if (server.isDirect) {
+        final sources = streams
+            .map(
+              (s) => StreamSource(
+                url: s.url,
+                title: s.name.isEmpty ? 'Server' : s.name,
+                type: s.isDirect
+                    ? (s.url.contains('.m3u8')
+                        ? 'hls'
+                        : s.url.contains('.mpd')
+                            ? 'dash'
+                            : 'mp4')
+                    : 'arabic_embed',
+              ),
+            )
+            .toList();
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PlayerScreen(
+              streamUrl: server.url,
+              title: widget.title,
+              sources: sources,
+              activeProvider: 'arabic',
+            ),
+          ),
+        );
+        return;
+      }
+
+      final result = await EmbedStreamResolve.resolve(server.url);
       if (result != null && mounted) {
-        debugPrint('[ArabicPlayer] Extract OK from ${server.name}');
-
-        // Build sources list: all servers as switchable options (embed URLs)
-        final sources = servers.map((s) => StreamSource(
-          url: s.embedUrl,
-          title: s.name,
-          type: 'arabic_embed',
-        )).toList();
-
-        // Replace the working server's URL with the actual stream URL
+        final sources = streams
+            .map(
+              (s) => StreamSource(
+                url: s.url,
+                title: s.name.isEmpty ? 'Server' : s.name,
+                type: s.isDirect ? 'mp4' : 'arabic_embed',
+              ),
+            )
+            .toList();
         sources[i] = StreamSource(
           url: result.url,
-          title: server.name,
-          type: result.url.contains('.m3u8') ? 'hls' : result.url.contains('.mpd') ? 'dash' : 'mp4',
+          title: server.name.isEmpty ? 'Server' : server.name,
+          type: result.url.contains('.m3u8')
+              ? 'hls'
+              : result.url.contains('.mpd')
+                  ? 'dash'
+                  : 'mp4',
         );
 
         Navigator.pushReplacement(

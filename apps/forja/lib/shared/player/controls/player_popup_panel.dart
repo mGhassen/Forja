@@ -774,7 +774,9 @@ class _PlayerPopupNavRowState extends State<PlayerPopupNavRow> {
       );
     }
     return FocusableControl(
-      autoFocus: PlayerPopupListFocusScope.claimAutofocus(context),
+      // Same as list tiles — only the active choice claims open focus.
+      autoFocus:
+          widget.selected && PlayerPopupListFocusScope.claimAutofocus(context),
       onTap: widget.onTap,
       borderRadius: PlayerPopupTokens.cardRadius,
       scaleOnFocus: 1.0,
@@ -1105,6 +1107,7 @@ class PlayerPopupListTile extends StatefulWidget {
     this.badgeColor,
     this.subtitle,
     this.selected = false,
+    this.autofocusIfSelected = true,
     this.status,
     this.trailing,
     this.onTap,
@@ -1123,6 +1126,9 @@ class PlayerPopupListTile extends StatefulWidget {
   final Color? badgeColor;
   final String? subtitle;
   final bool selected;
+  /// When false, [selected] is visual-only (e.g. language column while the
+  /// track column owns TV open focus).
+  final bool autofocusIfSelected;
   final PlayerSourceStatus? status;
   final Widget? trailing;
   final VoidCallback? onTap;
@@ -1392,8 +1398,9 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
       padding: const EdgeInsets.only(bottom: 5),
       child: FocusableControl(
         // Prefer the current value; else first row claims via fallback nextFocus.
-        autoFocus:
-            selected && PlayerPopupListFocusScope.claimAutofocus(context),
+        autoFocus: widget.autofocusIfSelected &&
+            selected &&
+            PlayerPopupListFocusScope.claimAutofocus(context),
         focusNode: widget.focusNode,
         onTap: widget.onTap,
         borderRadius: PlayerPopupTokens.chipRadius,

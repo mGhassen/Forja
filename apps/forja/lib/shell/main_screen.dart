@@ -357,6 +357,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final defaultTab = await SettingsService().getDefaultNavTab();
     visible = visible
         .where((id) => !temporarilyHiddenNavIds.contains(id))
+        .where(PluginNavRegistry.isContributed)
         .toList();
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
       visible = visible

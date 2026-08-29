@@ -954,6 +954,26 @@ String catalogHttpPlayProviderId(Map<String, dynamic> stream) {
   return 'stremio_direct';
 }
 
+/// Chrome / Sources panel selection for a catalog row (kept even if open fails).
+({String? catalogUrl, String? addonBase, String kind, String providerId})
+catalogPanelSelectionFromStream(Map<String, dynamic> stream) {
+  final base = stream['_addonBaseUrl']?.toString();
+  final rawUrl = stream['url']?.toString();
+  final catalogUrl =
+      durableStreamCatalogUrl(catalogUrl: rawUrl, playUrl: rawUrl) ?? rawUrl;
+  final kind = (base != null && base.startsWith('nuvio:'))
+      ? 'nuvio'
+      : (base != null && base.startsWith('engine:'))
+          ? 'engine'
+          : 'stremio';
+  return (
+    catalogUrl: catalogUrl,
+    addonBase: base,
+    kind: kind,
+    providerId: catalogHttpPlayProviderId(stream),
+  );
+}
+
 List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
   Map<String, dynamic> stream,
 ) {

@@ -95,6 +95,7 @@ function kisskhMeta(row) {
     poster: kisskhCover(row.thumbnail || row.cover),
     releaseInfo: release ? release.substring(0, 4) : '',
     ids: ids,
+    open: { surface: 'drama', id: String(row.id) },
   };
   var label = String(row.label || '').trim();
   if (label) meta.badge = label;
@@ -237,9 +238,6 @@ function extract(ctx) {
     if (railId === 'anime') return hubItems('rail', []);
     return kisskhList(ctx, cfg, kisskhExplorePath(params), params.limit)
       .then(function (items) {
-        return kisskhMaybeEnrichSpotlight(ctx, items, params);
-      })
-      .then(function (items) {
         return hubItems('rail', items, { maxAge: 600, swr: 3600 });
       })
       .catch(function (e) {
@@ -253,18 +251,9 @@ function extract(ctx) {
   }
   return kisskhList(ctx, cfg, path, params.limit)
     .then(function (items) {
-      return kisskhMaybeEnrichSpotlight(ctx, items, params);
-    })
-    .then(function (items) {
       return hubItems('rail', items, { maxAge: 600, swr: 3600 });
     })
     .catch(function (e) {
       return hubFail('rail', 'UPSTREAM', e && e.message, true);
     });
-}
-
-// Hero spotlight: pack-owned TMDB enrich via shared host/kit (same as AniList).
-function kisskhMaybeEnrichSpotlight(ctx, items, params) {
-  if (String(params.rail || '') !== 'spotlight') return Promise.resolve(items);
-  return hubEnrichTmdb(ctx, items, 5);
 }

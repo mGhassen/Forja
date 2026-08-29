@@ -210,6 +210,10 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       return;
     }
 
+    // In-stream / Media3 text tracks win — do not auto-sideload over them.
+    // Selection stays in `_maybeApplyPreferredSubtitle` (do not lock the flag).
+    if (_s._tracks.text.isNotEmpty) return;
+
     // Already on a matching Media3 text track (embedded or previous sideload).
     if (_s._tracks.text.any(
           (t) =>

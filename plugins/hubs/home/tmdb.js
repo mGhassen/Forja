@@ -99,6 +99,7 @@ function tmdbMeta(cfg, row, forcedType) {
     description: String(row.overview || '').trim(),
     releaseInfo: release ? release.substring(0, 4) : '',
     ids: { tmdb: String(row.id) },
+    open: { surface: 'tmdb', id: String(row.id), mediaType: type },
   };
   if (row.vote_average) meta.rating = Number(row.vote_average);
   return meta;

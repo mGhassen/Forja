@@ -1393,7 +1393,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         englishMatch ??= t;
       }
     }
-    final match = preferredMatch ?? englishMatch;
+    // Prefer any in-stream / Media3 text track over scraped sideloads.
+    final match = preferredMatch ?? englishMatch ?? _tracks.text.firstOrNull;
     if (match == null) {
       await _maybeAutoPickExternalSubtitle();
       return;

@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-asian-drama",
   "name": "ForjaHQ Asian Drama",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "plugins": [
     {
       "id": "kisskh-hub",
@@ -19,7 +19,8 @@
         "nav",
         "layout",
         "rail",
-        "search"
+        "search",
+        "details"
       ],
       "nav": {
         "tabId": "asian_drama",
@@ -30,6 +31,7 @@
         "defaultEnabled": true
       },
       "enabled": true,
+      "enrich": "enrich-tmdb",
       "config": {
         "base": "https://kisskh.co",
         "mirrors": [
@@ -41,6 +43,29 @@
           "https://kisskh.is",
           "https://kisskh.id"
         ]
+      },
+      "prelude": "_kit.js"
+    },
+    {
+      "id": "enrich-tmdb",
+      "name": "TMDB Enrich",
+      "description": "TMDB match enrich for Asian Drama metas (companion to KissKH)",
+      "entry": "enrich_tmdb.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "drama"
+      ],
+      "capabilities": [
+        "enrich"
+      ],
+      "enabled": true,
+      "config": {
+        "rails": [
+          "spotlight"
+        ],
+        "limit": 5
       },
       "prelude": "_kit.js"
     }

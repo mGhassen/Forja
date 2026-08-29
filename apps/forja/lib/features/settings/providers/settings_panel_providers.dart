@@ -8,6 +8,7 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:forja/shared/sync/providers/account_features_provider.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:rust/rust.dart';
 
@@ -499,8 +500,10 @@ class SettingsNavigationNotifier
     final defaultNavTab = await s.getDefaultNavTab();
     final allIds = SettingsService.allNavIds
         .where((id) => !temporarilyHiddenNavIds.contains(id))
+        .where(PluginNavRegistry.isContributed)
         .toList();
     navVisible.removeWhere(temporarilyHiddenNavIds.contains);
+    navVisible.removeWhere((id) => !PluginNavRegistry.isContributed(id));
     final hidden = allIds.where((id) => !navVisible.contains(id)).toList();
     var navOrder = [...navVisible, ...hidden];
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {

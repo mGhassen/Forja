@@ -345,6 +345,8 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
               ),
             ),
             selected: _groups[i].id == _selectedGroupId,
+            // Visual only — selected track in the right column owns open focus.
+            autofocusIfSelected: false,
             onUpEdge: i == 0 && _tvFocus ? _focusClose : null,
             onTap: () => setState(() => _selectedGroupId = _groups[i].id),
           ),
@@ -456,6 +458,8 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
               PlayerPopupHeaderChip(
                 label: 'Off',
                 selected: _textOff,
+                autoFocus: _textOff &&
+                    PlayerPopupListFocusScope.claimAutofocus(context),
                 onTap: () {
                   PlayerSubtitleDialog.dismiss();
                   unawaited(widget.onOff());

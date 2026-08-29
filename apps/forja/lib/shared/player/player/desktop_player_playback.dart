@@ -63,7 +63,7 @@ mixin _DesktopPlayerPlayback
 
       if (PlayableSourceBridge.isArabicEmbed(_s._playableSources, i, source)) {
         debugPrint('[Player] Extracting arabic embed: ${source.title}');
-        final result = await ArabicService.extractStreamUrl(source.url);
+        final result = await EmbedStreamResolve.resolve(source.url);
         if (_fallbackAborted(runGen)) return false;
         if (result == null) {
           debugPrint('[Player] Arabic extract failed for ${source.title}');

@@ -34,6 +34,45 @@ bool _focusInPlayerTvMenu(FocusNode node) {
   return false;
 }
 
+FocusScopeNode? _findPlayerTvMenuScope() {
+  FocusScopeNode? found;
+  void visit(FocusNode node) {
+    if (found != null) return;
+    if (node is FocusScopeNode &&
+        node.debugLabel == 'player-tv-menu' &&
+        node.context != null) {
+      found = node;
+      return;
+    }
+    for (final child in node.children) {
+      visit(child);
+    }
+  }
+  visit(FocusManager.instance.rootScope);
+  return found;
+}
+
+/// Player refresh / dialog setState can drop D-pad off the open menu (tiles
+/// remount, chrome autofocus races). Put focus back in [TvOverlayScope].
+void playerTvReclaimOpenMenuFocus() {
+  if (!_anyPlayerMenuOpen()) return;
+  final primary = FocusManager.instance.primaryFocus;
+  if (primary != null && _focusInPlayerTvMenu(primary)) return;
+
+  final scope = _findPlayerTvMenuScope();
+  if (scope == null) return;
+
+  final remembered = scope.focusedChild;
+  if (remembered != null &&
+      remembered.canRequestFocus &&
+      remembered.context != null) {
+    remembered.requestFocus();
+    return;
+  }
+  // List rebuild disposed the old focused child — land on first focusable.
+  scope.nextFocus();
+}
+
 /// Remember the chrome control that opened a player menu (TV). Kept across
 /// drill-ins until the last overlay closes, then restored.
 void playerMenuCaptureReturnFocus(BuildContext context) {

@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-anime",
   "name": "ForjaHQ Anime",
-  "version": "1.0.6",
+  "version": "1.0.8",
   "plugins": [
     {
       "id": "anilist",
@@ -20,7 +20,8 @@
         "layout",
         "rail",
         "search",
-        "filters"
+        "filters",
+        "details"
       ],
       "nav": {
         "tabId": "anime",
@@ -31,9 +32,33 @@
         "defaultEnabled": true
       },
       "enabled": true,
+      "enrich": "anime-enrich-tmdb",
       "config": {
         "graphql": "https://graphql.anilist.co",
         "perPage": 24
+      },
+      "prelude": "_kit.js"
+    },
+    {
+      "id": "anime-enrich-tmdb",
+      "name": "TMDB Enrich",
+      "description": "TMDB match enrich for Anime metas (companion to AniList)",
+      "entry": "enrich_tmdb.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "anime"
+      ],
+      "capabilities": [
+        "enrich"
+      ],
+      "enabled": true,
+      "config": {
+        "rails": [
+          "spotlight"
+        ],
+        "limit": 5
       },
       "prelude": "_kit.js"
     }

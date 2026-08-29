@@ -241,8 +241,12 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
   ) async {
     final switchGen = ++_s._fallbackGen;
     _s._opening = true;
+    // Claim chrome / panel selection immediately — keep it on failure.
     setState(() {
       _s._hasError = false;
+      _s._currentProvider = providerId;
+      _s._currentPlayingCatalogUrl = source.catalogUrl ?? source.url;
+      _s._sourceIndex = index;
     });
     final resumeAt = _s._position;
     final statusId = 'source-switch-$index';
@@ -252,6 +256,17 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       label,
       kind: StatusRouletteKind.loading,
     );
+
+    void abortSwitchUi() {
+      if (!mounted || _s._disposed) return;
+      _s._statusController.upsert(
+        statusId,
+        label,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      setState(() => _s._hasError = true);
+    }
 
     try {
       var openUrl = source.url;
@@ -278,12 +293,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       );
       if (!mounted || _s._disposed || switchGen != _s._fallbackGen) return;
       if (!reachable) {
-        _s._statusController.upsert(
-          statusId,
-          label,
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
+        abortSwitchUi();
         return;
       }
 
@@ -393,6 +403,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
+      setState(() => _s._hasError = true);
     } finally {
       if (switchGen == _s._fallbackGen) {
         _s._opening = false;
@@ -451,8 +462,15 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         .toString();
     final switchGen = ++_s._fallbackGen;
     _s._opening = true;
+    final pick = catalogPanelSelectionFromStream(stream);
     setState(() {
       _s._hasError = false;
+      if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
+        _s._currentPlayingCatalogUrl = pick.catalogUrl;
+      }
+      _s._catalogAddonBaseUrl = pick.addonBase;
+      _s._catalogSourceKind = pick.kind;
+      _s._currentProvider = pick.providerId;
     });
     final statusId = 'source-stremio-${stream.hashCode}';
     _s._statusController.upsert(
@@ -464,6 +482,22 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     if (!mounted || _s._fallbackAborted(switchGen)) {
       if (switchGen == _s._fallbackGen) _s._opening = false;
       return;
+    }
+
+    void abortCatalogSwitch({String? message}) {
+      if (!mounted || _s._disposed) return;
+      _s._statusController.upsert(
+        statusId,
+        title,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      setState(() => _s._hasError = true);
+      if (message != null && message.isNotEmpty) {
+        debugPrint(
+          '[ExoPlayer] ${catalogStreamKindLabel(stream)} switch failed: $message',
+        );
+      }
     }
 
     try {
@@ -482,17 +516,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         final msg = resolved is StremioResolveFailure
             ? resolved.message
             : 'Failed to resolve stream';
-        _s._statusController.upsert(
-          statusId,
-          title,
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        if (msg.isNotEmpty) {
-          debugPrint(
-            '[ExoPlayer] ${catalogStreamKindLabel(stream)} switch failed: $msg',
-          );
-        }
+        abortCatalogSwitch(message: msg);
         return;
       }
 
@@ -547,6 +571,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
+      setState(() => _s._hasError = true);
     } finally {
       if (switchGen == _s._fallbackGen) {
         _s._opening = false;
@@ -571,6 +596,15 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     if (!mounted) return;
     final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
         .toString();
+    final pick = catalogPanelSelectionFromStream(stream);
+    setState(() {
+      if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
+        _s._currentPlayingCatalogUrl = pick.catalogUrl;
+      }
+      _s._catalogAddonBaseUrl = pick.addonBase;
+      _s._catalogSourceKind = pick.kind;
+      _s._currentProvider = pick.providerId;
+    });
     _s._beginEpisodeLoading(
       label: title,
       status: 'Starting Local Torrent Engine…',
@@ -656,6 +690,11 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       return;
     }
     if (!mounted) return;
+    setState(() {
+      _s._activeMagnet = result.magnet;
+      _s._catalogSourceKind = 'torrents';
+      _s._currentProvider = 'torrent';
+    });
     _s._beginEpisodeLoading(
       label: result.name,
       status: 'Starting Local Torrent Engine…',

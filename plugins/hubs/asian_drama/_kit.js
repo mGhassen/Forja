@@ -278,6 +278,78 @@ function hubEnrichPreferType(meta) {
   return 'tv';
 }
 
+function hubEnrichMetaTmdbId(meta) {
+  if (!meta || !meta.ids) return 0;
+  var raw = meta.ids.tmdb != null ? meta.ids.tmdb : meta.ids.TMDB;
+  var n = Number(raw);
+  return n > 0 ? n : 0;
+}
+
+function hubTmdbHitFromDetails(json, media) {
+  if (!json || !json.id) return null;
+  var poster = json.poster_path
+    ? 'https://image.tmdb.org/t/p/w500' + json.poster_path
+    : '';
+  var backdrop = json.backdrop_path
+    ? 'https://image.tmdb.org/t/p/w1280' + json.backdrop_path
+    : '';
+  var name = String(
+    media === 'movie' ? json.title || '' : json.name || '',
+  );
+  var overview = String(json.overview || '').trim();
+  var rating = Number(json.vote_average);
+  var date = String(
+    media === 'movie' ? json.release_date || '' : json.first_air_date || '',
+  );
+  return {
+    id: Number(json.id),
+    mediaType: media,
+    name: name,
+    year: date.length >= 4 ? Number(date.slice(0, 4)) || null : null,
+    poster: poster || null,
+    backdrop: backdrop || null,
+    overview: overview || null,
+    rating: rating > 0 ? rating : null,
+  };
+}
+
+// Prefer KissKH/AniList embedded TMDB id (same as details) before title search.
+function hubTmdbById(ctx, id, preferType) {
+  var tid = Number(id);
+  if (!(tid > 0)) return Promise.resolve(null);
+  var primary = preferType === 'movie' ? 'movie' : 'tv';
+  var secondary = primary === 'movie' ? 'tv' : 'movie';
+  var cfg = hubConfig(ctx, {});
+  var key = String(cfg.apiKey || '').trim();
+  if (!key) return Promise.resolve(null);
+
+  function fetchOne(media) {
+    var url =
+      'https://api.themoviedb.org/3/' +
+      media +
+      '/' +
+      tid +
+      '?api_key=' +
+      encodeURIComponent(key);
+    return ctx
+      .fetch(url)
+      .then(function (res) {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then(function (json) {
+        return hubTmdbHitFromDetails(json, media);
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  return fetchOne(primary).then(function (hit) {
+    return hit || fetchOne(secondary);
+  });
+}
+
 function hubEnrichTmdb(ctx, items, limit) {
   if (!Array.isArray(items) || !items.length) return Promise.resolve(items || []);
   var n = Number(limit) > 0 ? Number(limit) : items.length;
@@ -285,14 +357,22 @@ function hubEnrichTmdb(ctx, items, limit) {
   var tail = items.slice(n);
   return Promise.all(
     head.map(function (meta) {
+      var prefer = hubEnrichPreferType(meta);
       var yearBit = String(meta.releaseInfo || '').split(' • ')[0];
       var year = Number(yearBit) || 0;
-      return hubTmdbMatch(ctx, {
-        title: meta.name,
-        year: year,
-        type: hubEnrichPreferType(meta),
-      }).then(function (hit) {
-        return hubApplyTmdbHit(meta, hit);
+      var existingId = hubEnrichMetaTmdbId(meta);
+      var start = existingId
+        ? hubTmdbById(ctx, existingId, prefer)
+        : Promise.resolve(null);
+      return start.then(function (hit) {
+        if (hit) return hubApplyTmdbHit(meta, hit);
+        return hubTmdbMatch(ctx, {
+          title: meta.name,
+          year: year,
+          type: prefer,
+        }).then(function (matched) {
+          return hubApplyTmdbHit(meta, matched);
+        });
       });
     }),
   ).then(function (enriched) {

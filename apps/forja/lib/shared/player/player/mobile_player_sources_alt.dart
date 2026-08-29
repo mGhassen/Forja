@@ -56,16 +56,39 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     _s._isInitPlaybackRunning = true;
     // `source-` prefix → CHECKING SOURCES roulette (not a top toast).
     final statusId = 'source-stremio-${stream.hashCode}';
+    final pick = catalogPanelSelectionFromStream(stream);
+    _s._markPlaybackConfirmed(false);
     setState(() {
       _s._hasError = false;
+      if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
+        _s._currentPlayingCatalogUrl = pick.catalogUrl;
+      }
+      _s._catalogAddonBaseUrl = pick.addonBase;
+      _s._catalogSourceKind = pick.kind;
+      _s._currentProvider = pick.providerId;
     });
-    _s._markPlaybackConfirmed(false);
     _s._statusController.upsert(statusId, title, kind: StatusRouletteKind.loading);
     // Let the overlay paint before heavy resolve work.
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _s._fallbackAborted(switchGen)) {
       if (switchGen == _s._fallbackGen) _s._isInitPlaybackRunning = false;
       return;
+    }
+
+    void abortCatalogSwitch({String? message}) {
+      if (!mounted || _s._disposed) return;
+      _s._statusController.upsert(
+        statusId,
+        title,
+        kind: StatusRouletteKind.failed,
+        dismissAfter: const Duration(seconds: 2),
+      );
+      setState(() => _s._hasError = true);
+      if (message != null && message.isNotEmpty) {
+        debugPrint(
+          '[Player] ${catalogStreamKindLabel(stream)} switch failed: $message',
+        );
+      }
     }
 
     try {
@@ -83,17 +106,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         final msg = resolved is StremioResolveFailure
             ? resolved.message
             : 'Failed to resolve stream';
-        _s._statusController.upsert(
-          statusId,
-          title,
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        if (msg.isNotEmpty) {
-          debugPrint(
-            '[Player] ${catalogStreamKindLabel(stream)} switch failed: $msg',
-          );
-        }
+        abortCatalogSwitch(message: msg);
         return;
       }
 
@@ -111,15 +124,8 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         headers: resolved.headers,
       )) {
         if (!mounted || _s._fallbackAborted(switchGen)) return;
-        debugPrint(
-          '[Player] ${catalogStreamKindLabel(stream)} switch probe failed: '
-          '${resolved.streamUrl}',
-        );
-        _s._statusController.upsert(
-          statusId,
-          title,
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
+        abortCatalogSwitch(
+          message: 'switch probe failed: ${resolved.streamUrl}',
         );
         return;
       }
@@ -134,15 +140,8 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       _s._player.setVolume(_s._mpvVolume);
 
       if (openedUrl == null) {
-        _s._statusController.upsert(
-          statusId,
-          title,
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        debugPrint(
-          '[Player] ${catalogStreamKindLabel(stream)} switch failed: '
-          '${resolved.streamUrl}',
+        abortCatalogSwitch(
+          message: 'switch failed: ${resolved.streamUrl}',
         );
         return;
       }
@@ -191,6 +190,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
+      setState(() => _s._hasError = true);
     } finally {
       if (switchGen == _s._fallbackGen) {
         _s._isInitPlaybackRunning = false;
@@ -218,6 +218,15 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     if (!mounted) return;
     final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
         .toString();
+    final pick = catalogPanelSelectionFromStream(stream);
+    setState(() {
+      if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
+        _s._currentPlayingCatalogUrl = pick.catalogUrl;
+      }
+      _s._catalogAddonBaseUrl = pick.addonBase;
+      _s._catalogSourceKind = pick.kind;
+      _s._currentProvider = pick.providerId;
+    });
     _s._beginEpisodeLoading(
       label: title,
       status: 'Starting Local Torrent Engine…',
@@ -300,6 +309,11 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       return;
     }
     if (!mounted) return;
+    setState(() {
+      _s._activeMagnet = result.magnet;
+      _s._catalogSourceKind = 'torrents';
+      _s._currentProvider = 'torrent';
+    });
     // Keep current video playing with the loading card while the new magnet
     // resolves in the background. Only replace the player when the stream is
     // ready - never tear down the active swarm first (that freezes mpv).

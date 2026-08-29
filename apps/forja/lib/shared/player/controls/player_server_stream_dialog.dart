@@ -350,6 +350,11 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
         _urlStatuses[source.url] =
             ok ? PlayerSourceStatus.ready : PlayerSourceStatus.failed;
       });
+      // Status glyphs rebuild the streams column — keep D-pad on the menu.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        playerTvReclaimOpenMenuFocus();
+      });
     }
   }
 

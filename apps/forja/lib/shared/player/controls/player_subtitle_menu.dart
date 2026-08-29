@@ -170,6 +170,8 @@ class PlayerSubtitleMenu {
           PlayerPopupHeaderChip(
             label: 'Off',
             selected: subtitlesOff,
+            // Outside list scope — claim open focus when subs are off.
+            autoFocus: subtitlesOff,
             onTap: turnOffSubtitles,
           ),
           if (!hideLoadFile) ...[

@@ -1,0 +1,60 @@
+---
+description: Catalog hub host stays pack-agnostic — no scraper/plugin hardcoding
+alwaysApply: true
+---
+
+# Catalog hubs — host is generic
+
+Hub packs (`plugins/hubs/**`) are **external plugins**. The Flutter host
+(`apps/forja/lib/shared/catalog/**`, CatalogShell, `catalog_open`) must stay
+**pack-agnostic**.
+
+## Forbidden in host catalog code
+
+Hardcoding or branching on:
+
+- Pack / plugin ids: `anilist`, `kisskh`, `kisskh-hub`, `arabic-hub`, `tmdb` (as plugin id), …
+- Scraper / source names: `larozaa`, `dimatoon`, `brstej`, …
+- Pack-specific `ids.*` keys to decide how to open (`numericId('anilist')`, `ids['larozaa']`, …)
+
+**Wrong:** `switch (type) { case 'arabic': parse ids.larozaa / dimatoon / brstej }`  
+**Wrong:** `openAnimeDetails` only if `numericId('anilist')`  
+**Wrong:** seeding Feature docs / shell with scraper hostnames as Dart constants for open
+
+## Required contract
+
+Plugins put a host **surface** on every openable meta:
+
+```json
+"open": {
+  "surface": "anime" | "drama" | "tmdb" | "arabic",
+  "id": "<opaque for that surface>",
+  "...": "surface extras (arabic: source, url, movie; tmdb: mediaType)"
+}
+```
+
+Host `openCatalogMetaItem` / list-pin helpers **only** switch on `open.surface`
+(host feature routes). Opaque `open.id` + extras are passed through.
+
+Allowed host id scheme (not a pack): **`tmdb`** for movie/tv when `open` is
+absent and `type` is `movie`/`tv`.
+
+## Where pack knowledge lives
+
+| Layer | May know scrapers / pack ids |
+|-------|------------------------------|
+| `plugins/hubs/**` JS | Yes — emit `open` + layout |
+| Host feature screens (`features/anime`, `asian_drama`, `arabic`, …) | Yes — their own APIs |
+| `shared/catalog/**`, CatalogShell open path | **No** |
+
+## Seed / nav
+
+`PluginNavRegistry` may list **tab ids** from seed for flash-free boot
+(`home`, `anime`, `asian_drama`). Optional packs (Arabic) must not be special-cased
+in open/list logic. Builders/destinations still come from pack `nav` on refresh.
+
+## When adding a hub
+
+1. Emit `open` from the pack meta builder.
+2. If a new **host surface** is needed, add one route handler — not scraper names.
+3. Do **not** teach `catalog_open.dart` about the pack’s upstream sites.

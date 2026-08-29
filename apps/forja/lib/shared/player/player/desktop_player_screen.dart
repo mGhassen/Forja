@@ -35,7 +35,7 @@ import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/list_follow_from_watched.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
-import 'package:forja/shared/extractors/providers/arabic/arabic_service.dart';
+import 'package:forja/shared/extractors/core/embed_stream_resolve.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/services/pip_service.dart';

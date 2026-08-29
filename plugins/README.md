@@ -47,7 +47,7 @@ layout before dismiss. **Settings → Sources → Forja** can Refresh / Retry.
 | `hubs/home/` | TMDB Home + `_kit.js` |
 | `hubs/anime/` | AniList hub + `_kit.js` |
 | `hubs/asian_drama/` | KissKH hub + `_kit.js` |
-| `hubs/arabic/` | Arabic hub stub + `_kit.js` |
+| `hubs/arabic/` | Arabic hub (Larozaa / DimaToon / Brstej) + `_kit.js` |
 | `hubs/fixtures/` | Protocol conformance fixtures |
 | `domains.json` | Forja-owned mirror registry (MoviesMod, HDHub4u, …) |
 

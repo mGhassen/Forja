@@ -11,6 +11,7 @@ abstract final class ForjaHostAssets {
   static const flutterNavHome = 'assets/images/nav/home.png';
   static const flutterNavAnime = 'assets/images/nav/anime.png';
   static const flutterNavAsianDrama = 'assets/images/nav/asian-drama.png';
+  static const flutterNavArabic = 'assets/images/nav/arabic.png';
   static const flutterNavSearch = 'assets/images/nav/search.png';
   static const flutterNavLiveMatches = 'assets/images/nav/live-matches.png';
   static const flutterNavIptv = 'assets/images/nav/iptv.png';
@@ -18,6 +19,7 @@ abstract final class ForjaHostAssets {
   static const uriNavHome = '${uriPrefix}nav/home';
   static const uriNavAnime = '${uriPrefix}nav/anime';
   static const uriNavAsianDrama = '${uriPrefix}nav/asian-drama';
+  static const uriNavArabic = '${uriPrefix}nav/arabic';
   static const uriNavSearch = '${uriPrefix}nav/search';
   static const uriNavLiveMatches = '${uriPrefix}nav/live-matches';
   static const uriNavIptv = '${uriPrefix}nav/iptv';
@@ -27,6 +29,7 @@ abstract final class ForjaHostAssets {
     'nav/home': flutterNavHome,
     'nav/anime': flutterNavAnime,
     'nav/asian-drama': flutterNavAsianDrama,
+    'nav/arabic': flutterNavArabic,
     'nav/search': flutterNavSearch,
     'nav/live-matches': flutterNavLiveMatches,
     'nav/iptv': flutterNavIptv,

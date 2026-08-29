@@ -117,8 +117,12 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
   /// video key node (seek / OK still work after idle hide).
   void _ensureFocus() {
     if (!mounted || !widget.enabled) return;
-    // Menus (stats, settings, …) own D-pad — do not yank focus under an overlay.
-    if (playerChromeOverlayBlocksFocusClaim()) return;
+    // Menus own D-pad — never steal Play; if a refresh dropped focus out of
+    // the dialog, put it back in the menu instead of leaving the remote dead.
+    if (playerChromeOverlayBlocksFocusClaim()) {
+      playerTvReclaimOpenMenuFocus();
+      return;
+    }
     final primary = FocusManager.instance.primaryFocus;
     final lost = primary == null || !primary.hasFocus;
     if (widget.showControls) {
@@ -200,9 +204,11 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     // When chrome is hidden, only this node may hold focus. Otherwise an
     // invisible Play / Sources control can keep primary focus and FocusableControl
     // eats ←/→ as traversal instead of seeking.
+    // No autofocus while a menu is open — a player rebuild must not re-steal
+    // D-pad from the dialog (Focus.deactivate resets the one-shot autofocus).
     return Focus(
       focusNode: widget.focusNode,
-      autofocus: true,
+      autofocus: !playerChromeOverlayBlocksFocusClaim(),
       descendantsAreFocusable: widget.showControls,
       descendantsAreTraversable: widget.showControls,
       onKeyEvent: _onKey,

@@ -32,7 +32,6 @@ abstract final class PluginNavRegistry {
     'home': 'tmdb',
     'anime': 'anilist',
     'asian_drama': 'kisskh-hub',
-    'arabic': 'arabic-hub',
   };
 
   static Map<String, NavDestination> _destinations = {};
@@ -65,7 +64,8 @@ abstract final class PluginNavRegistry {
     seedBuiltIns();
   }
 
-  /// Synchronous seed matching official hub pack nav blocks.
+  /// Synchronous seed for required in-scope hubs (Home / Anime / Asian Drama).
+  /// Optional hubs (Arabic) appear only after [refresh] when their pack is on.
   static void seedBuiltIns() {
     _destinations = {
       'home': const NavDestination(
@@ -89,18 +89,11 @@ abstract final class PluginNavRegistry {
         label: 'Asian Drama',
         iconAsset: ForjaHostAssets.flutterNavAsianDrama,
       ),
-      'arabic': const NavDestination(
-        id: 'arabic',
-        icon: Icons.movie_filter_outlined,
-        activeIcon: Icons.movie_filter,
-        label: 'Arabic',
-      ),
     };
     _accents = {
       'home': const Color(0xFF1CE783),
       'anime': const Color(0xFFFB7185),
       'asian_drama': const Color(0xFFC4B5FD),
-      'arabic': const Color(0xFFF59E0B),
     };
     _builders = {
       for (final e in builtInHubPluginIds.entries)
@@ -109,13 +102,19 @@ abstract final class PluginNavRegistry {
     _seeded = true;
   }
 
+  /// Hub tab currently contributed by an enabled pack+plugin (or seed).
+  static bool isContributed(String tabId) {
+    _ensureSeeded();
+    if (!hubTabIds.contains(tabId)) return true;
+    return _destinations.containsKey(tabId);
+  }
+
   static Future<List<EnginePlugin>> listHubPlugins({
     bool requireEnabled = true,
   }) async {
     final packs = await EngineService.instance.listPacks();
     final out = <EnginePlugin>[];
     for (final p in packs) {
-      // Pack may be disabled — still list hubs so Features keeps the row.
       if (requireEnabled && !p.enabled) continue;
       for (final pl in p.plugins) {
         if (!pl.isHubCatalog) continue;
@@ -128,10 +127,10 @@ abstract final class PluginNavRegistry {
 
   /// Hub plugins that declare `nav` — for Features / shell destinations.
   ///
-  /// **Not** gated on plugin enable: Sources → Forja toggles whether the hub
-  /// *runs*; Settings → Features toggles whether the tab *shows*.
+  /// Only **enabled** pack+plugin hubs contribute (disabled → gone from Features
+  /// and the rail). Features show/hide still applies among contributed hubs.
   static Future<List<(EnginePlugin, CatalogNavSpec)>> listNavHubs({
-    bool requireEnabled = false,
+    bool requireEnabled = true,
   }) async {
     final plugins = await listHubPlugins(requireEnabled: requireEnabled);
     final out = <(EnginePlugin, CatalogNavSpec)>[];
@@ -149,15 +148,16 @@ abstract final class PluginNavRegistry {
     return out;
   }
 
-  /// Rebuild hub destinations / accents / builders from installed pack nav.
+  /// Rebuild hub destinations / accents / builders from enabled pack nav.
   ///
-  /// Returns true when the contribution changed. Registers any new `tabId`s
-  /// with [SettingsService] so Features / navbar config can see them — including
-  /// hubs whose plugin is currently disabled.
+  /// Returns true when the contribution changed. Registers new `tabId`s and
+  /// drops disabled hubs from Features / navbar visibility.
   static Future<bool> refresh() async {
     _ensureSeeded();
-    final hubs = await listNavHubs(requireEnabled: false);
-    if (hubs.isEmpty) return false;
+    // Installed hubs (any enable state) — empty means packs not ready yet.
+    final installed = await listNavHubs(requireEnabled: false);
+    if (installed.isEmpty) return false;
+    final hubs = await listNavHubs(requireEnabled: true);
 
     final dests = <String, NavDestination>{};
     final accents = <String, Color>{};
@@ -206,18 +206,26 @@ abstract final class PluginNavRegistry {
         allHubIds: dests.keys.toList(),
       );
     }
+    await SettingsService().syncActiveHubNavIds(
+      activeHubIds: dests.keys.toSet(),
+      knownHubIds: hubTabIds,
+    );
+    // Features filters by contribution — bump even when visible list unchanged
+    // (e.g. Arabic was already Features-off but still listed).
+    if (changed) {
+      SettingsService.navbarChangeNotifier.value++;
+    }
     return changed;
   }
 
   static Future<String?> pluginIdForTab(String tabId) async {
-    for (final (pl, nav) in await listNavHubs(requireEnabled: false)) {
+    for (final (pl, nav) in await listNavHubs(requireEnabled: true)) {
       if (nav.tabId == tabId) return pl.id;
     }
     return builtInHubPluginIds[tabId];
   }
 
   /// Whether the hub plugin (and its pack) are enabled to *run*.
-  /// Independent of Settings → Features visibility.
   static Future<bool> isHubPluginEnabled(String pluginId) async {
     final want = pluginId.trim();
     if (want.isEmpty) return false;
@@ -246,6 +254,7 @@ abstract final class PluginNavRegistry {
     if (id == 'nav/home') return Icons.home_outlined;
     if (id == 'nav/anime') return Icons.animation_outlined;
     if (id == 'nav/asian-drama') return Icons.theater_comedy_outlined;
+    if (id == 'nav/arabic') return Icons.movie_filter_outlined;
     if (icon == 'movie_filter') return Icons.movie_filter_outlined;
     return Icons.grid_view_rounded;
   }

@@ -1276,9 +1276,10 @@ class _HeroMainColumn extends StatelessWidget {
     var showMetaLine = true;
     var titleHeight = _titleBlockHeight;
 
-    // Actions + progress under synopsis. Keep title + Play first; drop
-    // secondary chrome, then synopsis, before shrinking the title. Never zero
-    // the title while synopsis is still showing (720p ATV / short phones).
+    // Actions + progress under synopsis. Keep title + Play + meta (year /
+    // type / cert / rating) first; drop secondary chrome and synopsis before
+    // the meta row (720p ATV episode rail used to kill cert + ★). Never zero
+    // the title while synopsis is still showing.
     double? metaBudget;
     if (bounded) {
       metaBudget = (maxHeight! -
@@ -1310,9 +1311,9 @@ class _HeroMainColumn extends StatelessWidget {
 
       if (overBudget()) showDirector = false;
       if (overBudget()) showProviders = false;
+      if (overBudget()) showOverview = false;
       if (overBudget()) showGenres = false;
       if (overBudget()) showMetaLine = false;
-      if (overBudget()) showOverview = false;
       if (overBudget() && showSeriesProgress) {
         showSeriesProgress = false;
         refreshBudget();

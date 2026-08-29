@@ -2,12 +2,12 @@
   "schema": 1,
   "id": "forjahq-arabic",
   "name": "ForjaHQ Arabic",
-  "version": "1.0.3",
+  "version": "1.2.0",
   "plugins": [
     {
       "id": "arabic-hub",
       "name": "Arabic",
-      "description": "Arabic hub \u2014 layout only until sources land",
+      "description": "Arabic hub — Larozaa, DimaToon, Brstej",
       "entry": "arabic.js",
       "kind": "catalog",
       "protocol": 1,
@@ -19,17 +19,31 @@
       "capabilities": [
         "nav",
         "layout",
-        "rail"
+        "rail",
+        "search",
+        "details",
+        "stream"
       ],
       "nav": {
         "tabId": "arabic",
         "label": "Arabic",
         "order": 40,
-        "accent": "#F59E0B",
+        "icon": "forja://asset/nav/arabic",
+        "accent": "#14B8A6",
         "defaultEnabled": false
       },
       "enabled": true,
-      "config": {},
+      "config": {
+        "bootstrap": "https://larozaa.bond",
+        "mirrors": [
+          "https://larozaa.bond",
+          "https://larozaa.home",
+          "https://larozaa.homes",
+          "https://larozaa.com"
+        ],
+        "dimatoon": "https://www.dima-toon.com",
+        "brstej": "https://hd1.brstej.com"
+      },
       "prelude": "_kit.js"
     }
   ]

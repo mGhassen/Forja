@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **4 / 4** acceptance (host enrich) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) |
-| **Current slice** | Host asset URIs for pack nav icons; A15 manual QA still open |
+| **Progress** | **9 / 9** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **5 / 5** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) |
+| **Current slice** | Arabic details+stream live in pack; host scrapers removed — A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -72,6 +72,16 @@
 
 ---
 
+## Acceptance (hub contribution — enabled only)
+
+Disabled hubs must leave Features / rail (supersedes the “keep Features row while plugin off” reading of A27).
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A41 | Only enabled pack+plugin hubs contribute to `PluginNavRegistry` / Features / rail; disable removes the row | ✅ |
+
+---
+
 ## Acceptance (host enrich slice)
 
 Pack-owned enrichment — host exposes reusable match APIs; plugins compose (AniList+TMDB, KissKH+TMDB, …). No CatalogShell `if (tabId == anime)` hardcode.
@@ -82,6 +92,20 @@ Pack-owned enrichment — host exposes reusable match APIs; plugins compose (Ani
 | 2 | R70-A29 | Shared kit helpers `hubTmdbMatch` / `hubEnrichTmdb` / `hubApplyTmdbHit` | ✅ |
 | 3 | R70-A30 | Anime spotlight rail enriches via kit/host (CatalogShell anime TMDB hardcode removed) | ✅ |
 | 4 | R70-A31 | Asian Drama spotlight rail enriches via kit/host (backdrop + synopsis/rating when KissKH omits them) | ✅ |
+
+---
+
+## Acceptance (enrich companion)
+
+Source hub JS stays data-only. Pack declares `"enrich": "<pluginId>"`; host pipes `rail` / `details` through that companion’s `enrich` action.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A42 | `EnginePlugin.enrich` + `CatalogRuntime` pipes `rail`/`details` items/meta through companion `enrich` before cache | ✅ |
+| 2 | R70-A43 | Asian Drama: `kisskh.js` standalone; `enrich_tmdb.js` + manifest `enrich: enrich-tmdb` (spotlight + details meta) | ✅ |
+| 3 | R70-A44 | Anime: `anilist.js` standalone; `enrich_tmdb.js` + manifest `enrich: anime-enrich-tmdb` (spotlight + details meta) | ✅ |
+| 4 | R70-A49 | `hubEnrichTmdb` prefers `meta.ids.tmdb` (fetch by id, movie↔tv fallback) before title search — same as details | ✅ |
+| 5 | R70-A50 | Hub cinematic hero client enrich uses `KissKhTmdbMatch` + dual-type details fetch (not first-with-backdrop) | ✅ |
 
 ---
 
@@ -114,6 +138,22 @@ Packs reference host icons by Forja URI only. Real Flutter paths stay in the app
 |--:|----|-------------|--------|
 | 1 | R70-A39 | `ForjaHostAssets` maps `forja://asset/nav/*` → bundled nav PNGs; unknown / raw `assets/` resolve to null | ✅ |
 | 2 | R70-A40 | Official hub manifests use `forja://asset/nav/…`; `PluginNavRegistry.refresh` resolves via catalog (no `startsWith('assets/')`) | ✅ |
+
+---
+
+## Acceptance (Arabic sources)
+
+Optional Arabic pack — browse/search/details/stream from Larozaa + DimaToon + Brstej; open via pack-declared `meta.open.surface` (host never names scrapers).
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A45 | `arabic.js` rails: Larozaa categories + Brstej latest (no longer empty stub) | ✅ |
+| 2 | R70-A46 | Arabic hub `search` merges Larozaa + DimaToon + Brstej | ✅ |
+| 3 | R70-A47 | Hub metas declare `open: { surface, id, … }`; host `openCatalogMetaItem` switches only on surface (no pack/scraper id keys) | ✅ |
+| 4 | R70-A48 | Hub open uses shell meta immediately (no await pack `details`/enrich); same plugin+id re-entry ignored until route pops — no double details / 429 stall | ✅ |
+| 5 | R70-A51 | Arabic hub `details` returns `meta.videos` (opaque ids); host details UI loads via `CatalogRuntime` only — no host scrapers | ✅ |
+| 6 | R70-A52 | Arabic hub `stream` returns direct/embed URLs; host player resolves embeds via generic `EmbedStreamResolve` | ✅ |
+| 7 | R70-A53 | Host `ArabicService` / scraper string switches deleted; Arabic pack owns site HTML | ✅ |
 
 ---
 
@@ -192,7 +232,7 @@ ctx.host.tmdb.match({ title: 'One Piece', year: 1999, type: 'tv' })
 // → { id, mediaType, name, year, poster, backdrop } | null
 ```
 
-Kit helpers (`hubTmdbMatch`, `hubEnrichTmdb`) prefer `ctx.host.tmdb.match` and fall back to `ctx.fetch` + injected `config.apiKey`. Packs own which rails enrich (AniList + KissKH spotlight) — CatalogShell only renders `meta`. Match hits may include `overview` / `rating`; `hubApplyTmdbHit` fills empty pack synopsis/score only. Rust `tmdb::match_json` keeps a process-lifetime match cache (R70-A34). Splash warms layout + first-paint rails into `CatalogCache` (R70-A33) — BootCache replacement.
+Kit helpers (`hubTmdbMatch`, `hubEnrichTmdb`, `hubTmdbById`) prefer `meta.ids.tmdb` (details fetch, movie↔tv fallback) before title search via `ctx.host.tmdb.match`, and fall back to `ctx.fetch` + injected `config.apiKey`. Source plugins may call kit enrich inline **or** declare a companion via `"enrich": "<pluginId>"` — host runs `action: enrich` after `rail`/`details` and caches the merged payload (R70-A42–A44, R70-A49–A50: Asian Drama `enrich-tmdb`, Anime `anime-enrich-tmdb`; hub hero client uses the same scored matcher as details). CatalogShell only renders `meta`. Match hits may include `overview` / `rating`; `hubApplyTmdbHit` fills empty pack synopsis/score only. Rust `tmdb::match_json` keeps a process-lifetime match cache (R70-A34). Splash warms layout + first-paint rails into `CatalogCache` (R70-A33) — BootCache replacement.
 
 ### Host assets (R70-A39+)
 

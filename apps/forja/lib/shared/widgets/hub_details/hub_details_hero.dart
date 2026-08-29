@@ -490,13 +490,14 @@ class _HubHeroMainColumn extends StatelessWidget {
             .clamp(0.0, maxHeight!);
       }
 
-      if (overBudget()) showGenres = false;
       if (overBudget()) showSubtitle = false;
+      if (overBudget()) showOverview = false;
+      if (overBudget()) showGenres = false;
+      // Meta (type / year / cert / ★) stays above synopsis on tight ATV chrome.
       if (overBudget()) showMetaLine = false;
       if (!_hasLogo && overBudget()) {
         titleHeight = 64.0;
       }
-      // Keep synopsis — TMDB chrome must not yank the source overview.
       if (overBudget() && showSeriesProgress) {
         showSeriesProgress = false;
         refreshBudget();

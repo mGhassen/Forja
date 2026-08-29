@@ -241,7 +241,8 @@ List<Map<String, dynamic>> externalSubtitlesForAutoPick({
   return out;
 }
 
-/// Embedded track match: preferred, then English.
+/// Embedded track match: preferred, then English, then any in-stream track.
+/// Prefer muxed/HLS text over scraped sideloads when the stream ships subs.
 SubtitleTrack? pickEmbeddedSubtitleWithFallback({
   required String preferredLang,
   required List<SubtitleTrack> tracks,
@@ -257,7 +258,8 @@ SubtitleTrack? pickEmbeddedSubtitleWithFallback({
       }
     }
   }
-  return null;
+  // Unlabeled / wrong-tag in-stream still beats OpenSubtitles auto-pick.
+  return real.isNotEmpty ? real.first : null;
 }
 
 /// Codec/title hints we want to *avoid* because the bundled mpv build on
