@@ -48,11 +48,19 @@ class KissKhTmdbMatch {
   }) async {
     final q = normalizeTitle(title);
     if (q.isEmpty) return null;
-    final api = tmdb ?? TmdbApi();
     final wantMovie = preferMovie(kissKhType);
+    final cacheKey =
+        'kisskh-match:${q.toLowerCase()}|${year ?? ''}|$wantMovie|$minScore';
+    if (_matchCache.containsKey(cacheKey)) {
+      return _matchCache[cacheKey];
+    }
+    final api = tmdb ?? TmdbApi();
     try {
       final hits = await api.searchMulti(q);
-      if (hits.isEmpty) return null;
+      if (hits.isEmpty) {
+        _matchCache[cacheKey] = null;
+        return null;
+      }
       Movie? best;
       var bestScore = -1;
       final wantYear = int.tryParse((year ?? '').trim()) ??
@@ -98,13 +106,18 @@ class KissKhTmdbMatch {
           best = h;
         }
       }
-      if (best == null || bestScore < minScore) return null;
+      if (best == null || bestScore < minScore) {
+        _matchCache[cacheKey] = null;
+        return null;
+      }
       if (kDebugMode) {
         debugPrint(
           '[AsianDrama] TMDB match '
           '"$q" → id=${best.id} ${best.mediaType} score=$bestScore',
         );
       }
+      if (_matchCache.length >= _matchCacheMax) _matchCache.clear();
+      _matchCache[cacheKey] = best;
       return best;
     } catch (e) {
       if (kDebugMode) {
@@ -113,4 +126,7 @@ class KissKhTmdbMatch {
       return null;
     }
   }
+
+  static final Map<String, Movie?> _matchCache = {};
+  static const _matchCacheMax = 256;
 }

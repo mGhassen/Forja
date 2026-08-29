@@ -285,7 +285,11 @@ class _CatalogShellState extends State<CatalogShell>
     final yearBit = item.releaseInfo.isEmpty
         ? null
         : item.releaseInfo.split(' • ').first;
-    final movie = catalogMetaToMovie(item);
+    // Anime / drama: keep KissKH·AniList open + listTarget. Never set [movie]
+    // — hub hero has onOpenDetails=null, so a TMDB Movie made View details a
+    // silent no-op after spotlight enrich.
+    final hubNative = item.type == 'anime' || item.type == 'drama';
+    final movie = hubNative ? null : catalogMetaToMovie(item);
     return HubHeroSlide(
       id: item.id,
       title: item.name,
@@ -304,7 +308,6 @@ class _CatalogShellState extends State<CatalogShell>
       tmdbMediaType: movie?.mediaType ??
           item.tmdbMediaType ??
           (item.type == 'movie' ? 'movie' : 'tv'),
-      // Home TMDB pin (+); anime/drama use listTarget instead.
       movie: movie,
       listTarget: _listTarget(item),
       onDetails: () => unawaited(_openMeta(item)),

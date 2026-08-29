@@ -1217,8 +1217,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           ? null
           : () {
               final item = items[_heroIndex];
-              if (item.movie != null) {
-                widget.onOpenDetails?.call(item.movie!);
+              if (item.movie != null && widget.onOpenDetails != null) {
+                widget.onOpenDetails!(item.movie!);
               } else {
                 item.onDetails();
               }
@@ -1820,8 +1820,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           : null,
       onTap: focusable
           ? () {
-              if (heroItem.movie != null) {
-                widget.onOpenDetails?.call(heroItem.movie!);
+              if (heroItem.movie != null && widget.onOpenDetails != null) {
+                widget.onOpenDetails!(heroItem.movie!);
               } else {
                 heroItem.onDetails();
               }

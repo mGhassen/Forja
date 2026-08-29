@@ -1,6 +1,7 @@
 library;
 
 export 'cache.dart';
+export 'hub_tmdb_enrich_cache.dart';
 export 'deeplink.dart';
 export 'filter.dart';
 export 'plugin_nav.dart';

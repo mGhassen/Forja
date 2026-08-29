@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/shared/catalog/hub_tmdb_enrich_cache.dart';
 import 'package:rust/rust.dart';
 
 final animeServiceProvider = Provider<AnimeService>((ref) => AnimeService());
@@ -47,9 +48,22 @@ typedef AnimeTmdbQuery = ({String title, int? year, bool isMovie});
 final animeTmdbEnrichmentProvider = FutureProvider.autoDispose
     .family<RichMediaDetails?, AnimeTmdbQuery>((ref, query) async {
   if (query.title.isEmpty) return null;
-  return ref.watch(animeServiceProvider).getTmdbRichDetails(
+  final key =
+      'anime-enrich:${query.title}|${query.year ?? ''}|${query.isMovie}';
+  if (HubTmdbEnrichCache.contains(key)) {
+    return HubTmdbEnrichCache.get<RichMediaDetails>(key);
+  }
+  final rich = await ref.watch(animeServiceProvider).getTmdbRichDetails(
         title: query.title,
         year: query.year,
         isMovie: query.isMovie,
       );
+  HubTmdbEnrichCache.put(key, rich);
+  if (rich != null) {
+    final type = rich.movie.mediaType == 'movie' || rich.movie.mediaType == 'tv'
+        ? rich.movie.mediaType
+        : (query.isMovie ? 'movie' : 'tv');
+    HubTmdbEnrichCache.put('anime-enrich:id:${rich.movie.id}:$type', rich);
+  }
+  return rich;
 });

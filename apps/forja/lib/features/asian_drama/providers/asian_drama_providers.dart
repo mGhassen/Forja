@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_tmdb_match.dart';
+import 'package:forja/shared/catalog/hub_tmdb_enrich_cache.dart';
 import 'package:rust/rust.dart';
 
 final kissKhServiceProvider = Provider<KissKhService>((ref) => KissKhService());
@@ -96,58 +97,112 @@ class AsianDramaTmdbEnrichment {
 }
 
 /// TMDB rich details (+ season stills for TV) for a KissKH title.
+///
+/// Result is process-cached — `autoDispose` alone was dumping enrich on leave.
 final asianDramaTmdbEnrichmentProvider = FutureProvider.autoDispose
     .family<AsianDramaTmdbEnrichment?, AsianDramaTmdbQuery>((ref, query) async {
+  final qKey = _asianEnrichQueryKey(query);
+  if (HubTmdbEnrichCache.contains(qKey)) {
+    return HubTmdbEnrichCache.get<AsianDramaTmdbEnrichment>(qKey);
+  }
+
+  final tmdbId = query.tmdbId;
+  if (tmdbId != null && tmdbId > 0) {
+    for (final type in [
+      KissKhTmdbMatch.preferMovie(query.kissKhType) ? 'movie' : 'tv',
+      KissKhTmdbMatch.preferMovie(query.kissKhType) ? 'tv' : 'movie',
+    ]) {
+      final idKey = _asianEnrichIdKey(tmdbId, type);
+      if (HubTmdbEnrichCache.contains(idKey)) {
+        final byId = HubTmdbEnrichCache.get<AsianDramaTmdbEnrichment>(idKey);
+        HubTmdbEnrichCache.put(qKey, byId);
+        return byId;
+      }
+    }
+  }
+
   final tmdb = ref.watch(tmdbApiProvider);
   final kissKhTmdbId = query.tmdbId;
+  AsianDramaTmdbEnrichment? result;
   if (kissKhTmdbId != null && kissKhTmdbId > 0) {
     final preferMovie = KissKhTmdbMatch.preferMovie(query.kissKhType);
     final primary = preferMovie ? 'movie' : 'tv';
     final secondary = preferMovie ? 'tv' : 'movie';
-    final direct = await _enrichByTmdbId(tmdb, kissKhTmdbId, primary) ??
+    result = await _enrichByTmdbId(tmdb, kissKhTmdbId, primary) ??
         await _enrichByTmdbId(tmdb, kissKhTmdbId, secondary);
-    if (direct != null) {
-      if (kDebugMode) {
-        debugPrint(
-          '[AsianDrama] TMDB from KissKH tmdbID=$kissKhTmdbId '
-          'type=${direct.rich.movie.mediaType}',
-        );
-      }
-      return direct;
+    if (result != null && kDebugMode) {
+      debugPrint(
+        '[AsianDrama] TMDB from KissKH tmdbID=$kissKhTmdbId '
+        'type=${result.rich.movie.mediaType}',
+      );
     }
   }
-  final match = await KissKhTmdbMatch.resolve(
-    title: query.title,
-    year: query.year,
-    kissKhType: query.kissKhType,
-    tmdb: tmdb,
-  );
-  if (match == null) return null;
-  final mediaType =
-      match.mediaType == 'movie' || match.mediaType == 'tv'
-          ? match.mediaType
-          : KissKhTmdbMatch.preferMovie(query.kissKhType)
-              ? 'movie'
-              : 'tv';
-  return _enrichByTmdbId(tmdb, match.id, mediaType);
+  if (result == null) {
+    final match = await KissKhTmdbMatch.resolve(
+      title: query.title,
+      year: query.year,
+      kissKhType: query.kissKhType,
+      tmdb: tmdb,
+    );
+    if (match == null) {
+      HubTmdbEnrichCache.put(qKey, null);
+      return null;
+    }
+    final mediaType =
+        match.mediaType == 'movie' || match.mediaType == 'tv'
+            ? match.mediaType
+            : KissKhTmdbMatch.preferMovie(query.kissKhType)
+                ? 'movie'
+                : 'tv';
+    result = await _enrichByTmdbId(tmdb, match.id, mediaType);
+  }
+
+  HubTmdbEnrichCache.put(qKey, result);
+  if (result != null) {
+    final m = result.rich.movie;
+    final type = m.mediaType == 'movie' || m.mediaType == 'tv'
+        ? m.mediaType
+        : 'tv';
+    HubTmdbEnrichCache.put(_asianEnrichIdKey(m.id, type), result);
+  }
+  return result;
 });
+
+String _asianEnrichQueryKey(AsianDramaTmdbQuery q) {
+  final id = q.tmdbId;
+  if (id != null && id > 0) {
+    return 'asian-enrich:tmdb:$id|${q.kissKhType ?? ''}';
+  }
+  return 'asian-enrich:q:${q.title}|${q.year ?? ''}|${q.kissKhType ?? ''}';
+}
+
+String _asianEnrichIdKey(int id, String mediaType) =>
+    'asian-enrich:id:$id:$mediaType';
 
 Future<AsianDramaTmdbEnrichment?> _enrichByTmdbId(
   TmdbApi tmdb,
   int id,
   String mediaType,
 ) async {
+  final idKey = _asianEnrichIdKey(id, mediaType);
+  if (HubTmdbEnrichCache.contains(idKey)) {
+    return HubTmdbEnrichCache.get<AsianDramaTmdbEnrichment>(idKey);
+  }
   try {
     final rich = await tmdb.getRichDetails(id, mediaType);
+    final AsianDramaTmdbEnrichment out;
     if (mediaType != 'tv') {
-      return AsianDramaTmdbEnrichment(rich: rich);
+      out = AsianDramaTmdbEnrichment(rich: rich);
+    } else {
+      final season = await _loadSeasonExtras(tmdb, id);
+      out = AsianDramaTmdbEnrichment(
+        rich: rich,
+        episodeStills: season.stills,
+        episodeMeta: season.meta,
+      );
     }
-    final season = await _loadSeasonExtras(tmdb, id);
-    return AsianDramaTmdbEnrichment(
-      rich: rich,
-      episodeStills: season.stills,
-      episodeMeta: season.meta,
-    );
+    HubTmdbEnrichCache.put(idKey, out);
+    return out;
   } catch (e) {
     if (kDebugMode) {
       debugPrint(
