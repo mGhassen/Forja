@@ -215,6 +215,15 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
     attempt();
   }
 
+  /// ↓ past the last portal (incl. filtered search) → channels, else groups.
+  /// Keeps the panel open (symmetric with → from the stream grid into portals).
+  void _focusCatalogFromLastPortal() {
+    if (!mounted || !widget.ctrl.portalPanelOpen) return;
+    if (iptvFocusRowItem('browser-streams')) return;
+    if (iptvFocusBrowserCategories(widget.ctrl)) return;
+    iptvFocusFirstPortalGroup(widget.ctrl);
+  }
+
   /// Row ↓ from the header lands on: where the user left the list, else the
   /// active (playing) portal on first entry.
   int _portalEntryIndex(List<VerifiedPortal> all) {
@@ -727,7 +736,7 @@ class _IptvPortalPanelState extends State<IptvPortalPanel> {
                           )
                       : () => _focusPortalAt(i - ShellTvHoldAccel.lastStep),
                   onDownEdge: i >= last
-                      ? null
+                      ? _focusCatalogFromLastPortal
                       : () => _focusPortalAt(i + ShellTvHoldAccel.lastStep),
                   onEdit: () => _showPortalDialog(context, existing: v),
                 ),

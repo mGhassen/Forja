@@ -648,6 +648,42 @@ class _BrowserViewState extends State<_BrowserView> {
     }
   }
 
+  /// Favorites / Already watched → portal group for [stream], keep focus on it.
+  /// Hold-OK path only — never plays.
+  void _jumpToStreamCatalogCategory(IptvStream stream) {
+    final catId = stream.categoryId.isEmpty
+        ? IptvCatalogOrphans.uncategorizedId
+        : stream.categoryId;
+    final prev = widget.ctrl.browserSelectedCategoryId;
+    if (prev != catId) {
+      iptvResetBrowserStreamsFocusMemory();
+      _revealedLogoIds.clear();
+      _allowNewLogos = false;
+    }
+    widget.ctrl.selectBrowserCategory(catId);
+    if (prev != catId) {
+      _bumpChannelLogoSettle(hide: true);
+    }
+    if (iptvUseTvFocus(context)) {
+      setState(() {
+        _tvFocusedCategoryId = catId;
+        _tvCategoryRailFocused = false;
+      });
+    }
+    _scrollCategorySidebarToSelected();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final idx =
+          _filteredStreams.indexWhere((x) => x.streamId == stream.streamId);
+      if (idx < 0) {
+        iptvFocusBrowserCategories(widget.ctrl);
+        return;
+      }
+      _scrollAndFocusStreamAt(idx);
+    });
+  }
+
   /// Scroll lazy grid/list then focus the tile — highlight only, no play.
   void _scrollAndFocusStreamAt(int index) {
     if (index < 0) return;
@@ -1257,11 +1293,17 @@ class _BrowserViewState extends State<_BrowserView> {
             final synthetic = IptvLiveCatalog.isSyntheticId(cat.id);
             final movableIndex = canReorder ? reorderIndex : null;
             final floating = _tvFloatingCategoryId == cat.id;
+            // Leanback skim (↓ without OK): mute the open-group mark so only
+            // the focused row paints green — selected + focus looked like 2–3
+            // hovers. First pending setState clears it; later skims skip
+            // rebuild but selected stays false until focus returns / commits.
+            final openSelected = cat.id == ctrl.browserSelectedCategoryId &&
+                !(iptvLeanbackOnly(context) && _tvCategoryPendingCommit);
             return _CategorySidebarRow(
               key: ValueKey(cat.id),
               label: cat.name.isEmpty ? 'Uncategorized' : cat.name,
               icon: _iptvCategoryIcon(cat.id),
-              selected: cat.id == ctrl.browserSelectedCategoryId,
+              selected: openSelected,
               compact: compact,
               listIndex: listIndex,
               pinnable: live && !synthetic,
@@ -1462,6 +1504,11 @@ class _BrowserViewState extends State<_BrowserView> {
           itemBuilder: (_, i) {
             final stream = list[i];
             final atRightEdge = (i % cross) == cross - 1;
+            final selected = widget.ctrl.browserSelectedCategoryId;
+            final holdJump = selected != null &&
+                    IptvLiveCatalog.isSyntheticId(selected)
+                ? () => _jumpToStreamCatalogCategory(stream)
+                : null;
             return _StreamCard(
               stream: stream,
               ctrl: widget.ctrl,
@@ -1484,6 +1531,7 @@ class _BrowserViewState extends State<_BrowserView> {
                   ? iptvStreamLeftEdge(widget.ctrl, stream)
                   : null,
               onTap: () => _onStreamTap(stream),
+              onHoldJumpToCategory: holdJump,
             );
           },
         );
@@ -1534,6 +1582,11 @@ class _BrowserViewState extends State<_BrowserView> {
       addAutomaticKeepAlives: false,
       itemBuilder: (_, i) {
         final stream = list[i];
+        final selected = ctrl.browserSelectedCategoryId;
+        final holdJump = selected != null &&
+                IptvLiveCatalog.isSyntheticId(selected)
+            ? () => _jumpToStreamCatalogCategory(stream)
+            : null;
         return _StreamRowTile(
           stream: stream,
           ctrl: ctrl,
@@ -1551,6 +1604,7 @@ class _BrowserViewState extends State<_BrowserView> {
               : null,
           onDownEdge: i == list.length - 1 ? () {} : null,
           onTap: () => _onStreamTap(stream),
+          onHoldJumpToCategory: holdJump,
         );
       },
     );

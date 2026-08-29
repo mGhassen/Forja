@@ -329,7 +329,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       iptvFocusRowItem('portals', widget.listIndex + 1);
       return;
     }
-    // Last portal: leave action chrome and stay on this card.
+    // Last portal without an edge: stay on the card (panel wires exit itself).
     _focusAction(_rowFocus);
   }
 

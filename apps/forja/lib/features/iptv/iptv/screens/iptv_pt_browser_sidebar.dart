@@ -536,29 +536,32 @@ class _CategorySidebarRowState extends State<_CategorySidebarRow>
     // Desktop drag proxy wraps the row — same brighter green as TV floating.
     final lifted =
         _floating || _IptvCategoryDragProxyScope.isProxy(context);
-    // Focus / hover / lift own the “lit” look. Selected alone = muted open mark
-    // so any jump distance never paints two focus-strength greens in view.
+    // Focus / hover / lift own the “lit” look. Selected alone = faint open
+    // tick (not brand-green icon) — leanback skim mutes selected entirely via
+    // parent pending-commit so ↓ never paints two focus-strength rows.
     final lit = _tvFocused || lifted || _active;
     final iconColor = _tvFocused || lifted
         ? ForjaShellColors.brandGreen
         : _active
             ? Colors.white
             : selected
-                ? ForjaShellColors.brandGreen.withValues(alpha: 0.7)
+                ? (leanback
+                    ? ForjaShellColors.textSecondary
+                    : ForjaShellColors.brandGreen.withValues(alpha: 0.7))
                 : ForjaShellColors.textSecondary;
     final titleColor = _tvFocused || lifted
         ? ForjaShellColors.brandGreen
         : _active
             ? Colors.white
             : selected
-                ? Colors.white.withValues(alpha: 0.88)
+                ? Colors.white.withValues(alpha: leanback ? 0.7 : 0.88)
                 : ForjaShellColors.textSecondary;
     final leftBar = lifted || _tvFocused
         ? ForjaShellColors.brandGreen
         : _active
             ? ForjaShellColors.brandGreen.withValues(alpha: 0.55)
             : selected
-                ? ForjaShellColors.brandGreen.withValues(alpha: 0.4)
+                ? ForjaShellColors.brandGreen.withValues(alpha: leanback ? 0.22 : 0.4)
                 : Colors.transparent;
 
     // Fill only for focus / hover / floating. Snap colors — no fade trail.

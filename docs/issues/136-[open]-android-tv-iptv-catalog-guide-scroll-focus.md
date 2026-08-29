@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **16 / 16** fix · **0 / 7** acceptance · **1** deferred (A05) |
+| **Progress** | **17 / 17** fix · **0 / 7** acceptance · **1** deferred (A05) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -35,6 +35,7 @@
 | 14 | I136-T14 | TV category pin: after pin/unpin, scroll rail to new index + focus that row (supersedes freeze-scroll of T07) | ✅ |
 | 15 | I136-T15 | TV category rail: sync-clear focus chrome on blur; selected-only = left bar (no second inkHover fill) | ✅ |
 | 16 | I136-T16 | Channel grid last-row ↓ traps (no spatial wrap back to category rail); `moveInGrid` last-row down returns handled | ✅ |
+| 17 | I136-T17 | Leanback skim: mute open-category selected mark while pending-commit; quieter selected-only chrome (no brand-green icon) | ✅ |
 
 ---
 
@@ -80,6 +81,8 @@ D-pad focus on IPTV **catalog** (category rail + channel grid/list) and **in-pla
 **Follow-up (I136-T15):** ↑/↓ left a ghost focus fill for one frame (deferred `_focused=false`) plus selected `inkHover` — looked like 2–3 hovers. Blur clears focus chrome sync; on TV selected-only keeps the green left bar without a second fill (`I136-A07`).
 
 **Follow-up (I136-T16):** Last channel-row **↓** was ignored (`moveInGrid` returned false) so Flutter spatial wrap landed on the category rail. Last-row ↓ now traps — same as last-column → (`I136-A08`).
+
+**Follow-up (I136-T17):** T15 cleared ghost `_focused` fill, but leanback ↓ skim still painted the **opened** group’s selected mark (green icon + left bar) next to the focused row — looked like multiple focuses. Pending-commit now mutes `selected` on the rail; selected-only chrome drops brand-green icon (`I136-A07`).
 
 ## Related
 

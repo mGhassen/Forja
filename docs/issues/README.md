@@ -156,7 +156,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 10/10 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [134-[fixed]-…](fixed/134-[fixed]-player-audio-continues-after-app-switch.md) | Player audio continues after app switch | P1 | High | fixed | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [135-[open]-…](135-[open]-android-tv-spatial-dpad-all-screens.md) | ATV spatial 2D D-pad (all screens) | P1 | High | open | 9/9 · A 1/8 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [136-[open]-…](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) | ATV IPTV catalog/guide scroll focus + logos | P1 | Medium | open | 16/16 · A 0/7 · 1⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
+| [136-[open]-…](136-[open]-android-tv-iptv-catalog-guide-scroll-focus.md) | ATV IPTV catalog/guide scroll focus + logos | P1 | Medium | open | 17/17 · A 0/7 · 1⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
 | [137-[open]-…](137-[open]-android-tv-player-engine-not-remembered.md) | ATV in-player engine not remembered per surface | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [138-[open]-…](138-[open]-android-tv-iptv-4k-audio.md) | ATV IPTV 4K MediaKit silent / Exo audio stutter | P1 | High | open | 3/3 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [139-[open]-…](139-[open]-android-tv-shell-focus-chrome-stutter.md) | ATV shell / catalog focus chrome stutter | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |

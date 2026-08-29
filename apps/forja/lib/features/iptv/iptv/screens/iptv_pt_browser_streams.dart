@@ -3,6 +3,53 @@ part of 'iptv_pt_screen.dart';
 /// Live channels probe on hover/focus; Movies and Series skip status checks.
 bool _streamHealthEnabled(IptvStream s) => s.kind == 'live';
 
+/// TV OK-hold on Favorites / Already watched: short → play, ≥1s → jump (no play).
+class _StreamOkHoldJump {
+  Timer? _timer;
+  bool _fired = false;
+
+  static const delay = Duration(seconds: 1);
+
+  void cancel() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  void dispose() {
+    cancel();
+    _fired = false;
+  }
+
+  KeyEventResult handle(
+    KeyEvent event, {
+    required VoidCallback onHold,
+    required VoidCallback onShort,
+    required bool Function() mounted,
+  }) {
+    if (event is KeyDownEvent &&
+        shellTvIsActivateLogicalKey(event.logicalKey)) {
+      _fired = false;
+      cancel();
+      _timer = Timer(delay, () {
+        if (!mounted()) return;
+        _fired = true;
+        onHold();
+      });
+      return KeyEventResult.handled;
+    }
+    if (event is KeyUpEvent && shellTvIsActivateLogicalKey(event.logicalKey)) {
+      cancel();
+      if (_fired) {
+        _fired = false;
+        return KeyEventResult.handled;
+      }
+      onShort();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+}
+
 class _StreamThumbPlayHint extends StatelessWidget {
   const _StreamThumbPlayHint({required this.active});
 
@@ -37,6 +84,8 @@ class _StreamCard extends StatefulWidget {
   final IptvStream stream;
   final IptvController ctrl;
   final VoidCallback onTap;
+  /// TV: hold OK ~1s from Favorites / Already watched → portal category.
+  final VoidCallback? onHoldJumpToCategory;
   final bool showLogo;
   final bool highlighted;
   final VoidCallback? onTvFocusGained;
@@ -50,6 +99,7 @@ class _StreamCard extends StatefulWidget {
     required this.stream,
     required this.ctrl,
     required this.onTap,
+    this.onHoldJumpToCategory,
     this.showLogo = true,
     this.highlighted = false,
     this.onTvFocusGained,
@@ -68,6 +118,7 @@ class _StreamCard extends StatefulWidget {
 class _StreamCardState extends State<_StreamCard> {
   bool _hovered = false;
   bool _focused = false;
+  final _okHold = _StreamOkHoldJump();
 
   bool _active(BuildContext context) => ShellInputPolicy.interactiveActive(
         ShellScope.inputPolicyOf(context),
@@ -82,6 +133,7 @@ class _StreamCardState extends State<_StreamCard> {
   }
 
   void _onFocus(bool focused) {
+    if (!focused) _okHold.cancel();
     setState(() => _focused = focused);
     _syncLiveProbe(focused || _hovered);
     if (focused && iptvUseTvFocus(context)) {
@@ -103,10 +155,24 @@ class _StreamCardState extends State<_StreamCard> {
 
   @override
   void dispose() {
+    _okHold.dispose();
     if (_streamHealthEnabled(widget.stream)) {
       widget.ctrl.cancelLazyCheck(widget.stream.streamId);
     }
     super.dispose();
+  }
+
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    final jump = widget.onHoldJumpToCategory;
+    if (jump == null || !iptvUseTvFocus(context)) {
+      return KeyEventResult.ignored;
+    }
+    return _okHold.handle(
+      event,
+      onHold: jump,
+      onShort: widget.onTap,
+      mounted: () => mounted,
+    );
   }
 
   Color _surfaceColor(bool active, bool? health) {
@@ -155,6 +221,8 @@ class _StreamCardState extends State<_StreamCard> {
             ? _buildTvPosterBody(context, health: health, active: active)
             : _buildDefaultBody(context, health: health, active: active);
         final radius = tv ? shellCardBorderRadius(context) : 12.0;
+        final holdJump = widget.onHoldJumpToCategory != null &&
+            iptvUseTvFocus(context);
         Widget card = AnimatedContainer(
           duration: tv ? Duration.zero : const Duration(milliseconds: 150),
           curve: Curves.easeOutCubic,
@@ -188,6 +256,7 @@ class _StreamCardState extends State<_StreamCard> {
             onDownEdge: widget.onDownEdge,
             onFocusChange: _onFocus,
             onHoverChange: _onHover,
+            onKeyEvent: holdJump ? _onKeyEvent : null,
             child: column,
           ),
         );
@@ -453,6 +522,7 @@ class _StreamRowTile extends StatefulWidget {
     required this.ctrl,
     required this.categoryName,
     required this.onTap,
+    this.onHoldJumpToCategory,
     this.showLogo = true,
     this.highlighted = false,
     this.onTvFocusGained,
@@ -467,6 +537,8 @@ class _StreamRowTile extends StatefulWidget {
   final IptvController ctrl;
   final String categoryName;
   final VoidCallback onTap;
+  /// TV: hold OK ~1s from Favorites / Already watched → portal category.
+  final VoidCallback? onHoldJumpToCategory;
   final bool showLogo;
   final bool highlighted;
   final VoidCallback? onTvFocusGained;
@@ -483,6 +555,7 @@ class _StreamRowTile extends StatefulWidget {
 class _StreamRowTileState extends State<_StreamRowTile> {
   bool _hovered = false;
   bool _focused = false;
+  final _okHold = _StreamOkHoldJump();
 
   bool _active(BuildContext context) => ShellInputPolicy.interactiveActive(
         ShellScope.inputPolicyOf(context),
@@ -497,6 +570,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
   }
 
   void _onFocus(bool focused) {
+    if (!focused) _okHold.cancel();
     setState(() => _focused = focused);
     _syncLiveProbe(focused || _hovered);
     if (focused && iptvUseTvFocus(context)) {
@@ -518,10 +592,24 @@ class _StreamRowTileState extends State<_StreamRowTile> {
 
   @override
   void dispose() {
+    _okHold.dispose();
     if (_streamHealthEnabled(widget.stream)) {
       widget.ctrl.cancelLazyCheck(widget.stream.streamId);
     }
     super.dispose();
+  }
+
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    final jump = widget.onHoldJumpToCategory;
+    if (jump == null || !iptvUseTvFocus(context)) {
+      return KeyEventResult.ignored;
+    }
+    return _okHold.handle(
+      event,
+      onHold: jump,
+      onShort: widget.onTap,
+      mounted: () => mounted,
+    );
   }
 
   Color _surfaceColor(bool active, bool? health) {
@@ -553,6 +641,8 @@ class _StreamRowTileState extends State<_StreamRowTile> {
             : null;
         final active = _active(context);
         final highlighted = widget.highlighted;
+        final holdJump = widget.onHoldJumpToCategory != null &&
+            iptvUseTvFocus(context);
         final tile = Padding(
           padding: EdgeInsets.zero,
           child: AnimatedContainer(
@@ -586,6 +676,7 @@ class _StreamRowTileState extends State<_StreamRowTile> {
               onDownEdge: widget.onDownEdge,
               onFocusChange: _onFocus,
               onHoverChange: _onHover,
+              onKeyEvent: holdJump ? _onKeyEvent : null,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 child: Row(
