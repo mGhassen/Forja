@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/pages/settings_category_bodies.dart';
@@ -36,6 +38,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   final FocusScopeNode _detailScope =
       FocusScopeNode(debugLabel: 'settings-detail');
   int _detailEnterToken = 0;
+  Timer? _missingCategoryFallback;
 
   @override
   void initState() {
@@ -53,13 +56,29 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     setState(() => _visibility = next);
     if (!SettingsTokens.useSplitLayout(context)) return;
     final ids = settingsCategories(next).map((c) => c.id).toSet();
-    if (!ids.contains(widget.selectedId)) {
-      widget.onSelect(SettingsCategoryId.profile);
+    if (ids.contains(widget.selectedId)) {
+      _missingCategoryFallback?.cancel();
+      _missingCategoryFallback = null;
+      return;
     }
+    // Resume / cloud pull can briefly drop gated tiles (admin flags, play
+    // sources). Keep selection and only fall back if it stays missing.
+    _missingCategoryFallback?.cancel();
+    _missingCategoryFallback = Timer(const Duration(milliseconds: 800), () {
+      if (!mounted) return;
+      if (!SettingsTokens.useSplitLayout(context)) return;
+      final v = _visibility;
+      if (v == null) return;
+      final settled = settingsCategories(v).map((c) => c.id).toSet();
+      if (!settled.contains(widget.selectedId)) {
+        widget.onSelect(SettingsCategoryId.profile);
+      }
+    });
   }
 
   @override
   void dispose() {
+    _missingCategoryFallback?.cancel();
     _detailScope.dispose();
     super.dispose();
   }

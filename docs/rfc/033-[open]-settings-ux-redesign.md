@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) · **3 / 3** acceptance (TV detail focus) |
-| **Current slice** | TV selects: OK opens option list (original chrome) |
+| **Progress** | **8 / 8** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) · **3 / 3** acceptance (TV detail focus) · **1 / 1** acceptance (resume selection) |
+| **Current slice** | Resume: keep Settings category across background sync |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -67,6 +67,14 @@
 | 1 | R33-A17 | Split TV: OK/→ from category enters detail and lands on the first right-pane control; ↑/↓/←/→ stay in the right pane (no ← exit to rail) | ✅ |
 | 2 | R33-A18 | Back from detail → selected category → first category → nav rail | ✅ |
 | 3 | R33-A19 | TV select rows: OK opens D-pad option list (selected highlighted); chrome unchanged | ✅ |
+
+---
+
+## Acceptance (resume selection)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R33-A20 | Background → resume (cloud pull / visibility refresh) keeps the open Settings category; only falls back to Profile if the tile stays missing | ✅ |
 
 ---
 

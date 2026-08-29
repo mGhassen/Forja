@@ -86,6 +86,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   void _prepareShellForIncomingProfile() {
     popShellOverlayUntilRoot();
     ShellBus.clearHideGlobalNav();
+    ShellBus.settingsHubCategoryId = null;
     ShellBus.selectDefaultTabOnNextNavLoad = true;
     // Merge may no-op when navigation payloads match; force a shell reload.
     SettingsService.navbarChangeNotifier.value++;

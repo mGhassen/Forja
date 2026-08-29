@@ -21,7 +21,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _selectedId = SettingsCategoryId.profile;
+  late String _selectedId;
   final FocusNode _firstHubFocus = FocusNode(debugLabel: 'settings-hub-0');
 
   @override
@@ -30,7 +30,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final pending = ShellBus.requestSettingsCategory.value;
     if (pending != null) {
       _selectedId = pending;
+      ShellBus.settingsHubCategoryId = pending;
       ShellBus.requestSettingsCategory.value = null;
+    } else {
+      _selectedId =
+          ShellBus.settingsHubCategoryId ?? SettingsCategoryId.profile;
     }
     ShellBus.requestSettingsCategory.addListener(_applyRequestedCategory);
     TvHeroActions.bind(
@@ -65,16 +69,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final id = ShellBus.requestSettingsCategory.value;
     if (id == null || !mounted) return;
     ShellBus.requestSettingsCategory.value = null;
+    _rememberCategory(id);
     if (id == _selectedId) return;
     setState(() => _selectedId = id);
   }
 
+  void _rememberCategory(String id) {
+    ShellBus.settingsHubCategoryId = id;
+  }
+
   void _onSelect(String id) {
     unawaited(ProductAnalytics.screen('settings/$id'));
-    if (SettingsTokens.useSplitLayout(context)) {
+    _rememberCategory(id);
+    // Always keep hub selection in sync — compact used to skip this, so a
+    // remount / split flip landed back on Profile.
+    if (id != _selectedId) {
       setState(() => _selectedId = id);
-      return;
     }
+    if (SettingsTokens.useSplitLayout(context)) return;
     pushShellRoute(
       context,
       AppRouter.slideShellRoute(

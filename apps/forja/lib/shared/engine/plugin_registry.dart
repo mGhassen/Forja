@@ -475,7 +475,8 @@ class PluginRegistry {
   }
 
   /// Disable (not remove) packs that are not in [keepUrls] but share ForjaHQ
-  /// pack ids / canonical paths. Enable packs in [keepUrls].
+  /// pack ids / canonical paths. Never touches [EnginePack.enabled] on keep
+  /// URLs — FORCE / cloud only choose install source; activation is user-owned.
   @visibleForTesting
   Future<void> applyOfficialKeepSet(List<String> keepUrls) async {
     final keep = {
@@ -487,15 +488,7 @@ class PluginRegistry {
     var changed = false;
     for (final pack in packs) {
       if (keep.contains(pack.sourceUrl)) {
-        if (!pack.enabled) {
-          debugPrint(
-            '[engine] ForjaHQ: enable ${pack.packId} (${pack.sourceUrl})',
-          );
-          next.add(pack.copyWith(enabled: true));
-          changed = true;
-        } else {
-          next.add(pack);
-        }
+        next.add(pack);
         continue;
       }
       if (!isShadowOfficialPack(pack, keep)) {
@@ -623,7 +616,7 @@ class PluginRegistry {
 
         final forceEnvReinstall = forcePluginEnv && !_forceEnvApplied;
         final cloudNeedsApply = usingCloud && !_cloudOfficialApplied;
-        // Run enable/disable + optional install even when only switching keep-set.
+        // Shadow disable + optional install when switching keep-set / first force.
         final mustRun = force || forceEnvReinstall || cloudNeedsApply;
 
         if (!mustRun && _officialInstallFailed) return;

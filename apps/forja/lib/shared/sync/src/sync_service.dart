@@ -1008,12 +1008,13 @@ class SyncService {
           return await pullOnce(forceRefresh: true);
         } catch (e2) {
           debugPrint('[Sync] pullAccountFeatures error after JWT retry: $e2');
-          AccountFeatures.instance.clear();
+          // Keep last-known flags — clearing mid-session drops admin Settings
+          // categories and sends the hub back to Profile on resume.
           return const {};
         }
       }
       debugPrint('[Sync] pullAccountFeatures error: $e');
-      AccountFeatures.instance.clear();
+      // Same: do not wipe in-memory flags on a transient network/JWT blip.
       return const {};
     }
   }

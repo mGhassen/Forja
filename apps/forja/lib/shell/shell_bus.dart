@@ -144,6 +144,10 @@ class ShellBus {
   static final ValueNotifier<String?> requestSettingsCategory =
       ValueNotifier<String?>(null);
 
+  /// Last Settings hub category the user opened. Survives tab remount / resume
+  /// sync so the hub does not jump back to Profile.
+  static String? settingsHubCategoryId;
+
   /// When true, the next Settings hub build should D-pad into the category pane.
   static bool _enterSettingsDetail = false;
 
@@ -153,6 +157,7 @@ class ShellBus {
   /// pane so leftover Select KeyUp cannot hit the nav rail.
   static void openSettings({String? categoryId, bool enterDetail = false}) {
     if (categoryId != null) {
+      settingsHubCategoryId = categoryId;
       requestSettingsCategory.value = categoryId;
     }
     if (enterDetail) _enterSettingsDetail = true;

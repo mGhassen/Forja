@@ -368,7 +368,7 @@ void main() {
       );
     });
 
-    test('applyOfficialKeepSet disables GitHub and enables local keep URL',
+    test('applyOfficialKeepSet disables GitHub shadows; leaves keep enabled as-is',
         () async {
       const github =
           'https://raw.githubusercontent.com/example/Forja/main/plugins/providers/manifest.json';
@@ -421,7 +421,8 @@ void main() {
       await registry.applyOfficialKeepSet([local]);
       final packs = await registry.listPacksRaw();
       expect(packs.firstWhere((p) => p.sourceUrl == github).enabled, isFalse);
-      expect(packs.firstWhere((p) => p.sourceUrl == local).enabled, isTrue);
+      // Keep URL stays user-disabled — FORCE only chooses install source.
+      expect(packs.firstWhere((p) => p.sourceUrl == local).enabled, isFalse);
       expect(
         packs.any((p) => p.sourceUrl == 'https://community.example/manifest.json'),
         isTrue,
