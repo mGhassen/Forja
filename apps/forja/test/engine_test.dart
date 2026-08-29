@@ -1230,10 +1230,13 @@ void main() {
       expect(cinemacity.contains('atob'), isTrue);
 
       final dahmermovies = await loadForjaHqFile('providers/dahmermovies.js');
+      expect(dahmermovies.contains('st.111477.xyz'), isTrue);
       expect(dahmermovies.contains('a.111477.xyz'), isTrue);
-      // CF beacon `/cdn-cgi/challenge-platform/` must not alone abort listings.
-      expect(dahmermovies.contains('challenge-platform|'), isFalse);
-      expect(dahmermovies.contains('you are being rate limited'), isTrue);
+      expect(dahmermovies.contains('/stream/movie/'), isTrue);
+      expect(dahmermovies.contains('generateManifestBaseUrl'), isTrue);
+      // Must not scrape HTML directory listings (CF on p.111477/bulk).
+      expect(dahmermovies.contains('data-entry'), isFalse);
+      expect(dahmermovies.contains('you are being rate limited'), isFalse);
 
       final kurage = await loadForjaHqFile('providers/kurage.js');
       expect(kurage.contains('graphql.anilist.co'), isTrue);
@@ -1636,6 +1639,20 @@ void main() {
             '_enginePluginId': 'service111477',
           }),
           isTrue,
+        );
+        expect(
+          catalogStreamRequiresSeekProxy({
+            'url': 'https://a.111477.xyz/movies/x.mkv',
+            '_enginePluginId': 'videasy',
+          }),
+          isTrue,
+        );
+        expect(
+          catalogStreamRequiresSeekProxy({
+            'url': 'https://strem1o.example.workers.dev/d/abc',
+            '_enginePluginId': 'service111477',
+          }),
+          isFalse,
         );
         expect(
           catalogStreamRequiresSeekProxy({

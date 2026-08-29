@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -166,6 +169,173 @@ class ListFollowFromWatched {
     } else {
       await markMovieWatchingOnPlay(movie, container: container);
     }
+  }
+
+  static bool _staleMyListReconciled = false;
+
+  /// Watch marks / movie progress already say Completed, but My List still
+  /// shows Watching until details open — catch up without visiting each title.
+  static Future<int> reconcileStaleMyList({
+    ProviderContainer? container,
+    bool force = false,
+  }) async {
+    if (_staleMyListReconciled && !force) return 0;
+    _staleMyListReconciled = true;
+    await MyListService().ensureLoaded();
+    var bumped = 0;
+    final items = List<Map<String, dynamic>>.from(MyListService().items);
+    for (final item in items) {
+      final status = item['listStatus']?.toString() ?? '';
+      if (status == 'completed' || status == 'dropped' || status == 'hold') {
+        continue;
+      }
+      try {
+        if (await _reconcileStaleItem(item, container: container)) {
+          bumped++;
+        }
+      } catch (e) {
+        debugPrint('[ListFollow] stale reconcile skip ${item['uniqueId']}: $e');
+      }
+    }
+    if (bumped > 0) {
+      debugPrint('[ListFollow] Stale My List → Completed: $bumped');
+      container?.invalidate(simklWatchlistProvider);
+    }
+    return bumped;
+  }
+
+  static Future<bool> _reconcileStaleItem(
+    Map<String, dynamic> item, {
+    ProviderContainer? container,
+  }) async {
+    final mt = item['mediaType']?.toString() ?? '';
+    if (mt == 'movie') {
+      final tmdbId = item['tmdbId'] as int?;
+      if (tmdbId == null) return false;
+      final progress = await WatchHistoryService().getProgress(tmdbId);
+      if (progress == null) return false;
+      final pos = watchHistoryInt(progress['position']);
+      final dur = watchHistoryInt(progress['duration']);
+      if (!isWatchFinished(pos, dur)) return false;
+      final before = MyListService().statusOf(
+        MyListService.movieId(tmdbId, 'movie'),
+      );
+      await markMovieCompletedIfFinished(
+        _movieFromListItem(item, tmdbId),
+        positionMs: pos,
+        durationMs: dur,
+        container: container,
+      );
+      return before != 'completed';
+    }
+
+    if (mt == 'tv' || mt == 'series') {
+      final tmdbId = item['tmdbId'] as int?;
+      if (tmdbId == null) return false;
+      final watched =
+          (await EpisodeWatchedService().getWatchedSet(tmdbId)).length;
+      if (watched <= 0) return false;
+      final details = await TmdbApi().getTvDetails(tmdbId);
+      final total = details.numberOfEpisodes;
+      if (total <= 0 || watched < total) return false;
+      final uid = MyListService.movieId(tmdbId, 'tv');
+      final before =
+          MyListService().contains(uid) ? MyListService().statusOf(uid) : null;
+      await applyTmdb(
+        movie: details,
+        watchedCount: watched,
+        totalEpisodes: total,
+        episodeNowWatched: true,
+        container: container,
+      );
+      return before != 'completed';
+    }
+
+    if (mt == 'anime') {
+      final anilistId = item['anilistId'] as int?;
+      if (anilistId == null) return false;
+      final watched = (await EpisodeWatchedService().getWatchedSet(
+        anilistId,
+        catalog: EpisodeWatchedService.catalogAnilist,
+      ))
+          .length;
+      if (watched <= 0) return false;
+      final card = await AnimeService().getDetails(anilistId);
+      final total = card.episodes ?? 0;
+      if (total <= 0 || watched < total) return false;
+      final target = HubListFollowTarget.anime(
+        anilistId: anilistId,
+        title: item['title']?.toString() ?? card.displayTitle,
+        posterPath: item['posterPath']?.toString() ?? card.coverUrl,
+        voteAverage: (item['voteAverage'] as num?)?.toDouble() ??
+            (card.averageScore ?? 0) / 10.0,
+        releaseDate: item['releaseDate']?.toString() ??
+            card.seasonYear?.toString() ??
+            '',
+      );
+      final before = MyListService().contains(target.uniqueId)
+          ? MyListService().statusOf(target.uniqueId)
+          : null;
+      await reconcileHub(
+        target: target,
+        watchedCount: watched,
+        totalEpisodes: total,
+        container: container,
+      );
+      return before != 'completed';
+    }
+
+    if (mt == 'asian_drama') {
+      final kisskhId = item['kisskhId'] as int?;
+      if (kisskhId == null) return false;
+      final watched = (await EpisodeWatchedService().getWatchedSet(
+        kisskhId,
+        catalog: EpisodeWatchedService.catalogKisskh,
+      ))
+          .length;
+      if (watched <= 0) return false;
+      final det = await KissKhService().getDetails(kisskhId);
+      final total =
+          det.episodes.isNotEmpty ? det.episodes.length : det.episodesCount;
+      if (total <= 0 || watched < total) return false;
+      final target = HubListFollowTarget.drama(
+        kisskhId: kisskhId,
+        title: item['title']?.toString() ?? det.title,
+        posterPath: item['posterPath']?.toString() ?? det.cover,
+        tmdbId: item['tmdbId'] as int?,
+        tmdbMediaType: item['tmdbMediaType']?.toString(),
+        releaseDate: item['releaseDate']?.toString() ?? det.year ?? '',
+        kissKhType: item['kissKhType']?.toString() ?? det.type,
+      );
+      final before = MyListService().contains(target.uniqueId)
+          ? MyListService().statusOf(target.uniqueId)
+          : null;
+      await reconcileHub(
+        target: target,
+        watchedCount: watched,
+        totalEpisodes: total,
+        container: container,
+      );
+      return before != 'completed';
+    }
+
+    return false;
+  }
+
+  static Movie _movieFromListItem(Map<String, dynamic> item, int tmdbId) {
+    return Movie(
+      id: tmdbId,
+      imdbId: item['imdbId']?.toString(),
+      title: item['title']?.toString() ?? '',
+      posterPath: item['posterPath']?.toString() ?? '',
+      backdropPath: '',
+      voteAverage: (item['voteAverage'] as num?)?.toDouble() ?? 0,
+      releaseDate: item['releaseDate']?.toString() ?? '',
+      overview: '',
+      genres: const [],
+      runtime: 0,
+      mediaType: 'movie',
+    );
   }
 
   static Future<bool> _setTmdbStatus(

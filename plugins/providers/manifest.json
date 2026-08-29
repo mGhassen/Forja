@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-providers",
   "name": "ForjaHQ Providers",
-  "version": "1.5.23",
+  "version": "1.5.24",
   "plugins": [
     {
       "id": "videasy",

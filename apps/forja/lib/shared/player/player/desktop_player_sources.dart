@@ -787,7 +787,7 @@ mixin _DesktopPlayerSources
             : source.title,
       );
 
-      if (_s._currentProvider == 'service111477') {
+      if (site111477_proxy.is111477UpstreamUrl(source.url)) {
         if (site111477_proxy.is111477ProxyRunning) {
           await site111477_proxy.stop111477Proxy();
         }

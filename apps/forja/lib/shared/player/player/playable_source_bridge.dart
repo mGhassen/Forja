@@ -32,11 +32,17 @@ abstract final class PlayableSourceBridge {
     String? providerId, {
     String? streamUrl,
   }) {
-    if (playable != null && index < playable.length) {
-      return playable[index].requiresProxy;
+    if (playable != null &&
+        index < playable.length &&
+        playable[index].requiresProxy) {
+      return true;
     }
-    if (providerId == 'service111477') return true;
-    if (providerId == 'engine:service111477') return true;
-    return false;
+    final url = streamUrl ??
+        (playable != null && index < playable.length
+            ? playable[index].url
+            : null);
+    // Seek proxy only for raw *111477* CDN hosts (a./p.). Addon workers.dev
+    // URLs play direct — PlayTorrio path. Do not key off provider id alone.
+    return is111477UpstreamUrl(url ?? '');
   }
 }

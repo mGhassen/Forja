@@ -19,11 +19,11 @@ class SeekBarZone {
   final double end;
 
   Color get color => switch (kind) {
-        // Mock: muted track tint for opening / recap.
-        SeekBarZoneKind.intro => const Color(0xFFB0B0B0),
-        // Mock: seafoam for credits / outro.
+        // Soft blue — distinct from track / outro / next.
+        SeekBarZoneKind.intro => const Color(0xFF6BA3D6),
+        // Seafoam for credits / outro.
         SeekBarZoneKind.outro => const Color(0xFF74B49B),
-        // Mock: amber for next-episode preview / near-end.
+        // Amber for next-episode preview / near-end.
         SeekBarZoneKind.nextEpisode => const Color(0xFFD8A657),
       };
 }

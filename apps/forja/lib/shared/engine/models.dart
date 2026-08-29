@@ -737,6 +737,11 @@ Map<String, dynamic>? mapEngineStream({
       : (rawTitle.isNotEmpty
             ? rawTitle.split('\n').first.trim()
             : (rawName.isNotEmpty ? rawName : plugin.name));
+  final needsSeekProxy =
+      requiresProxy ||
+      raw['requiresProxy'] == true ||
+      raw['requires_proxy'] == true ||
+      (Uri.tryParse(url)?.host.toLowerCase().contains('111477') ?? false);
   return {
     'url': url,
     'title': cardTitle,
@@ -752,10 +757,7 @@ Map<String, dynamic>? mapEngineStream({
         'notWebReady': true,
         'proxyHeaders': {'request': headers},
       },
-    if (requiresProxy ||
-        raw['requiresProxy'] == true ||
-        raw['requires_proxy'] == true)
-      'requires_proxy': true,
+    if (needsSeekProxy) 'requires_proxy': true,
     if (raw['subtitles'] is List && (raw['subtitles'] as List).isNotEmpty)
       'subtitles': raw['subtitles'],
     '_addonBaseUrl': 'engine:${plugin.id}',

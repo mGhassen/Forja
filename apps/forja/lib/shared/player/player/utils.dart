@@ -980,9 +980,9 @@ List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
 /// 111477 catalog rows and explicit `requires_proxy` need the local seek proxy.
 bool catalogStreamRequiresSeekProxy(Map<String, dynamic> stream) {
   if (stream['requires_proxy'] == true) return true;
-  final pid = catalogHttpPlayProviderId(stream);
-  if (pid == 'engine:service111477') return true;
-  return false;
+  final url = stream['url']?.toString() ?? '';
+  // Raw a./p.111477 hosts only — st.111477 addon returns workers.dev (no proxy).
+  return is111477UpstreamUrl(url);
 }
 
 /// Rewrites catalog HTTP streams that cannot be opened directly (111477).
@@ -2491,7 +2491,11 @@ Future<bool> validateStreamSourceForCheck({
   required StreamSource source,
   Map<String, String>? headers,
 }) async {
-  if (providerId == 'service111477') {
+  if (providerId == 'service111477' ||
+      providerId == 'engine:service111477' ||
+      providerId == 'dahmermovies' ||
+      providerId == 'engine:dahmermovies' ||
+      is111477UpstreamUrl(source.url)) {
     final url = source.url.trim();
     if (url.isEmpty || isUnplayableCachedStreamUrl(url)) return false;
     // Catalog hosts only - loopback is rejected by [isUnplayableCachedStreamUrl].

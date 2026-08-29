@@ -107,12 +107,26 @@ class SettingsEnginePackExpansion extends StatelessWidget {
                 color: ForjaShellColors.textPrimary,
               ),
             ),
-            subtitle: Text(
-              '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · v${pack.version}',
-              style: const TextStyle(
-                fontSize: 11,
-                color: ForjaShellColors.textSecondary,
-              ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  pack.sourceUrl,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: ForjaShellColors.textSecondary,
+                  ),
+                ),
+                Text(
+                  '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · v${pack.version}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: ForjaShellColors.textSecondary.withValues(alpha: 0.75),
+                  ),
+                ),
+              ],
             ),
             trailing: trailing,
             children: [

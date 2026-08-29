@@ -75,6 +75,20 @@ pub fn infer_height(url: &str, title: &str) -> u32 {
     0
 }
 
+/// Raw a./p.111477 CDN file URLs need Forja's seek111477 localhost proxy.
+/// Addon `workers.dev/d/…` URLs (st.111477) play direct — no proxy.
+fn requires_seek_proxy(provider_id: &str, url: &str) -> bool {
+    let _ = provider_id; // kept for call-site stability; host decides
+    let lower = url.to_ascii_lowercase();
+    let Some(rest) = lower.split("://").nth(1) else {
+        return false;
+    };
+    let host = rest.split('/').next().unwrap_or("");
+    let host = host.split('@').next_back().unwrap_or(host);
+    let host = host.split(':').next().unwrap_or(host);
+    host.contains("111477")
+}
+
 pub fn from_legacy(
     url: &str,
     title: &str,
@@ -91,7 +105,7 @@ pub fn from_legacy(
     } else {
         None
     };
-    let requires_proxy = provider_id == "service111477";
+    let requires_proxy = requires_seek_proxy(provider_id, url);
 
     PlayableSource {
         url: url.to_string(),
@@ -155,5 +169,48 @@ mod tests {
             1,
         );
         assert_eq!(s.embed_kind, Some(EmbedKind::ArabicEmbed));
+    }
+
+    #[test]
+    fn seek_proxy_for_111477_host_only() {
+        let by_id = from_legacy(
+            "https://cdn.example/x.mkv",
+            "1080p",
+            "mkv",
+            HashMap::new(),
+            "engine:service111477",
+            0,
+        );
+        assert!(!by_id.requires_proxy);
+
+        let workers = from_legacy(
+            "https://strem1o.example.workers.dev/d/abc",
+            "1080p",
+            "mkv",
+            HashMap::new(),
+            "service111477",
+            0,
+        );
+        assert!(!workers.requires_proxy);
+
+        let by_host = from_legacy(
+            "https://a.111477.xyz/movies/x.mkv",
+            "1080p",
+            "mkv",
+            HashMap::new(),
+            "videasy",
+            0,
+        );
+        assert!(by_host.requires_proxy);
+
+        let plain = from_legacy(
+            "https://cdn.example/x.m3u8",
+            "1080p",
+            "hls",
+            HashMap::new(),
+            "videasy",
+            0,
+        );
+        assert!(!plain.requires_proxy);
     }
 }
