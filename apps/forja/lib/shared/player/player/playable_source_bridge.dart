@@ -2,6 +2,9 @@ import 'package:rust/rust.dart';
 
 /// Bridges legacy [StreamSource] lists with [PlayableSource] metadata in the player.
 abstract final class PlayableSourceBridge {
+  static bool isArabicEmbedCatalogRow(Map<String, dynamic> stream) =>
+      stream['type']?.toString() == 'arabic_embed';
+
   static Future<List<PlayableSource>> rankWidgetSources({
     required List<StreamSource>? sources,
     required String? providerId,

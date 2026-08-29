@@ -88,6 +88,7 @@ HubCatalogPlayHooks buildHubCatalogPlayHooks({
   int? episode,
   int? kisskhId,
   int? kisskhEpisodeId,
+  String? arabicVideoId,
   int? anilistId,
   int? malId,
   String? engineCategory,
@@ -98,8 +99,11 @@ HubCatalogPlayHooks buildHubCatalogPlayHooks({
           ? EngineCategories.drama
           : anilistId != null
               ? EngineCategories.anime
-              : null);
-  if (category == null || (kisskhId == null && anilistId == null)) {
+              : (arabicVideoId != null && arabicVideoId.isNotEmpty)
+                  ? EngineCategories.arabic
+                  : null);
+  if (category == null ||
+      (kisskhId == null && anilistId == null && (arabicVideoId ?? '').isEmpty)) {
     return const HubCatalogPlayHooks.none();
   }
 
@@ -111,6 +115,11 @@ HubCatalogPlayHooks buildHubCatalogPlayHooks({
     kisskhId: kisskhId,
     kisskhEpisodeIdByNumber: kisskhEpisodeId != null && ep != null
         ? {ep: kisskhEpisodeId}
+        : const {},
+    arabicVideoIdByEpisode: arabicVideoId != null &&
+            arabicVideoId.isNotEmpty &&
+            ep != null
+        ? {ep: arabicVideoId}
         : const {},
     animeAudioCategory: animeAudioCategory,
   );

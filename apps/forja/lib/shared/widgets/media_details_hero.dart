@@ -1191,7 +1191,7 @@ class _HeroMainColumn extends StatelessWidget {
     height: 1.6,
     color: Color(0xB8FFFFFF),
   );
-  static const _titleBlockHeight = 120.0;
+  static const _titleBlockHeight = 96.0;
   static const _titleMinHeight = 32.0;
   static const _genreBlockHeight = 20.0;
   static const _metaBlockHeight = 24.0;

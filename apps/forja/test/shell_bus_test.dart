@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   tearDown(() {
+    CatalogVerticalFiltersRegistry.clearForTest();
     ShellBus.clearHideGlobalNav();
     ShellBus.requestSettingsCategory.value = null;
     ShellBus.settingsHubCategoryId.value = 'profile';
@@ -68,16 +71,34 @@ void main() {
   });
 
   test('ShellBus provider menu show + top logo clear filter', () {
+    CatalogVerticalFiltersRegistry.register(
+      CatalogVerticalFiltersSpec(
+        widgetId: 'watch_providers',
+        tabId: 'home',
+        pluginId: 'tmdb',
+        packSourceUrl: '',
+        showSelectedInTopBar: true,
+        options: [
+          CatalogVerticalFilterOption(
+            id: 'netflix',
+            label: 'Netflix',
+            logo: 'logos/netflix.svg',
+            tileColor: const Color(0xFF000000),
+            filter: CatalogFilterAst.eq('watch_provider', 8),
+          ),
+        ],
+      ),
+    );
     ShellBus.homeProviderMenuVisible.value = false;
-    ShellBus.selectedWatchProviderId.value = null;
+    CatalogVerticalFiltersRegistry.selectedIdFor('home').value = null;
 
     ShellBus.showHomeProviderMenu();
     expect(ShellBus.homeProviderMenuVisible.value, isTrue);
 
-    ShellBus.selectedWatchProviderId.value = 8;
+    CatalogVerticalFiltersRegistry.selectedIdFor('home').value = 'netflix';
     ShellBus.onTopProviderLogoTap();
     expect(ShellBus.homeProviderMenuVisible.value, isTrue);
-    expect(ShellBus.selectedWatchProviderId.value, isNull);
+    expect(CatalogVerticalFiltersRegistry.selectedIdFor('home').value, isNull);
 
     ShellBus.homeProviderMenuVisible.value = false;
     ShellBus.onTopProviderLogoTap();

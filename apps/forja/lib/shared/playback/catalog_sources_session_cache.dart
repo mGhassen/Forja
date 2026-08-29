@@ -102,11 +102,15 @@ class CatalogSourcesSessionCache {
     int? malId,
     int? kisskhId,
     String? animeAudioCategory,
+    String? arabicVideoId,
   }) {
     final ep = (episode == null || episode < 1) ? 1 : episode;
     final audio = (animeAudioCategory ?? '').trim().toLowerCase();
     final audioSuffix =
         (audio == 'sub' || audio == 'dub') ? ':$audio' : '';
+
+    final arabicVid = (arabicVideoId ?? '').trim();
+    if (arabicVid.isNotEmpty) return 'arabic:$arabicVid';
 
     final ani = anilistId ?? 0;
     if (ani > 0) return 'anime:$ani:E$ep$audioSuffix';

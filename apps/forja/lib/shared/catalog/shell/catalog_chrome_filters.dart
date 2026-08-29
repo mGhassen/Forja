@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/features/anime/anime_genre_categories.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/shared/catalog/filter.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 /// Shell top-bar Films / Series / Categories → protocol filter leaves.
@@ -16,19 +17,27 @@ List<Map<String, dynamic>?> catalogChromeFilters(String? tabId) {
 
 /// Epoch string so rail [ValueKey]s change when chrome filters flip.
 String catalogChromeFilterEpoch(String? tabId) {
+  final vertical = CatalogVerticalFiltersRegistry.chromeFilterEpoch(tabId);
   return switch (tabId) {
     'home' =>
-      '${ShellBus.homeCategory.value}|${ShellBus.homeSelectedGenreId.value}',
+      '${ShellBus.homeCategory.value}|${ShellBus.homeSelectedGenreId.value}|$vertical',
     'anime' =>
-      '${ShellBus.animeCategory.value}|${ShellBus.animeSelectedGenreId.value}',
+      '${ShellBus.animeCategory.value}|${ShellBus.animeSelectedGenreId.value}|$vertical',
     'asian_drama' =>
-      '${ShellBus.asianDramaCategory.value}|${ShellBus.asianDramaSelectedCountryId.value}',
-    _ => '',
+      '${ShellBus.asianDramaCategory.value}|${ShellBus.asianDramaSelectedCountryId.value}|$vertical',
+    _ => vertical,
   };
 }
 
 Listenable? catalogChromeFilterListenable(String? tabId) {
-  return switch (tabId) {
+  final id = tabId?.trim();
+  final vertical = id == null || id.isEmpty
+      ? null
+      : Listenable.merge([
+          CatalogVerticalFiltersRegistry.revision,
+          CatalogVerticalFiltersRegistry.selectedIdFor(id),
+        ]);
+  final base = switch (tabId) {
     'home' => Listenable.merge([
         ShellBus.homeCategory,
         ShellBus.homeSelectedGenreId,
@@ -43,6 +52,9 @@ Listenable? catalogChromeFilterListenable(String? tabId) {
       ]),
     _ => null,
   };
+  if (base == null) return vertical;
+  if (vertical == null) return base;
+  return Listenable.merge([base, vertical]);
 }
 
 List<Map<String, dynamic>?> _home() {
@@ -60,6 +72,7 @@ List<Map<String, dynamic>?> _home() {
   return [
     catalogFilterFromSelection(field: 'type', value: type),
     catalogFilterFromSelection(field: 'genre', value: genreIds),
+    CatalogVerticalFiltersRegistry.activeFilterFor('home'),
   ];
 }
 

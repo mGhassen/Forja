@@ -304,6 +304,7 @@ mixin _LiveMatchesForjaLive
     if (_forjaLivePluginLoadsEqual(next, _s._forjaLivePluginLoads)) return;
     setState(() => _s._forjaLivePluginLoads = next);
     _ensureForjaLivePluginFilterValid();
+    (this as _LiveMatchesData)._scheduleRestoreLiveMatchesTvFocus();
   }
 
   bool _forjaLivePluginLoadsEqual(
@@ -561,7 +562,8 @@ mixin _LiveMatchesForjaLive
     final cats = _sportCategoriesFromCurrentMatches();
     if (cats.isEmpty) {
       (this as _LiveMatchesData)
-          ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
+        .._scheduleRestoreRefreshFocus(clearWhenSettled: true)
+        .._scheduleRestoreLiveMatchesTvFocus();
       return;
     }
 
@@ -569,7 +571,8 @@ mixin _LiveMatchesForjaLive
         _s._tabController != null &&
         _s._tabController!.length == cats.length + 1) {
       (this as _LiveMatchesData)
-          ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
+        .._scheduleRestoreRefreshFocus(clearWhenSettled: true)
+        .._scheduleRestoreLiveMatchesTvFocus();
       return;
     }
 
@@ -600,6 +603,7 @@ mixin _LiveMatchesForjaLive
     _deferTabControllerDispose(oldCtrl);
     _syncNewTabControllerIndex(newCtrl, cats, nextFilter);
     (this as _LiveMatchesData)
-        ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
+      .._scheduleRestoreRefreshFocus(clearWhenSettled: true)
+      .._scheduleRestoreLiveMatchesTvFocus();
   }
 }

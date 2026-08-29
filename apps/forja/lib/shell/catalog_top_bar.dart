@@ -2,9 +2,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters_rail.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
-import 'package:forja/shell/shell_top_bar.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -27,7 +28,6 @@ class CatalogTopBar extends StatefulWidget {
     required this.scrollOffset,
     required this.heroHeight,
     required this.onSearch,
-    this.showProviderLogo = false,
   });
 
   final String tabId;
@@ -38,7 +38,6 @@ class CatalogTopBar extends StatefulWidget {
   final ValueNotifier<double> scrollOffset;
   final ValueNotifier<double> heroHeight;
   final VoidCallback onSearch;
-  final bool showProviderLogo;
 
   static const hideSlideDistance = 56.0;
 
@@ -69,14 +68,24 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
   void initState() {
     super.initState();
     // First menu tab is Search — UP from hero gallery lands here.
-    ShellTvFocus.homeMenu = _searchFocus;
-    ShellTvFocus.homeSearch = _searchFocus;
+    if (widget.tabId == 'home') {
+      ShellTvFocus.homeMenu = _searchFocus;
+      ShellTvFocus.homeSearch = _searchFocus;
+    } else {
+      ShellTvFocus.hubHeroSearch = _searchFocus;
+    }
   }
 
   @override
   void dispose() {
-    if (ShellTvFocus.homeMenu == _menuFocus) ShellTvFocus.homeMenu = null;
-    if (ShellTvFocus.homeSearch == _searchFocus) ShellTvFocus.homeSearch = null;
+    if (widget.tabId == 'home') {
+      if (ShellTvFocus.homeMenu == _searchFocus) ShellTvFocus.homeMenu = null;
+      if (ShellTvFocus.homeSearch == _searchFocus) {
+        ShellTvFocus.homeSearch = null;
+      }
+    } else if (ShellTvFocus.hubHeroSearch == _searchFocus) {
+      ShellTvFocus.hubHeroSearch = null;
+    }
     _menuFocus.dispose();
     _searchFocus.dispose();
     _providerLogoFocus.dispose();
@@ -288,11 +297,14 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
         MediaQuery.sizeOf(context).width < ShellTokens.shellNavCompactMaxWidth;
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
-    return ValueListenableBuilder<int?>(
-      valueListenable: ShellBus.selectedWatchProviderId,
-      builder: (context, selectedProviderId, _) {
-        final hasProviderLogo =
-            widget.showProviderLogo && selectedProviderId != null;
+    return ValueListenableBuilder<String?>(
+      valueListenable: CatalogVerticalFiltersRegistry.selectedIdFor(
+        widget.tabId,
+      ),
+      builder: (context, selectedFilterId, _) {
+        final spec = CatalogVerticalFiltersRegistry.specFor(widget.tabId);
+        final hasFilterLogo = spec?.showSelectedInTopBar == true &&
+            selectedFilterId != null;
         final usesTv = ShellScope.metricsOf(context).usesTvDensity;
         final logoWidth = usesTv
             ? ShellTokens.shellProviderTopBarIconWidthTv
@@ -358,7 +370,7 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                         final tabTextHeight =
                             shellScaled(context, 34).clamp(28.0, 34.0);
                         // Provider logo (Home) → Search → Films → Series → Categories
-                        final searchIndex = hasProviderLogo ? 1 : 0;
+                        final searchIndex = hasFilterLogo ? 1 : 0;
                         final filmsIndex = searchIndex + 1;
                         final seriesIndex = searchIndex + 2;
                         final categoriesIndex = searchIndex + 3;
@@ -368,7 +380,7 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (hasProviderLogo) ...[
+                              if (hasFilterLogo) ...[
                                 Transform.translate(
                                   offset: Offset(
                                     0,
@@ -377,7 +389,8 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                                   child: SizedBox(
                                     width: logoWidth,
                                     height: logoHeight,
-                                    child: HomeSelectedWatchProviderLogo(
+                                    child: CatalogVerticalFilterTopBarLogo(
+                                      tabId: widget.tabId,
                                       width: logoWidth,
                                       height: logoHeight,
                                       tvFocus: tvFocus,

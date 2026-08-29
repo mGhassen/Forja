@@ -585,7 +585,7 @@ mixin _DesktopPlayerSources
       return (openUrl: source.url, headers: headers, resolved: source);
     }
 
-    if (pid == 'arabic' && source.type == 'arabic_embed') {
+    if (source.type == 'arabic_embed') {
       final result = await EmbedStreamResolve.resolve(source.url);
       if (result == null) return null;
       openUrl = result.url;

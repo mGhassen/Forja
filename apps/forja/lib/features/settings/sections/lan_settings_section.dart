@@ -217,6 +217,31 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     );
   }
 
+  /// Text action on touch/desktop; [shellFocusableTap] on TV.
+  Widget _lanTvTextAction(
+    BuildContext context, {
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      return shellFocusableTap(
+        context: context,
+        onTap: onPressed,
+        borderRadius: 8,
+        scaleOnFocus: 1.0,
+        showFocusRail: true,
+        tvTabId: 'settings',
+        tvZone: ShellTvZone.settings,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Text(label),
+        ),
+      );
+    }
+    return TextButton(onPressed: onPressed, child: Text(label));
+  }
+
   Future<void> _refreshTorrentPanel() async {
     if (!_isDesktopServer) return;
     var cacheBytes = _torrentCacheBytes;
@@ -993,32 +1018,43 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         const SizedBox(height: 8),
         _sectionLabel('FIND DESKTOP'),
         const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: _discovering ? null : _discover,
-          icon: _discovering
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.wifi_find_rounded),
-          label: Text(_discovering ? 'Searching…' : 'Discover on Wi‑Fi'),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SettingsFilledButton(
+            label: _discovering ? 'Searching…' : 'Discover on Wi‑Fi',
+            icon: Icons.wifi_find_rounded,
+            busy: _discovering,
+            secondary: true,
+            onPressed: _discovering ? null : _discover,
+          ),
         ),
         if (_discovered.isNotEmpty) ...[
           const SizedBox(height: 8),
           ..._discovered.map(
-            (s) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(s.host),
-              subtitle: Text('Port ${s.port}'),
-              trailing: TextButton(
-                onPressed: () {
-                  setState(() {
-                    _manualHostController.text = s.host;
-                    _manualPortController.text = '${s.port}';
-                  });
-                },
-                child: const Text('Use'),
+            (s) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(s.host),
+                        Text('Port ${s.port}'),
+                      ],
+                    ),
+                  ),
+                  _lanTvTextAction(
+                    context,
+                    label: 'Use',
+                    onPressed: () {
+                      setState(() {
+                        _manualHostController.text = s.host;
+                        _manualPortController.text = '${s.port}';
+                      });
+                    },
+                  ),
+                ],
               ),
             ),
           ),
@@ -1048,26 +1084,22 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         const SizedBox(height: 8),
-        FilledButton(
-          onPressed: _pairing ? null : () => _pairWith(),
-          child: _pairing
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Pair with desktop'),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: SettingsFilledButton(
+            label: 'Pair with desktop',
+            busy: _pairing,
+            onPressed: _pairing ? null : () => _pairWith(),
+          ),
         ),
       ],
       if (defaultTargetPlatform == TargetPlatform.android) ...[
         const SizedBox(height: 20),
         const Divider(),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text('Allow local torrent on this device'),
-          subtitle: const Text(
-            'Advanced — use the on-device engine instead of the desktop. Leave off for TV.',
-          ),
+        SettingsToggleRow(
+          title: 'Allow local torrent on this device',
+          subtitle:
+              'Advanced — use the on-device engine instead of the desktop. Leave off for TV.',
           value: _allowLocalTorrent,
           onChanged: (v) async {
             await LanPrefs.instance.setAllowLocalTorrentOnDevice(v);

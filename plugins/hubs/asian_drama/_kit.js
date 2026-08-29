@@ -154,19 +154,35 @@ function hubStripHtml(html) {
     .trim();
 }
 
+function hubNormalizeTitle(raw) {
+  var t = String(raw || '').trim();
+  if (!t) return t;
+  t = t.replace(/[\(\[]\s*\d{4}\s*[\)\]]\s*$/g, '').trim();
+  t = t.replace(
+    /\b(HD|FHD|UHD|4K|1080p|720p|WEB-?DL|BluRay)\b/gi,
+    ' ',
+  );
+  var pipe = t.indexOf('|');
+  if (pipe > 0) t = t.substring(0, pipe);
+  return t.replace(/\s+/g, ' ').trim();
+}
+
 function hubTmdbMatch(ctx, query) {
   query = query || {};
+  var title = hubNormalizeTitle(query.title);
+  if (!title) return Promise.resolve(null);
+  var normalized = Object.assign({}, query, { title: title });
   if (ctx && ctx.host && ctx.host.tmdb && typeof ctx.host.tmdb.match === 'function') {
-    return Promise.resolve(ctx.host.tmdb.match(query)).then(function (hit) {
+    return Promise.resolve(ctx.host.tmdb.match(normalized)).then(function (hit) {
       return hit && hit.id ? hit : null;
     }).catch(function () { return null; });
   }
-  return hubTmdbMatchFetch(ctx, query);
+  return hubTmdbMatchFetch(ctx, normalized);
 }
 
 function hubTmdbMatchFetch(ctx, query) {
   query = query || {};
-  var title = String(query.title || '').trim();
+  var title = hubNormalizeTitle(query.title);
   if (!title) return Promise.resolve(null);
   var cfg = hubConfig(ctx, {});
   var key = String(cfg.apiKey || '').trim();
@@ -273,8 +289,12 @@ function hubApplyTmdbHit(meta, hit) {
 function hubEnrichPreferType(meta) {
   var prefer = String(meta.tmdbMediaType || '').toLowerCase();
   if (prefer === 'movie' || prefer === 'tv') return prefer;
+  if (prefer === 'tvseries' || prefer === 'anime') return 'tv';
   var fmt = String(meta.badge || '').toUpperCase();
   if (fmt === 'MOVIE' || fmt === 'FILM' || fmt === 'HOLLYWOOD') return 'movie';
+  if (fmt === 'TV' || fmt === 'SERIES' || fmt === 'TVSERIES' || fmt === 'ANIME') {
+    return 'tv';
+  }
   return 'tv';
 }
 

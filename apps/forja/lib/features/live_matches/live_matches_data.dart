@@ -20,6 +20,31 @@ mixin _LiveMatchesData
     });
   }
 
+  /// Re-land on the last grid / chip / timeline row after lazy catalog
+  /// setStates — sport-tab remounts release item focus but keep row memory.
+  void _scheduleRestoreLiveMatchesTvFocus() {
+    if (!_tvFocusEnabled) return;
+    if (!(this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible) return;
+
+    void attempt() {
+      if (!mounted) return;
+      if (ShellTvFocus.currentNavTabId != _LiveMatchesScreenState._tabId) {
+        return;
+      }
+      if (ShellTvFocusCoordinator.tabHasAttachedFocus(
+        _LiveMatchesScreenState._tabId,
+      )) {
+        return;
+      }
+      _restoreLiveMatchesTvFocus();
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      attempt();
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    });
+  }
+
   void _focusTopBarItem(int index) {
     if (index == _LiveMatchesScreenState._topBarServersIndex ||
         (_s._showCatalogTopBar && index == _s._topBarCatalogIndex) ||
@@ -553,6 +578,7 @@ mixin _LiveMatchesData
     }
     markShellTabFresh();
     _scheduleRestoreRefreshFocus(clearWhenSettled: true);
+    _scheduleRestoreLiveMatchesTvFocus();
     if (_s._server == _LiveMatchesServer.all &&
         (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog) {
       unawaited((this as _LiveMatchesForjaLive)._applyEspnScheduleMerge());

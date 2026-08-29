@@ -17,6 +17,7 @@ import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_shell.dart';
 import 'package:forja/shell/nav_config.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
 import 'package:forja/shell/home_top_bar.dart';
@@ -266,9 +267,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
     final id = _visibleIds[index];
     if (previousId != null && previousId != id) {
       _notifyTabHidden(previousId);
-      if (previousId == 'home') {
-        ShellBus.onLeaveHomeTab();
-      }
+      CatalogVerticalFiltersRegistry.onLeaveTab(previousId);
+    } else if (previousId == id) {
+      CatalogVerticalFiltersRegistry.onNavRepress(id);
     }
     // Same-tab Home re-select must not dismiss the provider panel.
     setState(() {
@@ -571,10 +572,13 @@ class _MainScreenState extends ConsumerState<MainScreen>
           shellTopBar = null;
         } else {
           shellTopBar = switch (_currentTabId) {
+            null => null,
             'home' => const HomeTopBar(),
             'anime' => const AnimeCatalogTopBar(),
             'asian_drama' => const AsianDramaCatalogTopBar(),
             'arabic' => const ArabicCatalogTopBar(),
+            final id when PluginNavRegistry.isHubTab(id) =>
+              PluginHubCatalogTopBar(tabId: id),
             _ => null,
           };
         }

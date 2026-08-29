@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/anime/anime_genre_categories.dart';
 import 'package:forja/features/asian_drama/asian_drama_country_categories.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_search_screen.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/catalog_top_bar.dart';
@@ -92,6 +93,35 @@ class ArabicCatalogTopBar extends StatelessWidget {
         pluginId: 'arabic-hub',
         tabId: 'arabic',
         hintText: 'بحث… · Search',
+      ),
+    );
+  }
+}
+
+/// Generic plugin hub top bar — any [PluginNavRegistry] catalog tab.
+class PluginHubCatalogTopBar extends StatelessWidget {
+  const PluginHubCatalogTopBar({super.key, required this.tabId});
+
+  final String tabId;
+
+  @override
+  Widget build(BuildContext context) {
+    final pluginId = PluginNavRegistry.pluginIdForTabSync(tabId);
+    if (pluginId == null) return const SizedBox.shrink();
+    final label = PluginNavRegistry.destinations[tabId]?.label ?? 'Search';
+    return CatalogTopBar(
+      tabId: tabId,
+      seriesLabel: 'Series',
+      mediaCategory: ShellBus.hubCategoryFor(tabId),
+      selectedCategoryId: ShellBus.hubSelectedCategoryIdFor(tabId),
+      categories: const [],
+      scrollOffset: ShellBus.hubScrollOffsetFor(tabId),
+      heroHeight: ShellBus.hubHeroHeightFor(tabId),
+      onSearch: () => openHubCatalogSearch(
+        context,
+        pluginId: pluginId,
+        tabId: tabId,
+        hintText: 'Search $label…',
       ),
     );
   }

@@ -70,8 +70,9 @@ class PlayerSourcesPanel {
     int? malId,
     int? kisskhId,
     int? kisskhEpisodeId,
+    String? arabicVideoId,
 
-    /// Soft Forja category for this panel: movie | tv | anime | drama.
+    /// Soft Forja category for this panel: movie | tv | anime | drama | arabic.
     String? engineCategory,
 
     /// Anime hub SUB/DUB — filters Forja/Nuvio rows when set (`sub` | `dub`).
@@ -108,6 +109,7 @@ class PlayerSourcesPanel {
           malId: malId,
           kisskhId: kisskhId,
           kisskhEpisodeId: kisskhEpisodeId,
+          arabicVideoId: arabicVideoId,
           engineCategory: engineCategory,
           animeAudioCategory: animeAudioCategory,
           detailsHost: detailsHost,
@@ -140,6 +142,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.malId,
     this.kisskhId,
     this.kisskhEpisodeId,
+    this.arabicVideoId,
     this.engineCategory,
     this.animeAudioCategory,
     this.detailsHost = false,
@@ -157,6 +160,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final int? malId;
   final int? kisskhId;
   final int? kisskhEpisodeId;
+  final String? arabicVideoId;
   final String? engineCategory;
   final String? animeAudioCategory;
   final bool detailsHost;
@@ -206,6 +210,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           malId: widget.malId,
           kisskhId: widget.kisskhId,
           kisskhEpisodeId: widget.kisskhEpisodeId,
+          arabicVideoId: widget.arabicVideoId,
           engineCategory: widget.engineCategory,
           animeAudioCategory: widget.animeAudioCategory,
           onTorrentSelected: widget.onTorrentSelected,
@@ -234,6 +239,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.malId,
     this.kisskhId,
     this.kisskhEpisodeId,
+    this.arabicVideoId,
     this.engineCategory,
     this.animeAudioCategory,
   });
@@ -250,6 +256,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final int? malId;
   final int? kisskhId;
   final int? kisskhEpisodeId;
+  final String? arabicVideoId;
   final String? engineCategory;
   final String? animeAudioCategory;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
@@ -1009,6 +1016,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     malId: widget.malId,
     kisskhId: widget.kisskhId,
     animeAudioCategory: widget.animeAudioCategory,
+    arabicVideoId: widget.arabicVideoId,
   );
 
   /// Hydrate from session TTL cache or fetch - only for the active kind.
@@ -2435,6 +2443,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         anilistId: widget.anilistId,
         kisskhId: widget.kisskhId,
         kisskhEpisodeId: widget.kisskhEpisodeId,
+        arabicVideoId: widget.arabicVideoId,
         allowHostFallback: false,
       );
     } catch (e) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/nav_config.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
@@ -42,8 +43,9 @@ class ShellBottomNav extends StatelessWidget {
                   hoverColor: ForjaShellColors.inkHover,
                   splashColor: ForjaShellColors.inkSplash,
                   onTap: () => onItemTapped(idx),
-                  onLongPress: id == 'home'
-                      ? () => ShellBus.showHomeProviderMenu()
+                  onLongPress:
+                      CatalogVerticalFiltersRegistry.hasFilters(id)
+                      ? () => CatalogVerticalFiltersRegistry.showMenu(id)
                       : null,
                   child: SizedBox(
                     width: ShellTokens.bottomNavItemWidth,

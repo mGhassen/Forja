@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -783,7 +783,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   bool _providerHoldFired = false;
   late final FocusNode _focusNode;
 
-  bool get _isHome => widget.destination.id == 'home';
+  bool get _hasVerticalFilters =>
+      CatalogVerticalFiltersRegistry.hasFilters(widget.destination.id);
 
   @override
   void initState() {
@@ -823,11 +824,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
   }
 
   void _scheduleProviderMenuReveal() {
-    if (!_isHome) return;
+    if (!_hasVerticalFilters) return;
     _providerRevealTimer?.cancel();
-    _providerRevealTimer = Timer(ShellBus.homeProviderMenuHoverDelay, () {
+    _providerRevealTimer = Timer(CatalogVerticalFiltersRegistry.menuHoverDelay, () {
       if (!mounted) return;
-      ShellBus.showHomeProviderMenu();
+      CatalogVerticalFiltersRegistry.showMenu(widget.destination.id);
     });
   }
 
@@ -843,7 +844,7 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       if (!mounted || !_hover) return;
       setState(() => _typing = true);
     });
-    ShellBus.cancelHomeProviderMenuHide();
+    CatalogVerticalFiltersRegistry.cancelMenuHide(widget.destination.id);
     _scheduleProviderMenuReveal();
   }
 
@@ -852,8 +853,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     _revealTimer?.cancel();
     _providerRevealTimer?.cancel();
     _providerRevealTimer = null;
-    if (ShellBus.homeProviderMenuVisible.value) {
-      ShellBus.scheduleHomeProviderMenuHide();
+    if (CatalogVerticalFiltersRegistry.menuVisibleFor(widget.destination.id).value) {
+      CatalogVerticalFiltersRegistry.scheduleMenuHide(widget.destination.id);
     }
     setState(() {
       _hover = false;
@@ -1027,18 +1028,18 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
           widget.onFocusChanged();
         },
         onKeyEvent: (node, event) {
-          if (_isHome) {
+          if (_hasVerticalFilters) {
             if (shellTvIsActivateKey(event)) {
               _providerHoldFired = false;
               _providerHoldTimer?.cancel();
               _providerHoldTimer = Timer(
-                ShellBus.homeProviderMenuHoldDelay,
+                CatalogVerticalFiltersRegistry.menuHoldDelay,
                 () {
                   if (!mounted) return;
                   _providerHoldFired = true;
-                  ShellBus.showHomeProviderMenu();
+                  CatalogVerticalFiltersRegistry.showMenu(widget.destination.id);
                   WidgetsBinding.instance.addPostFrameCallback((_) {
-                    ShellTvFocus.focusHomeProviderRail();
+                    ShellTvFocus.focusVerticalFilterRail();
                   });
                 },
               );
@@ -1062,9 +1063,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
           if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
             final arrow = event.logicalKey;
             if (arrow == LogicalKeyboardKey.arrowRight) {
-              if (_isHome &&
-                  ShellBus.homeProviderMenuVisible.value &&
-                  ShellTvFocus.focusHomeProviderRail()) {
+              if (_hasVerticalFilters &&
+                  CatalogVerticalFiltersRegistry.menuVisibleFor(
+                    widget.destination.id,
+                  ).value &&
+                  ShellTvFocus.focusVerticalFilterRail()) {
                 return KeyEventResult.handled;
               }
               _returnToActivePage();
@@ -1096,9 +1099,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                     onTapUp: (_) => setState(() => _pressed = false),
                     onTapCancel: () => setState(() => _pressed = false),
                     onTap: _enterPageFromNav,
-                    onLongPress: _isHome
+                    onLongPress: _hasVerticalFilters
                         ? () {
-                            ShellBus.showHomeProviderMenu();
+                            CatalogVerticalFiltersRegistry.showMenu(
+                              widget.destination.id,
+                            );
                           }
                         : null,
                     behavior: HitTestBehavior.opaque,

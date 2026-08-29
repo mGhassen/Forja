@@ -3,7 +3,8 @@ import 'package:forja/shell/shell_body.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
-import 'package:forja/shell/shell_top_bar.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters_rail.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -167,15 +168,23 @@ class _ShellScaffoldState extends State<ShellScaffold> {
         // re-select / top-bar chrome toggles cannot steal this Element.
         if (widget.visibleIds.isNotEmpty &&
             widget.selectedIndex < widget.visibleIds.length &&
-            widget.visibleIds[widget.selectedIndex] == 'home')
+            CatalogVerticalFiltersRegistry.hasFilters(
+              widget.visibleIds[widget.selectedIndex],
+            ))
           Positioned(
-            key: const ValueKey('shell-home-provider-rail'),
+            key: ValueKey(
+              'shell-vf-rail-${widget.visibleIds[widget.selectedIndex]}',
+            ),
             left: contentLeftInset + ShellTokens.shellProviderRailInset,
             top: 0,
             bottom: 0,
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: Center(child: HomeWatchProviderRail()),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: CatalogVerticalFiltersRail(
+                  tabId: widget.visibleIds[widget.selectedIndex],
+                ),
+              ),
             ),
           ),
         if (widget.maskUnderPlayer)

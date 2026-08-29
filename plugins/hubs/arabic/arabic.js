@@ -1,6 +1,7 @@
 // Arabic hub — Larozaa + DimaToon + Brstej (protocol 1).
-// Browse / search / details / stream all live in this pack. Host only
-// renders CatalogShell + surface:arabic details UI and resolves embeds.
+// Browse / search / details live in this pack. Stream extract is in
+// providers (larozaa, dimatoon, brstej). Host renders CatalogShell +
+// shared hub details + engine Sources.
 
 var ARABIC_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
@@ -1231,9 +1232,6 @@ function extract(ctx) {
   }
   if (action === 'details') {
     return arabicDetails(ctx, cfg, params);
-  }
-  if (action === 'stream') {
-    return arabicStream(ctx, cfg, params);
   }
   if (action === 'search') {
     return arabicSearch(ctx, cfg, params).catch(function (e) {

@@ -17,6 +17,8 @@ Future<void> runHubEngineAutoPlay({
   int? kisskhId,
   int? kisskhEpisodeId,
   Map<int, int> kisskhEpisodeIdByNumber = const {},
+  String? arabicVideoId,
+  Map<int, String> arabicVideoIdByEpisode = const {},
   int? anilistId,
   int? malId,
   String? animeAudioCategory,
@@ -29,10 +31,18 @@ Future<void> runHubEngineAutoPlay({
 
   String? loadingSubtitle,
   List<PlayerHubEpisode>? hubEpisodes,
+  Set<String>? selectedPluginIds,
 }) {
   final mergedKisskh = {
     ...kisskhEpisodeIdByNumber,
     if (kisskhEpisodeId != null && episode != null) episode: kisskhEpisodeId,
+  };
+  final mergedArabic = {
+    ...arabicVideoIdByEpisode,
+    if (arabicVideoId != null &&
+        arabicVideoId.isNotEmpty &&
+        episode != null)
+      episode: arabicVideoId,
   };
   return runEngineAutoPlay(
     context: context,
@@ -42,6 +52,7 @@ Future<void> runHubEngineAutoPlay({
     episode: episode,
     kisskhId: kisskhId,
     kisskhEpisodeId: kisskhEpisodeId,
+    arabicVideoId: arabicVideoId,
     anilistId: anilistId,
     malId: malId,
     animeAudioCategory: animeAudioCategory,
@@ -51,12 +62,14 @@ Future<void> runHubEngineAutoPlay({
     loadingSubtitle: loadingSubtitle,
     hubEpisodes: hubEpisodes,
     hubEpisodeNumber: episode,
+    selectedPluginIds: selectedPluginIds,
     enginePlaySession: EnginePlaySession(
       category: engineCategory,
       anilistId: anilistId,
       malId: malId,
       kisskhId: kisskhId,
       kisskhEpisodeIdByNumber: mergedKisskh,
+      arabicVideoIdByEpisode: mergedArabic,
       animeAudioCategory: animeAudioCategory,
     ),
   );

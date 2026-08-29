@@ -8,6 +8,7 @@ abstract final class EngineCategories {
   static const tv = 'tv';
   static const anime = 'anime';
   static const drama = 'drama';
+  static const arabic = 'arabic';
 
   /// Live Matches plugin types (`engine.json`).
   static const liveCatalog = 'catalog';
@@ -18,13 +19,14 @@ abstract final class EngineCategories {
   /// Distinct from [liveCatalog] (`types: catalog` schedule feeds).
   static const hubCatalog = 'hubs';
 
-  static const all = [movie, tv, anime, drama];
+  static const all = [movie, tv, anime, drama, arabic];
 
   static String label(String id) => switch (id) {
     movie => 'Movie',
     tv => 'TV',
     anime => 'Anime',
     drama => 'Drama',
+    arabic => 'Arabic',
     _ => id,
   };
 
@@ -38,6 +40,7 @@ abstract final class EngineCategories {
     final types = plugin.types.map((t) => t.toLowerCase()).toSet();
     if (types.contains(anime)) return anime;
     if (types.contains(drama)) return drama;
+    if (types.contains(arabic)) return arabic;
     if (types.contains(movie) && types.contains(tv)) return 'movie_tv';
     if (types.contains(tv) || types.contains('series')) return tv;
     if (types.contains(movie)) return movie;
@@ -50,6 +53,7 @@ abstract final class EngineCategories {
     tv => 'TV',
     anime => 'Anime',
     drama => 'Drama',
+    arabic => 'Arabic',
     livePlugin => 'Live',
     liveCatalog => 'Catalog',
     hubCatalog => 'Hubs',
@@ -62,6 +66,7 @@ abstract final class EngineCategories {
     tv,
     anime,
     drama,
+    arabic,
     livePlugin,
     liveCatalog,
     hubCatalog,
@@ -124,6 +129,7 @@ abstract final class EngineCategories {
         types.contains('series');
     if (types.contains(anime) && !hasMovieTv) return anime;
     if (types.contains(drama) && !hasMovieTv) return drama;
+    if (types.contains(arabic) && !hasMovieTv) return arabic;
     return null;
   }
 

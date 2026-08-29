@@ -5,6 +5,9 @@ import 'package:forja/features/home/widgets/home_movie_section.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/cinematic_hero.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/home_movie_card.dart';
@@ -29,6 +32,8 @@ import 'catalog_host_genre_rows.dart';
 import 'catalog_host_home_mood.dart';
 import 'catalog_host_popular_asian.dart';
 import 'catalog_host_trakt.dart';
+import 'package:forja/shared/engine/plugin_registry.dart';
+import 'catalog_vertical_filters.dart';
 import 'catalog_meta_movie.dart';
 import 'catalog_open.dart';
 
@@ -68,6 +73,7 @@ class _CatalogShellState extends State<CatalogShell>
   bool _forceNextRails = false;
 
   Listenable? _chromeListenable;
+  VoidCallback? _verticalFiltersRevisionListener;
 
   @override
   bool get wantKeepAlive => true;
@@ -81,13 +87,32 @@ class _CatalogShellState extends State<CatalogShell>
   void initState() {
     super.initState();
     _scroll.addListener(_publishScroll);
+    _rebindChromeListenable();
+    _verticalFiltersRevisionListener = () {
+      if (!mounted) return;
+      _rebindChromeListenable();
+      _onChromeFilterChanged();
+    };
+    CatalogVerticalFiltersRegistry.revision.addListener(
+      _verticalFiltersRevisionListener!,
+    );
+    unawaited(_loadLayout());
+  }
+
+  void _rebindChromeListenable() {
+    _chromeListenable?.removeListener(_onChromeFilterChanged);
     _chromeListenable = catalogChromeFilterListenable(widget.tabId);
     _chromeListenable?.addListener(_onChromeFilterChanged);
-    unawaited(_loadLayout());
   }
 
   @override
   void dispose() {
+    CatalogVerticalFiltersRegistry.unregister(_pageKey);
+    if (_verticalFiltersRevisionListener != null) {
+      CatalogVerticalFiltersRegistry.revision.removeListener(
+        _verticalFiltersRevisionListener!,
+      );
+    }
     _chromeListenable?.removeListener(_onChromeFilterChanged);
     _scroll.removeListener(_publishScroll);
     _scroll.dispose();
@@ -185,6 +210,19 @@ class _CatalogShellState extends State<CatalogShell>
       _loading = false;
       _widgets = widgets;
     });
+    final packSourceUrl = (await PluginRegistry.instance.findPlugin(
+      widget.pluginId,
+    ))
+        ?.pack
+        .sourceUrl;
+    if (!mounted) return;
+    CatalogVerticalFiltersRegistry.syncFromLayout(
+      tabId: _pageKey,
+      pluginId: widget.pluginId,
+      packSourceUrl: packSourceUrl,
+      widgets: widgets,
+    );
+    _rebindChromeListenable();
     markShellTabFresh();
   }
 
@@ -333,8 +371,17 @@ class _CatalogShellState extends State<CatalogShell>
     // — hub hero has onOpenDetails=null, so a TMDB Movie made View details a
     // silent no-op after spotlight enrich.
     final surface = item.open?.surface;
-    final hubNative = surface == 'anime' || surface == 'drama' || surface == 'arabic';
+    final hubNative =
+        surface == 'anime' || surface == 'drama' || surface == 'arabic';
     final movie = hubNative ? null : catalogMetaToMovie(item);
+    final mediaHint = (item.tmdbMediaType ?? '').trim().toLowerCase();
+    final badge = (item.badge ?? '').trim().toUpperCase();
+    final tmdbMediaType = movie?.mediaType ??
+        (mediaHint == 'movie' || mediaHint == 'tv'
+            ? mediaHint
+            : (badge == 'MOVIE' || badge == 'FILM' || badge == 'HOLLYWOOD'
+                ? 'movie'
+                : 'tv'));
     return HubHeroSlide(
       id: item.id,
       title: item.name,
@@ -350,10 +397,7 @@ class _CatalogShellState extends State<CatalogShell>
       imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
       imageAlignment: useAniBanner ? Alignment.center : Alignment.centerRight,
       tmdbId: item.numericId('tmdb') ?? movie?.id,
-      tmdbMediaType:
-          movie?.mediaType ??
-          item.tmdbMediaType ??
-          (item.type == 'movie' ? 'movie' : 'tv'),
+      tmdbMediaType: tmdbMediaType,
       movie: movie,
       listTarget: _listTarget(item),
       onDetails: () => unawaited(_openMeta(item)),
@@ -367,6 +411,7 @@ class _CatalogShellState extends State<CatalogShell>
     bool showRank = false,
     String? rowId,
     HubPosterAspect aspect = HubPosterAspect.portrait,
+    VoidCallback? onUpEdge,
   }) => HubPosterCard(
     imageUrl: item.poster,
     title: item.name,
@@ -379,6 +424,7 @@ class _CatalogShellState extends State<CatalogShell>
     listTarget: _listTarget(item),
     tvTabId: widget.tabId,
     tvRowId: rowId,
+    onUpEdge: onUpEdge,
     aspect: aspect,
     onTap: () => unawaited(_openMeta(item)),
   );
@@ -432,7 +478,95 @@ class _CatalogShellState extends State<CatalogShell>
 
   bool get _isHomeTab => widget.tabId == 'home' || widget.tabId == null;
 
-  Widget _homeMovieRail(Map<String, dynamic> spec, {bool compactTop = false}) {
+  bool get _usesHomeMovieRails =>
+      _isHomeTab || widget.tabId == 'arabic';
+
+  /// Assigns monotonic [sortOrder] values for TV row registry from layout order.
+  Map<String, int> _planTvRowOrders({
+    Map<String, dynamic>? bleedSpec,
+    String? bleedId,
+  }) {
+    final orders = <String, int>{};
+    var order = 0;
+
+    // Hero bleed row (Featured under spotlight) is always the first catalog row.
+    if (bleedSpec != null) {
+      final bleedWidgetId =
+          (bleedSpec['id'] ?? bleedId ?? '').toString().trim();
+      if (bleedWidgetId.isNotEmpty) {
+        orders[bleedWidgetId] = order++;
+      }
+    }
+
+    for (final spec in _widgets) {
+      final type = (spec['type'] ?? '').toString();
+      final id = (spec['id'] ?? '').toString();
+      final rail = (spec['rail'] ?? '').toString();
+      if (bleedSpec != null &&
+          bleedId != null &&
+          (id == bleedId || rail == bleedId) &&
+          (type == 'rail' || type == 'ranked') &&
+          spec['hideWhenBleed'] == true) {
+        continue;
+      }
+      if (spec['hideWhenTypeFilter'] == true &&
+          _chromeHidesTypeFilterRail()) {
+        continue;
+      }
+      if (!_layoutWidgetCountsForTv(spec)) continue;
+
+      switch (type) {
+        case 'hero':
+        case 'host.vertical_filters':
+          break;
+        case 'mood':
+          orders['$id-chips'] = order;
+          orders['$id-results'] = order + 1;
+          order += 2;
+        case 'host.genre_rows':
+          orders[id] = order;
+          order += 10;
+        default:
+          if (id.isNotEmpty) {
+            orders[id] = order++;
+          }
+      }
+    }
+    return orders;
+  }
+
+  bool _layoutWidgetCountsForTv(Map<String, dynamic> spec) {
+    switch ((spec['type'] ?? '').toString()) {
+      case 'host.vertical_filters':
+        return false;
+      case 'host.because':
+      case 'host.trakt':
+      case 'host.genre_rows':
+        return _isHomeTab;
+      case 'host.continue':
+        return switch (widget.tabId ?? 'home') {
+          'anime' || 'asian_drama' || 'home' => true,
+          _ => false,
+        };
+      default:
+        return true;
+    }
+  }
+
+  int _tvOrder(Map<String, int> orders, String id, {int fallback = 0}) =>
+      orders[id] ?? fallback;
+
+  void _focusHeroPlay() {
+    ShellTvFocusCoordinator.revealHeroForTab(_pageKey);
+    ShellTvFocus.focusHomeHeroPlay();
+  }
+
+  Widget _homeMovieRail(
+    Map<String, dynamic> spec, {
+    bool compactTop = false,
+    int tvRowOrder = 0,
+    VoidCallback? tvFocusUp,
+  }) {
     final id = (spec['id'] ?? '').toString();
     final title = (spec['title'] ?? '').toString();
     final numbered = _isNumbered(spec);
@@ -444,18 +578,40 @@ class _CatalogShellState extends State<CatalogShell>
         future: _homeMovieFuture(spec),
         showRank: numbered,
         compactTop: compactTop,
+        tvTabId: widget.tabId ?? 'home',
         tvRowId: id,
-        onMovieTap: (m) => AppRouter.openDetails(context, movie: m),
+        tvRowOrder: tvRowOrder,
+        onMovieTap: (m) {
+          if (widget.tabId == 'arabic') {
+            final meta = catalogMetaItemForMovie(m);
+            if (meta != null) {
+              unawaited(_openMeta(meta));
+              return;
+            }
+          }
+          AppRouter.openDetails(context, movie: m);
+        },
       );
     }
     return HomeMovieSection(
       key: ValueKey('hrail:$id:$chrome:$_chromeEpoch'),
       title: title,
       future: _homeMovieFuture(spec),
-      onMovieTap: (m) => AppRouter.openDetails(context, movie: m),
+      onMovieTap: (m) {
+        if (widget.tabId == 'arabic') {
+          final meta = catalogMetaItemForMovie(m);
+          if (meta != null) {
+            unawaited(_openMeta(meta));
+            return;
+          }
+        }
+        AppRouter.openDetails(context, movie: m);
+      },
       compactTop: compactTop,
       showRank: numbered,
       tvRowId: id,
+      tvRowOrder: tvRowOrder,
+      tvFocusUp: tvFocusUp,
     );
   }
 
@@ -471,9 +627,18 @@ class _CatalogShellState extends State<CatalogShell>
     });
   }
 
-  Widget _railSection(Map<String, dynamic> spec, {bool showRank = false}) {
-    if (_isHomeTab) {
-      return _homeMovieRail(spec);
+  Widget _railSection(
+    Map<String, dynamic> spec, {
+    bool showRank = false,
+    int tvRowOrder = 0,
+    VoidCallback? tvFocusUp,
+  }) {
+    if (_usesHomeMovieRails) {
+      return _homeMovieRail(
+        spec,
+        tvRowOrder: tvRowOrder,
+        tvFocusUp: tvFocusUp,
+      );
     }
     final id = (spec['id'] ?? '').toString();
     final mood = _moods[(spec['moodSource'] ?? '').toString()] ?? '';
@@ -489,6 +654,7 @@ class _CatalogShellState extends State<CatalogShell>
         aspect: aspect,
         tvTabId: widget.tabId,
         tvRowId: id,
+        tvRowOrder: tvRowOrder,
         cardBuilder: (context, item, index) => _card(
           context,
           item,
@@ -507,6 +673,8 @@ class _CatalogShellState extends State<CatalogShell>
       cardAspect: aspect,
       tvTabId: widget.tabId,
       tvRowId: id,
+      tvRowOrder: tvRowOrder,
+      tvFocusUp: tvFocusUp,
       cardBuilder: (context, item, index) => _card(
         context,
         item,
@@ -518,7 +686,11 @@ class _CatalogShellState extends State<CatalogShell>
     );
   }
 
-  Widget _heroSection(Map<String, dynamic> spec, {Widget? pageBottomChild}) {
+  Widget _heroSection(
+    Map<String, dynamic> spec, {
+    Widget? pageBottomChild,
+    String? bleedRowId,
+  }) {
     final chrome = catalogChromeFilterEpoch(widget.tabId);
     return _CatalogHeroSection(
       key: ValueKey('hero:$chrome:$_chromeEpoch'),
@@ -527,6 +699,7 @@ class _CatalogShellState extends State<CatalogShell>
       tvTabId: widget.tabId ?? 'home',
       scrollController: _scroll,
       pageBottomChild: pageBottomChild,
+      bleedRowId: bleedRowId,
     );
   }
 
@@ -556,9 +729,11 @@ class _CatalogShellState extends State<CatalogShell>
     return Color(0xFF000000 | v);
   }
 
-  Widget _moodSection(Map<String, dynamic> spec) {
+  Widget _moodSection(Map<String, dynamic> spec, {required int tvRowOrder}) {
     final id = (spec['id'] ?? 'mood').toString();
     final title = (spec['title'] ?? 'Moods').toString();
+    final chipRowId = '$id-chips';
+    final resultsRowId = '$id-results';
     final options = [
       for (final o in (spec['options'] as List? ?? const []))
         if (o is Map) Map<String, dynamic>.from(o),
@@ -573,6 +748,71 @@ class _CatalogShellState extends State<CatalogShell>
     }
     final titleTop = shellHomeSectionTitleTop(context);
     final resultsRail = (spec['rail'] ?? '').toString().trim();
+    final tvNav = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+    Widget moodChip({
+      required ShellMoodCircleLayout layout,
+      required int i,
+      TvChipEdges? edges,
+    }) {
+      final opt = options[i];
+      final optId = opt['id']?.toString() ?? '';
+      final isSelected = optId == selected;
+      return ShellMoodCircleItem(
+        layout: layout,
+        label: (opt['label'] ?? optId).toString(),
+        icon: _moodIcon(opt['icon']?.toString()),
+        accent: _moodAccent(opt['accent']?.toString()),
+        selected: isSelected,
+        listIndex: i,
+        tvTabId: widget.tabId,
+        tvRowId: chipRowId,
+        onTap: () {
+          setState(() {
+            _invalidateRailFutures();
+            _moods[id] = optId;
+          });
+          if (isSelected && edges != null) {
+            edges.onSelectAlreadySelected();
+          }
+        },
+        onLeftEdge: edges?.onLeft,
+        onRightEdge: edges?.onRight,
+        onUpEdge: edges?.onUp,
+        onDownEdge: edges?.onDown,
+      );
+    }
+
+    Widget moodChipRow({
+      required ShellMoodCircleLayout layout,
+      TvChipEdges Function(int index)? edgesFor,
+      bool scaleToFit = false,
+    }) {
+      final row = Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < options.length; i++) ...[
+            if (i > 0) SizedBox(width: layout.horizontalGap),
+            moodChip(layout: layout, i: i, edges: edgesFor?.call(i)),
+          ],
+        ],
+      );
+      return SizedBox(
+        height: layout.rowHeight,
+        width: double.infinity,
+        child: FocusTraversalGroup(
+          policy: ReadingOrderTraversalPolicy(),
+          child: scaleToFit
+              ? FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.center,
+                  child: row,
+                )
+              : Center(child: row),
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -592,32 +832,42 @@ class _CatalogShellState extends State<CatalogShell>
               itemCount: options.length,
               maxWidth: constraints.maxWidth,
             );
-            final row = Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (var i = 0; i < options.length; i++) ...[
-                  if (i > 0) SizedBox(width: layout.horizontalGap),
-                  ShellMoodCircleItem(
-                    layout: layout,
-                    label: (options[i]['label'] ?? options[i]['id'] ?? '')
-                        .toString(),
-                    icon: _moodIcon(options[i]['icon']?.toString()),
-                    accent: _moodAccent(options[i]['accent']?.toString()),
-                    selected: options[i]['id']?.toString() == selected,
-                    listIndex: i,
-                    tvTabId: widget.tabId,
-                    tvRowId: id,
-                    onTap: () => setState(() {
-                      _invalidateRailFutures();
-                      _moods[id] = options[i]['id']?.toString() ?? '';
-                    }),
-                  ),
-                ],
-              ],
-            );
+            if (tvNav) {
+              return TvChipStrip(
+                tabId: widget.tabId,
+                rowId: chipRowId,
+                sortOrder: tvRowOrder,
+                itemCount: options.length,
+                resultsRowId: resultsRowId,
+                builder: (context, edgesFor) {
+                  if (layout.contentWidth(options.length) <=
+                      constraints.maxWidth) {
+                    return moodChipRow(
+                      layout: layout,
+                      edgesFor: edgesFor,
+                      scaleToFit: true,
+                    );
+                  }
+                  return SizedBox(
+                    height: layout.rowHeight,
+                    child: HorizontalScroller(
+                      height: layout.rowHeight,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: shellHomeSectionHorizontalPadding(context),
+                      ),
+                      itemCount: options.length,
+                      separatorBuilder: (_, _) =>
+                          SizedBox(width: layout.horizontalGap),
+                      itemBuilder: (context, i) =>
+                          moodChip(layout: layout, i: i, edges: edgesFor(i)),
+                    ),
+                  );
+                },
+              );
+            }
+
             if (layout.contentWidth(options.length) <= constraints.maxWidth) {
-              return Center(child: row);
+              return Center(child: moodChipRow(layout: layout));
             }
             return HorizontalScroller(
               height: layout.rowHeight,
@@ -626,21 +876,7 @@ class _CatalogShellState extends State<CatalogShell>
               ),
               itemCount: options.length,
               separatorBuilder: (_, _) => SizedBox(width: layout.horizontalGap),
-              itemBuilder: (context, i) => ShellMoodCircleItem(
-                layout: layout,
-                label: (options[i]['label'] ?? options[i]['id'] ?? '')
-                    .toString(),
-                icon: _moodIcon(options[i]['icon']?.toString()),
-                accent: _moodAccent(options[i]['accent']?.toString()),
-                selected: options[i]['id']?.toString() == selected,
-                listIndex: i,
-                tvTabId: widget.tabId,
-                tvRowId: id,
-                onTap: () => setState(() {
-                  _invalidateRailFutures();
-                  _moods[id] = options[i]['id']?.toString() ?? '';
-                }),
-              ),
+              itemBuilder: (context, i) => moodChip(layout: layout, i: i),
             );
           },
         ),
@@ -653,23 +889,49 @@ class _CatalogShellState extends State<CatalogShell>
             embedded: true,
             compactTop: true,
             tvTabId: widget.tabId,
-            tvRowId: '$id-results',
-            cardBuilder: (context, item, index) =>
-                _card(context, item, index, rowId: '$id-results'),
+            tvRowId: resultsRowId,
+            tvRowOrder: tvRowOrder + 1,
+            cardBuilder: (context, item, index) => _card(
+              context,
+              item,
+              index,
+              rowId: resultsRowId,
+              onUpEdge: tvResultsUpToChips(
+                context,
+                chipRowId: chipRowId,
+              ),
+            ),
           ),
         ],
       ],
     );
   }
 
-  Widget? _widgetFor(Map<String, dynamic> spec, {Widget? heroBleedChild}) {
+  Widget? _widgetFor(
+    Map<String, dynamic> spec, {
+    Widget? heroBleedChild,
+    String? heroBleedRowId,
+    required Map<String, int> tvOrders,
+  }) {
+    final id = (spec['id'] ?? '').toString();
     switch ((spec['type'] ?? '').toString().trim()) {
       case 'hero':
-        return _heroSection(spec, pageBottomChild: heroBleedChild);
+        return _heroSection(
+          spec,
+          pageBottomChild: heroBleedChild,
+          bleedRowId: heroBleedRowId,
+        );
       case 'rail':
-        return _railSection(spec);
+        return _railSection(
+          spec,
+          tvRowOrder: _tvOrder(tvOrders, id),
+        );
       case 'ranked':
-        return _railSection(spec, showRank: true);
+        return _railSection(
+          spec,
+          showRank: true,
+          tvRowOrder: _tvOrder(tvOrders, id),
+        );
       case 'mood':
         if (_isHomeTab) {
           final options = [
@@ -679,14 +941,17 @@ class _CatalogShellState extends State<CatalogShell>
           return CatalogHostHomeMood(
             options: options,
             title: (spec['title'] ?? "What's your mood?").toString(),
-            tvRowOrder: 3,
+            tvRowOrder: _tvOrder(tvOrders, '$id-chips'),
           );
         }
-        return _moodSection(spec);
+        return _moodSection(
+          spec,
+          tvRowOrder: _tvOrder(tvOrders, '$id-chips'),
+        );
       case 'host.continue':
         return CatalogHostContinue(
           tabId: widget.tabId ?? 'home',
-          tvRowOrder: _isHomeTab ? 2 : 1,
+          tvRowOrder: _tvOrder(tvOrders, id),
         );
       case 'host.popular_asian':
         return const CatalogHostPopularAsian();
@@ -695,7 +960,13 @@ class _CatalogShellState extends State<CatalogShell>
       case 'host.trakt':
         return _isHomeTab ? const CatalogHostTrakt() : null;
       case 'host.genre_rows':
-        return _isHomeTab ? const CatalogHostGenreRows() : null;
+        return _isHomeTab
+            ? CatalogHostGenreRows(
+                tvRowOrderBase: _tvOrder(tvOrders, id),
+              )
+            : null;
+      case 'host.vertical_filters':
+        return null;
       default:
         return null;
     }
@@ -737,10 +1008,18 @@ class _CatalogShellState extends State<CatalogShell>
         }
       }
       final bleed = bleedSpec;
+      final tvOrders = _planTvRowOrders(bleedSpec: bleed, bleedId: bleedId);
+      final bleedRowId =
+          bleed == null ? null : (bleed['id'] ?? '').toString();
       final Widget? bleedChild = bleed == null
           ? null
-          : (_isHomeTab
-                ? _homeMovieRail(bleed, compactTop: true)
+          : (_usesHomeMovieRails
+                ? _homeMovieRail(
+                    bleed,
+                    compactTop: true,
+                    tvRowOrder: _tvOrder(tvOrders, bleedRowId ?? ''),
+                    tvFocusUp: _focusHeroPlay,
+                  )
                 : HubCatalogSection<CatalogMetaItem>(
                     key: ValueKey('bleed:${bleed['id']}:$_chromeEpoch'),
                     title: (bleed['title'] ?? '').toString(),
@@ -749,7 +1028,9 @@ class _CatalogShellState extends State<CatalogShell>
                     compactTop: true,
                     cardAspect: _aspectOf(bleed),
                     tvTabId: widget.tabId,
-                    tvRowId: (bleed['id'] ?? '').toString(),
+                    tvRowId: bleedRowId,
+                    tvRowOrder: _tvOrder(tvOrders, bleedRowId ?? ''),
+                    tvFocusUp: _focusHeroPlay,
                     cardBuilder: (context, item, index) => _card(
                       context,
                       item,
@@ -778,6 +1059,8 @@ class _CatalogShellState extends State<CatalogShell>
         final w = _widgetFor(
           spec,
           heroBleedChild: type == 'hero' ? bleedChild : null,
+          heroBleedRowId: type == 'hero' ? bleedRowId : null,
+          tvOrders: tvOrders,
         );
         if (w != null) sections.add(w);
       }
@@ -812,6 +1095,7 @@ class _CatalogHeroSection extends StatefulWidget {
     required this.tvTabId,
     required this.scrollController,
     this.pageBottomChild,
+    this.bleedRowId,
   });
 
   final Future<List<CatalogMetaItem>> future;
@@ -819,6 +1103,7 @@ class _CatalogHeroSection extends StatefulWidget {
   final String tvTabId;
   final ScrollController scrollController;
   final Widget? pageBottomChild;
+  final String? bleedRowId;
 
   @override
   State<_CatalogHeroSection> createState() => _CatalogHeroSectionState();
@@ -875,6 +1160,7 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
       tvTabId: widget.tvTabId,
       scrollController: widget.scrollController,
       pageBottomChild: bottom,
+      bleedRowId: widget.bleedRowId,
       firstCatalogRowHeight: bottom == null
           ? null
           : HomeMovieSection.sectionHeight(context, compactTop: true),
@@ -890,7 +1176,9 @@ class _VerticalHomeMovieRail extends StatefulWidget {
     required this.onMovieTap,
     this.showRank = false,
     this.compactTop = false,
+    this.tvTabId = 'home',
     this.tvRowId,
+    this.tvRowOrder = 0,
   });
 
   final String title;
@@ -898,7 +1186,9 @@ class _VerticalHomeMovieRail extends StatefulWidget {
   final void Function(Movie) onMovieTap;
   final bool showRank;
   final bool compactTop;
+  final String tvTabId;
   final String? tvRowId;
+  final int tvRowOrder;
 
   @override
   State<_VerticalHomeMovieRail> createState() => _VerticalHomeMovieRailState();
@@ -923,7 +1213,8 @@ class _VerticalHomeMovieRailState extends State<_VerticalHomeMovieRail> {
           return const SizedBox.shrink();
         }
         final pad = shellHomeSectionHorizontalPadding(context);
-        return Column(
+        final rowId = widget.tvRowId;
+        final column = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ShellSectionTitle(
@@ -950,12 +1241,21 @@ class _VerticalHomeMovieRailState extends State<_VerticalHomeMovieRail> {
                     onTap: () => widget.onMovieTap(movies[i]),
                     rank: widget.showRank ? i + 1 : null,
                     listIndex: i,
-                    tvTabId: 'home',
-                    tvRowId: widget.tvRowId,
+                    tvTabId: widget.tvTabId,
+                    tvRowId: rowId,
                   ),
                 ),
               ),
           ],
+        );
+        if (rowId == null) return column;
+        return TvCatalogRow(
+          tabId: widget.tvTabId,
+          rowId: rowId,
+          sortOrder: widget.tvRowOrder,
+          itemCount: movies.length,
+          orientation: ShellTvRowOrientation.vertical,
+          child: column,
         );
       },
     );
@@ -972,6 +1272,7 @@ class _VerticalHubRail extends StatefulWidget {
     this.aspect = HubPosterAspect.portrait,
     this.tvTabId,
     this.tvRowId,
+    this.tvRowOrder = 0,
   });
 
   final String title;
@@ -981,6 +1282,7 @@ class _VerticalHubRail extends StatefulWidget {
   final HubPosterAspect aspect;
   final String? tvTabId;
   final String? tvRowId;
+  final int tvRowOrder;
 
   @override
   State<_VerticalHubRail> createState() => _VerticalHubRailState();
@@ -1003,7 +1305,8 @@ class _VerticalHubRailState extends State<_VerticalHubRail> {
           return const SizedBox.shrink();
         }
         final pad = shellHomeSectionHorizontalPadding(context);
-        return Column(
+        final rowId = widget.tvRowId;
+        final column = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ShellSectionTitle(
@@ -1026,6 +1329,15 @@ class _VerticalHubRailState extends State<_VerticalHubRail> {
                 ),
               ),
           ],
+        );
+        if (rowId == null || widget.tvTabId == null) return column;
+        return TvCatalogRow(
+          tabId: widget.tvTabId,
+          rowId: rowId,
+          sortOrder: widget.tvRowOrder,
+          itemCount: items.length,
+          orientation: ShellTvRowOrientation.vertical,
+          child: column,
         );
       },
     );

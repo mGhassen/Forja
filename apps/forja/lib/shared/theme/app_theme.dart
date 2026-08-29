@@ -248,7 +248,14 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       }
       if (widget.focusNode == null) {
         _ownedNode ??= FocusNode(debugLabel: _tvDebugLabel(widget.tvMeta));
+        if (oldNode?.hasFocus ?? false) {
+          _ownedNode!.requestFocus();
+        }
       } else {
+        if ((_ownedNode?.hasFocus ?? false) &&
+            widget.focusNode!.canRequestFocus) {
+          widget.focusNode!.requestFocus();
+        }
         _ownedNode?.dispose();
         _ownedNode = null;
       }
@@ -404,16 +411,6 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
     if (linearScope) {
       final linear = shellTvLinearMenuArrows(context: context, event: event);
       if (linear == KeyEventResult.handled) return linear;
-      // Linear already owns ↑/↓/←/→ — do not also run focusInDirection.
-      if (shellTvIsNavigationKey(event)) {
-        final key = event.logicalKey;
-        if (key == LogicalKeyboardKey.arrowUp ||
-            key == LogicalKeyboardKey.arrowDown ||
-            key == LogicalKeyboardKey.arrowLeft ||
-            key == LogicalKeyboardKey.arrowRight) {
-          return KeyEventResult.handled;
-        }
-      }
     }
 
     // Spatial nearest-neighbor when catalog row/grid edges did not claim the

@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/catalog/hub_tmdb_enrich_cache.dart';
 import 'package:rust/rust.dart';
 
 /// Best-effort KissKH title → TMDB [Movie] (keeps `id` + `mediaType`).
@@ -14,6 +15,37 @@ class KissKhTmdbMatch {
       default:
         return false;
     }
+  }
+
+  /// Hub hero badge / label → KissKH type wire for [resolve].
+  static String? kissKhTypeFromBadge(String? badge) {
+    switch ((badge ?? '').trim().toUpperCase()) {
+      case 'FILM':
+      case 'MOVIE':
+      case 'HOLLYWOOD':
+        return 'movie';
+      case 'SERIES':
+      case 'TV':
+      case 'TVSERIES':
+        return 'tvseries';
+      case 'ANIME':
+        return 'anime';
+      default:
+        return null;
+    }
+  }
+
+  /// Reuse details TMDB enrich on the browse hero (same KissKH id cache).
+  static Movie? peekCachedHeroMovie(int kisskhId) {
+    final key = 'asian-enrich:kisskh:$kisskhId';
+    if (!HubTmdbEnrichCache.contains(key)) return null;
+    final cached = HubTmdbEnrichCache.get<Object?>(key);
+    if (cached == null) return null;
+    try {
+      final movie = (cached as dynamic).rich.movie;
+      if (movie is Movie && movie.id > 0) return movie;
+    } catch (_) {}
+    return null;
   }
 
   /// Strip KissKH noise so TMDB search/scoring lines up with clean titles.

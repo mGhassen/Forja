@@ -202,6 +202,7 @@ class HomeCinematicHero extends StatefulWidget {
     required this.onOpenDetails,
     this.pageBottomChild,
     this.tvTabId = 'home',
+    this.bleedRowId,
     this.firstCatalogRowHeight,
   })  : slides = null;
 
@@ -210,6 +211,7 @@ class HomeCinematicHero extends StatefulWidget {
     required this.slides,
     this.pageBottomChild,
     this.tvTabId = 'anime',
+    this.bleedRowId,
     this.firstCatalogRowHeight,
     this.scrollController,
   })  : moviesFuture = null,
@@ -226,6 +228,7 @@ class HomeCinematicHero extends StatefulWidget {
   final HomeHeroController? controller;
   final Future<void> Function(Movie movie)? onOpenDetails;
   final String tvTabId;
+  final String? bleedRowId;
   final double? firstCatalogRowHeight;
 
   /// First catalog row rendered on the extended page backdrop (desktop/TV).
@@ -293,12 +296,12 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   void initState() {
     super.initState();
     _syncSharedHeroFocusNodes();
+    TvHeroActions.bind(
+      widget.tvTabId,
+      defaultFocus: () => _tvHeroPlayFocus,
+      heroReveal: _scrollHeroIntoView,
+    );
     if (!_isHub) {
-      TvHeroActions.bind(
-        widget.tvTabId,
-        defaultFocus: () => _tvHeroPlayFocus,
-        heroReveal: _scrollHeroIntoView,
-      );
       widget.controller?.revealPlayFocus = _revealedHeroPlayFocus;
     }
     _startHeroTimer();
@@ -317,6 +320,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
 
   @override
   void dispose() {
+    TvHeroActions.unbind(widget.tvTabId);
     if (ShellTvFocus.homeHeroPlay == _tvHeroPlayFocus) {
       ShellTvFocus.homeHeroPlay = null;
     }
@@ -456,16 +460,13 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   }
 
   ValueNotifier<double> _heroHeightNotifier() {
-    switch (widget.tvTabId) {
-      case 'anime':
-        return ShellBus.animeHeroHeight;
-      case 'asian_drama':
-        return ShellBus.asianDramaHeroHeight;
-      case 'arabic':
-        return ShellBus.arabicHeroHeight;
-      default:
-        return ShellBus.homeHeroHeight;
-    }
+    return switch (widget.tvTabId) {
+      'anime' => ShellBus.animeHeroHeight,
+      'asian_drama' => ShellBus.asianDramaHeroHeight,
+      'arabic' => ShellBus.arabicHeroHeight,
+      'home' => ShellBus.homeHeroHeight,
+      final id => ShellBus.hubHeroHeightFor(id),
+    };
   }
 
   void _publishHeroHeight() {
@@ -503,6 +504,16 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   void _focusHomeHeroMenu() {
     ShellTvFocusCoordinator.revealHeroForTab(widget.tvTabId);
     ShellTvFocus.focusHomeMenu();
+  }
+
+  void _focusBleedCatalogRow() {
+    final rowId = widget.bleedRowId?.trim();
+    if (rowId != null &&
+        rowId.isNotEmpty &&
+        ShellTvFocusCoordinator.focusRowItem(widget.tvTabId, rowId, 0)) {
+      return;
+    }
+    ShellTvFocusCoordinator.focusFirstContentRow(widget.tvTabId);
   }
 
   void _stepHeroFilm(int delta, List<_HeroItem> items) {
@@ -671,12 +682,30 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       if (!needsLogo && !needsOverview && !needsBackdrop) continue;
       _hubEnrichInflight.add(id);
       try {
-        var tmdbId = slide.tmdbId;
+        final kisskhId = slide.id.startsWith('kisskh:')
+            ? int.tryParse(slide.id.split(':').last)
+            : null;
+        final cachedHero = kisskhId != null
+            ? KissKhTmdbMatch.peekCachedHeroMovie(kisskhId)
+            : null;
+
+        var tmdbId = slide.tmdbId ?? cachedHero?.id;
         var mediaType = slide.tmdbMediaType.trim().isEmpty
-            ? 'tv'
+            ? (cachedHero?.mediaType ?? 'tv')
             : slide.tmdbMediaType.trim();
+        if (cachedHero != null && cachedHero.id > 0) {
+          tmdbId = cachedHero.id;
+          if (cachedHero.mediaType == 'movie' ||
+              cachedHero.mediaType == 'tv') {
+            mediaType = cachedHero.mediaType;
+          }
+        }
+        final kissKhType = KissKhTmdbMatch.kissKhTypeFromBadge(slide.badge);
         if (tmdbId == null || tmdbId <= 0) {
           final year = (slide.year ?? '').trim();
+          final preferMovie = kissKhType != null
+              ? KissKhTmdbMatch.preferMovie(kissKhType)
+              : mediaType == 'movie';
           final matchKey =
               'hubHeroMatch:${slide.title.trim().toLowerCase()}|$mediaType|$year';
           ({int id, String mediaType})? hit;
@@ -687,7 +716,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             hit = await _matchHubTitle(
               slide.title,
               year: year.isEmpty ? null : year,
-              preferMovie: mediaType == 'movie',
+              kissKhType: kissKhType,
+              preferMovie: preferMovie,
             );
             HubTmdbEnrichCache.put(
               matchKey,
@@ -708,11 +738,11 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           mediaType = hit.mediaType;
         }
         final detailsKey = 'hubHeroDetails:$tmdbId:$mediaType';
-        Movie? details;
+        Movie? details = cachedHero;
         if (HubTmdbEnrichCache.contains(detailsKey)) {
-          details = HubTmdbEnrichCache.get<Movie>(detailsKey);
+          details = HubTmdbEnrichCache.get<Movie>(detailsKey) ?? details;
         } else if (needsOverview || needsBackdrop) {
-          details = await _hubHeroDetails(tmdbId, mediaType);
+          details ??= await _hubHeroDetails(tmdbId, mediaType);
           if (details != null) {
             mediaType = details.mediaType == 'movie' || details.mediaType == 'tv'
                 ? details.mediaType
@@ -779,13 +809,14 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   /// Same scorer as Asian Drama details — not first-with-backdrop.
   Future<({int id, String mediaType})?> _matchHubTitle(
     String title, {
+    String? kissKhType,
     required bool preferMovie,
     String? year,
   }) async {
     final match = await KissKhTmdbMatch.resolve(
       title: title,
       year: year,
-      kissKhType: preferMovie ? 'movie' : 'tv',
+      kissKhType: kissKhType ?? (preferMovie ? 'movie' : 'tvseries'),
       tmdb: _api,
     );
     if (match == null || match.id <= 0) return null;
@@ -1917,6 +1948,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       tabId: tabId,
       itemCount: listAction != null ? 2 : 1,
       onFocusUp: _focusHomeHeroGallery,
+      onFocusDown:
+          widget.pageBottomChild != null ? _focusBleedCatalogRow : null,
       child: body,
     );
   }

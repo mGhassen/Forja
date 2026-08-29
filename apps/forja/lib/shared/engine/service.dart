@@ -469,6 +469,7 @@ class EngineService {
     int? anilistId,
     int? kisskhId,
     int? kisskhEpisodeId,
+    String? arabicVideoId,
     bool allowHostFallback = false,
     EngineRuntime? runtime,
   }) async {
@@ -520,11 +521,12 @@ class EngineService {
 
     final overlay =
         ProviderRuntimeConfig.instance.engine[active.id] ?? const {};
-    final config = engineConfigWithKissKhIds(
+    final config = mergeEnginePluginConfig(
       mergeEngineConfig(active.config, overlay),
       pluginId: active.id,
       kisskhId: kisskhId,
       kisskhEpisodeId: kisskhEpisodeId,
+      arabicVideoId: arabicVideoId,
     );
     var code = await _loadScript(active);
     if (gen != _extractGeneration) return null;
@@ -933,6 +935,7 @@ class EngineService {
     int? anilistId,
     int? kisskhId,
     int? kisskhEpisodeId,
+    String? arabicVideoId,
     bool allowHostFallback = false,
   }) async {
     // RFC-064: Forja EngineJS on tokio (true parallel). Null → flutter_js fork
@@ -952,6 +955,7 @@ class EngineService {
       anilistId: anilistId,
       kisskhId: kisskhId,
       kisskhEpisodeId: kisskhEpisodeId,
+      arabicVideoId: arabicVideoId,
       allowHostFallback: allowHostFallback,
     );
     if (viaRust != null) return viaRust;
@@ -981,6 +985,7 @@ class EngineService {
         anilistId: anilistId,
         kisskhId: kisskhId,
         kisskhEpisodeId: kisskhEpisodeId,
+        arabicVideoId: arabicVideoId,
         allowHostFallback: allowHostFallback,
         runtime: runtime,
       );
@@ -1004,6 +1009,7 @@ class EngineService {
     int? anilistId,
     int? kisskhId,
     int? kisskhEpisodeId,
+    String? arabicVideoId,
     bool allowHostFallback = false,
   }) async {
     final gen = _extractGeneration;
@@ -1020,11 +1026,12 @@ class EngineService {
     final mediaType = _normalizeEngineMediaType(type);
     final overlay =
         ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
-    final config = engineConfigWithKissKhIds(
+    final config = mergeEnginePluginConfig(
       mergeEngineConfig(plugin.config, overlay),
       pluginId: plugin.id,
       kisskhId: kisskhId,
       kisskhEpisodeId: kisskhEpisodeId,
+      arabicVideoId: arabicVideoId,
     );
     final code = await _loadScript(plugin);
     if (gen != _extractGeneration || code == null) return null;

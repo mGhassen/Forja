@@ -42,7 +42,9 @@ class HomeMovieCard extends StatelessWidget {
     final metaSize = shellScaled(context, 11).clamp(7.0, 11.0);
     final compact = cardWidth < 85;
     final imageUrl = movie.posterPath.isNotEmpty
-        ? TmdbApi.getImageUrl(movie.posterPath)
+        ? (movie.posterPath.startsWith('http')
+            ? movie.posterPath
+            : TmdbApi.getImageUrl(movie.posterPath))
         : '';
 
     final card = shellFocusableTap(

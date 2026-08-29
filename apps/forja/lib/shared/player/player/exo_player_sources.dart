@@ -438,6 +438,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       malId: session?.malId,
       kisskhId: session?.kisskhId,
       kisskhEpisodeId: ep != null ? session?.kisskhEpisodeIdFor(ep) : null,
+      arabicVideoId: ep != null ? session?.arabicVideoIdFor(ep) : null,
       engineCategory: session?.category,
       animeAudioCategory: session?.animeAudioCategory,
       onTorrentSelected: _switchTorrentSource,

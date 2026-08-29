@@ -997,6 +997,35 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
   }
 }
 
+/// IconButton on touch/desktop; [shellFocusableTap] on TV so D-pad owns focus.
+Widget _settingsTvIconButton(
+  BuildContext context, {
+  required String tooltip,
+  required IconData icon,
+  required VoidCallback? onPressed,
+  Color color = ForjaShellColors.textPrimary,
+}) {
+  final child = Icon(icon, color: color, size: 20);
+  final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+  if (tv) {
+    return shellFocusableTap(
+      context: context,
+      onTap: onPressed,
+      borderRadius: 8,
+      scaleOnFocus: 1.0,
+      showFocusRail: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      child: SizedBox(width: 40, height: 40, child: Center(child: child)),
+    );
+  }
+  return IconButton(
+    tooltip: tooltip,
+    onPressed: onPressed,
+    icon: child,
+  );
+}
+
 /// Pack master switch + refresh + remove for an installed engine plugin pack.
 class _EnginePackActions extends StatelessWidget {
   const _EnginePackActions({
@@ -1035,9 +1064,10 @@ class _EnginePackActions extends StatelessWidget {
               ),
             ),
           ),
-        IconButton(
+        _settingsTvIconButton(
+          context,
           tooltip: 'Refresh',
-          icon: const Icon(Icons.refresh_rounded, size: 20),
+          icon: Icons.refresh_rounded,
           onPressed: onRefresh,
         ),
         _AddonRemoveActions(onRemove: onRemove),
@@ -1086,24 +1116,12 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
     required Color color,
     required VoidCallback onTap,
   }) {
-    final child = Icon(icon, color: color, size: 20);
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    if (tv) {
-      return shellFocusableTap(
-        context: context,
-        onTap: onTap,
-        borderRadius: 8,
-        scaleOnFocus: 1.0,
-        showFocusRail: true,
-        tvTabId: 'settings',
-        tvZone: ShellTvZone.settings,
-        child: SizedBox(width: 40, height: 40, child: Center(child: child)),
-      );
-    }
-    return IconButton(
+    return _settingsTvIconButton(
+      context,
       tooltip: tooltip,
+      icon: icon,
+      color: color,
       onPressed: onTap,
-      icon: child,
     );
   }
 

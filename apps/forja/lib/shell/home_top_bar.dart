@@ -22,7 +22,6 @@ class HomeTopBar extends StatelessWidget {
       ],
       scrollOffset: ShellBus.homeScrollOffset,
       heroHeight: ShellBus.homeHeroHeight,
-      showProviderLogo: true,
       onSearch: () {
         pushShellRoute(
           context,

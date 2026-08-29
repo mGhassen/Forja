@@ -198,7 +198,13 @@ class SettingsCategoryTile extends StatelessWidget {
         // onSelect(profile) — yanking the hub every background→foreground.
         final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
         if (leanback && focused && !selected) {
-          (onFocusSelect ?? onTap)();
+          // Defer — sync onSelect rebuilds the rail and rebinds
+          // [firstTileFocusNode] onto the new tile, disposing the owned node
+          // that just received D-pad focus (↓ looked dead on Playback → Sources).
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!context.mounted) return;
+            (onFocusSelect ?? onTap)();
+          });
         }
       },
       child: child,
@@ -1640,7 +1646,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       }
       if (moved) return KeyEventResult.handled;
     }
-    return KeyEventResult.handled;
+    return KeyEventResult.ignored;
   }
 
   @override

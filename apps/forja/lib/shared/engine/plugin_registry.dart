@@ -59,6 +59,25 @@ class PluginRegistry {
     defaultValue: false,
   );
 
+  /// Shipped ForjaHQ manifests on `main` — used when dart-define points at a
+  /// dev workstation path that does not exist on device (Android / iOS / TV).
+  static const builtinCloudManifestUrls = <String, String>{
+    'providers':
+        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/providers/manifest.json',
+    'live':
+        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/live/manifest.json',
+    'catalog':
+        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/catalog/manifest.json',
+    'home':
+        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/home/manifest.json',
+    'anime':
+        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/anime/manifest.json',
+    'asian_drama':
+        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/asian_drama/manifest.json',
+    'arabic':
+        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/arabic/manifest.json',
+  };
+
   static const officialPackIds = {
     'forjahq-providers',
     'forjahq-live',
@@ -159,6 +178,39 @@ class PluginRegistry {
       return File(t);
     }
     return null;
+  }
+
+  Future<bool> _localManifestExists(String url) async {
+    final file = _asLocalFile(url);
+    if (file == null) return true;
+    return file.exists();
+  }
+
+  /// When `.env` uses a Mac checkout path, device builds cannot read it — swap
+  /// to cloud (prefs first, then [builtinCloudManifestUrls]).
+  Future<String> _substituteUnreachableLocalManifest(String url) async {
+    if (await _localManifestExists(url)) return url;
+    final slot = forjaHqSlot(url);
+    final cloud = slot == null
+        ? null
+        : (_cloudOfficialBySlot[slot] ?? builtinCloudManifestUrls[slot]);
+    if (cloud != null && cloud.isNotEmpty) {
+      debugPrint(
+        '[engine] local manifest missing ($slot) — using cloud pack',
+      );
+      return cloud;
+    }
+    return url;
+  }
+
+  Future<List<String>> _substituteUnreachableLocalManifests(
+    List<String> urls,
+  ) async {
+    final out = <String>[];
+    for (final u in urls) {
+      out.add(await _substituteUnreachableLocalManifest(u));
+    }
+    return out;
   }
 
   Future<String> _fetchText(String url) async {
@@ -645,26 +697,45 @@ class PluginRegistry {
   Future<List<String>> resolveEffectiveOfficialUrls() async {
     final dartUrls = officialManifestUrls;
     if (dartUrls.length < requiredOfficialPackCount) return dartUrls;
-    if (forcePluginEnv) {
-      return [...dartUrls, ...optionalOfficialManifestUrls];
-    }
 
     await _loadCloudOfficialFromPrefs();
     await _discoverCloudOfficialFromInstalled();
 
+    final optionalDart = optionalOfficialManifestUrls;
+    final resolvedDart = await _substituteUnreachableLocalManifests(dartUrls);
+    final resolvedOptional =
+        await _substituteUnreachableLocalManifests(optionalDart);
+    final hasReachableLocal = await () async {
+      for (final u in [...resolvedDart, ...resolvedOptional]) {
+        final file = _asLocalFile(u);
+        if (file != null && await file.exists()) return true;
+      }
+      return false;
+    }();
+
+    if (forcePluginEnv && hasReachableLocal) {
+      return [...resolvedDart, ...resolvedOptional];
+    }
+    if (forcePluginEnv && !hasReachableLocal) {
+      debugPrint(
+        '[engine] FORJA_HQ_FORCE_PLUGIN_ENV=true but local manifests are '
+        'unavailable on this device — using cloud ForjaHQ packs',
+      );
+    }
+
     // Resolve every required slot this build configures.
     final wanted = <String>{
-      for (final u in dartUrls)
+      for (final u in resolvedDart)
         if (forjaHqSlot(u) != null) forjaHqSlot(u)!,
     };
     final bySlot = <String, String>{};
     for (final s in officialSlotOrder) {
       if (!wanted.contains(s)) continue;
-      final cloud = _cloudOfficialBySlot[s];
+      final cloud = _cloudOfficialBySlot[s] ?? builtinCloudManifestUrls[s];
       if (cloud != null && cloud.isNotEmpty) bySlot[s] = cloud;
     }
-    // Fill missing slots from dart-define.
-    for (final u in dartUrls) {
+    // Fill missing slots from dart-define (already cloud-substituted).
+    for (final u in resolvedDart) {
       final s = forjaHqSlot(u);
       if (s == null || bySlot.containsKey(s)) continue;
       bySlot[s] = u;
@@ -674,14 +745,15 @@ class PluginRegistry {
         if (bySlot[s] != null) bySlot[s]!,
     ];
     final required =
-        out.length == wanted.length ? out : dartUrls;
+        out.length == wanted.length ? out : resolvedDart;
     // Optional Arabic: prefer cloud slot, else dart-define when set.
     final optional = <String>[];
-    final cloudArabic = _cloudOfficialBySlot['arabic'];
+    final cloudArabic =
+        _cloudOfficialBySlot['arabic'] ?? builtinCloudManifestUrls['arabic'];
     if (cloudArabic != null && cloudArabic.isNotEmpty) {
       optional.add(cloudArabic);
-    } else {
-      optional.addAll(optionalOfficialManifestUrls);
+    } else if (resolvedOptional.isNotEmpty) {
+      optional.addAll(resolvedOptional);
     }
     return [...required, ...optional];
   }

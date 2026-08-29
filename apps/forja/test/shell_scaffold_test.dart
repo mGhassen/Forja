@@ -10,7 +10,9 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_scaffold.dart';
 import 'package:forja/shell/home_top_bar.dart';
-import 'package:forja/shell/shell_top_bar.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters_rail.dart';
+import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/forja_profile_avatar.dart';
 import 'package:rust/src/settings_service.dart';
@@ -36,7 +38,30 @@ Widget _wrapShellScope(
 void main() {
   const visibleIds = ['home', 'search', 'settings'];
 
+  void seedHomeVerticalFilters() {
+    CatalogVerticalFiltersRegistry.register(
+      CatalogVerticalFiltersSpec(
+        widgetId: 'watch_providers',
+        tabId: 'home',
+        pluginId: 'tmdb',
+        packSourceUrl: '',
+        showSelectedInTopBar: true,
+        options: [
+          CatalogVerticalFilterOption(
+            id: 'netflix',
+            label: 'Netflix',
+            logo: 'assets/watch_providers/netflix.svg',
+            tileColor: const Color(0xFF000000),
+            filter: CatalogFilterAst.eq('watch_provider', 8),
+          ),
+        ],
+      ),
+    );
+  }
+
   setUp(() {
+    CatalogVerticalFiltersRegistry.clearForTest();
+    seedHomeVerticalFilters();
     ShellBus.homeCategory.value = null;
     ShellBus.homeSelectedGenreId.value = null;
     ShellBus.homeHeroHeight.value = 0;
@@ -202,13 +227,14 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(HomeWatchProviderRail), findsOneWidget);
+    expect(find.byType(CatalogVerticalFiltersRail), findsOneWidget);
   });
 
   testWidgets('HomeTopBar shows selected provider logo before Films', (
     tester,
   ) async {
-    ShellBus.selectedWatchProviderId.value = 8; // Netflix
+    ShellBus.selectedWatchProviderId.value = 8; // legacy — logo uses registry
+    CatalogVerticalFiltersRegistry.selectedIdFor('home').value = 'netflix';
     await pumpScaffold(
       tester,
       desktopScaffold(shellTopBar: const HomeTopBar()),
@@ -217,7 +243,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.byType(HomeSelectedWatchProviderLogo), findsOneWidget);
+    expect(find.byType(CatalogVerticalFilterTopBarLogo), findsOneWidget);
   });
 
   testWidgets('HomeTopBar slides away after scrolling past hero height', (

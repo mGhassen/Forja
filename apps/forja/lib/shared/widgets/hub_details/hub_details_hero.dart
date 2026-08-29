@@ -372,7 +372,7 @@ class _HubHeroMainColumn extends StatelessWidget {
     color: Color(0xB8FFFFFF),
   );
   /// Room for up to 3 lines of text title (auto-shrinks in [HeroTitle]).
-  static const _textTitleBlockHeight = 120.0;
+  static const _textTitleBlockHeight = 96.0;
   static const _titleMinHeight = 32.0;
   static const _subtitleBlockHeight = 26.0;
   static const _genreBlockHeight = 20.0;

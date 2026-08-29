@@ -21,6 +21,10 @@ abstract final class ShellTvFocus {
   static FocusNode? homeProviderRailFirst;
   static final Map<int, FocusNode> homeProviderRailById = {};
 
+  static String? verticalFilterRailTabId;
+  static FocusNode? verticalFilterRailFirst;
+  static final Map<String, FocusNode> verticalFilterRailById = {};
+
   static final Map<String, FocusNode> _navNodes = {};
 
   static void registerNav(String id, FocusNode node) {
@@ -101,8 +105,10 @@ abstract final class ShellTvFocus {
     return true;
   }
 
-  static bool focusHomeProviderRail() {
-    final node = homeProviderRailFirst;
+  static bool focusHomeProviderRail() => focusVerticalFilterRail();
+
+  static bool focusVerticalFilterRail() {
+    final node = verticalFilterRailFirst ?? homeProviderRailFirst;
     if (node == null || !node.canRequestFocus) return false;
     node.requestFocus();
     return true;
@@ -144,9 +150,38 @@ abstract final class ShellTvFocus {
 
   /// After opening the rail (may need a rebuild), land on [providerId].
   static void scheduleFocusHomeProviderById(int? providerId) {
+    scheduleFocusVerticalFilterById(
+      verticalFilterRailTabId ?? 'home',
+      providerId?.toString(),
+    );
+  }
+
+  static bool focusVerticalFilterById(String tabId, String? optionId) {
+    final node = optionId == null
+        ? null
+        : verticalFilterRailById[optionId];
+    final target = (node != null && node.canRequestFocus)
+        ? node
+        : verticalFilterRailFirst;
+    if (target == null || !target.canRequestFocus) return false;
+    target.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = target.context;
+      if (ctx == null || !ctx.mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        alignment: 0.4,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+      );
+    });
+    return true;
+  }
+
+  static void scheduleFocusVerticalFilterById(String tabId, String? optionId) {
     void attempt(int n) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (focusHomeProviderById(providerId)) return;
+        if (focusVerticalFilterById(tabId, optionId)) return;
         if (n < 2) attempt(n + 1);
       });
     }
@@ -294,8 +329,8 @@ KeyEventResult shellTvLinearMenuArrows({
   // Default closedLoop makes previousFocus on the first node land on the last.
   final edge = scope.traversalEdgeBehavior;
   scope.traversalEdgeBehavior = TraversalEdgeBehavior.stop;
+  var movedAny = false;
   try {
-    var movedAny = false;
     for (var i = 0; i < steps; i++) {
       final moved = backward ? scope.previousFocus() : scope.nextFocus();
       if (!moved) {
@@ -315,7 +350,7 @@ KeyEventResult shellTvLinearMenuArrows({
   } finally {
     scope.traversalEdgeBehavior = edge;
   }
-  return KeyEventResult.handled;
+  return movedAny ? KeyEventResult.handled : KeyEventResult.ignored;
 }
 
 /// Coordinator-first D-pad arrows for catalog rows - traps horizontal edges.
@@ -421,6 +456,18 @@ KeyEventResult shellTvTrapRowGeometry({
   if ((rowBound || grid) &&
       (key == LogicalKeyboardKey.arrowUp ||
           key == LogicalKeyboardKey.arrowDown)) {
+    // Vertical rails (Settings categories, episode lists): coordinator may
+    // return ignored when the next tile is not registered yet — spatial
+    // focusInDirection must still run. Horizontal catalog rows keep the trap.
+    if (rowBound && tvMeta?.rowId != null) {
+      final handle = ShellTvFocusCoordinator.rowHandle(
+        tvMeta!.tabId,
+        tvMeta.rowId!,
+      );
+      if (handle?.orientation == ShellTvRowOrientation.vertical) {
+        return KeyEventResult.ignored;
+      }
+    }
     return KeyEventResult.handled;
   }
   return KeyEventResult.ignored;

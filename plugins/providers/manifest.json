@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-providers",
   "name": "ForjaHQ Providers",
-  "version": "1.5.24",
+  "version": "1.5.26",
   "plugins": [
     {
       "id": "videasy",
@@ -109,6 +109,49 @@
         "drama"
       ],
       "kind": "http"
+    },
+    {
+      "id": "larozaa",
+      "name": "Larozaa",
+      "entry": "larozaa.js",
+      "types": [
+        "arabic"
+      ],
+      "kind": "http",
+      "config": {
+        "bootstrap": "https://larozaa.bond",
+        "mirrors": [
+          "https://larozaa.bond",
+          "https://larozaa.home",
+          "https://larozaa.homes",
+          "https://larozaa.com",
+          "https://laaroza.pics"
+        ]
+      }
+    },
+    {
+      "id": "dimatoon",
+      "name": "DimaToon",
+      "entry": "dimatoon.js",
+      "types": [
+        "arabic"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://www.dima-toon.com"
+      }
+    },
+    {
+      "id": "brstej",
+      "name": "Brstej",
+      "entry": "brstej.js",
+      "types": [
+        "arabic"
+      ],
+      "kind": "http",
+      "config": {
+        "origin": "https://hd1.brstej.com"
+      }
     },
     {
       "id": "hexa",

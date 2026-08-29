@@ -18,9 +18,48 @@ String catalogTmdbPath(String raw) {
   return s;
 }
 
+/// Stable negative id for hub meta without TMDB (Arabic catalog cards).
+int catalogSyntheticMovieId(CatalogMetaItem item) {
+  return -item.id.hashCode.abs().clamp(1, 0x7FFFFFFF);
+}
+
+final Map<int, CatalogMetaItem> _catalogMetaByMovieId = {};
+
+/// Reverse lookup after [catalogMetaToMovie] (Arabic home rails tap).
+CatalogMetaItem? catalogMetaItemForMovie(Movie movie) =>
+    _catalogMetaByMovieId[movie.id];
+
+String catalogPosterPathForMovie(String raw) {
+  final s = raw.trim();
+  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+  return catalogTmdbPath(s);
+}
+
 /// Map catalog meta → [Movie] for HomeMovieCard / HomeMovieSection.
 Movie? catalogMetaToMovie(CatalogMetaItem item) {
   final type = item.type.toLowerCase();
+  if (type == 'arabic') {
+    final movieId = catalogSyntheticMovieId(item);
+    _catalogMetaByMovieId[movieId] = item;
+    final isMovie = item.open?.extraBool('movie') == true ||
+        (item.badge ?? '').toUpperCase() == 'MOVIE';
+    final poster = item.poster.trim();
+    final backdrop = item.background.trim();
+    return Movie(
+      id: movieId,
+      title: item.name,
+      posterPath: catalogPosterPathForMovie(poster),
+      backdropPath: catalogPosterPathForMovie(
+        backdrop.isNotEmpty ? backdrop : poster,
+      ),
+      voteAverage: item.rating ?? 0,
+      releaseDate: item.releaseInfo,
+      overview: item.description,
+      genres: item.genres,
+      mediaType: isMovie ? 'movie' : 'tv',
+    );
+  }
+
   final id = item.numericId('tmdb');
   if (id == null || id <= 0) return null;
 

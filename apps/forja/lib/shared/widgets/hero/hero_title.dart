@@ -75,10 +75,10 @@ int heroTitleMaxLinesForSlot(double maxHeight) {
 }
 
 double heroTitlePreferredFontSize(double maxHeight) {
-  if (maxHeight <= 56) return 32;
-  if (maxHeight <= 72) return 40;
-  if (maxHeight <= 100) return 44;
-  return 48;
+  if (maxHeight <= 56) return 26;
+  if (maxHeight <= 72) return 32;
+  if (maxHeight <= 100) return 36;
+  return 40;
 }
 
 /// Cyan/amber offset layers under white — desktop/mobile details look.
@@ -228,8 +228,14 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
 
   @override
   Widget build(BuildContext context) {
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
     final logoUrl = widget.logoUrl?.trim() ?? '';
-    final logoHeight = widget.slotHeight ?? 96.0;
+    final defaultHeight = tv ? ShellTokens.heroLogoMaxHeightTv : 96.0;
+    final logoHeight = widget.slotHeight == null
+        ? defaultHeight
+        : tv
+            ? widget.slotHeight!.clamp(0.0, ShellTokens.heroLogoMaxHeightTv)
+            : widget.slotHeight!;
     final title = _fallbackTitle(widget.movie, logoHeight);
     if (logoUrl.isEmpty) return title;
 
@@ -322,11 +328,14 @@ class _HomeHeroTitleSlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bodyWidth = MediaQuery.sizeOf(context).width;
-    final logoMaxHeight = compact
-        ? ShellTokens.heroLogoMaxHeightCompact
-        : desktop
-            ? ShellTokens.heroLogoMaxHeightDesktop
-            : (isLandscape ? 140.0 : 110.0);
+    final tv = ShellScope.metricsOf(context).usesTvDensity;
+    final logoMaxHeight = tv
+        ? ShellTokens.heroLogoMaxHeightTv
+        : compact
+            ? ShellTokens.heroLogoMaxHeightCompact
+            : desktop
+                ? ShellTokens.heroLogoMaxHeightDesktop
+                : (isLandscape ? 140.0 : 110.0);
     final resolvedMaxWidth = maxWidth ??
         (compact
             ? bodyWidth * 0.72
@@ -336,9 +345,11 @@ class _HomeHeroTitleSlot extends StatelessWidget {
     final resolvedSlotHeight = slotHeight ??
         (compact
             ? ShellTokens.heroTitleSlotHeightCompact
-            : desktop
-                ? ShellTokens.heroTitleSlotHeightDesktop
-                : logoMaxHeight + 14);
+            : tv
+                ? ShellTokens.heroTitleSlotHeightTv
+                : desktop
+                    ? ShellTokens.heroTitleSlotHeightDesktop
+                    : logoMaxHeight + 14);
     final hasLogo = logoUrl != null && logoUrl!.isNotEmpty;
     // Text titles use the full slot; logo placeholders fit the logo box.
     final textMaxHeight = hasLogo ? logoMaxHeight : resolvedSlotHeight;

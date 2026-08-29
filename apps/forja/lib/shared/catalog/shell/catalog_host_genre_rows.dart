@@ -5,12 +5,15 @@ import 'package:forja/features/home/home_catalog_rotate.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/features/home/widgets/home_movie_section.dart';
 import 'package:forja/shell/app_router.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
 
 /// Host-owned random (or filter-locked) genre discovery rows — old Home bottom.
 class CatalogHostGenreRows extends StatefulWidget {
-  const CatalogHostGenreRows({super.key});
+  const CatalogHostGenreRows({super.key, this.tvRowOrderBase = 20});
+
+  final int tvRowOrderBase;
 
   @override
   State<CatalogHostGenreRows> createState() => _CatalogHostGenreRowsState();
@@ -32,7 +35,7 @@ class _CatalogHostGenreRowsState extends State<CatalogHostGenreRows> {
     super.initState();
     ShellBus.homeSelectedGenreId.addListener(_onFilter);
     ShellBus.homeCategory.addListener(_onFilter);
-    ShellBus.selectedWatchProviderId.addListener(_onFilter);
+    CatalogVerticalFiltersRegistry.selectedIdFor('home').addListener(_onFilter);
     _reset();
   }
 
@@ -40,7 +43,9 @@ class _CatalogHostGenreRowsState extends State<CatalogHostGenreRows> {
   void dispose() {
     ShellBus.homeSelectedGenreId.removeListener(_onFilter);
     ShellBus.homeCategory.removeListener(_onFilter);
-    ShellBus.selectedWatchProviderId.removeListener(_onFilter);
+    CatalogVerticalFiltersRegistry.selectedIdFor('home').removeListener(
+      _onFilter,
+    );
     super.dispose();
   }
 
@@ -54,7 +59,7 @@ class _CatalogHostGenreRowsState extends State<CatalogHostGenreRows> {
       List<int> tvGenres,
     }) category,
   ) async {
-    final providerId = ShellBus.selectedWatchProviderId.value;
+    final providerId = CatalogVerticalFiltersRegistry.watchProviderIdFor('home');
     final selected = ShellBus.homeSelectedGenreId.value;
     final looked = lookupHomeGenre(selected);
     final movieGenres = looked?.movieGenres ?? category.movieGenres;
@@ -168,7 +173,7 @@ class _CatalogHostGenreRowsState extends State<CatalogHostGenreRows> {
                 : _rows[i].future,
             onMovieTap: (m) => AppRouter.openDetails(context, movie: m),
             tvRowId: 'genre-${_rows[i].id}',
-            tvRowOrder: 20 + i,
+            tvRowOrder: widget.tvRowOrderBase + i,
           ),
       ],
     );

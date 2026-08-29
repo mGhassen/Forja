@@ -4,6 +4,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
 /// Prevents nested horizontal rows from scrolling the parent vertical list.
@@ -64,18 +65,11 @@ VoidCallback? _resolveTvNavLeftEdge(
       ShellTvLinearFocusScope.activeOf(context)) {
     return null;
   }
-  if (tvTabId != null &&
-      tvTabId != ShellTvFocus.currentNavTabId &&
-      tvTabId != 'home' &&
-      tvTabId != MediaDetailsTv.tabId &&
-      tvTabId != 'iptv' &&
-      tvTabId != 'search' &&
-      tvTabId != 'anime' &&
-      tvTabId != 'asian_drama' &&
-      tvTabId != 'live_matches' &&
-      tvTabId != 'mylist' &&
-      tvTabId != 'settings') {
-    return null;
+  if (tvTabId != null && tvTabId != ShellTvFocus.currentNavTabId) {
+    final known = tvTabId == MediaDetailsTv.tabId ||
+        PluginNavRegistry.isHubTab(tvTabId) ||
+        PluginNavRegistry.isCoreShell(tvTabId);
+    if (!known) return null;
   }
   if (gridIndex != null && gridColumns != null) {
     return shellTvNavLeftEdgeGrid(

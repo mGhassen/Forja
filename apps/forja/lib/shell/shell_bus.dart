@@ -1,7 +1,6 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
@@ -45,16 +44,16 @@ class ShellBus {
       ValueNotifier<String?>(null);
 
   /// TMDB watch-provider filter for Home (`null` = all providers).
+  /// Deprecated — use [CatalogVerticalFiltersRegistry] for hub tabs.
   static final ValueNotifier<int?> selectedWatchProviderId = ValueNotifier(
     null,
   );
 
-  /// Floating Home provider panel (hover/hold Home, or top-logo tap).
-  /// Session UI only — not persisted. Hide on leave-Home, tap-outside, or
+  /// Floating hub vertical-filter panel (hover/hold nav, or top-logo tap).
+  /// Session UI only — not persisted. Hide on leave-tab, tap-outside, or
   /// desktop unhover after [homeProviderMenuHideDelay].
-  static final ValueNotifier<bool> homeProviderMenuVisible = ValueNotifier(
-    false,
-  );
+  static ValueNotifier<bool> get homeProviderMenuVisible =>
+      CatalogVerticalFiltersRegistry.menuVisibleFor('home');
 
   /// [TapRegion.groupId] for the panel + top-bar selected-provider mark.
   static const Object homeProviderMenuTapGroup = Object();
@@ -70,50 +69,30 @@ class ShellBus {
   /// Desktop: hide after pointer leaves Home nav / provider panel.
   static const Duration homeProviderMenuHideDelay = Duration(seconds: 1);
 
-  static Timer? _homeProviderHideTimer;
-
   static void cancelHomeProviderMenuHide() {
-    _homeProviderHideTimer?.cancel();
-    _homeProviderHideTimer = null;
+    CatalogVerticalFiltersRegistry.cancelMenuHide('home');
   }
 
-  /// Start (or restart) the desktop unhover hide timer.
   static void scheduleHomeProviderMenuHide() {
-    if (!homeProviderMenuVisible.value) return;
-    cancelHomeProviderMenuHide();
-    _homeProviderHideTimer = Timer(homeProviderMenuHideDelay, () {
-      _homeProviderHideTimer = null;
-      hideHomeProviderMenu();
-    });
+    CatalogVerticalFiltersRegistry.scheduleMenuHide('home');
   }
 
   static void showHomeProviderMenu() {
-    cancelHomeProviderMenuHide();
-    if (!homeProviderMenuVisible.value) {
-      homeProviderMenuVisible.value = true;
-    }
+    CatalogVerticalFiltersRegistry.showMenu('home');
   }
 
   static void hideHomeProviderMenu() {
-    cancelHomeProviderMenuHide();
-    if (homeProviderMenuVisible.value) {
-      homeProviderMenuVisible.value = false;
-    }
+    CatalogVerticalFiltersRegistry.hideMenu('home');
   }
 
-  /// Top-bar selected-provider mark: open panel, or clear filter if already open.
+  /// Top-bar selected-filter mark: open panel, or clear filter if already open.
   static void onTopProviderLogoTap() {
-    if (!homeProviderMenuVisible.value) {
-      homeProviderMenuVisible.value = true;
-      cancelHomeProviderMenuHide();
-      return;
-    }
-    selectedWatchProviderId.value = null;
+    CatalogVerticalFiltersRegistry.onTopLogoTap('home');
   }
 
-  /// Leaving Home hides the panel; filter stays until cleared.
+  /// Leaving a hub tab hides the panel; filter stays until cleared.
   static void onLeaveHomeTab() {
-    hideHomeProviderMenu();
+    CatalogVerticalFiltersRegistry.onLeaveTab('home');
   }
 
   /// Home feed vertical scroll - [HomeTopBar] slides away near [homeHeroHeight].
@@ -131,6 +110,27 @@ class ShellBus {
   static final ValueNotifier<double> asianDramaHeroHeight = ValueNotifier(0);
   static final ValueNotifier<double> arabicHeroHeight = ValueNotifier(0);
   static final ValueNotifier<double> homeHeroHeight = ValueNotifier(0);
+
+  static final Map<String, ValueNotifier<double>> _hubScrollOffsets = {};
+  static final Map<String, ValueNotifier<double>> _hubHeroHeights = {};
+  static final Map<String, ValueNotifier<ShellHomeCategory?>> _hubCategories = {};
+  static final Map<String, ValueNotifier<String?>> _hubSelectedCategoryIds = {};
+
+  /// Per-tab scroll offset for plugin hubs without a dedicated [ShellBus] field.
+  static ValueNotifier<double> hubScrollOffsetFor(String tabId) =>
+      _hubScrollOffsets.putIfAbsent(tabId, () => ValueNotifier(0));
+
+  /// Per-tab hero height for plugin hubs without a dedicated [ShellBus] field.
+  static ValueNotifier<double> hubHeroHeightFor(String tabId) =>
+      _hubHeroHeights.putIfAbsent(tabId, () => ValueNotifier(0));
+
+  /// Films / Series filter for plugin hub top bars (`null` = mixed).
+  static ValueNotifier<ShellHomeCategory?> hubCategoryFor(String tabId) =>
+      _hubCategories.putIfAbsent(tabId, () => ValueNotifier(null));
+
+  /// Categories menu selection for plugin hub top bars (`null` = all).
+  static ValueNotifier<String?> hubSelectedCategoryIdFor(String tabId) =>
+      _hubSelectedCategoryIds.putIfAbsent(tabId, () => ValueNotifier(null));
 
   /// SearchScreen listens for incoming Stremio search requests.
   /// Value: {'query': '...', 'addonBaseUrl': '...'} or null.

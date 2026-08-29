@@ -1,9 +1,11 @@
+import 'package:forja/shared/player/player/playable_source_bridge.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 /// Soft reachability check for Sources panel stream rows (Forja / Nuvio / Stremio).
 Future<bool> probeSourcesPanelStream(Map<String, dynamic> stream) async {
   final url = (stream['url'] ?? '').toString().trim();
   if (url.isEmpty) return false;
+  if (PlayableSourceBridge.isArabicEmbedCatalogRow(stream)) return true;
   final lower = url.toLowerCase();
   if (lower.startsWith('magnet:') ||
       lower.startsWith('stremio://') ||

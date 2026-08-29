@@ -36,10 +36,11 @@ class EnginePlaySession {
     this.malId,
     this.kisskhId,
     this.kisskhEpisodeIdByNumber = const {},
+    this.arabicVideoIdByEpisode = const {},
     this.animeAudioCategory,
   });
 
-  /// `movie` | `tv` | `anime` | `drama` — same as [runEngineAutoPlay] category.
+  /// `movie` | `tv` | `anime` | `drama` | `arabic` — same as [runEngineAutoPlay] category.
   final String category;
   final int? anilistId;
   final int? malId;
@@ -48,13 +49,20 @@ class EnginePlaySession {
   /// KissKh display episode number → episode id (drama next/prev).
   final Map<int, int> kisskhEpisodeIdByNumber;
 
+  /// Arabic hub display episode number → opaque pack video id.
+  final Map<int, String> arabicVideoIdByEpisode;
+
   /// Anime hub SUB/DUB — same session-cache key as green Play / Sources.
   final String? animeAudioCategory;
 
   bool get isHubFlatList =>
-      category == EngineCategories.anime || category == EngineCategories.drama;
+      category == EngineCategories.anime ||
+      category == EngineCategories.drama ||
+      category == EngineCategories.arabic;
 
   int? kisskhEpisodeIdFor(int episode) => kisskhEpisodeIdByNumber[episode];
+
+  String? arabicVideoIdFor(int episode) => arabicVideoIdByEpisode[episode];
 }
 
 /// Current player session came from Forja Engine (`engine:<pluginId>`).
@@ -95,6 +103,7 @@ Future<void> switchEpisodeViaEngineAutoPlay({
     malId: s?.malId,
     kisskhId: s?.kisskhId,
     kisskhEpisodeId: s?.kisskhEpisodeIdFor(episode),
+    arabicVideoId: s?.arabicVideoIdFor(episode),
     animeAudioCategory: s?.animeAudioCategory,
     stremioId: stremioId ?? movie.imdbId,
     loadingSubtitle: s?.isHubFlatList == true
@@ -154,6 +163,7 @@ Future<void> runEngineAutoPlay({
   int? episode,
   int? kisskhId,
   int? kisskhEpisodeId,
+  String? arabicVideoId,
   int? anilistId,
   int? malId,
   String? animeAudioCategory,
@@ -198,6 +208,12 @@ Future<void> runEngineAutoPlay({
         kisskhEpisodeIdByNumber: {
           if (kisskhEpisodeId != null && episode != null) episode: kisskhEpisodeId,
         },
+        arabicVideoIdByEpisode: {
+          if (arabicVideoId != null &&
+              arabicVideoId.isNotEmpty &&
+              episode != null)
+            episode: arabicVideoId,
+        },
         animeAudioCategory: animeAudioCategory,
       );
   final resolveType = _engineResolveType(category, movie);
@@ -210,6 +226,7 @@ Future<void> runEngineAutoPlay({
     malId: malId,
     kisskhId: kisskhId,
     animeAudioCategory: animeAudioCategory,
+    arabicVideoId: arabicVideoId,
   );
 
   var cancelled = false;
@@ -555,6 +572,8 @@ Future<void> runEngineAutoPlay({
           anilistId: anilistId,
           kisskhId: kisskhId,
           kisskhEpisodeId: kisskhEpisodeId,
+          arabicVideoId:
+              session.arabicVideoIdFor(episode ?? 1) ?? arabicVideoId,
           allowHostFallback: false,
         );
       } catch (e) {
@@ -779,6 +798,7 @@ Future<void> runEngineAutoPlay({
 String _engineResolveType(String panelCategory, Movie movie) {
   if (panelCategory == EngineCategories.anime) return 'anime';
   if (panelCategory == EngineCategories.drama) return 'drama';
+  if (panelCategory == EngineCategories.arabic) return 'arabic';
   return movie.mediaType == 'tv' ? 'tv' : 'movie';
 }
 

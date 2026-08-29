@@ -31,11 +31,53 @@ var TMDB_MOODS = [
   { id: 'drama', label: 'Drama', icon: 'theaters', accent: '#3B82F6', movieGenres: [18], tvGenres: [18] },
 ];
 
+// Pack-owned logos under plugins/hubs/home/logos — host.vertical_filters widget.
+var TMDB_VERTICAL_FILTERS = [
+  { id: 'netflix', label: 'Netflix', logo: 'logos/netflix.svg', tileColor: '#000000', inset: 0.16, filter: { field: 'watch_provider', value: 8 } },
+  { id: 'disney', label: 'Disney+', logo: 'logos/disneyplus.svg', tileColor: '#FFFFFF', inset: 0.12, filter: { field: 'watch_provider', value: 337 } },
+  { id: 'prime', label: 'Prime Video', logo: 'logos/primevideo.svg', tileColor: '#000000', inset: 0.14, filter: { field: 'watch_provider', value: 9 } },
+  { id: 'apple', label: 'Apple TV+', logo: 'logos/appletv.svg', tileColor: '#000000', inset: 0.2, filter: { field: 'watch_provider', value: 350 } },
+  { id: 'max', label: 'Max', logo: 'logos/max.svg', tileColor: '#002BE7', inset: 0.18, forceWhiteLogo: true, filter: { field: 'watch_provider', value: 1899 } },
+  { id: 'hulu', label: 'Hulu', logo: 'logos/hulu.svg', tileColor: '#000000', inset: 0.2, filter: { field: 'watch_provider', value: 15 } },
+  { id: 'paramount', label: 'Paramount+', logo: 'logos/paramountplus.svg', tileColor: '#0064FF', inset: 0.14, forceWhiteLogo: true, filter: { field: 'watch_provider', value: 2303 } },
+  { id: 'peacock', label: 'Peacock', logo: 'logos/peacock.svg', tileColor: '#FFFFFF', inset: 0.14, filter: { field: 'watch_provider', value: 386 } },
+  { id: 'crunchyroll', label: 'Crunchyroll', logo: 'logos/crunchyroll.svg', tileColor: '#000000', inset: 0.16, filter: { field: 'watch_provider', value: 283 } },
+  { id: 'tubi', label: 'Tubi', logo: 'logos/tubi.svg', tileColor: '#4B0082', inset: 0.18, filter: { field: 'watch_provider', value: 73 } },
+];
+
+var TMDB_WATCH_FAMILIES = {
+  8: [8, 1796, 175],
+  337: [337, 122, 619],
+  9: [9, 119],
+  350: [350],
+  1899: [1899, 384, 118, 27, 425, 616, 483],
+  15: [15],
+  2303: [2303, 531, 1770],
+  386: [386, 387],
+  283: [283],
+  73: [73],
+};
+
+function tmdbWatchProviderQuery(filter) {
+  var chip = hubFilterValue(filter, 'watch_provider');
+  if (!chip) return '';
+  var id = Number(chip);
+  if (!id) return '';
+  var ids = TMDB_WATCH_FAMILIES[id] || [id];
+  return ids.join('|');
+}
+
 function tmdbLayout() {
   return {
     pages: {
       home: {
         widgets: [
+          {
+            type: 'host.vertical_filters',
+            id: 'watch_providers',
+            showSelectedInTopBar: true,
+            options: TMDB_VERTICAL_FILTERS,
+          },
           {
             type: 'hero',
             id: 'spotlight',
@@ -157,9 +199,13 @@ function tmdbList(ctx, cfg, params) {
   var railId = String(params.rail || 'spotlight');
   var genres = hubFilterValues(params.filter, 'genre');
   var typeFilter = hubFilterValue(params.filter, 'type');
+  var watchProviders = tmdbWatchProviderQuery(params.filter);
   if (typeFilter !== 'movie' && typeFilter !== 'tv') typeFilter = '';
   var page = Number(params.page) > 0 ? Number(params.page) : 1;
   var limit = params.limit;
+  var providerQuery = watchProviders
+    ? { with_watch_providers: watchProviders, watch_region: String(cfg.region || 'US') }
+    : {};
 
   // Mood discover — movie genres from selected mood option (host merges tv).
   if (railId === 'discover' || genres.length) {
@@ -178,13 +224,13 @@ function tmdbList(ctx, cfg, params) {
     var mediaType = typeFilter || 'movie';
     var g = mediaType === 'tv' ? tvGenres : movieGenres;
     if (!g.length && genres.length) g = genres;
-    return tmdbGet(ctx, cfg, '/discover/' + mediaType, {
+    return tmdbGet(ctx, cfg, '/discover/' + mediaType, Object.assign({
       sort_by: String(params.sort || 'popularity.desc'),
       with_genres: g.join(','),
       page: page,
       include_adult: 'false',
       'vote_count.gte': 50,
-    }).then(function (json) {
+    }, providerQuery)).then(function (json) {
       return tmdbMetas(cfg, json, mediaType, limit);
     });
   }
@@ -194,30 +240,50 @@ function tmdbList(ctx, cfg, params) {
     return Promise.all([
       typeFilter === 'tv'
         ? Promise.resolve({ results: [] })
-        : tmdbGet(ctx, cfg, '/discover/movie', {
+        : tmdbGet(ctx, cfg, '/discover/movie', Object.assign({
             'primary_release_date.gte': win.gte,
             'primary_release_date.lte': win.lte,
             sort_by: 'popularity.desc',
             'vote_average.gte': 6,
             page: page,
             include_adult: 'false',
-          }),
+          }, providerQuery)),
       typeFilter === 'movie'
         ? Promise.resolve({ results: [] })
-        : tmdbGet(ctx, cfg, '/discover/tv', {
+        : tmdbGet(ctx, cfg, '/discover/tv', Object.assign({
             'first_air_date.gte': win.gte,
             'first_air_date.lte': win.lte,
             sort_by: 'popularity.desc',
             'vote_average.gte': 6,
             page: page,
             include_adult: 'false',
-          }),
+          }, providerQuery)),
     ]).then(function (pair) {
       return tmdbMergeLists(cfg, pair[0], pair[1], limit);
     });
   }
 
   if (railId === 'popular') {
+    if (watchProviders) {
+      return Promise.all([
+        typeFilter === 'tv'
+          ? Promise.resolve({ results: [] })
+          : tmdbGet(ctx, cfg, '/discover/movie', Object.assign({
+              sort_by: 'popularity.desc',
+              page: page,
+              include_adult: 'false',
+            }, providerQuery)),
+        typeFilter === 'movie'
+          ? Promise.resolve({ results: [] })
+          : tmdbGet(ctx, cfg, '/discover/tv', Object.assign({
+              sort_by: 'popularity.desc',
+              page: page,
+              include_adult: 'false',
+            }, providerQuery)),
+      ]).then(function (pair) {
+        return tmdbMergeLists(cfg, pair[0], pair[1], limit);
+      });
+    }
     return Promise.all([
       typeFilter === 'tv'
         ? Promise.resolve({ results: [] })
@@ -231,6 +297,26 @@ function tmdbList(ctx, cfg, params) {
   }
 
   if (railId === 'new_releases') {
+    if (watchProviders) {
+      return Promise.all([
+        typeFilter === 'tv'
+          ? Promise.resolve({ results: [] })
+          : tmdbGet(ctx, cfg, '/discover/movie', Object.assign({
+              sort_by: 'primary_release_date.desc',
+              page: page,
+              include_adult: 'false',
+            }, providerQuery)),
+        typeFilter === 'movie'
+          ? Promise.resolve({ results: [] })
+          : tmdbGet(ctx, cfg, '/discover/tv', Object.assign({
+              sort_by: 'first_air_date.desc',
+              page: page,
+              include_adult: 'false',
+            }, providerQuery)),
+      ]).then(function (pair) {
+        return tmdbMergeLists(cfg, pair[0], pair[1], limit);
+      });
+    }
     return Promise.all([
       typeFilter === 'tv'
         ? Promise.resolve({ results: [] })
@@ -244,9 +330,9 @@ function tmdbList(ctx, cfg, params) {
   }
 
   if (typeFilter) {
-    return tmdbGet(ctx, cfg, '/trending/' + typeFilter + '/day', {
+    return tmdbGet(ctx, cfg, '/trending/' + typeFilter + '/day', Object.assign({
       page: page,
-    }).then(function (json) {
+    }, providerQuery)).then(function (json) {
       return tmdbMetas(cfg, json, typeFilter, limit);
     });
   }
@@ -254,6 +340,28 @@ function tmdbList(ctx, cfg, params) {
   var spec = TMDB_RAILS[railId];
   if (!spec || !spec.path) {
     return Promise.reject(new Error('unknown rail ' + railId));
+  }
+  if (watchProviders && railId === 'spotlight') {
+    return Promise.all([
+      typeFilter === 'tv'
+        ? Promise.resolve({ results: [] })
+        : tmdbGet(ctx, cfg, '/discover/movie', Object.assign({
+            sort_by: 'popularity.desc',
+            page: page,
+            include_adult: 'false',
+            'vote_count.gte': 50,
+          }, providerQuery)),
+      typeFilter === 'movie'
+        ? Promise.resolve({ results: [] })
+        : tmdbGet(ctx, cfg, '/discover/tv', Object.assign({
+            sort_by: 'popularity.desc',
+            page: page,
+            include_adult: 'false',
+            'vote_count.gte': 50,
+          }, providerQuery)),
+    ]).then(function (pair) {
+      return tmdbMergeLists(cfg, pair[0], pair[1], limit);
+    });
   }
   return tmdbGet(ctx, cfg, spec.path, { page: page }).then(function (json) {
     return tmdbMetas(cfg, json, spec.type, limit);

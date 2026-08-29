@@ -37,6 +37,7 @@ abstract final class PluginNavRegistry {
   static Map<String, NavDestination> _destinations = {};
   static Map<String, Color> _accents = {};
   static Map<String, TabBuilder> _builders = {};
+  static Map<String, String> _tabPluginIds = {};
   static bool _seeded = false;
 
   static Map<String, NavDestination> get destinations {
@@ -99,6 +100,7 @@ abstract final class PluginNavRegistry {
       for (final e in builtInHubPluginIds.entries)
         e.key: () => CatalogShell(pluginId: e.value, tabId: e.key),
     };
+    _tabPluginIds = Map<String, String>.from(builtInHubPluginIds);
     _seeded = true;
   }
 
@@ -162,6 +164,7 @@ abstract final class PluginNavRegistry {
     final dests = <String, NavDestination>{};
     final accents = <String, Color>{};
     final builders = <String, TabBuilder>{};
+    final tabPluginIds = <String, String>{};
     final extras = <String>[];
     final defaultOn = <String>[];
 
@@ -176,10 +179,9 @@ abstract final class PluginNavRegistry {
         label: nav.label,
         iconAsset: iconAsset,
       );
-      builders[nav.tabId] = () => CatalogShell(
-            pluginId: pl.id,
-            tabId: nav.tabId,
-          );
+      builders[nav.tabId] = () =>
+          CatalogShell(pluginId: pl.id, tabId: nav.tabId);
+      tabPluginIds[nav.tabId] = pl.id;
       final accent = accentFor(nav);
       if (accent != null) accents[nav.tabId] = accent;
       if (!SettingsService.allNavIds.contains(nav.tabId)) {
@@ -188,13 +190,15 @@ abstract final class PluginNavRegistry {
       if (nav.defaultEnabled) defaultOn.add(nav.tabId);
     }
 
-    final changed = !_mapEq(_destinations, dests) ||
+    final changed =
+        !_mapEq(_destinations, dests) ||
         !_colorMapEq(_accents, accents) ||
         !_builderKeysEq(_builders, builders);
 
     _destinations = dests;
     _accents = accents;
     _builders = builders;
+    _tabPluginIds = tabPluginIds;
     _seeded = true;
 
     if (extras.isNotEmpty) {
@@ -218,11 +222,20 @@ abstract final class PluginNavRegistry {
     return changed;
   }
 
+  /// Cached tab → plugin id (seed + last [refresh]).
+  static String? pluginIdForTabSync(String tabId) {
+    _ensureSeeded();
+    return _tabPluginIds[tabId] ?? builtInHubPluginIds[tabId];
+  }
+
   static Future<String?> pluginIdForTab(String tabId) async {
+    _ensureSeeded();
+    final cached = _tabPluginIds[tabId] ?? builtInHubPluginIds[tabId];
+    if (cached != null) return cached;
     for (final (pl, nav) in await listNavHubs(requireEnabled: true)) {
       if (nav.tabId == tabId) return pl.id;
     }
-    return builtInHubPluginIds[tabId];
+    return null;
   }
 
   /// Whether the hub plugin (and its pack) are enabled to *run*.

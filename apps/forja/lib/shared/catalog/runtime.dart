@@ -36,7 +36,14 @@ class CatalogRuntime {
     final cached = forceRefresh ? null : CatalogCache.instance.get(key);
 
     if (cached != null && cached.isFresh) {
-      return _cachedEnvelope(action, cached);
+      return _pipeEnrichCached(
+        sourcePluginId: pluginId,
+        action: action,
+        params: params,
+        auth: auth,
+        envelope: _cachedEnvelope(action, cached),
+        timeout: timeout,
+      );
     }
     if (cached != null && cached.isRevalidatable) {
       _reviveInBackground(
@@ -48,7 +55,14 @@ class CatalogRuntime {
         entry: cached,
         timeout: timeout,
       );
-      return _cachedEnvelope(action, cached);
+      return _pipeEnrichCached(
+        sourcePluginId: pluginId,
+        action: action,
+        params: params,
+        auth: auth,
+        envelope: _cachedEnvelope(action, cached),
+        timeout: timeout,
+      );
     }
 
     return _fetch(
@@ -136,6 +150,27 @@ class CatalogRuntime {
       );
     }
     return envelope;
+  }
+
+  /// Companion enrich on cache hits — spotlight rows cached before enrich
+  /// shipped (or from an older build) must still get TMDB backdrops.
+  Future<CatalogEnvelope> _pipeEnrichCached({
+    required String sourcePluginId,
+    required String action,
+    required Map<String, dynamic> params,
+    Map<String, dynamic>? auth,
+    required CatalogEnvelope envelope,
+    required Duration timeout,
+  }) async {
+    if (action != 'rail' && action != 'details') return envelope;
+    return _pipeEnrich(
+      sourcePluginId: sourcePluginId,
+      action: action,
+      params: params,
+      auth: auth,
+      envelope: envelope,
+      timeout: timeout,
+    );
   }
 
   /// After a source catalog answers `rail` / `details`, optionally run the

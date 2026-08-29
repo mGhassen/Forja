@@ -80,6 +80,25 @@ function kisskhCover(raw) {
   return url.replace('media.themoviedb.org/t/p', 'image.tmdb.org/t/p');
 }
 
+function kisskhInferMediaType(row) {
+  var kt = String(row.type || '').trim().toLowerCase();
+  if (kt === 'movie' || kt === 'hollywood') return 'movie';
+  if (kt === 'tvseries' || kt === 'anime' || kt === 'tv') return 'tv';
+  var label = String(row.label || '').trim().toUpperCase();
+  if (label === 'MOVIE' || label === 'FILM' || label === 'HOLLYWOOD') {
+    return 'movie';
+  }
+  if (
+    label === 'TV' ||
+    label === 'SERIES' ||
+    label === 'TVSERIES' ||
+    label === 'ANIME'
+  ) {
+    return 'tv';
+  }
+  return '';
+}
+
 function kisskhMeta(row) {
   if (!row || !row.id) return null;
   var name = String(row.title || '').trim();
@@ -101,10 +120,8 @@ function kisskhMeta(row) {
   if (label) meta.badge = label;
   var desc = String(row.description || '').trim();
   if (desc) meta.description = hubStripHtml(desc);
-  // Prefer movie search for Film / Hollywood; dramas default to TV.
-  var kt = String(row.type || '').toLowerCase();
-  if (kt === 'movie' || kt === 'hollywood') meta.tmdbMediaType = 'movie';
-  else if (kt) meta.tmdbMediaType = 'tv';
+  var mediaType = kisskhInferMediaType(row);
+  if (mediaType) meta.tmdbMediaType = mediaType;
   return meta;
 }
 

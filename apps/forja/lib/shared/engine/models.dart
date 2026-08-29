@@ -567,6 +567,43 @@ Map<String, dynamic> engineConfigWithKissKhIds(
   return out;
 }
 
+/// Arabic hub Sources inject opaque pack video ids into provider config.
+Map<String, dynamic> engineConfigWithArabicVideoId(
+  Map<String, dynamic> config, {
+  required String pluginId,
+  String? videoId,
+}) {
+  if (pluginId != 'larozaa' &&
+      pluginId != 'dimatoon' &&
+      pluginId != 'brstej') {
+    return config;
+  }
+  final vid = (videoId ?? '').trim();
+  if (vid.isEmpty) return config;
+  final out = Map<String, dynamic>.from(config);
+  out['videoId'] = vid;
+  return out;
+}
+
+Map<String, dynamic> mergeEnginePluginConfig(
+  Map<String, dynamic> config, {
+  required String pluginId,
+  int? kisskhId,
+  int? kisskhEpisodeId,
+  String? arabicVideoId,
+}) {
+  return engineConfigWithArabicVideoId(
+    engineConfigWithKissKhIds(
+      config,
+      pluginId: pluginId,
+      kisskhId: kisskhId,
+      kisskhEpisodeId: kisskhEpisodeId,
+    ),
+    pluginId: pluginId,
+    videoId: arabicVideoId,
+  );
+}
+
 /// Card title matching Nuvio plugin rows: `Show S1E1 - (2026)`.
 String engineMediaDisplayTitle({
   String? title,

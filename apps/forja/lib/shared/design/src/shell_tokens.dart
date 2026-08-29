@@ -162,6 +162,9 @@ abstract final class ShellTokens {
   static const double heroMinHeightCompact = 280;
   static const double heroLogoMaxHeightCompact = 72;
   static const double heroTitleSlotHeightCompact = 80;
+  /// Browse / details TMDB logo cap on Android TV (landscape 720p).
+  static const double heroLogoMaxHeightTv = 56;
+  static const double heroTitleSlotHeightTv = 64;
   static const double heroImageStartFractionCompact = 0.08;
 
   static const double heroImageStartFraction = 0.12;
