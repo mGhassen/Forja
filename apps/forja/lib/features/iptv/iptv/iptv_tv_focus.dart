@@ -376,6 +376,23 @@ void iptvEnterFromNav(IptvController ctrl) {
   }
 }
 
+/// Arm the channel pane's D-pad memory at [index] without moving focus.
+///
+/// Catalog restore on open keeps focus on the category rail; this makes the
+/// first → land on the restored channel instead of the first tile.
+/// Returns false while the row is not registered yet (caller should retry).
+bool iptvArmBrowserStreamFocusMemory(int index) {
+  if (index < 0) return false;
+  final handle = ShellTvFocusCoordinator.rowHandle('iptv', 'browser-streams');
+  if (handle == null || handle.itemCount <= index) return false;
+  ShellTvFocusCoordinator.setRowLastFocusedIndex(
+    'iptv',
+    'browser-streams',
+    index,
+  );
+  return true;
+}
+
 /// Focus a catalog channel tile after leaving the player (exact index only).
 ///
 /// Does not fall back to tile 0 — callers must scroll the lazy grid into view

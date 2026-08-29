@@ -399,7 +399,8 @@ class _BrowserViewState extends State<_BrowserView> {
         if (widget.ctrl.categories.isNotEmpty ||
             widget.ctrl.browserAllStreams.isNotEmpty) {
           if (catalogKey != null) _landedCatalogKey = catalogKey;
-          _focusCatalogGroup();
+          // Catalog just (re)loaded — land on the category, not the channel.
+          _focusCatalogGroup(preferCategoryFocus: true);
         }
       }
     });
@@ -588,7 +589,7 @@ class _BrowserViewState extends State<_BrowserView> {
     if (_needsPortal) {
       _focusOpenPortalButton();
     } else if (!widget.ctrl.isLoading) {
-      _landRestoredCatalog();
+      _landRestoredCatalog(preferCategoryFocus: true);
     }
   }
 
@@ -599,7 +600,7 @@ class _BrowserViewState extends State<_BrowserView> {
       return;
     }
     if (widget.ctrl.isLoading) return;
-    _landRestoredCatalog();
+    _landRestoredCatalog(preferCategoryFocus: true);
   }
 
   void _focusOpenPortalButton() {
@@ -609,8 +610,11 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   /// Select + scroll last category; if a last-played channel is in the list,
-  /// scroll and focus it (no autoplay). Favorites / Already watched included.
-  void _landRestoredCatalog() {
+  /// scroll to it too (no autoplay). Favorites / Already watched included.
+  ///
+  /// [preferCategoryFocus] is the catalog-open landing: the channel is scrolled
+  /// into view and stays highlighted, but focus rests on the category rail.
+  void _landRestoredCatalog({bool preferCategoryFocus = false}) {
     if (!mounted || _needsPortal || widget.ctrl.isLoading) return;
     // Don't steal catalog focus/scroll while the player overlay owns the page.
     if (ShellBus.playerSurfaceActive.value ||
@@ -624,7 +628,7 @@ class _BrowserViewState extends State<_BrowserView> {
     final channelIdx = (highlightId != null && highlightId.isNotEmpty)
         ? list.indexWhere((x) => x.streamId == highlightId)
         : -1;
-    final focusChannel = channelIdx >= 0;
+    final focusChannel = channelIdx >= 0 && !preferCategoryFocus;
 
     if (iptvUseTvFocus(context) && selected != null) {
       setState(() {
@@ -639,13 +643,46 @@ class _BrowserViewState extends State<_BrowserView> {
       _scrollAndFocusStreamAt(channelIdx);
       return;
     }
-    _landedHighlightId = null;
+    if (channelIdx >= 0) {
+      _landedHighlightId = highlightId;
+      _scrollStreamsToRestoredChannel(channelIdx);
+    } else {
+      _landedHighlightId = null;
+    }
     if (!iptvUseTvFocus(context)) return;
     if (!iptvFocusBrowserCategories(widget.ctrl)) {
       if (widget.ctrl.browserSidebarCategories.isEmpty) {
         iptvFocusRowItem('browser-streams', 0);
       }
     }
+  }
+
+  /// Category rail keeps focus: scroll the restored channel into view and arm
+  /// the pane's D-pad memory so → lands on it instead of the first tile.
+  void _scrollStreamsToRestoredChannel(int index) {
+    if (index < 0) return;
+    var tries = 0;
+    void attempt() {
+      if (!mounted) return;
+      if (ShellBus.shellOverlayHasPage.value ||
+          ShellBus.playerSurfaceActive.value) {
+        if (tries++ < 24) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+        }
+        return;
+      }
+      // Lazy grid/list: offsets only settle once the viewport has clients.
+      final scrolled = _streamScroll.hasClients;
+      _scrollStreamsToIndex(index);
+      final armed = iptvArmBrowserStreamFocusMemory(index);
+      if (scrolled && armed) return;
+      if (tries++ < 12) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+      }
+    }
+
+    attempt();
+    WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
   }
 
   /// Favorites / Already watched → portal group for [stream], keep focus on it.
@@ -721,7 +758,8 @@ class _BrowserViewState extends State<_BrowserView> {
   }
 
   /// Alias used by panel-close / load paths.
-  void _focusCatalogGroup() => _landRestoredCatalog();
+  void _focusCatalogGroup({bool preferCategoryFocus = false}) =>
+      _landRestoredCatalog(preferCategoryFocus: preferCategoryFocus);
 
   /// Commit a category for the channel pane. On TV, OK / → also moves focus
   /// into streams; ↑/↓ alone must not call this (avoids logo thrash).
