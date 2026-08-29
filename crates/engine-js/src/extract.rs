@@ -425,6 +425,16 @@ fn fetch_cancelled_json(url: &str) -> String {
     .to_string()
 }
 
+async fn native_tmdb_match(payload: String) -> rquickjs::Result<String> {
+    if cancelled() {
+        return Ok("null".into());
+    }
+    let out = tokio::task::spawn_blocking(move || tmdb::match_json(&payload))
+        .await
+        .unwrap_or_else(|_| "null".into());
+    Ok(out)
+}
+
 async fn native_fetch(
     url: String,
     method: String,
@@ -648,6 +658,14 @@ async fn run_in_ctx<'js>(
         .map_err(|e| e.to_string())?;
     ctx.globals()
         .set("__native_fetch", fetch_fn)
+        .map_err(|e| e.to_string())?;
+
+    let tmdb_match_fn = Function::new(ctx.clone(), Async(native_tmdb_match))
+        .map_err(|e| e.to_string())?
+        .with_name("__native_tmdb_match")
+        .map_err(|e| e.to_string())?;
+    ctx.globals()
+        .set("__native_tmdb_match", tmdb_match_fn)
         .map_err(|e| e.to_string())?;
 
     let decrypt_fn = Function::new(ctx.clone(), stream_decrypt_safe)
@@ -932,7 +950,19 @@ async fn run_in_ctx<'js>(
     error: function(msg) {{ console.error('[' + pluginLabel + '] Error: ' + String(msg == null ? '' : msg)); }},
     fetch: globalThis.fetch,
     html: globalThis.__engineHtml,
-    host: globalThis.__engineHost,
+    host: (function(){{
+      var h = globalThis.__engineHost;
+      if (typeof h !== 'function') h = function(){{ return Promise.resolve([]); }};
+      h.tmdb = {{
+        match: function(query) {{
+          return Promise.resolve(__native_tmdb_match(JSON.stringify(query == null ? {{}} : query))).then(function(raw){{
+            if (!raw || raw === 'null') return null;
+            try {{ return JSON.parse(raw); }} catch (e) {{ return null; }}
+          }});
+        }}
+      }};
+      return h;
+    }})(),
     hop: globalThis.__engineHop,
     crypto: Object.assign({{}}, globalThis.CryptoJS || {{}}, {{
       streamDecrypt: streamDecrypt,
@@ -1136,7 +1166,8 @@ function extract(ctx) {
     kit: ctx.kit || 0,
     protocol: ctx.protocol || 0,
     etag: String((ctx.cache && ctx.cache.etag) || ''),
-    subject: String((ctx.auth && ctx.auth.subject) || '')
+    subject: String((ctx.auth && ctx.auth.subject) || ''),
+    hasTmdbMatch: !!(ctx.host && ctx.host.tmdb && typeof ctx.host.tmdb.match === 'function')
   }];
 }
 "#;
@@ -1168,5 +1199,9 @@ function extract(ctx) {
         assert_eq!(row.get("protocol").and_then(|v| v.as_i64()), Some(1));
         assert_eq!(row.get("etag").and_then(|v| v.as_str()), Some("abc"));
         assert_eq!(row.get("subject").and_then(|v| v.as_str()), Some("u1"));
+        assert_eq!(
+            row.get("hasTmdbMatch").and_then(|v| v.as_bool()),
+            Some(true)
+        );
     }
 }

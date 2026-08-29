@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) |
-| **Current slice** | A26 layout/widget parity shipped; A15 manual QA open |
+| **Progress** | **8 / 8** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **3 / 3** acceptance (host enrich) |
+| **Current slice** | Host enrich shipped — A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -68,6 +68,18 @@
 | 10 | R70-A25 | Asian Drama hub plugin id is `kisskh-hub` — no collision with providers extract `kisskh` | ✅ |
 | 11 | R70-A26 | Hub pack layouts + CatalogShell match pre-cutover row order / mood circles / hero bleed / Asian landscape + TMDB Popular (host Because/Trakt/genre rows still open) | ✅ |
 | 12 | R70-A27 | Every hub with `nav` registers Settings → Features; plugin enable (Sources) is independent of Features show/hide | ✅ |
+
+---
+
+## Acceptance (host enrich slice)
+
+Pack-owned enrichment — host exposes reusable match APIs; plugins compose (AniList+TMDB, KissKH+TMDB, …). No CatalogShell `if (tabId == anime)` hardcode.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A28 | `ctx.host.tmdb.match({ title, year, type })` on EngineJS + flutter_js invokers | ✅ |
+| 2 | R70-A29 | Shared kit helpers `hubTmdbMatch` / `hubEnrichTmdb` / `hubApplyTmdbHit` | ✅ |
+| 3 | R70-A30 | Anime spotlight rail enriches via kit/host (CatalogShell anime TMDB hardcode removed) | ✅ |
 
 ---
 
@@ -134,7 +146,18 @@ fails engine boot the same way as a missing providers URL. The legacy combined
 | `details` | `id` | `meta` |
 | `filters` | — | `fields[]` |
 
-Widget types: `hero`, `rail`, `ranked`, `mood`, `host.continue`.
+Widget types: `hero`, `rail`, `ranked`, `mood`, `host.continue`, `host.popular_asian`, …
+
+### Host enrich (R70-A28+)
+
+Catalog plugins may call shared host capabilities while composing metas:
+
+```js
+ctx.host.tmdb.match({ title: 'One Piece', year: 1999, type: 'tv' })
+// → { id, mediaType, name, year, poster, backdrop } | null
+```
+
+Kit helpers (`hubTmdbMatch`, `hubEnrichTmdb`) prefer `ctx.host.tmdb.match` and fall back to `ctx.fetch` + injected `config.apiKey`. Packs own which rails enrich (e.g. AniList spotlight only) — CatalogShell only renders `meta`.
 
 ### Related
 

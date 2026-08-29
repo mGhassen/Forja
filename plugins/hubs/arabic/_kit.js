@@ -136,3 +136,149 @@ function hubFilterValue(filter, field) {
   var values = hubFilterValues(filter, field);
   return values.length ? values[0] : '';
 }
+
+
+function hubStripHtml(html) {
+  if (html == null) return '';
+  return String(html)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function hubTmdbMatch(ctx, query) {
+  query = query || {};
+  if (ctx && ctx.host && ctx.host.tmdb && typeof ctx.host.tmdb.match === 'function') {
+    return Promise.resolve(ctx.host.tmdb.match(query)).then(function (hit) {
+      return hit && hit.id ? hit : null;
+    }).catch(function () { return null; });
+  }
+  return hubTmdbMatchFetch(ctx, query);
+}
+
+function hubTmdbMatchFetch(ctx, query) {
+  query = query || {};
+  var title = String(query.title || '').trim();
+  if (!title) return Promise.resolve(null);
+  var cfg = hubConfig(ctx, {});
+  var key = String(cfg.apiKey || '').trim();
+  if (!key) return Promise.resolve(null);
+  var prefer = String(query.type || '').trim().toLowerCase();
+  var primary = prefer === 'movie' ? 'movie' : 'tv';
+  var secondary = primary === 'movie' ? 'tv' : 'movie';
+  var year = Number(query.year) > 0 ? Number(query.year) : 0;
+
+  function search(media) {
+    var url =
+      'https://api.themoviedb.org/3/search/' +
+      media +
+      '?api_key=' +
+      encodeURIComponent(key) +
+      '&query=' +
+      encodeURIComponent(title) +
+      '&include_adult=false';
+    return ctx.fetch(url).then(function (res) {
+      if (!res.ok) return null;
+      return res.json();
+    }).then(function (json) {
+      if (!json || !Array.isArray(json.results) || !json.results.length) return null;
+      return hubTmdbPick(json.results, media, year);
+    }).catch(function () { return null; });
+  }
+
+  return search(primary).then(function (hit) {
+    return hit || search(secondary);
+  });
+}
+
+function hubTmdbPick(results, media, year) {
+  function yearOf(m) {
+    var d = String(
+      media === 'movie' ? m.release_date || '' : m.first_air_date || '',
+    );
+    if (d.length < 4) return 0;
+    return Number(d.slice(0, 4)) || 0;
+  }
+  function withBackdrop(list) {
+    for (var i = 0; i < list.length; i++) {
+      if (list[i] && list[i].backdrop_path) return list[i];
+    }
+    return list.length ? list[0] : null;
+  }
+  var chosen = null;
+  if (year > 0) {
+    var exact = [];
+    var near = [];
+    for (var i = 0; i < results.length; i++) {
+      var y = yearOf(results[i]);
+      if (y === year) exact.push(results[i]);
+      else if (y && Math.abs(y - year) <= 1) near.push(results[i]);
+    }
+    chosen = withBackdrop(exact) || withBackdrop(near) || withBackdrop(results);
+  } else {
+    chosen = withBackdrop(results);
+  }
+  if (!chosen || !chosen.id) return null;
+  var name = String(
+    media === 'movie' ? chosen.title || '' : chosen.name || '',
+  );
+  var poster = chosen.poster_path
+    ? 'https://image.tmdb.org/t/p/w500' + chosen.poster_path
+    : '';
+  var backdrop = chosen.backdrop_path
+    ? 'https://image.tmdb.org/t/p/w1280' + chosen.backdrop_path
+    : '';
+  return {
+    id: Number(chosen.id),
+    mediaType: media,
+    name: name,
+    year: yearOf(chosen) || null,
+    poster: poster || null,
+    backdrop: backdrop || null,
+  };
+}
+
+function hubApplyTmdbHit(meta, hit) {
+  if (!meta || !hit || !hit.id) return meta;
+  meta.ids = Object.assign({}, meta.ids || {}, { tmdb: String(hit.id) });
+  if (hit.mediaType) meta.tmdbMediaType = String(hit.mediaType);
+  if (hit.backdrop) {
+    meta.background = String(hit.backdrop);
+    meta.bannerImage = '';
+  } else if (hit.poster && !meta.poster) {
+    meta.poster = String(hit.poster);
+  }
+  return meta;
+}
+
+function hubEnrichTmdb(ctx, items, limit) {
+  if (!Array.isArray(items) || !items.length) return Promise.resolve(items || []);
+  var n = Number(limit) > 0 ? Number(limit) : items.length;
+  var head = items.slice(0, n);
+  var tail = items.slice(n);
+  return Promise.all(
+    head.map(function (meta) {
+      var yearBit = String(meta.releaseInfo || '').split(' • ')[0];
+      var year = Number(yearBit) || 0;
+      var fmt = String(meta.badge || '').toUpperCase();
+      return hubTmdbMatch(ctx, {
+        title: meta.name,
+        year: year,
+        type: fmt === 'MOVIE' ? 'movie' : 'tv',
+      }).then(function (hit) {
+        return hubApplyTmdbHit(meta, hit);
+      });
+    }),
+  ).then(function (enriched) {
+    return enriched.concat(tail);
+  });
+}
+

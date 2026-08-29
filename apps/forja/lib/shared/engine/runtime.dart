@@ -771,7 +771,66 @@ class EngineRuntime {
     },
     fetch: globalThis.fetch,
     html: globalThis.__engineHtml,
-    host: ${allowHostFallback ? 'globalThis.__engineHost' : 'function(){ return Promise.resolve([]); }'},
+    host: (function(){
+      var h = ${allowHostFallback ? 'globalThis.__engineHost' : 'function(){ return Promise.resolve([]); }'};
+      if (typeof h !== 'function') h = function(){ return Promise.resolve([]); };
+      var tmdbKey = (meta.config && meta.config.apiKey) ? String(meta.config.apiKey) : '';
+      h.tmdb = {
+        match: function(query) {
+          query = query || {};
+          var title = String(query.title || '').trim();
+          if (!title || !tmdbKey) return Promise.resolve(null);
+          var prefer = String(query.type || '').trim().toLowerCase();
+          var primary = prefer === 'movie' ? 'movie' : 'tv';
+          var secondary = primary === 'movie' ? 'tv' : 'movie';
+          var year = Number(query.year) > 0 ? Number(query.year) : 0;
+          function yearOf(m, media) {
+            var d = String(media === 'movie' ? (m.release_date || '') : (m.first_air_date || ''));
+            return d.length >= 4 ? (Number(d.slice(0, 4)) || 0) : 0;
+          }
+          function pick(results, media) {
+            function withBackdrop(list) {
+              for (var i = 0; i < list.length; i++) if (list[i] && list[i].backdrop_path) return list[i];
+              return list.length ? list[0] : null;
+            }
+            var chosen = null;
+            if (year > 0) {
+              var exact = [], near = [];
+              for (var i = 0; i < results.length; i++) {
+                var y = yearOf(results[i], media);
+                if (y === year) exact.push(results[i]);
+                else if (y && Math.abs(y - year) <= 1) near.push(results[i]);
+              }
+              chosen = withBackdrop(exact) || withBackdrop(near) || withBackdrop(results);
+            } else chosen = withBackdrop(results);
+            if (!chosen || !chosen.id) return null;
+            return {
+              id: Number(chosen.id),
+              mediaType: media,
+              name: String(media === 'movie' ? (chosen.title || '') : (chosen.name || '')),
+              year: yearOf(chosen, media) || null,
+              poster: chosen.poster_path ? 'https://image.tmdb.org/t/p/w500' + chosen.poster_path : null,
+              backdrop: chosen.backdrop_path ? 'https://image.tmdb.org/t/p/w1280' + chosen.backdrop_path : null
+            };
+          }
+          function search(media) {
+            var url = 'https://api.themoviedb.org/3/search/' + media +
+              '?api_key=' + encodeURIComponent(tmdbKey) +
+              '&query=' + encodeURIComponent(title) +
+              '&include_adult=false';
+            return globalThis.fetch(url).then(function(res) {
+              if (!res.ok) return null;
+              return res.json();
+            }).then(function(json) {
+              if (!json || !Array.isArray(json.results) || !json.results.length) return null;
+              return pick(json.results, media);
+            }).catch(function(){ return null; });
+          }
+          return search(primary).then(function(hit){ return hit || search(secondary); });
+        }
+      };
+      return h;
+    })(),
     hop: globalThis.__engineHop,
     crypto: Object.assign({}, globalThis.CryptoJS || {}, {
       streamDecrypt: streamDecrypt,

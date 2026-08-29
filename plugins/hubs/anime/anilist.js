@@ -67,7 +67,15 @@ function anilistLayout() {
             options: ANILIST_MOODS,
             rail: 'trending',
           },
-          { type: 'rail', id: 'trending', title: 'Trending Now', rail: 'trending', hideWhenBleed: true },
+          {
+            type: 'rail',
+            id: 'trending',
+            title: 'Trending Now',
+            rail: 'trending',
+            hideWhenBleed: true,
+            // Films / Series / Categories — Trending duplicates Top Rated.
+            hideWhenTypeFilter: true,
+          },
           { type: 'rail', id: 'top_airing', title: 'Top Airing', rail: 'top_airing' },
           { type: 'ranked', id: 'top_10', title: 'Top 10 Today', rail: 'top_10', style: 'numbered' },
           { type: 'rail', id: 'popular', title: 'Most Popular', rail: 'popular' },
@@ -86,6 +94,23 @@ function anilistTitle(t) {
   return String(t.romaji || t.english || t.native || '').trim();
 }
 
+function anilistCardMeta(m) {
+  // Same as pre-CatalogShell `_animeCardMeta`: year • FILM / year • N eps.
+  var parts = [];
+  if (m.seasonYear) parts.push(String(m.seasonYear));
+  var fmt = String(m.format || '').toUpperCase();
+  if (fmt === 'TV' || fmt === 'TV_SHORT') {
+    if (m.episodes) parts.push(String(m.episodes) + ' eps');
+  } else if (fmt === 'MOVIE') {
+    parts.push('FILM');
+  } else if (fmt) {
+    parts.push(fmt.replace(/_/g, ' '));
+  } else if (m.episodes) {
+    parts.push(String(m.episodes) + ' eps');
+  }
+  return parts.join(' • ');
+}
+
 function anilistMeta(m) {
   if (!m || !m.id) return null;
   var name = anilistTitle(m.title);
@@ -93,14 +118,17 @@ function anilistMeta(m) {
   var cover = m.coverImage || {};
   var ids = { anilist: String(m.id) };
   if (m.idMal) ids.mal = String(m.idMal);
+  var banner = String(m.bannerImage || '');
+  var poster = String(cover.extraLarge || cover.large || '');
   var meta = {
     id: 'anilist:' + m.id,
     type: 'anime',
     name: name,
-    poster: String(cover.extraLarge || cover.large || ''),
-    background: String(m.bannerImage || ''),
+    poster: poster,
+    // Prefer AniList banner for hero; cover fallback matches old bannerOrCover.
+    background: banner || poster,
     description: hubStripHtml(m.description),
-    releaseInfo: m.seasonYear ? String(m.seasonYear) : '',
+    releaseInfo: anilistCardMeta(m),
     genres: Array.isArray(m.genres) ? m.genres : [],
     ids: ids,
   };
@@ -108,6 +136,7 @@ function anilistMeta(m) {
   if (m.format) meta.badge = String(m.format).replace(/_/g, ' ');
   if (m.status) meta.status = String(m.status);
   if (m.episodes) meta.episodes = Number(m.episodes);
+  if (banner) meta.bannerImage = banner;
   return meta;
 }
 
@@ -189,6 +218,10 @@ function anilistPage(ctx, cfg, params) {
       }
     }
     if (Number(spec.limit) > 0) out = out.slice(0, Number(spec.limit));
+    // Hero spotlight: pack-owned TMDB enrich via shared host/kit (not Dart).
+    if (railId === 'spotlight') {
+      return hubEnrichTmdb(ctx, out, 5);
+    }
     return out;
   });
 }

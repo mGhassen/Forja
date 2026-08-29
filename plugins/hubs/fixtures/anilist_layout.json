@@ -21,7 +21,7 @@
                 { "id": "romance", "label": "Romance", "genre": "Romance" }
               ]
             },
-            { "type": "rail", "id": "trending", "title": "Trending Now", "rail": "trending", "hideWhenBleed": true },
+            { "type": "rail", "id": "trending", "title": "Trending Now", "rail": "trending", "hideWhenBleed": true, "hideWhenTypeFilter": true },
             { "type": "rail", "id": "top_airing", "title": "Top Airing", "rail": "top_airing" },
             { "type": "ranked", "id": "top_10", "title": "Top 10 Today", "rail": "top_10" },
             { "type": "rail", "id": "popular", "title": "Most Popular", "rail": "popular" },

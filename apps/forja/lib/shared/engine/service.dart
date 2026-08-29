@@ -251,13 +251,17 @@ class EngineService {
     final config = <String, dynamic>{
       ...mergeEngineConfig(plugin.config, overlay),
     };
+    // Catalog hubs may call ctx.host.tmdb.match / hubTmdbMatch — inject the
+    // same compile-time key Home uses (R70-A14 / R70-A28).
+    const tmdbKey = String.fromEnvironment('TMDB_API_KEY');
+    if (tmdbKey.isNotEmpty &&
+        (config['apiKey'] == null || config['apiKey'].toString().isEmpty)) {
+      config['apiKey'] = tmdbKey;
+    }
     // Home hub (tmdb) uses the same compile-time key as Rust TMDB — never ship
     // a key in pack config (R70-A14).
-    if (plugin.id == 'tmdb') {
-      const tmdbKey = String.fromEnvironment('TMDB_API_KEY');
-      if (tmdbKey.isNotEmpty) {
-        config['apiKey'] = tmdbKey;
-      }
+    if (plugin.id == 'tmdb' && tmdbKey.isNotEmpty) {
+      config['apiKey'] = tmdbKey;
     }
 
     // First-class catalog request (both EngineJS + flutter_js invokers).

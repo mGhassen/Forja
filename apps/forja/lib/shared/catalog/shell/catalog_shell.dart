@@ -272,22 +272,38 @@ class _CatalogShellState extends State<CatalogShell>
 
   List<HubHeroSlide> _heroSlides(List<CatalogMetaItem> items) {
     return [
-      for (final item in items.take(5))
-        HubHeroSlide(
-          id: item.id,
-          title: item.name,
-          imageUrl: item.background.isNotEmpty ? item.background : item.poster,
-          overview: item.description,
-          rating: item.rating,
-          year: item.releaseInfo.isEmpty ? null : item.releaseInfo,
-          badge: item.badge,
-          genres: item.genres,
-          tmdbId: item.numericId('tmdb'),
-          tmdbMediaType: item.type == 'movie' ? 'movie' : 'tv',
-          listTarget: _listTarget(item),
-          onDetails: () => unawaited(_openMeta(item)),
-        ),
+      for (final item in items.take(5)) _heroSlideFor(item),
     ];
+  }
+
+  HubHeroSlide _heroSlideFor(CatalogMetaItem item) {
+    final status = (item.status ?? '').trim();
+    final isUpcoming = status.toUpperCase() == 'NOT_YET_RELEASED';
+    final useAniBanner = item.type == 'anime' &&
+        item.bannerImage.isNotEmpty &&
+        item.background == item.bannerImage;
+    final yearBit = item.releaseInfo.isEmpty
+        ? null
+        : item.releaseInfo.split(' • ').first;
+    return HubHeroSlide(
+      id: item.id,
+      title: item.name,
+      imageUrl: item.background.isNotEmpty ? item.background : item.poster,
+      overview: item.description,
+      rating: item.rating,
+      year: yearBit,
+      badge: item.badge,
+      statusChip: status.isEmpty ? null : hubAnimeStatusLabel(status),
+      isUpcoming: isUpcoming,
+      upcomingReleaseLabel: isUpcoming ? yearBit : null,
+      genres: item.genres,
+      imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
+      imageAlignment: useAniBanner ? Alignment.center : Alignment.centerRight,
+      tmdbId: item.numericId('tmdb'),
+      tmdbMediaType: item.type == 'movie' ? 'movie' : 'tv',
+      listTarget: _listTarget(item),
+      onDetails: () => unawaited(_openMeta(item)),
+    );
   }
 
   HubPosterCard _card(
@@ -304,7 +320,8 @@ class _CatalogShellState extends State<CatalogShell>
         subtitle: item.releaseInfo.isEmpty ? null : item.releaseInfo,
         rating: item.rating,
         rank: showRank ? index + 1 : null,
-        badge: item.badge,
+        // Anime pre-cutover put format under the title (releaseInfo), not a badge.
+        badge: item.type == 'anime' ? null : item.badge,
         listIndex: index,
         listTarget: _listTarget(item),
         tvTabId: widget.tabId,
@@ -319,6 +336,18 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   bool get _fullHeroBleed => hubIsFullCinematicHero(context);
+
+  /// Chrome leaf that should hide `hideWhenTypeFilter` rails (and their bleed).
+  bool _chromeHidesTypeFilterRail() {
+    final chrome = catalogChromeFilters(widget.tabId);
+    if (widget.tabId == 'anime') return chrome.any((f) => f != null);
+    return chrome.any(
+      (f) =>
+          f != null &&
+          ((f['field'] ?? '').toString() == 'type') &&
+          f['value'] != null,
+    );
+  }
 
   String? get _bleedRailId {
     if (!_fullHeroBleed) return null;
@@ -653,6 +682,12 @@ class _CatalogShellState extends State<CatalogShell>
               (w['rail'] ?? '').toString() == bleedId) {
             final t = (w['type'] ?? '').toString();
             if (t == 'rail' || t == 'ranked') {
+              // Don't bleed a rail the chrome filter would hide (Anime Films/
+              // Series / Categories hid Trending under the hero too).
+              if (w['hideWhenTypeFilter'] == true &&
+                  _chromeHidesTypeFilterRail()) {
+                break;
+              }
               bleedSpec = w;
               break;
             }
@@ -694,15 +729,9 @@ class _CatalogShellState extends State<CatalogShell>
             spec['hideWhenBleed'] == true) {
           continue;
         }
-        if (spec['hideWhenTypeFilter'] == true) {
-          final chrome = catalogChromeFilters(widget.tabId);
-          final hasType = chrome.any(
-            (f) =>
-                f != null &&
-                ((f['field'] ?? '').toString() == 'type') &&
-                f['value'] != null,
-          );
-          if (hasType) continue;
+        if (spec['hideWhenTypeFilter'] == true &&
+            _chromeHidesTypeFilterRail()) {
+          continue;
         }
         final w = _widgetFor(
           spec,
@@ -784,10 +813,14 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
   @override
   Widget build(BuildContext context) {
     final items = _items;
-    if (items == null) {
-      return homeCinematicHeroShimmer(context);
+    // Keep shimmer until slides arrive (empty also keeps bleed height — never
+    // collapse to zero and drop Trending under the hero).
+    if (items == null || items.isEmpty) {
+      return homeCinematicHeroShimmer(
+        context,
+        pageBottomBleed: widget.pageBottomChild != null,
+      );
     }
-    if (items.isEmpty) return const SizedBox.shrink();
     final bottom = widget.pageBottomChild;
     return HomeCinematicHero.hub(
       slides: widget.buildSlides(items),

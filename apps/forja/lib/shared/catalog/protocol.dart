@@ -214,6 +214,9 @@ class CatalogMetaItem {
     this.releaseInfo = '',
     this.genres = const [],
     this.badge,
+    this.status,
+    this.episodes,
+    this.bannerImage = '',
     this.ids = const {},
     this.listTarget,
   });
@@ -228,6 +231,11 @@ class CatalogMetaItem {
   final String releaseInfo;
   final List<String> genres;
   final String? badge;
+  /// AniList / hub status wire (`RELEASING`, `NOT_YET_RELEASED`, …).
+  final String? status;
+  final int? episodes;
+  /// Ultrawide AniList banner — hero uses `fitWidth` when set (pre-cutover).
+  final String bannerImage;
   final Map<String, dynamic> ids;
   final Map<String, dynamic>? listTarget;
 
@@ -269,6 +277,9 @@ class CatalogMetaItem {
           ? genresRaw.map((e) => e.toString()).toList()
           : const [],
       badge: j['badge']?.toString(),
+      status: j['status']?.toString(),
+      episodes: (j['episodes'] as num?)?.toInt(),
+      bannerImage: (j['bannerImage'] ?? '').toString(),
       ids: j['ids'] is Map
           ? Map<String, dynamic>.from(j['ids'] as Map)
           : const {},
@@ -289,6 +300,9 @@ class CatalogMetaItem {
         if (releaseInfo.isNotEmpty) 'releaseInfo': releaseInfo,
         if (genres.isNotEmpty) 'genres': genres,
         if (badge != null) 'badge': badge,
+        if (status != null && status!.isNotEmpty) 'status': status,
+        if (episodes != null) 'episodes': episodes,
+        if (bannerImage.isNotEmpty) 'bannerImage': bannerImage,
         if (ids.isNotEmpty) 'ids': ids,
         if (listTarget != null) 'listTarget': listTarget,
       };
