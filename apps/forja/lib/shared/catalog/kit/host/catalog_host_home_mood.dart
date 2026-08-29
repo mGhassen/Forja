@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:forja/features/home/widgets/home_mood_section.dart';
+import 'package:forja/shared/catalog/kit/home/home_mood_section.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 

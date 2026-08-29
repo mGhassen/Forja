@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 
-import 'package:forja/features/home/widgets/home_widget_imports.dart';
+import 'package:forja/shared/catalog/kit/home/home_widget_imports.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
 import 'package:forja/shared/playback/hub_engine_watch_history.dart';

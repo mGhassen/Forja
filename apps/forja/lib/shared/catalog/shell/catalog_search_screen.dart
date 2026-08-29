@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
-import 'package:forja/shared/widgets/hub/hub_search_page.dart';
+import 'package:forja/shared/catalog/kit/chrome/hub_search_page.dart';
 
 /// Hub search backed by a catalog plugin `search` action.
 class CatalogSearchScreen extends StatelessWidget {

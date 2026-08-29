@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
-import 'package:forja/shared/catalog/shell/catalog_vertical_filters_rail.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters_rail.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 
 /// Toggle a vertical-filter option by TMDB watch-provider chip id.

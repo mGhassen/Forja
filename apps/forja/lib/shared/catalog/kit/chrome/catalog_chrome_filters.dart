@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/features/anime/anime_genre_categories.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
 import 'package:forja/shared/catalog/filter.dart';
-import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 /// Shell top-bar Films / Series / Categories → protocol filter leaves.

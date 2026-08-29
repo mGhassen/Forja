@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/home/widgets/home_movie_section.dart';
+import 'package:forja/shared/catalog/kit/rows/home_movie_section.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shell/app_router.dart';

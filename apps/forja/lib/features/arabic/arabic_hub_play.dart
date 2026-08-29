@@ -1,5 +1,5 @@
 import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/catalog/shell/catalog_meta_movie.dart';
+import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 

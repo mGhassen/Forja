@@ -5,7 +5,7 @@ import 'package:shimmer/shimmer.dart';
 
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/widgets/home_movie_card.dart';
+import 'package:forja/shared/catalog/kit/cards/home_movie_card.dart';
 
 Widget homeLoadingShimmer(Widget child) {
   return Shimmer.fromColors(

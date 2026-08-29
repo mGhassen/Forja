@@ -8,7 +8,7 @@ import 'package:forja/features/anime/widgets/anime_continue_watching_section.dar
 import 'package:forja/features/asian_drama/asian_drama_details_screen.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/asian_drama/widgets/asian_drama_continue_watching_section.dart';
-import 'package:forja/features/home/widgets/continue_watching_section.dart';
+import 'package:forja/shared/catalog/kit/home/continue_watching_section.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';

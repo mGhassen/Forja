@@ -2,8 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
-import 'package:forja/shared/catalog/shell/catalog_vertical_filters_rail.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters_rail.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shared/design/design.dart';

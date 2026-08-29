@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/features/home/widgets/because_you_watched_section.dart';
+import 'package:forja/shared/catalog/kit/home/because_you_watched_section.dart';
 import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';

@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/theme/app_theme.dart';

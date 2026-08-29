@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/features/home/widgets/home_movie_section.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -10,10 +9,8 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/cinematic_hero.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
-import 'package:forja/shared/widgets/home_movie_card.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
-import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
-import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
+import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/shell_mood_circle.dart';
 import 'package:forja/shell/app_router.dart';
@@ -21,20 +18,23 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:rust/rust.dart';
 
+import '../kit/cards/home_movie_card.dart';
+import '../kit/cards/hub_poster_card.dart';
+import '../kit/chrome/catalog_vertical_filters.dart';
+import '../kit/host/catalog_host_because.dart';
+import '../kit/host/catalog_host_continue.dart';
+import '../kit/host/catalog_host_genre_rows.dart';
+import '../kit/host/catalog_host_home_mood.dart';
+import '../kit/host/catalog_host_popular_asian.dart';
+import '../kit/host/catalog_host_trakt.dart';
+import '../kit/meta/catalog_meta_movie.dart';
+import '../kit/rows/home_movie_section.dart';
+import '../kit/rows/hub_catalog_section.dart';
 import '../filter.dart';
 import '../plugin_nav.dart';
 import '../protocol.dart';
 import '../runtime.dart';
-import 'catalog_chrome_filters.dart';
-import 'catalog_host_because.dart';
-import 'catalog_host_continue.dart';
-import 'catalog_host_genre_rows.dart';
-import 'catalog_host_home_mood.dart';
-import 'catalog_host_popular_asian.dart';
-import 'catalog_host_trakt.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
-import 'catalog_vertical_filters.dart';
-import 'catalog_meta_movie.dart';
+import '../kit/chrome/catalog_chrome_filters.dart';
 import 'catalog_open.dart';
 
 /// Renders a shell tab from a `kind: catalog` plugin layout.

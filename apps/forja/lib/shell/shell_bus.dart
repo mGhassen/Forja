@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 

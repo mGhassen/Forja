@@ -10,5 +10,5 @@ export 'package:forja/shared/tv/shell_tv_focus.dart';
 export 'package:forja/features/home/home_rail_dedupe.dart';
 export 'package:forja/shared/widgets/horizontal_scroller.dart';
 export 'package:forja/shared/widgets/home_loading_skeleton.dart';
-export 'package:forja/shared/widgets/home_movie_card.dart';
+export 'package:forja/shared/catalog/kit/cards/home_movie_card.dart';
 export 'package:forja/shared/widgets/shell_focusable_tap.dart';

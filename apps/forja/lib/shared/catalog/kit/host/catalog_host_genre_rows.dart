@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/home/home_catalog_rotate.dart';
 import 'package:forja/features/home/home_genre_categories.dart';
-import 'package:forja/features/home/widgets/home_movie_section.dart';
+import 'package:forja/shared/catalog/kit/rows/home_movie_section.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shell/app_router.dart';
-import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
 

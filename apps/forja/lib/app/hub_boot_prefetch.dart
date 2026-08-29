@@ -3,7 +3,7 @@ import 'package:forja/app/boot_needs.dart';
 import 'package:forja/shared/catalog/filter.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/runtime.dart';
-import 'package:forja/shared/catalog/shell/catalog_chrome_filters.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_chrome_filters.dart';
 
 /// Prefetch default hub layout + first-paint rails into [CatalogCache].
 ///

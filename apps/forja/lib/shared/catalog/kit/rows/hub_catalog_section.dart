@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
-import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
+import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 

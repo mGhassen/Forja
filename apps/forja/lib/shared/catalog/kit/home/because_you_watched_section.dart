@@ -1,6 +1,6 @@
 // Home tab section widgets - extracted from home_screen.dart (RFC-019 Phase B).
 
-import 'package:forja/features/home/widgets/home_widget_imports.dart';
+import 'package:forja/shared/catalog/kit/home/home_widget_imports.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 class HomeBecauseYouWatchedSection extends StatefulWidget {

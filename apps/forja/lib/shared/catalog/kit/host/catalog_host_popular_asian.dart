@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/asian_drama/providers/asian_drama_providers.dart';
 import 'package:forja/shell/app_router.dart';
-import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
-import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
+import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
+import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:rust/rust.dart';
 

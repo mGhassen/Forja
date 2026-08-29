@@ -2,7 +2,7 @@
 
 import 'dart:math' as math;
 
-import 'package:forja/features/home/widgets/home_widget_imports.dart';
+import 'package:forja/shared/catalog/kit/home/home_widget_imports.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 class HomeMoodCircleLayout {
   const HomeMoodCircleLayout({

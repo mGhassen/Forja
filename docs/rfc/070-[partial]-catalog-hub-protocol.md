@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **5 / 5** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) |
-| **Current slice** | Arabic details+stream live in pack; host scrapers removed — A15 manual QA still open |
+| **Progress** | **10 / 10** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **5 / 5** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) |
+| **Current slice** | `shared/catalog/kit/` widget library; A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -28,6 +28,7 @@
 | 7 | R70-C07 | `PluginRegistry` `hubs` slot — `FORJA_HQ_HUBS_MANIFEST_URL`, `forjahq-hubs` pack id | ✅ |
 | 8 | R70-C08 | `CatalogShell` + `plugins/hubs` pack (`_kit.js`, tmdb, anilist, kisskh, arabic) | ✅ |
 | 9 | R70-C09 | `ForjaHostAssets` — `forja://asset/{id}` catalog → Flutter paths; packs never use `assets/` | ✅ |
+| 10 | R70-C10 | `shared/catalog/kit/` — rows, cards, host widgets, chrome; [CatalogShell](shell/catalog_shell.dart) composes layout only | ✅ |
 
 ---
 
@@ -222,6 +223,22 @@ fails engine boot the same way as a missing providers URL. The legacy combined
 | `filters` | — | `fields[]` |
 
 Widget types: `hero`, `rail`, `ranked`, `mood`, `host.continue`, `host.popular_asian`, …
+
+### Host widget kit (R70-C10)
+
+Dart UI for hub plugins lives under `shared/catalog/kit/` — not in feature browse screens:
+
+| Folder | Role |
+|--------|------|
+| `kit/cards/` | `HomeMovieCard`, `HubPosterCard` (+ My List pin) |
+| `kit/rows/` | `HomeMovieSection`, `HubCatalogSection` (horizontal / numbered / vertical) |
+| `kit/home/` | Home-only sections: mood, continue, because |
+| `kit/host/` | `host.*` layout slots: continue router, trakt, genre rows, popular Asian, … |
+| `kit/chrome/` | Vertical filters, chrome filter AST bridge, hub search page |
+| `kit/meta/` | `CatalogMetaItem` → `Movie` for TMDB home rows |
+| `shell/` | `CatalogShell` composition + open/search only |
+
+Legacy import paths (`features/home/widgets/*`, `shared/widgets/hub/*`) re-export the kit for gradual migration.
 
 ### Host enrich (R70-A28+)
 

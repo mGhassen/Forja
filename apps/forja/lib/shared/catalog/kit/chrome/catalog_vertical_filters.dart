@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../filter.dart';
-import '../protocol.dart';
+import '../../filter.dart';
+import '../../protocol.dart';
 
 /// One selectable chip in a [host.vertical_filters] layout widget.
 class CatalogVerticalFilterOption {
