@@ -501,38 +501,55 @@ class _SettingsProvidersSectionState
           if (packs.isNotEmpty) ...[
             const SizedBox(height: 20),
             const SettingsEngineMiniLabel('Installed plugins'),
-            const SizedBox(height: 4),
-            ...packs.map((pack) {
-              // HTTP (VOD + Live + schedule Catalog) + hub `kind: catalog`.
-              // Hops stay internal.
-              final panelPlugins = [
-                for (final p in pack.plugins)
-                  if (p.isHttp || p.isHubCatalog) p,
-              ];
-              if (panelPlugins.isEmpty) return const SizedBox.shrink();
-              final official = EngineService.isOfficialPack(pack.sourceUrl);
-              return SettingsEnginePackExpansion(
-                pack: pack,
-                plugins: panelPlugins,
-                groupKey: EngineCategories.groupKey,
-                groupLabel: EngineCategories.groupLabel,
-                groupOrder: EngineCategories.groupOrder,
-                trailing: _EnginePackActions(
-                  packEnabled: pack.enabled,
-                  onTogglePack: (val) => EngineService.instance.setPackEnabled(
-                    sourceUrl: pack.sourceUrl,
-                    enabled: val,
-                  ),
-                  onRefresh: () => _refreshEnginePack(pack.sourceUrl),
-                  onRemove: () => _removeEnginePack(pack.sourceUrl),
-                  showOfficialBadge: official,
-                ),
-              );
-            }),
+            ..._buildEnginePacksByKind(packs),
           ],
         ],
       ),
     );
+  }
+
+  List<Widget> _buildEnginePacksByKind(List<EnginePack> packs) {
+    final grouped = groupEnginePacksByKind(packs);
+    final out = <Widget>[];
+    for (final kind in grouped.orderedKinds) {
+      final kindPacks = grouped.byKind[kind] ?? const <EnginePack>[];
+      final rows = <Widget>[];
+      for (final pack in kindPacks) {
+        // HTTP (VOD + Live + schedule Catalog) + hub `kind: catalog`.
+        // Hops stay internal.
+        final panelPlugins = [
+          for (final p in pack.plugins)
+            if (p.isHttp || p.isHubCatalog) p,
+        ];
+        if (panelPlugins.isEmpty) continue;
+        final official = EngineService.isOfficialPack(pack.sourceUrl);
+        rows.add(
+          SettingsEnginePackExpansion(
+            pack: pack,
+            plugins: panelPlugins,
+            groupKey: EngineCategories.groupKey,
+            groupLabel: EngineCategories.groupLabel,
+            groupOrder: EngineCategories.groupOrder,
+            trailing: _EnginePackActions(
+              packEnabled: pack.enabled,
+              onTogglePack: (val) => EngineService.instance.setPackEnabled(
+                sourceUrl: pack.sourceUrl,
+                enabled: val,
+              ),
+              onRefresh: () => _refreshEnginePack(pack.sourceUrl),
+              onRemove: () => _removeEnginePack(pack.sourceUrl),
+              showOfficialBadge: official,
+            ),
+          ),
+        );
+      }
+      if (rows.isEmpty) continue;
+      out.add(const SizedBox(height: 12));
+      out.add(SettingsEngineMiniLabel(PluginRegistry.packKindLabel(kind)));
+      out.add(const SizedBox(height: 4));
+      out.addAll(rows);
+    }
+    return out;
   }
 
   Future<void> _retryOfficialEnginePack() async {

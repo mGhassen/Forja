@@ -219,7 +219,7 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     ShellBus.hideGlobalNav.value = false;
     ShellBus.requestTab.value = null;
     ShellBus.requestSettingsCategory.value = null;
-    ShellBus.settingsHubCategoryId = null;
+    ShellBus.settingsHubCategoryId.value = 'profile';
     ShellBus.selectDefaultTabOnNextNavLoad = false;
 
     setState(() => _stage = _StartupStage.account);

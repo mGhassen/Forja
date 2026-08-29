@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 6** acceptance (first-use lazy) ⏭️ · **8 / 8** acceptance (profile-gated splash) · **3 / 3** acceptance (profile-switch = intro) · **4 / 4** acceptance (instant splash + post-splash engines) |
-| **Current slice** | Instant splash paint; play-source engines post-dismiss; no Home Stremio rails |
+| **Progress** | **0 / 6** acceptance (first-use lazy) ⏭️ · **8 / 8** acceptance (profile-gated splash) · **3 / 3** acceptance (profile-switch = intro) · **4 / 4** acceptance (instant splash + post-splash engines) · **3 / 3** acceptance (pack-gated splash) |
+| **Current slice** | Splash awaits ForjaHQ packs + default hub prefetch; play-source engines still post-dismiss |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -64,9 +64,19 @@
 
 ---
 
+## Acceptance (pack-gated splash)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R17-A22 | Intro / profile splash **awaits** official ForjaHQ packs (6 required; Arabic optional) before dismiss | ✅ |
+| 2 | R17-A23 | Splash prefetches default hub `layout` (Home, else first visible hub) into CatalogCache | ✅ |
+| 3 | R17-A24 | LocalServer / WebStreamr / Nuvio / Torrent still start **post**-dismiss (unchanged) | ✅ |
+
+---
+
 ## Summary
 
-Move heavy native and network engines off the uncritical always-on boot path. **Current slice:** logo splash paints immediately; cloud sync / update check are background; Sources engines (proxy, WebStreamr, Nuvio, torrent) start after splash dismiss — not under the animation floor.
+Move heavy native and network engines off the uncritical always-on boot path. **Current slice:** logo splash paints immediately; **awaits ForjaHQ pack install + default hub layout prefetch** before dismiss; Sources engines (proxy, WebStreamr, Nuvio, torrent) start after splash dismiss.
 
 ## Problem
 

@@ -63,7 +63,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   GlobalKey<State<StatefulWidget>>? _keyForTab(String id) {
-    if (id == 'search') return null;
+    // Settings must not use a GlobalKey: shell churn on resume was disposing
+    // the keyed State while the cached widget stayed, then remounting → Profile.
+    if (id == 'search' || id == 'settings') return null;
     return _ensureTabKey(id);
   }
 
@@ -115,7 +117,15 @@ class _MainScreenState extends ConsumerState<MainScreen>
         'music' => MusicScreen(key: key),
         'jellyfin' => JellyfinScreen(key: key),
         'live_matches' => LiveMatchesScreen(key: key),
-        _ => _tabWithKey(key, builder()),
+        // CatalogShell keeps the GlobalKey for [ShellTabRefresh]. Plain tabs
+        // (Settings) stay unkeyed — see [_keyForTab].
+        _ => () {
+            final child = builder();
+            if (child is CatalogShell) {
+              return _tabWithKey(key, child);
+            }
+            return child;
+          }(),
       };
     });
     if (isNew && kDebugMode) {

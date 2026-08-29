@@ -2,7 +2,7 @@
 //!
 //! Mirrors the shape of Lume's Swift `StalkerClient`: candidate middleware
 //! endpoints are tried in order until one handshakes, the winning
-//! (endpoint, token) pair is cached per `portal_origin|mac` for the life of
+//! (endpoint, token) pair is cached per `portal_origin|mac|timezone` for the life of
 //! the process (catalog sync issues many separate `request_json` calls —
 //! login / categories / streams / create_link — and re-handshaking every
 //! one would be both slow and rude to the portal), a 401/403 clears the
@@ -87,7 +87,7 @@ struct Endpoint {
     token: String,
 }
 
-/// In-memory session cache keyed by `portal_origin|mac`, shared by every
+/// In-memory session cache keyed by `portal_origin|mac|timezone`, shared by every
 /// `Session` in this process. A handshake pins both the winning endpoint
 /// path (`portal.php` vs `server/load.php` vs `stalker_portal/...`) and the
 /// bearer token; both are reused across the separate login / catalog /
@@ -193,7 +193,7 @@ impl Session {
             .cookie_store(true)
             .build()
             .map_err(|e| e.to_string())?;
-        let cache_key = format!("{origin}|{mac}");
+        let cache_key = format!("{origin}|{mac}|{}", device_timezone());
         let session = Self {
             referer: format!("{origin}/c/"),
             origin,
@@ -209,9 +209,12 @@ impl Session {
     }
 
     fn cookie_header(&self) -> String {
+        // Mag EPG wall-clock strings follow this cookie — must match the device
+        // region so Dart can treat naive `YYYY-MM-DD HH:MM:SS` as local.
         format!(
-            "mac={}; stb_lang=en; timezone=Europe/London",
-            urlencoding::encode(&self.mac)
+            "mac={}; stb_lang=en; timezone={}",
+            urlencoding::encode(&self.mac),
+            device_timezone()
         )
     }
 
@@ -295,6 +298,21 @@ impl Session {
                             .perform_get(
                                 &endpoint_url,
                                 "type=stb&action=get_profile&JsHttpRequest=1-xml",
+                                Some(&token),
+                                timeout,
+                            )
+                            .await;
+                        // Align Mag STB timezone with the device so EPG
+                        // listings match regional wall-clock (cookie alone is
+                        // not enough on every Ministra fork).
+                        let tz = device_timezone();
+                        let tz_enc = urlencoding::encode(&tz);
+                        let _ = self
+                            .perform_get(
+                                &endpoint_url,
+                                &format!(
+                                    "type=stb&action=set_timezone&timezone={tz_enc}&JsHttpRequest=1-xml"
+                                ),
                                 Some(&token),
                                 timeout,
                             )
@@ -1356,6 +1374,12 @@ fn normalize_epoch(n: i64) -> i64 {
     }
 }
 
+/// Host OS IANA zone (e.g. `Africa/Tunis`). Falls back to `UTC` when the
+/// platform cannot resolve one — never hardcode a random city.
+fn device_timezone() -> String {
+    iana_time_zone::get_timezone().unwrap_or_else(|_| "UTC".to_string())
+}
+
 fn parse_stalker_episodes(js: &Value) -> Vec<ParsedSeriesEpisode> {
     let arr = js
         .get("data")
@@ -1698,6 +1722,32 @@ mod tests {
         assert!(has_empty_stream_param("http://host/live.php?stream=&extension=ts"));
         assert!(!has_empty_stream_param("http://host/live.php?stream=5"));
         assert!(!has_empty_stream_param("http://host/live.php"));
+    }
+
+    #[test]
+    fn device_timezone_is_nonempty_iana_like() {
+        let tz = device_timezone();
+        assert!(!tz.is_empty());
+        // IANA zones are Path-like (`Area/City`) or `UTC` / `Etc/...`.
+        assert!(
+            tz == "UTC" || tz.contains('/') || tz.starts_with("Etc/"),
+            "unexpected timezone {tz}"
+        );
+    }
+
+    #[test]
+    fn cookie_header_embeds_device_timezone() {
+        let tz = device_timezone();
+        let cookie = format!(
+            "mac={}; stb_lang=en; timezone={}",
+            urlencoding::encode("00:1A:79:00:00:01"),
+            tz
+        );
+        assert!(cookie.contains(&format!("timezone={tz}")));
+        // Must not pin every STB to London unless the host actually is.
+        if tz != "Europe/London" {
+            assert!(!cookie.contains("timezone=Europe/London"));
+        }
     }
 
     // ── transient retry classification ────────────────────────────────

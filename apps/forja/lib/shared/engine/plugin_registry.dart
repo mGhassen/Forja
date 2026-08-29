@@ -45,7 +45,8 @@ class PluginRegistry {
     'FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL',
   );
 
-  /// Official ForjaHQ Arabic hub pack (`FORJA_HQ_ARABIC_MANIFEST_URL`).
+  /// Optional Arabic hub pack (`FORJA_HQ_ARABIC_MANIFEST_URL`) — out of product
+  /// scope; install only when the dart-define is set.
   static const officialArabicManifestUrl = String.fromEnvironment(
     'FORJA_HQ_ARABIC_MANIFEST_URL',
   );
@@ -70,7 +71,7 @@ class PluginRegistry {
 
   static const _cloudOfficialKey = 'engine_js_cloud_forjahq_urls_v1';
 
-  /// Slot resolve order — all six are required.
+  /// Slot resolve order — six required packs (Arabic is optional).
   static const officialSlotOrder = [
     'providers',
     'live',
@@ -78,16 +79,15 @@ class PluginRegistry {
     'home',
     'anime',
     'asian_drama',
-    'arabic',
   ];
 
   /// Hub catalog slots (one pack per shell hub tab).
   static const hubSlotIds = {'home', 'anime', 'asian_drama', 'arabic'};
 
   /// Packs that must be configured for the engine to work at all.
-  static const requiredOfficialPackCount = 7;
+  static const requiredOfficialPackCount = 6;
 
-  /// All configured official pack URLs from dart-define.
+  /// Required official pack URLs from dart-define (no Arabic).
   static List<String> get officialManifestUrls => [
         for (final u in [
           officialProvidersManifestUrl,
@@ -96,9 +96,14 @@ class PluginRegistry {
           officialHomeManifestUrl,
           officialAnimeManifestUrl,
           officialAsianDramaManifestUrl,
-          officialArabicManifestUrl,
         ])
           if (u.trim().isNotEmpty) u.trim(),
+      ];
+
+  /// Optional extras (Arabic when set).
+  static List<String> get optionalOfficialManifestUrls => [
+        if (officialArabicManifestUrl.trim().isNotEmpty)
+          officialArabicManifestUrl.trim(),
       ];
 
   /// @Deprecated Use [officialProvidersManifestUrl] or [officialManifestUrls].
@@ -202,6 +207,66 @@ class PluginRegistry {
     return null;
   }
 
+  /// Settings → Forja plugins pack buckets (not per-plugin [EngineCategories]).
+  static const packKindProviders = 'providers';
+  static const packKindLive = 'live';
+  static const packKindCatalog = 'catalog';
+  static const packKindHubs = 'hubs';
+  static const packKindOther = 'other';
+
+  static const packKindOrder = [
+    packKindProviders,
+    packKindLive,
+    packKindCatalog,
+    packKindHubs,
+    packKindOther,
+  ];
+
+  static String packKindLabel(String key) => switch (key) {
+    packKindProviders => 'Providers',
+    packKindLive => 'Live',
+    packKindCatalog => 'Catalog',
+    packKindHubs => 'Hubs',
+    _ => 'Other',
+  };
+
+  static String? hubSlotLabel(String? slot) => switch (slot) {
+    'home' => 'Home',
+    'anime' => 'Anime',
+    'asian_drama' => 'Asian Drama',
+    'arabic' => 'Arabic',
+    _ => null,
+  };
+
+  /// Pack bucket for the installed list: Providers / Live / Catalog / Hubs / Other.
+  static String packKindKey(EnginePack pack) {
+    final slot = forjaHqSlot(pack.sourceUrl);
+    if (slot != null) {
+      return switch (slot) {
+        'providers' => packKindProviders,
+        'live' => packKindLive,
+        'catalog' => packKindCatalog,
+        'home' || 'anime' || 'asian_drama' || 'arabic' => packKindHubs,
+        _ => packKindOther,
+      };
+    }
+    if (pack.plugins.any((p) => p.isHubCatalog)) return packKindHubs;
+    if (pack.plugins.any((p) => p.isLiveCatalog)) return packKindCatalog;
+    if (pack.plugins.any((p) => p.isLive)) return packKindLive;
+    if (pack.plugins.any((p) => p.isHttp)) return packKindProviders;
+    return packKindOther;
+  }
+
+  /// Subtitle kind chip: `Providers` or `Hubs · Home`.
+  static String packKindInfo(EnginePack pack) {
+    final kind = packKindKey(pack);
+    final hub = hubSlotLabel(forjaHqSlot(pack.sourceUrl));
+    if (kind == packKindHubs && hub != null) {
+      return '${packKindLabel(kind)} · $hub';
+    }
+    return packKindLabel(kind);
+  }
+
   /// Cloud/GitHub (or other) URL that mirrors an official ForjaHQ pack path but
   /// is not the current dart-define URL.
   static bool isShadowingOfficialManifestUrl(String sourceUrl) {
@@ -238,8 +303,24 @@ class PluginRegistry {
       '${Uri.encodeComponent(preludeEntry)}';
 
   static const _missingOfficialUrlsMessage =
-      'FORJA_HQ_PROVIDERS/LIVE/CATALOG/HOME/ANIME/ASIAN_DRAMA/ARABIC_MANIFEST_URL '
+      'FORJA_HQ_PROVIDERS/LIVE/CATALOG/HOME/ANIME/ASIAN_DRAMA_MANIFEST_URL '
       'missing — set in .env / dart-define';
+
+  /// Serialize [install] writes — parallel callers fetch concurrently via
+  /// [Future.wait] but must not interleave prefs commits.
+  Future<void> _installMutex = Future<void>.value();
+
+  Future<T> _withInstallLock<T>(Future<T> Function() fn) {
+    final done = Completer<T>();
+    _installMutex = _installMutex.then((_) async {
+      try {
+        done.complete(await fn());
+      } catch (e, st) {
+        done.completeError(e, st);
+      }
+    });
+    return done.future;
+  }
 
   void notifyChanged() => changeNotifier.value++;
 
@@ -563,12 +644,14 @@ class PluginRegistry {
   Future<List<String>> resolveEffectiveOfficialUrls() async {
     final dartUrls = officialManifestUrls;
     if (dartUrls.length < requiredOfficialPackCount) return dartUrls;
-    if (forcePluginEnv) return dartUrls;
+    if (forcePluginEnv) {
+      return [...dartUrls, ...optionalOfficialManifestUrls];
+    }
 
     await _loadCloudOfficialFromPrefs();
     await _discoverCloudOfficialFromInstalled();
 
-    // Resolve every slot this build configures (all seven when dart-defines are set).
+    // Resolve every required slot this build configures.
     final wanted = <String>{
       for (final u in dartUrls)
         if (forjaHqSlot(u) != null) forjaHqSlot(u)!,
@@ -589,7 +672,17 @@ class PluginRegistry {
       for (final s in officialSlotOrder)
         if (bySlot[s] != null) bySlot[s]!,
     ];
-    return out.length == wanted.length ? out : dartUrls;
+    final required =
+        out.length == wanted.length ? out : dartUrls;
+    // Optional Arabic: prefer cloud slot, else dart-define when set.
+    final optional = <String>[];
+    final cloudArabic = _cloudOfficialBySlot['arabic'];
+    if (cloudArabic != null && cloudArabic.isNotEmpty) {
+      optional.add(cloudArabic);
+    } else {
+      optional.addAll(optionalOfficialManifestUrls);
+    }
+    return [...required, ...optional];
   }
 
   /// First boot / ensure: install or refresh each official pack when needed.
@@ -611,8 +704,12 @@ class PluginRegistry {
     final run = () async {
       try {
         final urls = await resolveEffectiveOfficialUrls();
-        final usingCloud =
-            !forcePluginEnv && urls.every((u) => _asLocalFile(u) == null);
+        final requiredUrls = [
+          for (final u in urls)
+            if (forjaHqSlot(u) != 'arabic') u,
+        ];
+        final usingCloud = !forcePluginEnv &&
+            requiredUrls.every((u) => _asLocalFile(u) == null);
 
         final forceEnvReinstall = forcePluginEnv && !_forceEnvApplied;
         final cloudNeedsApply = usingCloud && !_cloudOfficialApplied;
@@ -635,16 +732,20 @@ class PluginRegistry {
 
         final packs = await listPacksRaw();
         final byUrl = {for (final p in packs) p.sourceUrl: p};
+        final pending = <Future<void>>[];
         for (final url in urls) {
           final local = byUrl[url];
           if (local == null || local.plugins.isEmpty) {
-            await install(url);
+            pending.add(install(url));
           } else if (forceEnvReinstall) {
             // FORCE=true once: reload scripts from dart-define / disk.
-            await install(url);
+            pending.add(install(url));
           } else if (!_officialUpdateChecked) {
-            await _maybeRefreshOfficialIfNewer(url, local);
+            pending.add(_maybeRefreshOfficialIfNewer(url, local));
           }
+        }
+        if (pending.isNotEmpty) {
+          await Future.wait(pending);
         }
         await applyOfficialKeepSet(urls);
 
@@ -730,7 +831,10 @@ class PluginRegistry {
   }
 
   /// Transactional install: fetch all bodies, then write prefs.
-  Future<EnginePack> install(String manifestUrl) async {
+  Future<EnginePack> install(String manifestUrl) =>
+      _withInstallLock(() => _installUnlocked(manifestUrl));
+
+  Future<EnginePack> _installUnlocked(String manifestUrl) async {
     final body = await _fetchText(manifestUrl);
     final map = jsonDecode(body) as Map<String, dynamic>;
     final schema = map['schema'];

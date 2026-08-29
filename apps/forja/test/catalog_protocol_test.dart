@@ -421,7 +421,7 @@ void main() {
     });
 
     test('hub manifest urls map to home / anime / asian_drama / arabic slots', () {
-      expect(PluginRegistry.requiredOfficialPackCount, 7);
+      expect(PluginRegistry.requiredOfficialPackCount, 6);
       expect(
         PluginRegistry.forjaHqSlot(
           'https://x/plugins/hubs/home/manifest.json',

@@ -446,6 +446,55 @@ void main() {
       );
     });
 
+    test('packKindKey groups ForjaHQ slots and hub info', () {
+      EnginePack pack(String url, {List<EnginePlugin>? plugins}) => EnginePack(
+            sourceUrl: url,
+            packId: 't',
+            name: 'T',
+            version: '1',
+            plugins: plugins ??
+                [
+                  EnginePlugin(id: 'p', name: 'P', entry: 'p.js'),
+                ],
+          );
+      expect(
+        PluginRegistry.packKindKey(
+          pack('https://x/plugins/providers/manifest.json'),
+        ),
+        PluginRegistry.packKindProviders,
+      );
+      expect(
+        PluginRegistry.packKindKey(
+          pack('https://x/plugins/live/manifest.json'),
+        ),
+        PluginRegistry.packKindLive,
+      );
+      expect(
+        PluginRegistry.packKindKey(
+          pack('https://x/plugins/catalog/manifest.json'),
+        ),
+        PluginRegistry.packKindCatalog,
+      );
+      expect(
+        PluginRegistry.packKindKey(
+          pack('https://x/plugins/hubs/anime/manifest.json'),
+        ),
+        PluginRegistry.packKindHubs,
+      );
+      expect(
+        PluginRegistry.packKindInfo(
+          pack('https://x/plugins/hubs/asian_drama/manifest.json'),
+        ),
+        'Hubs · Asian Drama',
+      );
+      expect(
+        PluginRegistry.packKindInfo(
+          pack('https://x/plugins/providers/manifest.json'),
+        ),
+        'Providers',
+      );
+    });
+
     test('transactional install writes nothing when a script fetch fails',
         () async {
       const url = 'https://tx.example/manifest.json';

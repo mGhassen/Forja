@@ -513,11 +513,12 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 400));
 
     final needs = await BootNeeds.resolve();
-    // Sources engines (proxy, WebStreamr, Nuvio, torrent) — not splash work.
+    // Sources engines only — packs already awaited on splash.
     await ProfileEngineWarm.warm(
       needs,
       startTorrent: true,
       startPlaySources: true,
+      awaitOfficialPacks: false,
       reason: 'post-splash',
     );
   }
@@ -557,50 +558,63 @@ class _SplashScreenState extends State<SplashScreen> {
     }
   }
 
-  /// Dismiss when the min splash timer elapses. If [bootFuture] is still
-  /// running, show the slow-boot toast; otherwise wait out any remaining
-  /// min time after boot finishes early.
+  /// Dismiss after packs/prefetch finish, honoring the min splash floor.
+  /// Does not dismiss early while official packs are still installing.
   Future<void> _dismissWhenReady(Future<void> bootFuture) async {
+    final started = DateTime.now();
     final minSplashFuture = Future<void>.delayed(_minSplashDuration);
-    final bootFinishedFirst = await Future.any<bool>([
-      bootFuture.then((_) => true),
-      minSplashFuture.then((_) => false),
-    ]);
+
+    var bootOk = true;
+    try {
+      await bootFuture.timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          bootOk = false;
+          debugPrint(
+            '[Boot] Pack/hub warm timed out after 30s — dismissing with toast',
+          );
+        },
+      );
+    } catch (e) {
+      bootOk = false;
+      debugPrint('[Boot] Pack/hub warm error: $e');
+    }
 
     if (!mounted) return;
 
-    if (bootFinishedFirst) {
+    final elapsed = DateTime.now().difference(started);
+    if (elapsed < _minSplashDuration) {
       debugPrint(
         '[Boot] Step 4: Waiting for minimum splash time so the '
         'pre-built MainScreen finishes its first paints...',
       );
       await _awaitMinSplashWithHoldStatus(minSplashFuture);
-      if (!mounted) return;
-      debugPrint(
-        '[Boot] Step 5: Dismissing splash overlay (MainScreen '
-        'already mounted underneath)',
-      );
-      _dismissSplash();
-    } else {
-      _setBootStatus('Finishing up…');
-      debugPrint(
-        '[Boot] Step 4: Min splash elapsed - boot still running; '
-        'dismissing overlay and continuing in background',
-      );
-      _dismissSplash(showSlowBootToast: true);
-      await bootFuture;
     }
 
     if (!mounted) return;
+    debugPrint(
+      '[Boot] Step 5: Dismissing splash overlay (MainScreen '
+      'already mounted underneath)',
+    );
+    _dismissSplash(showSlowBootToast: !bootOk);
+
     debugPrint('═══════════════════════════════════════════════════════════');
     debugPrint('[Boot] ✓✓✓ ENGINE INITIALIZATION COMPLETE ✓✓✓');
     debugPrint('═══════════════════════════════════════════════════════════');
   }
 
   Future<void> _initOfflineBoot() async {
-    debugPrint('[Init] offline boot - skip network catalog');
+    debugPrint('[Init] offline boot - local packs only');
     final needs = await BootNeeds.resolve();
-    // Play-source engines start post-splash (same as online).
+    await ProfileEngineWarm.warm(
+      needs,
+      startTorrent: false,
+      startPlaySources: false,
+      awaitOfficialPacks: true,
+      prefetchDefaultHub: false,
+      reason: 'intro-splash-offline',
+      onStatus: _setBootStatus,
+    );
     debugPrint('[Init] offline boot complete ($needs)');
     _setBootStatus(_splashOpeningStatus(needs));
   }
@@ -611,13 +625,14 @@ class _SplashScreenState extends State<SplashScreen> {
     final needs = await BootNeeds.resolve();
     debugPrint('[Init] $needs');
 
-    // Splash floor: profile engines only. Hub catalog rails load from the
-    // hubs pack after dismiss. LocalServer / WebStreamr / Nuvio / torrent
-    // start after dismiss (Sources / details), not during the animation.
+    // Splash floor: await ForjaHQ packs + default hub layout/rails prefetch.
+    // LocalServer / WebStreamr / Nuvio / torrent start after dismiss.
     await ProfileEngineWarm.warm(
       needs,
       startTorrent: false,
       startPlaySources: false,
+      awaitOfficialPacks: true,
+      prefetchDefaultHub: true,
       reason: 'intro-splash',
       onStatus: _setBootStatus,
     );

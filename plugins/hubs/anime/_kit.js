@@ -235,6 +235,8 @@ function hubTmdbPick(results, media, year) {
   var backdrop = chosen.backdrop_path
     ? 'https://image.tmdb.org/t/p/w1280' + chosen.backdrop_path
     : '';
+  var overview = String(chosen.overview || '').trim();
+  var rating = Number(chosen.vote_average);
   return {
     id: Number(chosen.id),
     mediaType: media,
@@ -242,6 +244,8 @@ function hubTmdbPick(results, media, year) {
     year: yearOf(chosen) || null,
     poster: poster || null,
     backdrop: backdrop || null,
+    overview: overview || null,
+    rating: rating > 0 ? rating : null,
   };
 }
 
@@ -255,7 +259,22 @@ function hubApplyTmdbHit(meta, hit) {
   } else if (hit.poster && !meta.poster) {
     meta.poster = String(hit.poster);
   }
+  // Fill synopsis / score only when the pack left them empty (AniList keeps its own).
+  if (hit.overview && !String(meta.description || '').trim()) {
+    meta.description = String(hit.overview);
+  }
+  if (hit.rating != null && !(Number(meta.rating) > 0)) {
+    meta.rating = Number(hit.rating);
+  }
   return meta;
+}
+
+function hubEnrichPreferType(meta) {
+  var prefer = String(meta.tmdbMediaType || '').toLowerCase();
+  if (prefer === 'movie' || prefer === 'tv') return prefer;
+  var fmt = String(meta.badge || '').toUpperCase();
+  if (fmt === 'MOVIE' || fmt === 'FILM' || fmt === 'HOLLYWOOD') return 'movie';
+  return 'tv';
 }
 
 function hubEnrichTmdb(ctx, items, limit) {
@@ -267,11 +286,10 @@ function hubEnrichTmdb(ctx, items, limit) {
     head.map(function (meta) {
       var yearBit = String(meta.releaseInfo || '').split(' • ')[0];
       var year = Number(yearBit) || 0;
-      var fmt = String(meta.badge || '').toUpperCase();
       return hubTmdbMatch(ctx, {
         title: meta.name,
         year: year,
-        type: fmt === 'MOVIE' ? 'movie' : 'tv',
+        type: hubEnrichPreferType(meta),
       }).then(function (hit) {
         return hubApplyTmdbHit(meta, hit);
       });

@@ -21,10 +21,19 @@ String catalogTmdbPath(String raw) {
 /// Map catalog meta → [Movie] for HomeMovieCard / HomeMovieSection.
 Movie? catalogMetaToMovie(CatalogMetaItem item) {
   final type = item.type.toLowerCase();
-  if (type != 'movie' && type != 'tv' && type != 'series') return null;
-  final mediaType = type == 'series' ? 'tv' : type;
   final id = item.numericId('tmdb');
   if (id == null || id <= 0) return null;
+
+  String mediaType;
+  if (type == 'movie' || type == 'tv' || type == 'series') {
+    mediaType = type == 'series' ? 'tv' : type;
+  } else if (type == 'drama' || type == 'anime') {
+    final hint = (item.tmdbMediaType ?? '').toLowerCase();
+    mediaType = hint == 'movie' ? 'movie' : 'tv';
+  } else {
+    return null;
+  }
+
   return Movie(
     id: id,
     title: item.name,

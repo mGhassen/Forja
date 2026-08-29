@@ -32,7 +32,7 @@ class BootNeeds {
   final bool homeTab;
 
   /// True when Home / Search / My List is visible (splash copy / VOD affinity).
-  /// Hub rails load from the Hubs pack after splash — no BootCache prefetch.
+  /// Splash warms the default hub layout + first-paint rails into CatalogCache.
   final bool tmdb;
 
   /// Effective: Direct torrent on **and** a VOD tab visible.

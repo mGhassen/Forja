@@ -9,6 +9,15 @@ const STALKER_UA =
   'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3'
 const STALKER_X_UA = 'Model: MAG250; Link: WiFi'
 
+/** Host IANA zone for Mag Cookie — EPG wall-clock follows this. */
+function stalkerTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch {
+    return 'UTC'
+  }
+}
+
 function dead(status: string, error?: string): PortalStatus {
   return {
     alive: false,
@@ -164,7 +173,7 @@ async function stalkerGetJs(
       'User-Agent': STALKER_UA,
       'X-User-Agent': STALKER_X_UA,
       Referer: opts.referer,
-      Cookie: `mac=${enc(opts.mac)}; stb_lang=en; timezone=Europe/London`,
+      Cookie: `mac=${enc(opts.mac)}; stb_lang=en; timezone=${stalkerTimezone()}`,
     }
     if (opts.token) {
       headers.Authorization = `Bearer ${opts.token}`

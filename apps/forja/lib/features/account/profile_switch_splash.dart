@@ -86,7 +86,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   void _prepareShellForIncomingProfile() {
     popShellOverlayUntilRoot();
     ShellBus.clearHideGlobalNav();
-    ShellBus.settingsHubCategoryId = null;
+    ShellBus.settingsHubCategoryId.value = 'profile';
     ShellBus.selectDefaultTabOnNextNavLoad = true;
     // Merge may no-op when navigation payloads match; force a shell reload.
     SettingsService.navbarChangeNotifier.value++;
@@ -126,53 +126,39 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     }
   }
 
-  /// Intro-equivalent warm: engines only; play-source engines post-dismiss.
+  /// Intro-equivalent warm: packs + hub prefetch; play-source engines post-dismiss.
   Future<void> _warmLikeIntro(BootNeeds needs) async {
     await ProfileEngineWarm.warm(
       needs,
       startTorrent: false,
       startPlaySources: false,
+      awaitOfficialPacks: true,
+      prefetchDefaultHub: true,
       reason: 'profile-splash',
       onStatus: _setStatus,
     );
   }
 
-  /// Mirror [SplashScreen._dismissWhenReady]: dismiss at the motion floor even
-  /// when warm/TMDB is still running; keep that future alive in the background.
+  /// Wait for packs/prefetch, then honor motion floor. Do not dismiss early
+  /// while official packs are still installing.
   Future<void> _dismissWhenReady(Future<void> bootFuture, BootNeeds needs) async {
-    final elapsed = DateTime.now().difference(_startedAt);
-    final remaining = elapsed >= _splashDuration
-        ? Duration.zero
-        : _splashDuration - elapsed;
-    final minSplashFuture = Future<void>.delayed(remaining);
+    final started = _startedAt;
+    final minEnd = started.add(_splashDuration);
 
-    final bootFinishedFirst = await Future.any<bool>([
-      bootFuture.then((_) => true),
-      minSplashFuture.then((_) => false),
-    ]);
+    try {
+      await bootFuture.timeout(const Duration(seconds: 30));
+    } catch (e) {
+      debugPrint('[ProfileSplash] Pack/hub warm error/timeout: $e');
+    }
 
     if (!mounted || _finished) return;
 
-    if (bootFinishedFirst) {
-      await minSplashFuture;
-      if (!mounted || _finished) return;
-      _finish(true);
-      unawaited(_startPlaySourcesPostSplash(needs));
-      return;
+    final remaining = minEnd.difference(DateTime.now());
+    if (remaining > Duration.zero) {
+      await Future<void>.delayed(remaining);
     }
+    if (!mounted || _finished) return;
 
-    debugPrint(
-      '[ProfileSplash] Motion floor elapsed — dismissing; warm continues '
-      'in background',
-    );
-    // Keep boot alive after this State may dispose.
-    unawaited(
-      bootFuture.then((_) {
-        debugPrint('[ProfileSplash] Background warm complete');
-      }).catchError((Object e) {
-        debugPrint('[ProfileSplash] Background warm error: $e');
-      }),
-    );
     _finish(true);
     unawaited(_startPlaySourcesPostSplash(needs));
   }
@@ -182,6 +168,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       needs,
       startTorrent: true,
       startPlaySources: true,
+      awaitOfficialPacks: false,
       reason: 'post-profile-splash',
     );
   }

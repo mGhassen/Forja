@@ -217,6 +217,7 @@ class CatalogMetaItem {
     this.status,
     this.episodes,
     this.bannerImage = '',
+    this.tmdbMediaType,
     this.ids = const {},
     this.listTarget,
   });
@@ -236,6 +237,8 @@ class CatalogMetaItem {
   final int? episodes;
   /// Ultrawide AniList banner — hero uses `fitWidth` when set (pre-cutover).
   final String bannerImage;
+  /// Pack/kit TMDB media hint (`movie` / `tv`) from enrich.
+  final String? tmdbMediaType;
   final Map<String, dynamic> ids;
   final Map<String, dynamic>? listTarget;
 
@@ -280,6 +283,7 @@ class CatalogMetaItem {
       status: j['status']?.toString(),
       episodes: (j['episodes'] as num?)?.toInt(),
       bannerImage: (j['bannerImage'] ?? '').toString(),
+      tmdbMediaType: j['tmdbMediaType']?.toString(),
       ids: j['ids'] is Map
           ? Map<String, dynamic>.from(j['ids'] as Map)
           : const {},
@@ -303,6 +307,8 @@ class CatalogMetaItem {
         if (status != null && status!.isNotEmpty) 'status': status,
         if (episodes != null) 'episodes': episodes,
         if (bannerImage.isNotEmpty) 'bannerImage': bannerImage,
+        if (tmdbMediaType != null && tmdbMediaType!.isNotEmpty)
+          'tmdbMediaType': tmdbMediaType,
         if (ids.isNotEmpty) 'ids': ids,
         if (listTarget != null) 'listTarget': listTarget,
       };

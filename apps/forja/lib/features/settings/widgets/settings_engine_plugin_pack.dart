@@ -24,6 +24,22 @@ groupEnginePluginsForSettings({
   return (byGroup: byGroup, orderedGroups: orderedGroups);
 }
 
+/// Groups installed packs by Providers / Live / Catalog / Hubs / Other.
+({Map<String, List<EnginePack>> byKind, List<String> orderedKinds})
+groupEnginePacksByKind(List<EnginePack> packs) {
+  final byKind = <String, List<EnginePack>>{};
+  for (final pack in packs) {
+    byKind.putIfAbsent(PluginRegistry.packKindKey(pack), () => []).add(pack);
+  }
+  final orderedKinds = [
+    for (final key in PluginRegistry.packKindOrder)
+      if (byKind.containsKey(key)) key,
+    for (final key in byKind.keys)
+      if (!PluginRegistry.packKindOrder.contains(key)) key,
+  ];
+  return (byKind: byKind, orderedKinds: orderedKinds);
+}
+
 /// Small muted uppercase label used for inline sub-sections (Forja pack lists).
 class SettingsEngineMiniLabel extends StatelessWidget {
   const SettingsEngineMiniLabel(this.text, {super.key});
@@ -120,7 +136,9 @@ class SettingsEnginePackExpansion extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · v${pack.version}',
+                  '${PluginRegistry.packKindInfo(pack)} · '
+                  '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
+                  'v${pack.version}',
                   style: TextStyle(
                     fontSize: 11,
                     color: ForjaShellColors.textSecondary.withValues(alpha: 0.75),

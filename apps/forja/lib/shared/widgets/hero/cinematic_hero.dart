@@ -273,7 +273,10 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   Timer? _heroTimer;
   int _heroIndex = 0;
   final Map<String, String> _heroLogos = {};
+  final Map<String, String> _heroOverviews = {};
+  final Map<String, double> _heroRatings = {};
   final Map<String, List<String>> _heroBackdropUrls = {};
+  final Set<String> _hubEnrichInflight = {};
   bool _heroHeightSyncScheduled = false;
   double? _heroPageViewportWidth;
   List<Movie>? _lastHeroMovies;
@@ -339,6 +342,10 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     if (_isHub && oldCount != newCount) {
       _startHeroTimer();
     }
+    if (_isHub && !identical(oldWidget.slides, widget.slides)) {
+      // New pack metas (e.g. after chrome filter) — re-enrich.
+      _hubEnrichInflight.clear();
+    }
   }
 
   @override
@@ -361,7 +368,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       }
       final items = slides.map(_HeroItem.fromSlide).toList();
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _fetchHubHeroLogos(slides);
+        if (mounted) unawaited(_enrichHubHeroSlides(slides));
       });
       return _buildCinematicHeroBlock(items, compact: _compact);
     }
@@ -649,36 +656,132 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     }
   }
 
-  Future<void> _fetchHubHeroLogos(List<HubHeroSlide> slides) async {
+  Future<void> _enrichHubHeroSlides(List<HubHeroSlide> slides) async {
     for (final slide in slides) {
-      final tmdbId = slide.tmdbId;
-      if (tmdbId == null || tmdbId <= 0) continue;
       final id = slide.id;
-      if (_heroLogos.containsKey(id)) continue;
+      if (_hubEnrichInflight.contains(id)) continue;
+      final needsLogo = !_heroLogos.containsKey(id);
+      final needsOverview =
+          slide.overview.trim().isEmpty && !_heroOverviews.containsKey(id);
+      final needsBackdrop = !_heroBackdropUrls.containsKey(id) &&
+          (slide.imageUrl.trim().isEmpty ||
+              !slide.imageUrl.contains('image.tmdb.org/t/p/w1280'));
+      if (!needsLogo && !needsOverview && !needsBackdrop) continue;
+      _hubEnrichInflight.add(id);
       try {
-        final mediaType = slide.tmdbMediaType.trim().isEmpty
+        var tmdbId = slide.tmdbId;
+        var mediaType = slide.tmdbMediaType.trim().isEmpty
             ? 'tv'
             : slide.tmdbMediaType.trim();
-        final logoPath = await _api.getLogoPath(tmdbId, mediaType: mediaType);
-        if (!mounted) return;
-        setState(() {
-          _heroLogos[id] = logoPath.isNotEmpty
-              ? TmdbApi.getImageUrl(logoPath)
-              : '';
-        });
-      } catch (_) {}
+        if (tmdbId == null || tmdbId <= 0) {
+          final hit = await _matchHubTitle(slide.title, preferMovie: mediaType == 'movie');
+          if (hit == null) {
+            if (!mounted) return;
+            setState(() {
+              if (needsLogo) _heroLogos[id] = '';
+              if (needsOverview) _heroOverviews[id] = '';
+            });
+            continue;
+          }
+          tmdbId = hit.id;
+          mediaType = hit.mediaType;
+        }
+        if (needsLogo) {
+          try {
+            final logoPath =
+                await _api.getLogoPath(tmdbId, mediaType: mediaType);
+            if (!mounted) return;
+            setState(() {
+              _heroLogos[id] = logoPath.isNotEmpty
+                  ? TmdbApi.getImageUrl(logoPath)
+                  : '';
+            });
+          } catch (_) {
+            if (mounted) setState(() => _heroLogos[id] = '');
+          }
+        }
+        if (needsOverview || needsBackdrop) {
+          try {
+            final details = mediaType == 'movie'
+                ? await _api.getMovieDetails(tmdbId)
+                : await _api.getTvDetails(tmdbId);
+            if (!mounted) return;
+            setState(() {
+              if (needsOverview) {
+                final o = details.overview.trim();
+                if (o.isNotEmpty) _heroOverviews[id] = o;
+                if (details.voteAverage > 0) {
+                  _heroRatings[id] = details.voteAverage;
+                }
+              }
+              if (needsBackdrop) {
+                final path = details.backdropPath.trim();
+                if (path.isNotEmpty) {
+                  final url = path.startsWith('http')
+                      ? path
+                      : TmdbApi.getBackdropUrl(path);
+                  if (url.isNotEmpty) {
+                    _heroBackdropUrls[id] = [url];
+                  }
+                }
+              }
+            });
+          } catch (_) {}
+        }
+      } finally {
+        _hubEnrichInflight.remove(id);
+      }
     }
+  }
+
+  Future<({int id, String mediaType})?> _matchHubTitle(
+    String title, {
+    required bool preferMovie,
+  }) async {
+    final q = title.trim();
+    if (q.isEmpty) return null;
+    try {
+      final primary = preferMovie
+          ? await _api.searchMovies(q)
+          : await _api.searchTvShows(q);
+      final secondary = preferMovie
+          ? await _api.searchTvShows(q)
+          : await _api.searchMovies(q);
+      Movie? pick(List<Movie> list) {
+        for (final m in list) {
+          if (m.backdropPath.trim().isNotEmpty) return m;
+        }
+        return list.isEmpty ? null : list.first;
+      }
+      final hit = pick(primary) ?? pick(secondary);
+      if (hit == null || hit.id <= 0) return null;
+      return (id: hit.id, mediaType: hit.mediaType);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _overviewFor(_HeroItem item) {
+    final o = _heroOverviews[item.id];
+    if (o != null && o.isNotEmpty) return o;
+    return item.overview;
+  }
+
+  double _ratingFor(_HeroItem item) {
+    final r = _heroRatings[item.id];
+    if (r != null && r > 0) return r;
+    return item.voteAverage;
   }
 
   Movie _heroItemAsMovie(_HeroItem item) {
     return Movie(
-      id: int.tryParse(item.id) ?? 0,
+      id: item.tmdbId ?? 0,
       title: item.title,
       posterPath: '',
       backdropPath: '',
-      voteAverage: item.voteAverage,
+      voteAverage: _ratingFor(item),
       releaseDate: item.releaseDate,
-      overview: item.overview,
+      overview: _overviewFor(item),
       genres: item.genres,
       mediaType: item.mediaType.isNotEmpty ? item.mediaType : item.tmdbMediaType,
     );
@@ -723,6 +826,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   }
 
   List<String> _itemSlideUrls(_HeroItem item) {
+    final cached = _heroBackdropUrls[item.id];
+    if (cached != null && cached.isNotEmpty) return cached;
     if (_isHub) return item.backdropUrls;
     final movie = item.movie;
     if (movie == null) return item.backdropUrls;
@@ -1309,9 +1414,10 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     );
     const titleGap = 20.0;
     const actionGap = 16.0;
+    final overview = _overviewFor(heroItem);
     final layout = shellHeroDesktopTextLayout(
       maxHeight: maxHeight,
-      hasOverview: heroItem.overview.isNotEmpty,
+      hasOverview: overview.isNotEmpty,
       minTitleHeight: ShellScope.metricsOf(context).heroMinTitleHeight,
     );
 
@@ -1351,7 +1457,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                   child: Align(
                     alignment: Alignment.topLeft,
                     child: HeroOverviewText(
-                      overview: heroItem.overview,
+                      overview: overview,
                       style: overviewStyle,
                       maxLines: layout.overviewMaxLines,
                       shrinkWrap: false,
@@ -1523,7 +1629,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final metaFont = shellScaled(context, 13).clamp(9.0, 13.0);
     final genreFont = shellScaled(context, 12).clamp(8.0, 12.0);
     final gap = shellScaled(context, 10).clamp(7.0, 10.0);
-    final rating = heroItem.voteAverage > 0
+    final vote = _ratingFor(heroItem);
+    final rating = vote > 0
         ? Container(
       padding: EdgeInsets.symmetric(
         horizontal: shellScaled(context, 8).clamp(4.0, 8.0),
@@ -1544,7 +1651,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           ),
           SizedBox(width: shellScaled(context, 4).clamp(2.0, 4.0)),
           Text(
-            heroItem.voteAverage.toStringAsFixed(1),
+            vote.toStringAsFixed(1),
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.amber,

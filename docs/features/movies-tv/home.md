@@ -26,7 +26,7 @@ Tap **Home** in the navigation bar (first tab by default).
 
 ## Tips
 
-- Hub rails come from the ForjaHQ **Hubs** pack — layout can change without an app update when the pack bumps.
+- Hub rails come from the ForjaHQ **Hubs** pack — layout can change without an app update when the pack bumps. Cold start warms layout + first-paint rails into the shared catalog cache so Home opens without a cold network round-trip.
 - Continue Watching is host-owned (your watch history), not pack data.
 - On **desktop**, drag-select the hero title text to copy it (logo titles are images).
 - On **Android TV**, first open focuses the **Home** nav rail item; **RIGHT** or **Enter** moves into the page. From the top **Search** tab, **↓** lands on the hero gallery; **←/→** swaps slides; **OK** opens details; **↓** continues into **View details** then catalog rails.

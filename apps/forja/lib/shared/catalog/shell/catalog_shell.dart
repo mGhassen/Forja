@@ -302,6 +302,7 @@ class _CatalogShellState extends State<CatalogShell>
       imageAlignment: useAniBanner ? Alignment.center : Alignment.centerRight,
       tmdbId: item.numericId('tmdb') ?? movie?.id,
       tmdbMediaType: movie?.mediaType ??
+          item.tmdbMediaType ??
           (item.type == 'movie' ? 'movie' : 'tv'),
       // Home TMDB pin (+); anime/drama use listTarget instead.
       movie: movie,

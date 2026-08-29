@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/pages/settings_category_bodies.dart';
-import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/widgets/settings_hub_scaffold.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -13,6 +12,9 @@ import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 /// Settings tab - RFC-033 category hub; RFC-024 R24-A13: local prefs only.
+///
+/// Selection lives on [ShellBus.settingsHubCategoryId] (not State) so resume
+/// sync / tab remount cannot drop the hub back to Profile.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -21,7 +23,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late String _selectedId;
   final FocusNode _firstHubFocus = FocusNode(debugLabel: 'settings-hub-0');
 
   @override
@@ -29,12 +30,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     final pending = ShellBus.requestSettingsCategory.value;
     if (pending != null) {
-      _selectedId = pending;
-      ShellBus.settingsHubCategoryId = pending;
+      ShellBus.settingsHubCategoryId.value = pending;
       ShellBus.requestSettingsCategory.value = null;
-    } else {
-      _selectedId =
-          ShellBus.settingsHubCategoryId ?? SettingsCategoryId.profile;
     }
     ShellBus.requestSettingsCategory.addListener(_applyRequestedCategory);
     TvHeroActions.bind(
@@ -69,22 +66,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final id = ShellBus.requestSettingsCategory.value;
     if (id == null || !mounted) return;
     ShellBus.requestSettingsCategory.value = null;
-    _rememberCategory(id);
-    if (id == _selectedId) return;
-    setState(() => _selectedId = id);
-  }
-
-  void _rememberCategory(String id) {
-    ShellBus.settingsHubCategoryId = id;
+    if (ShellBus.settingsHubCategoryId.value == id) return;
+    ShellBus.settingsHubCategoryId.value = id;
   }
 
   void _onSelect(String id) {
     unawaited(ProductAnalytics.screen('settings/$id'));
-    _rememberCategory(id);
-    // Always keep hub selection in sync — compact used to skip this, so a
-    // remount / split flip landed back on Profile.
-    if (id != _selectedId) {
-      setState(() => _selectedId = id);
+    if (ShellBus.settingsHubCategoryId.value != id) {
+      ShellBus.settingsHubCategoryId.value = id;
     }
     if (SettingsTokens.useSplitLayout(context)) return;
     pushShellRoute(
@@ -98,10 +87,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SettingsHubScaffold(
-      selectedId: _selectedId,
-      onSelect: _onSelect,
-      firstTileFocusNode: _firstHubFocus,
+    return ValueListenableBuilder<String>(
+      valueListenable: ShellBus.settingsHubCategoryId,
+      builder: (context, selectedId, _) {
+        return SettingsHubScaffold(
+          selectedId: selectedId,
+          onSelect: _onSelect,
+          firstTileFocusNode: _firstHubFocus,
+        );
+      },
     );
   }
 }

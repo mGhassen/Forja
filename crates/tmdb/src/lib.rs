@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+use std::sync::{LazyLock, Mutex};
+use std::time::{Duration, Instant};
+
 use stremio::fetch_get_catalog;
 
 pub const BASE_URL: &str = "https://api.themoviedb.org/3";
@@ -49,11 +53,65 @@ pub fn get_json(resource_path: &str, timeout_secs: u64) -> String {
 
 const IMAGE_BASE: &str = "https://image.tmdb.org/t/p";
 
+const MATCH_CACHE_TTL: Duration = Duration::from_secs(30 * 60);
+const MATCH_CACHE_MAX: usize = 256;
+
+struct MatchCacheEntry {
+    body: String,
+    at: Instant,
+}
+
+static MATCH_CACHE: LazyLock<Mutex<HashMap<String, MatchCacheEntry>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn match_cache_key(title: &str, year: Option<i64>, prefer: &str) -> String {
+    format!(
+        "{}|{}|{}",
+        title.to_ascii_lowercase(),
+        year.unwrap_or(0),
+        prefer
+    )
+}
+
+fn match_cache_get(key: &str) -> Option<String> {
+    let Ok(guard) = MATCH_CACHE.lock() else {
+        return None;
+    };
+    let e = guard.get(key)?;
+    if e.at.elapsed() > MATCH_CACHE_TTL {
+        return None;
+    }
+    Some(e.body.clone())
+}
+
+fn match_cache_put(key: String, body: String) {
+    let Ok(mut guard) = MATCH_CACHE.lock() else {
+        return;
+    };
+    if guard.len() >= MATCH_CACHE_MAX {
+        // Drop expired first; if still full, wipe (simple process-lifetime LRU).
+        guard.retain(|_, e| e.at.elapsed() <= MATCH_CACHE_TTL);
+        if guard.len() >= MATCH_CACHE_MAX {
+            guard.clear();
+        }
+    }
+    guard.insert(
+        key,
+        MatchCacheEntry {
+            body,
+            at: Instant::now(),
+        },
+    );
+}
+
 /// Catalog hub enrich — match a title (+ optional year) to a TMDB movie/tv.
+///
+/// Process-lifetime cache (30m TTL, 256 entries) so spotlight revalidate and
+/// cross-hub enrich reuse the same hit without re-searching TMDB.
 ///
 /// Request JSON: `{ "title": "...", "year": 2024, "type": "tv"|"movie"|"" }`.
 /// Response JSON: hit object or `null`. Hit shape:
-/// `{ "id", "mediaType", "name", "year", "poster", "backdrop" }`.
+/// `{ "id", "mediaType", "name", "year", "poster", "backdrop", "overview", "rating" }`.
 pub fn match_json(request_json: &str) -> String {
     let Ok(req) = serde_json::from_str::<serde_json::Value>(request_json) else {
         return "null".into();
@@ -81,6 +139,11 @@ pub fn match_json(request_json: &str) -> String {
         .trim()
         .to_ascii_lowercase();
 
+    let key = match_cache_key(title, year, &prefer);
+    if let Some(cached) = match_cache_get(&key) {
+        return cached;
+    }
+
     let encoded = urlencoding_lite(title);
     let primary = if prefer == "movie" { "movie" } else { "tv" };
     let secondary = if primary == "movie" { "tv" } else { "movie" };
@@ -89,10 +152,12 @@ pub fn match_json(request_json: &str) -> String {
     if hit.is_none() {
         hit = search_pick(secondary, &encoded, year);
     }
-    match hit {
+    let out = match hit {
         Some(v) => v.to_string(),
         None => "null".into(),
-    }
+    };
+    match_cache_put(key, out.clone());
+    out
 }
 
 fn search_pick(media: &str, encoded_title: &str, year: Option<i64>) -> Option<serde_json::Value> {
@@ -174,6 +239,16 @@ fn pick_result(
         .and_then(|v| v.as_str())
         .unwrap_or("");
     let y = year_of(chosen);
+    let overview = chosen
+        .get("overview")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+    let rating = chosen
+        .get("vote_average")
+        .and_then(|v| v.as_f64())
+        .filter(|n| *n > 0.0);
 
     Some(serde_json::json!({
         "id": id,
@@ -190,6 +265,12 @@ fn pick_result(
         } else {
             serde_json::Value::String(format!("{IMAGE_BASE}/w1280{backdrop_path}"))
         },
+        "overview": if overview.is_empty() {
+            serde_json::Value::Null
+        } else {
+            serde_json::Value::String(overview)
+        },
+        "rating": rating,
     }))
 }
 
@@ -260,5 +341,18 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(&raw).unwrap();
         assert!(v.get("id").and_then(|x| x.as_i64()).unwrap_or(0) > 0);
         assert_eq!(v.get("mediaType").and_then(|x| x.as_str()), Some("tv"));
+    }
+
+    #[test]
+    fn match_json_cache_reuses_hit() {
+        if API_KEY.is_empty() {
+            eprintln!("skip match_json_cache_reuses_hit: TMDB_API_KEY not set");
+            return;
+        }
+        let req = r#"{"title":"One Piece","year":1999,"type":"tv"}"#;
+        let a = match_json(req);
+        let b = match_json(req);
+        assert_eq!(a, b);
+        assert_ne!(a, "null");
     }
 }

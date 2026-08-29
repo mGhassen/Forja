@@ -804,13 +804,17 @@ class EngineRuntime {
               chosen = withBackdrop(exact) || withBackdrop(near) || withBackdrop(results);
             } else chosen = withBackdrop(results);
             if (!chosen || !chosen.id) return null;
+            var overview = String(chosen.overview || '').trim();
+            var rating = Number(chosen.vote_average);
             return {
               id: Number(chosen.id),
               mediaType: media,
               name: String(media === 'movie' ? (chosen.title || '') : (chosen.name || '')),
               year: yearOf(chosen, media) || null,
               poster: chosen.poster_path ? 'https://image.tmdb.org/t/p/w500' + chosen.poster_path : null,
-              backdrop: chosen.backdrop_path ? 'https://image.tmdb.org/t/p/w1280' + chosen.backdrop_path : null
+              backdrop: chosen.backdrop_path ? 'https://image.tmdb.org/t/p/w1280' + chosen.backdrop_path : null,
+              overview: overview || null,
+              rating: rating > 0 ? rating : null
             };
           }
           function search(media) {

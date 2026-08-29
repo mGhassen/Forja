@@ -464,22 +464,35 @@ class IptvClient {
     return RustLib.instance.decodeXtreamText(s);
   }
 
-  static DateTime? _parseEpgTs(dynamic v) {
+  /// Parse Xtream / Mag EPG times into **device-local** [DateTime].
+  ///
+  /// Unix epochs (`start_timestamp`) are UTC instants → [DateTime.toLocal].
+  /// Naive wall-clock strings are treated as already regional/local (Mag
+  /// cookie + `set_timezone` match the device; Xtream prefers timestamps).
+  /// Strings with `Z` / explicit offset are absolute → local.
+  @visibleForTesting
+  static DateTime? parseEpgTs(dynamic v) {
     if (v == null) return null;
-    final s = v.toString();
-    // Xtream sends both unix-seconds ("start_timestamp") and ISO-ish
-    // strings ("start": "2026-04-25 19:00:00"). Try seconds first.
+    final s = v.toString().trim();
+    if (s.isEmpty) return null;
+    // Xtream/Mag send unix-seconds ("start_timestamp") and ISO-ish
+    // strings ("start": "2026-04-25 19:00:00"). Prefer epochs.
     final secs = int.tryParse(s);
     if (secs != null && secs > 1000000000) {
       final ms = secs > 1000000000000 ? secs : secs * 1000;
       return DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true).toLocal();
     }
     try {
-      return DateTime.parse(s.replaceFirst(' ', 'T')).toLocal();
+      final normalized = s.contains('T') ? s : s.replaceFirst(' ', 'T');
+      final parsed = DateTime.parse(normalized);
+      // Offset / Z → UTC instant in Dart; naive → local wall-clock.
+      return parsed.isUtc ? parsed.toLocal() : parsed;
     } catch (_) {
       return null;
     }
   }
+
+  static DateTime? _parseEpgTs(dynamic v) => parseEpgTs(v);
 
   static List<EpgEntry> _parseEpgListings(String text) {
     final root = json.decode(text);

@@ -2,16 +2,19 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
+import 'package:forja/app/hub_boot_prefetch.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:rust/rust.dart';
 
-/// Starts profile-activated engines. Idempotent - safe from post-splash,
+/// Starts profile-activated engines. Idempotent - safe from splash,
 /// profile splash post-dismiss, and settings toggles.
 ///
 /// Intro / profile splash should pass [startPlaySources]: false and
 /// [startTorrent]: false so LocalServer / WebStreamr / Nuvio / torrent stay
-/// off the animation floor (they belong with Sources / details, not boot).
+/// off the animation floor. Official ForjaHQ packs (+ optional hub layout/rails
+/// prefetch into CatalogCache) always await during splash so Catalog Shell is
+/// ready on dismiss.
 class ProfileEngineWarm {
   ProfileEngineWarm._();
 
@@ -19,10 +22,28 @@ class ProfileEngineWarm {
     BootNeeds needs, {
     bool startTorrent = true,
     bool startPlaySources = true,
+    bool awaitOfficialPacks = true,
+    bool prefetchDefaultHub = false,
     String reason = 'boot',
     void Function(String status)? onStatus,
   }) async {
     debugPrint('[Init] warm ($reason): $needs');
+
+    if (awaitOfficialPacks) {
+      onStatus?.call('Loading plugins…');
+      debugPrint('[Init] ForjaHQ install (await)');
+      await EngineService.instance.ensureOfficialInstalled().catchError((
+        Object e,
+      ) {
+        debugPrint('[Init] ForjaHQ install error (non-fatal): $e');
+      });
+      if (prefetchDefaultHub) {
+        onStatus?.call(
+          needs.homeTab ? 'Opening Home…' : 'Warming catalog…',
+        );
+        await prefetchDefaultHubLayout(needs);
+      }
+    }
 
     if (!startPlaySources) {
       debugPrint('[Init] LocalServer / WebStreamr / Nuvio skip (deferred)');
@@ -49,30 +70,11 @@ class ProfileEngineWarm {
       }
 
       if (needs.nuvio) {
-        // Lean list from cloud sync is enough at warm — fetch scrapers only
-        // when Settings / Sources actually opens Nuvio (not while on IPTV).
         debugPrint('[Init] Nuvio defer hydrate to first Sources/Settings use');
       } else if (!needs.playSourceNuvio) {
         debugPrint('[Init] Nuvio skip (play source off)');
       } else {
         debugPrint('[Init] Nuvio skip (no VOD tab)');
-      }
-
-      if (needs.playSourceEngine) {
-        final install = EngineService.instance
-            .ensureOfficialInstalled()
-            .catchError((Object e) {
-          debugPrint('[Init] ForjaHQ install error (non-fatal): $e');
-        });
-        if (startPlaySources) {
-          debugPrint('[Init] ForjaHQ install (post-splash await)');
-          await install;
-        } else {
-          debugPrint('[Init] ForjaHQ install (splash background)');
-          unawaited(install);
-        }
-      } else {
-        debugPrint('[Init] engine skip (play source off)');
       }
     }
 

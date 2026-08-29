@@ -74,7 +74,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R33-A20 | Background → resume (cloud pull / visibility refresh) keeps the open Settings category; only falls back to Profile if the tile stays missing | ✅ |
+| 1 | R33-A20 | Background → resume keeps the open Settings category ([ShellBus.settingsHubCategoryId]); no auto-jump to Profile on visibility refresh | ✅ |
 
 ---
 

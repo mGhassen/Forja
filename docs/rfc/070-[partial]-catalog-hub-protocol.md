@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **3 / 3** acceptance (host enrich) |
-| **Current slice** | Host enrich shipped — A15 manual QA still open |
+| **Progress** | **8 / 8** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **4 / 4** acceptance (host enrich) · **1 / 1** acceptance (required packs) · **2 / 2** acceptance (shared cache) |
+| **Current slice** | Shared cache restored (splash rail warm + TMDB match LRU); A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -80,6 +80,24 @@ Pack-owned enrichment — host exposes reusable match APIs; plugins compose (Ani
 | 1 | R70-A28 | `ctx.host.tmdb.match({ title, year, type })` on EngineJS + flutter_js invokers | ✅ |
 | 2 | R70-A29 | Shared kit helpers `hubTmdbMatch` / `hubEnrichTmdb` / `hubApplyTmdbHit` | ✅ |
 | 3 | R70-A30 | Anime spotlight rail enriches via kit/host (CatalogShell anime TMDB hardcode removed) | ✅ |
+| 4 | R70-A31 | Asian Drama spotlight rail enriches via kit/host (backdrop + synopsis/rating when KissKH omits them) | ✅ |
+
+---
+
+## Acceptance (required packs — in-scope)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A32 | Required official packs = 6 (Providers/Live/Catalog/Home/Anime/Asian Drama); Arabic dart-define optional / out of product scope | ✅ |
+
+---
+
+## Acceptance (shared cache — BootCache parity)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A33 | Splash prefetches default hub layout + first-paint rails into `CatalogCache` (Home: spotlight/featured/popular/new_releases; Anime/Asian Drama: hero + bleed) | ✅ |
+| 2 | R70-A34 | `tmdb::match_json` process cache (30m TTL, 256 cap) so hub enrich reuses TMDB match hits across revalidate / hubs | ✅ |
 
 ---
 
@@ -121,11 +139,12 @@ are first-class fields on both the Rust EngineJS and flutter_js invokers
 
 ### Required packs
 
-Seven official dart-defines are required — `requiredOfficialPackCount == 7`
-(providers, live, catalog, home, anime, asian_drama, arabic). One hub pack
-per shell tab. Unset any of
+Six official dart-defines are required — `requiredOfficialPackCount == 6`
+(providers, live, catalog, home, anime, asian_drama). Arabic
+(`FORJA_HQ_ARABIC_MANIFEST_URL`) is optional / out of product scope.
+Unset any of
 `FORJA_HQ_HOME_MANIFEST_URL` / `FORJA_HQ_ANIME_MANIFEST_URL` /
-`FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL` / `FORJA_HQ_ARABIC_MANIFEST_URL`
+`FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL`
 fails engine boot the same way as a missing providers URL. The legacy combined
 `forjahq-hubs` pack is treated as a shadow and replaced. Arabic nav stays
 `defaultEnabled: false` until sources ship.
@@ -157,7 +176,7 @@ ctx.host.tmdb.match({ title: 'One Piece', year: 1999, type: 'tv' })
 // → { id, mediaType, name, year, poster, backdrop } | null
 ```
 
-Kit helpers (`hubTmdbMatch`, `hubEnrichTmdb`) prefer `ctx.host.tmdb.match` and fall back to `ctx.fetch` + injected `config.apiKey`. Packs own which rails enrich (e.g. AniList spotlight only) — CatalogShell only renders `meta`.
+Kit helpers (`hubTmdbMatch`, `hubEnrichTmdb`) prefer `ctx.host.tmdb.match` and fall back to `ctx.fetch` + injected `config.apiKey`. Packs own which rails enrich (AniList + KissKH spotlight) — CatalogShell only renders `meta`. Match hits may include `overview` / `rating`; `hubApplyTmdbHit` fills empty pack synopsis/score only. Rust `tmdb::match_json` keeps a process-lifetime match cache (R70-A34). Splash warms layout + first-paint rails into `CatalogCache` (R70-A33) — BootCache replacement.
 
 ### Related
 

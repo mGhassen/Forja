@@ -38,7 +38,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [015-[partial]-…](015-[partial]-in-app-updates.md) | In-app updates | v1.0 / v1.1 | partial | 7/7 · 11/13 · 3/3 · 2/2 · 5/5 · 5/6 · 1/1 · 3/3 · 2/3 · 4/4 · 4/4 · 1/1 · 2/2 · 1/1 | [0.0.1](../backlog/done/0.0.1-[done].md), [0.6.3](../backlog/done/0.6.3-[done].md), [1.0.1](../backlog/1.0.1-[open].md), [1.0.2](../backlog/1.0.2-[draft].md), [1.0.4](../backlog/1.0.4-[draft].md) |
 | [016-[partial]-…](016-[partial]-lazy-tab-mounting.md) | Lazy tab mounting | v0.8.x | partial | 5/5 mount | [0.8.2](../backlog/done/0.8.2-[done].md) |
 | [024-[partial]-…](024-[partial]-tab-cache-eviction-stale.md) | Tab cache eviction + stale | v0.8.x | partial | 21/22 · 1 ⏭️ | [0.8.2](../backlog/done/0.8.2-[done].md) · [1.0.1](../backlog/1.0.1-[open].md) |
-| [017-[open]-…](017-[open]-deferred-engine-boot.md) | Deferred / profile-gated engine boot | v1.0.1 | open | 0/6 ⏭️ · 8/8 profile-gated · 3/3 switch=intro · 4/4 instant splash | [1.0.1](../backlog/1.0.1-[open].md) · [0.5.0](../backlog/done/0.5.0-[done].md) hist |
+| [017-[open]-…](017-[open]-deferred-engine-boot.md) | Deferred / profile-gated engine boot | v1.0.1 | open | 0/6 ⏭️ · 8/8 profile-gated · 3/3 switch=intro · 4/4 instant splash · **3/3 pack-gated** | [1.0.1](../backlog/1.0.1-[open].md) · [0.5.0](../backlog/done/0.5.0-[done].md) hist |
 | [018-[draft]-…](018-[draft]-startup-splash-home.md) | Splash + Home perf | v1.0.1 | draft | 0/4 · 2 fetch · 3⏭️ | [0.5.0](../backlog/done/0.5.0-[done].md), [0.5.1](../backlog/done/0.5.1-[done].md) |
 | [019-[draft]-…](019-[draft]-god-file-decomposition.md) | God file splits | v1.0.1 / v1.0.2 | draft | 5/5 | [1.0.1](../backlog/1.0.1-[draft].md) + [1.0.2](../backlog/1.0.2-[draft].md) |
 | [020-[draft]-…](020-[draft]-media-details-routing.md) | Media details routing | v1.0.1 | draft | 3/4 | [RFC-026](026-[draft]-media-details-player-ux.md) |
@@ -90,7 +90,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [067-[fixed]-…](fixed/067-[fixed]-forjahq-remote-plugin-pack.md) | ForjaHQ remote plugin pack (engine JS shell) | v1.4 | fixed | Complete · 5/5 · 10/10 | — |
 | [068-[fixed]-…](fixed/068-[fixed]-engine-plugin-registry.md) | Engine PluginRegistry (pack-scoped install) | v1.4 | fixed | Complete · 5/5 · 10/10 | — |
 | [069-[fixed]-…](fixed/069-[fixed]-official-plugins-split.md) | Official packs under `plugins/` (providers / live / catalog) | v1.4 | fixed | Complete · 4/4 · 8/8 | — |
-| [070-[partial]-…](070-[partial]-catalog-hub-protocol.md) | Catalog hub protocol (shell tabs from `kind: catalog` plugins) | v1.4 | partial | 8/8 · 14/15 · 12/12 hub parity · **3/3** host enrich | — |
+| [070-[partial]-…](070-[partial]-catalog-hub-protocol.md) | Catalog hub protocol (shell tabs from `kind: catalog` plugins) | v1.4 | partial | 8/8 · 14/15 · 12/12 hub parity · 4/4 host enrich · 1/1 required packs · **2/2** shared cache | — |
 
 ## Related
 

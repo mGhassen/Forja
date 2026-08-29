@@ -2,7 +2,7 @@
 
 Official engine JS packs for [Forja](https://github.com/mGhassen/Forja) — maintained by **Forja Team**.
 
-Seven packs (install all seven):
+Six required packs:
 
 | Pack | Path | Role |
 |------|------|------|
@@ -12,7 +12,8 @@ Seven packs (install all seven):
 | **ForjaHQ Home** | [`hubs/home/manifest.json`](hubs/home/manifest.json) | Home catalog hub (TMDB) |
 | **ForjaHQ Anime** | [`hubs/anime/manifest.json`](hubs/anime/manifest.json) | Anime catalog hub (AniList) |
 | **ForjaHQ Asian Drama** | [`hubs/asian_drama/manifest.json`](hubs/asian_drama/manifest.json) | Asian Drama catalog hub (KissKH) |
-| **ForjaHQ Arabic** | [`hubs/arabic/manifest.json`](hubs/arabic/manifest.json) | Arabic catalog hub (layout stub) |
+
+Arabic (`hubs/arabic/`) is optional / out of product scope — not required at build time.
 
 ## Install in Forja
 
@@ -25,14 +26,14 @@ FORJA_HQ_CATALOG_MANIFEST_URL=…/plugins/catalog/manifest.json
 FORJA_HQ_HOME_MANIFEST_URL=…/plugins/hubs/home/manifest.json
 FORJA_HQ_ANIME_MANIFEST_URL=…/plugins/hubs/anime/manifest.json
 FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL=…/plugins/hubs/asian_drama/manifest.json
-FORJA_HQ_ARABIC_MANIFEST_URL=…/plugins/hubs/arabic/manifest.json
 ```
 
-All seven are required — without the four hub packs the engine refuses to boot
-(Home / Anime / Asian Drama / Arabic tabs have no plugin). Arabic stays
-`defaultEnabled: false` in Features until sources ship.
+All six are required — without the three hub packs the engine refuses to boot
+(Home / Anime / Asian Drama tabs have no plugin).
 
-Local absolute paths or `https://raw.githubusercontent.com/…` both work. The app auto-installs on first launch; **Settings → Sources → Forja** can Refresh / Retry.
+Local absolute paths or `https://raw.githubusercontent.com/…` both work. The app
+awaits pack install on splash (parallel fetch) and prefetches the default hub
+layout before dismiss. **Settings → Sources → Forja** can Refresh / Retry.
 
 **Local checkout tip:** `FORJA_HQ_FORCE_PLUGIN_ENV=true` installs from those local URLs and disables cloud GitHub ForjaHQ packs. `false` (default) prefers cloud Profile ForjaHQ URLs when present and disables the local copies.
 

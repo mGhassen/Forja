@@ -41,7 +41,6 @@ _prev_hq_catalog="${FORJA_HQ_CATALOG_MANIFEST_URL:-}"
 _prev_hq_home="${FORJA_HQ_HOME_MANIFEST_URL:-}"
 _prev_hq_anime="${FORJA_HQ_ANIME_MANIFEST_URL:-}"
 _prev_hq_asian="${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL:-}"
-_prev_hq_arabic="${FORJA_HQ_ARABIC_MANIFEST_URL:-}"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
@@ -59,14 +58,13 @@ fi
 [[ -n "$_prev_hq_home" ]] && FORJA_HQ_HOME_MANIFEST_URL="$_prev_hq_home"
 [[ -n "$_prev_hq_anime" ]] && FORJA_HQ_ANIME_MANIFEST_URL="$_prev_hq_anime"
 [[ -n "$_prev_hq_asian" ]] && FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL="$_prev_hq_asian"
-[[ -n "$_prev_hq_arabic" ]] && FORJA_HQ_ARABIC_MANIFEST_URL="$_prev_hq_arabic"
-unset _prev_hq_providers _prev_hq_live _prev_hq_catalog _prev_hq_home _prev_hq_anime _prev_hq_asian _prev_hq_arabic
+unset _prev_hq_providers _prev_hq_live _prev_hq_catalog _prev_hq_home _prev_hq_anime _prev_hq_asian
 
 [[ -n "${SUPABASE_URL:-}" ]] || die "SUPABASE_URL missing"
 [[ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]] || die "SUPABASE_PUBLISHABLE_KEY missing"
 [[ -n "${RELEASE_CDN_URL:-}" ]] || die "RELEASE_CDN_URL missing"
 [[ -n "${FORJA_WEB_URL:-}" ]] || die "FORJA_WEB_URL missing"
-[[ -n "${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}" && -n "${FORJA_HQ_LIVE_MANIFEST_URL:-}" && -n "${FORJA_HQ_CATALOG_MANIFEST_URL:-}" && -n "${FORJA_HQ_HOME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ANIME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL:-}" && -n "${FORJA_HQ_ARABIC_MANIFEST_URL:-}" ]] || die "FORJA_HQ_PROVIDERS/LIVE/CATALOG/HOME/ANIME/ASIAN_DRAMA/ARABIC_MANIFEST_URL missing"
+[[ -n "${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}" && -n "${FORJA_HQ_LIVE_MANIFEST_URL:-}" && -n "${FORJA_HQ_CATALOG_MANIFEST_URL:-}" && -n "${FORJA_HQ_HOME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ANIME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL:-}" ]] || die "FORJA_HQ_PROVIDERS/LIVE/CATALOG/HOME/ANIME/ASIAN_DRAMA_MANIFEST_URL missing"
 case "${FORJA_HQ_PROVIDERS_MANIFEST_URL}" in
   https://*) ;;
   *) die "FORJA_HQ_*_MANIFEST_URL must be https:// for release (got local path?)" ;;
@@ -92,7 +90,7 @@ echo "==> Flutter Windows ($VERSION)"
     --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
     --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
     --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
-    --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="${FORJA_HQ_PROVIDERS_MANIFEST_URL}" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="${FORJA_HQ_LIVE_MANIFEST_URL}" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="${FORJA_HQ_CATALOG_MANIFEST_URL}" --dart-define=FORJA_HQ_HOME_MANIFEST_URL="${FORJA_HQ_HOME_MANIFEST_URL}" --dart-define=FORJA_HQ_ANIME_MANIFEST_URL="${FORJA_HQ_ANIME_MANIFEST_URL}" --dart-define=FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL="${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL}" --dart-define=FORJA_HQ_ARABIC_MANIFEST_URL="${FORJA_HQ_ARABIC_MANIFEST_URL}"
+    --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="${FORJA_HQ_PROVIDERS_MANIFEST_URL}" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="${FORJA_HQ_LIVE_MANIFEST_URL}" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="${FORJA_HQ_CATALOG_MANIFEST_URL}" --dart-define=FORJA_HQ_HOME_MANIFEST_URL="${FORJA_HQ_HOME_MANIFEST_URL}" --dart-define=FORJA_HQ_ANIME_MANIFEST_URL="${FORJA_HQ_ANIME_MANIFEST_URL}" --dart-define=FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL="${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL}"
 )
 
 echo "==> Embed Rust + MSVC CRT + verify"

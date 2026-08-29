@@ -63,7 +63,7 @@ Search, Discover, Similar, Media Downloader, Magnet, Audiobooks, Books, Music, C
 ## Tips
 
 - Hide tabs you never use to reduce clutter — they can be re-enabled anytime (among the available tabs)
-- Startup follows your profile: Home / My List prefetch TMDB under the logo splash; torrent / Stremio / Nuvio / Forja / Webstreaming engines start **after** splash when those play sources are on **and** you have a VOD tab (Home, Anime, Asian Drama, or My List). IPTV + Live Sports alone skip them. Restored-session cold start paints the logo splash immediately (update check + cloud sync run in the background). After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches).
+- Startup follows your profile: splash warms the default hub layout + first-paint rails into the shared catalog cache (Home trending/popular/etc. equivalent); torrent / Stremio / Nuvio / Forja / Webstreaming engines start **after** splash when those play sources are on **and** you have a VOD tab (Home, Anime, Asian Drama, or My List). IPTV + Live Sports alone skip them. Restored-session cold start paints the logo splash immediately (update check + cloud sync run in the background). After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches).
 - Movie and series details open on top of the current tab; the player opens full-screen from there
 - On **desktop**, the mouse **Back** side button and **Escape** act like the in-app **Back** control — player first, then details, then in-tab screens. A two-finger trackpad swipe-right on empty page chrome (not over the Sources panel, addon chips, catalog rows, or other horizontal strips) shows a left-edge arrow; when the ring fills completely, Back commits.
 

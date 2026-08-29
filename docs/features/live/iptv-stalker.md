@@ -16,7 +16,7 @@ The IPTV tab supports **Stalker / Ministra** portals alongside Xtream and M3U. Y
 - Tap the dice icon next to the portal name field for a random name
 - Tap **Generate** next to the MAC field for a random MAG-style MAC if your provider issues portal access by any MAC
 - Browse **Live**, **Movies**, and **Series** like Xtream — movies and series open the same Home-style details overlay (portal first; TMDB layers in when matched — logo, production card, Cast/Crew/Trailers; series also get episodes; Android TV D-pad matches movie details)
-- View programme guide (EPG) when the portal provides it — Live cards show **NOW** / **NEXT**, long-press opens the programme sheet, the in-player guide peeks listings, and the desktop Live **EPG** grid uses the same data (same Settings toggle as Xtream)
+- View programme guide (EPG) when the portal provides it — Live cards show **NOW** / **NEXT**, long-press opens the programme sheet, the in-player guide peeks listings, and the desktop Live **EPG** grid uses the same data (same Settings toggle as Xtream); times follow **this device’s regional timezone** (not a fixed London STB zone)
 - Play in the IPTV player — channel guide and search work for live. Stalker live opens the stream URL directly (no Xtream-style continuity proxy). Each open/reconnect mints a fresh `create_link`; if the panel keeps returning a dead link, the player stops retrying, shows **Stream offline**, and marks the channel red in the catalog (Reload tries again)
 - Use the portal with **Live Matches → Forja Sports** (name/EPG match; stream link created when you pick a channel)
 - Sync Stalker portals to your signed-in profile (same as Xtream)
