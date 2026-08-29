@@ -112,7 +112,6 @@ mixin _LiveMatchesPlayback
         title: streamed.title.isNotEmpty ? streamed.title : ppv.name,
         ppv: hasPpv ? ppv : null,
         streamed: streams,
-        catalogViewers: ppv.viewers + streamed.viewers,
         onPpvSelected: () {
           Navigator.pop(context);
           unawaited(_openDamiTvStream(ppv));
@@ -212,7 +211,7 @@ mixin _LiveMatchesPlayback
         awayBadge: ppv.awayBadge ?? anchor.awayBadge,
         sources: const [],
         catalog: 'forja_live',
-        livePluginId: 'live-ppv',
+        livePluginId: _ppvLivePluginId(),
       ),
       stream: _StreamedStream(
         id: ppv.id,
@@ -315,10 +314,28 @@ mixin _LiveMatchesPlayback
     return out;
   }
 
+  bool _isPpvMatch(_StreamedMatch match, [_StreamedStream? stream]) {
+    if (stream != null && stream.source.trim().toLowerCase() == 'ppv') {
+      return true;
+    }
+    if (LiveMatchesEngine.cachedIsNativeUnlock(match.livePluginId, 'ppv')) {
+      return true;
+    }
+    if (stream != null && _ppvEmbedRequiresWebView(stream.embedUrl)) {
+      return true;
+    }
+    return false;
+  }
+
+  String _ppvLivePluginId() =>
+      LiveMatchesEngine.cachedPluginIdForNativeUnlock('ppv') ?? 'live-ppv';
+
+  String _defaultLivePluginId() =>
+      LiveMatchesEngine.cachedPluginIdForNativeUnlock('streamed') ??
+      'live-streamed';
+
   bool _isPpvStreamChoice(_StreamedStreamChoice choice) {
-    if (choice.catalogMatch.livePluginId == 'live-ppv') return true;
-    if (choice.stream.source.trim().toLowerCase() == 'ppv') return true;
-    return _ppvEmbedRequiresWebView(choice.stream.embedUrl);
+    return _isPpvMatch(choice.catalogMatch, choice.stream);
   }
 
   Future<void> _openResolvedStreamChoice(
@@ -374,10 +391,11 @@ mixin _LiveMatchesPlayback
   }) async {
     final pluginId = match.livePluginId.isNotEmpty
         ? match.livePluginId
-        : 'live-streamed';
+        : _defaultLivePluginId();
     final label = _liveForjaPluginDisplayName(pluginId).toLowerCase();
+    final unlock = await LiveMatchesEngine.pluginNativeUnlock(pluginId);
 
-    if (pluginId == 'live-streamed') {
+    if (unlock == 'streamed') {
       final rows = await _fetchStreamedStreams(
         source,
         allowFallback: allowStreamedFallback,
@@ -385,7 +403,7 @@ mixin _LiveMatchesPlayback
       if (rows.isNotEmpty) return rows;
     }
 
-    if (pluginId == 'live-watchfooty') {
+    if (unlock == 'watchfooty') {
       final mid = source.id.trim().replaceFirst(RegExp(r'^wf_'), '');
       if (mid.isNotEmpty) {
         final unlocked = await LiveGoatUnlock.resolveWatchfootyMatch(
@@ -425,7 +443,7 @@ mixin _LiveMatchesPlayback
       },
     );
     if (rows.isEmpty) {
-      if (pluginId == 'live-ppv' && source.iframe.trim().isNotEmpty) {
+      if (unlock == 'ppv' && source.iframe.trim().isNotEmpty) {
         return [
           _StreamedStream(
             id: source.id,
@@ -523,12 +541,13 @@ mixin _LiveMatchesPlayback
     try {
       if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
         choices.add(_ppvStreamChoice(ppvAnchor, match));
-      } else if (filter == 'all' || filter == 'live-ppv') {
+      } else if (filter == 'all' ||
+          LiveMatchesEngine.cachedIsNativeUnlock(filter, 'ppv')) {
         _prependMatchingPpvChoices(match, choices);
       }
 
       // Catalog → PPV: never pull TimStreams/Streamed/etc. from the session cache.
-      if (filter != 'live-ppv') {
+      if (!LiveMatchesEngine.cachedIsNativeUnlock(filter, 'ppv')) {
         final catalogMatches =
             _streamedMatchesForEvent(match, _s._streamedMatches);
         final scoped = filter == 'all'
@@ -1010,13 +1029,15 @@ mixin _LiveMatchesPlayback
     final embed = stream.embedUrl.trim();
     if (embed.isEmpty) return null;
 
-    final isPpv = match.livePluginId == 'live-ppv' ||
-        stream.source.trim().toLowerCase() == 'ppv';
+    final isPpv = _isPpvMatch(match, stream);
     final catalogReferer = isPpv
         ? await LiveMatchesEngine.ppvWebReferer()
         : match.isForjaLive
         ? (_forjaLiveCdnReferer(embed) ??
-              _forjaLiveWrapperReferer(embed, pluginId: match.livePluginId))
+              await LiveMatchesEngine.pluginReferer(
+                match.livePluginId,
+                embedUrl: embed,
+              ))
         : _streamedReferer;
     if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
       final headers = isPpv
@@ -1041,10 +1062,12 @@ mixin _LiveMatchesPlayback
 
     onProgress?.call('Unlocking source…');
     final pluginId = isPpv
-        ? 'live-ppv'
+        ? (match.livePluginId.isNotEmpty
+              ? match.livePluginId
+              : _ppvLivePluginId())
         : match.isForjaLive && match.livePluginId.isNotEmpty
         ? match.livePluginId
-        : 'live-streamed';
+        : _defaultLivePluginId();
     final result = await LiveMatchesEngine.resolve(
       pluginId: pluginId,
       params: {
@@ -1256,8 +1279,7 @@ mixin _LiveMatchesPlayback
       return;
     }
 
-    final isPpv = match.livePluginId == 'live-ppv' ||
-        stream.source.trim().toLowerCase() == 'ppv';
+    final isPpv = _isPpvMatch(match, stream);
     if (isPpv) {
       LiveMatchesEngine.engineResolveFailed();
       return;
@@ -1271,9 +1293,9 @@ mixin _LiveMatchesPlayback
     final catalogReferer = match.isMut
         ? _mutReferer
         : (match.isForjaLive
-              ? _forjaLiveWrapperReferer(
-                  stream.embedUrl,
-                  pluginId: match.livePluginId,
+              ? await LiveMatchesEngine.pluginReferer(
+                  match.livePluginId,
+                  embedUrl: stream.embedUrl,
                 )
               : _streamedReferer);
     final proxyReferer = match.isForjaLive

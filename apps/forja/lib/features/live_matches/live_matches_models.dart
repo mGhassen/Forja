@@ -323,9 +323,9 @@ class _StreamedMatch {
 
   bool get isLive {
     if (isAlwaysOn || airing) return true;
-    // WatchFooty sets airing from API status (incl. stream-less). Don't fake
-    // LIVE for every kickoff in the last 6h.
-    if (livePluginId == 'live-watchfooty') return false;
+    // Catalogs with airingOnlyLive (e.g. WatchFooty) set airing from API status
+    // (incl. stream-less). Don't fake LIVE for every kickoff in the last 6h.
+    if (LiveMatchesEngine.cachedAiringOnlyLive(livePluginId)) return false;
 
     if (dateMs <= 0) return false;
     final dt = DateTime.fromMillisecondsSinceEpoch(dateMs);
@@ -370,6 +370,24 @@ class _StreamedStream {
 /// reports audience on the match (StreamFree / TimStreams / PPV).
 int _effectiveStreamViewers(_StreamedStream stream, _StreamedMatch match) =>
     stream.viewers > 0 ? stream.viewers : match.viewers;
+
+/// Sheet header total: sum every stream's own viewers, plus each catalog's
+/// match-level audience once when that catalog's rows have no per-stream count.
+int _sheetTotalViewers(Iterable<_StreamedStreamChoice> choices) {
+  var total = 0;
+  final countedCatalogFallback = <String>{};
+  for (final c in choices) {
+    if (c.stream.viewers > 0) {
+      total += c.stream.viewers;
+      continue;
+    }
+    if (c.catalogMatch.viewers <= 0) continue;
+    final key = '${c.catalogMatch.livePluginId}:${c.catalogMatch.id}';
+    if (!countedCatalogFallback.add(key)) continue;
+    total += c.catalogMatch.viewers;
+  }
+  return total;
+}
 
 /// Catalog row in the stream picker — may be unresolved until the user selects it.
 class _StreamedStreamChoice {
@@ -2030,25 +2048,6 @@ Map<String, String> _liveEmbedStreamHeaders(
   };
 }
 
-/// iframe `loadData` wrapper — catalog site (timstreams.st, streamfree.top, …).
-String _forjaLiveWrapperReferer(String embedUrl, {String pluginId = ''}) {
-  switch (pluginId) {
-    case 'live-timstreams':
-      return 'https://timstreams.st/';
-    case 'live-streamfree':
-      return 'https://streamfree.top/';
-    case 'live-watchfooty':
-      return 'https://watchfooty.st/';
-    case 'live-streamic':
-      return 'https://streamic.st/';
-    default:
-      break;
-  }
-  final uri = Uri.tryParse(embedUrl.trim());
-  if (uri != null && uri.host.isNotEmpty) return '${uri.origin}/';
-  return 'https://timstreams.st/';
-}
-
 /// CDN token checks — JW/HLS on the third-party embed host, not the catalog.
 String? _forjaLiveCdnReferer(String embedUrl) {
   final uri = Uri.tryParse(embedUrl.trim());
@@ -3156,19 +3155,8 @@ enum _LiveMatchesServer {
   iptvSports,
 }
 
-const _liveForjaPluginDisplayNames = <String, String>{
-  'live-streamed': 'Streamed',
-  'live-ppv': 'PPV',
-  'live-timstreams': 'TimStreams',
-  'live-streamfree': 'StreamFree',
-  'live-watchfooty': 'WatchFooty',
-  'live-streamic': 'Streamic',
-  'catalog-espn': 'ESPN',
-};
-
 String _liveForjaPluginDisplayName(String pluginId) {
-  if (pluginId.isEmpty) return 'Forja Live';
-  return _liveForjaPluginDisplayNames[pluginId] ?? pluginId;
+  return LiveMatchesEngine.cachedPluginDisplayName(pluginId);
 }
 
 /// True when an installed Stremio addon is wired to Live and exposes sport catalogs.

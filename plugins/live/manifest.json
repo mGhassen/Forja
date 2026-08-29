@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-live",
   "name": "ForjaHQ Live",
-      "version": "1.5.22",
+  "version": "1.5.23",
   "plugins": [
     {
       "id": "live-streamed",
@@ -13,7 +13,12 @@
         "plugins"
       ],
       "kind": "http",
-      "prelude": "embed-st.js"
+      "prelude": "embed-st.js",
+      "config": {
+        "origin": "https://streamed.pk",
+        "embedOrigin": "https://embed.st",
+        "nativeUnlock": "streamed"
+      }
     },
     {
       "id": "live-ppv",
@@ -24,7 +29,11 @@
         "plugins"
       ],
       "kind": "http",
-      "prelude": "embed-st.js"
+      "prelude": "embed-st.js",
+      "config": {
+        "webOrigin": "https://ppv.st",
+        "nativeUnlock": "ppv"
+      }
     },
     {
       "id": "live-timstreams",
@@ -35,7 +44,10 @@
         "live_sport"
       ],
       "kind": "http",
-      "prelude": "embed-st.js"
+      "prelude": "embed-st.js",
+      "config": {
+        "origin": "https://timstreams.st"
+      }
     },
     {
       "id": "live-streamfree",
@@ -46,7 +58,10 @@
         "live_sport"
       ],
       "kind": "http",
-      "prelude": "embed-st.js"
+      "prelude": "embed-st.js",
+      "config": {
+        "origin": "https://streamfree.top"
+      }
     },
     {
       "id": "live-watchfooty",
@@ -57,7 +72,12 @@
         "live_sport"
       ],
       "kind": "http",
-      "prelude": "embed-st.js"
+      "prelude": "embed-st.js",
+      "config": {
+        "origin": "https://watchfooty.st",
+        "nativeUnlock": "watchfooty",
+        "airingOnlyLive": true
+      }
     },
     {
       "id": "live-streamic",
@@ -68,7 +88,10 @@
         "live_sport"
       ],
       "kind": "http",
-      "prelude": "embed-st.js"
+      "prelude": "embed-st.js",
+      "config": {
+        "origin": "https://streamic.st"
+      }
     }
   ]
 }

@@ -3664,7 +3664,6 @@ class _MergedMatchStreamSheet extends StatefulWidget {
     required this.title,
     required this.ppv,
     required this.streamed,
-    this.catalogViewers = 0,
     required this.onPpvSelected,
     required this.onStreamedSelected,
   });
@@ -3672,7 +3671,6 @@ class _MergedMatchStreamSheet extends StatefulWidget {
   final String title;
   final _DamiTvStream? ppv;
   final List<_StreamedStream> streamed;
-  final int catalogViewers;
   final VoidCallback onPpvSelected;
   final ValueChanged<_StreamedStream> onStreamedSelected;
 
@@ -3710,6 +3708,10 @@ class _MergedMatchStreamSheetState extends State<_MergedMatchStreamSheet> {
     final count = sorted.length + (widget.ppv == null ? 0 : 1);
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final streamedOffset = widget.ppv == null ? 0 : 1;
+    var totalViewers = widget.ppv?.viewers ?? 0;
+    for (final s in sorted) {
+      totalViewers += s.viewers;
+    }
     final body = Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
@@ -3742,7 +3744,7 @@ class _MergedMatchStreamSheetState extends State<_MergedMatchStreamSheet> {
                 'No streams available'
               else
                 '$count ${count == 1 ? 'stream' : 'streams'}',
-              if (widget.catalogViewers > 0) '${widget.catalogViewers} viewers',
+              if (totalViewers > 0) '$totalViewers viewers',
             ].join(' · '),
             style: const TextStyle(
               color: ForjaShellColors.textSecondary,
@@ -3909,7 +3911,9 @@ class _StreamedStreamSheet extends StatefulWidget {
   }
 
   static String serverLabelFor(_StreamedMatch match) {
-    if (match.livePluginId == 'live-ppv') return 'PPV';
+    if (LiveMatchesEngine.cachedIsNativeUnlock(match.livePluginId, 'ppv')) {
+      return _liveForjaPluginDisplayName(match.livePluginId);
+    }
     if (match.isMut) return 'Mut';
     if (match.isForjaLive) {
       return _liveForjaPluginDisplayName(match.livePluginId);
@@ -3967,7 +3971,7 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
     final sorted = _sortedChoices();
     final maxHeight = MediaQuery.sizeOf(context).height * 0.6;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final matchViewers = widget.match.viewers;
+    final totalViewers = _sheetTotalViewers(sorted);
     final body = Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
@@ -4000,7 +4004,7 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
                 'No streams available'
               else
                 '${sorted.length} ${sorted.length == 1 ? 'stream' : 'streams'}',
-              if (matchViewers > 0) '$matchViewers viewers',
+              if (totalViewers > 0) '$totalViewers viewers',
             ].join(' · '),
             style: const TextStyle(
               color: ForjaShellColors.textSecondary,

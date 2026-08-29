@@ -6,10 +6,16 @@ import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 
 /// Live Matches engine plugin orchestration (RFC-065).
+///
+/// Site origins, labels, and native unlock paths come from plugin/catalog
+/// **config** — not a hardcoded list of third-party plugin ids.
 class LiveMatchesEngine {
   LiveMatchesEngine._();
 
-  static String? _cachedPpvWebOrigin;
+  static final Map<String, String> _originByPluginId = {};
+  static final Map<String, String> _nameByPluginId = {};
+  static final Map<String, String> _nativeUnlockByPluginId = {};
+  static final Map<String, bool> _airingOnlyLiveByPluginId = {};
 
   static Future<bool> isEngineResolveMode() async {
     if (!AccountFeatures.instance.isAdmin) return true;
@@ -30,30 +36,218 @@ class LiveMatchesEngine {
     return '$o/';
   }
 
+  static String? _originFromConfig(Map<String, dynamic> cfg) {
+    final direct = _normalizeOrigin(
+      (cfg['webOrigin'] ?? cfg['origin'] ?? '').toString(),
+    );
+    if (direct.isNotEmpty) return direct;
+    final api = (cfg['api'] ?? '').toString().trim();
+    if (api.isEmpty) return null;
+    final host = Uri.tryParse(api)?.origin;
+    if (host == null || host.isEmpty) return null;
+    return _normalizeOrigin(host);
+  }
+
+  static void _cachePluginMeta(EnginePlugin plugin) {
+    _nameByPluginId[plugin.id] = plugin.name;
+    final unlock = (plugin.config['nativeUnlock'] ?? '').toString().trim();
+    if (unlock.isNotEmpty) {
+      _nativeUnlockByPluginId[plugin.id] = unlock.toLowerCase();
+    }
+    if (plugin.config['airingOnlyLive'] == true) {
+      _airingOnlyLiveByPluginId[plugin.id] = true;
+    }
+    final origin = _originFromConfig(plugin.config);
+    if (origin != null && origin.isNotEmpty) {
+      _originByPluginId[plugin.id] = origin;
+    }
+    final providerId = (plugin.config['providerId'] ?? '').toString().trim();
+    if (providerId.isEmpty) return;
+    final o = _originByPluginId[plugin.id];
+    if (o != null && o.isNotEmpty) {
+      _originByPluginId.putIfAbsent(providerId, () => o);
+    }
+    _nameByPluginId.putIfAbsent(providerId, () => plugin.name);
+    if (unlock.isNotEmpty) {
+      _nativeUnlockByPluginId.putIfAbsent(
+        providerId,
+        () => unlock.toLowerCase(),
+      );
+    }
+    if (plugin.config['airingOnlyLive'] == true) {
+      _airingOnlyLiveByPluginId.putIfAbsent(providerId, () => true);
+    }
+  }
+
+  /// Warm name/origin/unlock caches from installed live + catalog plugins.
+  static Future<void> warmPluginMeta() async {
+    await EngineService.instance.ensureOfficialInstalled();
+    for (final p in await EngineService.instance.listLivePluginsForSettings()) {
+      _cachePluginMeta(p);
+    }
+    for (final p
+        in await EngineService.instance.listEnabledLiveCatalogPlugins()) {
+      _cachePluginMeta(p);
+    }
+    // Disabled catalogs still carry origin/providerId for live twins.
+    for (final pack in await EngineService.instance.listPacks()) {
+      for (final p in pack.plugins) {
+        if (p.isLiveCatalog) _cachePluginMeta(p);
+      }
+    }
+  }
+
   /// Merged plugin config (manifest + remote overlay).
   static Future<Map<String, dynamic>> pluginConfig(String pluginId) async {
     await EngineService.instance.ensureOfficialInstalled();
     final plugin = await EngineService.instance.pluginById(pluginId);
     if (plugin == null) return const {};
+    _cachePluginMeta(plugin);
     final overlay =
         ProviderRuntimeConfig.instance.engine[pluginId] ?? const {};
     return mergeEngineConfig(plugin.config, overlay);
   }
 
-  /// Site origin from plugin `webOrigin` / `origin` (no trailing slash).
+  /// Site origin from plugin/catalog `webOrigin` / `origin` / `api` host.
   static Future<String> pluginWebOrigin(String pluginId) async {
+    if (pluginId.isEmpty) return '';
+    final cached = _originByPluginId[pluginId];
+    if (cached != null && cached.isNotEmpty) return cached;
+
     final cfg = await pluginConfig(pluginId);
-    final raw = (cfg['webOrigin'] ?? cfg['origin'] ?? '').toString();
-    return _normalizeOrigin(raw);
+    final fromCfg = _originFromConfig(cfg);
+    if (fromCfg != null && fromCfg.isNotEmpty) {
+      _originByPluginId[pluginId] = fromCfg;
+      return fromCfg;
+    }
+
+    // live-X → catalog-X twin (origins often live on catalog manifests).
+    if (pluginId.startsWith('live-')) {
+      final twin = 'catalog-${pluginId.substring('live-'.length)}';
+      final twinOrigin = await pluginWebOrigin(twin);
+      if (twinOrigin.isNotEmpty) {
+        _originByPluginId[pluginId] = twinOrigin;
+        return twinOrigin;
+      }
+    }
+
+    // Catalog row that declares providerId == this live plugin.
+    await warmPluginMeta();
+    final warmed = _originByPluginId[pluginId];
+    if (warmed != null && warmed.isNotEmpty) return warmed;
+    return '';
   }
 
-  /// PPV catalog site origin — `live-ppv` / `catalog-ppv` config only.
-  static Future<String> ppvWebOrigin() async {
-    final cached = _cachedPpvWebOrigin;
+  /// Catalog-site Referer for iframe / unlock wrappers.
+  static Future<String> pluginReferer(
+    String pluginId, {
+    String embedUrl = '',
+  }) async {
+    final origin = await pluginWebOrigin(pluginId);
+    if (origin.isNotEmpty) return _refererForOrigin(origin);
+    final uri = Uri.tryParse(embedUrl.trim());
+    if (uri != null && uri.host.isNotEmpty) return '${uri.origin}/';
+    return '';
+  }
+
+  /// Display name from plugin/catalog manifest (`name`), never a Dart allowlist.
+  static Future<String> pluginDisplayName(String pluginId) async {
+    if (pluginId.isEmpty) return 'Forja Live';
+    final cached = _nameByPluginId[pluginId];
     if (cached != null && cached.isNotEmpty) return cached;
+    final plugin = await EngineService.instance.pluginById(pluginId);
+    if (plugin != null) {
+      _cachePluginMeta(plugin);
+      return plugin.name;
+    }
+    if (pluginId.startsWith('live-')) {
+      final twin = 'catalog-${pluginId.substring('live-'.length)}';
+      final twinPlugin = await EngineService.instance.pluginById(twin);
+      if (twinPlugin != null) {
+        _cachePluginMeta(twinPlugin);
+        _nameByPluginId[pluginId] = twinPlugin.name;
+        return twinPlugin.name;
+      }
+    }
+    await warmPluginMeta();
+    return _nameByPluginId[pluginId] ?? pluginId;
+  }
+
+  /// Sync label after [warmPluginMeta] / [pluginDisplayName] has run.
+  static String cachedPluginDisplayName(String pluginId) {
+    if (pluginId.isEmpty) return 'Forja Live';
+    return _nameByPluginId[pluginId] ?? pluginId;
+  }
+
+  /// Sync Referer after [warmPluginMeta] / [pluginReferer] has populated origins.
+  static String cachedPluginReferer(String pluginId) {
+    final o = _originByPluginId[pluginId];
+    if (o == null || o.isEmpty) return '';
+    return _refererForOrigin(o);
+  }
+
+  /// Host capability declared on the plugin (`nativeUnlock` in config).
+  static Future<String> pluginNativeUnlock(String pluginId) async {
+    if (pluginId.isEmpty) return '';
+    final cached = _nativeUnlockByPluginId[pluginId];
+    if (cached != null) return cached;
+    final cfg = await pluginConfig(pluginId);
+    final unlock = (cfg['nativeUnlock'] ?? '').toString().trim().toLowerCase();
+    if (unlock.isNotEmpty) {
+      _nativeUnlockByPluginId[pluginId] = unlock;
+      return unlock;
+    }
+    if (pluginId.startsWith('live-')) {
+      final twin = 'catalog-${pluginId.substring('live-'.length)}';
+      final twinCfg = await pluginConfig(twin);
+      final twinUnlock =
+          (twinCfg['nativeUnlock'] ?? '').toString().trim().toLowerCase();
+      if (twinUnlock.isNotEmpty) {
+        _nativeUnlockByPluginId[pluginId] = twinUnlock;
+        return twinUnlock;
+      }
+    }
+    _nativeUnlockByPluginId[pluginId] = '';
+    return '';
+  }
+
+  static bool cachedIsNativeUnlock(String pluginId, String kind) {
+    final k = kind.trim().toLowerCase();
+    if (k.isEmpty || pluginId.isEmpty) return false;
+    return _nativeUnlockByPluginId[pluginId] == k;
+  }
+
+  /// First live plugin id that declares [kind] (`nativeUnlock`), if any.
+  static String? cachedPluginIdForNativeUnlock(String kind) {
+    final k = kind.trim().toLowerCase();
+    if (k.isEmpty) return null;
+    for (final e in _nativeUnlockByPluginId.entries) {
+      if (e.value != k) continue;
+      if (e.key.startsWith('live-')) return e.key;
+    }
+    for (final e in _nativeUnlockByPluginId.entries) {
+      if (e.value == k) return e.key;
+    }
+    return null;
+  }
+
+  /// When true, ● LIVE follows catalog `airing` only (no kickoff-window fudge).
+  static bool cachedAiringOnlyLive(String pluginId) {
+    if (pluginId.isEmpty) return false;
+    return _airingOnlyLiveByPluginId[pluginId] == true;
+  }
+
+  /// PPV site origin — any plugin that declares `nativeUnlock: ppv`, else
+  /// legacy catalog/live ppv ids when packs still use those ids.
+  static Future<String> ppvWebOrigin() async {
+    await warmPluginMeta();
+    for (final e in _nativeUnlockByPluginId.entries) {
+      if (e.value != 'ppv') continue;
+      final o = await pluginWebOrigin(e.key);
+      if (o.isNotEmpty) return o;
+    }
     var origin = await pluginWebOrigin('live-ppv');
     if (origin.isEmpty) origin = await pluginWebOrigin('catalog-ppv');
-    if (origin.isNotEmpty) _cachedPpvWebOrigin = origin;
     return origin;
   }
 
@@ -62,9 +256,18 @@ class LiveMatchesEngine {
 
   /// Sync host label after [ppvWebOrigin] has been resolved once.
   static String ppvHostLabelCached() {
-    final o = _cachedPpvWebOrigin;
-    if (o == null || o.isEmpty) return 'PPV';
-    return Uri.tryParse(o)?.host ?? 'PPV';
+    for (final e in _nativeUnlockByPluginId.entries) {
+      if (e.value != 'ppv') continue;
+      final o = _originByPluginId[e.key];
+      if (o != null && o.isNotEmpty) {
+        return Uri.tryParse(o)?.host ?? cachedPluginDisplayName(e.key);
+      }
+    }
+    final o = _originByPluginId['live-ppv'] ?? _originByPluginId['catalog-ppv'];
+    if (o == null || o.isEmpty) {
+      return cachedPluginDisplayName('live-ppv');
+    }
+    return Uri.tryParse(o)?.host ?? cachedPluginDisplayName('live-ppv');
   }
 
   static Future<List<Map<String, dynamic>>> fetchCatalog() async {
@@ -76,6 +279,7 @@ class LiveMatchesEngine {
     final all = <Map<String, dynamic>>[];
     try {
       for (final catalog in catalogPlugins) {
+        _cachePluginMeta(catalog);
         final batch = await EngineService.instance.runLiveCatalog(
           catalogPlugin: catalog,
         );
@@ -94,85 +298,94 @@ class LiveMatchesEngine {
     await EngineService.instance.ensureOfficialInstalled();
     final plugin = await EngineService.instance.pluginById(catalogId);
     if (plugin == null || !plugin.isLiveCatalog) return [];
+    _cachePluginMeta(plugin);
     return EngineService.instance.runLiveCatalog(catalogPlugin: plugin);
+  }
+
+  static Future<LiveEngineResolveResult?> _tryNativeUnlock({
+    required String unlock,
+    required String label,
+    required Map<String, dynamic> params,
+  }) async {
+    switch (unlock) {
+      case 'streamed':
+        final native = await LiveGoatUnlock.resolveStreamed(
+          embedUrl: (params['embedUrl'] ?? params['url'] ?? '').toString(),
+          source: (params['source'] ?? '').toString(),
+          matchId: (params['matchId'] ?? '').toString(),
+          stream: (params['stream'] ?? '1').toString(),
+        );
+        if (native == null) return null;
+        return LiveEngineResolveResult.playable(
+          url: native.url,
+          headers: native.headers,
+          label: label,
+        );
+      case 'ppv':
+        final embed = (params['embedUrl'] ?? params['iframe'] ?? '')
+            .toString()
+            .trim();
+        if (embed.isEmpty) return null;
+        final native = await LiveGoatUnlock.resolvePpv(embedUrl: embed);
+        if (native == null) return null;
+        return LiveEngineResolveResult.playable(
+          url: native.url,
+          headers: native.headers,
+          label: label,
+          directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(native.url),
+        );
+      case 'watchfooty':
+        final embed =
+            (params['embedUrl'] ?? params['url'] ?? params['iframe'] ?? '')
+                .toString()
+                .trim();
+        if (embed.isNotEmpty) {
+          final native = await LiveGoatUnlock.resolveWatchfootyEmbed(
+            embedUrl: embed,
+          );
+          if (native != null) {
+            return LiveEngineResolveResult.playable(
+              url: native.url,
+              headers: native.headers,
+              label: label,
+              directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(
+                native.url,
+              ),
+            );
+          }
+        }
+        final mid = (params['matchId'] ?? params['eventId'] ?? '')
+            .toString()
+            .trim()
+            .replaceFirst(RegExp(r'^wf_'), '');
+        if (mid.isEmpty) return null;
+        final rows = await LiveGoatUnlock.resolveWatchfootyMatch(matchId: mid);
+        if (rows.isEmpty) return null;
+        final first = rows.first;
+        return LiveEngineResolveResult.playable(
+          url: first.url,
+          headers: first.headers,
+          label: first.name.isNotEmpty ? first.name : label,
+          directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(first.url),
+        );
+      default:
+        return null;
+    }
   }
 
   static Future<LiveEngineResolveResult?> resolve({
     required String pluginId,
     Map<String, dynamic> params = const {},
   }) async {
-    if (pluginId == 'live-streamed') {
-      final native = await LiveGoatUnlock.resolveStreamed(
-        embedUrl: (params['embedUrl'] ?? params['url'] ?? '').toString(),
-        source: (params['source'] ?? '').toString(),
-        matchId: (params['matchId'] ?? '').toString(),
-        stream: (params['stream'] ?? '1').toString(),
+    final label = await pluginDisplayName(pluginId);
+    final unlock = await pluginNativeUnlock(pluginId);
+    if (unlock.isNotEmpty) {
+      final native = await _tryNativeUnlock(
+        unlock: unlock,
+        label: label,
+        params: params,
       );
-      if (native != null) {
-        return LiveEngineResolveResult.playable(
-          url: native.url,
-          headers: native.headers,
-          label: 'Streamed',
-        );
-      }
-    }
-
-    if (pluginId == 'live-ppv') {
-      final embed = (params['embedUrl'] ?? params['iframe'] ?? '')
-          .toString()
-          .trim();
-      if (embed.isNotEmpty) {
-        final native = await LiveGoatUnlock.resolvePpv(embedUrl: embed);
-        if (native != null) {
-          return LiveEngineResolveResult.playable(
-            url: native.url,
-            headers: native.headers,
-            label: 'PPV',
-            directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(
-              native.url,
-            ),
-          );
-        }
-      }
-    }
-
-    if (pluginId == 'live-watchfooty') {
-      final embed =
-          (params['embedUrl'] ?? params['url'] ?? params['iframe'] ?? '')
-              .toString()
-              .trim();
-      if (embed.isNotEmpty) {
-        final native = await LiveGoatUnlock.resolveWatchfootyEmbed(
-          embedUrl: embed,
-        );
-        if (native != null) {
-          return LiveEngineResolveResult.playable(
-            url: native.url,
-            headers: native.headers,
-            label: 'WatchFooty',
-            directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(
-              native.url,
-            ),
-          );
-        }
-      }
-
-      final mid = (params['matchId'] ?? params['eventId'] ?? '')
-          .toString()
-          .trim()
-          .replaceFirst(RegExp(r'^wf_'), '');
-      if (mid.isNotEmpty) {
-        final rows = await LiveGoatUnlock.resolveWatchfootyMatch(matchId: mid);
-        if (rows.isNotEmpty) {
-          final first = rows.first;
-          return LiveEngineResolveResult.playable(
-            url: first.url,
-            headers: first.headers,
-            label: first.name,
-            directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(first.url),
-          );
-        }
-      }
+      if (native != null) return native;
     }
 
     final raw = await EngineService.instance.runLivePlugin(
@@ -197,7 +410,7 @@ class LiveMatchesEngine {
     return LiveEngineResolveResult.playable(
       url: url,
       headers: headers,
-      label: (first['name'] ?? first['title'] ?? pluginId).toString(),
+      label: (first['name'] ?? first['title'] ?? label).toString(),
       directPlayback: first['directPlayback'] == true,
     );
   }

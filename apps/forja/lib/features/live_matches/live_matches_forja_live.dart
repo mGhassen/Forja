@@ -77,7 +77,7 @@ mixin _LiveMatchesForjaLive
       return (ppv: ppv, streamed: streamed);
     }
     final filter = _s._forjaLivePluginFilter;
-    if (filter == 'live-ppv') {
+    if (LiveMatchesEngine.cachedIsNativeUnlock(filter, 'ppv')) {
       return (ppv: ppv, streamed: []);
     }
     streamed = streamed
@@ -365,7 +365,8 @@ mixin _LiveMatchesForjaLive
       );
       // Always cache on success — chip filter must not discard finished rows.
       if (!genAlive()) return;
-      if (catalog.id == 'catalog-ppv') {
+      if (LiveMatchesEngine.cachedIsNativeUnlock(catalog.id, 'ppv') ||
+          LiveMatchesEngine.cachedIsNativeUnlock(filterId, 'ppv')) {
         await LiveMatchesEngine.ppvWebOrigin();
         final streams = rows
             .where((row) =>
@@ -393,7 +394,12 @@ mixin _LiveMatchesForjaLive
       final matchRows = visibleRows
           .map(_forjaLiveRowToMatch)
           .where((m) => m.id.isNotEmpty && m.title.isNotEmpty);
-      final matches = catalog.id == 'catalog-streamed'
+      final uncapped = LiveMatchesEngine.cachedIsNativeUnlock(
+            catalog.id,
+            'streamed',
+          ) ||
+          LiveMatchesEngine.cachedIsNativeUnlock(filterId, 'streamed');
+      final matches = uncapped
           ? matchRows.toList()
           : matchRows.take(_kForjaLiveCatalogMaxPerPlugin).toList();
       setState(() {
@@ -401,7 +407,8 @@ mixin _LiveMatchesForjaLive
           ..._s._streamedMatches,
           ...matches,
         ]);
-        if (catalog.id == 'catalog-espn') {
+        if (catalog.id == 'catalog-espn' ||
+            filterId == 'catalog-espn') {
           _syncEspnGamesFromStreamed();
         }
         _s._forjaLivePluginLoads[filterId] =
@@ -433,6 +440,7 @@ mixin _LiveMatchesForjaLive
   Future<void> _loadForjaLiveCatalogLazy() async {
     final gen = _s._forjaLiveLoadGen;
     _s._catalogFetchedHorizon = _s._scheduleHorizon;
+    await LiveMatchesEngine.warmPluginMeta();
     await EngineService.instance.ensureOfficialInstalled();
     final catalogPlugins =
         await EngineService.instance.listEnabledLiveCatalogPlugins();
