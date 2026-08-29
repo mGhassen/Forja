@@ -560,9 +560,10 @@ class PluginRegistry {
 
         final forceEnvReinstall = forcePluginEnv && !_forceEnvApplied;
         final cloudNeedsApply = usingCloud && !_cloudOfficialApplied;
-        final effectiveForce = force || forceEnvReinstall || cloudNeedsApply;
+        // Run enable/disable + optional install even when only switching keep-set.
+        final mustRun = force || forceEnvReinstall || cloudNeedsApply;
 
-        if (!effectiveForce && _officialInstallFailed) return;
+        if (!mustRun && _officialInstallFailed) return;
 
         if (forceEnvReinstall) {
           debugPrint(
@@ -570,7 +571,7 @@ class PluginRegistry {
           );
         } else if (cloudNeedsApply) {
           debugPrint(
-            '[engine] FORJA_HQ_FORCE_PLUGIN_ENV=false: install from cloud',
+            '[engine] FORJA_HQ_FORCE_PLUGIN_ENV=false: prefer cloud packs',
           );
         }
 
@@ -580,7 +581,10 @@ class PluginRegistry {
         final byUrl = {for (final p in packs) p.sourceUrl: p};
         for (final url in urls) {
           final local = byUrl[url];
-          if (local == null || local.plugins.isEmpty || effectiveForce) {
+          if (local == null || local.plugins.isEmpty) {
+            await install(url);
+          } else if (forceEnvReinstall) {
+            // FORCE=true once: reload scripts from dart-define / disk.
             await install(url);
           } else if (!_officialUpdateChecked) {
             await _maybeRefreshOfficialIfNewer(url, local);

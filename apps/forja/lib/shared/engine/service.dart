@@ -113,19 +113,22 @@ class EngineService {
 
   Future<List<EnginePack>> listPacks() => PluginRegistry.instance.listPacks();
 
-  /// Settings list — hydrate lean cloud stubs first (Nuvio parity).
+  /// Settings list — prefs first (instant), ensure/hydrate in background.
   Future<List<EnginePack>> listUserPacks() async {
-    await PluginRegistry.instance.hydrateLeanInstalled();
-    return listPacks();
+    final cached = await PluginRegistry.instance.listPacksRaw();
+    unawaited(PluginRegistry.instance.ensureOfficialInstalled());
+    unawaited(PluginRegistry.instance.hydrateLeanInstalled());
+    return cached;
   }
 
   Future<void> applyLeanManifestUrls(Iterable<Map<String, dynamic>> rows) =>
       PluginRegistry.instance.applyLeanManifestUrls(rows);
 
   Future<List<EnginePack>> listSourcesPanelPacks() async {
-    // Lean stub installs are network-bound — never block Play/Sources on them.
+    // Never block Play/Sources on network install / lean hydrate.
+    unawaited(PluginRegistry.instance.ensureOfficialInstalled());
     unawaited(PluginRegistry.instance.hydrateLeanInstalled());
-    final packs = await listPacks();
+    final packs = await PluginRegistry.instance.listPacksRaw();
     return [
       for (final p in packs)
         if (p.enabled && p.plugins.any((pl) => pl.enabled && pl.isVodCatalog))
