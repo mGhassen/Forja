@@ -1,15 +1,18 @@
 var SPECS = {
   "base": "https://kurage.live",
-  "tmdbKey": "439c478a771f35c05022f9feabcca01c"
+  "tmdbKey": "439c478a771f35c05022f9feabcca01c",
+  "anilistUrl": "https://graphql.anilist.co",
+  "armBase": "https://arm.haglund.dev/api/v2",
+  "cinemetaUrl": "https://v3-cinemeta.strem.io/meta"
 };
 
 function extract(ctx) {
   var cfg = Object.assign({}, SPECS, ctx.config || {});
   var base = cfg.base.replace(/\/$/, '');
   var tmdbKey = cfg.tmdbKey;
-  var anilistUrl = cfg.anilistUrl || 'https://graphql.anilist.co';
-  var armBase = cfg.armBase || 'https://arm.haglund.dev/api/v2';
-  var cinemetaUrl = cfg.cinemetaUrl || 'https://v3-cinemeta.strem.io/meta';
+  var anilistUrl = cfg.anilistUrl;
+  var armBase = cfg.armBase;
+  var cinemetaUrl = cfg.cinemetaUrl;
   var ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   var hdrs = { 'User-Agent': ua, Accept: 'application/json, text/plain, */*', Origin: base, Referer: base + '/' };
   var isTv = ctx.type !== 'movie';

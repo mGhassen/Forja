@@ -14,7 +14,7 @@ function extract(ctx) {
   var backend = cfg.backend.replace(/\/$/, '');
   var enc = cfg.enc.replace(/\/$/, '');
   var origin = cfg.origin;
-  var servers = cfg.servers || ['primebox', 'rage'];
+  var servers = Array.isArray(cfg.servers) ? cfg.servers : [];
   var tmdbKey = cfg.tmdbKey;
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';

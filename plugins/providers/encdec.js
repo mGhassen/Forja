@@ -1,7 +1,11 @@
+var SPECS = {
+  "enc": "https://enc-dec.app/api"
+};
+
 function extract(ctx) {
-  var cfg = ctx.config || {};
+  var cfg = Object.assign({}, SPECS, ctx.config || {});
   var origin = cfg.origin;
-  var enc = cfg.enc || 'https://enc-dec.app/api';
+  var enc = cfg.enc;
   var slug = cfg.slug;
   if (!origin || !slug) return Promise.resolve([]);
   var ua =

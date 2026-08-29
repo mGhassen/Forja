@@ -1,13 +1,14 @@
 var SPECS = {
   "base": "https://dvdplay.xyz",
   "name": "DVDPlay",
-  "searchBase": "https://dvdplay.xyz/search.php?q="
+  "searchBase": "https://dvdplay.xyz/search.php?q=",
+  "tmdbKey": "439c478a771f35c05022f9feabcca01c"
 };
 
 function extract(ctx) {
   var cfg = Object.assign({}, SPECS, ctx.config || {});
   var base = cfg.base.replace(/\/$/, '');
-  var searchBase = (cfg.searchBase || base + '/search.php?q=').replace(/\/$/, '');
+  var searchBase = String(cfg.searchBase).replace(/\/$/, '');
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
   var headers = {
@@ -17,7 +18,7 @@ function extract(ctx) {
     Referer: base + '/',
   };
   var isTv = ctx.type !== 'movie';
-  var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
+  var tmdbKey = cfg.tmdbKey;
 
   function titleMeta() {
     var title = String(ctx.title || '').trim();

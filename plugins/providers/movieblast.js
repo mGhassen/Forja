@@ -10,9 +10,9 @@ var SPECS = {
 function extract(ctx) {
   var cfg = Object.assign({}, SPECS, ctx.config || {});
   var api = cfg.api.replace(/\/$/, '');
-  var token = cfg.token || '';
+  var token = cfg.token;
   var appId = cfg.appId;
-  var secret = cfg.signSecret || '';
+  var secret = cfg.signSecret;
   var tmdbKey = cfg.tmdbKey;
   if (!token || !secret) return Promise.resolve([]);
   var headers = {
@@ -20,7 +20,7 @@ function extract(ctx) {
     'x-request-x': appId,
   };
   var searchHeaders = Object.assign({}, headers, {
-    hash256: cfg.hash256 || '',
+    hash256: cfg.hash256,
     packagename: appId,
   });
   var isTv = ctx.type !== 'movie';

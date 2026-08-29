@@ -185,14 +185,14 @@ function extract(ctx) {
 
 
 const UA4 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36";
-const REFERER = "https://mkissa.to";
-const API = "https://api.mkissa.net";
+const REFERER = String(cfg.referer).replace(/\/$/, "");
+const API = String(cfg.api).replace(/\/$/, "");
 const API_URL = `${API}/api`;
 const CDN_ROOT = "https://cdn.mkissa.net/all/mk";
 const DISCOVERY_PATH = "/anime/attack-on-titan-Ycid9tDZd2FxGCJ8o/sub/1";
 const ANIZIP = "https://api.ani.zip/mappings";
 const CONTENT_LANE = "k7";
-const REFERER_HOST = "mkissa.to";
+const REFERER_HOST = REFERER.replace(/^https?:\/\//, "");
 const KEY_GROUP = "mkissa";
 const BOOT_EPOCH_MS = 604800000;
 const BOOT_GRACE_MS = 86400000;

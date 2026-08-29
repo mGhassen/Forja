@@ -13,7 +13,7 @@ function extract(ctx) {
   var megaplay = cfg.megaplay;
   var vidwish = cfg.vidwish;
   var megacloud = cfg.megacloud;
-  var tmdbKey = cfg.tmdbKey || '';
+  var tmdbKey = cfg.tmdbKey;
   var mapApi = cfg.mapApi;
   var jikan = cfg.jikan;
   var ua =

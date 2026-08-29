@@ -1,15 +1,17 @@
 var SPECS = {
   "base": "https://anidb.app",
   "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
-  "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
+  "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49",
+  "jikan": "https://api.jikan.moe/v4/anime",
+  "armBase": "https://arm.haglund.dev/api/v2"
 };
 
 function extract(ctx) {
   var cfg = Object.assign({}, SPECS, ctx.config || {});
   var base = cfg.base.replace(/\/$/, '');
   var mapApi = cfg.mapApi;
-  var jikan = cfg.jikan || 'https://api.jikan.moe/v4/anime';
-  var armBase = (cfg.armBase || 'https://arm.haglund.dev/api/v2').replace(/\/$/, '');
+  var jikan = cfg.jikan;
+  var armBase = cfg.armBase.replace(/\/$/, '');
   var tmdbKey = cfg.tmdbKey;
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';

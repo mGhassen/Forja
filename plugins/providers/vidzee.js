@@ -13,7 +13,7 @@ function extract(ctx) {
   var cfg = Object.assign({}, SPECS, ctx.config || {});
   var api = cfg.api.replace(/\/$/, '');
   var origin = cfg.origin.replace(/\/$/, '');
-  var servers = cfg.servers || ['dcloud', 'tik', 'ipcloud', 'v6:Hindi'];
+  var servers = Array.isArray(cfg.servers) ? cfg.servers : [];
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
   var tmdbId = String(ctx.tmdbId);

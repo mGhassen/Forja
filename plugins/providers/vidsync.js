@@ -9,7 +9,8 @@ var SPECS = {
     "cinevip",
     "cinecloud",
     "cine4k"
-  ]
+  ],
+  "tmdbKey": "439c478a771f35c05022f9feabcca01c"
 };
 
 function extract(ctx) {
@@ -28,7 +29,7 @@ function extract(ctx) {
   };
   var tmdbId = String(ctx.tmdbId);
   var isMovie = ctx.type === 'movie';
-  var tmdbKey = cfg.tmdbKey || '439c478a771f35c05022f9feabcca01c';
+  var tmdbKey = cfg.tmdbKey;
 
   function mediaMeta() {
     var title = String(ctx.title || '').trim();

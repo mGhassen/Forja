@@ -13,22 +13,10 @@ var SPECS = {
 
 function extract(ctx) {
   var cfg = Object.assign({}, SPECS, ctx.config || {});
-  var defaultMirrors = [
-    'https://kisskh.co',
-    'https://kisskh.nl',
-    'https://kisskh.ovh',
-    'https://kisskh.la',
-    'https://kisskh.do',
-    'https://kisskh.is',
-    'https://kisskh.id',
-  ];
-  var mirrors = (Array.isArray(cfg.mirrors) && cfg.mirrors.length
-    ? cfg.mirrors
-    : defaultMirrors
-  ).map(function (m) {
+  var mirrors = (Array.isArray(cfg.mirrors) ? cfg.mirrors : []).map(function (m) {
     return String(m).replace(/\/$/, '');
   });
-  var preferred = (cfg.origin || mirrors[0] || 'https://kisskh.co').replace(/\/$/, '');
+  var preferred = String(cfg.origin || mirrors[0] || '').replace(/\/$/, '');
   var ordered = [preferred].concat(
     mirrors.filter(function (m) {
       return m && m !== preferred;

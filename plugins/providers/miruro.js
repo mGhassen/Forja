@@ -8,9 +8,9 @@ var SPECS = {
 
 function extract(ctx) {
   var cfg = Object.assign({}, SPECS, ctx.config || {});
-  var bases = Array.isArray(cfg.bases) && cfg.bases.length
-    ? cfg.bases.map(function (b) { return String(b).replace(/\/$/, ''); })
-    : ['https://www.miruro.tv', 'https://www.miruro.to', 'https://www.miruro.bz'];
+  var bases = (Array.isArray(cfg.bases) ? cfg.bases : []).map(function (b) {
+    return String(b).replace(/\/$/, '');
+  });
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
   var isEpisodic = ctx.type !== 'movie';

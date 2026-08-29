@@ -46,33 +46,8 @@ function extract(ctx) {
   var directUa =
     cfg.directUserAgent ||
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36';
-  var domains = cfg.domains || [
-    'aHR0cHM6Ly9tb2JpbGVkZXRlY3RzLmNvbQ==',
-    'aHR0cHM6Ly9tb2JpbGVkZXRlY3QuYXBw',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0LmFydA==',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0LmNj',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0LmNsaWNr',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0Lmluaw==',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0LmxpdmU=',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0LnBybw==',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0LnNob3A=',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0LnNpdGU=',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0LnNwYWNl',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0LnN0b3Jl',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0LnZpcA==',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0Lndpa2k=',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0Lnh5eg==',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5hcnQ=',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5jYw==',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5pbmZv',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5pbms=',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5saXZl',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5wcm8=',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy5zdG9yZQ==',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy50b3A=',
-    'aHR0cHM6Ly9tb2JpZGV0ZWN0cy54eXo=',
-  ];
-  var platforms = cfg.platforms || ['netflix', 'primevideo', 'hotstar', 'disney'];
+  var domains = Array.isArray(cfg.domains) ? cfg.domains : [];
+  var platforms = Array.isArray(cfg.platforms) ? cfg.platforms : [];
   var platformMap = {
     netflix: 'nf',
     primevideo: 'pv',

@@ -7,7 +7,7 @@ var SPECS = {
 
 function extract(ctx) {
   var cfg = Object.assign({}, SPECS, ctx.config || {});
-  var domain = cfg.base || 'https://new1.hdhub4u.limo';
+  var domain = cfg.base;
   // Site search.html proxies Typesense via pingora (glass host is dead / 404).
   var searchApi = cfg.searchApi;
   var domainsUrl = cfg.domainsUrl;

@@ -1,19 +1,23 @@
 var SPECS = {
   "api": "https://api3.aoneroom.com",
-  "referer": "https://videodownloader.site/"
+  "referer": "https://videodownloader.site/",
+  "keyB64Default": "NzZpUmwwN3MweFNOOWpxbUVXQXQ3OUVCSlp1bElRSXNWNjRGWnIyTw==",
+  "keyB64Alt": "WHFuMm5uTzQxL0w5Mm8xaXVYaFNMSFRiWHZZNFo1Wlo2Mm04bVNMQQ==",
+  "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49",
+  "packageName": "com.community.mbox.in",
+  "versionCode": 50020042,
+  "versionName": "3.0.03.0529.03"
 };
 
 function extract(ctx) {
   var cfg = Object.assign({}, SPECS, ctx.config || {});
   var api = cfg.api.replace(/\/$/, '');
-  var keyB64Default =
-    cfg.keyB64Default || 'NzZpUmwwN3MweFNOOWpxbUVXQXQ3OUVCSlp1bElRSXNWNjRGWnIyTw==';
-  var keyB64Alt =
-    cfg.keyB64Alt || 'WHFuMm5uTzQxL0w5Mm8xaXVYaFNMSFRiWHZZNFo1Wlo2Mm04bVNMQQ==';
-  var tmdbKey = cfg.tmdbKey || '1865f43a0549ca50d341dd9ab8b29f49';
-  var pkg = cfg.packageName || 'com.community.mbox.in';
-  var versionCode = cfg.versionCode || 50020042;
-  var versionName = cfg.versionName || '3.0.03.0529.03';
+  var keyB64Default = cfg.keyB64Default;
+  var keyB64Alt = cfg.keyB64Alt;
+  var tmdbKey = cfg.tmdbKey;
+  var pkg = cfg.packageName;
+  var versionCode = cfg.versionCode;
+  var versionName = cfg.versionName;
   var ua =
     pkg +
     '/' +

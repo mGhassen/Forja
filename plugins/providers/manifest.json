@@ -102,16 +102,6 @@
       "kind": "http"
     },
     {
-      "id": "service111477",
-      "name": "111477",
-      "entry": "dahmermovies.js",
-      "types": [
-        "movie",
-        "tv"
-      ],
-      "kind": "http"
-    },
-    {
       "id": "kisskh",
       "name": "KissKh",
       "entry": "kisskh.js",

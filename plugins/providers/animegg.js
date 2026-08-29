@@ -1,14 +1,15 @@
 var SPECS = {
   "base": "https://www.animegg.org",
   "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
-  "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
+  "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49",
+  "jikan": "https://api.jikan.moe/v4/anime"
 };
 
 function extract(ctx) {
   var cfg = Object.assign({}, SPECS, ctx.config || {});
   var base = cfg.base.replace(/\/$/, '');
   var mapApi = cfg.mapApi;
-  var jikan = cfg.jikan || 'https://api.jikan.moe/v4/anime';
+  var jikan = cfg.jikan;
   var tmdbKey = cfg.tmdbKey;
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';

@@ -8,11 +8,11 @@ var SPECS = {
 
 function extract(ctx) {
   var cfg = Object.assign({}, SPECS, ctx.config || {});
-  var api = String(cfg.api || '').replace(/\/$/, '') + '/';
-  var stOrigin = String(cfg.stOrigin || 'https://st.111477.xyz').replace(/\/$/, '');
-  var tmdbKey = cfg.tmdbKey || '';
-  var limit = cfg.limit != null ? parseInt(cfg.limit, 10) : 3;
-  var sort = cfg.sort || 'file-desc';
+  var api = String(cfg.api).replace(/\/$/, '') + '/';
+  var stOrigin = String(cfg.stOrigin).replace(/\/$/, '');
+  var tmdbKey = cfg.tmdbKey;
+  var limit = parseInt(cfg.limit, 10);
+  var sort = cfg.sort;
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
   var isTv = ctx.type !== 'movie';

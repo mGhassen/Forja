@@ -6,7 +6,11 @@ var SPECS = {
     "https://mapper.mewcdn.online/api/mal"
   ],
   "mapApi": "https://id-mapping-api-malid.hf.space/api/resolve",
-  "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49"
+  "tmdbKey": "1865f43a0549ca50d341dd9ab8b29f49",
+  "anilistUrl": "https://graphql.anilist.co",
+  "armBase": "https://arm.haglund.dev/api/v2",
+  "jikan": "https://api.jikan.moe/v4/anime",
+  "spoofRef": "https://hianimes.re/"
 };
 
 function extract(ctx) {
@@ -14,16 +18,15 @@ function extract(ctx) {
   var base = cfg.base.replace(/\/$/, '');
   var mapperBases = Array.isArray(cfg.mappers) && cfg.mappers.length
     ? cfg.mappers
-    : [
-        cfg.mapper,
-        'https://mapper.mewcdn.online/api/mal',
-      ];
-  var anilistUrl = cfg.anilistUrl || 'https://graphql.anilist.co';
-  var armBase = (cfg.armBase || 'https://arm.haglund.dev/api/v2').replace(/\/$/, '');
+    : cfg.mapper
+      ? [cfg.mapper]
+      : [];
+  var anilistUrl = cfg.anilistUrl;
+  var armBase = cfg.armBase.replace(/\/$/, '');
   var mapApi = cfg.mapApi;
-  var jikan = cfg.jikan || 'https://api.jikan.moe/v4/anime';
+  var jikan = cfg.jikan;
   var tmdbKey = cfg.tmdbKey;
-  var spoofRef = cfg.spoofRef || 'https://hianimes.re/';
+  var spoofRef = cfg.spoofRef;
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
   var hdrs = { 'User-Agent': ua, Accept: 'text/html,*/*', 'Accept-Language': 'en-US,en;q=0.9' };

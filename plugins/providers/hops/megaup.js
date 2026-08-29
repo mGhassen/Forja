@@ -1,5 +1,6 @@
 var SPECS = {
-  "enc": "https://enc-dec.app/api"
+  "enc": "https://enc-dec.app/api",
+  "dec": "dec-mega"
 };
 
 function extract(ctx) {
@@ -7,7 +8,7 @@ function extract(ctx) {
   if (!url) return Promise.resolve([]);
   var cfg = Object.assign({}, SPECS, ctx.config || {});
   var enc = cfg.enc;
-  var dec = cfg.dec || 'dec-mega';
+  var dec = cfg.dec;
   var ua =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
   var referer = url.split('/e/')[0] + '/';

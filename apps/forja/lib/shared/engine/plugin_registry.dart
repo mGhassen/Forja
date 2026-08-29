@@ -29,6 +29,20 @@ class PluginRegistry {
     'FORJA_HQ_CATALOG_MANIFEST_URL',
   );
 
+  /// Dev: force reinstall from dart-define URLs every ensure, and drop stale
+  /// GitHub/cloud installs of the same official pack ids (different sourceUrl).
+  /// `FORJA_HQ_FORCE_PLUGIN_ENV=true` via `.env` / `--dart-define`.
+  static const forcePluginEnv = bool.fromEnvironment(
+    'FORJA_HQ_FORCE_PLUGIN_ENV',
+    defaultValue: false,
+  );
+
+  static const officialPackIds = {
+    'forjahq-providers',
+    'forjahq-live',
+    'forjahq-catalog',
+  };
+
   /// All configured official pack URLs (providers, live, catalog).
   static List<String> get officialManifestUrls => [
         for (final u in [
@@ -358,7 +372,30 @@ class PluginRegistry {
     return mu.replace(path: path).toString();
   }
 
+  /// Drop installed packs with official packIds whose [sourceUrl] is not in
+  /// [keepUrls] (e.g. GitHub install after `.env` switched to a local path).
+  @visibleForTesting
+  Future<void> evictStaleOfficialSiblingPacks(List<String> keepUrls) async {
+    final keep = {
+      for (final u in keepUrls)
+        if (u.trim().isNotEmpty) u.trim(),
+    };
+    final packs = await listPacksRaw();
+    for (final pack in packs) {
+      if (!officialPackIds.contains(pack.packId)) continue;
+      if (keep.contains(pack.sourceUrl)) continue;
+      debugPrint(
+        '[engine] FORJA_HQ_FORCE_PLUGIN_ENV: evict stale ${pack.packId} '
+        '(${pack.sourceUrl})',
+      );
+      await removePack(pack.sourceUrl);
+    }
+  }
+
   /// First boot / ensure: install or refresh each official pack when needed.
+  ///
+  /// When [forcePluginEnv] is true, always reinstalls from dart-define URLs and
+  /// evicts sibling official packs at other sourceUrls (local `.env` wins).
   Future<void> ensureOfficialInstalled({bool force = false}) async {
     final urls = officialManifestUrls;
     if (urls.length < 3) {
@@ -368,18 +405,26 @@ class PluginRegistry {
       notifyChanged();
       return;
     }
-    if (!force && _officialInstallFailed) return;
+    final forceEnv = forcePluginEnv;
+    final effectiveForce = force || forceEnv;
+    if (!effectiveForce && _officialInstallFailed) return;
     if (_officialEnsureFuture != null) {
       await _officialEnsureFuture;
       return;
     }
     final run = () async {
       try {
+        if (forceEnv) {
+          await evictStaleOfficialSiblingPacks(urls);
+          debugPrint(
+            '[engine] FORJA_HQ_FORCE_PLUGIN_ENV: reinstalling from dart-define',
+          );
+        }
         final packs = await listPacksRaw();
         final byUrl = {for (final p in packs) p.sourceUrl: p};
         for (final url in urls) {
           final local = byUrl[url];
-          if (local == null || force) {
+          if (local == null || effectiveForce) {
             await install(url);
           } else if (!_officialUpdateChecked) {
             await _maybeRefreshOfficialIfNewer(url, local);

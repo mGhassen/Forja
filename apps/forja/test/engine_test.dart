@@ -325,6 +325,49 @@ void main() {
       );
     });
 
+    test('evictStaleOfficialSiblingPacks drops GitHub copy of forjahq-providers',
+        () async {
+      const github =
+          'https://raw.githubusercontent.com/example/Forja/main/plugins/providers/manifest.json';
+      const local = '/tmp/forja-dev/plugins/providers/manifest.json';
+      SharedPreferences.setMockInitialValues({
+        'engine_js_packs_v2': jsonEncode([
+          {
+            'sourceUrl': github,
+            'packId': 'forjahq-providers',
+            'name': 'ForjaHQ Providers',
+            'version': '1.0.0',
+            'plugins': [
+              {
+                'id': 'videasy',
+                'name': 'Videasy',
+                'entry': 'videasy.js',
+                'kind': 'http',
+                'enabled': true,
+              },
+            ],
+          },
+          {
+            'sourceUrl': 'https://community.example/manifest.json',
+            'packId': 'community',
+            'name': 'Community',
+            'version': '1.0.0',
+            'plugins': const [],
+          },
+        ]),
+        'engine_js_packs_v2_migrated': true,
+        'engine_js_legacy_forjahq_wiped': true,
+      });
+      await registry.evictStaleOfficialSiblingPacks([local]);
+      final packs = await registry.listPacksRaw();
+      expect(packs.map((p) => p.sourceUrl), isNot(contains(github)));
+      expect(
+        packs.any((p) => p.sourceUrl == 'https://community.example/manifest.json'),
+        isTrue,
+      );
+      expect(packs.any((p) => p.packId == 'forjahq-providers'), isFalse);
+    });
+
     test('transactional install writes nothing when a script fetch fails',
         () async {
       const url = 'https://tx.example/manifest.json';
@@ -880,10 +923,6 @@ void main() {
       expect(parsed.firstWhere((p) => p.id == 'vidrock').entry, 'vidrock.js');
       expect(parsed.firstWhere((p) => p.id == 'vidzee').entry, 'vidzee.js');
       expect(parsed.firstWhere((p) => p.id == '2embed').entry, 'multiembed.js');
-      expect(
-        parsed.firstWhere((p) => p.id == 'service111477').entry,
-        'dahmermovies.js',
-      );
       expect(await loadForjaHqFile('providers/vidsrcsbs.js'), contains('https://web.nxsha.app'));
       expect(parsed.firstWhere((p) => p.id == 'hexa').entry, 'hexa.js');
       expect(parsed.firstWhere((p) => p.id == 'hianime').entry, 'hianime.js');
