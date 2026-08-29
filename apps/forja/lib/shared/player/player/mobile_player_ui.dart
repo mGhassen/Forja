@@ -7,6 +7,25 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
   //  UI HIDE TIMER
   // ─────────────────────────────────────────────────────────────────────────
 
+  void _revealChrome() {
+    if (!_s._showControls) {
+      setState(() => _s._showControls = true);
+    }
+    _syncChromeHideTimer();
+  }
+
+  void _syncChromeHideTimer() {
+    if (!_s._showControls || _s._isLocked) {
+      _s._hideTimer?.cancel();
+      return;
+    }
+    _startHideTimer();
+  }
+
+  void _onPlayerStatusForChromeHide() {
+    _syncChromeHideTimer();
+  }
+
   void _startHideTimer() {
     _s._hideTimer?.cancel();
     if (_s._isInitPlaybackRunning ||

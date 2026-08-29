@@ -121,6 +121,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     _s._checkingSourceIndices.remove(index);
     _syncUrlCheckFromIndex(index, PlayerSourceStatus.active);
     _notifySourceMenuChanged();
+    _s._syncChromeHideTimer();
   }
 
   void _onLiveSourcesUpdated() {

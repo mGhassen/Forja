@@ -70,6 +70,8 @@ class _AsianDramaContinueWatchingCardState
         totalEps > 0 ? 'Ep $epLabel / $totalEps' : 'Ep $epLabel';
     final cardWidth = AsianDramaContinueWatchingCard.cardWidth(context);
     final cardHeight = AsianDramaContinueWatchingCard.cardHeight(context);
+    final radius = shellCardBorderRadius(context);
+    final active = _activeFor(policy);
 
     return shellFocusableTap(
       context: context,
@@ -78,7 +80,7 @@ class _AsianDramaContinueWatchingCardState
       tvTabId: 'asian_drama',
       tvRowId: 'continue-watching',
       tvItemIndex: widget.listIndex,
-      borderRadius: 14,
+      borderRadius: radius,
       scaleOnFocus: 1.0,
       showFocusBorder: true,
       onFocusChange: (focused) => setState(() => _focused = focused),
@@ -91,7 +93,13 @@ class _AsianDramaContinueWatchingCardState
           width: cardWidth,
           height: cardHeight,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(
+              color: active
+                  ? ForjaShellColors.chipSelectedBorder
+                  : ForjaShellColors.cinematic.borderSubtle,
+              width: 1.5,
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.5),
@@ -101,7 +109,7 @@ class _AsianDramaContinueWatchingCardState
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radius - 1.5),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -229,8 +237,8 @@ class _AsianDramaContinueWatchingCardState
                         ),
                       ),
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(14),
+                        borderRadius: BorderRadius.vertical(
+                          bottom: Radius.circular(radius - 1.5),
                         ),
                         child: LinearProgressIndicator(
                           value: progress,
@@ -251,7 +259,7 @@ class _AsianDramaContinueWatchingCardState
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(radius - 1.5),
                     ),
                     child: Center(
                       child: CircularProgressIndicator(

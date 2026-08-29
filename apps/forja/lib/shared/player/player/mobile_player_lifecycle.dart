@@ -114,6 +114,10 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       if (_s._disposed || !_s._isPlayingNotifier.value) return;
       _s._saveWatchHistory(isBgPause: true);
     });
+    playerChromeOnOverlayDismissed = () {
+      if (mounted) _s._syncChromeHideTimer();
+    };
+    _s._statusController.addListener(_s._onPlayerStatusForChromeHide);
 
     _s._loadHeroMetadata();
     unawaited(_s._refreshAdjacentEpisodeFlags());

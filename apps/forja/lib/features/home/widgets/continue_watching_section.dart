@@ -296,6 +296,8 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
     final policy = ShellScope.inputPolicyOf(context);
     final cardWidth = HomeHistoryCard.cardWidth(context);
     final cardHeight = HomeHistoryCard.cardHeight(context);
+    final radius = shellCardBorderRadius(context);
+    final active = _active(context);
 
     return shellFocusableTap(
       context: context,
@@ -304,7 +306,7 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
       tvTabId: 'home',
       tvRowId: widget.tvRowId,
       tvItemIndex: widget.listIndex,
-      borderRadius: 14,
+      borderRadius: radius,
       scaleOnFocus: 1.0,
       showFocusBorder: true,
       onFocusChange: (focused) => setState(() => _focused = focused),
@@ -317,7 +319,13 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
               width: cardWidth,
               height: cardHeight,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(radius),
+                border: Border.all(
+                  color: active
+                      ? ForjaShellColors.chipSelectedBorder
+                      : ForjaShellColors.cinematic.borderSubtle,
+                  width: 1.5,
+                ),
                 boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.5),
@@ -327,7 +335,7 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
                       ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(radius - 1.5),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
@@ -444,7 +452,7 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
                   ),
                   // Progress bar
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius - 1.5)),
                     child: LinearProgressIndicator(
                       value: progress,
                       backgroundColor: Colors.white.withValues(alpha: 0.1),
@@ -465,7 +473,7 @@ class HomeHistoryCardState extends State<HomeHistoryCard> {
               Container(
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(radius - 1.5),
                 ),
                 child: Center(
                   child: CircularProgressIndicator(

@@ -22,6 +22,25 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     return _s._statusController.entries.any(isStatusRouletteEntry);
   }
 
+  void _revealChrome() {
+    if (!_s._showControls) {
+      setState(() => _s._showControls = true);
+    }
+    _syncChromeHideTimer();
+  }
+
+  void _syncChromeHideTimer() {
+    if (!_s._showControls) {
+      _s._hideTimer?.cancel();
+      return;
+    }
+    _startHideTimer();
+  }
+
+  void _onPlayerStatusForChromeHide() {
+    _syncChromeHideTimer();
+  }
+
   void _startHideTimer() {
     _s._hideTimer?.cancel();
     if (_s._isInitPlaybackRunning ||
@@ -44,8 +63,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
   }
 
   void _onMouseMove() {
-    if (!_s._showControls) setState(() => _s._showControls = true);
-    _startHideTimer();
+    _revealChrome();
   }
 
   Movie? get _displayMovie => _s._heroMovie ?? widget.movie;

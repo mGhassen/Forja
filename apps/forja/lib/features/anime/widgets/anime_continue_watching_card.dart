@@ -63,6 +63,8 @@ class _AnimeContinueWatchingCardState extends State<AnimeContinueWatchingCard> {
     final subtitle = 'Ep $ep · ${cat.toUpperCase()}';
     final cardWidth = AnimeContinueWatchingCard.cardWidth(context);
     final cardHeight = AnimeContinueWatchingCard.cardHeight(context);
+    final radius = shellCardBorderRadius(context);
+    final active = _activeFor(policy);
 
     return shellFocusableTap(
       context: context,
@@ -71,7 +73,7 @@ class _AnimeContinueWatchingCardState extends State<AnimeContinueWatchingCard> {
       tvTabId: 'anime',
       tvRowId: 'continue-watching',
       tvItemIndex: widget.listIndex,
-      borderRadius: 14,
+      borderRadius: radius,
       scaleOnFocus: 1.0,
       showFocusBorder: true,
       onFocusChange: (focused) => setState(() => _focused = focused),
@@ -84,7 +86,13 @@ class _AnimeContinueWatchingCardState extends State<AnimeContinueWatchingCard> {
           width: cardWidth,
           height: cardHeight,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(
+              color: active
+                  ? ForjaShellColors.chipSelectedBorder
+                  : ForjaShellColors.cinematic.borderSubtle,
+              width: 1.5,
+            ),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.5),
@@ -94,7 +102,7 @@ class _AnimeContinueWatchingCardState extends State<AnimeContinueWatchingCard> {
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(radius - 1.5),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -222,8 +230,8 @@ class _AnimeContinueWatchingCardState extends State<AnimeContinueWatchingCard> {
                         ),
                       ),
                       ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          bottom: Radius.circular(14),
+                        borderRadius: BorderRadius.vertical(
+                          bottom: Radius.circular(radius - 1.5),
                         ),
                         child: LinearProgressIndicator(
                           value: progress,
@@ -244,7 +252,7 @@ class _AnimeContinueWatchingCardState extends State<AnimeContinueWatchingCard> {
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.6),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(radius - 1.5),
                     ),
                     child: Center(
                       child: CircularProgressIndicator(

@@ -429,6 +429,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     windowManager.removeListener(this);
     WidgetsBinding.instance.removeObserver(this);
+    playerChromeOnOverlayDismissed = null;
+    _statusController.removeListener(_onPlayerStatusForChromeHide);
     _hideTimer?.cancel();
     _progressSaveTimer?.cancel();
     _trackAutoSelectTimer?.cancel();

@@ -12,6 +12,9 @@ import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
 
 FocusNode? _playerMenuReturnFocus;
 
+/// Fired once all player menus/panels are closed (after the dismiss frame).
+VoidCallback? playerChromeOnOverlayDismissed;
+
 bool _anyPlayerMenuOpen() {
   return PlayerStreamMenu.isShowing ||
       PlayerServerStreamDialog.isShowing ||
@@ -88,11 +91,16 @@ void playerMenuCaptureReturnFocus(BuildContext context) {
 
 /// After a menu/panel dismisses, refocus the opener if nothing else is open.
 void playerMenuRestoreReturnFocus() {
-  if (_playerMenuReturnFocus == null) return;
+  _scheduleAfterPlayerOverlayDismissed();
+}
+
+void _scheduleAfterPlayerOverlayDismissed() {
   WidgetsBinding.instance.addPostFrameCallback((_) {
     if (_anyPlayerMenuOpen()) return;
+    playerChromeOnOverlayDismissed?.call();
     final node = _playerMenuReturnFocus;
-    if (node == null || !node.canRequestFocus) {
+    if (node == null) return;
+    if (!node.canRequestFocus) {
       _playerMenuReturnFocus = null;
       return;
     }

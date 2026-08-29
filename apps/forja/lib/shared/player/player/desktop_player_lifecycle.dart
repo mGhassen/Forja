@@ -131,6 +131,10 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
       if (_s._disposed || !_s._isPlayingNotifier.value) return;
       unawaited(_saveWatchHistory(isBgPause: true));
     });
+    playerChromeOnOverlayDismissed = () {
+      if (mounted) _s._syncChromeHideTimer();
+    };
+    _s._statusController.addListener(_s._onPlayerStatusForChromeHide);
   }
 
   Future<void> _createPlayer() async {

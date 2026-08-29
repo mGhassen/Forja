@@ -931,6 +931,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                   iconSize: iconSz,
                   onPressed: () {
                     playing ? _s._player.pause() : _s._player.play();
+                    _s._syncChromeHideTimer();
                   },
                 ),
               ),

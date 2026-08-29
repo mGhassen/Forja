@@ -1664,7 +1664,7 @@ mixin _DesktopPlayerPlayback
             !_s._isLoadingNextEp) {
           unawaited(_s._nextEpisode());
         } else if (mounted) {
-          setState(() => _s._showControls = true);
+          _s._revealChrome();
         }
         return;
       }
@@ -1686,7 +1686,7 @@ mixin _DesktopPlayerPlayback
           !_s._openHadMidPlayback) {
         _s._positionNotifier.value = Duration.zero;
       }
-      if (mounted) setState(() => _s._showControls = true);
+      if (mounted) _s._revealChrome();
     });
 
     _s._tracksSub = _s._player.stream.tracks.listen((tracks) {

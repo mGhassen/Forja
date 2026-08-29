@@ -270,6 +270,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     }
     unawaited(_boot());
     unawaited(_loadSubtitlePrefs());
+    playerChromeOnOverlayDismissed = () {
+      if (mounted) _syncChromeHideTimer();
+    };
+    _statusController.addListener(_onPlayerStatusForChromeHide);
   }
 
   Future<List<_ExoSource>> _buildRankedSources() async {
@@ -866,13 +870,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       unawaited(ExoPlayerBridge.play(_viewId));
     }
     // Do not force chrome — Space / media keys pause with chrome hidden.
-    if (_showControls) _startHideTimer();
+    if (_showControls) _syncChromeHideTimer();
   }
 
   void _toggleControls() {
     setState(() => _showControls = !_showControls);
     if (_showControls) {
-      _startHideTimer();
+      _syncChromeHideTimer();
       if (_isTv) _claimPlayFocus();
     } else {
       _hideTimer?.cancel();
@@ -987,6 +991,25 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (_seekFocus.canRequestFocus) {
       _seekFocus.requestFocus();
     }
+  }
+
+  void _revealChrome() {
+    if (!_showControls) {
+      setState(() => _showControls = true);
+    }
+    _syncChromeHideTimer();
+  }
+
+  void _syncChromeHideTimer() {
+    if (!_showControls) {
+      _hideTimer?.cancel();
+      return;
+    }
+    _startHideTimer();
+  }
+
+  void _onPlayerStatusForChromeHide() {
+    _syncChromeHideTimer();
   }
 
   void _startHideTimer() {
@@ -1601,6 +1624,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _retryFocus.dispose();
     _streamActionFocus.dispose();
     _tvKeyFocus.dispose();
+    playerChromeOnOverlayDismissed = null;
+    _statusController.removeListener(_onPlayerStatusForChromeHide);
+    playerMenuClearReturnFocus();
     _statusController.dispose();
     _isBufferingNotifier.dispose();
     _providerSourcesCache.dispose();
@@ -2435,8 +2461,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       },
       onPlayPause: _togglePlayPause,
       onShowControls: () {
-        setState(() => _showControls = true);
-        _startHideTimer();
+        _revealChrome();
         _claimPlayFocus();
       },
       onSeekBack: () =>
@@ -2447,16 +2472,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       onVolumeDown: () => unawaited(_setVolume(_volume - 10)),
       onToggleControls: _toggleControls,
       onFocusBack: () {
-        setState(() => _showControls = true);
-        _startHideTimer();
+        _revealChrome();
         _claimBackFocus();
       },
       onFocusPlay: () {
-        setState(() => _showControls = true);
-        _startHideTimer();
+        _revealChrome();
         _claimPlayFocus();
       },
-      onControlsActivity: _startHideTimer,
+      onControlsActivity: _syncChromeHideTimer,
       child: body,
     );
   }

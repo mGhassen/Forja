@@ -533,6 +533,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     _skipChipFocus.dispose();
     _nextEpChipFocus.dispose();
     _tvKeyFocus.dispose();
+    playerChromeOnOverlayDismissed = null;
+    _statusController.removeListener(_onPlayerStatusForChromeHide);
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
     _progressSaveTimer?.cancel();
