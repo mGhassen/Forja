@@ -432,6 +432,12 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                                       duration: duration,
                                       position: position,
                                       bufferedPosition: buffered,
+                                      zones: buildSeekBarZones(
+                                        introDb: _s._introDbData,
+                                        duration: duration,
+                                        hasNextEpisode:
+                                            _s._isNextEpisodeAvailable,
+                                      ),
                                       captureFrame: _s._captureSeekPreview,
                                       onSeek: (t) {
                                         unawaited(_s._seekTo(t));

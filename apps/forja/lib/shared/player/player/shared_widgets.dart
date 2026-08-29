@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/seek_bar_zones.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'utils.dart'; // Ensure formatDuration is available
@@ -106,6 +107,7 @@ class CustomSeekbar extends StatefulWidget {
   final ValueChanged<Duration>? onSeek;
   final VoidCallback? onDragStart;
   final VoidCallback? onDragEnd;
+  final List<SeekBarZone> zones;
   final bool tvFocusable;
   final FocusNode? focusNode;
   final FocusNode? tvFocusUpNode;
@@ -123,6 +125,7 @@ class CustomSeekbar extends StatefulWidget {
     this.onSeek,
     this.onDragStart,
     this.onDragEnd,
+    this.zones = const [],
     this.tvFocusable = false,
     this.focusNode,
     this.tvFocusUpNode,
@@ -444,6 +447,12 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                       color: Colors.white.withValues(alpha: 0.55),
                     ),
                   ),
+                  if (widget.zones.isNotEmpty)
+                    SeekBarZoneLayer(
+                      zones: widget.zones,
+                      width: constraints.maxWidth,
+                      height: _tvFocused ? 4.0 : 3.0,
+                    ),
                   // Played Track
                   FractionallySizedBox(
                     widthFactor: relativePosition,

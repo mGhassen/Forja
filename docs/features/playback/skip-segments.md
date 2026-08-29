@@ -17,11 +17,13 @@ Automatic during playback for supported series — look for skip prompts on the 
 - Skip intro segment (manual button, or automatic when Auto skip intro is on)
 - Skip recap segment (same)
 - Skip credits (jump toward next episode or end) — always manual
+- See colored zones on the seek bar for intro/recap (gray), credits/outro (seafoam), and next-episode preview or near-end (amber)
 
 ## Tips
 
 - Coverage varies by show — not every series is in IntroDB
 - You can always seek manually if no skip button appears
+- Zone colors sit under the green played fill so you can scrub to them
 
 ## Related
 

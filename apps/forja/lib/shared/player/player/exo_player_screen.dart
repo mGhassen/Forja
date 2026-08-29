@@ -28,6 +28,7 @@ import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/player/controls/player_subtitle_dialog.dart';
 import 'package:forja/shared/player/controls/player_subtitle_settings_dialog.dart';
 import 'package:forja/shared/player/controls/player_touch_seekbar.dart';
+import 'package:forja/shared/player/controls/seek_bar_zones.dart';
 import 'package:forja/shared/player/controls/player_tv_key_scope.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/episode_switch_resolver.dart';
@@ -1840,6 +1841,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                             duration: _duration,
                             position: _position,
                             bufferedPosition: _buffered,
+                            zones: buildSeekBarZones(
+                              duration: _duration,
+                              hasNextEpisode: widget.hasNextEpisode,
+                            ),
                             tvFocusable: true,
                             focusNode: _seekFocus,
                             tvFocusUpNode: _backFocus,
@@ -1859,6 +1864,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                                 duration: _duration,
                                 position: _position,
                                 bufferedPosition: _buffered,
+                                zones: buildSeekBarZones(
+                                  duration: _duration,
+                                  hasNextEpisode: widget.hasNextEpisode,
+                                ),
                                 onSeek: (t) {
                                   unawaited(_seekTo(t));
                                 },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/seek_bar_zones.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 /// Touch-friendly seek bar for mobile / TV player chrome (no hover preview).
@@ -13,6 +14,7 @@ class PlayerTouchSeekBar extends StatefulWidget {
     required this.onSeek,
     required this.onDragStart,
     required this.onDragEnd,
+    this.zones = const [],
   });
 
   final Duration duration;
@@ -21,6 +23,7 @@ class PlayerTouchSeekBar extends StatefulWidget {
   final void Function(Duration) onSeek;
   final VoidCallback onDragStart;
   final VoidCallback onDragEnd;
+  final List<SeekBarZone> zones;
 
   @override
   State<PlayerTouchSeekBar> createState() => _PlayerTouchSeekBarState();
@@ -148,6 +151,12 @@ class _PlayerTouchSeekBarState extends State<PlayerTouchSeekBar> {
                       borderRadius: BorderRadius.circular(trackH),
                     ),
                   ),
+                  if (widget.zones.isNotEmpty)
+                    SeekBarZoneLayer(
+                      zones: widget.zones,
+                      width: _trackWidth,
+                      height: trackH,
+                    ),
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 80),
                     curve: Curves.easeOut,

@@ -609,6 +609,12 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                           duration: duration,
                                           position: position,
                                           bufferedPosition: buffered,
+                                          zones: buildSeekBarZones(
+                                            introDb: _s._introDbData,
+                                            duration: duration,
+                                            hasNextEpisode:
+                                                _s._isNextEpisodeAvailable,
+                                          ),
                                           tvFocusable: true,
                                           focusNode: _s._seekbarFocus,
                                           onTvFocusUp: _s._focusUpFromSeekbar,
@@ -622,6 +628,12 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                         duration: duration,
                                         position: position,
                                         bufferedPosition: buffered,
+                                        zones: buildSeekBarZones(
+                                          introDb: _s._introDbData,
+                                          duration: duration,
+                                          hasNextEpisode:
+                                              _s._isNextEpisodeAvailable,
+                                        ),
                                         onSeek: (t) {
                                           unawaited(_s._seekTo(t));
                                           _s._startHideTimer();

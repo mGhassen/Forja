@@ -46,6 +46,7 @@ import 'package:forja/shared/player/controls/desktop_pip_overlay.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/player/controls/seek_bar_with_preview.dart';
+import 'package:forja/shared/player/controls/seek_bar_zones.dart';
 import 'package:forja/shared/player/controls/player_stream_menu.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_provider_menu.dart';

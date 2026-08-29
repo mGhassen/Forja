@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/seek_bar_zones.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
 typedef SeekFrameCapture = Future<Uint8List?> Function(Duration position);
@@ -18,6 +19,7 @@ class SeekBarWithPreview extends StatefulWidget {
     this.onDragStart,
     this.onDragEnd,
     this.captureFrame,
+    this.zones = const [],
   });
 
   final Duration duration;
@@ -27,6 +29,7 @@ class SeekBarWithPreview extends StatefulWidget {
   final VoidCallback? onDragStart;
   final VoidCallback? onDragEnd;
   final SeekFrameCapture? captureFrame;
+  final List<SeekBarZone> zones;
 
   @override
   State<SeekBarWithPreview> createState() => _SeekBarWithPreviewState();
@@ -192,6 +195,12 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
                               ),
                             ),
                           ),
+                          if (widget.zones.isNotEmpty)
+                            SeekBarZoneLayer(
+                              zones: widget.zones,
+                              width: _trackWidth,
+                              height: trackH,
+                            ),
                           FractionallySizedBox(
                             widthFactor: _playFrac.clamp(0.001, 1.0),
                             child: Container(

@@ -8,6 +8,7 @@ class _MobileSeekbar extends StatefulWidget {
   final Duration duration;
   final Duration position;
   final Duration bufferedPosition;
+  final List<SeekBarZone> zones;
   final void Function(Duration) onSeek;
   final VoidCallback onDragStart;
   final VoidCallback onDragEnd;
@@ -16,6 +17,7 @@ class _MobileSeekbar extends StatefulWidget {
     required this.duration,
     required this.position,
     required this.bufferedPosition,
+    this.zones = const [],
     required this.onSeek,
     required this.onDragStart,
     required this.onDragEnd,
@@ -150,6 +152,12 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
                       borderRadius: BorderRadius.circular(trackH),
                     ),
                   ),
+                  if (widget.zones.isNotEmpty)
+                    SeekBarZoneLayer(
+                      zones: widget.zones,
+                      width: _trackWidth,
+                      height: trackH,
+                    ),
                   // Played
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 80),
