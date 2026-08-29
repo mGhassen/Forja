@@ -16,9 +16,20 @@ class AnimeService {
   /// AniList Media id → MAL id from relations + Jikan (not AniList `idMal`).
   static final Map<int, int?> _malIdByAnilistId = {};
   static final TmdbApi _tmdb = TmdbApi();
+
+  /// Process-lifetime AniList / TMDB caches — details providers are autoDispose
+  /// and CatalogShell enrich already hit AniList once; without these, reopen
+  /// + seasons BFS re-hammer GraphQL into HTTP 429.
+  static final Map<int, AnimeCard> _detailsById = {};
+  static final Map<int, List<AnimeCard>> _seasonsById = {};
+  static final Map<int, Map<String, dynamic>> _seasonsMediaById = {};
+  static final Map<String, Movie?> _tmdbMatchByKey = {};
+  static final Map<String, RichMediaDetails?> _tmdbRichByKey = {};
+  static const _anilistCacheMax = 256;
+
   // ─── GraphQL helper ─────────────────────────────────────────────
   Future<dynamic> _query(String query, [Map<String, dynamic>? vars]) async {
-    const maxAttempts = 3;
+    const maxAttempts = 4;
     Object? lastError;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -37,12 +48,21 @@ class AnimeService {
         return data['data'];
       } catch (e) {
         lastError = e;
-        if (attempt < maxAttempts) {
-          await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
-        }
+        if (attempt >= maxAttempts) break;
+        final msg = e.toString();
+        final rateLimited = msg.contains('429') || msg.contains('Rate limit');
+        final delayMs = rateLimited
+            ? 800 * attempt * attempt
+            : 250 * attempt;
+        await Future<void>.delayed(Duration(milliseconds: delayMs));
       }
     }
     throw lastError ?? Exception('AniList query failed');
+  }
+
+  static void _trimMap(Map map) {
+    if (map.length <= _anilistCacheMax) return;
+    map.clear();
   }
 
   /// Catalog / list cards - keep lean (no trailer / streamingEpisodes / cast).
@@ -184,15 +204,23 @@ class AnimeService {
     int? year,
     bool isMovie = false,
   }) async {
+    final key = 'rich:${title.trim().toLowerCase()}|${year ?? ''}|$isMovie';
+    if (_tmdbRichByKey.containsKey(key)) return _tmdbRichByKey[key];
     final best = await _searchTmdbMatch(
       title: title,
       year: year,
       isMovie: isMovie,
     );
-    if (best == null) return null;
+    if (best == null) {
+      _tmdbRichByKey[key] = null;
+      return null;
+    }
     final mediaType = _tmdbMediaType(best, isMovie: isMovie);
     try {
-      return await _tmdb.getRichDetails(best.id, mediaType);
+      final rich = await _tmdb.getRichDetails(best.id, mediaType);
+      _trimMap(_tmdbRichByKey);
+      _tmdbRichByKey[key] = rich;
+      return rich;
     } catch (e) {
       debugPrint('[AnimeService] TMDB rich details failed for $title: $e');
       return null;
@@ -206,6 +234,8 @@ class AnimeService {
   }) async {
     final query = title.trim();
     if (query.isEmpty) return null;
+    final key = '${query.toLowerCase()}|${year ?? ''}|$isMovie';
+    if (_tmdbMatchByKey.containsKey(key)) return _tmdbMatchByKey[key];
     try {
       var results = isMovie
           ? await _tmdb.searchMovies(query)
@@ -215,7 +245,10 @@ class AnimeService {
             ? await _tmdb.searchTvShows(query)
             : await _tmdb.searchMovies(query);
       }
-      return _pickTmdbMatch(results, year);
+      final best = _pickTmdbMatch(results, year);
+      _trimMap(_tmdbMatchByKey);
+      _tmdbMatchByKey[key] = best;
+      return best;
     } catch (e) {
       debugPrint('[AnimeService] TMDB search failed for $query: $e');
       return null;
@@ -427,6 +460,8 @@ class AnimeService {
   }
 
   Future<AnimeCard> getDetails(int anilistId) async {
+    final hit = _detailsById[anilistId];
+    if (hit != null) return hit;
     final q = '''
       query (\$id: Int) {
         Media(id: \$id, type: ANIME) {
@@ -436,7 +471,10 @@ class AnimeService {
       }
     ''';
     final data = await _query(q, {'id': anilistId});
-    return AnimeCard.fromJson(data['Media'] as Map<String, dynamic>);
+    final card = AnimeCard.fromJson(data['Media'] as Map<String, dynamic>);
+    _trimMap(_detailsById);
+    _detailsById[anilistId] = card;
+    return card;
   }
 
   /// MAIN + SUPPORTING characters (capped). Separate AniList call.
@@ -655,6 +693,9 @@ class AnimeService {
   /// includes the input when it is itself a season entry. Returns just the
   /// input if no TV neighbors exist.
   Future<List<AnimeCard>> getSeasons(int anilistId) async {
+    final cached = _seasonsById[anilistId];
+    if (cached != null) return cached;
+
     const q = r'''
       query ($id: Int) {
         Media(id: $id, type: ANIME) {
@@ -681,11 +722,18 @@ class AnimeService {
 
     Future<Map<String, dynamic>?> fetch(int id) async {
       if (fetched.containsKey(id)) return fetched[id];
+      final mem = _seasonsMediaById[id];
+      if (mem != null) {
+        fetched[id] = mem;
+        return mem;
+      }
       try {
         final data = await _query(q, {'id': id});
         final media = data['Media'];
         if (media is Map<String, dynamic>) {
           fetched[id] = media;
+          _trimMap(_seasonsMediaById);
+          _seasonsMediaById[id] = media;
           return media;
         }
       } catch (e) {
@@ -792,10 +840,20 @@ class AnimeService {
       });
 
     if (seasons.isEmpty) {
-      return [AnimeCard.fromJson(seed)];
+      final only = [AnimeCard.fromJson(seed)];
+      _trimMap(_seasonsById);
+      _seasonsById[anilistId] = only;
+      return only;
     }
     // Opening a film that bridges TV seasons: still show the TV rail.
-    return seasons.map(AnimeCard.fromJson).toList();
+    final out = seasons.map(AnimeCard.fromJson).toList();
+    _trimMap(_seasonsById);
+    _seasonsById[anilistId] = out;
+    // Alias every season id → same spine so switching seasons is free.
+    for (final s in out) {
+      _seasonsById[s.id] = out;
+    }
+    return out;
   }
 
   Future<List<AnimeCard>> browse({

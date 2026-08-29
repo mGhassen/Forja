@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **4 / 4** acceptance (host enrich) · **1 / 1** acceptance (required packs) · **4 / 4** acceptance (shared cache) |
+| **Progress** | **8 / 8** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **4 / 4** acceptance (host enrich) · **1 / 1** acceptance (required packs) · **5 / 5** acceptance (shared cache) |
 | **Current slice** | Shared cache restored (splash rail warm + TMDB match LRU); A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -100,6 +100,7 @@ Pack-owned enrichment — host exposes reusable match APIs; plugins compose (Ani
 | 2 | R70-A34 | `tmdb::match_json` process cache (30m TTL, 256 cap) so hub enrich reuses TMDB match hits across revalidate / hubs | ✅ |
 | 3 | R70-A35 | Details TMDB enrich (Asian Drama / Anime) process-cached via `HubTmdbEnrichCache` — survives Riverpod `autoDispose` leave/reopen | ✅ |
 | 4 | R70-A36 | Hub hero View details uses pack open (`onDetails`) for anime/drama — TMDB enrich must not set `movie` (null `onOpenDetails` was a silent no-op) | ✅ |
+| 5 | R70-A37 | `AnimeService` process-caches `getDetails` / `getSeasons` / TMDB match+rich; AniList `_query` backs off on HTTP 429 | ✅ |
 
 ---
 
