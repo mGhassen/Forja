@@ -63,6 +63,7 @@ class HubHeroSlide {
     this.imageAlignment = Alignment.centerRight,
     this.tmdbId,
     this.tmdbMediaType = 'tv',
+    this.movie,
     this.listTarget,
     required this.onDetails,
   });
@@ -84,6 +85,8 @@ class HubHeroSlide {
   final Alignment imageAlignment;
   final int? tmdbId;
   final String tmdbMediaType;
+  /// Home / TMDB hub — drives [MyListHeroStatusPill] (pin).
+  final Movie? movie;
   final HubListFollowTarget? listTarget;
   final VoidCallback onDetails;
 }
@@ -154,7 +157,7 @@ class _HeroItem {
       overview: slide.overview,
       voteAverage: slide.rating ?? 0,
       releaseDate: slide.year ?? '',
-      mediaType: '',
+      mediaType: slide.movie?.mediaType ?? '',
       badgeLabel: slide.badge,
       statusChip: slide.statusChip,
       upcomingReleaseLabel: slide.upcomingReleaseLabel,
@@ -162,10 +165,11 @@ class _HeroItem {
       imageFit: slide.imageFit,
       imageAlignment: slide.imageAlignment,
       genres: slide.genres,
-      tmdbId: slide.tmdbId,
+      tmdbId: slide.tmdbId ?? slide.movie?.id,
       tmdbMediaType: slide.tmdbMediaType,
       backdropUrls: imageUrl.isEmpty ? const [] : [imageUrl],
       onDetails: slide.onDetails,
+      movie: slide.movie,
       listTarget: slide.listTarget,
     );
   }

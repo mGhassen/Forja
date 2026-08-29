@@ -285,6 +285,7 @@ class _CatalogShellState extends State<CatalogShell>
     final yearBit = item.releaseInfo.isEmpty
         ? null
         : item.releaseInfo.split(' • ').first;
+    final movie = catalogMetaToMovie(item);
     return HubHeroSlide(
       id: item.id,
       title: item.name,
@@ -299,8 +300,11 @@ class _CatalogShellState extends State<CatalogShell>
       genres: item.genres,
       imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
       imageAlignment: useAniBanner ? Alignment.center : Alignment.centerRight,
-      tmdbId: item.numericId('tmdb'),
-      tmdbMediaType: item.type == 'movie' ? 'movie' : 'tv',
+      tmdbId: item.numericId('tmdb') ?? movie?.id,
+      tmdbMediaType: movie?.mediaType ??
+          (item.type == 'movie' ? 'movie' : 'tv'),
+      // Home TMDB pin (+); anime/drama use listTarget instead.
+      movie: movie,
       listTarget: _listTarget(item),
       onDetails: () => unawaited(_openMeta(item)),
     );
