@@ -866,10 +866,8 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
       );
     }
     if (items.isEmpty) {
-      return homeCinematicHeroShimmer(
-        context,
-        pageBottomBleed: widget.pageBottomChild != null,
-      );
+      // Empty rail — don't infinite-shimmer the hub (looks like a hung load).
+      return widget.pageBottomChild ?? const SizedBox.shrink();
     }
     final bottom = widget.pageBottomChild;
     return HomeCinematicHero.hub(

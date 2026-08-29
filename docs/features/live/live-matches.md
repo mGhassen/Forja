@@ -28,6 +28,7 @@ Tap **Live Sports** in the navigation bar.
 
 - Streams are third-party — availability changes with broadcasts and region
 - Escape still backs out of the player on all platforms (and stops the stream)
+- The **Stremio** server chip uses your saved Live assignment + sport catalogs on disk — opening Live Sports does not re-fetch every installed VOD addon first. Opening **Stremio** itself refreshes only Live-assigned addons.
 
 ## Related
 

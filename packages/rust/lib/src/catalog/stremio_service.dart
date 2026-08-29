@@ -315,23 +315,51 @@ class StremioService {
 
   Future<List<Map<String, dynamic>>> _hydrateInstalledAddonsImpl() async {
     final all = await _settings.getStremioAddons();
-    if (all.isEmpty) return const [];
+    return _hydrateAddonList(all);
+  }
+
+  /// Parallel manifest refresh for [addons] that still need hydrate.
+  Future<List<Map<String, dynamic>>> _hydrateAddonList(
+    List<Map<String, dynamic>> addons,
+  ) async {
+    if (addons.isEmpty) return const [];
     final now = DateTime.now();
     _hydrateFailedUntil.removeWhere((_, until) => until.isBefore(now));
-    final out = List<Map<String, dynamic>?>.filled(all.length, null);
+    final out = List<Map<String, dynamic>?>.filled(addons.length, null);
     var next = 0;
     Future<void> worker() async {
       while (true) {
         final i = next++;
-        if (i >= all.length) return;
-        out[i] = await _hydrateOneAddon(all[i], now);
+        if (i >= addons.length) return;
+        out[i] = await _hydrateOneAddon(addons[i], now);
       }
     }
-    final n = all.length < _hydrateConcurrency
-        ? all.length
+    final n = addons.length < _hydrateConcurrency
+        ? addons.length
         : _hydrateConcurrency;
     await Future.wait([for (var w = 0; w < n; w++) worker()]);
     return out.whereType<Map<String, dynamic>>().toList();
+  }
+
+  List<Map<String, dynamic>> _filterAddonsForFeature(
+    List<Map<String, dynamic>> addons,
+    String feature,
+  ) {
+    return [
+      for (final a in addons)
+        if (StremioAddonFeatures.isEnabled(a) &&
+            StremioAddonFeatures.read(a).contains(feature))
+          a,
+    ];
+  }
+
+  /// Disk-only feature filter — no manifest network. Live Matches uses this so
+  /// a dead VOD addon cannot block the tab while hydrating every install.
+  Future<List<Map<String, dynamic>>> peekAddonsForFeature(
+    String feature,
+  ) async {
+    final all = await _settings.getStremioAddons();
+    return _filterAddonsForFeature(all, feature);
   }
 
   Future<Map<String, dynamic>?> _hydrateOneAddon(
@@ -757,16 +785,15 @@ class StremioService {
     return null;
   }
 
-  /// Installed addons targeting [feature] (after hydrate).
+  /// Installed addons targeting [feature].
+  ///
+  /// Hydrates **only** addons that already claim [feature] — never every
+  /// installed VOD addon (dead torrent manifests must not block Live).
   Future<List<Map<String, dynamic>>> getAddonsForFeature(String feature) async {
-    final all = await hydrateInstalledAddons();
-    return all
-        .where(
-          (a) =>
-              StremioAddonFeatures.isEnabled(a) &&
-              StremioAddonFeatures.read(a).contains(feature),
-        )
-        .toList();
+    final candidates = await peekAddonsForFeature(feature);
+    if (candidates.isEmpty) return const [];
+    final hydrated = await _hydrateAddonList(candidates);
+    return _filterAddonsForFeature(hydrated, feature);
   }
 
   /// Prefer live/today sport catalogs; else every `type: sport` catalog.

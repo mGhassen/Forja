@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-arabic",
   "name": "ForjaHQ Arabic",
-  "version": "1.2.0",
+  "version": "1.2.3",
   "plugins": [
     {
       "id": "arabic-hub",
@@ -29,7 +29,7 @@
         "label": "Arabic",
         "order": 40,
         "icon": "forja://asset/nav/arabic",
-        "accent": "#14B8A6",
+        "accent": "#7BA737",
         "defaultEnabled": false
       },
       "enabled": true,
@@ -39,7 +39,8 @@
           "https://larozaa.bond",
           "https://larozaa.home",
           "https://larozaa.homes",
-          "https://larozaa.com"
+          "https://larozaa.com",
+          "https://laaroza.pics"
         ],
         "dimatoon": "https://www.dima-toon.com",
         "brstej": "https://hd1.brstej.com"

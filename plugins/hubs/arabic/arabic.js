@@ -12,6 +12,7 @@ var ARABIC_DEFAULTS = {
     'https://larozaa.home',
     'https://larozaa.homes',
     'https://larozaa.com',
+    'https://laaroza.pics',
   ],
   dimatoon: 'https://www.dima-toon.com',
   brstej: 'https://hd1.brstej.com',
@@ -48,17 +49,25 @@ function arabicLayout() {
         widgets: [
           {
             type: 'hero',
-            id: 'trending',
-            title: 'رائج · Trending',
+            id: 'spotlight',
+            title: 'رائج · Spotlight',
             rail: 'trending',
-            bleed: 'series',
+            bleed: 'brstej',
           },
+          {
+            type: 'ranked',
+            id: 'brstej',
+            title: 'Brstej · أحدث',
+            rail: 'brstej',
+            style: 'numbered',
+            hideWhenBleed: true,
+          },
+          { type: 'host.continue', id: 'continue_watching' },
           {
             type: 'rail',
             id: 'series',
             title: 'مسلسلات عربية',
             rail: 'series',
-            hideWhenBleed: true,
           },
           { type: 'rail', id: 'movies', title: 'أفلام عربية', rail: 'movies' },
           {
@@ -98,12 +107,6 @@ function arabicLayout() {
             title: 'أنمي',
             rail: 'anime_movies',
           },
-          {
-            type: 'rail',
-            id: 'brstej',
-            title: 'Brstej · أحدث',
-            rail: 'brstej',
-          },
         ],
       },
     },
@@ -130,9 +133,8 @@ function arabicOrigin(url) {
 }
 
 function arabicIsLarozaHost(host) {
-  return String(host || '')
-    .toLowerCase()
-    .indexOf('laroza') >= 0;
+  // Live hosts rotate spelling: larozaa.bond → laaroza.pics, larozza.yachts, …
+  return /la+r+o+z+a/i.test(String(host || ''));
 }
 
 function arabicHtml(ctx, html) {
@@ -196,7 +198,7 @@ function arabicFetchHtml(ctx, url, referer) {
 
 function arabicImg($, el, base) {
   if (!el || !el.length) return '';
-  var poster = el.attr('data-echo') || '';
+  var poster = el.attr('data-echo') || el.attr('data-src') || '';
   if (!poster || poster.indexOf('data:') === 0) poster = el.attr('src') || '';
   if (poster.indexOf('data:') === 0) poster = '';
   return arabicAbs(base, poster);
@@ -263,12 +265,24 @@ function arabicParseLarozaCardsRegex(html, base, isMovie) {
   var out = [];
   var seen = {};
   var re =
-    /<li[^>]*class="[^"]*col-xs-6[^"]*"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*(?:title="([^"]*)")?[\s\S]*?(?:data-echo="([^"]+)"|src="([^"]+)")/gi;
+    /<li[^>]*class="[^"]*col-xs-6[^"]*"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*(?:title="([^"]*)")?[\s\S]*?<\/li>/gi;
   var m;
   while ((m = re.exec(html))) {
+    var block = m[0] || '';
     var href = m[1] || '';
     var title = (m[2] || '').trim();
-    var poster = arabicAbs(base, m[3] || m[4] || '');
+    if (!title) {
+      var tm = /title="([^"]+)"/i.exec(block);
+      if (tm) title = (tm[1] || '').trim();
+    }
+    var poster = '';
+    var echo = /data-echo="(https?:\/\/[^"]+)"/i.exec(block);
+    if (echo) poster = echo[1];
+    if (!poster) {
+      var src = /(?:data-src|src)="(https?:\/\/[^"]+)"/i.exec(block);
+      if (src) poster = src[1];
+    }
+    poster = arabicAbs(base, poster);
     if (!title) continue;
     var ser = /ser=([^&]+)/.exec(href);
     var vid = /vid=([^&]+)/.exec(href);
@@ -570,9 +584,23 @@ function arabicRailItems(ctx, cfg, params) {
   }
   return p
     .then(function (items) {
+      if ((!items || !items.length) && rail === 'trending') {
+        return arabicBrowseBrstej(ctx, cfg, limit).then(function (fallback) {
+          return hubItems('rail', fallback || [], { maxAge: 600, swr: 3600 });
+        });
+      }
       return hubItems('rail', items, { maxAge: 600, swr: 3600 });
     })
     .catch(function (e) {
+      if (rail === 'trending') {
+        return arabicBrowseBrstej(ctx, cfg, limit)
+          .then(function (fallback) {
+            return hubItems('rail', fallback || [], { maxAge: 300, swr: 900 });
+          })
+          .catch(function () {
+            return hubFail('rail', 'UPSTREAM', e && e.message, true);
+          });
+      }
       return hubFail('rail', 'UPSTREAM', e && e.message, true);
     });
 }

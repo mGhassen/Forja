@@ -4,7 +4,7 @@
 
 ## What it is
 
-The Arabic tab is a catalog hub from the ForjaHQ **Arabic** pack plugin `arabic-hub` (`kind: catalog`). The pack owns browse, search, details (episode lists), and stream resolve for **Larozaa**, **DimaToon**, and **Brstej**. The host only renders Catalog Shell + a thin details/player UI (`surface: arabic`) and resolves generic embeds — it does not scrape those sites. The tab only appears in **Settings → Features** while the Arabic pack/plugin is enabled under **Sources → Forja → Hubs** (Features visibility defaults off).
+The Arabic tab is a catalog hub from the ForjaHQ **Arabic** pack plugin `arabic-hub` (`kind: catalog`). Layout matches the Home hub shell: cinematic spotlight hero with a bleed row, Continue Watching slot, ranked Brstej, then category rails. The pack owns browse, search, details, and stream resolve for **Larozaa**, **DimaToon**, and **Brstej**. The host only renders Catalog Shell + a thin details/player UI (`surface: arabic`) and resolves generic embeds — it does not scrape those sites. The tab only appears in **Settings → Features** while the Arabic pack/plugin is enabled under **Sources → Forja → Hubs** (Features visibility defaults off).
 
 ## How to open it
 

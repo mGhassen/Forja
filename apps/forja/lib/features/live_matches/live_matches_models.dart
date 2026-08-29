@@ -3241,9 +3241,11 @@ String _liveForjaPluginDisplayName(String pluginId) {
 }
 
 /// True when an installed Stremio addon is wired to Live and exposes sport catalogs.
+///
+/// Local prefs only — never awaits VOD manifest hydrate on Live tab open.
 Future<bool> _liveMatchesStremioLiveEnabled() async {
   final addons =
-      await StremioService().getAddonsForFeature(StremioAddonFeatures.live);
+      await StremioService().peekAddonsForFeature(StremioAddonFeatures.live);
   for (final addon in addons) {
     if (StremioService.sportCatalogsForLive(addon).isNotEmpty) return true;
   }
