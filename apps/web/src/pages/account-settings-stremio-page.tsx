@@ -61,6 +61,7 @@ export function AccountSettingsStremioPage() {
       baseUrl,
       name: baseUrl,
       features: ['vod'],
+      enabled: true,
     }
     void commit((prev) => ({ addons: [...prev.addons, row] }))
     setUrl('')
@@ -69,6 +70,14 @@ export function AccountSettingsStremioPage() {
   const removeAddon = (baseUrl: string) => {
     void commit((prev) => ({
       addons: prev.addons.filter((a) => a.baseUrl !== baseUrl),
+    }))
+  }
+
+  const setEnabled = (baseUrl: string, enabled: boolean) => {
+    void commit((prev) => ({
+      addons: prev.addons.map((a) =>
+        a.baseUrl === baseUrl ? { ...a, enabled } : a,
+      ),
     }))
   }
 
@@ -96,7 +105,7 @@ export function AccountSettingsStremioPage() {
     >
       <SettingsSection
         label="Installed addons"
-        description="Paste a Stremio addon manifest URL ending with /manifest.json. Use Sources for movies/series; Live Matches for sport addons."
+        description="Paste a Stremio addon manifest URL ending with /manifest.json. Use Sources for movies/series; Live Matches for sport addons. Turn the switch off to keep the addon installed without using it."
       >
           {draft.addons.length === 0 ? (
             <p className="text-sm text-forja-muted">No addons yet.</p>
@@ -106,13 +115,21 @@ export function AccountSettingsStremioPage() {
                 const features: Array<'vod' | 'live'> = addon.features?.length
                   ? [...addon.features]
                   : ['vod']
+                const enabled = addon.enabled !== false
                 return (
                   <li
                     key={addon.baseUrl}
                     className="flex min-h-14.5 flex-col gap-3 px-0.5 py-3 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="font-medium">{addon.name || 'Addon'}</p>
+                      <p
+                        className={cn(
+                          'font-medium',
+                          !enabled && 'text-forja-muted',
+                        )}
+                      >
+                        {addon.name || 'Addon'}
+                      </p>
                       <p className="truncate text-sm text-forja-muted">{addon.baseUrl}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {(
@@ -141,16 +158,42 @@ export function AccountSettingsStremioPage() {
                         })}
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="self-end text-red-300 hover:text-red-200 sm:self-center"
-                      onClick={() => removeAddon(addon.baseUrl)}
-                      disabled={controlsLocked || isSaving}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <div className="flex items-center gap-1 self-end sm:self-center">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={enabled}
+                        aria-label={enabled ? 'Disable addon' : 'Enable addon'}
+                        disabled={controlsLocked || isSaving}
+                        onClick={() => setEnabled(addon.baseUrl, !enabled)}
+                        className="group relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'absolute inset-0 rounded-full transition-colors',
+                            enabled ? 'bg-forja-green' : 'bg-white/15',
+                          )}
+                        />
+                        <span
+                          aria-hidden
+                          className={cn(
+                            'absolute top-1 left-1 size-4 rounded-full bg-forja-bg transition-transform',
+                            enabled ? 'translate-x-5' : 'translate-x-0',
+                          )}
+                        />
+                      </button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-300 hover:text-red-200"
+                        onClick={() => removeAddon(addon.baseUrl)}
+                        disabled={controlsLocked || isSaving}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   </li>
                 )
               })}

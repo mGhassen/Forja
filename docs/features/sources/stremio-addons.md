@@ -22,6 +22,7 @@ Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highf
 ## What you can do
 
 - Paste a manifest URL and install
+- Enable or disable an installed addon with the switch next to trash (keeps the install; skips resolve / catalogs / Live Matches when off)
 - Toggle **Sources** / **Live Matches** per addon (at least one stays on)
 - View installed addons and remove them (trash → Yes / No confirm, same as IPTV portal delete)
 - Browse catalogs ([Stremio catalog](../movies-tv/stremio-catalog.md)) when targeting Sources
@@ -35,13 +36,14 @@ Sport-only manifests (e.g. [Highfly Sports Streams](https://sportsfree-us2.highf
 1. Find a Stremio addon manifest URL (ends with `/manifest.json`, or copy the install URL from a configure page)
 2. Paste in **Install Stremio Addon** and tap Install
 3. Confirm the **Sources** / **Live Matches** chips — sport addons should have **Live Matches** on
-4. For Live Matches: open **Live Matches → Servers → Stremio**
+4. Use the switch next to trash to turn an addon off without uninstalling
+5. For Live Matches: open **Live Matches → Servers → Stremio**
 
 ## Tips
 
 - Not every addon implements catalog, stream, and search — check the addon's manifest resources
 - Sport-only / live-named catalogs (e.g. flixnest `*-live*`) default to **Live Matches** and are skipped by global Search
-- Cloud sync stores addon URLs + feature targets; the app re-fetches missing manifests in parallel (a few at a time) on sync / Sources so stream chips stay correct. Addons that time out or return 403 are skipped for a short cooldown instead of stalling the whole list
+- Cloud sync stores addon URLs + feature targets + disabled state; the app re-fetches missing manifests in parallel (a few at a time) on sync / Sources so stream chips stay correct. Addons that time out or return 403 are skipped for a short cooldown instead of stalling the whole list
 - Community addon lists change frequently — verify manifests are trustworthy
 - **Hash-based streams** (`infoHash`, e.g. Torrentio): on desktop and Android phone, Forja plays these via the local torrent engine or debrid. On **web**, only direct `url` streams and debrid-resolved hashes work — hash-only addons need debrid configured or streams are hidden. **Android TV** plays direct `url` streams on the TV; hash / magnet rows need a paired desktop (LAN) — a dialog prompts to pair if you pick one while unpaired. Sport addons for Live Matches still work when that tab is enabled
 - If **Torrentio** fails (Cloudflare / HTTP 403) while another stream addon works, Sources switches the provider chip to the addon that returned streams — pick Torrentio again only if you want to retry that addon alone

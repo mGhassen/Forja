@@ -548,6 +548,9 @@ class SyncDomainBridge {
       }
       final features = StremioAddonFeatures.read(raw);
       row['features'] = features;
+      if (!StremioAddonFeatures.isEnabled(raw)) {
+        row['enabled'] = false;
+      }
       lean.add(row);
     }
     return lean.isEmpty ? {} : {'addons': lean};
@@ -970,6 +973,11 @@ class SyncDomainBridge {
         if (syncedFeatures != null) {
           existing['features'] = syncedFeatures;
         }
+        if (lean.containsKey('enabled')) {
+          existing['enabled'] = StremioAddonFeatures.normalizeEnabled(
+            lean['enabled'],
+          );
+        }
         final name = (lean['name'] as String?)?.trim();
         if (name != null && name.isNotEmpty) existing['name'] = name;
         final description = (lean['description'] as String?)?.trim();
@@ -982,6 +990,9 @@ class SyncDomainBridge {
       }
 
       if (syncedFeatures != null) lean['features'] = syncedFeatures;
+      if (lean.containsKey('enabled')) {
+        lean['enabled'] = StremioAddonFeatures.normalizeEnabled(lean['enabled']);
+      }
       await _settings.saveStremioAddon(lean, notify: false);
       changed = true;
     }

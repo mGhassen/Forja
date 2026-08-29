@@ -121,6 +121,8 @@ export type StremioAddonRow = {
   description?: string
   /** `vod` = Sources / Home / Search; `live` = Live Matches Stremio server */
   features?: Array<'vod' | 'live'>
+  /** Master on/off — omit / true = enabled; false = installed but skipped */
+  enabled?: boolean
 }
 
 export type StremioPayload = {
@@ -398,6 +400,8 @@ function compactStremio(s: StremioPayload | undefined): StremioPayload | undefin
       if (name) row.name = name
       const description = a.description?.trim()
       if (description) row.description = description
+      if (a.features?.length) row.features = [...a.features]
+      if (a.enabled === false) row.enabled = false
       return row
     })
     .filter((a): a is StremioAddonRow => a != null)

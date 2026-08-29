@@ -355,6 +355,7 @@ class StremioService {
               : null,
         );
         fresh['features'] = kept;
+        fresh['enabled'] = StremioAddonFeatures.isEnabled(addon);
         final prev = _hydratePersistChain;
         final persist = prev.then(
           (_) => _settings.saveStremioAddon(fresh, notify: false),
@@ -384,6 +385,7 @@ class StremioService {
   }) async {
     final allAddons = await hydrateInstalledAddons();
     return allAddons.where((addon) {
+      if (!StremioAddonFeatures.isEnabled(addon)) return false;
       if (!StremioAddonFeatures.read(addon).contains(feature)) return false;
       final manifest = addon['manifest'];
       if (manifest is! Map) return false;
@@ -433,6 +435,7 @@ class StremioService {
     // list in the manifest is the authoritative signal.
     final allAddons = await hydrateInstalledAddons();
     final catalogAddons = allAddons.where((addon) {
+      if (!StremioAddonFeatures.isEnabled(addon)) return false;
       if (!StremioAddonFeatures.read(addon).contains(feature)) return false;
       final manifest = addon['manifest'];
       if (manifest is! Map) return false;
@@ -758,7 +761,11 @@ class StremioService {
   Future<List<Map<String, dynamic>>> getAddonsForFeature(String feature) async {
     final all = await hydrateInstalledAddons();
     return all
-        .where((a) => StremioAddonFeatures.read(a).contains(feature))
+        .where(
+          (a) =>
+              StremioAddonFeatures.isEnabled(a) &&
+              StremioAddonFeatures.read(a).contains(feature),
+        )
         .toList();
   }
 

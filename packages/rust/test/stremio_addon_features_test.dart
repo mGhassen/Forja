@@ -77,4 +77,12 @@ void main() {
       [StremioAddonFeatures.vod, StremioAddonFeatures.live],
     );
   });
+
+  test('isEnabled defaults true; false only when explicitly disabled', () {
+    expect(StremioAddonFeatures.isEnabled({}), isTrue);
+    expect(StremioAddonFeatures.isEnabled({'enabled': true}), isTrue);
+    expect(StremioAddonFeatures.isEnabled({'enabled': false}), isFalse);
+    expect(StremioAddonFeatures.normalizeEnabled(null), isTrue);
+    expect(StremioAddonFeatures.normalizeEnabled(false), isFalse);
+  });
 }

@@ -95,6 +95,12 @@ class StremioAddonFeatures {
   static bool targetsLive(Map<String, dynamic> addon) =>
       read(addon).contains(live);
 
+  /// Master on/off — missing / null means enabled (legacy installs).
+  static bool isEnabled(Map addon) => addon['enabled'] != false;
+
+  /// Persist as bool; default on.
+  static bool normalizeEnabled(dynamic raw) => raw != false;
+
   /// Toggle [feature]; keeps at least one target.
   static List<String> toggle(List<String> current, String feature) {
     final next = List<String>.from(current);

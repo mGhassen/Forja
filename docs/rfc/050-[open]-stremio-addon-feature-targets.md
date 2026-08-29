@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **6 / 8** acceptance |
-| **Current slice** | Per-addon Sources vs Live Matches targets + sport HLS; kickoff parse/sort landed; smoke R50-A06 / R50-A07 remain |
+| **Progress** | **4 / 4** components · **7 / 9** acceptance |
+| **Current slice** | Per-addon enable + Sources vs Live Matches targets + sport HLS; kickoff parse/sort landed; smoke R50-A06 / R50-A07 remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,6 +22,7 @@
 | 1 | R50-C01 | Persist `features` (`vod` / `live`) on installed Stremio addons + Settings chips | ✅ |
 | 2 | R50-C02 | Live Matches `Stremio` server — sport catalog + direct HLS via IPTV player | ✅ |
 | 3 | R50-C03 | Feature docs + changelog + cloud lean sync of `features` | ✅ |
+| 4 | R50-C04 | Per-addon `enabled` master switch (Settings + web) — skip when off | ✅ |
 
 ---
 
@@ -37,6 +38,7 @@
 | 6 | R50-A06 | Manual smoke: install Highfly → Live Matches → play one live HLS | ⬜ |
 | 7 | R50-A07 | Android TV Exo: Highfly `recaps.dev` /leaf HLS plays (no forever Reconnecting…) — [issue 143](../issues/143-[open]-android-tv-stremio-live-reconnect.md) | ⬜ |
 | 8 | R50-A08 | Stremio sport metas parse kickoff (`releaseInfo` / `released` / description) into `dateMs`; grid + timeline sort live-first then chronological | ✅ |
+| 9 | R50-A09 | Disable addon in Settings → stays installed; skipped for streams / catalogs / Live Matches; re-enable restores | ✅ |
 
 ---
 

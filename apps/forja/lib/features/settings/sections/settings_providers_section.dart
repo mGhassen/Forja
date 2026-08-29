@@ -174,6 +174,16 @@ class _SettingsProvidersSectionState
     if (mounted) ForjaToast.success('Addon removed');
   }
 
+  Future<void> _setAddonEnabled(Map<String, dynamic> addon, bool enabled) async {
+    final baseUrl = addon['baseUrl']?.toString() ?? '';
+    if (baseUrl.isEmpty) return;
+    if (StremioAddonFeatures.isEnabled(addon) == enabled) return;
+    final updated = Map<String, dynamic>.from(addon);
+    updated['enabled'] = enabled;
+    await _settings.saveStremioAddon(updated);
+    scheduleStremioSyncPush();
+  }
+
   Future<void> _setAddonFeatures(
     Map<String, dynamic> addon,
     String feature,
@@ -220,6 +230,7 @@ class _SettingsProvidersSectionState
               final name = addon['name']?.toString().trim();
               final baseUrl = addon['baseUrl']?.toString().trim() ?? '';
               final features = StremioAddonFeatures.read(addon);
+              final enabled = StremioAddonFeatures.isEnabled(addon);
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Column(
@@ -247,6 +258,10 @@ class _SettingsProvidersSectionState
                           ? 'Untitled addon'
                           : name,
                       subtitle: baseUrl,
+                      enabled: enabled,
+                      onEnabledChanged: (v) => unawaited(
+                        _setAddonEnabled(addon, v),
+                      ),
                       onRemove: () => _removeAddon(baseUrl),
                     ),
                     const SizedBox(height: 8),
@@ -880,18 +895,22 @@ class _SettingsProvidersSectionState
   }
 }
 
-/// Installed addon row — trash opens inline Yes/No (portal-style).
+/// Installed addon row — enable switch + trash (Yes/No confirm).
 class _AddonRemoveRow extends StatefulWidget {
   const _AddonRemoveRow({
     required this.leading,
     required this.title,
     required this.subtitle,
+    required this.enabled,
+    required this.onEnabledChanged,
     required this.onRemove,
   });
 
   final Widget leading;
   final String title;
   final String subtitle;
+  final bool enabled;
+  final ValueChanged<bool> onEnabledChanged;
   final Future<void> Function() onRemove;
 
   @override
@@ -924,8 +943,10 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
                     children: [
                       Text(
                         widget.title,
-                        style: const TextStyle(
-                          color: ForjaShellColors.textPrimary,
+                        style: TextStyle(
+                          color: widget.enabled
+                              ? ForjaShellColors.textPrimary
+                              : ForjaShellColors.textSecondary,
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
@@ -942,6 +963,12 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
                     ],
                   ),
           ),
+          if (!_confirming)
+            ForjaSwitch(
+              value: widget.enabled,
+              scale: ForjaSwitch.settingsScale,
+              onChanged: widget.onEnabledChanged,
+            ),
           _AddonRemoveActions(
             confirming: _confirming,
             onConfirmingChanged: (v) => setState(() => _confirming = v),

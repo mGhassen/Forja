@@ -597,6 +597,9 @@ class SettingsService {
       normalized['features'],
       manifest: manifest is Map ? Map<String, dynamic>.from(manifest) : null,
     );
+    normalized['enabled'] = StremioAddonFeatures.normalizeEnabled(
+      normalized['enabled'],
+    );
 
     final current = await getStremioAddons();
     current.removeWhere(
