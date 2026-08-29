@@ -4,11 +4,11 @@
 
 ## What it is
 
-The Arabic tab offers category browsing, search, liked titles, and a dedicated player for Arabic cinema content. Built for regional films and series outside the main TMDB torrent flow.
+The Arabic tab is a catalog hub from the ForjaHQ **Hubs** pack plugin `arabic-hub` (`kind: catalog`). Layout and top-bar Search are live; content rails stay empty until Arabic sources ship. Toggle show/hide under **Settings → Features** (off by default).
 
 ## How to open it
 
-The **Arabic** tab is temporarily hidden from the navigation bar and Settings → Features.
+Enable **Arabic** in **Settings → Features**, then tap **Arabic** in the navigation bar.
 
 ## What you can do
 

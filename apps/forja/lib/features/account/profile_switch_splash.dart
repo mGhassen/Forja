@@ -3,8 +3,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/app/boot_cache.dart';
-import 'package:forja/app/boot_catalog.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/features/account/profile_chooser_metrics.dart';
@@ -112,10 +110,9 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
           .pullAndMergeForProfileSwitch();
       if (!mounted) return;
 
-      BootCache.clear();
       final needs = await BootNeeds.resolve();
 
-      // Same as intro splash: TMDB under the floor; play sources after dismiss.
+      // Same as intro splash: engines under the floor; play sources after dismiss.
       final bootFuture = _warmLikeIntro(needs);
       if (widget.prepareCurrent) {
         _prepareShellForIncomingProfile();
@@ -128,7 +125,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     }
   }
 
-  /// Intro-equivalent warm: TMDB only; play-source engines post-dismiss.
+  /// Intro-equivalent warm: engines only; play-source engines post-dismiss.
   Future<void> _warmLikeIntro(BootNeeds needs) async {
     await ProfileEngineWarm.warm(
       needs,
@@ -137,11 +134,6 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       reason: 'profile-splash',
       onStatus: _setStatus,
     );
-    if (!mounted) return;
-    if (needs.tmdb) {
-      _setStatus('Loading your home feed…');
-      await BootCatalog.prefetchTmdb(onStatus: _setStatus);
-    }
   }
 
   /// Mirror [SplashScreen._dismissWhenReady]: dismiss at the motion floor even

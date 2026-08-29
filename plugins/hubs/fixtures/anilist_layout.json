@@ -1,0 +1,37 @@
+[
+  {
+    "ok": true,
+    "kit": 1,
+    "protocol": 1,
+    "action": "layout",
+    "cache": { "maxAge": 3600, "swr": 86400 },
+    "data": {
+      "pages": {
+        "anime": {
+          "widgets": [
+            { "type": "hero", "id": "spotlight", "rail": "spotlight", "bleed": "trending" },
+            { "type": "host.continue", "id": "continue_watching" },
+            {
+              "type": "mood",
+              "id": "moods",
+              "title": "Pick your vibe",
+              "rail": "trending",
+              "options": [
+                { "id": "shonen", "label": "Shōnen", "genre": "Action" },
+                { "id": "romance", "label": "Romance", "genre": "Romance" }
+              ]
+            },
+            { "type": "rail", "id": "trending", "title": "Trending Now", "rail": "trending", "hideWhenBleed": true },
+            { "type": "rail", "id": "top_airing", "title": "Top Airing", "rail": "top_airing" },
+            { "type": "ranked", "id": "top_10", "title": "Top 10 Today", "rail": "top_10" },
+            { "type": "rail", "id": "popular", "title": "Most Popular", "rail": "popular" },
+            { "type": "rail", "id": "latest_episodes", "title": "Latest Episodes", "rail": "latest_episodes" },
+            { "type": "rail", "id": "top_rated", "title": "Top Rated", "rail": "top_rated" },
+            { "type": "rail", "id": "most_favorited", "title": "Most Favorited", "rail": "most_favorited" },
+            { "type": "rail", "id": "latest_completed", "title": "Recently Completed", "rail": "latest_completed" }
+          ]
+        }
+      }
+    }
+  }
+]

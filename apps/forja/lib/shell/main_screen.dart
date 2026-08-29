@@ -6,12 +6,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/audiobooks/audiobook_screen.dart';
-import 'package:forja/features/anime/anime_screen.dart';
-import 'package:forja/features/anime/anime_search_screen.dart';
-import 'package:forja/features/asian_drama/asian_drama_screen.dart';
-import 'package:forja/features/asian_drama/asian_drama_search_screen.dart';
 import 'package:forja/features/discover/discover_screen.dart';
-import 'package:forja/features/home/home_screen.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_screen.dart';
 import 'package:forja/features/jellyfin/jellyfin_screen.dart';
 import 'package:forja/features/live_matches/live_matches_screen.dart';
@@ -19,6 +14,8 @@ import 'package:forja/features/music/music_screen.dart';
 import 'package:forja/features/my_list/my_list_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/catalog/shell/catalog_shell.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
@@ -30,6 +27,7 @@ import 'package:forja/shell/macos_shell_channel.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/engine/service.dart';
 import 'package:forja/shared/services/app_update_auto_check.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
@@ -96,31 +94,47 @@ class _MainScreenState extends ConsumerState<MainScreen>
           : _visibleIds[_selectedIndex];
 
   Widget _tabFor(String id) {
-    assert(navTabBuilders.containsKey(id));
+    assert(navTabBuilders.containsKey(id), 'No tab builder for $id');
     final isNew = !_tabCache.containsKey(id);
     final tab = _tabCache.putIfAbsent(id, () {
       if (id == 'search') {
         return SearchScreen(key: _searchKey);
       }
+      final builder = navTabBuilders[id];
+      if (builder == null) {
+        return const SizedBox.shrink();
+      }
+      // Catalog hubs and most tabs are built from [navTabBuilders] (hubs from
+      // PluginNavRegistry). Keep-alive keys still apply for a few legacy tabs.
       final key = _keyForTab(id);
       return switch (id) {
-        'home' => HomeScreen(key: key),
         'audiobooks' => AudiobookScreen(key: key),
         'mylist' => MyListScreen(key: key),
         'discover' => DiscoverScreen(key: key),
         'iptv' => IptvPtScreen(key: key),
         'music' => MusicScreen(key: key),
         'jellyfin' => JellyfinScreen(key: key),
-        'anime' => AnimeScreen(key: key),
-        'asian_drama' => AsianDramaScreen(key: key),
         'live_matches' => LiveMatchesScreen(key: key),
-        _ => navTabBuilders[id]!(),
+        _ => _tabWithKey(key, builder()),
       };
     });
     if (isNew && kDebugMode) {
       debugPrint('[MainScreen] Built tab: $id');
     }
     return tab;
+  }
+
+  /// Hub [CatalogShell] must own the tab [GlobalKey] so [ShellTabRefresh] works.
+  Widget _tabWithKey(GlobalKey<State<StatefulWidget>>? key, Widget child) {
+    if (key == null) return child;
+    if (child is CatalogShell) {
+      return CatalogShell(
+        key: key,
+        pluginId: child.pluginId,
+        tabId: child.tabId,
+      );
+    }
+    return KeyedSubtree(key: key, child: child);
   }
 
   void _touchTab(String id) {
@@ -303,10 +317,29 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.maskShellUnderPlayer.addListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.addListener(_onPlayerResourcePurge);
     MacOsShellChannel.listen(onFind: _onFindShortcut);
+    EngineService.changeNotifier.addListener(_onEnginePackChanged);
 
-    _loadNavbarConfig();
+    unawaited(_refreshHubNavThenLoad());
     _syncCurrentNavTab();
     _updateAutoCheck.start(() => _shellScopedContext ?? context);
+  }
+
+  void _onEnginePackChanged() {
+    unawaited(_refreshHubNavThenLoad());
+  }
+
+  Future<void> _refreshHubNavThenLoad() async {
+    final changed = await PluginNavRegistry.refresh();
+    if (!mounted) return;
+    if (changed) {
+      // Drop cached hub tab widgets so the next visit uses the new builder.
+      for (final id in PluginNavRegistry.destinations.keys) {
+        _tabCache.remove(id);
+        _mountedTabIds.remove(id);
+        _tabLru.remove(id);
+      }
+    }
+    await _loadNavbarConfig();
   }
 
   Future<void> _loadNavbarConfig() async {
@@ -465,14 +498,25 @@ class _MainScreenState extends ConsumerState<MainScreen>
       case 'search':
         _searchKey.currentState?.focusFromFindShortcut();
       case 'anime':
-        pushShellRoute(
+        openHubCatalogSearch(
           ctx,
-          AppRouter.slideShellRoute((_) => const AnimeSearchScreen()),
+          pluginId: 'anilist',
+          tabId: 'anime',
+          hintText: 'Search anime…',
         );
       case 'asian_drama':
-        pushShellRoute(
+        openHubCatalogSearch(
           ctx,
-          AppRouter.slideShellRoute((_) => const AsianDramaSearchScreen()),
+          pluginId: 'kisskh-hub',
+          tabId: 'asian_drama',
+          hintText: 'Search Asian dramas…',
+        );
+      case 'arabic':
+        openHubCatalogSearch(
+          ctx,
+          pluginId: 'arabic-hub',
+          tabId: 'arabic',
+          hintText: 'بحث… · Search',
         );
       default:
         break;
@@ -491,6 +535,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
     ShellBus.maskShellUnderPlayer.removeListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
+    EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     ShellBus.clearOverlayShellTabId();
     ShellBus.activeShellTabId = null;
     ShellBus.clearHideGlobalNav();
@@ -518,6 +563,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             'home' => const HomeTopBar(),
             'anime' => const AnimeCatalogTopBar(),
             'asian_drama' => const AsianDramaCatalogTopBar(),
+            'arabic' => const ArabicCatalogTopBar(),
             _ => null,
           };
         }

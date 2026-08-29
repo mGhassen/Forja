@@ -19,17 +19,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// True when official pack dart-defines are set (from `.env` / CI).
 /// Pack content is remote — tests must not assume a checkout path.
 bool get forjaHqPackEnvReady =>
-    PluginRegistry.officialManifestUrls.length >= 3;
+    PluginRegistry.officialManifestUrls.length >=
+        PluginRegistry.requiredOfficialPackCount;
 
 /// Fetch a file relative to the configured official pack URLs
-/// (`FORJA_HQ_{PROVIDERS,LIVE,CATALOG}_MANIFEST_URL`).
+/// (`FORJA_HQ_{PROVIDERS,LIVE,CATALOG,HOME,ANIME,ASIAN_DRAMA}_MANIFEST_URL`).
 ///
 /// Call only when [forjaHqPackEnvReady]. Clears [HttpOverrides] so
 /// [TestWidgetsFlutterBinding]'s stub client is not used.
 Future<String> loadForjaHqFile(String relativePath) async {
   if (!forjaHqPackEnvReady) {
     throw StateError(
-      'FORJA_HQ_{PROVIDERS,LIVE,CATALOG}_MANIFEST_URL not set',
+      'FORJA_HQ_{PROVIDERS,LIVE,CATALOG,HOME,ANIME,ASIAN_DRAMA}_MANIFEST_URL not set',
     );
   }
   late final String manifestUrl;
@@ -155,6 +156,48 @@ void main() {
       }, sourceUrl: 'asset:x');
       expect(enabledEnginePluginIds([pack]), {'http-one'});
       expect(pack.packId, startsWith('pack-'));
+    });
+  });
+
+  group('EngineCategories Settings groups', () {
+    test('hub kind:catalog is Hubs; live types:catalog stays Catalog', () {
+      final hub = EnginePlugin.fromJson({
+        'id': 'tmdb',
+        'name': 'Home',
+        'entry': 'tmdb.js',
+        'kind': 'catalog',
+        'types': ['movie', 'tv'],
+        'protocol': 1,
+        'kit': 1,
+      });
+      expect(hub.isHubCatalog, isTrue);
+      expect(hub.isExtractable, isFalse);
+      expect(EngineCategories.groupKey(hub), EngineCategories.hubCatalog);
+      expect(
+        EngineCategories.groupLabel(EngineCategories.hubCatalog),
+        'Hubs',
+      );
+      expect(
+        EngineCategories.groupOrder,
+        contains(EngineCategories.hubCatalog),
+      );
+
+      final liveSched = EnginePlugin.fromJson({
+        'id': 'watchfooty',
+        'name': 'WatchFooty',
+        'entry': 'watchfooty.js',
+        'kind': 'http',
+        'types': ['catalog'],
+      });
+      expect(liveSched.isLiveCatalog, isTrue);
+      expect(
+        EngineCategories.groupKey(liveSched),
+        EngineCategories.liveCatalog,
+      );
+      expect(
+        EngineCategories.groupLabel(EngineCategories.liveCatalog),
+        'Catalog',
+      );
     });
   });
 

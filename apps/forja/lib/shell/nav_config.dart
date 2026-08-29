@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/home/home_screen.dart';
 import 'package:forja/features/discover/discover_screen.dart';
 import 'package:forja/features/search/search_screen.dart';
 import 'package:forja/features/my_list/my_list_screen.dart';
@@ -10,68 +9,16 @@ import 'package:forja/features/books/books_screen.dart';
 import 'package:forja/features/comics/comics_screen.dart';
 import 'package:forja/features/manga/manga_screen.dart';
 import 'package:forja/features/jellyfin/jellyfin_screen.dart';
-import 'package:forja/features/anime/anime_screen.dart';
 import 'package:forja/features/anime_arabic/anime_arabic_screen.dart';
-import 'package:forja/features/asian_drama/asian_drama_screen.dart';
 import 'package:forja/features/similar/similar_hub_screen.dart';
 import 'package:forja/features/downloader/media_downloader_screen.dart';
-import 'package:forja/features/arabic/arabic_screen.dart';
 import 'package:forja/features/live_matches/live_matches_screen.dart';
 import 'package:forja/features/magnet/magnet_player_screen.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_screen.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shell/nav_destination.dart';
 
-class NavDestination {
-  const NavDestination({
-    required this.id,
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-    this.iconAsset,
-  });
-
-  final String id;
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  final String? iconAsset;
-}
-
-class NavDestinationIcon extends StatelessWidget {
-  const NavDestinationIcon({
-    super.key,
-    required this.destination,
-    required this.selected,
-    required this.color,
-    this.size = 24,
-  });
-
-  final NavDestination destination;
-  final bool selected;
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    final asset = destination.iconAsset;
-    if (asset != null) {
-      return ColorFiltered(
-        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-        child: Image.asset(
-          asset,
-          width: size,
-          height: size,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.medium,
-        ),
-      );
-    }
-    return Icon(
-      selected ? destination.activeIcon : destination.icon,
-      color: color,
-      size: size,
-    );
-  }
-}
+export 'package:forja/shell/nav_destination.dart';
 
 /// Tabs withheld from the shell and Settings → Features for now.
 /// Destinations and [navTabBuilders] stay registered - remove an ID here to restore.
@@ -88,18 +35,10 @@ const Set<String> temporarilyHiddenNavIds = {
   'manga',
   'jellyfin',
   'anime_arabic',
-  'arabic',
 };
 
-/// Single source of nav item metadata keyed by nav ID.
-const Map<String, NavDestination> navDestinations = {
-  'home': NavDestination(
-    id: 'home',
-    icon: Icons.home_outlined,
-    activeIcon: Icons.home,
-    label: 'Home',
-    iconAsset: 'assets/images/nav/home.png',
-  ),
+/// App-owned shell destinations (not catalog hubs).
+const Map<String, NavDestination> coreNavDestinations = {
   'discover': NavDestination(
     id: 'discover',
     icon: Icons.explore_outlined,
@@ -187,31 +126,11 @@ const Map<String, NavDestination> navDestinations = {
     activeIcon: Icons.dns_rounded,
     label: 'Jellyfin',
   ),
-  'anime': NavDestination(
-    id: 'anime',
-    icon: Icons.animation_outlined,
-    activeIcon: Icons.animation,
-    label: 'Anime',
-    iconAsset: 'assets/images/nav/anime.png',
-  ),
   'anime_arabic': NavDestination(
     id: 'anime_arabic',
     icon: Icons.subtitles_outlined,
     activeIcon: Icons.subtitles,
     label: 'Anime Arabic',
-  ),
-  'asian_drama': NavDestination(
-    id: 'asian_drama',
-    icon: Icons.theater_comedy_outlined,
-    activeIcon: Icons.theater_comedy,
-    label: 'Asian Drama',
-    iconAsset: 'assets/images/nav/asian-drama.png',
-  ),
-  'arabic': NavDestination(
-    id: 'arabic',
-    icon: Icons.movie_filter_outlined,
-    activeIcon: Icons.movie_filter,
-    label: 'Arabic',
   ),
   'settings': NavDestination(
     id: 'settings',
@@ -221,10 +140,15 @@ const Map<String, NavDestination> navDestinations = {
   ),
 };
 
+/// Core + hub destinations from [PluginNavRegistry] (plugin `nav` specs).
+Map<String, NavDestination> get navDestinations => {
+      ...coreNavDestinations,
+      ...PluginNavRegistry.destinations,
+    };
+
 /// Rail accents (desktop + Android TV). Icons stay neutral while idle and
 /// reveal their destination color when selected, hovered, or D-pad focused.
-const Map<String, Color> navDestinationAccentColors = {
-  'home': Color(0xFF1CE783),
+const Map<String, Color> coreNavDestinationAccentColors = {
   'discover': Color(0xFF2DD4BF),
   'similar': Color(0xFFA78BFA),
   'downloader': Color(0xFF38BDF8),
@@ -239,35 +163,40 @@ const Map<String, Color> navDestinationAccentColors = {
   'comics': Color(0xFFF97316),
   'manga': Color(0xFFE879F9),
   'jellyfin': Color(0xFF8B5CF6),
-  'anime': Color(0xFFFB7185),
   'anime_arabic': Color(0xFF34D399),
-  'asian_drama': Color(0xFFC4B5FD),
-  'arabic': Color(0xFFF59E0B),
   'settings': Color(0xFF94A3B8),
 };
 
-typedef TabBuilder = Widget Function();
+Map<String, Color> get navDestinationAccentColors => {
+      ...coreNavDestinationAccentColors,
+      ...PluginNavRegistry.accents,
+    };
 
 /// Lazy tab factories - widgets are created on first visit only.
-final Map<String, TabBuilder> navTabBuilders = {
-  'home': () => const HomeScreen(),
-  'discover': () => const DiscoverScreen(),
-  'similar': () => const SimilarHubScreen(),
-  'downloader': () => const MediaDownloaderScreen(),
-  'search': () => const SearchScreen(),
-  'mylist': () => const MyListScreen(),
-  'magnet': () => const MagnetPlayerScreen(),
-  'live_matches': () => const LiveMatchesScreen(),
-  'iptv': () => const IptvPtScreen(),
-  'audiobooks': () => const AudiobookScreen(),
-  'books': () => const BooksScreen(),
-  'music': () => const MusicScreen(),
-  'comics': () => ComicsScreen(initialSearch: null),
-  'manga': () => MangaScreen(initialSearch: null),
-  'jellyfin': () => const JellyfinScreen(),
-  'anime': () => const AnimeScreen(),
-  'anime_arabic': () => const AnimeArabicScreen(),
-  'asian_drama': () => const AsianDramaScreen(),
-  'arabic': () => const ArabicScreen(),
-  'settings': () => const SettingsScreen(),
+const Map<String, TabBuilder> coreNavTabBuilders = {
+  'discover': DiscoverScreen.new,
+  'similar': SimilarHubScreen.new,
+  'downloader': MediaDownloaderScreen.new,
+  'search': SearchScreen.new,
+  'mylist': MyListScreen.new,
+  'magnet': MagnetPlayerScreen.new,
+  'live_matches': LiveMatchesScreen.new,
+  'iptv': IptvPtScreen.new,
+  'audiobooks': AudiobookScreen.new,
+  'books': BooksScreen.new,
+  'music': MusicScreen.new,
+  'comics': _comicsTab,
+  'manga': _mangaTab,
+  'jellyfin': JellyfinScreen.new,
+  'anime_arabic': AnimeArabicScreen.new,
+  'settings': SettingsScreen.new,
 };
+
+Widget _comicsTab() => ComicsScreen(initialSearch: null);
+Widget _mangaTab() => MangaScreen(initialSearch: null);
+
+/// Core builders + catalog hub builders from [PluginNavRegistry].
+Map<String, TabBuilder> get navTabBuilders => {
+      ...coreNavTabBuilders,
+      ...PluginNavRegistry.builders,
+    };

@@ -329,7 +329,8 @@ class _ShellNavRailState extends State<ShellNavRail> {
               builder: (context) {
                 final id = _navIds[i];
                 final index = _indexForId(id)!;
-                final dest = navDestinations[id]!;
+                final dest = navDestinations[id];
+                if (dest == null) return const SizedBox.shrink();
                 final selected = index == widget.selectedIndex;
                 return _ShellNavRailItem(
                   key: ValueKey('nav-rail-$id'),

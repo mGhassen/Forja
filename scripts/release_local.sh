@@ -714,7 +714,11 @@ require_forja_hq_https() {
   for name in \
     FORJA_HQ_PROVIDERS_MANIFEST_URL \
     FORJA_HQ_LIVE_MANIFEST_URL \
-    FORJA_HQ_CATALOG_MANIFEST_URL; do
+    FORJA_HQ_CATALOG_MANIFEST_URL \
+    FORJA_HQ_HOME_MANIFEST_URL \
+    FORJA_HQ_ANIME_MANIFEST_URL \
+    FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL \
+    FORJA_HQ_ARABIC_MANIFEST_URL; do
     u="${!name:-}"
     [[ -n "$u" ]] || die "$name missing"
     case "$u" in
@@ -743,11 +747,23 @@ fetch_forja_hq_from_github() {
   FORJA_HQ_CATALOG_MANIFEST_URL="$(
     gh variable get FORJA_HQ_CATALOG_MANIFEST_URL -R "$repo" 2>/dev/null || true
   )"
-  [[ -n "${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}" && -n "${FORJA_HQ_LIVE_MANIFEST_URL:-}" && -n "${FORJA_HQ_CATALOG_MANIFEST_URL:-}" ]] \
+  FORJA_HQ_HOME_MANIFEST_URL="$(
+    gh variable get FORJA_HQ_HOME_MANIFEST_URL -R "$repo" 2>/dev/null || true
+  )"
+  FORJA_HQ_ANIME_MANIFEST_URL="$(
+    gh variable get FORJA_HQ_ANIME_MANIFEST_URL -R "$repo" 2>/dev/null || true
+  )"
+  FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL="$(
+    gh variable get FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL -R "$repo" 2>/dev/null || true
+  )"
+  FORJA_HQ_ARABIC_MANIFEST_URL="$(
+    gh variable get FORJA_HQ_ARABIC_MANIFEST_URL -R "$repo" 2>/dev/null || true
+  )"
+  [[ -n "${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}" && -n "${FORJA_HQ_LIVE_MANIFEST_URL:-}" && -n "${FORJA_HQ_CATALOG_MANIFEST_URL:-}" && -n "${FORJA_HQ_HOME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ANIME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL:-}" && -n "${FORJA_HQ_ARABIC_MANIFEST_URL:-}" ]] \
     || die "missing FORJA_HQ_*_MANIFEST_URL Actions variables on $repo
-  Set the same three names CI uses (Repository → Settings → Variables)."
+  Set the same four names CI uses (Repository → Settings → Variables)."
   export FORJA_HQ_PROVIDERS_MANIFEST_URL FORJA_HQ_LIVE_MANIFEST_URL \
-    FORJA_HQ_CATALOG_MANIFEST_URL
+    FORJA_HQ_CATALOG_MANIFEST_URL FORJA_HQ_HOME_MANIFEST_URL FORJA_HQ_ANIME_MANIFEST_URL FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL FORJA_HQ_ARABIC_MANIFEST_URL
 }
 
 # Wizard step: choose github vs .env. Exit 0=ok 2=back 3=quit.
@@ -789,8 +805,8 @@ ensure_forja_hq_manifests() {
       ;;
     local|env|dotenv|.env)
       info "ForjaHQ packs ← .env / process env"
-      [[ -n "${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}" && -n "${FORJA_HQ_LIVE_MANIFEST_URL:-}" && -n "${FORJA_HQ_CATALOG_MANIFEST_URL:-}" ]] \
-        || die "FORJA_HQ_PROVIDERS/LIVE/CATALOG_MANIFEST_URL missing in .env"
+      [[ -n "${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}" && -n "${FORJA_HQ_LIVE_MANIFEST_URL:-}" && -n "${FORJA_HQ_CATALOG_MANIFEST_URL:-}" && -n "${FORJA_HQ_HOME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ANIME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL:-}" && -n "${FORJA_HQ_ARABIC_MANIFEST_URL:-}" ]] \
+        || die "FORJA_HQ_PROVIDERS/LIVE/CATALOG/HOME/ANIME/ASIAN_DRAMA/ARABIC_MANIFEST_URL missing in .env"
       FORJA_HQ_MANIFEST_SOURCE=local
       ;;
     *)
@@ -804,6 +820,10 @@ ensure_forja_hq_manifests() {
   echo "    providers: $FORJA_HQ_PROVIDERS_MANIFEST_URL"
   echo "    live:      $FORJA_HQ_LIVE_MANIFEST_URL"
   echo "    catalog:   $FORJA_HQ_CATALOG_MANIFEST_URL"
+  echo "    home:      $FORJA_HQ_HOME_MANIFEST_URL"
+  echo "    anime:     $FORJA_HQ_ANIME_MANIFEST_URL"
+  echo "    asian:     $FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL"
+  echo "    arabic:    $FORJA_HQ_ARABIC_MANIFEST_URL"
   _FORJA_HQ_MANIFESTS_READY=1
   export _FORJA_HQ_MANIFESTS_READY
 }
@@ -1268,7 +1288,7 @@ build_macos() {
       --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
       --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
       --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
-      --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="${FORJA_HQ_PROVIDERS_MANIFEST_URL}" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="${FORJA_HQ_LIVE_MANIFEST_URL}" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="${FORJA_HQ_CATALOG_MANIFEST_URL}"
+      --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="${FORJA_HQ_PROVIDERS_MANIFEST_URL}" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="${FORJA_HQ_LIVE_MANIFEST_URL}" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="${FORJA_HQ_CATALOG_MANIFEST_URL}" --dart-define=FORJA_HQ_HOME_MANIFEST_URL="${FORJA_HQ_HOME_MANIFEST_URL}" --dart-define=FORJA_HQ_ANIME_MANIFEST_URL="${FORJA_HQ_ANIME_MANIFEST_URL}" --dart-define=FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL="${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL}" --dart-define=FORJA_HQ_ARABIC_MANIFEST_URL="${FORJA_HQ_ARABIC_MANIFEST_URL}"
   )
   echo "==> Ad-hoc codesign"
   ./scripts/codesign_macos_adhoc.sh
@@ -1301,6 +1321,10 @@ build_windows_prl() {
 FORJA_HQ_PROVIDERS_MANIFEST_URL=$(printf %q "$FORJA_HQ_PROVIDERS_MANIFEST_URL") \
 FORJA_HQ_LIVE_MANIFEST_URL=$(printf %q "$FORJA_HQ_LIVE_MANIFEST_URL") \
 FORJA_HQ_CATALOG_MANIFEST_URL=$(printf %q "$FORJA_HQ_CATALOG_MANIFEST_URL") \
+FORJA_HQ_HOME_MANIFEST_URL=$(printf %q "$FORJA_HQ_HOME_MANIFEST_URL") \
+FORJA_HQ_ANIME_MANIFEST_URL=$(printf %q "$FORJA_HQ_ANIME_MANIFEST_URL") \
+FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL=$(printf %q "$FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL") \
+FORJA_HQ_ARABIC_MANIFEST_URL=$(printf %q "$FORJA_HQ_ARABIC_MANIFEST_URL") \
 ./scripts/build_windows_release.sh '$ver'" \
     || die "Windows build failed — run scripts/setup_windows_vm.ps1 inside the VM first"
   local exe
@@ -1393,7 +1417,7 @@ build_android_tv() {
       --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
       --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
       --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
-      --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="${FORJA_HQ_PROVIDERS_MANIFEST_URL}" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="${FORJA_HQ_LIVE_MANIFEST_URL}" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="${FORJA_HQ_CATALOG_MANIFEST_URL}" \
+      --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="${FORJA_HQ_PROVIDERS_MANIFEST_URL}" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="${FORJA_HQ_LIVE_MANIFEST_URL}" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="${FORJA_HQ_CATALOG_MANIFEST_URL}" --dart-define=FORJA_HQ_HOME_MANIFEST_URL="${FORJA_HQ_HOME_MANIFEST_URL}" --dart-define=FORJA_HQ_ANIME_MANIFEST_URL="${FORJA_HQ_ANIME_MANIFEST_URL}" --dart-define=FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL="${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL}" --dart-define=FORJA_HQ_ARABIC_MANIFEST_URL="${FORJA_HQ_ARABIC_MANIFEST_URL}" \
       -PFORJA_KEYSTORE_PATH="$keystore" \
       -PFORJA_KEYSTORE_PASSWORD="${FORJA_KEYSTORE_PASSWORD}" \
       -PFORJA_KEY_ALIAS="$key_alias" \

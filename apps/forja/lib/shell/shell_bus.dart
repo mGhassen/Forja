@@ -12,7 +12,7 @@ enum ShellHomeCategory { films, tvShows }
 class ShellBus {
   ShellBus._();
 
-  /// Films / TV Shows filter for [HomeScreen] (`null` = mixed feed).
+  /// Films / TV Shows filter for the Home hub top bar (`null` = mixed feed).
   static final ValueNotifier<ShellHomeCategory?> homeCategory =
       ValueNotifier<ShellHomeCategory?>(null);
 
@@ -34,6 +34,14 @@ class ShellBus {
 
   /// KissKH country id for Asian Drama Categories (`null` = all).
   static final ValueNotifier<String?> asianDramaSelectedCountryId =
+      ValueNotifier<String?>(null);
+
+  /// Films / Series filter for Arabic hub (`null` = mixed).
+  static final ValueNotifier<ShellHomeCategory?> arabicCategory =
+      ValueNotifier<ShellHomeCategory?>(null);
+
+  /// Category id for Arabic Categories menu (`null` = all).
+  static final ValueNotifier<String?> arabicSelectedCategoryId =
       ValueNotifier<String?>(null);
 
   /// TMDB watch-provider filter for Home (`null` = all providers).
@@ -111,15 +119,17 @@ class ShellBus {
   /// Home feed vertical scroll - [HomeTopBar] slides away near [homeHeroHeight].
   static final ValueNotifier<double> homeScrollOffset = ValueNotifier(0);
 
-  /// Anime / Asian Drama hub scroll offsets for catalog top-bar hide.
+  /// Anime / Asian Drama / Arabic hub scroll offsets for catalog top-bar hide.
   static final ValueNotifier<double> animeScrollOffset = ValueNotifier(0);
   static final ValueNotifier<double> asianDramaScrollOffset = ValueNotifier(0);
+  static final ValueNotifier<double> arabicScrollOffset = ValueNotifier(0);
 
   /// Cinematic hero height in px (not the extended page-bleed backdrop).
   /// [HomeCinematicHero] publishes on layout; [HomeTopBar] uses it as the
   /// scroll-hide anchor.
   static final ValueNotifier<double> animeHeroHeight = ValueNotifier(0);
   static final ValueNotifier<double> asianDramaHeroHeight = ValueNotifier(0);
+  static final ValueNotifier<double> arabicHeroHeight = ValueNotifier(0);
   static final ValueNotifier<double> homeHeroHeight = ValueNotifier(0);
 
   /// SearchScreen listens for incoming Stremio search requests.

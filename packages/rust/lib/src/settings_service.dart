@@ -1492,7 +1492,7 @@ class SettingsService {
     return false;
   }
 
-  static const List<String> allNavIds = [
+  static const List<String> _baseAllNavIds = [
     'home',
     'discover',
     'similar',
@@ -1513,6 +1513,54 @@ class SettingsService {
     'asian_drama',
     'arabic',
   ];
+
+  static final List<String> _extraNavIds = [];
+
+  /// Built-in tabs plus any hub `tabId`s registered from catalog plugins (A13).
+  static List<String> get allNavIds => [
+        ..._baseAllNavIds,
+        ..._extraNavIds,
+      ];
+
+  /// Catalog hubs may mint new shell tab ids — keep them in navbar known set.
+  static void registerExtraNavIds(Iterable<String> ids) {
+    for (final id in ids) {
+      final t = id.trim();
+      if (t.isEmpty) continue;
+      if (_baseAllNavIds.contains(t) || _extraNavIds.contains(t)) continue;
+      _extraNavIds.add(t);
+    }
+  }
+
+  /// After hubs pack refresh: mark new tab ids known; auto-show defaultEnabled
+  /// hubs the user has never seen (same insert rules as [getNavbarConfig]).
+  Future<void> ensureNavIdsKnown({
+    required List<String> defaultEnabledIds,
+    required List<String> allHubIds,
+  }) async {
+    registerExtraNavIds(allHubIds);
+    final known = (await kvGetStringList(
+      _navbarKnownIdsKey,
+      fallback: const [],
+    )).toSet();
+    final visible = await kvHasKey(_navbarConfigKey)
+        ? await kvGetStringList(_navbarConfigKey, fallback: const [])
+        : List<String>.from(defaultVisibleNavIds);
+    var changed = false;
+    for (final id in allHubIds) {
+      if (known.contains(id)) continue;
+      known.add(id);
+      changed = true;
+      if (defaultEnabledIds.contains(id) && !visible.contains(id)) {
+        visible.add(id);
+      }
+    }
+    if (!changed && known.length == allNavIds.length) return;
+    await kvSetStringList(_navbarKnownIdsKey, allNavIds);
+    if (await kvHasKey(_navbarConfigKey)) {
+      await kvSetStringList(_navbarConfigKey, visible);
+    }
+  }
 
   /// One-shot migration for schema v2: indexer API keys → secure storage.
   Future<void> ensureCanonicalSettingsMigrated() async {

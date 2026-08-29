@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "id": "forjahq-arabic",
+  "name": "ForjaHQ Arabic",
+  "version": "1.0.3",
+  "plugins": [
+    {
+      "id": "arabic-hub",
+      "name": "Arabic",
+      "description": "Arabic hub \u2014 layout only until sources land",
+      "entry": "arabic.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "capabilities": [
+        "nav",
+        "layout",
+        "rail"
+      ],
+      "nav": {
+        "tabId": "arabic",
+        "label": "Arabic",
+        "order": 40,
+        "accent": "#F59E0B",
+        "defaultEnabled": false
+      },
+      "enabled": true,
+      "config": {},
+      "prelude": "_kit.js"
+    }
+  ]
+}

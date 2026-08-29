@@ -16,6 +16,10 @@ class EnginePlugin {
     this.enabled = true,
     this.config = const {},
     this.prelude = '',
+    this.protocol,
+    this.kit,
+    this.capabilities = const [],
+    this.nav,
   });
 
   final String id;
@@ -41,12 +45,36 @@ class EnginePlugin {
   /// Declared by the pack (`prelude`) — host does not hardcode pack paths.
   final String prelude;
 
+  /// Catalog hub protocol version the plugin speaks ([hostProtocolVersion]).
+  final int? protocol;
+
+  /// Catalog hub `ctx` kit version the plugin needs ([hostKitVersion]).
+  final int? kit;
+
+  /// Declared hub features (`nav`, `search`, `details`, `filters`, `auth`, …).
+  final List<String> capabilities;
+
+  /// Nav contribution — parsed by `CatalogNavSpec.fromPluginNav`.
+  final Map<String, dynamic>? nav;
+
   bool get isHttp => kind == 'http';
   bool get isHost => kind == 'host';
   bool get isHop => kind == 'hop';
 
-  /// Live Matches engine.json `types` (RFC-065).
-  bool get isLiveCatalog => types.contains('catalog');
+  /// Catalog hub plugin — serves shell tabs through the catalog protocol.
+  bool get isHubCatalog => kind == 'catalog';
+
+  /// Pack install must cache JS for this plugin.
+  bool get needsScript => isHttp || isHop || isHubCatalog;
+
+  bool hasCapability(String name) {
+    final want = name.trim().toLowerCase();
+    if (want.isEmpty) return false;
+    return capabilities.any((c) => c.toLowerCase() == want);
+  }
+
+  /// Live Matches schedule plugins (`types: catalog`, not hub `kind: catalog`).
+  bool get isLiveCatalog => types.contains('catalog') && !isHubCatalog;
   bool get isLivePlugin => types.contains('plugins');
   bool get isLiveSport => types.contains('live_sport');
 
@@ -54,9 +82,8 @@ class EnginePlugin {
   bool get isLive =>
       isLiveCatalog || isLivePlugin || isLiveSport || types.contains('live');
 
-  /// Sources chips: HTTP catalog plugins only. Hops are internal; host sniff
-  /// stays on green Play (`ctx.host` fallback), not as Forja chips.
-  bool get isExtractable => isHttp;
+  /// Sources chips: HTTP VOD only — hops and hub catalogs are never chips.
+  bool get isExtractable => isHttp && !isHubCatalog;
 
   /// Movie/TV Sources → Forja — not Live Matches plugins.
   bool get isVodCatalog => isExtractable && !isLive;
@@ -112,6 +139,10 @@ class EnginePlugin {
       enabled: (j['enabled'] as bool?) ?? true,
       config: config,
       prelude: preludeRaw.isNotEmpty ? preludeRaw : preludeFromConfig,
+      protocol: _asPluginInt(j['protocol']),
+      kit: _asPluginInt(j['kit']),
+      capabilities: _stringList(j['capabilities']),
+      nav: j['nav'] is Map ? Map<String, dynamic>.from(j['nav'] as Map) : null,
     );
   }
 
@@ -128,6 +159,10 @@ class EnginePlugin {
     'enabled': enabled,
     if (config.isNotEmpty) 'config': config,
     if (prelude.isNotEmpty) 'prelude': prelude,
+    if (protocol != null) 'protocol': protocol,
+    if (kit != null) 'kit': kit,
+    if (capabilities.isNotEmpty) 'capabilities': capabilities,
+    if (nav != null) 'nav': nav,
   };
 
   EnginePlugin copyWith({bool? enabled}) => EnginePlugin(
@@ -143,7 +178,16 @@ class EnginePlugin {
     enabled: enabled ?? this.enabled,
     config: config,
     prelude: prelude,
+    protocol: protocol,
+    kit: kit,
+    capabilities: capabilities,
+    nav: nav,
   );
+}
+
+int? _asPluginInt(dynamic raw) {
+  if (raw is num) return raw.toInt();
+  return int.tryParse(raw?.toString().trim() ?? '');
 }
 
 List<String> _stringList(dynamic raw) {

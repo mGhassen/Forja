@@ -916,6 +916,11 @@ async fn run_in_ctx<'js>(
     url: meta.url || '',
     config: meta.config || {{}},
     action: meta.action || '',
+    params: meta.params || {{}},
+    auth: meta.auth || {{}},
+    cache: meta.cache || {{}},
+    kit: meta.kit || 0,
+    protocol: meta.protocol || 0,
     matchId: meta.matchId || '',
     source: meta.source || '',
     stream: meta.stream || '',
@@ -1118,5 +1123,50 @@ function extract(ctx) {
         assert!(r.error.is_none(), "{:?}", r.error);
         assert!(r.streams.is_empty());
         assert_eq!(r.needs_host.as_deref(), Some("vidrock"));
+    }
+
+    #[tokio::test]
+    async fn catalog_request_fields_are_first_class_on_ctx() {
+        let code = r#"
+function extract(ctx) {
+  return [{
+    url: 'catalog',
+    action: String(ctx.action || ''),
+    rail: String((ctx.params && ctx.params.rail) || ''),
+    kit: ctx.kit || 0,
+    protocol: ctx.protocol || 0,
+    etag: String((ctx.cache && ctx.cache.etag) || ''),
+    subject: String((ctx.auth && ctx.auth.subject) || '')
+  }];
+}
+"#;
+        let r = extract(ExtractRequest {
+            plugin_id: "hub".into(),
+            code: code.into(),
+            ctx: serde_json::json!({
+                "type": "live",
+                "action": "rail",
+                "params": { "rail": "trending", "limit": 12 },
+                "auth": { "subject": "u1" },
+                "cache": { "etag": "abc" },
+                "kit": 1,
+                "protocol": 1,
+                "config": { "apiKey": "x" }
+            }),
+            timeout_ms: 5_000,
+            allow_host_fallback: false,
+            hops: vec![],
+            hop_depth: 0,
+        })
+        .await;
+        assert!(r.error.is_none(), "{:?}", r.error);
+        assert_eq!(r.streams.len(), 1);
+        let row = &r.streams[0];
+        assert_eq!(row.get("action").and_then(|v| v.as_str()), Some("rail"));
+        assert_eq!(row.get("rail").and_then(|v| v.as_str()), Some("trending"));
+        assert_eq!(row.get("kit").and_then(|v| v.as_i64()), Some(1));
+        assert_eq!(row.get("protocol").and_then(|v| v.as_i64()), Some(1));
+        assert_eq!(row.get("etag").and_then(|v| v.as_str()), Some("abc"));
+        assert_eq!(row.get("subject").and_then(|v| v.as_str()), Some("u1"));
     }
 }

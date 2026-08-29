@@ -577,7 +577,10 @@ class _SettingsNavigationPageBodyState
               },
               itemBuilder: (context, index) {
                 final id = _navbarOrder[index];
-                final dest = navDestinations[id]!;
+                final dest = navDestinations[id];
+                if (dest == null) {
+                  return SizedBox.shrink(key: ValueKey('nav-missing-$id'));
+                }
                 final isVisible = _navbarVisible.contains(id);
 
                 // Star / ↑↓ are siblings of the row tap — not nested inside it —

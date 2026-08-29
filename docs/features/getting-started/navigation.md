@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Default tab order on every profile:** Home, Asian Drama, Anime, IPTV, Live Sports, My List, and Settings. All are enabled on a fresh install. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Default tab order on every profile:** Home, Asian Drama, Anime, IPTV, Live Sports, My List, and Settings. All are enabled on a fresh install. **Home / Anime / Asian Drama / Arabic** labels and tab bodies come from ForjaHQ hub packs (`nav` on each catalog plugin); other tabs stay app-owned. **Settings → Features** shows/hides those hub tabs; **Settings → Sources → Forja** enables/disables the underlying plugin (content). On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 
@@ -54,9 +54,11 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 ## Available tabs
 
-Home · My List · Live Sports · IPTV · Anime · Asian Drama · Settings
+Home · My List · Live Sports · IPTV · Anime · Asian Drama · Arabic · Settings
 
-Search, Discover, Similar, Media Downloader, Magnet, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic, and Arabic are built but temporarily hidden from the shell and Navigation settings.
+Search, Discover, Similar, Media Downloader, Magnet, Audiobooks, Books, Music, Comics, Manga, Jellyfin, and Anime Arabic are built but temporarily hidden from the shell and Navigation settings.
+
+**Home, Anime, Asian Drama, and Arabic come from the ForjaHQ Hubs plugin pack** — their rows, moods, and ranked lists are defined by the pack, so an updated pack changes those tabs without an app update. If the Hubs pack is not installed, those tabs show a retry panel instead of rows. Arabic currently has a layout but no source, so its rows are empty.
 
 ## Tips
 

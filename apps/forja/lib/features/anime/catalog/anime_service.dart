@@ -1732,7 +1732,7 @@ class AnimeService {
   static const _legacyHistoryKey = 'enma_history_v1';
 
   /// Bumped whenever the watch history changes (record / remove).
-  /// UI surfaces (AnimeScreen) listen to this to refresh without
+  /// UI surfaces listen to this to refresh without
   /// needing to be in the foreground or pop a route.
   static final ValueNotifier<int> watchHistoryRevision =
       ValueNotifier<int>(0);

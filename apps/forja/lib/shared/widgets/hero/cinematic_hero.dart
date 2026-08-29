@@ -448,6 +448,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         return ShellBus.animeHeroHeight;
       case 'asian_drama':
         return ShellBus.asianDramaHeroHeight;
+      case 'arabic':
+        return ShellBus.arabicHeroHeight;
       default:
         return ShellBus.homeHeroHeight;
     }

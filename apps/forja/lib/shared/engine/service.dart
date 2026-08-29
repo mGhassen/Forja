@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/engine/anime_ids.dart';
 import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/engine/host_resolver.dart';
@@ -26,6 +27,14 @@ class EngineService {
       PluginRegistry.officialLiveManifestUrl;
   static const officialCatalogManifestUrl =
       PluginRegistry.officialCatalogManifestUrl;
+  static const officialHomeManifestUrl =
+      PluginRegistry.officialHomeManifestUrl;
+  static const officialAnimeManifestUrl =
+      PluginRegistry.officialAnimeManifestUrl;
+  static const officialAsianDramaManifestUrl =
+      PluginRegistry.officialAsianDramaManifestUrl;
+  static const officialArabicManifestUrl =
+      PluginRegistry.officialArabicManifestUrl;
   static List<String> get officialManifestUrls =>
       PluginRegistry.officialManifestUrls;
 
@@ -55,6 +64,7 @@ class EngineService {
 
   int _extractGeneration = 0;
   int _liveCatalogGeneration = 0;
+  int _catalogGeneration = 0;
   EngineRuntime? _liveCatalogRuntime;
 
   static bool isOfficialPack(String sourceUrl) =>
@@ -74,6 +84,11 @@ class EngineService {
   void abortInFlightExtracts() {
     _extractGeneration++;
     EngineRuntime.abortAll();
+  }
+
+  /// Abort in-flight catalog hub actions (tab switch / logout).
+  void cancelCatalog() {
+    _catalogGeneration++;
   }
 
   void cancelLiveCatalog() {
@@ -190,6 +205,123 @@ class EngineService {
     }
     out.sort((a, b) => a.name.compareTo(b.name));
     return out;
+  }
+
+  /// Enabled catalog hub plugins (`kind: catalog`) — Home / Anime / hubs.
+  Future<List<EnginePlugin>> listHubCatalogPlugins() async {
+    await ensureOfficialInstalled();
+    final out = <EnginePlugin>[];
+    for (final pack in await listPacks()) {
+      if (!pack.enabled) continue;
+      for (final p in pack.plugins) {
+        if (p.isHubCatalog && p.enabled) out.add(p);
+      }
+    }
+    out.sort((a, b) => a.name.compareTo(b.name));
+    return out;
+  }
+
+  /// Run one catalog hub action and return the raw protocol envelope map.
+  ///
+  /// Plugins must resolve to `[envelope]` — both engine paths only carry a JSON
+  /// array back. Catalog request fields are first-class on `ctx` (`params` /
+  /// `auth` / `cache` / `kit` / `protocol`); `ctx.action` stays top level too
+  /// (R70-A12).
+  Future<Map<String, dynamic>?> runCatalog({
+    required String pluginId,
+    required String action,
+    Map<String, dynamic> params = const {},
+    Map<String, dynamic>? auth,
+    Map<String, dynamic>? cache,
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
+    final gen = _catalogGeneration;
+    final packs = await listPacks();
+    if (gen != _catalogGeneration) return null;
+    final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
+    if (hit == null ||
+        !hit.plugin.isHubCatalog ||
+        !hit.pack.isPluginActive(hit.plugin)) {
+      debugPrint('[catalog] $pluginId not an active catalog plugin');
+      return null;
+    }
+    final plugin = hit.plugin;
+    final overlay =
+        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+    final config = <String, dynamic>{
+      ...mergeEngineConfig(plugin.config, overlay),
+    };
+    // Home hub (tmdb) uses the same compile-time key as Rust TMDB — never ship
+    // a key in pack config (R70-A14).
+    if (plugin.id == 'tmdb') {
+      const tmdbKey = String.fromEnvironment('TMDB_API_KEY');
+      if (tmdbKey.isNotEmpty) {
+        config['apiKey'] = tmdbKey;
+      }
+    }
+
+    // First-class catalog request (both EngineJS + flutter_js invokers).
+    final catalogCtx = <String, dynamic>{
+      'params': params,
+      if (auth != null && auth.isNotEmpty) 'auth': auth,
+      if (cache != null && cache.isNotEmpty) 'cache': cache,
+      'kit': hostKitVersion,
+      'protocol': hostProtocolVersion,
+    };
+
+    final code = await _loadScript(plugin);
+    if (gen != _catalogGeneration) return null;
+    if (code == null || code.isEmpty) {
+      debugPrint('[catalog] ${plugin.id} missing script');
+      return null;
+    }
+
+    final viaRust = await _runLiveEngineRustJs(
+      plugin: plugin,
+      config: config,
+      action: action,
+      params: catalogCtx,
+      timeout: timeout,
+      gen: gen,
+      generation: () => _catalogGeneration,
+    );
+    if (viaRust != null) {
+      final envelope = _firstEnvelopeMap(viaRust);
+      if (envelope != null) return envelope;
+      if (gen != _catalogGeneration) return null;
+      debugPrint(
+        '[catalog] ${plugin.id} $action enginejs gave no envelope — flutter_js',
+      );
+    }
+    if (gen != _catalogGeneration) return null;
+
+    final runtime = EngineRuntime.fork();
+    try {
+      await runtime.loadPlugin(pluginId: plugin.id, code: code);
+      if (gen != _catalogGeneration) return null;
+      final raw = await runtime.extractLive(
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        action: action,
+        params: catalogCtx,
+        config: config,
+        timeout: timeout,
+        isCancelled: () => gen != _catalogGeneration,
+      );
+      if (gen != _catalogGeneration) return null;
+      return _firstEnvelopeMap(raw);
+    } finally {
+      runtime.dispose();
+    }
+  }
+
+  static Map<String, dynamic>? _firstEnvelopeMap(
+    List<Map<String, dynamic>> rows,
+  ) {
+    for (final row in rows) {
+      if (row.containsKey('ok')) return row;
+    }
+    return null;
   }
 
   Future<void> ensureOfficialInstalled({bool force = false}) =>

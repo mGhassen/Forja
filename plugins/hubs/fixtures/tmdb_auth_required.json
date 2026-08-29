@@ -1,0 +1,13 @@
+[
+  {
+    "ok": false,
+    "kit": 1,
+    "protocol": 1,
+    "action": "rail",
+    "error": {
+      "code": "AUTH_REQUIRED",
+      "message": "TMDB API key missing — set apiKey in the Home hub config",
+      "retryable": false
+    }
+  }
+]

@@ -27,7 +27,7 @@ Widget _wrapProfile({
   );
 }
 
-/// Same FittedBox gate as [HomeScreen._buildHeroActionRow].
+/// Same FittedBox gate as the home hub hero action row.
 Widget _heroActionRowHarness(BuildContext context) {
   final metrics = ShellScope.metricsOf(context);
   const row = Row(
@@ -44,7 +44,7 @@ Widget _heroActionRowHarness(BuildContext context) {
   return row;
 }
 
-/// Same mood-chip focus gate as [_MoodSection] in home_screen.dart.
+/// Same mood-chip focus gate as hub mood sections.
 Widget _moodChipHarness(BuildContext context) {
   const chip = Text('Action');
   if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) {

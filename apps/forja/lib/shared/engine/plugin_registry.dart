@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/catalog/cache.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,6 +30,26 @@ class PluginRegistry {
     'FORJA_HQ_CATALOG_MANIFEST_URL',
   );
 
+  /// Official ForjaHQ Home hub pack (`FORJA_HQ_HOME_MANIFEST_URL`).
+  static const officialHomeManifestUrl = String.fromEnvironment(
+    'FORJA_HQ_HOME_MANIFEST_URL',
+  );
+
+  /// Official ForjaHQ Anime hub pack (`FORJA_HQ_ANIME_MANIFEST_URL`).
+  static const officialAnimeManifestUrl = String.fromEnvironment(
+    'FORJA_HQ_ANIME_MANIFEST_URL',
+  );
+
+  /// Official ForjaHQ Asian Drama hub pack (`FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL`).
+  static const officialAsianDramaManifestUrl = String.fromEnvironment(
+    'FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL',
+  );
+
+  /// Official ForjaHQ Arabic hub pack (`FORJA_HQ_ARABIC_MANIFEST_URL`).
+  static const officialArabicManifestUrl = String.fromEnvironment(
+    'FORJA_HQ_ARABIC_MANIFEST_URL',
+  );
+
   /// Dev switch (`FORJA_HQ_FORCE_PLUGIN_ENV`):
   /// - `true` → install from dart-define / `.env` URLs; disable cloud ForjaHQ.
   /// - `false` → prefer cloud Profile ForjaHQ URLs when present; disable `.env` locals.
@@ -41,16 +62,41 @@ class PluginRegistry {
     'forjahq-providers',
     'forjahq-live',
     'forjahq-catalog',
+    'forjahq-home',
+    'forjahq-anime',
+    'forjahq-asian-drama',
+    'forjahq-arabic',
   };
 
   static const _cloudOfficialKey = 'engine_js_cloud_forjahq_urls_v1';
 
-  /// All configured official pack URLs from dart-define (providers, live, catalog).
+  /// Slot resolve order — all six are required.
+  static const officialSlotOrder = [
+    'providers',
+    'live',
+    'catalog',
+    'home',
+    'anime',
+    'asian_drama',
+    'arabic',
+  ];
+
+  /// Hub catalog slots (one pack per shell hub tab).
+  static const hubSlotIds = {'home', 'anime', 'asian_drama', 'arabic'};
+
+  /// Packs that must be configured for the engine to work at all.
+  static const requiredOfficialPackCount = 7;
+
+  /// All configured official pack URLs from dart-define.
   static List<String> get officialManifestUrls => [
         for (final u in [
           officialProvidersManifestUrl,
           officialLiveManifestUrl,
           officialCatalogManifestUrl,
+          officialHomeManifestUrl,
+          officialAnimeManifestUrl,
+          officialAsianDramaManifestUrl,
+          officialArabicManifestUrl,
         ])
           if (u.trim().isNotEmpty) u.trim(),
       ];
@@ -137,13 +183,22 @@ class PluginRegistry {
     return false;
   }
 
-  /// `providers` / `live` / `catalog` when [url] is a ForjaHQ pack path.
+  /// `providers` / `live` / `catalog` / `home` / `anime` / `asian_drama`
+  /// when [url] is a ForjaHQ pack path.
   @visibleForTesting
   static String? forjaHqSlot(String url) {
     final path = url.trim().replaceAll('\\', '/').toLowerCase();
     if (path.endsWith('plugins/providers/manifest.json')) return 'providers';
     if (path.endsWith('plugins/live/manifest.json')) return 'live';
     if (path.endsWith('plugins/catalog/manifest.json')) return 'catalog';
+    if (path.endsWith('plugins/hubs/home/manifest.json')) return 'home';
+    if (path.endsWith('plugins/hubs/anime/manifest.json')) return 'anime';
+    if (path.endsWith('plugins/hubs/asian_drama/manifest.json')) {
+      return 'asian_drama';
+    }
+    if (path.endsWith('plugins/hubs/arabic/manifest.json')) return 'arabic';
+    // Legacy monolith hubs pack — treat as shadow of home so it gets replaced.
+    if (path.endsWith('plugins/hubs/manifest.json')) return 'home';
     return null;
   }
 
@@ -160,6 +215,7 @@ class PluginRegistry {
   /// Pack that shadows the active keep-set of official URLs.
   static bool isShadowOfficialPack(EnginePack pack, Set<String> keepUrls) {
     if (keepUrls.contains(pack.sourceUrl)) return false;
+    if (pack.packId == 'forjahq-hubs') return true; // legacy monolith hubs
     if (officialPackIds.contains(pack.packId)) return true;
     return forjaHqSlot(pack.sourceUrl) != null;
   }
@@ -180,6 +236,10 @@ class PluginRegistry {
   static String preludePrefsKey(String sourceUrl, String preludeEntry) =>
       '$_preludePrefixV2${urlHash(sourceUrl)}_'
       '${Uri.encodeComponent(preludeEntry)}';
+
+  static const _missingOfficialUrlsMessage =
+      'FORJA_HQ_PROVIDERS/LIVE/CATALOG/HOME/ANIME/ASIAN_DRAMA/ARABIC_MANIFEST_URL '
+      'missing — set in .env / dart-define';
 
   void notifyChanged() => changeNotifier.value++;
 
@@ -372,7 +432,7 @@ class PluginRegistry {
       var needs = false;
       for (final p in pack.plugins) {
         if (p.entry.isEmpty) continue;
-        if (!p.isHttp && !p.isHop) continue;
+        if (!p.needsScript) continue;
         final cached = prefs.getString(scriptPrefsKey(pack.sourceUrl, p.id));
         if (cached == null || cached.isEmpty) {
           needs = true;
@@ -509,30 +569,34 @@ class PluginRegistry {
   @visibleForTesting
   Future<List<String>> resolveEffectiveOfficialUrls() async {
     final dartUrls = officialManifestUrls;
-    if (dartUrls.length < 3) return dartUrls;
+    if (dartUrls.length < requiredOfficialPackCount) return dartUrls;
     if (forcePluginEnv) return dartUrls;
 
     await _loadCloudOfficialFromPrefs();
     await _discoverCloudOfficialFromInstalled();
 
-    const order = ['providers', 'live', 'catalog'];
+    // Resolve every slot this build configures (all seven when dart-defines are set).
+    final wanted = <String>{
+      for (final u in dartUrls)
+        if (forjaHqSlot(u) != null) forjaHqSlot(u)!,
+    };
     final bySlot = <String, String>{};
-    for (final s in order) {
+    for (final s in officialSlotOrder) {
+      if (!wanted.contains(s)) continue;
       final cloud = _cloudOfficialBySlot[s];
-      if (cloud != null && cloud.isNotEmpty) {
-        bySlot[s] = cloud;
-      }
+      if (cloud != null && cloud.isNotEmpty) bySlot[s] = cloud;
     }
-    if (bySlot.length < 3) {
-      // Fill missing slots from dart-define.
-      for (final u in dartUrls) {
-        final s = forjaHqSlot(u);
-        if (s == null || bySlot.containsKey(s)) continue;
-        bySlot[s] = u;
-      }
+    // Fill missing slots from dart-define.
+    for (final u in dartUrls) {
+      final s = forjaHqSlot(u);
+      if (s == null || bySlot.containsKey(s)) continue;
+      bySlot[s] = u;
     }
-    final out = [for (final s in order) if (bySlot[s] != null) bySlot[s]!];
-    return out.length == 3 ? out : dartUrls;
+    final out = [
+      for (final s in officialSlotOrder)
+        if (bySlot[s] != null) bySlot[s]!,
+    ];
+    return out.length == wanted.length ? out : dartUrls;
   }
 
   /// First boot / ensure: install or refresh each official pack when needed.
@@ -541,10 +605,9 @@ class PluginRegistry {
   /// false → cloud Profile ForjaHQ when known, disable local `.env` copies.
   Future<void> ensureOfficialInstalled({bool force = false}) async {
     final dartUrls = officialManifestUrls;
-    if (dartUrls.length < 3) {
+    if (dartUrls.length < requiredOfficialPackCount) {
       _officialInstallFailed = true;
-      officialInstallError.value =
-          'FORJA_HQ_PROVIDERS/LIVE/CATALOG_MANIFEST_URL missing — set in .env / dart-define';
+      officialInstallError.value = _missingOfficialUrlsMessage;
       notifyChanged();
       return;
     }
@@ -602,6 +665,10 @@ class PluginRegistry {
         _clearOfficialInstallError();
       } catch (e) {
         _officialInstallFailed = true;
+        // Once-per-process: do not retry-storm when FORCE install fails.
+        if (forcePluginEnv) {
+          _forceEnvApplied = true;
+        }
         final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
         officialInstallError.value = msg;
         notifyChanged();
@@ -648,10 +715,8 @@ class PluginRegistry {
 
   Future<void> retryOfficialInstall() async {
     final urls = await resolveEffectiveOfficialUrls();
-    if (urls.length < 3) {
-      throw Exception(
-        'FORJA_HQ_PROVIDERS/LIVE/CATALOG_MANIFEST_URL missing — set in .env / dart-define',
-      );
+    if (urls.length < requiredOfficialPackCount) {
+      throw Exception(_missingOfficialUrlsMessage);
     }
     _officialInstallFailed = false;
     officialInstallError.value = null;
@@ -747,7 +812,7 @@ class PluginRegistry {
     }
     for (final plugin in pack.plugins) {
       if (plugin.entry.isEmpty) continue;
-      if (!plugin.isHttp && !plugin.isHop) continue;
+      if (!plugin.needsScript) continue;
       final scriptUrl = resolveScriptUrl(manifestUrl, plugin.entry);
       try {
         final text = await _fetchText(scriptUrl);
@@ -801,6 +866,14 @@ class PluginRegistry {
     all.removeWhere((a) => a.sourceUrl == manifestUrl);
     all.add(pack);
     await _savePacks(all);
+    if (officialPackIds.contains(pack.packId) &&
+        hubSlotIds.contains(forjaHqSlot(manifestUrl))) {
+      CatalogCache.instance.syncHubPackVersion(pack.packId, pack.version);
+    }
+    // Legacy combined hubs pack → wipe so rails re-fetch from split packs.
+    if (pack.packId == 'forjahq-hubs') {
+      CatalogCache.instance.wipeAll();
+    }
     if (isOfficialPack(manifestUrl)) {
       _clearOfficialInstallError();
     }
@@ -1086,7 +1159,7 @@ class PluginRegistry {
 
     // FORCE=false + cloud ForjaHQ known → switch active packs to cloud.
     if (!forcePluginEnv &&
-        _cloudOfficialBySlot.length >= 3 &&
+        _cloudOfficialBySlot.length >= requiredOfficialPackCount &&
         (cloudOfficialChanged || !_cloudOfficialApplied)) {
       _officialInstallFailed = false;
       unawaited(ensureOfficialInstalled(force: true));

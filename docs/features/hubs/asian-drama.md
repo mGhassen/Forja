@@ -4,7 +4,7 @@
 
 ## What it is
 
-Asian Drama aggregates KissKH content: hero browse, explore categories, search, subtitles on streams, continue watching, and a dedicated player for episodes.
+Asian Drama aggregates KissKH content. **Browse rails** are served by the ForjaHQ **Asian Drama** pack plugin `kisskh-hub` (`kind: catalog`). The shell renders the shared **cinematic hero**, host **Continue Watching**, and **Search** via the pack `search` action. Details and the drama player stay in the app. Toggle the tab under **Settings → Features**.
 
 ## How to open it
 

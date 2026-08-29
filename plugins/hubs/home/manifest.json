@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "id": "forjahq-home",
+  "name": "ForjaHQ Home",
+  "version": "1.0.3",
+  "plugins": [
+    {
+      "id": "tmdb",
+      "name": "Home",
+      "description": "TMDB movie / TV hub",
+      "entry": "tmdb.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "movie",
+        "tv"
+      ],
+      "capabilities": [
+        "nav",
+        "layout",
+        "rail",
+        "search",
+        "filters"
+      ],
+      "nav": {
+        "tabId": "home",
+        "label": "Home",
+        "order": 10,
+        "icon": "assets/images/nav/home.png",
+        "accent": "#1CE783",
+        "defaultEnabled": true
+      },
+      "enabled": true,
+      "config": {
+        "base": "https://api.themoviedb.org/3",
+        "imageBase": "https://image.tmdb.org/t/p",
+        "apiKey": ""
+      },
+      "prelude": "_kit.js"
+    }
+  ]
+}

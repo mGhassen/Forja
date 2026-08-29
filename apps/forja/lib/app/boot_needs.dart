@@ -31,7 +31,8 @@ class BootNeeds {
   final List<String> visibleNavIds;
   final bool homeTab;
 
-  /// Prefetch TMDB lists for Home / Search / My List.
+  /// True when Home / Search / My List is visible (splash copy / VOD affinity).
+  /// Hub rails load from the Hubs pack after splash — no BootCache prefetch.
   final bool tmdb;
 
   /// Effective: Direct torrent on **and** a VOD tab visible.

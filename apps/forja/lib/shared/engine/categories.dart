@@ -14,6 +14,10 @@ abstract final class EngineCategories {
   static const livePlugin = 'plugins';
   static const liveSport = 'live_sport';
 
+  /// Shell hub plugins (`kind: catalog`) — Settings → Forja **Hubs** tab.
+  /// Distinct from [liveCatalog] (`types: catalog` schedule feeds).
+  static const hubCatalog = 'hubs';
+
   static const all = [movie, tv, anime, drama];
 
   static String label(String id) => switch (id) {
@@ -26,6 +30,7 @@ abstract final class EngineCategories {
 
   /// Settings / pack grouping key (dual movie+tv → one bucket).
   static String groupKey(EnginePlugin plugin) {
+    if (plugin.isHubCatalog) return hubCatalog;
     if (plugin.isLiveCatalog) return liveCatalog;
     if (plugin.isLivePlugin || plugin.isLiveSport || plugin.isLive) {
       return livePlugin;
@@ -47,6 +52,7 @@ abstract final class EngineCategories {
     drama => 'Drama',
     livePlugin => 'Live',
     liveCatalog => 'Catalog',
+    hubCatalog => 'Hubs',
     _ => 'Other',
   };
 
@@ -58,6 +64,7 @@ abstract final class EngineCategories {
     drama,
     livePlugin,
     liveCatalog,
+    hubCatalog,
     'other',
   ];
 

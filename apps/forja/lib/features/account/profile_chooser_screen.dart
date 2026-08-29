@@ -2,7 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/app/boot_cache.dart';
 import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -185,7 +184,6 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
       await ref
           .read(profileSettingsSyncProvider.notifier)
           .pullAndMergeForProfileSwitch();
-      BootCache.clear();
       return true;
     } catch (_) {
       return false;

@@ -488,10 +488,11 @@ class _SettingsProvidersSectionState
             const SettingsEngineMiniLabel('Installed plugins'),
             const SizedBox(height: 4),
             ...packs.map((pack) {
-              // All HTTP plugins (VOD + Live + Catalog). Hops stay internal.
+              // HTTP (VOD + Live + schedule Catalog) + hub `kind: catalog`.
+              // Hops stay internal.
               final panelPlugins = [
                 for (final p in pack.plugins)
-                  if (p.isHttp) p,
+                  if (p.isHttp || p.isHubCatalog) p,
               ];
               if (panelPlugins.isEmpty) return const SizedBox.shrink();
               final official = EngineService.isOfficialPack(pack.sourceUrl);

@@ -22,7 +22,6 @@ import 'package:forja/shared/utils/webview_cleanup.dart';
 import 'package:forja/shared/navigation/back_navigation_scope.dart';
 import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
-import 'package:forja/app/boot_catalog.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/shared/widgets/animated_logo.dart';
@@ -573,7 +572,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (bootFinishedFirst) {
       debugPrint(
         '[Boot] Step 4: Waiting for minimum splash time so the '
-        'pre-built MainScreen / HomeScreen finishes its first paints...',
+        'pre-built MainScreen finishes its first paints...',
       );
       await _awaitMinSplashWithHoldStatus(minSplashFuture);
       if (!mounted) return;
@@ -612,7 +611,8 @@ class _SplashScreenState extends State<SplashScreen> {
     final needs = await BootNeeds.resolve();
     debugPrint('[Init] $needs');
 
-    // Splash floor: TMDB only. LocalServer / WebStreamr / Nuvio / torrent
+    // Splash floor: profile engines only. Hub catalog rails load from the
+    // hubs pack after dismiss. LocalServer / WebStreamr / Nuvio / torrent
     // start after dismiss (Sources / details), not during the animation.
     await ProfileEngineWarm.warm(
       needs,
@@ -622,14 +622,6 @@ class _SplashScreenState extends State<SplashScreen> {
       onStatus: _setBootStatus,
     );
 
-    if (!needs.tmdb) {
-      debugPrint('[Init] TMDB skip (home/search/mylist not visible)');
-      _setBootStatus(_splashOpeningStatus(needs));
-      return;
-    }
-
-    _setBootStatus('Loading your home feed…');
-    await BootCatalog.prefetchTmdb(onStatus: _setBootStatus);
     _setBootStatus(_splashOpeningStatus(needs));
   }
 

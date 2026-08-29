@@ -1,0 +1,36 @@
+[
+  {
+    "ok": true,
+    "kit": 1,
+    "protocol": 1,
+    "action": "rail",
+    "cache": { "etag": "anilist-trending-1", "maxAge": 600, "swr": 3600 },
+    "data": {
+      "items": [
+        {
+          "id": "anilist:21",
+          "type": "anime",
+          "name": "ONE PIECE",
+          "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx21.jpg",
+          "background": "https://s4.anilist.co/file/anilistcdn/media/anime/banner/21.jpg",
+          "description": "Gold Roger was known as the Pirate King.",
+          "rating": 8.8,
+          "releaseInfo": "1999",
+          "genres": ["Action", "Adventure", "Comedy"],
+          "badge": "TV",
+          "ids": { "anilist": "21", "mal": "21" }
+        },
+        {
+          "id": "anilist:16498",
+          "type": "anime",
+          "name": "Shingeki no Kyojin",
+          "poster": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/nx16498.jpg",
+          "rating": 8.5,
+          "releaseInfo": "2013",
+          "genres": ["Action", "Drama"],
+          "ids": { "anilist": "16498", "mal": "16498" }
+        }
+      ]
+    }
+  }
+]

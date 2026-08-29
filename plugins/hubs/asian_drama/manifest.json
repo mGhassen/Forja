@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "id": "forjahq-asian-drama",
+  "name": "ForjaHQ Asian Drama",
+  "version": "1.0.3",
+  "plugins": [
+    {
+      "id": "kisskh-hub",
+      "name": "Asian Drama",
+      "description": "KissKH Asian drama hub",
+      "entry": "kisskh.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "drama"
+      ],
+      "capabilities": [
+        "nav",
+        "layout",
+        "rail",
+        "search"
+      ],
+      "nav": {
+        "tabId": "asian_drama",
+        "label": "Asian Drama",
+        "order": 30,
+        "icon": "assets/images/nav/asian-drama.png",
+        "accent": "#C4B5FD",
+        "defaultEnabled": true
+      },
+      "enabled": true,
+      "config": {
+        "base": "https://kisskh.co",
+        "mirrors": [
+          "https://kisskh.co",
+          "https://kisskh.nl",
+          "https://kisskh.ovh",
+          "https://kisskh.la",
+          "https://kisskh.do",
+          "https://kisskh.is",
+          "https://kisskh.id"
+        ]
+      },
+      "prelude": "_kit.js"
+    }
+  ]
+}

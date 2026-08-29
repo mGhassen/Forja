@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "id": "forjahq-anime",
+  "name": "ForjaHQ Anime",
+  "version": "1.0.3",
+  "plugins": [
+    {
+      "id": "anilist",
+      "name": "Anime",
+      "description": "AniList anime hub",
+      "entry": "anilist.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "anime"
+      ],
+      "capabilities": [
+        "nav",
+        "layout",
+        "rail",
+        "search",
+        "filters"
+      ],
+      "nav": {
+        "tabId": "anime",
+        "label": "Anime",
+        "order": 20,
+        "icon": "assets/images/nav/anime.png",
+        "accent": "#FB7185",
+        "defaultEnabled": true
+      },
+      "enabled": true,
+      "config": {
+        "graphql": "https://graphql.anilist.co",
+        "perPage": 24
+      },
+      "prelude": "_kit.js"
+    }
+  ]
+}

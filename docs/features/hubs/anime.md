@@ -4,7 +4,7 @@
 
 ## What it is
 
-The Anime tab is a full vertical for anime: hero carousel, circular mood picker (same design as Home), continue watching, curated rails (trending, airing, etc.), discover filters, search, and a dedicated player that probes available stream sources (Megaplay, VidNest, VidLink, AllAnime, plus adult fallbacks when needed).
+The Anime tab is a full vertical for anime. **Browse rails** (hero, moods, trending, airing, …) are served by the ForjaHQ **Hubs** pack plugin `anilist` (`kind: catalog`) — layout and rows come from remote JS and can change without an app update. The shell renders the shared **cinematic hero**, host **Continue Watching**, and **Search** via the pack `search` action. Details and the anime player stay in the app. Toggle the tab under **Settings → Features**.
 
 ## How to open it
 

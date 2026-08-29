@@ -34,7 +34,8 @@ class ShellBottomNav extends StatelessWidget {
               children: visibleIds.asMap().entries.map((entry) {
                 final idx = entry.key;
                 final id = entry.value;
-                final dest = navDestinations[id]!;
+                final dest = navDestinations[id];
+                if (dest == null) return const SizedBox.shrink();
                 final isSelected = selectedIndex == idx;
 
                 return InkWell(

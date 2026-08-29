@@ -1,0 +1,22 @@
+[
+  {
+    "ok": true,
+    "kit": 1,
+    "protocol": 1,
+    "action": "rail",
+    "cache": { "maxAge": 600, "swr": 3600 },
+    "data": {
+      "items": [
+        {
+          "id": "kisskh:10633",
+          "type": "drama",
+          "name": "Blossoms of Power",
+          "poster": "https://image.tmdb.org/t/p/w500/x.jpg",
+          "releaseInfo": "2026",
+          "badge": "EP 12",
+          "ids": { "kisskh": "10633", "tmdb": "215720" }
+        }
+      ]
+    }
+  }
+]
