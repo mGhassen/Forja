@@ -136,6 +136,9 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   List<_DamiTvStream> _damiTvStreams = [];
   List<_StreamedMatch> _streamedMatches = [];
 
+  /// After a stream picker resolves, card badge shows this total (all streams).
+  final Map<String, int> _eventStreamViewerTotals = {};
+
   /// ESPN scoreboard payloads for My IPTV (enrich on play).
   List<Map<String, dynamic>> _espnGames = [];
   String? _lastSyncedIptvPortalKey;

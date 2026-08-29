@@ -102,6 +102,12 @@ mixin _LiveMatchesPlayback
     if (!ok || !mounted) return;
 
     final hasPpv = ppv.iframe.isNotEmpty;
+    var totalViewers = hasPpv ? ppv.viewers : 0;
+    for (final s in streams) {
+      totalViewers += s.viewers;
+    }
+    _rememberEventStreamViewers(streamed, totalViewers);
+    if (hasPpv) _rememberPpvStreamViewers(ppv, totalViewers);
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF141414),
@@ -174,7 +180,22 @@ mixin _LiveMatchesPlayback
     }
 
     _prependMatchingPpvChoices(match, choices);
+    _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
     _showResolvedStreamSheet(match, choices);
+  }
+
+  void _rememberEventStreamViewers(_StreamedMatch match, int total) {
+    if (total <= 0 || !mounted) return;
+    final key = _liveEventViewerKey(match);
+    if (_s._eventStreamViewerTotals[key] == total) return;
+    setState(() => _s._eventStreamViewerTotals[key] = total);
+  }
+
+  void _rememberPpvStreamViewers(_DamiTvStream ppv, int total) {
+    if (total <= 0 || !mounted) return;
+    final key = _liveEventViewerKeyFromPpv(ppv);
+    if (_s._eventStreamViewerTotals[key] == total) return;
+    setState(() => _s._eventStreamViewerTotals[key] = total);
   }
 
   void _prependMatchingPpvChoices(
@@ -583,6 +604,10 @@ mixin _LiveMatchesPlayback
             liveStreamHd: stream.hd,
           ),
         ]);
+      }
+      _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
+      if (ppvAnchor != null) {
+        _rememberPpvStreamViewers(ppvAnchor, _sheetTotalViewers(choices));
       }
     } catch (e) {
       debugPrint('[LiveMatches] TV Forja Live resolve error: $e');

@@ -743,6 +743,39 @@ List<_StreamedMatch> _streamedMatchesForEvent(
 ) =>
     pool.where((m) => _sameStreamedEvent(match, m)).toList();
 
+/// Stable key for caching resolved stream-viewer totals on the grid card.
+String _liveEventViewerKey(_StreamedMatch match) {
+  final teams = _teamPairKey(match.homeTeam, match.awayTeam);
+  if (teams != null) return 't:$teams';
+  final title = _matchTextKey(match.title);
+  if (title.isNotEmpty && match.dateMs > 0) {
+    return 'n:$title@${match.dateMs ~/ 60000}';
+  }
+  if (title.isNotEmpty) return 'n:$title';
+  return 'id:${match.id}';
+}
+
+String _liveEventViewerKeyFromPpv(_DamiTvStream ppv) {
+  final teams = _teamPairKey(ppv.homeTeam, ppv.awayTeam);
+  if (teams != null) return 't:$teams';
+  final title = _matchTextKey(ppv.name);
+  if (title.isNotEmpty && ppv.startsAt > 0) {
+    return 'n:$title@${ppv.startsAt ~/ 60}';
+  }
+  if (title.isNotEmpty) return 'n:$title';
+  return 'id:ppv:${ppv.id}';
+}
+
+/// Catalog-level audience across every Forja Live row for this event.
+int _catalogViewersForEvent(
+  _StreamedMatch match,
+  List<_StreamedMatch> pool,
+) {
+  final siblings = _streamedMatchesForEvent(match, pool);
+  if (siblings.isEmpty) return match.viewers;
+  return siblings.fold<int>(0, (n, m) => n + m.viewers);
+}
+
 _StreamedMatch _pickBetterStreamedMatch(_StreamedMatch a, _StreamedMatch b) {
   if (a.isLive != b.isLive) return a.isLive ? a : b;
   if (a.poster.isNotEmpty != b.poster.isNotEmpty) {

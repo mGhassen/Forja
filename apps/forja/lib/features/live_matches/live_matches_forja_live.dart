@@ -98,6 +98,7 @@ mixin _LiveMatchesForjaLive
     _s._streamedMatches = _s._streamedMatches
         .where((m) => !m.isForjaLive)
         .toList();
+    _s._eventStreamViewerTotals.clear();
   }
 
   Future<void> _restoreForjaLiveCatalogFilterPreference() async {

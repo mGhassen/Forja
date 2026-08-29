@@ -4321,6 +4321,9 @@ class _StreamedMatchCard extends StatefulWidget {
   final String tvRowId;
   final ShellTvZone tvZone;
 
+  /// Summed catalog / resolved stream viewers (PPV-style badge).
+  final int? viewersOverride;
+
   const _StreamedMatchCard({
     required this.match,
     required this.onTap,
@@ -4334,6 +4337,7 @@ class _StreamedMatchCard extends StatefulWidget {
     this.onHoverChanged,
     this.tvRowId = 'grid',
     this.tvZone = ShellTvZone.grid,
+    this.viewersOverride,
   });
 
   @override
@@ -4343,6 +4347,8 @@ class _StreamedMatchCard extends StatefulWidget {
 class _StreamedMatchCardState extends State<_StreamedMatchCard> {
   bool _hovered = false;
   bool _focused = false;
+
+  int get _viewers => widget.viewersOverride ?? widget.match.viewers;
 
   @override
   Widget build(BuildContext context) {
@@ -4359,6 +4365,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
           focused: _focused,
         context: context,
         );
+    final viewers = _viewers;
 
     final overlays = <Widget>[
       if (canPlay)
@@ -4379,7 +4386,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
         _LiveMatchCornerBadge(label: '● LIVE', live: true, top: tv ? 6 : 8)
       else if (m.timeLabel.isNotEmpty)
         _LiveMatchCornerBadge(label: m.timeLabel, live: false, top: tv ? 6 : 8),
-      if (!tv && m.viewers > 0) _LiveMatchViewerBadge(viewers: m.viewers),
+      if (!tv && viewers > 0) _LiveMatchViewerBadge(viewers: viewers),
     ];
 
     final Widget card;
@@ -4442,7 +4449,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
         active: active,
         title: m.title,
         schedule: m.scheduleLabel.isEmpty ? null : m.scheduleLabel,
-        subtitle: m.viewers > 0 ? '${m.viewers} viewers' : null,
+        subtitle: viewers > 0 ? '$viewers viewers' : null,
         visual: visual,
         overlays: [
           if (canPlay)
@@ -4560,7 +4567,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
                     _LiveMatchCardTitleStack(
                       title: m.title,
                       schedule: m.scheduleLabel.isEmpty ? null : m.scheduleLabel,
-                      rightPadding: m.viewers > 0 ? 52 : 0,
+                      rightPadding: viewers > 0 ? 52 : 0,
                     ),
                   ],
                 ),

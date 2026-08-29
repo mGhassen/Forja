@@ -657,6 +657,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     return switch (entry) {
       _LiveMatchGridEntryPpv(:final stream) => _DamiTvMatchCard(
         stream: stream,
+        viewersOverride: _s._eventStreamViewerTotals[
+                _liveEventViewerKeyFromPpv(stream)] ??
+            stream.viewers,
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
@@ -670,6 +673,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       ),
       _LiveMatchGridEntryStreamed(:final match) => _StreamedMatchCard(
         match: match,
+        viewersOverride: _cardViewersForMatch(match),
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
@@ -684,7 +688,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       _LiveMatchGridEntryMerged(:final ppv, :final streamed) =>
         _DamiTvMatchCard(
           stream: ppv,
-          viewersOverride: ppv.viewers + streamed.viewers,
+          viewersOverride: _s._eventStreamViewerTotals[
+                  _liveEventViewerKey(streamed)] ??
+              (ppv.viewers +
+                  _catalogViewersForEvent(streamed, _s._streamedMatches)),
           gridIndex: i,
           gridColumns: crossCount,
           onUpEdge: upEdge,
@@ -698,6 +705,14 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
           onTap: () => _s._openMergedMatch(ppv, streamed),
         ),
     };
+  }
+
+  /// PPV-style card badge: resolved stream total when known, else catalog sum.
+  int _cardViewersForMatch(_StreamedMatch match) {
+    final cached = _s._eventStreamViewerTotals[_liveEventViewerKey(match)];
+    if (cached != null && cached > 0) return cached;
+    final catalog = _catalogViewersForEvent(match, _s._streamedMatches);
+    return catalog > 0 ? catalog : match.viewers;
   }
 
   Widget _buildForjaLiveCatalogProgress() {
@@ -772,6 +787,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
             );
             return _StreamedMatchCard(
               match: matches[i],
+              viewersOverride: _cardViewersForMatch(matches[i]),
               gridIndex: i,
               gridColumns: crossCount,
               onUpEdge: _s._gridUpEdge(context, i, crossCount),
@@ -838,6 +854,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
             );
             return _DamiTvMatchCard(
               stream: streams[i],
+              viewersOverride: _s._eventStreamViewerTotals[
+                      _liveEventViewerKeyFromPpv(streams[i])] ??
+                  streams[i].viewers,
               gridIndex: i,
               gridColumns: crossCount,
               onUpEdge: _s._gridUpEdge(context, i, crossCount),
