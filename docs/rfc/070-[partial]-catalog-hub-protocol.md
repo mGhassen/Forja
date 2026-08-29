@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **4 / 4** acceptance (host enrich) · **1 / 1** acceptance (required packs) · **5 / 5** acceptance (shared cache) |
-| **Current slice** | Shared cache restored (splash rail warm + TMDB match LRU); A15 manual QA still open |
+| **Progress** | **9 / 9** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **4 / 4** acceptance (host enrich) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) |
+| **Current slice** | Host asset URIs for pack nav icons; A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -27,6 +27,7 @@
 | 6 | R70-C06 | `EngineService.runCatalog` + `listHubCatalogPlugins` (Rust EngineJS, flutter_js fallback) | ✅ |
 | 7 | R70-C07 | `PluginRegistry` `hubs` slot — `FORJA_HQ_HUBS_MANIFEST_URL`, `forjahq-hubs` pack id | ✅ |
 | 8 | R70-C08 | `CatalogShell` + `plugins/hubs` pack (`_kit.js`, tmdb, anilist, kisskh, arabic) | ✅ |
+| 9 | R70-C09 | `ForjaHostAssets` — `forja://asset/{id}` catalog → Flutter paths; packs never use `assets/` | ✅ |
 
 ---
 
@@ -98,9 +99,21 @@ Pack-owned enrichment — host exposes reusable match APIs; plugins compose (Ani
 |--:|----|-------------|--------|
 | 1 | R70-A33 | Splash prefetches default hub layout + first-paint rails into `CatalogCache` (Home: spotlight/featured/popular/new_releases; Anime/Asian Drama: hero + bleed) | ✅ |
 | 2 | R70-A34 | `tmdb::match_json` process cache (30m TTL, 256 cap) so hub enrich reuses TMDB match hits across revalidate / hubs | ✅ |
-| 3 | R70-A35 | Details TMDB enrich (Asian Drama / Anime) process-cached via `HubTmdbEnrichCache` — survives Riverpod `autoDispose` leave/reopen | ✅ |
+| 3 | R70-A35 | Details TMDB enrich keyed by KissKH id via `HubTmdbEnrichCache` — reopen skips rematch + paint-gate animation (`instant`) | ✅ |
 | 4 | R70-A36 | Hub hero View details uses pack open (`onDetails`) for anime/drama — TMDB enrich must not set `movie` (null `onOpenDetails` was a silent no-op) | ✅ |
 | 5 | R70-A37 | `AnimeService` process-caches `getDetails` / `getSeasons` / TMDB match+rich; AniList `_query` backs off on HTTP 429 | ✅ |
+| 6 | R70-A38 | CatalogShell memoizes rail/hero Futures by chrome+mood; sections keep last paint — rebuild / tab return does not shimmer-reload | ✅ |
+
+---
+
+## Acceptance (host assets)
+
+Packs reference host icons by Forja URI only. Real Flutter paths stay in the app.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A39 | `ForjaHostAssets` maps `forja://asset/nav/*` → bundled nav PNGs; unknown / raw `assets/` resolve to null | ✅ |
+| 2 | R70-A40 | Official hub manifests use `forja://asset/nav/…`; `PluginNavRegistry.refresh` resolves via catalog (no `startsWith('assets/')`) | ✅ |
 
 ---
 
@@ -180,6 +193,16 @@ ctx.host.tmdb.match({ title: 'One Piece', year: 1999, type: 'tv' })
 ```
 
 Kit helpers (`hubTmdbMatch`, `hubEnrichTmdb`) prefer `ctx.host.tmdb.match` and fall back to `ctx.fetch` + injected `config.apiKey`. Packs own which rails enrich (AniList + KissKH spotlight) — CatalogShell only renders `meta`. Match hits may include `overview` / `rating`; `hubApplyTmdbHit` fills empty pack synopsis/score only. Rust `tmdb::match_json` keeps a process-lifetime match cache (R70-A34). Splash warms layout + first-paint rails into `CatalogCache` (R70-A33) — BootCache replacement.
+
+### Host assets (R70-A39+)
+
+Hub `nav.icon` must be a Forja host asset URI, not a Flutter path:
+
+```json
+"icon": "forja://asset/nav/asian-drama"
+```
+
+`ForjaHostAssets.catalog` is the allow-list (`nav/home`, `nav/anime`, `nav/asian-drama`, `nav/search`, `nav/live-matches`, `nav/iptv`, …). The host resolves to `assets/images/nav/…` for `Image.asset`. Raw `assets/…` from a pack is ignored.
 
 ### Related
 

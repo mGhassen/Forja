@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-home",
   "name": "ForjaHQ Home",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "plugins": [
     {
       "id": "tmdb",
@@ -27,7 +27,7 @@
         "tabId": "home",
         "label": "Home",
         "order": 10,
-        "icon": "assets/images/nav/home.png",
+        "icon": "forja://asset/nav/home",
         "accent": "#1CE783",
         "defaultEnabled": true
       },

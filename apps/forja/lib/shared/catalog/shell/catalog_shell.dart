@@ -60,6 +60,13 @@ class _CatalogShellState extends State<CatalogShell>
   /// Selected mood per mood-widget id.
   final Map<String, String> _moods = {};
 
+  /// Stable rail Futures — rebuild must not create a new Future (shimmer flash).
+  final Map<String, Future<List<CatalogMetaItem>>> _metaRailFutures = {};
+  final Map<String, Future<List<Movie>>> _movieRailFutures = {};
+
+  /// Next [_railFuture] / [_homeMovieFuture] miss goes through `forceRefresh`.
+  bool _forceNextRails = false;
+
   Listenable? _chromeListenable;
 
   @override
@@ -89,7 +96,13 @@ class _CatalogShellState extends State<CatalogShell>
 
   void _onChromeFilterChanged() {
     if (!mounted) return;
+    _invalidateRailFutures();
     setState(() => _chromeEpoch++);
+  }
+
+  void _invalidateRailFutures() {
+    _metaRailFutures.clear();
+    _movieRailFutures.clear();
   }
 
   void _publishScroll() {
@@ -114,8 +127,7 @@ class _CatalogShellState extends State<CatalogShell>
       setState(() => _error = null);
     }
 
-    final enabled =
-        await PluginNavRegistry.isHubPluginEnabled(widget.pluginId);
+    final enabled = await PluginNavRegistry.isHubPluginEnabled(widget.pluginId);
     if (!mounted) return;
     if (!enabled) {
       setState(() {
@@ -178,8 +190,16 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   @override
-  Future<void> onShellTabRefresh({required bool force}) =>
-      _loadLayout(forceRefresh: force);
+  Future<void> onShellTabRefresh({required bool force}) async {
+    _forceNextRails = force;
+    _invalidateRailFutures();
+    await _loadLayout(forceRefresh: force);
+    if (!mounted) return;
+    // Build after layout setState consumes [_forceNextRails] into new futures.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _forceNextRails = false;
+    });
+  }
 
   String _errorMessage(CatalogError? error) {
     if (error == null) return 'Could not load ${widget.pluginId}';
@@ -192,7 +212,10 @@ class _CatalogShellState extends State<CatalogShell>
     };
   }
 
-  Future<List<CatalogMetaItem>> _fetchRail(Map<String, dynamic> spec) async {
+  Future<List<CatalogMetaItem>> _fetchRail(
+    Map<String, dynamic> spec, {
+    bool forceRefresh = false,
+  }) async {
     final action = (spec['action'] ?? 'rail').toString().trim();
     final rawParams = spec['params'];
     final params = <String, dynamic>{
@@ -219,29 +242,50 @@ class _CatalogShellState extends State<CatalogShell>
           break;
         }
       }
-      moodFilter ??=
-          catalogFilterFromSelection(field: 'genre', value: moodId);
+      moodFilter ??= catalogFilterFromSelection(field: 'genre', value: moodId);
     }
     final envelope = await CatalogRuntime.instance.run(
       pluginId: widget.pluginId,
       action: action,
       params: catalogParamsWithFilters(
         params,
-        filters: [
-          ...catalogChromeFilters(widget.tabId),
-          moodFilter,
-        ],
+        filters: [...catalogChromeFilters(widget.tabId), moodFilter],
       ),
+      forceRefresh: forceRefresh,
     );
     if (!envelope.ok) return const [];
     return envelope.items;
   }
 
-  Future<void> _openMeta(CatalogMetaItem item) => openCatalogMetaItem(
-        context,
-        pluginId: widget.pluginId,
-        item: item,
-      );
+  String _railMemoKey(Map<String, dynamic> spec) {
+    final id = (spec['id'] ?? spec['rail'] ?? '').toString();
+    final moodSrc = (spec['moodSource'] ?? '').toString();
+    final mood = moodSrc.isEmpty ? '' : (_moods[moodSrc] ?? '');
+    final chrome = catalogChromeFilterEpoch(widget.tabId);
+    return '$id|$moodSrc|$mood|$chrome|$_chromeEpoch';
+  }
+
+  /// Same Future across rebuilds until chrome / mood / tab refresh invalidates.
+  Future<List<CatalogMetaItem>> _railFuture(Map<String, dynamic> spec) {
+    final key = _railMemoKey(spec);
+    final force = _forceNextRails;
+    return _metaRailFutures.putIfAbsent(
+      key,
+      () => _fetchRail(spec, forceRefresh: force),
+    );
+  }
+
+  Future<List<Movie>> _homeMovieFuture(Map<String, dynamic> spec) {
+    final key = _railMemoKey(spec);
+    final force = _forceNextRails;
+    return _movieRailFutures.putIfAbsent(key, () async {
+      final items = await _fetchRail(spec, forceRefresh: force);
+      return catalogMetasToMovies(items);
+    });
+  }
+
+  Future<void> _openMeta(CatalogMetaItem item) =>
+      openCatalogMetaItem(context, pluginId: widget.pluginId, item: item);
 
   HubListFollowTarget? _listTarget(CatalogMetaItem item) {
     switch (item.type) {
@@ -271,15 +315,14 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   List<HubHeroSlide> _heroSlides(List<CatalogMetaItem> items) {
-    return [
-      for (final item in items.take(5)) _heroSlideFor(item),
-    ];
+    return [for (final item in items.take(5)) _heroSlideFor(item)];
   }
 
   HubHeroSlide _heroSlideFor(CatalogMetaItem item) {
     final status = (item.status ?? '').trim();
     final isUpcoming = status.toUpperCase() == 'NOT_YET_RELEASED';
-    final useAniBanner = item.type == 'anime' &&
+    final useAniBanner =
+        item.type == 'anime' &&
         item.bannerImage.isNotEmpty &&
         item.background == item.bannerImage;
     final yearBit = item.releaseInfo.isEmpty
@@ -305,7 +348,8 @@ class _CatalogShellState extends State<CatalogShell>
       imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
       imageAlignment: useAniBanner ? Alignment.center : Alignment.centerRight,
       tmdbId: item.numericId('tmdb') ?? movie?.id,
-      tmdbMediaType: movie?.mediaType ??
+      tmdbMediaType:
+          movie?.mediaType ??
           item.tmdbMediaType ??
           (item.type == 'movie' ? 'movie' : 'tv'),
       movie: movie,
@@ -321,26 +365,27 @@ class _CatalogShellState extends State<CatalogShell>
     bool showRank = false,
     String? rowId,
     HubPosterAspect aspect = HubPosterAspect.portrait,
-  }) =>
-      HubPosterCard(
-        imageUrl: item.poster,
-        title: item.name,
-        subtitle: item.releaseInfo.isEmpty ? null : item.releaseInfo,
-        rating: item.rating,
-        rank: showRank ? index + 1 : null,
-        // Anime pre-cutover put format under the title (releaseInfo), not a badge.
-        badge: item.type == 'anime' ? null : item.badge,
-        listIndex: index,
-        listTarget: _listTarget(item),
-        tvTabId: widget.tabId,
-        tvRowId: rowId,
-        aspect: aspect,
-        onTap: () => unawaited(_openMeta(item)),
-      );
+  }) => HubPosterCard(
+    imageUrl: item.poster,
+    title: item.name,
+    subtitle: item.releaseInfo.isEmpty ? null : item.releaseInfo,
+    rating: item.rating,
+    rank: showRank ? index + 1 : null,
+    // Anime pre-cutover put format under the title (releaseInfo), not a badge.
+    badge: item.type == 'anime' ? null : item.badge,
+    listIndex: index,
+    listTarget: _listTarget(item),
+    tvTabId: widget.tabId,
+    tvRowId: rowId,
+    aspect: aspect,
+    onTap: () => unawaited(_openMeta(item)),
+  );
 
   HubPosterAspect _aspectOf(Map<String, dynamic> spec) {
     final a = (spec['aspect'] ?? '').toString().trim().toLowerCase();
-    return a == 'landscape' ? HubPosterAspect.landscape : HubPosterAspect.portrait;
+    return a == 'landscape'
+        ? HubPosterAspect.landscape
+        : HubPosterAspect.portrait;
   }
 
   bool get _fullHeroBleed => hubIsFullCinematicHero(context);
@@ -385,11 +430,6 @@ class _CatalogShellState extends State<CatalogShell>
 
   bool get _isHomeTab => widget.tabId == 'home' || widget.tabId == null;
 
-  Future<List<Movie>> _fetchHomeMovies(Map<String, dynamic> spec) async {
-    final items = await _fetchRail(spec);
-    return catalogMetasToMovies(items);
-  }
-
   Widget _homeMovieRail(Map<String, dynamic> spec, {bool compactTop = false}) {
     final id = (spec['id'] ?? '').toString();
     final title = (spec['title'] ?? '').toString();
@@ -399,7 +439,7 @@ class _CatalogShellState extends State<CatalogShell>
       return _VerticalHomeMovieRail(
         key: ValueKey('vrail:$id:$chrome:$_chromeEpoch'),
         title: title,
-        future: _fetchHomeMovies(spec),
+        future: _homeMovieFuture(spec),
         showRank: numbered,
         compactTop: compactTop,
         tvRowId: id,
@@ -409,7 +449,7 @@ class _CatalogShellState extends State<CatalogShell>
     return HomeMovieSection(
       key: ValueKey('hrail:$id:$chrome:$_chromeEpoch'),
       title: title,
-      future: _fetchHomeMovies(spec),
+      future: _homeMovieFuture(spec),
       onMovieTap: (m) => AppRouter.openDetails(context, movie: m),
       compactTop: compactTop,
       showRank: numbered,
@@ -419,7 +459,7 @@ class _CatalogShellState extends State<CatalogShell>
 
   Future<List<CatalogMetaItem>> _fetchMoodRail(Map<String, dynamic> moodSpec) {
     final rail = (moodSpec['rail'] ?? 'discover').toString();
-    return _fetchRail({
+    return _railFuture({
       ...moodSpec,
       'type': 'rail',
       'id': '${moodSpec['id']}_results',
@@ -442,7 +482,7 @@ class _CatalogShellState extends State<CatalogShell>
       return _VerticalHubRail(
         key: ValueKey('vhub:$id:$mood:$chrome:$_chromeEpoch'),
         title: (spec['title'] ?? '').toString(),
-        future: _fetchRail(spec),
+        future: _railFuture(spec),
         showRank: numbered,
         aspect: aspect,
         tvTabId: widget.tabId,
@@ -460,7 +500,7 @@ class _CatalogShellState extends State<CatalogShell>
     return HubCatalogSection<CatalogMetaItem>(
       key: ValueKey('$id:$mood:$chrome:$_chromeEpoch'),
       title: (spec['title'] ?? '').toString(),
-      future: _fetchRail(spec),
+      future: _railFuture(spec),
       showRank: numbered,
       cardAspect: aspect,
       tvTabId: widget.tabId,
@@ -476,14 +516,11 @@ class _CatalogShellState extends State<CatalogShell>
     );
   }
 
-  Widget _heroSection(
-    Map<String, dynamic> spec, {
-    Widget? pageBottomChild,
-  }) {
+  Widget _heroSection(Map<String, dynamic> spec, {Widget? pageBottomChild}) {
     final chrome = catalogChromeFilterEpoch(widget.tabId);
     return _CatalogHeroSection(
       key: ValueKey('hero:$chrome:$_chromeEpoch'),
-      future: _fetchRail(spec),
+      future: _railFuture(spec),
       buildSlides: _heroSlides,
       tvTabId: widget.tabId ?? 'home',
       scrollController: _scroll,
@@ -570,6 +607,7 @@ class _CatalogShellState extends State<CatalogShell>
                     tvTabId: widget.tabId,
                     tvRowId: id,
                     onTap: () => setState(() {
+                      _invalidateRailFutures();
                       _moods[id] = options[i]['id']?.toString() ?? '';
                     }),
                   ),
@@ -588,8 +626,8 @@ class _CatalogShellState extends State<CatalogShell>
               separatorBuilder: (_, _) => SizedBox(width: layout.horizontalGap),
               itemBuilder: (context, i) => ShellMoodCircleItem(
                 layout: layout,
-                label:
-                    (options[i]['label'] ?? options[i]['id'] ?? '').toString(),
+                label: (options[i]['label'] ?? options[i]['id'] ?? '')
+                    .toString(),
                 icon: _moodIcon(options[i]['icon']?.toString()),
                 accent: _moodAccent(options[i]['accent']?.toString()),
                 selected: options[i]['id']?.toString() == selected,
@@ -597,6 +635,7 @@ class _CatalogShellState extends State<CatalogShell>
                 tvTabId: widget.tabId,
                 tvRowId: id,
                 onTap: () => setState(() {
+                  _invalidateRailFutures();
                   _moods[id] = options[i]['id']?.toString() ?? '';
                 }),
               ),
@@ -613,22 +652,15 @@ class _CatalogShellState extends State<CatalogShell>
             compactTop: true,
             tvTabId: widget.tabId,
             tvRowId: '$id-results',
-            cardBuilder: (context, item, index) => _card(
-              context,
-              item,
-              index,
-              rowId: '$id-results',
-            ),
+            cardBuilder: (context, item, index) =>
+                _card(context, item, index, rowId: '$id-results'),
           ),
         ],
       ],
     );
   }
 
-  Widget? _widgetFor(
-    Map<String, dynamic> spec, {
-    Widget? heroBleedChild,
-  }) {
+  Widget? _widgetFor(Map<String, dynamic> spec, {Widget? heroBleedChild}) {
     switch ((spec['type'] ?? '').toString().trim()) {
       case 'hero':
         return _heroSection(spec, pageBottomChild: heroBleedChild);
@@ -706,25 +738,25 @@ class _CatalogShellState extends State<CatalogShell>
       final Widget? bleedChild = bleed == null
           ? null
           : (_isHomeTab
-              ? _homeMovieRail(bleed, compactTop: true)
-              : HubCatalogSection<CatalogMetaItem>(
-                  key: ValueKey('bleed:${bleed['id']}:$_chromeEpoch'),
-                  title: (bleed['title'] ?? '').toString(),
-                  future: _fetchRail(bleed),
-                  showRank: _isNumbered(bleed),
-                  compactTop: true,
-                  cardAspect: _aspectOf(bleed),
-                  tvTabId: widget.tabId,
-                  tvRowId: (bleed['id'] ?? '').toString(),
-                  cardBuilder: (context, item, index) => _card(
-                    context,
-                    item,
-                    index,
+                ? _homeMovieRail(bleed, compactTop: true)
+                : HubCatalogSection<CatalogMetaItem>(
+                    key: ValueKey('bleed:${bleed['id']}:$_chromeEpoch'),
+                    title: (bleed['title'] ?? '').toString(),
+                    future: _railFuture(bleed),
                     showRank: _isNumbered(bleed),
-                    rowId: (bleed['id'] ?? '').toString(),
-                    aspect: _aspectOf(bleed),
-                  ),
-                ));
+                    compactTop: true,
+                    cardAspect: _aspectOf(bleed),
+                    tvTabId: widget.tabId,
+                    tvRowId: (bleed['id'] ?? '').toString(),
+                    cardBuilder: (context, item, index) => _card(
+                      context,
+                      item,
+                      index,
+                      showRank: _isNumbered(bleed),
+                      rowId: (bleed['id'] ?? '').toString(),
+                      aspect: _aspectOf(bleed),
+                    ),
+                  ));
 
       final sections = <Widget>[];
       for (final spec in _widgets) {
@@ -808,22 +840,30 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
 
   Future<void> _load() async {
     final gen = ++_gen;
+    final had = _items != null && _items!.isNotEmpty;
     try {
       final items = await widget.future;
       if (!mounted || gen != _gen) return;
       setState(() => _items = items);
     } catch (_) {
       if (!mounted || gen != _gen) return;
-      setState(() => _items = const []);
+      // Keep last slides on error when we already painted.
+      if (!had) setState(() => _items = const []);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final items = _items;
-    // Keep shimmer until slides arrive (empty also keeps bleed height — never
-    // collapse to zero and drop Trending under the hero).
-    if (items == null || items.isEmpty) {
+    // Keep shimmer until first slides arrive. Later future swaps keep last
+    // slides (memoized rails + soft refresh) — never blank the hero.
+    if (items == null) {
+      return homeCinematicHeroShimmer(
+        context,
+        pageBottomBleed: widget.pageBottomChild != null,
+      );
+    }
+    if (items.isEmpty) {
       return homeCinematicHeroShimmer(
         context,
         pageBottomBleed: widget.pageBottomChild != null,
@@ -842,7 +882,7 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
   }
 }
 
-class _VerticalHomeMovieRail extends StatelessWidget {
+class _VerticalHomeMovieRail extends StatefulWidget {
   const _VerticalHomeMovieRail({
     super.key,
     required this.title,
@@ -861,42 +901,57 @@ class _VerticalHomeMovieRail extends StatelessWidget {
   final String? tvRowId;
 
   @override
+  State<_VerticalHomeMovieRail> createState() => _VerticalHomeMovieRailState();
+}
+
+class _VerticalHomeMovieRailState extends State<_VerticalHomeMovieRail> {
+  List<Movie>? _last;
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Movie>>(
-      future: future,
+      future: widget.future,
       builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return homeLoadingShimmer(
-            homeMovieRowSkeleton(context, compactTop: compactTop),
-          );
+        if (snap.hasData) _last = snap.data;
+        final movies = snap.data ?? _last ?? const <Movie>[];
+        if (movies.isEmpty) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return homeLoadingShimmer(
+              homeMovieRowSkeleton(context, compactTop: widget.compactTop),
+            );
+          }
+          return const SizedBox.shrink();
         }
-        final movies = snap.data ?? const <Movie>[];
-        if (movies.isEmpty) return const SizedBox.shrink();
         final pad = shellHomeSectionHorizontalPadding(context);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ShellSectionTitle(
-              title: title,
+              title: widget.title,
               padding: shellHomeSectionTitlePadding(
                 context,
-                top: compactTop
+                top: widget.compactTop
                     ? shellSectionTitleTopCompact(context)
                     : shellHomeSectionTitleTop(context),
               ),
             ),
             for (var i = 0; i < movies.length; i++)
               Padding(
-                padding: EdgeInsets.fromLTRB(pad, 0, pad, shellMovieCardRowGap(context)),
+                padding: EdgeInsets.fromLTRB(
+                  pad,
+                  0,
+                  pad,
+                  shellMovieCardRowGap(context),
+                ),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: HomeMovieCard(
                     movie: movies[i],
-                    onTap: () => onMovieTap(movies[i]),
-                    rank: showRank ? i + 1 : null,
+                    onTap: () => widget.onMovieTap(movies[i]),
+                    rank: widget.showRank ? i + 1 : null,
                     listIndex: i,
                     tvTabId: 'home',
-                    tvRowId: tvRowId,
+                    tvRowId: widget.tvRowId,
                   ),
                 ),
               ),
@@ -907,7 +962,7 @@ class _VerticalHomeMovieRail extends StatelessWidget {
   }
 }
 
-class _VerticalHubRail extends StatelessWidget {
+class _VerticalHubRail extends StatefulWidget {
   const _VerticalHubRail({
     super.key,
     required this.title,
@@ -928,21 +983,31 @@ class _VerticalHubRail extends StatelessWidget {
   final String? tvRowId;
 
   @override
+  State<_VerticalHubRail> createState() => _VerticalHubRailState();
+}
+
+class _VerticalHubRailState extends State<_VerticalHubRail> {
+  List<CatalogMetaItem>? _last;
+
+  @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<CatalogMetaItem>>(
-      future: future,
+      future: widget.future,
       builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return homeLoadingShimmer(homeMovieRowSkeleton(context));
+        if (snap.hasData) _last = snap.data;
+        final items = snap.data ?? _last ?? const <CatalogMetaItem>[];
+        if (items.isEmpty) {
+          if (snap.connectionState == ConnectionState.waiting) {
+            return homeLoadingShimmer(homeMovieRowSkeleton(context));
+          }
+          return const SizedBox.shrink();
         }
-        final items = snap.data ?? const <CatalogMetaItem>[];
-        if (items.isEmpty) return const SizedBox.shrink();
         final pad = shellHomeSectionHorizontalPadding(context);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ShellSectionTitle(
-              title: title,
+              title: widget.title,
               padding: shellHomeSectionTitlePadding(context),
             ),
             for (var i = 0; i < items.length; i++)
@@ -951,13 +1016,13 @@ class _VerticalHubRail extends StatelessWidget {
                   pad,
                   0,
                   pad,
-                  showRank
+                  widget.showRank
                       ? shellScaled(context, 6).clamp(3.0, 6.0)
                       : shellMovieCardRowGap(context),
                 ),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: cardBuilder(context, items[i], i),
+                  child: widget.cardBuilder(context, items[i], i),
                 ),
               ),
           ],

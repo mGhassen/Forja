@@ -118,7 +118,6 @@ class SettingsCategoryTile extends StatelessWidget {
     final titleColor =
         selected ? ForjaShellColors.textPrimary : ForjaShellColors.textSecondary;
     final rail = tvRowId != null;
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     final child = AnimatedContainer(
       duration: const Duration(milliseconds: 140),
@@ -193,10 +192,12 @@ class SettingsCategoryTile extends StatelessWidget {
       onRightEdge: onRightEdge,
       focusNode: focusNode,
       onFocusChange: (focused) {
-        // Keep detail pane on the focused category (no dual focus/selection).
-        // Prefer [onFocusSelect] so OK/Right can enter detail without ↑/↓ also
-        // diving into the right pane.
-        if (tv && focused && !selected) {
+        // Auto-select on focus is leanback-only. Desktop also has
+        // useFocusableMoodChips (hybrid D-pad), but resume/rebuild can dump
+        // focus onto the first category tile (Profile) and was calling
+        // onSelect(profile) — yanking the hub every background→foreground.
+        final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
+        if (leanback && focused && !selected) {
           (onFocusSelect ?? onTap)();
         }
       },

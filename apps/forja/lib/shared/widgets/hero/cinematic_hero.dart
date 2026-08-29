@@ -15,6 +15,7 @@ import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/shared/catalog/hub_tmdb_enrich_cache.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/hub/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
@@ -674,7 +675,22 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             ? 'tv'
             : slide.tmdbMediaType.trim();
         if (tmdbId == null || tmdbId <= 0) {
-          final hit = await _matchHubTitle(slide.title, preferMovie: mediaType == 'movie');
+          final matchKey =
+              'hubHeroMatch:${slide.title.trim().toLowerCase()}|$mediaType';
+          ({int id, String mediaType})? hit;
+          if (HubTmdbEnrichCache.contains(matchKey)) {
+            final c = HubTmdbEnrichCache.get<(int, String)?>(matchKey);
+            hit = c == null ? null : (id: c.$1, mediaType: c.$2);
+          } else {
+            hit = await _matchHubTitle(
+              slide.title,
+              preferMovie: mediaType == 'movie',
+            );
+            HubTmdbEnrichCache.put(
+              matchKey,
+              hit == null ? null : (hit.id, hit.mediaType),
+            );
+          }
           if (hit == null) {
             if (!mounted) return;
             setState(() {
@@ -686,47 +702,58 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           tmdbId = hit.id;
           mediaType = hit.mediaType;
         }
-        if (needsLogo) {
+        final detailsKey = 'hubHeroDetails:$tmdbId:$mediaType';
+        Movie? details;
+        if (HubTmdbEnrichCache.contains(detailsKey)) {
+          details = HubTmdbEnrichCache.get<Movie>(detailsKey);
+        } else if (needsOverview || needsBackdrop) {
           try {
-            final logoPath =
-                await _api.getLogoPath(tmdbId, mediaType: mediaType);
-            if (!mounted) return;
-            setState(() {
-              _heroLogos[id] = logoPath.isNotEmpty
-                  ? TmdbApi.getImageUrl(logoPath)
-                  : '';
-            });
-          } catch (_) {
-            if (mounted) setState(() => _heroLogos[id] = '');
-          }
-        }
-        if (needsOverview || needsBackdrop) {
-          try {
-            final details = mediaType == 'movie'
+            details = mediaType == 'movie'
                 ? await _api.getMovieDetails(tmdbId)
                 : await _api.getTvDetails(tmdbId);
-            if (!mounted) return;
-            setState(() {
-              if (needsOverview) {
-                final o = details.overview.trim();
-                if (o.isNotEmpty) _heroOverviews[id] = o;
-                if (details.voteAverage > 0) {
-                  _heroRatings[id] = details.voteAverage;
-                }
-              }
-              if (needsBackdrop) {
-                final path = details.backdropPath.trim();
-                if (path.isNotEmpty) {
-                  final url = path.startsWith('http')
-                      ? path
-                      : TmdbApi.getBackdropUrl(path);
-                  if (url.isNotEmpty) {
-                    _heroBackdropUrls[id] = [url];
-                  }
-                }
-              }
-            });
+            HubTmdbEnrichCache.put(detailsKey, details);
           } catch (_) {}
+        }
+        if (needsLogo) {
+          final cachedLogoKey = 'hubHeroLogo:$tmdbId:$mediaType';
+          String? logoUrl;
+          if (HubTmdbEnrichCache.contains(cachedLogoKey)) {
+            logoUrl = HubTmdbEnrichCache.get<String>(cachedLogoKey) ?? '';
+          } else {
+            try {
+              final logoPath =
+                  await _api.getLogoPath(tmdbId, mediaType: mediaType);
+              logoUrl = logoPath.isNotEmpty
+                  ? TmdbApi.getImageUrl(logoPath)
+                  : '';
+              HubTmdbEnrichCache.put(cachedLogoKey, logoUrl);
+            } catch (_) {
+              logoUrl = '';
+            }
+          }
+          if (!mounted) return;
+          setState(() => _heroLogos[id] = logoUrl ?? '');
+        }
+        if ((needsOverview || needsBackdrop) && details != null) {
+          if (!mounted) return;
+          setState(() {
+            if (needsOverview) {
+              final o = details!.overview.trim();
+              if (o.isNotEmpty) _heroOverviews[id] = o;
+              if (details.voteAverage > 0) {
+                _heroRatings[id] = details.voteAverage;
+              }
+            }
+            if (needsBackdrop) {
+              final path = details!.backdropPath.trim();
+              if (path.isNotEmpty) {
+                final url = path.startsWith('http')
+                    ? path
+                    : TmdbApi.getBackdropUrl(path);
+                if (url.isNotEmpty) _heroBackdropUrls[id] = [url];
+              }
+            }
+          });
         }
       } finally {
         _hubEnrichInflight.remove(id);

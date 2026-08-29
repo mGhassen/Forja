@@ -23,7 +23,9 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final FocusNode _firstHubFocus = FocusNode(debugLabel: 'settings-hub-0');
+  /// Attached to the *selected* category tile (not Profile/index 0).
+  final FocusNode _selectedCategoryFocus =
+      FocusNode(debugLabel: 'settings-hub-selected');
 
   @override
   void initState() {
@@ -36,17 +38,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ShellBus.requestSettingsCategory.addListener(_applyRequestedCategory);
     TvHeroActions.bind(
       'settings',
-      defaultFocus: () => _firstHubFocus,
+      defaultFocus: () => _selectedCategoryFocus,
       enterFromNavFocus: () {
         if (!ShellScope.metricsOf(context).usesTvDensity) return;
-        if (_firstHubFocus.canRequestFocus) {
-          _firstHubFocus.requestFocus();
+        if (_selectedCategoryFocus.canRequestFocus) {
+          _selectedCategoryFocus.requestFocus();
         }
       },
       restoreFocus: () {
         if (!ShellScope.metricsOf(context).usesTvDensity) return false;
-        if (_firstHubFocus.canRequestFocus) {
-          _firstHubFocus.requestFocus();
+        if (_selectedCategoryFocus.canRequestFocus) {
+          _selectedCategoryFocus.requestFocus();
           return true;
         }
         return false;
@@ -58,7 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     ShellBus.requestSettingsCategory.removeListener(_applyRequestedCategory);
     ShellTvFocusCoordinator.clearTab('settings');
-    _firstHubFocus.dispose();
+    _selectedCategoryFocus.dispose();
     super.dispose();
   }
 
@@ -93,7 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return SettingsHubScaffold(
           selectedId: selectedId,
           onSelect: _onSelect,
-          firstTileFocusNode: _firstHubFocus,
+          firstTileFocusNode: _selectedCategoryFocus,
         );
       },
     );

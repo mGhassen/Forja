@@ -74,7 +74,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R33-A20 | Background → resume keeps the open Settings category ([ShellBus.settingsHubCategoryId]); no auto-jump to Profile on visibility refresh | ✅ |
+| 1 | R33-A20 | Background → resume keeps the open Settings category; desktop hybrid must not focus→select Profile on rebuild | ✅ |
 
 ---
 

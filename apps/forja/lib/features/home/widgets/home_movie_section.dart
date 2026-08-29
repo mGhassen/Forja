@@ -43,40 +43,45 @@ class HomeMovieSection extends StatefulWidget {
 }
 
 class HomeMovieSectionState extends State<HomeMovieSection> {
+  List<Movie>? _last;
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Movie>>(
       future: widget.future,
       builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          _last = snapshot.data;
+        }
+        final movies = snapshot.data ?? _last ?? const <Movie>[];
         final loading = snapshot.connectionState == ConnectionState.waiting;
-        final movies = snapshot.data ?? const <Movie>[];
 
-        if (loading || movies.isEmpty) {
-          if (loading || !snapshot.hasData) {
-            return homeLoadingShimmer(
-              homeMovieRowSkeleton(
-                context,
-                compactTop: widget.compactTop,
-                titleWidth: widget.title.length > 12
-                    ? 180
-                    : widget.title.length * 11.0,
-              ),
-            );
-          }
-          return const SizedBox.shrink();
+        if (movies.isNotEmpty) {
+          return HomeStaticMovieSection(
+            title: widget.title,
+            movies: movies,
+            onMovieTap: widget.onMovieTap,
+            compactTop: widget.compactTop,
+            showRank: widget.showRank,
+            tvFocusUp: widget.tvFocusUp,
+            tvRowId: widget.tvRowId,
+            tvRowOrder: widget.tvRowOrder,
+            loadMore: widget.loadMore,
+          );
         }
 
-        return HomeStaticMovieSection(
-          title: widget.title,
-          movies: movies,
-          onMovieTap: widget.onMovieTap,
-          compactTop: widget.compactTop,
-          showRank: widget.showRank,
-          tvFocusUp: widget.tvFocusUp,
-          tvRowId: widget.tvRowId,
-          tvRowOrder: widget.tvRowOrder,
-          loadMore: widget.loadMore,
-        );
+        if (loading || !snapshot.hasData) {
+          return homeLoadingShimmer(
+            homeMovieRowSkeleton(
+              context,
+              compactTop: widget.compactTop,
+              titleWidth: widget.title.length > 12
+                  ? 180
+                  : widget.title.length * 11.0,
+            ),
+          );
+        }
+        return const SizedBox.shrink();
       },
     );
   }

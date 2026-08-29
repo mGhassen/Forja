@@ -15,6 +15,7 @@ import 'package:forja/features/downloader/media_downloader_screen.dart';
 import 'package:forja/features/live_matches/live_matches_screen.dart';
 import 'package:forja/features/magnet/magnet_player_screen.dart';
 import 'package:forja/features/iptv/iptv/screens/iptv_pt_screen.dart';
+import 'package:forja/shared/catalog/forja_host_assets.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shell/nav_destination.dart';
 
@@ -62,7 +63,7 @@ const Map<String, NavDestination> coreNavDestinations = {
     icon: Icons.search,
     activeIcon: Icons.search,
     label: 'Search',
-    iconAsset: 'assets/images/nav/search.png',
+    iconAsset: ForjaHostAssets.flutterNavSearch,
   ),
   'mylist': NavDestination(
     id: 'mylist',
@@ -81,14 +82,14 @@ const Map<String, NavDestination> coreNavDestinations = {
     icon: Icons.sports_soccer_outlined,
     activeIcon: Icons.sports_soccer_rounded,
     label: 'Live Sports',
-    iconAsset: 'assets/images/nav/live-matches.png',
+    iconAsset: ForjaHostAssets.flutterNavLiveMatches,
   ),
   'iptv': NavDestination(
     id: 'iptv',
     icon: Icons.live_tv_outlined,
     activeIcon: Icons.live_tv,
     label: 'IPTV',
-    iconAsset: 'assets/images/nav/iptv.png',
+    iconAsset: ForjaHostAssets.flutterNavIptv,
   ),
   'audiobooks': NavDestination(
     id: 'audiobooks',

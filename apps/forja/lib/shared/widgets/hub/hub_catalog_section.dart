@@ -6,7 +6,7 @@ import 'package:forja/shared/widgets/hub/hub_poster_card.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
-class HubCatalogSection<T> extends StatelessWidget {
+class HubCatalogSection<T> extends StatefulWidget {
   const HubCatalogSection({
     super.key,
     required this.title,
@@ -54,9 +54,16 @@ class HubCatalogSection<T> extends StatelessWidget {
         HubPosterCard.cardHeight(context, aspect: cardAspect);
   }
 
+  @override
+  State<HubCatalogSection<T>> createState() => _HubCatalogSectionState<T>();
+}
+
+class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
+  List<T>? _last;
+
   double _sectionTitleTop(BuildContext context) {
-    if (embedded) return 0;
-    if (!compactTop) return shellHomeSectionTitleTop(context);
+    if (widget.embedded) return 0;
+    if (!widget.compactTop) return shellHomeSectionTitleTop(context);
     return shellSectionTitleTopCompact(context);
   }
 
@@ -64,9 +71,7 @@ class HubCatalogSection<T> extends StatelessWidget {
     if (list.isEmpty) return const SizedBox.shrink();
 
     final sectionTop = _sectionTitleTop(context);
-    // Parent MediaDetailsBody owns the column edge; Cast/Trailers use 0 pad
-    // when embedded - don't double-apply home insets.
-    final horizontalPad = embedded
+    final horizontalPad = widget.embedded
         ? 0.0
         : shellHomeSectionHorizontalPadding(context);
 
@@ -75,79 +80,82 @@ class HubCatalogSection<T> extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         ShellSectionTitle(
-          title: title,
+          title: widget.title,
           padding: EdgeInsets.fromLTRB(
             horizontalPad,
             sectionTop,
             horizontalPad,
-            embedded
+            widget.embedded
                 ? DetailsTokens.sectionTitleGap
                 : shellHomeSectionBottomGap(context),
           ),
         ),
         FocusTraversalGroup(
           child: HorizontalScroller(
-            height: HubPosterCard.cardHeight(context, aspect: cardAspect),
+            height: HubPosterCard.cardHeight(context, aspect: widget.cardAspect),
             padding: EdgeInsets.symmetric(horizontal: horizontalPad),
             itemCount: list.length,
             separatorBuilder: (_, _) => SizedBox(
-              width: showRank
+              width: widget.showRank
                   ? shellScaled(context, 6).clamp(3.0, 6.0)
                   : shellMovieCardRowGap(context),
             ),
             itemBuilder: (context, index) =>
-                cardBuilder(context, list[index], index),
+                widget.cardBuilder(context, list[index], index),
           ),
         ),
       ],
     );
 
-    final tabId = tvTabId ?? ShellTvFocus.currentNavTabId;
-    final rowId = tvRowId;
+    final tabId = widget.tvTabId ?? ShellTvFocus.currentNavTabId;
+    final rowId = widget.tvRowId;
     if (tabId == null || rowId == null) return column;
 
     return TvCatalogRow(
       tabId: tabId,
       rowId: rowId,
-      sortOrder: tvRowOrder,
+      sortOrder: widget.tvRowOrder,
       itemCount: list.length,
-      onFocusUp: tvFocusUp,
+      onFocusUp: widget.tvFocusUp,
       child: column,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final staticItems = items;
+    final staticItems = widget.items;
     if (staticItems != null) {
       return _buildRow(context, staticItems);
     }
 
     return FutureBuilder<List<T>>(
-      future: future,
+      future: widget.future,
       builder: (context, snapshot) {
-        final loading = snapshot.connectionState == ConnectionState.waiting;
-        final list = snapshot.data ?? <T>[];
-
-        if (loading || list.isEmpty) {
-          if (loading || !snapshot.hasData) {
-            return homeLoadingShimmer(
-              homeMovieRowSkeleton(
-                context,
-                compactTop: compactTop,
-                titleWidth: title.length > 12 ? 180 : title.length * 11.0,
-                cardWidth: HubPosterCard.cardWidth(context, aspect: cardAspect),
-                cardHeight: HubPosterCard.cardHeight(
-                  context,
-                  aspect: cardAspect,
-                ),
-              ),
-            );
-          }
-          return const SizedBox.shrink();
+        if (snapshot.hasData) {
+          _last = snapshot.data;
         }
+        final list = snapshot.data ?? _last ?? <T>[];
+        final loading = snapshot.connectionState == ConnectionState.waiting;
 
-        return _buildRow(context, list);
+        // Keep last painted row while a new future resolves — no shimmer flash.
+        if (list.isNotEmpty) return _buildRow(context, list);
+
+        if (loading || !snapshot.hasData) {
+          return homeLoadingShimmer(
+            homeMovieRowSkeleton(
+              context,
+              compactTop: widget.compactTop,
+              titleWidth: widget.title.length > 12
+                  ? 180
+                  : widget.title.length * 11.0,
+              cardWidth:
+                  HubPosterCard.cardWidth(context, aspect: widget.cardAspect),
+              cardHeight:
+                  HubPosterCard.cardHeight(context, aspect: widget.cardAspect),
+            ),
+          );
+        }
+        return const SizedBox.shrink();
       },
     );
   }

@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-asian-drama",
   "name": "ForjaHQ Asian Drama",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "plugins": [
     {
       "id": "kisskh-hub",
@@ -25,7 +25,7 @@
         "tabId": "asian_drama",
         "label": "Asian Drama",
         "order": 30,
-        "icon": "assets/images/nav/asian-drama.png",
+        "icon": "forja://asset/nav/asian-drama",
         "accent": "#C4B5FD",
         "defaultEnabled": true
       },

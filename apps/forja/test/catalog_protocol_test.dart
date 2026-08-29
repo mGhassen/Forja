@@ -420,6 +420,51 @@ void main() {
       expect(PluginNavRegistry.accents['anime'], isNotNull);
     });
 
+    test('nav icons use forja://asset ids, not Flutter assets/ paths', () {
+      final specs = [
+        for (final p in loadAllHubPlugins())
+          CatalogNavSpec.fromPluginNav(
+            p.nav,
+            pluginId: p.id,
+            fallbackLabel: p.name,
+          )!,
+      ];
+      final byTab = {for (final s in specs) s.tabId: s};
+
+      expect(byTab['home']!.icon, ForjaHostAssets.uriNavHome);
+      expect(byTab['anime']!.icon, ForjaHostAssets.uriNavAnime);
+      expect(byTab['asian_drama']!.icon, ForjaHostAssets.uriNavAsianDrama);
+
+      for (final s in specs) {
+        final icon = s.icon;
+        if (icon == null || icon.isEmpty) continue;
+        expect(
+          icon.startsWith('assets/'),
+          isFalse,
+          reason: '${s.tabId} must not leak Flutter asset paths',
+        );
+        expect(
+          ForjaHostAssets.isKnown(icon),
+          isTrue,
+          reason: '${s.tabId} icon $icon must be in ForjaHostAssets.catalog',
+        );
+        expect(
+          ForjaHostAssets.resolveFlutterPath(icon),
+          isNotNull,
+        );
+      }
+
+      expect(
+        ForjaHostAssets.resolveFlutterPath('assets/images/nav/home.png'),
+        isNull,
+      );
+      expect(
+        ForjaHostAssets.resolveFlutterPath(ForjaHostAssets.uriNavHome),
+        ForjaHostAssets.flutterNavHome,
+      );
+      expect(ForjaHostAssets.ids, contains('nav/home'));
+    });
+
     test('hub manifest urls map to home / anime / asian_drama / arabic slots', () {
       expect(PluginRegistry.requiredOfficialPackCount, 6);
       expect(

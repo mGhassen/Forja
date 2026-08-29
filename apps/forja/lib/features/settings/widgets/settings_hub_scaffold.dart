@@ -378,7 +378,10 @@ class _CategorySidebar extends StatelessWidget {
                 selected: c.id == selectedId,
                 adminOnly: c.adminOnly,
                 listIndex: index,
-                focusNode: index == 0 ? firstTileFocusNode : null,
+                // Pin default/restore focus on the *selected* tile — never
+                // index 0 (Profile). Resume focus dump onto hub-0 was
+                // selecting Profile via onFocusSelect.
+                focusNode: c.id == selectedId ? firstTileFocusNode : null,
                 tvRowId: categoryRowId,
                 tvItemIndex: categoryRowId != null ? index : null,
                 onRightEdge: onEnterDetail == null

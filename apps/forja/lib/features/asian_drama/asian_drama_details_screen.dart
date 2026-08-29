@@ -476,7 +476,8 @@ class _AsianDramaDetailsScreenState
 
   AsianDramaTmdbQuery get _tmdbQuery {
     final det = _details;
-    return (
+    return AsianDramaTmdbQuery(
+      kisskhId: widget.drama.id,
       title: det?.title ?? widget.drama.title,
       year: det?.year ?? widget.drama.year,
       kissKhType: (det != null && det.type.isNotEmpty)
@@ -702,10 +703,15 @@ class _AsianDramaDetailsScreenState
 
   Widget _buildScrollLayout() {
     final det = _details!;
+    final query = _tmdbQuery;
+    final cacheHit = asianDramaTmdbEnrichCached(query.kisskhId);
+    final cached = peekAsianDramaTmdbEnrichment(query);
     final enrich =
-        ref.watch(asianDramaTmdbEnrichmentProvider(_tmdbQuery)).asData?.value;
+        ref.watch(asianDramaTmdbEnrichmentProvider(query)).asData?.value ??
+            cached;
     return TmdbPaintGate(
-      ready: enrich != null,
+      ready: enrich != null || cacheHit,
+      instant: cacheHit,
       builder: (context, level) => _buildPaintedLayout(det, enrich, level),
     );
   }

@@ -29,17 +29,23 @@ class TmdbPaintGate extends StatefulWidget {
     super.key,
     required this.ready,
     required this.builder,
+    this.instant = false,
   });
 
   final bool ready;
   final Widget Function(BuildContext context, TmdbPaintLevel level) builder;
+
+  /// Skip the staged reveal — reopen from process cache must look already enriched.
+  final bool instant;
 
   @override
   State<TmdbPaintGate> createState() => _TmdbPaintGateState();
 }
 
 class _TmdbPaintGateState extends State<TmdbPaintGate> {
-  TmdbPaintLevel _level = TmdbPaintLevel.none;
+  late TmdbPaintLevel _level = widget.ready && widget.instant
+      ? TmdbPaintLevel.rows
+      : TmdbPaintLevel.none;
   Timer? _art;
   Timer? _chrome;
   Timer? _rows;
@@ -47,7 +53,7 @@ class _TmdbPaintGateState extends State<TmdbPaintGate> {
   @override
   void initState() {
     super.initState();
-    if (widget.ready) {
+    if (widget.ready && !widget.instant) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _arm());
     }
   }
@@ -56,10 +62,21 @@ class _TmdbPaintGateState extends State<TmdbPaintGate> {
   void didUpdateWidget(covariant TmdbPaintGate oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.ready && !oldWidget.ready) {
-      _arm();
+      if (widget.instant) {
+        _cancel();
+        _level = TmdbPaintLevel.rows;
+      } else {
+        _arm();
+      }
     } else if (!widget.ready && oldWidget.ready) {
       _cancel();
       _level = TmdbPaintLevel.none;
+    } else if (widget.ready &&
+        widget.instant &&
+        !oldWidget.instant &&
+        _level != TmdbPaintLevel.rows) {
+      _cancel();
+      _level = TmdbPaintLevel.rows;
     }
   }
 

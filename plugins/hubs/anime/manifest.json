@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-anime",
   "name": "ForjaHQ Anime",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "plugins": [
     {
       "id": "anilist",
@@ -26,7 +26,7 @@
         "tabId": "anime",
         "label": "Anime",
         "order": 20,
-        "icon": "assets/images/nav/anime.png",
+        "icon": "forja://asset/nav/anime",
         "accent": "#FB7185",
         "defaultEnabled": true
       },

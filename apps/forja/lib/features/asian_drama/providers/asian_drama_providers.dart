@@ -69,13 +69,30 @@ final asianDramaDetailsProvider = FutureProvider.autoDispose
   );
 });
 
-/// Args for TMDB enrichment keyed by KissKH identity fields.
-typedef AsianDramaTmdbQuery = ({
-  String title,
-  String? year,
-  String? kissKhType,
-  int? tmdbId,
-});
+/// Args for TMDB enrichment. Equality is **KissKH id only** so list→details
+/// filling year/type does not restart the FutureProvider (and rematch).
+class AsianDramaTmdbQuery {
+  const AsianDramaTmdbQuery({
+    required this.kisskhId,
+    required this.title,
+    this.year,
+    this.kissKhType,
+    this.tmdbId,
+  });
+
+  final int kisskhId;
+  final String title;
+  final String? year;
+  final String? kissKhType;
+  final int? tmdbId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AsianDramaTmdbQuery && other.kisskhId == kisskhId;
+
+  @override
+  int get hashCode => kisskhId.hashCode;
+}
 
 /// TMDB metadata for Asian Drama details (null when no confident match).
 class AsianDramaTmdbEnrichment {
@@ -96,16 +113,12 @@ class AsianDramaTmdbEnrichment {
   List<String> get imagePaths => rich.movie.screenshots;
 }
 
-/// TMDB rich details (+ season stills for TV) for a KissKH title.
-///
-/// Result is process-cached — `autoDispose` alone was dumping enrich on leave.
-final asianDramaTmdbEnrichmentProvider = FutureProvider.autoDispose
-    .family<AsianDramaTmdbEnrichment?, AsianDramaTmdbQuery>((ref, query) async {
+/// Sync peek — details reopen must not wait on Riverpod for a cache hit.
+AsianDramaTmdbEnrichment? peekAsianDramaTmdbEnrichment(AsianDramaTmdbQuery query) {
   final qKey = _asianEnrichQueryKey(query);
   if (HubTmdbEnrichCache.contains(qKey)) {
     return HubTmdbEnrichCache.get<AsianDramaTmdbEnrichment>(qKey);
   }
-
   final tmdbId = query.tmdbId;
   if (tmdbId != null && tmdbId > 0) {
     for (final type in [
@@ -114,11 +127,27 @@ final asianDramaTmdbEnrichmentProvider = FutureProvider.autoDispose
     ]) {
       final idKey = _asianEnrichIdKey(tmdbId, type);
       if (HubTmdbEnrichCache.contains(idKey)) {
-        final byId = HubTmdbEnrichCache.get<AsianDramaTmdbEnrichment>(idKey);
-        HubTmdbEnrichCache.put(qKey, byId);
-        return byId;
+        return HubTmdbEnrichCache.get<AsianDramaTmdbEnrichment>(idKey);
       }
     }
+  }
+  return null;
+}
+
+/// True when this KissKH id was already enriched (including cached null / no match).
+bool asianDramaTmdbEnrichCached(int kisskhId) =>
+    HubTmdbEnrichCache.contains('asian-enrich:kisskh:$kisskhId');
+
+/// TMDB rich details (+ season stills for TV) for a KissKH title.
+///
+/// Result is process-cached by **KissKH id** (stable across list→details and
+/// type/year filling in) — `autoDispose` alone was dumping enrich on leave.
+final asianDramaTmdbEnrichmentProvider = FutureProvider.autoDispose
+    .family<AsianDramaTmdbEnrichment?, AsianDramaTmdbQuery>((ref, query) async {
+  final cached = peekAsianDramaTmdbEnrichment(query);
+  if (cached != null || HubTmdbEnrichCache.contains(_asianEnrichQueryKey(query))) {
+    // Cached null (no match) also short-circuits.
+    return cached;
   }
 
   final tmdb = ref.watch(tmdbApiProvider);
@@ -145,7 +174,7 @@ final asianDramaTmdbEnrichmentProvider = FutureProvider.autoDispose
       tmdb: tmdb,
     );
     if (match == null) {
-      HubTmdbEnrichCache.put(qKey, null);
+      _putAsianEnrich(query, null);
       return null;
     }
     final mediaType =
@@ -157,7 +186,12 @@ final asianDramaTmdbEnrichmentProvider = FutureProvider.autoDispose
     result = await _enrichByTmdbId(tmdb, match.id, mediaType);
   }
 
-  HubTmdbEnrichCache.put(qKey, result);
+  _putAsianEnrich(query, result);
+  return result;
+});
+
+void _putAsianEnrich(AsianDramaTmdbQuery query, AsianDramaTmdbEnrichment? result) {
+  HubTmdbEnrichCache.put(_asianEnrichQueryKey(query), result);
   if (result != null) {
     final m = result.rich.movie;
     final type = m.mediaType == 'movie' || m.mediaType == 'tv'
@@ -165,16 +199,10 @@ final asianDramaTmdbEnrichmentProvider = FutureProvider.autoDispose
         : 'tv';
     HubTmdbEnrichCache.put(_asianEnrichIdKey(m.id, type), result);
   }
-  return result;
-});
-
-String _asianEnrichQueryKey(AsianDramaTmdbQuery q) {
-  final id = q.tmdbId;
-  if (id != null && id > 0) {
-    return 'asian-enrich:tmdb:$id|${q.kissKhType ?? ''}';
-  }
-  return 'asian-enrich:q:${q.title}|${q.year ?? ''}|${q.kissKhType ?? ''}';
 }
+
+String _asianEnrichQueryKey(AsianDramaTmdbQuery q) =>
+    'asian-enrich:kisskh:${q.kisskhId}';
 
 String _asianEnrichIdKey(int id, String mediaType) =>
     'asian-enrich:id:$id:$mediaType';

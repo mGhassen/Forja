@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/catalog/forja_host_assets.dart';
 import 'package:forja/shared/catalog/shell/catalog_shell.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/nav_destination.dart';
@@ -72,21 +73,21 @@ abstract final class PluginNavRegistry {
         icon: Icons.home_outlined,
         activeIcon: Icons.home,
         label: 'Home',
-        iconAsset: 'assets/images/nav/home.png',
+        iconAsset: ForjaHostAssets.flutterNavHome,
       ),
       'anime': const NavDestination(
         id: 'anime',
         icon: Icons.animation_outlined,
         activeIcon: Icons.animation,
         label: 'Anime',
-        iconAsset: 'assets/images/nav/anime.png',
+        iconAsset: ForjaHostAssets.flutterNavAnime,
       ),
       'asian_drama': const NavDestination(
         id: 'asian_drama',
         icon: Icons.theater_comedy_outlined,
         activeIcon: Icons.theater_comedy,
         label: 'Asian Drama',
-        iconAsset: 'assets/images/nav/asian-drama.png',
+        iconAsset: ForjaHostAssets.flutterNavAsianDrama,
       ),
       'arabic': const NavDestination(
         id: 'arabic',
@@ -165,8 +166,8 @@ abstract final class PluginNavRegistry {
     final defaultOn = <String>[];
 
     for (final (pl, nav) in hubs) {
-      final iconAsset =
-          (nav.icon != null && nav.icon!.startsWith('assets/')) ? nav.icon : null;
+      // Plugins must use forja://asset/… — never Flutter assets/ paths.
+      final iconAsset = ForjaHostAssets.resolveFlutterPath(nav.icon);
       final material = iconDataFor(nav);
       dests[nav.tabId] = NavDestination(
         id: nav.tabId,
@@ -230,15 +231,22 @@ abstract final class PluginNavRegistry {
   }
 
   static IconData iconDataFor(CatalogNavSpec nav) {
+    switch (nav.tabId) {
+      case 'home':
+        return Icons.home_outlined;
+      case 'anime':
+        return Icons.animation_outlined;
+      case 'asian_drama':
+        return Icons.theater_comedy_outlined;
+      case 'arabic':
+        return Icons.movie_filter_outlined;
+    }
     final icon = nav.icon ?? '';
-    if (icon.contains('home')) return Icons.home_outlined;
-    if (icon.contains('anime')) return Icons.animation_outlined;
-    if (icon.contains('asian') || icon.contains('drama')) {
-      return Icons.theater_comedy_outlined;
-    }
-    if (icon == 'movie_filter' || icon.contains('arabic')) {
-      return Icons.movie_filter_outlined;
-    }
+    final id = ForjaHostAssets.parseId(icon);
+    if (id == 'nav/home') return Icons.home_outlined;
+    if (id == 'nav/anime') return Icons.animation_outlined;
+    if (id == 'nav/asian-drama') return Icons.theater_comedy_outlined;
+    if (icon == 'movie_filter') return Icons.movie_filter_outlined;
     return Icons.grid_view_rounded;
   }
 
