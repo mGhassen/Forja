@@ -163,12 +163,15 @@ class EngineService {
   }
 
   Future<EnginePlugin?> pluginById(String id) async {
+    EnginePlugin? disabled;
     for (final pack in await listPacks()) {
       for (final p in pack.plugins) {
-        if (p.id == id) return p;
+        if (p.id != id) continue;
+        if (p.enabled) return p;
+        disabled ??= p;
       }
     }
-    return null;
+    return disabled;
   }
 
   Future<List<EnginePlugin>> listEnabledLiveCatalogPlugins() async {
@@ -322,16 +325,7 @@ class EngineService {
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return null;
-    EnginePlugin? plugin;
-    for (final pack in packs) {
-      for (final p in pack.plugins) {
-        if (p.id == pluginId) {
-          plugin = p;
-          break;
-        }
-      }
-      if (plugin != null) break;
-    }
+    final plugin = PluginRegistry.pluginFromPacks(packs, pluginId);
     final rt = runtime ?? EngineRuntime.instance;
     if (runtime == null) {
       await _syncHops(packs);
@@ -511,16 +505,7 @@ class EngineService {
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return [];
-    EnginePlugin? plugin;
-    for (final pack in packs) {
-      for (final p in pack.plugins) {
-        if (p.id == pluginId) {
-          plugin = p;
-          break;
-        }
-      }
-      if (plugin != null) break;
-    }
+    final plugin = PluginRegistry.pluginFromPacks(packs, pluginId);
     if (plugin == null || !(plugin.isLivePlugin || plugin.isLiveSport)) {
       return [];
     }
@@ -868,16 +853,7 @@ class EngineService {
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return null;
-    EnginePlugin? plugin;
-    for (final pack in packs) {
-      for (final p in pack.plugins) {
-        if (p.id == pluginId) {
-          plugin = p;
-          break;
-        }
-      }
-      if (plugin != null) break;
-    }
+    final plugin = PluginRegistry.pluginFromPacks(packs, pluginId);
     if (plugin == null || !plugin.enabled || !plugin.isHttp) return null;
 
     final mediaType = _normalizeEngineMediaType(type);

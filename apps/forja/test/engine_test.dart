@@ -325,7 +325,7 @@ void main() {
       );
     });
 
-    test('evictStaleOfficialSiblingPacks drops GitHub copy of forjahq-providers',
+    test('disableShadowOfficialPacks turns off GitHub forjahq-providers',
         () async {
       const github =
           'https://raw.githubusercontent.com/example/Forja/main/plugins/providers/manifest.json';
@@ -358,14 +358,30 @@ void main() {
         'engine_js_packs_v2_migrated': true,
         'engine_js_legacy_forjahq_wiped': true,
       });
-      await registry.evictStaleOfficialSiblingPacks([local]);
+      await registry.disableShadowOfficialPacks([local]);
       final packs = await registry.listPacksRaw();
-      expect(packs.map((p) => p.sourceUrl), isNot(contains(github)));
+      expect(packs.any((p) => p.sourceUrl == github), isTrue);
+      final githubPack = packs.firstWhere((p) => p.sourceUrl == github);
+      expect(githubPack.plugins.every((p) => !p.enabled), isTrue);
       expect(
         packs.any((p) => p.sourceUrl == 'https://community.example/manifest.json'),
         isTrue,
       );
-      expect(packs.any((p) => p.packId == 'forjahq-providers'), isFalse);
+    });
+
+    test('isShadowingOfficialManifestUrl detects GitHub ForjaHQ paths', () {
+      expect(
+        PluginRegistry.isShadowingOfficialManifestUrl(
+          'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/providers/manifest.json',
+        ),
+        isTrue,
+      );
+      expect(
+        PluginRegistry.isShadowingOfficialManifestUrl(
+          'https://community.example/manifest.json',
+        ),
+        isFalse,
+      );
     });
 
     test('transactional install writes nothing when a script fetch fails',
