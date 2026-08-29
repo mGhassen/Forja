@@ -29,9 +29,9 @@ class PluginRegistry {
     'FORJA_HQ_CATALOG_MANIFEST_URL',
   );
 
-  /// Dev: prefer dart-define / `.env` pack URLs over cloud GitHub installs.
-  /// Disables shadowing packs (does not remove them) and reinstalls `.env`
-  /// packs once per process. `FORJA_HQ_FORCE_PLUGIN_ENV=true`.
+  /// Dev switch (`FORJA_HQ_FORCE_PLUGIN_ENV`):
+  /// - `true` → install from dart-define / `.env` URLs; disable cloud ForjaHQ.
+  /// - `false` → prefer cloud Profile ForjaHQ URLs when present; disable `.env` locals.
   static const forcePluginEnv = bool.fromEnvironment(
     'FORJA_HQ_FORCE_PLUGIN_ENV',
     defaultValue: false,
@@ -43,7 +43,9 @@ class PluginRegistry {
     'forjahq-catalog',
   };
 
-  /// All configured official pack URLs (providers, live, catalog).
+  static const _cloudOfficialKey = 'engine_js_cloud_forjahq_urls_v1';
+
+  /// All configured official pack URLs from dart-define (providers, live, catalog).
   static List<String> get officialManifestUrls => [
         for (final u in [
           officialProvidersManifestUrl,
@@ -76,8 +78,13 @@ class PluginRegistry {
   Future<void>? _officialEnsureFuture;
   bool _officialInstallFailed = false;
   bool _officialUpdateChecked = false;
-  /// `FORJA_HQ_FORCE_PLUGIN_ENV` disk reinstall — once per process.
+  /// `FORJA_HQ_FORCE_PLUGIN_ENV=true` disk reinstall — once per process.
   bool _forceEnvApplied = false;
+  /// Cloud ForjaHQ applied for `FORCE=false` — once until cloud URLs change.
+  bool _cloudOfficialApplied = false;
+  /// Slot → cloud manifest URL (`providers` / `live` / `catalog`).
+  final Map<String, String> _cloudOfficialBySlot = {};
+  bool _cloudOfficialLoaded = false;
   final Set<String> _scriptRepairAttempted = {};
 
   /// Test-only HTTP client override (MockClient).
@@ -121,30 +128,40 @@ class PluginRegistry {
     return resp.body;
   }
 
-  static bool isOfficialPack(String sourceUrl) =>
-      officialManifestUrls.contains(sourceUrl);
-
-  /// Cloud/GitHub (or other) URL that mirrors an official ForjaHQ pack path but
-  /// is not the current dart-define URL — kept installed, disabled when forcing
-  /// `.env`.
-  static bool isShadowingOfficialManifestUrl(String sourceUrl) {
-    if (isOfficialPack(sourceUrl) || isLegacyAssetPack(sourceUrl)) {
-      return false;
+  static bool isOfficialPack(String sourceUrl) {
+    if (officialManifestUrls.contains(sourceUrl)) return true;
+    if (!forcePluginEnv &&
+        instance._cloudOfficialBySlot.values.contains(sourceUrl)) {
+      return true;
     }
-    final path = sourceUrl.trim().replaceAll('\\', '/').toLowerCase();
-    return path.endsWith('/plugins/providers/manifest.json') ||
-        path.endsWith('/plugins/live/manifest.json') ||
-        path.endsWith('/plugins/catalog/manifest.json') ||
-        path.endsWith('plugins/providers/manifest.json') ||
-        path.endsWith('plugins/live/manifest.json') ||
-        path.endsWith('plugins/catalog/manifest.json');
+    return false;
   }
 
-  /// Pack that shadows dart-define official URLs (by id or canonical path).
+  /// `providers` / `live` / `catalog` when [url] is a ForjaHQ pack path.
+  @visibleForTesting
+  static String? forjaHqSlot(String url) {
+    final path = url.trim().replaceAll('\\', '/').toLowerCase();
+    if (path.endsWith('plugins/providers/manifest.json')) return 'providers';
+    if (path.endsWith('plugins/live/manifest.json')) return 'live';
+    if (path.endsWith('plugins/catalog/manifest.json')) return 'catalog';
+    return null;
+  }
+
+  /// Cloud/GitHub (or other) URL that mirrors an official ForjaHQ pack path but
+  /// is not the current dart-define URL.
+  static bool isShadowingOfficialManifestUrl(String sourceUrl) {
+    if (officialManifestUrls.contains(sourceUrl) ||
+        isLegacyAssetPack(sourceUrl)) {
+      return false;
+    }
+    return forjaHqSlot(sourceUrl) != null;
+  }
+
+  /// Pack that shadows the active keep-set of official URLs.
   static bool isShadowOfficialPack(EnginePack pack, Set<String> keepUrls) {
     if (keepUrls.contains(pack.sourceUrl)) return false;
     if (officialPackIds.contains(pack.packId)) return true;
-    return isShadowingOfficialManifestUrl(pack.sourceUrl);
+    return forjaHqSlot(pack.sourceUrl) != null;
   }
 
   static bool isLegacyMonolithPack(EnginePack pack) => pack.packId == 'forjahq';
@@ -397,9 +414,10 @@ class PluginRegistry {
     return mu.replace(path: path).toString();
   }
 
-  /// Disable (not remove) packs that shadow dart-define official URLs.
+  /// Disable (not remove) packs that are not in [keepUrls] but share ForjaHQ
+  /// pack ids / canonical paths. Enable packs in [keepUrls].
   @visibleForTesting
-  Future<void> disableShadowOfficialPacks(List<String> keepUrls) async {
+  Future<void> applyOfficialKeepSet(List<String> keepUrls) async {
     final keep = {
       for (final u in keepUrls)
         if (u.trim().isNotEmpty) u.trim(),
@@ -408,6 +426,18 @@ class PluginRegistry {
     final next = <EnginePack>[];
     var changed = false;
     for (final pack in packs) {
+      if (keep.contains(pack.sourceUrl)) {
+        if (!pack.enabled) {
+          debugPrint(
+            '[engine] ForjaHQ: enable ${pack.packId} (${pack.sourceUrl})',
+          );
+          next.add(pack.copyWith(enabled: true));
+          changed = true;
+        } else {
+          next.add(pack);
+        }
+        continue;
+      }
       if (!isShadowOfficialPack(pack, keep)) {
         next.add(pack);
         continue;
@@ -417,8 +447,7 @@ class PluginRegistry {
         continue;
       }
       debugPrint(
-        '[engine] FORJA_HQ_FORCE_PLUGIN_ENV: disable ${pack.packId} '
-        '(${pack.sourceUrl})',
+        '[engine] ForjaHQ: disable ${pack.packId} (${pack.sourceUrl})',
       );
       next.add(pack.copyWith(enabled: false));
       changed = true;
@@ -426,50 +455,144 @@ class PluginRegistry {
     if (changed) await _savePacks(next);
   }
 
+  @visibleForTesting
+  @Deprecated('Use applyOfficialKeepSet')
+  Future<void> disableShadowOfficialPacks(List<String> keepUrls) =>
+      applyOfficialKeepSet(keepUrls);
+
+  Future<void> _loadCloudOfficialFromPrefs() async {
+    if (_cloudOfficialLoaded) return;
+    _cloudOfficialLoaded = true;
+    final prefs = await _prefs;
+    final raw = prefs.getString(_cloudOfficialKey);
+    if (raw == null || raw.isEmpty) return;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
+      for (final e in decoded.entries) {
+        final slot = e.key.toString();
+        final url = e.value?.toString().trim() ?? '';
+        if (url.isEmpty || forjaHqSlot(url) != slot) continue;
+        _cloudOfficialBySlot[slot] = url;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _persistCloudOfficial() async {
+    final prefs = await _prefs;
+    await prefs.setString(
+      _cloudOfficialKey,
+      jsonEncode(_cloudOfficialBySlot),
+    );
+  }
+
+  void _rememberCloudOfficialUrl(String url) {
+    final slot = forjaHqSlot(url);
+    if (slot == null) return;
+    if (_asLocalFile(url) != null) return; // never treat local path as cloud
+    final prev = _cloudOfficialBySlot[slot];
+    if (prev == url) return;
+    _cloudOfficialBySlot[slot] = url;
+    _cloudOfficialApplied = false;
+  }
+
+  Future<void> _discoverCloudOfficialFromInstalled() async {
+    for (final pack in await listPacksRaw()) {
+      final slot = forjaHqSlot(pack.sourceUrl);
+      if (slot == null) continue;
+      if (_asLocalFile(pack.sourceUrl) != null) continue;
+      _cloudOfficialBySlot.putIfAbsent(slot, () => pack.sourceUrl);
+    }
+  }
+
+  /// Active official URLs: `.env` when [forcePluginEnv], else cloud (fallback `.env`).
+  @visibleForTesting
+  Future<List<String>> resolveEffectiveOfficialUrls() async {
+    final dartUrls = officialManifestUrls;
+    if (dartUrls.length < 3) return dartUrls;
+    if (forcePluginEnv) return dartUrls;
+
+    await _loadCloudOfficialFromPrefs();
+    await _discoverCloudOfficialFromInstalled();
+
+    const order = ['providers', 'live', 'catalog'];
+    final bySlot = <String, String>{};
+    for (final s in order) {
+      final cloud = _cloudOfficialBySlot[s];
+      if (cloud != null && cloud.isNotEmpty) {
+        bySlot[s] = cloud;
+      }
+    }
+    if (bySlot.length < 3) {
+      // Fill missing slots from dart-define.
+      for (final u in dartUrls) {
+        final s = forjaHqSlot(u);
+        if (s == null || bySlot.containsKey(s)) continue;
+        bySlot[s] = u;
+      }
+    }
+    final out = [for (final s in order) if (bySlot[s] != null) bySlot[s]!];
+    return out.length == 3 ? out : dartUrls;
+  }
+
   /// First boot / ensure: install or refresh each official pack when needed.
   ///
-  /// When [forcePluginEnv] is true (once per process): reinstall from
-  /// dart-define URLs and **disable** shadowing cloud/GitHub packs (kept).
+  /// [forcePluginEnv] true → dart-define / `.env` once, disable cloud.
+  /// false → cloud Profile ForjaHQ when known, disable local `.env` copies.
   Future<void> ensureOfficialInstalled({bool force = false}) async {
-    final urls = officialManifestUrls;
-    if (urls.length < 3) {
+    final dartUrls = officialManifestUrls;
+    if (dartUrls.length < 3) {
       _officialInstallFailed = true;
       officialInstallError.value =
           'FORJA_HQ_PROVIDERS/LIVE/CATALOG_MANIFEST_URL missing — set in .env / dart-define';
       notifyChanged();
       return;
     }
-    final forceEnv = forcePluginEnv;
-    final forceEnvReinstall = forceEnv && !_forceEnvApplied;
-    final effectiveForce = force || forceEnvReinstall;
-    if (!effectiveForce && _officialInstallFailed) return;
     if (_officialEnsureFuture != null) {
       await _officialEnsureFuture;
       return;
     }
     final run = () async {
       try {
-        if (forceEnv) {
-          await disableShadowOfficialPacks(urls);
-        }
+        final urls = await resolveEffectiveOfficialUrls();
+        final usingCloud =
+            !forcePluginEnv && urls.every((u) => _asLocalFile(u) == null);
+
+        final forceEnvReinstall = forcePluginEnv && !_forceEnvApplied;
+        final cloudNeedsApply = usingCloud && !_cloudOfficialApplied;
+        final effectiveForce = force || forceEnvReinstall || cloudNeedsApply;
+
+        if (!effectiveForce && _officialInstallFailed) return;
+
         if (forceEnvReinstall) {
           debugPrint(
-            '[engine] FORJA_HQ_FORCE_PLUGIN_ENV: installing from dart-define',
+            '[engine] FORJA_HQ_FORCE_PLUGIN_ENV=true: install from dart-define',
+          );
+        } else if (cloudNeedsApply) {
+          debugPrint(
+            '[engine] FORJA_HQ_FORCE_PLUGIN_ENV=false: install from cloud',
           );
         }
+
+        await applyOfficialKeepSet(urls);
+
         final packs = await listPacksRaw();
         final byUrl = {for (final p in packs) p.sourceUrl: p};
         for (final url in urls) {
           final local = byUrl[url];
-          if (local == null || effectiveForce) {
+          if (local == null || local.plugins.isEmpty || effectiveForce) {
             await install(url);
           } else if (!_officialUpdateChecked) {
             await _maybeRefreshOfficialIfNewer(url, local);
           }
         }
-        if (forceEnv) {
-          await disableShadowOfficialPacks(urls);
+        await applyOfficialKeepSet(urls);
+
+        if (forcePluginEnv) {
           _forceEnvApplied = true;
+        }
+        if (usingCloud) {
+          _cloudOfficialApplied = true;
         }
         _officialUpdateChecked = true;
         _clearOfficialInstallError();
@@ -520,7 +643,7 @@ class PluginRegistry {
   }
 
   Future<void> retryOfficialInstall() async {
-    final urls = officialManifestUrls;
+    final urls = await resolveEffectiveOfficialUrls();
     if (urls.length < 3) {
       throw Exception(
         'FORJA_HQ_PROVIDERS/LIVE/CATALOG_MANIFEST_URL missing — set in .env / dart-define',
@@ -529,8 +652,17 @@ class PluginRegistry {
     _officialInstallFailed = false;
     officialInstallError.value = null;
     _officialUpdateChecked = false;
+    _forceEnvApplied = false;
+    _cloudOfficialApplied = false;
+    await applyOfficialKeepSet(urls);
     for (final url in urls) {
       await install(url);
+    }
+    await applyOfficialKeepSet(urls);
+    if (forcePluginEnv) {
+      _forceEnvApplied = true;
+    } else if (urls.every((u) => _asLocalFile(u) == null)) {
+      _cloudOfficialApplied = true;
     }
     _clearOfficialInstallError();
   }
@@ -567,13 +699,14 @@ class PluginRegistry {
       );
     }
 
-    // Refuse plugin id collisions with other packs.
-    // When forcing `.env`, shadowing cloud/GitHub ForjaHQ packs are ignored
-    // (they stay installed but disabled — ids may overlap).
-    final keepOfficial = officialManifestUrls.toSet();
+    // Refuse plugin id collisions with other packs. Same ForjaHQ slot
+    // (providers/live/catalog) may overlap — cloud vs `.env` dual install.
+    final slot = forjaHqSlot(manifestUrl);
     for (final other in all) {
       if (other.sourceUrl == manifestUrl) continue;
-      if (forcePluginEnv && isShadowOfficialPack(other, keepOfficial)) {
+      if (slot != null && forjaHqSlot(other.sourceUrl) == slot) continue;
+      if (officialPackIds.contains(pack.packId) &&
+          other.packId == pack.packId) {
         continue;
       }
       final otherIds = {for (final p in other.plugins) p.id};
@@ -844,16 +977,25 @@ class PluginRegistry {
     bool removeMissingUserPacks = true,
   }) async {
     final remote = <String, ({String? name, String? version})>{};
+    var cloudOfficialChanged = false;
     for (final raw in rows) {
       final url = (raw['manifestUrl'] as String?)?.trim() ?? '';
-      if (url.isEmpty || isOfficialPack(url) || isLegacyAssetPack(url)) {
+      if (url.isEmpty || isLegacyAssetPack(url)) continue;
+
+      final slot = forjaHqSlot(url);
+      final isCloudForjaHq =
+          slot != null && _asLocalFile(url) == null;
+
+      if (isCloudForjaHq) {
+        final prev = _cloudOfficialBySlot[slot];
+        _rememberCloudOfficialUrl(url);
+        if (prev != url) cloudOfficialChanged = true;
+        // FORCE=true: remember URL but do not seed lean hydrate against `.env`.
+        if (forcePluginEnv) continue;
+      } else if (officialManifestUrls.contains(url) || isOfficialPack(url)) {
         continue;
       }
-      // Force-env: keep existing cloud ForjaHQ rows but do not re-seed them
-      // as lean stubs that hydrate against `.env` packs.
-      if (forcePluginEnv && isShadowingOfficialManifestUrl(url)) {
-        continue;
-      }
+
       final name = (raw['name'] as String?)?.trim();
       final version = (raw['version'] as String?)?.trim();
       remote[url] = (
@@ -862,19 +1004,25 @@ class PluginRegistry {
       );
     }
 
+    if (cloudOfficialChanged || _cloudOfficialBySlot.isNotEmpty) {
+      await _persistCloudOfficial();
+    }
+
     final all = await listPacksRaw();
     final next = <EnginePack>[];
     final victims = <EnginePack>[];
     var changed = false;
-    final keepOfficial = officialManifestUrls.toSet();
+    final keepDart = officialManifestUrls.toSet();
 
     for (final pack in all) {
-      if (isOfficialPack(pack.sourceUrl) || isLegacyAssetPack(pack.sourceUrl)) {
+      if (isLegacyAssetPack(pack.sourceUrl)) {
         next.add(pack);
         continue;
       }
-      // Never remove cloud ForjaHQ shadows while forcing `.env`.
-      if (forcePluginEnv && isShadowOfficialPack(pack, keepOfficial)) {
+      // Keep dart-define + cloud ForjaHQ rows; never wipe either side.
+      if (keepDart.contains(pack.sourceUrl) ||
+          forjaHqSlot(pack.sourceUrl) != null ||
+          officialPackIds.contains(pack.packId)) {
         next.add(pack);
         continue;
       }
@@ -895,6 +1043,7 @@ class PluginRegistry {
             name: leanName,
             version: lean?.version ?? pack.version,
             plugins: pack.plugins,
+            enabled: pack.enabled,
           ),
         );
         changed = true;
@@ -918,18 +1067,26 @@ class PluginRegistry {
       changed = true;
     }
 
-    if (!changed) return;
-
-    final prefs = await _prefs;
-    for (final pack in victims) {
-      for (final p in pack.plugins) {
-        await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
-        if (p.prelude.isNotEmpty) {
-          await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
+    if (changed) {
+      final prefs = await _prefs;
+      for (final pack in victims) {
+        for (final p in pack.plugins) {
+          await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
+          if (p.prelude.isNotEmpty) {
+            await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
+          }
         }
       }
+      await _savePacks(next);
     }
-    await _savePacks(next);
+
+    // FORCE=false + cloud ForjaHQ known → switch active packs to cloud.
+    if (!forcePluginEnv &&
+        _cloudOfficialBySlot.length >= 3 &&
+        (cloudOfficialChanged || !_cloudOfficialApplied)) {
+      _officialInstallFailed = false;
+      unawaited(ensureOfficialInstalled(force: true));
+    }
   }
 
   /// Fetch manifests for lean stubs (`plugins` empty). Idempotent.
@@ -942,11 +1099,16 @@ class PluginRegistry {
   }
 
   Future<void> _hydrateLeanInstalledImpl() async {
+    final keep = (await resolveEffectiveOfficialUrls()).toSet();
     final all = await listPacksRaw();
     for (final pack in all) {
       if (pack.plugins.isNotEmpty) continue;
       if (isLegacyAssetPack(pack.sourceUrl)) continue;
-      // Force-env: never hydrate cloud ForjaHQ stubs over `.env` packs.
+      // Only hydrate the active official slot URL (cloud or `.env`), not both.
+      final slot = forjaHqSlot(pack.sourceUrl);
+      if (slot != null && !keep.contains(pack.sourceUrl)) {
+        continue;
+      }
       if (forcePluginEnv && isShadowingOfficialManifestUrl(pack.sourceUrl)) {
         continue;
       }

@@ -22,7 +22,7 @@ FORJA_HQ_CATALOG_MANIFEST_URL=…/plugins/catalog/manifest.json
 
 Local absolute paths or `https://raw.githubusercontent.com/…` both work. The app auto-installs on first launch; **Settings → Sources → Forja** can Refresh / Retry.
 
-**Local checkout tip:** set `FORJA_HQ_FORCE_PLUGIN_ENV=true` so boot installs from those URLs and **disables** (does not remove) a previously installed GitHub/cloud copy of the same packs.
+**Local checkout tip:** `FORJA_HQ_FORCE_PLUGIN_ENV=true` installs from those local URLs and disables cloud GitHub ForjaHQ packs. `false` (default) prefers cloud Profile ForjaHQ URLs when present and disables the local copies.
 
 ## Layout
 
