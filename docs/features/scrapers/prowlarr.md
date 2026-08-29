@@ -8,7 +8,7 @@
 
 ## How to open it
 
-**Settings → Providers & Addons → Prowlarr** — URL, API key, and optional tags.
+**Settings → Sources → Prowlarr** (admin accounts — green sparkles on the group) — URL, API key, and optional tags.
 
 ## What you can do
 

@@ -11,6 +11,8 @@ import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Settings → Forja Sports — Xtream matcher (RFC-062) + live engine plugins (RFC-065).
+///
+/// Empty when no Live / Catalog HTTP plugins are installed.
 class SettingsIptvSportsSection extends StatefulWidget {
   const SettingsIptvSportsSection({super.key});
 
@@ -23,9 +25,10 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
   LiveMatchesIptvSportsConfig _config = const LiveMatchesIptvSportsConfig();
   bool _loading = true;
   String? _error;
-  EnginePack? _primaryPack;
-  List<EnginePlugin> _liveSourcePlugins = const [];
-  List<EnginePlugin> _liveCatalogPlugins = const [];
+  List<({EnginePack pack, List<EnginePlugin> plugins})> _liveSourcePacks =
+      const [];
+  List<({EnginePack pack, List<EnginePlugin> plugins})> _liveCatalogPacks =
+      const [];
 
   @override
   void initState() {
@@ -70,31 +73,38 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
   Future<void> _loadLivePlugins() async {
     await EngineService.instance.ensureOfficialInstalled();
     final packs = await EngineService.instance.listPacks();
-    final live = <EnginePlugin>[
-      for (final pack in packs)
+    final sources = <({EnginePack pack, List<EnginePlugin> plugins})>[];
+    final catalogs = <({EnginePack pack, List<EnginePlugin> plugins})>[];
+    for (final pack in packs) {
+      final liveHttp = [
         for (final p in pack.plugins)
           if (p.isLive && p.isHttp) p,
-    ];
-    live.sort((a, b) => a.name.compareTo(b.name));
-    final primary = packs.isEmpty
-        ? null
-        : packs.firstWhere(
-            (p) => EngineService.isOfficialPack(p.sourceUrl),
-            orElse: () => packs.first,
-          );
+      ];
+      if (liveHttp.isEmpty) continue;
+      final sourcePlugins = [
+        for (final p in liveHttp)
+          if (!p.isLiveCatalog) p,
+      ]..sort((a, b) => a.name.compareTo(b.name));
+      final catalogPlugins = [
+        for (final p in liveHttp)
+          if (p.isLiveCatalog) p,
+      ]..sort((a, b) => a.name.compareTo(b.name));
+      if (sourcePlugins.isNotEmpty) {
+        sources.add((pack: pack, plugins: sourcePlugins));
+      }
+      if (catalogPlugins.isNotEmpty) {
+        catalogs.add((pack: pack, plugins: catalogPlugins));
+      }
+    }
     if (!mounted) return;
     setState(() {
-      _primaryPack = primary;
-      _liveSourcePlugins = [
-        for (final p in live)
-          if (!p.isLiveCatalog) p,
-      ];
-      _liveCatalogPlugins = [
-        for (final p in live)
-          if (p.isLiveCatalog) p,
-      ];
+      _liveSourcePacks = sources;
+      _liveCatalogPacks = catalogs;
     });
   }
+
+  bool get _hasLivePlugins =>
+      _liveSourcePacks.isNotEmpty || _liveCatalogPacks.isNotEmpty;
 
   Future<void> _persist(LiveMatchesIptvSportsConfig next) async {
     setState(() => _config = next);
@@ -216,18 +226,22 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
       );
     }
 
+    if (!_hasLivePlugins) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_primaryPack != null && _liveSourcePlugins.isNotEmpty)
+        if (_liveSourcePacks.isNotEmpty)
           SettingsGroup(
             label: 'Live plugins',
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
                 child: Text(
-                  'Stream resolve and schedule sources for Forja Live and All. '
-                  'Movie Sources → Forja is unchanged.',
+                  'Stream resolve sources for Forja Live and All. '
+                  'Install / manage packs under Settings → Sources → Forja.',
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
                     fontSize: 13,
@@ -235,20 +249,21 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-                child: SettingsEnginePackExpansion(
-                  pack: _primaryPack!,
-                  plugins: _liveSourcePlugins,
-                  groupKey: EngineCategories.liveSourceGroupKey,
-                  groupLabel: EngineCategories.liveSourceGroupLabel,
-                  groupOrder: EngineCategories.liveSourceGroupOrder,
-                  tabRowId: 'live-engine-pack-tabs',
+              for (final entry in _liveSourcePacks)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+                  child: SettingsEnginePackExpansion(
+                    pack: entry.pack,
+                    plugins: entry.plugins,
+                    groupKey: EngineCategories.liveSourceGroupKey,
+                    groupLabel: EngineCategories.liveSourceGroupLabel,
+                    groupOrder: EngineCategories.liveSourceGroupOrder,
+                    tabRowId: 'live-engine-pack-tabs',
+                  ),
                 ),
-              ),
             ],
           ),
-        if (_primaryPack != null && _liveCatalogPlugins.isNotEmpty)
+        if (_liveCatalogPacks.isNotEmpty)
           SettingsGroup(
             label: 'Catalog',
             children: [
@@ -263,13 +278,14 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-                child: SettingsEnginePluginToggleList(
-                  sourceUrl: _primaryPack!.sourceUrl,
-                  plugins: _liveCatalogPlugins,
+              for (final entry in _liveCatalogPacks)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
+                  child: SettingsEnginePluginToggleList(
+                    sourceUrl: entry.pack.sourceUrl,
+                    plugins: entry.plugins,
+                  ),
                 ),
-              ),
             ],
           ),
         SettingsGroup(

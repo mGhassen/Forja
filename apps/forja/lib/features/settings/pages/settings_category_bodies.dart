@@ -120,11 +120,11 @@ class SettingsSourcesPageBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        SettingsProvidersSection(visibility: visibility),
         if (visibility.showProviderScoring)
           const SettingsProviderScoringSection(),
         if (visibility.showTorrentEngine)
           const SettingsSearchTorrentsSection(),
-        SettingsProvidersSection(visibility: visibility),
       ],
     );
   }
@@ -523,7 +523,15 @@ class _SettingsNavigationPageBodyState
       settingsNavigationProvider,
       (previous, next) {
         final snap = next.valueOrNull;
-        if (snap != null) setState(() => _hydrate(snap));
+        if (snap == null) return;
+        // Cloud pull often re-emits the same nav — skip setState so focus stays.
+        if (_loaded &&
+            listEquals(_navbarVisible, snap.visible) &&
+            listEquals(_navbarOrder, snap.order) &&
+            _defaultNavTab == snap.defaultTab) {
+          return;
+        }
+        setState(() => _hydrate(snap));
       },
     );
     if (!_loaded) {

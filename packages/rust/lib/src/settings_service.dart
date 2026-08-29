@@ -638,6 +638,7 @@ class SettingsService {
   Future<bool> isPlaySourceTorrentEnabled() async => isPlaySourceTorrentStored();
 
   Future<void> setPlaySourceTorrentEnabled(bool enabled) async {
+    if (await isPlaySourceTorrentStored() == enabled) return;
     await kvSetBool(_playSourceTorrentKey, enabled);
     playSourceChangeNotifier.value++;
   }
@@ -651,6 +652,7 @@ class SettingsService {
   Future<bool> isPlaySourceStremioEnabled() async => isPlaySourceStremioStored();
 
   Future<void> setPlaySourceStremioEnabled(bool enabled) async {
+    if (await isPlaySourceStremioStored() == enabled) return;
     await kvSetBool(_playSourceStremioKey, enabled);
     playSourceChangeNotifier.value++;
   }
@@ -672,6 +674,7 @@ class SettingsService {
   Future<bool> isPlaySourceNuvioEnabled() async => isPlaySourceNuvioStored();
 
   Future<void> setPlaySourceNuvioEnabled(bool enabled) async {
+    if (await isPlaySourceNuvioStored() == enabled) return;
     await kvSetBool(_playSourceNuvioKey, enabled);
     playSourceChangeNotifier.value++;
   }
@@ -689,6 +692,7 @@ class SettingsService {
   Future<bool> isPlaySourceEngineEnabled() async => isPlaySourceEngineStored();
 
   Future<void> setPlaySourceEngineEnabled(bool enabled) async {
+    if (await isPlaySourceEngineStored() == enabled) return;
     await kvSetBool(_playSourceEngineKey, enabled);
     playSourceChangeNotifier.value++;
   }
@@ -701,6 +705,7 @@ class SettingsService {
   );
 
   Future<void> setPlaySourceEngineAutoStartEnabled(bool enabled) async {
+    if (await isPlaySourceEngineAutoStartEnabled() == enabled) return;
     await kvSetBool(_playSourceEngineAutoStartKey, enabled);
     playSourceChangeNotifier.value++;
   }
@@ -711,6 +716,7 @@ class SettingsService {
   );
 
   Future<void> setPlaySourceWebstreamingEnabled(bool enabled) async {
+    if (await isPlaySourceWebstreamingEnabled() == enabled) return;
     await kvSetBool(_playSourceWebstreamingKey, enabled);
     playSourceChangeNotifier.value++;
   }
@@ -1471,6 +1477,7 @@ class SettingsService {
       await kvGetString(_defaultNavTabKey) ?? 'home';
 
   Future<void> setDefaultNavTab(String tabId) async {
+    if (await getDefaultNavTab() == tabId) return;
     await kvSetString(_defaultNavTabKey, tabId);
     navbarChangeNotifier.value++;
   }
@@ -1757,9 +1764,13 @@ class SettingsService {
     List<String> visibleIds, {
     bool notify = true,
   }) async {
+    final raw = await kvHasKey(_navbarConfigKey)
+        ? await kvGetStringList(_navbarConfigKey, fallback: const [])
+        : null;
+    final unchanged = raw != null && listEquals(raw, visibleIds);
     await kvSetStringList(_navbarConfigKey, visibleIds);
     await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
-    if (notify) navbarChangeNotifier.value++;
+    if (notify && !unchanged) navbarChangeNotifier.value++;
   }
 
   static const List<String> _secureKeys = [

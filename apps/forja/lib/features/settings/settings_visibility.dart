@@ -53,11 +53,15 @@ class SettingsVisibility {
   /// Play-source toggles under Playback (need a VOD tab to matter).
   bool get showPlaySources => vodTab;
 
-  /// Torrent search / engine / Jackett / Prowlarr.
+  /// Torrent search / engine (built-in providers, cache, connections).
   bool get showTorrentEngine =>
       vodTab &&
       playSourceTorrent &&
       PlatformPlayback.capabilities.builtinTorrentSearch;
+
+  /// Jackett / Prowlarr indexer config — admin accounts only (`accounts.is_admin`).
+  bool get showJackettProwlarr =>
+      showTorrentEngine && AccountFeatures.instance.isAdmin;
 
   /// Nuvio scrapers (own play source).
   bool get showNuvio => vodTab && playSourceNuvio;
@@ -130,6 +134,42 @@ class SettingsVisibility {
 
   /// Settings → Forja Sports (Live Matches Xtream matcher + live plugins).
   bool get showIptvSportsSettings => liveMatchesNav && iptvNav;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is SettingsVisibility &&
+        other.playSourceTorrent == playSourceTorrent &&
+        other.playSourceStremio == playSourceStremio &&
+        other.playSourceNuvio == playSourceNuvio &&
+        other.playSourceEngine == playSourceEngine &&
+        other.playSourceWebstreaming == playSourceWebstreaming &&
+        other.showPlaySourceTorrentToggle == showPlaySourceTorrentToggle &&
+        other.showPlaySourceStremioToggle == showPlaySourceStremioToggle &&
+        other.showPlaySourceNuvioToggle == showPlaySourceNuvioToggle &&
+        other.showPlaySourceEngineToggle == showPlaySourceEngineToggle &&
+        other.lanPlaySourcesEditable == lanPlaySourcesEditable &&
+        other.vodTab == vodTab &&
+        other.iptvNav == iptvNav &&
+        other.liveMatchesNav == liveMatchesNav;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        playSourceTorrent,
+        playSourceStremio,
+        playSourceNuvio,
+        playSourceEngine,
+        playSourceWebstreaming,
+        showPlaySourceTorrentToggle,
+        showPlaySourceStremioToggle,
+        showPlaySourceNuvioToggle,
+        showPlaySourceEngineToggle,
+        lanPlaySourcesEditable,
+        vodTab,
+        iptvNav,
+        liveMatchesNav,
+      );
 
   static Future<SettingsVisibility> resolve([SettingsService? settings]) async {
     final s = settings ?? SettingsService();

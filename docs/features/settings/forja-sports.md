@@ -6,16 +6,16 @@
 
 On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS schedule as **Forja Live** / **All** (TimStreams, StreamFree, ESPN, PPV, Streamed, …), then name/EPG matching against live channels on **one** Xtream or Stalker portal. Streams play in the native IPTV player. No self-hosted addon. Not an ESPN-only grid.
 
-**Forja Sports** is enabled by default with all leagues matched. **Settings → Forja Sports** can change leagues, live plugins, and catalog toggles.
+**Forja Sports** is enabled by default with all leagues matched. **Settings → Forja Sports** can change leagues, live plugins, and catalog toggles — but only when Live / Catalog HTTP plugins are installed (otherwise the page is empty; install packs under **Settings → Sources → Forja**).
 
 ## How to open it
 
 - **Live Matches → Servers → Forja Sports** (portal via top-right **Portals**)
-- **Settings → Forja Sports** for leagues and live plugin toggles
+- **Settings → Forja Sports** for leagues and live plugin toggles (empty until Live/Catalog packs are installed)
 
 ## What you can do
 
-- **Forja plugins** — built-in pack expansion with per-plugin toggles (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, …).
+- **Live plugins** — per-pack toggles for stream resolve (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, …). Packs are installed under **Settings → Sources → Forja**.
 - **Catalog** — schedule toggles (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, ESPN). **Default on:** Streamed, PPV, StreamFree — others off until you enable them. Checked catalogs appear as chips on Live Matches **All**, **Forja Live**, and **Forja Sports**, and load the same schedule rows. **Live plugins** toggles are for stream resolve only.
 - Browse the same catalog schedule as Forja Live, **merged with ESPN** when **Catalog → ESPN** is on (clean home/away for matching; ESPN-only games still appear). Switching **Servers** between Forja Live and Forja Sports keeps that list — no reload
 - Pick an **Xtream** or **Stalker** portal from top-right **Portals** (same IPTV panel; M3U is not supported for Sports yet)

@@ -8,7 +8,7 @@
 
 ## How to open it
 
-**Settings → Providers & Addons → Jackett** — enter URL and API key, then test connection.
+**Settings → Sources → Jackett** (admin accounts — green sparkles on the group) — enter URL and API key, then test connection.
 
 ## What you can do
 

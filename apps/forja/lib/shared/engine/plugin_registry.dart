@@ -614,6 +614,36 @@ class PluginRegistry {
     await _savePacks(next);
   }
 
+  /// Enable or disable every plugin in [pluginIds] for one pack.
+  Future<void> setPluginsEnabled({
+    required String sourceUrl,
+    required Set<String> pluginIds,
+    required bool enabled,
+  }) async {
+    if (pluginIds.isEmpty) return;
+    final all = await listPacksRaw();
+    final next = <EnginePack>[];
+    var changed = false;
+    for (final pack in all) {
+      if (pack.sourceUrl != sourceUrl) {
+        next.add(pack);
+        continue;
+      }
+      next.add(
+        pack.copyWithPlugins([
+          for (final p in pack.plugins)
+            pluginIds.contains(p.id) && p.enabled != enabled
+                ? p.copyWith(enabled: enabled)
+                : p,
+        ]),
+      );
+      changed = pack.plugins.any(
+        (p) => pluginIds.contains(p.id) && p.enabled != enabled,
+      );
+    }
+    if (changed) await _savePacks(next);
+  }
+
   /// Load plugin JS (+ optional prelude) for [plugin] from [sourceUrl] pack.
   /// Local checkout packs always read from disk so JS edits apply without reinstall.
   Future<String?> loadScript({

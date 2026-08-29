@@ -7,7 +7,6 @@ import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
@@ -50,6 +49,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
 
   void _reloadFromProvider(SettingsVisibility next) {
     if (!mounted) return;
+    if (_visibility == next) return;
     setState(() => _visibility = next);
     if (!SettingsTokens.useSplitLayout(context)) return;
     final ids = settingsCategories(next).map((c) => c.id).toSet();
@@ -191,15 +191,8 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     ref.listen(settingsVisibilityProvider, (_, next) {
       next.whenData(_reloadFromProvider);
     });
-    ref.listen(playSourceRevisionProvider, (_, _) {
-      ref.invalidate(settingsVisibilityProvider);
-    });
-    ref.listen(navbarRevisionProvider, (_, _) {
-      ref.invalidate(settingsVisibilityProvider);
-    });
-    ref.listen(accountFeaturesRevisionProvider, (_, _) {
-      ref.invalidate(settingsVisibilityProvider);
-    });
+    // Visibility already watches play/nav/account revisions — do not
+    // invalidate (that clears AsyncData and flashes the hub empty).
 
     final visibility = visibilityAsync.valueOrNull ?? _visibility;
     if (visibility == null) {

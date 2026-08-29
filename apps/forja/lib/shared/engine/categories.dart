@@ -26,6 +26,10 @@ abstract final class EngineCategories {
 
   /// Settings / pack grouping key (dual movie+tv → one bucket).
   static String groupKey(EnginePlugin plugin) {
+    if (plugin.isLiveCatalog) return liveCatalog;
+    if (plugin.isLivePlugin || plugin.isLiveSport || plugin.isLive) {
+      return livePlugin;
+    }
     final types = plugin.types.map((t) => t.toLowerCase()).toSet();
     if (types.contains(anime)) return anime;
     if (types.contains(drama)) return drama;
@@ -41,10 +45,21 @@ abstract final class EngineCategories {
     tv => 'TV',
     anime => 'Anime',
     drama => 'Drama',
+    livePlugin => 'Live',
+    liveCatalog => 'Catalog',
     _ => 'Other',
   };
 
-  static const groupOrder = ['movie_tv', movie, tv, anime, drama, 'other'];
+  static const groupOrder = [
+    'movie_tv',
+    movie,
+    tv,
+    anime,
+    drama,
+    livePlugin,
+    liveCatalog,
+    'other',
+  ];
 
   /// Live Matches source plugins (resolve + schedule) — one Settings bucket.
   /// Catalog plugins are listed separately under Settings → Catalog.

@@ -241,7 +241,9 @@ class SettingsPlaybackNotifier
   }
 
   Future<void> reload() async {
-    state = const AsyncLoading();
+    final previous = state;
+    state = const AsyncLoading<SettingsPlaybackSnapshot>()
+        .copyWithPrevious(previous);
     state = await AsyncValue.guard(_load);
   }
 
@@ -380,7 +382,9 @@ class SettingsDebridNotifier extends AsyncNotifier<SettingsDebridSnapshot> {
   }
 
   Future<void> reload() async {
-    state = const AsyncLoading();
+    final previous = state;
+    state = const AsyncLoading<SettingsDebridSnapshot>()
+        .copyWithPrevious(previous);
     state = await AsyncValue.guard(_load);
   }
 
@@ -438,7 +442,9 @@ class SettingsWebstreamrNotifier
   }
 
   Future<void> reload() async {
-    state = const AsyncLoading();
+    final previous = state;
+    state = const AsyncLoading<SettingsWebstreamrSnapshot>()
+        .copyWithPrevious(previous);
     state = await AsyncValue.guard(build);
   }
 }
@@ -456,6 +462,22 @@ class SettingsNavigationSnapshot {
   final List<String> visible;
   final List<String> order;
   final String defaultTab;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is SettingsNavigationSnapshot &&
+        other.defaultTab == defaultTab &&
+        listEquals(other.visible, visible) &&
+        listEquals(other.order, order);
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        defaultTab,
+        Object.hashAll(visible),
+        Object.hashAll(order),
+      );
 }
 
 final settingsNavigationProvider = AsyncNotifierProvider<
@@ -509,7 +531,9 @@ class SettingsNavigationNotifier
   }
 
   Future<void> reload() async {
-    state = const AsyncLoading();
+    final previous = state;
+    state = const AsyncLoading<SettingsNavigationSnapshot>()
+        .copyWithPrevious(previous);
     state = await AsyncValue.guard(_load);
   }
 }
@@ -552,7 +576,9 @@ class SettingsIndexerNotifier extends AsyncNotifier<SettingsIndexerSnapshot> {
   }
 
   Future<void> reload() async {
-    state = const AsyncLoading();
+    final previous = state;
+    state = const AsyncLoading<SettingsIndexerSnapshot>()
+        .copyWithPrevious(previous);
     state = await AsyncValue.guard(build);
   }
 }
@@ -578,7 +604,8 @@ class EnginePacksNotifier extends AsyncNotifier<List<EnginePack>> {
   }
 
   Future<void> reload() async {
-    state = const AsyncLoading();
+    final previous = state;
+    state = const AsyncLoading<List<EnginePack>>().copyWithPrevious(previous);
     state = await AsyncValue.guard(
       () => EngineService.instance.listUserPacks(),
     );
@@ -596,7 +623,8 @@ class NuvioAddonsNotifier extends AsyncNotifier<List<NuvioAddon>> {
   }
 
   Future<void> reload() async {
-    state = const AsyncLoading();
+    final previous = state;
+    state = const AsyncLoading<List<NuvioAddon>>().copyWithPrevious(previous);
     state = await AsyncValue.guard(
       () => NuvioService.instance.listUserAddons(),
     );

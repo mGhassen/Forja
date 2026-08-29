@@ -218,6 +218,17 @@ class EngineService {
         enabled: enabled,
       );
 
+  Future<void> setPluginsEnabled({
+    required String sourceUrl,
+    required Set<String> pluginIds,
+    required bool enabled,
+  }) =>
+      PluginRegistry.instance.setPluginsEnabled(
+        sourceUrl: sourceUrl,
+        pluginIds: pluginIds,
+        enabled: enabled,
+      );
+
   static String _selectedPrefsKey(String panelCategory) =>
       '$_selectedKeyPrefix$panelCategory';
 

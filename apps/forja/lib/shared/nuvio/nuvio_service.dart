@@ -715,6 +715,30 @@ class NuvioService {
     await _saveAddons(all);
   }
 
+  /// Enable or disable every scraper in one addon (built-in included).
+  Future<void> setAllScrapersEnabled({
+    required String manifestUrl,
+    required bool enabled,
+  }) async {
+    if (isBundled(manifestUrl)) {
+      await ensureBundledInstalled();
+    }
+    final all = await listAddons();
+    final idx = all.indexWhere((a) => a.manifestUrl == manifestUrl);
+    if (idx == -1) return;
+    final addon = all[idx];
+    if (addon.scrapers.every((s) => s.enabled == enabled)) return;
+    all[idx] = NuvioAddon(
+      manifestUrl: addon.manifestUrl,
+      name: addon.name,
+      version: addon.version,
+      scrapers: [
+        for (final s in addon.scrapers) s.copyWith(enabled: enabled),
+      ],
+    );
+    await _saveAddons(all);
+  }
+
   /// Refreshes every installed addon's manifest in parallel. Safe to call
   /// on every app launch - [refreshFromUrl] preserves each scraper's
   /// `enabled` flag and only invalidates cached scripts whose filename

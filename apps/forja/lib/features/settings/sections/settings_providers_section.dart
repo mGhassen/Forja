@@ -96,6 +96,13 @@ class _SettingsProvidersSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (v.showEngine)
+          SettingsGroup(
+            label: 'Forja plugins',
+            children: [
+              _buildEnginePackSection(enginePacks),
+            ],
+          ),
         if (v.showStremioAddons)
           SettingsGroup(
             label: 'Stremio addons',
@@ -122,20 +129,15 @@ class _SettingsProvidersSectionState
               _buildNuvioAddonSection(nuvioAddons),
             ],
           ),
-        if (v.showEngine)
-          SettingsGroup(
-            label: 'Forja plugins',
-            children: [
-              _buildEnginePackSection(enginePacks),
-            ],
-          ),
-        if (v.showTorrentEngine) ...[
+        if (v.showJackettProwlarr) ...[
           SettingsGroup(
             label: 'Jackett',
+            adminOnly: true,
             children: [_buildJackettConfig()],
           ),
           SettingsGroup(
             label: 'Prowlarr',
+            adminOnly: true,
             children: [_buildProwlarrConfig()],
           ),
         ],
@@ -317,6 +319,8 @@ class _SettingsProvidersSectionState
             ...nuvioAddons.map(
               (addon) {
                 final builtIn = NuvioService.isBundled(addon.manifestUrl);
+                final allOn = addon.scrapers.isNotEmpty &&
+                    addon.scrapers.every((s) => s.enabled);
                 return Theme(
                   data: Theme.of(
                     context,
@@ -343,12 +347,29 @@ class _SettingsProvidersSectionState
                         color: ForjaShellColors.textSecondary,
                       ),
                     ),
-                    trailing: builtIn
-                        ? null
-                        : _AddonRemoveActions(
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ForjaSwitch(
+                          value: allOn,
+                          scale: ForjaSwitch.settingsScale,
+                          onChanged: addon.scrapers.isEmpty
+                              ? null
+                              : (val) async {
+                                  await NuvioService.instance
+                                      .setAllScrapersEnabled(
+                                    manifestUrl: addon.manifestUrl,
+                                    enabled: val,
+                                  );
+                                },
+                        ),
+                        if (!builtIn)
+                          _AddonRemoveActions(
                             onRemove: () =>
                                 _removeNuvioAddon(addon.manifestUrl),
                           ),
+                      ],
+                    ),
                     children: addon.scrapers.map((s) {
                       final subtitle = [
                         if (s.description != null && s.description!.isNotEmpty)
@@ -467,12 +488,14 @@ class _SettingsProvidersSectionState
             const SettingsEngineMiniLabel('Installed plugins'),
             const SizedBox(height: 4),
             ...packs.map((pack) {
+              // All HTTP plugins (VOD + Live + Catalog). Hops stay internal.
               final panelPlugins = [
                 for (final p in pack.plugins)
-                  if (p.isVodCatalog) p,
+                  if (p.isHttp) p,
               ];
               if (panelPlugins.isEmpty) return const SizedBox.shrink();
               final official = EngineService.isOfficialPack(pack.sourceUrl);
+              final allOn = panelPlugins.every((p) => p.enabled);
               return SettingsEnginePackExpansion(
                 pack: pack,
                 plugins: panelPlugins,
@@ -480,6 +503,12 @@ class _SettingsProvidersSectionState
                 groupLabel: EngineCategories.groupLabel,
                 groupOrder: EngineCategories.groupOrder,
                 trailing: _EnginePackActions(
+                  allEnabled: allOn,
+                  onToggleAll: (val) => EngineService.instance.setPluginsEnabled(
+                    sourceUrl: pack.sourceUrl,
+                    pluginIds: {for (final p in panelPlugins) p.id},
+                    enabled: val,
+                  ),
                   onRefresh: () => _refreshEnginePack(pack.sourceUrl),
                   onRemove: () => _removeEnginePack(pack.sourceUrl),
                   showOfficialBadge: official,
@@ -925,14 +954,18 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
   }
 }
 
-/// Refresh + remove for an installed engine plugin pack.
+/// Select-all + refresh + remove for an installed engine plugin pack.
 class _EnginePackActions extends StatelessWidget {
   const _EnginePackActions({
+    required this.allEnabled,
+    required this.onToggleAll,
     required this.onRefresh,
     required this.onRemove,
     this.showOfficialBadge = false,
   });
 
+  final bool allEnabled;
+  final ValueChanged<bool> onToggleAll;
   final VoidCallback onRefresh;
   final Future<void> Function() onRemove;
   final bool showOfficialBadge;
@@ -942,6 +975,11 @@ class _EnginePackActions extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
+        ForjaSwitch(
+          value: allEnabled,
+          scale: ForjaSwitch.settingsScale,
+          onChanged: onToggleAll,
+        ),
         if (showOfficialBadge)
           Padding(
             padding: const EdgeInsets.only(right: 4),
