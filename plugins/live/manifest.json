@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-live",
   "name": "ForjaHQ Live",
-  "version": "1.5.21",
+      "version": "1.5.22",
   "plugins": [
     {
       "id": "live-streamed",

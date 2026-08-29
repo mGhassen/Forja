@@ -1218,6 +1218,44 @@ class _LiveMatchCornerBadge extends StatelessWidget {
   }
 }
 
+class _LiveMatchViewerBadge extends StatelessWidget {
+  const _LiveMatchViewerBadge({required this.viewers});
+
+  final int viewers;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      right: 8,
+      bottom: 8,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.65),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.circle, size: 7, color: Colors.red.shade400),
+              const SizedBox(width: 4),
+              Text(
+                '$viewers',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Forja Sports channel panel (right side, progressive) ────────────────────
 
 abstract final class _IptvSportsPanelCopy {
@@ -3626,6 +3664,7 @@ class _MergedMatchStreamSheet extends StatefulWidget {
     required this.title,
     required this.ppv,
     required this.streamed,
+    this.catalogViewers = 0,
     required this.onPpvSelected,
     required this.onStreamedSelected,
   });
@@ -3633,6 +3672,7 @@ class _MergedMatchStreamSheet extends StatefulWidget {
   final String title;
   final _DamiTvStream? ppv;
   final List<_StreamedStream> streamed;
+  final int catalogViewers;
   final VoidCallback onPpvSelected;
   final ValueChanged<_StreamedStream> onStreamedSelected;
 
@@ -3697,9 +3737,13 @@ class _MergedMatchStreamSheetState extends State<_MergedMatchStreamSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            count == 0
-                ? 'No streams available'
-                : '$count ${count == 1 ? 'stream' : 'streams'}',
+            [
+              if (count == 0)
+                'No streams available'
+              else
+                '$count ${count == 1 ? 'stream' : 'streams'}',
+              if (widget.catalogViewers > 0) '${widget.catalogViewers} viewers',
+            ].join(' · '),
             style: const TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: 13,
@@ -3725,6 +3769,7 @@ class _MergedMatchStreamSheetState extends State<_MergedMatchStreamSheet> {
                         sorted[i].source,
                       ),
                       serverLabel: 'Streamed',
+                      viewers: sorted[i].viewers,
                       onTap: () => widget.onStreamedSelected(sorted[i]),
                       tvItemIndex: streamedOffset + i,
                       tvRowId: _rowId,
@@ -3824,6 +3869,19 @@ class _MergedPpvStreamRowState extends State<_MergedPpvStreamRow> {
                 ),
               ),
             ),
+            if (widget.stream.viewers > 0) ...[
+              const Icon(
+                Icons.visibility_outlined,
+                size: 14,
+                color: Colors.white38,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${widget.stream.viewers}',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+              const SizedBox(width: 10),
+            ],
             const _LiveStreamProviderBadge(label: 'PPV'),
             const SizedBox(width: 10),
             const Icon(Icons.chevron_right, size: 18, color: Colors.white38),
@@ -3897,7 +3955,11 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
 
   List<_StreamedStreamChoice> _sortedChoices() {
     return [...widget.choices]
-      ..sort((a, b) => b.stream.viewers.compareTo(a.stream.viewers));
+      ..sort(
+        (a, b) => _effectiveStreamViewers(b.stream, b.catalogMatch).compareTo(
+          _effectiveStreamViewers(a.stream, a.catalogMatch),
+        ),
+      );
   }
 
   @override
@@ -3905,6 +3967,7 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
     final sorted = _sortedChoices();
     final maxHeight = MediaQuery.sizeOf(context).height * 0.6;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final matchViewers = widget.match.viewers;
     final body = Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       child: Column(
@@ -3932,9 +3995,13 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
           ),
           const SizedBox(height: 4),
           Text(
-            sorted.isEmpty
-                ? 'No streams available'
-                : '${sorted.length} ${sorted.length == 1 ? 'stream' : 'streams'}',
+            [
+              if (sorted.isEmpty)
+                'No streams available'
+              else
+                '${sorted.length} ${sorted.length == 1 ? 'stream' : 'streams'}',
+              if (matchViewers > 0) '$matchViewers viewers',
+            ].join(' · '),
             style: const TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: 13,
@@ -3956,6 +4023,10 @@ class _StreamedStreamSheetState extends State<_StreamedStreamSheet> {
                           sorted[i].stream.source,
                         ),
                         serverLabel: _StreamedStreamSheet.serverLabelFor(
+                          sorted[i].catalogMatch,
+                        ),
+                        viewers: _effectiveStreamViewers(
+                          sorted[i].stream,
                           sorted[i].catalogMatch,
                         ),
                         onTap: () => widget.onChoiceSelected(sorted[i]),
@@ -3988,6 +4059,7 @@ class _StreamedStreamRow extends StatefulWidget {
   final String sourceLabel;
   final String serverLabel;
   final bool pendingResolve;
+  final int? viewers;
   final VoidCallback onTap;
   final int? tvItemIndex;
   final String? tvRowId;
@@ -3998,6 +4070,7 @@ class _StreamedStreamRow extends StatefulWidget {
     required this.sourceLabel,
     this.serverLabel = 'Streamed',
     this.pendingResolve = false,
+    this.viewers,
     required this.onTap,
     this.tvItemIndex,
     this.tvRowId,
@@ -4081,7 +4154,7 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
                 ],
               ),
             ),
-            if (widget.stream.viewers > 0) ...[
+            if ((widget.viewers ?? widget.stream.viewers) > 0) ...[
               const Icon(
                 Icons.visibility_outlined,
                 size: 14,
@@ -4089,7 +4162,7 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
               ),
               const SizedBox(width: 4),
               Text(
-                '${widget.stream.viewers}',
+                '${widget.viewers ?? widget.stream.viewers}',
                 style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
               const SizedBox(width: 10),
@@ -4302,6 +4375,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
         _LiveMatchCornerBadge(label: '● LIVE', live: true, top: tv ? 6 : 8)
       else if (m.timeLabel.isNotEmpty)
         _LiveMatchCornerBadge(label: m.timeLabel, live: false, top: tv ? 6 : 8),
+      if (!tv && m.viewers > 0) _LiveMatchViewerBadge(viewers: m.viewers),
     ];
 
     final Widget card;
@@ -4364,7 +4438,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
         active: active,
         title: m.title,
         schedule: m.scheduleLabel.isEmpty ? null : m.scheduleLabel,
-        subtitle: null,
+        subtitle: m.viewers > 0 ? '${m.viewers} viewers' : null,
         visual: visual,
         overlays: [
           if (canPlay)
@@ -4482,6 +4556,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
                     _LiveMatchCardTitleStack(
                       title: m.title,
                       schedule: m.scheduleLabel.isEmpty ? null : m.scheduleLabel,
+                      rightPadding: m.viewers > 0 ? 52 : 0,
                     ),
                   ],
                 ),
@@ -4535,6 +4610,9 @@ class _DamiTvMatchCard extends StatefulWidget {
   final ValueChanged<bool>? onHoverChanged;
   final String tvRowId;
   final ShellTvZone tvZone;
+
+  /// Merged PPV+Streamed cards pass summed catalog viewers here.
+  final int? viewersOverride;
   const _DamiTvMatchCard({
     required this.stream,
     required this.onTap,
@@ -4548,6 +4626,7 @@ class _DamiTvMatchCard extends StatefulWidget {
     this.onHoverChanged,
     this.tvRowId = 'grid',
     this.tvZone = ShellTvZone.grid,
+    this.viewersOverride,
   });
 
   @override
@@ -4557,6 +4636,8 @@ class _DamiTvMatchCard extends StatefulWidget {
 class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
   bool _hovered = false;
   bool _focused = false;
+
+  int get _viewers => widget.viewersOverride ?? widget.stream.viewers;
 
   @override
   Widget build(BuildContext context) {
@@ -4594,35 +4675,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
         _LiveMatchCornerBadge(label: '● LIVE', live: true, top: tv ? 6 : 8)
       else if (s.timeLabel.isNotEmpty)
         _LiveMatchCornerBadge(label: s.timeLabel, live: false, top: tv ? 6 : 8),
-      if (!tv && s.viewers > 0)
-        Positioned(
-          right: 8,
-          bottom: 8,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.circle, size: 7, color: Colors.red.shade400),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${s.viewers}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+      if (!tv && _viewers > 0) _LiveMatchViewerBadge(viewers: _viewers),
     ];
 
     final Widget card;
@@ -4683,7 +4736,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
       }
       final captionBits = <String>[
         if (s.league.isNotEmpty) s.league,
-        if (s.viewers > 0) '${s.viewers} viewers',
+        if (_viewers > 0) '$_viewers viewers',
       ];
       card = _LiveMatchTvCaptionBody(
         active: active,
@@ -4789,7 +4842,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
                       title: s.name,
                       schedule: s.scheduleLabel.isEmpty ? null : s.scheduleLabel,
                       secondary: s.league.isEmpty ? null : s.league,
-                      rightPadding: s.viewers > 0 ? 52 : 0,
+                      rightPadding: _viewers > 0 ? 52 : 0,
                     ),
                   ],
                 ),

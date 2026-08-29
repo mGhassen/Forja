@@ -78,6 +78,7 @@ async function extract(ctx) {
       poster: String(ev.logo || ''),
       popular: ev.featured === true || (ev.viewers ? Number(ev.viewers) > 100 : false),
       airing: airing,
+      viewers: Number(ev.viewers || 0),
       sources: sources,
       catalog: 'forja_live',
       pluginId: pluginId,

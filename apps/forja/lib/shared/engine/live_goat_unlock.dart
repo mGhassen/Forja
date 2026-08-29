@@ -216,25 +216,33 @@ class LiveGoatUnlock {
             .compareTo((b['url'] ?? '').toString());
       });
 
-      final out = <({String url, String name, Map<String, String> headers})>[];
+      final pending = <({String embed, String source, String quality})>[];
       final seenEmbeds = <String>{};
       for (final s in ordered) {
         final embed = (s['url'] ?? '').toString().trim();
         if (embed.isEmpty || !seenEmbeds.add(embed)) continue;
-        final unlocked = await resolveWatchfootyEmbed(embedUrl: embed);
-        if (unlocked == null) continue;
-        final source = (s['source'] ?? '').toString().trim();
-        final quality = (s['quality'] ?? '').toString().trim();
-        final label = [
-          'WatchFooty',
-          if (source.isNotEmpty) source,
-          if (quality.isNotEmpty) quality,
-        ].join(' ');
-        out.add((url: unlocked.url, name: label, headers: unlocked.headers));
-        // One good HLS is enough to open the player; extras just delay.
-        if (out.length >= 2) break;
+        pending.add((
+          embed: embed,
+          source: (s['source'] ?? '').toString().trim(),
+          quality: (s['quality'] ?? '').toString().trim(),
+        ));
       }
-      return out;
+
+      // Unlock every unique embed in parallel (site lists them all; CDN-dead
+      // rows stay dropped by resolveWatchfootyEmbed probe).
+      final unlocked = await Future.wait(
+        pending.map((row) async {
+          final u = await resolveWatchfootyEmbed(embedUrl: row.embed);
+          if (u == null) return null;
+          final label = [
+            'WatchFooty',
+            if (row.source.isNotEmpty) row.source,
+            if (row.quality.isNotEmpty) row.quality,
+          ].join(' ');
+          return (url: u.url, name: label, headers: u.headers);
+        }),
+      );
+      return [for (final row in unlocked) ?row];
     } catch (e) {
       debugPrint('[LiveSportsEmbed] match resolve failed: $e');
       return const [];

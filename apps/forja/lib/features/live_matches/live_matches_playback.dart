@@ -112,6 +112,7 @@ mixin _LiveMatchesPlayback
         title: streamed.title.isNotEmpty ? streamed.title : ppv.name,
         ppv: hasPpv ? ppv : null,
         streamed: streams,
+        catalogViewers: ppv.viewers + streamed.viewers,
         onPpvSelected: () {
           Navigator.pop(context);
           unawaited(_openDamiTvStream(ppv));
@@ -204,6 +205,7 @@ mixin _LiveMatchesPlayback
         poster: ppv.poster.isNotEmpty ? ppv.poster : anchor.poster,
         popular: false,
         airing: ppv.isLive,
+        viewers: ppv.viewers,
         homeTeam: ppv.homeTeam ?? anchor.homeTeam,
         homeBadge: ppv.homeBadge ?? anchor.homeBadge,
         awayTeam: ppv.awayTeam ?? anchor.awayTeam,
@@ -305,7 +307,11 @@ mixin _LiveMatchesPlayback
       }
     }
 
-    out.sort((a, b) => b.stream.viewers.compareTo(a.stream.viewers));
+    out.sort(
+      (a, b) => _effectiveStreamViewers(b.stream, b.catalogMatch).compareTo(
+        _effectiveStreamViewers(a.stream, a.catalogMatch),
+      ),
+    );
     return out;
   }
 
@@ -356,7 +362,7 @@ mixin _LiveMatchesPlayback
       headers: headers,
       liveSourceKind: IptvLiveSourceKind.liveEngine,
       liveProviderBadge: _StreamedStreamSheet.serverLabelFor(match),
-      liveViewerCount: stream.viewers,
+      liveViewerCount: _effectiveStreamViewers(stream, match),
       liveStreamHd: stream.hd,
     );
   }
@@ -554,7 +560,7 @@ mixin _LiveMatchesPlayback
             detail: stream.hd ? 'HD' : null,
             liveSourceKind: IptvLiveSourceKind.liveEngine,
             liveProviderBadge: provider,
-            liveViewerCount: stream.viewers,
+            liveViewerCount: _effectiveStreamViewers(stream, choice.catalogMatch),
             liveStreamHd: stream.hd,
           ),
         ]);
@@ -988,6 +994,7 @@ mixin _LiveMatchesPlayback
     poster: s.poster,
     popular: false,
     airing: s.isLive,
+    viewers: s.viewers,
     homeTeam: s.homeTeam,
     awayTeam: s.awayTeam,
     homeBadge: s.homeBadge,

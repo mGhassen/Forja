@@ -684,6 +684,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       _LiveMatchGridEntryMerged(:final ppv, :final streamed) =>
         _DamiTvMatchCard(
           stream: ppv,
+          viewersOverride: ppv.viewers + streamed.viewers,
           gridIndex: i,
           gridColumns: crossCount,
           onUpEdge: upEdge,

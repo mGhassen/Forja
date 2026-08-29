@@ -106,7 +106,6 @@ async function resolveWatchfootyMatch(ctx, mid) {
         directPlayback: row.directPlayback === true,
       });
     }
-    if (out.length >= 6) break;
   }
   return out;
 }

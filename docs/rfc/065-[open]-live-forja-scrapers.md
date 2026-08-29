@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **14 / 18** acceptance · **2 / 2** Android WebView unlock 🔄 |
-| **Current slice** | WatchFooty catalog/all-sports + sportsembed unlock; Android/ATV WebView GOAT + GASM smoke pending ([203](../issues/203-[open]-android-tv-goat-webview-unlock.md)) |
+| **Progress** | **6 / 6** components · **15 / 19** acceptance · **2 / 2** Android WebView unlock 🔄 |
+| **Current slice** | TimStreams Engine unlock (embed.st / GASM / sportsembed); Android/ATV WebView GOAT + GASM smoke pending ([203](../issues/203-[open]-android-tv-goat-webview-unlock.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -50,6 +50,7 @@
 | 16 | R65-A16 | Android/ATV: GASM (embedindia) unlock via WebView | 🔄 |
 | 17 | R65-A17 | WatchFooty catalog: live-with-streams + upcoming `pre` (site Live parity), posters, real sport | ✅ |
 | 18 | R65-A18 | WatchFooty Engine: sportsembed `/api/get` + stream-lock.wasm unlock (no raw HTML / sniff hang) | ✅ |
+| 19 | R65-A19 | TimStreams Engine: unlock embed.st / embedindia / sportsembed to HLS (no webviewOnly miss toast) | ✅ |
 
 ---
 

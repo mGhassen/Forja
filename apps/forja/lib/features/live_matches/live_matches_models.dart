@@ -179,6 +179,9 @@ class _StreamedMatch {
 
   /// From Streamed `/api/matches/live` (engine tags `airing: true`).
   final bool airing;
+
+  /// Catalog-level concurrent viewers when the site exposes them (0 = unknown).
+  final int viewers;
   final String? homeTeam;
   final String? homeBadge;
   final String? awayTeam;
@@ -209,6 +212,7 @@ class _StreamedMatch {
     required this.poster,
     required this.popular,
     this.airing = false,
+    this.viewers = 0,
     this.homeTeam,
     this.homeBadge,
     this.awayTeam,
@@ -243,6 +247,7 @@ class _StreamedMatch {
       poster: (j['poster'] ?? '').toString(),
       popular: j['popular'] == true,
       airing: j['airing'] == true,
+      viewers: parsePpvViewers(j['viewers']),
       homeTeam: home?['name'] as String?,
       homeBadge: home?['badge'] as String?,
       awayTeam: away?['name'] as String?,
@@ -357,9 +362,14 @@ class _StreamedStream {
     hd: j['hd'] == true,
     embedUrl: (j['embedUrl'] ?? j['embed_url'] ?? '').toString(),
     source: (j['source'] ?? '').toString(),
-    viewers: (j['viewers'] as num?)?.toInt() ?? 0,
+    viewers: parsePpvViewers(j['viewers']),
   );
 }
+
+/// Prefer per-stream viewers; fall back to catalog-level when the site only
+/// reports audience on the match (StreamFree / TimStreams / PPV).
+int _effectiveStreamViewers(_StreamedStream stream, _StreamedMatch match) =>
+    stream.viewers > 0 ? stream.viewers : match.viewers;
 
 /// Catalog row in the stream picker — may be unresolved until the user selects it.
 class _StreamedStreamChoice {
@@ -618,6 +628,8 @@ List<_StreamedMatch> _sortStreamedLiveFirst(List<_StreamedMatch> items) {
       bLive: b.isLive,
       aStart: a.dateMs,
       bStart: b.dateMs,
+      aViewers: a.viewers,
+      bViewers: b.viewers,
     );
     if (live != 0) return live;
     // Within the same live bucket, prefer Streamed's popular / airing rows
@@ -644,8 +656,9 @@ int _gridEntryStartKey(_LiveMatchGridEntry entry) => switch (entry) {
 
 int _gridEntryViewers(_LiveMatchGridEntry entry) => switch (entry) {
   _LiveMatchGridEntryPpv(:final stream) => stream.viewers,
-  _LiveMatchGridEntryStreamed() => 0,
-  _LiveMatchGridEntryMerged(:final ppv) => ppv.viewers,
+  _LiveMatchGridEntryStreamed(:final match) => match.viewers,
+  _LiveMatchGridEntryMerged(:final ppv, :final streamed) =>
+    ppv.viewers + streamed.viewers,
 };
 
 String _matchTextKey(String raw) {
@@ -763,6 +776,7 @@ _StreamedMatch _mergeStreamedCatalogPair(_StreamedMatch a, _StreamedMatch b) {
     poster: primary.poster.isNotEmpty ? primary.poster : other.poster,
     popular: primary.popular || other.popular,
     airing: primary.airing || other.airing,
+    viewers: primary.viewers + other.viewers,
     homeTeam: _nonEmptyOrNull(primary.homeTeam) ?? other.homeTeam,
     homeBadge: _nonEmptyOrNull(primary.homeBadge) ?? other.homeBadge,
     awayTeam: _nonEmptyOrNull(primary.awayTeam) ?? other.awayTeam,
@@ -2447,6 +2461,7 @@ _StreamedMatch _copyStreamedMatch(
     poster: m.poster,
     popular: m.popular,
     airing: airing ?? m.airing,
+    viewers: m.viewers,
     homeTeam: homeTeam ?? m.homeTeam,
     homeBadge: homeBadge ?? m.homeBadge,
     awayTeam: awayTeam ?? m.awayTeam,
@@ -3105,7 +3120,7 @@ _DamiTvStream _damiTvFromPpvCatalogRow(Map<String, dynamic> row) {
     categoryName: categoryName,
     status: row['airing'] == true ? 'live' : '',
     league: '',
-    viewers: (row['viewers'] as num?)?.toInt() ?? 0,
+    viewers: parsePpvViewers(row['viewers']),
     iframe: (row['iframe'] ?? src['iframe'] ?? '').toString(),
     alwaysLive: row['always_live'] == true,
   );
