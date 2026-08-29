@@ -97,12 +97,12 @@ class EngineService {
     final hops = <EnginePlugin>[
       for (final pack in packs)
         for (final p in pack.plugins)
-          if (p.isHop) p,
+          if (p.isHop && pack.isPluginActive(p)) p,
     ];
     runtime.registerHops(hops);
     for (final pack in packs) {
       for (final p in pack.plugins) {
-        if (!p.isHop) continue;
+        if (!p.isHop || !pack.isPluginActive(p)) continue;
         final code = await _loadScript(p, sourceUrl: pack.sourceUrl);
         if (code != null && code.isNotEmpty) {
           runtime.stashPluginCode(p.id, code);
@@ -128,7 +128,7 @@ class EngineService {
     final packs = await listPacks();
     return [
       for (final p in packs)
-        if (p.plugins.any((pl) => pl.enabled && pl.isVodCatalog))
+        if (p.enabled && p.plugins.any((pl) => pl.enabled && pl.isVodCatalog))
           p.copyWithPlugins([
             for (final pl in p.plugins)
               if (pl.isVodCatalog) pl,
@@ -140,6 +140,7 @@ class EngineService {
     await ensureOfficialInstalled();
     final out = <EnginePlugin>[];
     for (final pack in await listPacks()) {
+      if (!pack.enabled) continue;
       for (final p in pack.plugins) {
         if (p.enabled && p.isLiveSport && p.isHttp) {
           out.add(p);
@@ -163,21 +164,22 @@ class EngineService {
   }
 
   Future<EnginePlugin?> pluginById(String id) async {
-    EnginePlugin? disabled;
+    EnginePlugin? inactive;
     for (final pack in await listPacks()) {
       for (final p in pack.plugins) {
         if (p.id != id) continue;
-        if (p.enabled) return p;
-        disabled ??= p;
+        if (pack.isPluginActive(p)) return p;
+        inactive ??= p;
       }
     }
-    return disabled;
+    return inactive;
   }
 
   Future<List<EnginePlugin>> listEnabledLiveCatalogPlugins() async {
     await ensureOfficialInstalled();
     final out = <EnginePlugin>[];
     for (final pack in await listPacks()) {
+      if (!pack.enabled) continue;
       for (final p in pack.plugins) {
         if (!p.isLiveCatalog || !p.isHttp || !p.enabled) continue;
         out.add(p);
@@ -218,6 +220,15 @@ class EngineService {
       PluginRegistry.instance.setPluginEnabled(
         sourceUrl: sourceUrl,
         pluginId: pluginId,
+        enabled: enabled,
+      );
+
+  Future<void> setPackEnabled({
+    required String sourceUrl,
+    required bool enabled,
+  }) =>
+      PluginRegistry.instance.setPackEnabled(
+        sourceUrl: sourceUrl,
         enabled: enabled,
       );
 
@@ -325,15 +336,19 @@ class EngineService {
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return null;
-    final plugin = PluginRegistry.pluginFromPacks(packs, pluginId);
+    final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
     final rt = runtime ?? EngineRuntime.instance;
     if (runtime == null) {
       await _syncHops(packs);
     } else {
       await _syncHopsForRuntime(rt, packs);
     }
-    if (plugin == null || !plugin.enabled || !plugin.isExtractable) return null;
-    final active = plugin;
+    if (hit == null ||
+        !hit.pack.isPluginActive(hit.plugin) ||
+        !hit.plugin.isExtractable) {
+      return null;
+    }
+    final active = hit.plugin;
     // Soft categories only — Sources filter hides chips; selected plugins always run.
     final mediaType = _normalizeEngineMediaType(type);
 
@@ -474,7 +489,7 @@ class EngineService {
       if (url.isEmpty || isTorrentStreamUrl(url)) continue;
       final mapped = mapEngineStream(
         raw: s,
-        plugin: plugin,
+        plugin: active,
         mediaTitle: title,
         year: year,
         type: mediaType,
@@ -505,11 +520,13 @@ class EngineService {
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return [];
-    final plugin = PluginRegistry.pluginFromPacks(packs, pluginId);
-    if (plugin == null || !(plugin.isLivePlugin || plugin.isLiveSport)) {
+    final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
+    if (hit == null ||
+        !(hit.plugin.isLivePlugin || hit.plugin.isLiveSport) ||
+        !hit.pack.isPluginActive(hit.plugin)) {
       return [];
     }
-    if (!plugin.enabled) return [];
+    final plugin = hit.plugin;
     final overlay =
         ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
     final config = mergeEngineConfig(plugin.config, overlay);
@@ -853,8 +870,13 @@ class EngineService {
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return null;
-    final plugin = PluginRegistry.pluginFromPacks(packs, pluginId);
-    if (plugin == null || !plugin.enabled || !plugin.isHttp) return null;
+    final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
+    if (hit == null ||
+        !hit.pack.isPluginActive(hit.plugin) ||
+        !hit.plugin.isHttp) {
+      return null;
+    }
+    final plugin = hit.plugin;
 
     final mediaType = _normalizeEngineMediaType(type);
     final overlay =
@@ -919,8 +941,8 @@ class EngineService {
     final hopPayload = <Map<String, Object?>>[];
     for (final pack in packs) {
       for (final p in pack.plugins) {
-        if (!p.isHop || !p.enabled) continue;
-        final hopCode = await _loadScript(p);
+        if (!p.isHop || !pack.isPluginActive(p)) continue;
+        final hopCode = await _loadScript(p, sourceUrl: pack.sourceUrl);
         if (hopCode == null || hopCode.isEmpty) continue;
         hopPayload.add({
           'id': p.id,

@@ -176,6 +176,7 @@ class EnginePack {
     required this.name,
     required this.version,
     required this.plugins,
+    this.enabled = true,
   });
 
   final String sourceUrl;
@@ -185,6 +186,12 @@ class EnginePack {
   final String name;
   final String version;
   final List<EnginePlugin> plugins;
+
+  /// Pack master switch — independent of per-plugin [EnginePlugin.enabled].
+  final bool enabled;
+
+  /// Plugin contributes only when the pack and the plugin are both on.
+  bool isPluginActive(EnginePlugin p) => enabled && p.enabled;
 
   factory EnginePack.fromJson(
     Map<String, dynamic> j, {
@@ -219,6 +226,7 @@ class EnginePack {
       name: name,
       version: (j['version'] as String?)?.trim() ?? '0.0.0',
       plugins: plugins,
+      enabled: (j['enabled'] as bool?) ?? true,
     );
   }
 
@@ -241,6 +249,7 @@ class EnginePack {
     'packId': packId,
     'name': name,
     'version': version,
+    'enabled': enabled,
     'plugins': [for (final p in plugins) p.toJson()],
   };
 
@@ -254,6 +263,7 @@ class EnginePack {
           : packIdFromSourceUrl(sourceUrl),
       name: (j['name'] as String?) ?? 'Engine',
       version: (j['version'] as String?) ?? '0.0.0',
+      enabled: (j['enabled'] as bool?) ?? true,
       plugins: [
         for (final raw in (j['plugins'] as List? ?? const []))
           if (raw is Map) EnginePlugin.fromJson(Map<String, dynamic>.from(raw)),
@@ -261,13 +271,18 @@ class EnginePack {
     );
   }
 
-  EnginePack copyWithPlugins(List<EnginePlugin> next) => EnginePack(
-    sourceUrl: sourceUrl,
-    packId: packId,
-    name: name,
-    version: version,
-    plugins: next,
-  );
+  EnginePack copyWith({bool? enabled, List<EnginePlugin>? plugins}) =>
+      EnginePack(
+        sourceUrl: sourceUrl,
+        packId: packId,
+        name: name,
+        version: version,
+        enabled: enabled ?? this.enabled,
+        plugins: plugins ?? this.plugins,
+      );
+
+  EnginePack copyWithPlugins(List<EnginePlugin> next) =>
+      copyWith(plugins: next);
 }
 
 /// Compare semver-ish `a.b.c` strings. Returns negative if [a] < [b].
@@ -307,14 +322,16 @@ class EngineExtractResult {
 
 Set<String> enabledEnginePluginIds(List<EnginePack> packs) => {
   for (final pack in packs)
-    for (final p in pack.plugins)
-      if (p.enabled && p.isHttp) p.id,
+    if (pack.enabled)
+      for (final p in pack.plugins)
+        if (p.enabled && p.isHttp) p.id,
 };
 
 /// Walk order for the Forja tab: HTTP/JS plugins only (no sniff hosts).
 List<String> orderedEnginePluginIds(List<EnginePack> packs) {
   final ids = <String>[];
   for (final pack in packs) {
+    if (!pack.enabled) continue;
     for (final p in pack.plugins) {
       if (p.enabled && p.isHttp) ids.add(p.id);
     }

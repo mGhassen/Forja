@@ -15,8 +15,8 @@ On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS sc
 
 ## What you can do
 
-- **Live plugins** — per-pack toggles for stream resolve (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, …). Packs are installed under **Settings → Sources → Forja**.
-- **Catalog** — schedule toggles (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, ESPN). **Default on:** Streamed, PPV, StreamFree — others off until you enable them. Checked catalogs appear as chips on Live Matches **All**, **Forja Live**, and **Forja Sports**, and load the same schedule rows. **Live plugins** toggles are for stream resolve only.
+- **Live plugins** — expandable pack rows (same as Sources → Forja) for stream resolve (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, …). Packs are installed under **Settings → Sources → Forja** (pack switch = pack on/off; expand for per-plugin toggles).
+- **Catalog** — same expandable pack UI for schedule feeds (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, ESPN). **Default on:** Streamed, PPV, StreamFree — others off until you enable them. Checked catalogs appear as chips on Live Matches **All**, **Forja Live**, and **Forja Sports**, and load the same schedule rows. **Live plugins** toggles are for stream resolve only.
 - Browse the same catalog schedule as Forja Live, **merged with ESPN** when **Catalog → ESPN** is on (clean home/away for matching; ESPN-only games still appear). Switching **Servers** between Forja Live and Forja Sports keeps that list — no reload
 - Pick an **Xtream** or **Stalker** portal from top-right **Portals** (same IPTV panel; M3U is not supported for Sports yet)
 - Open a match → right-side panel opens immediately while Forja sniffs your portal; ranked channels appear as they land (logo, short name, category, tier badge, **NOW/NEXT EPG** when the portal provides listings) → pick one to play (failover keeps the rest in the player Source menu with the same layout). Re-opening the same match within **30 minutes** reuses the last match result (no second portal search)

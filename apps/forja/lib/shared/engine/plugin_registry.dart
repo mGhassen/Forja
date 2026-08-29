@@ -412,7 +412,7 @@ class PluginRegistry {
         next.add(pack);
         continue;
       }
-      if (pack.plugins.isEmpty || pack.plugins.every((p) => !p.enabled)) {
+      if (!pack.enabled) {
         next.add(pack);
         continue;
       }
@@ -420,11 +420,7 @@ class PluginRegistry {
         '[engine] FORJA_HQ_FORCE_PLUGIN_ENV: disable ${pack.packId} '
         '(${pack.sourceUrl})',
       );
-      next.add(
-        pack.copyWithPlugins([
-          for (final p in pack.plugins) p.copyWith(enabled: false),
-        ]),
-      );
+      next.add(pack.copyWith(enabled: false));
       changed = true;
     }
     if (changed) await _savePacks(next);
@@ -559,11 +555,16 @@ class PluginRegistry {
         ? null
         : {for (final p in previous.plugins) p.id: p.enabled};
     var pack = EnginePack.fromJson(map, sourceUrl: manifestUrl);
-    if (enabledById != null) {
-      pack = pack.copyWithPlugins([
-        for (final p in pack.plugins)
-          p.copyWith(enabled: enabledById[p.id] ?? p.enabled),
-      ]);
+    if (previous != null) {
+      pack = pack.copyWith(
+        enabled: previous.enabled,
+        plugins: enabledById == null
+            ? pack.plugins
+            : [
+                for (final p in pack.plugins)
+                  p.copyWith(enabled: enabledById[p.id] ?? p.enabled),
+              ],
+      );
     }
 
     // Refuse plugin id collisions with other packs.
@@ -710,6 +711,29 @@ class PluginRegistry {
     await _savePacks(next);
   }
 
+  /// Pack master switch — does not change per-plugin [EnginePlugin.enabled].
+  Future<void> setPackEnabled({
+    required String sourceUrl,
+    required bool enabled,
+  }) async {
+    final all = await listPacksRaw();
+    final next = <EnginePack>[];
+    var changed = false;
+    for (final pack in all) {
+      if (pack.sourceUrl != sourceUrl) {
+        next.add(pack);
+        continue;
+      }
+      if (pack.enabled == enabled) {
+        next.add(pack);
+        continue;
+      }
+      next.add(pack.copyWith(enabled: enabled));
+      changed = true;
+    }
+    if (changed) await _savePacks(next);
+  }
+
   /// Enable or disable every plugin in [pluginIds] for one pack.
   Future<void> setPluginsEnabled({
     required String sourceUrl,
@@ -779,38 +803,36 @@ class PluginRegistry {
     return code;
   }
 
-  /// Resolve [pluginId] across packs — prefer enabled (`.env` over disabled cloud).
+  /// Resolve [pluginId] across packs — prefer active (pack + plugin on).
   static EnginePlugin? pluginFromPacks(
     List<EnginePack> packs,
     String pluginId,
+  ) =>
+      packPluginFromPacks(packs, pluginId)?.plugin;
+
+  /// Resolve [pluginId] to owning pack + plugin (prefer active).
+  static ({EnginePack pack, EnginePlugin plugin})? packPluginFromPacks(
+    List<EnginePack> packs,
+    String pluginId,
   ) {
-    EnginePlugin? disabled;
+    ({EnginePack pack, EnginePlugin plugin})? inactive;
     for (final pack in packs) {
       for (final p in pack.plugins) {
         if (p.id != pluginId) continue;
-        if (p.enabled) return p;
-        disabled ??= p;
+        if (pack.isPluginActive(p)) return (pack: pack, plugin: p);
+        inactive ??= (pack: pack, plugin: p);
       }
     }
-    return disabled;
+    return inactive;
   }
 
   /// Resolve [pluginId] to its owning pack + plugin.
-  /// Prefers an enabled plugin when the same id exists in multiple packs
+  /// Prefers an active plugin when the same id exists in multiple packs
   /// (dev `.env` + disabled cloud shadow).
   Future<({EnginePack pack, EnginePlugin plugin})?> findPlugin(
     String pluginId,
-  ) async {
-    ({EnginePack pack, EnginePlugin plugin})? disabled;
-    for (final pack in await listPacksRaw()) {
-      for (final p in pack.plugins) {
-        if (p.id != pluginId) continue;
-        if (p.enabled) return (pack: pack, plugin: p);
-        disabled ??= (pack: pack, plugin: p);
-      }
-    }
-    return disabled;
-  }
+  ) async =>
+      packPluginFromPacks(await listPacksRaw(), pluginId);
 
   Future<void>? _hydrateLeanInFlight;
 

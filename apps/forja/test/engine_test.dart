@@ -362,7 +362,8 @@ void main() {
       final packs = await registry.listPacksRaw();
       expect(packs.any((p) => p.sourceUrl == github), isTrue);
       final githubPack = packs.firstWhere((p) => p.sourceUrl == github);
-      expect(githubPack.plugins.every((p) => !p.enabled), isTrue);
+      expect(githubPack.enabled, isFalse);
+      expect(githubPack.plugins.any((p) => p.enabled), isTrue);
       expect(
         packs.any((p) => p.sourceUrl == 'https://community.example/manifest.json'),
         isTrue,

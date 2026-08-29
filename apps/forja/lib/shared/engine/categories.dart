@@ -161,11 +161,12 @@ abstract final class EngineCategories {
     required Set<String> categories,
   }) => {
     for (final pack in packs)
-      for (final p in pack.plugins)
-        if (p.enabled &&
-            p.isHttp &&
-            pluginMatchesCategories(p, categories))
-          p.id,
+      if (pack.enabled)
+        for (final p in pack.plugins)
+          if (p.enabled &&
+              p.isHttp &&
+              pluginMatchesCategories(p, categories))
+            p.id,
   };
 
   /// Legacy prefs / Select All that picked every enabled plugin → narrow to [scope].

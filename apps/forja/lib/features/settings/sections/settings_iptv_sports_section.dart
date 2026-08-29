@@ -280,10 +280,14 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
               ),
               for (final entry in _liveCatalogPacks)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-                  child: SettingsEnginePluginToggleList(
-                    sourceUrl: entry.pack.sourceUrl,
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
+                  child: SettingsEnginePackExpansion(
+                    pack: entry.pack,
                     plugins: entry.plugins,
+                    groupKey: EngineCategories.liveSourceGroupKey,
+                    groupLabel: EngineCategories.liveSourceGroupLabel,
+                    groupOrder: const [EngineCategories.liveCatalog],
+                    tabRowId: 'live-catalog-pack-tabs',
                   ),
                 ),
             ],

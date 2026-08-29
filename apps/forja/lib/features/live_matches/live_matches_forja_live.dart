@@ -222,7 +222,7 @@ mixin _LiveMatchesForjaLive
     final packs = await EngineService.instance.listPacks();
     for (final pack in packs) {
       for (final p in pack.plugins) {
-        if (p.id == 'catalog-espn') return p.enabled;
+        if (p.id == 'catalog-espn') return pack.isPluginActive(p);
       }
     }
     return false;

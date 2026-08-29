@@ -495,7 +495,6 @@ class _SettingsProvidersSectionState
               ];
               if (panelPlugins.isEmpty) return const SizedBox.shrink();
               final official = EngineService.isOfficialPack(pack.sourceUrl);
-              final allOn = panelPlugins.every((p) => p.enabled);
               return SettingsEnginePackExpansion(
                 pack: pack,
                 plugins: panelPlugins,
@@ -503,10 +502,9 @@ class _SettingsProvidersSectionState
                 groupLabel: EngineCategories.groupLabel,
                 groupOrder: EngineCategories.groupOrder,
                 trailing: _EnginePackActions(
-                  allEnabled: allOn,
-                  onToggleAll: (val) => EngineService.instance.setPluginsEnabled(
+                  packEnabled: pack.enabled,
+                  onTogglePack: (val) => EngineService.instance.setPackEnabled(
                     sourceUrl: pack.sourceUrl,
-                    pluginIds: {for (final p in panelPlugins) p.id},
                     enabled: val,
                   ),
                   onRefresh: () => _refreshEnginePack(pack.sourceUrl),
@@ -954,18 +952,18 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
   }
 }
 
-/// Select-all + refresh + remove for an installed engine plugin pack.
+/// Pack master switch + refresh + remove for an installed engine plugin pack.
 class _EnginePackActions extends StatelessWidget {
   const _EnginePackActions({
-    required this.allEnabled,
-    required this.onToggleAll,
+    required this.packEnabled,
+    required this.onTogglePack,
     required this.onRefresh,
     required this.onRemove,
     this.showOfficialBadge = false,
   });
 
-  final bool allEnabled;
-  final ValueChanged<bool> onToggleAll;
+  final bool packEnabled;
+  final ValueChanged<bool> onTogglePack;
   final VoidCallback onRefresh;
   final Future<void> Function() onRemove;
   final bool showOfficialBadge;
@@ -976,9 +974,9 @@ class _EnginePackActions extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         ForjaSwitch(
-          value: allEnabled,
+          value: packEnabled,
           scale: ForjaSwitch.settingsScale,
-          onChanged: onToggleAll,
+          onChanged: onTogglePack,
         ),
         if (showOfficialBadge)
           Padding(
