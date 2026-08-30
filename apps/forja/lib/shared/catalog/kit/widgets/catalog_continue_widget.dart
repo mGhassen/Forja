@@ -3,13 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
 import 'package:forja/shared/catalog/kit/widgets/catalog_continue_watching_section.dart';
+import 'package:forja/shared/catalog/services/catalog_home_watch_history.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/playback/catalog_play_resolve.dart';
-import 'package:rust/rust.dart' show isInProgressResume;
+import 'package:forja/shared/playback/history_playback_resume.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:rust/rust.dart' show WatchHistoryService, isInProgressResume;
 
-/// Layout widget type `continue` — pack-scoped [CatalogWatchHistory] only.
+/// Layout widget type `continue` — pack-scoped history; Home also reads legacy
+/// [WatchHistoryService] until TMDB details play through catalog meta.
 class CatalogContinueWidget extends StatefulWidget {
   const CatalogContinueWidget({
     super.key,
@@ -30,39 +34,54 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
   final _scroll = ScrollController();
   List<Map<String, dynamic>> _entries = const [];
   String? _resumingMetaId;
+  StreamSubscription<List<Map<String, dynamic>>>? _legacyHistorySub;
 
   @override
   void initState() {
     super.initState();
     CatalogWatchHistory.revision.addListener(_reload);
+    if (catalogHomeUsesLegacyWatchHistory(widget.pluginId)) {
+      _legacyHistorySub = listenLegacyHomeWatchHistory(_reload);
+    }
     unawaited(_reload());
   }
 
   @override
   void dispose() {
     CatalogWatchHistory.revision.removeListener(_reload);
+    unawaited(_legacyHistorySub?.cancel());
     _scroll.dispose();
     super.dispose();
   }
 
   Future<void> _reload() async {
     try {
-      final list = await CatalogWatchHistory.getAll(widget.pluginId);
+      final list = await catalogContinueEntries(widget.pluginId);
       if (!mounted) return;
-      setState(() {
-        _entries = list
-            .where((e) {
-              final pos = (e['positionMs'] as num?)?.toInt() ?? 0;
-              final dur = (e['durationMs'] as num?)?.toInt() ?? 0;
-              return isInProgressResume(pos, dur);
-            })
-            .take(10)
-            .toList();
-      });
+      setState(() => _entries = list);
     } catch (_) {}
   }
 
   Future<void> _resume(Map<String, dynamic> entry) async {
+    final legacy = entry['_legacyWatch'];
+    if (legacy is Map) {
+      final uniqueId = entry['_legacyUniqueId']?.toString();
+      if (uniqueId == null || _resumingMetaId != null) return;
+      setState(() => _resumingMetaId = uniqueId);
+      try {
+        await resumePlaybackFromHistory(
+          context,
+          Map<String, dynamic>.from(legacy),
+        );
+        if (mounted) await _reload();
+      } catch (e) {
+        if (mounted) ForjaToast.error('Resume failed: $e');
+      } finally {
+        if (mounted) setState(() => _resumingMetaId = null);
+      }
+      return;
+    }
+
     final metaId = entry['metaId']?.toString();
     if (metaId == null || _resumingMetaId != null) return;
     final meta = CatalogWatchHistory.metaFromEntry(entry);
@@ -101,16 +120,58 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
     }
   }
 
-  void _openDetails(Map<String, dynamic> entry) {
+  Future<void> _openDetails(Map<String, dynamic> entry) async {
+    final legacy = entry['_legacyWatch'];
+    if (legacy is Map) {
+      final item = Map<String, dynamic>.from(legacy);
+      final movie = movieFromWatchHistory(item);
+      final stremioItemId = item['stremioId'] as String?;
+      final stremioAddonBase = item['stremioAddonBaseUrl'] as String?;
+      final isCustomId = stremioItemId != null &&
+          stremioAddonBase != null &&
+          !stremioItemId.startsWith('tt');
+      Map<String, dynamic>? stremioItem;
+      if (isCustomId) {
+        stremioItem = {
+          'id': stremioItemId,
+          '_addonBaseUrl': stremioAddonBase,
+          'type': item['stremioType'] ??
+              (item['season'] != null ? 'series' : 'movie'),
+          'name': movie.title,
+        };
+      }
+      await AppRouter.openDetails(
+        context,
+        movie: movie,
+        stremioItem: stremioItem,
+        initialSeason: item['season'] as int?,
+        initialEpisode: item['episode'] as int?,
+      );
+      if (mounted) await _reload();
+      return;
+    }
+
     final meta = CatalogWatchHistory.metaFromEntry(entry);
     if (meta == null) return;
-    unawaited(
-      openCatalogMetaItem(
-        context,
-        pluginId: widget.pluginId,
-        item: meta,
-      ).then((_) => _reload()),
+    await openCatalogMetaItem(
+      context,
+      pluginId: widget.pluginId,
+      item: meta,
     );
+    if (mounted) await _reload();
+  }
+
+  Future<void> _remove(Map<String, dynamic> entry) async {
+    final legacyId = entry['_legacyUniqueId']?.toString();
+    if (legacyId != null) {
+      await WatchHistoryService().removeItem(legacyId);
+      if (mounted) await _reload();
+      return;
+    }
+    final id = entry['metaId']?.toString();
+    if (id == null) return;
+    await CatalogWatchHistory.remove(widget.pluginId, id);
+    if (mounted) await _reload();
   }
 
   @override
@@ -121,13 +182,8 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
       scrollController: _scroll,
       resumingMetaId: _resumingMetaId,
       onResume: _resume,
-      onRemove: (e) async {
-        final id = e['metaId']?.toString();
-        if (id == null) return;
-        await CatalogWatchHistory.remove(widget.pluginId, id);
-        if (mounted) await _reload();
-      },
-      onOpenDetails: _openDetails,
+      onRemove: _remove,
+      onOpenDetails: (e) => unawaited(_openDetails(e)),
       tvRowOrder: widget.tvRowOrder,
     );
   }

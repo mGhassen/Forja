@@ -8,7 +8,9 @@ import 'package:forja/shared/catalog/kit/chrome/catalog_chrome_filters.dart';
 import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
+import 'package:forja/shared/catalog/services/catalog_home_watch_history.dart';
 import 'package:forja/shared/catalog/services/catalog_resume_seeds.dart';
+import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
@@ -36,11 +38,23 @@ class _CatalogBecauseSectionState extends State<CatalogBecauseSection> {
   Future<_BecausePayload>? _future;
   int _shuffleKey = 0;
   int _epoch = 0;
+  StreamSubscription<List<Map<String, dynamic>>>? _legacyHistorySub;
 
   @override
   void initState() {
     super.initState();
+    CatalogWatchHistory.revision.addListener(_reload);
+    if (catalogHomeUsesLegacyWatchHistory(widget.pluginId)) {
+      _legacyHistorySub = listenLegacyHomeWatchHistory(_reload);
+    }
     _reload();
+  }
+
+  @override
+  void dispose() {
+    CatalogWatchHistory.revision.removeListener(_reload);
+    unawaited(_legacyHistorySub?.cancel());
+    super.dispose();
   }
 
   @override

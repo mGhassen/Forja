@@ -202,6 +202,12 @@ Movie movieWithResolvedHubArt(Movie movie) {
   );
 }
 
+int? _catalogWatchEpisode(num? episodeNumber, Movie movie) {
+  final ep = episodeNumber?.round();
+  if (ep != null && ep > 0) return ep;
+  return hubMediaIsEpisodic(movie) ? null : 1;
+}
+
 Future<void> seedHubEngineWatchHistory({
   required EnginePlaySession? session,
   required Movie movie,
@@ -209,8 +215,8 @@ Future<void> seedHubEngineWatchHistory({
   List<PlayerHubEpisode>? hubEpisodes,
 }) async {
   if (session == null || !hubEngineNeedsWatchHistory(session)) return;
-  final ep = episodeNumber?.round();
-  if (ep == null || ep <= 0) return;
+  final ep = _catalogWatchEpisode(episodeNumber, movie);
+  if (ep == null) return;
   await _recordCatalogWatchHistory(session: session, ep: ep);
 }
 
@@ -222,8 +228,8 @@ hubEngineSaveProgressCallback({
   List<PlayerHubEpisode>? hubEpisodes,
 }) {
   if (session == null || !hubEngineNeedsWatchHistory(session)) return null;
-  final ep = episodeNumber?.round();
-  if (ep == null || ep <= 0) return null;
+  final ep = _catalogWatchEpisode(episodeNumber, movie);
+  if (ep == null) return null;
 
   if (session.pluginId != null && session.catalogMeta != null) {
     return (pos, dur) async {
