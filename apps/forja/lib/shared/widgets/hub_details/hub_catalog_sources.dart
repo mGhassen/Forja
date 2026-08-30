@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
+import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/player/utils.dart';
@@ -44,40 +46,43 @@ Future<void> openHubCatalogSources({
   required Movie movie,
   int? season,
   int? episode,
+  CatalogOpen? catalogOpen,
   int? anilistId,
   int? malId,
   int? kisskhId,
   int? kisskhEpisodeId,
   String? arabicVideoId,
+  String? episodeVideoId,
 
   /// Forja chip category for this hub: `anime` | `drama` | `arabic`.
   String? engineCategory,
 
   /// Anime hub SUB/DUB — filters Forja/Nuvio rows when set (`sub` | `dub`).
   String? animeAudioCategory,
+  EnginePlaySession? enginePlaySession,
 }) {
   final hooks = buildHubCatalogPlayHooks(
     movie: movie,
     season: season,
     episode: episode,
-    kisskhId: kisskhId,
-    kisskhEpisodeId: kisskhEpisodeId,
-    arabicVideoId: arabicVideoId,
-    anilistId: anilistId,
+    catalogOpen: catalogOpen,
     malId: malId,
     engineCategory: engineCategory,
     animeAudioCategory: animeAudioCategory,
+    enginePlaySession: enginePlaySession,
   );
   return PlayerSourcesPanel.show(
     context: context,
     movie: movie,
     season: season,
     episode: episode,
+    catalogOpen: catalogOpen,
     anilistId: anilistId,
     malId: malId,
     kisskhId: kisskhId,
     kisskhEpisodeId: kisskhEpisodeId,
     arabicVideoId: arabicVideoId,
+    episodeVideoId: episodeVideoId,
     engineCategory: engineCategory,
     animeAudioCategory: animeAudioCategory,
     detailsHost: true,

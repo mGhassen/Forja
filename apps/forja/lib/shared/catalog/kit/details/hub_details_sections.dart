@@ -214,6 +214,11 @@ List<Map<String, String>> _crewAsCast(List<Map<String, String>> crew) {
   ];
 }
 
+final _hubTmdbRichCache = <String, RichMediaDetails>{};
+final _hubTmdbBackdropCache = <String, List<String>>{};
+
+String _hubTmdbUiCacheKey(int tmdbId, String mediaType) => '$tmdbId|$mediaType';
+
 Future<List<String>> hubTmdbHeroBackdropUrls(CatalogMetaItem meta) async {
   final tmdbId = meta.numericId('tmdb');
   if (tmdbId == null) return const [];
@@ -222,6 +227,10 @@ Future<List<String>> hubTmdbHeroBackdropUrls(CatalogMetaItem meta) async {
       meta.type == 'movie' ||
       (meta.badge ?? '').toUpperCase() == 'MOVIE';
   final mediaType = meta.tmdbMediaType ?? (isMovie ? 'movie' : 'tv');
+  final cacheKey = _hubTmdbUiCacheKey(tmdbId, mediaType);
+  final cached = _hubTmdbBackdropCache[cacheKey];
+  if (cached != null) return cached;
+
   final api = TmdbApi();
   final urls = <String>[];
 
@@ -240,7 +249,9 @@ Future<List<String>> hubTmdbHeroBackdropUrls(CatalogMetaItem meta) async {
     }
   } catch (_) {}
 
-  return urls.take(12).toList();
+  final out = urls.take(12).toList();
+  _hubTmdbBackdropCache[cacheKey] = out;
+  return out;
 }
 
 Future<RichMediaDetails?> hubLoadTmdbRich(CatalogMetaItem meta) async {
@@ -251,8 +262,14 @@ Future<RichMediaDetails?> hubLoadTmdbRich(CatalogMetaItem meta) async {
       meta.type == 'movie' ||
       (meta.badge ?? '').toUpperCase() == 'MOVIE';
   final mediaType = meta.tmdbMediaType ?? (isMovie ? 'movie' : 'tv');
+  final cacheKey = _hubTmdbUiCacheKey(tmdbId, mediaType);
+  final cached = _hubTmdbRichCache[cacheKey];
+  if (cached != null) return cached;
+
   try {
-    return await TmdbApi().getRichDetails(tmdbId, mediaType);
+    final rich = await TmdbApi().getRichDetails(tmdbId, mediaType);
+    _hubTmdbRichCache[cacheKey] = rich;
+    return rich;
   } catch (_) {
     return null;
   }

@@ -1,36 +1,33 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/playback/hub_play_context.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
+
+EnginePlaySession _sessionFromContext(HubPlayContext ctx) {
+  return EnginePlaySession(
+    category: ctx.engineCategory,
+    pluginId: ctx.pluginId,
+    catalogMeta: ctx.catalogMeta,
+    catalogOpen: ctx.effectiveOpen,
+    malId: ctx.malId,
+    episodeVideoIdByNumber: ctx.episodeVideoIdByNumber,
+    animeAudioCategory: ctx.animeAudioCategory,
+  );
+}
 
 /// Shared hub details play dispatch — green Play and Sources panel.
 Future<void> runHubPlayFromContext({
   required BuildContext context,
   required HubPlayContext ctx,
 }) {
-  final mergedKisskh = {
-    ...ctx.kisskhEpisodeIdByNumber,
-    if (ctx.kisskhEpisodeId != null && ctx.episode != null)
-      ctx.episode!: ctx.kisskhEpisodeId!,
-  };
-  final mergedArabic = {
-    ...ctx.arabicVideoIdByEpisode,
-    if (ctx.arabicVideoId != null &&
-        ctx.arabicVideoId!.isNotEmpty &&
-        ctx.episode != null)
-      ctx.episode!: ctx.arabicVideoId!,
-  };
+  final session = _sessionFromContext(ctx);
   return runEngineAutoPlay(
     context: context,
     movie: ctx.movie,
     engineCategory: ctx.engineCategory,
     season: ctx.season,
     episode: ctx.episode,
-    kisskhId: ctx.kisskhId,
-    kisskhEpisodeId: ctx.kisskhEpisodeId,
-    arabicVideoId: ctx.arabicVideoId,
-    anilistId: ctx.anilistId,
     malId: ctx.malId,
     animeAudioCategory: ctx.animeAudioCategory,
     startPosition: ctx.startPosition,
@@ -40,17 +37,7 @@ Future<void> runHubPlayFromContext({
     hubEpisodes: ctx.hubEpisodes,
     hubEpisodeNumber: ctx.episode,
     selectedPluginIds: ctx.selectedPluginIds,
-    enginePlaySession: EnginePlaySession(
-      category: ctx.engineCategory,
-      pluginId: ctx.pluginId,
-      catalogMeta: ctx.catalogMeta,
-      anilistId: ctx.anilistId,
-      malId: ctx.malId,
-      kisskhId: ctx.kisskhId,
-      kisskhEpisodeIdByNumber: mergedKisskh,
-      arabicVideoIdByEpisode: mergedArabic,
-      animeAudioCategory: ctx.animeAudioCategory,
-    ),
+    enginePlaySession: session,
   );
 }
 
@@ -58,18 +45,23 @@ Future<void> openHubSourcesFromContext({
   required BuildContext context,
   required HubPlayContext ctx,
 }) {
+  final session = _sessionFromContext(ctx);
+  final resolve = session.resolveForEpisode(ctx.episode);
   return openHubCatalogSources(
     context: context,
     movie: ctx.movie,
     season: ctx.season,
     episode: ctx.episode,
-    anilistId: ctx.anilistId,
-    malId: ctx.malId,
-    kisskhId: ctx.kisskhId,
-    kisskhEpisodeId: ctx.kisskhEpisodeId,
-    arabicVideoId: ctx.arabicVideoId,
+    catalogOpen: ctx.effectiveOpen,
+    malId: resolve.malId ?? ctx.malId,
+    anilistId: resolve.anilistId,
+    kisskhId: resolve.kisskhId,
+    kisskhEpisodeId: resolve.kisskhEpisodeId,
+    arabicVideoId: resolve.arabicVideoId,
+    episodeVideoId: session.episodeVideoIdFor(ctx.episode ?? 1),
     engineCategory: ctx.engineCategory,
     animeAudioCategory: ctx.animeAudioCategory,
+    enginePlaySession: session,
   );
 }
 

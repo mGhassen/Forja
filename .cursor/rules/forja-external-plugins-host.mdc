@@ -1,0 +1,138 @@
+---
+description: External plugins vs Flutter host — repo layout, contracts, forbidden host patterns
+alwaysApply: true
+---
+
+# External plugins and the Flutter host
+
+Index: [catalog hubs (pack-agnostic)](./catalog-hub-host-generic.mdc) · [playback (generic only)](./forja-playback-host-generic.mdc)
+
+## What “external plugins” means
+
+Forja ships **JavaScript packs** under repo-root `plugins/` — **not** compiled into the
+Flutter binary. The app **installs, caches, and runs** them at runtime via
+`PluginRegistry` + `EngineService`.
+
+| Pack tree | Role | Host entry |
+|-----------|------|------------|
+| `plugins/hubs/**` | Browse catalogs (home, anime, drama, …) | `CatalogRuntime.run(pluginId, action, …)` |
+| `plugins/providers/**` | Stream extractors (VidLink, Megaplay, …) | `EngineService.runPlugin(…)` |
+| `plugins/live/**` | Live matches / schedules | Engine live APIs |
+| `plugins/catalog/**` | Stremio-style catalog addons | Engine catalog |
+
+Each pack has `manifest.json` → one or more **plugin ids** (`anilist`, `kisskh-hub`,
+`tmdb`, …), `engine.json` **types** (`anime`, `drama`, `movie`, …), optional `nav`
+(tabId, icon), and JS handlers.
+
+**Pack knowledge** (AniList, KissKh, Larozaa, TMDB match, scraper URLs, episode id
+formats) lives **only in `plugins/**` JS** (and optional enrich companions).
+
+The Flutter app (`apps/forja/`) is the **host**: shell, generic catalog kit, player,
+engine runtime. It must stay replaceable when packs or upstream APIs change.
+
+---
+
+## Repo layout (do not blur these)
+
+```
+plugins/           ← external packs (source of truth for pack behavior)
+apps/forja/        ← Flutter host (generic contracts + UI)
+packages/rust/     ← native playback / torrent / resolve engine
+```
+
+- **Wrong:** hardcoding pack upstream logic in `apps/forja/lib/shared/**` because
+  “we know anime uses AniList”.
+- **Right:** pack emits data on the wire; host renders and passes opaque ids through.
+
+---
+
+## Host layers — who may know what
+
+| Layer | Path (typical) | May know pack/upstream? |
+|-------|----------------|-------------------------|
+| **Hub packs** | `plugins/hubs/**` | **Yes** — full |
+| **Catalog host** | `shared/catalog/**`, `CatalogShell`, `catalog_open` | **No** — render + route on `open.surface` only |
+| **Catalog kit play** | `shared/catalog/kit/**` | **No** — build play args from `CatalogMetaItem` + `pluginId`; pass `CatalogOpen` opaque |
+| **Playback** | `shared/playback/**` | **No** — generic VOD orchestration only (see playback rule) |
+| **Engine host** | `shared/engine/**` | Plugin ids + `engine.json` types for **extract**; map `CatalogOpen` → JS context **here only** when calling `runPlugin` |
+| **Feature screens** | `features/anime`, `asian_drama`, … | Legacy; **new hub work uses catalog kit**, not new feature forks |
+| **Shell seed** | `PluginNavRegistry` seed | Boot-only default `pluginId` per tab until pack `nav` refresh — **not** business logic |
+
+`open.surface` (`anime` | `drama` | `tmdb` | `arabic`) is a **host route name** for
+which details/play chrome to open. It is **not** permission to spread
+`switch (surface)` / `EngineCategories.anime` through catalog kit or playback.
+
+---
+
+## Required plugin → host contract
+
+Every openable hub meta must carry:
+
+```json
+"open": {
+  "surface": "anime | drama | tmdb | arabic",
+  "id": "<opaque for that route>",
+  "...": "route extras only (mal, source, movie, mediaType, …)"
+}
+```
+
+Host rules:
+
+1. **`openCatalogMetaItem`** — switch **only** on `open.surface` → push hub details or
+   TMDB details. Never on `ids.anilist`, pack id, or scraper name.
+2. **Pass through** `open.id` + extras — do not remap via `numericId('kisskh')` etc.
+3. **Details / play** — use `meta.videos`, poster, background as returned; enrich via
+   pack `enrich` companion (`CatalogRuntime` pipe), not host `TmdbApi` (see catalog rule).
+4. **Engine extract** — when play needs upstream ids, **`EngineService`** (or engine
+   helper) derives them from `CatalogOpen` + episode video id **once** at the
+   `runPlugin` boundary — not in `shared/playback/**`.
+
+Allowed host-only id scheme (not a pack): **`tmdb`** for Home movie/tv rows when
+`open` is absent.
+
+---
+
+## Forbidden everywhere in host shared code
+
+Unless explicitly listed as boot seed or engine extract boundary:
+
+- Pack / plugin ids as behavior switches: `kisskh-hub`, `anilist`, `arabic-hub`, …
+- Scraper / site names: `larozaa`, `dimatoon`, `kisskh.co`, …
+- `meta.numericId('anilist')`, `ids['kisskh']`, default provider `larozaa`
+- Interpreting `open.surface` outside **catalog open routing** and **engine extract mapping**
+- Hub-specific session fields in generic layers: `kisskhId`, `anilistId`, `arabicVideoId`
+- Files named / scoped as one pack in shared code (`hub_drama_*` doing generic hub work)
+- Duplicating pack categories in playback: `EngineCategories.anime` / `drama` / `arabic`
+  to decide how catalog meta plays
+
+---
+
+## Correct play flow (target)
+
+```
+Pack meta (open + videos)
+  → catalog/kit/play: CatalogPlayContext(pluginId, meta, open, episodeVideoIds)
+  → engine: runPlugin(pluginId, catalogOpen: open, …)  // maps open → JS ctx here
+  → playback: probe streams, open player, save progress  // no surface switches
+```
+
+Playback receives **streams + Movie + optional catalog watch hooks** — not “anime vs drama”.
+
+---
+
+## When adding a hub or provider
+
+1. Change **`plugins/**`** (manifest, JS, enrich).
+2. If new **host route** needed → add one `open.surface` handler in `catalog_open.dart`.
+3. If extract needs new context → extend **engine** `runPlugin` input, not playback.
+4. Do **not** add pack branches to `shared/playback/**` or `catalog_play_resolve.dart`.
+
+---
+
+## Legacy debt — do not extend
+
+- `shared/playback/hub_*`, `catalog_play_resolve.dart` — pack-scented; migrate to
+  `catalog/kit/play/` + engine boundary; do not add `anime`/`drama` switches.
+- `PluginNavRegistry.builtInHubPluginIds` — seed only.
+- `hub_details_sections.dart` TMDB host fetch — migrate to pack enrich.
+- Partial refactors that rename fields but keep `switch (surface)` in playback — **reject**.

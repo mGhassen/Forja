@@ -1,0 +1,96 @@
+---
+description: shared/playback is generic VOD only — no hub packs, surfaces, or upstream ids
+globs: apps/forja/lib/shared/playback/**
+alwaysApply: false
+---
+
+# Playback — host stays generic
+
+Parent: [forja-external-plugins-host.mdc](./forja-external-plugins-host.mdc)
+
+`apps/forja/lib/shared/playback/**` orchestrates **playback for any title**: stream
+probe, engine auto-play race, torrent/Stremio resolve, home TMDB watch history,
+provider runtime config, stream guards.
+
+It is **not** the place for hub pack logic, `open.surface` routing, or upstream
+catalog ids (AniList, KissKh, Arabic video ids).
+
+---
+
+## MUST
+
+- Work from **generic inputs**: `Movie`, stream rows, `pluginId` (engine extract only),
+  optional **opaque** `CatalogMetaItem` / `CatalogOpen` **passed through** to engine or
+  `CatalogWatchHistory` without interpreting `surface`.
+- Call `EngineService.runPlugin` / `runPluginIsolated` with resolve args produced by
+  **engine layer** helpers — not computed inside playback via `switch (surface)`.
+- Keep session cache keys stable using **`catalogOpen` (surface+id) or pluginId+metaId** —
+  not `anilistId` / `kisskhId` fields on playback types.
+- Clear hub continue-watching via **installed hub plugins** from engine/registry — not
+  hardcoded `builtInHubPluginIds` maps in playback.
+
+---
+
+## MUST NOT
+
+- Branch on `open.surface`, `EngineCategories.anime` / `drama` / `arabic`, or
+  `mediaType == 'anime'` to choose play behavior.
+- Define or use `kisskhId`, `anilistId`, `arabicVideoId`, `kisskhEpisodeIdByNumber`,
+  `hubEngineResolveParams`, `engineCategoryForOpen`, or similar in this folder.
+- Add files like `hub_open_engine.dart` that map surfaces → upstream ids.
+- Keep hub-only modules here long term: `hub_play_context.dart`, `hub_engine_watch_history.dart`,
+  `hub_drama_player_episodes.dart`, `catalog_play_resolve.dart` → belong under
+  **`shared/catalog/kit/play/`**.
+- Call `TmdbApi` or pack upstream APIs from playback.
+- Default scraper/provider names (`larozaa`, …).
+
+`EngineCategories` in **`shared/engine/categories.dart`** is for **engine plugin
+types** (`engine.json`). Playback must **not** import it to interpret catalog meta.
+
+---
+
+## Allowed exceptions (narrow)
+
+| Item | Why |
+|------|-----|
+| `provider_runtime_config.dart` provider hostnames | Stream **provider** URLs (VidLink, Megaplay paths), not hub **catalog** packs |
+| `anime_playback_embeds.dart` / `anime_embed.dart` | Legacy engine anime **provider** descriptors — not hub browse; do not grow |
+| `engine_auto_play.dart` | Calls engine; must not contain surface→id mapping (engine owns that) |
+
+---
+
+## Wrong vs right
+
+**Wrong** (`shared/playback`):
+
+```dart
+switch (open.surface) {
+  case 'anime': anilistId = open.idInt;
+  case 'drama': kisskhId = open.idInt;
+}
+if (category == EngineCategories.drama) { … }
+```
+
+**Right** — playback:
+
+```dart
+await EngineService.instance.runPluginIsolated(
+  pluginId: pluginId,
+  catalogOpen: open,
+  episodeVideoId: episodeIds[ep],
+  …,
+);
+```
+
+**Right** — engine (`shared/engine/**`) maps `catalogOpen` → JS extract context once.
+
+**Right** — catalog kit play builds `CatalogPlayContext(pluginId, meta, open, episodeIds)`
+and hands off to engine + player.
+
+---
+
+## Before changing this folder
+
+1. Is this hub/pack-specific? → move to `catalog/kit/play` or `engine/`.
+2. Does it need `anime`/`drama`/`kisskh`/`anilist`? → **stop** — engine or pack only.
+3. Does it only open/probe/cache streams? → OK here.

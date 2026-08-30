@@ -70,8 +70,9 @@ abstract final class SettingsDataCleaner {
 
   static Future<void> clearContinueWatching() async {
     await WatchHistoryService().clearAll();
-    for (final pluginId in PluginNavRegistry.builtInHubPluginIds.values) {
-      await CatalogWatchHistory.clear(pluginId);
+    final plugins = await PluginNavRegistry.listHubPlugins(requireEnabled: false);
+    for (final plugin in plugins) {
+      await CatalogWatchHistory.clear(plugin.id);
     }
     await AnimeArabicService().clearWatchHistory();
   }

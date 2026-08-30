@@ -75,6 +75,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   void initState() {
     super.initState();
     unawaited(ref.read(settingsPlaybackProvider.future));
+    _loading = !hubMetaTmdbEnriched(widget.item);
     _load();
   }
 
@@ -93,10 +94,13 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   bool get _isMovie => hubMetaIsMovie(_show);
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    final seedEnriched = hubMetaTmdbEnriched(widget.item);
+    if (!seedEnriched) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
     final env = await CatalogRuntime.instance.run(
       pluginId: widget.pluginId,
       action: 'details',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/playback/hub_play_context.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -14,15 +15,13 @@ Future<void> runHubEngineAutoPlay({
   required BuildContext context,
   required Movie movie,
   required String engineCategory,
+  CatalogOpen? catalogOpen,
+  CatalogMetaItem? catalogMeta,
+  String? pluginId,
   int? season,
   int? episode,
-  int? kisskhId,
-  int? kisskhEpisodeId,
-  Map<int, int> kisskhEpisodeIdByNumber = const {},
-  String? arabicVideoId,
-  Map<int, String> arabicVideoIdByEpisode = const {},
-  int? anilistId,
   int? malId,
+  Map<int, String> episodeVideoIdByNumber = const {},
   String? animeAudioCategory,
   Duration? startPosition,
   String? preferredPluginId,
@@ -36,15 +35,13 @@ Future<void> runHubEngineAutoPlay({
     ctx: HubPlayContext(
       movie: movie,
       engineCategory: engineCategory,
+      pluginId: pluginId,
+      catalogMeta: catalogMeta,
+      catalogOpen: catalogOpen ?? catalogMeta?.open,
       season: season,
       episode: episode,
-      kisskhId: kisskhId,
-      kisskhEpisodeId: kisskhEpisodeId,
-      kisskhEpisodeIdByNumber: kisskhEpisodeIdByNumber,
-      arabicVideoId: arabicVideoId,
-      arabicVideoIdByEpisode: arabicVideoIdByEpisode,
-      anilistId: anilistId,
       malId: malId,
+      episodeVideoIdByNumber: episodeVideoIdByNumber,
       animeAudioCategory: animeAudioCategory,
       startPosition: startPosition,
       preferredPluginId: preferredPluginId,

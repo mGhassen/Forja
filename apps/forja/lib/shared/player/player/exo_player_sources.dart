@@ -57,6 +57,9 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         widget.providers!.containsKey(key)) {
       return PlayerProviderMenu.snackbarLabel(key, widget.providers![key]);
     }
+    final session = widget.enginePlaySession;
+    final ep = widget.selectedEpisode ?? 1;
+    final resolve = session?.resolveForEpisode(ep);
     return catalogSourcesButtonLabel(
       movie: widget.movie,
       season: widget.selectedSeason,
@@ -69,10 +72,10 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       widgetMagnetLink: widget.magnetLink,
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       catalogSourceKind: _s._catalogSourceKind,
-      anilistId: widget.enginePlaySession?.anilistId,
-      malId: widget.enginePlaySession?.malId,
-      kisskhId: widget.enginePlaySession?.kisskhId,
-      animeAudioCategory: widget.enginePlaySession?.animeAudioCategory,
+      catalogOpen: session?.effectiveOpen,
+      malId: resolve?.malId ?? session?.malId,
+      animeAudioCategory: session?.animeAudioCategory,
+      episodeVideoId: session?.episodeVideoIdFor(ep),
     );
   }
 
@@ -417,6 +420,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     _s._hideTimer?.cancel();
     final session = widget.enginePlaySession;
     final ep = widget.selectedEpisode;
+    final epNum = ep ?? 1;
+    final resolve = session?.resolveForEpisode(epNum);
     await PlayerSourcesPanel.show(
       context: context,
       movie: movie,
@@ -434,11 +439,13 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         widgetAddonBaseUrl: widget.stremioAddonBaseUrl,
         currentProvider: _s._currentProvider,
       ),
-      anilistId: session?.anilistId,
-      malId: session?.malId,
-      kisskhId: session?.kisskhId,
-      kisskhEpisodeId: ep != null ? session?.kisskhEpisodeIdFor(ep) : null,
-      arabicVideoId: ep != null ? session?.arabicVideoIdFor(ep) : null,
+      catalogOpen: session?.effectiveOpen,
+      anilistId: resolve?.anilistId,
+      malId: resolve?.malId ?? session?.malId,
+      kisskhId: resolve?.kisskhId,
+      kisskhEpisodeId: resolve?.kisskhEpisodeId,
+      arabicVideoId: resolve?.arabicVideoId,
+      episodeVideoId: session?.episodeVideoIdFor(epNum),
       engineCategory: session?.category,
       animeAudioCategory: session?.animeAudioCategory,
       onTorrentSelected: _switchTorrentSource,

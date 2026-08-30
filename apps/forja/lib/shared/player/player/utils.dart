@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 export 'package:forja/shared/playback/playback_stream_guards.dart'
     show
@@ -893,10 +894,10 @@ String catalogSourcesButtonLabel({
   String? currentStreamUrl,
   String? currentPlayingCatalogUrl,
   String? catalogSourceKind,
-  int? anilistId,
+  CatalogOpen? catalogOpen,
   int? malId,
-  int? kisskhId,
   String? animeAudioCategory,
+  String? episodeVideoId,
 }) {
   final addon = (catalogAddonBaseUrl ?? widgetAddonBaseUrl)?.trim();
   if (addon != null && addon.isNotEmpty) {
@@ -910,10 +911,10 @@ String catalogSourcesButtonLabel({
           mediaType: movie.mediaType,
           season: season,
           episode: episode,
-          anilistId: anilistId,
+          catalogOpen: catalogOpen,
           malId: malId,
-          kisskhId: kisskhId,
           animeAudioCategory: animeAudioCategory,
+          episodeVideoId: episodeVideoId,
         );
 
   if (cacheKey != null) {

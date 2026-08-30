@@ -9,15 +9,11 @@ class HubPlayContext {
     required this.engineCategory,
     this.pluginId,
     this.catalogMeta,
+    this.catalogOpen,
     this.season,
     this.episode,
-    this.anilistId,
     this.malId,
-    this.kisskhId,
-    this.kisskhEpisodeId,
-    this.kisskhEpisodeIdByNumber = const {},
-    this.arabicVideoId,
-    this.arabicVideoIdByEpisode = const {},
+    this.episodeVideoIdByNumber = const {},
     this.animeAudioCategory,
     this.hubEpisodes,
     this.selectedPluginIds,
@@ -31,15 +27,11 @@ class HubPlayContext {
   final String engineCategory;
   final String? pluginId;
   final CatalogMetaItem? catalogMeta;
+  final CatalogOpen? catalogOpen;
   final int? season;
   final int? episode;
-  final int? anilistId;
   final int? malId;
-  final int? kisskhId;
-  final int? kisskhEpisodeId;
-  final Map<int, int> kisskhEpisodeIdByNumber;
-  final String? arabicVideoId;
-  final Map<int, String> arabicVideoIdByEpisode;
+  final Map<int, String> episodeVideoIdByNumber;
   final String? animeAudioCategory;
   final List<PlayerHubEpisode>? hubEpisodes;
   final Set<String>? selectedPluginIds;
@@ -47,4 +39,6 @@ class HubPlayContext {
   final String? preferredPluginId;
   final String? savedStreamUrl;
   final String? loadingSubtitle;
+
+  CatalogOpen? get effectiveOpen => catalogOpen ?? catalogMeta?.open;
 }

@@ -183,6 +183,19 @@ class CatalogRuntime {
       return envelope;
     }
 
+    if (_envelopeAlreadyEnriched(action, envelope.data, params)) {
+      final data = envelope.data;
+      if (data != null) {
+        CatalogCache.instance.put(
+          key: key,
+          pluginId: pluginId,
+          data: data,
+          hints: envelope.cache,
+        );
+      }
+      return envelope;
+    }
+
     envelope = await _pipeEnrich(
       sourcePluginId: pluginId,
       action: action,
@@ -204,8 +217,8 @@ class CatalogRuntime {
     return envelope;
   }
 
-  /// Companion enrich on cache hits — legacy rows and [feed] must still enrich;
-  /// merged payload is written back so later hits skip repeat TMDB work.
+  /// Companion enrich on cache hits — skip when payload already carries kit
+  /// `_hubTmdbEnriched`; merged payload is written back on first enrich.
   Future<CatalogEnvelope> _pipeEnrichCached({
     required String cacheKey,
     required String sourcePluginId,
@@ -216,6 +229,9 @@ class CatalogRuntime {
     required Duration timeout,
   }) async {
     if (action != 'rail' && action != 'details' && action != 'feed') {
+      return envelope;
+    }
+    if (_envelopeAlreadyEnriched(action, envelope.data, params)) {
       return envelope;
     }
     final enriched = await _pipeEnrich(
@@ -253,6 +269,9 @@ class CatalogRuntime {
       return envelope;
     }
     if (!envelope.ok) return envelope;
+    if (_envelopeAlreadyEnriched(action, envelope.data, params)) {
+      return envelope;
+    }
 
     final source = await _resolvePlugin(sourcePluginId);
     final enrichId = source?.enrich?.trim() ?? '';
@@ -407,6 +426,70 @@ class CatalogRuntime {
       if (meta is Map) merged['meta'] = Map<String, dynamic>.from(meta);
     }
     return merged;
+  }
+
+  /// Kit sets `_hubTmdbEnriched` on meta after [hubApplyTmdbHit]. Skip repeat
+  /// companion enrich on cache hits when that marker (or legacy TMDB backdrop)
+  /// is already present.
+  @visibleForTesting
+  static bool envelopeAlreadyEnriched(
+    String action,
+    Map<String, dynamic>? data,
+    Map<String, dynamic> params,
+  ) =>
+      _envelopeAlreadyEnriched(action, data, params);
+
+  static bool metaTmdbEnriched(Map<String, dynamic> meta) =>
+      _metaTmdbEnriched(meta);
+
+  static bool _envelopeAlreadyEnriched(
+    String action,
+    Map<String, dynamic>? data,
+    Map<String, dynamic> params,
+  ) {
+    if (data == null) return false;
+    switch (action) {
+      case 'details':
+        final meta = data['meta'];
+        if (meta is! Map) return false;
+        return _metaTmdbEnriched(Map<String, dynamic>.from(meta));
+      case 'rail':
+        final rail = (params['rail'] ?? '').toString().trim();
+        if (rail.isNotEmpty && rail != 'spotlight') return false;
+        final items = data['items'];
+        if (items is! List || items.isEmpty) return false;
+        return _itemsTmdbEnriched(items, limit: 5);
+      case 'feed':
+        final rails = data['rails'];
+        if (rails is! Map) return false;
+        final spotlight = rails['spotlight'];
+        if (spotlight is! List || spotlight.isEmpty) return false;
+        return _itemsTmdbEnriched(spotlight, limit: 5);
+      default:
+        return false;
+    }
+  }
+
+  static bool _metaTmdbEnriched(Map<String, dynamic> meta) {
+    if (meta['_hubTmdbEnriched'] == true) return true;
+    final ids = meta['ids'];
+    if (ids is! Map) return false;
+    final raw = ids['tmdb'];
+    if (raw == null || int.tryParse(raw.toString()) == null) return false;
+    final bg = (meta['background'] ?? '').toString();
+    return bg.contains('image.tmdb.org/t/p/w1280');
+  }
+
+  static bool _itemsTmdbEnriched(List items, {required int limit}) {
+    final n = limit > 0 ? limit : items.length;
+    var checked = 0;
+    for (final raw in items) {
+      if (checked >= n) break;
+      if (raw is! Map) continue;
+      checked++;
+      if (!_metaTmdbEnriched(Map<String, dynamic>.from(raw))) return false;
+    }
+    return checked > 0;
   }
 
   Future<EnginePlugin?> _resolvePlugin(String pluginId) async {

@@ -188,12 +188,106 @@ function hubTmdbMatch(ctx, query) {
   var title = hubNormalizeAnimeTitle(query.title);
   if (!title) return Promise.resolve(null);
   var normalized = Object.assign({}, query, { title: title });
-  if (ctx && ctx.host && ctx.host.tmdb && typeof ctx.host.tmdb.match === 'function') {
-    return Promise.resolve(ctx.host.tmdb.match(normalized)).then(function (hit) {
-      return hit && hit.id ? hit : null;
-    }).catch(function () { return null; });
+  function fetchJs() {
+    return hubTmdbMatchFetch(ctx, normalized);
   }
-  return hubTmdbMatchFetch(ctx, normalized);
+  if (ctx && ctx.host && ctx.host.tmdb && typeof ctx.host.tmdb.match === 'function') {
+    return Promise.resolve(ctx.host.tmdb.match(normalized))
+      .then(function (hit) {
+        if (hit && hit.id) return hit;
+        return fetchJs();
+      })
+      .catch(function () {
+        return fetchJs();
+      });
+  }
+  return fetchJs();
+}
+
+function hubTmdbMultiTitle(hit) {
+  if (!hit) return '';
+  var mt = String(hit.media_type || '').toLowerCase();
+  if (mt === 'movie') return String(hit.title || '').trim();
+  return String(hit.name || hit.title || '').trim();
+}
+
+function hubTmdbMultiYear(hit) {
+  var mt = String(hit.media_type || '').toLowerCase();
+  var d = String(
+    mt === 'movie' ? hit.release_date || '' : hit.first_air_date || '',
+  );
+  if (d.length < 4) return 0;
+  return Number(d.slice(0, 4)) || 0;
+}
+
+function hubTmdbHitFromMultiRow(row) {
+  if (!row || !row.id) return null;
+  var mt = String(row.media_type || '').toLowerCase();
+  if (mt !== 'movie' && mt !== 'tv') return null;
+  var name = hubTmdbMultiTitle(row);
+  var poster = row.poster_path
+    ? 'https://image.tmdb.org/t/p/w500' + row.poster_path
+    : '';
+  var backdrop = row.backdrop_path
+    ? 'https://image.tmdb.org/t/p/w1280' + row.backdrop_path
+    : '';
+  var overview = String(row.overview || '').trim();
+  var rating = Number(row.vote_average);
+  var year = hubTmdbMultiYear(row);
+  return {
+    id: Number(row.id),
+    mediaType: mt,
+    name: name,
+    year: year > 0 ? year : null,
+    poster: poster || null,
+    backdrop: backdrop || null,
+    overview: overview || null,
+    rating: rating > 0 ? rating : null,
+  };
+}
+
+function hubTmdbScoreMultiResults(results, queryTitle, wantMovie, wantYear, normalizeFn) {
+  if (!Array.isArray(results) || !results.length) return null;
+  var q = normalizeFn(String(queryTitle || ''));
+  if (!q) return null;
+  var qt = q.toLowerCase();
+  var best = null;
+  var bestScore = -1;
+  for (var i = 0; i < results.length; i++) {
+    var h = results[i];
+    if (!h || !h.id) continue;
+    var mt = String(h.media_type || '').toLowerCase();
+    if (mt !== 'movie' && mt !== 'tv') continue;
+    var ht = normalizeFn(hubTmdbMultiTitle(h)).toLowerCase();
+    var s = 0;
+    if (ht === qt) {
+      s += 5;
+    } else if (ht.indexOf(qt) === 0 || qt.indexOf(ht) === 0) {
+      s += 2;
+    } else if (ht.indexOf(qt) >= 0 || qt.indexOf(ht) >= 0) {
+      s += 1;
+    } else {
+      continue;
+    }
+    if (wantMovie) {
+      if (mt === 'movie') s += 3;
+      else if (mt === 'tv') s += 1;
+    } else {
+      if (mt === 'tv') s += 3;
+      else if (mt === 'movie') s += 1;
+    }
+    if (wantYear > 0) {
+      var hy = hubTmdbMultiYear(h);
+      if (hy === wantYear) s += 4;
+      else if (hy && Math.abs(hy - wantYear) <= 1) s += 1;
+    }
+    if (s > bestScore) {
+      bestScore = s;
+      best = h;
+    }
+  }
+  if (!best || bestScore < 2) return null;
+  return hubTmdbHitFromMultiRow(best);
 }
 
 function hubTmdbMatchFetch(ctx, query) {
@@ -204,82 +298,33 @@ function hubTmdbMatchFetch(ctx, query) {
   var key = String(cfg.apiKey || '').trim();
   if (!key) return Promise.resolve(null);
   var prefer = String(query.type || '').trim().toLowerCase();
-  var primary = prefer === 'movie' ? 'movie' : 'tv';
-  var secondary = primary === 'movie' ? 'tv' : 'movie';
+  var wantMovie = prefer === 'movie';
   var year = Number(query.year) > 0 ? Number(query.year) : 0;
-
-  function search(media) {
-    var url =
-      'https://api.themoviedb.org/3/search/' +
-      media +
-      '?api_key=' +
-      encodeURIComponent(key) +
-      '&query=' +
-      encodeURIComponent(title) +
-      '&include_adult=false';
-    return ctx.fetch(url).then(function (res) {
+  var url =
+    'https://api.themoviedb.org/3/search/multi?api_key=' +
+    encodeURIComponent(key) +
+    '&query=' +
+    encodeURIComponent(title) +
+    '&include_adult=false';
+  return ctx
+    .fetch(url)
+    .then(function (res) {
       if (!res.ok) return null;
       return res.json();
-    }).then(function (json) {
-      if (!json || !Array.isArray(json.results) || !json.results.length) return null;
-      return hubTmdbPick(json.results, media, year);
-    }).catch(function () { return null; });
-  }
-
-  return search(primary).then(function (hit) {
-    return hit || search(secondary);
-  });
-}
-
-function hubTmdbPick(results, media, year) {
-  function yearOf(m) {
-    var d = String(
-      media === 'movie' ? m.release_date || '' : m.first_air_date || '',
-    );
-    if (d.length < 4) return 0;
-    return Number(d.slice(0, 4)) || 0;
-  }
-  function withBackdrop(list) {
-    for (var i = 0; i < list.length; i++) {
-      if (list[i] && list[i].backdrop_path) return list[i];
-    }
-    return list.length ? list[0] : null;
-  }
-  var chosen = null;
-  if (year > 0) {
-    var exact = [];
-    var near = [];
-    for (var i = 0; i < results.length; i++) {
-      var y = yearOf(results[i]);
-      if (y === year) exact.push(results[i]);
-      else if (y && Math.abs(y - year) <= 1) near.push(results[i]);
-    }
-    chosen = withBackdrop(exact) || withBackdrop(near) || withBackdrop(results);
-  } else {
-    chosen = withBackdrop(results);
-  }
-  if (!chosen || !chosen.id) return null;
-  var name = String(
-    media === 'movie' ? chosen.title || '' : chosen.name || '',
-  );
-  var poster = chosen.poster_path
-    ? 'https://image.tmdb.org/t/p/w500' + chosen.poster_path
-    : '';
-  var backdrop = chosen.backdrop_path
-    ? 'https://image.tmdb.org/t/p/w1280' + chosen.backdrop_path
-    : '';
-  var overview = String(chosen.overview || '').trim();
-  var rating = Number(chosen.vote_average);
-  return {
-    id: Number(chosen.id),
-    mediaType: media,
-    name: name,
-    year: yearOf(chosen) || null,
-    poster: poster || null,
-    backdrop: backdrop || null,
-    overview: overview || null,
-    rating: rating > 0 ? rating : null,
-  };
+    })
+    .then(function (json) {
+      if (!json || !Array.isArray(json.results)) return null;
+      return hubTmdbScoreMultiResults(
+        json.results,
+        title,
+        wantMovie,
+        year,
+        hubNormalizeAnimeTitle,
+      );
+    })
+    .catch(function () {
+      return null;
+    });
 }
 
 function hubApplyTmdbHit(meta, hit) {
@@ -299,6 +344,7 @@ function hubApplyTmdbHit(meta, hit) {
   if (hit.rating != null && !(Number(meta.rating) > 0)) {
     meta.rating = Number(hit.rating);
   }
+  meta._hubTmdbEnriched = true;
   return meta;
 }
 

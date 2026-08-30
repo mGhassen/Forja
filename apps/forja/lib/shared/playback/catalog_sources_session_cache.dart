@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:rust/rust.dart';
 
 /// Tab, chip, and toolbar state for catalog Sources (player overlay).
@@ -90,36 +91,45 @@ class CatalogSourcesSessionCache {
 
   /// Stable key for a title/episode Sources session.
   ///
-  /// Prefer hub ids ([anilistId] / [kisskhId]) so Anime / Asian Drama stay on
-  /// one key when TMDB enrichment flips `movie.id` / `mediaType`. Episode is
-  /// always scoped for hubs; [animeAudioCategory] splits SUB/DUB when set.
+  /// Prefer [catalogOpen] so hub tabs stay on one key when TMDB enrichment
+  /// flips `movie.id` / `mediaType`. Episode is always scoped for hubs;
+  /// [animeAudioCategory] splits SUB/DUB when set.
   static String cacheKey({
     required int mediaId,
     required String mediaType,
     int? season,
     int? episode,
-    int? anilistId,
+    CatalogOpen? catalogOpen,
     int? malId,
-    int? kisskhId,
     String? animeAudioCategory,
-    String? arabicVideoId,
+    String? episodeVideoId,
   }) {
     final ep = (episode == null || episode < 1) ? 1 : episode;
     final audio = (animeAudioCategory ?? '').trim().toLowerCase();
     final audioSuffix =
         (audio == 'sub' || audio == 'dub') ? ':$audio' : '';
 
-    final arabicVid = (arabicVideoId ?? '').trim();
-    if (arabicVid.isNotEmpty) return 'arabic:$arabicVid';
+    final open = catalogOpen;
+    if (open != null) {
+      final id = open.id.trim();
+      if (id.isNotEmpty) {
+        switch (open.surface) {
+          case 'arabic':
+            final vid = (episodeVideoId ?? id).trim();
+            if (vid.isNotEmpty) return 'arabic:$vid';
+            break;
+          case 'anime':
+            return 'anime:$id:E$ep$audioSuffix';
+          case 'drama':
+            return 'drama:$id:E$ep';
+          default:
+            return '${open.surface}:$id:E$ep$audioSuffix';
+        }
+      }
+    }
 
-    final ani = anilistId ?? 0;
-    if (ani > 0) return 'anime:$ani:E$ep$audioSuffix';
-
-    final kiss = kisskhId ?? 0;
-    if (kiss > 0) return 'drama:$kiss:E$ep';
-
-    // Fallback Movie builds use negative AniList / KissKh ids + hub mediaType
-    // before TMDB lands — still episode-scoped (not bare `anime:-id`).
+    // Fallback Movie builds use negative hub ids + hub mediaType before TMDB
+    // lands — still episode-scoped (not bare `anime:-id`).
     final type = mediaType == 'series' ? 'tv' : mediaType;
     if (type == 'anime' || type == 'asian_drama' || type == 'drama') {
       final s = (season == null || season < 1) ? 1 : season;

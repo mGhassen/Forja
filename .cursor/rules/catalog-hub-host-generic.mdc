@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Catalog hubs — host is generic
 
+**Full model:** [forja-external-plugins-host.mdc](./forja-external-plugins-host.mdc) · **Playback:** [forja-playback-host-generic.mdc](./forja-playback-host-generic.mdc)
+
 Hub packs (`plugins/hubs/**`) are **external plugins**. The Flutter host
 (`apps/forja/lib/shared/catalog/**`, CatalogShell, `catalog_open`) must stay
 **pack-agnostic**.

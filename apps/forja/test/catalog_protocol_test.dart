@@ -288,6 +288,90 @@ void main() {
     });
   });
 
+  group('enrich cache skip', () {
+    test('details skips when kit marker set', () {
+      expect(
+        CatalogRuntime.envelopeAlreadyEnriched(
+          'details',
+          {
+            'meta': {
+              'id': 'anilist:1',
+              '_hubTmdbEnriched': true,
+            },
+          },
+          const {},
+        ),
+        isTrue,
+      );
+    });
+
+    test('details skips on legacy tmdb backdrop', () {
+      expect(
+        CatalogRuntime.envelopeAlreadyEnriched(
+          'details',
+          {
+            'meta': {
+              'ids': {'tmdb': '603'},
+              'background':
+                  'https://image.tmdb.org/t/p/w1280/abc.jpg',
+            },
+          },
+          const {},
+        ),
+        isTrue,
+      );
+    });
+
+    test('details does not skip bare ids.tmdb', () {
+      expect(
+        CatalogRuntime.envelopeAlreadyEnriched(
+          'details',
+          {
+            'meta': {
+              'ids': {'tmdb': '603'},
+              'background': 'https://cdn.anilist.co/img.jpg',
+            },
+          },
+          const {},
+        ),
+        isFalse,
+      );
+    });
+
+    test('spotlight rail skips when head items enriched', () {
+      expect(
+        CatalogRuntime.envelopeAlreadyEnriched(
+          'rail',
+          {
+            'items': [
+              {
+                '_hubTmdbEnriched': true,
+                'id': 'a:1',
+              },
+            ],
+          },
+          const {'rail': 'spotlight'},
+        ),
+        isTrue,
+      );
+    });
+
+    test('non-spotlight rail never skips', () {
+      expect(
+        CatalogRuntime.envelopeAlreadyEnriched(
+          'rail',
+          {
+            'items': [
+              {'_hubTmdbEnriched': true, 'id': 'a:1'},
+            ],
+          },
+          const {'rail': 'trending'},
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('deep links', () {
     test('parses plugin, action and id', () {
       final link = CatalogDeepLink.parse(

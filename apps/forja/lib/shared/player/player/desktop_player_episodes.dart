@@ -698,6 +698,8 @@ mixin _DesktopPlayerEpisodes
     _s._hideTimer?.cancel();
     final session = widget.enginePlaySession;
     final ep = widget.selectedEpisode;
+    final epNum = ep ?? 1;
+    final resolve = session?.resolveForEpisode(epNum);
     PlayerSourcesPanel.show(
       context: context,
       movie: movie,
@@ -712,11 +714,13 @@ mixin _DesktopPlayerEpisodes
         widgetAddonBaseUrl: widget.stremioAddonBaseUrl,
         currentProvider: _s._currentProvider,
       ),
-      anilistId: session?.anilistId,
-      malId: session?.malId,
-      kisskhId: session?.kisskhId,
-      kisskhEpisodeId: ep != null ? session?.kisskhEpisodeIdFor(ep) : null,
-      arabicVideoId: ep != null ? session?.arabicVideoIdFor(ep) : null,
+      catalogOpen: session?.effectiveOpen,
+      anilistId: resolve?.anilistId,
+      malId: resolve?.malId ?? session?.malId,
+      kisskhId: resolve?.kisskhId,
+      kisskhEpisodeId: resolve?.kisskhEpisodeId,
+      arabicVideoId: resolve?.arabicVideoId,
+      episodeVideoId: session?.episodeVideoIdFor(epNum),
       engineCategory: session?.category,
       animeAudioCategory: session?.animeAudioCategory,
       onTorrentSelected: _switchTorrentSource,

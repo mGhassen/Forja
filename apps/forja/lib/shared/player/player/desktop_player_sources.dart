@@ -424,6 +424,9 @@ mixin _DesktopPlayerSources
         widget.providers!.containsKey(key)) {
       return PlayerProviderMenu.snackbarLabel(key, widget.providers![key]);
     }
+    final session = widget.enginePlaySession;
+    final ep = widget.selectedEpisode ?? 1;
+    final resolve = session?.resolveForEpisode(ep);
     return catalogSourcesButtonLabel(
       movie: widget.movie,
       season: widget.selectedSeason,
@@ -437,10 +440,10 @@ mixin _DesktopPlayerSources
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
       catalogSourceKind: _s._catalogSourceKind,
-      anilistId: widget.enginePlaySession?.anilistId,
-      malId: widget.enginePlaySession?.malId,
-      kisskhId: widget.enginePlaySession?.kisskhId,
-      animeAudioCategory: widget.enginePlaySession?.animeAudioCategory,
+      catalogOpen: session?.effectiveOpen,
+      malId: resolve?.malId ?? session?.malId,
+      animeAudioCategory: session?.animeAudioCategory,
+      episodeVideoId: session?.episodeVideoIdFor(ep),
     );
   }
 

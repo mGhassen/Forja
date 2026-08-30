@@ -2,6 +2,7 @@ import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
+import 'package:forja/shared/playback/hub_open_engine.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/list_follow_from_watched.dart';
@@ -83,50 +84,31 @@ HubCatalogPlayHooks buildHubCatalogPlayHooks({
   required Movie movie,
   int? season,
   int? episode,
-  int? kisskhId,
-  int? kisskhEpisodeId,
-  String? arabicVideoId,
-  int? anilistId,
+  CatalogOpen? catalogOpen,
   int? malId,
   String? engineCategory,
   String? animeAudioCategory,
   String? pluginId,
   CatalogMetaItem? catalogMeta,
+  EnginePlaySession? enginePlaySession,
 }) {
-  final category = engineCategory ??
-      (kisskhId != null
-          ? EngineCategories.drama
-          : anilistId != null
-              ? EngineCategories.anime
-              : (arabicVideoId != null && arabicVideoId.isNotEmpty)
-                  ? EngineCategories.arabic
-                  : null);
-  if (category == null ||
-      (kisskhId == null &&
-          anilistId == null &&
-          (arabicVideoId ?? '').isEmpty &&
-          catalogMeta == null)) {
+  final open = catalogOpen ?? catalogMeta?.open;
+  final category =
+      engineCategory ?? engineCategoryForOpen(open, metaType: catalogMeta?.type);
+  if (open == null && catalogMeta == null && enginePlaySession == null) {
     return const HubCatalogPlayHooks.none();
   }
 
   final ep = episode ?? (hubMediaIsEpisodic(movie) ? (season ?? 1) : null);
-  final session = EnginePlaySession(
-    category: category,
-    pluginId: pluginId,
-    catalogMeta: catalogMeta,
-    anilistId: anilistId,
-    malId: malId,
-    kisskhId: kisskhId,
-    kisskhEpisodeIdByNumber: kisskhEpisodeId != null && ep != null
-        ? {ep: kisskhEpisodeId}
-        : const {},
-    arabicVideoIdByEpisode: arabicVideoId != null &&
-            arabicVideoId.isNotEmpty &&
-            ep != null
-        ? {ep: arabicVideoId}
-        : const {},
-    animeAudioCategory: animeAudioCategory,
-  );
+  final session = enginePlaySession ??
+      EnginePlaySession(
+        category: category,
+        pluginId: pluginId,
+        catalogMeta: catalogMeta,
+        catalogOpen: open,
+        malId: malId,
+        animeAudioCategory: animeAudioCategory,
+      );
   if (!hubEngineNeedsWatchHistory(session)) {
     return const HubCatalogPlayHooks.none();
   }
@@ -149,17 +131,6 @@ bool hubEngineNeedsWatchHistory(EnginePlaySession? session) {
       session.category == EngineCategories.drama;
 }
 
-String? _episodeVideoId(EnginePlaySession session, int ep) {
-  if (session.category == EngineCategories.drama) {
-    final id = session.kisskhEpisodeIdFor(ep);
-    return id != null && id > 0 ? id.toString() : null;
-  }
-  if (session.category == EngineCategories.arabic) {
-    return session.arabicVideoIdFor(ep);
-  }
-  return null;
-}
-
 Future<void> _recordCatalogWatchHistory({
   required EnginePlaySession session,
   required int ep,
@@ -173,7 +144,7 @@ Future<void> _recordCatalogWatchHistory({
     pluginId: pluginId,
     meta: meta,
     episodeNumber: ep,
-    episodeVideoId: _episodeVideoId(session, ep),
+    episodeVideoId: session.episodeVideoIdFor(ep),
     extras: {
       if (session.animeAudioCategory != null)
         'category': session.animeAudioCategory,
@@ -252,61 +223,65 @@ Future<void> _syncEpisodeWatched({
   required Duration pos,
   required Duration dur,
 }) async {
-  if (session.category == EngineCategories.anime && session.anilistId != null) {
-    await EpisodeWatchedService()
-        .markWatchedIfFinished(
-          mediaId: session.anilistId!,
-          season: 1,
-          episode: ep,
-          positionMs: pos.inMilliseconds,
-          durationMs: dur.inMilliseconds,
-          catalog: EpisodeWatchedService.catalogAnilist,
-        )
-        .then((marked) async {
-          if (!marked) return;
-          final meta = session.catalogMeta;
-          final target = HubListFollowTarget.anime(
-            anilistId: session.anilistId!,
-            title: meta?.name ?? '',
-            posterPath: meta?.poster ?? '',
-          );
-          HubListFollow.syncEpisodeWatched(target, episode: ep);
-          await ListFollowFromWatched.applyHubAfterAutoMark(
-            target: target,
-            mediaId: session.anilistId!,
-            catalog: EpisodeWatchedService.catalogAnilist,
-            totalEpisodes: meta?.episodes ?? ep,
-          );
-        });
-    return;
-  }
+  final open = session.effectiveOpen;
+  final mediaId = open?.idInt;
+  if (mediaId == null) return;
 
-  if (session.category == EngineCategories.drama && session.kisskhId != null) {
-    await EpisodeWatchedService()
-        .markWatchedIfFinished(
-          mediaId: session.kisskhId!,
-          season: 1,
-          episode: ep,
-          positionMs: pos.inMilliseconds,
-          durationMs: dur.inMilliseconds,
-          catalog: EpisodeWatchedService.catalogKisskh,
-        )
-        .then((marked) async {
-          if (!marked) return;
-          final meta = session.catalogMeta;
-          final target = HubListFollowTarget.drama(
-            kisskhId: session.kisskhId!,
-            title: meta?.name ?? '',
-            posterPath: meta?.poster ?? '',
-            releaseDate: meta?.releaseInfo ?? '',
-          );
-          HubListFollow.syncEpisodeWatched(target, episode: ep);
-          await ListFollowFromWatched.applyHubAfterAutoMark(
-            target: target,
-            mediaId: session.kisskhId!,
+  switch (open?.surface) {
+    case 'anime':
+      await EpisodeWatchedService()
+          .markWatchedIfFinished(
+            mediaId: mediaId,
+            season: 1,
+            episode: ep,
+            positionMs: pos.inMilliseconds,
+            durationMs: dur.inMilliseconds,
+            catalog: EpisodeWatchedService.catalogAnilist,
+          )
+          .then((marked) async {
+            if (!marked) return;
+            final meta = session.catalogMeta;
+            final target = HubListFollowTarget.anime(
+              anilistId: mediaId,
+              title: meta?.name ?? '',
+              posterPath: meta?.poster ?? '',
+            );
+            HubListFollow.syncEpisodeWatched(target, episode: ep);
+            await ListFollowFromWatched.applyHubAfterAutoMark(
+              target: target,
+              mediaId: mediaId,
+              catalog: EpisodeWatchedService.catalogAnilist,
+              totalEpisodes: meta?.episodes ?? ep,
+            );
+          });
+    case 'drama':
+      await EpisodeWatchedService()
+          .markWatchedIfFinished(
+            mediaId: mediaId,
+            season: 1,
+            episode: ep,
+            positionMs: pos.inMilliseconds,
+            durationMs: dur.inMilliseconds,
             catalog: EpisodeWatchedService.catalogKisskh,
-            totalEpisodes: meta?.episodes ?? ep,
-          );
-        });
+          )
+          .then((marked) async {
+            if (!marked) return;
+            final meta = session.catalogMeta;
+            final target = HubListFollowTarget.drama(
+              kisskhId: mediaId,
+              title: meta?.name ?? '',
+              posterPath: meta?.poster ?? '',
+              releaseDate: meta?.releaseInfo ?? '',
+            );
+            HubListFollow.syncEpisodeWatched(target, episode: ep);
+            await ListFollowFromWatched.applyHubAfterAutoMark(
+              target: target,
+              mediaId: mediaId,
+              catalog: EpisodeWatchedService.catalogKisskh,
+              totalEpisodes: meta?.episodes ?? ep,
+            );
+          });
+    default:
+      break;
   }
 }

@@ -8,6 +8,7 @@ import 'package:forja/shared/playback/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/playback/hub_drama_player_episodes.dart';
+import 'package:forja/shared/playback/hub_open_engine.dart';
 import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -31,11 +32,9 @@ class EnginePlaySession {
     required this.category,
     this.pluginId,
     this.catalogMeta,
-    this.anilistId,
+    this.catalogOpen,
     this.malId,
-    this.kisskhId,
-    this.kisskhEpisodeIdByNumber = const {},
-    this.arabicVideoIdByEpisode = const {},
+    this.episodeVideoIdByNumber = const {},
     this.animeAudioCategory,
   });
 
@@ -43,17 +42,9 @@ class EnginePlaySession {
   final String category;
   final String? pluginId;
   final CatalogMetaItem? catalogMeta;
-  final int? anilistId;
+  final CatalogOpen? catalogOpen;
   final int? malId;
-  final int? kisskhId;
-
-  /// KissKh display episode number → episode id (drama next/prev).
-  final Map<int, int> kisskhEpisodeIdByNumber;
-
-  /// Arabic hub display episode number → opaque pack video id.
-  final Map<int, String> arabicVideoIdByEpisode;
-
-  /// Anime hub SUB/DUB — same session-cache key as green Play / Sources.
+  final Map<int, String> episodeVideoIdByNumber;
   final String? animeAudioCategory;
 
   bool get isHubFlatList =>
@@ -61,9 +52,22 @@ class EnginePlaySession {
       category == EngineCategories.drama ||
       category == EngineCategories.arabic;
 
-  int? kisskhEpisodeIdFor(int episode) => kisskhEpisodeIdByNumber[episode];
+  CatalogOpen? get effectiveOpen =>
+      catalogOpen ?? catalogMeta?.open;
 
-  String? arabicVideoIdFor(int episode) => arabicVideoIdByEpisode[episode];
+  HubEngineResolveParams resolveForEpisode(int? episode) =>
+      hubEngineResolveParams(
+        catalogOpen: effectiveOpen,
+        category: category,
+        episode: episode,
+        malId: malId,
+        episodeVideoIdByNumber: episodeVideoIdByNumber,
+      );
+
+  String? episodeVideoIdFor(int episode) {
+    final v = episodeVideoIdByNumber[episode]?.trim();
+    return v != null && v.isNotEmpty ? v : null;
+  }
 }
 
 /// Current player session came from Forja Engine (`engine:<pluginId>`).
@@ -95,17 +99,14 @@ Future<void> switchEpisodeViaEngineAutoPlay({
   final category =
       s?.category ??
       EngineCategories.panelCategoryFor(mediaType: movie.mediaType);
+  final resolve = s?.resolveForEpisode(episode);
   return runEngineAutoPlay(
     context: context,
     movie: movie,
     engineCategory: category,
     season: season,
     episode: episode,
-    anilistId: s?.anilistId,
-    malId: s?.malId,
-    kisskhId: s?.kisskhId,
-    kisskhEpisodeId: s?.kisskhEpisodeIdFor(episode),
-    arabicVideoId: s?.arabicVideoIdFor(episode),
+    malId: resolve?.malId ?? s?.malId,
     animeAudioCategory: s?.animeAudioCategory,
     stremioId: stremioId ?? movie.imdbId,
     loadingSubtitle: s?.isHubFlatList == true
@@ -163,10 +164,6 @@ Future<void> runEngineAutoPlay({
   required String engineCategory,
   int? season,
   int? episode,
-  int? kisskhId,
-  int? kisskhEpisodeId,
-  String? arabicVideoId,
-  int? anilistId,
   int? malId,
   String? animeAudioCategory,
   Duration? startPosition,
@@ -197,42 +194,31 @@ Future<void> runEngineAutoPlay({
 }) async {
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
+  final hubResolve = enginePlaySession?.resolveForEpisode(episode);
   final category = EngineCategories.panelCategoryFor(
     mediaType: movie.mediaType,
     panelCategory: engineCategory,
-    hasAnimeIds: anilistId != null || malId != null,
+    hasAnimeIds: hubResolve?.hasAnimeIds == true,
   );
   final session =
       enginePlaySession ??
       EnginePlaySession(
         category: category,
-        anilistId: anilistId,
         malId: malId,
-        kisskhId: kisskhId,
-        kisskhEpisodeIdByNumber: {
-          if (kisskhEpisodeId != null && episode != null)
-            episode: kisskhEpisodeId,
-        },
-        arabicVideoIdByEpisode: {
-          if (arabicVideoId != null &&
-              arabicVideoId.isNotEmpty &&
-              episode != null)
-            episode: arabicVideoId,
-        },
         animeAudioCategory: animeAudioCategory,
       );
-  final resolveType = _engineResolveType(category, movie);
+  final resolve = session.resolveForEpisode(episode);
   final cacheKey = CatalogSourcesSessionCache.cacheKey(
     mediaId: movie.id,
     mediaType: movie.mediaType,
     season: season,
     episode: episode,
-    anilistId: anilistId,
-    malId: malId,
-    kisskhId: kisskhId,
-    animeAudioCategory: animeAudioCategory,
-    arabicVideoId: arabicVideoId,
+    catalogOpen: session.effectiveOpen,
+    malId: resolve.malId ?? malId,
+    animeAudioCategory: animeAudioCategory ?? session.animeAudioCategory,
+    episodeVideoId: session.episodeVideoIdFor(episode ?? 1),
   );
+  final resolveType = _engineResolveType(category, movie);
 
   var cancelled = false;
   var playGen = 0;
@@ -573,12 +559,11 @@ Future<void> runEngineAutoPlay({
           title: movie.title,
           year: year,
           movie: movie,
-          malId: malId,
-          anilistId: anilistId,
-          kisskhId: kisskhId,
-          kisskhEpisodeId: kisskhEpisodeId,
-          arabicVideoId:
-              session.arabicVideoIdFor(episode ?? 1) ?? arabicVideoId,
+          malId: resolve.malId,
+          anilistId: resolve.anilistId,
+          kisskhId: resolve.kisskhId,
+          kisskhEpisodeId: resolve.kisskhEpisodeId,
+          arabicVideoId: resolve.arabicVideoId,
           allowHostFallback: false,
         );
       } catch (e) {
@@ -777,9 +762,6 @@ Future<void> runEngineAutoPlay({
         engineCategory: engineCategory,
         season: season,
         episode: episode,
-        kisskhId: kisskhId,
-        kisskhEpisodeId: kisskhEpisodeId,
-        anilistId: anilistId,
         malId: malId,
         animeAudioCategory: animeAudioCategory,
         startPosition: startPosition,
@@ -787,6 +769,9 @@ Future<void> runEngineAutoPlay({
         stremioId: stremioId,
         preferredPluginId: preferredPluginId,
         savedStreamUrl: savedStreamUrl,
+        enginePlaySession: enginePlaySession,
+        hubEpisodes: hubEpisodes,
+        hubEpisodeNumber: hubEpisodeNumber,
         selectedPluginIds: selectedPluginIds,
         packs: packs,
         onCacheUpdated: onCacheUpdated,

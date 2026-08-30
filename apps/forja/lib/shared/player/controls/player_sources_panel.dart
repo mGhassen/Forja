@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -63,11 +64,13 @@ class PlayerSourcesPanel {
     /// `torrents` | `stremio` | `nuvio` - opens on the playing source kind.
     String? preferredKind,
     String? currentAddonBaseUrl,
+    CatalogOpen? catalogOpen,
     int? anilistId,
     int? malId,
     int? kisskhId,
     int? kisskhEpisodeId,
     String? arabicVideoId,
+    String? episodeVideoId,
 
     /// Soft Forja category for this panel: movie | tv | anime | drama | arabic.
     String? engineCategory,
@@ -102,11 +105,13 @@ class PlayerSourcesPanel {
           currentPlayingCatalogUrl: currentPlayingCatalogUrl,
           preferredKind: preferredKind,
           currentAddonBaseUrl: currentAddonBaseUrl,
+          catalogOpen: catalogOpen,
           anilistId: anilistId,
           malId: malId,
           kisskhId: kisskhId,
           kisskhEpisodeId: kisskhEpisodeId,
           arabicVideoId: arabicVideoId,
+          episodeVideoId: episodeVideoId,
           engineCategory: engineCategory,
           animeAudioCategory: animeAudioCategory,
           detailsHost: detailsHost,
@@ -135,11 +140,13 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.currentPlayingCatalogUrl,
     this.preferredKind,
     this.currentAddonBaseUrl,
+    this.catalogOpen,
     this.anilistId,
     this.malId,
     this.kisskhId,
     this.kisskhEpisodeId,
     this.arabicVideoId,
+    this.episodeVideoId,
     this.engineCategory,
     this.animeAudioCategory,
     this.detailsHost = false,
@@ -153,11 +160,13 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final String? currentPlayingCatalogUrl;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
+  final CatalogOpen? catalogOpen;
   final int? anilistId;
   final int? malId;
   final int? kisskhId;
   final int? kisskhEpisodeId;
   final String? arabicVideoId;
+  final String? episodeVideoId;
   final String? engineCategory;
   final String? animeAudioCategory;
   final bool detailsHost;
@@ -203,11 +212,13 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           currentPlayingCatalogUrl: widget.currentPlayingCatalogUrl,
           preferredKind: widget.preferredKind,
           currentAddonBaseUrl: widget.currentAddonBaseUrl,
+          catalogOpen: widget.catalogOpen,
           anilistId: widget.anilistId,
           malId: widget.malId,
           kisskhId: widget.kisskhId,
           kisskhEpisodeId: widget.kisskhEpisodeId,
           arabicVideoId: widget.arabicVideoId,
+          episodeVideoId: widget.episodeVideoId,
           engineCategory: widget.engineCategory,
           animeAudioCategory: widget.animeAudioCategory,
           onTorrentSelected: widget.onTorrentSelected,
@@ -232,11 +243,13 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.currentPlayingCatalogUrl,
     this.preferredKind,
     this.currentAddonBaseUrl,
+    this.catalogOpen,
     this.anilistId,
     this.malId,
     this.kisskhId,
     this.kisskhEpisodeId,
     this.arabicVideoId,
+    this.episodeVideoId,
     this.engineCategory,
     this.animeAudioCategory,
   });
@@ -249,11 +262,13 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final String? currentPlayingCatalogUrl;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
+  final CatalogOpen? catalogOpen;
   final int? anilistId;
   final int? malId;
   final int? kisskhId;
   final int? kisskhEpisodeId;
   final String? arabicVideoId;
+  final String? episodeVideoId;
   final String? engineCategory;
   final String? animeAudioCategory;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
@@ -1009,11 +1024,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     mediaType: widget.movie.mediaType,
     season: widget.season,
     episode: widget.episode,
-    anilistId: widget.anilistId,
+    catalogOpen: widget.catalogOpen,
     malId: widget.malId,
-    kisskhId: widget.kisskhId,
     animeAudioCategory: widget.animeAudioCategory,
-    arabicVideoId: widget.arabicVideoId,
+    episodeVideoId:
+        widget.episodeVideoId ?? widget.arabicVideoId,
   );
 
   /// Hydrate from session TTL cache or fetch - only for the active kind.

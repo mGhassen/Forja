@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
@@ -439,14 +440,14 @@ void main() {
       CatalogSourcesSessionCache.invalidate(key);
     });
 
-    test('hub cacheKey prefers anilist over TMDB mediaType flip', () {
+    test('hub cacheKey prefers catalogOpen over TMDB mediaType flip', () {
       expect(
         CatalogSourcesSessionCache.cacheKey(
           mediaId: 999,
           mediaType: 'tv',
           season: 1,
           episode: 3,
-          anilistId: 42,
+          catalogOpen: const CatalogOpen(surface: 'anime', id: '42'),
           animeAudioCategory: 'sub',
         ),
         'anime:42:E3:sub',
@@ -456,7 +457,7 @@ void main() {
           mediaId: -42,
           mediaType: 'anime',
           episode: 3,
-          anilistId: 42,
+          catalogOpen: const CatalogOpen(surface: 'anime', id: '42'),
           animeAudioCategory: 'sub',
         ),
         'anime:42:E3:sub',
@@ -466,7 +467,7 @@ void main() {
           mediaId: 55,
           mediaType: 'asian_drama',
           episode: 2,
-          kisskhId: 88,
+          catalogOpen: const CatalogOpen(surface: 'drama', id: '88'),
         ),
         'drama:88:E2',
       );

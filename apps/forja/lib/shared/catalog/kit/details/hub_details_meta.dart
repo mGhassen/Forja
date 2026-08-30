@@ -1,6 +1,7 @@
 import 'package:forja/shared/catalog/hub_cover_urls.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/runtime.dart';
 
 Map<String, dynamic> hubDetailsParams(CatalogMetaItem seed) {
   final params = <String, dynamic>{'id': seed.id};
@@ -56,3 +57,11 @@ String hubImageUrl(String path) => resolveHubCoverUrl(path.trim());
 
 String? hubShellTabIdForPlugin(String pluginId) =>
     PluginNavRegistry.tabIdForPluginSync(pluginId);
+
+/// Same contract as [CatalogRuntime.metaTmdbEnriched] for a parsed meta.
+bool hubMetaTmdbEnriched(CatalogMetaItem meta) => CatalogRuntime.metaTmdbEnriched(
+      {
+        ...meta.ids.isEmpty ? const <String, dynamic>{} : {'ids': meta.ids},
+        'background': meta.background,
+      },
+    );
