@@ -78,6 +78,9 @@ class _CatalogShellState extends State<CatalogShell>
   /// Next [_railFuture] miss goes through `forceRefresh`.
   bool _forceNextRails = false;
 
+  /// Last [catalogChromeFilterEpoch] — ignore structural revision bumps.
+  String _chromeFilterEpoch = '';
+
   Listenable? _chromeListenable;
   VoidCallback? _verticalFiltersRevisionListener;
 
@@ -92,6 +95,7 @@ class _CatalogShellState extends State<CatalogShell>
   @override
   void initState() {
     super.initState();
+    _chromeFilterEpoch = catalogChromeFilterEpoch(widget.tabId);
     _scroll.addListener(_publishScroll);
     _rebindChromeListenable();
     _verticalFiltersRevisionListener = () {
@@ -108,6 +112,7 @@ class _CatalogShellState extends State<CatalogShell>
   void _rebindChromeListenable() {
     _chromeListenable?.removeListener(_onChromeFilterChanged);
     _chromeListenable = catalogChromeFilterListenable(widget.tabId);
+    _chromeFilterEpoch = catalogChromeFilterEpoch(widget.tabId);
     _chromeListenable?.addListener(_onChromeFilterChanged);
   }
 
@@ -127,6 +132,9 @@ class _CatalogShellState extends State<CatalogShell>
 
   void _onChromeFilterChanged() {
     if (!mounted) return;
+    final epoch = catalogChromeFilterEpoch(widget.tabId);
+    if (epoch == _chromeFilterEpoch) return;
+    _chromeFilterEpoch = epoch;
     _invalidateRailFutures();
     setState(() => _chromeEpoch++);
   }

@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/catalog/filter.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
@@ -29,14 +28,12 @@ String catalogChromeFilterEpoch(String? tabId) {
 
 Listenable? catalogChromeFilterListenable(String? tabId) {
   final id = tabId?.trim();
-  if (id == null || id.isEmpty) {
-    return CatalogVerticalFiltersRegistry.revision;
-  }
+  if (id == null || id.isEmpty) return null;
+  // Value notifiers only — pack/vertical `revision` bumps on first load and
+  // layout sync must not invalidate painted rails when filters are unchanged.
   return Listenable.merge([
     ShellBus.hubCategoryFor(id),
     ShellBus.hubSelectedCategoryIdFor(id),
-    CatalogVerticalFiltersRegistry.revision,
     CatalogVerticalFiltersRegistry.selectedIdFor(id),
-    CatalogPackFiltersRegistry.revision,
   ]);
 }

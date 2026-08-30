@@ -3,8 +3,12 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/catalog/catalog.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_chrome_filters.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
+import 'package:forja/shell/shell_bus.dart';
 
 /// `plugins/hubs/fixtures/<name>.json` — test cwd is `apps/forja`.
 dynamic loadHubFixture(String name) {
@@ -206,6 +210,29 @@ void main() {
         'value': ['Action'],
       });
       expect(catalogMoodFilter({'id': 'a'}), isNull);
+    });
+  });
+
+  group('chrome filter epoch', () {
+    test('pack filters revision bump does not change epoch', () {
+      const tabId = 'anime';
+      ShellBus.hubCategoryFor(tabId).value = null;
+      ShellBus.hubSelectedCategoryIdFor(tabId).value = null;
+      CatalogVerticalFiltersRegistry.selectedIdFor(tabId).value = null;
+      final before = catalogChromeFilterEpoch(tabId);
+      CatalogPackFiltersRegistry.revision.value++;
+      expect(catalogChromeFilterEpoch(tabId), before);
+    });
+
+    test('category selection changes epoch', () {
+      const tabId = 'anime';
+      ShellBus.hubCategoryFor(tabId).value = null;
+      ShellBus.hubSelectedCategoryIdFor(tabId).value = null;
+      CatalogVerticalFiltersRegistry.selectedIdFor(tabId).value = null;
+      final before = catalogChromeFilterEpoch(tabId);
+      ShellBus.hubCategoryFor(tabId).value = ShellHomeCategory.films;
+      expect(catalogChromeFilterEpoch(tabId), isNot(before));
+      ShellBus.hubCategoryFor(tabId).value = null;
     });
   });
 
