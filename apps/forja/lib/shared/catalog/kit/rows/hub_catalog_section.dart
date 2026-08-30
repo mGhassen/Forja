@@ -79,17 +79,18 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        ShellSectionTitle(
-          title: widget.title,
-          padding: EdgeInsets.fromLTRB(
-            horizontalPad,
-            sectionTop,
-            horizontalPad,
-            widget.embedded
-                ? DetailsTokens.sectionTitleGap
-                : shellHomeSectionBottomGap(context),
+        if (widget.title.isNotEmpty)
+          ShellSectionTitle(
+            title: widget.title,
+            padding: EdgeInsets.fromLTRB(
+              horizontalPad,
+              sectionTop,
+              horizontalPad,
+              widget.embedded
+                  ? DetailsTokens.sectionTitleGap
+                  : shellHomeSectionBottomGap(context),
+            ),
           ),
-        ),
         FocusTraversalGroup(
           child: HorizontalScroller(
             height: HubPosterCard.cardHeight(context, aspect: widget.cardAspect),

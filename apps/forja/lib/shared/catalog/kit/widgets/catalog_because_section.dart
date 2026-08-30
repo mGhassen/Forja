@@ -13,6 +13,7 @@ import 'package:forja/shared/catalog/services/catalog_resume_seeds.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 
 /// Layout widget type `because` — pack owns rail logic; host renders meta rows.
@@ -124,45 +125,52 @@ class _CatalogBecauseSectionState extends State<CatalogBecauseSection> {
         if (payload.items.isEmpty) return const SizedBox.shrink();
 
         final rowId = (widget.spec['id'] ?? 'because').toString();
+        final seedTitle = _becauseSeedTitle(payload.heading);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: shellHomeSectionTitlePadding(context),
+              padding: shellSectionTitlePadding(context),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  if (payload.seedPoster.isNotEmpty) ...[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: CachedNetworkImage(
-                        imageUrl: payload.seedPoster,
-                        width: 32,
-                        height: 48,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                  ],
+                  _BecauseSeedPoster(url: payload.seedPoster),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      payload.heading.isEmpty
-                          ? 'Because you watched'
-                          : payload.heading,
-                      style: ShellSectionTitle.titleStyle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Because you watched',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          seedTitle.isEmpty ? 'recently' : seedTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   if (payload.canShuffle)
-                    IconButton(
-                      tooltip: 'Shuffle seed',
-                      onPressed: _shuffle,
-                      icon: Icon(
-                        Icons.shuffle_rounded,
-                        color: Colors.white.withValues(alpha: 0.7),
-                        size: 22,
-                      ),
+                    ForjaPlainIcon(
+                      icon: Icons.shuffle_rounded,
+                      tooltip: 'Pick a different show',
+                      onTap: _shuffle,
                     ),
                 ],
               ),
@@ -196,6 +204,46 @@ class _CatalogBecauseSectionState extends State<CatalogBecauseSection> {
           ],
         );
       },
+    );
+  }
+}
+
+String _becauseSeedTitle(String heading) {
+  const prefix = 'Because you watched ';
+  final trimmed = heading.trim();
+  if (trimmed.startsWith(prefix)) {
+    return trimmed.substring(prefix.length).trim();
+  }
+  return trimmed;
+}
+
+class _BecauseSeedPoster extends StatelessWidget {
+  const _BecauseSeedPoster({required this.url});
+
+  final String url;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 36,
+      height: 50,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        color: AppTheme.bgCard,
+        border: Border.all(
+          color: ForjaShellColors.borderSubtle,
+          width: 1.2,
+        ),
+      ),
+      child: url.isEmpty
+          ? const Icon(Icons.movie_outlined, color: Colors.white38, size: 18)
+          : CachedNetworkImage(
+              imageUrl: url,
+              fit: BoxFit.cover,
+              placeholder: (_, _) => ColoredBox(color: AppTheme.bgCard),
+              errorWidget: (_, _, _) => ColoredBox(color: AppTheme.bgCard),
+            ),
     );
   }
 }

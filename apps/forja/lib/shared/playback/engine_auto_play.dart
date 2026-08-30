@@ -857,7 +857,6 @@ Future<void> _playFromProbedSources({
     pluginId: enginePlaySession?.pluginId,
     metaId: enginePlaySession?.catalogMeta?.id,
     hubEpisodes: hubEpisodes,
-    tmdbTvId: playMovie.id > 0 ? playMovie.id : null,
     liveEpisodeCount: playMovie.numberOfEpisodes,
   );
   if (!context.mounted) return;
@@ -961,7 +960,6 @@ Future<void> _playResolveRow({
     pluginId: enginePlaySession?.pluginId,
     metaId: enginePlaySession?.catalogMeta?.id,
     hubEpisodes: hubEpisodes,
-    tmdbTvId: playMovie.id > 0 ? playMovie.id : null,
     liveEpisodeCount: playMovie.numberOfEpisodes,
   );
   if (!context.mounted) return;

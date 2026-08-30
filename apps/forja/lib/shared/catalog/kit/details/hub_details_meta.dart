@@ -1,6 +1,6 @@
+import 'package:forja/shared/catalog/hub_cover_urls.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/protocol.dart';
-import 'package:rust/rust.dart';
 
 Map<String, dynamic> hubDetailsParams(CatalogMetaItem seed) {
   final params = <String, dynamic>{'id': seed.id};
@@ -30,11 +30,12 @@ Map<int, List<Map<String, dynamic>>>? hubEpisodeMaps(
   for (final v in videos) {
     final season = v.season ?? 1;
     final epNum = v.episode ?? 1;
+    final thumb = resolveHubCoverUrl(v.thumbnail.trim());
     bySeason.putIfAbsent(season, () => []);
     bySeason[season]!.add({
       'episode_number': epNum,
       'name': v.title.isNotEmpty ? v.title : 'Episode $epNum',
-      'still_path': v.thumbnail,
+      if (thumb.isNotEmpty) 'still_path': thumb,
     });
   }
   return bySeason;
@@ -51,11 +52,7 @@ List<CatalogVideo> hubVideosForSeason(List<CatalogVideo> videos, int season) {
   ];
 }
 
-String hubImageUrl(String path) {
-  final p = path.trim();
-  if (p.isEmpty) return '';
-  return p.startsWith('http') ? p : TmdbApi.getImageUrl(p);
-}
+String hubImageUrl(String path) => resolveHubCoverUrl(path.trim());
 
 String? hubShellTabIdForPlugin(String pluginId) =>
     PluginNavRegistry.tabIdForPluginSync(pluginId);

@@ -370,6 +370,103 @@ function hubTmdbById(ctx, id, preferType) {
   });
 }
 
+function hubTmdbEpisodeStillUrl(path) {
+  var p = String(path || '').trim();
+  if (!p) return '';
+  if (p.indexOf('http') === 0) return p;
+  return 'https://image.tmdb.org/t/p/w300' + p;
+}
+
+function hubTmdbSeasonEpisodeMap(ctx, tvId, season) {
+  var cfg = hubConfig(ctx, {});
+  var key = String(cfg.apiKey || '').trim();
+  if (!key || !(Number(tvId) > 0) || !(Number(season) > 0)) {
+    return Promise.resolve({});
+  }
+  var url =
+    'https://api.themoviedb.org/3/tv/' +
+    Number(tvId) +
+    '/season/' +
+    Number(season) +
+    '?api_key=' +
+    encodeURIComponent(key);
+  return ctx
+    .fetch(url)
+    .then(function (res) {
+      if (!res.ok) return {};
+      return res.json();
+    })
+    .then(function (json) {
+      var out = {};
+      var eps = json && Array.isArray(json.episodes) ? json.episodes : [];
+      for (var i = 0; i < eps.length; i++) {
+        var e = eps[i] || {};
+        var n = Number(e.episode_number);
+        if (!(n > 0)) continue;
+        out[n] = {
+          still: e.still_path ? hubTmdbEpisodeStillUrl(e.still_path) : '',
+          name: String(e.name || '').trim(),
+          overview: String(e.overview || '').trim(),
+        };
+      }
+      return out;
+    })
+    .catch(function () {
+      return {};
+    });
+}
+
+// Details meta only — fill empty pack video thumbs/titles from matched TV season.
+function hubEnrichMetaVideos(ctx, meta, hit) {
+  if (!meta || !hit || !hit.id) return Promise.resolve(meta);
+  if (String(hit.mediaType || '').toLowerCase() === 'movie') {
+    return Promise.resolve(meta);
+  }
+  var videos = Array.isArray(meta.videos) ? meta.videos : [];
+  if (!videos.length) return Promise.resolve(meta);
+
+  var seasonSet = {};
+  for (var i = 0; i < videos.length; i++) {
+    var v = videos[i];
+    if (!v || typeof v !== 'object') continue;
+    var season = Number(v.season) > 0 ? Number(v.season) : 1;
+    seasonSet[season] = true;
+  }
+  var seasonNums = Object.keys(seasonSet).map(Number).filter(function (n) {
+    return n > 0;
+  });
+  if (!seasonNums.length) return Promise.resolve(meta);
+
+  return Promise.all(
+    seasonNums.map(function (season) {
+      return hubTmdbSeasonEpisodeMap(ctx, hit.id, season);
+    }),
+  ).then(function (maps) {
+    var epBySeason = {};
+    for (var si = 0; si < seasonNums.length; si++) {
+      epBySeason[seasonNums[si]] = maps[si] || {};
+    }
+    for (var vi = 0; vi < videos.length; vi++) {
+      var vid = videos[vi];
+      if (!vid || typeof vid !== 'object') continue;
+      var s = Number(vid.season) > 0 ? Number(vid.season) : 1;
+      var ep = Number(vid.episode) > 0 ? Number(vid.episode) : vi + 1;
+      var extras = (epBySeason[s] || {})[ep];
+      if (!extras) continue;
+      if (!String(vid.thumbnail || '').trim() && extras.still) {
+        vid.thumbnail = extras.still;
+      }
+      if (!String(vid.title || '').trim() && extras.name) {
+        vid.title = extras.name;
+      }
+      if (!String(vid.overview || '').trim() && extras.overview) {
+        vid.overview = extras.overview;
+      }
+    }
+    return meta;
+  });
+}
+
 function hubEnrichTmdb(ctx, items, limit) {
   if (!Array.isArray(items) || !items.length) return Promise.resolve(items || []);
   var n = Number(limit) > 0 ? Number(limit) : items.length;
@@ -385,13 +482,17 @@ function hubEnrichTmdb(ctx, items, limit) {
         ? hubTmdbById(ctx, existingId, prefer)
         : Promise.resolve(null);
       return start.then(function (hit) {
-        if (hit) return hubApplyTmdbHit(meta, hit);
+        function finish(applied, matchedHit) {
+          if (!applied || !matchedHit || !matchedHit.id) return applied;
+          return hubEnrichMetaVideos(ctx, applied, matchedHit);
+        }
+        if (hit) return finish(hubApplyTmdbHit(meta, hit), hit);
         return hubTmdbMatch(ctx, {
           title: meta.name,
           year: year,
           type: prefer,
         }).then(function (matched) {
-          return hubApplyTmdbHit(meta, matched);
+          return finish(hubApplyTmdbHit(meta, matched), matched);
         });
       });
     }),
