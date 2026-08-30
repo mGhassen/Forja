@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
@@ -213,9 +214,9 @@ class _CatalogShellState extends State<CatalogShell>
       if (_moods.containsKey(id)) continue;
       final options = w['options'];
       if (options is! List || options.isEmpty) continue;
-      final first = options.first;
-      if (first is Map && first['id'] != null) {
-        _moods[id] = first['id'].toString();
+      final picked = _randomMoodOptionId(options);
+      if (picked != null) {
+        _moods[id] = picked;
       }
     }
     setState(() {
@@ -730,6 +731,15 @@ class _CatalogShellState extends State<CatalogShell>
     };
   }
 
+  String? _randomMoodOptionId(List options) {
+    final ids = <String>[
+      for (final o in options)
+        if (o is Map && o['id'] != null) o['id'].toString(),
+    ];
+    if (ids.isEmpty) return null;
+    return ids[Random().nextInt(ids.length)];
+  }
+
   Color _moodAccent(String? hex) {
     final raw = (hex ?? '').trim().replaceFirst('#', '');
     if (raw.length != 6) return ForjaShellColors.sectionAccent;
@@ -748,13 +758,11 @@ class _CatalogShellState extends State<CatalogShell>
         if (o is Map) Map<String, dynamic>.from(o),
     ];
     if (options.isEmpty) return const SizedBox.shrink();
-    final selected = _moods[id] ?? options.first['id']?.toString() ?? '';
-    if (_moods[id] == null && selected.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _moods[id] != null) return;
-        setState(() => _moods[id] = selected);
-      });
+    if (_moods[id] == null) {
+      final picked = _randomMoodOptionId(options);
+      if (picked != null) _moods[id] = picked;
     }
+    final selected = _moods[id] ?? '';
     final titleTop = shellHomeSectionTitleTop(context);
     final resultsRail = (spec['rail'] ?? '').toString().trim();
     final tvNav = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -952,6 +960,7 @@ class _CatalogShellState extends State<CatalogShell>
           pluginId: widget.pluginId,
           tabId: widget.tabId ?? 'home',
           tvRowOrder: _tvOrder(tvOrders, id),
+          tvFocusUp: _focusHeroPlay,
         );
       case 'because':
         return CatalogBecauseSection(
@@ -978,7 +987,16 @@ class _CatalogShellState extends State<CatalogShell>
     super.build(context);
     final body = () {
       if (_loading && _widgets.isEmpty) {
-        return homeLoadingShimmer(homeMovieRowSkeleton(context));
+        return CustomScrollView(
+          controller: _scroll,
+          slivers: homeHubLoadingSlivers(
+            context,
+            heroShimmer: homeCinematicHeroShimmer(
+              context,
+              pageBottomBleed: _fullHeroBleed,
+            ),
+          ),
+        );
       }
       final error = _error;
       if (error != null && _widgets.isEmpty) {
