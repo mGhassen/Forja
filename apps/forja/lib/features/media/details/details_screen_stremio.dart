@@ -74,14 +74,9 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     _s._nuvioFetchGen++;
     _s._engineFetchGen++;
     if (cancelEngineJobs) {
-      _s._webstreamingOnlyExtractionCancelled = true;
       _s._engineAutoExtractionCancelled = true;
       _s._streamCancelled = true;
     }
-    DomainStreamProviderResolver.cancelAllPending(
-      cancelEngineJobs: cancelEngineJobs,
-    );
-    // Always stop Forja scrapes. cancelEngineJobs only gates magnet resolve.
     EngineService.instance.cancelPending();
     _s._isSearching = false;
     _s._isStremioFetching = false;
@@ -235,7 +230,6 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
     _s._nuvioInFlightScraperIds.clear();
     _nuvioPoolTasks.clear();
     _s._nuvioDiscardScraperIds.clear();
-    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     if (clearFetched) _s._nuvioFetchedScraperIds.clear();
   }
 
@@ -368,7 +362,6 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
       refresh = true;
     }
     if (reset || refresh) {
-      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
       _nuvioPoolTasks.clear();
     }
     final gen = ++_s._nuvioFetchGen;

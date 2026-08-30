@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/shared/playback/anime_embed.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';

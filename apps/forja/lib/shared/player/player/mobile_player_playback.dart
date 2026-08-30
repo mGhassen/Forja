@@ -656,27 +656,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     }
   }
 
-  Future<void> _invalidateWebstreamingCacheForCurrent() async {
-    final movie = widget.movie;
-    if (movie == null) return;
-    final key = WebstreamingStreamCache.cacheKeyFromProgress(
-      tmdbId: movie.id,
-      mediaType: movie.mediaType,
-      season: widget.selectedSeason,
-      episode: widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode,
-    );
-    await WebstreamingStreamCache.drop(key);
-    if (_s._disposed) return;
-    final pid = _s._currentProvider ?? widget.activeProvider;
-    if (pid != null && pid.isNotEmpty) {
-      final next = Map<String, List<StreamSource>>.from(
-        _s._liveProviderSourcesCache.value,
-      )..remove(pid);
-      _s._liveProviderSourcesCache.value = next;
-    }
-    debugPrint('[Player] dropped stale webstreaming cache $key');
-    _s._notifySourceMenuChanged();
-  }
+  Future<void> _invalidateWebstreamingCacheForCurrent() async {}
 
   /// After sibling streams fail: full Auto resolve (same as first Play).
   Future<bool> _reresolveLikeFirstPlay({

@@ -261,6 +261,26 @@ Hub `nav.icon` must be a Forja host asset URI, not a Flutter path:
 
 `ForjaHostAssets.catalog` is the allow-list (`nav/home`, `nav/anime`, `nav/asian-drama`, `nav/search`, `nav/live-matches`, `nav/iptv`, …). The host resolves to `assets/images/nav/…` for `Image.asset`. Raw `assets/…` from a pack is ignored.
 
+### Play contract (browse vs provider JS)
+
+Hub packs (`kind: catalog`, `runCatalog`) own **browse only** — rails, search, filters, details metadata, `open.surface`. They never extract stream URLs and never appear in Sources chips (`isExtractable == false`).
+
+VOD play uses **provider JS** (`plugins/providers/*.js`, `runPlugin` / `runPluginIsolated`) plus the shared Sources panel (Torrents / Stremio / Nuvio / Forja):
+
+| User action | Host path |
+|-------------|-----------|
+| Green Play (movie / TV / anime / drama / Arabic hub) | `runEngineAutoPlay` → races enabled provider plugins |
+| Sources (link) | `PlayerSourcesPanel` → same panel as TMDB details |
+| In-player next episode (engine session) | `switchEpisodeViaEngineAutoPlay` |
+
+Legacy Dart/Rust webstreaming sniff, dedicated anime/drama players, and built-in `StreamProviders` catalog are removed for VOD. ID injection for hub play:
+
+- `anilistId` / `malId` on anime green Play and Sources
+- `config.dramaId` / `config.episodeId` for provider `kisskh` (from hub details KissKH ids)
+- `config.videoId` for Arabic providers (`larozaa`, `dimatoon`, `brstej`)
+
+Shared kit: [`hub_play_context.dart`](../../apps/forja/lib/shared/playback/hub_play_context.dart), [`hub_details_play.dart`](../../apps/forja/lib/shared/catalog/kit/details/hub_details_play.dart).
+
 ### Related
 
 - [RFC-066](fixed/066-[fixed]-hub-catalog-top-bar.md) — hub chrome the search slice reuses

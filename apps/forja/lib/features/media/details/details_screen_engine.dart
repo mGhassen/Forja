@@ -333,10 +333,19 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
     });
   }
 
+  void _onPlayStreamingPressed() {
+    if (isEngineSavedProgress(_s._lastProgress) && _s._playSourceEngine) {
+      unawaited(_s._startEngineAutoPlayback(fromEngineResume: true));
+      return;
+    }
+    if (_s._playSourceEngine && _s._playSourceEngineAutoStart) {
+      unawaited(_s._startEngineAutoPlayback());
+    }
+  }
+
   /// Green Play → shared [runEngineAutoPlay] (same as Anime / Asian Drama).
   Future<void> _startEngineAutoPlayback({bool fromEngineResume = false}) async {
     if (_s._isEngineAutoExtracting) return;
-    if (!fromEngineResume && _s._playSourceWebstreaming) return;
     if (!fromEngineResume &&
         (!_s._playSourceEngine || !_s._playSourceEngineAutoStart)) {
       return;

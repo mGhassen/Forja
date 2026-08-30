@@ -1,4 +1,4 @@
-import 'package:forja/features/asian_drama/catalog/kisskh_tmdb_match.dart';
+import 'package:forja/shared/catalog/enrich/kisskh_tmdb_match.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/features/my_list/providers/my_list_providers.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';

@@ -265,6 +265,10 @@ function extract(ctx) {
   if (action === 'filters') {
     return hubOk('filters', {
       fields: [{ field: 'genre', label: 'Genre', options: ANILIST_MOODS }],
+      media: {
+        films: { op: 'eq', field: 'format', value: 'MOVIE' },
+        series: { op: 'eq', field: 'format_not', value: 'MOVIE' },
+      },
     }, { maxAge: 86400 });
   }
   if (action === 'details') {

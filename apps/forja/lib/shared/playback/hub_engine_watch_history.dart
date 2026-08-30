@@ -1,5 +1,5 @@
-import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -18,7 +18,6 @@ bool isHubTabMediaType(String? mediaType) {
   }
 }
 
-/// True when episodic hub rows use season/episode (not plain `tv` only).
 bool hubMediaIsEpisodic(Movie movie) {
   switch (movie.mediaType) {
     case 'tv':
@@ -30,14 +29,12 @@ bool hubMediaIsEpisodic(Movie movie) {
   }
 }
 
-/// Home Continue Watching pool — excludes hub-tab rows that leaked before enforcement.
 bool isHomeTabWatchHistoryEntry(Map<String, dynamic> item) {
   if (isHubTabMediaType(item['mediaType'] as String?)) return false;
   if (watchHistoryInt(item['tmdbId'], -1) < 0) return false;
   return true;
 }
 
-/// Whether this player session should persist to Home [`watch_history`].
 bool usesHomeWatchHistory({
   required Movie? movie,
   List<PlayerHubEpisode>? hubEpisodes,
@@ -47,7 +44,8 @@ bool usesHomeWatchHistory({
   if (movie == null) return false;
   if (hubEpisodes != null) return false;
   if (onSaveProgress != null) return false;
-  if (enginePlaySession != null && hubEngineNeedsWatchHistory(enginePlaySession)) {
+  if (enginePlaySession != null &&
+      hubEngineNeedsWatchHistory(enginePlaySession)) {
     return false;
   }
   if (isHubTabMediaType(movie.mediaType)) return false;
@@ -55,7 +53,6 @@ bool usesHomeWatchHistory({
   return true;
 }
 
-/// Hooks for catalog Sources opened from anime / Asian Drama details.
 class HubCatalogPlayHooks {
   const HubCatalogPlayHooks({
     this.session,
@@ -93,6 +90,8 @@ HubCatalogPlayHooks buildHubCatalogPlayHooks({
   int? malId,
   String? engineCategory,
   String? animeAudioCategory,
+  String? pluginId,
+  CatalogMetaItem? catalogMeta,
 }) {
   final category = engineCategory ??
       (kisskhId != null
@@ -103,13 +102,18 @@ HubCatalogPlayHooks buildHubCatalogPlayHooks({
                   ? EngineCategories.arabic
                   : null);
   if (category == null ||
-      (kisskhId == null && anilistId == null && (arabicVideoId ?? '').isEmpty)) {
+      (kisskhId == null &&
+          anilistId == null &&
+          (arabicVideoId ?? '').isEmpty &&
+          catalogMeta == null)) {
     return const HubCatalogPlayHooks.none();
   }
 
   final ep = episode ?? (hubMediaIsEpisodic(movie) ? (season ?? 1) : null);
   final session = EnginePlaySession(
     category: category,
+    pluginId: pluginId,
+    catalogMeta: catalogMeta,
     anilistId: anilistId,
     malId: malId,
     kisskhId: kisskhId,
@@ -140,61 +144,64 @@ HubCatalogPlayHooks buildHubCatalogPlayHooks({
 
 bool hubEngineNeedsWatchHistory(EnginePlaySession? session) {
   if (session == null) return false;
+  if (session.pluginId != null && session.catalogMeta != null) return true;
   return session.category == EngineCategories.anime ||
       session.category == EngineCategories.drama;
 }
 
-AnimeCard _animeCardFromHub(Movie movie, int anilistId) {
-  final title = movie.title.trim();
-  return AnimeCard(
-    id: anilistId,
-    titleEnglish: title,
-    titleRomaji: title,
-    titleNative: '',
-    coverLarge: movie.posterPath,
-    bannerImage: movie.backdropPath.isNotEmpty ? movie.backdropPath : null,
-    episodes: movie.numberOfEpisodes,
-    duration: movie.runtime > 0 ? movie.runtime : null,
-    description: movie.overview,
-    genres: movie.genres,
-    seasonYear: int.tryParse(movie.releaseDate),
+String? _episodeVideoId(EnginePlaySession session, int ep) {
+  if (session.category == EngineCategories.drama) {
+    final id = session.kisskhEpisodeIdFor(ep);
+    return id != null && id > 0 ? id.toString() : null;
+  }
+  if (session.category == EngineCategories.arabic) {
+    return session.arabicVideoIdFor(ep);
+  }
+  return null;
+}
+
+Future<void> _recordCatalogWatchHistory({
+  required EnginePlaySession session,
+  required int ep,
+  Duration? position,
+  Duration? duration,
+}) async {
+  final pluginId = session.pluginId;
+  final meta = session.catalogMeta;
+  if (pluginId == null || meta == null) return;
+  await CatalogWatchHistory.record(
+    pluginId: pluginId,
+    meta: meta,
+    episodeNumber: ep,
+    episodeVideoId: _episodeVideoId(session, ep),
+    extras: {
+      if (session.animeAudioCategory != null)
+        'category': session.animeAudioCategory,
+    },
+    position: position,
+    duration: duration,
   );
 }
 
-KdramaCard _dramaCardFromHub(Movie movie, int kisskhId) {
-  return KdramaCard(
-    id: kisskhId,
-    title: movie.title,
-    cover: KissKhService.resolveCoverUrl(movie.posterPath),
-    episodesCount: movie.numberOfEpisodes,
-  );
-}
-
-/// TMDB poster/backdrop keys saved on hub [Movie] rows must be full URLs in player UI.
 Movie movieWithResolvedHubArt(Movie movie) {
-  final poster = KissKhService.resolveCoverUrl(movie.posterPath);
+  final poster = movie.posterPath.trim();
   final backdropRaw =
-      movie.backdropPath.trim().isNotEmpty ? movie.backdropPath : movie.posterPath;
+      movie.backdropPath.trim().isNotEmpty ? movie.backdropPath : poster;
+  String resolve(String raw) {
+    final u = raw.trim();
+    if (u.isEmpty) return u;
+    if (u.startsWith('http')) {
+      return u.replaceAll('media.themoviedb.org/t/p', 'image.tmdb.org/t/p');
+    }
+    return u;
+  }
+
   return movie.copyWith(
-    posterPath: poster,
-    backdropPath: KissKhService.resolveCoverUrl(backdropRaw),
+    posterPath: resolve(poster),
+    backdropPath: resolve(backdropRaw),
   );
 }
-List<KdramaEpisode> _dramaEpisodesFromHub(
-  List<PlayerHubEpisode>? hubEpisodes,
-  EnginePlaySession session,
-) {
-  if (hubEpisodes == null || hubEpisodes.isEmpty) return const [];
-  return [
-    for (final hub in hubEpisodes)
-      KdramaEpisode(
-        id: session.kisskhEpisodeIdFor(hub.number.round()) ?? 0,
-        number: hub.number.toDouble(),
-      ),
-  ];
-}
 
-/// Stamp CW row when Forja Engine Auto opens a hub player (anime / drama).
 Future<void> seedHubEngineWatchHistory({
   required EnginePlaySession? session,
   required Movie movie,
@@ -204,28 +211,7 @@ Future<void> seedHubEngineWatchHistory({
   if (session == null || !hubEngineNeedsWatchHistory(session)) return;
   final ep = episodeNumber?.round();
   if (ep == null || ep <= 0) return;
-
-  if (session.category == EngineCategories.anime && session.anilistId != null) {
-    await AnimeService().recordWatch(
-      anime: _animeCardFromHub(movie, session.anilistId!),
-      episodeNumber: ep,
-      category: session.animeAudioCategory ?? 'sub',
-    );
-    return;
-  }
-
-  if (session.category == EngineCategories.drama && session.kisskhId != null) {
-    final episodes = _dramaEpisodesFromHub(hubEpisodes, session);
-    final episodeId = session.kisskhEpisodeIdFor(ep);
-    await KissKhService().recordWatch(
-      drama: _dramaCardFromHub(movie, session.kisskhId!),
-      episodeNumber:
-          episodeNumber != null ? episodeNumber.toDouble() : ep.toDouble(),
-      episodeId: episodeId != null && episodeId > 0 ? episodeId : null,
-      episodes: episodes,
-      totalEpisodes: episodes.isNotEmpty ? episodes.length : ep,
-    );
-  }
+  await _recordCatalogWatchHistory(session: session, ep: ep);
 }
 
 Future<void> Function(Duration position, Duration duration)?
@@ -239,99 +225,82 @@ hubEngineSaveProgressCallback({
   final ep = episodeNumber?.round();
   if (ep == null || ep <= 0) return null;
 
-  if (session.category == EngineCategories.anime && session.anilistId != null) {
-    final anime = _animeCardFromHub(movie, session.anilistId!);
-    final category = session.animeAudioCategory ?? 'sub';
+  if (session.pluginId != null && session.catalogMeta != null) {
     return (pos, dur) async {
-      await AnimeService().recordWatch(
-        anime: anime,
-        episodeNumber: ep,
-        category: category,
+      await _recordCatalogWatchHistory(
+        session: session,
+        ep: ep,
         position: pos,
         duration: dur,
       );
-      await EpisodeWatchedService()
-          .markWatchedIfFinished(
-            mediaId: anime.id,
-            season: 1,
-            episode: ep,
-            positionMs: pos.inMilliseconds,
-            durationMs: dur.inMilliseconds,
-            catalog: EpisodeWatchedService.catalogAnilist,
-          )
-          .then((marked) async {
-            if (!marked) return;
-            final target = HubListFollowTarget.anime(
-              anilistId: anime.id,
-              title: anime.displayTitle,
-              posterPath: anime.coverUrl,
-            );
-            HubListFollow.syncEpisodeWatched(
-              target,
-              episode: ep,
-            );
-            await ListFollowFromWatched.applyHubAfterAutoMark(
-              target: target,
-              mediaId: anime.id,
-              catalog: EpisodeWatchedService.catalogAnilist,
-              totalEpisodes: anime.episodes ?? ep,
-            );
-          });
-    };
-  }
-
-  if (session.category == EngineCategories.drama && session.kisskhId != null) {
-    final drama = _dramaCardFromHub(movie, session.kisskhId!);
-    final episodes = _dramaEpisodesFromHub(hubEpisodes, session);
-    final episodeId = session.kisskhEpisodeIdFor(ep);
-    final epNum = (episodeNumber ?? ep.toDouble()).toDouble();
-    return (pos, dur) async {
-      await KissKhService().recordWatch(
-        drama: drama,
-        episodeNumber: epNum,
-        episodeId: episodeId != null && episodeId > 0 ? episodeId : null,
-        episodes: episodes,
-        totalEpisodes: episodes.isNotEmpty ? episodes.length : ep,
-        position: pos,
-        duration: dur,
-      );
-      final index = episodes.indexWhere(
-        (e) => episodeId != null && episodeId > 0
-            ? e.id == episodeId
-            : e.number == epNum,
-      );
-      final epKey = index >= 0 ? index + 1 : ep;
-      await EpisodeWatchedService()
-          .markWatchedIfFinished(
-            mediaId: drama.id,
-            season: 1,
-            episode: epKey,
-            positionMs: pos.inMilliseconds,
-            durationMs: dur.inMilliseconds,
-            catalog: EpisodeWatchedService.catalogKisskh,
-          )
-          .then((marked) async {
-            if (!marked) return;
-            final target = HubListFollowTarget.drama(
-              kisskhId: drama.id,
-              title: drama.title,
-              posterPath: drama.cover,
-              releaseDate: drama.year ?? '',
-              kissKhType: drama.type,
-            );
-            HubListFollow.syncEpisodeWatched(
-              target,
-              episode: epKey,
-            );
-            await ListFollowFromWatched.applyHubAfterAutoMark(
-              target: target,
-              mediaId: drama.id,
-              catalog: EpisodeWatchedService.catalogKisskh,
-              totalEpisodes: episodes.isNotEmpty ? episodes.length : ep,
-            );
-          });
+      await _syncEpisodeWatched(session: session, ep: ep, pos: pos, dur: dur);
     };
   }
 
   return null;
+}
+
+Future<void> _syncEpisodeWatched({
+  required EnginePlaySession session,
+  required int ep,
+  required Duration pos,
+  required Duration dur,
+}) async {
+  if (session.category == EngineCategories.anime && session.anilistId != null) {
+    await EpisodeWatchedService()
+        .markWatchedIfFinished(
+          mediaId: session.anilistId!,
+          season: 1,
+          episode: ep,
+          positionMs: pos.inMilliseconds,
+          durationMs: dur.inMilliseconds,
+          catalog: EpisodeWatchedService.catalogAnilist,
+        )
+        .then((marked) async {
+          if (!marked) return;
+          final meta = session.catalogMeta;
+          final target = HubListFollowTarget.anime(
+            anilistId: session.anilistId!,
+            title: meta?.name ?? '',
+            posterPath: meta?.poster ?? '',
+          );
+          HubListFollow.syncEpisodeWatched(target, episode: ep);
+          await ListFollowFromWatched.applyHubAfterAutoMark(
+            target: target,
+            mediaId: session.anilistId!,
+            catalog: EpisodeWatchedService.catalogAnilist,
+            totalEpisodes: meta?.episodes ?? ep,
+          );
+        });
+    return;
+  }
+
+  if (session.category == EngineCategories.drama && session.kisskhId != null) {
+    await EpisodeWatchedService()
+        .markWatchedIfFinished(
+          mediaId: session.kisskhId!,
+          season: 1,
+          episode: ep,
+          positionMs: pos.inMilliseconds,
+          durationMs: dur.inMilliseconds,
+          catalog: EpisodeWatchedService.catalogKisskh,
+        )
+        .then((marked) async {
+          if (!marked) return;
+          final meta = session.catalogMeta;
+          final target = HubListFollowTarget.drama(
+            kisskhId: session.kisskhId!,
+            title: meta?.name ?? '',
+            posterPath: meta?.poster ?? '',
+            releaseDate: meta?.releaseInfo ?? '',
+          );
+          HubListFollow.syncEpisodeWatched(target, episode: ep);
+          await ListFollowFromWatched.applyHubAfterAutoMark(
+            target: target,
+            mediaId: session.kisskhId!,
+            catalog: EpisodeWatchedService.catalogKisskh,
+            totalEpisodes: meta?.episodes ?? ep,
+          );
+        });
+  }
 }

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/asian_drama/catalog/kisskh_tmdb_match.dart';
+import 'package:forja/shared/catalog/enrich/kisskh_tmdb_match.dart';
 
 void main() {
   group('KissKhTmdbMatch.normalizeTitle', () {

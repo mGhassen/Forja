@@ -11,18 +11,12 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/utils/extensions.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
-import 'package:forja/shared/playback/playback_service.dart';
-import 'package:forja/shared/playback/simple_streaming_resolve.dart';
-import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
-import 'package:forja/shared/playback/tv_stream_fallback.dart';
-import 'package:forja/shared/playback/provider_score_probe_sync.dart';
-import 'package:forja/shared/playback/sources_panel_stream_probe.dart';
-import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
+import 'package:forja/shared/playback/sources_panel_stream_probe.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -56,7 +50,6 @@ import 'package:forja/features/media/details/widgets/details_collection_section.
 part 'details_screen_torrent.dart';
 part 'details_screen_stremio.dart';
 part 'details_screen_engine.dart';
-part 'details_screen_webstreaming.dart';
 part 'details_screen_episodes.dart';
 part 'details_screen_panel.dart';
 part 'details_screen_play.dart';
@@ -101,7 +94,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
         _DetailsScreenTorrent,
         _DetailsScreenStremio,
         _DetailsScreenEngine,
-        _DetailsScreenWebstreaming,
         _DetailsScreenEpisodes,
         _DetailsScreenPlay,
         _DetailsScreenPanel,
@@ -174,11 +166,8 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
   bool get _playSourceEngine => _play.playSources.engine;
   bool get _playSourceEngineAutoStart => _play.playSources.engineAutoStart;
   bool get _playSourceStremio => _play.playSources.stremio;
-  bool get _playSourceWebstreaming => _play.playSources.webstreaming;
-
   bool get _showGreenPlay =>
-      _playSourceWebstreaming ||
-      (_playSourceEngine && _playSourceEngineAutoStart);
+      _playSourceEngine && _playSourceEngineAutoStart;
 
   String get _panelKindFilter => _play.panelKindFilter;
   set _panelKindFilter(String v) => _play.panelKindFilter = v;
@@ -294,35 +283,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
 
   bool get _engineSelectionHydrated => _play.engineSelectionHydrated;
   set _engineSelectionHydrated(bool v) => _play.engineSelectionHydrated = v;
-
-  Map<String, dynamic> get _webstreamingProviders =>
-      _play.webstreamingProviders;
-
-  List<String> get _webstreamingProviderOrder =>
-      _play.webstreamingProviderOrder;
-  set _webstreamingProviderOrder(List<String> v) =>
-      _play.webstreamingProviderOrder = v;
-
-  List<StreamSource> get _webstreamingStreams => _play.webstreamingStreams;
-  set _webstreamingStreams(List<StreamSource> v) =>
-      _play.webstreamingStreams = v;
-
-  String? get _webstreamingActiveProviderId =>
-      _play.webstreamingActiveProviderId;
-  set _webstreamingActiveProviderId(String? v) =>
-      _play.webstreamingActiveProviderId = v;
-
-  bool get _isWebstreamingOnlyExtracting => _play.isWebstreamingOnlyExtracting;
-  set _isWebstreamingOnlyExtracting(bool v) =>
-      _play.isWebstreamingOnlyExtracting = v;
-
-  bool get _webstreamingOnlyExtractionCancelled =>
-      _play.webstreamingOnlyExtractionCancelled;
-  set _webstreamingOnlyExtractionCancelled(bool v) =>
-      _play.webstreamingOnlyExtractionCancelled = v;
-
-  int get _webstreamingPlayGen => _play.webstreamingPlayGen;
-  set _webstreamingPlayGen(int v) => _play.webstreamingPlayGen = v;
 
   bool get _isEngineAutoExtracting => _play.isEngineAutoExtracting;
   set _isEngineAutoExtracting(bool v) => _play.isEngineAutoExtracting = v;
@@ -537,7 +497,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _trackerHandlersOrCreate.load();
     });
-    _loadWebstreamingProviderOrder();
   }
 
   @override
@@ -545,7 +504,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     // Leave the title → stop every in-flight source fetch (panel owner gone).
     // Flags first so Auto host loops halt even if cancel races mid-sniff.
     // rebuild: false — Element is already defunct here; setState would assert.
-    _webstreamingOnlyExtractionCancelled = true;
     _engineAutoExtractionCancelled = true;
     _streamCancelled = true;
     _cancelActiveSourceFetch(rebuild: false);
@@ -611,44 +569,18 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
           if (mounted) _claimTvHeroPlayAfterPlayer();
           return true;
         }
-        if (!_playSourceWebstreaming) return false;
-        if (_webstreamingStreams.isNotEmpty) {
-          await _playWebstreamingStream(
-            _webstreamingStreams.first,
-            startPosition: startPosition,
-          );
-          return mounted;
-        }
-        final sourceId = progress['sourceId'] as String? ?? '';
-        if (isWebStreamProviderId(sourceId)) {
-          final ok = await resumeSavedWebStreamProvider(
-            context: context,
-            movie: _movie,
-            progress: progress,
-            startPosition: startPosition,
-          );
-          if (ok) {
-            if (mounted) _claimTvHeroPlayAfterPlayer();
-            return true;
-          }
-        }
-        if (await _tryResumeWebStreamFromWatchHistory(startPosition)) {
+        if (_playSourceEngine) {
+          await _startEngineAutoPlayback(fromEngineResume: true);
           if (mounted) _claimTvHeroPlayAfterPlayer();
           return true;
         }
-        await _startWebstreamingOnlyPlayback();
-        return mounted;
+        return false;
       case 'amri':
-        if (!_playSourceWebstreaming) return false;
-        final ok = await resumeSavedAmriStream(
-          context: context,
-          movie: _movie,
-          progress: progress,
-          startPosition: startPosition,
-        );
-        if (ok) return true;
-        await _startWebstreamingOnlyPlayback();
-        return mounted;
+        if (_playSourceEngine) {
+          await _startEngineAutoPlayback(fromEngineResume: true);
+          return mounted;
+        }
+        return false;
       case 'stremio_direct':
         if (!_playSourceStremio) return false;
         return resumeSavedStremioDirectStream(
@@ -717,7 +649,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (_isTorrentSource) return _panelShowTorrent;
     if (_isNuvioSource) return _panelShowNuvio;
     if (_isEngineSource) return _panelShowEngine;
-    if (_isWebstreamingSource) return false;
     return _panelShowStremio;
   }
 
@@ -823,11 +754,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (_isCurrentSourceAllowed()) return;
     _selectedSourceId = _defaultSourceId();
     _resetPanelFilters();
-    if (_isWebstreamingSource) {
-      _webstreamingStreams = [];
-      _webstreamingActiveProviderId = null;
-      unawaited(_hydrateWebstreamingFromCache());
-    }
   }
 
   /// Clears cached torrent / Stremio / Nuvio panel results so the next panel
@@ -837,7 +763,6 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _stremioFetchGen++;
     if (_isNuvioFetching) {
       _nuvioFetchGen++;
-      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
     }
     if (_isEngineFetching) {
       _engineFetchGen++;

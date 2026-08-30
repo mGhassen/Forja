@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/extractors/core/stream_crypto.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
-import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
@@ -2322,22 +2321,6 @@ function extract(ctx) {
         type: 'movie',
       );
       expect(streams.single['url'], 'https://hop.test/e/abc/direct.mp4');
-    });
-  });
-
-  group('KissKhKkey', () {
-    test('matches rust golden episode 171699 video', () {
-      expect(
-        KissKhKkey.generate(171699),
-        '56697480CCBF13FF11E371C19696FBA7601E1C569630FF4001DBEBAB511F65357C5D712E4AD39F6E859770F5A0763B06E95ECB5142C0FE2DF561F722DB89E5F38D05E72CAA2FB6700380C17689688661D2D0631EDF1D579DF3127B9D313427CBD092C9B4D546EB6F69E2CA9760E02535750C1496D08C7C8937ACC42EE4B5334A',
-      );
-    });
-
-    test('matches rust golden episode 1 video', () {
-      expect(
-        KissKhKkey.generate(1),
-        '23DC3EEF3D9B5DF88849AF476B008D4A58F9F3ACAB38A549C34AB3E473B7B3328BF080D795B810DF74E2DD76B6998B74CFA8BA86F6D6475708E88A44B762E3C576A1990EFFE4FF40291730B851812E47A89F38E89D57750449910D068F584D8C62EF5E91C838C93469EC3C4CF54D6C12A694E331B7A27040C722FA017BB6FCEC',
-      );
     });
   });
 }

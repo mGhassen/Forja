@@ -15,7 +15,6 @@ export 'package:forja/shared/playback/playback_stream_guards.dart'
         playbackStreamIdentityUrl,
         playbackUrlsEquivalent,
         streamSourceMatchesPlaying;
-import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/playback/stream_open_pipeline.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -111,7 +110,7 @@ String normalizePlaybackStreamUrl(String url) {
     out = out.replaceFirst(RegExp(r'/+$'), '');
   }
   if (isVideasyCdnStreamUrl(out)) {
-    out = VideasyExtractor.preferHlsMasterUrl(out);
+    out = preferVideasyHlsMasterUrl(out);
   }
   return out;
 }

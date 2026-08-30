@@ -39,7 +39,10 @@ Future<void> prefetchDefaultHubLayout(BootNeeds needs) async {
         action: 'feed',
         params: catalogParamsWithFilters(
           const {},
-          filters: catalogChromeFilters(tabId),
+          filters: catalogChromeFilters(
+            tabId: tabId,
+            pluginId: pluginId,
+          ),
         ),
         timeout: const Duration(seconds: 40),
       );
@@ -66,7 +69,7 @@ Future<void> _prefetchRail(
       action: 'rail',
       params: catalogParamsWithFilters(
         {'rail': rail},
-        filters: catalogChromeFilters(tabId),
+        filters: catalogChromeFilters(tabId: tabId, pluginId: pluginId),
       ),
       timeout: const Duration(seconds: 25),
     );

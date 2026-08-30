@@ -25,7 +25,6 @@ import '../kit/host/catalog_host_because.dart';
 import '../kit/host/catalog_host_continue.dart';
 import '../kit/host/catalog_host_genre_rows.dart';
 import '../kit/host/catalog_host_home_mood.dart';
-import '../kit/host/catalog_host_popular_asian.dart';
 import '../kit/host/catalog_host_trakt.dart';
 import '../kit/meta/catalog_meta_movie.dart';
 import '../kit/rows/home_movie_section.dart';
@@ -71,6 +70,7 @@ class _CatalogShellState extends State<CatalogShell>
 
   /// Pack `feed` action — one JS call claims across spotlight / featured / …
   bool _pageUsesFeed = false;
+  String _cardStyle = 'poster';
   Map<String, List<CatalogMetaItem>> _feedRails = {};
   String _feedCacheKey = '';
   Future<Map<String, List<CatalogMetaItem>>>? _feedLoadFuture;
@@ -147,14 +147,8 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   void _publishScroll() {
-    final n = switch (widget.tabId) {
-      'anime' => ShellBus.animeScrollOffset,
-      'asian_drama' => ShellBus.asianDramaScrollOffset,
-      'home' => ShellBus.homeScrollOffset,
-      'arabic' => ShellBus.arabicScrollOffset,
-      _ => null,
-    };
-    n?.value = _scroll.hasClients ? _scroll.offset : 0;
+    ShellBus.hubScrollOffsetFor(_pageKey).value =
+        _scroll.hasClients ? _scroll.offset : 0;
   }
 
   Future<void> _loadLayout({bool forceRefresh = false}) async {
@@ -208,6 +202,7 @@ class _CatalogShellState extends State<CatalogShell>
     final page = pages[_pageKey] ?? pages.values.first;
     final pageMap = Map<String, dynamic>.from(page as Map);
     _pageUsesFeed = pageMap['feed'] == true;
+    _cardStyle = (pageMap['cardStyle'] ?? 'poster').toString().trim().toLowerCase();
     final rawWidgets = pageMap['widgets'] as List;
     final widgets = <Map<String, dynamic>>[
       for (final w in rawWidgets)
@@ -302,7 +297,7 @@ class _CatalogShellState extends State<CatalogShell>
       action: action,
       params: catalogParamsWithFilters(
         params,
-        filters: [...catalogChromeFilters(widget.tabId), moodFilter],
+        filters: [...catalogChromeFilters(tabId: widget.tabId, pluginId: widget.pluginId), moodFilter],
       ),
       forceRefresh: forceRefresh,
     );
@@ -350,7 +345,7 @@ class _CatalogShellState extends State<CatalogShell>
       action: 'feed',
       params: catalogParamsWithFilters(
         const {},
-        filters: catalogChromeFilters(widget.tabId),
+        filters: catalogChromeFilters(tabId: widget.tabId, pluginId: widget.pluginId),
       ),
       forceRefresh: forceRefresh,
     );
@@ -535,14 +530,11 @@ class _CatalogShellState extends State<CatalogShell>
 
   /// Chrome leaf that should hide `hideWhenTypeFilter` rails (and their bleed).
   bool _chromeHidesTypeFilterRail() {
-    final chrome = catalogChromeFilters(widget.tabId);
-    if (widget.tabId == 'anime') return chrome.any((f) => f != null);
-    return chrome.any(
-      (f) =>
-          f != null &&
-          ((f['field'] ?? '').toString() == 'type') &&
-          f['value'] != null,
+    final chrome = catalogChromeFilters(
+      tabId: widget.tabId,
+      pluginId: widget.pluginId,
     );
+    return chrome.any((f) => f != null);
   }
 
   String? get _bleedRailId {
@@ -571,9 +563,7 @@ class _CatalogShellState extends State<CatalogShell>
     return o == 'vertical';
   }
 
-  bool get _isHomeTab => widget.tabId == 'home' || widget.tabId == null;
-
-  bool get _usesHomeMovieRails => _isHomeTab || widget.tabId == 'arabic';
+  bool get _usesHomeMovieRails => _cardStyle == 'movie';
 
   /// Assigns monotonic [sortOrder] values for TV row registry from layout order.
   Map<String, int> _planTvRowOrders({
@@ -636,12 +626,9 @@ class _CatalogShellState extends State<CatalogShell>
       case 'host.because':
       case 'host.trakt':
       case 'host.genre_rows':
-        return _isHomeTab;
+        return _cardStyle == 'movie';
       case 'host.continue':
-        return switch (widget.tabId ?? 'home') {
-          'anime' || 'asian_drama' || 'home' => true,
-          _ => false,
-        };
+        return true;
       default:
         return true;
     }
@@ -676,12 +663,10 @@ class _CatalogShellState extends State<CatalogShell>
         tvRowId: id,
         tvRowOrder: tvRowOrder,
         onMovieTap: (m) {
-          if (widget.tabId == 'arabic') {
-            final meta = catalogMetaItemForMovie(m);
-            if (meta != null) {
-              unawaited(_openMeta(meta));
-              return;
-            }
+          final meta = catalogMetaItemForMovie(m);
+          if (meta != null && meta.open != null) {
+            unawaited(_openMeta(meta));
+            return;
           }
           AppRouter.openDetails(context, movie: m);
         },
@@ -692,12 +677,10 @@ class _CatalogShellState extends State<CatalogShell>
       title: title,
       future: _homeMovieFuture(spec),
       onMovieTap: (m) {
-        if (widget.tabId == 'arabic') {
-          final meta = catalogMetaItemForMovie(m);
-          if (meta != null) {
-            unawaited(_openMeta(meta));
-            return;
-          }
+        final meta = catalogMetaItemForMovie(m);
+        if (meta != null && meta.open != null) {
+          unawaited(_openMeta(meta));
+          return;
         }
         AppRouter.openDetails(context, movie: m);
       },
@@ -1017,7 +1000,7 @@ class _CatalogShellState extends State<CatalogShell>
           tvRowOrder: _tvOrder(tvOrders, id),
         );
       case 'mood':
-        if (_isHomeTab) {
+        if (_usesHomeMovieRails) {
           final options = [
             for (final o in (spec['options'] as List? ?? const []))
               if (o is Map) Map<String, dynamic>.from(o),
@@ -1031,18 +1014,24 @@ class _CatalogShellState extends State<CatalogShell>
         return _moodSection(spec, tvRowOrder: _tvOrder(tvOrders, '$id-chips'));
       case 'host.continue':
         return CatalogHostContinue(
+          pluginId: widget.pluginId,
           tabId: widget.tabId ?? 'home',
+          continuePool: (spec['pool'] ?? '').toString().trim().isEmpty
+              ? null
+              : (spec['pool'] ?? '').toString(),
           tvRowOrder: _tvOrder(tvOrders, id),
         );
-      case 'host.popular_asian':
-        return const CatalogHostPopularAsian();
       case 'host.because':
-        return _isHomeTab ? const CatalogHostBecause() : null;
+        return _usesHomeMovieRails ? const CatalogHostBecause() : null;
       case 'host.trakt':
-        return _isHomeTab ? const CatalogHostTrakt() : null;
+        return _usesHomeMovieRails ? const CatalogHostTrakt() : null;
       case 'host.genre_rows':
-        return _isHomeTab
-            ? CatalogHostGenreRows(tvRowOrderBase: _tvOrder(tvOrders, id))
+        return _usesHomeMovieRails
+            ? CatalogHostGenreRows(
+                pluginId: widget.pluginId,
+                tabId: widget.tabId ?? 'home',
+                tvRowOrderBase: _tvOrder(tvOrders, id),
+              )
             : null;
       case 'host.vertical_filters':
         return null;

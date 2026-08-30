@@ -1,13 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/features/anime/catalog/anime_stream_providers.dart';
-import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/catalog/kisskh_mirror.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/shared/sync/sync.dart';
 
-/// Webstreaming extractor order / reliability (Movies, Series, Anime, Asian Drama).
+Map<String, String> _animeSettingsCatalog() {
+  final out = <String, String>{
+    'megaplay': 'Megaplay',
+    'anikoto': 'AniKoto',
+    'vidlink': 'VidLink',
+    'watchhentai': 'WatchHentai',
+    'hentaini': 'Hentaini',
+  };
+  for (final p in miruroKnownProviders) {
+    out['miruro:$p'] = miruroUpstreamLabel(p);
+  }
+  for (final p in allAnimeKnownProviders) {
+    out['allanime:$p'] = p;
+  }
+  for (final p in vidnestKnownProviders) {
+    out['vidnest:$p'] = vidnestUpstreamLabels[p] ?? p;
+  }
+  return out;
+}
+
+/// Forja engine provider order / reliability (Movies, Series, Anime, Asian Drama).
 class SettingsProviderScoringSection extends ConsumerWidget {
   const SettingsProviderScoringSection({super.key});
 
@@ -49,20 +68,12 @@ class SettingsProviderScoringSection extends ConsumerWidget {
     final settings = SettingsService();
     final playback = ref.read(settingsPlaybackProvider.notifier);
 
-    final streamCatalog = <String, String>{
-      for (final entry in StreamProviders.providers.entries)
-        entry.key: (entry.value['name'] as String?) ?? entry.key,
-    };
-    final streamOrder = <String>[
-      ...snap.streamProviderOrder.where(streamCatalog.containsKey),
-      ...streamCatalog.keys
-          .where((k) => !snap.streamProviderOrder.contains(k)),
-    ];
-    final disabledStream = snap.disabledStreamProviders.toSet();
-    final streamEnabledCount =
-        streamOrder.where((id) => !disabledStream.contains(id)).length;
+    final streamCatalog = const <String, String>{};
+    const streamOrder = <String>[];
+    const disabledStream = <String>{};
+    const streamEnabledCount = 0;
 
-    final animeCatalog = AnimeStreamProviders.catalog;
+    final animeCatalog = _animeSettingsCatalog();
     final animeOrder = SettingsService.mergeProviderOrder(
       snap.animeProviderOrder,
       animeCatalog.keys,
@@ -71,7 +82,7 @@ class SettingsProviderScoringSection extends ConsumerWidget {
     final animeEnabledCount =
         animeOrder.where((id) => !disabledAnime.contains(id)).length;
 
-    final asianDramaCatalog = KissKhService.settingsCatalog;
+    final asianDramaCatalog = KissKhMirror.settingsCatalog;
     final asianDramaOrder = SettingsService.mergeProviderOrder(
       snap.asianDramaProviderOrder,
       asianDramaCatalog.keys,
@@ -82,9 +93,9 @@ class SettingsProviderScoringSection extends ConsumerWidget {
 
     Future<void> persistAsianDramaActivation() async {
       final enabled = await settings.getEnabledAsianDramaProviderOrder();
-      final host = KissKhService.activeHostFromOrder(enabled);
-      await KissKhService.activateEndpoint(
-        KissKhService.baseUrlForHost(host),
+      final host = KissKhMirror.activeHostFromOrder(enabled);
+      await KissKhMirror.activateEndpoint(
+        KissKhMirror.baseUrlForHost(host),
       );
     }
 

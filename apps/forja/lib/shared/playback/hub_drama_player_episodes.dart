@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/catalog/catalog_details_fetch.dart';
+import 'package:forja/shared/catalog/hub_cover_urls.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 
@@ -9,35 +11,31 @@ typedef HubSeasonExtras = ({
   Map<int, Map<String, dynamic>> meta,
 });
 
-/// TMDB season-1 stills + meta keyed by episode number (same shape as details enrich).
 class HubDramaEpisodeCache {
   HubDramaEpisodeCache._();
 
   static const ttl = Duration(minutes: 30);
-  static final _byKisskhId =
-      <int, ({DateTime at, List<PlayerHubEpisode> episodes})>{};
+  static final _byMetaId = <String, ({DateTime at, List<PlayerHubEpisode> episodes})>{};
 
-  static List<PlayerHubEpisode>? read(int kisskhId) {
-    final hit = _byKisskhId[kisskhId];
+  static List<PlayerHubEpisode>? read(String metaId) {
+    final hit = _byMetaId[metaId];
     if (hit == null) return null;
     if (DateTime.now().difference(hit.at) > ttl) {
-      _byKisskhId.remove(kisskhId);
+      _byMetaId.remove(metaId);
       return null;
     }
     return List<PlayerHubEpisode>.from(hit.episodes);
   }
 
-  static void write(int kisskhId, List<PlayerHubEpisode> episodes) {
-    if (kisskhId <= 0 || episodes.isEmpty) return;
-    _byKisskhId[kisskhId] = (
+  static void write(String metaId, List<PlayerHubEpisode> episodes) {
+    if (metaId.isEmpty || episodes.isEmpty) return;
+    _byMetaId[metaId] = (
       at: DateTime.now(),
       episodes: List.from(episodes),
     );
   }
 
-  static void invalidate(int kisskhId) {
-    _byKisskhId.remove(kisskhId);
-  }
+  static void invalidate(String metaId) => _byMetaId.remove(metaId);
 }
 
 Future<HubSeasonExtras> loadTmdbSeasonExtras(int tvId) async {
@@ -72,120 +70,106 @@ Future<HubSeasonExtras> loadTmdbSeasonExtras(int tvId) async {
   }
 }
 
-String? _hubEpisodeThumbnail(
-  KdramaDetails det,
-  KdramaEpisode ep,
-  Map<int, String> stills,
-) {
-  final kissNum =
-      ep.number == ep.number.truncateToDouble() ? ep.number.toInt() : null;
-  final still = (kissNum != null ? stills[kissNum] : null) ??
-      stills[ep.pickerKey];
-  if (still != null && still.trim().isNotEmpty) {
-    return resolveHubEpisodeArtUrl(still.trim(), still: true);
-  }
-  final cover = KissKhService.resolveCoverUrl(det.cover);
-  return cover.isNotEmpty ? cover : null;
-}
-
-/// Build player hub rows from KissKH details + TMDB season extras (details / player).
-List<PlayerHubEpisode> dramaHubEpisodesFromDetails(
-  KdramaDetails det, {
+List<PlayerHubEpisode> hubEpisodesFromCatalogMeta(
+  CatalogMetaItem meta, {
   Map<int, String> stills = const {},
-  Map<int, Map<String, dynamic>> meta = const {},
+  Map<int, Map<String, dynamic>> tmdbMeta = const {},
 }) {
+  final cover = resolveHubCoverUrl(
+    meta.background.isNotEmpty ? meta.background : meta.poster,
+  );
   return [
-    for (var i = 0; i < det.episodes.length; i++)
+    for (final v in meta.videos)
       _hubEpisodeRow(
-        det: det,
-        ep: det.episodes[i],
-        index: i,
+        video: v,
+        fallbackCover: cover,
         stills: stills,
-        meta: meta,
+        meta: tmdbMeta,
       ),
   ];
 }
 
 PlayerHubEpisode _hubEpisodeRow({
-  required KdramaDetails det,
-  required KdramaEpisode ep,
-  required int index,
+  required CatalogVideo video,
+  required String fallbackCover,
   required Map<int, String> stills,
   required Map<int, Map<String, dynamic>> meta,
 }) {
-  final kissNum =
-      ep.number == ep.number.truncateToDouble() ? ep.number.toInt() : null;
-  final tmdbMeta = meta[kissNum ?? -1] ?? meta[ep.pickerKey] ?? const {};
+  final epNum = video.episode ?? 1;
+  final tmdbMeta = meta[epNum] ?? const {};
   final tmdbName = (tmdbMeta['name'] as String?)?.trim() ?? '';
   final overview = (tmdbMeta['overview'] as String?)?.trim() ?? '';
   final runtime = (tmdbMeta['runtime'] as int?) ?? 0;
   final aired = (tmdbMeta['aired'] as String?)?.trim() ?? '';
+  final still = stills[epNum];
+  final thumbRaw = (video.thumbnail.trim().isNotEmpty
+          ? video.thumbnail
+          : still ?? '')
+      .trim();
+  final thumb = thumbRaw.isNotEmpty
+      ? resolveHubEpisodeArtUrl(thumbRaw, still: true)
+      : (fallbackCover.isNotEmpty ? fallbackCover : null);
   return PlayerHubEpisode(
-    number: ep.number,
-    title: tmdbName.isNotEmpty ? tmdbName : 'Episode ${ep.displayNumber}',
+    number: epNum,
+    title: tmdbName.isNotEmpty
+        ? tmdbName
+        : (video.title.isNotEmpty ? video.title : 'Episode $epNum'),
     overview: overview.isNotEmpty ? overview : null,
     runtimeMinutes: runtime,
     airDateLabel: aired.isNotEmpty ? aired : null,
-    thumbnailUrl: _hubEpisodeThumbnail(det, ep, stills),
+    thumbnailUrl: thumb,
   );
 }
 
-/// Keep TMDB-enriched rows from details; only hit KissKH when the list is missing.
+Future<List<PlayerHubEpisode>> _buildFromPackMeta(
+  CatalogMetaItem meta, {
+  int? tmdbTvId,
+}) async {
+  var stills = const <int, String>{};
+  var tmdbMeta = const <int, Map<String, dynamic>>{};
+  final tvId = tmdbTvId ?? meta.numericId('tmdb');
+  if (tvId != null && tvId > 0) {
+    final extras = await loadTmdbSeasonExtras(tvId);
+    stills = extras.stills;
+    tmdbMeta = extras.meta;
+  }
+  return hubEpisodesFromCatalogMeta(meta, stills: stills, tmdbMeta: tmdbMeta);
+}
+
+/// Keep enriched rows from details; fetch pack `details` when the list is missing.
 Future<List<PlayerHubEpisode>?> ensureDramaHubEpisodes({
-  required int? kisskhId,
+  required String? pluginId,
+  required String? metaId,
   required List<PlayerHubEpisode>? hubEpisodes,
   int? tmdbTvId,
-  KdramaDetails? kissDetails,
   int? liveEpisodeCount,
 }) async {
-  if (kisskhId == null || kisskhId <= 0) return hubEpisodes;
+  if (pluginId == null || metaId == null || metaId.isEmpty) return hubEpisodes;
 
   if (hubEpisodes != null && hubEpisodes.isNotEmpty) {
-    HubDramaEpisodeCache.write(kisskhId, hubEpisodes);
+    HubDramaEpisodeCache.write(metaId, hubEpisodes);
     return hubEpisodes;
   }
 
-  final cached = HubDramaEpisodeCache.read(kisskhId);
+  final cached = HubDramaEpisodeCache.read(metaId);
   if (cached != null && cached.isNotEmpty) {
-    final hintedCount = kissDetails?.episodes.length ?? liveEpisodeCount;
-    if (hintedCount != null && hintedCount == cached.length) return cached;
-
-    try {
-      final det = kissDetails ?? await KissKhService().getDetails(kisskhId);
-      if (det.episodes.length == cached.length) return cached;
-      if (det.episodes.isEmpty) return cached;
-
-      final rebuilt = await _buildDramaHubEpisodes(det, tmdbTvId: tmdbTvId);
-      HubDramaEpisodeCache.write(kisskhId, rebuilt);
-      return rebuilt;
-    } catch (_) {
+    if (liveEpisodeCount == null || liveEpisodeCount == cached.length) {
       return cached;
     }
   }
 
   try {
-    final det = kissDetails ?? await KissKhService().getDetails(kisskhId);
-    if (det.episodes.isEmpty) return hubEpisodes;
+    final meta = await fetchCatalogMetaDetails(
+      pluginId: pluginId,
+      metaId: metaId,
+    );
+    if (meta == null || meta.videos.isEmpty) return hubEpisodes ?? cached;
 
-    final built = await _buildDramaHubEpisodes(det, tmdbTvId: tmdbTvId);
-    HubDramaEpisodeCache.write(kisskhId, built);
+    final built = await _buildFromPackMeta(meta, tmdbTvId: tmdbTvId);
+    if (built.isEmpty) return hubEpisodes ?? cached;
+    HubDramaEpisodeCache.write(metaId, built);
     return built;
   } catch (_) {
-    return hubEpisodes;
+    return hubEpisodes ?? cached;
   }
-}
-
-Future<List<PlayerHubEpisode>> _buildDramaHubEpisodes(
-  KdramaDetails det, {
-  int? tmdbTvId,
-}) async {
-  var stills = const <int, String>{};
-  var meta = const <int, Map<String, dynamic>>{};
-  final tvId = tmdbTvId ?? det.tmdbId;
-  if (tvId != null && tvId > 0) {
-    final extras = await loadTmdbSeasonExtras(tvId);
-    stills = extras.stills;
-    meta = extras.meta;
-  }
-  return dramaHubEpisodesFromDetails(det, stills: stills, meta: meta);
 }

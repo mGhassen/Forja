@@ -147,7 +147,6 @@ mixin _DetailsScreenFetch on ConsumerState<DetailsScreen> {
           _s._isLoading = false;
           _s._syncSelectedSourceToPlaySources();
         });
-        await _s._hydrateWebstreamingFromCache();
         _s._maybeAutoPlay();
         // Stream scrapes stay lazy (kind/chip). Chrome metadata warmed above.
       }

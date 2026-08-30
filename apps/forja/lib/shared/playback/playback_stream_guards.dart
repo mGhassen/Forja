@@ -3,10 +3,42 @@ library;
 
 import 'dart:convert';
 
-import 'package:forja/shared/extractors/providers/vidnest/vidnest_extractor.dart';
-import 'package:forja/shared/extractors/providers/vidsrcwin/profile.dart';
-import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';
 import 'package:rust/rust.dart';
+
+const _videasyServerChipLabels = [
+  'Yoru',
+  'Kai',
+  'Ryu',
+  'Sora',
+  'Hana',
+  'Kaze',
+  'Mizu',
+];
+
+const _vidnestServerDisplayNames = [
+  'Gama',
+  'Beta',
+  'Delta',
+  'Alfa',
+  'Lamda',
+];
+
+String preferVideasyHlsMasterUrl(String url) {
+  final u = url.trim();
+  if (!RegExp(r'index-s\d+p-v\d+-a\d+\.m3u8', caseSensitive: false)
+      .hasMatch(u)) {
+    return u;
+  }
+  final withSd = u.replaceFirst(
+    RegExp(r'/sd/\d+/index-s\d+p-v\d+-a\d+\.m3u8', caseSensitive: false),
+    '/master.m3u8',
+  );
+  if (withSd != u) return withSd;
+  return u.replaceFirst(
+    RegExp(r'/index-s\d+p-v\d+-a\d+\.m3u8', caseSensitive: false),
+    '/master.m3u8',
+  );
+}
 
 /// Videasy / wings CDN (peakstorm, …) — requires player.videasy.to Referer.
 bool isVideasyCdnStreamUrl(String url) {
@@ -22,8 +54,7 @@ bool playbackUrlsEquivalent(String a, String b) {
   if (x.isEmpty || y.isEmpty) return false;
   if (x == y) return true;
   if (isVideasyCdnStreamUrl(x) || isVideasyCdnStreamUrl(y)) {
-    return VideasyExtractor.preferHlsMasterUrl(x) ==
-        VideasyExtractor.preferHlsMasterUrl(y);
+    return preferVideasyHlsMasterUrl(x) == preferVideasyHlsMasterUrl(y);
   }
   return false;
 }
@@ -283,17 +314,17 @@ bool streamSourceMatchesPlaying(
 /// Used to reject Videasy API rows that were wrongly cached under another
 /// server (VSEmbed / VidLink / …) after a shared-sniff race.
 bool hasVideasyMirrorTitle(String title) {
-  return _titleMatchesAnyLabel(title, VideasyExtractor.serverChipLabels);
+  return _titleMatchesAnyLabel(title, _videasyServerChipLabels);
 }
 
 /// True when [title] matches VidNest API mirror labels (`Gama · …`).
 bool hasVidnestMirrorTitle(String title) {
-  return _titleMatchesAnyLabel(title, VidnestExtractor.serverDisplayNames);
+  return _titleMatchesAnyLabel(title, _vidnestServerDisplayNames);
 }
 
 /// True when [title] matches VidSrc.win chip labels (`Alpha · …`).
 bool hasVidsrcwinMirrorTitle(String title) {
-  return _titleMatchesAnyLabel(title, vidsrcwinExtractProfile.serverChipLabels);
+  return _titleMatchesAnyLabel(title, const ['alpha', 'blaze']);
 }
 
 bool _titleMatchesAnyLabel(String title, Iterable<String> labels) {

@@ -1,6 +1,6 @@
 // KissKH Asian drama hub — layout / rail / search / details (protocol 1).
 // Row order matches the pre-CatalogShell Asian Drama hub.
-// Ranked Popular is host-owned TMDB Asian TV (`host.popular_asian`).
+// Ranked Popular comes from the KissKH `most_viewed` rail (pack JS).
 
 var KISSKH_DEFAULTS = {
   base: 'https://kisskh.co',
@@ -45,11 +45,10 @@ function kisskhLayout() {
             rail: 'trending',
             aspect: 'landscape',
           },
-          { type: 'host.popular_asian', id: 'popular' },
           {
-            type: 'rail',
-            id: 'most_viewed',
-            title: 'Most Viewed',
+            type: 'ranked',
+            id: 'popular',
+            title: 'Popular',
             rail: 'most_viewed',
             aspect: 'landscape',
           },
@@ -212,9 +211,57 @@ function kisskhDetails(ctx, cfg, params) {
       if (!meta) {
         return hubFail('details', 'NOT_FOUND', 'drama ' + id + ' not found');
       }
+      var eps = Array.isArray(raw.episodes) ? raw.episodes : [];
+      var videos = [];
+      for (var i = 0; i < eps.length; i++) {
+        var ep = eps[i];
+        if (!ep || ep.id == null || ep.number == null) continue;
+        var num = Math.round(Number(ep.number));
+        if (!num) continue;
+        videos.push({
+          id: String(ep.id),
+          episode: num,
+          season: 1,
+          title: 'Episode ' + num,
+        });
+      }
+      videos.sort(function (a, b) {
+        return a.episode - b.episode;
+      });
+      if (videos.length) meta.videos = videos;
+      var bg = String(raw.thumbnail || raw.cover || '').trim();
+      if (bg) meta.background = kisskhCover(bg);
+      var desc = String(raw.description || '').trim();
+      if (desc) meta.description = hubStripHtml(desc);
       return hubOk('details', { meta: meta }, { maxAge: 900, swr: 3600 });
     },
   );
+}
+
+function kisskhFilters() {
+  return {
+    fields: [
+      {
+        field: 'country',
+        label: 'Country',
+        options: [
+          { id: 'all', label: 'All', value: '0' },
+          { id: 'chinese', label: 'Chinese', value: '1' },
+          { id: 'korea', label: 'South Korea', value: '2' },
+          { id: 'japan', label: 'Japan', value: '3' },
+          { id: 'hongkong', label: 'Hong Kong', value: '4' },
+          { id: 'thailand', label: 'Thailand', value: '5' },
+          { id: 'taiwan', label: 'Taiwan', value: '7' },
+          { id: 'philippines', label: 'Philippines', value: '8' },
+          { id: 'indonesia', label: 'Indonesia', value: '9' },
+        ],
+      },
+    ],
+    media: {
+      films: { op: 'eq', field: 'type', value: '2' },
+      series: { op: 'eq', field: 'type', value: '1' },
+    },
+  };
 }
 
 function extract(ctx) {
@@ -224,6 +271,9 @@ function extract(ctx) {
 
   if (action === 'layout') {
     return hubOk('layout', kisskhLayout(), { maxAge: 3600, swr: 86400 });
+  }
+  if (action === 'filters') {
+    return hubOk('filters', kisskhFilters(), { maxAge: 86400 });
   }
   if (action === 'details') {
     return kisskhDetails(ctx, cfg, params).catch(function (e) {

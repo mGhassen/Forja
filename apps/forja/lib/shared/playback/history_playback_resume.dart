@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/extractors/core/stream_extractor.dart';
-import 'package:forja/shared/playback/domain_playback_resolve.dart';
-import 'package:forja/shared/playback/playback_service.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
-import 'package:forja/shared/playback/webstreaming_stream_cache.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/design/design.dart';
@@ -34,207 +30,6 @@ String _displayTitle(Movie movie, {int? season, int? episode}) {
     return '${movie.title} - S$season E$episode';
   }
   return movie.title;
-}
-
-Future<void> _openResolvedStreamPlayer(
-  BuildContext context, {
-  required Movie movie,
-  required String providerId,
-  required StreamProviderResolveResult resolved,
-  int? season,
-  int? episode,
-  required Duration startPosition,
-}) async {
-  final isTv = movie.mediaType == 'tv';
-  final sources = resolved.sources ?? <StreamSource>[];
-  final ranked = sources.isNotEmpty
-      ? await PlaybackSelection.rankLegacySources(
-          sources: sources,
-          providerId: providerId,
-          providerRank: 0,
-        ).then(playableSourcesToStreamSources)
-      : null;
-
-  if (!context.mounted) return;
-  await AppRouter.openPlayer(
-    context,
-    streamUrl: resolved.streamUrl,
-    audioUrl: resolved.audioUrl,
-    title: _displayTitle(movie, season: season, episode: episode),
-    headers: resolved.headers,
-    movie: movie,
-    providers: StreamProviders.providers,
-    activeProvider: providerId,
-    selectedSeason: isTv ? season : null,
-    selectedEpisode: isTv ? episode : null,
-    startPosition: startPosition,
-    sources: ranked,
-    externalSubtitles: resolved.subtitles,
-    fadeTransition: true,
-  );
-}
-
-Future<bool> _resumeWebStreamProvider(
-  BuildContext context, {
-  required Map<String, dynamic> item,
-  required Movie movie,
-  required String providerId,
-  required Duration startPosition,
-}) async {
-  final season = item['season'] as int? ?? 1;
-  final episode = item['episode'] as int? ?? 1;
-  final cacheKey = WebstreamingStreamCache.cacheKeyFromProgress(
-    tmdbId: movie.id,
-    mediaType: movie.mediaType,
-    season: season,
-    episode: episode,
-  );
-
-  final cached = await WebstreamingStreamCache.readLive(
-    cacheKey,
-    probe: probeStreamSourceUrl,
-  );
-  if (cached != null && cached.sources.isNotEmpty) {
-    if (!context.mounted) return false;
-    final activeProvider = cached.providerId.isNotEmpty
-        ? cached.providerId
-        : providerId;
-    debugPrint(
-      '[Resume] webstreaming cache hit $cacheKey '
-      '($activeProvider, ${cached.sources.length})',
-    );
-    final providerSourcesCache =
-        ValueNotifier<Map<String, List<StreamSource>>>({
-      activeProvider: cached.sources,
-    });
-    try {
-      await AppRouter.openPlayer(
-        context,
-        streamUrl: cached.sources.first.url,
-        title: _displayTitle(movie, season: season, episode: episode),
-        headers: cached.sources.first.headers,
-        movie: movie,
-        providers: StreamProviders.providers,
-        activeProvider: activeProvider,
-        selectedSeason: movie.mediaType == 'tv' ? season : null,
-        selectedEpisode: movie.mediaType == 'tv' ? episode : null,
-        startPosition: startPosition,
-        sources: cached.sources,
-        providerSourcesCache: providerSourcesCache,
-        pinSource: true,
-        fadeTransition: true,
-      );
-    } finally {
-      providerSourcesCache.dispose();
-    }
-    return true;
-  }
-
-  final savedStreamUrl = item['streamUrl'] as String?;
-  if (savedStreamUrl != null &&
-      savedStreamUrl.trim().isNotEmpty &&
-      !isTorrentStreamUrl(savedStreamUrl) &&
-      !isUnplayableCachedStreamUrl(savedStreamUrl) &&
-      await probeStreamSourceUrl(savedStreamUrl, null)) {
-    if (!context.mounted) return false;
-    debugPrint('[Resume] watch-history streamUrl hit $cacheKey');
-    if (isWebStreamProviderId(providerId)) {
-      await WebstreamingStreamCache.write(
-        cacheKey,
-        WebstreamingCacheHit(
-          providerId: providerId,
-          sources: [
-            StreamSource(
-              url: savedStreamUrl,
-              title: providerId,
-              type: savedStreamUrl.contains('.m3u8') ? 'hls' : 'video',
-            ),
-          ],
-        ),
-      );
-    }
-    if (!context.mounted) return false;
-    await AppRouter.openPlayer(
-      context,
-      streamUrl: savedStreamUrl,
-      title: _displayTitle(movie, season: season, episode: episode),
-      movie: movie,
-      providers: StreamProviders.providers,
-      activeProvider: providerId.isNotEmpty ? providerId : 'stream',
-      selectedSeason: movie.mediaType == 'tv' ? season : null,
-      selectedEpisode: movie.mediaType == 'tv' ? episode : null,
-      startPosition: startPosition,
-      pinSource: true,
-      fadeTransition: true,
-    );
-    return true;
-  }
-
-  final hit = await PlaybackService.resolveWebstreaming(
-    movie: movie,
-    providers: StreamProviders.providers,
-    season: season,
-    episode: episode,
-    preferredProvider: providerId,
-  );
-  if (hit == null || hit.streamUrl.isEmpty || !context.mounted) {
-    return false;
-  }
-
-  final sources = hit.streamSources;
-  await WebstreamingStreamCache.write(
-    cacheKey,
-    WebstreamingCacheHit(providerId: providerId, sources: sources),
-  );
-  if (!context.mounted) return false;
-  await _openResolvedStreamPlayer(
-    context,
-    movie: movie,
-    providerId: providerId,
-    resolved: StreamProviderResolveResult(
-      streamUrl: hit.streamUrl,
-      audioUrl: hit.audioUrl,
-      headers: hit.headers,
-      sources: sources,
-      subtitles: hit.subtitles,
-    ),
-    season: season,
-    episode: episode,
-    startPosition: startPosition,
-  );
-  return true;
-}
-
-Future<bool> _resumeAmriStream(
-  BuildContext context, {
-  required Map<String, dynamic> item,
-  required Movie movie,
-  required Duration startPosition,
-}) async {
-  final isTv = movie.mediaType == 'tv';
-  final season = item['season'] as int?;
-  final episode = item['episode'] as int?;
-  final result = await StreamExtractor().extractWithAmri(
-    tmdbId: movie.id.toString(),
-    isMovie: !isTv,
-    season: isTv ? season : null,
-    episode: isTv ? episode : null,
-  );
-  if (result == null || result.url.isEmpty || !context.mounted) return false;
-
-  await AppRouter.openPlayer(
-    context,
-    streamUrl: result.url,
-    title: _displayTitle(movie, season: season, episode: episode),
-    headers: result.headers.isNotEmpty ? result.headers : null,
-    movie: movie,
-    activeProvider: 'amri',
-    selectedSeason: isTv ? season : null,
-    selectedEpisode: isTv ? episode : null,
-    startPosition: startPosition,
-    fadeTransition: true,
-  );
-  return true;
 }
 
 Future<bool> _resumeStremioDirectStream(
@@ -431,18 +226,8 @@ Future<bool> resumeSavedWebStreamProvider({
   required Movie movie,
   required Map<String, dynamic> progress,
   Duration? startPosition,
-}) {
-  final providerId = progress['sourceId'] as String? ?? '';
-  if (!isWebStreamProviderId(providerId)) return Future.value(false);
-  final pos = startPosition ?? resumeStartPositionFromProgress(progress);
-  return _resumeWebStreamProvider(
-    context,
-    item: progress,
-    movie: movie,
-    providerId: providerId,
-    startPosition: pos,
-  );
-}
+}) =>
+    Future.value(false);
 
 /// Details-screen fallback when direct Amri resume fails.
 Future<bool> resumeSavedAmriStream({
@@ -450,15 +235,8 @@ Future<bool> resumeSavedAmriStream({
   required Movie movie,
   required Map<String, dynamic> progress,
   Duration? startPosition,
-}) {
-  final pos = startPosition ?? resumeStartPositionFromProgress(progress);
-  return _resumeAmriStream(
-    context,
-    item: progress,
-    movie: movie,
-    startPosition: pos,
-  );
-}
+}) =>
+    Future.value(false);
 
 /// Details-screen direct resume for a saved torrent magnet.
 Future<bool> resumeSavedTorrentStream({
@@ -503,8 +281,6 @@ Future<void> resumePlaybackFromHistory(
   try {
     final method = item['method'] as String?;
     final movie = movieFromWatchHistory(item);
-    // ≥85% (incl. false early-EOF “finished”) must restart from 0 - raw
-    // position seeks into credits and looks like play is broken.
     final startPos = resumeStartPositionFromProgress(item);
     if (!context.mounted) return;
 

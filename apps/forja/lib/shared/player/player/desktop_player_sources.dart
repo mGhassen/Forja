@@ -258,7 +258,7 @@ mixin _DesktopPlayerSources
     playerMenuClearReturnFocus();
     // Do not cancel Engine jobs - leaving the player must not abort a
     // torrentStream / magnet resolve started from details underneath.
-    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+    EngineService.instance.cancelPending();
   }
 
   void _markProviderLoadFailed(String providerId) {
@@ -363,7 +363,7 @@ mixin _DesktopPlayerSources
   void _syncPanelAfterPlaybackConfirmed() {
     // Playing - stop leftover Auto / host extracts; do not keep checking
     // other providers in the background.
-    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+    EngineService.instance.cancelPending();
     _s._refreshPanelPlayingStream();
     final pid = _s._currentProvider;
     if (pid == null) return;
@@ -506,7 +506,7 @@ mixin _DesktopPlayerSources
     final providers = widget.providers;
     if (movie != null && providers != null && providers.isNotEmpty) {
       final gen = ++_s._fallbackGen;
-      DomainStreamProviderResolver.cancelAllPending();
+      EngineService.instance.cancelPending();
       final hit = await PlayerSourceResolve.resolveAutoForMovie(
         movie: movie,
         providers: providers,
@@ -801,7 +801,7 @@ mixin _DesktopPlayerSources
 
       if (!mounted || _s._fallbackAborted(switchGen)) return;
 
-      DomainStreamProviderResolver.cancelAllPending();
+      EngineService.instance.cancelPending();
       _s._statusController.clear();
       _s._markPlaybackConfirmed(false);
 

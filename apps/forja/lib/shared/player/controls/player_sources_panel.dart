@@ -9,7 +9,6 @@ import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
-import 'package:forja/shared/playback/domain_playback_resolve.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
@@ -43,9 +42,7 @@ class PlayerSourcesPanel {
   /// be cancelled. [dispose] must never cancel Engine jobs: it runs a frame
   /// after [dismiss] and would kill the fresh torrent job.
   static void dismiss({bool cancelEngine = true}) {
-    DomainStreamProviderResolver.cancelAllPending(
-      cancelEngineJobs: cancelEngine,
-    );
+    EngineService.instance.cancelPending();
     final wasShowing = _entry != null;
     _entry?.remove();
     _entry = null;
@@ -541,7 +538,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     // Shared cancel without Engine - [dismiss] already cancelled on user
     // close; on source pick, resolve starts before this dispose and must keep
     // its torrentStream job alive.
-    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+    EngineService.instance.cancelPending();
     _listScrollController.dispose();
     super.dispose();
   }
@@ -2233,7 +2230,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _nuvioInFlightScraperIds.clear();
     _nuvioPoolTasks.clear();
     _nuvioDiscardScraperIds.clear();
-    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+    EngineService.instance.cancelPending();
     if (clearFetched) _nuvioFetchedScraperIds.clear();
   }
 
@@ -2360,7 +2357,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       refresh = true;
     }
     if (reset || refresh) {
-      DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+      EngineService.instance.cancelPending();
       _nuvioPoolTasks.clear();
     }
     final gen = ++_nuvioFetchGen;
@@ -3249,11 +3246,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             _stremioGen++;
             _nuvioFetchGen++;
             _engineFetchGen++;
-            DomainStreamProviderResolver.cancelAllPending();
             EngineService.instance.cancelPending();
-            DomainStreamProviderResolver.cancelAllPending(
-              cancelEngineJobs: false,
-            );
             setState(() {
               _searching = false;
               _torrentInFlightProviderIds.clear();

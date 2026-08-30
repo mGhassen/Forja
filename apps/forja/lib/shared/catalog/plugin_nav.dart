@@ -228,6 +228,18 @@ abstract final class PluginNavRegistry {
     return _tabPluginIds[tabId] ?? builtInHubPluginIds[tabId];
   }
 
+  /// Cached plugin id → shell tab id (seed + last [refresh]).
+  static String? tabIdForPluginSync(String pluginId) {
+    _ensureSeeded();
+    for (final e in _tabPluginIds.entries) {
+      if (e.value == pluginId) return e.key;
+    }
+    for (final e in builtInHubPluginIds.entries) {
+      if (e.value == pluginId) return e.key;
+    }
+    return null;
+  }
+
   static Future<String?> pluginIdForTab(String tabId) async {
     _ensureSeeded();
     final cached = _tabPluginIds[tabId] ?? builtInHubPluginIds[tabId];

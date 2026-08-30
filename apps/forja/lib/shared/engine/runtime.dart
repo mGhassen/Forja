@@ -7,11 +7,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/engine_polyfills.dart';
-import 'package:forja/shared/engine/host_resolver.dart';
 import 'package:forja/shared/engine/live_goat_unlock.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/extractors/core/stream_crypto.dart';
-import 'package:forja/shared/extractors/providers/kisskh/kisskh_kkey.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:http/http.dart' as http;
 import 'package:pointycastle/export.dart';
@@ -272,10 +270,7 @@ class EngineRuntime {
         final episodeId =
             int.tryParse((m['episodeId'] ?? m['id'] ?? '').toString()) ?? 0;
         final kind = (m['kind'] ?? 'video').toString();
-        return KissKhKkey.generate(
-          episodeId,
-          subtitle: kind == 'sub' || kind == 'subtitle',
-        );
+        return '';
       } catch (_) {
         return '';
       }
@@ -1114,39 +1109,7 @@ class EngineRuntime {
       _resolveHost(id: id, gen: gen, streams: const []);
       return;
     }
-    final movie =
-        _extractMovie ??
-        Movie(
-          id: int.tryParse(_extractTmdbId) ?? 0,
-          imdbId: _extractImdbId,
-          title: _extractTitle,
-          posterPath: '',
-          backdropPath: '',
-          voteAverage: 0,
-          releaseDate: _extractYear.isNotEmpty ? '$_extractYear-01-01' : '',
-          mediaType: _extractType,
-        );
-    final plugin = EnginePlugin(
-      id: 'host:$hostId',
-      name: hostId,
-      entry: '',
-      kind: 'host',
-      hostId: hostId,
-    );
-    List<Map<String, dynamic>> streams = const [];
-    try {
-      streams = await EngineHostResolver.resolve(
-        plugin: plugin,
-        movie: movie,
-        season: _extractSeason,
-        episode: _extractEpisode,
-        isCancelled: () => gen != _fetchGeneration,
-      );
-    } catch (e) {
-      _forjaRuntimeLog('host resolve failed id=$hostId: $e');
-    }
-    if (gen != _fetchGeneration) return;
-    _resolveHost(id: id, gen: gen, streams: streams);
+    _resolveHost(id: id, gen: gen, streams: const []);
   }
 
   Future<void> _dispatchHop({

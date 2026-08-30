@@ -7,7 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/live_goat_webview_unlock.dart';
 import 'package:forja/shared/engine/live_gasm_webview_unlock.dart';
-import 'package:forja/shared/extractors/core/stream_extractor.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
@@ -868,22 +867,7 @@ class LiveGoatUnlock {
     required String embedUrl,
     String? referer,
   }) async {
-    final url = embedUrl.trim();
-    if (url.isEmpty) return null;
-    final ref = (referer ?? url).trim();
-    try {
-      final extracted = await StreamExtractor().extract(
-        url,
-        referer: ref,
-        iframeWrapperBaseUrl: ref.endsWith('/') ? ref : '$ref/',
-        timeout: const Duration(seconds: 35),
-      );
-      final out = extracted?.url.trim() ?? '';
-      return out.isEmpty ? null : out;
-    } catch (e) {
-      debugPrint('[LiveSniffEmbed] failed: $e');
-      return null;
-    }
+    return null;
   }
 
   static Future<String?> _findNodeBinary() async {

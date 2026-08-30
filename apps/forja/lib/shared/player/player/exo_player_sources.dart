@@ -138,7 +138,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       if (id == providerId) continue;
       _s._providerLoadGens[id] = (_s._providerLoadGens[id] ?? 0) + 1;
     }
-    DomainStreamProviderResolver.cancelAllPending();
+    EngineService.instance.cancelPending();
 
     final gen = (_s._providerLoadGens[providerId] ?? 0) + 1;
     _s._providerLoadGens[providerId] = gen;
@@ -297,7 +297,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         return;
       }
 
-      DomainStreamProviderResolver.cancelAllPending();
+      EngineService.instance.cancelPending();
       try {
         await ExoPlayerBridge.stop(_s._viewId);
       } catch (_) {}

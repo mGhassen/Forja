@@ -1,8 +1,3 @@
-import 'dart:convert';
-
-import 'package:forja/shared/extractors/embed_extract_profiles.dart';
-import 'package:forja/shared/extractors/core/stream_extractor.dart';
-import 'package:forja/shared/playback/host_provider_adapter.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/episode_torrent_resolver.dart';
 import 'package:rust/rust.dart';
@@ -32,24 +27,12 @@ List<String> episodeProviderChain({
   String? magnetLink,
 }) {
   final current = currentProvider ?? activeProvider;
-  // Catalog torrent / Stremio sessions must not walk webstreaming providers -
-  // those maps are often still non-empty from details preload.
   if (current == 'stremio_direct') return const ['stremio_direct'];
   if (current == 'torrent' ||
       (magnetLink != null &&
           magnetLink.isNotEmpty &&
           (current == null || current.isEmpty))) {
     return const ['torrent'];
-  }
-  if (providers != null && providers.isNotEmpty) {
-    final keys = providers.keys.toList();
-    if (current != null) {
-      final idx = keys.indexOf(current);
-      if (idx > 0) {
-        return [...keys.sublist(idx), ...keys.sublist(0, idx)];
-      }
-    }
-    return keys;
   }
   if (activeProvider != null && activeProvider.isNotEmpty) {
     return [activeProvider];
@@ -90,7 +73,6 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
           headers = Map<String, String>.from(proxyHeaders);
         }
         final url = stream['url'] as String;
-        // Magnet in `url` must resolve like infoHash - never open as a file path.
         if (isTorrentStreamUrl(url)) {
           final settings = SettingsService();
           final playback = await resolveMagnetForPlayback(
@@ -183,8 +165,6 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
   }
 
   if (providerKey == 'torrent') {
-    // Prefer the current season-pack magnet (same swarm, new fileIdx) before
-    // kicking off a fresh indexer search.
     if (magnetLink != null && magnetLink.isNotEmpty) {
       try {
         final settings = SettingsService();
@@ -237,143 +217,5 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
     );
   }
 
-  if (providerKey == 'amri') {
-    final result = await StreamExtractor().extractWithAmri(
-      tmdbId: movie.id.toString(),
-      isMovie: false,
-      season: season,
-      episode: episode,
-    );
-    if (result == null) return null;
-    return EpisodeSwitchResult(
-      streamUrl: result.url,
-      headers: result.headers.isNotEmpty ? result.headers : null,
-      activeProvider: 'amri',
-    );
-  }
-
-  if (providers != null && providers.containsKey(providerKey)) {
-    final sourcesJson = await HostProviderAdapter.resolveToSourcesJson(
-      providerId: providerKey,
-      payloadJson: '{}',
-      movie: movie,
-      providers: providers,
-      season: season,
-      episode: episode,
-    );
-    if (sourcesJson == null) return null;
-    return _episodeFromSourcesJson(sourcesJson, providerKey, providers);
-  }
-
-  if (providerKey.startsWith('nuvio:') ||
-      _builtinProviderKeys.contains(providerKey)) {
-    final sourcesJson = await HostProviderAdapter.resolveToSourcesJson(
-      providerId: providerKey,
-      payloadJson: '{}',
-      movie: movie,
-      providers: const {},
-      season: season,
-      episode: episode,
-    );
-    if (sourcesJson == null) return null;
-    return _episodeFromSourcesJson(sourcesJson, providerKey, const {});
-  }
-
-  final provider = StreamProviders.providers[providerKey];
-  if (provider == null || provider['tv'] == null) return null;
-
-  final providerUrl = provider['tv'](movie.id.toString(), season, episode);
-  final profile = EmbedExtractProfiles.resolve(providerKey);
-  final result = await StreamExtractor().extract(
-    providerUrl,
-    profile: profile,
-    timeout: const Duration(seconds: 20),
-    referer: providerUrl,
-    providerId: providerKey,
-  );
-  if (result == null || result.url.isEmpty) return null;
-  return EpisodeSwitchResult(
-    streamUrl: result.url,
-    headers: result.headers.isNotEmpty ? result.headers : null,
-    sources: await _rankEpisodeSources(result.sources, providerKey, 0),
-    activeProvider: providerKey,
-  );
+  return null;
 }
-
-Future<EpisodeSwitchResult?> _episodeFromSourcesJson(
-  String sourcesJson,
-  String providerKey,
-  Map<String, dynamic> providers,
-) async {
-  final decoded = jsonDecode(sourcesJson);
-  if (decoded is! List || decoded.isEmpty) return null;
-  final first = decoded.first;
-  if (first is! Map) return null;
-  final url = first['url']?.toString() ?? '';
-  if (url.isEmpty) return null;
-  final sources = decoded
-      .whereType<Map>()
-      .map(
-        (m) => StreamSource(
-          url: m['url']?.toString() ?? '',
-          title: m['title']?.toString() ?? 'Stream',
-          type: m['container']?.toString() ?? 'hls',
-          headers: m['headers'] is Map
-              ? Map<String, String>.from(m['headers'] as Map)
-              : null,
-          providerId: (m['providerId'] ?? m['provider_id'])?.toString() ??
-              providerKey,
-          catalogUrl: m['catalogUrl']?.toString(),
-        ),
-      )
-      .where((s) => s.url.isNotEmpty)
-      .toList();
-  final ranked = await _rankEpisodeSources(
-    sources,
-    providerKey,
-    providers.keys.toList().indexOf(providerKey),
-  );
-  return EpisodeSwitchResult(
-    streamUrl: url,
-    headers: first['headers'] is Map
-        ? Map<String, String>.from(first['headers'] as Map)
-        : null,
-    sources: ranked,
-    activeProvider: providerKey,
-  );
-}
-
-Future<List<StreamSource>?> _rankEpisodeSources(
-  List<StreamSource>? sources,
-  String providerId,
-  int providerRank,
-) async {
-  if (sources == null || sources.isEmpty) return sources;
-  final ranked = await PlaybackSelection.rankLegacySources(
-    sources: sources,
-    providerId: providerId,
-    providerRank: providerRank,
-  );
-  return playableSourcesToStreamSources(ranked);
-}
-
-const _builtinProviderKeys = {
-  'service111477',
-  'webstreamr',
-  'videasy',
-  'vidsrc',
-  'vidsrcwin',
-  'vidlink',
-  'vixsrc',
-  'vidnest',
-  'vidzee',
-  'vidrock',
-  'vidfast',
-  '2embed',
-  'autoembed',
-  'vidlove',
-  'vidsrcsbs',
-  '111movies',
-  'moviesapi',
-  'vidapi',
-};

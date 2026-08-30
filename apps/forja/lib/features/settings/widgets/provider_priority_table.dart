@@ -57,7 +57,7 @@ class ProviderScoringPanel extends StatefulWidget {
 enum _ScoringTab { movies, series, anime, asianDrama }
 
 class _ProviderScoringPanelState extends State<ProviderScoringPanel> {
-  _ScoringTab _tab = _ScoringTab.movies;
+  _ScoringTab _tab = _ScoringTab.anime;
 
   @override
   void initState() {
@@ -262,8 +262,6 @@ class _TabStrip extends StatelessWidget {
   final ValueChanged<_ScoringTab> onChanged;
 
   static const _tabs = <(_ScoringTab, String)>[
-    (_ScoringTab.movies, 'Movies'),
-    (_ScoringTab.series, 'Series'),
     (_ScoringTab.anime, 'Anime'),
     (_ScoringTab.asianDrama, 'Asian Drama'),
   ];

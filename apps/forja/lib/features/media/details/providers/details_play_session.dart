@@ -10,9 +10,6 @@ import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 
 /// Async play / resolve ownership for media details (RFC-047 deep slice).
-///
-/// Hero Play / Direct / Sources panel read this via [detailsPlaySessionProvider].
-/// Ephemeral panel chrome (search query, filter chips) stays on the screen.
 @immutable
 class DetailsPlaySources {
   const DetailsPlaySources({
@@ -21,24 +18,20 @@ class DetailsPlaySources {
     required this.nuvio,
     required this.engine,
     required this.engineAutoStart,
-    required this.webstreaming,
   });
 
-  /// First paint before prefs hydrate — matches platform defaults (Forja + Auto).
   const DetailsPlaySources.pending()
       : torrent = false,
         stremio = false,
         nuvio = false,
         engine = true,
-        engineAutoStart = true,
-        webstreaming = false;
+        engineAutoStart = true;
 
   final bool torrent;
   final bool stremio;
   final bool nuvio;
   final bool engine;
   final bool engineAutoStart;
-  final bool webstreaming;
 
   DetailsPlaySources copyWith({
     bool? torrent,
@@ -46,7 +39,6 @@ class DetailsPlaySources {
     bool? nuvio,
     bool? engine,
     bool? engineAutoStart,
-    bool? webstreaming,
   }) {
     return DetailsPlaySources(
       torrent: torrent ?? this.torrent,
@@ -54,13 +46,10 @@ class DetailsPlaySources {
       nuvio: nuvio ?? this.nuvio,
       engine: engine ?? this.engine,
       engineAutoStart: engineAutoStart ?? this.engineAutoStart,
-      webstreaming: webstreaming ?? this.webstreaming,
     );
   }
 }
 
-/// Mutable session bag — Notifier bumps [DetailsPlaySessionNotifier] revision
-/// so [ref.watch] rebuilds; callers mutate fields then [bump].
 class DetailsPlaySession {
   DetailsPlaySources playSources = const DetailsPlaySources.pending();
 
@@ -90,14 +79,11 @@ class DetailsPlaySession {
   Set<String> nuvioSelectedScraperIds = {};
   bool nuvioSelectionHydrated = false;
 
-  /// Sources chip row: All is exclusive load mode; provider chips are view
-  /// filters while All is on (do not change fetch selection).
   bool nuvioAllMode = false;
   Set<String> nuvioViewFilterScraperIds = {};
 
   List<Map<String, dynamic>> engineStreams = [];
   bool isEngineFetching = false;
-  /// Packs/scripts still installing — Forja tab spinner only; other kinds stay live.
   bool enginePacksLoading = false;
   bool hasEnginePacks = false;
   Set<String> engineFetchedPluginIds = {};
@@ -107,22 +93,10 @@ class DetailsPlaySession {
   Set<String> engineSelectedPluginIds = {};
   bool engineSelectionHydrated = false;
 
-  /// Same contract as [nuvioAllMode] for Forja plugin chips.
   bool engineAllMode = false;
   Set<String> engineViewFilterPluginIds = {};
 
-  /// Torrents All chip: filter merged results without re-searching.
   Set<String> torrentViewFilterProviderIds = {};
-
-  final Map<String, dynamic> webstreamingProviders = {
-    ...StreamProviders.providers,
-  };
-  List<String> webstreamingProviderOrder = [];
-  List<StreamSource> webstreamingStreams = [];
-  String? webstreamingActiveProviderId;
-  bool isWebstreamingOnlyExtracting = false;
-  bool webstreamingOnlyExtractionCancelled = false;
-  int webstreamingPlayGen = 0;
 
   bool isEngineAutoExtracting = false;
   bool engineAutoExtractionCancelled = false;
@@ -131,12 +105,9 @@ class DetailsPlaySession {
   String selectedSourceId = '';
   String panelKindFilter = EngineIds.kind;
 
-  /// Last green-play kind / catalog URL — Sources opens on that tab; list
-  /// highlights the playing row. Chip multi-select is never rewritten from this.
   String? playingPanelKind;
   String? playingCatalogUrl;
 
-  /// Per-kind Stremio addon / torrent chip id — [selectedSourceId] is active tab only.
   Map<String, String> panelSourceIdByKind = {};
 
   DetailsResolveStatus get resolveStatus {
@@ -144,7 +115,6 @@ class DetailsPlaySession {
         isStremioFetching ||
         isNuvioFetching ||
         isEngineFetching ||
-        isWebstreamingOnlyExtracting ||
         isEngineAutoExtracting) {
       return DetailsResolveStatus.loading;
     }
@@ -152,15 +122,13 @@ class DetailsPlaySession {
         torrents.isEmpty &&
         stremioStreams.isEmpty &&
         nuvioStreams.isEmpty &&
-        engineStreams.isEmpty &&
-        webstreamingStreams.isEmpty) {
+        engineStreams.isEmpty) {
       return DetailsResolveStatus.error;
     }
     if (torrents.isNotEmpty ||
         stremioStreams.isNotEmpty ||
         nuvioStreams.isNotEmpty ||
-        engineStreams.isNotEmpty ||
-        webstreamingStreams.isNotEmpty) {
+        engineStreams.isNotEmpty) {
       return DetailsResolveStatus.ready;
     }
     return DetailsResolveStatus.idle;
@@ -174,7 +142,6 @@ class DetailsPlaySessionNotifier
   @override
   int build(DetailsMetaKey arg) {
     session = DetailsPlaySession();
-    // Re-load play-source toggles when Settings / cloud pull bumps revision.
     ref.listen(playSourceRevisionProvider, (_, _) {
       unawaited(loadPlaySources());
     });
@@ -187,7 +154,6 @@ class DetailsPlaySessionNotifier
 
   void bump() => state++;
 
-  /// Batch mutate then notify watchers once.
   void mutate(void Function(DetailsPlaySession s) fn) {
     fn(session);
     bump();
@@ -202,20 +168,17 @@ class DetailsPlaySessionNotifier
       nuvio: await PlaySourceEffective.nuvio(settings, lanReady),
       engine: await PlaySourceEffective.engine(settings, lanReady),
       engineAutoStart: await settings.isPlaySourceEngineAutoStartEnabled(),
-      webstreaming: await PlaySourceEffective.webstreaming(settings),
     );
     session.playSources = next;
     bump();
   }
 }
 
-/// Per-title play / resolve session (autoDispose when details route pops).
 final detailsPlaySessionProvider = NotifierProvider.autoDispose
     .family<DetailsPlaySessionNotifier, int, DetailsMetaKey>(
   DetailsPlaySessionNotifier.new,
 );
 
-/// Convenience: watch session bag (depends on revision int).
 DetailsPlaySession watchDetailsPlaySession(
   WidgetRef ref,
   DetailsMetaKey key,

@@ -70,10 +70,6 @@ abstract final class PlaySourceEffective {
     return s.isPlaySourceEngineEnabled();
   }
 
-  /// Sniffing extractors (Videasy, WebStreamr, …) — admin accounts only.
-  static Future<bool> webstreaming([SettingsService? settings]) async {
-    if (!AccountFeatures.instance.isAdmin) return false;
-    final s = settings ?? SettingsService();
-    return s.isPlaySourceWebstreamingEnabled();
-  }
+  /// Legacy webstreaming path removed — VOD uses provider JS only.
+  static Future<bool> webstreaming([SettingsService? settings]) async => false;
 }

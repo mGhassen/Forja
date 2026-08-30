@@ -29,13 +29,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
   void _failEpisodePlayPending() {
     if (!_s._episodePlayPending || !mounted) return;
     _s._episodePlayPending = false;
-    if (!_s._hasPanelPlaySources && _s._playSourceWebstreaming) {
-      unawaited(_s._startWebstreamingOnlyPlayback());
-      return;
-    }
-    if (!_s._hasPanelPlaySources &&
-        _s._playSourceEngine &&
-        _s._playSourceEngineAutoStart) {
+    if (!_s._hasPanelPlaySources && _s._playSourceEngine) {
       unawaited(_s._startEngineAutoPlayback());
       return;
     }
@@ -44,13 +38,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
 
   void _failAutoPlayFromRoute() {
     if (!mounted) return;
-    if (!_s._hasPanelPlaySources && _s._playSourceWebstreaming) {
-      unawaited(_s._startWebstreamingOnlyPlayback());
-      return;
-    }
-    if (!_s._hasPanelPlaySources &&
-        _s._playSourceEngine &&
-        _s._playSourceEngineAutoStart) {
+    if (!_s._hasPanelPlaySources && _s._playSourceEngine) {
       unawaited(_s._startEngineAutoPlayback());
       return;
     }
@@ -93,14 +81,9 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         ? (progress?['method'] as String?)
         : null;
 
-    // Home hero Play → webstreaming, else Forja auto when enabled.
+    // Home hero Play → Forja engine auto.
     if (fromRoute && !isContinueWatchingResume) {
-      if (_s._playSourceWebstreaming) {
-        _consumeAutoPlayFlags(fromRoute: true, fromEpisode: fromEpisode);
-        unawaited(_s._startWebstreamingOnlyPlayback());
-        return;
-      }
-      if (_s._playSourceEngine && _s._playSourceEngineAutoStart) {
+      if (_s._playSourceEngine) {
         _consumeAutoPlayFlags(fromRoute: true, fromEpisode: fromEpisode);
         unawaited(_s._startEngineAutoPlayback());
         return;
@@ -114,28 +97,16 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
         unawaited(_s._startEngineAutoPlayback(fromEngineResume: true));
         return;
       }
-      if (_s._playSourceWebstreaming && isWebStreamProviderId(sourceId)) {
-        if (_s._isWebstreamingOnlyExtracting) return;
-        _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
-        unawaited(
-          _s._resumeContinueWatchingWebStream(sourceId, fromRoute: fromRoute),
-        );
-        return;
-      }
-      // Webstreaming off (or last source was Forja/engine): same as green Play.
-      if (fromRoute &&
-          !_s._playSourceWebstreaming &&
-          _s._playSourceEngine &&
-          _s._playSourceEngineAutoStart) {
+      if (fromRoute && _s._playSourceEngine) {
         _consumeAutoPlayFlags(fromRoute: true, fromEpisode: fromEpisode);
         unawaited(_s._startEngineAutoPlayback());
         return;
       }
     }
 
-    if (savedMethod == 'amri' && _s._playSourceWebstreaming) {
+    if (savedMethod == 'amri' && _s._playSourceEngine) {
       _consumeAutoPlayFlags(fromRoute: fromRoute, fromEpisode: fromEpisode);
-      unawaited(_s._resumeContinueWatchingAmri(fromRoute: fromRoute));
+      unawaited(_s._startEngineAutoPlayback(fromEngineResume: true));
       return;
     }
 

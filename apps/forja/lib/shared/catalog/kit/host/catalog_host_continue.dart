@@ -1,77 +1,58 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/features/anime/anime_details_screen.dart';
-import 'package:forja/features/anime/anime_player_screen.dart';
-import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/features/anime/widgets/anime_continue_watching_section.dart';
-import 'package:forja/features/asian_drama/asian_drama_details_screen.dart';
-import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
-import 'package:forja/features/asian_drama/widgets/asian_drama_continue_watching_section.dart';
+import 'package:forja/shared/catalog/kit/home/catalog_continue_watching_section.dart';
+import 'package:rust/rust.dart' show isInProgressResume;
 import 'package:forja/shared/catalog/kit/home/continue_watching_section.dart';
-import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
+import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
-import 'package:rust/rust.dart';
+import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
+import 'package:forja/shared/playback/catalog_play_resolve.dart';
 
-/// Host-owned Continue Watching row for catalog shells (`host.continue`).
-class CatalogHostContinue extends StatelessWidget {
+/// `host.continue` — pack-agnostic Continue Watching (keyed by [pluginId]).
+class CatalogHostContinue extends StatefulWidget {
   const CatalogHostContinue({
     super.key,
+    required this.pluginId,
     required this.tabId,
+    this.continuePool,
     this.tvRowOrder = 1,
   });
 
+  final String pluginId;
   final String tabId;
+  /// Layout widget `pool` — e.g. `watch_history` for TMDB home pool.
+  final String? continuePool;
   final int tvRowOrder;
 
   @override
-  Widget build(BuildContext context) {
-    switch (tabId) {
-      case 'anime':
-        return _AnimeHostContinue(tvRowOrder: tvRowOrder);
-      case 'asian_drama':
-        return _DramaHostContinue(tvRowOrder: tvRowOrder);
-      case 'home':
-        return HomeContinueWatchingSection(
-          compactTop: false,
-          tvRowOrder: tvRowOrder,
-        );
-      default:
-        return const SizedBox.shrink();
-    }
-  }
+  State<CatalogHostContinue> createState() => _CatalogHostContinueState();
 }
 
-class _AnimeHostContinue extends StatefulWidget {
-  const _AnimeHostContinue({required this.tvRowOrder});
-  final int tvRowOrder;
-
-  @override
-  State<_AnimeHostContinue> createState() => _AnimeHostContinueState();
-}
-
-class _AnimeHostContinueState extends State<_AnimeHostContinue> {
-  final _service = AnimeService();
+class _CatalogHostContinueState extends State<CatalogHostContinue> {
   final _scroll = ScrollController();
   List<Map<String, dynamic>> _entries = const [];
-  int? _resumingId;
+  String? _resumingMetaId;
 
   @override
   void initState() {
     super.initState();
+    CatalogWatchHistory.revision.addListener(_reload);
     unawaited(_reload());
   }
 
   @override
   void dispose() {
+    CatalogWatchHistory.revision.removeListener(_reload);
     _scroll.dispose();
     super.dispose();
   }
 
   Future<void> _reload() async {
     try {
-      final list = await _service.getWatchHistory();
+      final list = await CatalogWatchHistory.getAll(widget.pluginId);
       if (!mounted) return;
       setState(() {
         _entries = list
@@ -87,12 +68,13 @@ class _AnimeHostContinueState extends State<_AnimeHostContinue> {
   }
 
   Future<void> _resume(Map<String, dynamic> entry) async {
-    final animeId = entry['animeId'] as int?;
-    if (animeId == null || _resumingId != null) return;
-    setState(() => _resumingId = animeId);
+    final metaId = entry['metaId']?.toString();
+    if (metaId == null || _resumingMetaId != null) return;
+    final meta = CatalogWatchHistory.metaFromEntry(entry);
+    if (meta == null) return;
+    setState(() => _resumingMetaId = metaId);
     try {
       final epNum = (entry['episodeNumber'] as num?)?.toInt() ?? 1;
-      final cat = (entry['category'] as String?) ?? 'sub';
       final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
       final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
       Duration? startPosition;
@@ -103,164 +85,62 @@ class _AnimeHostContinueState extends State<_AnimeHostContinue> {
         startPosition =
             Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
       }
-      final anime = await _service.getDetails(animeId);
+      final extras = entry['extras'];
+      final ctx = catalogPlayContextFromMeta(
+        meta: meta,
+        pluginId: widget.pluginId,
+        episodeNumber: epNum,
+        episodeVideoId: entry['episodeVideoId']?.toString(),
+        extras: extras is Map
+            ? Map<String, dynamic>.from(extras)
+            : const {},
+        startPosition: startPosition,
+      );
       if (!mounted) return;
-      final episodes = await _service.getEpisodes(anime);
-      if (!mounted) return;
-      if (await hubEngineAutoPlayEnabled()) {
-        if (!mounted) return;
-        final isMovie = (anime.format ?? '').toUpperCase() == 'MOVIE';
-        final malId = await _service.resolveMalId(animeId);
-        if (!mounted) return;
-        await runHubEngineAutoPlay(
-          context: context,
-          movie: Movie(
-            id: -anime.id,
-            title: anime.displayTitle,
-            posterPath: anime.coverUrl,
-            backdropPath: anime.heroBackdrop,
-            voteAverage: (anime.averageScore ?? 0) / 10.0,
-            releaseDate: anime.seasonYear?.toString() ?? '',
-            overview: anime.cleanDescription,
-            genres: anime.genres,
-            runtime: anime.duration ?? 0,
-            mediaType: 'anime',
-            numberOfEpisodes: anime.episodes ?? 0,
-          ),
-          engineCategory: 'anime',
-          season: isMovie ? null : 1,
-          episode: isMovie ? null : epNum,
-          anilistId: animeId,
-          malId: malId,
-          startPosition: startPosition,
-          loadingSubtitle: 'EP $epNum',
-          hubEpisodes: isMovie
-              ? null
-              : [
-                  for (final e in episodes)
-                    PlayerHubEpisode(
-                      number: e.number,
-                      title: e.title,
-                      notShippedYet: !e.aired,
-                    ),
-                ],
-        );
-      } else {
-        if (!mounted) return;
-        await openAnimePlayer(
-          context,
-          anime: anime,
-          episodeNumber: epNum,
-          category: cat,
-          allEpisodes: episodes,
-          startPosition: startPosition,
-          freshResolve: true,
-        );
-      }
+      await runHubPlayFromContext(context: context, ctx: ctx);
       if (mounted) await _reload();
     } catch (e) {
       if (mounted) ForjaToast.error('Resume failed: $e');
     } finally {
-      if (mounted) setState(() => _resumingId = null);
+      if (mounted) setState(() => _resumingMetaId = null);
     }
+  }
+
+  void _openDetails(Map<String, dynamic> entry) {
+    final meta = CatalogWatchHistory.metaFromEntry(entry);
+    if (meta == null) return;
+    unawaited(
+      openCatalogMetaItem(
+        context,
+        pluginId: widget.pluginId,
+        item: meta,
+      ).then((_) => _reload()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimeContinueWatchingSection(
+    // TMDB home pool uses a separate host widget until unified meta CW ships.
+    if (widget.continuePool == 'watch_history') {
+      return HomeContinueWatchingSection(
+        compactTop: false,
+        tvRowOrder: widget.tvRowOrder,
+      );
+    }
+
+    return CatalogContinueWatchingSection(
+      tabId: widget.tabId,
       entries: _entries,
       scrollController: _scroll,
-      resumingAnimeId: _resumingId,
+      resumingMetaId: _resumingMetaId,
       onResume: _resume,
       onRemove: (e) async {
-        final id = e['animeId'] as int?;
+        final id = e['metaId']?.toString();
         if (id == null) return;
-        await _service.removeFromHistory(id);
+        await CatalogWatchHistory.remove(widget.pluginId, id);
         if (mounted) await _reload();
       },
-      onOpenDetails: (a) => openAnimeDetails(context, a).then((_) => _reload()),
-      tvRowOrder: widget.tvRowOrder,
-    );
-  }
-}
-
-class _DramaHostContinue extends StatefulWidget {
-  const _DramaHostContinue({required this.tvRowOrder});
-  final int tvRowOrder;
-
-  @override
-  State<_DramaHostContinue> createState() => _DramaHostContinueState();
-}
-
-class _DramaHostContinueState extends State<_DramaHostContinue> {
-  final _service = KissKhService();
-  List<Map<String, dynamic>> _entries = const [];
-  int? _resumingId;
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(_reload());
-  }
-
-  Future<void> _reload() async {
-    try {
-      final list = await _service.getWatchHistory();
-      if (!mounted) return;
-      setState(() {
-        _entries = list
-            .where((e) {
-              final pos = (e['positionMs'] as num?)?.toInt() ?? 0;
-              final dur = (e['durationMs'] as num?)?.toInt() ?? 0;
-              return isInProgressResume(pos, dur);
-            })
-            .take(10)
-            .toList();
-      });
-    } catch (_) {}
-  }
-
-  KdramaCard _cardFromEntry(Map<String, dynamic> e) {
-    return KdramaCard(
-      id: (e['id'] as num?)?.toInt() ?? 0,
-      title: (e['title'] ?? '').toString(),
-      cover: (e['cover'] ?? e['poster'] ?? '').toString(),
-      year: e['year']?.toString(),
-      tmdbId: (e['tmdbId'] as num?)?.toInt(),
-    );
-  }
-
-  Future<void> _resume(Map<String, dynamic> entry) async {
-    final id = (entry['id'] as num?)?.toInt();
-    if (id == null || _resumingId != null) return;
-    setState(() => _resumingId = id);
-    try {
-      final card = _cardFromEntry(entry);
-      if (!mounted) return;
-      await openAsianDramaDetails(context, card);
-      if (mounted) await _reload();
-    } catch (e) {
-      if (mounted) ForjaToast.error('Resume failed: $e');
-    } finally {
-      if (mounted) setState(() => _resumingId = null);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AsianDramaContinueWatchingSection(
-      entries: _entries,
-      resumingDramaId: _resumingId,
-      onResume: _resume,
-      onRemove: (e) async {
-        final id = (e['id'] as num?)?.toInt();
-        if (id == null) return;
-        await _service.removeFromHistory(id);
-        if (mounted) await _reload();
-      },
-      onOpenDetails: (d) =>
-          openAsianDramaDetails(context, d).then((_) => _reload()),
-      cardFromEntry: _cardFromEntry,
+      onOpenDetails: _openDetails,
       tvRowOrder: widget.tvRowOrder,
     );
   }

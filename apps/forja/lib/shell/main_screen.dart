@@ -20,8 +20,7 @@ import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
-import 'package:forja/shell/home_top_bar.dart';
-import 'package:forja/shell/hub_catalog_top_bar.dart';
+import 'package:forja/shared/catalog/shell/hub_catalog_top_bar.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_find_shortcut.dart';
 import 'package:forja/shell/macos_shell_channel.dart';
@@ -578,10 +577,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
         } else {
           shellTopBar = switch (_currentTabId) {
             null => null,
-            'home' => const HomeTopBar(),
-            'anime' => const AnimeCatalogTopBar(),
-            'asian_drama' => const AsianDramaCatalogTopBar(),
-            'arabic' => const ArabicCatalogTopBar(),
             final id when PluginNavRegistry.isHubTab(id) =>
               PluginHubCatalogTopBar(tabId: id),
             _ => null,

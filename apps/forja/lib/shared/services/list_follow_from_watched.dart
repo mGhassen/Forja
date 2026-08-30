@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/catalog/catalog_details_fetch.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -260,17 +260,20 @@ class ListFollowFromWatched {
       ))
           .length;
       if (watched <= 0) return false;
-      final card = await AnimeService().getDetails(anilistId);
-      final total = card.episodes ?? 0;
+      final meta = await fetchCatalogMetaDetails(
+        pluginId: PluginNavRegistry.builtInHubPluginIds['anime'] ?? 'anilist',
+        metaId: 'anilist:$anilistId',
+      );
+      final total = meta?.episodes ?? (item['totalEpisodes'] as num?)?.toInt() ?? 0;
       if (total <= 0 || watched < total) return false;
       final target = HubListFollowTarget.anime(
         anilistId: anilistId,
-        title: item['title']?.toString() ?? card.displayTitle,
-        posterPath: item['posterPath']?.toString() ?? card.coverUrl,
+        title: item['title']?.toString() ?? meta?.name ?? '',
+        posterPath: item['posterPath']?.toString() ?? meta?.poster ?? '',
         voteAverage: (item['voteAverage'] as num?)?.toDouble() ??
-            (card.averageScore ?? 0) / 10.0,
+            (meta?.rating ?? 0),
         releaseDate: item['releaseDate']?.toString() ??
-            card.seasonYear?.toString() ??
+            meta?.releaseInfo ??
             '',
       );
       final before = MyListService().contains(target.uniqueId)
@@ -294,18 +297,23 @@ class ListFollowFromWatched {
       ))
           .length;
       if (watched <= 0) return false;
-      final det = await KissKhService().getDetails(kisskhId);
-      final total =
-          det.episodes.isNotEmpty ? det.episodes.length : det.episodesCount;
+      final meta = await fetchCatalogMetaDetails(
+        pluginId:
+            PluginNavRegistry.builtInHubPluginIds['asian_drama'] ?? 'kisskh-hub',
+        metaId: 'kisskh:$kisskhId',
+      );
+      final total = (meta?.videos.isNotEmpty ?? false)
+          ? meta!.videos.length
+          : (meta?.episodes ?? (item['totalEpisodes'] as num?)?.toInt() ?? 0);
       if (total <= 0 || watched < total) return false;
       final target = HubListFollowTarget.drama(
         kisskhId: kisskhId,
-        title: item['title']?.toString() ?? det.title,
-        posterPath: item['posterPath']?.toString() ?? det.cover,
-        tmdbId: item['tmdbId'] as int?,
-        tmdbMediaType: item['tmdbMediaType']?.toString(),
-        releaseDate: item['releaseDate']?.toString() ?? det.year ?? '',
-        kissKhType: item['kissKhType']?.toString() ?? det.type,
+        title: item['title']?.toString() ?? meta?.name ?? '',
+        posterPath: item['posterPath']?.toString() ?? meta?.poster ?? '',
+        tmdbId: item['tmdbId'] as int? ?? meta?.numericId('tmdb'),
+        tmdbMediaType: item['tmdbMediaType']?.toString() ?? meta?.tmdbMediaType,
+        releaseDate: item['releaseDate']?.toString() ?? meta?.releaseInfo ?? '',
+        kissKhType: item['kissKhType']?.toString() ?? meta?.badge,
       );
       final before = MyListService().contains(target.uniqueId)
           ? MyListService().statusOf(target.uniqueId)

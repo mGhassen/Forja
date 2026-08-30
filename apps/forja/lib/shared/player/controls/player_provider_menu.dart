@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/shared/playback/anime_embed.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:rust/rust.dart';
 

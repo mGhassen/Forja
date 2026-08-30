@@ -248,7 +248,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     playerMenuClearReturnFocus();
     // Do not cancel Engine jobs - leaving the player must not abort a
     // torrentStream / magnet resolve started from details underneath.
-    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+    EngineService.instance.cancelPending();
   }
 
   void _markProviderLoadFailed(String providerId) {
@@ -353,7 +353,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
   void _syncPanelAfterPlaybackConfirmed() {
     // Playing - stop leftover Auto / host extracts; do not keep checking
     // other providers in the background.
-    DomainStreamProviderResolver.cancelAllPending(cancelEngineJobs: false);
+    EngineService.instance.cancelPending();
     _s._refreshPanelPlayingStream();
     final pid = _s._currentProvider;
     if (pid == null) return;
@@ -502,7 +502,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     final providers = widget.providers;
     if (movie != null && providers != null && providers.isNotEmpty) {
       final gen = ++_s._fallbackGen;
-      DomainStreamProviderResolver.cancelAllPending();
+      EngineService.instance.cancelPending();
       final hit = await PlayerSourceResolve.resolveAutoForMovie(
         movie: movie,
         providers: providers,
@@ -798,7 +798,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
 
       if (!mounted || _s._fallbackAborted(switchGen)) return;
 
-      DomainStreamProviderResolver.cancelAllPending();
+      EngineService.instance.cancelPending();
       _s._statusController.clear();
       _s._markPlaybackConfirmed(false);
 

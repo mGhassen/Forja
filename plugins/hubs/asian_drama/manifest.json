@@ -20,7 +20,8 @@
         "layout",
         "rail",
         "search",
-        "details"
+        "details",
+        "filters"
       ],
       "nav": {
         "tabId": "asian_drama",

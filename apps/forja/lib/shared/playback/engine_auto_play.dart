@@ -6,6 +6,7 @@ import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/playback/hub_drama_player_episodes.dart';
 import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
@@ -18,20 +19,18 @@ import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
-/// True when Settings → Playback would run Forja Auto on green Play
-/// (Forja on + Auto on + Webstreaming off).
+/// VOD green Play always races Forja engine providers (provider JS).
 Future<bool> engineAutoPlayEnabled([SettingsService? settings]) async {
   final s = settings ?? SettingsService();
-  if (!await PlaySourceEffective.engine(s)) return false;
-  if (!await s.isPlaySourceEngineAutoStartEnabled()) return false;
-  if (await PlaySourceEffective.webstreaming(s)) return false;
-  return true;
+  return PlaySourceEffective.engine(s);
 }
 
 /// Hub / details context so in-player next episode can call the same Auto path.
 class EnginePlaySession {
   const EnginePlaySession({
     required this.category,
+    this.pluginId,
+    this.catalogMeta,
     this.anilistId,
     this.malId,
     this.kisskhId,
@@ -42,6 +41,8 @@ class EnginePlaySession {
 
   /// `movie` | `tv` | `anime` | `drama` | `arabic` — same as [runEngineAutoPlay] category.
   final String category;
+  final String? pluginId;
+  final CatalogMetaItem? catalogMeta;
   final int? anilistId;
   final int? malId;
   final int? kisskhId;
@@ -853,7 +854,8 @@ Future<void> _playFromProbedSources({
   final epNum = hubEpisodeNumber ?? episode;
   final playMovie = movieWithResolvedHubArt(movie);
   final playHubEpisodes = await ensureDramaHubEpisodes(
-    kisskhId: enginePlaySession?.kisskhId,
+    pluginId: enginePlaySession?.pluginId,
+    metaId: enginePlaySession?.catalogMeta?.id,
     hubEpisodes: hubEpisodes,
     tmdbTvId: playMovie.id > 0 ? playMovie.id : null,
     liveEpisodeCount: playMovie.numberOfEpisodes,
@@ -956,7 +958,8 @@ Future<void> _playResolveRow({
   final epNum = hubEpisodeNumber ?? episode;
   final playMovie = movieWithResolvedHubArt(movie);
   final playHubEpisodes = await ensureDramaHubEpisodes(
-    kisskhId: enginePlaySession?.kisskhId,
+    pluginId: enginePlaySession?.pluginId,
+    metaId: enginePlaySession?.catalogMeta?.id,
     hubEpisodes: hubEpisodes,
     tmdbTvId: playMovie.id > 0 ? playMovie.id : null,
     liveEpisodeCount: playMovie.numberOfEpisodes,

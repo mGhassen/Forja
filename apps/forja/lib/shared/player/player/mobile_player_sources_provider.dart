@@ -25,7 +25,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
       if (id == providerId) continue;
       _s._providerLoadGens[id] = (_s._providerLoadGens[id] ?? 0) + 1;
     }
-    DomainStreamProviderResolver.cancelAllPending();
+    EngineService.instance.cancelPending();
 
     final gen = (_s._providerLoadGens[providerId] ?? 0) + 1;
     _s._providerLoadGens[providerId] = gen;
@@ -125,7 +125,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
     unawaited(SettingsService().setPlayerAutoServer(false));
 
     final gen = ++_s._fallbackGen;
-    DomainStreamProviderResolver.cancelAllPending();
+    EngineService.instance.cancelPending();
     _s._statusController.clear();
     _s._markPlaybackConfirmed(false);
 

@@ -1,18 +1,25 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/features/home/home_catalog_rotate.dart';
-import 'package:forja/features/home/home_genre_categories.dart';
+import 'package:forja/shared/catalog/kit/home/home_catalog_rotate.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
 import 'package:forja/shared/catalog/kit/rows/home_movie_section.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:rust/rust.dart';
 
-/// Host-owned random (or filter-locked) genre discovery rows — old Home bottom.
+/// Host-owned random (or filter-locked) genre discovery rows — pack `genreRows`.
 class CatalogHostGenreRows extends StatefulWidget {
-  const CatalogHostGenreRows({super.key, this.tvRowOrderBase = 20});
+  const CatalogHostGenreRows({
+    super.key,
+    required this.pluginId,
+    required this.tabId,
+    this.tvRowOrderBase = 20,
+  });
 
+  final String pluginId;
+  final String tabId;
   final int tvRowOrderBase;
 
   @override
@@ -33,19 +40,24 @@ class _CatalogHostGenreRowsState extends State<CatalogHostGenreRows> {
   @override
   void initState() {
     super.initState();
-    ShellBus.homeSelectedGenreId.addListener(_onFilter);
-    ShellBus.homeCategory.addListener(_onFilter);
-    CatalogVerticalFiltersRegistry.selectedIdFor('home').addListener(_onFilter);
+    unawaited(CatalogPackFiltersRegistry.ensureLoaded(widget.pluginId));
+    ShellBus.hubSelectedCategoryIdFor(widget.tabId).addListener(_onFilter);
+    ShellBus.hubCategoryFor(widget.tabId).addListener(_onFilter);
+    CatalogVerticalFiltersRegistry.selectedIdFor(widget.tabId).addListener(
+      _onFilter,
+    );
+    CatalogPackFiltersRegistry.revision.addListener(_onFilter);
     _reset();
   }
 
   @override
   void dispose() {
-    ShellBus.homeSelectedGenreId.removeListener(_onFilter);
-    ShellBus.homeCategory.removeListener(_onFilter);
-    CatalogVerticalFiltersRegistry.selectedIdFor('home').removeListener(
+    ShellBus.hubSelectedCategoryIdFor(widget.tabId).removeListener(_onFilter);
+    ShellBus.hubCategoryFor(widget.tabId).removeListener(_onFilter);
+    CatalogVerticalFiltersRegistry.selectedIdFor(widget.tabId).removeListener(
       _onFilter,
     );
+    CatalogPackFiltersRegistry.revision.removeListener(_onFilter);
     super.dispose();
   }
 
@@ -59,9 +71,13 @@ class _CatalogHostGenreRowsState extends State<CatalogHostGenreRows> {
       List<int> tvGenres,
     }) category,
   ) async {
-    final providerId = CatalogVerticalFiltersRegistry.watchProviderIdFor('home');
-    final selected = ShellBus.homeSelectedGenreId.value;
-    final looked = lookupHomeGenre(selected);
+    final providerId =
+        CatalogVerticalFiltersRegistry.watchProviderIdFor(widget.tabId);
+    final selected = ShellBus.hubSelectedCategoryIdFor(widget.tabId).value;
+    final looked = CatalogPackFiltersRegistry.lookupGenreRow(
+      widget.pluginId,
+      selected,
+    );
     final movieGenres = looked?.movieGenres ?? category.movieGenres;
     final tvGenres = looked?.tvGenres ?? category.tvGenres;
     final bucket = homeCatalogHourBucket();
@@ -86,10 +102,9 @@ class _CatalogHostGenreRowsState extends State<CatalogHostGenreRows> {
         );
 
     final pair = await Future.wait([movies(), shows()]);
-    final filter = ShellBus.homeCategory.value;
+    final filter = ShellBus.hubCategoryFor(widget.tabId).value;
     if (filter == ShellHomeCategory.films) return pair[0];
     if (filter == ShellHomeCategory.tvShows) return pair[1];
-    // Interleave movie/tv like old `_fetchMixed`.
     final out = <Movie>[];
     final seen = <String>{};
     void add(Movie m) {
@@ -108,7 +123,13 @@ class _CatalogHostGenreRowsState extends State<CatalogHostGenreRows> {
   }
 
   void _reset() {
-    final selectedGenreId = ShellBus.homeSelectedGenreId.value;
+    final categories = CatalogPackFiltersRegistry.genreRowsFor(widget.pluginId);
+    if (categories.isEmpty) {
+      setState(() => _rows = const []);
+      return;
+    }
+    final selectedGenreId =
+        ShellBus.hubSelectedCategoryIdFor(widget.tabId).value;
     final List<
         ({
           String id,
@@ -117,11 +138,9 @@ class _CatalogHostGenreRowsState extends State<CatalogHostGenreRows> {
           List<int> tvGenres,
         })> picked;
     if (selectedGenreId != null) {
-      picked = homeGenreCategories
-          .where((c) => c.id == selectedGenreId)
-          .toList();
+      picked = categories.where((c) => c.id == selectedGenreId).toList();
     } else {
-      final pool = List.of(homeGenreCategories)
+      final pool = List.of(categories)
         ..shuffle(homeCatalogRandom(homeCatalogHourBucket(), 'genre-row-picks'));
       picked = pool.take(3).toList();
     }

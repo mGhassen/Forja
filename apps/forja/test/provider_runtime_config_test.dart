@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/anime/catalog/anime_service.dart';
+import 'package:forja/shared/playback/anime_playback_embeds.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
@@ -373,7 +373,7 @@ void main() {
           })!,
         ),
       );
-      final embeds = AnimeService().buildAllEmbeds(
+      final embeds = buildAnimePlaybackEmbeds(
         anilistId: 5114,
         episode: 1,
       );

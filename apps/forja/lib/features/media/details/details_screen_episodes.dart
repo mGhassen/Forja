@@ -38,8 +38,6 @@ mixin _DetailsScreenEpisodes on ConsumerState<DetailsScreen> {
     if (_s._selectedEpisode == episode) return;
     setState(() {
       _s._selectedEpisode = episode;
-      _s._webstreamingStreams = [];
-      _s._webstreamingActiveProviderId = null;
       _s._syncSelectedSourceToPlaySources();
     });
     if (_s._sourcesPanelOpen) {
@@ -65,11 +63,6 @@ mixin _DetailsScreenEpisodes on ConsumerState<DetailsScreen> {
       if (await _s._tryDirectEpisodeResumeFromHistory(progress)) return;
     }
 
-    if (_s._playSourceWebstreaming) {
-      unawaited(_s._playWebstreamingFromDetails());
-      return;
-    }
-
     if (_s._playSourceEngine && _s._playSourceEngineAutoStart) {
       unawaited(_s._startEngineAutoPlayback());
       return;
@@ -86,8 +79,6 @@ mixin _DetailsScreenEpisodes on ConsumerState<DetailsScreen> {
       setState(() {
         _s._selectedSeason = season;
         _s._selectedEpisode = 1;
-        _s._webstreamingStreams = [];
-        _s._webstreamingActiveProviderId = null;
       });
       _s._fetchStremioStreamsForCustomId(widget.stremioItem!);
       _s._checkHistory();
@@ -222,8 +213,6 @@ mixin _DetailsScreenEpisodes on ConsumerState<DetailsScreen> {
           _s._seasonData = data;
           _s._isLoadingSeason = false;
           _s._selectedSeason = seasonNumber;
-          _s._webstreamingStreams = [];
-          _s._webstreamingActiveProviderId = null;
           if (poster != null && poster.isNotEmpty) {
             _s._seasonPosters[seasonNumber] = poster;
           }
@@ -236,7 +225,6 @@ mixin _DetailsScreenEpisodes on ConsumerState<DetailsScreen> {
             _s._selectedEpisode = 1;
           }
         });
-        await _s._hydrateWebstreamingFromCache();
         await _loadEpisodeProgressForSeason(seasonNumber);
         _s._checkHistory();
         if (_s._sourcesPanelOpen) {

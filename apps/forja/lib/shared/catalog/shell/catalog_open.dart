@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/anime/anime_details_screen.dart';
-import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/features/arabic/arabic_details_screen.dart';
-import 'package:forja/features/asian_drama/asian_drama_details_screen.dart';
-import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
+import 'package:forja/shared/catalog/kit/details/hub_details_screen.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
@@ -59,44 +55,9 @@ Future<void> openCatalogMetaItem(
     if (open != null) {
       switch (open.surface) {
         case 'anime':
-          final id = open.idInt;
-          if (id == null) return;
-          await openAnimeDetails(
-            context,
-            AnimeCard(
-              id: id,
-              titleRomaji: item.name,
-              titleEnglish: item.name,
-              titleNative: '',
-              coverExtraLarge: item.poster.isEmpty ? null : item.poster,
-              bannerImage: item.background.isEmpty ? null : item.background,
-              description: item.description.isEmpty ? null : item.description,
-              averageScore: item.rating == null
-                  ? null
-                  : (item.rating! * 10).round(),
-              genres: item.genres,
-              tmdbId: item.numericId('tmdb'),
-              idMal: int.tryParse(open.extraString('mal') ?? ''),
-            ),
-          );
-          return;
         case 'drama':
-          final id = open.idInt;
-          if (id == null) return;
-          await openAsianDramaDetails(
-            context,
-            KdramaCard(
-              id: id,
-              title: item.name,
-              cover: item.poster,
-              year: item.releaseInfo.isEmpty ? null : item.releaseInfo,
-              tmdbId: item.numericId('tmdb'),
-              description: item.description,
-            ),
-          );
-          return;
         case 'arabic':
-          await openArabicDetails(
+          await openHubDetails(
             context,
             pluginId: pluginId,
             item: item,

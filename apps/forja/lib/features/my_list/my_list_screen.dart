@@ -4,15 +4,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/features/anime/anime_details_screen.dart';
-import 'package:forja/features/anime/catalog/anime_service.dart';
-import 'package:forja/features/asian_drama/asian_drama_details_screen.dart';
-import 'package:forja/features/asian_drama/catalog/kisskh_service.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/features/my_list/providers/my_list_providers.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
@@ -141,26 +139,41 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
 
     if (mediaType == 'anime' || anilistId != null) {
       final id = anilistId ?? tmdbId;
-      if (id != null) {
-        try {
-          final card = await AnimeService().getDetails(id);
-          if (mounted) await openAnimeDetails(context, card);
-          return;
-        } catch (_) {}
+      if (id != null && mounted) {
+        await openCatalogMetaItem(
+          context,
+          pluginId: 'anilist',
+          item: CatalogMetaItem(
+            id: 'anilist:$id',
+            type: 'anime',
+            name: title,
+            poster: poster,
+            releaseInfo: item['releaseDate']?.toString() ?? '',
+            open: CatalogOpen(surface: 'anime', id: id.toString()),
+            ids: {
+              'anilist': id.toString(),
+              if (tmdbId != null) 'tmdb': tmdbId.toString(),
+            },
+          ),
+        );
+        return;
       }
     }
 
     if (mediaType == 'asian_drama' || kisskhId != null) {
       final id = kisskhId;
       if (id != null && mounted) {
-        await openAsianDramaDetails(
+        await openCatalogMetaItem(
           context,
-          KdramaCard(
-            id: id,
-            title: title,
-            cover: poster,
-            year: item['releaseDate']?.toString(),
-            type: item['kissKhType']?.toString(),
+          pluginId: 'kisskh-hub',
+          item: CatalogMetaItem(
+            id: 'kisskh:$id',
+            type: 'drama',
+            name: title,
+            poster: poster,
+            releaseInfo: item['releaseDate']?.toString() ?? '',
+            open: CatalogOpen(surface: 'drama', id: id.toString()),
+            ids: {'kisskh': id.toString()},
           ),
         );
         return;
@@ -216,11 +229,21 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
     final imdbId = item['imdbId']?.toString();
 
     if (kind == 'anime' && anilistId != null) {
-      try {
-        final card = await AnimeService().getDetails(anilistId);
-        if (mounted) await openAnimeDetails(context, card);
-        return;
-      } catch (_) {}
+      if (mounted) {
+        await openCatalogMetaItem(
+          context,
+          pluginId: 'anilist',
+          item: CatalogMetaItem(
+            id: 'anilist:$anilistId',
+            type: 'anime',
+            name: item['title']?.toString() ?? 'Anime',
+            poster: item['posterPath']?.toString() ?? '',
+            open: CatalogOpen(surface: 'anime', id: anilistId.toString()),
+            ids: {'anilist': anilistId.toString()},
+          ),
+        );
+      }
+      return;
     }
     if (tmdbId != null) {
       try {

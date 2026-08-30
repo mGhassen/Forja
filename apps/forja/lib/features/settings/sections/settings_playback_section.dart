@@ -164,12 +164,18 @@ class _SettingsPlaybackSectionState
                 settingsFocusableToggle(
                   context,
                   'Forja',
-                  'Play from plugins in Sources → Forja. Auto = green Play races them.',
+                  'Play from plugins in Sources → Forja. Green Play races enabled plugins.',
                   snap.playSourceEngine,
                   (val) async {
                     await _settings.setPlaySourceEngineEnabled(val);
+                    if (val) {
+                      await _settings.setPlaySourceEngineAutoStartEnabled(true);
+                    }
                     await _playback.patch(
-                      (s) => s.copyWith(playSourceEngine: val),
+                      (s) => s.copyWith(
+                        playSourceEngine: val,
+                        playSourceEngineAutoStart: val ? true : s.playSourceEngineAutoStart,
+                      ),
                     );
                     schedulePreferencesSyncPush();
                     if (val) {
@@ -179,14 +185,6 @@ class _SettingsPlaybackSectionState
                     }
                   },
                   enabled: widget.visibility.lanPlaySourcesEditable,
-                  leadingCheckValue: snap.playSourceEngineAutoStart,
-                  onLeadingCheckChanged: (val) async {
-                    await _settings.setPlaySourceEngineAutoStartEnabled(val);
-                    await _playback.patch(
-                      (s) => s.copyWith(playSourceEngineAutoStart: val),
-                    );
-                    schedulePreferencesSyncPush();
-                  },
                 ),
               if (widget.visibility.showPlaySourceTorrentToggle)
                 settingsFocusableToggle(
@@ -260,63 +258,6 @@ class _SettingsPlaybackSectionState
                   },
                   enabled: widget.visibility.lanPlaySourcesEditable,
                 ),
-              if (AccountFeatures.instance.isAdmin)
-                settingsFocusableToggle(
-                  context,
-                  'Webstreaming',
-                  'Play from web stream extractors (Videasy, WebStreamr, …). '
-                  'Also gates Anime VidLink sniff and Asian Drama third-party embeds on green Play.',
-                  snap.playSourceWebstreaming,
-                  (val) async {
-                    await _settings.setPlaySourceWebstreamingEnabled(val);
-                    await _playback.patch(
-                      (s) => s.copyWith(playSourceWebstreaming: val),
-                    );
-                    schedulePreferencesSyncPush();
-                    if (val) {
-                      debugPrint('[Init] LocalServer start (settings toggle)');
-                      await LocalServerService().start();
-                      debugPrint('[Init] WebStreamr start (settings toggle)');
-                      await WebStreamrService.init();
-                    }
-                  },
-                  adminOnly: true,
-                ),
-              if (snap.playSourceWebstreaming &&
-                  AccountFeatures.instance.isAdmin) ...[
-                settingsFocusableToggle(
-                  context,
-                  'Simple resolve (experimental)',
-                  'One provider at a time in Tries order: filter streams, probe, then open the player once. Leaves the old race path off.',
-                  snap.simpleStreamingResolve,
-                  (val) async {
-                    await _settings.setSimpleStreamingResolveEnabled(val);
-                    await _playback.patch(
-                      (s) => s.copyWith(simpleStreamingResolve: val),
-                    );
-                    schedulePreferencesSyncPush();
-                  },
-                  adminOnly: true,
-                ),
-                settingsFocusableDropdown(
-                  context,
-                  'STREAMCRYPTO decrypt',
-                  'enc=2 player family (Videasy, VidSrc.sbs 4K, …). WebView is the current JS host; Native is Dart and skips that WebView.',
-                  snap.streamCryptoDecryptLabel,
-                  SettingsService.streamCryptoDecryptOptions.keys.toList(),
-                  (val) async {
-                    if (val == null) return;
-                    final stored =
-                        SettingsService.streamCryptoDecryptOptions[val] ??
-                        SettingsService.streamCryptoDecryptWebview;
-                    await _settings.setStreamCryptoDecrypt(stored);
-                    await _playback.patch(
-                      (s) => s.copyWith(streamCryptoDecryptLabel: val),
-                    );
-                    schedulePreferencesSyncPush();
-                  },
-                ),
-              ],
             ],
           ),
         ],

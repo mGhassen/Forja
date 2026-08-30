@@ -5,12 +5,10 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/engine/anime_ids.dart';
 import 'package:forja/shared/engine/categories.dart';
-import 'package:forja/shared/engine/host_resolver.dart';
 import 'package:forja/shared/engine/live_goat_unlock.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime.dart';
-import 'package:forja/shared/extractors/embed_extract_profiles.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:rust/rust.dart';
@@ -493,30 +491,8 @@ class EngineService {
     final mediaType = _normalizeEngineMediaType(type);
 
     if (active.isHost) {
-      final resolvedMovie =
-          movie ??
-          Movie(
-            id: int.tryParse(tmdbId) ?? 0,
-            title: title ?? '',
-            posterPath: '',
-            backdropPath: '',
-            voteAverage: 0,
-            releaseDate: year != null ? '$year-01-01' : '',
-            mediaType: mediaType,
-          );
-      final hostStreams = await EngineHostResolver.resolve(
-        plugin: active,
-        movie: resolvedMovie,
-        season: season ?? 1,
-        episode: episode ?? 1,
-        isCancelled: () => gen != _extractGeneration,
-      );
       if (gen != _extractGeneration) return null;
-      return EngineExtractResult(
-        pluginId: active.id,
-        pluginName: active.name,
-        streams: hostStreams,
-      );
+      return null;
     }
 
     final overlay =
@@ -609,9 +585,7 @@ class EngineService {
       config: config,
       movie: movie,
       // HTTP plugins: extract(ctx) only — no host / WebView / Dart extract fallbacks.
-      timeout:
-          EmbedExtractProfiles.resolve(active.id).timeout +
-          const Duration(seconds: 30),
+      timeout: const Duration(seconds: 75),
       allowHostFallback: allowHostFallback,
       isCancelled: () => gen != _extractGeneration,
     );
@@ -1066,9 +1040,7 @@ class EngineService {
       if (gen != _extractGeneration) return null;
     }
 
-    final timeout =
-        EmbedExtractProfiles.resolve(plugin.id).timeout +
-        const Duration(seconds: 30);
+    final timeout = const Duration(seconds: 75);
     final ctx = <String, Object?>{
       'tmdbId': tmdbId,
       'imdbId': animeIds?.imdbId ?? movie?.imdbId ?? '',
@@ -1173,49 +1145,7 @@ class EngineService {
         needsHost.isNotEmpty &&
         allowHostFallback &&
         gen == _extractGeneration) {
-      debugPrint('[engine] ${plugin.id} enginejs needs_host=$needsHost');
-      final resolvedMovie =
-          movie ??
-          Movie(
-            id: int.tryParse(tmdbId) ?? 0,
-            imdbId: animeIds?.imdbId,
-            title: title ?? '',
-            posterPath: '',
-            backdropPath: '',
-            voteAverage: 0,
-            releaseDate: year != null ? '$year-01-01' : '',
-            mediaType: mediaType,
-          );
-      final hostPlugin = EnginePlugin(
-        id: 'host:$needsHost',
-        name: needsHost,
-        entry: '',
-        kind: 'host',
-        hostId: needsHost,
-      );
-      try {
-        final hostMapped = await EngineHostResolver.resolve(
-          plugin: hostPlugin,
-          movie: resolvedMovie,
-          season: season ?? 1,
-          episode: episode ?? 1,
-          isCancelled: () => gen != _extractGeneration,
-        );
-        if (gen != _extractGeneration) return null;
-        if (hostMapped.isNotEmpty) {
-          debugPrint(
-            '[engine] ${plugin.id} done (enginejs+host) streams=${hostMapped.length} '
-            '${sw.elapsedMilliseconds}ms',
-          );
-          return EngineExtractResult(
-            pluginId: plugin.id,
-            pluginName: plugin.name,
-            streams: hostMapped,
-          );
-        }
-      } catch (e) {
-        debugPrint('[engine] ${plugin.id} host fallback failed: $e');
-      }
+      debugPrint('[engine] ${plugin.id} enginejs needs_host=$needsHost (skipped)');
     }
     if (gen != _extractGeneration) return null;
 
