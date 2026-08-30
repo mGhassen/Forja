@@ -439,6 +439,7 @@ function tmdbLayout() {
     pages: {
       home: {
         feed: true,
+        pageSize: TMDB_HOME_RAIL_CAP,
         widgets: [
           {
             type: 'vertical_filters',
@@ -460,7 +461,13 @@ function tmdbLayout() {
             rail: 'featured',
             hideWhenBleed: true,
           },
-          { type: 'ranked', id: 'popular', title: 'Popular', rail: 'popular', style: 'numbered' },
+          {
+            type: 'ranked',
+            id: 'popular',
+            title: 'Popular',
+            rail: 'popular',
+            style: 'numbered',
+          },
           { type: 'continue', id: 'continue_watching' },
           {
             type: 'mood',
@@ -837,7 +844,9 @@ function extract(ctx) {
   }
   return wrap(
     tmdbList(ctx, cfg, params).then(function (items) {
-      return hubItems('rail', items, { maxAge: 900, swr: 3600 })[0];
+      var pageSize =
+        Number(params.limit) > 0 ? Number(params.limit) : TMDB_HOME_RAIL_CAP;
+      return hubItems('rail', items, { maxAge: 900, swr: 3600 }, { pageSize: pageSize })[0];
     }),
   );
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/features/account/device_link_connect_view.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
@@ -47,6 +48,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   /// Set when a signed-in profile fetch fails (timeout / network).
   String? _profileLoadError;
   int _refreshGen = 0;
+  bool _deviceLinkActive = false;
 
   @override
   void initState() {
@@ -267,6 +269,18 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     } finally {
       if (mounted) setState(() => _passkeysLoading = false);
     }
+  }
+
+  Future<void> _onDeviceLinkAuthenticated() async {
+    if (!mounted) return;
+    setState(() => _deviceLinkActive = false);
+    await presentProfileChooser(
+      context,
+      prepareCurrentOnSwitch: false,
+    );
+    if (!mounted) return;
+    await _refreshRemote();
+    setState(() {});
   }
 
   Future<void> _tvDeviceLink() async {
@@ -508,6 +522,8 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       canSubmitPasskey: _canSubmitPasskey,
       showPasskey: ForjaPasskeys.supported,
       androidTv: PlatformInfo.isAndroidTv,
+      desktop: PlatformInfo.isDesktop,
+      deviceLinkActive: _deviceLinkActive,
       busy: _busy,
       passkeyBusy: _passkeyBusy,
       webBusy: _webBusy,
@@ -523,6 +539,9 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       onCancelWebLogin: _cancelWebLogin,
       onTvDeviceLink: _tvDeviceLink,
       onOpenSignup: _openSignup,
+      onStartDeviceLink: () => setState(() => _deviceLinkActive = true),
+      onCancelDeviceLink: () => setState(() => _deviceLinkActive = false),
+      onDeviceLinkAuthenticated: () => unawaited(_onDeviceLinkAuthenticated()),
     );
   }
 }
@@ -799,6 +818,8 @@ class _SignedOutAccountBody extends StatelessWidget {
     required this.canSubmitPasskey,
     required this.showPasskey,
     required this.androidTv,
+    required this.desktop,
+    required this.deviceLinkActive,
     required this.busy,
     required this.passkeyBusy,
     required this.webBusy,
@@ -811,6 +832,9 @@ class _SignedOutAccountBody extends StatelessWidget {
     required this.onCancelWebLogin,
     required this.onTvDeviceLink,
     required this.onOpenSignup,
+    required this.onStartDeviceLink,
+    required this.onCancelDeviceLink,
+    required this.onDeviceLinkAuthenticated,
   });
 
   final TextEditingController emailCtrl;
@@ -821,6 +845,8 @@ class _SignedOutAccountBody extends StatelessWidget {
   final bool canSubmitPasskey;
   final bool showPasskey;
   final bool androidTv;
+  final bool desktop;
+  final bool deviceLinkActive;
   final bool busy;
   final bool passkeyBusy;
   final bool webBusy;
@@ -833,6 +859,9 @@ class _SignedOutAccountBody extends StatelessWidget {
   final VoidCallback onCancelWebLogin;
   final VoidCallback onTvDeviceLink;
   final VoidCallback onOpenSignup;
+  final VoidCallback onStartDeviceLink;
+  final VoidCallback onCancelDeviceLink;
+  final VoidCallback onDeviceLinkAuthenticated;
 
   @override
   Widget build(BuildContext context) {
@@ -887,6 +916,77 @@ class _SignedOutAccountBody extends StatelessWidget {
               SettingsActionRow(
                 title: 'Create an account on the web',
                 subtitle: 'Use a phone or computer - then link this TV',
+                leading: const Icon(
+                  Icons.person_add_alt_1_rounded,
+                  color: ForjaShellColors.iconMuted,
+                  size: 22,
+                ),
+                onTap: formLocked ? null : onOpenSignup,
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    if (desktop) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
+            child: Text(
+              'Sign in to sync profiles and settings across devices. '
+              'You can keep using Forja without an account.',
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 13,
+                height: 1.45,
+              ),
+            ),
+          ),
+          SettingsGroup(
+            label: 'Sign in',
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (!deviceLinkActive) ...[
+                      Text(
+                        'Sign in with your phone or computer in under a minute.',
+                        style: TextStyle(
+                          color: ForjaShellColors.textSecondary.withValues(
+                            alpha: 0.95,
+                          ),
+                          fontSize: 13,
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ForjaButton.primary(
+                        label: 'Sign in',
+                        icon: Icons.link_rounded,
+                        onPressed: formLocked ? null : onStartDeviceLink,
+                      ),
+                    ] else
+                      DeviceLinkConnectView(
+                        compact: true,
+                        onBack: onCancelDeviceLink,
+                        onAuthenticated: onDeviceLinkAuthenticated,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SettingsGroup(
+            label: 'New here?',
+            children: [
+              SettingsActionRow(
+                title: 'Create an account on the web',
+                subtitle: 'Opens the Forja portal in your browser',
                 leading: const Icon(
                   Icons.person_add_alt_1_rounded,
                   color: ForjaShellColors.iconMuted,

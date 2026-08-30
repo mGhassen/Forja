@@ -72,13 +72,13 @@ abstract final class PlayerSourceResolve {
   static Future<List<String>> _movieSettingsOrder(Movie? movie) async {
     if (movie == null) return const [];
     final settings = SettingsService();
-    final t = movie.mediaType.toLowerCase();
-    if (t == 'asian_drama' || t == 'asian' || t == 'drama') {
-      return settings.getEnabledAsianDramaProviderOrder();
+    switch (SourceDomain.fromMediaType(movie.mediaType)) {
+      case SourceDomain.asianDrama:
+        return settings.getEnabledAsianDramaProviderOrder();
+      case SourceDomain.anime:
+        return settings.getEnabledAnimeProviderOrder();
+      default:
+        return settings.getEnabledStreamProviderOrder();
     }
-    if (t == 'anime') {
-      return settings.getEnabledAnimeProviderOrder();
-    }
-    return settings.getEnabledStreamProviderOrder();
   }
 }

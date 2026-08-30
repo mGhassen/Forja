@@ -1,35 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_context.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
-import 'package:forja/shared/playback/hub_play_context.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
 
-EnginePlaySession _sessionFromContext(HubPlayContext ctx) {
-  return EnginePlaySession(
-    category: ctx.engineCategory,
+CatalogPlaySession _sessionFromContext(CatalogPlayContext ctx) {
+  return CatalogPlaySession(
     pluginId: ctx.pluginId,
     catalogMeta: ctx.catalogMeta,
     catalogOpen: ctx.effectiveOpen,
     malId: ctx.malId,
     episodeVideoIdByNumber: ctx.episodeVideoIdByNumber,
-    animeAudioCategory: ctx.animeAudioCategory,
+    audioCategory: ctx.audioCategory,
   );
 }
 
 /// Shared hub details play dispatch — green Play and Sources panel.
 Future<void> runHubPlayFromContext({
   required BuildContext context,
-  required HubPlayContext ctx,
+  required CatalogPlayContext ctx,
 }) {
   final session = _sessionFromContext(ctx);
   return runEngineAutoPlay(
     context: context,
     movie: ctx.movie,
-    engineCategory: ctx.engineCategory,
+    engineCategory: engineCategoryForSession(session, ctx.movie) ?? 'movie',
     season: ctx.season,
     episode: ctx.episode,
     malId: ctx.malId,
-    animeAudioCategory: ctx.animeAudioCategory,
+    audioCategory: ctx.audioCategory,
     startPosition: ctx.startPosition,
     preferredPluginId: ctx.preferredPluginId,
     savedStreamUrl: ctx.savedStreamUrl,
@@ -37,31 +37,24 @@ Future<void> runHubPlayFromContext({
     hubEpisodes: ctx.hubEpisodes,
     hubEpisodeNumber: ctx.episode,
     selectedPluginIds: ctx.selectedPluginIds,
-    enginePlaySession: session,
+    catalogPlaySession: session,
   );
 }
 
 Future<void> openHubSourcesFromContext({
   required BuildContext context,
-  required HubPlayContext ctx,
+  required CatalogPlayContext ctx,
 }) {
   final session = _sessionFromContext(ctx);
-  final resolve = session.resolveForEpisode(ctx.episode);
   return openHubCatalogSources(
     context: context,
     movie: ctx.movie,
     season: ctx.season,
     episode: ctx.episode,
     catalogOpen: ctx.effectiveOpen,
-    malId: resolve.malId ?? ctx.malId,
-    anilistId: resolve.anilistId,
-    kisskhId: resolve.kisskhId,
-    kisskhEpisodeId: resolve.kisskhEpisodeId,
-    arabicVideoId: resolve.arabicVideoId,
-    episodeVideoId: session.episodeVideoIdFor(ctx.episode ?? 1),
-    engineCategory: ctx.engineCategory,
-    animeAudioCategory: ctx.animeAudioCategory,
-    enginePlaySession: session,
+    malId: ctx.malId,
+    audioCategory: ctx.audioCategory,
+    catalogPlaySession: session,
   );
 }
 

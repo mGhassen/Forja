@@ -7,6 +7,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
@@ -329,6 +330,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   /// drama from the playing `engine:` plugin so player Sources reuse the same
   /// chip prefs + session cache as details/hub.
   String get _enginePanelCategory {
+    if (widget.catalogOpen != null) {
+      return engineExtractContext(
+        catalogOpen: widget.catalogOpen,
+        movie: widget.movie,
+        episode: widget.episode,
+        episodeVideoId: widget.episodeVideoId ?? widget.arabicVideoId,
+        malId: widget.malId,
+        panelCategoryHint: widget.engineCategory,
+      ).panelCategory;
+    }
     final explicit = widget.engineCategory?.trim();
     if (explicit != null && explicit.isNotEmpty) {
       return EngineCategories.panelCategoryFor(
@@ -366,6 +377,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   /// Hub panels pass [engineCategory] / `asian_drama` even when TMDB match is
   /// `tv` — panel bucket wins over TMDB mediaType.
   String get _engineResolveType {
+    if (widget.catalogOpen != null) {
+      return engineExtractContext(
+        catalogOpen: widget.catalogOpen,
+        movie: widget.movie,
+        episode: widget.episode,
+        episodeVideoId: widget.episodeVideoId ?? widget.arabicVideoId,
+        malId: widget.malId,
+        panelCategoryHint: widget.engineCategory,
+      ).resolveType;
+    }
     final panel = _enginePanelCategory;
     if (panel == EngineCategories.anime) return 'anime';
     if (panel == EngineCategories.drama) return 'drama';
@@ -1026,7 +1047,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     episode: widget.episode,
     catalogOpen: widget.catalogOpen,
     malId: widget.malId,
-    animeAudioCategory: widget.animeAudioCategory,
+    audioCategory: widget.animeAudioCategory,
     episodeVideoId:
         widget.episodeVideoId ?? widget.arabicVideoId,
   );
@@ -2452,10 +2473,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         year: _year,
         movie: widget.movie,
         malId: widget.malId,
-        anilistId: widget.anilistId,
-        kisskhId: widget.kisskhId,
-        kisskhEpisodeId: widget.kisskhEpisodeId,
-        arabicVideoId: widget.arabicVideoId,
+        anilistId: widget.catalogOpen == null ? widget.anilistId : null,
+        kisskhId: widget.catalogOpen == null ? widget.kisskhId : null,
+        kisskhEpisodeId:
+            widget.catalogOpen == null ? widget.kisskhEpisodeId : null,
+        arabicVideoId: widget.catalogOpen == null ? widget.arabicVideoId : null,
+        catalogOpen: widget.catalogOpen,
+        episodeVideoId: widget.episodeVideoId ?? widget.arabicVideoId,
         allowHostFallback: false,
       );
     } catch (e) {

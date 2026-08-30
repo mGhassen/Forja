@@ -896,7 +896,7 @@ String catalogSourcesButtonLabel({
   String? catalogSourceKind,
   CatalogOpen? catalogOpen,
   int? malId,
-  String? animeAudioCategory,
+  String? audioCategory,
   String? episodeVideoId,
 }) {
   final addon = (catalogAddonBaseUrl ?? widgetAddonBaseUrl)?.trim();
@@ -913,7 +913,7 @@ String catalogSourcesButtonLabel({
           episode: episode,
           catalogOpen: catalogOpen,
           malId: malId,
-          animeAudioCategory: animeAudioCategory,
+          audioCategory: audioCategory,
           episodeVideoId: episodeVideoId,
         );
 

@@ -1,30 +1,33 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
+import 'package:forja/shared/catalog/kit/rows/catalog_row_prefetch.dart';
+import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
 import 'package:forja/shared/catalog/kit/widgets/catalog_continue_watching_section.dart';
-import 'package:forja/shared/catalog/services/catalog_home_watch_history.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_resolve.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/playback/catalog_play_resolve.dart';
-import 'package:forja/shared/playback/history_playback_resume.dart';
-import 'package:forja/shell/app_router.dart';
-import 'package:rust/rust.dart' show WatchHistoryService, isInProgressResume;
+import 'package:rust/rust.dart' show isInProgressResume;
 
-/// Layout widget type `continue` — pack-scoped history; Home also reads legacy
-/// [WatchHistoryService] until TMDB details play through catalog meta.
+/// Layout widget type `continue` — pack-scoped [CatalogWatchHistory] only.
 class CatalogContinueWidget extends StatefulWidget {
   const CatalogContinueWidget({
     super.key,
     required this.pluginId,
     required this.tabId,
     this.tvRowOrder = 1,
+    this.tvFocusUp,
+    this.prefetchSlot,
   });
 
   final String pluginId;
   final String tabId;
   final int tvRowOrder;
+  final VoidCallback? tvFocusUp;
+  final CatalogHubRowPrefetchSlot? prefetchSlot;
 
   @override
   State<CatalogContinueWidget> createState() => _CatalogContinueWidgetState();
@@ -34,22 +37,42 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
   final _scroll = ScrollController();
   List<Map<String, dynamic>> _entries = const [];
   String? _resumingMetaId;
-  StreamSubscription<List<Map<String, dynamic>>>? _legacyHistorySub;
+  bool _viewportActivated = false;
 
   @override
   void initState() {
     super.initState();
-    CatalogWatchHistory.revision.addListener(_reload);
-    if (catalogHomeUsesLegacyWatchHistory(widget.pluginId)) {
-      _legacyHistorySub = listenLegacyHomeWatchHistory(_reload);
+    _registerPrefetch();
+    CatalogWatchHistory.revision.addListener(_onHistoryRevision);
+  }
+
+  void _onHistoryRevision() {
+    if (_viewportActivated) unawaited(_reload());
+  }
+
+  void _onViewportVisible() {
+    _activate(prefetch: false);
+  }
+
+  void _registerPrefetch() {
+    final slot = widget.prefetchSlot;
+    if (slot == null) return;
+    slot.lane.register(slot.index, () => _activate(prefetch: true));
+  }
+
+  void _activate({required bool prefetch}) {
+    if (_viewportActivated) {
+      if (!prefetch) widget.prefetchSlot?.notifyVisible();
+      return;
     }
+    setState(() => _viewportActivated = true);
     unawaited(_reload());
+    widget.prefetchSlot?.notifyVisible();
   }
 
   @override
   void dispose() {
-    CatalogWatchHistory.revision.removeListener(_reload);
-    unawaited(_legacyHistorySub?.cancel());
+    CatalogWatchHistory.revision.removeListener(_onHistoryRevision);
     _scroll.dispose();
     super.dispose();
   }
@@ -63,25 +86,6 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
   }
 
   Future<void> _resume(Map<String, dynamic> entry) async {
-    final legacy = entry['_legacyWatch'];
-    if (legacy is Map) {
-      final uniqueId = entry['_legacyUniqueId']?.toString();
-      if (uniqueId == null || _resumingMetaId != null) return;
-      setState(() => _resumingMetaId = uniqueId);
-      try {
-        await resumePlaybackFromHistory(
-          context,
-          Map<String, dynamic>.from(legacy),
-        );
-        if (mounted) await _reload();
-      } catch (e) {
-        if (mounted) ForjaToast.error('Resume failed: $e');
-      } finally {
-        if (mounted) setState(() => _resumingMetaId = null);
-      }
-      return;
-    }
-
     final metaId = entry['metaId']?.toString();
     if (metaId == null || _resumingMetaId != null) return;
     final meta = CatalogWatchHistory.metaFromEntry(entry);
@@ -121,36 +125,6 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
   }
 
   Future<void> _openDetails(Map<String, dynamic> entry) async {
-    final legacy = entry['_legacyWatch'];
-    if (legacy is Map) {
-      final item = Map<String, dynamic>.from(legacy);
-      final movie = movieFromWatchHistory(item);
-      final stremioItemId = item['stremioId'] as String?;
-      final stremioAddonBase = item['stremioAddonBaseUrl'] as String?;
-      final isCustomId = stremioItemId != null &&
-          stremioAddonBase != null &&
-          !stremioItemId.startsWith('tt');
-      Map<String, dynamic>? stremioItem;
-      if (isCustomId) {
-        stremioItem = {
-          'id': stremioItemId,
-          '_addonBaseUrl': stremioAddonBase,
-          'type': item['stremioType'] ??
-              (item['season'] != null ? 'series' : 'movie'),
-          'name': movie.title,
-        };
-      }
-      await AppRouter.openDetails(
-        context,
-        movie: movie,
-        stremioItem: stremioItem,
-        initialSeason: item['season'] as int?,
-        initialEpisode: item['episode'] as int?,
-      );
-      if (mounted) await _reload();
-      return;
-    }
-
     final meta = CatalogWatchHistory.metaFromEntry(entry);
     if (meta == null) return;
     await openCatalogMetaItem(
@@ -162,12 +136,6 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
   }
 
   Future<void> _remove(Map<String, dynamic> entry) async {
-    final legacyId = entry['_legacyUniqueId']?.toString();
-    if (legacyId != null) {
-      await WatchHistoryService().removeItem(legacyId);
-      if (mounted) await _reload();
-      return;
-    }
     final id = entry['metaId']?.toString();
     if (id == null) return;
     await CatalogWatchHistory.remove(widget.pluginId, id);
@@ -176,15 +144,25 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return CatalogContinueWatchingSection(
-      tabId: widget.tabId,
-      entries: _entries,
-      scrollController: _scroll,
-      resumingMetaId: _resumingMetaId,
-      onResume: _resume,
-      onRemove: _remove,
-      onOpenDetails: (e) => unawaited(_openDetails(e)),
-      tvRowOrder: widget.tvRowOrder,
+    return HubLazyViewportGate(
+      detectorKey: ValueKey('continue:${widget.tabId}'),
+      placeholderHeight: HubCatalogSection.sectionHeight(
+        context,
+        cardAspect: HubPosterAspect.landscape,
+      ),
+      prefetchSlot: widget.prefetchSlot,
+      onVisible: _onViewportVisible,
+      builder: (_) => CatalogContinueWatchingSection(
+        tabId: widget.tabId,
+        entries: _entries,
+        scrollController: _scroll,
+        resumingMetaId: _resumingMetaId,
+        onResume: _resume,
+        onRemove: _remove,
+        onOpenDetails: (e) => unawaited(_openDetails(e)),
+        tvRowOrder: widget.tvRowOrder,
+        tvFocusUp: widget.tvFocusUp,
+      ),
     );
   }
 }

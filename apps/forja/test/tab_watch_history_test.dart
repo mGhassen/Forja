@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/playback/hub_engine_watch_history.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
 import 'package:rust/rust.dart';
 
 Movie _movie({required int id, String mediaType = 'movie'}) => Movie(

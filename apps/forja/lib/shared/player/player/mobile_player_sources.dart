@@ -416,7 +416,6 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
     }
     final session = widget.enginePlaySession;
     final ep = widget.selectedEpisode ?? 1;
-    final resolve = session?.resolveForEpisode(ep);
     return catalogSourcesButtonLabel(
       movie: widget.movie,
       season: widget.selectedSeason,
@@ -431,8 +430,8 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
       catalogSourceKind: _s._catalogSourceKind,
       catalogOpen: session?.effectiveOpen,
-      malId: resolve?.malId ?? session?.malId,
-      animeAudioCategory: session?.animeAudioCategory,
+      malId: session?.malId,
+      audioCategory: session?.audioCategory,
       episodeVideoId: session?.episodeVideoIdFor(ep),
     );
   }

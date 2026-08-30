@@ -448,7 +448,7 @@ void main() {
           season: 1,
           episode: 3,
           catalogOpen: const CatalogOpen(surface: 'anime', id: '42'),
-          animeAudioCategory: 'sub',
+          audioCategory: 'sub',
         ),
         'anime:42:E3:sub',
       );
@@ -458,7 +458,7 @@ void main() {
           mediaType: 'anime',
           episode: 3,
           catalogOpen: const CatalogOpen(surface: 'anime', id: '42'),
-          animeAudioCategory: 'sub',
+          audioCategory: 'sub',
         ),
         'anime:42:E3:sub',
       );

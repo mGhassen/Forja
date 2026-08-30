@@ -85,6 +85,7 @@ function anilistLayout() {
     pages: {
       anime: {
         feed: true,
+        pageSize: Number(ANILIST_DEFAULTS.perPage) || 24,
         widgets: [
           {
             type: 'hero',
@@ -111,7 +112,7 @@ function anilistLayout() {
             hideWhenTypeFilter: true,
           },
           { type: 'rail', id: 'top_airing', title: 'Top Airing', rail: 'top_airing' },
-          { type: 'ranked', id: 'top_10', title: 'Top 10 Today', rail: 'top_10', style: 'numbered' },
+          { type: 'ranked', id: 'top_10', title: 'Top 10 Today', rail: 'top_10', style: 'numbered', pageSize: 10 },
           { type: 'rail', id: 'popular', title: 'Most Popular', rail: 'popular' },
           { type: 'rail', id: 'latest_episodes', title: 'Latest Episodes', rail: 'latest_episodes' },
           { type: 'rail', id: 'top_rated', title: 'Top Rated', rail: 'top_rated' },
@@ -459,7 +460,16 @@ function extract(ctx) {
 
   return anilistPage(ctx, cfg, params)
     .then(function (items) {
-      return hubItems(action, items, { maxAge: 600, swr: 3600 });
+      var perPage =
+        Number(params.limit) > 0
+          ? Number(params.limit)
+          : Number(cfg.perPage) || 24;
+      return hubItems(
+        action,
+        items,
+        { maxAge: 600, swr: 3600 },
+        { pageSize: perPage },
+      );
     })
     .catch(function (e) {
       return hubFail(action, 'UPSTREAM', e && e.message, true);

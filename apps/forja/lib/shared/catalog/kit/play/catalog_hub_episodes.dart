@@ -3,11 +3,12 @@ import 'package:forja/shared/catalog/hub_cover_urls.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 
-class HubDramaEpisodeCache {
-  HubDramaEpisodeCache._();
+class HubCatalogEpisodeCache {
+  HubCatalogEpisodeCache._();
 
   static const ttl = Duration(minutes: 30);
-  static final _byMetaId = <String, ({DateTime at, List<PlayerHubEpisode> episodes})>{};
+  static final _byMetaId =
+      <String, ({DateTime at, List<PlayerHubEpisode> episodes})>{};
 
   static List<PlayerHubEpisode>? read(String metaId) {
     final hit = _byMetaId[metaId];
@@ -57,7 +58,7 @@ PlayerHubEpisode _hubEpisodeRow({
 }
 
 /// Keep enriched rows from details; fetch pack `details` when the list is missing.
-Future<List<PlayerHubEpisode>?> ensureDramaHubEpisodes({
+Future<List<PlayerHubEpisode>?> ensureHubCatalogEpisodes({
   required String? pluginId,
   required String? metaId,
   required List<PlayerHubEpisode>? hubEpisodes,
@@ -66,11 +67,11 @@ Future<List<PlayerHubEpisode>?> ensureDramaHubEpisodes({
   if (pluginId == null || metaId == null || metaId.isEmpty) return hubEpisodes;
 
   if (hubEpisodes != null && hubEpisodes.isNotEmpty) {
-    HubDramaEpisodeCache.write(metaId, hubEpisodes);
+    HubCatalogEpisodeCache.write(metaId, hubEpisodes);
     return hubEpisodes;
   }
 
-  final cached = HubDramaEpisodeCache.read(metaId);
+  final cached = HubCatalogEpisodeCache.read(metaId);
   if (cached != null && cached.isNotEmpty) {
     if (liveEpisodeCount == null || liveEpisodeCount == cached.length) {
       return cached;
@@ -86,7 +87,7 @@ Future<List<PlayerHubEpisode>?> ensureDramaHubEpisodes({
 
     final built = hubEpisodesFromCatalogMeta(meta);
     if (built.isEmpty) return hubEpisodes ?? cached;
-    HubDramaEpisodeCache.write(metaId, built);
+    HubCatalogEpisodeCache.write(metaId, built);
     return built;
   } catch (_) {
     return hubEpisodes ?? cached;

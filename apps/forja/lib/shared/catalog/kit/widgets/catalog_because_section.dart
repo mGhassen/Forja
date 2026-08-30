@@ -5,11 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/filter.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_chrome_filters.dart';
+import 'package:forja/shared/catalog/kit/rows/catalog_row_prefetch.dart';
 import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
-import 'package:forja/shared/catalog/services/catalog_home_watch_history.dart';
-import 'package:forja/shared/catalog/services/catalog_resume_seeds.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
@@ -24,12 +23,14 @@ class CatalogBecauseSection extends StatefulWidget {
     required this.tabId,
     required this.spec,
     this.tvRowOrder = 0,
+    this.prefetchSlot,
   });
 
   final String pluginId;
   final String tabId;
   final Map<String, dynamic> spec;
   final int tvRowOrder;
+  final CatalogHubRowPrefetchSlot? prefetchSlot;
 
   @override
   State<CatalogBecauseSection> createState() => _CatalogBecauseSectionState();
@@ -39,22 +40,42 @@ class _CatalogBecauseSectionState extends State<CatalogBecauseSection> {
   Future<_BecausePayload>? _future;
   int _shuffleKey = 0;
   int _epoch = 0;
-  StreamSubscription<List<Map<String, dynamic>>>? _legacyHistorySub;
+  bool _viewportActivated = false;
 
   @override
   void initState() {
     super.initState();
-    CatalogWatchHistory.revision.addListener(_reload);
-    if (catalogHomeUsesLegacyWatchHistory(widget.pluginId)) {
-      _legacyHistorySub = listenLegacyHomeWatchHistory(_reload);
+    _registerPrefetch();
+    CatalogWatchHistory.revision.addListener(_onHistoryRevision);
+  }
+
+  void _onHistoryRevision() {
+    if (_viewportActivated) _reload();
+  }
+
+  void _onViewportVisible() {
+    _activate(prefetch: false);
+  }
+
+  void _registerPrefetch() {
+    final slot = widget.prefetchSlot;
+    if (slot == null) return;
+    slot.lane.register(slot.index, () => _activate(prefetch: true));
+  }
+
+  void _activate({required bool prefetch}) {
+    if (_viewportActivated) {
+      if (!prefetch) widget.prefetchSlot?.notifyVisible();
+      return;
     }
+    setState(() => _viewportActivated = true);
     _reload();
+    widget.prefetchSlot?.notifyVisible();
   }
 
   @override
   void dispose() {
-    CatalogWatchHistory.revision.removeListener(_reload);
-    unawaited(_legacyHistorySub?.cancel());
+    CatalogWatchHistory.revision.removeListener(_onHistoryRevision);
     super.dispose();
   }
 
@@ -114,96 +135,102 @@ class _CatalogBecauseSectionState extends State<CatalogBecauseSection> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<_BecausePayload>(
-      future: _future,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting &&
-            !snap.hasData) {
-          return homeLoadingShimmer(homeMovieRowSkeleton(context));
-        }
-        final payload = snap.data ?? const _BecausePayload.empty();
-        if (payload.items.isEmpty) return const SizedBox.shrink();
+    return HubLazyViewportGate(
+      detectorKey: ValueKey('because:${widget.tabId}:${widget.spec['id']}'),
+      placeholderHeight: HubCatalogSection.sectionHeight(context),
+      prefetchSlot: widget.prefetchSlot,
+      onVisible: _onViewportVisible,
+      builder: (_) => FutureBuilder<_BecausePayload>(
+        future: _future,
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting &&
+              !snap.hasData) {
+            return homeLoadingShimmer(homeMovieRowSkeleton(context));
+          }
+          final payload = snap.data ?? const _BecausePayload.empty();
+          if (payload.items.isEmpty) return const SizedBox.shrink();
 
-        final rowId = (widget.spec['id'] ?? 'because').toString();
-        final seedTitle = _becauseSeedTitle(payload.heading);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: shellSectionTitlePadding(context),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _BecauseSeedPoster(url: payload.seedPoster),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Because you watched',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.5),
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
+          final rowId = (widget.spec['id'] ?? 'because').toString();
+          final seedTitle = _becauseSeedTitle(payload.heading);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: shellSectionTitlePadding(context),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _BecauseSeedPoster(url: payload.seedPoster),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Because you watched',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          seedTitle.isEmpty ? 'recently' : seedTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.3,
+                          const SizedBox(height: 2),
+                          Text(
+                            seedTitle.isEmpty ? 'recently' : seedTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  if (payload.canShuffle)
-                    ForjaPlainIcon(
-                      icon: Icons.shuffle_rounded,
-                      tooltip: 'Pick a different show',
-                      onTap: _shuffle,
-                    ),
-                ],
+                    if (payload.canShuffle)
+                      ForjaPlainIcon(
+                        icon: Icons.shuffle_rounded,
+                        tooltip: 'Pick a different show',
+                        onTap: _shuffle,
+                      ),
+                  ],
+                ),
               ),
-            ),
-            HubCatalogSection<CatalogMetaItem>(
-              title: '',
-              items: payload.items,
-              embedded: true,
-              compactTop: true,
-              tvTabId: widget.tabId,
-              tvRowId: rowId,
-              tvRowOrder: widget.tvRowOrder,
-              cardBuilder: (context, item, index) => HubPosterCard(
-                imageUrl: item.poster,
-                title: item.name,
-                subtitle:
-                    item.releaseInfo.isEmpty ? null : item.releaseInfo,
-                rating: item.rating,
-                listIndex: index,
+              HubCatalogSection<CatalogMetaItem>(
+                title: '',
+                items: payload.items,
+                embedded: true,
+                compactTop: true,
                 tvTabId: widget.tabId,
                 tvRowId: rowId,
-                onTap: () => unawaited(
-                  openCatalogMetaItem(
-                    context,
-                    pluginId: widget.pluginId,
-                    item: item,
+                tvRowOrder: widget.tvRowOrder,
+                cardBuilder: (context, item, index) => HubPosterCard(
+                  imageUrl: item.poster,
+                  title: item.name,
+                  subtitle:
+                      item.releaseInfo.isEmpty ? null : item.releaseInfo,
+                  rating: item.rating,
+                  listIndex: index,
+                  tvTabId: widget.tabId,
+                  tvRowId: rowId,
+                  onTap: () => unawaited(
+                    openCatalogMetaItem(
+                      context,
+                      pluginId: widget.pluginId,
+                      item: item,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }

@@ -533,7 +533,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
       movie: widget.movie,
       hubEpisodes: widget.hubEpisodes,
       onSaveProgress: widget.onSaveProgress,
-      enginePlaySession: widget.enginePlaySession,
+      catalogPlaySession: widget.enginePlaySession,
     )) {
       if (!isBgPause) _s._historySaved = true;
       return;

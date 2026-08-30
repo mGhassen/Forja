@@ -10,7 +10,6 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     final session = widget.enginePlaySession;
     final ep = widget.selectedEpisode;
     final epNum = ep ?? 1;
-    final resolve = session?.resolveForEpisode(epNum);
     PlayerSourcesPanel.show(
       context: context,
       movie: movie,
@@ -26,14 +25,12 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         currentProvider: _s._currentProvider,
       ),
       catalogOpen: session?.effectiveOpen,
-      anilistId: resolve?.anilistId,
-      malId: resolve?.malId ?? session?.malId,
-      kisskhId: resolve?.kisskhId,
-      kisskhEpisodeId: resolve?.kisskhEpisodeId,
-      arabicVideoId: resolve?.arabicVideoId,
+      malId: session?.malId,
       episodeVideoId: session?.episodeVideoIdFor(epNum),
-      engineCategory: session?.category,
-      animeAudioCategory: session?.animeAudioCategory,
+      engineCategory: session != null
+          ? engineCategoryForSession(session, movie)
+          : null,
+      animeAudioCategory: session?.audioCategory,
       onTorrentSelected: _switchTorrentSource,
       onStremioSelected: _switchStremioSource,
     );

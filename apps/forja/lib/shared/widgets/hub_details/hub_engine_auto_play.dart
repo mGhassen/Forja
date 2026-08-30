@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_context.dart';
 import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/playback/hub_play_context.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
@@ -14,7 +14,6 @@ Future<bool> hubEngineAutoPlayEnabled([SettingsService? settings]) =>
 Future<void> runHubEngineAutoPlay({
   required BuildContext context,
   required Movie movie,
-  required String engineCategory,
   CatalogOpen? catalogOpen,
   CatalogMetaItem? catalogMeta,
   String? pluginId,
@@ -22,7 +21,7 @@ Future<void> runHubEngineAutoPlay({
   int? episode,
   int? malId,
   Map<int, String> episodeVideoIdByNumber = const {},
-  String? animeAudioCategory,
+  String? audioCategory,
   Duration? startPosition,
   String? preferredPluginId,
   String? savedStreamUrl,
@@ -32,9 +31,8 @@ Future<void> runHubEngineAutoPlay({
 }) {
   return runHubPlayFromContext(
     context: context,
-    ctx: HubPlayContext(
+    ctx: CatalogPlayContext(
       movie: movie,
-      engineCategory: engineCategory,
       pluginId: pluginId,
       catalogMeta: catalogMeta,
       catalogOpen: catalogOpen ?? catalogMeta?.open,
@@ -42,7 +40,7 @@ Future<void> runHubEngineAutoPlay({
       episode: episode,
       malId: malId,
       episodeVideoIdByNumber: episodeVideoIdByNumber,
-      animeAudioCategory: animeAudioCategory,
+      audioCategory: audioCategory,
       startPosition: startPosition,
       preferredPluginId: preferredPluginId,
       savedStreamUrl: savedStreamUrl,

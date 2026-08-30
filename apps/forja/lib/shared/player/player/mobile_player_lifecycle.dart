@@ -684,7 +684,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
           movie: widget.movie,
           hubEpisodes: widget.hubEpisodes,
           onSaveProgress: widget.onSaveProgress,
-          enginePlaySession: widget.enginePlaySession,
+          catalogPlaySession: widget.enginePlaySession,
         )) {
       return;
     }

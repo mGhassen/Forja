@@ -59,8 +59,13 @@ function hubOk(action, data, cache) {
   return [env];
 }
 
-function hubItems(action, items, cache) {
-  return hubOk(action, { items: items || [] }, cache);
+function hubItems(action, items, cache, paging) {
+  var data = { items: items || [] };
+  if (paging && typeof paging === 'object') {
+    if (Number(paging.pageSize) > 0) data.pageSize = Number(paging.pageSize);
+    if (typeof paging.hasMore === 'boolean') data.hasMore = paging.hasMore;
+  }
+  return hubOk(action, data, cache);
 }
 
 function hubFail(action, code, message, retryable) {

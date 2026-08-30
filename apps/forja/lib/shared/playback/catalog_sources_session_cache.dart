@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:rust/rust.dart';
 
 /// Tab, chip, and toolbar state for catalog Sources (player overlay).
@@ -93,50 +94,43 @@ class CatalogSourcesSessionCache {
   ///
   /// Prefer [catalogOpen] so hub tabs stay on one key when TMDB enrichment
   /// flips `movie.id` / `mediaType`. Episode is always scoped for hubs;
-  /// [animeAudioCategory] splits SUB/DUB when set.
+  /// [audioCategory] splits SUB/DUB when set.
   static String cacheKey({
     required int mediaId,
     required String mediaType,
     int? season,
     int? episode,
     CatalogOpen? catalogOpen,
+    String? pluginId,
+    String? metaId,
     int? malId,
-    String? animeAudioCategory,
+    String? audioCategory,
     String? episodeVideoId,
   }) {
     final ep = (episode == null || episode < 1) ? 1 : episode;
-    final audio = (animeAudioCategory ?? '').trim().toLowerCase();
+    final audio = (audioCategory ?? '').trim().toLowerCase();
     final audioSuffix =
         (audio == 'sub' || audio == 'dub') ? ':$audio' : '';
 
     final open = catalogOpen;
     if (open != null) {
-      final id = open.id.trim();
-      if (id.isNotEmpty) {
-        switch (open.surface) {
-          case 'arabic':
-            final vid = (episodeVideoId ?? id).trim();
-            if (vid.isNotEmpty) return 'arabic:$vid';
-            break;
-          case 'anime':
-            return 'anime:$id:E$ep$audioSuffix';
-          case 'drama':
-            return 'drama:$id:E$ep';
-          default:
-            return '${open.surface}:$id:E$ep$audioSuffix';
-        }
-      }
+      return catalogOpenCacheKey(
+        open,
+        episode: ep,
+        audioCategory: audioCategory,
+        episodeVideoId: episodeVideoId,
+      );
     }
 
-    // Fallback Movie builds use negative hub ids + hub mediaType before TMDB
-    // lands — still episode-scoped (not bare `anime:-id`).
-    final type = mediaType == 'series' ? 'tv' : mediaType;
-    if (type == 'anime' || type == 'asian_drama' || type == 'drama') {
-      final s = (season == null || season < 1) ? 1 : season;
-      final mal = malId ?? 0;
-      final malSuffix = mal > 0 ? ':mal$mal' : '';
-      return '$type:$mediaId$malSuffix:S$s:E$ep$audioSuffix';
+    final pid = (pluginId ?? '').trim();
+    final mid = (metaId ?? '').trim();
+    if (pid.isNotEmpty && mid.isNotEmpty) {
+      final vid = (episodeVideoId ?? '').trim();
+      final vidSuffix = vid.isNotEmpty ? ':$vid' : '';
+      return 'catalog:$pid:$mid:E$ep$audioSuffix$vidSuffix';
     }
+
+    final type = mediaType == 'series' ? 'tv' : mediaType;
     if (type != 'tv') return '$type:$mediaId';
     final s = (season == null || season < 1) ? 1 : season;
     return '$type:$mediaId:S$s:E$ep';

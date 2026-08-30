@@ -21,6 +21,7 @@ function kisskhLayout() {
   return {
     pages: {
       asian_drama: {
+        pageSize: 24,
         widgets: [
           {
             type: 'hero',
@@ -305,7 +306,8 @@ function extract(ctx) {
     if (railId === 'anime') return hubItems('rail', []);
     return kisskhList(ctx, cfg, kisskhExplorePath(params), params.limit)
       .then(function (items) {
-        return hubItems('rail', items, { maxAge: 600, swr: 3600 });
+        var pageSize = Number(params.limit) > 0 ? Number(params.limit) : 24;
+        return hubItems('rail', items, { maxAge: 600, swr: 3600 }, { pageSize: pageSize });
       })
       .catch(function (e) {
         return hubFail('rail', 'UPSTREAM', e && e.message, true);
@@ -318,7 +320,8 @@ function extract(ctx) {
   }
   return kisskhList(ctx, cfg, path, params.limit)
     .then(function (items) {
-      return hubItems('rail', items, { maxAge: 600, swr: 3600 });
+      var pageSize = Number(params.limit) > 0 ? Number(params.limit) : 24;
+      return hubItems('rail', items, { maxAge: 600, swr: 3600 }, { pageSize: pageSize });
     })
     .catch(function (e) {
       return hubFail('rail', 'UPSTREAM', e && e.message, true);

@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/engine/anime_ids.dart';
+import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/engine/live_goat_unlock.dart';
 import 'package:forja/shared/engine/models.dart';
@@ -468,9 +469,31 @@ class EngineService {
     int? kisskhId,
     int? kisskhEpisodeId,
     String? arabicVideoId,
+    CatalogOpen? catalogOpen,
+    String? episodeVideoId,
     bool allowHostFallback = false,
     EngineRuntime? runtime,
   }) async {
+    final resolved = resolveEngineExtractInputs(
+      type: type,
+      movie: movie,
+      catalogOpen: catalogOpen,
+      episodeVideoId: episodeVideoId,
+      episode: episode,
+      malId: malId,
+      anilistId: anilistId,
+      kisskhId: kisskhId,
+      kisskhEpisodeId: kisskhEpisodeId,
+      arabicVideoId: arabicVideoId,
+      panelCategoryHint: type,
+    );
+    final extractType = resolved.type;
+    final resolvedMalId = resolved.malId;
+    final resolvedAnilistId = resolved.anilistId;
+    final resolvedKisskhId = resolved.kisskhId;
+    final resolvedKisskhEpisodeId = resolved.kisskhEpisodeId;
+    final resolvedArabicVideoId = resolved.arabicVideoId;
+
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return null;
@@ -488,7 +511,7 @@ class EngineService {
     }
     final active = hit.plugin;
     // Soft categories only — Sources filter hides chips; selected plugins always run.
-    final mediaType = _normalizeEngineMediaType(type);
+    final mediaType = _normalizeEngineMediaType(extractType);
 
     if (active.isHost) {
       if (gen != _extractGeneration) return null;
@@ -500,9 +523,9 @@ class EngineService {
     final config = mergeEnginePluginConfig(
       mergeEngineConfig(active.config, overlay),
       pluginId: active.id,
-      kisskhId: kisskhId,
-      kisskhEpisodeId: kisskhEpisodeId,
-      arabicVideoId: arabicVideoId,
+      kisskhId: resolvedKisskhId,
+      kisskhEpisodeId: resolvedKisskhEpisodeId,
+      arabicVideoId: resolvedArabicVideoId,
     );
     var code = await _loadScript(active);
     if (gen != _extractGeneration) return null;
@@ -533,14 +556,15 @@ class EngineService {
     if (EngineAnimeIds.pluginNeedsResolve(active)) {
       final kinds = EngineAnimeIds.requiredKinds(active);
       final haveMal =
-          !kinds.contains('mal') || (malId != null && malId > 0);
+          !kinds.contains('mal') || (resolvedMalId != null && resolvedMalId > 0);
       final haveAnilist =
-          !kinds.contains('anilist') || (anilistId != null && anilistId > 0);
+          !kinds.contains('anilist') ||
+          (resolvedAnilistId != null && resolvedAnilistId > 0);
       if (haveMal && haveAnilist) {
         animeIds = EngineAnimeIdBundle(
           imdbId: movie?.imdbId,
-          malId: malId,
-          anilistId: anilistId,
+          malId: resolvedMalId,
+          anilistId: resolvedAnilistId,
           mappedEpisode: episode ?? 1,
         );
       } else {
@@ -551,15 +575,15 @@ class EngineService {
           episode: episode ?? 1,
           title: title,
           imdbId: movie?.imdbId,
-          knownMalId: malId,
-          knownAnilistId: anilistId,
+          knownMalId: resolvedMalId,
+          knownAnilistId: resolvedAnilistId,
           kinds: kinds,
         );
       }
       if (gen != _extractGeneration) return null;
     }
-    final resolvedMal = animeIds?.malId ?? malId;
-    final resolvedAnilist = animeIds?.anilistId ?? anilistId;
+    final resolvedMal = animeIds?.malId ?? resolvedMalId;
+    final resolvedAnilist = animeIds?.anilistId ?? resolvedAnilistId;
     final resolvedImdb = animeIds?.imdbId ?? movie?.imdbId;
     debugPrint(
       '[engine] ${active.id} start tmdb=$tmdbId type=$mediaType '
@@ -910,8 +934,30 @@ class EngineService {
     int? kisskhId,
     int? kisskhEpisodeId,
     String? arabicVideoId,
+    CatalogOpen? catalogOpen,
+    String? episodeVideoId,
     bool allowHostFallback = false,
   }) async {
+    final resolved = resolveEngineExtractInputs(
+      type: type,
+      movie: movie,
+      catalogOpen: catalogOpen,
+      episodeVideoId: episodeVideoId,
+      episode: episode,
+      malId: malId,
+      anilistId: anilistId,
+      kisskhId: kisskhId,
+      kisskhEpisodeId: kisskhEpisodeId,
+      arabicVideoId: arabicVideoId,
+      panelCategoryHint: type,
+    );
+    final extractType = resolved.type;
+    final resolvedMalId = resolved.malId;
+    final resolvedAnilistId = resolved.anilistId;
+    final resolvedKisskhId = resolved.kisskhId;
+    final resolvedKisskhEpisodeId = resolved.kisskhEpisodeId;
+    final resolvedArabicVideoId = resolved.arabicVideoId;
+
     // RFC-064: Forja EngineJS on tokio (true parallel). Null → flutter_js fork
     // only when Rust is unsupported — never after cancelPending gen bump
     // (that stampeded UI-isolate JSC forks mid-play → macOS SIGSEGV).
@@ -919,17 +965,17 @@ class EngineService {
     final viaRust = await _runHttpPluginRustJs(
       pluginId: pluginId,
       tmdbId: tmdbId,
-      type: type,
+      type: extractType,
       season: season,
       episode: episode,
       title: title,
       year: year,
       movie: movie,
-      malId: malId,
-      anilistId: anilistId,
-      kisskhId: kisskhId,
-      kisskhEpisodeId: kisskhEpisodeId,
-      arabicVideoId: arabicVideoId,
+      malId: resolvedMalId,
+      anilistId: resolvedAnilistId,
+      kisskhId: resolvedKisskhId,
+      kisskhEpisodeId: resolvedKisskhEpisodeId,
+      arabicVideoId: resolvedArabicVideoId,
       allowHostFallback: allowHostFallback,
     );
     if (viaRust != null) return viaRust;
@@ -949,17 +995,19 @@ class EngineService {
       return await runPlugin(
         pluginId: pluginId,
         tmdbId: tmdbId,
-        type: type,
+        type: extractType,
         season: season,
         episode: episode,
         title: title,
         year: year,
         movie: movie,
-        malId: malId,
-        anilistId: anilistId,
-        kisskhId: kisskhId,
-        kisskhEpisodeId: kisskhEpisodeId,
-        arabicVideoId: arabicVideoId,
+        malId: resolvedMalId,
+        anilistId: resolvedAnilistId,
+        kisskhId: resolvedKisskhId,
+        kisskhEpisodeId: resolvedKisskhEpisodeId,
+        arabicVideoId: resolvedArabicVideoId,
+        catalogOpen: catalogOpen,
+        episodeVideoId: episodeVideoId,
         allowHostFallback: allowHostFallback,
         runtime: runtime,
       );

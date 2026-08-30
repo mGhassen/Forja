@@ -59,7 +59,6 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     }
     final session = widget.enginePlaySession;
     final ep = widget.selectedEpisode ?? 1;
-    final resolve = session?.resolveForEpisode(ep);
     return catalogSourcesButtonLabel(
       movie: widget.movie,
       season: widget.selectedSeason,
@@ -73,8 +72,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       catalogSourceKind: _s._catalogSourceKind,
       catalogOpen: session?.effectiveOpen,
-      malId: resolve?.malId ?? session?.malId,
-      animeAudioCategory: session?.animeAudioCategory,
+      malId: session?.malId,
+      audioCategory: session?.audioCategory,
       episodeVideoId: session?.episodeVideoIdFor(ep),
     );
   }
@@ -421,7 +420,6 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     final session = widget.enginePlaySession;
     final ep = widget.selectedEpisode;
     final epNum = ep ?? 1;
-    final resolve = session?.resolveForEpisode(epNum);
     await PlayerSourcesPanel.show(
       context: context,
       movie: movie,
@@ -440,14 +438,12 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         currentProvider: _s._currentProvider,
       ),
       catalogOpen: session?.effectiveOpen,
-      anilistId: resolve?.anilistId,
-      malId: resolve?.malId ?? session?.malId,
-      kisskhId: resolve?.kisskhId,
-      kisskhEpisodeId: resolve?.kisskhEpisodeId,
-      arabicVideoId: resolve?.arabicVideoId,
+      malId: session?.malId,
       episodeVideoId: session?.episodeVideoIdFor(epNum),
-      engineCategory: session?.category,
-      animeAudioCategory: session?.animeAudioCategory,
+      engineCategory: session != null
+          ? engineCategoryForSession(session, movie)
+          : null,
+      animeAudioCategory: session?.audioCategory,
       onTorrentSelected: _switchTorrentSource,
       onStremioSelected: _switchStremioSource,
     );

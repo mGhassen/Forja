@@ -1,8 +1,6 @@
+import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
-import 'package:forja/shared/engine/categories.dart';
-import 'package:forja/shared/playback/engine_auto_play.dart';
-import 'package:forja/shared/playback/hub_open_engine.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/list_follow_from_watched.dart';
@@ -40,13 +38,13 @@ bool usesHomeWatchHistory({
   required Movie? movie,
   List<PlayerHubEpisode>? hubEpisodes,
   Future<void> Function(Duration position, Duration duration)? onSaveProgress,
-  EnginePlaySession? enginePlaySession,
+  CatalogPlaySession? catalogPlaySession,
 }) {
   if (movie == null) return false;
   if (hubEpisodes != null) return false;
   if (onSaveProgress != null) return false;
-  if (enginePlaySession != null &&
-      hubEngineNeedsWatchHistory(enginePlaySession)) {
+  if (catalogPlaySession != null &&
+      catalogPlayNeedsWatchHistory(catalogPlaySession)) {
     return false;
   }
   if (isHubTabMediaType(movie.mediaType)) return false;
@@ -66,13 +64,13 @@ class HubCatalogPlayHooks {
         episodeNumber = null,
         onSaveProgress = null;
 
-  final EnginePlaySession? session;
+  final CatalogPlaySession? session;
   final num? episodeNumber;
   final Future<void> Function(Duration position, Duration duration)?
       onSaveProgress;
 
   Future<void> seedInitial({required Movie movie}) async {
-    await seedHubEngineWatchHistory(
+    await seedCatalogPlayWatchHistory(
       session: session,
       movie: movie,
       episodeNumber: episodeNumber,
@@ -86,37 +84,33 @@ HubCatalogPlayHooks buildHubCatalogPlayHooks({
   int? episode,
   CatalogOpen? catalogOpen,
   int? malId,
-  String? engineCategory,
-  String? animeAudioCategory,
+  String? audioCategory,
   String? pluginId,
   CatalogMetaItem? catalogMeta,
-  EnginePlaySession? enginePlaySession,
+  CatalogPlaySession? catalogPlaySession,
 }) {
   final open = catalogOpen ?? catalogMeta?.open;
-  final category =
-      engineCategory ?? engineCategoryForOpen(open, metaType: catalogMeta?.type);
-  if (open == null && catalogMeta == null && enginePlaySession == null) {
+  if (open == null && catalogMeta == null && catalogPlaySession == null) {
     return const HubCatalogPlayHooks.none();
   }
 
   final ep = episode ?? (hubMediaIsEpisodic(movie) ? (season ?? 1) : null);
-  final session = enginePlaySession ??
-      EnginePlaySession(
-        category: category,
+  final session = catalogPlaySession ??
+      CatalogPlaySession(
         pluginId: pluginId,
         catalogMeta: catalogMeta,
         catalogOpen: open,
         malId: malId,
-        animeAudioCategory: animeAudioCategory,
+        audioCategory: audioCategory,
       );
-  if (!hubEngineNeedsWatchHistory(session)) {
+  if (!catalogPlayNeedsWatchHistory(session)) {
     return const HubCatalogPlayHooks.none();
   }
 
   return HubCatalogPlayHooks(
     session: session,
     episodeNumber: ep,
-    onSaveProgress: hubEngineSaveProgressCallback(
+    onSaveProgress: catalogPlaySaveProgressCallback(
       session: session,
       movie: movie,
       episodeNumber: ep,
@@ -124,15 +118,13 @@ HubCatalogPlayHooks buildHubCatalogPlayHooks({
   );
 }
 
-bool hubEngineNeedsWatchHistory(EnginePlaySession? session) {
+bool catalogPlayNeedsWatchHistory(CatalogPlaySession? session) {
   if (session == null) return false;
-  if (session.pluginId != null && session.catalogMeta != null) return true;
-  return session.category == EngineCategories.anime ||
-      session.category == EngineCategories.drama;
+  return session.pluginId != null && session.catalogMeta != null;
 }
 
 Future<void> _recordCatalogWatchHistory({
-  required EnginePlaySession session,
+  required CatalogPlaySession session,
   required int ep,
   Duration? position,
   Duration? duration,
@@ -146,8 +138,7 @@ Future<void> _recordCatalogWatchHistory({
     episodeNumber: ep,
     episodeVideoId: session.episodeVideoIdFor(ep),
     extras: {
-      if (session.animeAudioCategory != null)
-        'category': session.animeAudioCategory,
+      if (session.audioCategory != null) 'category': session.audioCategory,
     },
     position: position,
     duration: duration,
@@ -179,46 +170,69 @@ int? _catalogWatchEpisode(num? episodeNumber, Movie movie) {
   return hubMediaIsEpisodic(movie) ? null : 1;
 }
 
-Future<void> seedHubEngineWatchHistory({
-  required EnginePlaySession? session,
+Future<void> seedCatalogPlayWatchHistory({
+  required CatalogPlaySession? session,
   required Movie movie,
   required num? episodeNumber,
   List<PlayerHubEpisode>? hubEpisodes,
 }) async {
-  if (session == null || !hubEngineNeedsWatchHistory(session)) return;
+  if (session == null || !catalogPlayNeedsWatchHistory(session)) return;
   final ep = _catalogWatchEpisode(episodeNumber, movie);
   if (ep == null) return;
   await _recordCatalogWatchHistory(session: session, ep: ep);
 }
 
+Future<void> seedHubEngineWatchHistory({
+  required CatalogPlaySession? session,
+  required Movie movie,
+  required num? episodeNumber,
+  List<PlayerHubEpisode>? hubEpisodes,
+}) =>
+    seedCatalogPlayWatchHistory(
+      session: session,
+      movie: movie,
+      episodeNumber: episodeNumber,
+      hubEpisodes: hubEpisodes,
+    );
+
 Future<void> Function(Duration position, Duration duration)?
-hubEngineSaveProgressCallback({
-  required EnginePlaySession? session,
+catalogPlaySaveProgressCallback({
+  required CatalogPlaySession? session,
   required Movie movie,
   required num? episodeNumber,
   List<PlayerHubEpisode>? hubEpisodes,
 }) {
-  if (session == null || !hubEngineNeedsWatchHistory(session)) return null;
+  if (session == null || !catalogPlayNeedsWatchHistory(session)) return null;
   final ep = _catalogWatchEpisode(episodeNumber, movie);
   if (ep == null) return null;
 
-  if (session.pluginId != null && session.catalogMeta != null) {
-    return (pos, dur) async {
-      await _recordCatalogWatchHistory(
-        session: session,
-        ep: ep,
-        position: pos,
-        duration: dur,
-      );
-      await _syncEpisodeWatched(session: session, ep: ep, pos: pos, dur: dur);
-    };
-  }
-
-  return null;
+  return (pos, dur) async {
+    await _recordCatalogWatchHistory(
+      session: session,
+      ep: ep,
+      position: pos,
+      duration: dur,
+    );
+    await _syncEpisodeWatched(session: session, ep: ep, pos: pos, dur: dur);
+  };
 }
 
+Future<void> Function(Duration position, Duration duration)?
+hubEngineSaveProgressCallback({
+  required CatalogPlaySession? session,
+  required Movie movie,
+  required num? episodeNumber,
+  List<PlayerHubEpisode>? hubEpisodes,
+}) =>
+    catalogPlaySaveProgressCallback(
+      session: session,
+      movie: movie,
+      episodeNumber: episodeNumber,
+      hubEpisodes: hubEpisodes,
+    );
+
 Future<void> _syncEpisodeWatched({
-  required EnginePlaySession session,
+  required CatalogPlaySession session,
   required int ep,
   required Duration pos,
   required Duration dur,

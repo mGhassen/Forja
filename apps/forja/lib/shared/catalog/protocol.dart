@@ -537,6 +537,54 @@ class CatalogFilterAst {
   }
 }
 
+/// Host fallback when hub layout, manifest config, and rail response omit page size.
+const int kCatalogRailPageSizeFallback = 20;
+
+const _catalogRailPageSizeKeys = [
+  'pageSize',
+  'limit',
+  'perPage',
+  'page_size',
+];
+
+/// Reads pack-declared rail page size from layout widgets, page defaults,
+/// manifest `config`, or rail response `data`.
+int? catalogRailPageSizeFrom(Map<String, dynamic>? source) {
+  if (source == null) return null;
+  for (final key in _catalogRailPageSizeKeys) {
+    final v = source[key];
+    if (v is num && v.toInt() > 0) return v.toInt();
+    final parsed = int.tryParse(v?.toString() ?? '');
+    if (parsed != null && parsed > 0) return parsed;
+  }
+  return null;
+}
+
+bool? catalogRailHasMoreFrom(Map<String, dynamic>? source) {
+  if (source == null) return null;
+  final v = source['hasMore'];
+  if (v is bool) return v;
+  return null;
+}
+
+/// One fetched rail page — items plus optional pack paging metadata.
+class CatalogRailPage<T> {
+  const CatalogRailPage({
+    required this.items,
+    this.pageSize,
+    this.hasMore,
+  });
+
+  const CatalogRailPage.empty()
+      : items = const [],
+        pageSize = null,
+        hasMore = null;
+
+  final List<T> items;
+  final int? pageSize;
+  final bool? hasMore;
+}
+
 /// Null when valid; otherwise a short reason string.
 String? validateLayoutData(Map<String, dynamic>? data) {
   if (data == null) return 'missing data';

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
-import 'package:forja/shared/playback/hub_engine_watch_history.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
 import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/external_player_handoff_screen.dart';
@@ -237,7 +237,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       movie: movie,
       hubEpisodes: widget.hubEpisodes,
       onSaveProgress: widget.onSaveProgress,
-      enginePlaySession: widget.enginePlaySession,
+      catalogPlaySession: widget.enginePlaySession,
     )) {
       return;
     }

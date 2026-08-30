@@ -7,9 +7,12 @@ import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/playback/hub_drama_player_episodes.dart';
-import 'package:forja/shared/playback/hub_open_engine.dart';
-import 'package:forja/shared/playback/hub_engine_watch_history.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_hub_episodes.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
+
+export 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
+import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/utils.dart';
@@ -24,50 +27,6 @@ import 'package:rust/rust.dart';
 Future<bool> engineAutoPlayEnabled([SettingsService? settings]) async {
   final s = settings ?? SettingsService();
   return PlaySourceEffective.engine(s);
-}
-
-/// Hub / details context so in-player next episode can call the same Auto path.
-class EnginePlaySession {
-  const EnginePlaySession({
-    required this.category,
-    this.pluginId,
-    this.catalogMeta,
-    this.catalogOpen,
-    this.malId,
-    this.episodeVideoIdByNumber = const {},
-    this.animeAudioCategory,
-  });
-
-  /// `movie` | `tv` | `anime` | `drama` | `arabic` — same as [runEngineAutoPlay] category.
-  final String category;
-  final String? pluginId;
-  final CatalogMetaItem? catalogMeta;
-  final CatalogOpen? catalogOpen;
-  final int? malId;
-  final Map<int, String> episodeVideoIdByNumber;
-  final String? animeAudioCategory;
-
-  bool get isHubFlatList =>
-      category == EngineCategories.anime ||
-      category == EngineCategories.drama ||
-      category == EngineCategories.arabic;
-
-  CatalogOpen? get effectiveOpen =>
-      catalogOpen ?? catalogMeta?.open;
-
-  HubEngineResolveParams resolveForEpisode(int? episode) =>
-      hubEngineResolveParams(
-        catalogOpen: effectiveOpen,
-        category: category,
-        episode: episode,
-        malId: malId,
-        episodeVideoIdByNumber: episodeVideoIdByNumber,
-      );
-
-  String? episodeVideoIdFor(int episode) {
-    final v = episodeVideoIdByNumber[episode]?.trim();
-    return v != null && v.isNotEmpty ? v : null;
-  }
 }
 
 /// Current player session came from Forja Engine (`engine:<pluginId>`).
@@ -96,26 +55,41 @@ Future<void> switchEpisodeViaEngineAutoPlay({
   List<PlayerHubEpisode>? hubEpisodes,
 }) {
   final s = session;
-  final category =
-      s?.category ??
-      EngineCategories.panelCategoryFor(mediaType: movie.mediaType);
-  final resolve = s?.resolveForEpisode(episode);
+  final extract = engineExtractContext(
+    catalogOpen: s?.effectiveOpen,
+    movie: movie,
+    episode: episode,
+    episodeVideoId: s?.episodeVideoIdFor(episode),
+    malId: s?.malId,
+    panelCategoryHint: engineCategoryForSession(s, movie),
+  );
   return runEngineAutoPlay(
     context: context,
     movie: movie,
-    engineCategory: category,
+    engineCategory: extract.panelCategory,
     season: season,
     episode: episode,
-    malId: resolve?.malId ?? s?.malId,
-    animeAudioCategory: s?.animeAudioCategory,
+    malId: extract.malId ?? s?.malId,
+    audioCategory: s?.audioCategory,
     stremioId: stremioId ?? movie.imdbId,
-    loadingSubtitle: s?.isHubFlatList == true
+    loadingSubtitle: s?.hasCatalogContext == true
         ? 'EP $episode'
         : 'Season $season · Episode $episode',
-    enginePlaySession: s,
+    catalogPlaySession: s,
     hubEpisodes: hubEpisodes,
     hubEpisodeNumber: episode,
   );
+}
+
+String? engineCategoryForSession(CatalogPlaySession? session, Movie movie) {
+  if (session?.effectiveOpen != null) {
+    return engineExtractContext(
+      catalogOpen: session!.effectiveOpen,
+      movie: movie,
+      malId: session.malId,
+    ).panelCategory;
+  }
+  return null;
 }
 
 Future<void> Function(PlayerHubEpisode episode)? _hubEngineEpisodePicker({
@@ -165,11 +139,12 @@ Future<void> runEngineAutoPlay({
   int? season,
   int? episode,
   int? malId,
-  String? animeAudioCategory,
+  String? audioCategory,
   Duration? startPosition,
   String? loadingSubtitle,
   String? stremioId,
-  EnginePlaySession? enginePlaySession,
+  CatalogPlaySession? catalogPlaySession,
+  @Deprecated('Use catalogPlaySession') CatalogPlaySession? enginePlaySession,
   List<PlayerHubEpisode>? hubEpisodes,
   num? hubEpisodeNumber,
 
@@ -194,31 +169,34 @@ Future<void> runEngineAutoPlay({
 }) async {
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
-  final hubResolve = enginePlaySession?.resolveForEpisode(episode);
-  final category = EngineCategories.panelCategoryFor(
-    mediaType: movie.mediaType,
-    panelCategory: engineCategory,
-    hasAnimeIds: hubResolve?.hasAnimeIds == true,
+  final session = catalogPlaySession ?? enginePlaySession;
+  final extract = engineExtractContext(
+    catalogOpen: session?.effectiveOpen,
+    movie: movie,
+    episode: episode,
+    episodeVideoId: session?.episodeVideoIdFor(episode ?? 1),
+    malId: malId ?? session?.malId,
+    panelCategoryHint: engineCategory,
   );
-  final session =
-      enginePlaySession ??
-      EnginePlaySession(
-        category: category,
+  final category = extract.panelCategory;
+  final resolveType = extract.resolveType;
+  final activeSession = session ??
+      CatalogPlaySession(
         malId: malId,
-        animeAudioCategory: animeAudioCategory,
+        audioCategory: audioCategory,
       );
-  final resolve = session.resolveForEpisode(episode);
   final cacheKey = CatalogSourcesSessionCache.cacheKey(
     mediaId: movie.id,
     mediaType: movie.mediaType,
     season: season,
     episode: episode,
-    catalogOpen: session.effectiveOpen,
-    malId: resolve.malId ?? malId,
-    animeAudioCategory: animeAudioCategory ?? session.animeAudioCategory,
-    episodeVideoId: session.episodeVideoIdFor(episode ?? 1),
+    catalogOpen: activeSession.effectiveOpen,
+    pluginId: activeSession.pluginId,
+    metaId: activeSession.catalogMeta?.id,
+    malId: extract.malId ?? malId,
+    audioCategory: audioCategory ?? activeSession.audioCategory,
+    episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
   );
-  final resolveType = _engineResolveType(category, movie);
 
   var cancelled = false;
   var playGen = 0;
@@ -559,11 +537,9 @@ Future<void> runEngineAutoPlay({
           title: movie.title,
           year: year,
           movie: movie,
-          malId: resolve.malId,
-          anilistId: resolve.anilistId,
-          kisskhId: resolve.kisskhId,
-          kisskhEpisodeId: resolve.kisskhEpisodeId,
-          arabicVideoId: resolve.arabicVideoId,
+          malId: extract.malId ?? malId,
+          catalogOpen: activeSession.effectiveOpen,
+          episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
           allowHostFallback: false,
         );
       } catch (e) {
@@ -689,7 +665,7 @@ Future<void> runEngineAutoPlay({
         episode: episode,
         startPosition: startPosition,
         stremioId: stremioId ?? movie.imdbId,
-        enginePlaySession: session,
+        enginePlaySession: activeSession,
         hubEpisodes: hubEpisodes,
         hubEpisodeNumber: hubEpisodeNumber ?? episode,
         loadingDialogContext: loadingDialogContext,
@@ -730,7 +706,7 @@ Future<void> runEngineAutoPlay({
         settings: settings,
         profile: profile,
         stremioId: stremioId ?? movie.imdbId,
-        enginePlaySession: session,
+        enginePlaySession: activeSession,
         hubEpisodes: hubEpisodes,
         hubEpisodeNumber: hubEpisodeNumber ?? episode,
         loadingDialogContext: loadingDialogContext,
@@ -763,13 +739,13 @@ Future<void> runEngineAutoPlay({
         season: season,
         episode: episode,
         malId: malId,
-        animeAudioCategory: animeAudioCategory,
+        audioCategory: audioCategory,
         startPosition: startPosition,
         loadingSubtitle: loadingSubtitle,
         stremioId: stremioId,
         preferredPluginId: preferredPluginId,
         savedStreamUrl: savedStreamUrl,
-        enginePlaySession: enginePlaySession,
+        catalogPlaySession: activeSession,
         hubEpisodes: hubEpisodes,
         hubEpisodeNumber: hubEpisodeNumber,
         selectedPluginIds: selectedPluginIds,
@@ -783,13 +759,6 @@ Future<void> runEngineAutoPlay({
     if (!openedPlayer) dismissLoading();
     disposeLoadingOverlayNotifiers(overlayNotifiers());
   }
-}
-
-String _engineResolveType(String panelCategory, Movie movie) {
-  if (panelCategory == EngineCategories.anime) return 'anime';
-  if (panelCategory == EngineCategories.drama) return 'drama';
-  if (panelCategory == EngineCategories.arabic) return 'arabic';
-  return movie.mediaType == 'tv' ? 'tv' : 'movie';
 }
 
 bool _pluginVisible(
@@ -838,7 +807,7 @@ Future<void> _playFromProbedSources({
   final ctx = loadingDialogContext;
   final epNum = hubEpisodeNumber ?? episode;
   final playMovie = movieWithResolvedHubArt(movie);
-  final playHubEpisodes = await ensureDramaHubEpisodes(
+  final playHubEpisodes = await ensureHubCatalogEpisodes(
     pluginId: enginePlaySession?.pluginId,
     metaId: enginePlaySession?.catalogMeta?.id,
     hubEpisodes: hubEpisodes,
@@ -941,7 +910,7 @@ Future<void> _playResolveRow({
   final ctx = loadingDialogContext;
   final epNum = hubEpisodeNumber ?? episode;
   final playMovie = movieWithResolvedHubArt(movie);
-  final playHubEpisodes = await ensureDramaHubEpisodes(
+  final playHubEpisodes = await ensureHubCatalogEpisodes(
     pluginId: enginePlaySession?.pluginId,
     metaId: enginePlaySession?.catalogMeta?.id,
     hubEpisodes: hubEpisodes,

@@ -6,8 +6,8 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
-import 'package:forja/shared/playback/engine_auto_play.dart';
-import 'package:forja/shared/playback/hub_engine_watch_history.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -47,19 +47,9 @@ Future<void> openHubCatalogSources({
   int? season,
   int? episode,
   CatalogOpen? catalogOpen,
-  int? anilistId,
   int? malId,
-  int? kisskhId,
-  int? kisskhEpisodeId,
-  String? arabicVideoId,
-  String? episodeVideoId,
-
-  /// Forja chip category for this hub: `anime` | `drama` | `arabic`.
-  String? engineCategory,
-
-  /// Anime hub SUB/DUB — filters Forja/Nuvio rows when set (`sub` | `dub`).
-  String? animeAudioCategory,
-  EnginePlaySession? enginePlaySession,
+  String? audioCategory,
+  CatalogPlaySession? catalogPlaySession,
 }) {
   final hooks = buildHubCatalogPlayHooks(
     movie: movie,
@@ -67,9 +57,8 @@ Future<void> openHubCatalogSources({
     episode: episode,
     catalogOpen: catalogOpen,
     malId: malId,
-    engineCategory: engineCategory,
-    animeAudioCategory: animeAudioCategory,
-    enginePlaySession: enginePlaySession,
+    audioCategory: audioCategory,
+    catalogPlaySession: catalogPlaySession,
   );
   return PlayerSourcesPanel.show(
     context: context,
@@ -77,14 +66,8 @@ Future<void> openHubCatalogSources({
     season: season,
     episode: episode,
     catalogOpen: catalogOpen,
-    anilistId: anilistId,
     malId: malId,
-    kisskhId: kisskhId,
-    kisskhEpisodeId: kisskhEpisodeId,
-    arabicVideoId: arabicVideoId,
-    episodeVideoId: episodeVideoId,
-    engineCategory: engineCategory,
-    animeAudioCategory: animeAudioCategory,
+    animeAudioCategory: audioCategory,
     detailsHost: true,
     onTorrentSelected: (result) => _playTorrent(
       context: context,

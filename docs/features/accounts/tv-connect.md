@@ -4,13 +4,14 @@
 
 ## What it is
 
-Cold start on **Android TV and desktop** is the same centered welcome (logo, **Your cinema**, **Sign in** / **Continue as guest**) over the animated background, with a soft dark shadow under the copy for readability. Sign in opens the code + QR screen (code under the QR as `XXXX-XXXX`); approve on `/connect`. After a successful link, Forja opens **Who’s watching?** so you can pick a profile. Desktop email/password, passkey, and Web login are not on this screen (they stay in Settings if you continue as guest).
+Cold start on **Android TV and desktop** is the same centered welcome (logo, **Your cinema**, **Sign in** / **Continue as guest**) over the animated background, with a soft dark shadow under the copy for readability. Sign in opens the code + QR screen (code under the QR as `XXXX-XXXX`); approve on `/connect`. After a successful link, Forja opens **Who’s watching?** so you can pick a profile. Desktop email/password, passkey, and Web login are not on this screen (mobile keeps email/password in Settings if you continue as guest; desktop guest **Settings → Profile & account** uses the same code + QR flow).
 
 ## How to open it
 
 - **Cold start (desktop and Android TV):** after the update check, choose **Sign in** or **Continue as guest**.
 - **Sign in:** the app shows the link code and QR; approve on the portal.
-- **Settings:** open the profile avatar at the bottom of the TV rail → **Profile & account** → **Link with code or QR** when signed out.
+- **Settings (desktop):** profile avatar at the bottom of the rail → **Profile & account** → **Sign in** when signed out (loads code + QR inline).
+- **Settings (Android TV):** profile avatar at the bottom of the TV rail → **Profile & account** → **Link with code or QR** when signed out.
 - **Web:** open `/connect` (or scan the QR). You must be signed in; otherwise you are sent to login and returned to `/connect` with the code.
 
 ## What you can do

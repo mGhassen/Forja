@@ -1,13 +1,12 @@
 import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_context.dart';
 import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/playback/hub_open_engine.dart';
-import 'package:forja/shared/playback/hub_play_context.dart';
+import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 
-/// Playback boundary — maps pack [CatalogMetaItem] → engine play args.
-/// Catalog kit must not import feature services or pack names.
-HubPlayContext catalogPlayContextFromMeta({
+/// Catalog kit boundary — maps pack [CatalogMetaItem] → play args.
+CatalogPlayContext catalogPlayContextFromMeta({
   required CatalogMetaItem meta,
   String? pluginId,
   CatalogVideo? episode,
@@ -26,7 +25,6 @@ HubPlayContext catalogPlayContextFromMeta({
   final isMovie = _metaIsMovie(meta);
   final isTv = !isMovie && vids.length > 1;
   final open = meta.open;
-  final engineCategory = engineCategoryForOpen(open, metaType: meta.type);
 
   final videoId = episodeVideoId ?? ep?.id;
   final providerFromVideo = videoId != null
@@ -42,12 +40,10 @@ HubPlayContext catalogPlayContextFromMeta({
     selectedPluginIds = {providerFromVideo};
   }
 
-  final malId =
-      int.tryParse(open?.extraString('mal') ?? '') ?? meta.numericId('mal');
+  final malId = int.tryParse(open?.extraString('mal') ?? '');
 
-  return HubPlayContext(
+  return CatalogPlayContext(
     movie: _playMovieFor(meta, videos: vids),
-    engineCategory: engineCategory,
     pluginId: pluginId,
     catalogMeta: meta,
     catalogOpen: open,
@@ -55,7 +51,7 @@ HubPlayContext catalogPlayContextFromMeta({
     episode: isTv ? epNum : (isMovie ? null : epNum),
     malId: malId,
     episodeVideoIdByNumber: episodeIds,
-    animeAudioCategory: extras['category']?.toString(),
+    audioCategory: extras['category']?.toString(),
     hubEpisodes: isTv ? _episodesFromVideos(vids) : null,
     selectedPluginIds: selectedPluginIds,
     startPosition: startPosition,
@@ -88,9 +84,7 @@ Movie _playMovieFor(CatalogMetaItem item, {List<CatalogVideo>? videos}) {
     voteAverage: item.rating ?? 0,
     releaseDate: item.releaseInfo,
     overview: item.description,
-    mediaType: isMovie
-        ? 'movie'
-        : (item.type == 'anime' ? 'anime' : 'tv'),
+    mediaType: isMovie ? 'movie' : 'tv',
     numberOfEpisodes: eps.isNotEmpty ? eps.length : (item.episodes ?? 0),
   );
 }

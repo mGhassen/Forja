@@ -18,10 +18,9 @@ profile is known — another profile’s settings are never shown first.
   first; then the same welcome as Android TV (logo, **Sign in** / **Continue as
   guest**). Sign in shows a code + QR — approve on the portal at `/connect`.
   See [Link Android TV](../accounts/tv-connect.md). Email/password, passkey, and
-  **Web login** are not on that screen; they remain in **Settings → Profile &
-  account** if you continue as guest. On Windows / Linux the sign-in and Who’s
-  watching screens keep the same window caption (min / max / close) as the main
-  app. New accounts are created only on the web.
+  **Web login** are not on that screen; on **mobile**, they remain in **Settings →
+  Profile & account** if you continue as guest. On **macOS / Windows**, guest
+  **Settings → Profile & account** uses the same **Sign in** → code + QR flow.
 - **Android TV startup:** after the update check, choose **Sign in** (then code or
   QR) or **Continue as guest**. After a successful link, pick a profile on
   **Who’s watching?** See [Link Android TV](../accounts/tv-connect.md). The TV

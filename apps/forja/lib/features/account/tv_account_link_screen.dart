@@ -1,16 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:forja/features/account/device_link_connect_view.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/platform/platform_info.dart';
-import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:qr_flutter/qr_flutter.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-enum _TvLinkStep { welcome, connect, linking, error }
+enum _TvLinkStep { welcome, connect, error }
 
 /// Leanback account link: welcome → code/QR (not desktop login).
 class TvAccountLinkScreen extends StatefulWidget {
@@ -30,10 +24,7 @@ class TvAccountLinkScreen extends StatefulWidget {
 class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
     with SingleTickerProviderStateMixin {
   _TvLinkStep _step = _TvLinkStep.welcome;
-  TvDeviceLinkSession? _session;
   String? _error;
-  bool _creating = false;
-  Timer? _pollTimer;
 
   late final AnimationController _enter;
 
@@ -56,7 +47,6 @@ class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
 
   @override
   void dispose() {
-    _pollTimer?.cancel();
     _enter.dispose();
     _signInFocus.dispose();
     _guestFocus.dispose();
@@ -65,130 +55,23 @@ class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
     super.dispose();
   }
 
-  String get _hostLabel {
-    try {
-      return Uri.parse(TvDeviceLinkAuth.webUrl).host;
-    } catch (_) {
-      return 'www.forjahq.xyz';
-    }
-  }
-
   void _focus(FocusNode node) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) node.requestFocus();
     });
   }
 
-  Future<void> _openConnect() async {
-    _pollTimer?.cancel();
+  void _openConnect() {
     setState(() {
       _error = null;
-      _session = null;
-      _creating = true;
       _step = _TvLinkStep.connect;
     });
     _focus(_backFocus);
-
-    try {
-      // Call Edge directly — do not route through an autoDispose Riverpod
-      // provider with only ref.read (dispose mid-await → false "create failed").
-      final session = await TvDeviceLinkAuth.create();
-      if (!mounted) return;
-      setState(() {
-        _session = session;
-        _creating = false;
-      });
-      _beginPoll(session);
-    } on AuthException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _creating = false;
-        _error = e.message;
-        _step = _TvLinkStep.error;
-      });
-      _focus(_retryFocus);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _creating = false;
-        _error = e.toString();
-        _step = _TvLinkStep.error;
-      });
-      _focus(_retryFocus);
-    }
-  }
-
-  void _beginPoll(TvDeviceLinkSession session) {
-    _pollTimer?.cancel();
-    final interval = Duration(seconds: session.interval.clamp(3, 15));
-    _pollTimer = Timer.periodic(interval, (_) => unawaited(_pollOnce(session)));
-    unawaited(_pollOnce(session));
-  }
-
-  Future<void> _pollOnce(TvDeviceLinkSession session) async {
-    if (!mounted || _step == _TvLinkStep.linking) return;
-    final result = await TvDeviceLinkAuth.poll(session.deviceCode);
-    if (!mounted) return;
-
-    switch (result.status) {
-      case TvDeviceLinkPollStatus.pending:
-        return;
-      case TvDeviceLinkPollStatus.expired:
-      case TvDeviceLinkPollStatus.denied:
-        _pollTimer?.cancel();
-        setState(() {
-          _error = result.status == TvDeviceLinkPollStatus.expired
-              ? 'This code expired. Start again to get a new one.'
-              : 'Linking was cancelled. Start again to get a new code.';
-          _session = null;
-          _step = _TvLinkStep.error;
-        });
-        _focus(_retryFocus);
-        return;
-      case TvDeviceLinkPollStatus.error:
-        final msg = (result.error ?? '').toLowerCase();
-        // Transient poll blips stay pending; hard failures need Retry / Guest.
-        final fatal = msg.contains('already used') ||
-            msg.contains('could not reach forja') ||
-            msg.contains('not configured');
-        if (fatal) {
-          _pollTimer?.cancel();
-          setState(() {
-            _error = result.error;
-            _session = null;
-            _step = _TvLinkStep.error;
-          });
-          _focus(_retryFocus);
-        }
-        return;
-      case TvDeviceLinkPollStatus.approved:
-        _pollTimer?.cancel();
-        setState(() => _step = _TvLinkStep.linking);
-        try {
-          await SyncService.instance.signInWithBrowserTokens(
-            accessToken: result.accessToken!,
-            refreshToken: result.refreshToken!,
-          );
-          if (!mounted) return;
-          widget.onAuthenticated();
-        } catch (e) {
-          if (!mounted) return;
-          setState(() {
-            _error = e is AuthException ? e.message : e.toString();
-            _session = null;
-            _step = _TvLinkStep.error;
-          });
-          _focus(_retryFocus);
-        }
-    }
   }
 
   void _backToWelcome() {
-    _pollTimer?.cancel();
     setState(() {
-      _session = null;
       _error = null;
-      _creating = false;
       _step = _TvLinkStep.welcome;
     });
     _focus(_signInFocus);
@@ -219,22 +102,19 @@ class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
                         _TvLinkStep.welcome => _WelcomePage(
                           signInFocus: _signInFocus,
                           guestFocus: _guestFocus,
-                          onSignIn: () => unawaited(_openConnect()),
+                          onSignIn: _openConnect,
                           onGuest: widget.onContinueAsGuest,
                         ),
                         _TvLinkStep.connect => _ConnectPage(
-                          hostLabel: _hostLabel,
-                          session: _session,
-                          creating: _creating,
                           backFocus: _backFocus,
                           onBack: _backToWelcome,
+                          onAuthenticated: widget.onAuthenticated,
                         ),
-                        _TvLinkStep.linking => const _LinkingPage(),
                         _TvLinkStep.error => _ErrorPage(
                           message: _error ?? 'Something went wrong.',
                           primaryFocus: _retryFocus,
                           secondaryFocus: _guestFocus,
-                          onRetry: () => unawaited(_openConnect()),
+                          onRetry: _openConnect,
                           onGuest: widget.onContinueAsGuest,
                         ),
                       },
@@ -545,27 +425,17 @@ class _SignInAction extends StatelessWidget {
 
 class _ConnectPage extends StatelessWidget {
   const _ConnectPage({
-    required this.hostLabel,
-    required this.session,
-    required this.creating,
     required this.backFocus,
     required this.onBack,
+    required this.onAuthenticated,
   });
 
-  final String hostLabel;
-  final TvDeviceLinkSession? session;
-  final bool creating;
   final FocusNode backFocus;
   final VoidCallback onBack;
+  final VoidCallback onAuthenticated;
 
   @override
   Widget build(BuildContext context) {
-    final code = session?.userCode;
-    final display = code != null && code.length == 8
-        ? '${code.substring(0, 4)}-${code.substring(4)}'
-        : code;
-    final qrUri = session?.verificationUriComplete;
-
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 980),
@@ -585,253 +455,16 @@ class _ConnectPage extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 28),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'LINK THIS TV',
-                          style: GoogleFonts.dmMono(
-                            textStyle: _tvText(
-                              color: ForjaShellColors.brandGreen,
-                              size: 13,
-                              weight: FontWeight.w700,
-                              letterSpacing: 2.6,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text.rich(
-                          TextSpan(
-                            style: GoogleFonts.dmSans(
-                              textStyle: _tvText(
-                                color: ForjaShellColors.textSecondary,
-                                size: 22,
-                                weight: FontWeight.w500,
-                                height: 1.35,
-                              ),
-                            ),
-                            children: [
-                              const TextSpan(text: 'Open '),
-                              TextSpan(
-                                text: '$hostLabel/connect',
-                                style: _tvText(
-                                  color: ForjaShellColors.textPrimary,
-                                  size: 22,
-                                  weight: FontWeight.w700,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Enter the code or scan the QR from your phone.',
-                          style: GoogleFonts.dmSans(
-                            textStyle: _tvText(
-                              color: ForjaShellColors.textSecondary,
-                              size: 16,
-                              height: 1.45,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-                        Text(
-                          creating
-                              ? 'Preparing a code…'
-                              : 'Waiting for approval…',
-                          style: GoogleFonts.dmSans(
-                            textStyle: _tvText(
-                              color: ForjaShellColors.iconMuted,
-                              size: 15,
-                              weight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        _FlatAction(
-                          focusNode: backFocus,
-                          autofocus: true,
-                          label: 'Back',
-                          onTap: onBack,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                  _QrWithCode(
-                    creating: creating,
-                    qrUri: qrUri,
-                    displayCode: display,
-                    openInBrowser: PlatformInfo.isDesktop,
-                  ),
-                ],
+              DeviceLinkConnectView(
+                backFocusNode: backFocus,
+                autofocusBack: true,
+                onBack: onBack,
+                onAuthenticated: onAuthenticated,
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-}
-
-class _QrWithCode extends StatelessWidget {
-  const _QrWithCode({
-    required this.creating,
-    required this.qrUri,
-    required this.displayCode,
-    this.openInBrowser = false,
-  });
-
-  final bool creating;
-  final String? qrUri;
-  final String? displayCode;
-  /// Desktop only — click opens `/connect?code=` in the system browser.
-  final bool openInBrowser;
-
-  Future<void> _openUri() async {
-    final raw = qrUri;
-    if (raw == null || raw.isEmpty) return;
-    final uri = Uri.tryParse(raw);
-    if (uri == null) return;
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const size = 168.0;
-    final qr = creating || qrUri == null
-        ? SizedBox(
-            width: size + 20,
-            height: size + 20,
-            child: const Center(
-              child: SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: ForjaShellColors.brandGreen,
-                ),
-              ),
-            ),
-          )
-        : DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: QrImageView(
-                data: qrUri!,
-                version: QrVersions.auto,
-                size: size,
-                backgroundColor: Colors.white,
-                eyeStyle: const QrEyeStyle(
-                  eyeShape: QrEyeShape.square,
-                  color: Color(0xFF141414),
-                ),
-                dataModuleStyle: const QrDataModuleStyle(
-                  dataModuleShape: QrDataModuleShape.square,
-                  color: Color(0xFF141414),
-                ),
-              ),
-            ),
-          );
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (openInBrowser && !creating && qrUri != null)
-          MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: Tooltip(
-              message: 'Open link page in browser',
-              child: GestureDetector(
-                onTap: () => unawaited(_openUri()),
-                child: qr,
-              ),
-            ),
-          )
-        else
-          qr,
-        const SizedBox(height: 18),
-        if (creating || displayCode == null)
-          const SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              color: ForjaShellColors.brandGreen,
-            ),
-          )
-        else
-          Text(
-            displayCode!,
-            style: GoogleFonts.dmMono(
-              textStyle: _tvText(
-                color: ForjaShellColors.textPrimary,
-                size: 36,
-                weight: FontWeight.w700,
-                letterSpacing: 3,
-                height: 1.0,
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _LinkingPage extends StatelessWidget {
-  const _LinkingPage();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Image.asset(
-          'assets/icon/logo-dark.png',
-          width: 72,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.high,
-        ),
-        const Spacer(),
-        const SizedBox(
-          width: 28,
-          height: 28,
-          child: CircularProgressIndicator(
-            strokeWidth: 2.5,
-            color: ForjaShellColors.brandGreen,
-          ),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          'Signing you in',
-          style: GoogleFonts.dmSans(
-            textStyle: _tvText(
-              color: ForjaShellColors.textPrimary,
-              size: 24,
-              weight: FontWeight.w700,
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Creating a secure session for this TV.',
-          style: GoogleFonts.dmSans(
-            textStyle: _tvText(color: ForjaShellColors.textSecondary, size: 14),
-          ),
-        ),
-        const Spacer(),
-      ],
     );
   }
 }

@@ -6,7 +6,8 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_sections.dart';
-import 'package:forja/shared/playback/catalog_play_resolve.dart';
+import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_play_resolve.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shared/design/design.dart';
@@ -22,7 +23,7 @@ import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
-import 'package:rust/rust.dart';
+import 'package:rust/rust.dart' show RichMediaDetails, isInProgressResume;
 
 Future<T?> openHubDetails<T>(
   BuildContext context, {
@@ -70,17 +71,21 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   int _selectedSeason = 1;
   int _selectedEpisode = 1;
   bool _detailsHeroInitialFocusDone = false;
+  Map<String, dynamic>? _watchProgress;
 
   @override
   void initState() {
     super.initState();
+    CatalogWatchHistory.revision.addListener(_onWatchHistoryChanged);
     unawaited(ref.read(settingsPlaybackProvider.future));
+    unawaited(_loadWatchProgress());
     _loading = !hubMetaTmdbEnriched(widget.item);
     _load();
   }
 
   @override
   void dispose() {
+    CatalogWatchHistory.revision.removeListener(_onWatchHistoryChanged);
     _scrollController.dispose();
     _heroPlayFocus.dispose();
     _backFocus.dispose();
@@ -92,6 +97,49 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   List<CatalogVideo> get _videos => _show.videos;
 
   bool get _isMovie => hubMetaIsMovie(_show);
+
+  void _onWatchHistoryChanged() {
+    unawaited(_loadWatchProgress());
+  }
+
+  Future<void> _loadWatchProgress() async {
+    if (!mounted) return;
+    try {
+      final entries = await CatalogWatchHistory.getAll(widget.pluginId);
+      Map<String, dynamic>? hit;
+      for (final entry in entries) {
+        if (entry['metaId']?.toString() == _show.id) {
+          hit = entry;
+          break;
+        }
+      }
+      if (!mounted) return;
+      setState(() => _watchProgress = hit);
+    } catch (_) {}
+  }
+
+  Duration? _startPositionForEpisode(int episodeNumber) {
+    final progress = _watchProgress;
+    if (progress == null) return null;
+    final savedEp = (progress['episodeNumber'] as num?)?.toInt();
+    if (savedEp != null && savedEp != episodeNumber) return null;
+    final posMs = (progress['positionMs'] as num?)?.toInt() ?? 0;
+    final durMs = (progress['durationMs'] as num?)?.toInt() ?? 0;
+    if (posMs <= 5000 || !isInProgressResume(posMs, durMs)) return null;
+    final clamped =
+        (durMs > 0 && posMs > durMs - 30000) ? (durMs - 30000) : posMs;
+    return Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
+  }
+
+  bool get _canResumeSelected {
+    final progress = _watchProgress;
+    if (progress == null) return false;
+    final savedEp = (progress['episodeNumber'] as num?)?.toInt();
+    if (savedEp != null && savedEp != _selectedEpisode) return false;
+    final posMs = (progress['positionMs'] as num?)?.toInt() ?? 0;
+    final durMs = (progress['durationMs'] as num?)?.toInt() ?? 0;
+    return isInProgressResume(posMs, durMs);
+  }
 
   Future<void> _load() async {
     final seedEnriched = hubMetaTmdbEnriched(widget.item);
@@ -134,6 +182,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       _selectedSeason = firstSeason;
       _selectedEpisode = firstEp;
     });
+    unawaited(_loadWatchProgress());
   }
 
   void _scrollDetailsHeroIntoView() {
@@ -176,6 +225,11 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     final ep = episode ?? _selectedVideo();
     final epNum = ep?.episode ?? _selectedEpisode;
     final season = ep?.season ?? _selectedSeason;
+    final progress = _watchProgress;
+    final progressExtras = progress?['extras'] is Map
+        ? Map<String, dynamic>.from(progress!['extras'] as Map)
+        : const <String, dynamic>{};
+    final progressVideoId = progress?['episodeVideoId']?.toString();
     final ctx = catalogPlayContextFromMeta(
       meta: _show,
       pluginId: widget.pluginId,
@@ -183,9 +237,13 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       season: season,
       episodeNumber: epNum,
       videos: _videos,
+      episodeVideoId: progressVideoId,
+      extras: progressExtras,
+      startPosition: _startPositionForEpisode(epNum),
     );
     await runHubPlayFromContext(context: context, ctx: ctx);
     if (!mounted) return;
+    await _loadWatchProgress();
     await _afterPlayClosed();
   }
 
@@ -318,9 +376,21 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
           )
         : null;
 
+    final canResume = _canResumeSelected;
+    final progress = _watchProgress;
     final playLabel = _isMovie
-        ? 'Play'
-        : (videos.isEmpty ? 'Play' : 'Play Ep $_selectedEpisode');
+        ? (canResume ? 'Resume' : 'Play')
+        : (videos.isEmpty
+            ? (canResume ? 'Resume' : 'Play')
+            : (canResume
+                ? 'Resume Ep $_selectedEpisode'
+                : 'Play Ep $_selectedEpisode'));
+    final heroPosMs = canResume
+        ? (progress?['positionMs'] as num?)?.toInt()
+        : null;
+    final heroDurMs = canResume
+        ? (progress?['durationMs'] as num?)?.toInt()
+        : null;
 
     final isUpcoming =
         (show.status ?? '').toUpperCase() == 'NOT_YET_RELEASED';
@@ -370,6 +440,8 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
         ),
         pageBottomChild: episodePicker,
         showSeasonRail: seasons.length > 1,
+        positionMs: heroPosMs,
+        durationMs: heroDurMs,
         actionRow: DetailsHeroTvActionScope(
           tabId: MediaDetailsTv.tabId,
           itemCount: heroActionCount,

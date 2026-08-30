@@ -35,7 +35,8 @@
       "config": {
         "base": "https://api.themoviedb.org/3",
         "imageBase": "https://image.tmdb.org/t/p",
-        "apiKey": ""
+        "apiKey": "",
+        "pageSize": 20
       },
       "prelude": "_kit.js"
     }

@@ -234,7 +234,12 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       providerUrls: _s._providerExternalSubUrls,
       restrictScraped: restrictScrapedSubtitleAutoPick(
         mediaType: widget.movie?.mediaType,
-        engineCategory: widget.enginePlaySession?.category,
+        engineCategory: widget.movie != null && widget.enginePlaySession != null
+            ? engineCategoryForSession(
+                widget.enginePlaySession,
+                widget.movie!,
+              )
+            : null,
       ),
     );
 
