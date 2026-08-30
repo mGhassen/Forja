@@ -100,14 +100,33 @@ function parseVideoId(raw) {
   return raw;
 }
 
-function embedRow(embedUrl, name, referer) {
-  return {
-    url: embedUrl,
-    name: name,
-    title: name,
-    type: 'arabic_embed',
-    headers: headers(referer),
-  };
+function collectLarozaServers($, playUrl, playReferer) {
+  var items = [];
+  if ($) {
+    $('.WatchList li').each(function () {
+      var item = $(this);
+      var embedUrl = item.attr('data-embed-url') || '';
+      if (!embedUrl) return;
+      var name = (item.text() || '').trim();
+      items.push({
+        embedUrl: embedUrl,
+        referer: playUrl || playReferer,
+        name: name || 'Server ' + (items.length + 1),
+      });
+    });
+    if (!items.length) {
+      var iframe = $('iframe[src]').first();
+      var src = iframe.length ? iframe.attr('src') || '' : '';
+      if (src) {
+        items.push({
+          embedUrl: src,
+          referer: playUrl || playReferer,
+          name: 'Server 1',
+        });
+      }
+    }
+  }
+  return items;
 }
 
 function extract(ctx) {
@@ -124,30 +143,10 @@ function extract(ctx) {
       var playReferer = base + '/';
       return fetchHtml(ctx, playUrl, playReferer).then(function (got) {
         var $ = html(ctx, got.html);
-        var rows = [];
-        if ($) {
-          $('.WatchList li').each(function () {
-            var item = $(this);
-            var embedUrl = item.attr('data-embed-url') || '';
-            if (!embedUrl) return;
-            var name = (item.text() || '').trim();
-            rows.push(
-              embedRow(
-                embedUrl,
-                name || 'Server ' + (rows.length + 1),
-                playUrl,
-              ),
-            );
-          });
-          if (!rows.length) {
-            var iframe = $('iframe[src]').first();
-            var src = iframe.length ? iframe.attr('src') || '' : '';
-            if (src) {
-              rows.push(embedRow(src, 'Server 1', playUrl));
-            }
-          }
-        }
-        return rows;
+        var servers = collectLarozaServers($, playUrl, playReferer);
+        return arabicResolveEmbeds(ctx, servers, function (msg) {
+          ctx.log('larozaa: ' + msg);
+        });
       });
     })
     .catch(function (e) {

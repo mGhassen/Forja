@@ -7,7 +7,6 @@ import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/playback/hub_engine_watch_history.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
-import 'package:forja/shared/player/player/playable_source_bridge.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
@@ -356,53 +355,6 @@ Future<void> _playStremio({
 
   if (precheck is StremioPlayable) {
     try {
-      if (PlayableSourceBridge.isArabicEmbedCatalogRow(stream)) {
-        final embedUrl = stream['url']?.toString() ?? '';
-        if (embedUrl.isEmpty) return;
-        Map<String, String>? hdrs;
-        final rawHeaders = stream['headers'];
-        if (rawHeaders is Map) {
-          hdrs = {
-            for (final e in rawHeaders.entries)
-              if (e.value != null) e.key.toString(): e.value.toString(),
-          };
-        }
-        final source = StreamSource(
-          url: embedUrl,
-          title: (stream['title'] ?? stream['name'] ?? movie.title).toString(),
-          type: 'arabic_embed',
-          headers: hdrs,
-          providerId: catalogHttpPlayProviderId(stream),
-          catalogUrl: embedUrl,
-        );
-        if (!context.mounted) return;
-        await _openHubCatalogPlayer(
-          context: context,
-          movie: movie,
-          hooks: hooks,
-          season: season,
-          episode: episode,
-          open: () => AppRouter.openPlayer(
-            context,
-            streamUrl: embedUrl,
-            title: movie.title,
-            headers: hdrs,
-            movie: movie,
-            selectedSeason: episodic ? (season ?? 1) : null,
-            selectedEpisode: episodic ? (episode ?? 1) : null,
-            sources: [source],
-            streamsPrevalidated: true,
-            activeProvider: catalogHttpPlayProviderId(stream),
-            externalSubtitles: catalogStreamExternalSubtitles(stream),
-            stremioId: stremioId,
-            stremioAddonBaseUrl: stremioAddonBaseUrl,
-            enginePlaySession: hooks.session,
-            onSaveProgress: hooks.onSaveProgress,
-            hubEpisodeNumber: hooks.episodeNumber,
-          ),
-        );
-        return;
-      }
       final proxied = await proxyCatalogHttpStreamIfNeeded(
         streamUrl: precheck.streamUrl,
         headers: precheck.headers,

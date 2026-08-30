@@ -4,7 +4,7 @@
 
 ## What it is
 
-The Arabic tab is a catalog hub from the ForjaHQ **Arabic** pack plugin `arabic-hub` (`kind: catalog`). Layout matches the Home hub shell: cinematic spotlight hero with a bleed row, Continue Watching slot, ranked Brstej, then category rails. The pack owns browse, search, details, and stream resolve for **Larozaa**, **DimaToon**, and **Brstej**. The host only renders Catalog Shell + a thin details/player UI (`surface: arabic`) and resolves generic embeds — it does not scrape those sites. The tab only appears in **Settings → Features** while the Arabic pack/plugin is enabled under **Sources → Forja → Hubs** (Features visibility defaults off).
+The Arabic tab is a catalog hub from the ForjaHQ **Arabic** pack plugin `arabic-hub` (`kind: catalog`). Layout matches the Home hub shell: cinematic spotlight hero with a bleed row, Continue Watching slot, ranked Brstej, then category rails. The pack owns browse, search, and details for **Larozaa**, **DimaToon**, and **Brstej**. Playback uses the **Larozaa**, **DimaToon**, and **Brstej** Forja provider plugins — they extract direct HLS/MP4 in JS (same path as Videasy). The host only renders Catalog Shell + a thin details/player UI (`surface: arabic`). The tab only appears in **Settings → Features** while the Arabic pack/plugin is enabled under **Sources → Forja → Hubs** (Features visibility defaults off).
 
 ## How to open it
 
@@ -20,7 +20,7 @@ Enable the ForjaHQ Arabic pack under **Settings → Sources → Forja → Hubs**
 
 ## Tips
 
-- Playback comes from the hub pack’s `stream` action — not TMDB [Media details](../movies-tv/media-details.md) Sources
+- Playback uses **Settings → Sources → Forja** provider plugins (Larozaa / DimaToon / Brstej) with **Forja Auto Play** or the hub **Sources** panel — direct streams, not embed pages
 - Pair with [Anime Arabic](anime-arabic.md) for dubbed anime (separate host feature)
 
 ## Related

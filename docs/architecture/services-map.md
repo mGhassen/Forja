@@ -133,7 +133,7 @@ Arabic / Anime Arabic: **hybrid** — HTTP+PACKER parse → Rust; WebView fallba
 | `MangaService` | 453 → ~250 | `manga` | Parse weebcentral HTML (fetch+parse in Rust) | ✅ |
 | `BooksService` | 245 → ~90 | `books` | Libgen-style HTML scrape | ✅ |
 | `BestSimilarScraper` | 454 → ~230 | `catalog` | Autocomplete JSON + detail HTML parse | ✅ |
-| `ArabicService` | — | deleted | Scrapers moved to `plugins/hubs/arabic`; host uses `EmbedStreamResolve` for embeds only | ✅ |
+| `ArabicService` | — | deleted | Scrapers in `plugins/hubs/arabic`; streams via provider JS (`larozaa` / `brstej` / `dimatoon`) | ✅ |
 | `AnimeArabicService` + `AnimeArabicExtractor` | 1242 | `anime-arabic` (new) | Browse/scrape parse → Rust; iframe/WebView paths → host | ⏭️ |
 | `AudiobookService` + `audiobook_scrapers` | 1328 | `audiobook` (new) | Multi-platform HTML/API scrape | ⏭️ |
 | `ComicsService` + scrapers | 1020 | extend `crates/proxy/comic` or `comics` | `ReadComicsOnlineScraper`, `ComicPageExtractor` | ⏭️ |
@@ -223,7 +223,7 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 |-----------|------|------------|---------------|
 | `StreamExtractor` | `shared/extractors/core/stream_extractor.dart` | C3 WebView embed sniff | ❌ Host unless crypto reversed |
 | `AmriExtractor` | `shared/extractors/providers/amri/amri_extractor.dart` | C3 WebView | ❌ Host |
-| Arabic hub pack | `plugins/hubs/arabic` | C2 multi-site scrape in pack JS | ✅ Host: thin UI + `EmbedStreamResolve` |
+| Arabic hub pack | `plugins/hubs/arabic` | C2 multi-site scrape in pack JS | ✅ Host: thin UI; streams via provider plugins |
 | `NuvioService` / `NuvioScraper` | `shared/nuvio/nuvio_service.dart` | C4 `flutter_js` | ❌ Permanent host |
 | `VideasyExtractor` | `shared/extractors/providers/videasy/videasy_extractor.dart` | C5 WASM | ❌ WASM host in Dart |
 | Per-provider profiles | `shared/extractors/providers/<id>/` | HostRequired sniff policy | ❌ Host |

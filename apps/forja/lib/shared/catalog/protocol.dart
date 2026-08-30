@@ -306,7 +306,7 @@ class CatalogStream {
 
   final String url;
   final String name;
-  /// `direct` (mp4/hls) or `embed` (needs [EmbedStreamResolve]).
+  /// `direct` (mp4/hls) or legacy `embed` (resolved upstream in the pack/provider).
   final String type;
 
   bool get isDirect => type == 'direct' || type == 'hls' || type == 'mp4';

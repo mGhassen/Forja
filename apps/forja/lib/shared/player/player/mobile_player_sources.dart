@@ -582,22 +582,6 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       return (openUrl: source.url, headers: headers, resolved: source);
     }
 
-    if (source.type == 'arabic_embed') {
-      final result = await EmbedStreamResolve.resolve(source.url);
-      if (result == null) return null;
-      openUrl = result.url;
-      headers = result.headers;
-      resolved = StreamSource(
-        url: result.url,
-        title: source.title,
-        type: result.url.contains('.m3u8')
-            ? 'hls'
-            : result.url.contains('.mpd')
-            ? 'dash'
-            : 'mp4',
-      );
-    }
-
     if (animeHlsNeedsPngStripFor(openUrl, sourceKey: pid)) {
       final stripped = await applyAnimePngStripIfNeeded(
         StreamSource(

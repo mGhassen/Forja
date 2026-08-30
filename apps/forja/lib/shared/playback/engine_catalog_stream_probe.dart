@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/playback/sources_panel_stream_probe.dart';
-import 'package:forja/shared/player/player/playable_source_bridge.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 
@@ -66,32 +65,6 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
     messageNotifier?.value = probeTotal > 1
         ? 'Probing streams ($probeOrdinal/$probeTotal)…'
         : 'Probing streams…';
-    final isArabicEmbed = PlayableSourceBridge.isArabicEmbedCatalogRow(row);
-    final catalogUrl = row['url']?.toString() ?? '';
-    if (isArabicEmbed) {
-      if (catalogUrl.isEmpty) continue;
-      final rawHeaders = row['headers'];
-      Map<String, String>? hdrs;
-      if (rawHeaders is Map) {
-        hdrs = {
-          for (final e in rawHeaders.entries)
-            if (e.value != null) e.key.toString(): e.value.toString(),
-        };
-      }
-      sources.add(
-        normalizeStreamSourcePlayUrl(
-          StreamSource(
-            url: catalogUrl,
-            title: (row['title'] ?? row['name'] ?? 'Forja').toString(),
-            type: 'arabic_embed',
-            headers: hdrs,
-            providerId: catalogHttpPlayProviderId(row),
-            catalogUrl: catalogUrl,
-          ),
-        ),
-      );
-      continue;
-    }
     final proxied = await proxyCatalogHttpStreamIfNeeded(
       streamUrl: check.streamUrl,
       headers: check.headers,

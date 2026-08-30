@@ -153,7 +153,7 @@ Optional Arabic pack — browse/search/details/stream from Larozaa + DimaToon + 
 | 3 | R70-A47 | Hub metas declare `open: { surface, id, … }`; host `openCatalogMetaItem` switches only on surface (no pack/scraper id keys) | ✅ |
 | 4 | R70-A48 | Hub open uses shell meta immediately (no await pack `details`/enrich); same plugin+id re-entry ignored until route pops — no double details / 429 stall | ✅ |
 | 5 | R70-A51 | Arabic hub `details` returns `meta.videos` (opaque ids); host details UI loads via `CatalogRuntime` only — no host scrapers | ✅ |
-| 6 | R70-A52 | Arabic hub `stream` returns direct/embed URLs; host player resolves embeds via generic `EmbedStreamResolve` | ✅ |
+| 6 | R70-A52 | Arabic providers extract direct HLS/MP4 in JS (Larozaa/Brstej unpack embed pages); host plays like Videasy — no `arabic_embed` hop | ✅ |
 | 7 | R70-A53 | Host `ArabicService` / scraper string switches deleted; Arabic pack owns site HTML | ✅ |
 
 ---

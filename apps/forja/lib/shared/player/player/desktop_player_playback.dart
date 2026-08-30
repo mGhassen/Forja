@@ -61,34 +61,6 @@ mixin _DesktopPlayerPlayback
         );
       }
 
-      if (PlayableSourceBridge.isArabicEmbed(_s._playableSources, i, source)) {
-        debugPrint('[Player] Extracting arabic embed: ${source.title}');
-        final result = await EmbedStreamResolve.resolve(source.url);
-        if (_fallbackAborted(runGen)) return false;
-        if (result == null) {
-          debugPrint('[Player] Arabic extract failed for ${source.title}');
-          _s._statusController.upsert(
-            'source-$i',
-            source.title,
-            kind: StatusRouletteKind.failed,
-            dismissAfter: const Duration(milliseconds: 1200),
-          );
-          _s._markSourceFailed(i);
-          _s._currentFallbackSourceIndex++;
-          continue;
-        }
-        source = StreamSource(
-          url: result.url,
-          title: source.title,
-          type: result.url.contains('.m3u8')
-              ? 'hls'
-              : result.url.contains('.mpd')
-              ? 'dash'
-              : 'mp4',
-        );
-        _s._currentSources![i] = source;
-      }
-
       try {
         _s._resetTrackAutoSelectForSource();
         _s._durationNotifier.value = Duration.zero;

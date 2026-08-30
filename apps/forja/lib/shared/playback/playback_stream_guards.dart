@@ -159,6 +159,12 @@ String? hlsProxyTargetUrl(String url) {
   return target.isEmpty ? null : target;
 }
 
+/// Upstream catalog URL for classify / headers — unwrap local hls-proxy play URLs.
+String playbackStreamIdentityUrl(String url) {
+  final trimmed = url.trim();
+  return (hlsProxyTargetUrl(trimmed) ?? trimmed).trim();
+}
+
 /// Durable catalog identity for Source panel / session cache - never loopback.
 String? durableStreamCatalogUrl({
   String? catalogUrl,

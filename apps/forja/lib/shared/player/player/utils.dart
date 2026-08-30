@@ -12,6 +12,7 @@ export 'package:forja/shared/playback/playback_stream_guards.dart'
         enginePluginIdFromCatalogBase,
         hlsProxyTargetUrl,
         isVideasyCdnStreamUrl,
+        playbackStreamIdentityUrl,
         playbackUrlsEquivalent,
         streamSourceMatchesPlaying;
 import 'package:forja/shared/extractors/providers/videasy/videasy_extractor.dart';

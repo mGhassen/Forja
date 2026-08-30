@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-providers",
   "name": "ForjaHQ Providers",
-  "version": "1.5.26",
+  "version": "1.5.27",
   "plugins": [
     {
       "id": "videasy",
@@ -114,6 +114,7 @@
       "id": "larozaa",
       "name": "Larozaa",
       "entry": "larozaa.js",
+      "prelude": "_arabic_stream_unpack.js",
       "types": [
         "arabic"
       ],
@@ -145,6 +146,7 @@
       "id": "brstej",
       "name": "Brstej",
       "entry": "brstej.js",
+      "prelude": "_arabic_stream_unpack.js",
       "types": [
         "arabic"
       ],
