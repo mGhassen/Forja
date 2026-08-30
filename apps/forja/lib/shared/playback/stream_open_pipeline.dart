@@ -5,10 +5,7 @@ import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 
 /// Leaf open technique (Stage 3).
-enum StreamOpenAction {
-  openDirect,
-  openPngStrip,
-}
+enum StreamOpenAction { openDirect, openPngStrip }
 
 /// Outcome of executing a step - feeds Stage 6 re-branch.
 enum StreamOpenStepResult {
@@ -52,8 +49,8 @@ class StreamOpenPipeline {
     required this.isHls,
     required this.isProgressive,
     String Function(String url, Map<String, String> headers)? buildStripProxy,
-  })  : _headers = headers,
-        _buildStripProxy = buildStripProxy;
+  }) : _headers = headers,
+       _buildStripProxy = buildStripProxy;
 
   final String catalogUrl;
   final String? providerId;
@@ -63,7 +60,7 @@ class StreamOpenPipeline {
   final bool isProgressive;
   final Map<String, String> _headers;
   final String Function(String url, Map<String, String> headers)?
-      _buildStripProxy;
+  _buildStripProxy;
 
   final Set<StreamOpenAction> _tried = {};
   StreamOpenStep? _current;
@@ -80,7 +77,7 @@ class StreamOpenPipeline {
     String Function(String url, Map<String, String> headers)? buildStripProxy,
   }) async {
     final catalog = normalizePlaybackStreamUrl(
-      (hlsProxyTargetUrl(catalogUrl) ?? catalogUrl).trim(),
+      playbackStreamIdentityUrl(catalogUrl),
     );
     final hdrs = resolvePlaybackHttpHeaders(
       headers,
@@ -93,7 +90,8 @@ class StreamOpenPipeline {
 
     final lower = catalog.toLowerCase();
     final isHls = urlLooksLikeHls(catalog);
-    final isProgressive = !isHls &&
+    final isProgressive =
+        !isHls &&
         (lower.contains('.mp4') ||
             lower.contains('.mkv') ||
             lower.contains('.webm') ||
@@ -232,8 +230,7 @@ class StreamOpenPipeline {
     return null;
   }
 
-  StreamOpenAction? _once(StreamOpenAction a) =>
-      _tried.contains(a) ? null : a;
+  StreamOpenAction? _once(StreamOpenAction a) => _tried.contains(a) ? null : a;
 
   Future<StreamOpenStep?> _materialize(StreamOpenAction action) async {
     switch (action) {

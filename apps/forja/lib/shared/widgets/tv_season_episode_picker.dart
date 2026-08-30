@@ -886,6 +886,8 @@ class _EpisodeCard extends StatefulWidget {
   static const double _titleLineHeight = 18; // ceil(14 * 1.25)
   static const double _dateBlockHeight = _metaGap + 15; // ceil(12 * 1.2)
   static const double _overviewBlockHeight = _metaGap + 34; // ceil(12 * 1.4 * 2)
+  // macOS/desktop font metrics can exceed ceil budgets by ~1px inside ListView rows.
+  static const double _layoutSlack = 1;
 
   static double get thumbHeight => (cardWidth * 9 / 16).ceilToDouble();
 
@@ -897,7 +899,7 @@ class _EpisodeCard extends StatefulWidget {
     var h = thumbHeight + _bodyTopGap + _titleLineHeight;
     if (showDate) h += _dateBlockHeight;
     if (showOverview) h += _overviewBlockHeight;
-    return h;
+    return h + _layoutSlack;
   }
 
   static double rowScrollerHeight({

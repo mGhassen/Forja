@@ -129,7 +129,9 @@ class PlayableSource {
   StreamSource toStreamSource() => StreamSource(
     url: url,
     title: title,
-    type: _containerToLegacyType(container),
+    type: isArabicEmbed
+        ? 'arabic_embed'
+        : _containerToLegacyType(container),
     headers: headers.isEmpty ? null : headers,
     providerId: providerId.isEmpty ? null : providerId,
   );

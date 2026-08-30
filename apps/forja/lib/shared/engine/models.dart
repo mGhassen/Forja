@@ -850,10 +850,12 @@ Map<String, dynamic>? mapEngineStream({
       raw['requiresProxy'] == true ||
       raw['requires_proxy'] == true ||
       (Uri.tryParse(url)?.host.toLowerCase().contains('111477') ?? false);
+  final typeHint = (raw['type'] ?? '').toString().trim();
   return {
     'url': url,
     'title': cardTitle,
     'name': addonName,
+    if (typeHint.isNotEmpty) 'type': typeHint,
     if (desc.isNotEmpty) 'description': desc,
     'quality': ?quality,
     'language': ?language,

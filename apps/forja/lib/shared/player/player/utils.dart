@@ -646,7 +646,8 @@ Future<String?> openCatalogHttpStreamWithPipeline(
   final playHeaders = proxied.headers;
   final pid = providerId ?? catalogHttpPlayProviderId(stream);
   final catalog = (hlsProxyTargetUrl(playUrl) ?? playUrl).trim();
-  final isHls = urlLooksLikeHls(playUrl) ||
+  final isHls =
+      urlLooksLikeHls(playUrl) ||
       urlLooksLikeHls(catalog) ||
       isLocalLoopbackPlayUrl(playUrl);
   if (!isHls) {
@@ -964,8 +965,8 @@ catalogPanelSelectionFromStream(Map<String, dynamic> stream) {
   final kind = (base != null && base.startsWith('nuvio:'))
       ? 'nuvio'
       : (base != null && base.startsWith('engine:'))
-          ? 'engine'
-          : 'stremio';
+      ? 'engine'
+      : 'stremio';
   return (
     catalogUrl: catalogUrl,
     addonBase: base,

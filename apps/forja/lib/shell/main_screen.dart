@@ -195,7 +195,12 @@ class _MainScreenState extends ConsumerState<MainScreen>
       _forceEvictSiblingTab(id);
       if (_mountedTabIds.length < before) changed = true;
     }
-    if (changed && mounted) setState(() {});
+    if (!changed || !mounted) return;
+    // Defer — purge runs while the player route is mounting; syncing mounted
+    // tabs in the same frame disposes hub widgets still handling focus events.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _onPlayerResourcePurge() {

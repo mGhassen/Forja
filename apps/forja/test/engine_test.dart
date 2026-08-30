@@ -1969,6 +1969,27 @@ void main() {
       expect(mapped['_addonName'], 'Videasy · Vidlink');
     });
 
+    test('preserves arabic_embed type for embed extractors', () {
+      final brstej = EnginePlugin.fromJson({
+        'id': 'brstej',
+        'name': 'Brstej',
+        'entry': 'brstej.js',
+        'kind': 'http',
+      });
+      final mapped = mapEngineStream(
+        raw: {
+          'url': 'https://hd1.hdup20.com/embed-abc.html',
+          'name': 'Server 1',
+          'type': 'arabic_embed',
+        },
+        plugin: brstej,
+        mediaTitle: 'Show',
+        type: 'movie',
+        year: '2024',
+      )!;
+      expect(mapped['type'], 'arabic_embed');
+    });
+
     test('Megaplay bracket names avoid plugin duplication', () {
       final megaplay = EnginePlugin.fromJson({
         'id': 'megaplay',

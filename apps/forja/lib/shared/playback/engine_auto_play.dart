@@ -91,7 +91,8 @@ Future<void> switchEpisodeViaEngineAutoPlay({
   List<PlayerHubEpisode>? hubEpisodes,
 }) {
   final s = session;
-  final category = s?.category ??
+  final category =
+      s?.category ??
       EngineCategories.panelCategoryFor(mediaType: movie.mediaType);
   return runEngineAutoPlay(
     context: context,
@@ -188,7 +189,8 @@ Future<void> runEngineAutoPlay({
   void Function(
     List<Map<String, dynamic>> streams,
     Set<String> fetchedPluginIds,
-  )? onCacheUpdated,
+  )?
+  onCacheUpdated,
   void Function(EngineAutoPlayPick pick)? onPick,
   VoidCallback? onCancelUi,
 }) async {
@@ -199,14 +201,16 @@ Future<void> runEngineAutoPlay({
     panelCategory: engineCategory,
     hasAnimeIds: anilistId != null || malId != null,
   );
-  final session = enginePlaySession ??
+  final session =
+      enginePlaySession ??
       EnginePlaySession(
         category: category,
         anilistId: anilistId,
         malId: malId,
         kisskhId: kisskhId,
         kisskhEpisodeIdByNumber: {
-          if (kisskhEpisodeId != null && episode != null) episode: kisskhEpisodeId,
+          if (kisskhEpisodeId != null && episode != null)
+            episode: kisskhEpisodeId,
         },
         arabicVideoIdByEpisode: {
           if (arabicVideoId != null &&
@@ -247,11 +251,11 @@ Future<void> runEngineAutoPlay({
   var fetchedIds = <String>{};
 
   List<ChangeNotifier> overlayNotifiers() => [
-        fadeOutNotifier,
-        messageNotifier,
-        failureNotifier,
-        probeNotifier,
-      ];
+    fadeOutNotifier,
+    messageNotifier,
+    failureNotifier,
+    probeNotifier,
+  ];
 
   void dismissLoading() {
     final ctx = loadingDialogContext;
@@ -350,7 +354,8 @@ Future<void> runEngineAutoPlay({
 
     final pinPlugin = preferredPluginId?.trim();
     final resumeAt = startPosition;
-    var pinActive = pinPlugin != null &&
+    var pinActive =
+        pinPlugin != null &&
         pinPlugin.isNotEmpty &&
         resumeAt != null &&
         resumeAt > Duration.zero;
@@ -452,9 +457,7 @@ Future<void> runEngineAutoPlay({
             id: pluginIds[i],
             label: labelFor(pluginIds[i]),
             status: statusById[pluginIds[i]]!,
-            isPreferred: pinActive
-                ? pluginIds[i] == pinPlugin
-                : i == 0,
+            isPreferred: pinActive ? pluginIds[i] == pinPlugin : i == 0,
           ),
       ];
     }
@@ -474,8 +477,9 @@ Future<void> runEngineAutoPlay({
         } else if (!fetchedIds.contains(id)) {
           statusById[id] = StreamProviderProbeStatus.pending;
         } else {
-          final hasRows =
-              streams.any((s) => engineStreamBelongsToPlugin(s, id));
+          final hasRows = streams.any(
+            (s) => engineStreamBelongsToPlugin(s, id),
+          );
           statusById[id] = hasRows
               ? StreamProviderProbeStatus.pending
               : StreamProviderProbeStatus.failed;
@@ -900,6 +904,7 @@ Future<void> _playFromProbedSources({
       fadeTransition: ctx != null,
     );
   }
+
   if (ctx != null && ctx.mounted) {
     await crossfadeLoadingOverlayToPlayer(
       loadingDialogContext: ctx,
@@ -1000,6 +1005,7 @@ Future<void> _playResolveRow({
       fadeTransition: ctx != null,
     );
   }
+
   if (ctx != null && ctx.mounted) {
     await crossfadeLoadingOverlayToPlayer(
       loadingDialogContext: ctx,

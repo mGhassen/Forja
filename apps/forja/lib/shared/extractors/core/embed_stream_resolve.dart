@@ -25,7 +25,10 @@ abstract final class EmbedStreamResolve {
           'Referer': origin.isNotEmpty ? '$origin/' : embedUrl,
           'Origin': origin,
         };
-        final proxyUrl = LocalServerService().getHlsProxyUrl(directUrl, headers);
+        final proxyUrl = LocalServerService().getHlsProxyUrl(
+          directUrl,
+          headers,
+        );
         return ExtractedMedia(url: proxyUrl, headers: {});
       }
     } else {
@@ -41,8 +44,10 @@ abstract final class EmbedStreamResolve {
       );
       if (result == null) return null;
       if (result.headers.isNotEmpty) {
-        final proxyUrl =
-            LocalServerService().getHlsProxyUrl(result.url, result.headers);
+        final proxyUrl = LocalServerService().getHlsProxyUrl(
+          result.url,
+          result.headers,
+        );
         return ExtractedMedia(
           url: proxyUrl,
           audioUrl: result.audioUrl,

@@ -17,16 +17,15 @@ void main() {
   group('isStreamUrlTokenExpired', () {
     test('rejects expired CloudStream token URLs', () {
       final token = _jwtWithExp(1_700_000_000); // 2023
-      final url =
-          'https://cdn.example/pl/x/master.m3u8?token=$token';
+      final url = 'https://cdn.example/pl/x/master.m3u8?token=$token';
       expect(isStreamUrlTokenExpired(url), isTrue);
       expect(isUnplayableCachedStreamUrl(url), isTrue);
     });
 
     test('accepts fresh token beyond skew', () {
       final now = DateTime.now().toUtc();
-      final exp = now.add(const Duration(hours: 1)).millisecondsSinceEpoch ~/
-          1000;
+      final exp =
+          now.add(const Duration(hours: 1)).millisecondsSinceEpoch ~/ 1000;
       final url =
           'https://cdn.example/pl/x/master.m3u8?token=${_jwtWithExp(exp)}';
       expect(isStreamUrlTokenExpired(url, now: now), isFalse);
@@ -35,12 +34,16 @@ void main() {
 
     test('rejects within skew window', () {
       final now = DateTime.now().toUtc();
-      final exp = now.add(const Duration(seconds: 30)).millisecondsSinceEpoch ~/
-          1000;
+      final exp =
+          now.add(const Duration(seconds: 30)).millisecondsSinceEpoch ~/ 1000;
       final url =
           'https://cdn.example/content/a/b/page-0.html?token=${_jwtWithExp(exp)}';
       expect(
-        isStreamUrlTokenExpired(url, now: now, skew: const Duration(minutes: 2)),
+        isStreamUrlTokenExpired(
+          url,
+          now: now,
+          skew: const Duration(minutes: 2),
+        ),
         isTrue,
       );
     });
@@ -75,7 +78,10 @@ void main() {
     test('direct HTTP(S) streams are NOT torrents', () {
       expect(isTorrentStreamUrl('https://cdn.example/stream.m3u8'), isFalse);
       expect(isTorrentStreamUrl('https://cdn.example/movie.mp4'), isFalse);
-      expect(isTorrentStreamUrl('http://127.0.0.1:8080/hls/index.m3u8'), isFalse);
+      expect(
+        isTorrentStreamUrl('http://127.0.0.1:8080/hls/index.m3u8'),
+        isFalse,
+      );
       expect(isTorrentStreamUrl(''), isFalse);
     });
   });
@@ -89,10 +95,7 @@ void main() {
     });
 
     test('unknown loopback stays unplayable', () {
-      expect(
-        isUnplayableCachedStreamUrl('http://127.0.0.1:9/random'),
-        isTrue,
-      );
+      expect(isUnplayableCachedStreamUrl('http://127.0.0.1:9/random'), isTrue);
     });
   });
 }

@@ -230,9 +230,7 @@ class _CatalogShellState extends State<CatalogShell>
     });
     final packSourceUrl = (await PluginRegistry.instance.findPlugin(
       widget.pluginId,
-    ))
-        ?.pack
-        .sourceUrl;
+    ))?.pack.sourceUrl;
     if (!mounted) return;
     CatalogVerticalFiltersRegistry.syncFromLayout(
       tabId: _pageKey,
@@ -468,12 +466,13 @@ class _CatalogShellState extends State<CatalogShell>
     final movie = hubNative ? null : catalogMetaToMovie(item);
     final mediaHint = (item.tmdbMediaType ?? '').trim().toLowerCase();
     final badge = (item.badge ?? '').trim().toUpperCase();
-    final tmdbMediaType = movie?.mediaType ??
+    final tmdbMediaType =
+        movie?.mediaType ??
         (mediaHint == 'movie' || mediaHint == 'tv'
             ? mediaHint
             : (badge == 'MOVIE' || badge == 'FILM' || badge == 'HOLLYWOOD'
-                ? 'movie'
-                : 'tv'));
+                  ? 'movie'
+                  : 'tv'));
     final tmdbSearch = item.ids['tmdbSearch']?.toString().trim();
     return HubHeroSlide(
       id: item.id,
@@ -574,8 +573,7 @@ class _CatalogShellState extends State<CatalogShell>
 
   bool get _isHomeTab => widget.tabId == 'home' || widget.tabId == null;
 
-  bool get _usesHomeMovieRails =>
-      _isHomeTab || widget.tabId == 'arabic';
+  bool get _usesHomeMovieRails => _isHomeTab || widget.tabId == 'arabic';
 
   /// Assigns monotonic [sortOrder] values for TV row registry from layout order.
   Map<String, int> _planTvRowOrders({
@@ -587,8 +585,9 @@ class _CatalogShellState extends State<CatalogShell>
 
     // Hero bleed row (Featured under spotlight) is always the first catalog row.
     if (bleedSpec != null) {
-      final bleedWidgetId =
-          (bleedSpec['id'] ?? bleedId ?? '').toString().trim();
+      final bleedWidgetId = (bleedSpec['id'] ?? bleedId ?? '')
+          .toString()
+          .trim();
       if (bleedWidgetId.isNotEmpty) {
         orders[bleedWidgetId] = order++;
       }
@@ -605,8 +604,7 @@ class _CatalogShellState extends State<CatalogShell>
           spec['hideWhenBleed'] == true) {
         continue;
       }
-      if (spec['hideWhenTypeFilter'] == true &&
-          _chromeHidesTypeFilterRail()) {
+      if (spec['hideWhenTypeFilter'] == true && _chromeHidesTypeFilterRail()) {
         continue;
       }
       if (!_layoutWidgetCountsForTv(spec)) continue;
@@ -730,11 +728,7 @@ class _CatalogShellState extends State<CatalogShell>
     VoidCallback? tvFocusUp,
   }) {
     if (_usesHomeMovieRails) {
-      return _homeMovieRail(
-        spec,
-        tvRowOrder: tvRowOrder,
-        tvFocusUp: tvFocusUp,
-      );
+      return _homeMovieRail(spec, tvRowOrder: tvRowOrder, tvFocusUp: tvFocusUp);
     }
     final id = (spec['id'] ?? '').toString();
     final mood = _moods[(spec['moodSource'] ?? '').toString()] ?? '';
@@ -992,10 +986,7 @@ class _CatalogShellState extends State<CatalogShell>
               item,
               index,
               rowId: resultsRowId,
-              onUpEdge: tvResultsUpToChips(
-                context,
-                chipRowId: chipRowId,
-              ),
+              onUpEdge: tvResultsUpToChips(context, chipRowId: chipRowId),
             ),
           ),
         ],
@@ -1018,10 +1009,7 @@ class _CatalogShellState extends State<CatalogShell>
           bleedRowId: heroBleedRowId,
         );
       case 'rail':
-        return _railSection(
-          spec,
-          tvRowOrder: _tvOrder(tvOrders, id),
-        );
+        return _railSection(spec, tvRowOrder: _tvOrder(tvOrders, id));
       case 'ranked':
         return _railSection(
           spec,
@@ -1040,10 +1028,7 @@ class _CatalogShellState extends State<CatalogShell>
             tvRowOrder: _tvOrder(tvOrders, '$id-chips'),
           );
         }
-        return _moodSection(
-          spec,
-          tvRowOrder: _tvOrder(tvOrders, '$id-chips'),
-        );
+        return _moodSection(spec, tvRowOrder: _tvOrder(tvOrders, '$id-chips'));
       case 'host.continue':
         return CatalogHostContinue(
           tabId: widget.tabId ?? 'home',
@@ -1057,9 +1042,7 @@ class _CatalogShellState extends State<CatalogShell>
         return _isHomeTab ? const CatalogHostTrakt() : null;
       case 'host.genre_rows':
         return _isHomeTab
-            ? CatalogHostGenreRows(
-                tvRowOrderBase: _tvOrder(tvOrders, id),
-              )
+            ? CatalogHostGenreRows(tvRowOrderBase: _tvOrder(tvOrders, id))
             : null;
       case 'host.vertical_filters':
         return null;
@@ -1105,8 +1088,7 @@ class _CatalogShellState extends State<CatalogShell>
       }
       final bleed = bleedSpec;
       final tvOrders = _planTvRowOrders(bleedSpec: bleed, bleedId: bleedId);
-      final bleedRowId =
-          bleed == null ? null : (bleed['id'] ?? '').toString();
+      final bleedRowId = bleed == null ? null : (bleed['id'] ?? '').toString();
       final Widget? bleedChild = bleed == null
           ? null
           : (_usesHomeMovieRails
