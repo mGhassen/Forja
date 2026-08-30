@@ -69,6 +69,19 @@ class _CatalogShellState extends State<CatalogShell>
   final Map<String, Future<List<CatalogMetaItem>>> _metaRailFutures = {};
   final Map<String, Future<List<Movie>>> _movieRailFutures = {};
 
+  /// Pack `feed` action — one JS call claims across spotlight / featured / …
+  bool _pageUsesFeed = false;
+  Map<String, List<CatalogMetaItem>> _feedRails = {};
+  String _feedCacheKey = '';
+  Future<Map<String, List<CatalogMetaItem>>>? _feedLoadFuture;
+
+  static const Set<String> _packFeedRailIds = {
+    'spotlight',
+    'featured',
+    'popular',
+    'new_releases',
+  };
+
   /// Next [_railFuture] / [_homeMovieFuture] miss goes through `forceRefresh`.
   bool _forceNextRails = false;
 
@@ -128,6 +141,9 @@ class _CatalogShellState extends State<CatalogShell>
   void _invalidateRailFutures() {
     _metaRailFutures.clear();
     _movieRailFutures.clear();
+    _feedRails = {};
+    _feedCacheKey = '';
+    _feedLoadFuture = null;
   }
 
   void _publishScroll() {
@@ -190,7 +206,9 @@ class _CatalogShellState extends State<CatalogShell>
 
     final pages = envelope.data!['pages'] as Map;
     final page = pages[_pageKey] ?? pages.values.first;
-    final rawWidgets = (page as Map)['widgets'] as List;
+    final pageMap = Map<String, dynamic>.from(page as Map);
+    _pageUsesFeed = pageMap['feed'] == true;
+    final rawWidgets = pageMap['widgets'] as List;
     final widgets = <Map<String, dynamic>>[
       for (final w in rawWidgets)
         if (w is Map) Map<String, dynamic>.from(w),
@@ -294,6 +312,68 @@ class _CatalogShellState extends State<CatalogShell>
     return envelope.items;
   }
 
+  String? _packRailId(Map<String, dynamic> spec) {
+    final rail = (spec['rail'] ?? '').toString().trim();
+    return rail.isEmpty ? null : rail;
+  }
+
+  bool _isPackFeedRail(Map<String, dynamic> spec) {
+    if (!_pageUsesFeed) return false;
+    final rail = _packRailId(spec);
+    return rail != null && _packFeedRailIds.contains(rail);
+  }
+
+  String _feedMemoKey() =>
+      'feed|${catalogChromeFilterEpoch(widget.tabId)}|$_chromeEpoch';
+
+  Future<Map<String, List<CatalogMetaItem>>> _ensureFeedLoaded({
+    bool force = false,
+  }) {
+    final key = _feedMemoKey();
+    if (!force && _feedCacheKey == key && _feedRails.isNotEmpty) {
+      return Future.value(_feedRails);
+    }
+    final pending = _feedLoadFuture;
+    if (!force && pending != null) return pending;
+    final load = _fetchFeed(forceRefresh: force).then((map) {
+      _feedRails = map;
+      _feedCacheKey = key;
+      return map;
+    });
+    _feedLoadFuture = load;
+    return load;
+  }
+
+  Future<Map<String, List<CatalogMetaItem>>> _fetchFeed({
+    bool forceRefresh = false,
+  }) async {
+    final envelope = await CatalogRuntime.instance.run(
+      pluginId: widget.pluginId,
+      action: 'feed',
+      params: catalogParamsWithFilters(
+        const {},
+        filters: catalogChromeFilters(widget.tabId),
+      ),
+      forceRefresh: forceRefresh,
+    );
+    if (!envelope.ok) return const {};
+    final data = envelope.data;
+    if (data == null) return const {};
+    final rails = data['rails'];
+    if (rails is! Map) return const {};
+    final out = <String, List<CatalogMetaItem>>{};
+    for (final entry in rails.entries) {
+      final items = entry.value;
+      if (items is! List) continue;
+      out[entry.key.toString()] = [
+        for (final it in items)
+          if (it is Map)
+            CatalogMetaItem.fromJson(Map<String, dynamic>.from(it)),
+      ];
+    }
+    return out;
+  }
+
   String _railMemoKey(Map<String, dynamic> spec) {
     final id = (spec['id'] ?? spec['rail'] ?? '').toString();
     final moodSrc = (spec['moodSource'] ?? '').toString();
@@ -302,13 +382,25 @@ class _CatalogShellState extends State<CatalogShell>
     return '$id|$moodSrc|$mood|$chrome|$_chromeEpoch';
   }
 
+  Future<List<CatalogMetaItem>> _itemsForRailSpec(
+    Map<String, dynamic> spec, {
+    bool forceRefresh = false,
+  }) async {
+    if (_isPackFeedRail(spec)) {
+      final railId = _packRailId(spec)!;
+      final feed = await _ensureFeedLoaded(force: forceRefresh);
+      return feed[railId] ?? const [];
+    }
+    return _fetchRail(spec, forceRefresh: forceRefresh);
+  }
+
   /// Same Future across rebuilds until chrome / mood / tab refresh invalidates.
   Future<List<CatalogMetaItem>> _railFuture(Map<String, dynamic> spec) {
     final key = _railMemoKey(spec);
     final force = _forceNextRails;
     return _metaRailFutures.putIfAbsent(
       key,
-      () => _fetchRail(spec, forceRefresh: force),
+      () => _itemsForRailSpec(spec, forceRefresh: force),
     );
   }
 
@@ -316,7 +408,7 @@ class _CatalogShellState extends State<CatalogShell>
     final key = _railMemoKey(spec);
     final force = _forceNextRails;
     return _movieRailFutures.putIfAbsent(key, () async {
-      final items = await _fetchRail(spec, forceRefresh: force);
+      final items = await _itemsForRailSpec(spec, forceRefresh: force);
       return catalogMetasToMovies(items);
     });
   }
@@ -382,9 +474,13 @@ class _CatalogShellState extends State<CatalogShell>
             : (badge == 'MOVIE' || badge == 'FILM' || badge == 'HOLLYWOOD'
                 ? 'movie'
                 : 'tv'));
+    final tmdbSearch = item.ids['tmdbSearch']?.toString().trim();
     return HubHeroSlide(
       id: item.id,
       title: item.name,
+      matchTitle: tmdbSearch != null && tmdbSearch.isNotEmpty
+          ? tmdbSearch
+          : null,
       imageUrl: item.background.isNotEmpty ? item.background : item.poster,
       overview: item.description,
       rating: item.rating,

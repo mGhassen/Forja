@@ -15,6 +15,7 @@ import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/features/anime/catalog/anime_tmdb_match.dart';
 import 'package:forja/features/asian_drama/catalog/kisskh_tmdb_match.dart';
 import 'package:forja/shared/catalog/hub_tmdb_enrich_cache.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
@@ -65,6 +66,7 @@ class HubHeroSlide {
     this.imageAlignment = Alignment.centerRight,
     this.tmdbId,
     this.tmdbMediaType = 'tv',
+    this.matchTitle,
     this.movie,
     this.listTarget,
     required this.onDetails,
@@ -87,6 +89,8 @@ class HubHeroSlide {
   final Alignment imageAlignment;
   final int? tmdbId;
   final String tmdbMediaType;
+  /// TMDB search title (e.g. AniList english) — display stays [title].
+  final String? matchTitle;
   /// Home / TMDB hub — drives [MyListHeroStatusPill] (pin).
   final Movie? movie;
   final HubListFollowTarget? listTarget;
@@ -682,12 +686,26 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       if (!needsLogo && !needsOverview && !needsBackdrop) continue;
       _hubEnrichInflight.add(id);
       try {
+        final isAnilist = slide.id.startsWith('anilist:');
+        final searchTitle = (slide.matchTitle ?? slide.title).trim();
+        final yearInt = int.tryParse((slide.year ?? '').trim());
+        final isMovie = isAnilist
+            ? AnimeTmdbMatch.isMovieFormat(slide.badge)
+            : false;
+
         final kisskhId = slide.id.startsWith('kisskh:')
             ? int.tryParse(slide.id.split(':').last)
             : null;
-        final cachedHero = kisskhId != null
-            ? KissKhTmdbMatch.peekCachedHeroMovie(kisskhId)
-            : null;
+        Movie? cachedHero;
+        if (isAnilist) {
+          cachedHero = AnimeTmdbMatch.peekCachedMovie(
+            title: searchTitle,
+            year: yearInt,
+            isMovie: isMovie,
+          );
+        } else if (kisskhId != null) {
+          cachedHero = KissKhTmdbMatch.peekCachedHeroMovie(kisskhId);
+        }
 
         var tmdbId = slide.tmdbId ?? cachedHero?.id;
         var mediaType = slide.tmdbMediaType.trim().isEmpty
@@ -700,29 +718,71 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             mediaType = cachedHero.mediaType;
           }
         }
-        final kissKhType = KissKhTmdbMatch.kissKhTypeFromBadge(slide.badge);
+        final kissKhType = isAnilist
+            ? null
+            : KissKhTmdbMatch.kissKhTypeFromBadge(slide.badge);
         if (tmdbId == null || tmdbId <= 0) {
           final year = (slide.year ?? '').trim();
-          final preferMovie = kissKhType != null
-              ? KissKhTmdbMatch.preferMovie(kissKhType)
-              : mediaType == 'movie';
-          final matchKey =
-              'hubHeroMatch:${slide.title.trim().toLowerCase()}|$mediaType|$year';
+          final preferMovie = isAnilist
+              ? isMovie
+              : kissKhType != null
+                  ? KissKhTmdbMatch.preferMovie(kissKhType)
+                  : mediaType == 'movie';
+          final matchKey = isAnilist
+              ? AnimeTmdbMatch.enrichCacheKey(searchTitle, yearInt, isMovie)
+              : 'hubHeroMatch:${slide.title.trim().toLowerCase()}|$mediaType|$year';
           ({int id, String mediaType})? hit;
           if (HubTmdbEnrichCache.contains(matchKey)) {
-            final c = HubTmdbEnrichCache.get<(int, String)?>(matchKey);
-            hit = c == null ? null : (id: c.$1, mediaType: c.$2);
+            if (isAnilist) {
+              final movie = AnimeTmdbMatch.peekCachedMovie(
+                title: searchTitle,
+                year: yearInt,
+                isMovie: isMovie,
+              );
+              hit = movie == null
+                  ? null
+                  : (
+                      id: movie.id,
+                      mediaType: movie.mediaType == 'movie' ||
+                              movie.mediaType == 'tv'
+                          ? movie.mediaType
+                          : (isMovie ? 'movie' : 'tv'),
+                    );
+            } else {
+              final c = HubTmdbEnrichCache.get<(int, String)?>(matchKey);
+              hit = c == null ? null : (id: c.$1, mediaType: c.$2);
+            }
           } else {
-            hit = await _matchHubTitle(
-              slide.title,
-              year: year.isEmpty ? null : year,
-              kissKhType: kissKhType,
-              preferMovie: preferMovie,
-            );
-            HubTmdbEnrichCache.put(
-              matchKey,
-              hit == null ? null : (hit.id, hit.mediaType),
-            );
+            if (isAnilist) {
+              final movie = await AnimeTmdbMatch.resolve(
+                title: searchTitle,
+                year: yearInt,
+                isMovie: isMovie,
+                tmdb: _api,
+              );
+              hit = movie == null
+                  ? null
+                  : (
+                      id: movie.id,
+                      mediaType: movie.mediaType == 'movie' ||
+                              movie.mediaType == 'tv'
+                          ? movie.mediaType
+                          : (isMovie ? 'movie' : 'tv'),
+                    );
+            } else {
+              hit = await _matchHubTitle(
+                slide.title,
+                year: year.isEmpty ? null : year,
+                kissKhType: kissKhType,
+                preferMovie: preferMovie,
+              );
+            }
+            if (!isAnilist) {
+              HubTmdbEnrichCache.put(
+                matchKey,
+                hit == null ? null : (hit.id, hit.mediaType),
+              );
+            }
           }
           if (hit == null) {
             if (!mounted) return;

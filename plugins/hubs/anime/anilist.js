@@ -94,6 +94,13 @@ function anilistTitle(t) {
   return String(t.romaji || t.english || t.native || '').trim();
 }
 
+function anilistTmdbSearchTitle(m) {
+  if (!m || !m.title) return anilistTitle(m && m.title);
+  var english = String(m.title.english || '').trim();
+  var romaji = String(m.title.romaji || '').trim();
+  return english || romaji || anilistTitle(m.title);
+}
+
 function anilistCardMeta(m) {
   // Same as pre-CatalogShell `_animeCardMeta`: year • FILM / year • N eps.
   var parts = [];
@@ -118,6 +125,8 @@ function anilistMeta(m) {
   var cover = m.coverImage || {};
   var ids = { anilist: String(m.id) };
   if (m.idMal) ids.mal = String(m.idMal);
+  var searchTitle = anilistTmdbSearchTitle(m);
+  if (searchTitle) ids.tmdbSearch = searchTitle;
   var banner = String(m.bannerImage || '');
   var poster = String(cover.extraLarge || cover.large || '');
   var meta = {
@@ -136,6 +145,9 @@ function anilistMeta(m) {
   if (m.idMal) meta.open.mal = String(m.idMal);
   if (m.averageScore) meta.rating = Number(m.averageScore) / 10;
   if (m.format) meta.badge = String(m.format).replace(/_/g, ' ');
+  var fmt = String(m.format || '').toUpperCase();
+  if (fmt === 'MOVIE') meta.tmdbMediaType = 'movie';
+  else if (fmt) meta.tmdbMediaType = 'tv';
   if (m.status) meta.status = String(m.status);
   if (m.episodes) meta.episodes = Number(m.episodes);
   if (banner) meta.bannerImage = banner;

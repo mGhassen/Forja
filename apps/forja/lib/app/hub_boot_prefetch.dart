@@ -31,6 +31,24 @@ Future<void> prefetchDefaultHubLayout(BootNeeds needs) async {
   final rails = _firstPaintRails(tabId);
   if (rails.isEmpty) return;
 
+  if (tabId == 'home') {
+    debugPrint('[Init] Prefetch hub feed (spotlight, featured, popular, new_releases)');
+    try {
+      await CatalogRuntime.instance.run(
+        pluginId: pluginId,
+        action: 'feed',
+        params: catalogParamsWithFilters(
+          const {},
+          filters: catalogChromeFilters(tabId),
+        ),
+        timeout: const Duration(seconds: 40),
+      );
+    } catch (e) {
+      debugPrint('[Init] Hub feed prefetch failed (non-fatal): $e');
+    }
+    return;
+  }
+
   debugPrint('[Init] Prefetch hub rails (${rails.join(', ')})');
   await Future.wait(
     rails.map((rail) => _prefetchRail(pluginId, tabId, rail)),
