@@ -39,9 +39,8 @@ Future<void> _openTmdb(BuildContext context, CatalogMetaItem item, String id) as
 
 /// Open details from hub meta already on the shell (rail / hero / search).
 ///
-/// Dispatches only on pack-declared [CatalogOpen.surface] (host feature routes).
-/// Never branches on pack/scraper id keys. Re-entry for the same plugin+id is
-/// ignored until the route pops.
+/// Hub surfaces use pack-driven [HubDetailsScreen]. Only `tmdb` opens the TMDB
+/// feature details route. Never branches on pack/scraper id keys.
 Future<void> openCatalogMetaItem(
   BuildContext context, {
   required String pluginId,

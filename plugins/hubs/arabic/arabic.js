@@ -63,7 +63,7 @@ function arabicLayout() {
             style: 'numbered',
             hideWhenBleed: true,
           },
-          { type: 'host.continue', id: 'continue_watching' },
+          { type: 'continue', id: 'continue_watching' },
           {
             type: 'rail',
             id: 'series',

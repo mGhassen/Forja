@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/catalog/kisskh_mirror.dart';
+import 'package:forja/shared/engine/hub_plugin_config.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/widgets/provider_priority_table.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -82,7 +82,12 @@ class SettingsProviderScoringSection extends ConsumerWidget {
     final animeEnabledCount =
         animeOrder.where((id) => !disabledAnime.contains(id)).length;
 
-    final asianDramaCatalog = KissKhMirror.settingsCatalog;
+    final asianDramaCatalogAsync = ref.watch(asianDramaMirrorCatalogProvider);
+    final asianDramaCatalog = asianDramaCatalogAsync.valueOrNull ??
+        {
+          for (final host in SettingsService.asianDramaMirrorHosts)
+            host: HubPluginConfig.mirrorLabel(host),
+        };
     final asianDramaOrder = SettingsService.mergeProviderOrder(
       snap.asianDramaProviderOrder,
       asianDramaCatalog.keys,
@@ -93,9 +98,12 @@ class SettingsProviderScoringSection extends ConsumerWidget {
 
     Future<void> persistAsianDramaActivation() async {
       final enabled = await settings.getEnabledAsianDramaProviderOrder();
-      final host = KissKhMirror.activeHostFromOrder(enabled);
-      await KissKhMirror.activateEndpoint(
-        KissKhMirror.baseUrlForHost(host),
+      final host = HubPluginConfig.activeHostFromOrder(
+        enabled,
+        asianDramaCatalog.keys,
+      );
+      await HubPluginConfig.activateMirrorBaseUrl(
+        HubPluginConfig.baseUrlForHost(host),
       );
     }
 

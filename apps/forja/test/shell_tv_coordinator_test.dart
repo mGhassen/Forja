@@ -8,7 +8,7 @@ import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_app_exit.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
-import 'package:forja/shared/widgets/home_movie_card.dart';
+import 'package:forja/shared/widgets/movie_poster_card.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
@@ -269,11 +269,11 @@ void main() {
     expect(find.byType(FocusableControl), findsOneWidget);
   });
 
-  testWidgets('HomeMovieCard uses FocusableControl on tv profile', (
+  testWidgets('MoviePosterCard uses FocusableControl on tv profile', (
     tester,
   ) async {
     await tester.pumpWidget(
-      _wrapTv(HomeMovieCard(movie: _testMovie(), onTap: () {})),
+      _wrapTv(MoviePosterCard(movie: _testMovie(), onTap: () {})),
     );
     expect(find.byType(FocusableControl), findsAtLeastNWidgets(1));
   });

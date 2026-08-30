@@ -1,37 +1,32 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/shared/catalog/kit/home/catalog_continue_watching_section.dart';
-import 'package:rust/rust.dart' show isInProgressResume;
-import 'package:forja/shared/catalog/kit/home/continue_watching_section.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
+import 'package:forja/shared/catalog/kit/widgets/catalog_continue_watching_section.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
 import 'package:forja/shared/playback/catalog_play_resolve.dart';
+import 'package:rust/rust.dart' show isInProgressResume;
 
-/// `host.continue` — pack-agnostic Continue Watching (keyed by [pluginId]).
-class CatalogHostContinue extends StatefulWidget {
-  const CatalogHostContinue({
+/// Layout widget type `continue` — pack-scoped [CatalogWatchHistory] only.
+class CatalogContinueWidget extends StatefulWidget {
+  const CatalogContinueWidget({
     super.key,
     required this.pluginId,
     required this.tabId,
-    this.continuePool,
     this.tvRowOrder = 1,
   });
 
   final String pluginId;
   final String tabId;
-  /// Layout widget `pool` — e.g. `watch_history` for TMDB home pool.
-  final String? continuePool;
   final int tvRowOrder;
 
   @override
-  State<CatalogHostContinue> createState() => _CatalogHostContinueState();
+  State<CatalogContinueWidget> createState() => _CatalogContinueWidgetState();
 }
 
-class _CatalogHostContinueState extends State<CatalogHostContinue> {
+class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
   final _scroll = ScrollController();
   List<Map<String, dynamic>> _entries = const [];
   String? _resumingMetaId;
@@ -120,14 +115,6 @@ class _CatalogHostContinueState extends State<CatalogHostContinue> {
 
   @override
   Widget build(BuildContext context) {
-    // TMDB home pool uses a separate host widget until unified meta CW ships.
-    if (widget.continuePool == 'watch_history') {
-      return HomeContinueWatchingSection(
-        compactTop: false,
-        tvRowOrder: widget.tvRowOrder,
-      );
-    }
-
     return CatalogContinueWatchingSection(
       tabId: widget.tabId,
       entries: _entries,

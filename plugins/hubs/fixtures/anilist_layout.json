@@ -8,9 +8,10 @@
     "data": {
       "pages": {
         "anime": {
+          "feed": true,
           "widgets": [
             { "type": "hero", "id": "spotlight", "rail": "spotlight", "bleed": "trending" },
-            { "type": "host.continue", "id": "continue_watching" },
+            { "type": "continue", "id": "continue_watching" },
             {
               "type": "mood",
               "id": "moods",

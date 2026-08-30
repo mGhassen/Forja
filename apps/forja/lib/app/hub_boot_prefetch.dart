@@ -28,11 +28,8 @@ Future<void> prefetchDefaultHubLayout(BootNeeds needs) async {
     debugPrint('[Init] Hub layout prefetch failed (non-fatal): $e');
   }
 
-  final rails = _firstPaintRails(tabId);
-  if (rails.isEmpty) return;
-
-  if (tabId == 'home') {
-    debugPrint('[Init] Prefetch hub feed (spotlight, featured, popular, new_releases)');
+  if (tabId == 'home' || tabId == 'anime') {
+    debugPrint('[Init] Prefetch hub feed ($tabId)');
     try {
       await CatalogRuntime.instance.run(
         pluginId: pluginId,
@@ -51,6 +48,9 @@ Future<void> prefetchDefaultHubLayout(BootNeeds needs) async {
     }
     return;
   }
+
+  final rails = _firstPaintRails(tabId);
+  if (rails.isEmpty) return;
 
   debugPrint('[Init] Prefetch hub rails (${rails.join(', ')})');
   await Future.wait(
@@ -82,7 +82,7 @@ Future<void> _prefetchRail(
 List<String> _firstPaintRails(String tabId) => switch (tabId) {
       // Home: trending→spotlight, featured bleed, popular, now playing→new_releases.
       'home' => const ['spotlight', 'featured', 'popular', 'new_releases'],
-      'anime' => const ['spotlight', 'trending'],
+      'anime' => const [],
       'asian_drama' => const ['spotlight', 'latest'],
       _ => const [],
     };

@@ -1,0 +1,266 @@
+import 'package:flutter/material.dart';
+import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
+import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
+import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/shell/catalog_open.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/widgets/media_details/media_details_recommendations_section.dart';
+import 'package:forja/shared/widgets/media_details_cast_section.dart';
+import 'package:forja/shared/widgets/media_details_trailers_section.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:rust/rust.dart';
+
+class HubDetailRailSection {
+  const HubDetailRailSection({
+    required this.id,
+    required this.title,
+    required this.items,
+  });
+
+  final String id;
+  final String title;
+  final List<CatalogMetaItem> items;
+}
+
+List<HubDetailRailSection> parseHubDetailRails(Map<String, dynamic>? data) {
+  final rails = data?['rails'];
+  if (rails is! Map) return const [];
+
+  final out = <HubDetailRailSection>[];
+  for (final entry in rails.entries) {
+    final id = entry.key.toString();
+    final v = entry.value;
+    var title = _defaultRailTitle(id);
+    List<CatalogMetaItem> items = const [];
+
+    if (v is List) {
+      items = _itemsFromJsonList(v);
+    } else if (v is Map) {
+      final m = Map<String, dynamic>.from(v);
+      final custom = (m['title'] ?? '').toString().trim();
+      if (custom.isNotEmpty) title = custom;
+      items = _itemsFromJsonList(m['items']);
+    }
+
+    if (items.isNotEmpty) {
+      out.add(HubDetailRailSection(id: id, title: title, items: items));
+    }
+  }
+  return out;
+}
+
+List<CatalogMetaItem> _itemsFromJsonList(dynamic raw) {
+  if (raw is! List) return const [];
+  return [
+    for (final it in raw)
+      if (it is Map)
+        CatalogMetaItem.fromJson(Map<String, dynamic>.from(it)),
+  ];
+}
+
+String _defaultRailTitle(String id) {
+  switch (id) {
+    case 'related':
+      return 'Related';
+    case 'recommendations':
+      return 'More Like This';
+    case 'characters':
+      return 'Characters';
+    case 'staff':
+      return 'Staff';
+    default:
+      if (id.isEmpty) return '';
+      return id[0].toUpperCase() + id.substring(1).replaceAll('_', ' ');
+  }
+}
+
+List<Widget> buildHubDetailRailSections({
+  required BuildContext context,
+  required String pluginId,
+  required List<HubDetailRailSection> rails,
+  required bool tvFocus,
+  VoidCallback? firstMetaFocusUp,
+}) {
+  if (rails.isEmpty) return const [];
+
+  var order = 0;
+  final sections = <Widget>[];
+  for (final rail in rails) {
+    final rowOrder = order++;
+    sections.add(
+      HubCatalogSection<CatalogMetaItem>(
+        title: rail.title,
+        items: rail.items,
+        embedded: true,
+        compactTop: true,
+        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+        tvRowId: rail.id,
+        tvRowOrder: rowOrder,
+        tvFocusUp: sections.isEmpty ? firstMetaFocusUp : null,
+        cardBuilder: (ctx, item, index) => HubPosterCard(
+          imageUrl: item.poster,
+          title: item.name,
+          subtitle: item.releaseInfo.isEmpty ? null : item.releaseInfo,
+          rating: item.rating,
+          badge: item.badge,
+          onTap: () => openCatalogMetaItem(
+            ctx,
+            pluginId: pluginId,
+            item: item,
+          ),
+          tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+          tvRowId: rail.id,
+        ),
+      ),
+    );
+  }
+  return sections;
+}
+
+List<Widget> buildHubTmdbDetailSections({
+  required BuildContext context,
+  required RichMediaDetails? rich,
+  required bool tvFocus,
+  VoidCallback? firstMetaFocusUp,
+}) {
+  if (rich == null) return const [];
+
+  final cast = rich.extras.cast;
+  final crew = _crewAsCast(rich.extras.crew);
+  final trailers = rich.extras.trailers;
+  final recommendations = rich.extras.recommendations;
+
+  final showCast = cast.isNotEmpty;
+  final showCrew = crew.isNotEmpty;
+  final showTrailers = trailers.isNotEmpty;
+  final showRecs = recommendations.isNotEmpty;
+  if (!showCast && !showCrew && !showTrailers && !showRecs) {
+    return const [];
+  }
+
+  var order = 0;
+  final sections = <Widget>[];
+  int? castOrder;
+  int? crewOrder;
+  int? trailersOrder;
+  int? recsOrder;
+
+  if (showCast) castOrder = order++;
+  if (showCrew) crewOrder = order++;
+  if (showTrailers) trailersOrder = order++;
+  if (showRecs) recsOrder = order++;
+
+  if (showCast) {
+    sections.add(
+      MediaDetailsCastSection(
+        cast: cast,
+        title: 'Characters',
+        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+        tvRowId: 'cast',
+        tvRowOrder: castOrder!,
+        tvFocusUp: firstMetaFocusUp,
+      ),
+    );
+  }
+  if (showCrew) {
+    sections.add(
+      MediaDetailsCastSection(
+        cast: crew,
+        title: 'Crew',
+        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+        tvRowId: 'crew',
+        tvRowOrder: crewOrder!,
+        tvFocusUp: showCast ? null : firstMetaFocusUp,
+      ),
+    );
+  }
+  if (showTrailers) {
+    sections.add(
+      MediaDetailsTrailersSection(
+        trailers: trailers,
+        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+        tvRowId: 'trailers',
+        tvRowOrder: trailersOrder!,
+        tvFocusUp: (showCast || showCrew) ? null : firstMetaFocusUp,
+      ),
+    );
+  }
+  if (showRecs) {
+    sections.add(
+      MediaDetailsRecommendationsSection(
+        movies: recommendations,
+        onMovieTap: (movie) => AppRouter.openDetails(context, movie: movie),
+        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+        tvRowId: 'recommendations',
+        tvRowOrder: recsOrder!,
+        tvFocusUp: (showCast || showCrew || showTrailers)
+            ? null
+            : firstMetaFocusUp,
+      ),
+    );
+  }
+  return sections;
+}
+
+List<Map<String, String>> _crewAsCast(List<Map<String, String>> crew) {
+  return [
+    for (final c in crew)
+      if ((c['name'] ?? '').trim().isNotEmpty)
+        {
+          'name': c['name']!,
+          'character': (c['job'] ?? '').trim(),
+          'profilePath': (c['profilePath'] ?? '').trim(),
+        },
+  ];
+}
+
+Future<List<String>> hubTmdbHeroBackdropUrls(CatalogMetaItem meta) async {
+  final tmdbId = meta.numericId('tmdb');
+  if (tmdbId == null) return const [];
+
+  final isMovie = meta.tmdbMediaType == 'movie' ||
+      meta.type == 'movie' ||
+      (meta.badge ?? '').toUpperCase() == 'MOVIE';
+  final mediaType = meta.tmdbMediaType ?? (isMovie ? 'movie' : 'tv');
+  final api = TmdbApi();
+  final urls = <String>[];
+
+  void addUrl(String path) {
+    if (path.isEmpty) return;
+    final u = path.startsWith('http') ? path : TmdbApi.getBackdropUrl(path);
+    if (u.isNotEmpty && !urls.contains(u)) urls.add(u);
+  }
+
+  addUrl(meta.background);
+  addUrl(meta.bannerImage);
+  try {
+    final paths = await api.getBackdrops(tmdbId, mediaType: mediaType);
+    for (final p in paths) {
+      addUrl(p);
+    }
+  } catch (_) {}
+
+  return urls.take(12).toList();
+}
+
+Future<RichMediaDetails?> hubLoadTmdbRich(CatalogMetaItem meta) async {
+  final tmdbId = meta.numericId('tmdb');
+  if (tmdbId == null) return null;
+
+  final isMovie = meta.tmdbMediaType == 'movie' ||
+      meta.type == 'movie' ||
+      (meta.badge ?? '').toUpperCase() == 'MOVIE';
+  final mediaType = meta.tmdbMediaType ?? (isMovie ? 'movie' : 'tv');
+  try {
+    return await TmdbApi().getRichDetails(tmdbId, mediaType);
+  } catch (_) {
+    return null;
+  }
+}
+
+String? hubTmdbLogoUrl(RichMediaDetails? rich) {
+  if (rich == null) return null;
+  final path = rich.movie.logoPath.trim();
+  if (path.isEmpty) return null;
+  return path.startsWith('http') ? path : TmdbApi.getImageUrl(path);
+}

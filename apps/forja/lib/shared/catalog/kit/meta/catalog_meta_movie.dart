@@ -35,7 +35,7 @@ String catalogPosterPathForMovie(String raw) {
   return catalogTmdbPath(s);
 }
 
-/// Map catalog meta → [Movie] for HomeMovieCard / HomeMovieSection.
+/// Map catalog meta → [Movie] when meta carries TMDB-shaped ids (hero bleed).
 Movie? catalogMetaToMovie(CatalogMetaItem item) {
   final type = item.type.toLowerCase();
   if (type == 'arabic') {

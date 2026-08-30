@@ -9,6 +9,7 @@ import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:forja/shared/sync/providers/account_features_provider.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/engine/hub_plugin_config.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:rust/rust.dart';
 
@@ -650,6 +651,11 @@ class TrackerAccountStatus {
   final Map<String, dynamic>? stats;
   final String? apiKey;
 }
+
+final asianDramaMirrorCatalogProvider =
+    FutureProvider<Map<String, String>>((ref) async {
+  return HubPluginConfig.mirrorCatalogForTab('asian_drama');
+});
 
 final traktStatusProvider =
     FutureProvider.autoDispose<TrackerAccountStatus>((ref) async {

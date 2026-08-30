@@ -29,7 +29,7 @@ function kisskhLayout() {
             rail: 'spotlight',
             bleed: 'latest',
           },
-          { type: 'host.continue', id: 'continue_watching' },
+          { type: 'continue', id: 'continue_watching' },
           {
             type: 'rail',
             id: 'latest',

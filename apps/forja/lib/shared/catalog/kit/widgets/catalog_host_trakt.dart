@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/catalog/kit/rows/home_movie_section.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/shared/widgets/home_movie_row.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
 /// Host-owned Trakt rails — Recommended / Upcoming Schedule / Upcoming Movies.
 class CatalogHostTrakt extends StatefulWidget {
-  const CatalogHostTrakt({super.key});
+  const CatalogHostTrakt({
+    super.key,
+    required this.tabId,
+    this.tvRowOrderBase = 11,
+  });
+
+  final String tabId;
+  final int tvRowOrderBase;
 
   @override
   State<CatalogHostTrakt> createState() => _CatalogHostTraktState();
@@ -122,33 +129,37 @@ class _CatalogHostTraktState extends State<CatalogHostTrakt> {
         homeMovieRowSkeleton(context, titleWidth: 180),
       );
     }
+    final base = widget.tvRowOrderBase;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
         if (_recs.isNotEmpty)
-          HomeStaticMovieSection(
+          HomeMovieRow(
             title: 'Recommended for You',
             movies: _recs,
             onMovieTap: _open,
+            tvTabId: widget.tabId,
             tvRowId: 'trakt-recs',
-            tvRowOrder: 11,
+            tvRowOrder: base,
           ),
         if (_shows.isNotEmpty)
-          HomeStaticMovieSection(
+          HomeMovieRow(
             title: 'Upcoming Schedule',
             movies: _shows,
             onMovieTap: _open,
+            tvTabId: widget.tabId,
             tvRowId: 'trakt-shows',
-            tvRowOrder: 12,
+            tvRowOrder: base + 1,
           ),
         if (_movies.isNotEmpty)
-          HomeStaticMovieSection(
+          HomeMovieRow(
             title: 'Upcoming Movies',
             movies: _movies,
             onMovieTap: _open,
+            tvTabId: widget.tabId,
             tvRowId: 'trakt-movies',
-            tvRowOrder: 13,
+            tvRowOrder: base + 2,
           ),
       ],
     );

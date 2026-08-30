@@ -6,7 +6,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
-/// Generic hub Continue Watching card — reads opaque [entry] maps only.
+/// Generic Continue Watching card — reads opaque [entry] maps only.
 class CatalogContinueWatchingCard extends StatefulWidget {
   const CatalogContinueWatchingCard({
     super.key,
@@ -38,7 +38,8 @@ class CatalogContinueWatchingCard extends StatefulWidget {
       _CatalogContinueWatchingCardState();
 }
 
-class _CatalogContinueWatchingCardState extends State<CatalogContinueWatchingCard> {
+class _CatalogContinueWatchingCardState
+    extends State<CatalogContinueWatchingCard> {
   bool _hovered = false;
   bool _focused = false;
 

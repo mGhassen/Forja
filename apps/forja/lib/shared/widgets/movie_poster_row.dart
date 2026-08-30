@@ -1,20 +1,26 @@
-// Home tab section widgets - extracted from home_screen.dart (RFC-019 Phase B).
-
-import 'package:forja/shared/catalog/kit/home/home_widget_imports.dart';
+import 'package:flutter/material.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/shared/widgets/horizontal_scroller.dart';
+import 'package:forja/shared/widgets/movie_poster_card.dart';
+import 'package:rust/rust.dart';
 
-class HomeMovieSection extends StatefulWidget {
-  final String title;
-  final Future<List<Movie>> future;
-  final Function(Movie) onMovieTap;
-  final bool compactTop;
-  final bool showRank;
-  final VoidCallback? tvFocusUp;
-  final String? tvRowId;
-  final int tvRowOrder;
-  final Future<List<Movie>> Function()? loadMore;
+String _movieMediaKey(Movie movie) => '${movie.mediaType}:${movie.id}';
 
-  const HomeMovieSection({
+List<Movie> mergeMovieRailPages(List<List<Movie>> pages) {
+  final seen = <String>{};
+  final out = <Movie>[];
+  for (final page in pages) {
+    for (final movie in page) {
+      if (seen.add(_movieMediaKey(movie))) out.add(movie);
+    }
+  }
+  return out;
+}
+
+class MoviePosterRow extends StatefulWidget {
+  const MoviePosterRow({
     super.key,
     required this.title,
     required this.future,
@@ -24,8 +30,20 @@ class HomeMovieSection extends StatefulWidget {
     this.tvFocusUp,
     this.tvRowId,
     this.tvRowOrder = 0,
+    this.tvTabId,
     this.loadMore,
   });
+
+  final String title;
+  final Future<List<Movie>> future;
+  final void Function(Movie) onMovieTap;
+  final bool compactTop;
+  final bool showRank;
+  final VoidCallback? tvFocusUp;
+  final String? tvRowId;
+  final int tvRowOrder;
+  final String? tvTabId;
+  final Future<List<Movie>> Function()? loadMore;
 
   static double sectionHeight(
     BuildContext context, {
@@ -34,15 +52,15 @@ class HomeMovieSection extends StatefulWidget {
     return shellCatalogSectionHeight(
       context,
       compactTop: compactTop,
-      cardHeight: HomeMovieCard.cardHeight(context),
+      cardHeight: MoviePosterCard.cardHeight(context),
     );
   }
 
   @override
-  State<HomeMovieSection> createState() => HomeMovieSectionState();
+  State<MoviePosterRow> createState() => _MoviePosterRowState();
 }
 
-class HomeMovieSectionState extends State<HomeMovieSection> {
+class _MoviePosterRowState extends State<MoviePosterRow> {
   List<Movie>? _last;
 
   @override
@@ -50,14 +68,12 @@ class HomeMovieSectionState extends State<HomeMovieSection> {
     return FutureBuilder<List<Movie>>(
       future: widget.future,
       builder: (context, snapshot) {
-        if (snapshot.hasData) {
-          _last = snapshot.data;
-        }
+        if (snapshot.hasData) _last = snapshot.data;
         final movies = snapshot.data ?? _last ?? const <Movie>[];
         final loading = snapshot.connectionState == ConnectionState.waiting;
 
         if (movies.isNotEmpty) {
-          return HomeStaticMovieSection(
+          return MoviePosterRowStatic(
             title: widget.title,
             movies: movies,
             onMovieTap: widget.onMovieTap,
@@ -66,6 +82,7 @@ class HomeMovieSectionState extends State<HomeMovieSection> {
             tvFocusUp: widget.tvFocusUp,
             tvRowId: widget.tvRowId,
             tvRowOrder: widget.tvRowOrder,
+            tvTabId: widget.tvTabId,
             loadMore: widget.loadMore,
           );
         }
@@ -87,19 +104,8 @@ class HomeMovieSectionState extends State<HomeMovieSection> {
   }
 }
 
-class HomeStaticMovieSection extends StatefulWidget {
-  final String title;
-  final List<Movie> movies;
-  final Function(Movie) onMovieTap;
-  final String? tvRowId;
-  final int tvRowOrder;
-  final bool compactTop;
-  final bool showRank;
-  final VoidCallback? tvFocusUp;
-  /// Fetches the next TMDB page when the scroller nears the end (once).
-  final Future<List<Movie>> Function()? loadMore;
-
-  const HomeStaticMovieSection({
+class MoviePosterRowStatic extends StatefulWidget {
+  const MoviePosterRowStatic({
     super.key,
     required this.title,
     required this.movies,
@@ -109,14 +115,26 @@ class HomeStaticMovieSection extends StatefulWidget {
     this.compactTop = false,
     this.showRank = false,
     this.tvFocusUp,
+    this.tvTabId,
     this.loadMore,
   });
 
+  final String title;
+  final List<Movie> movies;
+  final void Function(Movie) onMovieTap;
+  final String? tvRowId;
+  final int tvRowOrder;
+  final bool compactTop;
+  final bool showRank;
+  final VoidCallback? tvFocusUp;
+  final String? tvTabId;
+  final Future<List<Movie>> Function()? loadMore;
+
   @override
-  State<HomeStaticMovieSection> createState() => _HomeStaticMovieSectionState();
+  State<MoviePosterRowStatic> createState() => _MoviePosterRowStaticState();
 }
 
-class _HomeStaticMovieSectionState extends State<HomeStaticMovieSection> {
+class _MoviePosterRowStaticState extends State<MoviePosterRowStatic> {
   List<Movie> _extra = const [];
   bool _loadMoreStarted = false;
   int _loadGen = 0;
@@ -125,17 +143,16 @@ class _HomeStaticMovieSectionState extends State<HomeStaticMovieSection> {
 
   List<Movie> get _all {
     if (_extra.isEmpty) return widget.movies;
-    return mergeHomeRailPages([widget.movies, _extra]);
+    return mergeMovieRailPages([widget.movies, _extra]);
   }
 
   @override
-  void didUpdateWidget(covariant HomeStaticMovieSection oldWidget) {
+  void didUpdateWidget(covariant MoviePosterRowStatic oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Filter / pool swap — drop page-2 append so we don't mix catalogs.
     if (!identical(oldWidget.movies, widget.movies) &&
         oldWidget.movies != widget.movies) {
-      final oldKeys = oldWidget.movies.map(homeMediaKey).join(',');
-      final newKeys = widget.movies.map(homeMediaKey).join(',');
+      final oldKeys = oldWidget.movies.map(_movieMediaKey).join(',');
+      final newKeys = widget.movies.map(_movieMediaKey).join(',');
       if (oldKeys != newKeys) {
         _loadGen++;
         _extra = const [];
@@ -186,7 +203,7 @@ class _HomeStaticMovieSectionState extends State<HomeStaticMovieSection> {
           ),
           FocusTraversalGroup(
             child: HorizontalScroller(
-              height: HomeMovieCard.cardHeight(context),
+              height: MoviePosterCard.cardHeight(context),
               padding: EdgeInsets.symmetric(
                 horizontal: shellHomeSectionHorizontalPadding(context),
               ),
@@ -198,12 +215,12 @@ class _HomeStaticMovieSectionState extends State<HomeStaticMovieSection> {
                     ? shellScaled(context, 6).clamp(3.0, 6.0)
                     : shellMovieCardRowGap(context),
               ),
-              itemBuilder: (context, index) => HomeMovieCard(
+              itemBuilder: (context, index) => MoviePosterCard(
                 movie: movies[index],
                 onTap: () => widget.onMovieTap(movies[index]),
                 rank: widget.showRank ? index + 1 : null,
                 listIndex: index,
-                tvTabId: 'home',
+                tvTabId: widget.tvTabId,
                 tvRowId: _rowId,
               ),
             ),
@@ -214,8 +231,7 @@ class _HomeStaticMovieSectionState extends State<HomeStaticMovieSection> {
   }
 }
 
-/// Rating badge for string ratings (Stremio).
-Widget homeRatingBadgeText(String rating) {
+Widget stremioRatingBadgeText(String rating) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
     decoration: BoxDecoration(
@@ -228,7 +244,14 @@ Widget homeRatingBadgeText(String rating) {
       children: [
         const Icon(Icons.star_rounded, color: Colors.amber, size: 11),
         const SizedBox(width: 2),
-        Text(rating, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+        Text(
+          rating,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ],
     ),
   );

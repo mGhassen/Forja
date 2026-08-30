@@ -6,8 +6,9 @@ import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
-class HomeMovieCard extends StatelessWidget {
-  const HomeMovieCard({
+/// TMDB [Movie] poster tile — media details, my list, hero bleed (not catalog kit).
+class MoviePosterCard extends StatelessWidget {
+  const MoviePosterCard({
     super.key,
     required this.movie,
     required this.onTap,
@@ -35,8 +36,8 @@ class HomeMovieCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final titleSize = shellHubCardTitleFontSize(context);
-    final cardWidth = HomeMovieCard.cardWidth(context);
-    final cardHeight = HomeMovieCard.cardHeight(context);
+    final cardWidth = MoviePosterCard.cardWidth(context);
+    final cardHeight = MoviePosterCard.cardHeight(context);
     final radius = shellCardBorderRadius(context);
     final inset = shellScaled(context, 10).clamp(4.0, 10.0);
     final metaSize = shellScaled(context, 11).clamp(7.0, 11.0);
@@ -93,7 +94,8 @@ class HomeMovieCard extends StatelessWidget {
                               movie.title,
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                fontSize: shellScaled(context, 10).clamp(7.0, 10.0),
+                                fontSize: shellScaled(context, 10)
+                                    .clamp(7.0, 10.0),
                                 color: Colors.white24,
                               ),
                             ),
@@ -105,7 +107,8 @@ class HomeMovieCard extends StatelessWidget {
                           movie.title,
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: shellScaled(context, 10).clamp(7.0, 10.0),
+                            fontSize:
+                                shellScaled(context, 10).clamp(7.0, 10.0),
                             color: Colors.white24,
                           ),
                         ),
@@ -138,11 +141,12 @@ class HomeMovieCard extends StatelessWidget {
                         MyListButton.movie(
                           movie: movie,
                           excludeFromTvTraversal: true,
-                          iconSize: shellScaled(context, 18).clamp(12.0, 18.0),
+                          iconSize:
+                              shellScaled(context, 18).clamp(12.0, 18.0),
                         ),
                       const Spacer(),
                       if (movie.voteAverage > 0)
-                        HomeMovieRatingBadge(voteAverage: movie.voteAverage),
+                        MovieRatingBadge(voteAverage: movie.voteAverage),
                     ],
                   ),
                 ),
@@ -169,7 +173,8 @@ class HomeMovieCard extends StatelessWidget {
                         (movie.releaseDate.isNotEmpty ||
                             movie.mediaType == 'tv' ||
                             movie.mediaType == 'movie')) ...[
-                      SizedBox(height: shellScaled(context, 4).clamp(1.0, 4.0)),
+                      SizedBox(
+                          height: shellScaled(context, 4).clamp(1.0, 4.0)),
                       Text(
                         _metaLine(movie),
                         maxLines: 1,
@@ -226,8 +231,8 @@ class HomeMovieCard extends StatelessWidget {
   }
 }
 
-class HomeMovieRatingBadge extends StatelessWidget {
-  const HomeMovieRatingBadge({super.key, required this.voteAverage});
+class MovieRatingBadge extends StatelessWidget {
+  const MovieRatingBadge({super.key, required this.voteAverage});
 
   final double voteAverage;
 

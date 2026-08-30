@@ -3,14 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/catalog/kit/cards/home_movie_card.dart';
+import 'package:forja/shared/widgets/movie_poster_card.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Poster frame for hub catalog rows.
 ///
-/// [HubPosterAspect.portrait] — TMDB / AniList 2:3 posters (Home, Anime).
-/// [HubPosterAspect.landscape] — 16:9 banners (KissKH list thumbs).
+/// [HubPosterAspect.portrait] — 2:3 posters. [HubPosterAspect.landscape] — 16:9.
 enum HubPosterAspect { portrait, landscape }
 
 class HubPosterCard extends StatelessWidget {
@@ -52,7 +51,7 @@ class HubPosterCard extends StatelessWidget {
     if (aspect == HubPosterAspect.landscape) {
       return shellContinueWatchingCardWidth(context);
     }
-    return HomeMovieCard.cardWidth(context);
+    return shellMovieCardWidth(context);
   }
 
   static double cardHeight(
@@ -62,7 +61,7 @@ class HubPosterCard extends StatelessWidget {
     if (aspect == HubPosterAspect.landscape) {
       return shellContinueWatchingCardHeight(context);
     }
-    return HomeMovieCard.cardHeight(context);
+    return shellMovieCardHeight(context);
   }
 
   @override
@@ -173,7 +172,7 @@ class HubPosterCard extends StatelessWidget {
                         ),
                       const Spacer(),
                       if (rating != null && rating! > 0)
-                        HomeMovieRatingBadge(voteAverage: rating!),
+                        MovieRatingBadge(voteAverage: rating!),
                     ],
                   ),
                 ),

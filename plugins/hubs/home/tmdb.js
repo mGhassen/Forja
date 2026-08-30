@@ -31,7 +31,7 @@ var TMDB_MOODS = [
   { id: 'drama', label: 'Drama', icon: 'theaters', accent: '#3B82F6', movieGenres: [18], tvGenres: [18] },
 ];
 
-// Pack-owned logos under plugins/hubs/home/logos — host.vertical_filters widget.
+// Pack-owned logos under plugins/hubs/home/logos — vertical_filters widget.
 var TMDB_VERTICAL_FILTERS = [
   { id: 'netflix', label: 'Netflix', logo: 'logos/netflix.svg', tileColor: '#000000', inset: 0.16, filter: { field: 'watch_provider', value: 8 } },
   { id: 'disney', label: 'Disney+', logo: 'logos/disneyplus.svg', tileColor: '#FFFFFF', inset: 0.12, filter: { field: 'watch_provider', value: 337 } },
@@ -283,15 +283,165 @@ function tmdbHomeFeed(ctx, cfg, params) {
   });
 }
 
+var TMDB_GENRE_ROWS = [
+  { id: 'action', label: 'Action', movieGenres: [28], tvGenres: [10759] },
+  { id: 'adventure', label: 'Adventure', movieGenres: [12], tvGenres: [10759] },
+  { id: 'animation', label: 'Animation', movieGenres: [16], tvGenres: [16] },
+  { id: 'comedy', label: 'Comedy', movieGenres: [35], tvGenres: [35] },
+  { id: 'crime', label: 'Crime', movieGenres: [80], tvGenres: [80] },
+  { id: 'documentary', label: 'Documentary', movieGenres: [99], tvGenres: [99] },
+  { id: 'drama', label: 'Drama', movieGenres: [18], tvGenres: [18] },
+  { id: 'family', label: 'Family', movieGenres: [10751], tvGenres: [10751] },
+  { id: 'fantasy', label: 'Fantasy', movieGenres: [14], tvGenres: [10765] },
+  { id: 'horror', label: 'Horror', movieGenres: [27], tvGenres: [9648] },
+  { id: 'music', label: 'Music', movieGenres: [10402], tvGenres: [10402] },
+  { id: 'mystery', label: 'Mystery', movieGenres: [9648], tvGenres: [9648] },
+  { id: 'romance', label: 'Romance', movieGenres: [10749], tvGenres: [10749] },
+  { id: 'scifi', label: 'Sci-Fi', movieGenres: [878], tvGenres: [10765] },
+  { id: 'thriller', label: 'Thriller', movieGenres: [53], tvGenres: [80] },
+  { id: 'war', label: 'War', movieGenres: [10752], tvGenres: [10768] },
+];
+
+function tmdbHourBucket() {
+  return Math.floor(Date.now() / 3600000);
+}
+
+function tmdbSeededShuffle(list, salt) {
+  var out = list.slice();
+  var seed = tmdbHourBucket() + '|' + salt;
+  var h = 0;
+  for (var i = 0; i < seed.length; i++) {
+    h = ((h << 5) - h + seed.charCodeAt(i)) | 0;
+  }
+  for (var j = out.length - 1; j > 0; j--) {
+    h = ((h << 5) - h + j) | 0;
+    var k = Math.abs(h) % (j + 1);
+    var tmp = out[j];
+    out[j] = out[k];
+    out[k] = tmp;
+  }
+  return out;
+}
+
+function tmdbPickGenreRows(count) {
+  return tmdbSeededShuffle(TMDB_GENRE_ROWS, 'genre-rows').slice(0, count);
+}
+
+function tmdbGenreRowSpec(params) {
+  var genreRowId = String(
+    (params && (params.genreRow || params.genre)) || '',
+  ).trim();
+  if (!genreRowId) return null;
+  for (var i = 0; i < TMDB_GENRE_ROWS.length; i++) {
+    if (TMDB_GENRE_ROWS[i].id === genreRowId) return TMDB_GENRE_ROWS[i];
+  }
+  return null;
+}
+
+function tmdbGenreDiscover(ctx, cfg, params, filter, spec, typeFilter) {
+  var movieGenres = spec.movieGenres || [];
+  var tvGenres = spec.tvGenres || [];
+  var page = Number(params.page) > 0 ? Number(params.page) : 1;
+  var limit = params.limit;
+  var movieQ = {
+    sort_by: 'popularity.desc',
+    with_genres: movieGenres.join(','),
+    page: page,
+    'vote_count.gte': 50,
+  };
+  var tvQ = {
+    sort_by: 'popularity.desc',
+    with_genres: tvGenres.join(','),
+    page: page,
+    'vote_count.gte': 50,
+  };
+  if (typeFilter === 'movie') {
+    return tmdbDiscoverMovie(ctx, cfg, movieQ, filter).then(function (json) {
+      return tmdbMetas(cfg, json, 'movie', limit);
+    });
+  }
+  if (typeFilter === 'tv') {
+    return tmdbDiscoverTv(ctx, cfg, tvQ, filter).then(function (json) {
+      return tmdbMetas(cfg, json, 'tv', limit);
+    });
+  }
+  return Promise.all([
+    tmdbDiscoverMovie(ctx, cfg, movieQ, filter),
+    tmdbDiscoverTv(ctx, cfg, tvQ, filter),
+  ]).then(function (pair) {
+    return tmdbInterleaveMetas(cfg, pair[0], pair[1], limit || TMDB_HOME_RAIL_CAP);
+  });
+}
+
+function tmdbPickBecauseSeed(seeds, shuffleKey) {
+  if (!seeds || !seeds.length) return null;
+  var key = String(shuffleKey || '0');
+  var h = 0;
+  for (var i = 0; i < key.length; i++) {
+    h = ((h << 5) - h + key.charCodeAt(i)) | 0;
+  }
+  var idx = Math.abs(h) % seeds.length;
+  return seeds[idx];
+}
+
+function tmdbBecause(ctx, cfg, params) {
+  var seeds = (params && params.resumeSeeds) || [];
+  if (!seeds.length) {
+    return Promise.resolve(
+      hubOk('rail', { items: [], heading: '', canShuffle: false }, { maxAge: 300 }),
+    );
+  }
+  var seed = tmdbPickBecauseSeed(seeds, params.shuffleKey);
+  if (!seed) {
+    return Promise.resolve(
+      hubOk('rail', { items: [], heading: '', canShuffle: false }, { maxAge: 300 }),
+    );
+  }
+  var meta = seed.meta || {};
+  var tmdbId = meta.ids && meta.ids.tmdb;
+  var mediaType = String(meta.type || 'movie').trim();
+  if (mediaType !== 'tv') mediaType = 'movie';
+  if (!tmdbId) {
+    return Promise.resolve(
+      hubOk('rail', { items: [], heading: '', canShuffle: false }, { maxAge: 300 }),
+    );
+  }
+  var path =
+    mediaType === 'tv'
+      ? '/tv/' + tmdbId + '/recommendations'
+      : '/movie/' + tmdbId + '/recommendations';
+  var title = String(seed.title || meta.name || '').trim();
+  return tmdbGet(ctx, cfg, path, { page: 1 }).then(function (json) {
+    return hubOk(
+      'rail',
+      {
+        items: tmdbMetas(cfg, json, mediaType, TMDB_HOME_RAIL_CAP),
+        heading: title ? 'Because you watched ' + title : 'Because you watched',
+        seedPoster: String(meta.poster || meta.background || ''),
+        canShuffle: seeds.length > 1,
+      },
+      { maxAge: 900, swr: 3600 },
+    );
+  });
+}
+
 function tmdbLayout() {
+  var genreWidgets = tmdbPickGenreRows(3).map(function (g) {
+    return {
+      type: 'rail',
+      id: 'genre_' + g.id,
+      title: g.label,
+      rail: 'genre',
+      params: { genreRow: g.id },
+    };
+  });
   return {
     pages: {
       home: {
         feed: true,
-        cardStyle: 'movie',
         widgets: [
           {
-            type: 'host.vertical_filters',
+            type: 'vertical_filters',
             id: 'watch_providers',
             showSelectedInTopBar: true,
             options: TMDB_VERTICAL_FILTERS,
@@ -311,7 +461,7 @@ function tmdbLayout() {
             hideWhenBleed: true,
           },
           { type: 'ranked', id: 'popular', title: 'Popular', rail: 'popular', style: 'numbered' },
-          { type: 'host.continue', id: 'continue_watching', pool: 'watch_history' },
+          { type: 'continue', id: 'continue_watching' },
           {
             type: 'mood',
             id: 'moods',
@@ -319,16 +469,15 @@ function tmdbLayout() {
             options: TMDB_MOODS,
             rail: 'discover',
           },
-          { type: 'host.because', id: 'because' },
-          { type: 'host.trakt', id: 'trakt' },
+          { type: 'because', id: 'because', rail: 'because' },
+          { type: 'trakt', id: 'trakt' },
           {
             type: 'rail',
             id: 'new_releases',
             title: 'New Releases',
             rail: 'new_releases',
           },
-          { type: 'host.genre_rows', id: 'genre_rows' },
-        ],
+        ].concat(genreWidgets),
       },
     },
   };
@@ -422,6 +571,12 @@ function tmdbList(ctx, cfg, params) {
   if (typeFilter !== 'movie' && typeFilter !== 'tv') typeFilter = '';
   var page = Number(params.page) > 0 ? Number(params.page) : 1;
   var limit = params.limit;
+
+  if (railId === 'genre') {
+    var genreSpec = tmdbGenreRowSpec(params);
+    if (!genreSpec) return Promise.resolve([]);
+    return tmdbGenreDiscover(ctx, cfg, params, filter, genreSpec, typeFilter);
+  }
 
   // Mood discover — separate movie/tv genre lists from the mood option.
   if (railId === 'discover') {
@@ -624,24 +779,7 @@ function extract(ctx) {
         films: { op: 'eq', field: 'type', value: 'movie' },
         series: { op: 'eq', field: 'type', value: 'tv' },
       },
-      genreRows: [
-        { id: 'action', label: 'Action', movieGenres: [28], tvGenres: [10759] },
-        { id: 'adventure', label: 'Adventure', movieGenres: [12], tvGenres: [10759] },
-        { id: 'animation', label: 'Animation', movieGenres: [16], tvGenres: [16] },
-        { id: 'comedy', label: 'Comedy', movieGenres: [35], tvGenres: [35] },
-        { id: 'crime', label: 'Crime', movieGenres: [80], tvGenres: [80] },
-        { id: 'documentary', label: 'Documentary', movieGenres: [99], tvGenres: [99] },
-        { id: 'drama', label: 'Drama', movieGenres: [18], tvGenres: [18] },
-        { id: 'family', label: 'Family', movieGenres: [10751], tvGenres: [10751] },
-        { id: 'fantasy', label: 'Fantasy', movieGenres: [14], tvGenres: [10765] },
-        { id: 'horror', label: 'Horror', movieGenres: [27], tvGenres: [9648] },
-        { id: 'music', label: 'Music', movieGenres: [10402], tvGenres: [10402] },
-        { id: 'mystery', label: 'Mystery', movieGenres: [9648], tvGenres: [9648] },
-        { id: 'romance', label: 'Romance', movieGenres: [10749], tvGenres: [10749] },
-        { id: 'scifi', label: 'Sci-Fi', movieGenres: [878], tvGenres: [10765] },
-        { id: 'thriller', label: 'Thriller', movieGenres: [53], tvGenres: [80] },
-        { id: 'war', label: 'War', movieGenres: [10752], tvGenres: [10768] },
-      ],
+      genreRows: TMDB_GENRE_ROWS,
     }, { maxAge: 86400 });
   }
   if (!String(cfg.apiKey || '').trim()) {
@@ -689,6 +827,13 @@ function extract(ctx) {
   }
   if (action !== 'rail') {
     return hubFail(action, 'INVALID_ACTION', 'tmdb has no action ' + action);
+  }
+  if (String(params.rail || '') === 'because') {
+    return wrap(
+      tmdbBecause(ctx, cfg, params).then(function (env) {
+        return env[0];
+      }),
+    );
   }
   return wrap(
     tmdbList(ctx, cfg, params).then(function (items) {

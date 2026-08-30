@@ -5,7 +5,7 @@ import 'package:shimmer/shimmer.dart';
 
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
-import 'package:forja/shared/catalog/kit/cards/home_movie_card.dart';
+import 'package:forja/shared/widgets/movie_poster_card.dart';
 
 Widget homeLoadingShimmer(Widget child) {
   return Shimmer.fromColors(
@@ -40,8 +40,8 @@ Widget homeCardSkeleton(
   double? width,
   double? height,
 }) {
-  final cardWidth = width ?? HomeMovieCard.cardWidth(context);
-  final cardHeight = height ?? HomeMovieCard.cardHeight(context);
+  final cardWidth = width ?? MoviePosterCard.cardWidth(context);
+  final cardHeight = height ?? MoviePosterCard.cardHeight(context);
   return Container(
     width: cardWidth,
     height: cardHeight,
@@ -76,7 +76,7 @@ Widget homeMovieRowSkeleton(
   final top = topPadding > 0
       ? topPadding
       : homeSectionTitleTop(context, compactTop: compactTop);
-  final height = cardHeight ?? HomeMovieCard.cardHeight(context);
+  final height = cardHeight ?? MoviePosterCard.cardHeight(context);
   final hPad = shellHomeSectionHorizontalPadding(context);
 
   return Padding(
@@ -175,7 +175,7 @@ Widget homeContinueWatchingSkeleton(
 
 Widget homeCatalogCardRowSkeleton(BuildContext context, {int itemCount = 5}) {
   return SizedBox(
-    height: HomeMovieCard.cardHeight(context),
+    height: MoviePosterCard.cardHeight(context),
     child: ListView.separated(
       scrollDirection: Axis.horizontal,
       physics: const NeverScrollableScrollPhysics(),

@@ -15,7 +15,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
-import 'package:forja/shared/catalog/kit/cards/home_movie_card.dart';
+import 'package:forja/shared/widgets/movie_poster_card.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -940,7 +940,7 @@ class _ListPoster extends StatelessWidget {
                     ?pin,
                     const Spacer(),
                     if (rating > 0)
-                      HomeMovieRatingBadge(voteAverage: rating),
+                      MovieRatingBadge(voteAverage: rating),
                   ],
                 ),
               ),

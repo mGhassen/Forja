@@ -1,1 +1,1 @@
-export 'package:forja/shared/catalog/kit/cards/home_movie_card.dart';
+export 'package:forja/shared/widgets/movie_poster_card.dart';

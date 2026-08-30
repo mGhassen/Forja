@@ -4,7 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/catalog/kit/rows/home_movie_section.dart';
+import 'package:forja/shared/widgets/movie_poster_row.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
@@ -15,9 +15,6 @@ import 'package:forja/shared/widgets/hero/hero_title.dart';
 import 'package:forja/shared/widgets/hero/rotating_hero_backdrop.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
-import 'package:forja/shared/catalog/enrich/anime_tmdb_match.dart';
-import 'package:forja/shared/catalog/enrich/kisskh_tmdb_match.dart';
-import 'package:forja/shared/catalog/hub_tmdb_enrich_cache.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
@@ -31,23 +28,6 @@ bool hubIsFullCinematicHero(BuildContext context) =>
 
 bool hubUsesShellLayout(BuildContext context) =>
     ShellScope.profileOf(context) != ShellProfile.mobile;
-
-String hubAnimeStatusLabel(String anilistStatus) {
-  switch (anilistStatus.trim().toUpperCase()) {
-    case 'RELEASING':
-      return 'Airing';
-    case 'FINISHED':
-      return 'Completed';
-    case 'NOT_YET_RELEASED':
-      return 'Upcoming';
-    case 'CANCELLED':
-      return 'Cancelled';
-    case 'HIATUS':
-      return 'Hiatus';
-    default:
-      return anilistStatus.replaceAll('_', ' ');
-  }
-}
 
 class HubHeroSlide {
   const HubHeroSlide({
@@ -415,7 +395,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     return widget.firstCatalogRowHeight ??
         (_isHub
             ? HubCatalogSection.sectionHeight(context, compactTop: true)
-            : HomeMovieSection.sectionHeight(context, compactTop: true));
+            : MoviePosterRow.sectionHeight(context, compactTop: true));
   }
 
   double _homeBackdropHeight(BuildContext context, {required bool compact}) {
@@ -677,159 +657,57 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     for (final slide in slides) {
       final id = slide.id;
       if (_hubEnrichInflight.contains(id)) continue;
+
+      final metaBackdrop = slide.imageUrl.trim();
+      if (metaBackdrop.isNotEmpty && !_heroBackdropUrls.containsKey(id)) {
+        if (!mounted) return;
+        setState(() => _heroBackdropUrls[id] = [metaBackdrop]);
+      }
+
       final needsLogo = !_heroLogos.containsKey(id);
       final needsOverview =
           slide.overview.trim().isEmpty && !_heroOverviews.containsKey(id);
-      final needsBackdrop = !_heroBackdropUrls.containsKey(id) &&
-          (slide.imageUrl.trim().isEmpty ||
-              !slide.imageUrl.contains('image.tmdb.org/t/p/w1280'));
+      final needsBackdrop =
+          !_heroBackdropUrls.containsKey(id) && metaBackdrop.isEmpty;
       if (!needsLogo && !needsOverview && !needsBackdrop) continue;
+
+      final tmdbId = slide.tmdbId;
+      if (tmdbId == null || tmdbId <= 0) {
+        if (!mounted) return;
+        setState(() {
+          if (needsLogo) _heroLogos[id] = '';
+          if (needsOverview) _heroOverviews[id] = '';
+          if (needsBackdrop) _heroBackdropUrls[id] = const [];
+        });
+        continue;
+      }
+
       _hubEnrichInflight.add(id);
       try {
-        final isAnilist = slide.id.startsWith('anilist:');
-        final searchTitle = (slide.matchTitle ?? slide.title).trim();
-        final yearInt = int.tryParse((slide.year ?? '').trim());
-        final isMovie = isAnilist
-            ? AnimeTmdbMatch.isMovieFormat(slide.badge)
-            : false;
-
-        final kisskhId = slide.id.startsWith('kisskh:')
-            ? int.tryParse(slide.id.split(':').last)
-            : null;
-        Movie? cachedHero;
-        if (isAnilist) {
-          cachedHero = AnimeTmdbMatch.peekCachedMovie(
-            title: searchTitle,
-            year: yearInt,
-            isMovie: isMovie,
-          );
-        } else if (kisskhId != null) {
-          cachedHero = KissKhTmdbMatch.peekCachedHeroMovie(kisskhId);
-        }
-
-        var tmdbId = slide.tmdbId ?? cachedHero?.id;
         var mediaType = slide.tmdbMediaType.trim().isEmpty
-            ? (cachedHero?.mediaType ?? 'tv')
+            ? 'tv'
             : slide.tmdbMediaType.trim();
-        if (cachedHero != null && cachedHero.id > 0) {
-          tmdbId = cachedHero.id;
-          if (cachedHero.mediaType == 'movie' ||
-              cachedHero.mediaType == 'tv') {
-            mediaType = cachedHero.mediaType;
+
+        Movie? details;
+        if (needsOverview || needsBackdrop) {
+          details = await _hubHeroDetails(tmdbId, mediaType);
+          if (details != null &&
+              (details.mediaType == 'movie' || details.mediaType == 'tv')) {
+            mediaType = details.mediaType;
           }
         }
-        final kissKhType = isAnilist
-            ? null
-            : KissKhTmdbMatch.kissKhTypeFromBadge(slide.badge);
-        if (tmdbId == null || tmdbId <= 0) {
-          final year = (slide.year ?? '').trim();
-          final preferMovie = isAnilist
-              ? isMovie
-              : kissKhType != null
-                  ? KissKhTmdbMatch.preferMovie(kissKhType)
-                  : mediaType == 'movie';
-          final matchKey = isAnilist
-              ? AnimeTmdbMatch.enrichCacheKey(searchTitle, yearInt, isMovie)
-              : 'hubHeroMatch:${slide.title.trim().toLowerCase()}|$mediaType|$year';
-          ({int id, String mediaType})? hit;
-          if (HubTmdbEnrichCache.contains(matchKey)) {
-            if (isAnilist) {
-              final movie = AnimeTmdbMatch.peekCachedMovie(
-                title: searchTitle,
-                year: yearInt,
-                isMovie: isMovie,
-              );
-              hit = movie == null
-                  ? null
-                  : (
-                      id: movie.id,
-                      mediaType: movie.mediaType == 'movie' ||
-                              movie.mediaType == 'tv'
-                          ? movie.mediaType
-                          : (isMovie ? 'movie' : 'tv'),
-                    );
-            } else {
-              final c = HubTmdbEnrichCache.get<(int, String)?>(matchKey);
-              hit = c == null ? null : (id: c.$1, mediaType: c.$2);
-            }
-          } else {
-            if (isAnilist) {
-              final movie = await AnimeTmdbMatch.resolve(
-                title: searchTitle,
-                year: yearInt,
-                isMovie: isMovie,
-                tmdb: _api,
-              );
-              hit = movie == null
-                  ? null
-                  : (
-                      id: movie.id,
-                      mediaType: movie.mediaType == 'movie' ||
-                              movie.mediaType == 'tv'
-                          ? movie.mediaType
-                          : (isMovie ? 'movie' : 'tv'),
-                    );
-            } else {
-              hit = await _matchHubTitle(
-                slide.title,
-                year: year.isEmpty ? null : year,
-                kissKhType: kissKhType,
-                preferMovie: preferMovie,
-              );
-            }
-            if (!isAnilist) {
-              HubTmdbEnrichCache.put(
-                matchKey,
-                hit == null ? null : (hit.id, hit.mediaType),
-              );
-            }
-          }
-          if (hit == null) {
-            if (!mounted) return;
-            setState(() {
-              if (needsLogo) _heroLogos[id] = '';
-              if (needsOverview) _heroOverviews[id] = '';
-              // Mark attempted so we don't re-fetch every frame.
-              if (needsBackdrop) _heroBackdropUrls[id] = const [];
-            });
-            continue;
-          }
-          tmdbId = hit.id;
-          mediaType = hit.mediaType;
-        }
-        final detailsKey = 'hubHeroDetails:$tmdbId:$mediaType';
-        Movie? details = cachedHero;
-        if (HubTmdbEnrichCache.contains(detailsKey)) {
-          details = HubTmdbEnrichCache.get<Movie>(detailsKey) ?? details;
-        } else if (needsOverview || needsBackdrop) {
-          details ??= await _hubHeroDetails(tmdbId, mediaType);
-          if (details != null) {
-            mediaType = details.mediaType == 'movie' || details.mediaType == 'tv'
-                ? details.mediaType
-                : mediaType;
-            HubTmdbEnrichCache.put('hubHeroDetails:$tmdbId:$mediaType', details);
-          }
-        }
+
         if (needsLogo) {
-          final cachedLogoKey = 'hubHeroLogo:$tmdbId:$mediaType';
-          String? logoUrl;
-          if (HubTmdbEnrichCache.contains(cachedLogoKey)) {
-            logoUrl = HubTmdbEnrichCache.get<String>(cachedLogoKey) ?? '';
-          } else {
-            try {
-              final logoPath =
-                  await _api.getLogoPath(tmdbId, mediaType: mediaType);
-              logoUrl = logoPath.isNotEmpty
-                  ? TmdbApi.getImageUrl(logoPath)
-                  : '';
-              HubTmdbEnrichCache.put(cachedLogoKey, logoUrl);
-            } catch (_) {
-              logoUrl = '';
-            }
-          }
+          String logoUrl = '';
+          try {
+            final logoPath =
+                await _api.getLogoPath(tmdbId, mediaType: mediaType);
+            logoUrl = logoPath.isNotEmpty ? TmdbApi.getImageUrl(logoPath) : '';
+          } catch (_) {}
           if (!mounted) return;
-          setState(() => _heroLogos[id] = logoUrl ?? '');
+          setState(() => _heroLogos[id] = logoUrl);
         }
+
         if ((needsOverview || needsBackdrop) && details != null) {
           if (!mounted) return;
           setState(() {
@@ -846,17 +724,14 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                 final url = path.startsWith('http')
                     ? path
                     : TmdbApi.getBackdropUrl(path);
-                if (url.isNotEmpty) {
-                  _heroBackdropUrls[id] = [url];
-                } else {
-                  _heroBackdropUrls[id] = const [];
-                }
+                _heroBackdropUrls[id] =
+                    url.isNotEmpty ? [url] : const [];
               } else {
                 _heroBackdropUrls[id] = const [];
               }
             }
           });
-        } else if (needsBackdrop && details == null) {
+        } else if (needsBackdrop) {
           if (!mounted) return;
           setState(() => _heroBackdropUrls[id] = const []);
         }
@@ -864,26 +739,6 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
         _hubEnrichInflight.remove(id);
       }
     }
-  }
-
-  /// Same scorer as Asian Drama details — not first-with-backdrop.
-  Future<({int id, String mediaType})?> _matchHubTitle(
-    String title, {
-    String? kissKhType,
-    required bool preferMovie,
-    String? year,
-  }) async {
-    final match = await KissKhTmdbMatch.resolve(
-      title: title,
-      year: year,
-      kissKhType: kissKhType ?? (preferMovie ? 'movie' : 'tvseries'),
-      tmdb: _api,
-    );
-    if (match == null || match.id <= 0) return null;
-    final mt = match.mediaType == 'movie' || match.mediaType == 'tv'
-        ? match.mediaType
-        : (preferMovie ? 'movie' : 'tv');
-    return (id: match.id, mediaType: mt);
   }
 
   Future<Movie?> _hubHeroDetails(int tmdbId, String preferType) async {
@@ -1165,7 +1020,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final firstRowHeight = _firstCatalogRowHeight(context);
     final nextRowPeek = (_isHub
             ? HubCatalogSection.sectionHeight(context)
-            : HomeMovieSection.sectionHeight(context)) *
+            : MoviePosterRow.sectionHeight(context)) *
         shellHeroNextRowPeekFraction(context);
     final reservedBelow = shellHomeRowSpacing(context) +
         firstRowHeight +

@@ -37,7 +37,7 @@ import 'package:forja/shared/tv/tv_remote_debug.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
-import 'package:forja/shared/catalog/tmdb_user_region.dart';
+import 'package:forja/shared/services/tmdb_user_region.dart';
 import 'package:forja/shared/network/legacy_android_tls.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';

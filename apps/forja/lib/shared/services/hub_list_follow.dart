@@ -1,4 +1,3 @@
-import 'package:forja/shared/catalog/enrich/kisskh_tmdb_match.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/features/my_list/providers/my_list_providers.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -68,30 +67,12 @@ class HubListFollowTarget {
 class HubListFollow {
   HubListFollow._();
 
-  static Future<HubListFollowTarget> _withDramaTmdb(
-    HubListFollowTarget t,
-  ) async {
-    if (t.mediaType != 'asian_drama' || t.tmdbId != null) return t;
-    final match = await KissKhTmdbMatch.resolve(
-      title: t.title,
-      year: t.releaseDate,
-      kissKhType: t.kissKhType,
-    );
-    if (match == null) return t;
-    final mt = match.mediaType == 'movie' || match.mediaType == 'tv'
-        ? match.mediaType
-        : KissKhTmdbMatch.preferMovie(t.kissKhType)
-            ? 'movie'
-            : 'tv';
-    return t.copyWith(tmdbId: match.id, tmdbMediaType: mt);
-  }
-
   static Future<bool> setStatus(
     HubListFollowTarget raw,
     String to, {
     ProviderContainer? container,
   }) async {
-    var t = await _withDramaTmdb(raw);
+    final t = raw;
     if (to.isEmpty) {
       final keys = <String>{t.uniqueId};
       if (t.anilistId != null) keys.add('anilist_${t.anilistId}');
@@ -198,8 +179,6 @@ class HubListFollow {
       final storedType = stored?['tmdbMediaType']?.toString();
       if (storedTmdb != null) {
         t = t.copyWith(tmdbId: storedTmdb, tmdbMediaType: storedType);
-      } else {
-        t = await _withDramaTmdb(t);
       }
     }
 

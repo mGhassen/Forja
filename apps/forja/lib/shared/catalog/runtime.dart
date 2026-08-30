@@ -17,6 +17,7 @@ class CatalogRuntime {
   static final CatalogRuntime instance = CatalogRuntime._();
 
   final Set<String> _revalidating = {};
+  final Map<String, Future<CatalogEnvelope>> _inFlight = {};
 
   Future<CatalogEnvelope> run({
     required String pluginId,
@@ -37,6 +38,7 @@ class CatalogRuntime {
 
     if (cached != null && cached.isFresh) {
       return _pipeEnrichCached(
+        cacheKey: key,
         sourcePluginId: pluginId,
         action: action,
         params: params,
@@ -56,6 +58,7 @@ class CatalogRuntime {
         timeout: timeout,
       );
       return _pipeEnrichCached(
+        cacheKey: key,
         sourcePluginId: pluginId,
         action: action,
         params: params,
@@ -65,7 +68,14 @@ class CatalogRuntime {
       );
     }
 
-    return _fetch(
+    if (!forceRefresh) {
+      final pending = _inFlight[key];
+      if (pending != null) return pending;
+    } else {
+      _inFlight.remove(key);
+    }
+
+    final future = _fetch(
       key: key,
       pluginId: pluginId,
       action: action,
@@ -74,6 +84,12 @@ class CatalogRuntime {
       entry: cached,
       timeout: timeout,
     );
+    if (!forceRefresh) _inFlight[key] = future;
+    try {
+      return await future;
+    } finally {
+      _inFlight.remove(key);
+    }
   }
 
   Future<CatalogEnvelope> _fetch({
@@ -94,7 +110,17 @@ class CatalogRuntime {
       timeout: timeout,
     );
     if (raw == null) {
-      if (entry != null) return _cachedEnvelope(action, entry);
+      if (entry != null) {
+        return _pipeEnrichCached(
+          cacheKey: key,
+          sourcePluginId: pluginId,
+          action: action,
+          params: params,
+          auth: auth,
+          envelope: _cachedEnvelope(action, entry),
+          timeout: timeout,
+        );
+      }
       return CatalogEnvelope.failure(
         CatalogErrorCode.upstream,
         message: '$pluginId did not answer $action',
@@ -104,7 +130,17 @@ class CatalogRuntime {
 
     var envelope = parseEnvelope(raw);
     if (envelope == null) {
-      if (entry != null) return _cachedEnvelope(action, entry);
+      if (entry != null) {
+        return _pipeEnrichCached(
+          cacheKey: key,
+          sourcePluginId: pluginId,
+          action: action,
+          params: params,
+          auth: auth,
+          envelope: _cachedEnvelope(action, entry),
+          timeout: timeout,
+        );
+      }
       return CatalogEnvelope.failure(
         CatalogErrorCode.parse,
         message: '$pluginId returned a non-protocol payload',
@@ -121,12 +157,28 @@ class CatalogRuntime {
     }
     if (envelope.notModified && entry != null) {
       CatalogCache.instance.touch(key);
-      return _cachedEnvelope(action, entry);
+      return _pipeEnrichCached(
+        cacheKey: key,
+        sourcePluginId: pluginId,
+        action: action,
+        params: params,
+        auth: auth,
+        envelope: _cachedEnvelope(action, entry),
+        timeout: timeout,
+      );
     }
     if (!envelope.ok) {
       if (entry != null && !entry.isExpired) {
         debugPrint('[catalog] $pluginId $action ${envelope.error} — serving cache');
-        return _cachedEnvelope(action, entry);
+        return _pipeEnrichCached(
+          cacheKey: key,
+          sourcePluginId: pluginId,
+          action: action,
+          params: params,
+          auth: auth,
+          envelope: _cachedEnvelope(action, entry),
+          timeout: timeout,
+        );
       }
       return envelope;
     }
@@ -152,9 +204,10 @@ class CatalogRuntime {
     return envelope;
   }
 
-  /// Companion enrich on cache hits — spotlight rows cached before enrich
-  /// shipped (or from an older build) must still get TMDB backdrops.
+  /// Companion enrich on cache hits — legacy rows and [feed] must still enrich;
+  /// merged payload is written back so later hits skip repeat TMDB work.
   Future<CatalogEnvelope> _pipeEnrichCached({
+    required String cacheKey,
     required String sourcePluginId,
     required String action,
     required Map<String, dynamic> params,
@@ -162,8 +215,10 @@ class CatalogRuntime {
     required CatalogEnvelope envelope,
     required Duration timeout,
   }) async {
-    if (action != 'rail' && action != 'details') return envelope;
-    return _pipeEnrich(
+    if (action != 'rail' && action != 'details' && action != 'feed') {
+      return envelope;
+    }
+    final enriched = await _pipeEnrich(
       sourcePluginId: sourcePluginId,
       action: action,
       params: params,
@@ -171,10 +226,20 @@ class CatalogRuntime {
       envelope: envelope,
       timeout: timeout,
     );
+    final data = enriched.data;
+    if (data != null) {
+      CatalogCache.instance.put(
+        key: cacheKey,
+        pluginId: sourcePluginId,
+        data: data,
+        hints: enriched.cache,
+      );
+    }
+    return enriched;
   }
 
-  /// After a source catalog answers `rail` / `details`, optionally run the
-  /// companion enrich plugin declared as `EnginePlugin.enrich`.
+  /// After a source catalog answers `rail` / `details` / `feed`, optionally run
+  /// the companion enrich plugin declared as [EnginePlugin.enrich].
   Future<CatalogEnvelope> _pipeEnrich({
     required String sourcePluginId,
     required String action,
@@ -184,7 +249,9 @@ class CatalogRuntime {
     required Duration timeout,
   }) async {
     if (action == 'enrich') return envelope;
-    if (action != 'rail' && action != 'details') return envelope;
+    if (action != 'rail' && action != 'details' && action != 'feed') {
+      return envelope;
+    }
     if (!envelope.ok) return envelope;
 
     final source = await _resolvePlugin(sourcePluginId);
@@ -193,6 +260,18 @@ class CatalogRuntime {
 
     final data = envelope.data;
     if (data == null) return envelope;
+
+    if (action == 'feed') {
+      return _pipeEnrichFeed(
+        sourcePluginId: sourcePluginId,
+        enrichId: enrichId,
+        params: params,
+        auth: auth,
+        envelope: envelope,
+        data: data,
+        timeout: timeout,
+      );
+    }
 
     final enrichParams = <String, dynamic>{...params};
     if (action == 'rail') {
@@ -205,6 +284,101 @@ class CatalogRuntime {
       enrichParams['meta'] = Map<String, dynamic>.from(meta);
     }
 
+    final merged = await _mergeEnrichAnswer(
+      sourcePluginId: sourcePluginId,
+      enrichId: enrichId,
+      action: action,
+      data: data,
+      enrichParams: enrichParams,
+      auth: auth,
+      timeout: timeout,
+    );
+    if (merged == null) return envelope;
+    return CatalogEnvelope(
+      ok: true,
+      action: action,
+      kit: envelope.kit,
+      protocol: envelope.protocol,
+      data: merged,
+      cache: envelope.cache,
+    );
+  }
+
+  Future<CatalogEnvelope> _pipeEnrichFeed({
+    required String sourcePluginId,
+    required String enrichId,
+    required Map<String, dynamic> params,
+    Map<String, dynamic>? auth,
+    required CatalogEnvelope envelope,
+    required Map<String, dynamic> data,
+    required Duration timeout,
+  }) async {
+    final railsRaw = data['rails'];
+    if (railsRaw is! Map || railsRaw.isEmpty) return envelope;
+
+    final enrichPlugin = await _resolvePlugin(enrichId);
+    final railIds = _enrichRailIds(enrichPlugin);
+    final mergedRails = <String, dynamic>{
+      for (final entry in railsRaw.entries) entry.key.toString(): entry.value,
+    };
+    var changed = false;
+    for (final railId in railIds) {
+      final items = mergedRails[railId];
+      if (items is! List || items.isEmpty) continue;
+      final out = await _mergeEnrichAnswer(
+        sourcePluginId: sourcePluginId,
+        enrichId: enrichId,
+        action: 'rail',
+        data: const {'items': []},
+        enrichParams: <String, dynamic>{
+          ...params,
+          'rail': railId,
+          'items': items,
+        },
+        auth: auth,
+        timeout: timeout,
+      );
+      if (out == null) continue;
+      final enrichedItems = out['items'];
+      if (enrichedItems is List) {
+        mergedRails[railId] = enrichedItems;
+        changed = true;
+      }
+    }
+    if (!changed) return envelope;
+
+    final merged = Map<String, dynamic>.from(data);
+    merged['rails'] = mergedRails;
+    return CatalogEnvelope(
+      ok: true,
+      action: envelope.action,
+      kit: envelope.kit,
+      protocol: envelope.protocol,
+      data: merged,
+      cache: envelope.cache,
+    );
+  }
+
+  List<String> _enrichRailIds(EnginePlugin? enrichPlugin) {
+    final raw = enrichPlugin?.config['rails'];
+    if (raw is List && raw.isNotEmpty) {
+      return [
+        for (final entry in raw)
+          if (entry.toString().trim().isNotEmpty) entry.toString().trim(),
+      ];
+    }
+    return const ['spotlight'];
+  }
+
+  Future<Map<String, dynamic>?> _mergeEnrichAnswer({
+    required String sourcePluginId,
+    required String enrichId,
+    required String action,
+    required Map<String, dynamic> data,
+    required Map<String, dynamic> enrichParams,
+    Map<String, dynamic>? auth,
+    required Duration timeout,
+  }) async {
     final raw = await EngineService.instance.runCatalog(
       pluginId: enrichId,
       action: 'enrich',
@@ -214,14 +388,14 @@ class CatalogRuntime {
     );
     if (raw == null) {
       debugPrint('[catalog] $sourcePluginId enrich via $enrichId skipped (no answer)');
-      return envelope;
+      return null;
     }
     final enriched = parseEnvelope(raw);
     if (enriched == null || !enriched.ok || enriched.data == null) {
       debugPrint(
         '[catalog] $sourcePluginId enrich via $enrichId failed — keeping source',
       );
-      return envelope;
+      return null;
     }
 
     final merged = Map<String, dynamic>.from(data);
@@ -232,14 +406,7 @@ class CatalogRuntime {
       final meta = enriched.data!['meta'];
       if (meta is Map) merged['meta'] = Map<String, dynamic>.from(meta);
     }
-    return CatalogEnvelope(
-      ok: true,
-      action: action,
-      kit: envelope.kit,
-      protocol: envelope.protocol,
-      data: merged,
-      cache: envelope.cache,
-    );
+    return merged;
   }
 
   Future<EnginePlugin?> _resolvePlugin(String pluginId) async {

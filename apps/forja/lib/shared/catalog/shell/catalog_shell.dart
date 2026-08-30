@@ -13,21 +13,15 @@ import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/shell_mood_circle.dart';
-import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:rust/rust.dart';
 
-import '../kit/cards/home_movie_card.dart';
 import '../kit/cards/hub_poster_card.dart';
 import '../kit/chrome/catalog_vertical_filters.dart';
-import '../kit/host/catalog_host_because.dart';
-import '../kit/host/catalog_host_continue.dart';
-import '../kit/host/catalog_host_genre_rows.dart';
-import '../kit/host/catalog_host_home_mood.dart';
-import '../kit/host/catalog_host_trakt.dart';
+import '../kit/widgets/catalog_because_section.dart';
+import '../kit/widgets/catalog_continue_widget.dart';
+import '../kit/widgets/catalog_host_trakt.dart';
 import '../kit/meta/catalog_meta_movie.dart';
-import '../kit/rows/home_movie_section.dart';
 import '../kit/rows/hub_catalog_section.dart';
 import '../filter.dart';
 import '../plugin_nav.dart';
@@ -66,15 +60,14 @@ class _CatalogShellState extends State<CatalogShell>
 
   /// Stable rail Futures — rebuild must not create a new Future (shimmer flash).
   final Map<String, Future<List<CatalogMetaItem>>> _metaRailFutures = {};
-  final Map<String, Future<List<Movie>>> _movieRailFutures = {};
 
   /// Pack `feed` action — one JS call claims across spotlight / featured / …
   bool _pageUsesFeed = false;
-  String _cardStyle = 'poster';
   Map<String, List<CatalogMetaItem>> _feedRails = {};
   String _feedCacheKey = '';
   Future<Map<String, List<CatalogMetaItem>>>? _feedLoadFuture;
 
+  /// Rails served by the pack `feed` action (exclusive claim pools).
   static const Set<String> _packFeedRailIds = {
     'spotlight',
     'featured',
@@ -82,7 +75,7 @@ class _CatalogShellState extends State<CatalogShell>
     'new_releases',
   };
 
-  /// Next [_railFuture] / [_homeMovieFuture] miss goes through `forceRefresh`.
+  /// Next [_railFuture] miss goes through `forceRefresh`.
   bool _forceNextRails = false;
 
   Listenable? _chromeListenable;
@@ -140,7 +133,6 @@ class _CatalogShellState extends State<CatalogShell>
 
   void _invalidateRailFutures() {
     _metaRailFutures.clear();
-    _movieRailFutures.clear();
     _feedRails = {};
     _feedCacheKey = '';
     _feedLoadFuture = null;
@@ -202,7 +194,6 @@ class _CatalogShellState extends State<CatalogShell>
     final page = pages[_pageKey] ?? pages.values.first;
     final pageMap = Map<String, dynamic>.from(page as Map);
     _pageUsesFeed = pageMap['feed'] == true;
-    _cardStyle = (pageMap['cardStyle'] ?? 'poster').toString().trim().toLowerCase();
     final rawWidgets = pageMap['widgets'] as List;
     final widgets = <Map<String, dynamic>>[
       for (final w in rawWidgets)
@@ -223,6 +214,9 @@ class _CatalogShellState extends State<CatalogShell>
       _loading = false;
       _widgets = widgets;
     });
+    if (_pageUsesFeed) {
+      unawaited(_ensureFeedLoaded());
+    }
     final packSourceUrl = (await PluginRegistry.instance.findPlugin(
       widget.pluginId,
     ))?.pack.sourceUrl;
@@ -312,6 +306,7 @@ class _CatalogShellState extends State<CatalogShell>
 
   bool _isPackFeedRail(Map<String, dynamic> spec) {
     if (!_pageUsesFeed) return false;
+    if ((spec['moodSource'] ?? '').toString().isNotEmpty) return false;
     final rail = _packRailId(spec);
     return rail != null && _packFeedRailIds.contains(rail);
   }
@@ -397,15 +392,6 @@ class _CatalogShellState extends State<CatalogShell>
     );
   }
 
-  Future<List<Movie>> _homeMovieFuture(Map<String, dynamic> spec) {
-    final key = _railMemoKey(spec);
-    final force = _forceNextRails;
-    return _movieRailFutures.putIfAbsent(key, () async {
-      final items = await _itemsForRailSpec(spec, forceRefresh: force);
-      return catalogMetasToMovies(items);
-    });
-  }
-
   Future<void> _openMeta(CatalogMetaItem item) =>
       openCatalogMetaItem(context, pluginId: widget.pluginId, item: item);
 
@@ -431,6 +417,7 @@ class _CatalogShellState extends State<CatalogShell>
           title: item.name,
           posterPath: item.poster,
           tmdbId: item.numericId('tmdb'),
+          tmdbMediaType: item.tmdbMediaType,
           releaseDate: item.releaseInfo,
         );
       default:
@@ -480,7 +467,7 @@ class _CatalogShellState extends State<CatalogShell>
       rating: item.rating,
       year: yearBit,
       badge: item.badge,
-      statusChip: status.isEmpty ? null : hubAnimeStatusLabel(status),
+      statusChip: status.isEmpty ? null : status.replaceAll('_', ' '),
       isUpcoming: isUpcoming,
       upcomingReleaseLabel: isUpcoming ? yearBit : null,
       genres: item.genres,
@@ -563,8 +550,6 @@ class _CatalogShellState extends State<CatalogShell>
     return o == 'vertical';
   }
 
-  bool get _usesHomeMovieRails => _cardStyle == 'movie';
-
   /// Assigns monotonic [sortOrder] values for TV row registry from layout order.
   Map<String, int> _planTvRowOrders({
     Map<String, dynamic>? bleedSpec,
@@ -601,15 +586,13 @@ class _CatalogShellState extends State<CatalogShell>
 
       switch (type) {
         case 'hero':
+        case 'vertical_filters':
         case 'host.vertical_filters':
           break;
         case 'mood':
           orders['$id-chips'] = order;
           orders['$id-results'] = order + 1;
           order += 2;
-        case 'host.genre_rows':
-          orders[id] = order;
-          order += 10;
         default:
           if (id.isNotEmpty) {
             orders[id] = order++;
@@ -620,13 +603,11 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   bool _layoutWidgetCountsForTv(Map<String, dynamic> spec) {
-    switch ((spec['type'] ?? '').toString()) {
+    switch (_layoutWidgetType(spec)) {
+      case 'vertical_filters':
       case 'host.vertical_filters':
         return false;
-      case 'host.because':
-      case 'host.trakt':
-      case 'host.genre_rows':
-        return _cardStyle == 'movie';
+      case 'continue':
       case 'host.continue':
         return true;
       default:
@@ -642,77 +623,12 @@ class _CatalogShellState extends State<CatalogShell>
     ShellTvFocus.focusHomeHeroPlay();
   }
 
-  Widget _homeMovieRail(
-    Map<String, dynamic> spec, {
-    bool compactTop = false,
-    int tvRowOrder = 0,
-    VoidCallback? tvFocusUp,
-  }) {
-    final id = (spec['id'] ?? '').toString();
-    final title = (spec['title'] ?? '').toString();
-    final numbered = _isNumbered(spec);
-    final chrome = catalogChromeFilterEpoch(widget.tabId);
-    if (_isVertical(spec)) {
-      return _VerticalHomeMovieRail(
-        key: ValueKey('vrail:$id:$chrome:$_chromeEpoch'),
-        title: title,
-        future: _homeMovieFuture(spec),
-        showRank: numbered,
-        compactTop: compactTop,
-        tvTabId: widget.tabId ?? 'home',
-        tvRowId: id,
-        tvRowOrder: tvRowOrder,
-        onMovieTap: (m) {
-          final meta = catalogMetaItemForMovie(m);
-          if (meta != null && meta.open != null) {
-            unawaited(_openMeta(meta));
-            return;
-          }
-          AppRouter.openDetails(context, movie: m);
-        },
-      );
-    }
-    return HomeMovieSection(
-      key: ValueKey('hrail:$id:$chrome:$_chromeEpoch'),
-      title: title,
-      future: _homeMovieFuture(spec),
-      onMovieTap: (m) {
-        final meta = catalogMetaItemForMovie(m);
-        if (meta != null && meta.open != null) {
-          unawaited(_openMeta(meta));
-          return;
-        }
-        AppRouter.openDetails(context, movie: m);
-      },
-      compactTop: compactTop,
-      showRank: numbered,
-      tvRowId: id,
-      tvRowOrder: tvRowOrder,
-      tvFocusUp: tvFocusUp,
-    );
-  }
-
-  Future<List<CatalogMetaItem>> _fetchMoodRail(Map<String, dynamic> moodSpec) {
-    final rail = (moodSpec['rail'] ?? 'discover').toString();
-    return _railFuture({
-      ...moodSpec,
-      'type': 'rail',
-      'id': '${moodSpec['id']}_results',
-      'rail': rail,
-      'moodSource': moodSpec['id'],
-      'title': '',
-    });
-  }
-
   Widget _railSection(
     Map<String, dynamic> spec, {
     bool showRank = false,
     int tvRowOrder = 0,
     VoidCallback? tvFocusUp,
   }) {
-    if (_usesHomeMovieRails) {
-      return _homeMovieRail(spec, tvRowOrder: tvRowOrder, tvFocusUp: tvFocusUp);
-    }
     final id = (spec['id'] ?? '').toString();
     final mood = _moods[(spec['moodSource'] ?? '').toString()] ?? '';
     final chrome = catalogChromeFilterEpoch(widget.tabId);
@@ -757,6 +673,18 @@ class _CatalogShellState extends State<CatalogShell>
         aspect: aspect,
       ),
     );
+  }
+
+  Future<List<CatalogMetaItem>> _fetchMoodRail(Map<String, dynamic> moodSpec) {
+    final rail = (moodSpec['rail'] ?? 'discover').toString();
+    return _railFuture({
+      ...moodSpec,
+      'type': 'rail',
+      'id': '${moodSpec['id']}_results',
+      'rail': rail,
+      'moodSource': moodSpec['id'],
+      'title': '',
+    });
   }
 
   Widget _heroSection(
@@ -977,6 +905,16 @@ class _CatalogShellState extends State<CatalogShell>
     );
   }
 
+  String _layoutWidgetType(Map<String, dynamic> spec) {
+    return switch ((spec['type'] ?? '').toString().trim()) {
+      'host.continue' => 'continue',
+      'host.because' => 'because',
+      'host.trakt' => 'trakt',
+      'host.vertical_filters' => 'vertical_filters',
+      _ => (spec['type'] ?? '').toString().trim(),
+    };
+  }
+
   Widget? _widgetFor(
     Map<String, dynamic> spec, {
     Widget? heroBleedChild,
@@ -984,7 +922,7 @@ class _CatalogShellState extends State<CatalogShell>
     required Map<String, int> tvOrders,
   }) {
     final id = (spec['id'] ?? '').toString();
-    switch ((spec['type'] ?? '').toString().trim()) {
+    switch (_layoutWidgetType(spec)) {
       case 'hero':
         return _heroSection(
           spec,
@@ -1000,39 +938,26 @@ class _CatalogShellState extends State<CatalogShell>
           tvRowOrder: _tvOrder(tvOrders, id),
         );
       case 'mood':
-        if (_usesHomeMovieRails) {
-          final options = [
-            for (final o in (spec['options'] as List? ?? const []))
-              if (o is Map) Map<String, dynamic>.from(o),
-          ];
-          return CatalogHostHomeMood(
-            options: options,
-            title: (spec['title'] ?? "What's your mood?").toString(),
-            tvRowOrder: _tvOrder(tvOrders, '$id-chips'),
-          );
-        }
         return _moodSection(spec, tvRowOrder: _tvOrder(tvOrders, '$id-chips'));
-      case 'host.continue':
-        return CatalogHostContinue(
+      case 'continue':
+        return CatalogContinueWidget(
           pluginId: widget.pluginId,
           tabId: widget.tabId ?? 'home',
-          continuePool: (spec['pool'] ?? '').toString().trim().isEmpty
-              ? null
-              : (spec['pool'] ?? '').toString(),
           tvRowOrder: _tvOrder(tvOrders, id),
         );
-      case 'host.because':
-        return _usesHomeMovieRails ? const CatalogHostBecause() : null;
-      case 'host.trakt':
-        return _usesHomeMovieRails ? const CatalogHostTrakt() : null;
-      case 'host.genre_rows':
-        return _usesHomeMovieRails
-            ? CatalogHostGenreRows(
-                pluginId: widget.pluginId,
-                tabId: widget.tabId ?? 'home',
-                tvRowOrderBase: _tvOrder(tvOrders, id),
-              )
-            : null;
+      case 'because':
+        return CatalogBecauseSection(
+          pluginId: widget.pluginId,
+          tabId: widget.tabId ?? 'home',
+          spec: spec,
+          tvRowOrder: _tvOrder(tvOrders, id),
+        );
+      case 'trakt':
+        return CatalogHostTrakt(
+          tabId: widget.tabId ?? 'home',
+          tvRowOrderBase: _tvOrder(tvOrders, id),
+        );
+      case 'vertical_filters':
       case 'host.vertical_filters':
         return null;
       default:
@@ -1080,33 +1005,26 @@ class _CatalogShellState extends State<CatalogShell>
       final bleedRowId = bleed == null ? null : (bleed['id'] ?? '').toString();
       final Widget? bleedChild = bleed == null
           ? null
-          : (_usesHomeMovieRails
-                ? _homeMovieRail(
-                    bleed,
-                    compactTop: true,
-                    tvRowOrder: _tvOrder(tvOrders, bleedRowId ?? ''),
-                    tvFocusUp: _focusHeroPlay,
-                  )
-                : HubCatalogSection<CatalogMetaItem>(
-                    key: ValueKey('bleed:${bleed['id']}:$_chromeEpoch'),
-                    title: (bleed['title'] ?? '').toString(),
-                    future: _railFuture(bleed),
-                    showRank: _isNumbered(bleed),
-                    compactTop: true,
-                    cardAspect: _aspectOf(bleed),
-                    tvTabId: widget.tabId,
-                    tvRowId: bleedRowId,
-                    tvRowOrder: _tvOrder(tvOrders, bleedRowId ?? ''),
-                    tvFocusUp: _focusHeroPlay,
-                    cardBuilder: (context, item, index) => _card(
-                      context,
-                      item,
-                      index,
-                      showRank: _isNumbered(bleed),
-                      rowId: (bleed['id'] ?? '').toString(),
-                      aspect: _aspectOf(bleed),
-                    ),
-                  ));
+          : HubCatalogSection<CatalogMetaItem>(
+              key: ValueKey('bleed:${bleed['id']}:$_chromeEpoch'),
+              title: (bleed['title'] ?? '').toString(),
+              future: _railFuture(bleed),
+              showRank: _isNumbered(bleed),
+              compactTop: true,
+              cardAspect: _aspectOf(bleed),
+              tvTabId: widget.tabId,
+              tvRowId: bleedRowId,
+              tvRowOrder: _tvOrder(tvOrders, bleedRowId ?? ''),
+              tvFocusUp: _focusHeroPlay,
+              cardBuilder: (context, item, index) => _card(
+                context,
+                item,
+                index,
+                showRank: _isNumbered(bleed),
+                rowId: (bleed['id'] ?? '').toString(),
+                aspect: _aspectOf(bleed),
+              ),
+            );
 
       final sections = <Widget>[];
       for (final spec in _widgets) {
@@ -1230,101 +1148,7 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
       bleedRowId: widget.bleedRowId,
       firstCatalogRowHeight: bottom == null
           ? null
-          : HomeMovieSection.sectionHeight(context, compactTop: true),
-    );
-  }
-}
-
-class _VerticalHomeMovieRail extends StatefulWidget {
-  const _VerticalHomeMovieRail({
-    super.key,
-    required this.title,
-    required this.future,
-    required this.onMovieTap,
-    this.showRank = false,
-    this.compactTop = false,
-    this.tvTabId = 'home',
-    this.tvRowId,
-    this.tvRowOrder = 0,
-  });
-
-  final String title;
-  final Future<List<Movie>> future;
-  final void Function(Movie) onMovieTap;
-  final bool showRank;
-  final bool compactTop;
-  final String tvTabId;
-  final String? tvRowId;
-  final int tvRowOrder;
-
-  @override
-  State<_VerticalHomeMovieRail> createState() => _VerticalHomeMovieRailState();
-}
-
-class _VerticalHomeMovieRailState extends State<_VerticalHomeMovieRail> {
-  List<Movie>? _last;
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<List<Movie>>(
-      future: widget.future,
-      builder: (context, snap) {
-        if (snap.hasData) _last = snap.data;
-        final movies = snap.data ?? _last ?? const <Movie>[];
-        if (movies.isEmpty) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return homeLoadingShimmer(
-              homeMovieRowSkeleton(context, compactTop: widget.compactTop),
-            );
-          }
-          return const SizedBox.shrink();
-        }
-        final pad = shellHomeSectionHorizontalPadding(context);
-        final rowId = widget.tvRowId;
-        final column = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ShellSectionTitle(
-              title: widget.title,
-              padding: shellHomeSectionTitlePadding(
-                context,
-                top: widget.compactTop
-                    ? shellSectionTitleTopCompact(context)
-                    : shellHomeSectionTitleTop(context),
-              ),
-            ),
-            for (var i = 0; i < movies.length; i++)
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  pad,
-                  0,
-                  pad,
-                  shellMovieCardRowGap(context),
-                ),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: HomeMovieCard(
-                    movie: movies[i],
-                    onTap: () => widget.onMovieTap(movies[i]),
-                    rank: widget.showRank ? i + 1 : null,
-                    listIndex: i,
-                    tvTabId: widget.tvTabId,
-                    tvRowId: rowId,
-                  ),
-                ),
-              ),
-          ],
-        );
-        if (rowId == null) return column;
-        return TvCatalogRow(
-          tabId: widget.tvTabId,
-          rowId: rowId,
-          sortOrder: widget.tvRowOrder,
-          itemCount: movies.length,
-          orientation: ShellTvRowOrientation.vertical,
-          child: column,
-        );
-      },
+          : HubCatalogSection.sectionHeight(context, compactTop: true),
     );
   }
 }

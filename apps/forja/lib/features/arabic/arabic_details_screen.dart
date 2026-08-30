@@ -2,48 +2,43 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/arabic/arabic_hub_play.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
-import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
-import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
-import 'package:forja/shared/catalog/kit/details/hub_details_sections.dart';
-import 'package:forja/shared/playback/catalog_play_resolve.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/hub_details/hub_engine_auto_play.dart';
 import 'package:forja/shared/widgets/media_details/media_details.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
-import 'package:rust/rust.dart';
 
-Future<T?> openHubDetails<T>(
+Future<T?> openArabicDetails<T>(
   BuildContext context, {
   required String pluginId,
   required CatalogMetaItem item,
-  String? shellTabId,
 }) {
-  final tab = shellTabId ?? hubShellTabIdForPlugin(pluginId) ?? 'home';
   return pushShellRoute<T>(
     context,
     AppRouter.slideShellRoute(
-      (_) => HubDetailsScreen(pluginId: pluginId, item: item),
-      settings: RouteSettings(name: '${tab}_hub_details'),
+      (_) => ArabicDetailsScreen(pluginId: pluginId, item: item),
+      settings: const RouteSettings(name: 'arabic_details'),
     ),
-    shellTabId: tab,
+    shellTabId: 'arabic',
   );
 }
 
-/// Pack-driven details — host loads `action: details` then renders shared chrome.
-class HubDetailsScreen extends ConsumerStatefulWidget {
-  const HubDetailsScreen({
+class ArabicDetailsScreen extends ConsumerStatefulWidget {
+  const ArabicDetailsScreen({
     super.key,
     required this.pluginId,
     required this.item,
@@ -53,18 +48,16 @@ class HubDetailsScreen extends ConsumerStatefulWidget {
   final CatalogMetaItem item;
 
   @override
-  ConsumerState<HubDetailsScreen> createState() => _HubDetailsScreenState();
+  ConsumerState<ArabicDetailsScreen> createState() =>
+      _ArabicDetailsScreenState();
 }
 
-class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
+class _ArabicDetailsScreenState extends ConsumerState<ArabicDetailsScreen> {
   final ScrollController _scrollController = ScrollController();
-  final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'hub-details-play');
-  final FocusNode _backFocus = FocusNode(debugLabel: 'hub-details-back');
+  final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'arabic-details-play');
+  final FocusNode _backFocus = FocusNode(debugLabel: 'arabic-details-back');
 
   CatalogMetaItem? _detail;
-  List<HubDetailRailSection> _packRails = const [];
-  RichMediaDetails? _tmdbRich;
-  List<String> _heroBackdrops = const [];
   bool _loading = true;
   String? _error;
   int _selectedSeason = 1;
@@ -90,7 +83,21 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
 
   List<CatalogVideo> get _videos => _show.videos;
 
-  bool get _isMovie => hubMetaIsMovie(_show);
+  bool get _isMovie =>
+      _show.open?.extraBool('movie') == true ||
+      (_show.badge ?? '').toUpperCase() == 'MOVIE';
+
+  Map<String, dynamic> _detailsParams() {
+    final params = <String, dynamic>{'id': widget.item.id};
+    final open = widget.item.open;
+    if (open == null) return params;
+    for (final e in open.toJson().entries) {
+      if (e.key == 'surface') continue;
+      params[e.key] = e.value;
+    }
+    params['id'] = widget.item.id;
+    return params;
+  }
 
   Future<void> _load() async {
     setState(() {
@@ -100,7 +107,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     final env = await CatalogRuntime.instance.run(
       pluginId: widget.pluginId,
       action: 'details',
-      params: hubDetailsParams(widget.item),
+      params: _detailsParams(),
     );
     if (!mounted) return;
     if (!env.ok) {
@@ -111,21 +118,14 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       return;
     }
     final meta = env.meta ?? widget.item;
-    final packRails = parseHubDetailRails(env.data);
-    final rich = await hubLoadTmdbRich(meta);
-    final backdrops = await hubTmdbHeroBackdropUrls(meta);
-    if (!mounted) return;
-    final seasons = hubSeasonNumbers(meta.videos).toList()..sort();
+    final seasons = arabicSeasonNumbers(meta.videos).toList()..sort();
     final firstSeason = seasons.isEmpty ? 1 : seasons.first;
-    final seasonVideos = hubVideosForSeason(meta.videos, firstSeason);
+    final seasonVideos = arabicVideosForSeason(meta.videos, firstSeason);
     final firstEp = seasonVideos.isEmpty
         ? 1
         : (seasonVideos.first.episode ?? 1);
     setState(() {
       _detail = meta;
-      _packRails = packRails;
-      _tmdbRich = rich;
-      _heroBackdrops = backdrops;
       _loading = false;
       _selectedSeason = firstSeason;
       _selectedEpisode = firstEp;
@@ -161,35 +161,41 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     return _videos.isEmpty ? null : _videos.first;
   }
 
-  Future<void> _afterPlayClosed() => hubDetailsAfterPlayClosed(
-        scrollController: _scrollController,
-        heroPlayFocus: _heroPlayFocus,
-        isMounted: () => mounted,
-      );
-
-  Future<void> _playEpisode(CatalogVideo? episode) async {
+  Future<void> _afterPlayClosed() async {
     if (!mounted) return;
-    final ep = episode ?? _selectedVideo();
-    final epNum = ep?.episode ?? _selectedEpisode;
-    final season = ep?.season ?? _selectedSeason;
-    final ctx = catalogPlayContextFromMeta(
-      meta: _show,
-      pluginId: widget.pluginId,
-      episode: ep,
-      season: season,
-      episodeNumber: epNum,
-      videos: _videos,
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+    ShellTvFocusCoordinator.claimHeroPlayAfterPlayerExit(
+      _heroPlayFocus,
+      isMounted: () => mounted,
     );
-    await runHubPlayFromContext(context: context, ctx: ctx);
+  }
+
+  Future<void> _playEpisode(CatalogVideo episode) async {
+    if (!await hubEngineAutoPlayEnabled()) return;
+    if (!mounted) return;
+    final movie = arabicPlayMovieFor(_show, videos: _videos);
+    final epNum = episode.episode ?? _selectedEpisode;
+    final season = episode.season ?? _selectedSeason;
+    final isTv = !_isMovie && _videos.length > 1;
+    await runHubEngineAutoPlay(
+      context: context,
+      movie: movie,
+      engineCategory: 'arabic',
+      season: isTv ? season : null,
+      episode: isTv ? epNum : null,
+      arabicVideoId: episode.id,
+      arabicVideoIdByEpisode: arabicVideoIdByEpisode(_videos),
+      selectedPluginIds: {arabicProviderIdForVideoId(episode.id)},
+      loadingSubtitle: episode.title.isNotEmpty ? episode.title : 'EP $epNum',
+      hubEpisodes: isTv ? arabicHubEpisodes(_videos) : null,
+    );
     if (!mounted) return;
     await _afterPlayClosed();
   }
 
   void _playSelected() {
-    if (_isMovie || _videos.isEmpty) {
-      unawaited(_playEpisode(null));
-      return;
-    }
     final ep = _selectedVideo();
     if (ep == null) return;
     unawaited(_playEpisode(ep));
@@ -197,15 +203,19 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
 
   void _openCatalogSources() {
     final ep = _selectedVideo();
-    final ctx = catalogPlayContextFromMeta(
-      meta: _show,
-      pluginId: widget.pluginId,
-      episode: ep,
-      season: _selectedSeason,
-      episodeNumber: _selectedEpisode,
-      videos: _videos,
+    if (ep == null) return;
+    final movie = arabicPlayMovieFor(_show, videos: _videos);
+    final isTv = !_isMovie && _videos.length > 1;
+    unawaited(
+      openHubCatalogSources(
+        context: context,
+        movie: movie,
+        season: isTv ? _selectedSeason : null,
+        episode: isTv ? _selectedEpisode : null,
+        engineCategory: 'arabic',
+        arabicVideoId: ep.id,
+      ),
     );
-    unawaited(openHubSourcesFromContext(context: context, ctx: ctx));
   }
 
   @override
@@ -242,16 +252,10 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   Widget _buildScrollLayout() {
     final show = _show;
     final videos = _videos;
-    final seasons = hubSeasonNumbers(videos).toList()..sort();
-    final rich = _tmdbRich;
-    final backdrop = hubImageUrl(
-      _heroBackdrops.isNotEmpty
-          ? _heroBackdrops.first
-          : (show.background.isNotEmpty ? show.background : show.poster),
+    final seasons = arabicSeasonNumbers(videos).toList()..sort();
+    final backdrop = arabicImageUrl(
+      show.background.isNotEmpty ? show.background : show.poster,
     );
-    final backdropUrls = _heroBackdrops.length > 1
-        ? _heroBackdrops
-        : (backdrop.isNotEmpty ? [backdrop] : const <String>[]);
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
     final playbackSnap = ref.watch(settingsPlaybackProvider).valueOrNull;
@@ -260,7 +264,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
 
     if (policy.heroPlayAutoFocus &&
         !_detailsHeroInitialFocusDone &&
-        (_isMovie || videos.isNotEmpty)) {
+        videos.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _detailsHeroInitialFocusDone) return;
         if (_heroPlayFocus.context == null || !_heroPlayFocus.canRequestFocus) {
@@ -289,11 +293,11 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
               isLoadingSeason: false,
               seasonData: null,
               fallbackPosterPath: show.poster,
-              customEpisodesBySeason: hubEpisodeMaps(videos),
+              customEpisodesBySeason: arabicEpisodeMaps(videos),
               watchedEpisodes: const {},
               onToggleWatched: (season, episode) {},
               onSeasonSelected: (season) {
-                final eps = hubVideosForSeason(videos, season);
+                final eps = arabicVideosForSeason(videos, season);
                 setState(() {
                   _selectedSeason = season;
                   _selectedEpisode =
@@ -316,26 +320,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
 
     final playLabel = _isMovie
         ? 'Play'
-        : (videos.isEmpty ? 'Play' : 'Play Ep $_selectedEpisode');
-
-    final isUpcoming =
-        (show.status ?? '').toUpperCase() == 'NOT_YET_RELEASED';
-    final firstMetaFocusUp = tvFocus ? _revealedDetailsHeroPlayFocus : null;
-
-    final packSections = buildHubDetailRailSections(
-      context: context,
-      pluginId: widget.pluginId,
-      rails: _packRails,
-      tvFocus: tvFocus,
-      firstMetaFocusUp: firstMetaFocusUp,
-    );
-    final tmdbSections = buildHubTmdbDetailSections(
-      context: context,
-      rich: rich,
-      tvFocus: tvFocus,
-      firstMetaFocusUp: packSections.isEmpty ? firstMetaFocusUp : null,
-    );
-    final sections = [...packSections, ...tmdbSections];
+        : 'Play Ep $_selectedEpisode';
 
     return MediaDetailsScrollPage(
       scrollController: _scrollController,
@@ -348,56 +333,37 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       backgroundColor: AppTheme.bgDark,
       hero: HubDetailsHero(
         backdropUrl: backdrop,
-        backdropUrls: backdropUrls,
-        title: rich?.movie.title ?? show.name,
-        genres: show.genres,
-        overview: (rich?.movie.overview ?? show.description).trim(),
+        title: show.name,
+        overview: show.description,
         metaParts: [
           if (_isMovie) 'FILM' else 'TV',
           if (show.releaseInfo.isNotEmpty) show.releaseInfo,
         ],
-        rating: rich?.movie.voteAverage ?? show.rating,
-        richFacts: rich,
-        logoUrl: hubTmdbLogoUrl(rich),
         height: DetailsTokens.heroHeight(
           context,
           showEpisodeRail: hasEpisodes,
           showSeasonRail: seasons.length > 1,
         ),
         pageBottomChild: episodePicker,
-        showSeasonRail: seasons.length > 1,
         actionRow: DetailsHeroTvActionScope(
           tabId: MediaDetailsTv.tabId,
           itemCount: heroActionCount,
           onFocusUp: heroPopUp,
-          child: Row(
-            children: [
-              if (isUpcoming)
-                HubDetailsUpcomingNotice(
-                  releaseDateLabel: show.releaseInfo.trim().isEmpty
-                      ? null
-                      : show.releaseInfo,
-                )
-              else
-                HubDetailsPlayRow(
-                  label: playLabel,
-                  enabled: _isMovie || videos.isNotEmpty || show.open != null,
-                  onPlay: _playSelected,
-                  onOpenSources:
-                      showCatalogSources && (_isMovie || videos.isNotEmpty)
-                          ? _openCatalogSources
-                          : null,
-                  focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
-                  onUpEdge: heroPopUp,
-                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                  tvItemIndex: playIndex,
-                  tvSourcesItemIndex: sourcesIndex,
-                ),
-            ],
+          child: HubDetailsPlayRow(
+            label: playLabel,
+            enabled: _isMovie || videos.isNotEmpty,
+            onPlay: _playSelected,
+            onOpenSources:
+                showCatalogSources ? _openCatalogSources : null,
+            focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
+            onUpEdge: heroPopUp,
+            tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+            tvItemIndex: playIndex,
+            tvSourcesItemIndex: sourcesIndex,
           ),
         ),
       ),
-      sections: sections,
+      sections: const [],
     );
   }
 }

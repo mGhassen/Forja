@@ -21,6 +21,39 @@ var ANILIST_MEDIA_FIELDS = [
   'status',
 ].join(' ');
 
+var ANILIST_DETAILS_FIELDS = [
+  ANILIST_MEDIA_FIELDS,
+  'nextAiringEpisode { episode airingAt }',
+  'streamingEpisodes { title thumbnail }',
+  'relations { edges { relationType(version: 2) node { ' +
+    ANILIST_MEDIA_FIELDS +
+    ' type } } }',
+].join(' ');
+
+var ANILIST_RELATION_KEEP = {
+  SIDE_STORY: 0,
+  SUMMARY: 1,
+  ALTERNATIVE: 2,
+  SPIN_OFF: 3,
+  SEQUEL: 4,
+  PREQUEL: 5,
+  PARENT: 6,
+  COMPILATION: 7,
+  CONTAINS: 8,
+  OTHER: 9,
+};
+
+var ANILIST_RELATION_TYPES = Object.keys(ANILIST_RELATION_KEEP);
+
+var ANILIST_RELATION_FORMATS = {
+  TV: true,
+  TV_SHORT: true,
+  MOVIE: true,
+  OVA: true,
+  ONA: true,
+  SPECIAL: true,
+};
+
 // Matches AnimeService section sorts.
 var ANILIST_RAILS = {
   spotlight: { sort: ['TRENDING_DESC'] },
@@ -51,6 +84,7 @@ function anilistLayout() {
   return {
     pages: {
       anime: {
+        feed: true,
         widgets: [
           {
             type: 'hero',
@@ -59,7 +93,7 @@ function anilistLayout() {
             rail: 'spotlight',
             bleed: 'trending',
           },
-          { type: 'host.continue', id: 'continue_watching' },
+          { type: 'continue', id: 'continue_watching' },
           {
             type: 'mood',
             id: 'moods',
@@ -154,6 +188,74 @@ function anilistMeta(m) {
   return meta;
 }
 
+function anilistVideosFromMedia(m) {
+  var stream = Array.isArray(m.streamingEpisodes) ? m.streamingEpisodes : [];
+  if (stream.length) {
+    var out = [];
+    for (var i = 0; i < stream.length; i++) {
+      var ep = stream[i] || {};
+      var num = i + 1;
+      out.push({
+        id: String(num),
+        episode: num,
+        season: 1,
+        title: String(ep.title || '').trim() || 'Episode ' + num,
+        thumbnail: String(ep.thumbnail || '').trim(),
+      });
+    }
+    return out;
+  }
+  var count = Number(m.episodes) || 0;
+  if (count <= 0 && m.nextAiringEpisode && m.nextAiringEpisode.episode) {
+    count = Number(m.nextAiringEpisode.episode);
+  }
+  if (count <= 0) return [];
+  var videos = [];
+  for (var j = 1; j <= count; j++) {
+    videos.push({
+      id: String(j),
+      episode: j,
+      season: 1,
+      title: 'Episode ' + j,
+    });
+  }
+  return videos;
+}
+
+function anilistRelatedFromMedia(m) {
+  var edges =
+    m &&
+    m.relations &&
+    Array.isArray(m.relations.edges)
+      ? m.relations.edges
+      : [];
+  var out = [];
+  var seen = {};
+  for (var i = 0; i < edges.length; i++) {
+    var e = edges[i] || {};
+    var type = String(e.relationType || '');
+    if (ANILIST_RELATION_TYPES.indexOf(type) < 0) continue;
+    var node = e.node;
+    if (!node || String(node.type || 'ANIME') !== 'ANIME') continue;
+    var fmt = String(node.format || '').toUpperCase();
+    if (!fmt || !ANILIST_RELATION_FORMATS[fmt]) continue;
+    var id = Number(node.id);
+    if (!(id > 0) || seen[id]) continue;
+    seen[id] = true;
+    var meta = anilistMeta(node);
+    if (!meta) continue;
+    meta.relationType = type;
+    out.push(meta);
+  }
+  out.sort(function (a, b) {
+    var ra = ANILIST_RELATION_KEEP[a.relationType] ?? 99;
+    var rb = ANILIST_RELATION_KEEP[b.relationType] ?? 99;
+    if (ra !== rb) return ra - rb;
+    return String(a.name || '').localeCompare(String(b.name || ''));
+  });
+  return out;
+}
+
 function anilistQuery(ctx, cfg, query, variables) {
   return ctx
     .fetch(cfg.graphql, {
@@ -173,6 +275,84 @@ function anilistQuery(ctx, cfg, query, variables) {
         throw new Error(json.errors[0].message || 'anilist error');
       }
       return json && json.data ? json.data : {};
+    });
+}
+
+function anilistRailItemsFromList(railId, list) {
+  var out = [];
+  for (var i = 0; i < list.length; i++) {
+    var meta = anilistMeta(list[i]);
+    if (!meta) continue;
+    if (railId === 'spotlight') {
+      var st = String(meta.status || '').toUpperCase();
+      if (st && st !== 'RELEASING' && st !== 'FINISHED') continue;
+    }
+    out.push(meta);
+  }
+  if (railId === 'spotlight' && !out.length) {
+    for (var j = 0; j < list.length; j++) {
+      var m2 = anilistMeta(list[j]);
+      if (m2) out.push(m2);
+    }
+  }
+  var spec = ANILIST_RAILS[railId] || ANILIST_RAILS.trending;
+  if (Number(spec.limit) > 0) out = out.slice(0, Number(spec.limit));
+  return out;
+}
+
+function anilistFeedQuery(cfg, params) {
+  var genre = hubFilterValue(params.filter, 'genre');
+  var format = hubFilterValue(params.filter, 'format');
+  var formatNot = hubFilterValue(params.filter, 'format_not');
+  var perPage = Number(cfg.perPage) || 24;
+  var parts = [];
+  for (var railId in ANILIST_RAILS) {
+    if (!Object.prototype.hasOwnProperty.call(ANILIST_RAILS, railId)) continue;
+    var spec = ANILIST_RAILS[railId];
+    var limit = Number(spec.limit) > 0 ? Number(spec.limit) : perPage;
+    var sort = spec.sort.join(', ');
+    var status = spec.status ? ', status: ' + spec.status : '';
+    parts.push(
+      railId +
+        ': Page(page: 1, perPage: ' +
+        limit +
+        ') { media(type: ANIME, isAdult: false, sort: [' +
+        sort +
+        ']' +
+        status +
+        ', genre: $genre, format: $format, format_not_in: $formatNotIn) { ' +
+        ANILIST_MEDIA_FIELDS +
+        ' } }',
+    );
+  }
+  return (
+    'query AnilistFeed($genre: String, $format: MediaFormat, $formatNotIn: [MediaFormat]) { ' +
+    parts.join(' ') +
+    ' }'
+  );
+}
+
+function anilistFeedVariables(params) {
+  var genre = hubFilterValue(params.filter, 'genre');
+  var format = hubFilterValue(params.filter, 'format');
+  var formatNot = hubFilterValue(params.filter, 'format_not');
+  var variables = {};
+  if (genre) variables.genre = genre;
+  if (format) variables.format = format;
+  if (formatNot) variables.formatNotIn = [formatNot];
+  return variables;
+}
+
+function anilistFeed(ctx, cfg, params) {
+  return anilistQuery(ctx, cfg, anilistFeedQuery(cfg, params), anilistFeedVariables(params))
+    .then(function (data) {
+      var rails = {};
+      for (var railId in ANILIST_RAILS) {
+        if (!Object.prototype.hasOwnProperty.call(ANILIST_RAILS, railId)) continue;
+        var page = data[railId] || {};
+        rails[railId] = anilistRailItemsFromList(railId, page.media || []);
+      }
+      return hubOk('feed', { rails: rails }, { maxAge: 600, swr: 3600 });
     });
 }
 
@@ -214,25 +394,7 @@ function anilistPage(ctx, cfg, params) {
 
   return anilistQuery(ctx, cfg, query, variables).then(function (data) {
     var list = (data.Page && data.Page.media) || [];
-    var out = [];
-    for (var i = 0; i < list.length; i++) {
-      var meta = anilistMeta(list[i]);
-      if (!meta) continue;
-      // Spotlight: prefer airing / finished (same as spotlightFromTrending).
-      if (railId === 'spotlight') {
-        var st = String(meta.status || '').toUpperCase();
-        if (st && st !== 'RELEASING' && st !== 'FINISHED') continue;
-      }
-      out.push(meta);
-    }
-    if (railId === 'spotlight' && !out.length) {
-      for (var j = 0; j < list.length; j++) {
-        var m2 = anilistMeta(list[j]);
-        if (m2) out.push(m2);
-      }
-    }
-    if (Number(spec.limit) > 0) out = out.slice(0, Number(spec.limit));
-    return out;
+    return anilistRailItemsFromList(railId, list);
   });
 }
 
@@ -245,12 +407,22 @@ function anilistDetails(ctx, cfg, params) {
   }
   var query =
     'query ($id: Int) { Media(id: $id, type: ANIME) { ' +
-    ANILIST_MEDIA_FIELDS +
+    ANILIST_DETAILS_FIELDS +
     ' } }';
   return anilistQuery(ctx, cfg, query, { id: id }).then(function (data) {
-    var meta = anilistMeta(data.Media);
+    var media = data.Media;
+    var meta = anilistMeta(media);
     if (!meta) return hubFail('details', 'NOT_FOUND', 'anime ' + id + ' not found');
-    return hubOk('details', { meta: meta }, { maxAge: 1800, swr: 3600 });
+    var videos = anilistVideosFromMedia(media);
+    if (videos.length) meta.videos = videos;
+    var related = anilistRelatedFromMedia(media);
+    var payload = { meta: meta };
+    if (related.length) {
+      payload.rails = {
+        related: { title: 'Related', items: related },
+      };
+    }
+    return hubOk('details', payload, { maxAge: 1800, swr: 3600 });
   });
 }
 
@@ -274,6 +446,11 @@ function extract(ctx) {
   if (action === 'details') {
     return anilistDetails(ctx, cfg, params).catch(function (e) {
       return hubFail('details', 'UPSTREAM', e && e.message, true);
+    });
+  }
+  if (action === 'feed') {
+    return anilistFeed(ctx, cfg, params).catch(function (e) {
+      return hubFail('feed', 'UPSTREAM', e && e.message, true);
     });
   }
   if (action !== 'rail' && action !== 'search') {

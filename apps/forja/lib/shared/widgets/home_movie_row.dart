@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/catalog/kit/cards/home_movie_card.dart';
+import 'package:forja/shared/widgets/movie_poster_card.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:rust/rust.dart';
 
@@ -40,7 +40,7 @@ class HomeMovieRow extends StatelessWidget {
   final VoidCallback? tvFocusUp;
 
   static double rowHeight(BuildContext context) =>
-      HomeMovieCard.cardHeight(context);
+      MoviePosterCard.cardHeight(context);
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +90,7 @@ class HomeMovieRow extends StatelessWidget {
         if (resolvedTitleGap > 0) SizedBox(height: resolvedTitleGap),
         FocusTraversalGroup(
           child: HorizontalScroller(
-            height: HomeMovieCard.cardHeight(context),
+            height: MoviePosterCard.cardHeight(context),
             padding: resolvedListPadding,
             itemCount: movies.length,
             separatorBuilder: (_, _) => SizedBox(
@@ -99,7 +99,7 @@ class HomeMovieRow extends StatelessWidget {
                   : shellMovieCardRowGap(context),
             ),
             itemBuilder: (context, index) {
-              return HomeMovieCard(
+              return MoviePosterCard(
                 movie: movies[index],
                 onTap: () => onMovieTap(movies[index]),
                 rank: showRank ? index + 1 : null,

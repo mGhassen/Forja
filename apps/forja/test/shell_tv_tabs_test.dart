@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/home_movie_card.dart';
+import 'package:forja/shared/widgets/movie_poster_card.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
@@ -51,22 +51,22 @@ void main() {
     );
   });
 
-  testWidgets('HomeMovieCard uses FocusableControl on tv profile', (tester) async {
+  testWidgets('MoviePosterCard uses FocusableControl on tv profile', (tester) async {
     await tester.pumpWidget(
       _wrapProfile(
         profile: ShellProfile.tv,
-        child: HomeMovieCard(movie: _testMovie(), onTap: () {}),
+        child: MoviePosterCard(movie: _testMovie(), onTap: () {}),
       ),
     );
     expect(find.byType(FocusableControl), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('HomeMovieCard uses FocusableControl on mobile for focus border',
+  testWidgets('MoviePosterCard uses FocusableControl on mobile for focus border',
       (tester) async {
     await tester.pumpWidget(
       _wrapProfile(
         profile: ShellProfile.mobile,
-        child: HomeMovieCard(movie: _testMovie(), onTap: () {}),
+        child: MoviePosterCard(movie: _testMovie(), onTap: () {}),
       ),
     );
     expect(find.byType(FocusableControl), findsOneWidget);

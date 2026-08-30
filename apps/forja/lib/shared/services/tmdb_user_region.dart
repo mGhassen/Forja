@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:rust/rust.dart';
 
-/// Wire TMDB catalog region to the device locale (country code).
+/// Wire TMDB watch region to the device locale (country code).
 void initTmdbUserRegion() {
   TmdbWatchRegion.resolve = () {
     final country = PlatformDispatcher.instance.locale.countryCode;

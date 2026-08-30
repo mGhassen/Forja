@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../../filter.dart';
 import '../../protocol.dart';
 
-/// One selectable chip in a [host.vertical_filters] layout widget.
+/// One selectable chip in a [vertical_filters] layout widget.
 class CatalogVerticalFilterOption {
   const CatalogVerticalFilterOption({
     required this.id,
@@ -94,7 +94,7 @@ class CatalogVerticalFiltersSpec {
   }
 }
 
-/// Host state for plugin-declared [host.vertical_filters] widgets.
+/// Host state for plugin-declared [vertical_filters] widgets.
 abstract final class CatalogVerticalFiltersRegistry {
   CatalogVerticalFiltersRegistry._();
 
@@ -173,7 +173,8 @@ abstract final class CatalogVerticalFiltersRegistry {
     required List<Map<String, dynamic>> widgets,
   }) {
     for (final w in widgets) {
-      if ((w['type'] ?? '').toString().trim() != 'host.vertical_filters') {
+      final type = (w['type'] ?? '').toString().trim();
+      if (type != 'vertical_filters' && type != 'host.vertical_filters') {
         continue;
       }
       register(
