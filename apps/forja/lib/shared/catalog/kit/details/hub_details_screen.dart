@@ -15,8 +15,10 @@ import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/hub_list_status_hero.dart';
 import 'package:forja/shared/widgets/media_details/media_details.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
@@ -349,9 +351,14 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
 
     final heroFocusUp = _revealedDetailsHeroPlayFocus;
     final heroPopUp = tvFocus ? _focusDetailsBack : null;
+    final listTarget = CatalogListFollowTarget.fromMeta(
+      pluginId: widget.pluginId,
+      meta: show,
+    );
     var tvIndex = 0;
     final playIndex = tvIndex++;
     final sourcesIndex = showCatalogSources ? tvIndex++ : null;
+    final listIndex = listTarget != null ? tvIndex++ : null;
     final heroActionCount = tvIndex;
 
     final episodePicker = hasEpisodes
@@ -483,6 +490,15 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
                   tvItemIndex: playIndex,
                   tvSourcesItemIndex: sourcesIndex,
                 ),
+              if (listTarget != null) ...[
+                const SizedBox(width: 10),
+                HubListStatusHero(
+                  target: listTarget,
+                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                  tvItemIndexStart: listIndex!,
+                  onUpEdge: heroPopUp,
+                ),
+              ],
             ],
           ),
         ),
