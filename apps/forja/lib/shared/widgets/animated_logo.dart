@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -248,12 +249,23 @@ class SplashOverlayContent extends StatelessWidget {
     super.key,
     this.slogan = splashSlogan,
     this.statusLabel,
+    this.statusProgress,
+    this.onContinueInBackground,
+    this.showContinueInBackground = false,
   });
 
   final String slogan;
 
   /// Current boot step - shown above the version at the bottom of the splash.
   final String? statusLabel;
+
+  /// Pack install fraction (0–1). Non-null draws a thin bar under the status.
+  final double? statusProgress;
+
+  /// When [showContinueInBackground] is true, shows a TV-focusable CTA under
+  /// the status (stuck / slow / failed pack download).
+  final VoidCallback? onContinueInBackground;
+  final bool showContinueInBackground;
 
   @override
   Widget build(BuildContext context) {
@@ -284,6 +296,9 @@ class SplashOverlayContent extends StatelessWidget {
                 constraints.maxHeight * 0.38,
               );
               final status = statusLabel?.trim() ?? '';
+              final progress = statusProgress;
+              final showContinue = showContinueInBackground &&
+                  onContinueInBackground != null;
               return Stack(
                 fit: StackFit.expand,
                 children: [
@@ -341,6 +356,32 @@ class SplashOverlayContent extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: statusStyle,
                           ),
+                          if (progress != null) ...[
+                            const SizedBox(height: 10),
+                            Center(
+                              child: SizedBox(
+                                width: math.min(220, constraints.maxWidth - 48),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(999),
+                                  child: LinearProgressIndicator(
+                                    value: progress.clamp(0.0, 1.0),
+                                    minHeight: 3,
+                                    backgroundColor:
+                                        logoColors.base.withValues(alpha: 0.15),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      logoColors.base.withValues(alpha: 0.75),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (showContinue) ...[
+                            const SizedBox(height: 14),
+                            SplashContinueInBackgroundButton(
+                              onPressed: onContinueInBackground!,
+                            ),
+                          ],
                           const SizedBox(height: 10),
                         ],
                         AppVersionLabel(
@@ -354,6 +395,46 @@ class SplashOverlayContent extends StatelessWidget {
                 ],
               );
             },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Opens the app while pack install keeps running. Autofocuses on TV.
+class SplashContinueInBackgroundButton extends StatelessWidget {
+  const SplashContinueInBackgroundButton({
+    super.key,
+    required this.onPressed,
+  });
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final policy = ShellScope.maybeOf(context)?.inputPolicy ??
+        ShellInputPolicy.desktop;
+    final tv = policy.useFocusableMoodChips;
+
+    return FocusableControl(
+      onTap: onPressed,
+      autoFocus: tv,
+      showFocusBorder: tv,
+      showFocusFill: tv,
+      borderRadius: 8,
+      scaleOnFocus: tv ? 1.04 : 1.0,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Text(
+          'Continue in background',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.plusJakartaSans(
+            color: LogoColors.dark.base,
+            fontSize: tv ? 15 : 13,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+            decoration: TextDecoration.none,
           ),
         ),
       ),

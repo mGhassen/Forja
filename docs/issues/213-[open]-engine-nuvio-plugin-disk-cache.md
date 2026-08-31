@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** fix · **3 / 6** acceptance |
+| **Progress** | **7 / 7** fix · **3 / 7** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I213-T04 | `PluginInstallCoordinator` — cloud lean await, missing/update queue, progress notifier | ✅ |
 | 5 | I213-T05 | Splash / profile status line for pack install; in-shell banner for mid-session updates | ✅ |
 | 6 | I213-T06 | Unit tests for disk store, coordinator, registry install/remove | ✅ |
+| 7 | I213-T07 | Splash / profile “Continue in background” when install slow, stuck, or failed (TV autofocus) | ✅ |
 
 ---
 
@@ -37,7 +38,8 @@
 | 3 | I213-A03 | Remote manifest version bump → next launch status “Checking/Updating…” → disk replaced | ⬜ |
 | 4 | I213-A04 | Offline: no status spam; cached disk still loads | ⬜ |
 | 5 | I213-A05 | Settings Remove pack deletes `engine/<hash>/`; Nuvio remove deletes scraper files | ✅ |
-| 6 | I213-A06 | ATV: splash status readable; mid-session card non-focusable; extract batch unchanged | ⬜ |
+| 6 | I213-A06 | ATV: splash status + Continue in background autofocus; mid-session card non-focusable; extract batch unchanged | ⬜ |
+| 7 | I213-A07 | Slow/stuck/failed pack install → Continue in background opens app; install keeps running (in-shell card) | ⬜ |
 
 ---
 

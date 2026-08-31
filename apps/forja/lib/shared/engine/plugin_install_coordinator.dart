@@ -89,13 +89,16 @@ class PluginInstallCoordinator {
 
     for (final pack in packs) {
       if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
-      if (PluginRegistry.isLocalManifestUrl(pack.sourceUrl)) continue;
       if (PluginRegistry.isRetiredCatalogPack(pack)) continue;
+      // Remote lean / missing disk JS.
       if (await registry.packNeedsDiskInstall(pack)) {
         jobs.add((pack: pack, isUpdate: false));
         continue;
       }
-      if (checkUpdates && pack.plugins.isNotEmpty) {
+      // Remote + local checkout: re-read manifest; install when version is newer.
+      // (Local packs were previously skipped — Settings showed stale versions until
+      // manual Reload.)
+      if (checkUpdates) {
         jobs.add((pack: pack, isUpdate: true));
       }
     }
@@ -103,6 +106,10 @@ class PluginInstallCoordinator {
     // Updates are checked inside the loop; missing installs always run.
     var completed = 0;
     final total = jobs.length + (includeNuvio ? 1 : 0);
+    debugPrint(
+      '[PluginInstall] ${jobs.length} pack job(s), '
+      'nuvio=${includeNuvio ? 1 : 0}',
+    );
     if (total == 0) return;
 
     for (final job in jobs) {
@@ -121,6 +128,7 @@ class PluginInstallCoordinator {
           pack,
         );
         if (updated) {
+          debugPrint('[PluginInstall] updated ${pack.name}');
           _setProgress(
             PluginInstallProgress(
               label: 'Updated ${pack.name}',

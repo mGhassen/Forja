@@ -28,6 +28,8 @@ import 'package:forja/shared/widgets/animated_logo.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/engine/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/widgets/app_update_progress_banner.dart';
 import 'package:forja/shared/widgets/plugin_install_progress_banner.dart';
 import 'package:forja/shared/widgets/desktop_window_geometry.dart';
@@ -456,6 +458,12 @@ class _SplashScreenState extends State<SplashScreen> {
   /// and toast; catalog/services keep loading in the background.
   static const Duration _minSplashDuration = Duration(seconds: 8);
 
+  /// Offer "Continue in background" once pack install has been visible this long.
+  static const Duration _continueOfferAfter = Duration(seconds: 12);
+
+  /// Same completedSteps for this long → treat as stuck and offer continue.
+  static const Duration _stuckStepAfter = Duration(seconds: 10);
+
   /// Built once and kept alive in the widget tree behind the splash overlay
   /// so its element (and all child State objects) survive the transition
   /// without being re-created.
@@ -467,6 +475,14 @@ class _SplashScreenState extends State<SplashScreen> {
   /// Live boot step shown above the version on the splash.
   final ValueNotifier<String> _bootStatus =
       ValueNotifier<String>('Getting things ready…');
+
+  final ValueNotifier<bool> _offerContinue = ValueNotifier<bool>(false);
+
+  Completer<void>? _earlyContinue;
+  Timer? _continueOfferTimer;
+  Timer? _stuckStepTimer;
+  int? _lastCompletedSteps;
+  bool _packListenersArmed = false;
 
   @override
   void initState() {
@@ -486,7 +502,11 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   void dispose() {
+    _disarmPackContinueListeners();
+    _continueOfferTimer?.cancel();
+    _stuckStepTimer?.cancel();
     _bootStatus.dispose();
+    _offerContinue.dispose();
     super.dispose();
   }
 
@@ -495,8 +515,79 @@ class _SplashScreenState extends State<SplashScreen> {
     _bootStatus.value = status;
   }
 
+  void _armPackContinueListeners() {
+    if (_packListenersArmed) return;
+    _packListenersArmed = true;
+    PluginInstallCoordinator.instance.progress.addListener(_onPackProgress);
+    PluginRegistry.officialInstallError.addListener(_onPackInstallError);
+    _onPackProgress();
+    _onPackInstallError();
+  }
+
+  void _disarmPackContinueListeners() {
+    if (!_packListenersArmed) return;
+    _packListenersArmed = false;
+    PluginInstallCoordinator.instance.progress.removeListener(_onPackProgress);
+    PluginRegistry.officialInstallError.removeListener(_onPackInstallError);
+  }
+
+  void _onPackInstallError() {
+    if (!mounted || !_showOverlay) return;
+    if (PluginRegistry.officialInstallError.value != null) {
+      _offerContinue.value = true;
+    }
+  }
+
+  void _onPackProgress() {
+    if (!mounted || !_showOverlay) return;
+    final pack = PluginInstallCoordinator.instance.progress.value;
+    if (pack == null) {
+      _continueOfferTimer?.cancel();
+      _continueOfferTimer = null;
+      _stuckStepTimer?.cancel();
+      _stuckStepTimer = null;
+      _lastCompletedSteps = null;
+      return;
+    }
+
+    _continueOfferTimer ??= Timer(_continueOfferAfter, () {
+      if (mounted && _showOverlay) _offerContinue.value = true;
+    });
+
+    if (_lastCompletedSteps != pack.completedSteps) {
+      _lastCompletedSteps = pack.completedSteps;
+      _stuckStepTimer?.cancel();
+      _stuckStepTimer = Timer(_stuckStepAfter, () {
+        if (!mounted || !_showOverlay) return;
+        if (PluginInstallCoordinator.instance.progress.value != null) {
+          _offerContinue.value = true;
+        }
+      });
+    }
+  }
+
+  void _continueInBackground() {
+    if (!mounted || !_showOverlay) return;
+    // Let the in-shell banner take over while install keeps running.
+    PluginInstallCoordinator.instance.suppressBanner.value = false;
+    final early = _earlyContinue;
+    if (early != null && !early.isCompleted) {
+      early.complete();
+    }
+    _dismissSplash();
+    ForjaToast.info(
+      'Plugins keep downloading in the background.',
+      duration: const Duration(seconds: 3),
+    );
+  }
+
   void _skipSplash() {
     if (!mounted || !_showOverlay) return;
+    // Tap-to-skip while packs are installing → same as continue in background.
+    if (PluginInstallCoordinator.instance.progress.value != null) {
+      _continueInBackground();
+      return;
+    }
     setState(() => _showOverlay = false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _notifySplashDismissed();
@@ -514,7 +605,8 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 400));
 
     final needs = await BootNeeds.resolve();
-    // Sources engines only — packs already awaited on splash.
+    // Sources engines only — packs already awaited on splash (or still
+    // finishing via PluginInstallCoordinator._inFlight).
     await ProfileEngineWarm.warm(
       needs,
       startTorrent: true,
@@ -526,6 +618,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _dismissSplash({bool showSlowBootToast = false}) {
     if (!mounted || !_showOverlay) return;
+    _disarmPackContinueListeners();
+    _continueOfferTimer?.cancel();
+    _stuckStepTimer?.cancel();
     setState(() => _showOverlay = false);
     _notifySplashDismissed();
     if (showSlowBootToast) {
@@ -560,28 +655,43 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   /// Dismiss after packs/prefetch finish, honoring the min splash floor.
-  /// Does not dismiss early while official packs are still installing.
+  /// User can bail early via [\_continueInBackground] if install is slow/stuck.
   Future<void> _dismissWhenReady(Future<void> bootFuture) async {
     final started = DateTime.now();
     final minSplashFuture = Future<void>.delayed(_minSplashDuration);
+    final early = Completer<void>();
+    _earlyContinue = early;
+    _armPackContinueListeners();
 
     var bootOk = true;
+    var continuedEarly = false;
     try {
-      await bootFuture.timeout(
-        const Duration(seconds: 30),
-        onTimeout: () {
-          bootOk = false;
-          debugPrint(
-            '[Boot] Pack/hub warm timed out after 30s — dismissing with toast',
-          );
-        },
-      );
+      final outcome = await Future.any<String>([
+        bootFuture.then((_) => 'boot').timeout(
+          const Duration(seconds: 30),
+          onTimeout: () => 'timeout',
+        ),
+        early.future.then((_) => 'early'),
+      ]);
+      continuedEarly = outcome == 'early';
+      bootOk = outcome == 'boot';
+      if (outcome == 'timeout') {
+        debugPrint(
+          '[Boot] Pack/hub warm timed out after 30s — dismissing with toast',
+        );
+        PluginInstallCoordinator.instance.suppressBanner.value = false;
+      }
     } catch (e) {
       bootOk = false;
       debugPrint('[Boot] Pack/hub warm error: $e');
+      PluginInstallCoordinator.instance.suppressBanner.value = false;
     }
 
     if (!mounted) return;
+    if (!_showOverlay || continuedEarly) {
+      // User already opened the app; boot may still be running in background.
+      return;
+    }
 
     final elapsed = DateTime.now().difference(started);
     if (elapsed < _minSplashDuration) {
@@ -592,7 +702,7 @@ class _SplashScreenState extends State<SplashScreen> {
       await _awaitMinSplashWithHoldStatus(minSplashFuture);
     }
 
-    if (!mounted) return;
+    if (!mounted || !_showOverlay) return;
     debugPrint(
       '[Boot] Step 5: Dismissing splash overlay (MainScreen '
       'already mounted underneath)',
@@ -685,10 +795,22 @@ class _SplashScreenState extends State<SplashScreen> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _skipSplash,
-          child: ValueListenableBuilder<String>(
-            valueListenable: _bootStatus,
-            builder: (context, status, _) {
-              return SplashOverlayContent(statusLabel: status);
+          child: ListenableBuilder(
+            listenable: Listenable.merge([
+              _bootStatus,
+              _offerContinue,
+              PluginInstallCoordinator.instance.progress,
+            ]),
+            builder: (context, _) {
+              final pack = PluginInstallCoordinator.instance.progress.value;
+              return SplashOverlayContent(
+                statusLabel: _bootStatus.value,
+                statusProgress: pack != null && pack.totalSteps > 0
+                    ? pack.fraction
+                    : null,
+                showContinueInBackground: _offerContinue.value,
+                onContinueInBackground: _continueInBackground,
+              );
             },
           ),
         ),

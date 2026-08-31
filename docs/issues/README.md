@@ -232,7 +232,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [210-[open]-…](210-[open]-episode-watched-list-simkl-follow.md) | Episode watched → My List / Simkl list buckets | P2 | Medium | open | 5/6 · A 0/4 | — |
 | [211-[open]-…](211-[open]-movie-play-list-simkl-follow.md) | Movie play → My List / Simkl Watching / Completed | P2 | Medium | open | 4/5 · A 0/3 | — |
 | [212-[open]-…](212-[open]-android-tv-sources-filters-dpad-wrap.md) | ATV Sources Filters D-pad stuck per Wrap line | P1 | High | open | 2/2 · A 0/2 | — |
-| [213-[open]-…](213-[open]-engine-nuvio-plugin-disk-cache.md) | Engine/Nuvio plugin JS on disk + init download banner | P2 | Medium | open | 6/6 · A 3/6 | — |
+| [213-[open]-…](213-[open]-engine-nuvio-plugin-disk-cache.md) | Engine/Nuvio plugin JS on disk + init download banner | P2 | Medium | open | 7/7 · A 3/7 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

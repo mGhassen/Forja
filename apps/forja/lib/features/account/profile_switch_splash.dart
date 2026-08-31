@@ -9,8 +9,11 @@ import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/engine/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/widgets/animated_logo.dart';
 import 'package:forja/shared/widgets/forja_profile_avatar.dart';
 import 'package:rust/rust.dart';
 
@@ -44,6 +47,8 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   /// Same role as intro [_SplashScreenState._minSplashDuration]: motion floor
   /// and hard cap — dismiss even if warm/TMDB is still running.
   static const Duration _splashDuration = Duration(seconds: 5);
+  static const Duration _continueOfferAfter = Duration(seconds: 12);
+  static const Duration _stuckStepAfter = Duration(seconds: 10);
 
   late final AnimationController _motionController;
   late final Animation<double> _motion;
@@ -52,6 +57,13 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   late final DateTime _startedAt;
   String _status = 'Loading profile…';
   bool _finished = false;
+  bool _offerContinue = false;
+
+  Completer<void>? _earlyContinue;
+  Timer? _continueOfferTimer;
+  Timer? _stuckStepTimer;
+  int? _lastCompletedSteps;
+  bool _packListenersArmed = false;
 
   @override
   void initState() {
@@ -77,6 +89,9 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
 
   @override
   void dispose() {
+    _disarmPackContinueListeners();
+    _continueOfferTimer?.cancel();
+    _stuckStepTimer?.cancel();
     _motionController.dispose();
     super.dispose();
   }
@@ -139,19 +154,39 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     );
   }
 
-  /// Wait for packs/prefetch, then honor motion floor. Do not dismiss early
-  /// while official packs are still installing.
+  /// Wait for packs/prefetch, then honor motion floor. User can bail early
+  /// via continue-in-background if install is slow/stuck.
   Future<void> _dismissWhenReady(Future<void> bootFuture, BootNeeds needs) async {
     final started = _startedAt;
     final minEnd = started.add(_splashDuration);
+    final early = Completer<void>();
+    _earlyContinue = early;
+    _armPackContinueListeners();
 
+    var continuedEarly = false;
     try {
-      await bootFuture.timeout(const Duration(seconds: 30));
+      final outcome = await Future.any<String>([
+        bootFuture.then((_) => 'boot').timeout(
+          const Duration(seconds: 30),
+          onTimeout: () => 'timeout',
+        ),
+        early.future.then((_) => 'early'),
+      ]);
+      continuedEarly = outcome == 'early';
+      if (outcome == 'timeout') {
+        debugPrint('[ProfileSplash] Pack/hub warm timed out after 30s');
+        PluginInstallCoordinator.instance.suppressBanner.value = false;
+      }
     } catch (e) {
       debugPrint('[ProfileSplash] Pack/hub warm error/timeout: $e');
+      PluginInstallCoordinator.instance.suppressBanner.value = false;
     }
 
     if (!mounted || _finished) return;
+    if (continuedEarly) {
+      unawaited(_startPlaySourcesPostSplash(needs));
+      return;
+    }
 
     final remaining = minEnd.difference(DateTime.now());
     if (remaining > Duration.zero) {
@@ -161,6 +196,71 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
 
     _finish(true);
     unawaited(_startPlaySourcesPostSplash(needs));
+  }
+
+  void _armPackContinueListeners() {
+    if (_packListenersArmed) return;
+    _packListenersArmed = true;
+    PluginInstallCoordinator.instance.progress.addListener(_onPackProgress);
+    PluginRegistry.officialInstallError.addListener(_onPackInstallError);
+    _onPackProgress();
+    _onPackInstallError();
+  }
+
+  void _disarmPackContinueListeners() {
+    if (!_packListenersArmed) return;
+    _packListenersArmed = false;
+    PluginInstallCoordinator.instance.progress.removeListener(_onPackProgress);
+    PluginRegistry.officialInstallError.removeListener(_onPackInstallError);
+  }
+
+  void _onPackInstallError() {
+    if (!mounted || _finished) return;
+    if (PluginRegistry.officialInstallError.value != null) {
+      setState(() => _offerContinue = true);
+    }
+  }
+
+  void _onPackProgress() {
+    if (!mounted || _finished) return;
+    final pack = PluginInstallCoordinator.instance.progress.value;
+    if (pack == null) {
+      _continueOfferTimer?.cancel();
+      _continueOfferTimer = null;
+      _stuckStepTimer?.cancel();
+      _stuckStepTimer = null;
+      _lastCompletedSteps = null;
+      return;
+    }
+
+    _continueOfferTimer ??= Timer(_continueOfferAfter, () {
+      if (mounted && !_finished) setState(() => _offerContinue = true);
+    });
+
+    if (_lastCompletedSteps != pack.completedSteps) {
+      _lastCompletedSteps = pack.completedSteps;
+      _stuckStepTimer?.cancel();
+      _stuckStepTimer = Timer(_stuckStepAfter, () {
+        if (!mounted || _finished) return;
+        if (PluginInstallCoordinator.instance.progress.value != null) {
+          setState(() => _offerContinue = true);
+        }
+      });
+    }
+  }
+
+  void _continueInBackground() {
+    if (!mounted || _finished) return;
+    PluginInstallCoordinator.instance.suppressBanner.value = false;
+    final early = _earlyContinue;
+    if (early != null && !early.isCompleted) {
+      early.complete();
+    }
+    _finish(true);
+    ForjaToast.info(
+      'Plugins keep downloading in the background.',
+      duration: const Duration(seconds: 3),
+    );
   }
 
   Future<void> _startPlaySourcesPostSplash(BootNeeds needs) async {
@@ -176,6 +276,9 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   void _finish(bool ok) {
     if (!mounted || _finished) return;
     _finished = true;
+    _disarmPackContinueListeners();
+    _continueOfferTimer?.cancel();
+    _stuckStepTimer?.cancel();
     Navigator.of(context).pop(ok);
   }
 
@@ -196,6 +299,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   Widget build(BuildContext context) {
     final status = _status.trim();
     final metrics = ProfileChooserMetrics.of(context);
+    final packProgress = PluginInstallCoordinator.instance.progress;
     return ColoredBox(
       color: AppTheme.bgDark,
       child: LayoutBuilder(
@@ -296,6 +400,45 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
                                     decoration: TextDecoration.none,
                                   ),
                                 ),
+                                ValueListenableBuilder(
+                                  valueListenable: packProgress,
+                                  builder: (context, pack, _) {
+                                    if (pack == null || pack.totalSteps <= 0) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 10),
+                                      child: Center(
+                                        child: SizedBox(
+                                          width: math.min(200, screenW - 96),
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(999),
+                                            child: LinearProgressIndicator(
+                                              value: pack.fraction,
+                                              minHeight: 3,
+                                              backgroundColor:
+                                                  ForjaShellColors.brandGreen
+                                                      .withValues(alpha: 0.15),
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<
+                                                      Color>(
+                                                ForjaShellColors.brandGreen
+                                                    .withValues(alpha: 0.75),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                if (_offerContinue) ...[
+                                  const SizedBox(height: 14),
+                                  SplashContinueInBackgroundButton(
+                                    onPressed: _continueInBackground,
+                                  ),
+                                ],
                               ],
                             ],
                           ),
