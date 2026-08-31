@@ -298,18 +298,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   final Set<Future<void>> _enginePoolTasks = {};
   int _enginePoolLimit = kEngineSourcesBatchDesktop;
 
-  int? get _resolvedMalId =>
-      widget.malId ?? widget.catalogOpen?.effectiveExtract.intVal('malId');
-
-  bool get _hasAnimeExtractIds {
-    final extract = widget.catalogOpen?.effectiveExtract;
-    return (extract?.intVal('anilistId') ?? 0) > 0 ||
-        (_resolvedMalId ?? 0) > 0;
-  }
-
-  /// Soft Forja panel bucket. Prefer explicit hub category; else infer anime /
-  /// drama from the playing `engine:` plugin so player Sources reuse the same
-  /// chip prefs + session cache as details/hub.
+  /// Soft Forja panel bucket. Prefer explicit hub category; else infer from
+  /// the playing `engine:` plugin so player Sources reuse chip prefs.
   String get _enginePanelCategory {
     if (widget.catalogOpen != null) {
       return engineExtractContext(
@@ -317,7 +307,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         movie: widget.movie,
         episode: widget.episode,
         episodeVideoId: widget.episodeVideoId,
-        malId: _resolvedMalId,
         panelCategoryHint: widget.engineCategory,
       ).panelCategory;
     }
@@ -326,14 +315,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return EngineCategories.panelCategoryFor(
         mediaType: widget.movie.mediaType,
         panelCategory: explicit,
-        hasAnimeIds: _hasAnimeExtractIds,
       );
     }
     final inferred = _panelCategoryFromPlayingEnginePlugin();
     if (inferred != null) return inferred;
     return EngineCategories.panelCategoryFor(
       mediaType: widget.movie.mediaType,
-      hasAnimeIds: _hasAnimeExtractIds,
     );
   }
 
@@ -353,10 +340,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return null;
   }
 
-  /// Engine extract type — keep `anime` / `drama` (do not coerce to movie).
-  ///
-  /// Hub panels pass [engineCategory] / `asian_drama` even when TMDB match is
-  /// `tv` — panel bucket wins over TMDB mediaType.
+  /// Engine extract type — opaque string from pack `open.extract.resolveType`.
   String get _engineResolveType {
     if (widget.catalogOpen != null) {
       return engineExtractContext(
@@ -364,28 +348,28 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         movie: widget.movie,
         episode: widget.episode,
         episodeVideoId: widget.episodeVideoId,
-        malId: _resolvedMalId,
         panelCategoryHint: widget.engineCategory,
       ).resolveType;
     }
-    final panel = _enginePanelCategory;
-    if (panel == EngineCategories.anime) return 'anime';
-    if (panel == EngineCategories.drama) return 'drama';
+    final hint = widget.engineCategory?.trim();
+    if (hint != null && hint.isNotEmpty) return hint;
     final t = widget.movie.mediaType.toLowerCase();
-    if (t == 'anime') return 'anime';
-    if (t == 'drama' || t == 'asian_drama') return 'drama';
     if (t == 'tv' || t == 'series' || t == 'show') return 'tv';
     return 'movie';
   }
 
   bool get _engineNeedsEpisode {
-    final t = _engineResolveType;
-    return t == 'tv' || t == 'anime' || t == 'drama';
+    return _engineResolveType.toLowerCase() != 'movie';
   }
 
   Set<String> get _effectiveEngineCategories =>
       _engineVisibleCategories ??
       EngineCategories.defaultsForPanelCategory(_enginePanelCategory);
+
+  List<String> get _engineCategoryFilterOptions =>
+      EngineCategories.filterTypesFromPlugins([
+        for (final pack in _enginePacks) ...pack.plugins,
+      ]);
 
   bool _searching = false;
   bool _stremioFetching = false;
@@ -2453,7 +2437,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         title: widget.movie.title,
         year: _year,
         movie: widget.movie,
-        malId: _resolvedMalId,
         catalogOpen: widget.catalogOpen,
         episodeVideoId: widget.episodeVideoId,
         allowHostFallback: false,
@@ -3306,6 +3289,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           onSizeFiltersChanged: (v) => setState(() => _sizeFilters = v),
           showEngineCategories: _kindFilter == 'engine',
           engineVisibleCategories: _effectiveEngineCategories,
+          engineCategoryOptions: _engineCategoryFilterOptions,
           engineCategoryMediaType: _enginePanelCategory,
           onEngineCategoriesChanged: (v) =>
               setState(() => _engineVisibleCategories = v),

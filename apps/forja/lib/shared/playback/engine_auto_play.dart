@@ -60,7 +60,6 @@ Future<void> switchEpisodeViaEngineAutoPlay({
     movie: movie,
     episode: episode,
     episodeVideoId: s?.episodeVideoIdFor(episode),
-    malId: s?.malId,
     panelCategoryHint: engineCategoryForSession(s, movie),
   );
   return runEngineAutoPlay(
@@ -69,7 +68,7 @@ Future<void> switchEpisodeViaEngineAutoPlay({
     engineCategory: extract.panelCategory,
     season: season,
     episode: episode,
-    malId: extract.malId ?? s?.malId,
+    malId: extract.intVal('malId') ?? s?.malId,
     audioCategory: s?.audioCategory,
     stremioId: stremioId ?? movie.imdbId,
     loadingSubtitle: s?.hasCatalogContext == true
@@ -86,7 +85,6 @@ String? engineCategoryForSession(CatalogPlaySession? session, Movie movie) {
     return engineExtractContext(
       catalogOpen: session!.effectiveOpen,
       movie: movie,
-      malId: session.malId,
     ).panelCategory;
   }
   return null;
@@ -175,7 +173,6 @@ Future<void> runEngineAutoPlay({
     movie: movie,
     episode: episode,
     episodeVideoId: session?.episodeVideoIdFor(episode ?? 1),
-    malId: malId ?? session?.malId,
     panelCategoryHint: engineCategory,
   );
   final category = extract.panelCategory;
@@ -193,7 +190,7 @@ Future<void> runEngineAutoPlay({
     catalogOpen: activeSession.effectiveOpen,
     pluginId: activeSession.pluginId,
     metaId: activeSession.catalogMeta?.id,
-    malId: extract.malId ?? malId,
+    malId: extract.intVal('malId') ?? malId,
     audioCategory: audioCategory ?? activeSession.audioCategory,
     episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
   );
@@ -537,7 +534,6 @@ Future<void> runEngineAutoPlay({
           title: movie.title,
           year: year,
           movie: movie,
-          malId: extract.malId ?? malId,
           catalogOpen: activeSession.effectiveOpen,
           episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
           allowHostFallback: false,

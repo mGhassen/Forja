@@ -1,14 +1,11 @@
 import 'models.dart';
 
-/// Forja plugin categories from `engine.json` `types`.
-///
-/// Soft visibility only — selected off-category plugins still extract.
+/// Plugin `types` + structural buckets — all labels from manifest tokens, not
+/// hardcoded pack names.
 abstract final class EngineCategories {
+  /// TMDB-shaped defaults for Home / feature details (not hub pack types).
   static const movie = 'movie';
   static const tv = 'tv';
-  static const anime = 'anime';
-  static const drama = 'drama';
-  static const arabic = 'arabic';
 
   /// Live Matches plugin types (`engine.json`).
   static const liveCatalog = 'catalog';
@@ -16,19 +13,97 @@ abstract final class EngineCategories {
   static const liveSport = 'live_sport';
 
   /// Shell hub plugins (`kind: catalog`) — Settings → Forja **Hubs** tab.
-  /// Distinct from [liveCatalog] (`types: catalog` schedule feeds).
   static const hubCatalog = 'hubs';
 
-  static const all = [movie, tv, anime, drama, arabic];
-
-  static String label(String id) => switch (id) {
-    movie => 'Movie',
-    tv => 'TV',
-    anime => 'Anime',
-    drama => 'Drama',
-    arabic => 'Arabic',
-    _ => id,
+  static const _structuralGroupKeys = {
+    'movie_tv',
+    movie,
+    tv,
+    livePlugin,
+    liveCatalog,
+    hubCatalog,
+    'other',
   };
+
+  static String typeLabel(String id) {
+    switch (id) {
+      case 'movie_tv':
+        return 'Movie & TV';
+      case movie:
+        return 'Movie';
+      case tv:
+        return 'TV';
+      case livePlugin:
+        return 'Live';
+      case liveCatalog:
+        return 'Catalog';
+      case hubCatalog:
+        return 'Hubs';
+      case 'other':
+        return 'Other';
+      default:
+        return id
+            .split('_')
+            .where((w) => w.isNotEmpty)
+            .map(
+              (w) => w.length == 1
+                  ? w.toUpperCase()
+                  : '${w[0].toUpperCase()}${w.substring(1)}',
+            )
+            .join(' ');
+    }
+  }
+
+  /// Unique VOD filter chips from installed extractable plugins' `types`.
+  static List<String> filterTypesFromPlugins(Iterable<EnginePlugin> plugins) {
+    final out = <String>{movie, tv};
+    for (final p in plugins) {
+      if (!p.isExtractable) continue;
+      for (final raw in p.types) {
+        final t = raw.toLowerCase().trim();
+        if (t.isEmpty) continue;
+        if (t == 'series') {
+          out.add(tv);
+        } else if (!_liveTypeTokens.contains(t)) {
+          out.add(t);
+        }
+      }
+    }
+    final list = out.toList()..sort(_typeSortCompare);
+    return list;
+  }
+
+  static const _liveTypeTokens = {
+    liveCatalog,
+    livePlugin,
+    liveSport,
+    'live',
+  };
+
+  static int _typeSortCompare(String a, String b) {
+    const head = [movie, tv];
+    final ai = head.indexOf(a);
+    final bi = head.indexOf(b);
+    if (ai >= 0 || bi >= 0) {
+      if (ai < 0) return 1;
+      if (bi < 0) return -1;
+      return ai.compareTo(bi);
+    }
+    return a.compareTo(b);
+  }
+
+  /// Filter chip types: installed plugin types + [include] + [extra].
+  static List<String> filterTypeOptions({
+    required Iterable<EnginePlugin> plugins,
+    Set<String> include = const {},
+    List<String> extra = const [],
+  }) {
+    final out = filterTypesFromPlugins(plugins).toSet()
+      ..addAll(include)
+      ..addAll(extra);
+    final list = out.toList()..sort(_typeSortCompare);
+    return list;
+  }
 
   /// Settings / pack grouping key (dual movie+tv → one bucket).
   static String groupKey(EnginePlugin plugin) {
@@ -38,43 +113,39 @@ abstract final class EngineCategories {
       return livePlugin;
     }
     final types = plugin.types.map((t) => t.toLowerCase()).toSet();
-    if (types.contains(anime)) return anime;
-    if (types.contains(drama)) return drama;
-    if (types.contains(arabic)) return arabic;
     if (types.contains(movie) && types.contains(tv)) return 'movie_tv';
     if (types.contains(tv) || types.contains('series')) return tv;
     if (types.contains(movie)) return movie;
+    final vod = types.where((t) => t.isNotEmpty && t != 'series').toList()
+      ..sort();
+    if (vod.length == 1) return vod.first;
+    if (vod.isNotEmpty) return vod.first;
     return 'other';
   }
 
-  static String groupLabel(String key) => switch (key) {
-    'movie_tv' => 'Movie & TV',
-    movie => 'Movie',
-    tv => 'TV',
-    anime => 'Anime',
-    drama => 'Drama',
-    arabic => 'Arabic',
-    livePlugin => 'Live',
-    liveCatalog => 'Catalog',
-    hubCatalog => 'Hubs',
-    _ => 'Other',
-  };
+  static String groupLabel(String key) => typeLabel(key);
 
-  static const groupOrder = [
-    'movie_tv',
-    movie,
-    tv,
-    anime,
-    drama,
-    arabic,
-    livePlugin,
-    liveCatalog,
-    hubCatalog,
-    'other',
-  ];
+  /// Structural order first, then manifest VOD types present in [plugins].
+  static List<String> groupOrderFor(Iterable<EnginePlugin> plugins) {
+    final keys = plugins.map(groupKey).toSet();
+    const structural = [
+      'movie_tv',
+      movie,
+      tv,
+      livePlugin,
+      liveCatalog,
+      hubCatalog,
+    ];
+    final out = [for (final k in structural) if (keys.contains(k)) k];
+    final dynamicKeys = keys
+        .where((k) => !_structuralGroupKeys.contains(k))
+        .toList()
+      ..sort();
+    out.addAll(dynamicKeys);
+    if (keys.contains('other')) out.add('other');
+    return out;
+  }
 
-  /// Live Matches source plugins (resolve + schedule) — one Settings bucket.
-  /// Catalog plugins are listed separately under Settings → Catalog.
   static String liveSourceGroupKey(EnginePlugin plugin) {
     if (plugin.isLiveCatalog) return liveCatalog;
     return livePlugin;
@@ -88,28 +159,21 @@ abstract final class EngineCategories {
 
   static const liveSourceGroupOrder = [livePlugin];
 
-  /// Default visible categories for the current details media type.
   static Set<String> defaultsForMediaType(String? mediaType) =>
       {panelCategoryFor(mediaType: mediaType)};
 
-  /// Panel bucket for soft-hide + selection prefs: movie | tv | anime | drama.
-  ///
-  /// Hubs pass [panelCategory] explicitly — TMDB `movie`/`tv` alone is not enough
-  /// (anime/drama catalog Sources still use a TMDB Movie).
+  /// Panel bucket — explicit [panelCategory] from pack extract wins; else TMDB
+  /// movie/tv only (host does not map hub media types).
   static String panelCategoryFor({
     String? mediaType,
     String? panelCategory,
-    bool hasAnimeIds = false,
   }) {
     final explicit = panelCategory?.toLowerCase().trim();
     if (explicit != null && explicit.isNotEmpty) {
       if (explicit == 'series') return tv;
-      if (explicit == 'asian' || explicit == 'asian_drama') return drama;
-      if (all.contains(explicit)) return explicit;
+      return explicit;
     }
     final t = (mediaType ?? '').toLowerCase().trim();
-    if (t == anime || hasAnimeIds) return anime;
-    if (t == drama || t == 'asian' || t == 'asian_drama') return drama;
     if (t == 'tv' || t == 'series' || t == 'show') return tv;
     return movie;
   }
@@ -117,20 +181,20 @@ abstract final class EngineCategories {
   static Set<String> defaultsForPanelCategory(String category) =>
       {panelCategoryFor(panelCategory: category)};
 
-  /// Infer anime/drama panel bucket from the playing `engine:` plugin.
-  ///
-  /// Dual movie/TV plugins that also list `drama` (Videasy, VidLink, …) must
-  /// fall through so TMDB movie/TV Sources keep the full chip row.
+  /// Single-type VOD plugins → that type. Dual movie/TV (+ drama, …) → null.
   static String? panelCategoryFromPlayingPlugin(EnginePlugin plugin) {
-    final types = plugin.types.map((t) => t.toLowerCase()).toSet();
+    final types = plugin.types
+        .map((t) => t.toLowerCase().trim())
+        .where((t) => t.isNotEmpty)
+        .toSet();
     final hasMovieTv =
         types.contains(movie) ||
         types.contains(tv) ||
         types.contains('series');
-    if (types.contains(anime) && !hasMovieTv) return anime;
-    if (types.contains(drama) && !hasMovieTv) return drama;
-    if (types.contains(arabic) && !hasMovieTv) return arabic;
-    return null;
+    if (hasMovieTv) return null;
+    if (types.length == 1) return types.first;
+    final sorted = types.toList()..sort();
+    return sorted.isEmpty ? null : sorted.first;
   }
 
   static bool pluginMatchesCategories(
@@ -146,7 +210,6 @@ abstract final class EngineCategories {
     return false;
   }
 
-  /// Chips to show: matching category, or already selected (so they stay usable).
   static bool pluginChipVisible({
     required EnginePlugin plugin,
     required Set<String> visibleCategories,
@@ -159,7 +222,7 @@ abstract final class EngineCategories {
 
   static int extraCategoryFilterCount({
     required Set<String> visibleCategories,
-    required String? mediaType,
+    String? mediaType,
   }) {
     final defaults = defaultsForPanelCategory(
       panelCategoryFor(mediaType: mediaType, panelCategory: mediaType),
@@ -168,7 +231,6 @@ abstract final class EngineCategories {
         defaults.difference(visibleCategories).length;
   }
 
-  /// Enabled HTTP plugin ids whose `types` intersect [categories].
   static Set<String> matchingPluginIds({
     required List<EnginePack> packs,
     required Set<String> categories,
@@ -182,7 +244,6 @@ abstract final class EngineCategories {
             p.id,
   };
 
-  /// Legacy prefs / Select All that picked every enabled plugin → narrow to [scope].
   static Set<String> scopeSelectionIfFullAll({
     required Set<String> selected,
     required Set<String> enabledIds,

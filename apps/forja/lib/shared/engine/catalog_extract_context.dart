@@ -10,7 +10,10 @@ class EngineExtractContext {
     this.ctx = const {},
   });
 
+  /// Opaque extract type from the pack (`movie`, `tv`, or any plugin type).
   final String resolveType;
+
+  /// Opaque panel bucket from the pack — used for Sources chip prefs only.
   final String panelCategory;
   final Map<String, dynamic> ctx;
 
@@ -27,35 +30,23 @@ class EngineExtractContext {
     final s = v.toString().trim();
     return s.isEmpty ? null : s;
   }
+}
 
-  /// Rust FFI bridge — reads keys from opaque [ctx] only.
-  int? get malId => intVal('malId');
-  int? get anilistId => intVal('anilistId');
-  int? get kisskhId => intVal('kisskhId');
-  int? get kisskhEpisodeId => intVal('kisskhEpisodeId');
-  String? get arabicVideoId => strVal('arabicVideoId') ?? strVal('videoId');
-
-  bool get hasAnimeIds => (anilistId ?? 0) > 0 || (malId ?? 0) > 0;
+int? extractCtxInt(Map<String, dynamic> ctx, String key) {
+  final v = ctx[key];
+  if (v is int) return v;
+  if (v is num) return v.toInt();
+  return int.tryParse(v?.toString() ?? '');
 }
 
 EngineExtractContext _mergeEpisodeIntoCtx(
   CatalogOpenExtract spec,
   int? episode,
   String? episodeVideoId,
-  int? malId,
 ) {
   final ctx = Map<String, dynamic>.from(spec.ctx);
-  if (malId != null && malId > 0) ctx['malId'] = malId;
   final epVid = (episodeVideoId ?? '').trim();
-  if (epVid.isNotEmpty) {
-    ctx['episodeVideoId'] = epVid;
-    final epInt = int.tryParse(epVid);
-    if (epInt != null) {
-      ctx.putIfAbsent('kisskhEpisodeId', () => epInt);
-    }
-    ctx.putIfAbsent('arabicVideoId', () => epVid);
-    ctx.putIfAbsent('videoId', () => epVid);
-  }
+  if (epVid.isNotEmpty) ctx['episodeVideoId'] = epVid;
   if (episode != null && episode > 0) {
     ctx.putIfAbsent('episode', () => episode);
   }
@@ -72,7 +63,6 @@ EngineExtractContext engineExtractContext({
   required Movie movie,
   int? episode,
   String? episodeVideoId,
-  int? malId,
   String? panelCategoryHint,
 }) {
   final open = catalogOpen;
@@ -81,27 +71,21 @@ EngineExtractContext engineExtractContext({
       open.effectiveExtract,
       episode,
       episodeVideoId,
-      malId,
     );
   }
 
-  final panel = EngineCategories.panelCategoryFor(
-    mediaType: movie.mediaType,
-    panelCategory: panelCategoryHint,
-    hasAnimeIds: false,
-  );
+  final hint = panelCategoryHint?.trim();
+  final panel = (hint != null && hint.isNotEmpty)
+      ? hint
+      : EngineCategories.panelCategoryFor(mediaType: movie.mediaType);
+  final resolveType = (hint != null && hint.isNotEmpty)
+      ? hint
+      : (movie.mediaType == 'tv' || movie.mediaType == 'series' ? 'tv' : 'movie');
   return EngineExtractContext(
-    resolveType: _resolveTypeForPanelCategory(panel, movie),
+    resolveType: resolveType,
     panelCategory: panel,
-    ctx: malId != null && malId > 0 ? {'malId': malId} : const {},
+    ctx: const {},
   );
-}
-
-String _resolveTypeForPanelCategory(String panelCategory, Movie movie) {
-  if (panelCategory == EngineCategories.anime) return 'anime';
-  if (panelCategory == EngineCategories.drama) return 'drama';
-  if (panelCategory == EngineCategories.arabic) return 'arabic';
-  return movie.mediaType == 'tv' ? 'tv' : 'movie';
 }
 
 /// Opaque session-cache segment for a hub title/episode.
@@ -129,7 +113,7 @@ String? providerIdFromEpisodeVideoId(String videoId) {
   return id.isEmpty ? null : id;
 }
 
-/// Merges explicit extract ids with [catalogOpen] when present.
+/// Merges [catalogOpen] extract when present; otherwise TMDB-details hints only.
 ({String type, String panelCategory, Map<String, dynamic> ctx})
     resolveEngineExtractInputs({
   required String type,
@@ -137,8 +121,6 @@ String? providerIdFromEpisodeVideoId(String videoId) {
   CatalogOpen? catalogOpen,
   String? episodeVideoId,
   int? episode,
-  int? malId,
-  Map<String, dynamic>? legacyCtx,
   String? panelCategoryHint,
 }) {
   if (catalogOpen != null && movie != null) {
@@ -147,55 +129,17 @@ String? providerIdFromEpisodeVideoId(String videoId) {
       movie: movie,
       episode: episode,
       episodeVideoId: episodeVideoId,
-      malId: malId,
       panelCategoryHint: panelCategoryHint ?? type,
     );
-    final merged = Map<String, dynamic>.from(ctx.ctx);
-    if (legacyCtx != null) {
-      for (final e in legacyCtx.entries) {
-        merged.putIfAbsent(e.key, () => e.value);
-      }
-    }
     return (
       type: ctx.resolveType,
       panelCategory: ctx.panelCategory,
-      ctx: merged,
+      ctx: ctx.ctx,
     );
   }
   return (
     type: type,
     panelCategory: panelCategoryHint ?? type,
-    ctx: legacyCtx ?? const {},
-  );
-}
-
-/// Bridge opaque [ctx] to legacy Rust extract param names (engine layer only).
-({
-  int? malId,
-  int? anilistId,
-  int? kisskhId,
-  int? kisskhEpisodeId,
-  String? arabicVideoId,
-}) engineCtxToLegacyIds(Map<String, dynamic> ctx) {
-  int? pickInt(String k) {
-    final v = ctx[k];
-    if (v is int) return v;
-    if (v is num) return v.toInt();
-    return int.tryParse(v?.toString() ?? '');
-  }
-
-  String? pickStr(String k) {
-    final v = ctx[k];
-    if (v == null) return null;
-    final s = v.toString().trim();
-    return s.isEmpty ? null : s;
-  }
-
-  return (
-    malId: pickInt('malId'),
-    anilistId: pickInt('anilistId'),
-    kisskhId: pickInt('kisskhId'),
-    kisskhEpisodeId: pickInt('kisskhEpisodeId'),
-    arabicVideoId: pickStr('arabicVideoId') ?? pickStr('videoId'),
+    ctx: const {},
   );
 }

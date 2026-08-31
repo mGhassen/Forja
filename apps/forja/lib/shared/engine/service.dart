@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/engine/anime_ids.dart';
 import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/engine/live_goat_unlock.dart';
@@ -28,12 +27,6 @@ class EngineService {
       PluginRegistry.officialCatalogManifestUrl;
   static const officialHomeManifestUrl =
       PluginRegistry.officialHomeManifestUrl;
-  static const officialAnimeManifestUrl =
-      PluginRegistry.officialAnimeManifestUrl;
-  static const officialAsianDramaManifestUrl =
-      PluginRegistry.officialAsianDramaManifestUrl;
-  static const officialArabicManifestUrl =
-      PluginRegistry.officialArabicManifestUrl;
   static List<String> get officialManifestUrls =>
       PluginRegistry.officialManifestUrls;
 
@@ -257,11 +250,6 @@ class EngineService {
         (config['apiKey'] == null || config['apiKey'].toString().isEmpty)) {
       config['apiKey'] = tmdbKey;
     }
-    // Home hub (tmdb) uses the same compile-time key as Rust TMDB — never ship
-    // a key in pack config (R70-A14).
-    if (plugin.id == 'tmdb' && tmdbKey.isNotEmpty) {
-      config['apiKey'] = tmdbKey;
-    }
 
     // First-class catalog request (both EngineJS + flutter_js invokers).
     final catalogCtx = <String, dynamic>{
@@ -459,18 +447,13 @@ class EngineService {
     required String pluginId,
     required String tmdbId,
     required String type,
-    int? season,
+    Movie? movie,
+    CatalogOpen? catalogOpen,
     int? episode,
+    String? episodeVideoId,
+    int? season,
     String? title,
     String? year,
-    Movie? movie,
-    int? malId,
-    int? anilistId,
-    int? kisskhId,
-    int? kisskhEpisodeId,
-    String? arabicVideoId,
-    CatalogOpen? catalogOpen,
-    String? episodeVideoId,
     bool allowHostFallback = false,
     EngineRuntime? runtime,
   }) async {
@@ -480,22 +463,17 @@ class EngineService {
       catalogOpen: catalogOpen,
       episodeVideoId: episodeVideoId,
       episode: episode,
-      malId: malId,
-      legacyCtx: {
-        if (anilistId != null) 'anilistId': anilistId,
-        if (kisskhId != null) 'kisskhId': kisskhId,
-        if (kisskhEpisodeId != null) 'kisskhEpisodeId': kisskhEpisodeId,
-        if (arabicVideoId != null) 'arabicVideoId': arabicVideoId,
-      },
       panelCategoryHint: type,
     );
     final extractType = resolved.type;
-    final legacyIds = engineCtxToLegacyIds(resolved.ctx);
-    final resolvedMalId = legacyIds.malId;
-    final resolvedAnilistId = legacyIds.anilistId;
-    final resolvedKisskhId = legacyIds.kisskhId;
-    final resolvedKisskhEpisodeId = legacyIds.kisskhEpisodeId;
-    final resolvedArabicVideoId = legacyIds.arabicVideoId;
+    final extractCtx = Map<String, dynamic>.from(resolved.ctx);
+    if (movie?.imdbId != null && movie!.imdbId!.trim().isNotEmpty) {
+      extractCtx.putIfAbsent('imdbId', () => movie.imdbId!.trim());
+    }
+    final resolvedMalId = extractCtxInt(extractCtx, 'malId');
+    final resolvedAnilistId = extractCtxInt(extractCtx, 'anilistId');
+    final resolvedImdb = extractCtx['imdbId']?.toString() ?? movie?.imdbId;
+    final mappedEpisode = extractCtxInt(extractCtx, 'mappedEpisode') ?? episode;
 
     final gen = _extractGeneration;
     final packs = await listPacks();
@@ -523,12 +501,10 @@ class EngineService {
 
     final overlay =
         ProviderRuntimeConfig.instance.engine[active.id] ?? const {};
-    final config = mergeEnginePluginConfig(
+    final config = injectExtractCtxIntoConfig(
+      active,
+      extractCtx,
       mergeEngineConfig(active.config, overlay),
-      pluginId: active.id,
-      kisskhId: resolvedKisskhId,
-      kisskhEpisodeId: resolvedKisskhEpisodeId,
-      arabicVideoId: resolvedArabicVideoId,
     );
     var code = await _loadScript(active);
     if (gen != _extractGeneration) return null;
@@ -555,44 +531,11 @@ class EngineService {
       await rt.loadPlugin(pluginId: active.id, code: code);
     }
     if (gen != _extractGeneration) return null;
-    EngineAnimeIdBundle? animeIds;
-    if (EngineAnimeIds.pluginNeedsResolve(active)) {
-      final kinds = EngineAnimeIds.requiredKinds(active);
-      final haveMal =
-          !kinds.contains('mal') || (resolvedMalId != null && resolvedMalId > 0);
-      final haveAnilist =
-          !kinds.contains('anilist') ||
-          (resolvedAnilistId != null && resolvedAnilistId > 0);
-      if (haveMal && haveAnilist) {
-        animeIds = EngineAnimeIdBundle(
-          imdbId: movie?.imdbId,
-          malId: resolvedMalId,
-          anilistId: resolvedAnilistId,
-          mappedEpisode: episode ?? 1,
-        );
-      } else {
-        animeIds = await EngineAnimeIds.resolve(
-          tmdbId: tmdbId,
-          mediaType: _tmdbResolveMediaType(mediaType),
-          season: season ?? 1,
-          episode: episode ?? 1,
-          title: title,
-          imdbId: movie?.imdbId,
-          knownMalId: resolvedMalId,
-          knownAnilistId: resolvedAnilistId,
-          kinds: kinds,
-        );
-      }
-      if (gen != _extractGeneration) return null;
-    }
-    final resolvedMal = animeIds?.malId ?? resolvedMalId;
-    final resolvedAnilist = animeIds?.anilistId ?? resolvedAnilistId;
-    final resolvedImdb = animeIds?.imdbId ?? movie?.imdbId;
     debugPrint(
       '[engine] ${active.id} start tmdb=$tmdbId type=$mediaType '
       's=$season e=$episode title=$title'
-      '${resolvedMal != null ? ' mal=$resolvedMal' : ''}'
-      '${resolvedAnilist != null ? ' anilist=$resolvedAnilist' : ''}'
+      '${resolvedMalId != null ? ' mal=$resolvedMalId' : ''}'
+      '${resolvedAnilistId != null ? ' anilist=$resolvedAnilistId' : ''}'
       '${resolvedImdb != null && resolvedImdb.isNotEmpty ? ' imdb=$resolvedImdb' : ''}',
     );
     final sw = Stopwatch()..start();
@@ -601,9 +544,9 @@ class EngineService {
       pluginName: active.name,
       tmdbId: tmdbId,
       imdbId: resolvedImdb,
-      malId: resolvedMal,
-      anilistId: resolvedAnilist,
-      mappedEpisode: animeIds?.mappedEpisode,
+      malId: resolvedMalId,
+      anilistId: resolvedAnilistId,
+      mappedEpisode: mappedEpisode,
       type: mediaType,
       season: season,
       episode: episode,
@@ -611,6 +554,7 @@ class EngineService {
       year: year,
       config: config,
       movie: movie,
+      extractCtx: extractCtx,
       // HTTP plugins: extract(ctx) only — no host / WebView / Dart extract fallbacks.
       timeout: const Duration(seconds: 75),
       allowHostFallback: allowHostFallback,
@@ -927,18 +871,13 @@ class EngineService {
     required String pluginId,
     required String tmdbId,
     required String type,
-    int? season,
+    Movie? movie,
+    CatalogOpen? catalogOpen,
     int? episode,
+    String? episodeVideoId,
+    int? season,
     String? title,
     String? year,
-    Movie? movie,
-    int? malId,
-    int? anilistId,
-    int? kisskhId,
-    int? kisskhEpisodeId,
-    String? arabicVideoId,
-    CatalogOpen? catalogOpen,
-    String? episodeVideoId,
     bool allowHostFallback = false,
   }) async {
     final resolved = resolveEngineExtractInputs(
@@ -947,22 +886,13 @@ class EngineService {
       catalogOpen: catalogOpen,
       episodeVideoId: episodeVideoId,
       episode: episode,
-      malId: malId,
-      legacyCtx: {
-        if (anilistId != null) 'anilistId': anilistId,
-        if (kisskhId != null) 'kisskhId': kisskhId,
-        if (kisskhEpisodeId != null) 'kisskhEpisodeId': kisskhEpisodeId,
-        if (arabicVideoId != null) 'arabicVideoId': arabicVideoId,
-      },
       panelCategoryHint: type,
     );
     final extractType = resolved.type;
-    final legacyIds = engineCtxToLegacyIds(resolved.ctx);
-    final resolvedMalId = legacyIds.malId;
-    final resolvedAnilistId = legacyIds.anilistId;
-    final resolvedKisskhId = legacyIds.kisskhId;
-    final resolvedKisskhEpisodeId = legacyIds.kisskhEpisodeId;
-    final resolvedArabicVideoId = legacyIds.arabicVideoId;
+    final extractCtx = Map<String, dynamic>.from(resolved.ctx);
+    if (movie?.imdbId != null && movie!.imdbId!.trim().isNotEmpty) {
+      extractCtx.putIfAbsent('imdbId', () => movie.imdbId!.trim());
+    }
 
     // RFC-064: Forja EngineJS on tokio (true parallel). Null → flutter_js fork
     // only when Rust is unsupported — never after cancelPending gen bump
@@ -977,11 +907,7 @@ class EngineService {
       title: title,
       year: year,
       movie: movie,
-      malId: resolvedMalId,
-      anilistId: resolvedAnilistId,
-      kisskhId: resolvedKisskhId,
-      kisskhEpisodeId: resolvedKisskhEpisodeId,
-      arabicVideoId: resolvedArabicVideoId,
+      extractCtx: extractCtx,
       allowHostFallback: allowHostFallback,
     );
     if (viaRust != null) return viaRust;
@@ -1007,11 +933,6 @@ class EngineService {
         title: title,
         year: year,
         movie: movie,
-        malId: resolvedMalId,
-        anilistId: resolvedAnilistId,
-        kisskhId: resolvedKisskhId,
-        kisskhEpisodeId: resolvedKisskhEpisodeId,
-        arabicVideoId: resolvedArabicVideoId,
         catalogOpen: catalogOpen,
         episodeVideoId: episodeVideoId,
         allowHostFallback: allowHostFallback,
@@ -1033,11 +954,7 @@ class EngineService {
     String? title,
     String? year,
     Movie? movie,
-    int? malId,
-    int? anilistId,
-    int? kisskhId,
-    int? kisskhEpisodeId,
-    String? arabicVideoId,
+    required Map<String, dynamic> extractCtx,
     bool allowHostFallback = false,
   }) async {
     final gen = _extractGeneration;
@@ -1054,59 +971,38 @@ class EngineService {
     final mediaType = _normalizeEngineMediaType(type);
     final overlay =
         ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
-    final config = mergeEnginePluginConfig(
+    final config = injectExtractCtxIntoConfig(
+      plugin,
+      extractCtx,
       mergeEngineConfig(plugin.config, overlay),
-      pluginId: plugin.id,
-      kisskhId: kisskhId,
-      kisskhEpisodeId: kisskhEpisodeId,
-      arabicVideoId: arabicVideoId,
     );
     final code = await _loadScript(plugin);
     if (gen != _extractGeneration || code == null) return null;
 
-    EngineAnimeIdBundle? animeIds;
-    if (EngineAnimeIds.pluginNeedsResolve(plugin)) {
-      final kinds = EngineAnimeIds.requiredKinds(plugin);
-      final haveMal =
-          !kinds.contains('mal') || (malId != null && malId > 0);
-      final haveAnilist =
-          !kinds.contains('anilist') || (anilistId != null && anilistId > 0);
-      if (haveMal && haveAnilist) {
-        animeIds = EngineAnimeIdBundle(
-          imdbId: movie?.imdbId,
-          malId: malId,
-          anilistId: anilistId,
-          mappedEpisode: episode ?? 1,
-        );
-      } else {
-        animeIds = await EngineAnimeIds.resolve(
-          tmdbId: tmdbId,
-          mediaType: _tmdbResolveMediaType(mediaType),
-          season: season ?? 1,
-          episode: episode ?? 1,
-          title: title,
-          imdbId: movie?.imdbId,
-          knownMalId: malId,
-          knownAnilistId: anilistId,
-          kinds: kinds,
-        );
-      }
-      if (gen != _extractGeneration) return null;
+    final spreadCtx = Map<String, dynamic>.from(extractCtx);
+    if (movie?.imdbId != null && movie!.imdbId!.trim().isNotEmpty) {
+      spreadCtx.putIfAbsent('imdbId', () => movie.imdbId!.trim());
     }
+    final resolvedMalId = extractCtxInt(spreadCtx, 'malId');
+    final resolvedAnilistId = extractCtxInt(spreadCtx, 'anilistId');
+    final resolvedImdb = spreadCtx['imdbId']?.toString() ?? movie?.imdbId ?? '';
+    final mappedEpisode =
+        extractCtxInt(spreadCtx, 'mappedEpisode') ?? episode ?? 1;
 
     final timeout = const Duration(seconds: 75);
     final ctx = <String, Object?>{
       'tmdbId': tmdbId,
-      'imdbId': animeIds?.imdbId ?? movie?.imdbId ?? '',
-      'malId': animeIds?.malId ?? malId ?? '',
-      'anilistId': animeIds?.anilistId ?? anilistId ?? '',
-      'mappedEpisode': animeIds?.mappedEpisode ?? episode ?? 1,
+      'imdbId': resolvedImdb,
+      'malId': resolvedMalId ?? '',
+      'anilistId': resolvedAnilistId ?? '',
+      'mappedEpisode': mappedEpisode,
       'type': mediaType,
       'season': season ?? 1,
       'episode': episode ?? 1,
       'title': title ?? '',
       'year': year ?? '',
       'url': '',
+      ...spreadCtx,
       'config': config,
     };
 
@@ -1128,10 +1024,10 @@ class EngineService {
     debugPrint(
       '[engine] ${plugin.id} start (enginejs) tmdb=$tmdbId type=$mediaType '
       's=$season e=$episode title=$title hops=${hopPayload.length}'
-      '${(animeIds?.malId ?? malId) != null ? ' mal=${animeIds?.malId ?? malId}' : ''}'
-      '${(animeIds?.anilistId ?? anilistId) != null ? ' anilist=${animeIds?.anilistId ?? anilistId}' : ''}'
-      '${(animeIds?.imdbId ?? movie?.imdbId)?.isNotEmpty == true ? ' imdb=${animeIds?.imdbId ?? movie?.imdbId}' : ''}'
-      ' mappedEp=${animeIds?.mappedEpisode ?? episode ?? 1}',
+      '${resolvedMalId != null ? ' mal=$resolvedMalId' : ''}'
+      '${resolvedAnilistId != null ? ' anilist=$resolvedAnilistId' : ''}'
+      '${resolvedImdb.isNotEmpty ? ' imdb=$resolvedImdb' : ''}'
+      ' mappedEp=$mappedEpisode',
     );
     final sw = Stopwatch()..start();
     late final String rawJson;
@@ -1232,14 +1128,7 @@ class EngineService {
   static String _normalizeEngineMediaType(String type) {
     final t = type.toLowerCase().trim();
     if (t == 'tv' || t == 'series') return 'tv';
-    if (t == 'anime') return 'anime';
-    if (t == 'drama') return 'drama';
-    return 'movie';
-  }
-
-  /// TMDB id-mapping APIs only understand movie/tv.
-  static String _tmdbResolveMediaType(String mediaType) {
-    if (mediaType == 'anime' || mediaType == 'drama') return 'tv';
-    return mediaType;
+    if (t == 'movie') return 'movie';
+    return t;
   }
 }

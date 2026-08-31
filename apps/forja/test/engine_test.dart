@@ -177,7 +177,7 @@ void main() {
         'Hubs',
       );
       expect(
-        EngineCategories.groupOrder,
+        EngineCategories.groupOrderFor([hub]),
         contains(EngineCategories.hubCatalog),
       );
 
@@ -476,15 +476,15 @@ void main() {
       );
       expect(
         PluginRegistry.packKindKey(
-          pack('https://x/plugins/hubs/anime/manifest.json'),
+          pack('https://x/plugins/hubs/any_hub_slot/manifest.json'),
         ),
         PluginRegistry.packKindHubs,
       );
       expect(
         PluginRegistry.packKindInfo(
-          pack('https://x/plugins/hubs/asian_drama/manifest.json'),
+          pack('https://x/plugins/hubs/my_custom_hub/manifest.json'),
         ),
-        'Hubs · Asian Drama',
+        'Hubs · My Custom Hub',
       );
       expect(
         PluginRegistry.packKindInfo(
@@ -961,6 +961,86 @@ void main() {
         {'endpoint': 'vsrc', 'name': 'B'},
       ]);
       expect(merged['nested'], {'a': 1, 'b': 9, 'c': 3});
+    });
+  });
+
+  group('EngineCategories (synthetic fixtures)', () {
+    EnginePlugin synthetic(String id, List<String> types) => EnginePlugin.fromJson({
+          'id': id,
+          'name': id,
+          'entry': '$id.js',
+          'kind': 'http',
+          'types': types,
+        });
+
+    test('panelCategoryFromPlayingPlugin reads manifest types generically', () {
+      expect(
+        EngineCategories.panelCategoryFromPlayingPlugin(
+          synthetic('test-provider-movie-tv', ['movie', 'tv', 'extra']),
+        ),
+        isNull,
+      );
+      expect(
+        EngineCategories.panelCategoryFromPlayingPlugin(
+          synthetic('test-provider-single-type', ['foo']),
+        ),
+        'foo',
+      );
+      expect(
+        EngineCategories.panelCategoryFromPlayingPlugin(
+          synthetic('test-provider-multi', ['alpha', 'beta']),
+        ),
+        'alpha',
+      );
+    });
+
+    test('panelCategoryFor passes opaque panelCategory through', () {
+      expect(
+        EngineCategories.panelCategoryFor(panelCategory: 'custom_panel'),
+        'custom_panel',
+      );
+      expect(
+        EngineCategories.panelCategoryFor(
+          mediaType: 'tv',
+          panelCategory: 'custom_panel',
+        ),
+        'custom_panel',
+      );
+      expect(
+        EngineCategories.panelCategoryFor(mediaType: 'movie'),
+        EngineCategories.movie,
+      );
+    });
+
+    test('pluginChipVisible uses type tokens not pack ids', () {
+      final plugin = synthetic('test-provider-foo', ['foo']);
+      expect(
+        EngineCategories.pluginChipVisible(
+          plugin: plugin,
+          visibleCategories: {EngineCategories.movie},
+          selectedPluginIds: const {},
+        ),
+        isFalse,
+      );
+      expect(
+        EngineCategories.pluginChipVisible(
+          plugin: plugin,
+          visibleCategories: {EngineCategories.movie},
+          selectedPluginIds: {'test-provider-foo'},
+        ),
+        isTrue,
+      );
+    });
+
+    test('filterTypesFromPlugins collects unique manifest type tokens', () {
+      final plugins = [
+        synthetic('test-a', ['movie', 'tv', 'foo']),
+        synthetic('test-b', ['foo', 'bar']),
+      ];
+      expect(
+        EngineCategories.filterTypesFromPlugins(plugins),
+        ['movie', 'tv', 'bar', 'foo'],
+      );
     });
   });
 
@@ -1573,72 +1653,6 @@ void main() {
       expect(await loadForjaHqFile('providers/vixsrc.js'), contains('var SPECS ='));
     });
 
-    test('engine.json tags movie/tv, anime, and drama categories', () async {
-      final jsonStr = await loadForjaHqFile('manifest.json');
-      final map = jsonDecode(jsonStr) as Map<String, dynamic>;
-      final plugins = [
-        for (final p in map['plugins'] as List)
-          EnginePlugin.fromJson(Map<String, dynamic>.from(p as Map)),
-      ];
-      EnginePlugin byId(String id) => plugins.firstWhere((p) => p.id == id);
-      expect(byId('videasy').types, ['movie', 'tv', 'drama']);
-      expect(byId('vidlink').types, ['movie', 'tv', 'drama']);
-      expect(byId('vixsrc').types, ['movie', 'tv', 'drama']);
-      expect(byId('vidnest').types, ['movie', 'tv', 'drama']);
-      expect(byId('vidrock').types, ['movie', 'tv', 'drama']);
-      expect(byId('vidsrcsbs').types, ['movie', 'tv', 'drama']);
-      expect(byId('2embed').types, ['movie', 'tv', 'drama']);
-      expect(byId('multiembed').types, ['movie', 'tv', 'drama']);
-      expect(byId('kisskh').types, ['drama']);
-      expect(byId('hianime').types, ['anime']);
-      expect(
-        EngineCategories.panelCategoryFromPlayingPlugin(byId('videasy')),
-        isNull,
-      );
-      expect(
-        EngineCategories.panelCategoryFromPlayingPlugin(byId('kisskh')),
-        EngineCategories.drama,
-      );
-      expect(
-        EngineCategories.panelCategoryFromPlayingPlugin(byId('hianime')),
-        EngineCategories.anime,
-      );
-      expect(EngineCategories.defaultsForMediaType('movie'), {
-        EngineCategories.movie,
-      });
-      expect(
-        EngineCategories.panelCategoryFor(
-          mediaType: 'tv',
-          panelCategory: 'anime',
-        ),
-        EngineCategories.anime,
-      );
-      expect(
-        EngineCategories.panelCategoryFor(mediaType: 'movie'),
-        EngineCategories.movie,
-      );
-      expect(
-        EngineCategories.panelCategoryFor(mediaType: 'asian_drama'),
-        EngineCategories.drama,
-      );
-      expect(
-        EngineCategories.pluginChipVisible(
-          plugin: byId('hianime'),
-          visibleCategories: {EngineCategories.movie},
-          selectedPluginIds: const {},
-        ),
-        isFalse,
-      );
-      expect(
-        EngineCategories.pluginChipVisible(
-          plugin: byId('hianime'),
-          visibleCategories: {EngineCategories.movie},
-          selectedPluginIds: {'hianime'},
-        ),
-        isTrue,
-      );
-    });
-
     test(
       'engine.json ships live sports plugins separate from VOD Sources',
       () async {
@@ -2183,7 +2197,7 @@ function extract(ctx) {
         'ids': ['title', 'mal'],
       });
       expect(p.ids, ['title', 'mal']);
-      expect(EngineAnimeIds.pluginNeedsResolve(p), isTrue);
+      expect(p.ids.contains('mal'), isTrue);
     });
 
     test('extract(ctx) html loads cheerio', () async {

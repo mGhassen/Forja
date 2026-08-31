@@ -10,9 +10,12 @@ import 'package:forja/shared/catalog/kit/play/catalog_play_resolve.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:rust/rust.dart' show isInProgressResume;
+import 'package:forja/shared/playback/history_playback_resume.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:rust/rust.dart' show WatchHistoryService, isInProgressResume;
 
-/// Layout widget type `continue` — pack-scoped [CatalogWatchHistory] only.
+/// Layout widget type `continue` — pack-scoped [CatalogWatchHistory] plus Home
+/// TMDB [WatchHistoryService] when [pluginId] is `tmdb`.
 class CatalogContinueWidget extends StatefulWidget {
   const CatalogContinueWidget({
     super.key,
@@ -38,12 +41,18 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
   List<Map<String, dynamic>> _entries = const [];
   String? _resumingMetaId;
   bool _viewportActivated = false;
+  StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
 
   @override
   void initState() {
     super.initState();
     _registerPrefetch();
     CatalogWatchHistory.revision.addListener(_onHistoryRevision);
+    if (widget.pluginId == 'tmdb') {
+      _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
+        if (_viewportActivated) unawaited(_reload());
+      });
+    }
   }
 
   void _onHistoryRevision() {
@@ -73,6 +82,7 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
   @override
   void dispose() {
     CatalogWatchHistory.revision.removeListener(_onHistoryRevision);
+    unawaited(_homeHistorySub?.cancel());
     _scroll.dispose();
     super.dispose();
   }
@@ -86,6 +96,26 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
   }
 
   Future<void> _resume(Map<String, dynamic> entry) async {
+    if (isHomeWatchHistoryCatalogEntry(entry)) {
+      final home = entry['homeHistory'];
+      if (home is! Map || _resumingMetaId != null) return;
+      final metaId = entry['metaId']?.toString();
+      if (metaId == null) return;
+      setState(() => _resumingMetaId = metaId);
+      try {
+        await resumePlaybackFromHistory(
+          context,
+          Map<String, dynamic>.from(home),
+        );
+        if (mounted) await _reload();
+      } catch (e) {
+        if (mounted) ForjaToast.error('Resume failed: $e');
+      } finally {
+        if (mounted) setState(() => _resumingMetaId = null);
+      }
+      return;
+    }
+
     final metaId = entry['metaId']?.toString();
     if (metaId == null || _resumingMetaId != null) return;
     final meta = CatalogWatchHistory.metaFromEntry(entry);
@@ -125,6 +155,20 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
   }
 
   Future<void> _openDetails(Map<String, dynamic> entry) async {
+    if (isHomeWatchHistoryCatalogEntry(entry)) {
+      final home = entry['homeHistory'];
+      if (home is! Map) return;
+      final item = Map<String, dynamic>.from(home);
+      await AppRouter.openDetails(
+        context,
+        movie: movieFromWatchHistory(item),
+        initialSeason: item['season'] as int?,
+        initialEpisode: item['episode'] as int?,
+      );
+      if (mounted) await _reload();
+      return;
+    }
+
     final meta = CatalogWatchHistory.metaFromEntry(entry);
     if (meta == null) return;
     await openCatalogMetaItem(
@@ -136,6 +180,14 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
   }
 
   Future<void> _remove(Map<String, dynamic> entry) async {
+    if (isHomeWatchHistoryCatalogEntry(entry)) {
+      final id = entry['metaId']?.toString();
+      if (id == null) return;
+      await WatchHistoryService().removeItem(id);
+      if (mounted) await _reload();
+      return;
+    }
+
     final id = entry['metaId']?.toString();
     if (id == null) return;
     await CatalogWatchHistory.remove(widget.pluginId, id);

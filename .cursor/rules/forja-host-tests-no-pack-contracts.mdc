@@ -1,0 +1,62 @@
+---
+description: Host tests must not treat shipped plugin ids, hub slots, or pack types as fixed contracts
+alwaysApply: true
+---
+
+# Host tests — no pack-name contracts
+
+Index: [external plugins vs host](./forja-external-plugins-host.mdc)
+
+## Plugins are external
+
+JavaScript packs under `plugins/**` are **developed and shipped outside the Flutter host**.
+Users may install different hubs, rename tabs, omit packs, or fork providers.
+The host must **not** behave as if `anime`, `kisskh`, `anilist`, `hianime`, or any other
+**shipped** id/slot/type is guaranteed to exist.
+
+Pack knowledge lives in packs. Host code and **host tests** prove generic contracts only.
+
+---
+
+## Forbidden in `apps/forja/test/**`
+
+| Do not | Why |
+|--------|-----|
+| Assert a **shipped plugin id** exists in manifest (`kisskh`, `videasy`, `hianime`, …) | Pack inventory, not host behavior |
+| Assert **hub slot / tab ids** as behavioral contracts (`anime`, `asian_drama`, `arabic`) | User may ship `my_hub` instead |
+| Use `loadAllForjaHqPlugins()` / repo `plugins/**` manifest as **oracle** for categories, registry, or panel logic | Couples host CI to one pack tree |
+| Hardcode pack **type tokens** in host expectations (`expect(types, ['anime'])` from real manifest) | Types come from manifest; host reads them generically |
+| Test “does our anime hub work” inside the Flutter test suite | Belongs in pack tests or manual QA |
+
+**Wrong:** `expect(byId('kisskh').types, ['drama'])` after loading providers manifest.
+
+**Wrong:** `expect(PluginRegistry.hubSlotIds, contains('anime'))` as proof host routing works.
+
+**Right:** `EnginePlugin.fromJson({'id': 'test-provider-a', 'types': ['foo']})` → `panelCategoryFromPlayingPlugin` → `'foo'`.
+
+---
+
+## Allowed in host tests
+
+- **Synthetic fixtures** — arbitrary plugin ids (`test-provider-a`, `hub-plugin-x`), arbitrary type tokens (`foo`, `bar`, `movie`, `tv`), fake manifest JSON inline.
+- **Generic mechanics** — `forjaHqSlot('…/hubs/any_slot/manifest.json')` returns `'any_slot'`; envelope parse from **checked-in JSON fixtures** where ids are **test data**, not “the app ships this hub”.
+- **Structural constants only** when testing the constant itself (e.g. `EngineCategories.movie` for TMDB defaults) — not tied to a pack name.
+- **Opaque passthrough** — `panelCategoryFor(panelCategory: 'anything')` returns `'anything'`; no claim that `'anything'` is a real hub.
+
+---
+
+## Where pack contract tests go
+
+| Layer | Location |
+|-------|----------|
+| Provider JS behavior, upstream URLs, manifest inventory | `plugins/**` tests, pack CI, or env-gated integration (explicitly labeled **pack**, not host) |
+| Host generic contracts | `apps/forja/test/**` with synthetic fixtures only |
+
+When adding host tests after engine/catalog changes: **grep the test for shipped plugin ids and hub slot names**. If the assertion would break when a user removes or renames a pack, it does not belong in the host suite.
+
+---
+
+## Related host rules
+
+- [forja-external-plugins-host.mdc](./forja-external-plugins-host.mdc) — no pack branches in host code
+- [catalog-hub-host-generic.mdc](./catalog-hub-host-generic.mdc) — no pack ids in catalog kit

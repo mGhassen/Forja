@@ -439,6 +439,9 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
               setState(() => _s._activeSizeFilters = v),
           showEngineCategories: _s._panelKindFilter == EngineIds.kind,
           engineVisibleCategories: _s._effectiveEngineCategories,
+          engineCategoryOptions: EngineCategories.filterTypesFromPlugins([
+            for (final pack in _s._enginePacks) ...pack.plugins,
+          ]),
           engineCategoryMediaType: _s._enginePanelCategory,
           onEngineCategoriesChanged: (v) =>
               setState(() => _s._engineVisibleCategories = v),

@@ -1072,9 +1072,10 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
     /// When Sources closes, dismiss Filters if they were open.
     this.sourcesPanelOpen = false,
 
-    /// Forja tab soft categories (Movie / TV / Anime / Drama).
+    /// Forja tab soft categories (from installed plugin `types`).
     this.showEngineCategories = false,
     this.engineVisibleCategories = const {},
+    this.engineCategoryOptions = const [],
     this.engineCategoryMediaType,
     this.onEngineCategoriesChanged,
 
@@ -1112,6 +1113,7 @@ class TorrentSourceSearchToolbar extends StatefulWidget {
   final bool sourcesPanelOpen;
   final bool showEngineCategories;
   final Set<String> engineVisibleCategories;
+  final List<String> engineCategoryOptions;
   final String? engineCategoryMediaType;
   final ValueChanged<Set<String>>? onEngineCategoriesChanged;
   final FocusNode? searchFocusNode;
@@ -1262,6 +1264,7 @@ class _TorrentSourceSearchToolbarState
           onSortChanged: widget.onSortChanged,
           showEngineCategories: widget.showEngineCategories,
           engineVisibleCategories: widget.engineVisibleCategories,
+          engineCategoryOptions: widget.engineCategoryOptions,
           engineCategoryMediaType: widget.engineCategoryMediaType,
           onEngineCategoriesChanged: widget.onEngineCategoriesChanged,
           onClearAll: () {
@@ -1520,6 +1523,7 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
     this.onSizeFiltersChanged,
     this.showEngineCategories = false,
     this.engineVisibleCategories = const {},
+    this.engineCategoryOptions = const [],
     this.engineCategoryMediaType,
     this.onEngineCategoriesChanged,
     this.onRequestClose,
@@ -1544,6 +1548,7 @@ class _TorrentSourceFilterSheet extends StatefulWidget {
   final ValueChanged<String>? onSortChanged;
   final bool showEngineCategories;
   final Set<String> engineVisibleCategories;
+  final List<String> engineCategoryOptions;
   final String? engineCategoryMediaType;
   final ValueChanged<Set<String>>? onEngineCategoriesChanged;
   final VoidCallback onClearAll;
@@ -1657,9 +1662,13 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
                 widget.onEngineCategoriesChanged != null)
               _sheetSection(
                 'Category',
-                EngineCategories.all.map(
+                EngineCategories.filterTypeOptions(
+                  plugins: const [],
+                  include: widget.engineVisibleCategories,
+                  extra: widget.engineCategoryOptions,
+                ).map(
                   (id) => _sheetChip(
-                    label: EngineCategories.label(id),
+                    label: EngineCategories.typeLabel(id),
                     selected: _engineCats.contains(id),
                     onTap: () => _toggleEngineCategory(id),
                   ),

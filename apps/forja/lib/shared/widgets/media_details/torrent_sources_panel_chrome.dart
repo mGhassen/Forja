@@ -60,6 +60,7 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
     /// Forja tab: soft category filter (Movie / TV / Anime / Drama).
     this.showEngineCategories = false,
     this.engineVisibleCategories = const {},
+    this.engineCategoryOptions = const [],
     this.engineCategoryMediaType,
     this.onEngineCategoriesChanged,
 
@@ -125,6 +126,7 @@ class TorrentSourcesPanelChrome extends StatefulWidget {
   final bool showCacheLine;
   final bool showEngineCategories;
   final Set<String> engineVisibleCategories;
+  final List<String> engineCategoryOptions;
   final String? engineCategoryMediaType;
   final ValueChanged<Set<String>>? onEngineCategoriesChanged;
   final bool filterEnableBlur;
@@ -328,6 +330,7 @@ class _TorrentSourcesPanelChromeState extends State<TorrentSourcesPanelChrome> {
           sourcesPanelOpen: widget.sourcesPanelOpen,
           showEngineCategories: widget.showEngineCategories,
           engineVisibleCategories: widget.engineVisibleCategories,
+          engineCategoryOptions: widget.engineCategoryOptions,
           engineCategoryMediaType: widget.engineCategoryMediaType,
           onEngineCategoriesChanged: widget.onEngineCategoriesChanged,
           searchFocusNode: _tv ? _searchFocus : null,

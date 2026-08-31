@@ -21,6 +21,7 @@ class EnginePlugin {
     this.capabilities = const [],
     this.nav,
     this.enrich,
+    this.ctxConfigMap = const {},
   });
 
   final String id;
@@ -61,6 +62,10 @@ class EnginePlugin {
   /// Optional companion catalog plugin id for post-rail / post-details enrich.
   /// Source plugins stay data-only; host pipes `items` / `meta` through this.
   final String? enrich;
+
+  /// Maps `open.extract.ctx` keys → plugin `config` keys at extract time.
+  /// Declared in pack manifest — host does not branch on plugin id.
+  final Map<String, String> ctxConfigMap;
 
   bool get isHttp => kind == 'http';
   bool get isHost => kind == 'host';
@@ -151,6 +156,7 @@ class EnginePlugin {
       enrich: (j['enrich'] as String?)?.trim().isNotEmpty == true
           ? (j['enrich'] as String).trim()
           : null,
+      ctxConfigMap: _ctxConfigMap(j['ctxConfigMap']),
     );
   }
 
@@ -172,6 +178,7 @@ class EnginePlugin {
     if (capabilities.isNotEmpty) 'capabilities': capabilities,
     if (nav != null) 'nav': nav,
     if (enrich != null && enrich!.isNotEmpty) 'enrich': enrich,
+    if (ctxConfigMap.isNotEmpty) 'ctxConfigMap': ctxConfigMap,
   };
 
   EnginePlugin copyWith({bool? enabled}) => EnginePlugin(
@@ -192,7 +199,19 @@ class EnginePlugin {
     capabilities: capabilities,
     nav: nav,
     enrich: enrich,
+    ctxConfigMap: ctxConfigMap,
   );
+}
+
+Map<String, String> _ctxConfigMap(dynamic raw) {
+  if (raw is! Map) return const {};
+  final out = <String, String>{};
+  raw.forEach((k, v) {
+    final dest = k.toString().trim();
+    final src = v?.toString().trim() ?? '';
+    if (dest.isNotEmpty && src.isNotEmpty) out[dest] = src;
+  });
+  return out;
 }
 
 int? _asPluginInt(dynamic raw) {
@@ -548,60 +567,22 @@ Map<String, dynamic> mergeEngineConfig(
   return out;
 }
 
-/// Asian Drama Sources already knows KissKh drama/episode ids. Inject them
-/// into kisskh plugin config so extract skips title search (Search has no
-/// `tmdbID`, so TMDB match always misses).
-Map<String, dynamic> engineConfigWithKissKhIds(
-  Map<String, dynamic> config, {
-  required String pluginId,
-  int? kisskhId,
-  int? kisskhEpisodeId,
-}) {
-  if (pluginId != 'kisskh') return config;
-  final drama = kisskhId ?? 0;
-  final ep = kisskhEpisodeId ?? 0;
-  if (drama <= 0 && ep <= 0) return config;
+/// Copies [extractCtx] into plugin [config] per manifest [EnginePlugin.ctxConfigMap].
+Map<String, dynamic> injectExtractCtxIntoConfig(
+  EnginePlugin plugin,
+  Map<String, dynamic> extractCtx,
+  Map<String, dynamic> config,
+) {
+  if (plugin.ctxConfigMap.isEmpty) return config;
   final out = Map<String, dynamic>.from(config);
-  if (ep > 0) out['episodeId'] = ep;
-  if (drama > 0) out['dramaId'] = drama;
-  return out;
-}
-
-/// Arabic hub Sources inject opaque pack video ids into provider config.
-Map<String, dynamic> engineConfigWithArabicVideoId(
-  Map<String, dynamic> config, {
-  required String pluginId,
-  String? videoId,
-}) {
-  if (pluginId != 'larozaa' &&
-      pluginId != 'dimatoon' &&
-      pluginId != 'brstej') {
-    return config;
+  for (final entry in plugin.ctxConfigMap.entries) {
+    final v = extractCtx[entry.value];
+    if (v == null) continue;
+    if (v is String && v.trim().isEmpty) continue;
+    if (v is num && v <= 0) continue;
+    out[entry.key] = v;
   }
-  final vid = (videoId ?? '').trim();
-  if (vid.isEmpty) return config;
-  final out = Map<String, dynamic>.from(config);
-  out['videoId'] = vid;
   return out;
-}
-
-Map<String, dynamic> mergeEnginePluginConfig(
-  Map<String, dynamic> config, {
-  required String pluginId,
-  int? kisskhId,
-  int? kisskhEpisodeId,
-  String? arabicVideoId,
-}) {
-  return engineConfigWithArabicVideoId(
-    engineConfigWithKissKhIds(
-      config,
-      pluginId: pluginId,
-      kisskhId: kisskhId,
-      kisskhEpisodeId: kisskhEpisodeId,
-    ),
-    pluginId: pluginId,
-    videoId: arabicVideoId,
-  );
 }
 
 /// Card title matching Nuvio plugin rows: `Show S1E1 - (2026)`.

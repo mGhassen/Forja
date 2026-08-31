@@ -529,7 +529,7 @@ class _SettingsProvidersSectionState
             plugins: panelPlugins,
             groupKey: EngineCategories.groupKey,
             groupLabel: EngineCategories.groupLabel,
-            groupOrder: EngineCategories.groupOrder,
+            groupOrder: EngineCategories.groupOrderFor(panelPlugins),
             trailing: _EnginePackActions(
               packEnabled: pack.enabled,
               onTogglePack: (val) => EngineService.instance.setPackEnabled(

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # External plugins and the Flutter host
 
-Index: [catalog hubs (pack-agnostic)](./catalog-hub-host-generic.mdc) · [playback (generic only)](./forja-playback-host-generic.mdc)
+Index: [catalog hubs (pack-agnostic)](./catalog-hub-host-generic.mdc) · [playback (generic only)](./forja-playback-host-generic.mdc) · [host tests — no pack contracts](./forja-host-tests-no-pack-contracts.mdc)
 
 ## What “external plugins” means
 

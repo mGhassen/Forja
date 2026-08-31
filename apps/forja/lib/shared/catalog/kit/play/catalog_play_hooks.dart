@@ -23,12 +23,6 @@ bool hubMediaIsEpisodic(Movie movie) {
   }
 }
 
-bool isHomeTabWatchHistoryEntry(Map<String, dynamic> item) {
-  if (isHubTabMediaType(item['mediaType'] as String?)) return false;
-  if (watchHistoryInt(item['tmdbId'], -1) < 0) return false;
-  return true;
-}
-
 bool usesHomeWatchHistory({
   required Movie? movie,
   List<PlayerHubEpisode>? hubEpisodes,

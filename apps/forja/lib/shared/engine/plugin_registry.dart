@@ -246,18 +246,38 @@ class PluginRegistry {
   @visibleForTesting
   static String? forjaHqSlot(String url) {
     final path = url.trim().replaceAll('\\', '/').toLowerCase();
-    if (path.endsWith('plugins/providers/manifest.json')) return 'providers';
-    if (path.endsWith('plugins/live/manifest.json')) return 'live';
-    if (path.endsWith('plugins/catalog/manifest.json')) return 'catalog';
-    if (path.endsWith('plugins/hubs/home/manifest.json')) return 'home';
-    if (path.endsWith('plugins/hubs/anime/manifest.json')) return 'anime';
-    if (path.endsWith('plugins/hubs/asian_drama/manifest.json')) {
-      return 'asian_drama';
+    const core = {
+      'plugins/providers/manifest.json': 'providers',
+      'plugins/live/manifest.json': 'live',
+      'plugins/catalog/manifest.json': 'catalog',
+      'plugins/hubs/home/manifest.json': 'home',
+      'plugins/hubs/manifest.json': 'home',
+    };
+    for (final e in core.entries) {
+      if (path.endsWith(e.key)) return e.value;
     }
-    if (path.endsWith('plugins/hubs/arabic/manifest.json')) return 'arabic';
-    // Legacy monolith hubs pack — treat as shadow of home so it gets replaced.
-    if (path.endsWith('plugins/hubs/manifest.json')) return 'home';
+    final hub = RegExp(r'plugins/hubs/([^/]+)/manifest\.json$').firstMatch(path);
+    if (hub != null) return hub.group(1);
     return null;
+  }
+
+  /// Hub manifest slot (any path under `plugins/hubs/` except monolith home alias).
+  static bool isHubManifestSlot(String? slot) {
+    if (slot == null || slot.isEmpty) return false;
+    return slot != 'providers' && slot != 'live' && slot != 'catalog';
+  }
+
+  static String? hubSlotLabel(String? slot) {
+    if (slot == null || slot.isEmpty) return null;
+    return slot
+        .split('_')
+        .where((w) => w.isNotEmpty)
+        .map(
+          (w) => w.length == 1
+              ? w.toUpperCase()
+              : '${w[0].toUpperCase()}${w.substring(1)}',
+        )
+        .join(' ');
   }
 
   /// Settings → Forja plugins pack buckets (not per-plugin [EngineCategories]).
@@ -283,14 +303,6 @@ class PluginRegistry {
     _ => 'Other',
   };
 
-  static String? hubSlotLabel(String? slot) => switch (slot) {
-    'home' => 'Home',
-    'anime' => 'Anime',
-    'asian_drama' => 'Asian Drama',
-    'arabic' => 'Arabic',
-    _ => null,
-  };
-
   /// Pack bucket for the installed list: Providers / Live / Catalog / Hubs / Other.
   static String packKindKey(EnginePack pack) {
     final slot = forjaHqSlot(pack.sourceUrl);
@@ -299,7 +311,7 @@ class PluginRegistry {
         'providers' => packKindProviders,
         'live' => packKindLive,
         'catalog' => packKindCatalog,
-        'home' || 'anime' || 'asian_drama' || 'arabic' => packKindHubs,
+        _ when isHubManifestSlot(slot) => packKindHubs,
         _ => packKindOther,
       };
     }
@@ -1037,7 +1049,7 @@ class PluginRegistry {
     all.add(pack);
     await _savePacks(all);
     if (officialPackIds.contains(pack.packId) &&
-        hubSlotIds.contains(forjaHqSlot(manifestUrl))) {
+        isHubManifestSlot(forjaHqSlot(manifestUrl))) {
       CatalogCache.instance.syncHubPackVersion(pack.packId, pack.version);
     }
     // Legacy combined hubs pack → wipe so rails re-fetch from split packs.

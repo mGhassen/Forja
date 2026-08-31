@@ -602,61 +602,44 @@ void main() {
       expect(ForjaHostAssets.ids, contains('nav/home'));
     });
 
-    test('hub manifest urls map to home / anime / asian_drama / arabic slots', () {
-      expect(PluginRegistry.requiredOfficialPackCount, 6);
+    test('forjaHqSlot extracts arbitrary hub path segment from manifest url', () {
       expect(
         PluginRegistry.forjaHqSlot(
-          'https://x/plugins/hubs/home/manifest.json',
+          'https://x/plugins/hubs/my_custom_hub/manifest.json',
         ),
-        'home',
+        'my_custom_hub',
       );
       expect(
         PluginRegistry.forjaHqSlot(
-          'https://x/plugins/hubs/anime/manifest.json',
+          '/Users/me/Forja/plugins/hubs/another_slot/manifest.json',
         ),
-        'anime',
-      );
-      expect(
-        PluginRegistry.forjaHqSlot(
-          '/Users/me/Forja/plugins/hubs/asian_drama/manifest.json',
-        ),
-        'asian_drama',
+        'another_slot',
       );
       expect(
         PluginRegistry.forjaHqSlot('https://x/plugins/hubs/manifest.json'),
         'home',
       );
-      expect(PluginRegistry.officialSlotOrder, contains('asian_drama'));
-      expect(
-        PluginRegistry.forjaHqSlot(
-          'https://x/plugins/hubs/arabic/manifest.json',
-        ),
-        'arabic',
-      );
-      expect(
-        PluginRegistry.hubSlotIds,
-        containsAll(['home', 'anime', 'asian_drama', 'arabic']),
-      );
+      expect(PluginRegistry.hubSlotLabel('my_custom_hub'), 'My Custom Hub');
     });
 
     test('plugin json round-trips the catalog fields', () {
       final plugin = EnginePlugin.fromJson({
-        'id': 'kisskh-hub',
-        'name': 'Asian Drama',
-        'entry': 'kisskh.js',
+        'id': 'hub-plugin-test',
+        'name': 'Test Hub',
+        'entry': 'hub.js',
         'kind': 'catalog',
         'protocol': 1,
         'kit': 1,
         'capabilities': ['nav', 'rail'],
-        'nav': {'tabId': 'asian_drama', 'label': 'Asian Drama', 'order': 30},
-        'enrich': 'enrich-tmdb',
+        'nav': {'tabId': 'custom_tab', 'label': 'Custom Tab', 'order': 30},
+        'enrich': 'enrich-companion-test',
       });
       final again = EnginePlugin.fromJson(plugin.toJson());
       expect(again.isHubCatalog, isTrue);
       expect(again.capabilities, ['nav', 'rail']);
-      expect(again.nav!['tabId'], 'asian_drama');
-      expect(again.enrich, 'enrich-tmdb');
-      expect(again.copyWith(enabled: false).enrich, 'enrich-tmdb');
+      expect(again.nav!['tabId'], 'custom_tab');
+      expect(again.enrich, 'enrich-companion-test');
+      expect(again.copyWith(enabled: false).enrich, 'enrich-companion-test');
     });
   });
 }
