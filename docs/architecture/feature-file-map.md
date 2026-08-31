@@ -245,7 +245,6 @@ Paths relative to `apps/forja/lib/features/`.
 | 56 | anime | `anime/anime_search_screen.dart` | Sub-hub | In |
 | 43 | iptv | `iptv/iptv/data/pastesh_decryptor.dart` | Data/Service | In |
 | 42 | home | `home/home_genre_categories.dart` | Support | In |
-| 40 | settings | `settings/splash_preview_screen.dart` | Sub-hub | In |
 | 22 | iptv | `iptv/iptv/m3u/m3u_parser.dart` | Data/Service | In |
 | 19 | anime | `anime/catalog/anime_provider_map.dart` | Support | In |
 

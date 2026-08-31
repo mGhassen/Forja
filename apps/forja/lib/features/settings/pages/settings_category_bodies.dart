@@ -25,7 +25,6 @@ import 'package:forja/features/settings/sections/settings_search_torrents_sectio
 import 'package:forja/features/settings/sections/settings_simkl_panel.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
-import 'package:forja/features/settings/splash_preview_screen.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/app_version.dart';
@@ -747,7 +746,7 @@ class SettingsAboutPageBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isAdmin = ref.watch(accountFeaturesProvider).isAdmin;
-    final showSplashPreview =
+    final showDeveloperTools =
         isAdmin &&
         kDebugMode &&
         (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
@@ -764,24 +763,10 @@ class SettingsAboutPageBody extends ConsumerWidget {
             if (isAdmin && Platform.isMacOS) const SettingsMacOsKeychainRow(),
           ],
         ),
-        if (showSplashPreview)
+        if (showDeveloperTools)
           SettingsGroup(
             label: 'Developer',
             children: [
-              SettingsActionRow(
-                leading: const Icon(
-                  Icons.play_circle_outline,
-                  color: ForjaShellColors.iconActive,
-                ),
-                title: 'Preview Splash Screen',
-                subtitle: 'Show the boot splash without restarting',
-                adminOnly: true,
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const SplashPreviewScreen(),
-                  ),
-                ),
-              ),
               SettingsActionRow(
                 leading: const Icon(
                   Icons.bug_report_outlined,
