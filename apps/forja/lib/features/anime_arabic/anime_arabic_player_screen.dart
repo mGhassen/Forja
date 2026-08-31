@@ -1,7 +1,6 @@
-// Anime Arabic player resolver: cracks streamData, then races every
-// available iframe through StreamExtractor in parallel. The first hit
-// triggers a short grace window so slower extractors land as fallbacks
-// for the in-player source switcher. No UI to pick servers - auto only.
+// Anime Arabic player resolver: cracks streamData, then races engine providers
+// in parallel. The first hit triggers a short grace window so slower providers
+// land as fallbacks for the in-player source switcher. No UI to pick servers.
 
 import 'dart:async';
 

@@ -2,9 +2,8 @@
 //
 // Server-rendered HTML - we scrape the home & title pages, decode the
 // XOR/base64 obfuscated `data-href` attributes, and surface clean models
-// to the UI. Stream extraction itself is delegated to StreamExtractor
-// against the resolved /e/<slug>#<token> page (it sniffs the embedded
-// iframe's m3u8/mp4 once the page's own JS finishes its handshake).
+// to the UI. Playback resolves streams via engine providers against the
+// decoded /e/<slug>#<token> page.
 
 import 'dart:async';
 import 'dart:convert';

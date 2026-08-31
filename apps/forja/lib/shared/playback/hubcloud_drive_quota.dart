@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/extractors/core/bounded_parallel.dart';
+import 'package:forja/shared/utils/bounded_parallel.dart';
 import 'package:rust/rust.dart';
 
 /// Browser UA — HubCloud workers 403 bare `libmpv` / empty UA.

@@ -2421,8 +2421,7 @@ class _LiveMatchesEmbedPlayerScreenState
     } catch (_) {}
   }
 
-  /// Visible WebView sniff failed. Try variant fallback, then StreamExtractor
-  /// on phone. On Android TV headless WebView is blocked — exit with a toast.
+  /// Visible WebView sniff failed. Try variant fallback, then exit.
   Future<void> _androidSniffTimeoutFallback() async {
     if (_androidHandoffAbandoned ||
         _androidHandoffStarted ||
@@ -2441,68 +2440,7 @@ class _LiveMatchesEmbedPlayerScreenState
     _androidFallbackStarted = true;
     _androidSniffPoll?.cancel();
 
-    final blockedOnTv =
-        !kIsWeb && Platform.isAndroid && isAndroidTvHeadlessWebViewBlocked;
-    if (!blockedOnTv) {
-      debugPrint('[LiveMatches] Android sniff timeout → StreamExtractor');
-      try {
-        final extracted = await StreamExtractor().extract(
-          widget.embedUrl,
-          referer: widget.referer,
-          // Match visible WebView: PPV top-level; Streamed keeps wrapper.
-          iframeWrapperBaseUrl: _androidProfile.topLevelEmbedLoad
-              ? null
-              : widget.referer,
-          timeout: const Duration(seconds: 22),
-          isCancelled: () => _exiting || !mounted,
-        );
-        if (extracted != null &&
-            extracted.url.isNotEmpty &&
-            mounted &&
-            !_exiting &&
-            !_androidHandoffStarted) {
-          _androidHandoffStarted = true;
-          final url = extracted.url;
-          // Already proxied by some extract paths — still run handoff headers
-          // when it looks like a raw CDN playlist.
-          if (url.contains('/hls-proxy')) {
-            debugPrint('[LiveMatches] Android extract → $url');
-            if (!mounted) return;
-            final title = widget.title;
-            final subtitle = widget.subtitle;
-            final label = widget.badgeLabel;
-            _exiting = true;
-            _mediaStopped = true;
-            await Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (_) => IptvPtPlayerScreen(
-                  sources: [
-                    IptvPlaySource(
-                      url: url,
-                      label: label,
-                      liveSourceKind: IptvLiveSourceKind.stremio,
-                    ),
-                  ],
-                  title: title,
-                  subtitle: subtitle,
-                  engineContext: BuiltInPlayerContext.live,
-                  liveSourceKind: IptvLiveSourceKind.stremio,
-                ),
-              ),
-            );
-            return;
-          }
-          await _handOffToNativePlayer(url);
-          return;
-        }
-      } catch (e) {
-        debugPrint('[LiveMatches] Android extract fallback failed: $e');
-      }
-    } else {
-      debugPrint(
-        '[LiveMatches] Android TV sniff timeout (headless extract blocked)',
-      );
-    }
+    debugPrint('[LiveMatches] Android sniff timeout');
 
     if (!mounted || _exiting || _androidHandoffStarted) return;
     _androidHandoffAbandoned = true;

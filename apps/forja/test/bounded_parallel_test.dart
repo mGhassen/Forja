@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/extractors/core/bounded_parallel.dart';
+import 'package:forja/shared/utils/bounded_parallel.dart';
 
 void main() {
   test('mapBoundedParallel preserves order and drops nulls', () async {

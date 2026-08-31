@@ -9,7 +9,7 @@ import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/engine_polyfills.dart';
 import 'package:forja/shared/engine/live_goat_unlock.dart';
 import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/extractors/core/stream_crypto.dart';
+import 'package:forja/shared/engine/stream_crypto.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:http/http.dart' as http;
 import 'package:pointycastle/export.dart';
