@@ -74,6 +74,8 @@ var TMDB_TV_NETWORK_FAMILIES = {
 var TMDB_HOME_RAIL_CAP = 20;
 var TMDB_HOME_HERO_CAP = 5;
 var TMDB_HOME_FETCH_PAGES = 2;
+// Hourly mix — pick distinct TMDB pages in 1..max (Dart home_catalog_rotate).
+var TMDB_HOME_ROTATE_MAX_PAGE = 5;
 
 // Visual priority for pack feed claim (spotlight → featured → popular → new).
 var TMDB_FEED_CLAIM = [
@@ -243,24 +245,36 @@ function tmdbClaimRails(pools, specs) {
 }
 
 function tmdbListPool(ctx, cfg, params, railId) {
+  var preserveRank = railId === 'spotlight' || railId === 'popular';
+  var pageNums = preserveRank
+    ? (function () {
+        var fixed = [];
+        for (var fp = 1; fp <= TMDB_HOME_FETCH_PAGES; fp++) fixed.push(fp);
+        return fixed;
+      })()
+    : tmdbPickFetchPages(railId, TMDB_HOME_FETCH_PAGES, TMDB_HOME_ROTATE_MAX_PAGE);
   var pages = [];
-  for (var p = 1; p <= TMDB_HOME_FETCH_PAGES; p++) {
+  var pi;
+  for (pi = 0; pi < pageNums.length; pi++) {
     pages.push(
       tmdbList(
         ctx,
         cfg,
         Object.assign({}, params, {
           rail: railId,
-          page: p,
+          page: pageNums[pi],
           limit: TMDB_HOME_RAIL_CAP,
+          _poolPage: true,
         }),
       ),
     );
   }
   return Promise.all(pages).then(function (chunks) {
     var merged = [];
-    for (var i = 0; i < chunks.length; i++) merged = tmdbUniqueMetas(merged, chunks[i], 999);
-    return merged;
+    var i;
+    for (i = 0; i < chunks.length; i++) merged = tmdbUniqueMetas(merged, chunks[i], 999);
+    if (preserveRank) return merged;
+    return tmdbSeededShuffle(merged, 'pool-' + railId);
   });
 }
 
@@ -325,6 +339,43 @@ function tmdbSeededShuffle(list, salt) {
 
 function tmdbPickGenreRows(count) {
   return tmdbSeededShuffle(TMDB_GENRE_ROWS, 'genre-rows').slice(0, count);
+}
+
+function tmdbPickFetchPages(salt, count, maxPage) {
+  var pages = [];
+  var max = Number(maxPage) > 0 ? Number(maxPage) : TMDB_HOME_ROTATE_MAX_PAGE;
+  var n = Number(count) > 0 ? Number(count) : TMDB_HOME_FETCH_PAGES;
+  for (var i = 1; i <= max; i++) pages.push(i);
+  var shuffled = tmdbSeededShuffle(pages, 'pages-' + String(salt || ''));
+  var picked = shuffled.slice(0, Math.min(n, shuffled.length));
+  picked.sort(function (a, b) {
+    return a - b;
+  });
+  return picked;
+}
+
+function tmdbFetchRotatedList(ctx, cfg, params, salt, fetchOnePage) {
+  var pageNums = tmdbPickFetchPages(
+    salt,
+    TMDB_HOME_FETCH_PAGES,
+    TMDB_HOME_ROTATE_MAX_PAGE,
+  );
+  var limit = params.limit;
+  return Promise.all(
+    pageNums.map(function (p) {
+      return fetchOnePage(p).catch(function () {
+        return [];
+      });
+    }),
+  ).then(function (chunks) {
+    var merged = [];
+    var i;
+    for (i = 0; i < chunks.length; i++) {
+      merged = tmdbUniqueMetas(merged, chunks[i], 999);
+    }
+    var shuffled = tmdbSeededShuffle(merged, 'pool-' + String(salt || ''));
+    return hubClampList(shuffled, limit || TMDB_HOME_RAIL_CAP);
+  });
 }
 
 function tmdbGenreRowSpec(params) {
@@ -578,6 +629,77 @@ function tmdbMergeLists(cfg, movieJson, tvJson, limit) {
   return hubClampList(merged, limit);
 }
 
+function tmdbFeaturedForPage(
+  ctx,
+  cfg,
+  filter,
+  typeFilter,
+  watchProviders,
+  genres,
+  page,
+  limit,
+) {
+  var win = tmdbMonthWindow();
+  var hasProvider = !!watchProviders;
+  var hasGenre = genres.length > 0;
+
+  function loadFeatured(dateGte, dateLte, minRating) {
+    var movieQ = { sort_by: 'popularity.desc', page: page };
+    var tvQ = { sort_by: 'popularity.desc', page: page };
+    if (dateGte && dateLte) {
+      movieQ['primary_release_date.gte'] = dateGte;
+      movieQ['primary_release_date.lte'] = dateLte;
+      tvQ['first_air_date.gte'] = dateGte;
+      tvQ['first_air_date.lte'] = dateLte;
+    }
+    if (minRating != null) {
+      movieQ['vote_average.gte'] = minRating;
+      tvQ['vote_average.gte'] = minRating;
+    }
+    return tmdbFetchMixed(ctx, cfg, filter, typeFilter, movieQ, tvQ, limit);
+  }
+
+  return loadFeatured(win.gte, win.lte, hasProvider ? null : 6).then(function (month) {
+    var needsFill = hasProvider || hasGenre;
+    if (!needsFill || month.length >= TMDB_HOME_RAIL_CAP) return month;
+    return loadFeatured(null, null, null).then(function (popular) {
+      return tmdbUniqueMetas(month, popular, limit);
+    });
+  });
+}
+
+function tmdbNewReleasesForPage(
+  ctx,
+  cfg,
+  filter,
+  typeFilter,
+  watchProviders,
+  page,
+  limit,
+) {
+  if (watchProviders) {
+    return tmdbFetchMixed(
+      ctx,
+      cfg,
+      filter,
+      typeFilter,
+      { sort_by: 'primary_release_date.desc', page: page },
+      { sort_by: 'first_air_date.desc', page: page },
+      limit,
+    );
+  }
+  return Promise.all([
+    typeFilter === 'tv'
+      ? Promise.resolve({ results: [] })
+      : tmdbGet(ctx, cfg, '/movie/now_playing', { page: page }),
+    typeFilter === 'movie'
+      ? Promise.resolve({ results: [] })
+      : tmdbGet(ctx, cfg, '/tv/on_the_air', { page: page }),
+  ]).then(function (pair) {
+    return tmdbMergeLists(cfg, pair[0], pair[1], limit);
+  });
+}
+
 function tmdbList(ctx, cfg, params) {
   var railId = String(params.rail || 'spotlight');
   var filter = params.filter;
@@ -587,6 +709,7 @@ function tmdbList(ctx, cfg, params) {
   if (typeFilter !== 'movie' && typeFilter !== 'tv') typeFilter = '';
   var page = Number(params.page) > 0 ? Number(params.page) : 1;
   var limit = params.limit;
+  var poolPage = params._poolPage === true;
 
   if (railId === 'genre') {
     var genreSpec = tmdbGenreRowSpec(params);
@@ -628,33 +751,31 @@ function tmdbList(ctx, cfg, params) {
   }
 
   if (railId === 'featured') {
-    var win = tmdbMonthWindow();
-    var hasProvider = !!watchProviders;
-    var hasGenre = genres.length > 0;
-
-    function loadFeatured(dateGte, dateLte, minRating) {
-      var movieQ = { sort_by: 'popularity.desc', page: page };
-      var tvQ = { sort_by: 'popularity.desc', page: page };
-      if (dateGte && dateLte) {
-        movieQ['primary_release_date.gte'] = dateGte;
-        movieQ['primary_release_date.lte'] = dateLte;
-        tvQ['first_air_date.gte'] = dateGte;
-        tvQ['first_air_date.lte'] = dateLte;
-      }
-      if (minRating != null) {
-        movieQ['vote_average.gte'] = minRating;
-        tvQ['vote_average.gte'] = minRating;
-      }
-      return tmdbFetchMixed(ctx, cfg, filter, typeFilter, movieQ, tvQ, limit);
-    }
-
-    return loadFeatured(win.gte, win.lte, hasProvider ? null : 6).then(function (month) {
-      var needsFill = hasProvider || hasGenre;
-      if (!needsFill || month.length >= TMDB_HOME_RAIL_CAP) return month;
-      return loadFeatured(null, null, null).then(function (popular) {
-        return tmdbUniqueMetas(month, popular, limit);
+    if (!poolPage && page > 1) return Promise.resolve([]);
+    if (!poolPage && page === 1) {
+      return tmdbFetchRotatedList(ctx, cfg, params, 'featured', function (p) {
+        return tmdbFeaturedForPage(
+          ctx,
+          cfg,
+          filter,
+          typeFilter,
+          watchProviders,
+          genres,
+          p,
+          TMDB_HOME_RAIL_CAP,
+        );
       });
-    });
+    }
+    return tmdbFeaturedForPage(
+      ctx,
+      cfg,
+      filter,
+      typeFilter,
+      watchProviders,
+      genres,
+      page,
+      limit,
+    );
   }
 
   if (railId === 'popular') {
@@ -679,27 +800,29 @@ function tmdbList(ctx, cfg, params) {
   }
 
   if (railId === 'new_releases') {
-    if (watchProviders) {
-      return tmdbFetchMixed(
-        ctx,
-        cfg,
-        filter,
-        typeFilter,
-        { sort_by: 'primary_release_date.desc', page: page },
-        { sort_by: 'first_air_date.desc', page: page },
-        limit,
-      );
+    if (!poolPage && page > 1) return Promise.resolve([]);
+    if (!poolPage && page === 1) {
+      return tmdbFetchRotatedList(ctx, cfg, params, 'new_releases', function (p) {
+        return tmdbNewReleasesForPage(
+          ctx,
+          cfg,
+          filter,
+          typeFilter,
+          watchProviders,
+          p,
+          TMDB_HOME_RAIL_CAP,
+        );
+      });
     }
-    return Promise.all([
-      typeFilter === 'tv'
-        ? Promise.resolve({ results: [] })
-        : tmdbGet(ctx, cfg, '/movie/now_playing', { page: page }),
-      typeFilter === 'movie'
-        ? Promise.resolve({ results: [] })
-        : tmdbGet(ctx, cfg, '/tv/on_the_air', { page: page }),
-    ]).then(function (pair) {
-      return tmdbMergeLists(cfg, pair[0], pair[1], limit);
-    });
+    return tmdbNewReleasesForPage(
+      ctx,
+      cfg,
+      filter,
+      typeFilter,
+      watchProviders,
+      page,
+      limit,
+    );
   }
 
   if (typeFilter) {
