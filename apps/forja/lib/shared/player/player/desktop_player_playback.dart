@@ -4,7 +4,8 @@ mixin _DesktopPlayerPlayback
     on
         ConsumerState<DesktopPlayerScreen>,
         WidgetsBindingObserver,
-        WindowListener {
+        WindowListener,
+        _DesktopPlayerTracks {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   Future<bool> _trySourcesFromIndex(
@@ -1009,6 +1010,9 @@ mixin _DesktopPlayerPlayback
         _s._positionNotifier.value = target;
         _s._statusController.complete();
         debugPrint('[Player] Post-seek remount resumed @${target.inSeconds}s');
+        if (!_s._disposed && mounted) {
+          await _reapplyPreferredSubtitle();
+        }
         return true;
       }
       debugPrint('[Player] Post-seek remount failed to resume: $url');

@@ -1,6 +1,7 @@
 part of 'mobile_player_screen.dart';
 
-mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
+mixin _MobilePlayerPlayback
+    on ConsumerState<MobilePlayerScreen>, _MobilePlayerTracks {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   Future<bool> _trySourcesFromIndex(
@@ -1019,6 +1020,9 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
         _s._positionNotifier.value = target;
         _s._statusController.complete();
         debugPrint('[Player] Post-seek remount resumed @${target.inSeconds}s');
+        if (!_s._disposed && mounted) {
+          await _reapplyPreferredSubtitle();
+        }
         return true;
       }
       debugPrint('[Player] Post-seek remount failed to resume: $url');
