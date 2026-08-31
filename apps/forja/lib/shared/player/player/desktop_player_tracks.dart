@@ -95,6 +95,27 @@ mixin _DesktopPlayerTracks
       }
     }
 
+    // KissKh Sub CDN — encrypted cues; site player decrypts, we must too.
+    if (isKissKhEncryptedSubtitleEntry(s)) {
+      try {
+        final local = await materializeKissKhSubtitleFile(s);
+        if (local == null || !await externalSubtitleCacheFileValid(local)) {
+          fail();
+          return false;
+        }
+        final prior = _s._externalSubFileCache[url];
+        if (prior != null && prior != local) {
+          await deleteExternalSubtitleCacheFile(prior);
+        }
+        _s._externalSubFileCache[url] = local;
+        return await applyUri(local);
+      } catch (e) {
+        debugPrint('[DesktopPlayer] kisskh subtitle decrypt failed: $e');
+        fail();
+        return false;
+      }
+    }
+
     try {
       // Many subtitle CDNs (megacloud, vid-cdn, lostproject.club, etc.) gate
       // on a browser UA and the embed-host Referer (NOT the sub URL's own
@@ -269,6 +290,39 @@ mixin _DesktopPlayerTracks
     final preferred = await SettingsService().getPreferredSubtitleLanguage();
     if (_s._disposed || !mounted) return;
     if (preferred == 'None' || preferred.isEmpty) return;
+
+    // Seed provider URLs from the playable stream before online scrapers merge.
+    if (_s._providerExternalSubUrls.isEmpty &&
+        (widget.externalSubtitles ?? const []).isNotEmpty) {
+      _s._providerExternalSubUrls = providerExternalSubtitleUrls(
+        widget.externalSubtitles!,
+      );
+    }
+
+    // Provider-attached (KissKh /api/Sub, …) beat HLS mux — CDN in-stream is
+    // often mistimed vs the site player.
+    if (!_s._userPickedExternalSubtitle &&
+        _s._providerExternalSubUrls.isNotEmpty) {
+      final providerOnly = providerAttachedSubtitles(
+        all: _s._externalSubtitles.isNotEmpty
+            ? _s._externalSubtitles
+            : List<Map<String, dynamic>>.from(widget.externalSubtitles ?? const []),
+        providerUrls: _s._providerExternalSubUrls,
+      );
+      final providerCandidates = externalSubtitleAutoCandidates(
+        preferredLang: preferred,
+        subs: providerOnly,
+        preferUrlFirst: forcePlayerApply ? _s._selectedExternalSubUrl : null,
+      );
+      if (providerCandidates.isNotEmpty) {
+        if (await _autoLoadExternalSubtitleCandidates(
+          providerCandidates,
+          forcePlayerApply: forcePlayerApply,
+        )) {
+          return;
+        }
+      }
+    }
 
     if (!_s._userPickedExternalSubtitle) {
       final embedded =

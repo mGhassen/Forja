@@ -1141,6 +1141,16 @@ mixin _DesktopPlayerEpisodes
 
   Future<void> _applyAutoSubtitle() async {
     if (_s._disposed || !mounted) return;
+    // Provider sideloads (KissKh Sub API) win over HLS mux — applied in
+    // _maybeAutoPickExternalSubtitle.
+    if (_s._providerExternalSubUrls.isEmpty &&
+        (widget.externalSubtitles ?? const []).isNotEmpty) {
+      _s._providerExternalSubUrls = providerExternalSubtitleUrls(
+        widget.externalSubtitles!,
+      );
+    }
+    if (_s._providerExternalSubUrls.isNotEmpty) return;
+
     final settings = SettingsService();
     final preferred = await settings.getPreferredSubtitleLanguage();
     if (_s._disposed || !mounted) return;

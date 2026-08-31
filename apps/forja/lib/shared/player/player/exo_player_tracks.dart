@@ -92,6 +92,22 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       return pack(uri);
     }
 
+    if (isKissKhEncryptedSubtitleEntry(s)) {
+      try {
+        final local = await materializeKissKhSubtitleFile(s);
+        if (local == null) return null;
+        final prior = _s._externalSubFileCache[url];
+        if (prior != null && prior != local) {
+          await deleteExternalSubtitleCacheFile(prior);
+        }
+        _s._externalSubFileCache[url] = local;
+        return pack(local);
+      } catch (e) {
+        debugPrint('[ExoPlayer] kisskh subtitle decrypt failed: $e');
+        return null;
+      }
+    }
+
     try {
       final isTranslated =
           s['translated'] == true || url.contains('/subtitlecat-translate');
@@ -210,6 +226,13 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     if (_s._disposed || !mounted || _s._preferredSubtitleApplied) return;
     if (preferred == 'None' || preferred.isEmpty) return;
 
+    if (_s._providerExternalSubUrls.isEmpty &&
+        (widget.externalSubtitles ?? const []).isNotEmpty) {
+      _s._providerExternalSubUrls = providerExternalSubtitleUrls(
+        widget.externalSubtitles!,
+      );
+    }
+
     // Manual pick from the subtitle dialog — do not override with auto-pick.
     final manualUrl = _s._selectedExternalSubUrl;
     if (manualUrl != null &&
@@ -218,7 +241,33 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       return;
     }
 
-    // In-stream / Media3 text tracks win — do not auto-sideload over them.
+    // Provider-attached (KissKh /api/Sub) beat HLS mux mistiming.
+    if (_s._providerExternalSubUrls.isNotEmpty) {
+      final providerOnly = providerAttachedSubtitles(
+        all: _s._externalSubtitles.isNotEmpty
+            ? _s._externalSubtitles
+            : List<Map<String, dynamic>>.from(
+                widget.externalSubtitles ?? const [],
+              ),
+        providerUrls: _s._providerExternalSubUrls,
+      );
+      final pick = pickExternalSubtitleWithFallback(preferred, providerOnly);
+      if (pick != null) {
+        final pickUrl = pick['url']?.toString();
+        if (pickUrl != null && pickUrl == _s._selectedExternalSubUrl) {
+          _s._preferredSubtitleApplied = true;
+          return;
+        }
+        debugPrint(
+          '[ExoPlayer] auto provider subtitle → '
+          '${pick['display'] ?? pick['language']}',
+        );
+        await _loadOnlineSubtitle(pick);
+        return;
+      }
+    }
+
+    // In-stream / Media3 text tracks win — do not auto-sideload scraped over them.
     // Selection stays in `_maybeApplyPreferredSubtitle` (do not lock the flag).
     if (_s._tracks.text.isNotEmpty) return;
 

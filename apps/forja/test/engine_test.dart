@@ -1994,6 +1994,37 @@ void main() {
         ],
       );
     });
+
+    test('catalogStreamExternalSubtitles keeps KissKh sourceName', () {
+      expect(
+        catalogStreamExternalSubtitles({
+          'subtitles': [
+            {
+              'url': 'https://cdn.example/en.txt',
+              'language': 'English',
+              'name': 'English',
+              'sourceName': 'kisskh',
+            },
+          ],
+        }),
+        [
+          {
+            'url': 'https://cdn.example/en.txt',
+            'language': 'English',
+            'name': 'English',
+            'display': 'English',
+            'sourceName': 'kisskh',
+          },
+        ],
+      );
+      expect(
+        isKissKhEncryptedSubtitleEntry({
+          'url': 'https://cdn.example/en.txt',
+          'sourceName': 'kisskh',
+        }),
+        isTrue,
+      );
+    });
   });
 
   group('mapEngineStream', () {

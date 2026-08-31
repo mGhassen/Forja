@@ -13,14 +13,10 @@ bool isHubTabMediaType(String? mediaType) {
 }
 
 bool hubMediaIsEpisodic(Movie movie) {
-  switch (movie.mediaType) {
-    case 'tv':
-    case 'asian_drama':
-    case 'anime':
-      return true;
-    default:
-      return false;
-  }
+  final t = movie.mediaType;
+  if (t == 'tv') return true;
+  // Pack-emitted types (anime, drama, …) — anything that isn't Home movie/tv.
+  return isHubTabMediaType(t);
 }
 
 bool usesHomeWatchHistory({

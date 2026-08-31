@@ -14,6 +14,19 @@ Movie _movie({required int id, String mediaType = 'movie'}) => Movie(
     );
 
 void main() {
+  group('hubMediaIsEpisodic', () {
+    test('tv and any non-movie/tv pack type are episodic', () {
+      expect(hubMediaIsEpisodic(_movie(id: 1, mediaType: 'tv')), isTrue);
+      expect(hubMediaIsEpisodic(_movie(id: 1, mediaType: 'anime')), isTrue);
+      expect(
+        hubMediaIsEpisodic(_movie(id: 1, mediaType: 'asian_drama')),
+        isTrue,
+      );
+      expect(hubMediaIsEpisodic(_movie(id: 1, mediaType: 'foo')), isTrue);
+      expect(hubMediaIsEpisodic(_movie(id: 1, mediaType: 'movie')), isFalse);
+    });
+  });
+
   group('usesHomeWatchHistory', () {
     test('rejects hub media types and synthetic ids', () {
       expect(

@@ -5,6 +5,14 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
 
   Future<void> _applyAutoSubtitle() async {
     if (_s._disposed || !mounted) return;
+    if (_s._providerExternalSubUrls.isEmpty &&
+        (widget.externalSubtitles ?? const []).isNotEmpty) {
+      _s._providerExternalSubUrls = providerExternalSubtitleUrls(
+        widget.externalSubtitles!,
+      );
+    }
+    if (_s._providerExternalSubUrls.isNotEmpty) return;
+
     final settings = SettingsService();
     final preferred = await settings.getPreferredSubtitleLanguage();
     if (_s._disposed || !mounted) return;

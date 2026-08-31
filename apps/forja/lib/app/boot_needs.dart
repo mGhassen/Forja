@@ -1,4 +1,5 @@
 import 'package:forja/shell/nav_config.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:rust/rust.dart';
 
@@ -13,8 +14,8 @@ import 'package:rust/rust.dart';
 class BootNeeds {
   const BootNeeds({
     required this.visibleNavIds,
-    required this.homeTab,
-    required this.tmdb,
+    required this.hubTab,
+    required this.catalogTab,
     required this.torrent,
     required this.stremio,
     required this.nuvio,
@@ -29,11 +30,12 @@ class BootNeeds {
   });
 
   final List<String> visibleNavIds;
-  final bool homeTab;
 
-  /// True when Home / Search / My List is visible (splash copy / VOD affinity).
-  /// Splash warms the default hub layout + first-paint rails into CatalogCache.
-  final bool tmdb;
+  /// Any contributed catalog hub tab is visible (not IPTV / Live / Settings).
+  final bool hubTab;
+
+  /// Hub and/or My List — splash catalog affinity (prefetch / copy).
+  final bool catalogTab;
 
   /// Effective: Direct torrent on **and** a VOD tab visible.
   final bool torrent;
@@ -60,16 +62,35 @@ class BootNeeds {
   /// Any tab that can open VOD details / Sources.
   final bool vodTab;
 
-  static const _tmdbNavIds = {'home', 'search', 'mylist'};
+  /// My List + any non-core shell nav id (hubs). Never IPTV / Live / Settings.
+  static bool isVodNavId(String id) {
+    if (archivedNavIds.contains(id)) return false;
+    if (id == 'mylist') return true;
+    return !PluginNavRegistry.coreShellNavIds.contains(id);
+  }
 
-  /// Working-set tabs that can reach torrent / Stremio / webstreaming Sources.
-  static const vodNavIds = {
-    'home',
-    'search',
-    'anime',
-    'asian_drama',
-    'mylist',
-  };
+  /// Catalog hub tab — not core shell (My List / IPTV / Live / Settings).
+  static bool isHubNavId(String id) {
+    if (archivedNavIds.contains(id)) return false;
+    return !PluginNavRegistry.coreShellNavIds.contains(id);
+  }
+
+  /// Splash hold line after boot work finishes early.
+  String get openingStatusLabel {
+    final liveIptv = !vodTab &&
+        (visibleNavIds.contains('iptv') ||
+            visibleNavIds.contains('live_matches'));
+    if (liveIptv) return 'Opening Live & IPTV…';
+
+    for (final id in visibleNavIds) {
+      if (!isHubNavId(id)) continue;
+      final label = PluginNavRegistry.destinations[id]?.label.trim();
+      if (label != null && label.isNotEmpty) return 'Opening $label…';
+      return 'Warming catalog…';
+    }
+    if (catalogTab) return 'Warming catalog…';
+    return 'Just a moment…';
+  }
 
   static Future<BootNeeds> resolve([SettingsService? settings]) async {
     final s = settings ?? SettingsService();
@@ -82,14 +103,14 @@ class BootNeeds {
     final playSourceNuvio = await PlaySourceEffective.nuvio(s, lanReady);
     final playSourceEngine = await PlaySourceEffective.engine(s, lanReady);
     final playSourceWebstreaming = await PlaySourceEffective.webstreaming(s);
-    final homeTab = nav.contains('home');
-    final tmdb = nav.any(_tmdbNavIds.contains);
-    final vodTab = nav.any(vodNavIds.contains);
+    final hubTab = nav.any(isHubNavId);
+    final catalogTab = hubTab || nav.contains('mylist');
+    final vodTab = nav.any(isVodNavId);
 
     return BootNeeds(
       visibleNavIds: nav,
-      homeTab: homeTab,
-      tmdb: tmdb,
+      hubTab: hubTab,
+      catalogTab: catalogTab,
       vodTab: vodTab,
       playSourceTorrent: playSourceTorrent,
       playSourceStremio: playSourceStremio,
@@ -106,7 +127,8 @@ class BootNeeds {
 
   @override
   String toString() =>
-      'BootNeeds(nav=$visibleNavIds, vodTab=$vodTab, tmdb=$tmdb, '
+      'BootNeeds(nav=$visibleNavIds, vodTab=$vodTab, hubTab=$hubTab, '
+      'catalogTab=$catalogTab, '
       'torrent=$torrent (flag=$playSourceTorrent), '
       'stremio=$stremio (flag=$playSourceStremio), '
       'nuvio=$nuvio (flag=$playSourceNuvio), '

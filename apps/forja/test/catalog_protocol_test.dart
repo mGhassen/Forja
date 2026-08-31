@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/catalog/catalog.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_chrome_filters.dart';
@@ -550,7 +551,9 @@ void main() {
       expect(byTab['home']!.accent, '#1CE783');
       expect(byTab['home']!.order, 10);
 
-      for (final tab in byTab.keys) {
+      // Seeded hubs only until [refresh] contributes pack nav.
+      PluginNavRegistry.seedBuiltIns();
+      for (final tab in PluginNavRegistry.seedHubTabIds) {
         expect(PluginNavRegistry.isHubTab(tab), isTrue, reason: tab);
         expect(
           PluginNavRegistry.coreShellNavIds.contains(tab),
@@ -559,9 +562,7 @@ void main() {
         );
       }
       expect(PluginNavRegistry.isHubTab('settings'), isFalse);
-      expect(PluginNavRegistry.seedHubTabIds, contains('anime'));
-
-      PluginNavRegistry.seedBuiltIns();
+      expect(PluginNavRegistry.isHubTab('arabic'), isFalse);
       expect(PluginNavRegistry.builders.containsKey('home'), isTrue);
       expect(PluginNavRegistry.destinations['home']!.label, 'Home');
       expect(PluginNavRegistry.accents['anime'], isNotNull);
@@ -600,8 +601,28 @@ void main() {
           ForjaHostAssets.resolveFlutterPath(icon),
           isNotNull,
         );
+        // Material fallback keys off asset id — not tabId.
+        expect(
+          PluginNavRegistry.iconDataFor(s),
+          isNot(Icons.grid_view_rounded),
+          reason: '${s.tabId} known nav asset should map to a Material icon',
+        );
       }
 
+      expect(
+        PluginNavRegistry.iconDataFor(
+          CatalogNavSpec.fromPluginNav(
+            {
+              'tabId': 'custom_hub',
+              'label': 'Custom',
+              'icon': ForjaHostAssets.uriNavHome,
+            },
+            pluginId: 'test-hub',
+            fallbackLabel: 'Custom',
+          )!,
+        ),
+        Icons.home_outlined,
+      );
       expect(
         ForjaHostAssets.resolveFlutterPath('assets/images/nav/home.png'),
         isNull,

@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **10 / 10** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) |
-| **Current slice** | Play `Movie.id` prefers enrich `ids.tmdb`; A15 manual QA still open |
+| **Current slice** | Splash hub prefetch reads pack `layout` (`feed` / widgets above Continue) — no hardcoded home/anime rail lists; A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 

@@ -314,10 +314,8 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   void _invalidateHubTabsAfterPackChange({required bool remountBuilders}) {
-    final hubIds = <String>{
-      ...PluginNavRegistry.hubTabIds,
-      ...PluginNavRegistry.destinations.keys,
-    };
+    // Contributed hubs only — seed + last refresh; no frozen official-id list.
+    final hubIds = PluginNavRegistry.destinations.keys.toSet();
     for (final id in hubIds) {
       _refreshStateFor(id)?.markShellTabStale();
       if (!remountBuilders) continue;
@@ -482,50 +480,22 @@ class _MainScreenState extends ConsumerState<MainScreen>
     if (ShellBus.invokeFindShortcut()) return;
     if (ShellBus.shellOverlayHasPage.value) return;
 
+    final tabId = _currentTabId;
+    if (tabId == null || !PluginNavRegistry.isHubTab(tabId)) return;
+
     final ctx = _shellScopedContext;
     if (ctx == null || !ctx.mounted) return;
 
-    switch (_currentTabId) {
-      case 'home':
-        final homePlugin = await PluginNavRegistry.pluginIdForTab('home');
-        if (homePlugin == null || !ctx.mounted) return;
-        await openHubCatalogSearch(
-          ctx,
-          pluginId: homePlugin,
-          tabId: 'home',
-          hintText: 'Search…',
-        );
-      case 'anime':
-        final animePlugin = await PluginNavRegistry.pluginIdForTab('anime');
-        if (animePlugin == null || !ctx.mounted) return;
-        await openHubCatalogSearch(
-          ctx,
-          pluginId: animePlugin,
-          tabId: 'anime',
-          hintText: 'Search anime…',
-        );
-      case 'asian_drama':
-        final dramaPlugin =
-            await PluginNavRegistry.pluginIdForTab('asian_drama');
-        if (dramaPlugin == null || !ctx.mounted) return;
-        await openHubCatalogSearch(
-          ctx,
-          pluginId: dramaPlugin,
-          tabId: 'asian_drama',
-          hintText: 'Search Asian dramas…',
-        );
-      case 'arabic':
-        final arabicPlugin = await PluginNavRegistry.pluginIdForTab('arabic');
-        if (arabicPlugin == null || !ctx.mounted) return;
-        await openHubCatalogSearch(
-          ctx,
-          pluginId: arabicPlugin,
-          tabId: 'arabic',
-          hintText: 'بحث… · Search',
-        );
-      default:
-        break;
-    }
+    final pluginId = await PluginNavRegistry.pluginIdForTab(tabId);
+    if (pluginId == null || !ctx.mounted) return;
+
+    final label = PluginNavRegistry.destinations[tabId]?.label;
+    await openHubCatalogSearch(
+      ctx,
+      pluginId: pluginId,
+      tabId: tabId,
+      hintText: label == null || label.isEmpty ? 'Search…' : 'Search $label…',
+    );
   }
 
   @override

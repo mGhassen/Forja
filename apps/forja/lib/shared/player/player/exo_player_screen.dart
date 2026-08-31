@@ -1376,6 +1376,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (_disposed || _preferredSubtitleApplied) return;
     // Wait for STATE_READY before selectTrack / setSubtitles (issue 132).
     if (!_exoReady) return;
+    if (_providerExternalSubUrls.isEmpty &&
+        (widget.externalSubtitles ?? const []).isNotEmpty) {
+      _providerExternalSubUrls = providerExternalSubtitleUrls(
+        widget.externalSubtitles!,
+      );
+    }
+    // Provider sideloads (KissKh Sub API) win over HLS mux.
+    if (_providerExternalSubUrls.isNotEmpty) {
+      await _maybeAutoPickExternalSubtitle();
+      return;
+    }
     // Prefer external catalog when Media3 text tracks are still empty.
     if (_tracks.text.isEmpty) {
       await _maybeAutoPickExternalSubtitle();

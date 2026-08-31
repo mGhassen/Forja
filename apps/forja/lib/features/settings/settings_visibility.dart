@@ -6,9 +6,9 @@ import 'package:rust/rust.dart';
 
 /// Which Settings hub tiles / rows match the active profile (nav + play sources).
 ///
-/// VOD tabs ([BootNeeds.vodNavIds]) gate movie/series Settings the same way boot
-/// gates engines. IPTV-only / Live-only profiles keep Profile, Playback (IPTV +
-/// player), Navigation, About. Android TV hides Lists and Data &
+/// VOD tabs ([BootNeeds.isVodNavId]) gate movie/series Settings the same way
+/// boot gates engines. IPTV-only / Live-only profiles keep Profile, Playback
+/// (IPTV + player), Navigation, About. Android TV hides Lists and Data &
 /// backup (lean leanback Settings).
 class SettingsVisibility {
   const SettingsVisibility({
@@ -180,7 +180,7 @@ class SettingsVisibility {
       showPlaySourceNuvioToggle: await PlaySourceEffective.showNuvioToggle(),
       showPlaySourceEngineToggle: await PlaySourceEffective.showEngineToggle(),
       lanPlaySourcesEditable: lanEditable,
-      vodTab: nav.any(BootNeeds.vodNavIds.contains),
+      vodTab: nav.any(BootNeeds.isVodNavId),
       iptvNav: nav.contains('iptv'),
       liveMatchesNav: nav.contains('live_matches'),
     );

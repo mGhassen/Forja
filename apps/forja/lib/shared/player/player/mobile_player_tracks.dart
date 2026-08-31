@@ -89,6 +89,26 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       }
     }
 
+    if (isKissKhEncryptedSubtitleEntry(s)) {
+      try {
+        final local = await materializeKissKhSubtitleFile(s);
+        if (local == null || !await externalSubtitleCacheFileValid(local)) {
+          fail();
+          return false;
+        }
+        final prior = _s._externalSubFileCache[url];
+        if (prior != null && prior != local) {
+          await deleteExternalSubtitleCacheFile(prior);
+        }
+        _s._externalSubFileCache[url] = local;
+        return await applyUri(local);
+      } catch (e) {
+        debugPrint('[MobilePlayer] kisskh subtitle decrypt failed: $e');
+        fail();
+        return false;
+      }
+    }
+
     try {
       final subUri = Uri.parse(url);
       final selfOrigin = '${subUri.scheme}://${subUri.host}';
@@ -256,6 +276,38 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     final preferred = await SettingsService().getPreferredSubtitleLanguage();
     if (_s._disposed || !mounted) return;
     if (preferred == 'None' || preferred.isEmpty) return;
+
+    if (_s._providerExternalSubUrls.isEmpty &&
+        (widget.externalSubtitles ?? const []).isNotEmpty) {
+      _s._providerExternalSubUrls = providerExternalSubtitleUrls(
+        widget.externalSubtitles!,
+      );
+    }
+
+    if (!_s._userPickedExternalSubtitle &&
+        _s._providerExternalSubUrls.isNotEmpty) {
+      final providerOnly = providerAttachedSubtitles(
+        all: _s._externalSubtitles.isNotEmpty
+            ? _s._externalSubtitles
+            : List<Map<String, dynamic>>.from(
+                widget.externalSubtitles ?? const [],
+              ),
+        providerUrls: _s._providerExternalSubUrls,
+      );
+      final providerCandidates = externalSubtitleAutoCandidates(
+        preferredLang: preferred,
+        subs: providerOnly,
+        preferUrlFirst: forcePlayerApply ? _s._selectedExternalSubUrl : null,
+      );
+      if (providerCandidates.isNotEmpty) {
+        if (await _autoLoadExternalSubtitleCandidates(
+          providerCandidates,
+          forcePlayerApply: forcePlayerApply,
+        )) {
+          return;
+        }
+      }
+    }
 
     if (!_s._userPickedExternalSubtitle) {
       final embedded =

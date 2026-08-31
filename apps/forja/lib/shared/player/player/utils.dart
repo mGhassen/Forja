@@ -1279,15 +1279,38 @@ List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
     if (url.isEmpty) continue;
     final name =
         item['name']?.toString() ?? item['language']?.toString() ?? 'Subtitle';
+    final sourceName = item['sourceName']?.toString().trim();
     out.add({
       'url': url,
       'language':
           item['language']?.toString() ?? item['lang']?.toString() ?? 'en',
       'name': name,
       'display': name,
+      if (sourceName != null && sourceName.isNotEmpty) 'sourceName': sourceName,
     });
   }
   return out.isEmpty ? null : out;
+}
+
+/// KissKh Sub CDN cues are AES line-encrypted — must decrypt before mpv/Exo.
+bool isKissKhEncryptedSubtitleEntry(Map<String, dynamic> s) {
+  final source = (s['sourceName'] ?? '').toString().toLowerCase().trim();
+  return source == 'kisskh';
+}
+
+/// Fetch + decrypt KissKh Sub CDN → local `file://` URI (null on failure).
+Future<String?> materializeKissKhSubtitleFile(Map<String, dynamic> s) async {
+  final url = (s['url'] ?? '').toString().trim();
+  if (url.isEmpty) return null;
+  final lang = (s['language'] ?? s['lang'] ?? 'sub').toString();
+  final ref = (s['referer'] as String?)?.trim();
+  return KissKhSubtitleDecryptor.fetchAndDecrypt(
+    url: url,
+    episodeId: 0,
+    language: lang,
+    userAgent: kDefaultStreamUserAgent,
+    referer: (ref != null && ref.isNotEmpty) ? ref : 'https://kisskh.co/',
+  );
 }
 
 /// 111477 catalog rows and explicit `requires_proxy` need the local seek proxy.

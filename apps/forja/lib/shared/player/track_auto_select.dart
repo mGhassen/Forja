@@ -359,6 +359,18 @@ Set<String> providerExternalSubtitleUrls(
   };
 }
 
+/// Rows that arrived with the playable stream (KissKh `/api/Sub`, Videasy, …).
+List<Map<String, dynamic>> providerAttachedSubtitles({
+  required List<Map<String, dynamic>> all,
+  required Set<String> providerUrls,
+}) {
+  if (providerUrls.isEmpty) return const [];
+  return [
+    for (final s in all)
+      if (providerUrls.contains((s['url'] ?? '').toString())) s,
+  ];
+}
+
 /// Auto-pick pool — hub playback trusts provider sideloads + TMDB-backed
 /// Wyzie/Levrx; skips SubtitleCat/Mysubs (loose title search → wrong film).
 List<Map<String, dynamic>> externalSubtitlesForAutoPick({

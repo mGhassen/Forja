@@ -63,9 +63,7 @@ class ProfileEngineWarm {
         }
       }
       if (prefetchDefaultHub) {
-        onStatus?.call(
-          needs.homeTab ? 'Opening Home…' : 'Warming catalog…',
-        );
+        onStatus?.call(needs.openingStatusLabel);
         await prefetchDefaultHubLayout(needs);
       }
     }

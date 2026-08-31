@@ -49,8 +49,11 @@ abstract final class PluginNavRegistry {
     return Map.unmodifiable(_builders);
   }
 
-  static bool isHubTab(String id) =>
-      hubTabIds.contains(id) || _destinations.containsKey(id);
+  /// True when [id] is a contributed (or seeded) catalog hub tab.
+  static bool isHubTab(String id) {
+    _ensureSeeded();
+    return _destinations.containsKey(id);
+  }
 
   static bool isCoreShell(String id) => coreShellNavIds.contains(id);
 
@@ -254,17 +257,9 @@ abstract final class PluginNavRegistry {
     return hit.pack.isPluginActive(hit.plugin);
   }
 
+  /// Material fallback when [nav.icon] is a known host asset id (or legacy token).
+  /// Never branch on [CatalogNavSpec.tabId] — packs own tab identity.
   static IconData iconDataFor(CatalogNavSpec nav) {
-    switch (nav.tabId) {
-      case 'home':
-        return Icons.home_outlined;
-      case 'anime':
-        return Icons.animation_outlined;
-      case 'asian_drama':
-        return Icons.theater_comedy_outlined;
-      case 'arabic':
-        return Icons.movie_filter_outlined;
-    }
     final icon = nav.icon ?? '';
     final id = ForjaHostAssets.parseId(icon);
     if (id == 'nav/home') return Icons.home_outlined;

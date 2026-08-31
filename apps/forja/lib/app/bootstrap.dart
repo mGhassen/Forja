@@ -441,16 +441,6 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-/// User-facing hold line after boot work finishes early (min-splash wait).
-String _splashOpeningStatus(BootNeeds needs) {
-  final nav = needs.visibleNavIds;
-  final liveIptv =
-      !needs.vodTab &&
-      (nav.contains('iptv') || nav.contains('live_matches'));
-  if (liveIptv) return 'Opening Live & IPTV…';
-  if (needs.homeTab || needs.tmdb) return 'Opening Home…';
-  return 'Just a moment…';
-}
 
 class _SplashScreenState extends State<SplashScreen> {
   /// Hold the splash at least this long so MainScreen / Home can warm up.
@@ -727,7 +717,7 @@ class _SplashScreenState extends State<SplashScreen> {
       onStatus: _setBootStatus,
     );
     debugPrint('[Init] offline boot complete ($needs)');
-    _setBootStatus(_splashOpeningStatus(needs));
+    _setBootStatus(needs.openingStatusLabel);
   }
 
   Future<void> _initOnlineBoot() async {
@@ -748,7 +738,7 @@ class _SplashScreenState extends State<SplashScreen> {
       onStatus: _setBootStatus,
     );
 
-    _setBootStatus(_splashOpeningStatus(needs));
+    _setBootStatus(needs.openingStatusLabel);
   }
 
   Future<void> _initEngine() async {

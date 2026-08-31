@@ -123,7 +123,41 @@ function extract(ctx) {
     return [];
   }
 
-  function rowsFromEpisode(api, origin) {
+  // Site player uses /api/Sub/{id} (decrypted VTT). HLS mux tracks are often
+  // mistimed — always attach Sub API rows so the host can decrypt + prefer them.
+  function fetchSubtitles(episodeId, origin) {
+    if (!(ctx.crypto && ctx.crypto.kisskhKkey)) {
+      return Promise.resolve([]);
+    }
+    var kkey = ctx.crypto.kisskhKkey(episodeId, 'subtitle');
+    if (!kkey) return Promise.resolve([]);
+    var path = '/api/Sub/' + episodeId + '?kkey=' + encodeURIComponent(kkey);
+    return fetchJson(path)
+      .then(function (res) {
+        var list = Array.isArray(res.json) ? res.json : [];
+        var out = [];
+        list.forEach(function (t) {
+          if (!t || typeof t !== 'object') return;
+          var src = String(t.src || t.url || '').trim();
+          if (!src || !/^https?:/i.test(src)) return;
+          var label = String(t.label || t.language || t.land || 'Unknown').trim();
+          out.push({
+            url: src,
+            language: label,
+            name: label,
+            sourceName: 'kisskh',
+          });
+        });
+        ctx.log('kisskh Sub API tracks=' + out.length + ' @ ' + (res.origin || origin));
+        return out;
+      })
+      .catch(function (e) {
+        ctx.log('kisskh Sub API error: ' + (e && e.message ? e.message : e));
+        return [];
+      });
+  }
+
+  function rowsFromEpisode(api, origin, subtitles) {
     if (!api || typeof api !== 'object') return Promise.resolve([]);
     var urls = [];
     ['Video', 'video', 'VideoUrl', 'videoUrl'].forEach(function (k) {
@@ -132,18 +166,28 @@ function extract(ctx) {
     thirdPartyUrls(api).forEach(function (u) {
       urls.push(u);
     });
+    var subs = Array.isArray(subtitles) ? subtitles : [];
     return Promise.all(
       urls.map(function (u) {
         if (/\.m3u8|\.mp4/i.test(u)) {
-          return Promise.resolve([
-            {
-              url: u,
-              name: 'KissKh',
-              headers: playHeaders(origin),
-            },
-          ]);
+          var row = {
+            url: u,
+            name: 'KissKh',
+            headers: playHeaders(origin),
+          };
+          if (subs.length) row.subtitles = subs;
+          return Promise.resolve([row]);
         }
-        return ctx.hop(u);
+        return ctx.hop(u).then(function (hopped) {
+          if (!subs.length || !Array.isArray(hopped)) return hopped;
+          return hopped.map(function (r) {
+            if (!r || typeof r !== 'object') return r;
+            if (r.subtitles && r.subtitles.length) return r;
+            var copy = Object.assign({}, r);
+            copy.subtitles = subs;
+            return copy;
+          });
+        });
       }),
     ).then(function (groups) {
       return [].concat.apply([], groups);
@@ -185,7 +229,9 @@ function extract(ctx) {
           ctx.log('kisskh episode JSON has no Video/ThirdParty');
           return [];
         }
-        return rowsFromEpisode(api, res.origin);
+        return fetchSubtitles(id, res.origin).then(function (subs) {
+          return rowsFromEpisode(api, res.origin, subs);
+        });
       })
       .catch(function (e) {
         ctx.log('kisskh episode error: ' + (e && e.message ? e.message : e));
