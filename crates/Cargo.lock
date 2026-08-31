@@ -1188,7 +1188,6 @@ dependencies = [
  "engine-js",
  "indexer",
  "iptv",
- "kisskh",
  "lan",
  "live-matches",
  "provider-health",
@@ -2000,14 +1999,6 @@ dependencies = [
 [[package]]
 name = "kisskh"
 version = "0.1.0"
-dependencies = [
- "anime",
- "regex",
- "serde",
- "serde_json",
- "urlencoding",
- "utils",
-]
 
 [[package]]
 name = "lan"

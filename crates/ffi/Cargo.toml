@@ -34,7 +34,6 @@ tmdb = { path = "../tmdb" }
 anime = { path = "../anime" }
 indexer = { path = "../indexer" }
 debrid = { path = "../debrid" }
-kisskh = { path = "../kisskh" }
 live-matches = { path = "../live-matches" }
 provider-health = { path = "../provider-health" }
 engine-js = { path = "../engine-js" }

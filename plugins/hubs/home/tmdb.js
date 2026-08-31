@@ -266,7 +266,9 @@ function tmdbListPool(ctx, cfg, params, railId) {
           limit: TMDB_HOME_RAIL_CAP,
           _poolPage: true,
         }),
-      ),
+      ).catch(function () {
+        return [];
+      }),
     );
   }
   return Promise.all(pages).then(function (chunks) {

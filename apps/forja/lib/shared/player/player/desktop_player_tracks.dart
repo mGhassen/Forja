@@ -252,7 +252,11 @@ mixin _DesktopPlayerTracks
     if (_s._disposed || !mounted) return;
     await _s._applyAutoSubtitle();
     if (_s._disposed || !mounted) return;
-    await _maybeAutoPickExternalSubtitle(forcePlayerApply: true);
+    // Only re-attach a sideloaded file if we were actually on one. In-stream
+    // remount must not invent a Levrx apply while mux tracks are still empty.
+    final restoreExternal = _s._userPickedExternalSubtitle ||
+        _s._selectedExternalSubUrl != null;
+    await _maybeAutoPickExternalSubtitle(forcePlayerApply: restoreExternal);
   }
 
   /// Applies [SettingsService.getPreferredSubtitleLanguage] when external
@@ -273,7 +277,7 @@ mixin _DesktopPlayerTracks
         await _s._applyAutoSubtitle();
         if (_s._disposed || !mounted) return;
         if (_s._selectedExternalSubUrl == null && _playerHasActiveSubtitle()) {
-          if (!forcePlayerApply) return;
+          return;
         }
       }
     }
@@ -283,6 +287,14 @@ mixin _DesktopPlayerTracks
         _s._selectedExternalSubUrl == null &&
         _playerHasActiveSubtitle() &&
         _activeSubtitleMatchesPreferred(preferred)) {
+      return;
+    }
+
+    // Remount with in-stream selected: mux list may still be empty. Do not
+    // fill that gap with Levrx — late embedded auto will pick when tracks land.
+    if (forcePlayerApply &&
+        !_s._userPickedExternalSubtitle &&
+        _s._selectedExternalSubUrl == null) {
       return;
     }
 

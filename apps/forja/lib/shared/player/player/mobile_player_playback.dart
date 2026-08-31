@@ -1623,7 +1623,7 @@ mixin _MobilePlayerPlayback
     if (_s._disposed || !mounted) return;
     await _s._applyAutoSubtitle();
     if (_s._disposed || !mounted) return;
-    await _s._maybeAutoPickExternalSubtitle(forcePlayerApply: true);
+    await _s._maybeAutoPickExternalSubtitle();
   }
 
   Future<void> _applyTrackAutoSelect() async {

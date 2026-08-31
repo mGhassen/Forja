@@ -435,10 +435,14 @@ class _CatalogShellState extends State<CatalogShell>
     if (useFeedBatch && _isPackFeedRail(spec)) {
       final railId = _packRailId(spec)!;
       final feed = await _ensureFeedLoaded(force: forceRefresh);
-      return CatalogRailPage(
-        items: feed[railId] ?? const [],
-        pageSize: _railPageSizeHint(spec),
-      );
+      final batched = feed[railId] ?? const [];
+      if (batched.isNotEmpty) {
+        return CatalogRailPage(
+          items: batched,
+          pageSize: _railPageSizeHint(spec),
+        );
+      }
+      // Partial/empty feed slice (e.g. spotlight missing) — direct rail fetch.
     }
     return _fetchRail(spec, forceRefresh: forceRefresh);
   }
@@ -1250,6 +1254,7 @@ class _CatalogHeroSection extends StatefulWidget {
 
 class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
   List<CatalogMetaItem>? _items;
+  List<CatalogMetaItem>? _lastSlides;
   int _gen = 0;
 
   @override
@@ -1268,8 +1273,15 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
     final gen = ++_gen;
     final had = _items != null && _items!.isNotEmpty;
     try {
-      final items = await widget.future;
+      var items = await widget.future;
       if (!mounted || gen != _gen) return;
+      if (items.isEmpty &&
+          _lastSlides != null &&
+          _lastSlides!.isNotEmpty) {
+        items = _lastSlides!;
+      } else if (items.isNotEmpty) {
+        _lastSlides = items;
+      }
       setState(() => _items = items);
       if (items.isNotEmpty) widget.prefetchSlot?.notifyVisible();
     } catch (_) {
@@ -1291,8 +1303,12 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
       );
     }
     if (items.isEmpty) {
-      // Empty rail — don't infinite-shimmer the hub (looks like a hung load).
-      return widget.pageBottomChild ?? const SizedBox.shrink();
+      // Keep cinematic chrome (shimmer + bleed row) — bleed-only looked like a
+      // missing hero when spotlight was empty in a partial feed batch.
+      return homeCinematicHeroShimmer(
+        context,
+        pageBottomBleed: widget.pageBottomChild != null,
+      );
     }
     final bottom = widget.pageBottomChild;
     return HomeCinematicHero.hub(

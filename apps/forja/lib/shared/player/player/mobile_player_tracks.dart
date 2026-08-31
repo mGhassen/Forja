@@ -241,7 +241,9 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     if (_s._disposed || !mounted) return;
     await _s._applyAutoSubtitle();
     if (_s._disposed || !mounted) return;
-    await _maybeAutoPickExternalSubtitle(forcePlayerApply: true);
+    final restoreExternal = _s._userPickedExternalSubtitle ||
+        _s._selectedExternalSubUrl != null;
+    await _maybeAutoPickExternalSubtitle(forcePlayerApply: restoreExternal);
   }
 
   /// Applies preferred subtitle language when external tracks arrive.
@@ -262,7 +264,7 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
         await _s._applyAutoSubtitle();
         if (_s._disposed || !mounted) return;
         if (_s._selectedExternalSubUrl == null && _playerHasActiveSubtitle()) {
-          if (!forcePlayerApply) return;
+          return;
         }
       }
     }
@@ -271,6 +273,12 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
         _s._selectedExternalSubUrl == null &&
         _playerHasActiveSubtitle() &&
         _activeSubtitleMatchesPreferred(preferred)) {
+      return;
+    }
+
+    if (forcePlayerApply &&
+        !_s._userPickedExternalSubtitle &&
+        _s._selectedExternalSubUrl == null) {
       return;
     }
 
