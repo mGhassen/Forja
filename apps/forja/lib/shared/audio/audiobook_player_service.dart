@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:forja/features/audiobooks/catalog/audiobook_service.dart';
+import 'package:forja/features/archive/audiobooks/catalog/audiobook_service.dart';
 import 'package:forja/shared/audio/audio_handler.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:forja/shared/player/player/utils.dart';

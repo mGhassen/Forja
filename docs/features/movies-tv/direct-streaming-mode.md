@@ -4,7 +4,7 @@
 
 ## What it is
 
-**Webstreaming** is a **play source** on the unified [media details](media-details.md) screen — not a tab in **Sources**. It is available to **admin** accounts only. When enabled in **Settings → Playback**, the hero shows the default green **Play** / **Resume** pill with a play icon. It auto-searches extractors in your **Provider order** (VidLink, VixSrc, WebStreamr, Videasy, …) and starts playback when one works (loading roulette overlay).
+**Webstreaming** is a **play source** on the unified [TMDB details](tmdb-details.md) screen — not a tab in **Sources**. It is available to **admin** accounts only. When enabled in **Settings → Playback**, the hero shows the default green **Play** / **Resume** pill with a play icon. It auto-searches extractors in your **Provider order** (VidLink, VixSrc, WebStreamr, Videasy, …) and starts playback when one works (loading roulette overlay).
 
 The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent providers, **Nuvio**, **Forja**, Stremio). The **Sources** panel is not used for webstreaming.
 
@@ -38,6 +38,6 @@ The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent
 
 ## Related
 
-- [Media details](media-details.md)
+- [TMDB details](tmdb-details.md)
 - [Playback settings](../settings/playback-settings.md)
 - [Stream providers](../sources/stream-providers.md)

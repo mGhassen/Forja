@@ -32,7 +32,6 @@ Tap **Live Sports** in the navigation bar.
 
 ## Related
 
-- [Stremio addons](../sources/stremio-addons.md) — install sport addons and assign **Live Matches**
 - [IPTV — Xtream](iptv-xtream.md) — portals reused by **Forja Sports** matching
 - [Forja Sports](../settings/forja-sports.md) — setup for Live Matches → Forja Sports (stream resolve + live plugin toggles)
 - [Content hub scrapers](../scrapers/content-hub-scrapers.md)

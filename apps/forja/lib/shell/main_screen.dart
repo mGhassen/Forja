@@ -5,15 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/features/audiobooks/audiobook_screen.dart';
-import 'package:forja/features/discover/discover_screen.dart';
-import 'package:forja/features/iptv/iptv/screens/iptv_pt_screen.dart';
-import 'package:forja/features/jellyfin/jellyfin_screen.dart';
-import 'package:forja/features/live_matches/live_matches_screen.dart';
-import 'package:forja/features/music/music_screen.dart';
-import 'package:forja/features/my_list/my_list_screen.dart';
-import 'package:forja/features/search/search_screen.dart';
-import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_shell.dart';
 import 'package:forja/shell/nav_config.dart';
@@ -55,7 +46,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
   Timer? _metricsSafety;
   final AppUpdateAutoCheck _updateAutoCheck = AppUpdateAutoCheck();
 
-  final GlobalKey<SearchScreenState> _searchKey = GlobalKey<SearchScreenState>();
   final Map<String, GlobalKey<State<StatefulWidget>>> _tabKeys = {};
 
   GlobalKey<State<StatefulWidget>> _ensureTabKey(String id) {
@@ -65,19 +55,16 @@ class _MainScreenState extends ConsumerState<MainScreen>
   GlobalKey<State<StatefulWidget>>? _keyForTab(String id) {
     // Settings must not use a GlobalKey: shell churn on resume was disposing
     // the keyed State while the cached widget stayed, then remounting → Profile.
-    if (id == 'search' || id == 'settings') return null;
+    if (id == 'settings') return null;
     return _ensureTabKey(id);
   }
 
   ShellTabRefresh? _refreshStateFor(String id) {
-    final state = id == 'search'
-        ? _searchKey.currentState
-        : _keyForTab(id)?.currentState;
+    final state = _keyForTab(id)?.currentState;
     return state is ShellTabRefresh ? state : null;
   }
 
   bool _tabBlocksEviction(String id) {
-    if (id == 'music' && MusicPlayerService().isPlaying.value) return true;
     return _refreshStateFor(id)?.shellBlocksEviction ?? false;
   }
 
@@ -99,34 +86,22 @@ class _MainScreenState extends ConsumerState<MainScreen>
     assert(navTabBuilders.containsKey(id), 'No tab builder for $id');
     final isNew = !_tabCache.containsKey(id);
     final tab = _tabCache.putIfAbsent(id, () {
-      if (id == 'search') {
-        return SearchScreen(key: _searchKey);
-      }
       final builder = navTabBuilders[id];
       if (builder == null) {
         return const SizedBox.shrink();
       }
-      // Catalog hubs and most tabs are built from [navTabBuilders] (hubs from
-      // PluginNavRegistry). Keep-alive keys still apply for a few legacy tabs.
       final key = _keyForTab(id);
-      return switch (id) {
-        'audiobooks' => AudiobookScreen(key: key),
-        'mylist' => MyListScreen(key: key),
-        'discover' => DiscoverScreen(key: key),
-        'iptv' => IptvPtScreen(key: key),
-        'music' => MusicScreen(key: key),
-        'jellyfin' => JellyfinScreen(key: key),
-        'live_matches' => LiveMatchesScreen(key: key),
-        // CatalogShell keeps the GlobalKey for [ShellTabRefresh]. Plain tabs
-        // (Settings) stay unkeyed — see [_keyForTab].
-        _ => () {
-            final child = builder();
-            if (child is CatalogShell) {
-              return _tabWithKey(key, child);
-            }
-            return child;
-          }(),
-      };
+      final child = builder();
+      if (child is CatalogShell) {
+        return _tabWithKey(key, child);
+      }
+      if (key != null &&
+          (id == 'mylist' ||
+              id == 'iptv' ||
+              id == 'live_matches')) {
+        return KeyedSubtree(key: key, child: child);
+      }
+      return child;
     });
     if (isNew && kDebugMode) {
       debugPrint('[MainScreen] Built tab: $id');
@@ -178,9 +153,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     _mountedTabIds.remove(id);
     _tabCache.remove(id);
     _tabLru.remove(id);
-    if (id != 'search') {
-      _tabKeys.remove(id);
-    }
+    _tabKeys.remove(id);
     if (kDebugMode) {
       debugPrint('[MainScreen] Force-evicted sibling tab for player: $id');
     }
@@ -245,13 +218,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     _refreshStateFor(id)?.onShellTabShown();
   }
 
-  Widget? _shellHeader() {
-    if (_visibleIds.isEmpty || _selectedIndex >= _visibleIds.length) return null;
-    if (_visibleIds[_selectedIndex] != 'search') return null;
-    final isDesktop = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
-    if (isDesktop) return null;
-    return _searchKey.currentState?.buildShellSearchBar();
-  }
+  Widget? _shellHeader() => null;
 
   void _syncCurrentNavTab() {
     ShellBus.activeShellTabId = _currentTabId;
@@ -285,13 +252,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
     _enforceTabCap();
     _applyTabShellChrome(id);
     unawaited(ProductAnalytics.screenTab(id));
-    if (id == 'search') {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        setState(() {});
-        _searchKey.currentState?.focusTvBrowseFieldIfEmpty();
-      });
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       // Rapid tab switches queue multiple callbacks; only the still-selected
@@ -361,7 +321,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     var visible = await SettingsService().getNavbarConfig();
     final defaultTab = await SettingsService().getDefaultNavTab();
     visible = visible
-        .where((id) => !temporarilyHiddenNavIds.contains(id))
+        .where((id) => !archivedNavIds.contains(id))
         .where(PluginNavRegistry.isContributed)
         .toList();
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
@@ -479,8 +439,10 @@ class _MainScreenState extends ConsumerState<MainScreen>
   void _onStremioSearch() {
     final data = ShellBus.stremioSearchNotifier.value;
     if (data == null || (data['query'] ?? '').isEmpty) return;
-    final idx = _visibleIds.indexOf('search');
-    if (idx != -1) _selectTab(idx);
+    final ctx = _shellScopedContext;
+    if (ctx != null && ctx.mounted) {
+      unawaited(AppRouter.openSearch(ctx));
+    }
   }
 
   void _onRequestTab() {
@@ -491,15 +453,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.requestTab.value = null;
   }
 
-  void searchComics(String query) {
-    final idx = _visibleIds.indexOf('comics');
-    if (idx != -1) _selectTab(idx);
-  }
+  void searchComics(String query) {}
 
-  void searchManga(String query) {
-    final idx = _visibleIds.indexOf('manga');
-    if (idx != -1) _selectTab(idx);
-  }
+  void searchManga(String query) {}
 
   void _onFindShortcut() {
     unawaited(_handleFindShortcut());
@@ -515,8 +471,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
     switch (_currentTabId) {
       case 'home':
         AppRouter.openSearch(ctx);
-      case 'search':
-        _searchKey.currentState?.focusFromFindShortcut();
       case 'anime':
         final animePlugin = await PluginNavRegistry.pluginIdForTab('anime');
         if (animePlugin == null || !ctx.mounted) return;

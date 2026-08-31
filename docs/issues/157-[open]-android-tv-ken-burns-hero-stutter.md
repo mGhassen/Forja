@@ -43,4 +43,4 @@ Home featured hero and details heroes use **Ken Burns** (`KenBurnsBackdrop`: con
 ## Related
 
 - [139](139-[open]-android-tv-shell-focus-chrome-stutter.md) — focus chrome snap on TV
-- [home.md](../features/movies-tv/home.md) · [media-details.md](../features/movies-tv/media-details.md)
+- [home.md](../features/movies-tv/home.md) · [media-details.md](../features/movies-tv/tmdb-details.md)

@@ -33,6 +33,6 @@ Forja saves playback position locally when you watch movies or TV episodes. **Co
 ## Related
 
 - [Home](home.md)
-- [Media details](media-details.md)
+- [TMDB details](tmdb-details.md)
 - [Player](../playback/player.md)
 - [Cache & data](../settings/cache-data.md)

@@ -1,6 +1,6 @@
 # Navigation
 
-> Move between movies, live TV, music, reading, and more from the main tab bar.
+> Move between movies, live TV, and catalog hubs from the main tab bar.
 
 ## What it is
 
@@ -44,7 +44,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 - **Anime / Asian Drama (TV):** same `TvFocusGraph` recipes as Home for catalog rows and continue watching; Anime vibe chips match Home mood D-pad
 - **Live Sports / IPTV (TV):** same `TvFocusGraph` recipes — Live Sports sport/CDN chips and card grids; IPTV category rail, stream grid, EPG channel list, portal/M3U lists, and player top/controls via `iptvCatalogRow` (search-field chrome still syncs before focus)
 - **Search (TV):** results use the `TvGrid` recipe (4 columns); trending helpers use a vertical `TvCatalogRow`; first-column Left still jumps to helpers, first-row Up to the search field
-- **My List / Settings / details (TV):** My List posters use `TvGrid`; Settings category rail uses `TvCatalogRow` (detail pane is spatial inside a focus trap — Back exits left); media details cast, trailers, play, and torrent action rows sit in the same focus graph
+- **My List / Settings / details (TV):** My List posters use `TvGrid`; Settings category rail uses `TvCatalogRow` (detail pane is spatial inside a focus trap — Back exits left); TMDB details cast, trailers, play, and torrent action rows sit in the same focus graph
 - **Live Sports embed / Who’s watching (TV):** embed Back / Play / Mute chrome registers via `TvCatalogRow`; profile chooser uses the shared overlay focus host (spatial D-pad inside the panel)
 - **Anime / Asian Drama hubs:** same browse hero TV focus as Home (gallery **←/→**, then **View details**), plus the shared top menu (**Search** / Films / Series / Categories as text). Anime D-pad order is **View details → Trending → Continue Watching → Pick your vibe → catalog**; Asian Drama is **View details → Latest Update → Continue Watching → catalog**. **↑** from Continue Watching lands on the bleed row under the hero (Trending / Latest), then View details. Anime vibes use the same circular mood icons as Home (centered on TV); mood posters **↑** return to those vibes; empty Continue Watching is not in the focus graph; **→** from the nav rail restores real page focus (not a blank overlay scope). Open search from the top-bar **Search** text tab or **Find** (desktop) / platform search shortcut
 - Search uses the **two-column desktop layout** on TV (last searches then trending suggestions, focused-result detail pane, fluid results grid); D-pad lands on the **search field** first — **Down** moves to suggestions
@@ -54,16 +54,16 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 ## Available tabs
 
-Home · My List · Live Sports · IPTV · Anime · Asian Drama · Arabic · Settings
+**Default (fresh install):** Home · Asian Drama · Anime · IPTV · Live Sports · My List · Settings
 
-Search, Discover, Similar, Media Downloader, Magnet, Audiobooks, Books, Music, Comics, Manga, Jellyfin, and Anime Arabic are built but temporarily hidden from the shell and Navigation settings.
+Hub tabs (**Home**, **Anime**, **Asian Drama**) come from ForjaHQ catalog packs — layout and rows update when the pack changes. If a pack is missing, the tab shows a retry panel.
 
-**Home, Anime, Asian Drama, and Arabic come from the ForjaHQ Hubs plugin pack** — their rows, moods, and ranked lists are defined by the pack, so an updated pack changes those tabs without an app update. If the Hubs pack is not installed, those tabs show a retry panel instead of rows. Arabic currently has a layout but no source, so its rows are empty.
+**Archived tabs** (built in code, hidden from shell and Settings → Features): Search, Discover, Similar, Magnet, Media Downloader, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic, Arabic — see [archive](../archive/README.md).
 
 ## Tips
 
-- Hide tabs you never use to reduce clutter — they can be re-enabled anytime (among the available tabs)
-- Startup follows your profile: splash warms the default hub layout + first-paint rails into the shared catalog cache (Home trending/popular/etc. equivalent); torrent / Stremio / Nuvio / Forja / Webstreaming engines start **after** splash when those play sources are on **and** you have a VOD tab (Home, Anime, Asian Drama, or My List). IPTV + Live Sports alone skip them. Restored-session cold start paints the logo splash immediately (update check + cloud sync run in the background). After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches).
+- Hide tabs you never use to reduce clutter — among the tabs listed in Settings → Features
+- Startup follows your profile: splash warms the default hub layout + first-paint rails into the shared catalog cache; torrent / Nuvio / Forja / Webstreaming engines start **after** splash when those play sources are on **and** you have a VOD tab (Home, Anime, Asian Drama, or My List). IPTV + Live Sports alone skip them. Restored-session cold start paints the logo splash immediately (update check + cloud sync run in the background). After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches).
 - Movie and series details open on top of the current tab; the player opens full-screen from there
 - On **desktop**, the mouse **Back** side button and **Escape** act like the in-app **Back** control — player first, then details, then in-tab screens. A two-finger trackpad swipe-right on empty page chrome (not over the Sources panel, addon chips, catalog rows, or other horizontal strips) shows a left-edge arrow; when the ring fills completely, Back commits.
 

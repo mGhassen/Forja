@@ -4,7 +4,7 @@
 
 ## What it is
 
-Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Manage them in Settings, enable individual scrapers, and use them from the **Nuvio** tab in **Sources** on [media details](../movies-tv/media-details.md) (white **Play** / link icon — same panel as Forja torrent search). Provider chips under the **Nuvio** tab remember your selection on this device — tap a scraper to select it and load its sources; tap a fetched scraper again to deselect and clear that scraper’s rows. **All** loads every enabled scraper but only highlights the All chip — tap one scraper to filter to it; without All, multi-select toggles as before. Opening Nuvio with **All** (or several chips) selected keeps up to 10 scrapers in flight (5 on TV) until every selected one has been tried. Tap a scraper chip to add it to the in-flight search (does not stop the others). First open (no saved chips yet) starts with every enabled scraper selected.
+Nuvio addons are manifest URLs that bundle JavaScript scrapers. Each scraper searches specific sites and returns stream candidates. Manage them in Settings, enable individual scrapers, and use them from the **Nuvio** tab in **Sources** on [TMDB details](../movies-tv/tmdb-details.md) (white **Play** / link icon — same panel as Forja torrent search). Provider chips under the **Nuvio** tab remember your selection on this device — tap a scraper to select it and load its sources; tap a fetched scraper again to deselect and clear that scraper’s rows. **All** loads every enabled scraper but only highlights the All chip — tap one scraper to filter to it; without All, multi-select toggles as before. Opening Nuvio with **All** (or several chips) selected keeps up to 10 scrapers in flight (5 on TV) until every selected one has been tried. Tap a scraper chip to add it to the in-flight search (does not stop the others). First open (no saved chips yet) starts with every enabled scraper selected.
 
 Forja ships a **built-in** All-in-One Nuvio catalog. It appears in **Settings → Nuvio addons** (same scrapers as **Sources → Nuvio**). Each addon row has a switch to enable or disable every scraper in that pack (built-in included); expand the row to toggle scrapers one by one. The built-in addon cannot be removed.
 
@@ -45,7 +45,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 
 ## Related
 
-- [Media details](../movies-tv/media-details.md)
+- [TMDB details](../movies-tv/tmdb-details.md)
 - [Webstreaming](../movies-tv/direct-streaming-mode.md)
 - [Playback settings](../settings/playback-settings.md)
 - [Scrapers overview](README.md)

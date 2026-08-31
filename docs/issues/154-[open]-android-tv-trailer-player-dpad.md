@@ -53,4 +53,4 @@ The native trailer player (`TrailerPlayerScreen`) had partial TV chrome but brok
 - [RFC-055](../rfc/055-[open]-native-youtube-trailer-player.md)
 - [130](130-[open]-android-tv-player-dpad-stuck-on-play.md) — full-screen FocusScope spatial trap
 - [119](119-[open]-android-tv-double-back-exit.md) — Back vs Exit
-- [Media details](../features/movies-tv/media-details.md)
+- [Media details](../features/movies-tv/tmdb-details.md)

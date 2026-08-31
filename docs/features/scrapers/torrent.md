@@ -8,7 +8,7 @@ When you open a movie or series in torrent mode, Forja searches the **enabled** 
 
 ## How to open it
 
-Automatic on [Media details](../movies-tv/media-details.md) when you view torrent results.
+Automatic on [TMDB details](../movies-tv/tmdb-details.md) when you view torrent results.
 
 ## What you can do
 

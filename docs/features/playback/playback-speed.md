@@ -18,9 +18,7 @@ Open the speed control from the player menu during playback.
 ## Tips
 
 - Speed changes apply to the current session; not all stream types support every speed on every platform
-- Audiobooks have their own speed control in the audiobook player
 
 ## Related
 
 - [Player](player.md)
-- [Audiobooks](../reading/audiobooks.md)

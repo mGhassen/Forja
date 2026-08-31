@@ -19,7 +19,7 @@ Trakt connects your Forja activity to Trakt.tv — OAuth login, sync watched ite
 - See username and stats in Settings
 - Browse Trakt lists via [External lists](../movies-tv/external-lists.md)
 - Get recommendation and calendar rails on [Home](../movies-tv/home.md)
-- Rate titles from media details
+- Rate titles from TMDB details
 
 ## Setup
 

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/painting.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:forja/features/anime_arabic/catalog/anime_arabic_service.dart';
 import 'package:forja/features/iptv/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
@@ -74,7 +73,6 @@ abstract final class SettingsDataCleaner {
     for (final plugin in plugins) {
       await CatalogWatchHistory.clear(plugin.id);
     }
-    await AnimeArabicService().clearWatchHistory();
   }
 
   static Future<void> clearWatchedEpisodes() async {

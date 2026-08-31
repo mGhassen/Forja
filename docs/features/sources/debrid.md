@@ -23,7 +23,7 @@ Debrid services store popular torrents on fast servers. When you enable debrid, 
 - Toggle debrid on/off globally
 - Select active service
 - Save API keys or log into Real-Debrid
-- Resolve torrents on [Media details](../movies-tv/media-details.md) through debrid when cached
+- Resolve torrents on [TMDB details](../movies-tv/tmdb-details.md) through debrid when cached
 
 ## Setup
 
@@ -39,5 +39,5 @@ Debrid services store popular torrents on fast servers. When you enable debrid, 
 ## Related
 
 - [Torrent scrapers](../scrapers/torrent.md)
-- [Media details](../movies-tv/media-details.md)
+- [TMDB details](../movies-tv/tmdb-details.md)
 - [Torrent playback](../playback/torrent-playback.md)

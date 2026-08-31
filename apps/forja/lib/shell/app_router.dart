@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/media/details/details_screen.dart';
-import 'package:forja/features/search/search_screen.dart';
+import 'package:forja/features/archive/search/search_screen.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player_screen.dart';

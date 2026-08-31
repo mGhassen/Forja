@@ -29,7 +29,7 @@ profile is known — another profile’s settings are never shown first.
   **Settings → Profile & account**), or open that page from Settings —
   the page shows the active profile (**Watching now** — tap to switch), cloud
   sync status, passkeys (macOS / Windows), and **Sign out**. From Who’s watching,
-  **Account settings** opens Settings and dismisses any open media details so the
+  **Account settings** opens Settings and dismisses any open TMDB details so the
   hub is visible.
 - **Web:** sign in at `/login` with email/password or **Sign in with passkey**, or
   create an account at `/signup` (Turnstile captcha when configured) — check your
@@ -245,4 +245,3 @@ Supabase `service_role` / `sb_secret_…` key in a desktop build.
 - [IPTV — M3U](../live/iptv-m3u.md)
 - [Backup & restore](backup-restore.md)
 - [Stream providers](../sources/stream-providers.md)
-- [Stremio addons](../sources/stremio-addons.md)

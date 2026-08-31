@@ -174,7 +174,7 @@ class SettingsVisibility {
   static Future<SettingsVisibility> resolve([SettingsService? settings]) async {
     final s = settings ?? SettingsService();
     var nav = await s.getNavbarConfig();
-    nav = nav.where((id) => !temporarilyHiddenNavIds.contains(id)).toList();
+    nav = nav.where((id) => !archivedNavIds.contains(id)).toList();
 
     final lanReady = await PlaySourceEffective.lanDesktopReady();
     final lanEditable = await PlaySourceEffective.lanPlaySourcesEditable();

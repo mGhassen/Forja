@@ -35,4 +35,3 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 - [Subtitle scrapers](../scrapers/subtitle-scrapers.md)
 - [Player](player.md)
 - [Playback settings](../settings/playback-settings.md)
-- [Stremio addons](../sources/stremio-addons.md)

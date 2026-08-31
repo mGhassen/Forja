@@ -33,6 +33,5 @@ Tap **Home** in the navigation bar (first tab by default).
 
 ## Related
 
-- [Discover](discover.md)
 - [Watch history](watch-history.md)
-- [Stremio addons](../sources/stremio-addons.md)
+- [Hub details](../hubs/hub-details.md)

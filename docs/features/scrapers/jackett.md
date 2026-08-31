@@ -32,4 +32,4 @@
 
 - [Prowlarr](prowlarr.md) — alternative *arr stack indexer
 - [Torrent scrapers](torrent.md)
-- [Media details](../movies-tv/media-details.md)
+- [TMDB details](../movies-tv/tmdb-details.md)

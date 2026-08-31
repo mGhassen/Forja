@@ -17,15 +17,12 @@ abstract final class PluginNavRegistry {
     'iptv',
     'live_matches',
     'settings',
-    'search',
   };
 
   static const hubTabIds = {
     'home',
     'anime',
     'asian_drama',
-    'arabic',
-    'anime_arabic',
   };
 
   /// Default shell tab ids for in-scope catalog hubs (icons only — no plugin ids).

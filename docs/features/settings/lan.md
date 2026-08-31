@@ -59,5 +59,4 @@ LAN server is **off by default**. Only devices that complete pairing (or already
 ## Related
 
 - [Torrent playback](../playback/torrent-playback.md)
-- [Stremio addons](../sources/stremio-addons.md)
 - [Playback settings](playback-settings.md)

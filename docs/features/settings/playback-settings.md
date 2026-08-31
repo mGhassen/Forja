@@ -4,7 +4,7 @@
 
 ## What it is
 
-Core playback preferences: which backends **Play** tries on the media details screen, external player, preferred audio language, unsupported codec avoidance, and anime title language.
+Core playback preferences: which backends **Play** tries on the TMDB details screen, external player, preferred audio language, unsupported codec avoidance, and anime title language.
 
 ## How to open it
 
@@ -48,7 +48,7 @@ Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URL
 
 ## Related
 
-- [Media details](../movies-tv/media-details.md)
+- [TMDB details](../movies-tv/tmdb-details.md)
 - [Webstreaming](../movies-tv/direct-streaming-mode.md)
 - [Stream providers](../sources/stream-providers.md)
 - [Sources settings](torrent-settings.md)

@@ -92,7 +92,7 @@ Replace the fullscreen trailer YouTube iframe (and its 1.35× overscan hack to h
 
 ## Related
 
-- [Media details](../features/movies-tv/media-details.md)
+- [Media details](../features/movies-tv/tmdb-details.md)
 - [Issue 113](../issues/113-[open]-android-tv-trailer-player-white-screen.md) — WebView white screen (fullscreen path superseded)
 - [Issue 154](../issues/154-[open]-android-tv-trailer-player-dpad.md) — ATV D-pad / Back / Exit
 - [Issue 197](../issues/197-[open]-android-tv-trailer-quality-switch.md) — ATV quality switch

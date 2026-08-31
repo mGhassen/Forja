@@ -70,4 +70,4 @@ On **Android TV**, opening the torrent **Sources** panel left D-pad on the page 
 
 - [171](171-[open]-android-tv-details-focus-after-player.md) — details Play reclaim after player (Sources open skips that reclaim)
 - [156](156-[open]-android-tv-hold-scroll-accel.md) — hold ↑/↓ accel through Sources list
-- [torrent playback](../features/playback/torrent-playback.md) · [media details](../features/movies-tv/media-details.md)
+- [torrent playback](../features/playback/torrent-playback.md) · [media details](../features/movies-tv/tmdb-details.md)

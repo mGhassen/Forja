@@ -500,10 +500,10 @@ class SettingsNavigationNotifier
     var navVisible = await s.getNavbarConfig();
     final defaultNavTab = await s.getDefaultNavTab();
     final allIds = SettingsService.allNavIds
-        .where((id) => !temporarilyHiddenNavIds.contains(id))
+        .where((id) => !archivedNavIds.contains(id))
         .where(PluginNavRegistry.isContributed)
         .toList();
-    navVisible.removeWhere(temporarilyHiddenNavIds.contains);
+    navVisible.removeWhere(archivedNavIds.contains);
     navVisible.removeWhere((id) => !PluginNavRegistry.isContributed(id));
     final hidden = allIds.where((id) => !navVisible.contains(id)).toList();
     var navOrder = [...navVisible, ...hidden];

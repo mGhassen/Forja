@@ -1,25 +1,20 @@
 # Content hub scrapers
 
-> Built-in site scrapers for anime, drama, comics, sports, and more.
+> Built-in site scrapers for in-scope catalog hubs.
 
 ## What it is
 
 Several Forja tabs don't use TMDB torrents — they scrape dedicated sites for browse, search, and playback. No install step; open the tab and use it.
 
-## Hub scrapers
+## Hub scrapers (active)
 
 | Tab | What it scrapes |
 |-----|-----------------|
-| [Anime](../hubs/anime.md) | Anime metadata and multi-source streams |
-| [Anime Arabic](../hubs/anime-arabic.md) | AnimeSlayer — Arabic-dubbed anime |
+| [Anime](../hubs/anime.md) | AniList metadata and multi-source streams |
 | [Asian Drama](../hubs/asian-drama.md) | KissKH — Asian dramas with subtitles |
-| [Arabic](../hubs/arabic-cinema.md) | Arabic cinema categories and search |
-| [Live Matches](../live/live-matches.md) | Forja Live catalogs + Stremio sport addons + Forja Sports (Xtream) |
-| [Comics](../reading/comics.md) | Primary catalog + ReadComicsOnline fallback |
-| [Manga](../reading/manga.md) | Manga library search and chapters |
-| [Audiobooks](../reading/audiobooks.md) | Multiple audiobook sources in parallel |
-| [Similar](../movies-tv/similar.md) | BestSimilar.com recommendations |
-| [Media Downloader](../utilities/media-downloader.md) | 111477.xyz file index |
+| [Live Matches](../live/live-matches.md) | Forja Live catalogs + Forja Sports (Xtream) |
+
+More hub scrapers (Arabic, Manga, Similar, …) are documented in [archive](../archive/README.md).
 
 ## How to open it
 
@@ -28,7 +23,7 @@ Open the corresponding navigation tab — scraping happens behind the UI.
 ## What you can do
 
 - Search, browse categories, and play within each hub
-- Continue watching / reading history per hub (where supported)
+- Continue watching history per hub (where supported)
 
 ## Tips
 
@@ -38,4 +33,5 @@ Open the corresponding navigation tab — scraping happens behind the UI.
 ## Related
 
 - [Scrapers overview](README.md)
+- [Hub details](../hubs/hub-details.md)
 - [Navigation](../getting-started/navigation.md)

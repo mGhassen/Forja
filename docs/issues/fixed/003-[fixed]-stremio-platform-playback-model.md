@@ -33,7 +33,7 @@ Forja now follows Stremio's **platform-constrained playback model** via a shared
 | Streaming details Stremio path | `apps/forja/lib/features/home/streaming_details_screen.dart` |
 | Skip torrent engine on constrained | `apps/forja/lib/app/bootstrap.dart`, `torrent_stream_service.dart` |
 | Hide torrent UI (magnet nav, Jackett/Prowlarr settings, torrent source tab) | `main_screen.dart`, `settings_screen.dart`, `details_screen.dart` |
-| Docs | `docs/features/sources/stremio-addons.md` |
+| Docs | `docs/features/archive/sources/stremio-addons.md` |
 
 ### Profiles
 
@@ -55,5 +55,5 @@ Unchanged on desktop: direct streaming mode remains WebStreamr-first (`streaming
 ## Related
 
 - [RFC-010](../rfc/010-[draft]-web-client.md)
-- [Stremio addons](../features/sources/stremio-addons.md)
+- [Stremio addons](../features/archive/sources/stremio-addons.md)
 - [002](002-[fixed]-torrent-disk-cache-not-cleaned.md) — torrent lifecycle (desktop profile only)

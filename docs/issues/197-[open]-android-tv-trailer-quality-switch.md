@@ -58,4 +58,4 @@ Trailer **Quality** on Android TV updated the checkmark but playback stayed on t
 
 - [RFC-055](../rfc/055-[open]-native-youtube-trailer-player.md)
 - [154](154-[open]-android-tv-trailer-player-dpad.md) — ATV trailer D-pad
-- [Media details](../features/movies-tv/media-details.md)
+- [Media details](../features/movies-tv/tmdb-details.md)

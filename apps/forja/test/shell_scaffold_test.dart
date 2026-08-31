@@ -162,7 +162,7 @@ void main() {
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar()),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -175,7 +175,7 @@ void main() {
   testWidgets('PluginHubCatalogTopBar Categories menu sets genre filter', (tester) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar()),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -194,7 +194,7 @@ void main() {
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar()),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -219,7 +219,7 @@ void main() {
     await pumpScaffold(
       tester,
       desktopScaffold(
-        shellTopBar: const PluginHubCatalogTopBar(),
+        shellTopBar: const PluginHubCatalogTopBar(tabId: 'home'),
         selectedIndex: 0,
       ),
       size: const Size(1200, 800),
@@ -237,7 +237,7 @@ void main() {
     CatalogVerticalFiltersRegistry.selectedIdFor('home').value = 'netflix';
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar()),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -251,7 +251,7 @@ void main() {
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar()),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -286,7 +286,7 @@ void main() {
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar()),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -343,7 +343,7 @@ void main() {
     (tester) async {
       await pumpScaffold(
         tester,
-        desktopScaffold(shellTopBar: const PluginHubCatalogTopBar()),
+        desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
         size: const Size(800, 800),
       );
 
@@ -938,13 +938,13 @@ void main() {
     ]);
   });
 
-  test('temporarily hidden nav ids stay registered but are withheld', () {
-    for (final id in temporarilyHiddenNavIds) {
-      expect(navDestinations.containsKey(id), isTrue);
-      expect(navTabBuilders.containsKey(id), isTrue);
+  test('archived nav ids are not registered in shell', () {
+    for (final id in archivedNavIds) {
+      expect(navDestinations.containsKey(id), isFalse);
+      expect(navTabBuilders.containsKey(id), isFalse);
     }
     expect(
-      temporarilyHiddenNavIds.intersection(
+      archivedNavIds.intersection(
         SettingsService.defaultVisibleNavIds.toSet(),
       ),
       isEmpty,

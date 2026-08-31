@@ -1,8 +1,9 @@
 # Forja — User Guide
 
-Your cinema universe in one app. This guide explains every feature — what it does and how to use it.
+Your cinema universe in one app. This guide explains every **in-scope** feature — what it does and how to use it.
 
-**Developer docs:** [DEVELOPMENT.md](../DEVELOPMENT.md) · [ARCHITECTURE.md](../ARCHITECTURE.md)
+**Developer docs:** [DEVELOPMENT.md](../DEVELOPMENT.md) · [ARCHITECTURE.md](../ARCHITECTURE.md)  
+**Archived tabs & verticals:** [archive/](archive/README.md) (Search, Discover, Jellyfin, Stremio, Music, Reading, …)
 
 ---
 
@@ -16,15 +17,19 @@ Your cinema universe in one app. This guide explains every feature — what it d
 ## Movies & TV
 
 - [Home](movies-tv/home.md)
-- [Discover](movies-tv/discover.md)
-- [Search](movies-tv/search.md)
-- [Similar](movies-tv/similar.md)
-- [Media details](movies-tv/media-details.md)
+- [TMDB details](movies-tv/tmdb-details.md) — Home, My List, TMDB hub rows
 - [Webstreaming](movies-tv/direct-streaming-mode.md)
-- [Stremio catalog](movies-tv/stremio-catalog.md)
 - [My List](movies-tv/my-list.md)
 - [Watch history](movies-tv/watch-history.md)
 - [External lists](movies-tv/external-lists.md)
+
+---
+
+## Content hubs
+
+- [Hub details](hubs/hub-details.md) — catalog-kit title pages (Anime, Asian Drama, …)
+- [Anime](hubs/anime.md)
+- [Asian Drama](hubs/asian-drama.md)
 
 ---
 
@@ -61,7 +66,6 @@ How Forja finds torrents, streams, and subtitles from the web.
 
 ## Sources & integrations
 
-- [Stremio addons](sources/stremio-addons.md)
 - [Debrid](sources/debrid.md)
 - [Stream providers](sources/stream-providers.md)
 
@@ -74,45 +78,6 @@ How Forja finds torrents, streams, and subtitles from the web.
 - [IPTV — M3U](live/iptv-m3u.md)
 - [IPTV — Stalker](live/iptv-stalker.md)
 - [IPTV — Catalog ops (admin)](live/iptv-catalog-ops.md) — operators: pool, credits, scrape worker
-
----
-
-## Jellyfin
-
-- [Jellyfin](jellyfin/jellyfin.md)
-
----
-
-## Music
-
-- [Music](music/music.md)
-- [Music downloads](music/music-downloads.md)
-
----
-
-## Reading
-
-- [Manga](reading/manga.md)
-- [Comics](reading/comics.md)
-- [Books](reading/books.md)
-- [Audiobooks](reading/audiobooks.md)
-- [Generate audiobook](reading/generate-audiobook.md)
-
----
-
-## Content hubs
-
-- [Anime](hubs/anime.md)
-- [Anime Arabic](hubs/anime-arabic.md)
-- [Asian Drama](hubs/asian-drama.md)
-- [Arabic cinema](hubs/arabic-cinema.md)
-
----
-
-## Utilities
-
-- [Magnet player](utilities/magnet-player.md)
-- [Media Downloader](utilities/media-downloader.md)
 
 ---
 
@@ -148,16 +113,24 @@ How Forja finds torrents, streams, and subtitles from the web.
 
 ---
 
+## Archived features
+
+Tabs and verticals not in the default product surface — guides kept for reference:
+
+[archive/README.md](archive/README.md) — Search, Discover, Similar, Magnet, Media Downloader, Jellyfin, Music, Reading, Stremio, Arabic hubs, …
+
+---
+
 ## I want to…
 
 | Goal | Start here |
 |------|------------|
-| Watch a movie from torrents | [Media details](movies-tv/media-details.md) → [Torrent scrapers](scrapers/torrent.md) → [Debrid](sources/debrid.md) |
+| Watch a movie from Home | [TMDB details](movies-tv/tmdb-details.md) → [Torrent scrapers](scrapers/torrent.md) → [Debrid](sources/debrid.md) |
 | Play torrents on Android TV via desktop | [LAN](settings/lan.md) |
 | Watch without torrents | [Webstreaming](movies-tv/direct-streaming-mode.md) → [Stream providers](sources/stream-providers.md) |
 | Add more stream sources | [Nuvio scrapers](scrapers/nuvio.md) · [WebStreamr settings](scrapers/webstreamr-settings.md) |
+| Watch anime or Asian drama | [Anime](hubs/anime.md) / [Asian Drama](hubs/asian-drama.md) → [Hub details](hubs/hub-details.md) |
 | Watch live sports | [Live Matches](live/live-matches.md) |
-| Connect my home server | [Jellyfin](jellyfin/jellyfin.md) |
 | Resume where I left off | [Watch history](movies-tv/watch-history.md) |
 | Clear cache or watch history | [Cache & data](settings/cache-data.md) |
 | Customize the app | [Settings overview](settings/overview.md) · [Features](settings/navigation-bar.md) |

@@ -44,5 +44,4 @@ Older SharedPreferences copies of those settings are imported once into that fil
 - [Playback settings](playback-settings.md)
 - [IPTV — Xtream](../live/iptv-xtream.md)
 - [Trakt](../accounts/trakt.md)
-- [Stremio addons](../sources/stremio-addons.md)
 - [Features](navigation-bar.md)

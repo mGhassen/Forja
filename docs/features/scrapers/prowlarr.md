@@ -15,7 +15,7 @@
 - Configure Prowlarr base URL and API key
 - Test connection
 - Select Prowlarr tags to filter which indexers are queried
-- Merge results on [Media details](../movies-tv/media-details.md)
+- Merge results on [TMDB details](../movies-tv/tmdb-details.md)
 
 ## Setup
 
