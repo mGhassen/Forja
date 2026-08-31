@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **5 / 5** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) |
-| **Current slice** | `shared/catalog/kit/` widget library; A15 manual QA still open |
+| **Progress** | **10 / 10** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **5 / 5** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) |
+| **Current slice** | Search chrome capability-gated; Home `host_search` = Cmd+F overlay; A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -158,6 +158,20 @@ Optional Arabic pack — browse/search/details/stream from Larozaa + DimaToon + 
 
 ---
 
+## Acceptance (search capabilities)
+
+Pack `capabilities` activate hub Search chrome — host uses `EnginePlugin.hasCapability` only.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A54 | Capability `search` shows top-bar Search and opens `CatalogSearchScreen`; omit → no Search tab | ✅ |
+| 2 | R70-A55 | Capability `filters` merges `catalogChromeFilters` into search `params.filter` | ✅ |
+| 3 | R70-A56 | Capability `structured_search` mounts kit filter lens; pack owns DSL parse/execution | ✅ |
+| 4 | R70-A57 | Home `tmdb` pack declares `structured_search` + structured `search` in JS; Anime/KissKh omit it | ✅ |
+| 5 | R70-A58 | Capability `host_search` opens shared host Search overlay (Cmd+F); top-bar Search uses same entry as Cmd+F | ✅ |
+
+---
+
 ## Manual QA (A15)
 
 Desktop + Android TV D-pad — mark A15 ✅ only after this list is run:
@@ -218,9 +232,18 @@ fails engine boot the same way as a missing providers URL. The legacy combined
 |---|---|---|
 | `layout` | `page` | `pages.{page}.widgets[]` |
 | `rail` | `rail`, `filter`, `sort`, `page`, `limit`, `cursor` | `items[]`, `nextCursor` |
-| `search` | `query`, `page`, `limit` | `items[]` |
+| `search` | `query`, `page`, `limit`, `filter` (when pack has `filters`) | `items[]` |
 | `details` | `id` | `meta` |
 | `filters` | — | `fields[]` |
+
+Hub search **capabilities** (manifest `capabilities[]` — host never hardcodes plugin ids):
+
+| Capability | Host |
+|---|---|
+| `search` | Top-bar Search + pack [CatalogSearchScreen] (or host overlay if `host_search`) |
+| `host_search` | Shared host Search overlay (Cmd+F / RFC-058 + addons) — top-bar and shortcut same entry |
+| `filters` | Browse chrome AST also applied on pack search params |
+| `structured_search` | Tune / filter lens on kit pack search; pack parses RFC-058 query tokens |
 
 Widget types: `hero`, `rail`, `ranked`, `mood`, `host.continue`, `host.popular_asian`, …
 

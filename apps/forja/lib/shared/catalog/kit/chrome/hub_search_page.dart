@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/catalog/kit/chrome/hub_search_filters.dart';
 import 'package:forja/shared/search/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -45,6 +46,9 @@ typedef HubSearchOpen = void Function(HubSearchResult result);
 
 /// Hub search overlay - desktop split layout with recommendations + result grid
 /// (same structure as [SearchScreen]).
+///
+/// When [structuredSearch] is true (pack `structured_search` capability), mounts
+/// the tune / filter lens and composes RFC-058 tokens into the query string.
 class HubSearchPage extends StatefulWidget {
   const HubSearchPage({
     super.key,
@@ -53,6 +57,7 @@ class HubSearchPage extends StatefulWidget {
     required this.onSearch,
     required this.onOpen,
     required this.loadRecommendations,
+    this.structuredSearch = false,
     this.debounceMs = 500,
   });
 
@@ -61,6 +66,9 @@ class HubSearchPage extends StatefulWidget {
   final HubSearchQuery onSearch;
   final HubSearchOpen onOpen;
   final HubRecommendationsLoader loadRecommendations;
+
+  /// Pack declared `structured_search` — show filter lens chrome.
+  final bool structuredSearch;
   final int debounceMs;
 
   @override
@@ -71,6 +79,9 @@ class _HubSearchPageState extends State<HubSearchPage> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final FocusNode _closeFocusNode = FocusNode(debugLabel: 'hub-search-close');
+  final FocusNode _filterFocusNode = FocusNode(debugLabel: 'hub-search-filter');
+  final FocusNode _filterLensFirstFocusNode =
+      FocusNode(debugLabel: 'hub-search-filter-lens-first');
   final FocusNode _firstHelperFocusNode = FocusNode();
   final ScrollController _helpersScrollController = ScrollController();
   final ScrollController _resultsScrollController = ScrollController();
@@ -93,6 +104,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
   bool _searchSubmitArmed = false;
   int _searchEditEpoch = 0;
   bool _initialFocusScheduled = false;
+  SearchFilters _filters = SearchFilters.empty;
+  bool _filtersOpen = false;
   ModalRoute<void>? _route;
   AnimationStatusListener? _routeAnimationListener;
 
@@ -316,6 +329,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
     _controller.dispose();
     _focusNode.dispose();
     _closeFocusNode.dispose();
+    _filterFocusNode.dispose();
+    _filterLensFirstFocusNode.dispose();
     _firstHelperFocusNode.dispose();
     _helpersScrollController.dispose();
     _resultsScrollController.dispose();
@@ -333,6 +348,39 @@ class _HubSearchPageState extends State<HubSearchPage> {
     return policy.useFocusableMoodChips && !policy.scaleOnHover;
   }
 
+  String _effectiveSearchQuery([String? typed]) {
+    if (!widget.structuredSearch) return (typed ?? _query).trim();
+    return composeSearchQuery(typed ?? _query, _filters);
+  }
+
+  void _onFiltersChanged(SearchFilters next) {
+    setState(() => _filters = next);
+  }
+
+  void _toggleFiltersOpen() {
+    setState(() => _filtersOpen = !_filtersOpen);
+  }
+
+  void _submitFilters() {
+    setState(() => _filtersOpen = false);
+    final effective = _effectiveSearchQuery(_controller.text);
+    if (effective.isEmpty) return;
+    _debounce?.cancel();
+    _performSearch(effective, recordRecent: _controller.text.trim().isNotEmpty);
+  }
+
+  KeyEventResult _searchFilterTuneKeyEvent(FocusNode node, KeyEvent event) {
+    if (!mounted || !_tvFocus(context)) return KeyEventResult.ignored;
+    if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown && _filtersOpen) {
+      if (_filterLensFirstFocusNode.canRequestFocus) {
+        _filterLensFirstFocusNode.requestFocus();
+        return KeyEventResult.handled;
+      }
+    }
+    return KeyEventResult.ignored;
+  }
+
   void _onSearchChanged(String query) {
     setState(() {
       _query = query;
@@ -341,7 +389,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
       _error = null;
     });
     _debounce?.cancel();
-    if (query.trim().isEmpty) {
+    final effective = _effectiveSearchQuery(query);
+    if (effective.isEmpty) {
       setState(() {
         _results = [];
         _isSearching = false;
@@ -354,12 +403,13 @@ class _HubSearchPageState extends State<HubSearchPage> {
       return;
     }
     _debounce = Timer(Duration(milliseconds: widget.debounceMs), () {
-      final trimmed = query.trim();
-      if (trimmed.isEmpty) return;
+      final next = _effectiveSearchQuery(_controller.text);
+      if (next.isEmpty) return;
       // TV: only persist on OK/submit — debounce would save every IME partial.
       _performSearch(
-        trimmed,
-        recordRecent: !_leanbackTextInput(context) || !_searchFieldEditing,
+        next,
+        recordRecent: (!_leanbackTextInput(context) || !_searchFieldEditing) &&
+            _controller.text.trim().isNotEmpty,
       );
     });
   }
@@ -402,7 +452,8 @@ class _HubSearchPageState extends State<HubSearchPage> {
     if (!_leanbackTextInput(context)) return;
     if (!_searchSubmitArmed) return;
     final query = _controller.text.trim();
-    if (query.isEmpty) return;
+    final effective = _effectiveSearchQuery(query);
+    if (effective.isEmpty) return;
 
     _debounce?.cancel();
 
@@ -411,7 +462,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
     }
 
     _pendingGridFocusIndex = 0;
-    _performSearch(query, recordRecent: true);
+    _performSearch(effective, recordRecent: query.isNotEmpty);
     _scheduleFocusOnResultCardIfPending();
   }
 
@@ -754,7 +805,11 @@ class _HubSearchPageState extends State<HubSearchPage> {
         focusNode: _focusNode,
         autofocus: true,
         onChanged: _onSearchChanged,
-        onSubmitted: (v) => _performSearch(v.trim()),
+        onSubmitted: (v) {
+          final effective = _effectiveSearchQuery(v);
+          if (effective.isEmpty) return;
+          _performSearch(effective, recordRecent: v.trim().isNotEmpty);
+        },
         textInputAction: TextInputAction.search,
         style: const TextStyle(
           color: Colors.white,
@@ -773,6 +828,18 @@ class _HubSearchPageState extends State<HubSearchPage> {
         ),
       ),
       actions: [
+        if (widget.structuredSearch)
+          ForjaPlainIcon(
+            icon: Icons.tune_rounded,
+            size: 22,
+            focusNode: _filterFocusNode,
+            color: (_filtersOpen || _filters.isActive)
+                ? ForjaShellColors.textPrimary
+                : ForjaShellColors.textSecondary,
+            tooltip: 'Filters',
+            onKeyEvent: _searchFilterTuneKeyEvent,
+            onTap: _toggleFiltersOpen,
+          ),
         if (_controller.text.isNotEmpty)
           ForjaCloseButton.compact(
             tooltip: null,
@@ -787,6 +854,19 @@ class _HubSearchPageState extends State<HubSearchPage> {
           ),
         const SizedBox(width: 4),
       ],
+      bottom: widget.structuredSearch
+          ? PreferredSize(
+              preferredSize: Size.fromHeight(
+                _filtersOpen
+                    ? 320
+                    : (_filters.isActive ? 48 : 0),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _buildFilterChrome(context),
+              ),
+            )
+          : null,
     );
   }
 
@@ -856,6 +936,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildSearchField(context),
+              _buildFilterChrome(context),
               const SizedBox(height: 24),
               Expanded(
                 child: Row(
@@ -892,7 +973,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
     final showBrowsePlaceholder =
         browseOnly && _focusNode.hasFocus && _query.isEmpty;
 
-    return Stack(
+    final field = Stack(
       alignment: Alignment.centerLeft,
       children: [
         TextField(
@@ -912,10 +993,13 @@ class _HubSearchPageState extends State<HubSearchPage> {
             if (_leanbackTextInput(context)) {
               _submitSearchField();
             } else {
-              final trimmed = v.trim();
-              if (trimmed.isEmpty) return;
+              final effective = _effectiveSearchQuery(v);
+              if (effective.isEmpty) return;
               _debounce?.cancel();
-              _performSearch(trimmed, recordRecent: true);
+              _performSearch(
+                effective,
+                recordRecent: v.trim().isNotEmpty,
+              );
             }
           },
           textInputAction: TextInputAction.search,
@@ -955,6 +1039,55 @@ class _HubSearchPageState extends State<HubSearchPage> {
             hintStyle: hintStyle,
             caretHeight: 36,
           ),
+      ],
+    );
+
+    if (!widget.structuredSearch) return field;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(child: field),
+        ForjaPlainIcon(
+          icon: Icons.tune_rounded,
+          size: 24,
+          focusNode: _filterFocusNode,
+          color: (_filtersOpen || _filters.isActive)
+              ? ForjaShellColors.textPrimary
+              : ForjaShellColors.textSecondary,
+          tooltip: 'Filters',
+          onKeyEvent: _searchFilterTuneKeyEvent,
+          onTap: _toggleFiltersOpen,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChrome(BuildContext context) {
+    if (!widget.structuredSearch) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!_filtersOpen && _filters.isActive)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final token in _filters.tokenActions(_onFiltersChanged))
+                  HubSearchFilterToken(label: token.$1, onClear: token.$2),
+              ],
+            ),
+          ),
+        HubSearchFilterLens(
+          open: _filtersOpen,
+          filters: _filters,
+          onFiltersChanged: _onFiltersChanged,
+          onSubmit: _submitFilters,
+          firstFocusNode: _filterLensFirstFocusNode,
+          onUpFromFirst: _focusSearchFieldBrowse,
+        ),
       ],
     );
   }
@@ -1190,8 +1323,9 @@ class _HubSearchPageState extends State<HubSearchPage> {
   }
 
   Widget _buildCompactBody(BuildContext context) {
+    final effective = _effectiveSearchQuery();
     if (_error != null) return _buildError();
-    if (_query.isEmpty) return _buildEmpty();
+    if (effective.isEmpty) return _buildEmpty();
     if (_isSearching && _results.isEmpty) {
       return Center(
         child: CircularProgressIndicator(color: AppTheme.current.primaryColor),
@@ -1254,7 +1388,11 @@ class _HubSearchPageState extends State<HubSearchPage> {
   Widget _buildError() {
     return ShellErrorRetryPanel(
       message: _error!,
-      onRetry: () => _performSearch(_query),
+      onRetry: () {
+        final effective = _effectiveSearchQuery();
+        if (effective.isEmpty) return;
+        _performSearch(effective, recordRecent: false);
+      },
     );
   }
 }

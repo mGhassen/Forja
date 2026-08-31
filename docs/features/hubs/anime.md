@@ -16,7 +16,7 @@ Tap **Anime** in the navigation bar.
 
 - Browse hero and mood-based rails — titles follow **Settings → Playback → Anime title language** (**Romaji** by default). The browse hero uses the **same cinematic carousel as Home**. On **desktop / TV**, a top menu overlays the hero: **Search**, **Films**, **Series**, **Categories** (AniList genres). Films/Series/Categories **refetch** the hub from AniList; under those filters **Trending** is hidden and the hero uses Top Rated. **Upcoming** / **Airing** statuses show in hero meta; unreleased titles show **Coming soon** above **View details**. Hero and catalog posters have a glass **+** (My List / Simkl when connected).
 - **Continue watching** in-progress series — hover play on desktop; D-pad graph skips empty rows on TV.
-- **Search** — hub top-bar **Search** text tab (desktop / TV / mobile). Two-column layout on desktop/TV: search field, last searches + recommendations on the left, results grid on the right. **Cmd+F** / **Ctrl+F** opens or focuses search on desktop.
+- **Search** — hub top-bar **Search** (desktop / TV / mobile). Two-column layout on desktop/TV: search field, last searches + recommendations on the left, results grid on the right. Plain title search via the Anime pack (`search` capability — no structured person/year DSL unless the pack declares `structured_search`). **Cmd+F** / **Ctrl+F** opens or focuses search on desktop.
 - **View details** on any card → [Hub details](hub-details.md) (episodes, SUB/DUB, play, Sources when TMDB matched).
 - **Pick your vibe** — same circular mood icons as Home; D-pad **↑** from mood posters returns to vibes.
 

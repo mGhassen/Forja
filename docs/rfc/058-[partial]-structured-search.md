@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 3** components · **5 / 6** acceptance (1.4.0) · **5 / 5** acceptance (lens) |
-| **Current slice** | Filter lens + ATV scrub arm shipped — structured query device smoke still open |
+| **Progress** | **3 / 3** components · **5 / 6** acceptance (1.4.0) · **5 / 5** acceptance (lens) · **4 / 4** acceptance (kit capability) |
+| **Current slice** | Kit hub Search gated by pack `structured_search`; Home TMDB pack opted in — device smoke (R58-A06) still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -48,6 +48,17 @@
 | 3 | R58-A09 | Tune icon opens filter lens; active filters dock as clearable ghost tokens | ✅ |
 | 4 | R58-A10 | Addon search uses remainder only (skips when filters-only) | ✅ |
 | 5 | R58-A11 | ATV score/year: focus browse → OK arm → Left/Right scrub (year ↑/↓ thumb) | ✅ |
+
+---
+
+## Acceptance (kit catalog — capability-gated)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R58-A12 | Pack capability `structured_search` mounts kit filter lens; host never branches on pluginId/tabId | ✅ |
+| 2 | R58-A13 | Home hub pack declares `structured_search` and runs structured parse + multi/discover in `tmdb.js` `search` | ✅ |
+| 3 | R58-A14 | Kit `CatalogSearchScreen` merges chrome `filters` into search params when pack has `filters` | ✅ |
+| 4 | R58-A15 | Filter lens lives in `shared/catalog/kit/chrome/hub_search_filters.dart`; archive SearchScreen reuses it | ✅ |
 
 ---
 

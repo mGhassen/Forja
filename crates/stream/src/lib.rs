@@ -24,12 +24,7 @@ pub struct ProviderDef {
 
 /// Built-in movie/TV embed templates retired — engine JS providers only.
 pub fn list_providers() -> Vec<ProviderDef> {
-    vec![ProviderDef {
-        id: "service111477".into(),
-        name: "111477.xyz".into(),
-        has_movie_template: false,
-        has_tv_template: false,
-    }]
+    vec![]
 }
 
 pub fn build_movie_url(provider_id: &str, tmdb_id: i64) -> Option<String> {

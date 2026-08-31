@@ -487,11 +487,18 @@ class _MainScreenState extends ConsumerState<MainScreen>
 
     switch (_currentTabId) {
       case 'home':
-        AppRouter.openSearch(ctx);
+        final homePlugin = await PluginNavRegistry.pluginIdForTab('home');
+        if (homePlugin == null || !ctx.mounted) return;
+        await openHubCatalogSearch(
+          ctx,
+          pluginId: homePlugin,
+          tabId: 'home',
+          hintText: 'Search…',
+        );
       case 'anime':
         final animePlugin = await PluginNavRegistry.pluginIdForTab('anime');
         if (animePlugin == null || !ctx.mounted) return;
-        openHubCatalogSearch(
+        await openHubCatalogSearch(
           ctx,
           pluginId: animePlugin,
           tabId: 'anime',
@@ -501,7 +508,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
         final dramaPlugin =
             await PluginNavRegistry.pluginIdForTab('asian_drama');
         if (dramaPlugin == null || !ctx.mounted) return;
-        openHubCatalogSearch(
+        await openHubCatalogSearch(
           ctx,
           pluginId: dramaPlugin,
           tabId: 'asian_drama',
@@ -510,7 +517,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       case 'arabic':
         final arabicPlugin = await PluginNavRegistry.pluginIdForTab('arabic');
         if (arabicPlugin == null || !ctx.mounted) return;
-        openHubCatalogSearch(
+        await openHubCatalogSearch(
           ctx,
           pluginId: arabicPlugin,
           tabId: 'arabic',

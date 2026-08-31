@@ -105,13 +105,13 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               children: [
                 for (final token
                     in _s._filters.tokenActions(_s._onFiltersChanged))
-                  _SearchFilterToken(label: token.$1, onClear: token.$2),
+                  HubSearchFilterToken(label: token.$1, onClear: token.$2),
               ],
             ),
           ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _SearchFilterLens(
+          child: HubSearchFilterLens(
             open: _s._filtersOpen,
             filters: _s._filters,
             onFiltersChanged: _s._onFiltersChanged,
@@ -218,7 +218,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                             ? Align(
                                 key: const ValueKey('search-filter-lens'),
                                 alignment: Alignment.topLeft,
-                                child: _SearchFilterLens(
+                                child: HubSearchFilterLens(
                                   open: true,
                                   filters: _s._filters,
                                   onFiltersChanged: _s._onFiltersChanged,
@@ -348,7 +348,7 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
               runSpacing: 8,
               children: [
                 for (final token in _s._filters.tokenActions(_s._onFiltersChanged))
-                  _SearchFilterToken(label: token.$1, onClear: token.$2),
+                  HubSearchFilterToken(label: token.$1, onClear: token.$2),
               ],
             ),
           ),
@@ -643,13 +643,13 @@ mixin _SearchBuild on ConsumerState<SearchScreen> {
                 children: [
                   for (final token
                       in _s._filters.tokenActions(_s._onFiltersChanged))
-                    _SearchFilterToken(label: token.$1, onClear: token.$2),
+                    HubSearchFilterToken(label: token.$1, onClear: token.$2),
                 ],
               ),
             ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _SearchFilterLens(
+            child: HubSearchFilterLens(
               open: _s._filtersOpen,
               filters: _s._filters,
               onFiltersChanged: _s._onFiltersChanged,

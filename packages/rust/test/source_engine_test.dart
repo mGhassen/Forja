@@ -11,19 +11,18 @@ void main() {
   });
 
   group('SourceEngine', () {
-    test('auto excludes cross-domain providers', () {
+    test('settings order keeps all candidates including plugins', () {
       final ordered = SourceEngine.orderProviderIds(
-        domain: SourceDomain.anime,
-        candidateIds: ['videasy', 'megaplay', 'kisskh', 'vidlink'],
+        domain: SourceDomain.movies,
+        candidateIds: ['videasy', 'engine-plugin-x', 'vidlink'],
+        settingsOrder: ['engine-plugin-x', 'vidlink'],
       );
-      expect(ordered, contains('megaplay'));
-      expect(ordered, contains('vidlink')); // dual-domain: movies/series + anime
-      expect(ordered, isNot(contains('kisskh')));
-      expect(ordered, isNot(contains('videasy')));
-      expect(ordered.first, 'megaplay');
+      expect(ordered.first, 'engine-plugin-x');
+      expect(ordered, contains('videasy'));
+      expect(ordered, contains('vidlink'));
     });
 
-    test('settings baseline with bounded domain adjustment for movies', () {
+    test('settings baseline ranks', () {
       final result = SourceEngine.orderProviders(
         domain: SourceDomain.movies,
         candidateIds: ['vidsrc', 'vixsrc'],
@@ -33,23 +32,8 @@ void main() {
       final vixsrc = result.rows.firstWhere((r) => r.id == 'vixsrc');
       expect(vidsrc.settingsRank, 0);
       expect(vixsrc.settingsRank, 1);
-      expect(vixsrc.domainScore, greaterThan(vidsrc.domainScore));
-      expect(
-        (vixsrc.effectiveRank - vidsrc.effectiveRank).abs(),
-        lessThanOrEqualTo(2),
-      );
-    });
-
-    test('series prefers vidlink domain score within bounded window', () {
-      final result = SourceEngine.orderProviders(
-        domain: SourceDomain.series,
-        candidateIds: ['videasy', 'vidlink'],
-        settingsOrder: ['videasy', 'vidlink'],
-      );
-      final videasy = result.rows.firstWhere((r) => r.id == 'videasy');
-      final vidlink = result.rows.firstWhere((r) => r.id == 'vidlink');
-      expect(vidlink.domainScore, greaterThan(videasy.domainScore));
-      expect(vidlink.effectiveRank, lessThanOrEqualTo(videasy.effectiveRank + 2));
+      expect(vidsrc.domainScore, 1);
+      expect(vixsrc.domainScore, 1);
     });
 
     test('preferred pin is strict', () {
@@ -61,10 +45,10 @@ void main() {
       expect(ordered, ['vidsrc']);
     });
 
-    test('preferred pin rejects unsupported domain', () {
+    test('preferred pin rejects missing candidate', () {
       final ordered = SourceEngine.orderProviderIds(
         domain: SourceDomain.anime,
-        candidateIds: ['videasy', 'megaplay'],
+        candidateIds: ['megaplay'],
         preferred: 'videasy',
       );
       expect(ordered, isEmpty);
@@ -94,7 +78,7 @@ void main() {
         candidateIds: ['megaplay'],
         settingsOrder: ['megaplay'],
       );
-      expect(result.rows.single.domainScore, greaterThan(0));
+      expect(result.rows.single.domainScore, 1);
       expect(result.rows.single.maxDisplacement, maxProviderDisplacement);
     });
   });

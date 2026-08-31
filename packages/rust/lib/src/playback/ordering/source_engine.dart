@@ -5,9 +5,10 @@ import 'source_order_engine.dart';
 /// Domain-scoped orchestration — which providers compete for this content.
 ///
 /// Preferred mode:
-/// - [auto] → filter to domain-supported ids, sort by settings baseline
-///   with bounded domain-score adjustment (±[maxProviderDisplacement])
-/// - any other id → strict: only that provider (must support the domain)
+/// - [auto] → settings order, then remaining candidates (reliability ±2 nudge)
+/// - any other id → strict: only that provider when present in candidates
+///
+/// No built-in movie/TV embed domain tables — plugins / settings own order.
 abstract final class SourceEngine {
   static const String auto = 'auto';
 

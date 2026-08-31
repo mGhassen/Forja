@@ -376,21 +376,8 @@ class PlayerStreamMenu {
     })) {
       return SourceDomain.asianDrama;
     }
-    var animeSupported = 0;
-    var streamingSupported = 0;
-    for (final id in providers.keys) {
-      if (SourceEngine.domainScore(id, SourceDomain.anime) > 0) {
-        animeSupported++;
-      }
-      if (SourceEngine.domainScore(id, SourceDomain.movies) > 0 ||
-          SourceEngine.domainScore(id, SourceDomain.series) > 0) {
-        streamingSupported++;
-      }
-    }
-    if (animeSupported > 0 && animeSupported >= streamingSupported) {
-      return SourceDomain.anime;
-    }
-    if (movie?.mediaType == 'anime') return SourceDomain.anime;
+    final media = movie?.mediaType.toLowerCase() ?? '';
+    if (media == 'anime') return SourceDomain.anime;
     return SourceDomain.fromMediaType(movie?.mediaType);
   }
 

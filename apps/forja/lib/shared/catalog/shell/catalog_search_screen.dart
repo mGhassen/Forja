@@ -1,27 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/catalog/filter.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_chrome_filters.dart';
+import 'package:forja/shared/catalog/kit/chrome/hub_search_page.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
-import 'package:forja/shared/catalog/kit/chrome/hub_search_page.dart';
 
 /// Hub search backed by a catalog plugin `search` action.
+///
+/// Feature chrome is capability-gated by the caller ([structuredSearch],
+/// [applyChromeFilters]) — never by pluginId / tabId.
 class CatalogSearchScreen extends StatelessWidget {
   const CatalogSearchScreen({
     super.key,
     required this.pluginId,
     required this.tabId,
     this.hintText = 'Search…',
+    this.structuredSearch = false,
+    this.applyChromeFilters = false,
   });
 
   final String pluginId;
   final String tabId;
   final String hintText;
+  final bool structuredSearch;
+  final bool applyChromeFilters;
 
   Future<List<HubSearchResult>> _search(String query) async {
+    final base = <String, dynamic>{'query': query, 'limit': 40};
+    final params = applyChromeFilters
+        ? catalogParamsWithFilters(
+            base,
+            filters: catalogChromeFilters(
+              tabId: tabId,
+              pluginId: pluginId,
+            ),
+          )
+        : base;
     final env = await CatalogRuntime.instance.run(
       pluginId: pluginId,
       action: 'search',
-      params: {'query': query, 'limit': 40},
+      params: params,
     );
     if (!env.ok) return const [];
     return [
@@ -58,6 +77,7 @@ class CatalogSearchScreen extends StatelessWidget {
     return HubSearchPage(
       hintText: hintText,
       tvTabId: tabId,
+      structuredSearch: structuredSearch,
       onSearch: _search,
       loadRecommendations: _recommendations,
       onOpen: (result) {

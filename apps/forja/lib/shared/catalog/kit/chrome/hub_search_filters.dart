@@ -1,4 +1,8 @@
-part of 'search_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 enum SearchMediaFilter { all, movie, tv }
 
@@ -188,8 +192,9 @@ String composeSearchQuery(String typed, SearchFilters filters) {
   return '$q $suffix';
 }
 
-class _SearchFilterToken extends StatelessWidget {
-  const _SearchFilterToken({
+class HubSearchFilterToken extends StatelessWidget {
+  const HubSearchFilterToken({
+    super.key,
     required this.label,
     required this.onClear,
   });
@@ -920,8 +925,9 @@ class _YearTimelinePainter extends CustomPainter {
       old.highlightEnd != highlightEnd;
 }
 
-class _SearchFilterLens extends StatelessWidget {
-  const _SearchFilterLens({
+class HubSearchFilterLens extends StatelessWidget {
+  const HubSearchFilterLens({
+    super.key,
     required this.open,
     required this.filters,
     required this.onFiltersChanged,

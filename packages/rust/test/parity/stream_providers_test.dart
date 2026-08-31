@@ -41,11 +41,10 @@ void main() {
     );
   });
 
-  test('listProvidersJson only lists service111477 builtin', () {
+  test('listProvidersJson is empty without builtins', () {
     final rows =
         (jsonDecode(RustLib.instance.listProvidersJson()) as List)
             .cast<Map<String, dynamic>>();
-    expect(rows.map((r) => r['id']), ['service111477']);
-    expect(rows.single['name'], '111477.xyz');
+    expect(rows, isEmpty);
   });
 }

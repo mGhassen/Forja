@@ -8,6 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_search_bar.dart';
+import 'package:forja/shared/catalog/kit/chrome/hub_search_filters.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/search/search_recent_queries.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -23,7 +24,6 @@ part 'search_models.dart';
 part 'search_widgets.dart';
 part 'search_search.dart';
 part 'search_tv.dart';
-part 'search_filters.dart';
 part 'search_build.dart';
 
 /// Search tab - RFC-024 R24-A11: query-driven only; no ShellTabRefresh / auto stale refetch.

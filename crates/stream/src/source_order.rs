@@ -1,10 +1,15 @@
+//! Provider try-order: **settings list first**, then remaining candidates.
+//!
+//! No built-in embed / sniff domain profiles — those retired with the legacy
+//! green-Play resolver. Reliability totals (optional) may nudge ±2 ranks.
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Maximum positions a provider may move from its settings baseline rank.
 pub const MAX_PROVIDER_DISPLACEMENT: i32 = 2;
 
-/// Cap how much live reliability can shift the domain sort input.
+/// Cap how much live reliability can shift the sort input.
 pub const RELIABILITY_ORDER_CLAMP: i32 = 20;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -36,9 +41,8 @@ impl SourceDomain {
 pub struct ProviderOrderRow {
     pub id: String,
     pub settings_rank: u32,
-    /// Configured domain profile score (static).
+    /// Unused (kept for JSON shape / Dart). Always 1 when supported.
     pub domain_score: u32,
-    /// Sum of per-title reliability totals for this provider (across titles).
     #[serde(default)]
     pub reliability_score: i32,
     pub effective_rank: u32,
@@ -54,7 +58,6 @@ pub struct OrderProvidersRequest {
     pub settings_order: Vec<String>,
     #[serde(default = "default_auto")]
     pub preferred: String,
-    /// Live reliability totals keyed by provider id (optional; injected by FFI).
     #[serde(default)]
     pub reliability: HashMap<String, i32>,
 }
@@ -69,206 +72,6 @@ pub struct OrderProvidersResponse {
     pub rows: Vec<ProviderOrderRow>,
 }
 
-fn domain_score(id: &str, domain: SourceDomain) -> u32 {
-    match domain {
-        SourceDomain::Movies => match id {
-            "videasy" => 95,
-            "service111477" => 85,
-            "vidlink" => 80,
-            "vixsrc" => 75,
-            "vidsrc" => 70,
-            "vidsrcwin" => 69,
-            "vidnest" => 65,
-            "vidzee" => 60,
-            "vidrock" => 55,
-            "vidfast" => 58,
-            "2embed" => 57,
-            "autoembed" => 55,
-            "vidlove" => 54,
-            "vidsrcsbs" => 52,
-            "111movies" => 54,
-            "moviesapi" => 53,
-            "vidapi" => 51,
-            _ => fallback_score(id, domain),
-        },
-        SourceDomain::Series => match id {
-            "vidlink" => 92,
-            "videasy" => 90,
-            "service111477" => 85,
-            "vixsrc" => 75,
-            "vidsrc" => 70,
-            "vidsrcwin" => 69,
-            "vidnest" => 65,
-            "vidzee" => 60,
-            "vidrock" => 55,
-            "vidfast" => 58,
-            "2embed" => 57,
-            "autoembed" => 55,
-            "vidlove" => 54,
-            "vidsrcsbs" => 52,
-            "111movies" => 54,
-            "moviesapi" => 53,
-            "vidapi" => 51,
-            _ => fallback_score(id, domain),
-        },
-        SourceDomain::Anime => anime_score(id),
-        SourceDomain::AsianDrama => match id {
-            "kisskh" | "kisskh.co" => 99,
-            "kisskh.nl" => 98,
-            "kisskh.ovh" => 97,
-            "kisskh.la" => 96,
-            "kisskh.do" => 95,
-            "kisskh.is" => 94,
-            "kisskh.id" => 93,
-            _ => fallback_score(id, domain),
-        },
-        SourceDomain::Iptv => match id {
-            "xtream" => 95,
-            "m3u" => 80,
-            "stalker" => 70,
-            _ => fallback_score(id, domain),
-        },
-        SourceDomain::Torrent => match id {
-            "torrent" => 100,
-            _ => fallback_score(id, domain),
-        },
-    }
-}
-
-fn fallback_score(id: &str, domain: SourceDomain) -> u32 {
-    if known_profile(id, domain) {
-        return 1;
-    }
-    match domain {
-        SourceDomain::Movies | SourceDomain::Series if id.starts_with("nuvio:") => 1,
-        SourceDomain::Anime if anime_score(id) > 0 => 1,
-        SourceDomain::AsianDrama if id.starts_with("kisskh.") => 1,
-        _ => 0,
-    }
-}
-
-fn supports_domain(id: &str, domain: SourceDomain) -> bool {
-    domain_score(id, domain) > 0
-}
-
-fn ranking_score(
-    id: &str,
-    domain: SourceDomain,
-    reliability: &HashMap<String, i32>,
-) -> u32 {
-    let base = domain_score(id, domain) as i32;
-    let live = reliability
-        .get(id)
-        .copied()
-        .unwrap_or(0)
-        .clamp(-RELIABILITY_ORDER_CLAMP, RELIABILITY_ORDER_CLAMP);
-    (base + live).clamp(0, 200) as u32
-}
-
-fn known_profile(id: &str, domain: SourceDomain) -> bool {
-    matches!(
-        (id, domain),
-        ("videasy", SourceDomain::Movies)
-            | ("videasy", SourceDomain::Series)
-            | ("vidlink", SourceDomain::Movies)
-            | ("vidlink", SourceDomain::Series)
-            | ("vidlink", SourceDomain::Anime)
-            | ("vidsrc", SourceDomain::Movies)
-            | ("vidsrc", SourceDomain::Series)
-            | ("vidsrcwin", SourceDomain::Movies)
-            | ("vidsrcwin", SourceDomain::Series)
-            | ("vixsrc", SourceDomain::Movies)
-            | ("vixsrc", SourceDomain::Series)
-            | ("vidnest", SourceDomain::Movies)
-            | ("vidnest", SourceDomain::Series)
-            | ("vidzee", SourceDomain::Movies)
-            | ("vidzee", SourceDomain::Series)
-            | ("vidrock", SourceDomain::Movies)
-            | ("vidrock", SourceDomain::Series)
-            | ("vidfast", SourceDomain::Movies)
-            | ("vidfast", SourceDomain::Series)
-            | ("2embed", SourceDomain::Movies)
-            | ("2embed", SourceDomain::Series)
-            | ("autoembed", SourceDomain::Movies)
-            | ("autoembed", SourceDomain::Series)
-            | ("vidlove", SourceDomain::Movies)
-            | ("vidlove", SourceDomain::Series)
-            | ("vidsrcsbs", SourceDomain::Movies)
-            | ("vidsrcsbs", SourceDomain::Series)
-            | ("111movies", SourceDomain::Movies)
-            | ("111movies", SourceDomain::Series)
-            | ("moviesapi", SourceDomain::Movies)
-            | ("moviesapi", SourceDomain::Series)
-            | ("vidapi", SourceDomain::Movies)
-            | ("vidapi", SourceDomain::Series)
-            | ("service111477", SourceDomain::Movies)
-            | ("service111477", SourceDomain::Series)
-            | ("kisskh", SourceDomain::AsianDrama)
-            | ("kisskh", SourceDomain::Anime)
-            | ("kisskh.co", SourceDomain::AsianDrama)
-            | ("kisskh.nl", SourceDomain::AsianDrama)
-            | ("kisskh.ovh", SourceDomain::AsianDrama)
-            | ("kisskh.la", SourceDomain::AsianDrama)
-            | ("kisskh.do", SourceDomain::AsianDrama)
-            | ("kisskh.is", SourceDomain::AsianDrama)
-            | ("kisskh.id", SourceDomain::AsianDrama)
-            | ("xtream", SourceDomain::Iptv)
-            | ("m3u", SourceDomain::Iptv)
-            | ("stalker", SourceDomain::Iptv)
-            | ("torrent", SourceDomain::Torrent)
-    ) || anime_score(id) > 0
-}
-
-fn anime_order() -> &'static [&'static str] {
-    &[
-        "megaplay",
-        "anikoto",
-        "vidnest:hianime",
-        "vidnest:animepahe",
-        "allanime:Default",
-        "allanime:Yt-mp4",
-        "allanime:S-mp4",
-        "allanime:Luf-Mp4",
-        "vidlink",
-        "miruro:bee",
-        "miruro:zoro",
-        "miruro:kiwi",
-        "miruro:ally",
-        "miruro:hop",
-        "miruro:bonk",
-        "miruro:moo",
-        "miruro:animedunya",
-        "miruro:arc",
-        "miruro:jet",
-        "miruro:bun",
-        "miruro:kuz",
-        "miruro:telli",
-        "watchhentai",
-        "hentaini",
-    ]
-}
-
-fn anime_score(id: &str) -> u32 {
-    for (i, key) in anime_order().iter().enumerate() {
-        if *key == id {
-            return (100 - i).max(1) as u32;
-        }
-    }
-    if id.starts_with("miruro:")
-        || id.starts_with("allanime:")
-        || id.starts_with("vidnest:")
-        || id == "megaplay"
-        || id == "anikoto"
-        || id == "vidlink"
-        || id == "watchhentai"
-        || id == "hentaini"
-    {
-        1
-    } else {
-        0
-    }
-}
-
 fn settings_rank(id: &str, settings_order: &[String], fallback_index: u32) -> u32 {
     for (i, key) in settings_order.iter().enumerate() {
         if key == id {
@@ -278,6 +81,15 @@ fn settings_rank(id: &str, settings_order: &[String], fallback_index: u32) -> u3
     fallback_index
 }
 
+fn reliability_nudge(id: &str, reliability: &HashMap<String, i32>) -> i32 {
+    reliability
+        .get(id)
+        .copied()
+        .unwrap_or(0)
+        .clamp(-RELIABILITY_ORDER_CLAMP, RELIABILITY_ORDER_CLAMP)
+}
+
+/// Order candidates: settings order, then leftovers. Optional reliability ±2 nudge.
 pub fn order_providers(request: OrderProvidersRequest) -> OrderProvidersResponse {
     let mut candidates: Vec<String> = request
         .candidate_ids
@@ -297,20 +109,19 @@ pub fn order_providers(request: OrderProvidersRequest) -> OrderProvidersResponse
 
     let pin = request.preferred.trim();
     if !pin.is_empty() && pin != "auto" {
-        if !candidates.contains(&pin.to_string()) || !supports_domain(pin, request.domain) {
+        if !candidates.iter().any(|c| c == pin) {
             return OrderProvidersResponse {
                 ordered_ids: vec![],
                 rows: vec![],
             };
         }
-        let score = domain_score(pin, request.domain);
         let reliability_score = request.reliability.get(pin).copied().unwrap_or(0);
         return OrderProvidersResponse {
             ordered_ids: vec![pin.to_string()],
             rows: vec![ProviderOrderRow {
                 id: pin.to_string(),
                 settings_rank: settings_rank(pin, &request.settings_order, 0),
-                domain_score: score,
+                domain_score: 1,
                 reliability_score,
                 effective_rank: 0,
                 max_displacement: MAX_PROVIDER_DISPLACEMENT,
@@ -319,61 +130,65 @@ pub fn order_providers(request: OrderProvidersRequest) -> OrderProvidersResponse
         };
     }
 
-    let supported: Vec<String> = candidates
-        .into_iter()
-        .filter(|id| {
-            let score = domain_score(id, request.domain);
-            if score == 0 {
-                return false;
-            }
-            if known_profile(id, request.domain) {
-                return true;
-            }
-            // Unknown ids (Nuvio / unlisted mirrors) stay when caller scoped them.
-            true
-        })
-        .collect();
-
-    if supported.is_empty() {
-        return OrderProvidersResponse {
-            ordered_ids: vec![],
-            rows: vec![],
-        };
+    // Baseline: settings_order first, then remaining candidates (stable alpha).
+    let mut ordered: Vec<String> = Vec::with_capacity(candidates.len());
+    let mut seen = std::collections::HashSet::new();
+    for id in &request.settings_order {
+        let id = id.trim();
+        if id.is_empty() || id == "auto" {
+            continue;
+        }
+        if candidates.iter().any(|c| c == id) && seen.insert(id.to_string()) {
+            ordered.push(id.to_string());
+        }
     }
+    let mut rest: Vec<String> = candidates
+        .into_iter()
+        .filter(|id| !seen.contains(id))
+        .collect();
+    rest.sort();
+    ordered.extend(rest);
 
     let mut baseline: HashMap<String, u32> = HashMap::new();
-    for (i, id) in supported.iter().enumerate() {
-        let rank = settings_rank(id, &request.settings_order, i as u32 + 10_000);
-        baseline.insert(id.clone(), rank);
+    for (i, id) in ordered.iter().enumerate() {
+        baseline.insert(id.clone(), i as u32);
     }
 
-    let mut score_rank: HashMap<String, u32> = HashMap::new();
-    let mut by_score: Vec<(String, u32)> = supported
+    let any_reliability = ordered
         .iter()
-        .map(|id| {
-            (
-                id.clone(),
-                ranking_score(id, request.domain, &request.reliability),
-            )
-        })
-        .collect();
-    by_score.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
-    for (i, (id, _)) in by_score.iter().enumerate() {
-        score_rank.insert(id.clone(), i as u32);
-    }
+        .any(|id| reliability_nudge(id, &request.reliability) != 0);
 
-    let mut rows: Vec<ProviderOrderRow> = supported
+    let rel_rank: HashMap<String, u32> = if any_reliability {
+        let mut by_rel: Vec<(String, i32)> = ordered
+            .iter()
+            .map(|id| (id.clone(), reliability_nudge(id, &request.reliability)))
+            .collect();
+        by_rel.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        by_rel
+            .into_iter()
+            .enumerate()
+            .map(|(i, (id, _))| (id, i as u32))
+            .collect()
+    } else {
+        HashMap::new()
+    };
+
+    let mut rows: Vec<ProviderOrderRow> = ordered
         .iter()
         .map(|id| {
             let settings = *baseline.get(id).unwrap_or(&10_000);
-            let score_based = *score_rank.get(id).unwrap_or(&10_000);
-            let delta = score_based as i32 - settings as i32;
-            let clamped_delta = delta.clamp(-MAX_PROVIDER_DISPLACEMENT, MAX_PROVIDER_DISPLACEMENT);
-            let effective = (settings as i32 + clamped_delta).max(0) as u32;
+            let effective = if !any_reliability {
+                settings
+            } else {
+                let rel_based = *rel_rank.get(id).unwrap_or(&10_000);
+                let delta = rel_based as i32 - settings as i32;
+                let clamped = delta.clamp(-MAX_PROVIDER_DISPLACEMENT, MAX_PROVIDER_DISPLACEMENT);
+                (settings as i32 + clamped).max(0) as u32
+            };
             ProviderOrderRow {
                 id: id.clone(),
                 settings_rank: settings,
-                domain_score: domain_score(id, request.domain),
+                domain_score: 1,
                 reliability_score: request.reliability.get(id).copied().unwrap_or(0),
                 effective_rank: effective,
                 max_displacement: MAX_PROVIDER_DISPLACEMENT,
@@ -437,92 +252,64 @@ mod tests {
     use super::*;
 
     #[test]
-    fn settings_baseline_with_bounded_domain_adjustment() {
+    fn settings_order_wins() {
         let response = order_providers(OrderProvidersRequest {
             domain: SourceDomain::Movies,
-            candidate_ids: vec!["vidsrc".into(), "vixsrc".into()],
-            settings_order: vec!["vidsrc".into(), "vixsrc".into()],
+            candidate_ids: vec!["b".into(), "a".into(), "c".into()],
+            settings_order: vec!["c".into(), "a".into()],
             preferred: "auto".into(),
             reliability: HashMap::new(),
         });
-        assert_eq!(response.ordered_ids.len(), 2);
-        let vidsrc = response.rows.iter().find(|r| r.id == "vidsrc").unwrap();
-        let vixsrc = response.rows.iter().find(|r| r.id == "vixsrc").unwrap();
-        assert_eq!(vidsrc.settings_rank, 0);
-        assert_eq!(vixsrc.settings_rank, 1);
-        // vixsrc has higher domain score but can move at most +2 from baseline.
-        assert!(vixsrc.effective_rank <= vidsrc.effective_rank + 2);
+        assert_eq!(response.ordered_ids, vec!["c", "a", "b"]);
     }
 
     #[test]
-    fn strict_pin_single_provider() {
+    fn unknown_plugin_ids_are_kept() {
         let response = order_providers(OrderProvidersRequest {
-            domain: SourceDomain::AsianDrama,
-            candidate_ids: vec!["kisskh".into()],
-            settings_order: vec![],
-            preferred: "kisskh".into(),
+            domain: SourceDomain::Movies,
+            candidate_ids: vec!["engine-plugin-x".into(), "videasy".into()],
+            settings_order: vec!["engine-plugin-x".into()],
+            preferred: "auto".into(),
             reliability: HashMap::new(),
         });
-        assert_eq!(response.ordered_ids, vec!["kisskh"]);
-        assert_eq!(response.rows.len(), 1);
+        assert_eq!(response.ordered_ids[0], "engine-plugin-x");
+        assert!(response.ordered_ids.contains(&"videasy".to_string()));
     }
 
     #[test]
-    fn cross_domain_exclusion() {
+    fn strict_pin() {
         let response = order_providers(OrderProvidersRequest {
             domain: SourceDomain::Anime,
-            candidate_ids: vec!["videasy".into(), "miruro:bee".into()],
+            candidate_ids: vec!["megaplay".into(), "anikoto".into()],
             settings_order: vec![],
-            preferred: "auto".into(),
+            preferred: "anikoto".into(),
             reliability: HashMap::new(),
         });
-        assert_eq!(response.ordered_ids, vec!["miruro:bee"]);
+        assert_eq!(response.ordered_ids, vec!["anikoto"]);
     }
 
     #[test]
     fn next_provider_after_current() {
         let next = next_provider_ids(
             SourceDomain::Movies,
-            &[
-                "moviesapi".into(),
-                "videasy".into(),
-                "vidnest".into(),
-            ],
-            "videasy",
-            &[],
+            &["a".into(), "b".into(), "c".into()],
+            "b",
+            &["a".into(), "b".into(), "c".into()],
         );
-        assert!(!next.contains(&"videasy".to_string()));
-        assert!(!next.is_empty());
+        assert_eq!(next, vec!["c"]);
     }
 
     #[test]
-    fn unknown_nuvio_ids_follow_settings_order() {
+    fn reliability_nudge_within_cap() {
         let response = order_providers(OrderProvidersRequest {
             domain: SourceDomain::Movies,
-            candidate_ids: vec!["nuvio:foo".into()],
-            settings_order: vec!["nuvio:foo".into()],
+            candidate_ids: vec!["a".into(), "b".into()],
+            settings_order: vec!["a".into(), "b".into()],
             preferred: "auto".into(),
-            reliability: HashMap::new(),
+            reliability: HashMap::from([("b".into(), 20), ("a".into(), 0)]),
         });
-        assert_eq!(response.ordered_ids, vec!["nuvio:foo"]);
+        let a = response.rows.iter().find(|r| r.id == "a").unwrap();
+        let b = response.rows.iter().find(|r| r.id == "b").unwrap();
+        assert!(b.effective_rank <= a.effective_rank + 2);
     }
-
-    #[test]
-    fn reliability_nudge_affects_score_rank_within_cap() {
-        let response = order_providers(OrderProvidersRequest {
-            domain: SourceDomain::Movies,
-            candidate_ids: vec!["vidapi".into(), "moviesapi".into()],
-            settings_order: vec!["vidapi".into(), "moviesapi".into()],
-            preferred: "auto".into(),
-            reliability: HashMap::from([("moviesapi".into(), 20)]),
-        });
-        let moviesapi = response
-            .rows
-            .iter()
-            .find(|r| r.id == "moviesapi")
-            .unwrap();
-        assert_eq!(moviesapi.reliability_score, 20);
-        assert!(moviesapi.effective_rank <= 1);
-    }
-
 }

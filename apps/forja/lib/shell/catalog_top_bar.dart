@@ -37,7 +37,9 @@ class CatalogTopBar extends StatefulWidget {
   final List<({String id, String label})> categories;
   final ValueNotifier<double> scrollOffset;
   final ValueNotifier<double> heroHeight;
-  final VoidCallback onSearch;
+
+  /// Null when the pack does not declare `search` — Search tab is omitted.
+  final VoidCallback? onSearch;
 
   static const hideSlideDistance = 56.0;
 
@@ -369,11 +371,13 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                             : 36.0;
                         final tabTextHeight =
                             shellScaled(context, 34).clamp(28.0, 34.0);
-                        // Provider logo (Home) → Search → Films → Series → Categories
+                        // Provider logo (Home) → Search? → Films → Series → Categories
+                        final hasSearch = widget.onSearch != null;
                         final searchIndex = hasFilterLogo ? 1 : 0;
-                        final filmsIndex = searchIndex + 1;
-                        final seriesIndex = searchIndex + 2;
-                        final categoriesIndex = searchIndex + 3;
+                        final filmsIndex =
+                            searchIndex + (hasSearch ? 1 : 0);
+                        final seriesIndex = filmsIndex + 1;
+                        final categoriesIndex = filmsIndex + 2;
 
                         final tabs = FocusTraversalGroup(
                           policy: ReadingOrderTraversalPolicy(),
@@ -406,21 +410,23 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                                 ),
                                 SizedBox(width: tabGap),
                               ],
-                              _CategoryTab(
-                                label: 'Search',
-                                icon: Icons.search_rounded,
-                                isActive: false,
-                                onTap: widget.onSearch,
-                                tvFocus: tvFocus,
-                                tabId: widget.tabId,
-                                listIndex: searchIndex,
-                                focusNode: tvFocus ? _searchFocus : null,
-                                onDownEdge: tvFocus
-                                    ? () =>
-                                          ShellTvFocus.focusHomeHeroGallery()
-                                    : null,
-                              ),
-                              SizedBox(width: tabGap),
+                              if (hasSearch) ...[
+                                _CategoryTab(
+                                  label: 'Search',
+                                  icon: Icons.search_rounded,
+                                  isActive: false,
+                                  onTap: widget.onSearch!,
+                                  tvFocus: tvFocus,
+                                  tabId: widget.tabId,
+                                  listIndex: searchIndex,
+                                  focusNode: tvFocus ? _searchFocus : null,
+                                  onDownEdge: tvFocus
+                                      ? () =>
+                                            ShellTvFocus.focusHomeHeroGallery()
+                                      : null,
+                                ),
+                                SizedBox(width: tabGap),
+                              ],
                               _CategoryTab(
                                 label: 'Films',
                                 isActive:
