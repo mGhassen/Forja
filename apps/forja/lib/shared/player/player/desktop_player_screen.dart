@@ -407,7 +407,6 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
           shouldPinSeekBarAtEof(uiPosition: current, duration: dur) &&
           !shouldPinSeekBarAtEof(uiPosition: target, duration: dur);
       _lockSeekBarPosition = true;
-      peakstormPlaybackTimeOffset = target;
       _positionNotifier.value = target;
       if (leavingEof) {
         _seekAwayFromEofAt = DateTime.now();
@@ -420,7 +419,12 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
         caller: caller,
       );
       try {
-        await _remountCurrentStreamAt(target, allowFallbackInit: false);
+        final ok = await _remountCurrentStreamAt(
+          target,
+          allowFallbackInit: false,
+          showReconnectingStatus: false,
+        );
+        if (!ok) _positionNotifier.value = current;
       } finally {
         _lockSeekBarPosition = false;
       }

@@ -80,7 +80,11 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
         };
 
     final cached = _s._externalSubFileCache[url];
-    if (cached != null) return pack(cached);
+    if (cached != null) {
+      if (await externalSubtitleCacheFileValid(cached)) return pack(cached);
+      _s._externalSubFileCache.remove(url);
+      await deleteExternalSubtitleCacheFile(cached);
+    }
 
     if (url.startsWith('file://') || url.startsWith('/')) {
       final uri = url.startsWith('file://') ? url : Uri.file(url).toString();
@@ -107,6 +111,10 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
           .get(subUri, headers: headers)
           .timeout(Duration(minutes: isTranslated ? 5 : 1));
       if (res.statusCode != 200) return null;
+      if (!isPlausibleSubtitleBytes(res.bodyBytes)) {
+        debugPrint('[ExoPlayer] subtitle download rejected (invalid payload)');
+        return null;
+      }
 
       final dir = await getTemporaryDirectory();
       final safeLang = lang.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
@@ -532,4 +535,67 @@ AutoSelectResult computeAutoSelect({
     subtitle: subtitlePick,
     clearSubtitle: clearSub,
   );
+}
+
+/// True when [bytes] look like SRT/VTT/ASS — not HTML/CDN error pages saved as `.srt`.
+bool isPlausibleSubtitleBytes(List<int> bytes) {
+  if (bytes.isEmpty) return false;
+  final sample = utf8.decode(bytes, allowMalformed: true).trimLeft();
+  if (sample.isEmpty) return false;
+  final lower = sample.toLowerCase();
+  if (lower.startsWith('<!doctype') ||
+      lower.startsWith('<html') ||
+      lower.contains('<html')) {
+    return false;
+  }
+  if (lower.contains('cannot connect to db') ||
+      lower.contains('network connection to database') ||
+      (lower.startsWith('sorry.') && lower.contains('problem with network'))) {
+    return false;
+  }
+  if (sample.startsWith('WEBVTT')) return true;
+  if (sample.contains('[Script Info]') || sample.contains('[V4+ Styles]')) {
+    return true;
+  }
+  if (sample.contains('-->') &&
+      RegExp(r'\d{1,2}:\d{2}([,\.]\d+)?').hasMatch(sample)) {
+    return true;
+  }
+  return false;
+}
+
+String? externalSubtitleCacheFilePath(String fileUri) {
+  final trimmed = fileUri.trim();
+  if (trimmed.isEmpty) return null;
+  if (trimmed.startsWith('file://')) {
+    try {
+      return Uri.parse(trimmed).toFilePath();
+    } catch (_) {
+      return null;
+    }
+  }
+  if (trimmed.startsWith('/')) return trimmed;
+  return null;
+}
+
+/// Validates a cached `file://` subtitle still exists and is readable sub content.
+Future<bool> externalSubtitleCacheFileValid(String fileUri) async {
+  final path = externalSubtitleCacheFilePath(fileUri);
+  if (path == null) return false;
+  final file = File(path);
+  if (!await file.exists()) return false;
+  try {
+    final bytes = await file.readAsBytes();
+    return isPlausibleSubtitleBytes(bytes);
+  } catch (_) {
+    return false;
+  }
+}
+
+Future<void> deleteExternalSubtitleCacheFile(String fileUri) async {
+  final path = externalSubtitleCacheFilePath(fileUri);
+  if (path == null) return;
+  try {
+    await File(path).delete();
+  } catch (_) {}
 }

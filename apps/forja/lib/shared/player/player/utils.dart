@@ -2024,6 +2024,21 @@ Future<void> applyPreferredPlayerAudioTrack(
 /// Drop stale mpv external subtitle URI before opening another stream on the
 /// same [Player]. Soft reopen otherwise tries to reload the prior temp SRT.
 Future<void> resetPlayerSubtitleForNewOpen(Player player) async {
+  final platform = player.platform;
+  if (platform is NativePlayer && !platform.disposed) {
+    if (await mediaKitPlayerHandleReady(platform)) {
+      try {
+        await platform.setProperty(
+          'sub-file',
+          '',
+          waitForInitialization: false,
+        );
+      } catch (_) {}
+      try {
+        await platform.setProperty('sid', 'no', waitForInitialization: false);
+      } catch (_) {}
+    }
+  }
   try {
     await player.setSubtitleTrack(SubtitleTrack.no());
   } catch (_) {}

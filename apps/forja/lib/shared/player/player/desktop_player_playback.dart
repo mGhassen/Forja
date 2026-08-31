@@ -967,6 +967,7 @@ mixin _DesktopPlayerPlayback
   Future<bool> _remountCurrentStreamAt(
     Duration target, {
     bool allowFallbackInit = true,
+    bool showReconnectingStatus = true,
   }) async {
     if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return false;
     final url = _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
@@ -988,11 +989,13 @@ mixin _DesktopPlayerPlayback
       providerId: pid,
     );
     _s._isInitPlaybackRunning = true;
-    _s._statusController.upsert(
-      'post-seek-remount',
-      'Reconnecting…',
-      kind: StatusRouletteKind.loading,
-    );
+    if (showReconnectingStatus) {
+      _s._statusController.upsert(
+        'post-seek-remount',
+        'Reconnecting…',
+        kind: StatusRouletteKind.loading,
+      );
+    }
     debugPrint(
       '[Player] Post-seek remount open @${target.inSeconds}s: $playUrl',
     );
@@ -1008,7 +1011,7 @@ mixin _DesktopPlayerPlayback
       if (ok) {
         _s._currentUrl = playUrl;
         _s._positionNotifier.value = target;
-        _s._statusController.complete();
+        if (showReconnectingStatus) _s._statusController.complete();
         debugPrint('[Player] Post-seek remount resumed @${target.inSeconds}s');
         if (!_s._disposed && mounted) {
           await _reapplyPreferredSubtitle();
@@ -1022,7 +1025,9 @@ mixin _DesktopPlayerPlayback
       if (!_s._disposed) _s._isInitPlaybackRunning = false;
     }
     if (_s._disposed || !mounted) return false;
-    _s._statusController.remove('post-seek-remount');
+    if (showReconnectingStatus) {
+      _s._statusController.remove('post-seek-remount');
+    }
     if (!allowFallbackInit) return false;
     debugPrint(
       '[Player] Post-seek remount failed — reopening source @${target.inSeconds}s',

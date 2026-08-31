@@ -47,8 +47,8 @@ bool isVideasyCdnStreamUrl(String url) {
   return host.contains('peakstorm');
 }
 
-/// Deep user seeks on peakstorm fMP4 must remount (mpv `start`), not [Player.seek].
-const Duration kPeakstormRemountSeekMinDelta = Duration(minutes: 2);
+/// User seeks on peakstorm fMP4 must remount — [Player.seek] corrupts segments.
+const Duration kPeakstormRemountSeekMinDelta = Duration(seconds: 3);
 
 /// Peakstorm fMP4 HLS (Videasy, VidCore, …) — mpv `start` only.
 /// [Player.seek] mid-playlist corrupts segments (NAL decode errors → black screen).

@@ -44,13 +44,19 @@ mixin _DesktopPlayerTracks
     // Reuse a previously downloaded file (media open often wipes the track).
     final cached = _s._externalSubFileCache[url];
     if (cached != null) {
-      try {
-        await applyUri(cached);
-      } catch (e) {
-        debugPrint('[DesktopPlayer] cached subtitle re-apply failed: $e');
+      if (await externalSubtitleCacheFileValid(cached)) {
+        try {
+          await applyUri(cached);
+        } catch (e) {
+          debugPrint('[DesktopPlayer] cached subtitle re-apply failed: $e');
+          _s._externalSubFileCache.remove(url);
+          await deleteExternalSubtitleCacheFile(cached);
+        }
+        if (_s._externalSubFileCache.containsKey(url)) return;
+      } else {
         _s._externalSubFileCache.remove(url);
+        await deleteExternalSubtitleCacheFile(cached);
       }
-      if (_s._externalSubFileCache.containsKey(url)) return;
     }
 
     // Already-local subtitle (e.g. kisskh decrypted) - feed straight to libmpv.
@@ -97,6 +103,19 @@ mixin _DesktopPlayerTracks
         if (mounted) {
           setState(() => _s._selectedExternalSubUrl = null);
         }
+        _s._statusController.upsert(
+          'subtitle',
+          'Subtitle failed',
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+        return;
+      }
+      if (!isPlausibleSubtitleBytes(res.bodyBytes)) {
+        debugPrint(
+          '[DesktopPlayer] subtitle download rejected (invalid payload)',
+        );
+        if (mounted) setState(() => _s._selectedExternalSubUrl = null);
         _s._statusController.upsert(
           'subtitle',
           'Subtitle failed',
