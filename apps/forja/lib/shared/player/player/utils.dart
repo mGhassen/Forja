@@ -9,6 +9,7 @@ export 'package:forja/shared/playback/playback_stream_guards.dart'
     show
         catalogAddonBaseForPlaying,
         catalogStreamRowMatchesPlaying,
+        catalogStreamRowMatchesSavedProgress,
         durableStreamCatalogUrl,
         enginePluginIdFromCatalogBase,
         hlsProxyTargetUrl,
@@ -1590,20 +1591,39 @@ Future<void> resetPlayerAudioForNewOpen(
   } catch (_) {}
 }
 
-/// After open, ensure a concrete audio track when mpv is still on auto/no or
-/// carries an [aid] from a prior stream.
+/// First mux audio in demux order — not whatever [aid] carried from last open.
 Future<void> applyDefaultPlayerAudioTrack(Player player) async {
-  final tracks = player.state.tracks.audio
-      .where((t) => t.id != 'auto' && t.id != 'no')
-      .toList();
+  final tracks = concreteAudioTracks(player.state.tracks.audio);
   if (tracks.isEmpty) return;
-  final current = player.state.track.audio;
-  if (!isStalePlayerAudioSelection(current, tracks) &&
-      current.id != 'auto' &&
-      current.id != 'no') {
-    return;
+  final target = tracks.first;
+  if (player.state.track.audio.id == target.id) return;
+  await selectPlayerAudioTrack(player, target);
+}
+
+/// Settings-backed auto pick — always applied on a fresh source unless the user
+/// chose a track for this open.
+Future<void> applyPreferredPlayerAudioTrack(
+  Player player, {
+  required bool audioPinned,
+}) async {
+  final tracks = concreteAudioTracks(player.state.tracks.audio);
+  if (tracks.isEmpty) return;
+
+  AudioTrack target;
+  if (audioPinned) {
+    target = tracks.first;
+  } else {
+    final settings = SettingsService();
+    final best = pickBestAudioTrack(
+      audioTracks: player.state.tracks.audio,
+      preferredAudioLang: await settings.getPreferredAudioLanguage(),
+      avoidUnsupportedAudio: await settings.getAvoidUnsupportedAudio(),
+    );
+    target = best ?? tracks.first;
   }
-  await selectPlayerAudioTrack(player, tracks.first);
+
+  if (player.state.track.audio.id == target.id) return;
+  await selectPlayerAudioTrack(player, target);
 }
 
 /// Clears stale duration/buffer from a prior failed open before trying again.

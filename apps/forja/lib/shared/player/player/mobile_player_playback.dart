@@ -1677,11 +1677,16 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
 
     _s._tracksSub = _s._player.stream.tracks.listen((tracks) {
       if (_s._disposed) return;
-      final hasAudio = tracks.audio.any((t) => t.id != 'no' && t.id != 'auto');
-      if (!_s._autoTracksAppliedForSource && hasAudio) {
-        _s._autoTracksAppliedForSource = true;
+      final audioCount = concreteAudioTracks(tracks.audio).length;
+      if (audioCount == 0 || _s._userPickedAudioThisSource) {
+        _scheduleEmbeddedSubtitleAuto(tracks);
+        return;
+      }
+      if (audioCount > _s._lastAutoSelectAudioCount) {
+        _s._lastAutoSelectAudioCount = audioCount;
         _s._trackAutoSelectTimer?.cancel();
-        _s._trackAutoSelectTimer = Timer(const Duration(milliseconds: 600), () {
+        final delayMs = audioCount > 1 ? 400 : 100;
+        _s._trackAutoSelectTimer = Timer(Duration(milliseconds: delayMs), () {
           _s._trackAutoSelectTimer = null;
           unawaited(_applyTrackAutoSelect());
         });
@@ -1718,37 +1723,18 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
   }
 
   Future<void> _applyTrackAutoSelect() async {
-    if (_s._disposed || !mounted) return;
+    if (_s._disposed || !mounted || _s._userPickedAudioThisSource) return;
     try {
-      if (!_s._audioPinned) {
-        final settings = SettingsService();
-        final audioLang = await settings.getPreferredAudioLanguage();
-        final avoidUnsupported = await settings.getAvoidUnsupportedAudio();
-        if (_s._disposed || !mounted) return;
-
-        final best = pickBestAudioTrack(
-          audioTracks: _s._player.state.tracks.audio,
-          preferredAudioLang: audioLang,
-          avoidUnsupportedAudio: avoidUnsupported,
+      await applyPreferredPlayerAudioTrack(
+        _s._player,
+        audioPinned: _s._audioPinned,
+      );
+      if (_s._disposed || !mounted) return;
+      final active = await resolveActiveAudioTrack(_s._player);
+      if (active != null) {
+        debugPrint(
+          '[Player] auto audio → ${active.title ?? active.language ?? active.id}',
         );
-        if (best != null) {
-          final audioTracks = _s._player.state.tracks.audio
-              .where((t) => t.id != 'no' && t.id != 'auto')
-              .toList();
-          final current = _s._player.state.track.audio;
-          if (isStalePlayerAudioSelection(current, audioTracks) ||
-              current.id != best.id ||
-              current.id == 'auto' ||
-              current.id == 'no') {
-            await selectPlayerAudioTrack(_s._player, best);
-            if (_s._disposed || !mounted) return;
-            debugPrint(
-              '[Player] auto audio → ${best.title ?? best.language ?? best.id}',
-            );
-          }
-        }
-      } else {
-        await applyDefaultPlayerAudioTrack(_s._player);
       }
       await _s._reapplyPreferredSubtitle();
     } catch (e) {

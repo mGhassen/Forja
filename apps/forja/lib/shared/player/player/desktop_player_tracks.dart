@@ -447,7 +447,10 @@ mixin _DesktopPlayerTracks
       player: _s._player,
       onTrackSelected: () async {
         await SettingsService().setPlayerAutoAudio(false);
-        setState(() => _s._audioPinned = true);
+        setState(() {
+          _s._audioPinned = true;
+          _s._userPickedAudioThisSource = true;
+        });
       },
       anchorContext: anchorContext,
     );

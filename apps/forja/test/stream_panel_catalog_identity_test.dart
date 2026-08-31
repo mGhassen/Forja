@@ -57,6 +57,47 @@ void main() {
     });
   });
 
+  group('catalogStreamRowMatchesSavedProgress', () {
+    test('does not match other Videasy quality rows', () {
+      const saved =
+          'https://moon.peakstorm.top/vd/x/index-s1080p-v1-a1.m3u8';
+      const row720 =
+          'https://moon.peakstorm.top/vd/x/index-s720p-v1-a1.m3u8';
+      expect(
+        catalogStreamRowMatchesSavedProgress(
+          {'url': row720, '_enginePluginId': 'videasy'},
+          savedUrl: saved,
+          playingEnginePluginId: 'videasy',
+        ),
+        isFalse,
+      );
+      expect(
+        catalogStreamRowMatchesSavedProgress(
+          {'url': saved, '_enginePluginId': 'videasy'},
+          savedUrl: saved,
+          playingEnginePluginId: 'videasy',
+        ),
+        isTrue,
+      );
+    });
+
+    test('loose playing match would collapse all qualities', () {
+      const saved =
+          'https://moon.peakstorm.top/vd/x/index-s1080p-v1-a1.m3u8';
+      const row720 =
+          'https://moon.peakstorm.top/vd/x/index-s720p-v1-a1.m3u8';
+      expect(
+        catalogStreamRowMatchesPlaying(
+          {'url': row720, '_enginePluginId': 'videasy'},
+          playUrl: saved,
+          catalogUrl: saved,
+          playingEnginePluginId: 'videasy',
+        ),
+        isTrue,
+      );
+    });
+  });
+
   group('streamSourceMatchesPlaying', () {
     test('matches catalog row while play URL is proxy', () {
       const catalog = 'https://cdn.example/ep.m3u8';

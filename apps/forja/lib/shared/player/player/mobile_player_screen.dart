@@ -272,6 +272,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   PostSeekStallWatchdog? _postSeekStall;
   StreamSubscription<bool>? _pipSub;
   bool _autoTracksAppliedForSource = false;
+  int _lastAutoSelectAudioCount = 0;
+  bool _userPickedAudioThisSource = false;
   bool _embeddedSubtitleAutoApplied = false;
   bool _userPickedExternalSubtitle = false;
   bool _androidMediaKitSafeMode = false;
@@ -394,6 +396,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
 
   void _resetTrackAutoSelectForSource() {
     _autoTracksAppliedForSource = false;
+    _lastAutoSelectAudioCount = 0;
+    _userPickedAudioThisSource = false;
     _embeddedSubtitleAutoApplied = false;
     _userPickedExternalSubtitle = false;
     _trackAutoSelectTimer?.cancel();

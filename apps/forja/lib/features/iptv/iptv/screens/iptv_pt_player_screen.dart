@@ -18,6 +18,7 @@ import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/services/external_player_service.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
+import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/iptv/iptv/channel_guide/iptv_guide_epg.dart';

@@ -243,6 +243,34 @@ String? catalogAddonBaseForPlaying({
   return null;
 }
 
+bool _catalogStreamRowPluginScope(
+  Map<String, dynamic> stream,
+  String? playingEnginePluginId,
+) {
+  final want = playingEnginePluginId?.trim();
+  if (want == null || want.isEmpty) return true;
+  final rowPlugin = stream['_enginePluginId']?.toString().trim() ?? '';
+  if (rowPlugin == want) return true;
+  final base = stream['_addonBaseUrl']?.toString().trim() ?? '';
+  if (base == 'engine:$want') return true;
+  if (rowPlugin.isNotEmpty || base.startsWith('engine:')) return false;
+  return false;
+}
+
+/// Strict saved-progress identity — unwrap hls-proxy only; never collapse
+/// Videasy quality variants (1080p / 720p / 480p) to the same master URL.
+bool catalogStreamRowMatchesSavedProgress(
+  Map<String, dynamic> stream, {
+  required String savedUrl,
+  String? playingEnginePluginId,
+}) {
+  final url = stream['url']?.toString().trim() ?? '';
+  final saved = playbackStreamIdentityUrl(savedUrl);
+  final row = playbackStreamIdentityUrl(url);
+  if (saved.isEmpty || row.isEmpty || saved != row) return false;
+  return _catalogStreamRowPluginScope(stream, playingEnginePluginId);
+}
+
 /// Whether a Sources-panel Stremio/Nuvio/Engine row matches the active play URL.
 ///
 /// When [playingEnginePluginId] is set, rows with a different
@@ -272,16 +300,7 @@ bool catalogStreamRowMatchesPlaying(
   }
   if (!urlMatch) return false;
 
-  final want = playingEnginePluginId?.trim();
-  if (want == null || want.isEmpty) return true;
-  final rowPlugin = stream['_enginePluginId']?.toString().trim() ?? '';
-  if (rowPlugin == want) return true;
-  // Some rows only stamp `_addonBaseUrl` (engine:vidsrcsbs).
-  final base = stream['_addonBaseUrl']?.toString().trim() ?? '';
-  if (base == 'engine:$want') return true;
-  // Shared CDN under another plugin — do not steal the highlight.
-  if (rowPlugin.isNotEmpty || base.startsWith('engine:')) return false;
-  return false;
+  return _catalogStreamRowPluginScope(stream, playingEnginePluginId);
 }
 
 /// Whether [source] is the row currently playing (catalog or play URL).

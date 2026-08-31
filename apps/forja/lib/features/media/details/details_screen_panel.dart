@@ -788,20 +788,18 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     if (historyPlugin != null) {
       // Plugin chip alone used to light every mirror — require saved stream URL.
       matched = savedUrl.isNotEmpty &&
-          catalogStreamRowMatchesPlaying(
+          catalogStreamRowMatchesSavedProgress(
             s,
-            playUrl: savedUrl,
-            catalogUrl: savedUrl,
+            savedUrl: savedUrl,
             playingEnginePluginId: historyPlugin,
           );
     } else if (s['infoHash'] != null) {
       matched = _s._getHash(hs) ==
           _s._getHash('magnet:?xt=urn:btih:${s['infoHash']}');
     } else if (savedUrl.isNotEmpty) {
-      matched = catalogStreamRowMatchesPlaying(
+      matched = catalogStreamRowMatchesSavedProgress(
         s,
-        playUrl: savedUrl,
-        catalogUrl: savedUrl,
+        savedUrl: savedUrl,
       );
     } else {
       final url = s['url']?.toString();

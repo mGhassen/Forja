@@ -8,6 +8,8 @@ void main() {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
+      bufferingNearTargetStallAfter: const Duration(milliseconds: 40),
+      silentFreezeNearTargetStallAfter: const Duration(milliseconds: 40),
       armWindow: const Duration(seconds: 5),
       scaleStallWithDepth: false,
       onRemount: (t) async {
@@ -29,6 +31,8 @@ void main() {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
+      bufferingNearTargetStallAfter: const Duration(milliseconds: 40),
+      silentFreezeNearTargetStallAfter: const Duration(milliseconds: 40),
       armWindow: const Duration(seconds: 5),
       scaleStallWithDepth: false,
       onRemount: (t) async {
@@ -61,6 +65,8 @@ void main() {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
+      bufferingNearTargetStallAfter: const Duration(milliseconds: 40),
+      silentFreezeNearTargetStallAfter: const Duration(milliseconds: 40),
       scaleStallWithDepth: false,
       onRemount: (t) async {
         remounts.add(t);
@@ -79,6 +85,8 @@ void main() {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 60),
+      bufferingNearTargetStallAfter: const Duration(milliseconds: 60),
+      silentFreezeNearTargetStallAfter: const Duration(milliseconds: 60),
       scaleStallWithDepth: false,
       onRemount: (t) async {
         remounts.add(t);
@@ -100,6 +108,8 @@ void main() {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
+      bufferingNearTargetStallAfter: const Duration(milliseconds: 40),
+      silentFreezeNearTargetStallAfter: const Duration(milliseconds: 40),
       scaleStallWithDepth: false,
       onRemount: (t) async {
         remounts.add(t);
@@ -119,6 +129,8 @@ void main() {
     var attempt = 0;
     final w = PostSeekStallWatchdog(
       stallAfter: const Duration(milliseconds: 40),
+      bufferingNearTargetStallAfter: const Duration(milliseconds: 40),
+      silentFreezeNearTargetStallAfter: const Duration(milliseconds: 40),
       scaleStallWithDepth: false,
       onRemount: (t) async {
         remounts.add(t);
@@ -164,6 +176,25 @@ void main() {
       ),
       isTrue,
     );
+  });
+
+  test('buffering at seek target remounts faster than depth-scaled wait', () async {
+    final remounts = <Duration>[];
+    final w = PostSeekStallWatchdog(
+      stallAfter: const Duration(seconds: 20),
+      bufferingNearTargetStallAfter: const Duration(milliseconds: 30),
+      onRemount: (t) async {
+        remounts.add(t);
+        return true;
+      },
+    );
+
+    w.noteSeek(const Duration(minutes: 17));
+    w.onPosition(const Duration(minutes: 17));
+    w.onBuffering(true);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(remounts, [const Duration(minutes: 17)]);
+    w.dispose();
   });
 
   test('postSeekStallTimeoutForTarget scales with depth', () {

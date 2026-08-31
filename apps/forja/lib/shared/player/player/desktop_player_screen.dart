@@ -233,6 +233,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   PlaybackRecovery? _playbackRecovery;
   PostSeekStallWatchdog? _postSeekStall;
   bool _autoTracksAppliedForSource = false;
+  int _lastAutoSelectAudioCount = 0;
+  bool _userPickedAudioThisSource = false;
   bool _embeddedSubtitleAutoApplied = false;
   bool _userPickedExternalSubtitle = false;
   // ── Value Notifiers (rebuild only what's needed, no full setState) ────────
@@ -325,6 +327,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   void _resetTrackAutoSelectForSource() {
     _autoTracksAppliedForSource = false;
+    _lastAutoSelectAudioCount = 0;
+    _userPickedAudioThisSource = false;
     _embeddedSubtitleAutoApplied = false;
     _userPickedExternalSubtitle = false;
     _trackAutoSelectTimer?.cancel();

@@ -400,14 +400,35 @@ int _scoreAudioTrack(
   return score;
 }
 
+int audioTrackOrderKey(AudioTrack t) => int.tryParse(t.id) ?? 9999;
+
+/// Concrete mux tracks in demux order — lowest [aid] first (mpv default).
+List<AudioTrack> concreteAudioTracks(Iterable<AudioTrack> tracks) {
+  final real =
+      tracks.where((t) => t.id != 'no' && t.id != 'auto').toList(growable: false);
+  if (real.length <= 1) return real;
+  final sorted = List<AudioTrack>.from(real);
+  sorted.sort((a, b) {
+    if (a.isDefault == true && b.isDefault != true) return -1;
+    if (b.isDefault == true && a.isDefault != true) return 1;
+    return audioTrackOrderKey(a).compareTo(audioTrackOrderKey(b));
+  });
+  return sorted;
+}
+
+bool _prefersAudioTrack(AudioTrack candidate, AudioTrack incumbent) {
+  if (candidate.isDefault == true && incumbent.isDefault != true) return true;
+  if (incumbent.isDefault == true && candidate.isDefault != true) return false;
+  return audioTrackOrderKey(candidate) < audioTrackOrderKey(incumbent);
+}
+
 /// Picks the best concrete audio track for auto mode - never returns `auto`/`no`.
 AudioTrack? pickBestAudioTrack({
   required List<AudioTrack> audioTracks,
   required String preferredAudioLang,
   required bool avoidUnsupportedAudio,
 }) {
-  final realAudio =
-      audioTracks.where((t) => t.id != 'no' && t.id != 'auto').toList();
+  final realAudio = concreteAudioTracks(audioTracks);
   if (realAudio.isEmpty) return null;
 
   var bestScore = -1;
@@ -418,8 +439,10 @@ AudioTrack? pickBestAudioTrack({
       preferredAudioLang: preferredAudioLang,
       avoidUnsupportedAudio: avoidUnsupportedAudio,
     );
-    if (score > bestScore) {
+    if (best == null || score > bestScore) {
       bestScore = score;
+      best = t;
+    } else if (score == bestScore && _prefersAudioTrack(t, best)) {
       best = t;
     }
   }

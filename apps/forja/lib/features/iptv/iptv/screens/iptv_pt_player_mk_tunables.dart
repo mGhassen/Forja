@@ -28,18 +28,14 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
       if (!identical(_s._player, player)) return;
 
       try {
-        final tracks = player.state.tracks.audio
-            .where((t) => t.id != 'auto' && t.id != 'no')
-            .toList();
+        final tracks = concreteAudioTracks(player.state.tracks.audio);
         if (tracks.isNotEmpty) {
-          final current = player.state.track.audio;
-          if (isStalePlayerAudioSelection(current, tracks) ||
-              current.id == 'auto' ||
-              current.id == 'no') {
-            await selectPlayerAudioTrack(player, tracks.first);
+          final target = tracks.first;
+          if (player.state.track.audio.id != target.id) {
+            await selectPlayerAudioTrack(player, target);
             debugPrint(
               '[IPTV Player] desktop auto audio → '
-              '${tracks.first.title ?? tracks.first.language ?? tracks.first.id}',
+              '${target.title ?? target.language ?? target.id}',
             );
           }
           return;
@@ -78,15 +74,11 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
       if (!identical(_s._player, player)) return;
 
       try {
-        final tracks = player.state.tracks.audio
-            .where((t) => t.id != 'auto' && t.id != 'no')
-            .toList();
+        final tracks = concreteAudioTracks(player.state.tracks.audio);
         if (tracks.isNotEmpty) {
-          final current = player.state.track.audio;
-          if (isStalePlayerAudioSelection(current, tracks) ||
-              current.id == 'auto' ||
-              current.id == 'no') {
-            await selectPlayerAudioTrack(player, tracks.first);
+          final target = tracks.first;
+          if (player.state.track.audio.id != target.id) {
+            await selectPlayerAudioTrack(player, target);
           }
         }
 
