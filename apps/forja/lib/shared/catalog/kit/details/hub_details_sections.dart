@@ -1,5 +1,6 @@
 import 'package:forja/shared/catalog/hub_cover_urls.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
 import 'package:forja/shared/catalog/protocol.dart';
@@ -215,12 +216,21 @@ List<Map<String, String>> _crewAsCast(List<Map<String, String>> crew) {
   ];
 }
 
+final _hubTmdbRichCache = <String, RichMediaDetails>{};
+final _hubTmdbBackdropCache = <String, List<String>>{};
 final _hubHeroBackdropCache = <String, List<String>>{};
+
+String _hubTmdbUiCacheKey(CatalogMetaItem meta) {
+  final tmdbId = meta.numericId('tmdb');
+  if (tmdbId == null) return meta.id;
+  final mediaType = hubMetaTmdbMediaType(meta);
+  return '$tmdbId|$mediaType';
+}
 
 String _hubHeroCacheKey(CatalogMetaItem meta) =>
     '${meta.id}|${meta.background}|${meta.bannerImage}';
 
-List<String> hubHeroBackdropUrls(CatalogMetaItem meta) {
+List<String> _packHeroBackdropUrls(CatalogMetaItem meta) {
   final cacheKey = _hubHeroCacheKey(meta);
   final cached = _hubHeroBackdropCache[cacheKey];
   if (cached != null) return cached;
@@ -240,6 +250,67 @@ List<String> hubHeroBackdropUrls(CatalogMetaItem meta) {
   return out;
 }
 
-String? hubMetaLogoUrl(CatalogMetaItem meta) {
-  return null;
+/// Immediate pack / enrich URLs — use before [hubTmdbHeroBackdropUrls] resolves.
+List<String> hubHeroBackdropUrls(CatalogMetaItem meta) =>
+    _packHeroBackdropUrls(meta);
+
+Future<List<String>> hubTmdbHeroBackdropUrls(CatalogMetaItem meta) async {
+  final tmdbId = meta.numericId('tmdb');
+  if (tmdbId == null) return _packHeroBackdropUrls(meta);
+
+  final mediaType = hubMetaTmdbMediaType(meta);
+  final cacheKey = _hubTmdbUiCacheKey(meta);
+  final cached = _hubTmdbBackdropCache[cacheKey];
+  if (cached != null) return cached;
+
+  final api = TmdbApi();
+  final urls = <String>[];
+
+  void addUrl(String path) {
+    if (path.isEmpty) return;
+    final u = path.startsWith('http') ? path : TmdbApi.getBackdropUrl(path);
+    if (u.isNotEmpty && !urls.contains(u)) urls.add(u);
+  }
+
+  for (final raw in _packHeroBackdropUrls(meta)) {
+    addUrl(raw);
+  }
+
+  try {
+    final paths = await api.getBackdrops(tmdbId, mediaType: mediaType);
+    for (final p in paths) {
+      addUrl(p);
+    }
+  } catch (_) {}
+
+  final out = urls.take(12).toList();
+  _hubTmdbBackdropCache[cacheKey] = out;
+  return out;
 }
+
+Future<RichMediaDetails?> hubLoadTmdbRich(CatalogMetaItem meta) async {
+  final tmdbId = meta.numericId('tmdb');
+  if (tmdbId == null) return null;
+
+  final mediaType = hubMetaTmdbMediaType(meta);
+  final cacheKey = _hubTmdbUiCacheKey(meta);
+  final cached = _hubTmdbRichCache[cacheKey];
+  if (cached != null) return cached;
+
+  try {
+    final rich = await TmdbApi().getRichDetails(tmdbId, mediaType);
+    _hubTmdbRichCache[cacheKey] = rich;
+    return rich;
+  } catch (_) {
+    return null;
+  }
+}
+
+String? hubTmdbLogoUrl(RichMediaDetails? rich) {
+  if (rich == null) return null;
+  final path = rich.movie.logoPath.trim();
+  if (path.isEmpty) return null;
+  return path.startsWith('http') ? path : TmdbApi.getImageUrl(path);
+}
+
+String? hubMetaLogoUrl(CatalogMetaItem meta) => null;

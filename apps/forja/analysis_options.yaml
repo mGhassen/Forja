@@ -1,5 +1,9 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    - lib/features/archive/**
+
 linter:
   rules:
     prefer_const_constructors: false

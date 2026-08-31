@@ -40,15 +40,7 @@ namespace forja {
     string stremio_http_get_json(string url, u64 timeout_secs);
     string tmdb_get_json(string resource_path, u64 timeout_secs);
     string trakt_request_json(string request_json);
-    string jellyfin_request_json(string request_json);
-    string anilist_query_json(string query, string variables_json);
-    string manga_fetch_html(string url, string headers_json, u64 timeout_secs);
-    string manga_catalog_json(string request_json);
-    string kisskh_catalog_json(string request_json);
-    string books_catalog_json(string request_json);
-    string catalog_json(string request_json);
     string anime_request_json(string request_json);
-    string anime_extractor_json(string request_json);
     string indexer_request_json(string request_json);
     string debrid_request_json(string request_json);
     string parse_knaben_html_json(string html);

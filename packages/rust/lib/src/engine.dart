@@ -362,44 +362,9 @@ class RustLib {
         return _readString(_native.ffi_trakt_request_json(ptr));
       });
 
-  String jellyfinRequestJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_jellyfin_request_json(ptr));
-      });
-
-  String anilistQueryJson(
-    String query, {
-    String variablesJson = '{}',
-  }) =>
-      using((arena) {
-        final qPtr = query.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final vPtr =
-            variablesJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_anilist_query_json(qPtr, vPtr));
-      });
-
-  String mangaFetchHtml(
-    String url, {
-    String headersJson = '{}',
-    int timeoutSecs = 15,
-  }) =>
-      using((arena) {
-        final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final hdrPtr =
-            headersJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_manga_fetch_html(urlPtr, hdrPtr, timeoutSecs),
-        );
-      });
-
   String animeRequestJson(String requestJson) => using((arena) {
         final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_anime_request_json(ptr));
-      });
-
-  String animeExtractorJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_anime_extractor_json(ptr));
       });
 
   String indexerRequestJson(String requestJson) => using((arena) {
@@ -420,31 +385,6 @@ class RustLib {
   String megaResolveJson(String embedUrl) => using((arena) {
         final ptr = embedUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         return _readString(_native.ffi_mega_resolve_json(ptr));
-      });
-
-  String musicRequestJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_music_request_json(ptr));
-      });
-
-  String kisskhCatalogJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_kisskh_catalog_json(ptr));
-      });
-
-  String mangaCatalogJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_manga_catalog_json(ptr));
-      });
-
-  String booksCatalogJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_books_catalog_json(ptr));
-      });
-
-  String catalogCoreJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_catalog_json(ptr));
       });
 
   String metadataRequestJson(String requestJson) => using((arena) {
@@ -1019,29 +959,9 @@ final class _FfiNative {
               'ffi_trakt_request_json',
             )
             .asFunction(),
-        ffi_jellyfin_request_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_jellyfin_request_json',
-            )
-            .asFunction(),
-        ffi_anilist_query_json = lib
-            .lookup<ffi.NativeFunction<_AnilistQueryNative>>(
-              'ffi_anilist_query_json',
-            )
-            .asFunction(),
-        ffi_manga_fetch_html = lib
-            .lookup<ffi.NativeFunction<_MangaFetchNative>>(
-              'ffi_manga_fetch_html',
-            )
-            .asFunction(),
         ffi_anime_request_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_anime_request_json',
-            )
-            .asFunction(),
-        ffi_anime_extractor_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_anime_extractor_json',
             )
             .asFunction(),
         ffi_indexer_request_json = lib
@@ -1062,31 +982,6 @@ final class _FfiNative {
         ffi_mega_resolve_json = lib
             .lookup<ffi.NativeFunction<_StringInOutNative>>(
               'ffi_mega_resolve_json',
-            )
-            .asFunction(),
-        ffi_music_request_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_music_request_json',
-            )
-            .asFunction(),
-        ffi_kisskh_catalog_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_kisskh_catalog_json',
-            )
-            .asFunction(),
-        ffi_manga_catalog_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_manga_catalog_json',
-            )
-            .asFunction(),
-        ffi_books_catalog_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_books_catalog_json',
-            )
-            .asFunction(),
-        ffi_catalog_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_catalog_json',
             )
             .asFunction(),
         ffi_metadata_request_json = lib
@@ -1479,20 +1374,7 @@ final class _FfiNative {
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_trakt_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_jellyfin_request_json;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-  ) ffi_anilist_query_json;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-    int,
-  ) ffi_manga_fetch_html;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_anime_request_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_anime_extractor_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_indexer_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
@@ -1501,16 +1383,6 @@ final class _FfiNative {
       ffi_site111477_index_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_mega_resolve_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_music_request_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_kisskh_catalog_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_manga_catalog_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_books_catalog_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_catalog_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
       ffi_metadata_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
@@ -1658,15 +1530,6 @@ typedef _StringInOutNative =
 typedef _StremioHttpGetNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,
   ffi.Uint64,
-);
-typedef _AnilistQueryNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-);
-typedef _MangaFetchNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-  ffi.Int,
 );
 typedef _HttpGetNative = ffi.Pointer<ffi.Char> Function(
   ffi.Pointer<ffi.Char>,

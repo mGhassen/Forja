@@ -12,4 +12,3 @@ export 'tmdb_watch_provider_family.dart';
 export 'tmdb_watch_region.dart';
 export 'tmdb_service.dart';
 export 'subtitle_api.dart';
-export 'music_service.dart';

@@ -306,43 +306,9 @@ fn trakt_request_json(request_json: String) -> String {
     trakt::request_json(&request_json)
 }
 
-fn jellyfin_request_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    jellyfin::request_json(&request_json)
-}
-
-fn anilist_query_json(query: String, variables_json: String) -> String {
-    anilist::query_json(&query, &variables_json)
-}
-
-fn manga_fetch_html(url: String, headers_json: String, timeout_secs: u64) -> String {
-    utils::engine_cancel::enter_job();
-    manga::fetch_html(&url, &headers_json, timeout_secs)
-}
-
-fn manga_catalog_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    manga::catalog_json(&request_json)
-}
-
-fn books_catalog_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    books::books_catalog_json(&request_json)
-}
-
-fn catalog_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    catalog::catalog_json(&request_json)
-}
-
 fn anime_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
     anime::request_json(&request_json)
-}
-
-fn anime_extractor_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    anime::anime_extractor_json(&request_json)
 }
 
 fn indexer_request_json(request_json: String) -> String {
@@ -353,16 +319,6 @@ fn indexer_request_json(request_json: String) -> String {
 fn debrid_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
     debrid::request_json(&request_json)
-}
-
-fn music_request_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    music::request_json(&request_json)
-}
-
-fn kisskh_catalog_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    kisskh::catalog_json(&request_json)
 }
 
 fn metadata_request_json(request_json: String) -> String {

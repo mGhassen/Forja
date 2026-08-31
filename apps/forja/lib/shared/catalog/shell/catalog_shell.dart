@@ -505,6 +505,7 @@ class _CatalogShellState extends State<CatalogShell>
                   ? 'movie'
                   : 'tv'));
     final tmdbSearch = item.ids['tmdbSearch']?.toString().trim();
+    final tmdbFromIds = item.numericId('tmdb');
     return HubHeroSlide(
       id: item.id,
       title: item.name,
@@ -522,7 +523,7 @@ class _CatalogShellState extends State<CatalogShell>
       genres: item.genres,
       imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
       imageAlignment: useAniBanner ? Alignment.center : Alignment.centerRight,
-      tmdbId: open?.idInt ?? movie?.id,
+      tmdbId: tmdbFromIds ?? (hubNative ? null : (open?.idInt ?? movie?.id)),
       tmdbMediaType: tmdbMediaType,
       movie: movie,
       listTarget: _listTarget(item),

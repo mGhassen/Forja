@@ -362,6 +362,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       _s._livePaintMissStreak = 0;
       _s._stallFrameDropBaseline = -1;
       _s._stallPaintWatchSince = null;
+      await resetPlayerAudioForNewOpen(player);
       final headers = <String, String>{
         'User-Agent': _IptvPtPlayerScreenState._ua,
         ...src.headers,

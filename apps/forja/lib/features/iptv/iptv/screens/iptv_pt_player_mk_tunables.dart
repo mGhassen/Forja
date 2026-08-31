@@ -31,16 +31,19 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
         final tracks = player.state.tracks.audio
             .where((t) => t.id != 'auto' && t.id != 'no')
             .toList();
-        final current = player.state.track.audio;
-        if (tracks.isNotEmpty &&
-            (current.id == 'auto' || current.id == 'no')) {
-          await player.setAudioTrack(tracks.first);
-          debugPrint(
-            '[IPTV Player] desktop auto audio → '
-            '${tracks.first.title ?? tracks.first.language ?? tracks.first.id}',
-          );
+        if (tracks.isNotEmpty) {
+          final current = player.state.track.audio;
+          if (isStalePlayerAudioSelection(current, tracks) ||
+              current.id == 'auto' ||
+              current.id == 'no') {
+            await selectPlayerAudioTrack(player, tracks.first);
+            debugPrint(
+              '[IPTV Player] desktop auto audio → '
+              '${tracks.first.title ?? tracks.first.language ?? tracks.first.id}',
+            );
+          }
+          return;
         }
-        if (tracks.isNotEmpty) return;
       } catch (e) {
         debugPrint('[IPTV Player] desktop post-open tune failed: $e');
         return;
@@ -78,10 +81,13 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
         final tracks = player.state.tracks.audio
             .where((t) => t.id != 'auto' && t.id != 'no')
             .toList();
-        final current = player.state.track.audio;
-        if (tracks.isNotEmpty &&
-            (current.id == 'auto' || current.id == 'no')) {
-          await player.setAudioTrack(tracks.first);
+        if (tracks.isNotEmpty) {
+          final current = player.state.track.audio;
+          if (isStalePlayerAudioSelection(current, tracks) ||
+              current.id == 'auto' ||
+              current.id == 'no') {
+            await selectPlayerAudioTrack(player, tracks.first);
+          }
         }
 
         final h = int.tryParse((await p.getProperty('height')).toString()) ?? 0;

@@ -1,17 +1,8 @@
-import 'dart:convert';
-
-import '../helpers/rust_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:rust/rust.dart';
 
+// music crate archived — see crates/archive/README.md
 void main() {
-  setUpAll(() async {
-    await initRustForTests();
-  });
-
-  test('musicRequestJson rejects unknown action', () {
-    final raw = RustLib.instance.musicRequestJson('{"action":"nope"}');
-    final map = jsonDecode(raw) as Map<String, dynamic>;
-    expect(map['error'], contains('unknown action'));
-  });
+  group('music (archived crate)', () {
+    test('placeholder', () {});
+  }, skip: 'archived crate FFI removed from libffi');
 }

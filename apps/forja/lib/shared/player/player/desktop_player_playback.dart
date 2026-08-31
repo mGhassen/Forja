@@ -1697,8 +1697,12 @@ mixin _DesktopPlayerPlayback
           avoidUnsupportedAudio: avoidUnsupported,
         );
         if (best != null) {
+          final audioTracks = _s._player.state.tracks.audio
+              .where((t) => t.id != 'no' && t.id != 'auto')
+              .toList();
           final current = _s._player.state.track.audio;
-          if (current.id != best.id ||
+          if (isStalePlayerAudioSelection(current, audioTracks) ||
+              current.id != best.id ||
               current.id == 'auto' ||
               current.id == 'no') {
             await selectPlayerAudioTrack(_s._player, best);
@@ -1708,6 +1712,8 @@ mixin _DesktopPlayerPlayback
             );
           }
         }
+      } else {
+        await applyDefaultPlayerAudioTrack(_s._player);
       }
       // Preferred subtitles must re-apply after tracks settle - media open
       // clears external URI tracks while the menu still shows them selected.
@@ -1869,6 +1875,8 @@ mixin _DesktopPlayerPlayback
     // ── External Audio Track ──────────────────────────────────────────────
     if (widget.audioUrl != null) {
       await safeSet('audio-file', widget.audioUrl!);
+    } else {
+      await safeSet('audio-file', '');
     }
 
     // ── HTTP Headers ──────────────────────────────────────────────────────

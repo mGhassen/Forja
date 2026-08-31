@@ -266,6 +266,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   final Map<String, double> _heroRatings = {};
   final Map<String, List<String>> _heroBackdropUrls = {};
   final Set<String> _hubEnrichInflight = {};
+  final Set<String> _hubBackdropGalleryDone = {};
   bool _heroHeightSyncScheduled = false;
   double? _heroPageViewportWidth;
   List<Movie>? _lastHeroMovies;
@@ -335,6 +336,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     if (_isHub && !identical(oldWidget.slides, widget.slides)) {
       // New pack metas (e.g. after chrome filter) — re-enrich.
       _hubEnrichInflight.clear();
+      _hubBackdropGalleryDone.clear();
     }
   }
 
@@ -659,6 +661,9 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       if (_hubEnrichInflight.contains(id)) continue;
 
       final metaBackdrop = slide.imageUrl.trim();
+      final tmdbId = slide.tmdbId;
+      final validTmdb = tmdbId != null && tmdbId > 0;
+
       if (metaBackdrop.isNotEmpty && !_heroBackdropUrls.containsKey(id)) {
         if (!mounted) return;
         setState(() => _heroBackdropUrls[id] = [metaBackdrop]);
@@ -667,17 +672,25 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       final needsLogo = !_heroLogos.containsKey(id);
       final needsOverview =
           slide.overview.trim().isEmpty && !_heroOverviews.containsKey(id);
-      final needsBackdrop =
-          !_heroBackdropUrls.containsKey(id) && metaBackdrop.isEmpty;
-      if (!needsLogo && !needsOverview && !needsBackdrop) continue;
+      final needsBackdropGallery =
+          validTmdb && !_hubBackdropGalleryDone.contains(id);
+      final needsPrimaryBackdrop =
+          !validTmdb &&
+          !_heroBackdropUrls.containsKey(id) &&
+          metaBackdrop.isEmpty;
+      if (!needsLogo &&
+          !needsOverview &&
+          !needsBackdropGallery &&
+          !needsPrimaryBackdrop) {
+        continue;
+      }
 
-      final tmdbId = slide.tmdbId;
-      if (tmdbId == null || tmdbId <= 0) {
+      if (!validTmdb) {
         if (!mounted) return;
         setState(() {
           if (needsLogo) _heroLogos[id] = '';
           if (needsOverview) _heroOverviews[id] = '';
-          if (needsBackdrop) _heroBackdropUrls[id] = const [];
+          if (needsPrimaryBackdrop) _heroBackdropUrls[id] = const [];
         });
         continue;
       }
@@ -689,7 +702,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             : slide.tmdbMediaType.trim();
 
         Movie? details;
-        if (needsOverview || needsBackdrop) {
+        if (needsOverview || needsPrimaryBackdrop) {
           details = await _hubHeroDetails(tmdbId, mediaType);
           if (details != null &&
               (details.mediaType == 'movie' || details.mediaType == 'tv')) {
@@ -708,7 +721,34 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           setState(() => _heroLogos[id] = logoUrl);
         }
 
-        if ((needsOverview || needsBackdrop) && details != null) {
+        if (needsBackdropGallery) {
+          final urls = <String>[];
+          if (metaBackdrop.isNotEmpty) urls.add(metaBackdrop);
+          try {
+            final paths = await _api.getBackdrops(
+              tmdbId,
+              mediaType: mediaType,
+            );
+            for (final p in paths) {
+              final u = p.startsWith('http') ? p : TmdbApi.getBackdropUrl(p);
+              if (u.isNotEmpty && !urls.contains(u)) urls.add(u);
+            }
+          } catch (_) {}
+          if (urls.isEmpty && details != null) {
+            final path = details.backdropPath.trim();
+            if (path.isNotEmpty) {
+              final u = path.startsWith('http')
+                  ? path
+                  : TmdbApi.getBackdropUrl(path);
+              if (u.isNotEmpty) urls.add(u);
+            }
+          }
+          if (!mounted) return;
+          setState(() {
+            _heroBackdropUrls[id] = RotatingHeroBackdrop.normalizeUrls(urls);
+            _hubBackdropGalleryDone.add(id);
+          });
+        } else if ((needsOverview || needsPrimaryBackdrop) && details != null) {
           if (!mounted) return;
           setState(() {
             if (needsOverview) {
@@ -718,7 +758,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                 _heroRatings[id] = details.voteAverage;
               }
             }
-            if (needsBackdrop) {
+            if (needsPrimaryBackdrop) {
               final path = details!.backdropPath.trim();
               if (path.isNotEmpty) {
                 final url = path.startsWith('http')
@@ -731,7 +771,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               }
             }
           });
-        } else if (needsBackdrop) {
+        } else if (needsPrimaryBackdrop) {
           if (!mounted) return;
           setState(() => _heroBackdropUrls[id] = const []);
         }

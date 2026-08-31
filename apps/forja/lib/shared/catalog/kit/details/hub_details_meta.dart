@@ -23,6 +23,13 @@ bool hubMetaIsMovie(CatalogMetaItem item) {
   return fmt == 'MOVIE' || item.tmdbMediaType == 'movie';
 }
 
+String hubMetaTmdbMediaType(CatalogMetaItem item) {
+  if (hubMetaIsMovie(item)) return 'movie';
+  final hint = (item.tmdbMediaType ?? '').trim().toLowerCase();
+  if (hint == 'movie' || hint == 'tv') return hint;
+  return 'tv';
+}
+
 Map<int, List<Map<String, dynamic>>>? hubEpisodeMaps(
   List<CatalogVideo> videos,
 ) {

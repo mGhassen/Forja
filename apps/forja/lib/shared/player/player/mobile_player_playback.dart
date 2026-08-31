@@ -1713,8 +1713,12 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
           avoidUnsupportedAudio: avoidUnsupported,
         );
         if (best != null) {
+          final audioTracks = _s._player.state.tracks.audio
+              .where((t) => t.id != 'no' && t.id != 'auto')
+              .toList();
           final current = _s._player.state.track.audio;
-          if (current.id != best.id ||
+          if (isStalePlayerAudioSelection(current, audioTracks) ||
+              current.id != best.id ||
               current.id == 'auto' ||
               current.id == 'no') {
             await selectPlayerAudioTrack(_s._player, best);
@@ -1724,6 +1728,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
             );
           }
         }
+      } else {
+        await applyDefaultPlayerAudioTrack(_s._player);
       }
       await _s._reapplyPreferredSubtitle();
     } catch (e) {
@@ -1927,6 +1933,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     // ── External Audio ────────────────────────────────────────────────────
     if (widget.audioUrl != null) {
       await safeSet('audio-file', widget.audioUrl!);
+    } else {
+      await safeSet('audio-file', '');
     }
 
     // ── HTTP Headers ──────────────────────────────────────────────────────

@@ -15,7 +15,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:palette_generator/palette_generator.dart';
 
-import 'package:forja/shared/catalog/bestsimilar_scraper.dart';
+import 'package:forja/features/archive/similar/bestsimilar_scraper.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/design/design.dart';

@@ -387,48 +387,10 @@ pub unsafe extern "C" fn ffi_trakt_request_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_jellyfin_request_json(
-    request_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::jellyfin_request_json(from_c_str(request_json)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_anilist_query_json(
-    query: *const c_char,
-    variables_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::anilist_query_json(
-        from_c_str(query),
-        from_c_str(variables_json),
-    ))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_manga_fetch_html(
-    url: *const c_char,
-    headers_json: *const c_char,
-    timeout_secs: u64,
-) -> *mut c_char {
-    to_c_string(crate::manga_fetch_html(
-        from_c_str(url),
-        from_c_str(headers_json),
-        timeout_secs,
-    ))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn ffi_anime_request_json(
     request_json: *const c_char,
 ) -> *mut c_char {
     to_c_string(crate::anime_request_json(from_c_str(request_json)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_anime_extractor_json(
-    request_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::anime_extractor_json(from_c_str(request_json)))
 }
 
 #[no_mangle]
@@ -799,39 +761,6 @@ pub unsafe extern "C" fn ffi_site111477_index_request_json(
 #[no_mangle]
 pub unsafe extern "C" fn ffi_mega_resolve_json(embed_url: *const c_char) -> *mut c_char {
     to_c_string(crate::mega_resolve_json(from_c_str(embed_url)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_music_request_json(request_json: *const c_char) -> *mut c_char {
-    to_c_string(crate::music_request_json(from_c_str(request_json)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_kisskh_catalog_json(
-    request_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::kisskh_catalog_json(from_c_str(request_json)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_manga_catalog_json(
-    request_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::manga_catalog_json(from_c_str(request_json)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_books_catalog_json(
-    request_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::books_catalog_json(from_c_str(request_json)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_catalog_json(
-    request_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::catalog_json(from_c_str(request_json)))
 }
 
 #[no_mangle]

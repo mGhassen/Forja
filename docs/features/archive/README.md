@@ -1,6 +1,9 @@
 # Archived features
 
-Guides for tabs and verticals that are **not** in the default Forja product surface. Matching Dart code lives under [`apps/forja/lib/features/archive/`](../../../apps/forja/lib/features/archive/README.md).
+Guides for tabs and verticals that are **not** in the default Forja product surface. Matching code:
+
+- **Flutter:** [`apps/forja/lib/features/archive/`](../../../apps/forja/lib/features/archive/README.md)
+- **Rust:** [`crates/archive/`](../../../crates/archive/README.md)
 
 **Active user guide:** [features README](../README.md)
 

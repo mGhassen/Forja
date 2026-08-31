@@ -24,4 +24,4 @@ Shell tabs and verticals **removed from navigation**. Code is kept for reference
 
 Restore: re-register in [`nav_config.dart`](../../shell/nav_config.dart) and move the folder back under `features/`.
 
-User guide: [`docs/features/archive/README.md`](../../../../docs/features/archive/README.md)
+User guide: [`docs/features/archive/README.md`](../../../../docs/features/archive/README.md) · Rust: [`crates/archive/`](../../archive/README.md)

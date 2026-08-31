@@ -62,12 +62,6 @@ Future<String> runAnimeRequestJson(String requestJson) =>
       {'requestJson': requestJson},
     );
 
-Future<String> runAnimeExtractorJson(String requestJson) =>
-    EngineWorkerPool.run(
-      EngineJobKind.animeExtractor,
-      {'requestJson': requestJson},
-    );
-
 Future<String> runIndexerRequestJson(String requestJson) =>
     EngineWorkerPool.run(
       EngineJobKind.indexerRequest,
@@ -96,36 +90,6 @@ Future<String> runMegaResolveJson(String embedUrl) => EngineWorkerPool.run(
       {'embedUrl': embedUrl},
     );
 
-Future<String> runMusicRequestJson(String requestJson) =>
-    EngineWorkerPool.run(
-      EngineJobKind.musicRequest,
-      {'requestJson': requestJson},
-    );
-
-Future<String> runKisskhCatalogJson(String requestJson) =>
-    EngineWorkerPool.run(
-      EngineJobKind.kisskhCatalog,
-      {'requestJson': requestJson},
-    );
-
-Future<String> runMangaCatalogJson(String requestJson) =>
-    EngineWorkerPool.run(
-      EngineJobKind.mangaCatalog,
-      {'requestJson': requestJson},
-    );
-
-Future<String> runBooksCatalogJson(String requestJson) =>
-    EngineWorkerPool.run(
-      EngineJobKind.booksCatalog,
-      {'requestJson': requestJson},
-    );
-
-Future<String> runCatalogCoreJson(String requestJson) =>
-    EngineWorkerPool.run(
-      EngineJobKind.catalogCore,
-      {'requestJson': requestJson},
-    );
-
 Future<String> runMetadataRequestJson(String requestJson) =>
     EngineWorkerPool.run(
       EngineJobKind.metadataRequest,
@@ -150,35 +114,6 @@ Future<String> runTmdbGetJson(
 Future<String> runTraktRequestJson(String requestJson) =>
     EngineWorkerPool.run(
       EngineJobKind.traktRequest,
-      {'requestJson': requestJson},
-    );
-
-Future<String> runAnilistQueryJson(
-  String query, {
-  String variablesJson = '{}',
-}) =>
-    EngineWorkerPool.run(
-      EngineJobKind.anilistQuery,
-      {'query': query, 'variablesJson': variablesJson},
-    );
-
-Future<String> runMangaFetchHtml(
-  String url, {
-  String headersJson = '{}',
-  int timeoutSecs = 15,
-}) =>
-    EngineWorkerPool.run(
-      EngineJobKind.mangaFetchHtml,
-      {
-        'url': url,
-        'headersJson': headersJson,
-        'timeoutSecs': timeoutSecs,
-      },
-    );
-
-Future<String> runJellyfinRequestJson(String requestJson) =>
-    EngineWorkerPool.run(
-      EngineJobKind.jellyfinRequest,
       {'requestJson': requestJson},
     );
 

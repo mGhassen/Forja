@@ -1549,9 +1549,67 @@ Future<bool> remountPlayerStreamAtPosition(
   return remountPlaybackResumed(player.state, seekTarget);
 }
 
+/// True when mpv/media_kit still reports an [aid] that is not in [tracks].
+bool isStalePlayerAudioSelection(
+  AudioTrack current,
+  Iterable<AudioTrack> tracks,
+) {
+  if (current.id == 'auto' || current.id == 'no') return false;
+  return !tracks.any((t) => t.id == current.id);
+}
+
+/// Drop stale mpv `aid` / `audio-file` before opening another stream on the
+/// same [Player]. Soft reopen otherwise keeps the prior file's track index.
+Future<void> resetPlayerAudioForNewOpen(
+  Player player, {
+  bool clearExternalAudio = true,
+}) async {
+  if (clearExternalAudio) {
+    final platform = player.platform;
+    if (platform is NativePlayer && !platform.disposed) {
+      if (await mediaKitPlayerHandleReady(platform)) {
+        try {
+          await platform.setProperty(
+            'audio-file',
+            '',
+            waitForInitialization: false,
+          );
+        } catch (_) {}
+        try {
+          await platform.setProperty(
+            'aid',
+            'auto',
+            waitForInitialization: false,
+          );
+        } catch (_) {}
+      }
+    }
+  }
+  try {
+    await player.setAudioTrack(AudioTrack.auto());
+  } catch (_) {}
+}
+
+/// After open, ensure a concrete audio track when mpv is still on auto/no or
+/// carries an [aid] from a prior stream.
+Future<void> applyDefaultPlayerAudioTrack(Player player) async {
+  final tracks = player.state.tracks.audio
+      .where((t) => t.id != 'auto' && t.id != 'no')
+      .toList();
+  if (tracks.isEmpty) return;
+  final current = player.state.track.audio;
+  if (!isStalePlayerAudioSelection(current, tracks) &&
+      current.id != 'auto' &&
+      current.id != 'no') {
+    return;
+  }
+  await selectPlayerAudioTrack(player, tracks.first);
+}
+
 /// Clears stale duration/buffer from a prior failed open before trying again.
 Future<void> resetPlayerForOpen(Player player) async {
   await player.stop();
+  await resetPlayerAudioForNewOpen(player);
   final deadline = DateTime.now().add(const Duration(milliseconds: 500));
   while (DateTime.now().isBefore(deadline)) {
     if (!isMediaOpenReady(player.state)) return;

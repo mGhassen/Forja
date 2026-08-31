@@ -33,16 +33,10 @@ lan = { path = "../lan", optional = true }
 storage = { path = "../storage" }
 tmdb = { path = "../tmdb" }
 trakt = { path = "../trakt" }
-jellyfin = { path = "../jellyfin" }
-anilist = { path = "../anilist" }
-manga = { path = "../manga" }
 anime = { path = "../anime" }
 indexer = { path = "../indexer" }
 debrid = { path = "../debrid" }
-music = { path = "../music" }
 kisskh = { path = "../kisskh" }
-books = { path = "../books" }
-catalog = { path = "../catalog" }
 live-matches = { path = "../live-matches" }
 resolver-engine = { path = "../resolver-engine" }
 engine-js = { path = "../engine-js" }

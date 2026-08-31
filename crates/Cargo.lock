@@ -1230,20 +1230,14 @@ checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
 name = "ffi"
 version = "0.1.0"
 dependencies = [
- "anilist",
  "anime",
- "books",
- "catalog",
  "debrid",
  "engine-js",
  "indexer",
  "iptv",
- "jellyfin",
  "kisskh",
  "lan",
  "live-matches",
- "manga",
- "music",
  "proxy",
  "resolver-engine",
  "scrapers",

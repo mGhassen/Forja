@@ -23,7 +23,7 @@ import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
-import 'package:rust/rust.dart' show isInProgressResume;
+import 'package:rust/rust.dart' show RichMediaDetails, isInProgressResume;
 
 Future<T?> openHubDetails<T>(
   BuildContext context, {
@@ -65,6 +65,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   CatalogMetaItem? _detail;
   List<HubDetailRailSection> _packRails = const [];
   List<String> _heroBackdrops = const [];
+  RichMediaDetails? _rich;
   bool _loading = true;
   String? _error;
   int _selectedSeason = 1;
@@ -180,6 +181,23 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       _selectedEpisode = firstEp;
     });
     unawaited(_loadWatchProgress());
+    unawaited(_loadTmdbUi(meta));
+  }
+
+  Future<void> _loadTmdbUi(CatalogMetaItem meta) async {
+    if (meta.numericId('tmdb') == null) return;
+    final results = await Future.wait<Object?>([
+      hubTmdbHeroBackdropUrls(meta),
+      hubLoadTmdbRich(meta),
+    ]);
+    if (!mounted) return;
+    final backdrops = results[0] as List<String>;
+    final rich = results[1] as RichMediaDetails?;
+    if (backdrops.isEmpty && rich == null) return;
+    setState(() {
+      if (backdrops.isNotEmpty) _heroBackdrops = backdrops;
+      if (rich != null) _rich = rich;
+    });
   }
 
   void _scrollDetailsHeroIntoView() {
@@ -401,7 +419,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     );
     final tmdbSections = buildHubTmdbDetailSections(
       context: context,
-      rich: null,
+      rich: _rich,
       tvFocus: tvFocus,
       firstMetaFocusUp: packSections.isEmpty ? firstMetaFocusUp : null,
     );
@@ -427,8 +445,8 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
           if (show.releaseInfo.isNotEmpty) show.releaseInfo,
         ],
         rating: show.rating,
-        richFacts: null,
-        logoUrl: hubMetaLogoUrl(show),
+        richFacts: _rich,
+        logoUrl: hubTmdbLogoUrl(_rich) ?? hubMetaLogoUrl(show),
         height: DetailsTokens.heroHeight(
           context,
           showEpisodeRail: hasEpisodes,
