@@ -38,7 +38,7 @@ media-extra = { path = "../archive/media-extra" }
 indexer = { path = "../indexer" }
 debrid = { path = "../debrid" }
 live-matches = { path = "../live-matches" }
-engine-js = { path = "../engine-js" }
+engine = { path = "../engine" }
 uniffi = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

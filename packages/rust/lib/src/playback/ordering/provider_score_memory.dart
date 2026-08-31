@@ -7,7 +7,7 @@ import '../domain/provider_score_scope.dart';
 
 /// Per-title provider reliability for the player Source panel.
 ///
-/// Backed by the Rust engine-js health store when the engine is ready.
+/// Backed by the Rust engine health store when the engine is ready.
 abstract final class ProviderScoreMemory {
   static const serverFailDelta = -2;
   static const serverUpDelta = 2;

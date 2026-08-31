@@ -66,4 +66,4 @@ cd apps/forja && flutter test test/engine_smoke_test.dart
 
 ## Crates
 
-Full map: [docs/ARCHITECTURE.md §3.1](../docs/ARCHITECTURE.md). Workspace members include `ffi`, domain crates (`webstreamr`, `resolver-engine`, `torrent`, `proxy`, `lan`, `scrapers`, `iptv`, catalog clients, hub scrapers, `debrid`, `indexer`, `engine-js`, …) — see `crates/Cargo.toml`.
+Full map: [docs/ARCHITECTURE.md §3.1](../docs/ARCHITECTURE.md). Workspace members include `ffi`, domain crates (`webstreamr`, `resolver-engine`, `torrent`, `proxy`, `lan`, `scrapers`, `iptv`, catalog clients, hub scrapers, `debrid`, `indexer`, `engine`, …) — see `crates/Cargo.toml`.

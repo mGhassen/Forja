@@ -1096,7 +1096,8 @@ class _CatalogShellState extends State<CatalogShell>
       case 'continue':
         return CatalogContinueWidget(
           pluginId: widget.pluginId,
-          tabId: widget.tabId ?? 'home',
+          tabId: widget.tabId ?? '',
+          mergeHomeWatchHistory: spec['mergeHomeWatchHistory'] == true,
           tvRowOrder: _tvOrder(tvOrders, id),
           tvFocusUp: _focusHeroPlay,
           prefetchSlot: prefetch,
@@ -1104,7 +1105,7 @@ class _CatalogShellState extends State<CatalogShell>
       case 'because':
         return CatalogBecauseSection(
           pluginId: widget.pluginId,
-          tabId: widget.tabId ?? 'home',
+          tabId: widget.tabId ?? '',
           spec: spec,
           tvRowOrder: _tvOrder(tvOrders, id),
           prefetchSlot: prefetch,

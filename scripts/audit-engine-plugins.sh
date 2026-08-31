@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Batch-audit Forja HTTP movie/TV plugins via crates/engine-js.
+# Batch-audit Forja HTTP movie/TV plugins via crates/engine.
 #
 #   ./scripts/audit-engine-plugins.sh --tmdb=94997 --media=tv --season=1 --episode=1
 #   ./scripts/audit-engine-plugins.sh --json --plugin=hdhub4u
@@ -16,4 +16,4 @@ if [[ -f "$ROOT/.env" ]]; then
   set +a
 fi
 cd "$ROOT/crates"
-exec cargo run -q -p engine-js --bin audit-engine-plugins -- "$@"
+exec cargo run -q -p engine --bin audit-engine-plugins -- "$@"

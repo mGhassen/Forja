@@ -3,7 +3,7 @@
 **Status:** open  
 **Priority:** P1  
 **Severity:** High  
-**Area:** Sources → Forja · `EngineRuntime.fork` · macOS JSC · `crates/engine-js`
+**Area:** Sources → Forja · `EngineRuntime.fork` · macOS JSC · `crates/engine`
 
 ## Status at a glance
 
@@ -57,7 +57,7 @@
 
 **Root fix:** [RFC-064](../rfc/064-[open]-rust-quickjs-engine-runtime.md) — Forja EngineJS per extract on tokio + `scope_job_token` task-local cancel (NuvioMobile shape). Nuvio host scrapers unchanged. **Plus** never map cancel-null → `flutter_js`; Play aborts Forja extracts via kind-scoped cancel (not full `cancel_all` / ROOT `request()`).
 
-**Shipped for I190-T03:** `utils::engine_cancel::scope_job_token` + `EngineJobs.submit` wraps each job; `engine-js` `native_fetch` / `extract` `select!` on that token only.
+**Shipped for I190-T03:** `utils::engine_cancel::scope_job_token` + `EngineJobs.submit` wraps each job; `engine` `native_fetch` / `extract` `select!` on that token only.
 
 **Shipped for I190-T05 / T06 / T07:** `runPluginIsolated` gen gate; Play always `cancelPending` (scrapes stop); `cancel_kind(EngineJsExtract)` + `Engine.cancelEngineJsExtracts` so magnet resolve survives.
 

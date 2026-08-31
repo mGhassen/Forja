@@ -521,7 +521,7 @@ function tmdbLayout() {
             rail: 'popular',
             style: 'numbered',
           },
-          { type: 'continue', id: 'continue_watching' },
+          { type: 'continue', id: 'continue_watching', mergeHomeWatchHistory: true },
           {
             type: 'mood',
             id: 'moods',

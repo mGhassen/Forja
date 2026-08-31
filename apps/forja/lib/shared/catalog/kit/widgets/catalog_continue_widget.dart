@@ -14,13 +14,14 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
 import 'package:rust/rust.dart' show WatchHistoryService, isInProgressResume;
 
-/// Layout widget type `continue` — pack-scoped [CatalogWatchHistory] plus Home
-/// TMDB [WatchHistoryService] when [pluginId] is `tmdb`.
+/// Layout widget type `continue` — pack-scoped [CatalogWatchHistory]; optional
+/// legacy Home TMDB [WatchHistoryService] when the pack requests it.
 class CatalogContinueWidget extends StatefulWidget {
   const CatalogContinueWidget({
     super.key,
     required this.pluginId,
     required this.tabId,
+    this.mergeHomeWatchHistory = false,
     this.tvRowOrder = 1,
     this.tvFocusUp,
     this.prefetchSlot,
@@ -28,6 +29,7 @@ class CatalogContinueWidget extends StatefulWidget {
 
   final String pluginId;
   final String tabId;
+  final bool mergeHomeWatchHistory;
   final int tvRowOrder;
   final VoidCallback? tvFocusUp;
   final CatalogHubRowPrefetchSlot? prefetchSlot;
@@ -48,7 +50,7 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
     super.initState();
     _registerPrefetch();
     CatalogWatchHistory.revision.addListener(_onHistoryRevision);
-    if (widget.pluginId == 'tmdb') {
+    if (widget.mergeHomeWatchHistory) {
       _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
         if (_viewportActivated) unawaited(_reload());
       });
@@ -89,7 +91,10 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
 
   Future<void> _reload() async {
     try {
-      final list = await catalogContinueEntries(widget.pluginId);
+      final list = await catalogContinueEntries(
+        widget.pluginId,
+        mergeHomeWatchHistory: widget.mergeHomeWatchHistory,
+      );
       if (!mounted) return;
       setState(() => _entries = list);
     } catch (_) {}

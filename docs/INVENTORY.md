@@ -79,7 +79,7 @@ Exact LOC drifts quickly — re-run `wc -l` when needed. Feature god-file invent
 | `indexer` | **Yes** | Jackett / Prowlarr |
 | `debrid` | **Yes** | RD / AD / Premiumize / TorBox / Debrid-Link |
 | `music` | **Yes** | Deezer / YouTube helpers |
-| `engine-js` | Mixed | QuickJS extract / StreamCrypto-style jobs |
+| `engine` | Mixed | QuickJS extract / StreamCrypto-style jobs |
 
 Default `ffi` features: `torrent-engine`, `local-proxy`, `lan-server`.
 

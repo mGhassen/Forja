@@ -130,7 +130,7 @@ Workspace members (`crates/Cargo.toml`):
 | **`indexer`** | Jackett / Prowlarr HTTP |
 | **`debrid`** | Real-Debrid, AllDebrid, Premiumize, TorBox, Debrid-Link |
 | **`music`** | Deezer / YouTube music HTTP |
-| **`engine-js`** | QuickJS extract host (crypto, PoW, KissKh kkey, hop, fetch) + provider reliability score store |
+| **`engine`** | QuickJS extract host (crypto, PoW, KissKh kkey, hop, fetch) + provider reliability score store |
 
 Vendored patch: `crates/third_party/librqbit-dualstack-sockets` — iOS socket binding fix for librqbit.
 

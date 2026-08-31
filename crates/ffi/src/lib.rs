@@ -160,7 +160,7 @@ fn playback_order_providers_json(payload_json: String) -> String {
     };
     if request.reliability.is_empty() {
         request.reliability =
-            engine_js::ProviderHealthStore::global().all_provider_totals();
+            engine::ProviderHealthStore::global().all_provider_totals();
     }
     let response = order_providers(request);
     serde_json::to_string(&response)
@@ -772,7 +772,7 @@ fn mega_resolve_json(embed_url: String) -> String {
 }
 
 fn provider_health_json(payload_json: String) -> String {
-    engine_js::handle_health_json(&payload_json)
+    engine::handle_health_json(&payload_json)
 }
 
 fn storage_open(path: String) -> String {

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:rust/rust.dart';
@@ -1277,12 +1278,15 @@ class SimklService {
     final anilistId = _asInt(_ids(media)['anilist']);
     final point = _resumePoint(item);
     if (anilistId == null || point == null) return 0;
-    final existing = await CatalogWatchHistory.getAll('anilist');
-    if (existing.any((e) => e['metaId'] == 'anilist:$anilistId')) return 0;
+    final hubPlugin =
+        await PluginNavRegistry.pluginIdForEngineType('anime') ?? '';
+    if (hubPlugin.isEmpty) return 0;
+    final existing = await CatalogWatchHistory.getAll(hubPlugin);
+    if (existing.any((e) => e['metaId'] == '$hubPlugin:$anilistId')) return 0;
     try {
       final title = (media['title'] as String?)?.trim() ?? 'Anime';
       final meta = CatalogMetaItem(
-        id: 'anilist:$anilistId',
+        id: '$hubPlugin:$anilistId',
         type: 'anime',
         name: title,
         ids: {'anilist': anilistId},
@@ -1291,7 +1295,7 @@ class SimklService {
       final runtimeMin = _asInt(media['runtime']) ?? 24;
       final duration = Duration(minutes: runtimeMin);
       await CatalogWatchHistory.record(
-        pluginId: 'anilist',
+        pluginId: hubPlugin,
         meta: meta,
         episodeNumber: point.episode,
         position: Duration(

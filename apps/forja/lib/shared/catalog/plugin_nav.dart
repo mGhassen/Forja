@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/forja_host_assets.dart';
 import 'package:forja/shared/catalog/shell/catalog_shell.dart';
@@ -5,12 +8,12 @@ import 'package:forja/shared/engine/hub_plugin_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/nav_destination.dart';
 import 'package:rust/rust.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-/// Hub tabs owned by `kind: catalog` plugins. Shell-core stays in app.
+/// Hub tabs contributed by `kind: catalog` packs. Shell-core stays in app.
 ///
-/// Destinations / accents / builders are rebuilt from plugin `nav` specs
-/// ([refresh]). Until the first successful refresh, [seedBuiltIns] keeps the
-/// official hub tabs available so the rail and Features UI do not flash empty.
+/// Destinations / accents / builders come only from pack `nav` ([refresh]).
+/// Last [refresh] is cached so boot does not flash an empty rail.
 abstract final class PluginNavRegistry {
   static const coreShellNavIds = {
     'mylist',
@@ -19,14 +22,7 @@ abstract final class PluginNavRegistry {
     'settings',
   };
 
-  static const hubTabIds = {
-    'home',
-    'anime',
-    'asian_drama',
-  };
-
-  /// Default shell tab ids for in-scope catalog hubs (icons only — no plugin ids).
-  static const seedHubTabIds = ['home', 'anime', 'asian_drama'];
+  static const _navCacheKey = 'shell_hub_nav_cache_v1';
 
   static Map<String, NavDestination> _destinations = {};
   static Map<String, Color> _accents = {};
@@ -49,7 +45,7 @@ abstract final class PluginNavRegistry {
     return Map.unmodifiable(_builders);
   }
 
-  /// True when [id] is a contributed (or seeded) catalog hub tab.
+  /// True when [id] is a contributed catalog hub tab.
   static bool isHubTab(String id) {
     _ensureSeeded();
     return _destinations.containsKey(id);
@@ -62,49 +58,121 @@ abstract final class PluginNavRegistry {
     seedBuiltIns();
   }
 
-  /// Synchronous seed for required in-scope hubs (Home / Anime / Asian Drama).
-  /// Optional hubs (Arabic) appear only after [refresh] when their pack is on.
+  /// Load cached pack nav (if any). No hardcoded hub inventory.
   static void seedBuiltIns() {
-    _destinations = {
-      'home': const NavDestination(
-        id: 'home',
-        icon: Icons.home_outlined,
-        activeIcon: Icons.home,
-        label: 'Home',
-        iconAsset: ForjaHostAssets.flutterNavHome,
-      ),
-      'anime': const NavDestination(
-        id: 'anime',
-        icon: Icons.animation_outlined,
-        activeIcon: Icons.animation,
-        label: 'Anime',
-        iconAsset: ForjaHostAssets.flutterNavAnime,
-      ),
-      'asian_drama': const NavDestination(
-        id: 'asian_drama',
-        icon: Icons.theater_comedy_outlined,
-        activeIcon: Icons.theater_comedy,
-        label: 'Asian Drama',
-        iconAsset: ForjaHostAssets.flutterNavAsianDrama,
-      ),
-    };
-    _accents = {
-      'home': const Color(0xFF1CE783),
-      'anime': const Color(0xFFFB7185),
-      'asian_drama': const Color(0xFFC4B5FD),
-    };
-    _builders = {
-      for (final tabId in seedHubTabIds)
-        tabId: () => CatalogShellLoader(tabId: tabId),
-    };
+    _destinations = {};
+    _accents = {};
+    _builders = {};
     _tabPluginIds = {};
+    _seeded = true;
+    unawaited(_loadCachedNav());
+  }
+
+  static Future<void> _loadCachedNav() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString(_navCacheKey);
+      if (raw == null || raw.isEmpty) return;
+      final json = jsonDecode(raw);
+      if (json is! Map) return;
+      _applySnapshot(_snapshotFromJson(Map<String, dynamic>.from(json)));
+      SettingsService.navbarChangeNotifier.value++;
+    } catch (_) {}
+  }
+
+  static Future<void> _persistNavSnapshot({
+    required List<Map<String, dynamic>> destinationRows,
+  }) async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString(
+        _navCacheKey,
+        jsonEncode({
+          'version': 1,
+          'tabPluginIds': _tabPluginIds,
+          'destinations': destinationRows,
+          'accents': {
+            for (final e in _accents.entries)
+              e.key:
+                  '#${e.value.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
+          },
+        }),
+      );
+    } catch (_) {}
+  }
+
+  static _NavSnapshot _snapshotFromJson(Map<String, dynamic> json) {
+    final tabPluginIds = <String, String>{};
+    final rawIds = json['tabPluginIds'];
+    if (rawIds is Map) {
+      for (final e in rawIds.entries) {
+        final k = e.key.toString();
+        final v = e.value?.toString() ?? '';
+        if (k.isNotEmpty && v.isNotEmpty) tabPluginIds[k] = v;
+      }
+    }
+    final dests = <String, NavDestination>{};
+    final rawDests = json['destinations'];
+    if (rawDests is List) {
+      for (final raw in rawDests) {
+        if (raw is! Map) continue;
+        final m = Map<String, dynamic>.from(raw);
+        final tabId = m['tabId']?.toString() ?? '';
+        if (tabId.isEmpty) continue;
+        final iconAsset = m['iconAsset']?.toString();
+        final material =
+            ForjaHostAssets.materialIconFor(m['icon']?.toString() ?? iconAsset) ??
+            Icons.grid_view_rounded;
+        dests[tabId] = NavDestination(
+          id: tabId,
+          icon: material,
+          activeIcon: material,
+          label: m['label']?.toString() ?? tabId,
+          iconAsset: iconAsset,
+        );
+      }
+    }
+    final accents = <String, Color>{};
+    final rawAccents = json['accents'];
+    if (rawAccents is Map) {
+      for (final e in rawAccents.entries) {
+        final hex = e.value?.toString().trim() ?? '';
+        if (hex.isEmpty) continue;
+        final h = hex.startsWith('#') ? hex.substring(1) : hex;
+        if (h.length == 6) {
+          final v = int.tryParse(h, radix: 16);
+          if (v != null) accents[e.key.toString()] = Color(0xFF000000 | v);
+        }
+      }
+    }
+    return _NavSnapshot(
+      destinations: dests,
+      accents: accents,
+      tabPluginIds: tabPluginIds,
+    );
+  }
+
+  static void _applySnapshot(_NavSnapshot snap) {
+    _destinations = snap.destinations;
+    _accents = snap.accents;
+    _tabPluginIds = Map<String, String>.from(snap.tabPluginIds);
+    _builders = {
+      for (final tabId in _destinations.keys)
+        tabId: () {
+          final pluginId = _tabPluginIds[tabId];
+          if (pluginId != null && pluginId.isNotEmpty) {
+            return CatalogShell(pluginId: pluginId, tabId: tabId);
+          }
+          return CatalogShellLoader(tabId: tabId);
+        },
+    };
     _seeded = true;
   }
 
-  /// Hub tab currently contributed by an enabled pack+plugin (or seed).
+  /// Hub tab currently contributed by an enabled pack+plugin.
   static bool isContributed(String tabId) {
     _ensureSeeded();
-    if (!hubTabIds.contains(tabId)) return true;
+    if (coreShellNavIds.contains(tabId)) return true;
     return _destinations.containsKey(tabId);
   }
 
@@ -124,10 +192,6 @@ abstract final class PluginNavRegistry {
     return out;
   }
 
-  /// Hub plugins that declare `nav` — for Features / shell destinations.
-  ///
-  /// Only **enabled** pack+plugin hubs contribute (disabled → gone from Features
-  /// and the rail). Features show/hide still applies among contributed hubs.
   static Future<List<(EnginePlugin, CatalogNavSpec)>> listNavHubs({
     bool requireEnabled = true,
   }) async {
@@ -147,13 +211,8 @@ abstract final class PluginNavRegistry {
     return out;
   }
 
-  /// Rebuild hub destinations / accents / builders from enabled pack nav.
-  ///
-  /// Returns true when the contribution changed. Registers new `tabId`s and
-  /// drops disabled hubs from Features / navbar visibility.
   static Future<bool> refresh() async {
     _ensureSeeded();
-    // Installed hubs (any enable state) — empty means packs not ready yet.
     final installed = await listNavHubs(requireEnabled: false);
     if (installed.isEmpty) return false;
     final hubs = await listNavHubs(requireEnabled: true);
@@ -164,9 +223,12 @@ abstract final class PluginNavRegistry {
     final tabPluginIds = <String, String>{};
     final extras = <String>[];
     final defaultOn = <String>[];
+    final cacheRows = <Map<String, dynamic>>[];
+    final allHubTabIds = <String>{
+      for (final (_, nav) in installed) nav.tabId,
+    };
 
     for (final (pl, nav) in hubs) {
-      // Plugins must use forja://asset/… — never Flutter assets/ paths.
       final iconAsset = ForjaHostAssets.resolveFlutterPath(nav.icon);
       final material = iconDataFor(nav);
       dests[nav.tabId] = NavDestination(
@@ -185,6 +247,12 @@ abstract final class PluginNavRegistry {
         extras.add(nav.tabId);
       }
       if (nav.defaultEnabled) defaultOn.add(nav.tabId);
+      cacheRows.add({
+        'tabId': nav.tabId,
+        'label': nav.label,
+        'icon': nav.icon,
+        'iconAsset': iconAsset,
+      });
     }
 
     final changed =
@@ -209,23 +277,22 @@ abstract final class PluginNavRegistry {
     }
     await SettingsService().syncActiveHubNavIds(
       activeHubIds: dests.keys.toSet(),
-      knownHubIds: hubTabIds,
+      knownHubIds: allHubTabIds,
     );
-    // Features filters by contribution — bump even when visible list unchanged
-    // (e.g. Arabic was already Features-off but still listed).
+    if (dests.isNotEmpty) {
+      await _persistNavSnapshot(destinationRows: cacheRows);
+    }
     if (changed) {
       SettingsService.navbarChangeNotifier.value++;
     }
     return changed;
   }
 
-  /// Cached tab → plugin id (seed + last [refresh]).
   static String? pluginIdForTabSync(String tabId) {
     _ensureSeeded();
     return _tabPluginIds[tabId];
   }
 
-  /// Cached plugin id → shell tab id (seed + last [refresh]).
   static String? tabIdForPluginSync(String pluginId) {
     _ensureSeeded();
     for (final e in _tabPluginIds.entries) {
@@ -245,7 +312,39 @@ abstract final class PluginNavRegistry {
     return plugin?.id;
   }
 
-  /// Whether the hub plugin (and its pack) are enabled to *run*.
+  /// First enabled hub whose pack declares [typeToken] in `engine.types`.
+  static Future<String?> pluginIdForEngineType(String typeToken) async {
+    final want = typeToken.trim();
+    if (want.isEmpty) return null;
+    for (final pl in await listHubPlugins()) {
+      if (pl.types.contains(want)) return pl.id;
+    }
+    return null;
+  }
+
+  /// Resolve hub plugin id without hardcoded tab or pack ids.
+  static Future<String?> resolveHubPluginId({
+    String? pluginId,
+    String? tabId,
+    String? engineType,
+  }) async {
+    final direct = pluginId?.trim();
+    if (direct != null && direct.isNotEmpty) return direct;
+    final tab = tabId?.trim();
+    if (tab != null && tab.isNotEmpty) {
+      final fromTab = await pluginIdForTab(tab);
+      if (fromTab != null && fromTab.isNotEmpty) return fromTab;
+    }
+    final type = engineType?.trim();
+    if (type != null && type.isNotEmpty) {
+      final fromType = await pluginIdForEngineType(type);
+      if (fromType != null && fromType.isNotEmpty) return fromType;
+    }
+    final hubs = await listNavHubs(requireEnabled: true);
+    if (hubs.isNotEmpty) return hubs.first.$1.id;
+    return null;
+  }
+
   static Future<bool> isHubPluginEnabled(String pluginId) async {
     final want = pluginId.trim();
     if (want.isEmpty) return false;
@@ -257,17 +356,9 @@ abstract final class PluginNavRegistry {
     return hit.pack.isPluginActive(hit.plugin);
   }
 
-  /// Material fallback when [nav.icon] is a known host asset id (or legacy token).
-  /// Never branch on [CatalogNavSpec.tabId] — packs own tab identity.
   static IconData iconDataFor(CatalogNavSpec nav) {
-    final icon = nav.icon ?? '';
-    final id = ForjaHostAssets.parseId(icon);
-    if (id == 'nav/home') return Icons.home_outlined;
-    if (id == 'nav/anime') return Icons.animation_outlined;
-    if (id == 'nav/asian-drama') return Icons.theater_comedy_outlined;
-    if (id == 'nav/arabic') return Icons.movie_filter_outlined;
-    if (icon == 'movie_filter') return Icons.movie_filter_outlined;
-    return Icons.grid_view_rounded;
+    return ForjaHostAssets.materialIconFor(nav.icon) ??
+        Icons.grid_view_rounded;
   }
 
   static Color? accentFor(CatalogNavSpec nav) {
@@ -315,4 +406,16 @@ abstract final class PluginNavRegistry {
     }
     return true;
   }
+}
+
+class _NavSnapshot {
+  const _NavSnapshot({
+    required this.destinations,
+    required this.accents,
+    required this.tabPluginIds,
+  });
+
+  final Map<String, NavDestination> destinations;
+  final Map<String, Color> accents;
+  final Map<String, String> tabPluginIds;
 }

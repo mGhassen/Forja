@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_screen.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_legacy_movie_meta.dart';
 import 'package:forja/features/archive/search/search_screen.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
@@ -134,8 +135,10 @@ class AppRouter {
     String? pluginId,
     String? shellTabId,
   }) async {
-    final resolved =
-        pluginId ?? await resolveHubPluginIdForTab(shellTabId ?? 'home');
+    final resolved = await PluginNavRegistry.resolveHubPluginId(
+      pluginId: pluginId,
+      tabId: shellTabId ?? await SettingsService().getDefaultNavTab(),
+    );
     if (resolved == null || !context.mounted) return null;
     final meta = stremioItem != null
         ? catalogMetaFromStremioItem(stremioItem, movie)

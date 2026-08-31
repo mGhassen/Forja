@@ -551,21 +551,11 @@ void main() {
       expect(byTab['home']!.accent, '#1CE783');
       expect(byTab['home']!.order, 10);
 
-      // Seeded hubs only until [refresh] contributes pack nav.
+      // Host seed is empty — pack [refresh] (or cache) contributes tabs.
       PluginNavRegistry.seedBuiltIns();
-      for (final tab in PluginNavRegistry.seedHubTabIds) {
-        expect(PluginNavRegistry.isHubTab(tab), isTrue, reason: tab);
-        expect(
-          PluginNavRegistry.coreShellNavIds.contains(tab),
-          isFalse,
-          reason: tab,
-        );
-      }
+      expect(PluginNavRegistry.destinations, isEmpty);
       expect(PluginNavRegistry.isHubTab('settings'), isFalse);
-      expect(PluginNavRegistry.isHubTab('arabic'), isFalse);
-      expect(PluginNavRegistry.builders.containsKey('home'), isTrue);
-      expect(PluginNavRegistry.destinations['home']!.label, 'Home');
-      expect(PluginNavRegistry.accents['anime'], isNotNull);
+      expect(PluginNavRegistry.isContributed('mylist'), isTrue);
     });
 
     test('nav icons use forja://asset ids, not Flutter assets/ paths', () {

@@ -91,7 +91,5 @@ CatalogMetaItem catalogMetaFromStremioItem(
 }
 
 Future<String?> resolveHubPluginIdForTab(String tabId) async {
-  final sync = PluginNavRegistry.pluginIdForTabSync(tabId);
-  if (sync != null && sync.isNotEmpty) return sync;
-  return PluginNavRegistry.pluginIdForTab(tabId);
+  return PluginNavRegistry.resolveHubPluginId(tabId: tabId);
 }

@@ -1,4 +1,4 @@
-//! Batch-audit Forja HTTP movie/TV plugins via engine-js.
+//! Batch-audit Forja HTTP movie/TV plugins via engine.
 //!
 //!   ./scripts/audit-engine-plugins.sh --tmdb=94997 --media=tv --season=1 --episode=1
 //!
@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Instant;
 
-use engine_js::{extract, ExtractRequest, HopScript};
+use engine::{extract, ExtractRequest, HopScript};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
@@ -178,7 +178,7 @@ async fn fetch_text(client: &reqwest::Client, url: &str) -> Result<String, Strin
 
 fn usage() {
     eprintln!(
-        "audit-engine-plugins — Forja engine-js provider matrix\n\
+        "audit-engine-plugins — Forja engine provider matrix\n\
          \n\
          Usage:\n\
            audit-engine-plugins [--tmdb=ID] [--media=tv|movie] [--season=N]\n\

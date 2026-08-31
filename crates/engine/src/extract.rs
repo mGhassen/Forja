@@ -351,7 +351,7 @@ fn cheerio_load_js() -> String {
       : (typeof cheerio !== 'undefined' ? cheerio : null);
     if (c && typeof c.load === 'function') globalThis.__engineCheerio = c;
   }} catch (e) {{
-    console.error('[engine-js] cheerio load failed: ' + (e && e.message ? e.message : e));
+    console.error('[engine] cheerio load failed: ' + (e && e.message ? e.message : e));
   }}
 }})();"#,
         bundle = CHEERIO_BUNDLE
@@ -549,7 +549,7 @@ pub async fn extract(req: ExtractRequest) -> ExtractResult {
             Ok(r) => r,
             Err(_) => ExtractResult {
                 streams: vec![],
-                error: Some("engine-js timed out".into()),
+                error: Some("engine timed out".into()),
                 unsupported: None,
                 needs_host: None,
             },
@@ -693,7 +693,7 @@ async fn run_in_ctx<'js>(
         .map_err(|e| e.to_string())?;
 
     let log_fn = Function::new(ctx.clone(), |msg: String| {
-        eprintln!("[engine-js] {msg}");
+        eprintln!("[engine] {msg}");
     })
     .map_err(|e| e.to_string())?
     .with_name("__native_log")

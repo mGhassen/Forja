@@ -1,4 +1,4 @@
-use engine_js::{extract, ExtractRequest, HopScript};
+use engine::{extract, ExtractRequest, HopScript};
 use serde_json::json;
 use std::collections::HashMap;
 use std::env;

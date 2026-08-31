@@ -226,9 +226,12 @@ Future<List<Map<String, dynamic>>> _homeTabContinueEntries() async {
 }
 
 /// In-progress rows for layout widget type `continue`.
-Future<List<Map<String, dynamic>>> catalogContinueEntries(String pluginId) async {
+Future<List<Map<String, dynamic>>> catalogContinueEntries(
+  String pluginId, {
+  bool mergeHomeWatchHistory = false,
+}) async {
   final packEntries = await _catalogPackContinueEntries(pluginId);
-  if (pluginId != 'tmdb') return packEntries.take(10).toList();
+  if (!mergeHomeWatchHistory) return packEntries.take(10).toList();
   final homeEntries = await _homeTabContinueEntries();
   return _mergeContinueEntriesByShow([...packEntries, ...homeEntries]);
 }

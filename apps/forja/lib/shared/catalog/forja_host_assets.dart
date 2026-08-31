@@ -3,6 +3,10 @@
 /// Plugin manifests use `forja://asset/{id}` (e.g. `forja://asset/nav/home`).
 /// The host maps [id] → a bundled Flutter asset. Plugin authors only need the
 /// Forja URI / id list; the real path stays inside the app.
+library;
+
+import 'package:flutter/material.dart';
+
 abstract final class ForjaHostAssets {
   static const scheme = 'forja';
   static const host = 'asset';
@@ -58,4 +62,20 @@ abstract final class ForjaHostAssets {
   }
 
   static bool isKnown(String? ref) => resolveFlutterPath(ref) != null;
+
+  /// Material fallback when a pack icon is a known host asset id.
+  static IconData? materialIconFor(String? ref) {
+    final id = parseId(ref);
+    if (id == null) return null;
+    return switch (id) {
+      'nav/home' => Icons.home_outlined,
+      'nav/anime' => Icons.animation_outlined,
+      'nav/asian-drama' => Icons.theater_comedy_outlined,
+      'nav/arabic' => Icons.movie_filter_outlined,
+      'nav/search' => Icons.search_outlined,
+      'nav/live-matches' => Icons.sports_soccer_outlined,
+      'nav/iptv' => Icons.live_tv_outlined,
+      _ => null,
+    };
+  }
 }

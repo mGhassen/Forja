@@ -258,11 +258,12 @@ class ListFollowFromWatched {
     if (mt == 'anime') {
       final anilistId = item['anilistId'] as int?;
       if (anilistId == null) return false;
-      final pluginId =
-          item['pluginId']?.toString() ??
-          await PluginNavRegistry.pluginIdForTab('anime') ??
-          '';
-      if (pluginId.isEmpty) return false;
+      final pluginId = await PluginNavRegistry.resolveHubPluginId(
+        pluginId: item['pluginId']?.toString(),
+        tabId: item['hubTabId']?.toString(),
+        engineType: 'anime',
+      );
+      if (pluginId == null || pluginId.isEmpty) return false;
       final watched = (await EpisodeWatchedService().getWatchedSet(
         anilistId,
         catalog: pluginId,
@@ -311,11 +312,12 @@ class ListFollowFromWatched {
     if (mt == 'asian_drama') {
       final kisskhId = item['kisskhId'] as int?;
       if (kisskhId == null) return false;
-      final pluginId =
-          item['pluginId']?.toString() ??
-          await PluginNavRegistry.pluginIdForTab('asian_drama') ??
-          '';
-      if (pluginId.isEmpty) return false;
+      final pluginId = await PluginNavRegistry.resolveHubPluginId(
+        pluginId: item['pluginId']?.toString(),
+        tabId: item['hubTabId']?.toString(),
+        engineType: 'drama',
+      );
+      if (pluginId == null || pluginId.isEmpty) return false;
       final watched = (await EpisodeWatchedService().getWatchedSet(
         kisskhId,
         catalog: pluginId,

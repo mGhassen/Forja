@@ -29,7 +29,7 @@ Vertical catalog engines **removed from the active `ffi` link graph**. Code is k
 | `subtitles` | Player subtitle search (Wyzie, Levrx, SubtitleCat, Mysubs) |
 | `media-metadata` | mdblist + introdb |
 | `proxy` `/jellyfin-stream` | Loopback route for any Jellyfin-style stream URL — not the `jellyfin` catalog crate |
-| `engine-js` | Provider JS host — includes KissKh `kkey` (`__native_kisskh_kkey`) |
+| `engine` | Provider JS host — includes KissKh `kkey` (`__native_kisskh_kkey`) |
 
 ## Restore
 

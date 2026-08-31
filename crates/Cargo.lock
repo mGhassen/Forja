@@ -1113,7 +1113,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "engine-js"
+name = "engine"
 version = "0.1.0"
 dependencies = [
  "aes",
@@ -1185,7 +1185,7 @@ name = "ffi"
 version = "0.1.0"
 dependencies = [
  "debrid",
- "engine-js",
+ "engine",
  "host-http",
  "indexer",
  "iptv",

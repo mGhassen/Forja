@@ -49,7 +49,7 @@ Future<T?> openHubDetails<T>(
   Duration? startPosition,
   bool autoPlay = false,
 }) {
-  final tab = shellTabId ?? hubShellTabIdForPlugin(pluginId) ?? 'home';
+  final tab = shellTabId ?? hubShellTabIdForPlugin(pluginId);
   return pushShellRoute<T>(
     context,
     AppRouter.slideShellRoute(
@@ -61,7 +61,7 @@ Future<T?> openHubDetails<T>(
         startPosition: startPosition,
         autoPlay: autoPlay,
       ),
-      settings: RouteSettings(name: '${tab}_hub_details'),
+      settings: RouteSettings(name: '${tab ?? pluginId}_hub_details'),
     ),
     shellTabId: tab,
   );

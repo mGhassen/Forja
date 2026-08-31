@@ -2,7 +2,7 @@
 
 **Status:** open  
 **Depends on:** [RFC-060](fixed/060-[fixed]-enginejs-sources-forja-tab.md)  
-**Area:** `crates/engine-js`, `crates/ffi` EngineJobs, `apps/forja/lib/shared/engine/`
+**Area:** `crates/engine`, `crates/ffi` EngineJobs, `apps/forja/lib/shared/engine/`
 
 ## Status at a glance
 
@@ -19,7 +19,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R64-C01 | `crates/engine-js` — rquickjs `AsyncRuntime` per extract on tokio | ✅ |
+| 1 | R64-C01 | `crates/engine` — rquickjs `AsyncRuntime` per extract on tokio | ✅ |
 | 2 | R64-C02 | Bridges: `fetch`, timers, `streamDecrypt`, `encodePipe` / `decodePipe`, `solvePow` / scrypt PoW | ✅ |
 | 3 | R64-C03 | `EngineAsyncJob.engineJsExtract` + per-job task-local cancel token | ✅ |
 | 4 | R64-C04 | Dart `runPluginIsolated` prefers Rust JS; flutter_js fallback | ✅ |

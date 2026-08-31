@@ -22,7 +22,7 @@ void main() {
       expect(BootNeeds.isVodNavId('settings'), isFalse);
     });
 
-    test('openingStatusLabel uses hub destination label', () {
+    test('openingStatusLabel without pack nav uses generic copy', () {
       const needs = BootNeeds(
         visibleNavIds: ['anime', 'iptv'],
         hubTab: true,
@@ -37,7 +37,7 @@ void main() {
         playSourceEngine: false,
         vodTab: true,
       );
-      expect(needs.openingStatusLabel, 'Opening Anime…');
+      expect(needs.openingStatusLabel, 'Warming catalog…');
     });
 
     test('openingStatusLabel for live/iptv-only', () {

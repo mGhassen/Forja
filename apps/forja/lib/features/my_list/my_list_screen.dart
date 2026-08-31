@@ -161,8 +161,11 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
     if (mediaType == 'anime' || anilistId != null) {
       final id = anilistId ?? tmdbId;
       if (id != null && mounted) {
-        final hubPlugin =
-            pluginId ?? await PluginNavRegistry.pluginIdForTab('anime');
+        final hubPlugin = await PluginNavRegistry.resolveHubPluginId(
+          pluginId: pluginId ?? item['pluginId']?.toString(),
+          tabId: item['hubTabId']?.toString(),
+          engineType: 'anime',
+        );
         if (hubPlugin == null) return;
         await openCatalogMetaItem(
           context,
@@ -191,8 +194,11 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
     if (mediaType == 'asian_drama' || kisskhId != null) {
       final id = kisskhId;
       if (id != null && mounted) {
-        final hubPlugin =
-            pluginId ?? await PluginNavRegistry.pluginIdForTab('asian_drama');
+        final hubPlugin = await PluginNavRegistry.resolveHubPluginId(
+          pluginId: pluginId ?? item['pluginId']?.toString(),
+          tabId: item['hubTabId']?.toString(),
+          engineType: 'drama',
+        );
         if (hubPlugin == null) return;
         await openCatalogMetaItem(
           context,
@@ -268,11 +274,15 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
 
     if (kind == 'anime' && anilistId != null) {
       if (mounted) {
+        final hubPlugin = await PluginNavRegistry.resolveHubPluginId(
+          engineType: 'anime',
+        );
+        if (hubPlugin == null) return;
         await openCatalogMetaItem(
           context,
-          pluginId: 'anilist',
+          pluginId: hubPlugin,
           item: CatalogMetaItem(
-            id: 'anilist:$anilistId',
+            id: '$hubPlugin:$anilistId',
             type: 'anime',
             name: item['title']?.toString() ?? 'Anime',
             poster: item['posterPath']?.toString() ?? '',
