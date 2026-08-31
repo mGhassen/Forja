@@ -88,12 +88,16 @@ class PlayerSubtitleSettingsDialog {
   }
 
   static void _applyDelay(Player? player, double delay) {
-    if (player?.platform is NativePlayer) {
-      (player!.platform as NativePlayer).setProperty(
+    final platform = player?.platform;
+    if (platform is! NativePlayer || platform.disposed) return;
+    // Runtime prop — skip init wait (same pattern as sub-visibility toggles).
+    unawaited(
+      platform.setProperty(
         'sub-delay',
         delay.toString(),
-      );
-    }
+        waitForInitialization: false,
+      ),
+    );
   }
 
   static const _fonts = [
@@ -766,10 +770,16 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.tvFocus) {
+    // Desktop hybrid shares useFocusableMoodChips with TV, but mouse clicks on
+    // FocusableControl race ensureVisible-on-focus and cancel the tap. Use
+    // IconButton whenever we have a pointer (same pattern as Bold / Switch).
+    final leanback = widget.tvFocus &&
+        !(ShellScope.maybeOf(context)?.inputPolicy.scaleOnHover ?? true);
+    if (!leanback) {
       return IconButton(
         icon: Icon(widget.icon, color: Colors.white70, size: 20),
         visualDensity: VisualDensity.compact,
+        tooltip: widget.icon == Icons.add ? 'Increase delay' : 'Decrease delay',
         onPressed: () => widget.onStep(1),
       );
     }
@@ -806,6 +816,7 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
       scaleOnFocus: 1.0,
       showFocusBorder: false,
       showFocusFill: false,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.off,
       onFocusChange: (f) {
         setState(() => _focused = f);
         if (!f) _resetHold();

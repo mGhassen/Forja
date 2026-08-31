@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-/// Same key as `crates/anime/src/extractors/miruro.rs` PIPE_OBF_KEY.
+/// Same key as `crates/archive/anime/src/extractors/miruro.rs` PIPE_OBF_KEY.
 const PIPE_OBF_KEY: [u8; 16] = [
     0x71, 0x95, 0x10, 0x34, 0xf8, 0xfb, 0xcf, 0x53, 0xd8, 0x9d, 0xb5, 0x2c, 0xeb, 0x3d, 0xc2, 0x2c,
 ];

@@ -24,7 +24,7 @@ use stremio::{
     parse_manifest, parse_meta, parse_streams, parse_subtitles,
 };
 use tokio::runtime::Runtime;
-use utils::{episode_matcher, hls_parser, js_unpacker, kisskh_subtitle, torrent_filter};
+use utils::{episode_matcher, hls_parser, js_unpacker, torrent_filter};
 
 uniffi::include_scaffolding!("forja");
 
@@ -124,10 +124,6 @@ fn parse_hls_master_json(master_url: String, body: String) -> String {
     }
 }
 
-fn decrypt_kisskh_body(body: String, source_url: Option<String>) -> String {
-    kisskh_subtitle::decrypt_body(&body, source_url.as_deref())
-}
-
 fn set_provider_runtime_overlay(json: String) -> String {
     match utils::provider_runtime::set_overlay_json(&json) {
         Ok(()) => String::new(),
@@ -164,7 +160,7 @@ fn playback_order_providers_json(payload_json: String) -> String {
     };
     if request.reliability.is_empty() {
         request.reliability =
-            provider_health::ProviderHealthStore::global().all_provider_totals();
+            engine_js::ProviderHealthStore::global().all_provider_totals();
     }
     let response = order_providers(request);
     serde_json::to_string(&response)
@@ -771,7 +767,7 @@ fn mega_resolve_json(embed_url: String) -> String {
 }
 
 fn provider_health_json(payload_json: String) -> String {
-    provider_health::handle_health_json(&payload_json)
+    engine_js::handle_health_json(&payload_json)
 }
 
 fn storage_open(path: String) -> String {

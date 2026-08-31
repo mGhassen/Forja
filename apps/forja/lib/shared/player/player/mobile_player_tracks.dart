@@ -89,21 +89,22 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       }
     }
 
-    if (isKissKhEncryptedSubtitleEntry(s)) {
+    if (hasInlineSubtitleContent(s)) {
       try {
-        final local = await materializeKissKhSubtitleFile(s);
+        final local = await materializeInlineSubtitleFile(s);
         if (local == null || !await externalSubtitleCacheFileValid(local)) {
           fail();
           return false;
         }
-        final prior = _s._externalSubFileCache[url];
+        final cacheKey = url.isNotEmpty ? url : local;
+        final prior = _s._externalSubFileCache[cacheKey];
         if (prior != null && prior != local) {
           await deleteExternalSubtitleCacheFile(prior);
         }
-        _s._externalSubFileCache[url] = local;
+        _s._externalSubFileCache[cacheKey] = local;
         return await applyUri(local);
       } catch (e) {
-        debugPrint('[MobilePlayer] kisskh subtitle decrypt failed: $e');
+        debugPrint('[MobilePlayer] inline subtitle materialize failed: $e');
         fail();
         return false;
       }

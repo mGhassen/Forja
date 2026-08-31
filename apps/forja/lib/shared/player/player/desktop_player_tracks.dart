@@ -79,7 +79,7 @@ mixin _DesktopPlayerTracks
       }
     }
 
-    // Already-local subtitle (e.g. kisskh decrypted) - feed straight to libmpv.
+    // Already-local subtitle (e.g. provider-inlined plaintext) - feed straight to libmpv.
     if (url.startsWith('file://') || url.startsWith('/')) {
       try {
         final uri = url.startsWith('file://') ? url : Uri.file(url).toString();
@@ -95,22 +95,23 @@ mixin _DesktopPlayerTracks
       }
     }
 
-    // KissKh Sub CDN — encrypted cues; site player decrypts, we must too.
-    if (isKissKhEncryptedSubtitleEntry(s)) {
+    // Provider-supplied plaintext (e.g. KissKh Sub API decrypted in pack JS).
+    if (hasInlineSubtitleContent(s)) {
       try {
-        final local = await materializeKissKhSubtitleFile(s);
+        final local = await materializeInlineSubtitleFile(s);
         if (local == null || !await externalSubtitleCacheFileValid(local)) {
           fail();
           return false;
         }
-        final prior = _s._externalSubFileCache[url];
+        final cacheKey = url.isNotEmpty ? url : local;
+        final prior = _s._externalSubFileCache[cacheKey];
         if (prior != null && prior != local) {
           await deleteExternalSubtitleCacheFile(prior);
         }
-        _s._externalSubFileCache[url] = local;
+        _s._externalSubFileCache[cacheKey] = local;
         return await applyUri(local);
       } catch (e) {
-        debugPrint('[DesktopPlayer] kisskh subtitle decrypt failed: $e');
+        debugPrint('[DesktopPlayer] inline subtitle materialize failed: $e');
         fail();
         return false;
       }

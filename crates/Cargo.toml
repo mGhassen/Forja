@@ -17,7 +17,6 @@ members = [
     "indexer",
     "debrid",
     "live-matches",
-    "provider-health",
     "engine-js",
     "archive/jellyfin",
     "archive/music",
@@ -25,6 +24,7 @@ members = [
     "archive/manga",
     "archive/catalog",
     "archive/anilist",
+    "archive/anime",
     "archive/trakt",
 ]
 

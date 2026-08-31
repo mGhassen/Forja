@@ -92,18 +92,19 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       return pack(uri);
     }
 
-    if (isKissKhEncryptedSubtitleEntry(s)) {
+    if (hasInlineSubtitleContent(s)) {
       try {
-        final local = await materializeKissKhSubtitleFile(s);
+        final local = await materializeInlineSubtitleFile(s);
         if (local == null) return null;
-        final prior = _s._externalSubFileCache[url];
+        final cacheKey = url.isNotEmpty ? url : local;
+        final prior = _s._externalSubFileCache[cacheKey];
         if (prior != null && prior != local) {
           await deleteExternalSubtitleCacheFile(prior);
         }
-        _s._externalSubFileCache[url] = local;
+        _s._externalSubFileCache[cacheKey] = local;
         return pack(local);
       } catch (e) {
-        debugPrint('[ExoPlayer] kisskh subtitle decrypt failed: $e');
+        debugPrint('[ExoPlayer] inline subtitle materialize failed: $e');
         return null;
       }
     }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show File;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +33,7 @@ import 'package:forja/shared/player/player/player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:rust/rust.dart';
 
 /// Browser-like UA so CDNs that reject bare `libmpv` still serve the file.
@@ -1276,12 +1278,15 @@ List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
   for (final item in raw) {
     if (item is! Map) continue;
     final url = item['url']?.toString().trim() ?? '';
-    if (url.isEmpty) continue;
+    final content = (item['content'] ?? item['text'])?.toString();
+    final hasContent = content != null && content.trim().isNotEmpty;
+    if (url.isEmpty && !hasContent) continue;
     final name =
         item['name']?.toString() ?? item['language']?.toString() ?? 'Subtitle';
     final sourceName = item['sourceName']?.toString().trim();
     out.add({
-      'url': url,
+      if (url.isNotEmpty) 'url': url,
+      if (hasContent) 'content': content,
       'language':
           item['language']?.toString() ?? item['lang']?.toString() ?? 'en',
       'name': name,
@@ -1292,25 +1297,34 @@ List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
   return out.isEmpty ? null : out;
 }
 
-/// KissKh Sub CDN cues are AES line-encrypted — must decrypt before mpv/Exo.
-bool isKissKhEncryptedSubtitleEntry(Map<String, dynamic> s) {
-  final source = (s['sourceName'] ?? '').toString().toLowerCase().trim();
-  return source == 'kisskh';
+/// Provider already decrypted / inlined subtitle text — write a temp file for mpv/Exo.
+bool hasInlineSubtitleContent(Map<String, dynamic> s) {
+  final content = (s['content'] ?? s['text'])?.toString();
+  return content != null && content.trim().isNotEmpty;
 }
 
-/// Fetch + decrypt KissKh Sub CDN → local `file://` URI (null on failure).
-Future<String?> materializeKissKhSubtitleFile(Map<String, dynamic> s) async {
-  final url = (s['url'] ?? '').toString().trim();
-  if (url.isEmpty) return null;
-  final lang = (s['language'] ?? s['lang'] ?? 'sub').toString();
-  final ref = (s['referer'] as String?)?.trim();
-  return KissKhSubtitleDecryptor.fetchAndDecrypt(
-    url: url,
-    episodeId: 0,
-    language: lang,
-    userAgent: kDefaultStreamUserAgent,
-    referer: (ref != null && ref.isNotEmpty) ? ref : 'https://kisskh.co/',
-  );
+/// Write inline subtitle [content]/[text] → local `file://` URI (null on failure).
+Future<String?> materializeInlineSubtitleFile(Map<String, dynamic> s) async {
+  final text = (s['content'] ?? s['text'])?.toString();
+  if (text == null || text.trim().isEmpty) return null;
+  try {
+    final dir = await getTemporaryDirectory();
+    final safeLang = (s['language'] ?? s['lang'] ?? 'sub').toString().replaceAll(
+      RegExp(r'[^A-Za-z0-9_-]'),
+      '_',
+    );
+    final isVtt =
+        text.trimLeft().startsWith('WEBVTT') ||
+        (s['url']?.toString().toLowerCase().contains('.vtt') ?? false);
+    final file = File(
+      '${dir.path}/forja_sub_inline_${DateTime.now().millisecondsSinceEpoch}_$safeLang.${isVtt ? 'vtt' : 'srt'}',
+    );
+    await file.writeAsString(text);
+    return Uri.file(file.path).toString();
+  } catch (e, st) {
+    debugPrint('[Subtitle] inline materialize failed: $e\n$st');
+    return null;
+  }
 }
 
 /// 111477 catalog rows and explicit `requires_proxy` need the local seek proxy.

@@ -134,12 +134,6 @@ Future<String> runParseHlsMasterJson(String masterUrl, String body) =>
       'body': body,
     });
 
-Future<String> runDecryptKisskhBody(String body, {String? sourceUrl}) =>
-    EngineWorkerPool.run(EngineJobKind.decryptKisskh, {
-      'body': body,
-      'sourceUrl': sourceUrl,
-    });
-
 Future<String> runParseXtreamCategoriesJson(String json) =>
     EngineWorkerPool.run(EngineJobKind.parseXtreamCategories, {'json': json});
 

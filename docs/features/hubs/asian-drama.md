@@ -25,7 +25,7 @@ Tap **Asian Drama** in the navigation bar.
 - On **desktop**, drag-select hero titles to copy them.
 - KissKH posters often use TMDB CDN; Android 7.0 builds embed Let's Encrypt roots for those hosts.
 - Stream resolve signs KissKH keys in-engine (~1s typical); WebView fallback only if direct path fails. Rate-limit cooldown does not hop mirrors.
-- KissKh play uses the site’s **Sub API** subtitles (decrypted) — not the HLS mux tracks alone, which can be out of sync with the website player.
+- KissKh play uses the site’s **Sub API** subtitles — the provider pack decrypts cues before play so timing matches kisskh.co (not HLS mux tracks alone).
 - **Escape** / **Cancel** during resolve returns to details; leaving the tab stops the extract.
 - Part of [content hub scrapers](../scrapers/content-hub-scrapers.md)
 

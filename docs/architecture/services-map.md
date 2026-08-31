@@ -56,11 +56,11 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | Item | Crate / FFI | Dart after |
 |------|-------------|------------|
 | KissKh catalog API | `crates/kisskh` · `kisskh_catalog_json` | `kisskh_service.dart` — history + models + `KissKhExtractor` (C3) |
-| Anime extractors (5) | `crates/anime/extractors/*` · `anime_extractor_json` | Deleted Dart extractors; `miruro_pipe_session.dart` stays host |
+| Anime extractors (archived) | `crates/archive/anime/extractors/*` | Superseded by `plugins/providers/**` JS |
 | Live matches fetch | `crates/live-matches` · `live_matches_fetch_json` | `live_matches_models.dart` — playback/embed host only |
 | IPTV Reddit scraper | `crates/iptv` (`reddit_catalog` + `portal_extract`) · `scrape_page` | Thin `IptvScraper` host glue |
 
-| Anime Anikoto resolve + direct embed | `crates/anime/resolve/*` · `anime_extractor_json` | `anime_service.dart` — orchestration + cache only |
+| Anime Anikoto resolve (archived) | `crates/archive/anime/resolve/*` | Superseded by provider packs |
 
 ### ✅ Correct today — do not move
 
@@ -68,9 +68,9 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 |-----------|----------|-----|
 | TMDB, Trakt, Jellyfin API calls | `packages/rust` + `crates/*-core` | C1 engine |
 | Webstreamr, torrent, indexers, debrid, proxy | `crates/webstreamr`, `scrapers`, `debrid`, `proxy` | C2/C7 engine |
-| AniList GraphQL | `runAnilistQueryJson` → `anilist` | C1 — `AnimeService._query` is thin |
-| KissKh subtitle decrypt | `crates/utils/kisskh_subtitle` | Engine |
-| Subtitles, mdblist, introdb, lyrics, paper2audio | `crates/anime` | Engine |
+| AniList GraphQL | archived — hub is JS `plugins/hubs/anime` | Was `crates/archive/anilist` |
+| Subtitle search (Wyzie / Levrx / …) | `crates/anime` subtitle modules | Engine |
+| Subtitles, mdblist, introdb, lyrics, paper2audio | `crates/anime` (misnamed; generic engine helpers) | Engine |
 | Vidsrc extract | `VidsrcExtractor` → Rust resolve job | C2 engine |
 | Manga HTTP fetch | `mangaFetchHtml` → `manga` | Fetch only — **parse still Dart** |
 | Jellyfin HTTP | `runJellyfinRequestJson` → `jellyfin` | API in Rust; OAuth/cache/models stay host |

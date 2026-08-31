@@ -112,7 +112,7 @@ Workspace members (`crates/Cargo.toml`):
 | Crate | Responsibility |
 |-------|----------------|
 | **`ffi`** | C ABI (`c_api.rs`), job runtime (`engine_jobs`), torrent / proxy / LAN / mega / seek111477 engines |
-| **`utils`** | Episode matcher, torrent filter, JS unpacker, HLS parse, kisskh subtitle, cancel tokens, provider runtime |
+| **`utils`** | Episode matcher, torrent filter, JS unpacker, HLS parse, cancel tokens, provider runtime |
 | **`stream`** | Playable normalize / select / source order helpers |
 | **`iptv`** | M3U / Xtream / Stalker / Reddit catalog / portal extract / stream probe |
 | **`iptv-worker`** | Standalone IPTV worker binary |
@@ -130,8 +130,7 @@ Workspace members (`crates/Cargo.toml`):
 | **`indexer`** | Jackett / Prowlarr HTTP |
 | **`debrid`** | Real-Debrid, AllDebrid, Premiumize, TorBox, Debrid-Link |
 | **`music`** | Deezer / YouTube music HTTP |
-| **`provider-health`** | Provider reliability score store (server/stream up/down) |
-| **`engine-js`** | QuickJS extract host (crypto, PoW, KissKh kkey, hop, fetch) |
+| **`engine-js`** | QuickJS extract host (crypto, PoW, KissKh kkey, hop, fetch) + provider reliability score store |
 
 Vendored patch: `crates/third_party/librqbit-dualstack-sockets` — iOS socket binding fix for librqbit.
 

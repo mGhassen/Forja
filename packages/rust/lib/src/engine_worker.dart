@@ -14,7 +14,6 @@ enum EngineJobKind {
   sortTorrents,
   parseM3u,
   parseHlsMaster,
-  decryptKisskh,
   httpGet,
   httpPost,
   animeRequest,
@@ -249,11 +248,6 @@ String _dispatchJob(_WorkerJob job) {
       return rust.parseHlsMasterJson(
         job.args['masterUrl']! as String,
         job.args['body']! as String,
-      );
-    case EngineJobKind.decryptKisskh:
-      return rust.decryptKisskhBody(
-        job.args['body']! as String,
-        sourceUrl: job.args['sourceUrl'] as String?,
       );
     case EngineJobKind.httpGet:
       return rust.httpGetJson(

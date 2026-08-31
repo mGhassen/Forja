@@ -80,6 +80,20 @@ dependencies = [
 name = "anime"
 version = "0.1.0"
 dependencies = [
+ "base64",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "urlencoding",
+ "utils",
+]
+
+[[package]]
+name = "anime_extractors"
+version = "0.1.0"
+dependencies = [
  "aes",
  "base64",
  "ctr",
@@ -1130,6 +1144,8 @@ dependencies = [
  "serde_json",
  "sha1",
  "sha2",
+ "storage",
+ "stream",
  "thiserror 2.0.18",
  "tmdb",
  "tokio",
@@ -1189,7 +1205,6 @@ dependencies = [
  "iptv",
  "lan",
  "live-matches",
- "provider-health",
  "proxy",
  "scrapers",
  "serde",
@@ -2941,16 +2956,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8fd00f0bb2e90d81d1044c2b32617f68fcb9fa3bb7640c23e9c748e53fb30934"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "provider-health"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "storage",
- "stream",
 ]
 
 [[package]]

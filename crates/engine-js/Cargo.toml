@@ -26,6 +26,8 @@ scrypt = "0.11"
 flate2 = "1"
 utils = { path = "../utils" }
 tmdb = { path = "../tmdb" }
+stream = { path = "../stream" }
+storage = { path = "../storage" }
 rquickjs = { version = "0.9", features = ["futures", "parallel", "macro", "bindgen"] }
 
 [dev-dependencies]

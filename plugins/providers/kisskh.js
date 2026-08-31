@@ -123,10 +123,95 @@ function extract(ctx) {
     return [];
   }
 
-  // Site player uses /api/Sub/{id} (decrypted VTT). HLS mux tracks are often
-  // mistimed — always attach Sub API rows so the host can decrypt + prefer them.
+  // Site Sub CDN cues are AES line-encrypted (same keys as kisskh.co player).
+  // Decrypt here and emit plaintext `content` — host must not special-case KissKh.
+  var SUB_KEY_VARIANTS = [
+    { key: 'AmSmZVcH93UQUezi', iv: 'ReBKWW8cqdjPEnF6' },
+    { key: '8056483646328763', iv: '6852612370185273' },
+    { key: 'sWODXX04QRTkHdlZ', iv: '8pwhapJeC4hrS9hO' },
+  ];
+
+  function preferredSubKeyIndex(url) {
+    var path = String(url || '').split('?')[0];
+    var ext = path.split('.').pop();
+    if (!ext) return null;
+    ext = ext.toLowerCase();
+    if (ext === 'srt') return null;
+    if (ext === 'txt') return 1;
+    if (ext === 'txt1') return 0;
+    return 2;
+  }
+
+  function tryDecryptCue(b64, key, iv) {
+    if (!(ctx.crypto && ctx.crypto.AES && ctx.crypto.enc)) return null;
+    try {
+      var C = ctx.crypto;
+      var pt = C.AES.decrypt(
+        { ciphertext: C.enc.Base64.parse(String(b64).replace(/\n/g, '')) },
+        C.enc.Utf8.parse(key),
+        {
+          iv: C.enc.Utf8.parse(iv),
+          mode: C.mode.CBC,
+          padding: C.pad.Pkcs7,
+        },
+      );
+      var text = C.enc.Utf8.stringify(pt);
+      return text ? text : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function decryptCue(b64, sourceUrl) {
+    var trimmed = String(b64 || '').trim();
+    if (!trimmed || !/^[A-Za-z0-9+/=\s]+$/.test(trimmed)) return null;
+    var preferred = preferredSubKeyIndex(sourceUrl);
+    if (preferred != null) {
+      var hit = tryDecryptCue(
+        trimmed,
+        SUB_KEY_VARIANTS[preferred].key,
+        SUB_KEY_VARIANTS[preferred].iv,
+      );
+      if (hit) return hit;
+    }
+    for (var i = 0; i < SUB_KEY_VARIANTS.length; i++) {
+      if (i === preferred) continue;
+      var r = tryDecryptCue(
+        trimmed,
+        SUB_KEY_VARIANTS[i].key,
+        SUB_KEY_VARIANTS[i].iv,
+      );
+      if (r) return r;
+    }
+    return null;
+  }
+
+  function decryptSubBody(body, sourceUrl) {
+    var lines = String(body || '').split(/\r?\n/);
+    var out = [];
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      var t = line.trim();
+      if (
+        !t ||
+        t === 'WEBVTT' ||
+        t.indexOf('NOTE') === 0 ||
+        /^\d+$/.test(t) ||
+        line.indexOf('-->') >= 0
+      ) {
+        out.push(line);
+        continue;
+      }
+      var decoded = decryptCue(line, sourceUrl);
+      out.push(decoded != null ? decoded : line);
+    }
+    return out.join('\n');
+  }
+
+  // Site player uses /api/Sub/{id}. HLS mux tracks are often mistimed — attach
+  // decrypted Sub API rows so the host prefers them as generic sideloads.
   function fetchSubtitles(episodeId, origin) {
-    if (!(ctx.crypto && ctx.crypto.kisskhKkey)) {
+    if (!(ctx.crypto && ctx.crypto.kisskhKkey && ctx.crypto.AES)) {
       return Promise.resolve([]);
     }
     var kkey = ctx.crypto.kisskhKkey(episodeId, 'subtitle');
@@ -135,21 +220,41 @@ function extract(ctx) {
     return fetchJson(path)
       .then(function (res) {
         var list = Array.isArray(res.json) ? res.json : [];
-        var out = [];
-        list.forEach(function (t) {
-          if (!t || typeof t !== 'object') return;
-          var src = String(t.src || t.url || '').trim();
-          if (!src || !/^https?:/i.test(src)) return;
-          var label = String(t.label || t.language || t.land || 'Unknown').trim();
-          out.push({
-            url: src,
-            language: label,
-            name: label,
-            sourceName: 'kisskh',
-          });
+        var originUsed = res.origin || origin;
+        return Promise.all(
+          list.map(function (t) {
+            if (!t || typeof t !== 'object') return Promise.resolve(null);
+            var src = String(t.src || t.url || '').trim();
+            if (!src || !/^https?:/i.test(src)) return Promise.resolve(null);
+            var label = String(t.label || t.language || t.land || 'Unknown').trim();
+            var ext = (src.split('?')[0].split('.').pop() || '').toLowerCase();
+            return ctx
+              .fetch(src, { headers: headersFor(originUsed) })
+              .then(function (r) {
+                if (!r.ok) return null;
+                return r.text().then(function (body) {
+                  var text =
+                    ext === 'srt' ? String(body || '') : decryptSubBody(body, src);
+                  if (!String(text || '').trim()) return null;
+                  return {
+                    url: src,
+                    language: label,
+                    name: label,
+                    content: text,
+                  };
+                });
+              })
+              .catch(function () {
+                return null;
+              });
+          }),
+        ).then(function (rows) {
+          var out = rows.filter(Boolean);
+          ctx.log(
+            'kisskh Sub API tracks=' + out.length + ' @ ' + originUsed,
+          );
+          return out;
         });
-        ctx.log('kisskh Sub API tracks=' + out.length + ' @ ' + (res.origin || origin));
-        return out;
       })
       .catch(function (e) {
         ctx.log('kisskh Sub API error: ' + (e && e.message ? e.message : e));

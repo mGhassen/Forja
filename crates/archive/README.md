@@ -15,7 +15,8 @@ Vertical catalog engines **removed from the active `ffi` link graph**. Code is k
 | `books/` | Books tab |
 | `manga/` | Manga tab |
 | `catalog/` | Similar tab (`bestsimilar.com`) |
-| `anilist/` | Legacy AniList GraphQL (hubs are JS plugins now) |
+| `anilist/` | Legacy AniList GraphQL (hub browse is `plugins/hubs/anime`) |
+| `anime/` | Legacy Rust anime extractors/resolve (`anime_extractors`) — JS providers own extract now |
 | `trakt/` | Trakt.tv API client (Simkl is the active tracker) |
 
 ## Still active (not here)
@@ -23,7 +24,7 @@ Vertical catalog engines **removed from the active `ffi` link graph**. Code is k
 | Crate | Why |
 |-------|-----|
 | `stremio` | Live Matches, TMDB Sources, Stremio Direct playback |
-| `anime` | Generic `animeHttp()` for player / Simkl (HTTP only; extractors trimmed from FFI) |
+| `anime` | Misnamed kitchen sink: generic `animeHttp()` + metadata + subtitles (player / Simkl / mdblist / Wyzie). **Not** the Anime hub. |
 | `proxy` `/jellyfin-stream` | Loopback route for any Jellyfin-style stream URL — not the `jellyfin` catalog crate |
 | `engine-js` | Provider JS host — includes KissKh `kkey` (`__native_kisskh_kkey`) |
 

@@ -35,7 +35,6 @@ anime = { path = "../anime" }
 indexer = { path = "../indexer" }
 debrid = { path = "../debrid" }
 live-matches = { path = "../live-matches" }
-provider-health = { path = "../provider-health" }
 engine-js = { path = "../engine-js" }
 uniffi = { workspace = true }
 serde = { workspace = true }

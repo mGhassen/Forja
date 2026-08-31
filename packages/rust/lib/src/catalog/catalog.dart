@@ -1,5 +1,4 @@
 export 'introdb_service.dart';
-export 'kisskh_subtitle_decryptor.dart';
 export 'mdblist_service.dart';
 export 'mysubs_service.dart';
 export 'paper2audio_service.dart';

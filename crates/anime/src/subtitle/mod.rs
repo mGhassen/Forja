@@ -1,4 +1,3 @@
-mod kisskh;
 mod levrx;
 mod mysubs;
 mod subtitlecat;
@@ -24,12 +23,6 @@ struct SubtitleRequest {
     translate_base_url: String,
     #[serde(default = "default_max_results")]
     max_results: usize,
-    #[serde(default)]
-    url: String,
-    #[serde(default)]
-    user_agent: String,
-    #[serde(default)]
-    referer: String,
 }
 
 fn default_max_results() -> usize {
@@ -71,8 +64,6 @@ pub fn subtitle_request_json(request_json: &str) -> String {
             mysubs::fetch_all(&req.title, req.year, req.season, req.episode)
                 .map(|e| json!({ "entries": e }))
         }
-        "kisskh_fetch_decrypt" => kisskh::fetch_and_decrypt(&req.url, &req.user_agent, &req.referer)
-            .map(|r| json!({ "text": r.text, "is_vtt": r.is_vtt })),
         other => return json!({ "error": format!("unknown action: {other}") }).to_string(),
     };
 

@@ -248,24 +248,6 @@ pub unsafe extern "C" fn ffi_parse_hls_master_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_decrypt_kisskh_body(
-    body: *const c_char,
-    source_url: *const c_char,
-) -> *mut c_char {
-    let url = if source_url.is_null() {
-        None
-    } else {
-        let s = from_c_str(source_url);
-        if s.is_empty() {
-            None
-        } else {
-            Some(s)
-        }
-    };
-    to_c_string(crate::decrypt_kisskh_body(from_c_str(body), url))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn ffi_build_stremio_resource_url(
     addon_url: *const c_char,
     resource_path: *const c_char,

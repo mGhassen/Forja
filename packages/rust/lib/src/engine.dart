@@ -240,14 +240,6 @@ class RustLib {
     return _readString(_native.ffi_parse_hls_master_json(urlPtr, bodyPtr));
   });
 
-  String decryptKisskhBody(String body, {String? sourceUrl}) => using((arena) {
-    final bodyPtr = body.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    final sourcePtr = sourceUrl == null
-        ? ffi.nullptr
-        : sourceUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_decrypt_kisskh_body(bodyPtr, sourcePtr));
-  });
-
   String buildStremioResourceUrl(String addonUrl, String resourcePath) =>
       using((arena) {
         final a = addonUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
@@ -740,11 +732,6 @@ final class _FfiNative {
             'ffi_parse_hls_master_json',
           )
           .asFunction(),
-      ffi_decrypt_kisskh_body = lib
-          .lookup<ffi.NativeFunction<_TwoStringNative>>(
-            'ffi_decrypt_kisskh_body',
-          )
-          .asFunction(),
       ffi_build_stremio_resource_url = lib
           .lookup<ffi.NativeFunction<_TwoStringNative>>(
             'ffi_build_stremio_resource_url',
@@ -1120,11 +1107,6 @@ final class _FfiNative {
     ffi.Pointer<ffi.Char>,
   )
   ffi_parse_hls_master_json;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-  )
-  ffi_decrypt_kisskh_body;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,

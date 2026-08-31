@@ -30,12 +30,4 @@ void main() {
     final map = jsonDecode(raw) as Map<String, dynamic>;
     expect(map['error'], isNotNull);
   });
-
-  test('subtitleRequestJson rejects kisskh without url', () {
-    final raw = RustLib.instance.subtitleRequestJson(
-      '{"action":"kisskh_fetch_decrypt"}',
-    );
-    final map = jsonDecode(raw) as Map<String, dynamic>;
-    expect(map['error'], isNotNull);
-  });
 }

@@ -1995,7 +1995,7 @@ void main() {
       );
     });
 
-    test('catalogStreamExternalSubtitles keeps KissKh sourceName', () {
+    test('catalogStreamExternalSubtitles keeps inline content', () {
       expect(
         catalogStreamExternalSubtitles({
           'subtitles': [
@@ -2003,27 +2003,27 @@ void main() {
               'url': 'https://cdn.example/en.txt',
               'language': 'English',
               'name': 'English',
-              'sourceName': 'kisskh',
+              'content': 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nHi\n',
             },
           ],
         }),
         [
           {
             'url': 'https://cdn.example/en.txt',
+            'content': 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nHi\n',
             'language': 'English',
             'name': 'English',
             'display': 'English',
-            'sourceName': 'kisskh',
           },
         ],
       );
       expect(
-        isKissKhEncryptedSubtitleEntry({
-          'url': 'https://cdn.example/en.txt',
-          'sourceName': 'kisskh',
+        hasInlineSubtitleContent({
+          'content': 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nHi\n',
         }),
         isTrue,
       );
+      expect(hasInlineSubtitleContent({'url': 'https://x'}), isFalse);
     });
   });
 
