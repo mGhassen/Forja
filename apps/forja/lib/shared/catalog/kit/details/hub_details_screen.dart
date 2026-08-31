@@ -7,15 +7,20 @@ import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_sections.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
+import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_resolve.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
+import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
+import 'package:forja/shared/playback/player_stream_extract_cache.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
+import 'package:forja/shared/services/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
-import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/hub_list_status_hero.dart';
@@ -25,7 +30,8 @@ import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
-import 'package:rust/rust.dart' show RichMediaDetails, isInProgressResume;
+import 'package:rust/rust.dart'
+    show MediaTrailer, RichMediaDetails, isInProgressResume;
 
 Future<T?> openHubDetails<T>(
   BuildContext context, {
@@ -143,6 +149,64 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     return isInProgressResume(posMs, durMs);
   }
 
+  bool get _hasClearableProgress {
+    final progress = _watchProgress;
+    if (progress == null) return false;
+    final posMs = (progress['positionMs'] as num?)?.toInt() ?? 0;
+    return posMs > 0;
+  }
+
+  Future<void> _clearProgress() async {
+    final progress = _watchProgress;
+    if (progress == null) return;
+    final show = _show;
+    await CatalogWatchHistory.remove(widget.pluginId, show.id);
+
+    final listTarget = CatalogListFollowTarget.fromMeta(
+      pluginId: widget.pluginId,
+      meta: show,
+    );
+    if (listTarget != null) {
+      await HubListFollow.clearProgress(listTarget);
+    }
+
+    final ep = (progress['episodeNumber'] as num?)?.toInt() ?? _selectedEpisode;
+    final open = show.open;
+    if (open != null) {
+      final videoId = progress['episodeVideoId']?.toString();
+      for (final audio in const <String?>[null, 'sub', 'dub']) {
+        CatalogSourcesSessionCache.invalidate(
+          CatalogSourcesSessionCache.cacheKey(
+            mediaId: 0,
+            mediaType: show.type,
+            season: _isMovie ? null : _selectedSeason,
+            episode: ep,
+            catalogOpen: open,
+            pluginId: widget.pluginId,
+            metaId: show.id,
+            audioCategory: audio,
+            episodeVideoId: videoId,
+          ),
+        );
+      }
+    }
+
+    final tmdbId = show.numericId('tmdb');
+    if (tmdbId != null) {
+      await PlayerStreamExtractCache.drop(
+        PlayerStreamExtractCache.cacheKeyFromProgress(
+          tmdbId: tmdbId,
+          mediaType: _isMovie ? 'movie' : 'tv',
+          season: _isMovie ? null : _selectedSeason,
+          episode: _isMovie ? null : ep,
+        ),
+      );
+    }
+
+    if (!mounted) return;
+    setState(() => _watchProgress = null);
+  }
+
   Future<void> _load() async {
     final seedEnriched = hubMetaTmdbEnriched(widget.item);
     if (!seedEnriched) {
@@ -200,6 +264,27 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       if (backdrops.isNotEmpty) _heroBackdrops = backdrops;
       if (rich != null) _rich = rich;
     });
+    if (rich != null && rich.extras.trailers.isNotEmpty) {
+      YoutubeStreamService.prefetch(
+        rich.extras.trailers.map((t) => t.key),
+        limit: 1,
+      );
+    }
+  }
+
+  List<MediaTrailer> get _trailers =>
+      _rich?.extras.trailers ?? const <MediaTrailer>[];
+
+  void _openBestTrailer() {
+    final trailers = _trailers;
+    if (trailers.isEmpty || !mounted) return;
+    AppRouter.openTrailerPlayer(
+      context,
+      trailers: trailers,
+      initialIndex: 0,
+      movie: _rich?.movie ?? catalogMetaToMovie(_show),
+      languageCode: _rich?.extras.originalLanguage,
+    );
   }
 
   void _scrollDetailsHeroIntoView() {
@@ -355,9 +440,14 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       pluginId: widget.pluginId,
       meta: show,
     );
+    final hasClearableProgress = _hasClearableProgress;
+    final trailers = _trailers;
+    final hasTrailers = trailers.isNotEmpty;
     var tvIndex = 0;
     final playIndex = tvIndex++;
     final sourcesIndex = showCatalogSources ? tvIndex++ : null;
+    final clearIndex = hasClearableProgress ? tvIndex++ : null;
+    final trailerIndex = hasTrailers ? tvIndex++ : null;
     final listIndex = listTarget != null ? tvIndex++ : null;
     final heroActionCount = tvIndex;
 
@@ -490,6 +580,36 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
                   tvItemIndex: playIndex,
                   tvSourcesItemIndex: sourcesIndex,
                 ),
+              if (hasClearableProgress) ...[
+                const SizedBox(width: 10),
+                HeroPillIconGroup(
+                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                  tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                  tvItemIndexStart: clearIndex!,
+                  onUpEdge: heroPopUp,
+                  slots: [
+                    HeroPillIconSlot(
+                      icon: Icons.delete_outline_rounded,
+                      label: 'Clear',
+                      tooltip: 'Clear progress & stream cache',
+                      onTap: () => unawaited(_clearProgress()),
+                    ),
+                  ],
+                ),
+              ],
+              if (hasTrailers) ...[
+                const SizedBox(width: 10),
+                HeroPillPlayButton(
+                  label: 'Trailer',
+                  icon: Icons.smart_display_outlined,
+                  tone: HeroPillPlayTone.secondary,
+                  onTap: _openBestTrailer,
+                  onUpEdge: heroPopUp,
+                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                  tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                  tvItemIndex: trailerIndex,
+                ),
+              ],
               if (listTarget != null) ...[
                 const SizedBox(width: 10),
                 HubListStatusHero(

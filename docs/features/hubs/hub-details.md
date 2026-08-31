@@ -21,7 +21,7 @@ From **Home**, **Anime**, or **Asian Drama**:
 ## What you can do
 
 - **Hero** — pack title, synopsis, meta, rotating backdrops (Ken Burns on desktop/mobile; static stills on Android TV). TMDB enrich may add a title logo, extra facts, and richer backdrops without replacing pack art.
-- **Play row** — green **Play** / **Resume** runs the hub play path (Megaplay / KissKH native / Forja Auto / webstreaming when enabled). White **Play** / **Resume** (link icon) opens **Sources** when TMDB matched and Direct torrent / Nuvio / Forja play sources are on — same panel chrome as [TMDB details](../movies-tv/tmdb-details.md).
+- **Play row** — green **Play** / **Resume** runs the hub play path (Megaplay / KissKH native / Forja Auto / webstreaming when enabled). White **Play** / **Resume** (link icon) opens **Sources** when TMDB matched and Direct torrent / Nuvio / Forja play sources are on — same panel chrome as [TMDB details](../movies-tv/tmdb-details.md). **Trailer** appears when TMDB enrich returned videos (same in-app trailer player as movie/TV details).
 - **Episodes** — select a season (multi-season franchises) or episode; hero **Play** applies to the selected episode. Mark watched at ≥85% or via right-click / double-click on episode cards.
 - **My List** — glass **+** with Plan to Watch / Watching / … (Simkl when connected and ids resolve).
 - **Pack rails** — Characters, Staff, Related, Trailers, recommendations — whatever the pack returns after enrich.

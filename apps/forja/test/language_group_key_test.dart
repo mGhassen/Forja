@@ -40,13 +40,20 @@ void main() {
       expect(languageDisplayName('is'), 'Íslenska');
     });
 
-    test('resolves OpenSubtitles zt as traditional Chinese', () {
+    test('resolves OpenSubtitles zt as traditional Chinese endonym', () {
       expect(languageDisplayName('zt'), '中文（繁體）');
     });
 
-    test('does not leave bare two-letter codes as title case', () {
+    test('falls back to ISO English for 639-3 codes without endonyms', () {
+      expect(languageDisplayName('chr'), 'Cherokee');
+      expect(languageDisplayName('ckb'), 'Central Kurdish');
+      expect(languageDisplayName('crs'), 'Seselwa Creole French');
+    });
+
+    test('does not leave bare codes as title case when ISO known', () {
       expect(languageDisplayName('wo'), isNot('Wo'));
-      expect(languageDisplayName('xh'), isNot('Xh'));
+      expect(languageDisplayName('chr'), isNot('Chr'));
+      expect(languageDisplayName('ckb'), isNot('Ckb'));
     });
   });
 }

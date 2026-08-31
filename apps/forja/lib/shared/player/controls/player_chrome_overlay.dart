@@ -483,12 +483,16 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.link_rounded,
-                  color: fg,
-                  size: widget.iconSize,
-                ),
-                const SizedBox(width: 5),
+                // Link icon only when provider-only — two-line provider/server
+                // chrome is self-explanatory without it.
+                if (widget.server?.trim().isNotEmpty != true) ...[
+                  Icon(
+                    Icons.link_rounded,
+                    color: fg,
+                    size: widget.iconSize,
+                  ),
+                  const SizedBox(width: 5),
+                ],
                 _PlayerSourceButtonText(
                   label: widget.label,
                   server: widget.server,

@@ -1,3 +1,5 @@
+import 'package:forja/shared/utils/language_iso_fallback.dart';
+
 /// Maps ISO-639 codes (and common English aliases) to native endonyms.
 /// Used by audio/subtitle pickers so each language renders in its own script.
 const Map<String, String> _kLanguageNames = {
@@ -509,26 +511,36 @@ const Map<String, String> _kLanguageNames = {
   'xx': 'Unknown',
 };
 
-/// Lookup only - returns null when [code] is not a known language token.
-String? languageEndonym(String? code) {
-  if (code == null || code.trim().isEmpty) return null;
-  final c = code.trim().toLowerCase();
-  final hit = _kLanguageNames[c];
+String? _lookupLangMap(Map<String, String> map, String c) {
+  final hit = map[c];
   if (hit != null) return hit;
   final dash = c.indexOf(RegExp(r'[-_]'));
   if (dash > 0) {
-    final hit2 = _kLanguageNames[c.substring(0, dash)];
+    final hit2 = map[c.substring(0, dash)];
     if (hit2 != null) return hit2;
   }
   return null;
 }
 
-/// Returns the native endonym for the given code/string.
-/// Falls back to a Title-Cased version of the input, or 'Unknown' if empty.
+/// Lookup only - returns null when [code] is not a known endonym token.
+String? languageEndonym(String? code) {
+  if (code == null || code.trim().isEmpty) return null;
+  return _lookupLangMap(_kLanguageNames, code.trim().toLowerCase());
+}
+
+/// ISO / OpenSubtitles English name when no endonym exists.
+String? isoLanguageEnglishName(String? code) {
+  if (code == null || code.trim().isEmpty) return null;
+  return _lookupLangMap(kIsoLanguageEnglishNames, code.trim().toLowerCase());
+}
+
+/// Native endonym when known, else ISO English name, else title-cased input.
 String languageDisplayName(String? code) {
   if (code == null || code.trim().isEmpty) return 'Unknown';
-  final hit = languageEndonym(code);
-  if (hit != null) return hit;
+  final endo = languageEndonym(code);
+  if (endo != null) return endo;
+  final iso = isoLanguageEnglishName(code);
+  if (iso != null) return iso;
   return code
       .split(RegExp(r'[\s_-]+'))
       .where((p) => p.isNotEmpty)
