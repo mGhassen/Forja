@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/features/media/details/details_screen.dart';
+import 'package:forja/shared/catalog/kit/details/hub_details_screen.dart';
+import 'package:forja/shared/catalog/shell/catalog_legacy_movie_meta.dart';
 import 'package:forja/features/archive/search/search_screen.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -130,20 +131,24 @@ class AppRouter {
     int? initialEpisode,
     Duration? startPosition,
     bool autoPlay = false,
-  }) {
-    return pushShellRoute<T>(
+    String? pluginId,
+    String? shellTabId,
+  }) async {
+    final resolved =
+        pluginId ?? await resolveHubPluginIdForTab(shellTabId ?? 'home');
+    if (resolved == null || !context.mounted) return null;
+    final meta = stremioItem != null
+        ? catalogMetaFromStremioItem(stremioItem, movie)
+        : catalogMetaFromMovie(movie);
+    return openHubDetails<T>(
       context,
-      slideShellRoute(
-        (_) => DetailsScreen(
-          movie: movie,
-          stremioItem: stremioItem,
-          initialSeason: initialSeason,
-          initialEpisode: initialEpisode,
-          startPosition: startPosition,
-          autoPlay: autoPlay,
-        ),
-        settings: const RouteSettings(name: 'media_details'),
-      ),
+      pluginId: resolved,
+      item: meta,
+      shellTabId: shellTabId,
+      initialSeason: initialSeason,
+      initialEpisode: initialEpisode,
+      startPosition: startPosition,
+      autoPlay: autoPlay,
     );
   }
 

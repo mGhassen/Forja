@@ -1246,6 +1246,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _ensureStremioLoaded({bool force = false}) {
+    final customBase = widget.catalogOpen?.extraString('stremioAddonBaseUrl');
+    if (customBase != null && customBase.isNotEmpty) {
+      if (!_showsStremio) return;
+      setState(() => _selectedSourceId = customBase);
+      unawaited(_fetchStremioStreams(reset: force, refresh: force));
+      return;
+    }
     unawaited(
       _refreshStreamAddons().then((_) {
         if (!mounted || !_showsStremio) return;
@@ -2232,6 +2239,23 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     bool refresh = false,
   }) async {
     if (!_showsStremio) return;
+
+    final customBase = widget.catalogOpen?.extraString('stremioAddonBaseUrl');
+    final customId = widget.catalogOpen?.extraString('stremioId') ??
+        widget.catalogOpen?.id;
+    if (customBase != null &&
+        customBase.isNotEmpty &&
+        customId != null &&
+        customId.isNotEmpty) {
+      await _fetchStremioStreamsForCustomAddon(
+        baseUrl: customBase,
+        stremioId: customId,
+        reset: reset,
+        refresh: refresh,
+      );
+      return;
+    }
+
     if (_streamAddons.isEmpty) return;
     if (_selectedSourceId.isEmpty) return;
     final imdb = widget.movie.imdbId ?? '';
@@ -2288,6 +2312,95 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         baseUrl: baseUrl,
         type: type,
         id: stremioId,
+      );
+      if (!mounted || gen != _stremioGen) return;
+      final tagged = filterStremioStreamsForProfile(
+        streams.map((s) {
+          if (s is Map<String, dynamic>) {
+            return <String, dynamic>{
+              ...s,
+              '_addonName': addonName,
+              '_addonBaseUrl': baseUrl,
+            };
+          }
+          return <String, dynamic>{
+            '_addonName': addonName,
+            '_addonBaseUrl': baseUrl,
+          };
+        }).toList(),
+        _profile,
+      );
+      setState(() {
+        _completedAddonBaseUrls.add(baseUrl);
+        if (tagged.isNotEmpty) _loadedAddonBaseUrls.add(baseUrl);
+        _stremioStreams.removeWhere((s) => s['_addonBaseUrl'] == baseUrl);
+        _stremioStreams.addAll(tagged);
+        _stremioFetching = false;
+        _syncStremioProviderSelection();
+      });
+      CatalogSourcesSessionCache.writeStremio(
+        _catalogCacheKey,
+        _stremioStreams,
+      );
+      if (tagged.isNotEmpty) {
+        _focusPlayingSourceIfNeeded();
+        _requestScrollToCurrent();
+      }
+    } catch (_) {
+      if (!mounted || gen != _stremioGen) return;
+      setState(() {
+        _completedAddonBaseUrls.add(baseUrl);
+        _stremioFetching = false;
+        _syncStremioProviderSelection();
+        if (_stremioStreams.isEmpty && !_showsTorrents) {
+          _error = 'No streams found in $addonName';
+        }
+      });
+    }
+  }
+
+  Future<void> _fetchStremioStreamsForCustomAddon({
+    required String baseUrl,
+    required String stremioId,
+    bool reset = false,
+    bool refresh = false,
+  }) async {
+    if (!reset && !refresh && _completedAddonBaseUrls.contains(baseUrl)) {
+      setState(() => _syncStremioProviderSelection());
+      return;
+    }
+
+    final gen = ++_stremioGen;
+    setState(() {
+      _stremioFetching = true;
+      _error = null;
+      _selectedSourceId = baseUrl;
+      if (reset) {
+        _stremioStreams = [];
+        _loadedAddonBaseUrls.clear();
+        _completedAddonBaseUrls.clear();
+      } else if (refresh) {
+        _completedAddonBaseUrls.remove(baseUrl);
+        _loadedAddonBaseUrls.remove(baseUrl);
+      }
+    });
+
+    final addonName =
+        widget.catalogOpen?.extraString('stremioAddonName') ?? 'Addon';
+    var type = widget.catalogOpen?.extraString('stremioType') ??
+        (widget.movie.mediaType == 'tv' ? 'series' : 'movie');
+    var streamId = stremioId;
+    if (type == 'series' &&
+        widget.episodeVideoId != null &&
+        widget.episodeVideoId!.isNotEmpty) {
+      streamId = widget.episodeVideoId!;
+    }
+
+    try {
+      final streams = await _stremio.getStreams(
+        baseUrl: baseUrl,
+        type: type == 'collections' ? 'movie' : type,
+        id: streamId,
       );
       if (!mounted || gen != _stremioGen) return;
       final tagged = filterStremioStreamsForProfile(

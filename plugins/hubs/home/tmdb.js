@@ -879,6 +879,65 @@ function tmdbMetas(cfg, json, forcedType, limit) {
   return out;
 }
 
+function tmdbBuildTvVideos(ctx, cfg, tvId, showJson) {
+  var seasons = Array.isArray(showJson.seasons) ? showJson.seasons : [];
+  var seasonNums = [];
+  var si;
+  for (si = 0; si < seasons.length; si++) {
+    var sn = Number(seasons[si].season_number);
+    if (sn >= 1) seasonNums.push(sn);
+  }
+  seasonNums.sort(function (a, b) {
+    return a - b;
+  });
+  var maxSeasons = 25;
+  if (seasonNums.length > maxSeasons) {
+    seasonNums = seasonNums.slice(0, maxSeasons);
+  }
+  if (!seasonNums.length) return Promise.resolve([]);
+
+  return Promise.all(
+    seasonNums.map(function (sn) {
+      return tmdbGet(ctx, cfg, '/tv/' + tvId + '/season/' + sn, {}).then(
+        function (seasonJson) {
+          var eps = Array.isArray(seasonJson.episodes)
+            ? seasonJson.episodes
+            : [];
+          var out = [];
+          var ei;
+          for (ei = 0; ei < eps.length; ei++) {
+            var ep = eps[ei];
+            if (!ep || ep.episode_number == null) continue;
+            var epNum = Math.round(Number(ep.episode_number));
+            if (!epNum) continue;
+            out.push({
+              id: tvId + ':S' + sn + 'E' + epNum,
+              season: sn,
+              episode: epNum,
+              title: String(ep.name || 'Episode ' + epNum).trim(),
+              thumbnail: ep.still_path
+                ? tmdbImage(cfg, ep.still_path, 'w300')
+                : '',
+            });
+          }
+          return out;
+        },
+      );
+    }),
+  ).then(function (nested) {
+    var videos = [];
+    var ni;
+    for (ni = 0; ni < nested.length; ni++) {
+      videos = videos.concat(nested[ni]);
+    }
+    videos.sort(function (a, b) {
+      if (a.season !== b.season) return a.season - b.season;
+      return a.episode - b.episode;
+    });
+    return videos;
+  });
+}
+
 function tmdbDetails(ctx, cfg, params) {
   var raw = String(params.id || '').split(':');
   var id = Number(raw.pop());
@@ -889,10 +948,75 @@ function tmdbDetails(ctx, cfg, params) {
     );
   }
   if (type !== 'movie' && type !== 'tv') type = 'movie';
-  return tmdbGet(ctx, cfg, '/' + type + '/' + id, {}).then(function (json) {
+  var append =
+    type === 'tv'
+      ? 'external_ids,recommendations'
+      : 'external_ids,recommendations';
+  return tmdbGet(ctx, cfg, '/' + type + '/' + id, {
+    append_to_response: append,
+  }).then(function (json) {
     var meta = tmdbMeta(cfg, json, type);
     if (!meta) return hubFail('details', 'NOT_FOUND', type + ' ' + id);
-    return hubOk('details', { meta: meta }, { maxAge: 3600, swr: 86400 });
+
+    var ext = json.external_ids || {};
+    if (ext.imdb_id) {
+      meta.ids = meta.ids || {};
+      meta.ids.imdb = String(ext.imdb_id);
+    }
+
+    var rails = {};
+    var sideJobs = [];
+
+    var recJson = json.recommendations;
+    if (recJson && Array.isArray(recJson.results) && recJson.results.length) {
+      rails.recommendations = {
+        title: 'More Like This',
+        items: tmdbMetas(cfg, recJson, type, TMDB_HOME_RAIL_CAP),
+      };
+    } else {
+      sideJobs.push(
+        tmdbGet(ctx, cfg, '/' + type + '/' + id + '/recommendations', {
+          page: 1,
+        }).then(function (rec) {
+          rails.recommendations = {
+            title: 'More Like This',
+            items: tmdbMetas(cfg, rec, type, TMDB_HOME_RAIL_CAP),
+          };
+        }),
+      );
+    }
+
+    if (
+      type === 'movie' &&
+      json.belongs_to_collection &&
+      json.belongs_to_collection.id
+    ) {
+      var colId = Number(json.belongs_to_collection.id);
+      sideJobs.push(
+        tmdbGet(ctx, cfg, '/collection/' + colId, {}).then(function (col) {
+          var parts = Array.isArray(col.parts) ? col.parts : [];
+          if (!parts.length) return;
+          rails.collection = {
+            title: String(col.name || 'Collection').trim(),
+            items: tmdbMetas(cfg, { results: parts }, 'movie', 30),
+          };
+        }),
+      );
+    }
+
+    if (type === 'tv') {
+      sideJobs.push(
+        tmdbBuildTvVideos(ctx, cfg, id, json).then(function (videos) {
+          if (videos.length) meta.videos = videos;
+        }),
+      );
+    }
+
+    return Promise.all(sideJobs).then(function () {
+      var data = { meta: meta };
+      if (Object.keys(rails).length) data.rails = rails;
+      return hubOk('details', data, { maxAge: 3600, swr: 86400 });
+    });
   });
 }
 

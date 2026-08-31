@@ -9,9 +9,9 @@ import 'package:forja/shared/catalog/kit/widgets/catalog_continue_watching_secti
 import 'package:forja/shared/catalog/kit/play/catalog_play_resolve.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
-import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart' show WatchHistoryService, isInProgressResume;
 
 /// Layout widget type `continue` — pack-scoped [CatalogWatchHistory] plus Home
@@ -156,14 +156,18 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
 
   Future<void> _openDetails(Map<String, dynamic> entry) async {
     if (isHomeWatchHistoryCatalogEntry(entry)) {
+      final metaJson = entry['meta'];
+      if (metaJson is! Map) return;
+      final meta = CatalogMetaItem.fromJson(Map<String, dynamic>.from(metaJson));
       final home = entry['homeHistory'];
-      if (home is! Map) return;
-      final item = Map<String, dynamic>.from(home);
-      await AppRouter.openDetails(
+      final season = home is Map ? home['season'] as int? : null;
+      final episode = home is Map ? home['episode'] as int? : null;
+      await openCatalogMetaItem(
         context,
-        movie: movieFromWatchHistory(item),
-        initialSeason: item['season'] as int?,
-        initialEpisode: item['episode'] as int?,
+        pluginId: widget.pluginId,
+        item: meta,
+        initialSeason: season,
+        initialEpisode: episode,
       );
       if (mounted) await _reload();
       return;

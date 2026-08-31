@@ -4,12 +4,12 @@ import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
 import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/shell/catalog_legacy_movie_meta.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/widgets/media_details/media_details_recommendations_section.dart';
 import 'package:forja/shared/widgets/media_details_cast_section.dart';
 import 'package:forja/shared/widgets/media_details_trailers_section.dart';
-import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
 class HubDetailRailSection {
@@ -121,6 +121,7 @@ List<Widget> buildHubDetailRailSections({
 
 List<Widget> buildHubTmdbDetailSections({
   required BuildContext context,
+  required String pluginId,
   required RichMediaDetails? rich,
   required bool tvFocus,
   VoidCallback? firstMetaFocusUp,
@@ -191,7 +192,11 @@ List<Widget> buildHubTmdbDetailSections({
     sections.add(
       MediaDetailsRecommendationsSection(
         movies: recommendations,
-        onMovieTap: (movie) => AppRouter.openDetails(context, movie: movie),
+        onMovieTap: (movie) => openCatalogMetaItem(
+          context,
+          pluginId: pluginId,
+          item: catalogMetaFromMovie(movie),
+        ),
         tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
         tvRowId: 'recommendations',
         tvRowOrder: recsOrder!,

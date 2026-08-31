@@ -363,12 +363,6 @@ pub unsafe extern "C" fn ffi_host_http_request_json(request_json: *const c_char)
     to_c_string(crate::host_http_request_json(from_c_str(request_json)))
 }
 
-pub unsafe extern "C" fn ffi_media_extra_request_json(
-    request_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::media_extra_request_json(from_c_str(request_json)))
-}
-
 #[no_mangle]
 pub unsafe extern "C" fn ffi_indexer_request_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::indexer_request_json(from_c_str(request_json)))
@@ -635,6 +629,13 @@ pub unsafe extern "C" fn ffi_mega_resolve_json(embed_url: *const c_char) -> *mut
 #[no_mangle]
 pub unsafe extern "C" fn ffi_metadata_request_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::metadata_request_json(from_c_str(request_json)))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn ffi_media_extra_request_json(
+    request_json: *const c_char,
+) -> *mut c_char {
+    to_c_string(media_extra::media_extra_request_json(&from_c_str(request_json)))
 }
 
 #[no_mangle]

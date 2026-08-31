@@ -6,6 +6,7 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_sections.dart';
+import 'package:forja/shared/catalog/kit/details/hub_details_stremio.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_resolve.dart';
@@ -31,19 +32,35 @@ import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart'
-    show MediaTrailer, RichMediaDetails, isInProgressResume;
+    show
+        MediaTrailer,
+        RichMediaDetails,
+        WatchHistoryService,
+        isInProgressResume,
+        watchHistoryInt;
 
 Future<T?> openHubDetails<T>(
   BuildContext context, {
   required String pluginId,
   required CatalogMetaItem item,
   String? shellTabId,
+  int? initialSeason,
+  int? initialEpisode,
+  Duration? startPosition,
+  bool autoPlay = false,
 }) {
   final tab = shellTabId ?? hubShellTabIdForPlugin(pluginId) ?? 'home';
   return pushShellRoute<T>(
     context,
     AppRouter.slideShellRoute(
-      (_) => HubDetailsScreen(pluginId: pluginId, item: item),
+      (_) => HubDetailsScreen(
+        pluginId: pluginId,
+        item: item,
+        initialSeason: initialSeason,
+        initialEpisode: initialEpisode,
+        startPosition: startPosition,
+        autoPlay: autoPlay,
+      ),
       settings: RouteSettings(name: '${tab}_hub_details'),
     ),
     shellTabId: tab,
@@ -56,10 +73,18 @@ class HubDetailsScreen extends ConsumerStatefulWidget {
     super.key,
     required this.pluginId,
     required this.item,
+    this.initialSeason,
+    this.initialEpisode,
+    this.startPosition,
+    this.autoPlay = false,
   });
 
   final String pluginId;
   final CatalogMetaItem item;
+  final int? initialSeason;
+  final int? initialEpisode;
+  final Duration? startPosition;
+  final bool autoPlay;
 
   @override
   ConsumerState<HubDetailsScreen> createState() => _HubDetailsScreenState();
@@ -80,11 +105,18 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   int _selectedEpisode = 1;
   bool _detailsHeroInitialFocusDone = false;
   Map<String, dynamic>? _watchProgress;
+  bool _autoPlayConsumed = false;
+  StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
 
   @override
   void initState() {
     super.initState();
     CatalogWatchHistory.revision.addListener(_onWatchHistoryChanged);
+    if (hubMetaUsesHomeWatchHistory(widget.item)) {
+      _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
+        unawaited(_loadWatchProgress());
+      });
+    }
     unawaited(ref.read(settingsPlaybackProvider.future));
     unawaited(_loadWatchProgress());
     _loading = !hubMetaTmdbEnriched(widget.item);
@@ -94,6 +126,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   @override
   void dispose() {
     CatalogWatchHistory.revision.removeListener(_onWatchHistoryChanged);
+    unawaited(_homeHistorySub?.cancel());
     _scrollController.dispose();
     _heroPlayFocus.dispose();
     _backFocus.dispose();
@@ -121,12 +154,41 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
           break;
         }
       }
+      if (hit == null && hubMetaUsesHomeWatchHistory(_show)) {
+        hit = await _homeWatchHistoryProgress();
+      }
       if (!mounted) return;
       setState(() => _watchProgress = hit);
     } catch (_) {}
   }
 
+  Future<Map<String, dynamic>?> _homeWatchHistoryProgress() async {
+    final tmdbId = _show.numericId('tmdb');
+    if (tmdbId == null) return null;
+    final item = await WatchHistoryService().getProgress(
+      tmdbId,
+      season: _isMovie ? null : _selectedSeason,
+      episode: _isMovie ? null : _selectedEpisode,
+    );
+    if (item == null) return null;
+    return {
+      'metaId': _show.id,
+      'episodeNumber': item['episode'] ?? _selectedEpisode,
+      'positionMs': watchHistoryInt(item['position']),
+      'durationMs': watchHistoryInt(item['duration']),
+      'episodeVideoId': item['episodeVideoId'],
+      'extras': item['extras'],
+    };
+  }
+
   Duration? _startPositionForEpisode(int episodeNumber) {
+    if (widget.startPosition != null) {
+      if (_isMovie ||
+          widget.initialEpisode == null ||
+          widget.initialEpisode == episodeNumber) {
+        return widget.startPosition;
+      }
+    }
     final progress = _watchProgress;
     if (progress == null) return null;
     final savedEp = (progress['episodeNumber'] as num?)?.toInt();
@@ -201,6 +263,12 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
           episode: _isMovie ? null : ep,
         ),
       );
+      if (hubMetaUsesHomeWatchHistory(show)) {
+        final uniqueId = _isMovie
+            ? '$tmdbId'
+            : '${tmdbId}_S${_selectedSeason}_E$ep';
+        await WatchHistoryService().removeItem(uniqueId);
+      }
     }
 
     if (!mounted) return;
@@ -208,6 +276,47 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   }
 
   Future<void> _load() async {
+    if (hubMetaIsStremio(widget.item)) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+      final result = await loadHubStremioDetails(widget.item);
+      if (!mounted) return;
+      final meta = result.meta;
+      final backdrops = hubHeroBackdropUrls(meta);
+      final seasons = hubSeasonNumbers(meta.videos).toList()..sort();
+      var firstSeason = seasons.isEmpty ? 1 : seasons.first;
+      var firstEp = 1;
+      if (widget.initialSeason != null &&
+          (seasons.isEmpty || seasons.contains(widget.initialSeason))) {
+        firstSeason = widget.initialSeason!;
+      }
+      final seasonVideos = hubVideosForSeason(meta.videos, firstSeason);
+      firstEp = seasonVideos.isEmpty
+          ? (widget.initialEpisode ?? 1)
+          : (widget.initialEpisode != null &&
+                  seasonVideos.any((v) => v.episode == widget.initialEpisode)
+              ? widget.initialEpisode!
+              : (seasonVideos.first.episode ?? 1));
+      setState(() {
+        _detail = meta;
+        _packRails = result.rails;
+        _heroBackdrops = backdrops;
+        _loading = false;
+        _selectedSeason = firstSeason;
+        _selectedEpisode = firstEp;
+      });
+      unawaited(_loadWatchProgress());
+      if (meta.numericId('tmdb') != null) {
+        unawaited(_loadTmdbUi(meta));
+      }
+      if (widget.autoPlay) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoPlay());
+      }
+      return;
+    }
+
     final seedEnriched = hubMetaTmdbEnriched(widget.item);
     if (!seedEnriched) {
       setState(() {
@@ -233,11 +342,19 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     final backdrops = hubHeroBackdropUrls(meta);
     if (!mounted) return;
     final seasons = hubSeasonNumbers(meta.videos).toList()..sort();
-    final firstSeason = seasons.isEmpty ? 1 : seasons.first;
+    var firstSeason = seasons.isEmpty ? 1 : seasons.first;
+    var firstEp = 1;
+    if (widget.initialSeason != null &&
+        (seasons.isEmpty || seasons.contains(widget.initialSeason))) {
+      firstSeason = widget.initialSeason!;
+    }
     final seasonVideos = hubVideosForSeason(meta.videos, firstSeason);
-    final firstEp = seasonVideos.isEmpty
-        ? 1
-        : (seasonVideos.first.episode ?? 1);
+    firstEp = seasonVideos.isEmpty
+        ? (widget.initialEpisode ?? 1)
+        : (widget.initialEpisode != null &&
+                seasonVideos.any((v) => v.episode == widget.initialEpisode)
+            ? widget.initialEpisode!
+            : (seasonVideos.first.episode ?? 1));
     setState(() {
       _detail = meta;
       _packRails = packRails;
@@ -248,6 +365,15 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     });
     unawaited(_loadWatchProgress());
     unawaited(_loadTmdbUi(meta));
+    if (widget.autoPlay) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoPlay());
+    }
+  }
+
+  void _maybeAutoPlay() {
+    if (!mounted || _autoPlayConsumed || _loading || _error != null) return;
+    _autoPlayConsumed = true;
+    _playSelected();
   }
 
   Future<void> _loadTmdbUi(CatalogMetaItem meta) async {
@@ -516,6 +642,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     );
     final tmdbSections = buildHubTmdbDetailSections(
       context: context,
+      pluginId: widget.pluginId,
       rich: _rich,
       tvFocus: tvFocus,
       firstMetaFocusUp: packSections.isEmpty ? firstMetaFocusUp : null,

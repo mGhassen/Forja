@@ -820,6 +820,7 @@ class EngineService {
     required int gen,
     required int Function() generation,
   }) async {
+    if (!Engine.isReady) return null;
     if (gen != generation()) return null;
     final code = await _loadScript(plugin);
     if (gen != generation() || code == null) return null;
@@ -1036,6 +1037,7 @@ class EngineService {
     bool allowHostFallback = false,
   }) async {
     final gen = _extractGeneration;
+    if (!Engine.isReady) return null;
     final packs = await listPacks();
     if (gen != _extractGeneration) return null;
     final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
