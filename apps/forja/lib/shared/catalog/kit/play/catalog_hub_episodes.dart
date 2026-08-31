@@ -57,16 +57,22 @@ PlayerHubEpisode _hubEpisodeRow({
   );
 }
 
+bool _hubEpisodesNeedEnrichedDetails(List<PlayerHubEpisode> episodes) =>
+    episodes.every((e) => (e.thumbnailUrl ?? '').trim().isEmpty);
+
 /// Keep enriched rows from details; fetch pack `details` when the list is missing.
 Future<List<PlayerHubEpisode>?> ensureHubCatalogEpisodes({
   required String? pluginId,
   required String? metaId,
+  CatalogMetaItem? catalogMeta,
   required List<PlayerHubEpisode>? hubEpisodes,
   int? liveEpisodeCount,
 }) async {
   if (pluginId == null || metaId == null || metaId.isEmpty) return hubEpisodes;
 
-  if (hubEpisodes != null && hubEpisodes.isNotEmpty) {
+  if (hubEpisodes != null &&
+      hubEpisodes.isNotEmpty &&
+      !_hubEpisodesNeedEnrichedDetails(hubEpisodes)) {
     HubCatalogEpisodeCache.write(metaId, hubEpisodes);
     return hubEpisodes;
   }
@@ -82,6 +88,7 @@ Future<List<PlayerHubEpisode>?> ensureHubCatalogEpisodes({
     final meta = await fetchCatalogMetaDetails(
       pluginId: pluginId,
       metaId: metaId,
+      seed: catalogMeta,
     );
     if (meta == null || meta.videos.isEmpty) return hubEpisodes ?? cached;
 

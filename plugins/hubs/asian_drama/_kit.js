@@ -467,6 +467,10 @@ function hubTmdbSeasonEpisodeMap(ctx, tvId, season) {
     });
 }
 
+function hubIsGenericEpisodeTitle(title) {
+  return /^Episode\s+\d+$/i.test(String(title || '').trim());
+}
+
 // Details meta only — fill empty pack video thumbs/titles from matched TV season.
 function hubEnrichMetaVideos(ctx, meta, hit) {
   if (!meta || !hit || !hit.id) return Promise.resolve(meta);
@@ -507,7 +511,11 @@ function hubEnrichMetaVideos(ctx, meta, hit) {
       if (!String(vid.thumbnail || '').trim() && extras.still) {
         vid.thumbnail = extras.still;
       }
-      if (!String(vid.title || '').trim() && extras.name) {
+      if (
+        extras.name &&
+        (!String(vid.title || '').trim() ||
+          hubIsGenericEpisodeTitle(vid.title))
+      ) {
         vid.title = extras.name;
       }
       if (!String(vid.overview || '').trim() && extras.overview) {

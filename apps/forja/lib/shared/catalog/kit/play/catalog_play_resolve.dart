@@ -1,8 +1,8 @@
 import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_hub_episodes.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_context.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/engine/catalog_extract_context.dart';
-import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:rust/rust.dart';
 
 /// Catalog kit boundary — maps pack [CatalogMetaItem] → play args.
@@ -53,7 +53,9 @@ CatalogPlayContext catalogPlayContextFromMeta({
     malId: malId,
     episodeVideoIdByNumber: episodeIds,
     audioCategory: extras['category']?.toString(),
-    hubEpisodes: isTv ? _episodesFromVideos(vids) : null,
+    hubEpisodes: isTv
+        ? hubEpisodesFromCatalogMeta(meta.copyWith(videos: vids))
+        : null,
     selectedPluginIds: selectedPluginIds,
     startPosition: startPosition,
     loadingSubtitle: isMovie ? null : 'EP $epNum',
@@ -97,10 +99,3 @@ Map<int, String> _videoIdByEpisode(List<CatalogVideo> videos) {
   return out;
 }
 
-List<PlayerHubEpisode> _episodesFromVideos(List<CatalogVideo> videos) => [
-      for (final v in videos)
-        PlayerHubEpisode(
-          number: v.episode ?? 1,
-          title: v.title,
-        ),
-    ];

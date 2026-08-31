@@ -270,6 +270,28 @@ class CatalogOpenExtract {
     if (v is num) return v.toInt();
     return int.tryParse(v?.toString() ?? '');
   }
+
+  /// Host-only fallback when cached meta lacks pack [extract].
+  static CatalogOpenExtract fallbackFor({
+    required String surface,
+    required String id,
+    Map<String, dynamic> extras = const {},
+  }) {
+    final idN = int.tryParse(id);
+    if (surface == 'tmdb') {
+      final mt = extras['mediaType']?.toString() ?? 'movie';
+      return CatalogOpenExtract(
+        resolveType: mt == 'tv' || mt == 'series' ? 'tv' : 'movie',
+        panelCategory: 'movie',
+        ctx: {if (idN != null) 'tmdbId': idN},
+      );
+    }
+    return CatalogOpenExtract(
+      resolveType: surface.isNotEmpty ? surface : 'movie',
+      panelCategory: surface.isNotEmpty ? surface : 'movie',
+      ctx: {if (id.isNotEmpty) 'openId': id},
+    );
+  }
 }
 
 /// Host detail route declared by a hub pack on each openable meta.
@@ -289,9 +311,14 @@ class CatalogOpen {
 
   int? get idInt => int.tryParse(id);
 
-  /// Pack-owned extract spec, or legacy synthesis for cached meta without extract.
+  /// Pack-owned extract, or host-only TMDB route fallback (no pack branches).
   CatalogOpenExtract get effectiveExtract =>
-      extract ?? _legacyExtractFromSurface();
+      extract ??
+      CatalogOpenExtract.fallbackFor(
+        surface: surface,
+        id: id,
+        extras: extras,
+      );
 
   String? extraString(String key) {
     final v = extras[key];
@@ -306,51 +333,6 @@ class CatalogOpen {
     if (v == null) return false;
     final s = v.toString().toLowerCase();
     return s == 'true' || s == '1';
-  }
-
-  /// LEGACY — cached meta without [extract]; remove when migration complete.
-  CatalogOpenExtract _legacyExtractFromSurface() {
-    final idN = idInt;
-    switch (surface) {
-      case 'anime':
-        return CatalogOpenExtract(
-          resolveType: 'anime',
-          panelCategory: 'anime',
-          ctx: {
-            if (idN != null) 'anilistId': idN,
-            if (extraString('mal') case final mal?)
-              if (int.tryParse(mal) case final m?) 'malId': m,
-          },
-        );
-      case 'drama':
-        return CatalogOpenExtract(
-          resolveType: 'drama',
-          panelCategory: 'drama',
-          ctx: {if (idN != null) 'kisskhId': idN},
-        );
-      case 'arabic':
-        return CatalogOpenExtract(
-          resolveType: 'arabic',
-          panelCategory: 'arabic',
-          ctx: {
-            'videoId': id,
-            if (extraString('source') case final src?) 'source': src,
-          },
-        );
-      case 'tmdb':
-        final mt = extraString('mediaType') ?? 'movie';
-        return CatalogOpenExtract(
-          resolveType: mt == 'tv' ? 'tv' : 'movie',
-          panelCategory: 'movie',
-          ctx: {if (idN != null) 'tmdbId': idN},
-        );
-      default:
-        return CatalogOpenExtract(
-          resolveType: 'movie',
-          panelCategory: 'movie',
-          ctx: {if (idN != null) 'mediaId': idN},
-        );
-    }
   }
 
   static CatalogOpen? fromJson(dynamic raw) {

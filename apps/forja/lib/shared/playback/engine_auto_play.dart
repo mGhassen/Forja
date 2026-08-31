@@ -806,6 +806,7 @@ Future<void> _playFromProbedSources({
   final playHubEpisodes = await ensureHubCatalogEpisodes(
     pluginId: enginePlaySession?.pluginId,
     metaId: enginePlaySession?.catalogMeta?.id,
+    catalogMeta: enginePlaySession?.catalogMeta,
     hubEpisodes: hubEpisodes,
     liveEpisodeCount: playMovie.numberOfEpisodes,
   );
@@ -909,6 +910,7 @@ Future<void> _playResolveRow({
   final playHubEpisodes = await ensureHubCatalogEpisodes(
     pluginId: enginePlaySession?.pluginId,
     metaId: enginePlaySession?.catalogMeta?.id,
+    catalogMeta: enginePlaySession?.catalogMeta,
     hubEpisodes: hubEpisodes,
     liveEpisodeCount: playMovie.numberOfEpisodes,
   );

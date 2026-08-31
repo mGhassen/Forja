@@ -59,5 +59,39 @@ void main() {
       expect(catalogMovieIdForPlay(meta), 1396);
       expect(catalogMetaToMovie(meta)?.id, 1396);
     });
+
+    test('hub play context keeps enriched episode stills for player panel', () {
+      final meta = CatalogMetaItem.fromJson({
+        'id': 'test-hub:1',
+        'type': 'drama',
+        'name': 'Test Series',
+        'background': 'https://cdn.example/backdrop.jpg',
+        'videos': [
+          {
+            'id': '1',
+            'episode': 1,
+            'title': 'Episode 1',
+            'thumbnail': 'https://image.tmdb.org/t/p/w300/still1.jpg',
+          },
+          {
+            'id': '2',
+            'episode': 2,
+            'title': 'Pilot Part Two',
+            'thumbnail': '/still2.jpg',
+          },
+        ],
+      });
+      final ctx = catalogPlayContextFromMeta(meta: meta);
+      expect(ctx.hubEpisodes, isNotNull);
+      expect(ctx.hubEpisodes!.length, 2);
+      expect(
+        ctx.hubEpisodes![0].thumbnailUrl,
+        'https://image.tmdb.org/t/p/w300/still1.jpg',
+      );
+      expect(
+        ctx.hubEpisodes![1].thumbnailUrl,
+        contains('still2.jpg'),
+      );
+    });
   });
 }

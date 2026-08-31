@@ -1,6 +1,5 @@
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:rust/rust.dart';
 
 /// Legacy [Movie] → hub meta (host route/id scheme only — no plugin id).
@@ -88,8 +87,4 @@ CatalogMetaItem catalogMetaFromStremioItem(
       },
     ),
   );
-}
-
-Future<String?> resolveHubPluginIdForTab(String tabId) async {
-  return PluginNavRegistry.resolveHubPluginId(tabId: tabId);
 }
