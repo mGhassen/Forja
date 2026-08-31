@@ -40,7 +40,7 @@ class PlayerScreen extends StatefulWidget {
 
   /// External next-episode handler. When provided, the in-player "Next
   /// Episode" button will route through this callback instead of running the
-  /// built-in TMDB / torrent / WebStreamr resolution. Used by anime so the
+  /// built-in TMDB / torrent / webstreaming resolution. Used by anime so the
   /// resolver can re-race all sources for the next episode.
   final Future<void> Function()? onNextEpisode;
   final bool hasNextEpisode;

@@ -36,7 +36,7 @@ Nuvio is **not** part of green **Play** webstreaming. Direct links only there; t
 
 - Scraper scripts are cached locally after first use
 - Refreshing an addon merges new scrapers while keeping your enabled/disabled choices
-- **Webstreaming** (green **Play**) uses VidLink, WebStreamr, Videasy, etc. — not Nuvio
+- **Webstreaming** (green **Play**) uses VidLink, Videasy, engine providers, etc. — not Nuvio
 - Playing a Nuvio HTTP link from **Sources** must show video — if only audio starts (or the picture stays black), Forja fails that row so you can pick another instead of sitting on a blank screen
 - **Cancel**, leave the title, or switch tabs while scrapers are still checking stops work without disposing the JS heap mid-evaluate (avoids a macOS crash). Sources → Forja uses the same cancel contract.
 - HubCloud / 4kHdHub Drive proxies (`*.workers.dev` with `::` in the path) are probed before they appear. Google Drive **download quota exceeded** files are omitted — they cannot play until Drive resets that file (~24h)

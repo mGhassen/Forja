@@ -44,7 +44,6 @@ import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/list_follow_from_watched.dart';
-import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shell/app_router.dart';
@@ -633,13 +632,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   void _scrobbleStart() {
     final movie = widget.movie;
     if (movie == null) return;
-    TraktService().scrobbleStart(
-      tmdbId: movie.id,
-      mediaType: movie.mediaType,
-      season: widget.selectedSeason,
-      episode: widget.selectedEpisode,
-      progressPercent: _scrobblePercent,
-    );
     SimklService().scrobbleStart(
       tmdbId: movie.id,
       mediaType: movie.mediaType,
@@ -652,13 +644,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   void _scrobblePause() {
     final movie = widget.movie;
     if (movie == null) return;
-    TraktService().scrobblePause(
-      tmdbId: movie.id,
-      mediaType: movie.mediaType,
-      season: widget.selectedSeason,
-      episode: widget.selectedEpisode,
-      progressPercent: _scrobblePercent,
-    );
     SimklService().scrobblePause(
       tmdbId: movie.id,
       mediaType: movie.mediaType,
@@ -670,25 +655,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   void _scrobbleStop() {
     final movie = widget.movie;
     if (movie == null) return;
-    TraktService().scrobbleStop(
-      tmdbId: movie.id,
-      mediaType: movie.mediaType,
-      season: widget.selectedSeason,
-      episode: widget.selectedEpisode,
-      progressPercent: _scrobblePercent,
-    );
     SimklService().scrobbleStop(
       tmdbId: movie.id,
       mediaType: movie.mediaType,
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
     );
-  }
-
-  double get _scrobblePercent {
-    final dur = _duration.inMilliseconds;
-    if (dur <= 0) return 0.0;
-    return _position.inMilliseconds / dur * 100;
   }
 
   Future<void> _saveProgress() async {
@@ -782,9 +754,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         (_sources.isNotEmpty ? _sources[_sourceIndex].url : null);
     _postSeekStall.enabled = url != null &&
         !isLocalTorrentStreamUrl(url) &&
-        !isLocalLoopbackPlayUrl(url) &&
-        postSeekRemountAppliesTo(target);
-    if (!postSeekRemountAppliesTo(target)) return;
+        !isLocalLoopbackPlayUrl(url);
     if (shouldSkipPostSeekStallArm(
       target: target,
       resumeStartPosition: widget.startPosition,

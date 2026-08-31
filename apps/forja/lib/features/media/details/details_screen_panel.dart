@@ -782,6 +782,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     }
     final hs = progress['sourceId'] as String? ?? '';
     final savedUrl = (progress['streamUrl'] as String?)?.trim() ?? '';
+    final savedRowKey = (progress['streamRowKey'] as String?)?.trim() ?? '';
     final historyPlugin = EngineIds.pluginIdFromChip(hs);
 
     var matched = false;
@@ -792,6 +793,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
             s,
             savedUrl: savedUrl,
             playingEnginePluginId: historyPlugin,
+            savedRowKey: savedRowKey.isEmpty ? null : savedRowKey,
           );
     } else if (s['infoHash'] != null) {
       matched = _s._getHash(hs) ==
@@ -800,6 +802,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       matched = catalogStreamRowMatchesSavedProgress(
         s,
         savedUrl: savedUrl,
+        savedRowKey: savedRowKey.isEmpty ? null : savedRowKey,
       );
     } else {
       final url = s['url']?.toString();
@@ -811,23 +814,16 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
   }
 
   Widget _torrentTileFor(TorrentResult r, {int? tvItemIndex}) {
-    double prog = 0;
     var preselected = false;
     if (_s._lastProgress != null && _s._lastProgress!['method'] == 'torrent') {
       if (_s._getHash(r.magnet) == _s._getHash(_s._lastProgress!['sourceId'])) {
         preselected = true;
-        final pos = watchHistoryInt(_s._lastProgress!['position']);
-        final dur = watchHistoryInt(_s._lastProgress!['duration']);
-        if (dur > 0) {
-          prog = (pos / dur).clamp(0.0, 1.0);
-        }
       }
     }
     return TorrentSourceTile(
       key: ValueKey(r.magnet.isEmpty ? r.name : r.magnet),
       result: r,
-      progress: prog,
-      isResumable: preselected,
+      isResumable: false,
       highlightStart: false,
       tvItemIndex: tvItemIndex,
       onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,
@@ -848,8 +844,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
     final title = s['title'] ?? s['name'] ?? 'Unknown Stream';
     final description = s['description'] ?? '';
     final resume = _resumeForStreamRow(s);
-    final presentation =
-        stremioTilePresentation(s, isResumable: resume.resumable);
+    final presentation = stremioTilePresentation(s, isResumable: false);
     final playingCatalog = _s._playingCatalogUrl;
     final isPlaying = playingCatalog != null &&
         playingCatalog.isNotEmpty &&
@@ -866,8 +861,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       sizeText: s['size']?.toString(),
       seeders: s['seeders']?.toString() ?? s['seeds']?.toString(),
       stream: s,
-      progress: resume.progress,
-      isResumable: resume.resumable,
+      isResumable: false,
       highlightStart: isPlaying,
       tvItemIndex: tvItemIndex,
       onUpEdge: tvItemIndex == 0 ? SourcesPanelTv.focusProvidersItem : null,

@@ -53,7 +53,7 @@ Leanback launcher + full D-pad matrix: [issue 025](../../issues/025-[open]-andro
 ./scripts/atv-run.sh emulator-5554
 ```
 
-Stream play on TV uses WebStreamr/VSEmbed — configure at least one in Settings → Stream providers.
+Stream play on TV uses VSEmbed and engine HTTP providers — configure at least one in Settings → Stream providers.
 
 ### Phone / generic emulator (layout only)
 

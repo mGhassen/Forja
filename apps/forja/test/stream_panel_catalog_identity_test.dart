@@ -60,6 +60,41 @@ void main() {
   group('catalogStreamRowMatchesSavedProgress', () {
     test('does not match other Videasy quality rows', () {
       const saved =
+          'https://moon.peakstorm.top/vd/x/master.m3u8';
+      const row720 =
+          'https://moon.peakstorm.top/vd/x/master.m3u8';
+      expect(
+        catalogStreamRowMatchesSavedProgress(
+          {
+            'url': row720,
+            '_enginePluginId': 'videasy',
+            'quality': '720p',
+            'name': 'Videasy · Yoru',
+          },
+          savedUrl: saved,
+          playingEnginePluginId: 'videasy',
+        ),
+        isFalse,
+      );
+      expect(
+        catalogStreamRowMatchesSavedProgress(
+          {
+            'url': saved,
+            '_enginePluginId': 'videasy',
+            'quality': '1080p',
+            'name': 'Videasy · Yoru',
+          },
+          savedUrl: saved,
+          playingEnginePluginId: 'videasy',
+          savedRowKey:
+              'https://moon.peakstorm.top/vd/x/master.m3u8|1080p|videasy · yoru',
+        ),
+        isTrue,
+      );
+    });
+
+    test('does not match distinct demux URLs without saved row key', () {
+      const saved =
           'https://moon.peakstorm.top/vd/x/index-s1080p-v1-a1.m3u8';
       const row720 =
           'https://moon.peakstorm.top/vd/x/index-s720p-v1-a1.m3u8';

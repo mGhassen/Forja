@@ -16,6 +16,7 @@ Vertical catalog engines **removed from the active `ffi` link graph**. Code is k
 | `manga/` | Manga tab |
 | `catalog/` | Similar tab (`bestsimilar.com`) |
 | `anilist/` | Legacy AniList GraphQL (hubs are JS plugins now) |
+| `trakt/` | Trakt.tv API client (Simkl is the active tracker) |
 
 ## Still active (not here)
 

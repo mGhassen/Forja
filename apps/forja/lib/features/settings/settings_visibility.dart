@@ -8,8 +8,8 @@ import 'package:rust/rust.dart';
 ///
 /// VOD tabs ([BootNeeds.vodNavIds]) gate movie/series Settings the same way boot
 /// gates engines. IPTV-only / Live-only profiles keep Profile, Playback (IPTV +
-/// player), Navigation, About. Android TV hides WebStreamr, Lists, and Data &
-/// backup (lean leanback Settings). WebStreamr Settings is admin-only.
+/// player), Navigation, About. Android TV hides Lists and Data &
+/// backup (lean leanback Settings).
 class SettingsVisibility {
   const SettingsVisibility({
     required this.playSourceTorrent,
@@ -94,13 +94,6 @@ class SettingsVisibility {
       (playSourceTorrent || playSourceStremio || playSourceNuvio) &&
       AccountFeatures.instance.isAdmin;
 
-  /// Country / extractor / MFP hub — admin accounts only (`accounts.is_admin`).
-  bool get showWebstreamr =>
-      !_isAndroidTv &&
-      vodTab &&
-      playSourceWebstreaming &&
-      AccountFeatures.instance.isAdmin;
-
   /// Server reliability / provider order (webstreaming extractors).
   /// Lives under Sources — admin + Webstreaming; hidden on Android TV.
   bool get showProviderScoring =>
@@ -109,11 +102,8 @@ class SettingsVisibility {
       playSourceWebstreaming &&
       AccountFeatures.instance.isAdmin;
 
-  /// Simkl for everyone; Trakt / MDBlist rows admin-only.
+  /// Simkl for everyone; MDBlist row admin-only.
   bool get showAccounts => vodTab;
-
-  /// Trakt login / sync — admin accounts only (`accounts.is_admin`).
-  bool get showTrakt => vodTab && AccountFeatures.instance.isAdmin;
 
   /// MDBlist API key — admin accounts only (`accounts.is_admin`).
   bool get showMdblist => vodTab && AccountFeatures.instance.isAdmin;

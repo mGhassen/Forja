@@ -18,11 +18,9 @@ pub struct ResolveSettings {
     pub skip_host_on_tv: bool,
     #[serde(default)]
     pub blocklist_urls: Vec<String>,
-    /// WebStreamr country / MFP / extractor flags (`cc` → `"on"`, etc.).
-    /// Empty → crate [webstreamr::config::default_config].
+    /// Legacy WebStreamr resolve knobs (ignored — provider archived).
     #[serde(default)]
     pub webstreamr_config: HashMap<String, String>,
-    /// Optional TMDB v4 bearer for WebStreamr title matching.
     #[serde(default)]
     pub webstreamr_tmdb_access_token: String,
 }

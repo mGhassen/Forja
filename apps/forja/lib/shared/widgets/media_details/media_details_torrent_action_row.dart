@@ -24,9 +24,7 @@ class MediaDetailsTorrentActionRow extends StatefulWidget {
     required this.onOverflowAction,
     this.trailers = const [],
     this.trailerLanguageCode,
-    this.userTraktRating,
     this.userSimklRating,
-    this.isInTraktCollection = false,
     this.showPlay = true,
     this.statusMessage,
     this.playFocusNode,
@@ -45,9 +43,7 @@ class MediaDetailsTorrentActionRow extends StatefulWidget {
   final ValueChanged<String> onOverflowAction;
   final List<MediaTrailer> trailers;
   final String? trailerLanguageCode;
-  final int? userTraktRating;
   final int? userSimklRating;
-  final bool isInTraktCollection;
   final bool showPlay;
   final String? statusMessage;
   final FocusNode? playFocusNode;
@@ -62,7 +58,7 @@ class MediaDetailsTorrentActionRow extends StatefulWidget {
 
 class _MediaDetailsTorrentActionRowState
     extends State<MediaDetailsTorrentActionRow> {
-  /// Hero ⋮ menu (Trakt/Simkl) - kept wired; hide until product wants it back.
+  /// Hero ⋮ menu (Simkl) - kept wired; hide until product wants it back.
   static const bool _overflowVisible = false;
 
   @override
@@ -112,36 +108,12 @@ class _MediaDetailsTorrentActionRowState
           backgroundColor: ForjaShellColors.cinematic.menuSurface,
           children: [
             SimpleDialogOption(
-              onPressed: () => Navigator.pop(dialogContext, 'trakt_rate'),
-              child: Text(
-                widget.userTraktRating != null
-                    ? 'Trakt rating: ${widget.userTraktRating}'
-                    : 'Rate on Trakt',
-              ),
-            ),
-            SimpleDialogOption(
               onPressed: () => Navigator.pop(dialogContext, 'simkl_rate'),
               child: Text(
                 widget.userSimklRating != null
                     ? 'Simkl rating: ${widget.userSimklRating}'
                     : 'Rate on Simkl',
               ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(dialogContext, 'collect'),
-              child: Text(
-                widget.isInTraktCollection
-                    ? 'Remove from collection'
-                    : 'Add to collection',
-              ),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(dialogContext, 'checkin'),
-              child: const Text('Trakt check-in'),
-            ),
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(dialogContext, 'trakt_list'),
-              child: const Text('Add to Trakt list'),
             ),
           ],
         );

@@ -181,7 +181,7 @@ void main() {
           templates: base.templates,
           apis: base.apis,
           engine: base.engine,
-          webstreamr: base.webstreamr,
+          sourceHosts: base.sourceHosts,
           megaplay: base.megaplay,
           miruroOrigins: base.miruroOrigins,
           kisskhMirrors: base.kisskhMirrors,

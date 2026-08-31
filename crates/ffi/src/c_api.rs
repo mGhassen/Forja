@@ -377,11 +377,6 @@ pub unsafe extern "C" fn ffi_tmdb_get_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_trakt_request_json(request_json: *const c_char) -> *mut c_char {
-    to_c_string(crate::trakt_request_json(from_c_str(request_json)))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn ffi_anime_request_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::anime_request_json(from_c_str(request_json)))
 }
@@ -450,109 +445,6 @@ pub unsafe extern "C" fn ffi_sort_torrents_json(
 #[no_mangle]
 pub unsafe extern "C" fn ffi_is_video_file(file_name: *const c_char) -> bool {
     crate::is_video_file(from_c_str(file_name))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_extract_embed_html_json(
-    extractor_id: *const c_char,
-    html: *const c_char,
-    page_url: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::extract_embed_html_json(
-        from_c_str(extractor_id),
-        from_c_str(html),
-        from_c_str(page_url),
-    ))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_extract_vidsrc_chain_json(
-    outer_html: *const c_char,
-    rcp_html: *const c_char,
-    prorcp_html: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::extract_vidsrc_chain_json(
-        from_c_str(outer_html),
-        from_c_str(rcp_html),
-        from_c_str(prorcp_html),
-    ))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_resolve_vidsrc_embed_json(request_json: *const c_char) -> *mut c_char {
-    to_c_string(crate::resolve_vidsrc_embed_json(from_c_str(request_json)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_extract_hubcloud_links_json(
-    html: *const c_char,
-    page_url: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::extract_hubcloud_links_json(
-        from_c_str(html),
-        from_c_str(page_url),
-    ))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_extract_mfp_embed_html_json(
-    extractor_id: *const c_char,
-    html: *const c_char,
-    page_url: *const c_char,
-    mfp_config_json: *const c_char,
-    extra_html: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::extract_mfp_embed_html_json(
-        from_c_str(extractor_id),
-        from_c_str(html),
-        from_c_str(page_url),
-        from_c_str(mfp_config_json),
-        from_c_str(extra_html),
-    ))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_resolve_webstreamr_source_json(
-    source_id: *const c_char,
-    request_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::resolve_webstreamr_source_json(
-        from_c_str(source_id),
-        from_c_str(request_json),
-    ))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_extract_kinoger_episode_urls_json(
-    html: *const c_char,
-    season_index: i32,
-    episode_index: i32,
-) -> *mut c_char {
-    to_c_string(crate::extract_kinoger_episode_urls_json(
-        from_c_str(html),
-        season_index,
-        episode_index,
-    ))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_parse_webstreamr_source_html_json(
-    source_id: *const c_char,
-    html: *const c_char,
-    opts_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::parse_webstreamr_source_html_json(
-        from_c_str(source_id),
-        from_c_str(html),
-        from_c_str(opts_json),
-    ))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_webstreamr_get_streams_json(
-    request_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(crate::webstreamr_get_streams_json(from_c_str(request_json)))
 }
 
 #[no_mangle]

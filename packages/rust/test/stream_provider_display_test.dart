@@ -5,7 +5,6 @@ void main() {
   test('built-in providers use real player labels', () {
     expect(StreamProviderDisplay.playerLabel('vidsrc'), 'VSEmbed');
     expect(StreamProviderDisplay.playerLabel('vidsrcwin'), 'VidSrc');
-    expect(StreamProviderDisplay.playerLabel('webstreamr'), 'WebStreamr');
     expect(StreamProviderDisplay.hasProfile('vidsrc'), isTrue);
     expect(StreamProviderDisplay.hasProfile('vidsrcwin'), isTrue);
   });
@@ -46,7 +45,7 @@ void main() {
 
   test('flagsForText prefers emoji already in the stream title', () {
     expect(
-      StreamProviderDisplay.flagsForText('WebStreamr 🇩🇪\n🔗 KinoGer'),
+      StreamProviderDisplay.flagsForText('Provider 🇩🇪\n🔗 KinoGer'),
       '🇩🇪',
     );
   });

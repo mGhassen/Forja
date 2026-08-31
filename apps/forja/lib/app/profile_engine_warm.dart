@@ -11,7 +11,7 @@ import 'package:rust/rust.dart';
 /// profile splash post-dismiss, and settings toggles.
 ///
 /// Intro / profile splash should pass [startPlaySources]: false and
-/// [startTorrent]: false so LocalServer / WebStreamr / Nuvio / torrent stay
+/// [startTorrent]: false so LocalServer / Nuvio / torrent stay
 /// off the animation floor. Official ForjaHQ packs (+ optional hub layout/rails
 /// prefetch into CatalogCache) always await during splash so Catalog Shell is
 /// ready on dismiss.
@@ -46,7 +46,7 @@ class ProfileEngineWarm {
     }
 
     if (!startPlaySources) {
-      debugPrint('[Init] LocalServer / WebStreamr / Nuvio skip (deferred)');
+      debugPrint('[Init] LocalServer / Nuvio skip (deferred)');
     } else {
       if (needs.webstreaming) {
         onStatus?.call('Starting stream proxy…');
@@ -54,19 +54,10 @@ class ProfileEngineWarm {
         await LocalServerService().start().catchError((e) {
           debugPrint('[Init] LocalServer error: $e');
         });
-        onStatus?.call('Starting WebStreamr…');
-        debugPrint('[Init] WebStreamr start');
-        unawaited(
-          WebStreamrService.init().catchError((e) {
-            debugPrint('[Init] WebStreamr error (non-fatal): $e');
-          }),
-        );
       } else if (!needs.playSourceWebstreaming) {
         debugPrint('[Init] LocalServer skip (webstreaming off)');
-        debugPrint('[Init] WebStreamr skip (webstreaming off)');
       } else {
         debugPrint('[Init] LocalServer skip (no VOD tab)');
-        debugPrint('[Init] WebStreamr skip (no VOD tab)');
       }
 
       if (needs.nuvio) {

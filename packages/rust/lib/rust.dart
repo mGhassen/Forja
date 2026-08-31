@@ -25,7 +25,6 @@ export 'src/models/stream_source.dart';
 export 'src/models/playable_source.dart';
 export 'src/models/torrent_result.dart';
 export 'src/models/book_result.dart';
-export 'src/webstreamr_settings.dart';
 export 'src/playback/playback.dart';
 export 'src/catalog/catalog.dart';
 export 'src/indexer_http.dart';

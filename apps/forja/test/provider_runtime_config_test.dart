@@ -314,7 +314,7 @@ void main() {
       expect(merged.apis['anikotoApi'], contains('anikotoapi'));
     });
 
-    test('merge overlays webstreamr hosts', () {
+    test('merge overlays source hosts (legacy webstreamr JSON key)', () {
       final remote = ProviderRuntimeSnapshot.tryParse({
         'schema': 1,
         'webstreamr': {'kinoger': 'https://ops-kinoger.test'},
@@ -322,8 +322,8 @@ void main() {
       expect(remote, isNotNull);
       final merged =
           ProviderRuntimeSnapshot.builtins().merged(remote!);
-      expect(merged.webstreamr['kinoger'], 'https://ops-kinoger.test');
-      expect(merged.webstreamr['cuevana'], contains('cuevana'));
+      expect(merged.sourceHosts['kinoger'], 'https://ops-kinoger.test');
+      expect(merged.sourceHosts['cuevana'], contains('cuevana'));
     });
   });
 

@@ -41,7 +41,7 @@ class AccountFeatures {
   int? get memberNumber => _memberNumber;
 
   /// `accounts.is_admin` — experimental / ops toggles in Settings (Webstreaming
-  /// play source, WebStreamr hub, Debrid, Lists, Trakt, About Privacy/Developer,
+  /// play source, Debrid, Lists, About Privacy/Developer,
   /// Simple resolve, …). Unlimited IPTV portals. Forja Sports Settings is not
   /// admin-gated.
   bool get isAdmin => _isAdmin;

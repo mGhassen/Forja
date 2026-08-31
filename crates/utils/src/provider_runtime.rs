@@ -109,8 +109,8 @@ pub fn kisskh_mirrors() -> Option<Vec<String>> {
     .flatten()
 }
 
-/// WebStreamr source base URL overlay (`/webstreamr/{source_id}`).
-pub fn webstreamr_base(source_id: &str) -> Option<String> {
+/// Scraper source base URL overlay (`/webstreamr/{source_id}` — legacy RFC-039 key).
+pub fn source_host_base(source_id: &str) -> Option<String> {
     with_overlay(|v| {
         v.pointer(&format!("/webstreamr/{source_id}"))
             .and_then(|x| x.as_str())
@@ -149,7 +149,7 @@ mod tests {
     }
 
     #[test]
-    fn overlay_webstreamr_base() {
+    fn overlay_source_host_base() {
         let _guard = OVERLAY_TEST_LOCK
             .lock()
             .unwrap_or_else(|e| e.into_inner());
@@ -162,7 +162,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            webstreamr_base("kinoger").as_deref(),
+            source_host_base("kinoger").as_deref(),
             Some("https://ops.kinoger.test")
         );
         clear_overlay();

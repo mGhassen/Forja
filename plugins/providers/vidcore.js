@@ -17,7 +17,6 @@ function extract(ctx) {
   var headers = {
     'User-Agent': ua,
     Referer: origin + '/',
-    'X-Requested-With': 'XMLHttpRequest',
   };
 
   function validate(j) {

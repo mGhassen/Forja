@@ -166,10 +166,76 @@ void main() {
     );
   });
 
-  test('postSeekRemountAppliesTo only for deep seeks', () {
-    expect(postSeekRemountAppliesTo(const Duration(minutes: 7)), isFalse);
-    expect(postSeekRemountAppliesTo(const Duration(minutes: 20)), isTrue);
-    expect(postSeekRemountAppliesTo(const Duration(minutes: 43)), isTrue);
+  test('remountPlaybackResumed rejects buffering without decoded video', () {
+    final state = PlayerState().copyWith(
+      playing: true,
+      buffering: true,
+      position: const Duration(seconds: 1426),
+    );
+    expect(
+      remountPlaybackResumed(state, const Duration(seconds: 1426)),
+      isFalse,
+    );
+  });
+
+  test('remountPlaybackResumed rejects peakstorm buffering at target', () {
+    final state = PlayerState().copyWith(
+      playing: true,
+      buffering: true,
+      position: const Duration(seconds: 1108),
+      videoParams: const VideoParams(w: 1920, h: 960),
+    );
+    const url = 'https://moon.peakstorm.top/vd/x/master.m3u8';
+    expect(
+      remountPlaybackResumed(
+        state,
+        const Duration(seconds: 1108),
+        streamUrl: url,
+      ),
+      isFalse,
+    );
+    expect(
+      remountPlaybackResumed(
+        state.copyWith(buffering: false),
+        const Duration(seconds: 1108),
+        streamUrl: url,
+      ),
+      isTrue,
+    );
+  });
+
+  test('clearPendingSeek cancels armed remount', () async {
+    final remounts = <Duration>[];
+    final w = PostSeekStallWatchdog(
+      stallAfter: const Duration(milliseconds: 40),
+      scaleStallWithDepth: false,
+      onRemount: (t) async {
+        remounts.add(t);
+        return true;
+      },
+    );
+
+    w.noteSeek(const Duration(seconds: 100));
+    w.onBuffering(true);
+    w.clearPendingSeek();
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(remounts, isEmpty);
+    w.dispose();
+  });
+
+  test('peakstormFmp4HlsAvoidHardSeek matches master and child playlists', () {
+    expect(
+      peakstormFmp4HlsAvoidHardSeek(
+        'https://moon.peakstorm.top/vd/x/master.m3u8',
+      ),
+      isTrue,
+    );
+    expect(
+      peakstormFmp4HlsAvoidHardSeek(
+        'https://example.com/vod/index.m3u8',
+      ),
+      isFalse,
+    );
   });
 
   test('postSeekStallTimeoutForTarget scales with depth', () {
@@ -211,66 +277,6 @@ void main() {
     expect(
       remountResumeTimeoutForSeek(const Duration(minutes: 59)).inSeconds,
       60,
-    );
-  });
-
-  test('remountPlaybackResumed requires decoded frame near target', () {
-    const target = Duration(seconds: 2610);
-    expect(
-      remountPlaybackResumed(
-        PlayerState(
-          playing: true,
-          buffering: false,
-          position: target,
-          duration: const Duration(hours: 2),
-        ),
-        target,
-      ),
-      isFalse,
-    );
-    expect(
-      remountPlaybackResumed(
-        PlayerState(
-          playing: true,
-          buffering: false,
-          position: target,
-          duration: const Duration(hours: 2),
-          videoParams: const VideoParams(w: 1920, h: 1080),
-        ),
-        target,
-      ),
-      isTrue,
-    );
-  });
-
-  test('foregroundResumePlaybackStalled ignores intentional pause', () {
-    const pos = Duration(minutes: 15);
-    const dur = Duration(hours: 2);
-    expect(
-      foregroundResumePlaybackStalled(
-        state: PlayerState(
-          playing: false,
-          buffering: false,
-          position: pos,
-          duration: dur,
-        ),
-        pos: pos,
-        dur: dur,
-      ),
-      isFalse,
-    );
-    expect(
-      foregroundResumePlaybackStalled(
-        state: PlayerState(
-          playing: true,
-          buffering: true,
-          position: pos,
-          duration: dur,
-        ),
-        pos: pos,
-        dur: dur,
-      ),
-      isTrue,
     );
   });
 

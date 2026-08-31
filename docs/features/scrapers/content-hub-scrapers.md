@@ -27,7 +27,7 @@ Open the corresponding navigation tab — scraping happens behind the UI.
 
 ## Tips
 
-- Hub scrapers are independent from torrent and WebStreamr settings
+- Hub scrapers are independent from torrent settings
 - Site availability can change — if a hub is empty, the upstream site may be down or blocked
 
 ## Related

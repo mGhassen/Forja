@@ -631,7 +631,7 @@ mod tests {
             "tmdbId": 575265,
             "mediaType": "movie",
             "settings": {
-                "enabledProviderIds": ["webstreamr", "vidsrc"],
+                "enabledProviderIds": ["vidlink", "vidsrc"],
                 "preferred": "auto",
                 "maxInFlight": 2
             }
@@ -714,7 +714,7 @@ mod tests {
     #[test]
     fn parallel_batch_picks_lowest_rank_winner() {
         let ranks = HashMap::from([
-            ("webstreamr".to_string(), 0_u32),
+            ("vidlink".to_string(), 0_u32),
             ("vidsrc".to_string(), 1_u32),
         ]);
         let registry = Arc::new(ProviderRegistry::built_in());
@@ -730,17 +730,16 @@ mod tests {
             media_type: "movie".into(),
             device: DevicePlaybackCapabilities::default(),
             settings: ResolveSettings {
-                enabled_provider_ids: vec!["webstreamr".into(), "vidsrc".into()],
+                enabled_provider_ids: vec!["vidlink".into(), "vidsrc".into()],
                 max_in_flight: 2,
                 ..Default::default()
             },
             providers_json: String::new(),
         };
-        let batch = vec!["webstreamr".to_string(), "vidsrc".to_string()];
+        let batch = vec!["vidlink".to_string(), "vidsrc".to_string()];
         let winner = parallel_try_native(&registry, &ctx, &request, &batch, &ranks);
-        // Either provider may win depending on network; ensure structure when present.
         if let Some((id, sources)) = winner {
-            assert!(id == "webstreamr" || id == "vidsrc");
+            assert!(id == "vidlink" || id == "vidsrc");
             assert!(!sources.is_empty());
         }
     }

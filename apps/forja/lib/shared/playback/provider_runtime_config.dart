@@ -36,7 +36,7 @@ class ProviderRuntimeConfig {
   Map<String, ProviderUrlTemplates> get templates => _snap.templates;
   Map<String, String> get apis => _snap.apis;
   Map<String, Map<String, dynamic>> get engine => _snap.engine;
-  Map<String, String> get webstreamr => _snap.webstreamr;
+  Map<String, String> get sourceHosts => _snap.sourceHosts;
 
   /// Per-[sourceKey] anime probe / PNG-strip policy (builtins ∪ remote).
   /// Accepts panel ids like `miruro:kiwi:sub` and normalizes to `miruro:kiwi`.
@@ -64,7 +64,7 @@ class ProviderRuntimeConfig {
   /// Stable playback Referer/Origin for [providerId] (RFC-044). Null = no force.
   /// Playback Referer/Origin from **provider identity**, not CDN hostname.
   ///
-  /// Order: aliases that diverge from embed host → embed template / WebStreamr
+  /// Order: aliases that diverge from embed host → embed template / source host
   /// base / known API origin. New template providers get policy automatically
   /// when their URL is in [templates] (no per-CDN host chase).
   ({String referer, String origin})? playbackPolicyFor(String? providerId) {
@@ -140,7 +140,7 @@ class ProviderRuntimeConfig {
       return _httpsOrigin(_hostOf(origin), fallback: 'www.miruro.tv');
     }
 
-    // Template / WebStreamr / API embed host = open policy for that provider.
+    // Template / source host base / API embed host = open policy for that provider.
     // Covers vidzee, vidfast, vidrock, vixsrc, … without hardcoding each id.
     final templateKey = key.startsWith('vidnest:') ? 'vidnest' : key;
     final fromEmbed = _policyFromEmbedHost(templateKey);
@@ -149,7 +149,7 @@ class ProviderRuntimeConfig {
     return null;
   }
 
-  /// Prefer movie/tv template host, then WebStreamr base, then known API keys.
+  /// Prefer movie/tv template host, then source host base, then known API keys.
   ({String referer, String origin})? _policyFromEmbedHost(String key) {
     final tpl = templates[key];
     if (tpl != null) {
@@ -161,7 +161,7 @@ class ProviderRuntimeConfig {
       }
     }
 
-    final ws = webstreamr[key]?.trim();
+    final ws = sourceHosts[key]?.trim();
     if (ws != null && ws.isNotEmpty) {
       final host = _hostOf(ws);
       if (host.isNotEmpty) return _httpsOrigin(host, fallback: host);
@@ -238,8 +238,8 @@ class ProviderRuntimeConfig {
     return v;
   }
 
-  String? webstreamrBase(String sourceId) {
-    final v = _snap.webstreamr[sourceId]?.trim();
+  String? sourceHostBase(String sourceId) {
+    final v = _snap.sourceHosts[sourceId]?.trim();
     if (v == null || v.isEmpty) return null;
     return v;
   }
@@ -687,7 +687,7 @@ class ProviderRuntimeSnapshot {
   final Map<String, ProviderUrlTemplates> templates;
   final Map<String, String> apis;
   final Map<String, Map<String, dynamic>> engine;
-  final Map<String, String> webstreamr;
+  final Map<String, String> sourceHosts;
   final AnimeEmbedHostConfig megaplay;
   final List<String> miruroOrigins;
   final List<String> kisskhMirrors;
@@ -699,7 +699,7 @@ class ProviderRuntimeSnapshot {
     required this.templates,
     required this.apis,
     required this.engine,
-    required this.webstreamr,
+    required this.sourceHosts,
     required this.megaplay,
     required this.miruroOrigins,
     required this.kisskhMirrors,
@@ -787,8 +787,8 @@ class ProviderRuntimeSnapshot {
           'rgshowsApi': 'https://api.rgshows.ru',
         },
         engine: const {},
-        webstreamr: const {
-          // Aligned with WebStreamrMBG src/source bases (VSEmbed stays api.vidsrcEmbed).
+        sourceHosts: const {
+          // Scraper source bases (RFC-039 legacy JSON key: webstreamr).
           'vidsrc': 'https://vidsrcme.ru',
           'vixsrc': 'https://vixsrc.to',
           'vidzee': 'https://player.vidzee.wtf',
@@ -1037,13 +1037,13 @@ class ProviderRuntimeSnapshot {
         apis[e.key.toString()] = v;
       }
     }
-    final webstreamr = <String, String>{};
-    final rawWs = j['webstreamr'] as Map?;
+    final sourceHosts = <String, String>{};
+    final rawWs = (j['sourceHosts'] ?? j['webstreamr']) as Map?;
     if (rawWs != null) {
       for (final e in rawWs.entries) {
         final v = e.value?.toString().trim() ?? '';
         if (!v.startsWith('http')) continue;
-        webstreamr[e.key.toString()] = v;
+        sourceHosts[e.key.toString()] = v;
       }
     }
     final engine = <String, Map<String, dynamic>>{};
@@ -1074,7 +1074,7 @@ class ProviderRuntimeSnapshot {
       templates: templates,
       apis: apis,
       engine: engine,
-      webstreamr: webstreamr,
+      sourceHosts: sourceHosts,
       megaplay: megaplay,
       miruroOrigins: origins,
       kisskhMirrors: kisskh,
@@ -1089,7 +1089,7 @@ class ProviderRuntimeSnapshot {
       tpl[e.key] = (tpl[e.key] ?? e.value).merged(e.value);
     }
     final api = Map<String, String>.from(apis)..addAll(overlay.apis);
-    final ws = Map<String, String>.from(webstreamr)..addAll(overlay.webstreamr);
+    final ws = Map<String, String>.from(sourceHosts)..addAll(overlay.sourceHosts);
     final engineMerged = Map<String, Map<String, dynamic>>.from(engine);
     for (final e in overlay.engine.entries) {
       engineMerged[e.key] = mergeEngineConfig(
@@ -1113,7 +1113,7 @@ class ProviderRuntimeSnapshot {
       templates: tpl,
       apis: api,
       engine: engineMerged,
-      webstreamr: ws,
+      sourceHosts: ws,
       megaplay: megaplay.merged(overlay.megaplay),
       miruroOrigins: overlay.miruroOrigins.isNotEmpty
           ? overlay.miruroOrigins
@@ -1178,7 +1178,7 @@ class ProviderRuntimeSnapshot {
         },
         'apis': apis,
         'engine': engine,
-        'webstreamr': webstreamr,
+        'sourceHosts': sourceHosts,
         'anime': {
           'megaplay': megaplay.toJson(),
           'miruroOrigins': miruroOrigins,

@@ -9,11 +9,7 @@ void main() {
     expect(SecureSettings.forbiddenCanonicalKeys, contains('prowlarr_api_key'));
     expect(
       SecureSettings.forbiddenCanonicalKeys,
-      contains('webstreamr_mfp_password'),
-    );
-    expect(
-      SecureSettings.forbiddenCanonicalKeys,
-      contains('webstreamr_tmdb_token'),
+      containsAll(SecureSettings.retiredSecureKeys),
     );
     expect(
       SecureSettings.forbiddenCanonicalKeys,

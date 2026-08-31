@@ -89,7 +89,6 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "111movies" => 54,
             "moviesapi" => 53,
             "vidapi" => 51,
-            "webstreamr" => 50,
             _ => fallback_score(id, domain),
         },
         SourceDomain::Series => match id {
@@ -110,7 +109,6 @@ fn domain_score(id: &str, domain: SourceDomain) -> u32 {
             "111movies" => 54,
             "moviesapi" => 53,
             "vidapi" => 51,
-            "webstreamr" => 50,
             _ => fallback_score(id, domain),
         },
         SourceDomain::Anime => anime_score(id),
@@ -205,8 +203,6 @@ fn known_profile(id: &str, domain: SourceDomain) -> bool {
             | ("vidapi", SourceDomain::Series)
             | ("service111477", SourceDomain::Movies)
             | ("service111477", SourceDomain::Series)
-            | ("webstreamr", SourceDomain::Movies)
-            | ("webstreamr", SourceDomain::Series)
             | ("kisskh", SourceDomain::AsianDrama)
             | ("kisskh", SourceDomain::Anime)
             | ("kisskh.co", SourceDomain::AsianDrama)
@@ -488,7 +484,7 @@ mod tests {
         let next = next_provider_ids(
             SourceDomain::Movies,
             &[
-                "webstreamr".into(),
+                "moviesapi".into(),
                 "videasy".into(),
                 "vidnest".into(),
             ],
@@ -515,8 +511,8 @@ mod tests {
     fn reliability_nudge_affects_score_rank_within_cap() {
         let response = order_providers(OrderProvidersRequest {
             domain: SourceDomain::Movies,
-            candidate_ids: vec!["webstreamr".into(), "moviesapi".into()],
-            settings_order: vec!["webstreamr".into(), "moviesapi".into()],
+            candidate_ids: vec!["vidapi".into(), "moviesapi".into()],
+            settings_order: vec!["vidapi".into(), "moviesapi".into()],
             preferred: "auto".into(),
             reliability: HashMap::from([("moviesapi".into(), 20)]),
         });

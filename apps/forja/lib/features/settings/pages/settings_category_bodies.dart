@@ -23,8 +23,6 @@ import 'package:forja/features/settings/sections/settings_provider_scoring_secti
 import 'package:forja/features/settings/sections/settings_providers_section.dart';
 import 'package:forja/features/settings/sections/settings_search_torrents_section.dart';
 import 'package:forja/features/settings/sections/settings_simkl_panel.dart';
-import 'package:forja/features/settings/sections/settings_trakt_panel.dart';
-import 'package:forja/features/settings/sections/settings_webstreamr_section.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/splash_preview_screen.dart';
@@ -51,8 +49,6 @@ Widget buildSettingsCategoryBody(
       return SettingsPlaybackSection(visibility: visibility);
     case SettingsCategoryId.sources:
       return SettingsSourcesPageBody(visibility: visibility);
-    case SettingsCategoryId.webstreamr:
-      return const SettingsWebstreamrSection();
     case SettingsCategoryId.debrid:
       return const SettingsDebridSection();
     case SettingsCategoryId.accounts:
@@ -148,12 +144,6 @@ class SettingsAccountsPageBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (visibility.showTrakt)
-          const SettingsGroup(
-            label: 'Trakt',
-            adminOnly: true,
-            children: [SettingsTraktPanel()],
-          ),
         SettingsGroup(label: 'Simkl', children: const [SettingsSimklPanel()]),
         if (visibility.showMdblist)
           const SettingsGroup(

@@ -2,7 +2,6 @@ import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/features/my_list/providers/my_list_providers.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
-import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker_sync.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
@@ -139,14 +138,6 @@ class HubListFollow {
       } else {
         ok = false;
       }
-    }
-    if (t.tmdbId != null &&
-        (to == 'plantowatch' || to == 'watching') &&
-        await TraktService().isLoggedIn()) {
-      await TraktService().addToWatchlist(
-        tmdbId: t.tmdbId,
-        mediaType: t.tmdbMediaType ?? 'tv',
-      );
     }
     _invalidate(container);
     return ok;

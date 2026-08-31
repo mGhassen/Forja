@@ -167,11 +167,6 @@ class ProviderRegistry {
       displayName: '111477',
       kind: ProviderKind.api,
     ),
-    StreamProviderDef(
-      id: 'webstreamr',
-      displayName: 'WebStreamr',
-      kind: ProviderKind.api,
-    ),
   ];
 
   /// Legacy map shape used by player/settings UI (`name`, `movie`, `tv`).

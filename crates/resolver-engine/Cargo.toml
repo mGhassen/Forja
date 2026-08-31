@@ -10,7 +10,7 @@ path = "src/bin/resolve_engine.rs"
 
 [dependencies]
 stream = { path = "../stream" }
-webstreamr = { path = "../webstreamr" }
+tmdb = { path = "../tmdb" }
 iptv = { path = "../iptv" }
 debrid = { path = "../debrid" }
 storage = { path = "../storage" }

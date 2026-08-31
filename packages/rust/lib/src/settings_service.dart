@@ -828,7 +828,6 @@ class SettingsService {
     'moviesapi',
     'vidapi',
     'service111477',
-    'webstreamr',
   ];
 
   Future<List<String>> getStreamProviderOrder() async {
@@ -1595,9 +1594,38 @@ class SettingsService {
     await kvSetString(_atvCatalogPlaySourcesKey, '1');
   }
 
+  static const _webstreamrPurgedKey = 'webstreamr_settings_purged_v1';
+
+  static const _retiredWebstreamrKvKeys = <String>[
+    'webstreamr_country_codes',
+    'webstreamr_mfp_url',
+    'webstreamr_flare_url',
+    'webstreamr_disabled_extractors',
+    'webstreamr_excluded_resolutions',
+  ];
+
+  Future<void> _purgeRetiredWebstreamrSettings() async {
+    if (await kvHasKey(_webstreamrPurgedKey)) return;
+    for (final key in _retiredWebstreamrKvKeys) {
+      if (await kvHasKey(key)) {
+        await kvSetString(key, '');
+        await kvSetStringList(key, const []);
+      }
+    }
+    for (final key in SecureSettings.retiredSecureKeys) {
+      try {
+        await SecureSettings.delete(key);
+      } catch (e) {
+        debugPrint('[SettingsService] webstreamr secure purge skipped ($key): $e');
+      }
+    }
+    await kvSetString(_webstreamrPurgedKey, '1');
+  }
+
   Future<void> ensurePlatformDefaultsSeeded(PlatformProfile profile) async {
     configurePlatformProfile(profile);
     await ensureCanonicalSettingsMigrated();
+    await _purgeRetiredWebstreamrSettings();
     await _migrateBuiltInEngineDefaultToMediaKit();
     await _migratePlayInBackgroundDeviceLocal();
     await _migrateAtvCatalogPlaySources();
@@ -1822,8 +1850,7 @@ class SettingsService {
     SecureSettings.debridlinkApiKey,
     SecureSettings.jackettApiKey,
     SecureSettings.prowlarrApiKey,
-    SecureSettings.webstreamrMfpPassword,
-    SecureSettings.webstreamrTmdbToken,
+    ...SecureSettings.retiredSecureKeys,
     SecureSettings.iptvPortalPasswords,
     'trakt_access_token',
     'trakt_refresh_token',
@@ -1908,18 +1935,6 @@ class SettingsService {
     if (nuvioRaw != null && nuvioRaw.isNotEmpty) {
       prefsMap['nuvio_addons_v1'] = nuvioRaw;
     }
-    for (final key in [
-      'webstreamr_country_codes',
-      'webstreamr_disabled_extractors',
-      'webstreamr_excluded_resolutions',
-    ]) {
-      final list = await kvGetStringList(key, fallback: const []);
-      if (list.isNotEmpty) prefsMap[key] = list;
-    }
-    for (final key in ['webstreamr_mfp_url', 'webstreamr_flare_url']) {
-      final v = await kvGetString(key);
-      if (v != null && v.isNotEmpty) prefsMap[key] = v;
-    }
 
     // Prefer SecureSettings.read so Keychain misses still pick up legacy prefs
     // (e.g. macOS -34018 before keychain-access-groups is present).
@@ -1967,8 +1982,6 @@ class SettingsService {
       _externalPlayerKey,
       _jackettBaseUrlKey,
       _prowlarrBaseUrlKey,
-      'webstreamr_mfp_url',
-      'webstreamr_flare_url',
       'nuvio_addons_v1',
     ]) {
       if (prefsMap.containsKey(key)) {
@@ -2029,15 +2042,6 @@ class SettingsService {
         _asianDramaProviderOrderKey,
         (prefsMap[_asianDramaProviderOrderKey] as List).cast<String>(),
       );
-    }
-    for (final key in [
-      'webstreamr_country_codes',
-      'webstreamr_disabled_extractors',
-      'webstreamr_excluded_resolutions',
-    ]) {
-      if (prefsMap.containsKey(key)) {
-        await kvSetStringList(key, (prefsMap[key] as List).cast<String>());
-      }
     }
 
     final secureMap = data['secure_storage'] as Map<String, dynamic>? ?? {};

@@ -292,11 +292,6 @@ fn tmdb_get_json(resource_path: String, timeout_secs: u64) -> String {
     tmdb::get_json(&resource_path, timeout_secs)
 }
 
-fn trakt_request_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    trakt::request_json(&request_json)
-}
-
 fn anime_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
     anime::request_json(&request_json)
@@ -391,60 +386,6 @@ fn sort_torrents_json(results_json: String, preference: String) -> String {
 
 fn is_video_file(file_name: String) -> bool {
     torrent_filter::is_video_file(&file_name)
-}
-
-fn extract_embed_html_json(extractor_id: String, html: String, page_url: String) -> String {
-    webstreamr::extract_embed_html_json(&extractor_id, &html, &page_url)
-}
-
-fn extract_vidsrc_chain_json(outer_html: String, rcp_html: String, prorcp_html: String) -> String {
-    webstreamr::extract_vidsrc_chain_json(&outer_html, &rcp_html, &prorcp_html, None)
-}
-
-fn resolve_vidsrc_embed_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    webstreamr::resolve_vidsrc_embed_json(&request_json)
-}
-
-fn extract_hubcloud_links_json(html: String, page_url: String) -> String {
-    webstreamr::extract_hubcloud_links_json(&html, &page_url)
-}
-
-fn extract_mfp_embed_html_json(
-    extractor_id: String,
-    html: String,
-    page_url: String,
-    mfp_config_json: String,
-    extra_html: String,
-) -> String {
-    webstreamr::extract_mfp_embed_html_json(
-        &extractor_id,
-        &html,
-        &page_url,
-        &mfp_config_json,
-        &extra_html,
-    )
-}
-
-fn resolve_webstreamr_source_json(source_id: String, request_json: String) -> String {
-    webstreamr::resolve_source_json(&source_id, &request_json)
-}
-
-fn extract_kinoger_episode_urls_json(
-    html: String,
-    season_index: i32,
-    episode_index: i32,
-) -> String {
-    webstreamr::extract_kinoger_episode_urls_json(&html, season_index, episode_index)
-}
-
-fn parse_webstreamr_source_html_json(source_id: String, html: String, opts_json: String) -> String {
-    webstreamr::parse_webstreamr_source_html_json(&source_id, &html, &opts_json)
-}
-
-fn webstreamr_get_streams_json(request_json: String) -> String {
-    utils::engine_cancel::enter_job();
-    webstreamr::get_streams_json(&request_json)
 }
 
 fn torrent_start(magnet: String) -> bool {

@@ -25,14 +25,12 @@ utils = { path = "../utils" }
 stream = { path = "../stream" }
 iptv = { path = "../iptv" }
 stremio = { path = "../stremio" }
-webstreamr = { path = "../webstreamr" }
 scrapers = { path = "../scrapers" }
 torrent = { path = "../torrent", optional = true }
 proxy = { path = "../proxy", optional = true }
 lan = { path = "../lan", optional = true }
 storage = { path = "../storage" }
 tmdb = { path = "../tmdb" }
-trakt = { path = "../trakt" }
 anime = { path = "../anime" }
 indexer = { path = "../indexer" }
 debrid = { path = "../debrid" }

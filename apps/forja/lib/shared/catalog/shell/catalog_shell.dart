@@ -21,7 +21,6 @@ import '../kit/cards/hub_poster_card.dart';
 import '../kit/chrome/catalog_vertical_filters.dart';
 import '../kit/widgets/catalog_because_section.dart';
 import '../kit/widgets/catalog_continue_widget.dart';
-import '../kit/widgets/catalog_host_trakt.dart';
 import '../kit/meta/catalog_meta_movie.dart';
 import '../kit/rows/catalog_row_prefetch.dart';
 import '../kit/rows/hub_catalog_section.dart';
@@ -1091,11 +1090,6 @@ class _CatalogShellState extends State<CatalogShell>
           spec: spec,
           tvRowOrder: _tvOrder(tvOrders, id),
           prefetchSlot: prefetch,
-        );
-      case 'trakt':
-        return CatalogHostTrakt(
-          tabId: widget.tabId ?? 'home',
-          tvRowOrderBase: _tvOrder(tvOrders, id),
         );
       case 'vertical_filters':
       case 'host.vertical_filters':

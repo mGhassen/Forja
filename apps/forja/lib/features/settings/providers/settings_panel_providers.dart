@@ -5,7 +5,6 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
-import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:forja/shared/sync/providers/account_features_provider.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
@@ -390,62 +389,6 @@ class SettingsDebridNotifier extends AsyncNotifier<SettingsDebridSnapshot> {
   }
 }
 
-// ── WebStreamr ─────────────────────────────────────────────────────────────
-
-@immutable
-class SettingsWebstreamrSnapshot {
-  const SettingsWebstreamrSnapshot({
-    required this.enabledCountries,
-    required this.disabledExtractors,
-    required this.excludedResolutions,
-    required this.mfpUrl,
-    required this.mfpPwd,
-    required this.flareUrl,
-    required this.tmdbTok,
-  });
-
-  final Set<String> enabledCountries;
-  final Set<String> disabledExtractors;
-  final Set<String> excludedResolutions;
-  final String mfpUrl;
-  final String mfpPwd;
-  final String flareUrl;
-  final String tmdbTok;
-}
-
-final settingsWebstreamrProvider =
-    AsyncNotifierProvider<
-      SettingsWebstreamrNotifier,
-      SettingsWebstreamrSnapshot
-    >(SettingsWebstreamrNotifier.new);
-
-class SettingsWebstreamrNotifier
-    extends AsyncNotifier<SettingsWebstreamrSnapshot> {
-  @override
-  Future<SettingsWebstreamrSnapshot> build() async {
-    return SettingsWebstreamrSnapshot(
-      enabledCountries: (await WebStreamrSettings.getEnabledCountryCodes())
-          .toSet(),
-      disabledExtractors: (await WebStreamrSettings.getDisabledExtractors())
-          .toSet(),
-      excludedResolutions: (await WebStreamrSettings.getExcludedResolutions())
-          .toSet(),
-      mfpUrl: await WebStreamrSettings.getMediaFlowProxyUrl() ?? '',
-      mfpPwd: await WebStreamrSettings.getMediaFlowProxyPassword() ?? '',
-      flareUrl: await WebStreamrSettings.getFlareSolverrUrl() ?? '',
-      tmdbTok: await WebStreamrSettings.getTmdbAccessToken() ?? '',
-    );
-  }
-
-  Future<void> reload() async {
-    final previous = state;
-    state = const AsyncLoading<SettingsWebstreamrSnapshot>().copyWithPrevious(
-      previous,
-    );
-    state = await AsyncValue.guard(build);
-  }
-}
-
 // ── Features / navigation ──────────────────────────────────────────────────
 
 @immutable
@@ -651,20 +594,6 @@ final asianDramaMirrorCatalogProvider = FutureProvider<Map<String, String>>((
   ref,
 ) async {
   return HubPluginConfig.mirrorCatalogForTab('asian_drama');
-});
-
-final traktStatusProvider = FutureProvider.autoDispose<TrackerAccountStatus>((
-  ref,
-) async {
-  final trakt = TraktService();
-  final loggedIn = await trakt.isLoggedIn();
-  if (!loggedIn) return const TrackerAccountStatus(loggedIn: false);
-  final profile = await trakt.getUserProfile();
-  final user =
-      profile?['user']?['username']?.toString() ??
-      profile?['username']?.toString();
-  final stats = await trakt.getUserStats();
-  return TrackerAccountStatus(loggedIn: true, username: user, stats: stats);
 });
 
 final simklStatusProvider = FutureProvider.autoDispose<TrackerAccountStatus>((

@@ -343,11 +343,6 @@ class RustLib {
     return _readString(_native.ffi_tmdb_get_json(ptr, timeoutSecs));
   });
 
-  String traktRequestJson(String requestJson) => using((arena) {
-    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_trakt_request_json(ptr));
-  });
-
   String animeRequestJson(String requestJson) => using((arena) {
     final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
     return _readString(_native.ffi_anime_request_json(ptr));
@@ -441,113 +436,6 @@ class RustLib {
   bool isVideoFile(String fileName) => using((arena) {
     final ptr = fileName.toNativeUtf8(allocator: arena).cast<ffi.Char>();
     return _native.ffi_is_video_file(ptr);
-  });
-
-  String extractEmbedHtmlJson(
-    String extractorId,
-    String html,
-    String pageUrl,
-  ) => using((arena) {
-    final idPtr = extractorId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    final urlPtr = pageUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(
-      _native.ffi_extract_embed_html_json(idPtr, htmlPtr, urlPtr),
-    );
-  });
-
-  String extractVidsrcChainJson(
-    String outerHtml,
-    String rcpHtml,
-    String prorcpHtml,
-  ) => using((arena) {
-    final a = outerHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    final b = rcpHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    final c = prorcpHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_extract_vidsrc_chain_json(a, b, c));
-  });
-
-  String resolveVidsrcEmbedJson(String requestJson) => using((arena) {
-    final reqPtr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_resolve_vidsrc_embed_json(reqPtr));
-  });
-
-  String extractHubcloudLinksJson(String html, String pageUrl) =>
-      using((arena) {
-        final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final urlPtr = pageUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_extract_hubcloud_links_json(htmlPtr, urlPtr),
-        );
-      });
-
-  String extractMfpEmbedHtmlJson(
-    String extractorId,
-    String html,
-    String pageUrl,
-    String mfpConfigJson, {
-    String extraHtml = '',
-  }) => using((arena) {
-    final idPtr = extractorId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    final urlPtr = pageUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    final mfpPtr = mfpConfigJson
-        .toNativeUtf8(allocator: arena)
-        .cast<ffi.Char>();
-    final extraPtr = extraHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(
-      _native.ffi_extract_mfp_embed_html_json(
-        idPtr,
-        htmlPtr,
-        urlPtr,
-        mfpPtr,
-        extraPtr,
-      ),
-    );
-  });
-
-  String resolveWebstreamrSourceJson(String sourceId, String requestJson) =>
-      using((arena) {
-        final idPtr = sourceId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final reqPtr = requestJson
-            .toNativeUtf8(allocator: arena)
-            .cast<ffi.Char>();
-        return _readString(
-          _native.ffi_resolve_webstreamr_source_json(idPtr, reqPtr),
-        );
-      });
-
-  String webstreamrGetStreamsJson(String requestJson) => using((arena) {
-    final reqPtr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_webstreamr_get_streams_json(reqPtr));
-  });
-
-  String extractKinogerEpisodeUrlsJson(
-    String html,
-    int seasonIndex,
-    int episodeIndex,
-  ) => using((arena) {
-    final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(
-      _native.ffi_extract_kinoger_episode_urls_json(
-        htmlPtr,
-        seasonIndex,
-        episodeIndex,
-      ),
-    );
-  });
-
-  String parseWebstreamrSourceHtmlJson(
-    String sourceId,
-    String html,
-    String optsJson,
-  ) => using((arena) {
-    final idPtr = sourceId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    final optsPtr = optsJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(
-      _native.ffi_parse_webstreamr_source_html_json(idPtr, htmlPtr, optsPtr),
-    );
   });
 
   bool torrentStart(String magnet) => using((arena) {
@@ -928,11 +816,6 @@ final class _FfiNative {
             'ffi_tmdb_get_json',
           )
           .asFunction(),
-      ffi_trakt_request_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_trakt_request_json',
-          )
-          .asFunction(),
       ffi_anime_request_json = lib
           .lookup<ffi.NativeFunction<_StringInOutNative>>(
             'ffi_anime_request_json',
@@ -1005,51 +888,6 @@ final class _FfiNative {
           .asFunction(),
       ffi_is_video_file = lib
           .lookup<ffi.NativeFunction<_StringBoolNative>>('ffi_is_video_file')
-          .asFunction(),
-      ffi_extract_embed_html_json = lib
-          .lookup<ffi.NativeFunction<_ThreeStringNative>>(
-            'ffi_extract_embed_html_json',
-          )
-          .asFunction(),
-      ffi_extract_vidsrc_chain_json = lib
-          .lookup<ffi.NativeFunction<_ThreeStringNative>>(
-            'ffi_extract_vidsrc_chain_json',
-          )
-          .asFunction(),
-      ffi_resolve_vidsrc_embed_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_resolve_vidsrc_embed_json',
-          )
-          .asFunction(),
-      ffi_extract_hubcloud_links_json = lib
-          .lookup<ffi.NativeFunction<_TwoStringNative>>(
-            'ffi_extract_hubcloud_links_json',
-          )
-          .asFunction(),
-      ffi_extract_mfp_embed_html_json = lib
-          .lookup<ffi.NativeFunction<_FiveStringNative>>(
-            'ffi_extract_mfp_embed_html_json',
-          )
-          .asFunction(),
-      ffi_resolve_webstreamr_source_json = lib
-          .lookup<ffi.NativeFunction<_TwoStringNative>>(
-            'ffi_resolve_webstreamr_source_json',
-          )
-          .asFunction(),
-      ffi_webstreamr_get_streams_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_webstreamr_get_streams_json',
-          )
-          .asFunction(),
-      ffi_extract_kinoger_episode_urls_json = lib
-          .lookup<ffi.NativeFunction<_KinogerUrlsNative>>(
-            'ffi_extract_kinoger_episode_urls_json',
-          )
-          .asFunction(),
-      ffi_parse_webstreamr_source_html_json = lib
-          .lookup<ffi.NativeFunction<_ThreeStringNative>>(
-            'ffi_parse_webstreamr_source_html_json',
-          )
           .asFunction(),
       ffi_torrent_start = lib
           .lookup<ffi.NativeFunction<_TorrentStartNative>>('ffi_torrent_start')
@@ -1330,8 +1168,6 @@ final class _FfiNative {
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
   ffi_tmdb_get_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_trakt_request_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_anime_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_indexer_request_json;
@@ -1368,48 +1204,6 @@ final class _FfiNative {
   )
   ffi_sort_torrents_json;
   final bool Function(ffi.Pointer<ffi.Char>) ffi_is_video_file;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-  )
-  ffi_extract_embed_html_json;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-  )
-  ffi_extract_vidsrc_chain_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_resolve_vidsrc_embed_json;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-  )
-  ffi_extract_hubcloud_links_json;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-  )
-  ffi_extract_mfp_embed_html_json;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-  )
-  ffi_resolve_webstreamr_source_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_webstreamr_get_streams_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int, int)
-  ffi_extract_kinoger_episode_urls_json;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-  )
-  ffi_parse_webstreamr_source_html_json;
   final bool Function(ffi.Pointer<ffi.Char>) ffi_torrent_start;
   final void Function() ffi_torrent_stop;
   final bool Function() ffi_torrent_is_running;

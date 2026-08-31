@@ -31,7 +31,6 @@ import 'package:forja/shared/playback/stream_open_pipeline.dart';
 import 'package:forja/shared/playback/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/stream_open_strategy.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
-import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/list_follow_from_watched.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
@@ -218,8 +217,6 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   bool _pausedByLifecycle = false;
 
   // ── Resume State ─────────────────────────────────────────────────────────
-  bool _hasInitialSeek = false;
-
   // ── Stream Subscriptions ─────────────────────────────────────────────────
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration>? _durationSub;
@@ -239,7 +236,6 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   PlaybackRecovery? _playbackRecovery;
   PostSeekStallWatchdog? _postSeekStall;
   bool _autoTracksAppliedForSource = false;
-  int _lastAutoSelectAudioCount = 0;
   bool _userPickedAudioThisSource = false;
   bool _embeddedSubtitleAutoApplied = false;
   bool _userPickedExternalSubtitle = false;
@@ -301,6 +297,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   /// Catalog stream URL selected when playback last confirmed.
   String? _currentPlayingCatalogUrl;
+  String? _catalogStreamRowKey;
   bool _providerPinned = false;
   bool _sourcePinned = false;
   bool _audioPinned = false;
@@ -342,7 +339,6 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   void _resetTrackAutoSelectForSource() {
     _autoTracksAppliedForSource = false;
-    _lastAutoSelectAudioCount = 0;
     _userPickedAudioThisSource = false;
     _embeddedSubtitleAutoApplied = false;
     _userPickedExternalSubtitle = false;
@@ -370,28 +366,49 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     }
   }
 
-  Future<void> _seekTo(Duration position) => seekPlayerPreservingProgress(
-    _player,
-    position: position,
-    positionNotifier: _positionNotifier,
-    duration: _durationNotifier.value,
-    onSeekAwayFromEof: () {
-      _seekAwayFromEofAt = DateTime.now();
-      _abortiveCompletedLatched = false;
-    },
-    onSeekCommitted: _armPostSeekStall,
-  );
+  Future<void> _seekTo(Duration position) async {
+    final url = _hlsMasterUrl ?? _currentQualityUrl ?? _currentUrl;
+    final current = _positionNotifier.value;
+    if (url != null && peakstormHlsNeedsRemountSeek(url, current, position)) {
+      final dur = _durationNotifier.value;
+      var target = position;
+      if (target < Duration.zero) target = Duration.zero;
+      if (dur > Duration.zero && target > dur) target = dur;
+      final leavingEof =
+          dur > Duration.zero &&
+          shouldPinSeekBarAtEof(uiPosition: current, duration: dur) &&
+          !shouldPinSeekBarAtEof(uiPosition: target, duration: dur);
+      _positionNotifier.value = target;
+      if (leavingEof) {
+        _seekAwayFromEofAt = DateTime.now();
+        _abortiveCompletedLatched = false;
+      }
+      debugPrint(
+        '[Player] Peakstorm deep seek → remount @${target.inSeconds}s',
+      );
+      await _remountCurrentStreamAt(target, allowFallbackInit: false);
+      return;
+    }
+    await seekPlayerPreservingProgress(
+      _player,
+      position: position,
+      positionNotifier: _positionNotifier,
+      duration: _durationNotifier.value,
+      onSeekAwayFromEof: () {
+        _seekAwayFromEofAt = DateTime.now();
+        _abortiveCompletedLatched = false;
+      },
+      onSeekCommitted: _armPostSeekStall,
+    );
+  }
 
   void _armPostSeekStall(Duration target) {
     final url = _currentQualityUrl ?? _currentUrl;
     final w = _postSeekStall;
     if (w == null) return;
-    w.enabled =
-        url != null &&
+    w.enabled = url != null &&
         !isLocalTorrentStreamUrl(url) &&
-        !isLocalLoopbackPlayUrl(url) &&
-        postSeekRemountAppliesTo(target);
-    if (!postSeekRemountAppliesTo(target)) return;
+        !isLocalLoopbackPlayUrl(url);
     if (shouldSkipPostSeekStallArm(
       target: target,
       resumeStartPosition: widget.startPosition,

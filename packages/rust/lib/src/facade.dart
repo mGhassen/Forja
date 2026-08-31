@@ -526,18 +526,13 @@ abstract final class Engine {
       migrateJsonList('watch_history');
       migrateJsonList('dismissed_history');
 
-      // Nuvio / WebStreamr non-secrets if still only in prefs.
+      // Nuvio non-secrets if still only in prefs.
       if (!storageHasKey('nuvio_addons_v1')) {
         final raw = prefs.getString('nuvio_addons_v1');
         if (raw != null && raw.isNotEmpty) {
           storageWriteString('nuvio_addons_v1', raw);
         }
       }
-      migrateStringList('webstreamr_country_codes');
-      migrateString('webstreamr_mfp_url');
-      migrateString('webstreamr_flare_url');
-      migrateStringList('webstreamr_disabled_extractors');
-      migrateStringList('webstreamr_excluded_resolutions');
     }
 
     // Always strip settings keys from prefs — one store only.

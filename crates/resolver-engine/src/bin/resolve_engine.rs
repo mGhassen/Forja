@@ -3,7 +3,7 @@
 //! Prefer the repo wrapper (no cargo -p / --bin clutter):
 //! ```bash
 //! ./scripts/resolve-engine.sh --tmdb=1083381
-//! ./scripts/resolve-engine.sh -p webstreamr --tmdb=1083381
+//! ./scripts/resolve-engine.sh -p vidsrc --tmdb=1083381
 //! ```
 //!
 //! Or via cargo (package name ≠ binary name — that’s why it looks doubled):
@@ -19,6 +19,56 @@ use std::process::ExitCode;
 
 use resolver_engine::{list_builtin_provider_ids, resolve};
 use stream::SourceDomain;
+use tmdb;
+
+fn tmdb_id_from_imdb(imdb: &str, is_tv: bool) -> Option<i64> {
+    let body = tmdb::get_json(
+        &format!("find/{imdb}?external_source=imdb_id"),
+        15,
+    );
+    let json: serde_json::Value = serde_json::from_str(&body).ok()?;
+    if json.get("error").is_some() {
+        return None;
+    }
+    let key = if is_tv { "tv_results" } else { "movie_results" };
+    json.get(key)?
+        .as_array()?
+        .first()?
+        .get("id")?
+        .as_i64()
+}
+
+fn imdb_from_tmdb(tmdb_id: i64, is_tv: bool) -> Option<String> {
+    let media = if is_tv { "tv" } else { "movie" };
+    let body = tmdb::get_json(&format!("{media}/{tmdb_id}/external_ids"), 15);
+    let json: serde_json::Value = serde_json::from_str(&body).ok()?;
+    json.get("imdb_id")?.as_str().map(str::to_string)
+}
+
+fn tmdb_title_year(tmdb_id: i64, is_tv: bool) -> Option<(String, i32)> {
+    let media = if is_tv { "tv" } else { "movie" };
+    let body = tmdb::get_json(&format!("{media}/{tmdb_id}"), 15);
+    let json: serde_json::Value = serde_json::from_str(&body).ok()?;
+    if is_tv {
+        let name = json.get("name")?.as_str()?.to_string();
+        let year = json
+            .get("first_air_date")?
+            .as_str()?
+            .get(0..4)?
+            .parse()
+            .unwrap_or(0);
+        Some((name, year))
+    } else {
+        let name = json.get("title")?.as_str()?.to_string();
+        let year = json
+            .get("release_date")?
+            .as_str()?
+            .get(0..4)?
+            .parse()
+            .unwrap_or(0);
+        Some((name, year))
+    }
+}
 
 fn usage() -> ! {
     eprintln!(
@@ -113,47 +163,30 @@ fn main() -> ExitCode {
         i += 1;
     }
 
+    let is_tv = matches!(media.as_str(), "tv" | "series");
+
     let Some(tmdb_id) = tmdb.or_else(|| {
-        // Allow --imdb=tt… alone: resolve TMDB from IMDb.
         let imdb = imdb_arg.as_deref()?;
-        webstreamr::tmdb::get_tmdb_id_from_imdb(imdb, None, None, None)
-            .ok()
-            .and_then(|ids| ids.tmdb_id)
+        tmdb_id_from_imdb(imdb, is_tv)
     }) else {
         eprintln!("--tmdb=<id> or --imdb=tt… is required");
         usage();
     };
 
-    let is_tv = matches!(media.as_str(), "tv" | "series");
+    let ny = tmdb_title_year(tmdb_id, is_tv);
+    let imdb = imdb_arg
+        .or_else(|| imdb_from_tmdb(tmdb_id, is_tv))
+        .unwrap_or_default();
+    let title = title_arg
+        .or_else(|| ny.as_ref().map(|(n, _)| n.clone()))
+        .unwrap_or_default();
+    let year = year_arg.or_else(|| ny.as_ref().map(|(_, y)| *y).filter(|y| *y > 0));
+
     let domain = if is_tv {
         SourceDomain::Series
     } else {
         SourceDomain::Movies
     };
-
-    let ny = webstreamr::tmdb::get_tmdb_name_and_year(
-        tmdb_id,
-        if is_tv { Some(season) } else { None },
-        None,
-        None,
-    )
-    .ok();
-    let imdb = imdb_arg
-        .or_else(|| {
-            webstreamr::tmdb::get_imdb_id_from_tmdb(
-                tmdb_id,
-                if is_tv { Some(season) } else { None },
-                if is_tv { Some(episode) } else { None },
-                None,
-            )
-            .ok()
-            .and_then(|ids| ids.imdb_id)
-        })
-        .unwrap_or_default();
-    let title = title_arg
-        .or_else(|| ny.as_ref().map(|n| n.name.clone()))
-        .unwrap_or_default();
-    let year = year_arg.or_else(|| ny.as_ref().map(|n| n.year).filter(|y| *y > 0));
 
     let all = list_builtin_provider_ids();
     let enabled: Vec<String> = if providers.is_empty() {
@@ -251,7 +284,7 @@ fn main() -> ExitCode {
                 "\nThis is not a stream failure. Native Rust stops here for host providers\n\
                  (videasy, vidfast, 2embed, …). The website works in a browser because it\n\
                  runs their JS/player; Forja finishes those via HostProviderAdapter in the app.\n\
-                 Check in Forja: Sources → pin that provider. Or use -p webstreamr / vidsrc here."
+                 Check in Forja: Sources → pin that provider. Or use -p vidsrc here."
             );
         }
     }

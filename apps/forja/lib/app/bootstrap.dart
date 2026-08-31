@@ -239,7 +239,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   debugPrint('[Boot] MediaKit OK');
 
   // Music / Audiobooks AudioService stays off while those tabs are on hold.
-  // Profile-gated engines (WebStreamr, Nuvio, LocalServer, TorrentStream, TMDB)
+  // Profile-gated engines (Nuvio, LocalServer, TorrentStream, TMDB)
   // warm after profile settings are known - see ProfileEngineWarm / SplashScreen.
 
   // Hydrate theme preset before first frame
@@ -624,7 +624,7 @@ class _SplashScreenState extends State<SplashScreen> {
     debugPrint('[Init] $needs');
 
     // Splash floor: await ForjaHQ packs + default hub layout/rails prefetch.
-    // LocalServer / WebStreamr / Nuvio / torrent start after dismiss.
+    // LocalServer / Nuvio / torrent start after dismiss.
     await ProfileEngineWarm.warm(
       needs,
       startTorrent: false,

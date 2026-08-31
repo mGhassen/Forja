@@ -10,10 +10,16 @@ export 'package:forja/shared/playback/playback_stream_guards.dart'
         catalogAddonBaseForPlaying,
         catalogStreamRowMatchesPlaying,
         catalogStreamRowMatchesSavedProgress,
+        bindPendingCatalogStreamRowKey,
+        catalogStreamRowProgressKey,
+        takePendingCatalogStreamRowKey,
         durableStreamCatalogUrl,
         enginePluginIdFromCatalogBase,
         hlsProxyTargetUrl,
         isVideasyCdnStreamUrl,
+        peakstormFmp4HlsAvoidHardSeek,
+        peakstormHlsNeedsRemountSeek,
+        kPeakstormRemountSeekMinDelta,
         playbackStreamIdentityUrl,
         playbackUrlsEquivalent,
         streamSourceMatchesPlaying;
@@ -618,15 +624,20 @@ Future<String> openPlayerStream(
       (openUrl.startsWith('http://') || openUrl.startsWith('https://')) &&
       !isLocalTorrentStreamUrl(openUrl) &&
       !isLocalLoopbackPlayUrl(openUrl);
-  final useStart = startAt != null && startAt > Duration.zero;
-  if (useStart) await _mpvStartAt(player, startAt);
-  try {
-    // mwVault proxy auth lives in the URL query — do not duplicate via httpHeaders.
-    await player.open(
-      Media(openUrl, httpHeaders: isRemoteHttp && !mwVaultProxy ? hdrs : null),
+  final resumeAt =
+      startAt != null && startAt > Duration.zero ? startAt : null;
+  if (resumeAt != null) await _mpvStartAt(player, resumeAt);
+  // mwVault proxy auth lives in the URL query — do not duplicate via httpHeaders.
+  await player.open(
+    Media(openUrl, httpHeaders: isRemoteHttp && !mwVaultProxy ? hdrs : null),
+  );
+  if (resumeAt != null) {
+    await _waitForMpvStartApplied(
+      player,
+      resumeAt,
+      streamUrl: openUrl,
     );
-  } finally {
-    if (useStart) await _mpvStartAt(player, null);
+    await _mpvStartAt(player, null);
   }
   return openUrl;
 }
@@ -712,6 +723,8 @@ Future<void> ensureOpenedNearPosition(
   Player player,
   Duration? target, {
   bool skipNearCredits = true,
+  String? streamUrl,
+  bool openedWithMpvStart = false,
 }) async {
   if (target == null || target.inSeconds <= 0) return;
   final dur = player.state.duration;
@@ -722,6 +735,14 @@ Future<void> ensureOpenedNearPosition(
   }
   final pos = player.state.position;
   if ((pos - target).abs() <= const Duration(seconds: 5)) return;
+  if (openedWithMpvStart &&
+      streamUrl != null &&
+      peakstormFmp4HlsAvoidHardSeek(streamUrl)) {
+    debugPrint(
+      '[Player] Skip hard seek on peakstorm HLS — mpv start only @${target.inSeconds}s',
+    );
+    return;
+  }
   if (player.platform is NativePlayer) {
     try {
       await (player.platform as NativePlayer).setProperty('hr-seek', 'no');
@@ -1446,28 +1467,34 @@ bool remountPlaybackLooksLive({
 }
 
 /// Post-seek remount succeeded — position near target and a decoded frame.
-bool remountPlaybackResumed(PlayerState state, Duration target) {
-  return remountPlaybackLooksLive(
+bool remountPlaybackResumed(
+  PlayerState state,
+  Duration target, {
+  String? streamUrl,
+}) {
+  if (!remountPlaybackLooksLive(
         playing: state.playing,
         buffering: state.buffering,
         position: state.position,
         target: target,
-      ) &&
-      hasDecodedVideo(state);
+      )) {
+    return false;
+  }
+  if (!hasDecodedVideo(state)) return false;
+  final peakstorm =
+      streamUrl != null && peakstormFmp4HlsAvoidHardSeek(streamUrl);
+  if (peakstorm) {
+    // fMP4 peakstorm: PTS at target while buffering = hung demux (black screen).
+    return !state.buffering;
+  }
+  if (state.buffering && state.bufferingPercentage <= 0) return false;
+  return true;
 }
 
 /// Post-seek remount wait — deep VOD HLS needs longer than 15s to refill.
 Duration remountResumeTimeoutForSeek(Duration seekTarget) {
   final extra = (seekTarget.inMinutes ~/ 10) * 10;
   return Duration(seconds: (15 + extra).clamp(15, 60));
-}
-
-/// Videasy peakstorm HLS only needs same-URL remount on **deep** seeks.
-/// Shallow seeks recover with a normal mpv seek — remount disrupts playback.
-const Duration kPostSeekRemountMinTarget = Duration(minutes: 20);
-
-bool postSeekRemountAppliesTo(Duration seekTarget) {
-  return seekTarget >= kPostSeekRemountMinTarget;
 }
 
 /// After app foreground, true when network VOD is still stuck near [pos].
@@ -1528,6 +1555,35 @@ Future<void> _mpvStartAt(Player player, Duration? start) async {
   } catch (_) {}
 }
 
+/// HLS demuxer reads mpv `start` after [Player.open] returns — wait before
+/// clearing `start` so deep resume lands on the target (peakstorm fMP4).
+Future<void> _waitForMpvStartApplied(
+  Player player,
+  Duration startAt, {
+  required String streamUrl,
+}) async {
+  if (!urlLooksLikeHls(streamUrl)) {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    return;
+  }
+  final deadline = DateTime.now().add(remountResumeTimeoutForSeek(startAt));
+  final peakstorm = peakstormFmp4HlsAvoidHardSeek(streamUrl);
+  while (DateTime.now().isBefore(deadline)) {
+    final pos = player.state.position;
+    if ((pos - startAt).abs() <= const Duration(seconds: 8)) {
+      if (!peakstorm ||
+          remountPlaybackResumed(
+            player.state,
+            startAt,
+            streamUrl: streamUrl,
+          )) {
+        return;
+      }
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 150));
+  }
+}
+
 /// Re-open the same play URL at [seekTarget] (post-seek stall remount).
 ///
 /// Stops the hung demuxer first, opens with mpv `start` so HLS does not
@@ -1563,19 +1619,40 @@ Future<bool> remountPlayerStreamAtPosition(
     player,
     useStart ? seekTarget : null,
     skipNearCredits: false,
+    streamUrl: openUrl,
+    openedWithMpvStart: useStart,
   );
   if (!player.state.playing) {
     await player.play();
   }
 
   final deadline = DateTime.now().add(timeout);
+  var stableChecks = 0;
   while (DateTime.now().isBefore(deadline)) {
-    if (remountPlaybackResumed(player.state, seekTarget)) {
-      return true;
+    if (remountPlaybackResumed(
+      player.state,
+      seekTarget,
+      streamUrl: openUrl,
+    )) {
+      stableChecks++;
+      if (stableChecks >= 3) return true;
+    } else {
+      stableChecks = 0;
     }
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
-  return remountPlaybackResumed(player.state, seekTarget);
+  final ok = remountPlaybackResumed(
+    player.state,
+    seekTarget,
+    streamUrl: openUrl,
+  );
+  if (!ok && peakstormFmp4HlsAvoidHardSeek(openUrl)) {
+    debugPrint(
+      '[Player] Peakstorm remount not live @${seekTarget.inSeconds}s '
+      '(buffering=${player.state.buffering} pos=${player.state.position.inSeconds}s)',
+    );
+  }
+  return ok;
 }
 
 /// True when mpv/media_kit still reports an [aid] that is not in [tracks].
@@ -2333,13 +2410,13 @@ bool _isAnimeHlsAdHost(String url) {
       u.contains('ad-site-i18n');
 }
 
-/// VidRock / Vidzee / WebStreamr 1shows CDN — PNG-wrapped segments; proxy at play.
+/// VidRock / Vidzee / 1shows CDN — PNG-wrapped segments; proxy at play.
 bool is1showsCdnStreamUrl(String url) {
   final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
   return host.contains('1shows.app');
 }
 
-/// Same HLS re-proxy as [WebStreamrService] (local strip=png).
+/// Same HLS re-proxy as local stream proxy (local strip=png).
 Future<({String url, Map<String, String> headers})> proxy1showsHlsIfNeeded({
   required String streamUrl,
   required Map<String, String> headers,

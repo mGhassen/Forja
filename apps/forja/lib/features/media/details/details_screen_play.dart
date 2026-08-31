@@ -216,6 +216,7 @@ mixin _DetailsScreenPlay on ConsumerState<DetailsScreen> {
     Duration? startPosition,
   }) async {
     if (!_s._tryLockPlaybackLaunch()) return;
+    bindPendingCatalogStreamRowKey(stream);
     final kind = catalogStreamKindLabel(stream);
     debugPrint(
       '[Details] play $kind stream '

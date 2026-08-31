@@ -1,5 +1,4 @@
 import 'package:forja/shared/services/tracker/simkl_service.dart';
-import 'package:forja/shared/services/tracker/trakt_service.dart';
 
 void syncEpisodeWatchedToTrackers(
   int tmdbId,
@@ -7,25 +6,6 @@ void syncEpisodeWatchedToTrackers(
   int episode,
   bool watched,
 ) {
-  TraktService().isLoggedIn().then((loggedIn) {
-    if (!loggedIn) return;
-    if (watched) {
-      TraktService().addToHistory(
-        tmdbId: tmdbId,
-        mediaType: 'tv',
-        season: season,
-        episode: episode,
-      );
-    } else {
-      TraktService().removeFromHistory(
-        tmdbId: tmdbId,
-        mediaType: 'tv',
-        season: season,
-        episode: episode,
-      );
-    }
-  });
-
   SimklService().isLoggedIn().then((loggedIn) {
     if (!loggedIn) return;
     final show = {
@@ -49,14 +29,6 @@ void syncEpisodeWatchedToTrackers(
 
 void syncMyListAddToTrackers(int? tmdbId, String? imdbId, String mediaType) {
   if (tmdbId == null && imdbId == null) return;
-  TraktService().isLoggedIn().then((loggedIn) {
-    if (!loggedIn) return;
-    TraktService().addToWatchlist(
-      tmdbId: tmdbId,
-      imdbId: imdbId,
-      mediaType: mediaType,
-    );
-  });
   SimklService().isLoggedIn().then((loggedIn) {
     if (!loggedIn) return;
     SimklService().addToWatchlist(
@@ -73,14 +45,6 @@ void syncMyListRemoveFromTrackers(
   String mediaType,
 ) {
   if (tmdbId == null && imdbId == null) return;
-  TraktService().isLoggedIn().then((loggedIn) {
-    if (!loggedIn) return;
-    TraktService().removeFromWatchlist(
-      tmdbId: tmdbId,
-      imdbId: imdbId,
-      mediaType: mediaType,
-    );
-  });
   SimklService().isLoggedIn().then((loggedIn) {
     if (!loggedIn) return;
     SimklService().removeFromWatchlist(
@@ -99,15 +63,6 @@ void syncProgressClearedToTrackers({
   int? season,
   int? episode,
 }) {
-  TraktService().isLoggedIn().then((loggedIn) {
-    if (!loggedIn) return;
-    TraktService().removeFromHistory(
-      tmdbId: tmdbId,
-      mediaType: mediaType,
-      season: season,
-      episode: episode,
-    );
-  });
   SimklService().isLoggedIn().then((loggedIn) {
     if (!loggedIn) return;
     SimklService().clearWatched(

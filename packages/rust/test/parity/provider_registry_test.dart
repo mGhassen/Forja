@@ -41,9 +41,9 @@ void main() {
     }
   });
 
-  test('catalog includes webstreamr and videasy', () {
-    expect(ProviderRegistry.catalog.containsKey('webstreamr'), isTrue);
+  test('catalog includes videasy and vidlink', () {
     expect(ProviderRegistry.catalog.containsKey('videasy'), isTrue);
+    expect(ProviderRegistry.catalog.containsKey('vidlink'), isTrue);
     expect(ProviderRegistry.catalog['vidlink']?['movie'], isNotNull);
   });
 }

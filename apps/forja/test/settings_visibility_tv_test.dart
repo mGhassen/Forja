@@ -75,17 +75,14 @@ void main() {
       expect(v.lanPlaySourcesEditable, isTrue);
       expect(v.showProviderScoring, isFalse);
       expect(v.showSourcesCategory, isTrue);
-      expect(v.showWebstreamr, isFalse);
       expect(v.showLists, isFalse);
       expect(v.showDataCategory, isFalse);
       expect(v.showDebrid, isFalse);
       expect(v.showAccounts, isTrue);
-      expect(v.showTrakt, isFalse);
       expect(v.showMdblist, isFalse);
 
       final ids = settingsCategories(v).map((c) => c.id).toSet();
       expect(ids.contains(SettingsCategoryId.sources), isTrue);
-      expect(ids.contains(SettingsCategoryId.webstreamr), isFalse);
       expect(ids.contains(SettingsCategoryId.lists), isFalse);
       expect(ids.contains(SettingsCategoryId.data), isFalse);
       expect(ids.contains(SettingsCategoryId.debrid), isFalse);

@@ -532,7 +532,13 @@ mixin _DesktopPlayerTracks
         return;
       }
       if (pos.inSeconds > 0) {
-        await ensureOpenedNearPosition(_s._player, pos, skipNearCredits: false);
+        await ensureOpenedNearPosition(
+          _s._player,
+          pos,
+          skipNearCredits: false,
+          streamUrl: q.url,
+          openedWithMpvStart: true,
+        );
       }
     } finally {
       if (switchGen == _s._fallbackGen) {

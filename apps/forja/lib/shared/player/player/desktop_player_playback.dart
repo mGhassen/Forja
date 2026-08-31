@@ -326,9 +326,13 @@ mixin _DesktopPlayerPlayback
         );
         if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
           // Open used mpv `start`; hard-seek only if still far from target.
-          await ensureOpenedNearPosition(_s._player, seekAfterOpen);
+          await ensureOpenedNearPosition(
+            _s._player,
+            seekAfterOpen,
+            streamUrl: openUrl,
+            openedWithMpvStart: true,
+          );
           if (_fallbackAborted(runGen)) return false;
-          _s._hasInitialSeek = true;
         }
         // Quality menu needs the master — play URL may already be a capped variant.
         _s._detectHlsQualities(
@@ -606,9 +610,13 @@ mixin _DesktopPlayerPlayback
               buffered: _s._bufferedNotifier,
             );
             if (resumeAt != null && resumeAt.inSeconds > 0) {
-              await ensureOpenedNearPosition(_s._player, resumeAt);
+              await ensureOpenedNearPosition(
+                _s._player,
+                resumeAt,
+                streamUrl: openedUrl,
+                openedWithMpvStart: true,
+              );
               if (_fallbackAborted(initGen)) return;
-              _s._hasInitialSeek = true;
             }
             _s._syncPanelAfterPlaybackConfirmed();
             widget.onPlaybackStarted?.call();
@@ -1075,7 +1083,8 @@ mixin _DesktopPlayerPlayback
     bool allowFallbackInit = true,
   }) async {
     if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return false;
-    final url = _s._currentQualityUrl ?? _s._currentUrl;
+    final url =
+        _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
     if (url == null ||
         isLocalTorrentStreamUrl(url) ||
         isLocalLoopbackPlayUrl(url)) {
@@ -1136,13 +1145,14 @@ mixin _DesktopPlayerPlayback
       seekOverride: target,
     );
     if (_s._disposed || !mounted) return false;
-    return remountPlaybackResumed(_s._player.state, target);
+    return remountPlaybackResumed(_s._player.state, target, streamUrl: playUrl);
   }
 
   /// Peakstorm HLS often dies while backgrounded — `play()` alone leaves BUFFERING.
   Future<void> _recoverPlaybackAfterForeground() async {
     if (_s._disposed || !_s._playbackConfirmed) return;
-    final url = _s._currentQualityUrl ?? _s._currentUrl;
+    final url =
+        _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
     if (url == null ||
         isLocalTorrentStreamUrl(url) ||
         isLocalLoopbackPlayUrl(url)) {
@@ -1491,24 +1501,11 @@ mixin _DesktopPlayerPlayback
       _s._updateActiveSkipSegment(pos);
     });
 
-    // Duration – triggers auto-resume on first valid duration
+    // Duration – sync notifier only; resume uses mpv `start` on open (issue 198).
     _s._durationSub = _s._player.stream.duration.listen((dur) {
       if (_s._disposed) return;
       if (!_s._playbackConfirmed) return;
       _s._durationNotifier.value = dur;
-      if (!_s._hasInitialSeek &&
-          dur.inSeconds >= 90 &&
-          widget.startPosition != null) {
-        final start = widget.startPosition!;
-        // Don't seek into the credits - that looks like "started finished".
-        if (start.inMilliseconds > 0 &&
-            start < dur - const Duration(seconds: 15)) {
-          _s._hasInitialSeek = true;
-          _s._player.seek(start);
-        } else {
-          _s._hasInitialSeek = true;
-        }
-      }
     });
 
     // Buffered position – shows how far ahead is cached
@@ -1527,16 +1524,6 @@ mixin _DesktopPlayerPlayback
         _s._startHideTimer();
         // Scrobble resume
         if (widget.movie != null) {
-          final pos = _s._positionNotifier.value.inMilliseconds;
-          final dur = _s._durationNotifier.value.inMilliseconds;
-          final pct = dur > 0 ? (pos / dur * 100) : 0.0;
-          TraktService().scrobbleStart(
-            tmdbId: widget.movie!.id,
-            mediaType: widget.movie!.mediaType,
-            season: widget.selectedSeason,
-            episode: widget.selectedEpisode,
-            progressPercent: pct,
-          );
           SimklService().scrobbleStart(
             tmdbId: widget.movie!.id,
             mediaType: widget.movie!.mediaType,
@@ -1549,16 +1536,6 @@ mixin _DesktopPlayerPlayback
         // paused hero still shows via _isPlayingNotifier.
         unawaited(_s._saveWatchHistory(isBgPause: true));
         if (widget.movie != null) {
-          final pos = _s._positionNotifier.value.inMilliseconds;
-          final dur = _s._durationNotifier.value.inMilliseconds;
-          final pct = dur > 0 ? (pos / dur * 100) : 0.0;
-          TraktService().scrobblePause(
-            tmdbId: widget.movie!.id,
-            mediaType: widget.movie!.mediaType,
-            season: widget.selectedSeason,
-            episode: widget.selectedEpisode,
-            progressPercent: pct,
-          );
           SimklService().scrobblePause(
             tmdbId: widget.movie!.id,
             mediaType: widget.movie!.mediaType,
@@ -1692,16 +1669,15 @@ mixin _DesktopPlayerPlayback
 
     _s._tracksSub = _s._player.stream.tracks.listen((tracks) {
       if (_s._disposed) return;
-      final audioCount = concreteAudioTracks(tracks.audio).length;
-      if (audioCount == 0 || _s._userPickedAudioThisSource) {
-        _scheduleEmbeddedSubtitleAuto(tracks);
-        return;
-      }
-      if (audioCount > _s._lastAutoSelectAudioCount) {
-        _s._lastAutoSelectAudioCount = audioCount;
+      final hasAudio = tracks.audio.any(
+        (t) => t.id != 'no' && t.id != 'auto',
+      );
+      if (!_s._autoTracksAppliedForSource &&
+          hasAudio &&
+          !_s._userPickedAudioThisSource) {
+        _s._autoTracksAppliedForSource = true;
         _s._trackAutoSelectTimer?.cancel();
-        final delayMs = audioCount > 1 ? 400 : 100;
-        _s._trackAutoSelectTimer = Timer(Duration(milliseconds: delayMs), () {
+        _s._trackAutoSelectTimer = Timer(const Duration(milliseconds: 600), () {
           _s._trackAutoSelectTimer = null;
           unawaited(_applyTrackAutoSelect());
         });
@@ -1711,7 +1687,14 @@ mixin _DesktopPlayerPlayback
   }
 
   Future<void> _applyTrackAutoSelect() async {
-    if (_s._disposed || !mounted || _s._userPickedAudioThisSource) return;
+    if (_s._disposed ||
+        !mounted ||
+        _s._userPickedAudioThisSource ||
+        _s._isInitPlaybackRunning ||
+        _s._networkRemountInFlight ||
+        (_s._postSeekStall?.remountInFlight ?? false)) {
+      return;
+    }
     try {
       await applyPreferredPlayerAudioTrack(
         _s._player,
@@ -1724,9 +1707,6 @@ mixin _DesktopPlayerPlayback
           '[DesktopPlayer] auto audio → ${active.title ?? active.language ?? active.id}',
         );
       }
-      // Preferred subtitles must re-apply after tracks settle - media open
-      // clears external URI tracks while the menu still shows them selected.
-      await _s._reapplyPreferredSubtitle();
     } catch (e) {
       debugPrint('[DesktopPlayer] track auto-select failed: $e');
     }
@@ -1734,6 +1714,9 @@ mixin _DesktopPlayerPlayback
 
   void _scheduleEmbeddedSubtitleAuto(Tracks tracks) {
     if (_s._disposed ||
+        _s._isInitPlaybackRunning ||
+        _s._networkRemountInFlight ||
+        (_s._postSeekStall?.remountInFlight ?? false) ||
         _s._embeddedSubtitleAutoApplied ||
         _s._userPickedExternalSubtitle) {
       return;

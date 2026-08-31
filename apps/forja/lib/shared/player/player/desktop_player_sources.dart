@@ -885,6 +885,8 @@ mixin _DesktopPlayerSources
           _s._player,
           currentPos,
           skipNearCredits: false,
+          streamUrl: openUrl,
+          openedWithMpvStart: true,
         );
       }
       syncPlayerProgressNotifiers(

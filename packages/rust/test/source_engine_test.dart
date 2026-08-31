@@ -55,10 +55,10 @@ void main() {
     test('preferred pin is strict', () {
       final ordered = SourceEngine.orderProviderIds(
         domain: SourceDomain.movies,
-        candidateIds: ['videasy', 'vidlink', 'webstreamr'],
-        preferred: 'webstreamr',
+        candidateIds: ['videasy', 'vidlink', 'vidsrc'],
+        preferred: 'vidsrc',
       );
-      expect(ordered, ['webstreamr']);
+      expect(ordered, ['vidsrc']);
     });
 
     test('preferred pin rejects unsupported domain', () {

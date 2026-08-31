@@ -43,6 +43,15 @@ class PostSeekStallWatchdog {
   Duration? get pendingTarget => _target;
   bool get remountInFlight => _remountInFlight;
 
+  /// Drop a pending user seek — e.g. app backgrounded while HLS prefetches.
+  /// Foreground stall recovery uses [_recoverPlaybackAfterForeground] instead.
+  void clearPendingSeek() {
+    _timer?.cancel();
+    _timer = null;
+    _seekAt = null;
+    _target = null;
+  }
+
   void dispose() {
     _timer?.cancel();
     _timer = null;
@@ -109,7 +118,7 @@ class PostSeekStallWatchdog {
     if (_timer != null || _remountedForSeek || _remountInFlight) return;
     final target = _target;
     if (target == null || !_playing) return;
-    _timer = Timer(_armedStallAfter, () => unawaited(_fire(target, _armedStallAfter)));
+    _timer = Timer(_armedStallAfter, () => unawaited(_fire(target)));
   }
 
   bool _looksStalled() {
@@ -118,14 +127,14 @@ class PostSeekStallWatchdog {
     return _lastPos - target < progressClear;
   }
 
-  Future<void> _fire(Duration target, Duration armedFor) async {
+  Future<void> _fire(Duration target) async {
     _timer?.cancel();
     _timer = null;
     if (!enabled || _remountedForSeek || _remountInFlight) return;
     if (!_playing || !_looksStalled()) return;
     _remountInFlight = true;
     debugPrint(
-      '[Player] Post-seek stall ≥${armedFor.inMilliseconds}ms '
+      '[Player] Post-seek stall ≥${_armedStallAfter.inMilliseconds}ms '
       '(buffering=$_buffering pos=${_lastPos.inSeconds}s) — '
       'remount @${target.inSeconds}s',
     );

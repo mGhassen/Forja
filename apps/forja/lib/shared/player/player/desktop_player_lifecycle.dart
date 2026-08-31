@@ -32,6 +32,7 @@ mixin _DesktopPlayerLifecycle
     _s._currentProvider = widget.activeProvider;
     _s._catalogAddonBaseUrl = widget.stremioAddonBaseUrl;
     _s._catalogSourceKind = _initialCatalogSourceKind();
+    _s._catalogStreamRowKey = takePendingCatalogStreamRowKey();
     // Do not pin from pinSource / preloaded sources - that blocked Auto
     // failover after green Play. Prefs + explicit user picks set pins.
     unawaited(_s._loadPlayerAutoSettings());
@@ -190,13 +191,6 @@ mixin _DesktopPlayerLifecycle
       _s._startHideTimer();
       _s._fetchSubtitles();
       if (widget.movie != null && widget.hubEpisodes == null) {
-        TraktService().scrobbleStart(
-          tmdbId: widget.movie!.id,
-          mediaType: widget.movie!.mediaType,
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-          progressPercent: 0,
-        );
         SimklService().scrobbleStart(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
@@ -511,21 +505,18 @@ mixin _DesktopPlayerLifecycle
         _s._pausedByLifecycle = true;
       }
       // macOS focus blur fires inactive often — save only; pause on paused/hidden.
+      _s._postSeekStall?.clearPendingSeek();
       _saveWatchHistory(isBgPause: true);
     } else if (state == AppLifecycleState.resumed) {
       _s._historySaved = false;
       _resumeAfterAppBackground();
       unawaited(_s._recoverPlaybackAfterForeground());
       if (widget.movie != null && _s._isPlayingNotifier.value) {
-        final pos = _s._positionNotifier.value.inMilliseconds;
-        final dur = _s._durationNotifier.value.inMilliseconds;
-        final pct = dur > 0 ? (pos / dur * 100) : 0.0;
-        TraktService().scrobbleStart(
+        SimklService().scrobbleStart(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
-          progressPercent: pct,
         );
       }
     }
@@ -545,6 +536,7 @@ mixin _DesktopPlayerLifecycle
     if (SettingsService.keepsPlayingInBackground) return;
     if (_s._player.state.playing) {
       _s._pausedByLifecycle = true;
+      _s._postSeekStall?.clearPendingSeek();
       unawaited(_s._player.pause());
     }
   }
@@ -651,6 +643,7 @@ mixin _DesktopPlayerLifecycle
         streamUrl: isStremioDirect
             ? widget.mediaPath
             : (method == 'stream' ? resolvedStreamUrl : null),
+        streamRowKey: _s._catalogStreamRowKey,
         stremioId: widget.stremioId,
         stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
         stremioType: widget.movie!.mediaType == 'tv' ? 'series' : 'movie',
@@ -684,14 +677,6 @@ mixin _DesktopPlayerLifecycle
       // Heartbeat / pause / lifecycle keep writing; only exit latches.
       if (!isBgPause) {
         _s._historySaved = true;
-        final progressPercent = dur > 0 ? (pos / dur * 100) : 0.0;
-        TraktService().scrobbleStop(
-          tmdbId: widget.movie!.id,
-          mediaType: widget.movie!.mediaType,
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-          progressPercent: progressPercent,
-        );
         SimklService().scrobbleStop(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,

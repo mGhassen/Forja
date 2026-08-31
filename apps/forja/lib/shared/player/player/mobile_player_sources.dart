@@ -881,6 +881,8 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
           _s._player,
           currentPos,
           skipNearCredits: false,
+          streamUrl: openUrl,
+          openedWithMpvStart: true,
         );
       }
       syncPlayerProgressNotifiers(

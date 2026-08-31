@@ -6,7 +6,6 @@ import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
-import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:rust/rust.dart';
 
 /// Bumps My List + Simkl list buckets from episode watched marks / movie play.
@@ -405,14 +404,6 @@ class ListFollowFromWatched {
         imdbId: movie.imdbId,
         mediaType: movie.mediaType,
         to: to,
-      );
-    }
-    if ((to == 'plantowatch' || to == 'watching') &&
-        await TraktService().isLoggedIn()) {
-      await TraktService().addToWatchlist(
-        tmdbId: movie.id,
-        imdbId: movie.imdbId,
-        mediaType: movie.mediaType,
       );
     }
     container?.invalidate(simklWatchlistProvider);

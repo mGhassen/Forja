@@ -56,9 +56,6 @@ How Forja finds torrents, streams, and subtitles from the web.
 - [Jackett](scrapers/jackett.md)
 - [Prowlarr](scrapers/prowlarr.md)
 - [Nuvio scrapers](scrapers/nuvio.md)
-- [WebStreamr sources](scrapers/webstreamr-sources.md)
-- [WebStreamr extractors](scrapers/webstreamr-extractors.md)
-- [WebStreamr settings](scrapers/webstreamr-settings.md)
 - [Subtitle scrapers](scrapers/subtitle-scrapers.md)
 - [Content hub scrapers](scrapers/content-hub-scrapers.md)
 
@@ -128,7 +125,7 @@ Tabs and verticals not in the default product surface — guides kept for refere
 | Watch a movie from Home | [TMDB details](movies-tv/tmdb-details.md) → [Torrent scrapers](scrapers/torrent.md) → [Debrid](sources/debrid.md) |
 | Play torrents on Android TV via desktop | [LAN](settings/lan.md) |
 | Watch without torrents | [Webstreaming](movies-tv/direct-streaming-mode.md) → [Stream providers](sources/stream-providers.md) |
-| Add more stream sources | [Nuvio scrapers](scrapers/nuvio.md) · [WebStreamr settings](scrapers/webstreamr-settings.md) |
+| Add more stream sources | [Nuvio scrapers](scrapers/nuvio.md) · [Stream providers](sources/stream-providers.md) |
 | Watch anime or Asian drama | [Anime](hubs/anime.md) / [Asian Drama](hubs/asian-drama.md) → [Hub details](hubs/hub-details.md) |
 | Watch live sports | [Live Matches](live/live-matches.md) |
 | Resume where I left off | [Watch history](movies-tv/watch-history.md) |

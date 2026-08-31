@@ -31,12 +31,6 @@ pub fn list_providers() -> Vec<ProviderDef> {
             has_tv_template: false,
         },
         ProviderDef {
-            id: "webstreamr".into(),
-            name: "WebStreamr".into(),
-            has_movie_template: false,
-            has_tv_template: false,
-        },
-        ProviderDef {
             id: "vidlink".into(),
             name: "VidLink".into(),
             has_movie_template: true,

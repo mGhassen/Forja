@@ -13,7 +13,7 @@ pub const API_KEY: &str = match option_env!("TMDB_API_KEY") {
     None => "",
 };
 
-/// TMDB v4 read access token (Bearer). Optional; used by WebStreamr when set.
+/// TMDB v4 read access token (Bearer). Optional overlay for TMDB-backed helpers.
 pub const READ_ACCESS_TOKEN: &str = match option_env!("TMDB_READ_ACCESS_TOKEN") {
     Some(t) => t,
     None => "",

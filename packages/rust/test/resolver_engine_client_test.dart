@@ -11,7 +11,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  test('buildRequest passes maxInFlight and webstreamr settings', () async {
+  test('buildRequest passes maxInFlight', () async {
     final request = await ResolverEngineClient.buildRequest(
       domain: SourceDomain.movies,
       movie: Movie(
@@ -26,17 +26,12 @@ void main() {
       ),
       season: 1,
       episode: 1,
-      providers: {'webstreamr': {}, 'vidsrc': {}},
+      providers: {'vidsrc': {}, 'vidlink': {}},
       maxInFlight: 3,
     );
     final settings = request['settings'] as Map<String, dynamic>;
     expect(settings['maxInFlight'], 3);
-    final wsConfig = Map<String, String>.from(
-      settings['webstreamrConfig'] as Map,
-    );
-    expect(wsConfig['multi'], 'on');
-    expect(wsConfig['de'], 'on');
-    expect(settings.containsKey('webstreamrTmdbAccessToken'), isTrue);
+    expect(settings.containsKey('webstreamrConfig'), isFalse);
   });
 
   test('continueWithHost payload shape', () {

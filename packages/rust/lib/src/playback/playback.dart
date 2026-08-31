@@ -17,7 +17,6 @@ export 'proxy/site111477_proxy.dart';
 export 'providers/registry/stream_providers.dart';
 export 'domain/torrent_engine_backend.dart';
 export 'torrent/torrent_stream_service.dart';
-export 'providers/services/webstreamr_service.dart';
 export 'torrent/debrid_api.dart'
     show
         DebridApi,

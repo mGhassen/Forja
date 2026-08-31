@@ -21,7 +21,6 @@ pub mod vidsrcsbs;
 pub mod vidsrcwin;
 pub mod vidzee;
 pub mod vixsrc;
-pub mod webstreamr;
 
 use std::sync::Arc;
 
@@ -29,7 +28,6 @@ use crate::provider::Provider;
 
 pub fn built_in() -> Vec<Arc<dyn Provider>> {
     vec![
-        Arc::new(webstreamr::WebstreamrProvider),
         Arc::new(vidsrc::VidsrcProvider),
         Arc::new(videasy::VideasyProvider),
         Arc::new(service111477::Service111477Provider),

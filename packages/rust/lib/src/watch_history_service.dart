@@ -47,6 +47,7 @@ class WatchHistoryService {
     String? magnetLink,
     int? fileIndex,
     String? streamUrl,
+    String? streamRowKey,
     String? stremioId,
     String? stremioAddonBaseUrl,
     String? stremioType,
@@ -74,6 +75,8 @@ class WatchHistoryService {
       'magnetLink': magnetLink,
       'fileIndex': fileIndex,
       'streamUrl': streamUrl,
+      if (streamRowKey != null && streamRowKey.isNotEmpty)
+        'streamRowKey': streamRowKey,
       'stremioId': stremioId,
       'stremioAddonBaseUrl': stremioAddonBaseUrl,
       'stremioType': stremioType,

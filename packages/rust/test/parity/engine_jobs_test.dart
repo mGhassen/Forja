@@ -12,11 +12,8 @@ void main() {
 
   test('cancel completes pending job with cancelled error', () async {
     final fut = EngineJobs.run(
-      EngineAsyncJob.webstreamrGetStreams,
-      {
-        'requestJson':
-            '{"media_type":"movie","tmdb_id":550,"enabled_sources":["vidsrc","rgshows"]}',
-      },
+      EngineAsyncJob.searchTorrents,
+      {'query': 'test query that should cancel quickly'},
     );
     RustLib.instance.engineCancelPending();
     final raw = await fut.timeout(const Duration(seconds: 10));
@@ -24,13 +21,10 @@ void main() {
     expect(m['error'], 'cancelled');
   });
 
-  test('EngineJobs runs webstreamr job off main isolate', () async {
+  test('EngineJobs runs search torrents job off main isolate', () async {
     final raw = await EngineJobs.run(
-      EngineAsyncJob.webstreamrGetStreams,
-      {
-        'requestJson':
-            '{"media_type":"movie","tmdb_id":550,"enabled_sources":["vidsrc"]}',
-      },
+      EngineAsyncJob.searchTorrents,
+      {'query': '{"query":"ubuntu","providers":["tpb"]}'},
     );
     final decoded = jsonDecode(raw);
     expect(decoded, isA<List>());

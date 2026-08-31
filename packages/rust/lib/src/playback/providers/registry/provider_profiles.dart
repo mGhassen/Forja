@@ -107,10 +107,6 @@ abstract final class ProviderProfiles {
       id: 'service111477',
       priority: {SourceDomain.movies: 85, SourceDomain.series: 85},
     ),
-    'webstreamr': const ProviderProfile(
-      id: 'webstreamr',
-      priority: {SourceDomain.movies: 50, SourceDomain.series: 50},
-    ),
 
     // ── Anime ─────────────────────────────────────────────────────────────
     ..._profilesFromOrder(_animeOrder, SourceDomain.anime, start: 100),

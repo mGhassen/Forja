@@ -7,9 +7,7 @@ import 'library_path.dart';
 /// Long-lived Rust FFI workers — one [Isolate.run] per call replaced by a pool.
 enum EngineJobKind {
   version,
-  webstreamrGetStreams,
   stremioHttpGet,
-  resolveVidsrcEmbed,
   opensslAesDecrypt,
   searchTorrents,
   filterTorrents,
@@ -27,7 +25,6 @@ enum EngineJobKind {
   metadataRequest,
   subtitleRequest,
   tmdbGet,
-  traktRequest,
   parseXtreamCategories,
   parseXtreamStreams,
   parseXtreamSeriesEpisodes,
@@ -222,15 +219,11 @@ String _dispatchJob(_WorkerJob job) {
   switch (job.kind) {
     case EngineJobKind.version:
       return rust.version;
-    case EngineJobKind.webstreamrGetStreams:
-      return rust.webstreamrGetStreamsJson(job.args['requestJson']! as String);
     case EngineJobKind.stremioHttpGet:
       return rust.stremioHttpGet(
         job.args['url']! as String,
         timeoutSecs: job.args['timeoutSecs']! as int,
       );
-    case EngineJobKind.resolveVidsrcEmbed:
-      return rust.resolveVidsrcEmbedJson(job.args['requestJson']! as String);
     case EngineJobKind.opensslAesDecrypt:
       return rust.opensslAesDecryptJson(
         job.args['b64']! as String,
@@ -296,8 +289,6 @@ String _dispatchJob(_WorkerJob job) {
         job.args['resourcePath']! as String,
         timeoutSecs: job.args['timeoutSecs']! as int,
       );
-    case EngineJobKind.traktRequest:
-      return rust.traktRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.parseXtreamCategories:
       return rust.parseXtreamCategoriesJson(job.args['json']! as String);
     case EngineJobKind.parseXtreamStreams:

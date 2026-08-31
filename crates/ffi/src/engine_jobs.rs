@@ -34,9 +34,7 @@ static JOBS: LazyLock<Mutex<JobStore>> = LazyLock::new(|| {
 #[repr(u32)]
 #[derive(Clone, Copy, Debug)]
 pub enum JobKind {
-    WebstreamrGetStreams = 1,
     StremioHttpGet = 2,
-    ResolveVidsrcEmbed = 3,
     SearchTorrents = 4,
     HttpGet = 5,
     HttpPost = 6,
@@ -162,18 +160,6 @@ async fn run_job_async(kind: u32, payload_json: &str) -> String {
 
 async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> {
     match kind {
-        k if k == JobKind::WebstreamrGetStreams as u32 => {
-            let req: RequestJsonPayload =
-                serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
-            let request_json = req.request_json;
-            let token = utils::engine_cancel::cancellation_token();
-            tokio::task::spawn_blocking(move || {
-                utils::engine_cancel::attach_job_token(token);
-                Ok(webstreamr::get_streams_json(&request_json))
-            })
-            .await
-            .map_err(|e| e.to_string())?
-        }
         k if k == JobKind::StremioHttpGet as u32 => {
             let req: StremioHttpReq = serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
             let token = utils::engine_cancel::cancellation_token();
@@ -183,18 +169,6 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
                     Ok(resp) => serde_json::to_string(&resp).map_err(|e| e.to_string()),
                     Err(e) => Ok(serde_json::json!({ "error": e }).to_string()),
                 }
-            })
-            .await
-            .map_err(|e| e.to_string())?
-        }
-        k if k == JobKind::ResolveVidsrcEmbed as u32 => {
-            let req: RequestJsonPayload =
-                serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
-            let request_json = req.request_json;
-            let token = utils::engine_cancel::cancellation_token();
-            tokio::task::spawn_blocking(move || {
-                utils::engine_cancel::attach_job_token(token);
-                Ok(webstreamr::resolve_vidsrc_embed_json(&request_json))
             })
             .await
             .map_err(|e| e.to_string())?

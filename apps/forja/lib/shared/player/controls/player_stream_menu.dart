@@ -658,7 +658,7 @@ class PlayerStreamMenu {
           )
           .trim();
     }
-    // Prefer the 🔗 detail line (WebStreamr) when present; else last non-empty.
+    // Prefer the 🔗 detail line when present; else last non-empty.
     final lines = body
         .split('\n')
         .map((l) => l.trim())

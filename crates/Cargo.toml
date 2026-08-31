@@ -7,14 +7,12 @@ members = [
     "iptv",
     "iptv-worker",
     "stremio",
-    "webstreamr",
     "scrapers",
     "torrent",
     "proxy",
     "lan",
     "storage",
     "tmdb",
-    "trakt",
     "anime",
     "indexer",
     "debrid",
@@ -28,6 +26,7 @@ members = [
     "archive/manga",
     "archive/catalog",
     "archive/anilist",
+    "archive/trakt",
 ]
 
 [workspace.package]

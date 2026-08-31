@@ -27,9 +27,11 @@ abstract final class SecureSettings {
   static const jackettApiKey = 'jackett_api_key';
   static const prowlarrApiKey = 'prowlarr_api_key';
 
-  /// WebStreamr secrets
-  static const webstreamrMfpPassword = 'webstreamr_mfp_password';
-  static const webstreamrTmdbToken = 'webstreamr_tmdb_token';
+  /// Retired WebStreamr secrets — purged on upgrade; kept out of KV exports.
+  static const retiredSecureKeys = <String>{
+    'webstreamr_mfp_password',
+    'webstreamr_tmdb_token',
+  };
 
   /// IPTV Xtream portal passwords (JSON map `url|username` → password).
   static const iptvPortalPasswords = 'iptv_portal_passwords_v1';
@@ -47,8 +49,7 @@ abstract final class SecureSettings {
     debridlinkApiKey,
     jackettApiKey,
     prowlarrApiKey,
-    webstreamrMfpPassword,
-    webstreamrTmdbToken,
+    ...retiredSecureKeys,
     iptvPortalPasswords,
   };
 

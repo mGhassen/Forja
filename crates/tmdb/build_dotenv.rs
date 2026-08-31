@@ -1,4 +1,4 @@
-//! Shared by `tmdb` / `webstreamr` / `anime` / `iptv` `build.rs` — load repo-root `.env`
+//! Shared by `tmdb` / `anime` / `iptv` `build.rs` — load repo-root `.env`
 //! into `cargo:rustc-env` so `option_env!("…")` works without committing keys.
 //!
 //! Priority: process env (CI secrets) wins over `.env` file values.

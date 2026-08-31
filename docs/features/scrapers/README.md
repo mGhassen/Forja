@@ -15,15 +15,13 @@ You don't install most scrapers separately; they're built in. Exceptions: **Nuvi
 | [Torrent](torrent.md) | Magnet/torrent results on details | Settings → Sources |
 | [Jackett](jackett.md) / [Prowlarr](prowlarr.md) | Extra indexer results (admin) | Settings → Sources |
 | [Nuvio](nuvio.md) | JS scraper links in **Sources** (Direct torrent) | Settings → Nuvio Addons |
-| [WebStreamr sources](webstreamr-sources.md) | Country streaming sites | WebStreamr Settings |
-| [WebStreamr extractors](webstreamr-extractors.md) | Embed host links | WebStreamr Settings |
 | [Subtitle scrapers](subtitle-scrapers.md) | Sub tracks in player | Automatic |
 | [Content hubs](content-hub-scrapers.md) | Anime, drama, live sports | Built into each tab |
 
 ## Where results appear
 
 - **[TMDB details](../movies-tv/tmdb-details.md)** — torrent scrapers (Forja), Jackett, Prowlarr, **Nuvio** (Sources panel)
-- **Webstreaming** (green **Play**) — VidLink, Videasy, WebStreamr, etc. — **not** Nuvio
+- **Webstreaming** (green **Play**) — VidLink, Videasy, engine providers, etc. — **not** Nuvio
 - **Player** — subtitle scrapers
 - **Hub tabs** — Anime, Asian Drama, Live Matches ([Hub details](../hubs/hub-details.md))
 
@@ -31,4 +29,3 @@ You don't install most scrapers separately; they're built in. Exceptions: **Nuvi
 
 - [TMDB details](../movies-tv/tmdb-details.md)
 - [Direct streaming mode](../movies-tv/direct-streaming-mode.md)
-- [WebStreamr settings](webstreamr-settings.md)

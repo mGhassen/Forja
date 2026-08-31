@@ -631,19 +631,6 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              if (widget.isResumable)
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 2),
-                                  child: Text(
-                                    'RESUME',
-                                    style: TextStyle(
-                                      color: cinematic.textSecondary,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: 0.6,
-                                    ),
-                                  ),
-                                ),
                               Text(
                                 widget.title,
                                 maxLines: 2,
@@ -762,18 +749,6 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
               ],
             ),
           ),
-          if (widget.isResumable && widget.progress > 0)
-            Positioned(
-              bottom: 0,
-              left: 2.5,
-              right: 0,
-              child: LinearProgressIndicator(
-                value: widget.progress,
-                backgroundColor: Colors.transparent,
-                color: ForjaShellColors.progressFill,
-                minHeight: 2.5,
-              ),
-            ),
         ],
       ),
     );

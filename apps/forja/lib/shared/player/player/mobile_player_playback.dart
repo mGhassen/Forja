@@ -328,9 +328,13 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
           buffered: _s._bufferedNotifier,
         );
         if (seekAfterOpen != null && seekAfterOpen.inSeconds > 0) {
-          await ensureOpenedNearPosition(_s._player, seekAfterOpen);
+          await ensureOpenedNearPosition(
+            _s._player,
+            seekAfterOpen,
+            streamUrl: openUrl,
+            openedWithMpvStart: true,
+          );
           if (_fallbackAborted(runGen)) return false;
-          _s._hasInitialSeek = true;
         }
         _s._detectHlsQualities(
           catalogUrlForHlsQualities(
@@ -615,9 +619,13 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
               buffered: _s._bufferedNotifier,
             );
             if (resumeAt != null && resumeAt.inSeconds > 0) {
-              await ensureOpenedNearPosition(_s._player, resumeAt);
+              await ensureOpenedNearPosition(
+                _s._player,
+                resumeAt,
+                streamUrl: openedUrl,
+                openedWithMpvStart: true,
+              );
               if (_fallbackAborted(initGen)) return;
-              _s._hasInitialSeek = true;
             }
             _s._syncPanelAfterPlaybackConfirmed();
             widget.onPlaybackStarted?.call();
@@ -1084,7 +1092,8 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     bool allowFallbackInit = true,
   }) async {
     if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return false;
-    final url = _s._currentQualityUrl ?? _s._currentUrl;
+    final url =
+        _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
     if (url == null ||
         isLocalTorrentStreamUrl(url) ||
         isLocalLoopbackPlayUrl(url)) {
@@ -1145,12 +1154,14 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       seekOverride: target,
     );
     if (_s._disposed || !mounted) return false;
-    return remountPlaybackResumed(_s._player.state, target);
+    return remountPlaybackResumed(_s._player.state, target, streamUrl: playUrl);
   }
 
+  /// Peakstorm HLS often dies while backgrounded — `play()` alone leaves BUFFERING.
   Future<void> _recoverPlaybackAfterForeground() async {
     if (_s._disposed || !_s._playbackConfirmed) return;
-    final url = _s._currentQualityUrl ?? _s._currentUrl;
+    final url =
+        _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
     if (url == null ||
         isLocalTorrentStreamUrl(url) ||
         isLocalLoopbackPlayUrl(url)) {
@@ -1507,28 +1518,6 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
       if (_s._disposed) return;
       if (!_s._playbackConfirmed) return;
       _s._durationNotifier.value = dur;
-      if (!_s._hasInitialSeek &&
-          dur.inSeconds >= 90 &&
-          widget.startPosition != null) {
-        final target = widget.startPosition!;
-        // Don't seek into the credits - that looks like "started finished".
-        if (target.inMilliseconds <= 0 ||
-            target >= dur - const Duration(seconds: 15)) {
-          _s._hasInitialSeek = true;
-          return;
-        }
-        _s._hasInitialSeek = true;
-        // mpv 'start' property handles the initial seek natively (set in
-        // _configureMpvProperties). Fire a deferred seek as a safety net in
-        // case the property was ignored (e.g. live streams, non-seekable src).
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (_s._disposed || !_s._playbackConfirmed) return;
-          final currentPos = _s._positionNotifier.value;
-          if ((currentPos - target).abs() > const Duration(seconds: 5)) {
-            _s._player.seek(target);
-          }
-        });
-      }
     });
 
     _s._bufferSub = _s._player.stream.buffer.listen((buf) {
@@ -1550,16 +1539,6 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
         _s._startHideTimer();
         // Scrobble resume
         if (widget.movie != null) {
-          final pos = _s._positionNotifier.value.inMilliseconds;
-          final dur = _s._durationNotifier.value.inMilliseconds;
-          final pct = dur > 0 ? (pos / dur * 100) : 0.0;
-          TraktService().scrobbleStart(
-            tmdbId: widget.movie!.id,
-            mediaType: widget.movie!.mediaType,
-            season: widget.selectedSeason,
-            episode: widget.selectedEpisode,
-            progressPercent: pct,
-          );
           SimklService().scrobbleStart(
             tmdbId: widget.movie!.id,
             mediaType: widget.movie!.mediaType,
@@ -1572,16 +1551,6 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
         // paused hero still shows via _isPlayingNotifier.
         _s._saveWatchHistory(isBgPause: true);
         if (widget.movie != null) {
-          final pos = _s._positionNotifier.value.inMilliseconds;
-          final dur = _s._durationNotifier.value.inMilliseconds;
-          final pct = dur > 0 ? (pos / dur * 100) : 0.0;
-          TraktService().scrobblePause(
-            tmdbId: widget.movie!.id,
-            mediaType: widget.movie!.mediaType,
-            season: widget.selectedSeason,
-            episode: widget.selectedEpisode,
-            progressPercent: pct,
-          );
           SimklService().scrobblePause(
             tmdbId: widget.movie!.id,
             mediaType: widget.movie!.mediaType,
@@ -1708,16 +1677,15 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
 
     _s._tracksSub = _s._player.stream.tracks.listen((tracks) {
       if (_s._disposed) return;
-      final audioCount = concreteAudioTracks(tracks.audio).length;
-      if (audioCount == 0 || _s._userPickedAudioThisSource) {
-        _scheduleEmbeddedSubtitleAuto(tracks);
-        return;
-      }
-      if (audioCount > _s._lastAutoSelectAudioCount) {
-        _s._lastAutoSelectAudioCount = audioCount;
+      final hasAudio = tracks.audio.any(
+        (t) => t.id != 'no' && t.id != 'auto',
+      );
+      if (!_s._autoTracksAppliedForSource &&
+          hasAudio &&
+          !_s._userPickedAudioThisSource) {
+        _s._autoTracksAppliedForSource = true;
         _s._trackAutoSelectTimer?.cancel();
-        final delayMs = audioCount > 1 ? 400 : 100;
-        _s._trackAutoSelectTimer = Timer(Duration(milliseconds: delayMs), () {
+        _s._trackAutoSelectTimer = Timer(const Duration(milliseconds: 600), () {
           _s._trackAutoSelectTimer = null;
           unawaited(_applyTrackAutoSelect());
         });
@@ -1728,6 +1696,9 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
 
   void _scheduleEmbeddedSubtitleAuto(Tracks tracks) {
     if (_s._disposed ||
+        _s._isInitPlaybackRunning ||
+        _s._networkRemountInFlight ||
+        (_s._postSeekStall?.remountInFlight ?? false) ||
         _s._embeddedSubtitleAutoApplied ||
         _s._userPickedExternalSubtitle) {
       return;
@@ -1754,7 +1725,14 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
   }
 
   Future<void> _applyTrackAutoSelect() async {
-    if (_s._disposed || !mounted || _s._userPickedAudioThisSource) return;
+    if (_s._disposed ||
+        !mounted ||
+        _s._userPickedAudioThisSource ||
+        _s._isInitPlaybackRunning ||
+        _s._networkRemountInFlight ||
+        (_s._postSeekStall?.remountInFlight ?? false)) {
+      return;
+    }
     try {
       await applyPreferredPlayerAudioTrack(
         _s._player,
@@ -1767,7 +1745,6 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
           '[Player] auto audio → ${active.title ?? active.language ?? active.id}',
         );
       }
-      await _s._reapplyPreferredSubtitle();
     } catch (e) {
       debugPrint('[Player] track auto-select failed: $e');
     }

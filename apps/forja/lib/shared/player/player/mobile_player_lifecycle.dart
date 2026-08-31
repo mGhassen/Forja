@@ -41,6 +41,7 @@ mixin _MobilePlayerLifecycle
     _s._currentProvider = widget.activeProvider;
     _s._catalogAddonBaseUrl = widget.stremioAddonBaseUrl;
     _s._catalogSourceKind = _initialCatalogSourceKind();
+    _s._catalogStreamRowKey = takePendingCatalogStreamRowKey();
     // Do not pin from pinSource / preloaded sources - that blocked Auto
     // failover after green Play. Prefs + explicit user picks set pins.
     unawaited(_s._loadPlayerAutoSettings());
@@ -272,13 +273,6 @@ mixin _MobilePlayerLifecycle
       }
       // Trakt scrobble start
       if (widget.movie != null) {
-        TraktService().scrobbleStart(
-          tmdbId: widget.movie!.id,
-          mediaType: widget.movie!.mediaType,
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-          progressPercent: 0,
-        );
         SimklService().scrobbleStart(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
@@ -647,21 +641,17 @@ mixin _MobilePlayerLifecycle
       // here — `paused`/`hidden` cover real backgrounding.
       _saveWatchHistory(isBgPause: true);
     } else if (state == AppLifecycleState.resumed) {
-      // Tell Trakt we're back
+      // App resumed — Simkl scrobble continues on play.
       _s._historySaved = false; // allow re-save on next exit
       _s._armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();
       unawaited(_s._recoverPlaybackAfterForeground());
       if (widget.movie != null && _s._isPlayingNotifier.value) {
-        final pos = _s._positionNotifier.value.inMilliseconds;
-        final dur = _s._durationNotifier.value.inMilliseconds;
-        final pct = dur > 0 ? (pos / dur * 100) : 0.0;
-        TraktService().scrobbleStart(
+        SimklService().scrobbleStart(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
-          progressPercent: pct,
         );
       }
     }
@@ -672,6 +662,7 @@ mixin _MobilePlayerLifecycle
     if (SettingsService.keepsPlayingInBackground) return;
     if (_s._player.state.playing) {
       _s._pausedByLifecycle = true;
+      _s._postSeekStall?.clearPendingSeek();
       unawaited(_s._player.pause());
     }
   }
@@ -799,6 +790,7 @@ mixin _MobilePlayerLifecycle
         streamUrl: isStremioDirect
             ? widget.mediaPath
             : (method == 'stream' ? resolvedStreamUrl : null),
+        streamRowKey: _s._catalogStreamRowKey,
         stremioId: widget.stremioId,
         stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
         stremioType: widget.movie!.mediaType == 'tv' ? 'series' : 'movie',
@@ -831,14 +823,6 @@ mixin _MobilePlayerLifecycle
       }
 
       if (!isBgPause) {
-        final progressPercent = dur > 0 ? (pos / dur * 100) : 0.0;
-        TraktService().scrobbleStop(
-          tmdbId: widget.movie!.id,
-          mediaType: widget.movie!.mediaType,
-          season: widget.selectedSeason,
-          episode: widget.selectedEpisode,
-          progressPercent: progressPercent,
-        );
         SimklService().scrobbleStop(
           tmdbId: widget.movie!.id,
           mediaType: widget.movie!.mediaType,

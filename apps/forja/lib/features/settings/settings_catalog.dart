@@ -6,7 +6,6 @@ abstract final class SettingsCategoryId {
   static const profile = 'profile';
   static const playback = 'playback';
   static const sources = 'sources';
-  static const webstreamr = 'webstreamr';
   static const debrid = 'debrid';
   static const accounts = 'accounts';
   static const lists = 'lists';
@@ -20,7 +19,6 @@ abstract final class SettingsCategoryId {
     profile,
     playback,
     sources,
-    webstreamr,
     debrid,
     accounts,
     lists,
@@ -86,14 +84,6 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
         subtitle: sourcesSubtitle,
         icon: Icons.extension_rounded,
       ),
-    if (visibility.showWebstreamr)
-      const SettingsCategoryMeta(
-        id: SettingsCategoryId.webstreamr,
-        title: 'WebStreamr',
-        subtitle: 'Countries, extractors, MFP, TMDB',
-        icon: Icons.language_rounded,
-        adminOnly: true,
-      ),
     if (visibility.showDebrid)
       const SettingsCategoryMeta(
         id: SettingsCategoryId.debrid,
@@ -106,8 +96,8 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       SettingsCategoryMeta(
         id: SettingsCategoryId.accounts,
         title: 'Connected services',
-        subtitle: visibility.showTrakt || visibility.showMdblist
-            ? 'Simkl; Trakt & MDBlist (admin)'
+        subtitle: visibility.showMdblist
+            ? 'Simkl; MDBlist (admin)'
             : 'Simkl',
         icon: Icons.sync_rounded,
       ),
@@ -115,7 +105,7 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       const SettingsCategoryMeta(
         id: SettingsCategoryId.lists,
         title: 'Lists',
-        subtitle: 'Trakt & MDBlist custom lists',
+        subtitle: 'MDBlist custom lists',
         icon: Icons.list_alt_rounded,
         fillViewport: true,
         adminOnly: true,

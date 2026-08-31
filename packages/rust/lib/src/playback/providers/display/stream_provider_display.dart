@@ -28,7 +28,6 @@ class StreamProviderDisplay {
     'moviesapi': 'MoviesAPI',
     'vidapi': 'VidAPI',
     'service111477': '111477',
-    'webstreamr': 'WebStreamr',
     'stremio_direct': 'Stremio Direct',
     'amri': 'Amri',
     'arabic': 'Arabic',

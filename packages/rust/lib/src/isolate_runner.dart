@@ -3,21 +3,11 @@ import 'engine_worker.dart';
 
 // ── Long I/O — Rust tokio jobs (main isolate stays free) ────────────────────
 
-Future<String> runWebstreamrGetStreamsJson(String requestJson) =>
-    EngineJobs.run(EngineAsyncJob.webstreamrGetStreams, {
-      'requestJson': requestJson,
-    });
-
 Future<String> runStremioHttpGet(String url, {int timeoutSecs = 15}) =>
     EngineJobs.run(EngineAsyncJob.stremioHttpGet, {
       'url': url,
       'timeout_secs': timeoutSecs,
     });
-
-Future<String> runResolveVidsrcEmbedJson(String requestJson) => EngineJobs.run(
-  EngineAsyncJob.resolveVidsrcEmbed,
-  {'requestJson': requestJson},
-);
 
 Future<String> runSearchTorrentsJson(String query) =>
     EngineJobs.run(EngineAsyncJob.searchTorrents, {'query': query});
@@ -87,11 +77,6 @@ Future<String> runTmdbGetJson(String resourcePath, {int timeoutSecs = 15}) =>
       'resourcePath': resourcePath,
       'timeoutSecs': timeoutSecs,
     });
-
-Future<String> runTraktRequestJson(String requestJson) => EngineWorkerPool.run(
-  EngineJobKind.traktRequest,
-  {'requestJson': requestJson},
-);
 
 Future<String> runIptvProbeStreamJson(String url, {int timeoutSecs = 8}) =>
     EngineJobs.run(EngineAsyncJob.iptvProbeStream, {

@@ -8,8 +8,8 @@
 
 | Layer | Holds |
 |-------|--------|
-| `forja_engine_store.json` (app support) | Non-secret settings: playback, provider order, Stremio/Nuvio addons, WebStreamr countries/filters, navbar, … |
-| Keychain / Keystore (or macOS ad-hoc local vault) | Credentials: Trakt, Simkl, Debrid, Jackett/Prowlarr API keys, WebStreamr MFP password / TMDB token, **IPTV portal passwords**, … |
+| `forja_engine_store.json` (app support) | Non-secret settings: playback, provider order, Stremio/Nuvio addons, navbar, … |
+| Keychain / Keystore (or macOS ad-hoc local vault) | Credentials: Simkl, Debrid, Jackett/Prowlarr API keys, **IPTV portal passwords**, … |
 | SharedPreferences (IPTV metadata) | Portal URL, username, labels, expiry, seats — **not** passwords once secure migration succeeds |
 
 Older SharedPreferences copies of those settings are imported once into that file and then removed — they are not a second source of truth.

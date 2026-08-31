@@ -7,9 +7,7 @@ import 'library_path.dart';
 
 /// Job kinds — must match [JobKind] in `crates/ffi/src/engine_jobs.rs`.
 abstract final class EngineAsyncJob {
-  static const webstreamrGetStreams = 1;
   static const stremioHttpGet = 2;
-  static const resolveVidsrcEmbed = 3;
   static const searchTorrents = 4;
   static const httpGet = 5;
   static const httpPost = 6;

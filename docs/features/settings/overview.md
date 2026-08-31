@@ -16,17 +16,16 @@ Select the profile avatar / Guest item pinned at the bottom of the desktop or
 
 ## Categories
 
-Categories appear only when they match your profile. **VOD tabs** = Home, Search, Anime, Asian Drama, or My List. Admin-only entries (WebStreamr, Debrid, Lists, Trakt, and some About / Playback rows) show green sparkles next to the title when you can see them.
+Categories appear only when they match your profile. **VOD tabs** = Home, Search, Anime, Asian Drama, or My List. Admin-only entries (Debrid, Lists, and some About / Playback rows) show green sparkles next to the title when you can see them.
 
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
 | [Playback](playback-settings.md) | Play sources, audio, auto next/skip, quality, IPTV EPG | Always (play sources / episode extras need a VOD tab; IPTV EPG needs the IPTV tab) |
 | [Sources](torrent-settings.md) | Server reliability, torrents, Stremio / Nuvio / Forja / Jackett / Prowlarr | VOD tab + Webstreaming / Direct torrent / Stremio / Nuvio / Forja on (or Live Matches for Stremio sport addons). Server reliability + Jackett / Prowlarr stay admin (+ phone/desktop for reliability) |
-| [WebStreamr](../scrapers/webstreamr-settings.md) | Country sources, extractors, resolutions, MFP, FlareSolverr, TMDB | Admin only · VOD tab + Webstreaming on — never on Android TV |
 | Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link | Admin only · VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
-| Connected services | Simkl; Trakt & MDBlist (admin) | VOD tab (Trakt / MDBlist rows are admin-only) |
-| [Lists](../movies-tv/external-lists.md) | Trakt & MDBlist custom / top lists | Admin only · VOD tab — never on Android TV |
+| Connected services | Simkl; MDBlist (admin) | VOD tab (MDBlist rows are admin-only) |
+| [Lists](../movies-tv/external-lists.md) | MDBlist custom / top lists | Admin only · VOD tab — never on Android TV |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
 | [Forja Sports](forja-sports.md) | Live plugins, catalog feeds, leagues, Enable Forja Sports | Live Matches + IPTV tabs on |
 | [LAN](lan.md) | Desktop server, pairing, torrent relay to phone/TV | Always |

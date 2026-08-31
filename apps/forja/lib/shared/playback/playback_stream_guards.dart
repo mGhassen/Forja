@@ -47,6 +47,31 @@ bool isVideasyCdnStreamUrl(String url) {
   return host.contains('peakstorm');
 }
 
+/// Deep user seeks on peakstorm fMP4 must remount (mpv `start`), not [Player.seek].
+const Duration kPeakstormRemountSeekMinDelta = Duration(minutes: 2);
+
+/// Peakstorm fMP4 HLS (Videasy, VidCore, …) — mpv `start` only.
+/// [Player.seek] mid-playlist corrupts segments (NAL decode errors → black screen).
+bool peakstormFmp4HlsAvoidHardSeek(String url) {
+  final u = url.trim();
+  if (u.isEmpty) return false;
+  if (isVideasyCdnStreamUrl(u)) return true;
+  final nested = Uri.tryParse(u)?.queryParameters['url'];
+  if (nested != null && nested.isNotEmpty) {
+    return peakstormFmp4HlsAvoidHardSeek(nested);
+  }
+  return false;
+}
+
+bool peakstormHlsNeedsRemountSeek(
+  String url,
+  Duration from,
+  Duration to,
+) {
+  if (!peakstormFmp4HlsAvoidHardSeek(url)) return false;
+  return (to - from).abs() >= kPeakstormRemountSeekMinDelta;
+}
+
 /// Same peakstorm target whether the row is demuxed child or master playlist.
 bool playbackUrlsEquivalent(String a, String b) {
   final x = a.trim();
@@ -257,18 +282,56 @@ bool _catalogStreamRowPluginScope(
   return false;
 }
 
+/// Stable Sources-row identity when several mirrors share one master.m3u8
+/// (Videasy 1080p / 720p / 480p).
+String catalogStreamRowProgressKey(Map<String, dynamic> stream) {
+  final url = playbackStreamIdentityUrl(stream['url']?.toString() ?? '');
+  final quality = (stream['quality'] ?? '').toString().trim().toLowerCase();
+  final name = (stream['name'] ?? '').toString().trim().toLowerCase();
+  return '$url|$quality|$name';
+}
+
+String? _pendingCatalogStreamRowKey;
+
+/// Bind the catalog row opened next so the first watch-history save records
+/// [catalogStreamRowProgressKey].
+void bindPendingCatalogStreamRowKey(Map<String, dynamic> stream) {
+  _pendingCatalogStreamRowKey = catalogStreamRowProgressKey(stream);
+}
+
+/// Consumed once when persisting watch progress from the player.
+String? takePendingCatalogStreamRowKey() {
+  final key = _pendingCatalogStreamRowKey;
+  _pendingCatalogStreamRowKey = null;
+  return key;
+}
+
+bool _catalogUrlSharesMasterPlaylist(String url) {
+  final u = playbackStreamIdentityUrl(url).toLowerCase();
+  return u.contains('master.m3u8');
+}
+
 /// Strict saved-progress identity — unwrap hls-proxy only; never collapse
 /// Videasy quality variants (1080p / 720p / 480p) to the same master URL.
 bool catalogStreamRowMatchesSavedProgress(
   Map<String, dynamic> stream, {
   required String savedUrl,
   String? playingEnginePluginId,
+  String? savedRowKey,
 }) {
   final url = stream['url']?.toString().trim() ?? '';
   final saved = playbackStreamIdentityUrl(savedUrl);
   final row = playbackStreamIdentityUrl(url);
   if (saved.isEmpty || row.isEmpty || saved != row) return false;
-  return _catalogStreamRowPluginScope(stream, playingEnginePluginId);
+  if (!_catalogStreamRowPluginScope(stream, playingEnginePluginId)) {
+    return false;
+  }
+  final key = savedRowKey?.trim() ?? '';
+  if (key.isNotEmpty) {
+    return key == catalogStreamRowProgressKey(stream);
+  }
+  if (_catalogUrlSharesMasterPlaylist(saved)) return false;
+  return true;
 }
 
 /// Whether a Sources-panel Stremio/Nuvio/Engine row matches the active play URL.

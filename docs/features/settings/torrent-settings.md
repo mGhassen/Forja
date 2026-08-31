@@ -26,7 +26,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 - Disable providers you don’t use to speed up search. Rows still appear as each remaining provider returns — a slow one no longer holds the list empty.
 - Lower the disk cache size on phones or small SSDs if space is tight
 - Sort by seeders for fastest starts on [torrent playback](../playback/torrent-playback.md)
-- On **Android TV**, **WebStreamr**, **Lists**, **Data & backup**, and **Debrid** stay hidden; **Server reliability** stays phone/desktop (admin). Configure torrents / Stremio / Nuvio / Forja under **Settings → Sources** on the TV the same as phone/desktop
+- On **Android TV**, **Lists**, **Data & backup**, and **Debrid** stay hidden; **Server reliability** stays phone/desktop (admin). Configure torrents / Stremio / Nuvio / Forja under **Settings → Sources** on the TV the same as phone/desktop
 
 ## Related
 
