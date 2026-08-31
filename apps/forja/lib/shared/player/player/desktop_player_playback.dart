@@ -1319,6 +1319,7 @@ mixin _DesktopPlayerPlayback
     // Position – drives seekbar & watch-history
     _s._positionSub = _s._player.stream.position.listen((pos) {
       if (_s._disposed) return;
+      if (_s._lockSeekBarPosition) return;
       // Ignore ephemeral demux while hunting a playable source - otherwise the
       // seek bar flashes full/empty as each CDN briefly reports duration.
       if (!_s._playbackConfirmed) return;

@@ -310,6 +310,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   final Map<String, PlayerSourceStatus> _urlCheckStatuses = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   bool _isInitPlaybackRunning = false;
+  /// Holds seek bar at user target while peakstorm trim remount runs.
+  bool _lockSeekBarPosition = false;
   bool _networkRemountInFlight = false;
   bool _playbackConfirmed = false;
   DateTime? _playbackConfirmedAt;
@@ -404,6 +406,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
           dur > Duration.zero &&
           shouldPinSeekBarAtEof(uiPosition: current, duration: dur) &&
           !shouldPinSeekBarAtEof(uiPosition: target, duration: dur);
+      _lockSeekBarPosition = true;
+      peakstormPlaybackTimeOffset = target;
       _positionNotifier.value = target;
       if (leavingEof) {
         _seekAwayFromEofAt = DateTime.now();
@@ -415,7 +419,11 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
         action: 'remount',
         caller: caller,
       );
-      await _remountCurrentStreamAt(target, allowFallbackInit: false);
+      try {
+        await _remountCurrentStreamAt(target, allowFallbackInit: false);
+      } finally {
+        _lockSeekBarPosition = false;
+      }
       return;
     }
     await seekPlayerPreservingProgress(
