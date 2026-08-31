@@ -349,11 +349,11 @@ mixin _LiveMatchesPlayback
   }
 
   String _ppvLivePluginId() =>
-      LiveMatchesEngine.cachedPluginIdForNativeUnlock('ppv') ?? 'live-ppv';
+      LiveMatchesEngine.cachedPluginIdForNativeUnlock('ppv') ?? 'ppv';
 
   String _defaultLivePluginId() =>
       LiveMatchesEngine.cachedPluginIdForNativeUnlock('streamed') ??
-      'live-streamed';
+      'streamed';
 
   bool _isPpvStreamChoice(_StreamedStreamChoice choice) {
     return _isPpvMatch(choice.catalogMatch, choice.stream);

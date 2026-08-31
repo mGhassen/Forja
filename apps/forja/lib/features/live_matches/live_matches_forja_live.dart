@@ -108,7 +108,10 @@ mixin _LiveMatchesForjaLive
     );
     if (saved == null || saved.isEmpty) return;
     if (!mounted) return;
-    setState(() => _s._forjaLivePluginFilter = saved);
+    final normalized = saved == 'all'
+        ? saved
+        : EngineService.normalizeLiveSportPluginId(saved);
+    setState(() => _s._forjaLivePluginFilter = normalized);
   }
 
   Future<void> _persistForjaLiveCatalogFilterPreference(String filter) async {
@@ -223,7 +226,13 @@ mixin _LiveMatchesForjaLive
     final packs = await EngineService.instance.listPacks();
     for (final pack in packs) {
       for (final p in pack.plugins) {
-        if (p.id == 'catalog-espn') return pack.isPluginActive(p);
+        if (p.id == 'espn') {
+          return await PluginRegistry.instance.isLiveCapabilityActive(
+            pack: pack,
+            plugin: p,
+            capability: LiveSportCapabilities.catalog,
+          );
+        }
       }
     }
     return false;
@@ -239,8 +248,8 @@ mixin _LiveMatchesForjaLive
 
   bool _shouldRunEspnScheduleMerge() {
     if (_s._forjaLivePluginFilter == 'all') return true;
-    if (_s._forjaLivePluginFilter == 'catalog-espn') return true;
-    final espnLoad = _s._forjaLivePluginLoads['catalog-espn'];
+    if (_s._forjaLivePluginFilter == 'espn') return true;
+    final espnLoad = _s._forjaLivePluginLoads['espn'];
     return espnLoad?.attempted == true;
   }
 
@@ -276,12 +285,12 @@ mixin _LiveMatchesForjaLive
   Future<Map<String, dynamic>> _liveCatalogExtraConfig(
     EnginePlugin catalog,
   ) async {
-    if (catalog.id != 'catalog-espn') return const {};
+    if (catalog.id != 'espn') return const {};
     final sportsConfig = await LiveMatchesIptvSportsConfig.load();
     final leagues = sportsConfig.leagues.isEmpty
         ? LiveMatchesIptvSportsConfig.allLeagues
         : sportsConfig.leagues;
-    return {'leagues': leagues, 'providerId': 'catalog-espn'};
+    return {'leagues': leagues, 'pluginId': 'espn'};
   }
 
   void _ensureForjaLivePluginLoadsRegistered(List<EnginePlugin> catalogPlugins) {
@@ -409,8 +418,7 @@ mixin _LiveMatchesForjaLive
           ..._s._streamedMatches,
           ...matches,
         ]);
-        if (catalog.id == 'catalog-espn' ||
-            filterId == 'catalog-espn') {
+        if (catalog.id == 'espn' || filterId == 'espn') {
           _syncEspnGamesFromStreamed();
         }
         _s._forjaLivePluginLoads[filterId] =

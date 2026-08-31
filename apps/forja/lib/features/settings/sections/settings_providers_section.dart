@@ -522,24 +522,46 @@ class _SettingsProvidersSectionState
             if (p.isHttp || p.isHubCatalog) p,
         ];
         if (panelPlugins.isEmpty) continue;
+        final liveSportPlugins = [
+          for (final p in panelPlugins)
+            if (p.isLiveSportPlugin) p,
+        ];
+        final isLiveSportPack =
+            liveSportPlugins.isNotEmpty &&
+            liveSportPlugins.length == panelPlugins.length;
         rows.add(
-          SettingsEnginePackExpansion(
-            pack: pack,
-            plugins: panelPlugins,
-            groupKey: EngineCategories.groupKey,
-            groupLabel: EngineCategories.groupLabel,
-            groupOrder: EngineCategories.groupOrderFor(panelPlugins),
-            trailing: _EnginePackActions(
-              packEnabled: pack.enabled,
-              onTogglePack: (val) => EngineService.instance.setPackEnabled(
-                sourceUrl: pack.sourceUrl,
-                enabled: val,
-              ),
-              onRefresh: () => _refreshEnginePack(pack.sourceUrl),
-              onRemove: () => _removeEnginePack(pack.sourceUrl),
-              showOfficialBadge: false,
-            ),
-          ),
+          isLiveSportPack
+              ? SettingsLiveSportPackExpansion(
+                  pack: pack,
+                  plugins: liveSportPlugins,
+                  trailing: _EnginePackActions(
+                    packEnabled: pack.enabled,
+                    onTogglePack: (val) => EngineService.instance.setPackEnabled(
+                      sourceUrl: pack.sourceUrl,
+                      enabled: val,
+                    ),
+                    onRefresh: () => _refreshEnginePack(pack.sourceUrl),
+                    onRemove: () => _removeEnginePack(pack.sourceUrl),
+                    showOfficialBadge: false,
+                  ),
+                )
+              : SettingsEnginePackExpansion(
+                  pack: pack,
+                  plugins: panelPlugins,
+                  groupKey: EngineCategories.groupKey,
+                  groupLabel: EngineCategories.groupLabel,
+                  groupOrder: EngineCategories.groupOrderFor(panelPlugins),
+                  trailing: _EnginePackActions(
+                    packEnabled: pack.enabled,
+                    onTogglePack: (val) => EngineService.instance.setPackEnabled(
+                      sourceUrl: pack.sourceUrl,
+                      enabled: val,
+                    ),
+                    onRefresh: () => _refreshEnginePack(pack.sourceUrl),
+                    onRemove: () => _removeEnginePack(pack.sourceUrl),
+                    showOfficialBadge: false,
+                  ),
+                ),
         );
       }
       if (rows.isEmpty) continue;

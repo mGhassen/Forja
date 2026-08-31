@@ -12,7 +12,9 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Settings → Forja Sports — Xtream matcher (RFC-062) + live engine plugins (RFC-065).
 ///
-/// Empty when no Live / Catalog HTTP plugins are installed.
+/// **Setup** (enable + leagues) is IPTV matcher config and always shows when this
+/// category is visible. **Live Sports** plugin toggles appear only when a live pack
+/// with `live_sport` plugins is installed.
 class SettingsIptvSportsSection extends StatefulWidget {
   const SettingsIptvSportsSection({super.key});
 
@@ -25,9 +27,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
   LiveMatchesIptvSportsConfig _config = const LiveMatchesIptvSportsConfig();
   bool _loading = true;
   String? _error;
-  List<({EnginePack pack, List<EnginePlugin> plugins})> _liveSourcePacks =
-      const [];
-  List<({EnginePack pack, List<EnginePlugin> plugins})> _liveCatalogPacks =
+  List<({EnginePack pack, List<EnginePlugin> plugins})> _liveSportPacks =
       const [];
 
   @override
@@ -73,38 +73,22 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
   Future<void> _loadLivePlugins() async {
     await EngineService.instance.ensureOfficialInstalled();
     final packs = await EngineService.instance.listPacks();
-    final sources = <({EnginePack pack, List<EnginePlugin> plugins})>[];
-    final catalogs = <({EnginePack pack, List<EnginePlugin> plugins})>[];
+    final liveSports = <({EnginePack pack, List<EnginePlugin> plugins})>[];
     for (final pack in packs) {
-      final liveHttp = [
+      final sportPlugins = [
         for (final p in pack.plugins)
-          if (p.isLive && p.isHttp) p,
-      ];
-      if (liveHttp.isEmpty) continue;
-      final sourcePlugins = [
-        for (final p in liveHttp)
-          if (!p.isLiveCatalog) p,
+          if (p.isLiveSportPlugin && p.isHttp) p,
       ]..sort((a, b) => a.name.compareTo(b.name));
-      final catalogPlugins = [
-        for (final p in liveHttp)
-          if (p.isLiveCatalog) p,
-      ]..sort((a, b) => a.name.compareTo(b.name));
-      if (sourcePlugins.isNotEmpty) {
-        sources.add((pack: pack, plugins: sourcePlugins));
-      }
-      if (catalogPlugins.isNotEmpty) {
-        catalogs.add((pack: pack, plugins: catalogPlugins));
-      }
+      if (sportPlugins.isEmpty) continue;
+      liveSports.add((pack: pack, plugins: sportPlugins));
     }
     if (!mounted) return;
     setState(() {
-      _liveSourcePacks = sources;
-      _liveCatalogPacks = catalogs;
+      _liveSportPacks = liveSports;
     });
   }
 
-  bool get _hasLivePlugins =>
-      _liveSourcePacks.isNotEmpty || _liveCatalogPacks.isNotEmpty;
+  bool get _hasLivePlugins => _liveSportPacks.isNotEmpty;
 
   Future<void> _persist(LiveMatchesIptvSportsConfig next) async {
     setState(() => _config = next);
@@ -226,22 +210,18 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
       );
     }
 
-    if (!_hasLivePlugins) {
-      return const SizedBox.shrink();
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_liveSourcePacks.isNotEmpty)
-          SettingsGroup(
-            label: 'Live plugins',
-            children: [
+        SettingsGroup(
+          label: 'Live Sports',
+          children: [
+            if (_hasLivePlugins) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
                 child: Text(
-                  'Stream resolve sources for Forja Live and All. '
-                  'Install / manage packs under Settings → Sources → Forja.',
+                  'Enable Catalog (schedule) and/or Provider (stream resolve) per site. '
+                  'Install / refresh packs under Settings → Sources → Forja → Live.',
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
                     fontSize: 13,
@@ -249,28 +229,55 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
                   ),
                 ),
               ),
-              for (final entry in _liveSourcePacks)
+              for (final entry in _liveSportPacks)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-                  child: SettingsEnginePackExpansion(
-                    pack: entry.pack,
-                    plugins: entry.plugins,
-                    groupKey: EngineCategories.liveSourceGroupKey,
-                    groupLabel: EngineCategories.liveSourceGroupLabel,
-                    groupOrder: EngineCategories.liveSourceGroupOrder,
-                    tabRowId: 'live-engine-pack-tabs',
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      dividerColor: Colors.transparent,
+                    ),
+                    child: ExpansionTile(
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 2),
+                      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
+                      leading: const Icon(
+                        Icons.bolt_rounded,
+                        color: ForjaShellColors.iconActive,
+                      ),
+                      title: Text(
+                        entry.pack.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: ForjaShellColors.textPrimary,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${PluginRegistry.packKindInfo(entry.pack)} · '
+                        '${entry.plugins.length} plugin${entry.plugins.length == 1 ? '' : 's'} · '
+                        'v${entry.pack.version}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: ForjaShellColors.textSecondary.withValues(
+                            alpha: 0.75,
+                          ),
+                        ),
+                      ),
+                      children: [
+                        SettingsLiveSportCapabilityTabs(
+                          sourceUrl: entry.pack.sourceUrl,
+                          plugins: entry.plugins,
+                          tabRowId: 'forja-sports-live-tabs',
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-            ],
-          ),
-        if (_liveCatalogPacks.isNotEmpty)
-          SettingsGroup(
-            label: 'Catalog',
-            children: [
+            ] else
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
                 child: Text(
-                  'Schedule feeds for Forja Live, All, and Forja Sports (Xtream match).',
+                  'No live sports pack installed. Add or refresh '
+                  'ForjaHQ Live Sports under Settings → Sources → Forja → Live.',
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
                     fontSize: 13,
@@ -278,20 +285,8 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
                   ),
                 ),
               ),
-              for (final entry in _liveCatalogPacks)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-                  child: SettingsEnginePackExpansion(
-                    pack: entry.pack,
-                    plugins: entry.plugins,
-                    groupKey: EngineCategories.liveSourceGroupKey,
-                    groupLabel: EngineCategories.liveSourceGroupLabel,
-                    groupOrder: const [EngineCategories.liveCatalog],
-                    tabRowId: 'live-catalog-pack-tabs',
-                  ),
-                ),
-            ],
-          ),
+          ],
+        ),
         SettingsGroup(
           label: 'Setup',
           children: [

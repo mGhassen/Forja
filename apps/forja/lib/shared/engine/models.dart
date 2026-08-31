@@ -83,14 +83,30 @@ class EnginePlugin {
     return capabilities.any((c) => c.toLowerCase() == want);
   }
 
-  /// Live Matches schedule plugins (`types: catalog`, not hub `kind: catalog`).
+  /// Unified live sport plugins (`types: live_sport`, not hub `kind: catalog`).
+  bool get isLiveSportPlugin =>
+      types.contains('live_sport') && !isHubCatalog;
+
+  /// Legacy schedule plugins (`types: catalog`, not hub `kind: catalog`).
   bool get isLiveCatalog => types.contains('catalog') && !isHubCatalog;
   bool get isLivePlugin => types.contains('plugins');
   bool get isLiveSport => types.contains('live_sport');
 
+  bool get supportsLiveCatalog =>
+      isLiveSportPlugin ? hasCapability('catalog') : isLiveCatalog;
+
+  bool get supportsLiveResolve =>
+      isLiveSportPlugin
+          ? hasCapability('resolve')
+          : isLivePlugin || isLiveSport;
+
   /// Any Forja Sports / Live Matches plugin (catalog orchestrator, resolve, sport feeds).
   bool get isLive =>
-      isLiveCatalog || isLivePlugin || isLiveSport || types.contains('live');
+      isLiveSportPlugin ||
+      isLiveCatalog ||
+      isLivePlugin ||
+      isLiveSport ||
+      types.contains('live');
 
   /// Sources chips: HTTP VOD only — hops and hub catalogs are never chips.
   bool get isExtractable => isHttp && !isHubCatalog;

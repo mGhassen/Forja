@@ -61,22 +61,6 @@ class LiveMatchesEngine {
     if (origin != null && origin.isNotEmpty) {
       _originByPluginId[plugin.id] = origin;
     }
-    final providerId = (plugin.config['providerId'] ?? '').toString().trim();
-    if (providerId.isEmpty) return;
-    final o = _originByPluginId[plugin.id];
-    if (o != null && o.isNotEmpty) {
-      _originByPluginId.putIfAbsent(providerId, () => o);
-    }
-    _nameByPluginId.putIfAbsent(providerId, () => plugin.name);
-    if (unlock.isNotEmpty) {
-      _nativeUnlockByPluginId.putIfAbsent(
-        providerId,
-        () => unlock.toLowerCase(),
-      );
-    }
-    if (plugin.config['airingOnlyLive'] == true) {
-      _airingOnlyLiveByPluginId.putIfAbsent(providerId, () => true);
-    }
   }
 
   /// Warm name/origin/unlock caches from installed live + catalog plugins.
@@ -89,10 +73,10 @@ class LiveMatchesEngine {
         in await EngineService.instance.listEnabledLiveCatalogPlugins()) {
       _cachePluginMeta(p);
     }
-    // Disabled catalogs still carry origin/providerId for live twins.
+    // Disabled catalogs still carry config for warm cache.
     for (final pack in await EngineService.instance.listPacks()) {
       for (final p in pack.plugins) {
-        if (p.isLiveCatalog) _cachePluginMeta(p);
+        if (p.isLiveSportPlugin || p.isLiveCatalog) _cachePluginMeta(p);
       }
     }
   }
@@ -110,32 +94,20 @@ class LiveMatchesEngine {
 
   /// Site origin from plugin/catalog `webOrigin` / `origin` / `api` host.
   static Future<String> pluginWebOrigin(String pluginId) async {
-    if (pluginId.isEmpty) return '';
-    final cached = _originByPluginId[pluginId];
+    final normalized = EngineService.normalizeLiveSportPluginId(pluginId);
+    if (normalized.isEmpty) return '';
+    final cached = _originByPluginId[normalized];
     if (cached != null && cached.isNotEmpty) return cached;
 
-    final cfg = await pluginConfig(pluginId);
+    final cfg = await pluginConfig(normalized);
     final fromCfg = _originFromConfig(cfg);
     if (fromCfg != null && fromCfg.isNotEmpty) {
-      _originByPluginId[pluginId] = fromCfg;
+      _originByPluginId[normalized] = fromCfg;
       return fromCfg;
     }
 
-    // live-X → catalog-X twin (origins often live on catalog manifests).
-    if (pluginId.startsWith('live-')) {
-      final twin = 'catalog-${pluginId.substring('live-'.length)}';
-      final twinOrigin = await pluginWebOrigin(twin);
-      if (twinOrigin.isNotEmpty) {
-        _originByPluginId[pluginId] = twinOrigin;
-        return twinOrigin;
-      }
-    }
-
-    // Catalog row that declares providerId == this live plugin.
     await warmPluginMeta();
-    final warmed = _originByPluginId[pluginId];
-    if (warmed != null && warmed.isNotEmpty) return warmed;
-    return '';
+    return _originByPluginId[normalized] ?? '';
   }
 
   /// Catalog-site Referer for iframe / unlock wrappers.
@@ -152,31 +124,24 @@ class LiveMatchesEngine {
 
   /// Display name from plugin/catalog manifest (`name`), never a Dart allowlist.
   static Future<String> pluginDisplayName(String pluginId) async {
-    if (pluginId.isEmpty) return 'Forja Live';
-    final cached = _nameByPluginId[pluginId];
+    final normalized = EngineService.normalizeLiveSportPluginId(pluginId);
+    if (normalized.isEmpty) return 'Forja Live';
+    final cached = _nameByPluginId[normalized];
     if (cached != null && cached.isNotEmpty) return cached;
-    final plugin = await EngineService.instance.pluginById(pluginId);
+    final plugin = await EngineService.instance.pluginById(normalized);
     if (plugin != null) {
       _cachePluginMeta(plugin);
       return plugin.name;
     }
-    if (pluginId.startsWith('live-')) {
-      final twin = 'catalog-${pluginId.substring('live-'.length)}';
-      final twinPlugin = await EngineService.instance.pluginById(twin);
-      if (twinPlugin != null) {
-        _cachePluginMeta(twinPlugin);
-        _nameByPluginId[pluginId] = twinPlugin.name;
-        return twinPlugin.name;
-      }
-    }
     await warmPluginMeta();
-    return _nameByPluginId[pluginId] ?? pluginId;
+    return _nameByPluginId[normalized] ?? normalized;
   }
 
   /// Sync label after [warmPluginMeta] / [pluginDisplayName] has run.
   static String cachedPluginDisplayName(String pluginId) {
-    if (pluginId.isEmpty) return 'Forja Live';
-    return _nameByPluginId[pluginId] ?? pluginId;
+    final normalized = EngineService.normalizeLiveSportPluginId(pluginId);
+    if (normalized.isEmpty) return 'Forja Live';
+    return _nameByPluginId[normalized] ?? normalized;
   }
 
   /// Sync Referer after [warmPluginMeta] / [pluginReferer] has populated origins.
@@ -188,27 +153,14 @@ class LiveMatchesEngine {
 
   /// Host capability declared on the plugin (`nativeUnlock` in config).
   static Future<String> pluginNativeUnlock(String pluginId) async {
-    if (pluginId.isEmpty) return '';
-    final cached = _nativeUnlockByPluginId[pluginId];
+    final normalized = EngineService.normalizeLiveSportPluginId(pluginId);
+    if (normalized.isEmpty) return '';
+    final cached = _nativeUnlockByPluginId[normalized];
     if (cached != null) return cached;
-    final cfg = await pluginConfig(pluginId);
+    final cfg = await pluginConfig(normalized);
     final unlock = (cfg['nativeUnlock'] ?? '').toString().trim().toLowerCase();
-    if (unlock.isNotEmpty) {
-      _nativeUnlockByPluginId[pluginId] = unlock;
-      return unlock;
-    }
-    if (pluginId.startsWith('live-')) {
-      final twin = 'catalog-${pluginId.substring('live-'.length)}';
-      final twinCfg = await pluginConfig(twin);
-      final twinUnlock =
-          (twinCfg['nativeUnlock'] ?? '').toString().trim().toLowerCase();
-      if (twinUnlock.isNotEmpty) {
-        _nativeUnlockByPluginId[pluginId] = twinUnlock;
-        return twinUnlock;
-      }
-    }
-    _nativeUnlockByPluginId[pluginId] = '';
-    return '';
+    _nativeUnlockByPluginId[normalized] = unlock;
+    return unlock;
   }
 
   static bool cachedIsNativeUnlock(String pluginId, String kind) {
@@ -221,10 +173,6 @@ class LiveMatchesEngine {
   static String? cachedPluginIdForNativeUnlock(String kind) {
     final k = kind.trim().toLowerCase();
     if (k.isEmpty) return null;
-    for (final e in _nativeUnlockByPluginId.entries) {
-      if (e.value != k) continue;
-      if (e.key.startsWith('live-')) return e.key;
-    }
     for (final e in _nativeUnlockByPluginId.entries) {
       if (e.value == k) return e.key;
     }
@@ -246,9 +194,7 @@ class LiveMatchesEngine {
       final o = await pluginWebOrigin(e.key);
       if (o.isNotEmpty) return o;
     }
-    var origin = await pluginWebOrigin('live-ppv');
-    if (origin.isEmpty) origin = await pluginWebOrigin('catalog-ppv');
-    return origin;
+    return pluginWebOrigin('ppv');
   }
 
   static Future<String> ppvWebReferer() async =>
@@ -263,11 +209,11 @@ class LiveMatchesEngine {
         return Uri.tryParse(o)?.host ?? cachedPluginDisplayName(e.key);
       }
     }
-    final o = _originByPluginId['live-ppv'] ?? _originByPluginId['catalog-ppv'];
+    final o = _originByPluginId['ppv'];
     if (o == null || o.isEmpty) {
-      return cachedPluginDisplayName('live-ppv');
+      return cachedPluginDisplayName('ppv');
     }
-    return Uri.tryParse(o)?.host ?? cachedPluginDisplayName('live-ppv');
+    return Uri.tryParse(o)?.host ?? cachedPluginDisplayName('ppv');
   }
 
   static Future<List<Map<String, dynamic>>> fetchCatalog() async {
@@ -297,7 +243,7 @@ class LiveMatchesEngine {
   ) async {
     await EngineService.instance.ensureOfficialInstalled();
     final plugin = await EngineService.instance.pluginById(catalogId);
-    if (plugin == null || !plugin.isLiveCatalog) return [];
+    if (plugin == null || !plugin.supportsLiveCatalog) return [];
     _cachePluginMeta(plugin);
     return EngineService.instance.runLiveCatalog(catalogPlugin: plugin);
   }

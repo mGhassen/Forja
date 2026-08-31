@@ -2243,7 +2243,7 @@ Future<List<_Sport>> _fetchStreamedSports() async {
 
 Future<List<_StreamedMatch>> _fetchStreamedMatches() async {
   try {
-    final list = await LiveMatchesEngine.fetchServerCatalog('catalog-streamed');
+    final list = await LiveMatchesEngine.fetchServerCatalog('streamed');
     return list
         .map((m) {
           try {
@@ -3210,7 +3210,7 @@ Future<List<_DamiTvStream>> _fetchDamiTvStreams() async {
   try {
     // Warm host label cache from plugin config (no hardcoded domain).
     await LiveMatchesEngine.ppvWebOrigin();
-    final list = await LiveMatchesEngine.fetchServerCatalog('catalog-ppv');
+    final list = await LiveMatchesEngine.fetchServerCatalog('ppv');
     return list
         .map((s) {
           try {

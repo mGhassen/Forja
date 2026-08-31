@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
@@ -268,6 +270,266 @@ class SettingsEnginePluginToggleList extends StatelessWidget {
     );
   }
 }
+
+/// Live sport pack row — **Catalog** / **Provider** tabs with per-site toggles.
+class SettingsLiveSportPackExpansion extends StatelessWidget {
+  const SettingsLiveSportPackExpansion({
+    super.key,
+    required this.pack,
+    required this.plugins,
+    this.trailing,
+  });
+
+  final EnginePack pack;
+  final List<EnginePlugin> plugins;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    if (plugins.isEmpty) return const SizedBox.shrink();
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: const EdgeInsets.symmetric(horizontal: 2),
+        childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
+        leading: const Icon(
+          Icons.bolt_rounded,
+          color: ForjaShellColors.iconActive,
+        ),
+        title: Text(
+          pack.name,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: ForjaShellColors.textPrimary,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              pack.sourceUrl,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                color: ForjaShellColors.textSecondary,
+              ),
+            ),
+            Text(
+              '${PluginRegistry.packKindInfo(pack)} · '
+              '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
+              'v${pack.version}',
+              style: TextStyle(
+                fontSize: 11,
+                color: ForjaShellColors.textSecondary.withValues(alpha: 0.75),
+              ),
+            ),
+          ],
+        ),
+        trailing: trailing,
+        children: [
+          SettingsLiveSportCapabilityTabs(
+            sourceUrl: pack.sourceUrl,
+            plugins: plugins,
+            tabRowId: 'live-sport-pack-tabs-${pack.sourceUrl.hashCode}',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Catalog | Provider tabs — one toggle per site in each tab.
+class SettingsLiveSportCapabilityTabs extends StatefulWidget {
+  const SettingsLiveSportCapabilityTabs({
+    super.key,
+    required this.sourceUrl,
+    required this.plugins,
+    this.tabRowId = 'live-sport-cap-tabs',
+  });
+
+  final String sourceUrl;
+  final List<EnginePlugin> plugins;
+  final String tabRowId;
+
+  @override
+  State<SettingsLiveSportCapabilityTabs> createState() =>
+      _SettingsLiveSportCapabilityTabsState();
+}
+
+class _SettingsLiveSportCapabilityTabsState
+    extends State<SettingsLiveSportCapabilityTabs> {
+  static const _tabCatalog = 'catalog';
+  static const _tabProvider = 'provider';
+
+  late String _tab;
+  Map<String, ({bool catalog, bool resolve})> _caps = const {};
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = _defaultTab();
+    EngineService.changeNotifier.addListener(_onEngineChanged);
+    unawaited(_reloadCaps());
+  }
+
+  @override
+  void dispose() {
+    EngineService.changeNotifier.removeListener(_onEngineChanged);
+    super.dispose();
+  }
+
+  String _defaultTab() {
+    final hasCatalog = widget.plugins.any((p) => p.supportsLiveCatalog);
+    return hasCatalog ? _tabCatalog : _tabProvider;
+  }
+
+  void _onEngineChanged() {
+    if (!mounted) return;
+    unawaited(_reloadCaps());
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsLiveSportCapabilityTabs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sourceUrl != widget.sourceUrl ||
+        oldWidget.plugins != widget.plugins) {
+      if (!_tabs.contains(_tab)) {
+        _tab = _defaultTab();
+      }
+      unawaited(_reloadCaps());
+    }
+  }
+
+  List<String> get _tabs {
+    final out = <String>[];
+    if (widget.plugins.any((p) => p.supportsLiveCatalog)) {
+      out.add(_tabCatalog);
+    }
+    if (widget.plugins.any((p) => p.supportsLiveResolve)) {
+      out.add(_tabProvider);
+    }
+    return out;
+  }
+
+  Future<void> _reloadCaps() async {
+    final next = <String, ({bool catalog, bool resolve})>{};
+    for (final p in widget.plugins) {
+      if (!p.isLiveSportPlugin) continue;
+      final catalog = p.supportsLiveCatalog
+          ? await EngineService.instance.liveCapabilityEnabled(
+              sourceUrl: widget.sourceUrl,
+              plugin: p,
+              capability: LiveSportCapabilities.catalog,
+            )
+          : false;
+      final resolve = p.supportsLiveResolve
+          ? await EngineService.instance.liveCapabilityEnabled(
+              sourceUrl: widget.sourceUrl,
+              plugin: p,
+              capability: LiveSportCapabilities.resolve,
+            )
+          : false;
+      next[p.id] = (catalog: catalog, resolve: resolve);
+    }
+    if (!mounted) return;
+    setState(() {
+      _caps = next;
+      _loading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    final tabs = _tabs;
+    if (tabs.isEmpty) return const SizedBox.shrink();
+
+    final showTabs = tabs.length > 1;
+    final catalogPlugins = [
+      for (final p in widget.plugins)
+        if (p.isLiveSportPlugin && p.supportsLiveCatalog) p,
+    ];
+    final providerPlugins = [
+      for (final p in widget.plugins)
+        if (p.isLiveSportPlugin && p.supportsLiveResolve) p,
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showTabs)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+            child: _SettingsEngineCategoryTabStrip(
+              groups: tabs,
+              selected: _tab,
+              groupLabel: (key) => switch (key) {
+                _tabCatalog => 'Catalog',
+                _tabProvider => 'Provider',
+                _ => key,
+              },
+              tabRowId: widget.tabRowId,
+              onChanged: (g) => setState(() => _tab = g),
+            ),
+          ),
+        if (_tab == _tabCatalog)
+          ..._capabilityRows(
+            catalogPlugins,
+            capability: LiveSportCapabilities.catalog,
+            subtitle: 'Schedule feed for Live Matches',
+            valueFor: (id) => _caps[id]?.catalog ?? false,
+          )
+        else
+          ..._capabilityRows(
+            providerPlugins,
+            capability: LiveSportCapabilities.resolve,
+            subtitle: 'Stream resolve for Forja Live',
+            valueFor: (id) => _caps[id]?.resolve ?? false,
+          ),
+      ],
+    );
+  }
+
+  List<Widget> _capabilityRows(
+    List<EnginePlugin> plugins, {
+    required String capability,
+    required String subtitle,
+    required bool Function(String id) valueFor,
+  }) {
+    return [
+      for (final p in plugins)
+        SettingsToggleRow(
+          title: p.name,
+          subtitle: [
+            if (p.description != null && p.description!.isNotEmpty) p.description!,
+            subtitle,
+          ].join(' · '),
+          value: valueFor(p.id),
+          onChanged: (val) async {
+            await EngineService.instance.setLiveCapabilityEnabled(
+              sourceUrl: widget.sourceUrl,
+              pluginId: p.id,
+              capability: capability,
+              enabled: val,
+            );
+          },
+        ),
+    ];
+  }
+}
+
+/// @deprecated Prefer [SettingsLiveSportCapabilityTabs].
+typedef SettingsLiveSportPluginList = SettingsLiveSportCapabilityTabs;
 
 class _SettingsEngineCategoryTabStrip extends StatelessWidget {
   const _SettingsEngineCategoryTabStrip({

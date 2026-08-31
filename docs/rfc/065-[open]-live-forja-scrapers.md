@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **15 / 19** acceptance · **2 / 2** Android WebView unlock 🔄 |
-| **Current slice** | TimStreams Engine unlock (embed.st / GASM / sportsembed); Android/ATV WebView GOAT + GASM smoke pending ([203](../issues/203-[open]-android-tv-goat-webview-unlock.md)) |
+| **Progress** | **7 / 7** components · **19 / 23** acceptance · **2 / 2** Android WebView unlock 🔄 |
+| **Current slice** | Unified live_sport pack (catalog + resolve capabilities); Android/ATV WebView GOAT + GASM smoke pending ([203](../issues/203-[open]-android-tv-goat-webview-unlock.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -25,6 +25,7 @@
 | 4 | R65-C04 | `live-streamed.js` + `ctx.live.goatUnlock` host bridge | ✅ |
 | 5 | R65-C05 | `live-ppv.js` + extra live-sport provider plugins | ✅ |
 | 6 | R65-C06 | Engine playback path (native proxy) vs existing sniff/embed | ✅ |
+| 7 | R65-C07 | Unified `live_sport` pack — site-name ids + Catalog/Provider capability toggles | ✅ |
 
 ---
 
@@ -51,6 +52,10 @@
 | 17 | R65-A17 | WatchFooty catalog: live-with-streams + upcoming `pre` (site Live parity), posters, real sport | ✅ |
 | 18 | R65-A18 | WatchFooty Engine: sportsembed `/api/get` + stream-lock.wasm unlock (no raw HTML / sniff hang) | ✅ |
 | 19 | R65-A19 | TimStreams Engine: unlock embed.st / embedindia / sportsembed to HLS (no webviewOnly miss toast) | ✅ |
+| 20 | R65-A20 | Merge `plugins/catalog/` + `plugins/live/` twins into one `plugins/live/` entry per site | ✅ |
+| 21 | R65-A21 | Settings → Forja Sports **Live Sports** — independent Catalog / Provider toggles per plugin | ✅ |
+| 22 | R65-A22 | Legacy `catalog-*` / `live-*` prefs migrate to unified ids + capability prefs | ✅ |
+| 23 | R65-A23 | Host tests + feature docs + changelog for unified live sport plugins | ✅ |
 
 ---
 

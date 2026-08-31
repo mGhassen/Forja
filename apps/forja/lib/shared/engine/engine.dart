@@ -4,6 +4,7 @@ export 'catalog_extract_context.dart';
 export 'categories.dart';
 export 'ids.dart';
 export 'live_goat_unlock.dart';
+export 'live_sport_capabilities.dart';
 export 'models.dart';
 export 'plugin_registry.dart';
 export 'runtime.dart';

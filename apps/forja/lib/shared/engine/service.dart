@@ -6,6 +6,7 @@ import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/engine/live_goat_unlock.dart';
+import 'package:forja/shared/engine/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime.dart';
@@ -18,18 +19,13 @@ class EngineService {
   EngineService._();
   static final EngineService instance = EngineService._();
 
-  static bool isInternalLiveCatalog(EnginePlugin plugin) => plugin.isLiveCatalog;
+  static bool isInternalLiveCatalog(EnginePlugin plugin) =>
+      plugin.supportsLiveCatalog;
 
-  static String catalogFilterId(EnginePlugin catalog) {
-    final providerId = (catalog.config['providerId'] ?? '').toString().trim();
-    if (providerId.startsWith('live-')) return providerId;
-    return catalog.id;
-  }
+  static String catalogFilterId(EnginePlugin catalog) => catalog.id;
 
-  static String catalogPluginIdForLiveSport(String liveSportId) {
-    if (!liveSportId.startsWith('live-')) return liveSportId;
-    return 'catalog-${liveSportId.substring('live-'.length)}';
-  }
+  static String normalizeLiveSportPluginId(String pluginId) =>
+      LiveSportCapabilities.normalizePluginId(pluginId);
 
   /// Legacy unscoped selection (migrated into `…_movie` once).
   static const _legacySelectedKey = 'engine_js_sources_selected_ids';
@@ -130,14 +126,41 @@ class EngineService {
   }
 
   Future<List<EnginePlugin>> listEnabledLivePlugins() async {
+    return listEnabledLiveResolvePlugins();
+  }
+
+  Future<List<EnginePlugin>> listLiveSportPlugins() async {
+    await ensureOfficialInstalled();
+    final out = <EnginePlugin>[];
+    for (final pack in await listPacks()) {
+      for (final p in pack.plugins) {
+        if (p.isLiveSportPlugin && p.isHttp) out.add(p);
+      }
+    }
+    out.sort((a, b) => a.name.compareTo(b.name));
+    return out;
+  }
+
+  Future<List<EnginePlugin>> listEnabledLiveResolvePlugins() async {
     await ensureOfficialInstalled();
     final out = <EnginePlugin>[];
     for (final pack in await listPacks()) {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
-        if (p.enabled && p.isLiveSport && p.isHttp) {
+        if (!p.isHttp || !p.enabled) continue;
+        if (p.isLiveSportPlugin) {
+          if (!p.supportsLiveResolve) continue;
+          if (!await PluginRegistry.instance.isLiveCapabilityActive(
+            pack: pack,
+            plugin: p,
+            capability: LiveSportCapabilities.resolve,
+          )) {
+            continue;
+          }
           out.add(p);
+          continue;
         }
+        if (p.isLivePlugin || p.isLiveSport) out.add(p);
       }
     }
     out.sort((a, b) => a.name.compareTo(b.name));
@@ -157,10 +180,11 @@ class EngineService {
   }
 
   Future<EnginePlugin?> pluginById(String id) async {
+    final normalized = normalizeLiveSportPluginId(id);
     EnginePlugin? inactive;
     for (final pack in await listPacks()) {
       for (final p in pack.plugins) {
-        if (p.id != id) continue;
+        if (p.id != normalized && p.id != id) continue;
         if (pack.isPluginActive(p)) return p;
         inactive ??= p;
       }
@@ -174,8 +198,20 @@ class EngineService {
     for (final pack in await listPacks()) {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
-        if (!p.isLiveCatalog || !p.isHttp || !p.enabled) continue;
-        out.add(p);
+        if (!p.isHttp || !p.enabled) continue;
+        if (p.isLiveSportPlugin) {
+          if (!p.supportsLiveCatalog) continue;
+          if (!await PluginRegistry.instance.isLiveCapabilityActive(
+            pack: pack,
+            plugin: p,
+            capability: LiveSportCapabilities.catalog,
+          )) {
+            continue;
+          }
+          out.add(p);
+          continue;
+        }
+        if (p.isLiveCatalog) out.add(p);
       }
     }
     out.sort((a, b) => a.name.compareTo(b.name));
@@ -339,6 +375,30 @@ class EngineService {
       PluginRegistry.instance.setPackEnabled(
         sourceUrl: sourceUrl,
         enabled: enabled,
+      );
+
+  Future<void> setLiveCapabilityEnabled({
+    required String sourceUrl,
+    required String pluginId,
+    required String capability,
+    required bool enabled,
+  }) =>
+      PluginRegistry.instance.setLiveCapabilityEnabled(
+        sourceUrl: sourceUrl,
+        pluginId: pluginId,
+        capability: capability,
+        enabled: enabled,
+      );
+
+  Future<bool> liveCapabilityEnabled({
+    required String sourceUrl,
+    required EnginePlugin plugin,
+    required String capability,
+  }) =>
+      PluginRegistry.instance.liveCapabilityEnabled(
+        sourceUrl: sourceUrl,
+        plugin: plugin,
+        capability: capability,
       );
 
   Future<void> setPluginsEnabled({
@@ -601,7 +661,7 @@ class EngineService {
     );
   }
 
-  /// Live Matches Forja plugins (`providers` / `live_sport` / internal `catalog`).
+  /// Live Matches Forja plugins (unified `live_sport` resolve capability).
   Future<List<Map<String, dynamic>>> runLivePlugin({
     required String pluginId,
     required String action,
@@ -609,19 +669,31 @@ class EngineService {
     Duration timeout = const Duration(seconds: 45),
   }) async {
     if (action != 'resolve') return [];
+    final normalizedId = normalizeLiveSportPluginId(pluginId);
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return [];
-    final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
-    if (hit == null ||
-        !(hit.plugin.isLivePlugin || hit.plugin.isLiveSport) ||
-        !hit.pack.isPluginActive(hit.plugin)) {
-      return [];
-    }
+    final hit = PluginRegistry.packPluginFromPacks(packs, normalizedId);
+    if (hit == null) return [];
     final plugin = hit.plugin;
+    final canResolve = plugin.isLiveSportPlugin
+        ? plugin.supportsLiveResolve
+        : plugin.isLivePlugin || plugin.isLiveSport;
+    if (!canResolve) return [];
+    final active = plugin.isLiveSportPlugin
+        ? await PluginRegistry.instance.isLiveCapabilityActive(
+            pack: hit.pack,
+            plugin: plugin,
+            capability: LiveSportCapabilities.resolve,
+          )
+        : hit.pack.isPluginActive(plugin);
+    if (!active) return [];
     final overlay =
         ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
-    final config = mergeEngineConfig(plugin.config, overlay);
+    final config = {
+      ...mergeEngineConfig(plugin.config, overlay),
+      'pluginId': plugin.id,
+    };
     final code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
     if (gen != _extractGeneration || code == null) return [];
     final viaRust = await _runLiveEngineRustJs(
@@ -667,36 +739,37 @@ class EngineService {
     }
   }
 
-  /// Run one bundled live catalog plugin (`catalog/*.js`).
+  /// Run one live sport plugin catalog action.
   Future<List<Map<String, dynamic>>> runLiveCatalog({
     required EnginePlugin catalogPlugin,
     Map<String, dynamic> extraConfig = const {},
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    if (!catalogPlugin.isLiveCatalog) return [];
+    if (!catalogPlugin.supportsLiveCatalog) return [];
     final gen = _liveCatalogGeneration;
     final packs = await listPacks();
     if (gen != _liveCatalogGeneration) return [];
+
+    final hit = PluginRegistry.packPluginFromPacks(packs, catalogPlugin.id);
+    if (hit != null && catalogPlugin.isLiveSportPlugin) {
+      final active = await PluginRegistry.instance.isLiveCapabilityActive(
+        pack: hit.pack,
+        plugin: catalogPlugin,
+        capability: LiveSportCapabilities.catalog,
+      );
+      if (!active) return [];
+    } else if (hit != null && !hit.pack.isPluginActive(catalogPlugin)) {
+      return [];
+    }
 
     final overlay =
         ProviderRuntimeConfig.instance.engine[catalogPlugin.id] ?? const {};
     var config = mergeEngineConfig(catalogPlugin.config, overlay);
 
-    final providerId = (catalogPlugin.config['providerId'] ?? '').toString();
-    if (providerId.startsWith('live-')) {
-      final provider = await pluginById(providerId);
-      if (provider != null) {
-        final providerOverlay =
-            ProviderRuntimeConfig.instance.engine[provider.id] ?? const {};
-        config = mergeEngineConfig(provider.config, config);
-        config = mergeEngineConfig(config, providerOverlay);
-        config['providerId'] = providerId;
-      }
-    }
-
     if (extraConfig.isNotEmpty) {
       config = {...config, ...extraConfig};
     }
+    config['pluginId'] = catalogPlugin.id;
 
     final code = await _loadScript(catalogPlugin);
     if (gen != _liveCatalogGeneration || code == null) return [];
@@ -774,6 +847,7 @@ class EngineService {
       'embedUrl': (params['embedUrl'] ?? params['url'] ?? '').toString(),
       'iframe': (params['iframe'] ?? params['embedUrl'] ?? '').toString(),
       'category': (params['category'] ?? '').toString(),
+      'pluginId': plugin.id,
       'config': config,
     };
 

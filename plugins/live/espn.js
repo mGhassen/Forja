@@ -25,7 +25,6 @@ var SPECS = {
 };
 
 function ua() {
-  // ESPN blocks common browser UAs from many IPs; plain client strings work.
   return 'curl/8.7.1';
 }
 
@@ -78,6 +77,10 @@ var LEAGUE_LABELS = {
 };
 
 var NCAA_LEAGUES = { NCAAMB: true, NCAAWB: true, NCAAFB: true };
+
+function pluginIdFromCtx(ctx, cfg) {
+  return String(ctx.pluginId || cfg.pluginId || 'espn');
+}
 
 function leagueFamily(league) {
   switch (String(league || '').toUpperCase()) {
@@ -194,7 +197,7 @@ function mapGame(league, event, pluginId) {
     awayBadge: awayLogo,
     sources: [],
     catalog: 'forja_live',
-    pluginId: String(pluginId || 'catalog-espn'),
+    pluginId: String(pluginId || 'espn'),
     sportMatchGame: sportMatchGame,
   };
 }
@@ -226,7 +229,7 @@ async function extract(ctx) {
   if (action !== 'catalog') return [];
 
   var cfg = Object.assign({}, SPECS, ctx.config || {});
-  var pluginId = String(cfg.providerId || 'catalog-espn');
+  var pluginId = pluginIdFromCtx(ctx, cfg);
   var leaguesRaw = cfg.leagues;
   var leagues = leaguesRaw && leaguesRaw.length
     ? leaguesRaw

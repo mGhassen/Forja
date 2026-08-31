@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
@@ -23,7 +25,7 @@ class PlayerSubtitleMenu {
     required void Function(SubtitleTrack track) updateSubVisibility,
     required void Function(String? url) onExternalUrlChanged,
     required void Function(bool isNative) onNativeSubtitleChanged,
-    required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
+    required Future<bool> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
     PlayerSubtitleSelectionCallback? onSubtitleSelected,
     /// IPTV / junk titles — opens a "search by name" dialog.
@@ -99,7 +101,7 @@ class PlayerSubtitleMenu {
     required void Function(SubtitleTrack track) updateSubVisibility,
     required void Function(String? url) onExternalUrlChanged,
     required void Function(bool isNative) onNativeSubtitleChanged,
-    required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
+    required Future<bool> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
     PlayerSubtitleSelectionCallback? onSubtitleSelected,
     VoidCallback? onTitleSearch,
@@ -113,15 +115,8 @@ class PlayerSubtitleMenu {
     final selectedSubtitleId = subtitlesOff || selectedExternalSubUrl != null
         ? null
         : (active?.id ?? current.id);
-    // In-stream tracks only — skip Off/auto and http URI tracks (online picker).
-    final embedded = player.state.tracks.subtitle
-        .where(
-          (t) =>
-              t.id != 'no' &&
-              t.id != 'auto' &&
-              !t.id.startsWith('http'),
-        )
-        .toList();
+    // In-stream mux tracks only — mpv keeps every temp file:// sub as a track.
+    final embedded = embeddedSubtitleTracks(player.state.tracks.subtitle);
 
     void turnOffSubtitles() {
       onSubtitleSelected?.call(off: true);
@@ -265,9 +260,8 @@ class PlayerSubtitleMenu {
                   title: languageDisplayName(key),
                   value: '${stream.length + online.length}',
                   selected: hasSelected,
-                  onTap: () async {
-                    PlayerPopupPanel.dismiss();
-                    await _openLanguage(
+                  onTap: () {
+                    unawaited(_openLanguage(
                       context,
                       langKey: key,
                       embedded: stream,
@@ -298,7 +292,7 @@ class PlayerSubtitleMenu {
                       ),
                       margin: margin,
                       anchorContext: anchorContext,
-                    );
+                    ));
                   },
                 );
               },
@@ -319,7 +313,7 @@ class PlayerSubtitleMenu {
     required Player player,
     required void Function(SubtitleTrack track) updateSubVisibility,
     required void Function(String? url) onExternalUrlChanged,
-    required Future<void> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
+    required Future<bool> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     PlayerSubtitleSelectionCallback? onSubtitleSelected,
     required Future<void> Function() onRoot,
     required EdgeInsets margin,
@@ -375,7 +369,8 @@ class PlayerSubtitleMenu {
                   language: s['language']?.toString() ?? langKey,
                   title: s['display']?.toString(),
                 );
-                await loadOnlineSubtitle(s);
+                final ok = await loadOnlineSubtitle(s);
+                if (!ok) return;
                 onExternalUrlChanged(s['url']?.toString());
                 if (context.mounted) PlayerPopupPanel.dismiss();
               },

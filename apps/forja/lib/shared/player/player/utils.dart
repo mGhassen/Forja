@@ -2381,7 +2381,7 @@ SubtitleTrack? findSubtitleTrack(List<SubtitleTrack> tracks, String id) {
 /// Embedded (in-stream) subtitle tracks — excludes Off/auto and sideloaded URIs.
 List<SubtitleTrack> embeddedSubtitleTracks(Iterable<SubtitleTrack> tracks) {
   return tracks
-      .where((t) => t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'))
+      .where((t) => !isSideloadedExternalSubtitleTrack(t))
       .toList();
 }
 

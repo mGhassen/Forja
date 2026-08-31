@@ -11,58 +11,39 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
   //  ONLINE SUBTITLE LOADER (download → temp file → SubtitleTrack.uri)
   // ─────────────────────────────────────────────────────────────────────────
 
-  Future<void> _loadOnlineSubtitle(
+  Future<bool> _loadOnlineSubtitle(
     Map<String, dynamic> s, {
     bool userInitiated = false,
+    bool showFailureToast = true,
   }) async {
     if (userInitiated) {
       _s._userPickedExternalSubtitle = true;
       _s._embeddedSubtitleAutoApplied = true;
     }
     final url = (s['url'] ?? '').toString();
-    if (url.isEmpty) return;
+    if (url.isEmpty) return false;
     final isTranslated =
         s['translated'] == true || url.contains('/subtitlecat-translate');
 
-    Future<void> applyUri(String uri) async {
-      if (_s._disposed || !mounted) return;
+    Future<bool> applyUri(String uri) async {
+      if (_s._disposed || !mounted) return false;
+      await resetPlayerSubtitleForNewOpen(_s._player);
       final track = SubtitleTrack.uri(
         uri,
         title: s['display'],
         language: s['language'],
       );
       await _s._player.setSubtitleTrack(track);
-      if (_s._disposed || !mounted) return;
+      if (_s._disposed || !mounted) return false;
       _s._updateSubVisibility(track);
       if (mounted) setState(() => _s._selectedExternalSubUrl = url);
+      return true;
     }
 
-    final cached = _s._externalSubFileCache[url];
-    if (cached != null) {
-      if (await externalSubtitleCacheFileValid(cached)) {
-        try {
-          await applyUri(cached);
-        } catch (e) {
-          debugPrint('[MobilePlayer] cached subtitle re-apply failed: $e');
-          _s._externalSubFileCache.remove(url);
-          await deleteExternalSubtitleCacheFile(cached);
-        }
-        if (_s._externalSubFileCache.containsKey(url)) return;
-      } else {
-        _s._externalSubFileCache.remove(url);
-        await deleteExternalSubtitleCacheFile(cached);
-      }
-    }
-
-    // Already-local subtitle (e.g. kisskh decrypted) - feed straight to libmpv.
-    if (url.startsWith('file://') || url.startsWith('/')) {
-      try {
-        final uri = url.startsWith('file://') ? url : Uri.file(url).toString();
-        _s._externalSubFileCache[url] = uri;
-        await applyUri(uri);
-      } catch (e) {
-        if (!mounted) return;
-        setState(() => _s._selectedExternalSubUrl = null);
+    void fail() {
+      if (!mounted) return;
+      setState(() => _s._selectedExternalSubUrl = null);
+      if (showFailureToast) {
         _s._statusController.upsert(
           'subtitle',
           'Subtitle failed',
@@ -70,14 +51,40 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
           dismissAfter: const Duration(seconds: 2),
         );
       }
-      return;
+    }
+
+    final cached = _s._externalSubFileCache[url];
+    if (cached != null) {
+      if (await externalSubtitleCacheFileValid(cached)) {
+        try {
+          if (await applyUri(cached)) return true;
+        } catch (e) {
+          debugPrint('[MobilePlayer] cached subtitle re-apply failed: $e');
+        }
+        _s._externalSubFileCache.remove(url);
+        await deleteExternalSubtitleCacheFile(cached);
+      } else {
+        _s._externalSubFileCache.remove(url);
+        await deleteExternalSubtitleCacheFile(cached);
+      }
+    }
+
+    if (url.startsWith('file://') || url.startsWith('/')) {
+      try {
+        final uri = url.startsWith('file://') ? url : Uri.file(url).toString();
+        if (!await externalSubtitleCacheFileValid(uri)) {
+          fail();
+          return false;
+        }
+        _s._externalSubFileCache[url] = uri;
+        return await applyUri(uri);
+      } catch (e) {
+        fail();
+        return false;
+      }
     }
 
     try {
-      // Many subtitle CDNs (megacloud, vid-cdn, etc.) gate on a browser UA
-      // and the embed-host Referer (NOT the sub URL's own host). Prefer the
-      // referer/origin the extractor passed through; otherwise fall back to
-      // the sub URL's own origin.
       final subUri = Uri.parse(url);
       final selfOrigin = '${subUri.scheme}://${subUri.host}';
       final ref = (s['referer'] as String?)?.trim();
@@ -93,31 +100,17 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       final res = await http
           .get(subUri, headers: headers)
           .timeout(Duration(minutes: isTranslated ? 5 : 1));
-      if (!mounted) return;
+      if (!mounted) return false;
       if (res.statusCode != 200) {
-        if (mounted) {
-          setState(() => _s._selectedExternalSubUrl = null);
-        }
-        _s._statusController.upsert(
-          'subtitle',
-          'Subtitle failed',
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        return;
+        fail();
+        return false;
       }
       if (!isPlausibleSubtitleBytes(res.bodyBytes)) {
         debugPrint(
           '[MobilePlayer] subtitle download rejected (invalid payload)',
         );
-        if (mounted) setState(() => _s._selectedExternalSubUrl = null);
-        _s._statusController.upsert(
-          'subtitle',
-          'Subtitle failed',
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        return;
+        fail();
+        return false;
       }
       final dir = await getTemporaryDirectory();
       final safeLang = (s['language'] ?? 'sub').toString().replaceAll(
@@ -129,18 +122,38 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       );
       await file.writeAsBytes(res.bodyBytes);
       final uri = Uri.file(file.path).toString();
+      final prior = _s._externalSubFileCache[url];
+      if (prior != null && prior != uri) {
+        await deleteExternalSubtitleCacheFile(prior);
+      }
       _s._externalSubFileCache[url] = uri;
-      await applyUri(uri);
+      return await applyUri(uri);
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _s._selectedExternalSubUrl = null);
-      _s._statusController.upsert(
-        'subtitle',
-        'Subtitle failed',
-        kind: StatusRouletteKind.failed,
-        dismissAfter: const Duration(seconds: 2),
-      );
+      fail();
+      return false;
     }
+  }
+
+  Future<bool> _autoLoadExternalSubtitleCandidates(
+    List<Map<String, dynamic>> candidates, {
+    bool forcePlayerApply = false,
+  }) async {
+    if (candidates.isEmpty) return false;
+    for (var i = 0; i < candidates.length; i++) {
+      final s = candidates[i];
+      debugPrint(
+        '[MobilePlayer] auto subtitle → ${s['display'] ?? s['language']}'
+        '${forcePlayerApply ? ' (re-apply)' : ''}'
+        '${i > 0 ? ' (fallback ${i + 1}/${candidates.length})' : ''}',
+      );
+      if (await _loadOnlineSubtitle(
+        s,
+        showFailureToast: i == candidates.length - 1,
+      )) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<void> _fetchSubtitles() async {
@@ -237,11 +250,13 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     if (_s._disposed || !mounted) return;
     if (preferred == 'None' || preferred.isEmpty) return;
 
-    // In-stream wins auto-select — only sideload when the stream has none
-    // (unless the user already picked an online track to re-apply).
     final embedded =
         embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
-    if (embedded.isNotEmpty && !_s._userPickedExternalSubtitle) return;
+    if (embedded.isNotEmpty &&
+        !_s._userPickedExternalSubtitle &&
+        _activeSubtitleMatchesPreferred(preferred)) {
+      return;
+    }
 
     if (_activeSubtitleMatchesPreferred(preferred)) return;
 
@@ -259,45 +274,27 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       ),
     );
 
-    final preferredPick = pickExternalSubtitleForLanguage(
-      preferred,
-      subsForAuto,
-    );
-
     final uiSelected = _s._selectedExternalSubUrl;
     if (uiSelected != null && !forcePlayerApply) {
       if (_playerHasActiveSubtitle()) return;
-      for (final s in _s._externalSubtitles) {
-        if (s['url']?.toString() == uiSelected) {
-          await _loadOnlineSubtitle(s);
-          return;
-        }
-      }
+      await _autoLoadExternalSubtitleCandidates(
+        externalSubtitleAutoCandidates(
+          preferredLang: preferred,
+          subs: subsForAuto,
+          preferUrlFirst: uiSelected,
+        ),
+      );
       return;
     }
 
-    final pick =
-        preferredPick ??
-        (preferred == 'English'
-            ? null
-            : pickExternalSubtitleForLanguage('English', subsForAuto));
-    if (pick == null) return;
-
-    Map<String, dynamic> toLoad = pick;
-    if (forcePlayerApply && uiSelected != null) {
-      for (final s in _s._externalSubtitles) {
-        if (s['url']?.toString() == uiSelected) {
-          toLoad = s;
-          break;
-        }
-      }
-    }
-
-    debugPrint(
-      '[MobilePlayer] auto subtitle → ${toLoad['display'] ?? toLoad['language']}'
-      '${forcePlayerApply ? ' (re-apply)' : ''}',
+    await _autoLoadExternalSubtitleCandidates(
+      externalSubtitleAutoCandidates(
+        preferredLang: preferred,
+        subs: subsForAuto,
+        preferUrlFirst: forcePlayerApply ? uiSelected : null,
+      ),
+      forcePlayerApply: forcePlayerApply,
     );
-    await _loadOnlineSubtitle(toLoad);
   }
 
   void _showSubtitlesMenu(BuildContext anchorContext) {

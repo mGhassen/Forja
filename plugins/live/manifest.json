@@ -1,96 +1,150 @@
 {
   "schema": 1,
   "id": "forjahq-live",
-  "name": "ForjaHQ Live",
-  "version": "1.5.23",
+  "name": "ForjaHQ Live Sports",
+  "version": "1.6.0",
   "plugins": [
     {
-      "id": "live-streamed",
+      "id": "streamed",
       "name": "Streamed",
-      "description": "streamed.pk stream resolve (GOAT / golf)",
+      "description": "streamed.pk schedule + stream resolve (GOAT / golf)",
       "entry": "streamed.js",
-      "types": [
-        "plugins"
-      ],
+      "types": ["live_sport"],
+      "capabilities": ["catalog", "resolve"],
       "kind": "http",
       "prelude": "embed-st.js",
+      "enabled": true,
       "config": {
+        "catalogEnabled": true,
+        "resolveEnabled": true,
         "origin": "https://streamed.pk",
         "embedOrigin": "https://embed.st",
         "nativeUnlock": "streamed"
       }
     },
     {
-      "id": "live-ppv",
+      "id": "ppv",
       "name": "PPV",
-      "description": "ppv.st / api.ppv.st stream resolve",
+      "description": "ppv.st schedule + stream resolve",
       "entry": "ppv.js",
-      "types": [
-        "plugins"
-      ],
+      "types": ["live_sport"],
+      "capabilities": ["catalog", "resolve"],
       "kind": "http",
       "prelude": "embed-st.js",
+      "enabled": true,
       "config": {
+        "catalogEnabled": true,
+        "resolveEnabled": true,
         "webOrigin": "https://ppv.st",
-        "nativeUnlock": "ppv"
+        "nativeUnlock": "ppv",
+        "apis": [
+          "https://api.ppv.st/api/streams",
+          "https://api.ppv.cx/api/streams"
+        ]
       }
     },
     {
-      "id": "live-timstreams",
-      "name": "TimStreams",
-      "description": "timstreams.st stream resolve",
-      "entry": "timstreams.js",
-      "types": [
-        "live_sport"
-      ],
-      "kind": "http",
-      "prelude": "embed-st.js",
-      "config": {
-        "origin": "https://timstreams.st"
-      }
-    },
-    {
-      "id": "live-streamfree",
+      "id": "streamfree",
       "name": "StreamFree",
-      "description": "streamfree.top stream resolve",
+      "description": "streamfree.top schedule + stream resolve",
       "entry": "streamfree.js",
-      "types": [
-        "live_sport"
-      ],
+      "types": ["live_sport"],
+      "capabilities": ["catalog", "resolve"],
       "kind": "http",
       "prelude": "embed-st.js",
+      "enabled": true,
       "config": {
+        "catalogEnabled": true,
+        "resolveEnabled": true,
         "origin": "https://streamfree.top"
       }
     },
     {
-      "id": "live-watchfooty",
-      "name": "WatchFooty",
-      "description": "watchfooty.st stream resolve",
-      "entry": "watchfooty.js",
-      "types": [
-        "live_sport"
-      ],
+      "id": "timstreams",
+      "name": "TimStreams",
+      "description": "timstreams.st schedule + stream resolve",
+      "entry": "timstreams.js",
+      "types": ["live_sport"],
+      "capabilities": ["catalog", "resolve"],
       "kind": "http",
       "prelude": "embed-st.js",
+      "enabled": false,
       "config": {
+        "catalogEnabled": false,
+        "resolveEnabled": false,
+        "origin": "https://timstreams.st",
+        "api": "https://timstreams.st/api/live-upcoming",
+        "embedOrigin": "https://embed.st"
+      }
+    },
+    {
+      "id": "watchfooty",
+      "name": "WatchFooty",
+      "description": "watchfooty.st schedule + stream resolve",
+      "entry": "watchfooty.js",
+      "types": ["live_sport"],
+      "capabilities": ["catalog", "resolve"],
+      "kind": "http",
+      "prelude": "embed-st.js",
+      "enabled": false,
+      "config": {
+        "catalogEnabled": false,
+        "resolveEnabled": false,
         "origin": "https://watchfooty.st",
         "nativeUnlock": "watchfooty",
         "airingOnlyLive": true
       }
     },
     {
-      "id": "live-streamic",
+      "id": "streamic",
       "name": "Streamic",
-      "description": "streamic.live stream resolve",
+      "description": "streamic.live schedule + stream resolve",
       "entry": "streamic.js",
-      "types": [
-        "live_sport"
-      ],
+      "types": ["live_sport"],
+      "capabilities": ["catalog", "resolve"],
       "kind": "http",
       "prelude": "embed-st.js",
+      "enabled": false,
       "config": {
+        "catalogEnabled": false,
+        "resolveEnabled": false,
         "origin": "https://streamic.st"
+      }
+    },
+    {
+      "id": "espn",
+      "name": "ESPN",
+      "description": "ESPN scoreboard schedule catalog",
+      "entry": "espn.js",
+      "types": ["live_sport"],
+      "capabilities": ["catalog"],
+      "kind": "http",
+      "enabled": false,
+      "config": {
+        "catalogEnabled": false,
+        "leagues": [
+          "NBA",
+          "NFL",
+          "MLB",
+          "NHL",
+          "WNBA",
+          "NCAAMB",
+          "NCAAWB",
+          "NCAAFB",
+          "EPL",
+          "MLS",
+          "LALIGA",
+          "SERIEA",
+          "BUNDESLIGA",
+          "LIGUE1",
+          "UCL",
+          "EUROPA",
+          "EREDIVISIE",
+          "LIGAPORTUGAL",
+          "LIGAMX",
+          "WORLDCUP",
+          "UFC"
+        ]
       }
     }
   ]

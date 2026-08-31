@@ -251,35 +251,79 @@ List<String> subtitleLanguageCandidates(String preferred) {
   return [preferred, 'English'];
 }
 
-/// Picks the "best" external subtitle entry for [preferredLang] from a list
-/// of subtitle maps (each must contain at least `url`, `language`,
-/// `display`). Returns null if no match. Prefers entries whose language
-/// matches exactly; ranks human-translated above auto-translated.
+/// Score for auto-pick ordering — higher is preferred.
+int externalSubtitleEntryRank(Map<String, dynamic> s) {
+  var score = 100;
+  if (s['translated'] == true) score -= 50;
+  if ((s['display'] ?? '').toString().toLowerCase().contains('hearing')) {
+    score -= 5;
+  }
+  return score;
+}
+
 Map<String, dynamic>? pickExternalSubtitleForLanguage(
   String preferredLang,
   List<Map<String, dynamic>> subs,
 ) {
-  if (preferredLang == 'None' || subs.isEmpty) return null;
-  Map<String, dynamic>? best;
-  int bestScore = -1;
+  final ranked = rankedExternalSubtitleCandidatesForLanguage(preferredLang, subs);
+  return ranked.isEmpty ? null : ranked.first;
+}
+
+/// All external subs matching [preferredLang], best-first for auto-pick retries.
+List<Map<String, dynamic>> rankedExternalSubtitleCandidatesForLanguage(
+  String preferredLang,
+  List<Map<String, dynamic>> subs,
+) {
+  if (preferredLang == 'None') return const [];
+  final scored = <({Map<String, dynamic> sub, int score})>[];
   for (final s in subs) {
     final url = (s['url'] ?? '').toString();
     if (url.isEmpty) continue;
     final lang = s['language']?.toString();
     final disp = s['display']?.toString();
-    if (!matchesPreferredLanguage(preferredLang,
-        language: lang, title: disp)) {
+    if (!matchesPreferredLanguage(
+      preferredLang,
+      language: lang,
+      title: disp,
+    )) {
       continue;
     }
-    var score = 100;
-    if (s['translated'] == true) score -= 50; // prefer non-translated
-    if ((disp ?? '').toLowerCase().contains('hearing')) score -= 5; // SDH ↓
-    if (score > bestScore) {
-      bestScore = score;
-      best = s;
+    scored.add((sub: s, score: externalSubtitleEntryRank(s)));
+  }
+  scored.sort((a, b) => b.score.compareTo(a.score));
+  return [for (final e in scored) e.sub];
+}
+
+/// Preferred language (+ English fallback), deduped, optionally [preferUrlFirst].
+List<Map<String, dynamic>> externalSubtitleAutoCandidates({
+  required String preferredLang,
+  required List<Map<String, dynamic>> subs,
+  String? preferUrlFirst,
+}) {
+  final out = <Map<String, dynamic>>[];
+  final seen = <String>{};
+
+  void add(Map<String, dynamic> s) {
+    final url = (s['url'] ?? '').toString();
+    if (url.isEmpty || !seen.add(url)) return;
+    out.add(s);
+  }
+
+  if (preferUrlFirst != null) {
+    for (final s in subs) {
+      if (s['url']?.toString() == preferUrlFirst) {
+        add(s);
+        break;
+      }
     }
   }
-  return best;
+
+  for (final lang in subtitleLanguageCandidates(preferredLang)) {
+    for (final s in rankedExternalSubtitleCandidatesForLanguage(lang, subs)) {
+      add(s);
+    }
+  }
+  return out;
 }
 
 /// Preferred language, then English fallback when that category is absent.
@@ -339,25 +383,25 @@ List<Map<String, dynamic>> externalSubtitlesForAutoPick({
   return out;
 }
 
-/// Embedded track match: preferred, then English, then any in-stream track.
-/// Prefer muxed/HLS text over scraped sideloads when the stream ships subs.
+/// In-stream track matching [preferredLang], then English — no random mux fallback.
 SubtitleTrack? pickEmbeddedSubtitleWithFallback({
   required String preferredLang,
   required List<SubtitleTrack> tracks,
 }) {
-  final real = tracks
-      .where((t) => t.id != 'no' && t.id != 'auto' && !t.id.startsWith('http'))
-      .toList();
+  final real =
+      tracks.where((t) => !isSideloadedExternalSubtitleTrack(t)).toList();
   for (final lang in subtitleLanguageCandidates(preferredLang)) {
     for (final t in real) {
-      if (matchesPreferredLanguage(lang,
-          language: t.language, title: t.title)) {
+      if (matchesPreferredLanguage(
+        lang,
+        language: t.language,
+        title: t.title,
+      )) {
         return t;
       }
     }
   }
-  // Unlabeled / wrong-tag in-stream still beats OpenSubtitles auto-pick.
-  return real.isNotEmpty ? real.first : null;
+  return null;
 }
 
 /// Codec/title hints we want to *avoid* because the bundled mpv build on
@@ -535,6 +579,18 @@ AutoSelectResult computeAutoSelect({
     subtitle: subtitlePick,
     clearSubtitle: clearSub,
   );
+}
+
+/// True for temp `file://` subs mpv keeps across remounts — not muxed in-stream.
+bool isSideloadedExternalSubtitleTrack(SubtitleTrack track) {
+  final id = track.id;
+  if (id == 'no' || id == 'auto') return false;
+  if (id.startsWith('http')) return true;
+  final probe = '$id ${track.title ?? ''}'.toLowerCase();
+  if (probe.contains('forja_sub_') || probe.contains('forja_iptv_sub_')) {
+    return true;
+  }
+  return id.startsWith('file://') || id.startsWith('/');
 }
 
 /// True when [bytes] look like SRT/VTT/ASS — not HTML/CDN error pages saved as `.srt`.

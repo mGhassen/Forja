@@ -1412,12 +1412,14 @@ mixin _MobilePlayerPlayback
     _s._durationSub = _s._player.stream.duration.listen((dur) {
       if (_s._disposed) return;
       if (!_s._playbackConfirmed) return;
+      if (_s._lockSeekBarPosition) return;
       _s._durationNotifier.value = dur;
     });
 
     _s._bufferSub = _s._player.stream.buffer.listen((buf) {
       if (_s._disposed) return;
       if (!_s._playbackConfirmed) return;
+      if (_s._lockSeekBarPosition) return;
       _applyBufferedEnd(cacheTime: buf);
     });
     _s._cacheAheadPoll?.cancel();
@@ -1615,6 +1617,8 @@ mixin _MobilePlayerPlayback
   Future<void> _applyLateEmbeddedSubtitle() async {
     if (_s._disposed || !mounted) return;
     await _s._applyAutoSubtitle();
+    if (_s._disposed || !mounted) return;
+    await _s._maybeAutoPickExternalSubtitle(forcePlayerApply: true);
   }
 
   Future<void> _applyTrackAutoSelect() async {
@@ -1687,7 +1691,9 @@ mixin _MobilePlayerPlayback
     Duration cacheTime = Duration.zero,
     double? aheadSecs,
   }) {
-    if (_s._disposed || !_s._playbackConfirmed) return;
+    if (_s._disposed || !_s._playbackConfirmed || _s._lockSeekBarPosition) {
+      return;
+    }
     final pos = _s._positionNotifier.value;
     final end = bufferedEndFromCacheAhead(
       position: pos,
@@ -1705,7 +1711,10 @@ mixin _MobilePlayerPlayback
   }
 
   Future<void> _sampleDemuxerCacheAhead() async {
-    if (_s._disposed || !_s._playbackConfirmed || _s._cacheAheadProbeInFlight) {
+    if (_s._disposed ||
+        !_s._playbackConfirmed ||
+        _s._lockSeekBarPosition ||
+        _s._cacheAheadProbeInFlight) {
       return;
     }
     final platform = _s._player.platform;

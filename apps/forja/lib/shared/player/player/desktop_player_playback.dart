@@ -1399,6 +1399,7 @@ mixin _DesktopPlayerPlayback
     _s._durationSub = _s._player.stream.duration.listen((dur) {
       if (_s._disposed) return;
       if (!_s._playbackConfirmed) return;
+      if (_s._lockSeekBarPosition) return;
       _s._durationNotifier.value = dur;
     });
 
@@ -1406,6 +1407,7 @@ mixin _DesktopPlayerPlayback
     _s._bufferSub = _s._player.stream.buffer.listen((buf) {
       if (_s._disposed) return;
       if (!_s._playbackConfirmed) return;
+      if (_s._lockSeekBarPosition) return;
       _s._bufferedNotifier.value = buf;
     });
 
@@ -1632,6 +1634,8 @@ mixin _DesktopPlayerPlayback
   Future<void> _applyLateEmbeddedSubtitle() async {
     if (_s._disposed || !mounted) return;
     await _s._applyAutoSubtitle();
+    if (_s._disposed || !mounted) return;
+    await _s._maybeAutoPickExternalSubtitle(forcePlayerApply: true);
   }
 
   Future<void> _recoverAudioTrack() async {

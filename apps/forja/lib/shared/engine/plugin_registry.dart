@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/cache.dart';
+import 'package:forja/shared/engine/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +24,7 @@ class PluginRegistry {
   static const _preludePrefixV2 = 'engine_js_prelude_v2_';
   static const _migratedKey = 'engine_js_packs_v2_migrated';
   static const _legacyMonolithWipedKey = 'engine_js_legacy_forjahq_wiped';
+  static const _liveSportMigrationKey = 'live_sport_unified_migration_v1';
 
   static const _legacyBundledSourceUrlProviders = 'asset:providers/engine.json';
   static const _legacyBundledSourceUrl = 'asset:engine_js/engine.json';
@@ -108,7 +110,6 @@ class PluginRegistry {
     const core = {
       'plugins/providers/manifest.json': 'providers',
       'plugins/live/manifest.json': 'live',
-      'plugins/catalog/manifest.json': 'catalog',
       'plugins/hubs/home/manifest.json': 'home',
       'plugins/hubs/manifest.json': 'home',
     };
@@ -175,8 +176,9 @@ class PluginRegistry {
       };
     }
     if (pack.plugins.any((p) => p.isHubCatalog)) return packKindHubs;
-    if (pack.plugins.any((p) => p.isLiveCatalog)) return packKindCatalog;
-    if (pack.plugins.any((p) => p.isLive)) return packKindLive;
+    if (pack.plugins.any((p) => p.isLiveSportPlugin || p.isLive)) {
+      return packKindLive;
+    }
     if (pack.plugins.any((p) => p.isHttp)) return packKindProviders;
     return packKindOther;
   }
@@ -511,6 +513,7 @@ class PluginRegistry {
     final run = () async {
       try {
         await hydrateLeanInstalled();
+        await migrateLegacyLiveSportPacksIfNeeded();
         final packs = await listPacksRaw();
         if (force) {
           final pending = <Future<void>>[];
@@ -764,6 +767,127 @@ class PluginRegistry {
       );
     }
     await _savePacks(next);
+  }
+
+  bool? _legacyPluginEnabled(List<EnginePack> packs, String pluginId) {
+    for (final pack in packs) {
+      for (final p in pack.plugins) {
+        if (p.id != pluginId) continue;
+        return pack.enabled && p.enabled;
+      }
+    }
+    return null;
+  }
+
+  Future<bool> liveCapabilityEnabled({
+    required String sourceUrl,
+    required EnginePlugin plugin,
+    required String capability,
+  }) async {
+    if (!plugin.isLiveSportPlugin) {
+      return plugin.enabled;
+    }
+    final prefs = await _prefs;
+    final key = LiveSportCapabilities.capabilityPrefsKey(
+      sourceUrl,
+      plugin.id,
+      capability,
+    );
+    final stored = prefs.getBool(key);
+    if (stored != null) return stored;
+    return LiveSportCapabilities.defaultEnabled(plugin, capability);
+  }
+
+  Future<bool> isLiveCapabilityActive({
+    required EnginePack pack,
+    required EnginePlugin plugin,
+    required String capability,
+  }) async {
+    if (!pack.enabled || !plugin.enabled) return false;
+    if (!plugin.isLiveSportPlugin) {
+      return pack.isPluginActive(plugin);
+    }
+    return liveCapabilityEnabled(
+      sourceUrl: pack.sourceUrl,
+      plugin: plugin,
+      capability: capability,
+    );
+  }
+
+  Future<void> setLiveCapabilityEnabled({
+    required String sourceUrl,
+    required String pluginId,
+    required String capability,
+    required bool enabled,
+  }) async {
+    final prefs = await _prefs;
+    final key = LiveSportCapabilities.capabilityPrefsKey(
+      sourceUrl,
+      pluginId,
+      capability,
+    );
+    await prefs.setBool(key, enabled);
+    notifyChanged();
+  }
+
+  /// One-time migration from twin `catalog-*` / `live-*` packs to unified ids.
+  Future<void> migrateLegacyLiveSportPacksIfNeeded() async {
+    final prefs = await _prefs;
+    if (prefs.getBool(_liveSportMigrationKey) == true) return;
+
+    var packs = await listPacksRaw();
+    final capabilityWrites = <String, bool>{};
+
+    for (final entry in LiveSportCapabilities.legacyTwinIds.entries) {
+      final newId = entry.key;
+      final (catalogOld, liveOld) = entry.value;
+      final catalogOn = _legacyPluginEnabled(packs, catalogOld);
+      final resolveOn =
+          liveOld == null ? null : _legacyPluginEnabled(packs, liveOld);
+
+      for (final pack in packs) {
+        if (forjaHqSlot(pack.sourceUrl) != 'live') continue;
+        for (final p in pack.plugins) {
+          if (p.id != newId) continue;
+          if (catalogOn != null) {
+            capabilityWrites[
+              LiveSportCapabilities.capabilityPrefsKey(
+                pack.sourceUrl,
+                newId,
+                LiveSportCapabilities.catalog,
+              )
+            ] = catalogOn;
+          }
+          if (resolveOn != null) {
+            capabilityWrites[
+              LiveSportCapabilities.capabilityPrefsKey(
+                pack.sourceUrl,
+                newId,
+                LiveSportCapabilities.resolve,
+              )
+            ] = resolveOn;
+          }
+        }
+      }
+    }
+
+    for (final entry in capabilityWrites.entries) {
+      await prefs.setBool(entry.key, entry.value);
+    }
+
+    final next = [
+      for (final pack in packs)
+        if (pack.packId != 'forjahq-catalog' &&
+            forjaHqSlot(pack.sourceUrl) != 'catalog')
+          pack,
+    ];
+    if (next.length != packs.length) {
+      packs = next;
+      await _savePacks(packs);
+    }
+
+    await prefs.setBool(_liveSportMigrationKey, true);
+    notifyChanged();
   }
 
   /// Pack master switch — does not change per-plugin [EnginePlugin.enabled].

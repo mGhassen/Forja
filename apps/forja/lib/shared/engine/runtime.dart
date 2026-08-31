@@ -626,6 +626,7 @@ class EngineRuntime {
         isCancelled: isCancelled,
         extraCtx: {
           'action': action,
+          'pluginId': pluginId,
           ...params,
         },
       );
@@ -736,6 +737,7 @@ class EngineRuntime {
     stream: meta.stream || '',
     embedUrl: meta.embedUrl || '',
     category: meta.category || '',
+    pluginId: meta.pluginId || '',
     live: {
       goatUnlock: function(bodyHex, goat, slot) {
         return sendMessage('LiveGoatUnlock', JSON.stringify({

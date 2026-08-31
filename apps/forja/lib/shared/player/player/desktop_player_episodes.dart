@@ -1151,7 +1151,6 @@ mixin _DesktopPlayerEpisodes
         tracks: embedded,
       );
       if (track == null) {
-        _s._embeddedSubtitleAutoApplied = true;
         return;
       }
       await _s._player.setSubtitleTrack(track);

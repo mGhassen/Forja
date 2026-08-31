@@ -15,30 +15,46 @@ mixin _DesktopPlayerTracks
   //  ONLINE SUBTITLE LOADER (download → temp file → SubtitleTrack.uri)
   // ─────────────────────────────────────────────────────────────────────────
 
-  Future<void> _loadOnlineSubtitle(
+  Future<bool> _loadOnlineSubtitle(
     Map<String, dynamic> s, {
     bool userInitiated = false,
+    bool showFailureToast = true,
   }) async {
     if (userInitiated) {
       _s._userPickedExternalSubtitle = true;
       _s._embeddedSubtitleAutoApplied = true;
     }
     final url = (s['url'] ?? '').toString();
-    if (url.isEmpty) return;
+    if (url.isEmpty) return false;
     final isTranslated =
         s['translated'] == true || url.contains('/subtitlecat-translate');
 
-    Future<void> applyUri(String uri) async {
-      if (_s._disposed || !mounted) return;
+    Future<bool> applyUri(String uri) async {
+      if (_s._disposed || !mounted) return false;
+      await resetPlayerSubtitleForNewOpen(_s._player);
       final track = SubtitleTrack.uri(
         uri,
         title: s['display'],
         language: s['language'],
       );
       await _s._player.setSubtitleTrack(track);
-      if (_s._disposed || !mounted) return;
+      if (_s._disposed || !mounted) return false;
       _s._updateSubVisibility(track);
       if (mounted) setState(() => _s._selectedExternalSubUrl = url);
+      return true;
+    }
+
+    void fail() {
+      if (!mounted) return;
+      setState(() => _s._selectedExternalSubUrl = null);
+      if (showFailureToast) {
+        _s._statusController.upsert(
+          'subtitle',
+          'Subtitle failed',
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+      }
     }
 
     // Reuse a previously downloaded file (media open often wipes the track).
@@ -46,13 +62,12 @@ mixin _DesktopPlayerTracks
     if (cached != null) {
       if (await externalSubtitleCacheFileValid(cached)) {
         try {
-          await applyUri(cached);
+          if (await applyUri(cached)) return true;
         } catch (e) {
           debugPrint('[DesktopPlayer] cached subtitle re-apply failed: $e');
-          _s._externalSubFileCache.remove(url);
-          await deleteExternalSubtitleCacheFile(cached);
         }
-        if (_s._externalSubFileCache.containsKey(url)) return;
+        _s._externalSubFileCache.remove(url);
+        await deleteExternalSubtitleCacheFile(cached);
       } else {
         _s._externalSubFileCache.remove(url);
         await deleteExternalSubtitleCacheFile(cached);
@@ -63,19 +78,16 @@ mixin _DesktopPlayerTracks
     if (url.startsWith('file://') || url.startsWith('/')) {
       try {
         final uri = url.startsWith('file://') ? url : Uri.file(url).toString();
+        if (!await externalSubtitleCacheFileValid(uri)) {
+          fail();
+          return false;
+        }
         _s._externalSubFileCache[url] = uri;
-        await applyUri(uri);
+        return await applyUri(uri);
       } catch (e) {
-        if (!mounted) return;
-        setState(() => _s._selectedExternalSubUrl = null);
-        _s._statusController.upsert(
-          'subtitle',
-          'Subtitle failed',
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
+        fail();
+        return false;
       }
-      return;
     }
 
     try {
@@ -98,31 +110,17 @@ mixin _DesktopPlayerTracks
       final res = await http
           .get(subUri, headers: headers)
           .timeout(Duration(minutes: isTranslated ? 5 : 1));
-      if (!mounted) return;
+      if (!mounted) return false;
       if (res.statusCode != 200) {
-        if (mounted) {
-          setState(() => _s._selectedExternalSubUrl = null);
-        }
-        _s._statusController.upsert(
-          'subtitle',
-          'Subtitle failed',
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        return;
+        fail();
+        return false;
       }
       if (!isPlausibleSubtitleBytes(res.bodyBytes)) {
         debugPrint(
           '[DesktopPlayer] subtitle download rejected (invalid payload)',
         );
-        if (mounted) setState(() => _s._selectedExternalSubUrl = null);
-        _s._statusController.upsert(
-          'subtitle',
-          'Subtitle failed',
-          kind: StatusRouletteKind.failed,
-          dismissAfter: const Duration(seconds: 2),
-        );
-        return;
+        fail();
+        return false;
       }
       final dir = await getTemporaryDirectory();
       final safeLang = (s['language'] ?? 'sub').toString().replaceAll(
@@ -134,18 +132,38 @@ mixin _DesktopPlayerTracks
       );
       await file.writeAsBytes(res.bodyBytes);
       final uri = Uri.file(file.path).toString();
+      final prior = _s._externalSubFileCache[url];
+      if (prior != null && prior != uri) {
+        await deleteExternalSubtitleCacheFile(prior);
+      }
       _s._externalSubFileCache[url] = uri;
-      await applyUri(uri);
+      return await applyUri(uri);
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _s._selectedExternalSubUrl = null);
-      _s._statusController.upsert(
-        'subtitle',
-        'Subtitle failed',
-        kind: StatusRouletteKind.failed,
-        dismissAfter: const Duration(seconds: 2),
-      );
+      fail();
+      return false;
     }
+  }
+
+  Future<bool> _autoLoadExternalSubtitleCandidates(
+    List<Map<String, dynamic>> candidates, {
+    bool forcePlayerApply = false,
+  }) async {
+    if (candidates.isEmpty) return false;
+    for (var i = 0; i < candidates.length; i++) {
+      final s = candidates[i];
+      debugPrint(
+        '[DesktopPlayer] auto subtitle → ${s['display'] ?? s['language']}'
+        '${forcePlayerApply ? ' (re-apply)' : ''}'
+        '${i > 0 ? ' (fallback ${i + 1}/${candidates.length})' : ''}',
+      );
+      if (await _loadOnlineSubtitle(
+        s,
+        showFailureToast: i == candidates.length - 1,
+      )) {
+        return true;
+      }
+    }
+    return false;
   }
 
   Future<void> _fetchSubtitles() async {
@@ -243,11 +261,15 @@ mixin _DesktopPlayerTracks
     if (_s._disposed || !mounted) return;
     if (preferred == 'None' || preferred.isEmpty) return;
 
-    // In-stream wins auto-select — only sideload when the stream has none
-    // (unless the user already picked an online track to re-apply).
+    // In-stream wins only when it matches settings — junk HLS tags fall through
+    // to Wyzie/Levrx (e.g. Peakstorm mux lists Ug/Wo/Unknown, not English).
     final embedded =
         embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
-    if (embedded.isNotEmpty && !_s._userPickedExternalSubtitle) return;
+    if (embedded.isNotEmpty &&
+        !_s._userPickedExternalSubtitle &&
+        _activeSubtitleMatchesPreferred(preferred)) {
+      return;
+    }
 
     if (_activeSubtitleMatchesPreferred(preferred)) return;
 
@@ -265,47 +287,27 @@ mixin _DesktopPlayerTracks
       ),
     );
 
-    final preferredPick = pickExternalSubtitleForLanguage(
-      preferred,
-      subsForAuto,
-    );
-
-    // UI shows a selection but mpv was wiped by media open → must reload.
     final uiSelected = _s._selectedExternalSubUrl;
     if (uiSelected != null && !forcePlayerApply) {
       if (_playerHasActiveSubtitle()) return;
-      for (final s in _s._externalSubtitles) {
-        if (s['url']?.toString() == uiSelected) {
-          await _loadOnlineSubtitle(s);
-          return;
-        }
-      }
+      await _autoLoadExternalSubtitleCandidates(
+        externalSubtitleAutoCandidates(
+          preferredLang: preferred,
+          subs: subsForAuto,
+          preferUrlFirst: uiSelected,
+        ),
+      );
       return;
     }
 
-    final pick =
-        preferredPick ??
-        (preferred == 'English'
-            ? null
-            : pickExternalSubtitleForLanguage('English', subsForAuto));
-    if (pick == null) return;
-
-    // Prefer the already-chosen URL when forcing re-apply after open.
-    Map<String, dynamic> toLoad = pick;
-    if (forcePlayerApply && uiSelected != null) {
-      for (final s in _s._externalSubtitles) {
-        if (s['url']?.toString() == uiSelected) {
-          toLoad = s;
-          break;
-        }
-      }
-    }
-
-    debugPrint(
-      '[DesktopPlayer] auto subtitle → ${toLoad['display'] ?? toLoad['language']}'
-      '${forcePlayerApply ? ' (re-apply)' : ''}',
+    await _autoLoadExternalSubtitleCandidates(
+      externalSubtitleAutoCandidates(
+        preferredLang: preferred,
+        subs: subsForAuto,
+        preferUrlFirst: forcePlayerApply ? uiSelected : null,
+      ),
+      forcePlayerApply: forcePlayerApply,
     );
-    await _loadOnlineSubtitle(toLoad);
   }
 
   void _showSubtitlesMenu(BuildContext anchorContext) {

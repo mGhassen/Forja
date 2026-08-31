@@ -310,7 +310,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   final Map<String, PlayerSourceStatus> _urlCheckStatuses = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   bool _isInitPlaybackRunning = false;
-  /// Holds seek bar at user target while peakstorm trim remount runs.
+  /// Pins seek bar position/duration while peakstorm trim remount runs.
   bool _lockSeekBarPosition = false;
   bool _networkRemountInFlight = false;
   bool _playbackConfirmed = false;

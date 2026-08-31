@@ -256,7 +256,10 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       onExternalUrlChanged: (url) =>
           setState(() => _s._selectedExternalSubUrl = url),
       onNativeSubtitleChanged: (v) => setState(() => _s._isNativeSubtitle = v),
-      loadOnlineSubtitle: _loadOnlineSubtitle,
+      loadOnlineSubtitle: (s) async {
+        await _loadOnlineSubtitle(s);
+        return _s._selectedExternalSubUrl == (s['url'] ?? '').toString();
+      },
       onSubtitleSettings: _showSubtitleSettings,
       onTitleSearch: widget.onlineSubtitles
           ? () => unawaited(_showTitleSearchDialog())
