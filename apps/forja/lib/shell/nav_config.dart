@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/iptv/iptv/screens/iptv_pt_screen.dart';
+import 'package:forja/features/iptv/screens/iptv_pt_screen.dart';
 import 'package:forja/features/live_matches/live_matches_screen.dart';
 import 'package:forja/features/my_list/my_list_screen.dart';
 import 'package:forja/features/settings/settings_screen.dart';

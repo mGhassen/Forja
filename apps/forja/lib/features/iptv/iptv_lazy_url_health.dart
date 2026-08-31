@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
+import 'package:forja/features/iptv/data/iptv_network.dart';
 
 /// Debounced live URL probe — mirrors IPTV catalog lazy checks (350ms dwell).
 /// Only live URLs land in [_sessionHealth]; misses are not cached across panels.

@@ -45,7 +45,7 @@ Opening the stream list from a multi-source live match (Live Matches → Stremio
 
 ## Related
 
-- `apps/forja/lib/features/iptv/iptv/screens/iptv_pt_player_ui.dart` — `_showSourcePicker`, `_buildTopBar`, bottom control bar
+- `apps/forja/lib/features/iptv/screens/iptv_pt_player_ui.dart` — `_showSourcePicker`, `_buildTopBar`, bottom control bar
 - `apps/forja/lib/shared/player/controls/player_popup_panel.dart` — panel + list tile contract
 - [122](122-[open]-android-tv-iptv-player-lost-dpad.md) — IPTV player D-pad parity with the movie player
 - [110](110-[open]-android-tv-iptv-player-top-bar-dpad.md) — top-bar D-pad chain this change trims

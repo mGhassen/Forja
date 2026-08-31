@@ -54,7 +54,7 @@ On Android TV, scrolling the Portals panel with the D-pad threw focus back to th
 
 ## Related
 
-- `apps/forja/lib/features/iptv/iptv/screens/iptv_catalog_portal_panel.dart`
-- `iptvRowHasFocus` — `apps/forja/lib/features/iptv/iptv/iptv_tv_focus.dart`
+- `apps/forja/lib/features/iptv/screens/iptv_catalog_portal_panel.dart`
+- `iptvRowHasFocus` — `apps/forja/lib/features/iptv/iptv_tv_focus.dart`
 - [144](144-[open]-iptv-catalog-stream-health-never-reprobes.md) — health TTL that drives the notify storm
 - [iptv-xtream](../features/live/iptv-xtream.md) — Portals panel D-pad map

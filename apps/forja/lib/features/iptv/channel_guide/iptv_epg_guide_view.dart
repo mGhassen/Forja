@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
-import 'package:forja/features/iptv/iptv/data/models.dart';
-import 'package:forja/features/iptv/iptv/iptv_tv_focus.dart';
-import 'package:forja/features/iptv/iptv/widgets/iptv_live_favorite_button.dart';
+import 'package:forja/features/iptv/controller/iptv_controller.dart';
+import 'package:forja/features/iptv/data/models.dart';
+import 'package:forja/features/iptv/iptv_tv_focus.dart';
+import 'package:forja/features/iptv/widgets/iptv_live_favorite_button.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';

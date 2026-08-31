@@ -14,7 +14,7 @@ On **TV profile** (`ShellInputPolicy.tv`), only these shell tabs are in scope fo
 | Search | `search` | `features/search/search_screen.dart` |
 | Anime | `anime` | `features/anime/anime_screen.dart` |
 | Asian Drama | `asian_drama` | `features/asian_drama/asian_drama_screen.dart` |
-| IPTV | `iptv` | `features/iptv/iptv/screens/iptv_pt_screen.dart` |
+| IPTV | `iptv` | `features/iptv/screens/iptv_pt_screen.dart` |
 | Live Matches | `live_matches` | `features/live_matches/live_matches_screen.dart` |
 | Lists | `mylist` | `features/my_list/my_list_screen.dart`, `lists_screen.dart` |
 | Settings | `settings` | `features/settings/settings_screen.dart` |

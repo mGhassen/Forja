@@ -1,5 +1,5 @@
-import 'package:forja/features/iptv/iptv/data/models.dart';
-import 'package:forja/features/iptv/iptv/iptv_title_clean.dart';
+import 'package:forja/features/iptv/data/models.dart';
+import 'package:forja/features/iptv/iptv_title_clean.dart';
 import 'package:rust/rust.dart';
 
 /// TMDB recommendation that maps to a playable portal VOD/series row.

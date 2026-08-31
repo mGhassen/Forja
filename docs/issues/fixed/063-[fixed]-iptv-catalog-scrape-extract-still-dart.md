@@ -3,7 +3,7 @@
 **Status:** fixed  
 **Priority:** P2  
 **Severity:** Medium  
-**Area:** `crates/iptv` · `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart`
+**Area:** `crates/iptv` · `apps/forja/lib/features/iptv/data/iptv_network.dart`
 
 ## Status at a glance
 

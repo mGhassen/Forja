@@ -3,7 +3,7 @@
 **Priority:** P1 (when hit)  
 **Severity:** High  
 **Status:** fixed (2026-07-06) — **complete** (root cause fixed, not symptom-only)  
-**Area:** `apps/forja/lib/features/iptv/iptv/data/iptv_network.dart`, `iptv_controller.dart`  
+**Area:** `apps/forja/lib/features/iptv/data/iptv_network.dart`, `iptv_controller.dart`  
 **Reported:** 2026-07-06  
 **Parent:** [004](004-[fixed]-sync-ffi-ui-thread-audit.md)
 ## Status at a glance

@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'm3u_models.dart';
 import 'm3u_parser.dart';
-import 'package:forja/features/iptv/iptv/data/models.dart';
+import 'package:forja/features/iptv/data/models.dart';
 
 class M3uStore {
   static const _key = 'pt_iptv_m3u_playlists_v1';

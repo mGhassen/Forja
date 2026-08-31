@@ -4,7 +4,7 @@ import 'dart:isolate';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/iptv/iptv/data/models.dart';
+import 'package:forja/features/iptv/data/models.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/iptv/iptv/iptv_title_clean.dart';
+import 'package:forja/features/iptv/iptv_title_clean.dart';
 
 void main() {
   test('strips EN-/NETFLIX- prefixes and year', () {

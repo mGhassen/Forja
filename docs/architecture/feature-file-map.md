@@ -57,12 +57,12 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
-| [`iptv/iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_screen.dart) | 152 | Orchestrator | In | Routing + `IptvController`; 7 widget part files |
+| [`iptv/screens/iptv_pt_screen.dart`](../../apps/forja/lib/features/iptv/screens/iptv_pt_screen.dart) | 152 | Orchestrator | In | Routing + `IptvController`; 7 widget part files |
 | [`live_matches/live_matches_screen.dart`](../../apps/forja/lib/features/live_matches/live_matches_screen.dart) | 94 | Orchestrator | In | models/widgets parts + data/build/playback mixins |
 | [`search/search_screen.dart`](../../apps/forja/lib/features/search/search_screen.dart) | 109 | Orchestrator | In | search/tv/build mixins + widgets part |
 | [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In | feed/build mixins + `widgets/` |
 | [`home/home_screen.dart`](../../apps/forja/lib/features/home/home_screen.dart) | 218 | Orchestrator | In | feed/build in `home_screen_feed.dart`, `home_screen_build.dart` |
-| [`iptv/iptv/controller/iptv_controller.dart`](../../apps/forja/lib/features/iptv/iptv/controller/iptv_controller.dart) | 477 | Orchestrator | In | fields/init/dispose; portal/browser/live/channels/nav mixins |
+| [`iptv/controller/iptv_controller.dart`](../../apps/forja/lib/features/iptv/controller/iptv_controller.dart) | 477 | Orchestrator | In | fields/init/dispose; portal/browser/live/channels/nav mixins |
 
 ---
 
@@ -80,9 +80,9 @@ No `features/` screen orchestrators above 3k. Largest IPTV files: `iptv_catalog_
 | File | Lines | Role | TV scope | Notes |
 |------|------:|------|----------|-------|
 | [`settings/settings_screen.dart`](../../apps/forja/lib/features/settings/settings_screen.dart) | 748 | Orchestrator | In | Phase C done — see Tier 1c |
-| [`iptv/iptv/screens/iptv_catalog_workspace.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_catalog_workspace.dart) | 67 | Library root | In | Shelf constants; `IptvCatalogTopBar` + `IptvPortalPanel` in parts |
+| [`iptv/screens/iptv_catalog_workspace.dart`](../../apps/forja/lib/features/iptv/screens/iptv_catalog_workspace.dart) | 67 | Library root | In | Shelf constants; `IptvCatalogTopBar` + `IptvPortalPanel` in parts |
 | [`music/music_screen.dart`](../../apps/forja/lib/features/music/music_screen.dart) | 2,401 | Orchestrator | Out | No shell/TV wiring |
-| [`iptv/iptv/screens/iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_player_screen.dart) | 288 | Orchestrator | In | State + lifecycle; engine/ui mixins |
+| [`iptv/screens/iptv_pt_player_screen.dart`](../../apps/forja/lib/features/iptv/screens/iptv_pt_player_screen.dart) | 288 | Orchestrator | In | State + lifecycle; engine/ui mixins |
 | [`jellyfin/jellyfin_screen.dart`](../../apps/forja/lib/features/jellyfin/jellyfin_screen.dart) | 1,697 | Orchestrator | Out | |
 | [`anime/catalog/anime_service.dart`](../../apps/forja/lib/features/anime/catalog/anime_service.dart) | 1,648 | Data/Service | In | Catalog backend |
 | [`downloader/media_downloader_screen.dart`](../../apps/forja/lib/features/downloader/media_downloader_screen.dart) | 1,536 | Orchestrator | Out | |
@@ -124,30 +124,30 @@ Paths relative to `apps/forja/lib/features/`.
 | 376 | media | `media/details/details_screen_build.dart` | Details build mixin | In |
 | 240 | media | `media/details/details_screen_fetch.dart` | Details fetch mixin | In |
 | 231 | media | `media/details/details_screen_episodes.dart` | Details episodes mixin | In |
-| 942 | iptv | `iptv/iptv/screens/iptv_catalog_portal_form.dart` | Portal add/edit dialog | In |
-| 921 | iptv | `iptv/iptv/screens/iptv_pt_player_ui.dart` | Player UI mixin | In |
-| 809 | iptv | `iptv/iptv/screens/iptv_pt_browser_streams.dart` | Stream cards + EPG widgets | In |
-| 798 | iptv | `iptv/iptv/screens/iptv_pt_browser_view.dart` | Browser view state | In |
-| 797 | iptv | `iptv/iptv/screens/iptv_pt_player_engine.dart` | Player engine mixin | In |
+| 942 | iptv | `iptv/screens/iptv_catalog_portal_form.dart` | Portal add/edit dialog | In |
+| 921 | iptv | `iptv/screens/iptv_pt_player_ui.dart` | Player UI mixin | In |
+| 809 | iptv | `iptv/screens/iptv_pt_browser_streams.dart` | Stream cards + EPG widgets | In |
+| 798 | iptv | `iptv/screens/iptv_pt_browser_view.dart` | Browser view state | In |
+| 797 | iptv | `iptv/screens/iptv_pt_player_engine.dart` | Player engine mixin | In |
 | 1457 | live_matches | `live_matches/live_matches_widgets.dart` | Cards + embed player | In |
-| 815 | iptv | `iptv/iptv/screens/iptv_pt_widgets_channels.dart` | Channels hub/results | In |
-| 93 | iptv | `iptv/iptv/screens/iptv_pt_browser_sidebar.dart` | Category sidebar row | In |
-| 786 | iptv | `iptv/iptv/screens/iptv_catalog_top_bar.dart` | Catalog top bar + shelf tabs | In |
-| 736 | iptv | `iptv/iptv/screens/iptv_catalog_portal_widgets.dart` | Portal dialog fields/tiles | In |
+| 815 | iptv | `iptv/screens/iptv_pt_widgets_channels.dart` | Channels hub/results | In |
+| 93 | iptv | `iptv/screens/iptv_pt_browser_sidebar.dart` | Category sidebar row | In |
+| 786 | iptv | `iptv/screens/iptv_catalog_top_bar.dart` | Catalog top bar + shelf tabs | In |
+| 736 | iptv | `iptv/screens/iptv_catalog_portal_widgets.dart` | Portal dialog fields/tiles | In |
 | 712 | live_matches | `live_matches/live_matches_build.dart` | Build mixin | In |
 | 705 | live_matches | `live_matches/live_matches_models.dart` | Models + API | In |
-| 570 | iptv | `iptv/iptv/screens/iptv_pt_widgets_portal.dart` | Portal list (legacy) | In |
-| 358 | iptv | `iptv/iptv/screens/iptv_catalog_portal_panel.dart` | Portal side panel | In |
+| 570 | iptv | `iptv/screens/iptv_pt_widgets_portal.dart` | Portal list (legacy) | In |
+| 358 | iptv | `iptv/screens/iptv_catalog_portal_panel.dart` | Portal side panel | In |
 | 360 | live_matches | `live_matches/live_matches_data.dart` | Data mixin | In |
-| 66 | iptv | `iptv/iptv/screens/iptv_catalog_workspace.dart` | Library root | In |
+| 66 | iptv | `iptv/screens/iptv_catalog_workspace.dart` | Library root | In |
 | 2401 | music | `music/music_screen.dart` | Orchestrator | Out |
-| 288 | iptv | `iptv/iptv/screens/iptv_pt_player_screen.dart` | Player orchestrator | In |
-| 68 | iptv | `iptv/iptv/screens/iptv_pt_player_widgets.dart` | Source chip | In |
-| 191 | iptv | `iptv/iptv/screens/iptv_pt_widgets_episode.dart` | Episode list | In |
-| 152 | iptv | `iptv/iptv/screens/iptv_pt_screen.dart` | Orchestrator | In |
-| 137 | iptv | `iptv/iptv/screens/iptv_pt_widgets_section.dart` | Section pick (legacy) | In |
-| 137 | iptv | `iptv/iptv/screens/iptv_pt_widgets_common.dart` | App bar + chips | In |
-| 76 | iptv | `iptv/iptv/screens/iptv_pt_catalog_shell.dart` | Catalog shell | In |
+| 288 | iptv | `iptv/screens/iptv_pt_player_screen.dart` | Player orchestrator | In |
+| 68 | iptv | `iptv/screens/iptv_pt_player_widgets.dart` | Source chip | In |
+| 191 | iptv | `iptv/screens/iptv_pt_widgets_episode.dart` | Episode list | In |
+| 152 | iptv | `iptv/screens/iptv_pt_screen.dart` | Orchestrator | In |
+| 137 | iptv | `iptv/screens/iptv_pt_widgets_section.dart` | Section pick (legacy) | In |
+| 137 | iptv | `iptv/screens/iptv_pt_widgets_common.dart` | App bar + chips | In |
+| 76 | iptv | `iptv/screens/iptv_pt_catalog_shell.dart` | Catalog shell | In |
 | 235 | live_matches | `live_matches/live_matches_playback.dart` | Playback mixin | In |
 | 94 | live_matches | `live_matches/live_matches_screen.dart` | Orchestrator | In |
 | 609 | search | `search/search_widgets.dart` | Cards + my-list buttons | In |
@@ -156,13 +156,13 @@ Paths relative to `apps/forja/lib/features/`.
 | 304 | search | `search/search_search.dart` | Search API mixin | In |
 | 109 | search | `search/search_screen.dart` | Orchestrator | In |
 | 41 | search | `search/search_models.dart` | Models | In |
-| 477 | iptv | `iptv/iptv/controller/iptv_controller.dart` | Orchestrator | In |
-| 532 | iptv | `iptv/iptv/controller/iptv_controller_portal.dart` | Portal mixin | In |
-| 363 | iptv | `iptv/iptv/controller/iptv_controller_channels.dart` | Channels mixin | In |
-| 307 | iptv | `iptv/iptv/controller/iptv_controller_browser.dart` | Browser mixin | In |
-| 97 | iptv | `iptv/iptv/controller/iptv_controller_live.dart` | Live mixin | In |
-| 34 | iptv | `iptv/iptv/controller/iptv_controller_nav.dart` | Nav mixin | In |
-| 18 | iptv | `iptv/iptv/controller/iptv_controller_models.dart` | Models | In |
+| 477 | iptv | `iptv/controller/iptv_controller.dart` | Orchestrator | In |
+| 532 | iptv | `iptv/controller/iptv_controller_portal.dart` | Portal mixin | In |
+| 363 | iptv | `iptv/controller/iptv_controller_channels.dart` | Channels mixin | In |
+| 307 | iptv | `iptv/controller/iptv_controller_browser.dart` | Browser mixin | In |
+| 97 | iptv | `iptv/controller/iptv_controller_live.dart` | Live mixin | In |
+| 34 | iptv | `iptv/controller/iptv_controller_nav.dart` | Nav mixin | In |
+| 18 | iptv | `iptv/controller/iptv_controller_models.dart` | Models | In |
 | 1697 | jellyfin | `jellyfin/jellyfin_screen.dart` | Orchestrator | Out |
 | 1648 | anime | `anime/catalog/anime_service.dart` | Data/Service | In |
 | 1536 | downloader | `downloader/media_downloader_screen.dart` | Orchestrator | Out |
@@ -171,22 +171,22 @@ Paths relative to `apps/forja/lib/features/`.
 | 1292 | media | `media/stremio_catalog_screen.dart` | Stremio catalog route | In |
 | 1285 | anime | `anime/anime_player_screen.dart` | Player | In |
 | 1271 | jellyfin | `jellyfin/catalog/jellyfin_service.dart` | Data/Service | Out |
-| 1196 | iptv | `iptv/iptv/data/iptv_network.dart` | Data/Service | In |
+| 1196 | iptv | `iptv/data/iptv_network.dart` | Data/Service | In |
 | 1153 | books | `books/book_reader_screen.dart` | Player | Out |
-| 1127 | iptv | `iptv/iptv/m3u/m3u_playlists_screen.dart` | Sub-hub | In |
+| 1127 | iptv | `iptv/m3u/m3u_playlists_screen.dart` | Sub-hub | In |
 | 535 | anime | `anime/anime_screen_build.dart` | Build mixin | In |
 | 255 | anime | `anime/anime_widgets.dart` | Continue-watching card | In |
 | 195 | anime | `anime/anime_screen_feed.dart` | Feed mixin | In |
 | 131 | anime | `anime/anime_screen.dart` | Orchestrator | In |
 | 1040 | audiobooks | `audiobooks/catalog/audiobook_service.dart` | Data/Service | Out |
-| 1026 | iptv | `iptv/iptv/channel_guide/iptv_channel_guide_panel.dart` | UI Panel | In |
+| 1026 | iptv | `iptv/channel_guide/iptv_channel_guide_panel.dart` | UI Panel | In |
 | 920 | music | `music/music_player_screen.dart` | Player | Out |
 | 888 | similar | `similar/similar_results_screen.dart` | Sub-hub | Out |
 | 857 | manga | `manga/manga_screen.dart` | Orchestrator | Out |
 | 846 | books | `books/books_screen.dart` | Orchestrator | Out |
 | 787 | audiobooks | `audiobooks/generate_audiobook_screen.dart` | Sub-hub | Out |
 | 781 | asian_drama | `asian_drama/asian_drama_screen.dart` | Orchestrator | In |
-| 780 | iptv | `iptv/iptv/iptv_tv_focus.dart` | UI Panel | In |
+| 780 | iptv | `iptv/iptv_tv_focus.dart` | UI Panel | In |
 | 771 | discover | `discover/discover_screen.dart` | Orchestrator | Out |
 | 763 | my_list | `my_list/lists_screen.dart` | Sub-hub | In |
 | 721 | arabic | `arabic/arabic_screen.dart` | Orchestrator | Out |
@@ -202,15 +202,15 @@ Paths relative to `apps/forja/lib/features/`.
 | 598 | anime | `anime/anime_discover_screen.dart` | Sub-hub | In |
 | 569 | comics | `comics/comics_screen.dart` | Orchestrator | Out |
 | 532 | comics | `comics/comic_reader_screen.dart` | Player | Out |
-| 526 | iptv | `iptv/iptv/channel_guide/iptv_guide_epg.dart` | UI Panel | In |
-| 521 | iptv | `iptv/iptv/channel_guide/iptv_channel_search_overlay.dart` | UI Panel | In |
+| 526 | iptv | `iptv/channel_guide/iptv_guide_epg.dart` | UI Panel | In |
+| 521 | iptv | `iptv/channel_guide/iptv_channel_search_overlay.dart` | UI Panel | In |
 | 503 | shared | `shared/extractors/providers/kisskh/kisskh_extractor.dart` | Data/Service | In |
 | 498 | manga | `manga/manga_details_screen.dart` | Details | Out |
 | 486 | asian_drama | `asian_drama/asian_drama_player_screen.dart` | Player | In |
 | 482 | arabic | `arabic/arabic_details_screen.dart` | Details | Out |
 | 479 | comics | `comics/catalog/comics_service.dart` | Data/Service | Out |
 | 478 | anime | `anime/anime_details_screen.dart` | Details | In |
-| 458 | iptv | `iptv/iptv/data/hardcoded_channels.dart` | Data/Service | In |
+| 458 | iptv | `iptv/data/hardcoded_channels.dart` | Data/Service | In |
 | 453 | manga | `manga/catalog/manga_service.dart` | Data/Service | Out |
 | 435 | audiobooks | `audiobooks/audiobook_downloads_screen.dart` | Sub-hub | Out |
 | 416 | asian_drama | `asian_drama/asian_drama_details_screen.dart` | Details | In |
@@ -225,27 +225,27 @@ Paths relative to `apps/forja/lib/features/`.
 | 307 | anime | `anime/catalog/hentaini_extractor.dart` | Data/Service | In |
 | 288 | audiobooks | `audiobooks/catalog/audiobook_scrapers.dart` | Data/Service | Out |
 | 285 | anime_arabic | `anime_arabic/anime_arabic_search_screen.dart` | Sub-hub | Out |
-| 265 | iptv | `iptv/iptv/data/iptv_portal_share.dart` | Data/Service | In |
-| 257 | iptv | `iptv/iptv/data/storage.dart` | Data/Service | In |
+| 265 | iptv | `iptv/data/iptv_portal_share.dart` | Data/Service | In |
+| 257 | iptv | `iptv/data/storage.dart` | Data/Service | In |
 | 245 | books | `books/catalog/books_service.dart` | Data/Service | Out |
-| 242 | iptv | `iptv/iptv/channel_guide/iptv_player_stats_panel.dart` | UI Panel | In |
+| 242 | iptv | `iptv/channel_guide/iptv_player_stats_panel.dart` | UI Panel | In |
 | 222 | settings | `settings/widgets/provider_priority_table.dart` | UI Panel | In |
 | 215 | settings | `settings/webstreamr_settings_screen.dart` | Sub-hub | In |
 | 206 | anime | `anime/catalog/animerealms_extractor.dart` | Data/Service | In |
 | 194 | anime | `anime/catalog/miruro_pipe_session.dart` | Data/Service | In |
 | 193 | arabic | `arabic/arabic_player_screen.dart` | Player | Out |
 | 189 | comics | `comics/catalog/readcomicsonline_scraper.dart` | Data/Service | Out |
-| 169 | iptv | `iptv/iptv/channel_guide/iptv_channel_guide.dart` | UI Panel | In |
-| 148 | iptv | `iptv/iptv/data/models.dart` | Data/Service | In |
+| 169 | iptv | `iptv/channel_guide/iptv_channel_guide.dart` | UI Panel | In |
+| 148 | iptv | `iptv/data/models.dart` | Data/Service | In |
 | 102 | anime | `anime/catalog/anime_stream_providers.dart` | Data/Service | In |
-| 92 | iptv | `iptv/iptv/m3u/m3u_models.dart` | Data/Service | In |
-| 80 | iptv | `iptv/iptv/m3u/m3u_store.dart` | Data/Service | In |
-| 71 | iptv | `iptv/iptv/iptv_shell_style.dart` | Support | In |
+| 92 | iptv | `iptv/m3u/m3u_models.dart` | Data/Service | In |
+| 80 | iptv | `iptv/m3u/m3u_store.dart` | Data/Service | In |
+| 71 | iptv | `iptv/iptv_shell_style.dart` | Support | In |
 | 57 | asian_drama | `asian_drama/asian_drama_search_screen.dart` | Sub-hub | In |
 | 56 | anime | `anime/anime_search_screen.dart` | Sub-hub | In |
-| 43 | iptv | `iptv/iptv/data/pastesh_decryptor.dart` | Data/Service | In |
+| 43 | iptv | `iptv/data/pastesh_decryptor.dart` | Data/Service | In |
 | 42 | home | `home/home_genre_categories.dart` | Support | In |
-| 22 | iptv | `iptv/iptv/m3u/m3u_parser.dart` | Data/Service | In |
+| 22 | iptv | `iptv/m3u/m3u_parser.dart` | Data/Service | In |
 | 19 | anime | `anime/catalog/anime_provider_map.dart` | Support | In |
 
 **Role legend:** Orchestrator = shell tab / main hub · Sub-hub = discover/explore within feature · Details · Player · Data/Service · UI Panel · Support
@@ -378,7 +378,7 @@ features/settings/
 ### IPTV follow-on (not in RFC-019)
 
 ```
-features/iptv/iptv/
+features/iptv/
   screens/iptv_pt_screen.dart       # 152 — routing only (Phase E done)
   screens/iptv_pt_catalog_shell.dart
   screens/iptv_pt_browser_*.dart      # view, sidebar, streams

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/features/iptv/iptv/data/storage.dart';
+import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:rust/rust.dart';
 

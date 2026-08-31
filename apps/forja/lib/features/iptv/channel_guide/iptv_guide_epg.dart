@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
+import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/shared/widgets/hero_overview_text.dart';
 
-import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
-import 'package:forja/features/iptv/iptv/data/models.dart';
+import 'package:forja/features/iptv/data/iptv_network.dart';
+import 'package:forja/features/iptv/data/models.dart';
 
 /// Memoized short-EPG fetches for the in-player channel guide.
 class IptvGuideEpgCache {

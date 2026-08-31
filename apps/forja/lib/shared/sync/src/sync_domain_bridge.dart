@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/iptv/iptv/data/iptv_catalog_disk_store.dart';
-import 'package:forja/features/iptv/iptv/data/models.dart';
-import 'package:forja/features/iptv/iptv/data/storage.dart';
+import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
+import 'package:forja/features/iptv/data/models.dart';
+import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/sync/src/account_features.dart';

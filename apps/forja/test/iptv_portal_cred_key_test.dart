@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/iptv/iptv/data/models.dart';
+import 'package:forja/features/iptv/data/models.dart';
 
 void main() {
   group('IptvPortal.credKey', () {

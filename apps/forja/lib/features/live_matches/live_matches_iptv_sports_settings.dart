@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:forja/features/iptv/iptv/data/models.dart';
-import 'package:forja/features/iptv/iptv/data/storage.dart';
+import 'package:forja/features/iptv/data/models.dart';
+import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/live_matches/live_matches_sport_filter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

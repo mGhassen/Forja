@@ -155,14 +155,14 @@ Migrate Forja’s Flutter host from ad-hoc `StatefulWidget` + `setState` / `Valu
 | Search | `lib/features/search/providers/search_providers.dart` |
 | Anime | `lib/features/anime/providers/anime_catalog_provider.dart` |
 | Asian Drama | `lib/features/asian_drama/providers/asian_drama_providers.dart` |
-| IPTV | `lib/features/iptv/iptv/providers/iptv_controller_provider.dart` |
+| IPTV | `lib/features/iptv/providers/iptv_controller_provider.dart` |
 | Live Matches | `lib/features/live_matches/providers/live_matches_providers.dart` |
 | My List | `lib/features/my_list/providers/my_list_providers.dart` |
 | Settings visibility | `lib/features/settings/providers/settings_visibility_provider.dart` |
 | Settings panels (playback, debrid, webstreamr, nav, trackers, …) | `lib/features/settings/providers/settings_panel_providers.dart` |
 | Stremio addons | `lib/features/settings/providers/stremio_addons_provider.dart` |
 | Sync profiles + TV device link | `lib/shared/sync/providers/sync_profiles_provider.dart` |
-| IPTV player boot / EPG / M3U | `lib/features/iptv/iptv/providers/iptv_player_providers.dart` |
+| IPTV player boot / EPG / M3U | `lib/features/iptv/providers/iptv_player_providers.dart` |
 | Player auto + subtitle prefs | `lib/shared/player/providers/player_prefs_providers.dart` |
 | Home Trakt / Stremio rails | `lib/features/home/providers/home_tracker_providers.dart` |
 | External lists (Trakt / MDBlist) | `lib/features/my_list/providers/external_lists_providers.dart` |

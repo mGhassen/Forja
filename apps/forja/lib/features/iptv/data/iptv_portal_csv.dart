@@ -1,4 +1,4 @@
-import 'package:forja/features/iptv/iptv/data/models.dart';
+import 'package:forja/features/iptv/data/models.dart';
 
 /// CSV columns - keep in sync with `apps/web/src/lib/iptv-portal-csv.ts`.
 const iptvPortalCsvHeaders = <String>[

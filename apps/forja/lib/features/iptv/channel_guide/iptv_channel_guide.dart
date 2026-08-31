@@ -1,5 +1,5 @@
-import 'package:forja/features/iptv/iptv/data/models.dart';
-import 'package:forja/features/iptv/iptv/m3u/m3u_models.dart';
+import 'package:forja/features/iptv/data/models.dart';
+import 'package:forja/features/iptv/m3u/m3u_models.dart';
 
 class IptvGuideGroup {
   final String id;

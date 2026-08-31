@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/iptv/iptv/data/iptv_network.dart';
+import 'package:forja/features/iptv/data/iptv_network.dart';
 
 void main() {
   test('parseRedditCatalogCursor starts at sub 0', () {

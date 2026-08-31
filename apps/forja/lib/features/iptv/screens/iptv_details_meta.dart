@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/iptv/iptv/iptv_catalog_recs.dart';
+import 'package:forja/features/iptv/iptv_catalog_recs.dart';
 import 'package:forja/shared/widgets/hero/hero_meta_line.dart';
 import 'package:forja/shared/widgets/hero/hero_utils.dart';
 import 'package:forja/shared/widgets/media_details/media_details_recommendations_section.dart';

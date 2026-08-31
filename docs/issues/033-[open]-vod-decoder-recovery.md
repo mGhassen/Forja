@@ -48,4 +48,4 @@ VOD player ignored video decoder init failures and treated all decoder errors as
 ## Related
 
 - [RFC-030](../rfc/030-[open]-playback-selection-engine.md)
-- [iptv_pt_player_screen.dart](../../apps/forja/lib/features/iptv/iptv/screens/iptv_pt_player_screen.dart)
+- [iptv_pt_player_screen.dart](../../apps/forja/lib/features/iptv/screens/iptv_pt_player_screen.dart)

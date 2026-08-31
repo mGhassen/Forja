@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:forja/features/iptv/iptv/iptv_title_clean.dart';
+import 'package:forja/features/iptv/iptv_title_clean.dart';
 import 'package:rust/rust.dart';
 
 /// TMDB match + rich details for IPTV movie/series details pages.

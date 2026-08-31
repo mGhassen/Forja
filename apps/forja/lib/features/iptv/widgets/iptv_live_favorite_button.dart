@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
+import 'package:forja/features/iptv/controller/iptv_controller.dart';
 
 /// Live catalog favorite star - hidden until channel hover (or already favorited).
 /// No splash/background; icon heartbeats (scale) while the pointer is on it.

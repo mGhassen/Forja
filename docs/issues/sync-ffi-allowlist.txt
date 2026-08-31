@@ -5,7 +5,7 @@
 # Format: repo-relative path
 
 # IPTV — decodeXtreamText only (tiny base64; long HTTP via isolate_runner)
-apps/forja/lib/features/iptv/iptv/data/iptv_network.dart
+apps/forja/lib/features/iptv/data/iptv_network.dart
 
 # Instant / tiny FFI
 apps/forja/lib/features/settings/settings_screen.dart

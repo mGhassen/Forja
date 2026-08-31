@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:forja/features/iptv/iptv/controller/iptv_controller.dart';
-import 'package:forja/features/iptv/iptv/data/models.dart';
-import 'package:forja/features/iptv/iptv/iptv_shell_style.dart';
+import 'package:forja/features/iptv/controller/iptv_controller.dart';
+import 'package:forja/features/iptv/data/models.dart';
+import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';

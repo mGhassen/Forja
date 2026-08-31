@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/iptv/iptv/data/models.dart';
-import 'package:forja/features/iptv/iptv/screens/iptv_pt_player_screen.dart';
+import 'package:forja/features/iptv/data/models.dart';
+import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 
 void main() {
   group('iptvExoUrlLooksLive', () {

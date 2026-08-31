@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/iptv/iptv/data/models.dart';
-import 'package:forja/features/iptv/iptv/iptv_catalog_recs.dart';
+import 'package:forja/features/iptv/data/models.dart';
+import 'package:forja/features/iptv/iptv_catalog_recs.dart';
 import 'package:rust/rust.dart';
 
 Movie _movie({
