@@ -204,6 +204,35 @@ void main() {
     );
   });
 
+  test('remountPlaybackResumed rejects peakstorm stagnant PTS at target', () {
+    const url = 'https://moon.peakstorm.top/vd/x/master.m3u8';
+    const target = Duration(seconds: 587);
+    final state = PlayerState().copyWith(
+      playing: true,
+      buffering: false,
+      position: target,
+      videoParams: const VideoParams(w: 1920, h: 960),
+    );
+    expect(
+      remountPlaybackResumed(
+        state,
+        target,
+        streamUrl: url,
+        previousPosition: target,
+      ),
+      isFalse,
+    );
+    expect(
+      remountPlaybackResumed(
+        state,
+        target,
+        streamUrl: url,
+        previousPosition: const Duration(seconds: 585),
+      ),
+      isTrue,
+    );
+  });
+
   test('clearPendingSeek cancels armed remount', () async {
     final remounts = <Duration>[];
     final w = PostSeekStallWatchdog(

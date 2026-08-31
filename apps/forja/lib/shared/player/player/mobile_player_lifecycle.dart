@@ -504,11 +504,23 @@ mixin _MobilePlayerLifecycle
       if (idx >= 0) _s._currentFallbackSourceIndex = idx;
       return;
     }
+    final pinned = _s._currentFallbackSourceIndex;
+    if (pinned >= 0 &&
+        pinned < sources.length &&
+        streamSourceMatchesPlaying(
+          sources[pinned],
+          playUrl: _s._currentUrl,
+          catalogUrl: _s._currentPlayingCatalogUrl,
+          playingRowKey: _s._catalogStreamRowKey,
+        )) {
+      return;
+    }
     final idx = sources.indexWhere(
       (s) => streamSourceMatchesPlaying(
         s,
         playUrl: _s._currentUrl,
         catalogUrl: _s._currentPlayingCatalogUrl,
+        playingRowKey: _s._catalogStreamRowKey,
       ),
     );
     if (idx >= 0) {

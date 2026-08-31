@@ -22,7 +22,8 @@ export 'package:forja/shared/playback/playback_stream_guards.dart'
         kPeakstormRemountSeekMinDelta,
         playbackStreamIdentityUrl,
         playbackUrlsEquivalent,
-        streamSourceMatchesPlaying;
+        streamSourceMatchesPlaying,
+        streamSourceProgressKey;
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/playback/stream_open_pipeline.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -624,19 +625,14 @@ Future<String> openPlayerStream(
       (openUrl.startsWith('http://') || openUrl.startsWith('https://')) &&
       !isLocalTorrentStreamUrl(openUrl) &&
       !isLocalLoopbackPlayUrl(openUrl);
-  final resumeAt =
-      startAt != null && startAt > Duration.zero ? startAt : null;
+  final resumeAt = startAt != null && startAt > Duration.zero ? startAt : null;
   if (resumeAt != null) await _mpvStartAt(player, resumeAt);
   // mwVault proxy auth lives in the URL query — do not duplicate via httpHeaders.
   await player.open(
     Media(openUrl, httpHeaders: isRemoteHttp && !mwVaultProxy ? hdrs : null),
   );
   if (resumeAt != null) {
-    await _waitForMpvStartApplied(
-      player,
-      resumeAt,
-      streamUrl: openUrl,
-    );
+    await _waitForMpvStartApplied(player, resumeAt, streamUrl: openUrl);
     await _mpvStartAt(player, null);
   }
   return openUrl;
@@ -1471,24 +1467,92 @@ bool remountPlaybackResumed(
   PlayerState state,
   Duration target, {
   String? streamUrl,
+  Duration? previousPosition,
 }) {
   if (!remountPlaybackLooksLive(
-        playing: state.playing,
-        buffering: state.buffering,
-        position: state.position,
-        target: target,
-      )) {
+    playing: state.playing,
+    buffering: state.buffering,
+    position: state.position,
+    target: target,
+  )) {
     return false;
   }
   if (!hasDecodedVideo(state)) return false;
   final peakstorm =
       streamUrl != null && peakstormFmp4HlsAvoidHardSeek(streamUrl);
   if (peakstorm) {
-    // fMP4 peakstorm: PTS at target while buffering = hung demux (black screen).
-    return !state.buffering;
+    if (state.buffering) return false;
+    if (previousPosition != null &&
+        state.position <= previousPosition + const Duration(milliseconds: 300)) {
+      return false;
+    }
+    return true;
   }
   if (state.buffering && state.bufferingPercentage <= 0) return false;
   return true;
+}
+
+/// Peakstorm fMP4 HLS — mpv `start` can report target PTS without advancing.
+Future<bool> peakstormResumeVerified(
+  Player player,
+  Duration target, {
+  required String streamUrl,
+  Duration sampleGap = const Duration(milliseconds: 350),
+  int samples = 3,
+}) async {
+  if (!peakstormFmp4HlsAvoidHardSeek(streamUrl) || target.inSeconds <= 0) {
+    return true;
+  }
+  Duration? previous;
+  var advances = 0;
+  for (var i = 0; i < samples; i++) {
+    if (i > 0) await Future<void>.delayed(sampleGap);
+    final state = player.state;
+    if (!remountPlaybackResumed(
+      state,
+      target,
+      streamUrl: streamUrl,
+      previousPosition: previous,
+    )) {
+      return false;
+    }
+    if (previous != null &&
+        state.position > previous + const Duration(milliseconds: 250)) {
+      advances++;
+    }
+    previous = state.position;
+  }
+  return advances >= 1;
+}
+
+/// After open with mpv `start`, remount once when peakstorm resume is fake PTS.
+Future<void> ensurePeakstormResumeAfterOpen(
+  Player player, {
+  required Duration target,
+  required String streamUrl,
+  Map<String, String>? headers,
+  String? providerId,
+}) async {
+  if (!peakstormFmp4HlsAvoidHardSeek(streamUrl) || target.inSeconds <= 0) {
+    return;
+  }
+  if (await peakstormResumeVerified(
+    player,
+    target,
+    streamUrl: streamUrl,
+  )) {
+    return;
+  }
+  debugPrint(
+    '[Player] Peakstorm open resume missed @${target.inSeconds}s — remount',
+  );
+  await remountPlayerStreamAtPosition(
+    player,
+    url: streamUrl,
+    headers: headers,
+    providerId: providerId,
+    seekTarget: target,
+  );
 }
 
 /// Post-seek remount wait — deep VOD HLS needs longer than 15s to refill.
@@ -1568,15 +1632,28 @@ Future<void> _waitForMpvStartApplied(
   }
   final deadline = DateTime.now().add(remountResumeTimeoutForSeek(startAt));
   final peakstorm = peakstormFmp4HlsAvoidHardSeek(streamUrl);
+  if (peakstorm) {
+    while (DateTime.now().isBefore(deadline)) {
+      if (await peakstormResumeVerified(
+        player,
+        startAt,
+        streamUrl: streamUrl,
+        samples: 2,
+      )) {
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    return;
+  }
   while (DateTime.now().isBefore(deadline)) {
     final pos = player.state.position;
     if ((pos - startAt).abs() <= const Duration(seconds: 8)) {
-      if (!peakstorm ||
-          remountPlaybackResumed(
-            player.state,
-            startAt,
-            streamUrl: streamUrl,
-          )) {
+      if (remountPlaybackResumed(
+        player.state,
+        startAt,
+        streamUrl: streamUrl,
+      )) {
         return;
       }
     }
@@ -1627,14 +1704,28 @@ Future<bool> remountPlayerStreamAtPosition(
   }
 
   final deadline = DateTime.now().add(timeout);
+  final peakstorm = peakstormFmp4HlsAvoidHardSeek(openUrl);
   var stableChecks = 0;
+  Duration? lastPos;
   while (DateTime.now().isBefore(deadline)) {
+    final state = player.state;
+    final pos = state.position;
+    final previous = lastPos;
+    lastPos = pos;
     if (remountPlaybackResumed(
-      player.state,
+      state,
       seekTarget,
       streamUrl: openUrl,
+      previousPosition: peakstorm ? previous : null,
     )) {
-      stableChecks++;
+      if (peakstorm) {
+        if (previous != null &&
+            pos > previous + const Duration(milliseconds: 300)) {
+          stableChecks++;
+        }
+      } else {
+        stableChecks++;
+      }
       if (stableChecks >= 3) return true;
     } else {
       stableChecks = 0;

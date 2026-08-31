@@ -352,6 +352,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
         setState(() {
           _s._currentUrl = openUrl;
           _s._currentPlayingCatalogUrl = catalogIdentity ?? source.url;
+          _s._catalogStreamRowKey = streamSourceProgressKey(source);
           _s._markPlaybackConfirmed(true);
         });
         if (_s._durationNotifier.value <= Duration.zero &&
@@ -1092,8 +1093,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
     bool allowFallbackInit = true,
   }) async {
     if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return false;
-    final url =
-        _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
+    final url = _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
     if (url == null ||
         isLocalTorrentStreamUrl(url) ||
         isLocalLoopbackPlayUrl(url)) {
@@ -1160,8 +1160,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
   /// Peakstorm HLS often dies while backgrounded — `play()` alone leaves BUFFERING.
   Future<void> _recoverPlaybackAfterForeground() async {
     if (_s._disposed || !_s._playbackConfirmed) return;
-    final url =
-        _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
+    final url = _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
     if (url == null ||
         isLocalTorrentStreamUrl(url) ||
         isLocalLoopbackPlayUrl(url)) {
@@ -1677,9 +1676,7 @@ mixin _MobilePlayerPlayback on ConsumerState<MobilePlayerScreen> {
 
     _s._tracksSub = _s._player.stream.tracks.listen((tracks) {
       if (_s._disposed) return;
-      final hasAudio = tracks.audio.any(
-        (t) => t.id != 'no' && t.id != 'auto',
-      );
+      final hasAudio = tracks.audio.any((t) => t.id != 'no' && t.id != 'auto');
       if (!_s._autoTracksAppliedForSource &&
           hasAudio &&
           !_s._userPickedAudioThisSource) {

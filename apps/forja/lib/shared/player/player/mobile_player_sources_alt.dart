@@ -18,6 +18,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       currentMagnet: _s._activeMagnet ?? widget.magnetLink,
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
+      currentPlayingRowKey: _s._catalogStreamRowKey,
       preferredKind: _s._catalogSourceKind,
       currentAddonBaseUrl: catalogAddonBaseForPlaying(
         catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
@@ -60,6 +61,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     final statusId = 'source-stremio-${stream.hashCode}';
     final pick = catalogPanelSelectionFromStream(stream);
     _s._markPlaybackConfirmed(false);
+    _s._catalogStreamRowKey = catalogStreamRowProgressKey(stream);
     setState(() {
       _s._hasError = false;
       if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {

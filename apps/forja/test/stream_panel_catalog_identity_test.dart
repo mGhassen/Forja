@@ -116,7 +116,41 @@ void main() {
       );
     });
 
-    test('loose playing match would collapse all qualities', () {
+    test('does not collapse Videasy master quality rows without row key', () {
+      const master = 'https://moon.peakstorm.top/vd/x/master.m3u8';
+      expect(
+        catalogStreamRowMatchesPlaying(
+          {
+            'url': master,
+            '_enginePluginId': 'videasy',
+            'quality': '720p',
+            'name': 'Videasy · Yoru',
+          },
+          playUrl: master,
+          catalogUrl: master,
+          playingEnginePluginId: 'videasy',
+        ),
+        isFalse,
+      );
+      expect(
+        catalogStreamRowMatchesPlaying(
+          {
+            'url': master,
+            '_enginePluginId': 'videasy',
+            'quality': '1080p',
+            'name': 'Videasy · Yoru',
+          },
+          playUrl: master,
+          catalogUrl: master,
+          playingEnginePluginId: 'videasy',
+          playingRowKey:
+              'https://moon.peakstorm.top/vd/x/master.m3u8|1080p|videasy · yoru',
+        ),
+        isTrue,
+      );
+    });
+
+    test('distinct demux play URLs still match their catalog row', () {
       const saved =
           'https://moon.peakstorm.top/vd/x/index-s1080p-v1-a1.m3u8';
       const row720 =
@@ -128,7 +162,33 @@ void main() {
           catalogUrl: saved,
           playingEnginePluginId: 'videasy',
         ),
-        isTrue,
+        isFalse,
+      );
+    });
+  });
+
+  group('streamSourceProgressKey', () {
+    test('disambiguates shared master URL by title', () {
+      const master = 'https://moon.peakstorm.top/vd/x/master.m3u8';
+      final row1080 = StreamSource(
+        url: master,
+        title: 'Yoru 1080p',
+        type: 'hls',
+      );
+      final row720 = StreamSource(
+        url: master,
+        title: 'Yoru 720p',
+        type: 'hls',
+      );
+      expect(streamSourceProgressKey(row1080), isNot(row720));
+      expect(
+        streamSourceMatchesPlaying(
+          row720,
+          playUrl: master,
+          catalogUrl: master,
+          playingRowKey: streamSourceProgressKey(row1080),
+        ),
+        isFalse,
       );
     });
   });

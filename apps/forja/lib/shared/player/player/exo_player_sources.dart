@@ -431,6 +431,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
           durableStreamCatalogUrl(
             playUrl: _s._currentUrl ?? widget.mediaPath,
           ),
+      currentPlayingRowKey: _s._catalogStreamRowKey,
       preferredKind: _s._catalogSourceKind,
       currentAddonBaseUrl: catalogAddonBaseForPlaying(
         catalogAddonBaseUrl: _s._catalogAddonBaseUrl,
@@ -467,6 +468,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     final switchGen = ++_s._fallbackGen;
     _s._opening = true;
     final pick = catalogPanelSelectionFromStream(stream);
+    _s._catalogStreamRowKey = catalogStreamRowProgressKey(stream);
     setState(() {
       _s._hasError = false;
       if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {

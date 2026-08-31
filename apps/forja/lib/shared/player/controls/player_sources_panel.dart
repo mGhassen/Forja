@@ -61,6 +61,7 @@ class PlayerSourcesPanel {
     String? currentMagnet,
     String? currentStreamUrl,
     String? currentPlayingCatalogUrl,
+    String? currentPlayingRowKey,
 
     /// `torrents` | `stremio` | `nuvio` - opens on the playing source kind.
     String? preferredKind,
@@ -100,6 +101,7 @@ class PlayerSourcesPanel {
           currentMagnet: currentMagnet,
           currentStreamUrl: currentStreamUrl,
           currentPlayingCatalogUrl: currentPlayingCatalogUrl,
+          currentPlayingRowKey: currentPlayingRowKey,
           preferredKind: preferredKind,
           currentAddonBaseUrl: currentAddonBaseUrl,
           catalogOpen: catalogOpen,
@@ -131,6 +133,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.currentMagnet,
     this.currentStreamUrl,
     this.currentPlayingCatalogUrl,
+    this.currentPlayingRowKey,
     this.preferredKind,
     this.currentAddonBaseUrl,
     this.catalogOpen,
@@ -147,6 +150,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final String? currentMagnet;
   final String? currentStreamUrl;
   final String? currentPlayingCatalogUrl;
+  final String? currentPlayingRowKey;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
   final CatalogOpen? catalogOpen;
@@ -195,6 +199,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           currentMagnet: widget.currentMagnet,
           currentStreamUrl: widget.currentStreamUrl,
           currentPlayingCatalogUrl: widget.currentPlayingCatalogUrl,
+          currentPlayingRowKey: widget.currentPlayingRowKey,
           preferredKind: widget.preferredKind,
           currentAddonBaseUrl: widget.currentAddonBaseUrl,
           catalogOpen: widget.catalogOpen,
@@ -222,6 +227,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.currentMagnet,
     this.currentStreamUrl,
     this.currentPlayingCatalogUrl,
+    this.currentPlayingRowKey,
     this.preferredKind,
     this.currentAddonBaseUrl,
     this.catalogOpen,
@@ -237,6 +243,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final String? currentMagnet;
   final String? currentStreamUrl;
   final String? currentPlayingCatalogUrl;
+  final String? currentPlayingRowKey;
   final String? preferredKind;
   final String? currentAddonBaseUrl;
   final CatalogOpen? catalogOpen;
@@ -596,6 +603,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         playUrl: playUrl,
         catalogUrl: widget.currentPlayingCatalogUrl,
         playingEnginePluginId: _playingEnginePluginId,
+        playingRowKey: widget.currentPlayingRowKey,
       )) {
         return true;
       }
@@ -630,6 +638,27 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     List<Map<String, dynamic>> nuvio = const [],
     List<Map<String, dynamic>> engine = const [],
   }) {
+    final rowKey = widget.currentPlayingRowKey?.trim() ?? '';
+    if (rowKey.isNotEmpty) {
+      final stremioOffset = torrents.length;
+      final nuvioOffset = stremioOffset + stremio.length;
+      final engineOffset = nuvioOffset + nuvio.length;
+      for (var i = 0; i < stremio.length; i++) {
+        if (catalogStreamRowProgressKey(stremio[i]) == rowKey) {
+          return stremioOffset + i;
+        }
+      }
+      for (var i = 0; i < nuvio.length; i++) {
+        if (catalogStreamRowProgressKey(nuvio[i]) == rowKey) {
+          return nuvioOffset + i;
+        }
+      }
+      for (var i = 0; i < engine.length; i++) {
+        if (catalogStreamRowProgressKey(engine[i]) == rowKey) {
+          return engineOffset + i;
+        }
+      }
+    }
     for (var i = 0; i < torrents.length; i++) {
       if (_isCurrentMagnet(torrents[i].magnet)) return i;
     }

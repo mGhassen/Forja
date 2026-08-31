@@ -453,6 +453,14 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     final url = _hlsMasterUrl ?? _currentQualityUrl ?? _currentUrl;
     final current = _positionNotifier.value;
     if (url != null && peakstormHlsNeedsRemountSeek(url, current, position)) {
+      if (_isInitPlaybackRunning ||
+          shouldSkipPostSeekStallArm(
+            target: position,
+            resumeStartPosition: widget.startPosition,
+            playbackConfirmedAt: _playbackConfirmedAt,
+          )) {
+        return;
+      }
       final dur = _durationNotifier.value;
       var target = position;
       if (target < Duration.zero) target = Duration.zero;

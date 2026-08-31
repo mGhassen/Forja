@@ -204,6 +204,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   String? _currentProvider;
   String? _currentUrl;
   String? _currentPlayingCatalogUrl;
+  String? _catalogStreamRowKey;
   String? _activeMagnet;
   String? _catalogSourceKind;
   String? _catalogAddonBaseUrl;

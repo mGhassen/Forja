@@ -344,6 +344,7 @@ bool catalogStreamRowMatchesPlaying(
   String? playUrl,
   String? catalogUrl,
   String? playingEnginePluginId,
+  String? playingRowKey,
 }) {
   final play = playUrl?.trim() ?? '';
   final catalog = catalogUrl?.trim() ?? '';
@@ -363,7 +364,44 @@ bool catalogStreamRowMatchesPlaying(
   }
   if (!urlMatch) return false;
 
-  return _catalogStreamRowPluginScope(stream, playingEnginePluginId);
+  if (!_catalogStreamRowPluginScope(stream, playingEnginePluginId)) {
+    return false;
+  }
+
+  final key = playingRowKey?.trim() ?? '';
+  if (key.isNotEmpty) {
+    return key == catalogStreamRowProgressKey(stream);
+  }
+
+  final rowIdentity = playbackStreamIdentityUrl(url);
+  final playIdentity = playbackStreamIdentityUrl(
+    play.isNotEmpty ? play : catalog,
+  );
+  if (rowIdentity.isNotEmpty &&
+      playIdentity.isNotEmpty &&
+      rowIdentity == playIdentity) {
+    if (_catalogUrlSharesMasterPlaylist(rowIdentity)) return false;
+    return true;
+  }
+
+  // Child demux play URL ↔ master catalog row (preferHlsMaster normalization).
+  if (_catalogUrlSharesMasterPlaylist(rowIdentity) &&
+      (hit(url, play) ||
+          hit(url, catalog) ||
+          hit(url, playTarget) ||
+          hit(urlTarget, catalog) ||
+          hit(urlTarget, playTarget))) {
+    return true;
+  }
+
+  return false;
+}
+
+/// Provider [StreamSource] row identity when several qualities share one URL.
+String streamSourceProgressKey(StreamSource source) {
+  final url = playbackStreamIdentityUrl(source.url);
+  final title = source.title.trim().toLowerCase();
+  return '$url|$title';
 }
 
 /// Whether [source] is the row currently playing (catalog or play URL).
@@ -371,6 +409,7 @@ bool streamSourceMatchesPlaying(
   StreamSource source, {
   String? playUrl,
   String? catalogUrl,
+  String? playingRowKey,
 }) {
   final play = playUrl?.trim() ?? '';
   final catalog = catalogUrl?.trim() ?? '';
@@ -381,12 +420,47 @@ bool streamSourceMatchesPlaying(
 
   bool hit(String a, String b) => _urlsMatchForPlayback(a, b);
 
+  var urlMatch = false;
   // Direct / catalog identity.
-  if (hit(url, play) || hit(url, catalog)) return true;
-  if (hit(sourceCatalog, play) || hit(sourceCatalog, catalog)) return true;
-  // Proxy play URL ↔ catalog row (PNG-strip / hls-proxy).
-  if (hit(url, playTarget) || hit(sourceCatalog, playTarget)) return true;
-  if (hit(urlTarget, catalog) || hit(urlTarget, playTarget)) return true;
+  if (hit(url, play) || hit(url, catalog)) {
+    urlMatch = true;
+  } else if (hit(sourceCatalog, play) || hit(sourceCatalog, catalog)) {
+    urlMatch = true;
+  } else if (hit(url, playTarget) || hit(sourceCatalog, playTarget)) {
+    urlMatch = true;
+  } else if (hit(urlTarget, catalog) || hit(urlTarget, playTarget)) {
+    urlMatch = true;
+  }
+  if (!urlMatch) return false;
+
+  final key = playingRowKey?.trim() ?? '';
+  if (key.isNotEmpty) {
+    return key == streamSourceProgressKey(source);
+  }
+
+  final rowIdentity = playbackStreamIdentityUrl(url);
+  final playIdentity = playbackStreamIdentityUrl(
+    play.isNotEmpty ? play : catalog,
+  );
+  if (rowIdentity.isNotEmpty &&
+      playIdentity.isNotEmpty &&
+      rowIdentity == playIdentity) {
+    if (_catalogUrlSharesMasterPlaylist(rowIdentity)) return false;
+    return true;
+  }
+
+  if (_catalogUrlSharesMasterPlaylist(rowIdentity) &&
+      (hit(url, play) ||
+          hit(url, catalog) ||
+          hit(sourceCatalog, play) ||
+          hit(sourceCatalog, catalog) ||
+          hit(url, playTarget) ||
+          hit(sourceCatalog, playTarget) ||
+          hit(urlTarget, catalog) ||
+          hit(urlTarget, playTarget))) {
+    return true;
+  }
+
   return false;
 }
 

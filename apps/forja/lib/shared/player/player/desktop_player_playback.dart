@@ -351,6 +351,7 @@ mixin _DesktopPlayerPlayback
         setState(() {
           _s._currentUrl = openUrl;
           _s._currentPlayingCatalogUrl = catalogIdentity ?? source.url;
+          _s._catalogStreamRowKey = streamSourceProgressKey(source);
           _s._markPlaybackConfirmed(true);
         });
         // HLS duration often lands after confirm - soft-wait so the seek bar
@@ -1083,8 +1084,7 @@ mixin _DesktopPlayerPlayback
     bool allowFallbackInit = true,
   }) async {
     if (_s._disposed || !mounted || _s._isInitPlaybackRunning) return false;
-    final url =
-        _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
+    final url = _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
     if (url == null ||
         isLocalTorrentStreamUrl(url) ||
         isLocalLoopbackPlayUrl(url)) {
@@ -1151,8 +1151,7 @@ mixin _DesktopPlayerPlayback
   /// Peakstorm HLS often dies while backgrounded — `play()` alone leaves BUFFERING.
   Future<void> _recoverPlaybackAfterForeground() async {
     if (_s._disposed || !_s._playbackConfirmed) return;
-    final url =
-        _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
+    final url = _s._hlsMasterUrl ?? _s._currentQualityUrl ?? _s._currentUrl;
     if (url == null ||
         isLocalTorrentStreamUrl(url) ||
         isLocalLoopbackPlayUrl(url)) {
@@ -1669,9 +1668,7 @@ mixin _DesktopPlayerPlayback
 
     _s._tracksSub = _s._player.stream.tracks.listen((tracks) {
       if (_s._disposed) return;
-      final hasAudio = tracks.audio.any(
-        (t) => t.id != 'no' && t.id != 'auto',
-      );
+      final hasAudio = tracks.audio.any((t) => t.id != 'no' && t.id != 'auto');
       if (!_s._autoTracksAppliedForSource &&
           hasAudio &&
           !_s._userPickedAudioThisSource) {

@@ -191,12 +191,14 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       final source = sources[i];
       final isCurrent = _s._currentProvider == 'service111477'
           ? source.url == _s._current111477FileUrl
-          : streamSourceMatchesPlaying(
-                  source,
-                  playUrl: _s._currentUrl,
-                  catalogUrl: _s._currentPlayingCatalogUrl,
-                ) ||
-                (_s._playbackConfirmed && sources.length == 1);
+          : i == _s._currentFallbackSourceIndex ||
+              streamSourceMatchesPlaying(
+                source,
+                playUrl: _s._currentUrl,
+                catalogUrl: _s._currentPlayingCatalogUrl,
+                playingRowKey: _s._catalogStreamRowKey,
+              ) ||
+              (_s._playbackConfirmed && sources.length == 1);
       if (isCurrent && _s._playbackConfirmed) return PlayerSourceStatus.active;
       if (_s._checkingSourceIndices.contains(i)) {
         return PlayerSourceStatus.checking;
@@ -692,21 +694,19 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       }
     }
     var targetIndex = index;
-    if (_s._currentSources != null && _s._currentSources!.isNotEmpty) {
-      final byUrl = _s._currentSources!.indexWhere((s) => s.url == source.url);
-      if (byUrl >= 0) targetIndex = byUrl;
+    if (_s._currentSources != null &&
+        index >= 0 &&
+        index < _s._currentSources!.length) {
+      targetIndex = index;
+    } else if (_s._currentSources != null && _s._currentSources!.isNotEmpty) {
+      final urlOwners = <int>[];
+      for (var i = 0; i < _s._currentSources!.length; i++) {
+        if (_s._currentSources![i].url == source.url) urlOwners.add(i);
+      }
+      if (urlOwners.length == 1) targetIndex = urlOwners.first;
     }
 
-    final isCurrent = _s._currentProvider == 'service111477'
-        ? source.url == _s._current111477FileUrl
-        : streamSourceMatchesPlaying(
-            source,
-            playUrl: _s._currentUrl,
-            catalogUrl: _s._currentPlayingCatalogUrl,
-          );
-    // Same catalog URL under a different quality row must still switch.
-    final alreadyPlayingRow =
-        isCurrent && targetIndex == _s._currentFallbackSourceIndex;
+    final alreadyPlayingRow = targetIndex == _s._currentFallbackSourceIndex;
     if (alreadyPlayingRow && _s._sourcePinned && _s._playbackConfirmed) {
       return;
     }
@@ -867,6 +867,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
         setState(() {
           _s._currentUrl = openUrl;
           _s._currentPlayingCatalogUrl = source.url;
+          _s._catalogStreamRowKey = streamSourceProgressKey(source);
           _s._currentFallbackSourceIndex = targetIndex.clamp(
             0,
             (_s._currentSources?.length ?? 1) - 1,
