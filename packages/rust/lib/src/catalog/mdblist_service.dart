@@ -4,7 +4,7 @@ import '../forja_platform_secure_store.dart';
 import '../metadata_http.dart';
 
 /// MDBlist integration — API-key auth, ratings aggregation, list management.
-/// HTTP engine: `anime/mdblist` via `metadataRequest`. API key stays in host secure storage.
+/// HTTP engine: `media-metadata/mdblist` via `metadataRequest`. API key stays in host secure storage.
 class MdblistService {
   static final MdblistService _instance = MdblistService._internal();
   factory MdblistService() => _instance;

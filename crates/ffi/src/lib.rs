@@ -289,9 +289,14 @@ fn tmdb_get_json(resource_path: String, timeout_secs: u64) -> String {
     tmdb::get_json(&resource_path, timeout_secs)
 }
 
-fn anime_request_json(request_json: String) -> String {
+fn host_http_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    anime::request_json(&request_json)
+    host_http::request_json(&request_json)
+}
+
+fn media_extra_request_json(request_json: String) -> String {
+    utils::engine_cancel::enter_job();
+    media_extra::media_extra_request_json(&request_json)
 }
 
 fn indexer_request_json(request_json: String) -> String {
@@ -306,12 +311,12 @@ fn debrid_request_json(request_json: String) -> String {
 
 fn metadata_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    anime::metadata_request_json(&request_json)
+    media_metadata::metadata_request_json(&request_json)
 }
 
 fn subtitle_request_json(request_json: String) -> String {
     utils::engine_cancel::enter_job();
-    anime::subtitle_request_json(&request_json)
+    subtitles::subtitle_request_json(&request_json)
 }
 
 fn build_stremio_resource_url(addon_url: String, resource_path: String) -> String {

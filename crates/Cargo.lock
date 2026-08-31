@@ -77,20 +77,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anime"
-version = "0.1.0"
-dependencies = [
- "base64",
- "regex",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "urlencoding",
- "utils",
-]
-
-[[package]]
 name = "anime_extractors"
 version = "0.1.0"
 dependencies = [
@@ -1198,13 +1184,15 @@ checksum = "9f1f227452a390804cdb637b74a86990f2a7d7ba4b7d5693aac9b4dd6defd8d6"
 name = "ffi"
 version = "0.1.0"
 dependencies = [
- "anime",
  "debrid",
  "engine-js",
+ "host-http",
  "indexer",
  "iptv",
  "lan",
  "live-matches",
+ "media-extra",
+ "media-metadata",
  "proxy",
  "scrapers",
  "serde",
@@ -1212,6 +1200,7 @@ dependencies = [
  "storage",
  "stream",
  "stremio",
+ "subtitles",
  "tmdb",
  "tokio",
  "torrent",
@@ -1589,6 +1578,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc627f471c528ff0c4a49e1d5e60450c8f6461dd6d10ba9dcd3a61d3dff7728d"
 dependencies = [
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "host-http"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "utils",
 ]
 
 [[package]]
@@ -2508,6 +2509,29 @@ dependencies = [
  "log",
  "polling",
  "socket2 0.5.10",
+]
+
+[[package]]
+name = "media-extra"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "host-http",
+ "regex",
+ "serde",
+ "serde_json",
+ "stremio",
+ "urlencoding",
+]
+
+[[package]]
+name = "media-metadata"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "stremio",
+ "urlencoding",
 ]
 
 [[package]]
@@ -3947,6 +3971,17 @@ name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
+
+[[package]]
+name = "subtitles"
+version = "0.1.0"
+dependencies = [
+ "regex",
+ "serde",
+ "serde_json",
+ "stremio",
+ "urlencoding",
+]
 
 [[package]]
 name = "subtle"

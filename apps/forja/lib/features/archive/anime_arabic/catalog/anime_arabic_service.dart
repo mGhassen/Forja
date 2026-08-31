@@ -31,7 +31,7 @@ class AnimeArabicService {
     if (cached != null && DateTime.now().isBefore(cached.expires)) {
       return cached.body;
     }
-    final res = await animeHttp('GET', url, headers: {
+    final res = await hostHttp('GET', url, headers: {
       'User-Agent': _userAgent,
       'Accept-Language': 'ar,en;q=0.8',
     });

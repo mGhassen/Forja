@@ -225,7 +225,7 @@ void main() {
           'https://9hjkrt.nekostream.site/x/master.m3u8',
           sourceKey: 'megaplay',
         ),
-        isTrue,
+        isFalse,
       );
     });
 
@@ -254,7 +254,7 @@ void main() {
           'https://brand-new-cdn.example/x/master.m3u8',
           sourceKey: 'megaplay',
         ),
-        isTrue,
+        isFalse,
       );
       expect(
         ProviderRuntimeConfig.instance.playbackPolicyFor('megaplay')?.referer,

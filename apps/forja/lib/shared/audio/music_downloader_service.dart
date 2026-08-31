@@ -120,7 +120,7 @@ class MusicDownloaderService {
       // 6. Download Cover Art
       String localCoverPath = track.cover;
       try {
-        final coverBytes = await animeHttpBytes(track.cover, maxRetries: 0);
+        final coverBytes = await hostHttpBytes(track.cover, maxRetries: 0);
         if (coverBytes.isNotEmpty) {
           final coverFile = File('${dir.path}/$cleanName.jpg');
           await coverFile.writeAsBytes(coverBytes);

@@ -2737,9 +2737,6 @@ bool animeHlsNeedsPngStrip(String url) {
 }
 
 /// Whether [applyAnimePngStripIfNeeded] should run for [url] / [sourceKey].
-///
-/// [AnimePngStripMode.auto] returns true for HLS so apply can content-sample
-/// (RFC-044). Host needles alone no longer gate strip.
 bool animeHlsNeedsPngStripFor(String url, {String? sourceKey}) {
   final u = url.trim();
   if (u.isEmpty) return false;
@@ -2751,16 +2748,13 @@ bool animeHlsNeedsPngStripFor(String url, {String? sourceKey}) {
   final cfg = ProviderRuntimeConfig.instance;
   if (sourceKey != null && sourceKey.trim().isNotEmpty) {
     final p = cfg.animePlaybackProfile(sourceKey);
-    if (p.pngStrip == AnimePngStripMode.never) return false;
-    if (p.pngStrip == AnimePngStripMode.force ||
-        p.pngStrip == AnimePngStripMode.auto) {
-      return u.contains('.m3u8');
-    }
-    return p.urlNeedsPngStrip(u);
+    if (p.pngStrip != AnimePngStripMode.force) return false;
+    return u.contains('.m3u8');
   }
-  // No key: only legacy host needles / force profiles that match the URL.
   for (final p in cfg.animePlaybackProfiles.values) {
-    if (p.urlNeedsPngStrip(u)) return true;
+    if (p.pngStrip == AnimePngStripMode.force && p.urlNeedsPngStrip(u)) {
+      return true;
+    }
   }
   return false;
 }
@@ -2826,17 +2820,10 @@ bool animePngStripShouldProxy({
   };
 }
 
-/// Route PNG-wrapped HLS through local `/hls-proxy?strip=png` (RFC-044).
-///
-/// [AnimePngStripMode.force] always proxies; [AnimePngStripMode.auto] samples a
-/// media segment and strips only when [pngWrapsMpegTs]; [never] is a no-op.
-/// Host needles do **not** force strip for [auto] - plain HLS stays direct.
+/// Route PNG-wrapped HLS through local `/hls-proxy?strip=png` when profile is force.
 Future<StreamSource> applyAnimePngStripIfNeeded(
   StreamSource source, {
   String? sourceKey,
-  @visibleForTesting
-  Future<bool> Function(String url, Map<String, String> headers)?
-  segmentLooksPngWrapped,
   @visibleForTesting
   String Function(String url, Map<String, String> headers)? buildStripProxy,
 }) async {
@@ -2850,36 +2837,13 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
   final profile = ProviderRuntimeConfig.instance.animePlaybackProfile(
     pid ?? '',
   );
-  final mode = profile.pngStrip;
-  // `auto` is owned by [StreamOpenStrategy] at open time (try direct ↔ strip).
-  // This helper only materializes `force` (or legacy callers that pass a mock).
-  if (mode == AnimePngStripMode.never) return source;
-  if (mode == AnimePngStripMode.auto && segmentLooksPngWrapped == null) {
-    return source;
-  }
+  if (profile.pngStrip != AnimePngStripMode.force) return source;
 
   final hdrs = resolvePlaybackHttpHeaders(
     source.headers,
     streamUrl: url,
     providerId: pid,
   );
-  final looksWrapped = mode == AnimePngStripMode.auto
-      ? await (segmentLooksPngWrapped ?? _animeHlsSegmentLooksPngWrapped)(
-          url,
-          hdrs,
-        )
-      : false;
-  if (!animePngStripShouldProxy(
-    mode: mode,
-    contentLooksWrapped: looksWrapped,
-  )) {
-    if (kDebugMode && mode == AnimePngStripMode.auto) {
-      debugPrint(
-        '[Player] PNG-strip skip (no wrap detected) $url key=${pid ?? ''}',
-      );
-    }
-    return source;
-  }
 
   late final String proxied;
   if (buildStripProxy != null) {
@@ -2903,97 +2867,6 @@ Future<StreamSource> applyAnimePngStripIfNeeded(
     providerId: pid,
     catalogUrl: source.catalogUrl ?? url,
   );
-}
-
-/// True when the first playable media segment is a PNG shell wrapping MPEG-TS
-/// (or a kotocdn-style Range decoy that implies wrap).
-///
-/// Used by [StreamOpenStrategy] sniff and [applyAnimePngStripIfNeeded].
-Future<bool> animeHlsSegmentLooksPngWrappedForStrategy(
-  String playlistUrl,
-  Map<String, String> headers,
-) => _animeHlsSegmentLooksPngWrapped(playlistUrl, headers);
-
-/// True when the first playable media segment is a PNG shell wrapping MPEG-TS.
-Future<bool> _animeHlsSegmentLooksPngWrapped(
-  String playlistUrl,
-  Map<String, String> headers,
-) async {
-  try {
-    final master = await animeHttp(
-      'GET',
-      playlistUrl,
-      headers: headers,
-      maxRetries: 0,
-      timeoutSecs: 8,
-    );
-    if (master.status != 200 || !master.body.contains('#EXTM3U')) return false;
-    var mediaPlaylistUrl = playlistUrl;
-    final masterLines = master.body.split('\n');
-    for (final line in masterLines) {
-      final t = line.trim();
-      if (t.isEmpty || t.startsWith('#')) continue;
-      if (t.contains('.m3u8')) {
-        mediaPlaylistUrl = _joinPlaylistUri(playlistUrl, t);
-        break;
-      }
-    }
-    String body = master.body;
-    if (mediaPlaylistUrl != playlistUrl) {
-      final media = await animeHttp(
-        'GET',
-        mediaPlaylistUrl,
-        headers: headers,
-        maxRetries: 0,
-        timeoutSecs: 8,
-      );
-      if (media.status != 200) return false;
-      body = media.body;
-    }
-    for (final line in body.split('\n')) {
-      final t = line.trim();
-      if (t.isEmpty || t.startsWith('#')) continue;
-      if (_isAnimeHlsAdHost(t)) continue;
-      final segUrl = _joinPlaylistUri(mediaPlaylistUrl, t);
-      final sample = await animeHttpBytes(
-        segUrl,
-        headers: {...headers, 'Range': 'bytes=0-2047'},
-        timeoutSecs: 8,
-        maxRetries: 0,
-      );
-      if (sample.isEmpty) continue;
-      if (animeSegmentSampleLooksPngWrapped(sample)) {
-        if (kDebugMode && looksLikePng(sample) && !pngWrapsMpegTs(sample)) {
-          debugPrint(
-            '[Player] PNG Range decoy (${sample.length}B) - strip $segUrl',
-          );
-        }
-        return true;
-      }
-    }
-  } catch (_) {}
-  return false;
-}
-
-Future<List<StreamSource>> applyAnimePngStripAll(
-  List<StreamSource> sources, {
-  String? sourceKey,
-}) async {
-  final out = <StreamSource>[];
-  for (final s in sources) {
-    out.add(await applyAnimePngStripIfNeeded(s, sourceKey: sourceKey));
-  }
-  return out;
-}
-
-/// Known anti-scraper CDN hosts - may still wrap real video (see [pngWrapsMpegTs]).
-bool _isAnimeHlsAdHost(String url) {
-  final u = url.toLowerCase();
-  return u.contains('ibyteimg.com') ||
-      u.contains('byteimg.com') ||
-      u.contains('tiktokcdn.com') ||
-      u.contains('p16-ad-') ||
-      u.contains('ad-site-i18n');
 }
 
 /// VidRock / Vidzee / 1shows CDN — PNG-wrapped segments; proxy at play.
@@ -3036,133 +2909,15 @@ Future<({String url, Map<String, String> headers})> proxy1showsHlsIfNeeded({
   );
 }
 
-String _joinPlaylistUri(String base, String uri) {
-  final t = uri.trim();
-  if (t.startsWith('http://') || t.startsWith('https://')) return t;
-  final b = Uri.tryParse(base);
-  if (b == null) return t;
-  return b.resolve(t).toString();
-}
-
-/// Sample media segments - masters can be valid while every segment is a PNG ad.
-///
-/// PNG shells that wrap MPEG-TS (Megaplay / nekostream) count as playable -
-/// open those via [applyAnimePngStripIfNeeded].
-///
-/// Runs in Dart (not only Rust) so a stale app-bundle `libffi` cannot let
-/// nekostream/vivibebe green-pass then fail at decode.
-Future<bool> hlsMediaSegmentsLookPlayable(
-  String playlistUrl,
-  Map<String, String> headers,
-) async {
-  try {
-    final master = await animeHttp(
-      'GET',
-      playlistUrl,
-      headers: headers,
-      maxRetries: 0,
-      timeoutSecs: 8,
-    );
-    if (master.status != 200 || !master.body.contains('#EXTM3U')) return false;
-
-    // Already on /hls-proxy?strip=png - nested sample is redundant.
-    // Do NOT skip sampling just because the profile has pngStrip auto/force:
-    // pure image ads (vivibebe → ibyteimg PNG) are not fixable by strip.
-    if (hlsProxyStripIsPng(playlistUrl)) return true;
-
-    var mediaUrl = playlistUrl;
-    var body = master.body;
-    final lines = body.split('\n');
-    for (var i = 0; i < lines.length; i++) {
-      final line = lines[i].trim();
-      if (!line.startsWith('#EXT-X-STREAM-INF')) continue;
-      if (i + 1 >= lines.length) break;
-      final next = lines[i + 1].trim();
-      if (next.isEmpty || next.startsWith('#')) continue;
-      mediaUrl = _joinPlaylistUri(playlistUrl, next);
-      final media = await animeHttp(
-        'GET',
-        mediaUrl,
-        headers: headers,
-        maxRetries: 0,
-        timeoutSecs: 8,
-      );
-      if (media.status != 200 || !media.body.contains('#EXTM3U')) return false;
-      body = media.body;
-      break;
-    }
-
-    final segs = body
-        .split('\n')
-        .map((l) => l.trim())
-        .where((l) => l.isNotEmpty && !l.startsWith('#'))
-        .map((l) => _joinPlaylistUri(mediaUrl, l))
-        .take(4)
-        .toList();
-    if (segs.isEmpty) {
-      return !body.contains('#EXT-X-STREAM-INF');
-    }
-
-    var checked = 0;
-    var poisoned = 0;
-    for (final seg in segs) {
-      try {
-        final res = await animeHttp(
-          'GET',
-          seg,
-          headers: {...headers, 'Range': 'bytes=0-1023'},
-          maxRetries: 0,
-          timeoutSecs: 8,
-        );
-        if (res.status == 401 || res.status == 403 || res.status == 404) {
-          checked++;
-          poisoned++;
-          continue;
-        }
-        if (res.status != 200 && res.status != 206) continue;
-        checked++;
-
-        final ct = (res.headers['content-type'] ?? '').toLowerCase();
-        final maybeWrapped =
-            _isAnimeHlsAdHost(res.finalUrl) ||
-            _isAnimeHlsAdHost(seg) ||
-            ct.startsWith('image/');
-        if (maybeWrapped) {
-          try {
-            final sample = await animeHttpBytes(
-              seg,
-              headers: {...headers, 'Range': 'bytes=0-1023'},
-              timeoutSecs: 8,
-              maxRetries: 0,
-            );
-            if (sample.isNotEmpty &&
-                animeSegmentSampleLooksPngWrapped(sample)) {
-              continue;
-            }
-          } catch (_) {}
-          poisoned++;
-        }
-      } catch (_) {
-        // Network blip - don't count.
-      }
-    }
-    if (checked == 0) return true;
-    return poisoned * 2 < checked;
-  } catch (_) {
-    return false;
-  }
-}
-
 Future<bool> _probeHlsMasterOnly(
   String catalog,
   Map<String, String> hdrs,
 ) async {
   try {
-    final master = await animeHttp(
+    final master = await engineHttp(
       'GET',
       catalog,
       headers: hdrs,
-      maxRetries: 0,
       timeoutSecs: 8,
     );
     return master.status == 200 && master.body.contains('#EXTM3U');
@@ -3173,19 +2928,17 @@ Future<bool> _probeHlsMasterOnly(
 
 Future<bool> _probeHeadOrRange(String catalog, Map<String, String> hdrs) async {
   try {
-    var res = await animeHttp(
+    var res = await engineHttp(
       'HEAD',
       catalog,
       headers: hdrs,
-      maxRetries: 0,
       timeoutSecs: 8,
     );
     if (res.status >= 200 && res.status < 400) return true;
-    res = await animeHttp(
+    res = await engineHttp(
       'GET',
       catalog,
       headers: {...hdrs, 'Range': 'bytes=0-0'},
-      maxRetries: 0,
       timeoutSecs: 8,
     );
     return res.status == 200 || res.status == 206;
@@ -3234,14 +2987,7 @@ Future<bool> probeStreamSourceUrl(
         if (catalog.contains('.m3u8') ||
             catalog.toLowerCase().contains('/api/proxy') ||
             normalized.contains('/hls-proxy')) {
-          if (!await hlsMediaSegmentsLookPlayable(catalog, hdrs)) {
-            debugPrint(
-              '[Player] HLS media poison/ad segments - reject $catalog '
-              '(sourceKey=$key)',
-            );
-            return false;
-          }
-          return true;
+          return _probeHlsMasterOnly(catalog, hdrs);
         }
         return _probeHeadOrRange(catalog, hdrs);
     }
@@ -3251,12 +2997,7 @@ Future<bool> probeStreamSourceUrl(
     if (catalog.contains('.m3u8') ||
         catalog.toLowerCase().contains('/api/proxy') ||
         normalized.contains('/hls-proxy')) {
-      // Legacy (no sourceKey): keep segment sample for movie/misc HLS.
-      if (!await hlsMediaSegmentsLookPlayable(catalog, hdrs)) {
-        debugPrint('[Player] HLS media poison/ad segments - reject $catalog');
-        return false;
-      }
-      return true;
+      return _probeHlsMasterOnly(catalog, hdrs);
     }
     return _probeHeadOrRange(catalog, hdrs);
   } catch (_) {

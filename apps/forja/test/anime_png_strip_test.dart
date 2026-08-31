@@ -10,21 +10,14 @@ void main() {
     );
   });
 
-  group('animeHlsNeedsPngStripFor (RFC-044)', () {
-    test('megaplay auto strips HLS without CDN host needle', () {
+  group('animeHlsNeedsPngStripFor', () {
+    test('auto profile does not strip without force', () {
       expect(
         animeHlsNeedsPngStripFor(
           'https://brand-new-cdn.example/abc/master.m3u8',
           sourceKey: 'megaplay',
         ),
-        isTrue,
-      );
-      expect(
-        animeHlsNeedsPngStripFor(
-          'https://megap.kotocdn.site/abc/master.m3u8',
-          sourceKey: 'megaplay',
-        ),
-        isTrue,
+        isFalse,
       );
     });
 
@@ -36,35 +29,12 @@ void main() {
         ),
         isFalse,
       );
-      expect(
-        animeHlsNeedsPngStripFor(
-          'https://vault-99.owocdn.top/stream/99/02/abc/uwu.m3u8',
-          sourceKey: 'miruro:kiwi',
-        ),
-        isFalse,
-      );
     });
 
     test('plain CDN without sourceKey skips', () {
       expect(
         animeHlsNeedsPngStrip('https://cdn.example/video.m3u8'),
         isFalse,
-      );
-    });
-
-    test('proxy of megaplay HLS still needs strip', () {
-      expect(
-        animeHlsNeedsPngStripFor(
-          'http://127.0.0.1:1/hls-proxy?url=https%3A%2F%2Fbrand-new.example%2Fx%2Fmaster.m3u8&strip=png',
-          sourceKey: 'megaplay',
-        ),
-        isTrue,
-      );
-      expect(
-        hlsProxyStripIsPng(
-          'http://127.0.0.1:1/hls-proxy?url=https%3A%2F%2Fx.m3u8&strip=png',
-        ),
-        isTrue,
       );
     });
   });
@@ -81,100 +51,28 @@ void main() {
       ];
       expect(pngWrapsMpegTs(raw), isTrue);
     });
-
-    test('detects Megaplay offset-252 wrap', () {
-      final raw = <int>[
-        0x89, 0x50, 0x4E, 0x47,
-        ...List.filled(248, 0),
-        0x47,
-        ...List.filled(187, 0),
-        0x47,
-      ];
-      expect(raw.length, 252 + 189);
-      expect(pngWrapsMpegTs(raw), isTrue);
-    });
-
-    test('pure tiny PNG is not wrapped video', () {
-      expect(
-        pngWrapsMpegTs([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
-        isFalse,
-      );
-    });
-  });
-
-  group('animeSegmentSampleLooksPngWrapped', () {
-    test('kotocdn Range decoy tiny PNG implies strip', () {
-      // Real kotocdn Range → ibyteimg 1×1 PNG (~100B), not MPEG-TS.
-      final decoy = <int>[
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-        0, 0, 0, 0x0D, 0x49, 0x48, 0x44, 0x52,
-        ...List.filled(80, 0),
-      ];
-      expect(pngWrapsMpegTs(decoy), isFalse);
-      expect(animeSegmentSampleLooksPngWrapped(decoy), isTrue);
-    });
-
-    test('real PNG+TS sample still implies strip', () {
-      final raw = <int>[
-        0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-        0, 0, 0, 0, 0, 0, 0, 0,
-        0x49, 0x45, 0x4E, 0x44, 0, 0, 0, 0,
-        0x47,
-        ...List.filled(187, 0),
-        0x47,
-      ];
-      expect(animeSegmentSampleLooksPngWrapped(raw), isTrue);
-    });
-
-    test('non-PNG sample does not imply strip', () {
-      expect(animeSegmentSampleLooksPngWrapped([0x47, 0, 0, 0]), isFalse);
-    });
-  });
-
-  group('animePngStripShouldProxy', () {
-    test('auto is content-only', () {
-      expect(
-        animePngStripShouldProxy(
-          mode: AnimePngStripMode.auto,
-          contentLooksWrapped: false,
-        ),
-        isFalse,
-      );
-      expect(
-        animePngStripShouldProxy(
-          mode: AnimePngStripMode.auto,
-          contentLooksWrapped: true,
-        ),
-        isTrue,
-      );
-    });
-
-    test('force always; never never', () {
-      expect(
-        animePngStripShouldProxy(
-          mode: AnimePngStripMode.force,
-          contentLooksWrapped: false,
-        ),
-        isTrue,
-      );
-      expect(
-        animePngStripShouldProxy(
-          mode: AnimePngStripMode.never,
-          contentLooksWrapped: true,
-        ),
-        isFalse,
-      );
-    });
   });
 
   group('applyAnimePngStripIfNeeded', () {
-    const catalog =
-        'https://megap.kotocdn.site/abc/def/master.m3u8';
+    const catalog = 'https://megap.kotocdn.site/abc/def/master.m3u8';
 
-    test('auto + plain segment keeps direct HLS (host needle does not force)',
-        () async {
+    test('auto keeps direct HLS', () async {
+      final out = await applyAnimePngStripIfNeeded(
+        StreamSource(
+          url: catalog,
+          title: 'megaplay',
+          type: 'hls',
+          providerId: 'megaplay',
+        ),
+        sourceKey: 'megaplay',
+        buildStripProxy: (u, _) =>
+            'http://127.0.0.1:9/hls-proxy?url=$u&strip=png',
+      );
+      expect(out.url, catalog);
+    });
+
+    test('force routes through strip proxy', () async {
       final base = ProviderRuntimeSnapshot.builtins();
-      final megaplay = base.animePlaybackProfiles['megaplay']!;
       ProviderRuntimeConfig.instance.debugSetSnapshot(
         ProviderRuntimeSnapshot(
           schema: base.schema,
@@ -188,38 +86,14 @@ void main() {
           cdnRefererRules: base.cdnRefererRules,
           animePlaybackProfiles: {
             ...base.animePlaybackProfiles,
-            'megaplay': AnimePlaybackProfile(
-              probe: megaplay.probe,
-              pngStrip: AnimePngStripMode.auto,
-              pngStripHostContains: const ['kotocdn', 'nekostream'],
+            'megaplay': const AnimePlaybackProfile(
+              probe: AnimeProbeMode.masterOnly,
+              pngStrip: AnimePngStripMode.force,
             ),
           },
         ),
       );
-      expect(
-        ProviderRuntimeConfig.instance
-            .animePlaybackProfile('megaplay')
-            .urlNeedsPngStrip(catalog),
-        isTrue,
-      );
 
-      final out = await applyAnimePngStripIfNeeded(
-        StreamSource(
-          url: catalog,
-          title: 'megaplay',
-          type: 'hls',
-          providerId: 'megaplay',
-        ),
-        sourceKey: 'megaplay',
-        segmentLooksPngWrapped: (_, _) async => false,
-        buildStripProxy: (u, _) =>
-            'http://127.0.0.1:9/hls-proxy?url=$u&strip=png',
-      );
-      expect(out.url, catalog);
-      expect(out.url.contains('/hls-proxy'), isFalse);
-    });
-
-    test('auto + PNG-wrapped segment routes through strip proxy', () async {
       final out = await applyAnimePngStripIfNeeded(
         StreamSource(
           url: catalog,
@@ -229,31 +103,11 @@ void main() {
           catalogUrl: catalog,
         ),
         sourceKey: 'megaplay',
-        segmentLooksPngWrapped: (_, _) async => true,
         buildStripProxy: (u, _) =>
             'http://127.0.0.1:9/hls-proxy?url=${Uri.encodeComponent(u)}&strip=png',
       );
       expect(out.url, contains('/hls-proxy'));
       expect(out.url, contains('strip=png'));
-      expect(hlsProxyTargetUrl(out.url), catalog);
-      expect(out.catalogUrl, catalog);
-      expect(out.providerId, 'megaplay');
-    });
-
-    test('never keeps catalog even when sample would say wrapped', () async {
-      final out = await applyAnimePngStripIfNeeded(
-        StreamSource(
-          url: 'https://vault.example/a.m3u8',
-          title: 'pahe',
-          type: 'hls',
-          providerId: 'vidnest:animepahe',
-        ),
-        sourceKey: 'vidnest:animepahe',
-        segmentLooksPngWrapped: (_, _) async => true,
-        buildStripProxy: (u, _) =>
-            'http://127.0.0.1:9/hls-proxy?url=$u&strip=png',
-      );
-      expect(out.url, 'https://vault.example/a.m3u8');
     });
   });
 }

@@ -16,7 +16,8 @@ enum EngineJobKind {
   parseHlsMaster,
   httpGet,
   httpPost,
-  animeRequest,
+  hostHttpRequest,
+  mediaExtraRequest,
   indexerRequest,
   debridRequest,
   site111477IndexRequest,
@@ -262,8 +263,10 @@ String _dispatchJob(_WorkerJob job) {
         headersJson: job.args['headersJson']! as String,
         body: job.args['body']! as String,
       );
-    case EngineJobKind.animeRequest:
-      return rust.animeRequestJson(job.args['requestJson']! as String);
+    case EngineJobKind.hostHttpRequest:
+      return rust.hostHttpRequestJson(job.args['requestJson']! as String);
+    case EngineJobKind.mediaExtraRequest:
+      return rust.mediaExtraRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.indexerRequest:
       return rust.indexerRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.debridRequest:

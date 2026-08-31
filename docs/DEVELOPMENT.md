@@ -80,13 +80,13 @@ flutter run -d macos --dart-define-from-file=../../.env
 
 ### API keys / `.env`
 
-Dev secrets live in a **gitignored** repo-root `.env` (see `.env.example`). Rust `build.rs` in `crates/tmdb`, `crates/webstreamr`, and `crates/anime` injects `TMDB_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, and `WYZIE_API_KEY` at **compile time**. After editing `.env`, rebuild Rust (`./scripts/build_rust.sh` or `cargo build -p ffi`).
+Dev secrets live in a **gitignored** repo-root `.env` (see `.env.example`). Rust `build.rs` in `crates/tmdb` and `crates/subtitles` injects `TMDB_API_KEY`, `TMDB_READ_ACCESS_TOKEN`, and `WYZIE_API_KEY` at **compile time**. After editing `.env`, rebuild Rust (`./scripts/build_rust.sh` or `cargo build -p ffi`).
 
 | Var | Used by |
 |-----|---------|
 | `TMDB_API_KEY` | Catalog / Home / Search (`crates/tmdb`) |
 | `TMDB_READ_ACCESS_TOKEN` | WebStreamr TMDB lookups when Settings token is empty |
-| `WYZIE_API_KEY` | Player subtitle search (`crates/anime` Wyzie) |
+| `WYZIE_API_KEY` | Player subtitle search (`crates/subtitles` Wyzie) |
 | `SUPABASE_URL` | Shared Supabase project used by desktop accounts and settings sync |
 | `SUPABASE_PUBLISHABLE_KEY` | Public Supabase client key (`sb_publishable_…`); never use `service_role` / `sb_secret_…` in the app |
 | `RELEASE_CDN_URL` | Public base URL for release installers on Cloudflare R2 (custom domain or `pub-*.r2.dev`). Built into clients via `--dart-define` / `VITE_RELEASE_CDN_URL`. |

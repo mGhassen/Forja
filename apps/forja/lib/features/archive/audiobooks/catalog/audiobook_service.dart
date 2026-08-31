@@ -188,7 +188,7 @@ class AudiobookService {
     String idPrefix,
   ) async {
     try {
-      final response = await animeHttp('GET', url, headers: _htmlHeaders(), maxRetries: 0);
+      final response = await hostHttp('GET', url, headers: _htmlHeaders(), maxRetries: 0);
       if (response.status != 200) return [];
       return parse(response.body)
           .map((hit) => _audiobookFromHit(hit, source, idPrefix))
@@ -325,7 +325,7 @@ class AudiobookService {
   Future<List<Audiobook>> _searchAudiozaic(String query) async {
     try {
       final searchUrl = 'https://audiozaic.com/?s=${Uri.encodeComponent(query)}';
-      final response = await animeHttp('GET', searchUrl, headers: {
+      final response = await hostHttp('GET', searchUrl, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       }, maxRetries: 0);
 
@@ -375,7 +375,7 @@ class AudiobookService {
   Future<List<Audiobook>> _searchGoldenAudiobook(String query) async {
     try {
       final searchUrl = 'https://goldenaudiobooks.com/?s=${Uri.encodeComponent(query)}';
-      final response = await animeHttp('GET', searchUrl, headers: {
+      final response = await hostHttp('GET', searchUrl, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       }, maxRetries: 0);
 
@@ -462,7 +462,7 @@ class AudiobookService {
         "userIdentity": _getUserIdentity()
       };
 
-      final detailsRes = await animeHttp('POST', '$_baseUrl/search/post-details', headers: _getHeaders(), body: json.encode(detailsPayload), maxRetries: 0);
+      final detailsRes = await hostHttp('POST', '$_baseUrl/search/post-details', headers: _getHeaders(), body: json.encode(detailsPayload), maxRetries: 0);
       if (detailsRes.status != 200) return [];
 
       final detailsData = json.decode(detailsRes.body);
@@ -476,7 +476,7 @@ class AudiobookService {
         "userIdentity": _getUserIdentity()
       };
 
-      final playlistRes = await animeHttp('POST', '$_baseUrl/playlist', headers: _getHeaders(), body: json.encode(playlistPayload), maxRetries: 0);
+      final playlistRes = await hostHttp('POST', '$_baseUrl/playlist', headers: _getHeaders(), body: json.encode(playlistPayload), maxRetries: 0);
       if (playlistRes.status != 200) return [];
 
       final data = json.decode(playlistRes.body);
@@ -515,7 +515,7 @@ class AudiobookService {
     try {
       if (book.pageUrl == null) return [];
 
-      final pageRes = await animeHttp('GET', book.pageUrl!, headers: {
+      final pageRes = await hostHttp('GET', book.pageUrl!, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       }, maxRetries: 0);
       if (pageRes.status != 200) return [];
@@ -551,7 +551,7 @@ class AudiobookService {
       if (book.pageUrl == null) return [];
 
       // 1. Fetch book page to get actual cover and listen link
-      final pageRes = await animeHttp('GET', book.pageUrl!, headers: {
+      final pageRes = await hostHttp('GET', book.pageUrl!, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       }, maxRetries: 0);
       if (pageRes.status != 200) return [];
@@ -582,7 +582,7 @@ class AudiobookService {
       }
 
       // 2. Fetch the file-audio page
-      final audioPageRes = await animeHttp('GET', listenUrl, headers: {
+      final audioPageRes = await hostHttp('GET', listenUrl, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Referer': book.pageUrl!,
       }, maxRetries: 0);
@@ -627,7 +627,7 @@ class AudiobookService {
     String idPrefix,
   ) async {
     try {
-      final response = await animeHttp('GET', searchUrl, headers: _htmlHeaders(), maxRetries: 0);
+      final response = await hostHttp('GET', searchUrl, headers: _htmlHeaders(), maxRetries: 0);
       if (response.status != 200) return [];
       return parse(response.body)
           .map((hit) => _audiobookFromHit(hit, source, idPrefix))
@@ -679,7 +679,7 @@ class AudiobookService {
   }) async {
     try {
       if (pageUrl == null || pageUrl.isEmpty) return [];
-      final pageRes = await animeHttp('GET', pageUrl, headers: _htmlHeaders(pageUrl), maxRetries: 0);
+      final pageRes = await hostHttp('GET', pageUrl, headers: _htmlHeaders(pageUrl), maxRetries: 0);
       if (pageRes.status != 200) return [];
       final hits = parse(pageRes.body);
       if (streamHeaders == null) return _chaptersFromHits(hits);
@@ -723,7 +723,7 @@ class AudiobookService {
       final searchUrl =
           'https://appaudiobooks.com/?s=${Uri.encodeComponent(query)}';
 
-      final response = await animeHttp('GET', searchUrl, headers: {
+      final response = await hostHttp('GET', searchUrl, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Referer': 'https://appaudiobooks.com/',
       }, maxRetries: 0);
@@ -789,7 +789,7 @@ class AudiobookService {
 
   Future<String> _fetchAppAudiobookCover(String pageUrl) async {
     try {
-      final res = await animeHttp('GET', pageUrl, headers: {
+      final res = await hostHttp('GET', pageUrl, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       }, maxRetries: 0);
       if (res.status != 200) return '';
@@ -804,7 +804,7 @@ class AudiobookService {
     try {
       if (book.pageUrl == null) return [];
 
-      final pageRes = await animeHttp('GET', book.pageUrl!, headers: {
+      final pageRes = await hostHttp('GET', book.pageUrl!, headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       }, maxRetries: 0);
       if (pageRes.status != 200) return [];
@@ -863,7 +863,7 @@ class AudiobookService {
       return _audionestIdToken;
     }
     try {
-      final res = await animeHttp('POST', 
+      final res = await hostHttp('POST', 
             'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$_audionestFirebaseApiKey', headers: {'Content-Type': 'application/json'}, body: json.encode({'returnSecureToken': true}), maxRetries: 0);
       if (res.status != 200) {
         debugPrint(
@@ -885,7 +885,7 @@ class AudiobookService {
 
   Future<List<Audiobook>> _searchAudionest(String query) async {
     try {
-      final res = await animeHttp(
+      final res = await hostHttp(
         'POST',
         '$_audionestMeiliBase/indexes/trackfiles/search',
         headers: {
@@ -930,7 +930,7 @@ class AudiobookService {
 
   Future<AnimeHttpResult> _audionestFirestoreQuery(
       String body, String token) async {
-    return animeHttp(
+    return hostHttp(
       'POST',
       '$_audionestFirestoreBase:runQuery',
       headers: {

@@ -17,14 +17,17 @@ Vertical catalog engines **removed from the active `ffi` link graph**. Code is k
 | `catalog/` | Similar tab (`bestsimilar.com`) |
 | `anilist/` | Legacy AniList GraphQL (hub browse is `plugins/hubs/anime`) |
 | `anime/` | Legacy Rust anime extractors/resolve (`anime_extractors`) — JS providers own extract now |
+| `host-http/` | Rich HTTP (retries, binary) via `hostHttp()` |
+| `media-extra/` | Lyrics + paper2audio via `mediaExtraRequest()` |
 | `trakt/` | Trakt.tv API client (Simkl is the active tracker) |
 
 ## Still active (not here)
 
 | Crate | Why |
 |-------|-----|
-| `stremio` | Live Matches, TMDB Sources, Stremio Direct playback |
-| `anime` | Misnamed kitchen sink: generic `animeHttp()` + metadata + subtitles (player / Simkl / mdblist / Wyzie). **Not** the Anime hub. |
+| `stremio` | Generic HTTP GET/POST for Simkl, hubcloud, probes |
+| `subtitles` | Player subtitle search (Wyzie, Levrx, SubtitleCat, Mysubs) |
+| `media-metadata` | mdblist + introdb |
 | `proxy` `/jellyfin-stream` | Loopback route for any Jellyfin-style stream URL — not the `jellyfin` catalog crate |
 | `engine-js` | Provider JS host — includes KissKh `kkey` (`__native_kisskh_kkey`) |
 

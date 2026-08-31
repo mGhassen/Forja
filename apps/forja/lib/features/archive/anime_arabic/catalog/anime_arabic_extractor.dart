@@ -526,7 +526,7 @@ class AnimeArabicExtractor {
       'User-Agent': _userAgent,
       ...?headers,
     };
-    final res = await animeHttp('GET', url, headers: hdrs, maxRetries: 0);
+    final res = await hostHttp('GET', url, headers: hdrs, maxRetries: 0);
     if (res.status >= 400) {
       throw Exception('GET $url → ${res.status}');
     }
@@ -546,7 +546,7 @@ class AnimeArabicExtractor {
       'Accept': 'application/json, text/plain, */*',
       ...?headers,
     };
-    final res = await animeHttp(
+    final res = await hostHttp(
       'POST',
       url,
       headers: hdrs,

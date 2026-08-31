@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../metadata_http.dart';
+import '../media_extra_request.dart';
 
 /// Voice option exposed in the picker. IDs match paper2audio.com (kokoro voices).
 class Paper2AudioVoice {
@@ -144,7 +144,7 @@ class Paper2AudioService {
     String? coverPath,
   }) async {
     await _ensureLoaded();
-    final decoded = await metadataRequest({
+    final decoded = await mediaExtraRequest({
       'action': 'p2a_upload',
       'file_name': fileName,
       'voice_id': voiceId,
@@ -175,7 +175,7 @@ class Paper2AudioService {
     final job = jobs.value[idx];
 
     try {
-      final decoded = await metadataRequest({
+      final decoded = await mediaExtraRequest({
         'action': 'p2a_check_status',
         'run_id': runId,
       });

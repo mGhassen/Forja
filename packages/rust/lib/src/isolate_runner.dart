@@ -34,10 +34,17 @@ Future<String> runHttpPostJson(
   'body': body,
 });
 
-Future<String> runAnimeRequestJson(String requestJson) => EngineWorkerPool.run(
-  EngineJobKind.animeRequest,
-  {'requestJson': requestJson},
-);
+Future<String> runHostHttpRequestJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.hostHttpRequest,
+      {'requestJson': requestJson},
+    );
+
+Future<String> runMediaExtraRequestJson(String requestJson) =>
+    EngineWorkerPool.run(
+      EngineJobKind.mediaExtraRequest,
+      {'requestJson': requestJson},
+    );
 
 Future<String> runIndexerRequestJson(String requestJson) =>
     EngineWorkerPool.run(EngineJobKind.indexerRequest, {

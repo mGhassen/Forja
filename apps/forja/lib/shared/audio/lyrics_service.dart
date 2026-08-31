@@ -30,7 +30,7 @@ class LyricsService {
     required int durationSeconds,
   }) async {
     try {
-      final decoded = await metadataRequest({
+      final decoded = await mediaExtraRequest({
         'action': 'synced_lyrics',
         'track_name': trackName,
         'artist_name': artistName,

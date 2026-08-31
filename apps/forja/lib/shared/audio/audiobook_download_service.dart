@@ -426,7 +426,7 @@ class AudiobookDownloadService {
   Future<void> _downloadCover(
       String primaryUrl, String fallbackUrl, String savePath) async {
     try {
-      final bytes = await animeHttpBytes(primaryUrl, headers: {
+      final bytes = await hostHttpBytes(primaryUrl, headers: {
         'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
       });
@@ -439,7 +439,7 @@ class AudiobookDownloadService {
     // Try fallback
     try {
       if (fallbackUrl.isNotEmpty && fallbackUrl != primaryUrl) {
-        final bytes = await animeHttpBytes(fallbackUrl, headers: {
+        final bytes = await hostHttpBytes(fallbackUrl, headers: {
           'User-Agent':
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         });
@@ -474,7 +474,7 @@ class AudiobookDownloadService {
 
   Future<Uint8List?> _downloadDirectChapter(AudiobookChapter chapter) async {
     try {
-      final bytes = await animeHttpBytes(
+      final bytes = await hostHttpBytes(
         chapter.url,
         headers: chapter.headers ?? {
           'User-Agent':
@@ -495,7 +495,7 @@ class AudiobookDownloadService {
     try {
       // The chapter URL is a proxy URL pointing to an M3U8
       // Fetch the M3U8 playlist
-      final m3u8Response = await animeHttp('GET', chapter.url, maxRetries: 0);
+      final m3u8Response = await hostHttp('GET', chapter.url, maxRetries: 0);
       if (m3u8Response.status != 200) return null;
 
       final m3u8Content = m3u8Response.body;
@@ -512,7 +512,7 @@ class AudiobookDownloadService {
       final BytesBuilder builder = BytesBuilder(copy: false);
 
       for (final segmentUrl in segmentUrls) {
-        final segBytes = await animeHttpBytes(segmentUrl, timeoutSecs: 60);
+        final segBytes = await hostHttpBytes(segmentUrl, timeoutSecs: 60);
         if (segBytes.isNotEmpty) {
           builder.add(segBytes);
         }

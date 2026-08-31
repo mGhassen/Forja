@@ -38,7 +38,8 @@ namespace forja {
     string parse_stremio_meta_json(string json);
     string stremio_http_get_json(string url, u64 timeout_secs);
     string tmdb_get_json(string resource_path, u64 timeout_secs);
-    string anime_request_json(string request_json);
+    string host_http_request_json(string request_json);
+    string media_extra_request_json(string request_json);
     string indexer_request_json(string request_json);
     string debrid_request_json(string request_json);
     string parse_knaben_html_json(string html);

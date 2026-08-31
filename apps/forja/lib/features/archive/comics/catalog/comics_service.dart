@@ -91,7 +91,7 @@ class ComicsService {
   Future<List<Comic>> getComics({int page = 1}) async {
     try {
       final url = '$_baseUrl/ComicList?page=$page';
-      final response = await animeHttp('GET', url, headers: {'User-Agent': _ua});
+      final response = await hostHttp('GET', url, headers: {'User-Agent': _ua});
 
       if (response.status == 200) {
         return _parseComics(response.body);
@@ -125,7 +125,7 @@ class ComicsService {
   Future<List<Comic>> _searchRco(String query) async {
     try {
       final url = '$_baseUrl/Search/Comic';
-      final response = await animeHttp(
+      final response = await hostHttp(
         'POST',
         url,
         headers: {
@@ -157,7 +157,7 @@ class ComicsService {
         url += url.contains('?') ? '&s=s2' : '?s=s2';
       }
       
-      final response = await animeHttp('GET', url, headers: {'User-Agent': _ua});
+      final response = await hostHttp('GET', url, headers: {'User-Agent': _ua});
 
       if (response.status != 200) return null;
 
@@ -244,7 +244,7 @@ class ComicsService {
       // Pure HTTP scrape - the headless WebView was crashing the app on Windows
       // when running the page's heavily-obfuscated JS. We replicate the site's
       // decoder (beau/baeu from rguard.min.js) directly in Dart.
-      final response = await animeHttp('GET', url, headers: {'User-Agent': _ua});
+      final response = await hostHttp('GET', url, headers: {'User-Agent': _ua});
 
       if (response.status != 200) {
         throw Exception('Chapter page returned HTTP ${response.status}');

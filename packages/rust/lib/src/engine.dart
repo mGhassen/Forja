@@ -335,9 +335,14 @@ class RustLib {
     return _readString(_native.ffi_tmdb_get_json(ptr, timeoutSecs));
   });
 
-  String animeRequestJson(String requestJson) => using((arena) {
+  String hostHttpRequestJson(String requestJson) => using((arena) {
     final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_anime_request_json(ptr));
+    return _readString(_native.ffi_host_http_request_json(ptr));
+  });
+
+  String mediaExtraRequestJson(String requestJson) => using((arena) {
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_media_extra_request_json(ptr));
   });
 
   String indexerRequestJson(String requestJson) => using((arena) {
@@ -803,9 +808,14 @@ final class _FfiNative {
             'ffi_tmdb_get_json',
           )
           .asFunction(),
-      ffi_anime_request_json = lib
+      ffi_host_http_request_json = lib
           .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_anime_request_json',
+            'ffi_host_http_request_json',
+          )
+          .asFunction(),
+      ffi_media_extra_request_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_media_extra_request_json',
           )
           .asFunction(),
       ffi_indexer_request_json = lib
@@ -1150,7 +1160,9 @@ final class _FfiNative {
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
   ffi_tmdb_get_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_anime_request_json;
+  ffi_host_http_request_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
+  ffi_media_extra_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_indexer_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

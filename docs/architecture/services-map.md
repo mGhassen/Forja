@@ -69,8 +69,10 @@ P1 rows below for Arabic / Anime Arabic / Audiobook / Comics are **⏭️ deferr
 | TMDB, Trakt, Jellyfin API calls | `packages/rust` + `crates/*-core` | C1 engine |
 | Webstreamr, torrent, indexers, debrid, proxy | `crates/webstreamr`, `scrapers`, `debrid`, `proxy` | C2/C7 engine |
 | AniList GraphQL | archived — hub is JS `plugins/hubs/anime` | Was `crates/archive/anilist` |
-| Subtitle search (Wyzie / Levrx / …) | `crates/anime` subtitle modules | Engine |
-| Subtitles, mdblist, introdb, lyrics, paper2audio | `crates/anime` (misnamed; generic engine helpers) | Engine |
+| Subtitle search (Wyzie / Levrx / …) | `crates/subtitles` | Engine |
+| mdblist + introdb | `crates/media-metadata` | Engine |
+| Rich vertical HTTP | `crates/archive/host-http` via `hostHttp()` | Shelved tabs |
+| Lyrics + paper2audio | `crates/archive/media-extra` via `mediaExtraRequest()` | Shelved tabs |
 | Vidsrc extract | `VidsrcExtractor` → Rust resolve job | C2 engine |
 | Manga HTTP fetch | `mangaFetchHtml` → `manga` | Fetch only — **parse still Dart** |
 | Jellyfin HTTP | `runJellyfinRequestJson` → `jellyfin` | API in Rust; OAuth/cache/models stay host |

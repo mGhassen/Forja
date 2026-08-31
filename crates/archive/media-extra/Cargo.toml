@@ -1,0 +1,15 @@
+[package]
+name = "media-extra"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Archived metadata helpers (lyrics, paper2audio)"
+
+[dependencies]
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+urlencoding = "2"
+base64 = { workspace = true }
+stremio = { path = "../../stremio" }
+host-http = { path = "../host-http" }
