@@ -1,6 +1,7 @@
 part of 'mobile_player_screen.dart';
 
-mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindingObserver {
+mixin _MobilePlayerLifecycle
+    on ConsumerState<MobilePlayerScreen>, WidgetsBindingObserver {
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   String? _initialCatalogSourceKind() {
@@ -33,9 +34,8 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
         setArmed: (v) => _s._tvBackExitArmed = v,
       );
     });
-    _s._ownedProviderSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
-      {},
-    );
+    _s._ownedProviderSourcesCache =
+        ValueNotifier<Map<String, List<StreamSource>>>({});
 
     // ── Provider initialization ──────────────────────────────────────────
     _s._currentProvider = widget.activeProvider;
@@ -44,12 +44,12 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     // Do not pin from pinSource / preloaded sources - that blocked Auto
     // failover after green Play. Prefs + explicit user picks set pins.
     unawaited(_s._loadPlayerAutoSettings());
-    final catalogSession = isCatalogSourcesMode(widget.activeProvider) ||
+    final catalogSession =
+        isCatalogSourcesMode(widget.activeProvider) ||
         (widget.magnetLink != null && widget.magnetLink!.isNotEmpty);
     // Catalog mode normally skips the webstreaming sources list — but green
     // Forja Play passes explicit failover URLs; keep those so open can hop.
-    if (catalogSession &&
-        (widget.sources == null || widget.sources!.isEmpty)) {
+    if (catalogSession && (widget.sources == null || widget.sources!.isEmpty)) {
       _s._currentSources = null;
     } else {
       _s._currentSources = widget.sources == null
@@ -96,7 +96,9 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     if (_s._currentProvider == 'service111477' &&
         widget.sources != null &&
         widget.sources!.isNotEmpty) {
-      final match = widget.sources!.indexWhere((s) => s.url == widget.mediaPath);
+      final match = widget.sources!.indexWhere(
+        (s) => s.url == widget.mediaPath,
+      );
       _s._current111477FileUrl = match >= 0
           ? widget.sources![match].url
           : widget.sources!.first.url;
@@ -194,8 +196,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       _s._player,
       configuration: VideoControllerConfiguration(
         vo: tvMediaKit ? 'mediacodec_embed' : null,
-        enableHardwareAcceleration:
-            tvMediaKit || !_s._androidMediaKitSafeMode,
+        enableHardwareAcceleration: tvMediaKit || !_s._androidMediaKitSafeMode,
         hwdec: tvMediaKit
             ? 'mediacodec'
             : (_s._androidMediaKitSafeMode ? 'no' : null),
@@ -284,9 +285,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
-        unawaited(
-          ListFollowFromWatched.markMovieWatchingOnPlay(widget.movie!),
-        );
+        unawaited(ListFollowFromWatched.markMovieWatchingOnPlay(widget.movie!));
       }
       // Fetch skip segments from IntroDB
       _fetchIntroDbTimestamps();
@@ -407,7 +406,8 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       for (final s in sources)
         if (isLocalLoopbackPlayUrl(s.url))
           StreamSource(
-            url: durableStreamCatalogUrl(
+            url:
+                durableStreamCatalogUrl(
                   catalogUrl: s.catalogUrl,
                   sourceUrl: s.url,
                   playUrl: s.url,
@@ -422,9 +422,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
         else
           s,
     ];
-    sources.removeWhere(
-      (s) => s.url.isEmpty || isLocalLoopbackPlayUrl(s.url),
-    );
+    sources.removeWhere((s) => s.url.isEmpty || isLocalLoopbackPlayUrl(s.url));
     sources = dedupeStreamSources(sources);
 
     var matchIdx = sources.indexWhere(
@@ -448,8 +446,8 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
         type: lower.contains('.m3u8')
             ? 'hls'
             : lower.contains('.mpd')
-                ? 'dash'
-                : 'mp4',
+            ? 'dash'
+            : 'mp4',
         headers: widget.headers,
         catalogUrl: identity,
       );
@@ -461,7 +459,8 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
     if (matchIdx < 0 || matchIdx >= sources.length) return;
 
     final playingRow = sources[matchIdx];
-    final nextCatalog = durableStreamCatalogUrl(
+    final nextCatalog =
+        durableStreamCatalogUrl(
           catalogUrl: catalogUrl ?? playingRow.catalogUrl,
           sourceUrl: playingRow.url,
           playUrl: playUrl,
@@ -541,8 +540,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       if (cached == null) continue;
       if (cached.any(
         (source) =>
-            source.url == playUrl ||
-            source.url == _s._currentPlayingCatalogUrl,
+            source.url == playUrl || source.url == _s._currentPlayingCatalogUrl,
       )) {
         return key;
       }
@@ -616,8 +614,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
 
   void _popPlayerRoute({NavigatorState? nav, Duration? result}) {
     final navigator =
-        nav ??
-        (mounted ? Navigator.of(context, rootNavigator: true) : null);
+        nav ?? (mounted ? Navigator.of(context, rootNavigator: true) : null);
     final popResult = result ?? _s._positionNotifier.value;
     // Strip loading under the player first — pop-then-dismiss paints resolve UI.
     // Keep canPop false for the whole session (desktop parity).
@@ -654,6 +651,7 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       _s._historySaved = false; // allow re-save on next exit
       _s._armDeadSurfaceCoverIfNeeded();
       _resumeAfterAppBackground();
+      unawaited(_s._recoverPlaybackAfterForeground());
       if (widget.movie != null && _s._isPlayingNotifier.value) {
         final pos = _s._positionNotifier.value.inMilliseconds;
         final dur = _s._durationNotifier.value.inMilliseconds;
@@ -747,7 +745,8 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       _saveAnimeWatchPosition(pos, dur);
     }
 
-    if (widget.movie == null || !usesHomeWatchHistory(
+    if (widget.movie == null ||
+        !usesHomeWatchHistory(
           movie: widget.movie,
           hubEpisodes: widget.hubEpisodes,
           onSaveProgress: widget.onSaveProgress,
@@ -867,5 +866,4 @@ mixin _MobilePlayerLifecycle on ConsumerState<MobilePlayerScreen>, WidgetsBindin
       }
     });
   }
-
 }

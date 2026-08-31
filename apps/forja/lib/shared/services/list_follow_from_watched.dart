@@ -50,8 +50,9 @@ class ListFollowFromWatched {
     if (movie.mediaType != 'tv') return;
     await MyListService().ensureLoaded();
     final uid = MyListService.movieId(movie.id, movie.mediaType);
-    final current =
-        MyListService().contains(uid) ? MyListService().statusOf(uid) : null;
+    final current = MyListService().contains(uid)
+        ? MyListService().statusOf(uid)
+        : null;
     final to = nextStatus(
       current: current,
       watchedCount: watchedCount,
@@ -71,8 +72,9 @@ class ListFollowFromWatched {
   }) async {
     await MyListService().ensureLoaded();
     final uid = target.uniqueId;
-    final current =
-        MyListService().contains(uid) ? MyListService().statusOf(uid) : null;
+    final current = MyListService().contains(uid)
+        ? MyListService().statusOf(uid)
+        : null;
     final to = nextStatus(
       current: current,
       watchedCount: watchedCount,
@@ -233,15 +235,17 @@ class ListFollowFromWatched {
     if (mt == 'tv' || mt == 'series') {
       final tmdbId = item['tmdbId'] as int?;
       if (tmdbId == null) return false;
-      final watched =
-          (await EpisodeWatchedService().getWatchedSet(tmdbId)).length;
+      final watched = (await EpisodeWatchedService().getWatchedSet(
+        tmdbId,
+      )).length;
       if (watched <= 0) return false;
       final details = await TmdbApi().getTvDetails(tmdbId);
       final total = details.numberOfEpisodes;
       if (total <= 0 || watched < total) return false;
       final uid = MyListService.movieId(tmdbId, 'tv');
-      final before =
-          MyListService().contains(uid) ? MyListService().statusOf(uid) : null;
+      final before = MyListService().contains(uid)
+          ? MyListService().statusOf(uid)
+          : null;
       await applyTmdb(
         movie: details,
         watchedCount: watched,
@@ -255,23 +259,25 @@ class ListFollowFromWatched {
     if (mt == 'anime') {
       final anilistId = item['anilistId'] as int?;
       if (anilistId == null) return false;
-      final pluginId = item['pluginId']?.toString() ??
+      final pluginId =
+          item['pluginId']?.toString() ??
           await PluginNavRegistry.pluginIdForTab('anime') ??
           '';
       if (pluginId.isEmpty) return false;
       final watched = (await EpisodeWatchedService().getWatchedSet(
         anilistId,
         catalog: pluginId,
-      ))
-          .length;
+      )).length;
       if (watched <= 0) return false;
       final meta = await fetchCatalogMetaDetails(
         pluginId: pluginId,
         metaId: item['metaId']?.toString() ?? '$pluginId:$anilistId',
       );
-      final total = meta?.episodes ?? (item['totalEpisodes'] as num?)?.toInt() ?? 0;
+      final total =
+          meta?.episodes ?? (item['totalEpisodes'] as num?)?.toInt() ?? 0;
       if (total <= 0 || watched < total) return false;
-      final open = CatalogOpen.fromJson(item['catalogOpen']) ??
+      final open =
+          CatalogOpen.fromJson(item['catalogOpen']) ??
           CatalogOpen(
             surface: 'anime',
             id: anilistId.toString(),
@@ -286,11 +292,9 @@ class ListFollowFromWatched {
         open: open,
         title: item['title']?.toString() ?? meta?.name ?? '',
         posterPath: item['posterPath']?.toString() ?? meta?.poster ?? '',
-        voteAverage: (item['voteAverage'] as num?)?.toDouble() ??
-            (meta?.rating ?? 0),
-        releaseDate: item['releaseDate']?.toString() ??
-            meta?.releaseInfo ??
-            '',
+        voteAverage:
+            (item['voteAverage'] as num?)?.toDouble() ?? (meta?.rating ?? 0),
+        releaseDate: item['releaseDate']?.toString() ?? meta?.releaseInfo ?? '',
         mediaType: 'anime',
       );
       final before = MyListService().contains(target.uniqueId)
@@ -308,15 +312,15 @@ class ListFollowFromWatched {
     if (mt == 'asian_drama') {
       final kisskhId = item['kisskhId'] as int?;
       if (kisskhId == null) return false;
-      final pluginId = item['pluginId']?.toString() ??
+      final pluginId =
+          item['pluginId']?.toString() ??
           await PluginNavRegistry.pluginIdForTab('asian_drama') ??
           '';
       if (pluginId.isEmpty) return false;
       final watched = (await EpisodeWatchedService().getWatchedSet(
         kisskhId,
         catalog: pluginId,
-      ))
-          .length;
+      )).length;
       if (watched <= 0) return false;
       final meta = await fetchCatalogMetaDetails(
         pluginId: pluginId,
@@ -326,7 +330,8 @@ class ListFollowFromWatched {
           ? meta!.videos.length
           : (meta?.episodes ?? (item['totalEpisodes'] as num?)?.toInt() ?? 0);
       if (total <= 0 || watched < total) return false;
-      final open = CatalogOpen.fromJson(item['catalogOpen']) ??
+      final open =
+          CatalogOpen.fromJson(item['catalogOpen']) ??
           CatalogOpen(
             surface: 'drama',
             id: kisskhId.toString(),

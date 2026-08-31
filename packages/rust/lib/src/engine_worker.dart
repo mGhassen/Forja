@@ -104,11 +104,10 @@ abstract final class EngineWorkerPool {
     final readyPorts = List.generate(_poolSize, (_) => ReceivePort());
     try {
       for (var i = 0; i < _poolSize; i++) {
-        final isolate = await Isolate.spawn(
-          _engineWorkerMain,
-          [readyPorts[i].sendPort, libraryPath],
-          debugName: 'forja-engine-worker-$i',
-        );
+        final isolate = await Isolate.spawn(_engineWorkerMain, [
+          readyPorts[i].sendPort,
+          libraryPath,
+        ], debugName: 'forja-engine-worker-$i');
         final startup = await readyPorts[i].first;
         if (startup is _WorkerStartupFailure) {
           isolate.kill(priority: Isolate.immediate);
@@ -179,12 +178,7 @@ abstract final class EngineWorkerPool {
     final reply = ReceivePort();
     final port = _ports[_roundRobin++ % _ports.length];
     port.send(
-      _WorkerJob(
-        id: id,
-        kind: kind,
-        args: args,
-        replyPort: reply.sendPort,
-      ),
+      _WorkerJob(id: id, kind: kind, args: args, replyPort: reply.sendPort),
     );
     final msg = await reply.first as _WorkerReply;
     reply.close();
@@ -229,9 +223,7 @@ String _dispatchJob(_WorkerJob job) {
     case EngineJobKind.version:
       return rust.version;
     case EngineJobKind.webstreamrGetStreams:
-      return rust.webstreamrGetStreamsJson(
-        job.args['requestJson']! as String,
-      );
+      return rust.webstreamrGetStreamsJson(job.args['requestJson']! as String);
     case EngineJobKind.stremioHttpGet:
       return rust.stremioHttpGet(
         job.args['url']! as String,
@@ -290,7 +282,9 @@ String _dispatchJob(_WorkerJob job) {
     case EngineJobKind.debridRequest:
       return rust.debridRequestJson(job.args['requestJson']! as String);
     case EngineJobKind.site111477IndexRequest:
-      return rust.site111477IndexRequestJson(job.args['requestJson']! as String);
+      return rust.site111477IndexRequestJson(
+        job.args['requestJson']! as String,
+      );
     case EngineJobKind.megaResolve:
       return rust.megaResolveJson(job.args['embedUrl']! as String);
     case EngineJobKind.metadataRequest:

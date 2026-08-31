@@ -34,10 +34,10 @@ void syncEpisodeWatchedToTrackers(
         {
           'number': season,
           'episodes': [
-            {'number': episode}
-          ]
-        }
-      ]
+            {'number': episode},
+          ],
+        },
+      ],
     };
     if (watched) {
       SimklService().addToHistory(shows: [show]);
@@ -47,11 +47,7 @@ void syncEpisodeWatchedToTrackers(
   });
 }
 
-void syncMyListAddToTrackers(
-  int? tmdbId,
-  String? imdbId,
-  String mediaType,
-) {
+void syncMyListAddToTrackers(int? tmdbId, String? imdbId, String mediaType) {
   if (tmdbId == null && imdbId == null) return;
   TraktService().isLoggedIn().then((loggedIn) {
     if (!loggedIn) return;

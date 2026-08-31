@@ -165,11 +165,10 @@ class SettingsPlaybackSnapshot {
 
 final settingsPlaybackProvider =
     AsyncNotifierProvider<SettingsPlaybackNotifier, SettingsPlaybackSnapshot>(
-  SettingsPlaybackNotifier.new,
-);
+      SettingsPlaybackNotifier.new,
+    );
 
-class SettingsPlaybackNotifier
-    extends AsyncNotifier<SettingsPlaybackSnapshot> {
+class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
   @override
   Future<SettingsPlaybackSnapshot> build() async {
     ref.watch(playSourceRevisionProvider);
@@ -189,8 +188,7 @@ class SettingsPlaybackNotifier
       playSourceStremio: await PlaySourceEffective.stremio(s, lanReady),
       playSourceNuvio: await PlaySourceEffective.nuvio(s, lanReady),
       playSourceEngine: await PlaySourceEffective.engine(s, lanReady),
-      playSourceEngineAutoStart:
-          await s.isPlaySourceEngineAutoStartEnabled(),
+      playSourceEngineAutoStart: await s.isPlaySourceEngineAutoStartEnabled(),
       playSourceWebstreaming: await PlaySourceEffective.webstreaming(s),
       p2pAcknowledged: await s.isP2pStreamingAcknowledged(),
       simpleStreamingResolve: await s.isSimpleStreamingResolveEnabled(),
@@ -222,8 +220,9 @@ class SettingsPlaybackNotifier
       iptvLiveRecoveryModeLabel: SettingsService.iptvLiveRecoveryModeLabel(
         recoveryMode,
       ),
-      iptvLiveRecoveryStallReopen:
-          SettingsService.iptvLiveRecoveryStallReopen(recoveryMode),
+      iptvLiveRecoveryStallReopen: SettingsService.iptvLiveRecoveryStallReopen(
+        recoveryMode,
+      ),
       iptvMatchDisplayRefresh: await s.getIptvMatchDisplayRefresh(),
       maxPlaybackHeightLabel: SettingsService.maxPlaybackHeightLabel(
         await s.getMaxPlaybackHeight(),
@@ -236,8 +235,9 @@ class SettingsPlaybackNotifier
 
   Future<void> reload() async {
     final previous = state;
-    state = const AsyncLoading<SettingsPlaybackSnapshot>()
-        .copyWithPrevious(previous);
+    state = const AsyncLoading<SettingsPlaybackSnapshot>().copyWithPrevious(
+      previous,
+    );
     state = await AsyncValue.guard(_load);
   }
 
@@ -287,8 +287,8 @@ class SettingsTorrentSnapshot {
 
 final settingsTorrentProvider =
     AsyncNotifierProvider<SettingsTorrentNotifier, SettingsTorrentSnapshot>(
-  SettingsTorrentNotifier.new,
-);
+      SettingsTorrentNotifier.new,
+    );
 
 class SettingsTorrentNotifier extends AsyncNotifier<SettingsTorrentSnapshot> {
   @override
@@ -354,8 +354,8 @@ class SettingsDebridSnapshot {
 
 final settingsDebridProvider =
     AsyncNotifierProvider<SettingsDebridNotifier, SettingsDebridSnapshot>(
-  SettingsDebridNotifier.new,
-);
+      SettingsDebridNotifier.new,
+    );
 
 class SettingsDebridNotifier extends AsyncNotifier<SettingsDebridSnapshot> {
   @override
@@ -377,8 +377,9 @@ class SettingsDebridNotifier extends AsyncNotifier<SettingsDebridSnapshot> {
 
   Future<void> reload() async {
     final previous = state;
-    state = const AsyncLoading<SettingsDebridSnapshot>()
-        .copyWithPrevious(previous);
+    state = const AsyncLoading<SettingsDebridSnapshot>().copyWithPrevious(
+      previous,
+    );
     state = await AsyncValue.guard(_load);
   }
 
@@ -412,10 +413,11 @@ class SettingsWebstreamrSnapshot {
   final String tmdbTok;
 }
 
-final settingsWebstreamrProvider = AsyncNotifierProvider<
-    SettingsWebstreamrNotifier, SettingsWebstreamrSnapshot>(
-  SettingsWebstreamrNotifier.new,
-);
+final settingsWebstreamrProvider =
+    AsyncNotifierProvider<
+      SettingsWebstreamrNotifier,
+      SettingsWebstreamrSnapshot
+    >(SettingsWebstreamrNotifier.new);
 
 class SettingsWebstreamrNotifier
     extends AsyncNotifier<SettingsWebstreamrSnapshot> {
@@ -424,10 +426,10 @@ class SettingsWebstreamrNotifier
     return SettingsWebstreamrSnapshot(
       enabledCountries: (await WebStreamrSettings.getEnabledCountryCodes())
           .toSet(),
-      disabledExtractors:
-          (await WebStreamrSettings.getDisabledExtractors()).toSet(),
-      excludedResolutions:
-          (await WebStreamrSettings.getExcludedResolutions()).toSet(),
+      disabledExtractors: (await WebStreamrSettings.getDisabledExtractors())
+          .toSet(),
+      excludedResolutions: (await WebStreamrSettings.getExcludedResolutions())
+          .toSet(),
       mfpUrl: await WebStreamrSettings.getMediaFlowProxyUrl() ?? '',
       mfpPwd: await WebStreamrSettings.getMediaFlowProxyPassword() ?? '',
       flareUrl: await WebStreamrSettings.getFlareSolverrUrl() ?? '',
@@ -437,8 +439,9 @@ class SettingsWebstreamrNotifier
 
   Future<void> reload() async {
     final previous = state;
-    state = const AsyncLoading<SettingsWebstreamrSnapshot>()
-        .copyWithPrevious(previous);
+    state = const AsyncLoading<SettingsWebstreamrSnapshot>().copyWithPrevious(
+      previous,
+    );
     state = await AsyncValue.guard(build);
   }
 }
@@ -467,17 +470,15 @@ class SettingsNavigationSnapshot {
   }
 
   @override
-  int get hashCode => Object.hash(
-        defaultTab,
-        Object.hashAll(visible),
-        Object.hashAll(order),
-      );
+  int get hashCode =>
+      Object.hash(defaultTab, Object.hashAll(visible), Object.hashAll(order));
 }
 
-final settingsNavigationProvider = AsyncNotifierProvider<
-    SettingsNavigationNotifier, SettingsNavigationSnapshot>(
-  SettingsNavigationNotifier.new,
-);
+final settingsNavigationProvider =
+    AsyncNotifierProvider<
+      SettingsNavigationNotifier,
+      SettingsNavigationSnapshot
+    >(SettingsNavigationNotifier.new);
 
 class SettingsNavigationNotifier
     extends AsyncNotifier<SettingsNavigationSnapshot> {
@@ -528,8 +529,9 @@ class SettingsNavigationNotifier
 
   Future<void> reload() async {
     final previous = state;
-    state = const AsyncLoading<SettingsNavigationSnapshot>()
-        .copyWithPrevious(previous);
+    state = const AsyncLoading<SettingsNavigationSnapshot>().copyWithPrevious(
+      previous,
+    );
     state = await AsyncValue.guard(_load);
   }
 }
@@ -555,8 +557,8 @@ class SettingsIndexerSnapshot {
 
 final settingsIndexerProvider =
     AsyncNotifierProvider<SettingsIndexerNotifier, SettingsIndexerSnapshot>(
-  SettingsIndexerNotifier.new,
-);
+      SettingsIndexerNotifier.new,
+    );
 
 class SettingsIndexerNotifier extends AsyncNotifier<SettingsIndexerSnapshot> {
   @override
@@ -573,21 +575,22 @@ class SettingsIndexerNotifier extends AsyncNotifier<SettingsIndexerSnapshot> {
 
   Future<void> reload() async {
     final previous = state;
-    state = const AsyncLoading<SettingsIndexerSnapshot>()
-        .copyWithPrevious(previous);
+    state = const AsyncLoading<SettingsIndexerSnapshot>().copyWithPrevious(
+      previous,
+    );
     state = await AsyncValue.guard(build);
   }
 }
 
 final nuvioAddonsProvider =
     AsyncNotifierProvider<NuvioAddonsNotifier, List<NuvioAddon>>(
-  NuvioAddonsNotifier.new,
-);
+      NuvioAddonsNotifier.new,
+    );
 
 final enginePacksProvider =
     AsyncNotifierProvider<EnginePacksNotifier, List<EnginePack>>(
-  EnginePacksNotifier.new,
-);
+      EnginePacksNotifier.new,
+    );
 
 class EnginePacksNotifier extends AsyncNotifier<List<EnginePack>> {
   @override
@@ -644,63 +647,67 @@ class TrackerAccountStatus {
   final String? apiKey;
 }
 
-final asianDramaMirrorCatalogProvider =
-    FutureProvider<Map<String, String>>((ref) async {
+final asianDramaMirrorCatalogProvider = FutureProvider<Map<String, String>>((
+  ref,
+) async {
   return HubPluginConfig.mirrorCatalogForTab('asian_drama');
 });
 
-final traktStatusProvider =
-    FutureProvider.autoDispose<TrackerAccountStatus>((ref) async {
+final traktStatusProvider = FutureProvider.autoDispose<TrackerAccountStatus>((
+  ref,
+) async {
   final trakt = TraktService();
   final loggedIn = await trakt.isLoggedIn();
   if (!loggedIn) return const TrackerAccountStatus(loggedIn: false);
   final profile = await trakt.getUserProfile();
-  final user = profile?['user']?['username']?.toString() ??
+  final user =
+      profile?['user']?['username']?.toString() ??
       profile?['username']?.toString();
   final stats = await trakt.getUserStats();
   return TrackerAccountStatus(loggedIn: true, username: user, stats: stats);
 });
 
-final simklStatusProvider =
-    FutureProvider.autoDispose<TrackerAccountStatus>((ref) async {
+final simklStatusProvider = FutureProvider.autoDispose<TrackerAccountStatus>((
+  ref,
+) async {
   final simkl = SimklService();
   final loggedIn = await simkl.isLoggedIn();
   if (!loggedIn) return const TrackerAccountStatus(loggedIn: false);
   final profile = await simkl.getUserProfile();
-  final name = profile?['user']?['name']?.toString() ??
-      profile?['name']?.toString();
+  final name =
+      profile?['user']?['name']?.toString() ?? profile?['name']?.toString();
   return TrackerAccountStatus(loggedIn: true, username: name);
 });
 
-final mdblistStatusProvider =
-    FutureProvider.autoDispose<TrackerAccountStatus>((ref) async {
+final mdblistStatusProvider = FutureProvider.autoDispose<TrackerAccountStatus>((
+  ref,
+) async {
   final mdblist = MdblistService();
   final configured = await mdblist.isConfigured();
   if (!configured) return const TrackerAccountStatus(loggedIn: false);
   final key = await mdblist.getApiKey();
   final info = await mdblist.getUserInfo();
   final name = info?['name']?.toString();
-  return TrackerAccountStatus(
-    loggedIn: true,
-    username: name,
-    apiKey: key,
-  );
+  return TrackerAccountStatus(loggedIn: true, username: name, apiKey: key);
 });
 
 // ── About telemetry / keychain ─────────────────────────────────────────────
 
-final crashReportingEnabledProvider =
-    FutureProvider.autoDispose<bool>((ref) async {
+final crashReportingEnabledProvider = FutureProvider.autoDispose<bool>((
+  ref,
+) async {
   return SettingsService().isCrashReportingEnabled();
 });
 
-final productAnalyticsEnabledProvider =
-    FutureProvider.autoDispose<bool>((ref) async {
+final productAnalyticsEnabledProvider = FutureProvider.autoDispose<bool>((
+  ref,
+) async {
   return SettingsService().isProductAnalyticsEnabled();
 });
 
-final macOsKeychainEnabledProvider =
-    FutureProvider.autoDispose<bool>((ref) async {
+final macOsKeychainEnabledProvider = FutureProvider.autoDispose<bool>((
+  ref,
+) async {
   await ForjaPlatformSecureStore.ensureConsentLoaded();
   return ForjaPlatformSecureStore.usesKeychain;
 });

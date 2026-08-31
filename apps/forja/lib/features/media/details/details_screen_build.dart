@@ -261,10 +261,7 @@ mixin _DetailsScreenBuild on ConsumerState<DetailsScreen> {
         fit: StackFit.expand,
         children: [
           scaffold,
-          const ModalBarrier(
-            dismissible: false,
-            color: Color(0x89000000),
-          ),
+          const ModalBarrier(dismissible: false, color: Color(0x89000000)),
           const Center(
             child: SizedBox(
               width: 28,

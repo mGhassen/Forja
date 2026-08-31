@@ -177,8 +177,11 @@ class MobilePlayerScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<MobilePlayerScreen> createState() => _MobilePlayerScreenState();
 }
+
 class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
-    with TickerProviderStateMixin, WidgetsBindingObserver,
+    with
+        TickerProviderStateMixin,
+        WidgetsBindingObserver,
         _MobilePlayerLifecycle,
         _MobilePlayerPlayback,
         _MobilePlayerUi,
@@ -199,15 +202,17 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   final ValueNotifier<Set<String>> _providerLoadFailures =
       ValueNotifier<Set<String>>({});
   late final ValueNotifier<Map<String, List<StreamSource>>>
-      _ownedProviderSourcesCache;
+  _ownedProviderSourcesCache;
   bool _historySaved = false;
   Timer? _progressSaveTimer;
   bool _hasError = false;
 
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;
+
   /// Guards re-entrant Back while [_exitPlayer] awaits stop/orientation.
   bool _exitInProgress = false;
+
   /// MediaKit [Video] mounted — cleared before pop on Android so MediaCodec
   /// surface teardown is not interleaved with route dispose (issue 128 ANR).
   bool _showVideoSurface = true;
@@ -215,33 +220,47 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   final FocusNode _rewindFocus = FocusNode(debugLabel: 'player-rewind');
   final FocusNode _forwardFocus = FocusNode(debugLabel: 'player-forward');
   final FocusNode _seekbarFocus = FocusNode(debugLabel: 'player-seekbar');
-  final FocusNode _transportSourcesFocus =
-      FocusNode(debugLabel: 'player-transport-sources');
-  final FocusNode _transportStreamFocus =
-      FocusNode(debugLabel: 'player-transport-stream');
-  final FocusNode _transportPrevEpFocus =
-      FocusNode(debugLabel: 'player-transport-prev-ep');
-  final FocusNode _transportNextEpFocus =
-      FocusNode(debugLabel: 'player-transport-next-ep');
-  final FocusNode _transportEpisodesFocus =
-      FocusNode(debugLabel: 'player-transport-episodes');
-  final FocusNode _transportAudioFocus =
-      FocusNode(debugLabel: 'player-transport-audio');
-  final FocusNode _transportSubsFocus =
-      FocusNode(debugLabel: 'player-transport-subs');
-  final FocusNode _transportQualityFocus =
-      FocusNode(debugLabel: 'player-transport-quality');
-  final FocusNode _transportSettingsFocus =
-      FocusNode(debugLabel: 'player-transport-settings');
+  final FocusNode _transportSourcesFocus = FocusNode(
+    debugLabel: 'player-transport-sources',
+  );
+  final FocusNode _transportStreamFocus = FocusNode(
+    debugLabel: 'player-transport-stream',
+  );
+  final FocusNode _transportPrevEpFocus = FocusNode(
+    debugLabel: 'player-transport-prev-ep',
+  );
+  final FocusNode _transportNextEpFocus = FocusNode(
+    debugLabel: 'player-transport-next-ep',
+  );
+  final FocusNode _transportEpisodesFocus = FocusNode(
+    debugLabel: 'player-transport-episodes',
+  );
+  final FocusNode _transportAudioFocus = FocusNode(
+    debugLabel: 'player-transport-audio',
+  );
+  final FocusNode _transportSubsFocus = FocusNode(
+    debugLabel: 'player-transport-subs',
+  );
+  final FocusNode _transportQualityFocus = FocusNode(
+    debugLabel: 'player-transport-quality',
+  );
+  final FocusNode _transportSettingsFocus = FocusNode(
+    debugLabel: 'player-transport-settings',
+  );
   final FocusNode _backFocus = FocusNode(debugLabel: 'player-back');
+
   /// First TV Back hid chrome (or armed while hidden) — next Back exits.
   bool _tvBackExitArmed = false;
 
   final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'player-menu');
   final FocusNode _retryFocus = FocusNode(debugLabel: 'player-retry');
-  final FocusNode _streamActionFocus = FocusNode(debugLabel: 'player-stream-action');
+  final FocusNode _streamActionFocus = FocusNode(
+    debugLabel: 'player-stream-action',
+  );
   final FocusNode _skipChipFocus = FocusNode(debugLabel: 'player-skip-chip');
-  final FocusNode _nextEpChipFocus = FocusNode(debugLabel: 'player-next-ep-chip');
+  final FocusNode _nextEpChipFocus = FocusNode(
+    debugLabel: 'player-next-ep-chip',
+  );
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
   Movie? _heroMovie;
   String? _episodeOverview;
@@ -264,6 +283,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   StreamSubscription<bool>? _completedSub;
   StreamSubscription<Tracks>? _tracksSub;
   StreamSubscription<PlayerLog>? _logSub;
+
   /// Deferred track/subtitle auto-select - cancel on exit so it cannot
   /// touch State after the route is gone.
   Timer? _trackAutoSelectTimer;
@@ -285,6 +305,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   /// True when we paused because the app left the foreground (not user pause).
   /// Resume only if this is set — keeps manual pause across app switch.
   bool _pausedByLifecycle = false;
+
   /// ATV: hide dead mediacodec_embed texture after veille while still paused (issue 182).
   bool _coverDeadSurface = false;
 
@@ -305,7 +326,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   /// gain. `tvRemoteEnabled` covers [TvPlayerScreen] before the async
   /// `isTelevision` probe lands.
   bool get _tvMediaKit =>
-      Platform.isAndroid && (widget.tvRemoteEnabled || PlatformInfo.isAndroidTv);
+      Platform.isAndroid &&
+      (widget.tvRemoteEnabled || PlatformInfo.isAndroidTv);
 
   // ── Gesture State ─────────────────────────────────────────────────────────
   double _volume = 100.0; // 0–150 (mpv supports >100%; 100 = full)
@@ -340,8 +362,10 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   List<PlayableSource>? _playableSources;
   String? _currentUrl;
   String? _activeMagnet;
+
   /// Catalog Sources kind for the playing session: `torrents` | `stremio` | `nuvio`.
   String? _catalogSourceKind;
+
   /// Last Stremio/Nuvio `_addonBaseUrl` (e.g. `nuvio:showbox`) for panel focus.
   String? _catalogAddonBaseUrl;
   // ── HLS Quality Selector ─────────────────────────────────────────────────
@@ -374,14 +398,19 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   bool _networkRemountInFlight = false;
   bool _playbackConfirmed = false;
   DateTime? _playbackConfirmedAt;
+
   /// First confirm of this episode session (survives source switches).
   DateTime? _sessionFirstConfirmedAt;
+
   /// True once position was observed in the episode body this session.
   bool _hadMidPlayback = false;
+
   /// Mid-body on the current source open only (resets on every re-open).
   bool _openHadMidPlayback = false;
+
   /// Latch abortive EOF so repeating `completed` events do not spam / auto-next.
   bool _abortiveCompletedLatched = false;
+
   /// Wall-clock when the user scrubbed away from EOF (suppresses re-pin).
   DateTime? _seekAwayFromEofAt;
   late final Future<void> _playableSourcesReady;
@@ -425,24 +454,27 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   }
 
   Future<void> _seekTo(Duration position) => seekPlayerPreservingProgress(
-        _player,
-        position: position,
-        positionNotifier: _positionNotifier,
-        duration: _durationNotifier.value,
-        onSeekAwayFromEof: () {
-          _seekAwayFromEofAt = DateTime.now();
-          _abortiveCompletedLatched = false;
-        },
-        onSeekCommitted: _armPostSeekStall,
-      );
+    _player,
+    position: position,
+    positionNotifier: _positionNotifier,
+    duration: _durationNotifier.value,
+    onSeekAwayFromEof: () {
+      _seekAwayFromEofAt = DateTime.now();
+      _abortiveCompletedLatched = false;
+    },
+    onSeekCommitted: _armPostSeekStall,
+  );
 
   void _armPostSeekStall(Duration target) {
     final url = _currentQualityUrl ?? _currentUrl;
     final w = _postSeekStall;
     if (w == null) return;
-    w.enabled = url != null &&
+    w.enabled =
+        url != null &&
         !isLocalTorrentStreamUrl(url) &&
-        !isLocalLoopbackPlayUrl(url);
+        !isLocalLoopbackPlayUrl(url) &&
+        postSeekRemountAppliesTo(target);
+    if (!postSeekRemountAppliesTo(target)) return;
     if (shouldSkipPostSeekStallArm(
       target: target,
       resumeStartPosition: widget.startPosition,
@@ -452,8 +484,10 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     }
     w.noteSeek(target);
   }
+
   bool _isFetchingSubs = false;
   String? _selectedExternalSubUrl;
+
   /// Downloaded external subtitle file URIs keyed by source URL - reused when
   /// mpv wipes the track on media open (auto-pick race).
   final Map<String, String> _externalSubFileCache = {};

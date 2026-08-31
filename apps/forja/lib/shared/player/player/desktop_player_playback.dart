@@ -1070,7 +1070,6 @@ mixin _DesktopPlayerPlayback
     }
   }
 
-  /// Same URL reopen at [target] after post-seek silent freeze (issue 184).
   Future<bool> _remountCurrentStreamAt(
     Duration target, {
     bool allowFallbackInit = true,
@@ -1138,6 +1137,38 @@ mixin _DesktopPlayerPlayback
     );
     if (_s._disposed || !mounted) return false;
     return remountPlaybackResumed(_s._player.state, target);
+  }
+
+  /// Peakstorm HLS often dies while backgrounded — `play()` alone leaves BUFFERING.
+  Future<void> _recoverPlaybackAfterForeground() async {
+    if (_s._disposed || !_s._playbackConfirmed) return;
+    final url = _s._currentQualityUrl ?? _s._currentUrl;
+    if (url == null ||
+        isLocalTorrentStreamUrl(url) ||
+        isLocalLoopbackPlayUrl(url)) {
+      return;
+    }
+
+    await Future<void>.delayed(const Duration(seconds: 4));
+    if (_s._disposed || !_s._playbackConfirmed) return;
+    if (_s._networkRemountInFlight ||
+        _s._isInitPlaybackRunning ||
+        (_s._postSeekStall?.remountInFlight ?? false)) {
+      return;
+    }
+
+    final pos = _s._positionNotifier.value;
+    final dur = _s._durationNotifier.value;
+    final state = _s._player.state;
+    if (!foregroundResumePlaybackStalled(state: state, pos: pos, dur: dur)) {
+      return;
+    }
+
+    debugPrint(
+      '[Player] Foreground resume stalled @${pos.inSeconds}s '
+      '(buffering=${state.buffering}) — remount',
+    );
+    await _remountCurrentStreamAt(pos, allowFallbackInit: false);
   }
 
   void _ensurePostSeekStallWatchdog() {

@@ -88,7 +88,8 @@ class _CatalogShellState extends State<CatalogShell>
   /// Last [catalogChromeFilterEpoch] — ignore structural revision bumps.
   String _chromeFilterEpoch = '';
 
-  final CatalogHubRowPrefetchLane _rowPrefetchLane = CatalogHubRowPrefetchLane();
+  final CatalogHubRowPrefetchLane _rowPrefetchLane =
+      CatalogHubRowPrefetchLane();
 
   Listenable? _chromeListenable;
   VoidCallback? _verticalFiltersRevisionListener;
@@ -160,8 +161,9 @@ class _CatalogShellState extends State<CatalogShell>
       CatalogHubRowPrefetchSlot(lane: _rowPrefetchLane, index: index);
 
   void _publishScroll() {
-    ShellBus.hubScrollOffsetFor(_pageKey).value =
-        _scroll.hasClients ? _scroll.offset : 0;
+    ShellBus.hubScrollOffsetFor(_pageKey).value = _scroll.hasClients
+        ? _scroll.offset
+        : 0;
   }
 
   Future<void> _loadLayout({bool forceRefresh = false}) async {
@@ -219,9 +221,7 @@ class _CatalogShellState extends State<CatalogShell>
     final pluginEntry = await PluginRegistry.instance.findPlugin(
       widget.pluginId,
     );
-    _pluginConfigPageSize = catalogRailPageSizeFrom(
-      pluginEntry?.plugin.config,
-    );
+    _pluginConfigPageSize = catalogRailPageSizeFrom(pluginEntry?.plugin.config);
     final rawWidgets = pageMap['widgets'] as List;
     final widgets = <Map<String, dynamic>>[
       for (final w in rawWidgets)
@@ -335,7 +335,13 @@ class _CatalogShellState extends State<CatalogShell>
       action: action,
       params: catalogParamsWithFilters(
         params,
-        filters: [...catalogChromeFilters(tabId: widget.tabId, pluginId: widget.pluginId), moodFilter],
+        filters: [
+          ...catalogChromeFilters(
+            tabId: widget.tabId,
+            pluginId: widget.pluginId,
+          ),
+          moodFilter,
+        ],
       ),
       forceRefresh: forceRefresh,
     );
@@ -389,7 +395,10 @@ class _CatalogShellState extends State<CatalogShell>
       action: 'feed',
       params: catalogParamsWithFilters(
         const {},
-        filters: catalogChromeFilters(tabId: widget.tabId, pluginId: widget.pluginId),
+        filters: catalogChromeFilters(
+          tabId: widget.tabId,
+          pluginId: widget.pluginId,
+        ),
       ),
       forceRefresh: forceRefresh,
     );
@@ -485,15 +494,15 @@ class _CatalogShellState extends State<CatalogShell>
   HubHeroSlide _heroSlideFor(CatalogMetaItem item) {
     final status = (item.status ?? '').trim();
     final isUpcoming = status.toUpperCase() == 'NOT_YET_RELEASED';
-    final useAniBanner = item.open != null &&
+    final useAniBanner =
+        item.open != null &&
         item.bannerImage.isNotEmpty &&
         item.background == item.bannerImage;
     final yearBit = item.releaseInfo.isEmpty
         ? null
         : item.releaseInfo.split(' • ').first;
     final open = item.open;
-    final hubNative =
-        open != null && catalogOpenUsesHubDetails(open);
+    final hubNative = open != null && catalogOpenUsesHubDetails(open);
     final movie = hubNative ? null : catalogMetaToMovie(item);
     final mediaHint = (item.tmdbMediaType ?? '').trim().toLowerCase();
     final badge = (item.badge ?? '').trim().toUpperCase();
@@ -953,7 +962,9 @@ class _CatalogShellState extends State<CatalogShell>
                       child: HorizontalScroller(
                         height: layout.rowHeight,
                         padding: EdgeInsets.symmetric(
-                          horizontal: shellHomeSectionHorizontalPadding(context),
+                          horizontal: shellHomeSectionHorizontalPadding(
+                            context,
+                          ),
                         ),
                         itemCount: options.length,
                         separatorBuilder: (_, _) =>
@@ -975,7 +986,8 @@ class _CatalogShellState extends State<CatalogShell>
                   horizontal: shellHomeSectionHorizontalPadding(context),
                 ),
                 itemCount: options.length,
-                separatorBuilder: (_, _) => SizedBox(width: layout.horizontalGap),
+                separatorBuilder: (_, _) =>
+                    SizedBox(width: layout.horizontalGap),
                 itemBuilder: (context, i) => moodChip(layout: layout, i: i),
               );
             },
@@ -1145,11 +1157,8 @@ class _CatalogShellState extends State<CatalogShell>
           : HubCatalogSection<CatalogMetaItem>(
               key: ValueKey('bleed:${bleed['id']}:$_chromeEpoch'),
               title: (bleed['title'] ?? '').toString(),
-              fetchPage: (page) => _fetchRailPage(
-                bleed,
-                page: page,
-                useFeedBatch: page == 1,
-              ),
+              fetchPage: (page) =>
+                  _fetchRailPage(bleed, page: page, useFeedBatch: page == 1),
               pageSizeHint: _railPageSizeHint(bleed),
               itemKey: (item) => item.id,
               showRank: _isNumbered(bleed),
@@ -1359,7 +1368,8 @@ class _VerticalHubRailState extends State<_VerticalHubRail> {
   Widget build(BuildContext context) {
     return HubLazyViewportGate(
       detectorKey: ValueKey('vhub-lazy:${widget.tvRowId ?? widget.title}'),
-      placeholderHeight: shellHomeSectionTitleTop(context) +
+      placeholderHeight:
+          shellHomeSectionTitleTop(context) +
           shellHomeSectionHeaderHeight(context) +
           HubPosterCard.cardHeight(context, aspect: widget.aspect),
       prefetchSlot: widget.prefetchSlot,

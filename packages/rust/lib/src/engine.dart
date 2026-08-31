@@ -87,9 +87,9 @@ class RustLib {
   void engineClearShutdown() => _native.ffi_engine_clear_shutdown();
 
   int engineSubmitJob(int kind, String payloadJson) => using((arena) {
-        final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _native.ffi_engine_submit_job(kind, ptr);
-      });
+    final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _native.ffi_engine_submit_job(kind, ptr);
+  });
 
   String? engineTakeJobResult(int jobId) {
     final ptr = _native.ffi_engine_take_job_result(jobId);
@@ -121,26 +121,26 @@ class RustLib {
   }
 
   String normalizeTorrentTitle(String title) => using((arena) {
-        final ptr = title.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_normalize_torrent_title(ptr));
-      });
+    final ptr = title.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_normalize_torrent_title(ptr));
+  });
 
   String unpackJs(String source) => using((arena) {
-        final ptr = source.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_unpack_js(ptr));
-      });
+    final ptr = source.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_unpack_js(ptr));
+  });
 
   /// Push merged provider runtime JSON into the Rust process overlay (RFC-039).
   /// Returns empty on success, otherwise an error message.
   String setProviderRuntimeOverlay(String json) => using((arena) {
-        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_set_provider_runtime_overlay(ptr));
-      });
+    final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_set_provider_runtime_overlay(ptr));
+  });
 
   String buildMovieUrl(String providerId, int tmdbId) => using((arena) {
-        final ptr = providerId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_build_movie_url(ptr, tmdbId));
-      });
+    final ptr = providerId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_build_movie_url(ptr, tmdbId));
+  });
 
   String buildTvUrl(String providerId, int tmdbId, int season, int episode) =>
       using((arena) {
@@ -150,109 +150,103 @@ class RustLib {
         );
       });
 
-  String listProvidersJson() =>
-      _readString(_native.ffi_list_providers_json());
+  String listProvidersJson() => _readString(_native.ffi_list_providers_json());
 
   String playbackRankSourcesJson(String payloadJson) => using((arena) {
-        final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_playback_rank_sources_json(ptr));
-      });
+    final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_playback_rank_sources_json(ptr));
+  });
 
   String playbackNormalizeLegacyJson(String payloadJson) => using((arena) {
-        final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_playback_normalize_legacy_json(ptr));
-      });
+    final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_playback_normalize_legacy_json(ptr));
+  });
 
   String playbackOrderProvidersJson(String payloadJson) => using((arena) {
-        final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_playback_order_providers_json(ptr));
-      });
+    final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_playback_order_providers_json(ptr));
+  });
 
   String parseM3uJson(String content) => using((arena) {
-        final ptr = content.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_m3u_json(ptr));
-      });
+    final ptr = content.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_m3u_json(ptr));
+  });
 
-  String decryptPasteResponse(String urlWithHash, String rawResponse) =>
-      using((arena) {
-        final urlPtr = urlWithHash.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final rawPtr = rawResponse.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_decrypt_paste_response(urlPtr, rawPtr));
-      });
+  String decryptPasteResponse(String urlWithHash, String rawResponse) => using((
+    arena,
+  ) {
+    final urlPtr = urlWithHash.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final rawPtr = rawResponse.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_decrypt_paste_response(urlPtr, rawPtr));
+  });
 
-  String opensslAesDecryptJson(String b64, {String passphrase = ''}) =>
-      using((arena) {
-        final b64Ptr = b64.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final passPtr =
-            passphrase.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_openssl_aes_decrypt_json(b64Ptr, passPtr),
-        );
-      });
+  String opensslAesDecryptJson(String b64, {String passphrase = ''}) => using((
+    arena,
+  ) {
+    final b64Ptr = b64.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final passPtr = passphrase.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_openssl_aes_decrypt_json(b64Ptr, passPtr));
+  });
 
   String decodeXtreamText(String text) => using((arena) {
-        final ptr = text.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_decode_xtream_text(ptr));
-      });
+    final ptr = text.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_decode_xtream_text(ptr));
+  });
 
-  String iptvPortalShareEncode(String url, String username, String password) =>
-      using((arena) {
-        final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final userPtr =
-            username.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final passPtr =
-            password.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_iptv_portal_share_encode(urlPtr, userPtr, passPtr),
-        );
-      });
+  String iptvPortalShareEncode(
+    String url,
+    String username,
+    String password,
+  ) => using((arena) {
+    final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final userPtr = username.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final passPtr = password.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(
+      _native.ffi_iptv_portal_share_encode(urlPtr, userPtr, passPtr),
+    );
+  });
 
   String iptvPortalShareDecode(String token) => using((arena) {
-        final ptr = token.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_iptv_portal_share_decode(ptr));
-      });
+    final ptr = token.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_iptv_portal_share_decode(ptr));
+  });
 
   String parseXtreamCategoriesJson(String json) => using((arena) {
-        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_xtream_categories_json(ptr));
-      });
+    final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_xtream_categories_json(ptr));
+  });
 
   String parseXtreamStreamsJson(String json, String section) => using((arena) {
-        final jsonPtr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final sectionPtr =
-            section.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_parse_xtream_streams_json(jsonPtr, sectionPtr),
-        );
-      });
+    final jsonPtr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final sectionPtr = section.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(
+      _native.ffi_parse_xtream_streams_json(jsonPtr, sectionPtr),
+    );
+  });
 
   String parseXtreamSeriesEpisodesJson(String json) => using((arena) {
-        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_xtream_series_episodes_json(ptr));
-      });
+    final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_xtream_series_episodes_json(ptr));
+  });
 
   String parseSceneInfoJson(String title) => using((arena) {
-        final ptr = title.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_scene_info_json(ptr));
-      });
+    final ptr = title.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_scene_info_json(ptr));
+  });
 
   String parseHlsMasterJson(String masterUrl, String body) => using((arena) {
-        final urlPtr = masterUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final bodyPtr = body.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_parse_hls_master_json(urlPtr, bodyPtr),
-        );
-      });
+    final urlPtr = masterUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final bodyPtr = body.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_hls_master_json(urlPtr, bodyPtr));
+  });
 
   String decryptKisskhBody(String body, {String? sourceUrl}) => using((arena) {
-        final bodyPtr = body.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final sourcePtr = sourceUrl == null
-            ? ffi.nullptr
-            : sourceUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_decrypt_kisskh_body(bodyPtr, sourcePtr),
-        );
-      });
+    final bodyPtr = body.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final sourcePtr = sourceUrl == null
+        ? ffi.nullptr
+        : sourceUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_decrypt_kisskh_body(bodyPtr, sourcePtr));
+  });
 
   String buildStremioResourceUrl(String addonUrl, String resourcePath) =>
       using((arena) {
@@ -262,240 +256,229 @@ class RustLib {
       });
 
   String normalizeStremioManifestUrl(String url) => using((arena) {
-        final ptr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_normalize_stremio_manifest_url(ptr));
-      });
+    final ptr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_normalize_stremio_manifest_url(ptr));
+  });
 
   String splitStremioAddonUrlJson(String url) => using((arena) {
-        final ptr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_split_stremio_addon_url_json(ptr));
-      });
+    final ptr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_split_stremio_addon_url_json(ptr));
+  });
 
   String parseStremioManifestJson(String json) => using((arena) {
-        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_stremio_manifest_json(ptr));
-      });
+    final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_stremio_manifest_json(ptr));
+  });
 
   String parseStremioStreamsJson(String json) => using((arena) {
-        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_stremio_streams_json(ptr));
-      });
+    final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_stremio_streams_json(ptr));
+  });
 
   String parseStremioSubtitlesJson(String json) => using((arena) {
-        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_stremio_subtitles_json(ptr));
-      });
+    final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_stremio_subtitles_json(ptr));
+  });
 
   String parseStremioCatalogJson(String json) => using((arena) {
-        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_stremio_catalog_json(ptr));
-      });
+    final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_stremio_catalog_json(ptr));
+  });
 
   String parseStremioMetaJson(String json) => using((arena) {
-        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_stremio_meta_json(ptr));
-      });
+    final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_stremio_meta_json(ptr));
+  });
 
   String stremioHttpGet(String url, {int timeoutSecs = 15}) => using((arena) {
-        final ptr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_stremio_http_get_json(ptr, timeoutSecs),
-        );
-      });
+    final ptr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_stremio_http_get_json(ptr, timeoutSecs));
+  });
 
   String httpGetJson(
     String url, {
     int timeoutSecs = 15,
     String headersJson = '{}',
-  }) =>
-      using((arena) {
-        final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final hdrPtr =
-            headersJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_http_get_json(urlPtr, timeoutSecs, hdrPtr),
-        );
-      });
+  }) => using((arena) {
+    final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final hdrPtr = headersJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_http_get_json(urlPtr, timeoutSecs, hdrPtr));
+  });
 
   String httpPostJson(
     String url, {
     int timeoutSecs = 15,
     String headersJson = '{}',
     String body = '',
-  }) =>
-      using((arena) {
-        final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final hdrPtr =
-            headersJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final bodyPtr = body.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_http_post_json(urlPtr, timeoutSecs, hdrPtr, bodyPtr),
-        );
-      });
+  }) => using((arena) {
+    final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final hdrPtr = headersJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final bodyPtr = body.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(
+      _native.ffi_http_post_json(urlPtr, timeoutSecs, hdrPtr, bodyPtr),
+    );
+  });
 
-  String iptvProbeStreamJson(String url, {int timeoutSecs = 8}) => using((arena) {
-        final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_iptv_probe_stream_json(urlPtr, timeoutSecs),
-        );
-      });
+  String iptvProbeStreamJson(String url, {int timeoutSecs = 8}) => using((
+    arena,
+  ) {
+    final urlPtr = url.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_iptv_probe_stream_json(urlPtr, timeoutSecs));
+  });
 
   String liveMatchesFetchJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_live_matches_fetch_json(ptr));
-      });
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_live_matches_fetch_json(ptr));
+  });
 
   String iptvRedditCatalogJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_iptv_reddit_catalog_json(ptr));
-      });
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_iptv_reddit_catalog_json(ptr));
+  });
 
-  String tmdbGetJson(String resourcePath, {int timeoutSecs = 15}) =>
-      using((arena) {
-        final ptr =
-            resourcePath.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_tmdb_get_json(ptr, timeoutSecs));
-      });
+  String tmdbGetJson(String resourcePath, {int timeoutSecs = 15}) => using((
+    arena,
+  ) {
+    final ptr = resourcePath.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_tmdb_get_json(ptr, timeoutSecs));
+  });
 
   String traktRequestJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_trakt_request_json(ptr));
-      });
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_trakt_request_json(ptr));
+  });
 
   String animeRequestJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_anime_request_json(ptr));
-      });
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_anime_request_json(ptr));
+  });
 
   String indexerRequestJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_indexer_request_json(ptr));
-      });
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_indexer_request_json(ptr));
+  });
 
   String debridRequestJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_debrid_request_json(ptr));
-      });
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_debrid_request_json(ptr));
+  });
 
   String site111477IndexRequestJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_site111477_index_request_json(ptr));
-      });
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_site111477_index_request_json(ptr));
+  });
 
   String megaResolveJson(String embedUrl) => using((arena) {
-        final ptr = embedUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_mega_resolve_json(ptr));
-      });
+    final ptr = embedUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_mega_resolve_json(ptr));
+  });
 
   String metadataRequestJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_metadata_request_json(ptr));
-      });
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_metadata_request_json(ptr));
+  });
 
   String subtitleRequestJson(String requestJson) => using((arena) {
-        final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_subtitle_request_json(ptr));
-      });
+    final ptr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_subtitle_request_json(ptr));
+  });
 
   String parseKnabenHtmlJson(String html) => using((arena) {
-        final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_knaben_html_json(ptr));
-      });
+    final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_knaben_html_json(ptr));
+  });
 
   String parseTpbHtmlJson(String html) => using((arena) {
-        final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_tpb_html_json(ptr));
-      });
+    final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_tpb_html_json(ptr));
+  });
 
   String parseUindexHtmlJson(String html) => using((arena) {
-        final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_uindex_html_json(ptr));
-      });
+    final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_parse_uindex_html_json(ptr));
+  });
 
   String dedupTorrentsJson(String resultsJson) => using((arena) {
-        final ptr = resultsJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_dedup_torrents_json(ptr));
-      });
+    final ptr = resultsJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_dedup_torrents_json(ptr));
+  });
 
   String searchTorrentsJson(String query) => using((arena) {
-        final ptr = query.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_search_torrents_json(ptr));
-      });
+    final ptr = query.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_search_torrents_json(ptr));
+  });
 
   String filterTorrentsJson(
     String resultsJson,
     String showTitle, {
     int requiredSeason = -1,
     int requiredEpisode = -1,
-  }) =>
-      using((arena) {
-        final resultsPtr =
-            resultsJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final titlePtr =
-            showTitle.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_filter_torrents_json(
-            resultsPtr,
-            titlePtr,
-            requiredSeason,
-            requiredEpisode,
-          ),
-        );
-      });
+  }) => using((arena) {
+    final resultsPtr = resultsJson
+        .toNativeUtf8(allocator: arena)
+        .cast<ffi.Char>();
+    final titlePtr = showTitle.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(
+      _native.ffi_filter_torrents_json(
+        resultsPtr,
+        titlePtr,
+        requiredSeason,
+        requiredEpisode,
+      ),
+    );
+  });
 
-  String sortTorrentsJson(String resultsJson, String preference) =>
-      using((arena) {
-        final resultsPtr =
-            resultsJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final prefPtr =
-            preference.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_sort_torrents_json(resultsPtr, prefPtr),
-        );
-      });
+  String sortTorrentsJson(String resultsJson, String preference) => using((
+    arena,
+  ) {
+    final resultsPtr = resultsJson
+        .toNativeUtf8(allocator: arena)
+        .cast<ffi.Char>();
+    final prefPtr = preference.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_sort_torrents_json(resultsPtr, prefPtr));
+  });
 
   bool isVideoFile(String fileName) => using((arena) {
-        final ptr = fileName.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _native.ffi_is_video_file(ptr);
-      });
+    final ptr = fileName.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _native.ffi_is_video_file(ptr);
+  });
 
   String extractEmbedHtmlJson(
     String extractorId,
     String html,
     String pageUrl,
-  ) =>
-      using((arena) {
-        final idPtr =
-            extractorId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final urlPtr = pageUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_extract_embed_html_json(idPtr, htmlPtr, urlPtr),
-        );
-      });
+  ) => using((arena) {
+    final idPtr = extractorId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final urlPtr = pageUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(
+      _native.ffi_extract_embed_html_json(idPtr, htmlPtr, urlPtr),
+    );
+  });
 
   String extractVidsrcChainJson(
     String outerHtml,
     String rcpHtml,
     String prorcpHtml,
-  ) =>
-      using((arena) {
-        final a = outerHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final b = rcpHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final c = prorcpHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_extract_vidsrc_chain_json(a, b, c));
-      });
+  ) => using((arena) {
+    final a = outerHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final b = rcpHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final c = prorcpHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_extract_vidsrc_chain_json(a, b, c));
+  });
 
   String resolveVidsrcEmbedJson(String requestJson) => using((arena) {
-        final reqPtr =
-            requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_resolve_vidsrc_embed_json(reqPtr));
-      });
+    final reqPtr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_resolve_vidsrc_embed_json(reqPtr));
+  });
 
-  String extractHubcloudLinksJson(String html, String pageUrl) => using((arena) {
+  String extractHubcloudLinksJson(String html, String pageUrl) =>
+      using((arena) {
         final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
         final urlPtr = pageUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_extract_hubcloud_links_json(htmlPtr, urlPtr));
+        return _readString(
+          _native.ffi_extract_hubcloud_links_json(htmlPtr, urlPtr),
+        );
       });
 
   String extractMfpEmbedHtmlJson(
@@ -504,81 +487,79 @@ class RustLib {
     String pageUrl,
     String mfpConfigJson, {
     String extraHtml = '',
-  }) =>
-      using((arena) {
-        final idPtr =
-            extractorId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final urlPtr = pageUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final mfpPtr =
-            mfpConfigJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final extraPtr = extraHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_extract_mfp_embed_html_json(
-          idPtr,
-          htmlPtr,
-          urlPtr,
-          mfpPtr,
-          extraPtr,
-        ));
-      });
+  }) => using((arena) {
+    final idPtr = extractorId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final urlPtr = pageUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final mfpPtr = mfpConfigJson
+        .toNativeUtf8(allocator: arena)
+        .cast<ffi.Char>();
+    final extraPtr = extraHtml.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(
+      _native.ffi_extract_mfp_embed_html_json(
+        idPtr,
+        htmlPtr,
+        urlPtr,
+        mfpPtr,
+        extraPtr,
+      ),
+    );
+  });
 
   String resolveWebstreamrSourceJson(String sourceId, String requestJson) =>
       using((arena) {
         final idPtr = sourceId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final reqPtr =
-            requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+        final reqPtr = requestJson
+            .toNativeUtf8(allocator: arena)
+            .cast<ffi.Char>();
         return _readString(
           _native.ffi_resolve_webstreamr_source_json(idPtr, reqPtr),
         );
       });
 
   String webstreamrGetStreamsJson(String requestJson) => using((arena) {
-        final reqPtr =
-            requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_webstreamr_get_streams_json(reqPtr));
-      });
+    final reqPtr = requestJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_webstreamr_get_streams_json(reqPtr));
+  });
 
   String extractKinogerEpisodeUrlsJson(
     String html,
     int seasonIndex,
     int episodeIndex,
-  ) =>
-      using((arena) {
-        final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_extract_kinoger_episode_urls_json(
-          htmlPtr,
-          seasonIndex,
-          episodeIndex,
-        ));
-      });
+  ) => using((arena) {
+    final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(
+      _native.ffi_extract_kinoger_episode_urls_json(
+        htmlPtr,
+        seasonIndex,
+        episodeIndex,
+      ),
+    );
+  });
 
   String parseWebstreamrSourceHtmlJson(
     String sourceId,
     String html,
     String optsJson,
-  ) =>
-      using((arena) {
-        final idPtr = sourceId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final optsPtr = optsJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_parse_webstreamr_source_html_json(
-          idPtr,
-          htmlPtr,
-          optsPtr,
-        ));
-      });
+  ) => using((arena) {
+    final idPtr = sourceId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final htmlPtr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final optsPtr = optsJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(
+      _native.ffi_parse_webstreamr_source_html_json(idPtr, htmlPtr, optsPtr),
+    );
+  });
 
   bool torrentStart(String magnet) => using((arena) {
-        final ptr = magnet.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _native.ffi_torrent_start(ptr);
-      });
+    final ptr = magnet.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _native.ffi_torrent_start(ptr);
+  });
 
   void torrentStop() => _native.ffi_torrent_stop();
 
   bool torrentIsRunning() => _native.ffi_torrent_is_running();
 
-  String torrentStatusJson() =>
-      _readString(_native.ffi_torrent_status_json());
+  String torrentStatusJson() => _readString(_native.ffi_torrent_status_json());
 
   int torrentEngineStart(int preferredPort) =>
       _native.ffi_torrent_engine_start(preferredPort);
@@ -596,33 +577,33 @@ class RustLib {
   void torrentSetDiskCacheBytes(int bytes) =>
       _native.ffi_torrent_set_disk_cache_bytes(bytes);
 
-  String torrentReclaimDiskCacheJson({int targetBytes = -1}) =>
-      _readString(_native.ffi_torrent_reclaim_disk_cache_json(
-        targetBytes < 0 ? 0xFFFFFFFFFFFFFFFF : targetBytes,
-      ));
+  String torrentReclaimDiskCacheJson({int targetBytes = -1}) => _readString(
+    _native.ffi_torrent_reclaim_disk_cache_json(
+      targetBytes < 0 ? 0xFFFFFFFFFFFFFFFF : targetBytes,
+    ),
+  );
 
   String torrentStreamJson(
     String magnet, {
     int? season,
     int? episode,
     int? fileIdx,
-  }) =>
-      using((arena) {
-        final ptr = magnet.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(
-          _native.ffi_torrent_stream_json(
-            ptr,
-            season ?? -1,
-            episode ?? -1,
-            fileIdx ?? -1,
-          ),
-        );
-      });
+  }) => using((arena) {
+    final ptr = magnet.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(
+      _native.ffi_torrent_stream_json(
+        ptr,
+        season ?? -1,
+        episode ?? -1,
+        fileIdx ?? -1,
+      ),
+    );
+  });
 
   String torrentListFilesJson(String magnet) => using((arena) {
-        final ptr = magnet.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_torrent_list_files_json(ptr));
-      });
+    final ptr = magnet.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_torrent_list_files_json(ptr));
+  });
 
   int proxyStart(int preferredPort) => _native.ffi_proxy_start(preferredPort);
 
@@ -631,10 +612,10 @@ class RustLib {
   int proxyPort() => _native.ffi_proxy_port();
 
   bool proxyRegisterRoute(String token, String upstreamUrl) => using((arena) {
-        final tokenPtr = token.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final urlPtr = upstreamUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _native.ffi_proxy_register_route(tokenPtr, urlPtr);
-      });
+    final tokenPtr = token.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final urlPtr = upstreamUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _native.ffi_proxy_register_route(tokenPtr, urlPtr);
+  });
 
   int lanServerStart({int bindMode = 1, int preferredPort = 0}) =>
       _native.ffi_lan_server_start(bindMode, preferredPort);
@@ -652,9 +633,9 @@ class RustLib {
   String lanPairingCode() => _readString(_native.ffi_lan_pairing_code());
 
   bool lanRevokeDevice(String deviceId) => using((arena) {
-        final ptr = deviceId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _native.ffi_lan_revoke_device(ptr);
-      });
+    final ptr = deviceId.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _native.ffi_lan_revoke_device(ptr);
+  });
 
   String lanDevicesJson() => _readString(_native.ffi_lan_devices_json());
 
@@ -662,9 +643,9 @@ class RustLib {
       _readString(_native.ffi_lan_torrent_history_json());
 
   bool lanRemoveTorrentHistory(String infoHash) => using((arena) {
-        final ptr = infoHash.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _native.ffi_lan_remove_torrent_history(ptr);
-      });
+    final ptr = infoHash.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _native.ffi_lan_remove_torrent_history(ptr);
+  });
 
   bool lanClearTorrentHistory() => _native.ffi_lan_clear_torrent_history();
 
@@ -672,9 +653,9 @@ class RustLib {
       _readString(_native.ffi_lan_browse_servers_json(timeoutMs));
 
   String seek111477StartJson(String json) => using((arena) {
-        final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_seek111477_start_json(ptr));
-      });
+    final ptr = json.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_seek111477_start_json(ptr));
+  });
 
   void seek111477Stop() => _native.ffi_seek111477_stop();
 
@@ -683,30 +664,30 @@ class RustLib {
   bool seek111477IsRunning() => _native.ffi_seek111477_is_running();
 
   String seek111477PurgeCacheJson(String cacheDir) => using((arena) {
-        final ptr = cacheDir.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_seek111477_purge_cache_json(ptr));
-      });
+    final ptr = cacheDir.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_seek111477_purge_cache_json(ptr));
+  });
 
   String providerHealthJson(String payloadJson) => using((arena) {
-        final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_provider_health_json(ptr));
-      });
+    final ptr = payloadJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_provider_health_json(ptr));
+  });
 
   String storageOpen(String path) => using((arena) {
-        final ptr = path.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_storage_open(ptr));
-      });
+    final ptr = path.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_storage_open(ptr));
+  });
 
   String storageGetJson(String key) => using((arena) {
-        final ptr = key.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_storage_get_json(ptr));
-      });
+    final ptr = key.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_storage_get_json(ptr));
+  });
 
   String storageSetJson(String key, String valueJson) => using((arena) {
-        final keyPtr = key.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        final valPtr = valueJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-        return _readString(_native.ffi_storage_set_json(keyPtr, valPtr));
-      });
+    final keyPtr = key.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    final valPtr = valueJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+    return _readString(_native.ffi_storage_set_json(keyPtr, valPtr));
+  });
 
   String _readString(ffi.Pointer<ffi.Char> ptr) {
     if (ptr == ffi.nullptr) return '';
@@ -720,545 +701,518 @@ class RustLib {
 
 final class _FfiNative {
   _FfiNative(ffi.DynamicLibrary lib)
-      : ffi_free_string = lib
-            .lookup<ffi.NativeFunction<_FreeStringNative>>('ffi_free_string')
-            .asFunction(),
-        ffi_version = lib
-            .lookup<ffi.NativeFunction<_VersionNative>>('ffi_version')
-            .asFunction(),
-        ffi_engine_cancel_pending = lib
-            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
-              'ffi_engine_cancel_pending',
-            )
-            .asFunction(),
-        ffi_engine_cancel_catalog = lib
-            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
-              'ffi_engine_cancel_catalog',
-            )
-            .asFunction(),
-        ffi_engine_cancel_jobs_of_kind = lib
-            .lookup<ffi.NativeFunction<_EngineCancelKindNative>>(
-              'ffi_engine_cancel_jobs_of_kind',
-            )
-            .asFunction(),
-        ffi_engine_prepare_shutdown = lib
-            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
-              'ffi_engine_prepare_shutdown',
-            )
-            .asFunction(),
-        ffi_engine_clear_shutdown = lib
-            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
-              'ffi_engine_clear_shutdown',
-            )
-            .asFunction(),
-        ffi_engine_submit_job = lib
-            .lookup<ffi.NativeFunction<_EngineSubmitJobNative>>(
-              'ffi_engine_submit_job',
-            )
-            .asFunction(),
-        ffi_engine_take_job_result = lib
-            .lookup<ffi.NativeFunction<_EngineTakeJobNative>>(
-              'ffi_engine_take_job_result',
-            )
-            .asFunction(),
-        ffi_add =
-            lib.lookup<ffi.NativeFunction<_AddNative>>('ffi_add').asFunction(),
-        ffi_episode_matches = lib
-            .lookup<ffi.NativeFunction<_EpisodeMatchesNative>>(
-              'ffi_episode_matches',
-            )
-            .asFunction(),
-        ffi_pick_episode_index_json = lib
-            .lookup<ffi.NativeFunction<_PickEpisodeIndexNative>>(
-              'ffi_pick_episode_index_json',
-            )
-            .asFunction(),
-        ffi_pick_largest_video_index_json = lib
-            .lookup<ffi.NativeFunction<_PickLargestVideoIndexNative>>(
-              'ffi_pick_largest_video_index_json',
-            )
-            .asFunction(),
-        ffi_normalize_torrent_title = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_normalize_torrent_title',
-            )
-            .asFunction(),
-        ffi_unpack_js = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>('ffi_unpack_js')
-            .asFunction(),
-        ffi_set_provider_runtime_overlay = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_set_provider_runtime_overlay',
-            )
-            .asFunction(),
-        ffi_build_movie_url = lib
-            .lookup<ffi.NativeFunction<_BuildMovieUrlNative>>(
-              'ffi_build_movie_url',
-            )
-            .asFunction(),
-        ffi_build_tv_url = lib
-            .lookup<ffi.NativeFunction<_BuildTvUrlNative>>('ffi_build_tv_url')
-            .asFunction(),
-        ffi_list_providers_json = lib
-            .lookup<ffi.NativeFunction<_VersionNative>>(
-              'ffi_list_providers_json',
-            )
-            .asFunction(),
-        ffi_playback_rank_sources_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_playback_rank_sources_json',
-            )
-            .asFunction(),
-        ffi_playback_normalize_legacy_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_playback_normalize_legacy_json',
-            )
-            .asFunction(),
-        ffi_playback_order_providers_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_playback_order_providers_json',
-            )
-            .asFunction(),
-        ffi_parse_m3u_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_m3u_json',
-            )
-            .asFunction(),
-        ffi_decrypt_paste_response = lib
-            .lookup<ffi.NativeFunction<_TwoStringNative>>(
-              'ffi_decrypt_paste_response',
-            )
-            .asFunction(),
-        ffi_openssl_aes_decrypt_json = lib
-            .lookup<ffi.NativeFunction<_TwoStringNative>>(
-              'ffi_openssl_aes_decrypt_json',
-            )
-            .asFunction(),
-        ffi_decode_xtream_text = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_decode_xtream_text',
-            )
-            .asFunction(),
-        ffi_iptv_portal_share_encode = lib
-            .lookup<ffi.NativeFunction<_ThreeStringNative>>(
-              'ffi_iptv_portal_share_encode',
-            )
-            .asFunction(),
-        ffi_iptv_portal_share_decode = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_iptv_portal_share_decode',
-            )
-            .asFunction(),
-        ffi_parse_xtream_categories_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_xtream_categories_json',
-            )
-            .asFunction(),
-        ffi_parse_xtream_streams_json = lib
-            .lookup<ffi.NativeFunction<_TwoStringNative>>(
-              'ffi_parse_xtream_streams_json',
-            )
-            .asFunction(),
-        ffi_parse_xtream_series_episodes_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_xtream_series_episodes_json',
-            )
-            .asFunction(),
-        ffi_parse_scene_info_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_scene_info_json',
-            )
-            .asFunction(),
-        ffi_parse_hls_master_json = lib
-            .lookup<ffi.NativeFunction<_TwoStringNative>>(
-              'ffi_parse_hls_master_json',
-            )
-            .asFunction(),
-        ffi_decrypt_kisskh_body = lib
-            .lookup<ffi.NativeFunction<_TwoStringNative>>(
-              'ffi_decrypt_kisskh_body',
-            )
-            .asFunction(),
-        ffi_build_stremio_resource_url = lib
-            .lookup<ffi.NativeFunction<_TwoStringNative>>(
-              'ffi_build_stremio_resource_url',
-            )
-            .asFunction(),
-        ffi_normalize_stremio_manifest_url = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_normalize_stremio_manifest_url',
-            )
-            .asFunction(),
-        ffi_split_stremio_addon_url_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_split_stremio_addon_url_json',
-            )
-            .asFunction(),
-        ffi_parse_stremio_manifest_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_stremio_manifest_json',
-            )
-            .asFunction(),
-        ffi_parse_stremio_streams_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_stremio_streams_json',
-            )
-            .asFunction(),
-        ffi_parse_stremio_subtitles_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_stremio_subtitles_json',
-            )
-            .asFunction(),
-        ffi_parse_stremio_catalog_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_stremio_catalog_json',
-            )
-            .asFunction(),
-        ffi_parse_stremio_meta_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_stremio_meta_json',
-            )
-            .asFunction(),
-        ffi_stremio_http_get_json = lib
-            .lookup<ffi.NativeFunction<_StremioHttpGetNative>>(
-              'ffi_stremio_http_get_json',
-            )
-            .asFunction(),
-        ffi_http_get_json = lib
-            .lookup<ffi.NativeFunction<_HttpGetNative>>(
-              'ffi_http_get_json',
-            )
-            .asFunction(),
-        ffi_http_post_json = lib
-            .lookup<ffi.NativeFunction<_HttpPostNative>>(
-              'ffi_http_post_json',
-            )
-            .asFunction(),
-        ffi_iptv_probe_stream_json = lib
-            .lookup<ffi.NativeFunction<_StremioHttpGetNative>>(
-              'ffi_iptv_probe_stream_json',
-            )
-            .asFunction(),
-        ffi_live_matches_fetch_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_live_matches_fetch_json',
-            )
-            .asFunction(),
-        ffi_iptv_reddit_catalog_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_iptv_reddit_catalog_json',
-            )
-            .asFunction(),
-        ffi_tmdb_get_json = lib
-            .lookup<ffi.NativeFunction<_StremioHttpGetNative>>(
-              'ffi_tmdb_get_json',
-            )
-            .asFunction(),
-        ffi_trakt_request_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_trakt_request_json',
-            )
-            .asFunction(),
-        ffi_anime_request_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_anime_request_json',
-            )
-            .asFunction(),
-        ffi_indexer_request_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_indexer_request_json',
-            )
-            .asFunction(),
-        ffi_debrid_request_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_debrid_request_json',
-            )
-            .asFunction(),
-        ffi_site111477_index_request_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_site111477_index_request_json',
-            )
-            .asFunction(),
-        ffi_mega_resolve_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_mega_resolve_json',
-            )
-            .asFunction(),
-        ffi_metadata_request_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_metadata_request_json',
-            )
-            .asFunction(),
-        ffi_subtitle_request_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_subtitle_request_json',
-            )
-            .asFunction(),
-        ffi_parse_knaben_html_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_knaben_html_json',
-            )
-            .asFunction(),
-        ffi_parse_tpb_html_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_tpb_html_json',
-            )
-            .asFunction(),
-        ffi_parse_uindex_html_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_parse_uindex_html_json',
-            )
-            .asFunction(),
-        ffi_dedup_torrents_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_dedup_torrents_json',
-            )
-            .asFunction(),
-        ffi_search_torrents_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_search_torrents_json',
-            )
-            .asFunction(),
-        ffi_filter_torrents_json = lib
-            .lookup<ffi.NativeFunction<_FilterTorrentsNative>>(
-              'ffi_filter_torrents_json',
-            )
-            .asFunction(),
-        ffi_sort_torrents_json = lib
-            .lookup<ffi.NativeFunction<_TwoStringNative>>(
-              'ffi_sort_torrents_json',
-            )
-            .asFunction(),
-        ffi_is_video_file = lib
-            .lookup<ffi.NativeFunction<_StringBoolNative>>(
-              'ffi_is_video_file',
-            )
-            .asFunction(),
-        ffi_extract_embed_html_json = lib
-            .lookup<ffi.NativeFunction<_ThreeStringNative>>(
-              'ffi_extract_embed_html_json',
-            )
-            .asFunction(),
-        ffi_extract_vidsrc_chain_json = lib
-            .lookup<ffi.NativeFunction<_ThreeStringNative>>(
-              'ffi_extract_vidsrc_chain_json',
-            )
-            .asFunction(),
-        ffi_resolve_vidsrc_embed_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_resolve_vidsrc_embed_json',
-            )
-            .asFunction(),
-        ffi_extract_hubcloud_links_json = lib
-            .lookup<ffi.NativeFunction<_TwoStringNative>>(
-              'ffi_extract_hubcloud_links_json',
-            )
-            .asFunction(),
-        ffi_extract_mfp_embed_html_json = lib
-            .lookup<ffi.NativeFunction<_FiveStringNative>>(
-              'ffi_extract_mfp_embed_html_json',
-            )
-            .asFunction(),
-        ffi_resolve_webstreamr_source_json = lib
-            .lookup<ffi.NativeFunction<_TwoStringNative>>(
-              'ffi_resolve_webstreamr_source_json',
-            )
-            .asFunction(),
-        ffi_webstreamr_get_streams_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_webstreamr_get_streams_json',
-            )
-            .asFunction(),
-        ffi_extract_kinoger_episode_urls_json = lib
-            .lookup<ffi.NativeFunction<_KinogerUrlsNative>>(
-              'ffi_extract_kinoger_episode_urls_json',
-            )
-            .asFunction(),
-        ffi_parse_webstreamr_source_html_json = lib
-            .lookup<ffi.NativeFunction<_ThreeStringNative>>(
-              'ffi_parse_webstreamr_source_html_json',
-            )
-            .asFunction(),
-        ffi_torrent_start = lib
-            .lookup<ffi.NativeFunction<_TorrentStartNative>>(
-              'ffi_torrent_start',
-            )
-            .asFunction(),
-        ffi_torrent_stop = lib
-            .lookup<ffi.NativeFunction<_TorrentStopNative>>('ffi_torrent_stop')
-            .asFunction(),
-        ffi_torrent_is_running = lib
-            .lookup<ffi.NativeFunction<_TorrentIsRunningNative>>(
-              'ffi_torrent_is_running',
-            )
-            .asFunction(),
-        ffi_torrent_status_json = lib
-            .lookup<ffi.NativeFunction<_VersionNative>>(
-              'ffi_torrent_status_json',
-            )
-            .asFunction(),
-        ffi_torrent_engine_start = lib
-            .lookup<ffi.NativeFunction<_ProxyStartNative>>(
-              'ffi_torrent_engine_start',
-            )
-            .asFunction(),
-        ffi_torrent_engine_last_error = lib
-            .lookup<ffi.NativeFunction<_VersionNative>>(
-              'ffi_torrent_engine_last_error',
-            )
-            .asFunction(),
-        ffi_torrent_engine_port = lib
-            .lookup<ffi.NativeFunction<_ProxyPortNative>>(
-              'ffi_torrent_engine_port',
-            )
-            .asFunction(),
-        ffi_torrent_engine_stop = lib
-            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
-              'ffi_torrent_engine_stop',
-            )
-            .asFunction(),
-        ffi_torrent_set_peer_limit = lib
-            .lookup<ffi.NativeFunction<_TorrentSetPeerLimitNative>>(
-              'ffi_torrent_set_peer_limit',
-            )
-            .asFunction(),
-        ffi_torrent_set_disk_cache_bytes = lib
-            .lookup<ffi.NativeFunction<_TorrentSetDiskCacheNative>>(
-              'ffi_torrent_set_disk_cache_bytes',
-            )
-            .asFunction(),
-        ffi_torrent_reclaim_disk_cache_json = lib
-            .lookup<ffi.NativeFunction<_TorrentReclaimDiskCacheNative>>(
-              'ffi_torrent_reclaim_disk_cache_json',
-            )
-            .asFunction(),
-        ffi_torrent_stream_json = lib
-            .lookup<ffi.NativeFunction<_TorrentStreamJsonNative>>(
-              'ffi_torrent_stream_json',
-            )
-            .asFunction(),
-        ffi_torrent_list_files_json = lib
-            .lookup<ffi.NativeFunction<_TorrentJsonNative>>(
-              'ffi_torrent_list_files_json',
-            )
-            .asFunction(),
-        ffi_proxy_start = lib
-            .lookup<ffi.NativeFunction<_ProxyStartNative>>('ffi_proxy_start')
-            .asFunction(),
-        ffi_proxy_stop = lib
-            .lookup<ffi.NativeFunction<_TorrentStopNative>>('ffi_proxy_stop')
-            .asFunction(),
-        ffi_proxy_port = lib
-            .lookup<ffi.NativeFunction<_ProxyPortNative>>('ffi_proxy_port')
-            .asFunction(),
-        ffi_proxy_register_route = lib
-            .lookup<ffi.NativeFunction<_ProxyRegisterNative>>(
-              'ffi_proxy_register_route',
-            )
-            .asFunction(),
-        ffi_lan_server_start = lib
-            .lookup<ffi.NativeFunction<_LanServerStartNative>>(
-              'ffi_lan_server_start',
-            )
-            .asFunction(),
-        ffi_lan_server_last_error = lib
-            .lookup<ffi.NativeFunction<_VersionNative>>(
-              'ffi_lan_server_last_error',
-            )
-            .asFunction(),
-        ffi_lan_server_stop = lib
-            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
-              'ffi_lan_server_stop',
-            )
-            .asFunction(),
-        ffi_lan_server_port = lib
-            .lookup<ffi.NativeFunction<_ProxyPortNative>>(
-              'ffi_lan_server_port',
-            )
-            .asFunction(),
-        ffi_lan_pairing_code_refresh = lib
-            .lookup<ffi.NativeFunction<_VersionNative>>(
-              'ffi_lan_pairing_code_refresh',
-            )
-            .asFunction(),
-        ffi_lan_pairing_code = lib
-            .lookup<ffi.NativeFunction<_VersionNative>>(
-              'ffi_lan_pairing_code',
-            )
-            .asFunction(),
-        ffi_lan_revoke_device = lib
-            .lookup<ffi.NativeFunction<_TorrentStartNative>>(
-              'ffi_lan_revoke_device',
-            )
-            .asFunction(),
-        ffi_lan_devices_json = lib
-            .lookup<ffi.NativeFunction<_VersionNative>>(
-              'ffi_lan_devices_json',
-            )
-            .asFunction(),
-        ffi_lan_torrent_history_json = lib
-            .lookup<ffi.NativeFunction<_VersionNative>>(
-              'ffi_lan_torrent_history_json',
-            )
-            .asFunction(),
-        ffi_lan_remove_torrent_history = lib
-            .lookup<ffi.NativeFunction<_TorrentStartNative>>(
-              'ffi_lan_remove_torrent_history',
-            )
-            .asFunction(),
-        ffi_lan_clear_torrent_history = lib
-            .lookup<ffi.NativeFunction<_TorrentIsRunningNative>>(
-              'ffi_lan_clear_torrent_history',
-            )
-            .asFunction(),
-        ffi_lan_browse_servers_json = lib
-            .lookup<ffi.NativeFunction<_LanBrowseNative>>(
-              'ffi_lan_browse_servers_json',
-            )
-            .asFunction(),
-        ffi_seek111477_start_json = lib
-            .lookup<ffi.NativeFunction<_Seek111477JsonNative>>(
-              'ffi_seek111477_start_json',
-            )
-            .asFunction(),
-        ffi_seek111477_stop = lib
-            .lookup<ffi.NativeFunction<_TorrentStopNative>>(
-              'ffi_seek111477_stop',
-            )
-            .asFunction(),
-        ffi_seek111477_port = lib
-            .lookup<ffi.NativeFunction<_Seek111477PortNative>>(
-              'ffi_seek111477_port',
-            )
-            .asFunction(),
-        ffi_seek111477_is_running = lib
-            .lookup<ffi.NativeFunction<_Seek111477IsRunningNative>>(
-              'ffi_seek111477_is_running',
-            )
-            .asFunction(),
-        ffi_seek111477_purge_cache_json = lib
-            .lookup<ffi.NativeFunction<_Seek111477JsonNative>>(
-              'ffi_seek111477_purge_cache_json',
-            )
-            .asFunction(),
-        ffi_provider_health_json = lib
-            .lookup<ffi.NativeFunction<_StringInOutNative>>(
-              'ffi_provider_health_json',
-            )
-            .asFunction(),
-        ffi_storage_open = lib
-            .lookup<ffi.NativeFunction<_StoragePathNative>>('ffi_storage_open')
-            .asFunction(),
-        ffi_storage_get_json = lib
-            .lookup<ffi.NativeFunction<_StorageKeyNative>>(
-              'ffi_storage_get_json',
-            )
-            .asFunction(),
-        ffi_storage_set_json = lib
-            .lookup<ffi.NativeFunction<_StorageSetNative>>(
-              'ffi_storage_set_json',
-            )
-            .asFunction();
+    : ffi_free_string = lib
+          .lookup<ffi.NativeFunction<_FreeStringNative>>('ffi_free_string')
+          .asFunction(),
+      ffi_version = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>('ffi_version')
+          .asFunction(),
+      ffi_engine_cancel_pending = lib
+          .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+            'ffi_engine_cancel_pending',
+          )
+          .asFunction(),
+      ffi_engine_cancel_catalog = lib
+          .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+            'ffi_engine_cancel_catalog',
+          )
+          .asFunction(),
+      ffi_engine_cancel_jobs_of_kind = lib
+          .lookup<ffi.NativeFunction<_EngineCancelKindNative>>(
+            'ffi_engine_cancel_jobs_of_kind',
+          )
+          .asFunction(),
+      ffi_engine_prepare_shutdown = lib
+          .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+            'ffi_engine_prepare_shutdown',
+          )
+          .asFunction(),
+      ffi_engine_clear_shutdown = lib
+          .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+            'ffi_engine_clear_shutdown',
+          )
+          .asFunction(),
+      ffi_engine_submit_job = lib
+          .lookup<ffi.NativeFunction<_EngineSubmitJobNative>>(
+            'ffi_engine_submit_job',
+          )
+          .asFunction(),
+      ffi_engine_take_job_result = lib
+          .lookup<ffi.NativeFunction<_EngineTakeJobNative>>(
+            'ffi_engine_take_job_result',
+          )
+          .asFunction(),
+      ffi_add = lib
+          .lookup<ffi.NativeFunction<_AddNative>>('ffi_add')
+          .asFunction(),
+      ffi_episode_matches = lib
+          .lookup<ffi.NativeFunction<_EpisodeMatchesNative>>(
+            'ffi_episode_matches',
+          )
+          .asFunction(),
+      ffi_pick_episode_index_json = lib
+          .lookup<ffi.NativeFunction<_PickEpisodeIndexNative>>(
+            'ffi_pick_episode_index_json',
+          )
+          .asFunction(),
+      ffi_pick_largest_video_index_json = lib
+          .lookup<ffi.NativeFunction<_PickLargestVideoIndexNative>>(
+            'ffi_pick_largest_video_index_json',
+          )
+          .asFunction(),
+      ffi_normalize_torrent_title = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_normalize_torrent_title',
+          )
+          .asFunction(),
+      ffi_unpack_js = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>('ffi_unpack_js')
+          .asFunction(),
+      ffi_set_provider_runtime_overlay = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_set_provider_runtime_overlay',
+          )
+          .asFunction(),
+      ffi_build_movie_url = lib
+          .lookup<ffi.NativeFunction<_BuildMovieUrlNative>>(
+            'ffi_build_movie_url',
+          )
+          .asFunction(),
+      ffi_build_tv_url = lib
+          .lookup<ffi.NativeFunction<_BuildTvUrlNative>>('ffi_build_tv_url')
+          .asFunction(),
+      ffi_list_providers_json = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>('ffi_list_providers_json')
+          .asFunction(),
+      ffi_playback_rank_sources_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_playback_rank_sources_json',
+          )
+          .asFunction(),
+      ffi_playback_normalize_legacy_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_playback_normalize_legacy_json',
+          )
+          .asFunction(),
+      ffi_playback_order_providers_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_playback_order_providers_json',
+          )
+          .asFunction(),
+      ffi_parse_m3u_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>('ffi_parse_m3u_json')
+          .asFunction(),
+      ffi_decrypt_paste_response = lib
+          .lookup<ffi.NativeFunction<_TwoStringNative>>(
+            'ffi_decrypt_paste_response',
+          )
+          .asFunction(),
+      ffi_openssl_aes_decrypt_json = lib
+          .lookup<ffi.NativeFunction<_TwoStringNative>>(
+            'ffi_openssl_aes_decrypt_json',
+          )
+          .asFunction(),
+      ffi_decode_xtream_text = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_decode_xtream_text',
+          )
+          .asFunction(),
+      ffi_iptv_portal_share_encode = lib
+          .lookup<ffi.NativeFunction<_ThreeStringNative>>(
+            'ffi_iptv_portal_share_encode',
+          )
+          .asFunction(),
+      ffi_iptv_portal_share_decode = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_iptv_portal_share_decode',
+          )
+          .asFunction(),
+      ffi_parse_xtream_categories_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_parse_xtream_categories_json',
+          )
+          .asFunction(),
+      ffi_parse_xtream_streams_json = lib
+          .lookup<ffi.NativeFunction<_TwoStringNative>>(
+            'ffi_parse_xtream_streams_json',
+          )
+          .asFunction(),
+      ffi_parse_xtream_series_episodes_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_parse_xtream_series_episodes_json',
+          )
+          .asFunction(),
+      ffi_parse_scene_info_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_parse_scene_info_json',
+          )
+          .asFunction(),
+      ffi_parse_hls_master_json = lib
+          .lookup<ffi.NativeFunction<_TwoStringNative>>(
+            'ffi_parse_hls_master_json',
+          )
+          .asFunction(),
+      ffi_decrypt_kisskh_body = lib
+          .lookup<ffi.NativeFunction<_TwoStringNative>>(
+            'ffi_decrypt_kisskh_body',
+          )
+          .asFunction(),
+      ffi_build_stremio_resource_url = lib
+          .lookup<ffi.NativeFunction<_TwoStringNative>>(
+            'ffi_build_stremio_resource_url',
+          )
+          .asFunction(),
+      ffi_normalize_stremio_manifest_url = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_normalize_stremio_manifest_url',
+          )
+          .asFunction(),
+      ffi_split_stremio_addon_url_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_split_stremio_addon_url_json',
+          )
+          .asFunction(),
+      ffi_parse_stremio_manifest_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_parse_stremio_manifest_json',
+          )
+          .asFunction(),
+      ffi_parse_stremio_streams_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_parse_stremio_streams_json',
+          )
+          .asFunction(),
+      ffi_parse_stremio_subtitles_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_parse_stremio_subtitles_json',
+          )
+          .asFunction(),
+      ffi_parse_stremio_catalog_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_parse_stremio_catalog_json',
+          )
+          .asFunction(),
+      ffi_parse_stremio_meta_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_parse_stremio_meta_json',
+          )
+          .asFunction(),
+      ffi_stremio_http_get_json = lib
+          .lookup<ffi.NativeFunction<_StremioHttpGetNative>>(
+            'ffi_stremio_http_get_json',
+          )
+          .asFunction(),
+      ffi_http_get_json = lib
+          .lookup<ffi.NativeFunction<_HttpGetNative>>('ffi_http_get_json')
+          .asFunction(),
+      ffi_http_post_json = lib
+          .lookup<ffi.NativeFunction<_HttpPostNative>>('ffi_http_post_json')
+          .asFunction(),
+      ffi_iptv_probe_stream_json = lib
+          .lookup<ffi.NativeFunction<_StremioHttpGetNative>>(
+            'ffi_iptv_probe_stream_json',
+          )
+          .asFunction(),
+      ffi_live_matches_fetch_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_live_matches_fetch_json',
+          )
+          .asFunction(),
+      ffi_iptv_reddit_catalog_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_iptv_reddit_catalog_json',
+          )
+          .asFunction(),
+      ffi_tmdb_get_json = lib
+          .lookup<ffi.NativeFunction<_StremioHttpGetNative>>(
+            'ffi_tmdb_get_json',
+          )
+          .asFunction(),
+      ffi_trakt_request_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_trakt_request_json',
+          )
+          .asFunction(),
+      ffi_anime_request_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_anime_request_json',
+          )
+          .asFunction(),
+      ffi_indexer_request_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_indexer_request_json',
+          )
+          .asFunction(),
+      ffi_debrid_request_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_debrid_request_json',
+          )
+          .asFunction(),
+      ffi_site111477_index_request_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_site111477_index_request_json',
+          )
+          .asFunction(),
+      ffi_mega_resolve_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_mega_resolve_json',
+          )
+          .asFunction(),
+      ffi_metadata_request_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_metadata_request_json',
+          )
+          .asFunction(),
+      ffi_subtitle_request_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_subtitle_request_json',
+          )
+          .asFunction(),
+      ffi_parse_knaben_html_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_parse_knaben_html_json',
+          )
+          .asFunction(),
+      ffi_parse_tpb_html_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_parse_tpb_html_json',
+          )
+          .asFunction(),
+      ffi_parse_uindex_html_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_parse_uindex_html_json',
+          )
+          .asFunction(),
+      ffi_dedup_torrents_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_dedup_torrents_json',
+          )
+          .asFunction(),
+      ffi_search_torrents_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_search_torrents_json',
+          )
+          .asFunction(),
+      ffi_filter_torrents_json = lib
+          .lookup<ffi.NativeFunction<_FilterTorrentsNative>>(
+            'ffi_filter_torrents_json',
+          )
+          .asFunction(),
+      ffi_sort_torrents_json = lib
+          .lookup<ffi.NativeFunction<_TwoStringNative>>(
+            'ffi_sort_torrents_json',
+          )
+          .asFunction(),
+      ffi_is_video_file = lib
+          .lookup<ffi.NativeFunction<_StringBoolNative>>('ffi_is_video_file')
+          .asFunction(),
+      ffi_extract_embed_html_json = lib
+          .lookup<ffi.NativeFunction<_ThreeStringNative>>(
+            'ffi_extract_embed_html_json',
+          )
+          .asFunction(),
+      ffi_extract_vidsrc_chain_json = lib
+          .lookup<ffi.NativeFunction<_ThreeStringNative>>(
+            'ffi_extract_vidsrc_chain_json',
+          )
+          .asFunction(),
+      ffi_resolve_vidsrc_embed_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_resolve_vidsrc_embed_json',
+          )
+          .asFunction(),
+      ffi_extract_hubcloud_links_json = lib
+          .lookup<ffi.NativeFunction<_TwoStringNative>>(
+            'ffi_extract_hubcloud_links_json',
+          )
+          .asFunction(),
+      ffi_extract_mfp_embed_html_json = lib
+          .lookup<ffi.NativeFunction<_FiveStringNative>>(
+            'ffi_extract_mfp_embed_html_json',
+          )
+          .asFunction(),
+      ffi_resolve_webstreamr_source_json = lib
+          .lookup<ffi.NativeFunction<_TwoStringNative>>(
+            'ffi_resolve_webstreamr_source_json',
+          )
+          .asFunction(),
+      ffi_webstreamr_get_streams_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_webstreamr_get_streams_json',
+          )
+          .asFunction(),
+      ffi_extract_kinoger_episode_urls_json = lib
+          .lookup<ffi.NativeFunction<_KinogerUrlsNative>>(
+            'ffi_extract_kinoger_episode_urls_json',
+          )
+          .asFunction(),
+      ffi_parse_webstreamr_source_html_json = lib
+          .lookup<ffi.NativeFunction<_ThreeStringNative>>(
+            'ffi_parse_webstreamr_source_html_json',
+          )
+          .asFunction(),
+      ffi_torrent_start = lib
+          .lookup<ffi.NativeFunction<_TorrentStartNative>>('ffi_torrent_start')
+          .asFunction(),
+      ffi_torrent_stop = lib
+          .lookup<ffi.NativeFunction<_TorrentStopNative>>('ffi_torrent_stop')
+          .asFunction(),
+      ffi_torrent_is_running = lib
+          .lookup<ffi.NativeFunction<_TorrentIsRunningNative>>(
+            'ffi_torrent_is_running',
+          )
+          .asFunction(),
+      ffi_torrent_status_json = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>('ffi_torrent_status_json')
+          .asFunction(),
+      ffi_torrent_engine_start = lib
+          .lookup<ffi.NativeFunction<_ProxyStartNative>>(
+            'ffi_torrent_engine_start',
+          )
+          .asFunction(),
+      ffi_torrent_engine_last_error = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>(
+            'ffi_torrent_engine_last_error',
+          )
+          .asFunction(),
+      ffi_torrent_engine_port = lib
+          .lookup<ffi.NativeFunction<_ProxyPortNative>>(
+            'ffi_torrent_engine_port',
+          )
+          .asFunction(),
+      ffi_torrent_engine_stop = lib
+          .lookup<ffi.NativeFunction<_TorrentStopNative>>(
+            'ffi_torrent_engine_stop',
+          )
+          .asFunction(),
+      ffi_torrent_set_peer_limit = lib
+          .lookup<ffi.NativeFunction<_TorrentSetPeerLimitNative>>(
+            'ffi_torrent_set_peer_limit',
+          )
+          .asFunction(),
+      ffi_torrent_set_disk_cache_bytes = lib
+          .lookup<ffi.NativeFunction<_TorrentSetDiskCacheNative>>(
+            'ffi_torrent_set_disk_cache_bytes',
+          )
+          .asFunction(),
+      ffi_torrent_reclaim_disk_cache_json = lib
+          .lookup<ffi.NativeFunction<_TorrentReclaimDiskCacheNative>>(
+            'ffi_torrent_reclaim_disk_cache_json',
+          )
+          .asFunction(),
+      ffi_torrent_stream_json = lib
+          .lookup<ffi.NativeFunction<_TorrentStreamJsonNative>>(
+            'ffi_torrent_stream_json',
+          )
+          .asFunction(),
+      ffi_torrent_list_files_json = lib
+          .lookup<ffi.NativeFunction<_TorrentJsonNative>>(
+            'ffi_torrent_list_files_json',
+          )
+          .asFunction(),
+      ffi_proxy_start = lib
+          .lookup<ffi.NativeFunction<_ProxyStartNative>>('ffi_proxy_start')
+          .asFunction(),
+      ffi_proxy_stop = lib
+          .lookup<ffi.NativeFunction<_TorrentStopNative>>('ffi_proxy_stop')
+          .asFunction(),
+      ffi_proxy_port = lib
+          .lookup<ffi.NativeFunction<_ProxyPortNative>>('ffi_proxy_port')
+          .asFunction(),
+      ffi_proxy_register_route = lib
+          .lookup<ffi.NativeFunction<_ProxyRegisterNative>>(
+            'ffi_proxy_register_route',
+          )
+          .asFunction(),
+      ffi_lan_server_start = lib
+          .lookup<ffi.NativeFunction<_LanServerStartNative>>(
+            'ffi_lan_server_start',
+          )
+          .asFunction(),
+      ffi_lan_server_last_error = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>(
+            'ffi_lan_server_last_error',
+          )
+          .asFunction(),
+      ffi_lan_server_stop = lib
+          .lookup<ffi.NativeFunction<_TorrentStopNative>>('ffi_lan_server_stop')
+          .asFunction(),
+      ffi_lan_server_port = lib
+          .lookup<ffi.NativeFunction<_ProxyPortNative>>('ffi_lan_server_port')
+          .asFunction(),
+      ffi_lan_pairing_code_refresh = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>(
+            'ffi_lan_pairing_code_refresh',
+          )
+          .asFunction(),
+      ffi_lan_pairing_code = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>('ffi_lan_pairing_code')
+          .asFunction(),
+      ffi_lan_revoke_device = lib
+          .lookup<ffi.NativeFunction<_TorrentStartNative>>(
+            'ffi_lan_revoke_device',
+          )
+          .asFunction(),
+      ffi_lan_devices_json = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>('ffi_lan_devices_json')
+          .asFunction(),
+      ffi_lan_torrent_history_json = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>(
+            'ffi_lan_torrent_history_json',
+          )
+          .asFunction(),
+      ffi_lan_remove_torrent_history = lib
+          .lookup<ffi.NativeFunction<_TorrentStartNative>>(
+            'ffi_lan_remove_torrent_history',
+          )
+          .asFunction(),
+      ffi_lan_clear_torrent_history = lib
+          .lookup<ffi.NativeFunction<_TorrentIsRunningNative>>(
+            'ffi_lan_clear_torrent_history',
+          )
+          .asFunction(),
+      ffi_lan_browse_servers_json = lib
+          .lookup<ffi.NativeFunction<_LanBrowseNative>>(
+            'ffi_lan_browse_servers_json',
+          )
+          .asFunction(),
+      ffi_seek111477_start_json = lib
+          .lookup<ffi.NativeFunction<_Seek111477JsonNative>>(
+            'ffi_seek111477_start_json',
+          )
+          .asFunction(),
+      ffi_seek111477_stop = lib
+          .lookup<ffi.NativeFunction<_TorrentStopNative>>('ffi_seek111477_stop')
+          .asFunction(),
+      ffi_seek111477_port = lib
+          .lookup<ffi.NativeFunction<_Seek111477PortNative>>(
+            'ffi_seek111477_port',
+          )
+          .asFunction(),
+      ffi_seek111477_is_running = lib
+          .lookup<ffi.NativeFunction<_Seek111477IsRunningNative>>(
+            'ffi_seek111477_is_running',
+          )
+          .asFunction(),
+      ffi_seek111477_purge_cache_json = lib
+          .lookup<ffi.NativeFunction<_Seek111477JsonNative>>(
+            'ffi_seek111477_purge_cache_json',
+          )
+          .asFunction(),
+      ffi_provider_health_json = lib
+          .lookup<ffi.NativeFunction<_StringInOutNative>>(
+            'ffi_provider_health_json',
+          )
+          .asFunction(),
+      ffi_storage_open = lib
+          .lookup<ffi.NativeFunction<_StoragePathNative>>('ffi_storage_open')
+          .asFunction(),
+      ffi_storage_get_json = lib
+          .lookup<ffi.NativeFunction<_StorageKeyNative>>('ffi_storage_get_json')
+          .asFunction(),
+      ffi_storage_set_json = lib
+          .lookup<ffi.NativeFunction<_StorageSetNative>>('ffi_storage_set_json')
+          .asFunction();
 
   final void Function(ffi.Pointer<ffi.Char>) ffi_free_string;
   final ffi.Pointer<ffi.Char> Function() ffi_version;
@@ -1272,181 +1226,190 @@ final class _FfiNative {
   final int Function(int, int) ffi_add;
   final bool Function(ffi.Pointer<ffi.Char>, int, int) ffi_episode_matches;
   final int Function(ffi.Pointer<ffi.Char>, int, int)
-      ffi_pick_episode_index_json;
-  final int Function(ffi.Pointer<ffi.Char>)
-      ffi_pick_largest_video_index_json;
+  ffi_pick_episode_index_json;
+  final int Function(ffi.Pointer<ffi.Char>) ffi_pick_largest_video_index_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_normalize_torrent_title;
+  ffi_normalize_torrent_title;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>) ffi_unpack_js;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_set_provider_runtime_overlay;
+  ffi_set_provider_runtime_overlay;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
-      ffi_build_movie_url;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    int,
-    int,
-    int,
-  ) ffi_build_tv_url;
+  ffi_build_movie_url;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int, int, int)
+  ffi_build_tv_url;
   final ffi.Pointer<ffi.Char> Function() ffi_list_providers_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_playback_rank_sources_json;
+  ffi_playback_rank_sources_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_playback_normalize_legacy_json;
+  ffi_playback_normalize_legacy_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_playback_order_providers_json;
+  ffi_playback_order_providers_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_m3u_json;
+  ffi_parse_m3u_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_decrypt_paste_response;
+  )
+  ffi_decrypt_paste_response;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_openssl_aes_decrypt_json;
+  )
+  ffi_openssl_aes_decrypt_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_decode_xtream_text;
+  ffi_decode_xtream_text;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_iptv_portal_share_encode;
+  )
+  ffi_iptv_portal_share_encode;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_iptv_portal_share_decode;
+  ffi_iptv_portal_share_decode;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_xtream_categories_json;
+  ffi_parse_xtream_categories_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_parse_xtream_streams_json;
+  )
+  ffi_parse_xtream_streams_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_xtream_series_episodes_json;
+  ffi_parse_xtream_series_episodes_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_scene_info_json;
+  ffi_parse_scene_info_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_parse_hls_master_json;
+  )
+  ffi_parse_hls_master_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_decrypt_kisskh_body;
+  )
+  ffi_decrypt_kisskh_body;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_build_stremio_resource_url;
+  )
+  ffi_build_stremio_resource_url;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_normalize_stremio_manifest_url;
+  ffi_normalize_stremio_manifest_url;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_split_stremio_addon_url_json;
+  ffi_split_stremio_addon_url_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_stremio_manifest_json;
+  ffi_parse_stremio_manifest_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_stremio_streams_json;
+  ffi_parse_stremio_streams_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_stremio_subtitles_json;
+  ffi_parse_stremio_subtitles_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_stremio_catalog_json;
+  ffi_parse_stremio_catalog_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_stremio_meta_json;
+  ffi_parse_stremio_meta_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
-      ffi_stremio_http_get_json;
+  ffi_stremio_http_get_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     int,
     ffi.Pointer<ffi.Char>,
-  ) ffi_http_get_json;
+  )
+  ffi_http_get_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     int,
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_http_post_json;
+  )
+  ffi_http_post_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
-      ffi_iptv_probe_stream_json;
+  ffi_iptv_probe_stream_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_live_matches_fetch_json;
+  ffi_live_matches_fetch_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_iptv_reddit_catalog_json;
+  ffi_iptv_reddit_catalog_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int)
-      ffi_tmdb_get_json;
+  ffi_tmdb_get_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_trakt_request_json;
+  ffi_trakt_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_anime_request_json;
+  ffi_anime_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_indexer_request_json;
+  ffi_indexer_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_debrid_request_json;
+  ffi_debrid_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_site111477_index_request_json;
+  ffi_site111477_index_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_mega_resolve_json;
+  ffi_mega_resolve_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_metadata_request_json;
+  ffi_metadata_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_subtitle_request_json;
+  ffi_subtitle_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_knaben_html_json;
+  ffi_parse_knaben_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_tpb_html_json;
+  ffi_parse_tpb_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_parse_uindex_html_json;
+  ffi_parse_uindex_html_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_dedup_torrents_json;
+  ffi_dedup_torrents_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_search_torrents_json;
+  ffi_search_torrents_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
     int,
     int,
-  ) ffi_filter_torrents_json;
+  )
+  ffi_filter_torrents_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_sort_torrents_json;
+  )
+  ffi_sort_torrents_json;
   final bool Function(ffi.Pointer<ffi.Char>) ffi_is_video_file;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_extract_embed_html_json;
+  )
+  ffi_extract_embed_html_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_extract_vidsrc_chain_json;
+  )
+  ffi_extract_vidsrc_chain_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_resolve_vidsrc_embed_json;
+  ffi_resolve_vidsrc_embed_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_extract_hubcloud_links_json;
+  )
+  ffi_extract_hubcloud_links_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_extract_mfp_embed_html_json;
+  )
+  ffi_extract_mfp_embed_html_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_resolve_webstreamr_source_json;
+  )
+  ffi_resolve_webstreamr_source_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_webstreamr_get_streams_json;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    int,
-    int,
-  ) ffi_extract_kinoger_episode_urls_json;
+  ffi_webstreamr_get_streams_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int, int)
+  ffi_extract_kinoger_episode_urls_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_parse_webstreamr_source_html_json;
+  )
+  ffi_parse_webstreamr_source_html_json;
   final bool Function(ffi.Pointer<ffi.Char>) ffi_torrent_start;
   final void Function() ffi_torrent_stop;
   final bool Function() ffi_torrent_is_running;
@@ -1458,21 +1421,15 @@ final class _FfiNative {
   final void Function(int) ffi_torrent_set_peer_limit;
   final void Function(int) ffi_torrent_set_disk_cache_bytes;
   final ffi.Pointer<ffi.Char> Function(int) ffi_torrent_reclaim_disk_cache_json;
-  final ffi.Pointer<ffi.Char> Function(
-    ffi.Pointer<ffi.Char>,
-    int,
-    int,
-    int,
-  ) ffi_torrent_stream_json;
+  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int, int, int)
+  ffi_torrent_stream_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_torrent_list_files_json;
+  ffi_torrent_list_files_json;
   final int Function(int) ffi_proxy_start;
   final void Function() ffi_proxy_stop;
   final int Function() ffi_proxy_port;
-  final bool Function(
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Char>,
-  ) ffi_proxy_register_route;
+  final bool Function(ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)
+  ffi_proxy_register_route;
   final int Function(int, int) ffi_lan_server_start;
   final ffi.Pointer<ffi.Char> Function() ffi_lan_server_last_error;
   final void Function() ffi_lan_server_stop;
@@ -1486,138 +1443,124 @@ final class _FfiNative {
   final bool Function() ffi_lan_clear_torrent_history;
   final ffi.Pointer<ffi.Char> Function(int) ffi_lan_browse_servers_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_seek111477_start_json;
+  ffi_seek111477_start_json;
   final void Function() ffi_seek111477_stop;
   final int Function() ffi_seek111477_port;
   final bool Function() ffi_seek111477_is_running;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_seek111477_purge_cache_json;
+  ffi_seek111477_purge_cache_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_provider_health_json;
+  ffi_provider_health_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>) ffi_storage_open;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-      ffi_storage_get_json;
+  ffi_storage_get_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,
-  ) ffi_storage_set_json;
+  )
+  ffi_storage_set_json;
 }
 
 typedef _FreeStringNative = ffi.Void Function(ffi.Pointer<ffi.Char>);
 typedef _VersionNative = ffi.Pointer<ffi.Char> Function();
 typedef _AddNative = ffi.Int64 Function(ffi.Int64, ffi.Int64);
-typedef _EpisodeMatchesNative = ffi.Bool Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Int32,
-  ffi.Int32,
-);
-typedef _PickEpisodeIndexNative = ffi.Int32 Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Int32,
-  ffi.Int32,
-);
-typedef _PickLargestVideoIndexNative = ffi.Int32 Function(
-  ffi.Pointer<ffi.Char>,
-);
-typedef _FilterTorrentsNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-  ffi.Int32,
-  ffi.Int32,
-);
+typedef _EpisodeMatchesNative =
+    ffi.Bool Function(ffi.Pointer<ffi.Char>, ffi.Int32, ffi.Int32);
+typedef _PickEpisodeIndexNative =
+    ffi.Int32 Function(ffi.Pointer<ffi.Char>, ffi.Int32, ffi.Int32);
+typedef _PickLargestVideoIndexNative =
+    ffi.Int32 Function(ffi.Pointer<ffi.Char>);
+typedef _FilterTorrentsNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+      ffi.Int32,
+      ffi.Int32,
+    );
 typedef _StringInOutNative =
     ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>);
-typedef _StremioHttpGetNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Uint64,
-);
-typedef _HttpGetNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Uint64,
-  ffi.Pointer<ffi.Char>,
-);
-typedef _HttpPostNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Uint64,
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-);
-typedef _BuildMovieUrlNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Int64,
-);
-typedef _BuildTvUrlNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Int64,
-  ffi.Int32,
-  ffi.Int32,
-);
-typedef _TwoStringNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-);
-typedef _ThreeStringNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-);
-typedef _FiveStringNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-);
-typedef _KinogerUrlsNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Int32,
-  ffi.Int32,
-);
+typedef _StremioHttpGetNative =
+    ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, ffi.Uint64);
+typedef _HttpGetNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Uint64,
+      ffi.Pointer<ffi.Char>,
+    );
+typedef _HttpPostNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Uint64,
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+    );
+typedef _BuildMovieUrlNative =
+    ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, ffi.Int64);
+typedef _BuildTvUrlNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Int64,
+      ffi.Int32,
+      ffi.Int32,
+    );
+typedef _TwoStringNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+    );
+typedef _ThreeStringNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+    );
+typedef _FiveStringNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+    );
+typedef _KinogerUrlsNative =
+    ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, ffi.Int32, ffi.Int32);
 typedef _StringBoolNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStartNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStopNative = ffi.Void Function();
 typedef _EngineCancelKindNative = ffi.Void Function(ffi.Uint32);
-typedef _EngineSubmitJobNative = ffi.Uint64 Function(
-  ffi.Uint32,
-  ffi.Pointer<ffi.Char>,
-);
-typedef _EngineTakeJobNative =
-    ffi.Pointer<ffi.Char> Function(ffi.Uint64);
+typedef _EngineSubmitJobNative =
+    ffi.Uint64 Function(ffi.Uint32, ffi.Pointer<ffi.Char>);
+typedef _EngineTakeJobNative = ffi.Pointer<ffi.Char> Function(ffi.Uint64);
 typedef _TorrentSetPeerLimitNative = ffi.Void Function(ffi.Uint32);
 typedef _TorrentSetDiskCacheNative = ffi.Void Function(ffi.Uint64);
-typedef _TorrentReclaimDiskCacheNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Uint64,
-);
+typedef _TorrentReclaimDiskCacheNative =
+    ffi.Pointer<ffi.Char> Function(ffi.Uint64);
 typedef _TorrentIsRunningNative = ffi.Bool Function();
-typedef _TorrentStreamJsonNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Int32,
-  ffi.Int32,
-  ffi.Int32,
-);
-typedef _TorrentJsonNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-);
+typedef _TorrentStreamJsonNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Int32,
+      ffi.Int32,
+      ffi.Int32,
+    );
+typedef _TorrentJsonNative =
+    ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>);
 typedef _ProxyStartNative = ffi.Int32 Function(ffi.Uint16);
 typedef _ProxyPortNative = ffi.Uint16 Function();
-typedef _ProxyRegisterNative = ffi.Bool Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-);
+typedef _ProxyRegisterNative =
+    ffi.Bool Function(ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>);
 typedef _LanServerStartNative = ffi.Int32 Function(ffi.Uint8, ffi.Uint16);
 typedef _LanBrowseNative = ffi.Pointer<ffi.Char> Function(ffi.Uint64);
-typedef _Seek111477JsonNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-);
+typedef _Seek111477JsonNative =
+    ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>);
 typedef _Seek111477PortNative = ffi.Uint32 Function();
 typedef _Seek111477IsRunningNative = ffi.Bool Function();
-typedef _StoragePathNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-);
-typedef _StorageKeyNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-);
-typedef _StorageSetNative = ffi.Pointer<ffi.Char> Function(
-  ffi.Pointer<ffi.Char>,
-  ffi.Pointer<ffi.Char>,
-);
+typedef _StoragePathNative =
+    ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>);
+typedef _StorageKeyNative =
+    ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>);
+typedef _StorageSetNative =
+    ffi.Pointer<ffi.Char> Function(
+      ffi.Pointer<ffi.Char>,
+      ffi.Pointer<ffi.Char>,
+    );

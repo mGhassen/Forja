@@ -86,8 +86,10 @@ class _MediaDetailsTorrentActionRowState
 
   void _invalidateSimklLists() {
     try {
-      ProviderScope.containerOf(context, listen: false)
-          .invalidate(simklWatchlistProvider);
+      ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).invalidate(simklWatchlistProvider);
     } catch (_) {}
   }
 
@@ -319,23 +321,22 @@ class _MediaDetailsTorrentActionRowState
   @override
   Widget build(BuildContext context) {
     final row = _buildRow(context);
-    final child =
-        !widget.isStreamingExtracting || widget.statusMessage == null
-            ? row
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  row,
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.statusMessage!,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              );
+    final child = !widget.isStreamingExtracting || widget.statusMessage == null
+        ? row
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              row,
+              const SizedBox(height: 8),
+              Text(
+                widget.statusMessage!,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          );
 
     final tabId = widget.tvTabId;
     if (tabId == null) return child;

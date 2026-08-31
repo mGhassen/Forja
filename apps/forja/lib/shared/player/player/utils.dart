@@ -1462,6 +1462,34 @@ Duration remountResumeTimeoutForSeek(Duration seekTarget) {
   return Duration(seconds: (15 + extra).clamp(15, 60));
 }
 
+/// Videasy peakstorm HLS only needs same-URL remount on **deep** seeks.
+/// Shallow seeks recover with a normal mpv seek — remount disrupts playback.
+const Duration kPostSeekRemountMinTarget = Duration(minutes: 20);
+
+bool postSeekRemountAppliesTo(Duration seekTarget) {
+  return seekTarget >= kPostSeekRemountMinTarget;
+}
+
+/// After app foreground, true when network VOD is still stuck near [pos].
+bool foregroundResumePlaybackStalled({
+  required PlayerState state,
+  required Duration pos,
+  required Duration dur,
+}) {
+  if (!isMidEpisodePlayback(pos.inMilliseconds, dur.inMilliseconds)) {
+    return false;
+  }
+  if (remountPlaybackResumed(state, pos)) return false;
+  if (!state.playing && !state.buffering) return false;
+  if (state.buffering) return true;
+  return !remountPlaybackLooksLive(
+    playing: state.playing,
+    buffering: state.buffering,
+    position: state.position,
+    target: pos,
+  );
+}
+
 /// Stall timer before post-seek remount — scales with seek depth (issue 184).
 Duration postSeekStallTimeoutForTarget(Duration seekTarget) {
   final extra = (seekTarget.inMinutes ~/ 10) * 5;

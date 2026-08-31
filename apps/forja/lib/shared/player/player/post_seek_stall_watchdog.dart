@@ -12,8 +12,6 @@ class PostSeekStallWatchdog {
   PostSeekStallWatchdog({
     required this.onRemount,
     this.stallAfter = const Duration(seconds: 10),
-    this.bufferingNearTargetStallAfter = const Duration(seconds: 8),
-    this.silentFreezeNearTargetStallAfter = const Duration(seconds: 12),
     this.armWindow = const Duration(seconds: 45),
     this.progressClear = const Duration(seconds: 2),
     this.enabled = true,
@@ -23,8 +21,6 @@ class PostSeekStallWatchdog {
   /// Return true only when remount actually ran and resumed playback.
   final Future<bool> Function(Duration seekTarget) onRemount;
   final Duration stallAfter;
-  final Duration bufferingNearTargetStallAfter;
-  final Duration silentFreezeNearTargetStallAfter;
   final Duration armWindow;
   final Duration progressClear;
 
@@ -67,31 +63,12 @@ class PostSeekStallWatchdog {
     if (_playing) _armTimer();
   }
 
-  bool _nearTarget() {
-    final target = _target;
-    if (target == null) return false;
-    return (_lastPos - target).abs() <= progressClear;
-  }
-
-  Duration _effectiveStallAfter() {
-    if (!_nearTarget()) return _armedStallAfter;
-    if (_buffering) return bufferingNearTargetStallAfter;
-    return silentFreezeNearTargetStallAfter;
-  }
-
   void onBuffering(bool buffering) {
     _buffering = buffering;
     if (!enabled || _seekAt == null || _remountedForSeek || _remountInFlight) {
       return;
     }
-    if (!_playing) return;
-    if (buffering && _nearTarget()) {
-      _timer?.cancel();
-      _timer = null;
-      _armTimer();
-      return;
-    }
-    if (_timer == null) _armTimer();
+    if (_playing && _timer == null) _armTimer();
   }
 
   void onPlaying(bool playing) {
@@ -132,8 +109,7 @@ class PostSeekStallWatchdog {
     if (_timer != null || _remountedForSeek || _remountInFlight) return;
     final target = _target;
     if (target == null || !_playing) return;
-    final delay = _effectiveStallAfter();
-    _timer = Timer(delay, () => unawaited(_fire(target, delay)));
+    _timer = Timer(_armedStallAfter, () => unawaited(_fire(target, _armedStallAfter)));
   }
 
   bool _looksStalled() {

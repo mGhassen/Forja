@@ -123,8 +123,7 @@ class SettingsSourcesPageBody extends StatelessWidget {
         SettingsProvidersSection(visibility: visibility),
         if (visibility.showProviderScoring)
           const SettingsProviderScoringSection(),
-        if (visibility.showTorrentEngine)
-          const SettingsSearchTorrentsSection(),
+        if (visibility.showTorrentEngine) const SettingsSearchTorrentsSection(),
       ],
     );
   }
@@ -168,10 +167,7 @@ class SettingsAccountsPageBody extends StatelessWidget {
 }
 
 class SettingsDataPageBody extends StatefulWidget {
-  const SettingsDataPageBody({
-    super.key,
-    required this.visibility,
-  });
+  const SettingsDataPageBody({super.key, required this.visibility});
 
   final SettingsVisibility visibility;
 
@@ -338,8 +334,9 @@ class SettingsNavigationPageBody extends ConsumerStatefulWidget {
 class _SettingsNavigationPageBodyState
     extends ConsumerState<SettingsNavigationPageBody> {
   final SettingsService _settings = SettingsService();
-  final FocusNode _firstTabFocus =
-      FocusNode(debugLabel: 'settings-features-tab-0');
+  final FocusNode _firstTabFocus = FocusNode(
+    debugLabel: 'settings-features-tab-0',
+  );
   List<String> _navbarVisible = [];
   List<String> _navbarOrder = [];
   String _defaultNavTab = 'home';
@@ -519,21 +516,20 @@ class _SettingsNavigationPageBodyState
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(settingsNavigationProvider);
-    ref.listen<AsyncValue<SettingsNavigationSnapshot>>(
-      settingsNavigationProvider,
-      (previous, next) {
-        final snap = next.valueOrNull;
-        if (snap == null) return;
-        // Cloud pull often re-emits the same nav — skip setState so focus stays.
-        if (_loaded &&
-            listEquals(_navbarVisible, snap.visible) &&
-            listEquals(_navbarOrder, snap.order) &&
-            _defaultNavTab == snap.defaultTab) {
-          return;
-        }
-        setState(() => _hydrate(snap));
-      },
-    );
+    ref.listen<
+      AsyncValue<SettingsNavigationSnapshot>
+    >(settingsNavigationProvider, (previous, next) {
+      final snap = next.valueOrNull;
+      if (snap == null) return;
+      // Cloud pull often re-emits the same nav — skip setState so focus stays.
+      if (_loaded &&
+          listEquals(_navbarVisible, snap.visible) &&
+          listEquals(_navbarOrder, snap.order) &&
+          _defaultNavTab == snap.defaultTab) {
+        return;
+      }
+      setState(() => _hydrate(snap));
+    });
     if (!_loaded) {
       final snap = async.valueOrNull;
       if (snap != null) _hydrate(snap);

@@ -1,15 +1,15 @@
-mod engine_jobs;
 mod c_api;
-#[cfg(feature = "torrent-engine")]
-mod engine_torrent;
-#[cfg(feature = "local-proxy")]
-mod engine_proxy;
+mod engine_jobs;
 #[cfg(feature = "lan-server")]
 mod engine_lan;
 #[cfg(feature = "local-proxy")]
-mod engine_seek111477;
-#[cfg(feature = "local-proxy")]
 mod engine_mega;
+#[cfg(feature = "local-proxy")]
+mod engine_proxy;
+#[cfg(feature = "local-proxy")]
+mod engine_seek111477;
+#[cfg(feature = "torrent-engine")]
+mod engine_torrent;
 
 use iptv::m3u;
 use iptv::pastesh;
@@ -17,24 +17,21 @@ use scrapers::{
     dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html, search_request,
     SearchRequest,
 };
+use std::sync::LazyLock;
 use stream::list_providers;
 use stremio::{
     build_resource_url, fetch_get, fetch_get_with_headers, fetch_post_with_headers, parse_catalog,
     parse_manifest, parse_meta, parse_streams, parse_subtitles,
 };
-use utils::{
-    episode_matcher, hls_parser, js_unpacker, kisskh_subtitle, torrent_filter,
-};
-use std::sync::LazyLock;
 use tokio::runtime::Runtime;
+use utils::{episode_matcher, hls_parser, js_unpacker, kisskh_subtitle, torrent_filter};
 
 uniffi::include_scaffolding!("forja");
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[allow(dead_code)]
-static RUNTIME: LazyLock<Runtime> =
-    LazyLock::new(|| Runtime::new().expect("ffi tokio runtime"));
+static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| Runtime::new().expect("ffi tokio runtime"));
 
 fn version() -> String {
     VERSION.to_string()
@@ -169,9 +166,8 @@ fn playback_order_providers_json(payload_json: String) -> String {
         request.reliability = resolver_engine::ProviderHealthStore::global().all_provider_totals();
     }
     let response = order_providers(request);
-    serde_json::to_string(&response).unwrap_or_else(|e| {
-        serde_json::json!({ "error": e.to_string() }).to_string()
-    })
+    serde_json::to_string(&response)
+        .unwrap_or_else(|e| serde_json::json!({ "error": e.to_string() }).to_string())
 }
 
 fn parse_m3u_json(content: String) -> String {
@@ -266,12 +262,7 @@ fn http_get_json(url: String, timeout_secs: u64, headers_json: String) -> String
     }
 }
 
-fn http_post_json(
-    url: String,
-    timeout_secs: u64,
-    headers_json: String,
-    body: String,
-) -> String {
+fn http_post_json(url: String, timeout_secs: u64, headers_json: String, body: String) -> String {
     utils::engine_cancel::enter_job();
     let headers: std::collections::HashMap<String, String> =
         serde_json::from_str(&headers_json).unwrap_or_default();
@@ -439,7 +430,11 @@ fn resolve_webstreamr_source_json(source_id: String, request_json: String) -> St
     webstreamr::resolve_source_json(&source_id, &request_json)
 }
 
-fn extract_kinoger_episode_urls_json(html: String, season_index: i32, episode_index: i32) -> String {
+fn extract_kinoger_episode_urls_json(
+    html: String,
+    season_index: i32,
+    episode_index: i32,
+) -> String {
     webstreamr::extract_kinoger_episode_urls_json(&html, season_index, episode_index)
 }
 
@@ -587,10 +582,7 @@ fn torrent_list_files_json(magnet: String) -> String {
 fn proxy_start(preferred_port: u32) -> i32 {
     #[cfg(feature = "local-proxy")]
     {
-        engine_proxy::proxy_start(
-            &RUNTIME,
-            preferred_port.min(u16::MAX as u32) as u16,
-        )
+        engine_proxy::proxy_start(&RUNTIME, preferred_port.min(u16::MAX as u32) as u16)
     }
     #[cfg(not(feature = "local-proxy"))]
     {

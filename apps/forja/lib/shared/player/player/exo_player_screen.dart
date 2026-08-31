@@ -782,7 +782,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         (_sources.isNotEmpty ? _sources[_sourceIndex].url : null);
     _postSeekStall.enabled = url != null &&
         !isLocalTorrentStreamUrl(url) &&
-        !isLocalLoopbackPlayUrl(url);
+        !isLocalLoopbackPlayUrl(url) &&
+        postSeekRemountAppliesTo(target);
+    if (!postSeekRemountAppliesTo(target)) return;
     if (shouldSkipPostSeekStallArm(
       target: target,
       resumeStartPosition: widget.startPosition,

@@ -70,8 +70,7 @@ class SettingsVisibility {
   bool get showEngine => vodTab && playSourceEngine;
 
   /// Stremio addons — VOD Sources and/or Live Matches sport servers.
-  bool get showStremioAddons =>
-      (vodTab && playSourceStremio) || liveMatchesNav;
+  bool get showStremioAddons => (vodTab && playSourceStremio) || liveMatchesNav;
 
   /// Settings → Sources hub tile (torrent / Stremio / Nuvio / server reliability).
   ///
@@ -156,20 +155,20 @@ class SettingsVisibility {
 
   @override
   int get hashCode => Object.hash(
-        playSourceTorrent,
-        playSourceStremio,
-        playSourceNuvio,
-        playSourceEngine,
-        playSourceWebstreaming,
-        showPlaySourceTorrentToggle,
-        showPlaySourceStremioToggle,
-        showPlaySourceNuvioToggle,
-        showPlaySourceEngineToggle,
-        lanPlaySourcesEditable,
-        vodTab,
-        iptvNav,
-        liveMatchesNav,
-      );
+    playSourceTorrent,
+    playSourceStremio,
+    playSourceNuvio,
+    playSourceEngine,
+    playSourceWebstreaming,
+    showPlaySourceTorrentToggle,
+    showPlaySourceStremioToggle,
+    showPlaySourceNuvioToggle,
+    showPlaySourceEngineToggle,
+    lanPlaySourcesEditable,
+    vodTab,
+    iptvNav,
+    liveMatchesNav,
+  );
 
   static Future<SettingsVisibility> resolve([SettingsService? settings]) async {
     final s = settings ?? SettingsService();
@@ -184,8 +183,10 @@ class SettingsVisibility {
       playSourceNuvio: await PlaySourceEffective.nuvio(s, lanReady),
       playSourceEngine: await PlaySourceEffective.engine(s, lanReady),
       playSourceWebstreaming: await PlaySourceEffective.webstreaming(s),
-      showPlaySourceTorrentToggle: await PlaySourceEffective.showTorrentToggle(),
-      showPlaySourceStremioToggle: await PlaySourceEffective.showStremioToggle(),
+      showPlaySourceTorrentToggle:
+          await PlaySourceEffective.showTorrentToggle(),
+      showPlaySourceStremioToggle:
+          await PlaySourceEffective.showStremioToggle(),
       showPlaySourceNuvioToggle: await PlaySourceEffective.showNuvioToggle(),
       showPlaySourceEngineToggle: await PlaySourceEffective.showEngineToggle(),
       lanPlaySourcesEditable: lanEditable,

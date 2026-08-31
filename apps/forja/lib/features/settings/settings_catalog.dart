@@ -58,13 +58,13 @@ class SettingsCategoryMeta {
 List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
   final sourcesSubtitle = visibility.showTorrentEngine
       ? (visibility.showStremioAddons
-          ? 'Torrents, extractors, addons'
-          : 'Torrents and scrapers')
+            ? 'Torrents, extractors, addons'
+            : 'Torrents and scrapers')
       : visibility.showProviderScoring
-          ? (visibility.showStremioAddons
-              ? 'Server reliability, addons'
-              : 'Server reliability')
-          : 'Extractors and addons';
+      ? (visibility.showStremioAddons
+            ? 'Server reliability, addons'
+            : 'Server reliability')
+      : 'Extractors and addons';
 
   return [
     const SettingsCategoryMeta(

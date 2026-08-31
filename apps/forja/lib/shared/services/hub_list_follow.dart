@@ -38,10 +38,7 @@ class CatalogListFollowTarget {
 
   int? get mediaIdInt => open.idInt;
 
-  CatalogListFollowTarget copyWith({
-    int? tmdbId,
-    String? tmdbMediaType,
-  }) {
+  CatalogListFollowTarget copyWith({int? tmdbId, String? tmdbMediaType}) {
     return CatalogListFollowTarget(
       pluginId: pluginId,
       open: open,
@@ -90,9 +87,7 @@ class HubListFollow {
     if (to.isEmpty) {
       final keys = <String>{t.uniqueId};
       if (t.tmdbId != null) {
-        keys.add(
-          MyListService.movieId(t.tmdbId!, t.tmdbMediaType ?? 'tv'),
-        );
+        keys.add(MyListService.movieId(t.tmdbId!, t.tmdbMediaType ?? 'tv'));
       }
       container?.read(myListHiddenKeysProvider.notifier).addAll(keys);
       await MyListService().remove(t.uniqueId);
@@ -211,7 +206,9 @@ class HubListFollow {
     final mt = t.tmdbMediaType ?? 'tv';
     if (mt == 'movie') {
       if (!await SimklService().isLoggedIn()) return;
-      final hist = {'ids': {'tmdb': t.tmdbId}};
+      final hist = {
+        'ids': {'tmdb': t.tmdbId},
+      };
       if (watched) {
         await SimklService().addToHistory(movies: [hist]);
       } else {

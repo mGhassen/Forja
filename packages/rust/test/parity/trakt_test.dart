@@ -11,11 +11,7 @@ void main() {
 
   test('traktRequestJson rejects empty client_id', () {
     final raw = RustLib.instance.traktRequestJson(
-      jsonEncode({
-        'client_id': '',
-        'method': 'GET',
-        'path': '/users/me',
-      }),
+      jsonEncode({'client_id': '', 'method': 'GET', 'path': '/users/me'}),
     );
     final decoded = jsonDecode(raw) as Map<String, dynamic>;
     expect(decoded['error'], isNotNull);

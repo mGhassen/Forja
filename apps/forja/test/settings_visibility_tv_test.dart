@@ -48,108 +48,96 @@ void main() {
     await LanPrefs.instance.clearServer();
   });
 
-  test('Android TV unpaired honors stored torrent/Stremio/Nuvio; Sources on',
-      () async {
-    PlatformPlayback.override = PlaybackProfile.androidTv;
-    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+  test(
+    'Android TV unpaired honors stored torrent/Stremio/Nuvio; Sources on',
+    () async {
+      PlatformPlayback.override = PlaybackProfile.androidTv;
+      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
 
-    final service = SettingsService();
-    // Seed shell migration markers so getNavbarConfig won't rewrite our nav.
-    await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
-    await service.setNavbarConfig([
-      'home',
-      'anime',
-      'iptv',
-      'mylist',
-    ]);
-    await service.setPlaySourceTorrentEnabled(true);
-    await service.setPlaySourceStremioEnabled(true);
-    await service.setPlaySourceNuvioEnabled(true);
-    await service.setPlaySourceWebstreamingEnabled(true);
+      final service = SettingsService();
+      // Seed shell migration markers so getNavbarConfig won't rewrite our nav.
+      await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
+      await service.setNavbarConfig(['home', 'anime', 'iptv', 'mylist']);
+      await service.setPlaySourceTorrentEnabled(true);
+      await service.setPlaySourceStremioEnabled(true);
+      await service.setPlaySourceNuvioEnabled(true);
+      await service.setPlaySourceWebstreamingEnabled(true);
 
-    final v = await SettingsVisibility.resolve(service);
-    expect(v.playSourceTorrent, isTrue);
-    expect(v.playSourceStremio, isTrue);
-    expect(v.playSourceNuvio, isTrue);
-    // Stored on, but effective Webstreaming stays off without admin.
-    expect(v.playSourceWebstreaming, isFalse);
-    expect(v.showPlaySourceTorrentToggle, isTrue);
-    expect(v.showPlaySourceStremioToggle, isTrue);
-    expect(v.showPlaySourceNuvioToggle, isTrue);
-    expect(v.lanPlaySourcesEditable, isTrue);
-    expect(v.showProviderScoring, isFalse);
-    expect(v.showSourcesCategory, isTrue);
-    expect(v.showWebstreamr, isFalse);
-    expect(v.showLists, isFalse);
-    expect(v.showDataCategory, isFalse);
-    expect(v.showDebrid, isFalse);
-    expect(v.showAccounts, isTrue);
-    expect(v.showTrakt, isFalse);
-    expect(v.showMdblist, isFalse);
+      final v = await SettingsVisibility.resolve(service);
+      expect(v.playSourceTorrent, isTrue);
+      expect(v.playSourceStremio, isTrue);
+      expect(v.playSourceNuvio, isTrue);
+      // Stored on, but effective Webstreaming stays off without admin.
+      expect(v.playSourceWebstreaming, isFalse);
+      expect(v.showPlaySourceTorrentToggle, isTrue);
+      expect(v.showPlaySourceStremioToggle, isTrue);
+      expect(v.showPlaySourceNuvioToggle, isTrue);
+      expect(v.lanPlaySourcesEditable, isTrue);
+      expect(v.showProviderScoring, isFalse);
+      expect(v.showSourcesCategory, isTrue);
+      expect(v.showWebstreamr, isFalse);
+      expect(v.showLists, isFalse);
+      expect(v.showDataCategory, isFalse);
+      expect(v.showDebrid, isFalse);
+      expect(v.showAccounts, isTrue);
+      expect(v.showTrakt, isFalse);
+      expect(v.showMdblist, isFalse);
 
-    final ids = settingsCategories(v).map((c) => c.id).toSet();
-    expect(ids.contains(SettingsCategoryId.sources), isTrue);
-    expect(ids.contains(SettingsCategoryId.webstreamr), isFalse);
-    expect(ids.contains(SettingsCategoryId.lists), isFalse);
-    expect(ids.contains(SettingsCategoryId.data), isFalse);
-    expect(ids.contains(SettingsCategoryId.debrid), isFalse);
-    expect(ids.contains(SettingsCategoryId.playback), isTrue);
-    expect(ids.contains(SettingsCategoryId.accounts), isTrue);
-    expect(ids.contains(SettingsCategoryId.navigation), isTrue);
-    expect(ids.contains(SettingsCategoryId.about), isTrue);
-    expect(ids.contains(SettingsCategoryId.lan), isTrue);
-  });
+      final ids = settingsCategories(v).map((c) => c.id).toSet();
+      expect(ids.contains(SettingsCategoryId.sources), isTrue);
+      expect(ids.contains(SettingsCategoryId.webstreamr), isFalse);
+      expect(ids.contains(SettingsCategoryId.lists), isFalse);
+      expect(ids.contains(SettingsCategoryId.data), isFalse);
+      expect(ids.contains(SettingsCategoryId.debrid), isFalse);
+      expect(ids.contains(SettingsCategoryId.playback), isTrue);
+      expect(ids.contains(SettingsCategoryId.accounts), isTrue);
+      expect(ids.contains(SettingsCategoryId.navigation), isTrue);
+      expect(ids.contains(SettingsCategoryId.about), isTrue);
+      expect(ids.contains(SettingsCategoryId.lan), isTrue);
+    },
+  );
 
-  test('Android TV paired + online unlocks Playback toggles; honors stored',
-      () async {
-    PlatformPlayback.override = PlaybackProfile.androidTv;
-    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
-    PlaySourceEffective.debugForceLanDesktopOnline = true;
+  test(
+    'Android TV paired + online unlocks Playback toggles; honors stored',
+    () async {
+      PlatformPlayback.override = PlaybackProfile.androidTv;
+      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+      PlaySourceEffective.debugForceLanDesktopOnline = true;
 
-    final service = SettingsService();
-    await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
-    await service.setNavbarConfig([
-      'home',
-      'anime',
-      'iptv',
-      'mylist',
-    ]);
-    await LanPrefs.instance.setServer(host: '192.168.1.10', port: 8787);
-    await LanPrefs.instance.setToken('test-token');
-    await service.setPlaySourceTorrentEnabled(true);
-    await service.setPlaySourceStremioEnabled(false);
-    await service.setPlaySourceNuvioEnabled(true);
+      final service = SettingsService();
+      await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
+      await service.setNavbarConfig(['home', 'anime', 'iptv', 'mylist']);
+      await LanPrefs.instance.setServer(host: '192.168.1.10', port: 8787);
+      await LanPrefs.instance.setToken('test-token');
+      await service.setPlaySourceTorrentEnabled(true);
+      await service.setPlaySourceStremioEnabled(false);
+      await service.setPlaySourceNuvioEnabled(true);
 
-    final v = await SettingsVisibility.resolve(service);
-    expect(v.showPlaySourceTorrentToggle, isTrue);
-    expect(v.showPlaySourceStremioToggle, isTrue);
-    expect(v.showPlaySourceNuvioToggle, isTrue);
-    expect(v.lanPlaySourcesEditable, isTrue);
-    expect(v.playSourceTorrent, isTrue);
-    expect(v.playSourceStremio, isFalse);
-    expect(v.playSourceNuvio, isTrue);
-    expect(v.showSourcesCategory, isTrue);
-    expect(v.showDebrid, isFalse);
+      final v = await SettingsVisibility.resolve(service);
+      expect(v.showPlaySourceTorrentToggle, isTrue);
+      expect(v.showPlaySourceStremioToggle, isTrue);
+      expect(v.showPlaySourceNuvioToggle, isTrue);
+      expect(v.lanPlaySourcesEditable, isTrue);
+      expect(v.playSourceTorrent, isTrue);
+      expect(v.playSourceStremio, isFalse);
+      expect(v.playSourceNuvio, isTrue);
+      expect(v.showSourcesCategory, isTrue);
+      expect(v.showDebrid, isFalse);
 
-    expect(await PlaySourceEffective.torrent(service), isTrue);
-    expect(await PlaySourceEffective.stremio(service), isFalse);
-    expect(await PlaySourceEffective.nuvio(service), isTrue);
-  });
+      expect(await PlaySourceEffective.torrent(service), isTrue);
+      expect(await PlaySourceEffective.stremio(service), isFalse);
+      expect(await PlaySourceEffective.nuvio(service), isTrue);
+    },
+  );
 
-  test('Android TV paired + offline keeps play sources; Sources on',
-      () async {
+  test('Android TV paired + offline keeps play sources; Sources on', () async {
     PlatformPlayback.override = PlaybackProfile.androidTv;
     SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
     PlaySourceEffective.debugForceLanDesktopOnline = false;
 
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
-    await service.setNavbarConfig([
-      'home',
-      'anime',
-      'iptv',
-      'mylist',
-    ]);
+    await service.setNavbarConfig(['home', 'anime', 'iptv', 'mylist']);
     await LanPrefs.instance.setServer(host: '192.168.1.10', port: 8787);
     await LanPrefs.instance.setToken('test-token');
     await service.setPlaySourceTorrentEnabled(true);

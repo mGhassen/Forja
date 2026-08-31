@@ -88,9 +88,7 @@ pub unsafe extern "C" fn ffi_pick_episode_index_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_pick_largest_video_index_json(
-    files_json: *const c_char,
-) -> i32 {
+pub unsafe extern "C" fn ffi_pick_largest_video_index_json(files_json: *const c_char) -> i32 {
     crate::pick_largest_video_index_json(from_c_str(files_json))
 }
 
@@ -148,14 +146,18 @@ pub unsafe extern "C" fn ffi_playback_rank_sources_json(
 pub unsafe extern "C" fn ffi_playback_normalize_legacy_json(
     payload_json: *const c_char,
 ) -> *mut c_char {
-    to_c_string(crate::playback_normalize_legacy_json(from_c_str(payload_json)))
+    to_c_string(crate::playback_normalize_legacy_json(from_c_str(
+        payload_json,
+    )))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn ffi_playback_order_providers_json(
     payload_json: *const c_char,
 ) -> *mut c_char {
-    to_c_string(crate::playback_order_providers_json(from_c_str(payload_json)))
+    to_c_string(crate::playback_order_providers_json(from_c_str(
+        payload_json,
+    )))
 }
 
 #[no_mangle]
@@ -225,9 +227,7 @@ pub unsafe extern "C" fn ffi_parse_xtream_streams_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_parse_xtream_series_episodes_json(
-    json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn ffi_parse_xtream_series_episodes_json(json: *const c_char) -> *mut c_char {
     to_c_string(crate::parse_xtream_series_episodes_json(from_c_str(json)))
 }
 
@@ -256,7 +256,11 @@ pub unsafe extern "C" fn ffi_decrypt_kisskh_body(
         None
     } else {
         let s = from_c_str(source_url);
-        if s.is_empty() { None } else { Some(s) }
+        if s.is_empty() {
+            None
+        } else {
+            Some(s)
+        }
     };
     to_c_string(crate::decrypt_kisskh_body(from_c_str(body), url))
 }
@@ -348,23 +352,16 @@ pub unsafe extern "C" fn ffi_iptv_probe_stream_json(
     url: *const c_char,
     timeout_secs: u64,
 ) -> *mut c_char {
-    to_c_string(crate::iptv_probe_stream_json(
-        from_c_str(url),
-        timeout_secs,
-    ))
+    to_c_string(crate::iptv_probe_stream_json(from_c_str(url), timeout_secs))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_live_matches_fetch_json(
-    request_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn ffi_live_matches_fetch_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::live_matches_fetch_json(from_c_str(request_json)))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_iptv_reddit_catalog_json(
-    request_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn ffi_iptv_reddit_catalog_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::iptv_reddit_catalog_json(from_c_str(request_json)))
 }
 
@@ -380,30 +377,22 @@ pub unsafe extern "C" fn ffi_tmdb_get_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_trakt_request_json(
-    request_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn ffi_trakt_request_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::trakt_request_json(from_c_str(request_json)))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_anime_request_json(
-    request_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn ffi_anime_request_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::anime_request_json(from_c_str(request_json)))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_indexer_request_json(
-    request_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn ffi_indexer_request_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::indexer_request_json(from_c_str(request_json)))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_debrid_request_json(
-    request_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn ffi_debrid_request_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::debrid_request_json(from_c_str(request_json)))
 }
 
@@ -490,9 +479,7 @@ pub unsafe extern "C" fn ffi_extract_vidsrc_chain_json(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_resolve_vidsrc_embed_json(
-    request_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn ffi_resolve_vidsrc_embed_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::resolve_vidsrc_embed_json(from_c_str(request_json)))
 }
 
@@ -755,7 +742,9 @@ pub unsafe extern "C" fn ffi_seek111477_purge_cache_json(cache_dir: *const c_cha
 pub unsafe extern "C" fn ffi_site111477_index_request_json(
     request_json: *const c_char,
 ) -> *mut c_char {
-    to_c_string(crate::site111477_index_request_json(from_c_str(request_json)))
+    to_c_string(crate::site111477_index_request_json(from_c_str(
+        request_json,
+    )))
 }
 
 #[no_mangle]
@@ -764,23 +753,17 @@ pub unsafe extern "C" fn ffi_mega_resolve_json(embed_url: *const c_char) -> *mut
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_metadata_request_json(
-    request_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn ffi_metadata_request_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::metadata_request_json(from_c_str(request_json)))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_subtitle_request_json(
-    request_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn ffi_subtitle_request_json(request_json: *const c_char) -> *mut c_char {
     to_c_string(crate::subtitle_request_json(from_c_str(request_json)))
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_provider_health_json(
-    payload_json: *const c_char,
-) -> *mut c_char {
+pub unsafe extern "C" fn ffi_provider_health_json(payload_json: *const c_char) -> *mut c_char {
     to_c_string(crate::provider_health_json(from_c_str(payload_json)))
 }
 

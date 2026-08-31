@@ -214,14 +214,23 @@ class MediaDetailsTrackerHandlers {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF141414),
-        title: const Text('Check-in Failed', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Check-in Failed',
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           'You may already have an active check-in.\nCancel existing and retry?',
           style: TextStyle(color: Colors.white70),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes, retry')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Yes, retry'),
+          ),
         ],
       ),
     );
@@ -254,9 +263,7 @@ class MediaDetailsTrackerHandlers {
     final lists = await TraktService().getUserLists();
     if (!context.mounted || lists.isEmpty) {
       if (mounted) {
-        ForjaToast.warning(
-          'No Trakt lists found. Create one in Lists screen.',
-        );
+        ForjaToast.warning('No Trakt lists found. Create one in Lists screen.');
       }
       return;
     }
@@ -319,7 +326,10 @@ class MediaDetailsTrackerHandlers {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF141414),
-          title: const Text('Rate on Trakt', style: TextStyle(color: Colors.white)),
+          title: const Text(
+            'Rate on Trakt',
+            style: TextStyle(color: Colors.white),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -332,7 +342,9 @@ class MediaDetailsTrackerHandlers {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 1),
                       child: Icon(
-                        val <= selected ? Icons.star_rounded : Icons.star_outline_rounded,
+                        val <= selected
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
                         color: const Color(0xFFFFD700),
                         size: 28,
                       ),
@@ -358,18 +370,27 @@ class MediaDetailsTrackerHandlers {
                   Navigator.pop(ctx);
                   _removeTraktRating();
                 },
-                child: const Text('Remove', style: TextStyle(color: Colors.redAccent)),
+                child: const Text(
+                  'Remove',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
               ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             TextButton(
               onPressed: () {
                 Navigator.pop(ctx);
                 _rateTraktItem(selected);
               },
-              child: Text('Rate', style: TextStyle(color: AppTheme.primaryColor)),
+              child: Text(
+                'Rate',
+                style: TextStyle(color: AppTheme.primaryColor),
+              ),
             ),
           ],
         ),
@@ -386,7 +407,10 @@ class MediaDetailsTrackerHandlers {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF141414),
-          title: const Text('Rate on Simkl', style: TextStyle(color: Colors.white)),
+          title: const Text(
+            'Rate on Simkl',
+            style: TextStyle(color: Colors.white),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -399,7 +423,9 @@ class MediaDetailsTrackerHandlers {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 1),
                       child: Icon(
-                        val <= selected ? Icons.star_rounded : Icons.star_outline_rounded,
+                        val <= selected
+                            ? Icons.star_rounded
+                            : Icons.star_outline_rounded,
                         color: const Color(0xFF0BF5E5),
                         size: 28,
                       ),
@@ -425,18 +451,27 @@ class MediaDetailsTrackerHandlers {
                   Navigator.pop(ctx);
                   _removeSimklRating();
                 },
-                child: const Text('Remove', style: TextStyle(color: Colors.redAccent)),
+                child: const Text(
+                  'Remove',
+                  style: TextStyle(color: Colors.redAccent),
+                ),
               ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white54),
+              ),
             ),
             TextButton(
               onPressed: () {
                 Navigator.pop(ctx);
                 _rateSimklItem(selected);
               },
-              child: const Text('Rate', style: TextStyle(color: Color(0xFF0BF5E5))),
+              child: const Text(
+                'Rate',
+                style: TextStyle(color: Color(0xFF0BF5E5)),
+              ),
             ),
           ],
         ),

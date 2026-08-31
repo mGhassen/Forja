@@ -1,6 +1,10 @@
 part of 'desktop_player_screen.dart';
 
-mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+mixin _DesktopPlayerLifecycle
+    on
+        ConsumerState<DesktopPlayerScreen>,
+        WidgetsBindingObserver,
+        WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   String? _initialCatalogSourceKind() {
@@ -21,9 +25,8 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
   @override
   void initState() {
     super.initState();
-    _s._ownedProviderSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
-      {},
-    );
+    _s._ownedProviderSourcesCache =
+        ValueNotifier<Map<String, List<StreamSource>>>({});
 
     // ── Provider initialization ──────────────────────────────────────────
     _s._currentProvider = widget.activeProvider;
@@ -35,12 +38,12 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
     // Torrent / Stremio Direct: never seed the webstreaming sources list with
     // localhost stream URLs - that path skips them as "unplayable extracts"
     // and then fails pinned failover.
-    final catalogSession = isCatalogSourcesMode(widget.activeProvider) ||
+    final catalogSession =
+        isCatalogSourcesMode(widget.activeProvider) ||
         (widget.magnetLink != null && widget.magnetLink!.isNotEmpty);
     // Catalog mode normally skips the webstreaming sources list — but green
     // Forja Play passes explicit failover URLs; keep those so open can hop.
-    if (catalogSession &&
-        (widget.sources == null || widget.sources!.isEmpty)) {
+    if (catalogSession && (widget.sources == null || widget.sources!.isEmpty)) {
       _s._currentSources = null;
     } else {
       _s._currentSources = widget.sources == null
@@ -90,7 +93,9 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
     if (_s._currentProvider == 'service111477' &&
         widget.sources != null &&
         widget.sources!.isNotEmpty) {
-      final match = widget.sources!.indexWhere((s) => s.url == widget.mediaPath);
+      final match = widget.sources!.indexWhere(
+        (s) => s.url == widget.mediaPath,
+      );
       _s._current111477FileUrl = match >= 0
           ? widget.sources![match].url
           : widget.sources!.first.url;
@@ -198,9 +203,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
           season: widget.selectedSeason,
           episode: widget.selectedEpisode,
         );
-        unawaited(
-          ListFollowFromWatched.markMovieWatchingOnPlay(widget.movie!),
-        );
+        unawaited(ListFollowFromWatched.markMovieWatchingOnPlay(widget.movie!));
       }
       _fetchIntroDbTimestamps();
     });
@@ -324,7 +327,8 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
       for (final s in sources)
         if (isLocalLoopbackPlayUrl(s.url))
           StreamSource(
-            url: durableStreamCatalogUrl(
+            url:
+                durableStreamCatalogUrl(
                   catalogUrl: s.catalogUrl,
                   sourceUrl: s.url,
                   playUrl: s.url,
@@ -339,9 +343,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
         else
           s,
     ];
-    sources.removeWhere(
-      (s) => s.url.isEmpty || isLocalLoopbackPlayUrl(s.url),
-    );
+    sources.removeWhere((s) => s.url.isEmpty || isLocalLoopbackPlayUrl(s.url));
     sources = dedupeStreamSources(sources);
 
     var matchIdx = sources.indexWhere(
@@ -365,8 +367,8 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
         type: lower.contains('.m3u8')
             ? 'hls'
             : lower.contains('.mpd')
-                ? 'dash'
-                : 'mp4',
+            ? 'dash'
+            : 'mp4',
         headers: widget.headers,
         catalogUrl: identity,
       );
@@ -378,7 +380,8 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
     if (matchIdx < 0 || matchIdx >= sources.length) return;
 
     final playingRow = sources[matchIdx];
-    final nextCatalog = durableStreamCatalogUrl(
+    final nextCatalog =
+        durableStreamCatalogUrl(
           catalogUrl: catalogUrl ?? playingRow.catalogUrl,
           sourceUrl: playingRow.url,
           playUrl: playUrl,
@@ -458,8 +461,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
       if (cached == null) continue;
       if (cached.any(
         (source) =>
-            source.url == playUrl ||
-            source.url == _s._currentPlayingCatalogUrl,
+            source.url == playUrl || source.url == _s._currentPlayingCatalogUrl,
       )) {
         return key;
       }
@@ -513,6 +515,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
     } else if (state == AppLifecycleState.resumed) {
       _s._historySaved = false;
       _resumeAfterAppBackground();
+      unawaited(_s._recoverPlaybackAfterForeground());
       if (widget.movie != null && _s._isPlayingNotifier.value) {
         final pos = _s._positionNotifier.value.inMilliseconds;
         final dur = _s._durationNotifier.value.inMilliseconds;
@@ -529,9 +532,7 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
   }
 
   void _pauseForAppBackground() {
-    if (_s._disposed ||
-        _s._isPipMode ||
-        PipService.instance.isDesktopActive) {
+    if (_s._disposed || _s._isPipMode || PipService.instance.isDesktopActive) {
       return;
     }
     // Space / desktop switch: enter PiP instead of pausing (fluid).
