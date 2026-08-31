@@ -581,8 +581,9 @@ AutoSelectResult computeAutoSelect({
   );
 }
 
-/// True for temp `file://` subs mpv keeps across remounts — not muxed in-stream.
+/// True for sideloaded / online subs — not muxed in-stream HLS tracks.
 bool isSideloadedExternalSubtitleTrack(SubtitleTrack track) {
+  if (track.uri || track.data) return true;
   final id = track.id;
   if (id == 'no' || id == 'auto') return false;
   if (id.startsWith('http')) return true;

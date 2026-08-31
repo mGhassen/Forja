@@ -4,7 +4,7 @@
 
 ## What it is
 
-Core playback preferences: which backends **Play** tries on the TMDB details screen, external player, preferred audio language, unsupported codec avoidance, and anime title language.
+Core playback preferences: which backends **Play** tries on the TMDB details screen, external player, preferred audio and subtitle languages, unsupported codec avoidance, and anime title language.
 
 ## How to open it
 
@@ -20,6 +20,7 @@ Core playback preferences: which backends **Play** tries on the TMDB details scr
 - **Webstreaming** appears only for **admin** accounts (`is_admin`). When on: green **Play** on movies/TV races sniffing extractors; Anime green **Play** includes **VidLink** sniff; Asian Drama may sniff third-party embeds when KissKh has no direct URL. When off: Anime/Asian Drama green **Play** stay on HTTP/native paths only (same idea as Forja Auto with no host sniff). Also toggle **Simple resolve (experimental)** (on by default) — tries one provider at a time in **Tries** order, filters/probes streams, then opens the player once (old multi-provider race stays when this is off)
 - On **Android**, choose **Movies & series engine** — **MediaKit (libmpv)** (default) or **ExoPlayer (Media3)** — for Home, Search, Anime, Asian Drama, and **IPTV Movies/Series** (also changeable from the in-player **Player** menu). When the IPTV tab is visible, **IPTV engine** sets **live channels** only (independent of Movies). **Live Matches** defaults to **MediaKit** and remembers its own in-player choice. On **Android TV**, the in-player **Player** menu only lists those two engines (no external apps)
 - Set **Preferred audio language**
+- Set **Preferred subtitle language** (default **English**) — in-stream mux subs are tried first, then online/scraped tracks; pick **None** to start with subs off
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
 - Toggle **Auto next episode** (on by default) — when an episode finishes, start the next one; also available as the **Auto next** switch in the player Episodes panel top bar
 - Toggle **Auto skip intro** (off by default) — when IntroDB has intro/recap timestamps, skip them without tapping Skip; also available in the in-player **Settings** menu
@@ -55,3 +56,4 @@ Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URL
 - [Anime](../hubs/anime.md)
 - [External players](../playback/external-players.md)
 - [Audio tracks](../playback/audio-tracks.md)
+- [Subtitles](../playback/subtitles.md)

@@ -29,6 +29,19 @@ void main() {
   });
 
   group('isSideloadedExternalSubtitleTrack', () {
+    test('detects SubtitleTrack.uri sideloads', () {
+      expect(
+        isSideloadedExternalSubtitleTrack(
+          SubtitleTrack.uri(
+            'file:///tmp/forja_sub_123_en.srt',
+            title: 'English 1 - levrx',
+            language: 'en',
+          ),
+        ),
+        isTrue,
+      );
+    });
+
     test('detects forja cache paths', () {
       expect(
         isSideloadedExternalSubtitleTrack(

@@ -578,6 +578,7 @@ class SyncDomainBridge {
       final manifestUrl = pack.sourceUrl.trim();
       if (manifestUrl.isEmpty) continue;
       if (PluginRegistry.isLegacyAssetPack(manifestUrl)) continue;
+      if (PluginRegistry.isRetiredCatalogManifestUrl(manifestUrl)) continue;
       final row = <String, dynamic>{'manifestUrl': manifestUrl};
       final name = pack.name.trim();
       if (name.isNotEmpty) row['name'] = name;

@@ -1611,11 +1611,16 @@ mixin _DesktopPlayerPlayback
         _s._isInitPlaybackRunning ||
         _s._networkRemountInFlight ||
         (_s._postSeekStall?.remountInFlight ?? false) ||
-        _s._embeddedSubtitleAutoApplied ||
         _s._userPickedExternalSubtitle) {
       return;
     }
-    if (embeddedSubtitleTracks(tracks.subtitle).isEmpty) return;
+    final embedded = embeddedSubtitleTracks(tracks.subtitle);
+    if (embedded.isEmpty) return;
+    if (embedded.length != _s._embeddedSubtitleTrackCount) {
+      _s._embeddedSubtitleTrackCount = embedded.length;
+      _s._embeddedSubtitleAutoApplied = false;
+    }
+    if (_s._embeddedSubtitleAutoApplied) return;
     _s._embeddedSubtitleAutoTimer?.cancel();
     _s._embeddedSubtitleAutoTimer = Timer(
       const Duration(milliseconds: 200),

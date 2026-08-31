@@ -34,6 +34,7 @@ class SettingsPlaybackSnapshot {
     required this.asianDramaProviderOrder,
     required this.disabledAsianDramaProviders,
     required this.preferredAudioLang,
+    required this.preferredSubtitleLang,
     required this.avoidUnsupportedAudio,
     required this.autoNextEpisode,
     required this.autoSkipIntro,
@@ -66,6 +67,7 @@ class SettingsPlaybackSnapshot {
   final List<String> asianDramaProviderOrder;
   final List<String> disabledAsianDramaProviders;
   final String preferredAudioLang;
+  final String preferredSubtitleLang;
   final bool avoidUnsupportedAudio;
   final bool autoNextEpisode;
   final bool autoSkipIntro;
@@ -98,6 +100,7 @@ class SettingsPlaybackSnapshot {
     List<String>? asianDramaProviderOrder,
     List<String>? disabledAsianDramaProviders,
     String? preferredAudioLang,
+    String? preferredSubtitleLang,
     bool? avoidUnsupportedAudio,
     bool? autoNextEpisode,
     bool? autoSkipIntro,
@@ -137,6 +140,8 @@ class SettingsPlaybackSnapshot {
       disabledAsianDramaProviders:
           disabledAsianDramaProviders ?? this.disabledAsianDramaProviders,
       preferredAudioLang: preferredAudioLang ?? this.preferredAudioLang,
+      preferredSubtitleLang:
+          preferredSubtitleLang ?? this.preferredSubtitleLang,
       avoidUnsupportedAudio:
           avoidUnsupportedAudio ?? this.avoidUnsupportedAudio,
       autoNextEpisode: autoNextEpisode ?? this.autoNextEpisode,
@@ -178,6 +183,7 @@ class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
   Future<SettingsPlaybackSnapshot> _load() async {
     final s = SettingsService();
     final preferredAudio = await s.getPreferredAudioLanguage();
+    final preferredSubtitle = await s.getPreferredSubtitleLanguage();
     final iptvEpgEnabled = await s.isIptvEpgEnabled();
     SettingsService.iptvEpgEnabledNotifier.value = iptvEpgEnabled;
     final lanReady = await PlaySourceEffective.lanDesktopReady();
@@ -206,6 +212,10 @@ class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
       preferredAudioLang: kTrackLanguageDisplayNames.contains(preferredAudio)
           ? preferredAudio
           : 'None',
+      preferredSubtitleLang:
+          kTrackLanguageDisplayNames.contains(preferredSubtitle)
+              ? preferredSubtitle
+              : 'English',
       avoidUnsupportedAudio: await s.getAvoidUnsupportedAudio(),
       autoNextEpisode: await s.getAutoNextEpisode(),
       autoSkipIntro: await s.getAutoSkipIntro(),

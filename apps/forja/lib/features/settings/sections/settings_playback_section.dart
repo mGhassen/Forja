@@ -304,6 +304,22 @@ class _SettingsPlaybackSectionState
                 }
               },
             ),
+            settingsFocusableDropdown(
+              context,
+              'Preferred Subtitle Language',
+              'When a video starts, pick in-stream or online subtitles in this language. In-stream mux tracks win when they match. Pick "None" to start with subs off.',
+              snap.preferredSubtitleLang,
+              kTrackLanguageDisplayNames,
+              (val) async {
+                if (val != null) {
+                  await _settings.setPreferredSubtitleLanguage(val);
+                  await _playback.patch(
+                    (s) => s.copyWith(preferredSubtitleLang: val),
+                  );
+                  schedulePreferencesSyncPush();
+                }
+              },
+            ),
             settingsFocusableToggle(
               context,
               'Avoid unsupported audio (Atmos / TrueHD / 7.1)',

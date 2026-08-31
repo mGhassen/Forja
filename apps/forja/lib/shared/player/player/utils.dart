@@ -2396,6 +2396,43 @@ List<SubtitleTrack> embeddedSubtitleTracks(Iterable<SubtitleTrack> tracks) {
       .toList();
 }
 
+/// In-stream tracks for the subtitle menu — hides mpv copies of active external subs.
+List<SubtitleTrack> menuEmbeddedSubtitleTracks(
+  Player player, {
+  String? selectedExternalSubUrl,
+  List<Map<String, dynamic>> externalSubtitles = const [],
+}) {
+  final embedded = embeddedSubtitleTracks(player.state.tracks.subtitle);
+  if (selectedExternalSubUrl == null) return embedded;
+
+  Map<String, dynamic>? selectedOnline;
+  for (final s in externalSubtitles) {
+    if (s['url']?.toString() == selectedExternalSubUrl) {
+      selectedOnline = s;
+      break;
+    }
+  }
+  final selectedDisplay = selectedOnline?['display']?.toString();
+  final active = player.state.track.subtitle;
+
+  return embedded.where((t) {
+    if (active.id != 'no' && active.id != 'auto' && t.id == active.id) {
+      return false;
+    }
+    if (selectedDisplay != null &&
+        t.title != null &&
+        t.title!.trim() == selectedDisplay.trim()) {
+      return false;
+    }
+    if ((active.uri || active.data) &&
+        t.title == active.title &&
+        t.language == active.language) {
+      return false;
+    }
+    return true;
+  }).toList();
+}
+
 Future<AudioTrack?> resolveActiveAudioTrack(Player player) async {
   final selected = player.state.track.audio;
   if (selected.id != 'auto' && selected.id != 'no') return selected;

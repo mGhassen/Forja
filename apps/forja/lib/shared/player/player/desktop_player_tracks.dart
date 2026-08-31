@@ -266,17 +266,31 @@ mixin _DesktopPlayerTracks
     if (_s._disposed || !mounted) return;
     if (preferred == 'None' || preferred.isEmpty) return;
 
-    // In-stream wins only when it matches settings — junk HLS tags fall through
-    // to Wyzie/Levrx (e.g. Peakstorm mux lists Ug/Wo/Unknown, not English).
-    final embedded =
-        embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
-    if (embedded.isNotEmpty &&
-        !_s._userPickedExternalSubtitle &&
+    if (!_s._userPickedExternalSubtitle) {
+      final embedded =
+          embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
+      if (embedded.isNotEmpty) {
+        await _s._applyAutoSubtitle();
+        if (_s._disposed || !mounted) return;
+        if (_s._selectedExternalSubUrl == null && _playerHasActiveSubtitle()) {
+          if (!forcePlayerApply) return;
+        }
+      }
+    }
+
+    // In-stream wins when it matches settings — do not replace with scraped subs.
+    if (!_s._userPickedExternalSubtitle &&
+        _s._selectedExternalSubUrl == null &&
+        _playerHasActiveSubtitle() &&
         _activeSubtitleMatchesPreferred(preferred)) {
       return;
     }
 
-    if (_activeSubtitleMatchesPreferred(preferred)) return;
+    if (_activeSubtitleMatchesPreferred(preferred) &&
+        _s._selectedExternalSubUrl != null &&
+        !forcePlayerApply) {
+      return;
+    }
 
     final subsForAuto = externalSubtitlesForAutoPick(
       all: _s._externalSubtitles,

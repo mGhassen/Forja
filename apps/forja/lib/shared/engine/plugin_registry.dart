@@ -205,7 +205,7 @@ class PluginRegistry {
   /// Retired split live catalog pack — merged into [plugins/live/manifest.json].
   static bool isRetiredCatalogManifestUrl(String url) {
     final path = url.trim().replaceAll('\\', '/').toLowerCase();
-    return path.endsWith('plugins/catalog/manifest.json') ||
+    return path.contains('/plugins/catalog/manifest.json') ||
         forjaHqSlot(url) == 'catalog';
   }
 
@@ -268,7 +268,8 @@ class PluginRegistry {
         for (final e in decoded)
           if (e is Map) EnginePack.fromStored(Map<String, dynamic>.from(e)),
       ];
-      return _purgeLegacyAssetPacks(packs);
+      final withoutAssets = await _purgeLegacyAssetPacks(packs);
+      return _purgeRetiredCatalogPacks(withoutAssets);
     } catch (_) {
       return [];
     }
@@ -424,6 +425,33 @@ class PluginRegistry {
       }
     }
     await _savePacks(keep);
+    return keep;
+  }
+
+  Future<List<EnginePack>> _purgeRetiredCatalogPacks(List<EnginePack> packs) async {
+    final keep = <EnginePack>[];
+    final victims = <EnginePack>[];
+    for (final p in packs) {
+      if (isRetiredCatalogPack(p)) {
+        victims.add(p);
+      } else {
+        keep.add(p);
+      }
+    }
+    if (victims.isEmpty) return packs;
+    final prefs = await _prefs;
+    for (final pack in victims) {
+      for (final p in pack.plugins) {
+        await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
+        if (p.prelude.isNotEmpty) {
+          await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
+        }
+      }
+    }
+    await _savePacks(keep);
+    debugPrint(
+      '[engine] purged ${victims.length} retired catalog pack(s) from prefs',
+    );
     return keep;
   }
 
@@ -604,6 +632,13 @@ class PluginRegistry {
 
   Future<EnginePack> _installUnlocked(String manifestUrl) async {
     manifestUrl = await _substituteUnreachableLocalManifest(manifestUrl);
+    if (isRetiredCatalogManifestUrl(manifestUrl)) {
+      await removePack(manifestUrl);
+      throw Exception(
+        'ForjaHQ Catalog pack retired — live schedules live in '
+        'plugins/live/manifest.json',
+      );
+    }
     final body = await _fetchText(manifestUrl);
     final map = jsonDecode(body) as Map<String, dynamic>;
     final schema = map['schema'];
@@ -1116,27 +1151,7 @@ class PluginRegistry {
   }
 
   Future<void> _purgeRetiredOfficialPacks() async {
-    final all = await listPacksRaw();
-    final victims = all.where(isRetiredCatalogPack).toList();
-    if (victims.isEmpty) return;
-
-    final next = [
-      for (final pack in all)
-        if (!isRetiredCatalogPack(pack)) pack,
-    ];
-    final prefs = await _prefs;
-    for (final pack in victims) {
-      for (final p in pack.plugins) {
-        await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
-        if (p.prelude.isNotEmpty) {
-          await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
-        }
-      }
-    }
-    await _savePacks(next);
-    debugPrint(
-      '[engine] removed ${victims.length} retired catalog pack(s)',
-    );
+    await listPacksRaw();
   }
 
   /// Fetch manifests for lean stubs (`plugins` empty). Idempotent.
@@ -1154,14 +1169,21 @@ class PluginRegistry {
       if (pack.plugins.isNotEmpty) continue;
       if (isLegacyAssetPack(pack.sourceUrl)) continue;
       if (isRetiredCatalogPack(pack)) continue;
-      if (forjaHqSlot(pack.sourceUrl) == 'catalog' &&
+      if (_asLocalFile(pack.sourceUrl) != null &&
           !await _localManifestExists(pack.sourceUrl)) {
+        if (isRetiredCatalogManifestUrl(pack.sourceUrl)) {
+          await removePack(pack.sourceUrl);
+        }
         continue;
       }
       try {
         final url = await _substituteUnreachableLocalManifest(pack.sourceUrl);
         await install(url);
       } catch (e) {
+        if (isRetiredCatalogManifestUrl(pack.sourceUrl)) {
+          await removePack(pack.sourceUrl);
+          continue;
+        }
         debugPrint(
           '[engine] lean hydrate failed (${pack.sourceUrl}): $e',
         );

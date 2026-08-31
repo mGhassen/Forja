@@ -239,6 +239,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   bool _autoTracksAppliedForSource = false;
   bool _userPickedAudioThisSource = false;
   bool _embeddedSubtitleAutoApplied = false;
+  int _embeddedSubtitleTrackCount = 0;
   bool _userPickedExternalSubtitle = false;
   // ── Value Notifiers (rebuild only what's needed, no full setState) ────────
   final ValueNotifier<Duration> _positionNotifier = ValueNotifier(
@@ -344,6 +345,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     _autoTracksAppliedForSource = false;
     _userPickedAudioThisSource = false;
     _embeddedSubtitleAutoApplied = false;
+    _embeddedSubtitleTrackCount = 0;
     _userPickedExternalSubtitle = false;
     _trackAutoSelectTimer?.cancel();
     _trackAutoSelectTimer = null;

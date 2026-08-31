@@ -17,8 +17,8 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 - Change appearance (size, color, font, opacity, position) — tune icon next to Close in the Subtitles header on **MediaKit** and **ExoPlayer**. On **TV**, focus a slider and use **Left/Right** to adjust (no OK first). Color swatches show a brand-green circular focus ring. Sync **delay** applies on MediaKit only
 - Adjust sync delay if dialogue is early/late (MediaKit). On **Android TV**, focus **−** / **+**, tap **OK** for 0.1s steps, or **hold OK** to accelerate the longer you press
 - Use advanced ASS/SSA rendering for styled subs (MediaKit)
-- **Preferred language sticks across episodes** — picking French (or any category) remembers it; the next episode auto-selects the same language when available, otherwise **English**. **Off** clears the preference
-- **Auto-select prefers in-stream** — when the stream already has subtitle tracks, those are chosen first (preferred language, else English, else the first muxed track). Online / scraped subs auto-load only if the stream has none; you can still pick them manually
+- **Preferred language sticks across episodes** — picking French (or any category) remembers it; the next episode auto-selects the same language when available, otherwise **English**. **Off** clears the preference. Set the default under **Settings → Playback → Preferred subtitle language**
+- **Auto-select prefers in-stream** — when the stream already has subtitle tracks that match your preferred language, those are chosen first; online / scraped subs auto-load only when nothing muxed matches (you can still pick them manually)
 
 ## Tips
 

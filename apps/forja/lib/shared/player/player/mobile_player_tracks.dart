@@ -255,15 +255,30 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     if (_s._disposed || !mounted) return;
     if (preferred == 'None' || preferred.isEmpty) return;
 
-    final embedded =
-        embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
-    if (embedded.isNotEmpty &&
-        !_s._userPickedExternalSubtitle &&
+    if (!_s._userPickedExternalSubtitle) {
+      final embedded =
+          embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
+      if (embedded.isNotEmpty) {
+        await _s._applyAutoSubtitle();
+        if (_s._disposed || !mounted) return;
+        if (_s._selectedExternalSubUrl == null && _playerHasActiveSubtitle()) {
+          if (!forcePlayerApply) return;
+        }
+      }
+    }
+
+    if (!_s._userPickedExternalSubtitle &&
+        _s._selectedExternalSubUrl == null &&
+        _playerHasActiveSubtitle() &&
         _activeSubtitleMatchesPreferred(preferred)) {
       return;
     }
 
-    if (_activeSubtitleMatchesPreferred(preferred)) return;
+    if (_activeSubtitleMatchesPreferred(preferred) &&
+        _s._selectedExternalSubUrl != null &&
+        !forcePlayerApply) {
+      return;
+    }
 
     final subsForAuto = externalSubtitlesForAutoPick(
       all: _s._externalSubtitles,

@@ -427,6 +427,38 @@ void main() {
       );
     });
 
+    test('listPacksRaw purges retired catalog lean stub from prefs', () async {
+      const liveUrl = '/Users/x/Forja/plugins/live/manifest.json';
+      const catalogUrl = '/Users/x/Forja/plugins/catalog/manifest.json';
+      SharedPreferences.setMockInitialValues({
+        'engine_js_packs_v2': jsonEncode([
+          {
+            'sourceUrl': liveUrl,
+            'packId': 'forjahq-live',
+            'name': 'Live',
+            'version': '1.6.0',
+            'plugins': [],
+          },
+          {
+            'sourceUrl': catalogUrl,
+            'packId': 'forjahq-catalog',
+            'name': 'Catalog',
+            'version': '1.0.0',
+            'plugins': [],
+          },
+        ]),
+        'engine_js_packs_v2_migrated': true,
+        'engine_js_legacy_forjahq_wiped': true,
+      });
+      final packs = await registry.listPacksRaw();
+      expect(packs, hasLength(1));
+      expect(packs.single.sourceUrl, liveUrl);
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('engine_js_packs_v2');
+      expect(raw, isNotNull);
+      expect(raw!, isNot(contains('forjahq-catalog')));
+    });
+
     test('packPluginFromPacks prefers active pack when plugin id is duplicated',
         () {
       EnginePlugin hubPlugin(String id) => EnginePlugin(

@@ -292,6 +292,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   bool _autoTracksAppliedForSource = false;
   bool _userPickedAudioThisSource = false;
   bool _embeddedSubtitleAutoApplied = false;
+  int _embeddedSubtitleTrackCount = 0;
   bool _userPickedExternalSubtitle = false;
   bool _androidMediaKitSafeMode = false;
   bool _isAndroidTv = false;
@@ -427,6 +428,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     _autoTracksAppliedForSource = false;
     _userPickedAudioThisSource = false;
     _embeddedSubtitleAutoApplied = false;
+    _embeddedSubtitleTrackCount = 0;
     _userPickedExternalSubtitle = false;
     _trackAutoSelectTimer?.cancel();
     _trackAutoSelectTimer = null;

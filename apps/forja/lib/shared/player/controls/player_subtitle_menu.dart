@@ -115,8 +115,12 @@ class PlayerSubtitleMenu {
     final selectedSubtitleId = subtitlesOff || selectedExternalSubUrl != null
         ? null
         : (active?.id ?? current.id);
-    // In-stream mux tracks only — mpv keeps every temp file:// sub as a track.
-    final embedded = embeddedSubtitleTracks(player.state.tracks.subtitle);
+    // Muxed HLS tracks only — not sideloaded copies of the active external sub.
+    final embedded = menuEmbeddedSubtitleTracks(
+      player,
+      selectedExternalSubUrl: selectedExternalSubUrl,
+      externalSubtitles: externalSubtitles,
+    );
 
     void turnOffSubtitles() {
       onSubtitleSelected?.call(off: true);
