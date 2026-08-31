@@ -463,6 +463,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           _s._errorMessage = null;
         });
         unawaited(NuvioService.instance.saveSourcesSelectedScraperIds({}));
+        unawaited(NuvioService.instance.saveSourcesViewFilterScraperIds({}));
         _s._savePanelUiCache();
         return;
       }
@@ -510,6 +511,12 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           );
           _s._errorMessage = null;
         });
+        unawaited(
+          NuvioService.instance.saveSourcesViewFilterScraperIds(
+            _s._nuvioViewFilterScraperIds,
+          ),
+        );
+        _s._savePanelUiCache();
         return;
       }
       final prev = _s._nuvioSelectedScraperIds;
@@ -547,6 +554,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       if (next.contains(scraperId) && !fetched) {
         unawaited(_s._fetchNextNuvioScraper());
       }
+      _s._savePanelUiCache();
       return;
     }
     if (id == EngineIds.allChip) {
@@ -572,6 +580,12 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         });
         unawaited(
           EngineService.instance.saveSourcesSelectedPluginIds(
+            {},
+            panelCategory: _s._enginePanelCategory,
+          ),
+        );
+        unawaited(
+          EngineService.instance.saveSourcesViewFilterPluginIds(
             {},
             panelCategory: _s._enginePanelCategory,
           ),
@@ -629,6 +643,13 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           );
           _s._errorMessage = null;
         });
+        unawaited(
+          EngineService.instance.saveSourcesViewFilterPluginIds(
+            _s._engineViewFilterPluginIds,
+            panelCategory: _s._enginePanelCategory,
+          ),
+        );
+        _s._savePanelUiCache();
         return;
       }
       final selected = _s._engineSelectedPluginIds;
@@ -668,6 +689,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
       if (next.contains(pluginId) && !fetched) {
         unawaited(_s._fetchNextEnginePlugin());
       }
+      _s._savePanelUiCache();
       return;
     }
     if (id == TorrentSearchProviders.allId) {
@@ -695,6 +717,7 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
           id,
         );
       });
+      _s._savePanelUiCache();
       return;
     }
     if (id == _s._selectedSourceId) return;
@@ -927,12 +950,13 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         (_panelShowsStremio ? _s._allCombinedStremioStreams.length : 0) +
         (_panelShowsNuvio ? _selectedNuvioStreams.length : 0) +
         (_panelShowsEngine ? _selectedEngineStreams.length : 0);
+    final isEngineListFetching = _s._isEngineFetching ||
+        (_s._enginePacksLoading && _s._engineSelectedPluginIds.isNotEmpty);
     final isFetching =
         (_panelShowsTorrents && _s._isSearching) ||
         (_panelShowsStremio && _s._isStremioFetching) ||
         (_panelShowsNuvio && _s._isNuvioFetching) ||
-        (_panelShowsEngine &&
-            (_s._isEngineFetching || _s._enginePacksLoading));
+        (_panelShowsEngine && isEngineListFetching);
 
     // Never replace a multi-addon result set with a sticky provider error.
     if (_s._errorMessage != null && count == 0 && !isFetching) {
@@ -968,6 +992,10 @@ mixin _DetailsScreenPanel on ConsumerState<DetailsScreen> {
         msg = 'Select at least one provider';
       } else if (_panelShowsNuvio && _s._nuvioSelectedScraperIds.isEmpty) {
         msg = 'Select at least one provider';
+      } else if (_panelShowsEngine &&
+          !_s._enginePacksLoading &&
+          enabledEnginePluginIds(_s._enginePacks).isEmpty) {
+        msg = 'No Forja plugins installed';
       } else if (_panelShowsEngine && _s._engineSelectedPluginIds.isEmpty) {
         msg = 'Select at least one provider';
       } else if (_panelShowsNuvio &&

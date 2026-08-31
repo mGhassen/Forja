@@ -19,6 +19,7 @@ export 'package:forja/shared/playback/playback_stream_guards.dart'
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/playback/stream_open_pipeline.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:rust/rust.dart';
@@ -1443,6 +1444,17 @@ bool remountPlaybackLooksLive({
   return position + slop >= target;
 }
 
+/// Post-seek remount succeeded — position near target and a decoded frame.
+bool remountPlaybackResumed(PlayerState state, Duration target) {
+  return remountPlaybackLooksLive(
+        playing: state.playing,
+        buffering: state.buffering,
+        position: state.position,
+        target: target,
+      ) &&
+      hasDecodedVideo(state);
+}
+
 /// Post-seek remount wait — deep VOD HLS needs longer than 15s to refill.
 Duration remountResumeTimeoutForSeek(Duration seekTarget) {
   final extra = (seekTarget.inMinutes ~/ 10) * 10;
@@ -1529,22 +1541,12 @@ Future<bool> remountPlayerStreamAtPosition(
 
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
-    if (remountPlaybackLooksLive(
-      playing: player.state.playing,
-      buffering: player.state.buffering,
-      position: player.state.position,
-      target: seekTarget,
-    )) {
+    if (remountPlaybackResumed(player.state, seekTarget)) {
       return true;
     }
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
-  return remountPlaybackLooksLive(
-    playing: player.state.playing,
-    buffering: player.state.buffering,
-    position: player.state.position,
-    target: seekTarget,
-  );
+  return remountPlaybackResumed(player.state, seekTarget);
 }
 
 /// Clears stale duration/buffer from a prior failed open before trying again.
@@ -1748,31 +1750,21 @@ String? playbackQualityDetail(PlayerState state) {
 }
 
 /// Label for audio/subtitle chips - language endonym when known
-/// (हिन्दी, தமிழ், English…), else raw title / Track id.
+/// (हिन्दी, தமிழ், English…), else raw title / Audio N.
 String formatPlayerTrackLabel({
   required String id,
   String? title,
   String? language,
+  int? index,
 }) {
-  final fromLang = languageEndonym(language);
-  if (fromLang != null && fromLang != 'Unknown') return fromLang;
+  final endo = trackLanguageEndonym(language: language, title: title);
+  if (endo != null) return endo;
 
   final trimmedTitle = title?.trim();
-  if (trimmedTitle != null && trimmedTitle.isNotEmpty) {
-    final fromTitle = languageEndonym(trimmedTitle);
-    if (fromTitle != null && fromTitle != 'Unknown') return fromTitle;
-    // "English 5.1" / "Hindi [Forced]" → first token
-    final first = trimmedTitle.split(RegExp(r'[\s\[\(,/·]+')).first;
-    final fromFirst = languageEndonym(first);
-    if (fromFirst != null && fromFirst != 'Unknown') return fromFirst;
-    return trimmedTitle;
-  }
+  if (trimmedTitle != null && trimmedTitle.isNotEmpty) return trimmedTitle;
 
-  final trimmedLanguage = language?.trim();
-  if (trimmedLanguage != null && trimmedLanguage.isNotEmpty) {
-    return languageDisplayName(trimmedLanguage);
-  }
-  return 'Track $id';
+  if (index != null && index > 0) return 'Audio $index';
+  return 'Audio $id';
 }
 
 bool _sameTrackText(String a, String? b) {

@@ -2,7 +2,8 @@
 //!
 //!   ./scripts/audit-engine-plugins.sh --tmdb=94997 --media=tv --season=1 --episode=1
 //!
-//! Pack source: `FORJA_HQ_PROVIDERS_MANIFEST_URL` (repo `.env`) by default.
+//! Pack source: repo `plugins/providers/manifest.json`, `FORJA_HQ_PROVIDERS_MANIFEST_URL`,
+//! or `--manifest-url` / `--assets`.
 //! Optional: `--manifest-url=URL` or `--assets=DIR` (local override).
 
 use std::collections::BTreeSet;
@@ -120,15 +121,38 @@ impl PackSource {
     }
 }
 
-fn env_manifest_url() -> Result<String, String> {
-    env::var("FORJA_HQ_PROVIDERS_MANIFEST_URL")
-        .ok()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| {
-            "FORJA_HQ_PROVIDERS_MANIFEST_URL missing — set in repo-root .env (or pass --manifest-url / --assets)"
-                .into()
-        })
+fn local_providers_manifest_from_cwd() -> Option<String> {
+  let mut dir = env::current_dir().ok()?;
+  for _ in 0..10 {
+    let path = dir.join("plugins/providers/manifest.json");
+    if path.is_file() {
+      return Some(path.to_string_lossy().to_string());
+    }
+    if !dir.pop() {
+      break;
+    }
+  }
+  None
+}
+
+async fn env_manifest_url(_client: &reqwest::Client) -> Result<String, String> {
+  if let Ok(url) = env::var("FORJA_HQ_PROVIDERS_MANIFEST_URL") {
+    let url = url.trim().to_string();
+    if !url.is_empty() {
+      return Ok(url);
+    }
+  }
+  if let Ok(repo_root) = env::var("FORJA_REPO_ROOT") {
+    let path = Path::new(&repo_root).join("plugins/providers/manifest.json");
+    if path.is_file() {
+      return Ok(path.to_string_lossy().to_string());
+    }
+  }
+  local_providers_manifest_from_cwd().ok_or_else(|| {
+    "providers manifest missing — set FORJA_HQ_PROVIDERS_MANIFEST_URL, FORJA_REPO_ROOT, \
+     or run from Forja checkout (plugins/providers/manifest.json); or pass --manifest-url / --assets"
+      .into()
+  })
 }
 
 fn pack_base(manifest_url: &str) -> String {
@@ -161,7 +185,8 @@ fn usage() {
                                 [--episode=N] [--timeout-ms=N] [--plugin=ID]... [--json]\n\
                                 [--manifest-url=URL] [--assets=DIR]\n\
          \n\
-         Pack: FORJA_HQ_PROVIDERS_MANIFEST_URL (repo .env) by default.\n\
+         Pack: repo plugins/providers/manifest.json, FORJA_HQ_PROVIDERS_MANIFEST_URL, \
+         --manifest-url, or --assets.\n\
          --manifest-url overrides env; --assets=DIR uses a local pack folder instead.\n\
          Defaults: tmdb=94997 media=tv season=1 episode=1 timeout-ms=60000\n"
     );
@@ -265,13 +290,24 @@ async fn main() -> ExitCode {
         i += 1;
     }
 
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("http client: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+
     let pack = if let Some(dir) = assets {
         PackSource::Local(dir)
     } else if let Some(manifest_url) = manifest_url_arg {
         let base = pack_base(&manifest_url);
         PackSource::Remote { manifest_url, base }
     } else {
-        match env_manifest_url() {
+        match env_manifest_url(&client).await {
             Ok(manifest_url) => {
                 let base = pack_base(&manifest_url);
                 PackSource::Remote { manifest_url, base }
@@ -281,17 +317,6 @@ async fn main() -> ExitCode {
                 usage();
                 return ExitCode::FAILURE;
             }
-        }
-    };
-
-    let client = match reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(60))
-        .build()
-    {
-        Ok(c) => c,
-        Err(e) => {
-            eprintln!("http client: {e}");
-            return ExitCode::FAILURE;
         }
     };
 

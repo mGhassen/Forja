@@ -470,7 +470,11 @@ mixin _DesktopPlayerTracks
     final existing = _s._hlsQualitiesNotifier.value;
     if (existing != null && existing.any((q) => q.url == url)) return;
 
-    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
+    final resolved = resolvePlaybackHttpHeaders(
+      headers,
+      streamUrl: url,
+      providerId: _s._currentProvider,
+    );
     _s._hlsMasterUrl = url;
     _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;

@@ -28,31 +28,33 @@ class PlayerAudioMenu {
       alignment: alignment,
       margin: margin,
       anchorContext: anchorContext,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-        child: tracks.isEmpty
-            ? const Text(
+      child: tracks.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.fromLTRB(12, 12, 12, 14),
+              child: Text(
                 'No audio tracks found',
                 style: TextStyle(color: PlayerPopupTokens.muted),
-              )
-            : Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final track in tracks)
-                    _tile(
-                      track: track,
-                      selected: track.id == selectedId,
-                      onTrackSelected: onTrackSelected,
-                      player: player,
-                    ),
-                ],
               ),
-      ),
+            )
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+              children: [
+                for (var i = 0; i < tracks.length; i++)
+                  _tile(
+                    track: tracks[i],
+                    index: i + 1,
+                    selected: tracks[i].id == selectedId,
+                    onTrackSelected: onTrackSelected,
+                    player: player,
+                  ),
+              ],
+            ),
     );
   }
 
   static Widget _tile({
     required AudioTrack track,
+    required int index,
     required bool selected,
     required VoidCallback? onTrackSelected,
     required Player player,
@@ -61,6 +63,7 @@ class PlayerAudioMenu {
       id: track.id,
       title: track.title,
       language: track.language,
+      index: index,
     );
     return PlayerPopupListTile(
       label: label,

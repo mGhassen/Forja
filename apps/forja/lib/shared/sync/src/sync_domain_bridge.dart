@@ -129,7 +129,6 @@ class SyncDomainBridge {
 
     final packs = await EngineService.instance.listPacks();
     for (final pack in packs) {
-      if (EngineService.isOfficialPack(pack.sourceUrl)) continue;
       if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
       try {
         await EngineService.instance.removePack(pack.sourceUrl);
@@ -578,7 +577,6 @@ class SyncDomainBridge {
     for (final pack in packs) {
       final manifestUrl = pack.sourceUrl.trim();
       if (manifestUrl.isEmpty) continue;
-      if (EngineService.isOfficialPack(manifestUrl)) continue;
       if (PluginRegistry.isLegacyAssetPack(manifestUrl)) continue;
       final row = <String, dynamic>{'manifestUrl': manifestUrl};
       final name = pack.name.trim();
@@ -798,7 +796,6 @@ class SyncDomainBridge {
           .isPlaySourceEngineAutoStartEnabled(),
       'simple_streaming_resolve_enabled': await _settings
           .isSimpleStreamingResolveEnabled(),
-      'streamcrypto_decrypt': await _settings.getStreamCryptoDecrypt(),
       'preferred_audio_lang': await _settings.getPreferredAudioLanguage(),
       'preferred_subtitle_lang': await _settings.getPreferredSubtitleLanguage(),
       'avoid_unsupported_audio': await _settings.getAvoidUnsupportedAudio(),
@@ -842,11 +839,6 @@ class SyncDomainBridge {
     if (payload.containsKey('simple_streaming_resolve_enabled')) {
       await _settings.setSimpleStreamingResolveEnabled(
         payload['simple_streaming_resolve_enabled'] as bool,
-      );
-    }
-    if (payload.containsKey('streamcrypto_decrypt')) {
-      await _settings.setStreamCryptoDecrypt(
-        payload['streamcrypto_decrypt'] as String,
       );
     }
     if (payload.containsKey('preferred_audio_lang')) {
@@ -1029,7 +1021,6 @@ class SyncDomainBridge {
 
   /// Apply cloud lean rows (`manifestUrl` + optional name). **No network** —
   /// [PluginRegistry.hydrateLeanInstalled] fills packs on first Settings use.
-  /// Official ForjaHQ packs are never removed.
   Future<void> importForja(Map<String, dynamic> payload) async {
     final packs = payload['packs'] as List? ?? const [];
     final rows = <Map<String, dynamic>>[

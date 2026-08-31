@@ -14,8 +14,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
-use crate::stream_crypto;
-
 /// Same key as `crates/anime/src/extractors/miruro.rs` PIPE_OBF_KEY.
 const PIPE_OBF_KEY: [u8; 16] = [
     0x71, 0x95, 0x10, 0x34, 0xf8, 0xfb, 0xcf, 0x53, 0xd8, 0x9d, 0xb5, 0x2c, 0xeb, 0x3d, 0xc2, 0x2c,
@@ -337,6 +335,7 @@ const HOST_JS: &str = r#"
 "#;
 
 const CRYPTO_JS: &str = include_str!("crypto_js_polyfill.js");
+const STREAMCRYPTO_JS: &str = include_str!("../../../plugins/providers/_streamcrypto.js");
 const CHEERIO_BUNDLE: &str =
     include_str!("../../../apps/forja/assets/nuvio/cheerio.bundle.js");
 
@@ -510,13 +509,6 @@ async fn native_fetch(
     .to_string())
 }
 
-fn stream_decrypt_safe(body: String, seed: String, tmdb_id: String) -> String {
-    match stream_crypto::decrypt(&body, &seed, &tmdb_id) {
-        Ok(s) => s,
-        Err(e) => format!("ENGINE_DECRYPT_ERROR:{e}"),
-    }
-}
-
 fn solve_pow(challenge: String, difficulty: i32, max: i32) -> String {
     if challenge.is_empty() || !(0..=8).contains(&difficulty) {
         return String::new();
@@ -666,14 +658,6 @@ async fn run_in_ctx<'js>(
         .map_err(|e| e.to_string())?;
     ctx.globals()
         .set("__native_tmdb_match", tmdb_match_fn)
-        .map_err(|e| e.to_string())?;
-
-    let decrypt_fn = Function::new(ctx.clone(), stream_decrypt_safe)
-        .map_err(|e| e.to_string())?
-        .with_name("__native_stream_decrypt")
-        .map_err(|e| e.to_string())?;
-    ctx.globals()
-        .set("__native_stream_decrypt", decrypt_fn)
         .map_err(|e| e.to_string())?;
 
     let pow_fn = Function::new(ctx.clone(), solve_pow)
@@ -883,6 +867,9 @@ async fn run_in_ctx<'js>(
     ctx.eval::<(), _>(CRYPTO_JS)
         .catch(&ctx)
         .map_err(|e| e.to_string())?;
+    ctx.eval::<(), _>(STREAMCRYPTO_JS)
+        .catch(&ctx)
+        .map_err(|e| e.to_string())?;
 
     let load = format!(
         r#"(function(){{
@@ -914,11 +901,13 @@ async fn run_in_ctx<'js>(
   var meta = {meta};
   var pluginLabel = {label};
   var streamDecrypt = function(body, seed, tmdbId) {{
-    var out = __native_stream_decrypt(String(body == null ? '' : body), String(seed == null ? '' : seed), String(tmdbId == null ? '' : tmdbId));
-    if (typeof out === 'string' && out.indexOf('ENGINE_DECRYPT_ERROR:') === 0) {{
-      throw new Error(out.substring('ENGINE_DECRYPT_ERROR:'.length));
-    }}
-    return out;
+    var fn = globalThis.__engineStreamDecrypt;
+    if (typeof fn !== 'function') throw new Error('STREAMCRYPTO: not loaded');
+    return fn(
+      String(body == null ? '' : body),
+      String(seed == null ? '' : seed),
+      String(tmdbId == null ? '' : tmdbId),
+    );
   }};
   var ctx = {{
     tmdbId: meta.tmdbId,

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:forja/shared/playback/anime_embed.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_episode_panel.dart';
@@ -317,7 +316,6 @@ class PlayerStreamMenu {
   }
 
   static bool _isMiruroPanelProvider(String providerId, dynamic provider) {
-    if (provider is AnimeEmbed && provider.server == 'miruro') return true;
     final id = _engineScoringId(providerId, provider).toLowerCase();
     return id.startsWith('miruro:');
   }
@@ -361,7 +359,6 @@ class PlayerStreamMenu {
   }
 
   static String _engineScoringId(String providerId, dynamic provider) {
-    if (provider is AnimeEmbed) return provider.sourceKey;
     final lower = providerId.toLowerCase();
     if (lower.endsWith(':sub') || lower.endsWith(':dub')) {
       return providerId.substring(0, providerId.lastIndexOf(':'));
@@ -373,9 +370,6 @@ class PlayerStreamMenu {
     Movie? movie,
     Map<String, dynamic> providers,
   ) {
-    if (providers.values.any((v) => v is AnimeEmbed)) {
-      return SourceDomain.anime;
-    }
     if (providers.keys.any((k) {
       final id = k.trim().toLowerCase();
       return id == 'kisskh' || id.startsWith('kisskh.');
@@ -425,9 +419,7 @@ class PlayerStreamMenu {
     final domain = _resolveProviderDomain(movie, prov);
     if (domain == SourceDomain.asianDrama) return null;
 
-    if (domain == SourceDomain.anime ||
-        hubEpisodeNumber != null ||
-        prov.values.any((v) => v is AnimeEmbed)) {
+    if (domain == SourceDomain.anime || hubEpisodeNumber != null) {
       final anilistId = movie.id < 0 ? -movie.id : movie.id;
       final ep = (hubEpisodeNumber ?? selectedEpisode ?? 1).toInt();
       return ProviderScoreScope.anime(anilistId: anilistId, episode: ep);
@@ -624,7 +616,6 @@ class PlayerStreamMenu {
   }
 
   static String? providerAudioCategory(String providerId, dynamic provider) {
-    if (provider is AnimeEmbed) return provider.category.toLowerCase();
     final lower = providerId.toLowerCase();
     if (lower.endsWith(':sub')) return 'sub';
     if (lower.endsWith(':dub')) return 'dub';
@@ -810,15 +801,10 @@ class PlayerStreamMenu {
     String providerId,
     dynamic provider,
   ) {
-    if (provider is AnimeEmbed) {
-      return (
-        label: provider.label,
-        categoryBadge: provider.category.toUpperCase(),
-      );
-    }
+    final category = providerAudioCategory(providerId, provider);
     return (
       label: PlayerProviderMenu.snackbarLabel(providerId, provider),
-      categoryBadge: null,
+      categoryBadge: category?.toUpperCase(),
     );
   }
 

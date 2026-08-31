@@ -446,7 +446,11 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
 
     // New stream - clear any prior quality state immediately so the gear
     // doesn't expose stale variants while the new master loads.
-    final resolved = resolvePlaybackHttpHeaders(headers, streamUrl: url);
+    final resolved = resolvePlaybackHttpHeaders(
+      headers,
+      streamUrl: url,
+      providerId: _s._currentProvider,
+    );
     _s._hlsMasterUrl = url;
     _s._hlsMasterHeaders = resolved;
     _s._hlsQualitiesNotifier.value = null;

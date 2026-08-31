@@ -707,124 +707,9 @@ require_darwin() {
   [[ "$(uname -s)" == Darwin ]] || die "macOS host required (got $(uname -s))"
 }
 
-# Official pack URLs must be remote https — local /Users/… paths bake into the
-# binary and break Android TV / any host without that path.
-require_forja_hq_https() {
-  local u name
-  for name in \
-    FORJA_HQ_PROVIDERS_MANIFEST_URL \
-    FORJA_HQ_LIVE_MANIFEST_URL \
-    FORJA_HQ_CATALOG_MANIFEST_URL \
-    FORJA_HQ_HOME_MANIFEST_URL \
-    FORJA_HQ_ANIME_MANIFEST_URL \
-    FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL; do
-    u="${!name:-}"
-    [[ -n "$u" ]] || die "$name missing"
-    case "$u" in
-      https://*) ;;
-      *)
-        die "$name must be https:// for release (got: $u)
-  Local file paths poison Android TV. Pick GitHub variables in the release
-  wizard, or set https URLs in .env / FORJA_HQ_MANIFEST_SOURCE=github."
-        ;;
-    esac
-  done
-}
-
-fetch_forja_hq_from_github() {
-  require_cmd gh
-  gh auth status >/dev/null 2>&1 || die "gh not authenticated — run: gh auth login"
-  local repo
-  repo="$(gh_repo)"
-  info "ForjaHQ packs ← GitHub Actions variables ($repo)"
-  FORJA_HQ_PROVIDERS_MANIFEST_URL="$(
-    gh variable get FORJA_HQ_PROVIDERS_MANIFEST_URL -R "$repo" 2>/dev/null || true
-  )"
-  FORJA_HQ_LIVE_MANIFEST_URL="$(
-    gh variable get FORJA_HQ_LIVE_MANIFEST_URL -R "$repo" 2>/dev/null || true
-  )"
-  FORJA_HQ_CATALOG_MANIFEST_URL="$(
-    gh variable get FORJA_HQ_CATALOG_MANIFEST_URL -R "$repo" 2>/dev/null || true
-  )"
-  FORJA_HQ_HOME_MANIFEST_URL="$(
-    gh variable get FORJA_HQ_HOME_MANIFEST_URL -R "$repo" 2>/dev/null || true
-  )"
-  FORJA_HQ_ANIME_MANIFEST_URL="$(
-    gh variable get FORJA_HQ_ANIME_MANIFEST_URL -R "$repo" 2>/dev/null || true
-  )"
-  FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL="$(
-    gh variable get FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL -R "$repo" 2>/dev/null || true
-  )"
- ="$(
-    gh variable get -R "$repo" 2>/dev/null || true
-  )"
-  [[ -n "${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}" && -n "${FORJA_HQ_LIVE_MANIFEST_URL:-}" && -n "${FORJA_HQ_CATALOG_MANIFEST_URL:-}" && -n "${FORJA_HQ_HOME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ANIME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL:-}" ]] \
-    || die "missing FORJA_HQ_*_MANIFEST_URL Actions variables on $repo
-  Set the same four names CI uses (Repository → Settings → Variables)."
-  export FORJA_HQ_PROVIDERS_MANIFEST_URL FORJA_HQ_LIVE_MANIFEST_URL \
-    FORJA_HQ_CATALOG_MANIFEST_URL FORJA_HQ_HOME_MANIFEST_URL FORJA_HQ_ANIME_MANIFEST_URL FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL
-}
-
-# Wizard step: choose github vs .env. Exit 0=ok 2=back 3=quit.
-# Sets FORJA_HQ_MANIFEST_SOURCE only — apply via ensure_forja_hq_manifests.
-pick_forja_hq_manifest_source() {
-  local source rc
-  if [[ -n "${FORJA_HQ_MANIFEST_SOURCE:-}" ]]; then
-    return 0
-  fi
-  if ! ui_can; then
-    FORJA_HQ_MANIFEST_SOURCE=github
-    export FORJA_HQ_MANIFEST_SOURCE
-    return 0
-  fi
-  source="$(ui_choose 1 1 "ForjaHQ pack URLs (baked into the binary)" -- \
-    "github|GitHub Actions variables — same https URLs as CI (recommended)" \
-    "local|.env values — must already be https:// (not /Users/… paths)")" || {
-    rc=$?
-    return "$rc"
-  }
-  FORJA_HQ_MANIFEST_SOURCE="$source"
-  export FORJA_HQ_MANIFEST_SOURCE
-}
-
-# Apply FORJA_HQ_MANIFEST_SOURCE (default: github). Idempotent per process.
-ensure_forja_hq_manifests() {
-  if [[ "${_FORJA_HQ_MANIFESTS_READY:-}" == "1" ]]; then
-    require_forja_hq_https
-    return 0
-  fi
-
-  local source="${FORJA_HQ_MANIFEST_SOURCE:-github}"
-  source="$(printf '%s' "$source" | tr '[:upper:]' '[:lower:]')"
-
-  case "$source" in
-    github|gh|ci|actions|remote)
-      fetch_forja_hq_from_github
-      FORJA_HQ_MANIFEST_SOURCE=github
-      ;;
-    local|env|dotenv|.env)
-      info "ForjaHQ packs ← .env / process env"
-      [[ -n "${FORJA_HQ_PROVIDERS_MANIFEST_URL:-}" && -n "${FORJA_HQ_LIVE_MANIFEST_URL:-}" && -n "${FORJA_HQ_CATALOG_MANIFEST_URL:-}" && -n "${FORJA_HQ_HOME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ANIME_MANIFEST_URL:-}" && -n "${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL:-}" ]] \
-        || die "FORJA_HQ_PROVIDERS/LIVE/CATALOG/HOME/ANIME/ASIAN_DRAMA_MANIFEST_URL missing in .env"
-      FORJA_HQ_MANIFEST_SOURCE=local
-      ;;
-    *)
-      die "FORJA_HQ_MANIFEST_SOURCE must be github or local (got: $source)"
-      ;;
-  esac
-
-  export FORJA_HQ_MANIFEST_SOURCE
-  require_forja_hq_https
-  ok "ForjaHQ source: $FORJA_HQ_MANIFEST_SOURCE"
-  echo "    providers: $FORJA_HQ_PROVIDERS_MANIFEST_URL"
-  echo "    live:      $FORJA_HQ_LIVE_MANIFEST_URL"
-  echo "    catalog:   $FORJA_HQ_CATALOG_MANIFEST_URL"
-  echo "    home:      $FORJA_HQ_HOME_MANIFEST_URL"
-  echo "    anime:     $FORJA_HQ_ANIME_MANIFEST_URL"
-  echo "    asian:     $FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL"
-  _FORJA_HQ_MANIFESTS_READY=1
-  export _FORJA_HQ_MANIFESTS_READY
-}
+# Engine packs are external (profile sync / user manifest URLs) — not baked into binaries.
+pick_forja_hq_manifest_source() { :; }
+ensure_forja_hq_manifests() { :; }
 
 require_build_env() {
   require_darwin
@@ -835,7 +720,6 @@ require_build_env() {
   [[ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]] || die "SUPABASE_PUBLISHABLE_KEY missing (set in .env)"
   [[ -n "${RELEASE_CDN_URL:-}" ]] || die "RELEASE_CDN_URL missing (set in .env)"
   [[ -n "${FORJA_WEB_URL:-}" ]] || die "FORJA_WEB_URL missing (set in .env)"
-  ensure_forja_hq_manifests
   case "$FORJA_WEB_URL" in
     http://127.0.0.1:*|http://localhost:*|https://127.0.0.1:*|https://localhost:*)
       die "FORJA_WEB_URL must be the public portal URL, not localhost"
@@ -1285,8 +1169,7 @@ build_macos() {
       --dart-define=SENTRY_DSN="${SENTRY_DSN:-}" \
       --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
       --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
-      --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
-      --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="${FORJA_HQ_PROVIDERS_MANIFEST_URL}" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="${FORJA_HQ_LIVE_MANIFEST_URL}" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="${FORJA_HQ_CATALOG_MANIFEST_URL}" --dart-define=FORJA_HQ_HOME_MANIFEST_URL="${FORJA_HQ_HOME_MANIFEST_URL}" --dart-define=FORJA_HQ_ANIME_MANIFEST_URL="${FORJA_HQ_ANIME_MANIFEST_URL}" --dart-define=FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL="${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL}"
+      --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}"
   )
   echo "==> Ad-hoc codesign"
   ./scripts/codesign_macos_adhoc.sh
@@ -1305,24 +1188,14 @@ build_windows_prl() {
   local bash_repo unc
   require_darwin
   require_cmd prlctl
-  ensure_forja_hq_manifests
   prl_ensure_running
   unc="$(win_repo_unc)"
   bash_repo="$(win_repo_bash)"
   echo "==> Windows build via Parallels ($PRL_VM)"
   echo "    repo: $unc"
-  # Prefer Git Bash so existing .sh scripts run unchanged.
-  # Pass resolved ForjaHQ https URLs — guest .env must not re-poison with local paths.
   prlctl exec "$PRL_VM" --current-user \
     "C:\\Program Files\\Git\\bin\\bash.exe" -lc \
-    "cd '$bash_repo' && \
-FORJA_HQ_PROVIDERS_MANIFEST_URL=$(printf %q "$FORJA_HQ_PROVIDERS_MANIFEST_URL") \
-FORJA_HQ_LIVE_MANIFEST_URL=$(printf %q "$FORJA_HQ_LIVE_MANIFEST_URL") \
-FORJA_HQ_CATALOG_MANIFEST_URL=$(printf %q "$FORJA_HQ_CATALOG_MANIFEST_URL") \
-FORJA_HQ_HOME_MANIFEST_URL=$(printf %q "$FORJA_HQ_HOME_MANIFEST_URL") \
-FORJA_HQ_ANIME_MANIFEST_URL=$(printf %q "$FORJA_HQ_ANIME_MANIFEST_URL") \
-FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL=$(printf %q "$FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL") \
-./scripts/build_windows_release.sh '$ver'" \
+    "cd '$bash_repo' && ./scripts/build_windows_release.sh '$ver'" \
     || die "Windows build failed — run scripts/setup_windows_vm.ps1 inside the VM first"
   local exe
   exe="$(exe_path "$ver")"
@@ -1342,7 +1215,6 @@ build_android_tv() {
   [[ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]] || die "SUPABASE_PUBLISHABLE_KEY missing (set in .env)"
   [[ -n "${RELEASE_CDN_URL:-}" ]] || die "RELEASE_CDN_URL missing (set in .env)"
   [[ -n "${FORJA_WEB_URL:-}" ]] || die "FORJA_WEB_URL missing (set in .env)"
-  ensure_forja_hq_manifests
   [[ -n "${FORJA_KEYSTORE_PASSWORD:-}" ]] || die "FORJA_KEYSTORE_PASSWORD missing (set in .env)"
   [[ -n "${FORJA_KEY_PASSWORD:-}" ]] || die "FORJA_KEY_PASSWORD missing (set in .env)"
 
@@ -1414,7 +1286,6 @@ build_android_tv() {
       --dart-define=POSTHOG_API_KEY="${POSTHOG_API_KEY:-}" \
       --dart-define=POSTHOG_HOST="${POSTHOG_HOST:-}" \
       --dart-define=SIMKL_CLIENT_ID="${SIMKL_CLIENT_ID:-}" \
-      --dart-define=FORJA_HQ_PROVIDERS_MANIFEST_URL="${FORJA_HQ_PROVIDERS_MANIFEST_URL}" --dart-define=FORJA_HQ_LIVE_MANIFEST_URL="${FORJA_HQ_LIVE_MANIFEST_URL}" --dart-define=FORJA_HQ_CATALOG_MANIFEST_URL="${FORJA_HQ_CATALOG_MANIFEST_URL}" --dart-define=FORJA_HQ_HOME_MANIFEST_URL="${FORJA_HQ_HOME_MANIFEST_URL}" --dart-define=FORJA_HQ_ANIME_MANIFEST_URL="${FORJA_HQ_ANIME_MANIFEST_URL}" --dart-define=FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL="${FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL}" \
       -PFORJA_KEYSTORE_PATH="$keystore" \
       -PFORJA_KEYSTORE_PASSWORD="${FORJA_KEYSTORE_PASSWORD}" \
       -PFORJA_KEY_ALIAS="$key_alias" \
@@ -1639,7 +1510,6 @@ collect_android_tv_downloader_codes() {
 build_selected() {
   local ver="$1"
   local -a tv_abis=()
-  ensure_forja_hq_manifests
   if want_platform linux; then
     [[ "$(uname -s)" == Linux ]] \
       || die "Linux AppImage builds need a Linux host — use ./scripts/release_ci.sh"
@@ -2031,7 +1901,6 @@ wizard_release_tag() {
     fi
     detail="Tag:       ${tag}
 Platforms: $(platforms)
-ForjaHQ:   ${FORJA_HQ_MANIFEST_SOURCE} (pack URLs baked into binary)
 Action:    build + publish → GitHub + R2
 Mirror:    $([[ "$do_sync" == 1 ]] && echo "yes → ${SYNC_REPO}" || echo no)
 Note:      Android TV → Downloader codes prompted after R2 upload"
@@ -2103,7 +1972,6 @@ wizard_new_version() {
 
     detail="Bump:      ${bump}
 Platforms: $(platforms)
-ForjaHQ:   ${FORJA_HQ_MANIFEST_SOURCE} (pack URLs baked into binary)
 Backfill:  $([[ "$do_backfill" == 1 ]] && echo yes || echo no)
 Mirror:    $([[ "$do_sync" == 1 ]] && echo "yes → ${SYNC_REPO}" || echo no)
 Action:    freeze changelog → commit → tag → push → build + publish

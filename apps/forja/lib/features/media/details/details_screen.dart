@@ -492,6 +492,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     _loadSortPreference();
     _checkIndexerConfiguration();
     _loadWatchedEpisodes();
+    _restorePanelUiFromSessionCache();
     _fetchDetails();
     _fetchExternalRatings();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -679,6 +680,45 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
     if (kind == 'stremio') {
       _applyStremioFilter();
     }
+  }
+
+  void _restorePanelUiFromSessionCache() {
+    final cachedUi = CatalogSourcesSessionCache.readUi(_catalogCacheKey);
+    if (cachedUi == null) return;
+    applyCatalogSourcesPanelUiState(
+      state: cachedUi,
+      setKindFilter: (k) => _panelKindFilter = k,
+      setNuvioSelectedScraperIds: (ids) => _nuvioSelectedScraperIds = ids,
+      setEngineSelectedPluginIds: (ids) => _engineSelectedPluginIds = ids,
+      setNuvioAllMode: (mode) {
+        if (mode != null) _nuvioAllMode = mode;
+      },
+      setEngineAllMode: (mode) {
+        if (mode != null) _engineAllMode = mode;
+      },
+      setNuvioViewFilterScraperIds: (ids) =>
+          _nuvioViewFilterScraperIds = ids,
+      setEngineViewFilterPluginIds: (ids) =>
+          _engineViewFilterPluginIds = ids,
+      setTorrentViewFilterProviderIds: (ids) =>
+          _torrentViewFilterProviderIds = ids,
+      setUserPickedStremioProvider: (picked) =>
+          _userPickedStremioProvider = picked,
+      setSearchQuery: (q) => _sourceSearchQuery = q,
+      setQualityFilters: (f) => _activeQualityFilters = f,
+      setLanguageFilters: (f) => _activeLanguageFilters = f,
+      setTechFilters: (f) => _activeTechFilters = f,
+      setAudioFilters: (f) => _activeAudioFilters = f,
+      setSizeFilters: (f) => _activeSizeFilters = f,
+      setPanelSourceIdByKind: (byKind) {
+        _panelSourceIdByKind
+          ..clear()
+          ..addAll(byKind);
+      },
+    );
+    _restorePanelSourceIdForKind(_panelKindFilter);
+    _engineSelectionHydrated = true;
+    _nuvioSelectionHydrated = true;
   }
 
   void _savePanelUiCache() {
@@ -1010,6 +1050,7 @@ class _DetailsScreenState extends ConsumerState<DetailsScreen>
       _errorMessage = null;
       _restorePanelSourceIdForKind(kind);
     });
+    _savePanelUiCache();
     if (_sourcesListScrollController.hasClients) {
       _sourcesListScrollController.jumpTo(0);
     }

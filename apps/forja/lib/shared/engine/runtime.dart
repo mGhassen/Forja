@@ -9,7 +9,6 @@ import 'package:flutter_js/flutter_js.dart';
 import 'package:forja/shared/engine/engine_polyfills.dart';
 import 'package:forja/shared/engine/live_goat_unlock.dart';
 import 'package:forja/shared/engine/models.dart';
-import 'package:forja/shared/engine/stream_crypto.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:http/http.dart' as http;
 import 'package:pointycastle/export.dart';
@@ -113,6 +112,7 @@ class EngineRuntime {
       _registerBridges(rt);
       _installHost(rt);
       _installPolyfills(rt);
+      await _loadStreamCrypto(rt);
       await _loadCheerio(rt);
       _ready = true;
       _initCompleter!.complete();
@@ -144,19 +144,6 @@ class EngineRuntime {
         _forjaJsConsole(_bridgeMap(args));
       } catch (_) {}
       return null;
-    });
-
-    br('StreamCryptoDecrypt', (args) {
-      try {
-        final m = _bridgeMap(args);
-        return StreamCrypto.decrypt(
-          (m['body'] ?? '').toString(),
-          (m['seed'] ?? '').toString(),
-          (m['tmdbId'] ?? '').toString(),
-        );
-      } catch (e) {
-        return 'ENGINE_DECRYPT_ERROR:${e.toString()}';
-      }
     });
 
     br('CryptoDigest', (args) {
@@ -462,6 +449,20 @@ class EngineRuntime {
     }
   }
 
+  Future<void> _loadStreamCrypto(JavascriptRuntime rt) async {
+    try {
+      final code = await rootBundle.loadString(
+        'assets/engine/_streamcrypto.js',
+      );
+      final res = rt.evaluate(code, sourceUrl: 'engine://streamcrypto');
+      if (res.isError) {
+        _forjaRuntimeLog('streamcrypto load error: ${res.stringResult}');
+      }
+    } catch (e) {
+      _forjaRuntimeLog('streamcrypto load failed: $e');
+    }
+  }
+
   Future<void> _loadCheerio(JavascriptRuntime rt) async {
     try {
       final code = await rootBundle.loadString(
@@ -701,15 +702,15 @@ class EngineRuntime {
   var meta = $ctx;
   var pluginLabel = ${jsonEncode(pluginLabel)};
   var streamDecrypt = function(body, seed, tmdbId) {
-    var out = sendMessage('StreamCryptoDecrypt', JSON.stringify({
-      body: String(body == null ? '' : body),
-      seed: String(seed == null ? '' : seed),
-      tmdbId: String(tmdbId == null ? '' : tmdbId)
-    }));
-    if (typeof out === 'string' && out.indexOf('ENGINE_DECRYPT_ERROR:') === 0) {
-      throw new Error(out.substring('ENGINE_DECRYPT_ERROR:'.length));
+    var fn = globalThis.__engineStreamDecrypt;
+    if (typeof fn !== 'function') {
+      throw new Error('STREAMCRYPTO: not loaded');
     }
-    return out;
+    return fn(
+      String(body == null ? '' : body),
+      String(seed == null ? '' : seed),
+      String(tmdbId == null ? '' : tmdbId),
+    );
   };
   var ctx = {
     tmdbId: meta.tmdbId,

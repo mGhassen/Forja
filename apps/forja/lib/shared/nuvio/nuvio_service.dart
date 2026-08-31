@@ -304,6 +304,8 @@ class NuvioService {
   /// Sources → Nuvio chip selection (device KV, same store as addons).
   static const String _sourcesSelectedKey =
       'nuvio_sources_selected_scrapers_v1';
+  static const String _sourcesViewFilterKey =
+      'nuvio_sources_view_filter_scrapers_v1';
 
   /// Manifest URLs that ship with the app. Persisted like any other addon so
   /// Settings and Sources share one list (scrapers toggleable / not ghosted).
@@ -517,6 +519,27 @@ class NuvioService {
     await _ensureAddonsInKv();
     final sorted = ids.toList()..sort();
     await kvSetStringList(_sourcesSelectedKey, sorted);
+  }
+
+  /// All-mode scraper chip filters (view-only under All).
+  Future<Set<String>> loadSourcesViewFilterScraperIds({
+    required Set<String> enabledIds,
+  }) async {
+    await _ensureAddonsInKv();
+    final saved = await kvGetStringList(
+      _sourcesViewFilterKey,
+      fallback: const [],
+    );
+    return filterNuvioSelectedScraperIds(
+      savedIds: saved,
+      enabledIds: enabledIds,
+    );
+  }
+
+  Future<void> saveSourcesViewFilterScraperIds(Set<String> ids) async {
+    await _ensureAddonsInKv();
+    final sorted = ids.toList()..sort();
+    await kvSetStringList(_sourcesViewFilterKey, sorted);
   }
 
   /// Offline fallback when [ensureBundledInstalled] cannot reach the network.

@@ -15,119 +15,6 @@ class PluginRegistry {
   PluginRegistry._();
   static final PluginRegistry instance = PluginRegistry._();
 
-  /// Official ForjaHQ Providers pack (`FORJA_HQ_PROVIDERS_MANIFEST_URL`).
-  static const officialProvidersManifestUrl = String.fromEnvironment(
-    'FORJA_HQ_PROVIDERS_MANIFEST_URL',
-  );
-
-  /// Official ForjaHQ Live pack (`FORJA_HQ_LIVE_MANIFEST_URL`).
-  static const officialLiveManifestUrl = String.fromEnvironment(
-    'FORJA_HQ_LIVE_MANIFEST_URL',
-  );
-
-  /// Official ForjaHQ Catalog pack (`FORJA_HQ_CATALOG_MANIFEST_URL`).
-  static const officialCatalogManifestUrl = String.fromEnvironment(
-    'FORJA_HQ_CATALOG_MANIFEST_URL',
-  );
-
-  /// Official ForjaHQ Home hub pack (`FORJA_HQ_HOME_MANIFEST_URL`).
-  static const officialHomeManifestUrl = String.fromEnvironment(
-    'FORJA_HQ_HOME_MANIFEST_URL',
-  );
-
-  /// Official ForjaHQ Anime hub pack (`FORJA_HQ_ANIME_MANIFEST_URL`).
-  static const officialAnimeManifestUrl = String.fromEnvironment(
-    'FORJA_HQ_ANIME_MANIFEST_URL',
-  );
-
-  /// Official ForjaHQ Asian Drama hub pack (`FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL`).
-  static const officialAsianDramaManifestUrl = String.fromEnvironment(
-    'FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL',
-  );
-
-  /// Optional Arabic hub pack (`FORJA_HQ_ARABIC_MANIFEST_URL`) — out of product
-  /// scope; install only when the dart-define is set.
-  static const officialArabicManifestUrl = String.fromEnvironment(
-    'FORJA_HQ_ARABIC_MANIFEST_URL',
-  );
-
-  /// Dev switch (`FORJA_HQ_FORCE_PLUGIN_ENV`):
-  /// - `true` → install from dart-define / `.env` URLs; disable cloud ForjaHQ.
-  /// - `false` → prefer cloud Profile ForjaHQ URLs when present; disable `.env` locals.
-  static const forcePluginEnv = bool.fromEnvironment(
-    'FORJA_HQ_FORCE_PLUGIN_ENV',
-    defaultValue: false,
-  );
-
-  /// Shipped ForjaHQ manifests on `main` — used when dart-define points at a
-  /// dev workstation path that does not exist on device (Android / iOS / TV).
-  static const builtinCloudManifestUrls = <String, String>{
-    'providers':
-        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/providers/manifest.json',
-    'live':
-        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/live/manifest.json',
-    'catalog':
-        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/catalog/manifest.json',
-    'home':
-        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/home/manifest.json',
-    'anime':
-        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/anime/manifest.json',
-    'asian_drama':
-        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/asian_drama/manifest.json',
-    'arabic':
-        'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/hubs/arabic/manifest.json',
-  };
-
-  static const officialPackIds = {
-    'forjahq-providers',
-    'forjahq-live',
-    'forjahq-catalog',
-    'forjahq-home',
-    'forjahq-anime',
-    'forjahq-asian-drama',
-    'forjahq-arabic',
-  };
-
-  static const _cloudOfficialKey = 'engine_js_cloud_forjahq_urls_v1';
-
-  /// Slot resolve order — six required packs (Arabic is optional).
-  static const officialSlotOrder = [
-    'providers',
-    'live',
-    'catalog',
-    'home',
-    'anime',
-    'asian_drama',
-  ];
-
-  /// Hub catalog slots (one pack per shell hub tab).
-  static const hubSlotIds = {'home', 'anime', 'asian_drama', 'arabic'};
-
-  /// Packs that must be configured for the engine to work at all.
-  static const requiredOfficialPackCount = 6;
-
-  /// Required official pack URLs from dart-define (no Arabic).
-  static List<String> get officialManifestUrls => [
-        for (final u in [
-          officialProvidersManifestUrl,
-          officialLiveManifestUrl,
-          officialCatalogManifestUrl,
-          officialHomeManifestUrl,
-          officialAnimeManifestUrl,
-          officialAsianDramaManifestUrl,
-        ])
-          if (u.trim().isNotEmpty) u.trim(),
-      ];
-
-  /// Optional extras (Arabic when set).
-  static List<String> get optionalOfficialManifestUrls => [
-        if (officialArabicManifestUrl.trim().isNotEmpty)
-          officialArabicManifestUrl.trim(),
-      ];
-
-  /// @Deprecated Use [officialProvidersManifestUrl] or [officialManifestUrls].
-  static const officialManifestUrl = officialProvidersManifestUrl;
-
   static const _packsKeyV1 = 'engine_js_packs_v1';
   static const _packsKeyV2 = 'engine_js_packs_v2';
   static const _scriptPrefixV1 = 'engine_js_script_';
@@ -146,15 +33,7 @@ class PluginRegistry {
       ValueNotifier<String?>(null);
 
   Future<void>? _officialEnsureFuture;
-  bool _officialInstallFailed = false;
   bool _officialUpdateChecked = false;
-  /// `FORJA_HQ_FORCE_PLUGIN_ENV=true` disk reinstall — once per process.
-  bool _forceEnvApplied = false;
-  /// Cloud ForjaHQ applied for `FORCE=false` — once until cloud URLs change.
-  bool _cloudOfficialApplied = false;
-  /// Slot → cloud manifest URL (`providers` / `live` / `catalog`).
-  final Map<String, String> _cloudOfficialBySlot = {};
-  bool _cloudOfficialLoaded = false;
   final Set<String> _scriptRepairAttempted = {};
 
   /// Test-only HTTP client override (MockClient).
@@ -186,31 +65,22 @@ class PluginRegistry {
     return file.exists();
   }
 
-  /// When `.env` uses a Mac checkout path, device builds cannot read it — swap
-  /// to cloud (prefs first, then [builtinCloudManifestUrls]).
+  /// When a stored manifest is a local path this device cannot read, try another
+  /// installed pack at the same conventional slot (remote URL).
   Future<String> _substituteUnreachableLocalManifest(String url) async {
     if (await _localManifestExists(url)) return url;
     final slot = forjaHqSlot(url);
-    final cloud = slot == null
-        ? null
-        : (_cloudOfficialBySlot[slot] ?? builtinCloudManifestUrls[slot]);
-    if (cloud != null && cloud.isNotEmpty) {
+    if (slot == null) return url;
+    for (final pack in await listPacksRaw()) {
+      if (pack.sourceUrl == url) continue;
+      if (forjaHqSlot(pack.sourceUrl) != slot) continue;
+      if (_asLocalFile(pack.sourceUrl) != null) continue;
       debugPrint(
-        '[engine] local manifest missing ($slot) — using cloud pack',
+        '[engine] local manifest missing ($slot) — using ${pack.sourceUrl}',
       );
-      return cloud;
+      return pack.sourceUrl;
     }
     return url;
-  }
-
-  Future<List<String>> _substituteUnreachableLocalManifests(
-    List<String> urls,
-  ) async {
-    final out = <String>[];
-    for (final u in urls) {
-      out.add(await _substituteUnreachableLocalManifest(u));
-    }
-    return out;
   }
 
   Future<String> _fetchText(String url) async {
@@ -231,18 +101,7 @@ class PluginRegistry {
     return resp.body;
   }
 
-  static bool isOfficialPack(String sourceUrl) {
-    if (officialManifestUrls.contains(sourceUrl)) return true;
-    if (optionalOfficialManifestUrls.contains(sourceUrl)) return true;
-    if (!forcePluginEnv &&
-        instance._cloudOfficialBySlot.values.contains(sourceUrl)) {
-      return true;
-    }
-    return false;
-  }
-
-  /// `providers` / `live` / `catalog` / `home` / `anime` / `asian_drama`
-  /// when [url] is a ForjaHQ pack path.
+  /// Path-pattern helper for Settings grouping — not pack inventory.
   @visibleForTesting
   static String? forjaHqSlot(String url) {
     final path = url.trim().replaceAll('\\', '/').toLowerCase();
@@ -332,21 +191,10 @@ class PluginRegistry {
     return packKindLabel(kind);
   }
 
-  /// Cloud/GitHub (or other) URL that mirrors an official ForjaHQ pack path but
-  /// is not the current dart-define URL.
-  static bool isShadowingOfficialManifestUrl(String sourceUrl) {
-    if (officialManifestUrls.contains(sourceUrl) ||
-        isLegacyAssetPack(sourceUrl)) {
-      return false;
-    }
-    return forjaHqSlot(sourceUrl) != null;
-  }
-
-  /// Pack that shadows the active keep-set of official URLs.
-  static bool isShadowOfficialPack(EnginePack pack, Set<String> keepUrls) {
+  /// Pack at a conventional ForjaHQ path that is not in [keepUrls].
+  static bool isShadowSlotPack(EnginePack pack, Set<String> keepUrls) {
     if (keepUrls.contains(pack.sourceUrl)) return false;
     if (pack.packId == 'forjahq-hubs') return true; // legacy monolith hubs
-    if (officialPackIds.contains(pack.packId)) return true;
     return forjaHqSlot(pack.sourceUrl) != null;
   }
 
@@ -366,10 +214,6 @@ class PluginRegistry {
   static String preludePrefsKey(String sourceUrl, String preludeEntry) =>
       '$_preludePrefixV2${urlHash(sourceUrl)}_'
       '${Uri.encodeComponent(preludeEntry)}';
-
-  static const _missingOfficialUrlsMessage =
-      'FORJA_HQ_PROVIDERS/LIVE/CATALOG/HOME/ANIME/ASIAN_DRAMA_MANIFEST_URL '
-      'missing — set in .env / dart-define';
 
   /// Serialize [install] writes — parallel callers fetch concurrently via
   /// [Future.wait] but must not interleave prefs commits.
@@ -620,9 +464,8 @@ class PluginRegistry {
     return mu.replace(path: path).toString();
   }
 
-  /// Disable (not remove) packs that are not in [keepUrls] but share ForjaHQ
-  /// pack ids / canonical paths. Never touches [EnginePack.enabled] on keep
-  /// URLs — FORCE / cloud only choose install source; activation is user-owned.
+  /// Disable (not remove) packs that share a conventional slot but are not in
+  /// [keepUrls]. Never touches [EnginePack.enabled] on keep URLs.
   @visibleForTesting
   Future<void> applyOfficialKeepSet(List<String> keepUrls) async {
     final keep = {
@@ -637,7 +480,7 @@ class PluginRegistry {
         next.add(pack);
         continue;
       }
-      if (!isShadowOfficialPack(pack, keep)) {
+      if (!isShadowSlotPack(pack, keep)) {
         next.add(pack);
         continue;
       }
@@ -646,7 +489,7 @@ class PluginRegistry {
         continue;
       }
       debugPrint(
-        '[engine] ForjaHQ: disable ${pack.packId} (${pack.sourceUrl})',
+        '[engine] disable shadow pack ${pack.packId} (${pack.sourceUrl})',
       );
       next.add(pack.copyWith(enabled: false));
       changed = true;
@@ -659,199 +502,39 @@ class PluginRegistry {
   Future<void> disableShadowOfficialPacks(List<String> keepUrls) =>
       applyOfficialKeepSet(keepUrls);
 
-  Future<void> _loadCloudOfficialFromPrefs() async {
-    if (_cloudOfficialLoaded) return;
-    _cloudOfficialLoaded = true;
-    final prefs = await _prefs;
-    final raw = prefs.getString(_cloudOfficialKey);
-    if (raw == null || raw.isEmpty) return;
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) return;
-      for (final e in decoded.entries) {
-        final slot = e.key.toString();
-        final url = e.value?.toString().trim() ?? '';
-        if (url.isEmpty || forjaHqSlot(url) != slot) continue;
-        _cloudOfficialBySlot[slot] = url;
-      }
-    } catch (_) {}
-  }
-
-  Future<void> _persistCloudOfficial() async {
-    final prefs = await _prefs;
-    await prefs.setString(
-      _cloudOfficialKey,
-      jsonEncode(_cloudOfficialBySlot),
-    );
-  }
-
-  void _rememberCloudOfficialUrl(String url) {
-    final slot = forjaHqSlot(url);
-    if (slot == null) return;
-    if (_asLocalFile(url) != null) return; // never treat local path as cloud
-    final prev = _cloudOfficialBySlot[slot];
-    if (prev == url) return;
-    _cloudOfficialBySlot[slot] = url;
-    _cloudOfficialApplied = false;
-  }
-
-  Future<void> _discoverCloudOfficialFromInstalled() async {
-    for (final pack in await listPacksRaw()) {
-      final slot = forjaHqSlot(pack.sourceUrl);
-      if (slot == null) continue;
-      if (_asLocalFile(pack.sourceUrl) != null) continue;
-      _cloudOfficialBySlot.putIfAbsent(slot, () => pack.sourceUrl);
-    }
-  }
-
-  /// Active official URLs: `.env` when [forcePluginEnv], else cloud (fallback `.env`).
-  @visibleForTesting
-  Future<List<String>> resolveEffectiveOfficialUrls() async {
-    final dartUrls = officialManifestUrls;
-    if (dartUrls.length < requiredOfficialPackCount) return dartUrls;
-
-    await _loadCloudOfficialFromPrefs();
-    await _discoverCloudOfficialFromInstalled();
-
-    final optionalDart = optionalOfficialManifestUrls;
-    final resolvedDart = await _substituteUnreachableLocalManifests(dartUrls);
-    final resolvedOptional =
-        await _substituteUnreachableLocalManifests(optionalDart);
-    final hasReachableLocal = await () async {
-      for (final u in [...resolvedDart, ...resolvedOptional]) {
-        final file = _asLocalFile(u);
-        if (file != null && await file.exists()) return true;
-      }
-      return false;
-    }();
-
-    if (forcePluginEnv && hasReachableLocal) {
-      return [...resolvedDart, ...resolvedOptional];
-    }
-    if (forcePluginEnv && !hasReachableLocal) {
-      debugPrint(
-        '[engine] FORJA_HQ_FORCE_PLUGIN_ENV=true but local manifests are '
-        'unavailable on this device — using cloud ForjaHQ packs',
-      );
-    }
-
-    // Resolve every required slot this build configures.
-    final wanted = <String>{
-      for (final u in resolvedDart)
-        if (forjaHqSlot(u) != null) forjaHqSlot(u)!,
-    };
-    final bySlot = <String, String>{};
-    for (final s in officialSlotOrder) {
-      if (!wanted.contains(s)) continue;
-      final cloud = _cloudOfficialBySlot[s] ?? builtinCloudManifestUrls[s];
-      if (cloud != null && cloud.isNotEmpty) bySlot[s] = cloud;
-    }
-    // Fill missing slots from dart-define (already cloud-substituted).
-    for (final u in resolvedDart) {
-      final s = forjaHqSlot(u);
-      if (s == null || bySlot.containsKey(s)) continue;
-      bySlot[s] = u;
-    }
-    final out = [
-      for (final s in officialSlotOrder)
-        if (bySlot[s] != null) bySlot[s]!,
-    ];
-    final required =
-        out.length == wanted.length ? out : resolvedDart;
-    // Optional Arabic: prefer cloud slot, else dart-define when set.
-    final optional = <String>[];
-    final cloudArabic =
-        _cloudOfficialBySlot['arabic'] ?? builtinCloudManifestUrls['arabic'];
-    if (cloudArabic != null && cloudArabic.isNotEmpty) {
-      optional.add(cloudArabic);
-    } else if (resolvedOptional.isNotEmpty) {
-      optional.addAll(resolvedOptional);
-    }
-    return [...required, ...optional];
-  }
-
-  /// First boot / ensure: install or refresh each official pack when needed.
-  ///
-  /// [forcePluginEnv] true → dart-define / `.env` once, disable cloud.
-  /// false → cloud Profile ForjaHQ when known, disable local `.env` copies.
+  /// Hydrate lean stubs and refresh remote packs when needed.
   Future<void> ensureOfficialInstalled({bool force = false}) async {
-    final dartUrls = officialManifestUrls;
-    if (dartUrls.length < requiredOfficialPackCount) {
-      _officialInstallFailed = true;
-      officialInstallError.value = _missingOfficialUrlsMessage;
-      notifyChanged();
-      return;
-    }
     if (_officialEnsureFuture != null) {
       await _officialEnsureFuture;
       return;
     }
     final run = () async {
       try {
-        final urls = await resolveEffectiveOfficialUrls();
-        final requiredUrls = [
-          for (final u in urls)
-            if (forjaHqSlot(u) != 'arabic') u,
-        ];
-        final usingCloud = !forcePluginEnv &&
-            requiredUrls.every((u) => _asLocalFile(u) == null);
-
-        final forceEnvReinstall = forcePluginEnv && !_forceEnvApplied;
-        final cloudNeedsApply = usingCloud && !_cloudOfficialApplied;
-        // Shadow disable + optional install when switching keep-set / first force.
-        final mustRun = force || forceEnvReinstall || cloudNeedsApply;
-
-        if (!mustRun && _officialInstallFailed) return;
-
-        if (forceEnvReinstall) {
-          debugPrint(
-            '[engine] FORJA_HQ_FORCE_PLUGIN_ENV=true: install from dart-define',
-          );
-        } else if (cloudNeedsApply) {
-          debugPrint(
-            '[engine] FORJA_HQ_FORCE_PLUGIN_ENV=false: prefer cloud packs',
-          );
-        }
-
-        await applyOfficialKeepSet(urls);
-
+        await hydrateLeanInstalled();
         final packs = await listPacksRaw();
-        final byUrl = {for (final p in packs) p.sourceUrl: p};
-        final pending = <Future<void>>[];
-        for (final url in urls) {
-          final local = byUrl[url];
-          if (local == null || local.plugins.isEmpty) {
-            pending.add(install(url));
-          } else if (forceEnvReinstall) {
-            // FORCE=true once: reload scripts from dart-define / disk.
-            pending.add(install(url));
-          } else if (!_officialUpdateChecked) {
-            pending.add(_maybeRefreshOfficialIfNewer(url, local));
+        if (force) {
+          final pending = <Future<void>>[];
+          for (final pack in packs) {
+            if (isLegacyAssetPack(pack.sourceUrl)) continue;
+            pending.add(install(pack.sourceUrl));
           }
+          if (pending.isNotEmpty) await Future.wait(pending);
+        } else if (!_officialUpdateChecked) {
+          _officialUpdateChecked = true;
+          final pending = <Future<void>>[];
+          for (final pack in packs) {
+            if (pack.plugins.isEmpty) continue;
+            if (_asLocalFile(pack.sourceUrl) != null) continue;
+            pending.add(_maybeRefreshIfNewer(pack.sourceUrl, pack));
+          }
+          if (pending.isNotEmpty) await Future.wait(pending);
         }
-        if (pending.isNotEmpty) {
-          await Future.wait(pending);
-        }
-        await applyOfficialKeepSet(urls);
-
-        if (forcePluginEnv) {
-          _forceEnvApplied = true;
-        }
-        if (usingCloud) {
-          _cloudOfficialApplied = true;
-        }
-        _officialUpdateChecked = true;
         _clearOfficialInstallError();
       } catch (e) {
-        _officialInstallFailed = true;
-        // Once-per-process: do not retry-storm when FORCE install fails.
-        if (forcePluginEnv) {
-          _forceEnvApplied = true;
-        }
         final msg = e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
         officialInstallError.value = msg;
         notifyChanged();
-        debugPrint('[engine] ForjaHQ install failed: $msg');
+        debugPrint('[engine] pack hydrate failed: $msg');
       }
     }();
     _officialEnsureFuture = run;
@@ -864,7 +547,7 @@ class PluginRegistry {
     }
   }
 
-  Future<void> _maybeRefreshOfficialIfNewer(
+  Future<void> _maybeRefreshIfNewer(
     String manifestUrl,
     EnginePack local,
   ) async {
@@ -885,7 +568,6 @@ class PluginRegistry {
   }
 
   void _clearOfficialInstallError() {
-    _officialInstallFailed = false;
     if (officialInstallError.value != null) {
       officialInstallError.value = null;
       notifyChanged();
@@ -893,26 +575,12 @@ class PluginRegistry {
   }
 
   Future<void> retryOfficialInstall() async {
-    final urls = await resolveEffectiveOfficialUrls();
-    if (urls.length < requiredOfficialPackCount) {
-      throw Exception(_missingOfficialUrlsMessage);
-    }
-    _officialInstallFailed = false;
     officialInstallError.value = null;
     _officialUpdateChecked = false;
-    _forceEnvApplied = false;
-    _cloudOfficialApplied = false;
-    await applyOfficialKeepSet(urls);
-    for (final url in urls) {
-      await install(url);
+    await ensureOfficialInstalled(force: true);
+    if (officialInstallError.value != null) {
+      throw Exception(officialInstallError.value);
     }
-    await applyOfficialKeepSet(urls);
-    if (forcePluginEnv) {
-      _forceEnvApplied = true;
-    } else if (urls.every((u) => _asLocalFile(u) == null)) {
-      _cloudOfficialApplied = true;
-    }
-    _clearOfficialInstallError();
   }
 
   /// Transactional install: fetch all bodies, then write prefs.
@@ -920,6 +588,7 @@ class PluginRegistry {
       _withInstallLock(() => _installUnlocked(manifestUrl));
 
   Future<EnginePack> _installUnlocked(String manifestUrl) async {
+    manifestUrl = await _substituteUnreachableLocalManifest(manifestUrl);
     final body = await _fetchText(manifestUrl);
     final map = jsonDecode(body) as Map<String, dynamic>;
     final schema = map['schema'];
@@ -956,10 +625,6 @@ class PluginRegistry {
     for (final other in all) {
       if (other.sourceUrl == manifestUrl) continue;
       if (slot != null && forjaHqSlot(other.sourceUrl) == slot) continue;
-      if (officialPackIds.contains(pack.packId) &&
-          other.packId == pack.packId) {
-        continue;
-      }
       final otherIds = {for (final p in other.plugins) p.id};
       for (final p in pack.plugins) {
         if (otherIds.contains(p.id)) {
@@ -1048,17 +713,15 @@ class PluginRegistry {
     all.removeWhere((a) => a.sourceUrl == manifestUrl);
     all.add(pack);
     await _savePacks(all);
-    if (officialPackIds.contains(pack.packId) &&
-        isHubManifestSlot(forjaHqSlot(manifestUrl))) {
+    final hubSlot = forjaHqSlot(manifestUrl);
+    if (isHubManifestSlot(hubSlot)) {
       CatalogCache.instance.syncHubPackVersion(pack.packId, pack.version);
     }
     // Legacy combined hubs pack → wipe so rails re-fetch from split packs.
     if (pack.packId == 'forjahq-hubs') {
       CatalogCache.instance.wipeAll();
     }
-    if (isOfficialPack(manifestUrl)) {
-      _clearOfficialInstallError();
-    }
+    _clearOfficialInstallError();
     _scriptRepairAttempted.remove(manifestUrl);
     return pack;
   }
@@ -1230,30 +893,14 @@ class PluginRegistry {
 
   /// Sync / cloud lean rows — URL (+ optional name) only. **No network.**
   /// Full packs land via [hydrateLeanInstalled] on first Settings/Sources use.
-  /// Official ForjaHQ packs are never removed.
   Future<void> applyLeanManifestUrls(
     Iterable<Map<String, dynamic>> rows, {
     bool removeMissingUserPacks = true,
   }) async {
     final remote = <String, ({String? name, String? version})>{};
-    var cloudOfficialChanged = false;
     for (final raw in rows) {
       final url = (raw['manifestUrl'] as String?)?.trim() ?? '';
       if (url.isEmpty || isLegacyAssetPack(url)) continue;
-
-      final slot = forjaHqSlot(url);
-      final isCloudForjaHq =
-          slot != null && _asLocalFile(url) == null;
-
-      if (isCloudForjaHq) {
-        final prev = _cloudOfficialBySlot[slot];
-        _rememberCloudOfficialUrl(url);
-        if (prev != url) cloudOfficialChanged = true;
-        // FORCE=true: remember URL but do not seed lean hydrate against `.env`.
-        if (forcePluginEnv) continue;
-      } else if (officialManifestUrls.contains(url) || isOfficialPack(url)) {
-        continue;
-      }
 
       final name = (raw['name'] as String?)?.trim();
       final version = (raw['version'] as String?)?.trim();
@@ -1263,25 +910,13 @@ class PluginRegistry {
       );
     }
 
-    if (cloudOfficialChanged || _cloudOfficialBySlot.isNotEmpty) {
-      await _persistCloudOfficial();
-    }
-
     final all = await listPacksRaw();
     final next = <EnginePack>[];
     final victims = <EnginePack>[];
     var changed = false;
-    final keepDart = officialManifestUrls.toSet();
 
     for (final pack in all) {
       if (isLegacyAssetPack(pack.sourceUrl)) {
-        next.add(pack);
-        continue;
-      }
-      // Keep dart-define + cloud ForjaHQ rows; never wipe either side.
-      if (keepDart.contains(pack.sourceUrl) ||
-          forjaHqSlot(pack.sourceUrl) != null ||
-          officialPackIds.contains(pack.packId)) {
         next.add(pack);
         continue;
       }
@@ -1339,13 +974,7 @@ class PluginRegistry {
       await _savePacks(next);
     }
 
-    // FORCE=false + cloud ForjaHQ known → switch active packs to cloud.
-    if (!forcePluginEnv &&
-        _cloudOfficialBySlot.length >= requiredOfficialPackCount &&
-        (cloudOfficialChanged || !_cloudOfficialApplied)) {
-      _officialInstallFailed = false;
-      unawaited(ensureOfficialInstalled(force: true));
-    }
+    unawaited(ensureOfficialInstalled());
   }
 
   /// Fetch manifests for lean stubs (`plugins` empty). Idempotent.
@@ -1358,21 +987,13 @@ class PluginRegistry {
   }
 
   Future<void> _hydrateLeanInstalledImpl() async {
-    final keep = (await resolveEffectiveOfficialUrls()).toSet();
     final all = await listPacksRaw();
     for (final pack in all) {
       if (pack.plugins.isNotEmpty) continue;
       if (isLegacyAssetPack(pack.sourceUrl)) continue;
-      // Only hydrate the active official slot URL (cloud or `.env`), not both.
-      final slot = forjaHqSlot(pack.sourceUrl);
-      if (slot != null && !keep.contains(pack.sourceUrl)) {
-        continue;
-      }
-      if (forcePluginEnv && isShadowingOfficialManifestUrl(pack.sourceUrl)) {
-        continue;
-      }
       try {
-        await install(pack.sourceUrl);
+        final url = await _substituteUnreachableLocalManifest(pack.sourceUrl);
+        await install(url);
       } catch (e) {
         debugPrint(
           '[engine] lean hydrate failed (${pack.sourceUrl}): $e',

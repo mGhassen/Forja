@@ -30,7 +30,7 @@ Pack knowledge lives in packs. Host code and **host tests** prove generic contra
 
 **Wrong:** `expect(byId('kisskh').types, ['drama'])` after loading providers manifest.
 
-**Wrong:** `expect(PluginRegistry.hubSlotIds, contains('anime'))` as proof host routing works.
+**Wrong:** `expect(PluginRegistry.officialPackIds, contains('forjahq-anime'))` as proof host routing works.
 
 **Right:** `EnginePlugin.fromJson({'id': 'test-provider-a', 'types': ['foo']})` → `panelCategoryFromPlayingPlugin` → `'foo'`.
 

@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/engine/stream_crypto.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/player/utils.dart';
@@ -15,78 +14,34 @@ import 'package:http/testing.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// True when official pack dart-defines are set (from `.env` / CI).
-/// Pack content is remote — tests must not assume a checkout path.
-bool get forjaHqPackEnvReady =>
-    PluginRegistry.officialManifestUrls.length >=
-        PluginRegistry.requiredOfficialPackCount;
+/// True when repo `plugins/` tree is available (local checkout).
+bool get forjaHqPackEnvReady => _repoPluginsRoot() != null;
 
-/// Fetch a file relative to the configured official pack URLs
-/// (`FORJA_HQ_{PROVIDERS,LIVE,CATALOG,HOME,ANIME,ASIAN_DRAMA}_MANIFEST_URL`).
-///
-/// Call only when [forjaHqPackEnvReady]. Clears [HttpOverrides] so
-/// [TestWidgetsFlutterBinding]'s stub client is not used.
+String? _repoPluginsRoot() {
+  var dir = Directory.current;
+  for (var i = 0; i < 10; i++) {
+    final plugins = Directory('${dir.path}/plugins');
+    if (File('${plugins.path}/providers/manifest.json').existsSync()) {
+      return plugins.path;
+    }
+    final parent = dir.parent;
+    if (parent.path == dir.path) break;
+    dir = parent;
+  }
+  return null;
+}
+
+/// Load a file under repo `plugins/` (pack tests — not host inventory).
 Future<String> loadForjaHqFile(String relativePath) async {
-  if (!forjaHqPackEnvReady) {
-    throw StateError(
-      'FORJA_HQ_{PROVIDERS,LIVE,CATALOG,HOME,ANIME,ASIAN_DRAMA}_MANIFEST_URL not set',
-    );
+  final root = _repoPluginsRoot();
+  if (root == null) {
+    throw StateError('plugins/ tree not found — run tests from Forja checkout');
   }
-  late final String manifestUrl;
-  late final String entry;
-  if (relativePath == 'manifest.json' ||
-      relativePath == 'providers/manifest.json') {
-    manifestUrl = EngineService.officialProvidersManifestUrl;
-    entry = 'manifest.json';
-  } else if (relativePath == 'live/manifest.json') {
-    manifestUrl = EngineService.officialLiveManifestUrl;
-    entry = 'manifest.json';
-  } else if (relativePath == 'catalog/manifest.json') {
-    manifestUrl = EngineService.officialCatalogManifestUrl;
-    entry = 'manifest.json';
-  } else if (relativePath.startsWith('providers/')) {
-    manifestUrl = EngineService.officialProvidersManifestUrl;
-    entry = relativePath.substring('providers/'.length);
-  } else if (relativePath.startsWith('live/')) {
-    manifestUrl = EngineService.officialLiveManifestUrl;
-    entry = relativePath.substring('live/'.length);
-  } else if (relativePath.startsWith('catalog/')) {
-    manifestUrl = EngineService.officialCatalogManifestUrl;
-    entry = relativePath.substring('catalog/'.length);
-  } else if (relativePath.startsWith('archived/')) {
-    manifestUrl = EngineService.officialProvidersManifestUrl;
-    entry = '../archived/${relativePath.substring('archived/'.length)}';
-  } else if (relativePath == 'domains.json') {
-    manifestUrl = EngineService.officialProvidersManifestUrl;
-    entry = '../domains.json';
-  } else {
-    throw StateError('unknown pack-relative path: $relativePath');
+  final file = File('$root/$relativePath');
+  if (!file.existsSync()) {
+    throw StateError('pack file missing: ${file.path}');
   }
-  final scriptUrl =
-      PluginRegistry.instance.resolveScriptUrl(manifestUrl, entry);
-  if (!scriptUrl.startsWith('http://') && !scriptUrl.startsWith('https://')) {
-    final file = File(scriptUrl);
-    if (!file.existsSync()) {
-      throw StateError('pack file missing: ${file.path}');
-    }
-    return file.readAsStringSync();
-  }
-  final previous = HttpOverrides.current;
-  HttpOverrides.global = null;
-  try {
-    final client = IOClient(HttpClient());
-    try {
-      final res = await client.get(Uri.parse(scriptUrl));
-      if (res.statusCode != 200) {
-        throw StateError('pack fetch ${res.statusCode}: $scriptUrl');
-      }
-      return res.body;
-    } finally {
-      client.close();
-    }
-  } finally {
-    HttpOverrides.global = previous;
-  }
+  return file.readAsStringSync();
 }
 
 Future<List<EnginePlugin>> loadAllForjaHqPlugins() async {
@@ -443,6 +398,43 @@ void main() {
         PluginRegistry.forjaHqSlot('https://community.example/manifest.json'),
         isNull,
       );
+    });
+
+    test('packPluginFromPacks prefers active pack when plugin id is duplicated',
+        () {
+      EnginePlugin hubPlugin(String id) => EnginePlugin(
+            id: id,
+            name: id,
+            entry: '$id.js',
+            kind: 'catalog',
+            enabled: true,
+          );
+      EnginePack pack(
+        String url, {
+        required bool enabled,
+        required String pluginId,
+      }) =>
+          EnginePack(
+            sourceUrl: url,
+            packId: 'forjahq-home',
+            name: 'ForjaHQ Home',
+            version: '1.0.0',
+            enabled: enabled,
+            plugins: [hubPlugin(pluginId)],
+          );
+
+      const github =
+          'https://raw.githubusercontent.com/example/Forja/main/plugins/hubs/home/manifest.json';
+      const local = '/Users/dev/Forja/plugins/hubs/home/manifest.json';
+      final packs = [
+        pack(github, enabled: false, pluginId: 'tmdb'),
+        pack(local, enabled: true, pluginId: 'tmdb'),
+      ];
+
+      final hit = PluginRegistry.packPluginFromPacks(packs, 'tmdb');
+      expect(hit, isNotNull);
+      expect(hit!.pack.sourceUrl, local);
+      expect(hit.pack.isPluginActive(hit.plugin), isTrue);
     });
 
     test('packKindKey groups ForjaHQ slots and hub info', () {
@@ -1787,8 +1779,7 @@ void main() {
   },
     skip: forjaHqPackEnvReady
         ? false
-        : 'Set FORJA_HQ_{PROVIDERS,LIVE,CATALOG}_MANIFEST_URL '
-            '(e.g. --dart-define-from-file=.env)',
+        : 'Run tests from Forja checkout (plugins/providers/manifest.json)',
   );
 
   group('catalog Vidlink proxy', () {
@@ -2068,14 +2059,14 @@ void main() {
       const seed = 'test-seed';
       const mediaId = '550';
       const json = '{"ok":true}';
-      final payload = StreamCrypto.encryptForTest(json, seed, mediaId);
       final rt = EngineRuntime.instance;
       await rt.loadPlugin(
         pluginId: 'crypto-test',
         code:
             '''
 function extract(ctx) {
-  var body = ctx.streamcrypto.decrypt(${jsonEncode(payload)}, ${jsonEncode(seed)}, ctx.tmdbId);
+  var payload = globalThis.__engineStreamEncryptForTest(${jsonEncode(json)}, ${jsonEncode(seed)}, ctx.tmdbId);
+  var body = ctx.streamcrypto.decrypt(payload, ${jsonEncode(seed)}, ctx.tmdbId);
   return Promise.resolve([{ url: 'https://cdn.example/a.m3u8', title: body }]);
 }
 ''',
@@ -2094,14 +2085,14 @@ function extract(ctx) {
       const seed = 'alias-seed';
       const mediaId = '42';
       const json = '{"alias":true}';
-      final payload = StreamCrypto.encryptForTest(json, seed, mediaId);
       final rt = EngineRuntime.instance;
       await rt.loadPlugin(
         pluginId: 'crypto-alias',
         code:
             '''
 function extract(ctx) {
-  var body = ctx.crypto.streamDecrypt(${jsonEncode(payload)}, ${jsonEncode(seed)}, ctx.tmdbId);
+  var payload = globalThis.__engineStreamEncryptForTest(${jsonEncode(json)}, ${jsonEncode(seed)}, ctx.tmdbId);
+  var body = ctx.crypto.streamDecrypt(payload, ${jsonEncode(seed)}, ctx.tmdbId);
   return Promise.resolve([{ url: 'https://cdn.example/b.m3u8', title: body }]);
 }
 ''',

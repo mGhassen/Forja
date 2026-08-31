@@ -197,31 +197,34 @@ abstract final class ExoPlayerMenus {
     required List<ExoTrackInfo> tracks,
     required Future<void> Function(String trackId) onSelect,
   }) {
-    return Padding(
+    if (tracks.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(12, 12, 12, 14),
+        child: Text(
+          'None available',
+          style: TextStyle(color: PlayerPopupTokens.muted),
+        ),
+      );
+    }
+    return ListView(
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
-      child: tracks.isEmpty
-          ? const Text(
-              'None available',
-              style: TextStyle(color: PlayerPopupTokens.muted),
-            )
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final track in tracks)
-                  _audioTile(track: track, onSelect: onSelect),
-              ],
-            ),
+      children: [
+        for (var i = 0; i < tracks.length; i++)
+          _audioTile(track: tracks[i], index: i + 1, onSelect: onSelect),
+      ],
     );
   }
 
   static Widget _audioTile({
     required ExoTrackInfo track,
+    required int index,
     required Future<void> Function(String trackId) onSelect,
   }) {
     final label = formatPlayerTrackLabel(
       id: track.id,
       title: track.label,
       language: track.language,
+      index: index,
     );
     return PlayerPopupListTile(
       label: label,

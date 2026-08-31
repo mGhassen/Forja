@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
 
 /// Common ISO-639-1 / ISO-639-2 codes mapped to display names.
@@ -56,9 +57,8 @@ bool _matchesLanguage(String displayName, String? language, String? title) {
       language: language, title: title);
 }
 
-/// Public version of [_matchesLanguage] - useful for matching external
-/// subtitle map entries (which carry `language`/`display` keys, not real
-/// SubtitleTrack objects yet).
+/// Public version of [_matchesLanguage] — for scraped/online subtitle rows
+/// (`language` / `display` keys), not embedded [SubtitleTrack] objects.
 bool matchesPreferredLanguage(String displayName,
     {String? language, String? title}) {
   if (displayName == 'None' || displayName.isEmpty) return false;
@@ -142,6 +142,101 @@ String? resolvePreferredLanguageDisplayName({
       return name;
     }
   }
+  return null;
+}
+
+const _kRegionalSpanishLangTags = {
+  'es-la',
+  'es-419',
+  'latino',
+  'latin american',
+  'latin america',
+};
+
+/// Bare two-letter tags that often appear on HLS muxes with no ISO meaning.
+const _kUnreliableBareLangCodes = {'la', 'sv', 'no'};
+
+bool _bareLangTagReliable(String? language, String? title) {
+  final lang = _normalize(language);
+  if (lang.isEmpty) return false;
+  if (lang.length >= 3) return true;
+  if (lang.length != 2) return false;
+  if (!_kUnreliableBareLangCodes.contains(lang)) return true;
+  final fromTitle = resolvePreferredLanguageDisplayName(
+    language: null,
+    title: title,
+  );
+  final fromLang = resolvePreferredLanguageDisplayName(
+    language: language,
+    title: null,
+  );
+  return fromTitle != null && fromTitle == fromLang;
+}
+
+String? _endonymFromPreferredDisplay(
+  String display, {
+  String? language,
+}) {
+  final langNorm = _normalize(language);
+  if (display == 'Spanish' &&
+      _kRegionalSpanishLangTags.contains(langNorm)) {
+    return 'Español (Latinoamérica)';
+  }
+  if (display == 'Portuguese' &&
+      (langNorm == 'pt-br' || langNorm.startsWith('pt-br'))) {
+    return 'Português (Brasil)';
+  }
+  for (final entry in kTrackLanguageOptions) {
+    if (entry.key != display) continue;
+    for (final alias in entry.value) {
+      if (RegExp(r'^[a-z]{2}(-[a-z0-9]+)?$').hasMatch(alias)) {
+        final endo = languageEndonym(alias);
+        if (endo != null && endo != 'Unknown') return endo;
+      }
+    }
+    break;
+  }
+  final fromDisplay = languageEndonym(display);
+  if (fromDisplay != null && fromDisplay != 'Unknown') return fromDisplay;
+  return null;
+}
+
+/// Native endonym for an audio/subtitle track — mux [title] first, then lang
+/// when the tag is trustworthy. Unreliable bare tags fall back to null.
+String? trackLanguageEndonym({
+  String? language,
+  String? title,
+}) {
+  final titleDisplay = resolvePreferredLanguageDisplayName(
+    language: null,
+    title: title,
+  );
+  if (titleDisplay != null) {
+    return _endonymFromPreferredDisplay(titleDisplay, language: language);
+  }
+
+  if (!_bareLangTagReliable(language, title)) return null;
+
+  final display = resolvePreferredLanguageDisplayName(
+    language: language,
+    title: null,
+  );
+  if (display != null) {
+    return _endonymFromPreferredDisplay(display, language: language);
+  }
+
+  final fromLang = languageEndonym(language);
+  if (fromLang != null && fromLang != 'Unknown') return fromLang;
+
+  final trimmedTitle = title?.trim();
+  if (trimmedTitle != null && trimmedTitle.isNotEmpty) {
+    final fromTitle = languageEndonym(trimmedTitle);
+    if (fromTitle != null && fromTitle != 'Unknown') return fromTitle;
+    final first = trimmedTitle.split(RegExp(r'[\s\[\(,/·]+')).first;
+    final fromFirst = languageEndonym(first);
+    if (fromFirst != null && fromFirst != 'Unknown') return fromFirst;
+  }
+
   return null;
 }
 

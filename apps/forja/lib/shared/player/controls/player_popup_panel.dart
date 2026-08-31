@@ -451,73 +451,88 @@ class _PanelShell extends StatelessWidget {
         borderRadius: BorderRadius.circular(PlayerPopupTokens.shellRadius),
         border: Border.all(color: PlayerPopupTokens.border),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showHeader) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 6, 8),
-              child: Row(
-                children: [
-                  if (onBack != null)
-                    ShellBackIconButton(
-                      icon: Icons.arrow_back_rounded,
-                      size: 18,
-                      tooltip: 'Back',
-                      onTap: onBack,
-                    )
-                  else if (leadingIcon != null)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, right: 6),
-                      child: Icon(
-                        leadingIcon,
-                        color: PlayerPopupTokens.muted,
-                        size: 16,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          const headerBlockHeight = 52.0;
+          final headerHeight = showHeader ? headerBlockHeight : 0.0;
+          final scrollMax = constraints.maxHeight.isFinite
+              ? (constraints.maxHeight - headerHeight).clamp(0.0, double.infinity)
+              : double.infinity;
+          final body = scrollMax.isFinite && scrollMax > 0
+              ? ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: scrollMax),
+                  child: PlayerPopupListFocusScope(child: child),
+                )
+              : PlayerPopupListFocusScope(child: child);
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (showHeader) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 10, 6, 8),
+                  child: Row(
+                    children: [
+                      if (onBack != null)
+                        ShellBackIconButton(
+                          icon: Icons.arrow_back_rounded,
+                          size: 18,
+                          tooltip: 'Back',
+                          onTap: onBack,
+                        )
+                      else if (leadingIcon != null)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4, right: 6),
+                          child: Icon(
+                            leadingIcon,
+                            color: PlayerPopupTokens.muted,
+                            size: 16,
+                          ),
+                        )
+                      else
+                        const SizedBox(width: 4),
+                      if (title.isNotEmpty)
+                        Expanded(
+                          child: Text(
+                            title,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.15,
+                            ),
+                          ),
+                        )
+                      else
+                        const Spacer(),
+                      if (trailing != null) ...[
+                        trailing!,
+                        const SizedBox(width: 4),
+                      ],
+                      _PopupChromeButton(
+                        icon: Icons.close_rounded,
+                        tooltip: 'Close',
+                        onTap: onClose,
+                        autoFocus: tvFocus && autofocusClose,
                       ),
-                    )
-                  else
-                    const SizedBox(width: 4),
-                  if (title.isNotEmpty)
-                    Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.15,
-                        ),
-                      ),
-                    )
-                  else
-                    const Spacer(),
-                  if (trailing != null) ...[
-                    trailing!,
-                    const SizedBox(width: 4),
-                  ],
-                  _PopupChromeButton(
-                    icon: Icons.close_rounded,
-                    tooltip: 'Close',
-                    onTap: onClose,
-                    autoFocus: tvFocus && autofocusClose,
+                    ],
                   ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Divider(
-                height: 1,
-                thickness: 0.5,
-                color: PlayerPopupTokens.border,
-              ),
-            ),
-          ],
-          Flexible(child: PlayerPopupListFocusScope(child: child)),
-        ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Divider(
+                    height: 1,
+                    thickness: 0.5,
+                    color: PlayerPopupTokens.border,
+                  ),
+                ),
+              ],
+              body,
+            ],
+          );
+        },
       ),
     );
 

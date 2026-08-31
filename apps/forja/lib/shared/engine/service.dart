@@ -18,21 +18,6 @@ class EngineService {
   EngineService._();
   static final EngineService instance = EngineService._();
 
-  /// Official ForjaHQ Providers pack URL — see [PluginRegistry.officialProvidersManifestUrl].
-  static const officialProvidersManifestUrl =
-      PluginRegistry.officialProvidersManifestUrl;
-  static const officialLiveManifestUrl =
-      PluginRegistry.officialLiveManifestUrl;
-  static const officialCatalogManifestUrl =
-      PluginRegistry.officialCatalogManifestUrl;
-  static const officialHomeManifestUrl =
-      PluginRegistry.officialHomeManifestUrl;
-  static List<String> get officialManifestUrls =>
-      PluginRegistry.officialManifestUrls;
-
-  /// @Deprecated Prefer [officialProvidersManifestUrl].
-  static const officialManifestUrl = PluginRegistry.officialManifestUrl;
-
   static bool isInternalLiveCatalog(EnginePlugin plugin) => plugin.isLiveCatalog;
 
   static String catalogFilterId(EnginePlugin catalog) {
@@ -49,6 +34,7 @@ class EngineService {
   /// Legacy unscoped selection (migrated into `…_movie` once).
   static const _legacySelectedKey = 'engine_js_sources_selected_ids';
   static const _selectedKeyPrefix = 'engine_js_sources_selected_ids_';
+  static const _viewFilterKeyPrefix = 'engine_js_sources_view_filter_ids_';
 
   static ValueNotifier<int> get changeNotifier => PluginRegistry.changeNotifier;
   static ValueNotifier<String?> get officialInstallError =>
@@ -58,9 +44,6 @@ class EngineService {
   int _liveCatalogGeneration = 0;
   int _catalogGeneration = 0;
   EngineRuntime? _liveCatalogRuntime;
-
-  static bool isOfficialPack(String sourceUrl) =>
-      PluginRegistry.isOfficialPack(sourceUrl);
 
   static bool isLegacyAssetPack(String sourceUrl) =>
       PluginRegistry.isLegacyAssetPack(sourceUrl);
@@ -260,7 +243,7 @@ class EngineService {
       'protocol': hostProtocolVersion,
     };
 
-    final code = await _loadScript(plugin);
+    final code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
     if (gen != _catalogGeneration) return null;
     if (code == null || code.isEmpty) {
       debugPrint('[catalog] ${plugin.id} missing script');
@@ -420,6 +403,34 @@ class EngineService {
     );
   }
 
+  static String _viewFilterPrefsKey(String panelCategory) =>
+      '$_viewFilterKeyPrefix$panelCategory';
+
+  /// All-mode provider chip filters (view-only under All).
+  Future<Set<String>> loadSourcesViewFilterPluginIds({
+    required Set<String> enabledIds,
+    required String panelCategory,
+  }) async {
+    final prefs = await _prefs;
+    final raw = prefs.getStringList(_viewFilterPrefsKey(panelCategory));
+    if (raw == null || raw.isEmpty) return {};
+    return filterEngineSelectedPluginIds(
+      savedIds: raw,
+      enabledIds: enabledIds,
+    );
+  }
+
+  Future<void> saveSourcesViewFilterPluginIds(
+    Set<String> ids, {
+    required String panelCategory,
+  }) async {
+    final prefs = await _prefs;
+    await prefs.setStringList(
+      _viewFilterPrefsKey(panelCategory),
+      ids.toList(),
+    );
+  }
+
   Future<void> _syncHops(List<EnginePack> packs) async {
     await _syncHopsForRuntime(EngineRuntime.instance, packs);
   }
@@ -506,21 +517,16 @@ class EngineService {
       extractCtx,
       mergeEngineConfig(active.config, overlay),
     );
-    var code = await _loadScript(active);
+    var code = await _loadScript(active, sourceUrl: hit.pack.sourceUrl);
     if (gen != _extractGeneration) return null;
     if (code == null || code.isEmpty) {
       debugPrint('[engine] ${active.id} missing script — repairing pack');
-      for (final pack in packs) {
-        if (pack.plugins.any((p) => p.id == active.id)) {
-          try {
-            await PluginRegistry.instance.install(pack.sourceUrl);
-          } catch (e) {
-            debugPrint('[engine] repair install failed: $e');
-          }
-          break;
-        }
+      try {
+        await PluginRegistry.instance.install(hit.pack.sourceUrl);
+      } catch (e) {
+        debugPrint('[engine] repair install failed: $e');
       }
-      code = await _loadScript(active);
+      code = await _loadScript(active, sourceUrl: hit.pack.sourceUrl);
       if (gen != _extractGeneration) return null;
       if (code == null || code.isEmpty) {
         debugPrint('[engine] ${active.id} still missing script after repair');
@@ -616,7 +622,7 @@ class EngineService {
     final overlay =
         ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
     final config = mergeEngineConfig(plugin.config, overlay);
-    final code = await _loadScript(plugin);
+    final code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
     if (gen != _extractGeneration || code == null) return [];
     final viaRust = await _runLiveEngineRustJs(
       plugin: plugin,

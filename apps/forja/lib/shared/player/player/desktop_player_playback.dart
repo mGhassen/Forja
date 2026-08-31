@@ -1069,8 +1069,12 @@ mixin _DesktopPlayerPlayback
             _s._currentFallbackSourceIndex < _s._currentSources!.length
         ? _s._currentSources![_s._currentFallbackSourceIndex]
         : null;
-    final headers = _s._hlsMasterHeaders ?? src?.headers ?? widget.headers;
     final pid = src?.providerId ?? _s._currentProvider;
+    final headers = resolvePlaybackHttpHeaders(
+      _s._hlsMasterHeaders ?? src?.headers ?? widget.headers,
+      streamUrl: playUrl,
+      providerId: pid,
+    );
     _s._isInitPlaybackRunning = true;
     _s._statusController.upsert(
       'post-seek-remount',
@@ -1114,12 +1118,7 @@ mixin _DesktopPlayerPlayback
       seekOverride: target,
     );
     if (_s._disposed || !mounted) return false;
-    return remountPlaybackLooksLive(
-      playing: _s._player.state.playing,
-      buffering: _s._player.state.buffering,
-      position: _s._positionNotifier.value,
-      target: target,
-    );
+    return remountPlaybackResumed(_s._player.state, target);
   }
 
   void _ensurePostSeekStallWatchdog() {

@@ -398,13 +398,20 @@ class CatalogRuntime {
     Map<String, dynamic>? auth,
     required Duration timeout,
   }) async {
-    final raw = await EngineService.instance.runCatalog(
-      pluginId: enrichId,
-      action: 'enrich',
-      params: enrichParams,
-      auth: auth,
-      timeout: timeout,
-    );
+    Map<String, dynamic>? raw;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) {
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+      }
+      raw = await EngineService.instance.runCatalog(
+        pluginId: enrichId,
+        action: 'enrich',
+        params: enrichParams,
+        auth: auth,
+        timeout: timeout,
+      );
+      if (raw != null) break;
+    }
     if (raw == null) {
       debugPrint('[catalog] $sourcePluginId enrich via $enrichId skipped (no answer)');
       return null;
@@ -450,9 +457,11 @@ class CatalogRuntime {
     if (data == null) return false;
     switch (action) {
       case 'details':
+        // KissKH embeds ids.tmdb + TMDB backdrop URLs — backdrop alone is not
+        // companion enrich (episode stills / kit marker). Require the marker.
         final meta = data['meta'];
         if (meta is! Map) return false;
-        return _metaTmdbEnriched(Map<String, dynamic>.from(meta));
+        return Map<String, dynamic>.from(meta)['_hubTmdbEnriched'] == true;
       case 'rail':
         final rail = (params['rail'] ?? '').toString().trim();
         if (rail.isNotEmpty && rail != 'spotlight') return false;

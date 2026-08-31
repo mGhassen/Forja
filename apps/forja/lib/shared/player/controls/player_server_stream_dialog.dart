@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:forja/shared/playback/anime_embed.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
@@ -365,10 +364,8 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
 
   String? _serverBadge(String providerId) {
     final provider = widget.providers?[providerId];
-    if (provider is AnimeEmbed) {
-      return provider.category.toUpperCase();
-    }
-    return null;
+    final cat = PlayerStreamMenu.providerAudioCategory(providerId, provider);
+    return cat?.toUpperCase();
   }
 
   Widget _buildServersColumn() {

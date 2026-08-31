@@ -464,8 +464,8 @@ class _SettingsProvidersSectionState
               padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
               child: Text(
                 installError == null
-                    ? 'No plugins installed. ForjaHQ installs on first launch, or paste a manifest URL below.'
-                    : 'ForjaHQ could not install: $installError',
+                    ? 'No plugins installed. Paste a manifest URL below, or sign in to sync packs from your profile.'
+                    : 'Plugin install failed: $installError',
                 style: TextStyle(
                   color: installError == null
                       ? ForjaShellColors.textSecondary.withValues(alpha: 0.9)
@@ -477,7 +477,7 @@ class _SettingsProvidersSectionState
             ),
             if (installError != null) ...[
               SettingsFilledButton(
-                label: 'Retry ForjaHQ',
+                label: 'Retry install',
                 icon: Icons.refresh_rounded,
                 busy: _engineInstalling,
                 onPressed: _retryOfficialEnginePack,
@@ -522,7 +522,6 @@ class _SettingsProvidersSectionState
             if (p.isHttp || p.isHubCatalog) p,
         ];
         if (panelPlugins.isEmpty) continue;
-        final official = EngineService.isOfficialPack(pack.sourceUrl);
         rows.add(
           SettingsEnginePackExpansion(
             pack: pack,
@@ -538,7 +537,7 @@ class _SettingsProvidersSectionState
               ),
               onRefresh: () => _refreshEnginePack(pack.sourceUrl),
               onRemove: () => _removeEnginePack(pack.sourceUrl),
-              showOfficialBadge: official,
+              showOfficialBadge: false,
             ),
           ),
         );
@@ -557,10 +556,10 @@ class _SettingsProvidersSectionState
     try {
       await EngineService.instance.retryOfficialInstall();
       if (!mounted) return;
-      ForjaToast.success('ForjaHQ installed');
+      ForjaToast.success('Plugins refreshed');
     } catch (e) {
       if (!mounted) return;
-      ForjaToast.error('ForjaHQ install failed: $e');
+      ForjaToast.error('Plugin install failed: $e');
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
     }

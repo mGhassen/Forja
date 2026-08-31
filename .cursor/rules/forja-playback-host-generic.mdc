@@ -54,7 +54,6 @@ types** (`engine.json`). Playback must **not** import it to interpret catalog me
 | Item | Why |
 |------|-----|
 | `provider_runtime_config.dart` provider hostnames | Stream **provider** URLs (VidLink, Megaplay paths), not hub **catalog** packs |
-| `anime_playback_embeds.dart` / `anime_embed.dart` | Legacy engine anime **provider** descriptors — not hub browse; do not grow |
 | `engine_auto_play.dart` | Calls engine; must not contain surface→id mapping (engine owns that) |
 
 ---

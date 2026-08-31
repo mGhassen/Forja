@@ -136,6 +136,7 @@ flutter:
     - assets/fonts/
     - assets/videasy/
     - assets/nuvio/
+    - assets/engine/_streamcrypto.js
     - assets/plugins/live/goat/
     - assets/plugins/live/goat/vendor/
     - assets/plugins/live/goat/webview/

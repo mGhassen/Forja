@@ -271,6 +271,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<NuvioAddon> _nuvioAddons = [];
   Set<String> _nuvioSelectedScraperIds = {};
   bool _nuvioAllMode = false;
+  bool _nuvioSelectionHydrated = false;
   Set<String> _nuvioViewFilterScraperIds = {};
   Set<String> _nuvioFetchedScraperIds = {};
   /// Soft-cancelled while in-flight — discard late results.
@@ -285,6 +286,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   List<EnginePack> _enginePacks = [];
   Set<String> _engineSelectedPluginIds = {};
   bool _engineAllMode = false;
+  bool _engineSelectionHydrated = false;
   Set<String> _engineViewFilterPluginIds = {};
   Set<String> _engineFetchedPluginIds = {};
   /// Soft-cancelled while in-flight — discard late results without abortAll.
@@ -440,39 +442,41 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _ => false,
     };
     if (cachedUi != null && kindAllowed(cachedUi.kindFilter)) {
-      _kindFilter = cachedUi.kindFilter;
+      applyCatalogSourcesPanelUiState(
+        state: cachedUi,
+        setKindFilter: (k) => _kindFilter = k,
+        setNuvioSelectedScraperIds: (ids) => _nuvioSelectedScraperIds = ids,
+        setEngineSelectedPluginIds: (ids) => _engineSelectedPluginIds = ids,
+        setNuvioAllMode: (mode) {
+          if (mode != null) _nuvioAllMode = mode;
+        },
+        setEngineAllMode: (mode) {
+          if (mode != null) _engineAllMode = mode;
+        },
+        setNuvioViewFilterScraperIds: (ids) =>
+            _nuvioViewFilterScraperIds = ids,
+        setEngineViewFilterPluginIds: (ids) =>
+            _engineViewFilterPluginIds = ids,
+        setTorrentViewFilterProviderIds: (ids) =>
+            _torrentViewFilterProviderIds = ids,
+        setUserPickedStremioProvider: (picked) =>
+            _userPickedStremioProvider = picked,
+        setSearchQuery: (q) => _searchQuery = q,
+        setQualityFilters: (f) => _qualityFilters = f,
+        setLanguageFilters: (f) => _languageFilters = f,
+        setTechFilters: (f) => _techFilters = f,
+        setAudioFilters: (f) => _audioFilters = f,
+        setSizeFilters: (f) => _sizeFilters = f,
+        setPanelSourceIdByKind: (byKind) {
+          _panelSourceIdByKind
+            ..clear()
+            ..addAll(byKind);
+        },
+        kindAllowed: kindAllowed,
+      );
       _userPickedKind = cachedUi.userPickedKind;
-      _userPickedStremioProvider = cachedUi.userPickedStremioProvider;
-      _searchQuery = cachedUi.searchQuery;
-      _qualityFilters = Set<String>.from(cachedUi.qualityFilters);
-      _languageFilters = Set<String>.from(cachedUi.languageFilters);
-      _techFilters = Set<String>.from(cachedUi.techFilters);
-      _audioFilters = Set<String>.from(cachedUi.audioFilters);
-      _sizeFilters = Set<String>.from(cachedUi.sizeFilters);
-      _nuvioSelectedScraperIds = Set<String>.from(
-        cachedUi.nuvioSelectedScraperIds,
-      );
-      _engineSelectedPluginIds = Set<String>.from(
-        cachedUi.engineSelectedPluginIds,
-      );
-      _nuvioViewFilterScraperIds = Set<String>.from(
-        cachedUi.nuvioViewFilterScraperIds,
-      );
-      _engineViewFilterPluginIds = Set<String>.from(
-        cachedUi.engineViewFilterPluginIds,
-      );
-      _torrentViewFilterProviderIds = Set<String>.from(
-        cachedUi.torrentViewFilterProviderIds,
-      );
-      if (cachedUi.nuvioAllMode != null) {
-        _nuvioAllMode = cachedUi.nuvioAllMode!;
-      }
-      if (cachedUi.engineAllMode != null) {
-        _engineAllMode = cachedUi.engineAllMode!;
-      }
-      _panelSourceIdByKind
-        ..clear()
-        ..addAll(cachedUi.panelSourceIdByKind);
+      _engineSelectionHydrated = true;
+      _nuvioSelectionHydrated = true;
       _restorePanelSourceIdForKind(_kindFilter);
     } else {
       _kindFilter = _resolveInitialKind(
@@ -872,14 +876,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final hasEngine = engineOn;
 
     List<EnginePack> enginePacks = const [];
-    var enginePacksLoading = false;
     if (engineOn) {
       enginePacks = await packsFut;
-      // Cold install can take a long time — paint Torrents/Stremio/Nuvio now
-      // and let Forja show its own loading state.
-      if (enabledEnginePluginIds(enginePacks).isEmpty) {
-        enginePacksLoading = true;
-      }
     }
     if (!mounted) return;
 
@@ -935,10 +933,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           : {};
       sourceIdByKind = {};
     }
-    // Seeded selection can be empty while packs were still loading — fall back.
+    // Seeded selection can be empty while packs were still loading — fall back
+    // only when there is no session snapshot (prefs default) or All mode.
     if (hasEngine &&
         engineSelected.isEmpty &&
-        enabledEnginePluginIds(enginePacks).isNotEmpty) {
+        enabledEnginePluginIds(enginePacks).isNotEmpty &&
+        (cachedUi == null || cachedUi.engineAllMode == true)) {
       engineSelected = await _loadDefaultEngineChipSelection(enginePacks);
     }
     if (!mounted) return;
@@ -949,37 +949,127 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _showNuvio = hasNuvio;
       _showEngine = hasEngine;
       _nuvioAddons = nuvioAddons;
-      _nuvioSelectedScraperIds = nuvioSelected;
-      _nuvioAllMode = cachedUi?.nuvioAllMode ??
-          nuvioFullAllSelected(
-            enabledIds: enabledNuvioScraperIds(nuvioAddons),
-            selectedIds: nuvioSelected,
-          );
-      _nuvioViewFilterScraperIds = cachedUi != null
-          ? Set<String>.from(cachedUi.nuvioViewFilterScraperIds)
-          : _nuvioViewFilterScraperIds;
+      final nuvioEnabled = enabledNuvioScraperIds(nuvioAddons);
+      if (!_nuvioSelectionHydrated) {
+        _nuvioSelectedScraperIds = nuvioSelected;
+        _nuvioAllMode = cachedUi?.nuvioAllMode ??
+            nuvioFullAllSelected(
+              enabledIds: nuvioEnabled,
+              selectedIds: nuvioSelected,
+            );
+        _nuvioViewFilterScraperIds = cachedUi != null
+            ? Set<String>.from(cachedUi.nuvioViewFilterScraperIds)
+            : _nuvioViewFilterScraperIds;
+      } else {
+        _nuvioSelectedScraperIds = filterNuvioSelectedScraperIds(
+          savedIds: _nuvioSelectedScraperIds,
+          enabledIds: nuvioEnabled,
+        );
+        _nuvioViewFilterScraperIds = filterNuvioSelectedScraperIds(
+          savedIds: _nuvioViewFilterScraperIds,
+          enabledIds: nuvioEnabled,
+        );
+      }
       _enginePacks = enginePacks;
-      _enginePacksLoading = enginePacksLoading;
-      _engineSelectedPluginIds = engineSelected;
-      final engineScope = EngineCategories.matchingPluginIds(
-        packs: enginePacks,
-        categories: EngineCategories.defaultsForPanelCategory(
-          _enginePanelCategory,
-        ),
-      );
-      _engineAllMode = cachedUi?.engineAllMode ??
-          engineFullAllSelected(
-            enabledIds: engineScope.isNotEmpty
-                ? engineScope
-                : enabledEnginePluginIds(enginePacks),
-            selectedIds: engineSelected,
+      final engineEnabled = enabledEnginePluginIds(enginePacks);
+      if (!_engineSelectionHydrated) {
+        _engineSelectedPluginIds = engineSelected;
+        final engineScope = EngineCategories.matchingPluginIds(
+          packs: enginePacks,
+          categories: EngineCategories.defaultsForPanelCategory(
+            _enginePanelCategory,
+          ),
+        );
+        _engineAllMode = cachedUi?.engineAllMode ??
+            engineFullAllSelected(
+              enabledIds: engineScope.isNotEmpty ? engineScope : engineEnabled,
+              selectedIds: engineSelected,
+            );
+        _engineViewFilterPluginIds = cachedUi != null
+            ? Set<String>.from(cachedUi.engineViewFilterPluginIds)
+            : _engineViewFilterPluginIds;
+      } else {
+        _engineSelectedPluginIds = filterEngineSelectedPluginIds(
+          savedIds: _engineSelectedPluginIds,
+          enabledIds: engineEnabled,
+        );
+        _engineViewFilterPluginIds = filterEngineSelectedPluginIds(
+          savedIds: _engineViewFilterPluginIds,
+          enabledIds: engineEnabled,
+        );
+      }
+      if (!_engineSelectionHydrated) {
+        if (_engineAllMode &&
+            _engineViewFilterPluginIds.isEmpty &&
+            engineEnabled.isNotEmpty) {
+          unawaited(
+            EngineService.instance
+                .loadSourcesViewFilterPluginIds(
+                  enabledIds: engineEnabled,
+                  panelCategory: _enginePanelCategory,
+                )
+                .then((ids) {
+              if (!mounted) return;
+              if (ids.isEmpty) return;
+              setState(() => _engineViewFilterPluginIds = ids);
+            }),
           );
-      _engineViewFilterPluginIds = cachedUi != null
-          ? Set<String>.from(cachedUi.engineViewFilterPluginIds)
-          : _engineViewFilterPluginIds;
-      _torrentViewFilterProviderIds = cachedUi != null
-          ? Set<String>.from(cachedUi.torrentViewFilterProviderIds)
-          : _torrentViewFilterProviderIds;
+        }
+      } else if (_engineAllMode &&
+          _engineViewFilterPluginIds.isEmpty &&
+          engineEnabled.isNotEmpty) {
+        unawaited(
+          EngineService.instance
+              .loadSourcesViewFilterPluginIds(
+                enabledIds: engineEnabled,
+                panelCategory: _enginePanelCategory,
+              )
+              .then((ids) {
+            if (!mounted) return;
+            if (ids.isEmpty) return;
+            setState(() => _engineViewFilterPluginIds = ids);
+          }),
+        );
+      }
+      if (!_nuvioSelectionHydrated) {
+        if (_nuvioAllMode &&
+            _nuvioViewFilterScraperIds.isEmpty &&
+            nuvioEnabled.isNotEmpty) {
+          unawaited(
+            NuvioService.instance
+                .loadSourcesViewFilterScraperIds(enabledIds: nuvioEnabled)
+                .then((ids) {
+              if (!mounted) return;
+              if (ids.isEmpty) return;
+              setState(() => _nuvioViewFilterScraperIds = ids);
+            }),
+          );
+        }
+      } else if (_nuvioAllMode &&
+          _nuvioViewFilterScraperIds.isEmpty &&
+          nuvioEnabled.isNotEmpty) {
+        unawaited(
+          NuvioService.instance
+              .loadSourcesViewFilterScraperIds(enabledIds: nuvioEnabled)
+              .then((ids) {
+            if (!mounted) return;
+            if (ids.isEmpty) return;
+            setState(() => _nuvioViewFilterScraperIds = ids);
+          }),
+        );
+      }
+      if (_engineSelectionHydrated) {
+        _torrentViewFilterProviderIds = {
+          for (final id in _torrentViewFilterProviderIds)
+            if (TorrentSearchProviders.isBuiltinSearchChip(id) &&
+                _enabledTorrentProviders.contains(id))
+              id,
+        };
+      } else {
+        _torrentViewFilterProviderIds = cachedUi != null
+            ? Set<String>.from(cachedUi.torrentViewFilterProviderIds)
+            : _torrentViewFilterProviderIds;
+      }
       _streamAddons = addons;
       _panelSourceIdByKind
         ..clear()
@@ -996,6 +1086,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _sizeFilters = Set<String>.from(cachedUi.sizeFilters);
       }
       _restorePanelSourceIdForKind(kind);
+      _engineSelectionHydrated = true;
+      _nuvioSelectionHydrated = true;
     });
 
     // Load only the selected kind(s) - no prefetch of other categories.
@@ -1048,7 +1140,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         savedIds: _engineSelectedPluginIds,
         enabledIds: enabledIds,
       );
-      if (selected.isEmpty && enabledIds.isNotEmpty) {
+      if (selected.isEmpty &&
+          enabledIds.isNotEmpty &&
+          !_engineSelectionHydrated) {
         selected = await _loadDefaultEngineChipSelection(packs);
       }
       if (!mounted) return;
@@ -1062,6 +1156,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _enginePacks = packs;
         _enginePacksLoading = false;
         _engineSelectedPluginIds = selected;
+        _engineSelectionHydrated = true;
         if (_engineAllMode ||
             engineFullAllSelected(
               enabledIds: engineScope.isNotEmpty ? engineScope : enabledIds,
@@ -1759,11 +1854,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
   }
 
+  bool get _isEngineListFetching =>
+      _engineFetching ||
+      (_enginePacksLoading && _engineSelectedPluginIds.isNotEmpty);
+
   bool get _isFetching =>
       (_showsTorrents && _searching) ||
       (_showsStremio && _stremioFetching) ||
       (_showsNuvio && _nuvioFetching) ||
-      (_showsEngine && (_engineFetching || _enginePacksLoading));
+      (_showsEngine && _isEngineListFetching);
 
   void _abortTorrentSearch() {
     if (!_searching) return;
@@ -2600,6 +2699,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _kindFilter = kind;
       _restorePanelSourceIdForKind(kind);
     });
+    _savePanelUiCache();
     _resetListScroll(allowScrollToCurrent: true);
     _ensureVisibleKindsLoaded();
   }
@@ -2889,6 +2989,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           _error = null;
         });
         unawaited(NuvioService.instance.saveSourcesSelectedScraperIds({}));
+        unawaited(NuvioService.instance.saveSourcesViewFilterScraperIds({}));
         _savePanelUiCache();
         return;
       }
@@ -2935,6 +3036,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           );
           _error = null;
         });
+        unawaited(
+          NuvioService.instance.saveSourcesViewFilterScraperIds(
+            _nuvioViewFilterScraperIds,
+          ),
+        );
+        _savePanelUiCache();
         return;
       }
       final prev = _nuvioSelectedScraperIds;
@@ -2972,6 +3079,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       if (next.contains(scraperId) && !fetched) {
         unawaited(_fetchNextNuvioScraper());
       }
+      _savePanelUiCache();
       return;
     }
     if (id == 'all_engine') {
@@ -2997,6 +3105,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         });
         unawaited(
           EngineService.instance.saveSourcesSelectedPluginIds(
+            {},
+            panelCategory: _enginePanelCategory,
+          ),
+        );
+        unawaited(
+          EngineService.instance.saveSourcesViewFilterPluginIds(
             {},
             panelCategory: _enginePanelCategory,
           ),
@@ -3053,6 +3167,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           );
           _error = null;
         });
+        unawaited(
+          EngineService.instance.saveSourcesViewFilterPluginIds(
+            _engineViewFilterPluginIds,
+            panelCategory: _enginePanelCategory,
+          ),
+        );
+        _savePanelUiCache();
         return;
       }
       final selected = _engineSelectedPluginIds;
@@ -3092,6 +3213,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       if (next.contains(pluginId) && !fetched) {
         unawaited(_fetchNextEnginePlugin());
       }
+      _savePanelUiCache();
       return;
     }
     if (id == TorrentSearchProviders.allId) {
@@ -3119,6 +3241,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           id,
         );
       });
+      _savePanelUiCache();
       return;
     }
     if (id == _selectedSourceId) return;
@@ -3253,6 +3376,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               _nuvioInFlightScraperIds.clear();
               _nuvioPoolTasks.clear();
               _engineFetching = false;
+              _enginePacksLoading = false;
               _engineInFlightPluginIds.clear();
               _enginePoolTasks.clear();
             });
@@ -3446,14 +3570,17 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       );
     }
     if (totalCount == 0) {
-      final emptyMsg =
-          (_showsNuvio && _nuvioSelectedScraperIds.isEmpty) ||
-              (_showsEngine && _engineSelectedPluginIds.isEmpty) ||
-              (_showsStremio && _selectedSourceId.isEmpty) ||
-              (_showsTorrents &&
-                  TorrentSearchProviders.isNoneChip(_selectedSourceId))
-          ? 'Select at least one provider'
-          : 'No matching sources';
+      final emptyMsg = _showsEngine &&
+              !_enginePacksLoading &&
+              enabledEnginePluginIds(_enginePacks).isEmpty
+          ? 'No Forja plugins installed'
+          : (_showsNuvio && _nuvioSelectedScraperIds.isEmpty) ||
+                  (_showsEngine && _engineSelectedPluginIds.isEmpty) ||
+                  (_showsStremio && _selectedSourceId.isEmpty) ||
+                  (_showsTorrents &&
+                      TorrentSearchProviders.isNoneChip(_selectedSourceId))
+              ? 'Select at least one provider'
+              : 'No matching sources';
       return Center(
         child: Text(
           emptyMsg,

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/player/post_seek_stall_watchdog.dart';
 import 'package:forja/shared/player/player/utils.dart';
+import 'package:media_kit/media_kit.dart';
 
 void main() {
   test('remounts after prolonged buffering when position stuck', () async {
@@ -204,6 +205,35 @@ void main() {
     expect(
       remountResumeTimeoutForSeek(const Duration(minutes: 59)).inSeconds,
       60,
+    );
+  });
+
+  test('remountPlaybackResumed requires decoded frame near target', () {
+    const target = Duration(seconds: 2610);
+    expect(
+      remountPlaybackResumed(
+        PlayerState(
+          playing: true,
+          buffering: false,
+          position: target,
+          duration: const Duration(hours: 2),
+        ),
+        target,
+      ),
+      isFalse,
+    );
+    expect(
+      remountPlaybackResumed(
+        PlayerState(
+          playing: true,
+          buffering: false,
+          position: target,
+          duration: const Duration(hours: 2),
+          videoParams: const VideoParams(w: 1920, h: 1080),
+        ),
+        target,
+      ),
+      isTrue,
     );
   });
 

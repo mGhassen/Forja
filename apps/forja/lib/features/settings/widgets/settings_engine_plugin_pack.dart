@@ -97,7 +97,6 @@ class SettingsEnginePackExpansion extends StatelessWidget {
       groupKey: groupKey,
       groupOrder: groupOrder,
     );
-    final official = EngineService.isOfficialPack(pack.sourceUrl);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -116,7 +115,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
               color: ForjaShellColors.iconActive,
             ),
             title: Text(
-              official ? '${pack.name} (ForjaHQ)' : pack.name,
+              pack.name,
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 14,

@@ -6,17 +6,19 @@ import 'package:forja/features/iptv/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/iptv/data/storage.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
-import 'package:forja/shared/playback/anime_playback_embeds.dart';
-import 'package:forja/shared/services/app_update_download_storage.dart';
 import 'package:forja/shared/services/app_update_download_service.dart';
+import 'package:forja/shared/services/app_update_download_storage.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/utils/webview_cleanup.dart';
 import 'package:rust/rust.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Settings-driven clears for caches and local viewing data.
 abstract final class SettingsDataCleaner {
   static Future<void> clearStreamCaches() async {
-    await clearLegacyAnimeStreamPrefs();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('enma_anime_stream_cache_v1');
+    await prefs.remove('enma_anime_source_v1');
     if (PlatformPlayback.capabilities.localTorrentEngine) {
       try {
         await TorrentStreamService().clearCacheDirectory();

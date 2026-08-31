@@ -246,13 +246,12 @@ abstract final class PluginNavRegistry {
   static Future<bool> isHubPluginEnabled(String pluginId) async {
     final want = pluginId.trim();
     if (want.isEmpty) return false;
-    for (final pack in await EngineService.instance.listPacks()) {
-      for (final pl in pack.plugins) {
-        if (pl.id != want) continue;
-        return pack.enabled && pl.enabled && pl.isHubCatalog;
-      }
-    }
-    return false;
+    final hit = PluginRegistry.packPluginFromPacks(
+      await EngineService.instance.listPacks(),
+      want,
+    );
+    if (hit == null || !hit.plugin.isHubCatalog) return false;
+    return hit.pack.isPluginActive(hit.plugin);
   }
 
   static IconData iconDataFor(CatalogNavSpec nav) {

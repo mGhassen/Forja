@@ -16,6 +16,32 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
           enabledIds: enabledIds,
         );
       }
+      var nuvioViewFilters = _s._nuvioViewFilterScraperIds;
+      if (!_s._nuvioSelectionHydrated) {
+        final allMode = nuvioFullAllSelected(
+          enabledIds: enabledIds,
+          selectedIds: saved,
+        );
+        if (allMode) {
+          nuvioViewFilters =
+              await NuvioService.instance.loadSourcesViewFilterScraperIds(
+            enabledIds: enabledIds,
+          );
+        } else {
+          nuvioViewFilters = {};
+        }
+      } else if (_s._nuvioAllMode) {
+        nuvioViewFilters = filterNuvioSelectedScraperIds(
+          savedIds: nuvioViewFilters,
+          enabledIds: enabledIds,
+        );
+        if (nuvioViewFilters.isEmpty) {
+          nuvioViewFilters =
+              await NuvioService.instance.loadSourcesViewFilterScraperIds(
+            enabledIds: enabledIds,
+          );
+        }
+      }
       if (!mounted) return;
       setState(() {
         _s._hasNuvioAddons = addons.isNotEmpty;
@@ -26,7 +52,7 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
             enabledIds: enabledIds,
             selectedIds: saved,
           );
-          _s._nuvioViewFilterScraperIds = {};
+          _s._nuvioViewFilterScraperIds = nuvioViewFilters;
           _s._nuvioSelectionHydrated = true;
         } else {
           _s._nuvioSelectedScraperIds = filterNuvioSelectedScraperIds(
@@ -38,7 +64,11 @@ mixin _DetailsScreenStremio on ConsumerState<DetailsScreen> {
               enabledIds: enabledIds,
               selectedIds: _s._nuvioSelectedScraperIds,
             );
-            if (!_s._nuvioAllMode) _s._nuvioViewFilterScraperIds = {};
+            if (_s._nuvioAllMode) {
+              _s._nuvioViewFilterScraperIds = nuvioViewFilters;
+            } else {
+              _s._nuvioViewFilterScraperIds = {};
+            }
           }
         }
       });

@@ -53,6 +53,38 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
               panelCategory: panelCategory,
               selectAllScopeIds: scope,
             );
+      var engineViewFilters = _s._engineViewFilterPluginIds;
+      if (!_s._engineSelectionHydrated) {
+        final allMode = engineFullAllSelected(
+          enabledIds: scope.isNotEmpty ? scope : enabledIds,
+          selectedIds: EngineCategories.scopeSelectionIfFullAll(
+            selected: saved ?? {},
+            enabledIds: enabledIds,
+            scope: scope,
+          ),
+        );
+        if (allMode) {
+          engineViewFilters =
+              await EngineService.instance.loadSourcesViewFilterPluginIds(
+            enabledIds: enabledIds,
+            panelCategory: panelCategory,
+          );
+        } else {
+          engineViewFilters = {};
+        }
+      } else if (_s._engineAllMode) {
+        engineViewFilters = filterEngineSelectedPluginIds(
+          savedIds: engineViewFilters,
+          enabledIds: enabledIds,
+        );
+        if (engineViewFilters.isEmpty) {
+          engineViewFilters =
+              await EngineService.instance.loadSourcesViewFilterPluginIds(
+            enabledIds: enabledIds,
+            panelCategory: panelCategory,
+          );
+        }
+      }
       if (!mounted) return;
       setState(() {
         _s._hasEnginePacks = enabledIds.isNotEmpty;
@@ -68,7 +100,7 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
             enabledIds: scope.isNotEmpty ? scope : enabledIds,
             selectedIds: _s._engineSelectedPluginIds,
           );
-          _s._engineViewFilterPluginIds = {};
+          _s._engineViewFilterPluginIds = engineViewFilters;
           _s._engineSelectionHydrated = true;
         } else {
           _s._engineSelectedPluginIds = filterEngineSelectedPluginIds(
@@ -80,7 +112,11 @@ mixin _DetailsScreenEngine on ConsumerState<DetailsScreen> {
               enabledIds: scope.isNotEmpty ? scope : enabledIds,
               selectedIds: _s._engineSelectedPluginIds,
             );
-            if (!_s._engineAllMode) _s._engineViewFilterPluginIds = {};
+            if (_s._engineAllMode) {
+              _s._engineViewFilterPluginIds = engineViewFilters;
+            } else {
+              _s._engineViewFilterPluginIds = {};
+            }
           }
         }
       });

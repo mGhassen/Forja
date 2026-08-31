@@ -52,6 +52,56 @@ class CatalogSourcesPanelUiState {
   final Map<String, String> panelSourceIdByKind;
 }
 
+/// Restores tab/chip/filter fields from a session UI snapshot.
+///
+/// Callers pass [kindAllowed] when play-source flags are known; when omitted,
+/// the cached kind is applied as-is (details cold start).
+void applyCatalogSourcesPanelUiState({
+  required CatalogSourcesPanelUiState state,
+  required void Function(String kindFilter) setKindFilter,
+  required void Function(Set<String> ids) setNuvioSelectedScraperIds,
+  required void Function(Set<String> ids) setEngineSelectedPluginIds,
+  required void Function(bool? mode) setNuvioAllMode,
+  required void Function(bool? mode) setEngineAllMode,
+  required void Function(Set<String> ids) setNuvioViewFilterScraperIds,
+  required void Function(Set<String> ids) setEngineViewFilterPluginIds,
+  required void Function(Set<String> ids) setTorrentViewFilterProviderIds,
+  required void Function(bool picked) setUserPickedStremioProvider,
+  required void Function(String query) setSearchQuery,
+  required void Function(Set<String> filters) setQualityFilters,
+  required void Function(Set<String> filters) setLanguageFilters,
+  required void Function(Set<String> filters) setTechFilters,
+  required void Function(Set<String> filters) setAudioFilters,
+  required void Function(Set<String> filters) setSizeFilters,
+  required void Function(Map<String, String> byKind) setPanelSourceIdByKind,
+  bool Function(String kind)? kindAllowed,
+}) {
+  final kindOk =
+      kindAllowed == null || kindAllowed(state.kindFilter);
+  if (kindOk) setKindFilter(state.kindFilter);
+  setNuvioSelectedScraperIds(Set<String>.from(state.nuvioSelectedScraperIds));
+  setEngineSelectedPluginIds(Set<String>.from(state.engineSelectedPluginIds));
+  setNuvioAllMode(state.nuvioAllMode);
+  setEngineAllMode(state.engineAllMode);
+  setNuvioViewFilterScraperIds(
+    Set<String>.from(state.nuvioViewFilterScraperIds),
+  );
+  setEngineViewFilterPluginIds(
+    Set<String>.from(state.engineViewFilterPluginIds),
+  );
+  setTorrentViewFilterProviderIds(
+    Set<String>.from(state.torrentViewFilterProviderIds),
+  );
+  setUserPickedStremioProvider(state.userPickedStremioProvider);
+  setSearchQuery(state.searchQuery);
+  setQualityFilters(Set<String>.from(state.qualityFilters));
+  setLanguageFilters(Set<String>.from(state.languageFilters));
+  setTechFilters(Set<String>.from(state.techFilters));
+  setAudioFilters(Set<String>.from(state.audioFilters));
+  setSizeFilters(Set<String>.from(state.sizeFilters));
+  setPanelSourceIdByKind(Map<String, String>.from(state.panelSourceIdByKind));
+}
+
 /// In-memory TTL cache for catalog Sources (Torrents / Stremio / Nuvio / Engine).
 ///
 /// Shared by media-details and the in-player Sources panel so reopening the

@@ -332,7 +332,7 @@ void main() {
       );
     });
 
-    test('details skips on legacy tmdb backdrop', () {
+    test('details does not skip on legacy tmdb backdrop alone', () {
       expect(
         CatalogRuntime.envelopeAlreadyEnriched(
           'details',
@@ -344,6 +344,26 @@ void main() {
             },
           },
           const {},
+        ),
+        isFalse,
+      );
+    });
+
+    test('spotlight rail skips on legacy tmdb backdrop', () {
+      expect(
+        CatalogRuntime.envelopeAlreadyEnriched(
+          'rail',
+          {
+            'items': [
+              {
+                'ids': {'tmdb': '603'},
+                'background':
+                    'https://image.tmdb.org/t/p/w1280/abc.jpg',
+                'id': 'kisskh:1',
+              },
+            ],
+          },
+          const {'rail': 'spotlight'},
         ),
         isTrue,
       );
@@ -454,15 +474,6 @@ void main() {
       expect(arabic.packId, 'forjahq-arabic');
       expect(home.plugins.map((p) => p.id), ['tmdb']);
       expect(arabic.plugins.map((p) => p.id), ['arabic-hub']);
-      expect(
-        PluginRegistry.officialPackIds,
-        containsAll([
-          'forjahq-home',
-          'forjahq-anime',
-          'forjahq-asian-drama',
-          'forjahq-arabic',
-        ]),
-      );
 
       final byId = {
         for (final p in [

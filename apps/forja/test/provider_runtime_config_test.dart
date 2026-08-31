@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/playback/anime_playback_embeds.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/player/player/utils.dart';
 
@@ -358,30 +357,6 @@ void main() {
         streamUrl: 'https://x.customcdn.test/a/master.m3u8',
       );
       expect(h['Referer'], 'https://megaplay.buzz/');
-    });
-  });
-
-  group('AnimeService embeds use runtime config', () {
-    test('overlay host appears in buildAllEmbeds', () {
-      ProviderRuntimeConfig.instance.debugSetSnapshot(
-        ProviderRuntimeSnapshot.builtins().merged(
-          ProviderRuntimeSnapshot.tryParse({
-            'schema': 1,
-            'anime': {
-              'megaplay': {'host': 'ops-megaplay.test'},
-            },
-          })!,
-        ),
-      );
-      final embeds = buildAnimePlaybackEmbeds(
-        anilistId: 5114,
-        episode: 1,
-      );
-      final mega = embeds.where((e) => e.server == 'megaplay').toList();
-      expect(
-        mega.every((e) => e.url.contains('ops-megaplay.test')),
-        isTrue,
-      );
     });
   });
 }
