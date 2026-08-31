@@ -12,7 +12,6 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/forja_profile_avatar.dart';
-import 'package:forja/shared/widgets/plugin_install_progress_banner.dart';
 import 'package:rust/rust.dart';
 
 /// Profile-switch splash: avatar flies from its Who's watching tile to center
@@ -299,20 +298,6 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
                                 ),
                               ],
                             ],
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        left: 16,
-                        right: 16,
-                        bottom: 24,
-                        child: SafeArea(
-                          child: Align(
-                            alignment: Alignment.bottomCenter,
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 420),
-                              child: const PluginInstallProgressBanner(),
-                            ),
                           ),
                         ),
                       ),

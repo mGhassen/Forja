@@ -15,7 +15,9 @@ class PluginInstallProgressBannerHost extends StatelessWidget {
     final coordinator = PluginInstallCoordinator.instance;
     final listenable = Listenable.merge([
       coordinator.progress,
+      coordinator.suppressBanner,
       ShellBus.playerSurfaceActive,
+      ShellBus.splashDismissed,
     ]);
 
     return Stack(
@@ -29,7 +31,10 @@ class PluginInstallProgressBannerHost extends StatelessWidget {
             child: ListenableBuilder(
               listenable: listenable,
               builder: (context, _) {
-                if (ShellBus.playerSurfaceActive.value) {
+                // Intro splash + profile warm use the bottom status line.
+                if (coordinator.suppressBanner.value ||
+                    !ShellBus.splashDismissed.value ||
+                    ShellBus.playerSurfaceActive.value) {
                   return const SizedBox.shrink();
                 }
                 final current = coordinator.progress.value;
@@ -48,25 +53,6 @@ class PluginInstallProgressBannerHost extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Compact banner for splash overlays (same look, no Stack host).
-class PluginInstallProgressBanner extends StatelessWidget {
-  const PluginInstallProgressBanner({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: PluginInstallCoordinator.instance.progress,
-      builder: (context, _) {
-        final current = PluginInstallCoordinator.instance.progress.value;
-        if (current == null) return const SizedBox.shrink();
-        return ExcludeFocus(
-          child: _PluginInstallBanner(progress: current),
-        );
-      },
     );
   }
 }

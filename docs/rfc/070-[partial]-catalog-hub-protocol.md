@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **5 / 5** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) |
-| **Current slice** | Search chrome capability-gated; Home `host_search` = Cmd+F overlay; A15 manual QA still open |
+| **Progress** | **10 / 10** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) |
+| **Current slice** | Play `Movie.id` prefers enrich `ids.tmdb`; A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -107,6 +107,7 @@ Source hub JS stays data-only. Pack declares `"enrich": "<pluginId>"`; host pipe
 | 3 | R70-A44 | Anime: `anilist.js` standalone; `enrich_tmdb.js` + manifest `enrich: anime-enrich-tmdb` (spotlight + details meta) | ✅ |
 | 4 | R70-A49 | `hubEnrichTmdb` prefers `meta.ids.tmdb` (fetch by id, movie↔tv fallback) before title search — same as details | ✅ |
 | 5 | R70-A50 | Hub cinematic hero client enrich uses `KissKhTmdbMatch` + dual-type details fetch (not first-with-backdrop) | ✅ |
+| 6 | R70-A59 | Hub play `Movie.id` prefers enrich `meta.ids.tmdb` over `open.id` (Wyzie / Simkl / generic extract) | ✅ |
 
 ---
 

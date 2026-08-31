@@ -26,7 +26,7 @@ During playback, tap the **Subtitles** icon in the bottom control bar. Languages
 - Auto-play picks an in-stream row when the stream has any; online results stay in the list for manual pick
 - On **Android TV**, opening Subtitles lands focus on the active language/track (or **Off** when subs are off)
 - **File** in the Subtitles header loads a local subtitle file; it is hidden on Android TV
-- Anime / Asian Drama still search by title (SubtitleCat / MySubs); Wyzie needs a real TMDB id (movies / TV)
+- Anime / Asian Drama still search by title (SubtitleCat / MySubs); Wyzie / Levrx use the hub’s enrich TMDB id when present (not the KissKh / AniList open id)
 - Subtitle search works best when the title and year match TMDB metadata
 - Stremio subtitle addons require IMDB id and installed addons with a subtitles resource
 

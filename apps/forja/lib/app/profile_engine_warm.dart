@@ -32,15 +32,36 @@ class ProfileEngineWarm {
     if (awaitOfficialPacks) {
       onStatus?.call('Loading plugins…');
       debugPrint('[Init] PluginInstallCoordinator (await)');
-      await PluginInstallCoordinator.instance
-          .ensureAllInstalled(
-            checkUpdates: true,
-            awaitCloudLean: true,
-            includeNuvio: needs.nuvio || needs.playSourceNuvio,
-          )
-          .catchError((Object e) {
-            debugPrint('[Init] Plugin install error (non-fatal): $e');
-          });
+      final coordinator = PluginInstallCoordinator.instance;
+      // Splash / profile warm already own the bottom status line — drive that
+      // instead of the in-shell progress card.
+      final statusCb = onStatus;
+      void Function()? forwardProgress;
+      if (statusCb != null) {
+        forwardProgress = () {
+          final p = coordinator.progress.value;
+          if (p == null) return;
+          statusCb(p.label);
+        };
+        coordinator.suppressBanner.value = true;
+        coordinator.progress.addListener(forwardProgress);
+      }
+      try {
+        await coordinator
+            .ensureAllInstalled(
+              checkUpdates: true,
+              awaitCloudLean: true,
+              includeNuvio: needs.nuvio || needs.playSourceNuvio,
+            )
+            .catchError((Object e) {
+              debugPrint('[Init] Plugin install error (non-fatal): $e');
+            });
+      } finally {
+        if (forwardProgress != null) {
+          coordinator.progress.removeListener(forwardProgress);
+          coordinator.suppressBanner.value = false;
+        }
+      }
       if (prefetchDefaultHub) {
         onStatus?.call(
           needs.homeTab ? 'Opening Home…' : 'Warming catalog…',

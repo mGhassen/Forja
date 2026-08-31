@@ -685,30 +685,11 @@ class _SplashScreenState extends State<SplashScreen> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _skipSplash,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ValueListenableBuilder<String>(
-                valueListenable: _bootStatus,
-                builder: (context, status, _) {
-                  return SplashOverlayContent(statusLabel: status);
-                },
-              ),
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 24,
-                child: SafeArea(
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
-                      child: const PluginInstallProgressBanner(),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          child: ValueListenableBuilder<String>(
+            valueListenable: _bootStatus,
+            builder: (context, status, _) {
+              return SplashOverlayContent(statusLabel: status);
+            },
           ),
         ),
       ),

@@ -7,7 +7,7 @@ import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
 
-/// Progress for the bottom install banner / splash status.
+/// Progress for the in-shell install banner / splash status line.
 class PluginInstallProgress {
   const PluginInstallProgress({
     required this.label,
@@ -34,6 +34,10 @@ class PluginInstallCoordinator {
 
   final ValueNotifier<PluginInstallProgress?> progress =
       ValueNotifier<PluginInstallProgress?>(null);
+
+  /// When true, [PluginInstallProgressBannerHost] stays hidden — splash /
+  /// profile warm own the bottom status text instead of a card.
+  final ValueNotifier<bool> suppressBanner = ValueNotifier<bool>(false);
 
   Future<void>? _inFlight;
 

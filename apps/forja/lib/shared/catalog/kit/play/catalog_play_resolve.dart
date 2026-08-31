@@ -73,12 +73,8 @@ Movie _playMovieFor(CatalogMetaItem item, {List<CatalogVideo>? videos}) {
   final poster = item.poster.trim();
   final backdrop = item.background.trim();
   final eps = videos ?? item.videos;
-  final open = item.open;
-  final id = open?.idInt ??
-      int.tryParse(item.id.split(':').last) ??
-      catalogSyntheticMovieId(item);
   return Movie(
-    id: id,
+    id: catalogMovieIdForPlay(item),
     title: item.name,
     posterPath: catalogPosterPathForMovie(poster),
     backdropPath: catalogPosterPathForMovie(

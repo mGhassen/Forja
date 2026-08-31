@@ -42,6 +42,18 @@ int? _numericOpenId(CatalogMetaItem item) {
   return int.tryParse(tail);
 }
 
+/// [Movie.id] for play / Wyzie / generic extract.
+///
+/// Prefer enrich `ids.tmdb` over hub `open.id` (KissKh / AniList / …). Pack
+/// extract keeps the hub id in [CatalogOpen.extract] `ctx` (e.g. `kisskhId`).
+int catalogMovieIdForPlay(CatalogMetaItem item) {
+  final tmdb = item.numericId('tmdb');
+  if (tmdb != null && tmdb > 0) return tmdb;
+  final openId = _numericOpenId(item);
+  if (openId != null && openId > 0) return openId;
+  return catalogSyntheticMovieId(item);
+}
+
 /// Map catalog meta → [Movie] for hero bleed / TMDB-shaped playback ids.
 Movie? catalogMetaToMovie(CatalogMetaItem item) {
   final open = item.open;
@@ -71,7 +83,9 @@ Movie? catalogMetaToMovie(CatalogMetaItem item) {
     );
   }
 
-  final id = _numericOpenId(item);
+  final tmdb = item.numericId('tmdb');
+  final openId = _numericOpenId(item);
+  final id = (tmdb != null && tmdb > 0) ? tmdb : openId;
   if (id == null || id <= 0) return null;
 
   String mediaType;
