@@ -21,6 +21,7 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/player_source_resolve.dart';
+import 'package:forja/shared/playback/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/stream_open_pipeline.dart';
 import 'package:forja/shared/playback/stream_open_strategy.dart';

@@ -31,13 +31,17 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
     _s._providerLoadGens[providerId] = gen;
 
     try {
-      if (widget.movie == null || widget.providers == null) {
+      if (widget.movie == null) {
+        _s._markProviderLoadFailed(providerId);
+        return null;
+      }
+      if (widget.providers == null && !EngineIds.isPluginChip(providerId)) {
         _s._markProviderLoadFailed(providerId);
         return null;
       }
       final hit = await PlayerSourceResolve.resolvePinnedForMovie(
         movie: widget.movie!,
-        providers: widget.providers!,
+        providers: widget.providers ?? {providerId: const {}},
         providerId: providerId,
         season: widget.selectedSeason ?? 1,
         episode:
@@ -162,14 +166,15 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
         streamUrl = cached.first.url;
         headers = cached.first.headers;
         sources = cached;
-      } else if (widget.movie != null && widget.providers != null) {
+      } else if (widget.movie != null &&
+          (widget.providers != null || EngineIds.isPluginChip(newProvider))) {
         if (newProvider == 'service111477' &&
             site111477_proxy.is111477ProxyRunning) {
           await site111477_proxy.stop111477Proxy();
         }
         final hit = await PlayerSourceResolve.resolvePinnedForMovie(
           movie: widget.movie!,
-          providers: widget.providers!,
+          providers: widget.providers ?? {newProvider: const {}},
           providerId: newProvider,
           season: widget.selectedSeason ?? 1,
           episode:

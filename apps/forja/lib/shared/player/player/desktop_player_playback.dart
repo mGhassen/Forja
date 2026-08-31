@@ -454,7 +454,7 @@ mixin _DesktopPlayerPlayback
             debugPrint(
               '[Player] Cached $pid source failed - re-resolving fresh extract',
             );
-            await _invalidateWebstreamingCacheForCurrent();
+            await _invalidatePlayerStreamExtractCacheForCurrent();
             final hit = await PlayerSourceResolve.resolvePinnedForMovie(
               movie: movie,
               providers: providers,
@@ -504,7 +504,7 @@ mixin _DesktopPlayerPlayback
         // Anime / host reload callback: always re-resolve like first Play even
         // when Auto server is Off - otherwise a 1-URL session cache leaves an
         // empty Sources panel and no recovery (movie I43 host path).
-        await _invalidateWebstreamingCacheForCurrent();
+        await _invalidatePlayerStreamExtractCacheForCurrent();
 
         final hostOwnsReload = widget.onReloadStreams != null;
         if (widget.streamsPrevalidated ||
@@ -646,7 +646,26 @@ mixin _DesktopPlayerPlayback
     }
   }
 
-  Future<void> _invalidateWebstreamingCacheForCurrent() async {}
+  Future<void> _invalidatePlayerStreamExtractCacheForCurrent() async {
+    final movie = widget.movie;
+    if (movie == null) return;
+    final key = PlayerStreamExtractCache.cacheKeyFromProgress(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode,
+    );
+    await PlayerStreamExtractCache.drop(key);
+    if (_s._disposed) return;
+    final pid = _s._currentProvider ?? widget.activeProvider;
+    if (pid != null && pid.isNotEmpty) {
+      final next = Map<String, List<StreamSource>>.from(
+        _s._liveProviderSourcesCache.value,
+      )..remove(pid);
+      _s._liveProviderSourcesCache.value = next;
+    }
+    debugPrint('[Player] dropped stale player stream extract cache $key');
+  }
 
   /// After sibling streams fail: full Auto resolve (same as first Play).
   Future<bool> _reresolveLikeFirstPlay({
@@ -978,7 +997,7 @@ mixin _DesktopPlayerPlayback
         }
       }
 
-      await _invalidateWebstreamingCacheForCurrent();
+      await _invalidatePlayerStreamExtractCacheForCurrent();
       if (_fallbackAborted(chainGen)) return;
 
       final recovered = await _reresolveLikeFirstPlay(
@@ -998,7 +1017,7 @@ mixin _DesktopPlayerPlayback
   Future<void> _retryCurrentPlayback() async {
     final idx = _s._currentFallbackSourceIndex;
     _s._failedSourceIndices.remove(idx);
-    await _invalidateWebstreamingCacheForCurrent();
+    await _invalidatePlayerStreamExtractCacheForCurrent();
     await _initPlayback(sourceStartIndex: idx);
   }
 
@@ -1151,7 +1170,7 @@ mixin _DesktopPlayerPlayback
       _s._hasError = true;
       _s._showControls = true;
     });
-    await _invalidateWebstreamingCacheForCurrent();
+    await _invalidatePlayerStreamExtractCacheForCurrent();
   }
 
   Future<void> _autoFallbackToNextProvider() async {
@@ -1196,7 +1215,7 @@ mixin _DesktopPlayerPlayback
         _s._showControls = true;
       });
       _notifyAllSourcesExhausted();
-      await _invalidateWebstreamingCacheForCurrent();
+      await _invalidatePlayerStreamExtractCacheForCurrent();
     }
   }
 
@@ -1563,7 +1582,7 @@ mixin _DesktopPlayerPlayback
           debugPrint('[Player] Open failed during network remount ($err)');
           return;
         }
-        unawaited(_invalidateWebstreamingCacheForCurrent());
+        unawaited(_invalidatePlayerStreamExtractCacheForCurrent());
         debugPrint('[Player] Open failed during probe - hopping ($err)');
         return;
       }

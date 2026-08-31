@@ -28,6 +28,7 @@ import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/player_source_resolve.dart';
 import 'package:forja/shared/playback/provider_score_probe_sync.dart';
 import 'package:forja/shared/playback/stream_open_pipeline.dart';
+import 'package:forja/shared/playback/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/stream_open_strategy.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';

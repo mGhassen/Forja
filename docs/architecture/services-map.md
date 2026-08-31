@@ -236,7 +236,7 @@ Already shipped (low priority tabs): manga, books, BestSimilar (`catalog`).
 |-----------|------|------|--------|
 | `PlaybackService` / `PlaybackEngine` | `shared/playback/` | C11 resolve UX, guards, cache | ✅ Host orchestration |
 | `DomainStreamProviderResolver` | `domain_playback_resolve.dart` | C11 domain → engine jobs | ✅ Host |
-| `WebstreamingStreamCache` | `webstreaming_stream_cache.dart` | C11 session cache | ✅ Host |
+| `PlayerStreamExtractCache` | `player_stream_extract_cache.dart` | C11 session cache | ✅ Host |
 | `HistoryPlaybackResume` | `history_playback_resume.dart` | C11 resume routing | ✅ Host |
 | `BestSimilarScraper` | `shared/catalog/bestsimilar_scraper.dart` | C2 TMDB-adjacent recs | 🔄 Port to `crates/*` when touched |
 | `MusicPlayerService` | `shared/audio/music_player_service.dart` | C6 audio playback UI glue | ✅ Host |

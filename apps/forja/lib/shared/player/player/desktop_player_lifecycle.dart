@@ -227,7 +227,53 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
 
   /// Session/disk cache when live [_s._currentSources] is empty (reopen same episode).
   Future<void> _hydrateSessionCacheFromDisk() async {
-    return;
+    if (widget.providerSourcesCache != null) return;
+    final movie = widget.movie;
+    if (movie == null) return;
+    if (widget.magnetLink != null ||
+        widget.activeProvider == 'stremio_direct' ||
+        isCatalogSourcesMode(widget.activeProvider)) {
+      return;
+    }
+
+    final key = PlayerStreamExtractCache.cacheKeyFromProgress(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+    final hit = await PlayerStreamExtractCache.read(key);
+    if (_s._disposed || !mounted || hit == null || hit.sources.isEmpty) return;
+
+    final providerId = hit.providerId.isNotEmpty
+        ? hit.providerId
+        : (_s._currentProvider ?? widget.activeProvider);
+    if (providerId == null || providerId.isEmpty) return;
+
+    final sources = dedupeStreamSources(hit.sources);
+    final cache = Map<String, List<StreamSource>>.from(
+      _s._ownedProviderSourcesCache.value,
+    );
+    if (cache[providerId]?.isEmpty ?? true) {
+      cache[providerId] = sources;
+      _s._ownedProviderSourcesCache.value = cache;
+    }
+
+    final needsSources =
+        _s._currentSources == null || _s._currentSources!.isEmpty;
+    final needsProvider =
+        _s._currentProvider == null || _s._currentProvider!.isEmpty;
+    if (!needsSources && !needsProvider) return;
+
+    if (!mounted) return;
+    setState(() {
+      if (needsProvider) _s._currentProvider = providerId;
+      if (needsSources) {
+        _s._currentSources = sources;
+        _syncCurrentSourceIndexFromPlayUrl();
+      }
+    });
+    _s._notifySourceMenuChanged();
   }
 
   List<StreamSource>? get _effectiveCurrentSources {
@@ -344,12 +390,33 @@ mixin _DesktopPlayerLifecycle on ConsumerState<DesktopPlayerScreen>, WidgetsBind
       _s._currentFallbackSourceIndex = matchIdx;
     });
     _s._cacheProviderSources(pid, sources);
-    unawaited(_persistWebstreamingCacheForCurrent());
+    unawaited(_persistPlayerStreamExtractCacheForCurrent());
     _s._markSourceActive(matchIdx);
     _s._notifySourceMenuChanged();
   }
 
-  Future<void> _persistWebstreamingCacheForCurrent() async {}
+  Future<void> _persistPlayerStreamExtractCacheForCurrent() async {
+    final movie = widget.movie;
+    if (movie == null || widget.magnetLink != null) return;
+    final pid = _s._currentProvider ?? widget.activeProvider;
+    if (pid == null || !isPlayerStreamExtractCacheProviderId(pid)) return;
+    final sources = _s._effectiveCurrentSources
+        ?.where((s) => !isUnplayableCachedStreamUrl(s.url))
+        .toList();
+    if (sources == null || sources.isEmpty) {
+      return;
+    }
+    final key = PlayerStreamExtractCache.cacheKeyFromProgress(
+      tmdbId: movie.id,
+      mediaType: movie.mediaType,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+    );
+    await PlayerStreamExtractCache.write(
+      key,
+      PlayerStreamExtractHit(providerId: pid, sources: sources),
+    );
+  }
 
   void _syncCurrentSourceIndexFromPlayUrl() {
     final sources = _s._currentSources;
