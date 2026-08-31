@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/filter.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_chrome_filters.dart';
+import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/kit/chrome/hub_search_page.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
@@ -50,7 +51,7 @@ class CatalogSearchScreen extends StatelessWidget {
           title: item.name,
           posterUrl: item.poster,
           backdropUrl: item.background.isEmpty ? null : item.background,
-          subtitle: item.releaseInfo.isEmpty ? null : item.releaseInfo,
+          subtitle: hubPosterCardSubtitle(item),
           rating: item.rating,
           payload: item,
         ),

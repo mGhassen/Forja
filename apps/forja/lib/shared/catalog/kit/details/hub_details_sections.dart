@@ -1,6 +1,7 @@
 import 'package:forja/shared/catalog/hub_cover_urls.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
+import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
 import 'package:forja/shared/catalog/protocol.dart';
@@ -102,7 +103,7 @@ List<Widget> buildHubDetailRailSections({
         cardBuilder: (ctx, item, index) => HubPosterCard(
           imageUrl: item.poster,
           title: item.name,
-          subtitle: item.releaseInfo.isEmpty ? null : item.releaseInfo,
+          subtitle: hubPosterCardSubtitle(item),
           rating: item.rating,
           badge: item.badge,
           onTap: () => openCatalogMetaItem(

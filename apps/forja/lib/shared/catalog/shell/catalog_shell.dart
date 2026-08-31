@@ -568,7 +568,7 @@ class _CatalogShellState extends State<CatalogShell>
   }) => HubPosterCard(
     imageUrl: item.poster,
     title: item.name,
-    subtitle: item.releaseInfo.isEmpty ? null : item.releaseInfo,
+    subtitle: hubPosterCardSubtitle(item),
     rating: item.rating,
     rank: showRank ? index + 1 : null,
     // Anime pre-cutover put format under the title (releaseInfo), not a badge.

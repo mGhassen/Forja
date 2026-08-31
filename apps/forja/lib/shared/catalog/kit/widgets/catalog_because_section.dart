@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/filter.dart';
+import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_chrome_filters.dart';
 import 'package:forja/shared/catalog/kit/rows/catalog_row_prefetch.dart';
@@ -212,8 +213,7 @@ class _CatalogBecauseSectionState extends State<CatalogBecauseSection> {
                 cardBuilder: (context, item, index) => HubPosterCard(
                   imageUrl: item.poster,
                   title: item.name,
-                  subtitle:
-                      item.releaseInfo.isEmpty ? null : item.releaseInfo,
+                  subtitle: hubPosterCardSubtitle(item),
                   rating: item.rating,
                   listIndex: index,
                   tvTabId: widget.tabId,

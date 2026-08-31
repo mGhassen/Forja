@@ -115,3 +115,44 @@ List<Movie> catalogMetasToMovies(Iterable<CatalogMetaItem> items) => [
       for (final item in items)
         if (catalogMetaToMovie(item) case final m?) m,
     ];
+
+/// Home-style card meta under the title: `2026 • FILM` / `TV` / …
+///
+/// Packs that already put format in [CatalogMetaItem.releaseInfo] (anime:
+/// `2026 • 12 eps`) are passed through unchanged.
+String? hubPosterCardSubtitle(CatalogMetaItem item) {
+  final release = item.releaseInfo.trim();
+  if (release.contains(' • ')) {
+    return release.isEmpty ? null : release;
+  }
+
+  final parts = <String>[];
+  if (release.isNotEmpty) {
+    parts.add(release.contains('-') ? release.split('-').first : release);
+  }
+
+  final typeLabel = hubPosterTypeLabel(item);
+  if (typeLabel != null) parts.add(typeLabel);
+
+  return parts.isEmpty ? null : parts.join(' • ');
+}
+
+String? hubPosterTypeLabel(CatalogMetaItem item) {
+  if (item.type == 'anime') return null;
+
+  final hint = (item.tmdbMediaType ?? '').trim().toLowerCase();
+  final kind = item.type.trim().toLowerCase();
+
+  if (hint == 'tv' || kind == 'tv' || kind == 'series') return 'TV';
+  if (hint == 'movie' || kind == 'movie') return 'FILM';
+
+  if (kind == 'drama') {
+    final badge = (item.badge ?? '').trim().toUpperCase();
+    if (badge == 'MOVIE' || badge == 'FILM' || badge == 'HOLLYWOOD') {
+      return 'FILM';
+    }
+    return 'TV';
+  }
+
+  return null;
+}
