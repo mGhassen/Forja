@@ -12,6 +12,7 @@ import 'package:forja/shared/widgets/hero/cinematic_hero.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
+import 'package:forja/shared/engine/service.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/shell_mood_circle.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -115,6 +116,7 @@ class _CatalogShellState extends State<CatalogShell>
     CatalogVerticalFiltersRegistry.revision.addListener(
       _verticalFiltersRevisionListener!,
     );
+    EngineService.changeNotifier.addListener(_onEnginePackChanged);
     unawaited(_loadLayout());
   }
 
@@ -125,8 +127,20 @@ class _CatalogShellState extends State<CatalogShell>
     _chromeListenable?.addListener(_onChromeFilterChanged);
   }
 
+  /// Pack install / refresh / enable — keep-alive shell must drop memoized rails.
+  void _onEnginePackChanged() {
+    if (!mounted) return;
+    markShellTabStale();
+    _forceNextRails = true;
+    _invalidateRailFutures();
+    if (shellTabVisible) {
+      unawaited(refreshIfStale(force: true));
+    }
+  }
+
   @override
   void dispose() {
+    EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     CatalogVerticalFiltersRegistry.unregister(_pageKey);
     if (_verticalFiltersRevisionListener != null) {
       CatalogVerticalFiltersRegistry.revision.removeListener(

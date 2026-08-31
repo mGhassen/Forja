@@ -1122,7 +1122,6 @@ dependencies = [
  "cbc",
  "flate2",
  "hmac",
- "kisskh",
  "md-5",
  "reqwest",
  "rquickjs",
@@ -1995,10 +1994,6 @@ dependencies = [
  "futures-util",
  "wasm-bindgen",
 ]
-
-[[package]]
-name = "kisskh"
-version = "0.1.0"
 
 [[package]]
 name = "lan"

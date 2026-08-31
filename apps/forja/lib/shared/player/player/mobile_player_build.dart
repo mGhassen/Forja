@@ -329,6 +329,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
     final hasEpisodePicker = _s._hasEpisodePicker;
     final hasStreamPicker = _s._hasStreamPicker;
     final hasTorrentSources = _s._usesCatalogSourcesPanel;
+    final catalogSourceLines =
+        hasTorrentSources ? _s._catalogSourcesButtonLabels() : null;
+    final streamPickerLines =
+        hasStreamPicker ? _s._streamPickerLabels() : null;
     final btnSize = 38.0;
     final iconSz = 20.0;
     final compact = MediaQuery.sizeOf(context).width < 700;
@@ -652,6 +656,8 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                       hasTorrentSources: hasTorrentSources,
                       hasStreamPicker: hasStreamPicker,
                       hasEpisodePicker: hasEpisodePicker,
+                      catalogSourceLines: catalogSourceLines,
+                      streamPickerLines: streamPickerLines,
                     )
                   else
                     Row(
@@ -728,14 +734,16 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                               PlayerSourcesPanelButton(
                                 size: btnSize,
                                 iconSize: iconSz,
-                                label: _s._catalogSourcesButtonLabel(),
+                                label: catalogSourceLines!.label,
+                                server: catalogSourceLines.server,
                                 onPressed: _s._showTorrentSourcesPanel,
                               ),
                             if (hasStreamPicker)
                               PlayerStreamPickerButton(
                                 size: btnSize,
                                 iconSize: iconSz - 2,
-                                label: _s._streamPickerLabel(),
+                                label: streamPickerLines!.label,
+                                server: streamPickerLines.server,
                                 onPressedWithContext: (ctx) =>
                                     _s._showStreamMenu(ctx),
                               ),
@@ -847,6 +855,8 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
     required bool hasTorrentSources,
     required bool hasStreamPicker,
     required bool hasEpisodePicker,
+    required ({String label, String? server})? catalogSourceLines,
+    required ({String label, String? server})? streamPickerLines,
   }) {
     Widget ordered(int order, Widget child) => FocusTraversalOrder(
           order: NumericFocusOrder(order.toDouble()),
@@ -1030,7 +1040,8 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                   onRightEdge: focusStreamOrAfter,
                   size: btnSize,
                   iconSize: iconSz,
-                  label: _s._catalogSourcesButtonLabel(),
+                  label: catalogSourceLines!.label,
+                  server: catalogSourceLines.server,
                   onPressed: _s._showTorrentSourcesPanel,
                 ),
               ),
@@ -1046,7 +1057,8 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                   onRightEdge: focusEpisodesOrAudio,
                   size: btnSize,
                   iconSize: iconSz - 2,
-                  label: _s._streamPickerLabel(),
+                  label: streamPickerLines!.label,
+                  server: streamPickerLines.server,
                   onPressedWithContext: (ctx) => _s._showStreamMenu(ctx),
                 ),
               ),

@@ -1562,8 +1562,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     return null;
   }
 
-  String _streamPickerLabel() => _activeServerLabel();
-
   bool get _hasStreamPicker => _hasStreamPickerSources;
 
   bool get _hasEpisodePicker {
@@ -1629,6 +1627,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final compact = MediaQuery.sizeOf(context).width < 700;
     final tvFocus = _isTv;
     final hasTorrentSources = _usesCatalogSourcesPanel;
+    final catalogSourceLines =
+        hasTorrentSources ? _catalogSourcesButtonLabels() : null;
+    final streamPickerLines =
+        _hasStreamPicker ? _streamPickerLabels() : null;
     final topBarHeight = PlayerTopBar.totalHeight(
       context,
       hasStatusActions: _hasError,
@@ -1889,6 +1891,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                       btnSize: btnSize,
                       iconSz: iconSz,
                       hasTorrentSources: hasTorrentSources,
+                      catalogSourceLines: catalogSourceLines,
+                      streamPickerLines: streamPickerLines,
                     )
                   else
                     Row(
@@ -1939,7 +1943,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                               PlayerSourcesPanelButton(
                                 size: btnSize,
                                 iconSize: iconSz,
-                                label: _catalogSourcesButtonLabel(),
+                                label: catalogSourceLines!.label,
+                                server: catalogSourceLines.server,
                                 onPressed: () =>
                                     unawaited(_showTorrentSourcesPanel()),
                               ),
@@ -1947,7 +1952,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                               PlayerStreamPickerButton(
                                 size: btnSize,
                                 iconSize: iconSz - 2,
-                                label: _streamPickerLabel(),
+                                label: streamPickerLines!.label,
+                                server: streamPickerLines.server,
                                 onPressedWithContext: (ctx) =>
                                     unawaited(_showSourcesDialog(ctx)),
                               ),
@@ -2016,6 +2022,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     required double btnSize,
     required double iconSz,
     required bool hasTorrentSources,
+    required ({String label, String? server})? catalogSourceLines,
+    required ({String label, String? server})? streamPickerLines,
   }) {
     Widget ordered(int order, Widget child) => FocusTraversalOrder(
           order: NumericFocusOrder(order.toDouble()),
@@ -2116,7 +2124,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     },
                     size: btnSize,
                     iconSize: iconSz,
-                    label: _catalogSourcesButtonLabel(),
+                    label: catalogSourceLines!.label,
+                    server: catalogSourceLines.server,
                     onPressed: () => unawaited(_showTorrentSourcesPanel()),
                   ),
                 ),
@@ -2146,7 +2155,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     },
                     size: btnSize,
                     iconSize: iconSz - 2,
-                    label: _streamPickerLabel(),
+                    label: streamPickerLines!.label,
+                    server: streamPickerLines.server,
                     onPressedWithContext: (ctx) =>
                         unawaited(_showSourcesDialog(ctx)),
                   ),

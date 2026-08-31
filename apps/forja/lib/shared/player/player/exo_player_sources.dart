@@ -35,7 +35,20 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     return hasProviders || hasSources;
   }
 
-  String _activeServerLabel() {
+  String? _playingSourceTitle() {
+    if (_s._sources.isNotEmpty) {
+      final title = _s._sources[_s._sourceIndex].title.trim();
+      if (title.isNotEmpty) return title;
+    }
+    final sources = _s._currentSources;
+    if (sources != null && sources.isNotEmpty) {
+      final t = sources.first.title.trim();
+      if (t.isNotEmpty) return t;
+    }
+    return null;
+  }
+
+  String? _providerDisplayLabel() {
     final pid = _s._currentProvider ?? widget.activeProvider;
     if (pid != null &&
         pid.isNotEmpty &&
@@ -43,23 +56,33 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         widget.providers!.containsKey(pid)) {
       return PlayerProviderMenu.snackbarLabel(pid, widget.providers![pid]);
     }
-    if (_s._sources.isNotEmpty) {
-      final title = _s._sources[_s._sourceIndex].title.trim();
-      if (title.isNotEmpty) return title;
-    }
-    return 'Sources';
+    return null;
   }
 
-  String _catalogSourcesButtonLabel() {
-    final key = _s._currentProvider ?? widget.activeProvider;
-    if (key != null &&
-        widget.providers != null &&
-        widget.providers!.containsKey(key)) {
-      return PlayerProviderMenu.snackbarLabel(key, widget.providers![key]);
+  ({String label, String? server}) _streamPickerLabels() {
+    final provider = _providerDisplayLabel();
+    final sourceTitle = _playingSourceTitle();
+    if (provider != null) {
+      if (sourceTitle != null) {
+        return splitSourceButtonLines(sourceTitle, providerHint: provider);
+      }
+      return (label: provider, server: null);
     }
+    if (sourceTitle != null) return splitSourceButtonLines(sourceTitle);
+    return (label: 'Sources', server: null);
+  }
+
+  ({String label, String? server}) _catalogSourcesButtonLabels() {
+    final provider = _providerDisplayLabel();
     final session = widget.enginePlaySession;
     final ep = widget.selectedEpisode ?? 1;
-    return catalogSourcesButtonLabel(
+    if (provider != null) {
+      final sourceTitle = _playingSourceTitle();
+      if (sourceTitle != null) {
+        return splitSourceButtonLines(sourceTitle, providerHint: provider);
+      }
+    }
+    return catalogSourcesButtonLabels(
       movie: widget.movie,
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
@@ -71,6 +94,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       widgetMagnetLink: widget.magnetLink,
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       catalogSourceKind: _s._catalogSourceKind,
+      currentSourceTitle: _playingSourceTitle(),
       catalogOpen: session?.effectiveOpen,
       malId: session?.malId,
       audioCategory: session?.audioCategory,

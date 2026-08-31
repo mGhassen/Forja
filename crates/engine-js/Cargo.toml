@@ -25,7 +25,6 @@ hmac = "0.12"
 scrypt = "0.11"
 flate2 = "1"
 utils = { path = "../utils" }
-kisskh = { path = "../kisskh" }
 tmdb = { path = "../tmdb" }
 rquickjs = { version = "0.9", features = ["futures", "parallel", "macro", "bindgen"] }
 

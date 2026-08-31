@@ -2,8 +2,9 @@
 //!
 //! Port of consumet `extractors/kisskh/kkey.js` (AES-like block cipher over a
 //! fixed site key schedule). Verified against live `kisskh.co` Episode API.
+//! Exposed to provider JS as `ctx.crypto.kisskhKkey` via `__native_kisskh_kkey`.
 
-#[path = "kkey_tables.rs"]
+#[path = "kisskh_kkey_tables.rs"]
 mod kkey_tables;
 
 use kkey_tables::{RK, SBOX, T0, T1, T2, T3};

@@ -306,15 +306,32 @@ class _MainScreenState extends ConsumerState<MainScreen>
   Future<void> _refreshHubNavThenLoad() async {
     final changed = await PluginNavRegistry.refresh();
     if (!mounted) return;
-    if (changed) {
-      // Drop cached hub tab widgets so the next visit uses the new builder.
-      for (final id in PluginNavRegistry.destinations.keys) {
-        _tabCache.remove(id);
-        _mountedTabIds.remove(id);
-        _tabLru.remove(id);
-      }
-    }
+    // Pack scripts can change without nav shape changes. Hub CatalogShell is
+    // keep-alive + 15m stale window — mark stale (and remount builders when
+    // nav actually changed) so returning to Home / Anime / … reloads rails.
+    _invalidateHubTabsAfterPackChange(remountBuilders: changed);
     await _loadNavbarConfig();
+  }
+
+  void _invalidateHubTabsAfterPackChange({required bool remountBuilders}) {
+    final hubIds = <String>{
+      ...PluginNavRegistry.hubTabIds,
+      ...PluginNavRegistry.destinations.keys,
+    };
+    for (final id in hubIds) {
+      _refreshStateFor(id)?.markShellTabStale();
+      if (!remountBuilders) continue;
+      _tabCache.remove(id);
+      _mountedTabIds.remove(id);
+      _tabLru.remove(id);
+      // Drop GlobalKey so a new CatalogShell State is created (same key would
+      // reparent and keep the old memoized rails).
+      _tabKeys.remove(id);
+    }
+    final current = _currentTabId;
+    if (current != null && PluginNavRegistry.isHubTab(current)) {
+      _refreshTabIfStale(current, force: true);
+    }
   }
 
   Future<void> _loadNavbarConfig() async {

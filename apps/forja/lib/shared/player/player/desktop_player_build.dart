@@ -203,6 +203,10 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         (widget.hubEpisodes != null && widget.hubEpisodes!.isNotEmpty);
     final hasStreamPicker = _s._hasStreamPicker;
     final hasTorrentSources = _s._usesCatalogSourcesPanel;
+    final catalogSourceLines =
+        hasTorrentSources ? _s._catalogSourcesButtonLabels() : null;
+    final streamPickerLines =
+        hasStreamPicker ? _s._streamPickerLabels() : null;
     final compact = MediaQuery.sizeOf(context).width < 900;
     final topBarHeight = PlayerTopBar.totalHeight(
       context,
@@ -523,14 +527,16 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                       children: [
                         if (hasTorrentSources) ...[
                           PlayerSourcesPanelButton(
-                            label: _s._catalogSourcesButtonLabel(),
+                            label: catalogSourceLines!.label,
+                            server: catalogSourceLines.server,
                             onPressed: _s._showTorrentSourcesPanel,
                           ),
                           const SizedBox(width: 2),
                         ],
                         if (hasStreamPicker) ...[
                           PlayerStreamPickerButton(
-                            label: _s._streamPickerLabel(),
+                            label: streamPickerLines!.label,
+                            server: streamPickerLines.server,
                             onPressedWithContext: (ctx) => _s._showStreamMenu(ctx),
                           ),
                           const SizedBox(width: 6),

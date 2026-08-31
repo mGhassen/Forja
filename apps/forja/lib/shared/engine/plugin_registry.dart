@@ -766,6 +766,10 @@ class PluginRegistry {
     final hubSlot = forjaHqSlot(manifestUrl);
     if (isHubManifestSlot(hubSlot)) {
       CatalogCache.instance.syncHubPackVersion(pack.packId, pack.version);
+      // Scripts may change at the same semver — always drop this pack's answers.
+      for (final p in pack.plugins) {
+        CatalogCache.instance.wipePlugin(p.id);
+      }
     }
     // Legacy combined hubs pack → wipe so rails re-fetch from split packs.
     if (pack.packId == 'forjahq-hubs') {

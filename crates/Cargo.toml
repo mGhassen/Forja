@@ -16,7 +16,6 @@ members = [
     "anime",
     "indexer",
     "debrid",
-    "kisskh",
     "live-matches",
     "provider-health",
     "engine-js",

@@ -23,9 +23,9 @@ Vertical catalog engines **removed from the active `ffi` link graph**. Code is k
 | Crate | Why |
 |-------|-----|
 | `stremio` | Live Matches, TMDB Sources, Stremio Direct playback |
-| `kisskh` | `engine-js` native kkey (`__native_kisskh_kkey`) |
 | `anime` | Generic `animeHttp()` for player / Simkl (HTTP only; extractors trimmed from FFI) |
 | `proxy` `/jellyfin-stream` | Loopback route for any Jellyfin-style stream URL — not the `jellyfin` catalog crate |
+| `engine-js` | Provider JS host — includes KissKh `kkey` (`__native_kisskh_kkey`) |
 
 ## Restore
 

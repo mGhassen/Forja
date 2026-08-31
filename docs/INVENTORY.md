@@ -74,7 +74,7 @@ Exact LOC drifts quickly — re-run `wc -l` when needed. Feature god-file invent
 | `stream` | No | Normalize / select / order helpers |
 | `storage` | No | JSON file KV |
 | `tmdb` / `trakt` / `jellyfin` / `anilist` | **Yes** | Catalog API clients |
-| `anime` / `kisskh` / `live-matches` | **Yes** | Hub extract/catalog pipelines |
+| `anime` / `live-matches` | **Yes** | Hub extract/catalog pipelines |
 | `manga` / `books` / `catalog` | **Yes** | Vertical scrape/catalog |
 | `indexer` | **Yes** | Jackett / Prowlarr |
 | `debrid` | **Yes** | RD / AD / Premiumize / TorBox / Debrid-Link |

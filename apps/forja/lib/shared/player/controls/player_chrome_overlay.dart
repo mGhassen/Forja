@@ -244,6 +244,7 @@ class PlayerStreamPickerButton extends StatefulWidget {
   const PlayerStreamPickerButton({
     super.key,
     required this.label,
+    this.server,
     required this.onPressedWithContext,
     this.enabled = true,
     this.size = 40,
@@ -257,6 +258,8 @@ class PlayerStreamPickerButton extends StatefulWidget {
   });
 
   final String label;
+  /// Active mirror / server under [label] (e.g. Videasy → Yoru).
+  final String? server;
   final ValueChanged<BuildContext>? onPressedWithContext;
   final bool enabled;
   final double size;
@@ -333,22 +336,14 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
                   size: widget.iconSize,
                 ),
                 const SizedBox(width: 5),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 88),
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: _tvFocused
-                          ? ForjaShellColors.brandGreen
-                          : Colors.white.withValues(alpha: fgAlpha),
-                      fontSize: 12,
-                      fontWeight: _tvFocused
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                    ),
-                  ),
+                _PlayerSourceButtonText(
+                  label: widget.label,
+                  server: widget.server,
+                  color: _tvFocused
+                      ? ForjaShellColors.brandGreen
+                      : Colors.white.withValues(alpha: fgAlpha),
+                  tvFocused: _tvFocused,
+                  maxWidth: 88,
                 ),
                 Icon(
                   Icons.expand_more_rounded,
@@ -393,7 +388,11 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
                 : SystemMouseCursors.basic,
             child: child,
           );
-    return Tooltip(message: 'Source - ${widget.label}', child: button);
+    final server = widget.server?.trim();
+    final tip = server != null && server.isNotEmpty
+        ? 'Source — ${widget.label} · $server'
+        : 'Source — ${widget.label}';
+    return Tooltip(message: tip, child: button);
   }
 }
 
@@ -402,6 +401,7 @@ class PlayerSourcesPanelButton extends StatefulWidget {
   const PlayerSourcesPanelButton({
     super.key,
     required this.label,
+    this.server,
     this.onPressed,
     this.onPressedWithContext,
     this.size = 40,
@@ -415,6 +415,8 @@ class PlayerSourcesPanelButton extends StatefulWidget {
   }) : assert(onPressed != null || onPressedWithContext != null);
 
   final String label;
+  /// Active mirror / server under [label] (e.g. Videasy → Yoru).
+  final String? server;
   final VoidCallback? onPressed;
   final ValueChanged<BuildContext>? onPressedWithContext;
   final double size;
@@ -487,19 +489,12 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
                   size: widget.iconSize,
                 ),
                 const SizedBox(width: 5),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 100),
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: fg,
-                      fontSize: 12,
-                      fontWeight:
-                          _tvFocused ? FontWeight.w600 : FontWeight.w500,
-                    ),
-                  ),
+                _PlayerSourceButtonText(
+                  label: widget.label,
+                  server: widget.server,
+                  color: fg,
+                  tvFocused: _tvFocused,
+                  maxWidth: 100,
                 ),
               ],
             ),
@@ -533,7 +528,66 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
             cursor: SystemMouseCursors.click,
             child: child,
           );
-    return Tooltip(message: 'Sources — ${widget.label}', child: button);
+    final server = widget.server?.trim();
+    final tip = server != null && server.isNotEmpty
+        ? 'Sources — ${widget.label} · $server'
+        : 'Sources — ${widget.label}';
+    return Tooltip(message: tip, child: button);
+  }
+}
+
+/// Provider on top, optional server underneath (Videasy / Yoru).
+class _PlayerSourceButtonText extends StatelessWidget {
+  const _PlayerSourceButtonText({
+    required this.label,
+    required this.color,
+    required this.tvFocused,
+    required this.maxWidth,
+    this.server,
+  });
+
+  final String label;
+  final String? server;
+  final Color color;
+  final bool tvFocused;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final serverLine = server?.trim();
+    final hasServer = serverLine != null && serverLine.isNotEmpty;
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: hasServer ? 11 : 12,
+              height: 1.1,
+              fontWeight: tvFocused ? FontWeight.w600 : FontWeight.w500,
+            ),
+          ),
+          if (hasServer)
+            Text(
+              serverLine,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color.withValues(alpha: 0.72),
+                fontSize: 10,
+                height: 1.1,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 

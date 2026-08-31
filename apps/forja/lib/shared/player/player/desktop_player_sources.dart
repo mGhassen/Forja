@@ -393,42 +393,62 @@ mixin _DesktopPlayerSources
     return Listenable.merge(listenables);
   }
 
-  String _streamPickerLabel() {
-    final key = _s._currentProvider ?? widget.activeProvider;
-    if (key != null &&
-        widget.providers != null &&
-        widget.providers!.containsKey(key)) {
-      return PlayerProviderMenu.snackbarLabel(key, widget.providers![key]);
-    }
+  String? _playingSourceTitle() {
     final sources = _s._currentSources;
-    if (sources != null && sources.isNotEmpty) {
-      final idx = _s._currentFallbackSourceIndex;
-      if (idx >= 0 && idx < sources.length) return sources[idx].title;
-      final current = sources.firstWhere(
-        (s) => _s._currentProvider == 'service111477'
-            ? s.url == _s._current111477FileUrl
-            : streamSourceMatchesPlaying(
-                s,
-                playUrl: _s._currentUrl,
-                catalogUrl: _s._currentPlayingCatalogUrl,
-              ),
-        orElse: () => sources.first,
-      );
-      return current.title;
+    if (sources == null || sources.isEmpty) return null;
+    final idx = _s._currentFallbackSourceIndex;
+    if (idx >= 0 && idx < sources.length) {
+      final t = sources[idx].title.trim();
+      if (t.isNotEmpty) return t;
     }
-    return 'Stream';
+    final current = sources.firstWhere(
+      (s) => _s._currentProvider == 'service111477'
+          ? s.url == _s._current111477FileUrl
+          : streamSourceMatchesPlaying(
+              s,
+              playUrl: _s._currentUrl,
+              catalogUrl: _s._currentPlayingCatalogUrl,
+            ),
+      orElse: () => sources.first,
+    );
+    final t = current.title.trim();
+    return t.isEmpty ? null : t;
   }
 
-  String _catalogSourcesButtonLabel() {
+  String? _providerDisplayLabel() {
     final key = _s._currentProvider ?? widget.activeProvider;
     if (key != null &&
         widget.providers != null &&
         widget.providers!.containsKey(key)) {
       return PlayerProviderMenu.snackbarLabel(key, widget.providers![key]);
     }
+    return null;
+  }
+
+  ({String label, String? server}) _streamPickerLabels() {
+    final provider = _providerDisplayLabel();
+    final sourceTitle = _playingSourceTitle();
+    if (provider != null) {
+      if (sourceTitle != null) {
+        return splitSourceButtonLines(sourceTitle, providerHint: provider);
+      }
+      return (label: provider, server: null);
+    }
+    if (sourceTitle != null) return splitSourceButtonLines(sourceTitle);
+    return (label: 'Stream', server: null);
+  }
+
+  ({String label, String? server}) _catalogSourcesButtonLabels() {
+    final provider = _providerDisplayLabel();
     final session = widget.enginePlaySession;
     final ep = widget.selectedEpisode ?? 1;
-    return catalogSourcesButtonLabel(
+    if (provider != null) {
+      final sourceTitle = _playingSourceTitle();
+      if (sourceTitle != null) {
+        return splitSourceButtonLines(sourceTitle, providerHint: provider);
+      }
+    }
+    return catalogSourcesButtonLabels(
       movie: widget.movie,
       season: widget.selectedSeason,
       episode: widget.selectedEpisode,
@@ -441,6 +461,7 @@ mixin _DesktopPlayerSources
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
       catalogSourceKind: _s._catalogSourceKind,
+      currentSourceTitle: _playingSourceTitle(),
       catalogOpen: session?.effectiveOpen,
       malId: session?.malId,
       audioCategory: session?.audioCategory,

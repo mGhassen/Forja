@@ -44,6 +44,11 @@ mixin ShellTabRefresh<T extends StatefulWidget> on State<T> {
     _lastShellRefreshAt = DateTime.now();
   }
 
+  /// Next [refreshIfStale] (or show) must fetch — e.g. after an engine pack update.
+  void markShellTabStale() {
+    _lastShellRefreshAt = null;
+  }
+
   Future<void> refreshIfStale({bool force = false}) async {
     if (!mounted) return;
     if (!force &&

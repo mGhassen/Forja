@@ -534,11 +534,11 @@ fn kisskh_kkey(episode_id: i32, kind: String) -> String {
         return String::new();
     }
     let k = if kind == "sub" || kind == "subtitle" {
-        kisskh::KkeyKind::Subtitle
+        crate::kisskh_kkey::KkeyKind::Subtitle
     } else {
-        kisskh::KkeyKind::Video
+        crate::kisskh_kkey::KkeyKind::Video
     };
-    kisskh::generate_kkey(episode_id, k)
+    crate::kisskh_kkey::generate_kkey(episode_id, k)
 }
 
 pub async fn extract(req: ExtractRequest) -> ExtractResult {

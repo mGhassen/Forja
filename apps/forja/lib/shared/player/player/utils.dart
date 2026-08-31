@@ -984,8 +984,39 @@ String? _catalogAddonNameFromSessionCaches(
   return null;
 }
 
-/// Player Sources button label — active scraper/addon or torrent indexer.
-String catalogSourcesButtonLabel({
+/// Split `Provider · Server` / `Server · quality` into chrome button lines.
+({String label, String? server}) splitSourceButtonLines(
+  String raw, {
+  String? providerHint,
+}) {
+  final t = raw.trim();
+  if (t.isEmpty) return (label: 'Sources', server: null);
+  final hint = providerHint?.trim();
+  final parts = t
+      .split(RegExp(r'\s*[·•]\s*'))
+      .map((p) => p.trim())
+      .where((p) => p.isNotEmpty)
+      .toList();
+  if (parts.length >= 2) {
+    if (hint != null &&
+        hint.isNotEmpty &&
+        parts.first.toLowerCase() != hint.toLowerCase()) {
+      // "Yoru · 2160p" under provider Videasy → Videasy / Yoru
+      return (label: hint, server: parts.first);
+    }
+    // "Videasy · Yoru" → Videasy / Yoru
+    return (label: parts.first, server: parts[1]);
+  }
+  if (hint != null &&
+      hint.isNotEmpty &&
+      t.toLowerCase() != hint.toLowerCase()) {
+    return (label: hint, server: t);
+  }
+  return (label: hint != null && hint.isNotEmpty ? hint : t, server: null);
+}
+
+/// Player Sources / Source button lines — provider on top, server below.
+({String label, String? server}) catalogSourcesButtonLabels({
   required Movie? movie,
   required int? season,
   required int? episode,
@@ -998,16 +1029,12 @@ String catalogSourcesButtonLabel({
   String? currentStreamUrl,
   String? currentPlayingCatalogUrl,
   String? catalogSourceKind,
+  String? currentSourceTitle,
   CatalogOpen? catalogOpen,
   int? malId,
   String? audioCategory,
   String? episodeVideoId,
 }) {
-  final addon = (catalogAddonBaseUrl ?? widgetAddonBaseUrl)?.trim();
-  if (addon != null && addon.isNotEmpty) {
-    return StreamProviderDisplay.playerLabel(addon);
-  }
-
   final cacheKey = movie == null
       ? null
       : CatalogSourcesSessionCache.cacheKey(
@@ -1022,12 +1049,6 @@ String catalogSourcesButtonLabel({
         );
 
   if (cacheKey != null) {
-    final magnet = (activeMagnet ?? widgetMagnetLink)?.trim();
-    if (magnet != null && magnet.isNotEmpty) {
-      final indexer = _torrentIndexerFromSessionCache(cacheKey, magnet);
-      if (indexer != null) return indexer;
-    }
-
     final playUrl = currentStreamUrl?.trim();
     if (playUrl != null && playUrl.isNotEmpty) {
       final addonName = _catalogAddonNameFromSessionCaches(
@@ -1035,22 +1056,93 @@ String catalogSourcesButtonLabel({
         playUrl: playUrl,
         catalogUrl: currentPlayingCatalogUrl,
       );
-      if (addonName != null) return addonName;
+      if (addonName != null && addonName.isNotEmpty) {
+        return splitSourceButtonLines(addonName);
+      }
+    }
+
+    final magnet = (activeMagnet ?? widgetMagnetLink)?.trim();
+    if (magnet != null && magnet.isNotEmpty) {
+      final indexer = _torrentIndexerFromSessionCache(cacheKey, magnet);
+      if (indexer != null) return (label: indexer, server: null);
     }
   }
 
-  final pid = (currentProvider ?? activeProvider)?.trim();
-  if (pid != null && pid.isNotEmpty) {
-    return StreamProviderDisplay.playerLabel(pid);
+  String? providerLabel;
+  final addon = (catalogAddonBaseUrl ?? widgetAddonBaseUrl)?.trim();
+  if (addon != null && addon.isNotEmpty) {
+    providerLabel = StreamProviderDisplay.playerLabel(addon);
+  } else {
+    final pid = (currentProvider ?? activeProvider)?.trim();
+    if (pid != null && pid.isNotEmpty) {
+      providerLabel = StreamProviderDisplay.playerLabel(pid);
+    }
   }
 
-  return switch (catalogSourceKind) {
-    'torrents' => 'Torrent',
-    'nuvio' => 'Nuvio',
-    'engine' => 'Forja',
-    'stremio' => 'Stremio',
-    _ => 'Sources',
-  };
+  final sourceTitle = currentSourceTitle?.trim();
+  if (sourceTitle != null && sourceTitle.isNotEmpty) {
+    return splitSourceButtonLines(sourceTitle, providerHint: providerLabel);
+  }
+  if (providerLabel != null && providerLabel.isNotEmpty) {
+    return (label: providerLabel, server: null);
+  }
+
+  return (
+    label: switch (catalogSourceKind) {
+      'torrents' => 'Torrent',
+      'nuvio' => 'Nuvio',
+      'engine' => 'Forja',
+      'stremio' => 'Stremio',
+      _ => 'Sources',
+    },
+    server: null,
+  );
+}
+
+/// Player Sources button label — active scraper/addon or torrent indexer.
+String catalogSourcesButtonLabel({
+  required Movie? movie,
+  required int? season,
+  required int? episode,
+  String? catalogAddonBaseUrl,
+  String? widgetAddonBaseUrl,
+  String? currentProvider,
+  String? activeProvider,
+  String? activeMagnet,
+  String? widgetMagnetLink,
+  String? currentStreamUrl,
+  String? currentPlayingCatalogUrl,
+  String? catalogSourceKind,
+  String? currentSourceTitle,
+  CatalogOpen? catalogOpen,
+  int? malId,
+  String? audioCategory,
+  String? episodeVideoId,
+}) {
+  final lines = catalogSourcesButtonLabels(
+    movie: movie,
+    season: season,
+    episode: episode,
+    catalogAddonBaseUrl: catalogAddonBaseUrl,
+    widgetAddonBaseUrl: widgetAddonBaseUrl,
+    currentProvider: currentProvider,
+    activeProvider: activeProvider,
+    activeMagnet: activeMagnet,
+    widgetMagnetLink: widgetMagnetLink,
+    currentStreamUrl: currentStreamUrl,
+    currentPlayingCatalogUrl: currentPlayingCatalogUrl,
+    catalogSourceKind: catalogSourceKind,
+    currentSourceTitle: currentSourceTitle,
+    catalogOpen: catalogOpen,
+    malId: malId,
+    audioCategory: audioCategory,
+    episodeVideoId: episodeVideoId,
+  );
+  final server = lines.server?.trim();
+  if (server != null && server.isNotEmpty) {
+    return '${lines.label} · $server';
+  }
+  return lines.label;
 }
 
 /// `activeProvider` / RFC-044 identity for a Sources HTTP row.

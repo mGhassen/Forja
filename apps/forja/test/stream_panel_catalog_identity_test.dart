@@ -329,5 +329,35 @@ void main() {
         'Stremio Direct',
       );
     });
+
+    test('joins provider and server when source title has both', () {
+      expect(
+        catalogSourcesButtonLabel(
+          movie: movie,
+          season: null,
+          episode: null,
+          activeProvider: 'videasy',
+          currentSourceTitle: 'Yoru · 2160p',
+        ),
+        'Videasy · Yoru',
+      );
+    });
+  });
+
+  group('splitSourceButtonLines', () {
+    test('splits Provider · Server', () {
+      final lines = splitSourceButtonLines('Videasy · Yoru');
+      expect(lines.label, 'Videasy');
+      expect(lines.server, 'Yoru');
+    });
+
+    test('uses provider hint with Server · quality title', () {
+      final lines = splitSourceButtonLines(
+        'Yoru · 2160p',
+        providerHint: 'Videasy',
+      );
+      expect(lines.label, 'Videasy');
+      expect(lines.server, 'Yoru');
+    });
   });
 }

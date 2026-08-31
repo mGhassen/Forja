@@ -126,13 +126,12 @@ Workspace members (`crates/Cargo.toml`):
 | **`tmdb`** / **`trakt`** / **`jellyfin`** / **`anilist`** | Catalog HTTP clients |
 | **`manga`** / **`books`** / **`catalog`** | Vertical scrape/catalog (manga, LibGen, BestSimilar, …) |
 | **`anime`** | Anime extractors, resolve, subtitles, mdblist, introdb, lyrics |
-| **`kisskh`** | Asian Drama catalog + kkey helpers |
 | **`live-matches`** | Live sports catalog / fetch pipelines |
 | **`indexer`** | Jackett / Prowlarr HTTP |
 | **`debrid`** | Real-Debrid, AllDebrid, Premiumize, TorBox, Debrid-Link |
 | **`music`** | Deezer / YouTube music HTTP |
-| **`resolver-engine`** | Provider race, scoring, cache, plugin registry ([ENGINE_BOUNDARY](ENGINE_BOUNDARY.md) D2) |
-| **`engine-js`** | QuickJS-backed extract / StreamCrypto-style jobs |
+| **`provider-health`** | Provider reliability score store (server/stream up/down) |
+| **`engine-js`** | QuickJS extract host (crypto, PoW, KissKh kkey, hop, fetch) |
 
 Vendored patch: `crates/third_party/librqbit-dualstack-sockets` — iOS socket binding fix for librqbit.
 
