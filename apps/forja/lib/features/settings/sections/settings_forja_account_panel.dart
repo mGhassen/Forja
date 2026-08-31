@@ -933,19 +933,18 @@ class _SignedOutAccountBody extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (!deviceLinkActive)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
-              child: Text(
-                'Sign in to sync profiles and settings across devices. '
-                'You can keep using Forja without an account.',
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  fontSize: 13,
-                  height: 1.45,
-                ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
+            child: Text(
+              'Sign in to sync profiles and settings across devices. '
+              'You can keep using Forja without an account.',
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: 13,
+                height: 1.45,
               ),
             ),
+          ),
           SettingsGroup(
             label: 'Sign in',
             children: [

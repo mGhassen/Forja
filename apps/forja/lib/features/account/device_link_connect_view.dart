@@ -258,81 +258,93 @@ class _CompactConnectLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text.rich(
-          TextSpan(
-            style: const TextStyle(
-              color: ForjaShellColors.textSecondary,
-              fontSize: 13,
-              height: 1.5,
-            ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const TextSpan(text: 'On your phone or computer, open '),
-              TextSpan(
-                text: '$hostLabel/connect',
-                style: const TextStyle(
-                  color: ForjaShellColors.textPrimary,
+              Text(
+                'LINK THIS DEVICE',
+                style: GoogleFonts.dmMono(
+                  color: ForjaShellColors.brandGreen,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: 2.2,
                 ),
               ),
-              const TextSpan(
-                text: ' and approve this device — or scan the QR.',
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              DeviceLinkQrWithCode(
-                loading: loading || qrUri == null,
-                qrUri: qrUri,
-                displayCode: displayCode,
-                qrSize: 148,
-              ),
-              if (onBack != null) ...[
-                const SizedBox(height: 14),
-                TextButton.icon(
-                  onPressed: onBack,
-                  icon: const Icon(Icons.close_rounded, size: 18),
-                  label: const Text('Cancel'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: ForjaShellColors.textSecondary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+              const SizedBox(height: 12),
+              Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: 14,
+                    height: 1.45,
+                  ),
+                  children: [
+                    const TextSpan(text: 'Open '),
+                    TextSpan(
+                      text: '$hostLabel/connect',
+                      style: const TextStyle(
+                        color: ForjaShellColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Enter the code or scan the QR from your phone.',
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: 13,
+                  height: 1.45,
+                ),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  error!,
+                  style: const TextStyle(
+                    color: Color(0xFFF87171),
+                    fontSize: 12.5,
+                    height: 1.35,
                   ),
                 ),
+                if (onRetry != null) ...[
+                  const SizedBox(height: 12),
+                  ForjaButton(
+                    label: 'Get a new code',
+                    icon: Icons.refresh_rounded,
+                    onPressed: onRetry,
+                  ),
+                ],
               ],
             ],
           ),
         ),
-        if (error != null) ...[
-          const SizedBox(height: 16),
-          Text(
-            error!,
-            style: const TextStyle(
-              color: Color(0xFFF87171),
-              fontSize: 12.5,
-              height: 1.35,
+        const SizedBox(width: 24),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DeviceLinkQrWithCode(
+              loading: loading || qrUri == null,
+              qrUri: qrUri,
+              displayCode: displayCode,
+              qrSize: 132,
             ),
-          ),
-          if (onRetry != null) ...[
-            const SizedBox(height: 12),
-            ForjaButton(
-              label: 'Get a new code',
-              icon: Icons.refresh_rounded,
-              onPressed: onRetry,
-            ),
+            if (onBack != null) ...[
+              const SizedBox(height: 16),
+              ForjaButton(
+                label: 'Cancel',
+                icon: Icons.close_rounded,
+                onPressed: onBack,
+              ),
+            ],
           ],
-        ],
+        ),
       ],
     );
   }
