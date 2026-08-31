@@ -218,23 +218,80 @@ CatalogEnvelope? parseEnvelope(dynamic raw) {
   return null;
 }
 
-/// Host detail route declared by a hub pack on each openable meta.
+/// Engine extract inputs declared by a hub pack on [CatalogOpen.extract].
 ///
-/// Host switches only on [surface] — never on pack/scraper id keys.
+/// Host passes [ctx] through to the engine boundary without interpreting keys.
+class CatalogOpenExtract {
+  const CatalogOpenExtract({
+    required this.resolveType,
+    required this.panelCategory,
+    this.ctx = const {},
+  });
+
+  final String resolveType;
+  final String panelCategory;
+  final Map<String, dynamic> ctx;
+
+  static CatalogOpenExtract? fromJson(dynamic raw) {
+    if (raw is! Map) return null;
+    final m = Map<String, dynamic>.from(raw);
+    final resolveType =
+        (m['resolveType'] ?? m['type'] ?? '').toString().trim();
+    final panelCategory =
+        (m['panelCategory'] ?? m['panel'] ?? '').toString().trim();
+    if (resolveType.isEmpty || panelCategory.isEmpty) return null;
+    Map<String, dynamic> ctx;
+    if (m['ctx'] is Map) {
+      ctx = Map<String, dynamic>.from(m['ctx'] as Map);
+    } else {
+      ctx = Map<String, dynamic>.from(m)
+        ..remove('resolveType')
+        ..remove('type')
+        ..remove('panelCategory')
+        ..remove('panel')
+        ..remove('ctx');
+    }
+    return CatalogOpenExtract(
+      resolveType: resolveType,
+      panelCategory: panelCategory,
+      ctx: ctx,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'resolveType': resolveType,
+        'panelCategory': panelCategory,
+        if (ctx.isNotEmpty) 'ctx': ctx,
+      };
+
+  int? intVal(String key) {
+    final v = ctx[key];
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v?.toString() ?? '');
+  }
+}
+
+/// Host detail route declared by a hub pack on each openable meta.
 class CatalogOpen {
   const CatalogOpen({
     required this.surface,
     required this.id,
+    this.extract,
     this.extras = const {},
   });
 
-  /// Host surface: `anime` | `drama` | `tmdb` | `arabic` (feature routes).
+  /// Host route name (opaque to host behavior — use [extract] for engine).
   final String surface;
-  /// Opaque id for that surface (string form of int or remote key).
   final String id;
+  final CatalogOpenExtract? extract;
   final Map<String, dynamic> extras;
 
   int? get idInt => int.tryParse(id);
+
+  /// Pack-owned extract spec, or legacy synthesis for cached meta without extract.
+  CatalogOpenExtract get effectiveExtract =>
+      extract ?? _legacyExtractFromSurface();
 
   String? extraString(String key) {
     final v = extras[key];
@@ -251,22 +308,75 @@ class CatalogOpen {
     return s == 'true' || s == '1';
   }
 
+  /// LEGACY — cached meta without [extract]; remove when migration complete.
+  CatalogOpenExtract _legacyExtractFromSurface() {
+    final idN = idInt;
+    switch (surface) {
+      case 'anime':
+        return CatalogOpenExtract(
+          resolveType: 'anime',
+          panelCategory: 'anime',
+          ctx: {
+            if (idN != null) 'anilistId': idN,
+            if (extraString('mal') case final mal?)
+              if (int.tryParse(mal) case final m?) 'malId': m,
+          },
+        );
+      case 'drama':
+        return CatalogOpenExtract(
+          resolveType: 'drama',
+          panelCategory: 'drama',
+          ctx: {if (idN != null) 'kisskhId': idN},
+        );
+      case 'arabic':
+        return CatalogOpenExtract(
+          resolveType: 'arabic',
+          panelCategory: 'arabic',
+          ctx: {
+            'videoId': id,
+            if (extraString('source') case final src?) 'source': src,
+          },
+        );
+      case 'tmdb':
+        final mt = extraString('mediaType') ?? 'movie';
+        return CatalogOpenExtract(
+          resolveType: mt == 'tv' ? 'tv' : 'movie',
+          panelCategory: 'movie',
+          ctx: {if (idN != null) 'tmdbId': idN},
+        );
+      default:
+        return CatalogOpenExtract(
+          resolveType: 'movie',
+          panelCategory: 'movie',
+          ctx: {if (idN != null) 'mediaId': idN},
+        );
+    }
+  }
+
   static CatalogOpen? fromJson(dynamic raw) {
     if (raw is! Map) return null;
     final m = Map<String, dynamic>.from(raw);
     final surface = (m['surface'] ?? m['route'] ?? '').toString().trim();
     final id = (m['id'] ?? '').toString().trim();
     if (surface.isEmpty || id.isEmpty) return null;
+    final extract = CatalogOpenExtract.fromJson(m['extract']);
     final extras = Map<String, dynamic>.from(m)
       ..remove('surface')
       ..remove('route')
-      ..remove('id');
-    return CatalogOpen(surface: surface, id: id, extras: extras);
+      ..remove('id')
+      ..remove('extract');
+    return CatalogOpen(
+      surface: surface,
+      id: id,
+      extract: extract,
+      extras: extras,
+    );
   }
 
   Map<String, dynamic> toJson() => {
         'surface': surface,
         'id': id,
+        if (extract != null) 'extract': extract!.toJson(),
         ...extras,
       };
 }

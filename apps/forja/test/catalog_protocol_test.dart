@@ -548,7 +548,7 @@ void main() {
         );
       }
       expect(PluginNavRegistry.isHubTab('settings'), isFalse);
-      expect(PluginNavRegistry.builtInHubPluginIds['anime'], 'anilist');
+      expect(PluginNavRegistry.seedHubTabIds, contains('anime'));
 
       PluginNavRegistry.seedBuiltIns();
       expect(PluginNavRegistry.builders.containsKey('home'), isTrue);

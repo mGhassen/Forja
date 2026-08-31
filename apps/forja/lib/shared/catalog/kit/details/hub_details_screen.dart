@@ -23,7 +23,7 @@ import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/widgets/tv_season_episode_picker.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
-import 'package:rust/rust.dart' show RichMediaDetails, isInProgressResume;
+import 'package:rust/rust.dart' show isInProgressResume;
 
 Future<T?> openHubDetails<T>(
   BuildContext context, {
@@ -64,7 +64,6 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
 
   CatalogMetaItem? _detail;
   List<HubDetailRailSection> _packRails = const [];
-  RichMediaDetails? _tmdbRich;
   List<String> _heroBackdrops = const [];
   bool _loading = true;
   String? _error;
@@ -164,8 +163,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     }
     final meta = env.meta ?? widget.item;
     final packRails = parseHubDetailRails(env.data);
-    final rich = await hubLoadTmdbRich(meta);
-    final backdrops = await hubTmdbHeroBackdropUrls(meta);
+    final backdrops = hubHeroBackdropUrls(meta);
     if (!mounted) return;
     final seasons = hubSeasonNumbers(meta.videos).toList()..sort();
     final firstSeason = seasons.isEmpty ? 1 : seasons.first;
@@ -176,7 +174,6 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     setState(() {
       _detail = meta;
       _packRails = packRails;
-      _tmdbRich = rich;
       _heroBackdrops = backdrops;
       _loading = false;
       _selectedSeason = firstSeason;
@@ -305,7 +302,6 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     final show = _show;
     final videos = _videos;
     final seasons = hubSeasonNumbers(videos).toList()..sort();
-    final rich = _tmdbRich;
     final backdrop = hubImageUrl(
       _heroBackdrops.isNotEmpty
           ? _heroBackdrops.first
@@ -405,7 +401,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     );
     final tmdbSections = buildHubTmdbDetailSections(
       context: context,
-      rich: rich,
+      rich: null,
       tvFocus: tvFocus,
       firstMetaFocusUp: packSections.isEmpty ? firstMetaFocusUp : null,
     );
@@ -423,16 +419,16 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       hero: HubDetailsHero(
         backdropUrl: backdrop,
         backdropUrls: backdropUrls,
-        title: rich?.movie.title ?? show.name,
+        title: show.name,
         genres: show.genres,
-        overview: (rich?.movie.overview ?? show.description).trim(),
+        overview: show.description.trim(),
         metaParts: [
           if (_isMovie) 'FILM' else 'TV',
           if (show.releaseInfo.isNotEmpty) show.releaseInfo,
         ],
-        rating: rich?.movie.voteAverage ?? show.rating,
-        richFacts: rich,
-        logoUrl: hubTmdbLogoUrl(rich),
+        rating: show.rating,
+        richFacts: null,
+        logoUrl: hubMetaLogoUrl(show),
         height: DetailsTokens.heroHeight(
           context,
           showEpisodeRail: hasEpisodes,

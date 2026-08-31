@@ -66,11 +66,7 @@ class PlayerSourcesPanel {
     String? preferredKind,
     String? currentAddonBaseUrl,
     CatalogOpen? catalogOpen,
-    int? anilistId,
     int? malId,
-    int? kisskhId,
-    int? kisskhEpisodeId,
-    String? arabicVideoId,
     String? episodeVideoId,
 
     /// Soft Forja category for this panel: movie | tv | anime | drama | arabic.
@@ -107,11 +103,7 @@ class PlayerSourcesPanel {
           preferredKind: preferredKind,
           currentAddonBaseUrl: currentAddonBaseUrl,
           catalogOpen: catalogOpen,
-          anilistId: anilistId,
           malId: malId,
-          kisskhId: kisskhId,
-          kisskhEpisodeId: kisskhEpisodeId,
-          arabicVideoId: arabicVideoId,
           episodeVideoId: episodeVideoId,
           engineCategory: engineCategory,
           animeAudioCategory: animeAudioCategory,
@@ -142,11 +134,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.preferredKind,
     this.currentAddonBaseUrl,
     this.catalogOpen,
-    this.anilistId,
     this.malId,
-    this.kisskhId,
-    this.kisskhEpisodeId,
-    this.arabicVideoId,
     this.episodeVideoId,
     this.engineCategory,
     this.animeAudioCategory,
@@ -162,11 +150,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final String? preferredKind;
   final String? currentAddonBaseUrl;
   final CatalogOpen? catalogOpen;
-  final int? anilistId;
   final int? malId;
-  final int? kisskhId;
-  final int? kisskhEpisodeId;
-  final String? arabicVideoId;
   final String? episodeVideoId;
   final String? engineCategory;
   final String? animeAudioCategory;
@@ -214,11 +198,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           preferredKind: widget.preferredKind,
           currentAddonBaseUrl: widget.currentAddonBaseUrl,
           catalogOpen: widget.catalogOpen,
-          anilistId: widget.anilistId,
           malId: widget.malId,
-          kisskhId: widget.kisskhId,
-          kisskhEpisodeId: widget.kisskhEpisodeId,
-          arabicVideoId: widget.arabicVideoId,
           episodeVideoId: widget.episodeVideoId,
           engineCategory: widget.engineCategory,
           animeAudioCategory: widget.animeAudioCategory,
@@ -245,11 +225,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.preferredKind,
     this.currentAddonBaseUrl,
     this.catalogOpen,
-    this.anilistId,
     this.malId,
-    this.kisskhId,
-    this.kisskhEpisodeId,
-    this.arabicVideoId,
     this.episodeVideoId,
     this.engineCategory,
     this.animeAudioCategory,
@@ -264,11 +240,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final String? preferredKind;
   final String? currentAddonBaseUrl;
   final CatalogOpen? catalogOpen;
-  final int? anilistId;
   final int? malId;
-  final int? kisskhId;
-  final int? kisskhEpisodeId;
-  final String? arabicVideoId;
   final String? episodeVideoId;
   final String? engineCategory;
   final String? animeAudioCategory;
@@ -326,6 +298,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   final Set<Future<void>> _enginePoolTasks = {};
   int _enginePoolLimit = kEngineSourcesBatchDesktop;
 
+  int? get _resolvedMalId =>
+      widget.malId ?? widget.catalogOpen?.effectiveExtract.intVal('malId');
+
+  bool get _hasAnimeExtractIds {
+    final extract = widget.catalogOpen?.effectiveExtract;
+    return (extract?.intVal('anilistId') ?? 0) > 0 ||
+        (_resolvedMalId ?? 0) > 0;
+  }
+
   /// Soft Forja panel bucket. Prefer explicit hub category; else infer anime /
   /// drama from the playing `engine:` plugin so player Sources reuse the same
   /// chip prefs + session cache as details/hub.
@@ -335,8 +316,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         catalogOpen: widget.catalogOpen,
         movie: widget.movie,
         episode: widget.episode,
-        episodeVideoId: widget.episodeVideoId ?? widget.arabicVideoId,
-        malId: widget.malId,
+        episodeVideoId: widget.episodeVideoId,
+        malId: _resolvedMalId,
         panelCategoryHint: widget.engineCategory,
       ).panelCategory;
     }
@@ -345,14 +326,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return EngineCategories.panelCategoryFor(
         mediaType: widget.movie.mediaType,
         panelCategory: explicit,
-        hasAnimeIds: (widget.anilistId ?? 0) > 0 || (widget.malId ?? 0) > 0,
+        hasAnimeIds: _hasAnimeExtractIds,
       );
     }
     final inferred = _panelCategoryFromPlayingEnginePlugin();
     if (inferred != null) return inferred;
     return EngineCategories.panelCategoryFor(
       mediaType: widget.movie.mediaType,
-      hasAnimeIds: (widget.anilistId ?? 0) > 0 || (widget.malId ?? 0) > 0,
+      hasAnimeIds: _hasAnimeExtractIds,
     );
   }
 
@@ -382,8 +363,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         catalogOpen: widget.catalogOpen,
         movie: widget.movie,
         episode: widget.episode,
-        episodeVideoId: widget.episodeVideoId ?? widget.arabicVideoId,
-        malId: widget.malId,
+        episodeVideoId: widget.episodeVideoId,
+        malId: _resolvedMalId,
         panelCategoryHint: widget.engineCategory,
       ).resolveType;
     }
@@ -1049,7 +1030,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     malId: widget.malId,
     audioCategory: widget.animeAudioCategory,
     episodeVideoId:
-        widget.episodeVideoId ?? widget.arabicVideoId,
+        widget.episodeVideoId,
   );
 
   /// Hydrate from session TTL cache or fetch - only for the active kind.
@@ -2472,14 +2453,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         title: widget.movie.title,
         year: _year,
         movie: widget.movie,
-        malId: widget.malId,
-        anilistId: widget.catalogOpen == null ? widget.anilistId : null,
-        kisskhId: widget.catalogOpen == null ? widget.kisskhId : null,
-        kisskhEpisodeId:
-            widget.catalogOpen == null ? widget.kisskhEpisodeId : null,
-        arabicVideoId: widget.catalogOpen == null ? widget.arabicVideoId : null,
+        malId: _resolvedMalId,
         catalogOpen: widget.catalogOpen,
-        episodeVideoId: widget.episodeVideoId ?? widget.arabicVideoId,
+        episodeVideoId: widget.episodeVideoId,
         allowHostFallback: false,
       );
     } catch (e) {

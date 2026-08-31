@@ -502,6 +502,10 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   void _onFindShortcut() {
+    unawaited(_handleFindShortcut());
+  }
+
+  Future<void> _handleFindShortcut() async {
     if (ShellBus.invokeFindShortcut()) return;
     if (ShellBus.shellOverlayHasPage.value) return;
 
@@ -514,23 +518,30 @@ class _MainScreenState extends ConsumerState<MainScreen>
       case 'search':
         _searchKey.currentState?.focusFromFindShortcut();
       case 'anime':
+        final animePlugin = await PluginNavRegistry.pluginIdForTab('anime');
+        if (animePlugin == null || !ctx.mounted) return;
         openHubCatalogSearch(
           ctx,
-          pluginId: 'anilist',
+          pluginId: animePlugin,
           tabId: 'anime',
           hintText: 'Search anime…',
         );
       case 'asian_drama':
+        final dramaPlugin =
+            await PluginNavRegistry.pluginIdForTab('asian_drama');
+        if (dramaPlugin == null || !ctx.mounted) return;
         openHubCatalogSearch(
           ctx,
-          pluginId: 'kisskh-hub',
+          pluginId: dramaPlugin,
           tabId: 'asian_drama',
           hintText: 'Search Asian dramas…',
         );
       case 'arabic':
+        final arabicPlugin = await PluginNavRegistry.pluginIdForTab('arabic');
+        if (arabicPlugin == null || !ctx.mounted) return;
         openHubCatalogSearch(
           ctx,
-          pluginId: 'arabic-hub',
+          pluginId: arabicPlugin,
           tabId: 'arabic',
           hintText: 'بحث… · Search',
         );

@@ -515,7 +515,16 @@ function tmdbMeta(cfg, row, forcedType) {
     description: String(row.overview || '').trim(),
     releaseInfo: release ? release.substring(0, 4) : '',
     ids: { tmdb: String(row.id) },
-    open: { surface: 'tmdb', id: String(row.id), mediaType: type },
+    open: {
+      surface: 'tmdb',
+      id: String(row.id),
+      mediaType: type,
+      extract: {
+        resolveType: type === 'tv' ? 'tv' : 'movie',
+        panelCategory: 'movie',
+        ctx: { tmdbId: Number(row.id) },
+      },
+    },
   };
   if (row.vote_average) meta.rating = Number(row.vote_average);
   return meta;

@@ -6,15 +6,10 @@ import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/list_follow_from_watched.dart';
 import 'package:rust/rust.dart';
 
-/// Hub tab media types — never written to Home [`watch_history`].
+/// Hub tab media types — episodic catalog rows, not Home TMDB watch history.
 bool isHubTabMediaType(String? mediaType) {
-  switch (mediaType) {
-    case 'asian_drama':
-    case 'anime':
-      return true;
-    default:
-      return false;
-  }
+  if (mediaType == null || mediaType.isEmpty) return false;
+  return mediaType != 'movie' && mediaType != 'tv';
 }
 
 bool hubMediaIsEpisodic(Movie movie) {
@@ -237,65 +232,37 @@ Future<void> _syncEpisodeWatched({
   required Duration pos,
   required Duration dur,
 }) async {
+  final pluginId = session.pluginId;
+  final meta = session.catalogMeta;
   final open = session.effectiveOpen;
   final mediaId = open?.idInt;
-  if (mediaId == null) return;
-
-  switch (open?.surface) {
-    case 'anime':
-      await EpisodeWatchedService()
-          .markWatchedIfFinished(
-            mediaId: mediaId,
-            season: 1,
-            episode: ep,
-            positionMs: pos.inMilliseconds,
-            durationMs: dur.inMilliseconds,
-            catalog: EpisodeWatchedService.catalogAnilist,
-          )
-          .then((marked) async {
-            if (!marked) return;
-            final meta = session.catalogMeta;
-            final target = HubListFollowTarget.anime(
-              anilistId: mediaId,
-              title: meta?.name ?? '',
-              posterPath: meta?.poster ?? '',
-            );
-            HubListFollow.syncEpisodeWatched(target, episode: ep);
-            await ListFollowFromWatched.applyHubAfterAutoMark(
-              target: target,
-              mediaId: mediaId,
-              catalog: EpisodeWatchedService.catalogAnilist,
-              totalEpisodes: meta?.episodes ?? ep,
-            );
-          });
-    case 'drama':
-      await EpisodeWatchedService()
-          .markWatchedIfFinished(
-            mediaId: mediaId,
-            season: 1,
-            episode: ep,
-            positionMs: pos.inMilliseconds,
-            durationMs: dur.inMilliseconds,
-            catalog: EpisodeWatchedService.catalogKisskh,
-          )
-          .then((marked) async {
-            if (!marked) return;
-            final meta = session.catalogMeta;
-            final target = HubListFollowTarget.drama(
-              kisskhId: mediaId,
-              title: meta?.name ?? '',
-              posterPath: meta?.poster ?? '',
-              releaseDate: meta?.releaseInfo ?? '',
-            );
-            HubListFollow.syncEpisodeWatched(target, episode: ep);
-            await ListFollowFromWatched.applyHubAfterAutoMark(
-              target: target,
-              mediaId: mediaId,
-              catalog: EpisodeWatchedService.catalogKisskh,
-              totalEpisodes: meta?.episodes ?? ep,
-            );
-          });
-    default:
-      break;
+  if (pluginId == null || meta == null || open == null || mediaId == null) {
+    return;
   }
+
+  final catalog = pluginId;
+  await EpisodeWatchedService()
+      .markWatchedIfFinished(
+        mediaId: mediaId,
+        season: 1,
+        episode: ep,
+        positionMs: pos.inMilliseconds,
+        durationMs: dur.inMilliseconds,
+        catalog: catalog,
+      )
+      .then((marked) async {
+        if (!marked) return;
+        final target = CatalogListFollowTarget.fromMeta(
+          pluginId: pluginId,
+          meta: meta,
+        );
+        if (target == null) return;
+        HubListFollow.syncEpisodeWatched(target, episode: ep);
+        await ListFollowFromWatched.applyHubAfterAutoMark(
+          target: target,
+          mediaId: mediaId,
+          catalog: catalog,
+          totalEpisodes: meta.episodes ?? ep,
+        );
+      });
 }

@@ -114,8 +114,10 @@ class CatalogSourcesSessionCache {
 
     final open = catalogOpen;
     if (open != null) {
+      final pid = (pluginId ?? '').trim();
       return catalogOpenCacheKey(
         open,
+        pluginId: pid.isNotEmpty ? pid : 'catalog',
         episode: ep,
         audioCategory: audioCategory,
         episodeVideoId: episodeVideoId,

@@ -471,34 +471,11 @@ class _CatalogShellState extends State<CatalogShell>
   Future<void> _openMeta(CatalogMetaItem item) =>
       openCatalogMetaItem(context, pluginId: widget.pluginId, item: item);
 
-  HubListFollowTarget? _listTarget(CatalogMetaItem item) {
-    final open = item.open;
-    if (open == null) return null;
-    switch (open.surface) {
-      case 'anime':
-        final id = open.idInt;
-        if (id == null) return null;
-        return HubListFollowTarget.anime(
-          anilistId: id,
-          title: item.name,
-          posterPath: item.poster,
-          voteAverage: item.rating ?? 0,
-          releaseDate: item.releaseInfo,
-        );
-      case 'drama':
-        final id = open.idInt;
-        if (id == null) return null;
-        return HubListFollowTarget.drama(
-          kisskhId: id,
-          title: item.name,
-          posterPath: item.poster,
-          tmdbId: item.numericId('tmdb'),
-          tmdbMediaType: item.tmdbMediaType,
-          releaseDate: item.releaseInfo,
-        );
-      default:
-        return null;
-    }
+  CatalogListFollowTarget? _listTarget(CatalogMetaItem item) {
+    return CatalogListFollowTarget.fromMeta(
+      pluginId: widget.pluginId,
+      meta: item,
+    );
   }
 
   List<HubHeroSlide> _heroSlides(List<CatalogMetaItem> items) {
@@ -508,19 +485,15 @@ class _CatalogShellState extends State<CatalogShell>
   HubHeroSlide _heroSlideFor(CatalogMetaItem item) {
     final status = (item.status ?? '').trim();
     final isUpcoming = status.toUpperCase() == 'NOT_YET_RELEASED';
-    final useAniBanner =
-        item.open?.surface == 'anime' &&
+    final useAniBanner = item.open != null &&
         item.bannerImage.isNotEmpty &&
         item.background == item.bannerImage;
     final yearBit = item.releaseInfo.isEmpty
         ? null
         : item.releaseInfo.split(' • ').first;
-    // Hub-native surfaces: keep pack open + listTarget. Never set [movie]
-    // — hub hero has onOpenDetails=null, so a TMDB Movie made View details a
-    // silent no-op after spotlight enrich.
-    final surface = item.open?.surface;
+    final open = item.open;
     final hubNative =
-        surface == 'anime' || surface == 'drama' || surface == 'arabic';
+        open != null && catalogOpenUsesHubDetails(open);
     final movie = hubNative ? null : catalogMetaToMovie(item);
     final mediaHint = (item.tmdbMediaType ?? '').trim().toLowerCase();
     final badge = (item.badge ?? '').trim().toUpperCase();
@@ -549,7 +522,7 @@ class _CatalogShellState extends State<CatalogShell>
       genres: item.genres,
       imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
       imageAlignment: useAniBanner ? Alignment.center : Alignment.centerRight,
-      tmdbId: item.numericId('tmdb') ?? movie?.id,
+      tmdbId: open?.idInt ?? movie?.id,
       tmdbMediaType: tmdbMediaType,
       movie: movie,
       listTarget: _listTarget(item),
@@ -1433,5 +1406,56 @@ class _VerticalHubRailState extends State<_VerticalHubRail> {
         );
       },
     );
+  }
+}
+
+/// Resolves [tabId] → installed hub [pluginId] before building [CatalogShell].
+class CatalogShellLoader extends StatefulWidget {
+  const CatalogShellLoader({super.key, required this.tabId});
+
+  final String tabId;
+
+  @override
+  State<CatalogShellLoader> createState() => _CatalogShellLoaderState();
+}
+
+class _CatalogShellLoaderState extends State<CatalogShellLoader> {
+  String? _pluginId;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_resolve());
+  }
+
+  Future<void> _resolve() async {
+    try {
+      final id = await PluginNavRegistry.pluginIdForTab(widget.tabId);
+      if (!mounted) return;
+      if (id == null || id.isEmpty) {
+        setState(() => _error = 'Hub pack not installed');
+        return;
+      }
+      setState(() => _pluginId = id);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pluginId = _pluginId;
+    if (pluginId != null) {
+      return CatalogShell(pluginId: pluginId, tabId: widget.tabId);
+    }
+    if (_error != null) {
+      return ShellErrorRetryPanel(
+        message: 'Could not load hub tab',
+        onRetry: () => unawaited(_resolve()),
+      );
+    }
+    return const Center(child: CircularProgressIndicator());
   }
 }

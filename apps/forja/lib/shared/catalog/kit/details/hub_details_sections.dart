@@ -1,3 +1,4 @@
+import 'package:forja/shared/catalog/hub_cover_urls.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
 import 'package:forja/shared/catalog/kit/rows/hub_catalog_section.dart';
@@ -214,70 +215,31 @@ List<Map<String, String>> _crewAsCast(List<Map<String, String>> crew) {
   ];
 }
 
-final _hubTmdbRichCache = <String, RichMediaDetails>{};
-final _hubTmdbBackdropCache = <String, List<String>>{};
+final _hubHeroBackdropCache = <String, List<String>>{};
 
-String _hubTmdbUiCacheKey(int tmdbId, String mediaType) => '$tmdbId|$mediaType';
+String _hubHeroCacheKey(CatalogMetaItem meta) =>
+    '${meta.id}|${meta.background}|${meta.bannerImage}';
 
-Future<List<String>> hubTmdbHeroBackdropUrls(CatalogMetaItem meta) async {
-  final tmdbId = meta.numericId('tmdb');
-  if (tmdbId == null) return const [];
-
-  final isMovie = meta.tmdbMediaType == 'movie' ||
-      meta.type == 'movie' ||
-      (meta.badge ?? '').toUpperCase() == 'MOVIE';
-  final mediaType = meta.tmdbMediaType ?? (isMovie ? 'movie' : 'tv');
-  final cacheKey = _hubTmdbUiCacheKey(tmdbId, mediaType);
-  final cached = _hubTmdbBackdropCache[cacheKey];
+List<String> hubHeroBackdropUrls(CatalogMetaItem meta) {
+  final cacheKey = _hubHeroCacheKey(meta);
+  final cached = _hubHeroBackdropCache[cacheKey];
   if (cached != null) return cached;
 
-  final api = TmdbApi();
   final urls = <String>[];
-
-  void addUrl(String path) {
-    if (path.isEmpty) return;
-    final u = path.startsWith('http') ? path : TmdbApi.getBackdropUrl(path);
+  void addUrl(String raw) {
+    final u = resolveHubCoverUrl(raw.trim());
     if (u.isNotEmpty && !urls.contains(u)) urls.add(u);
   }
 
   addUrl(meta.background);
   addUrl(meta.bannerImage);
-  try {
-    final paths = await api.getBackdrops(tmdbId, mediaType: mediaType);
-    for (final p in paths) {
-      addUrl(p);
-    }
-  } catch (_) {}
+  addUrl(meta.poster);
 
   final out = urls.take(12).toList();
-  _hubTmdbBackdropCache[cacheKey] = out;
+  _hubHeroBackdropCache[cacheKey] = out;
   return out;
 }
 
-Future<RichMediaDetails?> hubLoadTmdbRich(CatalogMetaItem meta) async {
-  final tmdbId = meta.numericId('tmdb');
-  if (tmdbId == null) return null;
-
-  final isMovie = meta.tmdbMediaType == 'movie' ||
-      meta.type == 'movie' ||
-      (meta.badge ?? '').toUpperCase() == 'MOVIE';
-  final mediaType = meta.tmdbMediaType ?? (isMovie ? 'movie' : 'tv');
-  final cacheKey = _hubTmdbUiCacheKey(tmdbId, mediaType);
-  final cached = _hubTmdbRichCache[cacheKey];
-  if (cached != null) return cached;
-
-  try {
-    final rich = await TmdbApi().getRichDetails(tmdbId, mediaType);
-    _hubTmdbRichCache[cacheKey] = rich;
-    return rich;
-  } catch (_) {
-    return null;
-  }
-}
-
-String? hubTmdbLogoUrl(RichMediaDetails? rich) {
-  if (rich == null) return null;
-  final path = rich.movie.logoPath.trim();
-  if (path.isEmpty) return null;
-  return path.startsWith('http') ? path : TmdbApi.getImageUrl(path);
+String? hubMetaLogoUrl(CatalogMetaItem meta) {
+  return null;
 }

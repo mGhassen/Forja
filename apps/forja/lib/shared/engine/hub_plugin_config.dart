@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/service.dart';
 import 'package:rust/rust.dart';
@@ -102,19 +103,33 @@ abstract final class HubPluginConfig {
     return 'https://$host';
   }
 
+  static Future<String?> _dramaHubPluginId() async {
+    final plugin = await catalogPluginForTab('asian_drama');
+    return plugin?.id;
+  }
+
   static Future<void> activateMirrorBaseUrl(String baseUrl) async {
-    await kisskhCatalog({'action': 'activate_base_url', 'base_url': baseUrl});
+    final pluginId = await _dramaHubPluginId();
+    if (pluginId == null) return;
+    await CatalogRuntime.instance.run(
+      pluginId: pluginId,
+      action: 'activate_base_url',
+      params: {'base_url': baseUrl},
+    );
   }
 
   static Future<bool> probeMirrorBaseUrl(String hostOrId) async {
+    final pluginId = await _dramaHubPluginId();
+    if (pluginId == null) return false;
     final base = baseUrlForHost(hostOrId);
     if (kDebugMode) debugPrint('[HubPluginConfig] probe $base …');
     try {
-      final decoded = await kisskhCatalog({
-        'action': 'probe_base_url',
-        'base_url': base,
-      });
-      return decoded['ok'] == true;
+      final env = await CatalogRuntime.instance.run(
+        pluginId: pluginId,
+        action: 'probe_base_url',
+        params: {'base_url': base},
+      );
+      return env.data?['ok'] == true;
     } catch (_) {
       return false;
     }

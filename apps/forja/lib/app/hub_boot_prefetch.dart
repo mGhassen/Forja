@@ -13,7 +13,7 @@ Future<void> prefetchDefaultHubLayout(BootNeeds needs) async {
   final tabId = _defaultHubTab(needs);
   if (tabId == null) return;
 
-  final pluginId = PluginNavRegistry.builtInHubPluginIds[tabId];
+  final pluginId = await PluginNavRegistry.pluginIdForTab(tabId);
   if (pluginId == null || pluginId.isEmpty) return;
 
   debugPrint('[Init] Prefetch hub ($tabId → $pluginId)');

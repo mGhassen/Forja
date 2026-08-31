@@ -175,7 +175,18 @@ function anilistMeta(m) {
     releaseInfo: anilistCardMeta(m),
     genres: Array.isArray(m.genres) ? m.genres : [],
     ids: ids,
-    open: { surface: 'anime', id: String(m.id) },
+    open: {
+      surface: 'anime',
+      id: String(m.id),
+      extract: {
+        resolveType: 'anime',
+        panelCategory: 'anime',
+        ctx: {
+          anilistId: Number(m.id),
+          malId: m.idMal ? Number(m.idMal) : undefined,
+        },
+      },
+    },
   };
   if (m.idMal) meta.open.mal = String(m.idMal);
   if (m.averageScore) meta.rating = Number(m.averageScore) / 10;

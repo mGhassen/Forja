@@ -27,20 +27,11 @@ class CatalogPlaySession {
     return v != null && v.isNotEmpty ? v : null;
   }
 
-  /// Hub episodic lists (anime / drama / arabic) — flat episode numbers, not TMDB seasons.
+  /// Hub episodic lists — flat episode numbers when meta carries videos.
   bool get isHubFlatList {
-    final open = effectiveOpen;
-    if (open != null) {
-      switch (open.surface) {
-        case 'anime':
-        case 'drama':
-        case 'arabic':
-          return true;
-        default:
-          return false;
-      }
-    }
-    return catalogMeta != null;
+    final videos = catalogMeta?.videos;
+    if (videos != null && videos.isNotEmpty) return true;
+    return catalogMeta != null && effectiveOpen != null;
   }
 }
 

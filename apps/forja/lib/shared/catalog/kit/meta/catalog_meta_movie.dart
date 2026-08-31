@@ -18,14 +18,14 @@ String catalogTmdbPath(String raw) {
   return s;
 }
 
-/// Stable negative id for hub meta without TMDB (Arabic catalog cards).
+/// Stable negative id for hub meta without a numeric upstream id.
 int catalogSyntheticMovieId(CatalogMetaItem item) {
   return -item.id.hashCode.abs().clamp(1, 0x7FFFFFFF);
 }
 
 final Map<int, CatalogMetaItem> _catalogMetaByMovieId = {};
 
-/// Reverse lookup after [catalogMetaToMovie] (Arabic home rails tap).
+/// Reverse lookup after [catalogMetaToMovie].
 CatalogMetaItem? catalogMetaItemForMovie(Movie movie) =>
     _catalogMetaByMovieId[movie.id];
 
@@ -35,13 +35,24 @@ String catalogPosterPathForMovie(String raw) {
   return catalogTmdbPath(s);
 }
 
-/// Map catalog meta → [Movie] when meta carries TMDB-shaped ids (hero bleed).
+int? _numericOpenId(CatalogMetaItem item) {
+  final open = item.open;
+  if (open != null) return open.idInt;
+  final tail = item.id.split(':').last;
+  return int.tryParse(tail);
+}
+
+/// Map catalog meta → [Movie] for hero bleed / TMDB-shaped playback ids.
 Movie? catalogMetaToMovie(CatalogMetaItem item) {
-  final type = item.type.toLowerCase();
-  if (type == 'arabic') {
+  final open = item.open;
+  final extract = open?.effectiveExtract;
+  final resolveType = extract?.resolveType ?? item.type.toLowerCase();
+
+  if (resolveType == 'arabic' ||
+      (open == null && item.type.toLowerCase() == 'arabic')) {
     final movieId = catalogSyntheticMovieId(item);
     _catalogMetaByMovieId[movieId] = item;
-    final isMovie = item.open?.extraBool('movie') == true ||
+    final isMovie = open?.extraBool('movie') == true ||
         (item.badge ?? '').toUpperCase() == 'MOVIE';
     final poster = item.poster.trim();
     final backdrop = item.background.trim();
@@ -60,17 +71,17 @@ Movie? catalogMetaToMovie(CatalogMetaItem item) {
     );
   }
 
-  final id = item.numericId('tmdb');
+  final id = _numericOpenId(item);
   if (id == null || id <= 0) return null;
 
   String mediaType;
-  if (type == 'movie' || type == 'tv' || type == 'series') {
-    mediaType = type == 'series' ? 'tv' : type;
-  } else if (type == 'drama' || type == 'anime') {
+  if (resolveType == 'movie' || resolveType == 'tv' || resolveType == 'series') {
+    mediaType = resolveType == 'series' ? 'tv' : resolveType;
+  } else if (resolveType == 'anime' || resolveType == 'drama') {
     final hint = (item.tmdbMediaType ?? '').toLowerCase();
     mediaType = hint == 'movie' ? 'movie' : 'tv';
   } else {
-    return null;
+    mediaType = item.tmdbMediaType == 'movie' ? 'movie' : 'tv';
   }
 
   return Movie(

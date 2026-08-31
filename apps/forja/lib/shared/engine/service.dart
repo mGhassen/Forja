@@ -481,18 +481,21 @@ class EngineService {
       episodeVideoId: episodeVideoId,
       episode: episode,
       malId: malId,
-      anilistId: anilistId,
-      kisskhId: kisskhId,
-      kisskhEpisodeId: kisskhEpisodeId,
-      arabicVideoId: arabicVideoId,
+      legacyCtx: {
+        if (anilistId != null) 'anilistId': anilistId,
+        if (kisskhId != null) 'kisskhId': kisskhId,
+        if (kisskhEpisodeId != null) 'kisskhEpisodeId': kisskhEpisodeId,
+        if (arabicVideoId != null) 'arabicVideoId': arabicVideoId,
+      },
       panelCategoryHint: type,
     );
     final extractType = resolved.type;
-    final resolvedMalId = resolved.malId;
-    final resolvedAnilistId = resolved.anilistId;
-    final resolvedKisskhId = resolved.kisskhId;
-    final resolvedKisskhEpisodeId = resolved.kisskhEpisodeId;
-    final resolvedArabicVideoId = resolved.arabicVideoId;
+    final legacyIds = engineCtxToLegacyIds(resolved.ctx);
+    final resolvedMalId = legacyIds.malId;
+    final resolvedAnilistId = legacyIds.anilistId;
+    final resolvedKisskhId = legacyIds.kisskhId;
+    final resolvedKisskhEpisodeId = legacyIds.kisskhEpisodeId;
+    final resolvedArabicVideoId = legacyIds.arabicVideoId;
 
     final gen = _extractGeneration;
     final packs = await listPacks();
@@ -945,18 +948,21 @@ class EngineService {
       episodeVideoId: episodeVideoId,
       episode: episode,
       malId: malId,
-      anilistId: anilistId,
-      kisskhId: kisskhId,
-      kisskhEpisodeId: kisskhEpisodeId,
-      arabicVideoId: arabicVideoId,
+      legacyCtx: {
+        if (anilistId != null) 'anilistId': anilistId,
+        if (kisskhId != null) 'kisskhId': kisskhId,
+        if (kisskhEpisodeId != null) 'kisskhEpisodeId': kisskhEpisodeId,
+        if (arabicVideoId != null) 'arabicVideoId': arabicVideoId,
+      },
       panelCategoryHint: type,
     );
     final extractType = resolved.type;
-    final resolvedMalId = resolved.malId;
-    final resolvedAnilistId = resolved.anilistId;
-    final resolvedKisskhId = resolved.kisskhId;
-    final resolvedKisskhEpisodeId = resolved.kisskhEpisodeId;
-    final resolvedArabicVideoId = resolved.arabicVideoId;
+    final legacyIds = engineCtxToLegacyIds(resolved.ctx);
+    final resolvedMalId = legacyIds.malId;
+    final resolvedAnilistId = legacyIds.anilistId;
+    final resolvedKisskhId = legacyIds.kisskhId;
+    final resolvedKisskhEpisodeId = legacyIds.kisskhEpisodeId;
+    final resolvedArabicVideoId = legacyIds.arabicVideoId;
 
     // RFC-064: Forja EngineJS on tokio (true parallel). Null → flutter_js fork
     // only when Rust is unsupported — never after cancelPending gen bump

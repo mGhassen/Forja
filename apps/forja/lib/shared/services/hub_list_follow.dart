@@ -1,82 +1,94 @@
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/features/my_list/providers/my_list_providers.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/trakt_service.dart';
 import 'package:forja/shared/services/tracker_sync.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
 
-class HubListFollowTarget {
-  const HubListFollowTarget.anime({
-    required this.anilistId,
+/// Generic list-follow target — keyed by hub [pluginId] + opaque [open].
+class CatalogListFollowTarget {
+  const CatalogListFollowTarget({
+    required this.pluginId,
+    required this.open,
     required this.title,
     required this.posterPath,
     this.voteAverage = 0,
     this.releaseDate = '',
-  })  : kisskhId = null,
-        tmdbId = null,
-        tmdbMediaType = null,
-        kissKhType = null,
-        mediaType = 'anime';
-
-  const HubListFollowTarget.drama({
-    required this.kisskhId,
-    required this.title,
-    required this.posterPath,
     this.tmdbId,
     this.tmdbMediaType,
-    this.releaseDate = '',
-    this.kissKhType,
-    this.voteAverage = 0,
-  })  : anilistId = null,
-        mediaType = 'asian_drama';
+    this.mediaType,
+  });
 
-  final String mediaType;
-  final int? anilistId;
-  final int? kisskhId;
-  final int? tmdbId;
-  final String? tmdbMediaType;
+  final String pluginId;
+  final CatalogOpen open;
   final String title;
   final String posterPath;
   final double voteAverage;
   final String releaseDate;
-  final String? kissKhType;
+  final int? tmdbId;
+  final String? tmdbMediaType;
+  final String? mediaType;
 
-  String get uniqueId => mediaType == 'anime'
-      ? MyListService.anilistId(anilistId!)
-      : MyListService.kisskhId(kisskhId!);
+  String get resolvedMediaType =>
+      mediaType ?? open.effectiveExtract.panelCategory;
 
-  HubListFollowTarget copyWith({
+  String get uniqueId => MyListService.catalogEntryId(pluginId, open.id);
+
+  int? get mediaIdInt => open.idInt;
+
+  CatalogListFollowTarget copyWith({
     int? tmdbId,
     String? tmdbMediaType,
   }) {
-    if (mediaType == 'anime') return this;
-    return HubListFollowTarget.drama(
-      kisskhId: kisskhId!,
+    return CatalogListFollowTarget(
+      pluginId: pluginId,
+      open: open,
       title: title,
       posterPath: posterPath,
+      voteAverage: voteAverage,
+      releaseDate: releaseDate,
       tmdbId: tmdbId ?? this.tmdbId,
       tmdbMediaType: tmdbMediaType ?? this.tmdbMediaType,
-      releaseDate: releaseDate,
-      kissKhType: kissKhType,
-      voteAverage: voteAverage,
+      mediaType: mediaType,
+    );
+  }
+
+  static CatalogListFollowTarget? fromMeta({
+    required String pluginId,
+    required CatalogMetaItem meta,
+  }) {
+    final open = meta.open;
+    if (open == null) return null;
+    return CatalogListFollowTarget(
+      pluginId: pluginId,
+      open: open,
+      title: meta.name,
+      posterPath: meta.poster,
+      voteAverage: meta.rating ?? 0,
+      releaseDate: meta.releaseInfo,
+      tmdbId: meta.numericId('tmdb'),
+      tmdbMediaType: meta.tmdbMediaType,
+      mediaType: meta.type,
     );
   }
 }
+
+/// Back-compat alias — migrate imports to [CatalogListFollowTarget].
+typedef HubListFollowTarget = CatalogListFollowTarget;
 
 class HubListFollow {
   HubListFollow._();
 
   static Future<bool> setStatus(
-    HubListFollowTarget raw,
+    CatalogListFollowTarget raw,
     String to, {
     ProviderContainer? container,
   }) async {
     final t = raw;
     if (to.isEmpty) {
       final keys = <String>{t.uniqueId};
-      if (t.anilistId != null) keys.add('anilist_${t.anilistId}');
-      if (t.kisskhId != null) keys.add('kisskh_${t.kisskhId}');
       if (t.tmdbId != null) {
         keys.add(
           MyListService.movieId(t.tmdbId!, t.tmdbMediaType ?? 'tv'),
@@ -86,9 +98,9 @@ class HubListFollow {
       await MyListService().remove(t.uniqueId);
       var ok = true;
       if (await SimklService().isLoggedIn()) {
-        if (t.mediaType == 'anime' && t.anilistId != null) {
+        if (t.resolvedMediaType == 'anime' && t.mediaIdInt != null) {
           ok = await SimklService().removeFromWatchlist(
-            anilistId: t.anilistId,
+            anilistId: t.mediaIdInt,
             mediaType: 'anime',
           );
         } else if (t.tmdbId != null) {
@@ -101,26 +113,25 @@ class HubListFollow {
       _invalidate(container);
       return ok;
     }
-    await MyListService().upsertHub(
+    await MyListService().upsertCatalog(
+      pluginId: t.pluginId,
+      open: t.open.toJson(),
       uniqueId: t.uniqueId,
-      mediaType: t.mediaType,
+      mediaType: t.resolvedMediaType,
       title: t.title,
       posterPath: t.posterPath,
       listStatus: to,
-      anilistId: t.anilistId,
-      kisskhId: t.kisskhId,
       tmdbId: t.tmdbId,
       tmdbMediaType: t.tmdbMediaType,
       voteAverage: t.voteAverage,
       releaseDate: t.releaseDate,
-      kissKhType: t.kissKhType,
     );
 
     var ok = true;
     if (await SimklService().isLoggedIn()) {
-      if (t.mediaType == 'anime' && t.anilistId != null) {
+      if (t.resolvedMediaType == 'anime' && t.mediaIdInt != null) {
         ok = await SimklService().setListStatus(
-          anilistId: t.anilistId,
+          anilistId: t.mediaIdInt,
           mediaType: 'anime',
           to: to,
         );
@@ -131,7 +142,6 @@ class HubListFollow {
           to: to,
         );
       } else {
-        // Logged in but no AniList/TMDB id to send — local still saved.
         ok = false;
       }
     }
@@ -147,7 +157,7 @@ class HubListFollow {
     return ok;
   }
 
-  static Future<void> markWatchingOnPlay(HubListFollowTarget raw) async {
+  static Future<void> markWatchingOnPlay(CatalogListFollowTarget raw) async {
     await MyListService().ensureLoaded();
     final uid = raw.uniqueId;
     if (MyListService().contains(uid)) {
@@ -158,22 +168,21 @@ class HubListFollow {
   }
 
   static Future<void> syncEpisodeWatched(
-    HubListFollowTarget raw, {
+    CatalogListFollowTarget raw, {
     required int episode,
     bool watched = true,
   }) async {
     await syncSeasonWatched(raw, episodes: [episode], watched: watched);
   }
 
-  /// Batch Simkl/Trakt history for many episodes (one Simkl payload per show).
   static Future<void> syncSeasonWatched(
-    HubListFollowTarget raw, {
+    CatalogListFollowTarget raw, {
     required List<int> episodes,
     bool watched = true,
   }) async {
     if (episodes.isEmpty) return;
     var t = raw;
-    if (t.mediaType == 'asian_drama' && t.tmdbId == null) {
+    if (t.resolvedMediaType == 'drama' && t.tmdbId == null) {
       final stored = MyListService().itemOf(t.uniqueId);
       final storedTmdb = stored?['tmdbId'] as int?;
       final storedType = stored?['tmdbMediaType']?.toString();
@@ -182,10 +191,10 @@ class HubListFollow {
       }
     }
 
-    if (t.mediaType == 'anime' && t.anilistId != null) {
+    if (t.resolvedMediaType == 'anime' && t.mediaIdInt != null) {
       if (!await SimklService().isLoggedIn()) return;
       final item = {
-        'ids': {'anilist': t.anilistId},
+        'ids': {'anilist': t.mediaIdInt},
         'episodes': [
           for (final n in episodes) {'number': n},
         ],
@@ -234,18 +243,19 @@ class HubListFollow {
     }
   }
 
-  static Future<void> clearProgress(HubListFollowTarget raw) async {
+  static Future<void> clearProgress(CatalogListFollowTarget raw) async {
     if (!await SimklService().isLoggedIn()) return;
-    if (raw.mediaType == 'anime' && raw.anilistId != null) {
+    if (raw.resolvedMediaType == 'anime' && raw.mediaIdInt != null) {
       await SimklService().clearWatched(
-        anilistId: raw.anilistId,
+        anilistId: raw.mediaIdInt,
         mediaType: 'anime',
       );
       return;
     }
     final stored = MyListService().itemOf(raw.uniqueId);
     final tmdbId = raw.tmdbId ?? stored?['tmdbId'] as int?;
-    final mt = raw.tmdbMediaType ?? stored?['tmdbMediaType']?.toString() ?? 'tv';
+    final mt =
+        raw.tmdbMediaType ?? stored?['tmdbMediaType']?.toString() ?? 'tv';
     if (tmdbId == null) return;
     await SimklService().clearWatched(tmdbId: tmdbId, mediaType: mt);
     syncProgressClearedToTrackers(tmdbId: tmdbId, mediaType: mt);

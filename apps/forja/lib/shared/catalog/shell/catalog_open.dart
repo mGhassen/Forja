@@ -16,8 +16,15 @@ String catalogTmdbImagePath(String url) {
   return m?.group(1) ?? url;
 }
 
-Future<void> _openTmdb(BuildContext context, CatalogMetaItem item, String id) async {
-  final tmdbId = int.tryParse(id) ?? item.numericId('tmdb');
+bool catalogOpenUsesHubDetails(CatalogOpen open) =>
+    !_openUsesFeatureDetailsRoute(open);
+
+Future<void> _openFeatureDetails(
+  BuildContext context,
+  CatalogMetaItem item,
+  String id,
+) async {
+  final tmdbId = int.tryParse(id);
   if (tmdbId == null) return;
   final mediaType = item.open?.extraString('mediaType') ??
       item.tmdbMediaType ??
@@ -37,10 +44,15 @@ Future<void> _openTmdb(BuildContext context, CatalogMetaItem item, String id) as
   );
 }
 
+bool _openUsesFeatureDetailsRoute(CatalogOpen open) {
+  final route = open.extraString('detailsRoute') ??
+      open.extraString('featureRoute');
+  if (route != null && route.isNotEmpty) return true;
+  return open.effectiveExtract.resolveType == 'movie' ||
+      open.effectiveExtract.resolveType == 'tv';
+}
+
 /// Open details from hub meta already on the shell (rail / hero / search).
-///
-/// Hub surfaces use pack-driven [HubDetailsScreen]. Only `tmdb` opens the TMDB
-/// feature details route. Never branches on pack/scraper id keys.
 Future<void> openCatalogMetaItem(
   BuildContext context, {
   required String pluginId,
@@ -52,27 +64,23 @@ Future<void> openCatalogMetaItem(
     if (!context.mounted) return;
     final open = item.open;
     if (open != null) {
-      switch (open.surface) {
-        case 'anime':
-        case 'drama':
-        case 'arabic':
-          await openHubDetails(
-            context,
-            pluginId: pluginId,
-            item: item,
-          );
-          return;
-        case 'tmdb':
-          await _openTmdb(context, item, open.id);
-          return;
+      if (_openUsesFeatureDetailsRoute(open)) {
+        await _openFeatureDetails(context, item, open.id);
+        return;
       }
+      await openHubDetails(
+        context,
+        pluginId: pluginId,
+        item: item,
+      );
+      return;
     }
 
-    // Host-only fallback: movie/tv + tmdb id scheme (not a pack name).
     if (item.type == 'movie' || item.type == 'tv') {
-      final tmdbId = item.numericId('tmdb');
+      final id = item.open?.id ?? item.id.split(':').last;
+      final tmdbId = int.tryParse(id);
       if (tmdbId == null) return;
-      await _openTmdb(context, item, tmdbId.toString());
+      await _openFeatureDetails(context, item, tmdbId.toString());
     }
   } finally {
     _catalogOpenInFlight.remove(key);

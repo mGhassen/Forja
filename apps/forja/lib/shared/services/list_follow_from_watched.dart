@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/catalog/catalog_details_fetch.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
+import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -254,20 +255,35 @@ class ListFollowFromWatched {
     if (mt == 'anime') {
       final anilistId = item['anilistId'] as int?;
       if (anilistId == null) return false;
+      final pluginId = item['pluginId']?.toString() ??
+          await PluginNavRegistry.pluginIdForTab('anime') ??
+          '';
+      if (pluginId.isEmpty) return false;
       final watched = (await EpisodeWatchedService().getWatchedSet(
         anilistId,
-        catalog: EpisodeWatchedService.catalogAnilist,
+        catalog: pluginId,
       ))
           .length;
       if (watched <= 0) return false;
       final meta = await fetchCatalogMetaDetails(
-        pluginId: PluginNavRegistry.builtInHubPluginIds['anime'] ?? 'anilist',
-        metaId: 'anilist:$anilistId',
+        pluginId: pluginId,
+        metaId: item['metaId']?.toString() ?? '$pluginId:$anilistId',
       );
       final total = meta?.episodes ?? (item['totalEpisodes'] as num?)?.toInt() ?? 0;
       if (total <= 0 || watched < total) return false;
-      final target = HubListFollowTarget.anime(
-        anilistId: anilistId,
+      final open = CatalogOpen.fromJson(item['catalogOpen']) ??
+          CatalogOpen(
+            surface: 'anime',
+            id: anilistId.toString(),
+            extract: CatalogOpenExtract(
+              resolveType: 'anime',
+              panelCategory: 'anime',
+              ctx: {'anilistId': anilistId},
+            ),
+          );
+      final target = CatalogListFollowTarget(
+        pluginId: pluginId,
+        open: open,
         title: item['title']?.toString() ?? meta?.name ?? '',
         posterPath: item['posterPath']?.toString() ?? meta?.poster ?? '',
         voteAverage: (item['voteAverage'] as num?)?.toDouble() ??
@@ -275,6 +291,7 @@ class ListFollowFromWatched {
         releaseDate: item['releaseDate']?.toString() ??
             meta?.releaseInfo ??
             '',
+        mediaType: 'anime',
       );
       final before = MyListService().contains(target.uniqueId)
           ? MyListService().statusOf(target.uniqueId)
@@ -291,29 +308,43 @@ class ListFollowFromWatched {
     if (mt == 'asian_drama') {
       final kisskhId = item['kisskhId'] as int?;
       if (kisskhId == null) return false;
+      final pluginId = item['pluginId']?.toString() ??
+          await PluginNavRegistry.pluginIdForTab('asian_drama') ??
+          '';
+      if (pluginId.isEmpty) return false;
       final watched = (await EpisodeWatchedService().getWatchedSet(
         kisskhId,
-        catalog: EpisodeWatchedService.catalogKisskh,
+        catalog: pluginId,
       ))
           .length;
       if (watched <= 0) return false;
       final meta = await fetchCatalogMetaDetails(
-        pluginId:
-            PluginNavRegistry.builtInHubPluginIds['asian_drama'] ?? 'kisskh-hub',
-        metaId: 'kisskh:$kisskhId',
+        pluginId: pluginId,
+        metaId: item['metaId']?.toString() ?? '$pluginId:$kisskhId',
       );
       final total = (meta?.videos.isNotEmpty ?? false)
           ? meta!.videos.length
           : (meta?.episodes ?? (item['totalEpisodes'] as num?)?.toInt() ?? 0);
       if (total <= 0 || watched < total) return false;
-      final target = HubListFollowTarget.drama(
-        kisskhId: kisskhId,
+      final open = CatalogOpen.fromJson(item['catalogOpen']) ??
+          CatalogOpen(
+            surface: 'drama',
+            id: kisskhId.toString(),
+            extract: CatalogOpenExtract(
+              resolveType: 'drama',
+              panelCategory: 'drama',
+              ctx: {'kisskhId': kisskhId},
+            ),
+          );
+      final target = CatalogListFollowTarget(
+        pluginId: pluginId,
+        open: open,
         title: item['title']?.toString() ?? meta?.name ?? '',
         posterPath: item['posterPath']?.toString() ?? meta?.poster ?? '',
-        tmdbId: item['tmdbId'] as int? ?? meta?.numericId('tmdb'),
+        tmdbId: item['tmdbId'] as int? ?? meta?.open?.idInt,
         tmdbMediaType: item['tmdbMediaType']?.toString() ?? meta?.tmdbMediaType,
         releaseDate: item['releaseDate']?.toString() ?? meta?.releaseInfo ?? '',
-        kissKhType: item['kissKhType']?.toString() ?? meta?.badge,
+        mediaType: 'asian_drama',
       );
       final before = MyListService().contains(target.uniqueId)
           ? MyListService().statusOf(target.uniqueId)

@@ -216,6 +216,14 @@ function arabicMeta(source, id, title, poster, opts) {
     surface: 'arabic',
     id: String(id),
     source: String(source),
+    extract: {
+      resolveType: 'arabic',
+      panelCategory: 'arabic',
+      ctx: {
+        videoId: String(id),
+        source: String(source),
+      },
+    },
   };
   if (opts.url) open.url = String(opts.url);
   if (opts.isMovie) open.movie = true;

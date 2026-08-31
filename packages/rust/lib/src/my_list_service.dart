@@ -108,6 +108,47 @@ class MyListService {
     return null;
   }
 
+  static String catalogEntryId(String pluginId, String openId) =>
+      'catalog_${pluginId}_$openId';
+
+  Future<void> upsertCatalog({
+    required String pluginId,
+    required Map<String, dynamic> open,
+    required String uniqueId,
+    required String mediaType,
+    required String title,
+    required String posterPath,
+    required String listStatus,
+    int? tmdbId,
+    String? tmdbMediaType,
+    double voteAverage = 0,
+    String releaseDate = '',
+  }) async {
+    await _ensureLoaded();
+    final idx = _items.indexWhere((e) => e['uniqueId'] == uniqueId);
+    final row = <String, dynamic>{
+      if (idx >= 0) ..._items[idx],
+      'uniqueId': uniqueId,
+      'pluginId': pluginId,
+      'catalogOpen': open,
+      'title': title,
+      'posterPath': posterPath,
+      'mediaType': mediaType,
+      'voteAverage': voteAverage,
+      'releaseDate': releaseDate,
+      'source': pluginId,
+      'listStatus': listStatus,
+      if (tmdbId != null) 'tmdbId': tmdbId,
+      if (tmdbMediaType != null) 'tmdbMediaType': tmdbMediaType,
+      'addedAt': idx >= 0
+          ? _items[idx]['addedAt']
+          : DateTime.now().millisecondsSinceEpoch,
+    };
+    if (idx >= 0) _items.removeAt(idx);
+    _items.insert(0, row);
+    await _save();
+  }
+
   Future<void> upsertHub({
     required String uniqueId,
     required String mediaType,

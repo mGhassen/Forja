@@ -40,7 +40,8 @@ CatalogPlayContext catalogPlayContextFromMeta({
     selectedPluginIds = {providerFromVideo};
   }
 
-  final malId = int.tryParse(open?.extraString('mal') ?? '');
+  final malId = open?.effectiveExtract.intVal('malId') ??
+      int.tryParse(open?.extraString('mal') ?? '');
 
   return CatalogPlayContext(
     movie: _playMovieFor(meta, videos: vids),
@@ -72,8 +73,10 @@ Movie _playMovieFor(CatalogMetaItem item, {List<CatalogVideo>? videos}) {
   final poster = item.poster.trim();
   final backdrop = item.background.trim();
   final eps = videos ?? item.videos;
-  final tmdbId = item.numericId('tmdb');
-  final id = tmdbId ?? catalogSyntheticMovieId(item);
+  final open = item.open;
+  final id = open?.idInt ??
+      int.tryParse(item.id.split(':').last) ??
+      catalogSyntheticMovieId(item);
   return Movie(
     id: id,
     title: item.name,

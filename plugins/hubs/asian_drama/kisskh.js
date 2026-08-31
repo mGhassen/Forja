@@ -114,7 +114,15 @@ function kisskhMeta(row) {
     poster: kisskhCover(row.thumbnail || row.cover),
     releaseInfo: release ? release.substring(0, 4) : '',
     ids: ids,
-    open: { surface: 'drama', id: String(row.id) },
+    open: {
+      surface: 'drama',
+      id: String(row.id),
+      extract: {
+        resolveType: 'drama',
+        panelCategory: 'drama',
+        ctx: { kisskhId: Number(row.id) },
+      },
+    },
   };
   var label = String(row.label || '').trim();
   if (label) meta.badge = label;

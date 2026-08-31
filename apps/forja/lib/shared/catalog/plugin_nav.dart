@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/forja_host_assets.dart';
 import 'package:forja/shared/catalog/shell/catalog_shell.dart';
+import 'package:forja/shared/engine/hub_plugin_config.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/nav_destination.dart';
 import 'package:rust/rust.dart';
@@ -27,12 +28,8 @@ abstract final class PluginNavRegistry {
     'anime_arabic',
   };
 
-  /// Default plugin id for each built-in hub tab (official hubs pack).
-  static const builtInHubPluginIds = {
-    'home': 'tmdb',
-    'anime': 'anilist',
-    'asian_drama': 'kisskh-hub',
-  };
+  /// Default shell tab ids for in-scope catalog hubs (icons only — no plugin ids).
+  static const seedHubTabIds = ['home', 'anime', 'asian_drama'];
 
   static Map<String, NavDestination> _destinations = {};
   static Map<String, Color> _accents = {};
@@ -97,10 +94,10 @@ abstract final class PluginNavRegistry {
       'asian_drama': const Color(0xFFC4B5FD),
     };
     _builders = {
-      for (final e in builtInHubPluginIds.entries)
-        e.key: () => CatalogShell(pluginId: e.value, tabId: e.key),
+      for (final tabId in seedHubTabIds)
+        tabId: () => CatalogShellLoader(tabId: tabId),
     };
-    _tabPluginIds = Map<String, String>.from(builtInHubPluginIds);
+    _tabPluginIds = {};
     _seeded = true;
   }
 
@@ -225,7 +222,7 @@ abstract final class PluginNavRegistry {
   /// Cached tab → plugin id (seed + last [refresh]).
   static String? pluginIdForTabSync(String tabId) {
     _ensureSeeded();
-    return _tabPluginIds[tabId] ?? builtInHubPluginIds[tabId];
+    return _tabPluginIds[tabId];
   }
 
   /// Cached plugin id → shell tab id (seed + last [refresh]).
@@ -234,20 +231,18 @@ abstract final class PluginNavRegistry {
     for (final e in _tabPluginIds.entries) {
       if (e.value == pluginId) return e.key;
     }
-    for (final e in builtInHubPluginIds.entries) {
-      if (e.value == pluginId) return e.key;
-    }
     return null;
   }
 
   static Future<String?> pluginIdForTab(String tabId) async {
     _ensureSeeded();
-    final cached = _tabPluginIds[tabId] ?? builtInHubPluginIds[tabId];
-    if (cached != null) return cached;
+    final cached = _tabPluginIds[tabId];
+    if (cached != null && cached.isNotEmpty) return cached;
     for (final (pl, nav) in await listNavHubs(requireEnabled: true)) {
       if (nav.tabId == tabId) return pl.id;
     }
-    return null;
+    final plugin = await HubPluginConfig.catalogPluginForTab(tabId);
+    return plugin?.id;
   }
 
   /// Whether the hub plugin (and its pack) are enabled to *run*.

@@ -2,54 +2,68 @@ import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/engine/categories.dart';
 import 'package:rust/rust.dart';
 
-/// Resolved engine extract inputs — only layer that interprets [CatalogOpen.surface].
+/// Resolved engine extract inputs from pack [CatalogOpen.extract].
 class EngineExtractContext {
   const EngineExtractContext({
     required this.resolveType,
     required this.panelCategory,
-    this.anilistId,
-    this.malId,
-    this.kisskhId,
-    this.kisskhEpisodeId,
-    this.arabicVideoId,
+    this.ctx = const {},
   });
 
-  /// `movie` | `tv` | `anime` | `drama` | `arabic` for plugin extract.
   final String resolveType;
   final String panelCategory;
-  final int? anilistId;
-  final int? malId;
-  final int? kisskhId;
-  final int? kisskhEpisodeId;
-  final String? arabicVideoId;
+  final Map<String, dynamic> ctx;
+
+  int? intVal(String key) {
+    final v = ctx[key];
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v?.toString() ?? '');
+  }
+
+  String? strVal(String key) {
+    final v = ctx[key];
+    if (v == null) return null;
+    final s = v.toString().trim();
+    return s.isEmpty ? null : s;
+  }
+
+  /// Rust FFI bridge — reads keys from opaque [ctx] only.
+  int? get malId => intVal('malId');
+  int? get anilistId => intVal('anilistId');
+  int? get kisskhId => intVal('kisskhId');
+  int? get kisskhEpisodeId => intVal('kisskhEpisodeId');
+  String? get arabicVideoId => strVal('arabicVideoId') ?? strVal('videoId');
 
   bool get hasAnimeIds => (anilistId ?? 0) > 0 || (malId ?? 0) > 0;
 }
 
-String _panelCategoryForSurface(String surface) {
-  switch (surface) {
-    case 'anime':
-      return EngineCategories.anime;
-    case 'drama':
-      return EngineCategories.drama;
-    case 'arabic':
-      return EngineCategories.arabic;
-    default:
-      return EngineCategories.movie;
+EngineExtractContext _mergeEpisodeIntoCtx(
+  CatalogOpenExtract spec,
+  int? episode,
+  String? episodeVideoId,
+  int? malId,
+) {
+  final ctx = Map<String, dynamic>.from(spec.ctx);
+  if (malId != null && malId > 0) ctx['malId'] = malId;
+  final epVid = (episodeVideoId ?? '').trim();
+  if (epVid.isNotEmpty) {
+    ctx['episodeVideoId'] = epVid;
+    final epInt = int.tryParse(epVid);
+    if (epInt != null) {
+      ctx.putIfAbsent('kisskhEpisodeId', () => epInt);
+    }
+    ctx.putIfAbsent('arabicVideoId', () => epVid);
+    ctx.putIfAbsent('videoId', () => epVid);
   }
-}
-
-String _resolveTypeForSurface(String surface, Movie movie) {
-  switch (surface) {
-    case 'anime':
-      return 'anime';
-    case 'drama':
-      return 'drama';
-    case 'arabic':
-      return 'arabic';
-    default:
-      return movie.mediaType == 'tv' ? 'tv' : 'movie';
+  if (episode != null && episode > 0) {
+    ctx.putIfAbsent('episode', () => episode);
   }
+  return EngineExtractContext(
+    resolveType: spec.resolveType,
+    panelCategory: spec.panelCategory,
+    ctx: ctx,
+  );
 }
 
 /// Build extract + panel category from catalog open and/or movie/TV details hints.
@@ -63,41 +77,12 @@ EngineExtractContext engineExtractContext({
 }) {
   final open = catalogOpen;
   if (open != null) {
-    final ep = episode ?? 1;
-    final epVid = (episodeVideoId ?? '').trim();
-    final surface = open.surface;
-    final panel = _panelCategoryForSurface(surface);
-    final resolveType = _resolveTypeForSurface(surface, movie);
-    final resolvedMal =
-        malId ?? int.tryParse(open.extraString('mal') ?? '');
-    switch (surface) {
-      case 'anime':
-        return EngineExtractContext(
-          resolveType: resolveType,
-          panelCategory: panel,
-          anilistId: open.idInt,
-          malId: resolvedMal,
-        );
-      case 'drama':
-        return EngineExtractContext(
-          resolveType: resolveType,
-          panelCategory: panel,
-          kisskhId: open.idInt,
-          kisskhEpisodeId: int.tryParse(epVid),
-        );
-      case 'arabic':
-        final vid = epVid.isNotEmpty ? epVid : open.id.trim();
-        return EngineExtractContext(
-          resolveType: resolveType,
-          panelCategory: panel,
-          arabicVideoId: vid.isNotEmpty ? vid : null,
-        );
-      default:
-        return EngineExtractContext(
-          resolveType: resolveType,
-          panelCategory: panel,
-        );
-    }
+    return _mergeEpisodeIntoCtx(
+      open.effectiveExtract,
+      episode,
+      episodeVideoId,
+      malId,
+    );
   }
 
   final panel = EngineCategories.panelCategoryFor(
@@ -108,7 +93,7 @@ EngineExtractContext engineExtractContext({
   return EngineExtractContext(
     resolveType: _resolveTypeForPanelCategory(panel, movie),
     panelCategory: panel,
-    malId: malId,
+    ctx: malId != null && malId > 0 ? {'malId': malId} : const {},
   );
 }
 
@@ -122,6 +107,7 @@ String _resolveTypeForPanelCategory(String panelCategory, Movie movie) {
 /// Opaque session-cache segment for a hub title/episode.
 String catalogOpenCacheKey(
   CatalogOpen open, {
+  required String pluginId,
   int? episode,
   String? audioCategory,
   String? episodeVideoId,
@@ -132,10 +118,8 @@ String catalogOpenCacheKey(
       (audio == 'sub' || audio == 'dub') ? ':$audio' : '';
   final id = open.id.trim();
   final vid = (episodeVideoId ?? '').trim();
-  if (open.surface == 'arabic' && vid.isNotEmpty) {
-    return 'arabic:$vid';
-  }
-  return '${open.surface}:$id:E$ep$audioSuffix';
+  final vidSuffix = vid.isNotEmpty ? ':$vid' : '';
+  return '$pluginId:$id:E$ep$audioSuffix$vidSuffix';
 }
 
 String? providerIdFromEpisodeVideoId(String videoId) {
@@ -146,7 +130,7 @@ String? providerIdFromEpisodeVideoId(String videoId) {
 }
 
 /// Merges explicit extract ids with [catalogOpen] when present.
-({String type, int? malId, int? anilistId, int? kisskhId, int? kisskhEpisodeId, String? arabicVideoId})
+({String type, String panelCategory, Map<String, dynamic> ctx})
     resolveEngineExtractInputs({
   required String type,
   required Movie? movie,
@@ -154,10 +138,7 @@ String? providerIdFromEpisodeVideoId(String videoId) {
   String? episodeVideoId,
   int? episode,
   int? malId,
-  int? anilistId,
-  int? kisskhId,
-  int? kisskhEpisodeId,
-  String? arabicVideoId,
+  Map<String, dynamic>? legacyCtx,
   String? panelCategoryHint,
 }) {
   if (catalogOpen != null && movie != null) {
@@ -169,21 +150,52 @@ String? providerIdFromEpisodeVideoId(String videoId) {
       malId: malId,
       panelCategoryHint: panelCategoryHint ?? type,
     );
+    final merged = Map<String, dynamic>.from(ctx.ctx);
+    if (legacyCtx != null) {
+      for (final e in legacyCtx.entries) {
+        merged.putIfAbsent(e.key, () => e.value);
+      }
+    }
     return (
       type: ctx.resolveType,
-      malId: ctx.malId ?? malId,
-      anilistId: ctx.anilistId ?? anilistId,
-      kisskhId: ctx.kisskhId ?? kisskhId,
-      kisskhEpisodeId: ctx.kisskhEpisodeId ?? kisskhEpisodeId,
-      arabicVideoId: ctx.arabicVideoId ?? arabicVideoId,
+      panelCategory: ctx.panelCategory,
+      ctx: merged,
     );
   }
   return (
     type: type,
-    malId: malId,
-    anilistId: anilistId,
-    kisskhId: kisskhId,
-    kisskhEpisodeId: kisskhEpisodeId,
-    arabicVideoId: arabicVideoId,
+    panelCategory: panelCategoryHint ?? type,
+    ctx: legacyCtx ?? const {},
+  );
+}
+
+/// Bridge opaque [ctx] to legacy Rust extract param names (engine layer only).
+({
+  int? malId,
+  int? anilistId,
+  int? kisskhId,
+  int? kisskhEpisodeId,
+  String? arabicVideoId,
+}) engineCtxToLegacyIds(Map<String, dynamic> ctx) {
+  int? pickInt(String k) {
+    final v = ctx[k];
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v?.toString() ?? '');
+  }
+
+  String? pickStr(String k) {
+    final v = ctx[k];
+    if (v == null) return null;
+    final s = v.toString().trim();
+    return s.isEmpty ? null : s;
+  }
+
+  return (
+    malId: pickInt('malId'),
+    anilistId: pickInt('anilistId'),
+    kisskhId: pickInt('kisskhId'),
+    kisskhEpisodeId: pickInt('kisskhEpisodeId'),
+    arabicVideoId: pickStr('arabicVideoId') ?? pickStr('videoId'),
   );
 }
