@@ -359,5 +359,37 @@ void main() {
       expect(lines.label, 'Videasy');
       expect(lines.server, 'Yoru');
     });
+
+    test('strips Provider prefix from VidRock Astra', () {
+      final lines = splitSourceButtonLines(
+        'VidRock Astra',
+        providerHint: 'VidRock',
+      );
+      expect(lines.label, 'VidRock');
+      expect(lines.server, 'Astra');
+    });
+
+    test('rejects media title as server', () {
+      final lines = splitSourceButtonLines(
+        'Videasy · The Whisper Man - (2026)',
+      );
+      expect(lines.label, 'Videasy');
+      expect(lines.server, isNull);
+    });
+
+    test('rejects media title with provider hint', () {
+      final lines = splitSourceButtonLines(
+        'The Whisper Man - (2026)',
+        providerHint: 'Videasy',
+      );
+      expect(lines.label, 'Videasy');
+      expect(lines.server, isNull);
+    });
+
+    test('keeps Yoru mirror under Videasy', () {
+      final lines = splitSourceButtonLines('Videasy · Yoru');
+      expect(lines.label, 'Videasy');
+      expect(lines.server, 'Yoru');
+    });
   });
 }

@@ -46,6 +46,7 @@ class SettingsPlaybackSnapshot {
     required this.iptvLiveRecoveryModeLabel,
     required this.iptvLiveRecoveryStallReopen,
     required this.iptvMatchDisplayRefresh,
+    required this.iptvLiveBufferSecsLabel,
     required this.maxPlaybackHeightLabel,
     required this.animeTitleLanguageLabel,
   });
@@ -79,6 +80,7 @@ class SettingsPlaybackSnapshot {
   final String iptvLiveRecoveryModeLabel;
   final bool iptvLiveRecoveryStallReopen;
   final bool iptvMatchDisplayRefresh;
+  final String iptvLiveBufferSecsLabel;
   final String maxPlaybackHeightLabel;
   final String animeTitleLanguageLabel;
 
@@ -112,6 +114,7 @@ class SettingsPlaybackSnapshot {
     String? iptvLiveRecoveryModeLabel,
     bool? iptvLiveRecoveryStallReopen,
     bool? iptvMatchDisplayRefresh,
+    String? iptvLiveBufferSecsLabel,
     String? maxPlaybackHeightLabel,
     String? animeTitleLanguageLabel,
   }) {
@@ -159,6 +162,8 @@ class SettingsPlaybackSnapshot {
           iptvLiveRecoveryStallReopen ?? this.iptvLiveRecoveryStallReopen,
       iptvMatchDisplayRefresh:
           iptvMatchDisplayRefresh ?? this.iptvMatchDisplayRefresh,
+      iptvLiveBufferSecsLabel:
+          iptvLiveBufferSecsLabel ?? this.iptvLiveBufferSecsLabel,
       maxPlaybackHeightLabel:
           maxPlaybackHeightLabel ?? this.maxPlaybackHeightLabel,
       animeTitleLanguageLabel:
@@ -233,6 +238,9 @@ class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
         recoveryMode,
       ),
       iptvMatchDisplayRefresh: await s.getIptvMatchDisplayRefresh(),
+      iptvLiveBufferSecsLabel: SettingsService.iptvLiveBufferSecsLabel(
+        await s.getIptvLiveBufferSecs(),
+      ),
       maxPlaybackHeightLabel: SettingsService.maxPlaybackHeightLabel(
         await s.getMaxPlaybackHeight(),
       ),

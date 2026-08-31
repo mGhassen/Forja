@@ -73,15 +73,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
   }
 
   ({String label, String? server}) _catalogSourcesButtonLabels() {
-    final provider = _providerDisplayLabel();
     final session = widget.enginePlaySession;
     final ep = widget.selectedEpisode ?? 1;
-    if (provider != null) {
-      final sourceTitle = _playingSourceTitle();
-      if (sourceTitle != null) {
-        return splitSourceButtonLines(sourceTitle, providerHint: provider);
-      }
-    }
     return catalogSourcesButtonLabels(
       movie: widget.movie,
       season: widget.selectedSeason,
@@ -95,6 +88,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
       catalogSourceKind: _s._catalogSourceKind,
       currentSourceTitle: _playingSourceTitle(),
+      catalogAddonName: _s._catalogAddonName,
       catalogOpen: session?.effectiveOpen,
       malId: session?.malId,
       audioCategory: session?.audioCategory,
@@ -499,6 +493,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         _s._currentPlayingCatalogUrl = pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
+      _s._catalogAddonName = pick.addonName;
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });
@@ -573,6 +568,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         _s._currentSources = null;
         final base = stream['_addonBaseUrl']?.toString();
         _s._catalogAddonBaseUrl = base;
+        _s._catalogAddonName = catalogStreamAddonIdentity(stream);
         final magnet = resolved.magnetLink;
         final localTorrent = magnet != null &&
             magnet.isNotEmpty &&
@@ -632,6 +628,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         _s._currentPlayingCatalogUrl = pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
+      _s._catalogAddonName = pick.addonName;
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });

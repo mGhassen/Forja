@@ -504,7 +504,7 @@ class _SettingsPlaybackSectionState
                 ),
               if (AccountFeatures.instance.isAdmin &&
                   SettingsService.platformProfile ==
-                      PlatformProfile.androidTv)
+                      PlatformProfile.androidTv) ...[
                 settingsFocusableToggle(
                   context,
                   'IPTV match display refresh',
@@ -519,6 +519,25 @@ class _SettingsPlaybackSectionState
                   },
                   adminOnly: true,
                 ),
+                settingsFocusableDropdown(
+                  context,
+                  'IPTV live buffer',
+                  'MediaKit only. How many seconds of live demuxer cushion to keep ahead of the playhead. Auto picks by resolution (HD 15 / FHD 20 / UHD 30). Manual 15–30 also scales demuxer RAM so the seconds target is reachable. Helps underrun experiments — not cadence judder. Next open of the player.',
+                  snap.iptvLiveBufferSecsLabel,
+                  SettingsService.iptvLiveBufferSecsOptions.keys.toList(),
+                  (val) async {
+                    if (val == null) return;
+                    final secs =
+                        SettingsService.iptvLiveBufferSecsOptions[val] ?? 0;
+                    await _settings.setIptvLiveBufferSecs(secs);
+                    await _playback.patch(
+                      (s) => s.copyWith(iptvLiveBufferSecsLabel: val),
+                    );
+                    schedulePreferencesSyncPush();
+                  },
+                  adminOnly: true,
+                ),
+              ],
             ],
             if (widget.visibility.showPlaySources)
               settingsFocusableDropdown(

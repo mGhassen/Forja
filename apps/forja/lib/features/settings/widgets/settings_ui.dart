@@ -792,6 +792,7 @@ class SettingsSelectRow extends StatelessWidget {
     required this.value,
     required this.options,
     required this.onChanged,
+    this.adminOnly = false,
   });
 
   final String title;
@@ -799,6 +800,7 @@ class SettingsSelectRow extends StatelessWidget {
   final String value;
   final List<String> options;
   final ValueChanged<String?> onChanged;
+  final bool adminOnly;
 
   Future<void> _openPicker(BuildContext context) async {
     if (options.isEmpty) return;
@@ -823,13 +825,15 @@ class SettingsSelectRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                settingsTitleText(
                   title,
-                  style: const TextStyle(
+                  const TextStyle(
                     color: ForjaShellColors.textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
+                  adminOnly: adminOnly,
+                  sparkSize: 13,
                 ),
                 const SizedBox(height: 4),
                 Text(

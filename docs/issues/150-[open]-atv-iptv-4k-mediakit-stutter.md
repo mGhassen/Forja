@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 5** investigation · **1** ⏭️ · **0 / 4** acceptance |
-| **Current slice** | Height/bitrate live cache tiers shipped (I150-T05) — device smoke still open |
+| **Progress** | **4 / 6** investigation · **1** ⏭️ · **0 / 4** acceptance |
+| **Current slice** | Admin live buffer override shipped (I150-T07) — device smoke still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -26,6 +26,7 @@
 | 4 | I150-T04 | A/B `video-sync=audio` vs `display-resample` on UHD once audio is known good — **do not re-enable `audio` without crash smoke (`I155-A01`)**; known-good is `display-resample` | ⬜ |
 | 5 | I150-T05 | Bitrate-aware cache sizing if `demuxer-max-bytes` is the binding limit at 4K | ✅ |
 | 6 | I150-T06 | ATV MediaKit IPTV: Settings **IPTV match display refresh** (default **on**; admin toggle to disable); when on, read `container-fps` and call display mode match; clear on exit / hot-swap; keep `framedrop=vo` | ✅ |
+| 7 | I150-T07 | ATV MediaKit IPTV: Settings **IPTV live buffer** (admin) — Auto by resolution or force 15 / 20 / 30 s demuxer cushion with matching `demuxer-max-bytes`; apply on next open (cold + height retune) | ✅ |
 
 ---
 
@@ -58,6 +59,10 @@ Requires the set to expose a matching mode at the current resolution; otherwise 
 ## Fix shipped — height/bitrate live cache tiers (I150-T05)
 
 ATV MediaKit **live** uses a 32 MiB Player buffer (demuxer owns readahead). After decode height is known: HD 48 MiB / 15 s, FHD 96 MiB / 20 s, UHD 150 MiB / 30 s; bitrate can bump one tier when byte cap would bind. VOD never inherits live fat profile ([163](163-[open]-android-tv-iptv-vod-live-profile.md)). Cold open still uses UHD-safe defaults until height probes.
+
+## Fix shipped — admin live buffer override (I150-T07)
+
+Settings → Playback → **IPTV live buffer** (Android TV, admin-only): **Auto (by resolution)** keeps the height/bitrate tiers from T05; **15 / 20 / 30 seconds** forces `cache-secs` + matching `demuxer-readahead-secs` / `demuxer-max-bytes` (same tables as HD / FHD / UHD). Applied on cold open and after height probe. Use for underrun vs RAM A/B — does not fix cadence judder (T06) or Exo TextureView chop ([108](108-[open]-android-tv-iptv-exo-choppy-fps.md)).
 
 ## Suspected cause — the UHD path traded smoothness for audio (historical)
 

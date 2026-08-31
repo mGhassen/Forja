@@ -521,4 +521,37 @@ void main() {
       0,
     );
   });
+
+  test('iptv live buffer secs normalize + demuxer profiles', () {
+    expect(SettingsService.normalizeIptvLiveBufferSecs(null), 0);
+    expect(SettingsService.normalizeIptvLiveBufferSecs(0), 0);
+    expect(SettingsService.normalizeIptvLiveBufferSecs(15), 15);
+    expect(SettingsService.normalizeIptvLiveBufferSecs(20), 20);
+    expect(SettingsService.normalizeIptvLiveBufferSecs(30), 30);
+    expect(SettingsService.normalizeIptvLiveBufferSecs(25), 0);
+    expect(SettingsService.normalizeIptvLiveBufferSecs(60), 0);
+
+    expect(
+      SettingsService.iptvLiveBufferSecsLabel(0),
+      'Auto (by resolution)',
+    );
+    expect(SettingsService.iptvLiveBufferSecsLabel(30), '30 seconds');
+
+    final p15 = SettingsService.iptvLiveBufferProfileForSecs(15);
+    expect(p15.cacheSecs, 15);
+    expect(p15.demuxerMaxBytes, 48 * 1024 * 1024);
+
+    final p30 = SettingsService.iptvLiveBufferProfileForSecs(30);
+    expect(p30.cacheSecs, 30);
+    expect(p30.demuxerMaxBytes, 150000000);
+  });
+
+  test('iptv live buffer secs persist', () async {
+    final service = SettingsService();
+    expect(await service.getIptvLiveBufferSecs(), 0);
+    await service.setIptvLiveBufferSecs(30);
+    expect(await service.getIptvLiveBufferSecs(), 30);
+    await service.setIptvLiveBufferSecs(99);
+    expect(await service.getIptvLiveBufferSecs(), 0);
+  });
 }

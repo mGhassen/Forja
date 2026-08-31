@@ -214,6 +214,8 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
   }
 
   /// Height + bitrate aware live demuxer window (I150-T05). VOD must never call.
+  /// Admin override [SettingsService.getIptvLiveBufferSecs] replaces the tier
+  /// (15 / 20 / 30) and matching demuxer byte cap (I150-T07).
   Future<void> _applyAtvLiveCacheProfile(
     NativePlayer p, {
     required int height,
@@ -223,21 +225,49 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
     if (!_s._atvMediaKit || !_livePlaybackProfile) return;
     if (_s._liveCacheTierApplied && height == _s._lastVideoHeight) return;
 
-    var profile = height > 0
-        ? _atvLiveCacheTierForHeight(height)
-        : _atvLiveCacheTierForHeight(2160);
+    final overrideSecs = await SettingsService().getIptvLiveBufferSecs();
+    late ({
+      String tier,
+      int cacheSecs,
+      int readaheadSecs,
+      int demuxerMaxBytes,
+    }) profile;
 
-    if (videoBitrate > 0) {
-      final needBytes = (videoBitrate / 8) * profile.cacheSecs;
-      if (needBytes > profile.demuxerMaxBytes * 0.9) {
-        final bumped = _bumpAtvLiveCacheTier(profile);
-        if (bumped.tier != profile.tier) {
-          profile = bumped;
-        } else if (profile.tier == 'uhd') {
+    if (overrideSecs > 0) {
+      final forced = SettingsService.iptvLiveBufferProfileForSecs(overrideSecs);
+      profile = (
+        tier: forced.tier,
+        cacheSecs: forced.cacheSecs,
+        readaheadSecs: forced.readaheadSecs,
+        demuxerMaxBytes: forced.demuxerMaxBytes,
+      );
+      if (videoBitrate > 0) {
+        final needBytes = (videoBitrate / 8) * profile.cacheSecs;
+        if (needBytes > profile.demuxerMaxBytes * 0.9) {
           debugPrint(
-            '[IPTV Player] live/uhd demuxer may still byte-bind at '
-            '${(videoBitrate / 1e6).toStringAsFixed(1)}Mbps',
+            '[IPTV Player] live/${profile.tier} demuxer may byte-bind at '
+            '${(videoBitrate / 1e6).toStringAsFixed(1)}Mbps '
+            '(override ${profile.cacheSecs}s)',
           );
+        }
+      }
+    } else {
+      profile = height > 0
+          ? _atvLiveCacheTierForHeight(height)
+          : _atvLiveCacheTierForHeight(2160);
+
+      if (videoBitrate > 0) {
+        final needBytes = (videoBitrate / 8) * profile.cacheSecs;
+        if (needBytes > profile.demuxerMaxBytes * 0.9) {
+          final bumped = _bumpAtvLiveCacheTier(profile);
+          if (bumped.tier != profile.tier) {
+            profile = bumped;
+          } else if (profile.tier == 'uhd') {
+            debugPrint(
+              '[IPTV Player] live/uhd demuxer may still byte-bind at '
+              '${(videoBitrate / 1e6).toStringAsFixed(1)}Mbps',
+            );
+          }
         }
       }
     }
@@ -252,7 +282,8 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
     _s._liveCacheTierApplied = true;
     debugPrint(
       '[IPTV Player] MediaKit cache profile=live/${profile.tier} '
-      'height=$height bitrate=${videoBitrate > 0 ? (videoBitrate / 1e6).toStringAsFixed(1) : "?"}Mbps',
+      'height=$height bitrate=${videoBitrate > 0 ? (videoBitrate / 1e6).toStringAsFixed(1) : "?"}Mbps '
+      'cache=${profile.cacheSecs}s bytes=${profile.demuxerMaxBytes}',
     );
   }
 
@@ -308,10 +339,27 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
         // hard micro-pause — clockwork stutter, no Buffering chrome (issue 199).
         // Play through demuxer cushion; watchdog still shows Buffering + soft-reopen
         // when cache is truly empty (I199-T03/T04).
-        debugPrint('[IPTV Player] MediaKit cache profile=live/cold (uhd-safe)');
-        await p.setProperty('cache-secs', '30');
-        await p.setProperty('demuxer-readahead-secs', '20');
-        await p.setProperty('demuxer-max-bytes', '150000000');
+        // Cold open is UHD-safe until height probe retunes (I150-T05), unless the
+        // admin live-buffer override is set (I150-T07).
+        var coldSecs = 30;
+        var coldReadahead = 20;
+        var coldBytes = 150000000;
+        var coldLabel = 'live/cold (uhd-safe)';
+        if (_s._atvMediaKit) {
+          final overrideSecs = await SettingsService().getIptvLiveBufferSecs();
+          if (overrideSecs > 0) {
+            final forced =
+                SettingsService.iptvLiveBufferProfileForSecs(overrideSecs);
+            coldSecs = forced.cacheSecs;
+            coldReadahead = forced.readaheadSecs;
+            coldBytes = forced.demuxerMaxBytes;
+            coldLabel = 'live/cold (${forced.tier})';
+          }
+        }
+        debugPrint('[IPTV Player] MediaKit cache profile=$coldLabel');
+        await p.setProperty('cache-secs', '$coldSecs');
+        await p.setProperty('demuxer-readahead-secs', '$coldReadahead');
+        await p.setProperty('demuxer-max-bytes', '$coldBytes');
         // No past cushion — underrun freezes; proxy read-ahead absorbs CDN closes.
         await p.setProperty('demuxer-max-back-bytes', '0');
         await p.setProperty('audio-buffer', '1.0');

@@ -127,6 +127,9 @@ class SettingsService {
   /// Android TV MediaKit: ask the panel for a refresh matching stream fps
   /// (issue 150). Default on; Settings toggle is admin-only.
   static const String _iptvMatchDisplayRefreshKey = 'iptv_match_display_refresh';
+  /// Android TV MediaKit live demuxer cushion (seconds). `0` = Auto by height.
+  /// Admin-only; max 30. Pairs with demuxer-max-bytes tiers (issue 150).
+  static const String _iptvLiveBufferSecsKey = 'iptv_live_buffer_secs';
   static const String _maxPlaybackHeightKey = 'max_playback_height';
   static const String _animeTitleLanguageKey = 'anime_title_language';
 
@@ -143,6 +146,66 @@ class SettingsService {
       if (entry.value == height) return entry.key;
     }
     return height > 0 ? '${height}p' : 'Auto (full quality)';
+  }
+
+  /// ATV MediaKit live buffer cushion. `0` = height tier (HD 15 / FHD 20 / UHD 30).
+  static const Map<String, int> iptvLiveBufferSecsOptions = {
+    'Auto (by resolution)': 0,
+    '15 seconds': 15,
+    '20 seconds': 20,
+    '30 seconds': 30,
+  };
+
+  static String iptvLiveBufferSecsLabel(int secs) {
+    final n = normalizeIptvLiveBufferSecs(secs);
+    for (final entry in iptvLiveBufferSecsOptions.entries) {
+      if (entry.value == n) return entry.key;
+    }
+    return 'Auto (by resolution)';
+  }
+
+  /// Allowed values: `0` (Auto), `15`, `20`, `30`. Anything else → Auto.
+  static int normalizeIptvLiveBufferSecs(int? raw) {
+    if (raw == null || raw <= 0) return 0;
+    if (raw == 15 || raw == 20 || raw == 30) return raw;
+    return 0;
+  }
+
+  /// Demuxer profile for a manual seconds override (matches ATV height tiers).
+  ///
+  /// Call only when [normalizeIptvLiveBufferSecs] returned 15 / 20 / 30.
+  static ({int cacheSecs, int readaheadSecs, int demuxerMaxBytes, String tier})
+      iptvLiveBufferProfileForSecs(int secs) {
+    switch (normalizeIptvLiveBufferSecs(secs)) {
+      case 15:
+        return (
+          cacheSecs: 15,
+          readaheadSecs: 10,
+          demuxerMaxBytes: 48 * 1024 * 1024,
+          tier: 'manual-15s',
+        );
+      case 20:
+        return (
+          cacheSecs: 20,
+          readaheadSecs: 15,
+          demuxerMaxBytes: 96 * 1024 * 1024,
+          tier: 'manual-20s',
+        );
+      case 30:
+        return (
+          cacheSecs: 30,
+          readaheadSecs: 20,
+          demuxerMaxBytes: 150000000,
+          tier: 'manual-30s',
+        );
+      default:
+        return (
+          cacheSecs: 20,
+          readaheadSecs: 15,
+          demuxerMaxBytes: 96 * 1024 * 1024,
+          tier: 'manual-20s',
+        );
+    }
   }
 
   /// Stable without stall reopen — hold while demuxer cushion / paint is alive.
@@ -476,6 +539,14 @@ class SettingsService {
 
   Future<void> setIptvMatchDisplayRefresh(bool enabled) async =>
       kvSetBool(_iptvMatchDisplayRefreshKey, enabled);
+
+  /// Android TV MediaKit live demuxer cushion seconds. `0` = Auto by resolution.
+  Future<int> getIptvLiveBufferSecs() async => normalizeIptvLiveBufferSecs(
+        await kvGetInt(_iptvLiveBufferSecsKey, fallback: 0),
+      );
+
+  Future<void> setIptvLiveBufferSecs(int secs) async =>
+      kvSetInt(_iptvLiveBufferSecsKey, normalizeIptvLiveBufferSecs(secs));
 
   Future<int> getMaxPlaybackHeight() async =>
       await kvGetInt(_maxPlaybackHeightKey, fallback: 2160);

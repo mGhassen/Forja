@@ -7,6 +7,7 @@ export 'live_goat_unlock.dart';
 export 'live_sport_capabilities.dart';
 export 'models.dart';
 export 'plugin_registry.dart';
+export 'plugin_script_disk_store.dart';
 export 'runtime.dart';
 export 'service.dart';
 

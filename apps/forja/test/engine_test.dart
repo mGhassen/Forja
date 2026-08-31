@@ -214,18 +214,25 @@ void main() {
 
   group('PluginRegistry install', () {
     late PluginRegistry registry;
+    late Directory diskRoot;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       registry = PluginRegistry.instance;
       registry.debugHttpClient = null;
+      diskRoot = await Directory.systemTemp.createTemp('engine_disk_');
+      PluginScriptDiskStore.debugRoot = diskRoot;
     });
 
-    tearDown(() {
+    tearDown(() async {
       registry.debugHttpClient = null;
+      PluginScriptDiskStore.resetForTest();
+      if (await diskRoot.exists()) {
+        await diskRoot.delete(recursive: true);
+      }
     });
 
-    test('migrates v1 unscoped scripts to pack-scoped v2 keys', () async {
+    test('migrates v1 unscoped scripts to disk', () async {
       const url = 'https://example.com/pack/manifest.json';
       final v1Pack = {
         'sourceUrl': url,
@@ -252,10 +259,74 @@ void main() {
       expect(prefs.getString('engine_js_packs_v1'), isNull);
       expect(
         prefs.getString(PluginRegistry.scriptPrefsKey(url, 'videasy')),
+        isNull,
+      );
+      expect(
+        await PluginScriptDiskStore.loadEngineScript(
+          sourceUrl: url,
+          pluginId: 'videasy',
+        ),
         '/* v1 body */',
       );
       expect(prefs.getString('engine_js_script_videasy'), isNull);
       expect(prefs.getBool('engine_js_packs_v2_migrated'), isTrue);
+    });
+
+    test('install writes scripts to disk not prefs', () async {
+      const url = 'https://disk.example/manifest.json';
+      SharedPreferences.setMockInitialValues({
+        'engine_js_packs_v2_migrated': true,
+        'engine_js_scripts_disk_v3_migrated': true,
+      });
+      registry.debugHttpClient = MockClient((req) async {
+        final u = req.url.toString();
+        if (u == url) {
+          return http.Response(
+            jsonEncode({
+              'schema': 1,
+              'id': 'disk-pack',
+              'name': 'Disk',
+              'version': '1.0.0',
+              'plugins': [
+                {
+                  'id': 'alpha',
+                  'name': 'Alpha',
+                  'entry': 'alpha.js',
+                  'kind': 'http',
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (u.endsWith('alpha.js')) {
+          return http.Response('export default 1', 200);
+        }
+        return http.Response('not found', 404);
+      });
+      final pack = await registry.install(url);
+      expect(pack.plugins, hasLength(1));
+      final prefs = await SharedPreferences.getInstance();
+      expect(
+        prefs.getString(PluginRegistry.scriptPrefsKey(url, 'alpha')),
+        isNull,
+      );
+      expect(
+        await PluginScriptDiskStore.loadEngineScript(
+          sourceUrl: url,
+          pluginId: 'alpha',
+        ),
+        'export default 1',
+      );
+      await registry.removePack(url);
+      expect(
+        await PluginScriptDiskStore.hasEngineScript(
+          sourceUrl: url,
+          pluginId: 'alpha',
+        ),
+        isFalse,
+      );
     });
 
     test('refuses plugin id collision across packs', () async {
@@ -280,6 +351,7 @@ void main() {
           },
         ]),
         'engine_js_packs_v2_migrated': true,
+        'engine_js_scripts_disk_v3_migrated': true,
       });
       registry.debugHttpClient = MockClient((req) async {
         if (req.url.toString() == urlB) {
@@ -602,8 +674,11 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('engine_js_packs_v2'), isNull);
       expect(
-        prefs.getString(PluginRegistry.scriptPrefsKey(url, 'ok')),
-        isNull,
+        await PluginScriptDiskStore.hasEngineScript(
+          sourceUrl: url,
+          pluginId: 'ok',
+        ),
+        isFalse,
       );
     });
   });

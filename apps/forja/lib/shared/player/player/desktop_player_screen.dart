@@ -281,6 +281,9 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   /// Last Stremio/Nuvio `_addonBaseUrl` (e.g. `nuvio:showbox`) for panel focus.
   String? _catalogAddonBaseUrl;
+
+  /// Last catalog row `_addonName` / `name` (e.g. `VidRock · Astra`) for chrome.
+  String? _catalogAddonName;
   // ── HLS Quality Selector ─────────────────────────────────────────────────
   // Populated when the playing URL is a master HLS playlist with 2+
   // variants. The gear button in the top control bar is hidden until this

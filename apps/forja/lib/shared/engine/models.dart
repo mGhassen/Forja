@@ -719,6 +719,21 @@ String engineServerLabel({
     return pluginName;
   }
 
+  // "VidRock Astra" → Astra (plugin name already known).
+  final pluginPrefix = RegExp(
+    '^${RegExp.escape(pluginName)}(?:\\s+[·•|]\\s*|\\s+)',
+    caseSensitive: false,
+  );
+  final prefixed = pluginPrefix.firstMatch(stripped);
+  if (prefixed != null) {
+    final rest = stripped.substring(prefixed.end).trim();
+    if (rest.isNotEmpty) {
+      final server = rest.split(RegExp(r'\s*[·•]\s*')).first;
+      if (_looksLikeEngineMirrorLabel(server)) return server;
+      return pluginName;
+    }
+  }
+
   final cut = stripped.split(RegExp(r'\s*[·•|]\s*')).first.trim();
   if (cut.isEmpty || cut == stripped && stripped.length > 48) {
     return pluginName;
@@ -726,7 +741,19 @@ String engineServerLabel({
   if (cut.toLowerCase() == pluginName.toLowerCase()) {
     return pluginName;
   }
+  if (!_looksLikeEngineMirrorLabel(cut)) return pluginName;
   return cut;
+}
+
+/// Mirror chips are short (Yoru, Astra) — not media titles with years.
+bool _looksLikeEngineMirrorLabel(String raw) {
+  final t = raw.trim();
+  if (t.isEmpty || t.length > 28) return false;
+  if (RegExp(r'\(\d{4}\)').hasMatch(t)) return false;
+  if (t.contains(' - ')) return false;
+  if (RegExp(r'\bS\d+E\d+\b', caseSensitive: false).hasMatch(t)) return false;
+  if (t.split(RegExp(r'\s+')).length > 2) return false;
+  return true;
 }
 
 /// `sub`, `dub`, or null when the row has no audio hint.

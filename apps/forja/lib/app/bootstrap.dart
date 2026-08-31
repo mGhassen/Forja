@@ -29,6 +29,7 @@ import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/app_update_progress_banner.dart';
+import 'package:forja/shared/widgets/plugin_install_progress_banner.dart';
 import 'package:forja/shared/widgets/desktop_window_geometry.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_back_handler.dart';
@@ -395,8 +396,10 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
               builder: (context, _) {
                 final body = ForjaToastHost(
                   child: AppUpdateProgressBannerHost(
-                    child: BackNavigationScope(
-                      child: child ?? const SizedBox.shrink(),
+                    child: PluginInstallProgressBannerHost(
+                      child: BackNavigationScope(
+                        child: child ?? const SizedBox.shrink(),
+                      ),
                     ),
                   ),
                 );
@@ -682,11 +685,30 @@ class _SplashScreenState extends State<SplashScreen> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _skipSplash,
-          child: ValueListenableBuilder<String>(
-            valueListenable: _bootStatus,
-            builder: (context, status, _) {
-              return SplashOverlayContent(statusLabel: status);
-            },
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ValueListenableBuilder<String>(
+                valueListenable: _bootStatus,
+                builder: (context, status, _) {
+                  return SplashOverlayContent(statusLabel: status);
+                },
+              ),
+              Positioned(
+                left: 16,
+                right: 16,
+                bottom: 24,
+                child: SafeArea(
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: const PluginInstallProgressBanner(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

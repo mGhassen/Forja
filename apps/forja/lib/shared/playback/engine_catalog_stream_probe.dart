@@ -85,7 +85,10 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
       normalizeStreamSourcePlayUrl(
         StreamSource(
           url: url,
-          title: (row['title'] ?? row['name'] ?? 'Forja').toString(),
+          // Prefer plugin · server identity over media card title — player
+          // chrome / Source button need the mirror name (VidRock · Astra).
+          title: (row['_addonName'] ?? row['name'] ?? row['title'] ?? 'Forja')
+              .toString(),
           type: type,
           headers: proxied.headers,
           providerId: catalogHttpPlayProviderId(row),

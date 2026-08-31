@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:forja/shared/playback/hubcloud_drive_quota.dart';
+import 'package:forja/shared/engine/plugin_script_disk_store.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'nuvio_runtime.dart';
@@ -300,6 +301,7 @@ class NuvioService {
   static const String _prefsKey = 'nuvio_addons_v1';
   static const String _scriptCachePrefix = 'nuvio_script_';
   static const String _kvMigratedKey = 'nuvio_addons_kv_v1';
+  static const String _scriptsDiskMigratedKey = 'nuvio_scripts_disk_v1_migrated';
 
   /// Sources → Nuvio chip selection (device KV, same store as addons).
   static const String _sourcesSelectedKey =
@@ -392,6 +394,7 @@ class NuvioService {
 
     final all = await listAddons();
     final next = <NuvioAddon>[];
+    final victims = <NuvioAddon>[];
     var changed = false;
 
     for (final addon in all) {
@@ -400,6 +403,7 @@ class NuvioService {
         continue;
       }
       if (removeMissingUserAddons && !remote.containsKey(addon.manifestUrl)) {
+        victims.add(addon);
         changed = true;
         continue;
       }
@@ -435,7 +439,16 @@ class NuvioService {
       changed = true;
     }
 
-    if (changed) await _saveAddons(next);
+    if (changed) {
+      final prefs = await SharedPreferences.getInstance();
+      for (final a in victims) {
+        for (final s in a.scrapers) {
+          await PluginScriptDiskStore.removeNuvioScraper(s.id);
+          await prefs.remove(_scriptCachePrefix + s.id);
+        }
+      }
+      await _saveAddons(next);
+    }
   }
 
   /// Fetch manifests for lean stubs (`scrapers` empty). Idempotent; no-op when
@@ -589,8 +602,7 @@ class NuvioService {
   }
 
   /// Fetches the manifest, persists addon metadata and pre-downloads each
-  /// scraper script into SharedPreferences (so providers work offline once
-  /// installed).
+  /// scraper script onto disk (so providers work offline once installed).
   Future<NuvioAddon> install(String manifestUrl) async {
     final resp = await http.get(Uri.parse(manifestUrl));
     if (resp.statusCode != 200) {
@@ -612,13 +624,15 @@ class NuvioService {
 
     // Pre-download every scraper script. Failures here are non-fatal - the
     // user can still toggle them and retry later; getStreams will redownload.
-    final prefs = await SharedPreferences.getInstance();
     for (final s in scrapers) {
       try {
         final scriptUrl = _resolveScriptUrl(manifestUrl, s.filename);
         final scriptResp = await http.get(Uri.parse(scriptUrl));
-        if (scriptResp.statusCode == 200) {
-          await prefs.setString(_scriptCachePrefix + s.id, scriptResp.body);
+        if (scriptResp.statusCode == 200 && scriptResp.body.isNotEmpty) {
+          await PluginScriptDiskStore.saveNuvioScraper(
+            scraperId: s.id,
+            body: scriptResp.body,
+          );
         }
       } catch (e) {
         debugPrint('[NuvioService] script prefetch failed (${s.id}): $e');
@@ -676,12 +690,14 @@ class NuvioService {
     final newIds = merged.map((s) => s.id).toSet();
     for (final id in priorFilenames.keys) {
       if (!newIds.contains(id)) {
+        await PluginScriptDiskStore.removeNuvioScraper(id);
         await prefs.remove(_scriptCachePrefix + id);
       }
     }
     for (final s in merged) {
       final priorFn = priorFilenames[s.id];
       if (priorFn != null && priorFn != s.filename) {
+        await PluginScriptDiskStore.removeNuvioScraper(s.id);
         await prefs.remove(_scriptCachePrefix + s.id);
       }
     }
@@ -708,6 +724,7 @@ class NuvioService {
     final prefs = await SharedPreferences.getInstance();
     for (final a in removed) {
       for (final s in a.scrapers) {
+        await PluginScriptDiskStore.removeNuvioScraper(s.id);
         await prefs.remove(_scriptCachePrefix + s.id);
       }
     }
@@ -798,16 +815,72 @@ class NuvioService {
       final url = _resolveScriptUrl(addon.manifestUrl, s.filename);
       final r = await http.get(Uri.parse(url));
       if (r.statusCode == 200 && r.body.isNotEmpty) {
-        await prefs.setString(_scriptCachePrefix + s.id, r.body);
+        await PluginScriptDiskStore.saveNuvioScraper(
+          scraperId: s.id,
+          body: r.body,
+        );
+        await prefs.remove(_scriptCachePrefix + s.id);
         return r.body;
       }
     } catch (e) {
       debugPrint('[NuvioService] script fetch failed (${s.id}): $e');
     }
     if (forceFresh) return null;
+    final disk = await PluginScriptDiskStore.loadNuvioScraper(s.id);
+    if (disk != null && disk.isNotEmpty) return disk;
     final cached = prefs.getString(_scriptCachePrefix + s.id);
-    if (cached != null && cached.isNotEmpty) return cached;
+    if (cached != null && cached.isNotEmpty) {
+      await PluginScriptDiskStore.saveNuvioScraper(
+        scraperId: s.id,
+        body: cached,
+      );
+      await prefs.remove(_scriptCachePrefix + s.id);
+      return cached;
+    }
     return null;
+  }
+
+  /// One-time: prefs `nuvio_script_*` → disk.
+  Future<void> migrateScriptsToDiskIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_scriptsDiskMigratedKey) == true) return;
+    for (final key in prefs.getKeys()) {
+      if (!key.startsWith(_scriptCachePrefix)) continue;
+      final id = key.substring(_scriptCachePrefix.length);
+      if (id.isEmpty) continue;
+      final body = prefs.getString(key);
+      if (body == null || body.isEmpty) {
+        await prefs.remove(key);
+        continue;
+      }
+      await PluginScriptDiskStore.saveNuvioScraper(scraperId: id, body: body);
+      await prefs.remove(key);
+    }
+    await prefs.setBool(_scriptsDiskMigratedKey, true);
+    debugPrint('[NuvioService] migrated scraper scripts to disk');
+  }
+
+  /// Prefetch any scraper missing from disk (boot coordinator).
+  Future<void> ensureScriptsOnDisk() async {
+    final addons = await listAddons();
+    for (final addon in addons) {
+      for (final s in addon.scrapers) {
+        if (s.filename.isEmpty) continue;
+        if (await PluginScriptDiskStore.hasNuvioScraper(s.id)) continue;
+        try {
+          final url = _resolveScriptUrl(addon.manifestUrl, s.filename);
+          final r = await http.get(Uri.parse(url));
+          if (r.statusCode == 200 && r.body.isNotEmpty) {
+            await PluginScriptDiskStore.saveNuvioScraper(
+              scraperId: s.id,
+              body: r.body,
+            );
+          }
+        } catch (e) {
+          debugPrint('[NuvioService] ensureScriptsOnDisk (${s.id}): $e');
+        }
+      }
+    }
   }
 
   /// Runs every enabled scraper that supports [type] in parallel and

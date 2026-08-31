@@ -14,6 +14,8 @@ Movie/TV **URL templates**, scraper **source host bases**, anime **hosts / APIs 
 
 **Sources → Forja** runs `extract(ctx)` plugins in parallel (EngineJS job pool). Install via **Settings → Sources → Forja → Add plugin** or **Profile → Forja plugins**. Plugins are tagged **movie** / **tv** / **anime** / **drama**. Settings groups **Movie & TV** / **Anime** / **Drama** / **Live** / **Catalog**. **All** runs up to **10** plugins in flight (**5** on TV); rows appear as each finishes.
 
+Cold start (and profile switch) downloads any cloud-synced packs that are missing or outdated onto the device, with a **bottom progress bar** on the intro splash. **Settings → Reload** on a pack always re-fetches that pack; **Remove** deletes its cached scripts.
+
 ## How to open it
 
 **Settings → Sources → Server reliability** — Movies / Series / Anime / Asian Drama tabs with live **Score** and Auto **Tries** order.

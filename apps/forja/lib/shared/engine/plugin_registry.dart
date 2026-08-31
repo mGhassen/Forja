@@ -6,12 +6,14 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/cache.dart';
 import 'package:forja/shared/engine/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models.dart';
+import 'package:forja/shared/engine/plugin_script_disk_store.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Owns engine pack install / refresh / remove / script cache.
 ///
 /// [EngineService] stays the extract host and delegates pack lifecycle here.
+/// Remote JS bodies live on disk ([PluginScriptDiskStore]); pack metadata in prefs.
 class PluginRegistry {
   PluginRegistry._();
   static final PluginRegistry instance = PluginRegistry._();
@@ -23,6 +25,7 @@ class PluginRegistry {
   static const _scriptPrefixV2 = 'engine_js_script_v2_';
   static const _preludePrefixV2 = 'engine_js_prelude_v2_';
   static const _migratedKey = 'engine_js_packs_v2_migrated';
+  static const _scriptsDiskMigratedKey = 'engine_js_scripts_disk_v3_migrated';
   static const _legacyMonolithWipedKey = 'engine_js_legacy_forjahq_wiped';
   static const _liveSportMigrationKey = 'live_sport_unified_migration_v1';
 
@@ -221,12 +224,111 @@ class PluginRegistry {
 
   static String urlHash(String sourceUrl) => EnginePack.urlHash(sourceUrl);
 
+  /// Legacy prefs keys — kept for migration + tests only.
+  @visibleForTesting
   static String scriptPrefsKey(String sourceUrl, String pluginId) =>
       '$_scriptPrefixV2${urlHash(sourceUrl)}_$pluginId';
 
+  @visibleForTesting
   static String preludePrefsKey(String sourceUrl, String preludeEntry) =>
       '$_preludePrefixV2${urlHash(sourceUrl)}_'
       '${Uri.encodeComponent(preludeEntry)}';
+
+  static bool isLocalManifestUrl(String url) => _asLocalFile(url) != null;
+
+  /// True when a remote pack needs install/repair (lean stub or missing disk JS).
+  Future<bool> packNeedsDiskInstall(EnginePack pack) async {
+    if (isLegacyAssetPack(pack.sourceUrl)) return false;
+    if (isLocalManifestUrl(pack.sourceUrl)) return false;
+    if (pack.plugins.isEmpty) return true;
+    for (final p in pack.plugins) {
+      if (p.entry.isEmpty || !p.needsScript) continue;
+      if (!await PluginScriptDiskStore.hasEngineScript(
+        sourceUrl: pack.sourceUrl,
+        pluginId: p.id,
+      )) {
+        return true;
+      }
+      if (p.prelude.isNotEmpty &&
+          !await PluginScriptDiskStore.hasEnginePrelude(
+            sourceUrl: pack.sourceUrl,
+            preludeEntry: p.prelude,
+          )) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Future<void> _purgePackScriptStorage(EnginePack pack) async {
+    if (!isLocalManifestUrl(pack.sourceUrl)) {
+      await PluginScriptDiskStore.removeEnginePack(pack.sourceUrl);
+    }
+    final prefs = await _prefs;
+    for (final p in pack.plugins) {
+      await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
+      if (p.prelude.isNotEmpty) {
+        await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
+      }
+    }
+  }
+
+  /// One-time: prefs script bodies → disk. Idempotent.
+  Future<void> migrateScriptsToDiskIfNeeded() async {
+    final prefs = await _prefs;
+    if (prefs.getBool(_scriptsDiskMigratedKey) == true) return;
+    final raw = prefs.getString(_packsKeyV2);
+    if (raw == null || raw.isEmpty) {
+      await prefs.setBool(_scriptsDiskMigratedKey, true);
+      return;
+    }
+    List<EnginePack> packs;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        await prefs.setBool(_scriptsDiskMigratedKey, true);
+        return;
+      }
+      packs = [
+        for (final e in decoded)
+          if (e is Map) EnginePack.fromStored(Map<String, dynamic>.from(e)),
+      ];
+    } catch (_) {
+      await prefs.setBool(_scriptsDiskMigratedKey, true);
+      return;
+    }
+    for (final pack in packs) {
+      if (isLegacyAssetPack(pack.sourceUrl)) continue;
+      if (isLocalManifestUrl(pack.sourceUrl)) continue;
+      for (final p in pack.plugins) {
+        if (p.entry.isEmpty || !p.needsScript) continue;
+        final key = scriptPrefsKey(pack.sourceUrl, p.id);
+        final body = prefs.getString(key);
+        if (body != null && body.isNotEmpty) {
+          await PluginScriptDiskStore.saveEngineScript(
+            sourceUrl: pack.sourceUrl,
+            pluginId: p.id,
+            body: body,
+          );
+          await prefs.remove(key);
+        }
+        if (p.prelude.isNotEmpty) {
+          final preKey = preludePrefsKey(pack.sourceUrl, p.prelude);
+          final pre = prefs.getString(preKey);
+          if (pre != null && pre.isNotEmpty) {
+            await PluginScriptDiskStore.saveEnginePrelude(
+              sourceUrl: pack.sourceUrl,
+              preludeEntry: p.prelude,
+              body: pre,
+            );
+            await prefs.remove(preKey);
+          }
+        }
+      }
+    }
+    await prefs.setBool(_scriptsDiskMigratedKey, true);
+    debugPrint('[engine] migrated script bodies to disk');
+  }
 
   /// Serialize [install] writes — parallel callers fetch concurrently via
   /// [Future.wait] but must not interleave prefs commits.
@@ -258,6 +360,7 @@ class PluginRegistry {
   Future<List<EnginePack>> listPacksRaw() async {
     await _migrateV1IfNeeded();
     await _wipeLegacyMonolithIfNeeded();
+    await migrateScriptsToDiskIfNeeded();
     final prefs = await _prefs;
     final raw = prefs.getString(_packsKeyV2);
     if (raw == null || raw.isEmpty) return [];
@@ -300,12 +403,7 @@ class PluginRegistry {
         return;
       }
       for (final pack in victims) {
-        for (final p in pack.plugins) {
-          await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
-          if (p.prelude.isNotEmpty) {
-            await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
-          }
-        }
+        await _purgePackScriptStorage(pack);
       }
       final keep = packs.where((p) => !isLegacyMonolithPack(p)).toList();
       await prefs.setString(
@@ -361,19 +459,25 @@ class PluginRegistry {
         for (final p in pack.plugins) {
           final old = prefs.getString('$_scriptPrefixV1${p.id}');
           if (old != null && old.isNotEmpty) {
-            await prefs.setString(
-              scriptPrefsKey(pack.sourceUrl, p.id),
-              old,
-            );
+            if (!isLocalManifestUrl(pack.sourceUrl)) {
+              await PluginScriptDiskStore.saveEngineScript(
+                sourceUrl: pack.sourceUrl,
+                pluginId: p.id,
+                body: old,
+              );
+            }
           }
           if (p.prelude.isNotEmpty) {
             final oldPre = prefs.getString(
               '$_preludePrefixV1${Uri.encodeComponent(p.prelude)}',
             );
-            if (oldPre != null && oldPre.isNotEmpty) {
-              await prefs.setString(
-                preludePrefsKey(pack.sourceUrl, p.prelude),
-                oldPre,
+            if (oldPre != null &&
+                oldPre.isNotEmpty &&
+                !isLocalManifestUrl(pack.sourceUrl)) {
+              await PluginScriptDiskStore.saveEnginePrelude(
+                sourceUrl: pack.sourceUrl,
+                preludeEntry: p.prelude,
+                body: oldPre,
               );
             }
           }
@@ -415,14 +519,8 @@ class PluginRegistry {
       }
     }
     if (victims.isEmpty) return packs;
-    final prefs = await _prefs;
     for (final pack in victims) {
-      for (final p in pack.plugins) {
-        await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
-        if (p.prelude.isNotEmpty) {
-          await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
-        }
-      }
+      await _purgePackScriptStorage(pack);
     }
     await _savePacks(keep);
     return keep;
@@ -439,14 +537,8 @@ class PluginRegistry {
       }
     }
     if (victims.isEmpty) return packs;
-    final prefs = await _prefs;
     for (final pack in victims) {
-      for (final p in pack.plugins) {
-        await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
-        if (p.prelude.isNotEmpty) {
-          await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
-        }
-      }
+      await _purgePackScriptStorage(pack);
     }
     await _savePacks(keep);
     debugPrint(
@@ -456,29 +548,11 @@ class PluginRegistry {
   }
 
   Future<void> repairMissingScripts(List<EnginePack> packs) async {
-    final prefs = await _prefs;
     for (final pack in packs) {
       if (isLegacyAssetPack(pack.sourceUrl)) continue;
+      if (isLocalManifestUrl(pack.sourceUrl)) continue;
       if (_scriptRepairAttempted.contains(pack.sourceUrl)) continue;
-      var needs = false;
-      for (final p in pack.plugins) {
-        if (p.entry.isEmpty) continue;
-        if (!p.needsScript) continue;
-        final cached = prefs.getString(scriptPrefsKey(pack.sourceUrl, p.id));
-        if (cached == null || cached.isEmpty) {
-          needs = true;
-          break;
-        }
-        if (p.prelude.isNotEmpty) {
-          final pre =
-              prefs.getString(preludePrefsKey(pack.sourceUrl, p.prelude));
-          if (pre == null || pre.isEmpty) {
-            needs = true;
-            break;
-          }
-        }
-      }
-      if (!needs) continue;
+      if (!await packNeedsDiskInstall(pack)) continue;
       _scriptRepairAttempted.add(pack.sourceUrl);
       debugPrint('[engine] repairing missing scripts for ${pack.name}');
       try {
@@ -593,20 +667,29 @@ class PluginRegistry {
   Future<void> _maybeRefreshIfNewer(
     String manifestUrl,
     EnginePack local,
+  ) =>
+      maybeRefreshIfNewer(manifestUrl, local);
+
+  /// Public for [PluginInstallCoordinator] — install if remote version newer.
+  Future<bool> maybeRefreshIfNewer(
+    String manifestUrl,
+    EnginePack local,
   ) async {
     try {
       final body = await _fetchText(manifestUrl);
       final map = jsonDecode(body);
-      if (map is! Map) return;
+      if (map is! Map) return false;
       final remoteVer = (map['version'] as String?)?.trim() ?? '';
-      if (remoteVer.isEmpty) return;
-      if (compareEngineSemver(remoteVer, local.version) <= 0) return;
+      if (remoteVer.isEmpty) return false;
+      if (compareEngineSemver(remoteVer, local.version) <= 0) return false;
       debugPrint(
         '[engine] ${local.name} $remoteVer > ${local.version} — refreshing',
       );
       await install(manifestUrl);
+      return true;
     } catch (e) {
       debugPrint('[engine] ${local.name} version check failed: $e');
+      return false;
     }
   }
 
@@ -626,11 +709,22 @@ class PluginRegistry {
     }
   }
 
-  /// Transactional install: fetch all bodies, then write prefs.
-  Future<EnginePack> install(String manifestUrl) =>
-      _withInstallLock(() => _installUnlocked(manifestUrl));
+  /// Transactional install: fetch all bodies, write disk (remote), then prefs index.
+  ///
+  /// [onScriptFetched] fires after each prelude/script body is downloaded
+  /// (for install progress UI). Local checkout packs skip disk cache writes.
+  Future<EnginePack> install(
+    String manifestUrl, {
+    void Function()? onScriptFetched,
+  }) =>
+      _withInstallLock(
+        () => _installUnlocked(manifestUrl, onScriptFetched: onScriptFetched),
+      );
 
-  Future<EnginePack> _installUnlocked(String manifestUrl) async {
+  Future<EnginePack> _installUnlocked(
+    String manifestUrl, {
+    void Function()? onScriptFetched,
+  }) async {
     manifestUrl = await _substituteUnreachableLocalManifest(manifestUrl);
     if (isRetiredCatalogManifestUrl(manifestUrl)) {
       await removePack(manifestUrl);
@@ -689,6 +783,7 @@ class PluginRegistry {
     final scripts = <String, String>{}; // pluginId -> body
     final preludes = <String, String>{}; // prelude path -> body
     final missing = <String>[];
+    final localCheckout = isLocalManifestUrl(manifestUrl);
 
     final preludesNeeded = <String>{
       for (final p in pack.plugins)
@@ -703,6 +798,7 @@ class PluginRegistry {
           continue;
         }
         preludes[prelude] = text;
+        onScriptFetched?.call();
       } catch (_) {
         missing.add('prelude:$prelude');
       }
@@ -718,6 +814,7 @@ class PluginRegistry {
           continue;
         }
         scripts[plugin.id] = text;
+        onScriptFetched?.call();
       } catch (_) {
         missing.add(plugin.id);
       }
@@ -728,19 +825,22 @@ class PluginRegistry {
       );
     }
 
-    // Commit prefs only after all fetches succeed.
-    final prefs = await _prefs;
-    for (final e in preludes.entries) {
-      await prefs.setString(
-        preludePrefsKey(manifestUrl, e.key),
-        e.value,
-      );
-    }
-    for (final e in scripts.entries) {
-      await prefs.setString(
-        scriptPrefsKey(manifestUrl, e.key),
-        e.value,
-      );
+    // Commit disk (remote only) + prefs index only after all fetches succeed.
+    if (!localCheckout) {
+      for (final e in preludes.entries) {
+        await PluginScriptDiskStore.saveEnginePrelude(
+          sourceUrl: manifestUrl,
+          preludeEntry: e.key,
+          body: e.value,
+        );
+      }
+      for (final e in scripts.entries) {
+        await PluginScriptDiskStore.saveEngineScript(
+          sourceUrl: manifestUrl,
+          pluginId: e.key,
+          body: e.value,
+        );
+      }
     }
 
     // Drop scripts removed from this pack on refresh.
@@ -750,11 +850,24 @@ class PluginRegistry {
         for (final p in pack.plugins)
           if (p.prelude.isNotEmpty) p.prelude,
       };
+      final prefs = await _prefs;
       for (final p in previous.plugins) {
         if (!nextIds.contains(p.id)) {
+          if (!localCheckout) {
+            await PluginScriptDiskStore.removeEngineScript(
+              sourceUrl: manifestUrl,
+              pluginId: p.id,
+            );
+          }
           await prefs.remove(scriptPrefsKey(manifestUrl, p.id));
         }
         if (p.prelude.isNotEmpty && !nextPreludes.contains(p.prelude)) {
+          if (!localCheckout) {
+            await PluginScriptDiskStore.removeEnginePrelude(
+              sourceUrl: manifestUrl,
+              preludeEntry: p.prelude,
+            );
+          }
           await prefs.remove(preludePrefsKey(manifestUrl, p.prelude));
         }
       }
@@ -786,14 +899,8 @@ class PluginRegistry {
     final all = await listPacksRaw();
     final victim = all.where((a) => a.sourceUrl == sourceUrl).toList();
     all.removeWhere((a) => a.sourceUrl == sourceUrl);
-    final prefs = await _prefs;
     for (final pack in victim) {
-      for (final p in pack.plugins) {
-        await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
-        if (p.prelude.isNotEmpty) {
-          await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
-        }
-      }
+      await _purgePackScriptStorage(pack);
     }
     await _savePacks(all);
   }
@@ -1017,13 +1124,43 @@ class PluginRegistry {
       return code;
     }
 
-    final prefs = await _prefs;
-    final cached = prefs.getString(scriptPrefsKey(sourceUrl, plugin.id));
-    if (cached == null || cached.isEmpty) return null;
-    var code = cached;
+    var code = await PluginScriptDiskStore.loadEngineScript(
+      sourceUrl: sourceUrl,
+      pluginId: plugin.id,
+    );
+    if (code == null || code.isEmpty) {
+      // Lazy migrate leftover prefs key.
+      final prefs = await _prefs;
+      final cached = prefs.getString(scriptPrefsKey(sourceUrl, plugin.id));
+      if (cached == null || cached.isEmpty) return null;
+      await PluginScriptDiskStore.saveEngineScript(
+        sourceUrl: sourceUrl,
+        pluginId: plugin.id,
+        body: cached,
+      );
+      await prefs.remove(scriptPrefsKey(sourceUrl, plugin.id));
+      code = cached;
+    }
+
     final prelude = plugin.prelude.trim();
     if (prelude.isNotEmpty) {
-      final shared = prefs.getString(preludePrefsKey(sourceUrl, prelude));
+      var shared = await PluginScriptDiskStore.loadEnginePrelude(
+        sourceUrl: sourceUrl,
+        preludeEntry: prelude,
+      );
+      if (shared == null || shared.isEmpty) {
+        final prefs = await _prefs;
+        final pre = prefs.getString(preludePrefsKey(sourceUrl, prelude));
+        if (pre != null && pre.isNotEmpty) {
+          await PluginScriptDiskStore.saveEnginePrelude(
+            sourceUrl: sourceUrl,
+            preludeEntry: prelude,
+            body: pre,
+          );
+          await prefs.remove(preludePrefsKey(sourceUrl, prelude));
+          shared = pre;
+        }
+      }
       if (shared != null && shared.isNotEmpty) {
         code = '$shared\n$code';
       }
@@ -1139,14 +1276,8 @@ class PluginRegistry {
     }
 
     if (changed) {
-      final prefs = await _prefs;
       for (final pack in victims) {
-        for (final p in pack.plugins) {
-          await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
-          if (p.prelude.isNotEmpty) {
-            await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
-          }
-        }
+        await _purgePackScriptStorage(pack);
       }
       await _savePacks(next);
     }

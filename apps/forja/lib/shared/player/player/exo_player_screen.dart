@@ -208,6 +208,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   String? _activeMagnet;
   String? _catalogSourceKind;
   String? _catalogAddonBaseUrl;
+
+  /// Last catalog row `_addonName` / `name` (e.g. `VidRock · Astra`) for chrome.
+  String? _catalogAddonName;
   List<StreamSource>? _currentSources;
   final Map<String, int> _providerLoadGens = {};
   int _fallbackGen = 0;
@@ -258,6 +261,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _sources = [];
     _activeMagnet = widget.magnetLink;
     _catalogAddonBaseUrl = widget.stremioAddonBaseUrl;
+    String? seedAddon;
+    for (final s in widget.sources ?? const <StreamSource>[]) {
+      final t = s.title.trim();
+      if (t.isEmpty) continue;
+      final lines = splitSourceButtonLines(t);
+      if (lines.server != null) {
+        seedAddon = '${lines.label} · ${lines.server}';
+        break;
+      }
+    }
+    _catalogAddonName = seedAddon;
     _catalogSourceKind = _initialCatalogSourceKind();
     _currentPlayingCatalogUrl = widget.mediaPath;
     if (widget.audioUrl != null && widget.audioUrl!.isNotEmpty) {

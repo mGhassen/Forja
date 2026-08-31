@@ -40,6 +40,17 @@ mixin _MobilePlayerLifecycle
     // ── Provider initialization ──────────────────────────────────────────
     _s._currentProvider = widget.activeProvider;
     _s._catalogAddonBaseUrl = widget.stremioAddonBaseUrl;
+    String? seedAddon;
+    for (final s in widget.sources ?? const <StreamSource>[]) {
+      final t = s.title.trim();
+      if (t.isEmpty) continue;
+      final lines = splitSourceButtonLines(t);
+      if (lines.server != null) {
+        seedAddon = '${lines.label} · ${lines.server}';
+        break;
+      }
+    }
+    _s._catalogAddonName = seedAddon;
     _s._catalogSourceKind = _initialCatalogSourceKind();
     _s._catalogStreamRowKey = takePendingCatalogStreamRowKey();
     // Do not pin from pinSource / preloaded sources - that blocked Auto

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/hub_boot_prefetch.dart';
-import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:rust/rust.dart';
 
@@ -31,12 +31,16 @@ class ProfileEngineWarm {
 
     if (awaitOfficialPacks) {
       onStatus?.call('Loading plugins…');
-      debugPrint('[Init] ForjaHQ install (await)');
-      await EngineService.instance.ensureOfficialInstalled().catchError((
-        Object e,
-      ) {
-        debugPrint('[Init] ForjaHQ install error (non-fatal): $e');
-      });
+      debugPrint('[Init] PluginInstallCoordinator (await)');
+      await PluginInstallCoordinator.instance
+          .ensureAllInstalled(
+            checkUpdates: true,
+            awaitCloudLean: true,
+            includeNuvio: needs.nuvio || needs.playSourceNuvio,
+          )
+          .catchError((Object e) {
+            debugPrint('[Init] Plugin install error (non-fatal): $e');
+          });
       if (prefetchDefaultHub) {
         onStatus?.call(
           needs.homeTab ? 'Opening Home…' : 'Warming catalog…',
@@ -61,7 +65,7 @@ class ProfileEngineWarm {
       }
 
       if (needs.nuvio) {
-        debugPrint('[Init] Nuvio defer hydrate to first Sources/Settings use');
+        debugPrint('[Init] Nuvio scripts already hydrated via coordinator');
       } else if (!needs.playSourceNuvio) {
         debugPrint('[Init] Nuvio skip (play source off)');
       } else {

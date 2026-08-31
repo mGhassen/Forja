@@ -68,6 +68,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         _s._currentPlayingCatalogUrl = pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
+      _s._catalogAddonName = pick.addonName;
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });
@@ -162,6 +163,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         _s._currentSources = null;
         final base = stream['_addonBaseUrl']?.toString();
         _s._catalogAddonBaseUrl = base;
+        _s._catalogAddonName = catalogStreamAddonIdentity(stream);
         final magnet = resolved.magnetLink;
         final localTorrent = magnet != null &&
             magnet.isNotEmpty &&
@@ -228,6 +230,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         _s._currentPlayingCatalogUrl = pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
+      _s._catalogAddonName = pick.addonName;
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });

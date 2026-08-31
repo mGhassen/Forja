@@ -34,14 +34,16 @@ Widget settingsFocusableDropdown(
   String subtitle,
   String value,
   List<String> options,
-  ValueChanged<String?> onChanged,
-) {
+  ValueChanged<String?> onChanged, {
+  bool adminOnly = false,
+}) {
   return SettingsSelectRow(
     title: title,
     subtitle: subtitle,
     value: value,
     options: options,
     onChanged: onChanged,
+    adminOnly: adminOnly,
   );
 }
 

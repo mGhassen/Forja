@@ -984,7 +984,19 @@ String? _catalogAddonNameFromSessionCaches(
   return null;
 }
 
-/// Split `Provider · Server` / `Server · quality` into chrome button lines.
+/// True when [raw] looks like a mirror chip (Yoru, Astra) — not a media title.
+bool looksLikeMirrorServerLabel(String raw) {
+  final t = raw.trim();
+  if (t.isEmpty || t.length > 28) return false;
+  // Media cards: "The Whisper Man - (2026)", "Sterling Point S1E1 - (2026)"
+  if (RegExp(r'\(\d{4}\)').hasMatch(t)) return false;
+  if (t.contains(' - ')) return false;
+  if (RegExp(r'\bS\d+E\d+\b', caseSensitive: false).hasMatch(t)) return false;
+  if (t.split(RegExp(r'\s+')).length > 2) return false;
+  return true;
+}
+
+/// Split `Provider · Server` / `Provider Server` / `Server · quality` into chrome lines.
 ({String label, String? server}) splitSourceButtonLines(
   String raw, {
   String? providerHint,
@@ -992,27 +1004,75 @@ String? _catalogAddonNameFromSessionCaches(
   final t = raw.trim();
   if (t.isEmpty) return (label: 'Sources', server: null);
   final hint = providerHint?.trim();
+
+  ({String label, String? server}) finish(String label, String? server) {
+    final s = server?.trim();
+    if (s == null || s.isEmpty) return (label: label, server: null);
+    if (!looksLikeMirrorServerLabel(s)) return (label: label, server: null);
+    return (label: label, server: s);
+  }
+
+  // "VidRock Astra" / "VidRock [en]" under provider VidRock → VidRock / Astra
+  if (hint != null && hint.isNotEmpty) {
+    final prefix = RegExp(
+      '^${RegExp.escape(hint)}(?:\\s+[·•|]\\s*|\\s+)',
+      caseSensitive: false,
+    );
+    final m = prefix.firstMatch(t);
+    if (m != null) {
+      var rest = t.substring(m.end).trim();
+      rest = rest.replaceFirst(RegExp(r'\s*\[[^\]]*\]\s*$'), '').trim();
+      if (rest.isNotEmpty && rest.toLowerCase() != hint.toLowerCase()) {
+        return finish(hint, rest.split(RegExp(r'\s*[·•]\s*')).first);
+      }
+      return (label: hint, server: null);
+    }
+  }
+
   final parts = t
       .split(RegExp(r'\s*[·•]\s*'))
       .map((p) => p.trim())
       .where((p) => p.isNotEmpty)
       .toList();
   if (parts.length >= 2) {
+    var label = parts.first;
+    var server = parts[1];
+    final serverPrefix = RegExp(
+      '^${RegExp.escape(label)}(?:\\s+[·•|]\\s*|\\s+)',
+      caseSensitive: false,
+    );
+    final sm = serverPrefix.firstMatch(server);
+    if (sm != null) {
+      final rest = server.substring(sm.end).trim();
+      if (rest.isNotEmpty) server = rest;
+    }
     if (hint != null &&
         hint.isNotEmpty &&
-        parts.first.toLowerCase() != hint.toLowerCase()) {
-      // "Yoru · 2160p" under provider Videasy → Videasy / Yoru
-      return (label: hint, server: parts.first);
+        label.toLowerCase() != hint.toLowerCase()) {
+      return finish(hint, label);
     }
-    // "Videasy · Yoru" → Videasy / Yoru
-    return (label: parts.first, server: parts[1]);
+    if (server.toLowerCase() == label.toLowerCase()) {
+      return (label: label, server: null);
+    }
+    return finish(label, server);
   }
   if (hint != null &&
       hint.isNotEmpty &&
       t.toLowerCase() != hint.toLowerCase()) {
-    return (label: hint, server: t);
+    return finish(hint, t);
   }
   return (label: hint != null && hint.isNotEmpty ? hint : t, server: null);
+}
+
+/// Prefer `_addonName` (Videasy · Yoru). Never fall back to media `title`/`name`.
+String? catalogStreamAddonIdentity(Map<String, dynamic> stream) {
+  final addon = stream['_addonName']?.toString().trim();
+  if (addon == null || addon.isEmpty) return null;
+  final lines = splitSourceButtonLines(addon);
+  if (lines.server != null) return '${lines.label} · ${lines.server}';
+  // Provider-only addon name is fine (Megaplay with no mirror).
+  if (lines.label.isNotEmpty && lines.label != 'Sources') return lines.label;
+  return null;
 }
 
 /// Player Sources / Source button lines — provider on top, server below.
@@ -1030,11 +1090,20 @@ String? _catalogAddonNameFromSessionCaches(
   String? currentPlayingCatalogUrl,
   String? catalogSourceKind,
   String? currentSourceTitle,
+  String? catalogAddonName,
   CatalogOpen? catalogOpen,
   int? malId,
   String? audioCategory,
   String? episodeVideoId,
 }) {
+  final storedName = catalogAddonName?.trim();
+  if (storedName != null && storedName.isNotEmpty) {
+    final fromStored = splitSourceButtonLines(storedName);
+    // Only trust stored identity when the server half is a real mirror chip
+    // (Yoru / Astra) — never a media title that leaked into `_addonName`.
+    if (fromStored.server != null) return fromStored;
+  }
+
   final cacheKey = movie == null
       ? null
       : CatalogSourcesSessionCache.cacheKey(
@@ -1057,7 +1126,12 @@ String? _catalogAddonNameFromSessionCaches(
         catalogUrl: currentPlayingCatalogUrl,
       );
       if (addonName != null && addonName.isNotEmpty) {
-        return splitSourceButtonLines(addonName);
+        final fromCache = splitSourceButtonLines(addonName);
+        if (fromCache.server != null) return fromCache;
+        // Provider-only addon (no mirror) is still useful.
+        if (fromCache.label.isNotEmpty && fromCache.label != 'Sources') {
+          return fromCache;
+        }
       }
     }
 
@@ -1065,6 +1139,14 @@ String? _catalogAddonNameFromSessionCaches(
     if (magnet != null && magnet.isNotEmpty) {
       final indexer = _torrentIndexerFromSessionCache(cacheKey, magnet);
       if (indexer != null) return (label: indexer, server: null);
+    }
+  }
+
+  // Provider-only stored name (e.g. plain "Videasy") after cache miss.
+  if (storedName != null && storedName.isNotEmpty) {
+    final fromStored = splitSourceButtonLines(storedName);
+    if (!RegExp(r'\(\d{4}\)').hasMatch(fromStored.label)) {
+      return (label: fromStored.label, server: null);
     }
   }
 
@@ -1081,7 +1163,11 @@ String? _catalogAddonNameFromSessionCaches(
 
   final sourceTitle = currentSourceTitle?.trim();
   if (sourceTitle != null && sourceTitle.isNotEmpty) {
-    return splitSourceButtonLines(sourceTitle, providerHint: providerLabel);
+    final fromTitle = splitSourceButtonLines(
+      sourceTitle,
+      providerHint: providerLabel,
+    );
+    if (fromTitle.server != null) return fromTitle;
   }
   if (providerLabel != null && providerLabel.isNotEmpty) {
     return (label: providerLabel, server: null);
@@ -1114,6 +1200,7 @@ String catalogSourcesButtonLabel({
   String? currentPlayingCatalogUrl,
   String? catalogSourceKind,
   String? currentSourceTitle,
+  String? catalogAddonName,
   CatalogOpen? catalogOpen,
   int? malId,
   String? audioCategory,
@@ -1133,6 +1220,7 @@ String catalogSourcesButtonLabel({
     currentPlayingCatalogUrl: currentPlayingCatalogUrl,
     catalogSourceKind: catalogSourceKind,
     currentSourceTitle: currentSourceTitle,
+    catalogAddonName: catalogAddonName,
     catalogOpen: catalogOpen,
     malId: malId,
     audioCategory: audioCategory,
@@ -1153,7 +1241,13 @@ String catalogHttpPlayProviderId(Map<String, dynamic> stream) {
 }
 
 /// Chrome / Sources panel selection for a catalog row (kept even if open fails).
-({String? catalogUrl, String? addonBase, String kind, String providerId})
+({
+  String? catalogUrl,
+  String? addonBase,
+  String? addonName,
+  String kind,
+  String providerId,
+})
 catalogPanelSelectionFromStream(Map<String, dynamic> stream) {
   final base = stream['_addonBaseUrl']?.toString();
   final rawUrl = stream['url']?.toString();
@@ -1167,6 +1261,7 @@ catalogPanelSelectionFromStream(Map<String, dynamic> stream) {
   return (
     catalogUrl: catalogUrl,
     addonBase: base,
+    addonName: catalogStreamAddonIdentity(stream),
     kind: kind,
     providerId: catalogHttpPlayProviderId(stream),
   );

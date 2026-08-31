@@ -429,15 +429,8 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
   }
 
   ({String label, String? server}) _catalogSourcesButtonLabels() {
-    final provider = _providerDisplayLabel();
     final session = widget.enginePlaySession;
     final ep = widget.selectedEpisode ?? 1;
-    if (provider != null) {
-      final sourceTitle = _playingSourceTitle();
-      if (sourceTitle != null) {
-        return splitSourceButtonLines(sourceTitle, providerHint: provider);
-      }
-    }
     return catalogSourcesButtonLabels(
       movie: widget.movie,
       season: widget.selectedSeason,
@@ -452,6 +445,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
       catalogSourceKind: _s._catalogSourceKind,
       currentSourceTitle: _playingSourceTitle(),
+      catalogAddonName: _s._catalogAddonName,
       catalogOpen: session?.effectiveOpen,
       malId: session?.malId,
       audioCategory: session?.audioCategory,
