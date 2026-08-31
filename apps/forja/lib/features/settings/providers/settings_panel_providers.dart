@@ -22,7 +22,6 @@ class SettingsPlaybackSnapshot {
     required this.playSourceNuvio,
     required this.playSourceEngine,
     required this.playSourceEngineAutoStart,
-    required this.playSourceWebstreaming,
     required this.p2pAcknowledged,
     required this.simpleStreamingResolve,
     required this.builtInEngine,
@@ -56,7 +55,6 @@ class SettingsPlaybackSnapshot {
   final bool playSourceNuvio;
   final bool playSourceEngine;
   final bool playSourceEngineAutoStart;
-  final bool playSourceWebstreaming;
   final bool p2pAcknowledged;
   final bool simpleStreamingResolve;
   final BuiltInPlayerEngine builtInEngine;
@@ -90,7 +88,6 @@ class SettingsPlaybackSnapshot {
     bool? playSourceNuvio,
     bool? playSourceEngine,
     bool? playSourceEngineAutoStart,
-    bool? playSourceWebstreaming,
     bool? p2pAcknowledged,
     bool? simpleStreamingResolve,
     BuiltInPlayerEngine? builtInEngine,
@@ -125,8 +122,6 @@ class SettingsPlaybackSnapshot {
       playSourceEngine: playSourceEngine ?? this.playSourceEngine,
       playSourceEngineAutoStart:
           playSourceEngineAutoStart ?? this.playSourceEngineAutoStart,
-      playSourceWebstreaming:
-          playSourceWebstreaming ?? this.playSourceWebstreaming,
       p2pAcknowledged: p2pAcknowledged ?? this.p2pAcknowledged,
       simpleStreamingResolve:
           simpleStreamingResolve ?? this.simpleStreamingResolve,
@@ -199,7 +194,6 @@ class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
       playSourceNuvio: await PlaySourceEffective.nuvio(s, lanReady),
       playSourceEngine: await PlaySourceEffective.engine(s, lanReady),
       playSourceEngineAutoStart: await s.isPlaySourceEngineAutoStartEnabled(),
-      playSourceWebstreaming: await PlaySourceEffective.webstreaming(s),
       p2pAcknowledged: await s.isP2pStreamingAcknowledged(),
       simpleStreamingResolve: await s.isSimpleStreamingResolveEnabled(),
       builtInEngine: await s.getBuiltInPlayerEngine(

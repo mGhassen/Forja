@@ -61,14 +61,11 @@ void main() {
       await service.setPlaySourceTorrentEnabled(true);
       await service.setPlaySourceStremioEnabled(true);
       await service.setPlaySourceNuvioEnabled(true);
-      await service.setPlaySourceWebstreamingEnabled(true);
 
       final v = await SettingsVisibility.resolve(service);
       expect(v.playSourceTorrent, isTrue);
       expect(v.playSourceStremio, isTrue);
       expect(v.playSourceNuvio, isTrue);
-      // Stored on, but effective Webstreaming stays off without admin.
-      expect(v.playSourceWebstreaming, isFalse);
       expect(v.showPlaySourceTorrentToggle, isTrue);
       expect(v.showPlaySourceStremioToggle, isTrue);
       expect(v.showPlaySourceNuvioToggle, isTrue);

@@ -5,7 +5,7 @@ import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
-/// Tabbed webstreaming server preference + live reliability.
+/// Tabbed stream provider preference + live reliability.
 class ProviderScoringPanel extends StatefulWidget {
   const ProviderScoringPanel({
     super.key,

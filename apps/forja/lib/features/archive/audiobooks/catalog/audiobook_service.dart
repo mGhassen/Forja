@@ -928,7 +928,7 @@ class AudiobookService {
     return [];
   }
 
-  Future<AnimeHttpResult> _audionestFirestoreQuery(
+  Future<HostHttpResult> _audionestFirestoreQuery(
       String body, String token) async {
     return hostHttp(
       'POST',

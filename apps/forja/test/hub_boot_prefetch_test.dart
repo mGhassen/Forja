@@ -31,12 +31,10 @@ void main() {
         stremio: false,
         nuvio: false,
         engine: false,
-        webstreaming: false,
         playSourceTorrent: false,
         playSourceStremio: false,
         playSourceNuvio: false,
         playSourceEngine: false,
-        playSourceWebstreaming: false,
         vodTab: true,
       );
       expect(needs.openingStatusLabel, 'Opening Anime…');
@@ -51,12 +49,10 @@ void main() {
         stremio: false,
         nuvio: false,
         engine: false,
-        webstreaming: false,
         playSourceTorrent: false,
         playSourceStremio: false,
         playSourceNuvio: false,
         playSourceEngine: false,
-        playSourceWebstreaming: false,
         vodTab: false,
       );
       expect(needs.openingStatusLabel, 'Opening Live & IPTV…');

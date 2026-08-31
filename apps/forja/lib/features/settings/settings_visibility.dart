@@ -16,7 +16,6 @@ class SettingsVisibility {
     required this.playSourceStremio,
     required this.playSourceNuvio,
     required this.playSourceEngine,
-    required this.playSourceWebstreaming,
     required this.showPlaySourceTorrentToggle,
     required this.showPlaySourceStremioToggle,
     required this.showPlaySourceNuvioToggle,
@@ -31,7 +30,6 @@ class SettingsVisibility {
   final bool playSourceStremio;
   final bool playSourceNuvio;
   final bool playSourceEngine;
-  final bool playSourceWebstreaming;
 
   /// Settings → Playback rows (platform play-source caps).
   final bool showPlaySourceTorrentToggle;
@@ -81,8 +79,7 @@ class SettingsVisibility {
           (playSourceTorrent ||
               playSourceStremio ||
               playSourceNuvio ||
-              playSourceEngine ||
-              playSourceWebstreaming)) ||
+              playSourceEngine)) ||
       liveMatchesNav;
 
   /// Debrid serves torrent + Stremio hashes (+ Nuvio magnets).
@@ -94,12 +91,12 @@ class SettingsVisibility {
       (playSourceTorrent || playSourceStremio || playSourceNuvio) &&
       AccountFeatures.instance.isAdmin;
 
-  /// Server reliability / provider order (webstreaming extractors).
-  /// Lives under Sources — admin + Webstreaming; hidden on Android TV.
+  /// Server reliability / provider order (stream extractors).
+  /// Lives under Sources — admin + engine play source; hidden on Android TV.
   bool get showProviderScoring =>
       !_isAndroidTv &&
       vodTab &&
-      playSourceWebstreaming &&
+      playSourceEngine &&
       AccountFeatures.instance.isAdmin;
 
   /// Simkl for everyone; MDBlist row admin-only.
@@ -132,7 +129,6 @@ class SettingsVisibility {
         other.playSourceStremio == playSourceStremio &&
         other.playSourceNuvio == playSourceNuvio &&
         other.playSourceEngine == playSourceEngine &&
-        other.playSourceWebstreaming == playSourceWebstreaming &&
         other.showPlaySourceTorrentToggle == showPlaySourceTorrentToggle &&
         other.showPlaySourceStremioToggle == showPlaySourceStremioToggle &&
         other.showPlaySourceNuvioToggle == showPlaySourceNuvioToggle &&
@@ -149,7 +145,6 @@ class SettingsVisibility {
     playSourceStremio,
     playSourceNuvio,
     playSourceEngine,
-    playSourceWebstreaming,
     showPlaySourceTorrentToggle,
     showPlaySourceStremioToggle,
     showPlaySourceNuvioToggle,
@@ -172,7 +167,6 @@ class SettingsVisibility {
       playSourceStremio: await PlaySourceEffective.stremio(s, lanReady),
       playSourceNuvio: await PlaySourceEffective.nuvio(s, lanReady),
       playSourceEngine: await PlaySourceEffective.engine(s, lanReady),
-      playSourceWebstreaming: await PlaySourceEffective.webstreaming(s),
       showPlaySourceTorrentToggle:
           await PlaySourceEffective.showTorrentToggle(),
       showPlaySourceStremioToggle:

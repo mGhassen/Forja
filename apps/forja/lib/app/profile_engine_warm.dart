@@ -71,14 +71,14 @@ class ProfileEngineWarm {
     if (!startPlaySources) {
       debugPrint('[Init] LocalServer / Nuvio skip (deferred)');
     } else {
-      if (needs.webstreaming) {
+      if (needs.engine) {
         onStatus?.call('Starting stream proxy…');
-        debugPrint('[Init] LocalServer start (webstreaming)');
+        debugPrint('[Init] LocalServer start (engine VOD)');
         await LocalServerService().start().catchError((e) {
           debugPrint('[Init] LocalServer error: $e');
         });
-      } else if (!needs.playSourceWebstreaming) {
-        debugPrint('[Init] LocalServer skip (webstreaming off)');
+      } else if (!needs.playSourceEngine) {
+        debugPrint('[Init] LocalServer skip (engine off)');
       } else {
         debugPrint('[Init] LocalServer skip (no VOD tab)');
       }

@@ -8,9 +8,8 @@ import 'package:rust/rust.dart';
 /// Resolve only after the active profile's settings are merged (profile splash
 /// or guest local settings).
 ///
-/// Play-source engines (torrent / stremio / nuvio / webstreaming) also require
-/// a VOD tab that can open media details. IPTV + Live Matches alone never warm
-/// them.
+/// Play-source engines (torrent / stremio / nuvio / engine) also require a VOD
+/// tab that can open media details. IPTV + Live Matches alone never warm them.
 class BootNeeds {
   const BootNeeds({
     required this.visibleNavIds,
@@ -20,12 +19,10 @@ class BootNeeds {
     required this.stremio,
     required this.nuvio,
     required this.engine,
-    required this.webstreaming,
     required this.playSourceTorrent,
     required this.playSourceStremio,
     required this.playSourceNuvio,
     required this.playSourceEngine,
-    required this.playSourceWebstreaming,
     required this.vodTab,
   });
 
@@ -49,15 +46,11 @@ class BootNeeds {
   /// Effective: Forja engine on **and** a VOD tab visible.
   final bool engine;
 
-  /// Effective: Webstreaming on **and** a VOD tab visible.
-  final bool webstreaming;
-
   /// Raw Settings toggles (for skip-reason logs).
   final bool playSourceTorrent;
   final bool playSourceStremio;
   final bool playSourceNuvio;
   final bool playSourceEngine;
-  final bool playSourceWebstreaming;
 
   /// Any tab that can open VOD details / Sources.
   final bool vodTab;
@@ -102,7 +95,6 @@ class BootNeeds {
     final playSourceStremio = await PlaySourceEffective.stremio(s, lanReady);
     final playSourceNuvio = await PlaySourceEffective.nuvio(s, lanReady);
     final playSourceEngine = await PlaySourceEffective.engine(s, lanReady);
-    final playSourceWebstreaming = await PlaySourceEffective.webstreaming(s);
     final hubTab = nav.any(isHubNavId);
     final catalogTab = hubTab || nav.contains('mylist');
     final vodTab = nav.any(isVodNavId);
@@ -116,12 +108,10 @@ class BootNeeds {
       playSourceStremio: playSourceStremio,
       playSourceNuvio: playSourceNuvio,
       playSourceEngine: playSourceEngine,
-      playSourceWebstreaming: playSourceWebstreaming,
       torrent: playSourceTorrent && vodTab,
       stremio: playSourceStremio && vodTab,
       nuvio: playSourceNuvio && vodTab,
       engine: playSourceEngine && vodTab,
-      webstreaming: playSourceWebstreaming && vodTab,
     );
   }
 
@@ -132,6 +122,5 @@ class BootNeeds {
       'torrent=$torrent (flag=$playSourceTorrent), '
       'stremio=$stremio (flag=$playSourceStremio), '
       'nuvio=$nuvio (flag=$playSourceNuvio), '
-      'engine=$engine (flag=$playSourceEngine), '
-      'webstreaming=$webstreaming (flag=$playSourceWebstreaming))';
+      'engine=$engine (flag=$playSourceEngine))';
 }

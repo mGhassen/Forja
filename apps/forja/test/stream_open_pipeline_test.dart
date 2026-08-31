@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/playback/provider_runtime_config.dart';
-import 'package:forja/shared/playback/stream_media_classifier.dart';
 import 'package:forja/shared/playback/stream_open_pipeline.dart';
 
 void main() {
@@ -11,114 +10,41 @@ void main() {
   });
 
   group('StreamOpenPipeline', () {
-    test('pngWrapTs → strip first; openFailed → direct', () async {
+    test('returns direct open once then exhausts', () async {
       final pipe = await StreamOpenPipeline.start(
         catalogUrl: 'https://cdn.example/x/master.m3u8',
         providerId: 'megaplay',
-        mediaClassOverride: StreamMediaClass.pngWrapTs,
-        buildStripProxy: (u, _) =>
-            'http://127.0.0.1:9/hls-proxy?url=$u&strip=png',
       );
 
-      final a = await pipe.next();
-      expect(a?.action, StreamOpenAction.openPngStrip);
-      expect(a?.playUrl, contains('strip=png'));
-
-      pipe.report(StreamOpenStepResult.openFailed);
-      final b = await pipe.next();
-      expect(b?.action, StreamOpenAction.openDirect);
+      final step = await pipe.next();
+      expect(step?.action, StreamOpenAction.openDirect);
+      expect(step?.playUrl, 'https://cdn.example/x/master.m3u8');
+      expect(step?.catalogUrl, 'https://cdn.example/x/master.m3u8');
+      expect(step?.reason, 'direct');
 
       pipe.report(StreamOpenStepResult.openFailed);
       expect(await pipe.next(), isNull);
     });
 
-    test('plainMedia → direct first; fail → strip', () async {
-      final pipe = await StreamOpenPipeline.start(
-        catalogUrl: 'https://cdn.example/x/master.m3u8',
-        providerId: 'megaplay',
-        mediaClassOverride: StreamMediaClass.plainMedia,
-        buildStripProxy: (u, _) => 'http://127.0.0.1:9/proxy?u=$u',
-      );
-
-      final a = await pipe.next();
-      expect(a?.action, StreamOpenAction.openDirect);
-
-      pipe.report(StreamOpenStepResult.decodeFailed);
-      final b = await pipe.next();
-      expect(b?.action, StreamOpenAction.openPngStrip);
-
-      pipe.report(StreamOpenStepResult.openFailed);
-      expect(await pipe.next(), isNull);
-    });
-
-    test('imageNoTs exhausts without open', () async {
-      final pipe = await StreamOpenPipeline.start(
-        catalogUrl: 'https://cdn.example/x/master.m3u8',
-        providerId: 'megaplay',
-        mediaClassOverride: StreamMediaClass.imageNoTs,
-        buildStripProxy: (u, _) =>
-            'http://127.0.0.1:9/hls-proxy?url=$u&strip=png',
-      );
-      expect(await pipe.next(), isNull);
-    });
-
-    test('httpBlocked exhausts without open', () async {
-      final pipe = await StreamOpenPipeline.start(
-        catalogUrl: 'https://cdn.example/x/master.m3u8',
-        providerId: 'megaplay',
-        mediaClassOverride: StreamMediaClass.httpBlocked,
-      );
-      expect(await pipe.next(), isNull);
-    });
-
-    test('strip proxy unavailable → re-branch to direct for pngWrapTs',
-        () async {
-      final pipe = await StreamOpenPipeline.start(
-        catalogUrl: 'https://cdn.example/x/master.m3u8',
-        providerId: 'megaplay',
-        mediaClassOverride: StreamMediaClass.pngWrapTs,
-        buildStripProxy: (_, _) => '',
-      );
-      final a = await pipe.next();
-      expect(a?.action, StreamOpenAction.openDirect);
-      pipe.report(StreamOpenStepResult.openFailed);
-      expect(await pipe.next(), isNull);
-    });
-
-    test('progressive → direct only', () async {
+    test('progressive mp4 → direct only', () async {
       final pipe = await StreamOpenPipeline.start(
         catalogUrl: 'https://cdn.example/video.mp4',
         providerId: 'megaplay',
-        mediaClassOverride: StreamMediaClass.plainMedia,
       );
       expect((await pipe.next())?.action, StreamOpenAction.openDirect);
       pipe.report(StreamOpenStepResult.openFailed);
       expect(await pipe.next(), isNull);
     });
 
-    test('never profile → direct only', () async {
+    test('normalizes catalog url before open', () async {
       final pipe = await StreamOpenPipeline.start(
-        catalogUrl: 'https://cdn.example/x/master.m3u8',
-        providerId: 'vidnest:animepahe',
-        mediaClassOverride: StreamMediaClass.pngWrapTs,
-      );
-      expect((await pipe.next())?.action, StreamOpenAction.openDirect);
-      pipe.report(StreamOpenStepResult.openFailed);
-      expect(await pipe.next(), isNull);
-    });
-
-    test('vixsrc extensionless /playlist/ is HLS → plainMedia + direct',
-        () async {
-      final pipe = await StreamOpenPipeline.start(
-        catalogUrl:
-            'https://vixsrc.to/playlist/174559?b=1&token=abc&expires=1&h=1',
+        catalogUrl: 'https://vixsrc.to/playlist/174559?b=1&token=abc',
         providerId: 'engine:vixsrc',
       );
-      expect(pipe.isHls, isTrue);
-      expect(pipe.mediaClass, StreamMediaClass.plainMedia);
-      expect((await pipe.next())?.action, StreamOpenAction.openDirect);
+      final step = await pipe.next();
+      expect(step?.action, StreamOpenAction.openDirect);
+      expect(step?.playUrl, contains('vixsrc.to'));
       pipe.report(StreamOpenStepResult.openFailed);
-      // never pngStrip — no strip re-branch
       expect(await pipe.next(), isNull);
     });
   });

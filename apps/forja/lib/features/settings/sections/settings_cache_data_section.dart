@@ -30,9 +30,9 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
         !PlatformInfo.isAndroidTv &&
         PlatformPlayback.capabilities.localTorrentEngine;
     final streamSubtitle = mentionTorrent
-        ? 'Saved webstreaming and anime stream URLs, torrent temp files, '
+        ? 'Saved stream provider URLs, torrent temp files, '
             'and seek buffers. Next play re-resolves. Settings and watch history stay.'
-        : 'Saved webstreaming and anime stream URLs and seek buffers. '
+        : 'Saved stream provider URLs and seek buffers. '
             'Next play re-resolves. Settings and watch history stay.';
     final streamBody = mentionTorrent
         ? 'Clears saved stream extracts, torrent download cache, and '

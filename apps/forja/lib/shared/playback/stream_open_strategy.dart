@@ -2,4 +2,3 @@
 library;
 
 export 'stream_open_pipeline.dart';
-export 'stream_media_classifier.dart';

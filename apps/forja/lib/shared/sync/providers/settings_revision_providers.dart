@@ -17,7 +17,7 @@ class NavbarRevisionNotifier extends Notifier<int> {
   }
 }
 
-/// Play-source toggles (torrent / Stremio / Nuvio / webstreaming).
+/// Play-source toggles (torrent / Stremio / Nuvio / engine).
 final playSourceRevisionProvider =
     NotifierProvider<PlaySourceRevisionNotifier, int>(
   PlaySourceRevisionNotifier.new,

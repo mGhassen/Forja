@@ -69,7 +69,4 @@ abstract final class PlaySourceEffective {
     final s = settings ?? SettingsService();
     return s.isPlaySourceEngineEnabled();
   }
-
-  /// Legacy webstreaming path removed — VOD uses provider JS only.
-  static Future<bool> webstreaming([SettingsService? settings]) async => false;
 }
