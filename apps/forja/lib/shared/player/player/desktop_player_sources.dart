@@ -506,50 +506,6 @@ mixin _DesktopPlayerSources
       _s._sourcePinned = false;
       _s._currentFallbackSourceIndex = 0;
     });
-    final movie = widget.movie;
-    final providers = widget.providers;
-    if (movie != null && providers != null && providers.isNotEmpty) {
-      final gen = ++_s._fallbackGen;
-      EngineService.instance.cancelPending();
-      final hit = await PlayerSourceResolve.resolveAutoForMovie(
-        movie: movie,
-        providers: providers,
-        season: widget.selectedSeason ?? 1,
-        episode:
-            widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode ?? 1,
-        isCancelled: () => _s._fallbackAborted(gen),
-        onHitsUpdated: (hits) {
-          if (!mounted || _s._fallbackAborted(gen)) return;
-          _s._liveProviderSourcesCache.value = {
-            ..._s._liveProviderSourcesCache.value,
-            ...PlaybackEngine.hitsToProviderCache(hits),
-          };
-        },
-      );
-      if (_s._fallbackAborted(gen)) return;
-      if (hit != null) {
-        _scoreServerUp(hit.providerId);
-        setState(() {
-          _s._currentProvider = hit.providerId;
-          _s._currentSources = hit.streamSources;
-          _s._currentUrl = hit.streamUrl;
-          _s._currentFallbackSourceIndex = 0;
-          _s._failedSourceIndices.clear();
-          _s._checkingSourceIndices.clear();
-          _s._hasError = false;
-          if (hit.providerId == 'service111477' &&
-              hit.streamSources.isNotEmpty) {
-            _s._current111477FileUrl = hit.streamSources.first.url;
-          }
-        });
-        final played = await _s._trySourcesFromIndex(
-          0,
-          chainGen: gen,
-          seekAfterOpen: _s._positionNotifier.value,
-        );
-        if (played) return;
-      }
-    }
     final keepPos = _s._positionNotifier.value;
     await _s._initPlayback(
       seekOverride: keepPos.inSeconds > 0 ? keepPos : null,

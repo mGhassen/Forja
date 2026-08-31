@@ -15,6 +15,7 @@ import 'package:window_manager/window_manager.dart';
 import 'package:forja/shared/widgets/desktop_window_geometry.dart';
 
 import 'utils.dart';
+import 'player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/controls/player_menus.dart';
 import 'playback_recovery.dart';
 import 'network_playback_recovery.dart';
@@ -369,13 +370,30 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   Future<void> _seekTo(Duration position) async {
     final url = _hlsMasterUrl ?? _currentQualityUrl ?? _currentUrl;
     final current = _positionNotifier.value;
+    final caller = StackTrace.current;
     if (url != null && peakstormHlsNeedsRemountSeek(url, current, position)) {
-      if (_isInitPlaybackRunning ||
-          shouldSkipPostSeekStallArm(
-            target: position,
-            resumeStartPosition: widget.startPosition,
-            playbackConfirmedAt: _playbackConfirmedAt,
-          )) {
+      if (_isInitPlaybackRunning) {
+        logPeakstormSeekTo(
+          from: current,
+          to: position,
+          action: 'skip',
+          skipReason: 'init_playback_running',
+          caller: caller,
+        );
+        return;
+      }
+      if (shouldSkipPostSeekStallArm(
+        target: position,
+        resumeStartPosition: widget.startPosition,
+        playbackConfirmedAt: _playbackConfirmedAt,
+      )) {
+        logPeakstormSeekTo(
+          from: current,
+          to: position,
+          action: 'skip',
+          skipReason: 'open_resume_grace start=${widget.startPosition?.inSeconds}s',
+          caller: caller,
+        );
         return;
       }
       final dur = _durationNotifier.value;
@@ -391,8 +409,11 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
         _seekAwayFromEofAt = DateTime.now();
         _abortiveCompletedLatched = false;
       }
-      debugPrint(
-        '[Player] Peakstorm deep seek → remount @${target.inSeconds}s',
+      logPeakstormSeekTo(
+        from: current,
+        to: target,
+        action: 'remount',
+        caller: caller,
       );
       await _remountCurrentStreamAt(target, allowFallbackInit: false);
       return;

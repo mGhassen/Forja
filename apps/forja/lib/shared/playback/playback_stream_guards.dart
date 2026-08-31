@@ -87,29 +87,11 @@ bool playbackUrlsEquivalent(String a, String b) {
 bool _urlsMatchForPlayback(String a, String b) =>
     (a.isNotEmpty && b.isNotEmpty && a == b) || playbackUrlsEquivalent(a, b);
 
-/// True for built-in webstreaming extractors (Videasy, VidSrc, …).
-///
-/// [StreamProviderDisplay] labels also cover playback *modes* (`stremio_direct`,
-/// `amri`, `torrent`) - those must stay out of the green-Play cache.
-bool isWebStreamProviderId(String sourceId) {
-  if (sourceId.isEmpty) return false;
-  if (sourceId.startsWith('nuvio:')) return false;
-  if (sourceId.startsWith('engine:')) return false;
-  if (isCatalogSourcesMode(sourceId)) return false;
-  final id = StreamProviderDisplay.canonicalId(sourceId);
-  if (StreamProviders.providers.containsKey(id)) return true;
-  // Display-profile aliases that are still web extractors (e.g. kisskh).
-  return StreamProviderDisplay.hasProfile(id);
-}
+/// True for legacy built-in webstreaming extractors — retired (engine JS only).
+bool isWebStreamProviderId(String sourceId) => false;
 
-/// Anime hub embed that uses the movie/TV webstreaming resolver
-/// (VidLink MAL embed). Gate on [PlaySourceEffective.webstreaming] — same
-/// contract as Forja Auto (`allowHostFallback: false` when Webstreaming is off).
-bool isAnimeWebStreamSniffProvider(String sourceKeyOrServer) {
-  if (sourceKeyOrServer.isEmpty) return false;
-  return StreamProviderDisplay.canonicalId(sourceKeyOrServer).toLowerCase() ==
-      'vidlink';
-}
+/// Retired — VidLink MAL embed path removed.
+bool isAnimeWebStreamSniffProvider(String sourceKeyOrServer) => false;
 
 /// True for playback modes that use the torrent/Stremio **Sources** right panel
 /// (not the layers webstreaming server picker).

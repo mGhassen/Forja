@@ -4,7 +4,6 @@ mod cookies;
 mod headers;
 mod health;
 mod health_store;
-mod host_template;
 mod http;
 mod orchestrator;
 mod plugins;

@@ -2,11 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
-import 'package:forja/shared/playback/player_stream_extract_cache.dart';
-import 'package:forja/shared/player/player/utils.dart';
 import 'package:rust/rust.dart';
 
-/// Player-side helpers for Source Engine Auto / pinned resolve.
+/// Player-side helpers for Source Engine Auto / pinned resolve (`engine:*` only).
 abstract final class PlayerSourceResolve {
   static SourceDomain domainFor(Movie? movie) =>
       SourceDomain.fromMediaType(movie?.mediaType);
@@ -62,65 +60,17 @@ abstract final class PlayerSourceResolve {
     bool Function()? isCancelled,
     bool bypassDiskCache = false,
   }) async {
-    final cacheKey = PlayerStreamExtractCache.cacheKeyFromProgress(
-      tmdbId: movie.id,
-      mediaType: movie.mediaType,
-      season: season,
-      episode: episode,
-    );
-    if (bypassDiskCache) {
-      await PlayerStreamExtractCache.drop(cacheKey);
-    } else {
-      final cached = await PlayerStreamExtractCache.readLive(
-        cacheKey,
-        probe: probeStreamSourceUrl,
-      );
-      if (cached != null &&
-          cached.sources.isNotEmpty &&
-          cached.providerId == providerId) {
-        final rank = providers.keys.toList().indexOf(cached.providerId);
-        final sources = await PlaybackSelection.rankLegacySources(
-          sources: cached.sources,
-          providerId:
-              cached.providerId.isNotEmpty ? cached.providerId : providerId,
-          providerRank: rank >= 0 ? rank : 0,
-        );
-        final first = sources.first;
-        return PlaybackResolveHit(
-          providerId:
-              cached.providerId.isNotEmpty ? cached.providerId : providerId,
-          providerRank: rank >= 0 ? rank : 0,
-          streamUrl: first.url,
-          headers: first.headers,
-          sources: sources,
-        );
-      }
-    }
-
-    if (EngineIds.isPluginChip(providerId)) {
-      return _resolveEnginePinned(
-        movie: movie,
-        providerId: providerId,
-        season: season,
-        episode: episode,
-        isCancelled: isCancelled,
-      );
-    }
-
-    final order = settingsOrder.isNotEmpty
-        ? settingsOrder
-        : await _movieSettingsOrder(movie);
-    return _resolveLegacyPinned(
+    if (!EngineIds.isPluginChip(providerId)) return null;
+    return _resolveEnginePinned(
       movie: movie,
-      providers: providers,
       providerId: providerId,
       season: season,
       episode: episode,
-      settingsOrder: order,
       isCancelled: isCancelled,
     );
   }
 
+  /// Legacy embed auto-race retired — host reload / engine auto-play own recovery.
   static Future<PlaybackResolveHit?> resolveAutoForMovie({
     required Movie movie,
     required Map<String, dynamic> providers,
@@ -131,44 +81,8 @@ abstract final class PlayerSourceResolve {
     void Function(List<PlaybackResolveHit> hits)? onHitsUpdated,
     void Function(String providerId, String status)? onProgress,
     bool? fillBackgroundHits,
-  }) async {
-    final order = settingsOrder.isNotEmpty
-        ? settingsOrder
-        : await _movieSettingsOrder(movie);
-    return PlaybackEngine.resolveStreamingRace(
-      providers: providers,
-      movie: movie,
-      season: season,
-      episode: episode,
-      settingsOrder: order,
-      preferredProvider: SourceEngine.auto,
-      domain: domainFor(movie),
-      isCancelled: isCancelled,
-      onHitsUpdated: onHitsUpdated,
-      onProgress: onProgress,
-      fillBackgroundHits: fillBackgroundHits ?? false,
-    );
-  }
-
-  static Future<PlaybackResolveHit?> _resolveLegacyPinned({
-    required Movie movie,
-    required Map<String, dynamic> providers,
-    required String providerId,
-    required int season,
-    required int episode,
-    required List<String> settingsOrder,
-    bool Function()? isCancelled,
-  }) =>
-      PlaybackEngine.resolveStreamingRace(
-        providers: providers,
-        movie: movie,
-        season: season,
-        episode: episode,
-        settingsOrder: settingsOrder,
-        preferredProvider: providerId,
-        domain: domainFor(movie),
-        isCancelled: isCancelled,
-      );
+  }) async =>
+      null;
 
   static Future<PlaybackResolveHit?> _resolveEnginePinned({
     required Movie movie,

@@ -27,6 +27,7 @@ export 'package:forja/shared/playback/playback_stream_guards.dart'
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/playback/stream_open_pipeline.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/player/player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:media_kit/media_kit.dart';
@@ -632,10 +633,30 @@ Future<String> openPlayerStream(
     Media(openUrl, httpHeaders: isRemoteHttp && !mwVaultProxy ? hdrs : null),
   );
   if (resumeAt != null) {
+    logPeakstormResume(
+      'openPlayerStream startAt',
+      target: resumeAt,
+      detail: peakstormFmp4HlsAvoidHardSeek(openUrl)
+          ? 'peakstorm url=${_shortPeakstormUrl(openUrl)}'
+          : 'url=${openUrl.length > 80 ? '${openUrl.substring(0, 80)}…' : openUrl}',
+    );
     await _waitForMpvStartApplied(player, resumeAt, streamUrl: openUrl);
     await _mpvStartAt(player, null);
+    logPeakstormResume(
+      'openPlayerStream after mpv start cleared',
+      state: player.state,
+      target: resumeAt,
+    );
   }
   return openUrl;
+}
+
+String _shortPeakstormUrl(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return url;
+  final path = uri.path;
+  if (path.length <= 48) return '${uri.host}$path';
+  return '${uri.host}${path.substring(0, 24)}…${path.substring(path.length - 16)}';
 }
 
 /// Catalog row (Forja / Nuvio / Stremio HTTP) — 1shows proxy + RFC-045 pipeline.
@@ -730,12 +751,25 @@ Future<void> ensureOpenedNearPosition(
     return;
   }
   final pos = player.state.position;
-  if ((pos - target).abs() <= const Duration(seconds: 5)) return;
+  if ((pos - target).abs() <= const Duration(seconds: 5)) {
+    if (streamUrl != null && peakstormFmp4HlsAvoidHardSeek(streamUrl)) {
+      logPeakstormResume(
+        'ensureOpenedNearPosition near target',
+        state: player.state,
+        target: target,
+        detail: 'delta=${(pos - target).inMilliseconds}ms',
+      );
+    }
+    return;
+  }
   if (openedWithMpvStart &&
       streamUrl != null &&
       peakstormFmp4HlsAvoidHardSeek(streamUrl)) {
-    debugPrint(
-      '[Player] Skip hard seek on peakstorm HLS — mpv start only @${target.inSeconds}s',
+    logPeakstormResume(
+      'ensureOpenedNearPosition skip hard seek',
+      state: player.state,
+      target: target,
+      detail: 'mpv start only',
     );
     return;
   }
@@ -1514,6 +1548,18 @@ Future<bool> peakstormResumeVerified(
       streamUrl: streamUrl,
       previousPosition: previous,
     )) {
+      logPeakstormResume(
+        'verify sample $i fail',
+        state: state,
+        target: target,
+        previous: previous,
+        detail: peakstormResumeRejectReason(
+          state,
+          target,
+          streamUrl: streamUrl,
+          previousPosition: previous,
+        ),
+      );
       return false;
     }
     if (previous != null &&
@@ -1522,6 +1568,12 @@ Future<bool> peakstormResumeVerified(
     }
     previous = state.position;
   }
+  logPeakstormResume(
+    'verify ok',
+    target: target,
+    previous: previous,
+    detail: 'advances=$advances samples=$samples',
+  );
   return advances >= 1;
 }
 
@@ -1541,10 +1593,17 @@ Future<void> ensurePeakstormResumeAfterOpen(
     target,
     streamUrl: streamUrl,
   )) {
+    logPeakstormResume(
+      'open resume verified',
+      state: player.state,
+      target: target,
+    );
     return;
   }
-  debugPrint(
-    '[Player] Peakstorm open resume missed @${target.inSeconds}s — remount',
+  logPeakstormResume(
+    'open resume missed — remount',
+    state: player.state,
+    target: target,
   );
   await remountPlayerStreamAtPosition(
     player,
@@ -1640,10 +1699,21 @@ Future<void> _waitForMpvStartApplied(
         streamUrl: streamUrl,
         samples: 2,
       )) {
+        logPeakstormResume(
+          'mpv start applied',
+          state: player.state,
+          target: startAt,
+        );
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 200));
     }
+    logPeakstormResume(
+      'mpv start timeout',
+      state: player.state,
+      target: startAt,
+      detail: 'cleared start anyway',
+    );
     return;
   }
   while (DateTime.now().isBefore(deadline)) {
@@ -1726,7 +1796,15 @@ Future<bool> remountPlayerStreamAtPosition(
       } else {
         stableChecks++;
       }
-      if (stableChecks >= 3) return true;
+      if (stableChecks >= 3) {
+        logPeakstormResume(
+          'remount ok',
+          state: state,
+          target: seekTarget,
+          detail: 'stable=$stableChecks',
+        );
+        return true;
+      }
     } else {
       stableChecks = 0;
     }
@@ -1738,9 +1816,21 @@ Future<bool> remountPlayerStreamAtPosition(
     streamUrl: openUrl,
   );
   if (!ok && peakstormFmp4HlsAvoidHardSeek(openUrl)) {
-    debugPrint(
-      '[Player] Peakstorm remount not live @${seekTarget.inSeconds}s '
-      '(buffering=${player.state.buffering} pos=${player.state.position.inSeconds}s)',
+    logPeakstormResume(
+      'remount failed',
+      state: player.state,
+      target: seekTarget,
+      detail: peakstormResumeRejectReason(
+        player.state,
+        seekTarget,
+        streamUrl: openUrl,
+      ),
+    );
+  } else if (ok) {
+    logPeakstormResume(
+      'remount ok final',
+      state: player.state,
+      target: seekTarget,
     );
   }
   return ok;

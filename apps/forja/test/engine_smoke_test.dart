@@ -62,9 +62,9 @@ http://stream.example/live
     expect(rows.first['name'], 'Sports');
   });
 
-  test('stream provider movie URL', () {
-    final url = Engine.requireMovieUrl('vidlink', '550');
-    expect(url, 'https://vidlink.pro/movie/550');
+  test('legacy embed ProviderRegistry is empty', () {
+    expect(ProviderRegistry.all, isEmpty);
+    expect(ProviderRegistry.byId('vidlink'), isNull);
   });
 
   test('torrent peer limit + engine restart', () async {

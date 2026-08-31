@@ -631,7 +631,7 @@ mod tests {
             "tmdbId": 575265,
             "mediaType": "movie",
             "settings": {
-                "enabledProviderIds": ["vidlink", "vidsrc"],
+                "enabledProviderIds": ["service111477", "nuvio"],
                 "preferred": "auto",
                 "maxInFlight": 2
             }
@@ -648,7 +648,7 @@ mod tests {
             "tmdbId": 1,
             "mediaType": "movie",
             "settings": {
-                "enabledProviderIds": ["videasy"],
+                "enabledProviderIds": ["service111477"],
                 "maxInFlight": 1
             }
         });
@@ -659,7 +659,7 @@ mod tests {
         let continue_payload = serde_json::json!({
             "sessionId": session_id,
             "hostResults": [{
-                "providerId": "videasy",
+                "providerId": "service111477",
                 "sourcesJson": "[{\"url\":\"https://example.com/stream.m3u8\",\"title\":\"Primary\",\"container\":\"hls\"}]"
             }]
         });
@@ -675,14 +675,13 @@ mod tests {
 
     #[test]
     fn hosts_pause_one_by_one_in_score_order() {
-        // settings_order forces videasy before vidlink — first pause is videasy only.
         let payload = serde_json::json!({
             "domain": "movies",
             "tmdbId": 1,
             "mediaType": "movie",
             "settings": {
-                "enabledProviderIds": ["videasy", "vidlink"],
-                "settingsOrder": ["videasy", "vidlink"],
+                "enabledProviderIds": ["service111477", "nuvio:test"],
+                "settingsOrder": ["service111477", "nuvio:test"],
                 "preferred": "auto",
                 "maxInFlight": 2
             }
@@ -692,13 +691,13 @@ mod tests {
         assert_eq!(first["phase"], "awaiting_host");
         let hosts = first["hostRequests"].as_array().unwrap();
         assert_eq!(hosts.len(), 1);
-        assert_eq!(hosts[0]["providerId"], "videasy");
+        assert_eq!(hosts[0]["providerId"], "service111477");
 
         let session_id = first["sessionId"].as_str().unwrap();
         let miss = serde_json::json!({
             "sessionId": session_id,
             "hostResults": [{
-                "providerId": "videasy",
+                "providerId": "service111477",
                 "sourcesJson": "[]",
                 "error": "no_streams"
             }]
@@ -708,14 +707,14 @@ mod tests {
         assert_eq!(second["phase"], "awaiting_host");
         let hosts2 = second["hostRequests"].as_array().unwrap();
         assert_eq!(hosts2.len(), 1);
-        assert_eq!(hosts2[0]["providerId"], "vidlink");
+        assert_eq!(hosts2[0]["providerId"], "nuvio");
     }
 
     #[test]
     fn parallel_batch_picks_lowest_rank_winner() {
         let ranks = HashMap::from([
-            ("vidlink".to_string(), 0_u32),
-            ("vidsrc".to_string(), 1_u32),
+            ("service111477".to_string(), 0_u32),
+            ("nuvio".to_string(), 1_u32),
         ]);
         let registry = Arc::new(ProviderRegistry::built_in());
         let ctx = ResolverContext::new();
@@ -730,16 +729,16 @@ mod tests {
             media_type: "movie".into(),
             device: DevicePlaybackCapabilities::default(),
             settings: ResolveSettings {
-                enabled_provider_ids: vec!["vidlink".into(), "vidsrc".into()],
+                enabled_provider_ids: vec!["service111477".into(), "nuvio".into()],
                 max_in_flight: 2,
                 ..Default::default()
             },
             providers_json: String::new(),
         };
-        let batch = vec!["vidlink".to_string(), "vidsrc".to_string()];
+        let batch = vec!["service111477".to_string(), "nuvio".to_string()];
         let winner = parallel_try_native(&registry, &ctx, &request, &batch, &ranks);
         if let Some((id, sources)) = winner {
-            assert!(id == "vidlink" || id == "vidsrc");
+            assert!(id == "service111477" || id == "nuvio");
             assert!(!sources.is_empty());
         }
     }

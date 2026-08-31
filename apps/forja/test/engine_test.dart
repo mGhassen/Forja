@@ -791,10 +791,10 @@ void main() {
   });
 
   group('catalog vs webstreaming ids', () {
-    test('engine:videasy is Sources, not green Play', () {
+    test('engine:videasy is Sources, not legacy embed', () {
       expect(isCatalogSourcesMode('engine:videasy'), isTrue);
       expect(isWebStreamProviderId('engine:videasy'), isFalse);
-      expect(isWebStreamProviderId('videasy'), isTrue);
+      expect(isWebStreamProviderId('videasy'), isFalse);
     });
 
     test('catalogHttpPlayProviderId uses engine chip for Forja rows', () {

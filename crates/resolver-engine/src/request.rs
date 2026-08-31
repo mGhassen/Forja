@@ -18,7 +18,7 @@ pub struct ResolveSettings {
     pub skip_host_on_tv: bool,
     #[serde(default)]
     pub blocklist_urls: Vec<String>,
-    /// Legacy WebStreamr resolve knobs (ignored — provider archived).
+    /// Legacy fields ignored — embed resolver retired.
     #[serde(default)]
     pub webstreamr_config: HashMap<String, String>,
     #[serde(default)]

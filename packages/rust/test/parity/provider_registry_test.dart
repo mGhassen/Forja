@@ -18,32 +18,13 @@ void main() {
     tmp.deleteSync(recursive: true);
   });
 
-  test('ProviderRegistry catalog matches Rust build URLs', () {
-    const tmdbId = '550';
-    const tvId = '1399';
-    const season = 2;
-    const episode = 5;
-
-    for (final p in ProviderRegistry.all) {
-      if (p.movieUrl == null) continue;
-      final id = int.parse(tmdbId);
-      final rustMovie = RustLib.instance.buildMovieUrl(p.id, id);
-      expect(p.movieUrl!(tmdbId), rustMovie, reason: p.id);
-      if (p.tvUrl != null) {
-        final rustTv = RustLib.instance.buildTvUrl(
-          p.id,
-          int.parse(tvId),
-          season,
-          episode,
-        );
-        expect(p.tvUrl!(tvId, season, episode), rustTv, reason: p.id);
-      }
-    }
+  test('legacy embed registry is empty', () {
+    expect(ProviderRegistry.all, isEmpty);
+    expect(ProviderRegistry.catalog, isEmpty);
+    expect(ProviderRegistry.byId('vidlink'), isNull);
   });
 
-  test('catalog includes videasy and vidlink', () {
-    expect(ProviderRegistry.catalog.containsKey('videasy'), isTrue);
-    expect(ProviderRegistry.catalog.containsKey('vidlink'), isTrue);
-    expect(ProviderRegistry.catalog['vidlink']?['movie'], isNotNull);
+  test('Rust buildMovieUrl returns none without overlay template', () {
+    expect(RustLib.instance.buildMovieUrl('vidlink', 550), '');
   });
 }

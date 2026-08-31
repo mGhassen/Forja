@@ -810,25 +810,7 @@ class SettingsService {
       kvSetBool(_productAnalyticsEnabledKey, enabled);
 
   static const String _streamProviderOrderKey = 'stream_provider_order';
-  static const List<String> defaultStreamProviderOrder = <String>[
-    'videasy',
-    'vidlink',
-    'vidsrc',
-    'vidsrcwin',
-    'vixsrc',
-    'vidnest',
-    'vidzee',
-    'vidrock',
-    'vidfast',
-    '2embed',
-    'autoembed',
-    'vidlove',
-    'vidsrcsbs',
-    '111movies',
-    'moviesapi',
-    'vidapi',
-    'service111477',
-  ];
+  static const List<String> defaultStreamProviderOrder = <String>[];
 
   Future<List<String>> getStreamProviderOrder() async {
     final saved = await kvGetStringList(
