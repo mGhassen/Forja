@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/catalog/catalog_details_fetch.dart';
-import 'package:forja/shared/catalog/plugin_nav.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/shell/catalog_legacy_list_item.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -255,116 +254,40 @@ class ListFollowFromWatched {
       return before != 'completed';
     }
 
-    if (mt == 'anime') {
-      final anilistId = item['anilistId'] as int?;
-      if (anilistId == null) return false;
-      final pluginId = await PluginNavRegistry.resolveHubPluginId(
-        pluginId: item['pluginId']?.toString(),
-        tabId: item['hubTabId']?.toString(),
-        engineType: 'anime',
-      );
-      if (pluginId == null || pluginId.isEmpty) return false;
-      final watched = (await EpisodeWatchedService().getWatchedSet(
-        anilistId,
-        catalog: pluginId,
-      )).length;
-      if (watched <= 0) return false;
-      final meta = await fetchCatalogMetaDetails(
-        pluginId: pluginId,
-        metaId: item['metaId']?.toString() ?? '$pluginId:$anilistId',
-      );
-      final total =
-          meta?.episodes ?? (item['totalEpisodes'] as num?)?.toInt() ?? 0;
-      if (total <= 0 || watched < total) return false;
-      final open =
-          CatalogOpen.fromJson(item['catalogOpen']) ??
-          CatalogOpen(
-            surface: 'anime',
-            id: anilistId.toString(),
-            extract: CatalogOpenExtract(
-              resolveType: 'anime',
-              panelCategory: 'anime',
-              ctx: {'anilistId': anilistId},
-            ),
-          );
-      final target = CatalogListFollowTarget(
-        pluginId: pluginId,
-        open: open,
-        title: item['title']?.toString() ?? meta?.name ?? '',
-        posterPath: item['posterPath']?.toString() ?? meta?.poster ?? '',
-        voteAverage:
-            (item['voteAverage'] as num?)?.toDouble() ?? (meta?.rating ?? 0),
-        releaseDate: item['releaseDate']?.toString() ?? meta?.releaseInfo ?? '',
-        mediaType: 'anime',
-      );
-      final before = MyListService().contains(target.uniqueId)
-          ? MyListService().statusOf(target.uniqueId)
-          : null;
-      await reconcileHub(
-        target: target,
-        watchedCount: watched,
-        totalEpisodes: total,
-        container: container,
-      );
-      return before != 'completed';
-    }
+    return _reconcileStaleHubItem(item, container: container);
+  }
 
-    if (mt == 'asian_drama') {
-      final kisskhId = item['kisskhId'] as int?;
-      if (kisskhId == null) return false;
-      final pluginId = await PluginNavRegistry.resolveHubPluginId(
-        pluginId: item['pluginId']?.toString(),
-        tabId: item['hubTabId']?.toString(),
-        engineType: 'drama',
-      );
-      if (pluginId == null || pluginId.isEmpty) return false;
-      final watched = (await EpisodeWatchedService().getWatchedSet(
-        kisskhId,
-        catalog: pluginId,
-      )).length;
-      if (watched <= 0) return false;
-      final meta = await fetchCatalogMetaDetails(
-        pluginId: pluginId,
-        metaId: item['metaId']?.toString() ?? '$pluginId:$kisskhId',
-      );
-      final total = (meta?.videos.isNotEmpty ?? false)
-          ? meta!.videos.length
-          : (meta?.episodes ?? (item['totalEpisodes'] as num?)?.toInt() ?? 0);
-      if (total <= 0 || watched < total) return false;
-      final open =
-          CatalogOpen.fromJson(item['catalogOpen']) ??
-          CatalogOpen(
-            surface: 'drama',
-            id: kisskhId.toString(),
-            extract: CatalogOpenExtract(
-              resolveType: 'drama',
-              panelCategory: 'drama',
-              ctx: {'kisskhId': kisskhId},
-            ),
-          );
-      final target = CatalogListFollowTarget(
-        pluginId: pluginId,
-        open: open,
-        title: item['title']?.toString() ?? meta?.name ?? '',
-        posterPath: item['posterPath']?.toString() ?? meta?.poster ?? '',
-        tmdbId: item['tmdbId'] as int? ?? meta?.open?.idInt,
-        tmdbMediaType: item['tmdbMediaType']?.toString() ?? meta?.tmdbMediaType,
-        releaseDate: item['releaseDate']?.toString() ?? meta?.releaseInfo ?? '',
-        mediaType: 'asian_drama',
-      );
-      final before = MyListService().contains(target.uniqueId)
-          ? MyListService().statusOf(target.uniqueId)
-          : null;
-      await reconcileHub(
-        target: target,
-        watchedCount: watched,
-        totalEpisodes: total,
-        container: container,
-      );
-      return before != 'completed';
-    }
-
-    return false;
+  static Future<bool> _reconcileStaleHubItem(
+    Map<String, dynamic> item, {
+    ProviderContainer? container,
+  }) async {
+    final target = await listFollowTargetFromLegacyItem(item);
+    if (target == null) return false;
+    final mediaId = target.mediaIdInt;
+    if (mediaId == null) return false;
+    final watched = (await EpisodeWatchedService().getWatchedSet(
+      mediaId,
+      catalog: target.pluginId,
+    )).length;
+    if (watched <= 0) return false;
+    final meta = await fetchCatalogMetaDetails(
+      pluginId: target.pluginId,
+      metaId: item['metaId']?.toString() ?? '${target.pluginId}:$mediaId',
+    );
+    final total = (meta?.videos.isNotEmpty ?? false)
+        ? meta!.videos.length
+        : (meta?.episodes ?? (item['totalEpisodes'] as num?)?.toInt() ?? 0);
+    if (total <= 0 || watched < total) return false;
+    final before = MyListService().contains(target.uniqueId)
+        ? MyListService().statusOf(target.uniqueId)
+        : null;
+    await reconcileHub(
+      target: target,
+      watchedCount: watched,
+      totalEpisodes: total,
+      container: container,
+    );
+    return before != 'completed';
   }
 
   static Movie _movieFromListItem(Map<String, dynamic> item, int tmdbId) {

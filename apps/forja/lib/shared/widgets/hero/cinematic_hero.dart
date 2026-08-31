@@ -445,15 +445,8 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     );
   }
 
-  ValueNotifier<double> _heroHeightNotifier() {
-    return switch (widget.tvTabId) {
-      'anime' => ShellBus.animeHeroHeight,
-      'asian_drama' => ShellBus.asianDramaHeroHeight,
-      'arabic' => ShellBus.arabicHeroHeight,
-      'home' => ShellBus.homeHeroHeight,
-      final id => ShellBus.hubHeroHeightFor(id),
-    };
-  }
+  ValueNotifier<double> _heroHeightNotifier() =>
+      ShellBus.hubHeroHeightFor(widget.tvTabId);
 
   void _publishHeroHeight() {
     if (_heroHeightSyncScheduled) return;

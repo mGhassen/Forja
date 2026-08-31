@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
-import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/shell/catalog_legacy_list_item.dart';
 import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1285,13 +1285,13 @@ class SimklService {
     if (existing.any((e) => e['metaId'] == '$hubPlugin:$anilistId')) return 0;
     try {
       final title = (media['title'] as String?)?.trim() ?? 'Anime';
-      final meta = CatalogMetaItem(
-        id: '$hubPlugin:$anilistId',
-        type: 'anime',
-        name: title,
-        ids: {'anilist': anilistId},
-        open: CatalogOpen(surface: 'anime', id: anilistId.toString()),
-      );
+      final meta = catalogMetaFromLegacyListItem({
+        ...item,
+        'pluginId': hubPlugin,
+        'anilistId': anilistId,
+        'mediaType': 'anime',
+        'title': title,
+      });
       final runtimeMin = _asInt(media['runtime']) ?? 24;
       final duration = Duration(minutes: runtimeMin);
       await CatalogWatchHistory.record(

@@ -4,7 +4,7 @@ import 'package:forja/app/hub_boot_prefetch.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 
 void main() {
-  setUp(PluginNavRegistry.seedBuiltIns);
+  setUp(PluginNavRegistry.seedTestHubNav);
 
   group('BootNeeds nav helpers', () {
     test('hub vs vod vs core shell', () {
@@ -22,7 +22,7 @@ void main() {
       expect(BootNeeds.isVodNavId('settings'), isFalse);
     });
 
-    test('openingStatusLabel without pack nav uses generic copy', () {
+    test('openingStatusLabel uses hub destination label', () {
       const needs = BootNeeds(
         visibleNavIds: ['anime', 'iptv'],
         hubTab: true,
@@ -37,7 +37,7 @@ void main() {
         playSourceEngine: false,
         vodTab: true,
       );
-      expect(needs.openingStatusLabel, 'Warming catalog…');
+      expect(needs.openingStatusLabel, 'Opening Anime…');
     });
 
     test('openingStatusLabel for live/iptv-only', () {

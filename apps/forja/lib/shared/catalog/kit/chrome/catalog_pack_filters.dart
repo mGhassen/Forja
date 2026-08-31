@@ -13,6 +13,18 @@ class CatalogPackFiltersRegistry {
   static final ValueNotifier<int> revision = ValueNotifier(0);
   static final Map<String, _PackFilters> _byPlugin = {};
 
+  @visibleForTesting
+  static void seedFromJson(String pluginId, Map<String, dynamic> json) {
+    _byPlugin[pluginId] = _PackFilters.fromJson(json);
+    revision.value++;
+  }
+
+  @visibleForTesting
+  static void clearForTest() {
+    _byPlugin.clear();
+    revision.value++;
+  }
+
   static Future<void> ensureLoaded(String pluginId) async {
     if (_byPlugin.containsKey(pluginId)) return;
     try {

@@ -9,9 +9,11 @@ import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_scaffold.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/hub_catalog_top_bar.dart';
 import 'package:forja/shared/catalog/shell/catalog_vertical_filters_rail.dart';
 import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
 import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/widgets/forja_profile_avatar.dart';
@@ -36,14 +38,27 @@ Widget _wrapShellScope(
 }
 
 void main() {
-  const visibleIds = ['home', 'search', 'settings'];
+  const visibleIds = ['home', 'anime', 'settings'];
+
+  void seedHomePackFilters() {
+    CatalogPackFiltersRegistry.seedFromJson('test-home-hub', {
+      'fields': [
+        {
+          'field': 'genre',
+          'options': [
+            {'id': 'action', 'label': 'Action'},
+          ],
+        },
+      ],
+    });
+  }
 
   void seedHomeVerticalFilters() {
     CatalogVerticalFiltersRegistry.register(
       CatalogVerticalFiltersSpec(
         widgetId: 'watch_providers',
         tabId: 'home',
-        pluginId: 'tmdb',
+        pluginId: 'test-home-hub',
         packSourceUrl: '',
         showSelectedInTopBar: true,
         options: [
@@ -60,7 +75,10 @@ void main() {
   }
 
   setUp(() {
+    PluginNavRegistry.seedTestHubNav();
     CatalogVerticalFiltersRegistry.clearForTest();
+    CatalogPackFiltersRegistry.clearForTest();
+    seedHomePackFilters();
     seedHomeVerticalFilters();
     ShellBus.homeCategory.value = null;
     ShellBus.homeSelectedGenreId.value = null;
@@ -95,7 +113,7 @@ void main() {
       useNavRail: true,
       visibleIds: visibleIds,
       selectedIndex: selectedIndex,
-      mountedTabIds: const {'home', 'search'},
+      mountedTabIds: const {'home', 'anime'},
       onDestinationSelected: (_) {},
       tabFor: (id) => Center(child: Text(id)),
       hideGlobalNav: hideGlobalNav,
@@ -169,7 +187,7 @@ void main() {
 
     expect(find.byType(PluginHubCatalogTopBar), findsOneWidget);
     expect(find.text('Films'), findsOneWidget);
-    expect(find.text('TV Shows'), findsOneWidget);
+    expect(find.text('Series'), findsOneWidget);
   });
 
   testWidgets('PluginHubCatalogTopBar Categories menu sets genre filter', (tester) async {
@@ -358,7 +376,7 @@ void main() {
 
       expect(find.byType(ShellNavRail), findsOneWidget);
       expect(
-        find.image(const AssetImage('assets/images/nav/search.png')),
+        find.image(const AssetImage('assets/images/nav/anime.png')),
         findsOneWidget,
       );
     },
@@ -376,7 +394,7 @@ void main() {
 
     final railFinder = find.byType(ShellNavRail);
     expect(tester.getSize(railFinder).width, ShellTokens.navRailWidth);
-    expect(find.text('Search'), findsNothing);
+    expect(find.text('Anime'), findsNothing);
   });
 
   testWidgets('ShellNavRail reveals label after sustained hover', (
@@ -389,17 +407,17 @@ void main() {
       profile: ShellProfile.desktop,
     );
 
-    final searchIcon = find.image(
-      const AssetImage('assets/images/nav/search.png'),
+    final animeIcon = find.image(
+      const AssetImage('assets/images/nav/anime.png'),
     );
-    expect(searchIcon, findsOneWidget);
-    expect(find.text('Search'), findsNothing);
+    expect(animeIcon, findsOneWidget);
+    expect(find.text('Anime'), findsNothing);
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
     addTearDown(gesture.removePointer);
     await tester.pump();
-    await gesture.moveTo(tester.getCenter(searchIcon));
+    await gesture.moveTo(tester.getCenter(animeIcon));
     await tester.pump();
     await tester.pump(ShellTokens.navRailLabelRevealDelay);
     for (var i = 0; i < 12; i++) {
@@ -407,22 +425,22 @@ void main() {
     }
     await tester.pumpAndSettle();
 
-    expect(find.text('Search'), findsOneWidget);
+    expect(find.text('Anime'), findsOneWidget);
     expect(
       tester
           .widget<NavDestinationIcon>(
             find.byWidgetPredicate(
               (widget) =>
                   widget is NavDestinationIcon &&
-                  widget.destination.id == 'search',
+                  widget.destination.id == 'anime',
             ),
           )
           .color,
-      navDestinationAccentColors['search'],
+      navDestinationAccentColors['anime'],
     );
 
-    final searchItem = find.ancestor(
-      of: searchIcon,
+    final animeItem = find.ancestor(
+      of: animeIcon,
       matching: find.byWidgetPredicate(
         (w) =>
             w is SizedBox &&
@@ -430,7 +448,7 @@ void main() {
             w.width == ShellTokens.navRailWidth,
       ),
     );
-    expect(searchItem, findsWidgets);
+    expect(animeItem, findsWidgets);
   });
 
   testWidgets('desktop menu icon is grey idle and colored on hover', (
@@ -479,24 +497,24 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final searchImage = find.image(
-      const AssetImage('assets/images/nav/search.png'),
+    final animeImage = find.image(
+      const AssetImage('assets/images/nav/anime.png'),
     );
-    final underline = find.byKey(const ValueKey('nav-search-underline'));
+    final underline = find.byKey(const ValueKey('nav-anime-underline'));
     Color underlineColor() =>
         (tester.widget<AnimatedContainer>(underline).decoration
                 as BoxDecoration)
             .color!;
 
-    expect(underlineColor(), navDestinationAccentColors['search']);
+    expect(underlineColor(), navDestinationAccentColors['anime']);
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
     addTearDown(gesture.removePointer);
-    await gesture.moveTo(tester.getCenter(searchImage));
+    await gesture.moveTo(tester.getCenter(animeImage));
     await tester.pumpAndSettle();
 
-    expect(underlineColor(), navDestinationAccentColors['search']);
+    expect(underlineColor(), navDestinationAccentColors['anime']);
   });
 
   testWidgets('TV selected nav icon uses destination accent at desktop size', (
@@ -510,28 +528,27 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final searchIcon = tester.widget<NavDestinationIcon>(
+    final animeIcon = tester.widget<NavDestinationIcon>(
       find.byWidgetPredicate(
         (widget) =>
-            widget is NavDestinationIcon && widget.destination.id == 'search',
+            widget is NavDestinationIcon && widget.destination.id == 'anime',
       ),
     );
-    expect(searchIcon.color, navDestinationAccentColors['search']);
-    expect(searchIcon.size, ShellTokens.navRailIconSize);
+    expect(animeIcon.color, navDestinationAccentColors['anime']);
+    expect(animeIcon.size, ShellTokens.navRailIconSize);
 
-    final underline = find.byKey(const ValueKey('nav-search-underline'));
+    final underline = find.byKey(const ValueKey('nav-anime-underline'));
     final underlineColor =
         (tester.widget<AnimatedContainer>(underline).decoration
                 as BoxDecoration)
             .color!;
-    expect(underlineColor, navDestinationAccentColors['search']);
+    expect(underlineColor, navDestinationAccentColors['anime']);
   });
 
   testWidgets('TV nav rail fits all enabled tabs without scrolling', (
     tester,
   ) async {
     const manyIds = [
-      'search',
       'home',
       'asian_drama',
       'anime',
@@ -844,8 +861,8 @@ void main() {
         MaterialApp(
           home: ShellBody(
             selectedIndex: 2,
-            visibleIds: const ['home', 'search', 'settings'],
-            mountedTabIds: const {'home', 'search', 'settings'},
+            visibleIds: const ['home', 'anime', 'settings'],
+            mountedTabIds: const {'home', 'anime', 'settings'},
             tabFor: tabFor,
           ),
         ),
@@ -859,8 +876,8 @@ void main() {
         MaterialApp(
           home: ShellBody(
             selectedIndex: 3,
-            visibleIds: const ['home', 'search', 'anime', 'settings'],
-            mountedTabIds: const {'home', 'search', 'settings'},
+            visibleIds: const ['home', 'anime', 'settings'],
+            mountedTabIds: const {'home', 'anime', 'settings'},
             tabFor: tabFor,
           ),
         ),
@@ -919,15 +936,15 @@ void main() {
     },
   );
 
-  test('navDestinations includes default shell tabs', () {
+  test('navDestinations includes core and seeded hub tabs', () {
     expect(navDestinations.containsKey('home'), isTrue);
-    expect(navDestinations.containsKey('search'), isTrue);
-    expect(navDestinations.containsKey('asian_drama'), isTrue);
     expect(navDestinations.containsKey('anime'), isTrue);
+    expect(navDestinations.containsKey('asian_drama'), isTrue);
     expect(navDestinations.containsKey('iptv'), isTrue);
     expect(navDestinations.containsKey('live_matches'), isTrue);
     expect(navDestinations.containsKey('mylist'), isTrue);
     expect(navDestinations.containsKey('settings'), isTrue);
+    expect(navDestinations.containsKey('search'), isFalse);
     expect(SettingsService.defaultVisibleNavIds, [
       'home',
       'asian_drama',

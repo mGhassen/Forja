@@ -12,36 +12,20 @@ class ShellBus {
   ShellBus._();
 
   /// Films / TV Shows filter for the Home hub top bar (`null` = mixed feed).
-  static final ValueNotifier<ShellHomeCategory?> homeCategory =
-      ValueNotifier<ShellHomeCategory?>(null);
+  static ValueNotifier<ShellHomeCategory?> get homeCategory =>
+      hubCategoryFor('home');
 
   /// Genre filter for Home top-bar Categories menu (`null` = all genres).
-  static final ValueNotifier<String?> homeSelectedGenreId =
-      ValueNotifier<String?>(null);
+  static ValueNotifier<String?> get homeSelectedGenreId =>
+      hubSelectedCategoryIdFor('home');
 
-  /// Films / Series filter for Anime hub (`null` = mixed).
-  static final ValueNotifier<ShellHomeCategory?> animeCategory =
-      ValueNotifier<ShellHomeCategory?>(null);
+  /// Films / Series filter for plugin hub top bars (`null` = mixed).
+  static ValueNotifier<ShellHomeCategory?> hubCategoryFor(String tabId) =>
+      _hubCategories.putIfAbsent(tabId, () => ValueNotifier(null));
 
-  /// AniList genre id for Anime Categories menu (`null` = all).
-  static final ValueNotifier<String?> animeSelectedGenreId =
-      ValueNotifier<String?>(null);
-
-  /// Films / Series filter for Asian Drama hub (`null` = mixed).
-  static final ValueNotifier<ShellHomeCategory?> asianDramaCategory =
-      ValueNotifier<ShellHomeCategory?>(null);
-
-  /// KissKH country id for Asian Drama Categories (`null` = all).
-  static final ValueNotifier<String?> asianDramaSelectedCountryId =
-      ValueNotifier<String?>(null);
-
-  /// Films / Series filter for Arabic hub (`null` = mixed).
-  static final ValueNotifier<ShellHomeCategory?> arabicCategory =
-      ValueNotifier<ShellHomeCategory?>(null);
-
-  /// Category id for Arabic Categories menu (`null` = all).
-  static final ValueNotifier<String?> arabicSelectedCategoryId =
-      ValueNotifier<String?>(null);
+  /// Categories menu selection for plugin hub top bars (`null` = all).
+  static ValueNotifier<String?> hubSelectedCategoryIdFor(String tabId) =>
+      _hubSelectedCategoryIds.putIfAbsent(tabId, () => ValueNotifier(null));
 
   /// TMDB watch-provider filter for Home (`null` = all providers).
   /// Deprecated — use [CatalogVerticalFiltersRegistry] for hub tabs.
@@ -95,42 +79,25 @@ class ShellBus {
     CatalogVerticalFiltersRegistry.onLeaveTab('home');
   }
 
-  /// Home feed vertical scroll - [HomeTopBar] slides away near [homeHeroHeight].
-  static final ValueNotifier<double> homeScrollOffset = ValueNotifier(0);
-
-  /// Anime / Asian Drama / Arabic hub scroll offsets for catalog top-bar hide.
-  static final ValueNotifier<double> animeScrollOffset = ValueNotifier(0);
-  static final ValueNotifier<double> asianDramaScrollOffset = ValueNotifier(0);
-  static final ValueNotifier<double> arabicScrollOffset = ValueNotifier(0);
-
-  /// Cinematic hero height in px (not the extended page-bleed backdrop).
-  /// [HomeCinematicHero] publishes on layout; [HomeTopBar] uses it as the
-  /// scroll-hide anchor.
-  static final ValueNotifier<double> animeHeroHeight = ValueNotifier(0);
-  static final ValueNotifier<double> asianDramaHeroHeight = ValueNotifier(0);
-  static final ValueNotifier<double> arabicHeroHeight = ValueNotifier(0);
-  static final ValueNotifier<double> homeHeroHeight = ValueNotifier(0);
+  /// Hub feed vertical scroll — catalog top bar hide anchor.
+  static ValueNotifier<double> get homeScrollOffset =>
+      hubScrollOffsetFor('home');
 
   static final Map<String, ValueNotifier<double>> _hubScrollOffsets = {};
   static final Map<String, ValueNotifier<double>> _hubHeroHeights = {};
-  static final Map<String, ValueNotifier<ShellHomeCategory?>> _hubCategories = {};
+  static final Map<String, ValueNotifier<ShellHomeCategory?>> _hubCategories =
+      {};
   static final Map<String, ValueNotifier<String?>> _hubSelectedCategoryIds = {};
 
-  /// Per-tab scroll offset for plugin hubs without a dedicated [ShellBus] field.
+  /// Per-tab scroll offset for catalog hub tabs.
   static ValueNotifier<double> hubScrollOffsetFor(String tabId) =>
       _hubScrollOffsets.putIfAbsent(tabId, () => ValueNotifier(0));
 
-  /// Per-tab hero height for plugin hubs without a dedicated [ShellBus] field.
+  /// Per-tab cinematic hero height for catalog hub tabs.
+  static ValueNotifier<double> get homeHeroHeight => hubHeroHeightFor('home');
+
   static ValueNotifier<double> hubHeroHeightFor(String tabId) =>
       _hubHeroHeights.putIfAbsent(tabId, () => ValueNotifier(0));
-
-  /// Films / Series filter for plugin hub top bars (`null` = mixed).
-  static ValueNotifier<ShellHomeCategory?> hubCategoryFor(String tabId) =>
-      _hubCategories.putIfAbsent(tabId, () => ValueNotifier(null));
-
-  /// Categories menu selection for plugin hub top bars (`null` = all).
-  static ValueNotifier<String?> hubSelectedCategoryIdFor(String tabId) =>
-      _hubSelectedCategoryIds.putIfAbsent(tabId, () => ValueNotifier(null));
 
   /// SearchScreen listens for incoming Stremio search requests.
   /// Value: {'query': '...', 'addonBaseUrl': '...'} or null.

@@ -10,11 +10,9 @@ import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
-import 'package:forja/shared/catalog/protocol.dart';
-import 'package:forja/shared/catalog/shell/catalog_open.dart';
+import 'package:forja/shared/catalog/shell/catalog_legacy_list_item.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/movie_poster_card.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
@@ -128,142 +126,7 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
       await _openSimklItem(item);
       return;
     }
-
-    final source = item['source']?.toString() ?? 'tmdb';
-    final tmdbId = item['tmdbId'] as int?;
-    final imdbId = item['imdbId']?.toString();
-    final title = item['title']?.toString() ?? 'Unknown';
-    final poster = item['posterPath']?.toString() ?? '';
-    final mediaType = item['mediaType']?.toString() ?? 'movie';
-    final anilistId = item['anilistId'] as int?;
-    final kisskhId = item['kisskhId'] as int?;
-
-    final pluginId = item['pluginId']?.toString();
-    final storedOpen = CatalogOpen.fromJson(item['catalogOpen']);
-    if (pluginId != null && storedOpen != null && mounted) {
-      await openCatalogMetaItem(
-        context,
-        pluginId: pluginId,
-        item: CatalogMetaItem(
-          id: item['metaId']?.toString() ??
-              item['uniqueId']?.toString() ??
-              '$pluginId:${storedOpen.id}',
-          type: item['mediaType']?.toString() ?? 'tv',
-          name: title,
-          poster: poster,
-          releaseInfo: item['releaseDate']?.toString() ?? '',
-          open: storedOpen,
-        ),
-      );
-      return;
-    }
-
-    if (mediaType == 'anime' || anilistId != null) {
-      final id = anilistId ?? tmdbId;
-      if (id != null && mounted) {
-        final hubPlugin = await PluginNavRegistry.resolveHubPluginId(
-          pluginId: pluginId ?? item['pluginId']?.toString(),
-          tabId: item['hubTabId']?.toString(),
-          engineType: 'anime',
-        );
-        if (hubPlugin == null) return;
-        await openCatalogMetaItem(
-          context,
-          pluginId: hubPlugin,
-          item: CatalogMetaItem(
-            id: item['metaId']?.toString() ?? '$hubPlugin:$id',
-            type: 'anime',
-            name: title,
-            poster: poster,
-            releaseInfo: item['releaseDate']?.toString() ?? '',
-            open: CatalogOpen(
-              surface: 'anime',
-              id: id.toString(),
-              extract: CatalogOpenExtract(
-                resolveType: 'anime',
-                panelCategory: 'anime',
-                ctx: {'anilistId': id},
-              ),
-            ),
-          ),
-        );
-        return;
-      }
-    }
-
-    if (mediaType == 'asian_drama' || kisskhId != null) {
-      final id = kisskhId;
-      if (id != null && mounted) {
-        final hubPlugin = await PluginNavRegistry.resolveHubPluginId(
-          pluginId: pluginId ?? item['pluginId']?.toString(),
-          tabId: item['hubTabId']?.toString(),
-          engineType: 'drama',
-        );
-        if (hubPlugin == null) return;
-        await openCatalogMetaItem(
-          context,
-          pluginId: hubPlugin,
-          item: CatalogMetaItem(
-            id: item['metaId']?.toString() ?? '$hubPlugin:$id',
-            type: 'drama',
-            name: title,
-            poster: poster,
-            releaseInfo: item['releaseDate']?.toString() ?? '',
-            open: CatalogOpen(
-              surface: 'drama',
-              id: id.toString(),
-              extract: CatalogOpenExtract(
-                resolveType: 'drama',
-                panelCategory: 'drama',
-                ctx: {'kisskhId': id},
-              ),
-            ),
-          ),
-        );
-        return;
-      }
-    }
-
-    if (source == 'tmdb' && tmdbId != null) {
-      try {
-        final details = mediaType == 'tv'
-            ? await _api.getTvDetails(tmdbId)
-            : await _api.getMovieDetails(tmdbId);
-        if (mounted) {
-          await AppRouter.openMovie(context, movie: details);
-          return;
-        }
-      } catch (_) {}
-    }
-
-    if (imdbId != null && imdbId.startsWith('tt')) {
-      try {
-        final movie = await _api.findByImdbId(
-          imdbId,
-          mediaType: mediaType == 'series' ? 'tv' : mediaType,
-        );
-        if (movie != null && mounted) {
-          await AppRouter.openMovie(context, movie: movie);
-          return;
-        }
-      } catch (_) {}
-    }
-
-    if (mounted) {
-      await AppRouter.openMovie(
-        context,
-        movie: Movie(
-          id: tmdbId ?? title.hashCode,
-          imdbId: imdbId,
-          title: title,
-          posterPath: poster,
-          backdropPath: poster,
-          voteAverage: (item['voteAverage'] as num?)?.toDouble() ?? 0,
-          releaseDate: item['releaseDate']?.toString() ?? '',
-          mediaType: mediaType == 'series' ? 'tv' : mediaType,
-        ),
-      );
-    }
+    await openLegacyListItem(context, item: item);
   }
 
   Future<void> _openSimklItem(Map<String, dynamic> item) async {
@@ -278,17 +141,14 @@ class _MyListScreenState extends ConsumerState<MyListScreen>
           engineType: 'anime',
         );
         if (hubPlugin == null) return;
-        await openCatalogMetaItem(
+        await openLegacyListItem(
           context,
-          pluginId: hubPlugin,
-          item: CatalogMetaItem(
-            id: '$hubPlugin:$anilistId',
-            type: 'anime',
-            name: item['title']?.toString() ?? 'Anime',
-            poster: item['posterPath']?.toString() ?? '',
-            open: CatalogOpen(surface: 'anime', id: anilistId.toString()),
-            ids: {'anilist': anilistId.toString()},
-          ),
+          item: {
+            ...item,
+            'pluginId': hubPlugin,
+            'anilistId': anilistId,
+            'mediaType': 'anime',
+          },
         );
       }
       return;
@@ -1057,62 +917,12 @@ Widget? _listPin(
   final vote = (item['voteAverage'] as num?)?.toDouble() ?? 0;
   final date = item['releaseDate']?.toString() ?? '';
   final mt = item['mediaType']?.toString() ?? 'movie';
-  final anilistId = item['anilistId'] as int?;
-  final kisskhId = item['kisskhId'] as int?;
   final tmdbId = item['tmdbId'] as int?;
 
-  if (mt == 'anime' || anilistId != null) {
-    if (anilistId == null) return null;
-    final stored = CatalogOpen.fromJson(item['catalogOpen']);
+  final hubTarget = listFollowTargetFromLegacyItemSync(item);
+  if (hubTarget != null) {
     return MyListButton.hub(
-      hubTarget: CatalogListFollowTarget(
-        pluginId: item['pluginId']?.toString() ?? item['source']?.toString() ?? 'catalog',
-        open: stored ??
-            CatalogOpen(
-              surface: 'anime',
-              id: anilistId.toString(),
-              extract: CatalogOpenExtract(
-                resolveType: 'anime',
-                panelCategory: 'anime',
-                ctx: {'anilistId': anilistId},
-              ),
-            ),
-        title: title,
-        posterPath: poster,
-        voteAverage: vote,
-        releaseDate: date,
-        mediaType: 'anime',
-      ),
-      excludeFromTvTraversal: true,
-      iconSize: iconSize,
-      knownStatus: knownStatus,
-    );
-  }
-
-  if (mt == 'asian_drama' || kisskhId != null) {
-    if (kisskhId == null) return null;
-    final stored = CatalogOpen.fromJson(item['catalogOpen']);
-    return MyListButton.hub(
-      hubTarget: CatalogListFollowTarget(
-        pluginId: item['pluginId']?.toString() ?? item['source']?.toString() ?? 'catalog',
-        open: stored ??
-            CatalogOpen(
-              surface: 'drama',
-              id: kisskhId.toString(),
-              extract: CatalogOpenExtract(
-                resolveType: 'drama',
-                panelCategory: 'drama',
-                ctx: {'kisskhId': kisskhId},
-              ),
-            ),
-        title: title,
-        posterPath: poster,
-        tmdbId: tmdbId,
-        tmdbMediaType: item['tmdbMediaType']?.toString(),
-        releaseDate: date,
-        voteAverage: vote,
-        mediaType: 'asian_drama',
-      ),
+      hubTarget: hubTarget,
       excludeFromTvTraversal: true,
       iconSize: iconSize,
       knownStatus: knownStatus,

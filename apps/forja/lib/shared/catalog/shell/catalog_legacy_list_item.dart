@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
+import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:rust/rust.dart';
 
@@ -59,6 +60,33 @@ CatalogMetaItem catalogMetaFromLegacyListItem(Map<String, dynamic> item) {
   );
 }
 
+CatalogListFollowTarget? listFollowTargetFromLegacyItemSync(
+  Map<String, dynamic> item,
+) {
+  final pluginId = item['pluginId']?.toString();
+  if (pluginId == null || pluginId.isEmpty) return null;
+  if (item['catalogOpen'] == null &&
+      item['anilistId'] == null &&
+      item['kisskhId'] == null) {
+    return null;
+  }
+  final meta = catalogMetaFromLegacyListItem(item);
+  return CatalogListFollowTarget.fromMeta(pluginId: pluginId, meta: meta);
+}
+
+Future<CatalogListFollowTarget?> listFollowTargetFromLegacyItem(
+  Map<String, dynamic> item,
+) async {
+  final stored = listFollowTargetFromLegacyItemSync(item);
+  if (stored != null) return stored;
+  final resolved = await resolveLegacyListTarget(item);
+  if (resolved == null) return null;
+  return CatalogListFollowTarget.fromMeta(
+    pluginId: resolved.pluginId,
+    meta: resolved.meta,
+  );
+}
+
 Future<CatalogLegacyListTarget?> resolveLegacyListTarget(
   Map<String, dynamic> item,
 ) async {
@@ -95,11 +123,45 @@ Future<void> openLegacyListItem(
   }
 
   final target = await resolveLegacyListTarget(item);
-  if (target == null || !context.mounted) return;
-  await openCatalogMetaItem(
+  if (target != null && context.mounted) {
+    await openCatalogMetaItem(
+      context,
+      pluginId: target.pluginId,
+      item: target.meta,
+    );
+    return;
+  }
+
+  final imdbId = item['imdbId']?.toString();
+  final mediaType = item['mediaType']?.toString() ?? 'movie';
+  if (imdbId != null && imdbId.startsWith('tt')) {
+    try {
+      final movie = await TmdbApi().findByImdbId(
+        imdbId,
+        mediaType: mediaType == 'series' ? 'tv' : mediaType,
+      );
+      if (movie != null && context.mounted) {
+        await AppRouter.openMovie(context, movie: movie);
+        return;
+      }
+    } catch (_) {}
+  }
+
+  final title = item['title']?.toString() ?? 'Unknown';
+  final poster = item['posterPath']?.toString() ?? '';
+  if (!context.mounted) return;
+  await AppRouter.openMovie(
     context,
-    pluginId: target.pluginId,
-    item: target.meta,
+    movie: Movie(
+      id: tmdbId ?? title.hashCode,
+      imdbId: imdbId,
+      title: title,
+      posterPath: poster,
+      backdropPath: poster,
+      voteAverage: (item['voteAverage'] as num?)?.toDouble() ?? 0,
+      releaseDate: item['releaseDate']?.toString() ?? '',
+      mediaType: mediaType == 'series' ? 'tv' : mediaType,
+    ),
   );
 }
 

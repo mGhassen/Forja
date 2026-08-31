@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/forja_host_assets.dart';
 import 'package:forja/shared/catalog/shell/catalog_shell.dart';
@@ -29,6 +30,7 @@ abstract final class PluginNavRegistry {
   static Map<String, TabBuilder> _builders = {};
   static Map<String, String> _tabPluginIds = {};
   static bool _seeded = false;
+  static bool _testNavLocked = false;
 
   static Map<String, NavDestination> get destinations {
     _ensureSeeded();
@@ -68,7 +70,59 @@ abstract final class PluginNavRegistry {
     unawaited(_loadCachedNav());
   }
 
+  /// Test-only minimal hub nav (no shipped inventory in [seedBuiltIns]).
+  @visibleForTesting
+  static void seedTestHubNav({
+    Map<String, NavDestination>? destinations,
+    Map<String, String>? tabPluginIds,
+  }) {
+    _testNavLocked = true;
+    _destinations = destinations ??
+        {
+          'home': const NavDestination(
+            id: 'home',
+            icon: Icons.home_outlined,
+            activeIcon: Icons.home,
+            label: 'Home',
+            iconAsset: ForjaHostAssets.flutterNavHome,
+          ),
+          'anime': const NavDestination(
+            id: 'anime',
+            icon: Icons.animation_outlined,
+            activeIcon: Icons.animation,
+            label: 'Anime',
+            iconAsset: ForjaHostAssets.flutterNavAnime,
+          ),
+          'asian_drama': const NavDestination(
+            id: 'asian_drama',
+            icon: Icons.theater_comedy_outlined,
+            activeIcon: Icons.theater_comedy,
+            label: 'Asian Drama',
+            iconAsset: ForjaHostAssets.flutterNavAsianDrama,
+          ),
+        };
+    _accents = {
+      'home': const Color(0xFFE50914),
+      'anime': const Color(0xFF8B5CF6),
+      'asian_drama': const Color(0xFFEC4899),
+    };
+    _tabPluginIds = Map<String, String>.from(
+      tabPluginIds ??
+          const {
+            'home': 'test-home-hub',
+            'anime': 'test-anime-hub',
+            'asian_drama': 'test-drama-hub',
+          },
+    );
+    _builders = {
+      for (final tabId in _destinations.keys)
+        tabId: () => CatalogShellLoader(tabId: tabId),
+    };
+    _seeded = true;
+  }
+
   static Future<void> _loadCachedNav() async {
+    if (_testNavLocked) return;
     try {
       final p = await SharedPreferences.getInstance();
       final raw = p.getString(_navCacheKey);
