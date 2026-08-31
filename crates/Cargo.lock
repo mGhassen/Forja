@@ -1191,8 +1191,8 @@ dependencies = [
  "kisskh",
  "lan",
  "live-matches",
+ "provider-health",
  "proxy",
- "resolver-engine",
  "scrapers",
  "serde",
  "serde_json",
@@ -2958,6 +2958,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "provider-health"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "storage",
+ "stream",
+]
+
+[[package]]
 name = "proxy"
 version = "0.1.0"
 dependencies = [
@@ -3298,7 +3308,6 @@ dependencies = [
  "bytes",
  "cookie",
  "cookie_store",
- "futures-channel",
  "futures-core",
  "futures-util",
  "http",
@@ -3330,23 +3339,6 @@ dependencies = [
  "wasm-streams",
  "web-sys",
  "webpki-roots",
-]
-
-[[package]]
-name = "resolver-engine"
-version = "0.1.0"
-dependencies = [
- "debrid",
- "iptv",
- "reqwest",
- "serde",
- "serde_json",
- "storage",
- "stream",
- "thiserror 2.0.18",
- "tmdb",
- "tokio",
- "utils",
 ]
 
 [[package]]

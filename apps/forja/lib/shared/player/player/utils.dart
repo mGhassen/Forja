@@ -27,6 +27,7 @@ export 'package:forja/shared/playback/playback_stream_guards.dart'
 import 'package:forja/shared/playback/provider_runtime_config.dart';
 import 'package:forja/shared/playback/stream_open_pipeline.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
+import 'package:forja/shared/player/player/peakstorm_hls_trim.dart';
 import 'package:forja/shared/player/player/player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/utils/language_display.dart';
@@ -583,6 +584,18 @@ Future<void> teardownMediaKitPlayer(Player player, {bool fast = false}) async {
   } catch (_) {}
 }
 
+/// Set when the last [openPlayerStream] used a trimmed peakstorm playlist.
+bool lastPeakstormOpenUsedTrim = false;
+
+/// mpv playhead is ~0 on a trimmed peakstorm playlist — add this for UI/history.
+Duration peakstormPlaybackTimeOffset = Duration.zero;
+
+Duration playerUiPosition(Duration raw) {
+  final offset = peakstormPlaybackTimeOffset;
+  if (offset <= Duration.zero) return raw;
+  return offset + raw;
+}
+
 /// Normalize URL + headers, apply mpv UA/referrer, open via media_kit.
 Future<String> openPlayerStream(
   Player player, {
@@ -627,23 +640,61 @@ Future<String> openPlayerStream(
       !isLocalTorrentStreamUrl(openUrl) &&
       !isLocalLoopbackPlayUrl(openUrl);
   final resumeAt = startAt != null && startAt > Duration.zero ? startAt : null;
-  if (resumeAt != null) await _mpvStartAt(player, resumeAt);
+  lastPeakstormOpenUsedTrim = false;
+  peakstormPlaybackTimeOffset = Duration.zero;
+  var playUrl = openUrl;
+  Duration? mpvStart = resumeAt;
+  if (resumeAt != null && peakstormFmp4HlsAvoidHardSeek(openUrl)) {
+    final trimmed = await buildPeakstormTrimmedPlaylistFile(
+      catalogUrl: openUrl,
+      target: resumeAt,
+      headers: hdrs,
+    );
+    if (trimmed != null) {
+      playUrl = trimmed;
+      mpvStart = null;
+      lastPeakstormOpenUsedTrim = true;
+      peakstormPlaybackTimeOffset = resumeAt;
+      logPeakstormResume(
+        'open via trimmed playlist',
+        target: resumeAt,
+        detail: _shortPeakstormUrl(openUrl),
+      );
+    } else {
+      logPeakstormResume(
+        'trim failed — mpv start fallback',
+        target: resumeAt,
+      );
+    }
+  }
+  if (mpvStart != null) await _mpvStartAt(player, mpvStart);
   // mwVault proxy auth lives in the URL query — do not duplicate via httpHeaders.
+  final isFile = playUrl.startsWith('file://');
   await player.open(
-    Media(openUrl, httpHeaders: isRemoteHttp && !mwVaultProxy ? hdrs : null),
+    Media(
+      playUrl,
+      httpHeaders:
+          isRemoteHttp && !mwVaultProxy && !isFile ? hdrs : null,
+    ),
   );
-  if (resumeAt != null) {
+  if (mpvStart != null) {
     logPeakstormResume(
       'openPlayerStream startAt',
-      target: resumeAt,
+      target: mpvStart,
       detail: peakstormFmp4HlsAvoidHardSeek(openUrl)
           ? 'peakstorm url=${_shortPeakstormUrl(openUrl)}'
-          : 'url=${openUrl.length > 80 ? '${openUrl.substring(0, 80)}…' : openUrl}',
+          : null,
     );
-    await _waitForMpvStartApplied(player, resumeAt, streamUrl: openUrl);
+    await _waitForMpvStartApplied(player, mpvStart, streamUrl: openUrl);
     await _mpvStartAt(player, null);
     logPeakstormResume(
       'openPlayerStream after mpv start cleared',
+      state: player.state,
+      target: mpvStart,
+    );
+  } else if (resumeAt != null && playUrl.startsWith('file://')) {
+    logPeakstormResume(
+      'openPlayerStream trimmed open',
       state: player.state,
       target: resumeAt,
     );
@@ -1237,7 +1288,7 @@ void syncPlayerProgressNotifiers(
   required ValueNotifier<Duration> buffered,
 }) {
   duration.value = player.state.duration;
-  position.value = player.state.position;
+  position.value = playerUiPosition(player.state.position);
   buffered.value = player.state.buffer;
 }
 
@@ -1533,6 +1584,7 @@ Future<bool> peakstormResumeVerified(
   required String streamUrl,
   Duration sampleGap = const Duration(milliseconds: 350),
   int samples = 3,
+  bool quiet = false,
 }) async {
   if (!peakstormFmp4HlsAvoidHardSeek(streamUrl) || target.inSeconds <= 0) {
     return true;
@@ -1548,18 +1600,20 @@ Future<bool> peakstormResumeVerified(
       streamUrl: streamUrl,
       previousPosition: previous,
     )) {
-      logPeakstormResume(
-        'verify sample $i fail',
-        state: state,
-        target: target,
-        previous: previous,
-        detail: peakstormResumeRejectReason(
-          state,
-          target,
-          streamUrl: streamUrl,
-          previousPosition: previous,
-        ),
-      );
+      if (!quiet) {
+        logPeakstormResume(
+          'verify sample $i fail',
+          state: state,
+          target: target,
+          previous: previous,
+          detail: peakstormResumeRejectReason(
+            state,
+            target,
+            streamUrl: streamUrl,
+            previousPosition: previous,
+          ),
+        );
+      }
       return false;
     }
     if (previous != null &&
@@ -1568,13 +1622,35 @@ Future<bool> peakstormResumeVerified(
     }
     previous = state.position;
   }
-  logPeakstormResume(
-    'verify ok',
-    target: target,
-    previous: previous,
-    detail: 'advances=$advances samples=$samples',
-  );
+  if (!quiet) {
+    logPeakstormResume(
+      'verify ok',
+      target: target,
+      previous: previous,
+      detail: 'advances=$advances samples=$samples',
+    );
+  }
   return advances >= 1;
+}
+
+/// Trimmed playlist opens at media t≈0 — verify playhead advances.
+Future<bool> peakstormTrimPlaybackVerified(
+  Player player, {
+  Duration sampleGap = const Duration(milliseconds: 400),
+  int samples = 3,
+}) async {
+  Duration? previous;
+  for (var i = 0; i < samples; i++) {
+    if (i > 0) await Future<void>.delayed(sampleGap);
+    final state = player.state;
+    if (!state.playing || !hasDecodedVideo(state)) return false;
+    if (previous != null &&
+        state.position > previous + const Duration(milliseconds: 250)) {
+      return true;
+    }
+    previous = state.position;
+  }
+  return false;
 }
 
 /// After open with mpv `start`, remount once when peakstorm resume is fake PTS.
@@ -1588,7 +1664,16 @@ Future<void> ensurePeakstormResumeAfterOpen(
   if (!peakstormFmp4HlsAvoidHardSeek(streamUrl) || target.inSeconds <= 0) {
     return;
   }
-  if (await peakstormResumeVerified(
+  if (lastPeakstormOpenUsedTrim) {
+    if (await peakstormTrimPlaybackVerified(player)) {
+      logPeakstormResume(
+        'open resume verified (trim)',
+        state: player.state,
+        target: target,
+      );
+      return;
+    }
+  } else if (await peakstormResumeVerified(
     player,
     target,
     streamUrl: streamUrl,
@@ -1692,12 +1777,14 @@ Future<void> _waitForMpvStartApplied(
   final deadline = DateTime.now().add(remountResumeTimeoutForSeek(startAt));
   final peakstorm = peakstormFmp4HlsAvoidHardSeek(streamUrl);
   if (peakstorm) {
+    var lastReason = '';
     while (DateTime.now().isBefore(deadline)) {
       if (await peakstormResumeVerified(
         player,
         startAt,
         streamUrl: streamUrl,
         samples: 2,
+        quiet: true,
       )) {
         logPeakstormResume(
           'mpv start applied',
@@ -1706,13 +1793,27 @@ Future<void> _waitForMpvStartApplied(
         );
         return;
       }
-      await Future<void>.delayed(const Duration(milliseconds: 200));
+      final reason = peakstormResumeRejectReason(
+        player.state,
+        startAt,
+        streamUrl: streamUrl,
+      );
+      if (reason != lastReason) {
+        lastReason = reason;
+        logPeakstormResume(
+          'mpv start waiting',
+          state: player.state,
+          target: startAt,
+          detail: reason,
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 400));
     }
     logPeakstormResume(
       'mpv start timeout',
       state: player.state,
       target: startAt,
-      detail: 'cleared start anyway',
+      detail: lastReason,
     );
     return;
   }
@@ -1762,12 +1863,13 @@ Future<bool> remountPlayerStreamAtPosition(
   );
   if (!opened) return false;
 
+  final usedTrim = lastPeakstormOpenUsedTrim;
   await ensureOpenedNearPosition(
     player,
-    useStart ? seekTarget : null,
+    useStart && !usedTrim ? seekTarget : null,
     skipNearCredits: false,
     streamUrl: openUrl,
-    openedWithMpvStart: useStart,
+    openedWithMpvStart: useStart && !usedTrim,
   );
   if (!player.state.playing) {
     await player.play();
@@ -1782,13 +1884,18 @@ Future<bool> remountPlayerStreamAtPosition(
     final pos = state.position;
     final previous = lastPos;
     lastPos = pos;
-    if (remountPlaybackResumed(
-      state,
-      seekTarget,
-      streamUrl: openUrl,
-      previousPosition: peakstorm ? previous : null,
-    )) {
-      if (peakstorm) {
+    final live = usedTrim
+        ? await peakstormTrimPlaybackVerified(player, samples: 2)
+        : remountPlaybackResumed(
+            state,
+            seekTarget,
+            streamUrl: openUrl,
+            previousPosition: peakstorm ? previous : null,
+          );
+    if (live) {
+      if (usedTrim) {
+        stableChecks++;
+      } else if (peakstorm) {
         if (previous != null &&
             pos > previous + const Duration(milliseconds: 300)) {
           stableChecks++;
@@ -1801,7 +1908,7 @@ Future<bool> remountPlayerStreamAtPosition(
           'remount ok',
           state: state,
           target: seekTarget,
-          detail: 'stable=$stableChecks',
+          detail: 'stable=$stableChecks · trim=$usedTrim · ui=${playerUiPosition(pos).inSeconds}s',
         );
         return true;
       }
@@ -1810,11 +1917,13 @@ Future<bool> remountPlayerStreamAtPosition(
     }
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
-  final ok = remountPlaybackResumed(
-    player.state,
-    seekTarget,
-    streamUrl: openUrl,
-  );
+  final ok = usedTrim
+      ? await peakstormTrimPlaybackVerified(player)
+      : remountPlaybackResumed(
+          player.state,
+          seekTarget,
+          streamUrl: openUrl,
+        );
   if (!ok && peakstormFmp4HlsAvoidHardSeek(openUrl)) {
     logPeakstormResume(
       'remount failed',

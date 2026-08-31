@@ -320,4 +320,18 @@ void main() {
       isTrue,
     );
   });
+
+  test('playerUiPosition adds peakstorm trim offset', () {
+    peakstormPlaybackTimeOffset = const Duration(seconds: 1191);
+    addTearDown(() => peakstormPlaybackTimeOffset = Duration.zero);
+    expect(
+      playerUiPosition(const Duration(seconds: 2)),
+      const Duration(seconds: 1193),
+    );
+    peakstormPlaybackTimeOffset = Duration.zero;
+    expect(
+      playerUiPosition(const Duration(seconds: 2)),
+      const Duration(seconds: 2),
+    );
+  });
 }

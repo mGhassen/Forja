@@ -36,7 +36,7 @@ indexer = { path = "../indexer" }
 debrid = { path = "../debrid" }
 kisskh = { path = "../kisskh" }
 live-matches = { path = "../live-matches" }
-resolver-engine = { path = "../resolver-engine" }
+provider-health = { path = "../provider-health" }
 engine-js = { path = "../engine-js" }
 uniffi = { workspace = true }
 serde = { workspace = true }

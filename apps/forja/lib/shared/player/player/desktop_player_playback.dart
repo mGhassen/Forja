@@ -1322,11 +1322,12 @@ mixin _DesktopPlayerPlayback
       // Ignore ephemeral demux while hunting a playable source - otherwise the
       // seek bar flashes full/empty as each CDN briefly reports duration.
       if (!_s._playbackConfirmed) return;
+      final uiPos = playerUiPosition(pos);
       // keep-open EOF often emits position 0 after a real finish - don't empty
       // a seek bar that was already at the end.
       final shownDur = _s._durationNotifier.value;
       final shownPos = _s._positionNotifier.value;
-      if (pos <= Duration.zero &&
+      if (uiPos <= Duration.zero &&
           shownDur >= const Duration(seconds: 90) &&
           shownPos >= shownDur - const Duration(seconds: 2)) {
         return;
@@ -1340,7 +1341,7 @@ mixin _DesktopPlayerPlayback
       // Use this-open age/mid only - session mid from a prior source must not
       // disable suppress on a fresh fail-open.
       if (shouldSuppressEarlyEofSeekBarPosition(
-        positionMs: pos.inMilliseconds,
+        positionMs: uiPos.inMilliseconds,
         durationMs: effectiveDurMs,
         confirmedFor: openAge,
         hadMidPlayback: _s._openHadMidPlayback,
@@ -1348,7 +1349,7 @@ mixin _DesktopPlayerPlayback
         return;
       }
       if (shouldIgnoreStaleEofPosition(
-        reported: pos,
+        reported: uiPos,
         duration: shownDur.inMilliseconds > 0
             ? shownDur
             : _s._player.state.duration,
@@ -1357,11 +1358,11 @@ mixin _DesktopPlayerPlayback
       )) {
         return;
       }
-      _s._positionNotifier.value = pos;
-      _s._postSeekStall?.onPosition(pos);
+      _s._positionNotifier.value = uiPos;
+      _s._postSeekStall?.onPosition(uiPos);
 
       final dur = _s._durationNotifier.value;
-      if (isMidEpisodePlayback(pos.inMilliseconds, dur.inMilliseconds)) {
+      if (isMidEpisodePlayback(uiPos.inMilliseconds, dur.inMilliseconds)) {
         if (!_s._openHadMidPlayback) _s._openHadMidPlayback = true;
         if (!_s._hadMidPlayback) {
           _s._hadMidPlayback = true;
@@ -1372,7 +1373,7 @@ mixin _DesktopPlayerPlayback
       // Near-end detection for next episode button (clears if seeked back /
       // duration corrects after a bogus early report).
       if (_s._isNextEpisodeAvailable) {
-        final nearEnd = isNearEndOfEpisode(pos, _s._durationNotifier.value);
+        final nearEnd = isNearEndOfEpisode(uiPos, _s._durationNotifier.value);
         if (nearEnd != _s._nearEndOfEpisode) {
           setState(() => _s._nearEndOfEpisode = nearEnd);
         }
@@ -1381,7 +1382,7 @@ mixin _DesktopPlayerPlayback
       }
 
       // Skip segment detection (IntroDB)
-      _s._updateActiveSkipSegment(pos);
+      _s._updateActiveSkipSegment(uiPos);
     });
 
     // Duration – sync notifier only; resume uses mpv `start` on open (issue 198).

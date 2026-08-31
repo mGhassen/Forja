@@ -14,8 +14,6 @@ abstract final class EngineAsyncJob {
   static const iptvProbeStream = 7;
   static const torrentStream = 8;
   static const seek111477Start = 9;
-  static const resolverEngineResolve = 10;
-  static const resolverEngineContinue = 11;
   static const liveMatchesFetch = 12;
   static const iptvRedditCatalog = 13;
   static const iptvXtream = 14;

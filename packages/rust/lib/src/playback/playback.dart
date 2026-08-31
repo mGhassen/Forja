@@ -8,7 +8,6 @@ export 'providers/registry/provider_profiles.dart';
 export 'providers/registry/provider_registry.dart';
 export 'ordering/provider_score_memory.dart';
 export 'domain/provider_score_scope.dart';
-export 'resolver/resolver_engine_client.dart';
 export 'domain/source_domain.dart';
 export 'ordering/source_engine.dart';
 export 'ordering/source_order_engine.dart';

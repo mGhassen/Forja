@@ -18,7 +18,7 @@ members = [
     "debrid",
     "kisskh",
     "live-matches",
-    "resolver-engine",
+    "provider-health",
     "engine-js",
     "archive/jellyfin",
     "archive/music",
