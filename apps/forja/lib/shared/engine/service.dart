@@ -103,7 +103,6 @@ class EngineService {
   Future<List<EnginePack>> listUserPacks() async {
     final cached = await PluginRegistry.instance.listPacksRaw();
     unawaited(PluginRegistry.instance.ensureOfficialInstalled());
-    unawaited(PluginRegistry.instance.hydrateLeanInstalled());
     return cached;
   }
 
@@ -113,7 +112,6 @@ class EngineService {
   Future<List<EnginePack>> listSourcesPanelPacks() async {
     // Never block Play/Sources on network install / lean hydrate.
     unawaited(PluginRegistry.instance.ensureOfficialInstalled());
-    unawaited(PluginRegistry.instance.hydrateLeanInstalled());
     final packs = await PluginRegistry.instance.listPacksRaw();
     return [
       for (final p in packs)

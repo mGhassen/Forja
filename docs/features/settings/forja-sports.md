@@ -6,16 +6,17 @@
 
 On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS schedule as **Forja Live** / **All** (TimStreams, StreamFree, ESPN, PPV, Streamed, …), then name/EPG matching against live channels on **one** Xtream or Stalker portal. Streams play in the native IPTV player. No self-hosted addon. Not an ESPN-only grid.
 
-**Forja Sports** is enabled by default with all leagues matched. **Settings → Forja Sports** can change leagues and **Live Sports** plugin toggles — but only when the Live Sports pack is installed (otherwise the page is empty; install packs under **Settings → Sources → Forja**).
+**Forja Sports** is enabled by default with all leagues matched. **Settings → Forja Sports** always shows **Setup** (enable + leagues). **Live Sports** plugin toggles appear when the Live Sports pack is installed — install or refresh under **Settings → Sources → Forja → Live**.
 
 ## How to open it
 
 - **Live Matches → Servers → Forja Sports** (portal via top-right **Portals**)
-- **Settings → Forja Sports** for leagues and Live Sports toggles (empty until the Live Sports pack is installed)
+- **Settings → Forja Sports** — **Setup** always; **Live Sports** when the pack is installed
 
 ## What you can do
 
-- **Live Sports** — one row per site (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, ESPN). Each site has independent **Catalog** (schedule) and **Provider** (stream resolve) toggles. **Default on:** Streamed, PPV, StreamFree — both Catalog and Provider; others off until you enable them. Enabled catalogs appear as chips on Live Matches **All**, **Forja Live**, and **Forja Sports**.
+- **Setup** — enable Forja Sports in Live Matches and pick which leagues to match (independent of installed plugins)
+- **Live Sports** — **Catalog** / **Provider** tabs at the top; one toggle per site in each tab (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, ESPN). **Catalog** = schedule feed; **Provider** = stream resolve. **Default on:** Streamed, PPV, StreamFree — both caps; others off until you enable them. Enabled catalogs appear as chips on Live Matches **All**, **Forja Live**, and **Forja Sports**.
 - Browse the same catalog schedule as Forja Live, **merged with ESPN** when **Catalog → ESPN** is on (clean home/away for matching; ESPN-only games still appear). Switching **Servers** between Forja Live and Forja Sports keeps that list — no reload
 - Pick an **Xtream** or **Stalker** portal from top-right **Portals** (same IPTV panel; M3U is not supported for Sports yet)
 - Open a match → right-side panel opens immediately while Forja sniffs your portal; ranked channels appear as they land (logo, short name, category, tier badge, **NOW/NEXT EPG** when the portal provides listings) → pick one to play (failover keeps the rest in the player Source menu with the same layout). Re-opening the same match within **30 minutes** reuses the last match result (no second portal search)

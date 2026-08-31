@@ -261,38 +261,41 @@ class PlayerSubtitleMenu {
                   value: '${stream.length + online.length}',
                   selected: hasSelected,
                   onTap: () {
-                    unawaited(_openLanguage(
-                      context,
-                      langKey: key,
-                      embedded: stream,
-                      online: online,
-                      selectedSubtitleId: selectedSubtitleId,
-                      selectedExternalSubUrl: selectedExternalSubUrl,
-                      player: player,
-                      updateSubVisibility: updateSubVisibility,
-                      onExternalUrlChanged: onExternalUrlChanged,
-                      loadOnlineSubtitle: loadOnlineSubtitle,
-                      onSubtitleSelected: onSubtitleSelected,
-                      onRoot: () => _openRoot(
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (!context.mounted) return;
+                      unawaited(_openLanguage(
                         context,
-                        player: player,
-                        externalSubtitles: externalSubtitles,
+                        langKey: key,
+                        embedded: stream,
+                        online: online,
+                        selectedSubtitleId: selectedSubtitleId,
                         selectedExternalSubUrl: selectedExternalSubUrl,
-                        isFetchingSubs: isFetchingSubs,
+                        player: player,
                         updateSubVisibility: updateSubVisibility,
                         onExternalUrlChanged: onExternalUrlChanged,
-                        onNativeSubtitleChanged: onNativeSubtitleChanged,
                         loadOnlineSubtitle: loadOnlineSubtitle,
-                        onSubtitleSettings: onSubtitleSettings,
                         onSubtitleSelected: onSubtitleSelected,
-                        onTitleSearch: onTitleSearch,
-                        titleSearchHint: titleSearchHint,
+                        onRoot: () => _openRoot(
+                          context,
+                          player: player,
+                          externalSubtitles: externalSubtitles,
+                          selectedExternalSubUrl: selectedExternalSubUrl,
+                          isFetchingSubs: isFetchingSubs,
+                          updateSubVisibility: updateSubVisibility,
+                          onExternalUrlChanged: onExternalUrlChanged,
+                          onNativeSubtitleChanged: onNativeSubtitleChanged,
+                          loadOnlineSubtitle: loadOnlineSubtitle,
+                          onSubtitleSettings: onSubtitleSettings,
+                          onSubtitleSelected: onSubtitleSelected,
+                          onTitleSearch: onTitleSearch,
+                          titleSearchHint: titleSearchHint,
+                          margin: margin,
+                          anchorContext: anchorContext,
+                        ),
                         margin: margin,
                         anchorContext: anchorContext,
-                      ),
-                      margin: margin,
-                      anchorContext: anchorContext,
-                    ));
+                      ));
+                    });
                   },
                 );
               },
@@ -345,16 +348,21 @@ class PlayerSubtitleMenu {
               selected: selectedSubtitleId != null &&
                   selectedExternalSubUrl == null &&
                   t.id == selectedSubtitleId,
-              onTap: () {
+              onTap: () async {
                 onSubtitleSelected?.call(
                   off: false,
                   language: t.language,
                   title: t.title,
                 );
-                player.setSubtitleTrack(t);
-                updateSubVisibility(t);
                 onExternalUrlChanged(null);
-                PlayerPopupPanel.dismiss();
+                try {
+                  await preparePlayerExternalSubtitleSwitch(player);
+                  await player.setSubtitleTrack(t);
+                  updateSubVisibility(t);
+                  PlayerPopupPanel.dismiss();
+                } catch (e) {
+                  debugPrint('[PlayerSubtitleMenu] in-stream sub failed: $e');
+                }
               },
             ),
           for (final s in online)
@@ -364,13 +372,13 @@ class PlayerSubtitleMenu {
                   (s['sourceName']?.toString() ?? 'opensubtitles'),
               selected: s['url'] == selectedExternalSubUrl,
               onTap: () async {
+                final ok = await loadOnlineSubtitle(s);
+                if (!ok) return;
                 onSubtitleSelected?.call(
                   off: false,
                   language: s['language']?.toString() ?? langKey,
                   title: s['display']?.toString(),
                 );
-                final ok = await loadOnlineSubtitle(s);
-                if (!ok) return;
                 onExternalUrlChanged(s['url']?.toString());
                 if (context.mounted) PlayerPopupPanel.dismiss();
               },

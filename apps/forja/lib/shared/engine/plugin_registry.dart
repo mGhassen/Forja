@@ -202,6 +202,17 @@ class PluginRegistry {
 
   static bool isLegacyMonolithPack(EnginePack pack) => pack.packId == 'forjahq';
 
+  /// Retired split live catalog pack — merged into [plugins/live/manifest.json].
+  static bool isRetiredCatalogManifestUrl(String url) {
+    final path = url.trim().replaceAll('\\', '/').toLowerCase();
+    return path.endsWith('plugins/catalog/manifest.json') ||
+        forjaHqSlot(url) == 'catalog';
+  }
+
+  static bool isRetiredCatalogPack(EnginePack pack) =>
+      pack.packId == 'forjahq-catalog' ||
+      isRetiredCatalogManifestUrl(pack.sourceUrl);
+
   static bool isLegacyAssetPack(String sourceUrl) =>
       sourceUrl.startsWith('asset:') ||
       sourceUrl == _legacyAssetBundledSourceUrl ||
@@ -512,8 +523,9 @@ class PluginRegistry {
     }
     final run = () async {
       try {
-        await hydrateLeanInstalled();
         await migrateLegacyLiveSportPacksIfNeeded();
+        await _purgeRetiredOfficialPacks();
+        await hydrateLeanInstalled();
         final packs = await listPacksRaw();
         if (force) {
           final pending = <Future<void>>[];
@@ -877,9 +889,7 @@ class PluginRegistry {
 
     final next = [
       for (final pack in packs)
-        if (pack.packId != 'forjahq-catalog' &&
-            forjaHqSlot(pack.sourceUrl) != 'catalog')
-          pack,
+        if (!isRetiredCatalogPack(pack)) pack,
     ];
     if (next.length != packs.length) {
       packs = next;
@@ -1024,7 +1034,11 @@ class PluginRegistry {
     final remote = <String, ({String? name, String? version})>{};
     for (final raw in rows) {
       final url = (raw['manifestUrl'] as String?)?.trim() ?? '';
-      if (url.isEmpty || isLegacyAssetPack(url)) continue;
+      if (url.isEmpty ||
+          isLegacyAssetPack(url) ||
+          isRetiredCatalogManifestUrl(url)) {
+        continue;
+      }
 
       final name = (raw['name'] as String?)?.trim();
       final version = (raw['version'] as String?)?.trim();
@@ -1101,6 +1115,30 @@ class PluginRegistry {
     unawaited(ensureOfficialInstalled());
   }
 
+  Future<void> _purgeRetiredOfficialPacks() async {
+    final all = await listPacksRaw();
+    final victims = all.where(isRetiredCatalogPack).toList();
+    if (victims.isEmpty) return;
+
+    final next = [
+      for (final pack in all)
+        if (!isRetiredCatalogPack(pack)) pack,
+    ];
+    final prefs = await _prefs;
+    for (final pack in victims) {
+      for (final p in pack.plugins) {
+        await prefs.remove(scriptPrefsKey(pack.sourceUrl, p.id));
+        if (p.prelude.isNotEmpty) {
+          await prefs.remove(preludePrefsKey(pack.sourceUrl, p.prelude));
+        }
+      }
+    }
+    await _savePacks(next);
+    debugPrint(
+      '[engine] removed ${victims.length} retired catalog pack(s)',
+    );
+  }
+
   /// Fetch manifests for lean stubs (`plugins` empty). Idempotent.
   Future<void> hydrateLeanInstalled() {
     return _hydrateLeanInFlight ??= _hydrateLeanInstalledImpl().whenComplete(
@@ -1115,6 +1153,11 @@ class PluginRegistry {
     for (final pack in all) {
       if (pack.plugins.isNotEmpty) continue;
       if (isLegacyAssetPack(pack.sourceUrl)) continue;
+      if (isRetiredCatalogPack(pack)) continue;
+      if (forjaHqSlot(pack.sourceUrl) == 'catalog' &&
+          !await _localManifestExists(pack.sourceUrl)) {
+        continue;
+      }
       try {
         final url = await _substituteUnreachableLocalManifest(pack.sourceUrl);
         await install(url);

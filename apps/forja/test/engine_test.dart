@@ -377,7 +377,7 @@ void main() {
       );
     });
 
-    test('forjaHqSlot detects providers/live/catalog paths', () {
+    test('forjaHqSlot detects providers/live paths', () {
       expect(
         PluginRegistry.forjaHqSlot(
           'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/providers/manifest.json',
@@ -391,6 +391,39 @@ void main() {
       expect(
         PluginRegistry.forjaHqSlot('https://community.example/manifest.json'),
         isNull,
+      );
+    });
+
+    test('isRetiredCatalogPack detects removed split catalog manifest', () {
+      expect(
+        PluginRegistry.isRetiredCatalogManifestUrl(
+          '/Users/x/Forja/plugins/catalog/manifest.json',
+        ),
+        isTrue,
+      );
+      expect(
+        PluginRegistry.isRetiredCatalogPack(
+          EnginePack(
+            sourceUrl: '/Users/x/Forja/plugins/catalog/manifest.json',
+            packId: 'forjahq-catalog',
+            name: 'ForjaHQ Catalog',
+            version: '1.0.0',
+            plugins: const [],
+          ),
+        ),
+        isTrue,
+      );
+      expect(
+        PluginRegistry.isRetiredCatalogPack(
+          EnginePack(
+            sourceUrl: '/Users/x/Forja/plugins/live/manifest.json',
+            packId: 'forjahq-live',
+            name: 'ForjaHQ Live Sports',
+            version: '1.6.0',
+            plugins: const [],
+          ),
+        ),
+        isFalse,
       );
     });
 

@@ -527,10 +527,6 @@ class _SettingsLiveSportCapabilityTabsState
     ];
   }
 }
-
-/// @deprecated Prefer [SettingsLiveSportCapabilityTabs].
-typedef SettingsLiveSportPluginList = SettingsLiveSportCapabilityTabs;
-
 class _SettingsEngineCategoryTabStrip extends StatelessWidget {
   const _SettingsEngineCategoryTabStrip({
     required this.groups,

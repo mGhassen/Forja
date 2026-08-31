@@ -220,8 +220,8 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
                 child: Text(
-                  'Enable Catalog (schedule) and/or Provider (stream resolve) per site. '
-                  'Install / refresh packs under Settings → Sources → Forja → Live.',
+                  'Catalog = schedule feed · Provider = stream resolve. '
+                  'Manage the pack under Settings → Sources → Forja → Live.',
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
                     fontSize: 13,
@@ -229,49 +229,29 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
                   ),
                 ),
               ),
-              for (final entry in _liveSportPacks)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
-                  child: Theme(
-                    data: Theme.of(context).copyWith(
-                      dividerColor: Colors.transparent,
-                    ),
-                    child: ExpansionTile(
-                      tilePadding: const EdgeInsets.symmetric(horizontal: 2),
-                      childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-                      leading: const Icon(
-                        Icons.bolt_rounded,
-                        color: ForjaShellColors.iconActive,
+              for (final entry in _liveSportPacks) ...[
+                if (_liveSportPacks.length > 1)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(2, 8, 2, 0),
+                    child: Text(
+                      '${entry.pack.name} · v${entry.pack.version}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: ForjaShellColors.textPrimary,
                       ),
-                      title: Text(
-                        entry.pack.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                          color: ForjaShellColors.textPrimary,
-                        ),
-                      ),
-                      subtitle: Text(
-                        '${PluginRegistry.packKindInfo(entry.pack)} · '
-                        '${entry.plugins.length} plugin${entry.plugins.length == 1 ? '' : 's'} · '
-                        'v${entry.pack.version}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: ForjaShellColors.textSecondary.withValues(
-                            alpha: 0.75,
-                          ),
-                        ),
-                      ),
-                      children: [
-                        SettingsLiveSportCapabilityTabs(
-                          sourceUrl: entry.pack.sourceUrl,
-                          plugins: entry.plugins,
-                          tabRowId: 'forja-sports-live-tabs',
-                        ),
-                      ],
                     ),
                   ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),
+                  child: SettingsLiveSportCapabilityTabs(
+                    sourceUrl: entry.pack.sourceUrl,
+                    plugins: entry.plugins,
+                    tabRowId:
+                        'forja-sports-live-tabs-${entry.pack.sourceUrl.hashCode}',
+                  ),
                 ),
+              ],
             ] else
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 4),

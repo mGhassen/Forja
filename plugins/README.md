@@ -7,8 +7,7 @@ Six packs in this tree:
 | Pack | Path | Role |
 |------|------|------|
 | **ForjaHQ Providers** | [`providers/manifest.json`](providers/manifest.json) | VOD / anime / drama scrapers + file-host hops |
-| **ForjaHQ Live** | [`live/manifest.json`](live/manifest.json) | Live Matches resolve (`live/*.js` + `embed-st.js`) |
-| **ForjaHQ Catalog** | [`catalog/manifest.json`](catalog/manifest.json) | Live schedule catalogs |
+| **ForjaHQ Live Sports** | [`live/manifest.json`](live/manifest.json) | Live Matches schedule (catalog) + stream resolve per site |
 | **ForjaHQ Home** | [`hubs/home/manifest.json`](hubs/home/manifest.json) | Home catalog hub (TMDB) |
 | **ForjaHQ Anime** | [`hubs/anime/manifest.json`](hubs/anime/manifest.json) | Anime catalog hub (AniList) |
 | **ForjaHQ Asian Drama** | [`hubs/asian_drama/manifest.json`](hubs/asian_drama/manifest.json) | Asian Drama catalog hub (KissKH) |

@@ -27,17 +27,22 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
 
     Future<bool> applyUri(String uri) async {
       if (_s._disposed || !mounted) return false;
-      await resetPlayerSubtitleForNewOpen(_s._player);
-      final track = SubtitleTrack.uri(
-        uri,
-        title: s['display'],
-        language: s['language'],
-      );
-      await _s._player.setSubtitleTrack(track);
-      if (_s._disposed || !mounted) return false;
-      _s._updateSubVisibility(track);
-      if (mounted) setState(() => _s._selectedExternalSubUrl = url);
-      return true;
+      try {
+        await preparePlayerExternalSubtitleSwitch(_s._player);
+        final track = SubtitleTrack.uri(
+          uri,
+          title: s['display']?.toString(),
+          language: s['language']?.toString(),
+        );
+        await _s._player.setSubtitleTrack(track);
+        if (_s._disposed || !mounted) return false;
+        _s._updateSubVisibility(track);
+        if (mounted) setState(() => _s._selectedExternalSubUrl = url);
+        return true;
+      } catch (e) {
+        debugPrint('[MobilePlayer] subtitle apply failed: $e');
+        return false;
+      }
     }
 
     void fail() {
@@ -306,15 +311,17 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       selectedExternalSubUrl: _s._selectedExternalSubUrl,
       isFetchingSubs: _s._isFetchingSubs,
       updateSubVisibility: _s._updateSubVisibility,
-      onExternalUrlChanged: (url) =>
-          setState(() => _s._selectedExternalSubUrl = url),
+      onExternalUrlChanged: (url) => setState(() {
+        _s._selectedExternalSubUrl = url;
+        if (url == null) _s._userPickedExternalSubtitle = false;
+      }),
       onNativeSubtitleChanged: (v) => setState(() => _s._isNativeSubtitle = v),
       loadOnlineSubtitle: (s) => _loadOnlineSubtitle(s, userInitiated: true),
       onSubtitleSettings: _showSubtitleSettings,
       onSubtitleSelected:
           ({required bool off, String? language, String? title}) {
             _s._embeddedSubtitleAutoApplied = true;
-            if (!off) _s._userPickedExternalSubtitle = false;
+            if (off) _s._userPickedExternalSubtitle = false;
             unawaited(
               _rememberSubtitlePreference(
                 off: off,
