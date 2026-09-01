@@ -147,7 +147,7 @@ class EngineService {
     for (final pack in await listPacks()) {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
-        if (!p.isHttp || !p.enabled) continue;
+        if (!p.isHttp) continue;
         if (p.isLiveSportPlugin) {
           if (!p.supportsLiveResolve) continue;
           if (!await PluginRegistry.instance.isLiveCapabilityActive(
@@ -160,6 +160,7 @@ class EngineService {
           out.add(p);
           continue;
         }
+        if (!p.enabled) continue;
         if (p.isLivePlugin || p.isLiveSport) out.add(p);
       }
     }
@@ -198,7 +199,7 @@ class EngineService {
     for (final pack in await listPacks()) {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
-        if (!p.isHttp || !p.enabled) continue;
+        if (!p.isHttp) continue;
         if (p.isLiveSportPlugin) {
           if (!p.supportsLiveCatalog) continue;
           if (!await PluginRegistry.instance.isLiveCapabilityActive(
@@ -211,6 +212,7 @@ class EngineService {
           out.add(p);
           continue;
         }
+        if (!p.enabled) continue;
         if (p.isLiveCatalog) out.add(p);
       }
     }

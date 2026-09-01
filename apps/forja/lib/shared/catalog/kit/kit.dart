@@ -23,6 +23,7 @@ export 'widgets/catalog_because_section.dart';
 export 'widgets/catalog_continue_watching_card.dart';
 export 'widgets/catalog_continue_watching_section.dart';
 export 'widgets/catalog_continue_widget.dart';
+export 'details/catalog_play_filters.dart';
 export 'details/hub_details_play.dart';
 export 'details/hub_details_sections.dart';
 export 'play/catalog_hub_episodes.dart';

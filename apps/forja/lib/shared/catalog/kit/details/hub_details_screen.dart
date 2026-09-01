@@ -25,6 +25,8 @@ import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/youtube_stream_service.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
+import 'package:forja/shared/catalog/kit/details/catalog_play_filters.dart';
 import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
@@ -109,6 +111,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   String? _error;
   int _selectedSeason = 1;
   int _selectedEpisode = 1;
+  final Map<String, String> _playFilterSelections = {};
   bool _detailsHeroInitialFocusDone = false;
   Map<String, dynamic>? _watchProgress;
   bool _autoPlayConsumed = false;
@@ -120,12 +123,14 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   void initState() {
     super.initState();
     CatalogWatchHistory.revision.addListener(_onWatchHistoryChanged);
+    CatalogPackFiltersRegistry.revision.addListener(_onPackFiltersChanged);
     if (hubMetaUsesHomeWatchHistory(widget.item)) {
       _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
         unawaited(_loadWatchProgress());
       });
     }
     unawaited(ref.read(settingsPlaybackProvider.future));
+    unawaited(_ensurePackFilters());
     unawaited(_loadWatchProgress());
     _loading = !hubMetaTmdbEnriched(widget.item);
     _load();
@@ -134,6 +139,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   @override
   void dispose() {
     CatalogWatchHistory.revision.removeListener(_onWatchHistoryChanged);
+    CatalogPackFiltersRegistry.revision.removeListener(_onPackFiltersChanged);
     unawaited(_homeHistorySub?.cancel());
     _scrollController.dispose();
     _heroPlayFocus.dispose();
@@ -146,6 +152,69 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   List<CatalogVideo> get _videos => _show.videos;
 
   bool get _isMovie => hubMetaIsMovie(_show);
+
+  List<CatalogPlayFilterSpec> get _playFilters =>
+      CatalogPackFiltersRegistry.playFiltersFor(widget.pluginId);
+
+  Map<String, dynamic> get _playFilterExtras => catalogPlayFilterValues(
+        pluginId: widget.pluginId,
+        selections: _playFilterSelections,
+      );
+
+  void _onPackFiltersChanged() {
+    if (!mounted) return;
+    _seedPlayFilterDefaults();
+    setState(() {});
+  }
+
+  Future<void> _ensurePackFilters() async {
+    await CatalogPackFiltersRegistry.ensureLoaded(widget.pluginId);
+    if (!mounted) return;
+    _seedPlayFilterDefaults();
+    setState(() {});
+  }
+
+  void _seedPlayFilterDefaults({Map<String, dynamic>? progressExtras}) {
+    for (final spec in _playFilters) {
+      if (_playFilterSelections.containsKey(spec.field)) continue;
+      final initial = spec.initialValue(progressExtras);
+      if (initial != null) _playFilterSelections[spec.field] = initial;
+    }
+  }
+
+  void _restorePlayFiltersFromProgress(Map<String, dynamic>? progress) {
+    final extras = progress?['extras'];
+    if (extras is! Map) return;
+    final map = Map<String, dynamic>.from(extras);
+    for (final spec in _playFilters) {
+      final saved = map[spec.field]?.toString();
+      if (saved != null && spec.optionByValue(saved) != null) {
+        _playFilterSelections[spec.field] = saved;
+      }
+    }
+  }
+
+  String _playFilterValue(CatalogPlayFilterSpec spec) {
+    final hit = _playFilterSelections[spec.field];
+    if (hit != null && spec.optionByValue(hit) != null) return hit;
+    final progressExtras = _watchProgress?['extras'];
+    return spec.initialValue(
+          progressExtras is Map
+              ? Map<String, dynamic>.from(progressExtras)
+              : null,
+        ) ??
+        spec.options.first.value;
+  }
+
+  Iterable<String?> _audioCategoriesForCacheClear() sync* {
+    yield null;
+    for (final spec in _playFilters) {
+      if (spec.field != 'category') continue;
+      for (final opt in spec.options) {
+        yield opt.value;
+      }
+    }
+  }
 
   void _onWatchHistoryChanged() {
     unawaited(_loadWatchProgress());
@@ -166,7 +235,10 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
         hit = await _homeWatchHistoryProgress();
       }
       if (!mounted) return;
-      setState(() => _watchProgress = hit);
+      setState(() {
+        _watchProgress = hit;
+        if (hit != null) _restorePlayFiltersFromProgress(hit);
+      });
     } catch (_) {}
   }
 
@@ -244,7 +316,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     final open = show.open;
     if (open != null) {
       final videoId = progress['episodeVideoId']?.toString();
-      for (final audio in const <String?>[null, 'sub', 'dub']) {
+      for (final audio in _audioCategoriesForCacheClear()) {
         CatalogSourcesSessionCache.invalidate(
           CatalogSourcesSessionCache.cacheKey(
             mediaId: 0,
@@ -498,6 +570,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     final progressExtras = progress?['extras'] is Map
         ? Map<String, dynamic>.from(progress!['extras'] as Map)
         : const <String, dynamic>{};
+    final mergedExtras = {...progressExtras, ..._playFilterExtras};
     final progressVideoId = progress?['episodeVideoId']?.toString();
     final ctx = catalogPlayContextFromMeta(
       meta: _show,
@@ -507,7 +580,8 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       episodeNumber: epNum,
       videos: _videos,
       episodeVideoId: progressVideoId,
-      extras: progressExtras,
+      extras: mergedExtras,
+      audioCategory: catalogPlayAudioCategory(_playFilterSelections),
       startPosition: _startPositionForEpisode(epNum),
     );
     await runHubPlayFromContext(context: context, ctx: ctx);
@@ -535,6 +609,8 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       season: _selectedSeason,
       episodeNumber: _selectedEpisode,
       videos: _videos,
+      extras: _playFilterExtras,
+      audioCategory: catalogPlayAudioCategory(_playFilterSelections),
     );
     unawaited(openHubSourcesFromContext(context: context, ctx: ctx));
   }
@@ -612,12 +688,24 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     final hasClearableProgress = _hasClearableProgress;
     final trailers = _trailers;
     final hasTrailers = trailers.isNotEmpty;
+    final isUpcoming =
+        (show.status ?? '').toUpperCase() == 'NOT_YET_RELEASED';
     var tvIndex = 0;
     final playIndex = tvIndex++;
     final sourcesIndex = showCatalogSources ? tvIndex++ : null;
     final clearIndex = hasClearableProgress ? tvIndex++ : null;
     final trailerIndex = hasTrailers ? tvIndex++ : null;
     final listIndex = listTarget != null ? tvIndex++ : null;
+    final playFilters = _playFilters
+        .where((f) => f.style == 'grouped' && f.options.length >= 2)
+        .toList();
+    final showPlayFilters = !isUpcoming && playFilters.isNotEmpty;
+    final playFilterIndex = showPlayFilters ? tvIndex : null;
+    if (showPlayFilters) {
+      for (final f in playFilters) {
+        tvIndex += f.options.length;
+      }
+    }
     final heroActionCount = tvIndex;
 
     final episodePicker = hasEpisodes
@@ -672,8 +760,6 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
         ? (progress?['durationMs'] as num?)?.toInt()
         : null;
 
-    final isUpcoming =
-        (show.status ?? '').toUpperCase() == 'NOT_YET_RELEASED';
     final firstMetaFocusUp = tvFocus ? _revealedDetailsHeroPlayFocus : null;
 
     final packSections = buildHubDetailRailSections(
@@ -806,6 +892,26 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
                   tvItemIndexStart: listIndex!,
                   onUpEdge: heroPopUp,
                 ),
+              ],
+              if (showPlayFilters) ...[
+                const SizedBox(width: 10),
+                for (var i = 0; i < playFilters.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 10),
+                  CatalogKitGroupedPlayFilter(
+                    spec: playFilters[i],
+                    selected: _playFilterValue(playFilters[i]),
+                    onSelected: (value) => setState(
+                      () =>
+                          _playFilterSelections[playFilters[i].field] = value,
+                    ),
+                    tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                    tvItemIndexStart: playFilterIndex! +
+                        playFilters
+                            .take(i)
+                            .fold<int>(0, (n, f) => n + f.options.length),
+                    onUpEdge: heroPopUp,
+                  ),
+                ],
               ],
             ],
           ),

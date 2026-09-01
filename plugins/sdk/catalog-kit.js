@@ -614,3 +614,12 @@ function kitRow(id, opts) {
   return Object.assign({ type: 'kit.row', id: id }, o);
 }
 
+// Pack `filters` action — details hero play row (`play[]` in filters payload).
+function playFilterGrouped(field, options, opts) {
+  var o = opts && typeof opts === 'object' ? opts : {};
+  return Object.assign(
+    { field: field, style: 'grouped', options: options || [] },
+    o,
+  );
+}
+

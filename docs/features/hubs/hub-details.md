@@ -27,7 +27,7 @@ From **Home**, **Anime**, or **Asian Drama**:
 - **Episodes** — select a season (multi-season franchises) or episode; hero **Play** applies to the selected episode. Mark watched at ≥85% or via right-click / double-click on episode cards.
 - **My List** — glass **+** with Plan to Watch / Watching / … (Simkl when connected and ids resolve).
 - **Pack rails** — Characters, Staff, Related, Trailers, recommendations — whatever the pack returns after enrich.
-- **Anime only** — **SUB** / **DUB** toggle before play; filters Sources and provider resolve.
+- **Play filters** — when the pack’s `filters` action declares `play[]` grouped choices (e.g. SUB / DUB on Anime), they render on the details hero and flow into green Play and Sources.
 - **Resume / clear** — trash next to **Resume** clears watch progress and cached stream URLs for that title.
 
 ## Hub-specific play

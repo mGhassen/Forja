@@ -15,6 +15,7 @@ CatalogPlayContext catalogPlayContextFromMeta({
   String? episodeVideoId,
   List<CatalogVideo>? videos,
   Map<String, dynamic> extras = const {},
+  String? audioCategory,
   Duration? startPosition,
   Set<String>? selectedPluginIds,
 }) {
@@ -52,7 +53,7 @@ CatalogPlayContext catalogPlayContextFromMeta({
     episode: isTv ? epNum : (isMovie ? null : epNum),
     malId: malId,
     episodeVideoIdByNumber: episodeIds,
-    audioCategory: extras['category']?.toString(),
+    audioCategory: audioCategory ?? extras['category']?.toString(),
     hubEpisodes: isTv
         ? hubEpisodesFromCatalogMeta(meta.copyWith(videos: vids))
         : null,

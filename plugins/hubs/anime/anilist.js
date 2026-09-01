@@ -453,6 +453,18 @@ function extract(ctx) {
         films: { op: 'eq', field: 'format', value: 'MOVIE' },
         series: { op: 'eq', field: 'format_not', value: 'MOVIE' },
       },
+      play: [
+        {
+          id: 'audio',
+          field: 'category',
+          style: 'grouped',
+          default: 'sub',
+          options: [
+            { id: 'sub', label: 'SUB', value: 'sub', icon: 'subtitles' },
+            { id: 'dub', label: 'DUB', value: 'dub', icon: 'mic' },
+          ],
+        },
+      ],
     }, { maxAge: 86400 });
   }
   if (action === 'details') {

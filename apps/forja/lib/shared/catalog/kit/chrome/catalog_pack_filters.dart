@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/filter.dart';
+import 'package:forja/shared/catalog/kit/details/catalog_play_filters.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -55,6 +56,10 @@ class CatalogPackFiltersRegistry {
     ];
   }
 
+  static List<CatalogPlayFilterSpec> playFiltersFor(String pluginId) {
+    return (_byPlugin[pluginId] ?? _PackFilters.empty).play;
+  }
+
   static List<
       ({
         String id,
@@ -99,6 +104,7 @@ class _PackFilters {
     required this.fields,
     required this.media,
     required this.genreRows,
+    required this.play,
   });
 
   final List<_FilterField> fields;
@@ -110,11 +116,13 @@ class _PackFilters {
         List<int> movieGenres,
         List<int> tvGenres,
       })> genreRows;
+  final List<CatalogPlayFilterSpec> play;
 
   static const empty = _PackFilters(
     fields: [],
     media: _MediaFilters.empty,
     genreRows: [],
+    play: [],
   );
 
   factory _PackFilters.fromJson(Map<String, dynamic> json) {
@@ -145,6 +153,15 @@ class _PackFilters {
         ));
       }
     }
+    final play = <CatalogPlayFilterSpec>[];
+    final rawPlay = json['play'];
+    if (rawPlay is List) {
+      for (final row in rawPlay) {
+        if (row is! Map) continue;
+        play.add(CatalogPlayFilterSpec.fromJson(Map<String, dynamic>.from(row)));
+      }
+    }
+
     return _PackFilters(
       fields: fields,
       media: _MediaFilters.fromJson(
@@ -153,6 +170,7 @@ class _PackFilters {
             : const {},
       ),
       genreRows: genreRows,
+      play: play,
     );
   }
 

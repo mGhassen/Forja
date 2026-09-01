@@ -202,6 +202,66 @@ void main() {
     });
   });
 
+  group('Live sport capability toggles', () {
+    late PluginRegistry registry;
+
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      registry = PluginRegistry.instance;
+    });
+
+    test('opt-in site activates when user enables catalog in Settings', () async {
+      const sourceUrl = 'https://example.com/live/manifest.json';
+      final plugin = EnginePlugin.fromJson({
+        'id': 'watchfooty',
+        'name': 'WatchFooty',
+        'entry': 'watchfooty.js',
+        'kind': 'http',
+        'enabled': false,
+        'types': ['live_sport'],
+        'capabilities': ['catalog', 'resolve'],
+        'config': {
+          'catalogEnabled': false,
+          'resolveEnabled': false,
+        },
+      });
+      final pack = EnginePack(
+        sourceUrl: sourceUrl,
+        packId: 'forjahq-live',
+        name: 'Live',
+        version: '1.0.0',
+        plugins: [plugin],
+        prelude: '',
+        enabled: true,
+      );
+
+      expect(
+        await registry.isLiveCapabilityActive(
+          pack: pack,
+          plugin: plugin,
+          capability: LiveSportCapabilities.catalog,
+        ),
+        isFalse,
+      );
+
+      await registry.setLiveCapabilityEnabled(
+        sourceUrl: sourceUrl,
+        pluginId: plugin.id,
+        capability: LiveSportCapabilities.catalog,
+        enabled: true,
+      );
+
+      expect(
+        await registry.isLiveCapabilityActive(
+          pack: pack,
+          plugin: plugin,
+          capability: LiveSportCapabilities.catalog,
+        ),
+        isTrue,
+      );
+    });
+  });
+
   group('PluginRegistry keys and semver', () {
     test('urlHash is stable and pack-scoped script keys differ by URL', () {
       const a = 'https://a.example/manifest.json';

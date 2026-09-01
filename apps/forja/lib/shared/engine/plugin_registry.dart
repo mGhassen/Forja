@@ -1106,10 +1106,13 @@ class PluginRegistry {
     required EnginePlugin plugin,
     required String capability,
   }) async {
-    if (!pack.enabled || !plugin.enabled) return false;
+    if (!pack.enabled) return false;
     if (!plugin.isLiveSportPlugin) {
+      if (!plugin.enabled) return false;
       return pack.isPluginActive(plugin);
     }
+    // Opt-in live sites (WatchFooty, TimStreams, …): manifest `enabled: false`
+    // means default-off via catalogEnabled/resolveEnabled — not pack removal.
     return liveCapabilityEnabled(
       sourceUrl: pack.sourceUrl,
       plugin: plugin,
