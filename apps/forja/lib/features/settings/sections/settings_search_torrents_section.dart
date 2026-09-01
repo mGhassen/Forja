@@ -37,6 +37,17 @@ class SettingsSearchTorrentsSection extends ConsumerWidget {
         SettingsGroup(
           label: 'Torrent search',
           children: [
+            if (!TorrentSearchCatalog.hasInstalled)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
+                child: Text(
+                  'Install the ForjaHQ Torrent pack under Forja plugins above '
+                  'and enable indexers per plugin.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: ForjaShellColors.textSecondary,
+                      ),
+                ),
+              ),
             settingsFocusableDropdown(
               context,
               'Default Sort Order',
@@ -57,42 +68,6 @@ class SettingsSearchTorrentsSection extends ConsumerWidget {
                 }
               },
             ),
-          ],
-        ),
-        SettingsGroup(
-          label: 'Torrent providers',
-          children: [
-            if (!TorrentSearchCatalog.hasInstalled)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
-                child: Text(
-                  'Install the ForjaHQ Torrent pack under Settings → Sources → Forja '
-                  '(plugins/torrent/manifest.json) to enable indexer search.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: ForjaShellColors.textSecondary,
-                      ),
-                ),
-              )
-            else
-              for (final id in TorrentSearchProviders.all)
-                settingsFocusableToggle(
-                  context,
-                  TorrentSearchProviders.label(id),
-                  id == TorrentSearchProviders.torrentio
-                      ? 'IMDb search when available on details.'
-                      : 'Include results from this indexer.',
-                  snap.enabledProviders.contains(id),
-                  (val) async {
-                    await settings.setTorrentProviderEnabled(id, val);
-                    final next = List<String>.from(snap.enabledProviders);
-                    if (val) {
-                      if (!next.contains(id)) next.add(id);
-                    } else {
-                      next.remove(id);
-                    }
-                    notifier.patch((s) => s.copyWith(enabledProviders: next));
-                  },
-                ),
           ],
         ),
         SettingsGroup(

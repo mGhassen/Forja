@@ -393,9 +393,12 @@ class EngineService {
   }) async {
     final packs = await listPacks();
     final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
-    if (hit == null ||
-        !hit.pack.isPluginActive(hit.plugin) ||
-        !hit.plugin.isTorrent) {
+    if (hit == null) {
+      debugPrint('[engine] torrent search $pluginId: not installed');
+      return [];
+    }
+    if (!hit.pack.isPluginActive(hit.plugin) || !hit.plugin.isTorrent) {
+      debugPrint('[engine] torrent search $pluginId: pack/plugin off');
       return [];
     }
     final plugin = hit.plugin;
@@ -416,14 +419,20 @@ class EngineService {
         sourceUrl: hit.pack.sourceUrl,
         packPrelude: hit.pack.prelude,
       );
-      if (code == null || code.isEmpty) return [];
+      if (code == null || code.isEmpty) {
+        debugPrint(
+          '[engine] torrent search $pluginId: script missing '
+          '(${hit.pack.sourceUrl})',
+        );
+        return [];
+      }
     }
 
     final rt = runtime ?? EngineRuntime.fork();
     final owned = runtime == null;
     try {
       await rt.loadPlugin(pluginId: plugin.id, code: code);
-      return rt.searchTorrent(
+      final rows = await rt.searchTorrent(
         pluginId: plugin.id,
         pluginName: plugin.name,
         query: query,
@@ -433,6 +442,8 @@ class EngineService {
         config: config,
         isCancelled: isCancelled,
       );
+      debugPrint('[engine] torrent search $pluginId: ${rows.length} rows');
+      return rows;
     } catch (e) {
       debugPrint('[engine] torrent search $pluginId failed: $e');
       return [];

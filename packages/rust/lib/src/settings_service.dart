@@ -70,7 +70,6 @@ class SettingsService {
   static const String _productAnalyticsEnabledKey =
       'product_analytics_enabled';
   static const String _sortPreferenceKey = 'sort_preference';
-  static const String _enabledTorrentProvidersKey = 'enabled_torrent_providers';
   static const String _useDebridKey = 'use_debrid_for_streams';
   static const String _debridServiceKey = 'debrid_service';
   static const String _stremioAddonsKey = 'stremio_addons';
@@ -1150,48 +1149,6 @@ class SettingsService {
   Future<void> setSortPreference(String preference) async =>
       kvSetString(_sortPreferenceKey, preference);
 
-  /// Enabled torrent indexer ids from the installed ForjaHQ Torrent pack.
-  Future<List<String>> getEnabledTorrentProviders() async {
-    final installed = TorrentSearchProviders.all;
-    if (installed.isEmpty) return const [];
-    final raw = await kvGetString(_enabledTorrentProvidersKey);
-    if (raw == null || raw.trim().isEmpty) {
-      return List<String>.from(installed);
-    }
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is List) {
-        final ids = decoded
-            .map((e) => e.toString())
-            .where((id) => installed.contains(id))
-            .toList();
-        if (ids.isNotEmpty) return ids;
-      }
-    } catch (_) {}
-    return List<String>.from(installed);
-  }
-
-  Future<void> setEnabledTorrentProviders(List<String> ids) async {
-    final installed = TorrentSearchProviders.all.toSet();
-    if (installed.isEmpty) {
-      await kvSetString(_enabledTorrentProvidersKey, '[]');
-      return;
-    }
-    final filtered = ids.where(installed.contains).toList();
-    await kvSetString(_enabledTorrentProvidersKey, jsonEncode(filtered));
-  }
-
-  Future<void> setTorrentProviderEnabled(String id, bool enabled) async {
-    if (!TorrentSearchProviders.all.contains(id)) return;
-    final current = await getEnabledTorrentProviders();
-    if (enabled) {
-      if (!current.contains(id)) current.add(id);
-    } else {
-      current.remove(id);
-    }
-    await setEnabledTorrentProviders(current);
-  }
-
   Future<bool> useDebridForStreams() async => useDebridForStreamsSync();
 
   /// Sync — storage is sync under the hood; memoized after first read.
@@ -1938,7 +1895,6 @@ class SettingsService {
         await isP2pStreamingAcknowledged();
     for (final key in [
       _sortPreferenceKey,
-      _enabledTorrentProvidersKey,
       _debridServiceKey,
       _externalPlayerKey,
       _jackettBaseUrlKey,
@@ -2035,7 +1991,6 @@ class SettingsService {
     }
     for (final key in [
       _sortPreferenceKey,
-      _enabledTorrentProvidersKey,
       _debridServiceKey,
       _externalPlayerKey,
       _jackettBaseUrlKey,

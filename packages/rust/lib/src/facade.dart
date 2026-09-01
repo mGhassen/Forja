@@ -349,7 +349,6 @@ abstract final class Engine {
     'forja_iptv_groups',
     'forja_iptv_portal_meta',
     'sort_preference',
-    'enabled_torrent_providers',
     'debrid_service',
     'external_player',
     'jackett_base_url',
@@ -451,7 +450,6 @@ abstract final class Engine {
 
       for (final k in const [
         'sort_preference',
-    'enabled_torrent_providers',
         'debrid_service',
         'external_player',
         'jackett_base_url',

@@ -25,11 +25,4 @@ void main() {
     expect(m['error'], 'cancelled');
   });
 
-  test('search torrents job returns JSON array', () async {
-    final raw = await EngineJobs.run(
-      EngineAsyncJob.searchTorrents,
-      {'query': 'ubuntu'},
-    );
-    expect(jsonDecode(raw), isA<List>());
-  });
 }

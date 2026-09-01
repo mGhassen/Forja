@@ -34,7 +34,6 @@ static JOBS: LazyLock<Mutex<JobStore>> = LazyLock::new(|| {
 #[derive(Clone, Copy, Debug)]
 pub enum JobKind {
     StremioHttpGet = 2,
-    SearchTorrents = 4,
     HttpGet = 5,
     HttpPost = 6,
     IptvProbeStream = 7,
@@ -169,10 +168,6 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
             })
             .await
             .map_err(|e| e.to_string())?
-        }
-        k if k == JobKind::SearchTorrents as u32 => {
-            // Torrent indexer search runs in Dart via JS plugins (ForjaHQ Torrent pack).
-            Ok("[]".into())
         }
         k if k == JobKind::HttpGet as u32 => {
             let req: HttpReq = serde_json::from_str(payload_json).map_err(|e| e.to_string())?;

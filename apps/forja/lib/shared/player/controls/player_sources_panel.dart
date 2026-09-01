@@ -9,6 +9,7 @@ import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/playback/torrent_js_search.dart';
@@ -433,8 +434,35 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   @override
   void initState() {
     super.initState();
+    PluginRegistry.changeNotifier.addListener(_onTorrentPackChanged);
     _seedOptimisticChrome();
     unawaited(_bootstrap());
+  }
+
+  void _onTorrentPackChanged() {
+    unawaited(_refreshTorrentProvidersFromCatalog(research: true));
+  }
+
+  /// Re-read installed torrent indexers after pack install/toggle.
+  Future<void> _refreshTorrentProvidersFromCatalog({bool research = false}) async {
+    if (!mounted) return;
+    await syncTorrentSearchCatalog();
+    final enabled = enabledTorrentSearchPluginIds();
+    if (!mounted) return;
+    final hadProviders = _enabledTorrentProviders.isNotEmpty;
+    setState(() {
+      _enabledTorrentProviders = enabled;
+      if (_showsTorrents &&
+          TorrentSearchProviders.isNoneChip(_selectedSourceId) &&
+          enabled.isNotEmpty) {
+        _selectedSourceId = TorrentSearchProviders.allId;
+      }
+    });
+    if (!research || !_showsTorrents) return;
+    if (!hadProviders && enabled.isNotEmpty) {
+      _torrentFetchedProviderIds.clear();
+      unawaited(_runTorrentSearch(force: true));
+    }
   }
 
   /// Sync first frame: kind tabs + session UI/stream cache. No prefs awaits.
@@ -541,6 +569,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   @override
   void dispose() {
+    PluginRegistry.changeNotifier.removeListener(_onTorrentPackChanged);
     _savePanelUiCache();
     _searchGen++;
     _stremioGen++;
@@ -855,7 +884,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final jackett = await _settings.isJackettConfigured();
     final prowlarr = await _settings.isProwlarrConfigured();
     await syncTorrentSearchCatalog();
-    final enabledProviders = await _settings.getEnabledTorrentProviders();
+    final enabledProviders = enabledTorrentSearchPluginIds();
     final lanReady = await PlaySourceEffective.lanDesktopReady();
     final torrentOn = await PlaySourceEffective.torrent(_settings, lanReady);
     final stremioOn = await PlaySourceEffective.stremio(_settings, lanReady);
@@ -1935,13 +1964,24 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   Future<void> _runTorrentSearch({bool force = false}) async {
+    await syncTorrentSearchCatalog();
+    final freshEnabled = enabledTorrentSearchPluginIds();
+    if (!mounted) return;
+    if (freshEnabled.length != _enabledTorrentProviders.length ||
+        !_enabledTorrentProviders.toSet().containsAll(freshEnabled)) {
+      setState(() => _enabledTorrentProviders = freshEnabled);
+    }
     if (TorrentSearchProviders.isNoneChip(_selectedSourceId)) {
-      _searchGen++;
-      setState(() {
-        _searching = false;
-        _torrentInFlightProviderIds.clear();
-      });
-      return;
+      if (_enabledTorrentProviders.isNotEmpty) {
+        setState(() => _selectedSourceId = TorrentSearchProviders.allId);
+      } else {
+        _searchGen++;
+        setState(() {
+          _searching = false;
+          _torrentInFlightProviderIds.clear();
+        });
+        return;
+      }
     }
     final gen = ++_searchGen;
     if (force) {

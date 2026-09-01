@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **9 / 10** acceptance |
+| **Progress** | **9 / 9** components · **10 / 11** acceptance |
 | **Current slice** | JS torrent pack shipped — desktop smoke R54-A06 remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -45,6 +45,7 @@
 | 8 | R54-A08 | While an indexer is still searching, that provider chip shows the same animated `…` as the Torrents tab | ✅ |
 | 9 | R54-A09 | App search uses JS torrent plugins when the ForjaHQ Torrent pack is installed | ✅ |
 | 10 | R54-A10 | Title filter, normalize, and magnet playback stay on Rust (`filter_torrents`, torrent engine) | ✅ |
+| 11 | R54-A11 | Indexer on/off only in ForjaHQ Torrent pack expansion — duplicate Settings torrent providers group removed | ✅ |
 
 ---
 
@@ -71,7 +72,7 @@ Expand Forja’s fixed 3-scraper torrent search into a checkable multi-provider 
 - Provider ids: `knaben`, `pirate_bay`, `uindex`, `torrents_csv`, `nyaa`, `yts`, `solid_torrents`, `therarbg`, `torrentio`
 - Search request JSON: `{ "query", "enabled": [...], "imdb_id"?, "season"?, "episode"? }`
 - Soft-fail per provider; empty provider → empty list, not error
-- Settings key: `enabled_torrent_providers` (JSON string array)
+- Indexer enable follows pack + per-plugin toggle (`EnginePlugin.enabled`); legacy `enabled_torrent_providers` prefs key dropped
 
 ## Related
 

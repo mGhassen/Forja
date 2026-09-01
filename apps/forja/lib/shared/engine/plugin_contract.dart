@@ -1,6 +1,8 @@
 /// Machine-readable EngineJS pack contracts — `plugins/sdk/schema/*.json`.
 library;
 
+import 'package:forja/shared/catalog/protocol.dart';
+
 /// Validates pack manifests at install time (mirrors [manifest.schema.json]).
 abstract final class PluginContract {
   static const manifestSchemaVersion = 1;
@@ -64,11 +66,9 @@ abstract final class PluginContract {
         throw FormatException('plugin $id missing entry');
       }
       final kind = plugin['kind'];
-      if (kind != null) {
-        final k = kind.toString().trim();
-        if (k.isNotEmpty && !supportedKinds.contains(k)) {
-          throw FormatException('plugin $id unsupported kind: $k');
-        }
+      final kindName = kind?.toString().trim() ?? '';
+      if (kindName.isNotEmpty && !supportedKinds.contains(kindName)) {
+        throw FormatException('plugin $id unsupported kind: $kindName');
       }
       final protocol = plugin['protocol'];
       if (protocol is num && protocol.toInt() < 1) {
@@ -77,6 +77,19 @@ abstract final class PluginContract {
       final kit = plugin['kit'];
       if (kit is num && kit.toInt() < 1) {
         throw FormatException('plugin $id kit must be >= 1');
+      }
+      if (kindName == 'catalog') {
+        if (kit is num && kit.toInt() > hostKitVersion) {
+          throw FormatException(
+            'plugin $id requires kit ${kit.toInt()} (host $hostKitVersion)',
+          );
+        }
+        if (protocol is num && protocol.toInt() > hostProtocolVersion) {
+          throw FormatException(
+            'plugin $id requires protocol ${protocol.toInt()} '
+            '(host $hostProtocolVersion)',
+          );
+        }
       }
       final nav = plugin['nav'];
       if (nav != null) {

@@ -174,7 +174,7 @@ void main() {
         );
       }
       if (u.endsWith('p1.js')) {
-        return http.Response('export default 1', 200);
+        return http.Response('function extract(ctx) { return []; }', 200);
       }
       return http.Response('nf', 404);
     });
@@ -200,7 +200,7 @@ void main() {
         sourceUrl: url,
         pluginId: 'p1',
       ),
-      'export default 1',
+      'function extract(ctx) { return []; }',
     );
     expect(seen.whereType<PluginInstallProgress>(), isNotEmpty);
     expect(PluginInstallCoordinator.instance.progress.value, isNull);
@@ -298,7 +298,7 @@ void main() {
     });
     final manifestFile = File('${hubDir.path}/manifest.json');
     final entryFile = File('${hubDir.path}/p1.js');
-    await entryFile.writeAsString('export default 2');
+    await entryFile.writeAsString('function extract(ctx) { return []; }');
     await manifestFile.writeAsString(
       jsonEncode({
         'schema': 1,

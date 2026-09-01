@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/service.dart';
 import 'package:rust/rust.dart';
 
@@ -28,6 +29,10 @@ Future<void> syncTorrentSearchCatalog() async {
   }
 }
 
+/// Enabled torrent indexer ids — pack on and per-plugin toggle in Sources → Forja.
+List<String> enabledTorrentSearchPluginIds() =>
+    List<String>.from(TorrentSearchCatalog.allIds);
+
 Future<List<Map<String, dynamic>>> searchTorrentsViaPlugins(
   String query, {
   String? imdbId,
@@ -36,9 +41,14 @@ Future<List<Map<String, dynamic>>> searchTorrentsViaPlugins(
   List<String>? enabledProviders,
 }) async {
   await syncTorrentSearchCatalog();
-  final enabled = enabledProviders ??
-      await SettingsService().getEnabledTorrentProviders();
-  if (enabled.isEmpty) return [];
+  final enabled = enabledProviders ?? enabledTorrentSearchPluginIds();
+  if (enabled.isEmpty) {
+    debugPrint(
+      '[torrent] search skipped: no enabled indexers '
+      '(installed=${TorrentSearchCatalog.allIds.length})',
+    );
+    return [];
+  }
 
   final batches = await Future.wait([
     for (final id in enabled)
@@ -69,9 +79,14 @@ Future<List<Map<String, dynamic>>> searchTorrentsProgressiveViaPlugins(
   bool Function()? isCancelled,
 }) async {
   await syncTorrentSearchCatalog();
-  final enabled = enabledProviders ??
-      await SettingsService().getEnabledTorrentProviders();
-  if (enabled.isEmpty) return [];
+  final enabled = enabledProviders ?? enabledTorrentSearchPluginIds();
+  if (enabled.isEmpty) {
+    debugPrint(
+      '[torrent] search skipped: no enabled indexers '
+      '(installed=${TorrentSearchCatalog.allIds.length})',
+    );
+    return [];
+  }
 
   bool cancelled() => isCancelled?.call() == true;
 

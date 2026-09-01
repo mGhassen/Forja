@@ -9,7 +9,6 @@ import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:forja/shared/sync/providers/account_features_provider.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shell/nav_config.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/playback/torrent_js_search.dart';
 import 'package:rust/rust.dart';
 
@@ -274,25 +273,21 @@ class SettingsTorrentSnapshot {
     required this.sortPreference,
     required this.diskCacheGb,
     required this.connectionsLimit,
-    required this.enabledProviders,
   });
 
   final String sortPreference;
   final int diskCacheGb;
   final int connectionsLimit;
-  final List<String> enabledProviders;
 
   SettingsTorrentSnapshot copyWith({
     String? sortPreference,
     int? diskCacheGb,
     int? connectionsLimit,
-    List<String>? enabledProviders,
   }) {
     return SettingsTorrentSnapshot(
       sortPreference: sortPreference ?? this.sortPreference,
       diskCacheGb: diskCacheGb ?? this.diskCacheGb,
       connectionsLimit: connectionsLimit ?? this.connectionsLimit,
-      enabledProviders: enabledProviders ?? this.enabledProviders,
     );
   }
 }
@@ -305,19 +300,12 @@ final settingsTorrentProvider =
 class SettingsTorrentNotifier extends AsyncNotifier<SettingsTorrentSnapshot> {
   @override
   Future<SettingsTorrentSnapshot> build() async {
-    void onPluginsChanged() => ref.invalidateSelf();
-    PluginRegistry.changeNotifier.addListener(onPluginsChanged);
-    ref.onDispose(
-      () => PluginRegistry.changeNotifier.removeListener(onPluginsChanged),
-    );
-
     await syncTorrentSearchCatalog();
     final s = SettingsService();
     return SettingsTorrentSnapshot(
       sortPreference: await s.getSortPreference(),
       diskCacheGb: await s.getTorrentDiskCacheGb(),
       connectionsLimit: await s.getTorrentConnectionsLimit(),
-      enabledProviders: await s.getEnabledTorrentProviders(),
     );
   }
 

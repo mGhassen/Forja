@@ -354,7 +354,7 @@ void main() {
           );
         }
         if (u.endsWith('alpha.js')) {
-          return http.Response('export default 1', 200);
+          return http.Response('function extract(ctx) { return []; }', 200);
         }
         return http.Response('not found', 404);
       });
@@ -370,7 +370,7 @@ void main() {
           sourceUrl: url,
           pluginId: 'alpha',
         ),
-        'export default 1',
+        'function extract(ctx) { return []; }',
       );
       await registry.removePack(url);
       expect(
@@ -757,7 +757,7 @@ void main() {
           );
         }
         if (u.endsWith('ok.js')) {
-          return http.Response('export default 1', 200);
+          return http.Response('function extract(ctx) { return []; }', 200);
         }
         return http.Response('', 404);
       });

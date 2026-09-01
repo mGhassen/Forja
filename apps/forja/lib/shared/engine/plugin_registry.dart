@@ -7,6 +7,7 @@ import 'package:forja/shared/catalog/cache.dart';
 import 'package:forja/shared/engine/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_contract.dart';
+import 'package:forja/shared/engine/plugin_install_validator.dart';
 import 'package:forja/shared/engine/plugin_script_disk_store.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -925,6 +926,18 @@ class PluginRegistry {
       throw Exception(
         'manifest install failed — missing scripts: ${missing.join(', ')}',
       );
+    }
+
+    try {
+      await PluginInstallValidator.validateBeforeCommit(
+        manifestUrl: manifestUrl,
+        manifest: map,
+        pack: pack,
+        scripts: scripts,
+        preludes: preludes,
+      );
+    } on FormatException catch (e) {
+      throw Exception('install validation failed: ${e.message}');
     }
 
     // Commit disk (remote only) + prefs index only after all fetches succeed.
