@@ -574,27 +574,32 @@ final enginePackUpdatesProvider =
 
 class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
   Object? _checkToken;
+  bool _initialCheckScheduled = false;
 
   @override
   EnginePackUpdatesState build() {
     ref.listen(enginePacksProvider, (_, next) {
       final packs = next.valueOrNull;
-      if (packs != null) unawaited(check(packs));
+      if (packs != null) {
+        Future.microtask(() => check(packs));
+      }
     });
     final packs = ref.watch(enginePacksProvider).valueOrNull;
-    if (packs != null && packs.isNotEmpty) {
+    if (packs != null && packs.isNotEmpty && !_initialCheckScheduled) {
+      _initialCheckScheduled = true;
       Future.microtask(() => check(packs));
     }
-    return const EnginePackUpdatesState();
+    return stateOrNull ?? const EnginePackUpdatesState();
   }
 
   Future<void> check(List<EnginePack> packs) async {
     final token = Object();
     _checkToken = token;
+    final current = stateOrNull ?? const EnginePackUpdatesState();
     state = EnginePackUpdatesState(
-      updates: state.updates,
+      updates: current.updates,
       checking: true,
-      lastChecked: state.lastChecked,
+      lastChecked: current.lastChecked,
     );
     try {
       final updates = await EngineService.instance.checkPackUpdates(packs);
@@ -606,10 +611,11 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
       );
     } catch (_) {
       if (!identical(_checkToken, token)) return;
+      final latest = stateOrNull ?? current;
       state = EnginePackUpdatesState(
-        updates: state.updates,
+        updates: latest.updates,
         checking: false,
-        lastChecked: state.lastChecked,
+        lastChecked: latest.lastChecked,
       );
     }
   }
