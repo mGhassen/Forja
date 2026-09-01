@@ -62,7 +62,7 @@ Future<List<Map<String, dynamic>>> _searchIndexersSequential({
   final resolvedImdb = normalizeTorrentImdbId(imdbId);
 
   var rt = EngineRuntime.torrentSearchFork();
-  final byMagnet = <String, Map<String, dynamic>>{};
+  final allRows = <Map<String, dynamic>>[];
   try {
     for (final id in enabled) {
       if (cancelled()) break;
@@ -86,14 +86,16 @@ Future<List<Map<String, dynamic>>> _searchIndexersSequential({
       }
       if (cancelled()) break;
       onProviderDone?.call(id);
-      TorrentSearchProviders.mergeSearchRows(byMagnet, batch);
-      onPartial?.call(List<Map<String, dynamic>>.from(byMagnet.values));
+      if (batch.isNotEmpty) {
+        onPartial?.call(batch);
+        allRows.addAll(batch);
+      }
     }
   } finally {
     rt.dispose();
   }
   if (cancelled()) return [];
-  return byMagnet.values.toList();
+  return allRows;
 }
 
 Future<List<Map<String, dynamic>>> searchTorrentsViaPlugins(

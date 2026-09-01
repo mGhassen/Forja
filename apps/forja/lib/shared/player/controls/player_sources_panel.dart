@@ -2042,13 +2042,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           season: season,
           episode: episode,
           enabledProviders: enabled,
-          replace: replace,
         );
       } else {
         await _searchForjaMovieProgressive(
           gen,
           enabledProviders: enabled,
-          replace: replace,
         );
       }
       if (!mounted || gen != _searchGen) return;
@@ -2063,6 +2061,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
   }
 
+  bool get _torrentDedupeByMagnetOnly =>
+      !TorrentSearchProviders.isAllChip(_selectedSourceId);
+
   Future<void> _finishTorrentSearch(
     int gen,
     List<TorrentResult> found, {
@@ -2071,7 +2072,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (!mounted || gen != _searchGen) return;
     setState(() {
       if (merge) {
-        _mergeTorrentResults(found);
+        _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet([
+          ..._results,
+          ...found,
+        ]);
+      } else if (_torrentDedupeByMagnetOnly) {
+        _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet(found);
       } else {
         _results = found;
       }
@@ -2086,40 +2092,27 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _requestScrollToCurrent();
   }
 
-  void _mergeTorrentResults(List<TorrentResult> batch) {
-    final byKey = <String, TorrentResult>{
-      for (final r in _results) TorrentSearchProviders.torrentResultKey(r): r,
-    };
-    for (final r in batch) {
-      if (r.magnet.isEmpty) continue;
-      final key = TorrentSearchProviders.torrentResultKey(r);
-      final existing = byKey[key];
-      if (existing == null || r.seedersCount > existing.seedersCount) {
-        byKey[key] = r;
-      }
+  void _appendTorrentSearchBatch(List<TorrentResult> batch) {
+    if (batch.isEmpty) return;
+    if (_torrentDedupeByMagnetOnly) {
+      _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet([
+        ..._results,
+        ...batch,
+      ]);
+    } else {
+      _results = [..._results, ...batch];
     }
-    _results = byKey.values.toList();
   }
 
-  void _applyTorrentSearchPartial(
-    List<Map<String, dynamic>> batch, {
-    required bool replace,
-  }) {
+  void _applyTorrentSearchPartial(List<Map<String, dynamic>> batch) {
     if (batch.isEmpty) return;
     final next = batch.map(TorrentResult.fromJson).toList();
-    setState(() {
-      if (replace) {
-        _results = next;
-      } else {
-        _mergeTorrentResults(next);
-      }
-    });
+    setState(() => _appendTorrentSearchBatch(next));
   }
 
   Future<void> _searchForjaMovieProgressive(
     int gen, {
     List<String>? enabledProviders,
-    bool replace = true,
   }) async {
     final query = _year.isNotEmpty
         ? '${widget.movie.title} $_year'
@@ -2134,7 +2127,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       onPartial: (batch) {
         if (closed) return;
         if (!mounted || gen != _searchGen) return;
-        _applyTorrentSearchPartial(batch, replace: replace);
+        _applyTorrentSearchPartial(batch);
       },
     );
     closed = true;
@@ -2145,10 +2138,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     )).map(TorrentResult.fromJson).toList();
     if (!mounted || gen != _searchGen) return;
     setState(() {
-      if (replace) {
-        _results = filtered;
+      if (_torrentDedupeByMagnetOnly) {
+        _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet(filtered);
       } else {
-        _mergeTorrentResults(filtered);
+        _results = filtered;
       }
     });
   }
@@ -2158,7 +2151,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required int season,
     required int episode,
     List<String>? enabledProviders,
-    bool replace = true,
   }) async {
     final s = season.toString().padLeft(2, '0');
     final e = episode.toString().padLeft(2, '0');
@@ -2171,21 +2163,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
     void paintRaw(int seq) {
       if (!mounted || gen != _searchGen || closed || seq != paintSeq) return;
-      final combined = <String, TorrentResult>{};
-      for (final raw in episodeSoFar) {
-        final r = TorrentResult.fromJson(raw);
-        if (r.magnet.isNotEmpty) combined[r.magnet] = r;
-      }
-      for (final raw in seasonSoFar) {
-        final r = TorrentResult.fromJson(raw);
-        combined.putIfAbsent(r.magnet, () => r);
-      }
-      if (combined.isEmpty) return;
+      final next = [
+        ...episodeSoFar.map(TorrentResult.fromJson),
+        ...seasonSoFar.map(TorrentResult.fromJson),
+      ];
+      if (next.isEmpty) return;
       setState(() {
-        if (replace) {
-          _results = combined.values.toList();
+        if (_torrentDedupeByMagnetOnly) {
+          _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet(next);
         } else {
-          _mergeTorrentResults(combined.values.toList());
+          _results = next;
         }
       });
     }
@@ -2201,7 +2188,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         onProviderDone: onDone,
         onPartial: (batch) {
           if (closed) return;
-          seasonSoFar = batch;
+          seasonSoFar = [...seasonSoFar, ...batch];
           paintRaw(++paintSeq);
         },
       ),
@@ -2215,7 +2202,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         onProviderDone: onDone,
         onPartial: (batch) {
           if (closed) return;
-          episodeSoFar = batch;
+          episodeSoFar = [...episodeSoFar, ...batch];
           paintRaw(++paintSeq);
         },
       ),
@@ -2235,18 +2222,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       requiredSeason: season,
     )).map(TorrentResult.fromJson);
     if (!mounted || gen != _searchGen) return;
-    final combined = <String, TorrentResult>{};
-    for (final r in episodeFiltered) {
-      combined[r.magnet] = r;
-    }
-    for (final r in seasonFiltered) {
-      combined.putIfAbsent(r.magnet, () => r);
-    }
+    final combined = [
+      ...episodeFiltered,
+      ...seasonFiltered,
+    ];
     setState(() {
-      if (replace) {
-        _results = combined.values.toList();
+      if (_torrentDedupeByMagnetOnly) {
+        _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet(combined);
       } else {
-        _mergeTorrentResults(combined.values.toList());
+        _results = combined;
       }
     });
   }

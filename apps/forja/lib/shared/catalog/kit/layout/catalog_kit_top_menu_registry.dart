@@ -93,16 +93,20 @@ abstract final class CatalogKitTopMenuRegistry {
     if (_handles.remove(id) != null) revision.value++;
   }
 
-  /// Body inset so [kit.list] clears the overlaid shell top bar.
+  /// Body inset so [kit.list] clears the overlaid shell top bar
+  /// ([CatalogKitTopBar] includes [MediaQuery] top padding via [SafeArea]).
   static double bodyTopInset(BuildContext context, String? tabId) {
     final handle = handleFor(tabId);
     if (handle == null) return 0;
-    if (handle.menuSpec != null && handle.tabsSpec != null) {
-      return ShellTokens.kitTopBarTwoRowHeight;
-    }
-    if (handle.menuSpec != null) return ShellTokens.homeTopBarHeight;
-    if (handle.tabsSpec != null) return ShellTokens.kitTopBarStatusRowHeight;
-    return 0;
+    final safeTop = MediaQuery.paddingOf(context).top;
+    final barHeight = switch (handle) {
+      _ when handle.menuSpec != null && handle.tabsSpec != null =>
+        ShellTokens.kitTopBarTwoRowHeight,
+      _ when handle.menuSpec != null => ShellTokens.homeTopBarHeight,
+      _ when handle.tabsSpec != null => ShellTokens.kitTopBarStatusRowHeight,
+      _ => 0.0,
+    };
+    return safeTop + barHeight;
   }
 
   @visibleForTesting

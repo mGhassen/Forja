@@ -134,6 +134,7 @@ class _CatalogShellState extends State<CatalogShell>
     CatalogVerticalFiltersRegistry.revision.addListener(
       _verticalFiltersRevisionListener!,
     );
+    CatalogKitTopMenuRegistry.revision.addListener(_onKitTopMenuRevision);
     EngineService.changeNotifier.addListener(_onEnginePackChanged);
     unawaited(_loadLayout());
   }
@@ -143,6 +144,11 @@ class _CatalogShellState extends State<CatalogShell>
     _chromeListenable = catalogChromeFilterListenable(widget.tabId);
     _chromeFilterEpoch = catalogChromeFilterEpoch(widget.tabId);
     _chromeListenable?.addListener(_onChromeFilterChanged);
+  }
+
+  void _onKitTopMenuRevision() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   /// Pack install / refresh / enable — keep-alive shell must drop memoized rails.
@@ -161,6 +167,7 @@ class _CatalogShellState extends State<CatalogShell>
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     CatalogVerticalFiltersRegistry.unregister(_pageKey);
     CatalogKitTopMenuRegistry.unregister(_pageKey);
+    CatalogKitTopMenuRegistry.revision.removeListener(_onKitTopMenuRevision);
     if (_verticalFiltersRevisionListener != null) {
       CatalogVerticalFiltersRegistry.revision.removeListener(
         _verticalFiltersRevisionListener!,
@@ -382,18 +389,11 @@ class _CatalogShellState extends State<CatalogShell>
     if (!CatalogKitTypes.isCompositionRoot(root)) return null;
     final body = _buildLayoutWidget(root, tvOrders: tvOrders);
     if (body == null) return null;
-    final topInset = CatalogKitTopMenuRegistry.bodyTopInset(context, _pageKey);
     return CatalogLayoutScope(
       selections: Map.unmodifiable(_layoutSelections),
       widgetSpecs: _layoutWidgetSpecs,
       onSelect: _onLayoutTabSelect,
-      child: TvFocusGraph(
-        tabId: _pageKey,
-        child: Padding(
-          padding: EdgeInsets.only(top: topInset),
-          child: body,
-        ),
-      ),
+      child: TvFocusGraph(tabId: _pageKey, child: body),
     );
   }
 

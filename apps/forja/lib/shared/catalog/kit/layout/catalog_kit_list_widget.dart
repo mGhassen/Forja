@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/catalog/kit/cards/hub_poster_card.dart';
+import 'package:forja/shared/catalog/kit/layout/catalog_kit_top_menu_registry.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_layout_scope.dart';
 import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/kit/sources/catalog_kit_list_source.dart';
@@ -89,6 +90,11 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
     return _focusRow(rowId, idx);
   }
 
+  double _hoistedTopBarInset(BuildContext context) {
+    if (!CatalogKitTopMenuRegistry.hasTopMenu(widget.tabId)) return 0;
+    return CatalogKitTopMenuRegistry.bodyTopInset(context, widget.tabId);
+  }
+
   void _focusEntry() {
     if (_focusRow(widget.kindMenuId, 0)) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -145,7 +151,11 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
   ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final grid = _homeGrid(context, constraints.maxWidth);
+        final grid = _homeGrid(
+          context,
+          constraints.maxWidth,
+          chromeTop: _hoistedTopBarInset(context),
+        );
         return TvGrid(
           tabId: widget.tabId,
           rowId: widget.gridRowId,
@@ -225,7 +235,11 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
   Widget _loadingGrid(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final grid = _homeGrid(context, constraints.maxWidth);
+        final grid = _homeGrid(
+          context,
+          constraints.maxWidth,
+          chromeTop: _hoistedTopBarInset(context),
+        );
         return homeLoadingShimmer(
           GridView.builder(
             padding: EdgeInsets.fromLTRB(
@@ -267,40 +281,43 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
         }
       }
     }
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.bookmark_border_rounded,
-              size: 40,
-              color: ForjaShellColors.textSecondary.withValues(alpha: 0.45),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              filtered && kindLabel != null
-                  ? 'Nothing in $kindLabel'
-                  : 'Nothing in this list',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+    return Padding(
+      padding: EdgeInsets.only(top: _hoistedTopBarInset(context)),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.bookmark_border_rounded,
+                size: 40,
+                color: ForjaShellColors.textSecondary.withValues(alpha: 0.45),
               ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              filtered
-                  ? 'Tap a kind tab again to show everything'
-                  : 'Tap + on a title to set Plan to Watch / Watching / On Hold / Completed / Dropped',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: ForjaShellColors.textSecondary,
-                fontSize: 13,
+              const SizedBox(height: 14),
+              Text(
+                filtered && kindLabel != null
+                    ? 'Nothing in $kindLabel'
+                    : 'Nothing in this list',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text(
+                filtered
+                    ? 'Tap a kind tab again to show everything'
+                    : 'Tap + on a title to set Plan to Watch / Watching / On Hold / Completed / Dropped',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -327,7 +344,11 @@ class _HomeGrid {
   final double topPad;
 }
 
-_HomeGrid _homeGrid(BuildContext context, double maxWidth) {
+_HomeGrid _homeGrid(
+  BuildContext context,
+  double maxWidth, {
+  double chromeTop = 0,
+}) {
   final cardW = shellMovieCardWidth(context);
   final cardH = shellMovieCardHeight(context);
   final gap = shellMovieCardRowGap(context);
@@ -337,7 +358,8 @@ _HomeGrid _homeGrid(BuildContext context, double maxWidth) {
   final columns = math.max(1, ((inner + gap) / (cardW + gap)).floor());
   final gridW = columns * cardW + (columns - 1) * gap;
   final rightPad = math.max(trailing, maxWidth - leading - gridW);
-  final topPad = cardH * (ShellTokens.focusActiveScale - 1) / 2 + 4;
+  final topPad =
+      chromeTop + cardH * (ShellTokens.focusActiveScale - 1) / 2 + 4;
   return _HomeGrid(
     columns: columns,
     cardW: cardW,
