@@ -111,27 +111,6 @@ async function unlockEmbed(ctx, url, cfg) {
   }
 
   if (isSportsEmbedUrl(raw)) {
-    if (ctx.live && typeof ctx.live.sportsEmbedUnlock === 'function') {
-      try {
-        var unlockedUrl = await ctx.live.sportsEmbedUnlock(raw);
-        if (unlockedUrl) {
-          var origin = '';
-          try {
-            origin = new URL(raw).origin;
-          } catch (_) {}
-          return {
-            url: String(unlockedUrl),
-            headers: {
-              Referer: raw,
-              Origin: origin || 'https://sportsembed.su',
-              'User-Agent': ua(),
-            },
-            directPlayback: preferDirectPlayback(unlockedUrl),
-          };
-        }
-      } catch (_) {}
-    }
-
     var mapped = embedStUrlFromSportsEmbed(raw);
     if (mapped) {
       try {

@@ -259,30 +259,6 @@ async function resolveWatchfootyEmbed(ctx, embed) {
 
   if (!isSportsEmbedUrl(url)) return [];
 
-  if (ctx.live && typeof ctx.live.sportsEmbedUnlock === 'function') {
-    try {
-      var unlockedUrl = await ctx.live.sportsEmbedUnlock(url);
-      if (unlockedUrl) {
-        var origin = '';
-        try {
-          origin = new URL(url).origin;
-        } catch (_) {}
-        return [
-          {
-            url: String(unlockedUrl),
-            headers: {
-              Referer: url,
-              Origin: origin || 'https://sportsembed.su',
-              'User-Agent': ua(),
-            },
-            directPlayback: preferDirectPlayback(unlockedUrl),
-            viewers: catalogViewers,
-          },
-        ];
-      }
-    } catch (_) {}
-  }
-
   var mapped = embedStUrlFromSportsEmbed(url);
   if (mapped) {
     try {

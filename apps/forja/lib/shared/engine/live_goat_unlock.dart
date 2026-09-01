@@ -108,9 +108,8 @@ class LiveGoatUnlock {
 
   /// Unlock watchfooty.st sportsembed mirrors to a playable HLS URL.
   ///
-  /// Primary path: sportsembed `POST /api/get` + stream-lock.wasm (Node).
-  /// Fallback: map delta/echo slots onto embed.st GOAT. Never returns an HTML
-  /// embed URL — callers must not hand sportsembed pages to the IPTV player.
+  /// sportsembed hosts only mirror embed.st slots — map onto embed.st GOAT
+  /// (same as PPV/streamed). Never returns an HTML embed URL.
   static Future<({String url, Map<String, String> headers})?>
   resolveWatchfootyEmbed({required String embedUrl}) async {
     final embed = embedUrl.trim();
@@ -125,9 +124,6 @@ class LiveGoatUnlock {
       );
     }
     if (!isSportsEmbedUrl(embed)) return null;
-
-    final sports = await resolveSportsEmbed(embedUrl: embed);
-    if (sports != null) return sports;
 
     final mapped = embedStUrlFromSportsEmbed(embed);
     if (mapped != null) {
@@ -243,7 +239,7 @@ class LiveGoatUnlock {
       );
       return [for (final row in unlocked) ?row];
     } catch (e) {
-      debugPrint('[LiveSportsEmbed] match resolve failed: $e');
+      debugPrint('[WatchFooty] match resolve failed: $e');
       return const [];
     }
   }
@@ -279,7 +275,7 @@ class LiveGoatUnlock {
         }
       }
     } catch (e) {
-      debugPrint('[LiveSportsEmbed] live list lookup failed: $e');
+      debugPrint('[WatchFooty] live list lookup failed: $e');
     }
 
     final resp = await http
@@ -289,7 +285,7 @@ class LiveGoatUnlock {
         )
         .timeout(const Duration(seconds: 45));
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
-      debugPrint('[LiveSportsEmbed] match HTTP ${resp.statusCode}');
+      debugPrint('[WatchFooty] match HTTP ${resp.statusCode}');
       return const [];
     }
     final decoded = jsonDecode(resp.body);
