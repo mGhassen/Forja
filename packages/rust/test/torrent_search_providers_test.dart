@@ -12,6 +12,24 @@ void main() {
 
   tearDown(TorrentSearchCatalog.clear);
 
+  test('none chip queries no providers; all chip queries every enabled', () {
+    const enabled = ['knaben', 'yts', 'nyaa'];
+    expect(
+      TorrentSearchProviders.enabledForChip(
+        TorrentSearchProviders.noneId,
+        enabled,
+      ),
+      isEmpty,
+    );
+    expect(
+      TorrentSearchProviders.enabledForChip(
+        TorrentSearchProviders.allId,
+        enabled,
+      ),
+      enabled,
+    );
+  });
+
   test('mergeByMagnet keeps the higher-seeder copy', () {
     final into = <String, Map<String, dynamic>>{};
     TorrentSearchProviders.mergeByMagnet(into, [

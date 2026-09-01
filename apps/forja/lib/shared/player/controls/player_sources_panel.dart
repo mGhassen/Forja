@@ -1398,7 +1398,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       'stremio' => '',
       'nuvio' => 'all_nuvio',
       'engine' => 'all_engine',
-      'torrents' => TorrentSearchProviders.noneId,
+      'torrents' => _enabledTorrentProviders.isEmpty
+          ? TorrentSearchProviders.noneId
+          : TorrentSearchProviders.allId,
       _ => TorrentSearchProviders.noneId,
     };
   }
@@ -1409,8 +1411,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _restorePanelSourceIdForKind(String kind) {
-    _selectedSourceId =
+    var id =
         _panelSourceIdByKind[kind] ?? _sourceIdForKind(kind, _streamAddons);
+    if (kind == 'torrents' &&
+        TorrentSearchProviders.isNoneChip(id) &&
+        _enabledTorrentProviders.isNotEmpty) {
+      id = TorrentSearchProviders.allId;
+    }
+    _selectedSourceId = id;
     if (kind == 'stremio') {
       _syncStremioProviderSelection();
     }

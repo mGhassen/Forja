@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/nuvio/crypto_aes.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
@@ -529,6 +530,28 @@ void main() {
       expect(url, isNotNull);
       expect(url, endsWith('plugins/torrent/manifest.json'));
       expect(File(url!).existsSync(), isTrue);
+    });
+
+    test('groupEnginePacksByKind buckets torrent slot packs', () {
+      final pack = EnginePack.fromJson(
+        {
+          'id': 'forjahq-torrent',
+          'name': 'ForjaHQ Torrent',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'knaben',
+              'name': 'Knaben',
+              'entry': 'knaben.js',
+              'kind': 'torrent',
+            },
+          ],
+        },
+        sourceUrl: '/Users/x/Forja/plugins/torrent/manifest.json',
+      );
+      final grouped = groupEnginePacksByKind([pack]);
+      expect(grouped.orderedKinds, contains(PluginRegistry.packKindTorrent));
+      expect(grouped.byKind[PluginRegistry.packKindTorrent], [pack]);
     });
 
     test('isRetiredCatalogPack detects removed split catalog manifest', () {

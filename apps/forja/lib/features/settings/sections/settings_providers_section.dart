@@ -564,11 +564,11 @@ class _SettingsProvidersSectionState
           );
           continue;
         }
-        // HTTP (VOD + Live + schedule Catalog) + hub `kind: catalog`.
+        // HTTP (VOD + Live + schedule Catalog) + hub `kind: catalog` + torrent indexers.
         // Hops stay internal.
         final panelPlugins = [
           for (final p in pack.plugins)
-            if (p.isHttp || p.isHubCatalog) p,
+            if (p.isHttp || p.isHubCatalog || p.isTorrent) p,
         ];
         if (panelPlugins.isEmpty) continue;
         final liveSportPlugins = [
