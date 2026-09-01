@@ -252,6 +252,7 @@ class PluginInstallCoordinator {
     }
 
     await registry.migrateLegacyLiveSportPacksIfNeeded();
+    await registry.ensureDevTorrentPackSeeded();
 
     final packs = await registry.listPacksRaw();
     final jobs = <({EnginePack pack, bool isUpdate, bool forceRefresh})>[];

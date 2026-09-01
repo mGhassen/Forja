@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forja.app/plugins/sdk/schema/torrent-search.schema.json",
+  "title": "Forja torrent search response",
+  "description": "Return value of torrent kind search(ctx). Host parser: runtime.dart searchTorrent.",
+  "type": "array",
+  "items": { "$ref": "torrent-row.schema.json" }
+}

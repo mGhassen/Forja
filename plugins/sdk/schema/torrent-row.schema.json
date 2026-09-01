@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forja.app/plugins/sdk/schema/torrent-row.schema.json",
+  "title": "Forja torrent search result row",
+  "description": "One row from torrent kind search(ctx). Built by torrent-kit.js row().",
+  "type": "object",
+  "required": ["name", "magnet", "seeders", "size", "source"],
+  "additionalProperties": true,
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "magnet": {
+      "type": "string",
+      "pattern": "^magnet:\\?xt=urn:btih:",
+      "minLength": 1
+    },
+    "seeders": { "type": "string" },
+    "size": { "type": "string" },
+    "source": { "type": "string", "minLength": 1 }
+  }
+}

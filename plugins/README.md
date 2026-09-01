@@ -2,7 +2,7 @@
 
 Official engine JS packs for [Forja](https://github.com/mGhassen/Forja) — maintained by **Forja Team**.
 
-**Community developers:** [DEVELOPING.md](DEVELOPING.md) — manifest schema, `extract(ctx)` API, catalog hub protocol, publishing.
+**Community developers:** [DEVELOPING.md](DEVELOPING.md) — manifest schema, `extract(ctx)` / `search(ctx)` API, catalog hub protocol. **Contracts:** [sdk/contract.json](sdk/contract.json) + [sdk/schema/](sdk/schema/).
 
 Eight packs in this tree:
 
@@ -40,5 +40,6 @@ Point each manifest at the packs in this repo (e.g. raw GitHub URLs or your own 
 | `catalog/` | Live schedule catalogs |
 | `iptv/` | IPTV feature packs (VOD details — not shell hub tabs) |
 | `hubs/` | Catalog hub packs (home, anime, …) |
+| `sdk/` | JSON Schema contracts + canonical JS kits |
 
 Each pack is a `manifest.json` plus JS entries referenced from the manifest.

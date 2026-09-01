@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forja.app/plugins/sdk/schema/vod-stream.schema.json",
+  "title": "Forja VOD extract stream row",
+  "description": "Return value of http/hop/host kind extract(ctx). Host parser: StreamSource.fromJson.",
+  "type": "array",
+  "items": { "$ref": "#/$defs/stream" },
+  "$defs": {
+    "stream": {
+      "type": "object",
+      "required": ["url"],
+      "additionalProperties": true,
+      "properties": {
+        "url": { "type": "string", "minLength": 1 },
+        "file": { "type": "string" },
+        "src": { "type": "string" },
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "label": { "type": "string" },
+        "quality": { "type": "string" },
+        "language": { "type": "string" },
+        "audio": { "type": "string" },
+        "type": { "type": "string" },
+        "headers": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "subtitles": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "providerId": { "type": "string" },
+        "catalogUrl": { "type": "string" }
+      },
+      "anyOf": [
+        { "required": ["url"] },
+        { "required": ["file"] },
+        { "required": ["src"] }
+      ]
+    }
+  }
+}

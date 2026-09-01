@@ -6,6 +6,7 @@ export 'ids.dart';
 export 'live_goat_unlock.dart';
 export 'live_sport_capabilities.dart';
 export 'models.dart';
+export 'plugin_contract.dart';
 export 'plugin_install_coordinator.dart';
 export 'plugin_registry.dart';
 export 'plugin_script_disk_store.dart';

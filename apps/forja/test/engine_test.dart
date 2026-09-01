@@ -513,9 +513,22 @@ void main() {
         'live',
       );
       expect(
+        PluginRegistry.forjaHqSlot('/Users/x/Forja/plugins/torrent/manifest.json'),
+        'torrent',
+      );
+      expect(
         PluginRegistry.forjaHqSlot('https://community.example/manifest.json'),
         isNull,
       );
+    });
+
+    test('devTorrentManifestUrl joins FORJA_REPO_ROOT when set', () {
+      final root = Platform.environment['FORJA_REPO_ROOT']?.trim();
+      if (root == null || root.isEmpty) return;
+      final url = PluginRegistry.devTorrentManifestUrl();
+      expect(url, isNotNull);
+      expect(url, endsWith('plugins/torrent/manifest.json'));
+      expect(File(url!).existsSync(), isTrue);
     });
 
     test('isRetiredCatalogPack detects removed split catalog manifest', () {

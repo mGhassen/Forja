@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://forja.app/plugins/sdk/schema/catalog-envelope.schema.json",
+  "title": "Forja catalog hub response envelope",
+  "description": "Return value of catalog kind extract(ctx). Host parser: parseEnvelope in protocol.dart.",
+  "oneOf": [
+    {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/envelope" }
+    },
+    { "$ref": "#/$defs/envelope" }
+  ],
+  "$defs": {
+    "envelope": {
+      "type": "object",
+      "required": ["ok", "kit", "protocol", "action"],
+      "additionalProperties": true,
+      "properties": {
+        "ok": { "type": "boolean" },
+        "kit": { "type": "integer", "minimum": 1 },
+        "protocol": { "type": "integer", "minimum": 1 },
+        "action": { "type": "string" },
+        "notModified": { "type": "boolean" },
+        "cache": { "$ref": "#/$defs/cache" },
+        "data": { "type": "object" },
+        "error": { "$ref": "#/$defs/error" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "ok": { "const": true } }, "required": ["ok"] },
+          "then": { "not": { "required": ["error"] } }
+        },
+        {
+          "if": { "properties": { "ok": { "const": false } }, "required": ["ok"] },
+          "then": { "required": ["error"] }
+        }
+      ]
+    },
+    "cache": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "etag": { "type": "string" },
+        "maxAge": { "type": "number", "minimum": 0 },
+        "maxAgeSec": { "type": "number", "minimum": 0 },
+        "swr": { "type": "number", "minimum": 0 },
+        "staleWhileRevalidateSec": { "type": "number", "minimum": 0 },
+        "staleWhileRevalidate": { "type": "number", "minimum": 0 }
+      }
+    },
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "additionalProperties": true,
+      "properties": {
+        "code": {
+          "type": "string",
+          "enum": [
+            "INVALID_ACTION",
+            "INVALID_PARAMS",
+            "NOT_FOUND",
+            "AUTH_REQUIRED",
+            "AUTH_EXPIRED",
+            "RATE_LIMIT",
+            "UPSTREAM",
+            "PARSE",
+            "UNSUPPORTED_KIT",
+            "CANCELLED"
+          ]
+        },
+        "message": { "type": "string" },
+        "retryable": { "type": "boolean" },
+        "retriable": { "type": "boolean" }
+      }
+    },
+    "metaItem": {
+      "type": "object",
+      "required": ["id", "type", "name"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "poster": { "type": "string" },
+        "background": { "type": "string" },
+        "description": { "type": "string" },
+        "rating": { "type": "number" },
+        "releaseInfo": { "type": "string" },
+        "genres": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "badge": { "type": "string" },
+        "status": { "type": "string" },
+        "episodes": { "type": "integer" },
+        "bannerImage": { "type": "string" },
+        "tmdbMediaType": { "type": "string" },
+        "ids": { "type": "object" },
+        "listTarget": { "type": "object" },
+        "open": { "$ref": "#/$defs/open" },
+        "videos": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/video" }
+        }
+      }
+    },
+    "open": {
+      "type": "object",
+      "required": ["surface", "id"],
+      "additionalProperties": true,
+      "properties": {
+        "surface": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "extract": { "type": "object" }
+      }
+    },
+    "video": {
+      "type": "object",
+      "required": ["id", "title"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": "string" },
+        "season": { "type": "integer" },
+        "episode": { "type": "integer" },
+        "thumbnail": { "type": "string" },
+        "poster": { "type": "string" },
+        "overview": { "type": "string" }
+      }
+    }
+  }
+}

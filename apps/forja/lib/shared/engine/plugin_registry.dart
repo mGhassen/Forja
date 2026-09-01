@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/cache.dart';
 import 'package:forja/shared/engine/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models.dart';
+import 'package:forja/shared/engine/plugin_contract.dart';
 import 'package:forja/shared/engine/plugin_script_disk_store.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -641,6 +642,48 @@ class PluginRegistry {
   Future<void> disableShadowOfficialPacks(List<String> keepUrls) =>
       applyOfficialKeepSet(keepUrls);
 
+  /// Debug checkout: install `plugins/torrent/manifest.json` when
+  /// `FORJA_HQ_TORRENT_MANIFEST_URL` or `FORJA_REPO_ROOT` is set and no torrent
+  /// slot pack is installed yet.
+  @visibleForTesting
+  static String? devTorrentManifestUrl() {
+    if (!kDebugMode) return null;
+    var explicit =
+        const String.fromEnvironment('FORJA_HQ_TORRENT_MANIFEST_URL').trim();
+    if (explicit.isEmpty) {
+      explicit =
+          Platform.environment['FORJA_HQ_TORRENT_MANIFEST_URL']?.trim() ?? '';
+    }
+    if (explicit.isNotEmpty) return explicit;
+
+    var root = const String.fromEnvironment('FORJA_REPO_ROOT').trim();
+    if (root.isEmpty) {
+      root = Platform.environment['FORJA_REPO_ROOT']?.trim() ?? '';
+    }
+    if (root.isEmpty) return null;
+    final normalized = root.replaceAll('\\', '/').replaceAll(RegExp(r'/+$'), '');
+    return '$normalized/plugins/torrent/manifest.json';
+  }
+
+  Future<void> ensureDevTorrentPackSeeded() async {
+    if (!kDebugMode) return;
+    final url = devTorrentManifestUrl();
+    if (url == null) return;
+    final file = _asLocalFile(url);
+    if (file == null || !await file.exists()) return;
+
+    final packs = await listPacksRaw();
+    if (packs.any((p) => forjaHqSlot(p.sourceUrl) == 'torrent')) return;
+
+    debugPrint('[engine] dev seed ForjaHQ Torrent from $url');
+    try {
+      await install(url);
+      notifyChanged();
+    } catch (e) {
+      debugPrint('[engine] dev torrent seed failed: $e');
+    }
+  }
+
   /// Hydrate lean stubs and refresh remote packs when needed.
   Future<void> ensureOfficialInstalled({bool force = false}) async {
     if (_officialEnsureFuture != null) {
@@ -649,6 +692,7 @@ class PluginRegistry {
     }
     final run = () async {
       try {
+        await ensureDevTorrentPackSeeded();
         await migrateLegacyLiveSportPacksIfNeeded();
         await _purgeRetiredOfficialPacks();
         await hydrateLeanInstalled();
@@ -771,9 +815,10 @@ class PluginRegistry {
     }
     final body = await _fetchText(manifestUrl);
     final map = jsonDecode(body) as Map<String, dynamic>;
-    final schema = map['schema'];
-    if (schema != null && schema != 1) {
-      throw Exception('unsupported manifest schema: $schema');
+    try {
+      PluginContract.validateManifest(map);
+    } on FormatException catch (e) {
+      throw Exception('invalid manifest: ${e.message}');
     }
     final all = await listPacksRaw();
     EnginePack? previous;

@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "id": "forja-enginejs-sdk",
+  "name": "Forja EngineJS SDK",
+  "version": "1.0.0",
+  "kitVersion": 1,
+  "protocolVersion": 1,
+  "schemas": {
+    "manifest": "schema/manifest.schema.json",
+    "catalogEnvelope": "schema/catalog-envelope.schema.json",
+    "vodStream": "schema/vod-stream.schema.json",
+    "torrentSearch": "schema/torrent-search.schema.json",
+    "torrentRow": "schema/torrent-row.schema.json"
+  },
+  "kits": {
+    "catalog": "catalog-kit.js",
+    "torrent": "torrent-kit.js"
+  },
+  "entryPoints": {
+    "http": "extract",
+    "hop": "extract",
+    "host": "extract",
+    "catalog": "extract",
+    "torrent": "search"
+  },
+  "hostParity": {
+    "dart": {
+      "catalogProtocol": "apps/forja/lib/shared/catalog/protocol.dart",
+      "manifestParser": "apps/forja/lib/shared/engine/models.dart",
+      "manifestValidator": "apps/forja/lib/shared/engine/plugin_contract.dart",
+      "vodStreamParser": "packages/rust/lib/src/models/stream_source.dart",
+      "torrentSearch": "apps/forja/lib/shared/engine/runtime.dart"
+    }
+  },
+  "fixtures": {
+    "catalog": "../hubs/fixtures/"
+  }
+}

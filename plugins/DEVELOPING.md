@@ -4,7 +4,28 @@ Community guide for building **EngineJS packs** — JavaScript plugins the Forja
 
 The Flutter app is a **host**. It does not ship your scripts. Users install packs by manifest URL (**Settings → Sources → Forja → Add plugin**). Official reference packs live in this folder; fork them or publish your own CDN/GitHub raw URLs.
 
-**See also:** [README.md](README.md) (official pack inventory) · [docs/rfc/070-[partial]-catalog-hub-protocol.md](../docs/rfc/070-[partial]-catalog-hub-protocol.md) (hub protocol spec)
+**See also:** [README.md](README.md) (official pack inventory) · [sdk/contract.json](sdk/contract.json) (machine-readable contracts + JS kits) · [docs/rfc/070-[partial]-catalog-hub-protocol.md](../docs/rfc/070-[partial]-catalog-hub-protocol.md) (hub protocol spec)
+
+---
+
+## SDK contracts (`plugins/sdk/`)
+
+| File | Role |
+|------|------|
+| [contract.json](sdk/contract.json) | Index — schema paths, kit entry points, host parity |
+| [schema/manifest.schema.json](sdk/schema/manifest.schema.json) | Pack `manifest.json` |
+| [schema/catalog-envelope.schema.json](sdk/schema/catalog-envelope.schema.json) | Catalog `extract(ctx)` response |
+| [schema/vod-stream.schema.json](sdk/schema/vod-stream.schema.json) | VOD / hop `extract(ctx)` stream rows |
+| [schema/torrent-search.schema.json](sdk/schema/torrent-search.schema.json) | Torrent `search(ctx)` result array |
+| [catalog-kit.js](sdk/catalog-kit.js) | Canonical catalog prelude (`hubOk`, `kitStack`, …) |
+| [torrent-kit.js](sdk/torrent-kit.js) | Canonical torrent prelude (`row`, `magnetFromHash`, …) |
+
+Host validates manifests at install via `PluginContract.validateManifest` (mirrors `manifest.schema.json`).
+
+Prelude paths from pack manifests:
+
+- Hubs: `"prelude": "../../sdk/catalog-kit.js"`
+- Torrent / providers sibling: `"prelude": "../sdk/torrent-kit.js"` or catalog kit as needed
 
 ---
 
@@ -212,6 +233,44 @@ File-host unwrap plugins. Registered by **`hosts`** (hostname suffix match).
 When a provider calls `ctx.hop(url)`, the host picks the hop plugin whose `hosts` suffix-matches the URL hostname.
 
 Hop `extract(ctx)` receives **`ctx.url`** (the embed page) and returns the same stream array shape as VOD plugins.
+
+---
+
+## Torrent indexers (`kind: torrent`)
+
+Search plugins for **Settings → Torrent** / Sources **Torrents** tab. Implement **`search(ctx)`** (not `extract`).
+
+### Search context
+
+```javascript
+ctx.query     // string — title search query
+ctx.imdbId    // string — when TMDB/IMDb id known (Torrentio)
+ctx.season    // number — TV season (0 when N/A)
+ctx.episode   // number — TV episode (0 when N/A)
+ctx.config    // manifest config + optional cloud overlay
+ctx.fetch(url, opts)
+ctx.log(msg) / ctx.error(msg)
+```
+
+Use prelude [`sdk/torrent-kit.js`](sdk/torrent-kit.js) for `row()`, `magnetFromHash`, `fetchJsonMaybeJina`, etc.
+
+### Result rows
+
+Return an array of maps. Schema: [`sdk/schema/torrent-row.schema.json`](sdk/schema/torrent-row.schema.json).
+
+```javascript
+{
+  name: 'Title 1080p WEB-DL',
+  magnet: 'magnet:?xt=urn:btih:…&dn=…',  // required
+  seeders: '42',                            // string
+  size: '1.2 GB',                           // string
+  source: 'Knaben',                         // display label — from config.source
+}
+```
+
+Empty array = no hits. Host dedupes by magnet and merges seeders across providers.
+
+Reference: [`torrent/manifest.json`](torrent/manifest.json), [`torrent/knaben.js`](torrent/knaben.js).
 
 ---
 
