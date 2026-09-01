@@ -2,7 +2,7 @@ function parseNyaaRss(xml, source) {
   var out = [];
   var itemRe = /<item>([\s\S]*?)<\/item>/gi;
   var titleRe = /<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i;
-  var hashRe = /<nyaa:infoHash>([\s\S]*?)<\/nyaa:infoHash>/i;
+  var hashRe = /<nyaa:infoHash>([\s\S]*?)<\/nyaa:infoHash>/gi;
   var sizeRe = /<nyaa:size>([\s\S]*?)<\/nyaa:size>/i;
   var seedRe = /<nyaa:seeders>([\s\S]*?)<\/nyaa:seeders>/i;
   var m;

@@ -673,10 +673,33 @@ class PluginRegistry {
     final file = _asLocalFile(url);
     if (file == null || !await file.exists()) return;
 
-    final packs = await listPacksRaw();
-    if (packs.any((p) => forjaHqSlot(p.sourceUrl) == 'torrent')) return;
+    String manifestVersion = '';
+    try {
+      final map = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      manifestVersion = map['version']?.toString().trim() ?? '';
+    } catch (_) {
+      return;
+    }
 
-    debugPrint('[engine] dev seed ForjaHQ Torrent from $url');
+    final packs = await listPacksRaw();
+    EnginePack? existing;
+    for (final p in packs) {
+      if (forjaHqSlot(p.sourceUrl) == 'torrent') {
+        existing = p;
+        break;
+      }
+    }
+
+    final needsInstall = existing == null ||
+        existing.sourceUrl != url ||
+        (manifestVersion.isNotEmpty && existing.version != manifestVersion);
+
+    if (!needsInstall) return;
+
+    debugPrint(
+      '[engine] dev (re)install ForjaHQ Torrent from $url '
+      '(was ${existing?.version ?? "none"} → $manifestVersion)',
+    );
     try {
       await install(url);
       notifyChanged();
@@ -1266,6 +1289,20 @@ class PluginRegistry {
     required EnginePlugin plugin,
     String packPrelude = '',
   }) async {
+    if (kDebugMode && plugin.isTorrent) {
+      final devUrl = devTorrentManifestUrl();
+      if (devUrl != null) {
+        final fromCheckout = await _loadScriptFromLocalManifest(
+          manifestUrl: devUrl,
+          plugin: plugin,
+          packPrelude: packPrelude,
+        );
+        if (fromCheckout != null && fromCheckout.isNotEmpty) {
+          return fromCheckout;
+        }
+      }
+    }
+
     var preludeEntry = plugin.prelude.trim().isNotEmpty
         ? plugin.prelude.trim()
         : packPrelude.trim();
@@ -1274,20 +1311,11 @@ class PluginRegistry {
     }
     final localManifest = _asLocalFile(sourceUrl);
     if (localManifest != null) {
-      if (plugin.entry.isEmpty) return null;
-      final scriptPath = resolveScriptUrl(sourceUrl, plugin.entry);
-      final scriptFile = File(scriptPath);
-      if (!scriptFile.existsSync()) return null;
-      var code = await scriptFile.readAsString();
-      if (preludeEntry.isNotEmpty) {
-        final preludePath = resolveScriptUrl(sourceUrl, preludeEntry);
-        final preludeFile = File(preludePath);
-        if (preludeFile.existsSync()) {
-          final shared = await preludeFile.readAsString();
-          if (shared.isNotEmpty) code = '$shared\n$code';
-        }
-      }
-      return code;
+      return _loadScriptFromLocalManifest(
+        manifestUrl: sourceUrl,
+        plugin: plugin,
+        preludeEntry: preludeEntry,
+      );
     }
 
     var code = await PluginScriptDiskStore.loadEngineScript(
@@ -1328,6 +1356,41 @@ class PluginRegistry {
       }
       if (shared != null && shared.isNotEmpty) {
         code = '$shared\n$code';
+      }
+    }
+    return code;
+  }
+
+  Future<String?> _loadScriptFromLocalManifest({
+    required String manifestUrl,
+    required EnginePlugin plugin,
+    String packPrelude = '',
+    String preludeEntry = '',
+  }) async {
+    if (plugin.entry.isEmpty) return null;
+    final localManifest = _asLocalFile(manifestUrl);
+    if (localManifest == null) return null;
+
+    var prelude = preludeEntry.trim();
+    if (prelude.isEmpty) {
+      prelude = plugin.prelude.trim().isNotEmpty
+          ? plugin.prelude.trim()
+          : packPrelude.trim();
+    }
+    if (prelude.isEmpty) {
+      prelude = await _manifestPreludeFromLocalCheckout(manifestUrl);
+    }
+
+    final scriptPath = resolveScriptUrl(manifestUrl, plugin.entry);
+    final scriptFile = File(scriptPath);
+    if (!scriptFile.existsSync()) return null;
+    var code = await scriptFile.readAsString();
+    if (prelude.isNotEmpty) {
+      final preludePath = resolveScriptUrl(manifestUrl, prelude);
+      final preludeFile = File(preludePath);
+      if (preludeFile.existsSync()) {
+        final shared = await preludeFile.readAsString();
+        if (shared.isNotEmpty) code = '$shared\n$code';
       }
     }
     return code;

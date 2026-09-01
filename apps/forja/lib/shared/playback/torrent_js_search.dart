@@ -5,6 +5,7 @@ import 'package:rust/rust.dart';
 
 /// Sync [TorrentSearchCatalog] from installed `kind: torrent` plugins.
 Future<void> syncTorrentSearchCatalog() async {
+  await EngineService.instance.ensureDevTorrentPackSeeded();
   final packs = await EngineService.instance.listPacks();
   final metas = <TorrentSearchProviderMeta>[];
   for (final pack in packs) {

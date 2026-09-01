@@ -90,3 +90,18 @@ function fetchJsonMaybeJina(ctx, directUrl, jinaUrl) {
     return fetchJson(ctx, jinaUrl).then(unwrapJina);
   });
 }
+
+function fetchViaCodetabs(ctx, targetUrl) {
+  var proxy =
+    'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(targetUrl);
+  return fetchText(ctx, proxy);
+}
+
+function fetchTextMaybeProxy(ctx, directUrl, proxyUrl) {
+  return fetchText(ctx, directUrl).catch(function () {
+    if (!proxyUrl) return fetchViaCodetabs(ctx, directUrl);
+    return fetchText(ctx, proxyUrl).catch(function () {
+      return fetchViaCodetabs(ctx, directUrl);
+    });
+  });
+}
