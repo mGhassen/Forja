@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_screen.dart';
 import 'package:forja/features/live_matches/live_matches_screen.dart';
-import 'package:forja/features/my_list/my_list_screen.dart';
 import 'package:forja/features/settings/settings_screen.dart';
+import 'package:forja/shared/catalog/shell/catalog_shell.dart';
 import 'package:forja/shared/catalog/forja_host_assets.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shell/nav_destination.dart';
@@ -82,8 +82,8 @@ Map<String, Color> get navDestinationAccentColors => {
     };
 
 /// Lazy tab factories — widgets are created on first visit only.
-const Map<String, TabBuilder> coreNavTabBuilders = {
-  'mylist': MyListScreen.new,
+final Map<String, TabBuilder> coreNavTabBuilders = {
+  'mylist': () => CatalogShell.hostTab(tabId: 'mylist'),
   'live_matches': LiveMatchesScreen.new,
   'iptv': IptvPtScreen.new,
   'settings': SettingsScreen.new,

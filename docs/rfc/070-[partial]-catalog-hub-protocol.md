@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) |
+| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) |
 | **Current slice** | Splash hub prefetch reads pack `layout` (`feed` / widgets above Continue) — no hardcoded home/anime rail lists; A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -29,6 +29,7 @@
 | 8 | R70-C08 | `CatalogShell` + `plugins/hubs` pack (`_kit.js`, tmdb, anilist, kisskh, arabic) | ✅ |
 | 9 | R70-C09 | `ForjaHostAssets` — `forja://asset/{id}` catalog → Flutter paths; packs never use `assets/` | ✅ |
 | 10 | R70-C10 | `shared/catalog/kit/` — rows, cards, host widgets, chrome; [CatalogShell](shell/catalog_shell.dart) composes layout only | ✅ |
+| 11 | R70-C11 | `host.my_list` kit widget + inline host layout for core `mylist` tab | ✅ |
 
 ---
 
@@ -170,6 +171,20 @@ Pack `capabilities` activate hub Search chrome — host uses `EnginePlugin.hasCa
 | 3 | R70-A56 | Capability `structured_search` mounts kit filter lens; pack owns DSL parse/execution | ✅ |
 | 4 | R70-A57 | Home `tmdb` pack declares `structured_search` + structured `search` in JS; Anime/KissKh omit it | ✅ |
 | 5 | R70-A58 | Capability `host_search` opens shared host Search overlay (Cmd+F); top-bar Search uses same entry as Cmd+F | ✅ |
+
+---
+
+## Acceptance (My List host slice)
+
+Core `mylist` tab — host-owned data (local + Simkl); no Simkl JS catalog plugin.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A60 | My List tab uses `CatalogShell.hostTab` (not feature-screen grid) | ✅ |
+| 2 | R70-A61 | Status + kind chrome + per-kind horizontal rails | ✅ |
+| 3 | R70-A62 | Items render as `CatalogMetaItem` + `HubPosterCard` + list-follow pin | ✅ |
+| 4 | R70-A63 | Simkl rows TMDB-enriched at provider boundary; opens via `openCatalogMetaItem` / legacy bridge | ✅ |
+| 5 | R70-A64 | Simkl auth / sync / scrobble remain Dart host (no JS plugin) | ✅ |
 
 ---
 

@@ -23,6 +23,7 @@ class HubPosterCard extends StatelessWidget {
     this.rank,
     this.badge,
     this.listTarget,
+    this.listPin,
     this.listIndex,
     this.tvTabId,
     this.tvRowId,
@@ -37,6 +38,7 @@ class HubPosterCard extends StatelessWidget {
   final int? rank;
   final String? badge;
   final HubListFollowTarget? listTarget;
+  final Widget? listPin;
   final int? listIndex;
   final String? tvTabId;
   final String? tvRowId;
@@ -155,7 +157,7 @@ class HubPosterCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if ((!compact && listTarget != null) ||
+              if ((!compact && (listPin != null || listTarget != null)) ||
                   (rating != null && rating! > 0))
                 Positioned(
                   top: inset,
@@ -164,7 +166,9 @@ class HubPosterCard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (!compact && listTarget != null)
+                      if (!compact && listPin != null)
+                        listPin!
+                      else if (!compact && listTarget != null)
                         MyListButton.hub(
                           hubTarget: listTarget!,
                           excludeFromTvTraversal: true,
@@ -179,7 +183,7 @@ class HubPosterCard extends StatelessWidget {
               if (badge != null && badge!.isNotEmpty)
                 Positioned(
                   top: inset,
-                  left: !compact && listTarget != null
+                  left: !compact && (listPin != null || listTarget != null)
                       ? inset + shellScaled(context, 26).clamp(20.0, 26.0)
                       : inset,
                   child: Container(

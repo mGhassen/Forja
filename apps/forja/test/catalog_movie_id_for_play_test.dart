@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/catalog/kit/meta/catalog_meta_movie.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_resolve.dart';
 import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/engine/catalog_extract_context.dart';
 
 void main() {
   group('catalogMovieIdForPlay', () {
@@ -92,6 +93,31 @@ void main() {
         ctx.hubEpisodes![1].thumbnailUrl,
         contains('still2.jpg'),
       );
+    });
+
+    test('home tmdb tv episode ids do not pin a bogus provider', () {
+      expect(providerIdFromEpisodeVideoId('218843:S1E1'), isNull);
+      expect(providerIdFromEpisodeVideoId('videasy:abc123'), 'videasy');
+
+      final meta = CatalogMetaItem.fromJson({
+        'id': 'tmdb:tv:218843',
+        'type': 'tv',
+        'name': 'Lanterns',
+        'open': {
+          'surface': 'tmdb',
+          'id': '218843',
+          'mediaType': 'tv',
+          'extract': {
+            'resolveType': 'tv',
+            'panelCategory': 'tv',
+            'ctx': {'tmdbId': 218843},
+          },
+        },
+        'videos': [
+          {'id': '218843:S1E1', 'episode': 1, 'season': 1, 'title': 'Pilot'},
+        ],
+      });
+      expect(catalogPlayContextFromMeta(meta: meta).selectedPluginIds, isNull);
     });
   });
 }

@@ -282,7 +282,7 @@ class CatalogOpenExtract {
       final mt = extras['mediaType']?.toString() ?? 'movie';
       return CatalogOpenExtract(
         resolveType: mt == 'tv' || mt == 'series' ? 'tv' : 'movie',
-        panelCategory: 'movie',
+        panelCategory: mt == 'tv' || mt == 'series' ? 'tv' : 'movie',
         ctx: {if (idN != null) 'tmdbId': idN},
       );
     }

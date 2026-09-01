@@ -90,7 +90,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [067-[fixed]-…](fixed/067-[fixed]-forjahq-remote-plugin-pack.md) | ForjaHQ remote plugin pack (engine JS shell) | v1.4 | fixed | Complete · 5/5 · 10/10 | — |
 | [068-[fixed]-…](fixed/068-[fixed]-engine-plugin-registry.md) | Engine PluginRegistry (pack-scoped install) | v1.4 | fixed | Complete · 5/5 · 10/10 | — |
 | [069-[fixed]-…](fixed/069-[fixed]-official-plugins-split.md) | Official packs under `plugins/` (providers / live / catalog) | v1.4 | fixed | Complete · 4/4 · 8/8 | — |
-| [070-[partial]-…](070-[partial]-catalog-hub-protocol.md) | Catalog hub protocol (shell tabs from `kind: catalog` plugins) | v1.4 | partial | 10/10 · 14/15 · 12/12 hub parity · **1/1** hub contribution · 4/4 host enrich · **6/6** enrich companion · 1/1 required packs · 6/6 shared cache · 2/2 host assets · **7/7** Arabic/open · **5/5** search capabilities | — |
+| [070-[partial]-…](070-[partial]-catalog-hub-protocol.md) | Catalog hub protocol (shell tabs from `kind: catalog` plugins) | v1.4 | partial | 11/11 · 14/15 · 12/12 hub parity · **1/1** hub contribution · 4/4 host enrich · **6/6** enrich companion · 1/1 required packs · 6/6 shared cache · 2/2 host assets · **7/7** Arabic/open · **5/5** search capabilities · **5/5** My List host | — |
 | [072-[open]-…](072-[open]-iptv-vod-catalog-details.md) | IPTV VOD catalog details plugin + shared hub kit | v1.4 | open | 4/4 · 6/6 | — |
 
 ## Related

@@ -628,7 +628,7 @@ function tmdbMeta(cfg, row, forcedType) {
       mediaType: type,
       extract: {
         resolveType: type === 'tv' ? 'tv' : 'movie',
-        panelCategory: 'movie',
+        panelCategory: type === 'tv' ? 'tv' : 'movie',
         ctx: { tmdbId: Number(row.id) },
       },
     },

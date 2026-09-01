@@ -11,6 +11,7 @@ import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/hero/cinematic_hero.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
+import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/service.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
@@ -20,8 +21,10 @@ import 'package:forja/shell/shell_tab_refresh.dart';
 
 import '../kit/cards/hub_poster_card.dart';
 import '../kit/chrome/catalog_vertical_filters.dart';
+import '../kit/host/host_catalog_layouts.dart';
 import '../kit/widgets/catalog_because_section.dart';
 import '../kit/widgets/catalog_continue_widget.dart';
+import '../kit/widgets/catalog_my_list_widget.dart';
 import '../kit/details/hub_details_meta.dart';
 import '../kit/meta/catalog_meta_movie.dart';
 import '../kit/rows/catalog_row_prefetch.dart';
@@ -38,12 +41,33 @@ import 'catalog_open.dart';
 /// One `layout` call describes the page; each rail fetches when it enters the
 /// viewport and paginates horizontally as the user scrolls the row.
 class CatalogShell extends StatefulWidget {
-  const CatalogShell({super.key, required this.pluginId, this.tabId});
+  const CatalogShell({
+    super.key,
+    required this.pluginId,
+    this.tabId,
+    this.hostLayout,
+  });
+
+  /// Core shell tab with inline host layout (no catalog pack JS).
+  factory CatalogShell.hostTab({required String tabId}) {
+    final layout = HostCatalogLayouts.forTab(tabId);
+    if (layout == null) {
+      throw ArgumentError('No host catalog layout for tab $tabId');
+    }
+    return CatalogShell(
+      pluginId: HostCatalogLayouts.hostPluginId,
+      tabId: tabId,
+      hostLayout: layout,
+    );
+  }
 
   final String pluginId;
 
   /// Shell nav id — used for the layout page key (defaults to `home`).
   final String? tabId;
+
+  /// When set, layout is host-owned — skips [CatalogRuntime] `layout`.
+  final Map<String, dynamic>? hostLayout;
 
   @override
   State<CatalogShell> createState() => _CatalogShellState();
@@ -88,6 +112,9 @@ class _CatalogShellState extends State<CatalogShell>
 
   /// Next [_railFuture] miss goes through `forceRefresh`.
   bool _forceNextRails = false;
+
+  /// Bumped on shell tab refresh for host-owned widgets (My List).
+  int _hostRefreshEpoch = 0;
 
   /// Last [catalogChromeFilterEpoch] — ignore structural revision bumps.
   String _chromeFilterEpoch = '';
@@ -185,6 +212,20 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   Future<void> _loadLayout({bool forceRefresh = false}) async {
+    final hostLayout = widget.hostLayout;
+    if (hostLayout != null) {
+      final invalid = validateLayoutData(hostLayout);
+      if (invalid != null) {
+        setState(() {
+          _loading = false;
+          _error = 'Host layout for ${widget.tabId} is invalid — $invalid';
+        });
+        return;
+      }
+      _applyLayoutPage(hostLayout, packSourceUrl: null);
+      return;
+    }
+
     final soft = _widgets.isNotEmpty && !forceRefresh;
     if (!soft) {
       setState(() {
@@ -231,15 +272,31 @@ class _CatalogShellState extends State<CatalogShell>
       return;
     }
 
-    final pages = envelope.data!['pages'] as Map;
+    final pluginEntry = await PluginRegistry.instance.findPlugin(
+      widget.pluginId,
+    );
+    _applyLayoutPage(
+      envelope.data!,
+      packSourceUrl: pluginEntry?.pack.sourceUrl,
+      pluginEntry: pluginEntry,
+    );
+  }
+
+  void _applyLayoutPage(
+    Map<String, dynamic> data, {
+    String? packSourceUrl,
+    ({EnginePack pack, EnginePlugin plugin})? pluginEntry,
+  }) {
+    final pages = data['pages'] as Map;
     final page = pages[_pageKey] ?? pages.values.first;
     final pageMap = Map<String, dynamic>.from(page as Map);
     _pageUsesFeed = pageMap['feed'] == true;
     _layoutPageSize = catalogRailPageSizeFrom(pageMap);
-    final pluginEntry = await PluginRegistry.instance.findPlugin(
-      widget.pluginId,
-    );
-    _pluginConfigPageSize = catalogRailPageSizeFrom(pluginEntry?.plugin.config);
+    if (pluginEntry != null) {
+      _pluginConfigPageSize = catalogRailPageSizeFrom(
+        pluginEntry.plugin.config,
+      );
+    }
     final rawWidgets = pageMap['widgets'] as List;
     final widgets = <Map<String, dynamic>>[
       for (final w in rawWidgets)
@@ -256,6 +313,7 @@ class _CatalogShellState extends State<CatalogShell>
         _moods[id] = picked;
       }
     }
+    if (!mounted) return;
     setState(() {
       _loading = false;
       _widgets = widgets;
@@ -263,7 +321,6 @@ class _CatalogShellState extends State<CatalogShell>
     if (_pageUsesFeed) {
       unawaited(_ensureFeedLoaded());
     }
-    final packSourceUrl = pluginEntry?.pack.sourceUrl;
     if (!mounted) return;
     CatalogVerticalFiltersRegistry.syncFromLayout(
       tabId: _pageKey,
@@ -277,6 +334,11 @@ class _CatalogShellState extends State<CatalogShell>
 
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
+    if (widget.hostLayout != null) {
+      if (mounted) setState(() => _hostRefreshEpoch++);
+      markShellTabFresh();
+      return;
+    }
     _forceNextRails = force;
     _invalidateRailFutures();
     await _loadLayout(forceRefresh: force);
@@ -691,6 +753,9 @@ class _CatalogShellState extends State<CatalogShell>
       case 'continue':
       case 'host.continue':
         return true;
+      case 'my_list':
+      case 'host.my_list':
+        return true;
       default:
         return true;
     }
@@ -1062,6 +1127,7 @@ class _CatalogShellState extends State<CatalogShell>
       'host.continue' => 'continue',
       'host.because' => 'because',
       'host.trakt' => 'trakt',
+      'host.my_list' => 'my_list',
       'host.vertical_filters' => 'vertical_filters',
       _ => (spec['type'] ?? '').toString().trim(),
     };
@@ -1118,6 +1184,12 @@ class _CatalogShellState extends State<CatalogShell>
           spec: spec,
           tvRowOrder: _tvOrder(tvOrders, id),
           prefetchSlot: prefetch,
+        );
+      case 'my_list':
+        return CatalogMyListWidget(
+          tabId: widget.tabId ?? 'mylist',
+          refreshEpoch: _hostRefreshEpoch,
+          tvRowOrder: _tvOrder(tvOrders, id),
         );
       case 'vertical_filters':
       case 'host.vertical_filters':
