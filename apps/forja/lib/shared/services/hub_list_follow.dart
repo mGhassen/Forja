@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
 import 'package:forja/features/my_list/providers/my_list_providers.dart';
 import 'package:forja/shared/catalog/protocol.dart';
@@ -77,30 +78,48 @@ typedef HubListFollowTarget = CatalogListFollowTarget;
 class HubListFollow {
   HubListFollow._();
 
+  /// Drama rows may lack TMDB on browse cards; reuse a stored match after details.
+  @visibleForTesting
+  static CatalogListFollowTarget resolveSimklTarget(CatalogListFollowTarget t) {
+    if (t.tmdbId != null) return t;
+    if (t.resolvedMediaType != 'drama') return t;
+    final stored = MyListService().itemOf(t.uniqueId);
+    final storedTmdb = stored?['tmdbId'] as int?;
+    if (storedTmdb == null) return t;
+    return t.copyWith(
+      tmdbId: storedTmdb,
+      tmdbMediaType: stored?['tmdbMediaType']?.toString(),
+    );
+  }
+
   static Future<bool> setStatus(
     CatalogListFollowTarget raw,
     String to, {
     ProviderContainer? container,
   }) async {
+    await MyListService().ensureLoaded();
     final t = raw;
     if (to.isEmpty) {
+      final sync = resolveSimklTarget(t);
       final keys = <String>{t.uniqueId};
-      if (t.tmdbId != null) {
-        keys.add(MyListService.movieId(t.tmdbId!, t.tmdbMediaType ?? 'tv'));
+      if (sync.tmdbId != null) {
+        keys.add(
+          MyListService.movieId(sync.tmdbId!, sync.tmdbMediaType ?? 'tv'),
+        );
       }
       container?.read(myListHiddenKeysProvider.notifier).addAll(keys);
       await MyListService().remove(t.uniqueId);
       var ok = true;
       if (await SimklService().isLoggedIn()) {
-        if (t.resolvedMediaType == 'anime' && t.mediaIdInt != null) {
+        if (sync.resolvedMediaType == 'anime' && sync.mediaIdInt != null) {
           ok = await SimklService().removeFromWatchlist(
-            anilistId: t.mediaIdInt,
+            anilistId: sync.mediaIdInt,
             mediaType: 'anime',
           );
-        } else if (t.tmdbId != null) {
+        } else if (sync.tmdbId != null) {
           ok = await SimklService().removeFromWatchlist(
-            tmdbId: t.tmdbId,
-            mediaType: t.tmdbMediaType ?? 'tv',
+            tmdbId: sync.tmdbId,
+            mediaType: sync.tmdbMediaType ?? 'tv',
           );
         }
       }
@@ -121,22 +140,21 @@ class HubListFollow {
       releaseDate: t.releaseDate,
     );
 
+    final sync = resolveSimklTarget(t);
     var ok = true;
     if (await SimklService().isLoggedIn()) {
-      if (t.resolvedMediaType == 'anime' && t.mediaIdInt != null) {
+      if (sync.resolvedMediaType == 'anime' && sync.mediaIdInt != null) {
         ok = await SimklService().setListStatus(
-          anilistId: t.mediaIdInt,
+          anilistId: sync.mediaIdInt,
           mediaType: 'anime',
           to: to,
         );
-      } else if (t.tmdbId != null) {
+      } else if (sync.tmdbId != null) {
         ok = await SimklService().setListStatus(
-          tmdbId: t.tmdbId,
-          mediaType: t.tmdbMediaType ?? 'tv',
+          tmdbId: sync.tmdbId,
+          mediaType: sync.tmdbMediaType ?? 'tv',
           to: to,
         );
-      } else {
-        ok = false;
       }
     }
     _invalidate(container);
@@ -167,15 +185,7 @@ class HubListFollow {
     bool watched = true,
   }) async {
     if (episodes.isEmpty) return;
-    var t = raw;
-    if (t.resolvedMediaType == 'drama' && t.tmdbId == null) {
-      final stored = MyListService().itemOf(t.uniqueId);
-      final storedTmdb = stored?['tmdbId'] as int?;
-      final storedType = stored?['tmdbMediaType']?.toString();
-      if (storedTmdb != null) {
-        t = t.copyWith(tmdbId: storedTmdb, tmdbMediaType: storedType);
-      }
-    }
+    var t = resolveSimklTarget(raw);
 
     if (t.resolvedMediaType == 'anime' && t.mediaIdInt != null) {
       if (!await SimklService().isLoggedIn()) return;
