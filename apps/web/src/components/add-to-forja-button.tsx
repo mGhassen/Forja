@@ -1,16 +1,8 @@
-import { useNavigate } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
-import { useGoToPluginInstall } from '@/components/plugin-install-confirm-dialog'
-import { useAuth } from '@/hooks/use-auth'
-import { useForjaSetting } from '@/hooks/use-user-setting'
-import { useProfiles } from '@/hooks/use-profiles'
 import type { ForjaPluginPackLive } from '@/lib/forja-plugin-catalog'
-import {
-  isPackInstalled,
-  rememberPluginInstallIntent,
-} from '@/lib/forja-plugin-install'
+import { tryOpenForjaInstallDeepLink } from '@/lib/forja-plugin-install'
 import { cn } from '@/lib/utils'
 
 type AddToForjaButtonProps = {
@@ -26,70 +18,11 @@ export function AddToForjaButton({
   size = 'default',
   variant = 'default',
 }: AddToForjaButtonProps) {
-  const navigate = useNavigate()
-  const goToInstall = useGoToPluginInstall()
-  const { user, loading: authLoading } = useAuth()
-  const { activeProfile } = useProfiles()
-  const { data, isLoading } = useForjaSetting()
-
-  const installed = isPackInstalled(
-    data?.payload?.packs ?? [],
-    pack.manifestUrl,
-  )
   const magnetClass =
     'btn-magnet inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 font-mono-ui text-[11px] font-bold uppercase tracking-[0.12em] shadow-[0_0_28px_rgba(28,231,131,0.28)] will-change-transform sm:text-xs'
 
-  const payload = {
-    manifestUrl: pack.manifestUrl,
-    name: pack.name,
-    version: pack.version,
-  }
-
-  const openInstallFlow = () => {
-    if (!user) {
-      rememberPluginInstallIntent(payload)
-      void navigate({
-        to: '/login',
-        search: { next: '/account/settings/forja' },
-      })
-      return
-    }
-    if (!activeProfile) {
-      void navigate({ to: '/account/profiles' })
-      return
-    }
-    goToInstall(payload)
-  }
-
-  const label = installed ? 'Manage in profile' : 'Add to Forja'
-
-  if (!user && !authLoading) {
-    return (
-      <div className={cn('flex flex-col gap-2', className)}>
-        {variant === 'magnet' ? (
-          <button
-            type="button"
-            data-hover=""
-            className={magnetClass}
-            onClick={openInstallFlow}
-          >
-            <Plus className="size-4" />
-            Add to Forja
-          </button>
-        ) : (
-          <Button type="button" size={size} className="w-full sm:w-auto" asChild>
-            <Link
-              to="/login"
-              search={{ next: '/account/settings/forja' }}
-              onClick={() => rememberPluginInstallIntent(payload)}
-            >
-              <Plus className="size-4" />
-              Add to Forja
-            </Link>
-          </Button>
-        )}
-      </div>
-    )
+  const openInApp = () => {
+    tryOpenForjaInstallDeepLink(pack.manifestUrl, { name: pack.name })
   }
 
   if (variant === 'magnet') {
@@ -98,18 +31,15 @@ export function AddToForjaButton({
         <button
           type="button"
           data-hover=""
-          disabled={authLoading || isLoading}
-          onClick={openInstallFlow}
-          className={cn(
-            magnetClass,
-            installed &&
-              'border border-white/15 bg-white/10 text-[#EDE6DA] shadow-none hover:bg-white/15',
-            (authLoading || isLoading) && 'pointer-events-none opacity-60',
-          )}
+          className={magnetClass}
+          onClick={openInApp}
         >
           <Plus className="size-4" />
-          {label}
+          Add to Forja
         </button>
+        <p className="text-center font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.38)]">
+          Opens Forja to confirm install
+        </p>
       </div>
     )
   }
@@ -120,13 +50,20 @@ export function AddToForjaButton({
         type="button"
         size={size}
         className="w-full sm:w-auto"
-        disabled={authLoading || isLoading}
-        variant={installed ? 'secondary' : 'default'}
-        onClick={openInstallFlow}
+        onClick={openInApp}
       >
         <Plus className="size-4" />
-        {label}
+        Add to Forja
       </Button>
+      <p className="text-center font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.38)] sm:text-left">
+        Opens Forja to confirm install
+      </p>
+      <Link
+        to="/download"
+        className="text-center text-[10px] text-[rgba(237,230,218,0.4)] underline-offset-2 hover:text-forja-green hover:underline sm:text-left"
+      >
+        Don&apos;t have the app? Download
+      </Link>
     </div>
   )
 }

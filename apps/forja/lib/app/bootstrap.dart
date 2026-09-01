@@ -33,6 +33,7 @@ import 'package:forja/shared/engine/forja_plugin_deeplink.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/widgets/app_update_progress_banner.dart';
+import 'package:forja/shared/engine/plugin_install_prompt_host.dart';
 import 'package:forja/shared/widgets/plugin_install_progress_banner.dart';
 import 'package:forja/shared/widgets/desktop_window_geometry.dart';
 import 'package:forja/shared/design/design.dart';
@@ -407,8 +408,10 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                 final body = ForjaToastHost(
                   child: AppUpdateProgressBannerHost(
                     child: PluginInstallProgressBannerHost(
-                      child: BackNavigationScope(
-                        child: child ?? const SizedBox.shrink(),
+                      child: PluginInstallPromptHost(
+                        child: BackNavigationScope(
+                          child: child ?? const SizedBox.shrink(),
+                        ),
                       ),
                     ),
                   ),

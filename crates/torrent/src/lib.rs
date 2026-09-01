@@ -629,6 +629,16 @@ impl TorrentEngine {
         Ok(())
     }
 
+    /// Fire-and-forget prefetch from FFI (spawns on this engine's runtime).
+    pub fn prefetch_file_position(self: &Arc<Self>, byte_offset: u64) {
+        let this = Arc::clone(self);
+        let _ = self.runtime.spawn(async move {
+            if let Err(e) = this.prefetch_file_position_async(byte_offset).await {
+                eprintln!("[torrent] prefetch failed: {e}");
+            }
+        });
+    }
+
     fn abort_prefetch_locked(inner: &mut EngineInner) {
         if let Some(h) = inner.prefetch_task.take() {
             h.abort();

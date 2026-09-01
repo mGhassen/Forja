@@ -45,6 +45,7 @@ abstract final class ForjaPluginDeepLink {
     debugPrint('[PluginDeepLink] queue install $manifest');
     ShellBus.pendingPluginInstall.value = PluginInstallPrompt(
       manifestUrl: manifest,
+      displayName: uri.queryParameters['name']?.trim(),
     );
     ShellBus.openSettings(
       categoryId: SettingsCategoryId.sources,

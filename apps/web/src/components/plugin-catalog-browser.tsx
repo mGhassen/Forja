@@ -15,18 +15,11 @@ import {
 } from 'lucide-react'
 import { AddToForjaButton } from '@/components/add-to-forja-button'
 import { Button } from '@/components/ui/button'
-import { useCommitDraft } from '@/hooks/use-commit-draft'
-import { useForjaSetting } from '@/hooks/use-user-setting'
 import type {
   ForjaPluginKind,
   ForjaPluginPackLive,
 } from '@/lib/forja-plugin-catalog'
 import { pluginKindLabel, isOfficialPluginPack, packAuthorLabel } from '@/lib/forja-plugin-catalog'
-import { isPackInstalled } from '@/lib/forja-plugin-install'
-import {
-  emptyForjaPayload,
-  type ForjaPayload,
-} from '@/lib/sync-domains'
 import { cn } from '@/lib/utils'
 
 const KIND_ICONS: Record<ForjaPluginKind, LucideIcon> = {
@@ -58,11 +51,6 @@ function paginate<T>(items: T[], page: number) {
     end: Math.min(start + PAGE_SIZE, items.length),
     items: items.slice(start, start + PAGE_SIZE),
   }
-}
-
-function forjaFromServer(value: unknown): ForjaPayload {
-  const payload = value as ForjaPayload | undefined
-  return { packs: payload?.packs ?? [] }
 }
 
 function packShortName(name: string): string {
@@ -207,12 +195,10 @@ function PluginDetailPanel({
 function PluginListRow({
   pack,
   selected,
-  installed,
   onSelect,
 }: {
   pack: ForjaPluginPackLive
   selected: boolean
-  installed: boolean
   onSelect: () => void
 }) {
   const Icon = KIND_ICONS[pack.kind]
@@ -246,12 +232,6 @@ function PluginListRow({
             {packShortName(pack.name)}
           </span>
           {official ? <OfficialBadge compact /> : null}
-          {installed ? (
-            <span
-              className="size-1.5 shrink-0 rounded-full bg-forja-green"
-              title="On your profile"
-            />
-          ) : null}
         </div>
         <p className="truncate text-xs text-[rgba(237,230,218,0.42)]">
           {pluginKindLabel(pack.kind)}
@@ -284,17 +264,6 @@ export function PluginCatalogBrowser({
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
-
-  const { data, profileId, isLoading: settingsLoading, save } = useForjaSetting()
-  const { draft } = useCommitDraft({
-    profileId,
-    updatedAt: data?.updated_at,
-    isReady: Boolean(data) && !settingsLoading,
-    serverValue: data?.payload,
-    mapServer: forjaFromServer,
-    makeEmpty: emptyForjaPayload,
-    save,
-  })
 
   const filtered = useMemo(() => {
     let list = [...packs]
@@ -438,7 +407,6 @@ export function PluginCatalogBrowser({
                     key={pack.id}
                     pack={pack}
                     selected={selected?.id === pack.id}
-                    installed={isPackInstalled(draft.packs, pack.manifestUrl)}
                     onSelect={() => selectPack(pack.id)}
                   />
                 ))

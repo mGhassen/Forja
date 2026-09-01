@@ -68,13 +68,15 @@ export function PluginOrbitVisual({ className }: { className?: string }) {
       ))}
 
       <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2">
-        <div className="flex size-16 items-center justify-center rounded-2xl border border-white/15 bg-[#121110]/90 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl">
-          <span className="font-mono-ui text-[10px] font-bold uppercase tracking-[0.2em] text-forja-green">
-            JS
+        <div className="flex size-16 items-center justify-center rounded-2xl border border-forja-green/25 bg-[#121110]/90 shadow-[0_20px_60px_-20px_rgba(28,231,131,0.25)] backdrop-blur-xl">
+          <span className="font-mono-ui text-[9px] font-bold uppercase leading-tight tracking-[0.14em] text-forja-green">
+            Your
+            <br />
+            pack
           </span>
         </div>
         <span className="font-mono-ui text-[9px] uppercase tracking-[0.18em] text-[rgba(237,230,218,0.45)]">
-          Engine shell
+          Community
         </span>
       </div>
     </div>

@@ -97,10 +97,5 @@ pub fn torrent_list_files_json(magnet: String) -> String {
 }
 
 pub fn torrent_prefetch_byte_offset(byte_offset: u64) {
-    let engine = TORRENT.clone();
-    engine.runtime.handle().spawn(async move {
-        if let Err(e) = engine.prefetch_file_position_async(byte_offset).await {
-            eprintln!("[torrent] prefetch failed: {e}");
-        }
-    });
+    TORRENT.prefetch_file_position(byte_offset);
 }
