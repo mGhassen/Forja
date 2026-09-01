@@ -31,6 +31,16 @@ abstract final class CatalogKitTopMenuRegistry {
 
   static final ValueNotifier<int> revision = ValueNotifier(0);
   static final Map<String, CatalogKitTopMenuHandle> _handles = {};
+  static bool _deferredBumpPending = false;
+
+  static void _scheduleRevisionBump() {
+    if (_deferredBumpPending) return;
+    _deferredBumpPending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _deferredBumpPending = false;
+      revision.value++;
+    });
+  }
 
   static CatalogKitTopMenuHandle? handleFor(String? tabId) {
     final id = tabId?.trim();
@@ -90,7 +100,7 @@ abstract final class CatalogKitTopMenuRegistry {
   static void unregister(String tabId) {
     final id = tabId.trim();
     if (id.isEmpty) return;
-    if (_handles.remove(id) != null) revision.value++;
+    if (_handles.remove(id) != null) _scheduleRevisionBump();
   }
 
   /// Body inset so [kit.list] clears the overlaid shell top bar

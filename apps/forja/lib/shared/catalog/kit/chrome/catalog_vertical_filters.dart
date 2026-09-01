@@ -110,8 +110,19 @@ abstract final class CatalogVerticalFiltersRegistry {
   static final Map<String, ValueNotifier<bool>> _menuVisible = {};
   static final Map<String, ValueNotifier<String?>> _selectedId = {};
   static final Map<String, Timer?> _hideTimers = {};
+  static bool _deferredBumpPending = false;
 
   static void _bump() => revision.value++;
+
+  /// [unregister] runs from [CatalogShell.dispose] while the tree is locked.
+  static void _scheduleBump() {
+    if (_deferredBumpPending) return;
+    _deferredBumpPending = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _deferredBumpPending = false;
+      revision.value++;
+    });
+  }
 
   static bool hasFilters(String? tabId) {
     final id = tabId?.trim();
@@ -145,7 +156,7 @@ abstract final class CatalogVerticalFiltersRegistry {
     _hideTimers.remove(tabId);
     _menuVisible.remove(tabId)?.dispose();
     _selectedId.remove(tabId)?.dispose();
-    _bump();
+    _scheduleBump();
   }
 
   @visibleForTesting

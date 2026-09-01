@@ -167,8 +167,6 @@ class _CatalogShellState extends State<CatalogShell>
   @override
   void dispose() {
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
-    CatalogVerticalFiltersRegistry.unregister(_pageKey);
-    CatalogKitTopMenuRegistry.unregister(_pageKey);
     CatalogKitTopMenuRegistry.revision.removeListener(_onKitTopMenuRevision);
     if (_verticalFiltersRevisionListener != null) {
       CatalogVerticalFiltersRegistry.revision.removeListener(
@@ -176,6 +174,8 @@ class _CatalogShellState extends State<CatalogShell>
       );
     }
     _chromeListenable?.removeListener(_onChromeFilterChanged);
+    CatalogVerticalFiltersRegistry.unregister(_pageKey);
+    CatalogKitTopMenuRegistry.unregister(_pageKey);
     _scroll.removeListener(_publishScroll);
     _scroll.dispose();
     super.dispose();
