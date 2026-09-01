@@ -1,0 +1,483 @@
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Check,
+  Copy,
+  LayoutGrid,
+  Magnet,
+  Search,
+  SatelliteDish,
+  Trophy,
+  X,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react'
+import { AddToForjaButton } from '@/components/add-to-forja-button'
+import { useCommitDraft } from '@/hooks/use-commit-draft'
+import { useForjaSetting } from '@/hooks/use-user-setting'
+import type {
+  ForjaPluginKind,
+  ForjaPluginPackLive,
+} from '@/lib/forja-plugin-catalog'
+import { pluginKindLabel } from '@/lib/forja-plugin-catalog'
+import { isPackInstalled } from '@/lib/forja-plugin-install'
+import {
+  emptyForjaPayload,
+  type ForjaPayload,
+} from '@/lib/sync-domains'
+import { cn } from '@/lib/utils'
+
+const KIND_ICONS: Record<ForjaPluginKind, LucideIcon> = {
+  providers: Zap,
+  live: Trophy,
+  hubs: LayoutGrid,
+  torrent: Magnet,
+  iptv: SatelliteDish,
+}
+
+const ALL_KINDS: ForjaPluginKind[] = [
+  'providers',
+  'live',
+  'hubs',
+  'torrent',
+  'iptv',
+]
+
+function forjaFromServer(value: unknown): ForjaPayload {
+  const payload = value as ForjaPayload | undefined
+  return { packs: payload?.packs ?? [] }
+}
+
+function packShortName(name: string): string {
+  return name.replace(/^ForjaHQ\s+/i, '').trim()
+}
+
+function PluginDetailPanel({
+  pack,
+  onClose,
+  installed,
+}: {
+  pack: ForjaPluginPackLive
+  onClose?: () => void
+  installed: boolean
+}) {
+  const [copied, setCopied] = useState(false)
+  const Icon = KIND_ICONS[pack.kind]
+
+  async function copyManifest() {
+    try {
+      await navigator.clipboard.writeText(pack.manifestUrl)
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-[rgba(237,230,218,0.7)]">
+            <Icon className="size-4" strokeWidth={2} aria-hidden />
+          </div>
+          <div className="min-w-0">
+            <p className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.45)]">
+              {pluginKindLabel(pack.kind)}
+            </p>
+            <h2 className="truncate font-medium text-[#EDE6DA]">
+              {packShortName(pack.name)}
+            </h2>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {installed ? (
+            <span className="rounded-md border border-forja-green/30 bg-forja-green/10 px-2 py-0.5 font-mono-ui text-[9px] uppercase tracking-wider text-forja-green">
+              Added
+            </span>
+          ) : null}
+          {pack.version ? (
+            <span className="font-mono-ui text-[10px] text-[rgba(237,230,218,0.45)]">
+              v{pack.version}
+            </span>
+          ) : null}
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex size-8 items-center justify-center rounded-lg text-[rgba(237,230,218,0.5)] hover:bg-white/8 hover:text-[#EDE6DA] lg:hidden"
+              aria-label="Close details"
+            >
+              <X className="size-4" />
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
+        <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.62)]">
+          {pack.description}
+        </p>
+
+        <dl className="grid grid-cols-2 gap-3 text-sm">
+          {pack.pluginCount != null ? (
+            <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+              <dt className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+                Plugins
+              </dt>
+              <dd className="mt-0.5 text-[#EDE6DA]">{pack.pluginCount}</dd>
+            </div>
+          ) : null}
+          <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+            <dt className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+              Source
+            </dt>
+            <dd className="mt-0.5 text-[#EDE6DA]">Remote</dd>
+          </div>
+        </dl>
+
+        <div>
+          <p className="mb-1.5 font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+            Manifest URL
+          </p>
+          <div className="flex gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-lg border border-white/8 bg-black/20 px-2.5 py-2 font-mono text-[11px] text-[rgba(237,230,218,0.55)]">
+              {pack.manifestUrl}
+            </code>
+            <button
+              type="button"
+              onClick={() => void copyManifest()}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.55)] hover:border-white/20 hover:text-[#EDE6DA]"
+            >
+              {copied ? (
+                <Check className="size-3.5 text-forja-green" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              {copied ? 'OK' : 'Copy'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-white/10 p-4 sm:p-5">
+        <AddToForjaButton pack={pack} variant="magnet" className="w-full" />
+      </div>
+    </div>
+  )
+}
+
+function PluginListRow({
+  pack,
+  selected,
+  installed,
+  onSelect,
+}: {
+  pack: ForjaPluginPackLive
+  selected: boolean
+  installed: boolean
+  onSelect: () => void
+}) {
+  const Icon = KIND_ICONS[pack.kind]
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        'flex w-full items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 text-left transition-colors sm:px-4',
+        selected
+          ? 'bg-forja-green/10'
+          : 'hover:bg-white/[0.04]',
+      )}
+    >
+      <div
+        className={cn(
+          'flex size-8 shrink-0 items-center justify-center rounded-md border text-[rgba(237,230,218,0.65)]',
+          selected
+            ? 'border-forja-green/30 bg-forja-green/10'
+            : 'border-white/8 bg-white/[0.02]',
+        )}
+      >
+        <Icon className="size-3.5" strokeWidth={2} aria-hidden />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-sm font-medium text-[#EDE6DA]">
+            {packShortName(pack.name)}
+          </span>
+          {installed ? (
+            <span
+              className="size-1.5 shrink-0 rounded-full bg-forja-green"
+              title="In your account"
+            />
+          ) : null}
+        </div>
+        <p className="truncate text-xs text-[rgba(237,230,218,0.42)]">
+          {pluginKindLabel(pack.kind)}
+          {pack.pluginCount != null ? ` · ${pack.pluginCount} plugins` : ''}
+        </p>
+      </div>
+      {pack.version ? (
+        <span className="shrink-0 font-mono-ui text-[10px] text-[rgba(237,230,218,0.35)]">
+          v{pack.version}
+        </span>
+      ) : null}
+    </button>
+  )
+}
+
+type PluginCatalogBrowserProps = {
+  packs: ForjaPluginPackLive[]
+  isLoading?: boolean
+  error?: Error | null
+}
+
+export function PluginCatalogBrowser({
+  packs,
+  isLoading,
+  error,
+}: PluginCatalogBrowserProps) {
+  const [query, setQuery] = useState('')
+  const [kindFilter, setKindFilter] = useState<ForjaPluginKind | 'all'>('all')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
+
+  const { data, profileId, isLoading: settingsLoading, save } = useForjaSetting()
+  const { draft } = useCommitDraft({
+    profileId,
+    updatedAt: data?.updated_at,
+    isReady: Boolean(data) && !settingsLoading,
+    serverValue: data?.payload,
+    mapServer: forjaFromServer,
+    makeEmpty: emptyForjaPayload,
+    save,
+  })
+
+  const filtered = useMemo(() => {
+    let list = [...packs]
+    if (kindFilter !== 'all') {
+      list = list.filter((p) => p.kind === kindFilter)
+    }
+    const q = query.trim().toLowerCase()
+    if (q) {
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q) ||
+          pluginKindLabel(p.kind).toLowerCase().includes(q) ||
+          p.id.toLowerCase().includes(q),
+      )
+    }
+    return list.sort((a, b) => a.name.localeCompare(b.name))
+  }, [packs, kindFilter, query])
+
+  const selected =
+    filtered.find((p) => p.id === selectedId) ??
+    filtered[0] ??
+    null
+
+  useEffect(() => {
+    if (filtered.length === 0) {
+      setSelectedId(null)
+      setMobileDetailOpen(false)
+      return
+    }
+    if (!selectedId || !filtered.some((p) => p.id === selectedId)) {
+      setSelectedId(filtered[0]!.id)
+    }
+  }, [filtered, selectedId])
+
+  const kindCounts = useMemo(() => {
+    const counts = new Map<ForjaPluginKind, number>()
+    for (const p of packs) {
+      counts.set(p.kind, (counts.get(p.kind) ?? 0) + 1)
+    }
+    return counts
+  }, [packs])
+
+  function selectPack(id: string) {
+    setSelectedId(id)
+    setMobileDetailOpen(true)
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-white/10 bg-[#121110] p-8 text-center text-sm text-[rgba(237,230,218,0.6)]">
+        {error.message}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Toolbar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative min-w-0 flex-1 sm:max-w-md">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[rgba(237,230,218,0.35)]"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search packs…"
+            className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] pl-9 pr-3 text-sm text-[#EDE6DA] placeholder:text-[rgba(237,230,218,0.35)] outline-none focus:border-forja-green/40 focus:ring-1 focus:ring-forja-green/25"
+          />
+        </div>
+        <p className="shrink-0 font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+          {isLoading ? 'Loading…' : `${filtered.length} of ${packs.length}`}
+        </p>
+      </div>
+
+      {/* Kind filters */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <FilterChip
+          active={kindFilter === 'all'}
+          onClick={() => setKindFilter('all')}
+          label="All"
+          count={packs.length}
+        />
+        {ALL_KINDS.filter((k) => (kindCounts.get(k) ?? 0) > 0).map((kind) => (
+          <FilterChip
+            key={kind}
+            active={kindFilter === kind}
+            onClick={() => setKindFilter(kind)}
+            label={pluginKindLabel(kind)}
+            count={kindCounts.get(kind)}
+          />
+        ))}
+      </div>
+
+      {/* Master / detail */}
+      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#121110]">
+        <div className="grid min-h-[min(70vh,640px)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+          {/* List */}
+          <div
+            className={cn(
+              'flex flex-col border-white/10 lg:border-r',
+              mobileDetailOpen ? 'hidden lg:flex' : 'flex',
+            )}
+          >
+            <div className="border-b border-white/[0.06] px-3 py-2 sm:px-4">
+              <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
+                Packs
+              </p>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {isLoading ? (
+                <ListSkeleton />
+              ) : filtered.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm text-[rgba(237,230,218,0.45)]">
+                  No packs match your search.
+                </p>
+              ) : (
+                filtered.map((pack) => (
+                  <PluginListRow
+                    key={pack.id}
+                    pack={pack}
+                    selected={selected?.id === pack.id}
+                    installed={isPackInstalled(draft.packs, pack.manifestUrl)}
+                    onSelect={() => selectPack(pack.id)}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Detail — desktop */}
+          <div className="hidden flex-col bg-[#0f0e0d] lg:flex">
+            {selected ? (
+              <PluginDetailPanel
+                pack={selected}
+                installed={isPackInstalled(draft.packs, selected.manifestUrl)}
+              />
+            ) : (
+              <EmptyDetail />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Detail — mobile sheet */}
+      {mobileDetailOpen && selected ? (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            aria-label="Close details"
+            onClick={() => setMobileDetailOpen(false)}
+          />
+          <div className="absolute inset-x-0 bottom-0 top-[18%] flex flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121110] shadow-2xl">
+            <PluginDetailPanel
+              pack={selected}
+              installed={isPackInstalled(draft.packs, selected.manifestUrl)}
+              onClose={() => setMobileDetailOpen(false)}
+            />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function FilterChip({
+  active,
+  onClick,
+  label,
+  count,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+  count?: number
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 font-mono-ui text-[10px] uppercase tracking-wider transition-colors',
+        active
+          ? 'border-forja-green/40 bg-forja-green/15 text-forja-green'
+          : 'border-white/10 text-[rgba(237,230,218,0.45)] hover:border-white/20 hover:text-[#EDE6DA]',
+      )}
+    >
+      {label}
+      {count != null ? (
+        <span className={cn('tabular-nums', active ? 'opacity-80' : 'opacity-50')}>
+          {count}
+        </span>
+      ) : null}
+    </button>
+  )
+}
+
+function EmptyDetail() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
+      <p className="text-sm text-[rgba(237,230,218,0.45)]">
+        Select a pack to see details and install.
+      </p>
+    </div>
+  )
+}
+
+function ListSkeleton() {
+  return (
+    <div className="animate-pulse">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3"
+        >
+          <div className="size-8 rounded-md bg-white/10" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3 w-32 rounded bg-white/10" />
+            <div className="h-2.5 w-20 rounded bg-white/5" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
