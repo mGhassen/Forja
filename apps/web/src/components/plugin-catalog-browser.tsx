@@ -4,14 +4,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
-  LayoutGrid,
-  Magnet,
   Search,
-  SatelliteDish,
-  Trophy,
   X,
-  Zap,
-  type LucideIcon,
 } from 'lucide-react'
 import { AddToForjaButton } from '@/components/add-to-forja-button'
 import { Button } from '@/components/ui/button'
@@ -21,14 +15,6 @@ import type {
 } from '@/lib/forja-plugin-catalog'
 import { pluginKindLabel, isOfficialPluginPack, packAuthorLabel } from '@/lib/forja-plugin-catalog'
 import { cn } from '@/lib/utils'
-
-const KIND_ICONS: Record<ForjaPluginKind, LucideIcon> = {
-  providers: Zap,
-  live: Trophy,
-  hubs: LayoutGrid,
-  torrent: Magnet,
-  iptv: SatelliteDish,
-}
 
 const ALL_KINDS: ForjaPluginKind[] = [
   'providers',
@@ -80,7 +66,6 @@ function PluginDetailPanel({
   onClose?: () => void
 }) {
   const [copied, setCopied] = useState(false)
-  const Icon = KIND_ICONS[pack.kind]
   const official = isOfficialPluginPack(pack)
   const author = packAuthorLabel(pack)
 
@@ -97,23 +82,19 @@ function PluginDetailPanel({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-[rgba(237,230,218,0.7)]">
-            <Icon className="size-4" strokeWidth={2} aria-hidden />
-          </div>
-          <div className="min-w-0">
-            <p className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.45)]">
-              {pluginKindLabel(pack.kind)}
+        <div className="min-w-0">
+          {author ? (
+            <p className="truncate font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.45)]">
+              {author}
             </p>
-            <h2 className="truncate font-medium text-[#EDE6DA]">
-              {packShortName(pack.name)}
-            </h2>
-            {author ? (
-              <p className="mt-1 truncate text-xs text-[rgba(237,230,218,0.5)]">
-                by {author}
-              </p>
-            ) : null}
-          </div>
+          ) : null}
+          <h2 className="truncate font-medium text-[#EDE6DA]">
+            {packShortName(pack.name)}
+          </h2>
+          <p className="mt-1 truncate text-xs text-[rgba(237,230,218,0.5)]">
+            {pluginKindLabel(pack.kind)}
+            {pack.pluginCount != null ? ` · ${pack.pluginCount} plugins` : ''}
+          </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {official ? <OfficialBadge /> : null}
@@ -201,7 +182,6 @@ function PluginListRow({
   selected: boolean
   onSelect: () => void
 }) {
-  const Icon = KIND_ICONS[pack.kind]
   const official = isOfficialPluginPack(pack)
   const author = packAuthorLabel(pack)
 
@@ -216,27 +196,15 @@ function PluginListRow({
           : 'hover:bg-white/[0.04]',
       )}
     >
-      <div
-        className={cn(
-          'flex size-8 shrink-0 items-center justify-center rounded-md border text-[rgba(237,230,218,0.65)]',
-          selected
-            ? 'border-forja-green/30 bg-forja-green/10'
-            : 'border-white/8 bg-white/[0.02]',
-        )}
-      >
-        <Icon className="size-3.5" strokeWidth={2} aria-hidden />
-      </div>
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
-          <span className="truncate text-sm font-medium text-[#EDE6DA]">
-            {packShortName(pack.name)}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate font-mono-ui text-[10px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.45)]">
+            {author ?? 'Community'}
           </span>
           {official ? <OfficialBadge compact /> : null}
         </div>
-        <p className="truncate text-xs text-[rgba(237,230,218,0.42)]">
-          {pluginKindLabel(pack.kind)}
-          {pack.pluginCount != null ? ` · ${pack.pluginCount} plugins` : ''}
-          {author ? ` · ${author}` : ''}
+        <p className="truncate text-sm font-medium text-[#EDE6DA]">
+          {packShortName(pack.name)}
         </p>
       </div>
       {pack.version ? (
@@ -525,12 +493,11 @@ function ListSkeleton() {
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3"
+          className="border-b border-white/[0.06] px-4 py-3"
         >
-          <div className="size-8 rounded-md bg-white/10" />
-          <div className="flex-1 space-y-1.5">
+          <div className="space-y-1.5">
+            <div className="h-2.5 w-16 rounded bg-white/5" />
             <div className="h-3 w-32 rounded bg-white/10" />
-            <div className="h-2.5 w-20 rounded bg-white/5" />
           </div>
         </div>
       ))}
