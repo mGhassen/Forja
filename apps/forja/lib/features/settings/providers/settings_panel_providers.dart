@@ -582,10 +582,10 @@ class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
       if (packs != null) unawaited(check(packs));
     });
     final packs = ref.watch(enginePacksProvider).valueOrNull;
-    if (packs != null && packs.isNotEmpty && state.lastChecked == null) {
+    if (packs != null && packs.isNotEmpty) {
       Future.microtask(() => check(packs));
     }
-    return state;
+    return const EnginePackUpdatesState();
   }
 
   Future<void> check(List<EnginePack> packs) async {

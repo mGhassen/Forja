@@ -9,62 +9,44 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthRouteImport } from './routes/_auth'
-import { Route as AccountRouteImport } from './routes/account'
-import { Route as ChangelogRouteImport } from './routes/changelog'
-import { Route as DmcaRouteImport } from './routes/dmca'
-import { Route as DownloadRouteImport } from './routes/download'
-import { Route as IptvRouteImport } from './routes/iptv'
 import { Route as TermsRouteImport } from './routes/terms'
-import { Route as AuthConnectRouteImport } from './routes/_auth/connect'
-import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-password'
-import { Route as AuthLoginRouteImport } from './routes/_auth/login'
-import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
-import { Route as AuthSignupRouteImport } from './routes/_auth/signup'
-import { Route as AccountProfilesRouteImport } from './routes/account.profiles'
-import { Route as AccountSettingsRouteImport } from './routes/account.settings'
-import { Route as ApiChangelogRouteImport } from './routes/api.changelog'
-import { Route as ApiLatestReleaseRouteImport } from './routes/api.latest-release'
+import { Route as PluginsRouteImport } from './routes/plugins'
+import { Route as IptvRouteImport } from './routes/iptv'
+import { Route as DownloadRouteImport } from './routes/download'
+import { Route as DmcaRouteImport } from './routes/dmca'
+import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as AccountRouteImport } from './routes/account'
+import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
-import { Route as AuthLoginMfaRouteImport } from './routes/_auth/login.mfa'
-import { Route as AccountSettingsAccountRouteImport } from './routes/account.settings.account'
-import { Route as AccountSettingsConnectionsRouteImport } from './routes/account.settings.connections'
-import { Route as AccountSettingsForjaRouteImport } from './routes/account.settings.forja'
-import { Route as AccountSettingsIptvRouteImport } from './routes/account.settings.iptv'
-import { Route as AccountSettingsNavigationRouteImport } from './routes/account.settings.navigation'
-import { Route as AccountSettingsNuvioRouteImport } from './routes/account.settings.nuvio'
-import { Route as AccountSettingsPlaybackRouteImport } from './routes/account.settings.playback'
-import { Route as AccountSettingsProvidersRouteImport } from './routes/account.settings.providers'
+import { Route as ApiLatestReleaseRouteImport } from './routes/api.latest-release'
+import { Route as ApiChangelogRouteImport } from './routes/api.changelog'
+import { Route as AccountSettingsRouteImport } from './routes/account.settings'
+import { Route as AccountProfilesRouteImport } from './routes/account.profiles'
+import { Route as AuthSignupRouteImport } from './routes/_auth/signup'
+import { Route as AuthResetPasswordRouteImport } from './routes/_auth/reset-password'
+import { Route as AuthLoginRouteImport } from './routes/_auth/login'
+import { Route as AuthForgotPasswordRouteImport } from './routes/_auth/forgot-password'
+import { Route as AuthConnectRouteImport } from './routes/_auth/connect'
 import { Route as AccountSettingsStremioRouteImport } from './routes/account.settings.stremio'
+import { Route as AccountSettingsProvidersRouteImport } from './routes/account.settings.providers'
+import { Route as AccountSettingsPlaybackRouteImport } from './routes/account.settings.playback'
+import { Route as AccountSettingsNuvioRouteImport } from './routes/account.settings.nuvio'
+import { Route as AccountSettingsNavigationRouteImport } from './routes/account.settings.navigation'
+import { Route as AccountSettingsIptvRouteImport } from './routes/account.settings.iptv'
+import { Route as AccountSettingsForjaRouteImport } from './routes/account.settings.forja'
+import { Route as AccountSettingsConnectionsRouteImport } from './routes/account.settings.connections'
+import { Route as AccountSettingsAccountRouteImport } from './routes/account.settings.account'
+import { Route as AuthLoginMfaRouteImport } from './routes/_auth/login.mfa'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/_auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountRoute = AccountRouteImport.update({
-  id: '/account',
-  path: '/account',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChangelogRoute = ChangelogRouteImport.update({
-  id: '/changelog',
-  path: '/changelog',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DmcaRoute = DmcaRouteImport.update({
-  id: '/dmca',
-  path: '/dmca',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DownloadRoute = DownloadRouteImport.update({
-  id: '/download',
-  path: '/download',
+const PluginsRoute = PluginsRouteImport.update({
+  id: '/plugins',
+  path: '/plugins',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IptvRoute = IptvRouteImport.update({
@@ -72,54 +54,33 @@ const IptvRoute = IptvRouteImport.update({
   path: '/iptv',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TermsRoute = TermsRouteImport.update({
-  id: '/terms',
-  path: '/terms',
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthConnectRoute = AuthConnectRouteImport.update({
-  id: '/connect',
-  path: '/connect',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
-  id: '/forgot-password',
-  path: '/forgot-password',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AuthSignupRoute = AuthSignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => AuthRoute,
-} as any)
-const AccountProfilesRoute = AccountProfilesRouteImport.update({
-  id: '/profiles',
-  path: '/profiles',
-  getParentRoute: () => AccountRoute,
-} as any)
-const AccountSettingsRoute = AccountSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AccountRoute,
-} as any)
-const ApiChangelogRoute = ApiChangelogRouteImport.update({
-  id: '/api/changelog',
-  path: '/api/changelog',
+const DmcaRoute = DmcaRouteImport.update({
+  id: '/dmca',
+  path: '/dmca',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiLatestReleaseRoute = ApiLatestReleaseRouteImport.update({
-  id: '/api/latest-release',
-  path: '/api/latest-release',
+const ChangelogRoute = ChangelogRouteImport.update({
+  id: '/changelog',
+  path: '/changelog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -127,46 +88,54 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthLoginMfaRoute = AuthLoginMfaRouteImport.update({
-  id: '/mfa',
-  path: '/mfa',
-  getParentRoute: () => AuthLoginRoute,
+const ApiLatestReleaseRoute = ApiLatestReleaseRouteImport.update({
+  id: '/api/latest-release',
+  path: '/api/latest-release',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AccountSettingsAccountRoute = AccountSettingsAccountRouteImport.update({
-  id: '/account',
-  path: '/account',
-  getParentRoute: () => AccountSettingsRoute,
+const ApiChangelogRoute = ApiChangelogRouteImport.update({
+  id: '/api/changelog',
+  path: '/api/changelog',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AccountSettingsConnectionsRoute =
-  AccountSettingsConnectionsRouteImport.update({
-    id: '/connections',
-    path: '/connections',
-    getParentRoute: () => AccountSettingsRoute,
-  } as any)
-const AccountSettingsForjaRoute = AccountSettingsForjaRouteImport.update({
-  id: '/forja',
-  path: '/forja',
-  getParentRoute: () => AccountSettingsRoute,
+const AccountSettingsRoute = AccountSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AccountRoute,
 } as any)
-const AccountSettingsIptvRoute = AccountSettingsIptvRouteImport.update({
-  id: '/iptv',
-  path: '/iptv',
-  getParentRoute: () => AccountSettingsRoute,
+const AccountProfilesRoute = AccountProfilesRouteImport.update({
+  id: '/profiles',
+  path: '/profiles',
+  getParentRoute: () => AccountRoute,
 } as any)
-const AccountSettingsNavigationRoute =
-  AccountSettingsNavigationRouteImport.update({
-    id: '/navigation',
-    path: '/navigation',
-    getParentRoute: () => AccountSettingsRoute,
-  } as any)
-const AccountSettingsNuvioRoute = AccountSettingsNuvioRouteImport.update({
-  id: '/nuvio',
-  path: '/nuvio',
-  getParentRoute: () => AccountSettingsRoute,
+const AuthSignupRoute = AuthSignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => AuthRoute,
 } as any)
-const AccountSettingsPlaybackRoute = AccountSettingsPlaybackRouteImport.update({
-  id: '/playback',
-  path: '/playback',
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AuthConnectRoute = AuthConnectRouteImport.update({
+  id: '/connect',
+  path: '/connect',
+  getParentRoute: () => AuthRoute,
+} as any)
+const AccountSettingsStremioRoute = AccountSettingsStremioRouteImport.update({
+  id: '/stremio',
+  path: '/stremio',
   getParentRoute: () => AccountSettingsRoute,
 } as any)
 const AccountSettingsProvidersRoute =
@@ -175,10 +144,47 @@ const AccountSettingsProvidersRoute =
     path: '/providers',
     getParentRoute: () => AccountSettingsRoute,
   } as any)
-const AccountSettingsStremioRoute = AccountSettingsStremioRouteImport.update({
-  id: '/stremio',
-  path: '/stremio',
+const AccountSettingsPlaybackRoute = AccountSettingsPlaybackRouteImport.update({
+  id: '/playback',
+  path: '/playback',
   getParentRoute: () => AccountSettingsRoute,
+} as any)
+const AccountSettingsNuvioRoute = AccountSettingsNuvioRouteImport.update({
+  id: '/nuvio',
+  path: '/nuvio',
+  getParentRoute: () => AccountSettingsRoute,
+} as any)
+const AccountSettingsNavigationRoute =
+  AccountSettingsNavigationRouteImport.update({
+    id: '/navigation',
+    path: '/navigation',
+    getParentRoute: () => AccountSettingsRoute,
+  } as any)
+const AccountSettingsIptvRoute = AccountSettingsIptvRouteImport.update({
+  id: '/iptv',
+  path: '/iptv',
+  getParentRoute: () => AccountSettingsRoute,
+} as any)
+const AccountSettingsForjaRoute = AccountSettingsForjaRouteImport.update({
+  id: '/forja',
+  path: '/forja',
+  getParentRoute: () => AccountSettingsRoute,
+} as any)
+const AccountSettingsConnectionsRoute =
+  AccountSettingsConnectionsRouteImport.update({
+    id: '/connections',
+    path: '/connections',
+    getParentRoute: () => AccountSettingsRoute,
+  } as any)
+const AccountSettingsAccountRoute = AccountSettingsAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AccountSettingsRoute,
+} as any)
+const AuthLoginMfaRoute = AuthLoginMfaRouteImport.update({
+  id: '/mfa',
+  path: '/mfa',
+  getParentRoute: () => AuthLoginRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -188,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/iptv': typeof IptvRoute
+  '/plugins': typeof PluginsRoute
   '/terms': typeof TermsRoute
   '/connect': typeof AuthConnectRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
@@ -217,6 +224,7 @@ export interface FileRoutesByTo {
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/iptv': typeof IptvRoute
+  '/plugins': typeof PluginsRoute
   '/terms': typeof TermsRoute
   '/connect': typeof AuthConnectRoute
   '/forgot-password': typeof AuthForgotPasswordRoute
@@ -248,6 +256,7 @@ export interface FileRoutesById {
   '/dmca': typeof DmcaRoute
   '/download': typeof DownloadRoute
   '/iptv': typeof IptvRoute
+  '/plugins': typeof PluginsRoute
   '/terms': typeof TermsRoute
   '/_auth/connect': typeof AuthConnectRoute
   '/_auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -279,6 +288,7 @@ export interface FileRouteTypes {
     | '/dmca'
     | '/download'
     | '/iptv'
+    | '/plugins'
     | '/terms'
     | '/connect'
     | '/forgot-password'
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/dmca'
     | '/download'
     | '/iptv'
+    | '/plugins'
     | '/terms'
     | '/connect'
     | '/forgot-password'
@@ -338,6 +349,7 @@ export interface FileRouteTypes {
     | '/dmca'
     | '/download'
     | '/iptv'
+    | '/plugins'
     | '/terms'
     | '/_auth/connect'
     | '/_auth/forgot-password'
@@ -369,6 +381,7 @@ export interface RootRouteChildren {
   DmcaRoute: typeof DmcaRoute
   DownloadRoute: typeof DownloadRoute
   IptvRoute: typeof IptvRoute
+  PluginsRoute: typeof PluginsRoute
   TermsRoute: typeof TermsRoute
   ApiChangelogRoute: typeof ApiChangelogRoute
   ApiLatestReleaseRoute: typeof ApiLatestReleaseRoute
@@ -377,46 +390,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_auth': {
-      id: '/_auth'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/account': {
-      id: '/account'
-      path: '/account'
-      fullPath: '/account'
-      preLoaderRoute: typeof AccountRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/changelog': {
-      id: '/changelog'
-      path: '/changelog'
-      fullPath: '/changelog'
-      preLoaderRoute: typeof ChangelogRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dmca': {
-      id: '/dmca'
-      path: '/dmca'
-      fullPath: '/dmca'
-      preLoaderRoute: typeof DmcaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/download': {
-      id: '/download'
-      path: '/download'
-      fullPath: '/download'
-      preLoaderRoute: typeof DownloadRouteImport
+    '/plugins': {
+      id: '/plugins'
+      path: '/plugins'
+      fullPath: '/plugins'
+      preLoaderRoute: typeof PluginsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/iptv': {
@@ -426,74 +411,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IptvRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/terms': {
-      id: '/terms'
-      path: '/terms'
-      fullPath: '/terms'
-      preLoaderRoute: typeof TermsRouteImport
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_auth/connect': {
-      id: '/_auth/connect'
-      path: '/connect'
-      fullPath: '/connect'
-      preLoaderRoute: typeof AuthConnectRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/forgot-password': {
-      id: '/_auth/forgot-password'
-      path: '/forgot-password'
-      fullPath: '/forgot-password'
-      preLoaderRoute: typeof AuthForgotPasswordRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/login': {
-      id: '/_auth/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/reset-password': {
-      id: '/_auth/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof AuthResetPasswordRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/_auth/signup': {
-      id: '/_auth/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof AuthSignupRouteImport
-      parentRoute: typeof AuthRoute
-    }
-    '/account/profiles': {
-      id: '/account/profiles'
-      path: '/profiles'
-      fullPath: '/account/profiles'
-      preLoaderRoute: typeof AccountProfilesRouteImport
-      parentRoute: typeof AccountRoute
-    }
-    '/account/settings': {
-      id: '/account/settings'
-      path: '/settings'
-      fullPath: '/account/settings'
-      preLoaderRoute: typeof AccountSettingsRouteImport
-      parentRoute: typeof AccountRoute
-    }
-    '/api/changelog': {
-      id: '/api/changelog'
-      path: '/api/changelog'
-      fullPath: '/api/changelog'
-      preLoaderRoute: typeof ApiChangelogRouteImport
+    '/dmca': {
+      id: '/dmca'
+      path: '/dmca'
+      fullPath: '/dmca'
+      preLoaderRoute: typeof DmcaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/latest-release': {
-      id: '/api/latest-release'
-      path: '/api/latest-release'
-      fullPath: '/api/latest-release'
-      preLoaderRoute: typeof ApiLatestReleaseRouteImport
+    '/changelog': {
+      id: '/changelog'
+      path: '/changelog'
+      fullPath: '/changelog'
+      preLoaderRoute: typeof ChangelogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_auth': {
+      id: '/_auth'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/callback': {
@@ -503,60 +460,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_auth/login/mfa': {
-      id: '/_auth/login/mfa'
-      path: '/mfa'
-      fullPath: '/login/mfa'
-      preLoaderRoute: typeof AuthLoginMfaRouteImport
-      parentRoute: typeof AuthLoginRoute
+    '/api/latest-release': {
+      id: '/api/latest-release'
+      path: '/api/latest-release'
+      fullPath: '/api/latest-release'
+      preLoaderRoute: typeof ApiLatestReleaseRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/account/settings/account': {
-      id: '/account/settings/account'
-      path: '/account'
-      fullPath: '/account/settings/account'
-      preLoaderRoute: typeof AccountSettingsAccountRouteImport
-      parentRoute: typeof AccountSettingsRoute
+    '/api/changelog': {
+      id: '/api/changelog'
+      path: '/api/changelog'
+      fullPath: '/api/changelog'
+      preLoaderRoute: typeof ApiChangelogRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/account/settings/connections': {
-      id: '/account/settings/connections'
-      path: '/connections'
-      fullPath: '/account/settings/connections'
-      preLoaderRoute: typeof AccountSettingsConnectionsRouteImport
-      parentRoute: typeof AccountSettingsRoute
+    '/account/settings': {
+      id: '/account/settings'
+      path: '/settings'
+      fullPath: '/account/settings'
+      preLoaderRoute: typeof AccountSettingsRouteImport
+      parentRoute: typeof AccountRoute
     }
-    '/account/settings/forja': {
-      id: '/account/settings/forja'
-      path: '/forja'
-      fullPath: '/account/settings/forja'
-      preLoaderRoute: typeof AccountSettingsForjaRouteImport
-      parentRoute: typeof AccountSettingsRoute
+    '/account/profiles': {
+      id: '/account/profiles'
+      path: '/profiles'
+      fullPath: '/account/profiles'
+      preLoaderRoute: typeof AccountProfilesRouteImport
+      parentRoute: typeof AccountRoute
     }
-    '/account/settings/iptv': {
-      id: '/account/settings/iptv'
-      path: '/iptv'
-      fullPath: '/account/settings/iptv'
-      preLoaderRoute: typeof AccountSettingsIptvRouteImport
-      parentRoute: typeof AccountSettingsRoute
+    '/_auth/signup': {
+      id: '/_auth/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof AuthRoute
     }
-    '/account/settings/navigation': {
-      id: '/account/settings/navigation'
-      path: '/navigation'
-      fullPath: '/account/settings/navigation'
-      preLoaderRoute: typeof AccountSettingsNavigationRouteImport
-      parentRoute: typeof AccountSettingsRoute
+    '/_auth/reset-password': {
+      id: '/_auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof AuthRoute
     }
-    '/account/settings/nuvio': {
-      id: '/account/settings/nuvio'
-      path: '/nuvio'
-      fullPath: '/account/settings/nuvio'
-      preLoaderRoute: typeof AccountSettingsNuvioRouteImport
-      parentRoute: typeof AccountSettingsRoute
+    '/_auth/login': {
+      id: '/_auth/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof AuthRoute
     }
-    '/account/settings/playback': {
-      id: '/account/settings/playback'
-      path: '/playback'
-      fullPath: '/account/settings/playback'
-      preLoaderRoute: typeof AccountSettingsPlaybackRouteImport
+    '/_auth/forgot-password': {
+      id: '/_auth/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/_auth/connect': {
+      id: '/_auth/connect'
+      path: '/connect'
+      fullPath: '/connect'
+      preLoaderRoute: typeof AuthConnectRouteImport
+      parentRoute: typeof AuthRoute
+    }
+    '/account/settings/stremio': {
+      id: '/account/settings/stremio'
+      path: '/stremio'
+      fullPath: '/account/settings/stremio'
+      preLoaderRoute: typeof AccountSettingsStremioRouteImport
       parentRoute: typeof AccountSettingsRoute
     }
     '/account/settings/providers': {
@@ -566,12 +537,61 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountSettingsProvidersRouteImport
       parentRoute: typeof AccountSettingsRoute
     }
-    '/account/settings/stremio': {
-      id: '/account/settings/stremio'
-      path: '/stremio'
-      fullPath: '/account/settings/stremio'
-      preLoaderRoute: typeof AccountSettingsStremioRouteImport
+    '/account/settings/playback': {
+      id: '/account/settings/playback'
+      path: '/playback'
+      fullPath: '/account/settings/playback'
+      preLoaderRoute: typeof AccountSettingsPlaybackRouteImport
       parentRoute: typeof AccountSettingsRoute
+    }
+    '/account/settings/nuvio': {
+      id: '/account/settings/nuvio'
+      path: '/nuvio'
+      fullPath: '/account/settings/nuvio'
+      preLoaderRoute: typeof AccountSettingsNuvioRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
+    '/account/settings/navigation': {
+      id: '/account/settings/navigation'
+      path: '/navigation'
+      fullPath: '/account/settings/navigation'
+      preLoaderRoute: typeof AccountSettingsNavigationRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
+    '/account/settings/iptv': {
+      id: '/account/settings/iptv'
+      path: '/iptv'
+      fullPath: '/account/settings/iptv'
+      preLoaderRoute: typeof AccountSettingsIptvRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
+    '/account/settings/forja': {
+      id: '/account/settings/forja'
+      path: '/forja'
+      fullPath: '/account/settings/forja'
+      preLoaderRoute: typeof AccountSettingsForjaRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
+    '/account/settings/connections': {
+      id: '/account/settings/connections'
+      path: '/connections'
+      fullPath: '/account/settings/connections'
+      preLoaderRoute: typeof AccountSettingsConnectionsRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
+    '/account/settings/account': {
+      id: '/account/settings/account'
+      path: '/account'
+      fullPath: '/account/settings/account'
+      preLoaderRoute: typeof AccountSettingsAccountRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
+    '/_auth/login/mfa': {
+      id: '/_auth/login/mfa'
+      path: '/mfa'
+      fullPath: '/login/mfa'
+      preLoaderRoute: typeof AuthLoginMfaRouteImport
+      parentRoute: typeof AuthLoginRoute
     }
   }
 }
@@ -655,6 +675,7 @@ const rootRouteChildren: RootRouteChildren = {
   DmcaRoute: DmcaRoute,
   DownloadRoute: DownloadRoute,
   IptvRoute: IptvRoute,
+  PluginsRoute: PluginsRoute,
   TermsRoute: TermsRoute,
   ApiChangelogRoute: ApiChangelogRoute,
   ApiLatestReleaseRoute: ApiLatestReleaseRoute,
@@ -663,3 +684,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

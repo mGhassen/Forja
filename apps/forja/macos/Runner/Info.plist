@@ -38,5 +38,16 @@
 	<false/>
 	<key>FLTDisablePartialRepaint</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.forjahq.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>forja</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

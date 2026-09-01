@@ -136,6 +136,7 @@ class _CatalogContinueWatchingCardState
     final cardWidth = CatalogContinueWatchingCard.cardWidth(context);
     final cardHeight = CatalogContinueWatchingCard.cardHeight(context);
     final radius = shellCardBorderRadius(context);
+    final active = _activeFor(policy);
 
     return shellFocusableTap(
       context: context,
@@ -162,7 +163,7 @@ class _CatalogContinueWatchingCardState
             }
           : null,
       child: AnimatedScale(
-        scale: _activeFor(policy) ? ShellCardPlayOverlay.cardHoverScale : 1.0,
+        scale: active ? ShellCardPlayOverlay.cardHoverScale : 1.0,
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeOutCubic,
         child: Container(
@@ -171,7 +172,7 @@ class _CatalogContinueWatchingCardState
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(
-              color: _activeFor(policy)
+              color: active
                   ? ForjaShellColors.chipSelectedBorder
                   : ForjaShellColors.cinematic.borderSubtle,
               width: 1.5,
@@ -301,6 +302,10 @@ class _CatalogContinueWatchingCardState
                       ),
                     ],
                   ),
+                ),
+                ShellCardPlayOverlay(
+                  active: false,
+                  visible: active && !widget.isLoading,
                 ),
                 if (widget.isLoading)
                   Container(

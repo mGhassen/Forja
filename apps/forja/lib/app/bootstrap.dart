@@ -29,6 +29,7 @@ import 'package:forja/shared/widgets/animated_logo.dart';
 import 'package:forja/shared/services/app_version.dart';
 import 'package:forja/shared/services/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/engine/forja_plugin_deeplink.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/widgets/app_update_progress_banner.dart';
@@ -295,6 +296,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     }
     // ⌘Q / Quit menu never hits onWindowClose - AppKit calls prepareQuit.
     MacOsShellChannel.listenPrepareQuit(_runDesktopQuit);
+    unawaited(ForjaPluginDeepLink.ensureListening());
     // Mobile/TV often launch already in [AppLifecycleState.resumed], so
     // [didChangeAppLifecycleState] never fires for the first frame. Desktop
     // StartupGate still does a forced pull for restored sessions; this covers
@@ -314,6 +316,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
       windowManager.removeListener(this);
       SyncService.instance.stopDesktopSessionKeepAlive();
     }
+    unawaited(ForjaPluginDeepLink.dispose());
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

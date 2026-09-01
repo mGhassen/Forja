@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 const LINKS = [
   { to: '/' as const, label: 'Streaming Player', exact: true },
   { to: '/iptv' as const, label: 'Live Player' },
+  { to: '/plugins' as const, label: 'Plugins' },
 ]
 
 function NavLink({
@@ -18,7 +19,7 @@ function NavLink({
   className,
   variant = 'desktop',
 }: {
-  to: '/' | '/iptv' | '/download' | '/account' | '/login' | '/changelog'
+  to: '/' | '/iptv' | '/plugins' | '/download' | '/account' | '/login' | '/changelog'
   children: string
   exact?: boolean
   onNavigate?: () => void

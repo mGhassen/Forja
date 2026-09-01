@@ -14,7 +14,12 @@ export function isSafeAuthNextPath(raw: string | null | undefined): boolean {
   if (!raw) return false
   if (!raw.startsWith('/') || raw.startsWith('//')) return false
   if (raw.includes('://') || raw.includes('\\')) return false
-  return raw === '/connect' || raw.startsWith('/connect?')
+  return (
+    raw === '/connect' ||
+    raw.startsWith('/connect?') ||
+    raw === '/plugins' ||
+    raw.startsWith('/plugins?')
+  )
 }
 
 /** Normalize a typed TV code (uppercase, strip separators). */
@@ -30,13 +35,10 @@ export function rememberPostLoginNextFromSearch(
   const next = params.get('next')
   if (!isSafeAuthNextPath(next)) return
   try {
-    sessionStorage.setItem(
-      POST_LOGIN_NEXT_KEY,
-      JSON.stringify({
-        next: '/connect',
-        code: params.get('code')?.trim() || undefined,
-      }),
-    )
+    const payload: { next: string; code?: string } = { next: next! }
+    const code = params.get('code')?.trim()
+    if (code) payload.code = code
+    sessionStorage.setItem(POST_LOGIN_NEXT_KEY, JSON.stringify(payload))
   } catch {
     // ignore
   }
@@ -52,7 +54,7 @@ export function clearPostLoginNext(): void {
 }
 
 export function readPostLoginNext(): {
-  to: '/connect'
+  to: '/connect' | '/plugins'
   search?: { code?: string }
 } | null {
   if (typeof window === 'undefined') return null
@@ -72,6 +74,9 @@ export function readPostLoginNext(): {
     }
   }
   if (!isSafeAuthNextPath(next)) return null
+  if (next === '/plugins' || next?.startsWith('/plugins?')) {
+    return { to: '/plugins' }
+  }
   return {
     to: '/connect',
     ...(code ? { search: { code } } : {}),

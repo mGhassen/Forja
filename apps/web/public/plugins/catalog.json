@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "baseUrl": "https://raw.githubusercontent.com/mGhassen/Forja/main/plugins",
+  "packs": [
+    {
+      "id": "providers",
+      "kind": "providers",
+      "manifestPath": "providers/manifest.json",
+      "name": "ForjaHQ Providers",
+      "description": "VOD, anime, and drama stream extractors plus file-host hops.",
+      "accent": "brand"
+    },
+    {
+      "id": "live",
+      "kind": "live",
+      "manifestPath": "live/manifest.json",
+      "name": "ForjaHQ Live Sports",
+      "description": "Live Matches schedules and per-site stream resolve.",
+      "accent": "flame"
+    },
+    {
+      "id": "torrent",
+      "kind": "torrent",
+      "manifestPath": "torrent/manifest.json",
+      "name": "ForjaHQ Torrent",
+      "description": "Built-in torrent indexer search for movies and series.",
+      "accent": "brand"
+    },
+    {
+      "id": "home",
+      "kind": "hubs",
+      "manifestPath": "hubs/home/manifest.json",
+      "name": "ForjaHQ Home",
+      "description": "TMDB movie and TV catalog for the Home tab.",
+      "accent": "brand"
+    },
+    {
+      "id": "anime",
+      "kind": "hubs",
+      "manifestPath": "hubs/anime/manifest.json",
+      "name": "ForjaHQ Anime",
+      "description": "AniList-powered anime hub with search and details.",
+      "accent": "flame"
+    },
+    {
+      "id": "asian-drama",
+      "kind": "hubs",
+      "manifestPath": "hubs/asian_drama/manifest.json",
+      "name": "ForjaHQ Asian Drama",
+      "description": "KissKH Asian drama catalog hub.",
+      "accent": "brand"
+    },
+    {
+      "id": "my-list",
+      "kind": "hubs",
+      "manifestPath": "hubs/my_list/manifest.json",
+      "name": "ForjaHQ My List",
+      "description": "Personal watchlists — local bookmarks and Simkl sync.",
+      "accent": "flame"
+    },
+    {
+      "id": "iptv-vod",
+      "kind": "iptv",
+      "manifestPath": "iptv/vod/manifest.json",
+      "name": "ForjaHQ IPTV VOD",
+      "description": "IPTV portal movie and series details with optional TMDB enrich.",
+      "accent": "brand"
+    }
+  ]
+}
