@@ -2080,6 +2080,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _results = byMagnet.values.toList();
   }
 
+  void _applyTorrentSearchPartial(
+    List<Map<String, dynamic>> batch, {
+    required bool replace,
+  }) {
+    if (batch.isEmpty) return;
+    final next = batch.map(TorrentResult.fromJson).toList();
+    setState(() {
+      if (replace) {
+        _results = next;
+      } else {
+        _mergeTorrentResults(next);
+      }
+    });
+  }
+
   Future<void> _searchForjaMovieProgressive(
     int gen, {
     List<String>? enabledProviders,
@@ -2089,7 +2104,6 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         ? '${widget.movie.title} $_year'
         : widget.movie.title;
     var closed = false;
-    var paintSeq = 0;
     final raw = await Engine.searchTorrentsProgressive(
       query,
       imdbId: widget.movie.imdbId,
@@ -2098,24 +2112,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       onProviderDone: _onTorrentProviderDone(gen, hitsNeeded: 1),
       onPartial: (batch) {
         if (closed) return;
-        final seq = ++paintSeq;
-        unawaited(() async {
-          if (!mounted || gen != _searchGen || closed) return;
-          final filtered = (await Engine.filterTorrents(
-            batch,
-            widget.movie.title,
-          )).map(TorrentResult.fromJson).toList();
-          if (!mounted || gen != _searchGen || closed || seq != paintSeq) {
-            return;
-          }
-          setState(() {
-            if (replace) {
-              _results = filtered;
-            } else {
-              _mergeTorrentResults(filtered);
-            }
-          });
-        }());
+        if (!mounted || gen != _searchGen) return;
+        _applyTorrentSearchPartial(batch, replace: replace);
       },
     );
     closed = true;
@@ -2150,28 +2148,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     var seasonSoFar = <Map<String, dynamic>>[];
     var episodeSoFar = <Map<String, dynamic>>[];
 
-    Future<void> paint(int seq) async {
-      if (!mounted || gen != _searchGen || closed) return;
-      final episodeFiltered = (await Engine.filterTorrents(
-        episodeSoFar,
-        widget.movie.title,
-        requiredSeason: season,
-        requiredEpisode: episode,
-      )).map(TorrentResult.fromJson);
-      if (!mounted || gen != _searchGen || closed || seq != paintSeq) return;
-      final seasonFiltered = (await Engine.filterTorrents(
-        seasonSoFar,
-        widget.movie.title,
-        requiredSeason: season,
-      )).map(TorrentResult.fromJson);
+    void paintRaw(int seq) {
       if (!mounted || gen != _searchGen || closed || seq != paintSeq) return;
       final combined = <String, TorrentResult>{};
-      for (final r in episodeFiltered) {
-        combined[r.magnet] = r;
+      for (final raw in episodeSoFar) {
+        final r = TorrentResult.fromJson(raw);
+        if (r.magnet.isNotEmpty) combined[r.magnet] = r;
       }
-      for (final r in seasonFiltered) {
+      for (final raw in seasonSoFar) {
+        final r = TorrentResult.fromJson(raw);
         combined.putIfAbsent(r.magnet, () => r);
       }
+      if (combined.isEmpty) return;
       setState(() {
         if (replace) {
           _results = combined.values.toList();
@@ -2193,7 +2181,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         onPartial: (batch) {
           if (closed) return;
           seasonSoFar = batch;
-          unawaited(paint(++paintSeq));
+          paintRaw(++paintSeq);
         },
       ),
       Engine.searchTorrentsProgressive(
@@ -2207,7 +2195,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         onPartial: (batch) {
           if (closed) return;
           episodeSoFar = batch;
-          unawaited(paint(++paintSeq));
+          paintRaw(++paintSeq);
         },
       ),
     ]);
