@@ -195,6 +195,7 @@ Agent rules: [`.cursor/rules/rust-migration.mdc`](../.cursor/rules/rust-migratio
 
 | Doc | Purpose |
 |-----|---------|
+| [plugins/DEVELOPING.md](../plugins/DEVELOPING.md) | **Community plugin packs** — manifest, EngineJS API, catalog protocol |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, engine, data flows |
 | [INVENTORY.md](INVENTORY.md) | As-built codebase inventory (facts only) |
 | [ENGINE_BOUNDARY.md](ENGINE_BOUNDARY.md) | Host vs engine boundary (locked) |

@@ -67,6 +67,9 @@ class PluginInstallCoordinator {
   PluginInstallCoordinator._();
   static final PluginInstallCoordinator instance = PluginInstallCoordinator._();
 
+  /// How long the bottom banner stays on "Ready" before dismissing.
+  static const readyDwell = Duration(milliseconds: 2200);
+
   final ValueNotifier<PluginInstallProgress?> progress =
       ValueNotifier<PluginInstallProgress?>(null);
 
@@ -113,7 +116,7 @@ class PluginInstallCoordinator {
           isUpdate: isUpdate,
         ),
       );
-      await Future<void>.delayed(const Duration(milliseconds: 900));
+      await Future<void>.delayed(readyDwell);
       return pack;
     } finally {
       progress.value = null;
@@ -190,8 +193,7 @@ class PluginInstallCoordinator {
     if (want.isEmpty) return null;
     final current = progress.value;
     if (current != null) {
-      return '${current.phaseTitle} ${current.label} — wait for the progress bar '
-          '(Settings → Forja plugins or the banner at the bottom).';
+      return '${current.phaseTitle} ${current.label} — wait for the progress banner at the bottom.';
     }
     final hit = PluginRegistry.packPluginFromPacks(
       await PluginRegistry.instance.listPacksRaw(),
@@ -343,7 +345,7 @@ class PluginInstallCoordinator {
         isUpdate: false,
       ),
     );
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await Future<void>.delayed(readyDwell);
   }
 
   void _setProgress(PluginInstallProgress? value) {

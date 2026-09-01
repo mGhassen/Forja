@@ -65,9 +65,17 @@ class _PluginInstallBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final percent = (progress.fraction * 100).clamp(0, 100).round();
-    final title = progress.isUpdate
-        ? 'Updating plugins…'
-        : 'Downloading plugins…';
+    final ready = progress.phase == PluginInstallPhase.ready;
+    final title = ready
+        ? 'Plugins ready'
+        : progress.isUpdate
+            ? 'Updating plugins…'
+            : 'Downloading plugins…';
+    final icon = ready
+        ? Icons.check_circle_rounded
+        : progress.isUpdate
+            ? Icons.system_update_alt_rounded
+            : Icons.download_rounded;
 
     return Material(
       color: Colors.transparent,
@@ -93,9 +101,7 @@ class _PluginInstallBanner extends StatelessWidget {
               Row(
                 children: [
                   Icon(
-                    progress.isUpdate
-                        ? Icons.system_update_alt_rounded
-                        : Icons.download_rounded,
+                    icon,
                     size: 18,
                     color: ForjaShellColors.brandGreen,
                   ),
@@ -156,9 +162,7 @@ class _PluginInstallBanner extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(999),
                 child: LinearProgressIndicator(
-                  value: progress.totalSteps > 0
-                      ? progress.fraction
-                      : null,
+                  value: progress.totalSteps > 0 ? progress.fraction : null,
                   minHeight: 4,
                   backgroundColor: ForjaShellColors.borderSubtle,
                   valueColor: const AlwaysStoppedAnimation<Color>(
@@ -166,6 +170,17 @@ class _PluginInstallBanner extends StatelessWidget {
                   ),
                 ),
               ),
+              if (ready) ...[
+                const SizedBox(height: 6),
+                Text(
+                  'Plugin is ready to use.',
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
+                    fontSize: 10,
+                    height: 1.35,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

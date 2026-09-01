@@ -2,7 +2,7 @@
 
 Your cinema universe in one app. This guide explains every **in-scope** feature — what it does and how to use it.
 
-**Developer docs:** [DEVELOPMENT.md](../DEVELOPMENT.md) · [ARCHITECTURE.md](../ARCHITECTURE.md)  
+**Developer docs:** [DEVELOPMENT.md](../DEVELOPMENT.md) · [ARCHITECTURE.md](../ARCHITECTURE.md) · [Plugin packs](../../plugins/DEVELOPING.md)  
 **Archived tabs & verticals:** [archive/](archive/README.md) (Search, Discover, Jellyfin, Stremio, Music, Reading, …)
 
 ---

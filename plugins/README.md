@@ -2,6 +2,8 @@
 
 Official engine JS packs for [Forja](https://github.com/mGhassen/Forja) — maintained by **Forja Team**.
 
+**Community developers:** [DEVELOPING.md](DEVELOPING.md) — manifest schema, `extract(ctx)` API, catalog hub protocol, publishing.
+
 Seven packs in this tree:
 
 | Pack | Path | Role |

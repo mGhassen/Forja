@@ -530,10 +530,6 @@ class _SettingsProvidersSectionState
             busy: _engineInstalling,
             onPressed: _installEnginePack,
           ),
-          if (installProgress != null) ...[
-            const SizedBox(height: 14),
-            SettingsPluginInstallProgress(progress: installProgress),
-          ],
           if (packs.isNotEmpty) ...[
             const SizedBox(height: 20),
             const SettingsEngineMiniLabel('Installed plugins'),
