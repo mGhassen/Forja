@@ -12,7 +12,10 @@ abstract final class EngineCategories {
   static const livePlugin = 'plugins';
   static const liveSport = 'live_sport';
 
-  /// Shell hub plugins (`kind: catalog`) — Settings → Forja **Hubs** tab.
+  /// IPTV feature plugins (`types: iptv`) — Settings → Forja **IPTV** tab.
+  static const iptv = 'iptv';
+
+  /// Shell hub plugins (`kind: catalog`, nav tab) — Settings → Forja **Hubs** tab.
   static const hubCatalog = 'hubs';
 
   static const _structuralGroupKeys = {
@@ -21,6 +24,7 @@ abstract final class EngineCategories {
     tv,
     livePlugin,
     liveCatalog,
+    iptv,
     hubCatalog,
     'other',
   };
@@ -37,6 +41,8 @@ abstract final class EngineCategories {
         return 'Live';
       case liveCatalog:
         return 'Catalog';
+      case iptv:
+        return 'IPTV';
       case hubCatalog:
         return 'Hubs';
       case 'other':
@@ -107,12 +113,13 @@ abstract final class EngineCategories {
 
   /// Settings / pack grouping key (dual movie+tv → one bucket).
   static String groupKey(EnginePlugin plugin) {
+    final types = plugin.types.map((t) => t.toLowerCase()).toSet();
+    if (types.contains(iptv)) return iptv;
     if (plugin.isHubCatalog) return hubCatalog;
     if (plugin.isLiveCatalog) return liveCatalog;
     if (plugin.isLivePlugin || plugin.isLiveSport || plugin.isLive) {
       return livePlugin;
     }
-    final types = plugin.types.map((t) => t.toLowerCase()).toSet();
     if (types.contains(movie) && types.contains(tv)) return 'movie_tv';
     if (types.contains(tv) || types.contains('series')) return tv;
     if (types.contains(movie)) return movie;
@@ -134,6 +141,7 @@ abstract final class EngineCategories {
       tv,
       livePlugin,
       liveCatalog,
+      iptv,
       hubCatalog,
     ];
     final out = [for (final k in structural) if (keys.contains(k)) k];

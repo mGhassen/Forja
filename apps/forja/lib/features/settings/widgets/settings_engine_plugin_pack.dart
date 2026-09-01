@@ -27,7 +27,7 @@ groupEnginePluginsForSettings({
   return (byGroup: byGroup, orderedGroups: orderedGroups);
 }
 
-/// Groups installed packs by Providers / Live / Catalog / Hubs / Other.
+/// Groups installed packs by Providers / Live / Catalog / IPTV / Hubs / Other.
 ({Map<String, List<EnginePack>> byKind, List<String> orderedKinds})
 groupEnginePacksByKind(List<EnginePack> packs) {
   final byKind = <String, List<EnginePack>>{};

@@ -135,6 +135,31 @@ void main() {
         contains(EngineCategories.hubCatalog),
       );
 
+      final iptvVod = EnginePlugin.fromJson({
+        'id': 'iptv-vod',
+        'name': 'IPTV VOD',
+        'entry': 'iptv_vod.js',
+        'kind': 'catalog',
+        'types': ['iptv'],
+        'capabilities': ['details'],
+        'protocol': 1,
+        'kit': 1,
+      });
+      expect(iptvVod.isHubCatalog, isTrue);
+      expect(EngineCategories.groupKey(iptvVod), EngineCategories.iptv);
+      expect(
+        EngineCategories.groupLabel(EngineCategories.iptv),
+        'IPTV',
+      );
+      expect(
+        EngineCategories.groupOrderFor([iptvVod]),
+        contains(EngineCategories.iptv),
+      );
+      expect(
+        EngineCategories.groupOrderFor([iptvVod]),
+        isNot(contains(EngineCategories.hubCatalog)),
+      );
+
       final liveSched = EnginePlugin.fromJson({
         'id': 'test-sport-schedule',
         'name': 'Test Sport',
