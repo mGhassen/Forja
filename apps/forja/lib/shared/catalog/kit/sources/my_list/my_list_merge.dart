@@ -10,14 +10,31 @@ int? myListAsInt(dynamic v) {
 String myListItemKind(Map<String, dynamic> item) {
   final simkl = item['_simklType']?.toString();
   if (simkl == 'anime') return 'anime';
-  if (simkl == 'shows') return 'tv';
-  if (simkl == 'movies') return 'movie';
   final mt = item['mediaType']?.toString() ?? 'movie';
   if (mt == 'anime') return 'anime';
-  if (mt == 'asian_drama') return 'asian_drama';
+  if (mt == 'asian_drama' || mt == 'drama') return 'asian_drama';
   if (item['kisskhId'] != null) return 'asian_drama';
+  if (_myListCatalogOpenIsDrama(item['catalogOpen'])) return 'asian_drama';
+  if (simkl == 'movies') return 'movie';
+  if (simkl == 'shows') return 'tv';
   if (mt == 'tv' || mt == 'series') return 'tv';
   return 'movie';
+}
+
+bool _myListCatalogOpenIsDrama(Object? openRaw) {
+  if (openRaw is! Map) return false;
+  final open = Map<String, dynamic>.from(openRaw);
+  final surface = (open['surface'] ?? '').toString();
+  if (surface == 'drama') return true;
+  final extract = open['extract'];
+  if (extract is! Map) return false;
+  final extractMap = Map<String, dynamic>.from(extract);
+  final panel = (extractMap['panelCategory'] ?? extractMap['resolveType'] ?? '')
+      .toString();
+  if (panel == 'drama') return true;
+  final ctx = extractMap['ctx'];
+  if (ctx is Map && ctx['kisskhId'] != null) return true;
+  return false;
 }
 
 Map<String, dynamic>? simklCardItem(Map<String, dynamic> item) {

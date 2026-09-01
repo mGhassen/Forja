@@ -119,6 +119,26 @@ void main() {
         myListItemKind({'mediaType': 'asian_drama', 'kisskhId': 9}),
         'asian_drama',
       );
+      expect(
+        myListItemKind({'mediaType': 'drama', 'title': 'K-drama'}),
+        'asian_drama',
+      );
+      expect(
+        myListItemKind({
+          'mediaType': 'drama',
+          'title': 'Hub drama',
+          'catalogOpen': {
+            'surface': 'drama',
+            'id': '42',
+            'extract': {
+              'resolveType': 'drama',
+              'panelCategory': 'drama',
+              'ctx': {'kisskhId': 42},
+            },
+          },
+        }),
+        'asian_drama',
+      );
       expect(myListItemKind({'mediaType': 'tv', 'tmdbId': 1}), 'tv');
       expect(myListItemKind({'kisskhId': 2, 'mediaType': 'movie'}), 'asian_drama');
     });

@@ -113,6 +113,8 @@ final myListCatalogProvider =
             asianDrama.add(entry);
           case 'tv':
             tv.add(entry);
+          case 'movie':
+            films.add(entry);
           default:
             films.add(entry);
         }
