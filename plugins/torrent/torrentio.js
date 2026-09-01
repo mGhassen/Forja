@@ -2,6 +2,11 @@ function search(ctx) {
   var cfg = Object.assign({}, ctx.config || {});
   var imdbId = String(ctx.imdbId || '').trim();
   if (!imdbId) return Promise.resolve([]);
+  if (!/^tt\d+$/i.test(imdbId)) {
+    var digits = imdbId.replace(/[^0-9]/g, '');
+    if (!digits) return Promise.resolve([]);
+    imdbId = 'tt' + digits;
+  }
   var source = String(cfg.source || 'Torrentio');
   var season = Number(ctx.season || 0);
   var episode = Number(ctx.episode || 0);
@@ -9,7 +14,9 @@ function search(ctx) {
   var url =
     season > 0 && episode > 0
       ? base + '/stream/series/' + imdbId + ':' + season + ':' + episode + '.json'
-      : base + '/stream/movie/' + imdbId + '.json';
+      : season > 0
+        ? base + '/stream/series/' + imdbId + ':' + season + ':1.json'
+        : base + '/stream/movie/' + imdbId + '.json';
   return fetchJson(ctx, url)
     .then(function (v) {
       var streams = v && v.streams;

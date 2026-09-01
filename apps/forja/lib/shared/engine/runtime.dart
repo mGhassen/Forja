@@ -49,17 +49,38 @@ class EngineRuntime {
   /// [instance.abortPendingWork] alone leaves fork VMs live until `dispose`.
   static final Set<EngineRuntime> _liveForks = <EngineRuntime>{};
 
+  /// Torrent indexer batch — must survive [abortAll] while Engine/Nuvio pool
+  /// runs; only [abortTorrentSearchForks] / explicit dispose stops it.
+  bool _torrentSearchScope = false;
+
   factory EngineRuntime.fork() {
     final rt = EngineRuntime._();
     _liveForks.add(rt);
     return rt;
   }
 
-  /// Stop shared + every live fork (panel close / Cancel / tab switch).
-  static void abortAll() {
+  /// One QuickJS heap for a sequential torrent-indexer batch.
+  factory EngineRuntime.torrentSearchFork() {
+    final rt = EngineRuntime.fork();
+    rt._torrentSearchScope = true;
+    return rt;
+  }
+
+  bool get isActive => _runtime != null && !_deferredDrop;
+
+  /// Stop shared + extract forks. Skips [torrentSearchFork] heaps unless
+  /// [includeTorrentSearch] (panel dismiss / torrent cancel).
+  static void abortAll({bool includeTorrentSearch = false}) {
     instance.abortPendingWork();
     for (final fork in List<EngineRuntime>.of(_liveForks)) {
+      if (fork._torrentSearchScope && !includeTorrentSearch) continue;
       fork.abortPendingWork();
+    }
+  }
+
+  static void abortTorrentSearchForks() {
+    for (final fork in List<EngineRuntime>.of(_liveForks)) {
+      if (fork._torrentSearchScope) fork.abortPendingWork();
     }
   }
 

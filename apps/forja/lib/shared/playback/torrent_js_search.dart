@@ -34,6 +34,17 @@ Future<void> syncTorrentSearchCatalog() async {
 List<String> enabledTorrentSearchPluginIds() =>
     List<String>.from(TorrentSearchCatalog.allIds);
 
+/// Torrentio / Stremio-style ids must be `tt1234567`.
+String? normalizeTorrentImdbId(String? raw) {
+  if (raw == null) return null;
+  var id = raw.trim();
+  if (id.isEmpty) return null;
+  if (id.startsWith('tt')) return id;
+  final digits = id.replaceAll(RegExp(r'[^0-9]'), '');
+  if (digits.isEmpty) return null;
+  return 'tt$digits';
+}
+
 /// One JS heap per search — indexers run sequentially so we never spin up N
 /// parallel QuickJS VMs (that OOM-killed desktop when all 9 providers fired).
 Future<List<Map<String, dynamic>>> _searchIndexersSequential({
@@ -47,18 +58,23 @@ Future<List<Map<String, dynamic>>> _searchIndexersSequential({
   void Function(String providerId)? onProviderDone,
 }) async {
   bool cancelled() => isCancelled?.call() == true;
+  final resolvedImdb = normalizeTorrentImdbId(imdbId);
 
-  final rt = EngineRuntime.fork();
+  var rt = EngineRuntime.torrentSearchFork();
   final byMagnet = <String, Map<String, dynamic>>{};
   try {
     for (final id in enabled) {
       if (cancelled()) break;
+      if (!rt.isActive) {
+        rt.dispose();
+        rt = EngineRuntime.torrentSearchFork();
+      }
       List<Map<String, dynamic>> batch = const [];
       try {
         batch = await EngineService.instance.runTorrentSearch(
           pluginId: id,
           query: query,
-          imdbId: imdbId,
+          imdbId: resolvedImdb,
           season: season,
           episode: episode,
           isCancelled: isCancelled,

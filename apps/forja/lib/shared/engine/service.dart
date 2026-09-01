@@ -47,15 +47,16 @@ class EngineService {
 
   Future<SharedPreferences> get _prefs async => SharedPreferences.getInstance();
 
-  void cancelPending() {
-    abortInFlightExtracts();
-    cancelLiveCatalog();
-    Engine.cancelEngineJsExtracts();
-  }
-
   void abortInFlightExtracts() {
     _extractGeneration++;
-    EngineRuntime.abortAll();
+    EngineRuntime.abortAll(includeTorrentSearch: false);
+  }
+
+  void cancelPending() {
+    abortInFlightExtracts();
+    EngineRuntime.abortTorrentSearchForks();
+    cancelLiveCatalog();
+    Engine.cancelEngineJsExtracts();
   }
 
   /// Abort in-flight catalog hub actions (tab switch / logout).
