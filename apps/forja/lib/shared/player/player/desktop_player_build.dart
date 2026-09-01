@@ -125,6 +125,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                       status: _s._episodeLoadingStatus.isEmpty
                           ? 'Please wait…'
                           : _s._episodeLoadingStatus,
+                      torrentStatus: _s._episodeTorrentStatus,
                       failed: _s._episodeLoadingFailed,
                     ),
                   ),

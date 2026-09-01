@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/player/providers/player_prefs_providers.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/playback/torrent_loading_sink.dart';
 import 'package:forja/shared/playback/stremio_external_link.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -169,6 +170,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _loadingNextEp = false;
   String _episodeLoadingLabel = 'Next episode';
   String _episodeLoadingStatus = 'Loading next episode…';
+  TorrentLoadingStatus? _episodeTorrentStatus;
   bool _episodeLoadingFailed = false;
   double _volume = 100;
   double _rate = 1.0;
@@ -953,6 +955,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       _loadingNextEp = true;
       _episodeLoadingLabel = label;
       _episodeLoadingStatus = status;
+      _episodeTorrentStatus = null;
       _episodeLoadingFailed = false;
     });
   }
@@ -961,7 +964,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (!mounted || !_loadingNextEp) return;
     setState(() {
       _episodeLoadingStatus = status;
+      _episodeTorrentStatus = null;
       _episodeLoadingFailed = failed;
+    });
+  }
+
+  void _setEpisodeTorrentLoading(TorrentLoadingStatus status) {
+    if (!mounted || !_loadingNextEp) return;
+    setState(() {
+      _episodeTorrentStatus = status;
+      _episodeLoadingStatus = status.headline;
+      _episodeLoadingFailed = false;
     });
   }
 
@@ -2437,6 +2450,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   child: PlayerEpisodeLoadingCard(
                     episodeLabel: _episodeLoadingLabel,
                     status: _episodeLoadingStatus,
+                    torrentStatus: _episodeTorrentStatus,
                     failed: _episodeLoadingFailed,
                   ),
                 ),

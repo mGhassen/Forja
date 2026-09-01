@@ -648,8 +648,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     if (!mounted) return;
 
     try {
-      _s._setEpisodeLoadingStatus(
-        playbackResolveLabel(
+      _s._setEpisodeTorrentLoading(
+        initialTorrentResolveStatus(
           useDebrid: useDebrid,
           debridService: debridService,
         ),
@@ -660,6 +660,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         profile: PlatformPlayback.capabilities,
         season: widget.selectedSeason,
         episode: widget.selectedEpisode,
+        onStatus: _s._setEpisodeTorrentLoading,
       );
       if (!mounted) return;
       if (resolved is! StremioPlayable || resolved.streamUrl.isEmpty) {
@@ -738,8 +739,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     if (!mounted) return;
 
     try {
-      _s._setEpisodeLoadingStatus(
-        playbackResolveLabel(
+      _s._setEpisodeTorrentLoading(
+        initialTorrentResolveStatus(
           useDebrid: useDebrid,
           debridService: debridService,
         ),
@@ -752,6 +753,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         localTorrentEngine: PlatformPlayback.capabilities.localTorrentEngine,
         season: widget.selectedSeason,
         episode: widget.selectedEpisode,
+        onStatus: _s._setEpisodeTorrentLoading,
       );
       if (!mounted) return;
       if (playback == null || playback.url.isEmpty) {

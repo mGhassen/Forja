@@ -826,7 +826,9 @@ Future<void> ensureOpenedNearPosition(
     );
     return;
   }
-  if (player.platform is NativePlayer) {
+  if (streamUrl != null && isLocalTorrentStreamUrl(streamUrl)) {
+    await ensureLocalTorrentSeekable(player);
+  } else if (player.platform is NativePlayer) {
     try {
       await (player.platform as NativePlayer).setProperty('hr-seek', 'no');
     } catch (_) {}
@@ -1728,6 +1730,7 @@ Future<void> seekPlayerPreservingProgress(
   void Function()? onSeekAwayFromEof,
   void Function(Duration target)? onSeekCommitted,
   bool ensureTorrentSeekable = false,
+  String? streamUrl,
 }) async {
   final dur = duration ?? player.state.duration;
   final previous = positionNotifier.value;
@@ -1739,7 +1742,8 @@ Future<void> seekPlayerPreservingProgress(
       shouldPinSeekBarAtEof(uiPosition: previous, duration: dur) &&
       !shouldPinSeekBarAtEof(uiPosition: target, duration: dur);
   positionNotifier.value = target;
-  if (ensureTorrentSeekable) {
+  if (ensureTorrentSeekable ||
+      (streamUrl != null && isLocalTorrentStreamUrl(streamUrl))) {
     await ensureLocalTorrentSeekable(player);
   }
   await player.seek(target);

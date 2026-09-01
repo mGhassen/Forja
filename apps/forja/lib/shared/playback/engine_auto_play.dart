@@ -16,6 +16,7 @@ import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/playback/torrent_loading_sink.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
@@ -199,6 +200,7 @@ Future<void> runEngineAutoPlay({
   var playGen = 0;
   final fadeOutNotifier = ValueNotifier(false);
   final messageNotifier = ValueNotifier('Finding Forja servers…');
+  final torrentStatusNotifier = ValueNotifier<TorrentLoadingStatus?>(null);
   final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
   final failureNotifier = ValueNotifier<ResolveFailure?>(null);
   BuildContext? loadingDialogContext;
@@ -215,6 +217,7 @@ Future<void> runEngineAutoPlay({
   List<ChangeNotifier> overlayNotifiers() => [
     fadeOutNotifier,
     messageNotifier,
+    torrentStatusNotifier,
     failureNotifier,
     probeNotifier,
   ];
@@ -263,6 +266,7 @@ Future<void> runEngineAutoPlay({
       return LoadingOverlay(
         movie: movie,
         messageNotifier: messageNotifier,
+        torrentStatusNotifier: torrentStatusNotifier,
         providerProbesNotifier: probeNotifier,
         fadeOutNotifier: fadeOutNotifier,
         failureNotifier: failureNotifier,
@@ -707,6 +711,7 @@ Future<void> runEngineAutoPlay({
         hubEpisodeNumber: hubEpisodeNumber ?? episode,
         loadingDialogContext: loadingDialogContext,
         fadeOutNotifier: fadeOutNotifier,
+        torrentStatusNotifier: torrentStatusNotifier,
         isAborted: playAborted,
       );
       return;
@@ -883,6 +888,7 @@ Future<void> _playResolveRow({
   num? hubEpisodeNumber,
   required BuildContext? loadingDialogContext,
   required ValueNotifier<bool> fadeOutNotifier,
+  required ValueNotifier<TorrentLoadingStatus?> torrentStatusNotifier,
   required bool Function() isAborted,
 }) async {
   if (isAborted()) return;
@@ -892,6 +898,7 @@ Future<void> _playResolveRow({
   if (!await ensureLanP2pPlayback(context)) return;
   if (isAborted() || !context.mounted) return;
 
+  torrentStatusNotifier.value = null;
   final resolved = await resolveStremioStream(
     stream: stream,
     profile: profile,
@@ -899,7 +906,10 @@ Future<void> _playResolveRow({
     season: needsEp ? (season ?? 1) : null,
     episode: needsEp ? (episode ?? 1) : null,
     isCancelled: isAborted,
-    onStatus: (_) {},
+    onStatus: torrentLoadingStatusSink(
+      torrentStatusNotifier,
+      cancelled: isAborted,
+    ),
   );
   if (isAborted() || !context.mounted) return;
   if (resolved is! StremioPlayable) return;

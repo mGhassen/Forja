@@ -218,7 +218,7 @@ Future<StremioResolveOutcome> resolveStremioStream({
   int? season,
   int? episode,
   bool Function()? isCancelled,
-  void Function(String status)? onStatus,
+  void Function(TorrentLoadingStatus status)? onStatus,
 }) async {
   final svc = settings ?? SettingsService();
   final useDebrid = await svc.useDebridForStreams();
@@ -239,6 +239,15 @@ Future<StremioResolveOutcome> resolveStremioStream({
     useDebrid: useDebrid,
     debridService: debridService,
   );
+  onStatus?.call(
+    torrentLoadingStatusGeneric(
+      loadingMessage,
+      hint: playbackSourceHint(
+        useDebrid: useDebrid,
+        debridService: debridService,
+      ),
+    ),
+  );
 
   try {
     final result = await resolveMagnetForPlayback(
@@ -249,9 +258,7 @@ Future<StremioResolveOutcome> resolveStremioStream({
       season: season,
       episode: episode,
       fileIdx: fileIdx,
-      onStatus: onStatus == null
-          ? null
-          : (status) => onStatus(status.displayMessage),
+      onStatus: onStatus,
     );
     if (isCancelled?.call() == true) {
       return StremioResolveFailure(

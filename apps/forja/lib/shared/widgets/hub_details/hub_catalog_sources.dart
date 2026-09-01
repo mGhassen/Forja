@@ -11,6 +11,7 @@ import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
 import 'package:forja/shared/playback/stremio_external_link.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/playback/torrent_loading_sink.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
 import 'package:forja/shell/app_router.dart';
@@ -120,12 +121,9 @@ Future<void> _playTorrent({
 
   var cancelled = false;
   final overlayTorrentStatus = ValueNotifier<TorrentLoadingStatus?>(
-    torrentLoadingStatusGeneric(
-      playbackResolveLabel(useDebrid: useDebrid, debridService: debridService),
-      hint: playbackSourceHint(
-        useDebrid: useDebrid,
-        debridService: debridService,
-      ),
+    initialTorrentResolveStatus(
+      useDebrid: useDebrid,
+      debridService: debridService,
     ),
   );
   final fadeOutNotifier = ValueNotifier(false);
@@ -412,8 +410,8 @@ Future<void> _playStremio({
   if (!context.mounted) return;
 
   var cancelled = false;
-  final overlayMessage = ValueNotifier<String>(
-    stremioResolveLoadingMessage(
+  final overlayTorrentStatus = ValueNotifier<TorrentLoadingStatus?>(
+    initialStremioTorrentResolveStatus(
       profile: profile,
       useDebrid: useDebrid,
       debridService: debridService,
@@ -429,7 +427,7 @@ Future<void> _playStremio({
       loadingDialogContext = dialogContext;
       return LoadingOverlay(
         movie: movie,
-        messageNotifier: overlayMessage,
+        torrentStatusNotifier: overlayTorrentStatus,
         fadeOutNotifier: fadeOutNotifier,
         failureNotifier: failureNotifier,
         onCancel: () {
@@ -447,14 +445,15 @@ Future<void> _playStremio({
     season: episodic ? (season ?? 1) : null,
     episode: episodic ? (episode ?? 1) : null,
     isCancelled: () => cancelled || !context.mounted,
-    onStatus: (status) {
-      if (!cancelled) overlayMessage.value = status;
-    },
+    onStatus: torrentLoadingStatusSink(
+      overlayTorrentStatus,
+      cancelled: () => cancelled,
+    ),
   );
 
   if (cancelled || !context.mounted) {
     disposeLoadingOverlayNotifiers([
-      overlayMessage,
+      overlayTorrentStatus,
       fadeOutNotifier,
       failureNotifier,
     ]);
@@ -498,7 +497,7 @@ Future<void> _playStremio({
       Navigator.of(loadingDialogContext!).pop();
     }
     disposeLoadingOverlayNotifiers([
-      overlayMessage,
+      overlayTorrentStatus,
       fadeOutNotifier,
       failureNotifier,
     ]);
@@ -537,7 +536,7 @@ Future<void> _playStremio({
   }
 
   disposeLoadingOverlayNotifiers([
-    overlayMessage,
+    overlayTorrentStatus,
     fadeOutNotifier,
     failureNotifier,
   ]);

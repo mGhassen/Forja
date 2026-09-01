@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/widgets/torrent_loading_status_panel.dart';
+import 'package:rust/rust.dart';
 
 /// Compact floating card shown while the player resolves another episode.
 ///
@@ -11,11 +13,13 @@ class PlayerEpisodeLoadingCard extends StatelessWidget {
     super.key,
     required this.episodeLabel,
     required this.status,
+    this.torrentStatus,
     this.failed = false,
   });
 
   final String episodeLabel;
   final String status;
+  final TorrentLoadingStatus? torrentStatus;
   final bool failed;
 
   @override
@@ -26,7 +30,7 @@ class PlayerEpisodeLoadingCard extends StatelessWidget {
 
     return IgnorePointer(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 320),
+        constraints: const BoxConstraints(maxWidth: 360),
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: ForjaShellColors.cinematic.menuSurface.withValues(alpha: 0.9),
@@ -71,26 +75,29 @@ class PlayerEpisodeLoadingCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 3),
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 220),
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        child: Text(
-                          status,
-                          key: ValueKey(status),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: failed
-                                ? accent.withValues(alpha: 0.95)
-                                : ForjaShellColors.cinematic.textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            height: 1.25,
-                            fontFamily: 'Poppins',
+                      if (torrentStatus != null && !failed) ...[
+                        TorrentLoadingStatusCompact(status: torrentStatus!),
+                      ] else
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          child: Text(
+                            status,
+                            key: ValueKey(status),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: failed
+                                  ? accent.withValues(alpha: 0.95)
+                                  : ForjaShellColors.cinematic.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              height: 1.25,
+                              fontFamily: 'Poppins',
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),

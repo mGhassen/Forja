@@ -250,8 +250,8 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     if (!mounted) return;
 
     try {
-      _s._setEpisodeLoadingStatus(
-        playbackResolveLabel(
+      _s._setEpisodeTorrentLoading(
+        initialTorrentResolveStatus(
           useDebrid: useDebrid,
           debridService: debridService,
         ),
@@ -262,6 +262,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         profile: PlatformPlayback.capabilities,
         season: widget.selectedSeason,
         episode: widget.selectedEpisode,
+        onStatus: _s._setEpisodeTorrentLoading,
       );
       if (!mounted) return;
       if (resolved is! StremioPlayable || resolved.streamUrl.isEmpty) {
@@ -341,8 +342,8 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
 
     try {
       final localEngine = PlatformPlayback.capabilities.localTorrentEngine;
-      _s._setEpisodeLoadingStatus(
-        playbackResolveLabel(
+      _s._setEpisodeTorrentLoading(
+        initialTorrentResolveStatus(
           useDebrid: useDebrid,
           debridService: debridService,
         ),
@@ -355,6 +356,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         localTorrentEngine: localEngine,
         season: widget.selectedSeason,
         episode: widget.selectedEpisode,
+        onStatus: _s._setEpisodeTorrentLoading,
       );
       if (!mounted) return;
       if (playback == null || playback.url.isEmpty) {

@@ -26,6 +26,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/playback_engine.dart';
+import 'package:forja/shared/playback/torrent_loading_sink.dart';
 import 'package:forja/shared/playback/stremio_external_link.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/playback/player_source_resolve.dart';
@@ -442,6 +443,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
       position: position,
       positionNotifier: _positionNotifier,
       duration: _durationNotifier.value,
+      streamUrl: url,
       onSeekAwayFromEof: () {
         _seekAwayFromEofAt = DateTime.now();
         _abortiveCompletedLatched = false;
@@ -482,6 +484,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   bool _isLoadingNextEp = false;
   String _episodeLoadingLabel = '';
   String _episodeLoadingStatus = '';
+  TorrentLoadingStatus? _episodeTorrentStatus;
   bool _episodeLoadingFailed = false;
   bool _nearEndOfEpisode = false;
   bool _hasPrevEpisodeAdjacent = false;

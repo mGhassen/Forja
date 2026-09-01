@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 10** fix · **0 / 2** acceptance |
+| **Progress** | **10 / 11** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,6 +29,7 @@
 | 8 | I24-T08 | Player: 180s local-torrent open wait + re-open on transient format probe; engine prefer 256 KiB / min 64 KiB head | ✅ |
 | 9 | I24-T09 | Player: keep torrent Range seek (`force-seekable=yes`); bound lavf probe instead of `seekable=0` (which permanently blocked scrub) | ✅ |
 | 10 | I24-T10 | Player: open-phase sequential lavf (`seekable=0`); enable Range scrub only after decode via `ensureLocalTorrentSeekable` (T09 regression) | ✅ |
+| 11 | I24-T11 | Player: re-assert `ensureLocalTorrentSeekable` on every torrent scrub + resume seek (T09 flag never wired) | ✅ |
 
 ---
 
@@ -90,3 +91,9 @@ T07 left `seekable=0` for the whole session. Runtime `force-seekable=yes` after 
 Observed: Torrentio magnet on desktop — swarm ~30% (~260 MB) at 4+ MB/s, player stuck **Buffering** at `0:00 / 0:00`, logs show `[Player] Torrent probe retry (periodic)` every 15s. Regression from `09a7657b` (IPTV cleanup): T09 re-applied `force-seekable=yes` at configure time, so lavf Range-requested the moov tail while random middle pieces filled — same failure mode as T07.
 
 **Fix:** open-phase sequential lavf again (`force-seekable=no`, `seekable=0`); after `hasDecodedVideo` confirms, `ensureLocalTorrentSeekable` clears `seekable=0` and enables Range scrub; probe re-open calls `resetPlayerForOpen` first.
+
+### Follow-up (I24-T11) — 2026-09-01
+
+Observed: torrent plays after T10 but scrub logs `Cannot seek in this stream` / `force-seekable=yes` on every seek. T09 documented re-assert on every scrub; `seekPlayerPreservingProgress` had `ensureTorrentSeekable` but nothing passed it — only the one-shot call at end of `waitForPlayerStreamOpen` ran.
+
+**Fix:** pass localhost torrent URL into `seekPlayerPreservingProgress` (desktop + mobile `_seekTo`); call `ensureLocalTorrentSeekable` before resume seek in `ensureOpenedNearPosition`.

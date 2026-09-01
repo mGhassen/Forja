@@ -149,6 +149,7 @@ mixin _DesktopPlayerEpisodes
       _s._isLoadingNextEp = true;
       _s._episodeLoadingLabel = label;
       _s._episodeLoadingStatus = status;
+      _s._episodeTorrentStatus = null;
       _s._episodeLoadingFailed = false;
     });
   }
@@ -157,7 +158,17 @@ mixin _DesktopPlayerEpisodes
     if (!mounted || !_s._isLoadingNextEp) return;
     setState(() {
       _s._episodeLoadingStatus = status;
+      _s._episodeTorrentStatus = null;
       _s._episodeLoadingFailed = failed;
+    });
+  }
+
+  void _setEpisodeTorrentLoading(TorrentLoadingStatus status) {
+    if (!mounted || !_s._isLoadingNextEp) return;
+    setState(() {
+      _s._episodeTorrentStatus = status;
+      _s._episodeLoadingStatus = status.headline;
+      _s._episodeLoadingFailed = false;
     });
   }
 
@@ -165,6 +176,7 @@ mixin _DesktopPlayerEpisodes
     if (!mounted) return;
     setState(() {
       _s._isLoadingNextEp = false;
+      _s._episodeTorrentStatus = null;
       _s._episodeLoadingFailed = false;
     });
   }
@@ -945,8 +957,8 @@ mixin _DesktopPlayerEpisodes
     if (!mounted) return;
 
     try {
-      _setEpisodeLoadingStatus(
-        playbackResolveLabel(
+      _setEpisodeTorrentLoading(
+        initialTorrentResolveStatus(
           useDebrid: useDebrid,
           debridService: debridService,
         ),
@@ -957,6 +969,7 @@ mixin _DesktopPlayerEpisodes
         profile: PlatformPlayback.capabilities,
         season: widget.selectedSeason,
         episode: widget.selectedEpisode,
+        onStatus: _setEpisodeTorrentLoading,
       );
       if (!mounted) return;
       if (resolved is! StremioPlayable || resolved.streamUrl.isEmpty) {
@@ -1041,8 +1054,8 @@ mixin _DesktopPlayerEpisodes
 
     try {
       final localEngine = PlatformPlayback.capabilities.localTorrentEngine;
-      _setEpisodeLoadingStatus(
-        playbackResolveLabel(
+      _setEpisodeTorrentLoading(
+        initialTorrentResolveStatus(
           useDebrid: useDebrid,
           debridService: debridService,
         ),
@@ -1055,6 +1068,7 @@ mixin _DesktopPlayerEpisodes
         localTorrentEngine: localEngine,
         season: widget.selectedSeason,
         episode: widget.selectedEpisode,
+        onStatus: _setEpisodeTorrentLoading,
       );
       if (!mounted) return;
       if (playback == null || playback.url.isEmpty) {
