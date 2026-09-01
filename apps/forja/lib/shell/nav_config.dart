@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_screen.dart';
 import 'package:forja/features/live_matches/live_matches_screen.dart';
 import 'package:forja/features/settings/settings_screen.dart';
-import 'package:forja/shared/catalog/shell/catalog_shell.dart';
 import 'package:forja/shared/catalog/forja_host_assets.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shell/nav_destination.dart';
@@ -32,12 +31,6 @@ const Set<String> temporarilyHiddenNavIds = archivedNavIds;
 
 /// In-scope app-owned shell destinations
 const Map<String, NavDestination> coreNavDestinations = {
-  'mylist': NavDestination(
-    id: 'mylist',
-    icon: Icons.bookmark_outline,
-    activeIcon: Icons.bookmark,
-    label: 'My List',
-  ),
   'live_matches': NavDestination(
     id: 'live_matches',
     icon: Icons.sports_soccer_outlined,
@@ -62,28 +55,26 @@ const Map<String, NavDestination> coreNavDestinations = {
 
 /// Core + hub destinations from [PluginNavRegistry] (plugin `nav` specs).
 Map<String, NavDestination> get navDestinations => {
-      for (final e in {
-        ...coreNavDestinations,
-        ...PluginNavRegistry.destinations,
-      }.entries)
-        if (!archivedNavIds.contains(e.key)) e.key: e.value,
-    };
+  for (final e in {
+    ...coreNavDestinations,
+    ...PluginNavRegistry.destinations,
+  }.entries)
+    if (!archivedNavIds.contains(e.key)) e.key: e.value,
+};
 
 const Map<String, Color> coreNavDestinationAccentColors = {
-  'mylist': Color(0xFFFBBF24),
   'live_matches': Color(0xFFFB923C),
   'iptv': Color(0xFF22D3EE),
   'settings': Color(0xFF94A3B8),
 };
 
 Map<String, Color> get navDestinationAccentColors => {
-      ...coreNavDestinationAccentColors,
-      ...PluginNavRegistry.accents,
-    };
+  ...coreNavDestinationAccentColors,
+  ...PluginNavRegistry.accents,
+};
 
 /// Lazy tab factories — widgets are created on first visit only.
 final Map<String, TabBuilder> coreNavTabBuilders = {
-  'mylist': () => CatalogShell.hostTab(tabId: 'mylist'),
   'live_matches': LiveMatchesScreen.new,
   'iptv': IptvPtScreen.new,
   'settings': SettingsScreen.new,
@@ -91,9 +82,9 @@ final Map<String, TabBuilder> coreNavTabBuilders = {
 
 /// Core builders + catalog hub builders from [PluginNavRegistry].
 Map<String, TabBuilder> get navTabBuilders => {
-      for (final e in {
-        ...coreNavTabBuilders,
-        ...PluginNavRegistry.builders,
-      }.entries)
-        if (!archivedNavIds.contains(e.key)) e.key: e.value,
-    };
+  for (final e in {
+    ...coreNavTabBuilders,
+    ...PluginNavRegistry.builders,
+  }.entries)
+    if (!archivedNavIds.contains(e.key)) e.key: e.value,
+};

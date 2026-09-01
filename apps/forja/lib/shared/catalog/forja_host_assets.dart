@@ -27,6 +27,7 @@ abstract final class ForjaHostAssets {
   static const uriNavSearch = '${uriPrefix}nav/search';
   static const uriNavLiveMatches = '${uriPrefix}nav/live-matches';
   static const uriNavIptv = '${uriPrefix}nav/iptv';
+  static const uriNavMyList = '${uriPrefix}nav/my-list';
 
   /// Public id → Flutter asset path. Extend here when shipping new host icons.
   static const Map<String, String> catalog = {
@@ -61,7 +62,10 @@ abstract final class ForjaHostAssets {
     return catalog[id];
   }
 
-  static bool isKnown(String? ref) => resolveFlutterPath(ref) != null;
+  static bool isKnown(String? ref) {
+    if (resolveFlutterPath(ref) != null) return true;
+    return materialIconFor(ref) != null;
+  }
 
   /// Material fallback when a pack icon is a known host asset id.
   static IconData? materialIconFor(String? ref) {
@@ -75,6 +79,7 @@ abstract final class ForjaHostAssets {
       'nav/search' => Icons.search_outlined,
       'nav/live-matches' => Icons.sports_soccer_outlined,
       'nav/iptv' => Icons.live_tv_outlined,
+      'nav/my-list' => Icons.bookmark_outline,
       _ => null,
     };
   }

@@ -29,7 +29,7 @@
 | 8 | R70-C08 | `CatalogShell` + `plugins/hubs` pack (`_kit.js`, tmdb, anilist, kisskh, arabic) | ✅ |
 | 9 | R70-C09 | `ForjaHostAssets` — `forja://asset/{id}` catalog → Flutter paths; packs never use `assets/` | ✅ |
 | 10 | R70-C10 | `shared/catalog/kit/` — rows, cards, host widgets, chrome; [CatalogShell](shell/catalog_shell.dart) composes layout only | ✅ |
-| 11 | R70-C11 | `host.my_list` kit widget + inline host layout for core `mylist` tab | ✅ |
+| 11 | R70-C11 | `host.my_list` kit widget + `forjahq-my-list` hub pack | ✅ |
 
 ---
 
@@ -180,7 +180,7 @@ Core `mylist` tab — host-owned data (local + Simkl); no Simkl JS catalog plugi
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R70-A60 | My List tab uses `CatalogShell.hostTab` (not feature-screen grid) | ✅ |
+| 1 | R70-A60 | My List tab from `forjahq-my-list` pack nav — not hardcoded core shell | ✅ |
 | 2 | R70-A61 | Status + kind chrome + per-kind horizontal rails | ✅ |
 | 3 | R70-A62 | Items render as `CatalogMetaItem` + `HubPosterCard` + list-follow pin | ✅ |
 | 4 | R70-A63 | Simkl rows TMDB-enriched at provider boundary; opens via `openCatalogMetaItem` / legacy bridge | ✅ |

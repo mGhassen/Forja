@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/catalog_hub_capabilities.dart';
+import 'package:forja/shared/catalog/kit/layout/catalog_kit_layout_chrome.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_search_screen.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -93,16 +95,56 @@ class _PluginHubCatalogTopBarState extends State<PluginHubCatalogTopBar> {
     if (mounted) setState(() {});
   }
 
+  bool _layoutOnlyHub(EnginePlugin? plugin) {
+    if (plugin == null) return false;
+    final caps = plugin.capabilities.map((c) => c.toLowerCase()).toSet();
+    if (!caps.contains('nav') || !caps.contains('layout')) return false;
+    const browse = {
+      'rail',
+      'feed',
+      'search',
+      'filters',
+      'host_search',
+      'structured_search',
+      'details',
+    };
+    return caps.intersection(browse).isEmpty;
+  }
+
+  bool _hideTopBar() {
+    if (CatalogKitLayoutChromeRegistry.packOwnsChrome(widget.tabId)) {
+      return true;
+    }
+    return _layoutOnlyHub(_plugin);
+  }
+
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: CatalogKitLayoutChromeRegistry.revision,
+      builder: (context, _) {
+        if (_hideTopBar()) return const SizedBox.shrink();
+        return _buildTopBar(context);
+      },
+    );
+  }
+
+  Widget _buildTopBar(BuildContext context) {
     final pluginId = PluginNavRegistry.pluginIdForTabSync(widget.tabId);
     if (pluginId == null) return const SizedBox.shrink();
     final plugin = _plugin;
+    final canSearch =
+        plugin?.hasCapability(CatalogHubCapabilities.search) ?? false;
+    final canFilters =
+        plugin?.hasCapability(CatalogHubCapabilities.filters) ?? false;
+    final hasVerticalFilters =
+        CatalogVerticalFiltersRegistry.specFor(widget.tabId) != null;
+    if (!canSearch && !canFilters && !hasVerticalFilters) {
+      return const SizedBox.shrink();
+    }
     final label =
         PluginNavRegistry.destinations[widget.tabId]?.label ?? 'Search';
     final categories = CatalogPackFiltersRegistry.categoriesFor(pluginId);
-    final canSearch =
-        plugin?.hasCapability(CatalogHubCapabilities.search) ?? false;
     return CatalogTopBar(
       tabId: widget.tabId,
       seriesLabel: 'Series',

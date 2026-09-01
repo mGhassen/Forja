@@ -371,6 +371,34 @@ Keep source JS data-only; declare a second plugin for TMDB match, extra images, 
 
 The host runs `action: enrich` after `rail` / `details` and caches the merged result.
 
+### Layout kit (`kit.*` widgets)
+
+Compose hub pages in **`layout`** with typed kit widgets. The host maps each `type` to a Flutter widget; packs declare structure only — no hardcoded My List chrome in Dart.
+
+| Type | Role | Key fields |
+|------|------|------------|
+| `kit.stack` | Vertical column | `children[]`, `expand: true` (last child fills viewport) |
+| `kit.menu` | Underline filter menu | `items[]` (`id`, `label`), `toggle`, `focusUp` / `focusDown` |
+| `kit.tabs` | Status / segment strip | `tabs[]`, `default`, `focusUp` / `focusDown` |
+| `kit.list` | Host-backed grid | `source` (registered host backend, e.g. `my_list`), `kindMenu`, `statusTab` |
+| `kit.row` | Horizontal rail | Same as legacy `rail` / `ranked` |
+
+Legacy aliases still work: `stack` → `kit.stack`, `tabs` + `style: 'underline'` → `kit.menu`, `host.my_list` → `kit.list`.
+
+Helpers in pack `_kit.js` (copy into your hub):
+
+```javascript
+kitStack('page', { expand: true }, [
+  kitMenu('kind', [{ id: 'movie', label: 'Film' }, …], { toggle: true, focusDown: 'status' }),
+  kitTabs('status', [{ id: 'watching', label: 'Watching' }, …], { default: 'plantowatch' }),
+  kitList('grid', { source: 'my_list', kindMenu: 'kind', statusTab: 'status' }),
+]);
+```
+
+Browse hubs keep `hero`, `mood`, `rail`, `host.continue`, etc. Use `kit.*` when you need composable chrome (menus, tabs, host lists) in one page tree.
+
+`kit.list` binds to a **host source backend** (Model A): the pack declares layout + labels; the host owns persistence (local bookmarks, Simkl sync) and exposes data via registered source ids (`my_list` today). Optional `enrich` companion hydrates rows (e.g. TMDB details for Simkl stubs).
+
 ### Host helpers (catalog)
 
 ```javascript

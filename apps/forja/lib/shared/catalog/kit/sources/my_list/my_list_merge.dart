@@ -14,7 +14,9 @@ String myListItemKind(Map<String, dynamic> item) {
   if (simkl == 'movies') return 'movie';
   final mt = item['mediaType']?.toString() ?? 'movie';
   if (mt == 'anime') return 'anime';
-  if (mt == 'tv' || mt == 'series' || mt == 'asian_drama') return 'tv';
+  if (mt == 'asian_drama') return 'asian_drama';
+  if (item['kisskhId'] != null) return 'asian_drama';
+  if (mt == 'tv' || mt == 'series') return 'tv';
   return 'movie';
 }
 

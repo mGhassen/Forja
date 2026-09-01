@@ -96,9 +96,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
         return _tabWithKey(key, child);
       }
       if (key != null &&
-          (id == 'mylist' ||
-              id == 'iptv' ||
-              id == 'live_matches')) {
+          (id == 'iptv' || id == 'live_matches')) {
         return KeyedSubtree(key: key, child: child);
       }
       return child;

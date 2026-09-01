@@ -11,7 +11,7 @@ void main() {
       expect(BootNeeds.isHubNavId('home'), isTrue);
       expect(BootNeeds.isHubNavId('anime'), isTrue);
       expect(BootNeeds.isHubNavId('custom_hub'), isTrue);
-      expect(BootNeeds.isHubNavId('mylist'), isFalse);
+      expect(BootNeeds.isHubNavId('mylist'), isTrue);
       expect(BootNeeds.isHubNavId('iptv'), isFalse);
       expect(BootNeeds.isHubNavId('settings'), isFalse);
 

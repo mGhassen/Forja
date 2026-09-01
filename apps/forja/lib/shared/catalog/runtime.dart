@@ -501,6 +501,36 @@ class CatalogRuntime {
     return checked > 0;
   }
 
+  /// Host `kit.list` backends enrich legacy rows via the source pack's `enrich`
+  /// companion (same pipe as rail/details).
+  Future<List<Map<String, dynamic>>> enrichLegacyListItems({
+    required String sourcePluginId,
+    required List<Map<String, dynamic>> items,
+    Map<String, dynamic> params = const {},
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
+    if (items.isEmpty) return items;
+    final source = await _resolvePlugin(sourcePluginId);
+    final enrichId = source?.enrich?.trim() ?? '';
+    if (enrichId.isEmpty || enrichId == sourcePluginId) return items;
+    final out = await _mergeEnrichAnswer(
+      sourcePluginId: sourcePluginId,
+      enrichId: enrichId,
+      action: 'rail',
+      data: {'items': items},
+      enrichParams: {...params, 'items': items},
+      auth: null,
+      timeout: timeout,
+    );
+    if (out == null) return items;
+    final enriched = out['items'];
+    if (enriched is! List) return items;
+    return [
+      for (final row in enriched)
+        if (row is Map) Map<String, dynamic>.from(row),
+    ];
+  }
+
   Future<EnginePlugin?> _resolvePlugin(String pluginId) async {
     final packs = await EngineService.instance.listPacks();
     return PluginRegistry.packPluginFromPacks(packs, pluginId)?.plugin;

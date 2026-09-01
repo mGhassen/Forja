@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/my_list/my_list_merge.dart';
+import 'package:forja/shared/catalog/kit/sources/my_list/my_list_merge.dart';
 import 'package:forja/features/my_list/providers/my_list_providers.dart';
 import 'package:forja/shared/catalog/shell/catalog_legacy_list_item.dart';
 
@@ -110,6 +110,17 @@ void main() {
       expect(meta.open?.surface, 'anime');
       expect(meta.open?.id, '99');
       expect(meta.name, 'Hub Title');
+    });
+  });
+
+  group('myListItemKind', () {
+    test('splits asian drama from series', () {
+      expect(
+        myListItemKind({'mediaType': 'asian_drama', 'kisskhId': 9}),
+        'asian_drama',
+      );
+      expect(myListItemKind({'mediaType': 'tv', 'tmdbId': 1}), 'tv');
+      expect(myListItemKind({'kisskhId': 2, 'mediaType': 'movie'}), 'asian_drama');
     });
   });
 

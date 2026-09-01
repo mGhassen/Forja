@@ -554,7 +554,6 @@ void main() {
       'anime',
       'iptv',
       'live_matches',
-      'mylist',
       'settings',
     ];
     await pumpScaffold(
@@ -942,8 +941,8 @@ void main() {
     expect(navDestinations.containsKey('asian_drama'), isTrue);
     expect(navDestinations.containsKey('iptv'), isTrue);
     expect(navDestinations.containsKey('live_matches'), isTrue);
-    expect(navDestinations.containsKey('mylist'), isTrue);
     expect(navDestinations.containsKey('settings'), isTrue);
+    expect(navDestinations.containsKey('mylist'), isFalse);
     expect(navDestinations.containsKey('search'), isFalse);
     expect(SettingsService.defaultVisibleNavIds, [
       'home',

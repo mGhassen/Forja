@@ -17,7 +17,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Last [refresh] is cached so boot does not flash an empty rail.
 abstract final class PluginNavRegistry {
   static const coreShellNavIds = {
-    'mylist',
     'iptv',
     'live_matches',
     'settings',

@@ -38,7 +38,7 @@ Map<String, dynamic> loadIptvVodPackManifest() {
 
 List<EnginePlugin> loadAllHubPlugins() {
   final out = <EnginePlugin>[];
-  for (final dir in ['home', 'anime', 'asian_drama', 'arabic']) {
+  for (final dir in ['home', 'anime', 'asian_drama', 'arabic', 'my_list']) {
     final pack = EnginePack.fromJson(
       loadHubPackManifest(dir),
       sourceUrl: 'file:///plugins/hubs/$dir/manifest.json',
@@ -617,6 +617,8 @@ void main() {
       expect(byTab['anime']!.pluginId, 'anilist');
       expect(byTab['asian_drama']!.pluginId, 'kisskh-hub');
       expect(byTab['arabic']!.pluginId, 'arabic-hub');
+      expect(byTab['mylist']!.pluginId, 'my-list-hub');
+      expect(byTab['mylist']!.icon, ForjaHostAssets.uriNavMyList);
       expect(byTab['arabic']!.defaultEnabled, isFalse);
       expect(byTab['home']!.accent, '#1CE783');
       expect(byTab['home']!.order, 10);
@@ -625,7 +627,7 @@ void main() {
       PluginNavRegistry.seedBuiltIns();
       expect(PluginNavRegistry.destinations, isEmpty);
       expect(PluginNavRegistry.isHubTab('settings'), isFalse);
-      expect(PluginNavRegistry.isContributed('mylist'), isTrue);
+      expect(PluginNavRegistry.isContributed('mylist'), isFalse);
     });
 
     test('nav icons use forja://asset ids, not Flutter assets/ paths', () {
@@ -655,12 +657,18 @@ void main() {
         expect(
           ForjaHostAssets.isKnown(icon),
           isTrue,
-          reason: '${s.tabId} icon $icon must be in ForjaHostAssets.catalog',
+          reason: '${s.tabId} icon $icon must be a known Forja asset id',
         );
-        expect(
-          ForjaHostAssets.resolveFlutterPath(icon),
-          isNotNull,
-        );
+        final flutterPath = ForjaHostAssets.resolveFlutterPath(icon);
+        if (flutterPath != null) {
+          expect(flutterPath, startsWith('assets/'));
+        } else {
+          expect(
+            ForjaHostAssets.materialIconFor(icon),
+            isNotNull,
+            reason: '${s.tabId} material-only nav icon needs materialIconFor',
+          );
+        }
         // Material fallback keys off asset id — not tabId.
         expect(
           PluginNavRegistry.iconDataFor(s),

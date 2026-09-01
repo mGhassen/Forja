@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
@@ -12,6 +11,9 @@ class CatalogStatusTabs extends StatelessWidget {
     required this.tabId,
     required this.selected,
     required this.onSelect,
+    this.tabs,
+    this.rowId,
+    this.sortOrder = 1,
     this.onUp,
     this.onDown,
   });
@@ -19,10 +21,13 @@ class CatalogStatusTabs extends StatelessWidget {
   final String tabId;
   final String selected;
   final ValueChanged<String> onSelect;
+  final List<({String id, String title})>? tabs;
+  final String? rowId;
+  final int sortOrder;
   final VoidCallback? onUp;
   final VoidCallback? onDown;
 
-  static const tabs = [
+  static const defaultTabs = [
     (id: 'plantowatch', title: 'Plan to Watch'),
     (id: 'watching', title: 'Watching'),
     (id: 'hold', title: 'On Hold'),
@@ -33,11 +38,13 @@ class CatalogStatusTabs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final useTv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final statusTabs = tabs ?? defaultTabs;
+    final tvRowId = rowId ?? kCatalogMyListStatusRowId;
     return TvCatalogRow(
       tabId: tabId,
-      rowId: kCatalogMyListStatusRowId,
-      sortOrder: 1,
-      itemCount: tabs.length,
+      rowId: tvRowId,
+      sortOrder: sortOrder,
+      itemCount: statusTabs.length,
       onFocusUp: onUp,
       onFocusDown: onDown,
       child: Padding(
@@ -53,8 +60,10 @@ class CatalogStatusTabs extends StatelessWidget {
             policy: ReadingOrderTraversalPolicy(),
             child: Row(
               children: [
-                for (var i = 0; i < tabs.length; i++)
-                  Expanded(child: _tab(context, i, useTv)),
+                for (var i = 0; i < statusTabs.length; i++)
+                  Expanded(
+                    child: _tab(context, i, useTv, statusTabs, tvRowId),
+                  ),
               ],
             ),
           ),
@@ -63,8 +72,14 @@ class CatalogStatusTabs extends StatelessWidget {
     );
   }
 
-  Widget _tab(BuildContext context, int i, bool useTv) {
-    final tab = tabs[i];
+  Widget _tab(
+    BuildContext context,
+    int i,
+    bool useTv,
+    List<({String id, String title})> statusTabs,
+    String tvRowId,
+  ) {
+    final tab = statusTabs[i];
     final on = tab.id == selected;
     if (!useTv) {
       final label = Text(
@@ -99,6 +114,7 @@ class CatalogStatusTabs extends StatelessWidget {
       selected: on,
       listIndex: i,
       tabId: tabId,
+      rowId: tvRowId,
       onTap: () => onSelect(tab.id),
       onUp: onUp,
       onDown: onDown,
@@ -112,6 +128,7 @@ class _StatusTabFocus extends StatefulWidget {
     required this.selected,
     required this.listIndex,
     required this.tabId,
+    required this.rowId,
     required this.onTap,
     this.onUp,
     this.onDown,
@@ -121,6 +138,7 @@ class _StatusTabFocus extends StatefulWidget {
   final bool selected;
   final int listIndex;
   final String tabId;
+  final String rowId;
   final VoidCallback onTap;
   final VoidCallback? onUp;
   final VoidCallback? onDown;
@@ -156,7 +174,7 @@ class _StatusTabFocusState extends State<_StatusTabFocus> {
       borderRadius: 0,
       listIndex: widget.listIndex,
       tvTabId: widget.tabId,
-      tvRowId: kCatalogMyListStatusRowId,
+      tvRowId: widget.rowId,
       tvZone: ShellTvZone.chipStrip,
       tvItemIndex: widget.listIndex,
       onUpEdge: widget.onUp,

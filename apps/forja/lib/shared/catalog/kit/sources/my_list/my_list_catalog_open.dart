@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/my_list/providers/my_list_catalog_providers.dart';
+import 'package:forja/shared/catalog/kit/sources/catalog_kit_list_source.dart';
+import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_legacy_list_item.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/services/hub_list_follow.dart';
-import 'package:forja/shared/services/my_list_tmdb_enricher.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:rust/rust.dart';
 
 Future<void> openMyListCatalogEntry(
   BuildContext context,
-  MyListCatalogEntry entry,
+  CatalogKitListEntry entry,
 ) async {
   if (!context.mounted) return;
   final pluginId =
-      entry.pluginId ?? await MyListTmdbEnricher.pluginIdForRow(entry.legacyRow);
+      entry.pluginId ?? await pluginIdForLegacyListRow(entry.legacyRow);
   final open = entry.meta.open;
   if (pluginId != null &&
       open != null &&
@@ -32,9 +31,24 @@ Future<void> openMyListCatalogEntry(
   }
 }
 
+Future<String?> pluginIdForLegacyListRow(Map<String, dynamic> row) async {
+  final stored = row['pluginId']?.toString();
+  if (stored != null && stored.isNotEmpty) return stored;
+  final meta = catalogMetaFromLegacyListItem(row);
+  final open = meta.open;
+  if (open == null) return null;
+  if (open.surface == 'tmdb') {
+    return PluginNavRegistry.pluginIdForEngineType('movie');
+  }
+  return PluginNavRegistry.resolveHubPluginId(
+    pluginId: stored,
+    engineType: open.effectiveExtract.panelCategory,
+  );
+}
+
 Widget? myListEntryPin(
   BuildContext context,
-  MyListCatalogEntry entry,
+  CatalogKitListEntry entry,
   String tabStatus,
 ) {
   final iconSize = shellScaled(context, 18).clamp(12.0, 18.0);

@@ -110,10 +110,7 @@ String? providerIdFromEpisodeVideoId(String videoId) {
   final i = videoId.indexOf(':');
   if (i <= 0) return null;
   final id = videoId.substring(0, i).trim();
-  if (id.isEmpty) return null;
-  // Home TMDB TV episodes use `{tmdbId}:S{n}E{m}` — not `provider:opaque`.
-  if (RegExp(r'^\d+$').hasMatch(id)) return null;
-  return id;
+  return id.isEmpty ? null : id;
 }
 
 /// Merges [catalogOpen] extract when present; otherwise TMDB-details hints only.

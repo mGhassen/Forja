@@ -21,10 +21,15 @@ import 'package:forja/shell/shell_tab_refresh.dart';
 
 import '../kit/cards/hub_poster_card.dart';
 import '../kit/chrome/catalog_vertical_filters.dart';
-import '../kit/host/host_catalog_layouts.dart';
+import '../kit/layout/catalog_kit_list_widget.dart';
+import '../kit/layout/catalog_kit_menu_widget.dart';
+import '../kit/layout/catalog_stack_widget.dart';
+import '../kit/layout/catalog_kit_tabs_widget.dart';
+import '../kit/layout/catalog_kit_layout_chrome.dart';
+import '../kit/layout/catalog_kit_types.dart';
+import '../kit/layout/catalog_layout_scope.dart';
 import '../kit/widgets/catalog_because_section.dart';
 import '../kit/widgets/catalog_continue_widget.dart';
-import '../kit/widgets/catalog_my_list_widget.dart';
 import '../kit/details/hub_details_meta.dart';
 import '../kit/meta/catalog_meta_movie.dart';
 import '../kit/rows/catalog_row_prefetch.dart';
@@ -41,33 +46,12 @@ import 'catalog_open.dart';
 /// One `layout` call describes the page; each rail fetches when it enters the
 /// viewport and paginates horizontally as the user scrolls the row.
 class CatalogShell extends StatefulWidget {
-  const CatalogShell({
-    super.key,
-    required this.pluginId,
-    this.tabId,
-    this.hostLayout,
-  });
-
-  /// Core shell tab with inline host layout (no catalog pack JS).
-  factory CatalogShell.hostTab({required String tabId}) {
-    final layout = HostCatalogLayouts.forTab(tabId);
-    if (layout == null) {
-      throw ArgumentError('No host catalog layout for tab $tabId');
-    }
-    return CatalogShell(
-      pluginId: HostCatalogLayouts.hostPluginId,
-      tabId: tabId,
-      hostLayout: layout,
-    );
-  }
+  const CatalogShell({super.key, required this.pluginId, this.tabId});
 
   final String pluginId;
 
   /// Shell nav id — used for the layout page key (defaults to `home`).
   final String? tabId;
-
-  /// When set, layout is host-owned — skips [CatalogRuntime] `layout`.
-  final Map<String, dynamic>? hostLayout;
 
   @override
   State<CatalogShell> createState() => _CatalogShellState();
@@ -115,6 +99,9 @@ class _CatalogShellState extends State<CatalogShell>
 
   /// Bumped on shell tab refresh for host-owned widgets (My List).
   int _hostRefreshEpoch = 0;
+
+  final Map<String, String> _layoutSelections = {};
+  Map<String, Map<String, dynamic>> _layoutWidgetSpecs = {};
 
   /// Last [catalogChromeFilterEpoch] — ignore structural revision bumps.
   String _chromeFilterEpoch = '';
@@ -173,6 +160,7 @@ class _CatalogShellState extends State<CatalogShell>
   void dispose() {
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     CatalogVerticalFiltersRegistry.unregister(_pageKey);
+    CatalogKitLayoutChromeRegistry.unregister(_pageKey);
     if (_verticalFiltersRevisionListener != null) {
       CatalogVerticalFiltersRegistry.revision.removeListener(
         _verticalFiltersRevisionListener!,
@@ -212,20 +200,6 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   Future<void> _loadLayout({bool forceRefresh = false}) async {
-    final hostLayout = widget.hostLayout;
-    if (hostLayout != null) {
-      final invalid = validateLayoutData(hostLayout);
-      if (invalid != null) {
-        setState(() {
-          _loading = false;
-          _error = 'Host layout for ${widget.tabId} is invalid — $invalid';
-        });
-        return;
-      }
-      _applyLayoutPage(hostLayout, packSourceUrl: null);
-      return;
-    }
-
     final soft = _widgets.isNotEmpty && !forceRefresh;
     if (!soft) {
       setState(() {
@@ -317,6 +291,8 @@ class _CatalogShellState extends State<CatalogShell>
     setState(() {
       _loading = false;
       _widgets = widgets;
+      _layoutWidgetSpecs = layoutWidgetSpecIndex(widgets);
+      initLayoutTabSelections(_layoutSelections, widgets);
     });
     if (_pageUsesFeed) {
       unawaited(_ensureFeedLoaded());
@@ -328,16 +304,90 @@ class _CatalogShellState extends State<CatalogShell>
       packSourceUrl: packSourceUrl,
       widgets: widgets,
     );
+    CatalogKitLayoutChromeRegistry.syncFromLayout(
+      tabId: _pageKey,
+      widgets: widgets,
+    );
     _rebindChromeListenable();
     markShellTabFresh();
   }
 
+  bool get _hasMyListWidget => CatalogKitTypes.treeContains(
+    _widgets,
+    slot: CatalogKitTypes.list,
+    listSource: 'my_list',
+  );
+
+  void _onLayoutTabSelect(String widgetId, String value, {required bool toggle}) {
+    setState(() {
+      if (toggle) {
+        final current = _layoutSelections[widgetId];
+        _layoutSelections[widgetId] = current == value ? '' : value;
+      } else {
+        _layoutSelections[widgetId] = value;
+      }
+    });
+  }
+
+  Widget? _buildLayoutWidget(
+    Map<String, dynamic> spec, {
+    required Map<String, int> tvOrders,
+    int stackIndex = 0,
+  }) {
+    final type = _layoutWidgetType(spec);
+    final id = (spec['id'] ?? '').toString();
+    switch (type) {
+      case CatalogKitTypes.stack:
+        return CatalogKitStackWidget(
+          spec: spec,
+          childBuilder: (childSpec, index) => _buildLayoutWidget(
+            childSpec,
+            tvOrders: tvOrders,
+            stackIndex: index,
+          ),
+        );
+      case CatalogKitTypes.menu:
+        return CatalogKitMenuWidget(
+          tabId: _pageKey,
+          spec: spec,
+          sortOrder: stackIndex,
+        );
+      case CatalogKitTypes.tabs:
+        return CatalogKitTabsWidget(
+          tabId: _pageKey,
+          spec: spec,
+          sortOrder: stackIndex,
+        );
+      case CatalogKitTypes.list:
+        return CatalogKitListWidget(
+          tabId: widget.tabId ?? 'mylist',
+          layoutSpec: spec,
+          refreshEpoch: _hostRefreshEpoch,
+          tvRowOrder: _tvOrder(tvOrders, id),
+        );
+      default:
+        return _widgetFor(spec, tvOrders: tvOrders, prefetch: null);
+    }
+  }
+
+  Widget? _fullPageLayoutBody({required Map<String, int> tvOrders}) {
+    if (_widgets.length != 1) return null;
+    final root = _widgets.first;
+    if (!CatalogKitTypes.isCompositionRoot(root)) return null;
+    final body = _buildLayoutWidget(root, tvOrders: tvOrders);
+    if (body == null) return null;
+    return CatalogLayoutScope(
+      selections: Map.unmodifiable(_layoutSelections),
+      widgetSpecs: _layoutWidgetSpecs,
+      onSelect: _onLayoutTabSelect,
+      child: TvFocusGraph(tabId: _pageKey, child: body),
+    );
+  }
+
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
-    if (widget.hostLayout != null) {
-      if (mounted) setState(() => _hostRefreshEpoch++);
-      markShellTabFresh();
-      return;
+    if (_hasMyListWidget && mounted) {
+      setState(() => _hostRefreshEpoch++);
     }
     _forceNextRails = force;
     _invalidateRailFutures();
@@ -753,8 +803,10 @@ class _CatalogShellState extends State<CatalogShell>
       case 'continue':
       case 'host.continue':
         return true;
-      case 'my_list':
-      case 'host.my_list':
+      case CatalogKitTypes.list:
+      case CatalogKitTypes.stack:
+      case CatalogKitTypes.menu:
+      case CatalogKitTypes.tabs:
         return true;
       default:
         return true;
@@ -1123,15 +1175,20 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   String _layoutWidgetType(Map<String, dynamic> spec) {
-    return switch ((spec['type'] ?? '').toString().trim()) {
+    final raw = _rawLayoutWidgetType(spec);
+    final kit = CatalogKitTypes.normalize(raw, spec);
+    if (kit.startsWith('kit.')) return kit;
+    return switch (raw) {
       'host.continue' => 'continue',
       'host.because' => 'because',
       'host.trakt' => 'trakt',
-      'host.my_list' => 'my_list',
       'host.vertical_filters' => 'vertical_filters',
-      _ => (spec['type'] ?? '').toString().trim(),
+      _ => raw,
     };
   }
+
+  String _rawLayoutWidgetType(Map<String, dynamic> spec) =>
+      (spec['type'] ?? '').toString().trim();
 
   Widget? _widgetFor(
     Map<String, dynamic> spec, {
@@ -1141,7 +1198,8 @@ class _CatalogShellState extends State<CatalogShell>
     CatalogHubRowPrefetchSlot? prefetch,
   }) {
     final id = (spec['id'] ?? '').toString();
-    switch (_layoutWidgetType(spec)) {
+    final slot = _layoutWidgetType(spec);
+    switch (slot) {
       case 'hero':
         return _heroSection(
           spec,
@@ -1149,16 +1207,12 @@ class _CatalogShellState extends State<CatalogShell>
           bleedRowId: heroBleedRowId,
           prefetch: prefetch,
         );
+      case CatalogKitTypes.row:
       case 'rail':
-        return _railSection(
-          spec,
-          tvRowOrder: _tvOrder(tvOrders, id),
-          prefetch: prefetch,
-        );
       case 'ranked':
         return _railSection(
           spec,
-          showRank: true,
+          showRank: _rawLayoutWidgetType(spec) == 'ranked',
           tvRowOrder: _tvOrder(tvOrders, id),
           prefetch: prefetch,
         );
@@ -1185,11 +1239,39 @@ class _CatalogShellState extends State<CatalogShell>
           tvRowOrder: _tvOrder(tvOrders, id),
           prefetchSlot: prefetch,
         );
-      case 'my_list':
-        return CatalogMyListWidget(
+      case CatalogKitTypes.list:
+        return CatalogKitListWidget(
           tabId: widget.tabId ?? 'mylist',
+          layoutSpec: spec,
           refreshEpoch: _hostRefreshEpoch,
           tvRowOrder: _tvOrder(tvOrders, id),
+        );
+      case CatalogKitTypes.stack:
+        return CatalogKitStackWidget(
+          spec: spec,
+          childBuilder: (childSpec, index) => _buildLayoutWidget(
+            childSpec,
+            tvOrders: tvOrders,
+            stackIndex: index,
+          ),
+        );
+      case CatalogKitTypes.menu:
+      case CatalogKitTypes.tabs:
+        return CatalogLayoutScope(
+          selections: Map.unmodifiable(_layoutSelections),
+          widgetSpecs: _layoutWidgetSpecs,
+          onSelect: _onLayoutTabSelect,
+          child: slot == CatalogKitTypes.menu
+              ? CatalogKitMenuWidget(
+                  tabId: _pageKey,
+                  spec: spec,
+                  sortOrder: _tvOrder(tvOrders, id),
+                )
+              : CatalogKitTabsWidget(
+                  tabId: _pageKey,
+                  spec: spec,
+                  sortOrder: _tvOrder(tvOrders, id),
+                ),
         );
       case 'vertical_filters':
       case 'host.vertical_filters':
@@ -1251,6 +1333,11 @@ class _CatalogShellState extends State<CatalogShell>
         bleedActive: bleedActive,
       );
       final bleedRowId = bleed == null ? null : (bleed['id'] ?? '').toString();
+
+      // Full-page stack / host.my_list — Column+Expanded, not a sliver adapter.
+      final fullPage = _fullPageLayoutBody(tvOrders: tvOrders);
+      if (fullPage != null) return fullPage;
+
       final Widget? bleedChild = bleed == null || !bleedActive
           ? null
           : HubCatalogSection<CatalogMetaItem>(
@@ -1382,9 +1469,7 @@ class _CatalogHeroSectionState extends State<_CatalogHeroSection> {
     try {
       var items = await widget.future;
       if (!mounted || gen != _gen) return;
-      if (items.isEmpty &&
-          _lastSlides != null &&
-          _lastSlides!.isNotEmpty) {
+      if (items.isEmpty && _lastSlides != null && _lastSlides!.isNotEmpty) {
         items = _lastSlides!;
       } else if (items.isNotEmpty) {
         _lastSlides = items;

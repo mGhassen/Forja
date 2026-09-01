@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/movie_poster_card.dart';
 import 'package:forja/shared/widgets/my_list_button.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -25,6 +26,8 @@ class HubPosterCard extends StatelessWidget {
     this.listTarget,
     this.listPin,
     this.listIndex,
+    this.gridIndex,
+    this.gridColumns,
     this.tvTabId,
     this.tvRowId,
     this.onUpEdge,
@@ -40,6 +43,8 @@ class HubPosterCard extends StatelessWidget {
   final HubListFollowTarget? listTarget;
   final Widget? listPin;
   final int? listIndex;
+  final int? gridIndex;
+  final int? gridColumns;
   final String? tvTabId;
   final String? tvRowId;
   final VoidCallback? onUpEdge;
@@ -76,15 +81,19 @@ class HubPosterCard extends StatelessWidget {
     final metaSize = shellScaled(context, 11).clamp(7.0, 11.0);
     final compact = cardWidth < 85;
 
+    final inGrid = gridIndex != null && gridColumns != null;
     final card = shellFocusableTap(
       context: context,
       onTap: onTap,
       borderRadius: radius,
       showFocusBorder: true,
       listIndex: listIndex,
+      gridIndex: gridIndex,
+      gridColumns: gridColumns,
       tvTabId: tvTabId,
       tvRowId: tvRowId,
-      tvItemIndex: listIndex,
+      tvZone: inGrid ? ShellTvZone.grid : ShellTvZone.row,
+      tvItemIndex: listIndex ?? gridIndex,
       onUpEdge: onUpEdge,
       child: Container(
         width: cardWidth,

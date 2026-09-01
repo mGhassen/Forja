@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "id": "forjahq-my-list",
+  "name": "ForjaHQ My List",
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "id": "my-list-hub",
+      "name": "My List",
+      "description": "Personal watchlists — local bookmarks and Simkl sync",
+      "entry": "my_list.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": ["list"],
+      "capabilities": ["nav", "layout"],
+      "enrich": "my-list-enrich-tmdb",
+      "nav": {
+        "tabId": "mylist",
+        "label": "My List",
+        "order": 15,
+        "icon": "forja://asset/nav/my-list",
+        "accent": "#FBBF24",
+        "defaultEnabled": true
+      },
+      "enabled": true,
+      "prelude": "_kit.js"
+    },
+    {
+      "id": "my-list-enrich-tmdb",
+      "name": "My List TMDB enrich",
+      "description": "TMDB hydrate for My List legacy rows (companion to my-list-hub)",
+      "entry": "enrich_tmdb.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "capabilities": ["enrich"],
+      "enabled": true,
+      "prelude": "_kit.js"
+    }
+  ]
+}
