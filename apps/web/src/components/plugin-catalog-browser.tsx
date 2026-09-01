@@ -4,8 +4,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  LayoutGrid,
+  Magnet,
   Search,
+  SatelliteDish,
+  Trophy,
   X,
+  Zap,
+  type LucideIcon,
 } from 'lucide-react'
 import { AddToForjaButton } from '@/components/add-to-forja-button'
 import { Button } from '@/components/ui/button'
@@ -15,6 +21,14 @@ import type {
 } from '@/lib/forja-plugin-catalog'
 import { pluginKindLabel, isOfficialPluginPack, packAuthorLabel } from '@/lib/forja-plugin-catalog'
 import { cn } from '@/lib/utils'
+
+const KIND_ICONS: Record<ForjaPluginKind, LucideIcon> = {
+  providers: Zap,
+  live: Trophy,
+  hubs: LayoutGrid,
+  torrent: Magnet,
+  iptv: SatelliteDish,
+}
 
 const ALL_KINDS: ForjaPluginKind[] = [
   'providers',
@@ -66,6 +80,7 @@ function PluginDetailPanel({
   onClose?: () => void
 }) {
   const [copied, setCopied] = useState(false)
+  const Icon = KIND_ICONS[pack.kind]
   const official = isOfficialPluginPack(pack)
   const author = packAuthorLabel(pack)
 
@@ -82,19 +97,26 @@ function PluginDetailPanel({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
-        <div className="min-w-0">
-          {author ? (
-            <p className="truncate font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.45)]">
-              {author}
+        <div className="flex min-w-0 items-start gap-3">
+          <Icon
+            className="mt-0.5 size-4 shrink-0 text-[rgba(237,230,218,0.55)]"
+            strokeWidth={2}
+            aria-hidden
+          />
+          <div className="min-w-0">
+            {author ? (
+              <p className="truncate font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.45)]">
+                {author}
+              </p>
+            ) : null}
+            <h2 className="truncate font-medium text-[#EDE6DA]">
+              {packShortName(pack.name)}
+            </h2>
+            <p className="mt-1 truncate text-xs text-[rgba(237,230,218,0.5)]">
+              {pluginKindLabel(pack.kind)}
+              {pack.pluginCount != null ? ` · ${pack.pluginCount} plugins` : ''}
             </p>
-          ) : null}
-          <h2 className="truncate font-medium text-[#EDE6DA]">
-            {packShortName(pack.name)}
-          </h2>
-          <p className="mt-1 truncate text-xs text-[rgba(237,230,218,0.5)]">
-            {pluginKindLabel(pack.kind)}
-            {pack.pluginCount != null ? ` · ${pack.pluginCount} plugins` : ''}
-          </p>
+          </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {official ? <OfficialBadge /> : null}
@@ -182,6 +204,7 @@ function PluginListRow({
   selected: boolean
   onSelect: () => void
 }) {
+  const Icon = KIND_ICONS[pack.kind]
   const official = isOfficialPluginPack(pack)
   const author = packAuthorLabel(pack)
 
@@ -196,6 +219,16 @@ function PluginListRow({
           : 'hover:bg-white/[0.04]',
       )}
     >
+      <Icon
+        className={cn(
+          'size-4 shrink-0',
+          selected
+            ? 'text-forja-green'
+            : 'text-[rgba(237,230,218,0.45)]',
+        )}
+        strokeWidth={2}
+        aria-hidden
+      />
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="truncate font-mono-ui text-[10px] uppercase tracking-[0.12em] text-[rgba(237,230,218,0.45)]">
@@ -493,9 +526,10 @@ function ListSkeleton() {
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
-          className="border-b border-white/[0.06] px-4 py-3"
+          className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3"
         >
-          <div className="space-y-1.5">
+          <div className="size-4 rounded-sm bg-white/10" />
+          <div className="flex-1 space-y-1.5">
             <div className="h-2.5 w-16 rounded bg-white/5" />
             <div className="h-3 w-32 rounded bg-white/10" />
           </div>

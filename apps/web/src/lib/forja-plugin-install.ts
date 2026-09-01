@@ -22,16 +22,46 @@ export function buildForjaInstallDeepLink(
 export function tryOpenForjaInstallDeepLink(
   manifestUrl: string,
   opts?: { name?: string },
-): void {
-  if (typeof window === 'undefined') return
+): Promise<boolean> {
+  if (typeof window === 'undefined') return Promise.resolve(false)
   const trimmed = manifestUrl.trim()
-  if (!trimmed) return
-  const anchor = document.createElement('a')
-  anchor.href = buildForjaInstallDeepLink(trimmed, opts)
-  anchor.style.display = 'none'
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
+  if (!trimmed) return Promise.resolve(false)
+
+  return new Promise((resolve) => {
+    let settled = false
+    const finish = (opened: boolean) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      resolve(opened)
+    }
+
+    const onHide = () => finish(true)
+
+    const cleanup = () => {
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('pagehide', onHide)
+      window.removeEventListener('blur', onHide)
+      window.clearTimeout(timer)
+    }
+
+    const onVis = () => {
+      if (document.hidden) onHide()
+    }
+
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('pagehide', onHide)
+    window.addEventListener('blur', onHide)
+
+    const anchor = document.createElement('a')
+    anchor.href = buildForjaInstallDeepLink(trimmed, opts)
+    anchor.style.display = 'none'
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+
+    const timer = window.setTimeout(() => finish(false), 1600)
+  })
 }
 
 export function rememberPluginInstallIntent(intent: PluginInstallIntent): void {
