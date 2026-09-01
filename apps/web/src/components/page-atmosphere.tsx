@@ -21,7 +21,13 @@ function Bloom({
   )
 }
 
-export type AtmosphereRecipe = 'landing' | 'iptv' | 'auth' | 'download' | 'quiet'
+export type AtmosphereRecipe =
+  | 'landing'
+  | 'iptv'
+  | 'auth'
+  | 'download'
+  | 'quiet'
+  | 'plugins'
 
 export function PageAtmosphere({
   recipe,
@@ -43,6 +49,7 @@ export function PageAtmosphere({
       {recipe === 'auth' ? <AuthLight /> : null}
       {recipe === 'download' ? <DownloadLight /> : null}
       {recipe === 'quiet' ? <QuietLight /> : null}
+      {recipe === 'plugins' ? <PluginsLight /> : null}
     </div>
   )
 }
@@ -174,6 +181,34 @@ function QuietLight() {
       <Bloom
         color="flame"
         className="top-[52%] right-[6%] w-[min(22vw,14rem)] opacity-[0.14] blur-[80px]"
+      />
+    </>
+  )
+}
+
+/** Plugins — dual accent, tech-marketplace glow */
+function PluginsLight() {
+  return (
+    <>
+      <Bloom
+        color="brand"
+        className="top-[-8%] right-[-6%] w-[min(52vw,32rem)] opacity-[0.28] blur-[125px]"
+      />
+      <Bloom
+        color="flame"
+        className="top-[22%] left-[-10%] w-[min(40vw,25rem)] opacity-[0.22] blur-[105px]"
+      />
+      <Bloom
+        color="brand"
+        className="top-[48%] right-[8%] w-[min(18vw,11rem)] opacity-[0.16] blur-[60px]"
+      />
+      <Bloom
+        color="flame"
+        className="top-[68%] left-[20%] w-[min(36vw,22rem)] opacity-[0.2] blur-[95px]"
+      />
+      <Bloom
+        color="brand"
+        className="top-[88%] right-[-4%] w-[min(28vw,17rem)] opacity-[0.14] blur-[85px]"
       />
     </>
   )
