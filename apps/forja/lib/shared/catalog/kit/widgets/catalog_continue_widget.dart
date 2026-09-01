@@ -12,7 +12,7 @@ import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/playback/history_playback_resume.dart';
-import 'package:rust/rust.dart' show WatchHistoryService, isInProgressResume;
+import 'package:rust/rust.dart' show WatchHistoryService, canResumeFromSavedProgress;
 
 /// Layout widget type `continue` — pack-scoped [CatalogWatchHistory]; optional
 /// legacy Home TMDB [WatchHistoryService] when the pack requests it.
@@ -139,7 +139,7 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
       final posMs = (entry['positionMs'] as num?)?.toInt() ?? 0;
       final durMs = (entry['durationMs'] as num?)?.toInt() ?? 0;
       Duration? startPosition;
-      if (posMs > 5000 && isInProgressResume(posMs, durMs)) {
+      if (posMs > 5000 && canResumeFromSavedProgress(posMs, durMs)) {
         final clamped = (durMs > 0 && posMs > durMs - 30000)
             ? (durMs - 30000)
             : posMs;

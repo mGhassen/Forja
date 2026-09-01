@@ -41,7 +41,8 @@ import 'package:rust/rust.dart'
         MediaTrailer,
         RichMediaDetails,
         WatchHistoryService,
-        isInProgressResume,
+        canResumeFromSavedProgress,
+        isContinueWatchingRowEntry,
         watchHistoryInt;
 
 Future<T?> openHubDetails<T>(
@@ -202,7 +203,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     if (savedEp != null && savedEp != episodeNumber) return null;
     final posMs = (progress['positionMs'] as num?)?.toInt() ?? 0;
     final durMs = (progress['durationMs'] as num?)?.toInt() ?? 0;
-    if (posMs <= 5000 || !isInProgressResume(posMs, durMs)) return null;
+    if (posMs <= 5000 || !canResumeFromSavedProgress(posMs, durMs)) return null;
     final clamped =
         (durMs > 0 && posMs > durMs - 30000) ? (durMs - 30000) : posMs;
     return Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
@@ -215,7 +216,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     if (savedEp != null && savedEp != _selectedEpisode) return false;
     final posMs = (progress['positionMs'] as num?)?.toInt() ?? 0;
     final durMs = (progress['durationMs'] as num?)?.toInt() ?? 0;
-    return isInProgressResume(posMs, durMs);
+    return isContinueWatchingRowEntry(posMs, durMs);
   }
 
   bool get _hasClearableProgress {

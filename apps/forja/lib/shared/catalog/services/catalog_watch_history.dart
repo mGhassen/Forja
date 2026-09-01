@@ -211,7 +211,7 @@ Future<List<Map<String, dynamic>>> _catalogPackContinueEntries(
   for (final entry in await CatalogWatchHistory.getAll(pluginId)) {
     final pos = (entry['positionMs'] as num?)?.toInt() ?? 0;
     final dur = (entry['durationMs'] as num?)?.toInt() ?? 0;
-    if (!isInProgressResume(pos, dur)) continue;
+    if (!isContinueWatchingRowEntry(pos, dur)) continue;
     out.add(entry);
   }
   return out;

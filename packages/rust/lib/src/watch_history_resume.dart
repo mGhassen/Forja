@@ -8,6 +8,21 @@ bool isInProgressResume(int position, int duration) {
   return progress >= 0.02 && progress < watchFinishedThreshold;
 }
 
+/// Continue Watching row — show once the player would persist (~10s), not only
+/// after 2% of a long runtime (45m episode ≈ 54s at 2%).
+bool isContinueWatchingRowEntry(int position, int duration) {
+  if (duration <= 0 || position <= 0) return false;
+  if (isWatchFinished(position, duration)) return false;
+  if (isInProgressResume(position, duration)) return true;
+  return position > 10000;
+}
+
+/// Resume from saved progress when CW would list the title (matches save gate).
+bool canResumeFromSavedProgress(int position, int duration) {
+  if (position <= 5000) return false;
+  return isContinueWatchingRowEntry(position, duration);
+}
+
 /// True when playback reached [watchFinishedThreshold] (credits / done).
 bool isWatchFinished(int position, int duration) {
   if (duration <= 0) return false;
@@ -54,7 +69,7 @@ Duration resumeStartPositionFromProgress(Map<String, dynamic> progress) {
   final pos = watchHistoryInt(progress['position']);
   final dur = watchHistoryInt(progress['duration']);
   if (pos <= 0) return Duration.zero;
-  if (isInProgressResume(pos, dur)) return Duration(milliseconds: pos);
+  if (canResumeFromSavedProgress(pos, dur)) return Duration(milliseconds: pos);
   return Duration.zero;
 }
 
@@ -68,7 +83,7 @@ Map<String, dynamic>? latestInProgressForShow(
     if (watchHistoryInt(item['tmdbId'], -1) != tmdbId) continue;
     final pos = watchHistoryInt(item['position']);
     final dur = watchHistoryInt(item['duration']);
-    if (!isInProgressResume(pos, dur)) continue;
+    if (!isContinueWatchingRowEntry(pos, dur)) continue;
     final ts = watchHistoryInt(item['updatedAt']);
     final bestTs = best == null ? -1 : watchHistoryInt(best['updatedAt'], -1);
     if (ts > bestTs) best = item;
@@ -84,7 +99,7 @@ List<Map<String, dynamic>> inProgressPoolByShow(
   for (final item in history) {
     final pos = watchHistoryInt(item['position']);
     final dur = watchHistoryInt(item['duration']);
-    if (!isInProgressResume(pos, dur)) continue;
+    if (!isContinueWatchingRowEntry(pos, dur)) continue;
     final tmdbId = watchHistoryInt(item['tmdbId'], -1);
     if (tmdbId < 0) continue;
     final existing = byShow[tmdbId];

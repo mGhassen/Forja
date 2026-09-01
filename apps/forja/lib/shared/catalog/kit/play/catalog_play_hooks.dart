@@ -152,7 +152,7 @@ Movie movieWithResolvedHubArt(Movie movie) {
 int? _catalogWatchEpisode(num? episodeNumber, Movie movie) {
   final ep = episodeNumber?.round();
   if (ep != null && ep > 0) return ep;
-  return hubMediaIsEpisodic(movie) ? null : 1;
+  return 1;
 }
 
 Future<void> seedCatalogPlayWatchHistory({

@@ -93,4 +93,17 @@ void main() {
       expect(entry['cover'], contains('image.tmdb.org'));
     });
   });
+
+  group('isContinueWatchingRowEntry', () {
+    test('lists short saves on long runtimes once past player gate', () {
+      expect(isContinueWatchingRowEntry(15_000, 3_600_000), isTrue);
+      expect(isInProgressResume(15_000, 3_600_000), isFalse);
+    });
+
+    test('still hides finished and unsaved rows', () {
+      expect(isContinueWatchingRowEntry(0, 3_600_000), isFalse);
+      expect(isContinueWatchingRowEntry(3_200_000, 3_600_000), isFalse);
+      expect(isContinueWatchingRowEntry(5_000, 3_600_000), isFalse);
+    });
+  });
 }
