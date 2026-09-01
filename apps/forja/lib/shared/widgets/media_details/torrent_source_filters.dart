@@ -987,7 +987,7 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
       });
       if (hadDownloads) {
         ForjaToast.success(
-          snap.shouldShow ? 'Stopped active download' : 'Downloads cleared',
+          snap.hasClearableData ? 'Stopped active download' : 'Downloads cleared',
           duration: const Duration(seconds: 2),
         );
       }
@@ -1006,18 +1006,16 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
   @override
   Widget build(BuildContext context) {
     final snapshot = _snapshot;
-    if (!_loading && (snapshot == null || !snapshot.shouldShow)) {
-      return const SizedBox.shrink();
-    }
-
     final speed = TorrentStreamService().activeStats()?.speedLabel;
     final snap = snapshot;
-    final label = _loading ? '…' : snap!.label(speedLabel: speed);
-    final showPath =
-        !_loading && snap != null && snap.torrentCount > 0 && snap.cacheDir.isNotEmpty;
+    final label = _loading ? '…' : (snap?.label(speedLabel: speed) ?? '…');
+    final showPath = !_loading &&
+        snap != null &&
+        snap.torrentCount > 0 &&
+        snap.cacheDir.isNotEmpty;
     final cinematic = ForjaShellColors.cinematic;
     final metrics = ShellScope.metricsOf(context);
-    final hasData = !_loading && snap != null && snap.shouldShow;
+    final hasData = !_loading && (snap?.hasClearableData ?? false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1050,7 +1048,7 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   child: Text(
-                    snap.torrentCount > 0 ? 'Stop & clear' : 'Clear',
+                    (snap?.torrentCount ?? 0) > 0 ? 'Stop & clear' : 'Clear',
                     style: TextStyle(
                       color: cinematic.textSecondary,
                       fontSize: metrics.torrentPanelMetaFontSize,

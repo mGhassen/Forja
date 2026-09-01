@@ -13,11 +13,25 @@ void main() {
     expect(snap.totalBytes, 2000000000);
     expect(snap.torrentCount, 1);
     expect(snap.active, isTrue);
-    expect(snap.shouldShow, isTrue);
+    expect(snap.displayBytes, 500000000);
     expect(snap.label(), contains('Downloading:'));
   });
 
-  test('TorrentDownloadCacheSnapshot hides dht-only idle cache', () {
+  test('displayBytes prefers swarm progress over small disk footprint', () {
+    const snap = TorrentDownloadCacheSnapshot(
+      cacheDir: '/tmp/torrent',
+      diskBytes: 128000,
+      progressBytes: 900000000,
+      totalBytes: 2000000000,
+      torrentCount: 1,
+      active: true,
+    );
+    expect(snap.displayBytes, 900000000);
+    expect(snap.hasClearableData, isTrue);
+    expect(snap.label(), 'Downloading: 858.3 MB / 1.9 GB');
+  });
+
+  test('idle disk cache still shows on the row', () {
     const snap = TorrentDownloadCacheSnapshot(
       cacheDir: '/tmp/torrent',
       diskBytes: 128000,
@@ -26,6 +40,7 @@ void main() {
       torrentCount: 0,
       active: false,
     );
-    expect(snap.shouldShow, isFalse);
+    expect(snap.displayBytes, 128000);
+    expect(snap.label(), 'Torrent cache: 125.0 KB');
   });
 }

@@ -94,11 +94,35 @@ class TorrentDownloadCacheSnapshot {
     active: false,
   );
 
-  bool get shouldShow =>
-      torrentCount > 0 || progressBytes > 0 || diskBytes > 200 * 1024;
+  /// Best single number for the cache row — disk files or in-flight swarm bytes.
+  int get displayBytes {
+    var best = diskBytes;
+    if (progressBytes > best) best = progressBytes;
+    return best;
+  }
+
+  bool get hasClearableData => displayBytes > 0 || torrentCount > 0;
+
+  TorrentDownloadCacheSnapshot copyWith({
+    String? cacheDir,
+    int? diskBytes,
+    int? progressBytes,
+    int? totalBytes,
+    int? torrentCount,
+    bool? active,
+  }) {
+    return TorrentDownloadCacheSnapshot(
+      cacheDir: cacheDir ?? this.cacheDir,
+      diskBytes: diskBytes ?? this.diskBytes,
+      progressBytes: progressBytes ?? this.progressBytes,
+      totalBytes: totalBytes ?? this.totalBytes,
+      torrentCount: torrentCount ?? this.torrentCount,
+      active: active ?? this.active,
+    );
+  }
 
   String label({String? speedLabel}) {
-    if (torrentCount > 0 && totalBytes > 0) {
+    if (torrentCount > 0 && totalBytes > 0 && progressBytes < totalBytes) {
       final loaded = TorrentStreamService.formatStorageBytes(progressBytes);
       final total = TorrentStreamService.formatStorageBytes(totalBytes);
       if (speedLabel != null && speedLabel.isNotEmpty) {
@@ -106,10 +130,7 @@ class TorrentDownloadCacheSnapshot {
       }
       return 'Downloading: $loaded / $total';
     }
-    if (diskBytes > 0) {
-      return 'Torrent cache: ${TorrentStreamService.formatStorageBytes(diskBytes)}';
-    }
-    return 'Torrent cache: 0 B';
+    return 'Torrent cache: ${TorrentStreamService.formatStorageBytes(displayBytes)}';
   }
 
   static TorrentDownloadCacheSnapshot fromJson(String json) {
@@ -357,7 +378,8 @@ class TorrentStreamService {
   /// Prefer [EngineJobs.torrentStatusJsonStream] + [statsFromStatusJson] from
   /// the UI so status FFI stays off the main isolate.
   TorrentStats? activeStats() {
-    if (!RustLib.isInitialized || !_rustReady) return null;
+    if (!RustLib.isInitialized) return null;
+    if (RustLib.instance.torrentEnginePort() <= 0) return null;
     return statsFromStatusJson(RustLib.instance.torrentStatusJson());
   }
 
@@ -413,23 +435,59 @@ class TorrentStreamService {
       Directory('${Directory.systemTemp.path}${Platform.pathSeparator}torrent');
 
   /// Session swarms + on-disk bytes under `{temp}/torrent`.
+  ///
+  /// Always walks the download folder on disk, then merges engine session
+  /// stats and [activeStats] so the row matches real files while downloading.
   Future<TorrentDownloadCacheSnapshot> queryDownloadCacheSnapshot() async {
     if (!PlatformPlayback.capabilities.localTorrentEngine) {
       return TorrentDownloadCacheSnapshot.empty;
     }
-    if (RustLib.isInitialized) {
-      return TorrentDownloadCacheSnapshot.fromJson(
-        RustLib.instance.torrentDownloadCacheSnapshotJson(),
-      );
-    }
-    return TorrentDownloadCacheSnapshot(
-      cacheDir: cacheDirectory().path,
-      diskBytes: await _cacheDirectoryBytesOnDisk(),
+
+    final cacheDir = cacheDirectory().path;
+    final diskBytes = await _cacheDirectoryBytesOnDisk();
+    var snap = TorrentDownloadCacheSnapshot(
+      cacheDir: cacheDir,
+      diskBytes: diskBytes,
       progressBytes: 0,
       totalBytes: 0,
       torrentCount: 0,
       active: false,
     );
+
+    if (RustLib.isInitialized) {
+      if (RustLib.instance.torrentEnginePort() <= 0) {
+        await start();
+      }
+      try {
+        final rust = TorrentDownloadCacheSnapshot.fromJson(
+          RustLib.instance.torrentDownloadCacheSnapshotJson(),
+        );
+        snap = snap.copyWith(
+          cacheDir: rust.cacheDir.isNotEmpty ? rust.cacheDir : cacheDir,
+          diskBytes: rust.diskBytes > diskBytes ? rust.diskBytes : diskBytes,
+          progressBytes: rust.progressBytes,
+          totalBytes: rust.totalBytes,
+          torrentCount: rust.torrentCount,
+          active: rust.active,
+        );
+      } catch (e, st) {
+        _log('download cache snapshot FFI failed: $e\n$st');
+      }
+    }
+
+    final active = activeStats();
+    if (active != null) {
+      final loaded = active.loadedBytes;
+      final total = active.totalBytes;
+      snap = snap.copyWith(
+        progressBytes: loaded > snap.progressBytes ? loaded : snap.progressBytes,
+        totalBytes: total > snap.totalBytes ? total : snap.totalBytes,
+        torrentCount: snap.torrentCount > 0 ? snap.torrentCount : 1,
+        active: total > 0 && loaded < total,
+      );
+    }
+
+    return snap;
   }
 
   /// Legacy disk-only stats (Settings / LAN).
@@ -486,12 +544,16 @@ class TorrentStreamService {
       final snap = TorrentDownloadCacheSnapshot.fromJson(
         RustLib.instance.torrentClearAllDownloadsJson(),
       );
-      _log(
-        snap.torrentCount == 0 && snap.diskBytes == 0
-            ? 'Stopped and cleared all torrent downloads'
-            : 'Torrent downloads: ${snap.label()} remaining',
+      final diskBytes = await _cacheDirectoryBytesOnDisk();
+      final merged = snap.copyWith(
+        diskBytes: diskBytes > snap.diskBytes ? diskBytes : snap.diskBytes,
       );
-      return snap;
+      _log(
+        merged.torrentCount == 0 && merged.displayBytes == 0
+            ? 'Stopped and cleared all torrent downloads'
+            : 'Torrent downloads: ${merged.label()} remaining',
+      );
+      return merged;
     }
     final dir = cacheDirectory();
     if (await dir.exists()) {

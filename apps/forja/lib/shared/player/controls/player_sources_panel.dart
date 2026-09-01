@@ -3606,6 +3606,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             _openToken,
             _results.length,
             _searching,
+            TorrentStreamService().activeStats()?.loadedBytes,
           ),
           filterEnableBlur: false,
           onReloadKind: _reloadKind,
