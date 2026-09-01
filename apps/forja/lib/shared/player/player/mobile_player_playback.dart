@@ -1805,17 +1805,18 @@ mixin _MobilePlayerPlayback
         (widget.magnetLink != null && widget.magnetLink!.isNotEmpty) ||
         isLocalTorrentStreamUrl(widget.mediaPath);
     if (isTorrent) {
-      // Seekable HTTP Range (librqbit prioritizes pieces). Cap lavf probe so
-      // open prefers the already-fetched head instead of scanning the whole
-      // file; do NOT set seekable=0 — that permanently breaks scrub.
+      // Open phase: sequential pull only. force-seekable + Content-Length made
+      // lavf Range the tail (moov) while the swarm filled random middle pieces
+      // — probe retries forever at 0:00. After decode, ensureLocalTorrentSeekable
+      // clears seekable=0 and enables HTTP Range scrub (issue 024 T07/T09).
       await safeSet('cache', 'yes');
       await safeSet('network-timeout', '120');
       await safeSet('demuxer-readahead-secs', '20');
       await safeSet('demuxer-lavf-probesize', '65536');
       await safeSet('demuxer-lavf-analyzeduration', '0.5');
-      await safeSet('force-seekable', 'yes');
-      await safeSet('hr-seek', 'yes');
-      await safeSet('hr-seek-framedrop', 'no');
+      await safeSet('force-seekable', 'no');
+      await safeSet('stream-lavf-o', 'seekable=0');
+      await safeSet('demuxer-lavf-o', 'seekable=0');
     } else {
       // Sliding RAM window (cache-secs wins over readahead). Pause-to-refill
       // is set above so HLS underruns BUFFER instead of stuttering.

@@ -2413,7 +2413,7 @@ Future<bool> waitForMediaOpen(
   }
 }
 
-/// Belt-and-suspenders: ensure torrent scrub can Range (see configure path).
+/// After torrent decode confirms: drop open-phase seekable=0 and enable Range scrub.
 Future<void> ensureLocalTorrentSeekable(Player player) async {
   if (player.platform is! NativePlayer) return;
   final mpv = player.platform as NativePlayer;
@@ -2425,6 +2425,8 @@ Future<void> ensureLocalTorrentSeekable(Player player) async {
     }
   }
 
+  await safeSet('demuxer-lavf-o', '');
+  await safeSet('stream-lavf-o', '');
   await safeSet('force-seekable', 'yes');
   await safeSet('hr-seek', 'yes');
   await safeSet('hr-seek-framedrop', 'no');
@@ -2447,6 +2449,7 @@ Future<bool> waitForPlayerStreamOpen(
         : const Duration(seconds: 25),
     onProbeRetry: localTorrent
         ? () async {
+            await resetPlayerForOpen(player);
             if (reopen != null) {
               await reopen();
               return;

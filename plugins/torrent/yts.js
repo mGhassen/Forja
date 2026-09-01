@@ -5,11 +5,11 @@ function search(ctx) {
   var source = String(cfg.source || 'YTS');
   var enc = encodeURIComponent(query);
   var urls = [
-    'https://yts.lt/api/v2/list_movies.json?query_term=' + enc + '&limit=50',
     'https://movies-api.accel.li/api/v2/list_movies.json?query_term=' +
       enc +
       '&limit=50',
-    'https://yts.mx/api/v2/list_movies.json?query_term=' + enc + '&limit=50',
+    'https://yts.gg/api/v2/list_movies.json?query_term=' + enc + '&limit=50',
+    'https://yts.lt/api/v2/list_movies.json?query_term=' + enc + '&limit=50',
   ];
 
   function parseMovies(v) {

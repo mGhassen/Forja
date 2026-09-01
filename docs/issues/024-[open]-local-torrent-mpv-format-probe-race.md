@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 9** fix · **0 / 2** acceptance |
+| **Progress** | **9 / 10** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -28,6 +28,7 @@
 | 7 | I24-T07 | Player: disable `force-seekable` / lavf seek on open so mpv does not Range the undownloaded tail while the swarm fills the middle | ✅ |
 | 8 | I24-T08 | Player: 180s local-torrent open wait + re-open on transient format probe; engine prefer 256 KiB / min 64 KiB head | ✅ |
 | 9 | I24-T09 | Player: keep torrent Range seek (`force-seekable=yes`); bound lavf probe instead of `seekable=0` (which permanently blocked scrub) | ✅ |
+| 10 | I24-T10 | Player: open-phase sequential lavf (`seekable=0`); enable Range scrub only after decode via `ensureLocalTorrentSeekable` (T09 regression) | ✅ |
 
 ---
 
@@ -83,3 +84,9 @@ Observed: healthy swarm (~5 MB/s, 500–600 MB downloaded) still ended **Failed 
 ### Follow-up (I24-T09) — 2026-08-06
 
 T07 left `seekable=0` for the whole session. Runtime `force-seekable=yes` after open did **not** stick — scrub past the demuxer cache logged `Cannot seek in this stream`. Fix: drop `seekable=0`; open with `force-seekable=yes` + capped `demuxer-lavf-probesize` / `analyzeduration`; re-assert seekable on every torrent scrub.
+
+### Follow-up (I24-T10) — 2026-09-01
+
+Observed: Torrentio magnet on desktop — swarm ~30% (~260 MB) at 4+ MB/s, player stuck **Buffering** at `0:00 / 0:00`, logs show `[Player] Torrent probe retry (periodic)` every 15s. Regression from `09a7657b` (IPTV cleanup): T09 re-applied `force-seekable=yes` at configure time, so lavf Range-requested the moov tail while random middle pieces filled — same failure mode as T07.
+
+**Fix:** open-phase sequential lavf again (`force-seekable=no`, `seekable=0`); after `hasDecodedVideo` confirms, `ensureLocalTorrentSeekable` clears `seekable=0` and enables Range scrub; probe re-open calls `resetPlayerForOpen` first.
