@@ -88,6 +88,7 @@
         "description": { "type": "string" },
         "rating": { "type": "number" },
         "releaseInfo": { "type": "string" },
+        "premiereDate": { "type": "string" },
         "genres": {
           "type": "array",
           "items": { "type": "string" }
@@ -127,7 +128,10 @@
         "episode": { "type": "integer" },
         "thumbnail": { "type": "string" },
         "poster": { "type": "string" },
-        "overview": { "type": "string" }
+        "overview": { "type": "string" },
+        "airDate": { "type": "string" },
+        "air_date": { "type": "string" },
+        "aired": { "type": "boolean" }
       }
     }
   }

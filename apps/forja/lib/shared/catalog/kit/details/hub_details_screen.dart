@@ -596,7 +596,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       return;
     }
     final ep = _selectedVideo();
-    if (ep == null) return;
+    if (ep == null || hubVideoNotAiredYet(ep)) return;
     unawaited(_playEpisode(ep));
   }
 
@@ -688,8 +688,11 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     final hasClearableProgress = _hasClearableProgress;
     final trailers = _trailers;
     final hasTrailers = trailers.isNotEmpty;
-    final isUpcoming =
-        (show.status ?? '').toUpperCase() == 'NOT_YET_RELEASED';
+    final isUpcoming = hubMetaIsUpcoming(show, videos: videos);
+    final premiereLabel = hubMetaPremiereDateLabel(show);
+    final selectedVideo = _selectedVideo();
+    final selectedUnaired =
+        selectedVideo != null && hubVideoNotAiredYet(selectedVideo);
     var tvIndex = 0;
     final playIndex = tvIndex++;
     final sourcesIndex = showCatalogSources ? tvIndex++ : null;
@@ -835,14 +838,13 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
             children: [
               if (isUpcoming)
                 HubDetailsUpcomingNotice(
-                  releaseDateLabel: show.releaseInfo.trim().isEmpty
-                      ? null
-                      : show.releaseInfo,
+                  releaseDateLabel: premiereLabel,
                 )
               else
                 HubDetailsPlayRow(
                   label: playLabel,
-                  enabled: _isMovie || videos.isNotEmpty || show.open != null,
+                  enabled: !selectedUnaired &&
+                      (_isMovie || videos.isNotEmpty || show.open != null),
                   onPlay: _playSelected,
                   onOpenSources:
                       showCatalogSources && (_isMovie || videos.isNotEmpty)

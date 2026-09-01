@@ -371,6 +371,8 @@ class CatalogVideo {
     this.season,
     this.episode,
     this.thumbnail = '',
+    this.airDate = '',
+    this.aired,
   });
 
   final String id;
@@ -378,6 +380,10 @@ class CatalogVideo {
   final int? season;
   final int? episode;
   final String thumbnail;
+  /// ISO calendar date (`YYYY-MM-DD`) when the episode airs / aired.
+  final String airDate;
+  /// When `false`, the episode is scheduled but not playable yet.
+  final bool? aired;
 
   factory CatalogVideo.fromJson(Map<String, dynamic> j) => CatalogVideo(
         id: (j['id'] ?? '').toString(),
@@ -385,6 +391,9 @@ class CatalogVideo {
         season: (j['season'] as num?)?.toInt(),
         episode: (j['episode'] as num?)?.toInt(),
         thumbnail: (j['thumbnail'] ?? j['poster'] ?? '').toString(),
+        airDate: (j['airDate'] ?? j['air_date'] ?? j['release_date'] ?? '')
+            .toString(),
+        aired: j['aired'] is bool ? j['aired'] as bool : null,
       );
 }
 
@@ -420,6 +429,7 @@ class CatalogMetaItem {
     this.description = '',
     this.rating,
     this.releaseInfo = '',
+    this.premiereDate = '',
     this.genres = const [],
     this.badge,
     this.status,
@@ -440,6 +450,8 @@ class CatalogMetaItem {
   final String description;
   final double? rating;
   final String releaseInfo;
+  /// ISO premiere / first-air date (`YYYY-MM-DD`) for upcoming titles.
+  final String premiereDate;
   final List<String> genres;
   final String? badge;
   /// Hub status wire (`RELEASING`, `NOT_YET_RELEASED`, …).
@@ -492,6 +504,8 @@ class CatalogMetaItem {
       description: (j['description'] ?? '').toString(),
       rating: (j['rating'] as num?)?.toDouble(),
       releaseInfo: (j['releaseInfo'] ?? '').toString(),
+      premiereDate: (j['premiereDate'] ?? j['premiere_date'] ?? '')
+          .toString(),
       genres: genresRaw is List
           ? genresRaw.map((e) => e.toString()).toList()
           : const [],
@@ -526,6 +540,7 @@ class CatalogMetaItem {
         if (description.isNotEmpty) 'description': description,
         if (rating != null) 'rating': rating,
         if (releaseInfo.isNotEmpty) 'releaseInfo': releaseInfo,
+        if (premiereDate.isNotEmpty) 'premiereDate': premiereDate,
         if (genres.isNotEmpty) 'genres': genres,
         if (badge != null) 'badge': badge,
         if (status != null && status!.isNotEmpty) 'status': status,
@@ -545,6 +560,8 @@ class CatalogMetaItem {
                 if (v.season != null) 'season': v.season,
                 if (v.episode != null) 'episode': v.episode,
                 if (v.thumbnail.isNotEmpty) 'thumbnail': v.thumbnail,
+                if (v.airDate.isNotEmpty) 'airDate': v.airDate,
+                if (v.aired != null) 'aired': v.aired,
               },
           ],
       };
@@ -564,6 +581,7 @@ class CatalogMetaItem {
         description: description ?? this.description,
         rating: rating,
         releaseInfo: releaseInfo,
+        premiereDate: premiereDate,
         genres: genres,
         badge: badge,
         status: status,

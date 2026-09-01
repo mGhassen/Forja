@@ -193,15 +193,22 @@ class EngineService {
     return inactive;
   }
 
-  Future<List<EnginePlugin>> listEnabledLiveCatalogPlugins() async {
+  /// Live sport schedule plugins from installed packs.
+  ///
+  /// When [enabledOnly] is false, returns every `live_sport` catalog capability
+  /// (Settings may still disable individual sites).
+  Future<List<EnginePlugin>> listLiveSportCatalogPlugins({
+    bool enabledOnly = true,
+  }) async {
     await ensureOfficialInstalled();
     final out = <EnginePlugin>[];
     for (final pack in await listPacks()) {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
-        if (!p.isHttp) continue;
-        if (p.isLiveSportPlugin) {
-          if (!p.supportsLiveCatalog) continue;
+        if (!p.isHttp || !p.isLiveSportPlugin || !p.supportsLiveCatalog) {
+          continue;
+        }
+        if (enabledOnly) {
           if (!await PluginRegistry.instance.isLiveCapabilityActive(
             pack: pack,
             plugin: p,
@@ -209,11 +216,24 @@ class EngineService {
           )) {
             continue;
           }
-          out.add(p);
+        }
+        out.add(p);
+      }
+    }
+    out.sort((a, b) => a.name.compareTo(b.name));
+    return out;
+  }
+
+  Future<List<EnginePlugin>> listEnabledLiveCatalogPlugins() async {
+    await ensureOfficialInstalled();
+    final out = await listLiveSportCatalogPlugins();
+    for (final pack in await listPacks()) {
+      if (!pack.enabled) continue;
+      for (final p in pack.plugins) {
+        if (!p.isHttp || p.isLiveSportPlugin || !p.enabled || !p.isLiveCatalog) {
           continue;
         }
-        if (!p.enabled) continue;
-        if (p.isLiveCatalog) out.add(p);
+        out.add(p);
       }
     }
     out.sort((a, b) => a.name.compareTo(b.name));

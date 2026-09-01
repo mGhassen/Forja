@@ -1111,8 +1111,8 @@ class PluginRegistry {
       if (!plugin.enabled) return false;
       return pack.isPluginActive(plugin);
     }
-    // Opt-in live sites (WatchFooty, TimStreams, …): manifest `enabled: false`
-    // means default-off via catalogEnabled/resolveEnabled — not pack removal.
+    // live_sport: per-capability prefs + manifest catalogEnabled/resolveEnabled
+    // defaults — not pack.isPluginActive (plugin stays in pack when default-off).
     return liveCapabilityEnabled(
       sourceUrl: pack.sourceUrl,
       plugin: plugin,

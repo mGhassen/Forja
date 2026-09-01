@@ -372,6 +372,8 @@ Each browse card / details meta:
   description: '…',
   rating: 8.5,
   releaseInfo: '2024',
+  premiereDate: '2026-06-14',   // ISO — upcoming / first-air (details hero)
+  status: 'NOT_YET_RELEASED',   // optional — host shows Coming soon
   genres: ['Action'],
   ids: { tmdb: '123', anilist: '456' },  // opaque upstream ids
   open: {                     // required for openable items
@@ -386,6 +388,8 @@ Each browse card / details meta:
   videos: [ … ]               // episodes on details — opaque ids for play
 }
 ```
+
+`videos[]` episode rows may include **`airDate`** (`YYYY-MM-DD`) and **`aired: false`** when the episode is scheduled but not playable. The host episode picker shows the date in orange and blocks Play until aired.
 
 The host routes on **`open.surface`** only — not on your plugin id or scraper name.
 

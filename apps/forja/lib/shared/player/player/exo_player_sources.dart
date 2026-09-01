@@ -476,6 +476,14 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       useDebrid: debrid.useDebrid,
       debridService: debrid.service,
     );
+    if (precheck is StremioExternalLink) {
+      await handleStremioStreamIfExternal(context, stream, popToRoot: true);
+      return;
+    }
+    if (precheck is StremioResolveFailure) {
+      ForjaToast.info(precheck.message);
+      return;
+    }
     if (precheck == null) {
       await _switchStremioMagnetSource(stream);
       return;

@@ -333,6 +333,16 @@ function hubApplyTmdbHit(meta, hit) {
   if (hit.rating != null && !(Number(meta.rating) > 0)) {
     meta.rating = Number(hit.rating);
   }
+  if (hit.premiereDate && !String(meta.premiereDate || '').trim()) {
+    meta.premiereDate = String(hit.premiereDate);
+  }
+  if (
+    hit.premiereDate &&
+    hubIsFutureIsoDate(hit.premiereDate) &&
+    !String(meta.status || '').trim()
+  ) {
+    meta.status = 'NOT_YET_RELEASED';
+  }
   meta._hubTmdbEnriched = true;
   return meta;
 }
@@ -377,6 +387,7 @@ function hubTmdbHitFromDetails(json, media) {
     mediaType: media,
     name: name,
     year: date.length >= 4 ? Number(date.slice(0, 4)) || null : null,
+    premiereDate: hubParseIsoDate(date),
     poster: poster || null,
     backdrop: backdrop || null,
     overview: overview || null,
@@ -421,6 +432,26 @@ function hubTmdbById(ctx, id, preferType) {
   });
 }
 
+function hubParseIsoDate(raw) {
+  var s = String(raw || '').trim();
+  if (s.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+  return '';
+}
+
+function hubIsFutureIsoDate(iso) {
+  var s = hubParseIsoDate(iso);
+  if (!s) return false;
+  var parts = s.split('-');
+  var y = Number(parts[0]);
+  var m = Number(parts[1]);
+  var d = Number(parts[2]);
+  if (!(y > 0 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return false;
+  var air = new Date(y, m - 1, d);
+  var now = new Date();
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return air.getTime() > today.getTime();
+}
+
 function hubTmdbEpisodeStillUrl(path) {
   var p = String(path || '').trim();
   if (!p) return '';
@@ -458,6 +489,8 @@ function hubTmdbSeasonEpisodeMap(ctx, tvId, season) {
           still: e.still_path ? hubTmdbEpisodeStillUrl(e.still_path) : '',
           name: String(e.name || '').trim(),
           overview: String(e.overview || '').trim(),
+          air_date: hubParseIsoDate(e.air_date),
+          aired: e.air_date ? !hubIsFutureIsoDate(e.air_date) : undefined,
         };
       }
       return out;
@@ -520,6 +553,12 @@ function hubEnrichMetaVideos(ctx, meta, hit) {
       }
       if (!String(vid.overview || '').trim() && extras.overview) {
         vid.overview = extras.overview;
+      }
+      if (!String(vid.airDate || vid.air_date || '').trim() && extras.air_date) {
+        vid.airDate = extras.air_date;
+      }
+      if (vid.aired == null && extras.air_date) {
+        vid.aired = extras.aired !== false && !hubIsFutureIsoDate(extras.air_date);
       }
     }
     return meta;

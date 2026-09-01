@@ -210,14 +210,14 @@ void main() {
       registry = PluginRegistry.instance;
     });
 
-    test('opt-in site activates when user enables catalog in Settings', () async {
+    test('opt-in live_sport catalog activates when user enables in Settings', () async {
       const sourceUrl = 'https://example.com/live/manifest.json';
       final plugin = EnginePlugin.fromJson({
-        'id': 'watchfooty',
-        'name': 'WatchFooty',
-        'entry': 'watchfooty.js',
+        'id': 'test-live-optin',
+        'name': 'Test Live Opt-in',
+        'entry': 'test_live_optin.js',
         'kind': 'http',
-        'enabled': false,
+        'enabled': true,
         'types': ['live_sport'],
         'capabilities': ['catalog', 'resolve'],
         'config': {

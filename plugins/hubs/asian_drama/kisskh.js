@@ -107,6 +107,7 @@ function kisskhMeta(row) {
   var tmdb = row.tmdbID || row.tmdbId || row.tmdb_id;
   if (tmdb) ids.tmdb = String(tmdb);
   var release = String(row.releaseDate || '').trim();
+  var premiere = hubParseIsoDate(release);
   var meta = {
     id: 'kisskh:' + row.id,
     type: 'drama',
@@ -124,6 +125,7 @@ function kisskhMeta(row) {
       },
     },
   };
+  if (premiere) meta.premiereDate = premiere;
   var label = String(row.label || '').trim();
   if (label) meta.badge = label;
   var desc = String(row.description || '').trim();
@@ -227,17 +229,31 @@ function kisskhDetails(ctx, cfg, params) {
         if (!ep || ep.id == null || ep.number == null) continue;
         var num = Math.round(Number(ep.number));
         if (!num) continue;
-        videos.push({
+        var airRaw = hubParseIsoDate(
+          ep.airDate || ep.airdate || ep.releaseDate || ep.released,
+        );
+        var entry = {
           id: String(ep.id),
           episode: num,
           season: 1,
           title: 'Episode ' + num,
-        });
+        };
+        if (airRaw) {
+          entry.airDate = airRaw;
+          if (hubIsFutureIsoDate(airRaw)) entry.aired = false;
+        }
+        videos.push(entry);
       }
       videos.sort(function (a, b) {
         return a.episode - b.episode;
       });
       if (videos.length) meta.videos = videos;
+      else if (
+        meta.premiereDate &&
+        hubIsFutureIsoDate(meta.premiereDate)
+      ) {
+        meta.status = 'NOT_YET_RELEASED';
+      }
       var bg = String(raw.thumbnail || raw.cover || '').trim();
       if (bg) meta.background = kisskhCover(bg);
       var desc = String(raw.description || '').trim();

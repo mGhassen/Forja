@@ -645,7 +645,7 @@ class _CatalogShellState extends State<CatalogShell>
 
   HubHeroSlide _heroSlideFor(CatalogMetaItem item) {
     final status = (item.status ?? '').trim();
-    final isUpcoming = status.toUpperCase() == 'NOT_YET_RELEASED';
+    final isUpcoming = hubMetaIsUpcoming(item);
     final useAniBanner =
         item.open != null &&
         item.bannerImage.isNotEmpty &&
@@ -673,7 +673,8 @@ class _CatalogShellState extends State<CatalogShell>
       badge: heroTypeLabel ?? item.badge,
       statusChip: status.isEmpty ? null : status.replaceAll('_', ' '),
       isUpcoming: isUpcoming,
-      upcomingReleaseLabel: isUpcoming ? yearBit : null,
+      upcomingReleaseLabel:
+          isUpcoming ? (hubMetaPremiereDateLabel(item) ?? yearBit) : null,
       genres: item.genres,
       imageFit: useAniBanner ? BoxFit.fitWidth : BoxFit.cover,
       imageAlignment: useAniBanner ? Alignment.center : Alignment.centerRight,

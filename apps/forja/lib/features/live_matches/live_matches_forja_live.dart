@@ -4,6 +4,7 @@ class _ForjaLivePluginLoad {
   const _ForjaLivePluginLoad({
     required this.pluginId,
     required this.label,
+    this.enabled = true,
     this.loading = false,
     this.attempted = false,
     this.matchCount = 0,
@@ -12,12 +13,15 @@ class _ForjaLivePluginLoad {
 
   final String pluginId;
   final String label;
+  /// Settings → Forja Sports → Catalog toggle for this site.
+  final bool enabled;
   final bool loading;
   final bool attempted;
   final int matchCount;
   final String? error;
 
   _ForjaLivePluginLoad copyWith({
+    bool? enabled,
     bool? loading,
     bool? attempted,
     int? matchCount,
@@ -25,6 +29,7 @@ class _ForjaLivePluginLoad {
   }) => _ForjaLivePluginLoad(
     pluginId: pluginId,
     label: label,
+    enabled: enabled ?? this.enabled,
     loading: loading ?? this.loading,
     attempted: attempted ?? this.attempted,
     matchCount: matchCount ?? this.matchCount,
@@ -47,6 +52,11 @@ mixin _LiveMatchesForjaLive
 
   bool get _forjaLiveAnyLoading =>
       _s._forjaLivePluginLoads.values.any((e) => e.loading);
+
+  bool get _forjaLiveCatalogFilterDisabled {
+    if (_s._forjaLivePluginFilter == 'all') return false;
+    return _s._forjaLivePluginLoads[_s._forjaLivePluginFilter]?.enabled == false;
+  }
 
   bool _forjaLiveMatchPlayable(_StreamedMatch match) {
     return !_forjaLiveAnyLoading && match.isLive;
@@ -293,22 +303,28 @@ mixin _LiveMatchesForjaLive
     return {'leagues': leagues, 'pluginId': 'espn'};
   }
 
-  void _ensureForjaLivePluginLoadsRegistered(List<EnginePlugin> catalogPlugins) {
-    if (catalogPlugins.isEmpty) {
+  void _ensureForjaLivePluginLoadsRegistered({
+    required List<EnginePlugin> allCatalogPlugins,
+    required Set<String> enabledFilterIds,
+  }) {
+    if (allCatalogPlugins.isEmpty) {
       if (_s._forjaLivePluginLoads.isNotEmpty) {
         setState(() => _s._forjaLivePluginLoads = {});
       }
       return;
     }
     final next = <String, _ForjaLivePluginLoad>{};
-    for (final catalog in catalogPlugins) {
+    for (final catalog in allCatalogPlugins) {
       final filterId = EngineService.catalogFilterId(catalog);
       final existing = _s._forjaLivePluginLoads[filterId];
-      next[filterId] = existing ??
-          _ForjaLivePluginLoad(
-            pluginId: filterId,
-            label: catalog.name,
-          );
+      final enabled = enabledFilterIds.contains(filterId);
+      next[filterId] = existing == null
+          ? _ForjaLivePluginLoad(
+              pluginId: filterId,
+              label: catalog.name,
+              enabled: enabled,
+            )
+          : existing.copyWith(enabled: enabled);
     }
     if (_forjaLivePluginLoadsEqual(next, _s._forjaLivePluginLoads)) return;
     setState(() => _s._forjaLivePluginLoads = next);
@@ -326,6 +342,7 @@ mixin _LiveMatchesForjaLive
       if (other == null ||
           other.pluginId != e.value.pluginId ||
           other.label != e.value.label ||
+          other.enabled != e.value.enabled ||
           other.loading != e.value.loading ||
           other.attempted != e.value.attempted ||
           other.matchCount != e.value.matchCount ||
@@ -452,20 +469,29 @@ mixin _LiveMatchesForjaLive
     _s._catalogFetchedHorizon = _s._scheduleHorizon;
     await LiveMatchesEngine.warmPluginMeta();
     await EngineService.instance.ensureOfficialInstalled();
-    final catalogPlugins =
-        await EngineService.instance.listEnabledLiveCatalogPlugins();
+    final allCatalogPlugins =
+        await EngineService.instance.listLiveSportCatalogPlugins(
+          enabledOnly: false,
+        );
+    final enabledCatalogPlugins =
+        await EngineService.instance.listLiveSportCatalogPlugins();
     if (!mounted || gen != _s._forjaLiveLoadGen) return;
 
-    _ensureForjaLivePluginLoadsRegistered(catalogPlugins);
+    _ensureForjaLivePluginLoadsRegistered(
+      allCatalogPlugins: allCatalogPlugins,
+      enabledFilterIds: {
+        for (final p in enabledCatalogPlugins) EngineService.catalogFilterId(p),
+      },
+    );
     if (!mounted || gen != _s._forjaLiveLoadGen) return;
 
-    if (catalogPlugins.isEmpty) {
+    if (enabledCatalogPlugins.isEmpty) {
       await _applyEspnScheduleMerge();
       return;
     }
 
     final filter = _s._forjaLivePluginFilter;
-    final toLoad = _forjaLiveCatalogsToLoad(catalogPlugins, filter);
+    final toLoad = _forjaLiveCatalogsToLoad(enabledCatalogPlugins, filter);
     if (toLoad.isEmpty) {
       await _applyEspnScheduleMerge();
       return;

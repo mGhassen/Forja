@@ -8,6 +8,7 @@ import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
+import 'package:forja/shared/playback/stremio_external_link.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
@@ -383,7 +384,12 @@ Future<void> _playStremio({
   }
 
   if (precheck is StremioExternalLink) {
-    ForjaToast.info('Open this link from movie/TV details Sources.');
+    await handleStremioExternalUrl(
+      context,
+      url: precheck.externalUrl,
+      addonBaseUrl: stremioAddonBaseUrl,
+      popToRoot: true,
+    );
     return;
   }
 
@@ -470,6 +476,25 @@ Future<void> _playStremio({
         ),
       ),
     );
+  } else if (resolved is StremioExternalLink) {
+    if (loadingDialogContext != null &&
+        loadingDialogContext!.mounted &&
+        Navigator.of(loadingDialogContext!).canPop()) {
+      Navigator.of(loadingDialogContext!).pop();
+    }
+    disposeLoadingOverlayNotifiers([
+      overlayMessage,
+      fadeOutNotifier,
+      failureNotifier,
+    ]);
+    if (context.mounted) {
+      await handleStremioExternalUrl(
+        context,
+        url: resolved.externalUrl,
+        addonBaseUrl: stremioAddonBaseUrl,
+        popToRoot: true,
+      );
+    }
   } else if (resolved is StremioResolveFailure &&
       resolved.error != StremioPlaybackError.cancelled &&
       loadingDialogContext != null &&

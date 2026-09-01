@@ -471,11 +471,13 @@ class _LiveMatchesCatalogSheetState extends State<_LiveMatchesCatalogSheet> {
         (
           id: c.pluginId,
           label: c.label,
-          subtitle: c.loading
-              ? 'Loading…'
-              : c.attempted
-                  ? '${c.matchCount} match${c.matchCount == 1 ? '' : 'es'}'
-                  : null,
+          subtitle: !c.enabled
+              ? 'Off — enable in Settings → Forja Sports → Catalog'
+              : c.loading
+                  ? 'Loading…'
+                  : c.attempted
+                      ? '${c.matchCount} match${c.matchCount == 1 ? '' : 'es'}'
+                      : null,
         ),
     ];
     final maxHeight = MediaQuery.sizeOf(context).height * 0.7;

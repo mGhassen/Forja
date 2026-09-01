@@ -285,8 +285,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   void _onEnginePackChanged() {
     if (!mounted) return;
-    if (_server != _LiveMatchesServer.all &&
-        _server != _LiveMatchesServer.forjaLive) {
+    if (!_usesForjaLiveLazyCatalog) {
       return;
     }
     (this as _LiveMatchesForjaLive)._applyEngineCatalogSettingsChange(

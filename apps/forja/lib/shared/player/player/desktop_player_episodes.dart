@@ -736,6 +736,14 @@ mixin _DesktopPlayerEpisodes
     );
     // Magnets / infoHash need engine resolve - keep current video + loading
     // card, replace the player only when the new stream is ready.
+    if (precheck is StremioExternalLink) {
+      await handleStremioStreamIfExternal(context, stream, popToRoot: true);
+      return;
+    }
+    if (precheck is StremioResolveFailure) {
+      ForjaToast.info(precheck.message);
+      return;
+    }
     if (precheck == null) {
       await _switchStremioMagnetSource(stream);
       return;

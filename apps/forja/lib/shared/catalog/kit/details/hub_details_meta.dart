@@ -2,6 +2,7 @@ import 'package:forja/shared/catalog/hub_cover_urls.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
+import 'package:forja/shared/widgets/episode_air_date.dart';
 
 Map<String, dynamic> hubDetailsParams(CatalogMetaItem seed) {
   final params = <String, dynamic>{'id': seed.id};
@@ -30,6 +31,54 @@ String hubMetaTmdbMediaType(CatalogMetaItem item) {
   return 'tv';
 }
 
+String? hubMetaPremiereIso(CatalogMetaItem item) {
+  final premiere = item.premiereDate.trim();
+  if (premiere.length >= 10) return premiere.substring(0, 10);
+  final bit = item.releaseInfo.split(' • ').first.trim();
+  if (bit.length >= 10 && _looksLikeIsoDate(bit)) {
+    return bit.substring(0, 10);
+  }
+  return null;
+}
+
+String? hubMetaPremiereDateLabel(CatalogMetaItem item) {
+  final iso = hubMetaPremiereIso(item);
+  if (iso == null) return null;
+  return formatEpisodeDisplayDate(iso);
+}
+
+bool hubMetaIsUpcoming(
+  CatalogMetaItem item, {
+  Iterable<CatalogVideo> videos = const [],
+}) {
+  final status = (item.status ?? '').trim().toUpperCase();
+  if (status == 'NOT_YET_RELEASED') return true;
+  final iso = hubMetaPremiereIso(item);
+  if (iso == null || !isFutureIsoDate(iso)) return false;
+  if (hubMetaIsMovie(item)) return true;
+  return videos.isEmpty;
+}
+
+bool hubVideoNotAiredYet(CatalogVideo video) =>
+    episodeAirDateInfo(_hubVideoEpisodeMap(video)).notShippedYet;
+
+EpisodeAirDateInfo hubVideoAirDateInfo(CatalogVideo video) =>
+    episodeAirDateInfo(_hubVideoEpisodeMap(video));
+
+Map<String, dynamic> _hubVideoEpisodeMap(CatalogVideo video) => {
+      'air_date': video.airDate,
+      if (video.aired != null) 'aired': video.aired,
+    };
+
+bool _looksLikeIsoDate(String raw) {
+  if (raw.length < 10) return false;
+  final parts = raw.substring(0, 10).split('-');
+  if (parts.length != 3) return false;
+  return int.tryParse(parts[0]) != null &&
+      int.tryParse(parts[1]) != null &&
+      int.tryParse(parts[2]) != null;
+}
+
 Map<int, List<Map<String, dynamic>>>? hubEpisodeMaps(
   List<CatalogVideo> videos,
 ) {
@@ -44,6 +93,8 @@ Map<int, List<Map<String, dynamic>>>? hubEpisodeMaps(
       'episode_number': epNum,
       'name': v.title.isNotEmpty ? v.title : 'Episode $epNum',
       if (thumb.isNotEmpty) 'still_path': thumb,
+      if (v.airDate.trim().isNotEmpty) 'air_date': v.airDate.trim(),
+      if (v.aired != null) 'aired': v.aired,
     });
   }
   return bySeason;

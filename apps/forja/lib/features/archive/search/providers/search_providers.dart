@@ -207,10 +207,15 @@ class SearchResultsNotifier
     var sections = <SearchResultSection>[];
 
     final parsed = parseSearchQuery(query);
-    // Addons get title/person text only — score/year/type tokens confuse them.
-    final addonQuery = parsed.remainder.trim().isNotEmpty
-        ? parsed.remainder.trim()
-        : (parsed.hasStructuredFilters ? '' : query);
+    // Addons get title/person text — not score/year/type tokens; genre labels OK.
+    final addonQuery = () {
+      final remainder = parsed.remainder.trim();
+      if (remainder.isNotEmpty) return remainder;
+      final genre = parsed.matchedGenreLabel?.trim();
+      if (genre != null && genre.isNotEmpty) return genre;
+      if (parsed.hasStructuredFilters) return '';
+      return query;
+    }();
 
     try {
       final results = await api.searchStructured(query);

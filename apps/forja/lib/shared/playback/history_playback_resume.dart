@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:forja/shared/playback/playback_stream_guards.dart';
-import 'package:forja/shared/player/player/utils.dart';
+import 'package:forja/shared/playback/stremio_external_link.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
@@ -84,6 +83,19 @@ Future<bool> _resumeStremioDirectStream(
     useDebrid: useDebrid,
     debridService: debridService,
   );
+  if (precheck is StremioExternalLink) {
+    if (!context.mounted) return false;
+    return handleStremioExternalUrl(
+      context,
+      url: precheck.externalUrl,
+      addonBaseUrl: addonBaseUrl,
+      popToRoot: true,
+    );
+  }
+  if (precheck is StremioResolveFailure) {
+    if (precheck.message.isNotEmpty) ForjaToast.info(precheck.message);
+    return false;
+  }
   if (precheck == null) {
     if (!context.mounted) return false;
     if (!await ensureLanP2pPlayback(context)) {
@@ -101,8 +113,12 @@ Future<bool> _resumeStremioDirectStream(
 
   if (!context.mounted) return false;
   if (resolved is StremioExternalLink) {
-    ForjaToast.info('This stream opens in an external app.');
-    return false;
+    return handleStremioExternalUrl(
+      context,
+      url: resolved.externalUrl,
+      addonBaseUrl: addonBaseUrl,
+      popToRoot: true,
+    );
   }
   if (resolved is StremioResolveFailure) {
     if (resolved.message.isNotEmpty) ForjaToast.info(resolved.message);
