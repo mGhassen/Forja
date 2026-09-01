@@ -12,7 +12,6 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/features/settings/widgets/settings_plugin_install_progress.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -113,7 +112,14 @@ class _SettingsProvidersSectionState
           SettingsGroup(
             label: 'Forja plugins',
             children: [
-              _buildEnginePackSection(enginePacks),
+              ListenableBuilder(
+                listenable: Listenable.merge([
+                  PluginInstallCoordinator.instance.progress,
+                  EngineService.changeNotifier,
+                ]),
+                builder: (context, _) =>
+                    _buildEnginePackSection(enginePacks),
+              ),
             ],
           ),
         if (v.showStremioAddons)
@@ -524,8 +530,7 @@ class _SettingsProvidersSectionState
             busy: _engineInstalling,
             onPressed: _installEnginePack,
           ),
-          if (installProgress != null &&
-              installProgress.manifestUrl != null) ...[
+          if (installProgress != null) ...[
             const SizedBox(height: 14),
             SettingsPluginInstallProgress(progress: installProgress),
           ],
@@ -595,6 +600,7 @@ class _SettingsProvidersSectionState
                   groupKey: EngineCategories.groupKey,
                   groupLabel: EngineCategories.groupLabel,
                   groupOrder: EngineCategories.groupOrderFor(panelPlugins),
+                  installProgress: installProgress,
                   trailing: _EnginePackActions(
                     packEnabled: pack.enabled,
                     onTogglePack: (val) => EngineService.instance.setPackEnabled(

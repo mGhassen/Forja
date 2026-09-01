@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/features/settings/widgets/settings_plugin_install_progress.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 /// Groups [plugins] for Settings tab strips (movie Forja, live Forja, …).
@@ -78,6 +79,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
     this.tabRowId = 'engine-pack-tabs',
     this.trailing,
     this.showMiniLabel = false,
+    this.installProgress,
   });
 
   final EnginePack pack;
@@ -89,6 +91,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
   final String tabRowId;
   final Widget? trailing;
   final bool showMiniLabel;
+  final PluginInstallProgress? installProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -144,6 +147,10 @@ class SettingsEnginePackExpansion extends StatelessWidget {
                     fontSize: 11,
                     color: ForjaShellColors.textSecondary.withValues(alpha: 0.75),
                   ),
+                ),
+                SettingsEnginePackInstallStatus(
+                  sourceUrl: pack.sourceUrl,
+                  progress: installProgress,
                 ),
               ],
             ),

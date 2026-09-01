@@ -675,6 +675,11 @@ class PluginRegistry {
     String manifestUrl,
     EnginePack local,
   ) async {
+    if (isLocalManifestUrl(manifestUrl)) {
+      debugPrint('[engine] ${local.name} local checkout — refreshing scripts');
+      await install(manifestUrl);
+      return true;
+    }
     try {
       final body = await _fetchText(manifestUrl);
       final map = jsonDecode(body);
@@ -921,11 +926,10 @@ class PluginRegistry {
     return pack;
   }
 
-  /// Fetch disk JS for [pack] when metadata landed before scripts (lean sync /
-  /// background install). Safe to call right before running a catalog action.
+  /// Fetch disk JS for [pack] when metadata landed before scripts (lean sync).
+  /// Prefer [PluginInstallCoordinator.ensurePluginReady] for visible progress.
   Future<bool> ensurePackScriptsReady(EnginePack pack) async {
     if (isLegacyAssetPack(pack.sourceUrl)) return true;
-    if (isLocalManifestUrl(pack.sourceUrl)) return true;
     if (!await packNeedsDiskInstall(pack)) return true;
     debugPrint('[engine] hydrating scripts for ${pack.name}');
     try {
@@ -938,7 +942,7 @@ class PluginRegistry {
     }
   }
 
-  /// Same as [ensurePackScriptsReady] for a single [pluginId].
+  /// Prefer [PluginInstallCoordinator.ensurePluginReady] for visible progress.
   Future<bool> ensurePluginScriptsReady(String pluginId) async {
     final want = pluginId.trim();
     if (want.isEmpty) return false;

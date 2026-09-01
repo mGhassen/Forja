@@ -8,6 +8,7 @@ import 'package:forja/shared/engine/categories.dart';
 import 'package:forja/shared/engine/live_goat_unlock.dart';
 import 'package:forja/shared/engine/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models.dart';
+import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
@@ -281,7 +282,9 @@ class EngineService {
     if (gen != _catalogGeneration) return null;
     if (code == null || code.isEmpty) {
       debugPrint('[catalog] ${plugin.id} missing script — hydrating pack');
-      final ok = await PluginRegistry.instance.ensurePackScriptsReady(hit.pack);
+      final ok = await PluginInstallCoordinator.instance.ensurePluginReady(
+        plugin.id,
+      );
       if (gen != _catalogGeneration) return null;
       if (!ok) {
         debugPrint('[catalog] ${plugin.id} script hydrate failed');

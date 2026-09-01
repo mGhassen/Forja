@@ -11,7 +11,6 @@ import 'package:forja/shared/catalog/kit/details/hub_details_screen.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
-import 'package:forja/shared/engine/plugin_registry.dart';
 
 /// Build hub seed meta from a portal stream (host prefetches episodes for series).
 CatalogMetaItem catalogMetaFromIptvStream({
@@ -157,7 +156,7 @@ Future<bool> ensureIptvVodPluginReady(String pluginId) async {
     if (msg != null) ForjaToast.info(msg);
     return false;
   }
-  final ready = await PluginRegistry.instance.ensurePluginScriptsReady(pluginId);
+  final ready = await coordinator.ensurePluginReady(pluginId);
   if (ready) return true;
   final msg = await coordinator.pluginNotReadyMessage(pluginId);
   ForjaToast.error(msg ?? 'IPTV plugin is not ready yet');

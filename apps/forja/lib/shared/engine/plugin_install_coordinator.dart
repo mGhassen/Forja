@@ -8,6 +8,9 @@ import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
 
+/// User-visible install phase for Settings + shell banner.
+enum PluginInstallPhase { loading, installing, ready }
+
 /// Progress for the in-shell install banner / splash status line.
 class PluginInstallProgress {
   const PluginInstallProgress({
@@ -23,17 +26,34 @@ class PluginInstallProgress {
   final int completedSteps;
   final int totalSteps;
   final bool isUpdate;
-
-  /// Pack [sourceUrl] when a single manifest is installing (Settings add).
   final String? sourceUrl;
-
-  /// Human-readable manifest URL shown in Settings while downloading.
   final String? manifestUrl;
 
   double get fraction {
     if (totalSteps <= 0) return 0;
     return (completedSteps / totalSteps).clamp(0.0, 1.0);
   }
+
+  PluginInstallPhase get phase {
+    final lower = label.toLowerCase();
+    if (lower.startsWith('ready') || lower.contains('plugins ready')) {
+      return PluginInstallPhase.ready;
+    }
+    if (lower.startsWith('fetching') ||
+        lower.startsWith('syncing') ||
+        lower.startsWith('checking') ||
+        (completedSteps == 0 && fraction <= 0)) {
+      return PluginInstallPhase.loading;
+    }
+    if (fraction >= 1.0) return PluginInstallPhase.ready;
+    return PluginInstallPhase.installing;
+  }
+
+  String get phaseTitle => switch (phase) {
+        PluginInstallPhase.loading => 'Loading',
+        PluginInstallPhase.installing => 'Installing',
+        PluginInstallPhase.ready => 'Ready',
+      };
 
   bool matchesUrl(String url) {
     final want = url.trim();
@@ -70,12 +90,65 @@ class PluginInstallCoordinator {
     if (url.isEmpty) {
       return Future.error(ArgumentError('manifest URL is empty'));
     }
-    return _manualInstall ??= _installManifestImpl(url, isUpdate: isUpdate)
+    return _manualInstall ??= _installManifestSingle(url, isUpdate: isUpdate)
         .whenComplete(() => _manualInstall = null);
   }
 
-  Future<EnginePack> _installManifestImpl(
+  Future<EnginePack> _installManifestSingle(
     String manifestUrl, {
+    required bool isUpdate,
+  }) async {
+    try {
+      final pack = await _fetchPackWithProgress(
+        manifestUrl: manifestUrl,
+        isUpdate: isUpdate,
+      );
+      _setProgress(
+        PluginInstallProgress(
+          label: 'Ready — ${pack.name}',
+          manifestUrl: manifestUrl,
+          sourceUrl: manifestUrl,
+          completedSteps: 1,
+          totalSteps: 1,
+          isUpdate: isUpdate,
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+      return pack;
+    } finally {
+      progress.value = null;
+    }
+  }
+
+  /// Auto-refresh before catalog use — shows progress, no manual Reload.
+  Future<bool> ensurePluginReady(String pluginId) async {
+    final want = pluginId.trim();
+    if (want.isEmpty) return false;
+    if (_inFlight != null) await _inFlight;
+    if (_manualInstall != null) await _manualInstall;
+
+    final hit = PluginRegistry.packPluginFromPacks(
+      await PluginRegistry.instance.listPacksRaw(),
+      want,
+    );
+    if (hit == null) return false;
+
+    final url = hit.pack.sourceUrl;
+    final local = PluginRegistry.isLocalManifestUrl(url);
+    final needsDisk = await PluginRegistry.instance.packNeedsDiskInstall(hit.pack);
+    if (!local && !needsDisk) return true;
+
+    try {
+      await _installManifestSingle(url, isUpdate: !needsDisk);
+      return true;
+    } catch (e) {
+      debugPrint('[PluginInstall] ensurePluginReady($want) failed: $e');
+      return false;
+    }
+  }
+
+  Future<EnginePack> _fetchPackWithProgress({
+    required String manifestUrl,
     required bool isUpdate,
   }) async {
     _setProgress(
@@ -88,37 +161,21 @@ class PluginInstallCoordinator {
         isUpdate: isUpdate,
       ),
     );
-    try {
-      final pack = await EngineService.instance.installWithProgress(
-        manifestUrl,
-        onFetchProgress: (tick) {
-          _setProgress(
-            PluginInstallProgress(
-              label: tick.label,
-              manifestUrl: manifestUrl,
-              sourceUrl: manifestUrl,
-              completedSteps: tick.completed,
-              totalSteps: tick.total,
-              isUpdate: isUpdate,
-            ),
-          );
-        },
-      );
-      _setProgress(
-        PluginInstallProgress(
-          label: 'Ready — ${pack.name}',
-          manifestUrl: manifestUrl,
-          sourceUrl: manifestUrl,
-          completedSteps: 1,
-          totalSteps: 1,
-          isUpdate: isUpdate,
-        ),
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 350));
-      return pack;
-    } finally {
-      progress.value = null;
-    }
+    return EngineService.instance.installWithProgress(
+      manifestUrl,
+      onFetchProgress: (tick) {
+        _setProgress(
+          PluginInstallProgress(
+            label: tick.label,
+            manifestUrl: manifestUrl,
+            sourceUrl: manifestUrl,
+            completedSteps: tick.completed,
+            totalSteps: tick.total,
+            isUpdate: isUpdate,
+          ),
+        );
+      },
+    );
   }
 
   /// User-facing copy when a catalog plugin is invoked before scripts land.
@@ -127,8 +184,8 @@ class PluginInstallCoordinator {
     if (want.isEmpty) return null;
     final current = progress.value;
     if (current != null) {
-      return 'Still downloading ${current.label}. '
-          'Wait for the progress bar to finish or open Settings → Forja plugins.';
+      return '${current.phaseTitle} ${current.label} — wait for the progress bar '
+          '(Settings → Forja plugins or the banner at the bottom).';
     }
     final hit = PluginRegistry.packPluginFromPacks(
       await PluginRegistry.instance.listPacksRaw(),
@@ -138,8 +195,8 @@ class PluginInstallCoordinator {
       return 'Plugin not installed. Add its manifest in Settings → Forja plugins.';
     }
     if (await PluginRegistry.instance.packNeedsDiskInstall(hit.pack)) {
-      return '${hit.pack.name} is registered but scripts are not on this device yet. '
-          'Open Settings → Forja plugins and wait for the download to finish.';
+      return '${hit.pack.name} is still downloading. '
+          'Open Settings → Forja plugins to watch progress.';
     }
     return null;
   }
@@ -188,25 +245,20 @@ class PluginInstallCoordinator {
     await registry.migrateLegacyLiveSportPacksIfNeeded();
 
     final packs = await registry.listPacksRaw();
-    final jobs = <({EnginePack pack, bool isUpdate})>[];
+    final jobs = <({EnginePack pack, bool isUpdate, bool forceRefresh})>[];
 
     for (final pack in packs) {
       if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
       if (PluginRegistry.isRetiredCatalogPack(pack)) continue;
-      // Remote lean / missing disk JS.
       if (await registry.packNeedsDiskInstall(pack)) {
-        jobs.add((pack: pack, isUpdate: false));
+        jobs.add((pack: pack, isUpdate: false, forceRefresh: true));
         continue;
       }
-      // Remote + local checkout: re-read manifest; install when version is newer.
-      // (Local packs were previously skipped — Settings showed stale versions until
-      // manual Reload.)
-      if (checkUpdates) {
-        jobs.add((pack: pack, isUpdate: true));
-      }
+      if (!checkUpdates) continue;
+      final local = PluginRegistry.isLocalManifestUrl(pack.sourceUrl);
+      jobs.add((pack: pack, isUpdate: true, forceRefresh: local));
     }
 
-    // Updates are checked inside the loop; missing installs always run.
     var completed = 0;
     final total = jobs.length + (includeNuvio ? 1 : 0);
     debugPrint(
@@ -217,60 +269,40 @@ class PluginInstallCoordinator {
 
     for (final job in jobs) {
       final pack = job.pack;
-      if (job.isUpdate) {
-        _setProgress(
-          PluginInstallProgress(
-            label: 'Checking ${pack.name}…',
-            completedSteps: completed,
-            totalSteps: total,
-            isUpdate: true,
-          ),
-        );
-        final updated = await registry.maybeRefreshIfNewer(
-          pack.sourceUrl,
-          pack,
-        );
-        if (updated) {
-          debugPrint('[PluginInstall] updated ${pack.name}');
+      final url = pack.sourceUrl;
+      try {
+        if (job.forceRefresh) {
+          await _fetchPackWithProgress(
+            manifestUrl: url,
+            isUpdate: job.isUpdate,
+          );
+        } else {
           _setProgress(
             PluginInstallProgress(
-              label: 'Updated ${pack.name}',
-              completedSteps: completed + 1,
+              label: 'Checking ${pack.name}…',
+              manifestUrl: url,
+              sourceUrl: url,
+              completedSteps: completed,
               totalSteps: total,
               isUpdate: true,
             ),
           );
+          final updated = await registry.maybeRefreshIfNewer(url, pack);
+          if (updated) {
+            debugPrint('[PluginInstall] updated ${pack.name}');
+          }
         }
-      } else {
-        _setProgress(
-          PluginInstallProgress(
-            label: 'Installing ${pack.name}…',
-            completedSteps: completed,
-            totalSteps: total,
-            isUpdate: false,
-          ),
-        );
-        try {
-          await registry.install(
-            pack.sourceUrl,
-            onScriptFetched: () {
-              // Soft tick — pack-level progress stays primary.
-            },
-          );
-        } catch (e) {
-          debugPrint(
-            '[PluginInstall] install failed (${pack.sourceUrl}): $e',
-          );
-          PluginRegistry.officialInstallError.value =
-              e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
-        }
+      } catch (e) {
+        debugPrint('[PluginInstall] install failed ($url): $e');
+        PluginRegistry.officialInstallError.value =
+            e.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
       }
       completed++;
       _setProgress(
         PluginInstallProgress(
-          label: job.isUpdate
-              ? 'Checked ${pack.name}'
-              : 'Installed ${pack.name}',
+          label: job.isUpdate ? 'Ready — ${pack.name}' : 'Installed ${pack.name}',
+          manifestUrl: url,
+          sourceUrl: url,
           completedSteps: completed,
           totalSteps: total,
           isUpdate: job.isUpdate,
@@ -295,19 +327,17 @@ class PluginInstallCoordinator {
         debugPrint('[PluginInstall] nuvio hydrate failed: $e');
       }
       completed++;
-      _setProgress(
-        PluginInstallProgress(
-          label: 'Plugins ready',
-          completedSteps: completed,
-          totalSteps: total,
-          isUpdate: false,
-        ),
-      );
     }
 
-    if (PluginRegistry.officialInstallError.value == null) {
-      // clear via registry helper path on successful installs
-    }
+    _setProgress(
+      PluginInstallProgress(
+        label: 'Ready — all plugins',
+        completedSteps: total,
+        totalSteps: total,
+        isUpdate: false,
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 600));
   }
 
   void _setProgress(PluginInstallProgress? value) {

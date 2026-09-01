@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 
-/// Inline download progress for Settings → Forja plugins (add / refresh).
+/// Inline download progress for Settings → Forja plugins (add / refresh / boot).
 class SettingsPluginInstallProgress extends StatelessWidget {
   const SettingsPluginInstallProgress({
     super.key,
@@ -15,13 +15,20 @@ class SettingsPluginInstallProgress extends StatelessWidget {
   Widget build(BuildContext context) {
     final percent = (progress.fraction * 100).clamp(0, 100).round();
     final manifest = progress.manifestUrl?.trim();
-    final title = progress.isUpdate ? 'Updating plugin…' : 'Installing plugin…';
+    final phase = progress.phase;
+    final phaseColor = phase == PluginInstallPhase.ready
+        ? ForjaShellColors.brandGreen
+        : ForjaShellColors.textSecondary;
 
     return DecoratedBox(
       decoration: BoxDecoration(
         color: ForjaShellColors.surfaceElevated.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ForjaShellColors.borderSubtle),
+        border: Border.all(
+          color: phase == PluginInstallPhase.ready
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.5)
+              : ForjaShellColors.borderSubtle,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -30,27 +37,21 @@ class SettingsPluginInstallProgress extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(
-                  progress.isUpdate
-                      ? Icons.system_update_alt_rounded
-                      : Icons.download_rounded,
-                  size: 16,
-                  color: ForjaShellColors.brandGreen,
-                ),
+                _PhaseIcon(phase: phase),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: ForjaShellColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
+                Text(
+                  progress.phaseTitle.toUpperCase(),
+                  style: TextStyle(
+                    color: phaseColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
                   ),
                 ),
+                const Spacer(),
                 Text(
-                  '$percent%',
-                  style: const TextStyle(
+                  phase == PluginInstallPhase.ready ? '100%' : '$percent%',
+                  style: TextStyle(
                     color: ForjaShellColors.brandGreen,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -59,7 +60,7 @@ class SettingsPluginInstallProgress extends StatelessWidget {
               ],
             ),
             if (manifest != null && manifest.isNotEmpty) ...[
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
                 manifest,
                 maxLines: 2,
@@ -74,7 +75,7 @@ class SettingsPluginInstallProgress extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               progress.label,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
@@ -82,21 +83,25 @@ class SettingsPluginInstallProgress extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: progress.totalSteps > 0 ? progress.fraction : null,
-                minHeight: 4,
-                backgroundColor: ForjaShellColors.borderSubtle,
-                valueColor: const AlwaysStoppedAnimation<Color>(
-                  ForjaShellColors.brandGreen,
+            if (phase != PluginInstallPhase.ready) ...[
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(999),
+                child: LinearProgressIndicator(
+                  value: progress.totalSteps > 0 ? progress.fraction : null,
+                  minHeight: 4,
+                  backgroundColor: ForjaShellColors.borderSubtle,
+                  valueColor: const AlwaysStoppedAnimation<Color>(
+                    ForjaShellColors.brandGreen,
+                  ),
                 ),
               ),
-            ),
+            ],
             const SizedBox(height: 6),
             Text(
-              'The plugin is usable when this bar reaches 100%.',
+              phase == PluginInstallPhase.ready
+                  ? 'Plugin is ready to use.'
+                  : 'Do not close the app — the plugin becomes usable at 100%.',
               style: TextStyle(
                 color: ForjaShellColors.textSecondary.withValues(alpha: 0.75),
                 fontSize: 10,
@@ -107,6 +112,22 @@ class SettingsPluginInstallProgress extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _PhaseIcon extends StatelessWidget {
+  const _PhaseIcon({required this.phase});
+
+  final PluginInstallPhase phase;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = switch (phase) {
+      PluginInstallPhase.loading => Icons.hourglass_top_rounded,
+      PluginInstallPhase.installing => Icons.download_rounded,
+      PluginInstallPhase.ready => Icons.check_circle_rounded,
+    };
+    return Icon(icon, size: 16, color: ForjaShellColors.brandGreen);
   }
 }
 
@@ -126,6 +147,7 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = progress?.matchesUrl(sourceUrl) == true;
+    final phase = active ? progress!.phase : PluginInstallPhase.loading;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: DecoratedBox(
@@ -145,13 +167,7 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(
-                    active ? Icons.download_rounded : Icons.hourglass_top_rounded,
-                    size: 18,
-                    color: active
-                        ? ForjaShellColors.brandGreen
-                        : ForjaShellColors.textSecondary,
-                  ),
+                  _PhaseIcon(phase: phase),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -178,19 +194,29 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
                       ],
                     ),
                   ),
+                  Text(
+                    active ? progress!.phaseTitle : 'Waiting',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: active
+                          ? ForjaShellColors.brandGreen
+                          : ForjaShellColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
               Text(
                 active
                     ? (progress?.label ?? 'Downloading scripts…')
-                    : 'Waiting for scripts — open Settings or wait for background install.',
+                    : 'Queued — install continues in the background.',
                 style: TextStyle(
                   fontSize: 11,
                   color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
                 ),
               ),
-              if (active && progress != null) ...[
+              if (active && progress != null && progress!.phase != PluginInstallPhase.ready) ...[
                 const SizedBox(height: 8),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(999),
@@ -207,6 +233,42 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Ready / installing chip on an installed pack row.
+class SettingsEnginePackInstallStatus extends StatelessWidget {
+  const SettingsEnginePackInstallStatus({
+    super.key,
+    required this.sourceUrl,
+    this.progress,
+  });
+
+  final String sourceUrl;
+  final PluginInstallProgress? progress;
+
+  @override
+  Widget build(BuildContext context) {
+    if (progress != null && progress!.matchesUrl(sourceUrl)) {
+      return Text(
+        '${progress!.phaseTitle} · ${progress!.label}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          fontSize: 11,
+          color: ForjaShellColors.brandGreen,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+    return Text(
+      'Ready',
+      style: TextStyle(
+        fontSize: 11,
+        color: ForjaShellColors.textSecondary.withValues(alpha: 0.75),
+        fontWeight: FontWeight.w600,
       ),
     );
   }
