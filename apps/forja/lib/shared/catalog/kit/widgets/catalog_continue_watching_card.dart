@@ -1,6 +1,8 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
@@ -51,6 +53,63 @@ class _CatalogContinueWatchingCardState
         context: context,
       );
 
+  Future<void> _showTvActions(BuildContext context) async {
+    final action = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppTheme.bgDark,
+          title: Text(
+            (widget.entry['title'] ?? 'Title').toString(),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              shellFocusableTap(
+                context: ctx,
+                borderRadius: 8,
+                onTap: () => Navigator.pop(ctx, 'info'),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'More info',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ),
+              ),
+              shellFocusableTap(
+                context: ctx,
+                borderRadius: 8,
+                onTap: () => Navigator.pop(ctx, 'remove'),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Remove from Continue Watching',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (!context.mounted || action == null) return;
+    switch (action) {
+      case 'info':
+        widget.onInfo();
+      case 'remove':
+        widget.onRemove();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
@@ -90,6 +149,18 @@ class _CatalogContinueWatchingCardState
       showFocusBorder: true,
       onFocusChange: (f) => setState(() => _focused = f),
       onHoverChange: (h) => setState(() => _hovered = h),
+      onKeyEvent: policy.useFocusableMoodChips
+          ? (node, event) {
+              if (event is! KeyDownEvent) return KeyEventResult.ignored;
+              final key = event.logicalKey;
+              if (key == LogicalKeyboardKey.contextMenu ||
+                  key == LogicalKeyboardKey.f1) {
+                unawaited(_showTvActions(context));
+                return KeyEventResult.handled;
+              }
+              return KeyEventResult.ignored;
+            }
+          : null,
       child: AnimatedScale(
         scale: _activeFor(policy) ? ShellCardPlayOverlay.cardHoverScale : 1.0,
         duration: const Duration(milliseconds: 200),

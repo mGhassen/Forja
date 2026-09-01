@@ -14,7 +14,9 @@ import 'package:forja/shared/catalog/services/catalog_watch_history.dart';
 import 'package:forja/shared/catalog/shell/catalog_open.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/home_loading_skeleton.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Layout widget type `because` — pack owns rail logic; host renders meta rows.
 class CatalogBecauseSection extends StatefulWidget {
@@ -42,6 +44,7 @@ class _CatalogBecauseSectionState extends State<CatalogBecauseSection> {
   int _shuffleKey = 0;
   int _epoch = 0;
   bool _viewportActivated = false;
+  final FocusNode _shuffleFocusNode = FocusNode(debugLabel: 'because-shuffle');
 
   @override
   void initState() {
@@ -77,6 +80,7 @@ class _CatalogBecauseSectionState extends State<CatalogBecauseSection> {
   @override
   void dispose() {
     CatalogWatchHistory.revision.removeListener(_onHistoryRevision);
+    _shuffleFocusNode.dispose();
     super.dispose();
   }
 
@@ -197,10 +201,24 @@ class _CatalogBecauseSectionState extends State<CatalogBecauseSection> {
                       ),
                     ),
                     if (payload.canShuffle)
-                      ForjaPlainIcon(
-                        icon: Icons.shuffle_rounded,
-                        tooltip: 'Pick a different show',
+                      shellFocusableTap(
+                        context: context,
+                        focusNode: _shuffleFocusNode,
+                        borderRadius: 20,
                         onTap: _shuffle,
+                        onDownEdge: () => ShellTvFocusCoordinator.focusRowItem(
+                          widget.tabId,
+                          rowId,
+                          0,
+                        ),
+                        tvTabId: widget.tabId,
+                        tvRowId: '${rowId}_header',
+                        tvZone: ShellTvZone.row,
+                        tvItemIndex: 0,
+                        child: const ForjaPlainIcon(
+                          icon: Icons.shuffle_rounded,
+                          tooltip: 'Pick a different show',
+                        ),
                       ),
                   ],
                 ),
@@ -213,6 +231,9 @@ class _CatalogBecauseSectionState extends State<CatalogBecauseSection> {
                 tvTabId: widget.tabId,
                 tvRowId: rowId,
                 tvRowOrder: widget.tvRowOrder,
+                tvFocusUp: payload.canShuffle
+                    ? () => _shuffleFocusNode.requestFocus()
+                    : null,
                 cardBuilder: (context, item, index) => HubPosterCard(
                   imageUrl: item.poster,
                   title: item.name,

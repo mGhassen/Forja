@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 enum SearchMediaFilter { all, movie, tv }
@@ -197,45 +198,52 @@ class HubSearchFilterToken extends StatelessWidget {
     super.key,
     required this.label,
     required this.onClear,
+    this.listIndex,
   });
 
   final String label;
   final VoidCallback onClear;
+  final int? listIndex;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onClear,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.only(left: 10, right: 6, top: 4, bottom: 4),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: ForjaShellColors.textPrimary.withValues(alpha: 0.28),
+    final tabId = TvFocusGraph.tabIdOf(context, fallback: 'search');
+    return shellFocusableTap(
+      context: context,
+      borderRadius: 16,
+      scaleOnFocus: 1.04,
+      onTap: onClear,
+      listIndex: listIndex,
+      tvTabId: tabId,
+      tvRowId: 'search_filter_tokens',
+      tvZone: ShellTvZone.row,
+      tvItemIndex: listIndex,
+      child: Container(
+        padding: const EdgeInsets.only(left: 10, right: 6, top: 4, bottom: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: ForjaShellColors.textPrimary.withValues(alpha: 0.28),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: ForjaShellColors.textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: ForjaShellColors.textPrimary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 2),
-              const Icon(
-                Icons.close,
-                size: 14,
-                color: ForjaShellColors.textSecondary,
-              ),
-            ],
-          ),
+            const SizedBox(width: 2),
+            const Icon(
+              Icons.close,
+              size: 14,
+              color: ForjaShellColors.textSecondary,
+            ),
+          ],
         ),
       ),
     );
@@ -1011,6 +1019,7 @@ class HubSearchFilterLens extends StatelessWidget {
                         order: const NumericFocusOrder(4),
                         child: _SearchFilterChipSection(
                           title: 'Genre',
+                          tvRowId: 'search_filter_genre',
                           options: kSearchFilterGenres,
                           selectedToken: filters.genreToken,
                           onSelected: (token) => onFiltersChanged(
@@ -1025,6 +1034,7 @@ class HubSearchFilterLens extends StatelessWidget {
                         order: const NumericFocusOrder(5),
                         child: _SearchFilterChipSection(
                           title: 'Country',
+                          tvRowId: 'search_filter_country',
                           options: kSearchFilterCountries,
                           selectedToken: filters.countryToken,
                           onSelected: (token) => onFiltersChanged(
@@ -1082,12 +1092,14 @@ class HubSearchFilterLens extends StatelessWidget {
 class _SearchFilterChipSection extends StatelessWidget {
   const _SearchFilterChipSection({
     required this.title,
+    required this.tvRowId,
     required this.options,
     required this.selectedToken,
     required this.onSelected,
   });
 
   final String title;
+  final String tvRowId;
   final List<(String label, String token)> options;
   final String? selectedToken;
   final ValueChanged<String> onSelected;
@@ -1114,6 +1126,8 @@ class _SearchFilterChipSection extends StatelessWidget {
               _SearchFilterGhostChip(
                 label: options[i].$1,
                 selected: selectedToken == options[i].$2,
+                listIndex: i,
+                tvRowId: tvRowId,
                 onTap: () => onSelected(options[i].$2),
               ),
           ],
@@ -1128,11 +1142,15 @@ class _SearchFilterGhostChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    required this.listIndex,
+    required this.tvRowId,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final int listIndex;
+  final String tvRowId;
 
   @override
   Widget build(BuildContext context) {
@@ -1142,11 +1160,17 @@ class _SearchFilterGhostChip extends StatelessWidget {
     final fg = selected
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
+    final tabId = TvFocusGraph.tabIdOf(context, fallback: 'search');
     return shellFocusableTap(
       context: context,
       borderRadius: 16,
       scaleOnFocus: 1.04,
       onTap: onTap,
+      listIndex: listIndex,
+      tvTabId: tabId,
+      tvRowId: tvRowId,
+      tvZone: ShellTvZone.row,
+      tvItemIndex: listIndex,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
         curve: Curves.easeOut,

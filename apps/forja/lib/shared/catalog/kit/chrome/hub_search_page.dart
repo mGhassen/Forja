@@ -1065,6 +1065,7 @@ class _HubSearchPageState extends State<HubSearchPage> {
 
   Widget _buildFilterChrome(BuildContext context) {
     if (!widget.structuredSearch) return const SizedBox.shrink();
+    final tokens = _filters.tokenActions(_onFiltersChanged);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1075,8 +1076,12 @@ class _HubSearchPageState extends State<HubSearchPage> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final token in _filters.tokenActions(_onFiltersChanged))
-                  HubSearchFilterToken(label: token.$1, onClear: token.$2),
+                for (var i = 0; i < tokens.length; i++)
+                  HubSearchFilterToken(
+                    label: tokens[i].$1,
+                    onClear: tokens[i].$2,
+                    listIndex: i,
+                  ),
               ],
             ),
           ),

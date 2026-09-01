@@ -1432,7 +1432,10 @@ class _CatalogShellState extends State<CatalogShell>
       );
     }();
 
-    return ColoredBox(color: AppTheme.bgDark, child: body);
+    return ColoredBox(
+      color: AppTheme.bgDark,
+      child: TvFocusGraph(tabId: _pageKey, child: body),
+    );
   }
 }
 
