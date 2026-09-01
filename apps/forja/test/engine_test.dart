@@ -217,13 +217,9 @@ void main() {
         'name': 'Test Live Opt-in',
         'entry': 'test_live_optin.js',
         'kind': 'http',
-        'enabled': true,
         'types': ['live_sport'],
         'capabilities': ['catalog', 'resolve'],
-        'config': {
-          'catalogEnabled': false,
-          'resolveEnabled': false,
-        },
+        'config': const {},
       });
       final pack = EnginePack(
         sourceUrl: sourceUrl,
@@ -240,6 +236,13 @@ void main() {
           pack: pack,
           plugin: plugin,
           capability: LiveSportCapabilities.catalog,
+        ),
+        isFalse,
+      );
+      expect(
+        LiveSportCapabilities.defaultEnabled(
+          plugin,
+          LiveSportCapabilities.catalog,
         ),
         isFalse,
       );

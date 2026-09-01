@@ -1111,8 +1111,7 @@ class PluginRegistry {
       if (!plugin.enabled) return false;
       return pack.isPluginActive(plugin);
     }
-    // live_sport: per-capability prefs + manifest catalogEnabled/resolveEnabled
-    // defaults — not pack.isPluginActive (plugin stays in pack when default-off).
+    // live_sport: Settings prefs + app first-run defaults only.
     return liveCapabilityEnabled(
       sourceUrl: pack.sourceUrl,
       plugin: plugin,

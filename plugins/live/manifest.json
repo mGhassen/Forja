@@ -13,10 +13,7 @@
       "capabilities": ["catalog", "resolve"],
       "kind": "http",
       "prelude": "embed-st.js",
-      "enabled": true,
       "config": {
-        "catalogEnabled": true,
-        "resolveEnabled": true,
         "origin": "https://streamed.pk",
         "embedOrigin": "https://embed.st",
         "nativeUnlock": "streamed"
@@ -31,10 +28,7 @@
       "capabilities": ["catalog", "resolve"],
       "kind": "http",
       "prelude": "embed-st.js",
-      "enabled": true,
       "config": {
-        "catalogEnabled": true,
-        "resolveEnabled": true,
         "webOrigin": "https://ppv.st",
         "nativeUnlock": "ppv",
         "apis": [
@@ -52,10 +46,7 @@
       "capabilities": ["catalog", "resolve"],
       "kind": "http",
       "prelude": "embed-st.js",
-      "enabled": true,
       "config": {
-        "catalogEnabled": true,
-        "resolveEnabled": true,
         "origin": "https://streamfree.top"
       }
     },
@@ -68,10 +59,7 @@
       "capabilities": ["catalog", "resolve"],
       "kind": "http",
       "prelude": "embed-st.js",
-      "enabled": true,
       "config": {
-        "catalogEnabled": false,
-        "resolveEnabled": false,
         "origin": "https://timstreams.st",
         "api": "https://timstreams.st/api/live-upcoming",
         "embedOrigin": "https://embed.st"
@@ -86,10 +74,7 @@
       "capabilities": ["catalog", "resolve"],
       "kind": "http",
       "prelude": "embed-st.js",
-      "enabled": true,
       "config": {
-        "catalogEnabled": false,
-        "resolveEnabled": false,
         "origin": "https://watchfooty.st",
         "nativeUnlock": "watchfooty",
         "airingOnlyLive": true
@@ -104,10 +89,7 @@
       "capabilities": ["catalog", "resolve"],
       "kind": "http",
       "prelude": "embed-st.js",
-      "enabled": true,
       "config": {
-        "catalogEnabled": false,
-        "resolveEnabled": false,
         "origin": "https://streamic.st"
       }
     },
@@ -119,9 +101,7 @@
       "types": ["live_sport"],
       "capabilities": ["catalog"],
       "kind": "http",
-      "enabled": true,
       "config": {
-        "catalogEnabled": false,
         "leagues": [
           "NBA",
           "NFL",

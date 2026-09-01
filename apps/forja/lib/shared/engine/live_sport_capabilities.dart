@@ -16,6 +16,10 @@ abstract final class LiveSportCapabilities {
     'espn': ('catalog-espn', null),
   };
 
+  /// App-owned first-run defaults (Settings → Forja Sports). External live
+  /// packs must not declare `enabled`, `catalogEnabled`, or `resolveEnabled`.
+  static const defaultOnPluginIds = {'streamed', 'ppv', 'streamfree'};
+
   static String normalizePluginId(String pluginId) {
     final id = pluginId.trim();
     if (id.startsWith('live-')) return id.substring('live-'.length);
@@ -23,15 +27,16 @@ abstract final class LiveSportCapabilities {
     return id;
   }
 
+  /// Whether a capability is on before the user has a stored Settings pref.
   static bool defaultEnabled(EnginePlugin plugin, String capability) {
+    if (!plugin.isLiveSportPlugin) {
+      return plugin.enabled;
+    }
     final cap = capability.trim().toLowerCase();
-    if (cap == catalog) {
-      return plugin.config['catalogEnabled'] as bool? ?? plugin.enabled;
-    }
-    if (cap == resolve) {
-      return plugin.config['resolveEnabled'] as bool? ?? plugin.enabled;
-    }
-    return plugin.enabled;
+    if (cap != catalog && cap != resolve) return false;
+    if (cap == catalog && !plugin.supportsLiveCatalog) return false;
+    if (cap == resolve && !plugin.supportsLiveResolve) return false;
+    return defaultOnPluginIds.contains(normalizePluginId(plugin.id));
   }
 
   static String capabilityPrefsKey(
