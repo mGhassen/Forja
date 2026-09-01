@@ -39,4 +39,4 @@
 
 IPTV movie/series details used raw TMDB recommendations and `AppRouter.openDetails` (Home/torrent). Users expect playable portal titles only.
 
-**Fix:** Intersect TMDB recommendations with the active portal’s cached Movies + Series catalog (cleaned title match). Tap opens `openIptvMovieDetails` / `openIptvSeriesDetails`. Empty intersection hides the row. Live TV and the IPTV player are unchanged.
+**Fix:** Intersect TMDB recommendations with the active portal’s cached Movies + Series catalog (cleaned title match). Tap opens IPTV hub details via `openIptvVodDetails` (shared `HubDetailsScreen`). Empty intersection hides the row. Live TV and the IPTV player are unchanged.

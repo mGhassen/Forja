@@ -22,6 +22,7 @@ import '../kit/cards/hub_poster_card.dart';
 import '../kit/chrome/catalog_vertical_filters.dart';
 import '../kit/widgets/catalog_because_section.dart';
 import '../kit/widgets/catalog_continue_widget.dart';
+import '../kit/details/hub_details_meta.dart';
 import '../kit/meta/catalog_meta_movie.dart';
 import '../kit/rows/catalog_row_prefetch.dart';
 import '../kit/rows/hub_catalog_section.dart';
@@ -56,6 +57,9 @@ class _CatalogShellState extends State<CatalogShell>
   String? _error;
   bool _loading = true;
   int _chromeEpoch = 0;
+
+  /// Hero bleed rail loaded — `null` loading, `true` has items, `false` empty.
+  bool? _bleedPopulated;
 
   /// Selected mood per mood-widget id.
   final Map<String, String> _moods = {};
@@ -167,6 +171,7 @@ class _CatalogShellState extends State<CatalogShell>
     _feedRails = {};
     _feedCacheKey = '';
     _feedLoadFuture = null;
+    _bleedPopulated = null;
     _rowPrefetchLane.reset();
   }
 
@@ -255,6 +260,9 @@ class _CatalogShellState extends State<CatalogShell>
       _loading = false;
       _widgets = widgets;
     });
+    if (_pageUsesFeed) {
+      unawaited(_ensureFeedLoaded());
+    }
     final packSourceUrl = pluginEntry?.pack.sourceUrl;
     if (!mounted) return;
     CatalogVerticalFiltersRegistry.syncFromLayout(
@@ -451,9 +459,11 @@ class _CatalogShellState extends State<CatalogShell>
       final feed = await _ensureFeedLoaded(force: forceRefresh);
       final batched = feed[railId] ?? const [];
       if (batched.isNotEmpty) {
+        final pageSize = _railPageSizeHint(spec);
         return CatalogRailPage(
           items: batched,
-          pageSize: _railPageSizeHint(spec),
+          pageSize: pageSize,
+          hasMore: batched.length >= pageSize,
         );
       }
       // Partial/empty feed slice (e.g. spotlight missing) — direct rail fetch.
@@ -521,15 +531,8 @@ class _CatalogShellState extends State<CatalogShell>
     final open = item.open;
     final hubNative = open != null && catalogOpenUsesHubDetails(open);
     final movie = hubNative ? null : catalogMetaToMovie(item);
-    final mediaHint = (item.tmdbMediaType ?? '').trim().toLowerCase();
-    final badge = (item.badge ?? '').trim().toUpperCase();
-    final tmdbMediaType =
-        movie?.mediaType ??
-        (mediaHint == 'movie' || mediaHint == 'tv'
-            ? mediaHint
-            : (badge == 'MOVIE' || badge == 'FILM' || badge == 'HOLLYWOOD'
-                  ? 'movie'
-                  : 'tv'));
+    final tmdbMediaType = movie?.mediaType ?? hubMetaTmdbMediaType(item);
+    final heroTypeLabel = hubPosterTypeLabel(item);
     final tmdbSearch = item.ids['tmdbSearch']?.toString().trim();
     final tmdbFromIds = item.numericId('tmdb');
     return HubHeroSlide(
@@ -542,7 +545,7 @@ class _CatalogShellState extends State<CatalogShell>
       overview: item.description,
       rating: item.rating,
       year: yearBit,
-      badge: item.badge,
+      badge: heroTypeLabel ?? item.badge,
       statusChip: status.isEmpty ? null : status.replaceAll('_', ' '),
       isUpcoming: isUpcoming,
       upcomingReleaseLabel: isUpcoming ? yearBit : null,
@@ -630,12 +633,13 @@ class _CatalogShellState extends State<CatalogShell>
   Map<String, int> _planTvRowOrders({
     Map<String, dynamic>? bleedSpec,
     String? bleedId,
+    bool bleedActive = true,
   }) {
     final orders = <String, int>{};
     var order = 0;
 
     // Hero bleed row (Featured under spotlight) is always the first catalog row.
-    if (bleedSpec != null) {
+    if (bleedSpec != null && bleedActive) {
       final bleedWidgetId = (bleedSpec['id'] ?? bleedId ?? '')
           .toString()
           .trim();
@@ -649,6 +653,7 @@ class _CatalogShellState extends State<CatalogShell>
       final id = (spec['id'] ?? '').toString();
       final rail = (spec['rail'] ?? '').toString();
       if (bleedSpec != null &&
+          bleedActive &&
           bleedId != null &&
           (id == bleedId || rail == bleedId) &&
           (type == 'rail' || type == 'ranked') &&
@@ -736,7 +741,11 @@ class _CatalogShellState extends State<CatalogShell>
       key: ValueKey('$id:$mood:$chrome:$_chromeEpoch'),
       title: (spec['title'] ?? '').toString(),
       lazy: true,
-      fetchPage: (page) => _fetchRailPage(spec, page: page),
+      fetchPage: (page) => _fetchRailPage(
+        spec,
+        page: page,
+        useFeedBatch: page == 1 && _isPackFeedRail(spec),
+      ),
       pageSizeHint: _railPageSizeHint(spec),
       prefetchSlot: prefetch,
       itemKey: (item) => item.id,
@@ -1163,9 +1172,14 @@ class _CatalogShellState extends State<CatalogShell>
         }
       }
       final bleed = bleedSpec;
-      final tvOrders = _planTvRowOrders(bleedSpec: bleed, bleedId: bleedId);
+      final bleedActive = bleed == null || _bleedPopulated != false;
+      final tvOrders = _planTvRowOrders(
+        bleedSpec: bleed,
+        bleedId: bleedId,
+        bleedActive: bleedActive,
+      );
       final bleedRowId = bleed == null ? null : (bleed['id'] ?? '').toString();
-      final Widget? bleedChild = bleed == null
+      final Widget? bleedChild = bleed == null || !bleedActive
           ? null
           : HubCatalogSection<CatalogMetaItem>(
               key: ValueKey('bleed:${bleed['id']}:$_chromeEpoch'),
@@ -1181,6 +1195,12 @@ class _CatalogShellState extends State<CatalogShell>
               tvRowId: bleedRowId,
               tvRowOrder: _tvOrder(tvOrders, bleedRowId ?? ''),
               tvFocusUp: _focusHeroPlay,
+              onFirstPageLoaded: (count) {
+                if (!mounted) return;
+                final populated = count > 0;
+                if (_bleedPopulated == populated) return;
+                setState(() => _bleedPopulated = populated);
+              },
               cardBuilder: (context, item, index) => _card(
                 context,
                 item,
@@ -1192,13 +1212,13 @@ class _CatalogShellState extends State<CatalogShell>
             );
 
       final sections = <Widget>[];
-      _rowPrefetchLane.reset();
       var rowIndex = 0;
       for (final spec in _widgets) {
         final type = (spec['type'] ?? '').toString();
         final id = (spec['id'] ?? '').toString();
         final rail = (spec['rail'] ?? '').toString();
         if (bleedSpec != null &&
+            bleedActive &&
             (id == bleedId || rail == bleedId) &&
             (type == 'rail' || type == 'ranked') &&
             spec['hideWhenBleed'] == true) {

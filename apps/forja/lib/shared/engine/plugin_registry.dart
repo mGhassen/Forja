@@ -712,18 +712,25 @@ class PluginRegistry {
   /// Transactional install: fetch all bodies, write disk (remote), then prefs index.
   ///
   /// [onScriptFetched] fires after each prelude/script body is downloaded
-  /// (for install progress UI). Local checkout packs skip disk cache writes.
+  /// (for install progress UI). [onFetchProgress] carries step counts.
+  /// Local checkout packs skip disk cache writes.
   Future<EnginePack> install(
     String manifestUrl, {
     void Function()? onScriptFetched,
+    void Function(PluginScriptFetchProgress progress)? onFetchProgress,
   }) =>
       _withInstallLock(
-        () => _installUnlocked(manifestUrl, onScriptFetched: onScriptFetched),
+        () => _installUnlocked(
+          manifestUrl,
+          onScriptFetched: onScriptFetched,
+          onFetchProgress: onFetchProgress,
+        ),
       );
 
   Future<EnginePack> _installUnlocked(
     String manifestUrl, {
     void Function()? onScriptFetched,
+    void Function(PluginScriptFetchProgress progress)? onFetchProgress,
   }) async {
     manifestUrl = await _substituteUnreachableLocalManifest(manifestUrl);
     if (isRetiredCatalogManifestUrl(manifestUrl)) {
@@ -789,6 +796,28 @@ class PluginRegistry {
       for (final p in pack.plugins)
         if (p.prelude.isNotEmpty) p.prelude,
     };
+    final scriptsNeeded = [
+      for (final p in pack.plugins)
+        if (p.entry.isNotEmpty && p.needsScript) p,
+    ];
+    final fetchTotal = 1 + preludesNeeded.length + scriptsNeeded.length;
+    var fetchDone = 0;
+
+    void tick(String label) {
+      fetchDone++;
+      onScriptFetched?.call();
+      onFetchProgress?.call(
+        PluginScriptFetchProgress(
+          completed: fetchDone,
+          total: fetchTotal,
+          label: label,
+          sourceUrl: manifestUrl,
+        ),
+      );
+    }
+
+    tick('Fetched ${pack.name} manifest');
+
     for (final prelude in preludesNeeded) {
       final preludeUrl = resolveScriptUrl(manifestUrl, prelude);
       try {
@@ -798,14 +827,12 @@ class PluginRegistry {
           continue;
         }
         preludes[prelude] = text;
-        onScriptFetched?.call();
+        tick('Downloaded $prelude');
       } catch (_) {
         missing.add('prelude:$prelude');
       }
     }
-    for (final plugin in pack.plugins) {
-      if (plugin.entry.isEmpty) continue;
-      if (!plugin.needsScript) continue;
+    for (final plugin in scriptsNeeded) {
       final scriptUrl = resolveScriptUrl(manifestUrl, plugin.entry);
       try {
         final text = await _fetchText(scriptUrl);
@@ -814,7 +841,7 @@ class PluginRegistry {
           continue;
         }
         scripts[plugin.id] = text;
-        onScriptFetched?.call();
+        tick('Downloaded ${plugin.name}');
       } catch (_) {
         missing.add(plugin.id);
       }
@@ -890,7 +917,34 @@ class PluginRegistry {
     }
     _clearOfficialInstallError();
     _scriptRepairAttempted.remove(manifestUrl);
+    notifyChanged();
     return pack;
+  }
+
+  /// Fetch disk JS for [pack] when metadata landed before scripts (lean sync /
+  /// background install). Safe to call right before running a catalog action.
+  Future<bool> ensurePackScriptsReady(EnginePack pack) async {
+    if (isLegacyAssetPack(pack.sourceUrl)) return true;
+    if (isLocalManifestUrl(pack.sourceUrl)) return true;
+    if (!await packNeedsDiskInstall(pack)) return true;
+    debugPrint('[engine] hydrating scripts for ${pack.name}');
+    try {
+      await install(pack.sourceUrl);
+      _scriptRepairAttempted.remove(pack.sourceUrl);
+      return true;
+    } catch (e) {
+      debugPrint('[engine] script hydrate failed (${pack.sourceUrl}): $e');
+      return false;
+    }
+  }
+
+  /// Same as [ensurePackScriptsReady] for a single [pluginId].
+  Future<bool> ensurePluginScriptsReady(String pluginId) async {
+    final want = pluginId.trim();
+    if (want.isEmpty) return false;
+    final hit = packPluginFromPacks(await listPacksRaw(), want);
+    if (hit == null) return false;
+    return ensurePackScriptsReady(hit.pack);
   }
 
   Future<EnginePack> refresh(String manifestUrl) => install(manifestUrl);

@@ -52,13 +52,21 @@ class _CatalogContinueWidgetState extends State<CatalogContinueWidget> {
     CatalogWatchHistory.revision.addListener(_onHistoryRevision);
     if (widget.mergeHomeWatchHistory) {
       _homeHistorySub = WatchHistoryService().historyStream.listen((_) {
-        if (_viewportActivated) unawaited(_reload());
+        unawaited(_reload());
       });
     }
   }
 
+  @override
+  void didUpdateWidget(covariant CatalogContinueWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.prefetchSlot != null) {
+      _registerPrefetch();
+    }
+  }
+
   void _onHistoryRevision() {
-    if (_viewportActivated) unawaited(_reload());
+    unawaited(_reload());
   }
 
   void _onViewportVisible() {

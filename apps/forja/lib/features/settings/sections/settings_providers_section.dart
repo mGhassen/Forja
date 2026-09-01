@@ -10,7 +10,9 @@ import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
+import 'package:forja/features/settings/widgets/settings_plugin_install_progress.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -55,7 +57,18 @@ class _SettingsProvidersSectionState
   bool _indexersHydrated = false;
 
   @override
+  void initState() {
+    super.initState();
+    PluginInstallCoordinator.instance.progress.addListener(_onPluginInstallProgress);
+  }
+
+  void _onPluginInstallProgress() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    PluginInstallCoordinator.instance.progress.removeListener(_onPluginInstallProgress);
     _addonController.dispose();
     _nuvioController.dispose();
     _engineController.dispose();
@@ -454,6 +467,7 @@ class _SettingsProvidersSectionState
 
   Widget _buildEnginePackSection(List<EnginePack> packs) {
     final installError = EngineService.officialInstallError.value;
+    final installProgress = PluginInstallCoordinator.instance.progress.value;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
@@ -485,6 +499,18 @@ class _SettingsProvidersSectionState
               const SizedBox(height: 12),
             ],
           ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
+            child: Text(
+              'Each pack is a manifest.json URL. Forja downloads the manifest, '
+              'then every plugin script, before the pack is fully usable.',
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ),
           SettingsTextField(
             controller: _engineController,
             label: 'Add plugin',
@@ -498,23 +524,41 @@ class _SettingsProvidersSectionState
             busy: _engineInstalling,
             onPressed: _installEnginePack,
           ),
+          if (installProgress != null &&
+              installProgress.manifestUrl != null) ...[
+            const SizedBox(height: 14),
+            SettingsPluginInstallProgress(progress: installProgress),
+          ],
           if (packs.isNotEmpty) ...[
             const SizedBox(height: 20),
             const SettingsEngineMiniLabel('Installed plugins'),
-            ..._buildEnginePacksByKind(packs),
+            ..._buildEnginePacksByKind(packs, installProgress: installProgress),
           ],
         ],
       ),
     );
   }
 
-  List<Widget> _buildEnginePacksByKind(List<EnginePack> packs) {
+  List<Widget> _buildEnginePacksByKind(
+    List<EnginePack> packs, {
+    PluginInstallProgress? installProgress,
+  }) {
     final grouped = groupEnginePacksByKind(packs);
     final out = <Widget>[];
     for (final kind in grouped.orderedKinds) {
       final kindPacks = grouped.byKind[kind] ?? const <EnginePack>[];
       final rows = <Widget>[];
       for (final pack in kindPacks) {
+        if (pack.plugins.isEmpty) {
+          rows.add(
+            SettingsEnginePackPendingTile(
+              packName: pack.name,
+              sourceUrl: pack.sourceUrl,
+              progress: installProgress,
+            ),
+          );
+          continue;
+        }
         // HTTP (VOD + Live + schedule Catalog) + hub `kind: catalog`.
         // Hops stay internal.
         final panelPlugins = [
@@ -590,7 +634,10 @@ class _SettingsProvidersSectionState
   Future<void> _refreshEnginePack(String sourceUrl) async {
     setState(() => _engineInstalling = true);
     try {
-      final pack = await EngineService.instance.refresh(sourceUrl);
+      final pack = await PluginInstallCoordinator.instance.installManifest(
+        sourceUrl,
+        isUpdate: true,
+      );
       if (!mounted) return;
       ForjaToast.success(
         'Refreshed ${pack.name} v${pack.version}',
@@ -608,7 +655,7 @@ class _SettingsProvidersSectionState
     if (url.isEmpty) return;
     setState(() => _engineInstalling = true);
     try {
-      final pack = await EngineService.instance.install(url);
+      final pack = await PluginInstallCoordinator.instance.installManifest(url);
       if (!mounted) return;
       _engineController.clear();
       scheduleForjaSyncPush();

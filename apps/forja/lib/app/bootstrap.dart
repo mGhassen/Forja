@@ -14,6 +14,7 @@ import 'package:forja/shared/audio/audiobook_player_service.dart';
 import 'package:forja/shared/audio/music_player_service.dart';
 import 'package:rust/rust.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
+import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker_sync.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/services/player_pool_service.dart';
@@ -332,6 +333,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
     unawaited(SyncService.instance.refreshSession());
     unawaited(SyncDomainBridge.instance.syncFromCloud());
     unawaited(Telemetry.syncAnalyticsIdentity());
+    unawaited(SimklService().fullSync());
   }
 
   @override
@@ -362,6 +364,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
       // local cache, not only account feature flags.
       unawaited(SyncDomainBridge.instance.syncFromCloud());
       unawaited(Telemetry.syncAnalyticsIdentity());
+      unawaited(SimklService().fullSync());
       return;
     }
     if (state == AppLifecycleState.detached) {
@@ -604,6 +607,7 @@ class _SplashScreenState extends State<SplashScreen> {
       awaitOfficialPacks: false,
       reason: 'post-splash',
     );
+    unawaited(SimklService().fullSync());
   }
 
   void _dismissSplash({bool showSlowBootToast = false}) {

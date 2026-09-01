@@ -143,7 +143,7 @@ class _HeroItem {
       overview: slide.overview,
       voteAverage: slide.rating ?? 0,
       releaseDate: slide.year ?? '',
-      mediaType: slide.movie?.mediaType ?? '',
+      mediaType: slide.movie?.mediaType ?? slide.tmdbMediaType,
       badgeLabel: slide.badge,
       statusChip: slide.statusChip,
       upcomingReleaseLabel: slide.upcomingReleaseLabel,
@@ -264,6 +264,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   final Map<String, String> _heroLogos = {};
   final Map<String, String> _heroOverviews = {};
   final Map<String, double> _heroRatings = {};
+  final Map<String, List<String>> _heroGenres = {};
   final Map<String, List<String>> _heroBackdropUrls = {};
   final Set<String> _hubEnrichInflight = {};
   final Set<String> _hubBackdropGalleryDone = {};
@@ -337,6 +338,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       // New pack metas (e.g. after chrome filter) — re-enrich.
       _hubEnrichInflight.clear();
       _hubBackdropGalleryDone.clear();
+      _heroGenres.clear();
     }
   }
 
@@ -671,10 +673,13 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           !validTmdb &&
           !_heroBackdropUrls.containsKey(id) &&
           metaBackdrop.isEmpty;
+      final needsGenres =
+          slide.genres.isEmpty && !_heroGenres.containsKey(id);
       if (!needsLogo &&
           !needsOverview &&
           !needsBackdropGallery &&
-          !needsPrimaryBackdrop) {
+          !needsPrimaryBackdrop &&
+          !needsGenres) {
         continue;
       }
 
@@ -695,7 +700,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
             : slide.tmdbMediaType.trim();
 
         Movie? details;
-        if (needsOverview || needsPrimaryBackdrop) {
+        if (needsOverview || needsPrimaryBackdrop || needsGenres) {
           details = await _hubHeroDetails(tmdbId, mediaType);
           if (details != null &&
               (details.mediaType == 'movie' || details.mediaType == 'tv')) {
@@ -712,6 +717,11 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
           } catch (_) {}
           if (!mounted) return;
           setState(() => _heroLogos[id] = logoUrl);
+        }
+
+        if (needsGenres && details != null && details.genres.isNotEmpty) {
+          if (!mounted) return;
+          setState(() => _heroGenres[id] = List<String>.from(details!.genres));
         }
 
         if (needsBackdropGallery) {
@@ -763,6 +773,9 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
                 _heroBackdropUrls[id] = const [];
               }
             }
+            if (needsGenres && details!.genres.isNotEmpty) {
+              _heroGenres[id] = List<String>.from(details.genres);
+            }
           });
         } else if (needsPrimaryBackdrop) {
           if (!mounted) return;
@@ -798,6 +811,12 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     final r = _heroRatings[item.id];
     if (r != null && r > 0) return r;
     return item.voteAverage;
+  }
+
+  List<String> _genresFor(_HeroItem item) {
+    final enriched = _heroGenres[item.id];
+    if (enriched != null && enriched.isNotEmpty) return enriched;
+    return item.genres;
   }
 
   Movie _heroItemAsMovie(_HeroItem item) {
@@ -1700,9 +1719,12 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     Widget? typeBadge;
     if (heroItem.badgeLabel != null && heroItem.badgeLabel!.isNotEmpty) {
       typeBadge = _buildHeroMediaTypeBadge(heroItem.badgeLabel!);
-    } else if (heroItem.mediaType == 'tv') {
-      typeBadge = _buildHeroMediaTypeBadge('SERIES');
-    } else if (heroItem.mediaType == 'movie') {
+    } else if (heroItem.mediaType == 'tv' || heroItem.tmdbMediaType == 'tv') {
+      typeBadge = _buildHeroMediaTypeBadge(
+        heroItem.movie != null ? 'SERIES' : 'TV',
+      );
+    } else if (heroItem.mediaType == 'movie' ||
+        heroItem.tmdbMediaType == 'movie') {
       typeBadge = _buildHeroMediaTypeBadge('FILM');
     }
 
@@ -1743,11 +1765,11 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               ),
             ),
           ),
-          if (heroItem.genres.isNotEmpty) ...[
+          if (_genresFor(heroItem).isNotEmpty) ...[
             SizedBox(width: gap),
             Expanded(
               child: Text(
-                heroItem.genres.take(3).join('  ·  '),
+                _genresFor(heroItem).take(3).join('  ·  '),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -1784,9 +1806,9 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
               heroItem.statusChip!.isNotEmpty &&
               heroItem.statusChip != heroItem.badgeLabel)
             _buildHeroMediaTypeBadge(heroItem.statusChip!),
-          if (heroItem.genres.isNotEmpty)
+          if (_genresFor(heroItem).isNotEmpty)
             Text(
-              heroItem.genres.take(3).join('  ·  '),
+              _genresFor(heroItem).take(3).join('  ·  '),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.45),
                 fontSize: 12,

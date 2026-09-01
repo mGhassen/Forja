@@ -277,11 +277,22 @@ class EngineService {
       'protocol': hostProtocolVersion,
     };
 
-    final code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
+    var code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
     if (gen != _catalogGeneration) return null;
     if (code == null || code.isEmpty) {
-      debugPrint('[catalog] ${plugin.id} missing script');
-      return null;
+      debugPrint('[catalog] ${plugin.id} missing script — hydrating pack');
+      final ok = await PluginRegistry.instance.ensurePackScriptsReady(hit.pack);
+      if (gen != _catalogGeneration) return null;
+      if (!ok) {
+        debugPrint('[catalog] ${plugin.id} script hydrate failed');
+        return null;
+      }
+      code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
+      if (gen != _catalogGeneration) return null;
+      if (code == null || code.isEmpty) {
+        debugPrint('[catalog] ${plugin.id} missing script after hydrate');
+        return null;
+      }
     }
 
     final viaRust = await _runLiveEngineRustJs(
@@ -340,6 +351,18 @@ class EngineService {
 
   Future<EnginePack> install(String manifestUrl) async {
     final pack = await PluginRegistry.instance.install(manifestUrl);
+    await _syncHops(await PluginRegistry.instance.listPacksRaw());
+    return pack;
+  }
+
+  Future<EnginePack> installWithProgress(
+    String manifestUrl, {
+    void Function(PluginScriptFetchProgress progress)? onFetchProgress,
+  }) async {
+    final pack = await PluginRegistry.instance.install(
+      manifestUrl,
+      onFetchProgress: onFetchProgress,
+    );
     await _syncHops(await PluginRegistry.instance.listPacksRaw());
     return pack;
   }

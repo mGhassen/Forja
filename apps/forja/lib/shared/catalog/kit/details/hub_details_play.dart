@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/catalog/kit/play/catalog_iptv_play.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_context.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
@@ -21,6 +22,10 @@ Future<void> runHubPlayFromContext({
   required BuildContext context,
   required CatalogPlayContext ctx,
 }) {
+  final open = ctx.effectiveOpen;
+  if (open?.effectiveExtract.resolveType == 'iptv') {
+    return runIptvPortalPlayFromContext(context: context, ctx: ctx);
+  }
   final session = _sessionFromContext(ctx);
   return runEngineAutoPlay(
     context: context,

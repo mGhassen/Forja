@@ -29,7 +29,7 @@ Map<String, dynamic> loadHubPackManifest(String packDir) {
 
 List<EnginePlugin> loadAllHubPlugins() {
   final out = <EnginePlugin>[];
-  for (final dir in ['home', 'anime', 'asian_drama', 'arabic']) {
+  for (final dir in ['home', 'anime', 'asian_drama', 'arabic', 'iptv']) {
     final pack = EnginePack.fromJson(
       loadHubPackManifest(dir),
       sourceUrl: 'file:///plugins/hubs/$dir/manifest.json',
@@ -452,7 +452,7 @@ void main() {
   });
 
   group('hub packs', () {
-    test('home / anime / asian_drama / arabic manifests declare catalog plugins', () {
+    test('home / anime / asian_drama / arabic / iptv manifests declare catalog plugins', () {
       final home = EnginePack.fromJson(
         loadHubPackManifest('home'),
         sourceUrl: 'file:///plugins/hubs/home/manifest.json',
@@ -469,12 +469,18 @@ void main() {
         loadHubPackManifest('arabic'),
         sourceUrl: 'file:///plugins/hubs/arabic/manifest.json',
       );
+      final iptv = EnginePack.fromJson(
+        loadHubPackManifest('iptv'),
+        sourceUrl: 'file:///plugins/hubs/iptv/manifest.json',
+      );
       expect(home.packId, 'forjahq-home');
       expect(anime.packId, 'forjahq-anime');
       expect(drama.packId, 'forjahq-asian-drama');
       expect(arabic.packId, 'forjahq-arabic');
+      expect(iptv.packId, 'forjahq-iptv-vod');
       expect(home.plugins.map((p) => p.id), ['tmdb']);
       expect(arabic.plugins.map((p) => p.id), ['arabic-hub']);
+      expect(iptv.plugins.map((p) => p.id), ['iptv-vod', 'iptv-enrich-tmdb']);
 
       final byId = {
         for (final p in [
@@ -482,6 +488,7 @@ void main() {
           ...anime.plugins,
           ...drama.plugins,
           ...arabic.plugins,
+          ...iptv.plugins,
         ])
           p.id: p,
       };
@@ -494,6 +501,8 @@ void main() {
           'kisskh-hub',
           'enrich-tmdb',
           'arabic-hub',
+          'iptv-vod',
+          'iptv-enrich-tmdb',
         ]),
       );
       expect(byId['anilist']!.enrich, 'anime-enrich-tmdb');
@@ -513,6 +522,9 @@ void main() {
         if (plugin.hasCapability('enrich') && !plugin.hasCapability('nav')) {
           continue;
         }
+        if (plugin.hasCapability('details') && !plugin.hasCapability('nav')) {
+          continue;
+        }
         expect(plugin.hasCapability('nav'), isTrue, reason: plugin.id);
       }
 
@@ -530,6 +542,18 @@ void main() {
         File('../../plugins/hubs/asian_drama/enrich_tmdb.js').existsSync(),
         isTrue,
       );
+      expect(File('../../plugins/hubs/iptv/iptv_vod.js').existsSync(), isTrue);
+      expect(
+        File('../../plugins/hubs/iptv/enrich_tmdb.js').existsSync(),
+        isTrue,
+      );
+    });
+
+    test('iptv-vod details returns protocol envelope array', () {
+      final src =
+          File('../../plugins/hubs/iptv/iptv_vod.js').readAsStringSync();
+      expect(src, isNot(contains('iptvVodDetails(params)[0]')));
+      expect(src, contains('return Promise.resolve(iptvVodDetails(params));'));
     });
 
     test('nav specs map plugins onto hub tabs', () {

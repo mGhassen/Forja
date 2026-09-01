@@ -72,3 +72,6 @@ bool hubMetaTmdbEnriched(CatalogMetaItem meta) => CatalogRuntime.metaTmdbEnriche
         'background': meta.background,
       },
     );
+
+bool hubMetaIsIptv(CatalogMetaItem item) =>
+    item.open?.effectiveExtract.resolveType == 'iptv';

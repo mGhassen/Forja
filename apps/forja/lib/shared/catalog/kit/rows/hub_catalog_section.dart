@@ -35,6 +35,7 @@ class HubCatalogSection<T> extends StatefulWidget {
     this.tvFocusUp,
     this.cardAspect = HubPosterAspect.portrait,
     this.prefetchSlot,
+    this.onFirstPageLoaded,
   }) : assert(
          future != null || items != null || fetchPage != null,
          'Provide future, fetchPage, or items',
@@ -56,6 +57,7 @@ class HubCatalogSection<T> extends StatefulWidget {
   final VoidCallback? tvFocusUp;
   final HubPosterAspect cardAspect;
   final CatalogHubRowPrefetchSlot? prefetchSlot;
+  final void Function(int itemCount)? onFirstPageLoaded;
   final HubPosterCard Function(BuildContext context, T item, int index)
   cardBuilder;
 
@@ -102,7 +104,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
   @override
   void didUpdateWidget(covariant HubCatalogSection<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.prefetchSlot?.index != widget.prefetchSlot?.index) {
+    if (widget.prefetchSlot != null) {
       _registerPrefetch();
     }
     if (oldWidget.fetchPage != widget.fetchPage ||
@@ -197,6 +199,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
             (batch.length >= _effectivePageSize);
         _last = _loaded;
       });
+      if (!append) widget.onFirstPageLoaded?.call(_loaded.length);
     } catch (_) {
       if (!mounted || gen != _loadGen) return;
       setState(() {
@@ -204,6 +207,7 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
         _loadingMore = false;
         if (!append) _hasMore = false;
       });
+      if (!append) widget.onFirstPageLoaded?.call(0);
     }
   }
 
@@ -408,7 +412,7 @@ class _HubLazyViewportGateState extends State<HubLazyViewportGate> {
   @override
   void didUpdateWidget(covariant HubLazyViewportGate oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.prefetchSlot?.index != widget.prefetchSlot?.index) {
+    if (widget.prefetchSlot != null) {
       _registerPrefetch();
     }
   }

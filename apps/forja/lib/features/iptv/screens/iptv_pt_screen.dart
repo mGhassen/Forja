@@ -32,8 +32,7 @@ import 'package:forja/features/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
-import 'package:forja/features/iptv/screens/iptv_movie_details_view.dart';
-import 'package:forja/features/iptv/screens/iptv_series_details_view.dart';
+import 'package:forja/shared/catalog/shell/catalog_iptv_open.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'iptv_pt_player_screen.dart';
 

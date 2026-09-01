@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
+import 'package:forja/shared/engine/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
@@ -14,6 +15,8 @@ class PluginInstallProgress {
     required this.completedSteps,
     required this.totalSteps,
     required this.isUpdate,
+    this.sourceUrl,
+    this.manifestUrl,
   });
 
   final String label;
@@ -21,9 +24,21 @@ class PluginInstallProgress {
   final int totalSteps;
   final bool isUpdate;
 
+  /// Pack [sourceUrl] when a single manifest is installing (Settings add).
+  final String? sourceUrl;
+
+  /// Human-readable manifest URL shown in Settings while downloading.
+  final String? manifestUrl;
+
   double get fraction {
     if (totalSteps <= 0) return 0;
     return (completedSteps / totalSteps).clamp(0.0, 1.0);
+  }
+
+  bool matchesUrl(String url) {
+    final want = url.trim();
+    if (want.isEmpty) return false;
+    return sourceUrl == want || manifestUrl == want;
   }
 }
 
@@ -40,6 +55,94 @@ class PluginInstallCoordinator {
   final ValueNotifier<bool> suppressBanner = ValueNotifier<bool>(false);
 
   Future<void>? _inFlight;
+  Future<EnginePack>? _manualInstall;
+
+  bool get isInstalling => progress.value != null;
+
+  bool isInstallingUrl(String url) => progress.value?.matchesUrl(url) ?? false;
+
+  /// Settings → Add plugin (or refresh one pack) with visible download progress.
+  Future<EnginePack> installManifest(
+    String manifestUrl, {
+    bool isUpdate = false,
+  }) {
+    final url = manifestUrl.trim();
+    if (url.isEmpty) {
+      return Future.error(ArgumentError('manifest URL is empty'));
+    }
+    return _manualInstall ??= _installManifestImpl(url, isUpdate: isUpdate)
+        .whenComplete(() => _manualInstall = null);
+  }
+
+  Future<EnginePack> _installManifestImpl(
+    String manifestUrl, {
+    required bool isUpdate,
+  }) async {
+    _setProgress(
+      PluginInstallProgress(
+        label: 'Fetching manifest…',
+        manifestUrl: manifestUrl,
+        sourceUrl: manifestUrl,
+        completedSteps: 0,
+        totalSteps: 1,
+        isUpdate: isUpdate,
+      ),
+    );
+    try {
+      final pack = await EngineService.instance.installWithProgress(
+        manifestUrl,
+        onFetchProgress: (tick) {
+          _setProgress(
+            PluginInstallProgress(
+              label: tick.label,
+              manifestUrl: manifestUrl,
+              sourceUrl: manifestUrl,
+              completedSteps: tick.completed,
+              totalSteps: tick.total,
+              isUpdate: isUpdate,
+            ),
+          );
+        },
+      );
+      _setProgress(
+        PluginInstallProgress(
+          label: 'Ready — ${pack.name}',
+          manifestUrl: manifestUrl,
+          sourceUrl: manifestUrl,
+          completedSteps: 1,
+          totalSteps: 1,
+          isUpdate: isUpdate,
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      return pack;
+    } finally {
+      progress.value = null;
+    }
+  }
+
+  /// User-facing copy when a catalog plugin is invoked before scripts land.
+  Future<String?> pluginNotReadyMessage(String pluginId) async {
+    final want = pluginId.trim();
+    if (want.isEmpty) return null;
+    final current = progress.value;
+    if (current != null) {
+      return 'Still downloading ${current.label}. '
+          'Wait for the progress bar to finish or open Settings → Forja plugins.';
+    }
+    final hit = PluginRegistry.packPluginFromPacks(
+      await PluginRegistry.instance.listPacksRaw(),
+      want,
+    );
+    if (hit == null) {
+      return 'Plugin not installed. Add its manifest in Settings → Forja plugins.';
+    }
+    if (await PluginRegistry.instance.packNeedsDiskInstall(hit.pack)) {
+      return '${hit.pack.name} is registered but scripts are not on this device yet. '
+          'Open Settings → Forja plugins and wait for the download to finish.';
+    }
+    return null;
+  }
 
   Future<void> ensureAllInstalled({
     bool checkUpdates = true,

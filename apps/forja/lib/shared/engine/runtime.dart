@@ -928,10 +928,14 @@ class EngineRuntime {
       if (body.isEmpty || body == 'null' || body == 'undefined') return [];
       try {
         final decoded = jsonDecode(body);
+        if (decoded is Map) {
+          final map = Map<String, dynamic>.from(decoded);
+          if (map.containsKey('ok')) return [map];
+        }
         if (decoded is! List) return [];
         return decoded
             .whereType<Map>()
-            .map((e) => e.cast<String, dynamic>())
+            .map((e) => Map<String, dynamic>.from(e))
             .toList();
       } catch (e) {
         _forjaRuntimeLog('result parse failed ($pluginId): $e');

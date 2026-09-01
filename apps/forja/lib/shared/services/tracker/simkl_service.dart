@@ -1246,31 +1246,97 @@ class SimklService {
     final tmdbId = _asInt(ids['tmdb']);
     final point = _resumePoint(item);
     if (tmdbId == null || point == null) return 0;
+
+    final art = await _resolveArt(tmdbId, 'tv', media);
+    final durationMs = art.durationMs;
+    final positionMs = (durationMs * 0.05).round().clamp(1, durationMs - 1);
+    final title = media['title']?.toString() ?? 'Unknown';
+    final imdbId = ids['imdb']?.toString();
+
+    var imported = 0;
     final existing = await WatchHistoryService().getProgress(
       tmdbId,
       season: point.season,
       episode: point.episode,
     );
-    if (existing != null) return 0;
+    if (existing == null) {
+      await WatchHistoryService().saveProgress(
+        tmdbId: tmdbId,
+        imdbId: imdbId,
+        title: title,
+        posterPath: art.poster,
+        backdropPath: art.backdrop,
+        method: 'simkl_import',
+        sourceId: 'simkl',
+        position: positionMs,
+        duration: durationMs,
+        season: point.season,
+        episode: point.episode,
+        mediaType: 'tv',
+      );
+      imported++;
+    }
 
-    final art = await _resolveArt(tmdbId, 'tv', media);
-    final durationMs = art.durationMs;
-    final positionMs = (durationMs * 0.05).round().clamp(1, durationMs - 1);
-    await WatchHistoryService().saveProgress(
+    if (await _seedDramaHubContinueFromSimkl(
       tmdbId: tmdbId,
-      imdbId: ids['imdb']?.toString(),
-      title: media['title']?.toString() ?? 'Unknown',
+      imdbId: imdbId,
+      title: title,
       posterPath: art.poster,
       backdropPath: art.backdrop,
-      method: 'simkl_import',
-      sourceId: 'simkl',
-      position: positionMs,
-      duration: durationMs,
-      season: point.season,
       episode: point.episode,
-      mediaType: 'tv',
-    );
-    return 1;
+      positionMs: positionMs,
+      durationMs: durationMs,
+    )) {
+      imported++;
+    }
+    return imported > 0 ? 1 : 0;
+  }
+
+  /// Simkl TV resumes → Asian Drama hub CW (KissKh extract uses TMDB id).
+  Future<bool> _seedDramaHubContinueFromSimkl({
+    required int tmdbId,
+    String? imdbId,
+    required String title,
+    required String posterPath,
+    required String backdropPath,
+    required int episode,
+    required int positionMs,
+    required int durationMs,
+  }) async {
+    final hubPlugin =
+        await PluginNavRegistry.pluginIdForEngineType('drama') ?? '';
+    if (hubPlugin.isEmpty) return false;
+
+    final existing = await CatalogWatchHistory.getAll(hubPlugin);
+    final already = existing.any((entry) {
+      if (entry['metaId']?.toString() == '$hubPlugin:$tmdbId') return true;
+      final meta = CatalogWatchHistory.metaFromEntry(entry);
+      return meta?.numericId('tmdb') == tmdbId;
+    });
+    if (already) return false;
+
+    try {
+      final meta = catalogMetaFromLegacyListItem({
+        'pluginId': hubPlugin,
+        'tmdbId': tmdbId,
+        if (imdbId != null) 'imdbId': imdbId,
+        'mediaType': 'asian_drama',
+        'title': title,
+        'posterPath': posterPath,
+        'backdropPath': backdropPath,
+      });
+      await CatalogWatchHistory.record(
+        pluginId: hubPlugin,
+        meta: meta,
+        episodeNumber: episode,
+        position: Duration(milliseconds: positionMs),
+        duration: Duration(milliseconds: durationMs),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('[Simkl] Drama resume $tmdbId failed: $e');
+      return false;
+    }
   }
 
   Future<int> _importAnimeResume(Map<String, dynamic> item) async {

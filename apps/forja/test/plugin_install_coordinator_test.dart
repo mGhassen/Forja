@@ -53,6 +53,71 @@ void main() {
     expect(await registry.packNeedsDiskInstall(packs.first), isTrue);
   });
 
+  test('ensurePackScriptsReady hydrates lean stub before catalog use', () async {
+    const url = 'https://hydrate.example/manifest.json';
+    final manifest = jsonEncode({
+      'schema': 1,
+      'id': 'hydrate-pack',
+      'name': 'Hydrate Pack',
+      'version': '1.0.0',
+      'plugins': [
+        {
+          'id': 'iptv-vod',
+          'name': 'IPTV VOD',
+          'entry': 'iptv_vod.js',
+          'kind': 'catalog',
+          'protocol': 1,
+          'kit': 1,
+          'types': ['iptv'],
+          'capabilities': ['details'],
+          'enabled': true,
+          'prelude': '_kit.js',
+        },
+      ],
+    });
+    registry.debugHttpClient = MockClient((request) async {
+      final path = request.url.path;
+      if (path.endsWith('manifest.json')) {
+        return http.Response(manifest, 200);
+      }
+      if (path.endsWith('_kit.js')) {
+        return http.Response('var HUB_KIT = 1;', 200);
+      }
+      if (path.endsWith('iptv_vod.js')) {
+        return http.Response(
+          "function extract(ctx){ return hubOk('details', { meta: {} }); }",
+          200,
+        );
+      }
+      return http.Response('not found', 404);
+    });
+    SharedPreferences.setMockInitialValues({
+      'engine_js_packs_v2': jsonEncode([
+        {
+          'sourceUrl': url,
+          'packId': 'hydrate-pack',
+          'name': 'Hydrate Pack',
+          'version': '0.0.0',
+          'plugins': const [],
+        },
+      ]),
+      'engine_js_packs_v2_migrated': true,
+      'engine_js_scripts_disk_v3_migrated': true,
+    });
+    final packs = await registry.listPacksRaw();
+    expect(await registry.packNeedsDiskInstall(packs.first), isTrue);
+    expect(await registry.ensurePackScriptsReady(packs.first), isTrue);
+    final hydrated = (await registry.listPacksRaw()).first;
+    expect(await registry.packNeedsDiskInstall(hydrated), isFalse);
+    expect(
+      await PluginScriptDiskStore.loadEngineScript(
+        sourceUrl: url,
+        pluginId: 'iptv-vod',
+      ),
+      isNotNull,
+    );
+  });
+
   test('ensureAllInstalled installs missing lean pack with progress', () async {
     const url = 'https://coord.example/manifest.json';
     SharedPreferences.setMockInitialValues({

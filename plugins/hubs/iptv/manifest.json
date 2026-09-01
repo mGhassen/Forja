@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "id": "forjahq-iptv-vod",
+  "name": "ForjaHQ IPTV VOD",
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "id": "iptv-vod",
+      "name": "IPTV VOD Details",
+      "description": "Portal-only IPTV movie / series details (host browse + play)",
+      "entry": "iptv_vod.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "iptv"
+      ],
+      "capabilities": [
+        "details"
+      ],
+      "enabled": true,
+      "enrich": "iptv-enrich-tmdb",
+      "config": {},
+      "prelude": "_kit.js"
+    },
+    {
+      "id": "iptv-enrich-tmdb",
+      "name": "IPTV TMDB Enrich",
+      "description": "Optional TMDB match enrich for IPTV VOD metas",
+      "entry": "enrich_tmdb.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "iptv"
+      ],
+      "capabilities": [
+        "enrich"
+      ],
+      "enabled": true,
+      "config": {
+        "rails": [
+          "recommendations"
+        ],
+        "limit": 20
+      },
+      "prelude": "_kit.js"
+    }
+  ]
+}

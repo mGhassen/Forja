@@ -367,13 +367,23 @@ abstract final class PluginNavRegistry {
   }
 
   /// First enabled hub whose pack declares [typeToken] in `engine.types`.
+  ///
+  /// Prefers source plugins (`details` / `nav` / `feed`) over enrich-only
+  /// companions (`iptv-vod` before `iptv-enrich-tmdb`, etc.).
   static Future<String?> pluginIdForEngineType(String typeToken) async {
     final want = typeToken.trim();
     if (want.isEmpty) return null;
+    String? enrichFallback;
     for (final pl in await listHubPlugins()) {
-      if (pl.types.contains(want)) return pl.id;
+      if (!pl.types.contains(want)) continue;
+      if (pl.hasCapability('details') ||
+          pl.hasCapability('nav') ||
+          pl.hasCapability('feed')) {
+        return pl.id;
+      }
+      enrichFallback ??= pl.id;
     }
-    return null;
+    return enrichFallback;
   }
 
   /// Resolve hub plugin id without hardcoded tab or pack ids.

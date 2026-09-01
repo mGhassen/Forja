@@ -2,7 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/iptv/data/models.dart';
+import 'package:forja/features/iptv/iptv_catalog_recs.dart';
+import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
+import 'package:forja/shared/catalog/shell/catalog_iptv_open.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_meta.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_play.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_sections.dart';
@@ -13,6 +17,7 @@ import 'package:forja/shared/catalog/kit/play/catalog_play_resolve.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/player_stream_extract_cache.dart';
@@ -107,6 +112,8 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
   Map<String, dynamic>? _watchProgress;
   bool _autoPlayConsumed = false;
   StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
+  List<IptvCatalogRecHit> _iptvRecHits = const [];
+  VerifiedPortal? _iptvPortal;
 
   @override
   void initState() {
@@ -327,13 +334,19 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     final env = await CatalogRuntime.instance.run(
       pluginId: widget.pluginId,
       action: 'details',
-      params: hubDetailsParams(widget.item),
+      params: hubMetaIsIptv(widget.item)
+          ? iptvHubDetailsParams(widget.item)
+          : hubDetailsParams(widget.item),
     );
     if (!mounted) return;
     if (!env.ok) {
+      final notReady =
+          await PluginInstallCoordinator.instance.pluginNotReadyMessage(
+        widget.pluginId,
+      );
       setState(() {
         _loading = false;
-        _error = env.error?.message ?? 'Failed to load details';
+        _error = notReady ?? env.error?.message ?? 'Failed to load details';
       });
       return;
     }
@@ -363,6 +376,9 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       _selectedSeason = firstSeason;
       _selectedEpisode = firstEp;
     });
+    if (hubMetaIsIptv(meta)) {
+      _iptvPortal = await resolveIptvPortalFromMeta(meta);
+    }
     unawaited(_loadWatchProgress());
     unawaited(_loadTmdbUi(meta));
     if (widget.autoPlay) {
@@ -396,6 +412,30 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
         limit: 1,
       );
     }
+    if (hubMetaIsIptv(meta)) {
+      unawaited(_loadIptvCatalogRecs(meta, rich));
+    }
+  }
+
+  Future<void> _loadIptvCatalogRecs(
+    CatalogMetaItem meta,
+    RichMediaDetails? rich,
+  ) async {
+    final portal = _iptvPortal ?? await resolveIptvPortalFromMeta(meta);
+    if (portal == null || rich == null) return;
+    try {
+      final catalog = await ref
+          .read(iptvControllerProvider)
+          .vodSeriesCatalog(portal.key);
+      final stream = iptvStreamFromMeta(meta);
+      final hits = filterIptvCatalogRecommendations(
+        recommendations: rich.extras.recommendations,
+        catalog: catalog,
+        excludeStreamId: stream.streamId,
+      );
+      if (!mounted) return;
+      setState(() => _iptvRecHits = hits);
+    } catch (_) {}
   }
 
   List<MediaTrailer> get _trailers =>
@@ -544,7 +584,9 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
     final playbackSnap = ref.watch(settingsPlaybackProvider).valueOrNull;
-    final showCatalogSources = hubHasCatalogPanelSources(playbackSnap);
+    final isIptv = hubMetaIsIptv(_show);
+    final showCatalogSources =
+        !isIptv && hubHasCatalogPanelSources(playbackSnap);
     final hasEpisodes = videos.isNotEmpty && !_isMovie;
 
     if (policy.heroPlayAutoFocus &&
@@ -646,6 +688,24 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       rich: _rich,
       tvFocus: tvFocus,
       firstMetaFocusUp: packSections.isEmpty ? firstMetaFocusUp : null,
+      recommendations: isIptv && _iptvRecHits.isNotEmpty
+          ? _iptvRecHits.map((h) => h.tmdb).toList()
+          : null,
+      onRecommendationTap: isIptv && _iptvPortal != null
+          ? (movie) {
+              for (final hit in _iptvRecHits) {
+                if (hit.tmdb.id != movie.id) continue;
+                unawaited(
+                  openIptvVodStream(
+                    context,
+                    stream: hit.stream,
+                    portal: _iptvPortal!,
+                  ),
+                );
+                break;
+              }
+            }
+          : null,
     );
     final sections = [...packSections, ...tmdbSections];
 

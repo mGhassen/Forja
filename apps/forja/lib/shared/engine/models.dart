@@ -899,3 +899,21 @@ Map<String, dynamic>? mapEngineStream({
     '_enginePluginId': plugin.id,
   };
 }
+
+/// One script/prelude fetch tick during [PluginRegistry.install].
+class PluginScriptFetchProgress {
+  const PluginScriptFetchProgress({
+    required this.completed,
+    required this.total,
+    required this.label,
+    required this.sourceUrl,
+  });
+
+  final int completed;
+  final int total;
+  final String label;
+  final String sourceUrl;
+
+  double get fraction =>
+      total <= 0 ? 0 : (completed / total).clamp(0.0, 1.0);
+}

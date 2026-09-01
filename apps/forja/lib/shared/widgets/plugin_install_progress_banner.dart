@@ -116,7 +116,7 @@ class _PluginInstallBanner extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           progress.label,
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             color: ForjaShellColors.textSecondary,
@@ -124,6 +124,21 @@ class _PluginInstallBanner extends StatelessWidget {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+                        if (progress.manifestUrl != null &&
+                            progress.manifestUrl!.trim().isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            progress.manifestUrl!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: ForjaShellColors.textSecondary
+                                  .withValues(alpha: 0.75),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

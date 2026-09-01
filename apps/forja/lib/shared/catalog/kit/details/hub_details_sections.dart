@@ -126,18 +126,20 @@ List<Widget> buildHubTmdbDetailSections({
   required RichMediaDetails? rich,
   required bool tvFocus,
   VoidCallback? firstMetaFocusUp,
+  List<Movie>? recommendations,
+  void Function(Movie movie)? onRecommendationTap,
 }) {
   if (rich == null) return const [];
 
   final cast = rich.extras.cast;
   final crew = _crewAsCast(rich.extras.crew);
   final trailers = rich.extras.trailers;
-  final recommendations = rich.extras.recommendations;
+  final recs = recommendations ?? rich.extras.recommendations;
 
   final showCast = cast.isNotEmpty;
   final showCrew = crew.isNotEmpty;
   final showTrailers = trailers.isNotEmpty;
-  final showRecs = recommendations.isNotEmpty;
+  final showRecs = recs.isNotEmpty;
   if (!showCast && !showCrew && !showTrailers && !showRecs) {
     return const [];
   }
@@ -192,12 +194,13 @@ List<Widget> buildHubTmdbDetailSections({
   if (showRecs) {
     sections.add(
       MediaDetailsRecommendationsSection(
-        movies: recommendations,
-        onMovieTap: (movie) => openCatalogMetaItem(
-          context,
-          pluginId: pluginId,
-          item: catalogMetaFromMovie(movie),
-        ),
+        movies: recs,
+        onMovieTap: onRecommendationTap ??
+            (movie) => openCatalogMetaItem(
+                  context,
+                  pluginId: pluginId,
+                  item: catalogMetaFromMovie(movie),
+                ),
         tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
         tvRowId: 'recommendations',
         tvRowOrder: recsOrder!,

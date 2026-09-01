@@ -550,6 +550,58 @@ function tmdbImage(cfg, path, size) {
   return String(cfg.imageBase).replace(/\/$/, '') + '/' + size + p;
 }
 
+var TMDB_MOVIE_GENRE_NAMES = {
+  28: 'Action',
+  12: 'Adventure',
+  16: 'Animation',
+  35: 'Comedy',
+  80: 'Crime',
+  99: 'Documentary',
+  18: 'Drama',
+  10751: 'Family',
+  14: 'Fantasy',
+  36: 'History',
+  27: 'Horror',
+  10402: 'Music',
+  9648: 'Mystery',
+  10749: 'Romance',
+  878: 'Sci-Fi',
+  10770: 'TV Movie',
+  53: 'Thriller',
+  10752: 'War',
+  37: 'Western',
+};
+
+var TMDB_TV_GENRE_NAMES = {
+  10759: 'Action & Adventure',
+  16: 'Animation',
+  35: 'Comedy',
+  80: 'Crime',
+  99: 'Documentary',
+  18: 'Drama',
+  10751: 'Family',
+  10762: 'Kids',
+  9648: 'Mystery',
+  10763: 'News',
+  10764: 'Reality',
+  10765: 'Sci-Fi & Fantasy',
+  10766: 'Soap',
+  10767: 'Talk',
+  10768: 'War & Politics',
+  37: 'Western',
+};
+
+function tmdbGenreNames(type, genreIds) {
+  var map = type === 'tv' ? TMDB_TV_GENRE_NAMES : TMDB_MOVIE_GENRE_NAMES;
+  var names = [];
+  var ids = Array.isArray(genreIds) ? genreIds : [];
+  for (var i = 0; i < ids.length; i++) {
+    var label = map[Number(ids[i])];
+    if (label) names.push(label);
+  }
+  return names;
+}
+
 function tmdbMeta(cfg, row, forcedType) {
   if (!row || !row.id) return null;
   var type = String(forcedType || row.media_type || '').trim();
@@ -568,6 +620,8 @@ function tmdbMeta(cfg, row, forcedType) {
     description: String(row.overview || '').trim(),
     releaseInfo: release ? release.substring(0, 4) : '',
     ids: { tmdb: String(row.id) },
+    tmdbMediaType: type,
+    badge: type === 'movie' ? 'FILM' : 'TV',
     open: {
       surface: 'tmdb',
       id: String(row.id),
@@ -580,6 +634,8 @@ function tmdbMeta(cfg, row, forcedType) {
     },
   };
   if (row.vote_average) meta.rating = Number(row.vote_average);
+  var genreNames = tmdbGenreNames(type, row.genre_ids);
+  if (genreNames.length) meta.genres = genreNames;
   return meta;
 }
 
@@ -643,7 +699,6 @@ function tmdbFeaturedForPage(
 ) {
   var win = tmdbMonthWindow();
   var hasProvider = !!watchProviders;
-  var hasGenre = genres.length > 0;
 
   function loadFeatured(dateGte, dateLte, minRating) {
     var movieQ = { sort_by: 'popularity.desc', page: page };
@@ -662,8 +717,7 @@ function tmdbFeaturedForPage(
   }
 
   return loadFeatured(win.gte, win.lte, hasProvider ? null : 6).then(function (month) {
-    var needsFill = hasProvider || hasGenre;
-    if (!needsFill || month.length >= TMDB_HOME_RAIL_CAP) return month;
+    if (month.length >= TMDB_HOME_RAIL_CAP) return month;
     return loadFeatured(null, null, null).then(function (popular) {
       return tmdbUniqueMetas(month, popular, limit);
     });
@@ -753,7 +807,6 @@ function tmdbList(ctx, cfg, params) {
   }
 
   if (railId === 'featured') {
-    if (!poolPage && page > 1) return Promise.resolve([]);
     if (!poolPage && page === 1) {
       return tmdbFetchRotatedList(ctx, cfg, params, 'featured', function (p) {
         return tmdbFeaturedForPage(
@@ -802,7 +855,6 @@ function tmdbList(ctx, cfg, params) {
   }
 
   if (railId === 'new_releases') {
-    if (!poolPage && page > 1) return Promise.resolve([]);
     if (!poolPage && page === 1) {
       return tmdbFetchRotatedList(ctx, cfg, params, 'new_releases', function (p) {
         return tmdbNewReleasesForPage(
@@ -1658,7 +1710,15 @@ function extract(ctx) {
     tmdbList(ctx, cfg, params).then(function (items) {
       var pageSize =
         Number(params.limit) > 0 ? Number(params.limit) : TMDB_HOME_RAIL_CAP;
-      return hubItems('rail', items, { maxAge: 900, swr: 3600 }, { pageSize: pageSize })[0];
+      return hubItems(
+        'rail',
+        items,
+        { maxAge: 900, swr: 3600 },
+        {
+          pageSize: pageSize,
+          hasMore: items.length >= pageSize,
+        },
+      )[0];
     }),
   );
 }

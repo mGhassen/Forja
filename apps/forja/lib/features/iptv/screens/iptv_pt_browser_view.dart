@@ -1770,14 +1770,9 @@ class _BrowserViewState extends State<_BrowserView> {
     final ctrl = widget.ctrl;
     final p = ctrl.activePortal;
     if (p == null) return;
-    if (s.kind == 'series') {
+    if (s.kind == 'series' || s.kind == 'vod') {
       ctrl.noteBrowserSearchPlayedStream(s);
-      await openIptvSeriesDetails(context, series: s, portal: p);
-      return;
-    }
-    if (s.kind == 'vod') {
-      ctrl.noteBrowserSearchPlayedStream(s);
-      await openIptvMovieDetails(context, movie: s, portal: p);
+      await openIptvVodStream(context, stream: s, portal: p);
       return;
     }
     if (s.kind == 'live') {

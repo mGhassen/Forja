@@ -83,6 +83,9 @@ class _CatalogBecauseSectionState extends State<CatalogBecauseSection> {
   @override
   void didUpdateWidget(covariant CatalogBecauseSection oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.prefetchSlot != null) {
+      _registerPrefetch();
+    }
     if (oldWidget.spec != widget.spec ||
         oldWidget.pluginId != widget.pluginId ||
         oldWidget.tabId != widget.tabId) {
