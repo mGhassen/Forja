@@ -115,6 +115,9 @@ class PluginRegistry {
       'plugins/live/manifest.json': 'live',
       'plugins/hubs/home/manifest.json': 'home',
       'plugins/hubs/manifest.json': 'home',
+      'plugins/iptv/vod/manifest.json': 'iptv-vod',
+      // Legacy path before IPTV VOD left `plugins/hubs/`.
+      'plugins/hubs/iptv/manifest.json': 'iptv-vod',
     };
     for (final e in core.entries) {
       if (path.endsWith(e.key)) return e.value;
@@ -127,13 +130,19 @@ class PluginRegistry {
   /// Hub manifest slot (any path under `plugins/hubs/` except monolith home alias).
   static bool isHubManifestSlot(String? slot) {
     if (slot == null || slot.isEmpty) return false;
-    return slot != 'providers' && slot != 'live' && slot != 'catalog';
+    return slot != 'providers' &&
+        slot != 'live' &&
+        slot != 'catalog' &&
+        slot != 'iptv-vod';
   }
+
+  /// IPTV VOD details pack — catalog protocol, not a shell hub tab.
+  static bool isIptvVodManifestSlot(String? slot) => slot == 'iptv-vod';
 
   static String? hubSlotLabel(String? slot) {
     if (slot == null || slot.isEmpty) return null;
     return slot
-        .split('_')
+        .split(RegExp(r'[_-]+'))
         .where((w) => w.isNotEmpty)
         .map(
           (w) => w.length == 1
@@ -147,6 +156,7 @@ class PluginRegistry {
   static const packKindProviders = 'providers';
   static const packKindLive = 'live';
   static const packKindCatalog = 'catalog';
+  static const packKindIptv = 'iptv';
   static const packKindHubs = 'hubs';
   static const packKindOther = 'other';
 
@@ -154,6 +164,7 @@ class PluginRegistry {
     packKindProviders,
     packKindLive,
     packKindCatalog,
+    packKindIptv,
     packKindHubs,
     packKindOther,
   ];
@@ -162,11 +173,12 @@ class PluginRegistry {
     packKindProviders => 'Providers',
     packKindLive => 'Live',
     packKindCatalog => 'Catalog',
+    packKindIptv => 'IPTV',
     packKindHubs => 'Hubs',
     _ => 'Other',
   };
 
-  /// Pack bucket for the installed list: Providers / Live / Catalog / Hubs / Other.
+  /// Pack bucket for the installed list: Providers / Live / Catalog / IPTV / Hubs / Other.
   static String packKindKey(EnginePack pack) {
     final slot = forjaHqSlot(pack.sourceUrl);
     if (slot != null) {
@@ -174,10 +186,12 @@ class PluginRegistry {
         'providers' => packKindProviders,
         'live' => packKindLive,
         'catalog' => packKindCatalog,
+        'iptv-vod' => packKindIptv,
         _ when isHubManifestSlot(slot) => packKindHubs,
         _ => packKindOther,
       };
     }
+    if (pack.plugins.any((p) => p.types.contains('iptv'))) return packKindIptv;
     if (pack.plugins.any((p) => p.isHubCatalog)) return packKindHubs;
     if (pack.plugins.any((p) => p.isLiveSportPlugin || p.isLive)) {
       return packKindLive;
@@ -186,12 +200,16 @@ class PluginRegistry {
     return packKindOther;
   }
 
-  /// Subtitle kind chip: `Providers` or `Hubs · Home`.
+  /// Subtitle kind chip: `Providers` or `Hubs · Home` or `IPTV · VOD`.
   static String packKindInfo(EnginePack pack) {
     final kind = packKindKey(pack);
-    final hub = hubSlotLabel(forjaHqSlot(pack.sourceUrl));
-    if (kind == packKindHubs && hub != null) {
-      return '${packKindLabel(kind)} · $hub';
+    final slot = forjaHqSlot(pack.sourceUrl);
+    final slotLabel = hubSlotLabel(slot);
+    if (kind == packKindHubs && slotLabel != null) {
+      return '${packKindLabel(kind)} · $slotLabel';
+    }
+    if (kind == packKindIptv && slotLabel != null) {
+      return '${packKindLabel(kind)} · $slotLabel';
     }
     return packKindLabel(kind);
   }
@@ -909,7 +927,7 @@ class PluginRegistry {
     all.add(pack);
     await _savePacks(all);
     final hubSlot = forjaHqSlot(manifestUrl);
-    if (isHubManifestSlot(hubSlot)) {
+    if (isHubManifestSlot(hubSlot) || isIptvVodManifestSlot(hubSlot)) {
       CatalogCache.instance.syncHubPackVersion(pack.packId, pack.version);
       // Scripts may change at the same semver — always drop this pack's answers.
       for (final p in pack.plugins) {

@@ -604,6 +604,18 @@ void main() {
       );
       expect(
         PluginRegistry.packKindKey(
+          pack('https://x/plugins/iptv/vod/manifest.json'),
+        ),
+        PluginRegistry.packKindIptv,
+      );
+      expect(
+        PluginRegistry.packKindInfo(
+          pack('https://x/plugins/iptv/vod/manifest.json'),
+        ),
+        'IPTV · Iptv Vod',
+      );
+      expect(
+        PluginRegistry.packKindKey(
           pack('https://x/plugins/hubs/any_hub_slot/manifest.json'),
         ),
         PluginRegistry.packKindHubs,

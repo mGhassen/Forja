@@ -136,10 +136,16 @@ class PluginInstallCoordinator {
     final url = hit.pack.sourceUrl;
     final local = PluginRegistry.isLocalManifestUrl(url);
     final needsDisk = await PluginRegistry.instance.packNeedsDiskInstall(hit.pack);
-    if (!local && !needsDisk) return true;
+
+    // Bundled checkout (plugins/iptv/vod, plugins/hubs/*, …): JS is read from
+    // disk on each run — do not re-fetch manifest + show "Updating…" per tap.
+    if (local) {
+      return PluginRegistry.instance.ensurePackScriptsReady(hit.pack);
+    }
+    if (!needsDisk) return true;
 
     try {
-      await _installManifestSingle(url, isUpdate: !needsDisk);
+      await _installManifestSingle(url, isUpdate: false);
       return true;
     } catch (e) {
       debugPrint('[PluginInstall] ensurePluginReady($want) failed: $e');

@@ -11,7 +11,7 @@ Seven packs in this tree:
 | **ForjaHQ Home** | [`hubs/home/manifest.json`](hubs/home/manifest.json) | Home catalog hub (TMDB) |
 | **ForjaHQ Anime** | [`hubs/anime/manifest.json`](hubs/anime/manifest.json) | Anime catalog hub (AniList) |
 | **ForjaHQ Asian Drama** | [`hubs/asian_drama/manifest.json`](hubs/asian_drama/manifest.json) | Asian Drama catalog hub (KissKH) |
-| **ForjaHQ IPTV VOD** | [`hubs/iptv/manifest.json`](hubs/iptv/manifest.json) | IPTV portal VOD details + optional TMDB enrich (no shell tab) |
+| **ForjaHQ IPTV VOD** | [`iptv/vod/manifest.json`](iptv/vod/manifest.json) | IPTV portal VOD details + optional TMDB enrich (no shell tab) |
 
 Arabic (`hubs/arabic/`) is optional / out of product scope.
 
@@ -33,6 +33,7 @@ Point each manifest at the packs in this repo (e.g. raw GitHub URLs or your own 
 | `providers/` | VOD extractors |
 | `live/` | Live match resolvers |
 | `catalog/` | Live schedule catalogs |
+| `iptv/` | IPTV feature packs (VOD details — not shell hub tabs) |
 | `hubs/` | Catalog hub packs (home, anime, …) |
 
 Each pack is a `manifest.json` plus JS entries referenced from the manifest.

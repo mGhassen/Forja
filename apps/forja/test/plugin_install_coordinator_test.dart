@@ -206,6 +206,91 @@ void main() {
     expect(PluginInstallCoordinator.instance.progress.value, isNull);
   });
 
+  test('ensurePluginReady skips reinstall for local checkout packs', () async {
+    final hubDir = await Directory.systemTemp.createTemp('coord_local_iptv_');
+    addTearDown(() async {
+      if (await hubDir.exists()) await hubDir.delete(recursive: true);
+    });
+    final manifestFile = File('${hubDir.path}/manifest.json');
+    final entryFile = File('${hubDir.path}/iptv_vod.js');
+    await entryFile.writeAsString(
+      "function extract(ctx){ return hubOk('details', { meta: {} }); }",
+    );
+    await manifestFile.writeAsString(
+      jsonEncode({
+        'schema': 1,
+        'id': 'forjahq-iptv-vod',
+        'name': 'IPTV VOD',
+        'version': '1.0.0',
+        'plugins': [
+          {
+            'id': 'iptv-vod',
+            'name': 'IPTV VOD Details',
+            'entry': 'iptv_vod.js',
+            'kind': 'catalog',
+            'protocol': 1,
+            'kit': 1,
+            'types': ['iptv'],
+            'capabilities': ['details'],
+            'enabled': true,
+          },
+        ],
+      }),
+    );
+    final url = manifestFile.path;
+
+    SharedPreferences.setMockInitialValues({
+      'engine_js_packs_v2_migrated': true,
+      'engine_js_scripts_disk_v3_migrated': true,
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'engine_js_packs_v2',
+      jsonEncode([
+        {
+          'sourceUrl': url,
+          'packId': 'forjahq-iptv-vod',
+          'name': 'IPTV VOD',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'iptv-vod',
+              'name': 'IPTV VOD Details',
+              'entry': 'iptv_vod.js',
+              'kind': 'catalog',
+              'protocol': 1,
+              'kit': 1,
+              'types': ['iptv'],
+              'capabilities': ['details'],
+              'enabled': true,
+            },
+          ],
+        },
+      ]),
+    );
+
+    final progressSeen = <PluginInstallProgress?>[];
+    void listener() {
+      progressSeen.add(PluginInstallCoordinator.instance.progress.value);
+    }
+    PluginInstallCoordinator.instance.progress.addListener(listener);
+    try {
+      expect(
+        await PluginInstallCoordinator.instance.ensurePluginReady('iptv-vod'),
+        isTrue,
+      );
+      expect(
+        await PluginInstallCoordinator.instance.ensurePluginReady('iptv-vod'),
+        isTrue,
+      );
+    } finally {
+      PluginInstallCoordinator.instance.progress.removeListener(listener);
+    }
+
+    expect(progressSeen.whereType<PluginInstallProgress>(), isEmpty);
+    expect(PluginInstallCoordinator.instance.progress.value, isNull);
+  });
+
   test('ensureAllInstalled refreshes local checkout when manifest newer', () async {
     final hubDir = await Directory.systemTemp.createTemp('coord_local_hub_');
     addTearDown(() async {
