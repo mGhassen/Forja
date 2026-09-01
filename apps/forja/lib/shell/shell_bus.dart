@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
+import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
@@ -110,6 +111,16 @@ class ShellBus {
   /// Settings hub category to select on the next Settings show (`lan`, `playback`, …).
   static final ValueNotifier<String?> requestSettingsCategory =
       ValueNotifier<String?>(null);
+
+  /// Plugin pack install from web / deep link — consumed by Settings → Sources.
+  static final ValueNotifier<PluginInstallPrompt?> pendingPluginInstall =
+      ValueNotifier<PluginInstallPrompt?>(null);
+
+  static PluginInstallPrompt? takePendingPluginInstall() {
+    final value = pendingPluginInstall.value;
+    pendingPluginInstall.value = null;
+    return value;
+  }
 
   /// Last Settings hub category. Survives tab remount / resume sync — do not
   /// reset to Profile on cloud pull.

@@ -2,10 +2,11 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
-import 'package:forja/shared/engine/plugin_install_coordinator.dart';
-import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
+import 'package:forja/features/settings/settings_catalog.dart';
+import 'package:forja/shared/engine/plugin_install_prompt.dart';
+import 'package:forja/shell/shell_bus.dart';
 
-/// Handles `forja://install?manifest=<url>` from the web plugin catalog.
+/// Handles `forja://install?manifest=<url>` — opens Settings and asks before install.
 abstract final class ForjaPluginDeepLink {
   static final AppLinks _links = AppLinks();
   static StreamSubscription<Uri>? _sub;
@@ -16,10 +17,10 @@ abstract final class ForjaPluginDeepLink {
     try {
       final initial = await _links.getInitialLink();
       if (initial != null) {
-        unawaited(_handleUri(initial));
+        _queueInstall(initial);
       }
       _sub = _links.uriLinkStream.listen(
-        (uri) => unawaited(_handleUri(uri)),
+        _queueInstall,
         onError: (Object e) {
           debugPrint('[PluginDeepLink] stream error: $e');
         },
@@ -34,20 +35,21 @@ abstract final class ForjaPluginDeepLink {
     _sub = null;
   }
 
-  static Future<void> _handleUri(Uri uri) async {
+  static void _queueInstall(Uri uri) {
     if (!_isInstallLink(uri)) return;
     final manifest = _manifestFromUri(uri);
     if (manifest == null || manifest.isEmpty) {
       debugPrint('[PluginDeepLink] missing manifest param: $uri');
       return;
     }
-    debugPrint('[PluginDeepLink] install $manifest');
-    try {
-      await PluginInstallCoordinator.instance.installManifest(manifest);
-      scheduleForjaSyncPush();
-    } catch (e, st) {
-      debugPrint('[PluginDeepLink] install failed: $e\n$st');
-    }
+    debugPrint('[PluginDeepLink] queue install $manifest');
+    ShellBus.pendingPluginInstall.value = PluginInstallPrompt(
+      manifestUrl: manifest,
+    );
+    ShellBus.openSettings(
+      categoryId: SettingsCategoryId.sources,
+      enterDetail: true,
+    );
   }
 
   static bool _isInstallLink(Uri uri) {

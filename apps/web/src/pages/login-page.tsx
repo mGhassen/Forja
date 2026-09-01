@@ -47,7 +47,7 @@ function navigateAfterLogin(
     return
   }
   if (readPluginInstallIntent()) {
-    void navigate({ to: '/plugins', replace: true })
+    void navigate({ to: '/account/settings/forja', replace: true })
     return
   }
   void navigate({ to: '/account/profiles' })

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { readPluginInstallIntent } from '@/lib/forja-plugin-install'
 
 export type ApproveDeviceLinkResult =
   | { ok: true }
@@ -18,7 +19,9 @@ export function isSafeAuthNextPath(raw: string | null | undefined): boolean {
     raw === '/connect' ||
     raw.startsWith('/connect?') ||
     raw === '/plugins' ||
-    raw.startsWith('/plugins?')
+    raw.startsWith('/plugins?') ||
+    raw === '/account/settings/forja' ||
+    raw.startsWith('/account/settings/forja?')
   )
 }
 
@@ -54,8 +57,8 @@ export function clearPostLoginNext(): void {
 }
 
 export function readPostLoginNext(): {
-  to: '/connect' | '/plugins'
-  search?: { code?: string }
+  to: '/connect' | '/plugins' | '/account/settings/forja'
+  search?: { code?: string; manifest?: string; name?: string; version?: string }
 } | null {
   if (typeof window === 'undefined') return null
   const params = new URLSearchParams(window.location.search)
@@ -76,6 +79,24 @@ export function readPostLoginNext(): {
   if (!isSafeAuthNextPath(next)) return null
   if (next === '/plugins' || next?.startsWith('/plugins?')) {
     return { to: '/plugins' }
+  }
+  if (
+    next === '/account/settings/forja' ||
+    next?.startsWith('/account/settings/forja?')
+  ) {
+    const intent = readPluginInstallIntent()
+    return {
+      to: '/account/settings/forja',
+      ...(intent
+        ? {
+            search: {
+              manifest: intent.manifestUrl,
+              ...(intent.name ? { name: intent.name } : {}),
+              ...(intent.version ? { version: intent.version } : {}),
+            },
+          }
+        : {}),
+    }
   }
   return {
     to: '/connect',

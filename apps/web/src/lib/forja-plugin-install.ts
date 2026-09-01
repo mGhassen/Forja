@@ -8,24 +8,6 @@ export type PluginInstallIntent = {
   version?: string
 }
 
-export function buildForjaInstallDeepLink(manifestUrl: string): string {
-  const url = new URL('forja://install')
-  url.searchParams.set('manifest', manifestUrl.trim())
-  return url.toString()
-}
-
-export function tryOpenForjaInstallDeepLink(manifestUrl: string): void {
-  if (typeof window === 'undefined') return
-  const trimmed = manifestUrl.trim()
-  if (!trimmed) return
-  const anchor = document.createElement('a')
-  anchor.href = buildForjaInstallDeepLink(trimmed)
-  anchor.style.display = 'none'
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-}
-
 export function rememberPluginInstallIntent(intent: PluginInstallIntent): void {
   if (typeof window === 'undefined') return
   try {
@@ -77,4 +59,15 @@ export function isPackInstalled(
 ): boolean {
   const want = manifestUrl.trim()
   return packs.some((pack) => pack.manifestUrl.trim() === want)
+}
+
+export function isSafeManifestUrl(raw: string | null | undefined): boolean {
+  if (!raw?.trim()) return false
+  try {
+    const url = new URL(raw.trim())
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return false
+    return url.pathname.endsWith('.json')
+  } catch {
+    return false
+  }
 }

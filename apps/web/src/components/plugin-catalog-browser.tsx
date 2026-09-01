@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Check,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   LayoutGrid,
   Magnet,
@@ -12,6 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { AddToForjaButton } from '@/components/add-to-forja-button'
+import { Button } from '@/components/ui/button'
 import { useCommitDraft } from '@/hooks/use-commit-draft'
 import { useForjaSetting } from '@/hooks/use-user-setting'
 import type {
@@ -41,6 +44,21 @@ const ALL_KINDS: ForjaPluginKind[] = [
   'torrent',
   'iptv',
 ]
+
+const PAGE_SIZE = 20
+
+function paginate<T>(items: T[], page: number) {
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const start = (safePage - 1) * PAGE_SIZE
+  return {
+    page: safePage,
+    totalPages,
+    start: items.length === 0 ? 0 : start + 1,
+    end: Math.min(start + PAGE_SIZE, items.length),
+    items: items.slice(start, start + PAGE_SIZE),
+  }
+}
 
 function forjaFromServer(value: unknown): ForjaPayload {
   const payload = value as ForjaPayload | undefined
@@ -239,6 +257,7 @@ export function PluginCatalogBrowser({
 }: PluginCatalogBrowserProps) {
   const [query, setQuery] = useState('')
   const [kindFilter, setKindFilter] = useState<ForjaPluginKind | 'all'>('all')
+  const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
 
@@ -271,10 +290,25 @@ export function PluginCatalogBrowser({
     return list.sort((a, b) => a.name.localeCompare(b.name))
   }, [packs, kindFilter, query])
 
+  const pageSlice = useMemo(
+    () => paginate(filtered, page),
+    [filtered, page],
+  )
+
   const selected =
     filtered.find((p) => p.id === selectedId) ??
     filtered[0] ??
     null
+
+  useEffect(() => {
+    setPage(1)
+  }, [query, kindFilter])
+
+  useEffect(() => {
+    if (page > pageSlice.totalPages) {
+      setPage(pageSlice.totalPages)
+    }
+  }, [page, pageSlice.totalPages])
 
   useEffect(() => {
     if (filtered.length === 0) {
@@ -326,7 +360,11 @@ export function PluginCatalogBrowser({
           />
         </div>
         <p className="shrink-0 font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
-          {isLoading ? 'Loading…' : `${filtered.length} of ${packs.length}`}
+          {isLoading
+            ? 'Loading…'
+            : filtered.length === 0
+              ? '0 packs'
+              : `${pageSlice.start}-${pageSlice.end} of ${filtered.length}`}
         </p>
       </div>
 
@@ -348,8 +386,6 @@ export function PluginCatalogBrowser({
           />
         ))}
       </div>
-
-      {/* Master / detail */}
       <div className="overflow-hidden rounded-xl border border-white/10 bg-[#121110]">
         <div className="grid min-h-[min(70vh,640px)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
           {/* List */}
@@ -372,7 +408,7 @@ export function PluginCatalogBrowser({
                   No packs match your search.
                 </p>
               ) : (
-                filtered.map((pack) => (
+                pageSlice.items.map((pack) => (
                   <PluginListRow
                     key={pack.id}
                     pack={pack}
@@ -383,9 +419,40 @@ export function PluginCatalogBrowser({
                 ))
               )}
             </div>
+            {!isLoading && filtered.length > PAGE_SIZE ? (
+              <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-3 py-2.5 sm:px-4">
+                <span className="font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+                  Page {pageSlice.page} of {pageSlice.totalPages}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-[rgba(237,230,218,0.6)] hover:text-[#EDE6DA]"
+                    disabled={pageSlice.page <= 1}
+                    aria-label="Previous page"
+                    onClick={() => setPage(pageSlice.page - 1)}
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-[rgba(237,230,218,0.6)] hover:text-[#EDE6DA]"
+                    disabled={pageSlice.page >= pageSlice.totalPages}
+                    aria-label="Next page"
+                    onClick={() => setPage(pageSlice.page + 1)}
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
-          {/* Detail — desktop */}
+          {/* Detail - desktop */}
           <div className="hidden flex-col bg-[#0f0e0d] lg:flex">
             {selected ? (
               <PluginDetailPanel
@@ -399,7 +466,7 @@ export function PluginCatalogBrowser({
         </div>
       </div>
 
-      {/* Detail — mobile sheet */}
+      {/* Detail - mobile sheet */}
       {mobileDetailOpen && selected ? (
         <div className="fixed inset-0 z-50 lg:hidden">
           <button

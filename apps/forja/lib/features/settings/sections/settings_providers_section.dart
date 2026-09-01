@@ -13,9 +13,11 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/features/settings/widgets/settings_plugin_install_progress.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/plugin_install_prompt_dialog.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:forja/shell/shell_bus.dart';
 
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr.
 class SettingsProvidersSection extends ConsumerStatefulWidget {
@@ -56,11 +58,43 @@ class _SettingsProvidersSectionState
   Set<int> _prowlarrSelectedTagIds = {};
   bool _prowlarrTagsLoaded = false;
   bool _indexersHydrated = false;
+  bool _showingPluginInstallPrompt = false;
 
   @override
   void initState() {
     super.initState();
     PluginInstallCoordinator.instance.progress.addListener(_onPluginInstallProgress);
+    ShellBus.pendingPluginInstall.addListener(_onPendingPluginInstallQueued);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowPendingPluginInstall());
+  }
+
+  void _onPendingPluginInstallQueued() {
+    if (ShellBus.pendingPluginInstall.value == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowPendingPluginInstall());
+  }
+
+  Future<void> _maybeShowPendingPluginInstall() async {
+    if (!mounted || _showingPluginInstallPrompt) return;
+    if (PluginInstallPromptDialog.isShowing) return;
+    final prompt = ShellBus.takePendingPluginInstall();
+    if (prompt == null) return;
+    _showingPluginInstallPrompt = true;
+    try {
+      final packs = await PluginRegistry.instance.listPacksRaw();
+      if (!mounted) return;
+      final already = packs.any(
+        (p) => p.sourceUrl.trim() == prompt.manifestUrl.trim(),
+      );
+      await PluginInstallPromptDialog.show(
+        context,
+        prompt: prompt,
+        alreadyInstalled: already,
+      );
+      if (!mounted) return;
+      ref.invalidate(enginePacksProvider);
+    } finally {
+      if (mounted) _showingPluginInstallPrompt = false;
+    }
   }
 
   void _onPluginInstallProgress() {
@@ -69,6 +103,7 @@ class _SettingsProvidersSectionState
 
   @override
   void dispose() {
+    ShellBus.pendingPluginInstall.removeListener(_onPendingPluginInstallQueued);
     PluginInstallCoordinator.instance.progress.removeListener(_onPluginInstallProgress);
     _addonController.dispose();
     _nuvioController.dispose();
