@@ -37,3 +37,10 @@ Listenable? catalogChromeFilterListenable(String? tabId) {
     CatalogVerticalFiltersRegistry.selectedIdFor(id),
   ]);
 }
+
+/// Layout `hideWhenTypeFilter` — hide when Films / Series is active, not
+/// Categories (genre / country) or vertical provider filters.
+bool catalogChromeHidesTypeFilterRails(String? tabId) {
+  if (tabId == null) return false;
+  return ShellBus.hubCategoryFor(tabId).value != null;
+}

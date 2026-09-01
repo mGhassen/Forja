@@ -249,7 +249,9 @@ Future<StremioResolveOutcome> resolveStremioStream({
       season: season,
       episode: episode,
       fileIdx: fileIdx,
-      onStatus: onStatus,
+      onStatus: onStatus == null
+          ? null
+          : (status) => onStatus(status.displayMessage),
     );
     if (isCancelled?.call() == true) {
       return StremioResolveFailure(

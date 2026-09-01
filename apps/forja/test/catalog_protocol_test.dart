@@ -255,6 +255,45 @@ void main() {
     });
   });
 
+  group('hideWhenTypeFilter chrome', () {
+    const tabId = 'anime';
+
+    tearDown(() {
+      ShellBus.hubCategoryFor(tabId).value = null;
+      ShellBus.hubSelectedCategoryIdFor(tabId).value = null;
+    });
+
+    test('genre category does not hide type-filter rails', () {
+      ShellBus.hubSelectedCategoryIdFor(tabId).value = 'shonen';
+      expect(catalogChromeHidesTypeFilterRails(tabId), isFalse);
+    });
+
+    test('Films / Series hides type-filter rails', () {
+      ShellBus.hubCategoryFor(tabId).value = ShellHomeCategory.films;
+      expect(catalogChromeHidesTypeFilterRails(tabId), isTrue);
+      ShellBus.hubCategoryFor(tabId).value = ShellHomeCategory.tvShows;
+      expect(catalogChromeHidesTypeFilterRails(tabId), isTrue);
+    });
+  });
+
+  group('layout feedRails', () {
+    test('uses feedRails when declared', () {
+      final ids = catalogLayoutFeedRailIds({
+        'feed': true,
+        'feedRails': ['spotlight', 'latest', 'trending'],
+      });
+      expect(ids, {'spotlight', 'latest', 'trending'});
+    });
+
+    test('falls back to legacy home rails when feedRails omitted', () {
+      final ids = catalogLayoutFeedRailIds(
+        {'feed': true},
+        legacyWhenFeedOnly: {'spotlight', 'featured'},
+      );
+      expect(ids, {'spotlight', 'featured'});
+    });
+  });
+
   group('cache', () {
     setUp(CatalogCache.instance.wipeAll);
 

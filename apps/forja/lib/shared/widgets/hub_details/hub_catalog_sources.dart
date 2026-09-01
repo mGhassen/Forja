@@ -119,8 +119,14 @@ Future<void> _playTorrent({
   if (!context.mounted) return;
 
   var cancelled = false;
-  final overlayMessage = ValueNotifier<String>(
-    playbackResolveLabel(useDebrid: useDebrid, debridService: debridService),
+  final overlayTorrentStatus = ValueNotifier<TorrentLoadingStatus?>(
+    torrentLoadingStatusGeneric(
+      playbackResolveLabel(useDebrid: useDebrid, debridService: debridService),
+      hint: playbackSourceHint(
+        useDebrid: useDebrid,
+        debridService: debridService,
+      ),
+    ),
   );
   final fadeOutNotifier = ValueNotifier(false);
   final failureNotifier = ValueNotifier<ResolveFailure?>(null);
@@ -131,7 +137,7 @@ Future<void> _playTorrent({
     if (cleanedUp) return;
     cleanedUp = true;
     disposeLoadingOverlayNotifiers([
-      overlayMessage,
+      overlayTorrentStatus,
       fadeOutNotifier,
       failureNotifier,
     ]);
@@ -170,7 +176,7 @@ Future<void> _playTorrent({
       loadingDialogContext = dialogContext;
       return LoadingOverlay(
         movie: movie,
-        messageNotifier: overlayMessage,
+        torrentStatusNotifier: overlayTorrentStatus,
         fadeOutNotifier: fadeOutNotifier,
         failureNotifier: failureNotifier,
         onCancel: () {
@@ -195,7 +201,10 @@ Future<void> _playTorrent({
 
   try {
     if (!magnetLink.startsWith('magnet:')) {
-      overlayMessage.value = 'Resolving download link...';
+      overlayTorrentStatus.value = torrentLoadingStatusGeneric(
+        'Resolving download link…',
+        hint: 'Fetching the magnet from the torrent page.',
+      );
       final resolved = await linkResolver.resolve(magnetLink);
       if (cancelled) {
         popLoading();
@@ -210,9 +219,15 @@ Future<void> _playTorrent({
       }
     }
 
-    overlayMessage.value = playbackResolveLabel(
-      useDebrid: useDebrid,
-      debridService: debridService,
+    overlayTorrentStatus.value = torrentLoadingStatusGeneric(
+      playbackResolveLabel(
+        useDebrid: useDebrid,
+        debridService: debridService,
+      ),
+      hint: playbackSourceHint(
+        useDebrid: useDebrid,
+        debridService: debridService,
+      ),
     );
 
     final episodic = hubMediaIsEpisodic(movie);
@@ -224,7 +239,7 @@ Future<void> _playTorrent({
       season: episodic ? (season ?? 1) : null,
       episode: episodic ? (episode ?? 1) : null,
       onStatus: (status) {
-        if (!cancelled) overlayMessage.value = status;
+        if (!cancelled) overlayTorrentStatus.value = status;
       },
     );
     if (cancelled) {

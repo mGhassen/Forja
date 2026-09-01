@@ -670,6 +670,27 @@ int? catalogRailPageSizeFrom(Map<String, dynamic>? source) {
   return null;
 }
 
+/// Pack `layout.pages.*.feedRails` — rail ids batched through the `feed` action.
+Set<String> catalogLayoutFeedRailIds(
+  Map<String, dynamic> pageMap, {
+  Set<String> legacyWhenFeedOnly = const {},
+}) {
+  final out = <String>{};
+  final raw = pageMap['feedRails'];
+  if (raw is List) {
+    for (final r in raw) {
+      final id = r.toString().trim();
+      if (id.isNotEmpty) out.add(id);
+    }
+  }
+  if (out.isEmpty &&
+      pageMap['feed'] == true &&
+      legacyWhenFeedOnly.isNotEmpty) {
+    return Set<String>.from(legacyWhenFeedOnly);
+  }
+  return out;
+}
+
 bool? catalogRailHasMoreFrom(Map<String, dynamic>? source) {
   if (source == null) return null;
   final v = source['hasMore'];

@@ -63,6 +63,17 @@ pub struct TorrentStatus {
     pub state: String,
 }
 
+/// Disk + in-session download usage for the Sources panel cache row.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DownloadCacheSnapshot {
+    pub cache_dir: String,
+    pub disk_bytes: u64,
+    pub progress_bytes: u64,
+    pub total_bytes: u64,
+    pub torrent_count: u32,
+    pub active: bool,
+}
+
 #[derive(Debug, Serialize)]
 pub struct StreamResponse {
     pub url: String,
@@ -938,6 +949,86 @@ impl TorrentEngine {
             return Ok(());
         }
         std::fs::remove_dir_all(&dir).map_err(|e| e.to_string())
+    }
+
+    /// Session torrent progress + on-disk bytes under [`Self::download_dir`].
+    pub fn download_cache_snapshot(&self) -> DownloadCacheSnapshot {
+        let cache_dir = Self::download_dir();
+        let disk_bytes = disk_cache::directory_bytes(&cache_dir);
+        let mut progress_bytes = 0u64;
+        let mut total_bytes = 0u64;
+        let mut torrent_count = 0u32;
+        if let Ok(inner) = self.inner.lock() {
+            if let (Some(api), Some(session)) = (inner.api.as_ref(), inner.session.as_ref()) {
+                for torrent in api.api_torrent_list().torrents {
+                    torrent_count += 1;
+                    let Some(id) = torrent.id else {
+                        continue;
+                    };
+                    let Some(handle) = session.get(TorrentIdOrHash::Id(id)) else {
+                        continue;
+                    };
+                    let stats = handle.stats();
+                    progress_bytes = progress_bytes.saturating_add(stats.progress_bytes);
+                    total_bytes = total_bytes.saturating_add(stats.total_bytes);
+                }
+            }
+        }
+        let active = torrent_count > 0
+            && (progress_bytes > 0 || total_bytes > 0)
+            && progress_bytes < total_bytes.max(1);
+        DownloadCacheSnapshot {
+            cache_dir: cache_dir.to_string_lossy().into_owned(),
+            disk_bytes,
+            progress_bytes,
+            total_bytes,
+            torrent_count,
+            active,
+        }
+    }
+
+    pub fn download_cache_snapshot_json(&self) -> String {
+        serde_json::to_string(&self.download_cache_snapshot()).unwrap_or_else(|_| {
+            r#"{"cache_dir":"","disk_bytes":0,"progress_bytes":0,"total_bytes":0,"torrent_count":0,"active":false}"#.into()
+        })
+    }
+
+    /// Stop every swarm in the session and wipe the download directory.
+    pub fn clear_all_downloads(&self) -> DownloadCacheSnapshot {
+        self.runtime.block_on(async { self.clear_all_downloads_async().await })
+    }
+
+    pub fn clear_all_downloads_json(&self) -> String {
+        serde_json::to_string(&self.clear_all_downloads()).unwrap_or_else(|_| {
+            r#"{"cache_dir":"","disk_bytes":0,"progress_bytes":0,"total_bytes":0,"torrent_count":0,"active":false}"#.into()
+        })
+    }
+
+    async fn clear_all_downloads_async(&self) -> DownloadCacheSnapshot {
+        let api = {
+            let Ok(inner) = self.inner.lock() else {
+                let _ = Self::clear_cache_dir();
+                return self.download_cache_snapshot();
+            };
+            inner.api.clone()
+        };
+        if let Some(api) = api {
+            let ids: Vec<usize> = api
+                .api_torrent_list()
+                .torrents
+                .into_iter()
+                .filter_map(|t| t.id)
+                .collect();
+            for id in ids {
+                Self::delete_torrent_files(&api, id).await;
+            }
+        }
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.active = None;
+        }
+        let _ = self.reclaim_disk_cache(0);
+        let _ = Self::clear_cache_dir();
+        self.download_cache_snapshot()
     }
 
     pub fn status_json(&self) -> String {

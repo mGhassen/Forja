@@ -80,8 +80,9 @@ class _CatalogShellState extends State<CatalogShell>
   int? _layoutPageSize;
   int? _pluginConfigPageSize;
 
-  /// Pack `feed` action — one JS call claims across spotlight / featured / …
+  /// Pack `feed` action — one JS call claims across layout [feedRails].
   bool _pageUsesFeed = false;
+  Set<String> _layoutFeedRailIds = {};
   Map<String, List<CatalogMetaItem>> _feedRails = {};
   String _feedCacheKey = '';
   Future<Map<String, List<CatalogMetaItem>>>? _feedLoadFuture;
@@ -273,6 +274,10 @@ class _CatalogShellState extends State<CatalogShell>
     final page = pages[_pageKey] ?? pages.values.first;
     final pageMap = Map<String, dynamic>.from(page as Map);
     _pageUsesFeed = pageMap['feed'] == true;
+    _layoutFeedRailIds = catalogLayoutFeedRailIds(
+      pageMap,
+      legacyWhenFeedOnly: _packFeedRailIds,
+    );
     _layoutPageSize = catalogRailPageSizeFrom(pageMap);
     if (pluginEntry != null) {
       _pluginConfigPageSize = catalogRailPageSizeFrom(
@@ -511,7 +516,7 @@ class _CatalogShellState extends State<CatalogShell>
     if (!_pageUsesFeed) return false;
     if ((spec['moodSource'] ?? '').toString().isNotEmpty) return false;
     final rail = _packRailId(spec);
-    return rail != null && _packFeedRailIds.contains(rail);
+    return rail != null && _layoutFeedRailIds.contains(rail);
   }
 
   String _feedMemoKey() => 'feed|${catalogChromeFilterEpoch(widget.tabId)}';
@@ -720,14 +725,9 @@ class _CatalogShellState extends State<CatalogShell>
 
   bool get _fullHeroBleed => hubIsFullCinematicHero(context);
 
-  /// Chrome leaf that should hide `hideWhenTypeFilter` rails (and their bleed).
-  bool _chromeHidesTypeFilterRail() {
-    final chrome = catalogChromeFilters(
-      tabId: widget.tabId,
-      pluginId: widget.pluginId,
-    );
-    return chrome.any((f) => f != null);
-  }
+  /// Chrome Films / Series — hide `hideWhenTypeFilter` rails (not Categories).
+  bool _chromeHidesTypeFilterRail() =>
+      catalogChromeHidesTypeFilterRails(widget.tabId);
 
   String? get _bleedRailId {
     if (!_fullHeroBleed) return null;

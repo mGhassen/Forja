@@ -443,6 +443,12 @@ class RustLib {
     ),
   );
 
+  String torrentDownloadCacheSnapshotJson() =>
+      _readString(_native.ffi_torrent_download_cache_snapshot_json());
+
+  String torrentClearAllDownloadsJson() =>
+      _readString(_native.ffi_torrent_clear_all_downloads_json());
+
   String torrentStreamJson(
     String magnet, {
     int? season,
@@ -885,6 +891,16 @@ final class _FfiNative {
             'ffi_torrent_reclaim_disk_cache_json',
           )
           .asFunction(),
+      ffi_torrent_download_cache_snapshot_json = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>(
+            'ffi_torrent_download_cache_snapshot_json',
+          )
+          .asFunction(),
+      ffi_torrent_clear_all_downloads_json = lib
+          .lookup<ffi.NativeFunction<_VersionNative>>(
+            'ffi_torrent_clear_all_downloads_json',
+          )
+          .asFunction(),
       ffi_torrent_stream_json = lib
           .lookup<ffi.NativeFunction<_TorrentStreamJsonNative>>(
             'ffi_torrent_stream_json',
@@ -1149,6 +1165,9 @@ final class _FfiNative {
   final void Function(int) ffi_torrent_set_peer_limit;
   final void Function(int) ffi_torrent_set_disk_cache_bytes;
   final ffi.Pointer<ffi.Char> Function(int) ffi_torrent_reclaim_disk_cache_json;
+  final ffi.Pointer<ffi.Char> Function()
+  ffi_torrent_download_cache_snapshot_json;
+  final ffi.Pointer<ffi.Char> Function() ffi_torrent_clear_all_downloads_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, int, int, int)
   ffi_torrent_stream_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)

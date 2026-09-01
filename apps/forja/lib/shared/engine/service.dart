@@ -54,9 +54,14 @@ class EngineService {
 
   void cancelPending() {
     abortInFlightExtracts();
-    EngineRuntime.abortTorrentSearchForks();
+    cancelTorrentSearch();
     cancelLiveCatalog();
     Engine.cancelEngineJsExtracts();
+  }
+
+  /// Stop in-flight torrent indexer VMs (Sources panel tab switch / new search).
+  void cancelTorrentSearch() {
+    EngineRuntime.abortTorrentSearchForks();
   }
 
   /// Abort in-flight catalog hub actions (tab switch / logout).

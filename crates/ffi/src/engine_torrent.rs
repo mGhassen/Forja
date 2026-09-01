@@ -77,6 +77,14 @@ pub fn torrent_reclaim_disk_cache_json(target_bytes: u64) -> String {
     TORRENT.reclaim_disk_cache_json(target_bytes)
 }
 
+pub fn torrent_download_cache_snapshot_json() -> String {
+    TORRENT.download_cache_snapshot_json()
+}
+
+pub fn torrent_clear_all_downloads_json() -> String {
+    TORRENT.clear_all_downloads_json()
+}
+
 pub fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32) -> String {
     let season = if season < 0 { None } else { Some(season) };
     let episode = if episode < 0 { None } else { Some(episode) };

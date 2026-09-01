@@ -55,6 +55,8 @@ namespace forja {
     void torrent_set_peer_limit(u32 limit);
     void torrent_set_disk_cache_bytes(u64 bytes);
     string torrent_reclaim_disk_cache_json(u64 target_bytes);
+    string torrent_download_cache_snapshot_json();
+    string torrent_clear_all_downloads_json();
     string torrent_stream_json(string magnet, i32 season, i32 episode, i32 file_idx);
     string torrent_list_files_json(string magnet);
     i32 proxy_start(u32 preferred_port);

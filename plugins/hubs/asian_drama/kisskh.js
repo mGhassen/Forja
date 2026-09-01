@@ -21,6 +21,14 @@ function kisskhLayout() {
   return {
     pages: {
       asian_drama: {
+        feed: true,
+        feedRails: [
+          'spotlight',
+          'latest',
+          'trending',
+          'most_viewed',
+          'upcoming',
+        ],
         pageSize: 24,
         widgets: [
           {
@@ -336,6 +344,75 @@ function kisskhFilters() {
   };
 }
 
+var KISSKH_FEED_SLICES = [
+  { rail: 'spotlight', limit: 5 },
+  { rail: 'latest', limit: 24 },
+  { rail: 'trending', limit: 24 },
+  { rail: 'most_viewed', limit: 24 },
+  { rail: 'upcoming', limit: 24 },
+];
+
+function kisskhFeedLimit(railId, params) {
+  for (var i = 0; i < KISSKH_FEED_SLICES.length; i++) {
+    if (KISSKH_FEED_SLICES[i].rail === railId) {
+      return KISSKH_FEED_SLICES[i].limit;
+    }
+  }
+  var n = Number(params.limit);
+  return n > 0 ? n : 24;
+}
+
+function kisskhFilteredFeed(ctx, cfg, params) {
+  var total = 0;
+  for (var i = 0; i < KISSKH_FEED_SLICES.length; i++) {
+    total += KISSKH_FEED_SLICES[i].limit;
+  }
+  var fetchParams = Object.assign({}, params, { limit: total, page: 1 });
+  return kisskhList(ctx, cfg, kisskhExplorePath(fetchParams), total).then(
+    function (all) {
+      var rails = {};
+      var offset = 0;
+      for (var j = 0; j < KISSKH_FEED_SLICES.length; j++) {
+        var spec = KISSKH_FEED_SLICES[j];
+        rails[spec.rail] = all.slice(offset, offset + spec.limit);
+        offset += spec.limit;
+      }
+      return hubOk('feed', { rails: rails }, { maxAge: 600, swr: 3600 });
+    },
+  );
+}
+
+function kisskhUnfilteredFeed(ctx, cfg, params) {
+  var jobs = [];
+  for (var i = 0; i < KISSKH_FEED_SLICES.length; i++) {
+    (function (spec) {
+      var path = KISSKH_RAILS[spec.rail];
+      if (!path) return;
+      jobs.push(
+        kisskhList(ctx, cfg, path, kisskhFeedLimit(spec.rail, params)).then(
+          function (items) {
+            return { rail: spec.rail, items: items };
+          },
+        ),
+      );
+    })(KISSKH_FEED_SLICES[i]);
+  }
+  return Promise.all(jobs).then(function (rows) {
+    var rails = {};
+    for (var k = 0; k < rows.length; k++) {
+      rails[rows[k].rail] = rows[k].items;
+    }
+    return hubOk('feed', { rails: rails }, { maxAge: 600, swr: 3600 });
+  });
+}
+
+function kisskhFeed(ctx, cfg, params) {
+  if (kisskhChromeFiltered(params)) {
+    return kisskhFilteredFeed(ctx, cfg, params);
+  }
+  return kisskhUnfilteredFeed(ctx, cfg, params);
+}
+
 function extract(ctx) {
   var action = hubAction(ctx);
   var cfg = hubConfig(ctx, KISSKH_DEFAULTS);
@@ -346,6 +423,11 @@ function extract(ctx) {
   }
   if (action === 'filters') {
     return hubOk('filters', kisskhFilters(), { maxAge: 86400 });
+  }
+  if (action === 'feed') {
+    return kisskhFeed(ctx, cfg, params).catch(function (e) {
+      return hubFail('feed', 'UPSTREAM', e && e.message, true);
+    });
   }
   if (action === 'details') {
     return kisskhDetails(ctx, cfg, params).catch(function (e) {

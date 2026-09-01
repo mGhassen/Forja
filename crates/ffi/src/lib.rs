@@ -470,6 +470,28 @@ fn torrent_reclaim_disk_cache_json(target_bytes: u64) -> String {
     }
 }
 
+fn torrent_download_cache_snapshot_json() -> String {
+    #[cfg(feature = "torrent-engine")]
+    {
+        engine_torrent::torrent_download_cache_snapshot_json()
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        r#"{"cache_dir":"","disk_bytes":0,"progress_bytes":0,"total_bytes":0,"torrent_count":0,"active":false}"#.into()
+    }
+}
+
+fn torrent_clear_all_downloads_json() -> String {
+    #[cfg(feature = "torrent-engine")]
+    {
+        engine_torrent::torrent_clear_all_downloads_json()
+    }
+    #[cfg(not(feature = "torrent-engine"))]
+    {
+        r#"{"cache_dir":"","disk_bytes":0,"progress_bytes":0,"total_bytes":0,"torrent_count":0,"active":false}"#.into()
+    }
+}
+
 fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: i32) -> String {
     #[cfg(feature = "torrent-engine")]
     {

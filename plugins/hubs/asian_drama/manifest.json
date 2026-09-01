@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-asian-drama",
   "name": "ForjaHQ Asian Drama",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "plugins": [
     {
       "id": "kisskh-hub",
@@ -21,7 +21,8 @@
         "rail",
         "search",
         "details",
-        "filters"
+        "filters",
+        "feed"
       ],
       "nav": {
         "tabId": "asian_drama",

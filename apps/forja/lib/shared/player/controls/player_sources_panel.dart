@@ -1387,6 +1387,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   /// Stop in-flight work for kinds that are no longer selected.
   void _abortHiddenKindFetches(String keepKind) {
     if (keepKind != 'torrents' && _searching) {
+      EngineService.instance.cancelTorrentSearch();
       _searchGen++;
       _searching = false;
       _results = [];
@@ -1923,6 +1924,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   void _abortTorrentSearch() {
     if (!_searching) return;
+    EngineService.instance.cancelTorrentSearch();
     setState(() {
       _searchGen++;
       _searching = false;
@@ -1976,6 +1978,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final episode = widget.episode ?? 1;
 
     if (_selectedSourceId == 'jackett' || _selectedSourceId == 'prowlarr') {
+      EngineService.instance.cancelTorrentSearch();
       setState(() {
         _searching = true;
         _error = null;
@@ -2025,6 +2028,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       });
       return;
     }
+    EngineService.instance.cancelTorrentSearch();
     final replace =
         _results.isEmpty || !TorrentSearchProviders.isAllChip(_selectedSourceId);
     setState(() {
@@ -2106,9 +2110,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _applyTorrentSearchPartial(List<Map<String, dynamic>> batch) {
-    if (batch.isEmpty) return;
-    final next = batch.map(TorrentResult.fromJson).toList();
-    setState(() => _appendTorrentSearchBatch(next));
+    if (batch.isEmpty || !mounted) return;
+    try {
+      final next = batch.map(TorrentResult.fromJson).toList();
+      setState(() => _appendTorrentSearchBatch(next));
+    } catch (e, st) {
+      debugPrint('[sources] torrent partial failed: $e\n$st');
+    }
   }
 
   Future<void> _searchForjaMovieProgressive(
@@ -2179,35 +2187,36 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
 
     final onDone = _onTorrentProviderDone(gen, hitsNeeded: 2);
-    await Future.wait([
-      Engine.searchTorrentsProgressive(
-        seasonQuery,
-        imdbId: widget.movie.imdbId,
-        season: season,
-        enabledProviders: enabledProviders,
-        isCancelled: () => !mounted || gen != _searchGen || closed,
-        onProviderDone: onDone,
-        onPartial: (batch) {
-          if (closed) return;
-          seasonSoFar = [...seasonSoFar, ...batch];
-          paintRaw(++paintSeq);
-        },
-      ),
-      Engine.searchTorrentsProgressive(
-        episodeQuery,
-        imdbId: widget.movie.imdbId,
-        season: season,
-        episode: episode,
-        enabledProviders: enabledProviders,
-        isCancelled: () => !mounted || gen != _searchGen || closed,
-        onProviderDone: onDone,
-        onPartial: (batch) {
-          if (closed) return;
-          episodeSoFar = [...episodeSoFar, ...batch];
-          paintRaw(++paintSeq);
-        },
-      ),
-    ]);
+    // Season then episode — never two torrentSearchFork VMs at once (parallel
+    // QuickJS heaps OOM/SIGSEGV on desktop when both TV queries run together).
+    await Engine.searchTorrentsProgressive(
+      seasonQuery,
+      imdbId: widget.movie.imdbId,
+      season: season,
+      enabledProviders: enabledProviders,
+      isCancelled: () => !mounted || gen != _searchGen || closed,
+      onProviderDone: onDone,
+      onPartial: (batch) {
+        if (closed) return;
+        seasonSoFar = [...seasonSoFar, ...batch];
+        paintRaw(++paintSeq);
+      },
+    );
+    if (!mounted || gen != _searchGen || closed) return;
+    await Engine.searchTorrentsProgressive(
+      episodeQuery,
+      imdbId: widget.movie.imdbId,
+      season: season,
+      episode: episode,
+      enabledProviders: enabledProviders,
+      isCancelled: () => !mounted || gen != _searchGen || closed,
+      onProviderDone: onDone,
+      onPartial: (batch) {
+        if (closed) return;
+        episodeSoFar = [...episodeSoFar, ...batch];
+        paintRaw(++paintSeq);
+      },
+    );
     closed = true;
     if (!mounted || gen != _searchGen) return;
     final episodeFiltered = (await Engine.filterTorrents(

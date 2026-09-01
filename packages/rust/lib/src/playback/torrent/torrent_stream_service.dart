@@ -67,6 +67,69 @@ class TorrentStats {
 /// Engine lifecycle states.
 enum EngineState { stopped, starting, ready, error }
 
+/// Session + disk usage for the Sources panel torrent cache row.
+class TorrentDownloadCacheSnapshot {
+  const TorrentDownloadCacheSnapshot({
+    required this.cacheDir,
+    required this.diskBytes,
+    required this.progressBytes,
+    required this.totalBytes,
+    required this.torrentCount,
+    required this.active,
+  });
+
+  final String cacheDir;
+  final int diskBytes;
+  final int progressBytes;
+  final int totalBytes;
+  final int torrentCount;
+  final bool active;
+
+  static const empty = TorrentDownloadCacheSnapshot(
+    cacheDir: '',
+    diskBytes: 0,
+    progressBytes: 0,
+    totalBytes: 0,
+    torrentCount: 0,
+    active: false,
+  );
+
+  bool get shouldShow =>
+      torrentCount > 0 || progressBytes > 0 || diskBytes > 200 * 1024;
+
+  String label({String? speedLabel}) {
+    if (torrentCount > 0 && totalBytes > 0) {
+      final loaded = TorrentStreamService.formatStorageBytes(progressBytes);
+      final total = TorrentStreamService.formatStorageBytes(totalBytes);
+      if (speedLabel != null && speedLabel.isNotEmpty) {
+        return 'Downloading: $loaded / $total · $speedLabel';
+      }
+      return 'Downloading: $loaded / $total';
+    }
+    if (diskBytes > 0) {
+      return 'Torrent cache: ${TorrentStreamService.formatStorageBytes(diskBytes)}';
+    }
+    return 'Torrent cache: 0 B';
+  }
+
+  static TorrentDownloadCacheSnapshot fromJson(String json) {
+    if (json.isEmpty) return empty;
+    try {
+      final m = jsonDecode(json) as Map<String, dynamic>;
+      return TorrentDownloadCacheSnapshot(
+        cacheDir: m['cache_dir'] as String? ?? '',
+        diskBytes: (m['disk_bytes'] as num?)?.toInt() ?? 0,
+        progressBytes: (m['progress_bytes'] as num?)?.toInt() ?? 0,
+        totalBytes: (m['total_bytes'] as num?)?.toInt() ?? 0,
+        torrentCount: (m['torrent_count'] as num?)?.toInt() ?? 0,
+        active: m['active'] == true,
+      );
+    } catch (_) {
+      return empty;
+    }
+  }
+}
+
 /// librqbit download dir usage from [TorrentStreamService.queryDiskCacheStats].
 class TorrentDiskCacheStats {
   const TorrentDiskCacheStats({
@@ -349,24 +412,32 @@ class TorrentStreamService {
   static Directory cacheDirectory() =>
       Directory('${Directory.systemTemp.path}${Platform.pathSeparator}torrent');
 
-  /// Disk usage under the librqbit download dir — full folder size on disk.
-  ///
-  /// The Rust reclaim counter skips `dht_state.json`; the UI uses a directory
-  /// walk so the label matches what Clear actually frees.
-  Future<TorrentDiskCacheStats> queryDiskCacheStats() async {
+  /// Session swarms + on-disk bytes under `{temp}/torrent`.
+  Future<TorrentDownloadCacheSnapshot> queryDownloadCacheSnapshot() async {
     if (!PlatformPlayback.capabilities.localTorrentEngine) {
-      return TorrentDiskCacheStats.empty;
+      return TorrentDownloadCacheSnapshot.empty;
     }
-    final usedBytes = await _cacheDirectoryBytesOnDisk();
-    var protectedBytes = 0;
     if (RustLib.isInitialized) {
-      protectedBytes = TorrentDiskCacheStats.fromJson(
-        RustLib.instance.torrentReclaimDiskCacheJson(),
-      ).protectedBytes;
+      return TorrentDownloadCacheSnapshot.fromJson(
+        RustLib.instance.torrentDownloadCacheSnapshotJson(),
+      );
     }
+    return TorrentDownloadCacheSnapshot(
+      cacheDir: cacheDirectory().path,
+      diskBytes: await _cacheDirectoryBytesOnDisk(),
+      progressBytes: 0,
+      totalBytes: 0,
+      torrentCount: 0,
+      active: false,
+    );
+  }
+
+  /// Legacy disk-only stats (Settings / LAN).
+  Future<TorrentDiskCacheStats> queryDiskCacheStats() async {
+    final snap = await queryDownloadCacheSnapshot();
     return TorrentDiskCacheStats(
-      usedBytes: usedBytes,
-      protectedBytes: protectedBytes,
+      usedBytes: snap.diskBytes,
+      protectedBytes: 0,
       reclaimedBytes: 0,
       evictions: 0,
     );
@@ -407,50 +478,26 @@ class TorrentStreamService {
     return _directorySizeBytes(dir);
   }
 
-  static Future<void> _purgeResidualCacheMetadata() async {
-    final dht = File(
-      '${cacheDirectory().path}${Platform.pathSeparator}dht_state.json',
-    );
-    if (!await dht.exists()) return;
-    try {
-      await dht.delete();
-    } catch (_) {}
-  }
-
-  Future<TorrentDiskCacheStats> clearCacheDirectory() async {
-    await stop();
-    var reclaim = TorrentDiskCacheStats.empty;
-    if (RustLib.isInitialized) {
-      reclaim = TorrentDiskCacheStats.fromJson(
-        RustLib.instance.torrentReclaimDiskCacheJson(targetBytes: 0),
-      );
-    } else {
-      final dir = cacheDirectory();
-      if (await dir.exists()) {
-        await dir.delete(recursive: true);
-      }
+  Future<TorrentDownloadCacheSnapshot> clearCacheDirectory() async {
+    if (!PlatformPlayback.capabilities.localTorrentEngine) {
+      return TorrentDownloadCacheSnapshot.empty;
     }
-    await _purgeResidualCacheMetadata();
+    if (RustLib.isInitialized) {
+      final snap = TorrentDownloadCacheSnapshot.fromJson(
+        RustLib.instance.torrentClearAllDownloadsJson(),
+      );
+      _log(
+        snap.torrentCount == 0 && snap.diskBytes == 0
+            ? 'Stopped and cleared all torrent downloads'
+            : 'Torrent downloads: ${snap.label()} remaining',
+      );
+      return snap;
+    }
     final dir = cacheDirectory();
     if (await dir.exists()) {
-      try {
-        final entries = await dir.list(followLinks: false).toList();
-        if (entries.isEmpty) await dir.delete();
-      } catch (_) {}
+      await dir.delete(recursive: true);
     }
-    final remaining = await _cacheDirectoryBytesOnDisk();
-    _log(
-      remaining == 0
-          ? 'Cleared torrent disk cache'
-          : 'Torrent disk cache: ${formatStorageBytes(remaining)} left '
-              '(protected ${formatStorageBytes(reclaim.protectedBytes)})',
-    );
-    return TorrentDiskCacheStats(
-      usedBytes: remaining,
-      protectedBytes: reclaim.protectedBytes,
-      reclaimedBytes: reclaim.reclaimedBytes,
-      evictions: reclaim.evictions,
-    );
+    return TorrentDownloadCacheSnapshot.empty;
   }
 
   static final _hashRegExp = RegExp(r'[0-9a-fA-F]{40}');

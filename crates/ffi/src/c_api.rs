@@ -460,6 +460,16 @@ pub extern "C" fn ffi_torrent_reclaim_disk_cache_json(target_bytes: u64) -> *mut
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_torrent_download_cache_snapshot_json() -> *mut c_char {
+    to_c_string(crate::torrent_download_cache_snapshot_json())
+}
+
+#[no_mangle]
+pub extern "C" fn ffi_torrent_clear_all_downloads_json() -> *mut c_char {
+    to_c_string(crate::torrent_clear_all_downloads_json())
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn ffi_torrent_stream_json(
     magnet: *const c_char,
     season: i32,

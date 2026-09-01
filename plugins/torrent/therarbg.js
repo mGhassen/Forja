@@ -46,18 +46,6 @@ function fetchTherarbgJson(ctx, base, query, source) {
     });
 }
 
-function tryTherarbgMirrors(ctx, query, source, bases, index) {
-  if (index >= bases.length) return fromRargbHtml(ctx, query, source);
-  return fetchTherarbgJson(ctx, bases[index], query, source)
-    .then(function (rows) {
-      if (rows.length) return rows;
-      return tryTherarbgMirrors(ctx, query, source, bases, index + 1);
-    })
-    .catch(function () {
-      return tryTherarbgMirrors(ctx, query, source, bases, index + 1);
-    });
-}
-
 function magnetFromDetailHtml(html) {
   var m = String(html || '').match(/magnet:\?[^"'\s<>]+/i);
   return m ? m[0] : '';
@@ -70,25 +58,32 @@ function fetchRargbMagnet(ctx, detailPath) {
   });
 }
 
-function enrichRargbRows(ctx, rows, index, out) {
-  if (index >= rows.length) return Promise.resolve(out);
-  var row = rows[index];
-  return fetchRargbMagnet(ctx, row.detailPath).then(function (magnet) {
-    if (magnet) {
-      out.push({
-        name: row.name,
-        magnet: magnet,
-        seeders: row.seeders,
-        size: row.size,
-        source: row.source,
+function enrichRargbRows(ctx, rows) {
+  if (!rows.length) return Promise.resolve([]);
+  return Promise.all(
+    rows.map(function (row) {
+      return fetchRargbMagnet(ctx, row.detailPath).then(function (magnet) {
+        if (!magnet) return null;
+        return {
+          name: row.name,
+          magnet: magnet,
+          seeders: row.seeders,
+          size: row.size,
+          source: row.source,
+        };
       });
+    }),
+  ).then(function (items) {
+    var out = [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i]) out.push(items[i]);
     }
-    return enrichRargbRows(ctx, rows, index + 1, out);
+    return out;
   });
 }
 
 function fromRargbHtml(ctx, query, source) {
-  var maxRows = 25;
+  var maxRows = 10;
   var url = 'https://rargb.to/search/?search=' + encodeURIComponent(query);
   return fetchTextMaybeProxy(ctx, url)
     .then(function (html) {
@@ -96,11 +91,12 @@ function fromRargbHtml(ctx, query, source) {
       var pending = [];
       $('tr.lista2').each(function (_, tr) {
         if (pending.length >= maxRows) return;
-        var cells = $(tr).find('td.lista');
+        var cells = $(tr).find('td');
         if (cells.length < 6) return;
-        var titleLink = cells.eq(1).find('a').first();
+        var titleLink = cells.eq(1).find('a[href*="/torrent/"]').first();
+        if (!titleLink.length) titleLink = cells.eq(1).find('a').first();
         if (!titleLink.length) return;
-        var name = titleLink.text().trim();
+        var name = titleLink.attr('title') || titleLink.text().trim();
         var href = titleLink.attr('href') || '';
         if (!name || !href) return;
         var seedFont = cells.eq(5).find('font').first();
@@ -112,7 +108,7 @@ function fromRargbHtml(ctx, query, source) {
           source: source,
         });
       });
-      return enrichRargbRows(ctx, pending, 0, []);
+      return enrichRargbRows(ctx, pending);
     })
     .catch(function () {
       return [];
@@ -124,11 +120,15 @@ function search(ctx) {
   var query = String(ctx.query || '').trim();
   if (!query) return Promise.resolve([]);
   var source = String(cfg.source || 'TheRARBG');
-  var bases = [
-    'https://therarbg.to',
-    'https://therarbg.com',
-  ];
-  return tryTherarbgMirrors(ctx, query, source, bases, 0).catch(function () {
-    return [];
-  });
+  // Primary: therarbg.to JSON (fast, returns infohash). rargb.to HTML only if that fails.
+  return fetchTherarbgJson(ctx, 'https://therarbg.to', query, source)
+    .then(function (rows) {
+      if (rows.length) return rows;
+      return fromRargbHtml(ctx, query, source);
+    })
+    .catch(function () {
+      return fromRargbHtml(ctx, query, source).catch(function () {
+        return [];
+      });
+    });
 }

@@ -11,6 +11,7 @@ import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:forja/shared/widgets/torrent_loading_status_panel.dart';
 
 const loadingOverlayFadeOutDuration = Duration(milliseconds: 750);
 
@@ -202,6 +203,7 @@ class LoadingOverlay extends StatefulWidget {
   final Movie movie;
   final String? message;
   final ValueNotifier<String>? messageNotifier;
+  final ValueNotifier<TorrentLoadingStatus?>? torrentStatusNotifier;
   final ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier;
   final ValueNotifier<bool>? fadeOutNotifier;
 
@@ -226,6 +228,7 @@ class LoadingOverlay extends StatefulWidget {
     required this.movie,
     this.message,
     this.messageNotifier,
+    this.torrentStatusNotifier,
     this.providerProbesNotifier,
     this.fadeOutNotifier,
     this.failureNotifier,
@@ -253,6 +256,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   late Animation<double> _pulseAnimation;
   late Animation<double> _fadeOutAnimation;
   late String _message;
+  TorrentLoadingStatus? _torrentStatus;
   List<StreamProviderProbe> _probes = const [];
   bool _providerListOpen = false;
   ResolveFailure? _failure;
@@ -270,10 +274,12 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   void initState() {
     super.initState();
     _message = widget.messageNotifier?.value ??
-        widget.message?.toUpperCase() ??
-        'STARTING STREAM';
+        widget.message ??
+        'Starting stream';
+    _torrentStatus = widget.torrentStatusNotifier?.value;
     _failure = widget.failureNotifier?.value;
     widget.messageNotifier?.addListener(_onMessageChanged);
+    widget.torrentStatusNotifier?.addListener(_onTorrentStatusChanged);
     widget.providerProbesNotifier?.addListener(_onProbesChanged);
     widget.fadeOutNotifier?.addListener(_onFadeOutRequested);
     widget.failureNotifier?.addListener(_onFailureChanged);
@@ -393,7 +399,21 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       return;
     }
     if (next != _message && mounted) {
-      setState(() => _message = next.toUpperCase());
+      setState(() => _message = next);
+    }
+  }
+
+  void _onTorrentStatusChanged() {
+    final notifier = widget.torrentStatusNotifier;
+    if (notifier == null) return;
+    late final TorrentLoadingStatus? next;
+    try {
+      next = notifier.value;
+    } on FlutterError {
+      return;
+    }
+    if (next != _torrentStatus && mounted) {
+      setState(() => _torrentStatus = next);
     }
   }
 
@@ -455,6 +475,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   @override
   void dispose() {
     _safeRemoveListener(widget.messageNotifier, _onMessageChanged);
+    _safeRemoveListener(widget.torrentStatusNotifier, _onTorrentStatusChanged);
     _safeRemoveListener(widget.providerProbesNotifier, _onProbesChanged);
     _safeRemoveListener(widget.fadeOutNotifier, _onFadeOutRequested);
     _safeRemoveListener(widget.failureNotifier, _onFailureChanged);
@@ -535,6 +556,9 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
 
   bool get _probeWorkActive => _tryingProbes.isNotEmpty;
 
+  bool get _showTorrentStatus =>
+      !_showProviderProbes && _torrentStatus != null;
+
   bool _canManualCheck(StreamProviderProbe probe) {
     if (widget.onManualCheckProvider == null) return false;
     // Allow tapping CHECKING rows so the user can jump to another server
@@ -598,6 +622,41 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
           ),
         ),
     };
+  }
+
+  Widget _genericLoadingStatus() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          _message,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.88),
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            height: 1.3,
+            letterSpacing: 0.15,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        if (widget.subtitle != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            widget.subtitle!,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.48),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
+              letterSpacing: 0.1,
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ],
+      ],
+    );
   }
 
   Widget _providerListPanel() {
@@ -1181,30 +1240,11 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                           color: AppTheme.primaryColor,
                           strokeWidth: 3,
                         ),
-                        const SizedBox(height: 32),
-                        Text(
-                          _message,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 4,
-                            fontFamily: 'Poppins',
-                          ),
-                        ),
-                        if (widget.subtitle != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            widget.subtitle!.toUpperCase(),
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.45),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 2,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                        ],
+                        const SizedBox(height: 28),
+                        if (_showTorrentStatus)
+                          TorrentLoadingStatusPanel(status: _torrentStatus!)
+                        else
+                          _genericLoadingStatus(),
                       ],
                       if (!_showingFailure && widget.onCancel != null) ...[
                         SizedBox(height: _showProviderProbes ? 20 : 24),

@@ -24,8 +24,6 @@ pub fn clamp_capacity_bytes(bytes: u64) -> u64 {
     bytes.clamp(MIN_DISK_CACHE_BYTES, MAX_DISK_CACHE_BYTES)
 }
 
-/// Delete idle files under [root] until [used] <= [target_bytes].
-/// Never deletes [DHT_STATE_FILE] or paths in [protected_relpaths] (`/`-separated).
 pub fn reclaim_download_dir(
     root: &Path,
     protected_relpaths: &HashSet<String>,
@@ -89,6 +87,23 @@ pub fn reclaim_download_dir(
     stats.reclaimed_bytes = reclaimed;
     stats.over_budget = used > capacity_bytes;
     Ok(stats)
+}
+
+/// Total bytes of every file under [root] (includes [DHT_STATE_FILE]).
+pub fn directory_bytes(root: &Path) -> u64 {
+    if !root.exists() || !root.is_dir() {
+        return 0;
+    }
+    let mut files: Vec<CacheFile> = Vec::new();
+    if collect_files(root, root, &mut files).is_err() {
+        return 0;
+    }
+    let mut dht = 0u64;
+    let dht_path = root.join(DHT_STATE_FILE);
+    if let Ok(meta) = fs::metadata(&dht_path) {
+        dht = meta.len();
+    }
+    files.iter().map(|f| f.size).sum::<u64>().saturating_add(dht)
 }
 
 struct CacheFile {
@@ -213,6 +228,17 @@ mod tests {
                 ..DiskCacheStats::default()
             }
         );
+    }
+
+    #[test]
+    fn directory_bytes_includes_dht_state() {
+        let root = std::env::temp_dir().join("forja_disk_cache_dir_bytes_test");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+        write_file(&root.join("idle.bin"), &[1; 50]);
+        write_file(&root.join(DHT_STATE_FILE), &[2; 100]);
+        assert_eq!(directory_bytes(&root), 150);
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]

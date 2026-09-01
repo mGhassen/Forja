@@ -939,7 +939,8 @@ class TorrentCacheStorageLine extends StatefulWidget {
 class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
   static const _pollInterval = Duration(seconds: 2);
 
-  int _bytes = -1;
+  TorrentDownloadCacheSnapshot? _snapshot;
+  bool _loading = true;
   bool _clearing = false;
   int _loadGen = 0;
   Timer? _poll;
@@ -965,29 +966,35 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
 
   Future<void> _load() async {
     final gen = ++_loadGen;
-    final stats = await TorrentStreamService().queryDiskCacheStats();
+    final snapshot = await TorrentStreamService().queryDownloadCacheSnapshot();
     if (!mounted || gen != _loadGen) return;
-    setState(() => _bytes = stats.usedBytes);
+    setState(() {
+      _snapshot = snapshot;
+      _loading = false;
+    });
   }
 
   Future<void> _clear() async {
     if (_clearing) return;
     setState(() => _clearing = true);
     try {
-      final stats = await TorrentStreamService().clearCacheDirectory();
+      final hadDownloads = (_snapshot?.torrentCount ?? 0) > 0;
+      final snap = await TorrentStreamService().clearCacheDirectory();
       if (!mounted) return;
-      setState(() => _bytes = stats.usedBytes);
-      if (stats.protectedBytes > 0) {
-        ForjaToast.info(
-          'Kept ${TorrentStreamService.formatStorageBytes(stats.protectedBytes)} '
-          'for the active download',
-          duration: const Duration(seconds: 3),
+      setState(() {
+        _snapshot = snap;
+        _loading = false;
+      });
+      if (hadDownloads) {
+        ForjaToast.success(
+          snap.shouldShow ? 'Stopped active download' : 'Downloads cleared',
+          duration: const Duration(seconds: 2),
         );
       }
     } catch (_) {
       if (mounted) {
         ForjaToast.error(
-          'Could not clear torrent cache',
+          'Could not stop or clear torrent downloads',
           duration: const Duration(seconds: 2),
         );
       }
@@ -998,59 +1005,82 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
 
   @override
   Widget build(BuildContext context) {
-    if (_bytes == 0) return const SizedBox.shrink();
+    final snapshot = _snapshot;
+    if (!_loading && (snapshot == null || !snapshot.shouldShow)) {
+      return const SizedBox.shrink();
+    }
 
-    final label = _bytes < 0
-        ? '…'
-        : TorrentStreamService.formatStorageBytes(_bytes);
+    final speed = TorrentStreamService().activeStats()?.speedLabel;
+    final snap = snapshot;
+    final label = _loading ? '…' : snap!.label(speedLabel: speed);
+    final showPath =
+        !_loading && snap != null && snap.torrentCount > 0 && snap.cacheDir.isNotEmpty;
     final cinematic = ForjaShellColors.cinematic;
     final metrics = ShellScope.metricsOf(context);
-    final hasData = _bytes > 0;
+    final hasData = !_loading && snap != null && snap.shouldShow;
 
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          Icons.storage_rounded,
-          size: metrics.torrentPanelMetaIconSize,
-          color: cinematic.textSecondary,
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            'Torrent cache: $label',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+        Row(
+          children: [
+            Icon(
+              Icons.storage_rounded,
+              size: metrics.torrentPanelMetaIconSize,
               color: cinematic.textSecondary,
-              fontSize: metrics.torrentPanelMetaFontSize,
             ),
-          ),
-        ),
-        if (hasData && !_clearing)
-          shellFocusableTap(
-            context: context,
-            onTap: _clear,
-            borderRadius: 6,
-            scaleOnFocus: 1.0,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            const SizedBox(width: 6),
+            Expanded(
               child: Text(
-                'Clear',
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: cinematic.textSecondary,
                   fontSize: metrics.torrentPanelMetaFontSize,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-          ),
-        if (_clearing)
-          SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: cinematic.textSecondary,
+            if (hasData && !_clearing)
+              shellFocusableTap(
+                context: context,
+                onTap: _clear,
+                borderRadius: 6,
+                scaleOnFocus: 1.0,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Text(
+                    snap.torrentCount > 0 ? 'Stop & clear' : 'Clear',
+                    style: TextStyle(
+                      color: cinematic.textSecondary,
+                      fontSize: metrics.torrentPanelMetaFontSize,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            if (_clearing)
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: cinematic.textSecondary,
+                ),
+              ),
+          ],
+        ),
+        if (showPath)
+          Padding(
+            padding: const EdgeInsets.only(left: 22, top: 2),
+            child: Text(
+              snap.cacheDir,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: cinematic.textSecondary.withValues(alpha: 0.75),
+                fontSize: metrics.torrentPanelMetaFontSize - 1,
+              ),
             ),
           ),
       ],
