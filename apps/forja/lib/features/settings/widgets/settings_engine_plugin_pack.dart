@@ -261,6 +261,7 @@ class SettingsEnginePluginToggleList extends StatelessWidget {
       children: [
         for (final p in plugins)
           SettingsToggleRow(
+            key: ValueKey('engine-plugin-${sourceUrl.hashCode}-${p.id}'),
             title: p.name,
             subtitle: [
               if (p.description != null && p.description!.isNotEmpty)
@@ -524,6 +525,7 @@ class _SettingsLiveSportCapabilityTabsState
     return [
       for (final p in plugins)
         SettingsToggleRow(
+          key: ValueKey('live-cap-${widget.sourceUrl.hashCode}-${p.id}-$capability'),
           title: p.name,
           subtitle: [
             if (p.description != null && p.description!.isNotEmpty) p.description!,

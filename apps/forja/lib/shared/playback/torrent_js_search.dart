@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/runtime.dart';
 import 'package:forja/shared/engine/service.dart';
 import 'package:rust/rust.dart';
 
@@ -33,6 +34,51 @@ Future<void> syncTorrentSearchCatalog() async {
 List<String> enabledTorrentSearchPluginIds() =>
     List<String>.from(TorrentSearchCatalog.allIds);
 
+/// One JS heap per search — indexers run sequentially so we never spin up N
+/// parallel QuickJS VMs (that OOM-killed desktop when all 9 providers fired).
+Future<List<Map<String, dynamic>>> _searchIndexersSequential({
+  required List<String> enabled,
+  required String query,
+  String? imdbId,
+  int? season,
+  int? episode,
+  bool Function()? isCancelled,
+  void Function(List<Map<String, dynamic>> soFar)? onPartial,
+  void Function(String providerId)? onProviderDone,
+}) async {
+  bool cancelled() => isCancelled?.call() == true;
+
+  final rt = EngineRuntime.fork();
+  final byMagnet = <String, Map<String, dynamic>>{};
+  try {
+    for (final id in enabled) {
+      if (cancelled()) break;
+      List<Map<String, dynamic>> batch = const [];
+      try {
+        batch = await EngineService.instance.runTorrentSearch(
+          pluginId: id,
+          query: query,
+          imdbId: imdbId,
+          season: season,
+          episode: episode,
+          isCancelled: isCancelled,
+          runtime: rt,
+        );
+      } catch (e) {
+        debugPrint('[torrent] search $id failed: $e');
+      }
+      if (cancelled()) break;
+      onProviderDone?.call(id);
+      TorrentSearchProviders.mergeByMagnet(byMagnet, batch);
+      onPartial?.call(List<Map<String, dynamic>>.from(byMagnet.values));
+    }
+  } finally {
+    rt.dispose();
+  }
+  if (cancelled()) return [];
+  return byMagnet.values.toList();
+}
+
 Future<List<Map<String, dynamic>>> searchTorrentsViaPlugins(
   String query, {
   String? imdbId,
@@ -50,22 +96,13 @@ Future<List<Map<String, dynamic>>> searchTorrentsViaPlugins(
     return [];
   }
 
-  final batches = await Future.wait([
-    for (final id in enabled)
-      EngineService.instance.runTorrentSearch(
-        pluginId: id,
-        query: query,
-        imdbId: imdbId,
-        season: season,
-        episode: episode,
-      ),
-  ]);
-
-  final byMagnet = <String, Map<String, dynamic>>{};
-  for (final batch in batches) {
-    TorrentSearchProviders.mergeByMagnet(byMagnet, batch);
-  }
-  return byMagnet.values.toList();
+  return _searchIndexersSequential(
+    enabled: enabled,
+    query: query,
+    imdbId: imdbId,
+    season: season,
+    episode: episode,
+  );
 }
 
 Future<List<Map<String, dynamic>>> searchTorrentsProgressiveViaPlugins(
@@ -88,49 +125,16 @@ Future<List<Map<String, dynamic>>> searchTorrentsProgressiveViaPlugins(
     return [];
   }
 
-  bool cancelled() => isCancelled?.call() == true;
-
-  if (enabled.length == 1) {
-    List<Map<String, dynamic>> one = const [];
-    try {
-      one = await EngineService.instance.runTorrentSearch(
-        pluginId: enabled.first,
-        query: query,
-        imdbId: imdbId,
-        season: season,
-        episode: episode,
-        isCancelled: isCancelled,
-      );
-    } catch (_) {}
-    if (cancelled()) return [];
-    onProviderDone?.call(enabled.first);
-    onPartial?.call(one);
-    return one;
-  }
-
-  final byMagnet = <String, Map<String, dynamic>>{};
-  await Future.wait([
-    for (final id in enabled)
-      () async {
-        List<Map<String, dynamic>> batch = const [];
-        try {
-          batch = await EngineService.instance.runTorrentSearch(
-            pluginId: id,
-            query: query,
-            imdbId: imdbId,
-            season: season,
-            episode: episode,
-            isCancelled: isCancelled,
-          );
-        } catch (_) {}
-        if (cancelled()) return;
-        onProviderDone?.call(id);
-        TorrentSearchProviders.mergeByMagnet(byMagnet, batch);
-        onPartial?.call(List<Map<String, dynamic>>.from(byMagnet.values));
-      }(),
-  ]);
-  if (cancelled()) return [];
-  return byMagnet.values.toList();
+  return _searchIndexersSequential(
+    enabled: enabled,
+    query: query,
+    imdbId: imdbId,
+    season: season,
+    episode: episode,
+    isCancelled: isCancelled,
+    onPartial: onPartial,
+    onProviderDone: onProviderDone,
+  );
 }
 
 void registerTorrentSearchBridge() {

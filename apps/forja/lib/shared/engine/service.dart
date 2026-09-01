@@ -520,34 +520,23 @@ class EngineService {
   }) async {
     final prefs = await _prefs;
     final key = _selectedPrefsKey(panelCategory);
+    var selectionSaved = prefs.containsKey(key);
     var raw = prefs.getStringList(key);
-    if (raw == null && panelCategory == EngineCategories.movie) {
+    if (!selectionSaved && panelCategory == EngineCategories.movie) {
       final legacy = prefs.getStringList(_legacySelectedKey);
       if (legacy != null) {
         await prefs.setStringList(key, legacy);
         await prefs.remove(_legacySelectedKey);
+        selectionSaved = true;
         raw = legacy;
       }
     }
-    if (raw == null || raw.isEmpty) {
-      final scope = selectAllScopeIds ?? enabledIds;
-      return {
-        for (final id in scope)
-          if (enabledIds.contains(id)) id,
-      };
-    }
-    final filtered = filterEngineSelectedPluginIds(
-      savedIds: raw,
+    return resolveEngineSelectedPluginIds(
+      selectionSaved: selectionSaved,
+      savedIds: raw ?? const [],
       enabledIds: enabledIds,
+      selectAllScopeIds: selectAllScopeIds,
     );
-    if (filtered.isEmpty && enabledIds.isNotEmpty) {
-      final scope = selectAllScopeIds ?? enabledIds;
-      return {
-        for (final id in scope)
-          if (enabledIds.contains(id)) id,
-      };
-    }
-    return filtered;
   }
 
   Future<void> saveSourcesSelectedPluginIds(

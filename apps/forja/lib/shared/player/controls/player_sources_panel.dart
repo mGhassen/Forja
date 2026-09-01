@@ -450,14 +450,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final enabled = enabledTorrentSearchPluginIds();
     if (!mounted) return;
     final hadProviders = _enabledTorrentProviders.isNotEmpty;
-    setState(() {
-      _enabledTorrentProviders = enabled;
-      if (_showsTorrents &&
-          TorrentSearchProviders.isNoneChip(_selectedSourceId) &&
-          enabled.isNotEmpty) {
-        _selectedSourceId = TorrentSearchProviders.allId;
-      }
-    });
+    setState(() => _enabledTorrentProviders = enabled);
     if (!research || !_showsTorrents) return;
     if (!hadProviders && enabled.isNotEmpty) {
       _torrentFetchedProviderIds.clear();
@@ -996,7 +989,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (hasEngine &&
         engineSelected.isEmpty &&
         enabledEnginePluginIds(enginePacks).isNotEmpty &&
-        (cachedUi == null || cachedUi.engineAllMode == true)) {
+        cachedUi?.engineAllMode == true) {
       engineSelected = await _loadDefaultEngineChipSelection(enginePacks);
     }
     if (!mounted) return;
@@ -1194,15 +1187,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       }
       if (!mounted) return;
 
-      Set<String> selected = filterEngineSelectedPluginIds(
+      final selected = filterEngineSelectedPluginIds(
         savedIds: _engineSelectedPluginIds,
         enabledIds: enabledIds,
       );
-      if (selected.isEmpty &&
-          enabledIds.isNotEmpty &&
-          !_engineSelectionHydrated) {
-        selected = await _loadDefaultEngineChipSelection(packs);
-      }
       if (!mounted) return;
       final engineScope = EngineCategories.matchingPluginIds(
         packs: packs,
@@ -1440,13 +1428,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _restorePanelSourceIdForKind(String kind) {
-    var id =
+    final id =
         _panelSourceIdByKind[kind] ?? _sourceIdForKind(kind, _streamAddons);
-    if (kind == 'torrents' &&
-        TorrentSearchProviders.isNoneChip(id) &&
-        _enabledTorrentProviders.isNotEmpty) {
-      id = TorrentSearchProviders.allId;
-    }
     _selectedSourceId = id;
     if (kind == 'stremio') {
       _syncStremioProviderSelection();
@@ -1972,16 +1955,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       setState(() => _enabledTorrentProviders = freshEnabled);
     }
     if (TorrentSearchProviders.isNoneChip(_selectedSourceId)) {
-      if (_enabledTorrentProviders.isNotEmpty) {
-        setState(() => _selectedSourceId = TorrentSearchProviders.allId);
-      } else {
-        _searchGen++;
-        setState(() {
-          _searching = false;
-          _torrentInFlightProviderIds.clear();
-        });
-        return;
-      }
+      _searchGen++;
+      setState(() {
+        _searching = false;
+        _torrentInFlightProviderIds.clear();
+      });
+      return;
     }
     final gen = ++_searchGen;
     if (force) {
@@ -3401,6 +3380,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           _torrentViewFilterProviderIds = {};
         });
         _abortTorrentSearch();
+        _savePanelUiCache();
         return;
       }
       setState(() {

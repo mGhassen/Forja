@@ -554,6 +554,26 @@ Set<String> filterEngineSelectedPluginIds({
     if (enabledIds.contains(id)) id,
 };
 
+/// Missing chip selection → all enabled. Empty saved list is explicit none.
+Set<String> resolveEngineSelectedPluginIds({
+  required bool selectionSaved,
+  required Iterable<String> savedIds,
+  required Set<String> enabledIds,
+  Set<String>? selectAllScopeIds,
+}) {
+  if (!selectionSaved) {
+    final scope = selectAllScopeIds ?? enabledIds;
+    return {
+      for (final id in scope)
+        if (enabledIds.contains(id)) id,
+    };
+  }
+  return filterEngineSelectedPluginIds(
+    savedIds: savedIds,
+    enabledIds: enabledIds,
+  );
+}
+
 String? nextEnginePluginId({
   required List<String> orderedIds,
   required Set<String> selectedIds,

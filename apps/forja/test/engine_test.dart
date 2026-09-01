@@ -1010,6 +1010,35 @@ void main() {
     });
   });
 
+  group('engine chip selection', () {
+    test('missing chip selection defaults to all enabled', () {
+      expect(
+        resolveEngineSelectedPluginIds(
+          selectionSaved: false,
+          savedIds: const [],
+          enabledIds: const {'provider-a', 'provider-b'},
+        ),
+        {'provider-a', 'provider-b'},
+      );
+      expect(
+        resolveEngineSelectedPluginIds(
+          selectionSaved: true,
+          savedIds: const [],
+          enabledIds: const {'provider-a', 'provider-b'},
+        ),
+        isEmpty,
+      );
+      expect(
+        resolveEngineSelectedPluginIds(
+          selectionSaved: true,
+          savedIds: const ['provider-b', 'gone'],
+          enabledIds: const {'provider-a', 'provider-b'},
+        ),
+        {'provider-b'},
+      );
+    });
+  });
+
   group('Forja tab magnet filter', () {
     test('drops magnets and .torrent URLs', () {
       expect(isTorrentStreamUrl('magnet:?xt=urn:btih:abc'), isTrue);

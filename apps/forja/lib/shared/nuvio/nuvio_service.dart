@@ -640,8 +640,12 @@ class NuvioService {
     }
 
     final all = await listAddons();
-    all.removeWhere((a) => a.manifestUrl == manifestUrl);
-    all.add(addon);
+    final idx = all.indexWhere((a) => a.manifestUrl == manifestUrl);
+    if (idx >= 0) {
+      all[idx] = addon;
+    } else {
+      all.add(addon);
+    }
     await _saveAddons(all);
     return addon;
   }
@@ -708,8 +712,12 @@ class NuvioService {
       version: (mf['version'] as String?) ?? '1.0.0',
       scrapers: merged,
     );
-    all.removeWhere((a) => a.manifestUrl == manifestUrl);
-    all.add(addon);
+    final idx = all.indexWhere((a) => a.manifestUrl == manifestUrl);
+    if (idx >= 0) {
+      all[idx] = addon;
+    } else {
+      all.add(addon);
+    }
     await _saveAddons(all);
     return addon;
   }

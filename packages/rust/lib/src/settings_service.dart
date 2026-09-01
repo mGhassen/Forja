@@ -7,7 +7,6 @@ import 'catalog/stremio_addon_features.dart';
 import 'kv.dart';
 import 'platform_defaults.dart';
 import 'platform_profile.dart';
-import 'playback/torrent/torrent_search_providers.dart';
 import 'secure_settings.dart';
 
 class SettingsService {
@@ -670,11 +669,15 @@ class SettingsService {
     );
 
     final current = await getStremioAddons();
-    current.removeWhere(
+    final idx = current.indexWhere(
       (a) =>
           normalizeStremioAddonBaseUrl(a['baseUrl']?.toString() ?? '') == base,
     );
-    current.add(normalized);
+    if (idx >= 0) {
+      current[idx] = normalized;
+    } else {
+      current.add(normalized);
+    }
     await kvSetMapList(_stremioAddonsKey, current);
     if (notify) addonChangeNotifier.value++;
   }

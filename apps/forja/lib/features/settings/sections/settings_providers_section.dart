@@ -251,6 +251,7 @@ class _SettingsProvidersSectionState
               final features = StremioAddonFeatures.read(addon);
               final enabled = StremioAddonFeatures.isEnabled(addon);
               return Padding(
+                key: ValueKey(baseUrl),
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -384,6 +385,7 @@ class _SettingsProvidersSectionState
                       s.supportedTypes.join(', '),
                   ].join(' \u00b7 ');
                   return SettingsToggleRow(
+                    key: ValueKey('${addon.manifestUrl}::${s.id}'),
                     title: s.name,
                     subtitle: subtitle.isEmpty ? 'Scraper' : subtitle,
                     value: s.enabled,
@@ -397,6 +399,7 @@ class _SettingsProvidersSectionState
                   );
                 }).toList();
                 return Theme(
+                  key: ValueKey(addon.manifestUrl),
                   data: Theme.of(
                     context,
                   ).copyWith(dividerColor: Colors.transparent),

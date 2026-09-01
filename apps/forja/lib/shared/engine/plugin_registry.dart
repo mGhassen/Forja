@@ -988,8 +988,12 @@ class PluginRegistry {
       }
     }
 
-    all.removeWhere((a) => a.sourceUrl == manifestUrl);
-    all.add(pack);
+    final packIdx = all.indexWhere((a) => a.sourceUrl == manifestUrl);
+    if (packIdx >= 0) {
+      all[packIdx] = pack;
+    } else {
+      all.add(pack);
+    }
     await _savePacks(all);
     final hubSlot = forjaHqSlot(manifestUrl);
     if (isHubManifestSlot(hubSlot) || isIptvVodManifestSlot(hubSlot)) {
