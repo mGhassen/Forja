@@ -5,6 +5,7 @@ import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
+import 'package:forja/shared/playback/torrent_js_search.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
 
@@ -345,6 +346,7 @@ class PluginInstallCoordinator {
         isUpdate: false,
       ),
     );
+    await syncTorrentSearchCatalog();
     await Future<void>.delayed(readyDwell);
   }
 

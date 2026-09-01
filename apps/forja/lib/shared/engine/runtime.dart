@@ -520,18 +520,24 @@ class EngineRuntime {
   var module = { exports: {} };
   var exports = module.exports;
   globalThis.extract = undefined;
+  globalThis.search = undefined;
   try {
     $code
     if (typeof extract === 'function') {
       if (typeof module.exports.extract !== 'function') module.exports.extract = extract;
       if (typeof globalThis.extract !== 'function') globalThis.extract = extract;
     }
+    if (typeof search === 'function') {
+      if (typeof module.exports.search !== 'function') module.exports.search = search;
+      if (typeof globalThis.search !== 'function') globalThis.search = search;
+    }
   } catch (e) {
     sendMessage('Console', JSON.stringify({level:'err',msg:'[ForjaLoader:'+${jsonEncode(pluginId)}+'] ' + (e && e.message ? e.message : e)}));
     throw e;
   }
-  var fn = (module.exports && module.exports.extract) || globalThis.extract;
-  globalThis.__engineRegistry[${jsonEncode(pluginId)}] = { extract: fn };
+  var extractFn = (module.exports && module.exports.extract) || globalThis.extract;
+  var searchFn = (module.exports && module.exports.search) || globalThis.search;
+  globalThis.__engineRegistry[${jsonEncode(pluginId)}] = { extract: extractFn, search: searchFn };
 })();
 ''';
     final res = rt.evaluate(wrapped, sourceUrl: 'engine://$pluginId');
@@ -631,6 +637,168 @@ class EngineRuntime {
         },
       );
     });
+  }
+
+  Future<List<Map<String, dynamic>>> searchTorrent({
+    required String pluginId,
+    String? pluginName,
+    required String query,
+    String? imdbId,
+    int? season,
+    int? episode,
+    Map<String, dynamic> config = const {},
+    Duration timeout = const Duration(seconds: 20),
+    bool Function()? isCancelled,
+  }) {
+    return _jsLock.run(() async {
+      await _ensureInit();
+      if (isCancelled?.call() == true) return [];
+      if (!_loadedIds.contains(pluginId)) {
+        final code = _pluginCode[pluginId];
+        if (code == null) {
+          throw StateError('engine plugin $pluginId not loaded');
+        }
+        _loadPluginUnlocked(pluginId, code);
+      }
+      return _searchUnlocked(
+        pluginId: pluginId,
+        pluginName: pluginName,
+        query: query,
+        imdbId: imdbId,
+        season: season,
+        episode: episode,
+        config: config,
+        timeout: timeout,
+        isCancelled: isCancelled,
+      );
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> _searchUnlocked({
+    required String pluginId,
+    String? pluginName,
+    required String query,
+    String? imdbId,
+    int? season,
+    int? episode,
+    Map<String, dynamic> config = const {},
+    required Duration timeout,
+    bool Function()? isCancelled,
+  }) async {
+    final rt = _runtime!;
+    final callId = ++_callSeq;
+    final completer = Completer<String>();
+    _pendingResults[callId] = completer;
+    _activeExtract++;
+    _acceptingFetches = true;
+
+    try {
+      final ctx = jsonEncode({
+        'query': query,
+        'imdbId': imdbId ?? '',
+        'season': season ?? 0,
+        'episode': episode ?? 0,
+        'config': config,
+      });
+      final pluginLabel = (pluginName != null && pluginName.trim().isNotEmpty)
+          ? pluginName.trim()
+          : pluginId;
+      final invoker =
+          '''
+(function(){
+  var entry = globalThis.__engineRegistry[${jsonEncode(pluginId)}];
+  var fn = entry && entry.search;
+  if (typeof fn !== 'function') {
+    sendMessage('CaptureResult', JSON.stringify({id:$callId, body:'[]'}));
+    return;
+  }
+  var meta = $ctx;
+  var pluginLabel = ${jsonEncode(pluginLabel)};
+  var ctx = {
+    query: String(meta.query || ''),
+    imdbId: String(meta.imdbId || ''),
+    season: meta.season || 0,
+    episode: meta.episode || 0,
+    config: meta.config || {},
+    log: function(msg) {
+      console.log('[' + pluginLabel + '] ' + String(msg == null ? '' : msg));
+    },
+    error: function(msg) {
+      console.error('[' + pluginLabel + '] Error: ' + String(msg == null ? '' : msg));
+    },
+    fetch: globalThis.fetch,
+    html: globalThis.__engineHtml
+  };
+  Promise.resolve()
+    .then(function(){ return fn(ctx); })
+    .then(function(r){
+      try { sendMessage('CaptureResult', JSON.stringify({id:$callId, body: JSON.stringify(r == null ? [] : r)})); }
+      catch (e) { sendMessage('CaptureResult', JSON.stringify({id:$callId, body:'[]'})); }
+    })
+    .catch(function(e){
+      var msg = (e && e.message) ? e.message : (e ? String(e) : 'unknown');
+      sendMessage('Console', JSON.stringify({level:'err',msg:'[ForjaTorrent:'+${jsonEncode(pluginId)}+'] '+msg}));
+      sendMessage('CaptureResult', JSON.stringify({id:$callId, body:'[]'}));
+    });
+})();
+''';
+      final r = rt.evaluate(invoker);
+      if (r.isError) {
+        _pendingResults.remove(callId);
+        _forjaRuntimeLog('torrent invoker error: ${r.stringResult}');
+        return [];
+      }
+
+      final stopwatch = Stopwatch()..start();
+      while (!completer.isCompleted &&
+          stopwatch.elapsedMilliseconds < timeout.inMilliseconds) {
+        if (isCancelled?.call() == true) {
+          _pendingResults.remove(callId);
+          if (!completer.isCompleted) completer.complete('[]');
+          return [];
+        }
+        if (!identical(_runtime, rt) || _deferredDrop) {
+          if (!completer.isCompleted) completer.complete('[]');
+          return [];
+        }
+        try {
+          rt.executePendingJob();
+        } catch (_) {}
+        await Future<void>.delayed(const Duration(milliseconds: 8));
+      }
+      if (!completer.isCompleted) {
+        _pendingResults.remove(callId);
+        if (!completer.isCompleted) completer.complete('[]');
+        _fetchGeneration++;
+        _fetchGens.clear();
+        return [];
+      }
+
+      final body = (await completer.future).trim();
+      if (isCancelled?.call() == true) return [];
+      if (!identical(_runtime, rt) || _deferredDrop) return [];
+      if (body.isEmpty || body == 'null' || body == 'undefined') return [];
+      try {
+        final decoded = jsonDecode(body);
+        if (decoded is! List) return [];
+        return decoded
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      } catch (e) {
+        _forjaRuntimeLog('torrent result parse failed ($pluginId): $e');
+        return [];
+      }
+    } finally {
+      _pendingResults.remove(callId);
+      _activeExtract = (_activeExtract - 1).clamp(0, 1 << 30);
+      if (_activeExtract <= 0) {
+        _acceptingFetches = false;
+        if (_deferredDrop) {
+          _dropRuntime();
+        }
+      }
+    }
   }
 
   Future<List<Map<String, dynamic>>> _extractUnlocked({

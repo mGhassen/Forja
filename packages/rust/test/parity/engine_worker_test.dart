@@ -15,7 +15,7 @@ void main() {
   });
 
   test('EngineWorkerPool reuses workers across calls', () async {
-    final a = await runSearchTorrentsJson('test-a');
+    final a = await runSortTorrentsJson('[]', 'Seeders (High to Low)');
     final b = await runSortTorrentsJson('[]', 'seeders');
     expect(a, isA<String>());
     expect(b, isA<String>());

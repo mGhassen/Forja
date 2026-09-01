@@ -9,7 +9,6 @@ enum EngineJobKind {
   version,
   stremioHttpGet,
   opensslAesDecrypt,
-  searchTorrents,
   filterTorrents,
   sortTorrents,
   parseM3u,
@@ -229,8 +228,6 @@ String _dispatchJob(_WorkerJob job) {
         job.args['b64']! as String,
         passphrase: job.args['passphrase'] as String? ?? '',
       );
-    case EngineJobKind.searchTorrents:
-      return rust.searchTorrentsJson(job.args['query']! as String);
     case EngineJobKind.filterTorrents:
       return rust.filterTorrentsJson(
         job.args['resultsJson']! as String,

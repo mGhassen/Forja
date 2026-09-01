@@ -113,6 +113,7 @@ class PluginRegistry {
     const core = {
       'plugins/providers/manifest.json': 'providers',
       'plugins/live/manifest.json': 'live',
+      'plugins/torrent/manifest.json': 'torrent',
       'plugins/hubs/home/manifest.json': 'home',
       'plugins/hubs/manifest.json': 'home',
       'plugins/iptv/vod/manifest.json': 'iptv-vod',
@@ -133,6 +134,7 @@ class PluginRegistry {
     return slot != 'providers' &&
         slot != 'live' &&
         slot != 'catalog' &&
+        slot != 'torrent' &&
         slot != 'iptv-vod';
   }
 
@@ -156,6 +158,7 @@ class PluginRegistry {
   static const packKindProviders = 'providers';
   static const packKindLive = 'live';
   static const packKindCatalog = 'catalog';
+  static const packKindTorrent = 'torrent';
   static const packKindIptv = 'iptv';
   static const packKindHubs = 'hubs';
   static const packKindOther = 'other';
@@ -164,6 +167,7 @@ class PluginRegistry {
     packKindProviders,
     packKindLive,
     packKindCatalog,
+    packKindTorrent,
     packKindIptv,
     packKindHubs,
     packKindOther,
@@ -173,6 +177,7 @@ class PluginRegistry {
     packKindProviders => 'Providers',
     packKindLive => 'Live',
     packKindCatalog => 'Catalog',
+    packKindTorrent => 'Torrent',
     packKindIptv => 'IPTV',
     packKindHubs => 'Hubs',
     _ => 'Other',
@@ -186,6 +191,7 @@ class PluginRegistry {
         'providers' => packKindProviders,
         'live' => packKindLive,
         'catalog' => packKindCatalog,
+        'torrent' => packKindTorrent,
         'iptv-vod' => packKindIptv,
         _ when isHubManifestSlot(slot) => packKindHubs,
         _ => packKindOther,

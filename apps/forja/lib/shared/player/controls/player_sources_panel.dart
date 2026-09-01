@@ -11,6 +11,7 @@ import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
+import 'package:forja/shared/playback/torrent_js_search.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
@@ -421,9 +422,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   bool _jackettConfigured = false;
   bool _prowlarrConfigured = false;
-  List<String> _enabledTorrentProviders = List<String>.from(
-    TorrentSearchProviders.all,
-  );
+  List<String> _enabledTorrentProviders = const [];
   bool _localTorrentEngine = true;
 
   bool get _showsTorrents => _kindFilter == 'torrents';
@@ -855,6 +854,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final sort = await _settings.getSortPreference();
     final jackett = await _settings.isJackettConfigured();
     final prowlarr = await _settings.isProwlarrConfigured();
+    await syncTorrentSearchCatalog();
     final enabledProviders = await _settings.getEnabledTorrentProviders();
     final lanReady = await PlaySourceEffective.lanDesktopReady();
     final torrentOn = await PlaySourceEffective.torrent(_settings, lanReady);

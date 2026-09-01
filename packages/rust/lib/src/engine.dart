@@ -375,31 +375,6 @@ class RustLib {
     return _readString(_native.ffi_subtitle_request_json(ptr));
   });
 
-  String parseKnabenHtmlJson(String html) => using((arena) {
-    final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_parse_knaben_html_json(ptr));
-  });
-
-  String parseTpbHtmlJson(String html) => using((arena) {
-    final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_parse_tpb_html_json(ptr));
-  });
-
-  String parseUindexHtmlJson(String html) => using((arena) {
-    final ptr = html.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_parse_uindex_html_json(ptr));
-  });
-
-  String dedupTorrentsJson(String resultsJson) => using((arena) {
-    final ptr = resultsJson.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_dedup_torrents_json(ptr));
-  });
-
-  String searchTorrentsJson(String query) => using((arena) {
-    final ptr = query.toNativeUtf8(allocator: arena).cast<ffi.Char>();
-    return _readString(_native.ffi_search_torrents_json(ptr));
-  });
-
   String filterTorrentsJson(
     String resultsJson,
     String showTitle, {
@@ -848,31 +823,6 @@ final class _FfiNative {
             'ffi_subtitle_request_json',
           )
           .asFunction(),
-      ffi_parse_knaben_html_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_parse_knaben_html_json',
-          )
-          .asFunction(),
-      ffi_parse_tpb_html_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_parse_tpb_html_json',
-          )
-          .asFunction(),
-      ffi_parse_uindex_html_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_parse_uindex_html_json',
-          )
-          .asFunction(),
-      ffi_dedup_torrents_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_dedup_torrents_json',
-          )
-          .asFunction(),
-      ffi_search_torrents_json = lib
-          .lookup<ffi.NativeFunction<_StringInOutNative>>(
-            'ffi_search_torrents_json',
-          )
-          .asFunction(),
       ffi_filter_torrents_json = lib
           .lookup<ffi.NativeFunction<_FilterTorrentsNative>>(
             'ffi_filter_torrents_json',
@@ -1175,16 +1125,6 @@ final class _FfiNative {
   ffi_metadata_request_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_subtitle_request_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_parse_knaben_html_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_parse_tpb_html_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_parse_uindex_html_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_dedup_torrents_json;
-  final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
-  ffi_search_torrents_json;
   final ffi.Pointer<ffi.Char> Function(
     ffi.Pointer<ffi.Char>,
     ffi.Pointer<ffi.Char>,

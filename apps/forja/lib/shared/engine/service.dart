@@ -378,6 +378,58 @@ class EngineService {
   Future<EnginePack> refreshManifestUrl(String manifestUrl) =>
       refresh(manifestUrl);
 
+  /// Run one torrent indexer plugin (`kind: torrent`).
+  Future<List<Map<String, dynamic>>> runTorrentSearch({
+    required String pluginId,
+    required String query,
+    String? imdbId,
+    int? season,
+    int? episode,
+    bool Function()? isCancelled,
+    EngineRuntime? runtime,
+  }) async {
+    final packs = await listPacks();
+    final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
+    if (hit == null ||
+        !hit.pack.isPluginActive(hit.plugin) ||
+        !hit.plugin.isTorrent) {
+      return [];
+    }
+    final plugin = hit.plugin;
+    final overlay =
+        ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
+    final config = mergeEngineConfig(plugin.config, overlay);
+    var code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
+    if (code == null || code.isEmpty) {
+      try {
+        await PluginRegistry.instance.install(hit.pack.sourceUrl);
+      } catch (_) {}
+      code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
+      if (code == null || code.isEmpty) return [];
+    }
+
+    final rt = runtime ?? EngineRuntime.fork();
+    final owned = runtime == null;
+    try {
+      await rt.loadPlugin(pluginId: plugin.id, code: code);
+      return rt.searchTorrent(
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        query: query,
+        imdbId: imdbId,
+        season: season,
+        episode: episode,
+        config: config,
+        isCancelled: isCancelled,
+      );
+    } catch (e) {
+      debugPrint('[engine] torrent search $pluginId failed: $e');
+      return [];
+    } finally {
+      if (owned) rt.dispose();
+    }
+  }
+
   Future<void> removePack(String sourceUrl) =>
       PluginRegistry.instance.removePack(sourceUrl);
 

@@ -10,6 +10,7 @@ Eight packs in this tree:
 |------|------|------|
 | **ForjaHQ Providers** | [`providers/manifest.json`](providers/manifest.json) | VOD / anime / drama scrapers + file-host hops |
 | **ForjaHQ Live Sports** | [`live/manifest.json`](live/manifest.json) | Live Matches schedule (catalog) + stream resolve per site |
+| **ForjaHQ Torrent** | [`torrent/manifest.json`](torrent/manifest.json) | Builtin torrent indexer search (`kind: torrent`) |
 | **ForjaHQ Home** | [`hubs/home/manifest.json`](hubs/home/manifest.json) | Home catalog hub (TMDB) |
 | **ForjaHQ Anime** | [`hubs/anime/manifest.json`](hubs/anime/manifest.json) | Anime catalog hub (AniList) |
 | **ForjaHQ Asian Drama** | [`hubs/asian_drama/manifest.json`](hubs/asian_drama/manifest.json) | Asian Drama catalog hub (KissKH) |
@@ -34,6 +35,7 @@ Point each manifest at the packs in this repo (e.g. raw GitHub URLs or your own 
 | Path | Role |
 |------|------|
 | `providers/` | VOD extractors |
+| `torrent/` | Torrent indexer search plugins |
 | `live/` | Live match resolvers |
 | `catalog/` | Live schedule catalogs |
 | `iptv/` | IPTV feature packs (VOD details — not shell hub tabs) |

@@ -35,7 +35,7 @@ From **Home**, **Anime**, or **Asian Drama**:
 | Hub | Default green Play | Notes |
 |-----|-------------------|--------|
 | **Anime** | Megaplay / VidNest / Miruro race (or Forja Auto when on) | AniList + MAL ids passed to providers; see [Anime](anime.md) tips for provider order |
-| **Asian Drama** | KissKH native extract on enabled mirror | Upcoming titles disable play until published; mirror order under **Settings → Sources → Server reliability → Asian Drama** |
+| **Asian Drama** | KissKH native extract | Upcoming titles disable play until published |
 
 Loading uses the shared cinematic resolve overlay (**Finding / Checking / Probing / Opening**). **Cancel**, leaving the page, or switching tabs stops in-flight checks.
 

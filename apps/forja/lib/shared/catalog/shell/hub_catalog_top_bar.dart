@@ -2,9 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/catalog_hub_capabilities.dart';
-import 'package:forja/shared/catalog/kit/layout/catalog_kit_layout_chrome.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
+import 'package:forja/shared/catalog/kit/layout/catalog_kit_top_bar.dart';
+import 'package:forja/shared/catalog/kit/layout/catalog_kit_top_menu_registry.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_search_screen.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -77,6 +78,7 @@ class _PluginHubCatalogTopBarState extends State<PluginHubCatalogTopBar> {
       unawaited(_loadPlugin(pluginId));
     }
     CatalogPackFiltersRegistry.revision.addListener(_onFilters);
+    CatalogKitTopMenuRegistry.revision.addListener(_onFilters);
   }
 
   Future<void> _loadPlugin(String pluginId) async {
@@ -88,6 +90,7 @@ class _PluginHubCatalogTopBarState extends State<PluginHubCatalogTopBar> {
   @override
   void dispose() {
     CatalogPackFiltersRegistry.revision.removeListener(_onFilters);
+    CatalogKitTopMenuRegistry.revision.removeListener(_onFilters);
     super.dispose();
   }
 
@@ -95,41 +98,15 @@ class _PluginHubCatalogTopBarState extends State<PluginHubCatalogTopBar> {
     if (mounted) setState(() {});
   }
 
-  bool _layoutOnlyHub(EnginePlugin? plugin) {
-    if (plugin == null) return false;
-    final caps = plugin.capabilities.map((c) => c.toLowerCase()).toSet();
-    if (!caps.contains('nav') || !caps.contains('layout')) return false;
-    const browse = {
-      'rail',
-      'feed',
-      'search',
-      'filters',
-      'host_search',
-      'structured_search',
-      'details',
-    };
-    return caps.intersection(browse).isEmpty;
-  }
-
-  bool _hideTopBar() {
-    if (CatalogKitLayoutChromeRegistry.packOwnsChrome(widget.tabId)) {
-      return true;
-    }
-    return _layoutOnlyHub(_plugin);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: CatalogKitLayoutChromeRegistry.revision,
-      builder: (context, _) {
-        if (_hideTopBar()) return const SizedBox.shrink();
-        return _buildTopBar(context);
-      },
-    );
+    if (CatalogKitTopMenuRegistry.hasTopMenu(widget.tabId)) {
+      return CatalogKitTopBar(tabId: widget.tabId);
+    }
+    return _buildBrowseTopBar(context);
   }
 
-  Widget _buildTopBar(BuildContext context) {
+  Widget _buildBrowseTopBar(BuildContext context) {
     final pluginId = PluginNavRegistry.pluginIdForTabSync(widget.tabId);
     if (pluginId == null) return const SizedBox.shrink();
     final plugin = _plugin;

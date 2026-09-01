@@ -58,11 +58,9 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       ? (visibility.showStremioAddons
             ? 'Torrents, extractors, addons'
             : 'Torrents and scrapers')
-      : visibility.showProviderScoring
-      ? (visibility.showStremioAddons
-            ? 'Server reliability, addons'
-            : 'Server reliability')
-      : 'Extractors and addons';
+      : (visibility.showStremioAddons
+            ? 'Extractors and addons'
+            : 'Forja plugins and addons');
 
   return [
     const SettingsCategoryMeta(

@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "id": "forjahq-torrent",
+  "name": "ForjaHQ Torrent",
+  "version": "1.0.0",
+  "prelude": "_torrent_common.js",
+  "plugins": [
+    {
+      "id": "knaben",
+      "name": "Knaben",
+      "entry": "knaben.js",
+      "kind": "torrent",
+      "config": { "source": "Knaben" }
+    },
+    {
+      "id": "pirate_bay",
+      "name": "The Pirate Bay",
+      "entry": "pirate_bay.js",
+      "kind": "torrent",
+      "config": { "source": "ThePirateBay" }
+    },
+    {
+      "id": "uindex",
+      "name": "UIndex",
+      "entry": "uindex.js",
+      "kind": "torrent",
+      "config": { "source": "UIndex" }
+    },
+    {
+      "id": "torrents_csv",
+      "name": "Torrents CSV",
+      "entry": "torrents_csv.js",
+      "kind": "torrent",
+      "config": { "source": "Torrents CSV" }
+    },
+    {
+      "id": "nyaa",
+      "name": "Nyaa",
+      "entry": "nyaa.js",
+      "kind": "torrent",
+      "config": { "source": "Nyaa" }
+    },
+    {
+      "id": "yts",
+      "name": "YTS",
+      "entry": "yts.js",
+      "kind": "torrent",
+      "config": { "source": "YTS" }
+    },
+    {
+      "id": "solid_torrents",
+      "name": "SolidTorrents",
+      "entry": "solid_torrents.js",
+      "kind": "torrent",
+      "config": { "source": "SolidTorrents" }
+    },
+    {
+      "id": "therarbg",
+      "name": "TheRARBG",
+      "entry": "therarbg.js",
+      "kind": "torrent",
+      "config": { "source": "TheRARBG" }
+    },
+    {
+      "id": "torrentio",
+      "name": "Torrentio",
+      "entry": "torrentio.js",
+      "kind": "torrent",
+      "config": { "source": "Torrentio" }
+    }
+  ]
+}

@@ -1,4 +1,6 @@
-/// Builtin torrent search provider ids (must match `crates/scrapers` PROVIDER_IDS).
+import 'torrent_search_catalog.dart';
+
+/// Builtin torrent search provider ids and chip helpers.
 class TorrentSearchProviders {
   static const allId = 'all_torrents';
   static const noneId = 'none_torrents';
@@ -13,43 +15,12 @@ class TorrentSearchProviders {
   static const therarbg = 'therarbg';
   static const torrentio = 'torrentio';
 
-  static const all = <String>[
-    knaben,
-    pirateBay,
-    uindex,
-    torrentsCsv,
-    nyaa,
-    yts,
-    solidTorrents,
-    therarbg,
-    torrentio,
-  ];
+  static List<String> get all => TorrentSearchCatalog.allIds;
 
-  static const labels = <String, String>{
-    knaben: 'Knaben',
-    pirateBay: 'The Pirate Bay',
-    uindex: 'UIndex',
-    torrentsCsv: 'Torrents CSV',
-    nyaa: 'Nyaa',
-    yts: 'YTS',
-    solidTorrents: 'SolidTorrents',
-    therarbg: 'TheRARBG',
-    torrentio: 'Torrentio',
-  };
+  static Map<String, String> get labels => TorrentSearchCatalog.labels;
 
-  /// Result `source` tags written by `crates/scrapers` (must match Rust
-  /// `display_name` / HTML parsers).
-  static const resultSources = <String, String>{
-    knaben: 'Knaben',
-    pirateBay: 'ThePirateBay',
-    uindex: 'UIndex',
-    torrentsCsv: 'Torrents CSV',
-    nyaa: 'Nyaa',
-    yts: 'YTS',
-    solidTorrents: 'SolidTorrents',
-    therarbg: 'TheRARBG',
-    torrentio: 'Torrentio',
-  };
+  static Map<String, String> get resultSources =>
+      TorrentSearchCatalog.resultSources;
 
   static String label(String id) => labels[id] ?? id;
 

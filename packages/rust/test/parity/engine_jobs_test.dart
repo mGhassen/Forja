@@ -12,8 +12,12 @@ void main() {
 
   test('cancel completes pending job with cancelled error', () async {
     final fut = EngineJobs.run(
-      EngineAsyncJob.searchTorrents,
-      {'query': 'test query that should cancel quickly'},
+      EngineAsyncJob.httpGet,
+      {
+        'url': 'http://127.0.0.1:1/',
+        'timeout_secs': 60,
+        'headers_json': '{}',
+      },
     );
     RustLib.instance.engineCancelPending();
     final raw = await fut.timeout(const Duration(seconds: 10));
@@ -21,12 +25,11 @@ void main() {
     expect(m['error'], 'cancelled');
   });
 
-  test('EngineJobs runs search torrents job off main isolate', () async {
+  test('search torrents job returns JSON array', () async {
     final raw = await EngineJobs.run(
       EngineAsyncJob.searchTorrents,
-      {'query': '{"query":"ubuntu","providers":["tpb"]}'},
+      {'query': 'ubuntu'},
     );
-    final decoded = jsonDecode(raw);
-    expect(decoded, isA<List>());
+    expect(jsonDecode(raw), isA<List>());
   });
 }

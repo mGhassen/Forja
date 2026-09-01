@@ -102,19 +102,6 @@ http://stream.example/live
     expect(parsed['name'], 'Test Addon');
   });
 
-  test('Knaben HTML parse via Rust FFI', () {
-    expect(RustLib.isInitialized, isTrue);
-    const html = '''
-<table><tbody><tr>
-<td class="text-wrap"><a href="magnet:?xt=urn:btih:abc" title="Show S01E01">Show</a></td>
-<td>1.2 GB</td><td></td><td>100</td>
-</tr></tbody></table>
-''';
-    final rows = jsonDecode(RustLib.instance.parseKnabenHtmlJson(html)) as List;
-    expect(rows, hasLength(1));
-    expect(rows.first['magnet'], startsWith('magnet:'));
-  });
-
   test('EpisodeMatcher via Rust FFI', () {
     expect(RustLib.isInitialized, isTrue);
     expect(EpisodeMatcher.matches('Show.S03E07.1080p.mkv', 3, 7), isTrue);

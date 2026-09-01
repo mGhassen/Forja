@@ -25,7 +25,6 @@ utils = { path = "../utils" }
 stream = { path = "../stream" }
 iptv = { path = "../iptv" }
 stremio = { path = "../stremio" }
-scrapers = { path = "../scrapers" }
 torrent = { path = "../torrent", optional = true }
 proxy = { path = "../proxy", optional = true }
 lan = { path = "../lan", optional = true }

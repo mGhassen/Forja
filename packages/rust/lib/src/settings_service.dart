@@ -1150,29 +1150,34 @@ class SettingsService {
   Future<void> setSortPreference(String preference) async =>
       kvSetString(_sortPreferenceKey, preference);
 
-  /// Enabled builtin torrent search provider ids. Default: all known providers.
+  /// Enabled torrent indexer ids from the installed ForjaHQ Torrent pack.
   Future<List<String>> getEnabledTorrentProviders() async {
+    final installed = TorrentSearchProviders.all;
+    if (installed.isEmpty) return const [];
     final raw = await kvGetString(_enabledTorrentProvidersKey);
     if (raw == null || raw.trim().isEmpty) {
-      return List<String>.from(TorrentSearchProviders.all);
+      return List<String>.from(installed);
     }
     try {
       final decoded = jsonDecode(raw);
       if (decoded is List) {
         final ids = decoded
             .map((e) => e.toString())
-            .where((id) => TorrentSearchProviders.all.contains(id))
+            .where((id) => installed.contains(id))
             .toList();
         if (ids.isNotEmpty) return ids;
       }
     } catch (_) {}
-    return List<String>.from(TorrentSearchProviders.all);
+    return List<String>.from(installed);
   }
 
   Future<void> setEnabledTorrentProviders(List<String> ids) async {
-    final filtered = ids
-        .where((id) => TorrentSearchProviders.all.contains(id))
-        .toList();
+    final installed = TorrentSearchProviders.all.toSet();
+    if (installed.isEmpty) {
+      await kvSetString(_enabledTorrentProvidersKey, '[]');
+      return;
+    }
+    final filtered = ids.where(installed.contains).toList();
     await kvSetString(_enabledTorrentProvidersKey, jsonEncode(filtered));
   }
 

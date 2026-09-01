@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{LazyLock, Mutex};
 
-use scrapers::{search_request, SearchRequest};
 use stremio::{fetch_get, fetch_get_with_headers, fetch_post_with_headers};
 use utils::engine_cancel::CancellationToken;
 
@@ -172,14 +171,8 @@ async fn run_job_inner(kind: u32, payload_json: &str) -> Result<String, String> 
             .map_err(|e| e.to_string())?
         }
         k if k == JobKind::SearchTorrents as u32 => {
-            // Dart sends `{"query":"<SearchRequest json or plain text>"}`.
-            // Must use SearchRequest::parse — search_all(query) treats a JSON
-            // body as a literal search string and returns nothing.
-            let req: SearchReq = serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
-            let parsed = SearchRequest::parse(&req.query);
-            utils::engine_cancel::with_cancel(async move { Ok(search_request(&parsed).await) })
-                .await
-                .and_then(|results| serde_json::to_string(&results).map_err(|e| e.to_string()))
+            // Torrent indexer search runs in Dart via JS plugins (ForjaHQ Torrent pack).
+            Ok("[]".into())
         }
         k if k == JobKind::HttpGet as u32 => {
             let req: HttpReq = serde_json::from_str(payload_json).map_err(|e| e.to_string())?;
@@ -308,11 +301,6 @@ struct RequestJsonPayload {
 struct StremioHttpReq {
     url: String,
     timeout_secs: u64,
-}
-
-#[derive(serde::Deserialize)]
-struct SearchReq {
-    query: String,
 }
 
 #[derive(serde::Deserialize)]

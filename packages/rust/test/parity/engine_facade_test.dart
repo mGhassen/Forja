@@ -9,12 +9,6 @@ void main() {
     await initRustForTests();
   });
 
-  test('searchTorrentsJson returns JSON array', () {
-    final raw = RustLib.instance.searchTorrentsJson('ubuntu');
-    final decoded = jsonDecode(raw);
-    expect(decoded, isA<List>());
-  });
-
   test('filter sort isVideo FFI chain', () {
     const rows = [
       {

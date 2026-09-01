@@ -9,9 +9,6 @@ Future<String> runStremioHttpGet(String url, {int timeoutSecs = 15}) =>
       'timeout_secs': timeoutSecs,
     });
 
-Future<String> runSearchTorrentsJson(String query) =>
-    EngineJobs.run(EngineAsyncJob.searchTorrents, {'query': query});
-
 Future<String> runHttpGetJson(
   String url, {
   int timeoutSecs = 15,

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/playback/torrent_js_search.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 
@@ -61,25 +62,37 @@ class SettingsSearchTorrentsSection extends ConsumerWidget {
         SettingsGroup(
           label: 'Torrent providers',
           children: [
-            for (final id in TorrentSearchProviders.all)
-              settingsFocusableToggle(
-                context,
-                TorrentSearchProviders.label(id),
-                id == TorrentSearchProviders.torrentio
-                    ? 'IMDb search when available on details.'
-                    : 'Include results from this indexer.',
-                snap.enabledProviders.contains(id),
-                (val) async {
-                  await settings.setTorrentProviderEnabled(id, val);
-                  final next = List<String>.from(snap.enabledProviders);
-                  if (val) {
-                    if (!next.contains(id)) next.add(id);
-                  } else {
-                    next.remove(id);
-                  }
-                  notifier.patch((s) => s.copyWith(enabledProviders: next));
-                },
-              ),
+            if (!TorrentSearchCatalog.hasInstalled)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
+                child: Text(
+                  'Install the ForjaHQ Torrent pack under Settings → Sources → Forja '
+                  '(plugins/torrent/manifest.json) to enable indexer search.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: ForjaShellColors.textSecondary,
+                      ),
+                ),
+              )
+            else
+              for (final id in TorrentSearchProviders.all)
+                settingsFocusableToggle(
+                  context,
+                  TorrentSearchProviders.label(id),
+                  id == TorrentSearchProviders.torrentio
+                      ? 'IMDb search when available on details.'
+                      : 'Include results from this indexer.',
+                  snap.enabledProviders.contains(id),
+                  (val) async {
+                    await settings.setTorrentProviderEnabled(id, val);
+                    final next = List<String>.from(snap.enabledProviders);
+                    if (val) {
+                      if (!next.contains(id)) next.add(id);
+                    } else {
+                      next.remove(id);
+                    }
+                    notifier.patch((s) => s.copyWith(enabledProviders: next));
+                  },
+                ),
           ],
         ),
         SettingsGroup(

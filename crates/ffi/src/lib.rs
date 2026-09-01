@@ -13,10 +13,6 @@ mod engine_torrent;
 
 use iptv::m3u;
 use iptv::pastesh;
-use scrapers::{
-    dedup_by_infohash, parse_knaben_html, parse_tpb_html, parse_uindex_html, search_request,
-    SearchRequest,
-};
 use std::sync::LazyLock;
 use stream::list_providers;
 use stremio::{
@@ -332,30 +328,6 @@ fn split_stremio_addon_url_json(url: String) -> String {
     serde_json::to_string(&parts).unwrap_or_else(|_| "{}".into())
 }
 
-fn parse_knaben_html_json(html: String) -> String {
-    serde_json::to_string(&parse_knaben_html(&html)).unwrap_or_else(|_| "[]".into())
-}
-
-fn parse_tpb_html_json(html: String) -> String {
-    serde_json::to_string(&parse_tpb_html(&html, "ThePirateBay")).unwrap_or_else(|_| "[]".into())
-}
-
-fn parse_uindex_html_json(html: String) -> String {
-    serde_json::to_string(&parse_uindex_html(&html)).unwrap_or_else(|_| "[]".into())
-}
-
-fn dedup_torrents_json(results_json: String) -> String {
-    let parsed: Vec<scrapers::TorrentSearchResult> =
-        serde_json::from_str(&results_json).unwrap_or_default();
-    serde_json::to_string(&dedup_by_infohash(parsed)).unwrap_or_else(|_| "[]".into())
-}
-
-fn search_torrents_json(query: String) -> String {
-    utils::engine_cancel::enter_job();
-    let req = SearchRequest::parse(&query);
-    let results = RUNTIME.block_on(search_request(&req));
-    serde_json::to_string(&results).unwrap_or_else(|_| "[]".into())
-}
 
 fn filter_torrents_json(
     results_json: String,

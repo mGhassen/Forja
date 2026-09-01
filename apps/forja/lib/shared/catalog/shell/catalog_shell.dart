@@ -25,7 +25,7 @@ import '../kit/layout/catalog_kit_list_widget.dart';
 import '../kit/layout/catalog_kit_menu_widget.dart';
 import '../kit/layout/catalog_stack_widget.dart';
 import '../kit/layout/catalog_kit_tabs_widget.dart';
-import '../kit/layout/catalog_kit_layout_chrome.dart';
+import '../kit/layout/catalog_kit_top_menu_registry.dart';
 import '../kit/layout/catalog_kit_types.dart';
 import '../kit/layout/catalog_layout_scope.dart';
 import '../kit/widgets/catalog_because_section.dart';
@@ -160,7 +160,7 @@ class _CatalogShellState extends State<CatalogShell>
   void dispose() {
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     CatalogVerticalFiltersRegistry.unregister(_pageKey);
-    CatalogKitLayoutChromeRegistry.unregister(_pageKey);
+    CatalogKitTopMenuRegistry.unregister(_pageKey);
     if (_verticalFiltersRevisionListener != null) {
       CatalogVerticalFiltersRegistry.revision.removeListener(
         _verticalFiltersRevisionListener!,
@@ -304,9 +304,12 @@ class _CatalogShellState extends State<CatalogShell>
       packSourceUrl: packSourceUrl,
       widgets: widgets,
     );
-    CatalogKitLayoutChromeRegistry.syncFromLayout(
+    CatalogKitTopMenuRegistry.syncFromLayout(
       tabId: _pageKey,
       widgets: widgets,
+      selections: _layoutSelections,
+      widgetSpecs: _layoutWidgetSpecs,
+      onSelect: _onLayoutTabSelect,
     );
     _rebindChromeListenable();
     markShellTabFresh();
@@ -327,6 +330,7 @@ class _CatalogShellState extends State<CatalogShell>
         _layoutSelections[widgetId] = value;
       }
     });
+    CatalogKitTopMenuRegistry.notifySelectionChanged(_pageKey);
   }
 
   Widget? _buildLayoutWidget(
@@ -347,12 +351,14 @@ class _CatalogShellState extends State<CatalogShell>
           ),
         );
       case CatalogKitTypes.menu:
+        if (CatalogKitTopMenuRegistry.hasTopMenu(_pageKey)) return null;
         return CatalogKitMenuWidget(
           tabId: _pageKey,
           spec: spec,
           sortOrder: stackIndex,
         );
       case CatalogKitTypes.tabs:
+        if (CatalogKitTopMenuRegistry.hasTopMenu(_pageKey)) return null;
         return CatalogKitTabsWidget(
           tabId: _pageKey,
           spec: spec,
@@ -376,11 +382,18 @@ class _CatalogShellState extends State<CatalogShell>
     if (!CatalogKitTypes.isCompositionRoot(root)) return null;
     final body = _buildLayoutWidget(root, tvOrders: tvOrders);
     if (body == null) return null;
+    final topInset = CatalogKitTopMenuRegistry.bodyTopInset(context, _pageKey);
     return CatalogLayoutScope(
       selections: Map.unmodifiable(_layoutSelections),
       widgetSpecs: _layoutWidgetSpecs,
       onSelect: _onLayoutTabSelect,
-      child: TvFocusGraph(tabId: _pageKey, child: body),
+      child: TvFocusGraph(
+        tabId: _pageKey,
+        child: Padding(
+          padding: EdgeInsets.only(top: topInset),
+          child: body,
+        ),
+      ),
     );
   }
 
@@ -1257,6 +1270,7 @@ class _CatalogShellState extends State<CatalogShell>
         );
       case CatalogKitTypes.menu:
       case CatalogKitTypes.tabs:
+        if (CatalogKitTopMenuRegistry.hasTopMenu(_pageKey)) return null;
         return CatalogLayoutScope(
           selections: Map.unmodifiable(_layoutSelections),
           widgetSpecs: _layoutWidgetSpecs,

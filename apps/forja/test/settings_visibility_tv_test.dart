@@ -70,7 +70,6 @@ void main() {
       expect(v.showPlaySourceStremioToggle, isTrue);
       expect(v.showPlaySourceNuvioToggle, isTrue);
       expect(v.lanPlaySourcesEditable, isTrue);
-      expect(v.showProviderScoring, isFalse);
       expect(v.showSourcesCategory, isTrue);
       expect(v.showLists, isFalse);
       expect(v.showDataCategory, isFalse);

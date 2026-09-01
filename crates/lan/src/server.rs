@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Extension, Query, State},
+    extract::{Extension, State},
     http::StatusCode,
     middleware,
     response::IntoResponse,
@@ -206,7 +206,6 @@ fn build_router(state: LanServerState) -> Router {
         .route("/revoke", post(revoke_handler))
         .route("/open", post(open_handler))
         .route("/close", post(close_handler))
-        .route("/search", get(search_handler))
         .route("/status", get(status_handler))
         .route_layer(middleware::from_fn({
             let pairing = pairing.clone();
@@ -549,19 +548,6 @@ fn rewrite_local_url(url: &str, host: &str, port: u16) -> String {
 fn append_stream_ticket(url: &str, ticket: &str) -> String {
     let sep = if url.contains('?') { '&' } else { '?' };
     format!("{url}{sep}st={ticket}")
-}
-
-#[derive(Debug, Deserialize)]
-struct SearchQuery {
-    q: String,
-}
-
-async fn search_handler(
-    State(_state): State<LanServerState>,
-    Query(query): Query<SearchQuery>,
-) -> impl IntoResponse {
-    let results = scrapers::search_all(&query.q).await;
-    Json(serde_json::json!({ "results": results }))
 }
 
 async fn status_handler(State(state): State<LanServerState>) -> impl IntoResponse {

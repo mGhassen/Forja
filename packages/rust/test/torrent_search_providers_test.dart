@@ -2,6 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rust/rust.dart';
 
 void main() {
+  setUp(() {
+    TorrentSearchCatalog.update(const [
+      TorrentSearchProviderMeta(id: 'knaben', label: 'Knaben', resultSource: 'Knaben'),
+      TorrentSearchProviderMeta(id: 'yts', label: 'YTS', resultSource: 'YTS'),
+      TorrentSearchProviderMeta(id: 'nyaa', label: 'Nyaa', resultSource: 'Nyaa'),
+    ]);
+  });
+
+  tearDown(TorrentSearchCatalog.clear);
+
   test('mergeByMagnet keeps the higher-seeder copy', () {
     final into = <String, Map<String, dynamic>>{};
     TorrentSearchProviders.mergeByMagnet(into, [
@@ -82,8 +92,8 @@ void main() {
       ),
       [
         TorrentSearchProviders.knaben,
-        TorrentSearchProviders.nyaa,
         TorrentSearchProviders.yts,
+        TorrentSearchProviders.nyaa,
       ],
     );
     expect(

@@ -11,11 +11,13 @@ class CatalogKitTabsWidget extends StatelessWidget {
     required this.tabId,
     required this.spec,
     this.sortOrder = 0,
+    this.inShellTopBar = false,
   });
 
   final String tabId;
   final Map<String, dynamic> spec;
   final int sortOrder;
+  final bool inShellTopBar;
 
   String get _widgetId => (spec['id'] ?? 'tabs').toString();
   List<({String id, String label})> get _items => catalogKitItemsFromSpec(spec);
@@ -37,6 +39,7 @@ class CatalogKitTabsWidget extends StatelessWidget {
       onSelect: (id) => scope.onSelect(_widgetId, id, toggle: false),
       onUp: catalogKitFocusEdge(tabId, spec['focusUp']?.toString(), last: true),
       onDown: catalogKitFocusEdge(tabId, spec['focusDown']?.toString()),
+      inShellTopBar: inShellTopBar,
     );
   }
 }

@@ -255,7 +255,6 @@ New routes on the desktop's LAN-bound axum router (same process as proxy/torrent
 |----------------|------|---------|
 | `GET /health` | none | Liveness; confirm discovered server is Forja |
 | `POST /pair` | code | Exchange one-time code for token |
-| `GET /search?q=` | token | Torrent search (wraps `scrapers::search_all` via FFI pipeline) |
 | `POST /resolve` | token | Resolve title to candidate sources (host calls server; server runs provider registry + engine) |
 | `POST /open` | token | Open stream (torrent add or proxy route register); returns LAN play URL |
 | `POST /close` | token | Stop matching torrent swarm when client leaves player (`info_hash`); keeps cache |

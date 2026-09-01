@@ -16,6 +16,7 @@ class CatalogKitMenuWidget extends StatelessWidget {
     this.sortOrder = 0,
     this.count,
     this.firstFocusNode,
+    this.inShellTopBar = false,
   });
 
   final String tabId;
@@ -23,6 +24,7 @@ class CatalogKitMenuWidget extends StatelessWidget {
   final int sortOrder;
   final int? count;
   final FocusNode? firstFocusNode;
+  final bool inShellTopBar;
 
   String get _widgetId => (spec['id'] ?? 'menu').toString();
   bool get _toggle => spec['toggle'] == true;
@@ -55,10 +57,14 @@ class CatalogKitMenuWidget extends StatelessWidget {
       onFocusUp: focusUp ?? () {},
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-          ShellTokens.compactChromeLeadingInset(context),
-          ShellTokens.tabHeaderTopPadding,
+          inShellTopBar
+              ? ShellTokens.shellTopBarMenuLeadingInset(context)
+              : ShellTokens.compactChromeLeadingInset(context),
+          inShellTopBar
+              ? ShellTokens.shellHeaderTopPadding
+              : ShellTokens.tabHeaderTopPadding,
           ShellTokens.bodyHorizontalPadding,
-          4,
+          inShellTopBar ? 0 : 4,
         ),
         child: FocusTraversalGroup(
           policy: ReadingOrderTraversalPolicy(),

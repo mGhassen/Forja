@@ -16,6 +16,7 @@ class CatalogStatusTabs extends StatelessWidget {
     this.sortOrder = 1,
     this.onUp,
     this.onDown,
+    this.inShellTopBar = false,
   });
 
   final String tabId;
@@ -26,6 +27,7 @@ class CatalogStatusTabs extends StatelessWidget {
   final int sortOrder;
   final VoidCallback? onUp;
   final VoidCallback? onDown;
+  final bool inShellTopBar;
 
   static const defaultTabs = [
     (id: 'plantowatch', title: 'Plan to Watch'),
@@ -49,13 +51,15 @@ class CatalogStatusTabs extends StatelessWidget {
       onFocusDown: onDown,
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-          ShellTokens.compactChromeLeadingInset(context),
-          0,
+          inShellTopBar
+              ? ShellTokens.shellTopBarMenuLeadingInset(context)
+              : ShellTokens.compactChromeLeadingInset(context),
+          inShellTopBar ? ShellTokens.kitTopBarStatusRowTopGap : 0,
           ShellTokens.bodyHorizontalPadding,
           0,
         ),
         child: SizedBox(
-          height: 42,
+          height: ShellTokens.kitTopBarStatusRowHeight,
           child: FocusTraversalGroup(
             policy: ReadingOrderTraversalPolicy(),
             child: Row(

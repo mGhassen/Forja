@@ -374,31 +374,6 @@ pub unsafe extern "C" fn ffi_debrid_request_json(request_json: *const c_char) ->
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_parse_knaben_html_json(html: *const c_char) -> *mut c_char {
-    to_c_string(crate::parse_knaben_html_json(from_c_str(html)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_parse_tpb_html_json(html: *const c_char) -> *mut c_char {
-    to_c_string(crate::parse_tpb_html_json(from_c_str(html)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_parse_uindex_html_json(html: *const c_char) -> *mut c_char {
-    to_c_string(crate::parse_uindex_html_json(from_c_str(html)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_dedup_torrents_json(results_json: *const c_char) -> *mut c_char {
-    to_c_string(crate::dedup_torrents_json(from_c_str(results_json)))
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn ffi_search_torrents_json(query: *const c_char) -> *mut c_char {
-    to_c_string(crate::search_torrents_json(from_c_str(query)))
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn ffi_filter_torrents_json(
     results_json: *const c_char,
     show_title: *const c_char,

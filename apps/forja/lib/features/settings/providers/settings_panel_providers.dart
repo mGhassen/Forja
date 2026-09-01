@@ -8,8 +8,9 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/sync/providers/settings_revision_providers.dart';
 import 'package:forja/shared/sync/providers/account_features_provider.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
-import 'package:forja/shared/engine/hub_plugin_config.dart';
 import 'package:forja/shell/nav_config.dart';
+import 'package:forja/shared/engine/plugin_registry.dart';
+import 'package:forja/shared/playback/torrent_js_search.dart';
 import 'package:rust/rust.dart';
 
 // ── Playback ───────────────────────────────────────────────────────────────
@@ -304,6 +305,13 @@ final settingsTorrentProvider =
 class SettingsTorrentNotifier extends AsyncNotifier<SettingsTorrentSnapshot> {
   @override
   Future<SettingsTorrentSnapshot> build() async {
+    void onPluginsChanged() => ref.invalidateSelf();
+    PluginRegistry.changeNotifier.addListener(onPluginsChanged);
+    ref.onDispose(
+      () => PluginRegistry.changeNotifier.removeListener(onPluginsChanged),
+    );
+
+    await syncTorrentSearchCatalog();
     final s = SettingsService();
     return SettingsTorrentSnapshot(
       sortPreference: await s.getSortPreference(),
@@ -601,12 +609,6 @@ class TrackerAccountStatus {
   final Map<String, dynamic>? stats;
   final String? apiKey;
 }
-
-final asianDramaMirrorCatalogProvider = FutureProvider<Map<String, String>>((
-  ref,
-) async {
-  return HubPluginConfig.mirrorCatalogForTab('asian_drama');
-});
 
 final simklStatusProvider = FutureProvider.autoDispose<TrackerAccountStatus>((
   ref,

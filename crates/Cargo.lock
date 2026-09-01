@@ -1194,7 +1194,6 @@ dependencies = [
  "media-extra",
  "media-metadata",
  "proxy",
- "scrapers",
  "serde",
  "serde_json",
  "storage",
@@ -2020,7 +2019,6 @@ dependencies = [
  "mdns-sd",
  "proxy",
  "rand 0.8.6",
- "scrapers",
  "serde",
  "serde_json",
  "tokio",
@@ -3591,14 +3589,7 @@ name = "scrapers"
 version = "0.1.0"
 dependencies = [
  "regex",
- "reqwest",
- "scraper",
  "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "urlencoding",
- "utils",
 ]
 
 [[package]]

@@ -70,12 +70,13 @@ class EnginePlugin {
   bool get isHttp => kind == 'http';
   bool get isHost => kind == 'host';
   bool get isHop => kind == 'hop';
+  bool get isTorrent => kind == 'torrent';
 
   /// Catalog hub plugin — serves shell tabs through the catalog protocol.
   bool get isHubCatalog => kind == 'catalog';
 
   /// Pack install must cache JS for this plugin.
-  bool get needsScript => isHttp || isHop || isHubCatalog;
+  bool get needsScript => isHttp || isHop || isHubCatalog || isTorrent;
 
   bool hasCapability(String name) {
     final want = name.trim().toLowerCase();

@@ -144,6 +144,20 @@ abstract final class ShellTokens {
   /// Extra inset before the Films tab in [HomeTopBar].
   static const double homeTopBarMenuLeadingInset = 28;
 
+  /// Hoisted `kit.menu` → `kit.tabs` gap in [CatalogKitTopBar].
+  static const double kitTopBarStatusRowTopGap = 10;
+  static const double kitTopBarStatusRowHeight = 42;
+  static double get kitTopBarTwoRowHeight =>
+      homeTopBarHeight + kitTopBarStatusRowTopGap + kitTopBarStatusRowHeight;
+
+  /// Leading inset for shell top-bar menu rows (matches [CatalogTopBar]).
+  static double shellTopBarMenuLeadingInset(BuildContext context) {
+    if (usesCompactNavDrawer(context)) {
+      return compactMenuLeadingInset(context);
+    }
+    return bodyHorizontalPadding + homeTopBarMenuLeadingInset;
+  }
+
   /// Home Categories popup: visible rows before scrolling.
   static const double homeCategoriesMenuRowHeight = 38;
   static const int homeCategoriesMenuMaxVisibleRows = 8;

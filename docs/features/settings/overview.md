@@ -22,7 +22,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 |----------|----------------|------------|
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
 | [Playback](playback-settings.md) | Play sources, audio, auto next/skip, quality, IPTV EPG | Always (play sources / episode extras need a VOD tab; IPTV EPG needs the IPTV tab) |
-| [Sources](torrent-settings.md) | Server reliability, torrents, Stremio / Nuvio / Forja / Jackett / Prowlarr | VOD tab + Webstreaming / Direct torrent / Stremio / Nuvio / Forja on (or Live Matches for Stremio sport addons). Server reliability + Jackett / Prowlarr stay admin (+ phone/desktop for reliability) |
+| [Sources](torrent-settings.md) | Torrents, Stremio / Nuvio / Forja / Jackett / Prowlarr | VOD tab + Direct torrent / Stremio / Nuvio / Forja on (or Live Matches for Stremio sport addons). Jackett / Prowlarr stay admin-only |
 | Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link | Admin only · VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
 | Connected services | Simkl; MDBlist (admin) | VOD tab (MDBlist rows are admin-only) |
 | [Lists](../movies-tv/external-lists.md) | MDBlist custom / top lists | Admin only · VOD tab — never on Android TV |

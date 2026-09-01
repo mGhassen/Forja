@@ -18,7 +18,7 @@ Cold start (and profile switch) downloads any cloud-synced packs that are missin
 
 ## How to open it
 
-**Settings → Sources → Server reliability** — Movies / Series / Anime / Asian Drama tabs with live **Score** and Auto **Tries** order.
+**Settings → Sources → Forja** — enable or disable engine plugins per category.
 
 **In player → Servers** — pick **Auto** (default) or pin a specific server. Stream rows show a language flag when the title encodes a region/language.
 
@@ -27,8 +27,8 @@ Cold start (and profile switch) downloads any cloud-synced packs that are missin
 - **Auto** — Engine plugins try in **effective score order** until one works: extract → HTTP probe → open. Mid-watch failure tries sibling mirrors, then reloads via `onReloadStreams` / re-extract when pinned off.
 - **Manual** — pick a server / stream; Forja stays on that pick on fail. Switching providers mid-check starts the new one immediately.
 - Source links are **HTTP-probed before open** on play (same check as menu tap-to-probe). Dead playlist/CDN links fail that probe without waiting for a full mpv timeout.
-- The **score badge number** is the provider’s **running Σ** across titles you play (count **up or down**, never below **0** — fails at 0 stay 0; a later success counts up). The **+/− prefixes** are outcomes **for this film / TV episode / anime episode** only: server **±2**, stream **±2**. Server and stream are **linked**: extract OK + stream OK → **+2 +2**; extract OK + all streams dead → **+2 −2** (net 0); extract empty → **−2**. Score commits only when that check finishes — **Cancel**, mid-check, extract-only, or anime extract before the CDN reachability probe does **not** add **+2 +2**. Anime CDN-dead after extract commits **+2 −2**. Asian drama is not scored. Σ nudges Auto order over time.
-- Reorder providers in Settings (baseline per domain; effective order preview in table)
+- The **score badge number** (when shown) is the provider’s **running Σ** across titles you play. The **+/− prefixes** are outcomes **for this film / TV episode / anime episode** only.
+- Enable or disable providers under **Settings → Sources → Forja** (per-plugin toggles and pack switches)
 - On decoder failure, try software decode once — do not auto-switch providers
 
 ## Domains

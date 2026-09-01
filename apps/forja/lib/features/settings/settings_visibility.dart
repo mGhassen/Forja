@@ -70,10 +70,9 @@ class SettingsVisibility {
   /// Stremio addons — VOD Sources and/or Live Matches sport servers.
   bool get showStremioAddons => (vodTab && playSourceStremio) || liveMatchesNav;
 
-  /// Settings → Sources hub tile (torrent / Stremio / Nuvio / server reliability).
+  /// Settings → Sources hub tile (torrent / Stremio / Nuvio / Forja packs).
   ///
   /// Torrent / Stremio / Nuvio stay gated by [resolve] platform caps as well.
-  /// Server reliability ([showProviderScoring]) stays admin + phone/desktop.
   bool get showSourcesCategory =>
       (vodTab &&
           (playSourceTorrent ||
@@ -89,14 +88,6 @@ class SettingsVisibility {
       !_isAndroidTv &&
       vodTab &&
       (playSourceTorrent || playSourceStremio || playSourceNuvio) &&
-      AccountFeatures.instance.isAdmin;
-
-  /// Server reliability / provider order (stream extractors).
-  /// Lives under Sources — admin + engine play source; hidden on Android TV.
-  bool get showProviderScoring =>
-      !_isAndroidTv &&
-      vodTab &&
-      playSourceEngine &&
       AccountFeatures.instance.isAdmin;
 
   /// Simkl for everyone; MDBlist row admin-only.

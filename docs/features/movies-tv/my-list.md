@@ -4,7 +4,7 @@
 
 ## What it is
 
-My List is a hub-style list screen you can scroll. The **ForjaHQ My List** pack declares the page layout with catalog kit widgets: **`kit.stack`** → **`kit.menu`** (kind) + **`kit.tabs`** (status) + **`kit.list`** (poster grid). Default kind labels are **Film**, **Series**, **Anime**, **Asian Drama**; status labels are **Plan to Watch** … **Dropped** (tap a kind again to clear that filter).
+My List is a hub-style list screen you can scroll. The **ForjaHQ My List** pack declares **`kit.menu`** (kind) and **`kit.tabs`** (status) in the shell top bar — the same overlay slot as Home’s Search / Films / Series menu — plus a **`kit.list`** poster grid in the page body.
 
 ## How to open it
 

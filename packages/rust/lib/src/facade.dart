@@ -10,8 +10,7 @@ import 'engine_jobs.dart';
 import 'engine_worker.dart';
 import 'isolate_runner.dart';
 import 'library_path.dart';
-import 'playback/torrent/torrent_search_providers.dart';
-import 'settings_service.dart';
+import 'playback/torrent/torrent_search_bridge.dart';
 
 /// Rust engine facade — native library required for parser/torrent features.
 abstract final class Engine {
@@ -190,20 +189,17 @@ abstract final class Engine {
     int? episode,
     List<String>? enabledProviders,
   }) async {
-    _requireReady();
-    final enabled =
-        enabledProviders ?? await SettingsService().getEnabledTorrentProviders();
-    final request = <String, dynamic>{
-      'query': query,
-      'enabled': enabled,
-      if (imdbId != null && imdbId.isNotEmpty) 'imdb_id': imdbId,
-      'season': ?season,
-      'episode': ?episode,
-    };
-    final json = await runSearchTorrentsJson(jsonEncode(request));
-    return (jsonDecode(json) as List)
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
+    final handler = TorrentSearchBridge.handler;
+    if (handler == null) {
+      throw StateError('TorrentSearchBridge not registered');
+    }
+    return handler(
+      query,
+      imdbId: imdbId,
+      season: season,
+      episode: episode,
+      enabledProviders: enabledProviders,
+    );
   }
 
   /// Same as [searchTorrents] but one engine job per provider. [onPartial]
@@ -219,54 +215,20 @@ abstract final class Engine {
     void Function(String providerId)? onProviderDone,
     bool Function()? isCancelled,
   }) async {
-    _requireReady();
-    final enabled = enabledProviders ??
-        await SettingsService().getEnabledTorrentProviders();
-    if (enabled.isEmpty) return [];
-
-    bool cancelled() => isCancelled?.call() == true;
-
-    if (enabled.length == 1) {
-      List<Map<String, dynamic>> one = const [];
-      try {
-        one = await searchTorrents(
-          query,
-          imdbId: imdbId,
-          season: season,
-          episode: episode,
-          enabledProviders: enabled,
-        );
-      } catch (_) {}
-      if (cancelled()) return [];
-      onProviderDone?.call(enabled.first);
-      onPartial?.call(one);
-      return one;
+    final handler = TorrentSearchBridge.progressiveHandler;
+    if (handler == null) {
+      throw StateError('TorrentSearchBridge not registered');
     }
-
-    final byMagnet = <String, Map<String, dynamic>>{};
-    await Future.wait([
-      for (final id in enabled)
-        () async {
-          List<Map<String, dynamic>> batch = const [];
-          try {
-            batch = await searchTorrents(
-              query,
-              imdbId: imdbId,
-              season: season,
-              episode: episode,
-              enabledProviders: [id],
-            );
-          } catch (_) {}
-          if (cancelled()) return;
-          onProviderDone?.call(id);
-          TorrentSearchProviders.mergeByMagnet(byMagnet, batch);
-          onPartial?.call(
-            List<Map<String, dynamic>>.from(byMagnet.values),
-          );
-        }(),
-    ]);
-    if (cancelled()) return [];
-    return byMagnet.values.toList();
+    return handler(
+      query,
+      imdbId: imdbId,
+      season: season,
+      episode: episode,
+      enabledProviders: enabledProviders,
+      onPartial: onPartial,
+      onProviderDone: onProviderDone,
+      isCancelled: isCancelled,
+    );
   }
 
   static Future<List<Map<String, dynamic>>> filterTorrents(

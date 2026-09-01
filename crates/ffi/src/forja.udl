@@ -42,11 +42,6 @@ namespace forja {
     string media_extra_request_json(string request_json);
     string indexer_request_json(string request_json);
     string debrid_request_json(string request_json);
-    string parse_knaben_html_json(string html);
-    string parse_tpb_html_json(string html);
-    string parse_uindex_html_json(string html);
-    string dedup_torrents_json(string results_json);
-    string search_torrents_json(string query);
     string filter_torrents_json(string results_json, string show_title, i32 required_season, i32 required_episode);
     string sort_torrents_json(string results_json, string preference);
     boolean is_video_file(string file_name);

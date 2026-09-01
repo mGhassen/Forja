@@ -18,7 +18,6 @@ Tap **Asian Drama** in the navigation bar.
 - **Search** — hub top-bar **Search** overlay (same two-column pattern as Anime on desktop/TV). Plain KissKH title search via the pack `search` action (no structured DSL unless the pack declares `structured_search`). **Cmd+F** / **Ctrl+F** on desktop.
 - **View details** on KissKH cards → [Hub details](hub-details.md) (episodes, KissKH native play, Sources when TMDB matched).
 - **Continue watching** — resume from hub row or details; clear progress with trash on details hero.
-- Order KissKH mirrors under **Settings → Sources → Server reliability → Asian Drama** — playback uses the first enabled mirror only (no auto-failover across aliases).
 
 ## Tips
 

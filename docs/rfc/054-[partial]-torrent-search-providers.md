@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **7 / 8** acceptance |
-| **Current slice** | Progressive per-provider paint shipped — desktop smoke remaining |
+| **Progress** | **9 / 9** components · **9 / 10** acceptance |
+| **Current slice** | JS torrent pack shipped — desktop smoke R54-A06 remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -25,6 +25,9 @@
 | 4 | R54-C04 | Torrent panel shows `source` provider badge | ✅ |
 | 5 | R54-C05 | Progressive per-provider search — panel paints as each provider returns | ✅ |
 | 6 | R54-C06 | Checking provider chips show the same cycling `…` as the kind tab | ✅ |
+| 7 | R54-C07 | `plugins/torrent/` pack — nine `kind: torrent` JS indexers + manifest | ✅ |
+| 8 | R54-C08 | `EngineRuntime.search` + `EngineService.runTorrentSearch` host path | ✅ |
+| 9 | R54-C09 | Dynamic provider list from installed torrent pack (`TorrentSearchCatalog`) | ✅ |
 
 ---
 
@@ -40,6 +43,14 @@
 | 6 | R54-A06 | Desktop smoke: toggle off Knaben → search → no Knaben rows | ⬜ |
 | 7 | R54-A07 | Sources torrent list updates as each enabled provider returns (not wait-for-all) | ✅ |
 | 8 | R54-A08 | While an indexer is still searching, that provider chip shows the same animated `…` as the Torrents tab | ✅ |
+| 9 | R54-A09 | App search uses JS torrent plugins when the ForjaHQ Torrent pack is installed | ✅ |
+| 10 | R54-A10 | Title filter, normalize, and magnet playback stay on Rust (`filter_torrents`, torrent engine) | ✅ |
+
+---
+
+## Acceptance (JS pack slice — appended)
+
+See rows R54-A09–R54-A10 above. Frozen rows R54-C01–R54-A08 keep historical status; search execution moved off `crates/scrapers` FFI for the Flutter host (LAN server may still call Rust search until migrated).
 
 ---
 
@@ -53,7 +64,7 @@ Expand Forja’s fixed 3-scraper torrent search into a checkable multi-provider 
 - Paint torrent rows as each provider returns (slow indexer does not hold the list empty)
 - Per-provider enable in Settings (default: all on)
 - Honest `source` labels on each result
-- Engine logic stays in `crates/scrapers` (no Dart scrapers)
+- Indexer search in hot-updatable JS (`plugins/torrent/`); filter / normalize / playback stay in Rust
 
 ## Contracts
 

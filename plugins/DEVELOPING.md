@@ -399,6 +399,8 @@ Browse hubs keep `hero`, `mood`, `rail`, `host.continue`, etc. Use `kit.*` when 
 
 `kit.list` binds to a **host source backend** (Model A): the pack declares layout + labels; the host owns persistence (local bookmarks, Simkl sync) and exposes data via registered source ids (`my_list` today). Optional `enrich` companion hydrates rows (e.g. TMDB details for Simkl stubs).
 
+Pack `kit.menu` / `kit.tabs` render in the **shell top bar** (same slot as Home Search / Films / Series) — not inside the page body.
+
 ### Host helpers (catalog)
 
 ```javascript

@@ -19,7 +19,6 @@ import 'package:forja/features/settings/sections/settings_iptv_sports_section.da
 import 'package:forja/features/settings/sections/lan_settings_section.dart';
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
 import 'package:forja/features/settings/sections/settings_playback_section.dart';
-import 'package:forja/features/settings/sections/settings_provider_scoring_section.dart';
 import 'package:forja/features/settings/sections/settings_providers_section.dart';
 import 'package:forja/features/settings/sections/settings_search_torrents_section.dart';
 import 'package:forja/features/settings/sections/settings_simkl_panel.dart';
@@ -116,8 +115,6 @@ class SettingsSourcesPageBody extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsProvidersSection(visibility: visibility),
-        if (visibility.showProviderScoring)
-          const SettingsProviderScoringSection(),
         if (visibility.showTorrentEngine) const SettingsSearchTorrentsSection(),
       ],
     );
