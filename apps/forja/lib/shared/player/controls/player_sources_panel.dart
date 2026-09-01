@@ -2147,7 +2147,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
     closed = true;
     if (!mounted || gen != _searchGen) return;
-    final filtered = (await Engine.filterTorrents(
+    final filtered = (await Engine.filterTorrentSearchResults(
       raw,
       widget.movie.title,
     )).map(TorrentResult.fromJson).toList();
@@ -2225,14 +2225,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
     closed = true;
     if (!mounted || gen != _searchGen) return;
-    final episodeFiltered = (await Engine.filterTorrents(
+    final episodeFiltered = (await Engine.filterTorrentSearchResults(
       episodeSoFar,
       widget.movie.title,
       requiredSeason: season,
       requiredEpisode: episode,
     )).map(TorrentResult.fromJson);
     if (!mounted || gen != _searchGen) return;
-    final seasonFiltered = (await Engine.filterTorrents(
+    final seasonFiltered = (await Engine.filterTorrentSearchResults(
       seasonSoFar,
       widget.movie.title,
       requiredSeason: season,
@@ -2887,12 +2887,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         jackett.search(baseUrl, apiKey, '${widget.movie.title} S${s}E$e'),
       ]);
       final combined = <String, TorrentResult>{};
-      final seasonFiltered = (await Engine.filterTorrents(
+      final seasonFiltered = (await Engine.filterTorrentSearchResults(
         results[0].map((r) => r.toJson()).toList(),
         widget.movie.title,
         requiredSeason: season,
       )).map(TorrentResult.fromJson);
-      final episodeFiltered = (await Engine.filterTorrents(
+      final episodeFiltered = (await Engine.filterTorrentSearchResults(
         results[1].map((r) => r.toJson()).toList(),
         widget.movie.title,
         requiredSeason: season,
@@ -2911,7 +2911,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         ? '${widget.movie.title} $_year'
         : widget.movie.title;
     final results = await jackett.search(baseUrl, apiKey, query);
-    return (await Engine.filterTorrents(
+    return (await Engine.filterTorrentSearchResults(
       results.map((r) => r.toJson()).toList(),
       widget.movie.title,
     )).map(TorrentResult.fromJson).toList();
@@ -2957,12 +2957,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         ),
       ]);
       final combined = <String, TorrentResult>{};
-      final seasonFiltered = (await Engine.filterTorrents(
+      final seasonFiltered = (await Engine.filterTorrentSearchResults(
         results[0].map((r) => r.toJson()).toList(),
         widget.movie.title,
         requiredSeason: season,
       )).map(TorrentResult.fromJson);
-      final episodeFiltered = (await Engine.filterTorrents(
+      final episodeFiltered = (await Engine.filterTorrentSearchResults(
         results[1].map((r) => r.toJson()).toList(),
         widget.movie.title,
         requiredSeason: season,
@@ -2986,7 +2986,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       query,
       indexerIds: indexerIds,
     );
-    return (await Engine.filterTorrents(
+    return (await Engine.filterTorrentSearchResults(
       results.map((r) => r.toJson()).toList(),
       widget.movie.title,
     )).map(TorrentResult.fromJson).toList();

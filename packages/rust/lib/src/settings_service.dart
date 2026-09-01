@@ -651,6 +651,36 @@ class SettingsService {
     return u;
   }
 
+  /// True when a Stremio addon row is Torrentio (host or manifest name).
+  static bool isTorrentioStremioAddon(Map<String, dynamic> addon) {
+    final base =
+        normalizeStremioAddonBaseUrl(addon['baseUrl']?.toString() ?? '')
+            .toLowerCase();
+    if (base.contains('torrentio')) return true;
+    final name = (addon['name'] ?? '').toString().toLowerCase();
+    if (name.contains('torrentio')) return true;
+    final manifest = addon['manifest'];
+    if (manifest is Map) {
+      final manifestName = manifest['name']?.toString().toLowerCase() ?? '';
+      if (manifestName.contains('torrentio')) return true;
+    }
+    return false;
+  }
+
+  /// Installed Stremio Torrentio base (incl. `/sort=…` path config), if any.
+  Future<String?> resolveTorrentioStremioAddonBase() async {
+    final addons = await getStremioAddons();
+    for (final addon in addons) {
+      if (addon['enabled'] == false) continue;
+      final base = normalizeStremioAddonBaseUrl(
+        addon['baseUrl']?.toString() ?? '',
+      );
+      if (base.isEmpty) continue;
+      if (isTorrentioStremioAddon(addon)) return base;
+    }
+    return null;
+  }
+
   Future<void> saveStremioAddon(
     Map<String, dynamic> addon, {
     bool notify = true,

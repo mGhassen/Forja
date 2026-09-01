@@ -429,6 +429,12 @@ class EngineService {
     final overlay =
         ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
     var config = mergeEngineConfig(plugin.config, overlay);
+    if (pluginId == 'torrentio') {
+      final stremioBase = await SettingsService().resolveTorrentioStremioAddonBase();
+      if (stremioBase != null && stremioBase.isNotEmpty) {
+        config = {...config, 'base': stremioBase};
+      }
+    }
     final flareUrl = await SettingsService().getFlareSolverrUrl();
     if (flareUrl != null && flareUrl.isNotEmpty) {
       config = {...config, 'flareSolverrUrl': flareUrl};

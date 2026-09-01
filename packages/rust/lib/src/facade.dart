@@ -11,6 +11,7 @@ import 'engine_worker.dart';
 import 'isolate_runner.dart';
 import 'library_path.dart';
 import 'playback/torrent/torrent_search_bridge.dart';
+import 'playback/torrent/torrent_search_filter.dart';
 
 /// Rust engine facade — native library required for parser/torrent features.
 abstract final class Engine {
@@ -247,6 +248,24 @@ abstract final class Engine {
     return (jsonDecode(json) as List)
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
+  }
+
+  /// Title/scene filter for indexer rows; IMDb-keyed providers pass through.
+  static Future<List<Map<String, dynamic>>> filterTorrentSearchResults(
+    List<Map<String, dynamic>> results,
+    String showTitle, {
+    int? requiredSeason,
+    int? requiredEpisode,
+  }) async {
+    final parts = TorrentSearchFilter.partitionSearchRows(results);
+    if (parts.titleFilter.isEmpty) return parts.passThrough;
+    final filtered = await filterTorrents(
+      parts.titleFilter,
+      showTitle,
+      requiredSeason: requiredSeason,
+      requiredEpisode: requiredEpisode,
+    );
+    return [...parts.passThrough, ...filtered];
   }
 
   static Future<List<Map<String, dynamic>>> sortTorrents(

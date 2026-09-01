@@ -85,7 +85,7 @@ Future<List<TorrentResult>> searchTvTorrents({
   final combined = <String, TorrentResult>{};
 
   for (final batch in seasonBatches) {
-    final filtered = (await Engine.filterTorrents(
+    final filtered = (await Engine.filterTorrentSearchResults(
       batch.map((r) => r.toJson()).toList(),
       title,
       requiredSeason: season,
@@ -98,7 +98,7 @@ Future<List<TorrentResult>> searchTvTorrents({
   }
 
   for (final batch in episodeBatches) {
-    final filtered = (await Engine.filterTorrents(
+    final filtered = (await Engine.filterTorrentSearchResults(
       batch.map((r) => r.toJson()).toList(),
       title,
       requiredSeason: season,
