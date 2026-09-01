@@ -954,6 +954,55 @@ bool isTorrentSeekPlayback({
   return false;
 }
 
+/// Map a timeline position to a byte offset in the active torrent file.
+int torrentByteOffsetForDuration(
+  Duration position,
+  Duration duration,
+  int totalBytes,
+) {
+  if (totalBytes <= 0 || duration <= Duration.zero) return 0;
+  final frac = position.inMicroseconds / duration.inMicroseconds;
+  final offset = (frac * totalBytes).round();
+  return offset.clamp(0, totalBytes - 1);
+}
+
+/// Debounced scrub/hover prefetch into the Rust torrent engine.
+class TorrentSeekPrefetchScheduler {
+  TorrentSeekPrefetchScheduler({this.debounce = const Duration(milliseconds: 250)});
+
+  final Duration debounce;
+  Timer? _timer;
+  int _token = 0;
+
+  void schedule({
+    required Duration position,
+    required Duration duration,
+    required String? streamUrl,
+    int? totalBytes,
+  }) {
+    if (streamUrl == null || !isLocalTorrentStreamUrl(streamUrl)) return;
+    if (totalBytes == null || totalBytes <= 0 || duration <= Duration.zero) {
+      return;
+    }
+    _timer?.cancel();
+    final token = ++_token;
+    _timer = Timer(debounce, () {
+      if (token != _token) return;
+      final offset = torrentByteOffsetForDuration(
+        position,
+        duration,
+        totalBytes,
+      );
+      TorrentStreamService().prefetchByteOffset(offset);
+    });
+  }
+
+  void cancel() {
+    _timer?.cancel();
+    _token++;
+  }
+}
+
 /// Catalog stream kind for logs - Nuvio vs Stremio from stream metadata.
 String catalogStreamKindLabel(Map<String, dynamic> stream) {
   if (stream['_enginePluginId'] != null) return 'Forja';

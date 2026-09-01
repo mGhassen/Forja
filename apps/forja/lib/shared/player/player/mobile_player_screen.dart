@@ -363,6 +363,11 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   String? _currentUrl;
   String? _activeMagnet;
 
+  StreamSubscription<TorrentStats>? _torrentStatsSub;
+  TorrentStats? _torrentStats;
+  final TorrentSeekPrefetchScheduler _torrentSeekPrefetch =
+      TorrentSeekPrefetchScheduler();
+
   /// Catalog Sources kind for the playing session: `torrents` | `stremio` | `nuvio`.
   String? _catalogSourceKind;
 
@@ -457,6 +462,21 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
       // re-open; open mid stays cleared above.
       _playbackConfirmedAt = null;
     }
+  }
+
+  void _scheduleTorrentPrefetchAt(Duration position) {
+    final url =
+        _hlsMasterUrl ??
+        _currentQualityUrl ??
+        _currentUrl ??
+        (isLocalTorrentStreamUrl(widget.mediaPath) ? widget.mediaPath : null);
+    if (url == null || !isLocalTorrentStreamUrl(url)) return;
+    _torrentSeekPrefetch.schedule(
+      position: position,
+      duration: _durationNotifier.value,
+      streamUrl: url,
+      totalBytes: _torrentStats?.totalBytes,
+    );
   }
 
   Future<void> _seekTo(Duration position) async {
@@ -673,6 +693,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     _tracksSub?.cancel();
     _logSub?.cancel();
     _pipSub?.cancel();
+    _torrentStatsSub?.cancel();
+    _torrentSeekPrefetch.cancel();
 
     _positionNotifier.dispose();
     _durationNotifier.dispose();

@@ -116,6 +116,7 @@ pub struct TorrentAppState {
 struct ActiveTorrent {
     id: usize,
     info_hash: String,
+    file_idx: usize,
 }
 
 struct EngineInner {
@@ -126,6 +127,8 @@ struct EngineInner {
     active: Option<ActiveTorrent>,
     peer_limit: usize,
     disk_cache_capacity_bytes: u64,
+    /// Background read at a scrub/hover byte offset — boosts librqbit piece priority.
+    prefetch_task: Option<tokio::task::JoinHandle<()>>,
 }
 
 pub struct TorrentEngine {
@@ -150,6 +153,7 @@ impl TorrentEngine {
                 active: None,
                 peer_limit: 128,
                 disk_cache_capacity_bytes: DEFAULT_DISK_CACHE_BYTES,
+                prefetch_task: None,
             }),
             runtime: tokio::runtime::Runtime::new().expect("tokio runtime"),
         }
@@ -559,12 +563,76 @@ impl TorrentEngine {
 
         self.reclaim_disk_cache(u64::MAX);
 
+        if let Ok(mut inner) = self.inner.lock() {
+            if let Some(active) = inner.active.as_mut() {
+                if active.id == prepared.torrent_id {
+                    active.file_idx = file_idx;
+                }
+            }
+        }
+
         Ok(StreamResponse {
             url,
             torrent_id: prepared.torrent_id,
             file_idx,
             info_hash: prepared.info_hash,
         })
+    }
+
+    /// Background read at [byte_offset] — librqbit piece priority for scrub/hover prefetch.
+    pub async fn prefetch_file_position_async(&self, byte_offset: u64) -> Result<(), String> {
+        let (api, torrent_id, file_idx, prev) = {
+            let mut inner = self.inner.lock().map_err(|_| "Engine lock poisoned")?;
+            let Some(active) = inner.active.as_ref() else {
+                return Err("No active torrent".into());
+            };
+            let torrent_id = active.id;
+            let file_idx = active.file_idx;
+            let prev = inner.prefetch_task.take();
+            (
+                inner.api.clone().ok_or("Torrent engine not started")?,
+                torrent_id,
+                file_idx,
+                prev,
+            )
+        };
+        if let Some(h) = prev {
+            h.abort();
+        }
+
+        let mut stream = api
+            .api_stream(TorrentIdOrHash::Id(torrent_id), file_idx)
+            .await
+            .map_err(|e| e.to_string())?;
+        let len = stream.len();
+        if byte_offset >= len {
+            return Ok(());
+        }
+        stream
+            .seek(std::io::SeekFrom::Start(byte_offset))
+            .await
+            .map_err(|e| e.to_string())?;
+
+        let handle = tokio::spawn(async move {
+            let mut buf = vec![0u8; 64 * 1024];
+            loop {
+                match stream.read(&mut buf).await {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => {}
+                }
+            }
+        });
+
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.prefetch_task = Some(handle);
+        }
+        Ok(())
+    }
+
+    fn abort_prefetch_locked(inner: &mut EngineInner) {
+        if let Some(h) = inner.prefetch_task.take() {
+            h.abort();
+        }
     }
 
     async fn prepare_magnet(&self, magnet: &str) -> Result<PreparedTorrent, String> {
@@ -715,6 +783,7 @@ impl TorrentEngine {
             inner.active = Some(ActiveTorrent {
                 id: torrent_id,
                 info_hash: details.info_hash.clone(),
+                file_idx: 0,
             });
         }
 
@@ -762,6 +831,7 @@ impl TorrentEngine {
             let Ok(mut inner) = self.inner.lock() else {
                 return;
             };
+            Self::abort_prefetch_locked(&mut inner);
             match (inner.api.clone(), inner.active.take()) {
                 (Some(api), Some(active)) => Some((api, active.id)),
                 _ => None,

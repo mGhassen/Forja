@@ -299,6 +299,12 @@ class TorrentStreamService {
     _log('Disk cache budget set to $clamped GB');
   }
 
+  /// Prioritize swarm pieces at [byteOffset] while the user hovers/drags the seekbar.
+  void prefetchByteOffset(int byteOffset) {
+    if (byteOffset < 0 || !RustLib.isInitialized) return;
+    RustLib.instance.torrentPrefetchByteOffset(byteOffset);
+  }
+
   Future<List<TorrentFileEntry>?> listTorrentFiles(String magnetLink) async {
     if (_state != EngineState.ready) {
       final started = await start();

@@ -209,6 +209,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   bool _showTorrentStatsOverlay = false;
   StreamSubscription<TorrentStats>? _torrentStatsSub;
   TorrentStats? _torrentStats;
+  final TorrentSeekPrefetchScheduler _torrentSeekPrefetch =
+      TorrentSeekPrefetchScheduler();
   Movie? _heroMovie;
   String? _episodeOverview;
   bool _isFullscreen = false;
@@ -377,6 +379,21 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     }
   }
 
+  void _scheduleTorrentPrefetchAt(Duration position) {
+    final url =
+        _hlsMasterUrl ??
+        _currentQualityUrl ??
+        _currentUrl ??
+        (isLocalTorrentStreamUrl(widget.mediaPath) ? widget.mediaPath : null);
+    if (url == null || !isLocalTorrentStreamUrl(url)) return;
+    _torrentSeekPrefetch.schedule(
+      position: position,
+      duration: _durationNotifier.value,
+      streamUrl: url,
+      totalBytes: _torrentStats?.totalBytes,
+    );
+  }
+
   Future<void> _seekTo(Duration position) async {
     final url =
         _hlsMasterUrl ??
@@ -535,6 +552,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     _pipSub?.cancel();
     PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
     _torrentStatsSub?.cancel();
+    _torrentSeekPrefetch.cancel();
     PlayerSubtitleSettingsDialog.dismissIfShowing();
     LanP2pRequiredDialog.dismissIfShowing();
     PlayerTorrentFilePanel.dismiss();

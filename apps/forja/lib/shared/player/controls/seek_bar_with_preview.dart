@@ -16,6 +16,7 @@ class SeekBarWithPreview extends StatefulWidget {
     required this.position,
     required this.bufferedPosition,
     required this.onSeek,
+    this.onSeekPreview,
     this.onDragStart,
     this.onDragEnd,
     this.captureFrame,
@@ -26,6 +27,7 @@ class SeekBarWithPreview extends StatefulWidget {
   final Duration position;
   final Duration bufferedPosition;
   final void Function(Duration) onSeek;
+  final void Function(Duration)? onSeekPreview;
   final VoidCallback? onDragStart;
   final VoidCallback? onDragEnd;
   final SeekFrameCapture? captureFrame;
@@ -89,11 +91,14 @@ class _SeekBarWithPreviewState extends State<SeekBarWithPreview> {
 
   void _schedulePreview() {
     _previewDebounce?.cancel();
-    if (widget.captureFrame == null) return;
+    if (widget.captureFrame == null && widget.onSeekPreview == null) return;
     final token = ++_previewToken;
     _previewDebounce = Timer(const Duration(milliseconds: 200), () async {
       if (!mounted || token != _previewToken || !_hovering) return;
-      final bytes = await widget.captureFrame!(_hoverTime);
+      final time = _hoverTime;
+      widget.onSeekPreview?.call(time);
+      if (widget.captureFrame == null) return;
+      final bytes = await widget.captureFrame!(time);
       if (!mounted || token != _previewToken || !_hovering) return;
       setState(() => _previewBytes = bytes);
     });

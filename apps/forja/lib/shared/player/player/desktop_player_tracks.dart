@@ -498,8 +498,8 @@ mixin _DesktopPlayerTracks
   void _syncTorrentStatsSubscription() {
     _s._torrentStatsSub?.cancel();
     _s._torrentStatsSub = null;
-    final magnet = widget.magnetLink;
-    if (!_s._showTorrentStatsOverlay || magnet == null || magnet.isEmpty) {
+    final magnet = _s._activeMagnet ?? widget.magnetLink;
+    if (magnet == null || magnet.isEmpty) {
       if (_s._torrentStats != null && mounted) {
         setState(() => _s._torrentStats = null);
       } else {

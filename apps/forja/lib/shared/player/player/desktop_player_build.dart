@@ -448,6 +448,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                                         unawaited(_s._seekTo(t));
                                         _s._onMouseMove();
                                       },
+                                      onSeekPreview: _s._scheduleTorrentPrefetchAt,
                                       onDragStart: () =>
                                           _s._hideTimer?.cancel(),
                                       onDragEnd: _s._startHideTimer,

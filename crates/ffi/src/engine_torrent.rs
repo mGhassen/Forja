@@ -95,3 +95,12 @@ pub fn torrent_stream_json(magnet: String, season: i32, episode: i32, file_idx: 
 pub fn torrent_list_files_json(magnet: String) -> String {
     TORRENT.list_files_json(&magnet)
 }
+
+pub fn torrent_prefetch_byte_offset(byte_offset: u64) {
+    let engine = TORRENT.clone();
+    engine.runtime.handle().spawn(async move {
+        if let Err(e) = engine.prefetch_file_position_async(byte_offset).await {
+            eprintln!("[torrent] prefetch failed: {e}");
+        }
+    });
+}

@@ -516,6 +516,13 @@ fn torrent_list_files_json(magnet: String) -> String {
     }
 }
 
+fn torrent_prefetch_byte_offset(byte_offset: u64) {
+    #[cfg(feature = "torrent-engine")]
+    engine_torrent::torrent_prefetch_byte_offset(byte_offset);
+    #[cfg(not(feature = "torrent-engine"))]
+    let _ = byte_offset;
+}
+
 fn proxy_start(preferred_port: u32) -> i32 {
     #[cfg(feature = "local-proxy")]
     {

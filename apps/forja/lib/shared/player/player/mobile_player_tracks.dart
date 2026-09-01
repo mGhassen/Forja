@@ -629,4 +629,20 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       _s._startHideTimer();
     }
   }
+
+  void _syncTorrentStatsSubscription() {
+    _s._torrentStatsSub?.cancel();
+    _s._torrentStatsSub = null;
+    final magnet = _s._activeMagnet ?? widget.magnetLink;
+    if (magnet == null || magnet.isEmpty) {
+      _s._torrentStats = null;
+      return;
+    }
+    _s._torrentStatsSub = TorrentStreamService().statsStream(magnet).listen((
+      stats,
+    ) {
+      if (!mounted) return;
+      setState(() => _s._torrentStats = stats);
+    });
+  }
 }

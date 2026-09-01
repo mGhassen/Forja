@@ -105,6 +105,7 @@ mixin _MobilePlayerLifecycle
       _s._currentPlayingCatalogUrl = widget.mediaPath;
     }
     _s._activeMagnet = widget.magnetLink;
+    _s._syncTorrentStatsSubscription();
     if (_s._currentProvider == 'service111477' &&
         widget.sources != null &&
         widget.sources!.isNotEmpty) {

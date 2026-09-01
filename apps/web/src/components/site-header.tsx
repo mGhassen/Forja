@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 const LINKS = [
   { to: '/' as const, label: 'Streaming Player', exact: true },
   { to: '/iptv' as const, label: 'Live Player' },
-  { to: '/plugins' as const, label: 'Plugins' },
+  { to: '/plugins' as const, label: 'Community Packs' },
 ]
 
 function NavLink({

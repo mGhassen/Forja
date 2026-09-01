@@ -471,6 +471,9 @@ class RustLib {
     return _readString(_native.ffi_torrent_list_files_json(ptr));
   });
 
+  void torrentPrefetchByteOffset(int byteOffset) =>
+      _native.ffi_torrent_prefetch_byte_offset(byteOffset);
+
   int proxyStart(int preferredPort) => _native.ffi_proxy_start(preferredPort);
 
   void proxyStop() => _native.ffi_proxy_stop();
@@ -911,6 +914,11 @@ final class _FfiNative {
             'ffi_torrent_list_files_json',
           )
           .asFunction(),
+      ffi_torrent_prefetch_byte_offset = lib
+          .lookup<ffi.NativeFunction<_TorrentPrefetchNative>>(
+            'ffi_torrent_prefetch_byte_offset',
+          )
+          .asFunction(),
       ffi_proxy_start = lib
           .lookup<ffi.NativeFunction<_ProxyStartNative>>('ffi_proxy_start')
           .asFunction(),
@@ -1172,6 +1180,7 @@ final class _FfiNative {
   ffi_torrent_stream_json;
   final ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>)
   ffi_torrent_list_files_json;
+  final void Function(int) ffi_torrent_prefetch_byte_offset;
   final int Function(int) ffi_proxy_start;
   final void Function() ffi_proxy_stop;
   final int Function() ffi_proxy_port;
@@ -1292,6 +1301,7 @@ typedef _TorrentStreamJsonNative =
     );
 typedef _TorrentJsonNative =
     ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>);
+typedef _TorrentPrefetchNative = ffi.Void Function(ffi.Uint64);
 typedef _ProxyStartNative = ffi.Int32 Function(ffi.Uint16);
 typedef _ProxyPortNative = ffi.Uint16 Function();
 typedef _ProxyRegisterNative =

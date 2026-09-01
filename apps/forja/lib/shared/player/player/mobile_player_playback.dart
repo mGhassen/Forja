@@ -615,6 +615,7 @@ mixin _MobilePlayerPlayback
             _s._currentUrl = openUrl;
             _s._activeMagnet = magnet;
           });
+          _s._syncTorrentStatsSubscription();
         }
         final isTorrent =
             isLocalTorrentStreamUrl(openUrl) ||

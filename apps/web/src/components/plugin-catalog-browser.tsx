@@ -21,7 +21,7 @@ import type {
   ForjaPluginKind,
   ForjaPluginPackLive,
 } from '@/lib/forja-plugin-catalog'
-import { pluginKindLabel } from '@/lib/forja-plugin-catalog'
+import { pluginKindLabel, isOfficialPluginPack, packAuthorLabel } from '@/lib/forja-plugin-catalog'
 import { isPackInstalled } from '@/lib/forja-plugin-install'
 import {
   emptyForjaPayload,
@@ -69,17 +69,32 @@ function packShortName(name: string): string {
   return name.replace(/^ForjaHQ\s+/i, '').trim()
 }
 
+function OfficialBadge({ compact = false }: { compact?: boolean }) {
+  return (
+    <span
+      className={cn(
+        'shrink-0 rounded-md border border-forja-green/35 bg-forja-green/10 font-mono-ui uppercase tracking-wider text-forja-green',
+        compact
+          ? 'px-1.5 py-px text-[8px]'
+          : 'px-2 py-0.5 text-[9px]',
+      )}
+    >
+      Official
+    </span>
+  )
+}
+
 function PluginDetailPanel({
   pack,
   onClose,
-  installed,
 }: {
   pack: ForjaPluginPackLive
   onClose?: () => void
-  installed: boolean
 }) {
   const [copied, setCopied] = useState(false)
   const Icon = KIND_ICONS[pack.kind]
+  const official = isOfficialPluginPack(pack)
+  const author = packAuthorLabel(pack)
 
   async function copyManifest() {
     try {
@@ -105,14 +120,15 @@ function PluginDetailPanel({
             <h2 className="truncate font-medium text-[#EDE6DA]">
               {packShortName(pack.name)}
             </h2>
+            {author ? (
+              <p className="mt-1 truncate text-xs text-[rgba(237,230,218,0.5)]">
+                by {author}
+              </p>
+            ) : null}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {installed ? (
-            <span className="rounded-md border border-forja-green/30 bg-forja-green/10 px-2 py-0.5 font-mono-ui text-[9px] uppercase tracking-wider text-forja-green">
-              Added
-            </span>
-          ) : null}
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+          {official ? <OfficialBadge /> : null}
           {pack.version ? (
             <span className="font-mono-ui text-[10px] text-[rgba(237,230,218,0.45)]">
               v{pack.version}
@@ -145,12 +161,16 @@ function PluginDetailPanel({
               <dd className="mt-0.5 text-[#EDE6DA]">{pack.pluginCount}</dd>
             </div>
           ) : null}
-          <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
-            <dt className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
-              Source
-            </dt>
-            <dd className="mt-0.5 text-[#EDE6DA]">Remote</dd>
-          </div>
+          {author ? (
+            <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+              <dt className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+                Author
+              </dt>
+              <dd className="mt-0.5 truncate text-[#EDE6DA]" title={author}>
+                {author}
+              </dd>
+            </div>
+          ) : null}
         </dl>
 
         <div>
@@ -196,6 +216,8 @@ function PluginListRow({
   onSelect: () => void
 }) {
   const Icon = KIND_ICONS[pack.kind]
+  const official = isOfficialPluginPack(pack)
+  const author = packAuthorLabel(pack)
 
   return (
     <button
@@ -219,20 +241,22 @@ function PluginListRow({
         <Icon className="size-3.5" strokeWidth={2} aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <span className="truncate text-sm font-medium text-[#EDE6DA]">
             {packShortName(pack.name)}
           </span>
+          {official ? <OfficialBadge compact /> : null}
           {installed ? (
             <span
               className="size-1.5 shrink-0 rounded-full bg-forja-green"
-              title="In your account"
+              title="On your profile"
             />
           ) : null}
         </div>
         <p className="truncate text-xs text-[rgba(237,230,218,0.42)]">
           {pluginKindLabel(pack.kind)}
           {pack.pluginCount != null ? ` · ${pack.pluginCount} plugins` : ''}
+          {author ? ` · ${author}` : ''}
         </p>
       </div>
       {pack.version ? (
@@ -283,6 +307,7 @@ export function PluginCatalogBrowser({
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.description.toLowerCase().includes(q) ||
+          p.author?.toLowerCase().includes(q) ||
           pluginKindLabel(p.kind).toLowerCase().includes(q) ||
           p.id.toLowerCase().includes(q),
       )
@@ -455,10 +480,7 @@ export function PluginCatalogBrowser({
           {/* Detail - desktop */}
           <div className="hidden flex-col bg-[#0f0e0d] lg:flex">
             {selected ? (
-              <PluginDetailPanel
-                pack={selected}
-                installed={isPackInstalled(draft.packs, selected.manifestUrl)}
-              />
+              <PluginDetailPanel pack={selected} />
             ) : (
               <EmptyDetail />
             )}
@@ -478,7 +500,6 @@ export function PluginCatalogBrowser({
           <div className="absolute inset-x-0 bottom-0 top-[18%] flex flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121110] shadow-2xl">
             <PluginDetailPanel
               pack={selected}
-              installed={isPackInstalled(draft.packs, selected.manifestUrl)}
               onClose={() => setMobileDetailOpen(false)}
             />
           </div>

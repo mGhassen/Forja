@@ -627,6 +627,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                           onTvFocusLeft: _s._focusLeftFromSeekbar,
                                           onTvFocusRight: _s._focusRightFromSeekbar,
                                           onSeek: (t) => unawaited(_s._seekTo(t)),
+                                          onSeekPreview: _s._scheduleTorrentPrefetchAt,
                                         ),
                                       )
                                     : _MobileSeekbar(
@@ -643,6 +644,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                           unawaited(_s._seekTo(t));
                                           _s._startHideTimer();
                                         },
+                                        onSeekPreview: _s._scheduleTorrentPrefetchAt,
                                         onDragStart: () => _s._hideTimer?.cancel(),
                                         onDragEnd: _s._startHideTimer,
                                       ),

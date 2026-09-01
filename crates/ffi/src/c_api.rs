@@ -490,6 +490,11 @@ pub unsafe extern "C" fn ffi_torrent_list_files_json(magnet: *const c_char) -> *
 }
 
 #[no_mangle]
+pub extern "C" fn ffi_torrent_prefetch_byte_offset(byte_offset: u64) {
+    crate::torrent_prefetch_byte_offset(byte_offset);
+}
+
+#[no_mangle]
 pub extern "C" fn ffi_proxy_start(preferred_port: u16) -> i32 {
     crate::proxy_start(preferred_port as u32)
 }

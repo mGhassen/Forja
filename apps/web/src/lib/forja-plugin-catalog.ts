@@ -12,6 +12,9 @@ export type ForjaPluginCatalogEntry = {
   name: string
   description: string
   accent: 'brand' | 'flame'
+  /** Curated ForjaHQ packs in this catalog. Community entries omit or set false. */
+  official?: boolean
+  author?: string
 }
 
 export type ForjaPluginCatalog = {
@@ -47,6 +50,15 @@ const KIND_LABELS: Record<ForjaPluginKind, string> = {
 
 export function pluginKindLabel(kind: ForjaPluginKind): string {
   return KIND_LABELS[kind]
+}
+
+export function isOfficialPluginPack(pack: ForjaPluginPackLive): boolean {
+  return pack.official === true
+}
+
+export function packAuthorLabel(pack: ForjaPluginPackLive): string | undefined {
+  const author = pack.author?.trim()
+  return author || undefined
 }
 
 export function resolvePluginManifestUrl(

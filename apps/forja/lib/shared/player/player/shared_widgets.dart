@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
@@ -105,6 +107,7 @@ class CustomSeekbar extends StatefulWidget {
   final Duration position;
   final Duration bufferedPosition;
   final ValueChanged<Duration>? onSeek;
+  final ValueChanged<Duration>? onSeekPreview;
   final VoidCallback? onDragStart;
   final VoidCallback? onDragEnd;
   final List<SeekBarZone> zones;
@@ -123,6 +126,7 @@ class CustomSeekbar extends StatefulWidget {
     required this.position,
     this.bufferedPosition = Duration.zero,
     this.onSeek,
+    this.onSeekPreview,
     this.onDragStart,
     this.onDragEnd,
     this.zones = const [],
@@ -144,6 +148,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
   bool _isDragging = false;
   double _dragValue = 0.0; // In milliseconds
   bool _tvFocused = false;
+  Timer? _seekPreviewDebounce;
   /// TV: OK arms thumb scrub; then L/R nudge preview; OK commits; Back cancels.
   /// Unarmed L/R leave focus to left/right chrome (not seek).
   bool _tvScrubArmed = false;
@@ -167,6 +172,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
 
   @override
   void dispose() {
+    _seekPreviewDebounce?.cancel();
     playerChromeUnregisterSeekScrubCancel(_cancelScrubFromOverlay);
     if (widget.focusNode == null) {
       _ownedFocusNode.dispose();
@@ -191,6 +197,16 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
     _tvHoldStartedAt = null;
     _tvHoldKey = null;
     _tvHoldStride = 1;
+  }
+
+  void _scheduleSeekPreview(Duration position) {
+    final cb = widget.onSeekPreview;
+    if (cb == null) return;
+    _seekPreviewDebounce?.cancel();
+    _seekPreviewDebounce = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      cb(position);
+    });
   }
 
   String? get _tvScrubSpeedLabel {
@@ -234,6 +250,7 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
     setState(() {
       _dragValue = next.inMilliseconds.toDouble();
     });
+    _scheduleSeekPreview(next);
   }
 
   void _commitTvScrub() {
@@ -387,6 +404,9 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
               double dx = details.localPosition.dx.clamp(0.0, constraints.maxWidth);
               _hoverValue = (dx / constraints.maxWidth) * safeTotal;
             });
+            _scheduleSeekPreview(
+              Duration(milliseconds: _hoverValue.toInt()),
+            );
           },
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -409,6 +429,9 @@ class _CustomSeekbarState extends State<CustomSeekbar> {
                 double dx = details.localPosition.dx.clamp(0.0, constraints.maxWidth);
                 _dragValue = (dx / constraints.maxWidth) * safeTotal;
               });
+              _scheduleSeekPreview(
+                Duration(milliseconds: _dragValue.toInt()),
+              );
             },
             onHorizontalDragEnd: (details) {
               if (!_isDragging) return;

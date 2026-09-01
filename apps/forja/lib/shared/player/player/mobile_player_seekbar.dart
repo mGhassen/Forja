@@ -10,6 +10,7 @@ class _MobileSeekbar extends StatefulWidget {
   final Duration bufferedPosition;
   final List<SeekBarZone> zones;
   final void Function(Duration) onSeek;
+  final void Function(Duration)? onSeekPreview;
   final VoidCallback onDragStart;
   final VoidCallback onDragEnd;
 
@@ -19,6 +20,7 @@ class _MobileSeekbar extends StatefulWidget {
     required this.bufferedPosition,
     this.zones = const [],
     required this.onSeek,
+    this.onSeekPreview,
     required this.onDragStart,
     required this.onDragEnd,
   });
@@ -31,6 +33,7 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
   bool _isDragging = false;
   double _dragFrac = 0.0;
   double _trackWidth = 0.0;
+  Timer? _seekPreviewDebounce;
 
   double get _playFrac {
     final total = widget.duration.inMilliseconds.toDouble();
@@ -60,6 +63,7 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
 
   @override
   void dispose() {
+    _seekPreviewDebounce?.cancel();
     playerChromeUnregisterSeekScrubCancel(_cancelScrubFromOverlay);
     super.dispose();
   }
@@ -68,6 +72,16 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
     if (!mounted || !_isDragging) return;
     setState(() => _isDragging = false);
     widget.onDragEnd();
+  }
+
+  void _scheduleSeekPreview() {
+    final cb = widget.onSeekPreview;
+    if (cb == null || widget.duration <= Duration.zero) return;
+    _seekPreviewDebounce?.cancel();
+    _seekPreviewDebounce = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      cb(_dragTime);
+    });
   }
 
   @override
@@ -91,6 +105,7 @@ class _MobileSeekbarState extends State<_MobileSeekbar> {
         setState(() {
           _dragFrac = _fracFromLocal(d.localPosition.dx);
         });
+        _scheduleSeekPreview();
       },
       onHorizontalDragEnd: (_) {
         if (!_isDragging) return;
