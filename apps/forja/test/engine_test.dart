@@ -100,6 +100,33 @@ void main() {
       expect(pack.packId, 'videasy');
     });
 
+    test('propagates pack-level prelude to every plugin', () {
+      final pack = EnginePack.fromJson({
+        'id': 'forjahq-torrent',
+        'name': 'Torrent',
+        'version': '1.0.0',
+        'prelude': '_torrent_common.js',
+        'plugins': [
+          {
+            'id': 'knaben',
+            'name': 'Knaben',
+            'entry': 'knaben.js',
+            'kind': 'torrent',
+          },
+          {
+            'id': 'yts',
+            'name': 'YTS',
+            'entry': 'yts.js',
+            'kind': 'torrent',
+            'prelude': '_override.js',
+          },
+        ],
+      }, sourceUrl: 'https://example.com/torrent/manifest.json');
+      expect(pack.prelude, '_torrent_common.js');
+      expect(pack.plugins[0].prelude, '_torrent_common.js');
+      expect(pack.plugins[1].prelude, '_override.js');
+    });
+
     test('skips sniff plugins from enabled ids', () {
       final pack = EnginePack.fromJson({
         'plugins': [

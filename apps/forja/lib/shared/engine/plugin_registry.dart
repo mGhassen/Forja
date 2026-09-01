@@ -822,6 +822,7 @@ class PluginRegistry {
     final localCheckout = isLocalManifestUrl(manifestUrl);
 
     final preludesNeeded = <String>{
+      if (pack.prelude.isNotEmpty) pack.prelude,
       for (final p in pack.plugins)
         if (p.prelude.isNotEmpty) p.prelude,
     };
@@ -1181,12 +1182,32 @@ class PluginRegistry {
     if (changed) await _savePacks(next);
   }
 
+  /// Pack root `prelude` from a local checkout manifest (torrent pack pattern).
+  Future<String> _manifestPreludeFromLocalCheckout(String sourceUrl) async {
+    final manifest = _asLocalFile(sourceUrl);
+    if (manifest == null || !await manifest.exists()) return '';
+    try {
+      final decoded = jsonDecode(await manifest.readAsString());
+      if (decoded is! Map) return '';
+      return (decoded['prelude'] as String?)?.trim() ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
   /// Load plugin JS (+ optional prelude) for [plugin] from [sourceUrl] pack.
   /// Local checkout packs always read from disk so JS edits apply without reinstall.
   Future<String?> loadScript({
     required String sourceUrl,
     required EnginePlugin plugin,
+    String packPrelude = '',
   }) async {
+    var preludeEntry = plugin.prelude.trim().isNotEmpty
+        ? plugin.prelude.trim()
+        : packPrelude.trim();
+    if (preludeEntry.isEmpty) {
+      preludeEntry = await _manifestPreludeFromLocalCheckout(sourceUrl);
+    }
     final localManifest = _asLocalFile(sourceUrl);
     if (localManifest != null) {
       if (plugin.entry.isEmpty) return null;
@@ -1194,9 +1215,8 @@ class PluginRegistry {
       final scriptFile = File(scriptPath);
       if (!scriptFile.existsSync()) return null;
       var code = await scriptFile.readAsString();
-      final prelude = plugin.prelude.trim();
-      if (prelude.isNotEmpty) {
-        final preludePath = resolveScriptUrl(sourceUrl, prelude);
+      if (preludeEntry.isNotEmpty) {
+        final preludePath = resolveScriptUrl(sourceUrl, preludeEntry);
         final preludeFile = File(preludePath);
         if (preludeFile.existsSync()) {
           final shared = await preludeFile.readAsString();
@@ -1224,22 +1244,21 @@ class PluginRegistry {
       code = cached;
     }
 
-    final prelude = plugin.prelude.trim();
-    if (prelude.isNotEmpty) {
+    if (preludeEntry.isNotEmpty) {
       var shared = await PluginScriptDiskStore.loadEnginePrelude(
         sourceUrl: sourceUrl,
-        preludeEntry: prelude,
+        preludeEntry: preludeEntry,
       );
       if (shared == null || shared.isEmpty) {
         final prefs = await _prefs;
-        final pre = prefs.getString(preludePrefsKey(sourceUrl, prelude));
+        final pre = prefs.getString(preludePrefsKey(sourceUrl, preludeEntry));
         if (pre != null && pre.isNotEmpty) {
           await PluginScriptDiskStore.saveEnginePrelude(
             sourceUrl: sourceUrl,
-            preludeEntry: prelude,
+            preludeEntry: preludeEntry,
             body: pre,
           );
-          await prefs.remove(preludePrefsKey(sourceUrl, prelude));
+          await prefs.remove(preludePrefsKey(sourceUrl, preludeEntry));
           shared = pre;
         }
       }

@@ -198,7 +198,7 @@ class EnginePlugin {
     if (ctxConfigMap.isNotEmpty) 'ctxConfigMap': ctxConfigMap,
   };
 
-  EnginePlugin copyWith({bool? enabled}) => EnginePlugin(
+  EnginePlugin copyWith({bool? enabled, String? prelude}) => EnginePlugin(
     id: id,
     name: name,
     entry: entry,
@@ -210,7 +210,7 @@ class EnginePlugin {
     hosts: hosts,
     enabled: enabled ?? this.enabled,
     config: config,
-    prelude: prelude,
+    prelude: prelude ?? this.prelude,
     protocol: protocol,
     kit: kit,
     capabilities: capabilities,
@@ -266,6 +266,7 @@ class EnginePack {
     required this.name,
     required this.version,
     required this.plugins,
+    this.prelude = '',
     this.enabled = true,
   });
 
@@ -277,6 +278,9 @@ class EnginePack {
   final String version;
   final List<EnginePlugin> plugins;
 
+  /// Shared JS prelude for every plugin in this pack (manifest root `prelude`).
+  final String prelude;
+
   /// Pack master switch — independent of per-plugin [EnginePlugin.enabled].
   final bool enabled;
 
@@ -287,17 +291,24 @@ class EnginePack {
     Map<String, dynamic> j, {
     required String sourceUrl,
   }) {
+    final packPrelude = (j['prelude'] as String?)?.trim() ?? '';
     final pluginsRaw = j['plugins'];
     final List<EnginePlugin> plugins;
     if (pluginsRaw is List) {
       plugins = [
         for (final raw in pluginsRaw)
-          if (raw is Map) EnginePlugin.fromJson(Map<String, dynamic>.from(raw)),
+          if (raw is Map)
+            _pluginFromManifestEntry(
+              Map<String, dynamic>.from(raw),
+              packPrelude: packPrelude,
+            ),
       ];
     } else if ((j['id'] ?? '').toString().trim().isNotEmpty &&
         j['plugins'] == null) {
       // Single-plugin root manifest (legacy shape).
-      plugins = [EnginePlugin.fromJson(j)];
+      plugins = [
+        _pluginFromManifestEntry(j, packPrelude: packPrelude),
+      ];
     } else {
       plugins = const [];
     }
@@ -316,8 +327,18 @@ class EnginePack {
       name: name,
       version: (j['version'] as String?)?.trim() ?? '0.0.0',
       plugins: plugins,
+      prelude: packPrelude,
       enabled: (j['enabled'] as bool?) ?? true,
     );
+  }
+
+  static EnginePlugin _pluginFromManifestEntry(
+    Map<String, dynamic> j, {
+    required String packPrelude,
+  }) {
+    final plugin = EnginePlugin.fromJson(j);
+    if (plugin.prelude.isNotEmpty || packPrelude.isEmpty) return plugin;
+    return plugin.copyWith(prelude: packPrelude);
   }
 
   /// Derive a stable packId when the manifest omits `id`.
@@ -339,6 +360,7 @@ class EnginePack {
     'packId': packId,
     'name': name,
     'version': version,
+    if (prelude.isNotEmpty) 'prelude': prelude,
     'enabled': enabled,
     'plugins': [for (final p in plugins) p.toJson()],
   };
@@ -354,9 +376,14 @@ class EnginePack {
       name: (j['name'] as String?) ?? 'Engine',
       version: (j['version'] as String?) ?? '0.0.0',
       enabled: (j['enabled'] as bool?) ?? true,
+      prelude: (j['prelude'] as String?)?.trim() ?? '',
       plugins: [
         for (final raw in (j['plugins'] as List? ?? const []))
-          if (raw is Map) EnginePlugin.fromJson(Map<String, dynamic>.from(raw)),
+          if (raw is Map)
+            _pluginFromManifestEntry(
+              Map<String, dynamic>.from(raw),
+              packPrelude: (j['prelude'] as String?)?.trim() ?? '',
+            ),
       ],
     );
   }
@@ -367,8 +394,9 @@ class EnginePack {
         packId: packId,
         name: name,
         version: version,
-        enabled: enabled ?? this.enabled,
         plugins: plugins ?? this.plugins,
+        prelude: prelude,
+        enabled: enabled ?? this.enabled,
       );
 
   EnginePack copyWithPlugins(List<EnginePlugin> next) =>

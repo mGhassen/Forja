@@ -399,12 +399,20 @@ class EngineService {
     final overlay =
         ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
     final config = mergeEngineConfig(plugin.config, overlay);
-    var code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
+    var code = await _loadScript(
+      plugin,
+      sourceUrl: hit.pack.sourceUrl,
+      packPrelude: hit.pack.prelude,
+    );
     if (code == null || code.isEmpty) {
       try {
         await PluginRegistry.instance.install(hit.pack.sourceUrl);
       } catch (_) {}
-      code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
+      code = await _loadScript(
+        plugin,
+        sourceUrl: hit.pack.sourceUrl,
+        packPrelude: hit.pack.prelude,
+      );
       if (code == null || code.isEmpty) return [];
     }
 
@@ -574,6 +582,7 @@ class EngineService {
   Future<String?> _loadScript(
     EnginePlugin plugin, {
     String? sourceUrl,
+    String packPrelude = '',
   }) async {
     var url = sourceUrl;
     if (url == null || url.isEmpty) {
@@ -582,11 +591,13 @@ class EngineService {
       return PluginRegistry.instance.loadScript(
         sourceUrl: found.pack.sourceUrl,
         plugin: found.plugin,
+        packPrelude: found.pack.prelude,
       );
     }
     return PluginRegistry.instance.loadScript(
       sourceUrl: url,
       plugin: plugin,
+      packPrelude: packPrelude,
     );
   }
 

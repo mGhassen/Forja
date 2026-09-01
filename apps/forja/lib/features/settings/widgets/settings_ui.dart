@@ -212,12 +212,13 @@ class SettingsCategoryTile extends StatelessWidget {
   }
 }
 
-/// TV: [ExpansionTile.trailing] sits beside the header and steals ↓ into a
-/// horizontal strip. Omit [trailing] on TV and render it at the top of
-/// [children] after expand so vertical D-pad walks the page.
+/// Leanback TV: [ExpansionTile.trailing] sits beside the header and steals ↓
+/// into a horizontal strip. Omit [trailing] on leanback only and render it at
+/// the top of [children] after expand. Desktop hybrid keeps [useFocusableMoodChips]
+/// but still shows trailing in the header (mouse + arrow keys).
 Widget? settingsExpansionTrailing(BuildContext context, Widget? trailing) {
   if (trailing == null) return null;
-  if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) return null;
+  if (ShellScope.inputPolicyOf(context).leanbackOnly) return null;
   return trailing;
 }
 
@@ -227,7 +228,7 @@ List<Widget> settingsExpansionChildren(
   required List<Widget> children,
 }) {
   if (trailing == null ||
-      !ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+      !ShellScope.inputPolicyOf(context).leanbackOnly) {
     return children;
   }
   return [
