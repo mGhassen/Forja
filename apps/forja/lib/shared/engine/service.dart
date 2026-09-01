@@ -104,7 +104,10 @@ class EngineService {
   /// Settings list — prefs first (instant), ensure/hydrate in background.
   Future<List<EnginePack>> listUserPacks() async {
     final cached = await PluginRegistry.instance.listPacksRaw();
-    unawaited(PluginRegistry.instance.ensureOfficialInstalled());
+    // Avoid parallel install storms while boot/settings coordinator is running.
+    if (!PluginInstallCoordinator.instance.isInstalling) {
+      unawaited(PluginRegistry.instance.ensureOfficialInstalled());
+    }
     return cached;
   }
 

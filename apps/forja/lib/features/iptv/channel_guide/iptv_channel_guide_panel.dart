@@ -124,7 +124,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     _scheduleRevealPlaying();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (iptvUseTvFocus(context)) {
+      if (iptvLeanbackOnly(context)) {
         _bumpChannelLogoSettle();
       } else {
         setState(() => _allowNewLogos = true);
@@ -324,10 +324,18 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
     return [for (var i = first; i < last; i++) channels[i].id];
   }
 
+  /// Leanback TV: reveal one channel immediately when D-pad lands on it.
+  void _revealChannelLogo(String channelId) {
+    if (!iptvLeanbackOnly(context) || channelId.isEmpty) return;
+    if (_revealedLogoIds.add(channelId)) {
+      setState(() {});
+    }
+  }
+
   /// After 500ms idle, admit logos for the viewport. [hide] stops *new* logos
   /// on scroll/group swap — already-revealed rows stay painted.
   void _bumpChannelLogoSettle({bool hide = false}) {
-    if (!iptvUseTvFocus(context)) return;
+    if (!iptvLeanbackOnly(context)) return;
     _logoSettleTimer?.cancel();
     if (hide) {
       if (_allowNewLogos) {
@@ -347,7 +355,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
   }
 
   bool _showChannelLogo(IptvGuideChannel channel) {
-    if (!iptvUseTvFocus(context)) return true;
+    if (!iptvLeanbackOnly(context)) return true;
     return _revealedLogoIds.contains(channel.id) || _allowNewLogos;
   }
 
@@ -698,6 +706,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
         } else {
           _cancelHoverEpg();
         }
+        _revealChannelLogo(_visibleChannels[next].id);
         final scrolled = _scrollToFocused();
         _bumpChannelLogoSettle(hide: scrolled);
         setState(() {});
@@ -715,6 +724,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
       if (next == _focusedChannelIndex) return;
       _focusedChannelIndex = next;
       _cancelHoverEpg();
+      _revealChannelLogo(_visibleChannels[next].id);
       final scrolled = _scrollToFocused();
       _bumpChannelLogoSettle(hide: scrolled);
       setState(() {});

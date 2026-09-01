@@ -643,7 +643,12 @@ class LiveGoatUnlock {
     // PPV embedindia CDN — signed `/secure/…/index.m3u8` segments 403 when
     // hls-proxy rewrites query strings; open direct with Referer/Cookie.
     if (host.contains('indianservers.st')) return true;
-    return path.contains('/delta/stream/') || path.contains('/echo/stream/');
+    if (host.contains('streamfree.top') && path.contains('/live/')) {
+      return true;
+    }
+    return path.contains('/delta/stream/') ||
+        path.contains('/echo/stream/') ||
+        path.contains('/streamfree/stream/');
   }
 
   static Future<bool> _probePlayableM3u8(

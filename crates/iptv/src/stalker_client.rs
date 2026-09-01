@@ -11,8 +11,8 @@
 //! retry with short backoff so flaky CDNs don't surface as a Reload prompt.
 
 use crate::xtream::{
-    merge_orphan_categories, parse_section, ParsedCategory, ParsedSeriesEpisode, XtreamSection,
-    XtreamStreamRow,
+    absolutize_stream_rows, merge_orphan_categories, parse_section, ParsedCategory,
+    ParsedSeriesEpisode, XtreamSection, XtreamStreamRow,
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -456,6 +456,7 @@ impl Session {
         let section = parse_section(section).ok_or_else(|| "invalid_section".to_string())?;
         let cats = self.fetch_categories(section, timeout).await?;
         let streams = self.fetch_all_streams(section, &cats, timeout).await?;
+        let streams = absolutize_stream_rows(&self.origin, streams);
         let cats = merge_orphan_categories(cats, &streams);
         Ok(json!({ "categories": cats, "streams": streams }))
     }
@@ -1139,7 +1140,12 @@ fn parse_stalker_streams(js: &Value, section: XtreamSection) -> Vec<XtreamStream
             let icon = {
                 let i = field_string(o, "logo");
                 if i.is_empty() {
-                    field_string(o, "screenshot_uri")
+                    let s = field_string(o, "screenshot_uri");
+                    if s.is_empty() {
+                        field_string(o, "icon")
+                    } else {
+                        s
+                    }
                 } else {
                     i
                 }

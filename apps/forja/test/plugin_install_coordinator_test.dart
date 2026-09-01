@@ -356,4 +356,88 @@ void main() {
     expect(packs, hasLength(1));
     expect(packs.first.version, '2.0.0');
   });
+
+  test('ensureAllInstalled skips local checkout when manifest version unchanged',
+      () async {
+    final hubDir = await Directory.systemTemp.createTemp('coord_local_same_');
+    addTearDown(() async {
+      if (await hubDir.exists()) await hubDir.delete(recursive: true);
+    });
+    final manifestFile = File('${hubDir.path}/manifest.json');
+    final entryFile = File('${hubDir.path}/p1.js');
+    await entryFile.writeAsString('function extract(ctx) { return []; }');
+    await manifestFile.writeAsString(
+      jsonEncode({
+        'schema': 1,
+        'id': 'local-hub',
+        'name': 'Local Hub',
+        'version': '1.0.0',
+        'plugins': [
+          {
+            'id': 'p1',
+            'name': 'P1',
+            'entry': 'p1.js',
+            'kind': 'http',
+          },
+        ],
+      }),
+    );
+    final url = manifestFile.path;
+
+    SharedPreferences.setMockInitialValues({
+      'engine_js_packs_v2_migrated': true,
+      'engine_js_scripts_disk_v3_migrated': true,
+      'nuvio_scripts_disk_v1_migrated': true,
+      'nuvio_addons_kv_v1': '1',
+      'nuvio_addons_v1': '[]',
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'engine_js_packs_v2',
+      jsonEncode([
+        {
+          'sourceUrl': url,
+          'packId': 'local-hub',
+          'name': 'Local Hub',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'p1',
+              'name': 'P1',
+              'entry': 'p1.js',
+              'kind': 'http',
+              'enabled': true,
+            },
+          ],
+        },
+      ]),
+    );
+
+    final seen = <PluginInstallProgress?>[];
+    void listener() {
+      seen.add(PluginInstallCoordinator.instance.progress.value);
+    }
+
+    PluginInstallCoordinator.instance.progress.addListener(listener);
+    try {
+      await PluginInstallCoordinator.instance.ensureAllInstalled(
+        checkUpdates: true,
+        awaitCloudLean: false,
+        includeNuvio: false,
+      );
+    } finally {
+      PluginInstallCoordinator.instance.progress.removeListener(listener);
+    }
+
+    expect(
+      seen
+          .whereType<PluginInstallProgress>()
+          .map((p) => p.label)
+          .where((l) => l.toLowerCase().startsWith('fetching')),
+      isEmpty,
+    );
+    expect(PluginInstallCoordinator.instance.progress.value, isNull);
+    final packs = await registry.listPacksRaw();
+    expect(packs.first.version, '1.0.0');
+  });
 }

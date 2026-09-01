@@ -112,7 +112,12 @@ fn parse_stream_row(value: &Value, section: XtreamSection) -> Option<XtreamStrea
     let icon = {
         let i = field_string(o, "stream_icon");
         if i.is_empty() {
-            field_string(o, "cover")
+            let c = field_string(o, "cover");
+            if c.is_empty() {
+                field_string(o, "icon")
+            } else {
+                c
+            }
         } else {
             i
         }
@@ -141,6 +146,31 @@ fn field_string(o: &serde_json::Map<String, Value>, key: &str) -> String {
             _ => v.to_string(),
         })
         .unwrap_or_default()
+}
+
+/// Make relative Xtream / portal logo paths absolute against the portal base.
+pub fn absolutize_stream_logo(base: &str, logo: &str) -> String {
+    let logo = logo.trim();
+    if logo.is_empty() {
+        return String::new();
+    }
+    if logo.starts_with("http://") || logo.starts_with("https://") {
+        return logo.to_string();
+    }
+    if logo.starts_with("//") {
+        return format!("https:{logo}");
+    }
+    let base = base.trim_end_matches('/');
+    format!("{base}/{}", logo.trim_start_matches('/'))
+}
+
+pub fn absolutize_stream_rows(base: &str, rows: Vec<XtreamStreamRow>) -> Vec<XtreamStreamRow> {
+    rows.into_iter()
+        .map(|mut r| {
+            r.icon = absolutize_stream_logo(base, &r.icon);
+            r
+        })
+        .collect()
 }
 
 pub fn parse_section(section: &str) -> Option<XtreamSection> {
@@ -311,6 +341,25 @@ mod tests {
         assert_eq!(rows[0].stream_id, "42");
         assert_eq!(rows[0].container_ext, "ts");
         assert_eq!(rows[0].kind, "live");
+    }
+
+    #[test]
+    fn parses_icon_fallback_field() {
+        let json = r#"[{"stream_id":"1","name":"Ch","icon":"/logos/ch.png","category_id":"1"}]"#;
+        let rows = parse_streams_rows(json, XtreamSection::Live).unwrap();
+        assert_eq!(rows[0].icon, "/logos/ch.png");
+    }
+
+    #[test]
+    fn absolutize_relative_logo() {
+        assert_eq!(
+            absolutize_stream_logo("http://portal.example", "/img/logo.png"),
+            "http://portal.example/img/logo.png"
+        );
+        assert_eq!(
+            absolutize_stream_logo("http://portal.example", "http://cdn/logo.png"),
+            "http://cdn/logo.png"
+        );
     }
 
     #[test]

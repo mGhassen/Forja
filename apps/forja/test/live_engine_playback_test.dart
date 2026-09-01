@@ -36,6 +36,21 @@ void main() {
       );
     });
 
+    test('streamfree strmd and streamfree.top live open direct', () {
+      expect(
+        liveEnginePreferDirectPlayback(
+          'https://lb14.strmd.st/secure/tok/streamfree/stream/foo/1/playlist.m3u8',
+        ),
+        isTrue,
+      );
+      expect(
+        liveEnginePreferDirectPlayback(
+          'https://streamfree.top/live/match1080p/index.m3u8?_e=1&_n=x&_t=y',
+        ),
+        isTrue,
+      );
+    });
+
     test('admin rtmp master stays on hls-proxy', () {
       expect(
         liveEnginePreferDirectPlayback(

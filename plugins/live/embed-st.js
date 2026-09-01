@@ -135,7 +135,12 @@ function preferDirectPlayback(m3u8Url) {
   } catch (_) {}
   if (host.indexOf('wfty.st') >= 0) return true;
   if (host.indexOf('indianservers.st') >= 0) return true;
-  return path.indexOf('/delta/stream/') >= 0 || path.indexOf('/echo/stream/') >= 0;
+  if (host.indexOf('streamfree.top') >= 0 && path.indexOf('/live/') >= 0) return true;
+  return (
+    path.indexOf('/delta/stream/') >= 0 ||
+    path.indexOf('/echo/stream/') >= 0 ||
+    path.indexOf('/streamfree/stream/') >= 0
+  );
 }
 
 var SPORTS_EMBED_HOSTS = ['sportsembed.su', 'spiderembed.top'];

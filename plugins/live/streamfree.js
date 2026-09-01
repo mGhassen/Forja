@@ -1,5 +1,6 @@
 var SPECS = {
-  "origin": "https://streamfree.top"
+  "origin": "https://streamfree.top",
+  "embedOrigin": "https://embed.st"
 };
 
 function ua() {
@@ -24,6 +25,27 @@ function buildQuery(obj) {
       return encodeURIComponent(k) + '=' + encodeURIComponent(String(obj[k]));
     })
     .join('&');
+}
+
+function pickAvailableQuality(status) {
+  var prefs = ['2160p', '1080p', '720p', '540p'];
+  var sources = status.sources;
+  if (sources && typeof sources === 'object') {
+    var keys = Object.keys(sources).sort();
+    for (var k = 0; k < keys.length; k++) {
+      var row = sources[keys[k]];
+      if (!row || row.available === false) continue;
+      var q = row.qualities || {};
+      for (var i = 0; i < prefs.length; i++) {
+        if (q[prefs[i]]) return prefs[i];
+      }
+    }
+  }
+  var qualities = status.qualities || {};
+  for (var j = 0; j < prefs.length; j++) {
+    if (qualities[prefs[j]]) return prefs[j];
+  }
+  return null;
 }
 
 async function fetchCatalog(ctx, cfg) {
@@ -66,7 +88,7 @@ async function fetchCatalog(ctx, cfg) {
   return rows;
 }
 
-async function resolveStream(ctx, cfg) {
+async function resolveStreamfreeTop(ctx, cfg) {
   var origin = cfg.origin.replace(/\/$/, '');
   var cat = String(ctx.category || ctx.config.category || 'soccer');
   var sid = String(ctx.matchId || '').replace(/^sf_/, '');
@@ -79,15 +101,7 @@ async function resolveStream(ctx, cfg) {
   var status = await statusRes.json();
   if (!status.available) return [];
 
-  var qualities = status.qualities || {};
-  var prefs = ['2160p', '1080p', '720p', '540p'];
-  var quality = null;
-  for (var i = 0; i < prefs.length; i++) {
-    if (qualities[prefs[i]]) {
-      quality = prefs[i];
-      break;
-    }
-  }
+  var quality = pickAvailableQuality(status);
   if (!quality) return [];
 
   var embedUrl = origin + '/embed/' + cat + '/' + sid;
@@ -107,9 +121,27 @@ async function resolveStream(ctx, cfg) {
     {
       url: base,
       headers: { Referer: embedUrl, Origin: origin, 'User-Agent': ua() },
+      directPlayback: preferDirectPlayback(base),
       viewers: viewers,
     },
   ];
+}
+
+async function resolveStream(ctx, cfg) {
+  var embed = String(ctx.embedUrl || ctx.url || ctx.iframe || '').trim();
+  if (embed && (embed.indexOf('embed.st') >= 0 || parseEmbedUrl(embed, cfg))) {
+    try {
+      var goat = await resolveGoatEmbed(ctx, embed, cfg);
+      if (goat && goat.length) {
+        var viewers = Number(ctx.viewers || 0);
+        return goat.map(function (row) {
+          row.viewers = viewers;
+          return row;
+        });
+      }
+    } catch (_) {}
+  }
+  return resolveStreamfreeTop(ctx, cfg);
 }
 
 async function extract(ctx) {

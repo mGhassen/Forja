@@ -1,8 +1,8 @@
 //! Pattern B Xtream Codes client — fetch + parse + normalize in Rust.
 
 use crate::xtream::{
-    merge_orphan_categories, parse_categories_rows, parse_section, parse_series_episodes_rows,
-    parse_streams_rows, XtreamSection,
+    absolutize_stream_rows, merge_orphan_categories, parse_categories_rows, parse_section,
+    parse_series_episodes_rows, parse_streams_rows, XtreamSection,
 };
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -157,6 +157,7 @@ async fn catalog(api: &str, section: &str, timeout: Duration) -> Result<Value, S
     reject_xtream_auth_body(&streams_body)?;
     let cats = parse_categories_rows(&cats_body).map_err(|e| e.to_string())?;
     let streams = parse_streams_rows(&streams_body, section).map_err(|e| e.to_string())?;
+    let streams = absolutize_stream_rows(&portal_base_from_api(api), streams);
     let cats = merge_orphan_categories(cats, &streams);
     Ok(json!({
         "categories": cats,
@@ -197,7 +198,16 @@ async fn streams(
     let body = http_get(&url, timeout).await?;
     reject_xtream_auth_body(&body)?;
     let rows = parse_streams_rows(&body, section).map_err(|e| e.to_string())?;
+    let rows = absolutize_stream_rows(&portal_base_from_api(api), rows);
     Ok(json!({ "streams": rows }))
+}
+
+fn portal_base_from_api(api: &str) -> String {
+    if let Some(idx) = api.find("/player_api.php") {
+        api[..idx].to_string()
+    } else {
+        api.trim_end_matches('/').to_string()
+    }
 }
 
 async fn series_episodes(api: &str, series_id: &str, timeout: Duration) -> Result<Value, String> {

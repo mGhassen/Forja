@@ -25,6 +25,7 @@ abstract final class PluginInstallValidator {
     required EnginePack pack,
     required Map<String, String> scripts,
     required Map<String, String> preludes,
+    bool skipSmokeLoad = false,
   }) async {
     _validateScriptRefs(manifestUrl: manifestUrl, pack: pack);
     _validateCatalogVersions(pack);
@@ -34,7 +35,7 @@ abstract final class PluginInstallValidator {
       scripts: scripts,
       preludes: preludes,
     );
-    if (!debugSkipSmokeLoad) {
+    if (!debugSkipSmokeLoad && !skipSmokeLoad) {
       await _smokeLoadScripts(
         pack: pack,
         scripts: scripts,

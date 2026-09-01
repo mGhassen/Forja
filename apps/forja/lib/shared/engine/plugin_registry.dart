@@ -768,9 +768,23 @@ class PluginRegistry {
     EnginePack local,
   ) async {
     if (isLocalManifestUrl(manifestUrl)) {
-      debugPrint('[engine] ${local.name} local checkout — refreshing scripts');
-      await install(manifestUrl);
-      return true;
+      try {
+        final body = await _fetchText(manifestUrl);
+        final map = jsonDecode(body);
+        if (map is! Map) return false;
+        final remoteVer = (map['version'] as String?)?.trim() ?? '';
+        if (remoteVer.isEmpty) return false;
+        if (compareEngineSemver(remoteVer, local.version) <= 0) return false;
+        debugPrint(
+          '[engine] ${local.name} local checkout — '
+          '$remoteVer > ${local.version}',
+        );
+        await install(manifestUrl);
+        return true;
+      } catch (e) {
+        debugPrint('[engine] ${local.name} local version check failed: $e');
+        return false;
+      }
     }
     try {
       final body = await _fetchText(manifestUrl);
@@ -958,9 +972,30 @@ class PluginRegistry {
         pack: pack,
         scripts: scripts,
         preludes: preludes,
+        skipSmokeLoad: localCheckout,
       );
     } on FormatException catch (e) {
       throw Exception('install validation failed: ${e.message}');
+    }
+
+    // Re-read prefs so pack/plugin toggles during download are not overwritten.
+    if (previous != null) {
+      final fresh = await listPacksRaw();
+      for (final p in fresh) {
+        if (p.sourceUrl != manifestUrl) continue;
+        previous = p;
+        break;
+      }
+      if (previous != null) {
+        final enabledById = {for (final p in previous.plugins) p.id: p.enabled};
+        pack = pack.copyWith(
+          enabled: previous.enabled,
+          plugins: [
+            for (final p in pack.plugins)
+              p.copyWith(enabled: enabledById[p.id] ?? p.enabled),
+          ],
+        );
+      }
     }
 
     // Commit disk (remote only) + prefs index only after all fetches succeed.

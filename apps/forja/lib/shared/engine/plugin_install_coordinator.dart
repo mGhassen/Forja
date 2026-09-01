@@ -265,8 +265,9 @@ class PluginInstallCoordinator {
         continue;
       }
       if (!checkUpdates) continue;
-      final local = PluginRegistry.isLocalManifestUrl(pack.sourceUrl);
-      jobs.add((pack: pack, isUpdate: true, forceRefresh: local));
+      // Local checkout JS is read from disk at runtime — only refresh when the
+      // manifest version bumps (see [PluginRegistry.maybeRefreshIfNewer]).
+      jobs.add((pack: pack, isUpdate: true, forceRefresh: false));
     }
 
     var completed = 0;

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
+import 'package:forja/shared/services/app_update_download_service.dart';
 import 'package:forja/shell/shell_bus.dart';
 
-/// Bottom-center progress toast while Engine/Nuvio packs download or update.
+/// Sticky top-right progress toast while Engine/Nuvio packs download or update.
 /// Hidden while any fullscreen video player surface is active.
 class PluginInstallProgressBannerHost extends StatelessWidget {
   const PluginInstallProgressBannerHost({super.key, required this.child});
@@ -13,9 +14,12 @@ class PluginInstallProgressBannerHost extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final coordinator = PluginInstallCoordinator.instance;
+    final appUpdate = AppUpdateDownloadService.instance;
     final listenable = Listenable.merge([
       coordinator.progress,
       coordinator.suppressBanner,
+      appUpdate.state,
+      appUpdate.progressBannerDismissed,
       ShellBus.playerSurfaceActive,
       ShellBus.splashDismissed,
     ]);
@@ -24,14 +28,13 @@ class PluginInstallProgressBannerHost extends StatelessWidget {
       children: [
         child,
         Positioned(
-          left: 16,
+          top: 16,
           right: 16,
-          bottom: 16,
           child: SafeArea(
             child: ListenableBuilder(
               listenable: listenable,
               builder: (context, _) {
-                // Intro splash + profile warm use the bottom status line.
+                // Intro splash + profile warm use the splash status line.
                 if (coordinator.suppressBanner.value ||
                     !ShellBus.splashDismissed.value ||
                     ShellBus.playerSurfaceActive.value) {
@@ -39,11 +42,14 @@ class PluginInstallProgressBannerHost extends StatelessWidget {
                 }
                 final current = coordinator.progress.value;
                 if (current == null) return const SizedBox.shrink();
+                final stackBelowAppUpdate = appUpdate.shouldShowProgressBanner;
                 return ExcludeFocus(
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: stackBelowAppUpdate ? 88 : 0,
+                    ),
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
+                      constraints: const BoxConstraints(maxWidth: 360),
                       child: _PluginInstallBanner(progress: current),
                     ),
                   ),
@@ -93,7 +99,7 @@ class _PluginInstallBanner extends StatelessWidget {
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,

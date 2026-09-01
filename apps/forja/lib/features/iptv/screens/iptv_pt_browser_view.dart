@@ -91,7 +91,7 @@ class _BrowserViewState extends State<_BrowserView> {
       bindNav();
       _syncInitialFocus();
       if (!mounted) return;
-      if (iptvUseTvFocus(context)) {
+      if (iptvLeanbackOnly(context)) {
         _bumpChannelLogoSettle();
       } else {
         setState(() => _allowNewLogos = true);
@@ -959,9 +959,9 @@ class _BrowserViewState extends State<_BrowserView> {
     return false;
   }
 
-  /// TV: stop admitting *new* logos when the channel list offset moves.
+  /// Leanback TV: stop admitting *new* logos when the channel list offset moves.
   void _onStreamScrollForLogos() {
-    if (!mounted || !iptvUseTvFocus(context) || !_streamScroll.hasClients) {
+    if (!mounted || !iptvLeanbackOnly(context) || !_streamScroll.hasClients) {
       return;
     }
     final offset = _streamScroll.offset;
@@ -992,10 +992,19 @@ class _BrowserViewState extends State<_BrowserView> {
     return [for (var i = first; i < last; i++) list[i].streamId];
   }
 
+  /// Leanback TV: reveal one channel immediately (D-pad land) without waiting
+  /// for the scroll-settle debounce.
+  void _revealStreamLogo(String streamId) {
+    if (!iptvLeanbackOnly(context) || streamId.isEmpty) return;
+    if (_revealedLogoIds.add(streamId)) {
+      setState(() {});
+    }
+  }
+
   /// After 500ms idle, admit logos for the viewport. [hide] stops *new* logos
   /// on scroll/category swap — already-revealed tiles stay painted.
   void _bumpChannelLogoSettle({bool hide = false}) {
-    if (!iptvUseTvFocus(context)) return;
+    if (!iptvLeanbackOnly(context)) return;
     _scrollSettleTimer?.cancel();
     if (hide) {
       if (_allowNewLogos) {
@@ -1019,7 +1028,7 @@ class _BrowserViewState extends State<_BrowserView> {
       _LiveHealthProbe.usesScrollDebounce(context);
 
   bool _streamShowLogo(IptvStream stream) {
-    if (!iptvUseTvFocus(context)) return true;
+    if (!iptvLeanbackOnly(context)) return true;
     return _revealedLogoIds.contains(stream.streamId) || _allowNewLogos;
   }
 
@@ -1553,7 +1562,10 @@ class _BrowserViewState extends State<_BrowserView> {
               highlighted:
                   stream.streamId == widget.ctrl.browserHighlightedStreamId,
               showLogo: _streamShowLogo(stream),
-              onTvFocusGained: _bumpChannelLogoSettle,
+              onTvFocusGained: () {
+                _revealStreamLogo(stream.streamId);
+                _bumpChannelLogoSettle();
+              },
               gridIndex: i,
               gridColumns: cross,
               onUpEdge: i < cross
@@ -1632,7 +1644,10 @@ class _BrowserViewState extends State<_BrowserView> {
           highlighted: stream.streamId == ctrl.browserHighlightedStreamId,
           listIndex: i,
           showLogo: _streamShowLogo(stream),
-          onTvFocusGained: _bumpChannelLogoSettle,
+          onTvFocusGained: () {
+            _revealStreamLogo(stream.streamId);
+            _bumpChannelLogoSettle();
+          },
           onLeftEdge: iptvStreamLeftEdge(ctrl, stream),
           onRightEdge: ctrl.portalPanelOpen
               ? () => iptvFocusPortalList(ctrl)
