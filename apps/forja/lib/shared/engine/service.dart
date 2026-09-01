@@ -193,13 +193,8 @@ class EngineService {
     return inactive;
   }
 
-  /// Live sport schedule plugins from installed packs.
-  ///
-  /// When [enabledOnly] is false, returns every `live_sport` catalog capability
-  /// (Settings may still disable individual sites).
-  Future<List<EnginePlugin>> listLiveSportCatalogPlugins({
-    bool enabledOnly = true,
-  }) async {
+  /// Live sport schedule plugins with catalog capability enabled in Settings.
+  Future<List<EnginePlugin>> listLiveSportCatalogPlugins() async {
     await ensureOfficialInstalled();
     final out = <EnginePlugin>[];
     for (final pack in await listPacks()) {
@@ -208,14 +203,12 @@ class EngineService {
         if (!p.isHttp || !p.isLiveSportPlugin || !p.supportsLiveCatalog) {
           continue;
         }
-        if (enabledOnly) {
-          if (!await PluginRegistry.instance.isLiveCapabilityActive(
-            pack: pack,
-            plugin: p,
-            capability: LiveSportCapabilities.catalog,
-          )) {
-            continue;
-          }
+        if (!await PluginRegistry.instance.isLiveCapabilityActive(
+          pack: pack,
+          plugin: p,
+          capability: LiveSportCapabilities.catalog,
+        )) {
+          continue;
         }
         out.add(p);
       }
