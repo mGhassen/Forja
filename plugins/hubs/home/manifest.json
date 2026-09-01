@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-home",
   "name": "ForjaHQ Home",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "plugins": [
     {
       "id": "tmdb",

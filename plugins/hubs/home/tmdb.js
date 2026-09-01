@@ -245,7 +245,8 @@ function tmdbClaimRails(pools, specs) {
 }
 
 function tmdbListPool(ctx, cfg, params, railId) {
-  var preserveRank = railId === 'spotlight' || railId === 'popular';
+  var preserveRank =
+    railId === 'spotlight' || railId === 'popular' || railId === 'new_releases';
   var pageNums = preserveRank
     ? (function () {
         var fixed = [];
@@ -275,6 +276,7 @@ function tmdbListPool(ctx, cfg, params, railId) {
     var merged = [];
     var i;
     for (i = 0; i < chunks.length; i++) merged = tmdbUniqueMetas(merged, chunks[i], 999);
+    if (railId === 'new_releases') return tmdbSortMetasByReleaseDesc(merged);
     if (preserveRank) return merged;
     return tmdbSeededShuffle(merged, 'pool-' + railId);
   });
@@ -356,7 +358,7 @@ function tmdbPickFetchPages(salt, count, maxPage) {
   return picked;
 }
 
-function tmdbFetchRotatedList(ctx, cfg, params, salt, fetchOnePage) {
+function tmdbFetchRotatedList(ctx, cfg, params, salt, fetchOnePage, opts) {
   var pageNums = tmdbPickFetchPages(
     salt,
     TMDB_HOME_FETCH_PAGES,
@@ -375,8 +377,11 @@ function tmdbFetchRotatedList(ctx, cfg, params, salt, fetchOnePage) {
     for (i = 0; i < chunks.length; i++) {
       merged = tmdbUniqueMetas(merged, chunks[i], 999);
     }
-    var shuffled = tmdbSeededShuffle(merged, 'pool-' + String(salt || ''));
-    return hubClampList(shuffled, limit || TMDB_HOME_RAIL_CAP);
+    var ordered =
+      opts && opts.sortByRelease
+        ? tmdbSortMetasByReleaseDesc(merged)
+        : tmdbSeededShuffle(merged, 'pool-' + String(salt || ''));
+    return hubClampList(ordered, limit || TMDB_HOME_RAIL_CAP);
   });
 }
 
@@ -677,6 +682,27 @@ function tmdbMonthWindow() {
   };
 }
 
+function tmdbRecentReleaseWindow(daysBack, daysForward) {
+  var back = Number(daysBack) > 0 ? Number(daysBack) : 90;
+  var forward = Number(daysForward) > 0 ? Number(daysForward) : 60;
+  var now = new Date();
+  var start = new Date(now.getTime() - back * 86400000);
+  var end = new Date(now.getTime() + forward * 86400000);
+  var pad = function (n) {
+    return (n < 10 ? '0' : '') + n;
+  };
+  var fmt = function (d) {
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  };
+  return { gte: fmt(start), lte: fmt(end) };
+}
+
+function tmdbSortMetasByReleaseDesc(metas) {
+  return (metas || []).slice().sort(function (a, b) {
+    return String(b.releaseInfo || '').localeCompare(String(a.releaseInfo || ''));
+  });
+}
+
 function tmdbMergeLists(cfg, movieJson, tvJson, limit) {
   var movies = tmdbMetas(cfg, movieJson, 'movie', limit);
   var shows = tmdbMetas(cfg, tvJson, 'tv', limit);
@@ -733,27 +759,41 @@ function tmdbNewReleasesForPage(
   page,
   limit,
 ) {
-  if (watchProviders) {
-    return tmdbFetchMixed(
-      ctx,
-      cfg,
-      filter,
-      typeFilter,
-      { sort_by: 'primary_release_date.desc', page: page },
-      { sort_by: 'first_air_date.desc', page: page },
-      limit,
-    );
-  }
-  return Promise.all([
-    typeFilter === 'tv'
-      ? Promise.resolve({ results: [] })
-      : tmdbGet(ctx, cfg, '/movie/now_playing', { page: page }),
-    typeFilter === 'movie'
-      ? Promise.resolve({ results: [] })
-      : tmdbGet(ctx, cfg, '/tv/on_the_air', { page: page }),
-  ]).then(function (pair) {
-    return tmdbMergeLists(cfg, pair[0], pair[1], limit);
-  });
+  var win = tmdbRecentReleaseWindow(90, 60);
+  var movieQ = {
+    sort_by: 'primary_release_date.desc',
+    page: page,
+    'primary_release_date.gte': win.gte,
+    'primary_release_date.lte': win.lte,
+    'vote_count.gte': 10,
+  };
+  var tvQ = {
+    sort_by: 'first_air_date.desc',
+    page: page,
+    'first_air_date.gte': win.gte,
+    'first_air_date.lte': win.lte,
+    'vote_count.gte': 10,
+  };
+  return tmdbFetchMixed(ctx, cfg, filter, typeFilter, movieQ, tvQ, limit).then(
+    function (discover) {
+      if (watchProviders || typeFilter) {
+        return tmdbSortMetasByReleaseDesc(discover);
+      }
+      return Promise.all([
+        tmdbGet(ctx, cfg, '/movie/now_playing', { page: page }),
+        tmdbGet(ctx, cfg, '/movie/upcoming', { page: page }),
+      ]).then(function (pair) {
+        var curated = tmdbUniqueMetas(
+          tmdbMetas(cfg, pair[0], 'movie', limit),
+          tmdbMetas(cfg, pair[1], 'movie', limit),
+          999,
+        );
+        return tmdbSortMetasByReleaseDesc(
+          tmdbUniqueMetas(discover, curated, limit),
+        );
+      });
+    },
+  );
 }
 
 function tmdbList(ctx, cfg, params) {
@@ -856,17 +896,24 @@ function tmdbList(ctx, cfg, params) {
 
   if (railId === 'new_releases') {
     if (!poolPage && page === 1) {
-      return tmdbFetchRotatedList(ctx, cfg, params, 'new_releases', function (p) {
-        return tmdbNewReleasesForPage(
-          ctx,
-          cfg,
-          filter,
-          typeFilter,
-          watchProviders,
-          p,
-          TMDB_HOME_RAIL_CAP,
-        );
-      });
+      return tmdbFetchRotatedList(
+        ctx,
+        cfg,
+        params,
+        'new_releases',
+        function (p) {
+          return tmdbNewReleasesForPage(
+            ctx,
+            cfg,
+            filter,
+            typeFilter,
+            watchProviders,
+            p,
+            TMDB_HOME_RAIL_CAP,
+          );
+        },
+        { sortByRelease: true },
+      );
     }
     return tmdbNewReleasesForPage(
       ctx,
