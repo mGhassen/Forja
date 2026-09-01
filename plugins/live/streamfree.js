@@ -42,15 +42,16 @@ async function fetchCatalog(ctx, cfg) {
       var homeBadge = String(team1.logo || '');
       var awayBadge = String(team2.logo || '');
       var poster = absUrl(origin, s.thumbnail_url) || homeBadge || awayBadge;
+      var viewers = Number(s.viewers || 0);
       var row = {
         id: 'sf_' + id,
         title: String(s.name || ''),
         category: String(category).toLowerCase(),
         date: s.match_timestamp ? Number(s.match_timestamp) * 1000 : 0,
         poster: poster,
-        popular: Number(s.viewers || 0) > 100,
-        airing: false,
-        viewers: Number(s.viewers || 0),
+        popular: viewers > 50,
+        airing: viewers > 0,
+        viewers: viewers,
         sources: [{ source: 'streamfree', id: String(id) }],
         catalog: 'forja_live',
         pluginId: pluginId,
@@ -101,10 +102,12 @@ async function resolveStream(ctx, cfg) {
 
   var base =
     origin + '/live/' + sid + quality + '/index.m3u8?' + buildQuery(m3uInfo);
+  var viewers = Number(ctx.viewers || 0);
   return [
     {
       url: base,
       headers: { Referer: embedUrl, Origin: origin, 'User-Agent': ua() },
+      viewers: viewers,
     },
   ];
 }

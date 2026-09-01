@@ -82,6 +82,7 @@ class SettingsService {
   static const String _prowlarrBaseUrlKey = 'prowlarr_base_url';
   static const String _prowlarrApiKeyKey = 'prowlarr_api_key';
   static const String _prowlarrTagIdsKey = 'prowlarr_tag_ids';
+  static const String _flareSolverrUrlKey = 'flare_solverr_url';
   static const String _themePresetKey = 'theme_preset';
   static const String _torrentDiskCacheGbKey = 'torrent_disk_cache_gb';
   static const String _torrentConnectionsLimitKey = 'torrent_connections_limit';
@@ -1320,6 +1321,15 @@ class SettingsService {
     _prowlarrTagIdsKey,
     tagIds.map((id) => id.toString()).toList(),
   );
+
+  /// FlareSolverr / Byparr base (`http://host:8191`) for Cloudflare indexers.
+  Future<String?> getFlareSolverrUrl() async =>
+      kvGetString(_flareSolverrUrlKey);
+
+  Future<void> setFlareSolverrUrl(String url) async {
+    final normalized = url.trim().replaceAll(RegExp(r'/+$'), '');
+    await kvSetString(_flareSolverrUrlKey, normalized);
+  }
 
   static const int minTorrentDiskCacheGb = 1;
   static const int maxTorrentDiskCacheGb = 16;

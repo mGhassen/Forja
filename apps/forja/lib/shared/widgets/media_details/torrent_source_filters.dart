@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/design/design.dart';
@@ -935,13 +937,24 @@ class TorrentCacheStorageLine extends StatefulWidget {
 }
 
 class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
-  String _label = '…';
+  static const _pollInterval = Duration(seconds: 2);
+
+  int _bytes = -1;
   bool _clearing = false;
+  int _loadGen = 0;
+  Timer? _poll;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _poll = Timer.periodic(_pollInterval, (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
   }
 
   @override
@@ -951,23 +964,30 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
   }
 
   Future<void> _load() async {
-    final bytes = await TorrentStreamService().cacheDirectoryBytes();
-    if (!mounted) return;
-    setState(() {
-      _label = TorrentStreamService.formatStorageBytes(bytes);
-    });
+    final gen = ++_loadGen;
+    final stats = await TorrentStreamService().queryDiskCacheStats();
+    if (!mounted || gen != _loadGen) return;
+    setState(() => _bytes = stats.usedBytes);
   }
 
   Future<void> _clear() async {
     if (_clearing) return;
     setState(() => _clearing = true);
     try {
-      await TorrentStreamService().clearCacheDirectory();
-      await _load();
+      final stats = await TorrentStreamService().clearCacheDirectory();
+      if (!mounted) return;
+      setState(() => _bytes = stats.usedBytes);
+      if (stats.protectedBytes > 0) {
+        ForjaToast.info(
+          'Kept ${TorrentStreamService.formatStorageBytes(stats.protectedBytes)} '
+          'for the active download',
+          duration: const Duration(seconds: 3),
+        );
+      }
     } catch (_) {
       if (mounted) {
         ForjaToast.error(
-          'Could not clear stream cache',
+          'Could not clear torrent cache',
           duration: const Duration(seconds: 2),
         );
       }
@@ -978,9 +998,14 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
 
   @override
   Widget build(BuildContext context) {
+    if (_bytes == 0) return const SizedBox.shrink();
+
+    final label = _bytes < 0
+        ? '…'
+        : TorrentStreamService.formatStorageBytes(_bytes);
     final cinematic = ForjaShellColors.cinematic;
     final metrics = ShellScope.metricsOf(context);
-    final hasData = _label != '0 B';
+    final hasData = _bytes > 0;
 
     return Row(
       children: [
@@ -992,7 +1017,7 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
         const SizedBox(width: 6),
         Expanded(
           child: Text(
-            'Stream cache: $_label',
+            'Torrent cache: $label',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(

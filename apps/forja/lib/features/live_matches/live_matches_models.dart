@@ -3240,16 +3240,12 @@ String _liveForjaPluginDisplayName(String pluginId) {
   return LiveMatchesEngine.cachedPluginDisplayName(pluginId);
 }
 
-/// True when an installed Stremio addon is wired to Live and exposes sport catalogs.
+/// True when an installed Stremio addon is wired to Live Matches.
 ///
-/// Local prefs only — never awaits VOD manifest hydrate on Live tab open.
+/// Local prefs only — never awaits manifest hydrate on Live tab open. Catalog
+/// shape is resolved when the Stremio server loads (`getAddonsForFeature`).
 Future<bool> _liveMatchesStremioLiveEnabled() async {
-  final addons =
-      await StremioService().peekAddonsForFeature(StremioAddonFeatures.live);
-  for (final addon in addons) {
-    if (StremioService.sportCatalogsForLive(addon).isNotEmpty) return true;
-  }
-  return false;
+  return StremioService().hasInstalledLiveAddons();
 }
 
 /// Server picker order: Forja Live first, Stremio last when available.

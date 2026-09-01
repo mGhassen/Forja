@@ -1670,12 +1670,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             final filters = _torrentViewFilterProviderIds;
             if (filters.isEmpty) return true;
             return filters.any(
-              (id) => TorrentSearchProviders.matchesResultSource(id, r.source),
+              (id) => TorrentSearchProviders.matchesTorrentRow(id, r),
             );
           }
-          return TorrentSearchProviders.matchesResultSource(
+          return TorrentSearchProviders.matchesTorrentRow(
             _selectedSourceId,
-            r.source,
+            r,
           );
         });
     var out = List<TorrentResult>.from(list);
@@ -2025,7 +2025,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       });
       return;
     }
-    final replace = _results.isEmpty;
+    final replace =
+        _results.isEmpty || !TorrentSearchProviders.isAllChip(_selectedSourceId);
     setState(() {
       _searching = true;
       _error = null;
@@ -3107,6 +3108,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (_kindFilter == 'torrents') {
       setState(() {
         _torrentFetchedProviderIds.remove(id);
+        _results = _results
+            .where(
+              (r) => !TorrentSearchProviders.matchesTorrentRow(id, r),
+            )
+            .toList();
         if (TorrentSearchProviders.isAllChip(_selectedSourceId) ||
             _selectedSourceId == id) {
           // keep selection
@@ -3406,7 +3412,16 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     } else if (_kindFilter == 'torrents') {
       final toIndexer = id == 'jackett' || id == 'prowlarr';
       final fromIndexer = prev == 'jackett' || prev == 'prowlarr';
-      if (toIndexer ||
+      final singleBuiltin = TorrentSearchProviders.isBuiltinSearchChip(id) &&
+          !TorrentSearchProviders.isAllChip(id);
+      if (singleBuiltin) {
+        setState(() {
+          _results = [];
+          _torrentFetchedProviderIds.remove(id);
+        });
+        _abortTorrentSearch();
+        unawaited(_runTorrentSearch(force: true));
+      } else if (toIndexer ||
           fromIndexer ||
           TorrentSearchProviders.isBuiltinSearchChip(id)) {
         _abortTorrentSearch();

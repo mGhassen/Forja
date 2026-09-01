@@ -56,6 +56,7 @@ void main() {
                 'label': 'Horror',
                 'movieGenres': [27],
                 'tvGenres': [10765, 9648],
+                'filter': {'op': 'eq', 'field': 'mood', 'value': 'horror'},
               },
             ],
           },
@@ -82,9 +83,18 @@ void main() {
             'field': 'country',
             'label': 'Country',
             'options': [
-              {'id': 'all', 'label': 'All', 'value': '0'},
-              {'id': 'korea', 'label': 'South Korea', 'value': '2'},
-              {'id': 'japan', 'label': 'Japan', 'value': '3'},
+              {
+                'id': 'korea',
+                'label': 'South Korea',
+                'value': '2',
+                'filter': {'op': 'eq', 'field': 'country', 'value': '2'},
+              },
+              {
+                'id': 'japan',
+                'label': 'Japan',
+                'value': '3',
+                'filter': {'op': 'eq', 'field': 'country', 'value': '3'},
+              },
             ],
           },
         ],
@@ -93,7 +103,6 @@ void main() {
       final categories =
           CatalogPackFiltersRegistry.categoriesFor('kisskh-hub');
       expect(categories.map((e) => e.label), [
-        'All',
         'South Korea',
         'Japan',
       ]);
@@ -123,6 +132,7 @@ void main() {
                 'id': 'shonen',
                 'label': 'Shōnen',
                 'genre': 'Action',
+                'filter': {'op': 'eq', 'field': 'genre', 'value': 'Action'},
               },
             ],
           },
@@ -142,6 +152,43 @@ void main() {
       });
     });
 
+    test('anilist categories list pack genre options', () {
+      CatalogPackFiltersRegistry.seedFromJson('anilist', {
+        'fields': [
+          {
+            'field': 'genre',
+            'label': 'Genre',
+            'options': [
+              {
+                'id': 'shonen',
+                'label': 'Shōnen',
+                'filter': {'op': 'eq', 'field': 'genre', 'value': 'Action'},
+              },
+              {
+                'id': 'romance',
+                'label': 'Romance',
+                'filter': {'op': 'eq', 'field': 'genre', 'value': 'Romance'},
+              },
+            ],
+          },
+        ],
+        'play': [
+          {
+            'id': 'audio',
+            'field': 'category',
+            'style': 'grouped',
+            'default': 'sub',
+            'options': [
+              {'id': 'sub', 'label': 'SUB', 'value': 'sub'},
+            ],
+          },
+        ],
+      });
+
+      final categories = CatalogPackFiltersRegistry.categoriesFor('anilist');
+      expect(categories.map((e) => e.label), ['Shōnen', 'Romance']);
+    });
+
     test('anime romance uses upstream genre, not mood id', () {
       CatalogPackFiltersRegistry.seedFromJson('anilist', {
         'fields': [
@@ -153,6 +200,7 @@ void main() {
                 'id': 'romance',
                 'label': 'Romance',
                 'genre': 'Romance',
+                'filter': {'op': 'eq', 'field': 'genre', 'value': 'Romance'},
               },
             ],
           },

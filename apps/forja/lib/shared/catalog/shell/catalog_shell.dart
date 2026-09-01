@@ -20,6 +20,7 @@ import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 
 import '../kit/cards/hub_poster_card.dart';
+import '../kit/chrome/catalog_pack_filters.dart';
 import '../kit/chrome/catalog_vertical_filters.dart';
 import '../kit/layout/catalog_kit_list_widget.dart';
 import '../kit/layout/catalog_kit_menu_widget.dart';
@@ -64,7 +65,6 @@ class _CatalogShellState extends State<CatalogShell>
   List<Map<String, dynamic>> _widgets = const [];
   String? _error;
   bool _loading = true;
-  int _chromeEpoch = 0;
 
   /// Hero bleed rail loaded — `null` loading, `true` has items, `false` empty.
   bool? _bleedPopulated;
@@ -154,6 +154,7 @@ class _CatalogShellState extends State<CatalogShell>
   /// Pack install / refresh / enable — keep-alive shell must drop memoized rails.
   void _onEnginePackChanged() {
     if (!mounted) return;
+    CatalogPackFiltersRegistry.invalidate(widget.pluginId);
     markShellTabStale();
     _forceNextRails = true;
     _invalidateRailFutures();
@@ -185,7 +186,7 @@ class _CatalogShellState extends State<CatalogShell>
     if (epoch == _chromeFilterEpoch) return;
     _chromeFilterEpoch = epoch;
     _invalidateRailFutures();
-    setState(() => _chromeEpoch++);
+    setState(() {});
   }
 
   void _invalidateRailFutures() {
@@ -318,6 +319,7 @@ class _CatalogShellState extends State<CatalogShell>
       widgetSpecs: _layoutWidgetSpecs,
       onSelect: _onLayoutTabSelect,
     );
+    unawaited(CatalogPackFiltersRegistry.ensureLoaded(widget.pluginId));
     _rebindChromeListenable();
     markShellTabFresh();
   }
@@ -512,8 +514,7 @@ class _CatalogShellState extends State<CatalogShell>
     return rail != null && _packFeedRailIds.contains(rail);
   }
 
-  String _feedMemoKey() =>
-      'feed|${catalogChromeFilterEpoch(widget.tabId)}|$_chromeEpoch';
+  String _feedMemoKey() => 'feed|${catalogChromeFilterEpoch(widget.tabId)}';
 
   Future<Map<String, List<CatalogMetaItem>>> _ensureFeedLoaded({
     bool force = false,
@@ -571,7 +572,7 @@ class _CatalogShellState extends State<CatalogShell>
     final moodSrc = (spec['moodSource'] ?? '').toString();
     final mood = moodSrc.isEmpty ? '' : (_moods[moodSrc] ?? '');
     final chrome = catalogChromeFilterEpoch(widget.tabId);
-    return '$id|$moodSrc|$mood|$chrome|$_chromeEpoch';
+    return '$id|$moodSrc|$mood|$chrome';
   }
 
   Future<CatalogRailPage<CatalogMetaItem>> _itemsForRailSpec(
@@ -842,14 +843,14 @@ class _CatalogShellState extends State<CatalogShell>
     CatalogHubRowPrefetchSlot? prefetch,
   }) {
     final id = (spec['id'] ?? '').toString();
-    final mood = _moods[(spec['moodSource'] ?? '').toString()] ?? '';
-    final chrome = catalogChromeFilterEpoch(widget.tabId);
     final aspect = _aspectOf(spec);
+    final reload = _chromeFilterEpoch;
     final numbered = showRank || _isNumbered(spec);
     if (_isVertical(spec)) {
       return _VerticalHubRail(
-        key: ValueKey('vhub:$id:$mood:$chrome:$_chromeEpoch'),
+        key: ValueKey('vhub:$id'),
         title: (spec['title'] ?? '').toString(),
+        reloadToken: reload,
         fetchPage: (page) => _fetchRailPage(spec, page: page),
         prefetchSlot: prefetch,
         showRank: numbered,
@@ -868,8 +869,9 @@ class _CatalogShellState extends State<CatalogShell>
       );
     }
     return HubCatalogSection<CatalogMetaItem>(
-      key: ValueKey('$id:$mood:$chrome:$_chromeEpoch'),
+      key: ValueKey('rail:$id'),
       title: (spec['title'] ?? '').toString(),
+      reloadToken: reload,
       lazy: true,
       fetchPage: (page) => _fetchRailPage(
         spec,
@@ -902,9 +904,8 @@ class _CatalogShellState extends State<CatalogShell>
     String? bleedRowId,
     CatalogHubRowPrefetchSlot? prefetch,
   }) {
-    final chrome = catalogChromeFilterEpoch(widget.tabId);
     return _CatalogHeroSection(
-      key: ValueKey('hero:$chrome:$_chromeEpoch'),
+      key: const ValueKey('hero:spotlight'),
       future: _railFuture(spec, useFeedBatch: true),
       buildSlides: _heroSlides,
       tvTabId: widget.tabId ?? 'home',
@@ -1151,8 +1152,9 @@ class _CatalogShellState extends State<CatalogShell>
           if (resultsRail.isNotEmpty) ...[
             const SizedBox(height: 16),
             HubCatalogSection<CatalogMetaItem>(
-              key: ValueKey('mood-results:$id:$selected:$_chromeEpoch'),
+              key: ValueKey('mood-results:$id:$selected'),
               title: '',
+              reloadToken: _chromeFilterEpoch,
               fetchPage: (page) => _fetchRailPage(resultsSpec, page: page),
               pageSizeHint: _railPageSizeHint(spec),
               itemKey: (item) => item.id,
@@ -1175,7 +1177,7 @@ class _CatalogShellState extends State<CatalogShell>
     }
 
     return HubLazyViewportGate(
-      detectorKey: ValueKey('mood:$id:$_chromeEpoch'),
+      detectorKey: ValueKey('mood:$id'),
       placeholderHeight: _moodSectionPlaceholderHeight(
         context,
         optionCount: options.length,
@@ -1355,8 +1357,9 @@ class _CatalogShellState extends State<CatalogShell>
       final Widget? bleedChild = bleed == null || !bleedActive
           ? null
           : HubCatalogSection<CatalogMetaItem>(
-              key: ValueKey('bleed:${bleed['id']}:$_chromeEpoch'),
+              key: ValueKey('bleed:${bleed['id']}'),
               title: (bleed['title'] ?? '').toString(),
+              reloadToken: _chromeFilterEpoch,
               fetchPage: (page) =>
                   _fetchRailPage(bleed, page: page, useFeedBatch: page == 1),
               pageSizeHint: _railPageSizeHint(bleed),
@@ -1545,6 +1548,7 @@ class _VerticalHubRail extends StatefulWidget {
     this.tvTabId,
     this.tvRowId,
     this.tvRowOrder = 0,
+    this.reloadToken,
   });
 
   final String title;
@@ -1556,6 +1560,7 @@ class _VerticalHubRail extends StatefulWidget {
   final String? tvTabId;
   final String? tvRowId;
   final int tvRowOrder;
+  final String? reloadToken;
 
   @override
   State<_VerticalHubRail> createState() => _VerticalHubRailState();
@@ -1566,10 +1571,17 @@ class _VerticalHubRailState extends State<_VerticalHubRail> {
   bool _loading = false;
   int _loadGen = 0;
 
+  @override
+  void didUpdateWidget(covariant _VerticalHubRail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.reloadToken != widget.reloadToken) {
+      unawaited(_load());
+    }
+  }
+
   Future<void> _load() async {
-    if (_loading) return;
-    setState(() => _loading = true);
     final gen = ++_loadGen;
+    setState(() => _loading = true);
     try {
       final result = await widget.fetchPage(1);
       if (!mounted || gen != _loadGen) return;

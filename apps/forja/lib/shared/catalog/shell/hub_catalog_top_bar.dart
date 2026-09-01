@@ -9,6 +9,7 @@ import 'package:forja/shared/catalog/kit/layout/catalog_kit_top_menu_registry.da
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_search_screen.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:rust/rust.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/catalog_top_bar.dart';
 import 'package:forja/shell/shell_bus.dart';
@@ -72,23 +73,47 @@ class _PluginHubCatalogTopBarState extends State<PluginHubCatalogTopBar> {
   @override
   void initState() {
     super.initState();
-    final pluginId = PluginNavRegistry.pluginIdForTabSync(widget.tabId);
-    if (pluginId != null) {
-      unawaited(CatalogPackFiltersRegistry.ensureLoaded(pluginId));
-      unawaited(_loadPlugin(pluginId));
-    }
+    SettingsService.navbarChangeNotifier.addListener(_onNavbarChanged);
+    EngineService.changeNotifier.addListener(_onEngineChanged);
+    _schedulePackFiltersLoad();
     CatalogPackFiltersRegistry.revision.addListener(_onFilters);
     CatalogKitTopMenuRegistry.revision.addListener(_onFilters);
   }
 
-  Future<void> _loadPlugin(String pluginId) async {
+  void _schedulePackFiltersLoad() {
+    final pluginId = PluginNavRegistry.pluginIdForTabSync(widget.tabId);
+    if (pluginId == null) return;
+    unawaited(_loadPluginAndFilters(pluginId));
+  }
+
+  Future<void> _loadPluginAndFilters(String pluginId) async {
     final found = await PluginRegistry.instance.findPlugin(pluginId);
     if (!mounted) return;
     setState(() => _plugin = found?.plugin);
+    if (found?.plugin.hasCapability(CatalogHubCapabilities.filters) == true) {
+      await CatalogPackFiltersRegistry.ensureLoaded(pluginId);
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _onNavbarChanged() {
+    if (!mounted) return;
+    if (_plugin != null) return;
+    _schedulePackFiltersLoad();
+  }
+
+  void _onEngineChanged() {
+    if (!mounted) return;
+    final pluginId = PluginNavRegistry.pluginIdForTabSync(widget.tabId);
+    if (pluginId == null) return;
+    CatalogPackFiltersRegistry.invalidate(pluginId);
+    unawaited(_loadPluginAndFilters(pluginId));
   }
 
   @override
   void dispose() {
+    SettingsService.navbarChangeNotifier.removeListener(_onNavbarChanged);
+    EngineService.changeNotifier.removeListener(_onEngineChanged);
     CatalogPackFiltersRegistry.revision.removeListener(_onFilters);
     CatalogKitTopMenuRegistry.revision.removeListener(_onFilters);
     super.dispose();

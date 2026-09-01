@@ -100,3 +100,51 @@ function fetchTextMaybeProxy(ctx, directUrl, proxyUrl) {
     });
   });
 }
+
+function isCloudflareChallenge(html) {
+  return /Just a moment|cf-browser-verification|challenges\.cloudflare\.com/i.test(
+    String(html || ''),
+  );
+}
+
+function flareSolverrBase(ctx) {
+  var u = String((ctx.config && ctx.config.flareSolverrUrl) || '').trim();
+  if (!u) return '';
+  return u.replace(/\/+$/, '');
+}
+
+function fetchTextViaFlareSolverr(ctx, url) {
+  var base = flareSolverrBase(ctx);
+  if (!base) return Promise.reject(new Error('no flare solver'));
+  var endpoint = base + (/\/v1$/i.test(base) ? '' : '/v1');
+  return ctx
+    .fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        cmd: 'request.get',
+        url: url,
+        maxTimeout: 60000,
+      }),
+    })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (v) {
+      if (!v || v.status !== 'ok' || !v.solution) throw new Error('flare failed');
+      var body = String(v.solution.response || '');
+      if (!body || isCloudflareChallenge(body)) throw new Error('flare CF');
+      return body;
+    });
+}
+
+function fetchTextCloudflare(ctx, directUrl) {
+  return fetchText(ctx, directUrl).then(function (html) {
+    if (!isCloudflareChallenge(html)) return html;
+    return fetchTextViaFlareSolverr(ctx, directUrl);
+  });
+}

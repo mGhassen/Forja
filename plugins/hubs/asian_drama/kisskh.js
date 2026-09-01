@@ -263,23 +263,70 @@ function kisskhDetails(ctx, cfg, params) {
   );
 }
 
+function kisskhCountryFilter(value) {
+  return { op: 'eq', field: 'country', value: String(value) };
+}
+
+function kisskhCategoryOptions() {
+  return [
+    {
+      id: 'chinese',
+      label: 'Chinese',
+      value: '1',
+      filter: kisskhCountryFilter('1'),
+    },
+    {
+      id: 'korea',
+      label: 'South Korea',
+      value: '2',
+      filter: kisskhCountryFilter('2'),
+    },
+    {
+      id: 'japan',
+      label: 'Japan',
+      value: '3',
+      filter: kisskhCountryFilter('3'),
+    },
+    {
+      id: 'hongkong',
+      label: 'Hong Kong',
+      value: '4',
+      filter: kisskhCountryFilter('4'),
+    },
+    {
+      id: 'thailand',
+      label: 'Thailand',
+      value: '5',
+      filter: kisskhCountryFilter('5'),
+    },
+    {
+      id: 'taiwan',
+      label: 'Taiwan',
+      value: '7',
+      filter: kisskhCountryFilter('7'),
+    },
+    {
+      id: 'philippines',
+      label: 'Philippines',
+      value: '8',
+      filter: kisskhCountryFilter('8'),
+    },
+    {
+      id: 'indonesia',
+      label: 'Indonesia',
+      value: '9',
+      filter: kisskhCountryFilter('9'),
+    },
+  ];
+}
+
 function kisskhFilters() {
   return {
     fields: [
       {
         field: 'country',
         label: 'Country',
-        options: [
-          { id: 'all', label: 'All', value: '0' },
-          { id: 'chinese', label: 'Chinese', value: '1' },
-          { id: 'korea', label: 'South Korea', value: '2' },
-          { id: 'japan', label: 'Japan', value: '3' },
-          { id: 'hongkong', label: 'Hong Kong', value: '4' },
-          { id: 'thailand', label: 'Thailand', value: '5' },
-          { id: 'taiwan', label: 'Taiwan', value: '7' },
-          { id: 'philippines', label: 'Philippines', value: '8' },
-          { id: 'indonesia', label: 'Indonesia', value: '9' },
-        ],
+        options: kisskhCategoryOptions(),
       },
     ],
     media: {

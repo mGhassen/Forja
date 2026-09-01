@@ -15,6 +15,7 @@ Automatic on [TMDB details](../movies-tv/tmdb-details.md) when you view torrent 
 - Open **Sources → Torrents** and pick a provider chip (only that indexer is searched) or **All** (every enabled provider — only the All chip stays highlighted). Tap **All** again to clear. From **All**, tap one provider to filter to it. Switching chips mid-search **stops** the previous indexer; tap it again to continue that search. While an indexer is still searching, that chip shows the same animated **…** as the Torrents tab.
 - See combined results from enabled providers
 - Toggle which providers appear/run in [Torrent settings](../settings/torrent-settings.md)
+- **UIndex** needs a **FlareSolverr / Byparr** URL in Torrent settings — the site is behind Cloudflare; without a solver the chip returns no rows
 - Sort by seeders, size, or other options
 - Play magnets or torrent files via [torrent playback](../playback/torrent-playback.md)
 - On desktop, hover a torrent row in Sources to copy its magnet link

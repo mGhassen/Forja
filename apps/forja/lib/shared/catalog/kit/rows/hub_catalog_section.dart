@@ -36,6 +36,7 @@ class HubCatalogSection<T> extends StatefulWidget {
     this.cardAspect = HubPosterAspect.portrait,
     this.prefetchSlot,
     this.onFirstPageLoaded,
+    this.reloadToken,
   }) : assert(
          future != null || items != null || fetchPage != null,
          'Provide future, fetchPage, or items',
@@ -58,6 +59,8 @@ class HubCatalogSection<T> extends StatefulWidget {
   final HubPosterAspect cardAspect;
   final CatalogHubRowPrefetchSlot? prefetchSlot;
   final void Function(int itemCount)? onFirstPageLoaded;
+  /// When this changes, refetch [fetchPage] but keep the last painted row.
+  final String? reloadToken;
   final HubPosterCard Function(BuildContext context, T item, int index)
   cardBuilder;
 
@@ -107,10 +110,10 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
     if (widget.prefetchSlot != null) {
       _registerPrefetch();
     }
-    if (oldWidget.fetchPage != widget.fetchPage ||
+    if (oldWidget.reloadToken != widget.reloadToken ||
         oldWidget.lazy != widget.lazy ||
         oldWidget.pageSizeHint != widget.pageSizeHint) {
-      _resetLoader(keepVisible: widget.lazy && _visibleActivated);
+      _softReload(keepVisible: widget.lazy && _visibleActivated);
     }
   }
 
@@ -135,15 +138,11 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
     widget.prefetchSlot?.notifyVisible();
   }
 
-  void _resetLoader({required bool keepVisible}) {
+  /// Refetch while keeping the last painted row (chrome filter / Films / Series).
+  void _softReload({required bool keepVisible}) {
     _loadGen++;
-    _loaded = const [];
-    _page = 0;
-    _loading = false;
     _loadingMore = false;
     _hasMore = true;
-    _last = null;
-    _resolvedPageSize = null;
     if (!keepVisible) _visibleActivated = false;
     final fetchPage = widget.fetchPage;
     if (fetchPage != null && (!widget.lazy || _visibleActivated)) {
@@ -178,7 +177,6 @@ class _HubCatalogSectionState<T> extends State<HubCatalogSection<T>> {
       if (_loadingMore || !_hasMore) return;
       setState(() => _loadingMore = true);
     } else {
-      if (_loading) return;
       setState(() => _loading = true);
     }
 

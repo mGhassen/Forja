@@ -39,4 +39,19 @@ void main() {
     expect(src.pickerTitle, 'Stream');
     expect(src.pickerSubtitle, isNull);
   });
+
+  test('iptvLiveEnginePlayUrlReady distinguishes embed vs handoff', () {
+    expect(
+      iptvLiveEnginePlayUrlReady('https://streamed.pk/embed/abc'),
+      isFalse,
+    );
+    expect(
+      iptvLiveEnginePlayUrlReady('https://cdn.example/live/index.m3u8'),
+      isTrue,
+    );
+    expect(
+      iptvLiveEnginePlayUrlReady('http://127.0.0.1:1234/hls-proxy?url=x'),
+      isTrue,
+    );
+  });
 }

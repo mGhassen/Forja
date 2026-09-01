@@ -13,38 +13,87 @@ class CatalogPackFiltersRegistry {
 
   static final ValueNotifier<int> revision = ValueNotifier(0);
   static final Map<String, _PackFilters> _byPlugin = {};
+  static final Set<String> _loaded = {};
+  static final Map<String, Future<void>> _inflight = {};
 
   @visibleForTesting
   static void seedFromJson(String pluginId, Map<String, dynamic> json) {
-    _byPlugin[pluginId] = _PackFilters.fromJson(json);
+    final id = pluginId.trim();
+    _byPlugin[id] = _PackFilters.fromJson(json);
+    _loaded.add(id);
     revision.value++;
   }
 
   @visibleForTesting
   static void clearForTest() {
     _byPlugin.clear();
+    _loaded.clear();
+    _inflight.clear();
     revision.value++;
   }
 
-  static Future<void> ensureLoaded(String pluginId) async {
-    if (_byPlugin.containsKey(pluginId)) return;
+  /// Drop cached pack filters (pack install / refresh / enable).
+  static void invalidate([String? pluginId]) {
+    if (pluginId != null) {
+      final id = pluginId.trim();
+      _byPlugin.remove(id);
+      _loaded.remove(id);
+      _inflight.remove(id);
+    } else {
+      _byPlugin.clear();
+      _loaded.clear();
+      _inflight.clear();
+    }
+    revision.value++;
+  }
+
+  static Future<void> ensureLoaded(String pluginId, {bool force = false}) async {
+    final id = pluginId.trim();
+    if (id.isEmpty) return;
+    if (force) {
+      _loaded.remove(id);
+      _inflight.remove(id);
+    } else if (_loaded.contains(id)) {
+      return;
+    }
+    final pending = _inflight[id];
+    if (pending != null) return pending;
+
+    final future = _load(id, forceRefresh: force);
+    _inflight[id] = future;
+    return future;
+  }
+
+  static Future<void> _load(
+    String pluginId, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final env = await CatalogRuntime.instance.run(
         pluginId: pluginId,
         action: 'filters',
         params: const {},
+        forceRefresh: forceRefresh,
       );
-      if (!env.ok) {
-        _byPlugin[pluginId] = _PackFilters.empty;
-        return;
-      }
+      if (!env.ok) return;
       final data = env.data;
-      _byPlugin[pluginId] = _PackFilters.fromJson(
+      final pack = _PackFilters.fromJson(
         data is Map ? Map<String, dynamic>.from(data as Map) : const {},
       );
+      _byPlugin[pluginId] = pack;
+
+      // Stale disk cache can return `{}` — bust once before freezing the menu.
+      if (!forceRefresh && pack.categoryOptionCount == 0) {
+        await _load(pluginId, forceRefresh: true);
+        return;
+      }
+
+      _loaded.add(pluginId);
       revision.value++;
     } catch (_) {
-      _byPlugin[pluginId] = _PackFilters.empty;
+      // Transient — do not cache empty; next [ensureLoaded] retries.
+    } finally {
+      _inflight.remove(pluginId);
     }
   }
 
@@ -52,7 +101,8 @@ class CatalogPackFiltersRegistry {
     final pack = _byPlugin[pluginId] ?? _PackFilters.empty;
     return [
       for (final f in pack.fields)
-        for (final o in f.options) (id: o.id, label: o.label),
+        for (final o in f.options)
+          if (o.showInMenu) (id: o.id, label: o.label),
     ];
   }
 
@@ -118,6 +168,12 @@ class _PackFilters {
       })> genreRows;
   final List<CatalogPlayFilterSpec> play;
 
+  int get categoryOptionCount => [
+    for (final f in fields)
+      for (final o in f.options)
+        if (o.showInMenu) o,
+  ].length;
+
   static const empty = _PackFilters(
     fields: [],
     media: _MediaFilters.empty,
@@ -182,7 +238,14 @@ class _PackFilters {
     for (final field in fields) {
       for (final opt in field.options) {
         if (opt.id == selectedId) {
-          return [opt.filter ?? catalogFilterFromSelection(field: field.field, value: opt.value)];
+          final filter = opt.filter ??
+              (opt.value != null
+                  ? catalogFilterFromSelection(
+                      field: field.field,
+                      value: opt.value,
+                    )
+                  : null);
+          return filter == null ? const [] : [filter];
         }
       }
     }
@@ -232,19 +295,22 @@ class _FilterOption {
     required this.label,
     this.value,
     this.filter,
+    this.showInMenu = true,
   });
 
   final String id;
   final String label;
   final dynamic value;
   final Map<String, dynamic>? filter;
+  final bool showInMenu;
 
   factory _FilterOption.fromJson(Map<String, dynamic> json) {
     return _FilterOption(
       id: (json['id'] ?? json['label'] ?? '').toString(),
       label: (json['label'] ?? json['id'] ?? '').toString(),
-      value: json['value'] ?? json['genre'] ?? json['id'] ?? json['label'],
-      filter: CatalogFilterAst.parse(json['filter']) ?? catalogPackOptionFilter(json),
+      value: json['value'],
+      filter: CatalogFilterAst.parse(json['filter']),
+      showInMenu: json['menu'] != false && json['categoriesMenu'] != false,
     );
   }
 }

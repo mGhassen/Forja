@@ -4,6 +4,7 @@ class TorrentResult {
   final String seeders;
   final String size;
   final String source;
+  final String? providerId;
 
   TorrentResult({
     required this.name,
@@ -11,6 +12,7 @@ class TorrentResult {
     required this.seeders,
     required this.size,
     required this.source,
+    this.providerId,
   });
 
   factory TorrentResult.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class TorrentResult {
       seeders: json['seeders']?.toString() ?? '0',
       size: json['size'] ?? 'Unknown',
       source: json['source'] ?? 'Unknown',
+      providerId: json['_providerId']?.toString() ?? json['providerId']?.toString(),
     );
   }
 
@@ -29,6 +32,7 @@ class TorrentResult {
         'seeders': seeders,
         'size': size,
         'source': source,
+        if (providerId != null) '_providerId': providerId,
       };
 
   int get seedersCount => int.tryParse(seeders.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;

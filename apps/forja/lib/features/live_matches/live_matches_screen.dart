@@ -261,6 +261,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   void initState() {
     super.initState();
     EngineService.changeNotifier.addListener(_onEnginePackChanged);
+    SettingsService.addonChangeNotifier.addListener(_onStremioAddonsChanged);
     TvHeroActions.bind(
       _tabId,
       enterFromNavFocus: () {
@@ -300,9 +301,15 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     );
   }
 
+  void _onStremioAddonsChanged() {
+    if (!mounted) return;
+    unawaited(_clampServerIfForjaSportsDisabled(reload: false));
+  }
+
   @override
   void dispose() {
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
+    SettingsService.addonChangeNotifier.removeListener(_onStremioAddonsChanged);
     _IptvSportsChannelsPanel.dismiss();
     _timelineLiveTick?.cancel();
     _refreshFocusNode.dispose();

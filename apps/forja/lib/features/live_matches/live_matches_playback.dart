@@ -124,7 +124,16 @@ mixin _LiveMatchesPlayback
         },
         onStreamedSelected: (stream) {
           Navigator.pop(context);
-          unawaited(_openStreamedEmbed(streamed, stream));
+          final choices = [
+            for (final s in streams)
+              _StreamedStreamChoice(catalogMatch: streamed, stream: s),
+          ];
+          final choice = choices.firstWhere(
+            (c) => c.stream.embedUrl.trim() == stream.embedUrl.trim(),
+            orElse: () =>
+                _StreamedStreamChoice(catalogMatch: streamed, stream: stream),
+          );
+          unawaited(_openResolvedStreamChoice(choice, allChoices: choices));
         },
       ),
     );
@@ -392,7 +401,9 @@ mixin _LiveMatchesPlayback
     required _StreamedStream stream,
     required String url,
     Map<String, String> headers = const {},
+    bool resolved = false,
   }) {
+    final embed = stream.embedUrl.trim();
     return IptvPlaySource(
       url: url,
       label: _streamPickerLabel(match, stream),
@@ -402,6 +413,87 @@ mixin _LiveMatchesPlayback
       liveProviderBadge: _StreamedStreamSheet.serverLabelFor(match),
       liveViewerCount: _effectiveStreamViewers(stream, match),
       liveStreamHd: stream.hd,
+      liveEngineEmbedUrl: embed.isEmpty ? null : embed,
+      liveEngineResolveParams: resolved
+          ? null
+          : _liveEngineResolveParams(match, stream),
+    );
+  }
+
+  Map<String, dynamic> _liveEngineResolveParams(
+    _StreamedMatch match,
+    _StreamedStream stream,
+  ) {
+    return {
+      'eventId': match.id,
+      'matchId': stream.id,
+      'streamNo': stream.streamNo,
+      'category': match.category,
+      'title': match.title,
+      'source': stream.source,
+      'livePluginId': match.livePluginId,
+      'isForjaLive': match.isForjaLive,
+      'isMut': match.isMut,
+      'isPpv': _isPpvMatch(match, stream),
+      'hd': stream.hd,
+      'viewers': stream.viewers,
+      'language': stream.language,
+    };
+  }
+
+  _StreamedMatch _streamedMatchFromLiveEngineParams(Map<String, dynamic> params) {
+    final isForjaLive = params['isForjaLive'] == true;
+    final isMut = params['isMut'] == true;
+    return _StreamedMatch(
+      id: (params['eventId'] ?? '').toString(),
+      title: (params['title'] ?? '').toString(),
+      category: (params['category'] ?? '').toString(),
+      dateMs: 0,
+      poster: '',
+      popular: false,
+      airing: true,
+      viewers: parsePpvViewers(params['viewers']),
+      sources: const [],
+      catalog: isForjaLive
+          ? 'forja_live'
+          : (isMut ? 'mut' : ''),
+      livePluginId: (params['livePluginId'] ?? '').toString(),
+    );
+  }
+
+  _StreamedStream _streamedStreamFromLiveEngineParams(
+    Map<String, dynamic> params, {
+    required String embedUrl,
+  }) {
+    return _StreamedStream(
+      id: (params['matchId'] ?? '').toString(),
+      streamNo: (params['streamNo'] as num?)?.toInt() ?? 1,
+      language: (params['language'] ?? '').toString(),
+      hd: params['hd'] == true,
+      embedUrl: embedUrl,
+      source: (params['source'] ?? '').toString(),
+      viewers: parsePpvViewers(params['viewers']),
+    );
+  }
+
+  Future<IptvPlaySource?> _resolveIptvPlaySourceFromCatalog(
+    IptvPlaySource catalog, {
+    void Function(String)? onProgress,
+  }) async {
+    final params = catalog.liveEngineResolveParams;
+    if (params == null) return null;
+    final embed = (catalog.liveEngineEmbedUrl ?? catalog.url).trim();
+    if (embed.isEmpty) return null;
+    final match = _streamedMatchFromLiveEngineParams(params);
+    final stream = _streamedStreamFromLiveEngineParams(params, embedUrl: embed);
+    final resolved = await _resolveStreamToEnginePlaySource(
+      match,
+      stream,
+      onProgress: onProgress,
+    );
+    return resolved?.copyWith(
+      liveEngineEmbedUrl: embed,
+      liveEngineResolveParams: null,
     );
   }
 
@@ -436,6 +528,7 @@ mixin _LiveMatchesPlayback
         'stream': '1',
         'embedUrl': source.iframe,
         'iframe': source.iframe,
+        'viewers': match.viewers,
       },
     );
     if (rows.isEmpty) {
@@ -455,9 +548,12 @@ mixin _LiveMatchesPlayback
       return [];
     }
 
+    final catalogViewers = match.viewers;
     final out = <_StreamedStream>[];
     for (var i = 0; i < rows.length; i++) {
       final row = rows[i];
+      final rowViewers = parsePpvViewers(row['viewers']);
+      final viewers = rowViewers > 0 ? rowViewers : catalogViewers;
       if (row['webviewOnly'] == true) {
         final embed = (row['embedUrl'] ?? '').toString().trim();
         if (embed.isEmpty) continue;
@@ -469,7 +565,7 @@ mixin _LiveMatchesPlayback
             hd: false,
             embedUrl: embed,
             source: label,
-            viewers: 0,
+            viewers: viewers,
           ),
         );
         continue;
@@ -485,7 +581,7 @@ mixin _LiveMatchesPlayback
           hd: false,
           embedUrl: url,
           source: name.isEmpty ? label : name.toLowerCase(),
-          viewers: 0,
+          viewers: viewers,
         ),
       );
     }
@@ -1057,6 +1153,7 @@ mixin _LiveMatchesPlayback
         stream: stream,
         url: playUrl,
         headers: direct ? headers : const {},
+        resolved: true,
       );
     }
 
@@ -1104,6 +1201,7 @@ mixin _LiveMatchesPlayback
       stream: stream,
       url: playUrl,
       headers: direct ? headers : const {},
+      resolved: true,
     );
   }
 
@@ -1141,6 +1239,7 @@ mixin _LiveMatchesPlayback
           titleTracksSource: true,
           engineContext: BuiltInPlayerContext.live,
           liveSourceKind: IptvLiveSourceKind.liveEngine,
+          liveEngineResolveSource: _resolveIptvPlaySourceFromCatalog,
         ),
       );
     } finally {
@@ -1192,6 +1291,32 @@ mixin _LiveMatchesPlayback
     return out;
   }
 
+  List<IptvPlaySource> _liveEngineCatalogSources(
+    List<_StreamedStreamChoice> candidates,
+  ) {
+    final sorted = [...candidates]
+      ..sort(
+        (a, b) => _effectiveStreamViewers(
+          b.stream,
+          b.catalogMatch,
+        ).compareTo(_effectiveStreamViewers(a.stream, a.catalogMatch)),
+      );
+    final out = <IptvPlaySource>[];
+    final seenEmbeds = <String>{};
+    for (final choice in sorted) {
+      final embed = choice.stream.embedUrl.trim();
+      if (embed.isEmpty || !seenEmbeds.add(embed)) continue;
+      out.add(
+        _liveEnginePlaySource(
+          match: choice.catalogMatch,
+          stream: choice.stream,
+          url: embed,
+        ),
+      );
+    }
+    return out;
+  }
+
   Future<bool> _tryEngineStreamedOpen(
     _StreamedMatch match,
     _StreamedStream stream, {
@@ -1213,7 +1338,10 @@ mixin _LiveMatchesPlayback
     }
 
     final pickedEmbed = stream.embedUrl.trim();
-    final sources = <IptvPlaySource>[];
+    final sources = _liveEngineCatalogSources(candidates);
+    final pickedIndex = sources.indexWhere(
+      (s) => (s.liveEngineEmbedUrl ?? s.url).trim() == pickedEmbed,
+    );
     final ok = await _runWithCancellableLoading('Opening stream…', (
       setMessage,
     ) async {
@@ -1224,28 +1352,14 @@ mixin _LiveMatchesPlayback
         onProgress: setMessage,
       );
       if (picked == null) return;
-      sources.add(picked);
-      final seenUrls = {picked.url};
-
-      final others = candidates.where((c) {
-        return c.stream.embedUrl.trim() != pickedEmbed;
-      }).toList();
-      if (others.isEmpty) return;
-
-      setMessage(
-        others.length == 1
-            ? 'Loading other server…'
-            : 'Loading other servers…',
-      );
-      final resolved = await Future.wait(
-        others.map(
-          (c) => _resolveStreamToEnginePlaySource(c.catalogMatch, c.stream),
-        ),
-      );
-      for (final src in resolved) {
-        if (src == null || seenUrls.contains(src.url)) continue;
-        seenUrls.add(src.url);
-        sources.add(src);
+      if (pickedIndex >= 0) {
+        sources[pickedIndex] = picked;
+        if (pickedIndex != 0) {
+          final active = sources.removeAt(pickedIndex);
+          sources.insert(0, active);
+        }
+      } else {
+        sources.insert(0, picked);
       }
     });
     if (!ok) return true;

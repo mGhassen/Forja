@@ -362,6 +362,12 @@ class StremioService {
     return _filterAddonsForFeature(all, feature);
   }
 
+  /// Installed addon wired to Live Matches — disk prefs only (no manifest fetch).
+  Future<bool> hasInstalledLiveAddons() async {
+    final addons = await peekAddonsForFeature(StremioAddonFeatures.live);
+    return addons.isNotEmpty;
+  }
+
   Future<Map<String, dynamic>?> _hydrateOneAddon(
     Map<String, dynamic> addon,
     DateTime now,
@@ -808,7 +814,9 @@ class StremioService {
     for (final c in catalogs) {
       if (c is! Map) continue;
       final type = c['type']?.toString() ?? '';
-      if (type != 'sport') continue;
+      if (type != 'sport' && !StremioAddonFeatures.catalogLooksLive(c)) {
+        continue;
+      }
       sport.add(Map<String, dynamic>.from(c));
     }
     if (sport.isEmpty) return const [];

@@ -273,21 +273,25 @@ class SettingsTorrentSnapshot {
     required this.sortPreference,
     required this.diskCacheGb,
     required this.connectionsLimit,
+    required this.flareSolverrUrl,
   });
 
   final String sortPreference;
   final int diskCacheGb;
   final int connectionsLimit;
+  final String flareSolverrUrl;
 
   SettingsTorrentSnapshot copyWith({
     String? sortPreference,
     int? diskCacheGb,
     int? connectionsLimit,
+    String? flareSolverrUrl,
   }) {
     return SettingsTorrentSnapshot(
       sortPreference: sortPreference ?? this.sortPreference,
       diskCacheGb: diskCacheGb ?? this.diskCacheGb,
       connectionsLimit: connectionsLimit ?? this.connectionsLimit,
+      flareSolverrUrl: flareSolverrUrl ?? this.flareSolverrUrl,
     );
   }
 }
@@ -306,6 +310,7 @@ class SettingsTorrentNotifier extends AsyncNotifier<SettingsTorrentSnapshot> {
       sortPreference: await s.getSortPreference(),
       diskCacheGb: await s.getTorrentDiskCacheGb(),
       connectionsLimit: await s.getTorrentConnectionsLimit(),
+      flareSolverrUrl: await s.getFlareSolverrUrl() ?? '',
     );
   }
 

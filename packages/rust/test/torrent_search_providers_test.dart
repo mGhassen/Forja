@@ -185,5 +185,37 @@ void main() {
       ),
       isTrue,
     );
+    expect(
+      TorrentSearchProviders.matchesResultSource(
+        'unknown_chip',
+        'YTS',
+      ),
+      isFalse,
+    );
+  });
+
+  test('matchesTorrentRow prefers stamped provider id', () {
+    final row = TorrentResult(
+      name: 'Example',
+      magnet: 'magnet:?xt=urn:btih:abc',
+      seeders: '1',
+      size: '1 GB',
+      source: 'Torrentio',
+      providerId: 'knaben',
+    );
+    expect(
+      TorrentSearchProviders.matchesTorrentRow(
+        TorrentSearchProviders.knaben,
+        row,
+      ),
+      isTrue,
+    );
+    expect(
+      TorrentSearchProviders.matchesTorrentRow(
+        TorrentSearchProviders.torrentio,
+        row,
+      ),
+      isFalse,
+    );
   });
 }

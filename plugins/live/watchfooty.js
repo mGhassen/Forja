@@ -46,6 +46,113 @@ function absUrl(path) {
   return API_ORIGIN + p;
 }
 
+function trpcBatchUrl(procedures, input) {
+  return (
+    API_ORIGIN +
+    '/_internal/trpc/' +
+    procedures +
+    '?batch=1&input=' +
+    encodeURIComponent(JSON.stringify(input))
+  );
+}
+
+function trpcJson(batch, index) {
+  if (!Array.isArray(batch) || batch.length <= index) return null;
+  var chunk = batch[index];
+  return (
+    chunk &&
+    chunk.result &&
+    chunk.result.data &&
+    chunk.result.data.json
+  );
+}
+
+async function fetchTrpcPopularLiveViewerMap(ctx) {
+  var now = new Date();
+  var end = new Date(now.getTime() + 24 * 3600000);
+  var input = {
+    0: { json: { start: now.toISOString(), end: end.toISOString() } },
+    1: { json: null, meta: { values: ['undefined'] } },
+    2: { json: null, meta: { values: ['undefined'] } },
+  };
+  var url = trpcBatchUrl(
+    'sports.getSportsLiveMatchesCount,sports.getPopularMatches,sports.getPopularLiveMatches',
+    input
+  );
+  try {
+    var res = await ctx.fetch(url, { headers: { 'User-Agent': ua() } });
+    if (!res.ok) return {};
+    var list = trpcJson(await res.json(), 2);
+    if (!Array.isArray(list)) return {};
+    var map = {};
+    for (var i = 0; i < list.length; i++) {
+      var row = list[i];
+      var id = String(row.id || row.matchId || '');
+      if (!id) continue;
+      map[id] = Number(row.viewerCount || 0);
+    }
+    return map;
+  } catch (_) {
+    return {};
+  }
+}
+
+async function fetchTrpcMatchLinks(ctx, mid) {
+  var now = new Date();
+  var end = new Date(now.getTime() + 24 * 3600000);
+  var input = {
+    0: { json: { start: now.toISOString(), end: end.toISOString() } },
+    1: {
+      json: {
+        id: String(mid),
+        withoutAdditionalInfo: true,
+        withoutLinks: false,
+      },
+    },
+  };
+  var url = trpcBatchUrl(
+    'sports.getSportsLiveMatchesCount,sports.getMatchById',
+    input
+  );
+  try {
+    var res = await ctx.fetch(url, { headers: { 'User-Agent': ua() } });
+    if (!res.ok) return [];
+    var match = trpcJson(await res.json(), 1);
+    if (!match || !match.fixtureData) return [];
+    return Array.isArray(match.fixtureData.links) ? match.fixtureData.links : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function streamViewerMapFromTrpcLinks(links) {
+  var map = {};
+  for (var i = 0; i < links.length; i++) {
+    var link = links[i];
+    if (!link) continue;
+    var viewers = Number(link.viewerCount || 0);
+    if (viewers <= 0) continue;
+    var keys = [link.ui, link.u, link.id];
+    for (var j = 0; j < keys.length; j++) {
+      var key = String(keys[j] || '').trim();
+      if (!key) continue;
+      map[key] = viewers;
+    }
+  }
+  return map;
+}
+
+function viewersForStream(stream, linkViewers, catalogViewers) {
+  var keys = [stream && stream.id, stream && stream.source];
+  for (var i = 0; i < keys.length; i++) {
+    var key = String(keys[i] || '').trim();
+    if (!key) continue;
+    var hit = linkViewers[key];
+    if (hit > 0) return hit;
+  }
+  return catalogViewers;
+}
+
 function normSport(raw) {
   var s = String(raw || '').trim().toLowerCase();
   if (!s) return 'football';
@@ -56,7 +163,9 @@ function normSport(raw) {
   return s.replace(/\s+/g, '-');
 }
 
-function toRow(pluginId, item, airing) {
+function toRow(pluginId, item, airing, viewers) {
+  viewers = Number(viewers || 0);
+  var live = !!airing || viewers > 0;
   var mid = item.matchId;
   var title =
     item.title ||
@@ -69,8 +178,9 @@ function toRow(pluginId, item, airing) {
     category: normSport(item.sport),
     date: item.timestamp ? Number(item.timestamp) : Date.now(),
     poster: absUrl(item.poster),
-    popular: airing,
-    airing: airing,
+    popular: live || viewers > 50,
+    airing: live,
+    viewers: viewers,
     sources: [{ source: 'watchfooty', id: String(mid) }],
     catalog: 'forja_live',
     pluginId: pluginId,
@@ -93,7 +203,7 @@ async function fetchCatalog(ctx, cfg) {
     var item = liveList[i];
     var statusLive = item.status === 'in' || item.status === 'live';
     if (!statusLive) continue;
-    byId[String(item.matchId)] = toRow(pluginId, item, true);
+    byId[String(item.matchId)] = toRow(pluginId, item, true, 0);
   }
 
   if (!cfg.api) {
@@ -103,9 +213,20 @@ async function fetchCatalog(ctx, cfg) {
       if (u.status !== 'pre') continue;
       if (!inCatalogWindow(u.timestamp ? Number(u.timestamp) : 0, false)) continue;
       var id = String(u.matchId);
-      if (!byId[id]) byId[id] = toRow(pluginId, u, false);
+      if (!byId[id]) byId[id] = toRow(pluginId, u, false, 0);
     }
   }
+
+  var viewerMap = await fetchTrpcPopularLiveViewerMap(ctx);
+  Object.keys(viewerMap).forEach(function (id) {
+    var row = byId[id];
+    if (!row) return;
+    var viewers = Number(viewerMap[id] || 0);
+    if (viewers <= 0) return;
+    row.viewers = viewers;
+    row.airing = true;
+    row.popular = row.popular || viewers > 50;
+  });
 
   return Object.keys(byId)
     .map(function (k) {
@@ -123,6 +244,7 @@ async function fetchCatalog(ctx, cfg) {
 async function resolveWatchfootyEmbed(ctx, embed) {
   var url = String(embed || '').trim();
   if (!url) return [];
+  var catalogViewers = Number(ctx.viewers || 0);
 
   if (/\.m3u8|\.mp4/i.test(url)) {
     return [
@@ -130,6 +252,7 @@ async function resolveWatchfootyEmbed(ctx, embed) {
         url: url,
         headers: { Referer: WATCHFOOTY_REFERER, 'User-Agent': ua() },
         directPlayback: preferDirectPlayback(url),
+        viewers: catalogViewers,
       },
     ];
   }
@@ -153,6 +276,7 @@ async function resolveWatchfootyEmbed(ctx, embed) {
               'User-Agent': ua(),
             },
             directPlayback: preferDirectPlayback(unlockedUrl),
+            viewers: catalogViewers,
           },
         ];
       }
@@ -163,7 +287,13 @@ async function resolveWatchfootyEmbed(ctx, embed) {
   if (mapped) {
     try {
       var unlocked = await resolveGoatEmbed(ctx, mapped, ctx.config || {});
-      if (unlocked) return unlocked;
+      if (unlocked) {
+        return unlocked.map(function (row) {
+          return Object.assign({}, row, {
+            viewers: Number(row.viewers || 0) || catalogViewers,
+          });
+        });
+      }
     } catch (_) {}
   }
 
@@ -171,7 +301,13 @@ async function resolveWatchfootyEmbed(ctx, embed) {
   for (var i = 0; i < candidates.length; i++) {
     try {
       var candidate = await resolveGoatEmbed(ctx, candidates[i], ctx.config || {});
-      if (candidate) return candidate;
+      if (candidate) {
+        return candidate.map(function (row) {
+          return Object.assign({}, row, {
+            viewers: Number(row.viewers || 0) || catalogViewers,
+          });
+        });
+      }
     } catch (_) {}
   }
 
@@ -179,6 +315,10 @@ async function resolveWatchfootyEmbed(ctx, embed) {
 }
 
 async function resolveWatchfootyMatch(ctx, mid) {
+  var catalogViewers = Number(ctx.viewers || 0);
+  var linkViewers = streamViewerMapFromTrpcLinks(
+    await fetchTrpcMatchLinks(ctx, mid)
+  );
   var res = await ctx.fetch('https://api.watchfooty.st/api/v1/match/' + mid, {
     headers: { 'User-Agent': ua(), Accept: 'application/json' },
   });
@@ -207,6 +347,7 @@ async function resolveWatchfootyMatch(ctx, mid) {
         name: label,
         headers: row.headers || { Referer: WATCHFOOTY_REFERER, 'User-Agent': ua() },
         directPlayback: row.directPlayback === true,
+        viewers: viewersForStream(s, linkViewers, catalogViewers),
       });
     }
   }

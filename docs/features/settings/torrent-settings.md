@@ -16,6 +16,7 @@ Controls how torrent search and the torrent engine behave: which built-in provid
 - Install **Stremio** / **Nuvio** addons when those play sources are on (Stremio rows: switch next to trash enables/disables without uninstall; Sources / Live Matches chips assign surfaces); configure **Jackett** / **Prowlarr** when **Direct torrent** is on (**admin** only — green sparkles)
 - Enable or disable each **torrent indexer** in **ForjaHQ Torrent** under Settings → Sources → Forja (expand the pack, toggle per plugin). Until that pack is installed, **Torrent search** shows an install hint. Enabled indexers show as chips under **Sources → Torrents** (plus **All**) when **Direct torrent** is on and built-in torrent search is available on this platform. Paired LAN clients search on-device via the same pack (the desktop LAN server only streams magnets, it does not run indexers).
 - Set **sort preference** (e.g. seeders high to low)
+- Set **FlareSolverr / Byparr URL** when you use **UIndex** — `uindex.org` is Cloudflare-protected; point at a local solver (`http://127.0.0.1:8191`, same API as Prowlarr indexers)
 - Set **disk cache** size (1–16 GB) — oldest idle torrent files are deleted when over this cap; the title you are playing is never removed — on **TV**, focus the slider and use **Left/Right**
 - Set **connection limit** for the torrent engine — same D-pad nudge on **TV**
 

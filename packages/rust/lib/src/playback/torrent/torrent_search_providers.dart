@@ -165,7 +165,26 @@ class TorrentSearchProviders {
       return true;
     }
     final expected = resultSources[selectedChipId];
-    if (expected == null) return true;
+    if (expected == null) return false;
     return resultSource == expected;
+  }
+
+  /// Chip filter — prefer host-stamped [_providerId] over JS [source] label.
+  static bool matchesTorrentRow(
+    String selectedChipId,
+    TorrentResult row,
+  ) {
+    if (selectedChipId == noneId) return false;
+    if (selectedChipId == allId ||
+        selectedChipId == 'forja' ||
+        selectedChipId == 'jackett' ||
+        selectedChipId == 'prowlarr') {
+      return true;
+    }
+    final providerId = row.providerId;
+    if (providerId != null && providerId.isNotEmpty) {
+      return providerId == selectedChipId;
+    }
+    return matchesResultSource(selectedChipId, row.source);
   }
 }

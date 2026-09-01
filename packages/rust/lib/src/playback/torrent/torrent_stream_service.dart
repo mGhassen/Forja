@@ -349,25 +349,24 @@ class TorrentStreamService {
   static Directory cacheDirectory() =>
       Directory('${Directory.systemTemp.path}${Platform.pathSeparator}torrent');
 
-  /// Disk usage under the librqbit download dir (idle + active torrent files).
+  /// Disk usage under the librqbit download dir — full folder size on disk.
   ///
-  /// Uses the Rust engine counter when available so Clear and the label stay in
-  /// sync; falls back to a Dart walk only before the engine loads.
+  /// The Rust reclaim counter skips `dht_state.json`; the UI uses a directory
+  /// walk so the label matches what Clear actually frees.
   Future<TorrentDiskCacheStats> queryDiskCacheStats() async {
     if (!PlatformPlayback.capabilities.localTorrentEngine) {
       return TorrentDiskCacheStats.empty;
     }
+    final usedBytes = await _cacheDirectoryBytesOnDisk();
+    var protectedBytes = 0;
     if (RustLib.isInitialized) {
-      return TorrentDiskCacheStats.fromJson(
+      protectedBytes = TorrentDiskCacheStats.fromJson(
         RustLib.instance.torrentReclaimDiskCacheJson(),
-      );
+      ).protectedBytes;
     }
-    final dir = cacheDirectory();
-    if (!await dir.exists()) return TorrentDiskCacheStats.empty;
-    final bytes = await _directorySizeBytes(dir);
     return TorrentDiskCacheStats(
-      usedBytes: bytes,
-      protectedBytes: 0,
+      usedBytes: usedBytes,
+      protectedBytes: protectedBytes,
       reclaimedBytes: 0,
       evictions: 0,
     );
@@ -402,29 +401,56 @@ class TorrentStreamService {
     return total;
   }
 
+  static Future<int> _cacheDirectoryBytesOnDisk() async {
+    final dir = cacheDirectory();
+    if (!await dir.exists()) return 0;
+    return _directorySizeBytes(dir);
+  }
+
+  static Future<void> _purgeResidualCacheMetadata() async {
+    final dht = File(
+      '${cacheDirectory().path}${Platform.pathSeparator}dht_state.json',
+    );
+    if (!await dht.exists()) return;
+    try {
+      await dht.delete();
+    } catch (_) {}
+  }
+
   Future<TorrentDiskCacheStats> clearCacheDirectory() async {
     await stop();
+    var reclaim = TorrentDiskCacheStats.empty;
     if (RustLib.isInitialized) {
-      final stats = TorrentDiskCacheStats.fromJson(
+      reclaim = TorrentDiskCacheStats.fromJson(
         RustLib.instance.torrentReclaimDiskCacheJson(targetBytes: 0),
       );
-      _log(
-        'Reclaimed torrent disk cache '
-        '(used ${formatStorageBytes(stats.usedBytes)}, '
-        'protected ${formatStorageBytes(stats.protectedBytes)})',
-      );
-      return stats;
+    } else {
+      final dir = cacheDirectory();
+      if (await dir.exists()) {
+        await dir.delete(recursive: true);
+      }
     }
+    await _purgeResidualCacheMetadata();
     final dir = cacheDirectory();
-    if (!await dir.exists()) return TorrentDiskCacheStats.empty;
-    try {
-      await dir.delete(recursive: true);
-      _log('Cleared torrent disk cache (${dir.path})');
-      return TorrentDiskCacheStats.empty;
-    } catch (e) {
-      _log('Failed to clear torrent cache: $e');
-      rethrow;
+    if (await dir.exists()) {
+      try {
+        final entries = await dir.list(followLinks: false).toList();
+        if (entries.isEmpty) await dir.delete();
+      } catch (_) {}
     }
+    final remaining = await _cacheDirectoryBytesOnDisk();
+    _log(
+      remaining == 0
+          ? 'Cleared torrent disk cache'
+          : 'Torrent disk cache: ${formatStorageBytes(remaining)} left '
+              '(protected ${formatStorageBytes(reclaim.protectedBytes)})',
+    );
+    return TorrentDiskCacheStats(
+      usedBytes: remaining,
+      protectedBytes: reclaim.protectedBytes,
+      reclaimedBytes: reclaim.reclaimedBytes,
+      evictions: reclaim.evictions,
+    );
   }
 
   static final _hashRegExp = RegExp(r'[0-9a-fA-F]{40}');

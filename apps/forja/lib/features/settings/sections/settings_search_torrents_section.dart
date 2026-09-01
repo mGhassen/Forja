@@ -7,11 +7,26 @@ import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 
 /// Torrent engine and sort order settings.
-class SettingsSearchTorrentsSection extends ConsumerWidget {
+class SettingsSearchTorrentsSection extends ConsumerStatefulWidget {
   const SettingsSearchTorrentsSection({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsSearchTorrentsSection> createState() =>
+      _SettingsSearchTorrentsSectionState();
+}
+
+class _SettingsSearchTorrentsSectionState
+    extends ConsumerState<SettingsSearchTorrentsSection> {
+  final _flareSolverrController = TextEditingController();
+
+  @override
+  void dispose() {
+    _flareSolverrController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final torrent = PlatformPlayback.capabilities.builtinTorrentSearch;
     if (!torrent) return const SizedBox.shrink();
 
@@ -29,6 +44,10 @@ class SettingsSearchTorrentsSection extends ConsumerWidget {
           ),
         ),
       );
+    }
+
+    if (_flareSolverrController.text != snap.flareSolverrUrl) {
+      _flareSolverrController.text = snap.flareSolverrUrl;
     }
 
     return Column(
@@ -67,6 +86,26 @@ class SettingsSearchTorrentsSection extends ConsumerWidget {
                   notifier.patch((s) => s.copyWith(sortPreference: val));
                 }
               },
+            ),
+            const SizedBox(height: 16),
+            SettingsTextField(
+              controller: _flareSolverrController,
+              label: 'FlareSolverr / Byparr URL',
+              hint: 'http://127.0.0.1:8191',
+              onSubmitted: (val) async {
+                await settings.setFlareSolverrUrl(val);
+                notifier.patch((s) => s.copyWith(flareSolverrUrl: val.trim()));
+              },
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
+              child: Text(
+                'UIndex is Cloudflare-protected. Point this at a local FlareSolverr '
+                'or Byparr instance (same /v1 API) — same setup as Prowlarr indexers.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: ForjaShellColors.textSecondary,
+                    ),
+              ),
             ),
           ],
         ),

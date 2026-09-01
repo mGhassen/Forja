@@ -456,6 +456,16 @@ mixin _LiveMatchesForjaLive
       });
       (this as _LiveMatchesData)
           ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
+    } finally {
+      if (!genAlive() && mounted) {
+        final row = _s._forjaLivePluginLoads[filterId];
+        if (row != null && row.loading && !row.attempted) {
+          setState(() {
+            _s._forjaLivePluginLoads[filterId] =
+                row.copyWith(loading: false);
+          });
+        }
+      }
     }
   }
 
@@ -479,16 +489,6 @@ mixin _LiveMatchesForjaLive
 
       final filter = _s._forjaLivePluginFilter;
       final toLoad = _forjaLiveCatalogsToLoad(catalogPlugins, filter);
-      if (toLoad.isNotEmpty) {
-        setState(() {
-          for (final catalog in toLoad) {
-            final filterId = EngineService.catalogFilterId(catalog);
-            final load = _s._forjaLivePluginLoads[filterId];
-            if (load == null || load.loading || load.attempted) continue;
-            _s._forjaLivePluginLoads[filterId] = load.copyWith(loading: true);
-          }
-        });
-      }
       if (toLoad.isEmpty) {
         await _applyEspnScheduleMerge();
         return;

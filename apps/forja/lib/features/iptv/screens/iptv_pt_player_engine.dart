@@ -324,6 +324,7 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
   }
 
   Future<void> _engineOpenSource(IptvPlaySource src) async {
+    src = await _maybeResolveLiveEngineSource(src);
     src = await _refreshStalkerPlayUrl(src);
     _s._applyLiveRecoveryModeForCurrentSource(src: src);
     if (_s._exoBackend) {
@@ -411,6 +412,37 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
 
   /// Stalker create_link URLs are one-shot / short-lived. Mint a fresh link
   /// before every open when we still have the portal + cmd (streamId).
+  Future<IptvPlaySource> _maybeResolveLiveEngineSource(IptvPlaySource src) async {
+    if (_liveSourceKindFor(src) != IptvLiveSourceKind.liveEngine) return src;
+    if (iptvLiveEnginePlayUrlReady(src.url)) return src;
+    final resolve = widget.liveEngineResolveSource;
+    if (resolve == null) return src;
+    final idx = _s._sourceIdx;
+    setState(() {
+      _s._statusBanner = 'Unlocking source…';
+    });
+    try {
+      final resolved = await resolve(
+        src,
+        onProgress: (msg) {
+          if (!mounted) return;
+          setState(() => _s._statusBanner = msg);
+        },
+      );
+      if (resolved == null || !iptvLiveEnginePlayUrlReady(resolved.url)) {
+        return src;
+      }
+      if (idx >= 0 && idx < _s._sources.length && _s._sources[idx].url == src.url) {
+        _s._sources = List<IptvPlaySource>.from(_s._sources)..[idx] = resolved;
+      }
+      return resolved;
+    } finally {
+      if (mounted && _s._statusBanner == 'Unlocking source…') {
+        setState(() => _s._statusBanner = null);
+      }
+    }
+  }
+
   Future<IptvPlaySource> _refreshStalkerPlayUrl(IptvPlaySource src) async {
     if (_liveSourceKindFor(src) != IptvLiveSourceKind.iptvStalker) {
       return src;

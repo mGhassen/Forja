@@ -174,6 +174,13 @@ class IptvPlaySource {
 
   /// Live Matches stream sheet: HD quality row.
   final bool liveStreamHd;
+
+  /// Catalog embed URL before engine unlock (lazy resolve on source switch).
+  final String? liveEngineEmbedUrl;
+
+  /// Opaque resolve context for [IptvLiveEngineResolveSource].
+  final Map<String, dynamic>? liveEngineResolveParams;
+
   const IptvPlaySource({
     required this.url,
     required this.label,
@@ -186,6 +193,8 @@ class IptvPlaySource {
     this.liveProviderBadge,
     this.liveViewerCount = 0,
     this.liveStreamHd = false,
+    this.liveEngineEmbedUrl,
+    this.liveEngineResolveParams,
   });
 
   IptvPlaySource copyWith({
@@ -200,6 +209,8 @@ class IptvPlaySource {
     String? liveProviderBadge,
     int? liveViewerCount,
     bool? liveStreamHd,
+    String? liveEngineEmbedUrl,
+    Map<String, dynamic>? liveEngineResolveParams,
   }) {
     return IptvPlaySource(
       url: url ?? this.url,
@@ -213,6 +224,9 @@ class IptvPlaySource {
       liveProviderBadge: liveProviderBadge ?? this.liveProviderBadge,
       liveViewerCount: liveViewerCount ?? this.liveViewerCount,
       liveStreamHd: liveStreamHd ?? this.liveStreamHd,
+      liveEngineEmbedUrl: liveEngineEmbedUrl ?? this.liveEngineEmbedUrl,
+      liveEngineResolveParams:
+          liveEngineResolveParams ?? this.liveEngineResolveParams,
     );
   }
 
@@ -253,6 +267,21 @@ class IptvPlaySource {
   static String _normalizePipes(String s) =>
       s.replaceAll(RegExp(r'\s*\|\s*'), ' · ');
 }
+
+/// True when [url] is already a playable handoff (HLS/proxy), not a catalog embed.
+@visibleForTesting
+bool iptvLiveEnginePlayUrlReady(String url) {
+  final u = url.trim().toLowerCase();
+  if (u.isEmpty) return false;
+  if (u.contains('127.0.0.1') || u.contains('/hls-proxy')) return true;
+  return RegExp(r'\.m3u8(\?|$)|\.mp4(\?|$)').hasMatch(u);
+}
+
+typedef IptvLiveEngineResolveSource =
+    Future<IptvPlaySource?> Function(
+      IptvPlaySource catalogSource, {
+      void Function(String message)? onProgress,
+    });
 
 /// Dedicated IPTV / Live native player. Android remembers Exo / MediaKit per
 /// [engineContext] (IPTV ≠ VOD ≠ Live); other platforms use libmpv. Includes:
@@ -308,6 +337,9 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
   /// Default live profile when sources omit [IptvPlaySource.liveSourceKind].
   final IptvLiveSourceKind? liveSourceKind;
 
+  /// Live Matches: unlock catalog embed rows on source switch.
+  final IptvLiveEngineResolveSource? liveEngineResolveSource;
+
   const IptvPtPlayerScreen({
     super.key,
     required this.sources,
@@ -330,6 +362,7 @@ class IptvPtPlayerScreen extends ConsumerStatefulWidget {
     this.seriesShowTitle,
     this.titleTracksSource = false,
     this.liveSourceKind,
+    this.liveEngineResolveSource,
   });
 
   /// Convenience: build for a single catalog stream (Xtream / Stalker / M3U).
@@ -566,6 +599,9 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   final FocusNode _guideFocus = FocusNode(debugLabel: 'iptv-player-guide');
   final FocusNode _bottomSourceFocus = FocusNode(
     debugLabel: 'iptv-player-bottom-source',
+  );
+  final FocusNode _topSourceFocus = FocusNode(
+    debugLabel: 'iptv-player-top-source',
   );
 
   bool _guideVisible = false;
@@ -1352,6 +1388,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _searchChromeFocus.dispose();
     _guideFocus.dispose();
     _bottomSourceFocus.dispose();
+    _topSourceFocus.dispose();
     _pipSub?.cancel();
     PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
     _watchdog?.cancel();

@@ -420,7 +420,11 @@ class EngineService {
     final plugin = hit.plugin;
     final overlay =
         ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
-    final config = mergeEngineConfig(plugin.config, overlay);
+    var config = mergeEngineConfig(plugin.config, overlay);
+    final flareUrl = await SettingsService().getFlareSolverrUrl();
+    if (flareUrl != null && flareUrl.isNotEmpty) {
+      config = {...config, 'flareSolverrUrl': flareUrl};
+    }
     var code = await _loadScript(
       plugin,
       sourceUrl: hit.pack.sourceUrl,
@@ -446,6 +450,11 @@ class EngineService {
 
     final rt = runtime ?? EngineRuntime.fork();
     final owned = runtime == null;
+    final timeout = pluginId == 'uindex' &&
+            flareUrl != null &&
+            flareUrl.isNotEmpty
+        ? const Duration(seconds: 90)
+        : const Duration(seconds: 20);
     try {
       await rt.loadPlugin(pluginId: plugin.id, code: code);
       final rows = await rt.searchTorrent(
@@ -457,9 +466,16 @@ class EngineService {
         episode: episode,
         config: config,
         isCancelled: isCancelled,
+        timeout: timeout,
       );
       debugPrint('[engine] torrent search $pluginId: ${rows.length} rows');
-      return rows;
+      return [
+        for (final row in rows)
+          {
+            ...row,
+            '_providerId': plugin.id,
+          },
+      ];
     } catch (e) {
       debugPrint('[engine] torrent search $pluginId failed: $e');
       return [];
