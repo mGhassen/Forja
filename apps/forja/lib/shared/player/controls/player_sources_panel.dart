@@ -2125,6 +2125,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
   }
 
+  /// Store indexer rows as returned — title/scene filter runs only in the list UI.
+  List<TorrentResult> _torrentResultsFromRaw(List<Map<String, dynamic>> raw) {
+    final rows = raw.map(TorrentResult.fromJson).toList();
+    if (_torrentDedupeByMagnetOnly) {
+      return TorrentSearchProviders.dedupeTorrentResultsByMagnet(rows);
+    }
+    return rows;
+  }
+
   Future<void> _searchForjaMovieProgressive(
     int gen, {
     List<String>? enabledProviders,
@@ -2147,18 +2156,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
     closed = true;
     if (!mounted || gen != _searchGen) return;
-    final filtered = (await Engine.filterTorrentSearchResults(
-      raw,
-      widget.movie.title,
-    )).map(TorrentResult.fromJson).toList();
-    if (!mounted || gen != _searchGen) return;
-    setState(() {
-      if (_torrentDedupeByMagnetOnly) {
-        _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet(filtered);
-      } else {
-        _results = filtered;
-      }
-    });
+    setState(() => _results = _torrentResultsFromRaw(raw));
   }
 
   Future<void> _searchForjaTvProgressive(
@@ -2225,30 +2223,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     );
     closed = true;
     if (!mounted || gen != _searchGen) return;
-    final episodeFiltered = (await Engine.filterTorrentSearchResults(
-      episodeSoFar,
-      widget.movie.title,
-      requiredSeason: season,
-      requiredEpisode: episode,
-    )).map(TorrentResult.fromJson);
-    if (!mounted || gen != _searchGen) return;
-    final seasonFiltered = (await Engine.filterTorrentSearchResults(
-      seasonSoFar,
-      widget.movie.title,
-      requiredSeason: season,
-    )).map(TorrentResult.fromJson);
-    if (!mounted || gen != _searchGen) return;
-    final combined = [
-      ...episodeFiltered,
-      ...seasonFiltered,
-    ];
-    setState(() {
-      if (_torrentDedupeByMagnetOnly) {
-        _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet(combined);
-      } else {
-        _results = combined;
-      }
-    });
+    setState(
+      () => _results = _torrentResultsFromRaw([
+        ...episodeSoFar,
+        ...seasonSoFar,
+      ]),
+    );
   }
 
   Future<void> _fetchStremioStreams({
@@ -2887,21 +2867,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         jackett.search(baseUrl, apiKey, '${widget.movie.title} S${s}E$e'),
       ]);
       final combined = <String, TorrentResult>{};
-      final seasonFiltered = (await Engine.filterTorrentSearchResults(
-        results[0].map((r) => r.toJson()).toList(),
-        widget.movie.title,
-        requiredSeason: season,
-      )).map(TorrentResult.fromJson);
-      final episodeFiltered = (await Engine.filterTorrentSearchResults(
-        results[1].map((r) => r.toJson()).toList(),
-        widget.movie.title,
-        requiredSeason: season,
-        requiredEpisode: episode,
-      )).map(TorrentResult.fromJson);
-      for (final r in episodeFiltered) {
+      for (final r in results[1]) {
         combined[r.magnet] = r;
       }
-      for (final r in seasonFiltered) {
+      for (final r in results[0]) {
         combined[r.magnet] = r;
       }
       return combined.values.toList();
@@ -2910,11 +2879,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final query = _year.isNotEmpty
         ? '${widget.movie.title} $_year'
         : widget.movie.title;
-    final results = await jackett.search(baseUrl, apiKey, query);
-    return (await Engine.filterTorrentSearchResults(
-      results.map((r) => r.toJson()).toList(),
-      widget.movie.title,
-    )).map(TorrentResult.fromJson).toList();
+    return jackett.search(baseUrl, apiKey, query);
   }
 
   Future<List<TorrentResult>> _searchProwlarr({
@@ -2957,21 +2922,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         ),
       ]);
       final combined = <String, TorrentResult>{};
-      final seasonFiltered = (await Engine.filterTorrentSearchResults(
-        results[0].map((r) => r.toJson()).toList(),
-        widget.movie.title,
-        requiredSeason: season,
-      )).map(TorrentResult.fromJson);
-      final episodeFiltered = (await Engine.filterTorrentSearchResults(
-        results[1].map((r) => r.toJson()).toList(),
-        widget.movie.title,
-        requiredSeason: season,
-        requiredEpisode: episode,
-      )).map(TorrentResult.fromJson);
-      for (final r in episodeFiltered) {
+      for (final r in results[1]) {
         combined[r.magnet] = r;
       }
-      for (final r in seasonFiltered) {
+      for (final r in results[0]) {
         combined[r.magnet] = r;
       }
       return combined.values.toList();
@@ -2980,16 +2934,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     final query = _year.isNotEmpty
         ? '${widget.movie.title} $_year'
         : widget.movie.title;
-    final results = await prowlarr.search(
+    return prowlarr.search(
       baseUrl,
       apiKey,
       query,
       indexerIds: indexerIds,
     );
-    return (await Engine.filterTorrentSearchResults(
-      results.map((r) => r.toJson()).toList(),
-      widget.movie.title,
-    )).map(TorrentResult.fromJson).toList();
   }
 
   bool _nuvioStreamFromScraper(Map<String, dynamic> s, String scraperId) {

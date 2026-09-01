@@ -85,28 +85,13 @@ Future<List<TorrentResult>> searchTvTorrents({
   final combined = <String, TorrentResult>{};
 
   for (final batch in seasonBatches) {
-    final filtered = (await Engine.filterTorrentSearchResults(
-      batch.map((r) => r.toJson()).toList(),
-      title,
-      requiredSeason: season,
-    ))
-        .map(TorrentResult.fromJson)
-        .toList();
-    for (final r in filtered) {
+    for (final r in batch) {
       combined[r.magnet] = r;
     }
   }
 
   for (final batch in episodeBatches) {
-    final filtered = (await Engine.filterTorrentSearchResults(
-      batch.map((r) => r.toJson()).toList(),
-      title,
-      requiredSeason: season,
-      requiredEpisode: episode,
-    ))
-        .map(TorrentResult.fromJson)
-        .toList();
-    for (final r in filtered) {
+    for (final r in batch) {
       combined[r.magnet] = r;
     }
   }
