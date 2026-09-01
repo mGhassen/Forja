@@ -475,7 +475,7 @@ mixin _LiveMatchesData
   bool get _refreshFocusRestoreSettled =>
       !_s._loading &&
       (!(this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog ||
-          !(this as _LiveMatchesForjaLive)._forjaLiveAnyLoading);
+          !(this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy);
 
   void _scheduleRestoreRefreshFocus({bool clearWhenSettled = false}) {
     if (!_s._restoreRefreshFocus) return;
@@ -514,18 +514,26 @@ mixin _LiveMatchesData
       setState(() => _s._server = _LiveMatchesServer.forjaLive);
       unawaited(_s._persistServerPreference(_LiveMatchesServer.forjaLive));
     }
+    final lazyCatalog =
+        (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog;
     _s._loadGen++;
-    (this as _LiveMatchesForjaLive)._resetForjaLiveCatalogState();
+    (this as _LiveMatchesForjaLive)._resetForjaLiveCatalogState(
+      clearMatches: !lazyCatalog,
+    );
     _s._resetTimelineLazyState();
     setState(() {
-      _s._loading = true;
+      _s._loading = !lazyCatalog;
       _s._error = null;
       _s._sportFilter = 'all';
       _s._timelineAutoScrolled = false;
-      _s._damiTvStreams = [];
-      _s._streamedMatches = [];
-      _s._espnGames = [];
-      _s._sports = [];
+      if (!lazyCatalog) {
+        _s._damiTvStreams = [];
+        _s._streamedMatches = [];
+        _s._espnGames = [];
+        _s._sports = [];
+      } else {
+        _s._forjaLiveCatalogHydrating = true;
+      }
     });
     _scheduleRestoreRefreshFocus();
     if (_s._timelineScrollController.hasClients) {

@@ -76,8 +76,10 @@ Movie _playMovieFor(CatalogMetaItem item, {List<CatalogVideo>? videos}) {
   final poster = item.poster.trim();
   final backdrop = item.background.trim();
   final eps = videos ?? item.videos;
+  final imdb = item.ids['imdb']?.toString();
   return Movie(
     id: catalogMovieIdForPlay(item),
+    imdbId: (imdb != null && imdb.startsWith('tt')) ? imdb : null,
     title: item.name,
     posterPath: catalogPosterPathForMovie(poster),
     backdropPath: catalogPosterPathForMovie(

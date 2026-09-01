@@ -1,3 +1,4 @@
+import '../../models/torrent_result.dart';
 import 'torrent_search_catalog.dart';
 
 /// Builtin torrent search provider ids and chip helpers.
@@ -97,6 +98,46 @@ class TorrentSearchProviders {
   static int seedersOfJson(Map<String, dynamic> row) {
     final raw = row['seeders']?.toString() ?? '0';
     return int.tryParse(raw.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+  }
+
+  /// Stable key for per-indexer rows (same magnet may appear from many providers).
+  static String searchRowKey(Map<String, dynamic> row) {
+    final magnet = row['magnet']?.toString() ?? '';
+    final source = row['source']?.toString() ?? '';
+    return '$magnet|$source';
+  }
+
+  static String torrentResultKey(TorrentResult row) =>
+      '${row.magnet}|${row.source}';
+
+  /// Merge search batches without collapsing different indexers on the same magnet.
+  static void mergeSearchRows(
+    Map<String, Map<String, dynamic>> into,
+    List<Map<String, dynamic>> batch,
+  ) {
+    for (final row in batch) {
+      final key = searchRowKey(row);
+      if (key == '|' || row['magnet']?.toString().isEmpty != false) continue;
+      final existing = into[key];
+      if (existing == null || seedersOfJson(row) > seedersOfJson(existing)) {
+        into[key] = row;
+      }
+    }
+  }
+
+  /// One row per magnet — use only for All chip / play pick, not per-provider chips.
+  static List<TorrentResult> dedupeTorrentResultsByMagnet(
+    Iterable<TorrentResult> rows,
+  ) {
+    final byMagnet = <String, TorrentResult>{};
+    for (final row in rows) {
+      if (row.magnet.isEmpty) continue;
+      final existing = byMagnet[row.magnet];
+      if (existing == null || row.seedersCount > existing.seedersCount) {
+        byMagnet[row.magnet] = row;
+      }
+    }
+    return byMagnet.values.toList();
   }
 
   /// Merge [batch] into [into] keyed by magnet; keep the higher-seeder copy.

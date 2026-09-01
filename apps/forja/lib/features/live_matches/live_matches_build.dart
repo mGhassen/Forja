@@ -536,7 +536,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         _LiveMatchesServer.all =>
             _s._damiTvStreams.isNotEmpty ||
             _s._streamedMatches.isNotEmpty ||
-            (this as _LiveMatchesForjaLive)._forjaLiveAnyLoading,
+            (this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy,
         _ => false,
       };
       if (!showPartialCatalog) {
@@ -554,6 +554,13 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         statusIcon: Icons.error_outline,
         buttonIcon: Icons.refresh,
       );
+    }
+    final forjaLive = this as _LiveMatchesForjaLive;
+    if (forjaLive._forjaLiveCatalogBusy &&
+        _allGridEntries.isEmpty &&
+        forjaLive._displayStreamedMatches.isEmpty &&
+        _s._damiTvStreams.isEmpty) {
+      return _buildForjaLiveCatalogProgress();
     }
     // Leanback TV is cards-only (timeline D-pad is not supported).
     if (!_liveMatchesLeanbackOnly(context) &&
@@ -580,7 +587,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   Widget _buildAllBody() {
     final entries = _allGridEntries;
     if (entries.isEmpty) {
-      if ((this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
+      if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) {
         return _buildForjaLiveCatalogProgress();
       }
       return ShellErrorRetryPanel(
@@ -737,7 +744,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   Widget _buildStreamedBody() {
     final matches = _s._displayStreamedMatches;
     if (matches.isEmpty) {
-      if ((this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
+      if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) {
         return _buildForjaLiveCatalogProgress();
       }
       final forjaLive = this as _LiveMatchesForjaLive;

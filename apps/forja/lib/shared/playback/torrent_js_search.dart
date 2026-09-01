@@ -86,7 +86,7 @@ Future<List<Map<String, dynamic>>> _searchIndexersSequential({
       }
       if (cancelled()) break;
       onProviderDone?.call(id);
-      TorrentSearchProviders.mergeByMagnet(byMagnet, batch);
+      TorrentSearchProviders.mergeSearchRows(byMagnet, batch);
       onPartial?.call(List<Map<String, dynamic>>.from(byMagnet.values));
     }
   } finally {

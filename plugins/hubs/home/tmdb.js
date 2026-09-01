@@ -120,6 +120,20 @@ function tmdbUniqueRows(primary, extra) {
   return out;
 }
 
+function tmdbGenresForDiscover(filter, mediaType) {
+  var moodId = hubFilterValue(filter, 'mood');
+  if (moodId) {
+    for (var i = 0; i < TMDB_MOODS.length; i++) {
+      if (TMDB_MOODS[i].id === moodId) {
+        var ids =
+          mediaType === 'tv' ? TMDB_MOODS[i].tvGenres : TMDB_MOODS[i].movieGenres;
+        return (ids || []).map(String);
+      }
+    }
+  }
+  return hubFilterValues(filter, 'genre');
+}
+
 function tmdbDiscoverMovie(ctx, cfg, query, filter) {
   var q = Object.assign({ include_adult: 'false' }, query || {});
   var providers = tmdbWatchProviderQuery(filter);
@@ -127,7 +141,7 @@ function tmdbDiscoverMovie(ctx, cfg, query, filter) {
     q.with_watch_providers = providers;
     q.watch_region = String(cfg.region || 'US');
   }
-  var genres = hubFilterValues(filter, 'genre');
+  var genres = tmdbGenresForDiscover(filter, 'movie');
   if (genres.length) q.with_genres = genres.join(',');
   return tmdbGet(ctx, cfg, '/discover/movie', q);
 }
@@ -136,7 +150,7 @@ function tmdbDiscoverTv(ctx, cfg, query, filter) {
   var q = Object.assign({ include_adult: 'false' }, query || {});
   var providers = tmdbWatchProviderQuery(filter);
   var networks = tmdbTvNetworkQuery(filter);
-  var genres = hubFilterValues(filter, 'genre');
+  var genres = tmdbGenresForDiscover(filter, 'tv');
   if (genres.length) q.with_genres = genres.join(',');
   if (providers) {
     q.with_watch_providers = providers;

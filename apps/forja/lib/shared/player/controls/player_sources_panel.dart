@@ -1656,7 +1656,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   List<TorrentResult> get _filteredTorrents {
-    final list =
+    var list =
         filterTorrentResults(
           _results,
           searchQuery: _searchQuery,
@@ -1678,7 +1678,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             r.source,
           );
         });
-    return List<TorrentResult>.from(list)..sort(_compare);
+    var out = List<TorrentResult>.from(list);
+    return out..sort(_compare);
   }
 
   double _streamSizeBytes(Map<String, dynamic> s) =>
@@ -2086,17 +2087,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   void _mergeTorrentResults(List<TorrentResult> batch) {
-    final byMagnet = <String, TorrentResult>{
-      for (final r in _results) r.magnet: r,
+    final byKey = <String, TorrentResult>{
+      for (final r in _results) TorrentSearchProviders.torrentResultKey(r): r,
     };
     for (final r in batch) {
       if (r.magnet.isEmpty) continue;
-      final existing = byMagnet[r.magnet];
+      final key = TorrentSearchProviders.torrentResultKey(r);
+      final existing = byKey[key];
       if (existing == null || r.seedersCount > existing.seedersCount) {
-        byMagnet[r.magnet] = r;
+        byKey[key] = r;
       }
     }
-    _results = byMagnet.values.toList();
+    _results = byKey.values.toList();
   }
 
   void _applyTorrentSearchPartial(

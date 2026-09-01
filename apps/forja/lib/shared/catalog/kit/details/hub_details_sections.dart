@@ -105,7 +105,7 @@ List<Widget> buildHubDetailRailSections({
           title: item.name,
           subtitle: hubPosterCardSubtitle(item),
           rating: item.rating,
-          badge: item.badge,
+          badge: hubPosterCardBadge(item, pluginId: pluginId),
           listIndex: index,
           onTap: () => openCatalogMetaItem(
             ctx,

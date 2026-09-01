@@ -60,6 +60,30 @@ Movie? catalogMetaToMovie(CatalogMetaItem item) {
   final extract = open?.effectiveExtract;
   final resolveType = extract?.resolveType ?? item.type.toLowerCase();
 
+  if (open?.surface == 'stremio') {
+    final movieId = catalogSyntheticMovieId(item);
+    _catalogMetaByMovieId[movieId] = item;
+    final isMovie = item.type == 'movie' || item.tmdbMediaType == 'movie';
+    final poster = item.poster.trim();
+    final backdrop = item.background.trim();
+    final imdb = item.ids['imdb']?.toString();
+    return Movie(
+      id: movieId,
+      imdbId: (imdb != null && imdb.startsWith('tt')) ? imdb : null,
+      title: item.name,
+      posterPath: catalogPosterPathForMovie(poster),
+      backdropPath: catalogPosterPathForMovie(
+        backdrop.isNotEmpty ? backdrop : poster,
+      ),
+      voteAverage: item.rating ?? 0,
+      releaseDate: item.releaseInfo,
+      overview: item.description,
+      genres: item.genres,
+      mediaType: isMovie ? 'movie' : 'tv',
+      numberOfEpisodes: item.videos.length,
+    );
+  }
+
   if (resolveType == 'arabic' ||
       (open == null && item.type.toLowerCase() == 'arabic')) {
     final movieId = catalogSyntheticMovieId(item);
@@ -155,4 +179,19 @@ String? hubPosterTypeLabel(CatalogMetaItem item) {
   }
 
   return null;
+}
+
+/// Overlay badge on [HubPosterCard].
+///
+/// Anime: none (format in subtitle). Home `tmdb`: none (FILM/TV in subtitle).
+/// Other hubs: pack labels (KissKH unlock, remake sub, …).
+String? hubPosterCardBadge(
+  CatalogMetaItem item, {
+  String? pluginId,
+}) {
+  if (item.type == 'anime') return null;
+  if (pluginId == 'tmdb') return null;
+  final badge = item.badge?.trim();
+  if (badge == null || badge.isEmpty) return null;
+  return badge;
 }

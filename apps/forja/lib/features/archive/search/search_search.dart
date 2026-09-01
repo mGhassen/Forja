@@ -212,62 +212,7 @@ mixin _SearchSearch on ConsumerState<SearchScreen> {
   }
 
   Future<void> _openStremioItem(Map<String, dynamic> item) async {
-    final id = item['id']?.toString() ?? '';
-    final type = item['type']?.toString() ?? 'movie';
-    final name = item['name']?.toString() ?? 'Unknown';
-    final poster = item['poster']?.toString() ?? '';
-    final isCustomId = !id.startsWith('tt');
-    final isCollection = id.startsWith('ctmdb.') || type == 'collections';
-
-    if (!isCustomId && !isCollection) {
-      try {
-        final movie = await _s._api.findByImdbId(
-          id,
-          mediaType: type == 'series' ? 'tv' : 'movie',
-        );
-        if (movie != null && mounted) {
-          await AppRouter.openDetails(context, movie: movie, stremioItem: item);
-          return;
-        }
-      } catch (_) {}
-    }
-
-    if (!isCustomId && !isCollection) {
-      try {
-        final results = await _s._api.searchMulti(name);
-        if (results.isNotEmpty && mounted) {
-          final match = results.firstWhere(
-            (m) => m.title.toLowerCase() == name.toLowerCase(),
-            orElse: () => results.first,
-          );
-          await AppRouter.openDetails(context, movie: match, stremioItem: item);
-          return;
-        }
-      } catch (_) {}
-    }
-
-    if (mounted) {
-      final actualType = isCollection
-          ? 'collections'
-          : (type == 'series' ? 'tv' : 'movie');
-      final movie = Movie(
-        id: id.hashCode,
-        imdbId: id.startsWith('tt') ? id : null,
-        title: name,
-        posterPath: poster,
-        backdropPath: item['background']?.toString() ?? poster,
-        voteAverage: double.tryParse(item['imdbRating']?.toString() ?? '') ?? 0,
-        releaseDate: item['releaseInfo']?.toString() ?? '',
-        overview: item['description']?.toString() ?? '',
-        mediaType: actualType,
-      );
-      final updatedItem = Map<String, dynamic>.from(item);
-      if (isCollection) updatedItem['type'] = 'collections';
-      await AppRouter.openDetails(
-        context,
-        movie: movie,
-        stremioItem: updatedItem,
-      );
-    }
+    if (!mounted) return;
+    await AppRouter.openStremioSearchResult(context, item);
   }
 }

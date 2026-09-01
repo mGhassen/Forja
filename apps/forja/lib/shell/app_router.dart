@@ -124,6 +124,21 @@ class AppRouter {
     );
   }
 
+  static Future<T?> openStremioSearchResult<T>(
+    BuildContext context,
+    Map<String, dynamic> item,
+  ) async {
+    final resolved = await PluginNavRegistry.resolveHubPluginId(
+      tabId: await SettingsService().getDefaultNavTab(),
+    );
+    if (resolved == null || !context.mounted) return null;
+    return openHubDetails<T>(
+      context,
+      pluginId: resolved,
+      item: catalogMetaFromStremioSearchResult(item),
+    );
+  }
+
   static Future<T?> openDetails<T>(
     BuildContext context, {
     required Movie movie,

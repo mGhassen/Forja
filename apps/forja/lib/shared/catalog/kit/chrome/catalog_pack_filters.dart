@@ -243,8 +243,8 @@ class _FilterOption {
     return _FilterOption(
       id: (json['id'] ?? json['label'] ?? '').toString(),
       label: (json['label'] ?? json['id'] ?? '').toString(),
-      value: json['value'] ?? json['label'],
-      filter: CatalogFilterAst.parse(json['filter']),
+      value: json['value'] ?? json['genre'] ?? json['id'] ?? json['label'],
+      filter: CatalogFilterAst.parse(json['filter']) ?? catalogPackOptionFilter(json),
     );
   }
 }

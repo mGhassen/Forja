@@ -146,6 +146,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   int _iptvSportsSearchGen = 0;
   String _forjaLivePluginFilter = 'all';
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
+  /// Lazy catalog scrape in flight (before plugin rows mark `loading`).
+  bool _forjaLiveCatalogHydrating = false;
   _LiveMatchesScheduleStatus _scheduleStatus = _LiveMatchesScheduleStatus.both;
   _LiveMatchesScheduleHorizon _scheduleHorizon = _LiveMatchesScheduleHorizon.h1;
 
@@ -239,6 +241,11 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     _syncTimelineLiveTick();
     if (_error != null || (_sports.isEmpty && !_loading)) {
       unawaited(_load());
+    } else if ((this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog &&
+        _streamedMatches.where((m) => m.isForjaLive).isEmpty &&
+        !_forjaLiveCatalogHydrating &&
+        !(this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
+      (this as _LiveMatchesForjaLive)._kickForjaLiveLazyCatalog();
     } else if (_forjaLiveCatalogSettingsDirty &&
         (_server == _LiveMatchesServer.all ||
             _server == _LiveMatchesServer.forjaLive ||

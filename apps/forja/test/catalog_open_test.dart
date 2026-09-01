@@ -38,6 +38,23 @@ void main() {
       expect(catalogOpenUsesHubDetails(open), isFalse);
     });
 
+    test('stremio search row keeps addon id and catalog addon url', () {
+      final meta = catalogMetaFromStremioSearchResult({
+        'id': 'anilist:12345',
+        'type': 'series',
+        'name': 'Test Anime',
+        'poster': 'https://cdn.example/p.jpg',
+        '_addonBaseUrl': 'https://addon.example/manifest.json',
+        '_addonName': 'Test Addon',
+      });
+      expect(meta.open?.surface, 'stremio');
+      expect(meta.open?.id, 'anilist:12345');
+      expect(meta.open?.extraString('stremioAddonBaseUrl'),
+          'https://addon.example/manifest.json');
+      expect(meta.open?.extraString('stremioId'), 'anilist:12345');
+      expect(meta.ids.containsKey('tmdb'), isFalse);
+    });
+
     test('legacy movie meta uses tmdb route not plugin id', () {
       final meta = catalogMetaFromMovie(
         Movie(

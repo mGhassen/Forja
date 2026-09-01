@@ -79,51 +79,15 @@ Future<bool> _openStremioDetailLink(
     final imdbMatch = RegExp(r'(tt\d+)').firstMatch(id);
     if (imdbMatch != null) id = imdbMatch.group(1)!;
   }
+  if (!context.mounted || id.isEmpty) return false;
 
-  final stremioItem = <String, dynamic>{
+  await AppRouter.openStremioSearchResult(context, {
     'id': id,
     'type': type,
     'name': '',
     if (addonBaseUrl != null && addonBaseUrl.isNotEmpty)
       '_addonBaseUrl': addonBaseUrl,
-  };
-
-  final api = TmdbApi();
-  if (id.startsWith('tt')) {
-    try {
-      final movie = await api.findByImdbId(
-        id,
-        mediaType: type == 'series' ? 'tv' : 'movie',
-      );
-      if (movie != null && context.mounted) {
-        await AppRouter.openDetails(
-          context,
-          movie: movie,
-          stremioItem: stremioItem,
-        );
-        return true;
-      }
-    } catch (_) {}
-  }
-
-  if (!context.mounted) return false;
-  final actualType = type == 'series' ? 'tv' : 'movie';
-  final movie = Movie(
-    id: id.hashCode,
-    imdbId: id.startsWith('tt') ? id : null,
-    title: 'Unknown',
-    posterPath: '',
-    backdropPath: '',
-    voteAverage: 0,
-    releaseDate: '',
-    overview: '',
-    mediaType: actualType,
-  );
-  await AppRouter.openDetails(
-    context,
-    movie: movie,
-    stremioItem: stremioItem,
-  );
+  });
   return true;
 }
 

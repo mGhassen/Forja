@@ -207,7 +207,7 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
       title: meta.name,
       subtitle: hubPosterCardSubtitle(meta),
       rating: (meta.rating ?? 0) > 0 ? meta.rating : null,
-      badge: meta.type == 'anime' ? null : meta.badge,
+      badge: hubPosterCardBadge(meta),
       listPin: source.buildEntryPin(context, entry, status),
       gridIndex: index,
       gridColumns: grid.columns,

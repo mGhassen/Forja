@@ -218,13 +218,17 @@ void main() {
       );
     });
 
-    test('mood options fall back to their genre', () {
+    test('mood options fall back to mood id when no genre', () {
       expect(catalogMoodFilter({'id': 'a', 'genre': 'Action'}), {
         'field': 'genre',
         'op': 'in',
         'value': ['Action'],
       });
-      expect(catalogMoodFilter({'id': 'a'}), isNull);
+      expect(catalogMoodFilter({'id': 'a'}), {
+        'field': 'mood',
+        'op': 'eq',
+        'value': 'a',
+      });
     });
   });
 

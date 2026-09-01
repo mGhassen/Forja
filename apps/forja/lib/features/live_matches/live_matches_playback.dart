@@ -151,7 +151,7 @@ mixin _LiveMatchesPlayback
       return;
     }
     final catalogMatches = _streamedMatchesForEvent(match, _s._streamedMatches);
-    if (forjaLive && (this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
+    if (forjaLive && (this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) {
       ForjaToast.info('Loading Forja Live plugins…');
       return;
     }
@@ -504,7 +504,7 @@ mixin _LiveMatchesPlayback
     _DamiTvStream? ppvAnchor,
   }) async {
     if (!mounted) return;
-    if ((this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
+    if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) {
       ForjaToast.info('Loading Forja Live plugins…');
       return;
     }

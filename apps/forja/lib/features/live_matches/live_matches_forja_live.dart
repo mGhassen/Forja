@@ -48,6 +48,15 @@ mixin _LiveMatchesForjaLive
   bool get _forjaLiveAnyLoading =>
       _s._forjaLivePluginLoads.values.any((e) => e.loading);
 
+  bool get _forjaLiveCatalogBusy =>
+      _usesForjaLiveLazyCatalog &&
+      (_s._forjaLiveCatalogHydrating || _forjaLiveAnyLoading);
+
+  void _setForjaLiveCatalogHydrating(bool value) {
+    if (_s._forjaLiveCatalogHydrating == value) return;
+    setState(() => _s._forjaLiveCatalogHydrating = value);
+  }
+
   bool _forjaLiveMatchPlayable(_StreamedMatch match) {
     return !_forjaLiveAnyLoading && match.isLive;
   }
@@ -90,10 +99,11 @@ mixin _LiveMatchesForjaLive
     return (ppv: [], streamed: streamed);
   }
 
-  void _resetForjaLiveCatalogState() {
+  void _resetForjaLiveCatalogState({bool clearMatches = true}) {
     EngineService.instance.cancelLiveCatalog();
     _s._forjaLiveLoadGen++;
     _s._forjaLivePluginLoads = {};
+    if (!clearMatches) return;
     _s._damiTvStreams = [];
     _s._streamedMatches = _s._streamedMatches
         .where((m) => !m.isForjaLive)
@@ -189,7 +199,7 @@ mixin _LiveMatchesForjaLive
   }
 
   void _refetchCatalogsForWiderHorizon(_LiveMatchesScheduleHorizon horizon) {
-    _resetForjaLiveCatalogState();
+    _resetForjaLiveCatalogState(clearMatches: false);
     _s._catalogFetchedHorizon = horizon;
     _kickForjaLiveLazyCatalog();
   }
@@ -205,12 +215,13 @@ mixin _LiveMatchesForjaLive
     if (!_usesForjaLiveLazyCatalog) return;
     if (!(this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible) return;
     if (!_s._serverHydrated) return;
+    _setForjaLiveCatalogHydrating(true);
     unawaited(_loadForjaLiveCatalogLazy());
   }
 
   void _applyEngineCatalogSettingsChange({required bool reloadNow}) {
     if (!_usesForjaLiveLazyCatalog) return;
-    _resetForjaLiveCatalogState();
+    _resetForjaLiveCatalogState(clearMatches: false);
     if (!reloadNow) {
       _s._forjaLiveCatalogSettingsDirty = true;
       if (mounted) setState(() {});
@@ -451,37 +462,55 @@ mixin _LiveMatchesForjaLive
   Future<void> _loadForjaLiveCatalogLazy() async {
     final gen = _s._forjaLiveLoadGen;
     _s._catalogFetchedHorizon = _s._scheduleHorizon;
-    await LiveMatchesEngine.warmPluginMeta();
-    await EngineService.instance.ensureOfficialInstalled();
-    final catalogPlugins =
-        await EngineService.instance.listLiveSportCatalogPlugins();
-    if (!mounted || gen != _s._forjaLiveLoadGen) return;
-
-    _ensureForjaLivePluginLoadsRegistered(catalogPlugins);
-    if (!mounted || gen != _s._forjaLiveLoadGen) return;
-
-    if (catalogPlugins.isEmpty) {
-      await _applyEspnScheduleMerge();
-      return;
-    }
-
-    final filter = _s._forjaLivePluginFilter;
-    final toLoad = _forjaLiveCatalogsToLoad(catalogPlugins, filter);
-    if (toLoad.isEmpty) {
-      await _applyEspnScheduleMerge();
-      return;
-    }
-
-    // Finish every catalog in [toLoad] even if the chip filter changes mid-loop
-    // so each scrape is cached once (`attempted`) for the session.
-    for (final catalog in toLoad) {
+    try {
+      await LiveMatchesEngine.warmPluginMeta();
+      await EngineService.instance.ensureOfficialInstalled();
+      final catalogPlugins =
+          await EngineService.instance.listLiveSportCatalogPlugins();
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
-      await _loadOneForjaLiveCatalog(catalog: catalog, gen: gen);
-    }
 
-    if (!mounted || gen != _s._forjaLiveLoadGen) return;
-    _ensureForjaLivePluginFilterValid();
-    await _applyEspnScheduleMerge();
+      _ensureForjaLivePluginLoadsRegistered(catalogPlugins);
+      if (!mounted || gen != _s._forjaLiveLoadGen) return;
+
+      if (catalogPlugins.isEmpty) {
+        await _applyEspnScheduleMerge();
+        return;
+      }
+
+      final filter = _s._forjaLivePluginFilter;
+      final toLoad = _forjaLiveCatalogsToLoad(catalogPlugins, filter);
+      if (toLoad.isNotEmpty) {
+        setState(() {
+          for (final catalog in toLoad) {
+            final filterId = EngineService.catalogFilterId(catalog);
+            final load = _s._forjaLivePluginLoads[filterId];
+            if (load == null || load.loading || load.attempted) continue;
+            _s._forjaLivePluginLoads[filterId] = load.copyWith(loading: true);
+          }
+        });
+      }
+      if (toLoad.isEmpty) {
+        await _applyEspnScheduleMerge();
+        return;
+      }
+
+      // Finish every catalog in [toLoad] even if the chip filter changes mid-loop
+      // so each scrape is cached once (`attempted`) for the session.
+      for (final catalog in toLoad) {
+        if (!mounted || gen != _s._forjaLiveLoadGen) return;
+        await _loadOneForjaLiveCatalog(catalog: catalog, gen: gen);
+      }
+
+      if (!mounted || gen != _s._forjaLiveLoadGen) return;
+      _ensureForjaLivePluginFilterValid();
+      await _applyEspnScheduleMerge();
+    } finally {
+      if (mounted && gen == _s._forjaLiveLoadGen) {
+        _setForjaLiveCatalogHydrating(false);
+        (this as _LiveMatchesData)
+            ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
+      }
+    }
   }
 
   void _deferTabControllerDispose(TabController? ctrl) {

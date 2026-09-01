@@ -438,6 +438,17 @@ function anilistDetails(ctx, cfg, params) {
   });
 }
 
+function anilistCategoryOptions() {
+  return ANILIST_MOODS.map(function (m) {
+    return {
+      id: m.id,
+      label: m.label,
+      genre: m.genre,
+      filter: { op: 'eq', field: 'genre', value: m.genre },
+    };
+  });
+}
+
 function extract(ctx) {
   var action = hubAction(ctx);
   var cfg = hubConfig(ctx, ANILIST_DEFAULTS);
@@ -448,7 +459,7 @@ function extract(ctx) {
   }
   if (action === 'filters') {
     return hubOk('filters', {
-      fields: [{ field: 'genre', label: 'Genre', options: ANILIST_MOODS }],
+      fields: [{ field: 'genre', label: 'Genre', options: anilistCategoryOptions() }],
       media: {
         films: { op: 'eq', field: 'format', value: 'MOVIE' },
         series: { op: 'eq', field: 'format_not', value: 'MOVIE' },

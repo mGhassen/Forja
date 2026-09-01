@@ -30,6 +30,33 @@ void main() {
     );
   });
 
+  test('mergeSearchRows keeps one row per indexer for the same magnet', () {
+    final into = <String, Map<String, dynamic>>{};
+    TorrentSearchProviders.mergeSearchRows(into, [
+      {
+        'name': 'a',
+        'magnet': 'magnet:?xt=urn:btih:abc',
+        'seeders': '10',
+        'size': '1 GB',
+        'source': 'ThePirateBay',
+      },
+    ]);
+    TorrentSearchProviders.mergeSearchRows(into, [
+      {
+        'name': 'a-better',
+        'magnet': 'magnet:?xt=urn:btih:abc',
+        'seeders': '40',
+        'size': '1 GB',
+        'source': 'Knaben',
+      },
+    ]);
+    expect(into.length, 2);
+    expect(
+      into.values.map((r) => r['source']).toSet(),
+      {'ThePirateBay', 'Knaben'},
+    );
+  });
+
   test('mergeByMagnet keeps the higher-seeder copy', () {
     final into = <String, Map<String, dynamic>>{};
     TorrentSearchProviders.mergeByMagnet(into, [

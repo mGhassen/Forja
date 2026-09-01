@@ -700,8 +700,7 @@ class _CatalogShellState extends State<CatalogShell>
     subtitle: hubPosterCardSubtitle(item),
     rating: item.rating,
     rank: showRank ? index + 1 : null,
-    // Anime pre-cutover put format under the title (releaseInfo), not a badge.
-    badge: item.type == 'anime' ? null : item.badge,
+    badge: hubPosterCardBadge(item, pluginId: widget.pluginId),
     listIndex: index,
     listTarget: _listTarget(item),
     tvTabId: widget.tabId,
