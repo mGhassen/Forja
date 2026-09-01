@@ -1013,7 +1013,7 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
 
   @override
   Widget build(BuildContext context) {
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
 
     final titleBlock = _confirming
         ? const Text(
@@ -1056,7 +1056,7 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
           widget.leading,
           const SizedBox(width: 12),
           Expanded(child: titleBlock),
-          if (!_confirming && !tv)
+          if (!_confirming && !leanback)
             ForjaSwitch(
               value: widget.enabled,
               scale: ForjaSwitch.settingsScale,
@@ -1066,7 +1066,7 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
       ),
     );
 
-    if (!tv) {
+    if (!leanback) {
       return Row(
         children: [
           Expanded(child: rowBody),
