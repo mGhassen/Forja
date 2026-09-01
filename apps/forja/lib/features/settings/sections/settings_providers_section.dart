@@ -6,6 +6,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/providers/stremio_addons_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
+import 'package:forja/features/settings/widgets/settings_engine_pack_update.dart';
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
@@ -40,6 +41,7 @@ class _SettingsProvidersSectionState
   bool _nuvioInstalling = false;
   final TextEditingController _engineController = TextEditingController();
   bool _engineInstalling = false;
+  bool _engineUpdatingAll = false;
 
   final TextEditingController _jackettUrlController = TextEditingController();
   final TextEditingController _jackettApiKeyController = TextEditingController();
@@ -100,6 +102,7 @@ class _SettingsProvidersSectionState
     final installedAddons = addonsAsync.valueOrNull ?? const [];
     final nuvioAddons = ref.watch(nuvioAddonsProvider).valueOrNull ?? const [];
     final enginePacks = ref.watch(enginePacksProvider).valueOrNull ?? const [];
+    final packUpdates = ref.watch(enginePackUpdatesProvider);
     final indexerSnap = ref.watch(settingsIndexerProvider).valueOrNull;
     if (indexerSnap != null && !_indexersHydrated) {
       _hydrateIndexers(indexerSnap);
@@ -118,7 +121,7 @@ class _SettingsProvidersSectionState
                   EngineService.changeNotifier,
                 ]),
                 builder: (context, _) =>
-                    _buildEnginePackSection(enginePacks),
+                    _buildEnginePackSection(enginePacks, packUpdates),
               ),
             ],
           ),
@@ -478,7 +481,10 @@ class _SettingsProvidersSectionState
     }
   }
 
-  Widget _buildEnginePackSection(List<EnginePack> packs) {
+  Widget _buildEnginePackSection(
+    List<EnginePack> packs,
+    EnginePackUpdatesState packUpdates,
+  ) {
     final installError = EngineService.officialInstallError.value;
     final installProgress = PluginInstallCoordinator.instance.progress.value;
     return Padding(
@@ -539,8 +545,20 @@ class _SettingsProvidersSectionState
           ),
           if (packs.isNotEmpty) ...[
             const SizedBox(height: 20),
+            SettingsEnginePackUpdatesBar(
+              updateCount: packUpdates.count,
+              checking: packUpdates.checking,
+              updating: _engineUpdatingAll,
+              onUpdateAll: () => _updateAllEnginePacks(packUpdates.updates),
+              onCheckAgain: () =>
+                  ref.read(enginePackUpdatesProvider.notifier).refresh(),
+            ),
             const SettingsEngineMiniLabel('Installed plugins'),
-            ..._buildEnginePacksByKind(packs, installProgress: installProgress),
+            ..._buildEnginePacksByKind(
+              packs,
+              installProgress: installProgress,
+              packUpdates: packUpdates,
+            ),
           ],
         ],
       ),
@@ -550,6 +568,7 @@ class _SettingsProvidersSectionState
   List<Widget> _buildEnginePacksByKind(
     List<EnginePack> packs, {
     PluginInstallProgress? installProgress,
+    required EnginePackUpdatesState packUpdates,
   }) {
     final grouped = groupEnginePacksByKind(packs);
     final out = <Widget>[];
@@ -581,18 +600,24 @@ class _SettingsProvidersSectionState
         final isLiveSportPack =
             liveSportPlugins.isNotEmpty &&
             liveSportPlugins.length == panelPlugins.length;
+        final update = packUpdates.forPack(pack.sourceUrl);
         rows.add(
           isLiveSportPack
               ? SettingsLiveSportPackExpansion(
                   pack: pack,
                   plugins: liveSportPlugins,
+                  update: update,
                   trailing: _EnginePackActions(
                     packEnabled: pack.enabled,
+                    update: update,
                     onTogglePack: (val) => EngineService.instance.setPackEnabled(
                       sourceUrl: pack.sourceUrl,
                       enabled: val,
                     ),
-                    onRefresh: () => _refreshEnginePack(pack.sourceUrl),
+                    onRefresh: () => _refreshEnginePack(
+                      pack.sourceUrl,
+                      update: update,
+                    ),
                     onRemove: () => _removeEnginePack(pack.sourceUrl),
                     showOfficialBadge: false,
                   ),
@@ -604,13 +629,18 @@ class _SettingsProvidersSectionState
                   groupLabel: EngineCategories.groupLabel,
                   groupOrder: EngineCategories.groupOrderFor(panelPlugins),
                   installProgress: installProgress,
+                  update: update,
                   trailing: _EnginePackActions(
                     packEnabled: pack.enabled,
+                    update: update,
                     onTogglePack: (val) => EngineService.instance.setPackEnabled(
                       sourceUrl: pack.sourceUrl,
                       enabled: val,
                     ),
-                    onRefresh: () => _refreshEnginePack(pack.sourceUrl),
+                    onRefresh: () => _refreshEnginePack(
+                      pack.sourceUrl,
+                      update: update,
+                    ),
                     onRemove: () => _removeEnginePack(pack.sourceUrl),
                     showOfficialBadge: false,
                   ),
@@ -640,7 +670,10 @@ class _SettingsProvidersSectionState
     }
   }
 
-  Future<void> _refreshEnginePack(String sourceUrl) async {
+  Future<void> _refreshEnginePack(
+    String sourceUrl, {
+    EnginePackUpdateInfo? update,
+  }) async {
     setState(() => _engineInstalling = true);
     try {
       final pack = await PluginInstallCoordinator.instance.installManifest(
@@ -648,14 +681,51 @@ class _SettingsProvidersSectionState
         isUpdate: true,
       );
       if (!mounted) return;
+      ref.read(enginePackUpdatesProvider.notifier).clearFor(sourceUrl);
+      ref.invalidate(enginePacksProvider);
       ForjaToast.success(
-        'Refreshed ${pack.name} v${pack.version}',
+        update != null
+            ? 'Updated ${pack.name} to v${pack.version}'
+            : 'Refreshed ${pack.name} v${pack.version}',
       );
     } catch (e) {
       if (!mounted) return;
       ForjaToast.error('Refresh failed: $e');
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
+    }
+  }
+
+  Future<void> _updateAllEnginePacks(
+    Map<String, EnginePackUpdateInfo> updates,
+  ) async {
+    if (updates.isEmpty || _engineUpdatingAll) return;
+    setState(() => _engineUpdatingAll = true);
+    var ok = 0;
+    try {
+      for (final entry in updates.values) {
+        try {
+          await PluginInstallCoordinator.instance.installManifest(
+            entry.sourceUrl,
+            isUpdate: true,
+          );
+          ref.read(enginePackUpdatesProvider.notifier).clearFor(entry.sourceUrl);
+          ok++;
+        } catch (e) {
+          if (!mounted) return;
+          ForjaToast.error('${entry.packName} update failed: $e');
+        }
+      }
+      if (!mounted) return;
+      ref.invalidate(enginePacksProvider);
+      await ref.read(enginePackUpdatesProvider.notifier).refresh();
+      if (ok > 0) {
+        ForjaToast.success(
+          ok == 1 ? '1 plugin pack updated' : '$ok plugin packs updated',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _engineUpdatingAll = false);
     }
   }
 
@@ -1146,6 +1216,7 @@ class _EnginePackActions extends StatelessWidget {
     required this.onRefresh,
     required this.onRemove,
     this.showOfficialBadge = false,
+    this.update,
   });
 
   final bool packEnabled;
@@ -1153,9 +1224,11 @@ class _EnginePackActions extends StatelessWidget {
   final VoidCallback onRefresh;
   final Future<void> Function() onRemove;
   final bool showOfficialBadge;
+  final EnginePackUpdateInfo? update;
 
   @override
   Widget build(BuildContext context) {
+    final hasUpdate = update != null;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1176,11 +1249,25 @@ class _EnginePackActions extends StatelessWidget {
               ),
             ),
           ),
+        if (hasUpdate)
+          Padding(
+            padding: const EdgeInsets.only(right: 2),
+            child: SettingsEnginePackUpdateBadge(
+              remoteVersion: update!.remoteVersion,
+            ),
+          ),
         _settingsTvIconButton(
           context,
-          tooltip: 'Refresh',
-          icon: Icons.refresh_rounded,
+          tooltip: hasUpdate
+              ? 'Update to v${update!.remoteVersion}'
+              : 'Refresh',
+          icon: hasUpdate
+              ? Icons.system_update_rounded
+              : Icons.refresh_rounded,
           onPressed: onRefresh,
+          color: hasUpdate
+              ? ForjaShellColors.brandGreen
+              : ForjaShellColors.textPrimary,
         ),
         _AddonRemoveActions(onRemove: onRemove),
       ],

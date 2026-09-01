@@ -187,7 +187,7 @@ void main() {
     PluginInstallCoordinator.instance.progress.addListener(listener);
     try {
       await PluginInstallCoordinator.instance.ensureAllInstalled(
-        checkUpdates: false,
+        notifyUpdates: false,
         awaitCloudLean: false,
         includeNuvio: false,
       );
@@ -291,7 +291,7 @@ void main() {
     expect(PluginInstallCoordinator.instance.progress.value, isNull);
   });
 
-  test('ensureAllInstalled refreshes local checkout when manifest newer', () async {
+  test('ensureAllInstalled does not auto-update when manifest newer', () async {
     final hubDir = await Directory.systemTemp.createTemp('coord_local_hub_');
     addTearDown(() async {
       if (await hubDir.exists()) await hubDir.delete(recursive: true);
@@ -347,14 +347,16 @@ void main() {
     );
 
     await PluginInstallCoordinator.instance.ensureAllInstalled(
-      checkUpdates: true,
+      notifyUpdates: false,
       awaitCloudLean: false,
       includeNuvio: false,
     );
 
     final packs = await registry.listPacksRaw();
     expect(packs, hasLength(1));
-    expect(packs.first.version, '2.0.0');
+    expect(packs.first.version, '1.0.0');
+    final pending = await registry.peekRemoteUpdate(packs.first);
+    expect(pending?.remoteVersion, '2.0.0');
   });
 
   test('ensureAllInstalled skips local checkout when manifest version unchanged',
@@ -421,7 +423,7 @@ void main() {
     PluginInstallCoordinator.instance.progress.addListener(listener);
     try {
       await PluginInstallCoordinator.instance.ensureAllInstalled(
-        checkUpdates: true,
+        notifyUpdates: false,
         awaitCloudLean: false,
         includeNuvio: false,
       );

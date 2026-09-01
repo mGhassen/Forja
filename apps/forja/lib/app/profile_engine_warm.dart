@@ -49,7 +49,7 @@ class ProfileEngineWarm {
       try {
         await coordinator
             .ensureAllInstalled(
-              checkUpdates: true,
+              notifyUpdates: true,
               awaitCloudLean: true,
               includeNuvio: needs.nuvio || needs.playSourceNuvio,
             )

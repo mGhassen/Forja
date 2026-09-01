@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 
 class _PhaseIcon extends StatelessWidget {
@@ -131,16 +132,26 @@ class SettingsEnginePackInstallStatus extends StatelessWidget {
     super.key,
     required this.sourceUrl,
     this.progress,
+    this.update,
   });
 
   final String sourceUrl;
   final PluginInstallProgress? progress;
+  final EnginePackUpdateInfo? update;
 
   @override
   Widget build(BuildContext context) {
     if (progress != null && progress!.matchesUrl(sourceUrl)) {
+      if (progress!.phase == PluginInstallPhase.ready) {
+        return const SizedBox.shrink();
+      }
+      final title = progress!.phaseTitle;
+      final label = progress!.label;
+      final line = label.toLowerCase().startsWith(title.toLowerCase())
+          ? label
+          : '$title · $label';
       return Text(
-        '${progress!.phaseTitle} · ${progress!.label}',
+        line,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(
@@ -150,13 +161,16 @@ class SettingsEnginePackInstallStatus extends StatelessWidget {
         ),
       );
     }
-    return Text(
-      'Ready',
-      style: TextStyle(
-        fontSize: 11,
-        color: ForjaShellColors.textSecondary.withValues(alpha: 0.75),
-        fontWeight: FontWeight.w600,
-      ),
-    );
+    if (update != null) {
+      return Text(
+        'Update available · v${update!.remoteVersion}',
+        style: const TextStyle(
+          fontSize: 11,
+          color: ForjaShellColors.brandGreen,
+          fontWeight: FontWeight.w600,
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }

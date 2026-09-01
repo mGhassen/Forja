@@ -937,6 +937,23 @@ bool isLocalTorrentStreamUrl(String url) {
   return uri.path.contains('/torrents/') && uri.path.contains('/stream/');
 }
 
+/// True when the active session is local-engine torrent HTTP (not debrid CDN).
+bool isTorrentSeekPlayback({
+  String? streamUrl,
+  String? mediaPath,
+  String? magnetLink,
+}) {
+  if (streamUrl != null && isLocalTorrentStreamUrl(streamUrl)) return true;
+  if (mediaPath != null && isLocalTorrentStreamUrl(mediaPath)) return true;
+  if (magnetLink != null &&
+      magnetLink.trim().isNotEmpty &&
+      mediaPath != null &&
+      isLocalTorrentStreamUrl(mediaPath)) {
+    return true;
+  }
+  return false;
+}
+
 /// Catalog stream kind for logs - Nuvio vs Stremio from stream metadata.
 String catalogStreamKindLabel(Map<String, dynamic> stream) {
   if (stream['_enginePluginId'] != null) return 'Forja';
@@ -1731,6 +1748,8 @@ Future<void> seekPlayerPreservingProgress(
   void Function(Duration target)? onSeekCommitted,
   bool ensureTorrentSeekable = false,
   String? streamUrl,
+  String? mediaPath,
+  String? magnetLink,
 }) async {
   final dur = duration ?? player.state.duration;
   final previous = positionNotifier.value;
@@ -1743,7 +1762,11 @@ Future<void> seekPlayerPreservingProgress(
       !shouldPinSeekBarAtEof(uiPosition: target, duration: dur);
   positionNotifier.value = target;
   if (ensureTorrentSeekable ||
-      (streamUrl != null && isLocalTorrentStreamUrl(streamUrl))) {
+      isTorrentSeekPlayback(
+        streamUrl: streamUrl,
+        mediaPath: mediaPath,
+        magnetLink: magnetLink,
+      )) {
     await ensureLocalTorrentSeekable(player);
   }
   await player.seek(target);
@@ -2417,10 +2440,7 @@ Future<bool> waitForMediaOpen(
   }
 }
 
-/// After torrent decode confirms: drop open-phase seekable=0 and enable Range scrub.
-Future<void> ensureLocalTorrentSeekable(Player player) async {
-  if (player.platform is! NativePlayer) return;
-  final mpv = player.platform as NativePlayer;
+Future<void> _applyLocalTorrentSeekableMpv(NativePlayer mpv) async {
   Future<void> safeSet(String key, String val) async {
     try {
       await mpv.setProperty(key, val);
@@ -2429,11 +2449,64 @@ Future<void> ensureLocalTorrentSeekable(Player player) async {
     }
   }
 
-  await safeSet('demuxer-lavf-o', '');
-  await safeSet('stream-lavf-o', '');
+  // Open used seekable=0 on the lavf demuxer — runtime props alone do not flip
+  // that (issue 024 T09). Bound probe, no seekable=0, HTTP Range scrub.
+  await safeSet('demuxer-lavf-o', 'probesize=65536,analyzeduration=500000');
+  await safeSet('stream-lavf-o', 'probesize=65536');
   await safeSet('force-seekable', 'yes');
   await safeSet('hr-seek', 'yes');
   await safeSet('hr-seek-framedrop', 'no');
+}
+
+/// Re-assert seekable mpv props (every scrub) — demuxer must already be Range-capable.
+Future<void> ensureLocalTorrentSeekable(Player player) async {
+  if (player.platform is! NativePlayer) return;
+  await _applyLocalTorrentSeekableMpv(player.platform as NativePlayer);
+}
+
+/// After probe decode: reopen at current time with seekable lavf (not seekable=0).
+Future<bool> promoteLocalTorrentToSeekablePlayback(
+  Player player, {
+  required String streamUrl,
+  Map<String, String>? headers,
+  String? providerId,
+}) async {
+  if (!isLocalTorrentStreamUrl(streamUrl)) return true;
+  if (player.platform is! NativePlayer) return true;
+
+  final pos = player.state.position;
+  final playing = player.state.playing;
+  await _applyLocalTorrentSeekableMpv(player.platform as NativePlayer);
+
+  await resetPlayerForOpen(player);
+  try {
+    await openPlayerStream(
+      player,
+      url: streamUrl,
+      headers: headers,
+      providerId: providerId,
+      startAt: pos > const Duration(milliseconds: 500) ? pos : null,
+    );
+  } catch (e) {
+    debugPrint('[Player] Torrent seekable promote reopen failed: $e');
+    return false;
+  }
+
+  final deadline = DateTime.now().add(const Duration(seconds: 45));
+  while (DateTime.now().isBefore(deadline)) {
+    if (hasDecodedVideo(player.state)) {
+      if (playing && !player.state.playing) {
+        await player.play();
+      }
+      debugPrint(
+        '[Player] Torrent seekable promote OK (${player.state.position.inSeconds}s)',
+      );
+      return true;
+    }
+    await Future.delayed(const Duration(milliseconds: 80));
+  }
+  debugPrint('[Player] Torrent seekable promote: no frame after reopen');
+  return false;
 }
 
 /// [waitForMediaOpen] with local-torrent timeout + optional probe re-open.
@@ -2468,7 +2541,15 @@ Future<bool> waitForPlayerStreamOpen(
         : null,
   );
   if (opened && localTorrent) {
-    await ensureLocalTorrentSeekable(player);
+    final promoted = await promoteLocalTorrentToSeekablePlayback(
+      player,
+      streamUrl: streamUrl,
+      headers: headers,
+      providerId: providerId,
+    );
+    if (!promoted) {
+      await ensureLocalTorrentSeekable(player);
+    }
   }
   return opened;
 }

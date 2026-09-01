@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/features/settings/widgets/settings_engine_pack_update.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -80,6 +81,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
     this.trailing,
     this.showMiniLabel = false,
     this.installProgress,
+    this.update,
   });
 
   final EnginePack pack;
@@ -92,6 +94,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
   final Widget? trailing;
   final bool showMiniLabel;
   final PluginInstallProgress? installProgress;
+  final EnginePackUpdateInfo? update;
 
   @override
   Widget build(BuildContext context) {
@@ -112,12 +115,18 @@ class SettingsEnginePackExpansion extends StatelessWidget {
         ],
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
+          child: SettingsEnginePackUpdateFrame(
+            hasUpdate: update != null,
+            child: ExpansionTile(
             tilePadding: const EdgeInsets.symmetric(horizontal: 2),
             childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-            leading: const Icon(
-              Icons.bolt_rounded,
-              color: ForjaShellColors.iconActive,
+            leading: Icon(
+              update != null
+                  ? Icons.system_update_rounded
+                  : Icons.bolt_rounded,
+              color: update != null
+                  ? ForjaShellColors.brandGreen
+                  : ForjaShellColors.iconActive,
             ),
             title: Text(
               pack.name,
@@ -139,18 +148,17 @@ class SettingsEnginePackExpansion extends StatelessWidget {
                     color: ForjaShellColors.textSecondary,
                   ),
                 ),
-                Text(
-                  '${PluginRegistry.packKindInfo(pack)} · '
-                  '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
-                  'v${pack.version}',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: ForjaShellColors.textSecondary.withValues(alpha: 0.75),
-                  ),
+                SettingsEnginePackVersionLine(
+                  meta:
+                      '${PluginRegistry.packKindInfo(pack)} · '
+                      '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
+                      'v${pack.version}',
+                  update: update,
                 ),
                 SettingsEnginePackInstallStatus(
                   sourceUrl: pack.sourceUrl,
                   progress: installProgress,
+                  update: update,
                 ),
               ],
             ),
@@ -168,6 +176,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
                 ),
               ],
             ),
+          ),
           ),
         ),
       ],
@@ -290,24 +299,32 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
     required this.pack,
     required this.plugins,
     this.trailing,
+    this.update,
   });
 
   final EnginePack pack;
   final List<EnginePlugin> plugins;
   final Widget? trailing;
+  final EnginePackUpdateInfo? update;
 
   @override
   Widget build(BuildContext context) {
     if (plugins.isEmpty) return const SizedBox.shrink();
 
-    return Theme(
+    return SettingsEnginePackUpdateFrame(
+      hasUpdate: update != null,
+      child: Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 2),
         childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-        leading: const Icon(
-          Icons.bolt_rounded,
-          color: ForjaShellColors.iconActive,
+        leading: Icon(
+          update != null
+              ? Icons.system_update_rounded
+              : Icons.bolt_rounded,
+          color: update != null
+              ? ForjaShellColors.brandGreen
+              : ForjaShellColors.iconActive,
         ),
         title: Text(
           pack.name,
@@ -329,15 +346,25 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
                 color: ForjaShellColors.textSecondary,
               ),
             ),
-            Text(
-              '${PluginRegistry.packKindInfo(pack)} · '
-              '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
-              'v${pack.version}',
-              style: TextStyle(
-                fontSize: 11,
-                color: ForjaShellColors.textSecondary.withValues(alpha: 0.75),
-              ),
+            SettingsEnginePackVersionLine(
+              meta:
+                  '${PluginRegistry.packKindInfo(pack)} · '
+                  '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
+                  'v${pack.version}',
+              update: update,
             ),
+            if (update != null)
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Text(
+                  'Update available',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: ForjaShellColors.brandGreen,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
           ],
         ),
         trailing: settingsExpansionTrailing(context, trailing),
@@ -353,6 +380,7 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

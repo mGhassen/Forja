@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/service.dart';
@@ -63,13 +64,16 @@ class PluginInstallProgress {
   }
 }
 
-/// Boot + background: migrate, await cloud lean, install missing / updates.
+/// Boot + background: migrate, await cloud lean, install missing scripts only.
+/// Version bumps are never auto-installed — user updates in Settings.
 class PluginInstallCoordinator {
   PluginInstallCoordinator._();
   static final PluginInstallCoordinator instance = PluginInstallCoordinator._();
 
   /// How long the bottom banner stays on "Ready" before dismissing.
   static const readyDwell = Duration(milliseconds: 2200);
+
+  static bool _updateToastShownThisSession = false;
 
   final ValueNotifier<PluginInstallProgress?> progress =
       ValueNotifier<PluginInstallProgress?>(null);
@@ -210,13 +214,39 @@ class PluginInstallCoordinator {
     return null;
   }
 
+  /// Peek remote manifests; toast once per session when updates exist.
+  Future<void> notifyPendingUpdatesIfAny() async {
+    try {
+      final packs = await PluginRegistry.instance.listPacksRaw();
+      final updates = await EngineService.instance.checkPackUpdates(packs);
+      if (updates.isEmpty) return;
+      if (_updateToastShownThisSession) return;
+      _updateToastShownThisSession = true;
+      final count = updates.length;
+      final sample = updates.values.first.packName;
+      ForjaToast.info(
+        count == 1
+            ? '$sample update available — open Settings → Sources → Forja to update.'
+            : '$count plugin updates available — open Settings → Sources → Forja to update.',
+        duration: const Duration(seconds: 7),
+      );
+    } catch (e) {
+      debugPrint('[PluginInstall] update notify failed: $e');
+    }
+  }
+
+  @visibleForTesting
+  static void resetUpdateToastForTest() {
+    _updateToastShownThisSession = false;
+  }
+
   Future<void> ensureAllInstalled({
-    bool checkUpdates = true,
+    bool notifyUpdates = true,
     bool awaitCloudLean = true,
     bool includeNuvio = true,
   }) {
     return _inFlight ??= _run(
-      checkUpdates: checkUpdates,
+      notifyUpdates: notifyUpdates,
       awaitCloudLean: awaitCloudLean,
       includeNuvio: includeNuvio,
     ).whenComplete(() {
@@ -226,7 +256,7 @@ class PluginInstallCoordinator {
   }
 
   Future<void> _run({
-    required bool checkUpdates,
+    required bool notifyUpdates,
     required bool awaitCloudLean,
     required bool includeNuvio,
   }) async {
@@ -262,12 +292,7 @@ class PluginInstallCoordinator {
       if (PluginRegistry.isRetiredCatalogPack(pack)) continue;
       if (await registry.packNeedsDiskInstall(pack)) {
         jobs.add((pack: pack, isUpdate: false, forceRefresh: true));
-        continue;
       }
-      if (!checkUpdates) continue;
-      // Local checkout JS is read from disk at runtime — only refresh when the
-      // manifest version bumps (see [PluginRegistry.maybeRefreshIfNewer]).
-      jobs.add((pack: pack, isUpdate: true, forceRefresh: false));
     }
 
     var completed = 0;
@@ -276,33 +301,15 @@ class PluginInstallCoordinator {
       '[PluginInstall] ${jobs.length} pack job(s), '
       'nuvio=${includeNuvio ? 1 : 0}',
     );
-    if (total == 0) return;
 
     for (final job in jobs) {
       final pack = job.pack;
       final url = pack.sourceUrl;
       try {
-        if (job.forceRefresh) {
-          await _fetchPackWithProgress(
-            manifestUrl: url,
-            isUpdate: job.isUpdate,
-          );
-        } else {
-          _setProgress(
-            PluginInstallProgress(
-              label: 'Checking ${pack.name}…',
-              manifestUrl: url,
-              sourceUrl: url,
-              completedSteps: completed,
-              totalSteps: total,
-              isUpdate: true,
-            ),
-          );
-          final updated = await registry.maybeRefreshIfNewer(url, pack);
-          if (updated) {
-            debugPrint('[PluginInstall] updated ${pack.name}');
-          }
-        }
+        await _fetchPackWithProgress(
+          manifestUrl: url,
+          isUpdate: job.isUpdate,
+        );
       } catch (e) {
         debugPrint('[PluginInstall] install failed ($url): $e');
         PluginRegistry.officialInstallError.value =
@@ -340,16 +347,22 @@ class PluginInstallCoordinator {
       completed++;
     }
 
-    _setProgress(
-      PluginInstallProgress(
-        label: 'Ready — all plugins',
-        completedSteps: total,
-        totalSteps: total,
-        isUpdate: false,
-      ),
-    );
+    if (total > 0) {
+      _setProgress(
+        PluginInstallProgress(
+          label: 'Ready — all plugins',
+          completedSteps: total,
+          totalSteps: total,
+          isUpdate: false,
+        ),
+      );
+      await Future<void>.delayed(readyDwell);
+    }
+
     await syncTorrentSearchCatalog();
-    await Future<void>.delayed(readyDwell);
+    if (notifyUpdates) {
+      unawaited(notifyPendingUpdatesIfAny());
+    }
   }
 
   void _setProgress(PluginInstallProgress? value) {

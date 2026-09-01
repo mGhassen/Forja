@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-torrent",
   "name": "ForjaHQ Torrent",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "prelude": "_torrent_common.js",
   "plugins": [
     {

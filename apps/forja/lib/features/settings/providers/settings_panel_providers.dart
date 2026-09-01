@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
@@ -547,6 +549,87 @@ final enginePacksProvider =
     AsyncNotifierProvider<EnginePacksNotifier, List<EnginePack>>(
       EnginePacksNotifier.new,
     );
+
+@immutable
+class EnginePackUpdatesState {
+  const EnginePackUpdatesState({
+    this.updates = const {},
+    this.checking = false,
+    this.lastChecked,
+  });
+
+  final Map<String, EnginePackUpdateInfo> updates;
+  final bool checking;
+  final DateTime? lastChecked;
+
+  int get count => updates.length;
+
+  EnginePackUpdateInfo? forPack(String sourceUrl) => updates[sourceUrl];
+}
+
+final enginePackUpdatesProvider =
+    NotifierProvider<EnginePackUpdatesNotifier, EnginePackUpdatesState>(
+      EnginePackUpdatesNotifier.new,
+    );
+
+class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
+  Object? _checkToken;
+
+  @override
+  EnginePackUpdatesState build() {
+    ref.listen(enginePacksProvider, (_, next) {
+      final packs = next.valueOrNull;
+      if (packs != null) unawaited(check(packs));
+    });
+    final packs = ref.watch(enginePacksProvider).valueOrNull;
+    if (packs != null && packs.isNotEmpty && state.lastChecked == null) {
+      Future.microtask(() => check(packs));
+    }
+    return state;
+  }
+
+  Future<void> check(List<EnginePack> packs) async {
+    final token = Object();
+    _checkToken = token;
+    state = EnginePackUpdatesState(
+      updates: state.updates,
+      checking: true,
+      lastChecked: state.lastChecked,
+    );
+    try {
+      final updates = await EngineService.instance.checkPackUpdates(packs);
+      if (!identical(_checkToken, token)) return;
+      state = EnginePackUpdatesState(
+        updates: updates,
+        checking: false,
+        lastChecked: DateTime.now(),
+      );
+    } catch (_) {
+      if (!identical(_checkToken, token)) return;
+      state = EnginePackUpdatesState(
+        updates: state.updates,
+        checking: false,
+        lastChecked: state.lastChecked,
+      );
+    }
+  }
+
+  Future<void> refresh() async {
+    final packs = ref.read(enginePacksProvider).valueOrNull ?? const [];
+    await check(packs);
+  }
+
+  void clearFor(String sourceUrl) {
+    if (!state.updates.containsKey(sourceUrl)) return;
+    final next = Map<String, EnginePackUpdateInfo>.from(state.updates)
+      ..remove(sourceUrl);
+    state = EnginePackUpdatesState(
+      updates: next,
+      checking: state.checking,
+      lastChecked: state.lastChecked,
+    );
+  }
+}
 
 class EnginePacksNotifier extends AsyncNotifier<List<EnginePack>> {
   @override

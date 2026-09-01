@@ -378,7 +378,11 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   }
 
   Future<void> _seekTo(Duration position) async {
-    final url = _hlsMasterUrl ?? _currentQualityUrl ?? _currentUrl;
+    final url =
+        _hlsMasterUrl ??
+        _currentQualityUrl ??
+        _currentUrl ??
+        (isLocalTorrentStreamUrl(widget.mediaPath) ? widget.mediaPath : null);
     final current = _positionNotifier.value;
     final caller = StackTrace.current;
     if (url != null && peakstormHlsNeedsRemountSeek(url, current, position)) {
@@ -444,6 +448,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
       positionNotifier: _positionNotifier,
       duration: _durationNotifier.value,
       streamUrl: url,
+      mediaPath: widget.mediaPath,
+      magnetLink: widget.magnetLink,
       onSeekAwayFromEof: () {
         _seekAwayFromEofAt = DateTime.now();
         _abortiveCompletedLatched = false;

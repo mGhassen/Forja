@@ -1,4 +1,5 @@
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
+import 'package:meta/meta.dart';
 
 import 'ids.dart';
 
@@ -401,6 +402,22 @@ class EnginePack {
 
   EnginePack copyWithPlugins(List<EnginePlugin> next) =>
       copyWith(plugins: next);
+}
+
+/// Remote manifest is newer than the installed pack.
+@immutable
+class EnginePackUpdateInfo {
+  const EnginePackUpdateInfo({
+    required this.sourceUrl,
+    required this.packName,
+    required this.installedVersion,
+    required this.remoteVersion,
+  });
+
+  final String sourceUrl;
+  final String packName;
+  final String installedVersion;
+  final String remoteVersion;
 }
 
 /// Compare semver-ish `a.b.c` strings. Returns negative if [a] < [b].

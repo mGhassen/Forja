@@ -143,8 +143,20 @@ function fetchTextViaFlareSolverr(ctx, url) {
 }
 
 function fetchTextCloudflare(ctx, directUrl) {
-  return fetchText(ctx, directUrl).then(function (html) {
-    if (!isCloudflareChallenge(html)) return html;
+  function viaFlare() {
+    if (!flareSolverrBase(ctx)) {
+      return Promise.reject(new Error('Cloudflare blocked (configure FlareSolverr)'));
+    }
     return fetchTextViaFlareSolverr(ctx, directUrl);
-  });
+  }
+
+  return fetchText(ctx, directUrl)
+    .then(function (html) {
+      if (!isCloudflareChallenge(html)) return html;
+      return viaFlare();
+    })
+    .catch(function (err) {
+      if (!flareSolverrBase(ctx)) return Promise.reject(err);
+      return viaFlare();
+    });
 }

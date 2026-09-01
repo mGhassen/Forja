@@ -49,7 +49,14 @@ function search(ctx) {
   return fetchTextCloudflare(ctx, direct)
     .then(parseHtml)
     .catch(function (e) {
-      ctx.log('search failed: ' + String(e && e.message ? e.message : e));
+      var msg = String(e && e.message ? e.message : e);
+      if (/HTTP 403|Cloudflare|flare/i.test(msg) && !flareSolverrBase(ctx)) {
+        ctx.log(
+          'search failed: Cloudflare blocked — set FlareSolverr/Byparr URL in Settings → Sources → Torrent search',
+        );
+      } else {
+        ctx.log('search failed: ' + msg);
+      }
       return [];
     });
 }

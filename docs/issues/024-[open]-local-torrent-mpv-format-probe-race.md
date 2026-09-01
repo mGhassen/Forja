@@ -29,7 +29,7 @@
 | 8 | I24-T08 | Player: 180s local-torrent open wait + re-open on transient format probe; engine prefer 256 KiB / min 64 KiB head | ✅ |
 | 9 | I24-T09 | Player: keep torrent Range seek (`force-seekable=yes`); bound lavf probe instead of `seekable=0` (which permanently blocked scrub) | ✅ |
 | 10 | I24-T10 | Player: open-phase sequential lavf (`seekable=0`); enable Range scrub only after decode via `ensureLocalTorrentSeekable` (T09 regression) | ✅ |
-| 11 | I24-T11 | Player: re-assert `ensureLocalTorrentSeekable` on every torrent scrub + resume seek (T09 flag never wired) | ✅ |
+| 11 | I24-T11 | Player: after decode, reopen torrent with seekable lavf + Range scrub; re-assert on every scrub (runtime `force-seekable` cannot override open-phase `seekable=0`) | ✅ |
 
 ---
 
@@ -94,6 +94,6 @@ Observed: Torrentio magnet on desktop — swarm ~30% (~260 MB) at 4+ MB/s, playe
 
 ### Follow-up (I24-T11) — 2026-09-01
 
-Observed: torrent plays after T10 but scrub logs `Cannot seek in this stream` / `force-seekable=yes` on every seek. T09 documented re-assert on every scrub; `seekPlayerPreservingProgress` had `ensureTorrentSeekable` but nothing passed it — only the one-shot call at end of `waitForPlayerStreamOpen` ran.
+Observed: torrent plays after T10 but scrub logs `Cannot seek in this stream` / `force-seekable=yes` on every seek. T09 documented re-assert on every scrub; wiring alone was not enough — lavf opened with `seekable=0` and runtime `force-seekable=yes` does not flip the demuxer.
 
-**Fix:** pass localhost torrent URL into `seekPlayerPreservingProgress` (desktop + mobile `_seekTo`); call `ensureLocalTorrentSeekable` before resume seek in `ensureOpenedNearPosition`.
+**Fix:** `promoteLocalTorrentToSeekablePlayback` — after first decoded frame, apply seekable mpv props and **reopen** the localhost URL at the current position (probe stays sequential; playback demuxer is Range-capable). Re-assert props on every scrub + resume seek.

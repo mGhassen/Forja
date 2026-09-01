@@ -106,6 +106,24 @@ class EngineService {
 
   Future<List<EnginePack>> listPacks() => PluginRegistry.instance.listPacks();
 
+  /// Check installed packs against remote manifests (no install).
+  Future<Map<String, EnginePackUpdateInfo>> checkPackUpdates(
+    List<EnginePack> packs,
+  ) async {
+    final out = <String, EnginePackUpdateInfo>{};
+    await Future.wait([
+      for (final pack in packs)
+        () async {
+          if (pack.plugins.isEmpty) return;
+          if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) return;
+          if (PluginRegistry.isRetiredCatalogPack(pack)) return;
+          final info = await PluginRegistry.instance.peekRemoteUpdate(pack);
+          if (info != null) out[pack.sourceUrl] = info;
+        }(),
+    ]);
+    return out;
+  }
+
   /// Settings list — prefs first (instant), ensure/hydrate in background.
   Future<List<EnginePack>> listUserPacks() async {
     final cached = await PluginRegistry.instance.listPacksRaw();

@@ -40,7 +40,6 @@ class PluginRegistry {
       ValueNotifier<String?>(null);
 
   Future<void>? _officialEnsureFuture;
-  bool _officialUpdateChecked = false;
   final Set<String> _scriptRepairAttempted = {};
 
   /// Test-only HTTP client override (MockClient).
@@ -728,15 +727,6 @@ class PluginRegistry {
             pending.add(install(pack.sourceUrl));
           }
           if (pending.isNotEmpty) await Future.wait(pending);
-        } else if (!_officialUpdateChecked) {
-          _officialUpdateChecked = true;
-          final pending = <Future<void>>[];
-          for (final pack in packs) {
-            if (pack.plugins.isEmpty) continue;
-            if (_asLocalFile(pack.sourceUrl) != null) continue;
-            pending.add(_maybeRefreshIfNewer(pack.sourceUrl, pack));
-          }
-          if (pending.isNotEmpty) await Future.wait(pending);
         }
         _clearOfficialInstallError();
       } catch (e) {
@@ -756,52 +746,31 @@ class PluginRegistry {
     }
   }
 
-  Future<void> _maybeRefreshIfNewer(
-    String manifestUrl,
-    EnginePack local,
-  ) =>
-      maybeRefreshIfNewer(manifestUrl, local);
-
-  /// Public for [PluginInstallCoordinator] — install if remote version newer.
-  Future<bool> maybeRefreshIfNewer(
-    String manifestUrl,
-    EnginePack local,
-  ) async {
-    if (isLocalManifestUrl(manifestUrl)) {
-      try {
-        final body = await _fetchText(manifestUrl);
-        final map = jsonDecode(body);
-        if (map is! Map) return false;
-        final remoteVer = (map['version'] as String?)?.trim() ?? '';
-        if (remoteVer.isEmpty) return false;
-        if (compareEngineSemver(remoteVer, local.version) <= 0) return false;
-        debugPrint(
-          '[engine] ${local.name} local checkout — '
-          '$remoteVer > ${local.version}',
-        );
-        await install(manifestUrl);
-        return true;
-      } catch (e) {
-        debugPrint('[engine] ${local.name} local version check failed: $e');
-        return false;
-      }
-    }
+  /// Fetch manifest `version` without installing (Settings update badge).
+  Future<String?> peekRemoteVersion(String manifestUrl) async {
     try {
       final body = await _fetchText(manifestUrl);
       final map = jsonDecode(body);
-      if (map is! Map) return false;
+      if (map is! Map) return null;
       final remoteVer = (map['version'] as String?)?.trim() ?? '';
-      if (remoteVer.isEmpty) return false;
-      if (compareEngineSemver(remoteVer, local.version) <= 0) return false;
-      debugPrint(
-        '[engine] ${local.name} $remoteVer > ${local.version} — refreshing',
-      );
-      await install(manifestUrl);
-      return true;
+      return remoteVer.isEmpty ? null : remoteVer;
     } catch (e) {
-      debugPrint('[engine] ${local.name} version check failed: $e');
-      return false;
+      debugPrint('[engine] peek remote version failed ($manifestUrl): $e');
+      return null;
     }
+  }
+
+  /// Returns update info when the remote manifest version is newer.
+  Future<EnginePackUpdateInfo?> peekRemoteUpdate(EnginePack local) async {
+    final remoteVer = await peekRemoteVersion(local.sourceUrl);
+    if (remoteVer == null) return null;
+    if (compareEngineSemver(remoteVer, local.version) <= 0) return null;
+    return EnginePackUpdateInfo(
+      sourceUrl: local.sourceUrl,
+      packName: local.name,
+      installedVersion: local.version,
+      remoteVersion: remoteVer,
+    );
   }
 
   void _clearOfficialInstallError() {
@@ -813,7 +782,6 @@ class PluginRegistry {
 
   Future<void> retryOfficialInstall() async {
     officialInstallError.value = null;
-    _officialUpdateChecked = false;
     await ensureOfficialInstalled(force: true);
     if (officialInstallError.value != null) {
       throw Exception(officialInstallError.value);
