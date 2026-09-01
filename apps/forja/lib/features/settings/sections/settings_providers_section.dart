@@ -355,6 +355,47 @@ class _SettingsProvidersSectionState
                 final builtIn = NuvioService.isBundled(addon.manifestUrl);
                 final allOn = addon.scrapers.isNotEmpty &&
                     addon.scrapers.every((s) => s.enabled);
+                final trailing = Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ForjaSwitch(
+                      value: allOn,
+                      scale: ForjaSwitch.settingsScale,
+                      onChanged: addon.scrapers.isEmpty
+                          ? null
+                          : (val) async {
+                              await NuvioService.instance.setAllScrapersEnabled(
+                                manifestUrl: addon.manifestUrl,
+                                enabled: val,
+                              );
+                            },
+                    ),
+                    if (!builtIn)
+                      _AddonRemoveActions(
+                        onRemove: () => _removeNuvioAddon(addon.manifestUrl),
+                      ),
+                  ],
+                );
+                final scraperRows = addon.scrapers.map((s) {
+                  final subtitle = [
+                    if (s.description != null && s.description!.isNotEmpty)
+                      s.description!,
+                    if (s.supportedTypes.isNotEmpty)
+                      s.supportedTypes.join(', '),
+                  ].join(' \u00b7 ');
+                  return SettingsToggleRow(
+                    title: s.name,
+                    subtitle: subtitle.isEmpty ? 'Scraper' : subtitle,
+                    value: s.enabled,
+                    onChanged: (val) async {
+                      await NuvioService.instance.setScraperEnabled(
+                        manifestUrl: addon.manifestUrl,
+                        scraperId: s.id,
+                        enabled: val,
+                      );
+                    },
+                  );
+                }).toList();
                 return Theme(
                   data: Theme.of(
                     context,
@@ -381,49 +422,12 @@ class _SettingsProvidersSectionState
                         color: ForjaShellColors.textSecondary,
                       ),
                     ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ForjaSwitch(
-                          value: allOn,
-                          scale: ForjaSwitch.settingsScale,
-                          onChanged: addon.scrapers.isEmpty
-                              ? null
-                              : (val) async {
-                                  await NuvioService.instance
-                                      .setAllScrapersEnabled(
-                                    manifestUrl: addon.manifestUrl,
-                                    enabled: val,
-                                  );
-                                },
-                        ),
-                        if (!builtIn)
-                          _AddonRemoveActions(
-                            onRemove: () =>
-                                _removeNuvioAddon(addon.manifestUrl),
-                          ),
-                      ],
+                    trailing: settingsExpansionTrailing(context, trailing),
+                    children: settingsExpansionChildren(
+                      context,
+                      trailing: trailing,
+                      children: scraperRows,
                     ),
-                    children: addon.scrapers.map((s) {
-                      final subtitle = [
-                        if (s.description != null && s.description!.isNotEmpty)
-                          s.description!,
-                        if (s.supportedTypes.isNotEmpty)
-                          s.supportedTypes.join(', '),
-                      ].join(' \u00b7 ');
-                      return SettingsToggleRow(
-                        title: s.name,
-                        subtitle: subtitle.isEmpty ? 'Scraper' : subtitle,
-                        value: s.enabled,
-                        onChanged: (val) async {
-                          await NuvioService.instance.setScraperEnabled(
-                            manifestUrl: addon.manifestUrl,
-                            scraperId: s.id,
-                            enabled: val,
-                          );
-                        },
-                      );
-                    }).toList(),
                   ),
                 );
               },
@@ -1009,60 +1013,95 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+    final titleBlock = _confirming
+        ? const Text(
+            'Remove this addon?',
+            style: TextStyle(
+              color: Color(0xFFF87171),
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          )
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.title,
+                style: TextStyle(
+                  color: widget.enabled
+                      ? ForjaShellColors.textPrimary
+                      : ForjaShellColors.textSecondary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                widget.subtitle,
+                style: const TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  fontSize: 12.5,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          );
+
+    final rowBody = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
       child: Row(
         children: [
           widget.leading,
           const SizedBox(width: 12),
-          Expanded(
-            child: _confirming
-                ? const Text(
-                    'Remove this addon?',
-                    style: TextStyle(
-                      color: Color(0xFFF87171),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.title,
-                        style: TextStyle(
-                          color: widget.enabled
-                              ? ForjaShellColors.textPrimary
-                              : ForjaShellColors.textSecondary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.subtitle,
-                        style: const TextStyle(
-                          color: ForjaShellColors.textSecondary,
-                          fontSize: 12.5,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-          if (!_confirming)
+          Expanded(child: titleBlock),
+          if (!_confirming && !tv)
             ForjaSwitch(
               value: widget.enabled,
               scale: ForjaSwitch.settingsScale,
               onChanged: widget.onEnabledChanged,
             ),
+        ],
+      ),
+    );
+
+    if (!tv) {
+      return Row(
+        children: [
+          Expanded(child: rowBody),
           _AddonRemoveActions(
             confirming: _confirming,
             onConfirmingChanged: (v) => setState(() => _confirming = v),
             onRemove: widget.onRemove,
           ),
         ],
-      ),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: shellFocusableTap(
+            context: context,
+            onTap: _confirming
+                ? null
+                : () => widget.onEnabledChanged(!widget.enabled),
+            scaleOnFocus: 1.0,
+            showFocusRail: true,
+            tvTabId: 'settings',
+            tvZone: ShellTvZone.settings,
+            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+            child: rowBody,
+          ),
+        ),
+        _AddonRemoveActions(
+          confirming: _confirming,
+          onConfirmingChanged: (v) => setState(() => _confirming = v),
+          onRemove: widget.onRemove,
+        ),
+      ],
     );
   }
 }
@@ -1238,7 +1277,8 @@ class _AddonFeatureChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final chip = Material(
       color: selected
           ? ForjaShellColors.chipSelectedBg
           : ForjaShellColors.surfaceElevated,
@@ -1246,6 +1286,7 @@ class _AddonFeatureChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
+        canRequestFocus: !tv,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
@@ -1268,6 +1309,20 @@ class _AddonFeatureChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (!tv) return chip;
+
+    return shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 8,
+      scaleOnFocus: 1.0,
+      showFocusRail: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      child: chip,
     );
   }
 }

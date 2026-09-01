@@ -154,16 +154,20 @@ class SettingsEnginePackExpansion extends StatelessWidget {
                 ),
               ],
             ),
-            trailing: trailing,
-            children: [
-              SettingsEnginePluginGroupList(
-                sourceUrl: pack.sourceUrl,
-                byGroup: grouped.byGroup,
-                orderedGroups: grouped.orderedGroups,
-                groupLabel: groupLabel,
-                tabRowId: tabRowId,
-              ),
-            ],
+            trailing: settingsExpansionTrailing(context, trailing),
+            children: settingsExpansionChildren(
+              context,
+              trailing: trailing,
+              children: [
+                SettingsEnginePluginGroupList(
+                  sourceUrl: pack.sourceUrl,
+                  byGroup: grouped.byGroup,
+                  orderedGroups: grouped.orderedGroups,
+                  groupLabel: groupLabel,
+                  tabRowId: tabRowId,
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -335,14 +339,18 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
             ),
           ],
         ),
-        trailing: trailing,
-        children: [
-          SettingsLiveSportCapabilityTabs(
-            sourceUrl: pack.sourceUrl,
-            plugins: plugins,
-            tabRowId: 'live-sport-pack-tabs-${pack.sourceUrl.hashCode}',
-          ),
-        ],
+        trailing: settingsExpansionTrailing(context, trailing),
+        children: settingsExpansionChildren(
+          context,
+          trailing: trailing,
+          children: [
+            SettingsLiveSportCapabilityTabs(
+              sourceUrl: pack.sourceUrl,
+              plugins: plugins,
+              tabRowId: 'live-sport-pack-tabs-${pack.sourceUrl.hashCode}',
+            ),
+          ],
+        ),
       ),
     );
   }

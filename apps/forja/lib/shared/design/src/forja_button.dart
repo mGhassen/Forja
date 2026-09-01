@@ -230,11 +230,29 @@ class _ForjaButtonState extends State<ForjaButton> {
           if (linear == KeyEventResult.handled) return linear;
           if (shellTvIsNavigationKey(event)) {
             final key = event.logicalKey;
-            if (key == LogicalKeyboardKey.arrowUp ||
-                key == LogicalKeyboardKey.arrowDown ||
-                key == LogicalKeyboardKey.arrowLeft ||
-                key == LogicalKeyboardKey.arrowRight) {
-              return KeyEventResult.handled;
+            TraversalDirection? direction;
+            if (key == LogicalKeyboardKey.arrowLeft) {
+              direction = TraversalDirection.left;
+            } else if (key == LogicalKeyboardKey.arrowRight) {
+              direction = TraversalDirection.right;
+            } else if (key == LogicalKeyboardKey.arrowUp) {
+              direction = TraversalDirection.up;
+            } else if (key == LogicalKeyboardKey.arrowDown) {
+              direction = TraversalDirection.down;
+            }
+            final focusNode = widget.focusNode ?? node;
+            if (direction != null) {
+              final vertical = direction == TraversalDirection.up ||
+                  direction == TraversalDirection.down;
+              final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
+              var current = focusNode;
+              var moved = false;
+              for (var i = 0; i < steps; i++) {
+                if (!current.focusInDirection(direction)) break;
+                moved = true;
+                current = FocusManager.instance.primaryFocus ?? current;
+              }
+              if (moved) return KeyEventResult.handled;
             }
           }
         } else if (shellTvIsNavigationKey(event)) {

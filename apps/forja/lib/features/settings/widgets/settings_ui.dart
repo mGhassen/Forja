@@ -212,6 +212,33 @@ class SettingsCategoryTile extends StatelessWidget {
   }
 }
 
+/// TV: [ExpansionTile.trailing] sits beside the header and steals ↓ into a
+/// horizontal strip. Omit [trailing] on TV and render it at the top of
+/// [children] after expand so vertical D-pad walks the page.
+Widget? settingsExpansionTrailing(BuildContext context, Widget? trailing) {
+  if (trailing == null) return null;
+  if (ShellScope.inputPolicyOf(context).useFocusableMoodChips) return null;
+  return trailing;
+}
+
+List<Widget> settingsExpansionChildren(
+  BuildContext context, {
+  Widget? trailing,
+  required List<Widget> children,
+}) {
+  if (trailing == null ||
+      !ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
+    return children;
+  }
+  return [
+    Padding(
+      padding: const EdgeInsets.only(left: 4, right: 2, bottom: 10),
+      child: Align(alignment: Alignment.centerRight, child: trailing),
+    ),
+    ...children,
+  ];
+}
+
 /// Flat labeled section of settings rows - no card box, hairline row dividers.
 class SettingsGroup extends StatelessWidget {
   const SettingsGroup({
