@@ -169,6 +169,17 @@ class TorrentSearchProviders {
     return resultSource == expected;
   }
 
+  /// All chip: merge duplicate magnets when no view filter or 2+ filters.
+  /// One view-filter chip → show that indexer raw (no cross-provider merge).
+  static bool sourcesPanelMergeBest({
+    required bool allChip,
+    required int viewFilterCount,
+  }) {
+    if (!allChip) return false;
+    if (viewFilterCount == 1) return false;
+    return true;
+  }
+
   /// Chip filter — prefer host-stamped [_providerId] over JS [source] label.
   static bool matchesTorrentRow(
     String selectedChipId,

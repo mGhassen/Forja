@@ -49,6 +49,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   static const Duration _splashDuration = Duration(seconds: 5);
   static const Duration _continueOfferAfter = Duration(seconds: 12);
   static const Duration _stuckStepAfter = Duration(seconds: 10);
+  static const Duration _settingsSyncTimeout = Duration(seconds: 30);
 
   late final AnimationController _motionController;
   late final Animation<double> _motion;
@@ -60,7 +61,9 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   bool _offerContinue = false;
 
   Completer<void>? _earlyContinue;
+  Completer<void>? _earlySyncContinue;
   Timer? _continueOfferTimer;
+  Timer? _syncContinueTimer;
   Timer? _stuckStepTimer;
   int? _lastCompletedSteps;
   bool _packListenersArmed = false;
@@ -91,6 +94,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   void dispose() {
     _disarmPackContinueListeners();
     _continueOfferTimer?.cancel();
+    _syncContinueTimer?.cancel();
     _stuckStepTimer?.cancel();
     _motionController.dispose();
     super.dispose();
@@ -120,10 +124,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       if (!selected) {
         throw StateError('Profile unavailable');
       }
-      _setStatus('Syncing settings…');
-      await ref
-          .read(profileSettingsSyncProvider.notifier)
-          .pullAndMergeForProfileSwitch();
+      await _syncProfileSettings();
       if (!mounted) return;
 
       final needs = await BootNeeds.resolve();
@@ -138,6 +139,78 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       if (!mounted || _finished) return;
       await _waitOutSplash();
       _finish(false);
+    }
+  }
+
+  /// Cloud pull for the incoming profile — rotate status like intro splash,
+  /// timeout soft-fails (keep local), offer continue when slow.
+  Future<void> _syncProfileSettings() async {
+    const steps = <String>[
+      'Syncing settings…',
+      'Pulling your tabs and sources…',
+      'Applying playback preferences…',
+      'Almost ready…',
+    ];
+    _setStatus(steps.first);
+
+    final earlySync = Completer<void>();
+    _earlySyncContinue = earlySync;
+    _syncContinueTimer?.cancel();
+    _syncContinueTimer = Timer(_continueOfferAfter, () {
+      if (mounted && !_finished) setState(() => _offerContinue = true);
+    });
+
+    final syncFuture = ref
+        .read(profileSettingsSyncProvider.notifier)
+        .pullAndMergeForProfileSwitch();
+
+    try {
+      await _awaitWithRotatingStatus(
+        Future.any<void>([
+          syncFuture,
+          earlySync.future,
+        ]).timeout(
+          _settingsSyncTimeout,
+          onTimeout: () {
+            debugPrint(
+              '[ProfileSplash] Settings sync timed out after '
+              '${_settingsSyncTimeout.inSeconds}s — opening with local cache',
+            );
+          },
+        ),
+        steps,
+      );
+    } finally {
+      _syncContinueTimer?.cancel();
+      _syncContinueTimer = null;
+      _earlySyncContinue = null;
+      if (mounted && !_finished) {
+        setState(() => _offerContinue = false);
+      }
+    }
+  }
+
+  /// Rotate [steps] while [work] runs — same cadence as intro splash hold lines.
+  Future<void> _awaitWithRotatingStatus(
+    Future<void> work,
+    List<String> steps,
+  ) async {
+    if (steps.isEmpty) {
+      await work;
+      return;
+    }
+    var index = 0;
+    _setStatus(steps[index]);
+
+    while (mounted && !_finished) {
+      final finished = await Future.any<bool>([
+        work.then((_) => true),
+        Future<void>.delayed(const Duration(milliseconds: 1800))
+            .then((_) => false),
+      ]);
+      if (finished) return;
+      index = (index + 1) % steps.length;
+      _setStatus(steps[index]);
     }
   }
 
@@ -251,6 +324,20 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
 
   void _continueInBackground() {
     if (!mounted || _finished) return;
+
+    final earlySync = _earlySyncContinue;
+    if (earlySync != null && !earlySync.isCompleted) {
+      earlySync.complete();
+      _syncContinueTimer?.cancel();
+      _syncContinueTimer = null;
+      if (mounted) setState(() => _offerContinue = false);
+      ForjaToast.info(
+        'Opening with settings saved on this device.',
+        duration: const Duration(seconds: 3),
+      );
+      return;
+    }
+
     PluginInstallCoordinator.instance.suppressBanner.value = false;
     final early = _earlyContinue;
     if (early != null && !early.isCompleted) {
@@ -399,6 +486,11 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
                                     fontWeight: FontWeight.w500,
                                     decoration: TextDecoration.none,
                                   ),
+                                ),
+                                const SizedBox(height: 10),
+                                SplashLoadingDots(
+                                  color: ForjaShellColors.textSecondary
+                                      .withValues(alpha: 0.65),
                                 ),
                                 ValueListenableBuilder(
                                   valueListenable: packProgress,

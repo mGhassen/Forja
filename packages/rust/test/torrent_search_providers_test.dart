@@ -90,6 +90,37 @@ void main() {
     expect(into['magnet:?xt=urn:btih:def']!['name'], 'b');
   });
 
+  test('sourcesPanelMergeBest follows All + view-filter rules', () {
+    expect(
+      TorrentSearchProviders.sourcesPanelMergeBest(
+        allChip: true,
+        viewFilterCount: 0,
+      ),
+      isTrue,
+    );
+    expect(
+      TorrentSearchProviders.sourcesPanelMergeBest(
+        allChip: true,
+        viewFilterCount: 1,
+      ),
+      isFalse,
+    );
+    expect(
+      TorrentSearchProviders.sourcesPanelMergeBest(
+        allChip: true,
+        viewFilterCount: 2,
+      ),
+      isTrue,
+    );
+    expect(
+      TorrentSearchProviders.sourcesPanelMergeBest(
+        allChip: false,
+        viewFilterCount: 0,
+      ),
+      isFalse,
+    );
+  });
+
   test('mergeByMagnet skips empty magnets', () {
     final into = <String, Map<String, dynamic>>{};
     TorrentSearchProviders.mergeByMagnet(into, [

@@ -1680,6 +1680,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           );
         });
     var out = List<TorrentResult>.from(list);
+    if (TorrentSearchProviders.sourcesPanelMergeBest(
+      allChip: TorrentSearchProviders.isAllChip(_selectedSourceId),
+      viewFilterCount: _torrentViewFilterProviderIds.length,
+    )) {
+      out = TorrentSearchProviders.dedupeTorrentResultsByMagnet(out);
+    }
     return out..sort(_compare);
   }
 
