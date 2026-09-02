@@ -126,19 +126,16 @@ class HubListFollow {
       _invalidate(container);
       return ok;
     }
-    final kind = t.resolvedMediaType;
     await MyListService().upsertCatalog(
       pluginId: t.pluginId,
       open: t.open.toJson(),
       uniqueId: t.uniqueId,
-      mediaType: kind,
+      mediaType: t.resolvedMediaType,
       title: t.title,
       posterPath: t.posterPath,
       listStatus: to,
       tmdbId: t.tmdbId,
       tmdbMediaType: t.tmdbMediaType,
-      anilistId: kind == 'anime' ? t.mediaIdInt : null,
-      kisskhId: kind == 'drama' ? t.mediaIdInt : null,
       voteAverage: t.voteAverage,
       releaseDate: t.releaseDate,
     );

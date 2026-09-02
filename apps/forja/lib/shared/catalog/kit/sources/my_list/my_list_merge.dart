@@ -98,30 +98,24 @@ Map<String, dynamic>? _localMatch(
   List<Map<String, dynamic>> allLocal,
   Map<String, dynamic> item,
 ) {
-  final anilist = myListAsInt(item['anilistId']);
-  final kisskh = myListAsInt(item['kisskhId']);
   final tmdb = myListAsInt(item['tmdbId']);
   final mt = item['mediaType']?.toString();
-  final simklKeys = myListItemHideKeys(item);
+  final remoteKeys = myListItemHideKeys(item);
+  final remoteOpenIds = <int>{
+    for (final v in [
+      item['anilistId'],
+      item['kisskhId'],
+      item['tmdbId'],
+    ])
+      if (myListAsInt(v) != null) myListAsInt(v)!,
+  };
   for (final local in allLocal) {
-    if (anilist != null && myListAsInt(local['anilistId']) == anilist) {
+    if (remoteKeys.isNotEmpty &&
+        myListItemHideKeys(local).intersection(remoteKeys).isNotEmpty) {
       return local;
     }
-    if (kisskh != null && myListAsInt(local['kisskhId']) == kisskh) {
-      return local;
-    }
-    // Hub catalog rows often only store ids inside catalogOpen.
     final openId = _catalogOpenIdInt(local['catalogOpen']);
-    if (anilist != null && openId == anilist) {
-      final surface = _catalogOpenSurface(local['catalogOpen']);
-      if (surface == null || surface == 'anime') return local;
-    }
-    if (kisskh != null && openId == kisskh) {
-      final surface = _catalogOpenSurface(local['catalogOpen']);
-      if (surface == null || surface == 'drama') return local;
-    }
-    if (simklKeys.isNotEmpty &&
-        myListItemHideKeys(local).intersection(simklKeys).isNotEmpty) {
+    if (openId != null && remoteOpenIds.contains(openId)) {
       return local;
     }
     if (tmdb != null && myListAsInt(local['tmdbId']) == tmdb) {
@@ -141,12 +135,6 @@ Map<String, dynamic>? _localMatch(
 int? _catalogOpenIdInt(Object? openRaw) {
   if (openRaw is! Map) return null;
   return myListAsInt(openRaw['id']);
-}
-
-String? _catalogOpenSurface(Object? openRaw) {
-  if (openRaw is! Map) return null;
-  final surface = openRaw['surface']?.toString();
-  return (surface == null || surface.isEmpty) ? null : surface;
 }
 
 List<Map<String, dynamic>> mergeLocalHubs(

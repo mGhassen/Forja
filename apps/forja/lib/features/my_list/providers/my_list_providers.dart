@@ -66,22 +66,10 @@ Set<String> myListItemHideKeys(Map<String, dynamic> item) {
   if (kisskh is int) keys.add('kisskh_$kisskh');
   final open = item['catalogOpen'];
   if (open is Map) {
-    final openId = open['id'];
-    final idInt = openId is int
-        ? openId
-        : (openId is num
-            ? openId.toInt()
-            : int.tryParse(openId?.toString() ?? ''));
-    final surface = open['surface']?.toString();
-    if (idInt != null) {
-      if (surface == 'anime' || item['mediaType']?.toString() == 'anime') {
-        keys.add('anilist_$idInt');
-      }
-      if (surface == 'drama' ||
-          item['mediaType']?.toString() == 'asian_drama' ||
-          item['mediaType']?.toString() == 'drama') {
-        keys.add('kisskh_$idInt');
-      }
+    final surface = open['surface']?.toString().trim() ?? '';
+    final id = open['id']?.toString().trim() ?? '';
+    if (surface.isNotEmpty && id.isNotEmpty) {
+      keys.add('open:${surface}:$id');
     }
   }
   final tmdb = item['tmdbId'];

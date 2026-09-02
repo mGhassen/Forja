@@ -49,8 +49,6 @@ Map<String, dynamic> _overlayListFields(
     'posterPath',
     'voteAverage',
     'releaseDate',
-    'anilistId',
-    'kisskhId',
     'tmdbId',
     'pluginId',
     'catalogOpen',

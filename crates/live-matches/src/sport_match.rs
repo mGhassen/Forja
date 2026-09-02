@@ -558,48 +558,14 @@ fn broadcast_significant_tokens(label: &str) -> Vec<String> {
         .collect()
 }
 
-/// Brands that explode into dozens of numbered IPTV clones when the guide only
-/// says the brand (LiveSoccerTV "DAZN" → every "DAZN CA 01..N").
-const GENERIC_BROADCAST_BRANDS: &[&str] = &[
-    "dazn",
-    "espn",
-    "bein",
-    "paramount",
-    "peacock",
-    "fubo",
-    "supersport",
-    "dstv",
-    "digiturk",
-    "sportsnet",
-    "tnt",
-    "tntsports",
-    "sky",
-    "nowtv",
-    "mlbtv",
-    "nbcsports",
-    "foxsports",
-    "yesnetwork",
-    "willow",
-    "eurosport",
-];
-
-fn is_generic_broadcast_brand_token(token: &str) -> bool {
-    GENERIC_BROADCAST_BRANDS.contains(&token)
-}
-
+/// Guide listed only a network name (`DAZN`, `Viaplay`) with no product/number.
+/// Those explode into every numbered IPTV clone — require programme confirmation.
+/// Multi-token / numbered hints (`DAZN 4`, `Sky Sports Main Event`) stay strong.
 fn hint_is_bare_brand(tokens: &[String]) -> bool {
-    let mut brand = false;
-    for t in tokens {
-        if is_generic_broadcast_brand_token(t) {
-            if brand {
-                return false;
-            }
-            brand = true;
-            continue;
-        }
-        return false;
+    match tokens {
+        [t] => !t.is_empty() && !t.chars().all(|c| c.is_ascii_digit()),
+        _ => false,
     }
-    brand
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -620,21 +586,67 @@ pub enum BroadcastMatchMode {
     PreferEpg,
 }
 
-fn epg_confirms_broadcast_fixture(game: &MatchGame, c: &Candidate) -> bool {
-    let epg = c.description.to_lowercase();
-    if epg.trim().is_empty() {
+/// Channel / EPG text that looks like a fixture title (teams already baked in).
+fn text_looks_like_fixture(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    for sep in [" vs ", " v ", " versus ", " @ ", " at "] {
+        if lower.contains(sep) {
+            return true;
+        }
+    }
+    // "PRESTON - BRISTOL CITY" style guide lines.
+    for sep in [" - ", " – ", " — "] {
+        if let Some(i) = lower.find(sep) {
+            let left = lower[..i].trim();
+            let right = lower[i + sep.len()..].trim();
+            let left_ok = left.split_whitespace().any(|w| w.len() >= 3);
+            let right_ok = right.split_whitespace().any(|w| w.len() >= 3);
+            if left_ok && right_ok {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn text_confirms_broadcast_fixture(game: &MatchGame, text: &str) -> bool {
+    let text = text.to_lowercase();
+    if text.trim().is_empty() {
         return false;
     }
-    if text_has_title_phrase(&epg, &game.title_phrases) {
+    if text_has_title_phrase(&text, &game.title_phrases) {
         return true;
     }
     if !game.is_team_game() {
-        return count_token_hits(&epg, &game.specific_tokens) >= 2;
+        return count_token_hits(&text, &game.specific_tokens) >= 2;
     }
     let home = team_match_tokens(&game.home_team);
     let away = team_match_tokens(&game.away_team);
-    matches_team_in_epg(&epg, &game.home_team, &home)
-        && matches_team_in_epg(&epg, &game.away_team, &away)
+    matches_team_in_epg(&text, &game.home_team, &home)
+        && matches_team_in_epg(&text, &game.away_team, &away)
+}
+
+fn epg_confirms_broadcast_fixture(game: &MatchGame, c: &Candidate) -> bool {
+    text_confirms_broadcast_fixture(game, &c.description)
+}
+
+/// True when name/EPG already names *some* fixture that is not this match.
+fn channel_embeds_foreign_fixture(game: &MatchGame, c: &Candidate) -> bool {
+    let name = c.name.trim();
+    let desc = c.description.trim();
+    let name_fixture = text_looks_like_fixture(name);
+    let desc_fixture = text_looks_like_fixture(desc);
+    if !name_fixture && !desc_fixture {
+        return false;
+    }
+    if name_fixture && text_confirms_broadcast_fixture(game, name) {
+        return false;
+    }
+    if desc_fixture && text_confirms_broadcast_fixture(game, desc) {
+        return false;
+    }
+    // Name/EPG embeds a fixture but neither confirms ours.
+    true
 }
 
 fn broadcast_hint_hits_label(bc: &str, channel_label: &str) -> bool {
@@ -723,6 +735,11 @@ fn broadcast_channel_result_eligible(
     c: &Candidate,
     mode: BroadcastMatchMode,
 ) -> bool {
+    // Event IPTV rows bake the programme into the channel name. Matching only
+    // the network (TeliaPlay / Viaplay) would dump every Events clone — 1000+.
+    if channel_embeds_foreign_fixture(game, c) {
+        return false;
+    }
     let Some(kind) = broadcast_channel_candidate_hit_kind(game, c) else {
         return false;
     };
@@ -732,6 +749,10 @@ fn broadcast_channel_result_eligible(
             let has_epg = !c.description.trim().is_empty();
             if has_epg {
                 epg_confirms_broadcast_fixture(game, c)
+            } else if text_looks_like_fixture(&c.name) {
+                // Fixture is in the name (common for Events channels) — treat
+                // as programme text; foreign fixtures already rejected above.
+                text_confirms_broadcast_fixture(game, &c.name)
             } else {
                 kind == BroadcastHitKind::Strong
             }
@@ -1023,6 +1044,12 @@ pub fn match_streams(
 
         if broadcast_channel_result_eligible(game, s, BroadcastMatchMode::PreferEpg) {
             tiers[0].push((idx, s.start_timestamp));
+            continue;
+        }
+
+        // Channel name already names a different fixture — never promote on
+        // weak title/token overlap.
+        if channel_embeds_foreign_fixture(game, s) {
             continue;
         }
 
@@ -1571,6 +1598,86 @@ mod tests {
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);
+    }
+
+    #[test]
+    fn teliaplay_events_wrong_fixture_in_name_rejected() {
+        // Live Soccer TV may list "TeliaPlay" for an Egyptian match; IPTV Events
+        // clones bake Championship fixtures into the channel name. Must not dump
+        // West Bromwich when searching Abu Qair Semad.
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "Abu Qair Semad vs Al Ittihad",
+            "sport": "football",
+            "homeTeam": "Abu Qair Semad",
+            "awayTeam": "Al Ittihad",
+            "dateMs": 1_756_800_000_000i64,
+            "broadcastChannels": ["TeliaPlay", "Viaplay (SE)", "TV2 Play (NO)"]
+        }));
+        let cands = vec![
+            Candidate {
+                name: "West Bromwich vs Charlton @ Sep 2 20:37 :TeliaPlay SE 11".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/telia.m3u8".into(),
+                category_label: "Sweden · TeliaPlay Events".into(),
+                logo: String::new(),
+                stream_id: "t11".into(),
+                epg_channel_id: String::new(),
+            },
+            Candidate {
+                name: "Soccer: Preston vs Bristol City @ Sep 1 20:35".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/via.m3u8".into(),
+                category_label: "Sweden · ViaPlay Events".into(),
+                logo: String::new(),
+                stream_id: "v1".into(),
+                epg_channel_id: String::new(),
+            },
+            Candidate {
+                name: "Abu Qair Semad vs Al Ittihad @ Sep 2 19:00 :TeliaPlay SE 03".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/ok.m3u8".into(),
+                category_label: "Sweden · TeliaPlay Events".into(),
+                logo: String::new(),
+                stream_id: "t3".into(),
+                epg_channel_id: String::new(),
+            },
+        ];
+        let strong = broadcast_channel_matches(&g, &cands, BroadcastMatchMode::StrongOnly);
+        assert!(
+            strong.iter().all(|h| h.get("stream_id").and_then(|v| v.as_str()) == Some("t3")),
+            "only the matching Events row: {:?}",
+            strong
+        );
+        let hits = match_streams(&g, &cands, &[]);
+        assert_eq!(hits.len(), 1, "wrong Events clones must not flood: {:?}", hits);
+        assert_eq!(
+            hits[0].get("stream_id").and_then(|v| v.as_str()),
+            Some("t3")
+        );
+    }
+
+    #[test]
+    fn bare_viaplay_hint_is_weak_brand() {
+        let mut g = game();
+        g.broadcast_channels = vec!["Viaplay".into(), "TeliaPlay".into()];
+        let cands = vec![Candidate {
+            name: "Viaplay SE 07".into(),
+            description: String::new(),
+            start_timestamp: None,
+            stream_url: "https://x/v.m3u8".into(),
+            category_label: "Sweden · ViaPlay Events".into(),
+            logo: String::new(),
+            stream_id: "7".into(),
+            epg_channel_id: String::new(),
+        }];
+        let hits = broadcast_channel_matches(&g, &cands, BroadcastMatchMode::StrongOnly);
+        assert!(
+            hits.is_empty(),
+            "bare Viaplay/TeliaPlay must not dump Events family on fast path"
+        );
     }
 
     #[test]
