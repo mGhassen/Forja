@@ -192,12 +192,7 @@ async function resolveUrl(ctx, url, name, cfg) {
   var unlocked = await unlockEmbed(ctx, raw, cfg);
   if (unlocked) return withName(unlocked, name || 'Streamic');
 
-  return {
-    webviewOnly: true,
-    embedUrl: raw,
-    referer: ref,
-    name: name || 'Streamic',
-  };
+  return null;
 }
 
 function parseTeams(m) {
@@ -537,7 +532,7 @@ async function collectEmbeds(ctx, m, cfg) {
   var out = [];
   for (var i = 0; i < pending.length; i++) {
     var row = await resolveUrl(ctx, pending[i].url, pending[i].name, cfg);
-    if (row) out.push(row);
+    if (row && row.url && !row.webviewOnly) out.push(row);
   }
   return out;
 }

@@ -148,7 +148,7 @@ async function resolveUrl(ctx, url, name, cfg) {
   var unlocked = await unlockEmbed(ctx, raw, cfg || {});
   if (unlocked) return withName(unlocked, name || 'TimStreams');
 
-  return { webviewOnly: true, embedUrl: raw, referer: ref, name: name || 'TimStreams' };
+  return null;
 }
 
 async function resolveByEvent(ctx, cfg) {

@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-live",
   "name": "ForjaHQ Live Sports",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "plugins": [
     {
       "id": "streamed",
@@ -147,6 +147,19 @@
       "config": {
         "base": "https://m.liveonsat.com",
         "pages": ["2day.php"]
+      }
+    },
+    {
+      "id": "livesoccertv",
+      "name": "Live Soccer TV",
+      "description": "Live Soccer TV schedule + broadcast channel hints for Forja Sports",
+      "entry": "livesoccertv.js",
+      "types": ["live_sport"],
+      "capabilities": ["catalog"],
+      "kind": "http",
+      "config": {
+        "base": "https://www.livesoccertv.com",
+        "pages": ["/"]
       }
     }
   ]

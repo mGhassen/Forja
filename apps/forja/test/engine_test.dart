@@ -1989,6 +1989,7 @@ void main() {
           'streamic',
           'espn',
           'liveonsat',
+          'livesoccertv',
         ];
         for (final id in unifiedIds) {
           final p = plugins.firstWhere((e) => e.id == id);
@@ -2008,6 +2009,12 @@ void main() {
         expect(
           await loadForjaHqFile('live/liveonsat.js'),
           contains('m.liveonsat.com'),
+        );
+        final livesoccertv = plugins.firstWhere((e) => e.id == 'livesoccertv');
+        expect(livesoccertv.supportsLiveResolve, isFalse);
+        expect(
+          await loadForjaHqFile('live/livesoccertv.js'),
+          contains('www.livesoccertv.com'),
         );
         expect(
           await loadForjaHqFile('live/timstreams.js'),

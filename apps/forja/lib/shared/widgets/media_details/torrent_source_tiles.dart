@@ -621,6 +621,16 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final hasProvider =
         widget.provider != null && widget.provider!.trim().isNotEmpty;
     final hasViewers = (widget.viewerCount ?? 0) > 0;
+    final viewerColumnBadges = hasViewers
+        ? widget.badges
+            .where((b) => b.tone == _SourceBadgeTone.emphasis)
+            .toList()
+        : const <_SourceBadgeSpec>[];
+    final inlineBadges = hasViewers
+        ? widget.badges
+            .where((b) => b.tone != _SourceBadgeTone.emphasis)
+            .toList()
+        : widget.badges;
     final hasSeeders =
         widget.seeders != null && widget.seeders!.trim().isNotEmpty;
     final hasLanguageFlags = widget.languageCodes.isNotEmpty;
@@ -677,8 +687,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              if (hasLanguageFlags ||
-                                  widget.badges.isNotEmpty) ...[
+                              if (hasLanguageFlags || inlineBadges.isNotEmpty) ...[
                                 const SizedBox(height: 8),
                                 Wrap(
                                   spacing: 6,
@@ -689,7 +698,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                       _LanguageFlagBadges(
                                         codes: widget.languageCodes,
                                       ),
-                                    for (final badge in widget.badges)
+                                    for (final badge in inlineBadges)
                                       _SourceMetaBadge(badge: badge),
                                   ],
                                 ),
@@ -703,6 +712,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                         ),
                         if (hasProvider ||
                             hasViewers ||
+                            viewerColumnBadges.isNotEmpty ||
                             hasSeeders ||
                             showCopyMagnet) ...[
                           const SizedBox(width: 8),
@@ -754,6 +764,19 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                           height: 1.1,
                                         ),
                                       ),
+                                    ],
+                                  ),
+                                ],
+                                if (viewerColumnBadges.isNotEmpty) ...[
+                                  if (hasProvider || hasViewers)
+                                    const SizedBox(height: 4),
+                                  Wrap(
+                                    spacing: 6,
+                                    runSpacing: 6,
+                                    alignment: WrapAlignment.end,
+                                    children: [
+                                      for (final badge in viewerColumnBadges)
+                                        _SourceMetaBadge(badge: badge),
                                     ],
                                   ),
                                 ],

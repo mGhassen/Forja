@@ -433,7 +433,10 @@ mixin _LiveMatchesForjaLive
         if (catalog.id == 'espn' || filterId == 'espn') {
           _syncEspnGamesFromStreamed();
         }
-        if (catalog.id == 'liveonsat' || filterId == 'liveonsat') {
+        if (catalog.id == 'liveonsat' ||
+            filterId == 'liveonsat' ||
+            catalog.id == 'livesoccertv' ||
+            filterId == 'livesoccertv') {
           putLiveOnSatBroadcastIndex([
             for (final row in rows)
               if (row['sportMatchGame'] is Map)

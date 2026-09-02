@@ -15,6 +15,7 @@ abstract final class LiveSportCapabilities {
     'streamic': ('catalog-streamic', 'live-streamic'),
     'espn': ('catalog-espn', null),
     'liveonsat': ('catalog-liveonsat', null),
+    'livesoccertv': ('catalog-livesoccertv', null),
   };
 
   /// App-owned first-run defaults (Settings → Forja Sports). External live

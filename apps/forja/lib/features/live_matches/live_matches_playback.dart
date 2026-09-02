@@ -666,22 +666,7 @@ mixin _LiveMatchesPlayback
       final fields = forjaLiveStreamFieldsFromRowName(
         (row['name'] ?? row['title'] ?? '').toString(),
       );
-      if (row['webviewOnly'] == true) {
-        final embed = (row['embedUrl'] ?? '').toString().trim();
-        if (embed.isEmpty) continue;
-        out.add(
-          _StreamedStream(
-            id: source.id,
-            streamNo: i + 1,
-            language: fields.language,
-            hd: fields.hd,
-            embedUrl: embed,
-            source: pluginSource,
-            viewers: viewers,
-          ),
-        );
-        continue;
-      }
+      if (row['webviewOnly'] == true) continue;
       final url = (row['url'] ?? '').toString().trim();
       if (url.isEmpty) continue;
       out.add(
@@ -1516,7 +1501,7 @@ mixin _LiveMatchesPlayback
     }
 
     final isPpv = _isPpvMatch(match, stream);
-    if (isPpv) {
+    if (isPpv || match.isForjaLive) {
       LiveMatchesEngine.engineResolveFailed();
       return;
     }

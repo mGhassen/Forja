@@ -2830,31 +2830,51 @@ Future<List<Map<String, dynamic>>> _liveOnSatBroadcastIndexCached() async {
   }
 }
 
+const _broadcastCatalogPluginIds = ['liveonsat', 'livesoccertv'];
+
 Future<List<Map<String, dynamic>>> _fetchLiveOnSatBroadcastIndex() async {
   try {
     await EngineService.instance.ensureOfficialInstalled();
     final packs = await EngineService.instance.listPacks();
-    EnginePlugin? plugin;
-    for (final p in packs) {
-      for (final pl in p.plugins) {
-        if (pl.id == 'liveonsat') {
-          plugin = pl;
+    final plugins = <EnginePlugin>[];
+    for (final id in _broadcastCatalogPluginIds) {
+      for (final p in packs) {
+        EnginePlugin? hit;
+        for (final pl in p.plugins) {
+          if (pl.id == id) {
+            hit = pl;
+            break;
+          }
+        }
+        if (hit != null) {
+          plugins.add(hit);
           break;
         }
       }
-      if (plugin != null) break;
     }
-    if (plugin == null) return [];
-    final rows = await EngineService.instance.runLiveCatalog(
-      catalogPlugin: plugin,
-    );
-    return [
-      for (final row in rows)
-        if (row['sportMatchGame'] is Map)
-          Map<String, dynamic>.from(row['sportMatchGame'] as Map),
-    ];
+    if (plugins.isEmpty) return [];
+    final out = <Map<String, dynamic>>[];
+    final seen = <String>{};
+    for (final plugin in plugins) {
+      final rows = await EngineService.instance.runLiveCatalog(
+        catalogPlugin: plugin,
+      );
+      for (final row in rows) {
+        if (row['sportMatchGame'] is! Map) continue;
+        final game = Map<String, dynamic>.from(row['sportMatchGame'] as Map);
+        final key = [
+          (game['title'] ?? '').toString().toLowerCase(),
+          '${game['dateMs'] ?? ''}',
+          (game['category'] ?? '').toString().toLowerCase(),
+        ].join('|');
+        if (seen.contains(key)) continue;
+        seen.add(key);
+        out.add(game);
+      }
+    }
+    return out;
   } catch (e) {
-    debugPrint('[LiveMatches] LiveOnSat broadcast index failed: $e');
+    debugPrint('[LiveMatches] broadcast catalog index failed: $e');
     return [];
   }
 }
@@ -2921,12 +2941,12 @@ String _iptvSportsStreamsCacheKey({
   final id = matchId.trim().isNotEmpty
       ? matchId.trim()
       : (game['id'] ?? '').toString().trim();
-  final channels = (game['broadcastChannels'] as List?)
-          ?.map((e) => e.toString().trim().toLowerCase())
-          .where((e) => e.isNotEmpty)
-          .toList() ??
-      const <String>[];
-  channels.sort();
+  final channels = List<String>.from(
+    (game['broadcastChannels'] as List?)
+            ?.map((e) => e.toString().trim().toLowerCase())
+            .where((e) => e.isNotEmpty) ??
+        const <String>[],
+  )..sort();
   final channelKey = channels.join('|');
   return '$portalKey|${cats.join(',')}|$id|$home|$away|$dateMs|$channelKey';
 }
