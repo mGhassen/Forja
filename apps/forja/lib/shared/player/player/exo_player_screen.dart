@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/player/providers/player_prefs_providers.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/playback/torrent_loading_sink.dart';
+import 'package:forja/shared/playback/stream_loading.dart';
 import 'package:forja/shared/playback/stremio_external_link.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -15,7 +15,6 @@ import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
-import 'package:forja/shared/player/controls/player_episode_loading_card.dart';
 import 'package:forja/shared/player/controls/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
@@ -170,7 +169,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _loadingNextEp = false;
   String _episodeLoadingLabel = 'Next episode';
   String _episodeLoadingStatus = 'Loading next episode…';
-  TorrentLoadingStatus? _episodeTorrentStatus;
   bool _episodeLoadingFailed = false;
   double _volume = 100;
   double _rate = 1.0;
@@ -955,7 +953,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       _loadingNextEp = true;
       _episodeLoadingLabel = label;
       _episodeLoadingStatus = status;
-      _episodeTorrentStatus = null;
       _episodeLoadingFailed = false;
     });
   }
@@ -964,17 +961,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (!mounted || !_loadingNextEp) return;
     setState(() {
       _episodeLoadingStatus = status;
-      _episodeTorrentStatus = null;
       _episodeLoadingFailed = failed;
-    });
-  }
-
-  void _setEpisodeTorrentLoading(TorrentLoadingStatus status) {
-    if (!mounted || !_loadingNextEp) return;
-    setState(() {
-      _episodeTorrentStatus = status;
-      _episodeLoadingStatus = status.headline;
-      _episodeLoadingFailed = false;
     });
   }
 
@@ -2446,18 +2433,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     ),
                   ),
                 ),
-              if (_loadingNextEp)
-                Positioned(
-                  bottom: 120,
-                  right: 16,
-                  child: PlayerEpisodeLoadingCard(
-                    episodeLabel: _episodeLoadingLabel,
-                    status: _episodeLoadingStatus,
-                    torrentStatus: _episodeTorrentStatus,
-                    failed: _episodeLoadingFailed,
-                  ),
-                ),
-              if (!_loadingNextEp)
+              if (!isStreamLoadingOverlayActive && !_loadingNextEp)
                 PlayerStatusOverlay(
                   controller: _statusController,
                   bufferingListenable: _isBufferingNotifier,

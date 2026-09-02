@@ -7,6 +7,8 @@ import 'package:rust/rust.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
+import 'package:forja/shared/playback/stream_loading.dart';
+import 'package:forja/shared/widgets/direct_stream_loading_panel.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -203,6 +205,7 @@ class LoadingOverlay extends StatefulWidget {
   final Movie movie;
   final String? message;
   final ValueNotifier<String>? messageNotifier;
+  final ValueNotifier<StreamLoadingKind>? kindNotifier;
   final ValueNotifier<TorrentLoadingStatus?>? torrentStatusNotifier;
   final ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier;
   final ValueNotifier<bool>? fadeOutNotifier;
@@ -228,6 +231,7 @@ class LoadingOverlay extends StatefulWidget {
     required this.movie,
     this.message,
     this.messageNotifier,
+    this.kindNotifier,
     this.torrentStatusNotifier,
     this.providerProbesNotifier,
     this.fadeOutNotifier,
@@ -256,6 +260,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   late Animation<double> _pulseAnimation;
   late Animation<double> _fadeOutAnimation;
   late String _message;
+  StreamLoadingKind _kind = StreamLoadingKind.direct;
   TorrentLoadingStatus? _torrentStatus;
   List<StreamProviderProbe> _probes = const [];
   bool _providerListOpen = false;
@@ -276,9 +281,11 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     _message = widget.messageNotifier?.value ??
         widget.message ??
         'Starting stream';
+    _kind = widget.kindNotifier?.value ?? StreamLoadingKind.direct;
     _torrentStatus = widget.torrentStatusNotifier?.value;
     _failure = widget.failureNotifier?.value;
     widget.messageNotifier?.addListener(_onMessageChanged);
+    widget.kindNotifier?.addListener(_onKindChanged);
     widget.torrentStatusNotifier?.addListener(_onTorrentStatusChanged);
     widget.providerProbesNotifier?.addListener(_onProbesChanged);
     widget.fadeOutNotifier?.addListener(_onFadeOutRequested);
@@ -403,6 +410,20 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     }
   }
 
+  void _onKindChanged() {
+    final notifier = widget.kindNotifier;
+    if (notifier == null) return;
+    late final StreamLoadingKind next;
+    try {
+      next = notifier.value;
+    } on FlutterError {
+      return;
+    }
+    if (next != _kind && mounted) {
+      setState(() => _kind = next);
+    }
+  }
+
   void _onTorrentStatusChanged() {
     final notifier = widget.torrentStatusNotifier;
     if (notifier == null) return;
@@ -475,6 +496,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   @override
   void dispose() {
     _safeRemoveListener(widget.messageNotifier, _onMessageChanged);
+    _safeRemoveListener(widget.kindNotifier, _onKindChanged);
     _safeRemoveListener(widget.torrentStatusNotifier, _onTorrentStatusChanged);
     _safeRemoveListener(widget.providerProbesNotifier, _onProbesChanged);
     _safeRemoveListener(widget.fadeOutNotifier, _onFadeOutRequested);
@@ -490,7 +512,11 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   bool get _showProviderProbes =>
-      widget.providerProbesNotifier != null && _probes.isNotEmpty;
+      _kind == StreamLoadingKind.direct &&
+      widget.providerProbesNotifier != null &&
+      _probes.isNotEmpty;
+
+  bool get _isTorrentKind => _kind == StreamLoadingKind.torrent;
 
   int get _probeTotal => _probes.length;
 
@@ -521,43 +547,6 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   List<StreamProviderProbe> get _tryingProbes => _probes
       .where((p) => p.status == StreamProviderProbeStatus.trying)
       .toList(growable: false);
-
-  /// Step copy only — server names live in the layers list, not the headline.
-  String get _probeStatusHeadline {
-    final msg = _message.trim().toUpperCase();
-    if (msg.contains('OPENING')) return 'OPENING PLAYER…';
-    if (msg.contains('PROBING')) return 'PROBING STREAMS…';
-    if (_tryingProbes.isNotEmpty || msg.contains('CHECKING')) {
-      return 'CHECKING SERVERS…';
-    }
-    if (msg.contains('FINDING') || msg.contains('LOOKING')) {
-      return 'FINDING SERVERS…';
-    }
-    if (msg.isNotEmpty) return msg.endsWith('…') || msg.endsWith('...') ? msg : '$msg…';
-    return 'FINDING SERVERS…';
-  }
-
-  /// Short step hint — never provider names (those are in the servers card).
-  String? get _probeStatusDetail {
-    final msg = _message.trim().toUpperCase();
-    if (msg.contains('OPENING')) return 'Starting playback';
-    if (msg.contains('PROBING')) return 'Testing which links play';
-    if (_tryingProbes.isNotEmpty || msg.contains('CHECKING')) {
-      return 'Asking servers for streams';
-    }
-    if (msg.contains('FINDING') || msg.contains('LOOKING') || msg.isEmpty) {
-      return 'Looking up available providers';
-    }
-    return null;
-  }
-
-  /// Probe UI uses headline + detail for steps; skip activity (often duplicated names).
-  String? get _probeActivityLine => null;
-
-  bool get _probeWorkActive => _tryingProbes.isNotEmpty;
-
-  bool get _showTorrentStatus =>
-      !_showProviderProbes && _torrentStatus != null;
 
   bool _canManualCheck(StreamProviderProbe probe) {
     if (widget.onManualCheckProvider == null) return false;
@@ -624,38 +613,66 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     };
   }
 
-  Widget _genericLoadingStatus() {
+  Widget _optionalResolveBanners() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          _message,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.88),
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            height: 1.3,
-            letterSpacing: 0.15,
-            fontFamily: 'Poppins',
-          ),
-        ),
-        if (widget.subtitle != null) ...[
-          const SizedBox(height: 8),
+        if (widget.recheckBanner != null) ...[
           Text(
-            widget.subtitle!,
+            widget.recheckBanner!,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.48),
+              color: Colors.amber.shade200.withValues(alpha: 0.95),
               fontSize: 13,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               height: 1.35,
-              letterSpacing: 0.1,
               fontFamily: 'Poppins',
             ),
           ),
+          const SizedBox(height: 14),
+        ],
+        if (widget.showReloadButton) ...[
+          Text(
+            widget.reloadHint,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.62),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              height: 1.35,
+              fontFamily: 'Poppins',
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: widget.onReload,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: Text(widget.reloadLabel),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+              textStyle: const TextStyle(
+                fontFamily: 'Poppins',
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ],
+    );
+  }
+
+  Widget _resolveStatusBody() {
+    if (_isTorrentKind && _torrentStatus != null) {
+      return TorrentLoadingStatusPanel(status: _torrentStatus!);
+    }
+    return DirectStreamLoadingPanel(
+      message: _message,
+      subtitle: widget.subtitle,
+      probes: _probes,
     );
   }
 
@@ -923,170 +940,6 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     );
   }
 
-  Widget _probeProgressFooter() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (widget.recheckBanner != null) ...[
-          Text(
-            widget.recheckBanner!,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.amber.shade200.withValues(alpha: 0.95),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              height: 1.35,
-              fontFamily: 'Poppins',
-            ),
-          ),
-          const SizedBox(height: 14),
-        ],
-        if (widget.showReloadButton) ...[
-          Text(
-            widget.reloadHint,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.62),
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              height: 1.35,
-              fontFamily: 'Poppins',
-            ),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: widget.onReload,
-            icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: Text(widget.reloadLabel),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
-              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-              textStyle: const TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        Text(
-          _probeStatusHeadline,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.75),
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 3,
-            fontFamily: 'Poppins',
-          ),
-        ),
-        if (_probeStatusDetail != null) ...[
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              _probeStatusDetail!,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.45),
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 2,
-                fontFamily: 'Poppins',
-              ),
-            ),
-          ),
-        ],
-        if (_probeActivityLine != null) ...[
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              _probeActivityLine!,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.58),
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 1.2,
-                fontFamily: 'Poppins',
-              ),
-            ),
-          ),
-        ],
-        const SizedBox(height: 16),
-        SizedBox(
-          width: 220,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: _probeProgress),
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.easeOutCubic,
-              builder: (context, value, _) => LinearProgressIndicator(
-                value: _probeWorkActive ? null : (value > 0 ? value : null),
-                minHeight: 3,
-                backgroundColor: Colors.white.withValues(alpha: 0.12),
-                color: AppTheme.primaryColor,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          _probeSkipped > 0
-              ? '$_probeChecked / $_probeTotal CHECKED  ·  $_probeReady UP  ·  $_probeSkipped SKIPPED ON TV'
-              : '$_probeChecked / $_probeTotal CHECKED  ·  $_probeReady UP',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.5),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 2,
-            fontFamily: 'Poppins',
-          ),
-        ),
-        if (_probeSkipped > 0) ...[
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              _skippedProbeLabels.join(' · '),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.35),
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 1.2,
-                fontFamily: 'Poppins',
-              ),
-            ),
-          ),
-        ],
-        if (widget.subtitle != null) ...[
-          const SizedBox(height: 6),
-          Text(
-            widget.subtitle!.toUpperCase(),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.35),
-              fontSize: 10,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 1.5,
-              fontFamily: 'Poppins',
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
   String? get _logoImageUrl {
     final path = widget.movie.logoPath;
     if (path.isEmpty || path.toLowerCase().endsWith('.svg')) return null;
@@ -1184,67 +1037,14 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                           failure: _failure!,
                           compact: true,
                         )
-                      else if (_showProviderProbes)
-                        _probeProgressFooter()
                       else ...[
-                        if (widget.recheckBanner != null) ...[
-                          Text(
-                            widget.recheckBanner!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.amber.shade200.withValues(alpha: 0.95),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              height: 1.35,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                        ],
-                        if (widget.showReloadButton) ...[
-                          Text(
-                            widget.reloadHint,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.62),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              height: 1.35,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          OutlinedButton.icon(
-                            onPressed: widget.onReload,
-                            icon: const Icon(Icons.refresh_rounded, size: 16),
-                            label: Text(widget.reloadLabel),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
-                              side: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.35),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 22,
-                                vertical: 10,
-                              ),
-                              textStyle: const TextStyle(
-                                fontFamily: 'Poppins',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                        ],
+                        _optionalResolveBanners(),
                         const CircularProgressIndicator(
                           color: AppTheme.primaryColor,
                           strokeWidth: 3,
                         ),
                         const SizedBox(height: 28),
-                        if (_showTorrentStatus)
-                          TorrentLoadingStatusPanel(status: _torrentStatus!)
-                        else
-                          _genericLoadingStatus(),
+                        _resolveStatusBody(),
                       ],
                       if (!_showingFailure && widget.onCancel != null) ...[
                         SizedBox(height: _showProviderProbes ? 20 : 24),

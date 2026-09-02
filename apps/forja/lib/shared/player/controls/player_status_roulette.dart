@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/playback/stream_loading.dart';
 import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
 
@@ -21,6 +22,7 @@ void upsertStreamOpenStatus(
   PlayerStatusController controller,
   StreamOpenStatusStage stage,
 ) {
+  if (isStreamLoadingOverlayActive) return;
   controller.upsert(
     kStreamOpenStatusId,
     streamOpenStatusLabel(stage),

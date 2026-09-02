@@ -217,7 +217,6 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       _s._isLoadingNextEp = true;
       _s._episodeLoadingLabel = label;
       _s._episodeLoadingStatus = status;
-      _s._episodeTorrentStatus = null;
       _s._episodeLoadingFailed = false;
     });
   }
@@ -226,17 +225,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     if (!mounted || !_s._isLoadingNextEp) return;
     setState(() {
       _s._episodeLoadingStatus = status;
-      _s._episodeTorrentStatus = null;
       _s._episodeLoadingFailed = failed;
-    });
-  }
-
-  void _setEpisodeTorrentLoading(TorrentLoadingStatus status) {
-    if (!mounted || !_s._isLoadingNextEp) return;
-    setState(() {
-      _s._episodeTorrentStatus = status;
-      _s._episodeLoadingStatus = status.headline;
-      _s._episodeLoadingFailed = false;
     });
   }
 
@@ -244,7 +233,6 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     if (!mounted) return;
     setState(() {
       _s._isLoadingNextEp = false;
-      _s._episodeTorrentStatus = null;
       _s._episodeLoadingFailed = false;
     });
   }

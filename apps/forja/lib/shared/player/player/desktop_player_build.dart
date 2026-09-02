@@ -114,23 +114,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                 // ── PiP chrome (drag + throw snap + hover controls) ─────
                 if (pipMode) _buildPipRevertOverlay(),
 
-                if (_s._isLoadingNextEp)
-                  Positioned(
-                    bottom: 100,
-                    right: 24,
-                    child: PlayerEpisodeLoadingCard(
-                      episodeLabel: _s._episodeLoadingLabel.isEmpty
-                          ? 'Loading episode'
-                          : _s._episodeLoadingLabel,
-                      status: _s._episodeLoadingStatus.isEmpty
-                          ? 'Please wait…'
-                          : _s._episodeLoadingStatus,
-                      torrentStatus: _s._episodeTorrentStatus,
-                      failed: _s._episodeLoadingFailed,
-                    ),
-                  ),
-
-                if (!_s._isLoadingNextEp)
+                if (!isStreamLoadingOverlayActive && !_s._isLoadingNextEp)
                   PlayerStatusOverlay(
                     controller: _s._statusController,
                     bufferingListenable: _s._isBufferingNotifier,

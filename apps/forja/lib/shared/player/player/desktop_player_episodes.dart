@@ -132,13 +132,7 @@ mixin _DesktopPlayerEpisodes
       _s._nearEndOfEpisode &&
       !_s._isLoadingNextEp;
 
-  /// Extra space under the torrent stats card so it sits above Skip / Next.
-  double get _torrentStatsLift {
-    final skipVisible = _s._activeSkipLabel != null && !_s._skipDismissed;
-    if (skipVisible && _showNextEpButton) return 110;
-    if (skipVisible || _showNextEpButton) return 55;
-    return 0;
-  }
+  double get _torrentStatsLift => 0;
 
   void _beginEpisodeLoading({
     required String label,
@@ -149,7 +143,6 @@ mixin _DesktopPlayerEpisodes
       _s._isLoadingNextEp = true;
       _s._episodeLoadingLabel = label;
       _s._episodeLoadingStatus = status;
-      _s._episodeTorrentStatus = null;
       _s._episodeLoadingFailed = false;
     });
   }
@@ -158,17 +151,7 @@ mixin _DesktopPlayerEpisodes
     if (!mounted || !_s._isLoadingNextEp) return;
     setState(() {
       _s._episodeLoadingStatus = status;
-      _s._episodeTorrentStatus = null;
       _s._episodeLoadingFailed = failed;
-    });
-  }
-
-  void _setEpisodeTorrentLoading(TorrentLoadingStatus status) {
-    if (!mounted || !_s._isLoadingNextEp) return;
-    setState(() {
-      _s._episodeTorrentStatus = status;
-      _s._episodeLoadingStatus = status.headline;
-      _s._episodeLoadingFailed = false;
     });
   }
 
@@ -176,7 +159,6 @@ mixin _DesktopPlayerEpisodes
     if (!mounted) return;
     setState(() {
       _s._isLoadingNextEp = false;
-      _s._episodeTorrentStatus = null;
       _s._episodeLoadingFailed = false;
     });
   }
@@ -544,19 +526,29 @@ mixin _DesktopPlayerEpisodes
       return;
     }
 
-    _beginEpisodeLoading(
-      label: 'Season $season · Episode $episode',
-      status: 'Loading episode info…',
+    var cancelled = false;
+    final session = showStreamLoadingOverlay(
+      context,
+      movie: widget.movie!,
+      kind: StreamLoadingKind.direct,
+      initialMessage: 'Loading episode info…',
+      subtitle: 'Season $season · Episode $episode',
+      onCancel: () => cancelled = true,
     );
-    // Let the loading card paint before resolve starts.
+    setState(() => _s._isLoadingNextEp = true);
     await Future<void>.delayed(Duration.zero);
-    if (!mounted) return;
+    if (!mounted || cancelled) {
+      dismissStreamLoading(session);
+      finishStreamLoadingSession(session);
+      _endEpisodeLoading();
+      return;
+    }
     await _silenceForEpisodeHandoff();
 
     try {
       debugPrint('[EpSwitch] Playing S${season}E$episode');
       _s._saveWatchHistory();
-      _setEpisodeLoadingStatus('Checking sources…');
+      session.messageNotifier.value = 'Checking sources…';
 
       final chain = episodeProviderChain(
         providers: widget.providers,
@@ -570,13 +562,16 @@ mixin _DesktopPlayerEpisodes
 
       EpisodeSwitchResult? resolved;
       for (final key in chain) {
-        _setEpisodeLoadingStatus(
+        session.setKind(
           key == 'torrent'
-              ? 'Resolving torrent…'
-              : key == 'stremio_direct'
-              ? 'Checking Stremio…'
-              : 'Checking sources…',
+              ? StreamLoadingKind.torrent
+              : StreamLoadingKind.direct,
         );
+        session.messageNotifier.value = switch (key) {
+          'torrent' => 'Resolving torrent…',
+          'stremio_direct' => 'Checking Stremio…',
+          _ => 'Checking sources…',
+        };
         resolved = await resolveEpisodeForProvider(
           providerKey: key,
           movie: widget.movie!,
@@ -597,21 +592,21 @@ mixin _DesktopPlayerEpisodes
         throw Exception('Could not find stream for S${season}E$episode');
       }
 
-      if (!mounted) return;
-      _setEpisodeLoadingStatus('Opening stream…');
+      if (!mounted || cancelled || session.cancelled) {
+        dismissStreamLoading(session);
+        finishStreamLoadingSession(session);
+        _endEpisodeLoading();
+        return;
+      }
+      session.messageNotifier.value = 'Opening stream…';
 
       final nextTitle = '${widget.movie!.title} - S$season E$episode';
-      // Catalog torrent/Stremio: open like details Play (url + magnet), not a
-      // webstreaming sources list - localhost torrent URLs are filtered as
-      // "unplayable extracts" in the server-fallback path.
       final catalog = isCatalogSourcesMode(resolved.activeProvider);
-      // Keep the librqbit session alive while the outgoing player disposes -
-      // otherwise replacing the route stops the torrent the next episode just started.
       if (resolved.magnetLink != null && resolved.magnetLink!.isNotEmpty) {
         TorrentStreamService().retainForExternalHandoff = true;
       }
-      // openPlayer (not pushReplacement): clears old player + loading dialogs /
-      // hub host so Back returns to details, not the previous episode.
+      dismissStreamLoading(session);
+      finishStreamLoadingSession(session);
       unawaited(
         AppRouter.openPlayer(
           context,
@@ -644,8 +639,13 @@ mixin _DesktopPlayerEpisodes
       );
     } catch (e) {
       debugPrint('[EpSwitch] Error: $e');
+      dismissStreamLoading(session);
+      finishStreamLoadingSession(session);
       await _resumeAfterFailedEpisodeHandoff();
-      await _failEpisodeLoading('Could not find a stream for this episode');
+      if (mounted) {
+        ForjaToast.info('Could not find a stream for this episode');
+      }
+      _endEpisodeLoading();
     }
   }
 
@@ -922,12 +922,7 @@ mixin _DesktopPlayerEpisodes
     }
   }
 
-  /// Stremio/Torrentio magnet - same UX as [_switchTorrentSource]: keep the
-  /// current player running with a bottom-right card until the new stream is
-  /// ready, then open a fresh player.
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
-    // Supersede a prior episode/magnet loading card — never silent-return
-    // after Sources already dismissed.
     final debrid = SettingsService().debridPlaybackPrefs();
     final useDebrid = debrid.useDebrid;
     final debridService = debrid.service;
@@ -940,8 +935,6 @@ mixin _DesktopPlayerEpisodes
       return;
     }
     if (!mounted) return;
-    final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
-        .toString();
     final pick = catalogPanelSelectionFromStream(stream);
     setState(() {
       if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
@@ -952,81 +945,100 @@ mixin _DesktopPlayerEpisodes
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });
-    _beginEpisodeLoading(
-      label: title,
-      status: 'Starting Local Torrent Engine…',
+
+    var cancelled = false;
+    final loadingMovie =
+        movieForStreamLoading(movie: widget.movie, title: widget.title);
+    final session = showStreamLoadingOverlay(
+      context,
+      movie: loadingMovie,
+      kind: StreamLoadingKind.torrent,
+      initialTorrentStatus: initialTorrentResolveStatus(
+        useDebrid: useDebrid,
+        debridService: debridService,
+      ),
+      onCancel: () => cancelled = true,
     );
     await Future<void>.delayed(Duration.zero);
-    if (!mounted) return;
+    if (!mounted || cancelled) {
+      dismissStreamLoading(session);
+      finishStreamLoadingSession(session);
+      return;
+    }
 
     try {
-      _setEpisodeTorrentLoading(
-        initialTorrentResolveStatus(
-          useDebrid: useDebrid,
-          debridService: debridService,
-        ),
-      );
-
       final resolved = await resolveStremioStream(
         stream: stream,
         profile: PlatformPlayback.capabilities,
         season: widget.selectedSeason,
         episode: widget.selectedEpisode,
-        onStatus: _setEpisodeTorrentLoading,
+        isCancelled: () => cancelled || session.cancelled || !mounted,
+        onStatus: torrentLoadingStatusSink(
+          session.torrentStatusNotifier,
+          cancelled: () => cancelled || session.cancelled || !mounted,
+        ),
       );
-      if (!mounted) return;
+      if (!mounted || cancelled || session.cancelled) {
+        dismissStreamLoading(session);
+        finishStreamLoadingSession(session);
+        return;
+      }
       if (resolved is! StremioPlayable || resolved.streamUrl.isEmpty) {
-        final msg =
-            resolved is StremioResolveFailure && resolved.message.isNotEmpty
+        final msg = resolved is StremioResolveFailure && resolved.message.isNotEmpty
             ? resolved.message
             : 'Failed to resolve stream';
         debugPrint(
           '[Player] ${catalogStreamKindLabel(stream)} switch failed: $msg',
         );
-        await _failEpisodeLoading(msg);
+        dismissStreamLoading(session);
+        finishStreamLoadingSession(session);
+        if (mounted) ForjaToast.info(msg);
         return;
       }
 
-      _setEpisodeLoadingStatus('Opening stream…');
+      session.messageNotifier.value = 'Opening stream…';
       TorrentStreamService().retainForExternalHandoff = true;
 
       final season = widget.selectedSeason;
       final episode = widget.selectedEpisode;
-      final nextTitle =
-          widget.movie != null && season != null && episode != null
+      final nextTitle = widget.movie != null && season != null && episode != null
           ? '${widget.movie!.title} - S$season E$episode'
           : widget.title;
       final base = stream['_addonBaseUrl']?.toString();
       final magnet = resolved.magnetLink;
 
-      Navigator.of(context, rootNavigator: true).pushReplacement(
-        AppRouter.slideRoute(
-          (_) => PlayerScreen(
-            streamUrl: resolved.streamUrl,
-            title: nextTitle,
-            movie: widget.movie,
-            selectedSeason: season,
-            selectedEpisode: episode,
-            magnetLink: magnet,
-            fileIndex: resolved.fileIndex,
-            headers: resolved.headers.isEmpty ? null : resolved.headers,
-            activeProvider: 'stremio_direct',
-            stremioId: widget.stremioId,
-            stremioAddonBaseUrl: base ?? widget.stremioAddonBaseUrl,
-          ),
-        ),
+      await crossfadeStreamLoadingToPlayer(
+        session: session,
+        openPlayer: () async {
+          Navigator.of(context, rootNavigator: true).pushReplacement(
+            AppRouter.slideRoute(
+              (_) => PlayerScreen(
+                streamUrl: resolved.streamUrl,
+                title: nextTitle,
+                movie: widget.movie,
+                selectedSeason: season,
+                selectedEpisode: episode,
+                magnetLink: magnet,
+                fileIndex: resolved.fileIndex,
+                headers: resolved.headers.isEmpty ? null : resolved.headers,
+                activeProvider: 'stremio_direct',
+                stremioId: widget.stremioId,
+                stremioAddonBaseUrl: base ?? widget.stremioAddonBaseUrl,
+              ),
+            ),
+          );
+        },
       );
+      finishStreamLoadingSession(session);
     } catch (e) {
-      debugPrint(
-        '[Player] ${catalogStreamKindLabel(stream)} switch failed: $e',
-      );
-      await _failEpisodeLoading('Failed to resolve stream');
+      debugPrint('[Player] ${catalogStreamKindLabel(stream)} switch failed: $e');
+      dismissStreamLoading(session);
+      finishStreamLoadingSession(session);
+      if (mounted) ForjaToast.info('Failed to resolve stream');
     }
   }
 
   Future<void> _switchTorrentSource(TorrentResult result) async {
-    // Supersede a prior episode/magnet loading card — never silent-return
-    // after Sources already dismissed.
     final debrid = SettingsService().debridPlaybackPrefs();
     final useDebrid = debrid.useDebrid;
     final debridService = debrid.service;
@@ -1039,31 +1051,34 @@ mixin _DesktopPlayerEpisodes
       return;
     }
     if (!mounted) return;
-    // Claim Sources chrome/panel selection immediately — keep on failure.
     setState(() {
       _s._activeMagnet = result.magnet;
       _s._catalogSourceKind = 'torrents';
       _s._currentProvider = 'torrent';
     });
-    // Keep current video playing with the loading card while the new magnet
-    // resolves in the background. Only replace the player when the stream is
-    // ready - never tear down the active swarm first (that freezes mpv).
-    _beginEpisodeLoading(
-      label: result.name,
-      status: 'Starting Local Torrent Engine…',
+
+    var cancelled = false;
+    final loadingMovie =
+        movieForStreamLoading(movie: widget.movie, title: widget.title);
+    final session = showStreamLoadingOverlay(
+      context,
+      movie: loadingMovie,
+      kind: StreamLoadingKind.torrent,
+      initialTorrentStatus: initialTorrentResolveStatus(
+        useDebrid: useDebrid,
+        debridService: debridService,
+      ),
+      onCancel: () => cancelled = true,
     );
     await Future<void>.delayed(Duration.zero);
-    if (!mounted) return;
+    if (!mounted || cancelled) {
+      dismissStreamLoading(session);
+      finishStreamLoadingSession(session);
+      return;
+    }
 
     try {
       final localEngine = PlatformPlayback.capabilities.localTorrentEngine;
-      _setEpisodeTorrentLoading(
-        initialTorrentResolveStatus(
-          useDebrid: useDebrid,
-          debridService: debridService,
-        ),
-      );
-
       final playback = await resolveMagnetForPlayback(
         magnet: result.magnet,
         useDebrid: useDebrid,
@@ -1071,44 +1086,59 @@ mixin _DesktopPlayerEpisodes
         localTorrentEngine: localEngine,
         season: widget.selectedSeason,
         episode: widget.selectedEpisode,
-        onStatus: _setEpisodeTorrentLoading,
+        onStatus: torrentLoadingStatusSink(
+          session.torrentStatusNotifier,
+          cancelled: () => cancelled || session.cancelled || !mounted,
+        ),
       );
-      if (!mounted) return;
+      if (!mounted || cancelled || session.cancelled) {
+        dismissStreamLoading(session);
+        finishStreamLoadingSession(session);
+        return;
+      }
       if (playback == null || playback.url.isEmpty) {
-        await _failEpisodeLoading('Torrent stream failed to start');
+        dismissStreamLoading(session);
+        finishStreamLoadingSession(session);
+        if (mounted) ForjaToast.info('Torrent stream failed to start');
         return;
       }
 
-      _setEpisodeLoadingStatus('Opening stream…');
-      // Keep librqbit alive while the outgoing player disposes.
+      session.messageNotifier.value = 'Opening stream…';
       TorrentStreamService().retainForExternalHandoff = true;
 
       final season = widget.selectedSeason;
       final episode = widget.selectedEpisode;
-      final nextTitle =
-          widget.movie != null && season != null && episode != null
+      final nextTitle = widget.movie != null && season != null && episode != null
           ? '${widget.movie!.title} - S$season E$episode'
           : widget.title;
 
-      Navigator.of(context, rootNavigator: true).pushReplacement(
-        AppRouter.slideRoute(
-          (_) => PlayerScreen(
-            streamUrl: playback.url,
-            title: nextTitle,
-            movie: widget.movie,
-            selectedSeason: season,
-            selectedEpisode: episode,
-            magnetLink: result.magnet,
-            fileIndex: playback.fileIndex,
-            activeProvider: 'torrent',
-            stremioId: widget.stremioId,
-            stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
-          ),
-        ),
+      await crossfadeStreamLoadingToPlayer(
+        session: session,
+        openPlayer: () async {
+          Navigator.of(context, rootNavigator: true).pushReplacement(
+            AppRouter.slideRoute(
+              (_) => PlayerScreen(
+                streamUrl: playback.url,
+                title: nextTitle,
+                movie: widget.movie,
+                selectedSeason: season,
+                selectedEpisode: episode,
+                magnetLink: result.magnet,
+                fileIndex: playback.fileIndex,
+                activeProvider: 'torrent',
+                stremioId: widget.stremioId,
+                stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+              ),
+            ),
+          );
+        },
       );
+      finishStreamLoadingSession(session);
     } catch (e) {
       debugPrint('[Player] Torrent switch failed: $e');
-      await _failEpisodeLoading('Torrent stream failed to start');
+      dismissStreamLoading(session);
+      finishStreamLoadingSession(session);
+      if (mounted) ForjaToast.info('Torrent stream failed to start');
     }
   }
 

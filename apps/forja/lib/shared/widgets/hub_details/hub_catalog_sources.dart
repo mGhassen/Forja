@@ -11,7 +11,7 @@ import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
 import 'package:forja/shared/playback/stremio_external_link.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
 import 'package:forja/shared/player/player/utils.dart';
-import 'package:forja/shared/playback/torrent_loading_sink.dart';
+import 'package:forja/shared/playback/stream_loading.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
 import 'package:forja/shell/app_router.dart';
@@ -120,41 +120,25 @@ Future<void> _playTorrent({
   if (!context.mounted) return;
 
   var cancelled = false;
-  final overlayTorrentStatus = ValueNotifier<TorrentLoadingStatus?>(
-    initialTorrentResolveStatus(
+  final session = showStreamLoadingOverlay(
+    context,
+    movie: movie,
+    kind: StreamLoadingKind.torrent,
+    initialTorrentStatus: initialTorrentResolveStatus(
       useDebrid: useDebrid,
       debridService: debridService,
     ),
+    onCancel: () => cancelled = true,
   );
-  final fadeOutNotifier = ValueNotifier(false);
-  final failureNotifier = ValueNotifier<ResolveFailure?>(null);
-  BuildContext? loadingDialogContext;
-  var cleanedUp = false;
-
-  void cleanup() {
-    if (cleanedUp) return;
-    cleanedUp = true;
-    disposeLoadingOverlayNotifiers([
-      overlayTorrentStatus,
-      fadeOutNotifier,
-      failureNotifier,
-    ]);
-  }
-
-  void popLoading() {
-    final ctx = loadingDialogContext;
-    loadingDialogContext = null;
-    if (ctx != null && ctx.mounted) dismissLoadingOverlayRoute(ctx);
-  }
 
   Future<void> fail(String message) async {
     if (!context.mounted || cancelled) {
-      popLoading();
-      cleanup();
+      dismissStreamLoading(session);
+      finishStreamLoadingSession(session);
       return;
     }
     final action = Completer<void>();
-    failureNotifier.value = ResolveFailure(
+    session.failureNotifier.value = ResolveFailure(
       title: 'Couldn’t start playback',
       detail: message,
       primaryLabel: 'Close',
@@ -164,31 +148,14 @@ Future<void> _playTorrent({
       },
     );
     await action.future;
-    popLoading();
-    cleanup();
+    dismissStreamLoading(session);
+    finishStreamLoadingSession(session);
   }
-
-  showLoadingOverlayDialog(
-    context,
-    builder: (dialogContext) {
-      loadingDialogContext = dialogContext;
-      return LoadingOverlay(
-        movie: movie,
-        torrentStatusNotifier: overlayTorrentStatus,
-        fadeOutNotifier: fadeOutNotifier,
-        failureNotifier: failureNotifier,
-        onCancel: () {
-          cancelled = true;
-          dismissLoadingOverlayRoute(dialogContext);
-        },
-      );
-    },
-  );
 
   await Future<void>.delayed(Duration.zero);
   if (!context.mounted || cancelled) {
-    popLoading();
-    cleanup();
+    dismissStreamLoading(session);
+    finishStreamLoadingSession(session);
     return;
   }
 
@@ -199,14 +166,14 @@ Future<void> _playTorrent({
 
   try {
     if (!magnetLink.startsWith('magnet:')) {
-      overlayTorrentStatus.value = torrentLoadingStatusGeneric(
+      session.torrentStatusNotifier.value = torrentLoadingStatusGeneric(
         'Resolving download link…',
         hint: 'Fetching the magnet from the torrent page.',
       );
       final resolved = await linkResolver.resolve(magnetLink);
-      if (cancelled) {
-        popLoading();
-        cleanup();
+      if (cancelled || session.cancelled) {
+        dismissStreamLoading(session);
+        finishStreamLoadingSession(session);
         return;
       }
       if (resolved.isMagnet) {
@@ -217,7 +184,7 @@ Future<void> _playTorrent({
       }
     }
 
-    overlayTorrentStatus.value = torrentLoadingStatusGeneric(
+    session.torrentStatusNotifier.value = torrentLoadingStatusGeneric(
       playbackResolveLabel(
         useDebrid: useDebrid,
         debridService: debridService,
@@ -236,11 +203,12 @@ Future<void> _playTorrent({
       localTorrentEngine: profile.localTorrentEngine,
       season: episodic ? (season ?? 1) : null,
       episode: episodic ? (episode ?? 1) : null,
-      onStatus: (status) {
-        if (!cancelled) overlayTorrentStatus.value = status;
-      },
+      onStatus: torrentLoadingStatusSink(
+        session.torrentStatusNotifier,
+        cancelled: () => cancelled || session.cancelled,
+      ),
     );
-    if (cancelled) {
+    if (cancelled || session.cancelled) {
       if (playback != null) {
         LanClientService.instance.releaseLanTorrentIfNeeded(
           playUrl: playback.url,
@@ -251,8 +219,8 @@ Future<void> _playTorrent({
           magnet: magnetLink,
         );
       }
-      popLoading();
-      cleanup();
+      dismissStreamLoading(session);
+      finishStreamLoadingSession(session);
       return;
     }
     if (playback == null || playback.url.isEmpty) {
@@ -262,14 +230,14 @@ Future<void> _playTorrent({
     resolvedUrl = playback.url;
     resolvedFileIndex = playback.fileIndex;
   } catch (e) {
-    if (cancelled) {
+    if (cancelled || session.cancelled) {
       if (!profile.localTorrentEngine) {
         LanClientService.instance.releaseLanTorrentAfterCancel(
           magnet: magnetLink,
         );
       }
-      popLoading();
-      cleanup();
+      dismissStreamLoading(session);
+      finishStreamLoadingSession(session);
       return;
     }
     await fail(debridUserMessage(e, debridService));
@@ -279,26 +247,24 @@ Future<void> _playTorrent({
   }
 
   final playUrl = resolvedUrl;
-  if (!context.mounted || cancelled) {
+  if (!context.mounted || cancelled || session.cancelled) {
     LanClientService.instance.releaseLanTorrentIfNeeded(
       playUrl: playUrl,
       magnet: magnetLink,
     );
-    popLoading();
-    cleanup();
+    dismissStreamLoading(session);
+    finishStreamLoadingSession(session);
     return;
   }
 
-  final dialogContext = loadingDialogContext;
-  if (dialogContext == null) {
+  if (session.dialogContext == null) {
     await fail('Torrent stream failed to start.');
     return;
   }
 
   final episodic = hubMediaIsEpisodic(movie);
-  await crossfadeLoadingOverlayToPlayer(
-    loadingDialogContext: dialogContext,
-    fadeOutNotifier: fadeOutNotifier,
+  await crossfadeStreamLoadingToPlayer(
+    session: session,
     openPlayer: () => _openHubCatalogPlayer(
       context: context,
       movie: movie,
@@ -322,7 +288,7 @@ Future<void> _playTorrent({
       ),
     ),
   );
-  cleanup();
+  finishStreamLoadingSession(session);
 }
 
 Future<void> _playStremio({
@@ -410,33 +376,18 @@ Future<void> _playStremio({
   if (!context.mounted) return;
 
   var cancelled = false;
-  final overlayTorrentStatus = ValueNotifier<TorrentLoadingStatus?>(
-    initialStremioTorrentResolveStatus(
+  final session = showStreamLoadingOverlay(
+    context,
+    movie: movie,
+    kind: StreamLoadingKind.torrent,
+    initialTorrentStatus: initialStremioTorrentResolveStatus(
       profile: profile,
       useDebrid: useDebrid,
       debridService: debridService,
     ),
+    onCancel: () => cancelled = true,
   );
-  final fadeOutNotifier = ValueNotifier(false);
-  final failureNotifier = ValueNotifier<ResolveFailure?>(null);
-  BuildContext? loadingDialogContext;
-
-  showLoadingOverlayDialog(
-    context,
-    builder: (dialogContext) {
-      loadingDialogContext = dialogContext;
-      return LoadingOverlay(
-        movie: movie,
-        torrentStatusNotifier: overlayTorrentStatus,
-        fadeOutNotifier: fadeOutNotifier,
-        failureNotifier: failureNotifier,
-        onCancel: () {
-          cancelled = true;
-          dismissLoadingOverlayRoute(dialogContext);
-        },
-      );
-    },
-  );
+  await Future<void>.delayed(Duration.zero);
 
   final resolved = await resolveStremioStream(
     stream: stream,
@@ -444,26 +395,22 @@ Future<void> _playStremio({
     settings: settings,
     season: episodic ? (season ?? 1) : null,
     episode: episodic ? (episode ?? 1) : null,
-    isCancelled: () => cancelled || !context.mounted,
+    isCancelled: () => cancelled || session.cancelled || !context.mounted,
     onStatus: torrentLoadingStatusSink(
-      overlayTorrentStatus,
-      cancelled: () => cancelled,
+      session.torrentStatusNotifier,
+      cancelled: () => cancelled || session.cancelled,
     ),
   );
 
-  if (cancelled || !context.mounted) {
-    disposeLoadingOverlayNotifiers([
-      overlayTorrentStatus,
-      fadeOutNotifier,
-      failureNotifier,
-    ]);
+  if (cancelled || session.cancelled || !context.mounted) {
+    dismissStreamLoading(session);
+    finishStreamLoadingSession(session);
     return;
   }
 
-  if (resolved is StremioPlayable && loadingDialogContext != null) {
-    await crossfadeLoadingOverlayToPlayer(
-      loadingDialogContext: loadingDialogContext!,
-      fadeOutNotifier: fadeOutNotifier,
+  if (resolved is StremioPlayable && session.dialogContext != null) {
+    await crossfadeStreamLoadingToPlayer(
+      session: session,
       openPlayer: () => _openHubCatalogPlayer(
         context: context,
         movie: movie,
@@ -490,17 +437,13 @@ Future<void> _playStremio({
         ),
       ),
     );
-  } else if (resolved is StremioExternalLink) {
-    if (loadingDialogContext != null &&
-        loadingDialogContext!.mounted &&
-        Navigator.of(loadingDialogContext!).canPop()) {
-      Navigator.of(loadingDialogContext!).pop();
-    }
-    disposeLoadingOverlayNotifiers([
-      overlayTorrentStatus,
-      fadeOutNotifier,
-      failureNotifier,
-    ]);
+    finishStreamLoadingSession(session);
+    return;
+  }
+
+  if (resolved is StremioExternalLink) {
+    dismissStreamLoading(session);
+    finishStreamLoadingSession(session);
     if (context.mounted) {
       await handleStremioExternalUrl(
         context,
@@ -509,12 +452,15 @@ Future<void> _playStremio({
         popToRoot: true,
       );
     }
-  } else if (resolved is StremioResolveFailure &&
+    return;
+  }
+
+  if (resolved is StremioResolveFailure &&
       resolved.error != StremioPlaybackError.cancelled &&
-      loadingDialogContext != null &&
-      loadingDialogContext!.mounted) {
+      session.dialogContext != null &&
+      session.dialogContext!.mounted) {
     final action = Completer<void>();
-    failureNotifier.value = ResolveFailure(
+    session.failureNotifier.value = ResolveFailure(
       title: 'Couldn’t start playback',
       detail: resolved.message,
       primaryLabel: 'Close',
@@ -524,20 +470,8 @@ Future<void> _playStremio({
       },
     );
     await action.future;
-    if (loadingDialogContext != null &&
-        loadingDialogContext!.mounted &&
-        Navigator.of(loadingDialogContext!).canPop()) {
-      Navigator.of(loadingDialogContext!).pop();
-    }
-  } else if (loadingDialogContext != null &&
-      loadingDialogContext!.mounted &&
-      Navigator.of(loadingDialogContext!).canPop()) {
-    Navigator.of(loadingDialogContext!).pop();
   }
 
-  disposeLoadingOverlayNotifiers([
-    overlayTorrentStatus,
-    fadeOutNotifier,
-    failureNotifier,
-  ]);
+  dismissStreamLoading(session);
+  finishStreamLoadingSession(session);
 }

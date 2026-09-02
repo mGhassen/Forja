@@ -16,7 +16,7 @@ import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/playback/play_source_effective.dart';
 import 'package:forja/shared/player/controls/player_hub_episode.dart';
 import 'package:forja/shared/player/player/utils.dart';
-import 'package:forja/shared/playback/torrent_loading_sink.dart';
+import 'package:forja/shared/playback/stream_loading.dart';
 import 'package:forja/shared/widgets/loading_overlay.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
@@ -198,12 +198,6 @@ Future<void> runEngineAutoPlay({
 
   var cancelled = false;
   var playGen = 0;
-  final fadeOutNotifier = ValueNotifier(false);
-  final messageNotifier = ValueNotifier('Finding Forja servers…');
-  final torrentStatusNotifier = ValueNotifier<TorrentLoadingStatus?>(null);
-  final probeNotifier = ValueNotifier<List<StreamProviderProbe>>([]);
-  final failureNotifier = ValueNotifier<ResolveFailure?>(null);
-  BuildContext? loadingDialogContext;
   var openedPlayer = false;
   Completer<EngineAutoPlayPick?>? hitCompleter;
 
@@ -214,19 +208,38 @@ Future<void> runEngineAutoPlay({
   var streams = <Map<String, dynamic>>[];
   var fetchedIds = <String>{};
 
-  List<ChangeNotifier> overlayNotifiers() => [
-    fadeOutNotifier,
-    messageNotifier,
-    torrentStatusNotifier,
-    failureNotifier,
-    probeNotifier,
-  ];
-
-  void dismissLoading() {
-    final ctx = loadingDialogContext;
-    loadingDialogContext = null;
-    if (ctx != null && ctx.mounted) dismissLoadingOverlayRoute(ctx);
+  void abortPool() {
+    fetchGen++;
+    inFlight.clear();
+    poolTasks.clear();
+    EngineService.instance.cancelPending();
   }
+
+  late final StreamLoadingSession loadingSession;
+  void cancel() {
+    cancelled = true;
+    playGen++;
+    abortPool();
+    final pending = hitCompleter;
+    if (pending != null && !pending.isCompleted) pending.complete(null);
+    dismissStreamLoading(loadingSession);
+    onCancelUi?.call();
+  }
+
+  loadingSession = showStreamLoadingOverlay(
+    context,
+    movie: movie,
+    kind: StreamLoadingKind.direct,
+    initialMessage: 'Finding Forja servers…',
+    subtitle: loadingSubtitle,
+    onCancel: cancel,
+  );
+  final fadeOutNotifier = loadingSession.fadeOutNotifier;
+  final messageNotifier = loadingSession.messageNotifier;
+  final probeNotifier = loadingSession.probeNotifier;
+  final failureNotifier = loadingSession.failureNotifier;
+
+  void dismissLoading() => dismissStreamLoading(loadingSession);
 
   void publishCache() {
     CatalogSourcesSessionCache.writeEngine(
@@ -240,45 +253,12 @@ Future<void> runEngineAutoPlay({
     );
   }
 
-  void abortPool() {
-    fetchGen++;
-    inFlight.clear();
-    poolTasks.clear();
-    EngineService.instance.cancelPending();
-  }
-
-  void cancel() {
-    cancelled = true;
-    playGen++;
-    abortPool();
-    final pending = hitCompleter;
-    if (pending != null && !pending.isCompleted) pending.complete(null);
-    dismissLoading();
-    onCancelUi?.call();
-  }
-
   bool aborted() => cancelled || !context.mounted;
 
-  showLoadingOverlayDialog(
-    context,
-    builder: (dialogContext) {
-      loadingDialogContext = dialogContext;
-      return LoadingOverlay(
-        movie: movie,
-        messageNotifier: messageNotifier,
-        torrentStatusNotifier: torrentStatusNotifier,
-        providerProbesNotifier: probeNotifier,
-        fadeOutNotifier: fadeOutNotifier,
-        failureNotifier: failureNotifier,
-        subtitle: loadingSubtitle,
-        onCancel: cancel,
-      );
-    },
-  );
   await Future<void>.delayed(Duration.zero);
   if (aborted()) {
     dismissLoading();
-    disposeLoadingOverlayNotifiers(overlayNotifiers());
+    disposeStreamLoadingNotifiers(loadingSession);
     return;
   }
 
@@ -380,7 +360,7 @@ Future<void> runEngineAutoPlay({
             startPosition: resumeAt,
             activeProvider: EngineIds.pluginChip(pinPlugin!),
             pinSource: true,
-            fadeTransition: loadingDialogContext != null,
+            fadeTransition: loadingSession.dialogContext != null,
           );
           return;
         }
@@ -668,7 +648,7 @@ Future<void> runEngineAutoPlay({
         enginePlaySession: activeSession,
         hubEpisodes: hubEpisodes,
         hubEpisodeNumber: hubEpisodeNumber ?? episode,
-        loadingDialogContext: loadingDialogContext,
+        loadingDialogContext: loadingSession.dialogContext,
         fadeOutNotifier: fadeOutNotifier,
         messageNotifier: messageNotifier,
         isAborted: playAborted,
@@ -709,9 +689,7 @@ Future<void> runEngineAutoPlay({
         enginePlaySession: activeSession,
         hubEpisodes: hubEpisodes,
         hubEpisodeNumber: hubEpisodeNumber ?? episode,
-        loadingDialogContext: loadingDialogContext,
-        fadeOutNotifier: fadeOutNotifier,
-        torrentStatusNotifier: torrentStatusNotifier,
+        loadingSession: loadingSession,
         isAborted: playAborted,
       );
       return;
@@ -757,8 +735,12 @@ Future<void> runEngineAutoPlay({
       );
     }
   } finally {
-    if (!openedPlayer) dismissLoading();
-    disposeLoadingOverlayNotifiers(overlayNotifiers());
+    if (!openedPlayer) {
+      dismissLoading();
+      disposeStreamLoadingNotifiers(loadingSession);
+    } else {
+      finishStreamLoadingSession(loadingSession);
+    }
   }
 }
 
@@ -886,9 +868,7 @@ Future<void> _playResolveRow({
   EnginePlaySession? enginePlaySession,
   List<PlayerHubEpisode>? hubEpisodes,
   num? hubEpisodeNumber,
-  required BuildContext? loadingDialogContext,
-  required ValueNotifier<bool> fadeOutNotifier,
-  required ValueNotifier<TorrentLoadingStatus?> torrentStatusNotifier,
+  required StreamLoadingSession loadingSession,
   required bool Function() isAborted,
 }) async {
   if (isAborted()) return;
@@ -898,7 +878,13 @@ Future<void> _playResolveRow({
   if (!await ensureLanP2pPlayback(context)) return;
   if (isAborted() || !context.mounted) return;
 
-  torrentStatusNotifier.value = null;
+  final debrid = settings.debridPlaybackPrefs();
+  loadingSession.setKind(StreamLoadingKind.torrent);
+  loadingSession.torrentStatusNotifier.value = initialStremioTorrentResolveStatus(
+    profile: profile,
+    useDebrid: debrid.useDebrid,
+    debridService: debrid.service,
+  );
   final resolved = await resolveStremioStream(
     stream: stream,
     profile: profile,
@@ -907,14 +893,15 @@ Future<void> _playResolveRow({
     episode: needsEp ? (episode ?? 1) : null,
     isCancelled: isAborted,
     onStatus: torrentLoadingStatusSink(
-      torrentStatusNotifier,
+      loadingSession.torrentStatusNotifier,
       cancelled: isAborted,
     ),
   );
   if (isAborted() || !context.mounted) return;
   if (resolved is! StremioPlayable) return;
 
-  final ctx = loadingDialogContext;
+  final ctx = loadingSession.dialogContext;
+  final fadeOutNotifier = loadingSession.fadeOutNotifier;
   final epNum = hubEpisodeNumber ?? episode;
   final playMovie = movieWithResolvedHubArt(movie);
   final playHubEpisodes = await ensureHubCatalogEpisodes(
