@@ -17,7 +17,8 @@
         "providerId": "live-streamed",
         "origin": "https://streamed.pk",
         "embedOrigin": "https://embed.st",
-        "nativeUnlock": "streamed"
+        "nativeUnlock": "streamed",
+        "catalogCap": false
       }
     },
     {
@@ -31,6 +32,7 @@
         "providerId": "live-ppv",
         "webOrigin": "https://ppv.st",
         "nativeUnlock": "ppv",
+        "catalogLayout": "iframe",
         "apis": [
           "https://api.ppv.st/api/streams",
           "https://api.ppv.cx/api/streams"

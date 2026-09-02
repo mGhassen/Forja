@@ -17,6 +17,9 @@ class LiveMatchesEngine {
   static final Map<String, String> _nativeUnlockByPluginId = {};
   static final Map<String, bool> _airingOnlyLiveByPluginId = {};
   static final Map<String, String> _scheduleHorizonModeByPluginId = {};
+  static final Map<String, String> _catalogLayoutByPluginId = {};
+  static final Map<String, bool> _catalogUncappedByPluginId = {};
+  static final Map<String, bool> _scheduleEnrichByPluginId = {};
 
   static Future<bool> isEngineResolveMode() async {
     if (!AccountFeatures.instance.isAdmin) return true;
@@ -67,6 +70,10 @@ class LiveMatchesEngine {
     if (origin != null && origin.isNotEmpty) {
       _originByPluginId[key] = origin;
     }
+    _catalogLayoutByPluginId[key] = catalogLayoutFromConfig(plugin.config);
+    _catalogUncappedByPluginId[key] = catalogUncappedFromConfig(plugin.config);
+    _scheduleEnrichByPluginId[key] =
+        isScheduleEnrichCatalogConfig(plugin.config);
   }
 
   static String _metaPluginKey(String pluginId) =>
@@ -81,6 +88,62 @@ class LiveMatchesEngine {
 
   static bool scheduleFullDayFromConfig(Map<String, dynamic> config) =>
       scheduleHorizonModeFromConfig(config) == 'fullday';
+
+  /// Pack `config.catalogLayout` — `iframe` rows land in the iframe grid bucket.
+  static String catalogLayoutFromConfig(Map<String, dynamic> config) {
+    final layout =
+        (config['catalogLayout'] ?? 'schedule').toString().trim().toLowerCase();
+    return layout.isEmpty ? 'schedule' : layout;
+  }
+
+  static bool isIframeCatalogConfig(Map<String, dynamic> config) =>
+      catalogLayoutFromConfig(config) == 'iframe';
+
+  static bool isIframeCatalogPlugin(EnginePlugin plugin) =>
+      isIframeCatalogConfig(plugin.config);
+
+  static bool cachedIsIframeCatalog(String pluginId) {
+    if (pluginId.isEmpty) return false;
+    return _catalogLayoutByPluginId[_metaPluginKey(pluginId)] == 'iframe';
+  }
+
+  /// Pack `config.catalogCap` — when false, ingest is not capped per plugin.
+  static bool catalogUncappedFromConfig(Map<String, dynamic> config) {
+    final cap = config['catalogCap'];
+    if (cap is bool) return !cap;
+    if (cap is num) return cap <= 0;
+    return config['uncappedCatalog'] == true;
+  }
+
+  static bool cachedCatalogUncapped(String pluginId) {
+    if (pluginId.isEmpty) return false;
+    return _catalogUncappedByPluginId[_metaPluginKey(pluginId)] == true;
+  }
+
+  /// Full-day scoreboard catalogs that publish `sportMatchGame` for team merge.
+  static bool isScheduleEnrichCatalogConfig(Map<String, dynamic> config) {
+    if (!scheduleFullDayFromConfig(config)) return false;
+    final leagues = config['leagues'];
+    return leagues is List && leagues.isNotEmpty;
+  }
+
+  static bool isScheduleEnrichCatalogPlugin(EnginePlugin plugin) =>
+      isScheduleEnrichCatalogConfig(plugin.config);
+
+  static bool cachedIsScheduleEnrichCatalog(String pluginId) {
+    if (pluginId.isEmpty) return false;
+    return _scheduleEnrichByPluginId[_metaPluginKey(pluginId)] == true;
+  }
+
+  /// Warm web origin for iframe-layout catalogs (embed Referer on first load).
+  static Future<void> warmIframeCatalogWebOrigin() async {
+    await warmPluginMeta();
+    for (final e in _catalogLayoutByPluginId.entries) {
+      if (e.value != 'iframe') continue;
+      final o = await pluginWebOrigin(e.key);
+      if (o.isNotEmpty) return;
+    }
+  }
 
   /// Cache manifest config before catalog ingest / display filters run.
   static void cachePluginMeta(EnginePlugin plugin) => _cachePluginMeta(plugin);

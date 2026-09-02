@@ -111,7 +111,7 @@ mixin _LiveMatchesForjaLive
       );
     }
     final filter = _s._forjaLivePluginFilter;
-    if (LiveMatchesEngine.cachedIsNativeUnlock(filter, 'ppv')) {
+    if (LiveMatchesEngine.cachedIsIframeCatalog(filter)) {
       return (
         ppv: (this as _LiveMatchesData)._filteredDamiTv,
         streamed: [],
@@ -127,7 +127,7 @@ mixin _LiveMatchesForjaLive
       return (ppv: _s._damiTvStreams, streamed: _s._streamedMatches);
     }
     final filter = _s._forjaLivePluginFilter;
-    if (LiveMatchesEngine.cachedIsNativeUnlock(filter, 'ppv')) {
+    if (LiveMatchesEngine.cachedIsIframeCatalog(filter)) {
       return (ppv: _s._damiTvStreams, streamed: []);
     }
     return (
@@ -159,7 +159,7 @@ mixin _LiveMatchesForjaLive
     if (!clearMatches) return;
     _s._damiTvStreams = _s._damiTvStreams
         .where(
-          (s) => !LiveMatchesEngine.cachedIsNativeUnlock(norm, 'ppv'),
+          (s) => !LiveMatchesEngine.cachedIsIframeCatalog(norm),
         )
         .toList();
     // Catalog chip filters the schedule grid only — keep other catalog rows
@@ -307,56 +307,47 @@ mixin _LiveMatchesForjaLive
     _kickForjaLiveLazyCatalog();
   }
 
-  Future<bool> _isEspnCatalogEnabled() async {
-    await EngineService.instance.ensureOfficialInstalled();
-    final packs = await EngineService.instance.listPacks();
-    for (final pack in packs) {
-      for (final p in pack.plugins) {
-        if (p.id == 'catalog-espn' || p.id == 'espn') {
-          return await PluginRegistry.instance.isLiveCapabilityActive(
-            pack: pack,
-            plugin: p,
-            capability: LiveSportCapabilities.catalog,
-          );
-        }
-      }
-    }
-    return false;
+  Future<bool> _isScheduleEnrichCatalogEnabled() async {
+    final catalogs =
+        await EngineService.instance.listEnabledLiveCatalogPlugins();
+    return catalogs.any(LiveMatchesEngine.isScheduleEnrichCatalogPlugin);
   }
 
-  void _syncEspnGamesFromStreamed() {
+  void _syncScheduleEnrichGamesFromMatches() {
     _s._espnGames = [
       for (final m in _s._streamedMatches)
-        if (m.id.startsWith('espn:') && m.sportMatchGame != null)
+        if (m.sportMatchGame != null &&
+            LiveMatchesEngine.cachedIsScheduleEnrichCatalog(m.livePluginId))
           Map<String, dynamic>.from(m.sportMatchGame!),
     ];
   }
 
-  bool _shouldRunEspnScheduleMerge() {
+  bool _shouldRunScheduleEnrichMerge() {
     final filter = _s._forjaLivePluginFilter;
-    return filter == 'all' || filter == 'espn';
+    if (filter == 'all') return true;
+    return LiveMatchesEngine.cachedIsScheduleEnrichCatalog(filter);
   }
 
-  /// Enrich other catalog rows with ESPN teams; ESPN catalog rows load separately.
-  Future<void> _applyEspnScheduleMerge() async {
+  /// Enrich other catalog rows with full-day scoreboard teams.
+  Future<void> _applyScheduleEnrichMerge() async {
     if (!_usesForjaLiveLazyCatalog) return;
     if (!mounted) return;
-    if (!_shouldRunEspnScheduleMerge()) return;
+    if (!_shouldRunScheduleEnrichMerge()) return;
     if (_s._server == _LiveMatchesServer.forjaLive && _forjaLiveAnyLoading) {
       return;
     }
-    if (!await _isEspnCatalogEnabled()) return;
+    if (!await _isScheduleEnrichCatalogEnabled()) return;
 
-    var espn = _s._espnGames;
-    if (espn.isEmpty) {
-      espn = await _fetchEspnSportMatchGames();
+    var enrichGames = _s._espnGames;
+    if (enrichGames.isEmpty) {
+      enrichGames = await _fetchEspnSportMatchGames();
     }
     if (!mounted) return;
 
     final base = _stripEspnMergedScheduleRows(_s._streamedMatches);
     final merged = _mergeStreamedWithEspn(
       base,
-      espn,
+      enrichGames,
       appendUnmatched: _s._server != _LiveMatchesServer.forjaLive,
     );
     setState(() {
@@ -464,9 +455,8 @@ mixin _LiveMatchesForjaLive
       );
       // Always cache on success — chip filter must not discard finished rows.
       if (!genAlive()) return;
-      if (LiveMatchesEngine.cachedIsNativeUnlock(catalog.id, 'ppv') ||
-          LiveMatchesEngine.cachedIsNativeUnlock(filterId, 'ppv')) {
-        await LiveMatchesEngine.ppvWebOrigin();
+      if (LiveMatchesEngine.isIframeCatalogPlugin(catalog)) {
+        await LiveMatchesEngine.warmIframeCatalogWebOrigin();
         final streams = rows
             .where((row) =>
                 _forjaLiveCatalogRowInHorizon(row, _s._scheduleHorizon))
@@ -507,11 +497,9 @@ mixin _LiveMatchesForjaLive
             return _forjaLiveRowToMatch(enriched);
           })
           .where((m) => m.id.isNotEmpty && m.title.isNotEmpty);
-      final uncapped = LiveMatchesEngine.cachedIsNativeUnlock(
-            catalog.id,
-            'streamed',
-          ) ||
-          LiveMatchesEngine.cachedIsNativeUnlock(filterId, 'streamed');
+      final uncapped = LiveMatchesEngine.catalogUncappedFromConfig(catalog.config) ||
+          LiveMatchesEngine.cachedCatalogUncapped(catalog.id) ||
+          LiveMatchesEngine.cachedCatalogUncapped(filterId);
       final matches = uncapped
           ? matchRows.toList()
           : matchRows.take(_kForjaLiveCatalogMaxPerPlugin).toList();
@@ -521,8 +509,8 @@ mixin _LiveMatchesForjaLive
           ..._s._streamedMatches,
           ...matches,
         ]);
-        if (LiveMatchesEngine.scheduleFullDayFromConfig(catalog.config)) {
-          _syncEspnGamesFromStreamed();
+        if (LiveMatchesEngine.isScheduleEnrichCatalogPlugin(catalog)) {
+          _syncScheduleEnrichGamesFromMatches();
         }
         if (catalog.supportsLiveBroadcast) {
           putLiveBroadcastIndex([
@@ -581,13 +569,13 @@ mixin _LiveMatchesForjaLive
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
 
       if (catalogPlugins.isEmpty) {
-        await _applyEspnScheduleMerge();
+        await _applyScheduleEnrichMerge();
         return;
       }
 
       final toLoad = _forjaLiveCatalogsToLoad(catalogPlugins);
       if (toLoad.isEmpty) {
-        await _applyEspnScheduleMerge();
+        await _applyScheduleEnrichMerge();
         return;
       }
 
@@ -598,7 +586,7 @@ mixin _LiveMatchesForjaLive
 
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
       _ensureForjaLivePluginFilterValid();
-      await _applyEspnScheduleMerge();
+      await _applyScheduleEnrichMerge();
     } finally {
       if (mounted && gen == _s._forjaLiveLoadGen) {
         _s._deferSportTabRebuildDuringCatalog = false;
