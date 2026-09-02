@@ -102,6 +102,28 @@ mixin _LiveMatchesForjaLive
     return (ppv: [], streamed: streamed);
   }
 
+  /// Same catalog scope as the grid, but without the active sport-chip filter.
+  ({List<_DamiTvStream> ppv, List<_StreamedMatch> streamed})
+  _catalogSourcesForSportTabs() {
+    var ppv = _s._damiTvStreams;
+    var streamed = _s._streamedMatches;
+    if (!_showForjaLiveCatalogChrome || _s._forjaLivePluginFilter == 'all') {
+      return (ppv: ppv, streamed: streamed);
+    }
+    final filter = _s._forjaLivePluginFilter;
+    if (LiveMatchesEngine.cachedIsNativeUnlock(filter, 'ppv')) {
+      return (ppv: ppv, streamed: []);
+    }
+    streamed = streamed
+        .where(
+          (m) => _streamedMatchesForEvent(m, _s._streamedMatches).any(
+            (row) => _liveCatalogRowMatchesFilter(row, filter),
+          ),
+        )
+        .toList();
+    return (ppv: [], streamed: streamed);
+  }
+
   void _resetForjaLiveCatalogState({bool clearMatches = true}) {
     EngineService.instance.cancelLiveCatalog();
     _s._forjaLiveLoadGen++;
@@ -141,6 +163,7 @@ mixin _LiveMatchesForjaLive
     unawaited(_persistForjaLiveCatalogFilterPreference(filter));
     // Do not cancel in-flight catalog scrapes — finished rows stay cached
     // (`attempted`) so switching catalogs / All never re-fetches.
+    _rebuildSportTabsFromCurrentMatches();
     _kickForjaLiveLazyCatalog();
   }
 
@@ -549,6 +572,9 @@ mixin _LiveMatchesForjaLive
     final seen = <String>{};
     final cats = <_Sport>[];
     final applyWindow = (this as _LiveMatchesData)._applyTimeWindowFilter;
+    final sources = _usesForjaLiveLazyCatalog
+        ? _catalogSourcesForSportTabs()
+        : (ppv: _s._damiTvStreams, streamed: _s._streamedMatches);
 
     void addCat(String raw) {
       final id = _normalizeSportId(raw);
@@ -559,7 +585,7 @@ mixin _LiveMatchesForjaLive
     if (_s._server == _LiveMatchesServer.all ||
         _s._server == _LiveMatchesServer.forjaLive ||
         _s._server == _LiveMatchesServer.iptvSports) {
-      for (final s in _s._damiTvStreams) {
+      for (final s in sources.ppv) {
         if (applyWindow &&
             !_damiTvInScheduleFilter(
               s,
@@ -576,7 +602,7 @@ mixin _LiveMatchesForjaLive
       }
     }
 
-    for (final m in _s._streamedMatches) {
+    for (final m in sources.streamed) {
       if (applyWindow &&
           !_streamedMatchInScheduleFilter(
             m,
