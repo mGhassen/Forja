@@ -2834,11 +2834,44 @@ DateTime? _liveOnSatBroadcastCacheExpiry;
 List<Map<String, dynamic>> _liveOnSatBroadcastIndex = [];
 Future<List<Map<String, dynamic>>>? _liveOnSatBroadcastInFlight;
 
+String _broadcastIndexKey(Map<String, dynamic> game) {
+  return [
+    (game['title'] ?? '').toString().toLowerCase(),
+    '${game['dateMs'] ?? ''}',
+    (game['category'] ?? '').toString().toLowerCase(),
+  ].join('|');
+}
+
+Map<String, dynamic> _mergeBroadcastGames(
+  Map<String, dynamic> existing,
+  Map<String, dynamic> incoming,
+) {
+  final channels = <String>{
+    ..._broadcastChannelsFromGame(existing),
+    ..._broadcastChannelsFromGame(incoming),
+  };
+  return {
+    ...existing,
+    ...incoming,
+    if (channels.isNotEmpty) 'broadcastChannels': channels.toList(),
+  };
+}
+
 void putLiveOnSatBroadcastIndex(List<Map<String, dynamic>> games) {
   if (games.isEmpty) return;
-  _liveOnSatBroadcastIndex = [
-    for (final g in games) Map<String, dynamic>.from(g),
-  ];
+  final byKey = <String, Map<String, dynamic>>{
+    for (final g in _liveOnSatBroadcastIndex)
+      _broadcastIndexKey(g): Map<String, dynamic>.from(g),
+  };
+  for (final g in games) {
+    final incoming = Map<String, dynamic>.from(g);
+    final key = _broadcastIndexKey(incoming);
+    final existing = byKey[key];
+    byKey[key] = existing == null
+        ? incoming
+        : _mergeBroadcastGames(existing, incoming);
+  }
+  _liveOnSatBroadcastIndex = byKey.values.toList();
   _liveOnSatBroadcastCacheExpiry =
       DateTime.now().add(_liveOnSatBroadcastCacheTtl);
 }
@@ -2887,8 +2920,7 @@ Future<List<Map<String, dynamic>>> _fetchLiveOnSatBroadcastIndex() async {
       }
     }
     if (plugins.isEmpty) return [];
-    final out = <Map<String, dynamic>>[];
-    final seen = <String>{};
+    final byKey = <String, Map<String, dynamic>>{};
     for (final plugin in plugins) {
       final rows = await EngineService.instance.runLiveCatalog(
         catalogPlugin: plugin,
@@ -2896,17 +2928,14 @@ Future<List<Map<String, dynamic>>> _fetchLiveOnSatBroadcastIndex() async {
       for (final row in rows) {
         if (row['sportMatchGame'] is! Map) continue;
         final game = Map<String, dynamic>.from(row['sportMatchGame'] as Map);
-        final key = [
-          (game['title'] ?? '').toString().toLowerCase(),
-          '${game['dateMs'] ?? ''}',
-          (game['category'] ?? '').toString().toLowerCase(),
-        ].join('|');
-        if (seen.contains(key)) continue;
-        seen.add(key);
-        out.add(game);
+        final key = _broadcastIndexKey(game);
+        final existing = byKey[key];
+        byKey[key] = existing == null
+            ? game
+            : _mergeBroadcastGames(existing, game);
       }
     }
-    return out;
+    return byKey.values.toList();
   } catch (e) {
     debugPrint('[LiveMatches] broadcast catalog index failed: $e');
     return [];
@@ -2921,13 +2950,14 @@ Map<String, dynamic> _enrichGameWithLiveOnSatChannels(
   String? awayTeam,
   int dateMs = 0,
 }) {
-  final existing = game['broadcastChannels'];
-  if (existing is List && existing.isNotEmpty) return game;
   if (liveOnSatGames.isEmpty) return game;
   final home = (game['homeTeam'] ?? homeTeam ?? '').toString().trim();
   final away = (game['awayTeam'] ?? awayTeam ?? '').toString().trim();
   final kickoff = (game['dateMs'] as num?)?.toInt() ?? dateMs;
   final cardTitle = (game['title'] ?? title).toString().trim();
+  var merged = <String>{
+    ..._broadcastChannelsFromGame(game),
+  };
   for (final los in liveOnSatGames) {
     if (_sameCatalogEventAsLiveOnSat(
       title: cardTitle,
@@ -2938,16 +2968,15 @@ Map<String, dynamic> _enrichGameWithLiveOnSatChannels(
     )) {
       final channels = los['broadcastChannels'];
       if (channels is List && channels.isNotEmpty) {
-        return {
-          ...game,
-          'broadcastChannels': [
-            for (final c in channels) c.toString(),
-          ],
-        };
+        merged.addAll(channels.map((c) => c.toString()));
       }
     }
   }
-  return game;
+  if (merged.isEmpty) return game;
+  return {
+    ...game,
+    'broadcastChannels': merged.toList(),
+  };
 }
 
 class _IptvSportsStreamsCacheEntry {

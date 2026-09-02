@@ -260,7 +260,8 @@ class _LiveMatchDetailsScreenState
               );
 
               if (sideRail) {
-                final panelWidth = TorrentSourcesPanel.panelWidthOf(context);
+                final panelWidth =
+                    TorrentSourcesPanel.panelWidthOf(context) * 1.2;
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -274,14 +275,10 @@ class _LiveMatchDetailsScreenState
                     ),
                     SizedBox(
                       width: panelWidth,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: AppTheme.bgDark,
-                          border: Border(
-                            left: BorderSide(
-                              color: ForjaShellColors.borderSubtle
-                                  .withValues(alpha: 0.65),
-                            ),
+                      child: ForjaFrostedPanel(
+                        border: Border(
+                          left: BorderSide(
+                            color: ForjaShellColors.cinematic.borderSubtle,
                           ),
                         ),
                         child: streams,

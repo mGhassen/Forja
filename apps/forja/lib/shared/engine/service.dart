@@ -932,10 +932,9 @@ class EngineService {
     final code = await _loadScript(catalogPlugin);
     if (gen != _liveCatalogGeneration || code == null) return [];
 
-    final catalogTimeout = catalogPlugin.id == 'livesoccertv' &&
-            (flareUrl == null || flareUrl.isEmpty)
-        ? (timeout < const Duration(seconds: 45)
-            ? const Duration(seconds: 45)
+    final catalogTimeout = catalogPlugin.id == 'livesoccertv'
+        ? (timeout < const Duration(seconds: 90)
+            ? const Duration(seconds: 90)
             : timeout)
         : timeout;
 

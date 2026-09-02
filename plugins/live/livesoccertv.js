@@ -84,6 +84,22 @@ function isAiring(block, dateMs) {
   return dateMs <= now + 15 * 60000 && dateMs >= now - 4 * 3600000;
 }
 
+function mergeChannelLists(a, b) {
+  var out = [];
+  var seen = {};
+  function push(name) {
+    var cleaned = cleanChannelName(name);
+    if (!cleaned) return;
+    var key = cleaned.toLowerCase();
+    if (seen[key]) return;
+    seen[key] = true;
+    out.push(cleaned);
+  }
+  (a || []).forEach(push);
+  (b || []).forEach(push);
+  return out;
+}
+
 function extractChannels(block) {
   var out = [];
   var seen = {};
@@ -120,6 +136,67 @@ function extractChannels(block) {
   }
 
   return out;
+}
+
+function extractInternationalChannels(html) {
+  var out = [];
+  var seen = {};
+  var skip = {
+    'available on-demand': true,
+    'more channels': true,
+  };
+
+  function pushName(name) {
+    var cleaned = cleanChannelName(name);
+    if (!cleaned) return;
+    var key = cleaned.toLowerCase();
+    if (skip[key]) return;
+    if (seen[key]) return;
+    seen[key] = true;
+    out.push(cleaned);
+  }
+
+  var jsonLdRe = /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  var jm;
+  while ((jm = jsonLdRe.exec(String(html || '')))) {
+    try {
+      var data = JSON.parse(jm[1]);
+      var graph = data && data['@graph'];
+      var nodes = Array.isArray(graph) ? graph : data ? [data] : [];
+      nodes.forEach(function (node) {
+        if (!node || node['@type'] !== 'BroadcastEvent') return;
+        var pub = node.publishedOn;
+        if (pub && pub.name) pushName(pub.name);
+      });
+    } catch (e) {}
+  }
+
+  var section = String(html || '').match(
+    /id\s*=\s*["']dynamic-international-tv["'][\s\S]*?<table class\s*=\s*["'][^"']*ichannels[^"']*["']([\s\S]*?)<\/table>/i,
+  );
+  if (section) {
+    var rowRe = /<tr[\s\S]*?<\/tr>/gi;
+    var row;
+    while ((row = rowRe.exec(section[1]))) {
+      var tdRe = /<td[\s\S]*?<\/td>/gi;
+      var tds = [];
+      var td;
+      while ((td = tdRe.exec(row[0]))) tds.push(td[0]);
+      if (tds.length < 2) continue;
+      var linkRe = /<a[^>]*>([^<]+)<\/a>/gi;
+      var lm;
+      while ((lm = linkRe.exec(tds[1]))) {
+        pushName(lm[1]);
+      }
+    }
+  }
+
+  return out;
+}
+
+function extractMatchPath(block) {
+  var m = String(block || '').match(/href\s*=\s*["'](\/match\/[^#"']+)/i);
+  return m ? m[1] : '';
 }
 
 function parseCompetitionHeaders(html) {
@@ -173,6 +250,7 @@ function parsePage(html, pluginId) {
 
     var teams = parseTeams(title);
     var channels = extractChannels(block);
+    var matchPath = extractMatchPath(block);
     var dedupeKey =
       title.toLowerCase() + '|' + String(dateMs) + '|' + competition.toLowerCase();
     if (seen[dedupeKey]) continue;
@@ -189,6 +267,7 @@ function parsePage(html, pluginId) {
       awayTeam: teams.away,
       dateMs: dateMs,
       broadcastChannels: channels,
+      matchPath: matchPath,
     };
 
     out.push({
@@ -204,6 +283,7 @@ function parsePage(html, pluginId) {
       sources: [],
       catalog: 'forja_live',
       pluginId: pluginId,
+      matchPath: matchPath,
       sportMatchGame: sportMatchGame,
     });
   }
@@ -310,6 +390,40 @@ async function fetchPage(ctx, cfg, page) {
   }
 }
 
+async function enrichInternationalCoverage(ctx, cfg, rows) {
+  var base = String(cfg.base || SPECS.base).replace(/\/$/, '');
+  var pending = [];
+  rows.forEach(function (row) {
+    var path = String(
+      row.matchPath || (row.sportMatchGame && row.sportMatchGame.matchPath) || '',
+    ).trim();
+    if (!path) return;
+    pending.push({ row: row, url: base + path });
+  });
+  if (!pending.length) return rows;
+
+  var concurrency = 4;
+  for (var i = 0; i < pending.length; i += concurrency) {
+    var batch = pending.slice(i, i + concurrency);
+    await Promise.all(
+      batch.map(async function (item) {
+        try {
+          var html = await fetchHtml(ctx, cfg, item.url);
+          var intl = extractInternationalChannels(html);
+          if (!intl.length) return;
+          var row = item.row;
+          var game = row.sportMatchGame || {};
+          var merged = mergeChannelLists(game.broadcastChannels || [], intl);
+          game.broadcastChannels = merged;
+          row.sportMatchGame = game;
+          row.broadcastChannels = merged;
+        } catch (e) {}
+      }),
+    );
+  }
+  return rows;
+}
+
 async function fetchCatalog(ctx, cfg) {
   var pages = schedulePages(cfg);
   var seen = {};
@@ -323,11 +437,12 @@ async function fetchCatalog(ctx, cfg) {
       out.push(row);
     });
   }
-  return out
+  out = out
     .sort(function (a, b) {
       return Number(a.date || 0) - Number(b.date || 0);
     })
     .slice(0, CATALOG_MAX);
+  return enrichInternationalCoverage(ctx, cfg, out);
 }
 
 async function extract(ctx) {
