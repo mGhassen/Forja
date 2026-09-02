@@ -2919,19 +2919,116 @@ String _broadcastIndexKey(Map<String, dynamic> game) {
   ].join('|');
 }
 
+Map<String, List<String>> _broadcastBySourceMap(Map<String, dynamic> game) {
+  final raw = game['broadcastBySource'];
+  if (raw is! Map) return {};
+  final out = <String, List<String>>{};
+  for (final entry in raw.entries) {
+    final list = entry.value;
+    if (list is! List) continue;
+    out[entry.key.toString()] = [
+      for (final c in list)
+        if (c.toString().trim().isNotEmpty) c.toString().trim(),
+    ];
+  }
+  return out;
+}
+
+Map<String, dynamic> _stampBroadcastSource(
+  Map<String, dynamic> game, {
+  required String sourceKey,
+}) {
+  final channels = _broadcastChannelsFromGame(game);
+  if (channels.isEmpty || sourceKey.trim().isEmpty) return game;
+  return {
+    ...game,
+    'broadcastChannels': channels,
+    'broadcastBySource': {sourceKey: channels},
+  };
+}
+
 Map<String, dynamic> _mergeBroadcastGames(
   Map<String, dynamic> existing,
-  Map<String, dynamic> incoming,
-) {
+  Map<String, dynamic> incoming, {
+  String? sourceKey,
+}) {
   final channels = <String>{
     ..._broadcastChannelsFromGame(existing),
     ..._broadcastChannelsFromGame(incoming),
   };
+  final bySource = _broadcastBySourceMap(existing);
+  if (sourceKey != null && sourceKey.trim().isNotEmpty) {
+    final key = sourceKey.trim();
+    final incomingChannels = _broadcastChannelsFromGame(incoming);
+    if (incomingChannels.isNotEmpty) {
+      final list = List<String>.from(bySource[key] ?? const []);
+      for (final name in incomingChannels) {
+        if (!list.contains(name)) list.add(name);
+      }
+      bySource[key] = list;
+    }
+  } else {
+    for (final entry in _broadcastBySourceMap(incoming).entries) {
+      final list = List<String>.from(bySource[entry.key] ?? const []);
+      for (final name in entry.value) {
+        if (!list.contains(name)) list.add(name);
+      }
+      bySource[entry.key] = list;
+    }
+  }
   return {
     ...existing,
     ...incoming,
     if (channels.isNotEmpty) 'broadcastChannels': channels.toList(),
+    if (bySource.isNotEmpty) 'broadcastBySource': bySource,
   };
+}
+
+class _LiveBroadcastHints {
+  const _LiveBroadcastHints({
+    this.liveOnSat = const [],
+    this.liveSoccerTv = const [],
+  });
+
+  final List<String> liveOnSat;
+  final List<String> liveSoccerTv;
+
+  bool get isEmpty => liveOnSat.isEmpty && liveSoccerTv.isEmpty;
+}
+
+Future<_LiveBroadcastHints> _broadcastHintsForMatch(_StreamedMatch match) async {
+  final broadcastGames = await _liveBroadcastIndexCached();
+  if (broadcastGames.isEmpty) return const _LiveBroadcastHints();
+
+  final aligned = _sportMatchGameAlignedWithCard(match);
+  final home = (aligned['homeTeam'] ?? '').toString().trim();
+  final away = (aligned['awayTeam'] ?? '').toString().trim();
+  final title = (aligned['title'] ?? match.title).toString().trim();
+  final kickoff = (aligned['dateMs'] as num?)?.toInt() ?? match.dateMs;
+
+  for (final broadcast in broadcastGames) {
+    if (!_sameCatalogEventAsBroadcast(
+      title: title,
+      homeTeam: home.isEmpty ? null : home,
+      awayTeam: away.isEmpty ? null : away,
+      dateMs: kickoff,
+      broadcastGame: broadcast,
+    )) {
+      continue;
+    }
+    final bySource = _broadcastBySourceMap(broadcast);
+    if (bySource.isNotEmpty) {
+      return _LiveBroadcastHints(
+        liveOnSat: List<String>.from(bySource['liveonsat'] ?? const []),
+        liveSoccerTv: List<String>.from(bySource['livesoccertv'] ?? const []),
+      );
+    }
+    final merged = _broadcastChannelsFromGame(broadcast);
+    if (merged.isNotEmpty) {
+      return _LiveBroadcastHints(liveOnSat: merged);
+    }
+  }
+  return const _LiveBroadcastHints();
 }
 
 void putLiveBroadcastIndex(List<Map<String, dynamic>> games) {
@@ -2980,6 +3077,7 @@ Future<List<Map<String, dynamic>>> _fetchLiveBroadcastIndex() async {
     if (plugins.isEmpty) return [];
     final byKey = <String, Map<String, dynamic>>{};
     for (final plugin in plugins) {
+      final sourceKey = LiveSportCapabilities.normalizePluginId(plugin.id);
       final rows = await EngineService.instance.runLiveCatalog(
         catalogPlugin: plugin,
       );
@@ -2989,8 +3087,12 @@ Future<List<Map<String, dynamic>>> _fetchLiveBroadcastIndex() async {
         final key = _broadcastIndexKey(game);
         final existing = byKey[key];
         byKey[key] = existing == null
-            ? game
-            : _mergeBroadcastGames(existing, game);
+            ? _stampBroadcastSource(game, sourceKey: sourceKey)
+            : _mergeBroadcastGames(
+                existing,
+                game,
+                sourceKey: sourceKey,
+              );
       }
     }
     return byKey.values.toList();

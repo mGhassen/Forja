@@ -279,6 +279,7 @@ class _LiveMatchDetailsScreenState
         onRetry: _loadSources,
         tvFocus: tvFocus,
         sideRail: sideRail,
+        showInternationalTab: _playPath == _LiveMatchPlayPath.iptvSports,
       ),
     );
   }
@@ -389,7 +390,7 @@ class _LiveMatchDetailsScreenState
   }
 }
 
-class _LiveMatchStreamsSection extends StatelessWidget {
+class _LiveMatchStreamsSection extends StatefulWidget {
   const _LiveMatchStreamsSection({
     required this.controller,
     required this.onSourcePicked,
@@ -397,6 +398,7 @@ class _LiveMatchStreamsSection extends StatelessWidget {
     required this.tvFocus,
     this.sideRail = false,
     this.iptvCtrl,
+    this.showInternationalTab = false,
   });
 
   final _IptvSportsChannelsPanelController controller;
@@ -406,11 +408,27 @@ class _LiveMatchStreamsSection extends StatelessWidget {
   final VoidCallback onRetry;
   final bool tvFocus;
   final bool sideRail;
+  final bool showInternationalTab;
+
+  @override
+  State<_LiveMatchStreamsSection> createState() =>
+      _LiveMatchStreamsSectionState();
+}
+
+class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
+  static const _tabPortal = 'portal';
+  static const _tabInternational = 'international';
+
+  String _tab = _tabPortal;
+
+  _IptvSportsChannelsPanelController get controller => widget.controller;
 
   @override
   Widget build(BuildContext context) {
-    final body = _buildBody(context);
-    if (sideRail) {
+    final body = widget.showInternationalTab && _tab == _tabInternational
+        ? _buildInternationalBody(context)
+        : _buildPortalBody(context);
+    if (widget.sideRail) {
       return Padding(
         padding: DetailsTokens.sourcesPanelPadding,
         child: Column(
@@ -435,9 +453,66 @@ class _LiveMatchStreamsSection extends StatelessWidget {
     );
   }
 
+  Widget _buildTabStrip(BuildContext context) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    const tabs = [_tabPortal, _tabInternational];
+    String label(String key) => switch (key) {
+          _tabPortal => 'Portal',
+          _tabInternational => 'International TV',
+          _ => key,
+        };
+
+    if (!tv) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (var i = 0; i < tabs.length; i++)
+            ForjaShellChip(
+              label: label(tabs[i]),
+              selected: _tab == tabs[i],
+              listIndex: i,
+              onTap: () => setState(() => _tab = tabs[i]),
+            ),
+        ],
+      );
+    }
+
+    return TvChipStrip(
+      tabId: MediaDetailsTv.tabId,
+      rowId: 'live-match-stream-tabs',
+      sortOrder: 1,
+      itemCount: tabs.length,
+      builder: (context, edgesFor) {
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var i = 0; i < tabs.length; i++)
+              ForjaShellChip(
+                label: label(tabs[i]),
+                selected: _tab == tabs[i],
+                listIndex: i,
+                tvTabId: MediaDetailsTv.tabId,
+                tvRowId: 'live-match-stream-tabs',
+                onTap: () => setState(() => _tab = tabs[i]),
+                onLeftEdge: edgesFor(i).onLeft,
+                onRightEdge: edgesFor(i).onRight,
+                onDownEdge: edgesFor(i).onDown,
+                onUpEdge: edgesFor(i).onUp,
+              ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildHeader(BuildContext context) {
     final sources = controller.sources;
-    final showStatus = !controller.searching || sources.isNotEmpty;
+    final onPortalTab =
+        !widget.showInternationalTab || _tab == _tabPortal;
+    final showStatus = onPortalTab &&
+        (!controller.searching || sources.isNotEmpty);
     final status = !showStatus
         ? null
         : controller.searching
@@ -454,13 +529,17 @@ class _LiveMatchStreamsSection extends StatelessWidget {
             Expanded(
               child: ShellSectionTitle(title: 'Streams'),
             ),
-            if (!controller.searching && sources.isEmpty)
+            if (onPortalTab && !controller.searching && sources.isEmpty)
               TextButton(
-                onPressed: onRetry,
+                onPressed: widget.onRetry,
                 child: const Text('Retry'),
               ),
           ],
         ),
+        if (widget.showInternationalTab) ...[
+          const SizedBox(height: 10),
+          _buildTabStrip(context),
+        ],
         if (status != null) ...[
           const SizedBox(height: 8),
           Row(
@@ -488,20 +567,124 @@ class _LiveMatchStreamsSection extends StatelessWidget {
             ],
           ),
         ],
-        if (sideRail) const SizedBox(height: 12),
+        if (widget.sideRail) const SizedBox(height: 12),
       ],
     );
   }
 
-  Widget _buildBody(BuildContext context) {
+  Widget _buildInternationalBody(BuildContext context) {
+    if (controller.broadcastHintsLoading) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: widget.sideRail ? 32 : 24,
+            horizontal: 12,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: ForjaShellColors.sectionAccent,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Loading international TV listings…',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final hints = controller.broadcastHints;
+    if (hints == null || hints.isEmpty) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: widget.sideRail ? 16 : 24),
+        child: Column(
+          mainAxisAlignment: widget.sideRail
+              ? MainAxisAlignment.center
+              : MainAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.public_rounded,
+              size: 40,
+              color: ForjaShellColors.cinematic.textSecondary
+                  .withValues(alpha: 0.45),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No international TV listings for this match',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ForjaShellColors.cinematic.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final sections = <({String title, List<String> channels})>[
+      if (hints.liveOnSat.isNotEmpty)
+        (title: 'LiveOnSat', channels: hints.liveOnSat),
+      if (hints.liveSoccerTv.isNotEmpty)
+        (
+          title: 'Live Soccer TV · International Coverage',
+          channels: hints.liveSoccerTv,
+        ),
+    ];
+
+    return ListView.separated(
+      padding: const EdgeInsets.only(bottom: 12),
+      itemCount: sections.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 16),
+      itemBuilder: (context, sectionIndex) {
+        final section = sections[sectionIndex];
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              section.title,
+              style: TextStyle(
+                color: ForjaShellColors.cinematic.textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (var i = 0; i < section.channels.length; i++) ...[
+              if (i > 0) const SizedBox(height: 6),
+              _LiveBroadcastChannelRow(name: section.channels[i]),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPortalBody(BuildContext context) {
     final sources = controller.sources;
 
     if (sources.isEmpty && !controller.searching) {
       return Padding(
-        padding: EdgeInsets.symmetric(vertical: sideRail ? 16 : 24),
+        padding: EdgeInsets.symmetric(vertical: widget.sideRail ? 16 : 24),
         child: Column(
-          mainAxisAlignment:
-              sideRail ? MainAxisAlignment.center : MainAxisAlignment.start,
+          mainAxisAlignment: widget.sideRail
+              ? MainAxisAlignment.center
+              : MainAxisAlignment.start,
           children: [
             Icon(
               Icons.search_off_rounded,
@@ -563,7 +746,7 @@ class _LiveMatchStreamsSection extends StatelessWidget {
       );
     }
 
-    if (sideRail) {
+    if (widget.sideRail) {
       return ListView.separated(
         padding: const EdgeInsets.only(bottom: 12),
         itemCount: sources.length,
@@ -571,13 +754,13 @@ class _LiveMatchStreamsSection extends StatelessWidget {
         itemBuilder: (context, i) {
           return _IptvSportsChannelSheetRow(
             source: sources[i],
-            iptvCtrl: iptvCtrl,
+            iptvCtrl: widget.iptvCtrl,
             healthProbe: controller.healthProbe,
-            onTap: () => onSourcePicked(
+            onTap: () => widget.onSourcePicked(
               sources[i],
               List<IptvPlaySource>.from(sources),
             ),
-            tvItemIndex: tvFocus ? i : null,
+            tvItemIndex: widget.tvFocus ? i : null,
           );
         },
       );
@@ -601,18 +784,59 @@ class _LiveMatchStreamsSection extends StatelessWidget {
                 width: tileWidth,
                 child: _IptvSportsChannelSheetRow(
                   source: sources[i],
-                  iptvCtrl: iptvCtrl,
+                  iptvCtrl: widget.iptvCtrl,
                   healthProbe: controller.healthProbe,
-                  onTap: () => onSourcePicked(
+                  onTap: () => widget.onSourcePicked(
                     sources[i],
                     List<IptvPlaySource>.from(sources),
                   ),
-                  tvItemIndex: tvFocus ? i : null,
+                  tvItemIndex: widget.tvFocus ? i : null,
                 ),
               ),
           ],
         );
       },
+    );
+  }
+}
+
+class _LiveBroadcastChannelRow extends StatelessWidget {
+  const _LiveBroadcastChannelRow({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: ForjaShellColors.cinematic.surfaceElevated
+            .withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.tv_rounded,
+            size: 18,
+            color: ForjaShellColors.sectionAccent.withValues(alpha: 0.85),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: ForjaShellColors.cinematic.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

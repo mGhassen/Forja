@@ -1304,6 +1304,8 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
   late final IptvLazyUrlHealthProbe healthProbe;
   bool searching = true;
   String searchPhase = '';
+  _LiveBroadcastHints? broadcastHints;
+  bool broadcastHintsLoading = false;
   bool _disposed = false;
 
   bool get isDisposed => _disposed;
@@ -1352,6 +1354,22 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
     sources.clear();
     searching = false;
     searchPhase = '';
+    broadcastHints = null;
+    broadcastHintsLoading = false;
+    notifyListeners();
+  }
+
+  void beginBroadcastHintsLoad() {
+    if (_disposed) return;
+    broadcastHintsLoading = true;
+    broadcastHints = null;
+    notifyListeners();
+  }
+
+  void setBroadcastHints(_LiveBroadcastHints hints) {
+    if (_disposed) return;
+    broadcastHints = hints;
+    broadcastHintsLoading = false;
     notifyListeners();
   }
 

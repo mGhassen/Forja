@@ -600,7 +600,7 @@ mixin _LiveMatchesData
     _scheduleRestoreLiveMatchesTvFocus();
     if (_s._server == _LiveMatchesServer.all &&
         (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog) {
-      unawaited((this as _LiveMatchesForjaLive)._applyEspnScheduleMerge());
+      unawaited((this as _LiveMatchesForjaLive)._applyScheduleEnrichMerge());
     }
   }
 
