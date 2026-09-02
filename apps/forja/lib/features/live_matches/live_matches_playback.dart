@@ -168,17 +168,6 @@ mixin _LiveMatchesPlayback
     final enriched = _enrichedIptvSportsMatch(match);
     controller.setSearchPhase('Forja Sports');
     controller.beginBroadcastHintsLoad();
-    unawaited(() async {
-      try {
-        final hints = await _broadcastHintsForMatch(enriched);
-        if (isStale() || controller.isDisposed) return;
-        controller.setBroadcastHints(hints);
-      } catch (e) {
-        debugPrint('[LiveMatches] broadcast hints error: $e');
-        if (isStale() || controller.isDisposed) return;
-        controller.setBroadcastHints(const _LiveBroadcastHints());
-      }
-    }());
     try {
       await _resolveIptvSportsStreams(
         enriched,
@@ -189,6 +178,19 @@ mixin _LiveMatchesPlayback
       );
     } catch (e) {
       debugPrint('[LiveMatches] IPTV sports resolve error: $e');
+    }
+    if (!isStale() && !controller.isDisposed) {
+      try {
+        final hints = await _broadcastHintsForMatch(enriched);
+        if (!isStale() && !controller.isDisposed) {
+          controller.setBroadcastHints(hints);
+        }
+      } catch (e) {
+        debugPrint('[LiveMatches] broadcast hints error: $e');
+        if (!isStale() && !controller.isDisposed) {
+          controller.setBroadcastHints(const _LiveBroadcastHints());
+        }
+      }
     }
     return enriched;
   }
@@ -311,19 +313,21 @@ mixin _LiveMatchesPlayback
     }
 
     controller.setSearchPhase('Forja Sports');
-    controller.beginBroadcastHintsLoad();
-    unawaited(() async {
+    await addForja();
+    if (!controller.isDisposed && !isStale()) {
+      controller.beginBroadcastHintsLoad();
       try {
         final hints = await _broadcastHintsForMatch(enriched);
-        if (controller.isDisposed || isStale()) return;
-        controller.setBroadcastHints(hints);
+        if (!controller.isDisposed && !isStale()) {
+          controller.setBroadcastHints(hints);
+        }
       } catch (e) {
         debugPrint('[LiveMatches] broadcast hints error: $e');
-        if (controller.isDisposed || isStale()) return;
-        controller.setBroadcastHints(const _LiveBroadcastHints());
+        if (!controller.isDisposed && !isStale()) {
+          controller.setBroadcastHints(const _LiveBroadcastHints());
+        }
       }
-    }());
-    await addForja();
+    }
     if (controller.isDisposed || isStale()) return enriched;
     controller.setSearchPhase('Stremio');
     await addStremio();

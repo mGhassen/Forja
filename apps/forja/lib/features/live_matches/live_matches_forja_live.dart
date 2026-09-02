@@ -513,11 +513,19 @@ mixin _LiveMatchesForjaLive
           _syncScheduleEnrichGamesFromMatches();
         }
         if (catalog.supportsLiveBroadcast) {
-          putLiveBroadcastIndex([
-            for (final row in rows)
-              if (row['sportMatchGame'] is Map)
-                Map<String, dynamic>.from(row['sportMatchGame'] as Map),
-          ]);
+          final sourceKey =
+              LiveSportCapabilities.normalizePluginId(catalog.id);
+          putLiveBroadcastIndex(
+            [
+              for (final row in rows)
+                if (row['sportMatchGame'] is Map)
+                  _stampBroadcastSource(
+                    Map<String, dynamic>.from(row['sportMatchGame'] as Map),
+                    sourceKey: sourceKey,
+                  ),
+            ],
+            sourceKey: sourceKey,
+          );
         }
         _s._forjaLivePluginLoads[filterId] =
             _s._forjaLivePluginLoads[filterId]!.copyWith(

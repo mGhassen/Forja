@@ -2876,6 +2876,64 @@ Map<String, dynamic>? _findEspnGameForMatch(
   return null;
 }
 
+bool _broadcastTokenMatches(String a, String b) {
+  if (a.isEmpty || b.isEmpty) return false;
+  if (a == b) return true;
+  if (a.length >= 3 && b.contains(a)) return true;
+  if (b.length >= 3 && a.contains(b)) return true;
+  if (a.length >= 4 && b.length >= 4) {
+    final prefixLen = a.length < b.length ? a.length : b.length;
+    if (prefixLen >= 4 && a.substring(0, 4) == b.substring(0, 4)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+Set<String> _broadcastTeamTokens(String team) {
+  final key = _matchTextKey(team);
+  if (key.isEmpty) return const {};
+  return {
+    for (final token in key.split(' '))
+      if (token.length >= 3) token,
+  };
+}
+
+bool _broadcastTeamSideMatches(String a, String b) {
+  final left = _matchTextKey(a);
+  final right = _matchTextKey(b);
+  if (left.isNotEmpty && left == right) return true;
+
+  final ta = _broadcastTeamTokens(a);
+  final tb = _broadcastTeamTokens(b);
+  if (ta.isEmpty || tb.isEmpty) return false;
+
+  var hits = 0;
+  for (final x in ta) {
+    for (final y in tb) {
+      if (_broadcastTokenMatches(x, y)) {
+        hits++;
+        break;
+      }
+    }
+  }
+  final needed = ta.length <= 2 || tb.length <= 2 ? 1 : 2;
+  return hits >= needed;
+}
+
+bool _broadcastTitleTokenOverlap(String leftTitle, String rightTitle) {
+  final left = _matchTextKey(leftTitle);
+  final right = _matchTextKey(rightTitle);
+  if (left.isEmpty || right.isEmpty) return false;
+  if (left == right) return true;
+
+  final lt = left.split(' ').where((t) => t.length >= 4).toSet();
+  final rt = right.split(' ').where((t) => t.length >= 4).toSet();
+  if (lt.isEmpty || rt.isEmpty) return false;
+  final overlap = lt.intersection(rt).length;
+  return overlap >= 2 || (overlap >= 1 && lt.length <= 2 && rt.length <= 2);
+}
+
 bool _sameCatalogEventAsBroadcast({
   required String title,
   required String? homeTeam,
@@ -2893,13 +2951,31 @@ bool _sameCatalogEventAsBroadcast({
   );
   if (_teamPairsMatch(home, away, broadcastGame)) return true;
 
-  final broadcastTitle = _matchTextKey(
-    (broadcastGame['title'] ?? broadcastGame['name'] ?? '').toString(),
-  );
+  final bHome = (broadcastGame['homeTeam'] ?? '').toString().trim();
+  final bAway = (broadcastGame['awayTeam'] ?? '').toString().trim();
+  if (home.isNotEmpty &&
+      away.isNotEmpty &&
+      bHome.isNotEmpty &&
+      bAway.isNotEmpty) {
+    if (_broadcastTeamSideMatches(home, bHome) &&
+        _broadcastTeamSideMatches(away, bAway)) {
+      return true;
+    }
+    if (_broadcastTeamSideMatches(home, bAway) &&
+        _broadcastTeamSideMatches(away, bHome)) {
+      return true;
+    }
+  }
+
+  final broadcastTitle =
+      (broadcastGame['title'] ?? broadcastGame['name'] ?? '').toString();
+  if (_broadcastTitleTokenOverlap(title, broadcastTitle)) return true;
+
+  final broadcastTitleKey = _matchTextKey(broadcastTitle);
   final catalogTitle = _matchTextKey(title);
-  return broadcastTitle.isNotEmpty &&
+  return broadcastTitleKey.isNotEmpty &&
       catalogTitle.isNotEmpty &&
-      broadcastTitle == catalogTitle;
+      broadcastTitleKey == catalogTitle;
 }
 
 /// Matched My IPTV channels for a match — reused for [_iptvSportsStreamsCacheTtl].
@@ -2909,7 +2985,23 @@ const _liveBroadcastCacheTtl = Duration(minutes: 30);
 
 DateTime? _liveBroadcastCacheExpiry;
 List<Map<String, dynamic>> _liveBroadcastIndex = [];
+final Set<String> _liveBroadcastIndexedSources = {};
 Future<List<Map<String, dynamic>>>? _liveBroadcastInFlight;
+
+class _LiveBroadcastPluginCacheEntry {
+  const _LiveBroadcastPluginCacheEntry({
+    required this.expiresAt,
+    required this.rows,
+  });
+
+  final DateTime expiresAt;
+  final List<Map<String, dynamic>> rows;
+}
+
+final Map<String, _LiveBroadcastPluginCacheEntry> _liveBroadcastPluginRowsCache =
+    {};
+final Map<String, Future<List<Map<String, dynamic>>>> _liveBroadcastPluginInflight =
+    {};
 
 String _broadcastIndexKey(Map<String, dynamic> game) {
   return [
@@ -2996,43 +3088,263 @@ class _LiveBroadcastHints {
   bool get isEmpty => liveOnSat.isEmpty && liveSoccerTv.isEmpty;
 }
 
-Future<_LiveBroadcastHints> _broadcastHintsForMatch(_StreamedMatch match) async {
-  final broadcastGames = await _liveBroadcastIndexCached();
-  if (broadcastGames.isEmpty) return const _LiveBroadcastHints();
+void _logBroadcastHints(String message) {
+  debugPrint('[LiveMatches] broadcast hints: $message');
+}
 
+List<String> _broadcastSearchTokens({
+  required String title,
+  String? homeTeam,
+  String? awayTeam,
+}) {
+  final (home, away) = resolveLiveMatchTeams(
+    homeTeam: homeTeam,
+    awayTeam: awayTeam,
+    title: title,
+  );
+  return {
+    ..._broadcastTeamTokens(home),
+    ..._broadcastTeamTokens(away),
+    ..._matchTextKey(title).split(' ').where((t) => t.length >= 4),
+  }.toList();
+}
+
+void _logBroadcastNearMisses({
+  required String pluginId,
+  required List<Map<String, dynamic>> rows,
+  required List<String> searchTokens,
+  required int kickoffMs,
+}) {
+  if (searchTokens.isEmpty || rows.isEmpty) return;
+  final samples = <String>[];
+  for (final row in rows) {
+    if (row['sportMatchGame'] is! Map) continue;
+    final game = Map<String, dynamic>.from(row['sportMatchGame'] as Map);
+    final gameTitle = (game['title'] ?? row['title'] ?? '').toString();
+    final hay = _matchTextKey(gameTitle);
+    if (searchTokens.any(hay.contains)) {
+      final channels = _broadcastChannelsFromCatalogRow(row);
+      final gameMs = (game['dateMs'] as num?)?.toInt() ?? 0;
+      samples.add(
+        '"$gameTitle" channels=${channels.length} '
+        'kickoff=$gameMs delta=${kickoffMs > 0 && gameMs > 0 ? ((gameMs - kickoffMs) / 60000).round() : "?"}m',
+      );
+    }
+    if (samples.length >= 3) break;
+  }
+  if (samples.isEmpty) return;
+  _logBroadcastHints(
+    '$pluginId near-miss titles (token overlap, no fixture match): '
+    '${samples.join(" | ")}',
+  );
+}
+
+List<String> _broadcastChannelsFromCatalogRow(Map<String, dynamic> row) {
+  if (row['sportMatchGame'] is Map) {
+    final fromGame = _broadcastChannelsFromGame(
+      Map<String, dynamic>.from(row['sportMatchGame'] as Map),
+    );
+    if (fromGame.isNotEmpty) return fromGame;
+  }
+  return _broadcastChannelsFromGame(row);
+}
+
+Future<List<Map<String, dynamic>>> _liveBroadcastPluginRowsCached(
+  EnginePlugin plugin,
+) async {
+  final id = plugin.id;
+  final cached = _liveBroadcastPluginRowsCache[id];
+  if (cached != null && DateTime.now().isBefore(cached.expiresAt)) {
+    return cached.rows;
+  }
+  final inflight = _liveBroadcastPluginInflight[id];
+  if (inflight != null) return inflight;
+
+  final future = () async {
+    try {
+      final rows = await EngineService.instance.runLiveCatalog(
+        catalogPlugin: plugin,
+      );
+      final copy = List<Map<String, dynamic>>.from(rows);
+      final withChannels = copy.where((row) {
+        return _broadcastChannelsFromCatalogRow(row).isNotEmpty;
+      }).length;
+      _logBroadcastHints(
+        '${plugin.id} catalog rows=${copy.length} withChannels=$withChannels',
+      );
+      if (copy.isEmpty) {
+        _logBroadcastHints(
+          '${plugin.id} returned 0 rows — plugin disabled or fetch failed',
+        );
+      } else if (withChannels == 0) {
+        _logBroadcastHints(
+          '${plugin.id} has rows but none include broadcastChannels',
+        );
+      }
+      _liveBroadcastPluginRowsCache[id] = _LiveBroadcastPluginCacheEntry(
+        expiresAt: DateTime.now().add(_liveBroadcastCacheTtl),
+        rows: copy,
+      );
+      final sourceKey = LiveSportCapabilities.normalizePluginId(plugin.id);
+      putLiveBroadcastIndex(
+        [
+          for (final row in copy)
+            if (row['sportMatchGame'] is Map)
+              _stampBroadcastSource(
+                Map<String, dynamic>.from(row['sportMatchGame'] as Map),
+                sourceKey: sourceKey,
+              ),
+        ],
+        sourceKey: sourceKey,
+      );
+      return copy;
+    } catch (e) {
+      debugPrint('[LiveMatches] broadcast plugin ${plugin.id} failed: $e');
+      _logBroadcastHints('${plugin.id} fetch error: $e');
+      return const <Map<String, dynamic>>[];
+    } finally {
+      _liveBroadcastPluginInflight.remove(id);
+    }
+  }();
+
+  _liveBroadcastPluginInflight[id] = future;
+  return future;
+}
+
+_LiveBroadcastHints _liveBroadcastHintsFromGame(Map<String, dynamic>? game) {
+  if (game == null) return const _LiveBroadcastHints();
+  final bySource = _broadcastBySourceMap(game);
+  if (bySource.isNotEmpty) {
+    return _LiveBroadcastHints(
+      liveOnSat: List<String>.from(bySource['liveonsat'] ?? const []),
+      liveSoccerTv: List<String>.from(bySource['livesoccertv'] ?? const []),
+    );
+  }
+  final merged = _broadcastChannelsFromGame(game);
+  if (merged.isEmpty) return const _LiveBroadcastHints();
+  return _LiveBroadcastHints(liveOnSat: merged);
+}
+
+Future<_LiveBroadcastHints> _broadcastHintsForMatch(_StreamedMatch match) async {
   final aligned = _sportMatchGameAlignedWithCard(match);
+  final fromGame = _liveBroadcastHintsFromGame(aligned);
+  if (!fromGame.isEmpty) {
+    _logBroadcastHints(
+      'using enriched game payload liveOnSat=${fromGame.liveOnSat.length} '
+      'liveSoccerTv=${fromGame.liveSoccerTv.length}',
+    );
+    return fromGame;
+  }
+
+  final plugins =
+      await EngineService.instance.listLiveSportBroadcastPlugins();
+  if (plugins.isEmpty) {
+    _logBroadcastHints(
+      'no broadcast plugins enabled — turn on LiveOnSat / Live Soccer TV '
+      'in Settings → Forja Sports → Catalog',
+    );
+    return const _LiveBroadcastHints();
+  }
+
   final home = (aligned['homeTeam'] ?? '').toString().trim();
   final away = (aligned['awayTeam'] ?? '').toString().trim();
   final title = (aligned['title'] ?? match.title).toString().trim();
   final kickoff = (aligned['dateMs'] as num?)?.toInt() ?? match.dateMs;
+  final searchTokens = _broadcastSearchTokens(
+    title: title,
+    homeTeam: home.isEmpty ? null : home,
+    awayTeam: away.isEmpty ? null : away,
+  );
 
-  for (final broadcast in broadcastGames) {
-    if (!_sameCatalogEventAsBroadcast(
-      title: title,
-      homeTeam: home.isEmpty ? null : home,
-      awayTeam: away.isEmpty ? null : away,
-      dateMs: kickoff,
-      broadcastGame: broadcast,
-    )) {
-      continue;
+  _logBroadcastHints(
+    'lookup title="$title" home="$home" away="$away" kickoff=$kickoff '
+    'plugins=${plugins.map((p) => p.id).join(", ")}',
+  );
+
+  final liveOnSat = <String>[];
+  final liveSoccerTv = <String>[];
+
+  for (final plugin in plugins) {
+    final sourceKey = LiveSportCapabilities.normalizePluginId(plugin.id);
+    final rows = await _liveBroadcastPluginRowsCached(plugin);
+    var matchedRows = 0;
+    var matchedChannels = 0;
+
+    for (final row in rows) {
+      if (row['sportMatchGame'] is! Map) continue;
+      final game = Map<String, dynamic>.from(row['sportMatchGame'] as Map);
+      if (!_sameCatalogEventAsBroadcast(
+        title: title,
+        homeTeam: home.isEmpty ? null : home,
+        awayTeam: away.isEmpty ? null : away,
+        dateMs: kickoff,
+        broadcastGame: game,
+      )) {
+        continue;
+      }
+      matchedRows++;
+      final channels = _broadcastChannelsFromCatalogRow(row);
+      matchedChannels += channels.length;
+      if (channels.isEmpty) {
+        _logBroadcastHints(
+          '${plugin.id} matched "${game['title'] ?? row['title']}" but 0 channels',
+        );
+        continue;
+      }
+      switch (sourceKey) {
+        case 'liveonsat':
+          liveOnSat.addAll(channels);
+        case 'livesoccertv':
+          liveSoccerTv.addAll(channels);
+        default:
+          liveOnSat.addAll(channels);
+      }
     }
-    final bySource = _broadcastBySourceMap(broadcast);
-    if (bySource.isNotEmpty) {
-      return _LiveBroadcastHints(
-        liveOnSat: List<String>.from(bySource['liveonsat'] ?? const []),
-        liveSoccerTv: List<String>.from(bySource['livesoccertv'] ?? const []),
+
+    if (matchedRows == 0) {
+      _logBroadcastHints('${plugin.id} no fixture match in ${rows.length} rows');
+      _logBroadcastNearMisses(
+        pluginId: plugin.id,
+        rows: rows,
+        searchTokens: searchTokens,
+        kickoffMs: kickoff,
+      );
+    } else {
+      _logBroadcastHints(
+        '${plugin.id} matchedRows=$matchedRows matchedChannels=$matchedChannels',
       );
     }
-    final merged = _broadcastChannelsFromGame(broadcast);
-    if (merged.isNotEmpty) {
-      return _LiveBroadcastHints(liveOnSat: merged);
-    }
   }
-  return const _LiveBroadcastHints();
+
+  final hints = _LiveBroadcastHints(
+    liveOnSat: liveOnSat.toSet().toList(),
+    liveSoccerTv: liveSoccerTv.toSet().toList(),
+  );
+  if (hints.isEmpty) {
+    _logBroadcastHints(
+      'result empty — fixture not listed with TV data on LiveOnSat / Live Soccer TV',
+    );
+  } else {
+    _logBroadcastHints(
+      'result liveOnSat=${hints.liveOnSat.length} '
+      'liveSoccerTv=${hints.liveSoccerTv.length} '
+      'sample=${[
+        ...hints.liveOnSat.take(2),
+        ...hints.liveSoccerTv.take(2),
+      ].join(", ")}',
+    );
+  }
+  return hints;
 }
 
-void putLiveBroadcastIndex(List<Map<String, dynamic>> games) {
+void putLiveBroadcastIndex(
+  List<Map<String, dynamic>> games, {
+  String? sourceKey,
+}) {
   if (games.isEmpty) return;
+  if (sourceKey != null && sourceKey.trim().isNotEmpty) {
+    _liveBroadcastIndexedSources.add(sourceKey.trim());
+  }
   final byKey = <String, Map<String, dynamic>>{
     for (final g in _liveBroadcastIndex)
       _broadcastIndexKey(g): Map<String, dynamic>.from(g),
@@ -3043,28 +3355,39 @@ void putLiveBroadcastIndex(List<Map<String, dynamic>> games) {
     final existing = byKey[key];
     byKey[key] = existing == null
         ? incoming
-        : _mergeBroadcastGames(existing, incoming);
+        : _mergeBroadcastGames(
+            existing,
+            incoming,
+            sourceKey: sourceKey,
+          );
   }
   _liveBroadcastIndex = byKey.values.toList();
   _liveBroadcastCacheExpiry = DateTime.now().add(_liveBroadcastCacheTtl);
 }
 
 Future<List<Map<String, dynamic>>> _liveBroadcastIndexCached() async {
-  if (_liveBroadcastCacheExpiry != null &&
+  final plugins =
+      await EngineService.instance.listLiveSportBroadcastPlugins();
+  if (plugins.isEmpty) return _liveBroadcastIndex;
+
+  final requiredSources = {
+    for (final plugin in plugins)
+      LiveSportCapabilities.normalizePluginId(plugin.id),
+  };
+  final cacheFresh = _liveBroadcastCacheExpiry != null &&
       DateTime.now().isBefore(_liveBroadcastCacheExpiry!) &&
-      _liveBroadcastIndex.isNotEmpty) {
+      requiredSources.every(_liveBroadcastIndexedSources.contains);
+  if (cacheFresh && _liveBroadcastIndex.isNotEmpty) {
     return _liveBroadcastIndex;
   }
+
   final inflight = _liveBroadcastInFlight;
   if (inflight != null) return inflight;
+
   final future = _fetchLiveBroadcastIndex();
   _liveBroadcastInFlight = future;
   try {
-    final index = await future;
-    if (index.isNotEmpty) {
-      putLiveBroadcastIndex(index);
-    }
-    return index;
+    return await future;
   } finally {
     _liveBroadcastInFlight = null;
   }
@@ -3075,30 +3398,13 @@ Future<List<Map<String, dynamic>>> _fetchLiveBroadcastIndex() async {
     final plugins =
         await EngineService.instance.listLiveSportBroadcastPlugins();
     if (plugins.isEmpty) return [];
-    final byKey = <String, Map<String, dynamic>>{};
     for (final plugin in plugins) {
-      final sourceKey = LiveSportCapabilities.normalizePluginId(plugin.id);
-      final rows = await EngineService.instance.runLiveCatalog(
-        catalogPlugin: plugin,
-      );
-      for (final row in rows) {
-        if (row['sportMatchGame'] is! Map) continue;
-        final game = Map<String, dynamic>.from(row['sportMatchGame'] as Map);
-        final key = _broadcastIndexKey(game);
-        final existing = byKey[key];
-        byKey[key] = existing == null
-            ? _stampBroadcastSource(game, sourceKey: sourceKey)
-            : _mergeBroadcastGames(
-                existing,
-                game,
-                sourceKey: sourceKey,
-              );
-      }
+      await _liveBroadcastPluginRowsCached(plugin);
     }
-    return byKey.values.toList();
+    return _liveBroadcastIndex;
   } catch (e) {
     debugPrint('[LiveMatches] broadcast catalog index failed: $e');
-    return [];
+    return _liveBroadcastIndex;
   }
 }
 
@@ -3119,7 +3425,7 @@ Map<String, dynamic> _enrichGameWithBroadcastChannels(
     ..._broadcastChannelsFromGame(game),
   };
   for (final broadcast in broadcastGames) {
-    if (_sameCatalogEventAsBroadcast(
+      if (_sameCatalogEventAsBroadcast(
       title: cardTitle,
       homeTeam: home.isEmpty ? null : home,
       awayTeam: away.isEmpty ? null : away,
@@ -3129,6 +3435,14 @@ Map<String, dynamic> _enrichGameWithBroadcastChannels(
       final channels = broadcast['broadcastChannels'];
       if (channels is List && channels.isNotEmpty) {
         merged.addAll(channels.map((c) => c.toString()));
+      }
+      final bySource = _broadcastBySourceMap(broadcast);
+      if (bySource.isNotEmpty) {
+        return {
+          ...game,
+          'broadcastChannels': merged.toList(),
+          'broadcastBySource': bySource,
+        };
       }
     }
   }
