@@ -483,6 +483,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
       rowId: 'live-match-stream-tabs',
       sortOrder: 1,
       itemCount: tabs.length,
+      resultsRowId: 'live-match-stream-list',
       builder: (context, edgesFor) {
         return Wrap(
           spacing: 8,
@@ -810,8 +811,7 @@ class _LiveBroadcastChannelRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: ForjaShellColors.cinematic.surfaceElevated
-            .withValues(alpha: 0.35),
+        color: ForjaShellColors.surfaceElevated.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
       ),
