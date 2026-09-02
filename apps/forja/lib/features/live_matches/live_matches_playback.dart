@@ -80,31 +80,23 @@ mixin _LiveMatchesPlayback
   }) async {
     controller.setSearchPhase('Forja Live');
 
-    if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
-      await _fillMergedSources(
-        ppv: ppvAnchor,
-        streamed: match,
-        controller: controller,
-        choices: choices,
-        isStale: isStale,
-      );
-    } else {
-      await _fillForjaLiveSources(
+    // Providers = every enabled stream catalog + Stremio. Catalog-grid merge
+    // (PPV+Streamed card) is display-only and must not scope this list.
+    await _fillForjaLiveSources(
+      match: match,
+      controller: controller,
+      choices: choices,
+      isStale: isStale,
+      ppvAnchor: ppvAnchor,
+    );
+    if (choices.isEmpty && !isStale() && !controller.isDisposed) {
+      await _fillCatalogEngineSources(
         match: match,
         controller: controller,
         choices: choices,
         isStale: isStale,
-        ppvAnchor: ppvAnchor,
+        allowIptvFallback: false,
       );
-      if (choices.isEmpty && !isStale() && !controller.isDisposed) {
-        await _fillCatalogEngineSources(
-          match: match,
-          controller: controller,
-          choices: choices,
-          isStale: isStale,
-          allowIptvFallback: false,
-        );
-      }
     }
 
     if (isStale() || controller.isDisposed) return;
@@ -327,59 +319,6 @@ mixin _LiveMatchesPlayback
     controller.setSearchPhase('Stremio');
     await addStremio();
     return enriched;
-  }
-
-  Future<void> _fillMergedSources({
-    required _DamiTvStream ppv,
-    required _StreamedMatch streamed,
-    required _IptvSportsChannelsPanelController controller,
-    required List<_StreamedStreamChoice> choices,
-    required bool Function() isStale,
-  }) async {
-    controller.setSearchPhase('streams');
-    if (ppv.iframe.trim().isNotEmpty) {
-      choices.add(_ppvStreamChoice(ppv, streamed));
-      _panelAppendChoices(controller, choices);
-    }
-
-    final seenRefs = <String>{};
-    final jobs = <Future<void>>[];
-    for (final source in streamed.sources) {
-      final key = '${source.source}:${source.id}';
-      if (!seenRefs.add(key)) continue;
-      jobs.add(() async {
-        try {
-          final streams = await _fetchStreamedStreams(
-            source,
-            allowFallback: false,
-          );
-          final batch = [
-            for (final stream in streams)
-              if (stream.embedUrl.trim().isNotEmpty)
-                _StreamedStreamChoice(catalogMatch: streamed, stream: stream),
-          ];
-          if (isStale() || controller.isDisposed) return;
-          choices.addAll(batch);
-          _panelAppendChoices(controller, batch);
-        } catch (e) {
-          debugPrint('[LiveMatches] Merged Streamed resolve error: $e');
-        }
-      }());
-    }
-    await Future.wait(jobs);
-
-    if (isStale() || controller.isDisposed) return;
-    var totalViewers = ppv.iframe.trim().isNotEmpty ? ppv.viewers : 0;
-    for (final choice in choices) {
-      totalViewers += _effectiveStreamViewers(
-        choice.stream,
-        choice.catalogMatch,
-      );
-    }
-    _rememberEventStreamViewers(streamed, totalViewers);
-    if (ppv.iframe.trim().isNotEmpty) {
-      _rememberPpvStreamViewers(ppv, totalViewers);
-    }
   }
 
   Future<({_StreamedMatch match, _LiveMatchPlayPath? playPath})>
