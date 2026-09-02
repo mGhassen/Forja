@@ -1,9 +1,5 @@
 part of 'live_matches_screen.dart';
 
-/// Grid chip loads one catalog (or every catalog when chip is All).
-/// Match Streams hydrate every enabled catalog in the background.
-enum _ForjaLiveCatalogHydrationScope { grid, streams }
-
 class _ForjaLivePluginLoad {
   const _ForjaLivePluginLoad({
     required this.pluginId,
@@ -65,9 +61,6 @@ mixin _LiveMatchesForjaLive
   }
 
   bool get _forjaLiveAnyLoading => _gridScopedPluginLoads.any((e) => e.loading);
-
-  bool get _forjaLiveStreamCatalogBusy =>
-      _s._forjaLiveStreamCatalogInflight != null;
 
   bool get _forjaLiveCatalogBusy =>
       _usesForjaLiveLazyCatalog &&
@@ -285,74 +278,19 @@ mixin _LiveMatchesForjaLive
   }
 
   void _kickForjaLiveLazyCatalog({bool replace = false}) {
-    _kickForjaLiveCatalogHydration(
-      scope: _ForjaLiveCatalogHydrationScope.grid,
-      replace: replace,
-    );
-  }
-
-  void _kickForjaLiveStreamCatalogHydration({bool replace = false}) {
-    _kickForjaLiveCatalogHydration(
-      scope: _ForjaLiveCatalogHydrationScope.streams,
-      replace: replace,
-    );
-  }
-
-  bool _gridCatalogNeedsHydration() {
-    if (!_usesForjaLiveLazyCatalog) return false;
-    if (_s._forjaLivePluginLoads.isEmpty) return true;
-    final filter = _s._forjaLivePluginFilter;
-    if (filter == 'all') {
-      return _s._forjaLivePluginLoads.values.any(
-        (e) => !e.attempted && !e.loading,
-      );
-    }
-    final load = _s._forjaLivePluginLoads[filter] ??
-        _s._forjaLivePluginLoads[
-            EngineService.normalizeLiveSportPluginId(filter)];
-    return load == null || (!load.attempted && !load.loading);
-  }
-
-  void _kickForjaLiveCatalogHydration({
-    required _ForjaLiveCatalogHydrationScope scope,
-    bool replace = false,
-  }) {
     if (!_usesForjaLiveLazyCatalog) return;
-    if (scope == _ForjaLiveCatalogHydrationScope.grid) {
-      if (!(this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible) {
-        return;
-      }
-      if (!_s._serverHydrated) return;
-    }
-    final inflight = scope == _ForjaLiveCatalogHydrationScope.grid
-        ? _s._forjaLiveGridCatalogInflight
-        : _s._forjaLiveStreamCatalogInflight;
-    if (inflight != null && !replace) return;
-
-    final serial = scope == _ForjaLiveCatalogHydrationScope.grid
-        ? ++_s._forjaLiveGridCatalogInflightSerial
-        : ++_s._forjaLiveStreamCatalogInflightSerial;
-
-    if (scope == _ForjaLiveCatalogHydrationScope.grid) {
-      _s._deferSportTabRebuildDuringCatalog = true;
-      _setForjaLiveCatalogHydrating(true);
-    }
-
-    final future = _loadForjaLiveCatalogLazy(scope: scope);
-    if (scope == _ForjaLiveCatalogHydrationScope.grid) {
-      _s._forjaLiveGridCatalogInflight = future;
-    } else {
-      _s._forjaLiveStreamCatalogInflight = future;
-    }
+    if (!(this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible) return;
+    if (!_s._serverHydrated) return;
+    if (_s._forjaLiveGridCatalogInflight != null && !replace) return;
+    final serial = ++_s._forjaLiveGridCatalogInflightSerial;
+    _s._deferSportTabRebuildDuringCatalog = true;
+    _setForjaLiveCatalogHydrating(true);
+    final future = _loadForjaLiveCatalogLazy();
+    _s._forjaLiveGridCatalogInflight = future;
     unawaited(
       future.whenComplete(() {
-        if (scope == _ForjaLiveCatalogHydrationScope.grid) {
-          if (_s._forjaLiveGridCatalogInflightSerial != serial) return;
-          _s._forjaLiveGridCatalogInflight = null;
-        } else {
-          if (_s._forjaLiveStreamCatalogInflightSerial != serial) return;
-          _s._forjaLiveStreamCatalogInflight = null;
-        }
+        if (_s._forjaLiveGridCatalogInflightSerial != serial) return;
+        _s._forjaLiveGridCatalogInflight = null;
       }),
     );
   }
@@ -486,15 +424,11 @@ mixin _LiveMatchesForjaLive
     return true;
   }
 
-  /// Grid: only the selected catalog chip (or every catalog when chip is All).
-  /// Streams: every not-yet-attempted catalog for cross-provider resolve.
+  /// Only the selected catalog chip (or every catalog when chip is All).
   List<EnginePlugin> _forjaLiveCatalogsToLoad(
-    List<EnginePlugin> catalogPlugins, {
-    required _ForjaLiveCatalogHydrationScope scope,
-  }) {
-    final gridFilter = scope == _ForjaLiveCatalogHydrationScope.grid
-        ? _s._forjaLivePluginFilter
-        : 'all';
+    List<EnginePlugin> catalogPlugins,
+  ) {
+    final gridFilter = _s._forjaLivePluginFilter;
     final out = <EnginePlugin>[];
     for (final catalog in catalogPlugins) {
       final filterId = EngineService.catalogFilterId(catalog);
@@ -509,7 +443,6 @@ mixin _LiveMatchesForjaLive
   Future<void> _loadOneForjaLiveCatalog({
     required EnginePlugin catalog,
     required int gen,
-    required _ForjaLiveCatalogHydrationScope scope,
   }) async {
     final filterId = EngineService.catalogFilterId(catalog);
     bool genAlive() => mounted && gen == _s._forjaLiveLoadGen;
@@ -552,9 +485,7 @@ mixin _LiveMatchesForjaLive
             error: null,
           );
         });
-        if (scope == _ForjaLiveCatalogHydrationScope.grid) {
-          _maybeRebuildSportTabsFromCurrentMatches();
-        }
+        _maybeRebuildSportTabsFromCurrentMatches();
         return;
       }
 
@@ -609,9 +540,7 @@ mixin _LiveMatchesForjaLive
           error: null,
         );
       });
-      if (scope == _ForjaLiveCatalogHydrationScope.grid) {
-        _maybeRebuildSportTabsFromCurrentMatches();
-      }
+      _maybeRebuildSportTabsFromCurrentMatches();
     } catch (e) {
       debugPrint('[LiveMatches] Forja Live ${catalog.id}: $e');
       if (!genAlive()) return;
@@ -639,13 +568,9 @@ mixin _LiveMatchesForjaLive
     }
   }
 
-  Future<void> _loadForjaLiveCatalogLazy({
-    required _ForjaLiveCatalogHydrationScope scope,
-  }) async {
+  Future<void> _loadForjaLiveCatalogLazy() async {
     final gen = _s._forjaLiveLoadGen;
-    if (scope == _ForjaLiveCatalogHydrationScope.grid) {
-      _s._catalogFetchedHorizon = _s._scheduleHorizon;
-    }
+    _s._catalogFetchedHorizon = _s._scheduleHorizon;
     try {
       await LiveMatchesEngine.warmPluginMeta();
       await EngineService.instance.ensureOfficialInstalled();
@@ -657,50 +582,26 @@ mixin _LiveMatchesForjaLive
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
 
       if (catalogPlugins.isEmpty) {
-        if (scope == _ForjaLiveCatalogHydrationScope.grid) {
-          await _applyEspnScheduleMerge();
-        }
+        await _applyEspnScheduleMerge();
         return;
       }
 
-      final toLoad = _forjaLiveCatalogsToLoad(
-        catalogPlugins,
-        scope: scope,
-      );
+      final toLoad = _forjaLiveCatalogsToLoad(catalogPlugins);
       if (toLoad.isEmpty) {
-        if (scope == _ForjaLiveCatalogHydrationScope.grid) {
-          await _applyEspnScheduleMerge();
-        }
+        await _applyEspnScheduleMerge();
         return;
       }
 
-      // Finish every catalog in [toLoad] even if the chip filter changes mid-loop
-      // so each scrape is cached once (`attempted`) for the session.
-      final batchSize =
-          scope == _ForjaLiveCatalogHydrationScope.grid ? 1 : 3;
-      for (var i = 0; i < toLoad.length; i += batchSize) {
+      for (final catalog in toLoad) {
         if (!mounted || gen != _s._forjaLiveLoadGen) return;
-        final batch = toLoad.skip(i).take(batchSize).toList();
-        await Future.wait(
-          batch.map(
-            (catalog) => _loadOneForjaLiveCatalog(
-              catalog: catalog,
-              gen: gen,
-              scope: scope,
-            ),
-          ),
-        );
+        await _loadOneForjaLiveCatalog(catalog: catalog, gen: gen);
       }
 
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
-      if (scope == _ForjaLiveCatalogHydrationScope.grid) {
-        _ensureForjaLivePluginFilterValid();
-        await _applyEspnScheduleMerge();
-      }
+      _ensureForjaLivePluginFilterValid();
+      await _applyEspnScheduleMerge();
     } finally {
-      if (mounted &&
-          gen == _s._forjaLiveLoadGen &&
-          scope == _ForjaLiveCatalogHydrationScope.grid) {
+      if (mounted && gen == _s._forjaLiveLoadGen) {
         _s._deferSportTabRebuildDuringCatalog = false;
         _rebuildSportTabsFromCurrentMatches();
         _setForjaLiveCatalogHydrating(false);
@@ -710,7 +611,7 @@ mixin _LiveMatchesForjaLive
     }
   }
 
-  void _deferTabControllerDispose(TabController? ctrl) {
+  bool _gridCatalogNeedsHydration() {
     if (ctrl == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => ctrl.dispose());
   }

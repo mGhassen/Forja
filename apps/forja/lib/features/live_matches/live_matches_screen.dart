@@ -165,10 +165,6 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   Future<void>? _forjaLiveGridCatalogInflight;
   int _forjaLiveGridCatalogInflightSerial = 0;
 
-  /// Background hydration for match Streams — all enabled catalogs, not grid chip.
-  Future<void>? _forjaLiveStreamCatalogInflight;
-  int _forjaLiveStreamCatalogInflightSerial = 0;
-
   /// Sport tabs rebuild once after hydration instead of per-plugin setState.
   bool _deferSportTabRebuildDuringCatalog = false;
 
