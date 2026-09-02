@@ -211,6 +211,11 @@ mixin _LiveMatchesPlayback
   }) async {
     controller.setSearchPhase('Forja Live');
 
+    // Hydrate every enabled stream catalog first (Catalog chip is grid-only).
+    final catalogMatches = await (this as _LiveMatchesForjaLive)
+        ._catalogMatchesForStreamResolve(match);
+    if (isStale() || controller.isDisposed) return;
+
     if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
       choices.add(_ppvStreamChoice(ppvAnchor, match));
     } else {
@@ -218,8 +223,6 @@ mixin _LiveMatchesPlayback
     }
     _panelAppendChoices(controller, choices);
 
-    final catalogMatches = await (this as _LiveMatchesForjaLive)
-        ._catalogMatchesForStreamResolve(match);
     if (catalogMatches.isNotEmpty) {
       await _resolveCatalogStreamChoices(
         catalogMatches,

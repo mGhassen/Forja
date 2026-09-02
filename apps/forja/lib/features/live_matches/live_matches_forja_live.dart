@@ -350,12 +350,106 @@ mixin _LiveMatchesForjaLive
     _kickForjaLiveLazyCatalog(replace: true);
   }
 
-  /// Sibling schedule rows already loaded in the grid — stream search resolves
-  /// those via live `resolve` plugins; never re-fetch schedule catalogs here.
+  /// Schedule chip filters the grid only. Providers hydrate sibling rows from
+  /// every enabled stream catalog — including ones not loaded for the chip.
   Future<List<_StreamedMatch>> _catalogMatchesForStreamResolve(
     _StreamedMatch match,
   ) async {
-    return _streamedMatchesForEvent(match, _s._streamedMatches);
+    var siblings = _streamedMatchesForEvent(match, _s._streamedMatches);
+    final represented = <String>{
+      for (final m in siblings)
+        if (m.livePluginId.isNotEmpty)
+          EngineService.normalizeLiveSportPluginId(m.livePluginId),
+    };
+    final hasMatchingPpv = _s._damiTvStreams.any(
+      (ppv) =>
+          _samePpvStreamedMatch(ppv, match) && ppv.iframe.trim().isNotEmpty,
+    );
+
+    final catalogs =
+        await EngineService.instance.listEnabledLiveCatalogPlugins();
+    final missing = <EnginePlugin>[];
+    for (final catalog in catalogs) {
+      // Scoreboard / broadcast feeds are not Providers stream sources.
+      if (LiveMatchesEngine.isScheduleEnrichCatalogPlugin(catalog)) continue;
+      if (catalog.supportsLiveBroadcast) continue;
+      final filterId = EngineService.catalogFilterId(catalog);
+      final norm = EngineService.normalizeLiveSportPluginId(filterId);
+      if (represented.contains(norm)) continue;
+      if (LiveMatchesEngine.isIframeCatalogPlugin(catalog) && hasMatchingPpv) {
+        continue;
+      }
+      missing.add(catalog);
+    }
+    if (missing.isEmpty) return siblings;
+
+    final added = <_StreamedMatch>[];
+    await Future.wait(
+      missing.map((catalog) async {
+        final filterId = EngineService.catalogFilterId(catalog);
+        try {
+          LiveMatchesEngine.cachePluginMeta(catalog);
+          final extraConfig = await _liveCatalogExtraConfig(catalog);
+          final rows = await EngineService.instance.runLiveCatalog(
+            catalogPlugin: catalog,
+            extraConfig: extraConfig,
+          );
+          if (LiveMatchesEngine.isIframeCatalogPlugin(catalog)) {
+            final ppvHits = <_DamiTvStream>[];
+            for (final row in rows) {
+              if (!_forjaLiveCatalogRowInHorizon(row, _s._scheduleHorizon)) {
+                continue;
+              }
+              final ppv = _damiTvFromPpvCatalogRow(row);
+              if (ppv.id.isEmpty) continue;
+              final probe = _forjaLiveRowToMatch({
+                ...Map<String, dynamic>.from(row),
+                'pluginId': filterId,
+              });
+              if (!_sameStreamedEvent(match, probe)) continue;
+              ppvHits.add(ppv);
+            }
+            if (ppvHits.isNotEmpty && mounted) {
+              setState(() {
+                final existing = _s._damiTvStreams.map((s) => s.id).toSet();
+                _s._damiTvStreams = [
+                  ..._s._damiTvStreams,
+                  for (final p in ppvHits)
+                    if (!existing.contains(p.id)) p,
+                ];
+              });
+            }
+            return;
+          }
+
+          for (final row in rows) {
+            final enriched = Map<String, dynamic>.from(row);
+            enriched.putIfAbsent('pluginId', () => filterId);
+            final m = _forjaLiveRowToMatch(enriched);
+            if (m.id.isEmpty || m.title.isEmpty) continue;
+            if (!_sameStreamedEvent(match, m)) continue;
+            added.add(m);
+          }
+        } catch (e) {
+          debugPrint(
+            '[LiveMatches] stream-resolve catalog ${catalog.id}: $e',
+          );
+        }
+      }),
+    );
+
+    if (added.isNotEmpty && mounted) {
+      setState(() {
+        _invalidateLiveMatchesGridCache();
+        _s._streamedMatches = _sortStreamedLiveFirst([
+          ..._s._streamedMatches,
+          ...added,
+        ]);
+      });
+      siblings = _streamedMatchesForEvent(match, _s._streamedMatches);
+    }
+
+    return siblings;
   }
 
   void _ensureForjaLivePluginFilterValid() {
