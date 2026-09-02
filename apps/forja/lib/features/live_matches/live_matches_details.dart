@@ -346,7 +346,7 @@ class _LiveMatchDetailsScreenState
           ),
         ),
         if (showLiveTvSearch) ...[
-          const SizedBox(width: 10),
+          const SizedBox(width: 16),
           _buildLiveTvExpandingSearch(tvFocus: tvFocus),
         ],
       ],
@@ -415,6 +415,7 @@ class _LiveMatchDetailsScreenState
       context: context,
       onTap: _openLiveTvSearch,
       borderRadius: _kLiveTvSearchCollapsed / 2,
+      scaleOnFocus: 1.0,
       child: Tooltip(
         message: 'Search channels',
         child: Container(

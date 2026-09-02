@@ -122,24 +122,33 @@ mixin _LiveMatchesForjaLive
     setState(() => _s._forjaLiveCatalogHydrating = value);
   }
 
+  void _beginForjaLiveCatalogHydration() {
+    if (!_usesForjaLiveLazyCatalog) return;
+    _setForjaLiveCatalogHydrating(true);
+  }
+
   /// Drop the full-screen hydrate once scoped rows exist or any catalog returned.
+  ///
+  /// While plugin rows are still empty (listing catalogs), leave hydrating alone —
+  /// clearing it here flashes "No streams available" before discovery finishes.
   void _syncCatalogHydratingState() {
     if (!_usesForjaLiveLazyCatalog) {
       _setForjaLiveCatalogHydrating(false);
       return;
     }
     final scoped = _gridScopedPluginLoads.toList();
-    if (scoped.isEmpty) {
-      _setForjaLiveCatalogHydrating(false);
-      return;
-    }
+    if (scoped.isEmpty) return;
     final sources = _catalogFilteredGridSources();
     final hasEntries =
         sources.streamed.isNotEmpty || sources.ppv.isNotEmpty;
     final anyAttempted = scoped.any((e) => e.attempted);
-    _setForjaLiveCatalogHydrating(
-      !hasEntries && !anyAttempted && scoped.any((e) => e.loading),
-    );
+    if (hasEntries || anyAttempted) {
+      _setForjaLiveCatalogHydrating(false);
+      return;
+    }
+    // First scoped catalog not finished — keep spinner even if `loading` lags
+    // a frame behind registration / dispatch.
+    _setForjaLiveCatalogHydrating(true);
   }
 
   void _cancelOutOfScopeCatalogLoads(String filter) {
@@ -488,6 +497,7 @@ mixin _LiveMatchesForjaLive
       EngineService.instance.cancelLiveCatalog();
       _s._forjaLiveLoadGen++;
     }
+    _beginForjaLiveCatalogHydration();
     final serial = ++_s._forjaLiveGridCatalogInflightSerial;
     final future = _loadForjaLiveCatalogLazy();
     _s._forjaLiveGridCatalogInflight = future;
@@ -650,12 +660,15 @@ mixin _LiveMatchesForjaLive
     bool genAlive() => mounted && gen == _s._forjaLiveLoadGen;
 
     final load = _s._forjaLivePluginLoads[filterId];
-    if (load == null || load.loading || load.attempted) return;
+    // `loading` may already be true — dispatcher marks rows before await.
+    if (load == null || load.attempted) return;
 
-    setState(() {
-      _s._forjaLivePluginLoads[filterId] =
-          _s._forjaLivePluginLoads[filterId]!.copyWith(loading: true);
-    });
+    if (!load.loading) {
+      setState(() {
+        _s._forjaLivePluginLoads[filterId] =
+            _s._forjaLivePluginLoads[filterId]!.copyWith(loading: true);
+      });
+    }
 
     try {
       LiveMatchesEngine.cachePluginMeta(catalog);
@@ -792,6 +805,7 @@ mixin _LiveMatchesForjaLive
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
 
       if (catalogPlugins.isEmpty) {
+        _setForjaLiveCatalogHydrating(false);
         await _applyScheduleEnrichMerge();
         return;
       }
@@ -805,8 +819,18 @@ mixin _LiveMatchesForjaLive
         return;
       }
 
+      // Mark loading before any await so empty UI stays on the spinner.
       if (mounted && gen == _s._forjaLiveLoadGen) {
-        _syncCatalogHydratingState();
+        setState(() {
+          for (final catalog in toLoad) {
+            final filterId = EngineService.catalogFilterId(catalog);
+            final row = _s._forjaLivePluginLoads[filterId];
+            if (row == null || row.loading || row.attempted) continue;
+            _s._forjaLivePluginLoads[filterId] =
+                row.copyWith(loading: true);
+          }
+          _syncCatalogHydratingState();
+        });
       }
 
       var pending = toLoad.length;
@@ -827,10 +851,11 @@ mixin _LiveMatchesForjaLive
           }),
         );
       }
-    } finally {
+    } catch (_) {
       if (mounted && gen == _s._forjaLiveLoadGen) {
-        _syncCatalogHydratingState();
+        _setForjaLiveCatalogHydrating(false);
       }
+      rethrow;
     }
   }
 

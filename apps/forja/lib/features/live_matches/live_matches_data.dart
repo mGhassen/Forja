@@ -518,6 +518,9 @@ mixin _LiveMatchesData
     setState(() {
       (this as _LiveMatchesForjaLive)._invalidateLiveMatchesGridCache();
       _s._loading = !lazyCatalog;
+      // Keep spinner until discovery marks plugins loading — do not sync yet
+      // (empty plugin map would clear hydrating and flash the empty panel).
+      if (lazyCatalog) _s._forjaLiveCatalogHydrating = true;
       _s._error = null;
       _s._sportFilter = 'all';
       _s._timelineAutoScrolled = false;
@@ -533,9 +536,6 @@ mixin _LiveMatchesData
         (this as _LiveMatchesForjaLive)._deferTabControllerDispose(oldCtrl);
       }
     });
-    if (lazyCatalog) {
-      (this as _LiveMatchesForjaLive)._syncCatalogHydratingState();
-    }
     _scheduleRestoreRefreshFocus();
     if (_s._timelineScrollController.hasClients) {
       _s._timelineScrollController.jumpTo(0);
