@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shell/nav_config.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan.dart';
@@ -363,7 +364,7 @@ class _ShellNavRailState extends State<ShellNavRail> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(height: metrics.navRailTopPadding),
-              const _RailLogo(),
+              _RailLogo(onTap: ShellBus.notifyShellLogoTap),
               SizedBox(height: metrics.navRailLogoGap),
               Expanded(
                 child: MouseRegion(
@@ -487,10 +488,20 @@ class _ShellNavRailState extends State<ShellNavRail> {
   }
 }
 
-class _RailLogo extends StatelessWidget {
-  const _RailLogo();
+class _RailLogo extends StatefulWidget {
+  const _RailLogo({this.onTap});
 
+  final VoidCallback? onTap;
+
+  @override
+  State<_RailLogo> createState() => _RailLogoState();
+}
+
+class _RailLogoState extends State<_RailLogo> {
   static const _devGreen = Color(0xFF1CE783);
+
+  bool _hover = false;
+  bool _focused = false;
 
   @override
   Widget build(BuildContext context) {
@@ -500,17 +511,12 @@ class _RailLogo extends StatelessWidget {
       fit: BoxFit.contain,
     );
 
+    Widget content;
     if (!kDebugMode) {
-      return SizedBox(
-        width: ShellTokens.navRailWidth,
-        child: Center(child: logo),
-      );
-    }
-
-    // Runtime DEV chip - no alternate logo asset.
-    return SizedBox(
-      width: ShellTokens.navRailWidth,
-      child: Column(
+      content = logo;
+    } else {
+      // Runtime DEV chip - no alternate logo asset.
+      content = Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           logo,
@@ -533,6 +539,64 @@ class _RailLogo extends StatelessWidget {
             ),
           ),
         ],
+      );
+    }
+
+    final onTap = widget.onTap;
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final active = onTap != null &&
+        ShellInputPolicy.interactiveActive(
+          policy,
+          hovered: _hover,
+          focused: _focused,
+          context: context,
+        );
+
+    content = AnimatedScale(
+      scale: active ? 1.04 : 1,
+      duration: policy.instantFocusChrome
+          ? Duration.zero
+          : ShellTokens.navSelectionAnimation,
+      curve: Curves.easeOutCubic,
+      child: content,
+    );
+
+    if (onTap == null) {
+      return SizedBox(
+        width: ShellTokens.navRailWidth,
+        child: Center(child: content),
+      );
+    }
+
+    return SizedBox(
+      width: ShellTokens.navRailWidth,
+      child: Center(
+        child: Focus(
+          onFocusChange: (focused) => setState(() => _focused = focused),
+          onKeyEvent: (node, event) {
+            if (!shellTvIsNavigationKey(event)) return KeyEventResult.ignored;
+            if (event.logicalKey == LogicalKeyboardKey.enter ||
+                event.logicalKey == LogicalKeyboardKey.select) {
+              onTap();
+              return KeyEventResult.handled;
+            }
+            return KeyEventResult.ignored;
+          },
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _hover = true),
+            onExit: (_) => setState(() => _hover = false),
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: onTap,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                child: content,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

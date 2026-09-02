@@ -4,7 +4,7 @@
 
 ## What it is
 
-**Forja Packs** is where you install `manifest.json` URLs, enable packs, refresh updates, and turn the **Forja** play source on or off. This is separate from **Sources → Forja addons** (Direct torrent, Stremio, Nuvio).
+**Forja Packs** is where you install `manifest.json` URLs, enable packs, and refresh updates. Forja provider play is always on when your platform supports it. This is separate from **Sources → Forja addons** (Direct torrent, Stremio, Nuvio).
 
 ## How to open it
 
@@ -12,7 +12,6 @@
 
 ## What you can do
 
-- Toggle **Forja** play source — races enabled HTTP provider plugins when green **Play** is used
 - Paste a pack **manifest.json** URL and **Install**
 - **Update** / **Update all** when a remote pack version is newer
 - Enable or disable each installed pack; expand for per-plugin toggles (Providers, Live, Hubs, Torrent, …)

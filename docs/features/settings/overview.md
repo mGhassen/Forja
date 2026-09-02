@@ -36,7 +36,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 ## Tips
 
 - Only the selected category loads — opening Settings is lighter than the old all-sections page
-- IPTV / Live Matches alone → **Sources → Forja addons** and **Forja Packs** are always in the category list (no VOD tab required). Play-source toggles for Direct torrent / Stremio / Nuvio live under **Sources**; the **Forja** play toggle and pack install UI live under **Forja Packs**. Movie-only rows (Debrid, Simkl, Lists) stay hidden until a VOD tab is on in **Navigation**
+- IPTV / Live Matches alone → **Sources → Forja addons** and **Forja Packs** are always in the category list (no VOD tab required). Play-source toggles for Direct torrent / Stremio / Nuvio live under **Sources**; pack install UI lives under **Forja Packs** (Forja providers always on). Movie-only rows (Debrid, Simkl, Lists) stay hidden until a VOD tab is on in **Navigation**
 - On **TV**, the bottom rail item is your **profile avatar** (same as desktop).
   **↑/↓** moves through the category sidebar (flat green left bar + ink fill —
   no rounded hover card; focusing a category selects it and updates the right pane, but

@@ -60,7 +60,7 @@ class SettingsVisibility {
   bool get showNuvio => showPlaySourceNuvioToggle;
 
   /// Forja pack install UI (platform capability).
-  bool get showEngine => showPlaySourceEngineToggle;
+  bool get showEngine => PlatformPlayback.capabilities.playSourceEngine;
 
   /// Stremio addon install UI (platform capability).
   bool get showStremioAddons => showPlaySourceStremioToggle;

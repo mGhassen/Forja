@@ -127,7 +127,8 @@ class _ShellEmptyFeaturesScreenState
                   ],
                   const SizedBox(height: 20),
                   Text(
-                    'Your profile avatar in the sidebar opens Settings anytime.',
+                    'Tap the Forja logo in the sidebar to return here, or use '
+                    'your profile avatar to open Settings.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary.withValues(

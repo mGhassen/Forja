@@ -1,6 +1,5 @@
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
-import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:rust/rust.dart';
 
 /// Effective Direct torrent / Stremio / Nuvio for UI, boot, and details.
@@ -28,8 +27,7 @@ abstract final class PlaySourceEffective {
   static Future<bool> showNuvioToggle() async =>
       PlatformPlayback.capabilities.playSourceNuvio;
 
-  static Future<bool> showEngineToggle() async =>
-      PlatformPlayback.capabilities.playSourceEngine;
+  static Future<bool> showEngineToggle() async => false;
 
   /// Play-source toggles always accept input when the platform exposes them.
   static Future<bool> lanPlaySourcesEditable() async =>
@@ -65,8 +63,6 @@ abstract final class PlaySourceEffective {
   static Future<bool> engine([
     SettingsService? settings,
     bool? lanReady,
-  ]) async {
-    final s = settings ?? SettingsService();
-    return s.isPlaySourceEngineEnabled();
-  }
+  ]) async =>
+      PlatformPlayback.capabilities.playSourceEngine;
 }

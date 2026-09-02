@@ -6,7 +6,6 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_engine_pack_update.dart';
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
-import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_plugin_install_progress.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
@@ -14,7 +13,6 @@ import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
-import 'package:rust/rust.dart';
 
 /// Settings → Forja Packs — JS plugin manifests (providers, hubs, live, …).
 class SettingsForjaPacksSection extends ConsumerStatefulWidget {
@@ -29,13 +27,9 @@ class SettingsForjaPacksSection extends ConsumerStatefulWidget {
 
 class _SettingsForjaPacksSectionState
     extends ConsumerState<SettingsForjaPacksSection> {
-  final SettingsService _settings = SettingsService();
   final TextEditingController _engineController = TextEditingController();
   bool _engineInstalling = false;
   bool _engineUpdatingAll = false;
-
-  SettingsPlaybackNotifier get _playback =>
-      ref.read(settingsPlaybackProvider.notifier);
 
   @override
   void initState() {
@@ -62,11 +56,9 @@ class _SettingsForjaPacksSectionState
 
   @override
   Widget build(BuildContext context) {
-    final v = widget.visibility;
     final enginePacks =
         ref.watch(enginePacksProvider).valueOrNull ?? const [];
     final packUpdates = ref.watch(enginePackUpdatesProvider);
-    final snap = ref.watch(settingsPlaybackProvider).valueOrNull;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -74,33 +66,6 @@ class _SettingsForjaPacksSectionState
         SettingsGroup(
           label: 'Forja packs',
           children: [
-            if (v.showPlaySourceEngineToggle && snap != null)
-              settingsFocusableToggle(
-                context,
-                'Forja',
-                'Play from installed packs below. Green Play races enabled plugins.',
-                snap.playSourceEngine,
-                (val) async {
-                  await _settings.setPlaySourceEngineEnabled(val);
-                  if (val) {
-                    await _settings.setPlaySourceEngineAutoStartEnabled(true);
-                  }
-                  await _playback.patch(
-                    (s) => s.copyWith(
-                      playSourceEngine: val,
-                      playSourceEngineAutoStart:
-                          val ? true : s.playSourceEngineAutoStart,
-                    ),
-                  );
-                  schedulePreferencesSyncPush();
-                  if (val) {
-                    unawaited(
-                      EngineService.instance.ensureOfficialInstalled(),
-                    );
-                  }
-                },
-                enabled: v.lanPlaySourcesEditable,
-              ),
             ListenableBuilder(
               listenable: Listenable.merge([
                 PluginInstallCoordinator.instance.progress,

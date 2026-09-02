@@ -108,6 +108,13 @@ class ShellBus {
   /// Switch nav tab from anywhere: `ShellBus.requestTab.value = 'home';`
   static final ValueNotifier<String?> requestTab = ValueNotifier<String?>(null);
 
+  /// Nav-rail Forja logo tap — [MainScreen] returns to get-started or default tab.
+  static final ValueNotifier<int> shellLogoTapRevision = ValueNotifier(0);
+
+  static void notifyShellLogoTap() {
+    shellLogoTapRevision.value++;
+  }
+
   /// Settings hub category to select on the next Settings show (`lan`, `playback`, …).
   static final ValueNotifier<String?> requestSettingsCategory =
       ValueNotifier<String?>(null);

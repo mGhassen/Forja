@@ -297,6 +297,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     WidgetsBinding.instance.addObserver(this);
     ShellBus.stremioSearchNotifier.addListener(_onStremioSearch);
     ShellBus.requestTab.addListener(_onRequestTab);
+    ShellBus.shellLogoTapRevision.addListener(_onShellLogoTap);
     ShellBus.shellChromeRevision.addListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
     ShellBus.maskShellUnderPlayer.addListener(_onShellChromeChanged);
@@ -481,6 +482,41 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.requestTab.value = null;
   }
 
+  void _onShellLogoTap() {
+    if (!mounted) return;
+    popShellOverlayUntilRoot();
+    if (!_hasFeatureTabs) {
+      _returnToEmptyFeaturesHome();
+      return;
+    }
+    unawaited(_selectDefaultFeatureTab());
+  }
+
+  void _returnToEmptyFeaturesHome() {
+    final idx = _visibleIds.indexOf('settings');
+    if (idx < 0) return;
+    setState(() {
+      _emptyFeaturesBodyDismissed = false;
+      _selectedIndex = idx;
+      _mountedTabIds.add('settings');
+    });
+    _syncCurrentNavTab();
+  }
+
+  Future<void> _selectDefaultFeatureTab() async {
+    if (!mounted) return;
+    final defaultTab = await SettingsService().getDefaultNavTab();
+    if (!mounted) return;
+    final featureIds =
+        _visibleIds.where((id) => id != 'settings').toList(growable: false);
+    var target = defaultTab;
+    if (!featureIds.contains(target)) {
+      target = featureIds.isNotEmpty ? featureIds.first : 'home';
+    }
+    final idx = _visibleIds.indexOf(target);
+    if (idx >= 0) _selectTab(idx);
+  }
+
   void _openFeaturesFromEmptyState() {
     final ctx = _shellScopedContext;
     if (ctx == null || !ctx.mounted) return;
@@ -549,6 +585,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     WidgetsBinding.instance.removeObserver(this);
     ShellBus.stremioSearchNotifier.removeListener(_onStremioSearch);
     ShellBus.requestTab.removeListener(_onRequestTab);
+    ShellBus.shellLogoTapRevision.removeListener(_onShellLogoTap);
     ShellBus.shellChromeRevision.removeListener(_onShellChromeChanged);
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
     ShellBus.maskShellUnderPlayer.removeListener(_onShellChromeChanged);

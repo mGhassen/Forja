@@ -22,6 +22,12 @@ void main() {
     ShellBus.playerResourcePurgeRevision.value = 0;
   });
 
+  test('ShellBus.notifyShellLogoTap bumps revision', () {
+    final before = ShellBus.shellLogoTapRevision.value;
+    ShellBus.notifyShellLogoTap();
+    expect(ShellBus.shellLogoTapRevision.value, before + 1);
+  });
+
   test('ShellBus find shortcut handlers invoke newest first', () {
     var firstCalls = 0;
     var secondCalls = 0;
