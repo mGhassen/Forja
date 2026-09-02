@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/features/my_list/lists_screen.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/sections/settings_about_panel.dart';
@@ -55,8 +54,6 @@ Widget buildSettingsCategoryBody(
       return const SettingsDebridSection();
     case SettingsCategoryId.accounts:
       return SettingsAccountsPageBody(visibility: visibility);
-    case SettingsCategoryId.lists:
-      return const ListsScreen(embedded: true);
     case SettingsCategoryId.data:
       return SettingsDataPageBody(visibility: visibility);
     case SettingsCategoryId.iptvSports:

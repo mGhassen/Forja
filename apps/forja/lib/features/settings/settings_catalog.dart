@@ -18,16 +18,14 @@ abstract final class SettingsCategoryId {
 
   static const ordered = <String>[
     profile,
-    playback,
-    sources,
     forjaPacks,
-    debrid,
-    accounts,
-    lists,
-    data,
-    iptvSports,
-    lan,
     navigation,
+    sources,
+    debrid,
+    iptvSports,
+    accounts,
+    lan,
+    data,
     about,
   ];
 }
@@ -59,15 +57,22 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
   return [
     const SettingsCategoryMeta(
       id: SettingsCategoryId.profile,
-      title: 'Profile & account',
+      title: 'Account',
       subtitle: 'Profile, cloud sync, sign in',
       icon: Icons.account_circle_outlined,
     ),
+    if (visibility.showForjaPacksCategory)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.forjaPacks,
+        title: 'Forja Packs',
+        subtitle: 'Install and manage Forja plugin packs',
+        icon: Icons.inventory_2_outlined,
+      ),
     const SettingsCategoryMeta(
-      id: SettingsCategoryId.playback,
-      title: 'Playback',
-      subtitle: 'Quality, audio, auto-play',
-      icon: Icons.play_circle_outline_rounded,
+      id: SettingsCategoryId.navigation,
+      title: 'Features',
+      subtitle: 'Tabs, order, default menu',
+      icon: Icons.tab_rounded,
     ),
     if (visibility.showSourcesCategory)
       const SettingsCategoryMeta(
@@ -76,13 +81,6 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
         subtitle: 'Forja addons: torrent, Stremio, Nuvio',
         icon: Icons.extension_rounded,
       ),
-    if (visibility.showForjaPacksCategory)
-      const SettingsCategoryMeta(
-        id: SettingsCategoryId.forjaPacks,
-        title: 'Forja Packs',
-        subtitle: 'Install and manage Forja plugin packs',
-        icon: Icons.inventory_2_outlined,
-      ),
     if (visibility.showDebrid)
       const SettingsCategoryMeta(
         id: SettingsCategoryId.debrid,
@@ -90,6 +88,13 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
         subtitle: 'Real-Debrid, TorBox, and more',
         icon: Icons.cloud_download_rounded,
         adminOnly: true,
+      ),
+    if (visibility.showIptvSportsSettings)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.iptvSports,
+        title: 'Forja Sports',
+        subtitle: 'Portal, leagues, Live Matches matching',
+        icon: Icons.sports_rounded,
       ),
     if (visibility.showAccounts)
       SettingsCategoryMeta(
@@ -100,41 +105,19 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
             : 'Simkl',
         icon: Icons.sync_rounded,
       ),
-    if (visibility.showLists)
-      const SettingsCategoryMeta(
-        id: SettingsCategoryId.lists,
-        title: 'Lists',
-        subtitle: 'MDBlist custom lists',
-        icon: Icons.list_alt_rounded,
-        fillViewport: true,
-        adminOnly: true,
-      ),
-    if (visibility.showDataCategory)
-      const SettingsCategoryMeta(
-        id: SettingsCategoryId.data,
-        title: 'Data & backup',
-        subtitle: 'Clear cache, export, import',
-        icon: Icons.folder_outlined,
-      ),
-    if (visibility.showIptvSportsSettings)
-      const SettingsCategoryMeta(
-        id: SettingsCategoryId.iptvSports,
-        title: 'Forja Sports',
-        subtitle: 'Portal, leagues, Live Matches matching',
-        icon: Icons.sports_rounded,
-      ),
     const SettingsCategoryMeta(
       id: SettingsCategoryId.lan,
       title: 'LAN',
       subtitle: 'Desktop server, pairing, torrent relay',
       icon: Icons.lan_outlined,
     ),
-    const SettingsCategoryMeta(
-      id: SettingsCategoryId.navigation,
-      title: 'Features',
-      subtitle: 'Tabs, order, default menu',
-      icon: Icons.tab_rounded,
-    ),
+    if (visibility.showDataCategory)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.data,
+        title: 'Backup',
+        subtitle: 'Clear cache, export, import',
+        icon: Icons.folder_outlined,
+      ),
     const SettingsCategoryMeta(
       id: SettingsCategoryId.about,
       title: 'About',

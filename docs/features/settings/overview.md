@@ -16,27 +16,25 @@ Select the profile avatar / Guest item pinned at the bottom of the desktop or
 
 ## Categories
 
-Categories appear only when they match your profile. **VOD tabs** = Home, Search, Anime, Asian Drama, or My List. Admin-only entries (Debrid, Lists, and some About / Playback rows) show green sparkles next to the title when you can see them.
+Categories appear only when they match your profile. **VOD tabs** = Home, Search, Anime, Asian Drama, or My List. Admin-only entries (Debrid and some About rows) show green sparkles next to the title when you can see them.
 
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
-| [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
-| [Playback](playback-settings.md) | Player engine, audio, auto next/skip, quality, IPTV EPG | Always (episode extras need a VOD tab; IPTV EPG needs the IPTV tab) |
-| [Sources](torrent-settings.md) | **Forja addons** — Direct torrent, Stremio, Nuvio toggles + install | Always |
+| [Account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
 | [Forja Packs](forja-packs.md) | Install and manage Forja JS plugin manifests (providers, hubs, live, …) | Always |
+| [Features](navigation-bar.md) | Tab visibility, order, default menu | Always |
+| [Sources](torrent-settings.md) | **Forja addons** — Direct torrent, Stremio, Nuvio toggles + install | Always |
 | Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link | Admin only · VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
-| Connected services | Simkl; MDBlist (admin) | VOD tab (MDBlist rows are admin-only) |
-| [Lists](../movies-tv/external-lists.md) | MDBlist custom / top lists | Admin only · VOD tab — never on Android TV |
-| [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
 | [Forja Sports](forja-sports.md) | Live plugins, catalog feeds, leagues, Enable Forja Sports | Live Matches + IPTV tabs on |
+| Connected services | Simkl; MDBlist (admin) | VOD tab (MDBlist rows are admin-only) |
 | [LAN](lan.md) | Desktop server, pairing, torrent relay to phone/TV | Always |
-| [Navigation](navigation-bar.md) | Tab visibility, order, default menu | Always |
+| [Backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
 | [About](app-updates.md) | Check for updates, app version; Privacy / Developer rows for admins | Always |
 
 ## Tips
 
 - Only the selected category loads — opening Settings is lighter than the old all-sections page
-- IPTV / Live Matches alone → **Sources → Forja addons** and **Forja Packs** are always in the category list (no VOD tab required). Play-source toggles for Direct torrent / Stremio / Nuvio live under **Sources**; pack install UI lives under **Forja Packs** (Forja providers always on). Movie-only rows (Debrid, Simkl, Lists) stay hidden until a VOD tab is on in **Navigation**
+- IPTV / Live Matches alone → **Sources → Forja addons** and **Forja Packs** are always in the category list (no VOD tab required). Play-source toggles for Direct torrent / Stremio / Nuvio live under **Sources**; pack install UI lives under **Forja Packs** (Forja providers always on). Movie-only rows (Debrid, Simkl) stay hidden until a VOD tab is on in **Features**
 - On **TV**, the bottom rail item is your **profile avatar** (same as desktop).
   **↑/↓** moves through the category sidebar (flat green left bar + ink fill —
   no rounded hover card; focusing a category selects it and updates the right pane, but

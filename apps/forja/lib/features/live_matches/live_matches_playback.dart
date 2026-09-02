@@ -203,17 +203,20 @@ mixin _LiveMatchesPlayback
   }) async {
     controller.setSearchPhase('Forja Live');
 
-    // Hydrate every enabled stream catalog first (Catalog chip is grid-only).
-    final catalogMatches = await (this as _LiveMatchesForjaLive)
-        ._catalogMatchesForStreamResolve(match);
-    if (isStale() || controller.isDisposed) return;
-
     if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
       choices.add(_ppvStreamChoice(ppvAnchor, match));
     } else {
       _prependMatchingPpvChoices(match, choices);
     }
     _panelAppendChoices(controller, choices);
+
+    // Resolve live-* plugins from the opened row + pool first — no catalog re-fetch.
+    var catalogMatches = await (this as _LiveMatchesForjaLive)
+        ._catalogMatchesForStreamResolve(
+      match,
+      fetchMissingCatalogs: false,
+    );
+    if (isStale() || controller.isDisposed) return;
 
     if (catalogMatches.isNotEmpty) {
       await _resolveCatalogStreamChoices(
@@ -225,6 +228,30 @@ mixin _LiveMatchesPlayback
           _panelAppendChoices(controller, batch);
         },
       );
+    }
+    if (isStale() || controller.isDisposed) return;
+
+    final hasNonPpvStreams = choices.any((c) => !_isPpvStreamChoice(c));
+    if (!hasNonPpvStreams) {
+      final seenIds = {for (final m in catalogMatches) m.id};
+      final hydrated = await (this as _LiveMatchesForjaLive)
+          ._catalogMatchesForStreamResolve(match);
+      if (isStale() || controller.isDisposed) return;
+      final extra = [
+        for (final m in hydrated)
+          if (!seenIds.contains(m.id)) m,
+      ];
+      if (extra.isNotEmpty) {
+        await _resolveCatalogStreamChoices(
+          extra,
+          isStale: isStale,
+          onPartial: (batch) {
+            if (isStale() || controller.isDisposed) return;
+            choices.addAll(batch);
+            _panelAppendChoices(controller, batch);
+          },
+        );
+      }
     }
     if (isStale() || controller.isDisposed) return;
 

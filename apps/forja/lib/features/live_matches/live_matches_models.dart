@@ -880,6 +880,82 @@ List<_StreamedMatch> _streamedMatchesForEvent(
 ) =>
     pool.where((m) => _sameStreamedEvent(match, m)).toList();
 
+bool _streamedMatchSameIdentity(_StreamedMatch a, _StreamedMatch b) {
+  if (a.id.isNotEmpty && b.id.isNotEmpty && a.id == b.id) return true;
+  return _sameStreamedEvent(a, b);
+}
+
+/// Pool siblings plus the opened row — details Providers must never drop the anchor.
+List<_StreamedMatch> _eventMatchesForStreamResolve(
+  _StreamedMatch match,
+  List<_StreamedMatch> pool,
+) {
+  final siblings = _streamedMatchesForEvent(match, pool).toList();
+  if (!siblings.any((m) => _streamedMatchSameIdentity(m, match))) {
+    siblings.add(match);
+  }
+  return siblings;
+}
+
+String _liveSourceNameFromPluginId(String livePluginId) {
+  final norm = EngineService.normalizeLiveSportPluginId(livePluginId);
+  for (final prefix in ['live-', 'catalog-']) {
+    if (norm.startsWith(prefix)) return norm.substring(prefix.length);
+  }
+  return norm;
+}
+
+String _liveSourceRefId(_StreamedMatch match, String source) {
+  final id = match.id.trim();
+  if (id.isEmpty) return '';
+  final prefixed = '${source}_';
+  if (id.toLowerCase().startsWith(prefixed)) {
+    return id.substring(prefixed.length);
+  }
+  if (source == 'streamfree' && id.startsWith('sf_')) {
+    return id.substring(3);
+  }
+  return id;
+}
+
+/// Catalog rows normally carry `sources[]`; synthesize when the grid row lost them.
+_StreamedMatch _ensureProviderResolveMatch(_StreamedMatch match) {
+  if (match.sources.isNotEmpty || match.inlineStreams.isNotEmpty) {
+    return match;
+  }
+  if (!match.isForjaLive || match.id.isEmpty || match.livePluginId.isEmpty) {
+    return match;
+  }
+  if (LiveMatchesEngine.cachedIsScheduleEnrichCatalog(match.livePluginId)) {
+    return match;
+  }
+  final source = _liveSourceNameFromPluginId(match.livePluginId);
+  final refId = _liveSourceRefId(match, source);
+  if (source.isEmpty || refId.isEmpty) return match;
+  return _StreamedMatch(
+    id: match.id,
+    title: match.title,
+    category: match.category,
+    dateMs: match.dateMs,
+    poster: match.poster,
+    popular: match.popular,
+    airing: match.airing,
+    viewers: match.viewers,
+    homeTeam: match.homeTeam,
+    homeBadge: match.homeBadge,
+    awayTeam: match.awayTeam,
+    awayBadge: match.awayBadge,
+    sources: [_StreamedSourceRef(source: source, id: refId)],
+    inlineStreams: match.inlineStreams,
+    catalog: match.catalog,
+    stremioBaseUrl: match.stremioBaseUrl,
+    stremioType: match.stremioType,
+    stremioAddonName: match.stremioAddonName,
+    sportMatchGame: match.sportMatchGame,
+    livePluginId: match.livePluginId,
+  );
+}
+
 /// Stable key for caching resolved stream-viewer totals on the grid card.
 String _liveEventViewerKey(_StreamedMatch match) {
   final teams = _teamPairKeyFromCatalog(

@@ -361,10 +361,17 @@ mixin _LiveMatchesForjaLive
 
   /// Schedule chip filters the grid only. Providers hydrate sibling rows from
   /// every enabled stream catalog — including ones not loaded for the chip.
+  ///
+  /// When [fetchMissingCatalogs] is false, only pool + anchor rows are returned
+  /// so details can call `live-*` resolve plugins without re-listing schedules.
   Future<List<_StreamedMatch>> _catalogMatchesForStreamResolve(
-    _StreamedMatch match,
-  ) async {
-    var siblings = _streamedMatchesForEvent(match, _s._streamedMatches);
+    _StreamedMatch match, {
+    bool fetchMissingCatalogs = true,
+  }) async {
+    var siblings = _eventMatchesForStreamResolve(match, _s._streamedMatches)
+        .map(_ensureProviderResolveMatch)
+        .toList();
+    if (!fetchMissingCatalogs) return siblings;
     final represented = <String>{
       for (final m in siblings)
         if (m.livePluginId.isNotEmpty)
@@ -455,10 +462,10 @@ mixin _LiveMatchesForjaLive
           ...added,
         ]);
       });
-      siblings = _streamedMatchesForEvent(match, _s._streamedMatches);
+      siblings = _eventMatchesForStreamResolve(match, _s._streamedMatches);
     }
 
-    return siblings;
+    return siblings.map(_ensureProviderResolveMatch).toList();
   }
 
   void _ensureForjaLivePluginFilterValid() {

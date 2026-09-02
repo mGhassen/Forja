@@ -324,6 +324,59 @@ void main() {
     });
   });
 
+  group('torrentSeekRemountSettled', () {
+    PlayerState stubState({
+      Duration position = Duration.zero,
+      bool playing = false,
+      bool buffering = false,
+      int w = 1920,
+      int h = 1080,
+    }) {
+      return PlayerState(
+        position: position,
+        playing: playing,
+        buffering: buffering,
+        videoParams: VideoParams(w: w, h: h),
+      );
+    }
+
+    test('rejects false success at 0:00 when target is far ahead', () {
+      expect(
+        torrentSeekRemountSettled(
+          stubState(position: Duration.zero, playing: true),
+          const Duration(minutes: 45),
+        ),
+        isFalse,
+      );
+    });
+
+    test('accepts buffering near target', () {
+      expect(
+        torrentSeekRemountSettled(
+          stubState(
+            position: const Duration(minutes: 44, seconds: 55),
+            buffering: true,
+          ),
+          const Duration(minutes: 45),
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects position still far from target', () {
+      expect(
+        torrentSeekRemountSettled(
+          stubState(
+            position: const Duration(minutes: 10),
+            playing: true,
+          ),
+          const Duration(minutes: 45),
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('shouldPinSeekBarAtEof', () {
     test('false when UI already scrubbed away', () {
       expect(

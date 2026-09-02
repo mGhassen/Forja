@@ -112,4 +112,4 @@ Observed: forward scrub (e.g. resume at 50% or 90%) made the swarm download line
 
 **Root:** T12 only remounted backward jumps. Forward scrubs still used `player.seek()` on the sequential open demuxer, which cannot jump ahead of the current read cursor even when other pieces exist on disk.
 
-**Fix:** any torrent scrub >1s from the playhead (forward or back) reopens at target via `promoteLocalTorrentToSeekablePlayback` + immediate `prefetchByteOffset` at the target byte.
+**Fix:** any torrent scrub >1s from the playhead (forward or back) reopens at target via `promoteLocalTorrentToSeekablePlayback` + immediate `prefetchByteOffset` at the target byte. Scrub remount no longer treats “first frame at 0:00” as success — mpv `start` on localhost torrent HTTP is skipped; `ensureOpenedNearPosition` + `player.seek` after open; seek bar stays pinned until playhead lands near target.

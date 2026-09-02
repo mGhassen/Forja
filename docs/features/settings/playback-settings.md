@@ -31,7 +31,7 @@ Core playback preferences: which backends **Play** tries on the TMDB details scr
 - Set **Max stream quality** to cap automatic source ranking and HLS Auto start bitrate (**4K** by default; Auto, 1440p, 1080p, 720p, …)
 - Choose **Anime title language** — **Romaji** (default), **English**, or **Native** — for Anime hub / details / player titles. Stream matching still searches romaji first, then English, native, and AniList synonyms
 
-Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URLs, images, scores, continue watching).
+Cache reset moved to **Settings → [Backup](cache-data.md)** (stream URLs, images, scores, continue watching).
 
 ## Tips
 

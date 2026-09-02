@@ -43,40 +43,6 @@ class TorrentLoadingStatusPanel extends StatelessWidget {
             ),
           ),
         ],
-        if (status.hasHeadProgress) ...[
-          const SizedBox(height: 18),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: status.headProgressFraction > 0
-                        ? status.headProgressFraction
-                        : null,
-                    minHeight: 4,
-                    backgroundColor: Colors.white.withValues(alpha: 0.12),
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  status.headProgressLabel ?? '',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.62),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.1,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
         if (status.hasStats) ...[
           const SizedBox(height: 22),
           _StatsCard(status: status),

@@ -547,6 +547,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
       _player,
       position: position,
       positionNotifier: _positionNotifier,
+      bufferedNotifier: _bufferedNotifier,
+      onSeekBarLock: (locked) => _lockSeekBarPosition = locked,
       duration: _durationNotifier.value,
       streamUrl: url,
       mediaPath: widget.mediaPath,

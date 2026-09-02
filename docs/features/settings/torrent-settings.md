@@ -26,7 +26,7 @@
 - Disable providers you don’t use to speed up search. Rows still appear as each remaining provider returns — a slow one no longer holds the list empty.
 - Lower the disk cache size on phones or small SSDs if space is tight
 - Sort by seeders for fastest starts on [torrent playback](../playback/torrent-playback.md)
-- On **Android TV**, **Lists**, **Data & backup**, and **Debrid** stay hidden. Configure **Forja addons** under **Settings → Sources** and packs under **Forja Packs** on the TV the same as phone/desktop
+- On **Android TV**, **Backup**, and **Debrid** stay hidden. Configure **Forja addons** under **Settings → Sources** and packs under **Forja Packs** on the TV the same as phone/desktop
 
 ## Related
 

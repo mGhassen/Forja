@@ -963,6 +963,18 @@ bool localTorrentSeekNeedsRemount({
   return (target - previous).abs() > const Duration(seconds: 1);
 }
 
+/// Torrent scrub remount landed on [target] (not a false success at 0:00).
+bool torrentSeekRemountSettled(PlayerState state, Duration target) {
+  final pos = state.position;
+  const slop = Duration(seconds: 12);
+  if (target > const Duration(seconds: 5) &&
+      pos < const Duration(seconds: 2)) {
+    return false;
+  }
+  if ((pos - target).abs() > slop) return false;
+  return hasDecodedVideo(state) || state.buffering || state.playing;
+}
+
 String? localTorrentStreamUrlForSeek({
   String? streamUrl,
   String? mediaPath,
@@ -1861,6 +1873,8 @@ Future<void> seekPlayerPreservingProgress(
   String? mediaPath,
   String? magnetLink,
   int? torrentTotalBytes,
+  ValueNotifier<Duration>? bufferedNotifier,
+  void Function(bool locked)? onSeekBarLock,
 }) async {
   final dur = duration ?? player.state.duration;
   final previous = positionNotifier.value;
@@ -1879,6 +1893,11 @@ Future<void> seekPlayerPreservingProgress(
   );
   if (torrentUrl != null &&
       localTorrentSeekNeedsRemount(previous: previous, target: target)) {
+    bufferedNotifier?.value = target;
+  }
+
+  if (torrentUrl != null &&
+      localTorrentSeekNeedsRemount(previous: previous, target: target)) {
     if (torrentTotalBytes != null &&
         torrentTotalBytes > 0 &&
         dur > Duration.zero) {
@@ -1886,12 +1905,18 @@ Future<void> seekPlayerPreservingProgress(
         torrentByteOffsetForDuration(target, dur, torrentTotalBytes),
       );
     }
-    final ok = await promoteLocalTorrentToSeekablePlayback(
-      player,
-      streamUrl: torrentUrl,
-      seekTo: target,
-      resumePlaying: true,
-    );
+    onSeekBarLock?.call(true);
+    bool ok = false;
+    try {
+      ok = await promoteLocalTorrentToSeekablePlayback(
+        player,
+        streamUrl: torrentUrl,
+        seekTo: target,
+        resumePlaying: true,
+      );
+    } finally {
+      onSeekBarLock?.call(false);
+    }
     if (ok) {
       final nearEnd =
           dur > Duration.zero && target >= dur - const Duration(milliseconds: 500);
@@ -2610,7 +2635,7 @@ Future<void> ensureLocalTorrentSeekable(Player player) async {
   await _applyLocalTorrentSeekableMpv(player.platform as NativePlayer);
 }
 
-/// After probe decode (or backward scrub): reopen with seekable lavf (not seekable=0).
+/// After probe decode (or scrub): reopen with seekable lavf (not seekable=0).
 Future<bool> promoteLocalTorrentToSeekablePlayback(
   Player player, {
   required String streamUrl,
@@ -2634,7 +2659,11 @@ Future<bool> promoteLocalTorrentToSeekablePlayback(
       url: streamUrl,
       headers: headers,
       providerId: providerId,
-      startAt: pos > const Duration(milliseconds: 500) ? pos : null,
+      // mpv `start` on localhost torrent HTTP often opens at 0:00 — scrub seeks
+      // after the Range-capable demuxer is up (024 T13).
+      startAt: scrubRemount
+          ? null
+          : (pos > const Duration(milliseconds: 500) ? pos : null),
     );
   } catch (e) {
     debugPrint(
@@ -2643,22 +2672,45 @@ Future<bool> promoteLocalTorrentToSeekablePlayback(
     return false;
   }
 
-  final deadline = DateTime.now().add(const Duration(seconds: 45));
+  if (scrubRemount && pos > const Duration(milliseconds: 500)) {
+    final demuxReady = DateTime.now().add(const Duration(seconds: 30));
+    while (DateTime.now().isBefore(demuxReady)) {
+      final state = player.state;
+      if (state.duration > Duration.zero || hasDecodedVideo(state)) break;
+      await Future.delayed(const Duration(milliseconds: 80));
+    }
+    await ensureOpenedNearPosition(
+      player,
+      pos,
+      skipNearCredits: false,
+      streamUrl: streamUrl,
+      openedWithMpvStart: false,
+    );
+  }
+
+  final deadline = DateTime.now().add(
+    scrubRemount ? const Duration(seconds: 90) : const Duration(seconds: 45),
+  );
   while (DateTime.now().isBefore(deadline)) {
-    if (hasDecodedVideo(player.state)) {
-      if (playing && !player.state.playing) {
+    final state = player.state;
+    final settled = scrubRemount
+        ? torrentSeekRemountSettled(state, pos)
+        : hasDecodedVideo(state);
+    if (settled) {
+      if (playing && !state.playing) {
         await player.play();
       }
       debugPrint(
         '[Player] Torrent ${scrubRemount ? 'seek remount' : 'seekable promote'} OK '
-        '(${player.state.position.inSeconds}s)',
+        '(${state.position.inSeconds}s)',
       );
       return true;
     }
     await Future.delayed(const Duration(milliseconds: 80));
   }
   debugPrint(
-    '[Player] Torrent ${scrubRemount ? 'seek remount' : 'seekable promote'}: no frame after reopen',
+    '[Player] Torrent ${scrubRemount ? 'seek remount' : 'seekable promote'}: '
+    'no frame near ${pos.inSeconds}s (at ${player.state.position.inSeconds}s)',
   );
   return false;
 }

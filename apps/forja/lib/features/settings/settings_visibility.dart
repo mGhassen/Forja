@@ -86,10 +86,6 @@ class SettingsVisibility {
   /// MDBlist API key — admin accounts only (`accounts.is_admin`).
   bool get showMdblist => vodTab && AccountFeatures.instance.isAdmin;
 
-  /// Embedded Lists screen — admin accounts only (`accounts.is_admin`).
-  bool get showLists =>
-      !_isAndroidTv && vodTab && AccountFeatures.instance.isAdmin;
-
   /// Settings → Data & backup (cache clear, export/import, IPTV portals CSV).
   bool get showDataCategory => !_isAndroidTv;
 

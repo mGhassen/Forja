@@ -8,14 +8,14 @@ Beyond My List, Forja can show lists you've created or follow on Trakt and MDBLi
 
 ## How to open it
 
-**Settings → Lists** (admin accounts only — opens the lists manager screen).
+External lists (Trakt / MDBList) are no longer in Settings. Configure Trakt and MDBList under **Settings → Connected services**; browse lists from the **My List** tab when those services are linked.
 
 ## What you can do
 
 - Browse your Trakt lists when logged in
 - Browse your MDBList lists when an API key is configured
 - Explore MDBList top/public lists
-- Open a list for a poster grid, then tap a title to play — on **TV**, list detail opens in the shell overlay so **Back** returns to Settings → Lists
+- Open a list for a poster grid, then tap a title to play
 
 ## Setup (if needed)
 

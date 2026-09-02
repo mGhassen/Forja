@@ -14,7 +14,7 @@ MDBList aggregates movie/TV lists from multiple services. Add your API key to pu
 
 - Save MDBList API key
 - See configured username
-- Browse your lists and top lists (via Settings → Lists)
+- Browse your lists and top lists from the **My List** tab when Trakt or MDBList is configured
 
 ## Setup
 
