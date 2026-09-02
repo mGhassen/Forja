@@ -921,7 +921,10 @@ mixin _LiveMatchesPlayback
     _StreamedMatch match,
   ) async {
     final out = <IptvPlaySource>[];
-    final matchAddonName = match.stremioAddonName.trim();
+    final addonName = await _resolveStremioAddonName(
+      baseUrl: match.stremioBaseUrl,
+      matchAddonName: match.stremioAddonName,
+    );
     try {
       final raw = await StremioService().getStreams(
         baseUrl: match.stremioBaseUrl,
@@ -933,17 +936,13 @@ mixin _LiveMatchesPlayback
         final url = s['url']?.toString();
         if (!StremioService.isPlayableLiveUrl(url)) continue;
         final name = (s['name'] ?? s['title'] ?? 'Stream').toString().trim();
-        final inferredAddon =
-            matchAddonName.isNotEmpty
-                ? matchAddonName
-                : (_stremioAddonPrefixFromStreamName(name) ?? '');
         out.add(
           IptvPlaySource(
             url: url!,
-            label: _stremioStreamDisplayLabel(name, inferredAddon),
+            label: _stremioStreamDisplayLabel(name, addonName),
             headers: StremioService.liveStreamRequestHeaders(s),
             liveSourceKind: IptvLiveSourceKind.stremio,
-            liveProviderBadge: _stremioLiveProviderBadge(inferredAddon),
+            liveProviderBadge: _stremioLiveProviderBadge(addonName),
           ),
         );
       }

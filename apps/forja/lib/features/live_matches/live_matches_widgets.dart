@@ -202,12 +202,14 @@ class _LiveMatchesRefreshTopBarButtonState
 class _LiveMatchesServerSheet extends StatefulWidget {
   const _LiveMatchesServerSheet({
     required this.current,
+    required this.forjaLiveEnabled,
     required this.iptvSportsEnabled,
     required this.stremioLiveEnabled,
     required this.onSelected,
   });
 
   final _LiveMatchesServer current;
+  final bool forjaLiveEnabled;
   final bool iptvSportsEnabled;
   final bool stremioLiveEnabled;
   final ValueChanged<_LiveMatchesServer> onSelected;
@@ -227,6 +229,7 @@ class _LiveMatchesServerSheetState extends State<_LiveMatchesServerSheet> {
   );
 
   List<_LiveMatchesServer> get _servers => _liveMatchesServersForSurface(
+    forjaLiveEnabled: widget.forjaLiveEnabled,
     iptvSportsEnabled: widget.iptvSportsEnabled,
     stremioLiveEnabled: widget.stremioLiveEnabled,
   );

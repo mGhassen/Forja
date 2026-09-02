@@ -15,7 +15,7 @@ On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS sc
 
 ## What you can do
 
-- **Setup** — enable Forja Sports in Live Matches and pick which leagues to match (independent of installed plugins)
+- **Setup** — enable **Forja Live** and/or **Forja Sports** in Live Matches (independent of installed plugins) and pick which leagues to match for Forja Sports
 - **Live Sports** — **Catalog** / **Provider** tabs at the top; one toggle per site in each tab (Streamed, PPV, TimStreams, StreamFree, WatchFooty, Streamic, ESPN). **Catalog** = schedule feed; **Provider** = stream resolve. **Default on:** Streamed, PPV, StreamFree — both caps; others off until you enable them. Enabled catalogs appear as chips on Live Matches **All**, **Forja Live**, and **Forja Sports**.
 - Browse the same catalog schedule as Forja Live, **merged with ESPN** when **Catalog → ESPN** is on (clean home/away for matching; ESPN-only games still appear). Switching **Servers** between Forja Live and Forja Sports keeps that list — no reload
 - Pick an **Xtream** or **Stalker** portal from top-right **Portals** (same IPTV panel; M3U is not supported for Sports yet)

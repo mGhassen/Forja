@@ -35,6 +35,7 @@ class LiveMatchesIptvSportsConfig {
 
   const LiveMatchesIptvSportsConfig({
     this.enabled = true,
+    this.forjaLiveEnabled = true,
     this.portalKey = '',
     this.timezone = '',
     this.leagues = allLeagues,
@@ -42,6 +43,8 @@ class LiveMatchesIptvSportsConfig {
   });
 
   final bool enabled;
+  /// Live Matches → **Forja Live** server (engine catalogs + resolve).
+  final bool forjaLiveEnabled;
   /// [VerifiedPortal.key] of the chosen Xtream/Stalker portal.
   /// Empty → fall back to IPTV’s last-selected portal ([resolvePortalKey]).
   final String portalKey;
@@ -252,6 +255,7 @@ class LiveMatchesIptvSportsConfig {
 
   LiveMatchesIptvSportsConfig copyWith({
     bool? enabled,
+    bool? forjaLiveEnabled,
     String? portalKey,
     String? timezone,
     List<String>? leagues,
@@ -259,6 +263,7 @@ class LiveMatchesIptvSportsConfig {
   }) {
     return LiveMatchesIptvSportsConfig(
       enabled: enabled ?? this.enabled,
+      forjaLiveEnabled: forjaLiveEnabled ?? this.forjaLiveEnabled,
       portalKey: portalKey ?? this.portalKey,
       timezone: timezone ?? this.timezone,
       leagues: leagues ?? this.leagues,
@@ -268,6 +273,7 @@ class LiveMatchesIptvSportsConfig {
 
   Map<String, dynamic> toJson() => {
         'enabled': enabled,
+        'forjaLiveEnabled': forjaLiveEnabled,
         'portalKey': portalKey,
         'timezone': timezone,
         'leagues': leagues,
@@ -328,6 +334,7 @@ class LiveMatchesIptvSportsConfig {
     }
     return LiveMatchesIptvSportsConfig(
       enabled: j['enabled'] == true,
+      forjaLiveEnabled: j['forjaLiveEnabled'] != false,
       portalKey: (j['portalKey'] ?? '').toString(),
       timezone: (j['timezone'] ?? '').toString(),
       leagues: leagues,
@@ -341,6 +348,7 @@ class LiveMatchesIptvSportsConfig {
     if (raw == null || raw.isEmpty) {
       return const LiveMatchesIptvSportsConfig(
         enabled: true,
+        forjaLiveEnabled: true,
         leagues: allLeagues,
       );
     }

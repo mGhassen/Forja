@@ -82,15 +82,20 @@ mixin _LiveMatchesData
 
   Future<void> _selectServer(_LiveMatchesServer server) async {
     if (server == _s._server) return;
-    if (server == _LiveMatchesServer.iptvSports) {
-      final config = await LiveMatchesIptvSportsConfig.load();
-      if (!config.enabled) {
-        ForjaToast.info(
-          'Enable Forja Sports in Settings → Forja Sports first',
-        );
-        _scheduleRestoreCatalogTopBarFocus();
-        return;
-      }
+    final config = await LiveMatchesIptvSportsConfig.load();
+    if (server == _LiveMatchesServer.forjaLive && !config.forjaLiveEnabled) {
+      ForjaToast.info(
+        'Enable Forja Live in Settings → Forja Sports first',
+      );
+      _scheduleRestoreCatalogTopBarFocus();
+      return;
+    }
+    if (server == _LiveMatchesServer.iptvSports && !config.enabled) {
+      ForjaToast.info(
+        'Enable Forja Sports in Settings → Forja Sports first',
+      );
+      _scheduleRestoreCatalogTopBarFocus();
+      return;
     }
     final previous = _s._server;
     final keepSchedule = _sharesLiveCatalogSchedule(previous, server);
@@ -161,6 +166,7 @@ mixin _LiveMatchesData
           ),
           builder: (_) => _LiveMatchesServerSheet(
             current: _s._server,
+            forjaLiveEnabled: avail.forjaLiveEnabled,
             iptvSportsEnabled: avail.iptvSportsEnabled,
             stremioLiveEnabled: avail.stremioLiveEnabled,
             onSelected: (server) {
@@ -491,9 +497,16 @@ mixin _LiveMatchesData
   Future<void> _load() async {
     if (!mounted || !shellTabVisible) return;
     final iptvConfig = await LiveMatchesIptvSportsConfig.load();
-    if (_s._server == _LiveMatchesServer.iptvSports && !iptvConfig.enabled) {
-      setState(() => _s._server = _LiveMatchesServer.forjaLive);
-      unawaited(_s._persistServerPreference(_LiveMatchesServer.forjaLive));
+    final stremioLiveEnabled = await _liveMatchesStremioLiveEnabled();
+    final clamped = _liveMatchesClampServerForSurface(
+      _s._server,
+      forjaLiveEnabled: iptvConfig.forjaLiveEnabled,
+      iptvSportsEnabled: iptvConfig.enabled,
+      stremioLiveEnabled: stremioLiveEnabled,
+    );
+    if (clamped != _s._server) {
+      setState(() => _s._server = clamped);
+      unawaited(_s._persistServerPreference(clamped));
     }
     final lazyCatalog =
         (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog;

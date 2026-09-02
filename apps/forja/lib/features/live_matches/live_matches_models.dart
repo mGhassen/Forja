@@ -2502,21 +2502,47 @@ int _stremioParseHumanKickoff(String raw) {
   }
 }
 
+String _stremioAddonNameFromInstall(Map<String, dynamic> addon) {
+  final name = (addon['name']?.toString() ?? '').trim();
+  if (name.isNotEmpty) return name;
+  final manifest = addon['manifest'];
+  if (manifest is Map) {
+    final mname = (manifest['name']?.toString() ?? '').trim();
+    if (mname.isNotEmpty) return mname;
+  }
+  return '';
+}
+
+Future<String?> _stremioAddonNameForBaseUrl(String baseUrl) async {
+  final normalized = SettingsService.normalizeStremioAddonBaseUrl(baseUrl.trim());
+  if (normalized.isEmpty) return null;
+  final addons = await StremioService().peekAddonsForFeature(
+    StremioAddonFeatures.live,
+  );
+  for (final addon in addons) {
+    final url = SettingsService.normalizeStremioAddonBaseUrl(
+      addon['baseUrl']?.toString() ?? '',
+    );
+    if (url.isEmpty || url != normalized) continue;
+    final name = _stremioAddonNameFromInstall(addon);
+    if (name.isNotEmpty) return name;
+  }
+  return null;
+}
+
+Future<String> _resolveStremioAddonName({
+  required String baseUrl,
+  String matchAddonName = '',
+}) async {
+  final fromMatch = matchAddonName.trim();
+  if (fromMatch.isNotEmpty) return fromMatch;
+  return (await _stremioAddonNameForBaseUrl(baseUrl)) ?? '';
+}
+
 String _stremioLiveProviderBadge(String? addonName) {
   final addon = (addonName ?? '').trim();
   if (addon.isEmpty) return 'Stremio';
   return 'Stremio · $addon';
-}
-
-String? _stremioAddonPrefixFromStreamName(String rawName) {
-  final parts = rawName
-      .trim()
-      .split(RegExp(r'\s*[·•]\s*'))
-      .map((p) => p.trim())
-      .where((p) => p.isNotEmpty)
-      .toList();
-  if (parts.length < 2) return null;
-  return parts.first;
 }
 
 String _stremioStreamDisplayLabel(String rawName, String? addonName) {
@@ -2535,6 +2561,12 @@ String _stremioStreamDisplayLabel(String rawName, String? addonName) {
       final stripped = parts.sublist(1).join(' · ').trim();
       if (stripped.isNotEmpty) return stripped;
     }
+  }
+  // Upstream labels often prefix with an internal tag (e.g. Leaf · channel).
+  final parts = name.split(RegExp(r'\s*[·•]\s*'));
+  if (parts.length >= 2) {
+    final stripped = parts.sublist(1).join(' · ').trim();
+    if (stripped.isNotEmpty) return stripped;
   }
   return name;
 }
@@ -2591,7 +2623,7 @@ Future<List<_StreamedMatch>> _fetchStremioSportMatches() async {
   for (final addon in addons) {
     final baseUrl = addon['baseUrl']?.toString() ?? '';
     if (baseUrl.isEmpty) continue;
-    final addonName = addon['name']?.toString() ?? '';
+    final addonName = _stremioAddonNameFromInstall(addon);
     final catalogs = StremioService.sportCatalogsForLive(addon);
     for (final cat in catalogs) {
       final type = cat['type']?.toString() ?? 'sport';
@@ -4252,11 +4284,12 @@ Future<bool> _liveMatchesStremioLiveEnabled() async {
 /// Server picker order: Forja Live first, Stremio last when available.
 /// **All** / PPV / Streamed / MutStreams are hidden from the sheet.
 List<_LiveMatchesServer> _liveMatchesServersForSurface({
+  bool forjaLiveEnabled = true,
   bool iptvSportsEnabled = false,
   bool stremioLiveEnabled = false,
 }) {
   return [
-    _LiveMatchesServer.forjaLive,
+    if (forjaLiveEnabled) _LiveMatchesServer.forjaLive,
     if (iptvSportsEnabled) _LiveMatchesServer.iptvSports,
     if (stremioLiveEnabled) _LiveMatchesServer.stremio,
   ];
@@ -4264,15 +4297,18 @@ List<_LiveMatchesServer> _liveMatchesServersForSurface({
 
 _LiveMatchesServer _liveMatchesClampServerForSurface(
   _LiveMatchesServer server, {
+  bool forjaLiveEnabled = true,
   bool iptvSportsEnabled = false,
   bool stremioLiveEnabled = false,
 }) {
   final allowed = _liveMatchesServersForSurface(
+    forjaLiveEnabled: forjaLiveEnabled,
     iptvSportsEnabled: iptvSportsEnabled,
     stremioLiveEnabled: stremioLiveEnabled,
   );
   if (allowed.contains(server)) return server;
-  return _LiveMatchesServer.forjaLive;
+  if (allowed.isEmpty) return _LiveMatchesServer.forjaLive;
+  return allowed.first;
 }
 
 String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {

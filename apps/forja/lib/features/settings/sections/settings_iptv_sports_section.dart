@@ -273,8 +273,9 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 12, 2, 4),
               child: Text(
-                'Pick the portal in Live Matches → Forja Sports (top-right Portals). '
-                'Here: enable and which leagues to match.',
+                'Enable each Live Matches server independently. Pick the portal '
+                'in Live Matches → Forja Sports (top-right Portals). '
+                'Leagues apply to Forja Sports only.',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
                   fontSize: 13,
@@ -294,6 +295,12 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
                   ),
                 ),
               ),
+            SettingsToggleRow(
+              title: 'Enable Forja Live',
+              subtitle: 'Show the Forja Live server in Live Matches',
+              value: _config.forjaLiveEnabled,
+              onChanged: (v) => _persist(_config.copyWith(forjaLiveEnabled: v)),
+            ),
             SettingsToggleRow(
               title: 'Enable Forja Sports',
               subtitle: 'Show the Forja Sports server in Live Matches',
