@@ -1703,6 +1703,7 @@ class _IptvSportsChannelsOverlayState
                     // Bleed past left panel padding; right pad is already 0.
                     final insetLeft = DetailsTokens.sourcesPanelPadding.left;
                     final list = ListView.separated(
+                      clipBehavior: Clip.none,
                       padding: const EdgeInsets.only(bottom: 8),
                       itemCount: sources.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 8),
@@ -1803,10 +1804,7 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
     return _IptvSportsEpgNowRow(stream: stream, ctrl: ctrl);
   }
 
-  String get _probeKey {
-    final id = (source.streamId ?? '').trim();
-    return id.isEmpty ? source.url : id;
-  }
+  String get _probeKey => iptvLiveSourceProbeKey(source);
 
   Future<bool> _hoverProbe() async {
     final probed = healthProbe.healthFor(_probeKey);
@@ -1818,7 +1816,42 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
     }
     // Stalker sports rows have no durable URL until create_link at play.
     if (source.url.trim().isEmpty) return true;
-    return healthProbe.checkNow(_probeKey, source.url);
+    final probeUrl = iptvLiveSourceProbeUrl(source) ?? source.url.trim();
+    if (probeUrl.isEmpty) return false;
+    return healthProbe.checkNow(_probeKey, probeUrl);
+  }
+
+  Future<bool> _liveHoverProbe() async {
+    final probed = healthProbe.healthFor(_probeKey);
+    if (probed != null) return probed;
+    final probeUrl = iptvLiveSourceProbeUrl(source);
+    if (probeUrl == null) return iptvLiveSourceProbeSkipped(source);
+    return healthProbe.checkNow(_probeKey, probeUrl);
+  }
+
+  String? _liveQualityBadge(IptvPlaySource source) {
+    for (final text in [source.detail, source.label]) {
+      final raw = (text ?? '').trim();
+      if (raw.isEmpty) continue;
+      final match = RegExp(
+        r'\b(FHD|UHD|HD|4K|SD)\b',
+        caseSensitive: false,
+      ).firstMatch(raw);
+      if (match != null) return match.group(1)!.toUpperCase();
+    }
+    if (source.liveStreamHd) return 'HD';
+    return null;
+  }
+
+  String? _liveEmbedHost(IptvPlaySource source) {
+    final embed = (source.liveEngineEmbedUrl ?? '').trim();
+    final url = source.url.trim();
+    final probe = embed.isNotEmpty
+        ? embed
+        : (url.startsWith('pending:') ? '' : url);
+    final host = Uri.tryParse(probe)?.host;
+    if (host == null || host.isEmpty) return null;
+    return host;
   }
 
   Widget _logo(BuildContext context) {
@@ -1866,37 +1899,56 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLivePluginRow) {
-      final provider = (source.liveProviderBadge ?? '').trim().isNotEmpty
-          ? source.liveProviderBadge!.trim()
-          : (source.pickerSubtitle ?? '').trim();
-      final hd = source.liveStreamHd ||
-          RegExp(r'\bHD\b', caseSensitive: false)
-              .hasMatch(source.detail ?? '');
-      final viewers = source.liveViewerCount;
-      return SourcesPanelChannelTile(
-        title: source.pickerTitle,
-        provider: provider.isEmpty ? null : provider,
-        badges: [
-          if (hd) 'HD',
-          if (viewers > 0) '$viewers',
-        ],
-        onPlay: onTap,
-        tvItemIndex: tvItemIndex,
-        onUpEdge: onUpEdge,
-      );
-    }
-    final subtitle = source.pickerSubtitle;
-    return SourcesPanelChannelTile(
-      title: source.pickerTitle,
-      provider: (subtitle == null || subtitle.isEmpty) ? null : subtitle,
-      leading: _logo(context),
-      footer: _epgFooter(),
-      badges: const [],
-      onPlay: onTap,
-      tvItemIndex: tvItemIndex,
-      onUpEdge: onUpEdge,
-      onHoverProbe: _hoverProbe,
+    return ListenableBuilder(
+      listenable: healthProbe,
+      builder: (context, _) {
+        final cachedHealth = healthProbe.healthFor(_probeKey);
+        if (_isLivePluginRow) {
+          final provider = (source.liveProviderBadge ?? '').trim().isNotEmpty
+              ? source.liveProviderBadge!.trim()
+              : (source.pickerSubtitle ?? '').trim();
+          final qualityBadge = _liveQualityBadge(source);
+          final viewers = source.liveViewerCount;
+          final host = _liveEmbedHost(source);
+          return SourcesPanelChannelTile(
+            title: source.pickerTitle,
+            provider: provider.isEmpty ? null : provider,
+            footer: host == null
+                ? null
+                : Text(
+                    host,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+            badges: [
+              if (qualityBadge != null) qualityBadge,
+            ],
+            viewerCount: viewers > 0 ? viewers : null,
+            onPlay: onTap,
+            tvItemIndex: tvItemIndex,
+            onUpEdge: onUpEdge,
+            onHoverProbe: _liveHoverProbe,
+            probeHealthCache: cachedHealth,
+          );
+        }
+        final subtitle = source.pickerSubtitle;
+        return SourcesPanelChannelTile(
+          title: source.pickerTitle,
+          provider: (subtitle == null || subtitle.isEmpty) ? null : subtitle,
+          leading: _logo(context),
+          footer: _epgFooter(),
+          badges: const [],
+          onPlay: onTap,
+          tvItemIndex: tvItemIndex,
+          onUpEdge: onUpEdge,
+          onHoverProbe: _hoverProbe,
+          probeHealthCache: cachedHealth,
+        );
+      },
     );
   }
 }
@@ -4463,7 +4515,7 @@ class _StreamedMatchCardState extends State<_StreamedMatchCard> {
               Padding(
                 padding: const EdgeInsets.all(10),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
                       child: hasTeams
@@ -4748,7 +4800,7 @@ class _DamiTvMatchCardState extends State<_DamiTvMatchCard> {
               Padding(
                 padding: const EdgeInsets.all(10),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Expanded(
                       child: hasTeams

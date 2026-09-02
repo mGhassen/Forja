@@ -2470,20 +2470,27 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
 
   PlayerSourceStatus? _statusFor(int index, IptvPlaySource src) {
     if (index == widget.selectedIndex) return PlayerSourceStatus.active;
-    final health = _healthProbe.healthFor(src.url);
+    final key = iptvLiveSourceProbeKey(src);
+    final health = _healthProbe.healthFor(key);
     if (health == null) return null;
     return health ? PlayerSourceStatus.ready : PlayerSourceStatus.failed;
   }
 
   void _syncProbe(IptvPlaySource src, bool active) {
+    final key = iptvLiveSourceProbeKey(src);
+    final probeUrl = iptvLiveSourceProbeUrl(src);
+    if (probeUrl == null) {
+      if (!active) _healthProbe.cancel(key);
+      return;
+    }
     if (active) {
       _healthProbe.schedule(
-        src.url,
-        src.url,
+        key,
+        probeUrl,
         onlyThis: iptvUseTvFocus(context),
       );
     } else {
-      _healthProbe.cancel(src.url);
+      _healthProbe.cancel(key);
     }
   }
 

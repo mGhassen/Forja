@@ -482,38 +482,208 @@ pub fn indices_for_epg(game: &MatchGame, candidates: &[Candidate], max: usize) -
 }
 
 fn normalize_broadcast_channel_label(raw: &str) -> String {
-    raw.to_lowercase()
-        .replace("uhd", "")
-        .replace("hd", "")
-        .replace("  ", " ")
-        .trim()
-        .to_string()
+    let mut s = raw.to_lowercase();
+    for noise in [
+        " ($/geo/r)",
+        " ($/geo)",
+        " [online]",
+        " [via app]",
+        " [app]",
+        " (uk only)",
+        "|",
+        "·",
+    ] {
+        s = s.replace(noise, " ");
+    }
+    s = s.replace("$/geo/r", "");
+    for suffix in [" uhd", " hd", " 4k"] {
+        if let Some(stripped) = s.strip_suffix(suffix) {
+            s = stripped.to_string();
+        }
+    }
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-fn broadcast_channel_name_hit(game: &MatchGame, channel_name: &str) -> bool {
+const BROADCAST_TOKEN_STOP: &[&str] = &[
+    "tv", "the", "and", "for", "via", "app", "online", "streaming", "player", "connect",
+    "digital", "exclusive", "premium", "channel", "europe", "geo", "only", "extra", "plus",
+    "max", "now", "live", "uk", "usa", "mena", "ar", "en", "de", "fr", "pt", "pl", "no", "se",
+    "fi", "dk", "nl", "ie", "gb", "eu", "ca", "au", "nz", "tr", "gr", "it", "es", "be", "at",
+    "ch", "cz", "ro", "hu", "sk", "hr", "ba", "rs", "si", "bg", "ua", "ru", "az", "th", "jp",
+    "cn", "in", "ae", "sa", "qa", "kw", "bh", "om", "eg", "ma", "za", "br", "mx", "us",
+];
+
+fn broadcast_significant_tokens(label: &str) -> Vec<String> {
+    normalize_broadcast_channel_label(label)
+        .split_whitespace()
+        .filter(|w| w.len() >= 2 && !BROADCAST_TOKEN_STOP.contains(w))
+        .map(|w| w.to_string())
+        .collect()
+}
+
+fn broadcast_channel_needles(label: &str) -> Vec<String> {
+    let base = normalize_broadcast_channel_label(label);
+    if base.is_empty() {
+        return vec![];
+    }
+    let mut out = vec![base.clone()];
+    let parts: Vec<&str> = base.split_whitespace().collect();
+    if parts.len() >= 3 {
+        if let Ok(n) = parts.last().unwrap().parse::<u32>() {
+            if *parts.last().unwrap() == &n.to_string() {
+                let stem = parts[..parts.len() - 1].join(" ");
+                if stem.len() >= 5 {
+                    out.push(stem);
+                }
+            }
+        }
+        if parts.len() > 3 {
+            let prefix = parts[..3].join(" ");
+            if prefix.len() >= 5 {
+                out.push(prefix);
+            }
+        }
+        if parts.len() >= 2 {
+            let pair = parts[..2].join(" ");
+            if pair.len() >= 5 {
+                out.push(pair);
+            }
+        }
+    }
+    out.sort_by(|a, b| b.len().cmp(&a.len()));
+    out.dedup();
+    out
+}
+
+fn broadcast_token_overlap_score(tokens: &[String], haystack: &str) -> usize {
+    let h = normalize_broadcast_channel_label(haystack);
+    if h.is_empty() {
+        return 0;
+    }
+    tokens
+        .iter()
+        .filter(|t| t.len() >= 2 && h.contains(t.as_str()))
+        .count()
+}
+
+fn broadcast_tokens_required_hit_count(token_count: usize) -> usize {
+    match token_count {
+        0 => usize::MAX,
+        1 => 1,
+        2 => 2,
+        3 => 2,
+        n => (n * 2).saturating_sub(1) / 3 + 1,
+    }
+}
+
+fn broadcast_channel_name_hit_on_label(game: &MatchGame, channel_label: &str) -> bool {
     if game.broadcast_channels.is_empty() {
         return false;
     }
-    let name = normalize_broadcast_channel_label(channel_name);
+    let name = normalize_broadcast_channel_label(channel_label);
     if name.is_empty() {
         return false;
     }
     for bc in &game.broadcast_channels {
-        let needle = normalize_broadcast_channel_label(bc);
-        if needle.is_empty() {
-            continue;
+        let tokens = broadcast_significant_tokens(bc);
+        if !tokens.is_empty() {
+            let score = broadcast_token_overlap_score(&tokens, channel_label);
+            if score >= broadcast_tokens_required_hit_count(tokens.len()) {
+                return true;
+            }
         }
-        if name.contains(&needle) || needle.contains(&name) {
-            return true;
+        for needle in broadcast_channel_needles(bc) {
+            if needle.len() < 5 {
+                continue;
+            }
+            if name.contains(&needle) || needle.contains(&name) {
+                return true;
+            }
         }
     }
     false
 }
 
+fn broadcast_channel_candidate_hit(game: &MatchGame, c: &Candidate) -> bool {
+    broadcast_channel_name_hit_on_label(game, &c.name)
+        || (!c.category_label.trim().is_empty()
+            && broadcast_channel_name_hit_on_label(game, &c.category_label))
+}
+
+/// Direct IPTV channel name match from LiveOnSat (or similar) broadcast hints.
+pub fn broadcast_channel_matches(game: &MatchGame, candidates: &[Candidate]) -> Vec<Value> {
+    if game.broadcast_channels.is_empty() {
+        return vec![];
+    }
+    let mut hits: Vec<(usize, Option<f64>)> = Vec::new();
+    for (idx, s) in candidates.iter().enumerate() {
+        if broadcast_channel_candidate_hit(game, s) {
+            hits.push((idx, s.start_timestamp));
+        }
+    }
+    if hits.is_empty() {
+        return vec![];
+    }
+    let game_ts = if game.date_ms > 0 {
+        Some(game.date_ms as f64 / 1000.0)
+    } else {
+        None
+    };
+    if let Some(gt) = game_ts {
+        hits.sort_by(|a, b| {
+            let dist = |ts: Option<f64>| match ts {
+                Some(t) => (t - gt).abs(),
+                None => f64::INFINITY,
+            };
+            dist(a.1)
+                .partial_cmp(&dist(b.1))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+    }
+    let tiers = [hits, vec![], vec![], vec![]];
+    flatten_tiers(&tiers, candidates)
+}
+
+fn stream_item_key(item: &Value) -> String {
+    item.get("stream_id")
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| format!("id:{s}"))
+        .or_else(|| {
+            item.get("url")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(|s| format!("url:{s}"))
+        })
+        .unwrap_or_default()
+}
+
+/// Prepend broadcast-name hits; keep EPG/team matches after without duplicates.
+pub fn merge_broadcast_front(mut broadcast: Vec<Value>, team: Vec<Value>) -> Vec<Value> {
+    if broadcast.is_empty() {
+        return team;
+    }
+    let mut seen = std::collections::HashSet::new();
+    for item in &broadcast {
+        let key = stream_item_key(item);
+        if !key.is_empty() {
+            seen.insert(key);
+        }
+    }
+    for item in team {
+        let key = stream_item_key(&item);
+        if !key.is_empty() && !seen.insert(key) {
+            continue;
+        }
+        broadcast.push(item);
+    }
+    broadcast
+}
+
 fn team_prefilter_rank(game: &MatchGame, c: &Candidate) -> i32 {
     let name = c.name.to_lowercase();
     let cat = c.category_label.to_lowercase();
-    if broadcast_channel_name_hit(game, &c.name) {
+    if broadcast_channel_candidate_hit(game, c) {
         return 60;
     }
     if text_has_title_phrase(&name, &game.title_phrases) {
@@ -659,6 +829,11 @@ pub fn match_streams(
         let description = s.description.to_lowercase();
         let cat = s.category_label.to_lowercase();
         let combined = format!("{name} {description} {cat}");
+
+        if broadcast_channel_candidate_hit(game, s) {
+            tiers[0].push((idx, s.start_timestamp));
+            continue;
+        }
 
         let home_in_name = matches_team_side(&name, &game.home_team, &home_tokens);
         let away_in_name = matches_team_side(&name, &game.away_team, &away_tokens);
@@ -842,6 +1017,108 @@ mod tests {
         let idxs = indices_for_epg(&g, &cands, 10);
         assert_eq!(idxs.len(), 10, "name hits first, then pad to EPG cap");
         assert_eq!(idxs[0], 50);
+    }
+
+    #[test]
+    fn broadcast_channel_matches_tier_one() {
+        let mut g = game();
+        g.broadcast_channels = vec!["Sky Sports Main Event HD".into()];
+        let cands = vec![
+            Candidate {
+                name: "UK Sky Sports Main Event".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/sky.m3u8".into(),
+                category_label: "UK Sports".into(),
+                logo: String::new(),
+                stream_id: "sky1".into(),
+                epg_channel_id: String::new(),
+            },
+            Candidate {
+                name: "Random News".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/news.m3u8".into(),
+                category_label: "News".into(),
+                logo: String::new(),
+                stream_id: "news".into(),
+                epg_channel_id: String::new(),
+            },
+        ];
+        let hits = broadcast_channel_matches(&g, &cands);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(hits[0].get("name").and_then(|v| v.as_str()), Some("UK Sky Sports Main Event"));
+    }
+
+    #[test]
+    fn broadcast_channel_fuzzy_bein_and_tnt() {
+        let mut g = game();
+        g.broadcast_channels = vec!["beIN Sports 1".into(), "TNT Sports 1".into()];
+        let cands = vec![
+            Candidate {
+                name: "UK beIN SPORTS 1 HD".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/bein.m3u8".into(),
+                category_label: "Sports".into(),
+                logo: String::new(),
+                stream_id: "bein1".into(),
+                epg_channel_id: String::new(),
+            },
+            Candidate {
+                name: "TNT Sports 1 UK".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/tnt.m3u8".into(),
+                category_label: "Sports".into(),
+                logo: String::new(),
+                stream_id: "tnt1".into(),
+                epg_channel_id: String::new(),
+            },
+            Candidate {
+                name: "Random News".into(),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: "https://x/news.m3u8".into(),
+                category_label: "News".into(),
+                logo: String::new(),
+                stream_id: "news".into(),
+                epg_channel_id: String::new(),
+            },
+        ];
+        let hits = broadcast_channel_matches(&g, &cands);
+        assert_eq!(hits.len(), 2);
+    }
+
+    #[test]
+    fn merge_broadcast_front_dedupes_by_stream_id() {
+        let broadcast = vec![serde_json::json!({
+            "name": "Sky Sports",
+            "stream_id": "sky1",
+            "url": "https://x/sky.m3u8"
+        })];
+        let team = vec![
+            serde_json::json!({
+                "name": "Sky Sports",
+                "stream_id": "sky1",
+                "url": "https://x/sky.m3u8"
+            }),
+            serde_json::json!({
+                "name": "ESPN",
+                "stream_id": "espn1",
+                "url": "https://x/espn.m3u8"
+            }),
+        ];
+        let merged = merge_broadcast_front(broadcast, team);
+        assert_eq!(merged.len(), 2);
+        assert_eq!(
+            merged[0].get("stream_id").and_then(|v| v.as_str()),
+            Some("sky1")
+        );
+        assert_eq!(
+            merged[1].get("stream_id").and_then(|v| v.as_str()),
+            Some("espn1")
+        );
     }
 
     #[test]

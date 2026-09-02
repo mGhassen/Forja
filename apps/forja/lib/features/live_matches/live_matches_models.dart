@@ -374,6 +374,19 @@ class _StreamedStream {
   );
 }
 
+/// Resolve row `name` / `title` from Forja Live plugins into panel fields.
+({String language, bool hd}) forjaLiveStreamFieldsFromRowName(String raw) {
+  final name = raw.trim();
+  if (name.isEmpty) return (language: '', hd: false);
+  final match = RegExp(
+    r'\b(FHD|UHD|HD|4K|SD)\b',
+    caseSensitive: false,
+  ).firstMatch(name);
+  final token = match?.group(1)?.toUpperCase();
+  final hd = token != null && token != 'SD';
+  return (language: name, hd: hd);
+}
+
 /// Prefer per-stream viewers; fall back to catalog-level when the site only
 /// reports audience on the match (StreamFree / TimStreams / PPV).
 int _effectiveStreamViewers(_StreamedStream stream, _StreamedMatch match) =>
@@ -2563,6 +2576,43 @@ bool _kickoffClose(int aMs, int bMs) {
   return (aMs - bMs).abs() <= const Duration(minutes: 45).inMilliseconds;
 }
 
+bool _kickoffLoose(int aMs, int bMs) {
+  if (aMs <= 0 || bMs <= 0) return true;
+  if (_kickoffClose(aMs, bMs)) return true;
+  if ((aMs - bMs).abs() <= const Duration(hours: 6).inMilliseconds) {
+    return true;
+  }
+  final a = DateTime.fromMillisecondsSinceEpoch(aMs).toLocal();
+  final b = DateTime.fromMillisecondsSinceEpoch(bMs).toLocal();
+  return a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+List<String> _broadcastChannelsFromGame(Map<String, dynamic>? game) {
+  final raw = game?['broadcastChannels'];
+  if (raw is! List) return const [];
+  return [
+    for (final c in raw)
+      if (c.toString().trim().isNotEmpty) c.toString().trim(),
+  ];
+}
+
+Map<String, dynamic> _sportMatchGameForIptvResolve(
+  _StreamedMatch match,
+  List<Map<String, dynamic>> espnGames,
+) {
+  final existing = match.sportMatchGame != null
+      ? Map<String, dynamic>.from(match.sportMatchGame!)
+      : _sportMatchGamePayloadFromMatch(match);
+  final channels = _broadcastChannelsFromGame(existing);
+  final espn = _findEspnGameForMatch(match, espnGames);
+  if (espn == null) return existing;
+  final out = Map<String, dynamic>.from(espn);
+  if (channels.isNotEmpty) {
+    out['broadcastChannels'] = channels;
+  }
+  return out;
+}
+
 bool _teamPairsMatch(String? home, String? away, Map<String, dynamic> espn) {
   final epair = _teamPairKey(
     (espn['homeTeam'] ?? '').toString(),
@@ -2700,7 +2750,9 @@ Map<String, dynamic>? _findEspnGameForMatch(
   _StreamedMatch match,
   List<Map<String, dynamic>> espnGames,
 ) {
-  if (match.sportMatchGame != null) return match.sportMatchGame;
+  if (match.sportMatchGame != null) {
+    return Map<String, dynamic>.from(match.sportMatchGame!);
+  }
   for (final g in espnGames) {
     if (_sameCatalogEventAsEspn(
       title: match.title,
@@ -2713,6 +2765,31 @@ Map<String, dynamic>? _findEspnGameForMatch(
     }
   }
   return null;
+}
+
+bool _sameCatalogEventAsLiveOnSat({
+  required String title,
+  required String? homeTeam,
+  required String? awayTeam,
+  required int dateMs,
+  required Map<String, dynamic> liveOnSat,
+}) {
+  final losMs = (liveOnSat['dateMs'] as num?)?.toInt() ?? 0;
+  if (!_kickoffLoose(dateMs, losMs)) return false;
+
+  final (home, away) = resolveLiveMatchTeams(
+    homeTeam: homeTeam,
+    awayTeam: awayTeam,
+    title: title,
+  );
+  if (_teamPairsMatch(home, away, liveOnSat)) return true;
+
+  final losTitle =
+      _matchTextKey((liveOnSat['title'] ?? liveOnSat['name'] ?? '').toString());
+  final catalogTitle = _matchTextKey(title);
+  return losTitle.isNotEmpty &&
+      catalogTitle.isNotEmpty &&
+      losTitle == catalogTitle;
 }
 
 /// Matched My IPTV channels for a match — reused for [_iptvSportsStreamsCacheTtl].
@@ -2758,24 +2835,16 @@ Future<List<Map<String, dynamic>>> _fetchLiveOnSatBroadcastIndex() async {
     await EngineService.instance.ensureOfficialInstalled();
     final packs = await EngineService.instance.listPacks();
     EnginePlugin? plugin;
-    EnginePack? pack;
     for (final p in packs) {
       for (final pl in p.plugins) {
         if (pl.id == 'liveonsat') {
           plugin = pl;
-          pack = p;
           break;
         }
       }
       if (plugin != null) break;
     }
-    if (plugin == null || pack == null) return [];
-    final active = await PluginRegistry.instance.isLiveCapabilityActive(
-      pack: pack,
-      plugin: plugin,
-      capability: LiveSportCapabilities.catalog,
-    );
-    if (!active) return [];
+    if (plugin == null) return [];
     final rows = await EngineService.instance.runLiveCatalog(
       catalogPlugin: plugin,
     );
@@ -2806,12 +2875,12 @@ Map<String, dynamic> _enrichGameWithLiveOnSatChannels(
   final kickoff = (game['dateMs'] as num?)?.toInt() ?? dateMs;
   final cardTitle = (game['title'] ?? title).toString().trim();
   for (final los in liveOnSatGames) {
-    if (_sameCatalogEventAsEspn(
+    if (_sameCatalogEventAsLiveOnSat(
       title: cardTitle,
       homeTeam: home.isEmpty ? null : home,
       awayTeam: away.isEmpty ? null : away,
       dateMs: kickoff,
-      espn: los,
+      liveOnSat: los,
     )) {
       final channels = los['broadcastChannels'];
       if (channels is List && channels.isNotEmpty) {
@@ -2852,7 +2921,14 @@ String _iptvSportsStreamsCacheKey({
   final id = matchId.trim().isNotEmpty
       ? matchId.trim()
       : (game['id'] ?? '').toString().trim();
-  return '$portalKey|${cats.join(',')}|$id|$home|$away|$dateMs';
+  final channels = (game['broadcastChannels'] as List?)
+          ?.map((e) => e.toString().trim().toLowerCase())
+          .where((e) => e.isNotEmpty)
+          .toList() ??
+      const <String>[];
+  channels.sort();
+  final channelKey = channels.join('|');
+  return '$portalKey|${cats.join(',')}|$id|$home|$away|$dateMs|$channelKey';
 }
 
 List<IptvPlaySource>? _iptvSportsStreamsCacheGet(String key) {
@@ -2884,10 +2960,11 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   _StreamedMatch match, {
   void Function(List<IptvPlaySource> batch)? onPartial,
 }) async {
+  final liveOnSatFuture = _liveOnSatBroadcastIndexCached();
   var game = Map<String, dynamic>.from(
     match.sportMatchGame ?? _sportMatchGamePayloadFromMatch(match),
   );
-  final liveOnSat = await _liveOnSatBroadcastIndexCached();
+  final liveOnSat = await liveOnSatFuture;
   game = _enrichGameWithLiveOnSatChannels(
     game,
     liveOnSat,

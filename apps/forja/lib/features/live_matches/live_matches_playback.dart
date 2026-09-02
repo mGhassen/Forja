@@ -311,15 +311,41 @@ mixin _LiveMatchesPlayback
         : 'pending:${choice.catalogMatch.id}:${stream.id}:${stream.streamNo}';
     return IptvPlaySource(
       url: key,
-      label: _streamPickerLabel(choice.catalogMatch, stream),
-      detail: stream.hd ? 'HD' : null,
+      label: _streamPanelLabel(choice.catalogMatch, stream),
+      detail: _streamPanelDetail(stream),
       liveSourceKind: IptvLiveSourceKind.liveEngine,
       liveProviderBadge: _StreamedStreamSheet.serverLabelFor(
         choice.catalogMatch,
       ),
       liveViewerCount: _effectiveStreamViewers(stream, choice.catalogMatch),
       liveStreamHd: stream.hd,
+      liveEngineEmbedUrl: embed.isNotEmpty ? embed : null,
     );
+  }
+
+  String _streamPanelLabel(_StreamedMatch match, _StreamedStream stream) {
+    final lang = stream.language.trim();
+    if (lang.isNotEmpty) return lang;
+    return _streamPickerLabel(match, stream);
+  }
+
+  String? _streamPanelDetail(_StreamedStream stream) {
+    final parts = <String>[];
+    final quality = _streamQualityLabel(stream);
+    if (quality != null) parts.add(quality);
+    final host = Uri.tryParse(stream.embedUrl.trim())?.host;
+    if (host != null && host.isNotEmpty) parts.add(host);
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
+  String? _streamQualityLabel(_StreamedStream stream) {
+    final match = RegExp(
+      r'\b(FHD|UHD|HD|4K|SD)\b',
+      caseSensitive: false,
+    ).firstMatch(stream.language);
+    if (match != null) return match.group(1)!.toUpperCase();
+    if (stream.hd) return 'HD';
+    return null;
   }
 
   void _panelAppendChoices(
@@ -486,8 +512,8 @@ mixin _LiveMatchesPlayback
     final embed = stream.embedUrl.trim();
     return IptvPlaySource(
       url: url,
-      label: _streamPickerLabel(match, stream),
-      detail: stream.hd ? 'HD' : null,
+      label: _streamPanelLabel(match, stream),
+      detail: _streamPanelDetail(stream),
       headers: headers,
       liveSourceKind: IptvLiveSourceKind.liveEngine,
       liveProviderBadge: _StreamedStreamSheet.serverLabelFor(match),
@@ -628,12 +654,18 @@ mixin _LiveMatchesPlayback
       return [];
     }
 
+    final pluginSource = source.source.trim().isNotEmpty
+        ? source.source.trim().toLowerCase()
+        : label;
     final catalogViewers = match.viewers;
     final out = <_StreamedStream>[];
     for (var i = 0; i < rows.length; i++) {
       final row = rows[i];
       final rowViewers = parsePpvViewers(row['viewers']);
       final viewers = rowViewers > 0 ? rowViewers : catalogViewers;
+      final fields = forjaLiveStreamFieldsFromRowName(
+        (row['name'] ?? row['title'] ?? '').toString(),
+      );
       if (row['webviewOnly'] == true) {
         final embed = (row['embedUrl'] ?? '').toString().trim();
         if (embed.isEmpty) continue;
@@ -641,10 +673,10 @@ mixin _LiveMatchesPlayback
           _StreamedStream(
             id: source.id,
             streamNo: i + 1,
-            language: '',
-            hd: false,
+            language: fields.language,
+            hd: fields.hd,
             embedUrl: embed,
-            source: label,
+            source: pluginSource,
             viewers: viewers,
           ),
         );
@@ -652,15 +684,14 @@ mixin _LiveMatchesPlayback
       }
       final url = (row['url'] ?? '').toString().trim();
       if (url.isEmpty) continue;
-      final name = (row['name'] ?? row['title'] ?? label).toString().trim();
       out.add(
         _StreamedStream(
           id: source.id,
           streamNo: i + 1,
-          language: '',
-          hd: false,
+          language: fields.language,
+          hd: fields.hd,
           embedUrl: url,
-          source: name.isEmpty ? label : name.toLowerCase(),
+          source: pluginSource,
           viewers: viewers,
         ),
       );
@@ -787,20 +818,23 @@ mixin _LiveMatchesPlayback
     if (!mounted) return;
 
     final espnPayload = _findEspnGameForMatch(match, _s._espnGames);
-    final enriched = espnPayload == null
-        ? match
-        : _copyStreamedMatch(
-            match,
-            sportMatchGame: espnPayload,
-            homeTeam:
-                (espnPayload['homeTeam'] as String?)?.trim().isNotEmpty == true
-                ? espnPayload['homeTeam'] as String
-                : match.homeTeam,
-            awayTeam:
-                (espnPayload['awayTeam'] as String?)?.trim().isNotEmpty == true
-                ? espnPayload['awayTeam'] as String
-                : match.awayTeam,
-          );
+    final mergedGame = _sportMatchGameForIptvResolve(match, _s._espnGames);
+    final enriched = _copyStreamedMatch(
+      match,
+      sportMatchGame: mergedGame,
+      homeTeam: () {
+        final fromEspn = (espnPayload?['homeTeam'] ?? mergedGame['homeTeam'])
+            .toString()
+            .trim();
+        return fromEspn.isNotEmpty ? fromEspn : match.homeTeam;
+      }(),
+      awayTeam: () {
+        final fromEspn = (espnPayload?['awayTeam'] ?? mergedGame['awayTeam'])
+            .toString()
+            .trim();
+        return fromEspn.isNotEmpty ? fromEspn : match.awayTeam;
+      }(),
+    );
 
     final panel = _IptvSportsChannelsPanel.show(
       context: context,
@@ -976,21 +1010,24 @@ mixin _LiveMatchesPlayback
   Future<void> _openIptvSportsMatch(_StreamedMatch match) async {
     if (!mounted) return;
     final iptvCtrl = ref.read(iptvControllerProvider);
+    final mergedGame = _sportMatchGameForIptvResolve(match, _s._espnGames);
     final espnPayload = _findEspnGameForMatch(match, _s._espnGames);
-    final enriched = espnPayload == null
-        ? match
-        : _copyStreamedMatch(
-            match,
-            sportMatchGame: espnPayload,
-            homeTeam:
-                (espnPayload['homeTeam'] as String?)?.trim().isNotEmpty == true
-                ? espnPayload['homeTeam'] as String
-                : match.homeTeam,
-            awayTeam:
-                (espnPayload['awayTeam'] as String?)?.trim().isNotEmpty == true
-                ? espnPayload['awayTeam'] as String
-                : match.awayTeam,
-          );
+    final enriched = _copyStreamedMatch(
+      match,
+      sportMatchGame: mergedGame,
+      homeTeam: () {
+        final fromEspn = (espnPayload?['homeTeam'] ?? mergedGame['homeTeam'])
+            .toString()
+            .trim();
+        return fromEspn.isNotEmpty ? fromEspn : match.homeTeam;
+      }(),
+      awayTeam: () {
+        final fromEspn = (espnPayload?['awayTeam'] ?? mergedGame['awayTeam'])
+            .toString()
+            .trim();
+        return fromEspn.isNotEmpty ? fromEspn : match.awayTeam;
+      }(),
+    );
 
     final panel = _IptvSportsChannelsPanel.show(
       context: context,
@@ -1424,6 +1461,7 @@ mixin _LiveMatchesPlayback
     final pickedIndex = sources.indexWhere(
       (s) => (s.liveEngineEmbedUrl ?? s.url).trim() == pickedEmbed,
     );
+    IptvPlaySource? resolvedPick;
     final ok = await _runWithCancellableLoading('Opening stream…', (
       setMessage,
     ) async {
@@ -1434,6 +1472,7 @@ mixin _LiveMatchesPlayback
         onProgress: setMessage,
       );
       if (picked == null) return;
+      resolvedPick = picked;
       if (pickedIndex >= 0) {
         sources[pickedIndex] = picked;
         if (pickedIndex != 0) {
@@ -1445,6 +1484,7 @@ mixin _LiveMatchesPlayback
       }
     });
     if (!ok) return true;
+    if (resolvedPick == null) return false;
     if (sources.isEmpty) {
       debugPrint(
         '[LiveMatches] Engine resolve missed — no embed fallback '

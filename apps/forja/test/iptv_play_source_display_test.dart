@@ -54,4 +54,35 @@ void main() {
       isTrue,
     );
   });
+
+  test('iptvLiveSourceProbeUrl skips embed catalog pages', () {
+    const embed = IptvPlaySource(
+      url: 'https://streamed.pk/embed/abc',
+      label: 'English',
+      liveSourceKind: IptvLiveSourceKind.liveEngine,
+      liveEngineEmbedUrl: 'https://streamed.pk/embed/abc',
+    );
+    expect(iptvLiveSourceProbeUrl(embed), isNull);
+    expect(iptvLiveSourceProbeSkipped(embed), isTrue);
+
+    const handoff = IptvPlaySource(
+      url: 'https://cdn.example/live/index.m3u8',
+      label: 'English',
+      liveSourceKind: IptvLiveSourceKind.liveEngine,
+      liveEngineEmbedUrl: 'https://streamed.pk/embed/abc',
+    );
+    expect(
+      iptvLiveSourceProbeUrl(handoff),
+      'https://cdn.example/live/index.m3u8',
+    );
+
+    const portal = IptvPlaySource(
+      url: 'http://portal.example/live/u/p/1.m3u8',
+      label: 'Golf',
+    );
+    expect(
+      iptvLiveSourceProbeUrl(portal),
+      'http://portal.example/live/u/p/1.m3u8',
+    );
+  });
 }

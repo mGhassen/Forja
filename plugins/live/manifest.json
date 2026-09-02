@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-live",
   "name": "ForjaHQ Live Sports",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "plugins": [
     {
       "id": "streamed",
@@ -93,7 +93,13 @@
         "origin": "https://streamic.st",
         "api": "https://streamic.st/api/getEvents.php",
         "popularApi": "https://streamic.st/api/J.php",
-        "ssig": "bytmo8xialhem066"
+        "ssig": "bytmo8xialhem066",
+        "embedOrigin": "https://embed.st",
+        "ppvOrigin": "https://ppv.st",
+        "ppvApis": [
+          "https://api.ppv.st/api/streams",
+          "https://api.ppv.cx/api/streams"
+        ]
       }
     },
     {

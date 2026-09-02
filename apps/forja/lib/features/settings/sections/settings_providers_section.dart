@@ -1254,13 +1254,6 @@ class _EnginePackActions extends StatelessWidget {
               ),
             ),
           ),
-        if (hasUpdate)
-          Padding(
-            padding: const EdgeInsets.only(right: 2),
-            child: SettingsEnginePackUpdateBadge(
-              remoteVersion: update!.remoteVersion,
-            ),
-          ),
         _settingsTvIconButton(
           context,
           tooltip: hasUpdate

@@ -157,6 +157,8 @@ class SourcesPanelChannelTile extends StatelessWidget {
     this.onUpEdge,
     this.onDownEdge,
     this.onHoverProbe,
+    this.probeHealthCache,
+    this.viewerCount,
   });
 
   final String title;
@@ -165,10 +167,12 @@ class SourcesPanelChannelTile extends StatelessWidget {
   final Widget? leading;
   final Widget? footer;
   final List<String> badges;
+  final int? viewerCount;
   final int? tvItemIndex;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
   final Future<bool> Function()? onHoverProbe;
+  final bool? probeHealthCache;
 
   @override
   Widget build(BuildContext context) {
@@ -182,6 +186,8 @@ class SourcesPanelChannelTile extends StatelessWidget {
       onUpEdge: onUpEdge,
       onDownEdge: onDownEdge,
       onHoverProbe: onHoverProbe,
+      probeHealthCache: probeHealthCache,
+      viewerCount: viewerCount,
       badges: [
         for (final label in badges)
           if (label.trim().isNotEmpty)
@@ -466,6 +472,8 @@ class _SourceBadgeCard extends StatefulWidget {
     this.onUpEdge,
     this.onDownEdge,
     this.onHoverProbe,
+    this.probeHealthCache,
+    this.viewerCount,
   });
 
   final VoidCallback onTap;
@@ -486,22 +494,41 @@ class _SourceBadgeCard extends StatefulWidget {
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
   final Future<bool> Function()? onHoverProbe;
+  final bool? probeHealthCache;
+  final int? viewerCount;
 
   @override
   State<_SourceBadgeCard> createState() => _SourceBadgeCardState();
 }
 
 class _SourceBadgeCardState extends State<_SourceBadgeCard> {
-  static const _hoverProbeDelay = Duration(milliseconds: 1000);
+  static const _hoverProbeDelay = Duration(milliseconds: 400);
+  static const _probeBarWidth = 4.0;
 
   bool _hovered = false;
   bool _focused = false;
   bool? _probeHealth;
   bool _probeChecking = false;
+  bool _probeHoverActive = false;
   int _probeGen = 0;
   Timer? _hoverProbeTimer;
 
   bool get _hover => _hovered || _focused;
+
+  @override
+  void initState() {
+    super.initState();
+    _probeHealth = widget.probeHealthCache;
+  }
+
+  @override
+  void didUpdateWidget(covariant _SourceBadgeCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final cached = widget.probeHealthCache;
+    if (cached != null && cached != _probeHealth) {
+      _probeHealth = cached;
+    }
+  }
 
   @override
   void dispose() {
@@ -519,7 +546,13 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
   void _syncHoverProbe(bool active) {
     if (!active) {
       _cancelHoverProbe();
+      if (_probeHoverActive) {
+        setState(() => _probeHoverActive = false);
+      }
       return;
+    }
+    if (widget.onHoverProbe != null && !_probeHoverActive) {
+      setState(() => _probeHoverActive = true);
     }
     if (!_shouldScheduleHoverProbe()) return;
     _cancelHoverProbe();
@@ -545,6 +578,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     setState(() {
       _probeChecking = false;
       _probeHealth = ok;
+      _probeHoverActive = false;
     });
   }
 
@@ -568,7 +602,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
 
   Color _probeLeftBarColor() {
     if (widget.onHoverProbe == null) return Colors.transparent;
-    if (_probeChecking) {
+    if (_probeChecking || (_probeHoverActive && _probeHealth == null)) {
       return Colors.white.withValues(alpha: 0.35);
     }
     return switch (_probeHealth) {
@@ -586,6 +620,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final cinematic = ForjaShellColors.cinematic;
     final hasProvider =
         widget.provider != null && widget.provider!.trim().isNotEmpty;
+    final hasViewers = (widget.viewerCount ?? 0) > 0;
     final hasSeeders =
         widget.seeders != null && widget.seeders!.trim().isNotEmpty;
     final hasLanguageFlags = widget.languageCodes.isNotEmpty;
@@ -615,7 +650,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
               children: [
                 ColoredBox(
                   color: leftBarColor,
-                  child: const SizedBox(width: 2.5),
+                  child: const SizedBox(width: _probeBarWidth),
                 ),
                 Expanded(
                   child: Padding(
@@ -666,7 +701,10 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                             ],
                           ),
                         ),
-                        if (hasProvider || hasSeeders || showCopyMagnet) ...[
+                        if (hasProvider ||
+                            hasViewers ||
+                            hasSeeders ||
+                            showCopyMagnet) ...[
                           const SizedBox(width: 8),
                           ConstrainedBox(
                             constraints: const BoxConstraints(maxWidth: 120),
@@ -694,6 +732,31 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                       ),
                                     );
                                   }),
+                                if (hasViewers) ...[
+                                  if (hasProvider) const SizedBox(height: 2),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.visibility_outlined,
+                                        size: metrics.torrentPanelMetaFontSize,
+                                        color: cinematic.textSecondary
+                                            .withValues(alpha: 0.75),
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        '${widget.viewerCount}',
+                                        style: TextStyle(
+                                          color: cinematic.textSecondary,
+                                          fontSize:
+                                              metrics.torrentPanelMetaFontSize,
+                                          fontWeight: FontWeight.w500,
+                                          height: 1.1,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                                 if (hasSeeders) ...[
                                   if (hasProvider) const SizedBox(height: 2),
                                   Row(

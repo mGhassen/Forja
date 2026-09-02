@@ -376,7 +376,16 @@ pub fn sport_match_streams(
         .filter_map(|s| skeleton_candidate(&base, &user, &pass, s, &cats))
         .collect();
 
+    let broadcast_items = if !match_game.broadcast_channels.is_empty() {
+        sport_match::broadcast_channel_matches(&match_game, &candidates)
+    } else {
+        vec![]
+    };
+
     if skip_epg {
+        if !broadcast_items.is_empty() {
+            return ok_items(broadcast_items);
+        }
         let items = sport_match::match_streams(&match_game, &candidates, &[]);
         return ok_items(items);
     }
@@ -387,8 +396,11 @@ pub fn sport_match_streams(
     ));
 
     let team_names = espn::fetch_all_team_names(&sport);
-    let items = sport_match::match_streams(&match_game, &candidates, &team_names);
-    ok_items(items)
+    let team_items = sport_match::match_streams(&match_game, &candidates, &team_names);
+    ok_items(sport_match::merge_broadcast_front(
+        broadcast_items,
+        team_items,
+    ))
 }
 
 #[cfg(test)]

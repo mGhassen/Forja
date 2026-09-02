@@ -115,9 +115,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
         ],
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: SettingsEnginePackUpdateFrame(
-            hasUpdate: update != null,
-            child: ExpansionTile(
+          child: ExpansionTile(
             tilePadding: const EdgeInsets.symmetric(horizontal: 2),
             childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
             leading: Icon(
@@ -153,7 +151,6 @@ class SettingsEnginePackExpansion extends StatelessWidget {
                       '${PluginRegistry.packKindInfo(pack)} · '
                       '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
                       'v${pack.version}',
-                  update: update,
                 ),
                 SettingsEnginePackInstallStatus(
                   sourceUrl: pack.sourceUrl,
@@ -176,7 +173,6 @@ class SettingsEnginePackExpansion extends StatelessWidget {
                 ),
               ],
             ),
-          ),
           ),
         ),
       ],
@@ -311,9 +307,7 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
   Widget build(BuildContext context) {
     if (plugins.isEmpty) return const SizedBox.shrink();
 
-    return SettingsEnginePackUpdateFrame(
-      hasUpdate: update != null,
-      child: Theme(
+    return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 2),
@@ -351,20 +345,11 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
                   '${PluginRegistry.packKindInfo(pack)} · '
                   '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
                   'v${pack.version}',
+            ),
+            SettingsEnginePackInstallStatus(
+              sourceUrl: pack.sourceUrl,
               update: update,
             ),
-            if (update != null)
-              const Padding(
-                padding: EdgeInsets.only(top: 2),
-                child: Text(
-                  'Update available',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: ForjaShellColors.brandGreen,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
           ],
         ),
         trailing: settingsExpansionTrailing(context, trailing),
@@ -380,7 +365,6 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
           ],
         ),
       ),
-    ),
     );
   }
 }

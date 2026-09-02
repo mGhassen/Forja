@@ -277,6 +277,42 @@ bool iptvLiveEnginePlayUrlReady(String url) {
   return RegExp(r'\.m3u8(\?|$)|\.mp4(\?|$)').hasMatch(u);
 }
 
+/// Cache key for live-source hover / picker health probes.
+String iptvLiveSourceProbeKey(IptvPlaySource src) {
+  final id = (src.streamId ?? '').trim();
+  if (id.isNotEmpty) return id;
+  final url = src.url.trim();
+  if (url.isNotEmpty && !url.startsWith('pending:')) return url;
+  final embed = (src.liveEngineEmbedUrl ?? '').trim();
+  if (embed.isNotEmpty) return embed;
+  return url;
+}
+
+/// Playable URL for [IptvAliveChecker], or null when HTTP cannot judge the row
+/// (catalog embed page, unresolved `pending:` without a handoff URL).
+String? iptvLiveSourceProbeUrl(IptvPlaySource src) {
+  final url = src.url.trim();
+  if (iptvLiveEnginePlayUrlReady(url)) return url;
+
+  final embed = (src.liveEngineEmbedUrl ?? '').trim();
+  if (url.startsWith('pending:')) return null;
+
+  if (src.liveSourceKind == IptvLiveSourceKind.liveEngine || embed.isNotEmpty) {
+    return null;
+  }
+
+  if (url.isEmpty) return null;
+  return url;
+}
+
+/// Embed / pending catalog row that cannot be HTTP-probed but is still selectable.
+bool iptvLiveSourceProbeSkipped(IptvPlaySource src) {
+  if (iptvLiveSourceProbeUrl(src) != null) return false;
+  final embed = (src.liveEngineEmbedUrl ?? '').trim();
+  if (embed.isNotEmpty) return true;
+  return src.url.trim().startsWith('pending:');
+}
+
 typedef IptvLiveEngineResolveSource =
     Future<IptvPlaySource?> Function(
       IptvPlaySource catalogSource, {

@@ -76,6 +76,11 @@ function parseBritishDate(header, refYear) {
   return new Date(refYear, mon, day);
 }
 
+function isUkSummerTime(year, month) {
+  // BST roughly Mar–Oct (LiveOnSat lists UK local times).
+  return month >= 2 && month <= 9;
+}
+
 function parseKickoffMs(dateHeader, timeStr, refYear) {
   var base = parseBritishDate(dateHeader, refYear);
   if (!base) return 0;
@@ -84,8 +89,16 @@ function parseKickoffMs(dateHeader, timeStr, refYear) {
   var h = parseInt(tm[1], 10);
   var min = parseInt(tm[2], 10);
   if (isNaN(h) || isNaN(min)) return base.getTime();
-  // LiveOnSat lists UK local kickoff (GMT/BST). Approximate with +0 offset.
-  return Date.UTC(base.getFullYear(), base.getMonth(), base.getDate(), h, min);
+  var utc = Date.UTC(base.getFullYear(), base.getMonth(), base.getDate(), h, min);
+  if (isUkSummerTime(base.getFullYear(), base.getMonth())) {
+    utc -= 3600000;
+  }
+  return utc;
+}
+
+function blockShowsLiveIcon(block, beforeTail) {
+  var ctx = String(beforeTail || '') + String(block || '');
+  return /icon\/live\d*\.png/i.test(ctx);
 }
 
 function inCatalogWindow(dateMs) {
@@ -183,7 +196,11 @@ function parsePage(html, pluginId, now) {
     seen[dedupeKey] = true;
 
     var category = normCategory(competition);
-    var airing = isAiring(dateMs);
+    var beforeTail = parts[p - 1]
+      ? parts[p - 1].slice(Math.max(0, parts[p - 1].length - 800))
+      : '';
+    var airing =
+      blockShowsLiveIcon(block, beforeTail) || isAiring(dateMs);
     var sportMatchGame = {
       id: eventId,
       title: title,
@@ -201,7 +218,7 @@ function parsePage(html, pluginId, now) {
       category: category,
       date: dateMs,
       poster: '',
-      popular: airing && channels.length > 0,
+      popular: airing,
       airing: airing,
       homeTeam: teams.home,
       awayTeam: teams.away,

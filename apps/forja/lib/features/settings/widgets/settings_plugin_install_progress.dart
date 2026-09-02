@@ -163,7 +163,7 @@ class SettingsEnginePackInstallStatus extends StatelessWidget {
     }
     if (update != null) {
       return Text(
-        'Update available · v${update!.remoteVersion}',
+        'Update available: v${update!.remoteVersion}',
         style: const TextStyle(
           fontSize: 11,
           color: ForjaShellColors.brandGreen,

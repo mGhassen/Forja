@@ -142,6 +142,7 @@ mixin _LiveMatchesData
     if (reload || changed) {
       await _load();
     }
+    unawaited(_liveOnSatBroadcastIndexCached());
   }
 
   void _openServerPicker() {
