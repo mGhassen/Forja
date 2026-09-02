@@ -75,6 +75,10 @@ class PluginInstallCoordinator {
 
   static bool _updateToastShownThisSession = false;
 
+  /// Toast → Update: packs to confirm in [PluginPackUpdatePromptHost].
+  final ValueNotifier<List<EnginePackUpdateInfo>?> pendingUpdatePrompt =
+      ValueNotifier<List<EnginePackUpdateInfo>?>(null);
+
   final ValueNotifier<PluginInstallProgress?> progress =
       ValueNotifier<PluginInstallProgress?>(null);
 
@@ -222,17 +226,47 @@ class PluginInstallCoordinator {
       if (updates.isEmpty) return;
       if (_updateToastShownThisSession) return;
       _updateToastShownThisSession = true;
-      final count = updates.length;
-      final sample = updates.values.first.packName;
+      final list = updates.values.toList(growable: false);
+      final count = list.length;
+      final sample = list.first.packName;
       ForjaToast.info(
         count == 1
-            ? '$sample update available — open Settings → Sources → Forja to update.'
-            : '$count plugin updates available — open Settings → Sources → Forja to update.',
-        duration: const Duration(seconds: 7),
+            ? '$sample update available'
+            : '$count plugin updates available',
+        duration: const Duration(seconds: 8),
+        actionLabel: 'Update',
+        onAction: () {
+          pendingUpdatePrompt.value = list;
+        },
       );
     } catch (e) {
       debugPrint('[PluginInstall] update notify failed: $e');
     }
+  }
+
+  /// Consume the toast-driven update confirm payload (host shows dialog).
+  List<EnginePackUpdateInfo>? takePendingUpdatePrompt() {
+    final value = pendingUpdatePrompt.value;
+    pendingUpdatePrompt.value = null;
+    return value;
+  }
+
+  /// Install every pending pack update; returns how many succeeded.
+  Future<int> updatePacks(List<EnginePackUpdateInfo> updates) async {
+    if (updates.isEmpty) return 0;
+    var ok = 0;
+    for (final entry in updates) {
+      try {
+        await installManifest(entry.sourceUrl, isUpdate: true);
+        ok++;
+      } catch (e) {
+        debugPrint(
+          '[PluginInstall] update failed (${entry.sourceUrl}): $e',
+        );
+        ForjaToast.error('${entry.packName} update failed: $e');
+      }
+    }
+    return ok;
   }
 
   @visibleForTesting
