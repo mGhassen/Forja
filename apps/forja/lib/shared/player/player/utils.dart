@@ -954,6 +954,24 @@ bool isTorrentSeekPlayback({
   return false;
 }
 
+/// Local torrent scrub back — mpv `seek()` cannot jump before the sequential
+/// open demuxer; reopen at [target] with Range-capable lavf (issue 024 T11).
+bool localTorrentBackwardSeekNeedsRemount({
+  required Duration previous,
+  required Duration target,
+}) {
+  return target < previous - const Duration(seconds: 1);
+}
+
+String? localTorrentStreamUrlForSeek({
+  String? streamUrl,
+  String? mediaPath,
+}) {
+  if (streamUrl != null && isLocalTorrentStreamUrl(streamUrl)) return streamUrl;
+  if (mediaPath != null && isLocalTorrentStreamUrl(mediaPath)) return mediaPath;
+  return null;
+}
+
 /// Map a timeline position to a byte offset in the active torrent file.
 int torrentByteOffsetForDuration(
   Duration position,
@@ -1810,6 +1828,34 @@ Future<void> seekPlayerPreservingProgress(
       shouldPinSeekBarAtEof(uiPosition: previous, duration: dur) &&
       !shouldPinSeekBarAtEof(uiPosition: target, duration: dur);
   positionNotifier.value = target;
+
+  final torrentUrl = localTorrentStreamUrlForSeek(
+    streamUrl: streamUrl,
+    mediaPath: mediaPath,
+  );
+  if (torrentUrl != null &&
+      localTorrentBackwardSeekNeedsRemount(previous: previous, target: target)) {
+    final ok = await promoteLocalTorrentToSeekablePlayback(
+      player,
+      streamUrl: torrentUrl,
+      seekTo: target,
+      resumePlaying: true,
+    );
+    if (ok) {
+      final nearEnd =
+          dur > Duration.zero && target >= dur - const Duration(milliseconds: 500);
+      if (!player.state.playing && !nearEnd) {
+        await player.play();
+      }
+      if (leavingEof) onSeekAwayFromEof?.call();
+      onSeekCommitted?.call(target);
+      return;
+    }
+    debugPrint(
+      '[Player] Torrent backward seek remount failed @${target.inSeconds}s — mpv seek fallback',
+    );
+  }
+
   if (ensureTorrentSeekable ||
       isTorrentSeekPlayback(
         streamUrl: streamUrl,
@@ -2513,18 +2559,21 @@ Future<void> ensureLocalTorrentSeekable(Player player) async {
   await _applyLocalTorrentSeekableMpv(player.platform as NativePlayer);
 }
 
-/// After probe decode: reopen at current time with seekable lavf (not seekable=0).
+/// After probe decode (or backward scrub): reopen with seekable lavf (not seekable=0).
 Future<bool> promoteLocalTorrentToSeekablePlayback(
   Player player, {
   required String streamUrl,
   Map<String, String>? headers,
   String? providerId,
+  Duration? seekTo,
+  bool? resumePlaying,
 }) async {
   if (!isLocalTorrentStreamUrl(streamUrl)) return true;
   if (player.platform is! NativePlayer) return true;
 
-  final pos = player.state.position;
-  final playing = player.state.playing;
+  final pos = seekTo ?? player.state.position;
+  final playing = resumePlaying ?? player.state.playing;
+  final scrubRemount = seekTo != null;
   await _applyLocalTorrentSeekableMpv(player.platform as NativePlayer);
 
   await resetPlayerForOpen(player);
@@ -2537,7 +2586,9 @@ Future<bool> promoteLocalTorrentToSeekablePlayback(
       startAt: pos > const Duration(milliseconds: 500) ? pos : null,
     );
   } catch (e) {
-    debugPrint('[Player] Torrent seekable promote reopen failed: $e');
+    debugPrint(
+      '[Player] Torrent ${scrubRemount ? 'seek' : 'seekable promote'} reopen failed: $e',
+    );
     return false;
   }
 
@@ -2548,13 +2599,16 @@ Future<bool> promoteLocalTorrentToSeekablePlayback(
         await player.play();
       }
       debugPrint(
-        '[Player] Torrent seekable promote OK (${player.state.position.inSeconds}s)',
+        '[Player] Torrent ${scrubRemount ? 'seek remount' : 'seekable promote'} OK '
+        '(${player.state.position.inSeconds}s)',
       );
       return true;
     }
     await Future.delayed(const Duration(milliseconds: 80));
   }
-  debugPrint('[Player] Torrent seekable promote: no frame after reopen');
+  debugPrint(
+    '[Player] Torrent ${scrubRemount ? 'seek remount' : 'seekable promote'}: no frame after reopen',
+  );
   return false;
 }
 

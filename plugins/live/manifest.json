@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-live",
   "name": "ForjaHQ Live Sports",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "plugins": [
     {
       "id": "streamed",
@@ -90,7 +90,10 @@
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
-        "origin": "https://streamic.st"
+        "origin": "https://streamic.st",
+        "api": "https://streamic.st/api/getEvents.php",
+        "popularApi": "https://streamic.st/api/J.php",
+        "ssig": "bytmo8xialhem066"
       }
     },
     {
@@ -125,6 +128,19 @@
           "WORLDCUP",
           "UFC"
         ]
+      }
+    },
+    {
+      "id": "liveonsat",
+      "name": "LiveOnSat",
+      "description": "LiveOnSat TV schedule + broadcast channel hints for Forja Sports",
+      "entry": "liveonsat.js",
+      "types": ["live_sport"],
+      "capabilities": ["catalog"],
+      "kind": "http",
+      "config": {
+        "base": "https://m.liveonsat.com",
+        "pages": ["2day.php"]
       }
     }
   ]

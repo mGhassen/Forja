@@ -442,4 +442,59 @@ void main() {
     final packs = await registry.listPacksRaw();
     expect(packs.first.version, '1.0.0');
   });
+
+  test('peekRemoteUpdate detects newer local manifest version', () async {
+    final hubDir = await Directory.systemTemp.createTemp('coord_local_newer_');
+    addTearDown(() async {
+      if (await hubDir.exists()) await hubDir.delete(recursive: true);
+    });
+    final manifestFile = File('${hubDir.path}/manifest.json');
+    await File('${hubDir.path}/p1.js')
+        .writeAsString('function extract(ctx) { return []; }');
+    await manifestFile.writeAsString(
+      jsonEncode({
+        'schema': 1,
+        'id': 'local-live',
+        'name': 'Local Live',
+        'version': '1.7.0',
+        'plugins': [
+          {
+            'id': 'p1',
+            'name': 'P1',
+            'entry': 'p1.js',
+            'kind': 'http',
+          },
+        ],
+      }),
+    );
+    final url = manifestFile.path;
+
+    SharedPreferences.setMockInitialValues({
+      'engine_js_packs_v2_migrated': true,
+      'engine_js_scripts_disk_v3_migrated': true,
+      'engine_js_packs_v2': jsonEncode([
+        {
+          'sourceUrl': url,
+          'packId': 'local-live',
+          'name': 'Local Live',
+          'version': '1.6.0',
+          'plugins': [
+            {
+              'id': 'p1',
+              'name': 'P1',
+              'entry': 'p1.js',
+              'kind': 'http',
+              'enabled': true,
+            },
+          ],
+        },
+      ]),
+    });
+
+    final packs = await registry.listPacksRaw();
+    final update = await registry.peekRemoteUpdate(packs.first);
+    expect(update, isNotNull);
+    expect(update!.installedVersion, '1.6.0');
+    expect(update.remoteVersion, '1.7.0');
+  });
 }

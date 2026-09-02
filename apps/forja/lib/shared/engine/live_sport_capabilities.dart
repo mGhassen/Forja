@@ -14,6 +14,7 @@ abstract final class LiveSportCapabilities {
     'watchfooty': ('catalog-watchfooty', 'live-watchfooty'),
     'streamic': ('catalog-streamic', 'live-streamic'),
     'espn': ('catalog-espn', null),
+    'liveonsat': ('catalog-liveonsat', null),
   };
 
   /// App-owned first-run defaults (Settings → Forja Sports). External live

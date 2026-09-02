@@ -1988,6 +1988,7 @@ void main() {
           'watchfooty',
           'streamic',
           'espn',
+          'liveonsat',
         ];
         for (final id in unifiedIds) {
           final p = plugins.firstWhere((e) => e.id == id);
@@ -2002,6 +2003,12 @@ void main() {
         }
         final espn = plugins.firstWhere((e) => e.id == 'espn');
         expect(espn.supportsLiveResolve, isFalse);
+        final liveonsat = plugins.firstWhere((e) => e.id == 'liveonsat');
+        expect(liveonsat.supportsLiveResolve, isFalse);
+        expect(
+          await loadForjaHqFile('live/liveonsat.js'),
+          contains('m.liveonsat.com'),
+        );
         expect(
           await loadForjaHqFile('live/timstreams.js'),
           contains('function extract(ctx)'),

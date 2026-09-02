@@ -8,6 +8,52 @@ function pluginIdFromCtx(ctx, cfg) {
   return String(ctx.pluginId || cfg.pluginId || 'streamic');
 }
 
+function streamicOrigin(cfg) {
+  return String((cfg && cfg.origin) || 'https://streamic.st').replace(/\/$/, '');
+}
+
+function streamicHeaders(cfg) {
+  var origin = streamicOrigin(cfg);
+  var headers = {
+    Accept: '*/*',
+    Referer: origin + '/',
+    'User-Agent': ua(),
+  };
+  var ssig = String((cfg && cfg.ssig) || 'bytmo8xialhem066').trim();
+  if (ssig) headers['X-SSIG'] = ssig;
+  return headers;
+}
+
+function b64decodeUTF8(b64) {
+  try {
+    return decodeURIComponent(
+      atob(String(b64 || ''))
+        .split('')
+        .map(function (c) {
+          return '%' + c.charCodeAt(0).toString(16).padStart(2, '0');
+        })
+        .join('')
+    );
+  } catch (_) {
+    try {
+      return decodeURIComponent(escape(atob(String(b64 || ''))));
+    } catch (e2) {
+      return '';
+    }
+  }
+}
+
+function eventTitle(m) {
+  var title = m && m.title;
+  if (title && typeof title === 'object') {
+    if (title.pl && title.pl.home && title.pl.away) {
+      return String(title.pl.home) + ' - ' + String(title.pl.away);
+    }
+    return String(title.home || title.away || title.en || title.pl || '');
+  }
+  return String((m && (m.title || m.name)) || 'Streamic');
+}
+
 function normCategory(raw) {
   var s = String(raw || 'other').toLowerCase();
   if (s.indexOf('football') >= 0 || s.indexOf('soccer') >= 0) return 'football';
@@ -39,12 +85,71 @@ function embedReferer(raw) {
   }
 }
 
+function embedRows(group) {
+  var embeds = group && group.embeds;
+  if (!embeds) return [];
+  if (Array.isArray(embeds)) return embeds;
+  if (typeof embeds === 'object') {
+    return Object.keys(embeds)
+      .sort()
+      .map(function (k) {
+        return embeds[k];
+      })
+      .filter(Boolean);
+  }
+  return [];
+}
+
+async function fetchPopularList(ctx, cfg) {
+  var origin = streamicOrigin(cfg);
+  var api = (cfg && cfg.popularApi) || origin + '/api/J.php';
+  try {
+    var res = await ctx.fetch(api, { headers: streamicHeaders(cfg) });
+    if (!res.ok) return [];
+    var data = await res.json();
+    return Array.isArray(data) ? data : (data.events || data.streams || []);
+  } catch (e) {
+    ctx.error(e);
+    return [];
+  }
+}
+
+async function fetchMainList(ctx, cfg) {
+  var origin = streamicOrigin(cfg);
+  var api = (cfg && cfg.api) || origin + '/api/getEvents.php';
+  try {
+    var res = await ctx.fetch(api, { headers: streamicHeaders(cfg) });
+    if (!res.ok) return [];
+    var body = await res.text();
+    if (!body) return [];
+    var decoded = b64decodeUTF8(body.trim());
+    if (!decoded) return [];
+    var data = JSON.parse(decoded);
+    return Array.isArray(data) ? data : (data.events || data.streams || []);
+  } catch (e) {
+    ctx.error(e);
+    return [];
+  }
+}
+
 async function fetchList(ctx, cfg) {
-  var api = cfg.api || 'https://streamic.st/api/J.php';
-  var res = await ctx.fetch(api, { headers: { 'User-Agent': ua() } });
-  if (!res.ok) return [];
-  var data = await res.json();
-  return Array.isArray(data) ? data : (data.events || data.streams || []);
+  var popular = await fetchPopularList(ctx, cfg);
+  var main = await fetchMainList(ctx, cfg);
+  var byId = {};
+  popular.forEach(function (m, i) {
+    if (!m) return;
+    var id = String(m.id || 'pop_' + i);
+    m._popular = true;
+    byId[id] = m;
+  });
+  main.forEach(function (m, i) {
+    if (!m) return;
+    var id = String(m.id || 'evt_' + i);
+    byId[id] = m;
+  });
+  return Object.keys(byId).map(function (k) {
+    return byId[k];
+  });
 }
 
 function resolveOne(ctx, url, name) {
@@ -66,7 +171,7 @@ function collectEmbeds(ctx, m) {
   var out = [];
   (m._embeds || []).forEach(function (group) {
     var lang = String(group.language || '').trim();
-    (group.embeds || []).forEach(function (e) {
+    embedRows(group).forEach(function (e) {
       var url = String(e.embed || e.url || '').trim();
       if (!url) return;
       var label = String(e.label || '').trim();
@@ -85,37 +190,41 @@ function collectEmbeds(ctx, m) {
   return out;
 }
 
+function catalogRow(m, pluginId, i) {
+  var id = String(m.id || i);
+  var startTime = m.startTime ? Number(m.startTime) : 0;
+  var airing = isAiring(startTime);
+  return {
+    id: 'sic_' + id,
+    title: eventTitle(m),
+    category: normCategory(m.sport || m.category || 'other'),
+    date: startTime > 0 ? startTime : Date.now(),
+    poster: '',
+    popular: m._popular === true || airing,
+    airing: airing,
+    sources: [{ source: 'streamic', id: id }],
+    catalog: 'forja_live',
+    pluginId: pluginId,
+  };
+}
+
 async function fetchCatalog(ctx, cfg) {
   var pluginId = pluginIdFromCtx(ctx, cfg);
-  var api = cfg.api || 'https://streamic.st/api/J.php';
-  var res = await ctx.fetch(api, { headers: { 'User-Agent': ua() } });
-  if (!res.ok) return [];
-  var data = await res.json();
-  var list = Array.isArray(data) ? data : (data.events || data.streams || []);
+  var list = await fetchList(ctx, cfg);
   return list
     .filter(function (m) {
-      return inCatalogWindow(m.startTime ? Number(m.startTime) : 0);
+      var startTime = m.startTime ? Number(m.startTime) : 0;
+      if (m._popular === true && startTime > 0) return inCatalogWindow(startTime);
+      return inCatalogWindow(startTime);
     })
     .sort(function (a, b) {
+      if (a._popular === true && b._popular !== true) return -1;
+      if (b._popular === true && a._popular !== true) return 1;
       return Number(a.startTime || 0) - Number(b.startTime || 0);
     })
     .slice(0, CATALOG_MAX)
     .map(function (m, i) {
-      var id = String(m.id || i);
-      var startTime = m.startTime ? Number(m.startTime) : 0;
-      var airing = isAiring(startTime);
-      return {
-        id: 'sic_' + id,
-        title: String(m.title || m.name || 'Streamic'),
-        category: normCategory(m.sport || m.category || 'other'),
-        date: startTime > 0 ? startTime : Date.now(),
-        poster: '',
-        popular: airing,
-        airing: airing,
-        sources: [{ source: 'streamic', id: id }],
-        catalog: 'forja_live',
-        pluginId: pluginId,
-      };
+      return catalogRow(m, pluginId, i);
     });
 }
 

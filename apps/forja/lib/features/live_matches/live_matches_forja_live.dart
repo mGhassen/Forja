@@ -433,6 +433,13 @@ mixin _LiveMatchesForjaLive
         if (catalog.id == 'espn' || filterId == 'espn') {
           _syncEspnGamesFromStreamed();
         }
+        if (catalog.id == 'liveonsat' || filterId == 'liveonsat') {
+          putLiveOnSatBroadcastIndex([
+            for (final row in rows)
+              if (row['sportMatchGame'] is Map)
+                Map<String, dynamic>.from(row['sportMatchGame'] as Map),
+          ]);
+        }
         _s._forjaLivePluginLoads[filterId] =
             _s._forjaLivePluginLoads[filterId]!.copyWith(
           loading: false,

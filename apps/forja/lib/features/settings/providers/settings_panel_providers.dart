@@ -574,21 +574,15 @@ final enginePackUpdatesProvider =
 
 class EnginePackUpdatesNotifier extends Notifier<EnginePackUpdatesState> {
   Object? _checkToken;
-  bool _initialCheckScheduled = false;
 
   @override
   EnginePackUpdatesState build() {
     ref.listen(enginePacksProvider, (_, next) {
       final packs = next.valueOrNull;
-      if (packs != null) {
+      if (packs != null && packs.isNotEmpty) {
         Future.microtask(() => check(packs));
       }
     });
-    final packs = ref.watch(enginePacksProvider).valueOrNull;
-    if (packs != null && packs.isNotEmpty && !_initialCheckScheduled) {
-      _initialCheckScheduled = true;
-      Future.microtask(() => check(packs));
-    }
     return stateOrNull ?? const EnginePackUpdatesState();
   }
 

@@ -62,6 +62,10 @@ class _SettingsProvidersSectionState
   void initState() {
     super.initState();
     PluginInstallCoordinator.instance.progress.addListener(_onPluginInstallProgress);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(enginePackUpdatesProvider.notifier).refresh();
+    });
   }
 
   void _onPluginInstallProgress() {

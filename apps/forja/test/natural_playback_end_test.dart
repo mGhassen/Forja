@@ -260,6 +260,35 @@ void main() {
     });
   });
 
+  group('localTorrentBackwardSeekNeedsRemount', () {
+    test('true when scrubbing back more than 1s', () {
+      expect(
+        localTorrentBackwardSeekNeedsRemount(
+          previous: const Duration(minutes: 49),
+          target: const Duration(minutes: 30),
+        ),
+        isTrue,
+      );
+    });
+
+    test('false for forward or tiny nudge', () {
+      expect(
+        localTorrentBackwardSeekNeedsRemount(
+          previous: const Duration(minutes: 30),
+          target: const Duration(minutes: 49),
+        ),
+        isFalse,
+      );
+      expect(
+        localTorrentBackwardSeekNeedsRemount(
+          previous: const Duration(seconds: 100),
+          target: const Duration(seconds: 99, milliseconds: 500),
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group('shouldPinSeekBarAtEof', () {
     test('false when UI already scrubbed away', () {
       expect(

@@ -39,6 +39,8 @@ pub struct MatchGame {
     /// Normalized title phrases for PPV-style channel names.
     pub title_phrases: Vec<String>,
     pub date_ms: i64,
+    /// Known broadcast channel names (e.g. LiveOnSat) to boost IPTV prefilter.
+    pub broadcast_channels: Vec<String>,
 }
 
 impl MatchGame {
@@ -74,6 +76,17 @@ impl MatchGame {
         }
         let (specific_tokens, sport_tokens) = build_event_tokens(&title, &sport, &home_team, &away_team);
         let title_phrases = build_title_phrases(&title, &home_team, &away_team);
+        let broadcast_channels = v
+            .get("broadcastChannels")
+            .or_else(|| v.get("broadcast_channels"))
+            .and_then(|x| x.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|x| x.as_str().map(|s| s.trim().to_string()))
+                    .filter(|s| !s.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default();
         Self {
             home_team,
             away_team,
@@ -86,6 +99,7 @@ impl MatchGame {
             sport_tokens,
             title_phrases,
             date_ms,
+            broadcast_channels,
         }
     }
 
@@ -467,9 +481,41 @@ pub fn indices_for_epg(game: &MatchGame, candidates: &[Candidate], max: usize) -
     out
 }
 
+fn normalize_broadcast_channel_label(raw: &str) -> String {
+    raw.to_lowercase()
+        .replace("uhd", "")
+        .replace("hd", "")
+        .replace("  ", " ")
+        .trim()
+        .to_string()
+}
+
+fn broadcast_channel_name_hit(game: &MatchGame, channel_name: &str) -> bool {
+    if game.broadcast_channels.is_empty() {
+        return false;
+    }
+    let name = normalize_broadcast_channel_label(channel_name);
+    if name.is_empty() {
+        return false;
+    }
+    for bc in &game.broadcast_channels {
+        let needle = normalize_broadcast_channel_label(bc);
+        if needle.is_empty() {
+            continue;
+        }
+        if name.contains(&needle) || needle.contains(&name) {
+            return true;
+        }
+    }
+    false
+}
+
 fn team_prefilter_rank(game: &MatchGame, c: &Candidate) -> i32 {
     let name = c.name.to_lowercase();
     let cat = c.category_label.to_lowercase();
+    if broadcast_channel_name_hit(game, &c.name) {
+        return 60;
+    }
     if text_has_title_phrase(&name, &game.title_phrases) {
         return 50;
     }
@@ -681,6 +727,7 @@ mod tests {
                 "Toronto Blue Jays",
             ),
             date_ms: 1_700_000_000_000,
+            broadcast_channels: vec![],
         }
     }
 
@@ -795,6 +842,30 @@ mod tests {
         let idxs = indices_for_epg(&g, &cands, 10);
         assert_eq!(idxs.len(), 10, "name hits first, then pad to EPG cap");
         assert_eq!(idxs[0], 50);
+    }
+
+    #[test]
+    fn epg_indices_prefer_liveonsat_broadcast_channel() {
+        let mut g = game();
+        g.broadcast_channels = vec!["Sky Sports Main Event HD".into()];
+        let mut cands = Vec::new();
+        for i in 0..200 {
+            cands.push(Candidate {
+                name: format!("News {i}"),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: format!("https://x/{i}.m3u8"),
+                category_label: "News".into(),
+                logo: String::new(),
+                stream_id: format!("{i}"),
+                epg_channel_id: String::new(),
+            });
+        }
+        cands[75].name = "UK Sky Sports Main Event".into();
+        cands[75].category_label = "UK Sports".into();
+
+        let idxs = indices_for_epg(&g, &cands, 10);
+        assert_eq!(idxs[0], 75);
     }
 
     #[test]
@@ -969,6 +1040,7 @@ mod tests {
                 "Manchester United",
             ),
             date_ms: 1_755_861_000_000,
+            broadcast_channels: vec![],
         };
         let cands = vec![Candidate {
             name: "Viaplay NO 07".into(),
