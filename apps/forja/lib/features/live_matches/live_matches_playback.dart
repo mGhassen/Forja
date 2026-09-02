@@ -14,14 +14,6 @@ mixin _LiveMatchesPlayback
       _s._server == _LiveMatchesServer.stremio ||
       _s._server == _LiveMatchesServer.iptvSports;
 
-  VoidCallback _iptvSportsPanelDismissCancel() => () {
-    _s._iptvSportsSearchGen++;
-    Engine.cancelLiveMatchesFetch();
-  };
-
-  bool _iptvSportsSearchStale(int searchGen) =>
-      searchGen != _s._iptvSportsSearchGen;
-
   /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
   Future<bool> _runWithCancellableLoading(
     String message,
@@ -70,175 +62,352 @@ mixin _LiveMatchesPlayback
     _DamiTvStream ppv,
     _StreamedMatch streamed,
   ) async {
-    if (_s._server == _LiveMatchesServer.iptvSports) {
-      await _openIptvSportsMatch(streamed);
-      return;
-    }
-    if (_s._server == _LiveMatchesServer.forjaLive) {
-      await _openForjaLiveSourcesPanel(streamed, ppvAnchor: ppv);
-      return;
-    }
-    if (_tvNativeLiveOnly) {
-      await _openNativeSourcesPanel(streamed);
-      return;
-    }
-    await _openMergedSourcesPanel(ppv, streamed);
-  }
-
-  Future<void> _openMergedSourcesPanel(
-    _DamiTvStream ppv,
-    _StreamedMatch streamed,
-  ) async {
-    if (!mounted) return;
-    final choices = <_StreamedStreamChoice>[];
-    final panel = _IptvSportsChannelsPanel.show(
-      context: context,
+    await _openLiveMatchDetails(
+      host: _s,
       match: streamed,
-      panelTitle: 'Sources',
-      emptyMessage: 'No streams available',
-      searchingHint: 'Finding streams',
-      cancelInFlightSearch: _iptvSportsPanelDismissCancel(),
-      onChannelSelected: (picked, all) {
-        final hit = _choiceForPanelSource(picked, choices);
-        if (hit == null) {
-          LiveMatchesEngine.engineResolveFailed();
-          return;
-        }
-        unawaited(_openResolvedStreamChoice(hit, allChoices: choices));
-      },
+      ppvAnchor: ppv,
     );
-    panel.setSearchPhase('streams');
-    final searchGen = _s._iptvSportsSearchGen;
-
-    try {
-      if (ppv.iframe.trim().isNotEmpty) {
-        choices.add(_ppvStreamChoice(ppv, streamed));
-        _panelAppendChoices(panel, choices);
-      }
-
-      final seenRefs = <String>{};
-      final jobs = <Future<void>>[];
-      for (final source in streamed.sources) {
-        final key = '${source.source}:${source.id}';
-        if (!seenRefs.add(key)) continue;
-        jobs.add(() async {
-          try {
-            final streams = await _fetchStreamedStreams(
-              source,
-              allowFallback: false,
-            );
-            final batch = [
-              for (final stream in streams)
-                if (stream.embedUrl.trim().isNotEmpty)
-                  _StreamedStreamChoice(catalogMatch: streamed, stream: stream),
-            ];
-            if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
-            choices.addAll(batch);
-            _panelAppendChoices(panel, batch);
-          } catch (e) {
-            debugPrint('[LiveMatches] Merged Streamed resolve error: $e');
-          }
-        }());
-      }
-      await Future.wait(jobs);
-
-      if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
-      var totalViewers = ppv.iframe.trim().isNotEmpty ? ppv.viewers : 0;
-      for (final choice in choices) {
-        totalViewers += _effectiveStreamViewers(
-          choice.stream,
-          choice.catalogMatch,
-        );
-      }
-      _rememberEventStreamViewers(streamed, totalViewers);
-      if (ppv.iframe.trim().isNotEmpty) {
-        _rememberPpvStreamViewers(ppv, totalViewers);
-      }
-    } catch (e) {
-      debugPrint('[LiveMatches] Merged sources panel error: $e');
-    } finally {
-      if (!panel.isDisposed) panel.finishSearching();
-    }
   }
 
-  Future<void> _openStreamedMatch(_StreamedMatch match) async {
+  Future<_StreamedMatch> _fillMatchDetailsSources({
+    required _StreamedMatch match,
+    _DamiTvStream? ppvAnchor,
+    required _IptvSportsChannelsPanelController controller,
+    required List<_StreamedStreamChoice> choices,
+    required bool Function() isStale,
+    required void Function(_LiveMatchPlayPath path) onPlayPath,
+  }) async {
     final forjaLive = _s._server == _LiveMatchesServer.forjaLive;
     if (_s._server == _LiveMatchesServer.iptvSports ||
         (match.isIptvSports && !forjaLive)) {
-      await _openIptvSportsMatch(match);
-      return;
+      onPlayPath(_LiveMatchPlayPath.iptvSports);
+      return _fillIptvSportsSources(
+        match: match,
+        controller: controller,
+        isStale: isStale,
+      );
     }
     if (match.isStremio) {
-      await _openStremioSportMatch(match);
-      return;
+      onPlayPath(_LiveMatchPlayPath.stremioDirect);
+      await _fillStremioSources(
+        match: match,
+        controller: controller,
+        isStale: isStale,
+      );
+      return match;
     }
     if (forjaLive || match.isForjaLive) {
-      await _openForjaLiveSourcesPanel(match);
-      return;
+      onPlayPath(_LiveMatchPlayPath.engineChoices);
+      await _fillForjaLiveSources(
+        match: match,
+        controller: controller,
+        choices: choices,
+        isStale: isStale,
+        ppvAnchor: ppvAnchor,
+      );
+      return match;
     }
     if (_tvNativeLiveOnly) {
-      await _openNativeSourcesPanel(match);
-      return;
+      onPlayPath(_LiveMatchPlayPath.iptvSports);
+      return _fillNativeSources(
+        match: match,
+        controller: controller,
+        isStale: isStale,
+      );
     }
-    await _openCatalogEngineSourcesPanel(match);
+    if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
+      onPlayPath(_LiveMatchPlayPath.engineChoices);
+      await _fillMergedSources(
+        ppv: ppvAnchor,
+        streamed: match,
+        controller: controller,
+        choices: choices,
+        isStale: isStale,
+      );
+      return match;
+    }
+    onPlayPath(_LiveMatchPlayPath.engineChoices);
+    final catalogResult = await _fillCatalogEngineSources(
+      match: match,
+      controller: controller,
+      choices: choices,
+      isStale: isStale,
+    );
+    if (catalogResult.playPath != null) {
+      onPlayPath(catalogResult.playPath!);
+    }
+    return catalogResult.match;
   }
 
-  Future<void> _openCatalogEngineSourcesPanel(_StreamedMatch match) async {
-    if (!mounted) return;
-    final catalogMatches = _streamedMatchesForEvent(match, _s._streamedMatches);
-    final choices = <_StreamedStreamChoice>[];
-
-    final panel = _IptvSportsChannelsPanel.show(
-      context: context,
-      match: match,
-      panelTitle: 'Sources',
-      emptyMessage: 'No streams available',
-      searchingHint: 'Finding streams',
-      cancelInFlightSearch: _iptvSportsPanelDismissCancel(),
-      onChannelSelected: (picked, all) {
-        final hit = _choiceForPanelSource(picked, choices);
-        if (hit == null) {
-          LiveMatchesEngine.engineResolveFailed();
-          return;
-        }
-        unawaited(_openResolvedStreamChoice(hit, allChoices: choices));
-      },
+  _StreamedMatch _enrichedIptvSportsMatch(_StreamedMatch match) {
+    final mergedGame = _sportMatchGameForIptvResolve(match, _s._espnGames);
+    final espnPayload = _findEspnGameForMatch(match, _s._espnGames);
+    return _copyStreamedMatch(
+      match,
+      sportMatchGame: mergedGame,
+      homeTeam: () {
+        final fromEspn = (espnPayload?['homeTeam'] ?? mergedGame['homeTeam'])
+            .toString()
+            .trim();
+        return fromEspn.isNotEmpty ? fromEspn : match.homeTeam;
+      }(),
+      awayTeam: () {
+        final fromEspn = (espnPayload?['awayTeam'] ?? mergedGame['awayTeam'])
+            .toString()
+            .trim();
+        return fromEspn.isNotEmpty ? fromEspn : match.awayTeam;
+      }(),
     );
-    panel.setSearchPhase('streams');
-    final searchGen = _s._iptvSportsSearchGen;
+  }
 
+  Future<_StreamedMatch> _fillIptvSportsSources({
+    required _StreamedMatch match,
+    required _IptvSportsChannelsPanelController controller,
+    required bool Function() isStale,
+  }) async {
+    final enriched = _enrichedIptvSportsMatch(match);
+    controller.setSearchPhase('Forja Sports');
     try {
-      _prependMatchingPpvChoices(match, choices);
-      _panelAppendChoices(panel, choices);
+      await _resolveIptvSportsStreams(
+        enriched,
+        onPartial: (batch) {
+          if (isStale() || controller.isDisposed) return;
+          controller.appendSources(batch);
+        },
+      );
+    } catch (e) {
+      debugPrint('[LiveMatches] IPTV sports resolve error: $e');
+    }
+    return enriched;
+  }
 
-      if (catalogMatches.isNotEmpty) {
-        await _resolveCatalogStreamChoices(
-          catalogMatches,
-          isStale: () =>
-              panel.isDisposed || _iptvSportsSearchStale(searchGen),
+  Future<void> _fillStremioSources({
+    required _StreamedMatch match,
+    required _IptvSportsChannelsPanelController controller,
+    required bool Function() isStale,
+  }) async {
+    controller.setSearchPhase('Stremio');
+    try {
+      final sources = await _stremioPlaySourcesFor(match);
+      if (isStale() || controller.isDisposed) return;
+      controller.appendSources(sources);
+    } catch (e) {
+      debugPrint('[LiveMatches] Stremio stream error: $e');
+    }
+  }
+
+  Future<void> _fillForjaLiveSources({
+    required _StreamedMatch match,
+    required _IptvSportsChannelsPanelController controller,
+    required List<_StreamedStreamChoice> choices,
+    required bool Function() isStale,
+    _DamiTvStream? ppvAnchor,
+  }) async {
+    if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) {
+      ForjaToast.info('Loading Forja Live plugins…');
+      return;
+    }
+    controller.setSearchPhase('Forja Live');
+
+    if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
+      choices.add(_ppvStreamChoice(ppvAnchor, match));
+    } else {
+      _prependMatchingPpvChoices(match, choices);
+    }
+    _panelAppendChoices(controller, choices);
+
+    final catalogMatches =
+        _streamedMatchesForEvent(match, _s._streamedMatches);
+    if (catalogMatches.isNotEmpty) {
+      await _resolveCatalogStreamChoices(
+        catalogMatches,
+        isStale: isStale,
+        onPartial: (batch) {
+          if (isStale() || controller.isDisposed) return;
+          choices.addAll(batch);
+          _panelAppendChoices(controller, batch);
+        },
+      );
+    }
+    if (isStale() || controller.isDisposed) return;
+
+    _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
+    if (ppvAnchor != null) {
+      _rememberPpvStreamViewers(ppvAnchor, _sheetTotalViewers(choices));
+    }
+  }
+
+  Future<_StreamedMatch> _fillNativeSources({
+    required _StreamedMatch match,
+    required _IptvSportsChannelsPanelController controller,
+    required bool Function() isStale,
+  }) async {
+    final ctrl = ref.read(iptvControllerProvider);
+    final portal = ctrl.activePortal;
+    if (portal != null && portal.portal.platform.supportsForjaSports) {
+      await LiveMatchesIptvSportsConfig.ensureArmed(portalKey: portal.key);
+    } else {
+      await LiveMatchesIptvSportsConfig.ensureArmed();
+    }
+    if (!mounted) return match;
+
+    final enriched = _enrichedIptvSportsMatch(match);
+
+    Future<void> addForja() async {
+      try {
+        await _resolveIptvSportsStreams(
+          enriched,
           onPartial: (batch) {
-            if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
-            choices.addAll(batch);
-            _panelAppendChoices(panel, batch);
+            if (controller.isDisposed || isStale()) return;
+            controller.appendSources([
+              for (final s in batch)
+                IptvPlaySource(
+                  url: s.url,
+                  label: s.label,
+                  detail: _tvNativeSourceDetail('Forja Sports', s.detail),
+                  logoUrl: s.logoUrl,
+                  streamId: s.streamId,
+                  epgChannelId: s.epgChannelId,
+                  headers: s.headers,
+                  liveSourceKind:
+                      s.liveSourceKind ?? IptvLiveSourceKind.iptvXtream,
+                ),
+            ]);
           },
         );
+      } catch (e) {
+        debugPrint('[LiveMatches] TV Forja Sports resolve error: $e');
       }
-
-      if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
-
-      if (choices.isEmpty &&
-          catalogMatches.any((m) => m.sportMatchGame != null)) {
-        _IptvSportsChannelsPanel.dismiss();
-        await _openIptvSportsMatch(match);
-        return;
-      }
-
-      _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
-    } catch (e) {
-      debugPrint('[LiveMatches] catalog engine resolve error: $e');
-    } finally {
-      if (!panel.isDisposed) panel.finishSearching();
     }
+
+    Future<void> addStremio() async {
+      if (!_offerStremioPlayFallback || isStale()) return;
+      try {
+        final stremio = await _resolveStremioStreamsMatching(enriched);
+        if (controller.isDisposed || isStale()) return;
+        controller.appendSources([
+          for (final s in stremio)
+            IptvPlaySource(
+              url: s.url,
+              label: s.label,
+              detail: _tvNativeSourceDetail('Stremio', s.detail),
+              logoUrl: s.logoUrl,
+              streamId: s.streamId,
+              headers: s.headers,
+              liveSourceKind: IptvLiveSourceKind.stremio,
+            ),
+        ]);
+      } catch (e) {
+        debugPrint('[LiveMatches] TV Stremio resolve error: $e');
+      }
+    }
+
+    controller.setSearchPhase('Forja Sports');
+    await addForja();
+    if (controller.isDisposed || isStale()) return enriched;
+    controller.setSearchPhase('Stremio');
+    await addStremio();
+    return enriched;
+  }
+
+  Future<void> _fillMergedSources({
+    required _DamiTvStream ppv,
+    required _StreamedMatch streamed,
+    required _IptvSportsChannelsPanelController controller,
+    required List<_StreamedStreamChoice> choices,
+    required bool Function() isStale,
+  }) async {
+    controller.setSearchPhase('streams');
+    if (ppv.iframe.trim().isNotEmpty) {
+      choices.add(_ppvStreamChoice(ppv, streamed));
+      _panelAppendChoices(controller, choices);
+    }
+
+    final seenRefs = <String>{};
+    final jobs = <Future<void>>[];
+    for (final source in streamed.sources) {
+      final key = '${source.source}:${source.id}';
+      if (!seenRefs.add(key)) continue;
+      jobs.add(() async {
+        try {
+          final streams = await _fetchStreamedStreams(
+            source,
+            allowFallback: false,
+          );
+          final batch = [
+            for (final stream in streams)
+              if (stream.embedUrl.trim().isNotEmpty)
+                _StreamedStreamChoice(catalogMatch: streamed, stream: stream),
+          ];
+          if (isStale() || controller.isDisposed) return;
+          choices.addAll(batch);
+          _panelAppendChoices(controller, batch);
+        } catch (e) {
+          debugPrint('[LiveMatches] Merged Streamed resolve error: $e');
+        }
+      }());
+    }
+    await Future.wait(jobs);
+
+    if (isStale() || controller.isDisposed) return;
+    var totalViewers = ppv.iframe.trim().isNotEmpty ? ppv.viewers : 0;
+    for (final choice in choices) {
+      totalViewers += _effectiveStreamViewers(
+        choice.stream,
+        choice.catalogMatch,
+      );
+    }
+    _rememberEventStreamViewers(streamed, totalViewers);
+    if (ppv.iframe.trim().isNotEmpty) {
+      _rememberPpvStreamViewers(ppv, totalViewers);
+    }
+  }
+
+  Future<({_StreamedMatch match, _LiveMatchPlayPath? playPath})>
+      _fillCatalogEngineSources({
+    required _StreamedMatch match,
+    required _IptvSportsChannelsPanelController controller,
+    required List<_StreamedStreamChoice> choices,
+    required bool Function() isStale,
+  }) async {
+    controller.setSearchPhase('streams');
+    final catalogMatches = _streamedMatchesForEvent(match, _s._streamedMatches);
+
+    _prependMatchingPpvChoices(match, choices);
+    _panelAppendChoices(controller, choices);
+
+    if (catalogMatches.isNotEmpty) {
+      await _resolveCatalogStreamChoices(
+        catalogMatches,
+        isStale: isStale,
+        onPartial: (batch) {
+          if (isStale() || controller.isDisposed) return;
+          choices.addAll(batch);
+          _panelAppendChoices(controller, batch);
+        },
+      );
+    }
+
+    if (isStale() || controller.isDisposed) {
+      return (match: match, playPath: null);
+    }
+
+    if (choices.isEmpty &&
+        catalogMatches.any((m) => m.sportMatchGame != null)) {
+      final enriched = await _fillIptvSportsSources(
+        match: match,
+        controller: controller,
+        isStale: isStale,
+      );
+      return (match: enriched, playPath: _LiveMatchPlayPath.iptvSports);
+    }
+
+    _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
+    return (match: match, playPath: null);
+  }
+
+  Future<void> _openStreamedMatch(_StreamedMatch match) async {
+    await _openLiveMatchDetails(host: _s, match: match);
   }
 
   void _rememberEventStreamViewers(_StreamedMatch match, int total) {
@@ -684,92 +853,6 @@ mixin _LiveMatchesPlayback
     return out;
   }
 
-  /// Forja Live: right-side Sources panel; rows appear as each catalog resolves.
-  ///
-  /// Unlock/play happens on tap — do not hide rows when GOAT/node unlock fails
-  /// on Android.
-  ///
-  /// Respects Catalog filter: **PPV** → PPV only; a named plugin → that
-  /// plugin only; **All** → every catalog row for the event (+ matching PPV).
-  Future<void> _openForjaLiveSourcesPanel(
-    _StreamedMatch match, {
-    _DamiTvStream? ppvAnchor,
-  }) async {
-    if (!mounted) return;
-    if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) {
-      ForjaToast.info('Loading Forja Live plugins…');
-      return;
-    }
-
-    final filter = _s._forjaLivePluginFilter;
-    final phase = filter == 'all'
-        ? 'Forja Live'
-        : _liveForjaPluginDisplayName(filter);
-    final choices = <_StreamedStreamChoice>[];
-
-    final panel = _IptvSportsChannelsPanel.show(
-      context: context,
-      match: match,
-      panelTitle: 'Sources',
-      emptyMessage: 'No streams available',
-      searchingHint: 'Loading $phase streams',
-      cancelInFlightSearch: _iptvSportsPanelDismissCancel(),
-      onChannelSelected: (picked, all) {
-        final hit = _choiceForPanelSource(picked, choices);
-        if (hit == null) {
-          LiveMatchesEngine.engineResolveFailed();
-          return;
-        }
-        unawaited(_openResolvedStreamChoice(hit, allChoices: choices));
-      },
-    );
-    panel.setSearchPhase(phase);
-    final searchGen = _s._iptvSportsSearchGen;
-
-    try {
-      if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
-        choices.add(_ppvStreamChoice(ppvAnchor, match));
-      } else if (filter == 'all' ||
-          LiveMatchesEngine.cachedIsNativeUnlock(filter, 'ppv')) {
-        _prependMatchingPpvChoices(match, choices);
-      }
-      _panelAppendChoices(panel, choices);
-
-      // Catalog → PPV: never pull TimStreams/Streamed/etc. from the session cache.
-      if (!LiveMatchesEngine.cachedIsNativeUnlock(filter, 'ppv')) {
-        final catalogMatches =
-            _streamedMatchesForEvent(match, _s._streamedMatches);
-        final scoped = filter == 'all'
-            ? catalogMatches
-            : catalogMatches
-                .where((m) => m.livePluginId == filter)
-                .toList();
-        if (scoped.isNotEmpty) {
-          await _resolveCatalogStreamChoices(
-            scoped,
-            isStale: () =>
-                panel.isDisposed || _iptvSportsSearchStale(searchGen),
-            onPartial: (batch) {
-              if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
-              choices.addAll(batch);
-              _panelAppendChoices(panel, batch);
-            },
-          );
-        }
-      }
-      if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
-
-      _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
-      if (ppvAnchor != null) {
-        _rememberPpvStreamViewers(ppvAnchor, _sheetTotalViewers(choices));
-      }
-    } catch (e) {
-      debugPrint('[LiveMatches] Forja Live resolve error: $e');
-    } finally {
-      if (!panel.isDisposed) panel.finishSearching();
-    }
-  }
-
   _StreamedStreamChoice? _choiceForPanelSource(
     IptvPlaySource picked,
     List<_StreamedStreamChoice> choices,
@@ -788,110 +871,6 @@ mixin _LiveMatchesPlayback
       if (_streamPickerLabel(c.catalogMatch, c.stream) == label) return c;
     }
     return null;
-  }
-
-  /// Forja Sports ∪ Stremio on non–Forja Live servers (e.g. All).
-  Future<void> _openNativeSourcesPanel(_StreamedMatch match) async {
-    if (!mounted) return;
-    final ctrl = ref.read(iptvControllerProvider);
-    final portal = ctrl.activePortal;
-    if (portal != null && portal.portal.platform.supportsForjaSports) {
-      await LiveMatchesIptvSportsConfig.ensureArmed(portalKey: portal.key);
-    } else {
-      await LiveMatchesIptvSportsConfig.ensureArmed();
-    }
-    if (!mounted) return;
-
-    final espnPayload = _findEspnGameForMatch(match, _s._espnGames);
-    final mergedGame = _sportMatchGameForIptvResolve(match, _s._espnGames);
-    final enriched = _copyStreamedMatch(
-      match,
-      sportMatchGame: mergedGame,
-      homeTeam: () {
-        final fromEspn = (espnPayload?['homeTeam'] ?? mergedGame['homeTeam'])
-            .toString()
-            .trim();
-        return fromEspn.isNotEmpty ? fromEspn : match.homeTeam;
-      }(),
-      awayTeam: () {
-        final fromEspn = (espnPayload?['awayTeam'] ?? mergedGame['awayTeam'])
-            .toString()
-            .trim();
-        return fromEspn.isNotEmpty ? fromEspn : match.awayTeam;
-      }(),
-    );
-
-    final panel = _IptvSportsChannelsPanel.show(
-      context: context,
-      match: enriched,
-      panelTitle: 'Sources',
-      iptvCtrl: ctrl,
-      cancelInFlightSearch: _iptvSportsPanelDismissCancel(),
-      onChannelSelected: (picked, all) {
-        unawaited(_playIptvSportsSources(enriched, all, picked));
-      },
-    );
-    panel.setSearchPhase('Forja Sports');
-    final searchGen = _s._iptvSportsSearchGen;
-
-    Future<void> addForja() async {
-      try {
-        await _resolveIptvSportsStreams(
-          enriched,
-          onPartial: (batch) {
-            if (panel.isDisposed) return;
-            panel.appendSources([
-              for (final s in batch)
-                IptvPlaySource(
-                  url: s.url,
-                  label: s.label,
-                  detail: _tvNativeSourceDetail('Forja Sports', s.detail),
-                  logoUrl: s.logoUrl,
-                  streamId: s.streamId,
-                  epgChannelId: s.epgChannelId,
-                  headers: s.headers,
-                  liveSourceKind:
-                      s.liveSourceKind ?? IptvLiveSourceKind.iptvXtream,
-                ),
-            ]);
-          },
-        );
-      } catch (e) {
-        debugPrint('[LiveMatches] TV Forja Sports resolve error: $e');
-      }
-    }
-
-    Future<void> addStremio() async {
-      if (!_offerStremioPlayFallback) return;
-      if (_iptvSportsSearchStale(searchGen)) return;
-      try {
-        final stremio = await _resolveStremioStreamsMatching(enriched);
-        if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
-        panel.appendSources([
-          for (final s in stremio)
-            IptvPlaySource(
-              url: s.url,
-              label: s.label,
-              detail: _tvNativeSourceDetail('Stremio', s.detail),
-              logoUrl: s.logoUrl,
-              streamId: s.streamId,
-              headers: s.headers,
-              liveSourceKind: IptvLiveSourceKind.stremio,
-            ),
-        ]);
-      } catch (e) {
-        debugPrint('[LiveMatches] TV Stremio resolve error: $e');
-      }
-    }
-
-    // Serial on TV: parallel Forja Sports (Xtream + EPG) + Stremio OOMs leanback.
-    await addForja();
-    if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
-    panel.setSearchPhase('Stremio');
-    await addStremio();
-    if (!panel.isDisposed && !_iptvSportsSearchStale(searchGen)) {
-      panel.finishSearching();
-    }
   }
 
   String _tvNativeSourceDetail(String server, String? detail) {
@@ -947,100 +926,6 @@ mixin _LiveMatchesPlayback
       debugPrint('[LiveMatches] Stremio stream error: $e');
     }
     return out;
-  }
-
-  Future<void> _openStremioSportMatch(_StreamedMatch match) async {
-    if (!mounted) return;
-    final panel = _IptvSportsChannelsPanel.show(
-      context: context,
-      match: match,
-      panelTitle: 'Sources',
-      emptyMessage: 'No playable streams for this event',
-      searchingHint: 'Loading Stremio streams',
-      cancelInFlightSearch: _iptvSportsPanelDismissCancel(),
-      onChannelSelected: (picked, all) {
-        final ordered = <IptvPlaySource>[
-          picked,
-          for (final s in all)
-            if (!identical(s, picked) && s.url.trim() != picked.url.trim()) s,
-        ];
-        unawaited(
-          IptvPtPlayerScreen.open(
-            context,
-            IptvPtPlayerScreen(
-              sources: ordered,
-              title: match.title,
-              subtitle: match.categoryLabel,
-              titleTracksSource: true,
-              engineContext: BuiltInPlayerContext.live,
-              liveSourceKind: IptvLiveSourceKind.stremio,
-            ),
-          ),
-        );
-      },
-    );
-    panel.setSearchPhase('Stremio');
-    final searchGen = _s._iptvSportsSearchGen;
-    try {
-      final sources = await _stremioPlaySourcesFor(match);
-      if (panel.isDisposed || _iptvSportsSearchStale(searchGen)) return;
-      panel.appendSources(sources);
-    } catch (e) {
-      debugPrint('[LiveMatches] Stremio stream error: $e');
-    } finally {
-      if (!panel.isDisposed) panel.finishSearching();
-    }
-  }
-
-  Future<void> _openIptvSportsMatch(_StreamedMatch match) async {
-    if (!mounted) return;
-    final iptvCtrl = ref.read(iptvControllerProvider);
-    final mergedGame = _sportMatchGameForIptvResolve(match, _s._espnGames);
-    final espnPayload = _findEspnGameForMatch(match, _s._espnGames);
-    final enriched = _copyStreamedMatch(
-      match,
-      sportMatchGame: mergedGame,
-      homeTeam: () {
-        final fromEspn = (espnPayload?['homeTeam'] ?? mergedGame['homeTeam'])
-            .toString()
-            .trim();
-        return fromEspn.isNotEmpty ? fromEspn : match.homeTeam;
-      }(),
-      awayTeam: () {
-        final fromEspn = (espnPayload?['awayTeam'] ?? mergedGame['awayTeam'])
-            .toString()
-            .trim();
-        return fromEspn.isNotEmpty ? fromEspn : match.awayTeam;
-      }(),
-    );
-
-    final panel = _IptvSportsChannelsPanel.show(
-      context: context,
-      match: enriched,
-      iptvCtrl: iptvCtrl,
-      cancelInFlightSearch: _iptvSportsPanelDismissCancel(),
-      onChannelSelected: (picked, all) {
-        unawaited(_playIptvSportsSources(enriched, all, picked));
-      },
-    );
-    panel.setSearchPhase('Forja Sports');
-    final searchGen = _s._iptvSportsSearchGen;
-
-    try {
-      await _resolveIptvSportsStreams(
-        enriched,
-        onPartial: (batch) {
-          if (panel.isDisposed) return;
-          panel.appendSources(batch);
-        },
-      );
-    } catch (e) {
-      debugPrint('[LiveMatches] IPTV sports resolve error: $e');
-    } finally {
-      if (!panel.isDisposed && !_iptvSportsSearchStale(searchGen)) {
-        panel.finishSearching();
-      }
-    }
   }
 
   Future<void> _playIptvSportsSources(
@@ -1199,10 +1084,6 @@ mixin _LiveMatchesPlayback
       'Dec',
     ];
     return '${months[dt.month - 1]} ${dt.day} $time';
-  }
-
-  Future<void> _openIptvSportsFromPpv(_DamiTvStream s) async {
-    await _openIptvSportsMatch(_streamedMatchFromPpv(s));
   }
 
   _StreamedMatch _streamedMatchFromPpv(_DamiTvStream s) => _StreamedMatch(
@@ -1546,24 +1427,10 @@ mixin _LiveMatchesPlayback
   }
 
   Future<void> _openDamiTvStream(_DamiTvStream s) async {
-    if (_s._server == _LiveMatchesServer.iptvSports) {
-      await _openIptvSportsFromPpv(s);
-      return;
-    }
-    if (_s._server == _LiveMatchesServer.forjaLive) {
-      await _openForjaLiveSourcesPanel(
-        _streamedMatchFromPpv(s),
-        ppvAnchor: s,
-      );
-      return;
-    }
-    if (_tvNativeLiveOnly) {
-      await _openNativeSourcesPanel(_streamedMatchFromPpv(s));
-      return;
-    }
-    await _openForjaLiveSourcesPanel(
-      _streamedMatchFromPpv(s),
-      ppvAnchor: s.iframe.trim().isNotEmpty ? s : null,
+    await _openLiveMatchDetails(
+      host: _s,
+      match: _streamedMatchFromPpv(s),
+      ppvAnchor: s,
     );
   }
 }

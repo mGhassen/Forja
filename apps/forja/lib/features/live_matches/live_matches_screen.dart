@@ -50,6 +50,15 @@ import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
 import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
 import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
+import 'package:forja/shared/navigation/media_details_back_button.dart';
+import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja/shared/tv/media_details_tv_scope.dart';
+import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
+import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
+import 'package:forja/shared/widgets/media_details/media_details_scroll_page.dart';
+import 'package:forja/shared/widgets/media_details_body.dart';
+import 'package:forja/shell/app_router.dart';
+import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -63,6 +72,7 @@ part 'live_matches_build.dart';
 part 'live_matches_timeline.dart';
 part 'live_matches_playback.dart';
 part 'live_matches_forja_live.dart';
+part 'live_matches_details.dart';
 part 'providers/live_matches_providers.dart';
 
 class LiveMatchesScreen extends ConsumerStatefulWidget {
@@ -143,7 +153,6 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   String? _lastSyncedIptvPortalKey;
   int _forjaLiveLoadGen = 0;
   int _iptvSportsPlayGen = 0;
-  int _iptvSportsSearchGen = 0;
   String _forjaLivePluginFilter = 'all';
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
   /// Lazy catalog scrape in flight (before plugin rows mark `loading`).

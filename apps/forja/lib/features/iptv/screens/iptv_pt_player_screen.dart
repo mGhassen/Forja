@@ -28,6 +28,7 @@ import 'package:forja/features/iptv/channel_guide/iptv_channel_search_overlay.da
 import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
+import 'package:forja/shared/engine/live_goat_unlock.dart';
 import 'package:forja/features/iptv/iptv_live_continuity_proxy.dart';
 import 'package:forja/features/iptv/channel_guide/iptv_player_stats_panel.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
@@ -292,7 +293,16 @@ String iptvLiveSourceProbeKey(IptvPlaySource src) {
 /// (catalog embed page, unresolved `pending:` without a handoff URL).
 String? iptvLiveSourceProbeUrl(IptvPlaySource src) {
   final url = src.url.trim();
-  if (iptvLiveEnginePlayUrlReady(url)) return url;
+  if (iptvLiveEnginePlayUrlReady(url)) {
+    // WatchFooty / StreamFree / GOAT signed playlists need Referer — bare
+    // engine probe false-negatives while Exo/MediaKit play fine with headers.
+    if (src.liveSourceKind == IptvLiveSourceKind.liveEngine &&
+        LiveGoatUnlock.preferDirectEnginePlayback(url)) {
+      return null;
+    }
+    if (src.headers.isNotEmpty) return null;
+    return url;
+  }
 
   final embed = (src.liveEngineEmbedUrl ?? '').trim();
   if (url.startsWith('pending:')) return null;

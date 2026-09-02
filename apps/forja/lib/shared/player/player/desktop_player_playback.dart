@@ -1404,12 +1404,16 @@ mixin _DesktopPlayerPlayback
       _s._durationNotifier.value = dur;
     });
 
-    // Buffered position – shows how far ahead is cached
+    // Buffered position – demuxer readahead only (not torrent swarm %).
     _s._bufferSub = _s._player.stream.buffer.listen((buf) {
       if (_s._disposed) return;
       if (!_s._playbackConfirmed) return;
       if (_s._lockSeekBarPosition) return;
-      _s._bufferedNotifier.value = buf;
+      _applyBufferedEnd(cacheTime: buf);
+    });
+    _s._cacheAheadPoll?.cancel();
+    _s._cacheAheadPoll = Timer.periodic(const Duration(milliseconds: 750), (_) {
+      unawaited(_sampleDemuxerCacheAhead());
     });
 
     // Playing state
@@ -1681,6 +1685,56 @@ mixin _DesktopPlayerPlayback
         'sub-visibility',
         shouldUseNative ? 'yes' : 'no',
       );
+    }
+  }
+
+  bool _localTorrentPlaybackActive() {
+    final url =
+        _s._hlsMasterUrl ??
+        _s._currentQualityUrl ??
+        _s._currentUrl ??
+        widget.mediaPath;
+    if (isLocalTorrentStreamUrl(url)) return true;
+    return widget.magnetLink != null &&
+        widget.magnetLink!.isNotEmpty &&
+        isLocalTorrentStreamUrl(widget.mediaPath);
+  }
+
+  void _applyBufferedEnd({
+    Duration cacheTime = Duration.zero,
+    double? aheadSecs,
+  }) {
+    if (_s._disposed || !_s._playbackConfirmed || _s._lockSeekBarPosition) {
+      return;
+    }
+    syncSeekBarBufferedEnd(
+      buffered: _s._bufferedNotifier,
+      position: _s._positionNotifier.value,
+      duration: _s._durationNotifier.value,
+      cacheTime: cacheTime,
+      aheadSecs: aheadSecs ?? 0,
+      localTorrent: _localTorrentPlaybackActive(),
+    );
+  }
+
+  Future<void> _sampleDemuxerCacheAhead() async {
+    if (_s._disposed ||
+        !_s._playbackConfirmed ||
+        _s._lockSeekBarPosition ||
+        _s._cacheAheadProbeInFlight) {
+      return;
+    }
+    final platform = _s._player.platform;
+    if (platform is! NativePlayer) return;
+    _s._cacheAheadProbeInFlight = true;
+    try {
+      final raw = await platform.getProperty('demuxer-cache-duration');
+      final ahead = double.tryParse(raw.toString());
+      if (ahead == null) return;
+      _applyBufferedEnd(cacheTime: _s._player.state.buffer, aheadSecs: ahead);
+    } catch (_) {
+    } finally {
+      _s._cacheAheadProbeInFlight = false;
     }
   }
 

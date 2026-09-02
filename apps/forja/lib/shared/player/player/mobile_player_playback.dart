@@ -1693,6 +1693,18 @@ mixin _MobilePlayerPlayback
     }
   }
 
+  bool _localTorrentPlaybackActive() {
+    final url =
+        _s._hlsMasterUrl ??
+        _s._currentQualityUrl ??
+        _s._currentUrl ??
+        widget.mediaPath;
+    if (isLocalTorrentStreamUrl(url)) return true;
+    return widget.magnetLink != null &&
+        widget.magnetLink!.isNotEmpty &&
+        isLocalTorrentStreamUrl(widget.mediaPath);
+  }
+
   void _applyBufferedEnd({
     Duration cacheTime = Duration.zero,
     double? aheadSecs,
@@ -1700,20 +1712,14 @@ mixin _MobilePlayerPlayback
     if (_s._disposed || !_s._playbackConfirmed || _s._lockSeekBarPosition) {
       return;
     }
-    final pos = _s._positionNotifier.value;
-    final end = bufferedEndFromCacheAhead(
-      position: pos,
+    syncSeekBarBufferedEnd(
+      buffered: _s._bufferedNotifier,
+      position: _s._positionNotifier.value,
       duration: _s._durationNotifier.value,
-      aheadSecs: aheadSecs ?? 0,
       cacheTime: cacheTime,
+      aheadSecs: aheadSecs ?? 0,
+      localTorrent: _localTorrentPlaybackActive(),
     );
-    if (end == null || end <= pos) {
-      if (_s._bufferedNotifier.value < pos) {
-        _s._bufferedNotifier.value = pos;
-      }
-      return;
-    }
-    _s._bufferedNotifier.value = end;
   }
 
   Future<void> _sampleDemuxerCacheAhead() async {

@@ -1632,6 +1632,49 @@ Duration? bufferedEndFromCacheAhead({
   return fromAhead;
 }
 
+/// mpv `stream.buffer` is absolute PTS. Local torrent HTTP with the file on
+/// disk can report ~duration while the playhead is mid-movie — a false full-
+/// length gray bar that looks like a second "downloaded" seek track.
+Duration cacheTimeForSeekBarBuffer({
+  required Duration position,
+  required Duration cacheTime,
+  required bool localTorrent,
+  Duration maxAhead = const Duration(seconds: 45),
+}) {
+  if (!localTorrent || cacheTime <= Duration.zero) return cacheTime;
+  if (cacheTime <= position + maxAhead) return cacheTime;
+  return Duration.zero;
+}
+
+/// Drive seek-bar gray fill from playhead + demuxer readahead (not swarm %).
+void syncSeekBarBufferedEnd({
+  required ValueNotifier<Duration> buffered,
+  required Duration position,
+  required Duration duration,
+  Duration cacheTime = Duration.zero,
+  double aheadSecs = 0,
+  bool localTorrent = false,
+}) {
+  final filtered = cacheTimeForSeekBarBuffer(
+    position: position,
+    cacheTime: cacheTime,
+    localTorrent: localTorrent,
+  );
+  final end = bufferedEndFromCacheAhead(
+    position: position,
+    duration: duration,
+    aheadSecs: aheadSecs,
+    cacheTime: filtered,
+  );
+  if (end == null || end <= position) {
+    if (buffered.value < position) {
+      buffered.value = position;
+    }
+    return;
+  }
+  buffered.value = end;
+}
+
 /// Wall-clock time after [_playbackConfirmed] before EOF can count as natural.
 /// Local torrents demux a real duration then hit EOF within seconds.
 const kMinConfirmedPlaybackForNaturalEnd = Duration(seconds: 45);

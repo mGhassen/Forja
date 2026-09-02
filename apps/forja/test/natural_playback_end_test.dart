@@ -260,6 +260,38 @@ void main() {
     });
   });
 
+  group('cacheTimeForSeekBarBuffer', () {
+    test('drops absolute torrent PTS far ahead of playhead', () {
+      expect(
+        cacheTimeForSeekBarBuffer(
+          position: const Duration(minutes: 49),
+          cacheTime: const Duration(hours: 1, minutes: 18),
+          localTorrent: true,
+        ),
+        Duration.zero,
+      );
+    });
+
+    test('keeps near playhead cache and non-torrent absolute buffer', () {
+      expect(
+        cacheTimeForSeekBarBuffer(
+          position: const Duration(minutes: 49),
+          cacheTime: const Duration(minutes: 49, seconds: 30),
+          localTorrent: true,
+        ),
+        const Duration(minutes: 49, seconds: 30),
+      );
+      expect(
+        cacheTimeForSeekBarBuffer(
+          position: const Duration(minutes: 10),
+          cacheTime: const Duration(hours: 1),
+          localTorrent: false,
+        ),
+        const Duration(hours: 1),
+      );
+    });
+  });
+
   group('localTorrentBackwardSeekNeedsRemount', () {
     test('true when scrubbing back more than 1s', () {
       expect(

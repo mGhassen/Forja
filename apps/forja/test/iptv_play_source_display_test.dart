@@ -76,6 +76,17 @@ void main() {
       'https://cdn.example/live/index.m3u8',
     );
 
+    const signed = IptvPlaySource(
+      url:
+          'https://lb5.wfty.st/secure/tok/delta/live_foo/1/465/playlist.m3u8',
+      label: 'WatchFooty delta',
+      liveSourceKind: IptvLiveSourceKind.liveEngine,
+      liveEngineEmbedUrl:
+          'https://lb5.wfty.st/secure/tok/delta/live_foo/1/465/playlist.m3u8',
+    );
+    expect(iptvLiveSourceProbeUrl(signed), isNull);
+    expect(iptvLiveSourceProbeSkipped(signed), isTrue);
+
     const portal = IptvPlaySource(
       url: 'http://portal.example/live/u/p/1.m3u8',
       label: 'Golf',

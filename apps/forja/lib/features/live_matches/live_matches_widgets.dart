@@ -4095,7 +4095,6 @@ class _StreamedStreamRowState extends State<_StreamedStreamRow> {
     );
     final subtitleParts = <String>[
       if (widget.pendingResolve) 'Resolve on play',
-      if (!widget.pendingResolve && widget.stream.hd) 'HD',
     ];
     return shellFocusableTap(
       context: context,

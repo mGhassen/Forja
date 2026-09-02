@@ -227,6 +227,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   StreamSubscription<Duration>? _positionSub;
   StreamSubscription<Duration>? _durationSub;
   StreamSubscription<Duration>? _bufferSub;
+  Timer? _cacheAheadPoll;
+  bool _cacheAheadProbeInFlight = false;
   StreamSubscription<bool>? _playingSub;
   StreamSubscription<bool>? _bufferingSub;
   StreamSubscription<double>? _volumeSub;
@@ -568,6 +570,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     _positionSub?.cancel();
     _durationSub?.cancel();
     _bufferSub?.cancel();
+    _cacheAheadPoll?.cancel();
+    _cacheAheadPoll = null;
     _playingSub?.cancel();
     _bufferingSub?.cancel();
     _volumeSub?.cancel();

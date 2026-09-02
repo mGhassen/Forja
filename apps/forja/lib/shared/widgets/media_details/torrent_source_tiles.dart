@@ -621,16 +621,12 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     final hasProvider =
         widget.provider != null && widget.provider!.trim().isNotEmpty;
     final hasViewers = (widget.viewerCount ?? 0) > 0;
-    final viewerColumnBadges = hasViewers
-        ? widget.badges
-            .where((b) => b.tone == _SourceBadgeTone.emphasis)
-            .toList()
-        : const <_SourceBadgeSpec>[];
-    final inlineBadges = hasViewers
-        ? widget.badges
-            .where((b) => b.tone != _SourceBadgeTone.emphasis)
-            .toList()
-        : widget.badges;
+    final titlePrefixBadges = widget.badges
+        .where((b) => b.tone == _SourceBadgeTone.emphasis)
+        .toList();
+    final inlineBadges = widget.badges
+        .where((b) => b.tone != _SourceBadgeTone.emphasis)
+        .toList();
     final hasSeeders =
         widget.seeders != null && widget.seeders!.trim().isNotEmpty;
     final hasLanguageFlags = widget.languageCodes.isNotEmpty;
@@ -676,16 +672,36 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                widget.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: cinematic.textPrimary,
-                                  fontSize: titleSize,
-                                  height: 1.25,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (titlePrefixBadges.isNotEmpty) ...[
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 6,
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      children: [
+                                        for (final badge in titlePrefixBadges)
+                                          _SourceMetaBadge(badge: badge),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Expanded(
+                                    child: Text(
+                                      widget.title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: cinematic.textPrimary,
+                                        fontSize: titleSize,
+                                        height: 1.25,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                               if (hasLanguageFlags || inlineBadges.isNotEmpty) ...[
                                 const SizedBox(height: 8),
@@ -712,7 +728,6 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                         ),
                         if (hasProvider ||
                             hasViewers ||
-                            viewerColumnBadges.isNotEmpty ||
                             hasSeeders ||
                             showCopyMagnet) ...[
                           const SizedBox(width: 8),
@@ -764,19 +779,6 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
                                           height: 1.1,
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ],
-                                if (viewerColumnBadges.isNotEmpty) ...[
-                                  if (hasProvider || hasViewers)
-                                    const SizedBox(height: 4),
-                                  Wrap(
-                                    spacing: 6,
-                                    runSpacing: 6,
-                                    alignment: WrapAlignment.end,
-                                    children: [
-                                      for (final badge in viewerColumnBadges)
-                                        _SourceMetaBadge(badge: badge),
                                     ],
                                   ),
                                 ],
