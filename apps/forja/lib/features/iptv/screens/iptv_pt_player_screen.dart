@@ -600,9 +600,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   final FocusNode _bottomSourceFocus = FocusNode(
     debugLabel: 'iptv-player-bottom-source',
   );
-  final FocusNode _topSourceFocus = FocusNode(
-    debugLabel: 'iptv-player-top-source',
-  );
 
   bool _guideVisible = false;
   bool _searchVisible = false;
@@ -1388,7 +1385,6 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
     _searchChromeFocus.dispose();
     _guideFocus.dispose();
     _bottomSourceFocus.dispose();
-    _topSourceFocus.dispose();
     _pipSub?.cancel();
     PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
     _watchdog?.cancel();

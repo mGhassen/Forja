@@ -1320,12 +1320,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final showPip =
         PipService.instance.isSupported && iptvShowPointerChrome(context);
     final tv = iptvUseTvFocus(context);
-    final hasLiveSources =
-        widget.titleTracksSource && _s._sources.length > 1;
-    final activeSource = hasLiveSources
-        ? _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)]
-        : null;
-
     void downFromTop() {
       if (_showProgressChrome &&
           _isVodChrome &&
@@ -1352,23 +1346,11 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     /// Explicit ←/→ edges — [focusInDirection] often fails across the title gap.
     VoidCallback? rightFromBack() {
       if (!tv) return null;
-      if (hasLiveSources) return () => claim(_s._topSourceFocus);
-      return () => claim(_s._playerMenuFocus);
-    }
-
-    VoidCallback? leftFromTopSource() {
-      if (!tv) return null;
-      return () => claim(_s._backFocus);
-    }
-
-    VoidCallback? rightFromTopSource() {
-      if (!tv) return null;
       return () => claim(_s._playerMenuFocus);
     }
 
     VoidCallback? leftFromPlayer() {
       if (!tv) return null;
-      if (hasLiveSources) return () => claim(_s._topSourceFocus);
       return () => claim(_s._backFocus);
     }
 
@@ -1386,7 +1368,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     }
 
     var next = 1; // 1 = Back
-    final topSourceOrder = hasLiveSources ? ++next : null;
     final playerOrder = ++next;
     final statsOrder = ++next;
     final pipOrder = showPip ? ++next : null;
@@ -1460,25 +1441,6 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 ],
               ),
             ),
-            if (hasLiveSources) ...[
-              const SizedBox(width: 8),
-              wrapOrder(
-                topSourceOrder!,
-                PlayerStreamPickerButton(
-                  label: 'Source',
-                  server: activeSource!.label,
-                  size: 36,
-                  iconSize: 18,
-                  tvFocusable: tv,
-                  focusNode: _s._topSourceFocus,
-                  onPressedWithContext: (ctx) =>
-                      _showSourcePicker(anchorContext: ctx),
-                  onDownEdge: downFromTop,
-                  onLeftEdge: leftFromTopSource(),
-                  onRightEdge: rightFromTopSource(),
-                ),
-              ),
-            ],
             const SizedBox(width: 4),
             _topBarFlatAction(
               icon: Icons.smart_display_outlined,
@@ -1873,7 +1835,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       _claimBackFocus();
     }
 
-    /// Right chrome (Search / Guide / Source) → top-right Player (not Back).
+    /// Right chrome (Search / Guide / bottom Source) → top-right Player (not Back).
     void upFromRightControls() {
       if (_showProgressChrome &&
           _isVodChrome &&
