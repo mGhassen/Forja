@@ -544,9 +544,199 @@ const BROADCAST_TOKEN_STOP: &[&str] = &[
 fn broadcast_significant_tokens(label: &str) -> Vec<String> {
     normalize_broadcast_channel_label(label)
         .split_whitespace()
-        .filter(|w| w.len() >= 2 && !BROADCAST_TOKEN_STOP.contains(w))
+        .filter(|w| {
+            if w.is_empty() {
+                return false;
+            }
+            // Keep bare channel numbers ("DAZN 1") — geo stopwords alone must not.
+            if w.chars().all(|c| c.is_ascii_digit()) {
+                return true;
+            }
+            w.len() >= 2 && !BROADCAST_TOKEN_STOP.contains(w)
+        })
         .map(|w| w.to_string())
         .collect()
+}
+
+/// Brands that explode into dozens of numbered IPTV clones when the guide only
+/// says the brand (LiveSoccerTV "DAZN" → every "DAZN CA 01..N").
+const GENERIC_BROADCAST_BRANDS: &[&str] = &[
+    "dazn",
+    "espn",
+    "bein",
+    "paramount",
+    "peacock",
+    "fubo",
+    "supersport",
+    "dstv",
+    "digiturk",
+    "sportsnet",
+    "tnt",
+    "tntsports",
+    "sky",
+    "nowtv",
+    "mlbtv",
+    "nbcsports",
+    "foxsports",
+    "yesnetwork",
+    "willow",
+    "eurosport",
+];
+
+fn is_generic_broadcast_brand_token(token: &str) -> bool {
+    GENERIC_BROADCAST_BRANDS.contains(&token)
+}
+
+fn hint_is_bare_brand(tokens: &[String]) -> bool {
+    let mut brand = false;
+    for t in tokens {
+        if is_generic_broadcast_brand_token(t) {
+            if brand {
+                return false;
+            }
+            brand = true;
+            continue;
+        }
+        return false;
+    }
+    brand
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BroadcastHitKind {
+    /// Specific guide name (e.g. "Sky Sports Main Event", "beIN Sports 1").
+    Strong,
+    /// Bare mega-brand only (e.g. "DAZN") — needs EPG confirmation.
+    WeakBrand,
+}
+
+/// How broadcast-name hits are admitted into Live TV results.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BroadcastMatchMode {
+    /// Fast path (`skip_epg`): only specific guide names — never bare "DAZN".
+    StrongOnly,
+    /// After EPG may be present: strong without EPG; anything with EPG must
+    /// confirm the fixture (drops wrong-programme clones).
+    PreferEpg,
+}
+
+fn epg_confirms_broadcast_fixture(game: &MatchGame, c: &Candidate) -> bool {
+    let epg = c.description.to_lowercase();
+    if epg.trim().is_empty() {
+        return false;
+    }
+    if text_has_title_phrase(&epg, &game.title_phrases) {
+        return true;
+    }
+    if !game.is_team_game() {
+        return count_token_hits(&epg, &game.specific_tokens) >= 2;
+    }
+    let home = team_match_tokens(&game.home_team);
+    let away = team_match_tokens(&game.away_team);
+    matches_team_in_epg(&epg, &game.home_team, &home)
+        && matches_team_in_epg(&epg, &game.away_team, &away)
+}
+
+fn broadcast_hint_hits_label(bc: &str, channel_label: &str) -> bool {
+    let tokens = broadcast_significant_tokens(bc);
+    if !tokens.is_empty() {
+        let score = broadcast_token_overlap_score(&tokens, channel_label);
+        if score >= broadcast_tokens_required_hit_count(tokens.len()) {
+            return true;
+        }
+    }
+    let name = normalize_broadcast_channel_label(channel_label);
+    if name.is_empty() {
+        return false;
+    }
+    for needle in broadcast_channel_needles(bc) {
+        if needle.len() < 5 {
+            continue;
+        }
+        if name.contains(&needle) || needle.contains(&name) {
+            return true;
+        }
+    }
+    false
+}
+
+fn broadcast_hit_kind_on_label(bc: &str, channel_label: &str) -> Option<BroadcastHitKind> {
+    if !broadcast_hint_hits_label(bc, channel_label) {
+        return None;
+    }
+    let tokens = broadcast_significant_tokens(bc);
+    if hint_is_bare_brand(&tokens) {
+        Some(BroadcastHitKind::WeakBrand)
+    } else {
+        Some(BroadcastHitKind::Strong)
+    }
+}
+
+fn broadcast_channel_hit_kind(game: &MatchGame, channel_label: &str) -> Option<BroadcastHitKind> {
+    if game.broadcast_channels.is_empty() {
+        return None;
+    }
+    let name = normalize_broadcast_channel_label(channel_label);
+    if name.is_empty() {
+        return None;
+    }
+    let mut best: Option<BroadcastHitKind> = None;
+    for bc in &game.broadcast_channels {
+        let Some(kind) = broadcast_hit_kind_on_label(bc, channel_label) else {
+            continue;
+        };
+        match (best, kind) {
+            (None, k) => best = Some(k),
+            (Some(BroadcastHitKind::WeakBrand), BroadcastHitKind::Strong) => {
+                best = Some(BroadcastHitKind::Strong);
+            }
+            _ => {}
+        }
+    }
+    best
+}
+
+fn broadcast_channel_candidate_hit_kind(game: &MatchGame, c: &Candidate) -> Option<BroadcastHitKind> {
+    let mut best = broadcast_channel_hit_kind(game, &c.name);
+    if !c.category_label.trim().is_empty() {
+        if let Some(cat_kind) = broadcast_channel_hit_kind(game, &c.category_label) {
+            best = match (best, cat_kind) {
+                (None, k) => Some(k),
+                (Some(BroadcastHitKind::WeakBrand), BroadcastHitKind::Strong) => {
+                    Some(BroadcastHitKind::Strong)
+                }
+                (b, _) => b,
+            };
+        }
+    }
+    best
+}
+
+/// Name-hit used for EPG fetch priority (includes bare-brand weak hits).
+fn broadcast_channel_candidate_hit(game: &MatchGame, c: &Candidate) -> bool {
+    broadcast_channel_candidate_hit_kind(game, c).is_some()
+}
+
+/// Whether a broadcast name hit should appear in Live TV results.
+fn broadcast_channel_result_eligible(
+    game: &MatchGame,
+    c: &Candidate,
+    mode: BroadcastMatchMode,
+) -> bool {
+    let Some(kind) = broadcast_channel_candidate_hit_kind(game, c) else {
+        return false;
+    };
+    match mode {
+        BroadcastMatchMode::StrongOnly => kind == BroadcastHitKind::Strong,
+        BroadcastMatchMode::PreferEpg => {
+            let has_epg = !c.description.trim().is_empty();
+            if has_epg {
+                epg_confirms_broadcast_fixture(game, c)
+            } else {
+                kind == BroadcastHitKind::Strong
+            }
+        }
+    }
 }
 
 fn broadcast_channel_needles(label: &str) -> Vec<String> {
@@ -590,7 +780,10 @@ fn broadcast_token_overlap_score(tokens: &[String], haystack: &str) -> usize {
     }
     tokens
         .iter()
-        .filter(|t| t.len() >= 2 && h.contains(t.as_str()))
+        .filter(|t| {
+            let ok_len = t.len() >= 2 || t.chars().all(|c| c.is_ascii_digit());
+            ok_len && h.contains(t.as_str())
+        })
         .count()
 }
 
@@ -604,48 +797,18 @@ fn broadcast_tokens_required_hit_count(token_count: usize) -> usize {
     }
 }
 
-fn broadcast_channel_name_hit_on_label(game: &MatchGame, channel_label: &str) -> bool {
-    if game.broadcast_channels.is_empty() {
-        return false;
-    }
-    let name = normalize_broadcast_channel_label(channel_label);
-    if name.is_empty() {
-        return false;
-    }
-    for bc in &game.broadcast_channels {
-        let tokens = broadcast_significant_tokens(bc);
-        if !tokens.is_empty() {
-            let score = broadcast_token_overlap_score(&tokens, channel_label);
-            if score >= broadcast_tokens_required_hit_count(tokens.len()) {
-                return true;
-            }
-        }
-        for needle in broadcast_channel_needles(bc) {
-            if needle.len() < 5 {
-                continue;
-            }
-            if name.contains(&needle) || needle.contains(&name) {
-                return true;
-            }
-        }
-    }
-    false
-}
-
-fn broadcast_channel_candidate_hit(game: &MatchGame, c: &Candidate) -> bool {
-    broadcast_channel_name_hit_on_label(game, &c.name)
-        || (!c.category_label.trim().is_empty()
-            && broadcast_channel_name_hit_on_label(game, &c.category_label))
-}
-
 /// Direct IPTV channel name match from plugin `broadcastChannels` hints.
-pub fn broadcast_channel_matches(game: &MatchGame, candidates: &[Candidate]) -> Vec<Value> {
+pub fn broadcast_channel_matches(
+    game: &MatchGame,
+    candidates: &[Candidate],
+    mode: BroadcastMatchMode,
+) -> Vec<Value> {
     if game.broadcast_channels.is_empty() {
         return vec![];
     }
     let mut hits: Vec<(usize, Option<f64>)> = Vec::new();
     for (idx, s) in candidates.iter().enumerate() {
-        if broadcast_channel_candidate_hit(game, s) {
+        if broadcast_channel_result_eligible(game, s, mode) {
             hits.push((idx, s.start_timestamp));
         }
     }
@@ -858,7 +1021,7 @@ pub fn match_streams(
         let cat = s.category_label.to_lowercase();
         let combined = format!("{name} {description} {cat}");
 
-        if broadcast_channel_candidate_hit(game, s) {
+        if broadcast_channel_result_eligible(game, s, BroadcastMatchMode::PreferEpg) {
             tiers[0].push((idx, s.start_timestamp));
             continue;
         }
@@ -1073,7 +1236,7 @@ mod tests {
                 epg_channel_id: String::new(),
             },
         ];
-        let hits = broadcast_channel_matches(&g, &cands);
+        let hits = broadcast_channel_matches(&g, &cands, BroadcastMatchMode::StrongOnly);
         assert_eq!(hits.len(), 1);
         assert_eq!(hits[0].get("name").and_then(|v| v.as_str()), Some("UK Sky Sports Main Event"));
     }
@@ -1114,8 +1277,97 @@ mod tests {
                 epg_channel_id: String::new(),
             },
         ];
-        let hits = broadcast_channel_matches(&g, &cands);
+        let hits = broadcast_channel_matches(&g, &cands, BroadcastMatchMode::StrongOnly);
         assert_eq!(hits.len(), 2);
+    }
+
+    fn dazn_family_candidates() -> Vec<Candidate> {
+        (1..=4)
+            .map(|n| Candidate {
+                name: format!("DAZN CA {n:02}"),
+                description: String::new(),
+                start_timestamp: None,
+                stream_url: format!("https://x/dazn{n}.m3u8"),
+                category_label: "Canada - Dazn".into(),
+                logo: String::new(),
+                stream_id: format!("dazn{n}"),
+                epg_channel_id: String::new(),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn bare_dazn_hint_strong_only_skips_numbered_family() {
+        let mut g = game();
+        g.home_team = "Udinese".into();
+        g.away_team = "Venezia".into();
+        g.title = "Udinese vs Venezia".into();
+        g.title_phrases = build_title_phrases("Udinese vs Venezia", "Udinese", "Venezia");
+        g.broadcast_channels = vec!["DAZN".into()];
+        let cands = dazn_family_candidates();
+        let hits = broadcast_channel_matches(&g, &cands, BroadcastMatchMode::StrongOnly);
+        assert!(
+            hits.is_empty(),
+            "bare DAZN must not dump every DAZN CA ## on fast path"
+        );
+    }
+
+    #[test]
+    fn bare_dazn_prefer_epg_keeps_only_fixture_programme() {
+        let mut g = game();
+        g.home_team = "Udinese".into();
+        g.away_team = "Venezia".into();
+        g.title = "Udinese vs Venezia".into();
+        g.title_phrases = build_title_phrases("Udinese vs Venezia", "Udinese", "Venezia");
+        g.broadcast_channels = vec!["DAZN".into()];
+        let mut cands = dazn_family_candidates();
+        cands[0].description = "Jupiler Pro League: Gent vs Club Brugge".into();
+        cands[2].description = "Serie A: Udinese vs Venezia".into();
+        let hits = broadcast_channel_matches(&g, &cands, BroadcastMatchMode::PreferEpg);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(
+            hits[0].get("name").and_then(|v| v.as_str()),
+            Some("DAZN CA 03")
+        );
+    }
+
+    #[test]
+    fn bare_dazn_wrong_epg_excluded_from_match_streams() {
+        let mut g = game();
+        g.home_team = "Udinese".into();
+        g.away_team = "Venezia".into();
+        g.title = "Udinese vs Venezia".into();
+        g.title_phrases = build_title_phrases("Udinese vs Venezia", "Udinese", "Venezia");
+        g.specific_tokens = tokenize_text("Udinese vs Venezia");
+        g.broadcast_channels = vec!["DAZN".into()];
+        let cands = vec![Candidate {
+            name: "DAZN CA 04".into(),
+            description: "Jupiler Pro League: Gent vs Club Brugge @ Aug 30 07:30".into(),
+            start_timestamp: None,
+            stream_url: "https://x/dazn4.m3u8".into(),
+            category_label: "Canada - Dazn".into(),
+            logo: String::new(),
+            stream_id: "dazn4".into(),
+            epg_channel_id: String::new(),
+        }];
+        let hits = match_streams(&g, &cands, &[]);
+        assert!(
+            hits.is_empty(),
+            "wrong EPG on bare-brand channel must not appear as Live TV result"
+        );
+    }
+
+    #[test]
+    fn specific_dazn_numbered_hint_strong_without_epg() {
+        let mut g = game();
+        g.broadcast_channels = vec!["DAZN 4".into()];
+        let cands = dazn_family_candidates();
+        let hits = broadcast_channel_matches(&g, &cands, BroadcastMatchMode::StrongOnly);
+        assert_eq!(hits.len(), 1);
+        assert_eq!(
+            hits[0].get("name").and_then(|v| v.as_str()),
+            Some("DAZN CA 04")
+        );
     }
 
     #[test]

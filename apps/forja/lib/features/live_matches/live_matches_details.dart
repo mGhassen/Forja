@@ -19,13 +19,22 @@ class _LiveMatchDetailsScreen extends ConsumerStatefulWidget {
       _LiveMatchDetailsScreenState();
 }
 
+const _kLiveTvSearchCollapsed = 40.0;
+const _kLiveTvSearchExpanded = 260.0;
+
 class _LiveMatchDetailsScreenState
-    extends ConsumerState<_LiveMatchDetailsScreen> {
+    extends ConsumerState<_LiveMatchDetailsScreen>
+    with SingleTickerProviderStateMixin {
   late final _IptvSportsChannelsPanelController _providersCtrl;
   late final _IptvSportsChannelsPanelController _liveTvCtrl;
   final _choices = <_StreamedStreamChoice>[];
   final _backFocus = FocusNode(debugLabel: 'live-match-details-back');
   final _heroPlayFocus = FocusNode(debugLabel: 'live-match-details-play');
+  final _liveTvSearchCtrl = TextEditingController();
+  final _liveTvSearchFocus =
+      FocusNode(debugLabel: 'live-match-details-live-tv-search');
+  late final AnimationController _liveTvSearchAnim;
+  late final Animation<double> _liveTvSearchExpand;
 
   late _StreamedMatch _displayMatch;
   int _providersLoadGen = 0;
@@ -33,6 +42,8 @@ class _LiveMatchDetailsScreenState
   bool _providersRequested = false;
   bool _liveTvRequested = false;
   bool _detailsHeroInitialFocusDone = false;
+  bool _liveTvSearchOpen = false;
+  String _liveTvChannelQuery = '';
   _LiveMatchListTab _listTab = _LiveMatchListTab.providers;
 
   _IptvSportsChannelsPanelController get _activeCtrl =>
@@ -61,6 +72,23 @@ class _LiveMatchDetailsScreenState
       searchingHint: 'Matching channels on your portal',
       iptvCtrl: iptvCtrl,
     );
+    _liveTvSearchAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    _liveTvSearchExpand = CurvedAnimation(
+      parent: _liveTvSearchAnim,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    _liveTvSearchFocus.onKeyEvent = (node, event) {
+      if (event is! KeyDownEvent) return KeyEventResult.ignored;
+      if (event.logicalKey == LogicalKeyboardKey.escape) {
+        _closeLiveTvSearch(clearQuery: true);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    };
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _ensureTabLoaded(_LiveMatchListTab.providers);
@@ -78,12 +106,49 @@ class _LiveMatchDetailsScreenState
     _liveTvCtrl.dispose();
     _backFocus.dispose();
     _heroPlayFocus.dispose();
+    _liveTvSearchAnim.dispose();
+    _liveTvSearchCtrl.dispose();
+    _liveTvSearchFocus.dispose();
     super.dispose();
   }
 
   void _selectTab(_LiveMatchListTab tab) {
     setState(() => _listTab = tab);
+    if (tab != _LiveMatchListTab.liveTv) {
+      _closeLiveTvSearch(clearQuery: true);
+    }
     _ensureTabLoaded(tab);
+  }
+
+  void _openLiveTvSearch() {
+    if (_liveTvSearchOpen) {
+      _liveTvSearchFocus.requestFocus();
+      return;
+    }
+    setState(() => _liveTvSearchOpen = true);
+    unawaited(_liveTvSearchAnim.forward());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _liveTvSearchFocus.requestFocus();
+    });
+  }
+
+  void _closeLiveTvSearch({bool clearQuery = false}) {
+    if (!_liveTvSearchOpen && _liveTvChannelQuery.isEmpty) {
+      if (_liveTvSearchAnim.value == 0) return;
+    }
+    _liveTvSearchFocus.unfocus();
+    if (clearQuery) {
+      _liveTvSearchCtrl.clear();
+      _liveTvChannelQuery = '';
+    }
+    setState(() => _liveTvSearchOpen = false);
+    unawaited(_liveTvSearchAnim.reverse());
+  }
+
+  void _onLiveTvSearchChanged(String value) {
+    final next = value.trim();
+    if (next == _liveTvChannelQuery) return;
+    setState(() => _liveTvChannelQuery = next);
   }
 
   void _ensureTabLoaded(_LiveMatchListTab tab) {
@@ -249,30 +314,194 @@ class _LiveMatchDetailsScreenState
   }
 
   Widget _buildToggleRow({required bool tvFocus}) {
-    return DetailsHeroTvActionScope(
-      tabId: MediaDetailsTv.tabId,
-      itemCount: 2,
-      onFocusUp: tvFocus ? _focusBack : null,
-      onFocusDown: tvFocus ? () {} : null,
-      child: HeroPillSegmentedChoice<_LiveMatchListTab>(
-        segments: const [
-          HeroPillSegment(
-            value: _LiveMatchListTab.providers,
-            label: 'Providers',
-            icon: Icons.dns_rounded,
+    final showLiveTvSearch = _listTab == _LiveMatchListTab.liveTv;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        DetailsHeroTvActionScope(
+          tabId: MediaDetailsTv.tabId,
+          itemCount: 2,
+          onFocusUp: tvFocus ? _focusBack : null,
+          onFocusDown: tvFocus ? () {} : null,
+          child: HeroPillSegmentedChoice<_LiveMatchListTab>(
+            segments: const [
+              HeroPillSegment(
+                value: _LiveMatchListTab.providers,
+                label: 'Providers',
+                icon: Icons.dns_rounded,
+              ),
+              HeroPillSegment(
+                value: _LiveMatchListTab.liveTv,
+                label: 'Live TV',
+                icon: Icons.live_tv_rounded,
+              ),
+            ],
+            selected: _listTab,
+            onSelected: _selectTab,
+            onUpEdge: tvFocus ? _focusBack : null,
+            tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+            tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+            tvItemIndexStart: 0,
           ),
-          HeroPillSegment(
-            value: _LiveMatchListTab.liveTv,
-            label: 'Live TV',
-            icon: Icons.live_tv_rounded,
+        ),
+        if (showLiveTvSearch) ...[
+          const SizedBox(width: 10),
+          _buildLiveTvExpandingSearch(tvFocus: tvFocus),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLiveTvExpandingSearch({required bool tvFocus}) {
+    return AnimatedBuilder(
+      animation: _liveTvSearchExpand,
+      builder: (context, _) {
+        final t = _liveTvSearchExpand.value;
+        final width = _kLiveTvSearchCollapsed +
+            (_kLiveTvSearchExpanded - _kLiveTvSearchCollapsed) * t;
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            width: width,
+            height: _kLiveTvSearchCollapsed,
+            child: ClipRect(
+              child: Stack(
+                alignment: Alignment.centerLeft,
+                clipBehavior: Clip.hardEdge,
+                children: [
+                  Opacity(
+                    opacity: t,
+                    child: IgnorePointer(
+                      ignoring: t < 0.55,
+                      child: OverflowBox(
+                        maxWidth: _kLiveTvSearchExpanded,
+                        alignment: Alignment.centerLeft,
+                        child: SizedBox(
+                          width: _kLiveTvSearchExpanded,
+                          child: _buildLiveTvSearchField(
+                            context: context,
+                            tvFocus: tvFocus,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (t < 0.95)
+                    Opacity(
+                      opacity: (1.0 - t * 1.4).clamp(0.0, 1.0),
+                      child: IgnorePointer(
+                        ignoring: t > 0.2,
+                        child: _buildLiveTvSearchIcon(
+                          context: context,
+                          tvFocus: tvFocus,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLiveTvSearchIcon({
+    required BuildContext context,
+    required bool tvFocus,
+  }) {
+    return shellFocusableTap(
+      context: context,
+      onTap: _openLiveTvSearch,
+      borderRadius: _kLiveTvSearchCollapsed / 2,
+      child: Tooltip(
+        message: 'Search channels',
+        child: Container(
+          width: _kLiveTvSearchCollapsed,
+          height: _kLiveTvSearchCollapsed,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(_kLiveTvSearchCollapsed / 2),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          ),
+          child: const Icon(
+            Icons.search_rounded,
+            color: Colors.white70,
+            size: 20,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLiveTvSearchField({
+    required BuildContext context,
+    required bool tvFocus,
+  }) {
+    return Container(
+      height: _kLiveTvSearchCollapsed,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(_kLiveTvSearchCollapsed / 2),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      padding: const EdgeInsets.only(left: 4, right: 4),
+      child: Row(
+        children: [
+          const SizedBox(width: 8),
+          const Icon(Icons.search_rounded, color: Colors.white70, size: 18),
+          const SizedBox(width: 6),
+          Expanded(
+            child: tvFocus
+                ? TvBrowseTextField(
+                    controller: _liveTvSearchCtrl,
+                    focusNode: _liveTvSearchFocus,
+                    onChanged: _onLiveTvSearchChanged,
+                    onEscape: () => _closeLiveTvSearch(clearQuery: true),
+                    onSubmitted: (_) => _liveTvSearchFocus.unfocus(),
+                    browsePlaceholder: 'Search channels…',
+                    browseHintStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.38),
+                      fontSize: 13,
+                    ),
+                    caretHeight: 16,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  )
+                : TextField(
+                    controller: _liveTvSearchCtrl,
+                    focusNode: _liveTvSearchFocus,
+                    onChanged: _onLiveTvSearchChanged,
+                    onSubmitted: (_) => _liveTvSearchFocus.unfocus(),
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    cursorColor: ForjaShellColors.sectionAccent,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      border: InputBorder.none,
+                      hintText: 'Search channels…',
+                      hintStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.38),
+                        fontSize: 13,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+          ),
+          shellFocusableTap(
+            context: context,
+            onTap: () => _closeLiveTvSearch(clearQuery: true),
+            borderRadius: 16,
+            child: const Padding(
+              padding: EdgeInsets.all(6),
+              child: Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+            ),
           ),
         ],
-        selected: _listTab,
-        onSelected: _selectTab,
-        onUpEdge: tvFocus ? _focusBack : null,
-        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-        tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-        tvItemIndexStart: 0,
       ),
     );
   }
@@ -289,6 +518,9 @@ class _LiveMatchDetailsScreenState
         tvFocus: tvFocus,
         inlineHero: true,
         browseByCategory: _listTab == _LiveMatchListTab.liveTv,
+        channelQuery: _listTab == _LiveMatchListTab.liveTv
+            ? _liveTvChannelQuery
+            : '',
       ),
     );
   }
@@ -451,6 +683,33 @@ List<IptvPlaySource> _liveTvFilterByCategory(
   ];
 }
 
+bool _liveTvSourceMatchesQuery(IptvPlaySource source, String query) {
+  final q = query.trim().toLowerCase();
+  if (q.isEmpty) return true;
+  final hay = [
+    source.chromeTitle,
+    source.label,
+    source.detail,
+    source.pickerSubtitle,
+  ].whereType<String>().map((s) => s.trim().toLowerCase()).where((s) => s.isNotEmpty);
+  for (final part in hay) {
+    if (part.contains(q)) return true;
+  }
+  return false;
+}
+
+List<IptvPlaySource> _liveTvFilterByQuery(
+  List<IptvPlaySource> sources,
+  String query,
+) {
+  final q = query.trim();
+  if (q.isEmpty) return sources;
+  return [
+    for (final s in sources)
+      if (_liveTvSourceMatchesQuery(s, q)) s,
+  ];
+}
+
 class _LiveMatchStreamsSection extends StatefulWidget {
   const _LiveMatchStreamsSection({
     required this.controller,
@@ -460,6 +719,7 @@ class _LiveMatchStreamsSection extends StatefulWidget {
     this.iptvCtrl,
     this.inlineHero = false,
     this.browseByCategory = false,
+    this.channelQuery = '',
   });
 
   final _IptvSportsChannelsPanelController controller;
@@ -471,6 +731,8 @@ class _LiveMatchStreamsSection extends StatefulWidget {
   final bool inlineHero;
   /// Live TV: IPTV-style Categories | Channels split when wide enough.
   final bool browseByCategory;
+  /// Live TV channel text filter (from expanding search next to the tab).
+  final String channelQuery;
 
   @override
   State<_LiveMatchStreamsSection> createState() =>
@@ -809,10 +1071,38 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
     BuildContext context,
     List<IptvPlaySource> allSources,
   ) {
-    final cats = _liveTvCategoriesFromSources(allSources);
+    final queried = _liveTvFilterByQuery(allSources, widget.channelQuery);
+    final cats = _liveTvCategoriesFromSources(queried);
     final selected = _effectiveCategoryKey(cats);
-    final filtered = _liveTvFilterByCategory(allSources, selected);
+    final filtered = _liveTvFilterByCategory(queried, selected);
     final showAll = cats.length >= 2;
+    final searching = widget.channelQuery.trim().isNotEmpty;
+
+    if (queried.isEmpty && searching) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              size: 40,
+              color: ForjaShellColors.cinematic.textSecondary
+                  .withValues(alpha: 0.45),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No channels match “${widget.channelQuery.trim()}”',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ForjaShellColors.cinematic.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -835,7 +1125,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
                 context,
                 cats: cats,
                 showAll: showAll,
-                allCount: allSources.length,
+                allCount: queried.length,
                 selectedKey: selected,
               ),
             ),

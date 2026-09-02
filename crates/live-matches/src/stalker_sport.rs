@@ -402,7 +402,11 @@ pub fn sport_match_streams(
         .collect();
 
     let broadcast_items = if !match_game.broadcast_channels.is_empty() {
-        sport_match::broadcast_channel_matches(&match_game, &candidates)
+        sport_match::broadcast_channel_matches(
+            &match_game,
+            &candidates,
+            sport_match::BroadcastMatchMode::StrongOnly,
+        )
     } else {
         vec![]
     };
@@ -447,8 +451,17 @@ pub fn sport_match_streams(
         store_candidate_epg(&portal_key, &candidates, &batch_idxs);
         let team_names = espn::fetch_all_team_names(&sport);
         let team_items = sport_match::match_streams(&match_game, &candidates, &team_names);
+        let broadcast_epg = if !match_game.broadcast_channels.is_empty() {
+            sport_match::broadcast_channel_matches(
+                &match_game,
+                &candidates,
+                sport_match::BroadcastMatchMode::PreferEpg,
+            )
+        } else {
+            vec![]
+        };
         let mut items = if offset == 0 {
-            sport_match::merge_broadcast_front(broadcast_items, team_items)
+            sport_match::merge_broadcast_front(broadcast_epg, team_items)
         } else {
             team_items
         };
@@ -466,7 +479,16 @@ pub fn sport_match_streams(
 
     let team_names = espn::fetch_all_team_names(&sport);
     let team_items = sport_match::match_streams(&match_game, &candidates, &team_names);
-    let merged = sport_match::merge_broadcast_front(broadcast_items, team_items);
+    let broadcast_epg = if !match_game.broadcast_channels.is_empty() {
+        sport_match::broadcast_channel_matches(
+            &match_game,
+            &candidates,
+            sport_match::BroadcastMatchMode::PreferEpg,
+        )
+    } else {
+        vec![]
+    };
+    let merged = sport_match::merge_broadcast_front(broadcast_epg, team_items);
     ok_items(sport_match::filter_excluded_items(
         merged,
         &opts.exclude_stream_ids,
