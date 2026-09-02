@@ -27,6 +27,7 @@ class HubDetailsHero extends StatelessWidget {
     this.logoUrl,
     this.actionRow,
     this.belowActionRow,
+    this.belowActionRowFullWidth = false,
     this.height,
     this.positionMs,
     this.durationMs,
@@ -54,6 +55,9 @@ class HubDetailsHero extends StatelessWidget {
   final Widget? actionRow;
   /// Fills remaining hero height below [actionRow] (live match streams, etc.).
   final Widget? belowActionRow;
+  /// When true, [belowActionRow] spans the full hero content width instead of
+  /// the narrow description column (40% on desktop).
+  final bool belowActionRowFullWidth;
   final double? height;
   final int? positionMs;
   final int? durationMs;
@@ -131,6 +135,7 @@ class HubDetailsHero extends StatelessWidget {
                           logoUrl: logoUrl,
                           actionRow: actionRow,
                           belowActionRow: belowActionRow,
+                          belowActionRowFullWidth: belowActionRowFullWidth,
                           positionMs: positionMs,
                           durationMs: durationMs,
                           seriesProgress: seriesProgress,
@@ -273,6 +278,7 @@ class _HubHeroLayout extends StatelessWidget {
     this.logoUrl,
     this.actionRow,
     this.belowActionRow,
+    this.belowActionRowFullWidth = false,
     this.positionMs,
     this.durationMs,
     this.seriesProgress,
@@ -291,6 +297,7 @@ class _HubHeroLayout extends StatelessWidget {
   final String? logoUrl;
   final Widget? actionRow;
   final Widget? belowActionRow;
+  final bool belowActionRowFullWidth;
   final int? positionMs;
   final int? durationMs;
   final Widget? seriesProgress;
@@ -309,30 +316,128 @@ class _HubHeroLayout extends StatelessWidget {
         : (rawLogo.startsWith('http')
             ? rawLogo
             : TmdbApi.getImageUrl(rawLogo));
-    final mainColumn = _HubHeroMainColumn(
-      movie: tmdb?.copyWith(title: title) ??
-          Movie(
-            id: 0,
-            title: title,
-            posterPath: '',
-            backdropPath: '',
-            voteAverage: 0,
-            releaseDate: '',
-          ),
-      logoUrl: resolvedLogo,
-      title: title,
-      subtitle: subtitle,
-      genres: genres,
-      metaParts: metaParts,
-      rating: rating,
-      overview: overview,
-      actionRow: actionRow,
-      belowActionRow: belowActionRow,
-      positionMs: positionMs,
-      durationMs: durationMs,
-      seriesProgress: seriesProgress,
-      maxContentWidth: compact ? (availableWidth ?? width) : leftColumnWidth,
-      maxHeight: maxHeight,
+    final headerWidth = compact ? (availableWidth ?? width) : leftColumnWidth;
+    final useFullWidthList =
+        belowActionRow != null && belowActionRowFullWidth && maxHeight != null;
+
+    _HubHeroMainColumn buildMainColumn({
+      Widget? belowAction,
+      double? columnMaxHeight,
+      double? contentWidth,
+    }) {
+      return _HubHeroMainColumn(
+        movie: tmdb?.copyWith(title: title) ??
+            Movie(
+              id: 0,
+              title: title,
+              posterPath: '',
+              backdropPath: '',
+              voteAverage: 0,
+              releaseDate: '',
+            ),
+        logoUrl: resolvedLogo,
+        title: title,
+        subtitle: subtitle,
+        genres: genres,
+        metaParts: metaParts,
+        rating: rating,
+        overview: overview,
+        actionRow: actionRow,
+        belowActionRow: belowAction,
+        positionMs: positionMs,
+        durationMs: durationMs,
+        seriesProgress: seriesProgress,
+        maxContentWidth: contentWidth ?? headerWidth,
+        maxHeight: columnMaxHeight,
+      );
+    }
+
+    if (useFullWidthList) {
+      final listBody = SizedBox(
+        width: double.infinity,
+        height: maxHeight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            buildMainColumn(contentWidth: headerWidth),
+            const SizedBox(height: 20),
+            Expanded(child: belowActionRow!),
+          ],
+        ),
+      );
+
+      if (compact) {
+        return listBody;
+      }
+
+      final rich = richFacts;
+      final Widget? factsChild;
+      var hasFacts = false;
+      if (rich != null) {
+        final panel = HeroFactsPanel(
+          movie: rich.movie,
+          status: rich.extras.status,
+          budget: rich.extras.budget,
+          revenue: rich.extras.revenue,
+          languageCode: rich.extras.originalLanguage,
+          spokenLanguages: rich.extras.spokenLanguages,
+          productionCompanies: rich.extras.productionCompanies,
+          originCountries: rich.extras.originCountries,
+          lastAirDate: rich.extras.lastAirDate,
+          networks: rich.extras.networks,
+          creators: rich.extras.creators,
+          positionMs: positionMs,
+          durationMs: durationMs,
+        );
+        hasFacts = panel.hasContent;
+        factsChild = hasFacts ? panel : null;
+      } else {
+        final panel = HubDetailsFactsPanel(entries: facts);
+        hasFacts = panel.hasContent;
+        factsChild = hasFacts ? panel : null;
+      }
+
+      return SizedBox(
+        width: double.infinity,
+        height: maxHeight,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            listBody,
+            if (maxHeight != null)
+              Align(
+                alignment: Alignment.bottomRight,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: 300,
+                    maxHeight: maxHeight!,
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedOpacity(
+                      opacity: hasFacts ? 1 : 0,
+                      duration: const Duration(milliseconds: 700),
+                      curve: Curves.easeOutCubic,
+                      child: factsChild == null
+                          ? const SizedBox.shrink()
+                          : ListView(
+                              shrinkWrap: true,
+                              padding: EdgeInsets.zero,
+                              physics: const ClampingScrollPhysics(),
+                              children: [factsChild],
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
+    final mainColumn = buildMainColumn(
+      belowAction: belowActionRow,
+      columnMaxHeight: maxHeight,
     );
 
     if (compact) {

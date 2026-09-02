@@ -347,6 +347,7 @@ class _LiveMatchDetailsScreenState
       overview: '',
       height: height,
       actionRow: _buildToggleRow(tvFocus: tvFocus),
+      belowActionRowFullWidth: true,
       belowActionRow: _showStreamsList
           ? ListenableBuilder(
               listenable: Listenable.merge([_providersCtrl, _liveTvCtrl]),
