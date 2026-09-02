@@ -1194,6 +1194,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           magnetLink: widget.magnetLink,
           stremioId: widget.stremioId,
           stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+          torrentEp: catalogOpenTorrentEp(
+            widget.enginePlaySession?.effectiveOpen,
+          ),
         );
         if (resolved != null) break;
       }

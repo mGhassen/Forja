@@ -740,6 +740,9 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
           stremioId: widget.stremioId,
           stremioAddonBaseUrl:
               _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,
+          torrentEp: catalogOpenTorrentEp(
+            widget.enginePlaySession?.effectiveOpen,
+          ),
         );
         if (resolved != null) break;
       }

@@ -18,6 +18,7 @@ Tap **Anime** in the navigation bar.
 - **Continue watching** in-progress series — hover play on desktop; D-pad graph skips empty rows on TV.
 - **Search** — hub top-bar **Search** (desktop / TV / mobile). Two-column layout on desktop/TV: search field, last searches + recommendations on the left, results grid on the right. Plain title search via the Anime pack (`search` capability — no structured person/year DSL unless the pack declares `structured_search`). **Cmd+F** / **Ctrl+F** opens or focuses search on desktop.
 - **View details** on any card → [Hub details](hub-details.md) (episodes, SUB/DUB, play, Sources when TMDB matched).
+- **Torrents in Sources** — same panel as movies/TV; the Anime pack sets `open.torrentEp` so search uses `Title 05`, and Torrentio runs when enrich supplied an IMDb id (see [Torrent scrapers](../scrapers/torrent.md)).
 - **Pick your vibe** — same circular mood icons as Home; D-pad **↑** from mood posters returns to vibes.
 
 ## Tips

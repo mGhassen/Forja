@@ -16,6 +16,7 @@ import 'package:forja/shared/playback/torrent_js_search.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/player_torrent_file_panel.dart';
+import 'package:forja/shared/player/episode_torrent_resolver.dart';
 import 'package:forja/shared/playback/sources_panel_stream_probe.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
@@ -2165,68 +2166,64 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required int episode,
     List<String>? enabledProviders,
   }) async {
-    final s = season.toString().padLeft(2, '0');
-    final e = episode.toString().padLeft(2, '0');
-    final seasonQuery = '${widget.movie.title} S$s';
-    final episodeQuery = '${widget.movie.title} S${s}E$e';
+    final passes = tvTorrentSearchPasses(
+      title: widget.movie.title,
+      season: season,
+      episode: episode,
+      torrentEp: _torrentEp,
+    );
+    if (passes.isEmpty) return;
+
     var closed = false;
     var paintSeq = 0;
-    var seasonSoFar = <Map<String, dynamic>>[];
-    var episodeSoFar = <Map<String, dynamic>>[];
+    final soFarByPass = List<List<Map<String, dynamic>>>.generate(
+      passes.length,
+      (_) => <Map<String, dynamic>>[],
+    );
 
     void paintRaw(int seq) {
       if (!mounted || gen != _searchGen || closed || seq != paintSeq) return;
-      final next = [
-        ...episodeSoFar.map(TorrentResult.fromJson),
-        ...seasonSoFar.map(TorrentResult.fromJson),
+      final merged = <Map<String, dynamic>>[
+        for (var i = soFarByPass.length - 1; i >= 0; i--) ...soFarByPass[i],
       ];
-      if (next.isEmpty) return;
+      if (merged.isEmpty) return;
       setState(() {
         if (_torrentDedupeByMagnetOnly) {
-          _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet(next);
+          _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet(
+            merged.map(TorrentResult.fromJson).toList(),
+          );
         } else {
-          _results = next;
+          _results = merged.map(TorrentResult.fromJson).toList();
         }
       });
     }
 
-    final onDone = _onTorrentProviderDone(gen, hitsNeeded: 2);
-    // Season then episode — never two torrentSearchFork VMs at once (parallel
-    // QuickJS heaps OOM/SIGSEGV on desktop when both TV queries run together).
-    await Engine.searchTorrentsProgressive(
-      seasonQuery,
-      imdbId: widget.movie.imdbId,
-      season: season,
-      enabledProviders: enabledProviders,
-      isCancelled: () => !mounted || gen != _searchGen || closed,
-      onProviderDone: onDone,
-      onPartial: (batch) {
-        if (closed) return;
-        seasonSoFar = [...seasonSoFar, ...batch];
-        paintRaw(++paintSeq);
-      },
-    );
-    if (!mounted || gen != _searchGen || closed) return;
-    await Engine.searchTorrentsProgressive(
-      episodeQuery,
-      imdbId: widget.movie.imdbId,
-      season: season,
-      episode: episode,
-      enabledProviders: enabledProviders,
-      isCancelled: () => !mounted || gen != _searchGen || closed,
-      onProviderDone: onDone,
-      onPartial: (batch) {
-        if (closed) return;
-        episodeSoFar = [...episodeSoFar, ...batch];
-        paintRaw(++paintSeq);
-      },
-    );
+    final onDone = _onTorrentProviderDone(gen, hitsNeeded: passes.length);
+    // Sequential passes — never two torrentSearchFork VMs at once (parallel
+    // QuickJS heaps OOM/SIGSEGV on desktop when TV queries run together).
+    for (var i = 0; i < passes.length; i++) {
+      final pass = passes[i];
+      await Engine.searchTorrentsProgressive(
+        pass.query,
+        imdbId: widget.movie.imdbId,
+        season: pass.season,
+        episode: pass.episode,
+        enabledProviders: enabledProviders,
+        isCancelled: () => !mounted || gen != _searchGen || closed,
+        onProviderDone: onDone,
+        onPartial: (batch) {
+          if (closed) return;
+          soFarByPass[i] = [...soFarByPass[i], ...batch];
+          paintRaw(++paintSeq);
+        },
+      );
+      if (!mounted || gen != _searchGen || closed) return;
+    }
     closed = true;
     if (!mounted || gen != _searchGen) return;
     setState(
       () => _results = _torrentResultsFromRaw([
-        ...episodeSoFar,
-        ...seasonSoFar,
+        for (var i = soFarByPass.length - 1; i >= 0; i--) ...soFarByPass[i],
       ]),
     );
   }
@@ -2848,6 +2845,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     return d.length >= 4 ? d.substring(0, 4) : '';
   }
 
+  bool get _torrentEp => catalogOpenTorrentEp(widget.catalogOpen);
+
   Future<List<TorrentResult>> _searchJackett({
     required bool isTv,
     required int season,
@@ -2860,18 +2859,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     final jackett = JackettService();
     if (isTv) {
-      final s = season.toString().padLeft(2, '0');
-      final e = episode.toString().padLeft(2, '0');
+      final passes = tvTorrentSearchPasses(
+        title: widget.movie.title,
+        season: season,
+        episode: episode,
+        torrentEp: _torrentEp,
+      );
       final results = await Future.wait([
-        jackett.search(baseUrl, apiKey, '${widget.movie.title} S$s'),
-        jackett.search(baseUrl, apiKey, '${widget.movie.title} S${s}E$e'),
+        for (final pass in passes)
+          jackett.search(baseUrl, apiKey, pass.query),
       ]);
       final combined = <String, TorrentResult>{};
-      for (final r in results[1]) {
-        combined[r.magnet] = r;
-      }
-      for (final r in results[0]) {
-        combined[r.magnet] = r;
+      for (final batch in results.reversed) {
+        for (final r in batch) {
+          combined[r.magnet] = r;
+        }
       }
       return combined.values.toList();
     }
@@ -2905,28 +2907,26 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
 
     if (isTv) {
-      final s = season.toString().padLeft(2, '0');
-      final e = episode.toString().padLeft(2, '0');
+      final passes = tvTorrentSearchPasses(
+        title: widget.movie.title,
+        season: season,
+        episode: episode,
+        torrentEp: _torrentEp,
+      );
       final results = await Future.wait([
-        prowlarr.search(
-          baseUrl,
-          apiKey,
-          '${widget.movie.title} S$s',
-          indexerIds: indexerIds,
-        ),
-        prowlarr.search(
-          baseUrl,
-          apiKey,
-          '${widget.movie.title} S${s}E$e',
-          indexerIds: indexerIds,
-        ),
+        for (final pass in passes)
+          prowlarr.search(
+            baseUrl,
+            apiKey,
+            pass.query,
+            indexerIds: indexerIds,
+          ),
       ]);
       final combined = <String, TorrentResult>{};
-      for (final r in results[1]) {
-        combined[r.magnet] = r;
-      }
-      for (final r in results[0]) {
-        combined[r.magnet] = r;
+      for (final batch in results.reversed) {
+        for (final r in batch) {
+          combined[r.magnet] = r;
+        }
       }
       return combined.values.toList();
     }

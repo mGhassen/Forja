@@ -122,8 +122,10 @@ Movie? catalogMetaToMovie(CatalogMetaItem item) {
     mediaType = item.tmdbMediaType == 'movie' ? 'movie' : 'tv';
   }
 
+  final imdb = item.ids['imdb']?.toString();
   return Movie(
     id: id,
+    imdbId: (imdb != null && imdb.startsWith('tt')) ? imdb : null,
     title: item.name,
     posterPath: catalogTmdbPath(item.poster),
     backdropPath: catalogTmdbPath(item.background),

@@ -235,6 +235,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [213-[open]-…](213-[open]-engine-nuvio-plugin-disk-cache.md) | Engine/Nuvio plugin JS on disk + init download banner | P2 | Medium | open | 7/7 · A 3/7 | — |
 | [214-[open]-…](214-[open]-kisskh-instream-subs-mistimed.md) | KissKh Sub API mistimed vs site (HLS mux) | P1 | High | open | 6/6 · A 0/2 | — |
 | [215-[open]-…](215-[open]-android-tv-skia-glyph-atlas-glitch.md) | Android TV Skia glyph/icon atlas garbage | P1 | High | open | 3/3 · A 0/2 | — |
+| [216-[fixed]-…](fixed/216-[fixed]-anime-hub-torrent-search-empty.md) | Anime hub Torrents search empty | P1 | High | fixed | Complete · 4/4 · A 2/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

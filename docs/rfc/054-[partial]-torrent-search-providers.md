@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **10 / 11** acceptance |
-| **Current slice** | JS torrent pack shipped — desktop smoke R54-A06 remaining |
+| **Progress** | **9 / 9** components · **13 / 14** acceptance |
+| **Current slice** | Anime `open.torrentEp` + IMDb enrich shipped — desktop smoke R54-A06 remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -49,6 +49,16 @@
 
 ---
 
+## Acceptance (anime hub slice — appended)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 12 | R54-A12 | Anime TMDB enrich sets `ids.imdb` from TMDB external ids | ✅ |
+| 13 | R54-A13 | Packs may set `open.torrentEp` so Sources searches `Title 05` / `Title - 05` | ✅ |
+| 14 | R54-A14 | Hub `Movie.imdbId` carries enrich IMDb so Torrentio can run | ✅ |
+
+---
+
 ## Acceptance (JS pack slice — appended)
 
 See rows R54-A09–R54-A10 above. Frozen rows R54-C01–R54-A08 keep historical status; search execution moved off `crates/scrapers` FFI for the Flutter host (LAN server may still call Rust search until migrated).
@@ -78,3 +88,4 @@ Expand Forja’s fixed 3-scraper torrent search into a checkable multi-provider 
 
 - [Torrent scrapers](../features/scrapers/torrent.md)
 - [Torrent settings](../features/settings/torrent-settings.md)
+- [Issue 216](../issues/fixed/216-[fixed]-anime-hub-torrent-search-empty.md) — anime empty torrents

@@ -2,6 +2,8 @@ import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/episode_torrent_resolver.dart';
 import 'package:rust/rust.dart';
 
+export 'episode_torrent_resolver.dart' show catalogOpenTorrentEp;
+
 class EpisodeSwitchResult {
   final String streamUrl;
   final String? magnetLink;
@@ -49,6 +51,7 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
   String? magnetLink,
   String? stremioId,
   String? stremioAddonBaseUrl,
+  bool torrentEp = false,
 }) async {
   if (providerKey == 'stremio_direct' && stremioAddonBaseUrl != null) {
     final stremio = StremioService();
@@ -200,6 +203,7 @@ Future<EpisodeSwitchResult?> resolveEpisodeForProvider({
       season: season,
       episode: episode,
       imdbId: movie.imdbId,
+      torrentEp: torrentEp,
     );
     if (playback == null) return null;
     final ranked = await PlaybackSelection.rankAndDedupe(

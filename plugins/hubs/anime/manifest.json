@@ -4,7 +4,7 @@
   "name": "ForjaHQ Anime",
   "description": "AniList-powered anime hub with search and details.",
   "author": "ForjaHQ",
-  "version": "1.0.10",
+  "version": "1.0.12",
   "plugins": [
     {
       "id": "anilist",
