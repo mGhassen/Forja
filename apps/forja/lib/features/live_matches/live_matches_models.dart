@@ -3263,15 +3263,11 @@ Future<List<Map<String, dynamic>>> _liveBroadcastPluginRowsCached(
 _LiveBroadcastHints _liveBroadcastHintsFromGame(Map<String, dynamic>? game) {
   if (game == null) return const _LiveBroadcastHints();
   final bySource = _broadcastBySourceMap(game);
-  if (bySource.isNotEmpty) {
-    return _LiveBroadcastHints(
-      liveOnSat: List<String>.from(bySource['liveonsat'] ?? const []),
-      liveSoccerTv: List<String>.from(bySource['livesoccertv'] ?? const []),
-    );
-  }
-  final merged = _broadcastChannelsFromGame(game);
-  if (merged.isEmpty) return const _LiveBroadcastHints();
-  return _LiveBroadcastHints(liveOnSat: merged);
+  if (bySource.isEmpty) return const _LiveBroadcastHints();
+  return _LiveBroadcastHints(
+    liveOnSat: List<String>.from(bySource['liveonsat'] ?? const []),
+    liveSoccerTv: List<String>.from(bySource['livesoccertv'] ?? const []),
+  );
 }
 
 Future<_LiveBroadcastHints> _broadcastHintsForMatch(_StreamedMatch match) async {
@@ -3328,9 +3324,6 @@ Future<_LiveBroadcastHints> _broadcastHintsForMatch(_StreamedMatch match) async 
 
   for (final plugin in plugins) {
     final sourceKey = LiveSportCapabilities.normalizePluginId(plugin.id);
-    if (sourceKey == 'liveonsat' && liveOnSat.isNotEmpty) {
-      continue;
-    }
     if (sourceKey == 'livesoccertv' && liveSoccerTv.isNotEmpty) {
       continue;
     }
@@ -3340,6 +3333,7 @@ Future<_LiveBroadcastHints> _broadcastHintsForMatch(_StreamedMatch match) async 
     var matchedChannels = 0;
     String matchedMatchPath = '';
     int? matchedEventId;
+    final catalogChannels = <String>[];
 
     for (final row in rows) {
       if (row['sportMatchGame'] is! Map) continue;
@@ -3367,14 +3361,18 @@ Future<_LiveBroadcastHints> _broadcastHintsForMatch(_StreamedMatch match) async 
         );
         continue;
       }
-      switch (sourceKey) {
-        case 'liveonsat':
-          liveOnSat.addAll(channels);
-        case 'livesoccertv':
-          liveSoccerTv.addAll(channels);
-        default:
-          liveOnSat.addAll(channels);
+      catalogChannels.addAll(channels);
+    }
+
+    if (sourceKey == 'liveonsat') {
+      liveOnSat = catalogChannels.toSet().toList();
+      if (matchedRows == 0) {
+        _logBroadcastHints(
+          '${plugin.id} no fixture match — LiveOnSat section omitted',
+        );
       }
+    } else if (sourceKey == 'livesoccertv') {
+      liveSoccerTv = catalogChannels.toSet().toList();
     }
 
     if (sourceKey == 'livesoccertv' && liveSoccerTv.isEmpty) {
@@ -3515,32 +3513,33 @@ Map<String, dynamic> _enrichGameWithBroadcastChannels(
   var merged = <String>{
     ..._broadcastChannelsFromGame(game),
   };
+  final mergedBySource = <String, List<String>>{
+    ..._broadcastBySourceMap(game),
+  };
   for (final broadcast in broadcastGames) {
-      if (_sameCatalogEventAsBroadcast(
+    if (!_sameCatalogEventAsBroadcast(
       title: cardTitle,
       homeTeam: home.isEmpty ? null : home,
       awayTeam: away.isEmpty ? null : away,
       dateMs: kickoff,
       broadcastGame: broadcast,
     )) {
-      final channels = broadcast['broadcastChannels'];
-      if (channels is List && channels.isNotEmpty) {
-        merged.addAll(channels.map((c) => c.toString()));
+      continue;
+    }
+    merged.addAll(_broadcastChannelsFromGame(broadcast));
+    for (final entry in _broadcastBySourceMap(broadcast).entries) {
+      final list = List<String>.from(mergedBySource[entry.key] ?? const []);
+      for (final name in entry.value) {
+        if (!list.contains(name)) list.add(name);
       }
-      final bySource = _broadcastBySourceMap(broadcast);
-      if (bySource.isNotEmpty) {
-        return {
-          ...game,
-          'broadcastChannels': merged.toList(),
-          'broadcastBySource': bySource,
-        };
-      }
+      mergedBySource[entry.key] = list;
     }
   }
   if (merged.isEmpty) return game;
   return {
     ...game,
     'broadcastChannels': merged.toList(),
+    if (mergedBySource.isNotEmpty) 'broadcastBySource': mergedBySource,
   };
 }
 

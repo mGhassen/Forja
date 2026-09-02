@@ -759,7 +759,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   Widget _buildStreamedBody() {
     final matches = _s._displayStreamedMatches;
     if (matches.isEmpty) {
-      if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) {
+      if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogInitialBusy) {
         return _buildForjaLiveCatalogProgress();
       }
       final forjaLive = this as _LiveMatchesForjaLive;

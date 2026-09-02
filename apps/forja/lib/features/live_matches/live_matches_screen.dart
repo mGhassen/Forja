@@ -165,9 +165,6 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   Future<void>? _forjaLiveGridCatalogInflight;
   int _forjaLiveGridCatalogInflightSerial = 0;
 
-  /// Sport tabs rebuild once after hydration instead of per-plugin setState.
-  bool _deferSportTabRebuildDuringCatalog = false;
-
   int _liveMatchesGridCacheRevision = 0;
   int _liveMatchesGridEntriesCachedAtRevision = -1;
   List<_LiveMatchGridEntry>? _cachedLiveMatchesGridEntries;

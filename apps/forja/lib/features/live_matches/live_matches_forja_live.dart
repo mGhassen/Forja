@@ -89,6 +89,12 @@ mixin _LiveMatchesForjaLive
       _usesForjaLiveLazyCatalog &&
       (_s._forjaLiveCatalogHydrating || _forjaLiveAnyLoading);
 
+  /// Full-screen spinner only before the first scoped catalog finishes.
+  bool get _forjaLiveCatalogInitialBusy =>
+      _usesForjaLiveLazyCatalog &&
+      _s._forjaLiveCatalogHydrating &&
+      !_gridScopedPluginLoads.any((e) => e.attempted);
+
   void _setForjaLiveCatalogHydrating(bool value) {
     if (_s._forjaLiveCatalogHydrating == value) return;
     setState(() => _s._forjaLiveCatalogHydrating = value);
@@ -100,7 +106,6 @@ mixin _LiveMatchesForjaLive
   }
 
   void _maybeRebuildSportTabsFromCurrentMatches() {
-    if (_s._deferSportTabRebuildDuringCatalog) return;
     _rebuildSportTabsFromCurrentMatches();
   }
 
@@ -309,7 +314,6 @@ mixin _LiveMatchesForjaLive
     if (!_s._serverHydrated) return;
     if (_s._forjaLiveGridCatalogInflight != null && !replace) return;
     final serial = ++_s._forjaLiveGridCatalogInflightSerial;
-    _s._deferSportTabRebuildDuringCatalog = true;
     _setForjaLiveCatalogHydrating(true);
     final future = _loadForjaLiveCatalogLazy();
     _s._forjaLiveGridCatalogInflight = future;
@@ -614,17 +618,17 @@ mixin _LiveMatchesForjaLive
         return;
       }
 
-      for (final catalog in toLoad) {
-        if (!mounted || gen != _s._forjaLiveLoadGen) return;
-        await _loadOneForjaLiveCatalog(catalog: catalog, gen: gen);
-      }
+      await Future.wait(
+        toLoad.map(
+          (catalog) => _loadOneForjaLiveCatalog(catalog: catalog, gen: gen),
+        ),
+      );
 
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
       _ensureForjaLivePluginFilterValid();
       await _applyScheduleEnrichMerge();
     } finally {
       if (mounted && gen == _s._forjaLiveLoadGen) {
-        _s._deferSportTabRebuildDuringCatalog = false;
         _rebuildSportTabsFromCurrentMatches();
         _setForjaLiveCatalogHydrating(false);
         (this as _LiveMatchesData)

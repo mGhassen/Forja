@@ -846,7 +846,9 @@ async function fetchCatalog(ctx, cfg) {
       return Number(a.date || 0) - Number(b.date || 0);
     })
     .slice(0, CATALOG_MAX);
-  return enrichInternationalCoverage(ctx, cfg, out);
+  // Grid catalog: schedule rows already carry local channels. Per-match page
+  // fetches (international coverage) run only on broadcastLookup at play time.
+  return out;
 }
 
 async function extract(ctx) {
