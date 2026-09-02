@@ -245,7 +245,8 @@ mixin _LiveMatchesData
   String get _catalogTopBarLabel {
     final filter = _s._forjaLivePluginFilter;
     if (filter == 'all') return 'All';
-    return _s._forjaLivePluginLoads[filter]?.label ??
+    return (this as _LiveMatchesForjaLive)._forjaLivePluginLoadForFilter(filter)
+            ?.label ??
         _liveForjaPluginDisplayName(filter);
   }
 

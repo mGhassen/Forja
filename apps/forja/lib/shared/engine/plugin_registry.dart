@@ -610,6 +610,40 @@ class PluginRegistry {
   Future<void> disableShadowOfficialPacks(List<String> keepUrls) =>
       applyOfficialKeepSet(keepUrls);
 
+  /// Debug checkout: `plugins/catalog/manifest.json` from env or by walking up
+  /// from [Directory.current] (flutter run from `apps/forja`).
+  @visibleForTesting
+  static String? devCatalogManifestUrl() {
+    if (!kDebugMode) return null;
+    var explicit =
+        const String.fromEnvironment('FORJA_HQ_CATALOG_MANIFEST_URL').trim();
+    if (explicit.isEmpty) {
+      explicit =
+          Platform.environment['FORJA_HQ_CATALOG_MANIFEST_URL']?.trim() ?? '';
+    }
+    if (explicit.isNotEmpty) return explicit;
+
+    var root = const String.fromEnvironment('FORJA_REPO_ROOT').trim();
+    if (root.isEmpty) {
+      root = Platform.environment['FORJA_REPO_ROOT']?.trim() ?? '';
+    }
+    if (root.isNotEmpty) {
+      final normalized =
+          root.replaceAll('\\', '/').replaceAll(RegExp(r'/+$'), '');
+      return '$normalized/plugins/catalog/manifest.json';
+    }
+
+    var dir = Directory.current;
+    for (var i = 0; i < 8; i++) {
+      final candidate = File('${dir.path}/plugins/catalog/manifest.json');
+      if (candidate.existsSync()) return candidate.path;
+      final parent = dir.parent;
+      if (parent.path == dir.path) break;
+      dir = parent;
+    }
+    return null;
+  }
+
   /// Debug checkout: install `plugins/torrent/manifest.json` when
   /// `FORJA_HQ_TORRENT_MANIFEST_URL` or `FORJA_REPO_ROOT` is set and no torrent
   /// slot pack is installed yet.
@@ -1245,8 +1279,13 @@ class PluginRegistry {
     required EnginePlugin plugin,
     String packPrelude = '',
   }) async {
-    if (kDebugMode && plugin.isTorrent) {
-      final devUrl = devTorrentManifestUrl();
+    if (kDebugMode &&
+        (plugin.isTorrent ||
+            plugin.id.startsWith('catalog-') ||
+            plugin.supportsLiveBroadcast)) {
+      final devUrl = plugin.isTorrent
+          ? devTorrentManifestUrl()
+          : devCatalogManifestUrl();
       if (devUrl != null) {
         final fromCheckout = await _loadScriptFromLocalManifest(
           manifestUrl: devUrl,

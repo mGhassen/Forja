@@ -153,11 +153,26 @@ function titleFromLiveGame(game, result) {
 
 function parseCompetitionLinks(html) {
   var out = {};
+  var s = String(html || '');
+
   var re =
     /class\s*=\s*["'][^"']*sortable_comp[^"']*["'][^>]*\bid\s*=\s*["'](\d+)["'][\s\S]*?href\s*=\s*["'](\/competitions\/[^#"']+)["']/gi;
   var m;
-  while ((m = re.exec(String(html || '')))) {
+  while ((m = re.exec(s))) {
     out[m[1]] = m[2];
+  }
+
+  // New schedule layout: showMatches('565',…) + r_complink href (no sortable_comp id).
+  var showRe = /showMatches\s*\(\s*['"](\d+)['"]/gi;
+  while ((m = showRe.exec(s))) {
+    var cid = m[1];
+    if (out[cid]) continue;
+    var end = s.indexOf('competition_row', m.index + 1);
+    if (end < 0) end = Math.min(s.length, m.index + 900);
+    else end = Math.min(s.length, end);
+    var chunk = s.slice(m.index, end);
+    var hrefM = chunk.match(/href\s*=\s*["'](\/competitions\/[^#"']+)["']/i);
+    if (hrefM) out[cid] = hrefM[1];
   }
   return out;
 }
@@ -426,11 +441,25 @@ function competitionForIndex(compHeads, idx) {
 
 function parseCompetitionNames(html) {
   var out = {};
+  var s = String(html || '');
+
   var re =
     /class\s*=\s*["'][^"']*sortable_comp[^"']*["'][^>]*\bid\s*=\s*["'](\d+)["'][\s\S]*?<span[^>]*>([^<]+)</gi;
   var m;
-  while ((m = re.exec(String(html || '')))) {
+  while ((m = re.exec(s))) {
     out[m[1]] = m[2].trim();
+  }
+
+  var showRe = /showMatches\s*\(\s*['"](\d+)['"]/gi;
+  while ((m = showRe.exec(s))) {
+    var cid = m[1];
+    if (out[cid]) continue;
+    var end = s.indexOf('competition_row', m.index + 1);
+    if (end < 0) end = Math.min(s.length, m.index + 900);
+    else end = Math.min(s.length, end);
+    var chunk = s.slice(m.index, end);
+    var nameM = chunk.match(/class\s*=\s*["'][^"']*r_compname[^"']*["'][^>]*>([^<]+)</i);
+    if (nameM) out[cid] = nameM[1].trim();
   }
   return out;
 }
@@ -515,6 +544,31 @@ function isCloudflareChallenge(html) {
   return /<title>\s*Just a moment/i.test(s) || /cf-browser-verification/i.test(s);
 }
 
+function isUsableHtml(html) {
+  var s = String(html || '');
+  if (s.length < 400) return false;
+  if (isCloudflareChallenge(s)) return false;
+  return true;
+}
+
+function matchPathFromHtml(html, eventId) {
+  var s = String(html || '');
+  if (!eventId) return '';
+  var byId = new RegExp(
+    "href\\s*=\\s*[\"'](\\/match\\/[^#\"']+)#" + eventId + "[\"']",
+    'i',
+  );
+  var hm = s.match(byId);
+  if (hm) return hm[1];
+  var md = new RegExp(
+    "\\]\\((?:https?:\\/\\/[^)]*)?\\/match\\/([^#)]+)#" + eventId + "\\)",
+    'i',
+  );
+  var mm = s.match(md);
+  if (mm) return '/match/' + mm[1];
+  return '';
+}
+
 function flareSolverrBase(ctx) {
   var u = String((ctx.config && ctx.config.flareSolverrUrl) || '').trim();
   if (!u) return '';
@@ -570,7 +624,7 @@ function fetchTextViaJina(ctx, cfg, targetUrl) {
     Accept: 'text/html',
     'X-Return-Format': 'html',
   }).then(function (html) {
-    if (!html || isCloudflareChallenge(html)) throw new Error('jina CF');
+    if (!isUsableHtml(html)) throw new Error('jina CF');
     return html;
   });
 }
@@ -584,12 +638,15 @@ function fetchHtml(ctx, cfg, targetUrl) {
 
   return fetchText(ctx, targetUrl, headers)
     .then(function (html) {
-      if (!isCloudflareChallenge(html)) return html;
+      if (isUsableHtml(html)) return html;
       throw new Error('cloudflare');
     })
     .catch(function () {
       if (flareSolverrBase(ctx)) {
-        return fetchTextViaFlareSolverr(ctx, targetUrl);
+        return fetchTextViaFlareSolverr(ctx, targetUrl).then(function (html) {
+          if (isUsableHtml(html)) return html;
+          throw new Error('flare unusable');
+        });
       }
       return fetchTextViaJina(ctx, cfg, targetUrl);
     });
@@ -613,16 +670,61 @@ async function fetchPage(ctx, cfg, page) {
   }
 }
 
+async function resolveMatchPath(ctx, cfg, base, row) {
+  var path = String(
+    row.matchPath || (row.sportMatchGame && row.sportMatchGame.matchPath) || '',
+  ).trim();
+  if (path) return path;
+
+  var eventId = String(row.id || '').replace(/^lstv_/, '');
+  var game = row.sportMatchGame || {};
+  var home = String(row.homeTeam || game.homeTeam || '').trim();
+  var away = String(row.awayTeam || game.awayTeam || '').trim();
+  if (!eventId || !home || !away) return '';
+
+  try {
+    var html = await fetchHtml(
+      ctx,
+      cfg,
+      base + '/search/?q=' + encodeURIComponent(home + ' ' + away),
+    );
+    path = matchPathFromHtml(html, eventId);
+    if (path) {
+      row.matchPath = path;
+      game.matchPath = path;
+      row.sportMatchGame = game;
+    }
+  } catch (e) {}
+  return path;
+}
+
 async function enrichInternationalCoverage(ctx, cfg, rows) {
   var base = String(cfg.base || SPECS.base).replace(/\/$/, '');
   var pending = [];
+  var needPath = [];
+
   rows.forEach(function (row) {
     var path = String(
       row.matchPath || (row.sportMatchGame && row.sportMatchGame.matchPath) || '',
     ).trim();
-    if (!path) return;
-    pending.push({ row: row, url: base + path });
+    if (path) {
+      pending.push({ row: row, url: base + path });
+      return;
+    }
+    needPath.push(row);
   });
+
+  var pathConcurrency = 4;
+  for (var p = 0; p < needPath.length; p += pathConcurrency) {
+    var pathBatch = needPath.slice(p, p + pathConcurrency);
+    await Promise.all(
+      pathBatch.map(async function (row) {
+        var path = await resolveMatchPath(ctx, cfg, base, row);
+        if (path) pending.push({ row: row, url: base + path });
+      }),
+    );
+  }
+
   if (!pending.length) return rows;
 
   var concurrency = 4;
@@ -647,7 +749,73 @@ async function enrichInternationalCoverage(ctx, cfg, rows) {
   return rows;
 }
 
+async function fetchBroadcastLookup(ctx, cfg) {
+  var home = String(cfg.homeTeam || '').trim();
+  var away = String(cfg.awayTeam || '').trim();
+  if (!home || !away) return [];
+  var eventId = String(cfg.eventId || '').replace(/^lstv_/, '');
+  var base = String(cfg.base || SPECS.base).replace(/\/$/, '');
+  var row = {
+    id: 'lstv_' + (eventId || 'lookup'),
+    title: home + ' vs ' + away,
+    homeTeam: home,
+    awayTeam: away,
+    matchPath: String(cfg.matchPath || '').trim(),
+    sportMatchGame: {
+      id: eventId,
+      title: home + ' vs ' + away,
+      homeTeam: home,
+      awayTeam: away,
+      dateMs: Number(cfg.dateMs || 0) || 0,
+      broadcastChannels: [],
+      matchPath: String(cfg.matchPath || '').trim(),
+    },
+  };
+
+  if (!row.matchPath && eventId) {
+    var liveMap = await fetchLiveScores(ctx);
+    var live = liveMap[eventId];
+    if (live) {
+      var compLinks = {};
+      var pages = schedulePages(cfg);
+      for (var pi = 0; pi < pages.length; pi++) {
+        var sched = await fetchPage(ctx, cfg, pages[pi]);
+        Object.keys(sched.compLinks || {}).forEach(function (k) {
+          compLinks[k] = sched.compLinks[k];
+        });
+      }
+      var compPath = compLinks[String(live.cid || '')];
+      if (compPath) {
+        try {
+          var compHtml = await fetchHtml(ctx, cfg, base + compPath);
+          var fromComp = matchPathFromHtml(compHtml, eventId);
+          if (fromComp) {
+            row.matchPath = fromComp;
+            row.sportMatchGame.matchPath = fromComp;
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  await enrichInternationalCoverage(ctx, cfg, [row]);
+  var game = row.sportMatchGame || {};
+  var channels = game.broadcastChannels || row.broadcastChannels || [];
+  if (!channels.length) return [];
+  return [
+    {
+      id: row.id,
+      title: row.title,
+      sportMatchGame: game,
+      broadcastChannels: channels,
+    },
+  ];
+}
+
 async function fetchCatalog(ctx, cfg) {
+  if (cfg.broadcastLookup) {
+    return fetchBroadcastLookup(ctx, cfg);
+  }
   var pages = schedulePages(cfg);
   var seen = {};
   var out = [];

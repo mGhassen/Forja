@@ -51,6 +51,29 @@ mixin _LiveMatchesForjaLive
         EngineService.normalizeLiveSportPluginId(filter);
   }
 
+  _ForjaLivePluginLoad? _forjaLivePluginLoadForFilter(String filter) {
+    if (filter == 'all' || filter.isEmpty) return null;
+    final direct = _s._forjaLivePluginLoads[filter];
+    if (direct != null) return direct;
+    final norm = EngineService.normalizeLiveSportPluginId(filter);
+    for (final entry in _s._forjaLivePluginLoads.entries) {
+      if (EngineService.normalizeLiveSportPluginId(entry.key) == norm) {
+        return entry.value;
+      }
+    }
+    return null;
+  }
+
+  String? _canonicalForjaLivePluginFilterKey(String filter) {
+    if (filter == 'all' || filter.isEmpty) return filter;
+    if (_s._forjaLivePluginLoads.containsKey(filter)) return filter;
+    final norm = EngineService.normalizeLiveSportPluginId(filter);
+    for (final key in _s._forjaLivePluginLoads.keys) {
+      if (EngineService.normalizeLiveSportPluginId(key) == norm) return key;
+    }
+    return null;
+  }
+
   Iterable<_ForjaLivePluginLoad> get _gridScopedPluginLoads {
     if (_s._forjaLivePluginFilter == 'all') {
       return _s._forjaLivePluginLoads.values;
@@ -173,10 +196,7 @@ mixin _LiveMatchesForjaLive
     );
     if (saved == null || saved.isEmpty) return;
     if (!mounted) return;
-    final normalized = saved == 'all'
-        ? saved
-        : EngineService.normalizeLiveSportPluginId(saved);
-    setState(() => _s._forjaLivePluginFilter = normalized);
+    setState(() => _s._forjaLivePluginFilter = saved);
   }
 
   Future<void> _persistForjaLiveCatalogFilterPreference(String filter) async {
@@ -271,8 +291,15 @@ mixin _LiveMatchesForjaLive
 
   void _ensureForjaLivePluginFilterValid() {
     if (_s._forjaLivePluginFilter == 'all') return;
-    if (!_s._forjaLivePluginLoads.containsKey(_s._forjaLivePluginFilter)) {
+    final canonical =
+        _canonicalForjaLivePluginFilterKey(_s._forjaLivePluginFilter);
+    if (canonical == null) {
       _setForjaLivePluginFilter('all');
+      return;
+    }
+    if (canonical != _s._forjaLivePluginFilter) {
+      setState(() => _s._forjaLivePluginFilter = canonical);
+      unawaited(_persistForjaLiveCatalogFilterPreference(canonical));
     }
   }
 
@@ -615,9 +642,7 @@ mixin _LiveMatchesForjaLive
         (e) => !e.attempted && !e.loading,
       );
     }
-    final load = _s._forjaLivePluginLoads[filter] ??
-        _s._forjaLivePluginLoads[
-            EngineService.normalizeLiveSportPluginId(filter)];
+    final load = _forjaLivePluginLoadForFilter(filter);
     return load == null || (!load.attempted && !load.loading);
   }
 

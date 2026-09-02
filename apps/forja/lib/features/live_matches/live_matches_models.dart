@@ -3149,6 +3149,55 @@ List<String> _broadcastChannelsFromCatalogRow(Map<String, dynamic> row) {
   return _broadcastChannelsFromGame(row);
 }
 
+int? _broadcastEventIdFromGame(Map<String, dynamic>? game) {
+  if (game == null) return null;
+  final raw =
+      '${game['id'] ?? ''}'.trim().replaceFirst(RegExp(r'^lstv_'), '');
+  if (raw.isEmpty) return null;
+  return int.tryParse(raw);
+}
+
+Future<List<String>> _liveSoccerTvBroadcastOnDemand({
+  required EnginePlugin plugin,
+  required String home,
+  required String away,
+  int? eventId,
+  int? dateMs,
+  String matchPath = '',
+}) async {
+  if (home.isEmpty || away.isEmpty) return const [];
+  _liveBroadcastPluginRowsCache.remove(plugin.id);
+  try {
+    _logBroadcastHints(
+      '${plugin.id} on-demand international lookup home="$home" away="$away"',
+    );
+    final rows = await EngineService.instance.runLiveCatalog(
+      catalogPlugin: plugin,
+      extraConfig: {
+        'broadcastLookup': true,
+        'homeTeam': home,
+        'awayTeam': away,
+        if (eventId != null) 'eventId': '$eventId',
+        if (dateMs != null) 'dateMs': dateMs,
+        if (matchPath.trim().isNotEmpty) 'matchPath': matchPath.trim(),
+      },
+      timeout: const Duration(seconds: 45),
+    );
+    for (final row in rows) {
+      final channels = _broadcastChannelsFromCatalogRow(row);
+      if (channels.isNotEmpty) {
+        _logBroadcastHints(
+          '${plugin.id} on-demand returned ${channels.length} channels',
+        );
+        return channels;
+      }
+    }
+  } catch (e) {
+    _logBroadcastHints('${plugin.id} on-demand lookup failed: $e');
+  }
+  return const [];
+}
+
 Future<List<Map<String, dynamic>>> _liveBroadcastPluginRowsCached(
   EnginePlugin plugin,
 ) async {
@@ -3228,28 +3277,44 @@ _LiveBroadcastHints _liveBroadcastHintsFromGame(Map<String, dynamic>? game) {
 Future<_LiveBroadcastHints> _broadcastHintsForMatch(_StreamedMatch match) async {
   final aligned = _sportMatchGameAlignedWithCard(match);
   final fromGame = _liveBroadcastHintsFromGame(aligned);
-  if (!fromGame.isEmpty) {
+  var liveOnSat = List<String>.from(fromGame.liveOnSat);
+  var liveSoccerTv = List<String>.from(fromGame.liveSoccerTv);
+
+  if (liveOnSat.isNotEmpty && liveSoccerTv.isNotEmpty) {
     _logBroadcastHints(
-      'using enriched game payload liveOnSat=${fromGame.liveOnSat.length} '
-      'liveSoccerTv=${fromGame.liveSoccerTv.length}',
+      'using enriched game payload liveOnSat=${liveOnSat.length} '
+      'liveSoccerTv=${liveSoccerTv.length}',
     );
     return fromGame;
+  }
+
+  if (liveOnSat.isNotEmpty || liveSoccerTv.isNotEmpty) {
+    _logBroadcastHints(
+      'partial game payload liveOnSat=${liveOnSat.length} '
+      'liveSoccerTv=${liveSoccerTv.length} — filling gaps from catalogs',
+    );
   }
 
   final plugins =
       await EngineService.instance.listLiveSportBroadcastPlugins();
   if (plugins.isEmpty) {
-    _logBroadcastHints(
-      'no broadcast plugins enabled — turn on LiveOnSat / Live Soccer TV '
-      'in Settings → Forja Sports → Catalog',
+    if (liveOnSat.isEmpty && liveSoccerTv.isEmpty) {
+      _logBroadcastHints(
+        'no broadcast plugins enabled — turn on LiveOnSat / Live Soccer TV '
+        'in Settings → Forja Sports → Catalog',
+      );
+    }
+    return _LiveBroadcastHints(
+      liveOnSat: liveOnSat.toSet().toList(),
+      liveSoccerTv: liveSoccerTv.toSet().toList(),
     );
-    return const _LiveBroadcastHints();
   }
 
   final home = (aligned['homeTeam'] ?? '').toString().trim();
   final away = (aligned['awayTeam'] ?? '').toString().trim();
   final title = (aligned['title'] ?? match.title).toString().trim();
   final kickoff = (aligned['dateMs'] as num?)?.toInt() ?? match.dateMs;
+  final eventId = _broadcastEventIdFromGame(aligned);
   final searchTokens = _broadcastSearchTokens(
     title: title,
     homeTeam: home.isEmpty ? null : home,
@@ -3261,14 +3326,20 @@ Future<_LiveBroadcastHints> _broadcastHintsForMatch(_StreamedMatch match) async 
     'plugins=${plugins.map((p) => p.id).join(", ")}',
   );
 
-  final liveOnSat = <String>[];
-  final liveSoccerTv = <String>[];
-
   for (final plugin in plugins) {
     final sourceKey = LiveSportCapabilities.normalizePluginId(plugin.id);
+    if (sourceKey == 'liveonsat' && liveOnSat.isNotEmpty) {
+      continue;
+    }
+    if (sourceKey == 'livesoccertv' && liveSoccerTv.isNotEmpty) {
+      continue;
+    }
+
     final rows = await _liveBroadcastPluginRowsCached(plugin);
     var matchedRows = 0;
     var matchedChannels = 0;
+    String matchedMatchPath = '';
+    int? matchedEventId;
 
     for (final row in rows) {
       if (row['sportMatchGame'] is! Map) continue;
@@ -3283,6 +3354,11 @@ Future<_LiveBroadcastHints> _broadcastHintsForMatch(_StreamedMatch match) async 
         continue;
       }
       matchedRows++;
+      matchedEventId ??=
+          _broadcastEventIdFromGame(game) ?? _broadcastEventIdFromGame(row);
+      final rowPath =
+          (game['matchPath'] ?? row['matchPath'] ?? '').toString().trim();
+      if (rowPath.isNotEmpty) matchedMatchPath = rowPath;
       final channels = _broadcastChannelsFromCatalogRow(row);
       matchedChannels += channels.length;
       if (channels.isEmpty) {
@@ -3298,6 +3374,21 @@ Future<_LiveBroadcastHints> _broadcastHintsForMatch(_StreamedMatch match) async 
           liveSoccerTv.addAll(channels);
         default:
           liveOnSat.addAll(channels);
+      }
+    }
+
+    if (sourceKey == 'livesoccertv' && liveSoccerTv.isEmpty) {
+      final onDemand = await _liveSoccerTvBroadcastOnDemand(
+        plugin: plugin,
+        home: home,
+        away: away,
+        eventId: matchedEventId ?? eventId,
+        dateMs: kickoff,
+        matchPath: matchedMatchPath,
+      );
+      if (onDemand.isNotEmpty) {
+        liveSoccerTv.addAll(onDemand);
+        matchedChannels += onDemand.length;
       }
     }
 
