@@ -4,8 +4,8 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/widgets/desktop_window_focus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:window_manager/window_manager.dart';
 
 /// Opens the Forja web portal login and captures the session via a localhost
 /// callback (desktop OAuth-style). The portal `fetch()`es the loopback URL so
@@ -27,10 +27,6 @@ class DesktopBrowserAuth {
   /// can bring Forja forward when the user closes the tab.
   @visibleForTesting
   static Duration focusRetainDuration = const Duration(seconds: 45);
-
-  /// Test hook - skips `window_manager` when set.
-  @visibleForTesting
-  static Future<void> Function()? bringToFrontOverride;
 
   static Uri signupUri() => Uri.parse('$webUrl/signup');
 
@@ -121,7 +117,7 @@ class DesktopBrowserAuth {
           if (request.method == 'GET' && request.uri.path == '/focus') {
             final returnedState = request.uri.queryParameters['state'];
             if (returnedState == state) {
-              await _bringAppToFront();
+              await DesktopWindowFocus.bringToFront();
               await _writeCallbackResponse(
                 request,
                 title: 'Focused',
@@ -286,25 +282,6 @@ class DesktopBrowserAuth {
     } finally {
       await sub.cancel();
       await server.close(force: true);
-    }
-  }
-
-  static Future<void> _bringAppToFront() async {
-    final override = bringToFrontOverride;
-    if (override != null) {
-      await override();
-      return;
-    }
-    if (kIsWeb) return;
-    if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) return;
-    try {
-      if (await windowManager.isMinimized()) {
-        await windowManager.restore();
-      }
-      await windowManager.show();
-      await windowManager.focus();
-    } catch (e, st) {
-      debugPrint('[DesktopBrowserAuth] bring to front failed: $e\n$st');
     }
   }
 

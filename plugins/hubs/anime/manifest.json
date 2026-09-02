@@ -2,6 +2,8 @@
   "schema": 1,
   "id": "forjahq-anime",
   "name": "ForjaHQ Anime",
+  "description": "AniList-powered anime hub with search and details.",
+  "author": "ForjaHQ",
   "version": "1.0.10",
   "plugins": [
     {

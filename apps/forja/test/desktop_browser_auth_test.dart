@@ -4,16 +4,17 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
+import 'package:forja/shared/widgets/desktop_window_focus.dart';
 
 void main() {
   setUp(() {
     // Avoid pending timers from the post-handoff /focus retain window.
     DesktopBrowserAuth.focusRetainDuration = Duration.zero;
-    DesktopBrowserAuth.bringToFrontOverride = () async {};
+    DesktopWindowFocus.bringToFrontOverride = () async {};
   });
 
   tearDown(() {
-    DesktopBrowserAuth.bringToFrontOverride = null;
+    DesktopWindowFocus.bringToFrontOverride = null;
   });
 
   test('DesktopBrowserAuthResult success requires both tokens', () {

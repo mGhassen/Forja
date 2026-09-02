@@ -2,6 +2,8 @@
   "schema": 1,
   "id": "forjahq-iptv-vod",
   "name": "ForjaHQ IPTV VOD",
+  "description": "IPTV portal movie and series details with optional TMDB enrich.",
+  "author": "ForjaHQ",
   "version": "1.0.0",
   "plugins": [
     {

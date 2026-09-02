@@ -2,6 +2,8 @@
   "schema": 1,
   "id": "forjahq-home",
   "name": "ForjaHQ Home",
+  "description": "TMDB movie and TV catalog for the Home tab.",
+  "author": "ForjaHQ",
   "version": "1.0.12",
   "plugins": [
     {

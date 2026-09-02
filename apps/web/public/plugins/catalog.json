@@ -18,7 +18,7 @@
       "manifestPath": "catalog/manifest.json",
       "name": "ForjaHQ Catalog",
       "description": "Live Matches schedule catalogs (Streamed, PPV, ESPN, …).",
-      "accent": "brand",
+      "accent": "flame",
       "official": true,
       "author": "ForjaHQ"
     },
@@ -28,7 +28,7 @@
       "manifestPath": "live/manifest.json",
       "name": "ForjaHQ Live",
       "description": "Live Matches per-site stream resolve (Forja Live).",
-      "accent": "flame",
+      "accent": "brand",
       "official": true,
       "author": "ForjaHQ"
     },
@@ -38,7 +38,7 @@
       "manifestPath": "torrent/manifest.json",
       "name": "ForjaHQ Torrent",
       "description": "Built-in torrent indexer search for movies and series.",
-      "accent": "brand",
+      "accent": "flame",
       "official": true,
       "author": "ForjaHQ"
     },

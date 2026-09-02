@@ -20,8 +20,21 @@ export type ForjaPluginManifest = {
   schema?: number
   id?: string
   name?: string
+  description?: string
+  author?: string
   version?: string
-  plugins?: unknown[]
+  plugins?: Array<{ description?: string }>
+}
+
+function descriptionFromManifest(manifest: ForjaPluginManifest): string | undefined {
+  const root = manifest.description?.trim()
+  if (root) return root
+  if (!Array.isArray(manifest.plugins)) return undefined
+  for (const plugin of manifest.plugins) {
+    const desc = plugin?.description?.trim()
+    if (desc) return desc
+  }
+  return undefined
 }
 
 export type ForjaPluginPackLive = ForjaPluginCatalogEntry & {
@@ -93,6 +106,8 @@ export async function hydratePluginPack(
   const manifestUrl = resolvePluginManifestUrl(entry, baseUrl)
   try {
     const manifest = await fetchPluginManifest(manifestUrl)
+    const description = descriptionFromManifest(manifest) ?? entry.description
+    const author = manifest.author?.trim() || entry.author
     return {
       ...entry,
       manifestUrl,
@@ -101,6 +116,8 @@ export async function hydratePluginPack(
         ? manifest.plugins.length
         : undefined,
       name: manifest.name?.trim() || entry.name,
+      description,
+      ...(author ? { author } : {}),
     }
   } catch {
     return { ...entry, manifestUrl }

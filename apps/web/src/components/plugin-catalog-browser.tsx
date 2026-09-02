@@ -34,10 +34,6 @@ function paginate<T>(items: T[], page: number) {
   }
 }
 
-function packShortName(name: string): string {
-  return name.replace(/^ForjaHQ\s+/i, '').trim()
-}
-
 function OfficialBadge({ compact = false }: { compact?: boolean }) {
   return (
     <span
@@ -90,7 +86,7 @@ function PluginDetailPanel({
               </p>
             ) : null}
             <h2 className="truncate font-medium text-[#EDE6DA]">
-              {packShortName(pack.name)}
+              {pack.name}
             </h2>
             <p className="mt-1 truncate text-xs text-[rgba(237,230,218,0.5)]">
               {pluginKindLabel(pack.kind)}
@@ -216,7 +212,7 @@ function PluginListRow({
           {official ? <OfficialBadge compact /> : null}
         </div>
         <p className="truncate text-sm font-medium text-[#EDE6DA]">
-          {packShortName(pack.name)}
+          {pack.name}
         </p>
       </div>
       {pack.version ? (

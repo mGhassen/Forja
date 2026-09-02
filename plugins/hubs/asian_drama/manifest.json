@@ -2,6 +2,8 @@
   "schema": 1,
   "id": "forjahq-asian-drama",
   "name": "ForjaHQ Asian Drama",
+  "description": "KissKH Asian drama catalog hub.",
+  "author": "ForjaHQ",
   "version": "1.0.8",
   "plugins": [
     {

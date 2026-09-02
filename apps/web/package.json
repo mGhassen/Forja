@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "catalog:generate": "node ../../scripts/generate-plugin-catalog.mjs",
+    "build": "npm run catalog:generate && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "supabase:start": "supabase start",

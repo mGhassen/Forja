@@ -2,6 +2,8 @@
   "schema": 1,
   "id": "forjahq-live",
   "name": "ForjaHQ Live",
+  "description": "Live Matches per-site stream resolve (Forja Live).",
+  "author": "ForjaHQ",
   "version": "1.9.2",
   "plugins": [
     {

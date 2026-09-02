@@ -4,6 +4,7 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shared/engine/plugin_install_prompt.dart';
+import 'package:forja/shared/widgets/desktop_window_focus.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 /// Handles `forja://install?manifest=<url>` — opens Settings and asks before install.
@@ -43,6 +44,7 @@ abstract final class ForjaPluginDeepLink {
       return;
     }
     debugPrint('[PluginDeepLink] queue install $manifest');
+    unawaited(DesktopWindowFocus.bringToFront());
     ShellBus.pendingPluginInstall.value = PluginInstallPrompt(
       manifestUrl: manifest,
       displayName: uri.queryParameters['name']?.trim(),

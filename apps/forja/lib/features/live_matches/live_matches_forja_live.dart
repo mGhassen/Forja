@@ -261,100 +261,12 @@ mixin _LiveMatchesForjaLive
     _kickForjaLiveLazyCatalog(replace: true);
   }
 
-  /// Schedule chip filters the grid; opening a match resolves every enabled
-  /// catalog/live provider — hydrate sibling rows from catalogs not loaded yet.
+  /// Sibling schedule rows already loaded in the grid — stream search resolves
+  /// those via live `resolve` plugins; never re-fetch schedule catalogs here.
   Future<List<_StreamedMatch>> _catalogMatchesForStreamResolve(
     _StreamedMatch match,
   ) async {
-    var siblings = _streamedMatchesForEvent(match, _s._streamedMatches);
-    final represented = <String>{
-      for (final m in siblings)
-        if (m.livePluginId.isNotEmpty)
-          EngineService.normalizeLiveSportPluginId(m.livePluginId),
-    };
-
-    final catalogs =
-        await EngineService.instance.listEnabledLiveCatalogPlugins();
-    final missing = [
-      for (final catalog in catalogs)
-        if (!represented.contains(
-          EngineService.normalizeLiveSportPluginId(
-            EngineService.catalogFilterId(catalog),
-          ),
-        ))
-          catalog,
-    ];
-    if (missing.isEmpty) return siblings;
-
-    final added = <_StreamedMatch>[];
-    await Future.wait(
-      missing.map((catalog) async {
-        final filterId = EngineService.catalogFilterId(catalog);
-        try {
-          LiveMatchesEngine.cachePluginMeta(catalog);
-          final extraConfig = await _liveCatalogExtraConfig(catalog);
-          final rows = await EngineService.instance.runLiveCatalog(
-            catalogPlugin: catalog,
-            extraConfig: extraConfig,
-          );
-          final isPpv = LiveMatchesEngine.cachedIsNativeUnlock(catalog.id, 'ppv') ||
-              LiveMatchesEngine.cachedIsNativeUnlock(filterId, 'ppv');
-          if (isPpv) {
-            final ppvHits = <_DamiTvStream>[];
-            for (final row in rows) {
-              if (!_forjaLiveCatalogRowInHorizon(row, _s._scheduleHorizon)) {
-                continue;
-              }
-              final ppv = _damiTvFromPpvCatalogRow(row);
-              if (ppv.id.isEmpty) continue;
-              final probe = _forjaLiveRowToMatch({
-                ...Map<String, dynamic>.from(row),
-                'pluginId': filterId,
-              });
-              if (!_sameStreamedEvent(match, probe)) continue;
-              ppvHits.add(ppv);
-            }
-            if (ppvHits.isNotEmpty && mounted) {
-              setState(() {
-                final existing = _s._damiTvStreams.map((s) => s.id).toSet();
-                _s._damiTvStreams = [
-                  ..._s._damiTvStreams,
-                  for (final p in ppvHits)
-                    if (!existing.contains(p.id)) p,
-                ];
-              });
-            }
-            return;
-          }
-
-          for (final row in rows) {
-            final enriched = Map<String, dynamic>.from(row);
-            enriched.putIfAbsent('pluginId', () => filterId);
-            final m = _forjaLiveRowToMatch(enriched);
-            if (m.id.isEmpty || m.title.isEmpty) continue;
-            if (!_sameStreamedEvent(match, m)) continue;
-            added.add(m);
-          }
-        } catch (e) {
-          debugPrint(
-            '[LiveMatches] stream-resolve catalog ${catalog.id}: $e',
-          );
-        }
-      }),
-    );
-
-    if (added.isNotEmpty && mounted) {
-      setState(() {
-        _invalidateLiveMatchesGridCache();
-        _s._streamedMatches = _sortStreamedLiveFirst([
-          ..._s._streamedMatches,
-          ...added,
-        ]);
-      });
-      siblings = _streamedMatchesForEvent(match, _s._streamedMatches);
-    }
-
-    return siblings;
+    return _streamedMatchesForEvent(match, _s._streamedMatches);
   }
 
   void _ensureForjaLivePluginFilterValid() {
