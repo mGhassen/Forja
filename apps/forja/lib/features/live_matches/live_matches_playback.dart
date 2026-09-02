@@ -71,35 +71,6 @@ mixin _LiveMatchesPlayback
     );
   }
 
-  Future<_StreamedMatch> _fillMatchDetailsSources({
-    required _StreamedMatch match,
-    _DamiTvStream? ppvAnchor,
-    required _IptvSportsChannelsPanelController providersController,
-    required _IptvSportsChannelsPanelController liveTvController,
-    required List<_StreamedStreamChoice> choices,
-    required bool Function() isStale,
-  }) async {
-    providersController.beginSearching('Providers');
-    liveTvController.beginSearching('Live TV');
-
-    final providersFuture = _fillMatchDetailsProviders(
-      match: match,
-      ppvAnchor: ppvAnchor,
-      controller: providersController,
-      choices: choices,
-      isStale: isStale,
-    );
-    final liveTvFuture = _fillIptvSportsSources(
-      match: match,
-      controller: liveTvController,
-      isStale: isStale,
-      loadBroadcastHints: false,
-    );
-
-    await providersFuture;
-    return liveTvFuture;
-  }
-
   Future<void> _fillMatchDetailsProviders({
     required _StreamedMatch match,
     _DamiTvStream? ppvAnchor,

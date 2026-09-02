@@ -26,14 +26,50 @@ class _LiveMatchDetailsScreenState
   final _choices = <_StreamedStreamChoice>[];
   final _backFocus = FocusNode(debugLabel: 'live-match-details-back');
   final _heroPlayFocus = FocusNode(debugLabel: 'live-match-details-play');
+  final _toggleAnchorKey = GlobalKey(debugLabel: 'live-match-details-toggle');
 
   late _StreamedMatch _displayMatch;
-  int _loadGen = 0;
+  int _providersLoadGen = 0;
+  int _liveTvLoadGen = 0;
+  bool _providersRequested = false;
+  bool _liveTvRequested = false;
   bool _detailsHeroInitialFocusDone = false;
   _LiveMatchListTab _listTab = _LiveMatchListTab.providers;
+  double? _listTop;
 
   _IptvSportsChannelsPanelController get _activeCtrl =>
       _listTab == _LiveMatchListTab.providers ? _providersCtrl : _liveTvCtrl;
+
+  bool get _showStreamsList => _listTab == _LiveMatchListTab.providers
+      ? _providersRequested
+      : _liveTvRequested;
+
+  double _listWidth(BuildContext context) {
+    return (MediaQuery.sizeOf(context).width -
+            DetailsTokens.contentHorizontalPadding(
+              MediaQuery.sizeOf(context).width,
+            ) *
+                2)
+        .clamp(280.0, 560.0);
+  }
+
+  double _listLeftInset(BuildContext context) {
+    return DetailsTokens.contentLeftInset(MediaQuery.sizeOf(context).width);
+  }
+
+  void _scheduleListTopSync() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_showStreamsList) return;
+      final ctx = _toggleAnchorKey.currentContext;
+      if (ctx == null) return;
+      final box = ctx.findRenderObject() as RenderBox?;
+      if (box == null || !box.hasSize) return;
+      final next = box.localToGlobal(Offset.zero).dy + box.size.height + 20;
+      if (_listTop == null || (_listTop! - next).abs() > 0.5) {
+        setState(() => _listTop = next);
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -54,12 +90,12 @@ class _LiveMatchDetailsScreenState
       searchingHint: 'Matching channels on your portal',
       iptvCtrl: iptvCtrl,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleInitialLoad());
   }
 
   @override
   void dispose() {
-    _loadGen++;
+    _providersLoadGen++;
+    _liveTvLoadGen++;
     Engine.cancelLiveMatchesFetch();
     _providersCtrl.dispose();
     _liveTvCtrl.dispose();
@@ -68,71 +104,106 @@ class _LiveMatchDetailsScreenState
     super.dispose();
   }
 
-  void _scheduleInitialLoad() {
-    if (!mounted) return;
-    final route = ModalRoute.of(context);
-    final anim = route?.animation;
-    if (anim == null || anim.isCompleted) {
-      unawaited(_loadSources());
-      return;
-    }
-    void onStatus(AnimationStatus status) {
-      if (status != AnimationStatus.completed &&
-          status != AnimationStatus.dismissed) {
-        return;
-      }
-      anim.removeStatusListener(onStatus);
-      if (mounted) unawaited(_loadSources());
-    }
-
-    anim.addStatusListener(onStatus);
+  void _selectTab(_LiveMatchListTab tab) {
+    setState(() {
+      _listTab = tab;
+      _listTop = null;
+    });
+    _ensureTabLoaded(tab);
+    _scheduleListTopSync();
   }
 
-  Future<void> _awaitForjaGridCatalogIdle() async {
+  void _ensureTabLoaded(_LiveMatchListTab tab) {
+    switch (tab) {
+      case _LiveMatchListTab.providers:
+        if (!_providersRequested) {
+          setState(() => _providersRequested = true);
+          unawaited(_loadProviders());
+        }
+      case _LiveMatchListTab.liveTv:
+        if (!_liveTvRequested) {
+          setState(() => _liveTvRequested = true);
+          unawaited(_loadLiveTv());
+        }
+    }
+  }
+
+  Future<void> _awaitForjaGridCatalogIdle(_IptvSportsChannelsPanelController ctrl) async {
     final host = widget.host;
     var spins = 0;
     while (mounted && spins < 120) {
       if (!(host as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) return;
       if (spins == 0) {
-        _providersCtrl.setSearchPhase('Loading schedule');
+        ctrl.setSearchPhase('Loading schedule');
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
       spins++;
     }
   }
 
-  Future<void> _loadSources() async {
-    final gen = ++_loadGen;
+  Future<void> _loadProviders({bool force = false}) async {
+    if (_providersRequested && !force) return;
+    _providersRequested = true;
+    final gen = ++_providersLoadGen;
     final host = widget.host;
-    _choices.clear();
+    if (force) _choices.clear();
     _providersCtrl.resetForLoad();
-    _liveTvCtrl.resetForLoad();
-    _listTab = _LiveMatchListTab.providers;
+    _providersCtrl.beginSearching('Providers');
     try {
-      await _awaitForjaGridCatalogIdle();
-      if (!mounted || gen != _loadGen) return;
-
-      final display = await host._fillMatchDetailsSources(
+      await _awaitForjaGridCatalogIdle(_providersCtrl);
+      if (!mounted || gen != _providersLoadGen || _providersCtrl.isDisposed) {
+        return;
+      }
+      await host._fillMatchDetailsProviders(
         match: widget.match,
         ppvAnchor: widget.ppvAnchor,
-        providersController: _providersCtrl,
-        liveTvController: _liveTvCtrl,
+        controller: _providersCtrl,
         choices: _choices,
         isStale: () =>
             !mounted ||
-            gen != _loadGen ||
-            _providersCtrl.isDisposed ||
-            _liveTvCtrl.isDisposed,
+            gen != _providersLoadGen ||
+            _providersCtrl.isDisposed,
       );
-      if (!mounted || gen != _loadGen) return;
+    } catch (e) {
+      debugPrint('[LiveMatches] detail providers error: $e');
+    } finally {
+      if (mounted && gen == _providersLoadGen && !_providersCtrl.isDisposed) {
+        _providersCtrl.finishSearching();
+      }
+    }
+  }
+
+  Future<void> _loadLiveTv({bool force = false}) async {
+    if (_liveTvRequested && !force) return;
+    _liveTvRequested = true;
+    final gen = ++_liveTvLoadGen;
+    final host = widget.host;
+    _liveTvCtrl.resetForLoad();
+    _liveTvCtrl.beginSearching('Live TV');
+    try {
+      final display = await host._fillIptvSportsSources(
+        match: widget.match,
+        controller: _liveTvCtrl,
+        isStale: () =>
+            !mounted || gen != _liveTvLoadGen || _liveTvCtrl.isDisposed,
+        loadBroadcastHints: false,
+      );
+      if (!mounted || gen != _liveTvLoadGen) return;
       setState(() => _displayMatch = display);
     } catch (e) {
-      debugPrint('[LiveMatches] detail sources error: $e');
+      debugPrint('[LiveMatches] detail live tv error: $e');
     } finally {
-      if (mounted && gen == _loadGen) {
-        if (!_providersCtrl.isDisposed) _providersCtrl.finishSearching();
-        if (!_liveTvCtrl.isDisposed) _liveTvCtrl.finishSearching();
+      if (mounted && gen == _liveTvLoadGen && !_liveTvCtrl.isDisposed) {
+        _liveTvCtrl.finishSearching();
       }
+    }
+  }
+
+  void _retryActiveTab() {
+    if (_listTab == _LiveMatchListTab.providers) {
+      unawaited(_loadProviders(force: true));
+    } else {
+      unawaited(_loadLiveTv(force: true));
     }
   }
 
@@ -196,11 +267,52 @@ class _LiveMatchDetailsScreenState
     unawaited(host._openResolvedStreamChoice(hit, allChoices: _choices));
   }
 
-  double _inlineListMaxHeight(BuildContext context) {
-    final h = MediaQuery.sizeOf(context).height;
-    return (h * 0.46).clamp(180.0, 520.0);
+  Widget _buildToggleRow({required bool tvFocus}) {
+    return KeyedSubtree(
+      key: _toggleAnchorKey,
+      child: DetailsHeroTvActionScope(
+        tabId: MediaDetailsTv.tabId,
+        itemCount: 2,
+        onFocusUp: tvFocus ? _focusBack : null,
+        onFocusDown: tvFocus ? () {} : null,
+        child: HeroPillSegmentedChoice<_LiveMatchListTab>(
+          segments: const [
+            HeroPillSegment(
+              value: _LiveMatchListTab.providers,
+              label: 'Providers',
+              icon: Icons.dns_rounded,
+            ),
+            HeroPillSegment(
+              value: _LiveMatchListTab.liveTv,
+              label: 'Live TV',
+              icon: Icons.live_tv_rounded,
+            ),
+          ],
+          selected: _listTab,
+          onSelected: _selectTab,
+          onUpEdge: tvFocus ? _focusBack : null,
+          tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+          tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+          tvItemIndexStart: 0,
+        ),
+      ),
+    );
   }
 
+  Widget _buildStreamsListPanel({required bool tvFocus}) {
+    final active = _activeCtrl;
+    return ListenableBuilder(
+      listenable: active,
+      builder: (context, _) => _LiveMatchStreamsSection(
+        controller: active,
+        iptvCtrl: active.iptvCtrl,
+        onSourcePicked: _onSourcePicked,
+        onRetry: _retryActiveTab,
+        tvFocus: tvFocus,
+        inlineHero: true,
+      ),
+    );
+  }
   void _focusBack() {
     if (_backFocus.canRequestFocus) {
       _backFocus.requestFocus();
@@ -242,74 +354,6 @@ class _LiveMatchDetailsScreenState
     ];
   }
 
-  Widget _buildHeroActionColumn({
-    required BuildContext context,
-    required bool tvFocus,
-  }) {
-    final listMaxHeight = _inlineListMaxHeight(context);
-    final listWidth = (MediaQuery.sizeOf(context).width -
-            DetailsTokens.contentHorizontalPadding(
-              MediaQuery.sizeOf(context).width,
-            ) *
-                2)
-        .clamp(280.0, 560.0);
-    final active = _activeCtrl;
-    final showList = active.searching ||
-        active.sources.isNotEmpty ||
-        _listTab == _LiveMatchListTab.liveTv;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        DetailsHeroTvActionScope(
-          tabId: MediaDetailsTv.tabId,
-          itemCount: 2,
-          onFocusUp: tvFocus ? _focusBack : null,
-          onFocusDown: tvFocus ? () {} : null,
-          child: HeroPillSegmentedChoice<_LiveMatchListTab>(
-            segments: const [
-              HeroPillSegment(
-                value: _LiveMatchListTab.providers,
-                label: 'Providers',
-                icon: Icons.dns_rounded,
-              ),
-              HeroPillSegment(
-                value: _LiveMatchListTab.liveTv,
-                label: 'Live TV',
-                icon: Icons.live_tv_rounded,
-              ),
-            ],
-            selected: _listTab,
-            onSelected: (tab) => setState(() => _listTab = tab),
-            onUpEdge: tvFocus ? _focusBack : null,
-            tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-            tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-            tvItemIndexStart: 0,
-          ),
-        ),
-        if (showList) ...[
-          const SizedBox(height: 12),
-          SizedBox(
-            height: listMaxHeight,
-            width: listWidth,
-            child: ListenableBuilder(
-              listenable: active,
-              builder: (context, _) => _LiveMatchStreamsSection(
-                controller: active,
-                iptvCtrl: active.iptvCtrl,
-                onSourcePicked: _onSourcePicked,
-                onRetry: _loadSources,
-                tvFocus: tvFocus,
-                inlineHero: true,
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
   Widget _buildHero({
     required BuildContext context,
     required String backdrop,
@@ -326,10 +370,7 @@ class _LiveMatchDetailsScreenState
       height: height,
       actionRow: ListenableBuilder(
         listenable: Listenable.merge([_providersCtrl, _liveTvCtrl]),
-        builder: (context, _) => _buildHeroActionColumn(
-          context: context,
-          tvFocus: tvFocus,
-        ),
+        builder: (context, _) => _buildToggleRow(tvFocus: tvFocus),
       ),
     );
   }
@@ -340,6 +381,8 @@ class _LiveMatchDetailsScreenState
     final tvFocus = policy.useFocusableMoodChips;
     final backdrop = _streamedImageUrl(_displayMatch.poster);
     final viewport = MediaQuery.sizeOf(context);
+    final showList = _showStreamsList;
+    if (showList) _scheduleListTopSync();
 
     if (policy.heroPlayAutoFocus && !_detailsHeroInitialFocusDone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -366,6 +409,14 @@ class _LiveMatchDetailsScreenState
               height: viewport.height,
             ),
           ),
+          if (showList && _listTop != null)
+            Positioned(
+              left: _listLeftInset(context),
+              width: _listWidth(context),
+              top: _listTop,
+              bottom: MediaQuery.paddingOf(context).bottom,
+              child: _buildStreamsListPanel(tvFocus: tvFocus),
+            ),
           MediaDetailsBackButton(focusNode: _backFocus),
         ],
       ),
@@ -428,6 +479,52 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
 
   Widget _buildInlineStatus(BuildContext context) {
     final sources = controller.sources;
+    if (controller.searching && sources.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.8,
+                  color: ForjaShellColors.sectionAccent,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _IptvSportsPanelCopy.searching(controller.searchPhase),
+                    style: TextStyle(
+                      color: ForjaShellColors.cinematic.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    controller.searchingHint,
+                    style: TextStyle(
+                      color: ForjaShellColors.cinematic.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final showStatus = !controller.searching || sources.isNotEmpty;
     final status = !showStatus
         ? null
@@ -436,9 +533,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
             : (sources.isEmpty
                 ? null
                 : _IptvSportsPanelCopy.ready(sources.length));
-    if (status == null &&
-        !(controller.searching && sources.isEmpty) &&
-        !(!controller.searching && sources.isEmpty)) {
+    if (status == null && !(!controller.searching && sources.isEmpty)) {
       return const SizedBox.shrink();
     }
 
@@ -446,7 +541,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          if (controller.searching && sources.isEmpty) ...[
+          if (controller.searching) ...[
             SizedBox(
               width: 12,
               height: 12,
@@ -622,6 +717,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
     }
 
     if (sources.isEmpty && controller.searching) {
+      if (widget.inlineHero) return const SizedBox.shrink();
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 12),
@@ -661,36 +757,23 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
       );
     }
 
-    if (widget.inlineHero) {
-      return ListView.separated(
-        padding: const EdgeInsets.only(bottom: 8),
-        itemCount: sources.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 8),
-        itemBuilder: (context, i) {
-          return _IptvSportsChannelSheetRow(
-            source: sources[i],
-            iptvCtrl: widget.iptvCtrl,
-            healthProbe: controller.healthProbe,
-            onTap: () => widget.onSourcePicked(
-              sources[i],
-              List<IptvPlaySource>.from(sources),
-            ),
-            tvItemIndex: widget.tvFocus ? i : null,
-          );
-        },
-      );
-    }
+    return _buildSourcesGrid(context, sources);
+  }
 
+  Widget _buildSourcesGrid(
+    BuildContext context,
+    List<IptvPlaySource> sources,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 720;
+        final wide = widget.inlineHero || constraints.maxWidth >= 720;
         final crossCount = wide ? 2 : 1;
         const gap = 10.0;
         final tileWidth = crossCount == 1
             ? constraints.maxWidth
             : (constraints.maxWidth - gap) / 2;
 
-        return Wrap(
+        final grid = Wrap(
           spacing: gap,
           runSpacing: gap,
           children: [
@@ -710,6 +793,14 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
               ),
           ],
         );
+
+        if (widget.inlineHero) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: grid,
+          );
+        }
+        return grid;
       },
     );
   }

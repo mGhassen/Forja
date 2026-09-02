@@ -148,6 +148,18 @@ class LiveMatchesEngine {
   /// Cache manifest config before catalog ingest / display filters run.
   static void cachePluginMeta(EnginePlugin plugin) => _cachePluginMeta(plugin);
 
+  /// Drop in-memory manifest-derived flags after catalog/live pack changes.
+  static void invalidateDerivedCaches() {
+    _originByPluginId.clear();
+    _nameByPluginId.clear();
+    _nativeUnlockByPluginId.clear();
+    _airingOnlyLiveByPluginId.clear();
+    _scheduleHorizonModeByPluginId.clear();
+    _catalogLayoutByPluginId.clear();
+    _catalogUncappedByPluginId.clear();
+    _scheduleEnrichByPluginId.clear();
+  }
+
   /// Warm name/origin/unlock caches from installed live + catalog plugins.
   static Future<void> warmPluginMeta() async {
     await EngineService.instance.ensureOfficialInstalled();

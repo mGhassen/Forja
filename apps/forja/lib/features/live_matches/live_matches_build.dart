@@ -758,12 +758,16 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       final emptyMsg = switch (_s._server) {
         _LiveMatchesServer.stremio =>
           'No live Stremio addons — install one in Settings → Sources and enable Live Matches',
-        _LiveMatchesServer.iptvSports => forjaLive._showForjaLiveCatalogChrome
-            ? 'No matches for this catalog, sport, or schedule window — try Catalog → All, a wider time window, or Refresh'
-            : 'No Forja Sports matches — enable catalogs in Settings → Forja Sports → Catalog',
-        _LiveMatchesServer.forjaLive => forjaLive._showForjaLiveCatalogChrome
-            ? 'No matches for this catalog, sport, or schedule window — try Catalog → All, a wider time window, or Refresh'
-            : 'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins',
+        _LiveMatchesServer.iptvSports => kLiveMatchesCatalogFiltersHidden
+            ? 'Catalog schedule feeds are temporarily hidden'
+            : forjaLive._showForjaLiveCatalogChrome
+                ? 'No matches for this catalog, sport, or schedule window — try Catalog → All, a wider time window, or Refresh'
+                : 'No Forja Sports matches — enable catalogs in Settings → Forja Sports → Catalog',
+        _LiveMatchesServer.forjaLive => kLiveMatchesCatalogFiltersHidden
+            ? 'Catalog schedule feeds are temporarily hidden'
+            : forjaLive._showForjaLiveCatalogChrome
+                ? 'No matches for this catalog, sport, or schedule window — try Catalog → All, a wider time window, or Refresh'
+                : 'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins',
         _ => 'No streams available',
       };
       return ShellErrorRetryPanel(

@@ -187,7 +187,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   bool get _showIptvPortalTopBar => _iptvSportsEnabled;
 
   /// Catalog + schedule window on the live sports hub (always catalog grid).
-  bool get _showCatalogTopBar => _forjaLivePluginLoads.isNotEmpty;
+  bool get _showCatalogTopBar =>
+      !kLiveMatchesCatalogFiltersHidden && _forjaLivePluginLoads.isNotEmpty;
 
   bool get _showTimeTopBar => _showCatalogTopBar;
 
@@ -230,6 +231,14 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   Future<void> onShellTabRefresh({required bool force}) async {
     if (_error != null || _sports.isEmpty || force) {
       await _load();
+      return;
+    }
+    if ((this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog &&
+        _forjaLiveCatalogSettingsDirty) {
+      _forjaLiveCatalogSettingsDirty = false;
+      (this as _LiveMatchesForjaLive)._applyEngineCatalogSettingsChange(
+        reloadNow: true,
+      );
     }
   }
 

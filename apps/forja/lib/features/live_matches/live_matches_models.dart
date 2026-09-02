@@ -457,6 +457,9 @@ List<_DamiTvStream> _sortDamiTvLiveFirst(List<_DamiTvStream> items) {
 /// Max Forja Live catalog rows ingested per plugin (safety cap).
 const _kForjaLiveCatalogMaxPerPlugin = 100;
 
+/// Temporary — hide catalog schedule feeds and the Catalog top-bar filter.
+const kLiveMatchesCatalogFiltersHidden = true;
+
 /// Status axis of the schedule sheet (airing vs upcoming).
 enum _LiveMatchesScheduleStatus { airing, upcoming, both }
 
@@ -2982,6 +2985,15 @@ bool _sameCatalogEventAsBroadcast({
 const _iptvSportsStreamsCacheTtl = Duration(minutes: 30);
 const _iptvSportsEpgBatchSize = 12;
 const _liveBroadcastCacheTtl = Duration(minutes: 30);
+
+void invalidateLiveBroadcastCaches() {
+  _liveBroadcastCacheExpiry = null;
+  _liveBroadcastIndex = [];
+  _liveBroadcastIndexedSources.clear();
+  _liveBroadcastInFlight = null;
+  _liveBroadcastPluginRowsCache.clear();
+  _liveBroadcastPluginInflight.clear();
+}
 
 DateTime? _liveBroadcastCacheExpiry;
 List<Map<String, dynamic>> _liveBroadcastIndex = [];

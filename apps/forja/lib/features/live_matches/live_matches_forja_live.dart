@@ -38,9 +38,10 @@ mixin _LiveMatchesForjaLive
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   bool get _usesForjaLiveLazyCatalog =>
-      _s._server == _LiveMatchesServer.all ||
-      _s._server == _LiveMatchesServer.forjaLive ||
-      _s._server == _LiveMatchesServer.iptvSports;
+      !kLiveMatchesCatalogFiltersHidden &&
+      (_s._server == _LiveMatchesServer.all ||
+          _s._server == _LiveMatchesServer.forjaLive ||
+          _s._server == _LiveMatchesServer.iptvSports);
 
   bool get _showForjaLiveCatalogChrome =>
       _usesForjaLiveLazyCatalog && _s._forjaLivePluginLoads.isNotEmpty;
@@ -362,9 +363,15 @@ mixin _LiveMatchesForjaLive
     );
   }
 
+  void _clearPluginScheduleCaches() {
+    LiveMatchesEngine.invalidateDerivedCaches();
+    invalidateLiveBroadcastCaches();
+  }
+
   void _applyEngineCatalogSettingsChange({required bool reloadNow}) {
     if (!_usesForjaLiveLazyCatalog) return;
-    _resetForjaLiveCatalogState(clearMatches: false);
+    _clearPluginScheduleCaches();
+    _resetForjaLiveCatalogState(clearMatches: true);
     if (!reloadNow) {
       _s._forjaLiveCatalogSettingsDirty = true;
       if (mounted) setState(() {});

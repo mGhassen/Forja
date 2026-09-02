@@ -311,7 +311,8 @@ abstract final class PluginNavRegistry {
     final changed =
         !_mapEq(_destinations, dests) ||
         !_colorMapEq(_accents, accents) ||
-        !_builderKeysEq(_builders, builders);
+        !_builderKeysEq(_builders, builders) ||
+        !_tabPluginIdsEq(_tabPluginIds, tabPluginIds);
 
     _destinations = dests;
     _accents = accents;
@@ -466,6 +467,14 @@ abstract final class PluginNavRegistry {
     if (a.length != b.length) return false;
     for (final k in a.keys) {
       if (!b.containsKey(k)) return false;
+    }
+    return true;
+  }
+
+  static bool _tabPluginIdsEq(Map<String, String> a, Map<String, String> b) {
+    if (a.length != b.length) return false;
+    for (final e in a.entries) {
+      if (b[e.key] != e.value) return false;
     }
     return true;
   }

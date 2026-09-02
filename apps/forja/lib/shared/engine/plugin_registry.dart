@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/cache.dart';
 import 'package:forja/shared/engine/live_sport_capabilities.dart';
@@ -28,6 +29,9 @@ class PluginRegistry {
   static const _preludePrefixV2 = 'engine_js_prelude_v2_';
   static const _migratedKey = 'engine_js_packs_v2_migrated';
   static const _scriptsDiskMigratedKey = 'engine_js_scripts_disk_v3_migrated';
+
+  /// Local checkout script bodies — invalidate catalog answers when JS edits.
+  final Map<String, String> _localScriptDigests = {};
   static const _legacyMonolithWipedKey = 'engine_js_legacy_forjahq_wiped';
   static const _liveSportMigrationKey = 'live_sport_unified_migration_v1';
 
@@ -1019,10 +1023,11 @@ class PluginRegistry {
     final hubSlot = forjaHqSlot(manifestUrl);
     if (isHubManifestSlot(hubSlot) || isIptvVodManifestSlot(hubSlot)) {
       CatalogCache.instance.syncHubPackVersion(pack.packId, pack.version);
-      // Scripts may change at the same semver — always drop this pack's answers.
-      for (final p in pack.plugins) {
-        CatalogCache.instance.wipePlugin(p.id);
-      }
+    }
+    // Scripts may change at the same semver — always drop cached catalog answers.
+    for (final p in pack.plugins) {
+      CatalogCache.instance.wipePlugin(p.id);
+      _localScriptDigests.remove(p.id);
     }
     // Legacy combined hubs pack → wipe so rails re-fetch from split packs.
     if (pack.packId == 'forjahq-hubs') {
@@ -1281,11 +1286,14 @@ class PluginRegistry {
   }) async {
     if (kDebugMode &&
         (plugin.isTorrent ||
+            plugin.isHubCatalog ||
             plugin.id.startsWith('catalog-') ||
             plugin.supportsLiveBroadcast)) {
       final devUrl = plugin.isTorrent
           ? devTorrentManifestUrl()
-          : devCatalogManifestUrl();
+          : (plugin.isHubCatalog
+              ? _asLocalFile(sourceUrl)?.path
+              : devCatalogManifestUrl());
       if (devUrl != null) {
         final fromCheckout = await _loadScriptFromLocalManifest(
           manifestUrl: devUrl,
@@ -1293,6 +1301,7 @@ class PluginRegistry {
           packPrelude: packPrelude,
         );
         if (fromCheckout != null && fromCheckout.isNotEmpty) {
+          _maybeNotifyLocalScriptChanged(plugin.id, fromCheckout);
           return fromCheckout;
         }
       }
@@ -1306,11 +1315,15 @@ class PluginRegistry {
     }
     final localManifest = _asLocalFile(sourceUrl);
     if (localManifest != null) {
-      return _loadScriptFromLocalManifest(
+      final fromCheckout = await _loadScriptFromLocalManifest(
         manifestUrl: sourceUrl,
         plugin: plugin,
         preludeEntry: preludeEntry,
       );
+      if (fromCheckout != null && fromCheckout.isNotEmpty) {
+        _maybeNotifyLocalScriptChanged(plugin.id, fromCheckout);
+      }
+      return fromCheckout;
     }
 
     var code = await PluginScriptDiskStore.loadEngineScript(
@@ -1389,6 +1402,19 @@ class PluginRegistry {
       }
     }
     return code;
+  }
+
+  void _maybeNotifyLocalScriptChanged(String pluginId, String body) {
+    final id = pluginId.trim();
+    if (id.isEmpty || body.isEmpty) return;
+    final digest = md5.convert(utf8.encode(body)).toString();
+    final prev = _localScriptDigests[id];
+    if (prev == digest) return;
+    _localScriptDigests[id] = digest;
+    if (prev == null) return;
+    debugPrint('[engine] $id script changed — invalidating caches');
+    CatalogCache.instance.wipePlugin(id);
+    notifyChanged();
   }
 
   /// Resolve [pluginId] across packs — prefer active (pack + plugin on).
