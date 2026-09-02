@@ -437,11 +437,8 @@ mixin _LiveMatchesForjaLive
         if (catalog.id == 'espn' || filterId == 'espn') {
           _syncEspnGamesFromStreamed();
         }
-        if (catalog.id == 'liveonsat' ||
-            filterId == 'liveonsat' ||
-            catalog.id == 'livesoccertv' ||
-            filterId == 'livesoccertv') {
-          putLiveOnSatBroadcastIndex([
+        if (catalog.supportsLiveBroadcast) {
+          putLiveBroadcastIndex([
             for (final row in rows)
               if (row['sportMatchGame'] is Map)
                 Map<String, dynamic>.from(row['sportMatchGame'] as Map),

@@ -97,6 +97,10 @@ class EnginePlugin {
   bool get supportsLiveCatalog =>
       isLiveSportPlugin ? hasCapability('catalog') : isLiveCatalog;
 
+  /// IPTV broadcast channel hints on catalog rows (`broadcast` capability).
+  bool get supportsLiveBroadcast =>
+      isLiveSportPlugin && hasCapability('broadcast');
+
   bool get supportsLiveResolve =>
       isLiveSportPlugin
           ? hasCapability('resolve')

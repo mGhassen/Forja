@@ -5,6 +5,10 @@ abstract final class LiveSportCapabilities {
   static const catalog = 'catalog';
   static const resolve = 'resolve';
 
+  /// Schedule catalog rows include `sportMatchGame.broadcastChannels` for IPTV
+  /// name matching (LiveOnSat, Live Soccer TV International Coverage, …).
+  static const broadcast = 'broadcast';
+
   /// Site-name id → legacy twin plugin ids (catalog, live resolve).
   static const legacyTwinIds = <String, (String catalog, String? resolve)>{
     'streamed': ('catalog-streamed', 'live-streamed'),

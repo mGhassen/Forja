@@ -33,6 +33,7 @@ class HubDetailsHero extends StatelessWidget {
     this.pageBottomChild,
     this.seriesProgress,
     this.showSeasonRail = false,
+    this.chromeOnly = false,
   });
 
   final String backdropUrl;
@@ -59,6 +60,10 @@ class HubDetailsHero extends StatelessWidget {
   /// When false, hero bleed matches episodes-only height (no season posters).
   final bool showSeasonRail;
 
+  /// Title / meta / actions only — backdrop drawn elsewhere (e.g. live match
+  /// detail with a full-bleed surface under a side streams rail).
+  final bool chromeOnly;
+
   @override
   Widget build(BuildContext context) {
     final showEpisodeRail = pageBottomChild != null;
@@ -72,16 +77,11 @@ class HubDetailsHero extends StatelessWidget {
         ? DetailsTokens.episodeRailBleed(showSeasonRail: showSeasonRail)
         : 0.0;
     final totalH = h + bleed;
-    final shellBg = AppTheme.bgDark;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final topInset = MediaQuery.paddingOf(context).top;
     final viewportWidth = MediaQuery.sizeOf(context).width;
-    final cinematicDesktop = viewportWidth >= 900;
     final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
     final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
-    final bodyOverlap =
-        this.bodyOverlap ?? DetailsTokens.heroBodyOverlap;
-    final pageBleed = bleed > 0;
     final railGap = DetailsTokens.heroContentToRailGap(h);
 
     return SizedBox(
@@ -91,40 +91,14 @@ class HubDetailsHero extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            ColoredBox(color: shellBg),
-            Positioned.fill(
-              child: backdropUrl.isEmpty
-                  ? ColoredBox(color: shellBg)
-                  : RotatingHeroBackdrop(
-                      imageUrls: backdropUrls.isNotEmpty
-                          ? backdropUrls
-                          : [backdropUrl],
-                      showColorTint: false,
-                    ),
-            ),
-            if (cinematicDesktop)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: _CinematicHeroBottomGradient(
-                    shellBg: shellBg,
-                    overlap: pageBleed ? 0 : bodyOverlap,
-                    softFade: pageBleed,
-                  ),
-                ),
-              ),
-            if (cinematicDesktop)
-              Positioned.fill(
-                child: IgnorePointer(child: _CinematicHeroSideGradient(shellBg: shellBg)),
-              ),
-            if (!cinematicDesktop)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: pageBleed ? totalH * 0.42 : h * 0.55 + bodyOverlap,
-                child: IgnorePointer(
-                  child: _HeroBottomFade(shellBg: shellBg, soft: pageBleed),
-                ),
+            if (!chromeOnly)
+              HubDetailsHeroSurface(
+                backdropUrl: backdropUrl,
+                backdropUrls: backdropUrls,
+                height: totalH,
+                bodyOverlap: bodyOverlap ?? DetailsTokens.heroBodyOverlap,
+                pageBottomChild: pageBottomChild,
+                showSeasonRail: showSeasonRail,
               ),
             Positioned(
               left: 0,
@@ -190,6 +164,93 @@ class HubDetailsHero extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Full-bleed cinematic backdrop + gradients (no title chrome).
+class HubDetailsHeroSurface extends StatelessWidget {
+  const HubDetailsHeroSurface({
+    super.key,
+    required this.backdropUrl,
+    this.backdropUrls = const [],
+    this.height,
+    this.bodyOverlap,
+    this.pageBottomChild,
+    this.showSeasonRail = false,
+  });
+
+  final String backdropUrl;
+  final List<String> backdropUrls;
+  final double? height;
+  final double? bodyOverlap;
+  final Widget? pageBottomChild;
+  final bool showSeasonRail;
+
+  @override
+  Widget build(BuildContext context) {
+    final showEpisodeRail = pageBottomChild != null;
+    final h = height ??
+        DetailsTokens.heroHeight(
+          context,
+          showEpisodeRail: showEpisodeRail,
+          showSeasonRail: showSeasonRail,
+        );
+    final bleed = showEpisodeRail
+        ? DetailsTokens.episodeRailBleed(showSeasonRail: showSeasonRail)
+        : 0.0;
+    final totalH = h + bleed;
+    final shellBg = AppTheme.bgDark;
+    final viewportWidth = MediaQuery.sizeOf(context).width;
+    final cinematicDesktop = viewportWidth >= 900;
+    final resolvedOverlap = bodyOverlap ?? DetailsTokens.heroBodyOverlap;
+    final pageBleed = bleed > 0;
+
+    return SizedBox(
+      height: totalH,
+      width: double.infinity,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          ColoredBox(color: shellBg),
+          Positioned.fill(
+            child: backdropUrl.isEmpty
+                ? ColoredBox(color: shellBg)
+                : RotatingHeroBackdrop(
+                    imageUrls: backdropUrls.isNotEmpty
+                        ? backdropUrls
+                        : [backdropUrl],
+                    showColorTint: false,
+                  ),
+          ),
+          if (cinematicDesktop)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: _CinematicHeroBottomGradient(
+                  shellBg: shellBg,
+                  overlap: pageBleed ? 0 : resolvedOverlap,
+                  softFade: pageBleed,
+                ),
+              ),
+            ),
+          if (cinematicDesktop)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: _CinematicHeroSideGradient(shellBg: shellBg),
+              ),
+            ),
+          if (!cinematicDesktop)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: pageBleed ? totalH * 0.42 : h * 0.55 + resolvedOverlap,
+              child: IgnorePointer(
+                child: _HeroBottomFade(shellBg: shellBg, soft: pageBleed),
+              ),
+            ),
+        ],
       ),
     );
   }

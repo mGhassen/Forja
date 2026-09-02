@@ -28,6 +28,15 @@ class EngineService {
   static String normalizeLiveSportPluginId(String pluginId) =>
       LiveSportCapabilities.normalizePluginId(pluginId);
 
+  /// Pack-declared `config.catalogTimeoutSec` overrides the default catalog timeout.
+  static Duration liveCatalogTimeout(EnginePlugin plugin, Duration fallback) {
+    final raw = plugin.config['catalogTimeoutSec'];
+    if (raw is num && raw > 0) {
+      return Duration(seconds: raw.toInt());
+    }
+    return fallback;
+  }
+
   /// Legacy unscoped selection (migrated into `…_movie` once).
   static const _legacySelectedKey = 'engine_js_sources_selected_ids';
   static const _selectedKeyPrefix = 'engine_js_sources_selected_ids_';
@@ -227,6 +236,33 @@ class EngineService {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
         if (!p.isHttp || !p.isLiveSportPlugin || !p.supportsLiveCatalog) {
+          continue;
+        }
+        if (!await PluginRegistry.instance.isLiveCapabilityActive(
+          pack: pack,
+          plugin: p,
+          capability: LiveSportCapabilities.catalog,
+        )) {
+          continue;
+        }
+        out.add(p);
+      }
+    }
+    out.sort((a, b) => a.name.compareTo(b.name));
+    return out;
+  }
+
+  /// Live sport catalog plugins that emit `broadcastChannels` for IPTV search.
+  Future<List<EnginePlugin>> listLiveSportBroadcastPlugins() async {
+    await ensureOfficialInstalled();
+    final out = <EnginePlugin>[];
+    for (final pack in await listPacks()) {
+      if (!pack.enabled) continue;
+      for (final p in pack.plugins) {
+        if (!p.isHttp ||
+            !p.isLiveSportPlugin ||
+            !p.supportsLiveCatalog ||
+            !p.supportsLiveBroadcast) {
           continue;
         }
         if (!await PluginRegistry.instance.isLiveCapabilityActive(
@@ -932,11 +968,7 @@ class EngineService {
     final code = await _loadScript(catalogPlugin);
     if (gen != _liveCatalogGeneration || code == null) return [];
 
-    final catalogTimeout = catalogPlugin.id == 'livesoccertv'
-        ? (timeout < const Duration(seconds: 90)
-            ? const Duration(seconds: 90)
-            : timeout)
-        : timeout;
+    final catalogTimeout = liveCatalogTimeout(catalogPlugin, timeout);
 
     final viaRust = await _runLiveEngineRustJs(
       plugin: catalogPlugin,

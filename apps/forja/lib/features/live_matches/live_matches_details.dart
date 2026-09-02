@@ -194,6 +194,7 @@ class _LiveMatchDetailsScreenState
     required String backdrop,
     required bool tvFocus,
     required double? height,
+    bool chromeOnly = false,
   }) {
     final policy = ShellScope.inputPolicyOf(context);
     return HubDetailsHero(
@@ -204,6 +205,7 @@ class _LiveMatchDetailsScreenState
       metaParts: _heroMetaParts,
       overview: '',
       height: height,
+      chromeOnly: chromeOnly,
       actionRow: DetailsHeroTvActionScope(
         tabId: MediaDetailsTv.tabId,
         itemCount: 1,
@@ -262,27 +264,37 @@ class _LiveMatchDetailsScreenState
               if (sideRail) {
                 final panelWidth =
                     TorrentSourcesPanel.panelWidthOf(context) * 1.2;
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                return Stack(
+                  fit: StackFit.expand,
                   children: [
-                    Expanded(
-                      child: _buildHero(
-                        context: context,
-                        backdrop: backdrop,
-                        tvFocus: tvFocus,
-                        height: viewport.height,
-                      ),
+                    HubDetailsHeroSurface(
+                      backdropUrl: backdrop,
+                      height: viewport.height,
                     ),
-                    SizedBox(
-                      width: panelWidth,
-                      child: ForjaFrostedPanel(
-                        border: Border(
-                          left: BorderSide(
-                            color: ForjaShellColors.cinematic.borderSubtle,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: _buildHero(
+                            context: context,
+                            backdrop: backdrop,
+                            tvFocus: tvFocus,
+                            height: viewport.height,
+                            chromeOnly: true,
                           ),
                         ),
-                        child: streams,
-                      ),
+                        SizedBox(
+                          width: panelWidth,
+                          child: ForjaFrostedPanel(
+                            border: Border(
+                              left: BorderSide(
+                                color: ForjaShellColors.cinematic.borderSubtle,
+                              ),
+                            ),
+                            child: streams,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 );

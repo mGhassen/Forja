@@ -2006,12 +2006,15 @@ void main() {
         expect(espn.supportsLiveResolve, isFalse);
         final liveonsat = plugins.firstWhere((e) => e.id == 'liveonsat');
         expect(liveonsat.supportsLiveResolve, isFalse);
+        expect(liveonsat.supportsLiveBroadcast, isTrue);
         expect(
           await loadForjaHqFile('live/liveonsat.js'),
           contains('m.liveonsat.com'),
         );
         final livesoccertv = plugins.firstWhere((e) => e.id == 'livesoccertv');
         expect(livesoccertv.supportsLiveResolve, isFalse);
+        expect(livesoccertv.supportsLiveBroadcast, isTrue);
+        expect(livesoccertv.config['catalogTimeoutSec'], 90);
         expect(
           await loadForjaHqFile('live/livesoccertv.js'),
           contains('www.livesoccertv.com'),
