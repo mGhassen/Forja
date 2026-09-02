@@ -26,7 +26,6 @@ class _LiveMatchDetailsScreenState
   final _choices = <_StreamedStreamChoice>[];
   final _backFocus = FocusNode(debugLabel: 'live-match-details-back');
   final _heroPlayFocus = FocusNode(debugLabel: 'live-match-details-play');
-  final _toggleAnchorKey = GlobalKey(debugLabel: 'live-match-details-toggle');
 
   late _StreamedMatch _displayMatch;
   int _providersLoadGen = 0;
@@ -35,7 +34,6 @@ class _LiveMatchDetailsScreenState
   bool _liveTvRequested = false;
   bool _detailsHeroInitialFocusDone = false;
   _LiveMatchListTab _listTab = _LiveMatchListTab.providers;
-  double? _listTop;
 
   _IptvSportsChannelsPanelController get _activeCtrl =>
       _listTab == _LiveMatchListTab.providers ? _providersCtrl : _liveTvCtrl;
@@ -43,33 +41,6 @@ class _LiveMatchDetailsScreenState
   bool get _showStreamsList => _listTab == _LiveMatchListTab.providers
       ? _providersRequested
       : _liveTvRequested;
-
-  double _listWidth(BuildContext context) {
-    return (MediaQuery.sizeOf(context).width -
-            DetailsTokens.contentHorizontalPadding(
-              MediaQuery.sizeOf(context).width,
-            ) *
-                2)
-        .clamp(280.0, 560.0);
-  }
-
-  double _listLeftInset(BuildContext context) {
-    return DetailsTokens.contentLeftInset(MediaQuery.sizeOf(context).width);
-  }
-
-  void _scheduleListTopSync() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !_showStreamsList) return;
-      final ctx = _toggleAnchorKey.currentContext;
-      if (ctx == null) return;
-      final box = ctx.findRenderObject() as RenderBox?;
-      if (box == null || !box.hasSize) return;
-      final next = box.localToGlobal(Offset.zero).dy + box.size.height + 20;
-      if (_listTop == null || (_listTop! - next).abs() > 0.5) {
-        setState(() => _listTop = next);
-      }
-    });
-  }
 
   @override
   void initState() {
@@ -105,12 +76,8 @@ class _LiveMatchDetailsScreenState
   }
 
   void _selectTab(_LiveMatchListTab tab) {
-    setState(() {
-      _listTab = tab;
-      _listTop = null;
-    });
+    setState(() => _listTab = tab);
     _ensureTabLoaded(tab);
-    _scheduleListTopSync();
   }
 
   void _ensureTabLoaded(_LiveMatchListTab tab) {
@@ -268,33 +235,30 @@ class _LiveMatchDetailsScreenState
   }
 
   Widget _buildToggleRow({required bool tvFocus}) {
-    return KeyedSubtree(
-      key: _toggleAnchorKey,
-      child: DetailsHeroTvActionScope(
-        tabId: MediaDetailsTv.tabId,
-        itemCount: 2,
-        onFocusUp: tvFocus ? _focusBack : null,
-        onFocusDown: tvFocus ? () {} : null,
-        child: HeroPillSegmentedChoice<_LiveMatchListTab>(
-          segments: const [
-            HeroPillSegment(
-              value: _LiveMatchListTab.providers,
-              label: 'Providers',
-              icon: Icons.dns_rounded,
-            ),
-            HeroPillSegment(
-              value: _LiveMatchListTab.liveTv,
-              label: 'Live TV',
-              icon: Icons.live_tv_rounded,
-            ),
-          ],
-          selected: _listTab,
-          onSelected: _selectTab,
-          onUpEdge: tvFocus ? _focusBack : null,
-          tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-          tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-          tvItemIndexStart: 0,
-        ),
+    return DetailsHeroTvActionScope(
+      tabId: MediaDetailsTv.tabId,
+      itemCount: 2,
+      onFocusUp: tvFocus ? _focusBack : null,
+      onFocusDown: tvFocus ? () {} : null,
+      child: HeroPillSegmentedChoice<_LiveMatchListTab>(
+        segments: const [
+          HeroPillSegment(
+            value: _LiveMatchListTab.providers,
+            label: 'Providers',
+            icon: Icons.dns_rounded,
+          ),
+          HeroPillSegment(
+            value: _LiveMatchListTab.liveTv,
+            label: 'Live TV',
+            icon: Icons.live_tv_rounded,
+          ),
+        ],
+        selected: _listTab,
+        onSelected: _selectTab,
+        onUpEdge: tvFocus ? _focusBack : null,
+        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+        tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+        tvItemIndexStart: 0,
       ),
     );
   }
@@ -368,10 +332,14 @@ class _LiveMatchDetailsScreenState
       metaParts: _heroMetaParts,
       overview: '',
       height: height,
-      actionRow: ListenableBuilder(
-        listenable: Listenable.merge([_providersCtrl, _liveTvCtrl]),
-        builder: (context, _) => _buildToggleRow(tvFocus: tvFocus),
-      ),
+      actionRow: _buildToggleRow(tvFocus: tvFocus),
+      belowActionRow: _showStreamsList
+          ? ListenableBuilder(
+              listenable: Listenable.merge([_providersCtrl, _liveTvCtrl]),
+              builder: (context, _) =>
+                  _buildStreamsListPanel(tvFocus: tvFocus),
+            )
+          : null,
     );
   }
 
@@ -381,8 +349,6 @@ class _LiveMatchDetailsScreenState
     final tvFocus = policy.useFocusableMoodChips;
     final backdrop = _streamedImageUrl(_displayMatch.poster);
     final viewport = MediaQuery.sizeOf(context);
-    final showList = _showStreamsList;
-    if (showList) _scheduleListTopSync();
 
     if (policy.heroPlayAutoFocus && !_detailsHeroInitialFocusDone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -409,14 +375,6 @@ class _LiveMatchDetailsScreenState
               height: viewport.height,
             ),
           ),
-          if (showList && _listTop != null)
-            Positioned(
-              left: _listLeftInset(context),
-              width: _listWidth(context),
-              top: _listTop,
-              bottom: MediaQuery.paddingOf(context).bottom,
-              child: _buildStreamsListPanel(tvFocus: tvFocus),
-            ),
           MediaDetailsBackButton(focusNode: _backFocus),
         ],
       ),
@@ -769,39 +727,85 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
         final wide = widget.inlineHero || constraints.maxWidth >= 720;
         final crossCount = wide ? 2 : 1;
         const gap = 10.0;
-        final tileWidth = crossCount == 1
-            ? constraints.maxWidth
-            : (constraints.maxWidth - gap) / 2;
 
-        final grid = Wrap(
+        if (crossCount == 1) {
+          if (widget.inlineHero) {
+            return ListView.separated(
+              padding: const EdgeInsets.only(bottom: 8),
+              itemCount: sources.length,
+              separatorBuilder: (_, _) => const SizedBox(height: gap),
+              itemBuilder: (context, i) => _sourceRow(context, sources, i),
+            );
+          }
+          return Wrap(
+            runSpacing: gap,
+            children: [
+              for (var i = 0; i < sources.length; i++)
+                SizedBox(
+                  width: constraints.maxWidth,
+                  child: _sourceRow(context, sources, i),
+                ),
+            ],
+          );
+        }
+
+        final rowCount = (sources.length + 1) ~/ 2;
+        if (widget.inlineHero) {
+          return ListView.builder(
+            padding: const EdgeInsets.only(bottom: 8),
+            itemCount: rowCount,
+            itemBuilder: (context, row) {
+              final left = row * 2;
+              final right = left + 1;
+              return Padding(
+                padding: EdgeInsets.only(top: row == 0 ? 0 : gap),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _sourceRow(context, sources, left)),
+                    const SizedBox(width: gap),
+                    Expanded(
+                      child: right < sources.length
+                          ? _sourceRow(context, sources, right)
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        }
+
+        final tileWidth = (constraints.maxWidth - gap) / 2;
+        return Wrap(
           spacing: gap,
           runSpacing: gap,
           children: [
             for (var i = 0; i < sources.length; i++)
               SizedBox(
                 width: tileWidth,
-                child: _IptvSportsChannelSheetRow(
-                  source: sources[i],
-                  iptvCtrl: widget.iptvCtrl,
-                  healthProbe: controller.healthProbe,
-                  onTap: () => widget.onSourcePicked(
-                    sources[i],
-                    List<IptvPlaySource>.from(sources),
-                  ),
-                  tvItemIndex: widget.tvFocus ? i : null,
-                ),
+                child: _sourceRow(context, sources, i),
               ),
           ],
         );
-
-        if (widget.inlineHero) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: grid,
-          );
-        }
-        return grid;
       },
+    );
+  }
+
+  Widget _sourceRow(
+    BuildContext context,
+    List<IptvPlaySource> sources,
+    int i,
+  ) {
+    return _IptvSportsChannelSheetRow(
+      source: sources[i],
+      iptvCtrl: widget.iptvCtrl,
+      healthProbe: controller.healthProbe,
+      onTap: () => widget.onSourcePicked(
+        sources[i],
+        List<IptvPlaySource>.from(sources),
+      ),
+      tvItemIndex: widget.tvFocus ? i : null,
     );
   }
 }

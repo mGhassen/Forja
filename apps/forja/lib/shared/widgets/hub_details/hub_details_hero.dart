@@ -26,6 +26,7 @@ class HubDetailsHero extends StatelessWidget {
     this.richFacts,
     this.logoUrl,
     this.actionRow,
+    this.belowActionRow,
     this.height,
     this.positionMs,
     this.durationMs,
@@ -51,6 +52,8 @@ class HubDetailsHero extends StatelessWidget {
   /// Title logo when [richFacts] is not used (AniList / KissKH + TMDB match).
   final String? logoUrl;
   final Widget? actionRow;
+  /// Fills remaining hero height below [actionRow] (live match streams, etc.).
+  final Widget? belowActionRow;
   final double? height;
   final int? positionMs;
   final int? durationMs;
@@ -127,6 +130,7 @@ class HubDetailsHero extends StatelessWidget {
                           richFacts: richFacts,
                           logoUrl: logoUrl,
                           actionRow: actionRow,
+                          belowActionRow: belowActionRow,
                           positionMs: positionMs,
                           durationMs: durationMs,
                           seriesProgress: seriesProgress,
@@ -268,6 +272,7 @@ class _HubHeroLayout extends StatelessWidget {
     this.richFacts,
     this.logoUrl,
     this.actionRow,
+    this.belowActionRow,
     this.positionMs,
     this.durationMs,
     this.seriesProgress,
@@ -285,6 +290,7 @@ class _HubHeroLayout extends StatelessWidget {
   final RichMediaDetails? richFacts;
   final String? logoUrl;
   final Widget? actionRow;
+  final Widget? belowActionRow;
   final int? positionMs;
   final int? durationMs;
   final Widget? seriesProgress;
@@ -321,6 +327,7 @@ class _HubHeroLayout extends StatelessWidget {
       rating: rating,
       overview: overview,
       actionRow: actionRow,
+      belowActionRow: belowActionRow,
       positionMs: positionMs,
       durationMs: durationMs,
       seriesProgress: seriesProgress,
@@ -420,6 +427,7 @@ class _HubHeroMainColumn extends StatelessWidget {
     this.rating,
     required this.overview,
     this.actionRow,
+    this.belowActionRow,
     this.positionMs,
     this.durationMs,
     this.seriesProgress,
@@ -440,6 +448,7 @@ class _HubHeroMainColumn extends StatelessWidget {
   static const _metaBlockHeight = 24.0;
   static const _overviewGap = 14.0;
   static const _actionGap = 18.0;
+  static const _belowActionGap = 20.0;
   static const _progressBlockHeight = 36.0;
   static const _seriesProgressBlockHeight = 28.0;
 
@@ -452,6 +461,7 @@ class _HubHeroMainColumn extends StatelessWidget {
   final double? rating;
   final String overview;
   final Widget? actionRow;
+  final Widget? belowActionRow;
   final int? positionMs;
   final int? durationMs;
   final Widget? seriesProgress;
@@ -486,6 +496,7 @@ class _HubHeroMainColumn extends StatelessWidget {
   }) {
     var reserved = 0.0;
     if (actionRow != null) reserved += _actionGap + ShellTokens.shellButtonHeight;
+    if (belowActionRow != null) reserved += _belowActionGap;
     if (showProgress) reserved += 14 + _progressBlockHeight;
     if (showSeriesProgress) {
       reserved += (showProgress ? 8 : 14) + _seriesProgressBlockHeight;
@@ -681,6 +692,32 @@ class _HubHeroMainColumn extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [...metaColumn, ...footer],
           ),
+        ),
+      );
+    }
+
+    if (belowActionRow != null) {
+      return SizedBox(
+        width: maxContentWidth,
+        height: maxHeight,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Flexible(
+              fit: FlexFit.loose,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: metaColumn,
+              ),
+            ),
+            if (actionRow != null) ...[
+              const SizedBox(height: _actionGap),
+              DetailsHeroActionRowFit(child: actionRow!),
+            ],
+            const SizedBox(height: _belowActionGap),
+            Expanded(child: belowActionRow!),
+          ],
         ),
       );
     }

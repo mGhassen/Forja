@@ -200,6 +200,9 @@ class _StreamedMatch {
   final String stremioBaseUrl;
   final String stremioType;
 
+  /// Installed addon display name when [stremioBaseUrl] is set (e.g. Leaf).
+  final String stremioAddonName;
+
   /// ESPN game payload for My IPTV stream matching (RFC-062).
   final Map<String, dynamic>? sportMatchGame;
 
@@ -224,6 +227,7 @@ class _StreamedMatch {
     this.catalog = '',
     this.stremioBaseUrl = '',
     this.stremioType = 'sport',
+    this.stremioAddonName = '',
     this.sportMatchGame,
     this.livePluginId = '',
   });
@@ -289,6 +293,7 @@ class _StreamedMatch {
       catalog: (j['catalog'] ?? '').toString(),
       stremioBaseUrl: (j['stremioBaseUrl'] ?? '').toString(),
       stremioType: (j['stremioType'] ?? 'sport').toString(),
+      stremioAddonName: (j['stremioAddonName'] ?? '').toString(),
       sportMatchGame: j['sportMatchGame'] is Map
           ? Map<String, dynamic>.from(j['sportMatchGame'] as Map)
           : null,
@@ -979,6 +984,9 @@ _StreamedMatch _mergeStreamedCatalogPair(_StreamedMatch a, _StreamedMatch b) {
         ? primary.stremioBaseUrl
         : other.stremioBaseUrl,
     stremioType: primary.stremioType,
+    stremioAddonName: primary.stremioAddonName.isNotEmpty
+        ? primary.stremioAddonName
+        : other.stremioAddonName,
     sportMatchGame: sportMatchGame,
     livePluginId: livePluginId,
   );
@@ -2494,9 +2502,47 @@ int _stremioParseHumanKickoff(String raw) {
   }
 }
 
+String _stremioLiveProviderBadge(String? addonName) {
+  final addon = (addonName ?? '').trim();
+  if (addon.isEmpty) return 'Stremio';
+  return 'Stremio · $addon';
+}
+
+String? _stremioAddonPrefixFromStreamName(String rawName) {
+  final parts = rawName
+      .trim()
+      .split(RegExp(r'\s*[·•]\s*'))
+      .map((p) => p.trim())
+      .where((p) => p.isNotEmpty)
+      .toList();
+  if (parts.length < 2) return null;
+  return parts.first;
+}
+
+String _stremioStreamDisplayLabel(String rawName, String? addonName) {
+  final name = rawName.trim();
+  if (name.isEmpty) return 'Stream';
+  final addon = (addonName ?? '').trim();
+  if (addon.isNotEmpty) {
+    final prefix = '$addon · ';
+    if (name.startsWith(prefix)) {
+      final stripped = name.substring(prefix.length).trim();
+      if (stripped.isNotEmpty) return stripped;
+    }
+    final parts = name.split(RegExp(r'\s*[·•]\s*'));
+    if (parts.length >= 2 &&
+        parts.first.trim().toLowerCase() == addon.toLowerCase()) {
+      final stripped = parts.sublist(1).join(' · ').trim();
+      if (stripped.isNotEmpty) return stripped;
+    }
+  }
+  return name;
+}
+
 _StreamedMatch? _streamedMatchFromStremioMeta(
   Map<String, dynamic> meta, {
   required String addonBaseUrl,
+  String addonName = '',
 }) {
   final id = meta['id']?.toString().trim() ?? '';
   if (id.isEmpty) return null;
@@ -2531,6 +2577,7 @@ _StreamedMatch? _streamedMatchFromStremioMeta(
     catalog: 'stremio',
     stremioBaseUrl: addonBaseUrl,
     stremioType: (type == null || type.isEmpty) ? 'sport' : type,
+    stremioAddonName: addonName.trim(),
   );
 }
 
@@ -2544,6 +2591,7 @@ Future<List<_StreamedMatch>> _fetchStremioSportMatches() async {
   for (final addon in addons) {
     final baseUrl = addon['baseUrl']?.toString() ?? '';
     if (baseUrl.isEmpty) continue;
+    final addonName = addon['name']?.toString() ?? '';
     final catalogs = StremioService.sportCatalogsForLive(addon);
     for (final cat in catalogs) {
       final type = cat['type']?.toString() ?? 'sport';
@@ -2559,6 +2607,7 @@ Future<List<_StreamedMatch>> _fetchStremioSportMatches() async {
           final match = _streamedMatchFromStremioMeta(
             meta,
             addonBaseUrl: baseUrl,
+            addonName: addonName,
           );
           if (match == null) continue;
           if (!seen.add(match.id)) continue;
@@ -2678,6 +2727,7 @@ _StreamedMatch _copyStreamedMatch(
     catalog: m.catalog,
     stremioBaseUrl: m.stremioBaseUrl,
     stremioType: m.stremioType,
+    stremioAddonName: m.stremioAddonName,
     sportMatchGame: sportMatchGame ?? m.sportMatchGame,
     livePluginId: m.livePluginId,
   );
