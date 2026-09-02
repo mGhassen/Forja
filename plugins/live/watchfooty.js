@@ -67,6 +67,43 @@ function trpcJson(batch, index) {
   );
 }
 
+function normMatchTitle(title) {
+  return String(title || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function putViewerCount(map, key, viewers) {
+  var k = String(key || '').trim();
+  if (!k) return;
+  var n = Number(viewers || 0);
+  if (n <= 0) return;
+  if (!map[k] || n > map[k]) map[k] = n;
+}
+
+function putViewerRow(map, byTitle, row) {
+  var viewers = Number(row.viewerCount || 0);
+  if (viewers <= 0) return;
+  putViewerCount(map, row.id, viewers);
+  putViewerCount(map, row.matchId, viewers);
+  putViewerCount(map, row.eventId, viewers);
+  var title = normMatchTitle(row.title);
+  if (title) {
+    if (!byTitle[title] || viewers > byTitle[title]) byTitle[title] = viewers;
+  }
+}
+
+function catalogViewersForMatch(viewerMaps, matchId, title) {
+  var byId = viewerMaps.byId || {};
+  var byTitle = viewerMaps.byTitle || {};
+  var viewers = Number(byId[String(matchId || '')] || 0);
+  if (viewers <= 0) {
+    viewers = Number(byTitle[normMatchTitle(title)] || 0);
+  }
+  return viewers;
+}
+
 async function fetchTrpcPopularLiveViewerMap(ctx) {
   var now = new Date();
   var end = new Date(now.getTime() + 24 * 3600000);
@@ -79,22 +116,49 @@ async function fetchTrpcPopularLiveViewerMap(ctx) {
     'sports.getSportsLiveMatchesCount,sports.getPopularMatches,sports.getPopularLiveMatches',
     input
   );
+  var byId = {};
+  var byTitle = {};
   try {
     var res = await ctx.fetch(url, { headers: { 'User-Agent': ua() } });
-    if (!res.ok) return {};
+    if (!res.ok) return { byId: byId, byTitle: byTitle };
     var list = trpcJson(await res.json(), 2);
-    if (!Array.isArray(list)) return {};
-    var map = {};
+    if (!Array.isArray(list)) return { byId: byId, byTitle: byTitle };
     for (var i = 0; i < list.length; i++) {
-      var row = list[i];
-      var id = String(row.id || row.matchId || '');
-      if (!id) continue;
-      map[id] = Number(row.viewerCount || 0);
+      putViewerRow(byId, byTitle, list[i] || {});
     }
-    return map;
-  } catch (_) {
-    return {};
+  } catch (_) {}
+  return { byId: byId, byTitle: byTitle };
+}
+
+async function fetchTrpcLinkViewerTotals(ctx, matchIds) {
+  var out = {};
+  var ids = (matchIds || []).filter(function (id) {
+    return String(id || '').trim().length > 0;
+  });
+  if (!ids.length) return out;
+
+  var concurrency = 6;
+  var index = 0;
+  async function worker() {
+    while (index < ids.length) {
+      var mid = String(ids[index++]);
+      try {
+        var links = await fetchTrpcMatchLinks(ctx, mid);
+        var total = 0;
+        for (var i = 0; i < links.length; i++) {
+          total += Number((links[i] && links[i].viewerCount) || 0);
+        }
+        if (total > 0) out[mid] = total;
+      } catch (_) {}
+    }
   }
+
+  var workers = [];
+  for (var w = 0; w < Math.min(concurrency, ids.length); w++) {
+    workers.push(worker());
+  }
+  await Promise.all(workers);
+  return out;
 }
 
 async function fetchTrpcMatchLinks(ctx, mid) {
@@ -132,11 +196,15 @@ function streamViewerMapFromTrpcLinks(links) {
     if (!link) continue;
     var viewers = Number(link.viewerCount || 0);
     if (viewers <= 0) continue;
-    var keys = [link.ui, link.u, link.id];
+    var keys = [link.ui, link.u, link.id, link.t, link.gi];
     for (var j = 0; j < keys.length; j++) {
       var key = String(keys[j] || '').trim();
       if (!key) continue;
       map[key] = viewers;
+    }
+    var wld = link.wld;
+    if (wld && wld.cn) {
+      map[String(wld.cn).trim()] = viewers;
     }
   }
   return map;
@@ -217,16 +285,33 @@ async function fetchCatalog(ctx, cfg) {
     }
   }
 
-  var viewerMap = await fetchTrpcPopularLiveViewerMap(ctx);
-  Object.keys(viewerMap).forEach(function (id) {
+  var viewerMaps = await fetchTrpcPopularLiveViewerMap(ctx);
+  var liveIdsNeedingLinks = [];
+  Object.keys(byId).forEach(function (id) {
     var row = byId[id];
     if (!row) return;
-    var viewers = Number(viewerMap[id] || 0);
-    if (viewers <= 0) return;
-    row.viewers = viewers;
-    row.airing = true;
-    row.popular = row.popular || viewers > 50;
+    var viewers = catalogViewersForMatch(viewerMaps, id, row.title);
+    if (viewers > 0) {
+      row.viewers = viewers;
+      row.airing = true;
+      row.popular = row.popular || viewers > 50;
+      return;
+    }
+    if (row.airing) liveIdsNeedingLinks.push(id);
   });
+
+  if (liveIdsNeedingLinks.length) {
+    var linkTotals = await fetchTrpcLinkViewerTotals(ctx, liveIdsNeedingLinks);
+    Object.keys(linkTotals).forEach(function (id) {
+      var row = byId[id];
+      if (!row) return;
+      var viewers = Number(linkTotals[id] || 0);
+      if (viewers <= 0) return;
+      row.viewers = viewers;
+      row.airing = true;
+      row.popular = row.popular || viewers > 50;
+    });
+  }
 
   return Object.keys(byId)
     .map(function (k) {

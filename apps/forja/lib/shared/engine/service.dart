@@ -1002,6 +1002,7 @@ class EngineService {
       'embedUrl': (params['embedUrl'] ?? params['url'] ?? '').toString(),
       'iframe': (params['iframe'] ?? params['embedUrl'] ?? '').toString(),
       'category': (params['category'] ?? '').toString(),
+      'viewers': params['viewers'],
       'pluginId': plugin.id,
       'config': config,
     };
