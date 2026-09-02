@@ -43,6 +43,19 @@ pub(crate) fn ok_items(items: Vec<Value>) -> String {
     json!({ "items": items }).to_string()
 }
 
+pub(crate) fn ok_items_epg_batch(
+    items: Vec<Value>,
+    epg_more: bool,
+    epg_next_offset: usize,
+) -> String {
+    json!({
+        "items": items,
+        "epg_more": epg_more,
+        "epg_next_offset": epg_next_offset,
+    })
+    .to_string()
+}
+
 pub(crate) fn block_on<F: std::future::Future>(fut: F) -> F::Output {
     RUNTIME.block_on(fut)
 }

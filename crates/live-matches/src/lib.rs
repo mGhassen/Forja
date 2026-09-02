@@ -1,6 +1,7 @@
 mod espn;
 mod fetch;
 mod forja_catalog;
+mod sport_epg_cache;
 mod sport_match;
 mod stalker_sport;
 mod xtream_sport;
@@ -42,6 +43,15 @@ pub struct LiveMatchesRequest {
     /// When true, match on channel names only — skip short-EPG fetches (fast first batch).
     #[serde(default)]
     pub skip_epg: Option<bool>,
+    /// Start index into the EPG shortlist for batched progressive resolve.
+    #[serde(default)]
+    pub epg_offset: Option<u32>,
+    /// Max short-EPG fetches this call (`0` = all remaining when batching is off).
+    #[serde(default)]
+    pub epg_limit: Option<u32>,
+    /// Stream ids already shown to the host — omit from `items`.
+    #[serde(default)]
+    pub exclude_stream_ids: Option<Vec<String>>,
 }
 
 pub fn fetch_json(request_json: &str) -> String {
@@ -81,12 +91,15 @@ pub fn fetch_json(request_json: &str) -> String {
                 }
             };
             let cats = req.category_ids.unwrap_or_default();
-            let skip_epg = req.skip_epg.unwrap_or(false);
+            let opts = sport_match::SportStreamsOpts {
+                skip_epg: req.skip_epg.unwrap_or(false),
+                epg_offset: req.epg_offset.map(|n| n as usize),
+                epg_limit: req.epg_limit.map(|n| n as usize),
+                exclude_stream_ids: req.exclude_stream_ids.unwrap_or_default(),
+            };
             match (req.xtream, req.stalker) {
-                (Some(x), None) => xtream_sport::sport_match_streams(&game, &x, &cats, skip_epg),
-                (None, Some(s)) => {
-                    stalker_sport::sport_match_streams(&game, &s, &cats, skip_epg)
-                }
+                (Some(x), None) => xtream_sport::sport_match_streams(&game, &x, &cats, opts),
+                (None, Some(s)) => stalker_sport::sport_match_streams(&game, &s, &cats, opts),
                 (Some(_), Some(_)) => {
                     serde_json::json!({ "error": "provide xtream or stalker, not both" })
                         .to_string()

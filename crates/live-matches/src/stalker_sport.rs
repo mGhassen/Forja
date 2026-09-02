@@ -12,12 +12,14 @@ use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
 use crate::espn;
-use crate::fetch::{self, ok_items};
-use crate::sport_match::{self, Candidate, MatchGame};
+use crate::fetch::{self, ok_items, ok_items_epg_batch};
+use crate::sport_epg_cache::{apply_cached_epg, store_candidate_epg};
+use crate::sport_match::{self, Candidate, MatchGame, SportStreamsOpts};
 
 const LIVE_CACHE_TTL: Duration = Duration::from_secs(120);
 const EPG_CONCURRENCY: usize = 12;
 const MAX_EPG_FETCHES: usize = 120;
+const EPG_BATCH_SIZE: usize = 12;
 const SHORT_EPG_LIMIT: u32 = 8;
 
 struct PortalLiveCacheEntry {
@@ -375,7 +377,7 @@ pub fn sport_match_streams(
     game: &Value,
     stalker: &Value,
     category_ids: &[String],
-    skip_epg: bool,
+    opts: SportStreamsOpts,
 ) -> String {
     let url = field_str(stalker, &["url", "baseUrl"]);
     let mac = field_str(stalker, &["username", "user", "mac"]);
@@ -386,6 +388,7 @@ pub fn sport_match_streams(
 
     let sport = field_str(game, &["sport"]);
     let match_game = MatchGame::from_json(game);
+    let portal_key = portal_cache_key(&url, &mac);
 
     let (streams, cats) = match get_or_fetch_portal_live(&url, &mac, &serial) {
         Ok(v) => v,
@@ -404,24 +407,69 @@ pub fn sport_match_streams(
         vec![]
     };
 
-    if skip_epg {
+    if opts.skip_epg {
         if !broadcast_items.is_empty() {
-            return ok_items(broadcast_items);
+            return ok_items(sport_match::filter_excluded_items(
+                broadcast_items,
+                &opts.exclude_stream_ids,
+            ));
         }
         let items = sport_match::match_streams(&match_game, &candidates, &[]);
-        return ok_items(items);
+        return ok_items(sport_match::filter_excluded_items(
+            items,
+            &opts.exclude_stream_ids,
+        ));
     }
 
     let epg_idxs = sport_match::indices_for_epg(&match_game, &candidates, MAX_EPG_FETCHES);
+    if epg_idxs.is_empty() {
+        let team_names = espn::fetch_all_team_names(&sport);
+        let team_items = sport_match::match_streams(&match_game, &candidates, &team_names);
+        let merged = sport_match::merge_broadcast_front(broadcast_items, team_items);
+        return ok_items(sport_match::filter_excluded_items(
+            merged,
+            &opts.exclude_stream_ids,
+        ));
+    }
+
+    if opts.epg_batching() {
+        let offset = opts.epg_offset.unwrap_or(0);
+        let limit = opts.epg_limit.unwrap_or(EPG_BATCH_SIZE);
+        if offset >= epg_idxs.len() {
+            return ok_items_epg_batch(vec![], false, offset);
+        }
+        let end = (offset + limit).min(epg_idxs.len());
+        let batch_idxs: Vec<usize> = epg_idxs[offset..end].to_vec();
+        apply_cached_epg(&portal_key, &mut candidates);
+        fetch::block_on(fill_epg_async(
+            &url, &mac, &serial, &mut candidates, &batch_idxs,
+        ));
+        store_candidate_epg(&portal_key, &candidates, &batch_idxs);
+        let team_names = espn::fetch_all_team_names(&sport);
+        let team_items = sport_match::match_streams(&match_game, &candidates, &team_names);
+        let mut items = if offset == 0 {
+            sport_match::merge_broadcast_front(broadcast_items, team_items)
+        } else {
+            team_items
+        };
+        items = sport_match::filter_excluded_items(items, &opts.exclude_stream_ids);
+        let next_offset = end;
+        let epg_more = next_offset < epg_idxs.len();
+        return ok_items_epg_batch(items, epg_more, next_offset);
+    }
+
+    apply_cached_epg(&portal_key, &mut candidates);
     fetch::block_on(fill_epg_async(
         &url, &mac, &serial, &mut candidates, &epg_idxs,
     ));
+    store_candidate_epg(&portal_key, &candidates, &epg_idxs);
 
     let team_names = espn::fetch_all_team_names(&sport);
     let team_items = sport_match::match_streams(&match_game, &candidates, &team_names);
-    ok_items(sport_match::merge_broadcast_front(
-        broadcast_items,
-        team_items,
+    let merged = sport_match::merge_broadcast_front(broadcast_items, team_items);
+    ok_items(sport_match::filter_excluded_items(
+        merged,
+        &opts.exclude_stream_ids,
     ))
 }
 

@@ -2828,6 +2828,7 @@ bool _sameCatalogEventAsLiveOnSat({
 
 /// Matched My IPTV channels for a match — reused for [_iptvSportsStreamsCacheTtl].
 const _iptvSportsStreamsCacheTtl = Duration(minutes: 30);
+const _iptvSportsEpgBatchSize = 12;
 const _liveOnSatBroadcastCacheTtl = Duration(minutes: 30);
 
 DateTime? _liveOnSatBroadcastCacheExpiry;
@@ -3176,6 +3177,16 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
 
       void emitPartial(List<IptvPlaySource> batch) => coordinator.emit(batch);
 
+      final excludeStreamIds = <String>[];
+      final accumulated = <IptvPlaySource>[];
+
+      void trackExcludeIds(Iterable<IptvPlaySource> batch) {
+        for (final s in batch) {
+          final id = (s.streamId ?? '').trim();
+          if (id.isNotEmpty) excludeStreamIds.add(id);
+        }
+      }
+
       final fastRaw = await runLiveMatchesFetchJson(
         jsonEncode({...requestBase, 'skip_epg': true}),
       );
@@ -3188,28 +3199,56 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
           fastParsed['items'] as List? ?? [],
           platform: p.platform,
         );
-        emitPartial(_ensureIptvSportsUrls(fast, armedPortal));
+        final fastNorm = _ensureIptvSportsUrls(fast, armedPortal);
+        emitPartial(fastNorm);
+        accumulated.addAll(fastNorm);
+        trackExcludeIds(fastNorm);
       }
 
-      final raw = await runLiveMatchesFetchJson(jsonEncode(requestBase));
-      final parsed = jsonDecode(raw) as Map<String, dynamic>;
-      if (parsed.containsKey('error')) {
-        if (!_liveMatchesJsonCancelled(parsed)) {
-          debugPrint(
-            '[LiveMatches] IPTV sports streams error: ${parsed['error']}',
-          );
+      var epgOffset = 0;
+      var epgMore = true;
+      while (epgMore) {
+        final raw = await runLiveMatchesFetchJson(
+          jsonEncode({
+            ...requestBase,
+            'epg_offset': epgOffset,
+            'epg_limit': _iptvSportsEpgBatchSize,
+            'exclude_stream_ids': excludeStreamIds,
+          }),
+        );
+        final parsed = jsonDecode(raw) as Map<String, dynamic>;
+        if (_liveMatchesJsonCancelled(parsed)) {
+          return accumulated;
         }
-        return <IptvPlaySource>[];
+        if (parsed.containsKey('error')) {
+          if (!_liveMatchesJsonCancelled(parsed)) {
+            debugPrint(
+              '[LiveMatches] IPTV sports streams error: ${parsed['error']}',
+            );
+          }
+          break;
+        }
+        final batch = _parseSportMatchStreamItems(
+          parsed['items'] as List? ?? [],
+          platform: p.platform,
+        );
+        if (batch.isNotEmpty) {
+          final normalized = _ensureIptvSportsUrls(batch, armedPortal);
+          emitPartial(normalized);
+          accumulated.addAll(normalized);
+          trackExcludeIds(normalized);
+        }
+        epgMore = parsed['epg_more'] == true;
+        if (epgMore) {
+          epgOffset = (parsed['epg_next_offset'] as num?)?.toInt() ??
+              epgOffset + _iptvSportsEpgBatchSize;
+        }
       }
-      final out = _parseSportMatchStreamItems(
-        parsed['items'] as List? ?? [],
-        platform: p.platform,
-      );
-      final enriched = await _ensureIptvSportsLogos(out, portalKey);
-      final normalized = _ensureIptvSportsUrls(enriched, armedPortal);
-      emitPartial(normalized);
-      _iptvSportsStreamsCachePut(cacheKey, normalized);
-      return normalized;
+
+      if (accumulated.isEmpty) return <IptvPlaySource>[];
+      final enriched = await _ensureIptvSportsLogos(accumulated, portalKey);
+      _iptvSportsStreamsCachePut(cacheKey, enriched);
+      return enriched;
     } finally {
       _iptvSportsStreamsInFlight.remove(cacheKey);
     }

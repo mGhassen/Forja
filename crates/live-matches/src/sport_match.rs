@@ -4,6 +4,38 @@
 //! Xtream category folder → fetch short EPG on top candidates → re-score with EPG.
 
 use serde_json::{json, Value};
+use std::collections::HashSet;
+
+/// Host options for progressive `sport_match_streams`.
+#[derive(Debug, Clone, Default)]
+pub struct SportStreamsOpts {
+    pub skip_epg: bool,
+    pub epg_offset: Option<usize>,
+    pub epg_limit: Option<usize>,
+    pub exclude_stream_ids: Vec<String>,
+}
+
+impl SportStreamsOpts {
+    pub fn epg_batching(&self) -> bool {
+        !self.skip_epg && self.epg_limit.unwrap_or(0) > 0
+    }
+}
+
+pub fn filter_excluded_items(mut items: Vec<Value>, exclude: &[String]) -> Vec<Value> {
+    if exclude.is_empty() {
+        return items;
+    }
+    let exclude: HashSet<&str> = exclude.iter().map(|s| s.as_str()).collect();
+    items.retain(|item| {
+        let id = item
+            .get("stream_id")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .trim();
+        id.is_empty() || !exclude.contains(id)
+    });
+    items
+}
 
 /// Normalized IPTV candidate (Xtream / Stalker / M3U).
 #[derive(Debug, Clone)]
