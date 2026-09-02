@@ -575,100 +575,55 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
 
   Widget _buildInternationalBody(BuildContext context) {
     if (controller.broadcastHintsLoading) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            vertical: widget.sideRail ? 32 : 24,
-            horizontal: 12,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: ForjaShellColors.sectionAccent,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Loading international TV listings…',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: ForjaShellColors.cinematic.textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _LiveBroadcastGuideLoading(sideRail: widget.sideRail);
     }
 
     final hints = controller.broadcastHints;
     if (hints == null || hints.isEmpty) {
-      return Padding(
-        padding: EdgeInsets.symmetric(vertical: widget.sideRail ? 16 : 24),
-        child: Column(
-          mainAxisAlignment: widget.sideRail
-              ? MainAxisAlignment.center
-              : MainAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.public_rounded,
-              size: 40,
-              color: ForjaShellColors.cinematic.textSecondary
-                  .withValues(alpha: 0.45),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No international TV listings for this match',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: ForjaShellColors.cinematic.textSecondary,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      );
+      return _LiveBroadcastGuideEmpty(sideRail: widget.sideRail);
     }
 
-    final sections = <({String title, List<String> channels})>[
+    final sections = <_LiveBroadcastProviderSectionData>[
       if (hints.liveOnSat.isNotEmpty)
-        (title: 'LiveOnSat', channels: hints.liveOnSat),
+        _LiveBroadcastProviderSectionData(
+          id: 'liveonsat',
+          title: 'LiveOnSat',
+          subtitle: 'Satellite & regional listings',
+          icon: Icons.satellite_alt_rounded,
+          accent: const Color(0xFF38BDF8),
+          channels: hints.liveOnSat,
+        ),
       if (hints.liveSoccerTv.isNotEmpty)
-        (
-          title: 'Live Soccer TV · International Coverage',
+        _LiveBroadcastProviderSectionData(
+          id: 'livesoccertv',
+          title: 'Live Soccer TV',
+          subtitle: 'International coverage',
+          icon: Icons.public_rounded,
+          accent: ForjaShellColors.sectionAccent,
           channels: hints.liveSoccerTv,
         ),
     ];
 
-    return ListView.separated(
-      padding: const EdgeInsets.only(bottom: 12),
-      itemCount: sections.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 16),
-      itemBuilder: (context, sectionIndex) {
-        final section = sections[sectionIndex];
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    final totalChannels =
+        sections.fold<int>(0, (sum, s) => sum + s.channels.length);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 520;
+        return ListView(
+          padding: const EdgeInsets.only(bottom: 16),
           children: [
-            Text(
-              section.title,
-              style: TextStyle(
-                color: ForjaShellColors.cinematic.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.2,
-              ),
+            _LiveBroadcastGuideIntro(
+              channelCount: totalChannels,
+              providerCount: sections.length,
             ),
-            const SizedBox(height: 8),
-            for (var i = 0; i < section.channels.length; i++) ...[
-              if (i > 0) const SizedBox(height: 6),
-              _LiveBroadcastChannelRow(name: section.channels[i]),
+            const SizedBox(height: 14),
+            for (var i = 0; i < sections.length; i++) ...[
+              if (i > 0) const SizedBox(height: 12),
+              _LiveBroadcastProviderSection(
+                data: sections[i],
+                compact: widget.sideRail || !wide,
+              ),
             ],
           ],
         );
@@ -801,41 +756,518 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
   }
 }
 
-class _LiveBroadcastChannelRow extends StatelessWidget {
-  const _LiveBroadcastChannelRow({required this.name});
+class _LiveBroadcastProviderSectionData {
+  const _LiveBroadcastProviderSectionData({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.accent,
+    required this.channels,
+  });
 
-  final String name;
+  final String id;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color accent;
+  final List<String> channels;
+}
+
+class _LiveBroadcastGuideIntro extends StatelessWidget {
+  const _LiveBroadcastGuideIntro({
+    required this.channelCount,
+    required this.providerCount,
+  });
+
+  final int channelCount;
+  final int providerCount;
 
   @override
   Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
-        color: ForjaShellColors.surfaceElevated.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: ForjaShellColors.cinematic.borderSubtle),
+        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            ForjaShellColors.sectionAccent.withValues(alpha: 0.14),
+            cinematic.menuSurface.withValues(alpha: 0.55),
+          ],
+        ),
+        border: Border.all(color: cinematic.borderSubtle),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.tv_rounded,
-            size: 18,
-            color: ForjaShellColors.sectionAccent.withValues(alpha: 0.85),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: ForjaShellColors.sectionAccent.withValues(alpha: 0.16),
+              border: Border.all(
+                color: ForjaShellColors.sectionAccent.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Icon(
+              Icons.live_tv_rounded,
+              size: 18,
+              color: ForjaShellColors.sectionAccent,
+            ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Broadcast guide',
+                  style: TextStyle(
+                    color: cinematic.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$channelCount channel${channelCount == 1 ? '' : 's'} '
+                  '· $providerCount source${providerCount == 1 ? '' : 's'}',
+                  style: TextStyle(
+                    color: cinematic.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Reference only — tune these channels on your local '
+                  'provider or set-top box. Tap a name to copy.',
+                  style: TextStyle(
+                    color: cinematic.textSecondary.withValues(alpha: 0.85),
+                    fontSize: 11,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveBroadcastGuideLoading extends StatelessWidget {
+  const _LiveBroadcastGuideLoading({required this.sideRail});
+
+  final bool sideRail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: sideRail ? 24 : 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _LiveBroadcastGuideSkeleton(height: 72),
+          const SizedBox(height: 12),
+          _LiveBroadcastGuideSkeleton(height: 140),
+          const SizedBox(height: 12),
+          _LiveBroadcastGuideSkeleton(height: 100),
+          const SizedBox(height: 20),
+          Center(
             child: Text(
-              name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+              'Scanning broadcast listings…',
               style: TextStyle(
-                color: ForjaShellColors.cinematic.textPrimary,
-                fontSize: 13,
+                color: ForjaShellColors.cinematic.textSecondary,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LiveBroadcastGuideSkeleton extends StatelessWidget {
+  const _LiveBroadcastGuideSkeleton({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: ForjaShellColors.surfaceElevated.withValues(alpha: 0.22),
+        border: Border.all(
+          color: ForjaShellColors.cinematic.borderSubtle.withValues(alpha: 0.6),
+        ),
+      ),
+    );
+  }
+}
+
+class _LiveBroadcastGuideEmpty extends StatelessWidget {
+  const _LiveBroadcastGuideEmpty({required this.sideRail});
+
+  final bool sideRail;
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: sideRail ? 20 : 28),
+      child: Column(
+        mainAxisAlignment:
+            sideRail ? MainAxisAlignment.center : MainAxisAlignment.start,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: cinematic.menuSurface.withValues(alpha: 0.6),
+              border: Border.all(color: cinematic.borderSubtle),
+            ),
+            child: Icon(
+              Icons.public_off_rounded,
+              size: 26,
+              color: cinematic.textSecondary.withValues(alpha: 0.55),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No broadcast listings',
+            style: TextStyle(
+              color: cinematic.textPrimary,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'This fixture is not listed on LiveOnSat or Live Soccer TV\n'
+            'international coverage for your region.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: cinematic.textSecondary,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveBroadcastProviderSection extends StatelessWidget {
+  const _LiveBroadcastProviderSection({
+    required this.data,
+    required this.compact,
+  });
+
+  final _LiveBroadcastProviderSectionData data;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        color: cinematic.menuSurface.withValues(alpha: 0.42),
+        border: Border.all(color: cinematic.borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            height: 3,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  data.accent.withValues(alpha: 0.95),
+                  data.accent.withValues(alpha: 0.35),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    color: data.accent.withValues(alpha: 0.14),
+                    border: Border.all(
+                      color: data.accent.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Icon(data.icon, size: 17, color: data.accent),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        data.title,
+                        style: TextStyle(
+                          color: cinematic.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.15,
+                        ),
+                      ),
+                      Text(
+                        data.subtitle,
+                        style: TextStyle(
+                          color: cinematic.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    color: data.accent.withValues(alpha: 0.12),
+                    border: Border.all(
+                      color: data.accent.withValues(alpha: 0.22),
+                    ),
+                  ),
+                  child: Text(
+                    '${data.channels.length}',
+                    style: TextStyle(
+                      color: data.accent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: cinematic.borderSubtle.withValues(alpha: 0.65),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final columns = compact ? 1 : 2;
+                const gap = 8.0;
+                final tileWidth = columns == 1
+                    ? constraints.maxWidth
+                    : (constraints.maxWidth - gap) / 2;
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: [
+                    for (final name in data.channels)
+                      SizedBox(
+                        width: tileWidth,
+                        child: _LiveBroadcastChannelChip(
+                          name: name,
+                          accent: data.accent,
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LiveBroadcastChannelChip extends StatefulWidget {
+  const _LiveBroadcastChannelChip({
+    required this.name,
+    required this.accent,
+  });
+
+  final String name;
+  final Color accent;
+
+  @override
+  State<_LiveBroadcastChannelChip> createState() =>
+      _LiveBroadcastChannelChipState();
+}
+
+class _LiveBroadcastChannelChipState extends State<_LiveBroadcastChannelChip> {
+  bool _hovered = false;
+  bool _copiedFlash = false;
+
+  Color get _monogramColor {
+    final hash = widget.name.hashCode.abs();
+    const hues = [205.0, 165.0, 285.0, 28.0, 340.0, 130.0];
+    final hue = hues[hash % hues.length];
+    return HSLColor.fromAHSL(1, hue, 0.48, 0.44).toColor();
+  }
+
+  String get _monogram {
+    final parts =
+        widget.name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+    final list = parts.toList();
+    if (list.isEmpty) return '?';
+    if (list.length == 1) {
+      return list.first.characters.take(2).toString().toUpperCase();
+    }
+    return '${list.first.characters.first}${list[1].characters.first}'
+        .toUpperCase();
+  }
+
+  Future<void> _copyName() async {
+    await Clipboard.setData(ClipboardData(text: widget.name));
+    if (!mounted) return;
+    setState(() => _copiedFlash = true);
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    if (mounted) setState(() => _copiedFlash = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    final borderColor = _copiedFlash
+        ? widget.accent.withValues(alpha: 0.65)
+        : _hovered
+            ? widget.accent.withValues(alpha: 0.35)
+            : cinematic.borderSubtle.withValues(alpha: 0.85);
+    final bg = _hovered
+        ? cinematic.menuSurface.withValues(alpha: 0.72)
+        : ForjaShellColors.surfaceElevated.withValues(alpha: 0.28);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _copyName,
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: borderColor),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        _monogramColor.withValues(alpha: 0.95),
+                        _monogramColor.withValues(alpha: 0.55),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _monogramColor.withValues(alpha: 0.25),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _monogram,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: cinematic.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _copiedFlash ? 'Copied' : 'Broadcaster',
+                        style: TextStyle(
+                          color: _copiedFlash
+                              ? widget.accent
+                              : cinematic.textSecondary.withValues(alpha: 0.8),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.15,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 150),
+                  child: Icon(
+                    _copiedFlash
+                        ? Icons.check_rounded
+                        : Icons.content_copy_rounded,
+                    key: ValueKey(_copiedFlash),
+                    size: 16,
+                    color: _copiedFlash
+                        ? widget.accent
+                        : cinematic.textSecondary.withValues(
+                            alpha: _hovered ? 0.75 : 0.35,
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
