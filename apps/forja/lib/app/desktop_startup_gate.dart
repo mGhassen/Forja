@@ -158,6 +158,7 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     }
 
     if (!hasSession) {
+      await SyncService.instance.useGuestPluginDiskScope();
       if (!mounted) return;
       // Painted splash from a stale cache; session gone → account gate.
       if (_needsAccountGate &&
@@ -243,14 +244,18 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
             ? TvAccountLinkScreen(
                 onAuthenticated: () =>
                     setState(() => _stage = _StartupStage.profiles),
-                onContinueAsGuest: () =>
-                    setState(() => _stage = _StartupStage.splash),
+                onContinueAsGuest: () {
+                  unawaited(SyncService.instance.useGuestPluginDiskScope());
+                  setState(() => _stage = _StartupStage.splash);
+                },
               )
             : AccountEntryScreen(
                 onAuthenticated: () =>
                     setState(() => _stage = _StartupStage.profiles),
-                onContinueAsGuest: () =>
-                    setState(() => _stage = _StartupStage.splash),
+                onContinueAsGuest: () {
+                  unawaited(SyncService.instance.useGuestPluginDiskScope());
+                  setState(() => _stage = _StartupStage.splash);
+                },
               ),
       _StartupStage.profiles => ProfileChooserScreen(
         prepareCurrentOnSwitch: false,

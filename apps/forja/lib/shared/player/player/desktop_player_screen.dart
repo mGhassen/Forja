@@ -468,6 +468,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
       streamUrl: url,
       mediaPath: widget.mediaPath,
       magnetLink: widget.magnetLink,
+      torrentTotalBytes: _torrentStats?.totalBytes,
       onSeekAwayFromEof: () {
         _seekAwayFromEofAt = DateTime.now();
         _abortiveCompletedLatched = false;

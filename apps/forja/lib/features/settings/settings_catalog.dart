@@ -6,6 +6,7 @@ abstract final class SettingsCategoryId {
   static const profile = 'profile';
   static const playback = 'playback';
   static const sources = 'sources';
+  static const forjaPacks = 'forja_packs';
   static const debrid = 'debrid';
   static const accounts = 'accounts';
   static const lists = 'lists';
@@ -19,6 +20,7 @@ abstract final class SettingsCategoryId {
     profile,
     playback,
     sources,
+    forjaPacks,
     debrid,
     accounts,
     lists,
@@ -54,14 +56,6 @@ class SettingsCategoryMeta {
 
 /// Ordered catalog of Settings categories for the active [visibility].
 List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
-  final sourcesSubtitle = visibility.showTorrentEngine
-      ? (visibility.showStremioAddons
-            ? 'Torrents, extractors, addons'
-            : 'Torrents and scrapers')
-      : (visibility.showStremioAddons
-            ? 'Extractors and addons'
-            : 'Forja plugins and addons');
-
   return [
     const SettingsCategoryMeta(
       id: SettingsCategoryId.profile,
@@ -72,15 +66,22 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
     const SettingsCategoryMeta(
       id: SettingsCategoryId.playback,
       title: 'Playback',
-      subtitle: 'Play sources, quality, audio, auto-play',
+      subtitle: 'Quality, audio, auto-play',
       icon: Icons.play_circle_outline_rounded,
     ),
     if (visibility.showSourcesCategory)
-      SettingsCategoryMeta(
+      const SettingsCategoryMeta(
         id: SettingsCategoryId.sources,
         title: 'Sources',
-        subtitle: sourcesSubtitle,
+        subtitle: 'Forja addons: torrent, Stremio, Nuvio',
         icon: Icons.extension_rounded,
+      ),
+    if (visibility.showForjaPacksCategory)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.forjaPacks,
+        title: 'Forja Packs',
+        subtitle: 'Install and manage Forja plugin packs',
+        icon: Icons.inventory_2_outlined,
       ),
     if (visibility.showDebrid)
       const SettingsCategoryMeta(

@@ -55,6 +55,13 @@ class BootNeeds {
   /// Any tab that can open VOD details / Sources.
   final bool vodTab;
 
+  /// Install/warm Forja engine plugin packs at boot (hub, providers, torrent, nuvio).
+  ///
+  /// IPTV + Live Matches alone defer pack install to first use (Live Matches,
+  /// Settings → Forja Sports, VOD Sources) — no splash download banner.
+  bool get needsForjaPluginWarm =>
+      catalogTab || engine || torrent || nuvio;
+
   /// My List + any non-core shell nav id (hubs). Never IPTV / Live / Settings.
   static bool isVodNavId(String id) {
     if (archivedNavIds.contains(id)) return false;

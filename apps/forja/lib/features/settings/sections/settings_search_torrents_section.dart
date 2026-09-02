@@ -60,7 +60,7 @@ class _SettingsSearchTorrentsSectionState
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
                 child: Text(
-                  'Install the ForjaHQ Torrent pack under Forja plugins above '
+                  'Install the ForjaHQ Torrent pack under Settings → Forja Packs '
                   'and enable indexers per plugin.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: ForjaShellColors.textSecondary,

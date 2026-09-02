@@ -91,7 +91,17 @@ void main() {
       isFalse,
     );
     final hash = PluginScriptDiskStore.packHash(url);
-    final dir = Directory(p.join(temp.path, 'engine', hash));
+    final dir = Directory(
+      p.join(
+        temp.path,
+        'accounts',
+        'local',
+        'profiles',
+        'default',
+        'engine',
+        hash,
+      ),
+    );
     expect(await dir.exists(), isFalse);
   });
 
@@ -122,8 +132,61 @@ void main() {
     );
     expect(body, 'ok');
     final hash = PluginScriptDiskStore.packHash(url);
-    final preludes = Directory(p.join(temp.path, 'engine', hash, 'preludes'));
+    final preludes = Directory(
+      p.join(
+        temp.path,
+        'accounts',
+        'local',
+        'profiles',
+        'default',
+        'engine',
+        hash,
+        'preludes',
+      ),
+    );
     final names = preludes.listSync().map((e) => p.basename(e.path)).toList();
     expect(names, everyElement(matches(RegExp(r'^[a-f0-9]+\.js$'))));
+  });
+
+  test('scoped profiles isolate engine scripts', () async {
+    const url = 'https://example.com/pack/manifest.json';
+    await PluginScriptDiskStore.configureScope(
+      accountId: 'acct-a',
+      profileId: 'profile-1',
+    );
+    await PluginScriptDiskStore.saveEngineScript(
+      sourceUrl: url,
+      pluginId: 'alpha',
+      body: 'profile-one',
+    );
+
+    await PluginScriptDiskStore.configureScope(
+      accountId: 'acct-a',
+      profileId: 'profile-2',
+    );
+    expect(
+      await PluginScriptDiskStore.hasEngineScript(
+        sourceUrl: url,
+        pluginId: 'alpha',
+      ),
+      isFalse,
+    );
+    await PluginScriptDiskStore.saveEngineScript(
+      sourceUrl: url,
+      pluginId: 'alpha',
+      body: 'profile-two',
+    );
+
+    await PluginScriptDiskStore.configureScope(
+      accountId: 'acct-a',
+      profileId: 'profile-1',
+    );
+    expect(
+      await PluginScriptDiskStore.loadEngineScript(
+        sourceUrl: url,
+        pluginId: 'alpha',
+      ),
+      'profile-one',
+    );
   });
 }

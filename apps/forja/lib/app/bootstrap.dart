@@ -748,7 +748,7 @@ class _SplashScreenState extends State<SplashScreen> {
       startTorrent: false,
       startPlaySources: false,
       awaitOfficialPacks: true,
-      prefetchDefaultHub: true,
+      prefetchDefaultHub: needs.catalogTab,
       reason: 'intro-splash',
       onStatus: _setBootStatus,
     );

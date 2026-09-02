@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 12** fix · **0 / 2** acceptance |
+| **Progress** | **12 / 13** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -31,6 +31,7 @@
 | 10 | I24-T10 | Player: open-phase sequential lavf (`seekable=0`); enable Range scrub only after decode via `ensureLocalTorrentSeekable` (T09 regression) | ✅ |
 | 11 | I24-T11 | Player: after decode, reopen torrent with seekable lavf + Range scrub; re-assert on every scrub (runtime `force-seekable` cannot override open-phase `seekable=0`) | ✅ |
 | 12 | I24-T12 | Player: backward torrent scrub reopens at target (mpv `seek()` cannot jump before sequential open demuxer) | ✅ |
+| 13 | I24-T13 | Player: forward torrent scrub reopens at target + prefetch byte offset (mpv `seek()` cannot jump ahead of sequential read cursor) | ✅ |
 
 ---
 
@@ -104,3 +105,11 @@ Observed: torrent plays after T10 but scrub logs `Cannot seek in this stream` / 
 Observed: torrent at 100% download — scrubbing backward on the seek bar moved the playhead forward instead of jumping to the clicked time. Open-phase `seekable=0` demuxer only reads forward; `player.seek()` cannot jump before the current read position even when all pieces are on disk.
 
 **Fix:** backward torrent scrubs (>1s behind playhead) call `promoteLocalTorrentToSeekablePlayback` with an explicit `seekTo` — reopen at target with Range-capable lavf (same pattern as T11).
+
+### Follow-up (I24-T13) — 2026-09-03
+
+Observed: forward scrub (e.g. resume at 50% or 90%) made the swarm download linearly from byte 0 until that offset was reached — backward scrubs within already-fetched data worked instantly. Some forward targets (65%, 75%) failed while nearby positions (60%, 70%) played.
+
+**Root:** T12 only remounted backward jumps. Forward scrubs still used `player.seek()` on the sequential open demuxer, which cannot jump ahead of the current read cursor even when other pieces exist on disk.
+
+**Fix:** any torrent scrub >1s from the playhead (forward or back) reopens at target via `promoteLocalTorrentToSeekablePlayback` + immediate `prefetchByteOffset` at the target byte.

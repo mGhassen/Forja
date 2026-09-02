@@ -18,6 +18,8 @@ import 'package:forja/features/settings/sections/settings_iptv_portals_section.d
 import 'package:forja/features/settings/sections/settings_iptv_sports_section.dart';
 import 'package:forja/features/settings/sections/lan_settings_section.dart';
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
+import 'package:forja/features/settings/sections/settings_forja_addons_play_toggles.dart';
+import 'package:forja/features/settings/sections/settings_forja_packs_section.dart';
 import 'package:forja/features/settings/sections/settings_playback_section.dart';
 import 'package:forja/features/settings/sections/settings_providers_section.dart';
 import 'package:forja/features/settings/sections/settings_search_torrents_section.dart';
@@ -47,6 +49,8 @@ Widget buildSettingsCategoryBody(
       return SettingsPlaybackSection(visibility: visibility);
     case SettingsCategoryId.sources:
       return SettingsSourcesPageBody(visibility: visibility);
+    case SettingsCategoryId.forjaPacks:
+      return SettingsForjaPacksPageBody(visibility: visibility);
     case SettingsCategoryId.debrid:
       return const SettingsDebridSection();
     case SettingsCategoryId.accounts:
@@ -114,10 +118,22 @@ class SettingsSourcesPageBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsProvidersSection(visibility: visibility),
+        SettingsForjaAddonsPlayToggles(visibility: visibility),
+        SettingsForjaAddonsSection(visibility: visibility),
         if (visibility.showTorrentEngine) const SettingsSearchTorrentsSection(),
       ],
     );
+  }
+}
+
+class SettingsForjaPacksPageBody extends StatelessWidget {
+  const SettingsForjaPacksPageBody({super.key, required this.visibility});
+
+  final SettingsVisibility visibility;
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsForjaPacksSection(visibility: visibility);
   }
 }
 

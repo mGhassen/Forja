@@ -5,15 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shared/nuvio/nuvio.dart';
-import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
-import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
-import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/sync/sync.dart';
 
@@ -31,7 +27,6 @@ class SettingsPlaybackSection extends ConsumerStatefulWidget {
 class _SettingsPlaybackSectionState
     extends ConsumerState<SettingsPlaybackSection> {
   final SettingsService _settings = SettingsService();
-  bool _p2pPromptQueued = false;
 
   SettingsPlaybackNotifier get _playback =>
       ref.read(settingsPlaybackProvider.notifier);
@@ -57,58 +52,11 @@ class _SettingsPlaybackSectionState
     await _playback.reload();
   }
 
-  Future<bool> _confirmP2pIfNeeded() async {
-    final snap = ref.read(settingsPlaybackProvider).valueOrNull;
-    if (snap?.p2pAcknowledged == true) return true;
-    final ok = await ensureP2pStreamingAcknowledged(context);
-    if (!ok || !mounted) return false;
-    await _playback.patch((s) => s.copyWith(p2pAcknowledged: true));
-    return true;
-  }
-
-  Future<void> _maybePromptP2pAck(SettingsPlaybackSnapshot snap) async {
-    if (snap.p2pAcknowledged || !mounted) return;
-    final ok = await _confirmP2pIfNeeded();
-    if (!mounted) return;
-    if (ok) return;
-    await _settings.setPlaySourceTorrentEnabled(false);
-    await _settings.setPlaySourceStremioEnabled(false);
-    await _settings.setPlaySourceNuvioEnabled(false);
-    await _playback.patch(
-      (s) => s.copyWith(
-        playSourceTorrent: false,
-        playSourceStremio: false,
-        playSourceNuvio: false,
-      ),
-    );
-    schedulePreferencesSyncPush();
-  }
-
-  String _playSourceSubtitle({required String native, required String atv}) {
-    if (PlatformPlayback.capabilities.localTorrentEngine) return native;
-    return atv;
-  }
-
   @override
   Widget build(BuildContext context) {
     ref.watch(accountFeaturesProvider);
     final async = ref.watch(settingsPlaybackProvider);
     final snap = async.valueOrNull;
-    if (snap != null &&
-        !_p2pPromptQueued &&
-        !snap.p2pAcknowledged &&
-        (widget.visibility.showPlaySourceTorrentToggle ||
-            widget.visibility.showPlaySourceStremioToggle ||
-            widget.visibility.showPlaySourceNuvioToggle) &&
-        (snap.playSourceTorrent ||
-            snap.playSourceStremio ||
-            snap.playSourceNuvio)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _p2pPromptQueued) return;
-        _p2pPromptQueued = true;
-        unawaited(_maybePromptP2pAck(snap));
-      });
-    }
     if (snap == null) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -125,142 +73,6 @@ class _SettingsPlaybackSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (widget.visibility.showPlaySources) ...[
-          if (widget.visibility.showPlaySourceTorrentToggle ||
-              widget.visibility.showPlaySourceStremioToggle ||
-              widget.visibility.showPlaySourceNuvioToggle)
-            SettingsGroup(
-              children: [
-                SettingsActionRow(
-                  title: snap.p2pAcknowledged
-                      ? 'You are aware of P2P streaming'
-                      : 'Confirm you are aware of P2P streaming',
-                  subtitle: snap.p2pAcknowledged
-                      ? 'Direct torrent, Stremio, and Nuvio can be used. Tap to review.'
-                      : 'Required once before turning on Direct torrent, Stremio, or Nuvio.',
-                  trailing: snap.p2pAcknowledged
-                      ? const Icon(
-                          Icons.check_rounded,
-                          color: ForjaShellColors.brandGreen,
-                        )
-                      : const SizedBox.shrink(),
-                  onTap: () async {
-                    if (snap.p2pAcknowledged) {
-                      await showP2pStreamingAckDialog(
-                        context,
-                        reviewOnly: true,
-                      );
-                    } else {
-                      await _confirmP2pIfNeeded();
-                    }
-                  },
-                ),
-              ],
-            ),
-          SettingsGroup(
-            label: 'Play sources',
-            children: [
-              if (widget.visibility.showPlaySourceEngineToggle)
-                settingsFocusableToggle(
-                  context,
-                  'Forja',
-                  'Play from plugins in Sources → Forja. Green Play races enabled plugins.',
-                  snap.playSourceEngine,
-                  (val) async {
-                    await _settings.setPlaySourceEngineEnabled(val);
-                    if (val) {
-                      await _settings.setPlaySourceEngineAutoStartEnabled(true);
-                    }
-                    await _playback.patch(
-                      (s) => s.copyWith(
-                        playSourceEngine: val,
-                        playSourceEngineAutoStart: val ? true : s.playSourceEngineAutoStart,
-                      ),
-                    );
-                    schedulePreferencesSyncPush();
-                    if (val) {
-                      unawaited(
-                        EngineService.instance.ensureOfficialInstalled(),
-                      );
-                    }
-                  },
-                  enabled: widget.visibility.lanPlaySourcesEditable,
-                ),
-              if (widget.visibility.showPlaySourceTorrentToggle)
-                settingsFocusableToggle(
-                  context,
-                  'Direct torrent',
-                  _playSourceSubtitle(
-                    native:
-                        'Search Forja indexers (Jackett / Prowlarr) in Sources.',
-                    atv:
-                        'Search torrents here. Playing a magnet needs a paired desktop (Settings → LAN).',
-                  ),
-                  snap.playSourceTorrent,
-                  (val) async {
-                    if (val && !await _confirmP2pIfNeeded()) return;
-                    await _settings.setPlaySourceTorrentEnabled(val);
-                    await _playback.patch(
-                      (s) => s.copyWith(playSourceTorrent: val),
-                    );
-                    schedulePreferencesSyncPush();
-                    if (val &&
-                        PlatformPlayback.capabilities.localTorrentEngine) {
-                      debugPrint('[Init] TorrentStream start (settings toggle)');
-                      await TorrentStreamService().start();
-                    }
-                  },
-                  enabled: widget.visibility.lanPlaySourcesEditable,
-                ),
-              if (widget.visibility.showPlaySourceStremioToggle)
-                settingsFocusableToggle(
-                  context,
-                  'Stremio',
-                  _playSourceSubtitle(
-                    native: 'Play from installed Stremio addon streams.',
-                    atv:
-                        'Direct HTTP plays on this TV. Magnets need a paired desktop (Settings → LAN).',
-                  ),
-                  snap.playSourceStremio,
-                  (val) async {
-                    if (val && !await _confirmP2pIfNeeded()) return;
-                    await _settings.setPlaySourceStremioEnabled(val);
-                    await _playback.patch(
-                      (s) => s.copyWith(playSourceStremio: val),
-                    );
-                    schedulePreferencesSyncPush();
-                  },
-                  enabled: widget.visibility.lanPlaySourcesEditable,
-                ),
-              if (widget.visibility.showPlaySourceNuvioToggle)
-                settingsFocusableToggle(
-                  context,
-                  'Nuvio',
-                  _playSourceSubtitle(
-                    native:
-                        'Play from installed Nuvio scraper addons in Sources.',
-                    atv:
-                        'Direct HTTP plays on this TV. Magnets need a paired desktop (Settings → LAN).',
-                  ),
-                  snap.playSourceNuvio,
-                  (val) async {
-                    if (val && !await _confirmP2pIfNeeded()) return;
-                    await _settings.setPlaySourceNuvioEnabled(val);
-                    await _playback.patch(
-                      (s) => s.copyWith(playSourceNuvio: val),
-                    );
-                    schedulePreferencesSyncPush();
-                    if (val &&
-                        PlatformPlayback.capabilities.playSourceNuvio) {
-                      debugPrint('[Init] Nuvio refresh (settings toggle)');
-                      unawaited(NuvioService.instance.refreshAllInstalled());
-                    }
-                  },
-                  enabled: widget.visibility.lanPlaySourcesEditable,
-                ),
-            ],
-          ),
-        ],
         SettingsGroup(
           label: 'Player',
           children: [
@@ -539,7 +351,7 @@ class _SettingsPlaybackSectionState
                 ),
               ],
             ],
-            if (widget.visibility.showPlaySources)
+            if (widget.visibility.vodTab)
               settingsFocusableDropdown(
                 context,
                 'Max stream quality',

@@ -6,10 +6,9 @@ import 'package:rust/rust.dart';
 
 /// Which Settings hub tiles / rows match the active profile (nav + play sources).
 ///
-/// VOD tabs ([BootNeeds.isVodNavId]) gate movie/series Settings the same way
-/// boot gates engines. IPTV-only / Live-only profiles keep Profile, Playback
-/// (IPTV + player), Navigation, About. Android TV hides Lists and Data &
-/// backup (lean leanback Settings).
+/// VOD tabs ([BootNeeds.isVodNavId]) still gate movie/series Playback extras,
+/// Connected services, Lists, Debrid, etc. **Sources → plugins** follow play-source
+/// toggles only — not which nav tabs are visible.
 class SettingsVisibility {
   const SettingsVisibility({
     required this.playSourceTorrent,
@@ -48,38 +47,29 @@ class SettingsVisibility {
   static bool get _isAndroidTv =>
       SettingsService.platformProfile == PlatformProfile.androidTv;
 
-  /// Play-source toggles under Playback (need a VOD tab to matter).
-  bool get showPlaySources => vodTab;
-
   /// Torrent search / engine (built-in providers, cache, connections).
   bool get showTorrentEngine =>
-      vodTab &&
-      playSourceTorrent &&
+      showPlaySourceTorrentToggle &&
       PlatformPlayback.capabilities.builtinTorrentSearch;
 
   /// Jackett / Prowlarr indexer config — admin accounts only (`accounts.is_admin`).
   bool get showJackettProwlarr =>
       showTorrentEngine && AccountFeatures.instance.isAdmin;
 
-  /// Nuvio scrapers (own play source).
-  bool get showNuvio => vodTab && playSourceNuvio;
+  /// Nuvio scraper install UI (platform capability).
+  bool get showNuvio => showPlaySourceNuvioToggle;
 
-  /// Forja plugins (Sources → Forja).
-  bool get showEngine => vodTab && playSourceEngine;
+  /// Forja pack install UI (platform capability).
+  bool get showEngine => showPlaySourceEngineToggle;
 
-  /// Stremio addons — VOD Sources and/or Live Matches sport servers.
-  bool get showStremioAddons => (vodTab && playSourceStremio) || liveMatchesNav;
+  /// Stremio addon install UI (platform capability).
+  bool get showStremioAddons => showPlaySourceStremioToggle;
 
-  /// Settings → Sources hub tile (torrent / Stremio / Nuvio / Forja packs).
-  ///
-  /// Torrent / Stremio / Nuvio stay gated by [resolve] platform caps as well.
-  bool get showSourcesCategory =>
-      (vodTab &&
-          (playSourceTorrent ||
-              playSourceStremio ||
-              playSourceNuvio ||
-              playSourceEngine)) ||
-      liveMatchesNav;
+  /// Settings → Sources (Forja addons: torrent / Stremio / Nuvio).
+  bool get showSourcesCategory => true;
+
+  /// Settings → Forja Packs (JS plugin manifests).
+  bool get showForjaPacksCategory => true;
 
   /// Debrid serves torrent + Stremio hashes (+ Nuvio magnets).
   /// Lean Android TV Settings keep Debrid off (desktop relay only).

@@ -21,8 +21,9 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
-| [Playback](playback-settings.md) | Play sources, audio, auto next/skip, quality, IPTV EPG | Always (play sources / episode extras need a VOD tab; IPTV EPG needs the IPTV tab) |
-| [Sources](torrent-settings.md) | Torrents, Stremio / Nuvio / Forja / Jackett / Prowlarr | VOD tab + Direct torrent / Stremio / Nuvio / Forja on (or Live Matches for Stremio sport addons). Jackett / Prowlarr stay admin-only |
+| [Playback](playback-settings.md) | Player engine, audio, auto next/skip, quality, IPTV EPG | Always (episode extras need a VOD tab; IPTV EPG needs the IPTV tab) |
+| [Sources](torrent-settings.md) | **Forja addons** — Direct torrent, Stremio, Nuvio toggles + install | Always |
+| [Forja Packs](forja-packs.md) | Install and manage Forja JS plugin manifests (providers, hubs, live, …) | Always |
 | Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link | Admin only · VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
 | Connected services | Simkl; MDBlist (admin) | VOD tab (MDBlist rows are admin-only) |
 | [Lists](../movies-tv/external-lists.md) | MDBlist custom / top lists | Admin only · VOD tab — never on Android TV |
@@ -35,7 +36,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 ## Tips
 
 - Only the selected category loads — opening Settings is lighter than the old all-sections page
-- IPTV / Live Matches alone → movie Settings stay hidden until you turn a VOD tab back on in **Navigation**, then play sources under **Playback**
+- IPTV / Live Matches alone → **Sources → Forja addons** and **Forja Packs** are always in the category list (no VOD tab required). Play-source toggles for Direct torrent / Stremio / Nuvio live under **Sources**; the **Forja** play toggle and pack install UI live under **Forja Packs**. Movie-only rows (Debrid, Simkl, Lists) stay hidden until a VOD tab is on in **Navigation**
 - On **TV**, the bottom rail item is your **profile avatar** (same as desktop).
   **↑/↓** moves through the category sidebar (flat green left bar + ink fill —
   no rounded hover card; focusing a category selects it and updates the right pane, but

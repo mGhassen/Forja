@@ -5,6 +5,7 @@ import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/hub_boot_prefetch.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/lan/lan.dart';
+import 'package:forja/shared/sync/src/sync_service.dart';
 import 'package:rust/rust.dart';
 
 /// Starts profile-activated engines. Idempotent - safe from splash,
@@ -12,9 +13,9 @@ import 'package:rust/rust.dart';
 ///
 /// Intro / profile splash should pass [startPlaySources]: false and
 /// [startTorrent]: false so LocalServer / Nuvio / torrent stay
-/// off the animation floor. Official ForjaHQ packs (+ optional hub layout/rails
-/// prefetch into CatalogCache) always await during splash so Catalog Shell is
-/// ready on dismiss.
+/// off the animation floor. ForjaHQ packs (+ hub layout/rails prefetch) await
+/// only when [BootNeeds.needsForjaPluginWarm] — IPTV/Live-only profiles skip
+/// the download banner and hydrate on first catalog/Live Matches use.
 class ProfileEngineWarm {
   ProfileEngineWarm._();
 
@@ -29,7 +30,9 @@ class ProfileEngineWarm {
   }) async {
     debugPrint('[Init] warm ($reason): $needs');
 
-    if (awaitOfficialPacks) {
+    await SyncService.instance.ensurePluginDiskScopeForCurrentSession();
+
+    if (awaitOfficialPacks && needs.needsForjaPluginWarm) {
       onStatus?.call('Loading plugins…');
       debugPrint('[Init] PluginInstallCoordinator (await)');
       final coordinator = PluginInstallCoordinator.instance;
@@ -51,7 +54,7 @@ class ProfileEngineWarm {
             .ensureAllInstalled(
               notifyUpdates: true,
               awaitCloudLean: true,
-              includeNuvio: needs.nuvio || needs.playSourceNuvio,
+              includeNuvio: needs.nuvio,
             )
             .catchError((Object e) {
               debugPrint('[Init] Plugin install error (non-fatal): $e');
@@ -62,10 +65,15 @@ class ProfileEngineWarm {
           coordinator.suppressBanner.value = false;
         }
       }
-      if (prefetchDefaultHub) {
-        onStatus?.call(needs.openingStatusLabel);
-        await prefetchDefaultHubLayout(needs);
-      }
+    } else if (awaitOfficialPacks) {
+      debugPrint('[Init] PluginInstallCoordinator skip (no VOD/catalog tab)');
+    }
+
+    if (prefetchDefaultHub && needs.catalogTab) {
+      onStatus?.call(needs.openingStatusLabel);
+      await prefetchDefaultHubLayout(needs);
+    } else if (prefetchDefaultHub) {
+      debugPrint('[Init] Hub prefetch skip (no catalog tab)');
     }
 
     if (!startPlaySources) {

@@ -551,6 +551,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
       streamUrl: url,
       mediaPath: widget.mediaPath,
       magnetLink: widget.magnetLink,
+      torrentTotalBytes: _torrentStats?.totalBytes,
       onSeekAwayFromEof: () {
         _seekAwayFromEofAt = DateTime.now();
         _abortiveCompletedLatched = false;

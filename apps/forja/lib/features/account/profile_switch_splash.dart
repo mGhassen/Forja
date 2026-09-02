@@ -221,7 +221,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       startTorrent: false,
       startPlaySources: false,
       awaitOfficialPacks: true,
-      prefetchDefaultHub: true,
+      prefetchDefaultHub: needs.catalogTab,
       reason: 'profile-splash',
       onStatus: _setStatus,
     );

@@ -50,7 +50,7 @@ abstract final class ForjaPluginDeepLink {
       displayName: uri.queryParameters['name']?.trim(),
     );
     ShellBus.openSettings(
-      categoryId: SettingsCategoryId.sources,
+      categoryId: SettingsCategoryId.forjaPacks,
       enterDetail: true,
     );
   }

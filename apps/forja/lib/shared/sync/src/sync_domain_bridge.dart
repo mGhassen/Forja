@@ -119,19 +119,25 @@ class SyncDomainBridge {
       }
     }
 
-    final nuvioAddons = await NuvioService.instance.listAddons();
-    for (final addon in nuvioAddons) {
-      if (NuvioService.isBundled(addon.manifestUrl)) continue;
-      try {
-        await NuvioService.instance.remove(addon.manifestUrl);
-      } catch (_) {}
-    }
-
     final packs = await EngineService.instance.listPacks();
     for (final pack in packs) {
       if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
       try {
-        await EngineService.instance.removePack(pack.sourceUrl);
+        await EngineService.instance.removePack(
+          pack.sourceUrl,
+          purgeDisk: false,
+        );
+      } catch (_) {}
+    }
+
+    final nuvioAddons = await NuvioService.instance.listAddons();
+    for (final addon in nuvioAddons) {
+      if (NuvioService.isBundled(addon.manifestUrl)) continue;
+      try {
+        await NuvioService.instance.remove(
+          addon.manifestUrl,
+          purgeScripts: false,
+        );
       } catch (_) {}
     }
 

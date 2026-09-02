@@ -722,7 +722,7 @@ class NuvioService {
     return addon;
   }
 
-  Future<void> remove(String manifestUrl) async {
+  Future<void> remove(String manifestUrl, {bool purgeScripts = true}) async {
     if (isBundled(manifestUrl)) {
       throw Exception('Built-in Nuvio addon cannot be removed');
     }
@@ -732,7 +732,9 @@ class NuvioService {
     final prefs = await SharedPreferences.getInstance();
     for (final a in removed) {
       for (final s in a.scrapers) {
-        await PluginScriptDiskStore.removeNuvioScraper(s.id);
+        if (purgeScripts) {
+          await PluginScriptDiskStore.removeNuvioScraper(s.id);
+        }
         await prefs.remove(_scriptCachePrefix + s.id);
       }
     }

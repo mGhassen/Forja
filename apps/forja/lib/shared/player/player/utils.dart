@@ -954,13 +954,13 @@ bool isTorrentSeekPlayback({
   return false;
 }
 
-/// Local torrent scrub back — mpv `seek()` cannot jump before the sequential
-/// open demuxer; reopen at [target] with Range-capable lavf (issue 024 T11).
-bool localTorrentBackwardSeekNeedsRemount({
+/// Local torrent scrub — mpv `seek()` cannot jump off the sequential read
+/// cursor (forward or back); reopen at [target] with Range lavf (024 T11–T13).
+bool localTorrentSeekNeedsRemount({
   required Duration previous,
   required Duration target,
 }) {
-  return target < previous - const Duration(seconds: 1);
+  return (target - previous).abs() > const Duration(seconds: 1);
 }
 
 String? localTorrentStreamUrlForSeek({
@@ -1860,6 +1860,7 @@ Future<void> seekPlayerPreservingProgress(
   String? streamUrl,
   String? mediaPath,
   String? magnetLink,
+  int? torrentTotalBytes,
 }) async {
   final dur = duration ?? player.state.duration;
   final previous = positionNotifier.value;
@@ -1877,7 +1878,14 @@ Future<void> seekPlayerPreservingProgress(
     mediaPath: mediaPath,
   );
   if (torrentUrl != null &&
-      localTorrentBackwardSeekNeedsRemount(previous: previous, target: target)) {
+      localTorrentSeekNeedsRemount(previous: previous, target: target)) {
+    if (torrentTotalBytes != null &&
+        torrentTotalBytes > 0 &&
+        dur > Duration.zero) {
+      TorrentStreamService().prefetchByteOffset(
+        torrentByteOffsetForDuration(target, dur, torrentTotalBytes),
+      );
+    }
     final ok = await promoteLocalTorrentToSeekablePlayback(
       player,
       streamUrl: torrentUrl,
@@ -1895,7 +1903,7 @@ Future<void> seekPlayerPreservingProgress(
       return;
     }
     debugPrint(
-      '[Player] Torrent backward seek remount failed @${target.inSeconds}s — mpv seek fallback',
+      '[Player] Torrent seek remount failed @${target.inSeconds}s — mpv seek fallback',
     );
   }
 

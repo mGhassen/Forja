@@ -61,6 +61,12 @@ pub struct TorrentStatus {
     pub total_bytes: u64,
     pub eta_secs: u64,
     pub state: String,
+    /// Bytes read from the start of the file while waiting to open playback.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub head_read_bytes: Option<u64>,
+    /// Target head bytes before the player URL is returned ([`STREAM_HEAD_BYTES`]).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub head_target_bytes: Option<u64>,
 }
 
 /// Disk + in-session download usage for the Sources panel cache row.
@@ -129,6 +135,14 @@ struct EngineInner {
     disk_cache_capacity_bytes: u64,
     /// Background read at a scrub/hover byte offset — boosts librqbit piece priority.
     prefetch_task: Option<tokio::task::JoinHandle<()>>,
+    /// Live progress while [`wait_for_stream_head`] blocks before playback opens.
+    head_wait: Option<HeadWaitProgress>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct HeadWaitProgress {
+    read_bytes: u64,
+    target_bytes: u64,
 }
 
 pub struct TorrentEngine {
@@ -154,6 +168,7 @@ impl TorrentEngine {
                 peer_limit: 128,
                 disk_cache_capacity_bytes: DEFAULT_DISK_CACHE_BYTES,
                 prefetch_task: None,
+                head_wait: None,
             }),
             runtime: tokio::runtime::Runtime::new().expect("tokio runtime"),
         }
@@ -532,6 +547,7 @@ impl TorrentEngine {
         // Returning the URL at metadata-ready lets mpv open an empty stream
         // and die with "Failed to recognize file format".
         if let Err(e) = wait_for_stream_head(
+            self,
             &api,
             prepared.torrent_id,
             file_idx,
@@ -985,6 +1001,10 @@ impl TorrentEngine {
         } else {
             format!("{}", stats.state)
         };
+        let (head_read_bytes, head_target_bytes) = inner
+            .head_wait
+            .map(|h| (Some(h.read_bytes), Some(h.target_bytes)))
+            .unwrap_or((None, None));
         Some(TorrentStatus {
             name,
             info_hash: active.info_hash.clone(),
@@ -997,7 +1017,24 @@ impl TorrentEngine {
             total_bytes: stats.total_bytes,
             eta_secs,
             state,
+            head_read_bytes,
+            head_target_bytes,
         })
+    }
+
+    fn set_head_wait_progress(&self, read_bytes: u64, target_bytes: u64) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.head_wait = Some(HeadWaitProgress {
+                read_bytes,
+                target_bytes,
+            });
+        }
+    }
+
+    fn clear_head_wait_progress(&self) {
+        if let Ok(mut inner) = self.inner.lock() {
+            inner.head_wait = None;
+        }
     }
 
     /// librqbit download root (`{temp}/torrent`).
@@ -1127,12 +1164,22 @@ impl TorrentEngine {
 /// desktop clients that open playback once *some* head exists and keep
 /// buffering. Hard-fail only when the head is still empty.
 async fn wait_for_stream_head(
+    engine: &TorrentEngine,
     api: &Api,
     torrent_id: usize,
     file_idx: usize,
     min_bytes: u64,
     timeout: Duration,
 ) -> Result<(), String> {
+    struct HeadWaitGuard<'a> {
+        engine: &'a TorrentEngine,
+    }
+    impl Drop for HeadWaitGuard<'_> {
+        fn drop(&mut self) {
+            self.engine.clear_head_wait_progress();
+        }
+    }
+
     let mut stream = api
         .api_stream(TorrentIdOrHash::Id(torrent_id), file_idx)
         .await
@@ -1141,6 +1188,9 @@ async fn wait_for_stream_head(
     let min_accept = (STREAM_HEAD_MIN_ACCEPT as usize).min(need);
     let mut buf = vec![0u8; need];
     let mut read = 0usize;
+
+    engine.set_head_wait_progress(0, need as u64);
+    let _head_guard = HeadWaitGuard { engine };
 
     let timed_out = utils::engine_cancel::with_cancel(async {
         tokio::time::timeout(timeout, async {
@@ -1156,6 +1206,7 @@ async fn wait_for_stream_head(
                     break;
                 }
                 read += n;
+                engine.set_head_wait_progress(read as u64, need as u64);
             }
             Ok::<(), String>(())
         })
@@ -1523,6 +1574,7 @@ mod tests {
                 .await
                 .map_err(|e| e.to_string())?;
                 wait_for_stream_head(
+                    &engine,
                     &api,
                     prepared.torrent_id,
                     file_idx,

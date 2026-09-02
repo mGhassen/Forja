@@ -550,8 +550,8 @@ class EngineService {
     }
   }
 
-  Future<void> removePack(String sourceUrl) =>
-      PluginRegistry.instance.removePack(sourceUrl);
+  Future<void> removePack(String sourceUrl, {bool purgeDisk = true}) =>
+      PluginRegistry.instance.removePack(sourceUrl, purgeDisk: purgeDisk);
 
   Future<void> setPluginEnabled({
     required String sourceUrl,

@@ -46,7 +46,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
     _busy = true;
     try {
       ShellBus.openSettings(
-        categoryId: SettingsCategoryId.sources,
+        categoryId: SettingsCategoryId.forjaPacks,
         enterDetail: true,
       );
       await WidgetsBinding.instance.endOfFrame;

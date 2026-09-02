@@ -10,7 +10,9 @@ import 'package:forja/shared/catalog/shell/catalog_shell.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
+import 'package:forja/shell/shell_empty_features_screen.dart';
 import 'package:forja/shared/catalog/shell/hub_catalog_top_bar.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_find_shortcut.dart';
@@ -75,7 +77,16 @@ class _MainScreenState extends ConsumerState<MainScreen>
   /// Empty until first [getNavbarConfig] — avoids all-tabs → filtered flash.
   List<String> _visibleIds = const [];
   bool _initialNavResolved = false;
+  /// When every feature tab is hidden, show [ShellEmptyFeaturesScreen] until
+  /// the user opens Settings from the rail or an empty-state CTA.
+  bool _emptyFeaturesBodyDismissed = false;
   BuildContext? _shellScopedContext;
+
+  bool get _hasFeatureTabs =>
+      _visibleIds.any((id) => id != 'settings');
+
+  bool get _showEmptyFeaturesGate =>
+      _initialNavResolved && !_hasFeatureTabs && !_emptyFeaturesBodyDismissed;
 
   String? get _currentTabId =>
       _visibleIds.isEmpty || _selectedIndex >= _visibleIds.length
@@ -242,6 +253,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     }
     // Same-tab Home re-select must not dismiss the provider panel.
     setState(() {
+      if (id == 'settings') _emptyFeaturesBodyDismissed = true;
       _mountedTabIds.add(id);
       _selectedIndex = index;
     });
@@ -351,6 +363,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
       final currentId = _selectedIndex < _visibleIds.length
           ? _visibleIds[_selectedIndex]
           : null;
+      if (visible.isNotEmpty) {
+        _emptyFeaturesBodyDismissed = false;
+      }
       _visibleIds = [...visible, 'settings'];
       if (!_initialNavResolved || applyDefaultTab) {
         if (applyDefaultTab) {
@@ -466,6 +481,36 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.requestTab.value = null;
   }
 
+  void _openFeaturesFromEmptyState() {
+    final ctx = _shellScopedContext;
+    if (ctx == null || !ctx.mounted) return;
+    final tv = ShellScope.metricsOf(ctx).usesTvDensity;
+    ShellBus.openSettings(
+      categoryId: SettingsCategoryId.navigation,
+      enterDetail: tv,
+    );
+  }
+
+  void _openPluginsFromEmptyState() {
+    final ctx = _shellScopedContext;
+    if (ctx == null || !ctx.mounted) return;
+    final tv = ShellScope.metricsOf(ctx).usesTvDensity;
+    ShellBus.openSettings(
+      categoryId: SettingsCategoryId.forjaPacks,
+      enterDetail: tv,
+    );
+  }
+
+  Widget _shellTabFor(String id) {
+    if (id == 'settings' && _showEmptyFeaturesGate) {
+      return ShellEmptyFeaturesScreen(
+        onOpenFeatures: _openFeaturesFromEmptyState,
+        onInstallPlugins: _openPluginsFromEmptyState,
+      );
+    }
+    return _tabFor(id);
+  }
+
   void searchComics(String query) {}
 
   void searchManga(String query) {}
@@ -548,7 +593,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
             selectedIndex: _selectedIndex,
             mountedTabIds: _mountedTabIds,
             onDestinationSelected: _selectTab,
-            tabFor: _tabFor,
+            tabFor: _shellTabFor,
             shellHeader: _shellHeader(),
             shellTopBar: shellTopBar,
             // Root fullscreen players (movies, trailers, Live Matches) leave

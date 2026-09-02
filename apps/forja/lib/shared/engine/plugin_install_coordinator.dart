@@ -209,11 +209,11 @@ class PluginInstallCoordinator {
       want,
     );
     if (hit == null) {
-      return 'Plugin not installed. Add its manifest in Settings → Forja plugins.';
+      return 'Plugin not installed. Add its manifest in Settings → Forja Packs.';
     }
     if (await PluginRegistry.instance.packNeedsDiskInstall(hit.pack)) {
       return '${hit.pack.name} is still downloading. '
-          'Open Settings → Forja plugins to watch progress.';
+          'Open Settings → Forja Packs to watch progress.';
     }
     return null;
   }

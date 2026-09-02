@@ -5,6 +5,12 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 
+/// Bytes of file head the local engine waits for before returning a play URL.
+const int torrentPlaybackHeadBytes = 256 * 1024;
+
+/// Minimum head accepted after a long wait (matches Rust [`STREAM_HEAD_MIN_ACCEPT`]).
+const int torrentPlaybackHeadMinBytes = 64 * 1024;
+
 /// Rich torrent statistics object.
 class TorrentStats {
   final double downloadMbps;
@@ -17,6 +23,8 @@ class TorrentStats {
   final int? etaSeconds;
   final String hash;
   final bool isConnected;
+  final int? headReadBytes;
+  final int? headTargetBytes;
 
   const TorrentStats({
     required this.downloadMbps,
@@ -29,7 +37,19 @@ class TorrentStats {
     required this.etaSeconds,
     required this.hash,
     required this.isConnected,
+    this.headReadBytes,
+    this.headTargetBytes,
   });
+
+  bool get hasHeadProgress =>
+      headReadBytes != null &&
+      headTargetBytes != null &&
+      headTargetBytes! > 0;
+
+  double get headProgressFraction {
+    if (!hasHeadProgress) return 0;
+    return (headReadBytes! / headTargetBytes!).clamp(0.0, 1.0);
+  }
 
   /// Backward-compatible alias for download speed.
   double get speedMbps => downloadMbps;
@@ -615,6 +635,8 @@ class TorrentStreamService {
       final progressBytes = (m['progress_bytes'] as num?)?.toInt() ?? 0;
       final totalBytes = (m['total_bytes'] as num?)?.toInt() ?? 0;
       final etaSecs = (m['eta_secs'] as num?)?.toInt() ?? 0;
+      final headRead = (m['head_read_bytes'] as num?)?.toInt();
+      final headTarget = (m['head_target_bytes'] as num?)?.toInt();
       final statusHash = (m['info_hash'] as String?)?.trim().toLowerCase();
       return TorrentStats(
         downloadMbps: downloadRate / 1024 / 1024,
@@ -627,6 +649,8 @@ class TorrentStreamService {
         etaSeconds: etaSecs > 0 ? etaSecs : null,
         hash: (statusHash != null && statusHash.isNotEmpty) ? statusHash : hash,
         isConnected: numPeers > 0,
+        headReadBytes: headRead,
+        headTargetBytes: headTarget,
       );
     } catch (_) {
       return null;

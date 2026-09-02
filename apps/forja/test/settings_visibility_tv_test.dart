@@ -71,6 +71,7 @@ void main() {
       expect(v.showPlaySourceNuvioToggle, isTrue);
       expect(v.lanPlaySourcesEditable, isTrue);
       expect(v.showSourcesCategory, isTrue);
+      expect(v.showForjaPacksCategory, isTrue);
       expect(v.showLists, isFalse);
       expect(v.showDataCategory, isFalse);
       expect(v.showDebrid, isFalse);
@@ -79,6 +80,7 @@ void main() {
 
       final ids = settingsCategories(v).map((c) => c.id).toSet();
       expect(ids.contains(SettingsCategoryId.sources), isTrue);
+      expect(ids.contains(SettingsCategoryId.forjaPacks), isTrue);
       expect(ids.contains(SettingsCategoryId.lists), isFalse);
       expect(ids.contains(SettingsCategoryId.data), isFalse);
       expect(ids.contains(SettingsCategoryId.debrid), isFalse);
@@ -115,6 +117,7 @@ void main() {
       expect(v.playSourceStremio, isFalse);
       expect(v.playSourceNuvio, isTrue);
       expect(v.showSourcesCategory, isTrue);
+      expect(v.showForjaPacksCategory, isTrue);
       expect(v.showDebrid, isFalse);
 
       expect(await PlaySourceEffective.torrent(service), isTrue);
@@ -151,4 +154,28 @@ void main() {
     expect(await PlaySourceEffective.stremio(service), isTrue);
     expect(await PlaySourceEffective.nuvio(service), isTrue);
   });
+
+  test(
+    'IPTV + Live Matches only: Sources plugins follow play sources, not nav',
+    () async {
+      SettingsService.configurePlatformProfile(PlatformProfile.phone);
+      final service = SettingsService();
+      await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+      await service.setNavbarConfig(['iptv', 'live_matches']);
+      await service.setPlaySourceEngineEnabled(true);
+      await service.setPlaySourceStremioEnabled(true);
+      await service.setPlaySourceNuvioEnabled(true);
+      await service.setPlaySourceTorrentEnabled(true);
+
+      final v = await SettingsVisibility.resolve(service);
+      expect(v.vodTab, isFalse);
+      expect(v.liveMatchesNav, isTrue);
+      expect(v.showEngine, isTrue);
+      expect(v.showStremioAddons, isTrue);
+      expect(v.showNuvio, isTrue);
+      expect(v.showTorrentEngine, isTrue);
+      expect(v.showSourcesCategory, isTrue);
+      expect(v.showAccounts, isFalse);
+    },
+  );
 }

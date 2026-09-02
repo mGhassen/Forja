@@ -97,6 +97,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 - [Cache & data](settings/cache-data.md)
 - [Forja Sports](settings/forja-sports.md) — Catalog ↔ Xtream/Stalker for Live Matches
 - [Torrent settings](settings/torrent-settings.md)
+- [Forja Packs](settings/forja-packs.md)
 - [Backup & restore](settings/backup-restore.md)
 - [Features](settings/navigation-bar.md)
 - [App updates](settings/app-updates.md)

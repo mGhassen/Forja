@@ -279,8 +279,11 @@ class PluginRegistry {
     return false;
   }
 
-  Future<void> _purgePackScriptStorage(EnginePack pack) async {
-    if (!isLocalManifestUrl(pack.sourceUrl)) {
+  Future<void> _purgePackScriptStorage(
+    EnginePack pack, {
+    bool purgeDisk = true,
+  }) async {
+    if (purgeDisk && !isLocalManifestUrl(pack.sourceUrl)) {
       await PluginScriptDiskStore.removeEnginePack(pack.sourceUrl);
     }
     final prefs = await _prefs;
@@ -1066,12 +1069,12 @@ class PluginRegistry {
 
   Future<EnginePack> refresh(String manifestUrl) => install(manifestUrl);
 
-  Future<void> removePack(String sourceUrl) async {
+  Future<void> removePack(String sourceUrl, {bool purgeDisk = true}) async {
     final all = await listPacksRaw();
     final victim = all.where((a) => a.sourceUrl == sourceUrl).toList();
     all.removeWhere((a) => a.sourceUrl == sourceUrl);
     for (final pack in victim) {
-      await _purgePackScriptStorage(pack);
+      await _purgePackScriptStorage(pack, purgeDisk: purgeDisk);
     }
     await _savePacks(all);
   }

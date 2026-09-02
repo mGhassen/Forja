@@ -441,3 +441,103 @@ class SplashContinueInBackgroundButton extends StatelessWidget {
     );
   }
 }
+
+/// Small looping logo for empty states — no splash sound, no one-shot timeline.
+class ForjaLogoIdle extends StatefulWidget {
+  const ForjaLogoIdle({
+    super.key,
+    this.logoHeight = 88,
+  });
+
+  final double logoHeight;
+
+  @override
+  State<ForjaLogoIdle> createState() => _ForjaLogoIdleState();
+}
+
+class _ForjaLogoIdleState extends State<ForjaLogoIdle>
+    with SingleTickerProviderStateMixin {
+  static const _palette = [
+    Color(0xFF22D3EE),
+    Color(0xFF1CE783),
+    Color(0xFFF472B6),
+    Color(0xFF818CF8),
+    Color(0xFFFBBF24),
+  ];
+
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Color _letterColor(int letterIndex, double t) {
+    final phase = (t + letterIndex * 0.11) % 1.0;
+    final scaled = phase * _palette.length;
+    final idx = scaled.floor() % _palette.length;
+    final next = (idx + 1) % _palette.length;
+    final mix = scaled - scaled.floor();
+    return Color.lerp(_palette[idx], _palette[next], mix)!;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const colors = LogoColors.dark;
+    final logoWidth = widget.logoHeight * _logoAspectRatio;
+    final haloDiameter = widget.logoHeight * _haloScale;
+    final blurSigma = haloDiameter * 0.14;
+    final glowSourceSize = haloDiameter * 0.38;
+    final haloOverflow = haloDiameter + blurSigma * 4;
+
+    return SizedBox(
+      width: logoWidth,
+      height: widget.logoHeight,
+      child: OverflowBox(
+        maxWidth: haloOverflow,
+        maxHeight: haloOverflow,
+        alignment: Alignment.center,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            final t = _controller.value;
+            final pulse = 1 + math.sin(t * math.pi * 2) * 0.028;
+            final haloAlpha = 0.12 + math.sin(t * math.pi * 2) * 0.04;
+
+            return Transform.scale(
+              scale: pulse,
+              child: ForjaLogo(
+                width: logoWidth,
+                height: widget.logoHeight,
+                letterStyles: {
+                  for (var i = 0; i < forjaLetterOrder.length; i++)
+                    forjaLetterOrder[i]: ForjaLetterStyle(
+                      color: _letterColor(i, t),
+                      opacity: 0.92,
+                    ),
+                },
+                halo: ForjaLogoHalo(
+                  color: colors.base,
+                  centerAlpha: haloAlpha,
+                  midAlpha: haloAlpha * 0.45,
+                  blurSigma: blurSigma,
+                  glowSourceSize: glowSourceSize,
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}

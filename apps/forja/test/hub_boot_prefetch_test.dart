@@ -56,6 +56,41 @@ void main() {
         vodTab: false,
       );
       expect(needs.openingStatusLabel, 'Opening Live & IPTV…');
+      expect(needs.needsForjaPluginWarm, isFalse);
+    });
+
+    test('needsForjaPluginWarm true when catalog or VOD engines on', () {
+      const liveOnly = BootNeeds(
+        visibleNavIds: ['iptv', 'live_matches'],
+        hubTab: false,
+        catalogTab: false,
+        torrent: false,
+        stremio: false,
+        nuvio: false,
+        engine: false,
+        playSourceTorrent: true,
+        playSourceStremio: true,
+        playSourceNuvio: true,
+        playSourceEngine: true,
+        vodTab: false,
+      );
+      expect(liveOnly.needsForjaPluginWarm, isFalse);
+
+      const withHub = BootNeeds(
+        visibleNavIds: ['home', 'iptv'],
+        hubTab: true,
+        catalogTab: true,
+        torrent: false,
+        stremio: false,
+        nuvio: false,
+        engine: false,
+        playSourceTorrent: false,
+        playSourceStremio: false,
+        playSourceNuvio: false,
+        playSourceEngine: false,
+        vodTab: true,
+      );
+      expect(withHub.needsForjaPluginWarm, isTrue);
     });
   });
 

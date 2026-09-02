@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/plugin_script_disk_store.dart';
 import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
@@ -467,6 +468,7 @@ class SyncService {
   /// Drop cloud feature flags and refresh chrome after session end.
   void clearIdentityAfterSignOut() {
     AccountFeatures.instance.clear();
+    unawaited(useGuestPluginDiskScope());
     _notifyIdentityChanged();
   }
 
@@ -646,9 +648,15 @@ class SyncService {
 
   Future<SyncProfile?> activeProfile({List<SyncProfile>? profiles}) async {
     final userId = session?.user.id;
-    if (userId == null) return null;
+    if (userId == null) {
+      await _syncPluginDiskScope(accountId: null, profileId: null);
+      return null;
+    }
     final list = profiles ?? await listProfiles();
-    if (list.isEmpty) return null;
+    if (list.isEmpty) {
+      await _syncPluginDiskScope(accountId: userId, profileId: null);
+      return null;
+    }
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString('$_activeProfileKeyPrefix$userId');
     SyncProfile? selected;
@@ -662,6 +670,7 @@ class SyncService {
     if (saved != active.id) {
       await prefs.setString('$_activeProfileKeyPrefix$userId', active.id);
     }
+    await _syncPluginDiskScope(accountId: userId, profileId: active.id);
     return active;
   }
 
@@ -672,8 +681,36 @@ class SyncService {
     if (!profiles.any((profile) => profile.id == profileId)) return false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('$_activeProfileKeyPrefix$userId', profileId);
+    await _syncPluginDiskScope(accountId: userId, profileId: profileId);
     _notifyIdentityChanged();
     return true;
+  }
+
+  /// Plugin JS on disk is scoped per account + profile — call on boot / switch.
+  Future<void> _syncPluginDiskScope({
+    required String? accountId,
+    required String? profileId,
+  }) async {
+    await PluginScriptDiskStore.configureScope(
+      accountId: accountId,
+      profileId: profileId,
+    );
+  }
+
+  /// Guest / signed-out local shell.
+  Future<void> useGuestPluginDiskScope() =>
+      _syncPluginDiskScope(accountId: null, profileId: null);
+
+  /// Resolve account + saved profile id before any plugin disk I/O (boot warm).
+  Future<void> ensurePluginDiskScopeForCurrentSession() async {
+    final userId = session?.user.id;
+    if (userId == null) {
+      await useGuestPluginDiskScope();
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final profileId = prefs.getString('$_activeProfileKeyPrefix$userId');
+    await _syncPluginDiskScope(accountId: userId, profileId: profileId);
   }
 
   /// Matches `profiles_enforce_max` in Supabase.

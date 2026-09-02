@@ -292,10 +292,10 @@ void main() {
     });
   });
 
-  group('localTorrentBackwardSeekNeedsRemount', () {
+  group('localTorrentSeekNeedsRemount', () {
     test('true when scrubbing back more than 1s', () {
       expect(
-        localTorrentBackwardSeekNeedsRemount(
+        localTorrentSeekNeedsRemount(
           previous: const Duration(minutes: 49),
           target: const Duration(minutes: 30),
         ),
@@ -303,16 +303,19 @@ void main() {
       );
     });
 
-    test('false for forward or tiny nudge', () {
+    test('true when scrubbing forward more than 1s', () {
       expect(
-        localTorrentBackwardSeekNeedsRemount(
+        localTorrentSeekNeedsRemount(
           previous: const Duration(minutes: 30),
           target: const Duration(minutes: 49),
         ),
-        isFalse,
+        isTrue,
       );
+    });
+
+    test('false for tiny nudge', () {
       expect(
-        localTorrentBackwardSeekNeedsRemount(
+        localTorrentSeekNeedsRemount(
           previous: const Duration(seconds: 100),
           target: const Duration(seconds: 99, milliseconds: 500),
         ),
