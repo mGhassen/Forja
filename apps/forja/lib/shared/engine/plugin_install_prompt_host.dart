@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/plugin_install_prompt_dialog.dart';
 import 'package:forja/shell/shell_bus.dart';
 
@@ -16,7 +17,9 @@ class PluginInstallPromptHost extends StatefulWidget {
 }
 
 class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
-  bool _showing = false;
+  bool _busy = false;
+  PluginInstallPrompt? _prompt;
+  bool _alreadyInstalled = false;
 
   @override
   void initState() {
@@ -37,10 +40,10 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
   }
 
   Future<void> _maybeShow() async {
-    if (!mounted || _showing || PluginInstallPromptDialog.isShowing) return;
+    if (!mounted || _busy || _prompt != null) return;
     final prompt = ShellBus.takePendingPluginInstall();
     if (prompt == null) return;
-    _showing = true;
+    _busy = true;
     try {
       ShellBus.openSettings(
         categoryId: SettingsCategoryId.sources,
@@ -53,16 +56,37 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
       final already = packs.any(
         (p) => p.sourceUrl.trim() == prompt.manifestUrl.trim(),
       );
-      await PluginInstallPromptDialog.show(
-        context,
-        prompt: prompt,
-        alreadyInstalled: already,
-      );
+      setState(() {
+        _prompt = prompt;
+        _alreadyInstalled = already;
+      });
     } finally {
-      if (mounted) _showing = false;
+      if (mounted) _busy = false;
     }
   }
 
+  void _dismiss() {
+    if (_prompt == null) return;
+    setState(() {
+      _prompt = null;
+      _alreadyInstalled = false;
+    });
+  }
+
   @override
-  Widget build(BuildContext context) => widget.child;
+  Widget build(BuildContext context) {
+    final prompt = _prompt;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        widget.child,
+        if (prompt != null)
+          PluginInstallPromptOverlay(
+            prompt: prompt,
+            alreadyInstalled: _alreadyInstalled,
+            onDismiss: _dismiss,
+          ),
+      ],
+    );
+  }
 }

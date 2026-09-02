@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
@@ -7,57 +5,42 @@ import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 
-/// Confirms a remote plugin pack before install (deep link or queued prompt).
-class PluginInstallPromptDialog {
-  static OverlayEntry? _entry;
-  static Completer<bool>? _completer;
+/// Full-screen confirm overlay for a remote plugin pack (deep link / web Add to Forja).
+class PluginInstallPromptOverlay extends StatelessWidget {
+  const PluginInstallPromptOverlay({
+    super.key,
+    required this.prompt,
+    required this.alreadyInstalled,
+    required this.onDismiss,
+  });
 
-  static bool get isShowing => _entry != null;
+  final PluginInstallPrompt prompt;
+  final bool alreadyInstalled;
+  final VoidCallback onDismiss;
 
-  static void dismiss({bool installed = false}) {
-    if (_entry == null) return;
-    _entry?.remove();
-    _entry = null;
-    final c = _completer;
-    _completer = null;
-    if (c != null && !c.isCompleted) c.complete(installed);
-  }
-
-  static Future<bool> show(
-    BuildContext context, {
-    required PluginInstallPrompt prompt,
-    bool alreadyInstalled = false,
-  }) {
-    dismiss();
-    final overlay = Overlay.of(context, rootOverlay: true);
-    _completer = Completer<bool>();
-    _entry = OverlayEntry(
-      builder: (_) => ShellScopeBuilder(
-        builder: (ctx, _) => TvOverlayScope(
-          debugLabel: 'plugin-install-prompt',
-          onDismiss: dismiss,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              const ModalBarrier(
-                dismissible: false,
-                color: Color(0x9E000000),
-              ),
-              Center(
-                child: _PluginInstallPromptBody(
-                  prompt: prompt,
-                  alreadyInstalled: alreadyInstalled,
-                  onCancel: dismiss,
-                  onConfirm: () => dismiss(installed: true),
-                ),
-              ),
-            ],
+  @override
+  Widget build(BuildContext context) {
+    return TvOverlayScope(
+      debugLabel: 'plugin-install-prompt',
+      onDismiss: onDismiss,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const ModalBarrier(
+            dismissible: false,
+            color: Color(0x9E000000),
           ),
-        ),
+          Center(
+            child: _PluginInstallPromptBody(
+              prompt: prompt,
+              alreadyInstalled: alreadyInstalled,
+              onCancel: onDismiss,
+              onConfirm: onDismiss,
+            ),
+          ),
+        ],
       ),
     );
-    overlay.insert(_entry!);
-    return _completer!.future;
   }
 }
 
