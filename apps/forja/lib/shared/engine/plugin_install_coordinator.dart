@@ -289,7 +289,6 @@ class PluginInstallCoordinator {
 
     for (final pack in packs) {
       if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
-      if (PluginRegistry.isRetiredCatalogPack(pack)) continue;
       if (await registry.packNeedsDiskInstall(pack)) {
         jobs.add((pack: pack, isUpdate: false, forceRefresh: true));
       }

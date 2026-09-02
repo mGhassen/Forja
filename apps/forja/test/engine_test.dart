@@ -49,6 +49,7 @@ Future<List<EnginePlugin>> loadAllForjaHqPlugins() async {
   final out = <EnginePlugin>[];
   for (final path in [
     'providers/manifest.json',
+    'catalog/manifest.json',
     'live/manifest.json',
   ]) {
     final map =
@@ -618,12 +619,18 @@ void main() {
       );
     });
 
-    test('forjaHqSlot detects providers/live paths', () {
+    test('forjaHqSlot detects providers/catalog/live paths', () {
       expect(
         PluginRegistry.forjaHqSlot(
           'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins/providers/manifest.json',
         ),
         'providers',
+      );
+      expect(
+        PluginRegistry.forjaHqSlot(
+          '/Users/x/Forja/plugins/catalog/manifest.json',
+        ),
+        'catalog',
       );
       expect(
         PluginRegistry.forjaHqSlot('/Users/x/Forja/plugins/live/manifest.json'),
@@ -648,6 +655,48 @@ void main() {
       expect(File(url!).existsSync(), isTrue);
     });
 
+    test('groupEnginePacksByKind buckets catalog and live slot packs', () {
+      final catalog = EnginePack.fromJson(
+        {
+          'id': 'forjahq-catalog',
+          'name': 'ForjaHQ Catalog',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'catalog-streamed',
+              'name': 'Streamed',
+              'entry': 'streamed.js',
+              'types': ['catalog'],
+              'kind': 'http',
+            },
+          ],
+        },
+        sourceUrl: '/Users/x/Forja/plugins/catalog/manifest.json',
+      );
+      final live = EnginePack.fromJson(
+        {
+          'id': 'forjahq-live',
+          'name': 'ForjaHQ Live',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'live-streamed',
+              'name': 'Streamed',
+              'entry': 'streamed.js',
+              'types': ['live'],
+              'kind': 'http',
+            },
+          ],
+        },
+        sourceUrl: '/Users/x/Forja/plugins/live/manifest.json',
+      );
+      final grouped = groupEnginePacksByKind([catalog, live]);
+      expect(grouped.orderedKinds, contains(PluginRegistry.packKindCatalog));
+      expect(grouped.orderedKinds, contains(PluginRegistry.packKindLive));
+      expect(grouped.byKind[PluginRegistry.packKindCatalog], [catalog]);
+      expect(grouped.byKind[PluginRegistry.packKindLive], [live]);
+    });
+
     test('groupEnginePacksByKind buckets torrent slot packs', () {
       final pack = EnginePack.fromJson(
         {
@@ -670,40 +719,7 @@ void main() {
       expect(grouped.byKind[PluginRegistry.packKindTorrent], [pack]);
     });
 
-    test('isRetiredCatalogPack detects removed split catalog manifest', () {
-      expect(
-        PluginRegistry.isRetiredCatalogManifestUrl(
-          '/Users/x/Forja/plugins/catalog/manifest.json',
-        ),
-        isTrue,
-      );
-      expect(
-        PluginRegistry.isRetiredCatalogPack(
-          EnginePack(
-            sourceUrl: '/Users/x/Forja/plugins/catalog/manifest.json',
-            packId: 'forjahq-catalog',
-            name: 'ForjaHQ Catalog',
-            version: '1.0.0',
-            plugins: const [],
-          ),
-        ),
-        isTrue,
-      );
-      expect(
-        PluginRegistry.isRetiredCatalogPack(
-          EnginePack(
-            sourceUrl: '/Users/x/Forja/plugins/live/manifest.json',
-            packId: 'forjahq-live',
-            name: 'ForjaHQ Live Sports',
-            version: '1.6.0',
-            plugins: const [],
-          ),
-        ),
-        isFalse,
-      );
-    });
-
-    test('listPacksRaw purges retired catalog lean stub from prefs', () async {
+    test('listPacksRaw keeps catalog and live lean stubs', () async {
       const liveUrl = '/Users/x/Forja/plugins/live/manifest.json';
       const catalogUrl = '/Users/x/Forja/plugins/catalog/manifest.json';
       SharedPreferences.setMockInitialValues({
@@ -712,14 +728,14 @@ void main() {
             'sourceUrl': liveUrl,
             'packId': 'forjahq-live',
             'name': 'Live',
-            'version': '1.6.0',
+            'version': '1.9.2',
             'plugins': [],
           },
           {
             'sourceUrl': catalogUrl,
             'packId': 'forjahq-catalog',
             'name': 'Catalog',
-            'version': '1.0.0',
+            'version': '1.9.2',
             'plugins': [],
           },
         ]),
@@ -727,12 +743,13 @@ void main() {
         'engine_js_legacy_forjahq_wiped': true,
       });
       final packs = await registry.listPacksRaw();
-      expect(packs, hasLength(1));
-      expect(packs.single.sourceUrl, liveUrl);
+      expect(packs, hasLength(2));
+      expect(packs.map((p) => p.sourceUrl), containsAll([liveUrl, catalogUrl]));
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString('engine_js_packs_v2');
       expect(raw, isNotNull);
-      expect(raw!, isNot(contains('forjahq-catalog')));
+      expect(raw!, contains('forjahq-catalog'));
+      expect(raw, contains('forjahq-live'));
     });
 
     test('packPluginFromPacks prefers active pack when plugin id is duplicated',
@@ -2030,80 +2047,71 @@ void main() {
     });
 
     test(
-      'live sports plugins are unified live_sport entries separate from VOD Sources',
+      'live sports split into catalog schedule pack and live resolve pack',
       () async {
         final plugins = await loadAllForjaHqPlugins();
-        const unifiedIds = [
-          'streamed',
-          'ppv',
-          'timstreams',
-          'streamfree',
-          'watchfooty',
-          'streamic',
-          'espn',
-          'liveonsat',
-          'livesoccertv',
+        const catalogIds = [
+          'catalog-streamed',
+          'catalog-ppv',
+          'catalog-timstreams',
+          'catalog-streamfree',
+          'catalog-watchfooty',
+          'catalog-streamic',
+          'catalog-espn',
+          'catalog-liveonsat',
+          'catalog-livesoccertv',
         ];
-        for (final id in unifiedIds) {
+        const liveIds = [
+          'live-streamed',
+          'live-ppv',
+          'live-timstreams',
+          'live-streamfree',
+          'live-watchfooty',
+          'live-streamic',
+        ];
+        for (final id in catalogIds) {
           final p = plugins.firstWhere((e) => e.id == id);
-          expect(p.isLiveSportPlugin, isTrue);
-          expect(p.isVodCatalog, isFalse);
-          expect(p.entry.endsWith('.js'), isTrue);
+          expect(p.isLiveCatalog, isTrue);
+          expect(p.isLiveSportPlugin, isFalse);
           expect(p.supportsLiveCatalog, isTrue);
+          expect(p.supportsLiveResolve, isFalse);
         }
-        for (final id in ['streamed', 'ppv', 'streamfree']) {
+        for (final id in liveIds) {
           final p = plugins.firstWhere((e) => e.id == id);
-          expect(p.supportsLiveResolve, isTrue);
-          expect(p.defaultCapabilities['catalog'], isTrue);
-          expect(p.defaultCapabilities['resolve'], isTrue);
+          expect(p.isLiveResolve, isTrue, reason: id);
+          expect(p.isLivePlugin, isFalse, reason: id);
+          expect(p.isLiveSportPlugin, isFalse, reason: id);
+          expect(p.supportsLiveResolve, isTrue, reason: id);
+          expect(p.supportsLiveCatalog, isFalse, reason: id);
         }
-        for (final id in ['timstreams', 'watchfooty', 'streamic', 'espn']) {
-          final p = plugins.firstWhere((e) => e.id == id);
-          expect(p.defaultCapabilities['catalog'] ?? false, isFalse);
-        }
-        final espn = plugins.firstWhere((e) => e.id == 'espn');
-        expect(espn.supportsLiveResolve, isFalse);
-        final liveonsat = plugins.firstWhere((e) => e.id == 'liveonsat');
-        expect(liveonsat.supportsLiveResolve, isFalse);
+        final streamedCatalog =
+            plugins.firstWhere((e) => e.id == 'catalog-streamed');
+        expect(streamedCatalog.config['providerId'], 'live-streamed');
+        final liveonsat =
+            plugins.firstWhere((e) => e.id == 'catalog-liveonsat');
         expect(liveonsat.supportsLiveBroadcast, isTrue);
-        expect(liveonsat.defaultCapabilities['broadcast'], isTrue);
         expect(
-          await loadForjaHqFile('live/liveonsat.js'),
+          await loadForjaHqFile('catalog/liveonsat.js'),
           contains('m.liveonsat.com'),
         );
-        final livesoccertv = plugins.firstWhere((e) => e.id == 'livesoccertv');
-        expect(livesoccertv.supportsLiveResolve, isFalse);
+        final livesoccertv =
+            plugins.firstWhere((e) => e.id == 'catalog-livesoccertv');
         expect(livesoccertv.supportsLiveBroadcast, isTrue);
-        expect(livesoccertv.defaultCapabilities['broadcast'], isTrue);
         expect(livesoccertv.config['catalogTimeoutSec'], 90);
         expect(
-          await loadForjaHqFile('live/livesoccertv.js'),
+          await loadForjaHqFile('catalog/livesoccertv.js'),
           contains('www.livesoccertv.com'),
         );
         expect(
-          await loadForjaHqFile('live/livesoccertv.js'),
-          contains('r.jina.ai'),
-        );
-        expect(
-          await loadForjaHqFile('live/timstreams.js'),
-          contains('function extract(ctx)'),
+          await loadForjaHqFile('catalog/streamed.js'),
+          contains("cfg.providerId"),
         );
         expect(
           await loadForjaHqFile('live/streamed.js'),
-          contains('/api/matches/all'),
+          contains("action !== 'resolve'"),
         );
         expect(
-          await loadForjaHqFile('live/ppv.js'),
-          contains('api.ppv.st'),
-        );
-        for (final id in ['streamed', 'ppv', 'timstreams']) {
-          final p = plugins.firstWhere((e) => e.id == id);
-          final src = await loadForjaHqFile('live/${p.entry}');
-          expect(src, contains("action === 'catalog'"));
-          expect(src, contains("action === 'resolve'"));
-        }
-        expect(
-          await loadForjaHqFile('live/espn.js'),
+          await loadForjaHqFile('catalog/espn.js'),
           contains('LEAGUE_ENDPOINTS'),
         );
         expect(

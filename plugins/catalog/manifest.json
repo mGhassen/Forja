@@ -1,0 +1,165 @@
+{
+  "schema": 1,
+  "id": "forjahq-catalog",
+  "name": "ForjaHQ Catalog",
+  "version": "1.9.2",
+  "plugins": [
+    {
+      "id": "catalog-streamed",
+      "name": "Streamed",
+      "description": "streamed.pk schedule catalog",
+      "entry": "streamed.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "config": {
+        "providerId": "live-streamed",
+        "origin": "https://streamed.pk",
+        "embedOrigin": "https://embed.st",
+        "nativeUnlock": "streamed"
+      }
+    },
+    {
+      "id": "catalog-ppv",
+      "name": "PPV",
+      "description": "ppv.st schedule catalog",
+      "entry": "ppv.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "config": {
+        "providerId": "live-ppv",
+        "webOrigin": "https://ppv.st",
+        "nativeUnlock": "ppv",
+        "apis": [
+          "https://api.ppv.st/api/streams",
+          "https://api.ppv.cx/api/streams"
+        ]
+      }
+    },
+    {
+      "id": "catalog-streamfree",
+      "name": "StreamFree",
+      "description": "streamfree.top schedule catalog",
+      "entry": "streamfree.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "config": {
+        "providerId": "live-streamfree",
+        "origin": "https://streamfree.top"
+      }
+    },
+    {
+      "id": "catalog-timstreams",
+      "name": "TimStreams",
+      "description": "timstreams.st schedule catalog",
+      "entry": "timstreams.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "config": {
+        "providerId": "live-timstreams",
+        "origin": "https://timstreams.st",
+        "api": "https://timstreams.st/api/live-upcoming",
+        "embedOrigin": "https://embed.st"
+      }
+    },
+    {
+      "id": "catalog-watchfooty",
+      "name": "WatchFooty",
+      "description": "watchfooty.st schedule catalog",
+      "entry": "watchfooty.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "config": {
+        "providerId": "live-watchfooty",
+        "origin": "https://watchfooty.st",
+        "nativeUnlock": "watchfooty",
+        "airingOnlyLive": true
+      }
+    },
+    {
+      "id": "catalog-streamic",
+      "name": "Streamic",
+      "description": "streamic.live schedule catalog",
+      "entry": "streamic.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "config": {
+        "providerId": "live-streamic",
+        "origin": "https://streamic.st",
+        "api": "https://streamic.st/api/getEvents.php",
+        "popularApi": "https://streamic.st/api/J.php",
+        "ssig": "bytmo8xialhem066",
+        "embedOrigin": "https://embed.st",
+        "ppvOrigin": "https://ppv.st",
+        "ppvApis": [
+          "https://api.ppv.st/api/streams",
+          "https://api.ppv.cx/api/streams"
+        ]
+      }
+    },
+    {
+      "id": "catalog-espn",
+      "name": "ESPN",
+      "description": "ESPN scoreboard schedule catalog",
+      "entry": "espn.js",
+      "types": ["catalog"],
+      "kind": "http",
+      "config": {
+        "providerId": "catalog-espn",
+        "scheduleHorizon": "fullDay",
+        "catalogTimeoutSec": 90,
+        "leagues": [
+          "NBA",
+          "NFL",
+          "MLB",
+          "NHL",
+          "WNBA",
+          "NCAAMB",
+          "NCAAWB",
+          "NCAAFB",
+          "EPL",
+          "MLS",
+          "LALIGA",
+          "SERIEA",
+          "BUNDESLIGA",
+          "LIGUE1",
+          "UCL",
+          "EUROPA",
+          "EREDIVISIE",
+          "LIGAPORTUGAL",
+          "LIGAMX",
+          "WORLDCUP",
+          "UFC"
+        ]
+      }
+    },
+    {
+      "id": "catalog-liveonsat",
+      "name": "LiveOnSat",
+      "description": "LiveOnSat TV schedule + broadcast channel hints",
+      "entry": "liveonsat.js",
+      "types": ["catalog"],
+      "capabilities": ["broadcast"],
+      "kind": "http",
+      "config": {
+        "base": "https://m.liveonsat.com",
+        "pages": ["2day.php"],
+        "airingOnlyLive": true
+      }
+    },
+    {
+      "id": "catalog-livesoccertv",
+      "name": "Live Soccer TV",
+      "description": "Live Soccer TV schedule + broadcast channel hints",
+      "entry": "livesoccertv.js",
+      "types": ["catalog"],
+      "capabilities": ["broadcast"],
+      "kind": "http",
+      "config": {
+        "base": "https://www.livesoccertv.com",
+        "jinaPrefix": "https://r.jina.ai/",
+        "catalogTimeoutSec": 90,
+        "airingOnlyLive": true
+      }
+    }
+  ]
+}

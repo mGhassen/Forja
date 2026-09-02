@@ -313,7 +313,7 @@ mixin _LiveMatchesForjaLive
     final packs = await EngineService.instance.listPacks();
     for (final pack in packs) {
       for (final p in pack.plugins) {
-        if (p.id == 'espn') {
+        if (p.id == 'catalog-espn' || p.id == 'espn') {
           return await PluginRegistry.instance.isLiveCapabilityActive(
             pack: pack,
             plugin: p,
@@ -575,7 +575,7 @@ mixin _LiveMatchesForjaLive
       await LiveMatchesEngine.warmPluginMeta();
       await EngineService.instance.ensureOfficialInstalled();
       final catalogPlugins =
-          await EngineService.instance.listLiveSportCatalogPlugins();
+          await EngineService.instance.listEnabledLiveCatalogPlugins();
       if (!mounted || gen != _s._forjaLiveLoadGen) return;
 
       _ensureForjaLivePluginLoadsRegistered(catalogPlugins);
@@ -612,6 +612,21 @@ mixin _LiveMatchesForjaLive
   }
 
   bool _gridCatalogNeedsHydration() {
+    if (!_usesForjaLiveLazyCatalog) return false;
+    if (_s._forjaLivePluginLoads.isEmpty) return true;
+    final filter = _s._forjaLivePluginFilter;
+    if (filter == 'all') {
+      return _s._forjaLivePluginLoads.values.any(
+        (e) => !e.attempted && !e.loading,
+      );
+    }
+    final load = _s._forjaLivePluginLoads[filter] ??
+        _s._forjaLivePluginLoads[
+            EngineService.normalizeLiveSportPluginId(filter)];
+    return load == null || (!load.attempted && !load.loading);
+  }
+
+  void _deferTabControllerDispose(TabController? ctrl) {
     if (ctrl == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => ctrl.dispose());
   }

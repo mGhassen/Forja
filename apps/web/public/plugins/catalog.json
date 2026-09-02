@@ -13,11 +13,21 @@
       "author": "ForjaHQ"
     },
     {
+      "id": "catalog",
+      "kind": "catalog",
+      "manifestPath": "catalog/manifest.json",
+      "name": "ForjaHQ Catalog",
+      "description": "Live Matches schedule catalogs (Streamed, PPV, ESPN, …).",
+      "accent": "brand",
+      "official": true,
+      "author": "ForjaHQ"
+    },
+    {
       "id": "live",
       "kind": "live",
       "manifestPath": "live/manifest.json",
-      "name": "ForjaHQ Live Sports",
-      "description": "Live Matches schedules and per-site stream resolve.",
+      "name": "ForjaHQ Live",
+      "description": "Live Matches per-site stream resolve (Forja Live).",
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ"

@@ -84,18 +84,14 @@ class _LiveMatchDetailsScreenState
     anim.addStatusListener(onStatus);
   }
 
-  Future<void> _awaitForjaCatalogIdle() async {
+  Future<void> _awaitForjaGridCatalogIdle() async {
     if (!_waitsForForjaCatalogIdle) return;
     final host = widget.host;
     var spins = 0;
-    while (mounted && spins < 600) {
-      final forjaLive = host as _LiveMatchesForjaLive;
-      if (!forjaLive._forjaLiveCatalogBusy &&
-          !forjaLive._forjaLiveStreamCatalogBusy) {
-        return;
-      }
+    while (mounted && spins < 120) {
+      if (!(host as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) return;
       if (spins == 0) {
-        _sourcesCtrl.setSearchPhase('Loading live catalogs');
+        _sourcesCtrl.setSearchPhase('Loading schedule');
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
       spins++;
@@ -110,10 +106,7 @@ class _LiveMatchDetailsScreenState
     _playPath = _LiveMatchPlayPath.engineChoices;
     _sourcesCtrl.beginSearching('streams');
     try {
-      if (_waitsForForjaCatalogIdle) {
-        (host as _LiveMatchesForjaLive)._kickForjaLiveStreamCatalogHydration();
-      }
-      await _awaitForjaCatalogIdle();
+      await _awaitForjaGridCatalogIdle();
       if (!mounted || gen != _loadGen || _sourcesCtrl.isDisposed) return;
 
       final display = await host._fillMatchDetailsSources(

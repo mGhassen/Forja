@@ -101,26 +101,28 @@ class EnginePlugin {
   bool get isLiveCatalog => types.contains('catalog') && !isHubCatalog;
   bool get isLivePlugin => types.contains('plugins');
   bool get isLiveSport => types.contains('live_sport');
+  /// Resolve-only entries in `plugins/live/manifest.json` (`types: live`).
+  bool get isLiveResolve => types.contains('live');
 
   bool get supportsLiveCatalog =>
       isLiveSportPlugin ? hasCapability('catalog') : isLiveCatalog;
 
   /// IPTV broadcast channel hints on catalog rows (`broadcast` capability).
   bool get supportsLiveBroadcast =>
-      isLiveSportPlugin && hasCapability('broadcast');
+      (isLiveSportPlugin || isLiveCatalog) && hasCapability('broadcast');
 
   bool get supportsLiveResolve =>
       isLiveSportPlugin
           ? hasCapability('resolve')
-          : isLivePlugin || isLiveSport;
+          : isLiveResolve || isLivePlugin || isLiveSport;
 
   /// Any Forja Sports / Live Matches plugin (catalog orchestrator, resolve, sport feeds).
   bool get isLive =>
       isLiveSportPlugin ||
       isLiveCatalog ||
+      isLiveResolve ||
       isLivePlugin ||
-      isLiveSport ||
-      types.contains('live');
+      isLiveSport;
 
   /// Sources chips: HTTP VOD only — hops and hub catalogs are never chips.
   bool get isExtractable => isHttp && !isHubCatalog;

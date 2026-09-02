@@ -42,6 +42,7 @@ void main() {
   group('official pack manifests', () {
     final manifests = [
       'plugins/providers/manifest.json',
+      'plugins/catalog/manifest.json',
       'plugins/live/manifest.json',
       'plugins/torrent/manifest.json',
       'plugins/hubs/home/manifest.json',

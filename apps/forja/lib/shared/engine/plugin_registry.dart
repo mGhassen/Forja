@@ -113,6 +113,7 @@ class PluginRegistry {
     final path = url.trim().replaceAll('\\', '/').toLowerCase();
     const core = {
       'plugins/providers/manifest.json': 'providers',
+      'plugins/catalog/manifest.json': 'catalog',
       'plugins/live/manifest.json': 'live',
       'plugins/torrent/manifest.json': 'torrent',
       'plugins/hubs/home/manifest.json': 'home',
@@ -229,17 +230,6 @@ class PluginRegistry {
   }
 
   static bool isLegacyMonolithPack(EnginePack pack) => pack.packId == 'forjahq';
-
-  /// Retired split live catalog pack — merged into [plugins/live/manifest.json].
-  static bool isRetiredCatalogManifestUrl(String url) {
-    final path = url.trim().replaceAll('\\', '/').toLowerCase();
-    return path.contains('/plugins/catalog/manifest.json') ||
-        forjaHqSlot(url) == 'catalog';
-  }
-
-  static bool isRetiredCatalogPack(EnginePack pack) =>
-      pack.packId == 'forjahq-catalog' ||
-      isRetiredCatalogManifestUrl(pack.sourceUrl);
 
   static bool isLegacyAssetPack(String sourceUrl) =>
       sourceUrl.startsWith('asset:') ||
@@ -396,8 +386,7 @@ class PluginRegistry {
         for (final e in decoded)
           if (e is Map) EnginePack.fromStored(Map<String, dynamic>.from(e)),
       ];
-      final withoutAssets = await _purgeLegacyAssetPacks(packs);
-      return _purgeRetiredCatalogPacks(withoutAssets);
+      return _purgeLegacyAssetPacks(packs);
     } catch (_) {
       return [];
     }
@@ -548,27 +537,6 @@ class PluginRegistry {
       await _purgePackScriptStorage(pack);
     }
     await _savePacks(keep);
-    return keep;
-  }
-
-  Future<List<EnginePack>> _purgeRetiredCatalogPacks(List<EnginePack> packs) async {
-    final keep = <EnginePack>[];
-    final victims = <EnginePack>[];
-    for (final p in packs) {
-      if (isRetiredCatalogPack(p)) {
-        victims.add(p);
-      } else {
-        keep.add(p);
-      }
-    }
-    if (victims.isEmpty) return packs;
-    for (final pack in victims) {
-      await _purgePackScriptStorage(pack);
-    }
-    await _savePacks(keep);
-    debugPrint(
-      '[engine] purged ${victims.length} retired catalog pack(s) from prefs',
-    );
     return keep;
   }
 
@@ -812,13 +780,6 @@ class PluginRegistry {
     void Function(PluginScriptFetchProgress progress)? onFetchProgress,
   }) async {
     manifestUrl = await _substituteUnreachableLocalManifest(manifestUrl);
-    if (isRetiredCatalogManifestUrl(manifestUrl)) {
-      await removePack(manifestUrl);
-      throw Exception(
-        'ForjaHQ Catalog pack retired — live schedules live in '
-        'plugins/live/manifest.json',
-      );
-    }
     final body = await _fetchText(manifestUrl);
     final map = jsonDecode(body) as Map<String, dynamic>;
     try {
@@ -1161,7 +1122,7 @@ class PluginRegistry {
     notifyChanged();
   }
 
-  /// One-time migration from twin `catalog-*` / `live-*` packs to unified ids.
+  /// One-time migration from unified `live_sport` ids back to split catalog/live.
   Future<void> migrateLegacyLiveSportPacksIfNeeded() async {
     final prefs = await _prefs;
     if (prefs.getBool(_liveSportMigrationKey) == true) return;
@@ -1205,15 +1166,6 @@ class PluginRegistry {
 
     for (final entry in capabilityWrites.entries) {
       await prefs.setBool(entry.key, entry.value);
-    }
-
-    final next = [
-      for (final pack in packs)
-        if (!isRetiredCatalogPack(pack)) pack,
-    ];
-    if (next.length != packs.length) {
-      packs = next;
-      await _savePacks(packs);
     }
 
     await prefs.setBool(_liveSportMigrationKey, true);
@@ -1442,9 +1394,7 @@ class PluginRegistry {
     final remote = <String, ({String? name, String? version})>{};
     for (final raw in rows) {
       final url = (raw['manifestUrl'] as String?)?.trim() ?? '';
-      if (url.isEmpty ||
-          isLegacyAssetPack(url) ||
-          isRetiredCatalogManifestUrl(url)) {
+      if (url.isEmpty || isLegacyAssetPack(url)) {
         continue;
       }
 
@@ -1535,22 +1485,14 @@ class PluginRegistry {
     for (final pack in all) {
       if (pack.plugins.isNotEmpty) continue;
       if (isLegacyAssetPack(pack.sourceUrl)) continue;
-      if (isRetiredCatalogPack(pack)) continue;
       if (_asLocalFile(pack.sourceUrl) != null &&
           !await _localManifestExists(pack.sourceUrl)) {
-        if (isRetiredCatalogManifestUrl(pack.sourceUrl)) {
-          await removePack(pack.sourceUrl);
-        }
         continue;
       }
       try {
         final url = await _substituteUnreachableLocalManifest(pack.sourceUrl);
         await install(url);
       } catch (e) {
-        if (isRetiredCatalogManifestUrl(pack.sourceUrl)) {
-          await removePack(pack.sourceUrl);
-          continue;
-        }
         debugPrint(
           '[engine] lean hydrate failed (${pack.sourceUrl}): $e',
         );

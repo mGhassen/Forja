@@ -1,18 +1,15 @@
 {
   "schema": 1,
   "id": "forjahq-live",
-  "name": "ForjaHQ Live Sports",
+  "name": "ForjaHQ Live",
   "version": "1.9.2",
   "plugins": [
     {
-      "id": "streamed",
+      "id": "live-streamed",
       "name": "Streamed",
-      "description": "streamed.pk schedule + stream resolve (GOAT / golf)",
+      "description": "streamed.pk stream resolve (GOAT / golf)",
       "entry": "streamed.js",
-      "types": ["live_sport"],
-      "capabilities": ["catalog", "resolve"],
-      "defaultCapabilities": { "catalog": true, "resolve": true },
-      "legacyIds": { "catalog": "catalog-streamed", "resolve": "live-streamed" },
+      "types": ["live"],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -22,14 +19,11 @@
       }
     },
     {
-      "id": "ppv",
+      "id": "live-ppv",
       "name": "PPV",
-      "description": "ppv.st schedule + stream resolve",
+      "description": "ppv.st / api.ppv.st stream resolve",
       "entry": "ppv.js",
-      "types": ["live_sport"],
-      "capabilities": ["catalog", "resolve"],
-      "defaultCapabilities": { "catalog": true, "resolve": true },
-      "legacyIds": { "catalog": "catalog-ppv", "resolve": "live-ppv" },
+      "types": ["live"],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -42,14 +36,11 @@
       }
     },
     {
-      "id": "streamfree",
+      "id": "live-streamfree",
       "name": "StreamFree",
-      "description": "streamfree.top schedule + stream resolve",
+      "description": "streamfree.top stream resolve",
       "entry": "streamfree.js",
-      "types": ["live_sport"],
-      "capabilities": ["catalog", "resolve"],
-      "defaultCapabilities": { "catalog": true, "resolve": true },
-      "legacyIds": { "catalog": "catalog-streamfree", "resolve": "live-streamfree" },
+      "types": ["live"],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -57,29 +48,24 @@
       }
     },
     {
-      "id": "timstreams",
+      "id": "live-timstreams",
       "name": "TimStreams",
-      "description": "timstreams.st schedule + stream resolve",
+      "description": "timstreams.st stream resolve",
       "entry": "timstreams.js",
-      "types": ["live_sport"],
-      "capabilities": ["catalog", "resolve"],
-      "legacyIds": { "catalog": "catalog-timstreams", "resolve": "live-timstreams" },
+      "types": ["live"],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
         "origin": "https://timstreams.st",
-        "api": "https://timstreams.st/api/live-upcoming",
         "embedOrigin": "https://embed.st"
       }
     },
     {
-      "id": "watchfooty",
+      "id": "live-watchfooty",
       "name": "WatchFooty",
-      "description": "watchfooty.st schedule + stream resolve",
+      "description": "watchfooty.st stream resolve",
       "entry": "watchfooty.js",
-      "types": ["live_sport"],
-      "capabilities": ["catalog", "resolve"],
-      "legacyIds": { "catalog": "catalog-watchfooty", "resolve": "live-watchfooty" },
+      "types": ["live"],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -89,13 +75,11 @@
       }
     },
     {
-      "id": "streamic",
+      "id": "live-streamic",
       "name": "Streamic",
-      "description": "streamic.live schedule + stream resolve",
+      "description": "streamic.live stream resolve",
       "entry": "streamic.js",
-      "types": ["live_sport"],
-      "capabilities": ["catalog", "resolve"],
-      "legacyIds": { "catalog": "catalog-streamic", "resolve": "live-streamic" },
+      "types": ["live"],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -109,76 +93,6 @@
           "https://api.ppv.st/api/streams",
           "https://api.ppv.cx/api/streams"
         ]
-      }
-    },
-    {
-      "id": "espn",
-      "name": "ESPN",
-      "description": "ESPN scoreboard schedule catalog",
-      "entry": "espn.js",
-      "types": ["live_sport"],
-      "capabilities": ["catalog"],
-      "legacyIds": { "catalog": "catalog-espn" },
-      "kind": "http",
-      "config": {
-        "scheduleHorizon": "fullDay",
-        "catalogTimeoutSec": 90,
-        "leagues": [
-          "NBA",
-          "NFL",
-          "MLB",
-          "NHL",
-          "WNBA",
-          "NCAAMB",
-          "NCAAWB",
-          "NCAAFB",
-          "EPL",
-          "MLS",
-          "LALIGA",
-          "SERIEA",
-          "BUNDESLIGA",
-          "LIGUE1",
-          "UCL",
-          "EUROPA",
-          "EREDIVISIE",
-          "LIGAPORTUGAL",
-          "LIGAMX",
-          "WORLDCUP",
-          "UFC"
-        ]
-      }
-    },
-    {
-      "id": "liveonsat",
-      "name": "LiveOnSat",
-      "description": "LiveOnSat TV schedule + broadcast channel hints for Forja Sports",
-      "entry": "liveonsat.js",
-      "types": ["live_sport"],
-      "capabilities": ["catalog", "broadcast"],
-      "defaultCapabilities": { "broadcast": true },
-      "legacyIds": { "catalog": "catalog-liveonsat" },
-      "kind": "http",
-      "config": {
-        "base": "https://m.liveonsat.com",
-        "pages": ["2day.php"],
-        "airingOnlyLive": true
-      }
-    },
-    {
-      "id": "livesoccertv",
-      "name": "Live Soccer TV",
-      "description": "Live Soccer TV schedule + broadcast channel hints for Forja Sports",
-      "entry": "livesoccertv.js",
-      "types": ["live_sport"],
-      "capabilities": ["catalog", "broadcast"],
-      "defaultCapabilities": { "broadcast": true },
-      "legacyIds": { "catalog": "catalog-livesoccertv" },
-      "kind": "http",
-      "config": {
-        "base": "https://www.livesoccertv.com",
-        "jinaPrefix": "https://r.jina.ai/",
-        "catalogTimeoutSec": 90,
-        "airingOnlyLive": true
       }
     }
   ]

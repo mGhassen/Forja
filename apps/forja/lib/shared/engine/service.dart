@@ -125,7 +125,6 @@ class EngineService {
         () async {
           if (pack.plugins.isEmpty) return;
           if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) return;
-          if (PluginRegistry.isRetiredCatalogPack(pack)) return;
           final info = await PluginRegistry.instance.peekRemoteUpdate(pack);
           if (info != null) out[pack.sourceUrl] = info;
         }(),
@@ -196,7 +195,7 @@ class EngineService {
           continue;
         }
         if (!p.enabled) continue;
-        if (p.isLivePlugin || p.isLiveSport) out.add(p);
+        if (p.isLiveResolve || p.isLivePlugin || p.isLiveSport) out.add(p);
       }
     }
     out.sort((a, b) => a.name.compareTo(b.name));
@@ -259,14 +258,16 @@ class EngineService {
     for (final pack in await listPacks()) {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
-        if (!p.isHttp || !p.isLiveSportPlugin || !p.supportsLiveBroadcast) {
-          continue;
-        }
-        if (!await PluginRegistry.instance.isLiveCapabilityActive(
-          pack: pack,
-          plugin: p,
-          capability: LiveSportCapabilities.broadcast,
-        )) {
+        if (!p.isHttp || !p.supportsLiveBroadcast) continue;
+        if (p.isLiveSportPlugin) {
+          if (!await PluginRegistry.instance.isLiveCapabilityActive(
+            pack: pack,
+            plugin: p,
+            capability: LiveSportCapabilities.broadcast,
+          )) {
+            continue;
+          }
+        } else if (!pack.isPluginActive(p)) {
           continue;
         }
         out.add(p);
@@ -865,7 +866,7 @@ class EngineService {
     final plugin = hit.plugin;
     final canResolve = plugin.isLiveSportPlugin
         ? plugin.supportsLiveResolve
-        : plugin.isLivePlugin || plugin.isLiveSport;
+        : plugin.isLiveResolve || plugin.isLivePlugin || plugin.isLiveSport;
     if (!canResolve) return [];
     final active = plugin.isLiveSportPlugin
         ? await PluginRegistry.instance.isLiveCapabilityActive(
