@@ -1265,13 +1265,15 @@ class EngineRuntime {
       final respGoat = streamed.headers['goat'];
       final binaryResp = respCt.contains('application/octet-stream') ||
           (respGoat != null && respGoat.isNotEmpty);
+      const largeBodyThreshold = 48 * 1024;
+      final useBodyB64 = binaryResp || text.length > largeBodyThreshold;
       envelope = {
         'ok': streamed.statusCode >= 200 && streamed.statusCode < 300,
         'status': streamed.statusCode,
         'statusText': streamed.reasonPhrase ?? '',
         'url': streamed.request?.url.toString() ?? url,
-        'body': binaryResp ? '' : text,
-        if (binaryResp) 'bodyB64': base64Encode(bytes),
+        'body': useBodyB64 ? '' : text,
+        if (useBodyB64) 'bodyB64': base64Encode(bytes),
         'headers': respHeaders,
       };
     } catch (e) {

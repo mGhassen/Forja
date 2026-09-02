@@ -1339,6 +1339,14 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
     ctrl.notifyListeners();
   }
 
+  void beginSearching([String phase = '']) {
+    if (_disposed) return;
+    searching = true;
+    final next = phase.trim();
+    if (next.isNotEmpty) searchPhase = next;
+    notifyListeners();
+  }
+
   void setSearchPhase(String phase) {
     if (_disposed) return;
     final next = phase.trim();

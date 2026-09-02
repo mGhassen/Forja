@@ -642,7 +642,11 @@ mixin _LiveMatchesData
             (m) => _streamedMatchInScheduleFilter(
               m,
               status: _s._scheduleStatus,
-              horizon: _s._scheduleHorizon,
+              horizon: _scheduleHorizonForCatalogMatch(
+                m,
+                horizon: _s._scheduleHorizon,
+                catalogFilter: _s._forjaLivePluginFilter,
+              ),
             ),
           )
           .toList();

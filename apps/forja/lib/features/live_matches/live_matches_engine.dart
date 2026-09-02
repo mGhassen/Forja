@@ -16,6 +16,7 @@ class LiveMatchesEngine {
   static final Map<String, String> _nameByPluginId = {};
   static final Map<String, String> _nativeUnlockByPluginId = {};
   static final Map<String, bool> _airingOnlyLiveByPluginId = {};
+  static final Map<String, String> _scheduleHorizonModeByPluginId = {};
 
   static Future<bool> isEngineResolveMode() async {
     if (!AccountFeatures.instance.isAdmin) return true;
@@ -56,6 +57,11 @@ class LiveMatchesEngine {
     }
     if (plugin.config['airingOnlyLive'] == true) {
       _airingOnlyLiveByPluginId[plugin.id] = true;
+    }
+    final scheduleHorizon =
+        (plugin.config['scheduleHorizon'] ?? '').toString().trim().toLowerCase();
+    if (scheduleHorizon.isNotEmpty) {
+      _scheduleHorizonModeByPluginId[plugin.id] = scheduleHorizon;
     }
     final origin = _originFromConfig(plugin.config);
     if (origin != null && origin.isNotEmpty) {
@@ -184,6 +190,15 @@ class LiveMatchesEngine {
     if (pluginId.isEmpty) return false;
     return _airingOnlyLiveByPluginId[pluginId] == true;
   }
+
+  /// Pack manifest `scheduleHorizon` (e.g. `fullDay` scoreboard catalogs).
+  static String? cachedScheduleHorizonMode(String pluginId) {
+    if (pluginId.isEmpty) return null;
+    return _scheduleHorizonModeByPluginId[pluginId];
+  }
+
+  static bool cachedScheduleFullDay(String pluginId) =>
+      cachedScheduleHorizonMode(pluginId) == 'fullday';
 
   /// PPV site origin — any plugin that declares `nativeUnlock: ppv`, else
   /// legacy catalog/live ppv ids when packs still use those ids.

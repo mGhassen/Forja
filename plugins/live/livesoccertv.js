@@ -1,6 +1,6 @@
 var SPECS = {
   base: 'https://www.livesoccertv.com',
-  pages: ['/'],
+  jinaPrefix: 'https://r.jina.ai/',
 };
 
 var CATALOG_MAX = 120;
@@ -45,6 +45,30 @@ function normCategory(comp) {
     return 'motorsport';
   }
   return 'football';
+}
+
+function pad2(n) {
+  return n < 10 ? '0' + n : String(n);
+}
+
+function schedulePages(cfg) {
+  if (cfg.pages && cfg.pages.length) return cfg.pages;
+  var out = [];
+  var now = new Date();
+  for (var i = 0; i < 2; i++) {
+    var d = new Date(now.getTime());
+    d.setDate(d.getDate() + i);
+    out.push(
+      '/schedules/' +
+        d.getFullYear() +
+        '-' +
+        pad2(d.getMonth() + 1) +
+        '-' +
+        pad2(d.getDate()) +
+        '/',
+    );
+  }
+  return out;
 }
 
 function inCatalogWindow(dateMs) {
@@ -188,30 +212,106 @@ function parsePage(html, pluginId) {
 }
 
 function isCloudflareChallenge(html) {
-  return /Just a moment|cf-browser-verification|challenges\.cloudflare\.com/i.test(
-    String(html || ''),
-  );
+  var s = String(html || '');
+  if (/class\s*=\s*["'][^"']*matchrow/i.test(s)) return false;
+  return /<title>\s*Just a moment/i.test(s) || /cf-browser-verification/i.test(s);
+}
+
+function flareSolverrBase(ctx) {
+  var u = String((ctx.config && ctx.config.flareSolverrUrl) || '').trim();
+  if (!u) return '';
+  return u.replace(/\/+$/, '');
+}
+
+function fetchText(ctx, url, headers) {
+  return ctx.fetch(url, { headers: headers || {} }).then(function (res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.text();
+  });
+}
+
+function fetchTextViaFlareSolverr(ctx, url) {
+  var base = flareSolverrBase(ctx);
+  if (!base) return Promise.reject(new Error('no flare solver'));
+  var endpoint = base + (/\/v1$/i.test(base) ? '' : '/v1');
+  return ctx
+    .fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        cmd: 'request.get',
+        url: url,
+        maxTimeout: 60000,
+      }),
+    })
+    .then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(function (v) {
+      if (!v || v.status !== 'ok' || !v.solution) throw new Error('flare failed');
+      var body = String(v.solution.response || '');
+      if (!body || isCloudflareChallenge(body)) throw new Error('flare CF');
+      return body;
+    });
+}
+
+function jinaUrl(cfg, targetUrl) {
+  var prefix = String(cfg.jinaPrefix || SPECS.jinaPrefix).replace(/\/+$/, '') + '/';
+  return prefix + String(targetUrl || '').replace(/^\/+/, function (m) {
+    return m.length === 1 ? '' : m;
+  });
+}
+
+function fetchTextViaJina(ctx, cfg, targetUrl) {
+  var url = jinaUrl(cfg, targetUrl);
+  return fetchText(ctx, url, {
+    Accept: 'text/html',
+    'X-Return-Format': 'html',
+  }).then(function (html) {
+    if (!html || isCloudflareChallenge(html)) throw new Error('jina CF');
+    return html;
+  });
+}
+
+function fetchHtml(ctx, cfg, targetUrl) {
+  var headers = {
+    'User-Agent': ua(),
+    Accept: 'text/html,application/xhtml+xml',
+    'Accept-Language': 'en-US,en;q=0.9',
+  };
+
+  return fetchText(ctx, targetUrl, headers)
+    .then(function (html) {
+      if (!isCloudflareChallenge(html)) return html;
+      throw new Error('cloudflare');
+    })
+    .catch(function () {
+      if (flareSolverrBase(ctx)) {
+        return fetchTextViaFlareSolverr(ctx, targetUrl);
+      }
+      return fetchTextViaJina(ctx, cfg, targetUrl);
+    });
 }
 
 async function fetchPage(ctx, cfg, page) {
   var base = String(cfg.base || SPECS.base).replace(/\/$/, '');
-  var path = String(page || '/');
+  var path = String(page || '/schedules/');
   if (!path.startsWith('/')) path = '/' + path;
-  var res = await ctx.fetch(base + path, {
-    headers: {
-      'User-Agent': ua(),
-      Accept: 'text/html,application/xhtml+xml',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
-  });
-  if (!res.ok) return [];
-  var html = await res.text();
-  if (isCloudflareChallenge(html)) return [];
-  return parsePage(html, pluginIdFromCtx(ctx, cfg));
+  var targetUrl = base + path;
+  try {
+    var html = await fetchHtml(ctx, cfg, targetUrl);
+    return parsePage(html, pluginIdFromCtx(ctx, cfg));
+  } catch (e) {
+    return [];
+  }
 }
 
 async function fetchCatalog(ctx, cfg) {
-  var pages = cfg.pages && cfg.pages.length ? cfg.pages : SPECS.pages;
+  var pages = schedulePages(cfg);
   var seen = {};
   var out = [];
   for (var i = 0; i < pages.length; i++) {

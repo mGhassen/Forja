@@ -924,15 +924,26 @@ class EngineService {
       config = {...config, ...extraConfig};
     }
     config['pluginId'] = catalogPlugin.id;
+    final flareUrl = await SettingsService().getFlareSolverrUrl();
+    if (flareUrl != null && flareUrl.isNotEmpty) {
+      config = {...config, 'flareSolverrUrl': flareUrl};
+    }
 
     final code = await _loadScript(catalogPlugin);
     if (gen != _liveCatalogGeneration || code == null) return [];
+
+    final catalogTimeout = catalogPlugin.id == 'livesoccertv' &&
+            (flareUrl == null || flareUrl.isEmpty)
+        ? (timeout < const Duration(seconds: 45)
+            ? const Duration(seconds: 45)
+            : timeout)
+        : timeout;
 
     final viaRust = await _runLiveEngineRustJs(
       plugin: catalogPlugin,
       config: config,
       action: 'catalog',
-      timeout: timeout,
+      timeout: catalogTimeout,
       gen: gen,
       generation: () => _liveCatalogGeneration,
     );
@@ -953,7 +964,7 @@ class EngineService {
         pluginName: catalogPlugin.name,
         action: 'catalog',
         config: config,
-        timeout: timeout,
+        timeout: catalogTimeout,
         isCancelled: () => gen != _liveCatalogGeneration,
       );
       if (gen != _liveCatalogGeneration) return [];

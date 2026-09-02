@@ -412,7 +412,11 @@ mixin _LiveMatchesForjaLive
       }
 
       final Iterable<Map<String, dynamic>> visibleRows = rows.where(
-        (row) => _forjaLiveCatalogRowInHorizon(row, _s._scheduleHorizon),
+        (row) => _forjaLiveCatalogRowInHorizon(
+          row,
+          _s._scheduleHorizon,
+          pluginId: filterId,
+        ),
       );
       final matchRows = visibleRows
           .map(_forjaLiveRowToMatch)
@@ -572,7 +576,11 @@ mixin _LiveMatchesForjaLive
           !_streamedMatchInScheduleFilter(
             m,
             status: _s._scheduleStatus,
-            horizon: _s._scheduleHorizon,
+            horizon: _scheduleHorizonForCatalogMatch(
+              m,
+              horizon: _s._scheduleHorizon,
+              catalogFilter: _s._forjaLivePluginFilter,
+            ),
           )) {
         continue;
       }

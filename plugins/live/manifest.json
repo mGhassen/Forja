@@ -111,6 +111,7 @@
       "capabilities": ["catalog"],
       "kind": "http",
       "config": {
+        "scheduleHorizon": "fullDay",
         "leagues": [
           "NBA",
           "NFL",
@@ -159,7 +160,7 @@
       "kind": "http",
       "config": {
         "base": "https://www.livesoccertv.com",
-        "pages": ["/"]
+        "jinaPrefix": "https://r.jina.ai/"
       }
     }
   ]

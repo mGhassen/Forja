@@ -2017,6 +2017,10 @@ void main() {
           contains('www.livesoccertv.com'),
         );
         expect(
+          await loadForjaHqFile('live/livesoccertv.js'),
+          contains('r.jina.ai'),
+        );
+        expect(
           await loadForjaHqFile('live/timstreams.js'),
           contains('function extract(ctx)'),
         );

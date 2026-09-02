@@ -24,23 +24,91 @@ function streamicHeaders(cfg) {
   return headers;
 }
 
-function b64decodeUTF8(b64) {
+function hexByte(n) {
+  var hex = (n & 0xff).toString(16);
+  return hex.length < 2 ? '0' + hex : hex;
+}
+
+function utf8FromBinary(bin) {
+  if (!bin) return '';
+  if (typeof TextDecoder !== 'undefined') {
+    try {
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i) & 0xff;
+      return new TextDecoder('utf-8').decode(bytes);
+    } catch (_) {}
+  }
   try {
     return decodeURIComponent(
-      atob(String(b64 || ''))
+      bin
         .split('')
         .map(function (c) {
-          return '%' + c.charCodeAt(0).toString(16).padStart(2, '0');
+          return '%' + hexByte(c.charCodeAt(0));
         })
         .join('')
     );
   } catch (_) {
     try {
-      return decodeURIComponent(escape(atob(String(b64 || ''))));
+      return decodeURIComponent(escape(bin));
     } catch (e2) {
-      return '';
+      return bin;
     }
   }
+}
+
+function b64decodeUTF8(b64) {
+  var raw = String(b64 || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/\s+/g, '');
+  if (!raw) return '';
+  try {
+    return utf8FromBinary(atob(raw));
+  } catch (_) {
+    return '';
+  }
+}
+
+function parseStreamicEventsBody(body) {
+  var trimmed = String(body || '')
+    .replace(/^\uFEFF/, '')
+    .trim();
+  if (!trimmed) return [];
+  if (trimmed.charAt(0) === '[' || trimmed.charAt(0) === '{') {
+    var direct = JSON.parse(trimmed);
+    return Array.isArray(direct) ? direct : direct.events || direct.streams || [];
+  }
+  var decoded = b64decodeUTF8(trimmed);
+  if (!decoded) return [];
+  var data = JSON.parse(decoded);
+  return Array.isArray(data) ? data : data.events || data.streams || [];
+}
+
+async function readFetchBody(res) {
+  if (!res) return '';
+  if (res._bodyB64) {
+    try {
+      var bin = atob(String(res._bodyB64 || ''));
+      var fromB64 = '';
+      for (var i = 0; i < bin.length; i++) fromB64 += bin.charAt(i);
+      if (fromB64) return fromB64.trim();
+    } catch (_) {}
+  }
+  if (typeof res.text === 'function') {
+    try {
+      var text = await res.text();
+      if (text) return String(text).trim();
+    } catch (_) {}
+  }
+  if (typeof res.arrayBuffer === 'function') {
+    try {
+      var buf = await res.arrayBuffer();
+      var view = new Uint8Array(buf);
+      var out = '';
+      for (var j = 0; j < view.length; j++) out += String.fromCharCode(view[j]);
+      if (out) return out.trim();
+    } catch (_) {}
+  }
+  return '';
 }
 
 function eventTitle(m) {
@@ -497,16 +565,30 @@ async function fetchMainList(ctx, cfg) {
   try {
     var res = await ctx.fetch(api, { headers: streamicHeaders(cfg) });
     if (!res.ok) return [];
-    var body = await res.text();
+    var body = await readFetchBody(res);
     if (!body) return [];
-    var decoded = b64decodeUTF8(body.trim());
-    if (!decoded) return [];
-    var data = JSON.parse(decoded);
-    return Array.isArray(data) ? data : (data.events || data.streams || []);
+    return parseStreamicEventsBody(body);
   } catch (e) {
     ctx.error(e);
     return [];
   }
+}
+
+async function mapWithConcurrency(items, limit, fn) {
+  if (!items.length) return [];
+  var out = new Array(items.length);
+  var index = 0;
+  async function worker() {
+    while (index < items.length) {
+      var i = index++;
+      out[i] = await fn(items[i], i);
+    }
+  }
+  var workers = [];
+  var count = Math.max(1, Math.min(limit, items.length));
+  for (var w = 0; w < count; w++) workers.push(worker());
+  await Promise.all(workers);
+  return out;
 }
 
 async function collectEmbeds(ctx, m, cfg) {
@@ -529,9 +611,12 @@ async function collectEmbeds(ctx, m, cfg) {
     return a.priority - b.priority;
   });
 
+  var resolved = await mapWithConcurrency(pending, 4, function (item) {
+    return resolveUrl(ctx, item.url, item.name, cfg);
+  });
   var out = [];
-  for (var i = 0; i < pending.length; i++) {
-    var row = await resolveUrl(ctx, pending[i].url, pending[i].name, cfg);
+  for (var i = 0; i < resolved.length; i++) {
+    var row = resolved[i];
     if (row && row.url && !row.webviewOnly) out.push(row);
   }
   return out;

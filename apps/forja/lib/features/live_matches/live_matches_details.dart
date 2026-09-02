@@ -61,7 +61,7 @@ class _LiveMatchDetailsScreenState
     final gen = ++_loadGen;
     final host = widget.host;
     _playPath = _LiveMatchPlayPath.engineChoices;
-    _sourcesCtrl.setSearchPhase('streams');
+    _sourcesCtrl.beginSearching('streams');
     try {
       final display = await host._fillMatchDetailsSources(
         match: widget.match,
@@ -189,11 +189,45 @@ class _LiveMatchDetailsScreenState
     ];
   }
 
+  Widget _buildHero({
+    required BuildContext context,
+    required String backdrop,
+    required bool tvFocus,
+    required double? height,
+  }) {
+    final policy = ShellScope.inputPolicyOf(context);
+    return HubDetailsHero(
+      backdropUrl: backdrop,
+      title: _heroTitle,
+      subtitle: _heroSubtitle,
+      genres: const [],
+      metaParts: _heroMetaParts,
+      overview: '',
+      height: height,
+      actionRow: DetailsHeroTvActionScope(
+        tabId: MediaDetailsTv.tabId,
+        itemCount: 1,
+        onFocusUp: tvFocus ? _focusBack : null,
+        child: HubDetailsPlayRow(
+          label: 'Watch',
+          enabled: _sourcesCtrl.sources.isNotEmpty,
+          onPlay: _playFirstSource,
+          focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
+          onUpEdge: tvFocus ? _focusBack : null,
+          tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+          tvItemIndex: 0,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
     final backdrop = _streamedImageUrl(_displayMatch.poster);
+    final viewport = MediaQuery.sizeOf(context);
+    final sideRail = viewport.width >= 900;
 
     if (policy.heroPlayAutoFocus &&
         !_detailsHeroInitialFocusDone &&
@@ -216,6 +250,47 @@ class _LiveMatchDetailsScreenState
           ListenableBuilder(
             listenable: _sourcesCtrl,
             builder: (context, _) {
+              final streams = _LiveMatchStreamsSection(
+                controller: _sourcesCtrl,
+                iptvCtrl: _sourcesCtrl.iptvCtrl,
+                onSourcePicked: _onSourcePicked,
+                onRetry: _loadSources,
+                tvFocus: tvFocus,
+                sideRail: sideRail,
+              );
+
+              if (sideRail) {
+                final panelWidth = TorrentSourcesPanel.panelWidthOf(context);
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _buildHero(
+                        context: context,
+                        backdrop: backdrop,
+                        tvFocus: tvFocus,
+                        height: viewport.height,
+                      ),
+                    ),
+                    SizedBox(
+                      width: panelWidth,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppTheme.bgDark,
+                          border: Border(
+                            left: BorderSide(
+                              color: ForjaShellColors.borderSubtle
+                                  .withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ),
+                        child: streams,
+                      ),
+                    ),
+                  ],
+                );
+              }
+
               return MediaDetailsScrollPage(
                 scrollController: _scrollController,
                 tvHeroPlayFocus: _heroPlayFocus,
@@ -223,39 +298,13 @@ class _LiveMatchDetailsScreenState
                 bodyOverlap: 0,
                 topSpacing: DetailsTokens.bodyTopSpacing,
                 backgroundColor: AppTheme.bgDark,
-                hero: HubDetailsHero(
-                  backdropUrl: backdrop,
-                  title: _heroTitle,
-                  subtitle: _heroSubtitle,
-                  genres: const [],
-                  metaParts: _heroMetaParts,
-                  overview: '',
+                hero: _buildHero(
+                  context: context,
+                  backdrop: backdrop,
+                  tvFocus: tvFocus,
                   height: DetailsTokens.heroHeight(context),
-                  actionRow: DetailsHeroTvActionScope(
-                    tabId: MediaDetailsTv.tabId,
-                    itemCount: 1,
-                    onFocusUp: tvFocus ? _focusBack : null,
-                    child: HubDetailsPlayRow(
-                      label: 'Watch',
-                      enabled: _sourcesCtrl.sources.isNotEmpty,
-                      onPlay: _playFirstSource,
-                      focusNode:
-                          policy.heroPlayAutoFocus ? _heroPlayFocus : null,
-                      onUpEdge: tvFocus ? _focusBack : null,
-                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                      tvItemIndex: 0,
-                    ),
-                  ),
                 ),
-                sections: [
-                  _LiveMatchStreamsSection(
-                    controller: _sourcesCtrl,
-                    iptvCtrl: _sourcesCtrl.iptvCtrl,
-                    onSourcePicked: _onSourcePicked,
-                    onRetry: _loadSources,
-                    tvFocus: tvFocus,
-                  ),
-                ],
+                sections: [streams],
               );
             },
           ),
@@ -272,6 +321,7 @@ class _LiveMatchStreamsSection extends StatelessWidget {
     required this.onSourcePicked,
     required this.onRetry,
     required this.tvFocus,
+    this.sideRail = false,
     this.iptvCtrl,
   });
 
@@ -281,9 +331,37 @@ class _LiveMatchStreamsSection extends StatelessWidget {
       onSourcePicked;
   final VoidCallback onRetry;
   final bool tvFocus;
+  final bool sideRail;
 
   @override
   Widget build(BuildContext context) {
+    final body = _buildBody(context);
+    if (sideRail) {
+      return Padding(
+        padding: DetailsTokens.sourcesPanelPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildHeader(context),
+            Expanded(child: body),
+          ],
+        ),
+      );
+    }
+    return MediaDetailsBody.padContent(
+      context,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildHeader(context),
+          const SizedBox(height: 12),
+          body,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
     final sources = controller.sources;
     final showStatus = !controller.searching || sources.isNotEmpty;
     final status = !showStatus
@@ -294,146 +372,173 @@ class _LiveMatchStreamsSection extends StatelessWidget {
                 ? null
                 : _IptvSportsPanelCopy.ready(sources.length));
 
-    return MediaDetailsBody.padContent(
-      context,
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ShellSectionTitle(title: 'Streams'),
+            ),
+            if (!controller.searching && sources.isEmpty)
+              TextButton(
+                onPressed: onRetry,
+                child: const Text('Retry'),
+              ),
+          ],
+        ),
+        if (status != null) ...[
+          const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(
-                child: ShellSectionTitle(title: 'Streams'),
-              ),
-              if (!controller.searching && sources.isEmpty)
-                TextButton(
-                  onPressed: onRetry,
-                  child: const Text('Retry'),
+              if (controller.searching) ...[
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1.6,
+                    color: ForjaShellColors.sectionAccent,
+                  ),
                 ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  status,
+                  style: TextStyle(
+                    color: ForjaShellColors.cinematic.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
             ],
           ),
-          if (status != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                if (controller.searching) ...[
-                  SizedBox(
-                    width: 12,
-                    height: 12,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 1.6,
-                      color: ForjaShellColors.sectionAccent,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Expanded(
-                  child: Text(
-                    status,
-                    style: TextStyle(
-                      color: ForjaShellColors.cinematic.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
+        ],
+        if (sideRail) const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    final sources = controller.sources;
+
+    if (sources.isEmpty && !controller.searching) {
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: sideRail ? 16 : 24),
+        child: Column(
+          mainAxisAlignment:
+              sideRail ? MainAxisAlignment.center : MainAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.search_off_rounded,
+              size: 40,
+              color: ForjaShellColors.cinematic.textSecondary
+                  .withValues(alpha: 0.45),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              controller.emptyMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: ForjaShellColors.cinematic.textSecondary,
+                fontSize: 13,
+              ),
             ),
           ],
-          const SizedBox(height: 12),
-          if (sources.isEmpty && !controller.searching)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.search_off_rounded,
-                    size: 40,
-                    color: ForjaShellColors.cinematic.textSecondary
-                        .withValues(alpha: 0.45),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    controller.emptyMessage,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: ForjaShellColors.cinematic.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else if (sources.isEmpty && controller.searching)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: ForjaShellColors.sectionAccent,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _IptvSportsPanelCopy.searching(controller.searchPhase),
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: ForjaShellColors.cinematic.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      controller.searchingHint,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: ForjaShellColors.cinematic.textSecondary,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
+        ),
+      );
+    }
+
+    if (sources.isEmpty && controller.searching) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: ForjaShellColors.sectionAccent,
                 ),
               ),
-            )
-          else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final wide = constraints.maxWidth >= 720;
-                final crossCount = wide ? 2 : 1;
-                const gap = 10.0;
-                final tileWidth = crossCount == 1
-                    ? constraints.maxWidth
-                    : (constraints.maxWidth - gap) / 2;
+              const SizedBox(height: 16),
+              Text(
+                _IptvSportsPanelCopy.searching(controller.searchPhase),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                controller.searchingHint,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: ForjaShellColors.cinematic.textSecondary,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
-                return Wrap(
-                  spacing: gap,
-                  runSpacing: gap,
-                  children: [
-                    for (var i = 0; i < sources.length; i++)
-                      SizedBox(
-                        width: tileWidth,
-                        child: _IptvSportsChannelSheetRow(
-                          source: sources[i],
-                          iptvCtrl: iptvCtrl,
-                          healthProbe: controller.healthProbe,
-                          onTap: () => onSourcePicked(
-                            sources[i],
-                            List<IptvPlaySource>.from(sources),
-                          ),
-                          tvItemIndex: tvFocus ? i : null,
-                        ),
-                      ),
-                  ],
-                );
-              },
+    if (sideRail) {
+      return ListView.separated(
+        padding: const EdgeInsets.only(bottom: 12),
+        itemCount: sources.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 8),
+        itemBuilder: (context, i) {
+          return _IptvSportsChannelSheetRow(
+            source: sources[i],
+            iptvCtrl: iptvCtrl,
+            healthProbe: controller.healthProbe,
+            onTap: () => onSourcePicked(
+              sources[i],
+              List<IptvPlaySource>.from(sources),
             ),
-        ],
-      ),
+            tvItemIndex: tvFocus ? i : null,
+          );
+        },
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 720;
+        final crossCount = wide ? 2 : 1;
+        const gap = 10.0;
+        final tileWidth = crossCount == 1
+            ? constraints.maxWidth
+            : (constraints.maxWidth - gap) / 2;
+
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (var i = 0; i < sources.length; i++)
+              SizedBox(
+                width: tileWidth,
+                child: _IptvSportsChannelSheetRow(
+                  source: sources[i],
+                  iptvCtrl: iptvCtrl,
+                  healthProbe: controller.healthProbe,
+                  onTap: () => onSourcePicked(
+                    sources[i],
+                    List<IptvPlaySource>.from(sources),
+                  ),
+                  tvItemIndex: tvFocus ? i : null,
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

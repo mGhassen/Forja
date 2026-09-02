@@ -615,11 +615,45 @@ bool _kickoffInScheduleFilter({
       !dt.isAfter(now.add(range.future));
 }
 
+String _liveCatalogPluginIdFromRow(
+  Map<String, dynamic> row, {
+  String fallback = '',
+}) =>
+    EngineService.normalizeLiveSportPluginId(
+      (row['pluginId'] ?? row['livePluginId'] ?? fallback).toString(),
+    );
+
+_LiveMatchesScheduleHorizon _widerScheduleHorizon(
+  _LiveMatchesScheduleHorizon a,
+  _LiveMatchesScheduleHorizon b,
+) =>
+    _liveMatchesScheduleHorizonRank(a) >= _liveMatchesScheduleHorizonRank(b)
+        ? a
+        : b;
+
+/// When a pack declares `scheduleHorizon: fullDay`, widen display for its rows.
+_LiveMatchesScheduleHorizon _scheduleHorizonForCatalogMatch(
+  _StreamedMatch match, {
+  required _LiveMatchesScheduleHorizon horizon,
+  required String catalogFilter,
+}) {
+  if (catalogFilter == 'all' || catalogFilter.isEmpty) return horizon;
+  final filterId = EngineService.normalizeLiveSportPluginId(catalogFilter);
+  if (match.livePluginId != filterId) return horizon;
+  if (LiveMatchesEngine.cachedScheduleFullDay(filterId)) {
+    return _widerScheduleHorizon(horizon, _LiveMatchesScheduleHorizon.h24);
+  }
+  return horizon;
+}
+
 /// Catalog ingest uses horizon as both (cache upcoming for status switches).
 bool _forjaLiveCatalogRowInHorizon(
   Map<String, dynamic> row,
-  _LiveMatchesScheduleHorizon horizon,
-) {
+  _LiveMatchesScheduleHorizon horizon, {
+  String pluginId = '',
+}) {
+  final pid = _liveCatalogPluginIdFromRow(row, fallback: pluginId);
+  if (LiveMatchesEngine.cachedScheduleFullDay(pid)) return true;
   final raw = (row['date'] as num?)?.toInt() ?? 0;
   if (raw <= 0) {
     return row['airing'] == true || row['popular'] == true;
@@ -2926,7 +2960,46 @@ class _IptvSportsStreamsCacheEntry {
 }
 
 final Map<String, _IptvSportsStreamsCacheEntry> _iptvSportsStreamsCache = {};
-final Map<String, Future<List<IptvPlaySource>>> _iptvSportsStreamsInFlight = {};
+
+/// Dedupes concurrent resolves for the same match; late joiners replay partials.
+final class _IptvSportsStreamsInflight {
+  _IptvSportsStreamsInflight(this.future);
+
+  final Future<List<IptvPlaySource>> future;
+  final List<IptvPlaySource> _accumulated = [];
+  final Set<String> _seenKeys = {};
+  final List<void Function(List<IptvPlaySource> batch)> _listeners = [];
+
+  void subscribe(void Function(List<IptvPlaySource> batch)? onPartial) {
+    if (onPartial == null) return;
+    if (_accumulated.isNotEmpty) {
+      onPartial(List<IptvPlaySource>.from(_accumulated));
+    }
+    _listeners.add(onPartial);
+  }
+
+  void emit(List<IptvPlaySource> batch) {
+    if (batch.isEmpty) return;
+    final fresh = <IptvPlaySource>[];
+    for (final s in batch) {
+      final id = (s.streamId ?? '').trim();
+      final url = s.url.trim();
+      final key = id.isNotEmpty ? 'id:$id' : 'url:$url';
+      if (id.isEmpty && url.isEmpty) continue;
+      if (!_seenKeys.add(key)) continue;
+      fresh.add(s);
+      _accumulated.add(s);
+    }
+    if (fresh.isEmpty) return;
+    for (final listener in List<void Function(List<IptvPlaySource> batch)>.from(
+      _listeners,
+    )) {
+      listener(fresh);
+    }
+  }
+}
+
+final Map<String, _IptvSportsStreamsInflight> _iptvSportsStreamsInFlight = {};
 
 String _iptvSportsStreamsCacheKey({
   required String portalKey,
@@ -3037,9 +3110,13 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
     return result;
   }
   final inflight = _iptvSportsStreamsInFlight[cacheKey];
-  if (inflight != null) return inflight;
+  if (inflight != null) {
+    inflight.subscribe(onPartial);
+    return inflight.future;
+  }
 
   final armedPortal = portal;
+  late final _IptvSportsStreamsInflight coordinator;
   final future = () async {
     try {
       final p = armedPortal.portal;
@@ -3068,36 +3145,21 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
         'category_ids': categoryIds,
       };
 
-      final seenKeys = <String>{};
-      void emitPartial(List<IptvPlaySource> batch) {
-        if (onPartial == null || batch.isEmpty) return;
-        final fresh = <IptvPlaySource>[];
-        for (final s in batch) {
-          final id = (s.streamId ?? '').trim();
-          final url = s.url.trim();
-          final key = id.isNotEmpty ? 'id:$id' : 'url:$url';
-          if (id.isEmpty && url.isEmpty) continue;
-          if (!seenKeys.add(key)) continue;
-          fresh.add(s);
-        }
-        if (fresh.isNotEmpty) onPartial(fresh);
-      }
+      void emitPartial(List<IptvPlaySource> batch) => coordinator.emit(batch);
 
-      if (onPartial != null) {
-        final fastRaw = await runLiveMatchesFetchJson(
-          jsonEncode({...requestBase, 'skip_epg': true}),
+      final fastRaw = await runLiveMatchesFetchJson(
+        jsonEncode({...requestBase, 'skip_epg': true}),
+      );
+      final fastParsed = jsonDecode(fastRaw) as Map<String, dynamic>;
+      if (_liveMatchesJsonCancelled(fastParsed)) {
+        return <IptvPlaySource>[];
+      }
+      if (!fastParsed.containsKey('error')) {
+        final fast = _parseSportMatchStreamItems(
+          fastParsed['items'] as List? ?? [],
+          platform: p.platform,
         );
-        final fastParsed = jsonDecode(fastRaw) as Map<String, dynamic>;
-        if (_liveMatchesJsonCancelled(fastParsed)) {
-          return <IptvPlaySource>[];
-        }
-        if (!fastParsed.containsKey('error')) {
-          final fast = _parseSportMatchStreamItems(
-            fastParsed['items'] as List? ?? [],
-            platform: p.platform,
-          );
-          emitPartial(_ensureIptvSportsUrls(fast, armedPortal));
-        }
+        emitPartial(_ensureIptvSportsUrls(fast, armedPortal));
       }
 
       final raw = await runLiveMatchesFetchJson(jsonEncode(requestBase));
@@ -3124,7 +3186,9 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
     }
   }();
 
-  _iptvSportsStreamsInFlight[cacheKey] = future;
+  coordinator = _IptvSportsStreamsInflight(future);
+  coordinator.subscribe(onPartial);
+  _iptvSportsStreamsInFlight[cacheKey] = coordinator;
   return future;
 }
 
