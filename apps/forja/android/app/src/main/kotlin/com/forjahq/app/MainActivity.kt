@@ -44,12 +44,14 @@ class MainActivity : AudioServiceActivity() {
         return super.dispatchKeyEvent(event)
     }
 
-    // Belt-and-suspenders with ForjaApplication: MediaKit + Impeller =
-    // audio-only / black video on leanback.
+    // Belt-and-suspenders with ForjaApplication: Impeller OpenGLES on leanback
+    // (Skia glyph atlas corruption; MediaKit stays on mediacodec_embed).
     override fun getFlutterShellArgs(): FlutterShellArgs {
         val args = super.getFlutterShellArgs()
         if (isAndroidTv()) {
-            args.add(FlutterShellArgs.ARG_DISABLE_IMPELLER)
+            for (arg in TvFlutterShellArgs.forLeanback()) {
+                args.add(arg)
+            }
         }
         return args
     }

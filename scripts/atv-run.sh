@@ -18,6 +18,7 @@ FLAGS="_ --disable-gpu --disable-gpu-rasterization"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT/apps/forja"
-# --no-enable-impeller: media_kit video surface is black+audio under Impeller on ATV.
-# (ForjaApplication also forces this for leanback; flag keeps flutter-run consistent.)
-exec flutter run -d "$DEVICE" --no-enable-impeller "$@"
+# Impeller on (OpenGLES via ForjaApplication / MainActivity). Do not pass
+# --no-enable-impeller — Skia on leanback corrupts glyph/icon atlases (issue 215).
+# MediaKit uses vo=mediacodec_embed so video does not need Impeller EGL.
+exec flutter run -d "$DEVICE" --enable-impeller "$@"

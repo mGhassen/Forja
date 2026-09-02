@@ -540,7 +540,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool _softwareDecodeForced = false;
 
   /// Phone MediaKit: software decode (some MediaCodec paths flake).
-  /// Android TV MediaKit: keep HW + [vo=mediacodec_embed] (Impeller off in app).
+  /// Android TV MediaKit: keep HW + [vo=mediacodec_embed] (Impeller OpenGLES).
   bool _androidMediaKitSafeMode = false;
 
   bool get _atvMediaKit =>

@@ -167,8 +167,8 @@ mixin _MobilePlayerLifecycle
     WakelockPlus.enable();
 
     // Phone MediaKit: software-friendly decode (some MediaCodec paths flake).
-    // ATV MediaKit: keep MediaCodec HW - Impeller is disabled in
-    // ForjaApplication / MainActivity so the SurfaceProducer shows frames
+    // ATV MediaKit: keep MediaCodec HW - Impeller OpenGLES in
+    // ForjaApplication / MainActivity; mediacodec_embed paints frames
     // (not audio-only).
     if (Platform.isAndroid &&
         !widget.tvRemoteEnabled &&

@@ -48,8 +48,13 @@ Switching movies to **MediaKit** on Android TV played **audio with a black pictu
 
 **Fix:** Drop the manifest Impeller force (phones keep API 29+ default Impeller). Keep Application + MainActivity Impeller off on TV. Align VOD MediaKit with IPTV embed output. Persist session URL across Exo ↔ MediaKit switches.
 
+## Follow-up (issue 215)
+
+Forcing Skia on leanback (`--enable-impeller=false`) fixed MediaKit black video but **corrupted glyph/icon atlases** on physical ATV (garbled synopsis text, action icons). **Issue 215** switches ATV to **Impeller + `--impeller-backend=opengles`** while keeping `vo=mediacodec_embed`. Re-verify I114-A01 / A02 on physical sets after that change — MediaKit must still show picture under Impeller OpenGLES.
+
 ## Related
 
 - [102](102-[open]-android-tv-exoplayer-tiled-frames.md) — Exo TextureView compositing  
 - [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) — IPTV MediaKit `mediacodec_embed` (I108-T05)  
+- [215](215-[open]-android-tv-skia-glyph-atlas-glitch.md) — ATV Skia text/icon garbage → Impeller OpenGLES  
 - Changelog 1.2.366 — first ATV MediaKit video fix (Impeller + embed)

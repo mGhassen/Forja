@@ -3,25 +3,24 @@ package com.forjahq.app
 import android.app.Application
 import android.util.Log
 import io.flutter.FlutterInjector
-import io.flutter.embedding.engine.FlutterShellArgs
 
 class ForjaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        // media_kit SurfaceProducer + Impeller = audio-only / black video on ATV
-        // (Shield + leanback emulators). Init Skia before AudioService creates the engine.
-        // Manifest must NOT force EnableImpeller=true — that races --enable-impeller=false.
+        // Init Impeller OpenGLES before AudioService creates the engine.
+        // Do not force EnableImpeller in the manifest — phones keep the API 29+
+        // default (Vulkan when available); TV-only args live here + MainActivity.
         if (PlatformUtils.isAndroidTv(this)) {
             try {
                 val loader = FlutterInjector.instance().flutterLoader()
                 loader.startInitialization(this)
                 loader.ensureInitializationComplete(
                     this,
-                    arrayOf(FlutterShellArgs.ARG_DISABLE_IMPELLER),
+                    TvFlutterShellArgs.forLeanback(),
                 )
-                Log.i(TAG, "Impeller disabled for Android TV (MediaKit video surface)")
+                Log.i(TAG, "Impeller OpenGLES enabled for Android TV (glyph atlas + MediaKit embed)")
             } catch (e: Exception) {
-                Log.w(TAG, "Failed to disable Impeller on Android TV", e)
+                Log.w(TAG, "Failed to set Impeller OpenGLES on Android TV", e)
             }
         }
         WebViewTvWorkaround.applyIfNeeded(this)

@@ -49,6 +49,8 @@ This Flutter macOS embed already **defaults Impeller off** (`settings.enable_imp
 
 Not a root fix of Flutter/Skia Metal on Intel. Drop `FLTDisablePartialRepaint` when upstream presents Intel dirty rects without garbage. Keep `FLTEnableImpeller=false` until Impeller on Intel is actually good.
 
+Same atlas-garbage class on Android TV Skia: [215](215-[open]-android-tv-skia-glyph-atlas-glitch.md) (Impeller OpenGLES).
+
 ## Root fix (open)
 
 Flutter engine Metal present on Intel (partial damage / glyph atlas). Track upstream; do not patch Skia in-tree.

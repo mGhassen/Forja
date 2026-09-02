@@ -24,11 +24,10 @@
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:hardwareAccelerated="true">
-        <!-- Do not set EnableImpeller=true here. On Android TV ForjaApplication
-             (and MainActivity shell args) pass enable-impeller=false so
-             MediaKit SurfaceProducer shows video; a manifest true races that
-             and leaves audio-only / black picture on TV. Phones keep Impeller
-             via Flutter's API 29+ default. -->
+        <!-- Do not set EnableImpeller / ImpellerBackend here. Android TV uses
+             ForjaApplication + MainActivity shell args (Impeller + OpenGLES).
+             A global manifest force would hit phones; Skia-off-Impeller on TV
+             corrupted glyph atlases (issue 215). MediaKit stays mediacodec_embed. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
