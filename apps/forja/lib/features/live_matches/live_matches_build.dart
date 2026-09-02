@@ -406,9 +406,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
             onLeftEdge: () => _s._focusTopBarItem(
               _s._showTimeTopBar
                   ? _s._topBarTimeIndex
-                  : _s._showCatalogTopBar
-                      ? _s._topBarCatalogIndex
-                      : _LiveMatchesScreenState._topBarServersIndex,
+                  : _s._topBarCatalogIndex,
             ),
             onRightEdge: _s._showIptvPortalTopBar
                 ? () => _s._focusTopBarItem(_s._topBarPortalIndex)
@@ -429,15 +427,11 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       ),
       child: Row(
         children: [
-          _s._serversTopBarButton(),
           if (_s._showCatalogTopBar) ...[
-            const SizedBox(width: 8),
             _s._catalogTopBarButton(),
+            if (_s._showTimeTopBar) const SizedBox(width: 8),
           ],
-          if (_s._showTimeTopBar) ...[
-            const SizedBox(width: 8),
-            _s._timeTopBarButton(),
-          ],
+          if (_s._showTimeTopBar) _s._timeTopBarButton(),
           const Spacer(),
           refresh,
           if (!_liveMatchesLeanbackOnly(context) &&
@@ -582,10 +576,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         _s._view == _LiveMatchesView.timeline) {
       return _s._buildTimelineBody();
     }
-    if (_s._server == _LiveMatchesServer.all ||
-        _s._server == _LiveMatchesServer.iptvSports ||
-        (_s._server == _LiveMatchesServer.forjaLive &&
-            (this as _LiveMatchesForjaLive)._showForjaLiveCatalogChrome)) {
+    if ((this as _LiveMatchesForjaLive)._showForjaLiveCatalogChrome ||
+        _s._server == _LiveMatchesServer.forjaLive) {
       return _buildAllBody();
     }
     if (_s._server == _LiveMatchesServer.ppv) return _buildDamiTvBody();

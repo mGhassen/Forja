@@ -1,5 +1,7 @@
 part of 'live_matches_screen.dart';
 
+enum _LiveMatchPlayPath { engineChoices, iptvSports, stremioDirect }
+
 mixin _LiveMatchesPlayback
     on ConsumerState<LiveMatchesScreen>, _LiveMatchesData {
   @override
@@ -72,51 +74,42 @@ mixin _LiveMatchesPlayback
   Future<_StreamedMatch> _fillMatchDetailsSources({
     required _StreamedMatch match,
     _DamiTvStream? ppvAnchor,
+    required _IptvSportsChannelsPanelController providersController,
+    required _IptvSportsChannelsPanelController liveTvController,
+    required List<_StreamedStreamChoice> choices,
+    required bool Function() isStale,
+  }) async {
+    providersController.beginSearching('Providers');
+    liveTvController.beginSearching('Live TV');
+
+    final providersFuture = _fillMatchDetailsProviders(
+      match: match,
+      ppvAnchor: ppvAnchor,
+      controller: providersController,
+      choices: choices,
+      isStale: isStale,
+    );
+    final liveTvFuture = _fillIptvSportsSources(
+      match: match,
+      controller: liveTvController,
+      isStale: isStale,
+      loadBroadcastHints: false,
+    );
+
+    await providersFuture;
+    return liveTvFuture;
+  }
+
+  Future<void> _fillMatchDetailsProviders({
+    required _StreamedMatch match,
+    _DamiTvStream? ppvAnchor,
     required _IptvSportsChannelsPanelController controller,
     required List<_StreamedStreamChoice> choices,
     required bool Function() isStale,
-    required void Function(_LiveMatchPlayPath path) onPlayPath,
   }) async {
-    final forjaLive = _s._server == _LiveMatchesServer.forjaLive;
-    if (_s._server == _LiveMatchesServer.iptvSports ||
-        (match.isIptvSports && !forjaLive)) {
-      onPlayPath(_LiveMatchPlayPath.iptvSports);
-      return _fillIptvSportsSources(
-        match: match,
-        controller: controller,
-        isStale: isStale,
-      );
-    }
-    if (match.isStremio) {
-      onPlayPath(_LiveMatchPlayPath.stremioDirect);
-      await _fillStremioSources(
-        match: match,
-        controller: controller,
-        isStale: isStale,
-      );
-      return match;
-    }
-    if (forjaLive || match.isForjaLive) {
-      onPlayPath(_LiveMatchPlayPath.engineChoices);
-      await _fillForjaLiveSources(
-        match: match,
-        controller: controller,
-        choices: choices,
-        isStale: isStale,
-        ppvAnchor: ppvAnchor,
-      );
-      return match;
-    }
-    if (_tvNativeLiveOnly) {
-      onPlayPath(_LiveMatchPlayPath.iptvSports);
-      return _fillNativeSources(
-        match: match,
-        controller: controller,
-        isStale: isStale,
-      );
-    }
+    controller.setSearchPhase('Forja Live');
+
     if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
-      onPlayPath(_LiveMatchPlayPath.engineChoices);
       await _fillMergedSources(
         ppv: ppvAnchor,
         streamed: match,
@@ -124,19 +117,44 @@ mixin _LiveMatchesPlayback
         choices: choices,
         isStale: isStale,
       );
-      return match;
+    } else {
+      await _fillForjaLiveSources(
+        match: match,
+        controller: controller,
+        choices: choices,
+        isStale: isStale,
+        ppvAnchor: ppvAnchor,
+      );
+      if (choices.isEmpty && !isStale() && !controller.isDisposed) {
+        await _fillCatalogEngineSources(
+          match: match,
+          controller: controller,
+          choices: choices,
+          isStale: isStale,
+          allowIptvFallback: false,
+        );
+      }
     }
-    onPlayPath(_LiveMatchPlayPath.engineChoices);
-    final catalogResult = await _fillCatalogEngineSources(
-      match: match,
-      controller: controller,
-      choices: choices,
-      isStale: isStale,
-    );
-    if (catalogResult.playPath != null) {
-      onPlayPath(catalogResult.playPath!);
+
+    if (isStale() || controller.isDisposed) return;
+
+    controller.setSearchPhase('Stremio');
+    if (match.isStremio) {
+      await _fillStremioSources(
+        match: match,
+        controller: controller,
+        isStale: isStale,
+      );
+    } else {
+      try {
+        final stremio = await _resolveStremioStreamsMatching(match);
+        if (!isStale() && !controller.isDisposed && stremio.isNotEmpty) {
+          controller.appendSources(stremio);
+        }
+      } catch (e) {
+        debugPrint('[LiveMatches] Stremio match error: $e');
+      }
     }
-    return catalogResult.match;
   }
 
   _StreamedMatch _enrichedIptvSportsMatch(_StreamedMatch match) {
@@ -164,10 +182,13 @@ mixin _LiveMatchesPlayback
     required _StreamedMatch match,
     required _IptvSportsChannelsPanelController controller,
     required bool Function() isStale,
+    bool loadBroadcastHints = true,
   }) async {
     final enriched = _enrichedIptvSportsMatch(match);
-    controller.setSearchPhase('Forja Sports');
-    controller.beginBroadcastHintsLoad();
+    controller.setSearchPhase('Live TV');
+    if (loadBroadcastHints) {
+      controller.beginBroadcastHintsLoad();
+    }
     try {
       await _resolveIptvSportsStreams(
         enriched,
@@ -179,7 +200,7 @@ mixin _LiveMatchesPlayback
     } catch (e) {
       debugPrint('[LiveMatches] IPTV sports resolve error: $e');
     }
-    if (!isStale() && !controller.isDisposed) {
+    if (loadBroadcastHints && !isStale() && !controller.isDisposed) {
       try {
         final hints = await _broadcastHintsForMatch(enriched);
         if (!isStale() && !controller.isDisposed) {
@@ -393,6 +414,7 @@ mixin _LiveMatchesPlayback
     required _IptvSportsChannelsPanelController controller,
     required List<_StreamedStreamChoice> choices,
     required bool Function() isStale,
+    bool allowIptvFallback = true,
   }) async {
     controller.setSearchPhase('streams');
     final catalogMatches = await (this as _LiveMatchesForjaLive)
@@ -417,7 +439,8 @@ mixin _LiveMatchesPlayback
       return (match: match, playPath: null);
     }
 
-    if (choices.isEmpty &&
+    if (allowIptvFallback &&
+        choices.isEmpty &&
         catalogMatches.any((m) => m.sportMatchGame != null)) {
       final enriched = await _fillIptvSportsSources(
         match: match,

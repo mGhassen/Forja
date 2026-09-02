@@ -3487,9 +3487,9 @@ Future<List<Map<String, dynamic>>> _fetchLiveBroadcastIndex() async {
     final plugins =
         await EngineService.instance.listLiveSportBroadcastPlugins();
     if (plugins.isEmpty) return [];
-    for (final plugin in plugins) {
-      await _liveBroadcastPluginRowsCached(plugin);
-    }
+    await Future.wait(
+      plugins.map(_liveBroadcastPluginRowsCached),
+    );
     return _liveBroadcastIndex;
   } catch (e) {
     debugPrint('[LiveMatches] broadcast catalog index failed: $e');

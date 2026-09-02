@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/iptv/data/hardcoded_channels.dart';
 import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
+import 'package:forja/features/iptv/data/iptv_catalog_shelf_cache.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
@@ -918,6 +919,7 @@ class IptvController extends ChangeNotifier
   Future<void> init() async {
     // Fresh flags/credits from cloud (admin toggles) before portal chrome builds.
     unawaited(SyncService.instance.pullAccountFeatures());
+    await IptvCatalogShelfCache.reconcileOnLaunch();
     var stored = await IptvStore.load();
     final migrated = await M3uStore.migrateToPortalsIfNeeded();
     if (migrated.isNotEmpty) {

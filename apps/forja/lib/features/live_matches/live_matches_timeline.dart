@@ -701,9 +701,7 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
       tvItemIndex: index,
       onLeftEdge: edges?.onLeft,
       onRightEdge: edges?.onRight,
-      onUpEdge: () => _s._focusTopBarItem(
-        _LiveMatchesScreenState._topBarServersIndex,
-      ),
+      onUpEdge: () => _s._focusTopBarItem(_s._topBarCatalogIndex),
       onDownEdge: () => _s._restoreLiveMatchesTvFocus(),
       onTap: () {
         _s._timelineAutoScrolled = false;

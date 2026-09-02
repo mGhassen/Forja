@@ -7,11 +7,11 @@ mixin _LiveMatchesData
   bool get _tvFocusEnabled =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
-  void _scheduleRestoreServersTopBarFocus() {
+  void _scheduleRestoreCatalogTopBarFocus() {
     if (!_tvFocusEnabled) return;
     void attempt() {
       if (!mounted) return;
-      _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex);
+      _focusTopBarItem(_s._topBarCatalogIndex);
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -46,8 +46,7 @@ mixin _LiveMatchesData
   }
 
   void _focusTopBarItem(int index) {
-    if (index == _LiveMatchesScreenState._topBarServersIndex ||
-        (_s._showCatalogTopBar && index == _s._topBarCatalogIndex) ||
+    if ((_s._showCatalogTopBar && index == _s._topBarCatalogIndex) ||
         (_s._showTimeTopBar && index == _s._topBarTimeIndex) ||
         (_s._showIptvPortalTopBar && index == _s._topBarPortalIndex)) {
       ShellTvFocusCoordinator.focusRowItem(
@@ -89,7 +88,7 @@ mixin _LiveMatchesData
         ForjaToast.info(
           'Enable Forja Sports in Settings → Forja Sports first',
         );
-        _scheduleRestoreServersTopBarFocus();
+        _scheduleRestoreCatalogTopBarFocus();
         return;
       }
     }
@@ -109,11 +108,11 @@ mixin _LiveMatchesData
       await _syncMyIptvFromActivePortal(ctrl, reload: false);
     }
     if (keepSchedule) {
-      _scheduleRestoreServersTopBarFocus();
+      _scheduleRestoreCatalogTopBarFocus();
       return;
     }
     await _load();
-    _scheduleRestoreServersTopBarFocus();
+    _scheduleRestoreCatalogTopBarFocus();
   }
 
   Future<void> _syncMyIptvFromActivePortal(
@@ -250,28 +249,6 @@ mixin _LiveMatchesData
         _liveForjaPluginDisplayName(filter);
   }
 
-  Widget _serversTopBarButton() {
-    return _LiveMatchesTopBarActionButton(
-      label: _liveMatchesServerLabel(_s._server),
-      icon: Icons.dns_rounded,
-      accent: false,
-      tvItemIndex: _LiveMatchesScreenState._topBarServersIndex,
-      onTap: _openServerPicker,
-      onLeftEdge: shellTvNavLeftEdge(
-        context,
-        listIndex: _LiveMatchesScreenState._topBarServersIndex,
-      ),
-      onRightEdge: () => _focusTopBarItem(_s._topBarRightOfServersIndex),
-      onDownEdge: _topBarDownEdge,
-    );
-  }
-
-  int get _topBarRightOfServersIndex {
-    if (_s._showCatalogTopBar) return _s._topBarCatalogIndex;
-    if (_s._showTimeTopBar) return _s._topBarTimeIndex;
-    return _s._topBarRefreshIndex;
-  }
-
   Widget _catalogTopBarButton() {
     return _LiveMatchesTopBarActionButton(
       label: _catalogTopBarLabel,
@@ -279,8 +256,10 @@ mixin _LiveMatchesData
       accent: false,
       tvItemIndex: _s._topBarCatalogIndex,
       onTap: _openCatalogPicker,
-      onLeftEdge: () =>
-          _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex),
+      onLeftEdge: shellTvNavLeftEdge(
+        context,
+        listIndex: _s._topBarCatalogIndex,
+      ),
       onRightEdge: () => _focusTopBarItem(
         _s._showTimeTopBar ? _s._topBarTimeIndex : _s._topBarRefreshIndex,
       ),
@@ -301,7 +280,7 @@ mixin _LiveMatchesData
       onLeftEdge: () => _focusTopBarItem(
         _s._showCatalogTopBar
             ? _s._topBarCatalogIndex
-            : _LiveMatchesScreenState._topBarServersIndex,
+            : _s._topBarRefreshIndex,
       ),
       onRightEdge: () => _focusTopBarItem(_s._topBarRefreshIndex),
       onDownEdge: _topBarDownEdge,
@@ -364,10 +343,10 @@ mixin _LiveMatchesData
       _focusTopBarItem(_s._topBarCatalogIndex);
       return;
     }
-    _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex);
+    _focusTopBarItem(_s._topBarRefreshIndex);
   }
 
-  /// First grid row ↑ → sport chips → Servers / Catalog.
+  /// First grid row ↑ → sport chips → Catalog / Time.
   VoidCallback? _gridUpEdge(BuildContext context, int index, int crossCount) {
     if (!_s._tvFocus(context) || index ~/ crossCount != 0) return null;
     return _gridFocusUp;
@@ -389,13 +368,10 @@ mixin _LiveMatchesData
       _focusTopBarItem(_s._topBarCatalogIndex);
       return;
     }
-    _focusTopBarItem(_LiveMatchesScreenState._topBarServersIndex);
+    _focusTopBarItem(_s._topBarRefreshIndex);
   }
 
-  bool get _applyTimeWindowFilter =>
-      _s._server == _LiveMatchesServer.all ||
-      _s._server == _LiveMatchesServer.forjaLive ||
-      _s._server == _LiveMatchesServer.iptvSports;
+  bool get _applyTimeWindowFilter => _s._showCatalogTopBar;
 
   bool _focusGridItem(int index) {
     final handle = ShellTvFocusCoordinator.rowHandle(
@@ -535,13 +511,15 @@ mixin _LiveMatchesData
         _s._espnGames = [];
         _s._sports = [];
       } else {
-        _s._forjaLiveCatalogHydrating = true;
         final oldCtrl = _s._tabController;
         _s._tabController = null;
         _s._sports = [];
         (this as _LiveMatchesForjaLive)._deferTabControllerDispose(oldCtrl);
       }
     });
+    if (lazyCatalog) {
+      (this as _LiveMatchesForjaLive)._syncCatalogHydratingState();
+    }
     _scheduleRestoreRefreshFocus();
     if (_s._timelineScrollController.hasClients) {
       _s._timelineScrollController.jumpTo(0);

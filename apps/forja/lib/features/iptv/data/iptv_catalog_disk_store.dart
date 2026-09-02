@@ -122,6 +122,34 @@ abstract final class IptvCatalogDiskStore {
     }
   }
 
+  /// Keeps the [max] most recently modified shelf files; drops the rest.
+  static Future<void> trimToMaxFiles(int max) async {
+    if (max < 1) return;
+    try {
+      final root = await _root();
+      if (!await root.exists()) return;
+      final files = <File>[];
+      await for (final entity in root.list(followLinks: false)) {
+        if (entity is File && entity.path.endsWith('.json')) {
+          files.add(entity);
+        }
+      }
+      if (files.length <= max) return;
+      final modified = <File, DateTime>{};
+      for (final file in files) {
+        modified[file] = await file.lastModified();
+      }
+      files.sort(
+        (a, b) => modified[b]!.compareTo(modified[a]!),
+      );
+      for (var i = max; i < files.length; i++) {
+        await files[i].delete();
+      }
+    } catch (e) {
+      debugPrint('IptvCatalogDiskStore.trimToMaxFiles failed: $e');
+    }
+  }
+
   static String _encode(
     List<IptvCategory> categories,
     List<IptvStream> streams,

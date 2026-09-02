@@ -22,6 +22,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     final snap = _c._catalogCache[key];
     if (snap != null && _liveSnapIsStale(snap)) {
       _c._catalogCache.remove(key);
+      unawaited(IptvCatalogShelfCache.remove(key));
       unawaited(
         IptvCatalogDiskStore.deleteShelf(portalKey, IptvSection.live),
       );
@@ -48,6 +49,18 @@ mixin _IptvControllerBrowser on ChangeNotifier {
         continue;
       }
       _c._catalogCache[cacheKey] = snap;
+      unawaited(_touchCatalogShelf(cacheKey));
+    }
+  }
+
+  Future<void> _touchCatalogShelf(String shelfKey) async {
+    final evicted = await IptvCatalogShelfCache.touch(
+      shelfKey,
+      protect: shelfKey,
+    );
+    for (final key in evicted) {
+      _c._catalogCache.remove(key);
+      await IptvCatalogShelfCache.deleteShelfData(key);
     }
   }
 
@@ -70,7 +83,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _CatalogSnap snap, {
     bool persist = true,
   }) {
-    _c._catalogCache[_catalogCacheKey(portalKey, section)] = snap;
+    final cacheKey = _catalogCacheKey(portalKey, section);
+    _c._catalogCache[cacheKey] = snap;
+    unawaited(_touchCatalogShelf(cacheKey));
     if (!persist) return;
     if (section == IptvSection.live && _liveSnapIsStale(snap)) return;
     unawaited(
@@ -269,6 +284,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
           _c._catalogCache.remove(cacheKey);
         } else {
           ++_c._catalogLoadId;
+          unawaited(_touchCatalogShelf(cacheKey));
           await _applyCachedSnap(p, section, mem, persistSection: persistSection);
           return;
         }
@@ -294,6 +310,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
     // Disk hydrate filled the shelf → apply without network.
     if (!force && cached != null) {
+      unawaited(_touchCatalogShelf(cacheKey));
       await _applyCachedSnap(p, section, cached, persistSection: persistSection);
       return;
     }
@@ -420,7 +437,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   }
 
   String _catalogCacheKey(String portalKey, IptvSection section) =>
-      '$portalKey|${section.name}';
+      IptvCatalogShelfCache.shelfKey(portalKey, section);
 
   /// Drop legacy synthetic "All" (empty id) from cached category lists.
   List<IptvCategory> _withoutAllCategory(List<IptvCategory> cats) =>
@@ -542,6 +559,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   void _invalidatePortalCatalogCache(String portalKey) {
     final prefix = '$portalKey|';
     _c._catalogCache.removeWhere((k, _) => k.startsWith(prefix));
+    unawaited(IptvCatalogShelfCache.removePortal(portalKey));
     unawaited(IptvCatalogDiskStore.deletePortal(portalKey));
   }
 

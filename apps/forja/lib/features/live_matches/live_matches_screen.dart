@@ -54,8 +54,8 @@ import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_hero.dart';
+import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
-import 'package:forja/shared/widgets/media_details/media_details_scroll_page.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
@@ -142,6 +142,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   TabController? _tabController;
   _LiveMatchesServer _server = _LiveMatchesServer.forjaLive;
+  bool _iptvSportsEnabled = false;
 
   /// False until [_restoreServerPreference] finishes — avoids fetching before saved server applies.
   bool _serverHydrated = false;
@@ -181,33 +182,24 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   /// Prevent stacking Servers / Catalog / Time bottom sheets on double-tap.
   bool _topBarSheetOpen = false;
 
-  static const _topBarServersIndex = 0;
+  int get _topBarCatalogIndex => 0;
 
-  bool get _showIptvPortalTopBar => _server == _LiveMatchesServer.iptvSports;
+  bool get _showIptvPortalTopBar => _iptvSportsEnabled;
 
-  /// Catalog + schedule window on Forja Live / Sports / All.
-  bool get _showCatalogTopBar =>
-      (_server == _LiveMatchesServer.all ||
-          _server == _LiveMatchesServer.forjaLive ||
-          _server == _LiveMatchesServer.iptvSports) &&
-      _forjaLivePluginLoads.isNotEmpty;
+  /// Catalog + schedule window on the live sports hub (always catalog grid).
+  bool get _showCatalogTopBar => _forjaLivePluginLoads.isNotEmpty;
 
-  bool get _showTimeTopBar =>
-      _server == _LiveMatchesServer.all ||
-      _server == _LiveMatchesServer.forjaLive ||
-      _server == _LiveMatchesServer.iptvSports;
-
-  int get _topBarCatalogIndex => 1;
+  bool get _showTimeTopBar => _showCatalogTopBar;
 
   int get _topBarTimeIndex {
-    var index = 1;
+    var index = 0;
     if (_showCatalogTopBar) index++;
     return index;
   }
 
-  /// Servers → [Catalog] → [Time] → Refresh → [Portals] → [View].
+  /// [Catalog] → [Time] → Refresh → [Portals] → [View].
   int get _topBarRefreshIndex {
-    var index = 1;
+    var index = 0;
     if (_showCatalogTopBar) index++;
     if (_showTimeTopBar) index++;
     return index;
@@ -415,9 +407,14 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
       if (_server == _LiveMatchesServer.iptvSports) {
         ref.read(iptvControllerProvider).closePortalPanel();
       }
-      setState(() => _server = next);
-      unawaited(_persistServerPreference(next));
+      setState(() {
+        _server = _LiveMatchesServer.forjaLive;
+        _iptvSportsEnabled = iptvSportsEnabled;
+      });
+      unawaited(_persistServerPreference(_LiveMatchesServer.forjaLive));
       if (reload) await _load();
+    } else if (_iptvSportsEnabled != iptvSportsEnabled) {
+      setState(() => _iptvSportsEnabled = iptvSportsEnabled);
     }
     return (
       iptvSportsEnabled: iptvSportsEnabled,
@@ -431,8 +428,13 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
         ._restoreForjaLiveCatalogFilterPreference();
     await (this as _LiveMatchesForjaLive)._restoreTimeWindowPreference();
     if (!mounted) return;
-    setState(() => _serverHydrated = true);
-    if (_server == _LiveMatchesServer.iptvSports) {
+    final iptvEnabled = (await LiveMatchesIptvSportsConfig.load()).enabled;
+    if (!mounted) return;
+    setState(() {
+      _serverHydrated = true;
+      _iptvSportsEnabled = iptvEnabled;
+    });
+    if (_iptvSportsEnabled) {
       final ctrl = ref.read(iptvControllerProvider);
       await ctrl.preparePortalPanel();
       await _syncMyIptvFromActivePortal(ctrl, reload: false);
@@ -458,17 +460,14 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
         }
       }
     }
-    final next = _liveMatchesClampServerForSurface(
-      saved ?? _server,
-      iptvSportsEnabled: iptvSportsEnabled,
-      stremioLiveEnabled: stremioLiveEnabled,
-    );
-    // Clamp invalid saved server (hidden All/PPV/Streamed/Mut/Stremio, disabled Forja Sports, …).
+    final next = _LiveMatchesServer.forjaLive;
+    setState(() {
+      _server = next;
+      _iptvSportsEnabled = iptvSportsEnabled;
+    });
     if (saved != null && saved != next) {
       unawaited(_persistServerPreference(next));
     }
-    if (next == _server) return;
-    setState(() => _server = next);
   }
 
   Future<void> _persistServerPreference(_LiveMatchesServer server) async {

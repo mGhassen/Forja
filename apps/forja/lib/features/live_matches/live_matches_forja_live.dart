@@ -100,6 +100,36 @@ mixin _LiveMatchesForjaLive
     setState(() => _s._forjaLiveCatalogHydrating = value);
   }
 
+  /// Drop the full-screen hydrate once scoped rows exist or any catalog returned.
+  void _syncCatalogHydratingState() {
+    if (!_usesForjaLiveLazyCatalog) {
+      _setForjaLiveCatalogHydrating(false);
+      return;
+    }
+    final scoped = _gridScopedPluginLoads.toList();
+    if (scoped.isEmpty) {
+      _setForjaLiveCatalogHydrating(false);
+      return;
+    }
+    final sources = _catalogFilteredGridSources();
+    final hasEntries =
+        sources.streamed.isNotEmpty || sources.ppv.isNotEmpty;
+    final anyAttempted = scoped.any((e) => e.attempted);
+    _setForjaLiveCatalogHydrating(
+      !hasEntries && !anyAttempted && scoped.any((e) => e.loading),
+    );
+  }
+
+  void _cancelOutOfScopeCatalogLoads(String filter) {
+    if (filter == 'all' || filter.isEmpty) return;
+    for (final entry in _s._forjaLivePluginLoads.entries.toList()) {
+      if (_catalogFilterMatches(entry.key, filter)) continue;
+      final load = entry.value;
+      if (!load.loading) continue;
+      _s._forjaLivePluginLoads[entry.key] = load.copyWith(loading: false);
+    }
+  }
+
   void _invalidateLiveMatchesGridCache() {
     _s._liveMatchesGridCacheRevision++;
     _s._cachedLiveMatchesGridEntries = null;
@@ -214,13 +244,17 @@ mixin _LiveMatchesForjaLive
 
   void _setForjaLivePluginFilter(String filter) {
     if (_s._forjaLivePluginFilter == filter) return;
+    EngineService.instance.cancelLiveCatalog();
+    _s._forjaLiveLoadGen++;
     setState(() {
       _invalidateLiveMatchesGridCache();
       _s._forjaLivePluginFilter = filter;
+      _cancelOutOfScopeCatalogLoads(filter);
+      _syncCatalogHydratingState();
     });
     unawaited(_persistForjaLiveCatalogFilterPreference(filter));
     _rebuildSportTabsFromCurrentMatches();
-    _kickForjaLiveLazyCatalog();
+    _kickForjaLiveLazyCatalog(replace: true);
   }
 
   Future<void> _restoreTimeWindowPreference() async {
@@ -313,8 +347,11 @@ mixin _LiveMatchesForjaLive
     if (!(this as ShellTabRefresh<LiveMatchesScreen>).shellTabVisible) return;
     if (!_s._serverHydrated) return;
     if (_s._forjaLiveGridCatalogInflight != null && !replace) return;
+    if (replace) {
+      EngineService.instance.cancelLiveCatalog();
+      _s._forjaLiveLoadGen++;
+    }
     final serial = ++_s._forjaLiveGridCatalogInflightSerial;
-    _setForjaLiveCatalogHydrating(true);
     final future = _loadForjaLiveCatalogLazy();
     _s._forjaLiveGridCatalogInflight = future;
     unawaited(
@@ -504,6 +541,7 @@ mixin _LiveMatchesForjaLive
             matchCount: streams.length,
             error: null,
           );
+          _syncCatalogHydratingState();
         });
         _maybeRebuildSportTabsFromCurrentMatches();
         return;
@@ -565,6 +603,7 @@ mixin _LiveMatchesForjaLive
           matchCount: matches.length,
           error: null,
         );
+        _syncCatalogHydratingState();
       });
       _maybeRebuildSportTabsFromCurrentMatches();
     } catch (e) {
@@ -578,6 +617,7 @@ mixin _LiveMatchesForjaLive
           matchCount: 0,
           error: '$e',
         );
+        _syncCatalogHydratingState();
       });
       (this as _LiveMatchesData)
           ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
@@ -615,24 +655,37 @@ mixin _LiveMatchesForjaLive
       final toLoad = _forjaLiveCatalogsToLoad(catalogPlugins);
       if (toLoad.isEmpty) {
         await _applyScheduleEnrichMerge();
+        if (mounted && gen == _s._forjaLiveLoadGen) {
+          _syncCatalogHydratingState();
+        }
         return;
       }
 
-      await Future.wait(
-        toLoad.map(
-          (catalog) => _loadOneForjaLiveCatalog(catalog: catalog, gen: gen),
-        ),
-      );
+      if (mounted && gen == _s._forjaLiveLoadGen) {
+        _syncCatalogHydratingState();
+      }
 
-      if (!mounted || gen != _s._forjaLiveLoadGen) return;
-      _ensureForjaLivePluginFilterValid();
-      await _applyScheduleEnrichMerge();
+      var pending = toLoad.length;
+      for (final catalog in toLoad) {
+        unawaited(
+          _loadOneForjaLiveCatalog(catalog: catalog, gen: gen).whenComplete(() {
+            if (!mounted || gen != _s._forjaLiveLoadGen) return;
+            pending--;
+            if (pending > 0) return;
+            _ensureForjaLivePluginFilterValid();
+            unawaited(_applyScheduleEnrichMerge());
+            if (mounted && gen == _s._forjaLiveLoadGen) {
+              _rebuildSportTabsFromCurrentMatches();
+              _syncCatalogHydratingState();
+              (this as _LiveMatchesData)
+                  ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
+            }
+          }),
+        );
+      }
     } finally {
       if (mounted && gen == _s._forjaLiveLoadGen) {
-        _rebuildSportTabsFromCurrentMatches();
-        _setForjaLiveCatalogHydrating(false);
-        (this as _LiveMatchesData)
-            ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
+        _syncCatalogHydratingState();
       }
     }
   }
