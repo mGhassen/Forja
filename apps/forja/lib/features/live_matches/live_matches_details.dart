@@ -61,6 +61,10 @@ class _LiveMatchDetailsScreenState
       searchingHint: 'Matching channels on your portal',
       iptvCtrl: iptvCtrl,
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _ensureTabLoaded(_LiveMatchListTab.providers);
+    });
   }
 
   @override
@@ -68,6 +72,8 @@ class _LiveMatchDetailsScreenState
     _providersLoadGen++;
     _liveTvLoadGen++;
     Engine.cancelLiveMatchesFetch();
+    _providersCtrl.finishSearching();
+    _liveTvCtrl.finishSearching();
     _providersCtrl.dispose();
     _liveTvCtrl.dispose();
     _backFocus.dispose();
@@ -84,14 +90,14 @@ class _LiveMatchDetailsScreenState
     switch (tab) {
       case _LiveMatchListTab.providers:
         if (!_providersRequested) {
-          setState(() => _providersRequested = true);
           unawaited(_loadProviders());
         }
+        break;
       case _LiveMatchListTab.liveTv:
         if (!_liveTvRequested) {
-          setState(() => _liveTvRequested = true);
           unawaited(_loadLiveTv());
         }
+        break;
     }
   }
 
@@ -110,9 +116,13 @@ class _LiveMatchDetailsScreenState
 
   Future<void> _loadProviders({bool force = false}) async {
     if (_providersRequested && !force) return;
-    _providersRequested = true;
     final gen = ++_providersLoadGen;
     final host = widget.host;
+    if (mounted) {
+      setState(() => _providersRequested = true);
+    } else {
+      _providersRequested = true;
+    }
     if (force) _choices.clear();
     _providersCtrl.resetForLoad();
     _providersCtrl.beginSearching('Providers');
@@ -142,9 +152,13 @@ class _LiveMatchDetailsScreenState
 
   Future<void> _loadLiveTv({bool force = false}) async {
     if (_liveTvRequested && !force) return;
-    _liveTvRequested = true;
     final gen = ++_liveTvLoadGen;
     final host = widget.host;
+    if (mounted) {
+      setState(() => _liveTvRequested = true);
+    } else {
+      _liveTvRequested = true;
+    }
     _liveTvCtrl.resetForLoad();
     _liveTvCtrl.beginSearching('Live TV');
     try {

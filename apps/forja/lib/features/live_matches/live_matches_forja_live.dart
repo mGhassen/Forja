@@ -38,10 +38,9 @@ mixin _LiveMatchesForjaLive
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   bool get _usesForjaLiveLazyCatalog =>
-      !kLiveMatchesCatalogFiltersHidden &&
-      (_s._server == _LiveMatchesServer.all ||
-          _s._server == _LiveMatchesServer.forjaLive ||
-          _s._server == _LiveMatchesServer.iptvSports);
+      _s._server == _LiveMatchesServer.all ||
+      _s._server == _LiveMatchesServer.forjaLive ||
+      _s._server == _LiveMatchesServer.iptvSports;
 
   bool get _showForjaLiveCatalogChrome =>
       _usesForjaLiveLazyCatalog && _s._forjaLivePluginLoads.isNotEmpty;
@@ -76,12 +75,34 @@ mixin _LiveMatchesForjaLive
   }
 
   Iterable<_ForjaLivePluginLoad> get _gridScopedPluginLoads {
-    if (_s._forjaLivePluginFilter == 'all') {
-      return _s._forjaLivePluginLoads.values;
-    }
+    final filter = _activeForjaLiveCatalogFilter;
+    if (filter.isEmpty) return const [];
     return _s._forjaLivePluginLoads.values.where(
-      (e) => _catalogFilterMatches(e.pluginId, _s._forjaLivePluginFilter),
+      (e) => _catalogFilterMatches(e.pluginId, filter),
     );
+  }
+
+  /// Selected catalog only — no merged "All" grid.
+  String get _activeForjaLiveCatalogFilter {
+    final raw = _s._forjaLivePluginFilter;
+    if (raw.isEmpty || raw == 'all') {
+      return _defaultForjaLiveCatalogFilterKey() ?? '';
+    }
+    return _canonicalForjaLivePluginFilterKey(raw) ?? raw;
+  }
+
+  String? _defaultForjaLiveCatalogFilterKey() {
+    if (_s._forjaLivePluginLoads.isEmpty) return null;
+    final sorted = _s._forjaLivePluginLoads.values.toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
+    return sorted.first.pluginId;
+  }
+
+  String? _defaultForjaLiveCatalogLabel() {
+    final key = _defaultForjaLiveCatalogFilterKey();
+    if (key == null) return null;
+    return _s._forjaLivePluginLoads[key]?.label ??
+        _liveForjaPluginDisplayName(key);
   }
 
   bool get _forjaLiveAnyLoading => _gridScopedPluginLoads.any((e) => e.loading);
@@ -147,10 +168,12 @@ mixin _LiveMatchesForjaLive
   List<_StreamedMatch> _catalogScopedStreamedMatches() {
     final raw =
         (this as _LiveMatchesData)._streamedMatchesSportAndTimeFiltered();
-    if (!_showForjaLiveCatalogChrome || _s._forjaLivePluginFilter == 'all') {
+    if (!_showForjaLiveCatalogChrome) {
       return _mergeStreamedCatalogRows(_sortStreamedLiveFirst(raw));
     }
-    return _streamedMatchesForCatalogGrid(raw, _s._forjaLivePluginFilter);
+    final filter = _activeForjaLiveCatalogFilter;
+    if (filter.isEmpty) return const [];
+    return _streamedMatchesForCatalogGrid(raw, filter);
   }
 
   List<_StreamedMatch> get _displayStreamedMatches {
@@ -163,13 +186,16 @@ mixin _LiveMatchesForjaLive
 
   ({List<_DamiTvStream> ppv, List<_StreamedMatch> streamed})
   _catalogFilteredGridSources() {
-    if (!_showForjaLiveCatalogChrome || _s._forjaLivePluginFilter == 'all') {
+    if (!_showForjaLiveCatalogChrome) {
       return (
         ppv: (this as _LiveMatchesData)._filteredDamiTv,
         streamed: (this as _LiveMatchesData)._filteredStreamed,
       );
     }
-    final filter = _s._forjaLivePluginFilter;
+    final filter = _activeForjaLiveCatalogFilter;
+    if (filter.isEmpty) {
+      return (ppv: const [], streamed: const []);
+    }
     if (LiveMatchesEngine.cachedIsIframeCatalog(filter)) {
       return (
         ppv: (this as _LiveMatchesData)._filteredDamiTv,
@@ -182,10 +208,13 @@ mixin _LiveMatchesForjaLive
   /// Same catalog scope as the grid, but without the active sport-chip filter.
   ({List<_DamiTvStream> ppv, List<_StreamedMatch> streamed})
   _catalogSourcesForSportTabs() {
-    if (!_showForjaLiveCatalogChrome || _s._forjaLivePluginFilter == 'all') {
+    if (!_showForjaLiveCatalogChrome) {
       return (ppv: _s._damiTvStreams, streamed: _s._streamedMatches);
     }
-    final filter = _s._forjaLivePluginFilter;
+    final filter = _activeForjaLiveCatalogFilter;
+    if (filter.isEmpty) {
+      return (ppv: const [], streamed: const []);
+    }
     if (LiveMatchesEngine.cachedIsIframeCatalog(filter)) {
       return (ppv: _s._damiTvStreams, streamed: []);
     }
@@ -230,7 +259,7 @@ mixin _LiveMatchesForjaLive
     final saved = prefs.getString(
       _LiveMatchesScreenState._forjaLiveCatalogFilterPreferenceKey,
     );
-    if (saved == null || saved.isEmpty) return;
+    if (saved == null || saved.isEmpty || saved == 'all') return;
     if (!mounted) return;
     setState(() => _s._forjaLivePluginFilter = saved);
   }
@@ -330,11 +359,24 @@ mixin _LiveMatchesForjaLive
   }
 
   void _ensureForjaLivePluginFilterValid() {
-    if (_s._forjaLivePluginFilter == 'all') return;
-    final canonical =
-        _canonicalForjaLivePluginFilterKey(_s._forjaLivePluginFilter);
+    if (_s._forjaLivePluginLoads.isEmpty) return;
+    final defaultKey = _defaultForjaLiveCatalogFilterKey();
+    if (defaultKey == null) return;
+
+    final raw = _s._forjaLivePluginFilter;
+    if (raw.isEmpty || raw == 'all') {
+      if (raw != defaultKey) {
+        setState(() => _s._forjaLivePluginFilter = defaultKey);
+        unawaited(_persistForjaLiveCatalogFilterPreference(defaultKey));
+      }
+      return;
+    }
+
+    final canonical = _canonicalForjaLivePluginFilterKey(raw);
     if (canonical == null) {
-      _setForjaLivePluginFilter('all');
+      if (_s._forjaLivePluginFilter != defaultKey) {
+        _setForjaLivePluginFilter(defaultKey);
+      }
       return;
     }
     if (canonical != _s._forjaLivePluginFilter) {
@@ -398,8 +440,8 @@ mixin _LiveMatchesForjaLive
   }
 
   bool _shouldRunScheduleEnrichMerge() {
-    final filter = _s._forjaLivePluginFilter;
-    if (filter == 'all') return true;
+    final filter = _activeForjaLiveCatalogFilter;
+    if (filter.isEmpty) return false;
     return LiveMatchesEngine.cachedIsScheduleEnrichCatalog(filter);
   }
 
@@ -489,11 +531,12 @@ mixin _LiveMatchesForjaLive
     return true;
   }
 
-  /// Only the selected catalog chip (or every catalog when chip is All).
+  /// Only the selected catalog chip.
   List<EnginePlugin> _forjaLiveCatalogsToLoad(
     List<EnginePlugin> catalogPlugins,
   ) {
-    final gridFilter = _s._forjaLivePluginFilter;
+    final gridFilter = _activeForjaLiveCatalogFilter;
+    if (gridFilter.isEmpty) return const [];
     final out = <EnginePlugin>[];
     for (final catalog in catalogPlugins) {
       final filterId = EngineService.catalogFilterId(catalog);
@@ -700,12 +743,8 @@ mixin _LiveMatchesForjaLive
   bool _gridCatalogNeedsHydration() {
     if (!_usesForjaLiveLazyCatalog) return false;
     if (_s._forjaLivePluginLoads.isEmpty) return true;
-    final filter = _s._forjaLivePluginFilter;
-    if (filter == 'all') {
-      return _s._forjaLivePluginLoads.values.any(
-        (e) => !e.attempted && !e.loading,
-      );
-    }
+    final filter = _activeForjaLiveCatalogFilter;
+    if (filter.isEmpty) return true;
     final load = _forjaLivePluginLoadForFilter(filter);
     return load == null || (!load.attempted && !load.loading);
   }

@@ -157,7 +157,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   String? _lastSyncedIptvPortalKey;
   int _forjaLiveLoadGen = 0;
   int _iptvSportsPlayGen = 0;
-  String _forjaLivePluginFilter = 'all';
+  String _forjaLivePluginFilter = '';
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
   /// Lazy catalog scrape in flight (before plugin rows mark `loading`).
   bool _forjaLiveCatalogHydrating = false;

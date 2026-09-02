@@ -462,7 +462,7 @@ List<_DamiTvStream> _sortDamiTvLiveFirst(List<_DamiTvStream> items) {
 /// Max Forja Live catalog rows ingested per plugin (safety cap).
 const _kForjaLiveCatalogMaxPerPlugin = 100;
 
-/// When true, hides catalog schedule feeds and the Catalog top-bar filter.
+/// When true, hides the Catalog / Schedule top-bar chips only — grid still loads.
 const kLiveMatchesCatalogFiltersHidden = false;
 
 /// Status axis of the schedule sheet (airing vs upcoming).

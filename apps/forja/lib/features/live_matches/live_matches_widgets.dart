@@ -466,7 +466,6 @@ class _LiveMatchesCatalogSheetState extends State<_LiveMatchesCatalogSheet> {
   @override
   Widget build(BuildContext context) {
     final options = <({String id, String label, String? subtitle})>[
-      (id: 'all', label: 'All', subtitle: 'Every enabled catalog'),
       for (final c in widget.catalogs)
         (
           id: c.pluginId,
@@ -588,9 +587,7 @@ class _LiveMatchesCatalogSheetOptionState
 
     final tile = ListTile(
       leading: Icon(
-        widget.id == 'all'
-            ? Icons.grid_view_rounded
-            : Icons.video_library_rounded,
+        Icons.video_library_rounded,
         color: widget.selected
             ? ForjaShellColors.sectionAccent
             : Colors.white54,

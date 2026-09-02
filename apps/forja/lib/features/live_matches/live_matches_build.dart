@@ -761,12 +761,12 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         _LiveMatchesServer.iptvSports => kLiveMatchesCatalogFiltersHidden
             ? 'Catalog schedule feeds are temporarily hidden'
             : forjaLive._showForjaLiveCatalogChrome
-                ? 'No matches for this catalog, sport, or schedule window — try Catalog → All, a wider time window, or Refresh'
+                ? 'No matches for this catalog, sport, or schedule window — try another catalog, a wider time window, or Refresh'
                 : 'No Forja Sports matches — enable catalogs in Settings → Forja Sports → Catalog',
         _LiveMatchesServer.forjaLive => kLiveMatchesCatalogFiltersHidden
             ? 'Catalog schedule feeds are temporarily hidden'
             : forjaLive._showForjaLiveCatalogChrome
-                ? 'No matches for this catalog, sport, or schedule window — try Catalog → All, a wider time window, or Refresh'
+                ? 'No matches for this catalog, sport, or schedule window — try another catalog, a wider time window, or Refresh'
                 : 'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins',
         _ => 'No streams available',
       };
