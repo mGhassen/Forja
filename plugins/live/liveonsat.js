@@ -96,11 +96,6 @@ function parseKickoffMs(dateHeader, timeStr, refYear) {
   return utc;
 }
 
-function blockShowsLiveIcon(block, beforeTail) {
-  var ctx = String(beforeTail || '') + String(block || '');
-  return /icon\/live\d*\.png/i.test(ctx);
-}
-
 function inCatalogWindow(dateMs) {
   if (!dateMs) return false;
   var now = Date.now();
@@ -196,11 +191,7 @@ function parsePage(html, pluginId, now) {
     seen[dedupeKey] = true;
 
     var category = normCategory(competition);
-    var beforeTail = parts[p - 1]
-      ? parts[p - 1].slice(Math.max(0, parts[p - 1].length - 800))
-      : '';
-    var airing =
-      blockShowsLiveIcon(block, beforeTail) || isAiring(dateMs);
+    var airing = isAiring(dateMs);
     var sportMatchGame = {
       id: eventId,
       title: title,
@@ -218,7 +209,7 @@ function parsePage(html, pluginId, now) {
       category: category,
       date: dateMs,
       poster: '',
-      popular: airing,
+      popular: false,
       airing: airing,
       homeTeam: teams.home,
       awayTeam: teams.away,
