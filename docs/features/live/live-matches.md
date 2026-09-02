@@ -20,7 +20,7 @@ Tap **Live Sports** in the navigation bar.
 - Open a **live** match to open its **detail** page — full-screen cinematic hero. Under the title, **Providers** and **Live TV** toggle which list shows on the hero:
 
   - **Providers** — Forja Live streams (PPV, Streamed, TimStreams, … from every enabled catalog provider) **plus** matching **Stremio** addon streams in one list.
-  - **Live TV** — channels on your Xtream portal matched for this fixture (**Forja Sports** IPTV resolve).
+  - **Live TV** — channels on your Xtream portal matched for this fixture (**Forja Sports** IPTV resolve). On wide layouts, a **Categories** rail (portal groups + **All**) sits beside the channel list — same idea as the IPTV Live browser.
 
   Rows load in parallel; tap a card to play in the native IPTV player. **Forja Live** resolves through the live sport plugin; on miss shows an error toast — never the site embed player. Back returns to the match grid.
 - Back / Escape exits the player and **stops audio**. On **Android TV**, remote **Back** twice leaves; remote **Exit** is separate

@@ -288,6 +288,7 @@ class _LiveMatchDetailsScreenState
         onRetry: _retryActiveTab,
         tvFocus: tvFocus,
         inlineHero: true,
+        browseByCategory: _listTab == _LiveMatchListTab.liveTv,
       ),
     );
   }
@@ -397,6 +398,59 @@ class _LiveMatchDetailsScreenState
   }
 }
 
+/// Empty key = **All** (every matched channel).
+const _kLiveTvCategoryAll = '';
+
+String _liveTvCategoryKey(IptvPlaySource source) {
+  final cat = (source.pickerSubtitle ?? '').trim();
+  return cat.isEmpty ? 'Other' : cat;
+}
+
+class _LiveTvCategoryBucket {
+  const _LiveTvCategoryBucket({
+    required this.key,
+    required this.label,
+    required this.count,
+  });
+
+  final String key;
+  final String label;
+  final int count;
+}
+
+/// Unique portal categories in match-rank order (first appearance).
+List<_LiveTvCategoryBucket> _liveTvCategoriesFromSources(
+  List<IptvPlaySource> sources,
+) {
+  final order = <String>[];
+  final counts = <String, int>{};
+  for (final s in sources) {
+    final key = _liveTvCategoryKey(s);
+    final prev = counts[key];
+    if (prev == null) {
+      order.add(key);
+      counts[key] = 1;
+    } else {
+      counts[key] = prev + 1;
+    }
+  }
+  return [
+    for (final k in order)
+      _LiveTvCategoryBucket(key: k, label: k, count: counts[k]!),
+  ];
+}
+
+List<IptvPlaySource> _liveTvFilterByCategory(
+  List<IptvPlaySource> sources,
+  String selectedKey,
+) {
+  if (selectedKey == _kLiveTvCategoryAll) return sources;
+  return [
+    for (final s in sources)
+      if (_liveTvCategoryKey(s) == selectedKey) s,
+  ];
+}
+
 class _LiveMatchStreamsSection extends StatefulWidget {
   const _LiveMatchStreamsSection({
     required this.controller,
@@ -405,6 +459,7 @@ class _LiveMatchStreamsSection extends StatefulWidget {
     required this.tvFocus,
     this.iptvCtrl,
     this.inlineHero = false,
+    this.browseByCategory = false,
   });
 
   final _IptvSportsChannelsPanelController controller;
@@ -414,6 +469,8 @@ class _LiveMatchStreamsSection extends StatefulWidget {
   final VoidCallback onRetry;
   final bool tvFocus;
   final bool inlineHero;
+  /// Live TV: IPTV-style Categories | Channels split when wide enough.
+  final bool browseByCategory;
 
   @override
   State<_LiveMatchStreamsSection> createState() =>
@@ -422,6 +479,18 @@ class _LiveMatchStreamsSection extends StatefulWidget {
 
 class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
   _IptvSportsChannelsPanelController get controller => widget.controller;
+
+  /// [_kLiveTvCategoryAll] or a portal category label.
+  String _selectedCategoryKey = _kLiveTvCategoryAll;
+
+  String _effectiveCategoryKey(List<_LiveTvCategoryBucket> cats) {
+    if (cats.length == 1) return cats.first.key;
+    if (_selectedCategoryKey == _kLiveTvCategoryAll) return _kLiveTvCategoryAll;
+    if (cats.any((c) => c.key == _selectedCategoryKey)) {
+      return _selectedCategoryKey;
+    }
+    return _kLiveTvCategoryAll;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -730,13 +799,106 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
       );
     }
 
+    if (widget.browseByCategory) {
+      return _buildCategoryBrowse(context, sources);
+    }
     return _buildSourcesGrid(context, sources);
+  }
+
+  Widget _buildCategoryBrowse(
+    BuildContext context,
+    List<IptvPlaySource> allSources,
+  ) {
+    final cats = _liveTvCategoriesFromSources(allSources);
+    final selected = _effectiveCategoryKey(cats);
+    final filtered = _liveTvFilterByCategory(allSources, selected);
+    final showAll = cats.length >= 2;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final split = constraints.maxWidth >= 520;
+        if (!split) {
+          return _buildSourcesGrid(
+            context,
+            filtered,
+            allForPlay: allSources,
+            hideCategorySubtitle: false,
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: constraints.maxWidth >= 720 ? 200 : 168,
+              child: _buildCategoryRail(
+                context,
+                cats: cats,
+                showAll: showAll,
+                allCount: allSources.length,
+                selectedKey: selected,
+              ),
+            ),
+            VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: ForjaShellColors.borderSubtle,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildSourcesGrid(
+                context,
+                filtered,
+                allForPlay: allSources,
+                hideCategorySubtitle: true,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCategoryRail(
+    BuildContext context, {
+    required List<_LiveTvCategoryBucket> cats,
+    required bool showAll,
+    required int allCount,
+    required String selectedKey,
+  }) {
+    final rows = <({String key, String label, int count})>[
+      if (showAll) (key: _kLiveTvCategoryAll, label: 'All', count: allCount),
+      for (final c in cats) (key: c.key, label: c.label, count: c.count),
+    ];
+
+    return ListView.separated(
+      padding: const EdgeInsets.only(right: 8, bottom: 8),
+      itemCount: rows.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 4),
+      itemBuilder: (context, i) {
+        final row = rows[i];
+        final selected = row.key == selectedKey;
+        return _LiveTvCategoryRailRow(
+          label: row.label,
+          count: row.count,
+          selected: selected,
+          listIndex: i,
+          onTap: () {
+            if (_selectedCategoryKey == row.key) return;
+            setState(() => _selectedCategoryKey = row.key);
+          },
+        );
+      },
+    );
   }
 
   Widget _buildSourcesGrid(
     BuildContext context,
-    List<IptvPlaySource> sources,
-  ) {
+    List<IptvPlaySource> sources, {
+    List<IptvPlaySource>? allForPlay,
+    bool hideCategorySubtitle = false,
+  }) {
+    final playAll = allForPlay ?? sources;
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = widget.inlineHero || constraints.maxWidth >= 720;
@@ -749,7 +911,13 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
               padding: const EdgeInsets.only(bottom: 8),
               itemCount: sources.length,
               separatorBuilder: (_, _) => const SizedBox(height: gap),
-              itemBuilder: (context, i) => _sourceRow(context, sources, i),
+              itemBuilder: (context, i) => _sourceRow(
+                context,
+                sources,
+                i,
+                allForPlay: playAll,
+                hideCategorySubtitle: hideCategorySubtitle,
+              ),
             );
           }
           return Wrap(
@@ -758,7 +926,13 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
               for (var i = 0; i < sources.length; i++)
                 SizedBox(
                   width: constraints.maxWidth,
-                  child: _sourceRow(context, sources, i),
+                  child: _sourceRow(
+                    context,
+                    sources,
+                    i,
+                    allForPlay: playAll,
+                    hideCategorySubtitle: hideCategorySubtitle,
+                  ),
                 ),
             ],
           );
@@ -777,11 +951,25 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: _sourceRow(context, sources, left)),
+                    Expanded(
+                      child: _sourceRow(
+                        context,
+                        sources,
+                        left,
+                        allForPlay: playAll,
+                        hideCategorySubtitle: hideCategorySubtitle,
+                      ),
+                    ),
                     const SizedBox(width: gap),
                     Expanded(
                       child: right < sources.length
-                          ? _sourceRow(context, sources, right)
+                          ? _sourceRow(
+                              context,
+                              sources,
+                              right,
+                              allForPlay: playAll,
+                              hideCategorySubtitle: hideCategorySubtitle,
+                            )
                           : const SizedBox.shrink(),
                     ),
                   ],
@@ -799,7 +987,13 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
             for (var i = 0; i < sources.length; i++)
               SizedBox(
                 width: tileWidth,
-                child: _sourceRow(context, sources, i),
+                child: _sourceRow(
+                  context,
+                  sources,
+                  i,
+                  allForPlay: playAll,
+                  hideCategorySubtitle: hideCategorySubtitle,
+                ),
               ),
           ],
         );
@@ -810,17 +1004,108 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
   Widget _sourceRow(
     BuildContext context,
     List<IptvPlaySource> sources,
-    int i,
-  ) {
+    int i, {
+    required List<IptvPlaySource> allForPlay,
+    bool hideCategorySubtitle = false,
+  }) {
     return _IptvSportsChannelSheetRow(
       source: sources[i],
       iptvCtrl: widget.iptvCtrl,
       healthProbe: controller.healthProbe,
+      hideCategorySubtitle: hideCategorySubtitle,
       onTap: () => widget.onSourcePicked(
         sources[i],
-        List<IptvPlaySource>.from(sources),
+        List<IptvPlaySource>.from(allForPlay),
       ),
       tvItemIndex: widget.tvFocus ? i : null,
+    );
+  }
+}
+
+class _LiveTvCategoryRailRow extends StatefulWidget {
+  const _LiveTvCategoryRailRow({
+    required this.label,
+    required this.count,
+    required this.selected,
+    required this.onTap,
+    required this.listIndex,
+  });
+
+  final String label;
+  final int count;
+  final bool selected;
+  final VoidCallback onTap;
+  final int listIndex;
+
+  @override
+  State<_LiveTvCategoryRailRow> createState() => _LiveTvCategoryRailRowState();
+}
+
+class _LiveTvCategoryRailRowState extends State<_LiveTvCategoryRailRow> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = widget.selected;
+    final lit = selected || _focused || _hovered;
+    final tile = AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: selected
+            ? ForjaShellColors.sectionAccent.withValues(alpha: 0.18)
+            : lit
+                ? ForjaShellColors.surfaceElevated
+                : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: selected
+              ? ForjaShellColors.sectionAccent.withValues(alpha: 0.55)
+              : _focused
+                  ? ForjaShellColors.sectionAccent.withValues(alpha: 0.35)
+                  : Colors.transparent,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              widget.label,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: selected
+                    ? ForjaShellColors.cinematic.textPrimary
+                    : ForjaShellColors.cinematic.textSecondary,
+                fontSize: 12,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '${widget.count}',
+            style: TextStyle(
+              color: ForjaShellColors.cinematic.textSecondary,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return shellFocusableTap(
+      context: context,
+      onTap: widget.onTap,
+      borderRadius: 8,
+      scaleOnFocus: 1.0,
+      showFocusFill: false,
+      listIndex: widget.listIndex,
+      onFocusChange: (f) => setState(() => _focused = f),
+      onHoverChange: (h) => setState(() => _hovered = h),
+      child: tile,
     );
   }
 }
