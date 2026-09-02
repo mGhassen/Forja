@@ -15,7 +15,7 @@ Install the **ForjaHQ My List** hub pack under **Settings → Sources → Forja 
 - Filter the grid with **Film / Series / Anime / Asian Drama** (labels from the pack; tap again to show everything)
 - Switch **Plan to Watch / Watching / On Hold / Completed / Dropped** — local uses the same buckets; with Simkl, the open tab loads from Simkl. Change status from the card bookmark on desktop/mobile (same menu as Home); on Android TV use details / hero
 - Open a title — on **TV**, entering the tab focuses the first kind tab. **↓** goes to status then the grid; arrow keys move between posters; **←** from the first column returns to the nav rail
-- Add or move a title from details **+** or a poster bookmark (same five statuses, with or without Simkl) — movies/TV, Anime, and Asian Drama. Click the active status again to remove it; the card leaves that tab right away without reloading the whole grid (local status wins over a slow Simkl refresh)
+- Add or move a title from details **+** or a poster bookmark (same five statuses, with or without Simkl) — movies/TV, Anime, and Asian Drama. Click the active status again to remove it; the card leaves that tab right away (Completed / On Hold / Dropped included) without reloading the whole grid. Local status wins over a slow Simkl refresh or Simkl rewriting Completed on still-airing shows back to Watching.
 - Playing a **movie** adds it as **Watching** (or upgrades Plan to Watch). Finishing ≥85% moves it to **Completed**. TV / Anime / Asian Drama still follow episode watched marks for those buckets
 - Asian Drama titles have their own kind filter (KissKH and `asian_drama` bookmarks). Unmatched KissKH titles stay local and still show while Simkl is connected
 - Disconnect Simkl and the local buckets are still there

@@ -121,6 +121,8 @@ class MyListService {
     required String listStatus,
     int? tmdbId,
     String? tmdbMediaType,
+    int? anilistId,
+    int? kisskhId,
     double voteAverage = 0,
     String releaseDate = '',
   }) async {
@@ -140,6 +142,8 @@ class MyListService {
       'listStatus': listStatus,
       if (tmdbId != null) 'tmdbId': tmdbId,
       if (tmdbMediaType != null) 'tmdbMediaType': tmdbMediaType,
+      if (anilistId != null) 'anilistId': anilistId,
+      if (kisskhId != null) 'kisskhId': kisskhId,
       'addedAt': idx >= 0
           ? _items[idx]['addedAt']
           : DateTime.now().millisecondsSinceEpoch,

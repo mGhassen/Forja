@@ -251,57 +251,21 @@ function rowFromLiveScore(live, pluginId, competition) {
 
 function applyLiveScores(rows, liveMap, pluginId, compNames) {
   var seen = {};
+  var hasLive = Object.keys(liveMap || {}).length > 0;
   rows.forEach(function (row) {
     var eventId = String(row.id || '').replace(/^lstv_/, '');
     if (!eventId) return;
     seen[eventId] = true;
-    row.airing = liveMap[eventId] != null;
+    // Only override HTML airing when the live-scores feed answered.
+    if (hasLive) row.airing = liveMap[eventId] != null;
   });
 
-  Object.keys(liveMap).forEach(function (id) {
+  Object.keys(liveMap || {}).forEach(function (id) {
     if (seen[id]) return;
     var comp = compNames && liveMap[id].cid ? compNames[liveMap[id].cid] : '';
     var row = rowFromLiveScore(liveMap[id], pluginId, comp);
     if (row) rows.push(row);
   });
-  return rows;
-}
-
-async function fetchMissingLiveRows(ctx, cfg, rows, liveMap, compLinks, compNames) {
-  var have = {};
-  rows.forEach(function (row) {
-    have[String(row.id || '').replace(/^lstv_/, '')] = true;
-  });
-
-  var pending = [];
-  Object.keys(liveMap).forEach(function (id) {
-    if (have[id]) return;
-    var cid = String(liveMap[id].cid || '');
-    var path = compLinks[cid];
-    if (!path) return;
-    pending.push({ id: id, path: path, cid: cid });
-  });
-  if (!pending.length) return rows;
-
-  var base = String(cfg.base || SPECS.base).replace(/\/$/, '');
-  var seenPath = {};
-  for (var i = 0; i < pending.length; i++) {
-    var item = pending[i];
-    if (seenPath[item.path]) continue;
-    seenPath[item.path] = true;
-    try {
-      var html = await fetchHtml(ctx, cfg, base + item.path);
-      var parsed = parsePage(html, pluginIdFromCtx(ctx, cfg));
-      parsed.forEach(function (row) {
-        var eventId = String(row.id || '').replace(/^lstv_/, '');
-        if (!eventId || have[eventId]) return;
-        if (!liveMap[eventId]) return;
-        have[eventId] = true;
-        row.airing = true;
-        rows.push(row);
-      });
-    } catch (e) {}
-  }
   return rows;
 }
 
@@ -630,26 +594,19 @@ function fetchTextViaJina(ctx, cfg, targetUrl) {
 }
 
 function fetchHtml(ctx, cfg, targetUrl) {
-  var headers = {
-    'User-Agent': ua(),
-    Accept: 'text/html,application/xhtml+xml',
-    'Accept-Language': 'en-US,en;q=0.9',
-  };
-
-  return fetchText(ctx, targetUrl, headers)
-    .then(function (html) {
-      if (isUsableHtml(html)) return html;
-      throw new Error('cloudflare');
-    })
-    .catch(function () {
-      if (flareSolverrBase(ctx)) {
-        return fetchTextViaFlareSolverr(ctx, targetUrl).then(function (html) {
-          if (isUsableHtml(html)) return html;
-          throw new Error('flare unusable');
-        });
-      }
-      return fetchTextViaJina(ctx, cfg, targetUrl);
-    });
+  // livesoccertv.com is always Cloudflare-blocked for engine UA — skip the
+  // doomed direct hit and go FlareSolverr (if configured) or Jina first.
+  if (flareSolverrBase(ctx)) {
+    return fetchTextViaFlareSolverr(ctx, targetUrl)
+      .then(function (html) {
+        if (isUsableHtml(html)) return html;
+        throw new Error('flare unusable');
+      })
+      .catch(function () {
+        return fetchTextViaJina(ctx, cfg, targetUrl);
+      });
+  }
+  return fetchTextViaJina(ctx, cfg, targetUrl);
 }
 
 async function fetchPage(ctx, cfg, page) {
@@ -819,13 +776,13 @@ async function fetchCatalog(ctx, cfg) {
   var pages = schedulePages(cfg);
   var seen = {};
   var out = [];
-  var compLinks = {};
   var compNames = {};
-  for (var i = 0; i < pages.length; i++) {
-    var page = await fetchPage(ctx, cfg, pages[i]);
-    Object.keys(page.compLinks || {}).forEach(function (k) {
-      compLinks[k] = page.compLinks[k];
-    });
+  var pageResults = await Promise.all(
+    pages.map(function (page) {
+      return fetchPage(ctx, cfg, page);
+    }),
+  );
+  pageResults.forEach(function (page) {
     Object.keys(page.compNames || {}).forEach(function (k) {
       compNames[k] = page.compNames[k];
     });
@@ -835,10 +792,12 @@ async function fetchCatalog(ctx, cfg) {
       seen[key] = true;
       out.push(row);
     });
-  }
+  });
 
   var liveMap = await fetchLiveScores(ctx);
-  await fetchMissingLiveRows(ctx, cfg, out, liveMap, compLinks, compNames);
+  // Do NOT crawl competition pages for missing live games — that was 20+
+  // sequential CF/Jina hits (15–30s). applyLiveScores synthesizes those rows
+  // from the RSS. Channel enrich stays on broadcastLookup at play time.
   applyLiveScores(out, liveMap, pluginIdFromCtx(ctx, cfg), compNames);
 
   out = out
@@ -846,8 +805,6 @@ async function fetchCatalog(ctx, cfg) {
       return Number(a.date || 0) - Number(b.date || 0);
     })
     .slice(0, CATALOG_MAX);
-  // Grid catalog: schedule rows already carry local channels. Per-match page
-  // fetches (international coverage) run only on broadcastLookup at play time.
   return out;
 }
 

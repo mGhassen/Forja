@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/my_list/providers/external_lists_providers.dart';
@@ -15,8 +18,13 @@ const myListHubPluginId = 'my-list-hub';
 /// not re-run the enrich companion for titles already on screen.
 final Map<String, Map<String, dynamic>> _myListEnrichCache = {};
 
+final Set<String> _myListEnrichInflight = {};
+
 @visibleForTesting
-void clearMyListEnrichCache() => _myListEnrichCache.clear();
+void clearMyListEnrichCache() {
+  _myListEnrichCache.clear();
+  _myListEnrichInflight.clear();
+}
 
 @visibleForTesting
 String myListEnrichCacheKey(Map<String, dynamic> row) {
@@ -41,11 +49,31 @@ Map<String, dynamic> _overlayListFields(
     'posterPath',
     'voteAverage',
     'releaseDate',
+    'anilistId',
+    'kisskhId',
+    'tmdbId',
+    'pluginId',
+    'catalogOpen',
   ]) {
     final v = current[key];
     if (v != null) out[key] = v;
   }
   return out;
+}
+
+/// Sync cache apply — raw rows until enrich finishes in the background.
+@visibleForTesting
+List<Map<String, dynamic>> applyMyListEnrichCacheSync(
+  List<Map<String, dynamic>> merged,
+) {
+  if (merged.isEmpty) return merged;
+  return [
+    for (final row in merged)
+      if (_myListEnrichCache[myListEnrichCacheKey(row)] case final cached?)
+        _overlayListFields(cached, row)
+      else
+        Map<String, dynamic>.from(row),
+  ];
 }
 
 /// Apply cached enrich when present; enrich only cache misses.
@@ -92,6 +120,42 @@ Future<List<Map<String, dynamic>>> enrichMyListRowsWithCache(
   }
 
   return [for (final row in out) row!];
+}
+
+/// Bumps after background enrich so the sync page re-reads the cache.
+final myListEnrichEpochProvider =
+    NotifierProvider<MyListEnrichEpochNotifier, int>(
+      MyListEnrichEpochNotifier.new,
+    );
+
+class MyListEnrichEpochNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void bump() => state++;
+
+  void scheduleEnrich(List<Map<String, dynamic>> merged) {
+    final misses = <Map<String, dynamic>>[];
+    for (final row in merged) {
+      final key = myListEnrichCacheKey(row);
+      if (_myListEnrichCache.containsKey(key)) continue;
+      if (!_myListEnrichInflight.add(key)) continue;
+      misses.add(row);
+    }
+    if (misses.isEmpty) return;
+    unawaited(() async {
+      try {
+        await enrichMyListRowsWithCache(misses);
+        bump();
+      } catch (e, st) {
+        debugPrint('[MyList] background enrich failed: $e\n$st');
+      } finally {
+        for (final row in misses) {
+          _myListEnrichInflight.remove(myListEnrichCacheKey(row));
+        }
+      }
+    }());
+  }
 }
 
 class MyListCatalogPage implements CatalogKitListPage {
@@ -179,13 +243,24 @@ MyListCatalogPage myListCatalogPageFromRows(
   );
 }
 
+/// Sync page from local (+ Simkl cache). Status pin changes update the grid
+/// immediately — no FutureProvider loading gap that keeps a stale card.
 final myListCatalogProvider =
-    FutureProvider.family<MyListCatalogPage, String>((ref, status) async {
+    Provider.family<AsyncValue<MyListCatalogPage>, String>((ref, status) {
       ref.watch(myListRevisionProvider);
+      ref.watch(myListEnrichEpochProvider);
       final localItems = ref.watch(myListItemsProvider);
       final hiddenKeys = ref.watch(myListHiddenKeysProvider);
-      final gate = await ref.watch(externalListsGateProvider.future);
-      final simklLoggedIn = gate.simklLoggedIn;
+      final gateAsync = ref.watch(externalListsGateProvider);
+
+      if (gateAsync.isLoading && !gateAsync.hasValue) {
+        return const AsyncLoading();
+      }
+      if (gateAsync.hasError && !gateAsync.hasValue) {
+        return AsyncError(gateAsync.error!, gateAsync.stackTrace!);
+      }
+
+      final simklLoggedIn = gateAsync.valueOrNull?.simklLoggedIn == true;
 
       final localForStatus = localItems
           .where(
@@ -213,11 +288,22 @@ final myListCatalogProvider =
         merged = localForStatus;
       }
 
-      final enriched = await enrichMyListRowsWithCache(merged);
-      return myListCatalogPageFromRows(
-        enriched,
-        status,
-        loadingSimkl: loadingSimkl,
+      final enriched = applyMyListEnrichCacheSync(merged);
+      final pendingEnrich = List<Map<String, dynamic>>.from(merged);
+      Future.microtask(() {
+        try {
+          ref
+              .read(myListEnrichEpochProvider.notifier)
+              .scheduleEnrich(pendingEnrich);
+        } catch (_) {}
+      });
+
+      return AsyncData(
+        myListCatalogPageFromRows(
+          enriched,
+          status,
+          loadingSimkl: loadingSimkl,
+        ),
       );
     });
 
@@ -256,6 +342,7 @@ final class MyListCatalogSource implements CatalogKitListSource {
     clearMyListEnrichCache();
     ref.invalidate(myListRevisionProvider);
     ref.invalidate(simklWatchlistProvider);
+    ref.invalidate(myListEnrichEpochProvider);
   }
 
   @override

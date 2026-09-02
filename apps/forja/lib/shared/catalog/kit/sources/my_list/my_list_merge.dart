@@ -98,16 +98,35 @@ Map<String, dynamic>? _localMatch(
   List<Map<String, dynamic>> allLocal,
   Map<String, dynamic> item,
 ) {
-  final anilist = item['anilistId'] as int?;
-  final kisskh = item['kisskhId'] as int?;
-  final tmdb = item['tmdbId'] as int?;
+  final anilist = myListAsInt(item['anilistId']);
+  final kisskh = myListAsInt(item['kisskhId']);
+  final tmdb = myListAsInt(item['tmdbId']);
   final mt = item['mediaType']?.toString();
+  final simklKeys = myListItemHideKeys(item);
   for (final local in allLocal) {
-    if (anilist != null && local['anilistId'] == anilist) return local;
-    if (kisskh != null && local['kisskhId'] == kisskh) return local;
-    if (tmdb != null && local['tmdbId'] == tmdb) {
+    if (anilist != null && myListAsInt(local['anilistId']) == anilist) {
+      return local;
+    }
+    if (kisskh != null && myListAsInt(local['kisskhId']) == kisskh) {
+      return local;
+    }
+    // Hub catalog rows often only store ids inside catalogOpen.
+    final openId = _catalogOpenIdInt(local['catalogOpen']);
+    if (anilist != null && openId == anilist) {
+      final surface = _catalogOpenSurface(local['catalogOpen']);
+      if (surface == null || surface == 'anime') return local;
+    }
+    if (kisskh != null && openId == kisskh) {
+      final surface = _catalogOpenSurface(local['catalogOpen']);
+      if (surface == null || surface == 'drama') return local;
+    }
+    if (simklKeys.isNotEmpty &&
+        myListItemHideKeys(local).intersection(simklKeys).isNotEmpty) {
+      return local;
+    }
+    if (tmdb != null && myListAsInt(local['tmdbId']) == tmdb) {
       final lmt = local['mediaType']?.toString();
-      if (lmt == 'asian_drama') return local;
+      if (lmt == 'asian_drama' || lmt == 'drama') return local;
       if (mt == null || lmt == null || lmt == mt) return local;
       final localNorm = (lmt == 'tv' || lmt == 'series') ? 'tv' : lmt;
       final itemNorm = (mt == 'tv' || mt == 'series' || mt == 'shows')
@@ -117,6 +136,17 @@ Map<String, dynamic>? _localMatch(
     }
   }
   return null;
+}
+
+int? _catalogOpenIdInt(Object? openRaw) {
+  if (openRaw is! Map) return null;
+  return myListAsInt(openRaw['id']);
+}
+
+String? _catalogOpenSurface(Object? openRaw) {
+  if (openRaw is! Map) return null;
+  final surface = openRaw['surface']?.toString();
+  return (surface == null || surface.isEmpty) ? null : surface;
 }
 
 List<Map<String, dynamic>> mergeLocalHubs(

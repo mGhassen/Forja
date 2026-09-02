@@ -181,6 +181,45 @@ void main() {
       final filtered = filterSimklByLocal(simkl, local, 'watching', {});
       expect(filtered, isEmpty);
     });
+
+    test('drops simkl anime when local catalogOpen status differs', () {
+      final simkl = [
+        {'anilistId': 99, 'mediaType': 'anime', 'title': 'A'},
+      ];
+      final local = [
+        {
+          'uniqueId': 'catalog_anime-hub_99',
+          'pluginId': 'anime-hub',
+          'mediaType': 'anime',
+          'listStatus': 'completed',
+          'title': 'A',
+          'catalogOpen': {'surface': 'anime', 'id': '99'},
+        },
+      ];
+      final filtered = filterSimklByLocal(simkl, local, 'watching', {});
+      expect(filtered, isEmpty);
+    });
+
+    test('drops simkl when local hold/dropped differs from tab', () {
+      final simkl = [
+        {'tmdbId': 3, 'mediaType': 'tv', 'title': 'C'},
+      ];
+      for (final status in ['hold', 'dropped', 'completed']) {
+        final local = [
+          {
+            'tmdbId': 3,
+            'mediaType': 'tv',
+            'listStatus': status,
+            'title': 'C',
+          },
+        ];
+        expect(
+          filterSimklByLocal(simkl, local, 'watching', {}),
+          isEmpty,
+          reason: 'local $status should hide from watching',
+        );
+      }
+    });
   });
 
   group('catalogMetaFromLegacyListItem', () {
