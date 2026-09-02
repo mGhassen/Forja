@@ -126,6 +126,8 @@ function kisskhMeta(row) {
     open: {
       surface: 'drama',
       id: String(row.id),
+      // Host: open.torrentEp → search Title 05 (not SxxExx).
+      torrentEp: true,
       extract: {
         resolveType: 'drama',
         panelCategory: 'drama',

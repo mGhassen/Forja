@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **13 / 14** acceptance |
-| **Current slice** | Anime `open.torrentEp` + IMDb enrich shipped — desktop smoke R54-A06 remaining |
+| **Progress** | **9 / 9** components · **14 / 15** acceptance |
+| **Current slice** | Anime + Asian Drama `open.torrentEp` + IMDb enrich — desktop smoke R54-A06 remaining |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -56,6 +56,7 @@
 | 12 | R54-A12 | Anime TMDB enrich sets `ids.imdb` from TMDB external ids | ✅ |
 | 13 | R54-A13 | Packs may set `open.torrentEp` so Sources searches `Title 05` / `Title - 05` | ✅ |
 | 14 | R54-A14 | Hub `Movie.imdbId` carries enrich IMDb so Torrentio can run | ✅ |
+| 15 | R54-A15 | Asian Drama pack sets `open.torrentEp` + enrich `ids.imdb` | ✅ |
 
 ---
 

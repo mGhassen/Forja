@@ -125,7 +125,11 @@ class _CatalogKitListWidgetState extends ConsumerState<CatalogKitListWidget> {
     source.setupSideEffects(ref, status);
     final pageAsync = source.watchPage(ref, status);
 
+    // Status / Simkl writes re-run the FutureProvider; keep the current grid
+    // instead of swapping to the shimmer skeleton (feels like a full reload).
     return pageAsync.when(
+      skipLoadingOnReload: true,
+      skipLoadingOnRefresh: true,
       loading: () => _loadingGrid(context),
       error: (e, _) => Center(
         child: Text(

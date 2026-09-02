@@ -1,9 +1,102 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/shared/catalog/kit/sources/my_list/my_list_merge.dart';
 import 'package:forja/features/my_list/providers/my_list_providers.dart';
+import 'package:forja/shared/catalog/kit/sources/my_list/my_list_catalog_source.dart';
+import 'package:forja/shared/catalog/kit/sources/my_list/my_list_merge.dart';
 import 'package:forja/shared/catalog/shell/catalog_legacy_list_item.dart';
 
 void main() {
+  tearDown(clearMyListEnrichCache);
+
+  group('enrichMyListRowsWithCache', () {
+    test('reuses cache so status-only rebuilds skip enrich', () async {
+      var enrichCalls = 0;
+      Future<List<Map<String, dynamic>>> enrich(
+        List<Map<String, dynamic>> items,
+      ) async {
+        enrichCalls++;
+        return [
+          for (final row in items)
+            {...row, 'posterPath': 'https://cdn.example/${row['uniqueId']}.jpg'},
+        ];
+      }
+
+      final first = await enrichMyListRowsWithCache(
+        [
+          {
+            'uniqueId': 'tmdb_movie_1',
+            'tmdbId': 1,
+            'mediaType': 'movie',
+            'listStatus': 'watching',
+            'title': 'A',
+          },
+        ],
+        enrich: enrich,
+      );
+      expect(enrichCalls, 1);
+      expect(first.single['posterPath'], contains('tmdb_movie_1'));
+
+      final second = await enrichMyListRowsWithCache(
+        [
+          {
+            'uniqueId': 'tmdb_movie_1',
+            'tmdbId': 1,
+            'mediaType': 'movie',
+            'listStatus': 'completed',
+            'title': 'A',
+          },
+        ],
+        enrich: enrich,
+      );
+      expect(enrichCalls, 1);
+      expect(second.single['listStatus'], 'completed');
+      expect(second.single['posterPath'], contains('tmdb_movie_1'));
+    });
+
+    test('enriches only cache misses', () async {
+      final enrichedIds = <String>[];
+      Future<List<Map<String, dynamic>>> enrich(
+        List<Map<String, dynamic>> items,
+      ) async {
+        for (final row in items) {
+          enrichedIds.add(row['uniqueId']?.toString() ?? '');
+        }
+        return [for (final row in items) {...row, 'enriched': true}];
+      }
+
+      await enrichMyListRowsWithCache(
+        [
+          {
+            'uniqueId': 'a',
+            'mediaType': 'movie',
+            'title': 'A',
+            'listStatus': 'watching',
+          },
+        ],
+        enrich: enrich,
+      );
+      final mixed = await enrichMyListRowsWithCache(
+        [
+          {
+            'uniqueId': 'a',
+            'mediaType': 'movie',
+            'title': 'A',
+            'listStatus': 'watching',
+          },
+          {
+            'uniqueId': 'b',
+            'mediaType': 'movie',
+            'title': 'B',
+            'listStatus': 'watching',
+          },
+        ],
+        enrich: enrich,
+      );
+      expect(enrichedIds, ['a', 'b']);
+      expect(mixed.map((e) => e['uniqueId']), ['a', 'b']);
+      expect(mixed.every((e) => e['enriched'] == true), isTrue);
+    });
+  });
+
   group('simklCardItem', () {
     test('maps anime row with anilist id', () {
       final card = simklCardItem({

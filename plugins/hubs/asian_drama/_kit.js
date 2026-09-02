@@ -319,6 +319,9 @@ function hubTmdbMatchFetch(ctx, query) {
 function hubApplyTmdbHit(meta, hit) {
   if (!meta || !hit || !hit.id) return meta;
   meta.ids = Object.assign({}, meta.ids || {}, { tmdb: String(hit.id) });
+  if (hit.imdb) {
+    meta.ids.imdb = String(hit.imdb);
+  }
   if (hit.mediaType) meta.tmdbMediaType = String(hit.mediaType);
   if (hit.backdrop) {
     meta.background = String(hit.backdrop);
@@ -392,6 +395,11 @@ function hubTmdbHitFromDetails(json, media) {
     backdrop: backdrop || null,
     overview: overview || null,
     rating: rating > 0 ? rating : null,
+    imdb: (function () {
+      var ext = json.external_ids || {};
+      var id = String(ext.imdb_id || '').trim();
+      return id || null;
+    })(),
   };
 }
 
@@ -412,7 +420,8 @@ function hubTmdbById(ctx, id, preferType) {
       '/' +
       tid +
       '?api_key=' +
-      encodeURIComponent(key);
+      encodeURIComponent(key) +
+      '&append_to_response=external_ids';
     return ctx
       .fetch(url)
       .then(function (res) {
@@ -565,6 +574,51 @@ function hubEnrichMetaVideos(ctx, meta, hit) {
   });
 }
 
+function hubTmdbFetchImdb(ctx, media, id) {
+  var cfg = hubConfig(ctx, {});
+  var key = String(cfg.apiKey || '').trim();
+  var mid = Number(id);
+  var kind = String(media || '').toLowerCase();
+  if (!key || !(mid > 0) || (kind !== 'movie' && kind !== 'tv')) {
+    return Promise.resolve('');
+  }
+  var url =
+    'https://api.themoviedb.org/3/' +
+    kind +
+    '/' +
+    mid +
+    '/external_ids?api_key=' +
+    encodeURIComponent(key);
+  return ctx
+    .fetch(url)
+    .then(function (res) {
+      if (!res.ok) return '';
+      return res.json();
+    })
+    .then(function (json) {
+      return String((json && json.imdb_id) || '').trim();
+    })
+    .catch(function () {
+      return '';
+    });
+}
+
+function hubTmdbAttachImdb(ctx, meta, hit) {
+  if (!meta || !hit || !hit.id) return Promise.resolve(meta);
+  if (meta.ids && meta.ids.imdb) return Promise.resolve(meta);
+  if (hit.imdb) {
+    meta.ids = Object.assign({}, meta.ids || {}, { imdb: String(hit.imdb) });
+    return Promise.resolve(meta);
+  }
+  var media = String(hit.mediaType || meta.tmdbMediaType || 'tv').toLowerCase();
+  return hubTmdbFetchImdb(ctx, media, hit.id).then(function (imdb) {
+    if (imdb) {
+      meta.ids = Object.assign({}, meta.ids || {}, { imdb: imdb });
+    }
+    return meta;
+  });
+}
+
 function hubEnrichTmdb(ctx, items, limit) {
   if (!Array.isArray(items) || !items.length) return Promise.resolve(items || []);
   var n = Number(limit) > 0 ? Number(limit) : items.length;
@@ -581,8 +635,14 @@ function hubEnrichTmdb(ctx, items, limit) {
         : Promise.resolve(null);
       return start.then(function (hit) {
         function finish(applied, matchedHit) {
-          if (!applied || !matchedHit || !matchedHit.id) return applied;
-          return hubEnrichMetaVideos(ctx, applied, matchedHit);
+          if (!applied || !matchedHit || !matchedHit.id) {
+            return Promise.resolve(applied);
+          }
+          return hubEnrichMetaVideos(ctx, applied, matchedHit).then(
+            function (withVideos) {
+              return hubTmdbAttachImdb(ctx, withVideos, matchedHit);
+            },
+          );
         }
         if (hit) return finish(hubApplyTmdbHit(meta, hit), hit);
         return hubTmdbMatch(ctx, {
