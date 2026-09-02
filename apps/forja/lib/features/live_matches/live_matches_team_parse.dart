@@ -53,3 +53,44 @@
   }
   return (home, away);
 }
+
+const _genericTeamSuffixes = {
+  'city',
+  'united',
+  'town',
+  'rovers',
+  'county',
+  'athletic',
+  'wanderers',
+  'albion',
+  'villa',
+  'forest',
+  'palace',
+  'north',
+  'south',
+  'west',
+  'east',
+  'sport',
+  'sports',
+  'fc',
+  'sc',
+  'afc',
+  'cf',
+  'cd',
+  'real',
+  'inter',
+  'sporting',
+};
+
+/// Distinctive nickname for IPTV matcher — never bare suffixes like "City".
+String sportNickFromTeam(String team) {
+  final bits = team.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+  if (bits.isEmpty) return '';
+  for (var i = bits.length - 1; i >= 0; i--) {
+    final w = bits[i].toLowerCase();
+    if (w.length >= 3 && !_genericTeamSuffixes.contains(w)) {
+      return bits[i];
+    }
+  }
+  return bits.first;
+}

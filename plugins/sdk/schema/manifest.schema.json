@@ -60,6 +60,20 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         },
+        "defaultCapabilities": {
+          "type": "object",
+          "description": "First-run Settings defaults for live_sport capability toggles (catalog, resolve).",
+          "additionalProperties": { "type": "boolean" }
+        },
+        "legacyIds": {
+          "type": "object",
+          "description": "Retired twin-pack plugin ids for host migration (catalog-*, live-*).",
+          "additionalProperties": false,
+          "properties": {
+            "catalog": { "type": "string", "minLength": 1 },
+            "resolve": { "type": "string", "minLength": 1 }
+          }
+        },
         "nav": { "$ref": "#/$defs/nav" },
         "enrich": { "type": "string", "minLength": 1 },
         "hosts": {

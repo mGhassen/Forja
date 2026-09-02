@@ -70,7 +70,10 @@ mixin _LiveMatchesForjaLive
       list = list
           .where(
             (m) => _streamedMatchesForEvent(m, _s._streamedMatches).any(
-              (row) => row.livePluginId == _s._forjaLivePluginFilter,
+              (row) => _liveCatalogRowMatchesFilter(
+                row,
+                _s._forjaLivePluginFilter,
+              ),
             ),
           )
           .toList();
@@ -92,7 +95,7 @@ mixin _LiveMatchesForjaLive
     streamed = streamed
         .where(
           (m) => _streamedMatchesForEvent(m, _s._streamedMatches).any(
-            (row) => row.livePluginId == filter,
+            (row) => _liveCatalogRowMatchesFilter(row, filter),
           ),
         )
         .toList();
@@ -296,12 +299,13 @@ mixin _LiveMatchesForjaLive
   Future<Map<String, dynamic>> _liveCatalogExtraConfig(
     EnginePlugin catalog,
   ) async {
-    if (catalog.id != 'espn') return const {};
+    final leaguesRaw = catalog.config['leagues'];
+    if (leaguesRaw is! List || leaguesRaw.isEmpty) return const {};
     final sportsConfig = await LiveMatchesIptvSportsConfig.load();
     final leagues = sportsConfig.leagues.isEmpty
-        ? LiveMatchesIptvSportsConfig.allLeagues
+        ? [for (final lg in leaguesRaw) lg.toString()]
         : sportsConfig.leagues;
-    return {'leagues': leagues, 'pluginId': 'espn'};
+    return {'leagues': leagues, 'pluginId': catalog.id};
   }
 
   void _ensureForjaLivePluginLoadsRegistered(List<EnginePlugin> catalogPlugins) {
@@ -380,6 +384,7 @@ mixin _LiveMatchesForjaLive
     });
 
     try {
+      LiveMatchesEngine.cachePluginMeta(catalog);
       final extraConfig = await _liveCatalogExtraConfig(catalog);
       if (!genAlive()) return;
       final rows = await EngineService.instance.runLiveCatalog(
@@ -411,13 +416,18 @@ mixin _LiveMatchesForjaLive
         return;
       }
 
-      final Iterable<Map<String, dynamic>> visibleRows = rows.where(
-        (row) => _forjaLiveCatalogRowInHorizon(
-          row,
-          _s._scheduleHorizon,
-          pluginId: filterId,
-        ),
+      final ingestFullDay = LiveMatchesEngine.scheduleFullDayFromConfig(
+        catalog.config,
       );
+      final Iterable<Map<String, dynamic>> visibleRows = ingestFullDay
+          ? rows
+          : rows.where(
+              (row) => _forjaLiveCatalogRowInHorizon(
+                row,
+                _s._scheduleHorizon,
+                pluginId: filterId,
+              ),
+            );
       final matchRows = visibleRows
           .map(_forjaLiveRowToMatch)
           .where((m) => m.id.isNotEmpty && m.title.isNotEmpty);
@@ -434,7 +444,7 @@ mixin _LiveMatchesForjaLive
           ..._s._streamedMatches,
           ...matches,
         ]);
-        if (catalog.id == 'espn' || filterId == 'espn') {
+        if (LiveMatchesEngine.scheduleFullDayFromConfig(catalog.config)) {
           _syncEspnGamesFromStreamed();
         }
         if (catalog.supportsLiveBroadcast) {
@@ -614,6 +624,27 @@ mixin _LiveMatchesForjaLive
     if (!mounted) return;
     final cats = _sportCategoriesFromCurrentMatches();
     if (cats.isEmpty) {
+      (this as _LiveMatchesData)
+        .._scheduleRestoreRefreshFocus(clearWhenSettled: true)
+        .._scheduleRestoreLiveMatchesTvFocus();
+      return;
+    }
+
+    if (cats.length <= 1) {
+      if (_sportCategoryIdsEqual(cats, _s._sports) &&
+          _s._tabController == null) {
+        (this as _LiveMatchesData)
+          .._scheduleRestoreRefreshFocus(clearWhenSettled: true)
+          .._scheduleRestoreLiveMatchesTvFocus();
+        return;
+      }
+      final oldCtrl = _s._tabController;
+      setState(() {
+        _s._tabController = null;
+        _s._sports = cats;
+        _s._sportFilter = 'all';
+      });
+      _deferTabControllerDispose(oldCtrl);
       (this as _LiveMatchesData)
         .._scheduleRestoreRefreshFocus(clearWhenSettled: true)
         .._scheduleRestoreLiveMatchesTvFocus();

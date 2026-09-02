@@ -290,6 +290,13 @@ The host calls the same **`extract(ctx)`** entry with **`ctx.action`**:
 | `catalog` | Return schedule rows |
 | `resolve` | Return streams for `ctx.source`, `ctx.matchId`, `ctx.stream`, `ctx.embedUrl`, … |
 
+Optional manifest fields for unified live sport plugins:
+
+| Field | Role |
+|-------|------|
+| `defaultCapabilities` | First-run Settings on/off per capability (`catalog`, `resolve`) — omit or `false` to opt in |
+| `legacyIds` | Retired `catalog-*` / `live-*` ids for one-time host migration |
+
 Use a shared **`prelude`** for embed unlock helpers (see [`live/embed-st.js`](live/embed-st.js)).
 
 **Live-only ctx helpers:**

@@ -127,7 +127,7 @@ _StreamedMatch _forjaLiveRowToMatch(Map<String, dynamic> j) {
     for (final s in sourcesRaw) {
       if (s is! Map) continue;
       final m = Map<String, dynamic>.from(s);
-      final url = (m['url'] ?? '').toString();
+      final url = (m['url'] ?? m['iframe'] ?? '').toString();
       if (url.isNotEmpty) {
         inline.add({
           'id': m['id'] ?? '',

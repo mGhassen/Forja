@@ -4,6 +4,7 @@ var SPECS = {
 };
 
 var CATALOG_MAX = 120;
+var LIVE_SCORES_URL = 'https://proxy.livesoccertv.com/rss/livescores.xml';
 
 function ua() {
   return 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -77,11 +78,216 @@ function inCatalogWindow(dateMs) {
   return dateMs >= now - 6 * 3600000 && dateMs <= now + 7 * 24 * 3600000;
 }
 
-function isAiring(block, dateMs) {
-  if (/class\s*=\s*["'][^"']*livecell[^"']*\blive\b/i.test(block)) return true;
-  if (!dateMs) return false;
-  var now = Date.now();
-  return dateMs <= now + 15 * 60000 && dateMs >= now - 4 * 3600000;
+function isLiveTimer(raw) {
+  var t = String(raw || '').trim();
+  if (!t) return false;
+  if (/^[0-9]/.test(t)) return true;
+  return (
+    t === 'HT' ||
+    t === 'ET' ||
+    t === 'P' ||
+    t === 'Pen' ||
+    t === 'Break' ||
+    t === 'Pause' ||
+    t === 'BT'
+  );
+}
+
+function extractProgress(block) {
+  var timer = '';
+  var tm = String(block || '').match(/\bdata-timer\s*=\s*["']([^"']*)["']/i);
+  if (tm) timer = tm[1];
+  var prog = String(block || '').match(
+    /<span[^>]*class\s*=\s*["']inprogress["'][^>]*>([\s\S]*?)<\/span>/i,
+  );
+  var minute = prog ? String(prog[1]).replace(/<[^>]+>/g, '').trim() : '';
+  return { timer: timer, minute: minute };
+}
+
+function isAiring(block) {
+  if (/title\s*=\s*["']Match ended/i.test(block)) return false;
+  if (/class\s*=\s*["'][^"']*\bft\b[^"']*["'][^>]*title\s*=\s*["']Match ended/i.test(block)) {
+    return false;
+  }
+
+  var prog = extractProgress(block);
+  if (isLiveTimer(prog.timer) || isLiveTimer(prog.minute)) return true;
+
+  if (/class\s*=\s*["'][^"']*\blivematch\b/i.test(block)) {
+    return isLiveTimer(prog.timer) || isLiveTimer(prog.minute);
+  }
+
+  return false;
+}
+
+function parseEtKickoffMs(dateStr, timeStr) {
+  var d = String(dateStr || '').trim();
+  var t = String(timeStr || '00:00:00').trim();
+  if (!d) return 0;
+  var ms = Date.parse(d + 'T' + t + '-04:00');
+  return isNaN(ms) ? 0 : ms;
+}
+
+function attrValue(attrs, name) {
+  var m = String(attrs || '').match(new RegExp('\\b' + name + '\\s*=\\s*["\']([^"\']*)["\']', 'i'));
+  return m ? m[1] : '';
+}
+
+function titleFromLiveGame(game, result) {
+  var s = String(game || '').trim();
+  if (!s) return '';
+  var score = String(result || '').trim();
+  if (score) {
+    var parts = score.split(/\s*-\s*/);
+    if (parts.length === 2) {
+      var scoreRe = new RegExp(
+        '\\s+' + parts[0].trim() + '\\s*-\\s*' + parts[1].trim() + '\\s+',
+      );
+      if (scoreRe.test(s)) {
+        s = s.replace(scoreRe, ' vs ').trim();
+      }
+    }
+  }
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+function parseCompetitionLinks(html) {
+  var out = {};
+  var re =
+    /class\s*=\s*["'][^"']*sortable_comp[^"']*["'][^>]*\bid\s*=\s*["'](\d+)["'][\s\S]*?href\s*=\s*["'](\/competitions\/[^#"']+)["']/gi;
+  var m;
+  while ((m = re.exec(String(html || '')))) {
+    out[m[1]] = m[2];
+  }
+  return out;
+}
+
+function parseLiveScoresXml(xml) {
+  var out = {};
+  var re = /<match\b([^>]*)(?:\/>|>)/gi;
+  var m;
+  while ((m = re.exec(String(xml || '')))) {
+    var attrs = m[1];
+    var id = attrValue(attrs, 'id');
+    var status = attrValue(attrs, 'status');
+    if (!id || !isLiveTimer(status)) continue;
+    out[id] = {
+      id: id,
+      status: status,
+      game: attrValue(attrs, 'game'),
+      result: attrValue(attrs, 'result'),
+      date: attrValue(attrs, 'date'),
+      time: attrValue(attrs, 'time'),
+      cid: attrValue(attrs, 'cid'),
+    };
+  }
+  return out;
+}
+
+async function fetchLiveScores(ctx) {
+  try {
+    var res = await ctx.fetch(LIVE_SCORES_URL, {
+      headers: { Accept: 'application/xml,text/xml,*/*' },
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return parseLiveScoresXml(await res.text());
+  } catch (e) {
+    return {};
+  }
+}
+
+function rowFromLiveScore(live, pluginId, competition) {
+  var eventId = String(live.id || '');
+  if (!eventId) return null;
+  var title = titleFromLiveGame(live.game, live.result);
+  if (!title) return null;
+  var dateMs = parseEtKickoffMs(live.date, live.time);
+  if (!dateMs) return null;
+  var teams = parseTeams(title);
+  var category = normCategory(competition || '');
+  var sportMatchGame = {
+    id: eventId,
+    title: title,
+    sport: category,
+    category: competition || 'Live Soccer TV',
+    homeTeam: teams.home,
+    awayTeam: teams.away,
+    dateMs: dateMs,
+    broadcastChannels: [],
+    matchPath: '',
+  };
+  return {
+    id: 'lstv_' + eventId,
+    title: title,
+    category: category,
+    date: dateMs,
+    poster: '',
+    popular: false,
+    airing: true,
+    homeTeam: teams.home,
+    awayTeam: teams.away,
+    sources: [],
+    catalog: 'forja_live',
+    pluginId: pluginId,
+    matchPath: '',
+    sportMatchGame: sportMatchGame,
+  };
+}
+
+function applyLiveScores(rows, liveMap, pluginId, compNames) {
+  var seen = {};
+  rows.forEach(function (row) {
+    var eventId = String(row.id || '').replace(/^lstv_/, '');
+    if (!eventId) return;
+    seen[eventId] = true;
+    row.airing = liveMap[eventId] != null;
+  });
+
+  Object.keys(liveMap).forEach(function (id) {
+    if (seen[id]) return;
+    var comp = compNames && liveMap[id].cid ? compNames[liveMap[id].cid] : '';
+    var row = rowFromLiveScore(liveMap[id], pluginId, comp);
+    if (row) rows.push(row);
+  });
+  return rows;
+}
+
+async function fetchMissingLiveRows(ctx, cfg, rows, liveMap, compLinks, compNames) {
+  var have = {};
+  rows.forEach(function (row) {
+    have[String(row.id || '').replace(/^lstv_/, '')] = true;
+  });
+
+  var pending = [];
+  Object.keys(liveMap).forEach(function (id) {
+    if (have[id]) return;
+    var cid = String(liveMap[id].cid || '');
+    var path = compLinks[cid];
+    if (!path) return;
+    pending.push({ id: id, path: path, cid: cid });
+  });
+  if (!pending.length) return rows;
+
+  var base = String(cfg.base || SPECS.base).replace(/\/$/, '');
+  var seenPath = {};
+  for (var i = 0; i < pending.length; i++) {
+    var item = pending[i];
+    if (seenPath[item.path]) continue;
+    seenPath[item.path] = true;
+    try {
+      var html = await fetchHtml(ctx, cfg, base + item.path);
+      var parsed = parsePage(html, pluginIdFromCtx(ctx, cfg));
+      parsed.forEach(function (row) {
+        var eventId = String(row.id || '').replace(/^lstv_/, '');
+        if (!eventId || have[eventId]) return;
+        if (!liveMap[eventId]) return;
+        have[eventId] = true;
+        row.airing = true;
+        rows.push(row);
+      });
+    } catch (e) {}
+  }
+  return rows;
 }
 
 function mergeChannelLists(a, b) {
@@ -218,11 +424,23 @@ function competitionForIndex(compHeads, idx) {
   return competition;
 }
 
+function parseCompetitionNames(html) {
+  var out = {};
+  var re =
+    /class\s*=\s*["'][^"']*sortable_comp[^"']*["'][^>]*\bid\s*=\s*["'](\d+)["'][\s\S]*?<span[^>]*>([^<]+)</gi;
+  var m;
+  while ((m = re.exec(String(html || '')))) {
+    out[m[1]] = m[2].trim();
+  }
+  return out;
+}
+
 function parsePage(html, pluginId) {
   var out = [];
   var seen = {};
   var compHeads = parseCompetitionHeaders(html);
-  var rowRe = /<tr[^>]*\bid\s*=\s*["'](\d+)["'][^>]*class\s*=\s*["'][^"']*matchrow[^"']*["'][\s\S]*?<\/tr>/gi;
+  var rowRe =
+    /<tr[^>]*\bid\s*=\s*["'](\d+)["'][^>]*\bdata-ko\s*=\s*["'][^"']+["'][\s\S]*?<\/tr>/gi;
   var match;
 
   while ((match = rowRe.exec(html))) {
@@ -257,7 +475,7 @@ function parsePage(html, pluginId) {
     seen[dedupeKey] = true;
 
     var category = normCategory(competition);
-    var airing = isAiring(block, dateMs);
+    var airing = isAiring(block);
     var sportMatchGame = {
       id: eventId,
       title: title,
@@ -384,9 +602,14 @@ async function fetchPage(ctx, cfg, page) {
   var targetUrl = base + path;
   try {
     var html = await fetchHtml(ctx, cfg, targetUrl);
-    return parsePage(html, pluginIdFromCtx(ctx, cfg));
+    return {
+      html: html,
+      rows: parsePage(html, pluginIdFromCtx(ctx, cfg)),
+      compLinks: parseCompetitionLinks(html),
+      compNames: parseCompetitionNames(html),
+    };
   } catch (e) {
-    return [];
+    return { html: '', rows: [], compLinks: {}, compNames: {} };
   }
 }
 
@@ -428,15 +651,28 @@ async function fetchCatalog(ctx, cfg) {
   var pages = schedulePages(cfg);
   var seen = {};
   var out = [];
+  var compLinks = {};
+  var compNames = {};
   for (var i = 0; i < pages.length; i++) {
-    var rows = await fetchPage(ctx, cfg, pages[i]);
-    rows.forEach(function (row) {
+    var page = await fetchPage(ctx, cfg, pages[i]);
+    Object.keys(page.compLinks || {}).forEach(function (k) {
+      compLinks[k] = page.compLinks[k];
+    });
+    Object.keys(page.compNames || {}).forEach(function (k) {
+      compNames[k] = page.compNames[k];
+    });
+    (page.rows || []).forEach(function (row) {
       var key = String(row.id || row.title);
       if (seen[key]) return;
       seen[key] = true;
       out.push(row);
     });
   }
+
+  var liveMap = await fetchLiveScores(ctx);
+  await fetchMissingLiveRows(ctx, cfg, out, liveMap, compLinks, compNames);
+  applyLiveScores(out, liveMap, pluginIdFromCtx(ctx, cfg), compNames);
+
   out = out
     .sort(function (a, b) {
       return Number(a.date || 0) - Number(b.date || 0);

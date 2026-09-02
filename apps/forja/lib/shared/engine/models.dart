@@ -23,6 +23,8 @@ class EnginePlugin {
     this.nav,
     this.enrich,
     this.ctxConfigMap = const {},
+    this.defaultCapabilities = const {},
+    this.liveLegacyIds,
   });
 
   final String id;
@@ -67,6 +69,12 @@ class EnginePlugin {
   /// Maps `open.extract.ctx` keys → plugin `config` keys at extract time.
   /// Declared in pack manifest — host does not branch on plugin id.
   final Map<String, String> ctxConfigMap;
+
+  /// First-run Settings defaults for `live_sport` capability toggles (`catalog`, `resolve`).
+  final Map<String, bool> defaultCapabilities;
+
+  /// Retired twin-pack ids for one-time capability-pref migration (`catalog-*`, `live-*`).
+  final LiveSportLegacyIds? liveLegacyIds;
 
   bool get isHttp => kind == 'http';
   bool get isHost => kind == 'host';
@@ -179,6 +187,8 @@ class EnginePlugin {
           ? (j['enrich'] as String).trim()
           : null,
       ctxConfigMap: _ctxConfigMap(j['ctxConfigMap']),
+      defaultCapabilities: _defaultCapabilitiesMap(j['defaultCapabilities']),
+      liveLegacyIds: LiveSportLegacyIds.fromJson(j['legacyIds']),
     );
   }
 
@@ -201,6 +211,9 @@ class EnginePlugin {
     if (nav != null) 'nav': nav,
     if (enrich != null && enrich!.isNotEmpty) 'enrich': enrich,
     if (ctxConfigMap.isNotEmpty) 'ctxConfigMap': ctxConfigMap,
+    if (defaultCapabilities.isNotEmpty) 'defaultCapabilities': defaultCapabilities,
+    if (liveLegacyIds != null && !liveLegacyIds!.isEmpty)
+      'legacyIds': liveLegacyIds!.toJson(),
   };
 
   EnginePlugin copyWith({bool? enabled, String? prelude}) => EnginePlugin(
@@ -222,7 +235,48 @@ class EnginePlugin {
     nav: nav,
     enrich: enrich,
     ctxConfigMap: ctxConfigMap,
+    defaultCapabilities: defaultCapabilities,
+    liveLegacyIds: liveLegacyIds,
   );
+}
+
+/// Retired `catalog-*` / `live-*` plugin ids for unified `live_sport` migration.
+class LiveSportLegacyIds {
+  const LiveSportLegacyIds({this.catalog, this.resolve});
+
+  final String? catalog;
+  final String? resolve;
+
+  bool get isEmpty =>
+      (catalog == null || catalog!.isEmpty) &&
+      (resolve == null || resolve!.isEmpty);
+
+  static LiveSportLegacyIds? fromJson(dynamic raw) {
+    if (raw is! Map) return null;
+    final catalog = (raw['catalog'] as String?)?.trim();
+    final resolve = (raw['resolve'] as String?)?.trim();
+    final out = LiveSportLegacyIds(
+      catalog: catalog?.isNotEmpty == true ? catalog : null,
+      resolve: resolve?.isNotEmpty == true ? resolve : null,
+    );
+    return out.isEmpty ? null : out;
+  }
+
+  Map<String, String> toJson() => {
+    if (catalog != null) 'catalog': catalog!,
+    if (resolve != null) 'resolve': resolve!,
+  };
+}
+
+Map<String, bool> _defaultCapabilitiesMap(dynamic raw) {
+  if (raw is! Map) return const {};
+  final out = <String, bool>{};
+  raw.forEach((k, v) {
+    final key = k.toString().trim().toLowerCase();
+    if (key.isEmpty || v is! bool) return;
+    out[key] = v;
+  });
+  return out;
 }
 
 Map<String, String> _ctxConfigMap(dynamic raw) {

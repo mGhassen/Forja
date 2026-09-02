@@ -6,7 +6,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   bool _tvFocus(BuildContext context) =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
-  bool get _hasSportChips => _s._tabController != null && _s._sports.isNotEmpty;
+  bool get _hasSportChips =>
+      _s._sports.length > 1 && _s._tabController != null;
 
   int get _chipSortOrder => 1;
 
@@ -307,9 +308,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (_s._tabController != null && _s._sports.isNotEmpty)
+        if (_hasSportChips) ...[
           _buildSportTabs(),
-        const SizedBox(height: 2),
+          const SizedBox(height: 2),
+        ],
         Expanded(child: _buildBody()),
       ],
     );
@@ -382,7 +384,9 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         ? (_s._showIptvPortalTopBar
             ? _s._topBarPortalIndex + 1
             : _s._topBarRefreshIndex + 1)
-        : _s._topBarViewIndex + 1;
+        : (_LiveMatchesScreenState._timelineViewEnabled
+            ? _s._topBarViewIndex + 1
+            : _s._topBarRefreshIndex + 1);
 
     final refresh = tvFocus
         ? _LiveMatchesRefreshTopBarButton(
@@ -427,7 +431,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
           ],
           const Spacer(),
           refresh,
-          if (!_liveMatchesLeanbackOnly(context)) ...[
+          if (!_liveMatchesLeanbackOnly(context) &&
+              _LiveMatchesScreenState._timelineViewEnabled) ...[
             const SizedBox(width: 4),
             _buildViewToggle(),
           ],
@@ -464,7 +469,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   }
 
   Widget _buildSportTabs() {
-    if (_s._tabController == null || _s._sports.isEmpty) {
+    if (!_hasSportChips) {
       return const SizedBox.shrink();
     }
 
@@ -563,7 +568,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       return _buildForjaLiveCatalogProgress();
     }
     // Leanback TV is cards-only (timeline D-pad is not supported).
-    if (!_liveMatchesLeanbackOnly(context) &&
+    if (_LiveMatchesScreenState._timelineViewEnabled &&
+        !_liveMatchesLeanbackOnly(context) &&
         _s._view == _LiveMatchesView.timeline) {
       return _s._buildTimelineBody();
     }

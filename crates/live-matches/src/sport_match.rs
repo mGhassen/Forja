@@ -71,7 +71,7 @@ pub struct MatchGame {
     /// Normalized title phrases for PPV-style channel names.
     pub title_phrases: Vec<String>,
     pub date_ms: i64,
-    /// Known broadcast channel names (e.g. LiveOnSat) to boost IPTV prefilter.
+    /// Plugin-supplied broadcast channel names (`broadcastChannels` on sportMatchGame).
     pub broadcast_channels: Vec<String>,
 }
 
@@ -299,7 +299,7 @@ fn team_match_tokens(team: &str) -> Vec<String> {
         return vec![];
     }
     let mut out = Vec::new();
-    if lower.len() >= 4 {
+    if lower.len() >= 4 && !is_generic_team_token(&lower) {
         out.push(lower.clone());
     }
     for w in lower.split_whitespace() {
@@ -357,7 +357,11 @@ fn count_label_hits(label_lower: &str, tokens: &[String]) -> usize {
 
 fn matches_team_side(text_lower: &str, team: &str, tokens: &[String]) -> bool {
     let team_lower = team.trim().to_lowercase();
-    if team_lower.len() >= 4 && text_has_token(text_lower, &team_lower) {
+    if !team_lower.is_empty()
+        && !is_generic_team_token(&team_lower)
+        && team_lower.len() >= 4
+        && text_has_token(text_lower, &team_lower)
+    {
         return true;
     }
     tokens.iter().any(|k| text_has_token(text_lower, k))
@@ -513,21 +517,13 @@ pub fn indices_for_epg(game: &MatchGame, candidates: &[Candidate], max: usize) -
     out
 }
 
+/// Generic IPTV label normalize — site-specific scrubbing belongs in live pack JS
+/// (`cleanChannelName` on catalog rows before `broadcastChannels` is emitted).
 fn normalize_broadcast_channel_label(raw: &str) -> String {
     let mut s = raw.to_lowercase();
-    for noise in [
-        " ($/geo/r)",
-        " ($/geo)",
-        " [online]",
-        " [via app]",
-        " [app]",
-        " (uk only)",
-        "|",
-        "·",
-    ] {
-        s = s.replace(noise, " ");
+    for sep in ['|', '·'] {
+        s = s.replace(sep, " ");
     }
-    s = s.replace("$/geo/r", "");
     for suffix in [" uhd", " hd", " 4k"] {
         if let Some(stripped) = s.strip_suffix(suffix) {
             s = stripped.to_string();
@@ -642,7 +638,7 @@ fn broadcast_channel_candidate_hit(game: &MatchGame, c: &Candidate) -> bool {
             && broadcast_channel_name_hit_on_label(game, &c.category_label))
 }
 
-/// Direct IPTV channel name match from LiveOnSat (or similar) broadcast hints.
+/// Direct IPTV channel name match from plugin `broadcastChannels` hints.
 pub fn broadcast_channel_matches(game: &MatchGame, candidates: &[Candidate]) -> Vec<Value> {
     if game.broadcast_channels.is_empty() {
         return vec![];
@@ -900,7 +896,7 @@ pub fn match_streams(
             continue;
         }
         if (matches_team_side(&name, &game.home_nick, &home_nick_tokens)
-            || matches_team_side(&name, &game.away_nick, &away_nick_tokens))
+            && matches_team_side(&name, &game.away_nick, &away_nick_tokens))
             && !foreign_list
                 .iter()
                 .any(|w| text_has_token(&combined, w))
@@ -1154,7 +1150,7 @@ mod tests {
     }
 
     #[test]
-    fn epg_indices_prefer_liveonsat_broadcast_channel() {
+    fn epg_indices_prefer_broadcast_channel_hint() {
         let mut g = game();
         g.broadcast_channels = vec!["Sky Sports Main Event HD".into()];
         let mut cands = Vec::new();
@@ -1323,6 +1319,115 @@ mod tests {
         }];
         let hits = match_streams(&g, &cands, &[]);
         assert_eq!(hits.len(), 1);
+    }
+
+    #[test]
+    fn stoke_norwich_must_not_match_preston_bristol_city_nick() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "Stoke City vs Norwich City",
+            "sport": "soccer",
+            "homeTeam": "Stoke City",
+            "awayTeam": "Norwich City",
+            "homeNick": "City",
+            "awayNick": "City",
+            "dateMs": 1_756_000_000_000i64
+        }));
+        let cands = vec![Candidate {
+            name: "Viaplay SE 01".into(),
+            description: "ENDED | CHAMPIONSHIP PRESTON - BRISTOL CITY | Tue 01 Sep 20:35".into(),
+            start_timestamp: Some(1_756_000_500.0),
+            stream_url: "https://x/viaplay.m3u8".into(),
+            category_label: "UK Football".into(),
+            logo: String::new(),
+            stream_id: "7".into(),
+            epg_channel_id: String::new(),
+        }];
+        let hits = match_streams(&g, &cands, &[]);
+        assert!(
+            hits.is_empty(),
+            "city nick false positive must not match wrong fixture: {:?}",
+            hits
+        );
+    }
+
+    #[test]
+    fn tier4_city_nick_or_must_not_match_wrong_fixture_in_name() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "Stoke City vs Norwich City",
+            "sport": "soccer",
+            "homeTeam": "Stoke City",
+            "awayTeam": "Norwich City",
+            "homeNick": "City",
+            "awayNick": "City",
+            "dateMs": 1_756_000_000_000i64
+        }));
+        let cands = vec![Candidate {
+            name: "Soccer: Preston vs Bristol City @ Sep 1 20:35".into(),
+            description: String::new(),
+            start_timestamp: None,
+            stream_url: "https://x/v.m3u8".into(),
+            category_label: "UK Football".into(),
+            logo: String::new(),
+            stream_id: "7".into(),
+            epg_channel_id: String::new(),
+        }];
+        let hits = match_streams(&g, &cands, &[]);
+        assert!(
+            hits.is_empty(),
+            "generic City nick + OR tier must not match wrong fixture name: {:?}",
+            hits
+        );
+    }
+
+    #[test]
+    fn wrong_game_teams_match_wrong_epg_fixture() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "Stoke City vs Norwich City",
+            "sport": "soccer",
+            "homeTeam": "Preston",
+            "awayTeam": "Bristol City",
+            "dateMs": 1_756_000_000_000i64
+        }));
+        let cands = vec![Candidate {
+            name: "Viaplay SE 01".into(),
+            description: "ENDED | CHAMPIONSHIP PRESTON - BRISTOL CITY | Tue 01 Sep 20:35".into(),
+            start_timestamp: None,
+            stream_url: "https://x/v.m3u8".into(),
+            category_label: "UK Football".into(),
+            logo: String::new(),
+            stream_id: "7".into(),
+            epg_channel_id: String::new(),
+        }];
+        let hits = match_streams(&g, &cands, &[]);
+        assert_eq!(hits.len(), 1, "wrong teams in game payload reproduces bug");
+    }
+
+    #[test]
+    fn championship_token_must_not_match_unrelated_city_fixture() {
+        let g = MatchGame::from_json(&serde_json::json!({
+            "title": "Stoke City vs Norwich City",
+            "sport": "football",
+            "homeTeam": "",
+            "awayTeam": "",
+            "dateMs": 1_756_000_000_000i64
+        }));
+        assert!(g.is_team_game());
+        let cands = vec![Candidate {
+            name: "Viaplay SE 01".into(),
+            description: "ENDED | CHAMPIONSHIP PRESTON - BRISTOL CITY | Tue 01 Sep 20:35".into(),
+            start_timestamp: None,
+            stream_url: "https://x/v.m3u8".into(),
+            category_label: "UK Football".into(),
+            logo: String::new(),
+            stream_id: "7".into(),
+            epg_channel_id: String::new(),
+        }];
+        let hits = match_streams(&g, &cands, &[]);
+        assert!(
+            hits.is_empty(),
+            "championship/city overlap must not match: {:?}",
+            hits
+        );
     }
 
     #[test]

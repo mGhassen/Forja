@@ -96,10 +96,10 @@ async function unlockEmbed(ctx, url, cfg) {
   var raw = String(url || '').trim();
   if (!raw) return null;
 
-  if (isEmbedIndiaUrl(raw)) {
+  if (isEpiEmbedsUrl(raw) || isEmbedIndiaUrl(raw)) {
     try {
-      var india = await resolveEmbedIndia(ctx, raw, cfg);
-      if (india && india.length) return india[0];
+      var gasmJw = await resolveEmbedIndia(ctx, raw, cfg);
+      if (gasmJw && gasmJw.length) return gasmJw[0];
     } catch (_) {}
   }
 
@@ -177,6 +177,7 @@ async function fetchCatalog(ctx, cfg) {
         return {
           source: 'timstreams',
           id: String(st.name || i),
+          url: String(st.url || ''),
         };
       });
     if (!sources.length) return;

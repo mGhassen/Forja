@@ -309,6 +309,15 @@ function embedIndiaOrigin(cfg) {
   return ((cfg && cfg.embedIndiaOrigin) || 'https://embedindia.st').replace(/\/$/, '');
 }
 
+function isEpiEmbedsUrl(url) {
+  try {
+    var host = new URL(String(url || '').trim()).host.toLowerCase();
+    return host === 'epiembeds.online' || host.endsWith('.epiembeds.online');
+  } catch (_) {
+    return false;
+  }
+}
+
 function isEmbedIndiaUrl(url) {
   try {
     var host = new URL(String(url || '').trim()).host.toLowerCase();
@@ -316,6 +325,10 @@ function isEmbedIndiaUrl(url) {
   } catch (_) {
     return false;
   }
+}
+
+function isGasmJwEmbedUrl(url) {
+  return isEmbedIndiaUrl(url) || isEpiEmbedsUrl(url);
 }
 
 function parseEmbedIndiaUrl(raw) {
@@ -396,7 +409,35 @@ async function postEmbedIndiaFetch(ctx, slot, cfg) {
   return { bodyHex: bytesToHex(buf), island: String(island) };
 }
 
+function epiEmbedsReferer(embedUrl) {
+  try {
+    return new URL(String(embedUrl || '').trim()).origin + '/';
+  } catch (_) {
+    return 'https://epiembeds.online/';
+  }
+}
+
+async function resolveEpiEmbeds(ctx, embedUrl, cfg) {
+  var raw = String(embedUrl || '').trim();
+  if (!raw || !isEpiEmbedsUrl(raw)) return null;
+  if (ctx.live && typeof ctx.live.sniffEmbed === 'function') {
+    var ref = epiEmbedsReferer(raw);
+    var m3u8 = await ctx.live.sniffEmbed(raw, ref);
+    if (m3u8) {
+      var origin = ref.replace(/\/$/, '');
+      return [
+        {
+          url: m3u8,
+          headers: { Referer: raw, Origin: origin, 'User-Agent': ua() },
+        },
+      ];
+    }
+  }
+  return null;
+}
+
 async function resolveEmbedIndia(ctx, embedUrl, cfg) {
+  if (isEpiEmbedsUrl(embedUrl)) return resolveEpiEmbeds(ctx, embedUrl, cfg);
   var slot = parseEmbedIndiaUrl(embedUrl);
   if (!slot) return null;
   var fetched = await postEmbedIndiaFetch(ctx, slot, cfg);

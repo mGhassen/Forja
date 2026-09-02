@@ -63,5 +63,11 @@ void main() {
       expect(home, 'Home FC');
       expect(away, 'Away FC');
     });
+
+    test('sportNickFromTeam skips generic City suffix', () {
+      expect(sportNickFromTeam('Stoke City'), 'Stoke');
+      expect(sportNickFromTeam('Norwich City'), 'Norwich');
+      expect(sportNickFromTeam('Manchester United'), 'Manchester');
+    });
   });
 }

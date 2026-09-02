@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-live",
   "name": "ForjaHQ Live Sports",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "plugins": [
     {
       "id": "streamed",
@@ -11,6 +11,8 @@
       "entry": "streamed.js",
       "types": ["live_sport"],
       "capabilities": ["catalog", "resolve"],
+      "defaultCapabilities": { "catalog": true, "resolve": true },
+      "legacyIds": { "catalog": "catalog-streamed", "resolve": "live-streamed" },
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -26,6 +28,8 @@
       "entry": "ppv.js",
       "types": ["live_sport"],
       "capabilities": ["catalog", "resolve"],
+      "defaultCapabilities": { "catalog": true, "resolve": true },
+      "legacyIds": { "catalog": "catalog-ppv", "resolve": "live-ppv" },
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -44,6 +48,8 @@
       "entry": "streamfree.js",
       "types": ["live_sport"],
       "capabilities": ["catalog", "resolve"],
+      "defaultCapabilities": { "catalog": true, "resolve": true },
+      "legacyIds": { "catalog": "catalog-streamfree", "resolve": "live-streamfree" },
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -57,6 +63,7 @@
       "entry": "timstreams.js",
       "types": ["live_sport"],
       "capabilities": ["catalog", "resolve"],
+      "legacyIds": { "catalog": "catalog-timstreams", "resolve": "live-timstreams" },
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -72,6 +79,7 @@
       "entry": "watchfooty.js",
       "types": ["live_sport"],
       "capabilities": ["catalog", "resolve"],
+      "legacyIds": { "catalog": "catalog-watchfooty", "resolve": "live-watchfooty" },
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -87,6 +95,7 @@
       "entry": "streamic.js",
       "types": ["live_sport"],
       "capabilities": ["catalog", "resolve"],
+      "legacyIds": { "catalog": "catalog-streamic", "resolve": "live-streamic" },
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -109,9 +118,11 @@
       "entry": "espn.js",
       "types": ["live_sport"],
       "capabilities": ["catalog"],
+      "legacyIds": { "catalog": "catalog-espn" },
       "kind": "http",
       "config": {
         "scheduleHorizon": "fullDay",
+        "catalogTimeoutSec": 90,
         "leagues": [
           "NBA",
           "NFL",
@@ -144,10 +155,13 @@
       "entry": "liveonsat.js",
       "types": ["live_sport"],
       "capabilities": ["catalog", "broadcast"],
+      "defaultCapabilities": { "broadcast": true },
+      "legacyIds": { "catalog": "catalog-liveonsat" },
       "kind": "http",
       "config": {
         "base": "https://m.liveonsat.com",
-        "pages": ["2day.php"]
+        "pages": ["2day.php"],
+        "airingOnlyLive": true
       }
     },
     {
@@ -157,11 +171,14 @@
       "entry": "livesoccertv.js",
       "types": ["live_sport"],
       "capabilities": ["catalog", "broadcast"],
+      "defaultCapabilities": { "broadcast": true },
+      "legacyIds": { "catalog": "catalog-livesoccertv" },
       "kind": "http",
       "config": {
         "base": "https://www.livesoccertv.com",
         "jinaPrefix": "https://r.jina.ai/",
-        "catalogTimeoutSec": 90
+        "catalogTimeoutSec": 90,
+        "airingOnlyLive": true
       }
     }
   ]

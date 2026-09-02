@@ -573,14 +573,18 @@ mixin _LiveMatchesData
       (this as _LiveMatchesForjaLive)._rebuildSportTabsFromCurrentMatches();
     } else {
       final cats = load.sports;
-      final newCtrl = TabController(length: cats.length + 1, vsync: _s);
-      newCtrl.addListener(() {
-        if (!newCtrl.indexIsChanging) {
-          final idx = newCtrl.index;
-          _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
-        }
-      });
-      setState(() => _s._tabController = newCtrl);
+      if (cats.length > 1) {
+        final newCtrl = TabController(length: cats.length + 1, vsync: _s);
+        newCtrl.addListener(() {
+          if (!newCtrl.indexIsChanging) {
+            final idx = newCtrl.index;
+            _setSportFilter(idx == 0 ? 'all' : cats[idx - 1].id);
+          }
+        });
+        setState(() => _s._tabController = newCtrl);
+      } else {
+        setState(() => _s._tabController = null);
+      }
     }
     if (_s._timelineScrollController.hasClients) {
       _s._timelineScrollController.jumpTo(0);

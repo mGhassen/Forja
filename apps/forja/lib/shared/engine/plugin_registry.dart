@@ -1169,35 +1169,36 @@ class PluginRegistry {
     var packs = await listPacksRaw();
     final capabilityWrites = <String, bool>{};
 
-    for (final entry in LiveSportCapabilities.legacyTwinIds.entries) {
-      final newId = entry.key;
-      final (catalogOld, liveOld) = entry.value;
-      final catalogOn = _legacyPluginEnabled(packs, catalogOld);
-      final resolveOn =
-          liveOld == null ? null : _legacyPluginEnabled(packs, liveOld);
-
-      for (final pack in packs) {
-        if (forjaHqSlot(pack.sourceUrl) != 'live') continue;
-        for (final p in pack.plugins) {
-          if (p.id != newId) continue;
-          if (catalogOn != null) {
-            capabilityWrites[
-              LiveSportCapabilities.capabilityPrefsKey(
-                pack.sourceUrl,
-                newId,
-                LiveSportCapabilities.catalog,
-              )
-            ] = catalogOn;
-          }
-          if (resolveOn != null) {
-            capabilityWrites[
-              LiveSportCapabilities.capabilityPrefsKey(
-                pack.sourceUrl,
-                newId,
-                LiveSportCapabilities.resolve,
-              )
-            ] = resolveOn;
-          }
+    for (final pack in packs) {
+      if (forjaHqSlot(pack.sourceUrl) != 'live') continue;
+      for (final p in pack.plugins) {
+        final legacy = p.liveLegacyIds;
+        if (legacy == null) continue;
+        final catalogOld = legacy.catalog;
+        final liveOld = legacy.resolve;
+        final catalogOn = catalogOld == null
+            ? null
+            : _legacyPluginEnabled(packs, catalogOld);
+        final resolveOn = liveOld == null
+            ? null
+            : _legacyPluginEnabled(packs, liveOld);
+        if (catalogOn != null) {
+          capabilityWrites[
+            LiveSportCapabilities.capabilityPrefsKey(
+              pack.sourceUrl,
+              p.id,
+              LiveSportCapabilities.catalog,
+            )
+          ] = catalogOn;
+        }
+        if (resolveOn != null) {
+          capabilityWrites[
+            LiveSportCapabilities.capabilityPrefsKey(
+              pack.sourceUrl,
+              p.id,
+              LiveSportCapabilities.resolve,
+            )
+          ] = resolveOn;
         }
       }
     }

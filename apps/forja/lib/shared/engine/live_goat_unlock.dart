@@ -5,8 +5,11 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:forja/shared/engine/live_goat_webview_unlock.dart';
 import 'package:forja/shared/engine/live_gasm_webview_unlock.dart';
+import 'package:forja/shared/webview/forja_headless_in_app_webview.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
@@ -59,6 +62,15 @@ class LiveGoatUnlock {
     if (host.isEmpty) return false;
     return _sportsEmbedHosts.any((h) => host == h || host.endsWith('.$h'));
   }
+
+  static bool isEpiEmbedsUrl(String url) {
+    final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+    if (host.isEmpty) return false;
+    return host == 'epiembeds.online' || host.endsWith('.epiembeds.online');
+  }
+
+  static bool isGasmJwEmbedUrl(String url) =>
+      isEmbedIndiaUrl(url) || isEpiEmbedsUrl(url);
 
   static bool isEmbedIndiaUrl(String url) {
     final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
@@ -412,6 +424,21 @@ class LiveGoatUnlock {
   }) async {
     final embed = embedUrl.trim();
     if (embed.isEmpty) return null;
+    if (isEpiEmbedsUrl(embed)) {
+      final sniffed = await sniffEmbed(embedUrl: embed);
+      if (sniffed != null && sniffed.isNotEmpty) {
+        final origin = Uri.tryParse(embed)?.origin ?? '';
+        return (
+          url: sniffed,
+          headers: {
+            'Referer': embed,
+            if (origin.isNotEmpty) 'Origin': origin,
+            'User-Agent': _ua,
+          },
+        );
+      }
+      return null;
+    }
     final slot = _parseEmbedIndiaSlot(embed);
     if (slot == null) {
       debugPrint('[LiveGasmUnlock] unparseable embedindia url: $embed');
@@ -550,7 +577,7 @@ class LiveGoatUnlock {
       debugPrint('[LiveGasmUnlock] resolvePpv empty embed');
       return null;
     }
-    if (isEmbedIndiaUrl(embed)) {
+    if (isGasmJwEmbedUrl(embed)) {
       return resolveEmbedIndia(embedUrl: embed);
     }
     if (embed.contains('embed.st')) {
@@ -868,6 +895,142 @@ class LiveGoatUnlock {
     required String embedUrl,
     String? referer,
   }) async {
+    final embed = embedUrl.trim();
+    if (embed.isEmpty || !isEpiEmbedsUrl(embed)) return null;
+    if (kIsWeb) return null;
+
+    if (Platform.isMacOS ||
+        Platform.isWindows ||
+        Platform.isAndroid ||
+        Platform.isIOS) {
+      final viaWebView = await _sniffEpiEmbedsWebView(
+        embedUrl: embed,
+        referer: (referer ?? embed).trim(),
+      );
+      if (viaWebView != null && viaWebView.isNotEmpty) return viaWebView;
+    }
+
+    final node = await _findNodeBinary();
+    if (node == null) {
+      debugPrint('[LiveSniffEmbed] node not found — sniff skipped');
+      return null;
+    }
+
+    try {
+      final dir = await _ensureGasmDir(node);
+      return await _runSniffEmbed(
+        node: node,
+        dir: dir,
+        embedUrl: embed,
+        referer: (referer ?? embed).trim(),
+      );
+    } catch (e) {
+      debugPrint('[LiveSniffEmbed] failed: $e');
+      return null;
+    }
+  }
+
+  static Future<String?> _sniffEpiEmbedsWebView({
+    required String embedUrl,
+    required String referer,
+  }) async {
+    WidgetsFlutterBinding.ensureInitialized();
+    final completer = Completer<String?>();
+    ForjaHeadlessInAppWebView? headless;
+
+    Future<void> poll(InAppWebViewController controller) async {
+      const js = '''
+(function() {
+  try {
+    if (typeof jwplayer !== 'function') return '';
+    var item = jwplayer().getPlaylistItem();
+    if (!item) return '';
+    if (item.file && /\.m3u8/i.test(item.file)) return item.file;
+    var sources = item.sources;
+    if (!Array.isArray(sources)) return '';
+    for (var i = 0; i < sources.length; i++) {
+      var u = sources[i] && sources[i].file;
+      if (u && /\.m3u8/i.test(u)) return u;
+    }
+  } catch (_) {}
+  return '';
+})()
+''';
+      for (var i = 0; i < 40; i++) {
+        if (completer.isCompleted) return;
+        try {
+          final raw = await controller.evaluateJavascript(source: js);
+          final file = (raw ?? '').toString().trim();
+          if (file.isNotEmpty && file.contains('.m3u8')) {
+            if (!completer.isCompleted) completer.complete(file);
+            return;
+          }
+        } catch (_) {}
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      }
+      if (!completer.isCompleted) completer.complete(null);
+    }
+
+    headless = ForjaHeadlessInAppWebView(
+      initialUrlRequest: URLRequest(
+        url: WebUri(embedUrl),
+        headers: {'Referer': referer, 'User-Agent': _ua},
+      ),
+      onWebViewCreated: (controller) {},
+      onLoadStop: (controller, _) => unawaited(poll(controller)),
+      onReceivedError: (_, __, ___) {
+        if (!completer.isCompleted) completer.complete(null);
+      },
+    );
+
+    try {
+      await headless!.run();
+      return await completer.future.timeout(
+        const Duration(seconds: 45),
+        onTimeout: () => null,
+      );
+    } catch (e) {
+      debugPrint('[LiveSniffEmbed] webview failed: $e');
+      return null;
+    } finally {
+      await headless?.dispose();
+    }
+  }
+
+  static Future<String?> _runSniffEmbed({
+    required String node,
+    required String dir,
+    required String embedUrl,
+    required String referer,
+  }) async {
+    final payload = jsonEncode({
+      'embedUrl': embedUrl,
+      'referer': referer,
+    });
+    final proc = await Process.start(
+      node,
+      ['sniff.mjs'],
+      workingDirectory: dir,
+      runInShell: false,
+    );
+    proc.stdin.write(payload);
+    await proc.stdin.close();
+    final stdoutFuture = proc.stdout.transform(utf8.decoder).join();
+    final stderrFuture = proc.stderr.transform(utf8.decoder).join();
+    final exit = await proc.exitCode.timeout(const Duration(seconds: 45));
+    final stdout = await stdoutFuture;
+    final stderr = await stderrFuture;
+    final raw = stdout.trim();
+    if (exit != 0 || raw.isEmpty) {
+      debugPrint('[LiveSniffEmbed] exit=$exit stdout=$raw stderr=$stderr');
+      return null;
+    }
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) return null;
+    if (decoded['ok'] == true) {
+      return (decoded['url'] ?? '').toString().trim();
+    }
+    debugPrint('[LiveSniffEmbed] ${decoded['error']}');
     return null;
   }
 
@@ -994,6 +1157,10 @@ class LiveGoatUnlock {
     await _writeAsset(
       '$_gasmAssetRoot/unlock.mjs',
       File('$dir/unlock.mjs'),
+    );
+    await _writeAsset(
+      '$_gasmAssetRoot/sniff.mjs',
+      File('$dir/sniff.mjs'),
     );
     // Ref pair (ppv-hls-stream-resolver) — offsets in unlock.mjs match this wasm.
     await _writeAsset(

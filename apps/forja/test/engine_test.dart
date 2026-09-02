@@ -263,6 +263,59 @@ void main() {
         isTrue,
       );
     });
+
+    test('defaultCapabilities from manifest enable first-run catalog/resolve', () async {
+      const sourceUrl = 'https://example.com/live/manifest.json';
+      final plugin = EnginePlugin.fromJson({
+        'id': 'test-live-default-on',
+        'name': 'Test Live Default On',
+        'entry': 'test_live_default_on.js',
+        'kind': 'http',
+        'types': ['live_sport'],
+        'capabilities': ['catalog', 'resolve'],
+        'defaultCapabilities': const {'catalog': true, 'resolve': true},
+      });
+      final pack = EnginePack(
+        sourceUrl: sourceUrl,
+        packId: 'forjahq-live',
+        name: 'Live',
+        version: '1.0.0',
+        plugins: [plugin],
+        prelude: '',
+        enabled: true,
+      );
+
+      expect(
+        LiveSportCapabilities.defaultEnabled(
+          plugin,
+          LiveSportCapabilities.catalog,
+        ),
+        isTrue,
+      );
+      expect(
+        LiveSportCapabilities.defaultEnabled(
+          plugin,
+          LiveSportCapabilities.resolve,
+        ),
+        isTrue,
+      );
+      expect(
+        await registry.isLiveCapabilityActive(
+          pack: pack,
+          plugin: plugin,
+          capability: LiveSportCapabilities.catalog,
+        ),
+        isTrue,
+      );
+      expect(
+        await registry.isLiveCapabilityActive(
+          pack: pack,
+          plugin: plugin,
+          capability: LiveSportCapabilities.resolve,
+        ),
+        isTrue,
+      );
+    });
   });
 
   group('PluginRegistry keys and semver', () {
@@ -2001,12 +2054,19 @@ void main() {
         for (final id in ['streamed', 'ppv', 'streamfree']) {
           final p = plugins.firstWhere((e) => e.id == id);
           expect(p.supportsLiveResolve, isTrue);
+          expect(p.defaultCapabilities['catalog'], isTrue);
+          expect(p.defaultCapabilities['resolve'], isTrue);
+        }
+        for (final id in ['timstreams', 'watchfooty', 'streamic', 'espn']) {
+          final p = plugins.firstWhere((e) => e.id == id);
+          expect(p.defaultCapabilities['catalog'] ?? false, isFalse);
         }
         final espn = plugins.firstWhere((e) => e.id == 'espn');
         expect(espn.supportsLiveResolve, isFalse);
         final liveonsat = plugins.firstWhere((e) => e.id == 'liveonsat');
         expect(liveonsat.supportsLiveResolve, isFalse);
         expect(liveonsat.supportsLiveBroadcast, isTrue);
+        expect(liveonsat.defaultCapabilities['broadcast'], isTrue);
         expect(
           await loadForjaHqFile('live/liveonsat.js'),
           contains('m.liveonsat.com'),
@@ -2014,6 +2074,7 @@ void main() {
         final livesoccertv = plugins.firstWhere((e) => e.id == 'livesoccertv');
         expect(livesoccertv.supportsLiveResolve, isFalse);
         expect(livesoccertv.supportsLiveBroadcast, isTrue);
+        expect(livesoccertv.defaultCapabilities['broadcast'], isTrue);
         expect(livesoccertv.config['catalogTimeoutSec'], 90);
         expect(
           await loadForjaHqFile('live/livesoccertv.js'),

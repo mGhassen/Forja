@@ -631,6 +631,12 @@ _LiveMatchesScheduleHorizon _widerScheduleHorizon(
         ? a
         : b;
 
+bool _liveCatalogRowMatchesFilter(_StreamedMatch row, String filter) {
+  if (filter == 'all' || filter.isEmpty) return true;
+  return EngineService.normalizeLiveSportPluginId(row.livePluginId) ==
+      EngineService.normalizeLiveSportPluginId(filter);
+}
+
 /// When a pack declares `scheduleHorizon: fullDay`, widen display for its rows.
 _LiveMatchesScheduleHorizon _scheduleHorizonForCatalogMatch(
   _StreamedMatch match, {
@@ -638,8 +644,8 @@ _LiveMatchesScheduleHorizon _scheduleHorizonForCatalogMatch(
   required String catalogFilter,
 }) {
   if (catalogFilter == 'all' || catalogFilter.isEmpty) return horizon;
+  if (!_liveCatalogRowMatchesFilter(match, catalogFilter)) return horizon;
   final filterId = EngineService.normalizeLiveSportPluginId(catalogFilter);
-  if (match.livePluginId != filterId) return horizon;
   if (LiveMatchesEngine.cachedScheduleFullDay(filterId)) {
     return _widerScheduleHorizon(horizon, _LiveMatchesScheduleHorizon.h24);
   }
@@ -760,12 +766,36 @@ String _matchTextKey(String raw) {
                 token != 'at' &&
                 token != 'vs' &&
                 token != 'versus' &&
-                token != 'v',
+                token != 'v' &&
+                !_genericIptvTeamTokens.contains(token),
           )
           .toList()
         ..sort();
   return tokens.join(' ');
 }
+
+const _genericIptvTeamTokens = {
+  'city',
+  'united',
+  'town',
+  'rovers',
+  'county',
+  'athletic',
+  'wanderers',
+  'albion',
+  'villa',
+  'forest',
+  'palace',
+  'north',
+  'south',
+  'west',
+  'east',
+  'sport',
+  'sports',
+  'real',
+  'inter',
+  'sporting',
+};
 
 String? _teamPairKey(String? home, String? away) {
   if (home == null || away == null || home.isEmpty || away.isEmpty) return null;
@@ -3061,14 +3091,46 @@ void _iptvSportsStreamsCachePut(String key, List<IptvPlaySource> sources) {
   );
 }
 
+Map<String, dynamic> _sportMatchGameAlignedWithCard(_StreamedMatch match) {
+  final base = Map<String, dynamic>.from(
+    match.sportMatchGame ?? _sportMatchGamePayloadFromMatch(match),
+  );
+  final (home, away) = resolveLiveMatchTeams(
+    homeTeam: match.homeTeam,
+    awayTeam: match.awayTeam,
+    title: match.title,
+  );
+  final title = match.title.trim();
+  if (title.isNotEmpty) base['title'] = title;
+  if (home.isNotEmpty) {
+    base['homeTeam'] = home;
+    base['homeNick'] = sportNickFromTeam(home);
+  }
+  if (away.isNotEmpty) {
+    base['awayTeam'] = away;
+    base['awayNick'] = sportNickFromTeam(away);
+  }
+  if (match.dateMs > 0) {
+    base['dateMs'] = match.dateMs;
+    base['date'] = DateTime.fromMillisecondsSinceEpoch(
+      match.dateMs,
+      isUtc: true,
+    ).toIso8601String();
+  }
+  final sport = match.category.trim();
+  if (sport.isNotEmpty) {
+    base['sport'] = sport;
+    base['category'] = sport;
+  }
+  return base;
+}
+
 Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   _StreamedMatch match, {
   void Function(List<IptvPlaySource> batch)? onPartial,
 }) async {
   final broadcastFuture = _liveBroadcastIndexCached();
-  var game = Map<String, dynamic>.from(
-    match.sportMatchGame ?? _sportMatchGamePayloadFromMatch(match),
-  );
+  var game = _sportMatchGameAlignedWithCard(match);
   final broadcastGames = await broadcastFuture;
   game = _enrichGameWithBroadcastChannels(
     game,
@@ -3442,11 +3504,6 @@ Map<String, dynamic> _sportMatchGamePayloadFromMatch(_StreamedMatch match) {
     awayTeam: match.awayTeam,
     title: match.title,
   );
-  String nick(String team) {
-    final bits = team.split(RegExp(r'\s+')).where((s) => s.isNotEmpty);
-    return bits.isEmpty ? '' : bits.last;
-  }
-
   return {
     'id': match.id,
     'title': match.title,
@@ -3454,8 +3511,8 @@ Map<String, dynamic> _sportMatchGamePayloadFromMatch(_StreamedMatch match) {
     'category': match.category,
     'homeTeam': home,
     'awayTeam': away,
-    'homeNick': nick(home),
-    'awayNick': nick(away),
+    'homeNick': sportNickFromTeam(home),
+    'awayNick': sportNickFromTeam(away),
     'homeAbbr': '',
     'awayAbbr': '',
     'dateMs': match.dateMs,

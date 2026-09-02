@@ -9,23 +9,6 @@ abstract final class LiveSportCapabilities {
   /// name matching (LiveOnSat, Live Soccer TV International Coverage, …).
   static const broadcast = 'broadcast';
 
-  /// Site-name id → legacy twin plugin ids (catalog, live resolve).
-  static const legacyTwinIds = <String, (String catalog, String? resolve)>{
-    'streamed': ('catalog-streamed', 'live-streamed'),
-    'ppv': ('catalog-ppv', 'live-ppv'),
-    'streamfree': ('catalog-streamfree', 'live-streamfree'),
-    'timstreams': ('catalog-timstreams', 'live-timstreams'),
-    'watchfooty': ('catalog-watchfooty', 'live-watchfooty'),
-    'streamic': ('catalog-streamic', 'live-streamic'),
-    'espn': ('catalog-espn', null),
-    'liveonsat': ('catalog-liveonsat', null),
-    'livesoccertv': ('catalog-livesoccertv', null),
-  };
-
-  /// App-owned first-run defaults (Settings → Forja Sports). External live
-  /// packs must not declare `enabled`, `catalogEnabled`, or `resolveEnabled`.
-  static const defaultOnPluginIds = {'streamed', 'ppv', 'streamfree'};
-
   static String normalizePluginId(String pluginId) {
     final id = pluginId.trim();
     if (id.startsWith('live-')) return id.substring('live-'.length);
@@ -39,10 +22,14 @@ abstract final class LiveSportCapabilities {
       return plugin.enabled;
     }
     final cap = capability.trim().toLowerCase();
+    if (cap == broadcast) {
+      if (!plugin.supportsLiveBroadcast) return false;
+      return plugin.defaultCapabilities[cap] ?? false;
+    }
     if (cap != catalog && cap != resolve) return false;
     if (cap == catalog && !plugin.supportsLiveCatalog) return false;
     if (cap == resolve && !plugin.supportsLiveResolve) return false;
-    return defaultOnPluginIds.contains(normalizePluginId(plugin.id));
+    return plugin.defaultCapabilities[cap] ?? false;
   }
 
   static String capabilityPrefsKey(

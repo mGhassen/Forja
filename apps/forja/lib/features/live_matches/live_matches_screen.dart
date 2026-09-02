@@ -106,6 +106,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   String _sportFilter = 'all';
 
   // Body layout: card grid or vertical timeline.
+  static const _timelineViewEnabled = false;
   static const _viewPreferenceKey = 'live_matches_timeline_view';
   static const _serverPreferenceKey = 'live_matches_server_v1';
   static const _forjaLiveCatalogFilterPreferenceKey =
@@ -113,7 +114,9 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   static const _schedulePreferenceKey = 'live_matches_schedule_v2';
   /// Legacy single-axis pref — migrated once into [_schedulePreferenceKey].
   static const _timeWindowPreferenceKeyLegacy = 'live_matches_time_window_v1';
-  _LiveMatchesView _view = _LiveMatchesView.timeline;
+  _LiveMatchesView _view = _timelineViewEnabled
+      ? _LiveMatchesView.timeline
+      : _LiveMatchesView.grid;
   bool _viewWasToggled = false;
   _TimelineGranularity _timelineGranularity = _TimelineGranularity.h3;
   final ScrollController _timelineScrollController = ScrollController();
@@ -291,7 +294,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
       unawaited(_restoreServerThenLoad());
     }
     // Android TV / leanback: cards only - no timeline canvas (mirrors IPTV).
-    if (_liveMatchesLeanbackOnly(context) && _view != _LiveMatchesView.grid) {
+    if ((_liveMatchesLeanbackOnly(context) || !_timelineViewEnabled) &&
+        _view != _LiveMatchesView.grid) {
       _view = _LiveMatchesView.grid;
       _timelineAutoScrolled = false;
       _timelineHoveredBucketMs = null;
@@ -357,8 +361,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   Future<void> _restoreViewPreference() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted || _viewWasToggled) return;
-    // Leanback TV never restores timeline - cards-only surface.
-    if (_liveMatchesLeanbackOnly(context)) {
+    // Leanback TV / hidden timeline toggle: cards-only surface.
+    if (_liveMatchesLeanbackOnly(context) || !_timelineViewEnabled) {
       if (_view != _LiveMatchesView.grid) {
         setState(() => _view = _LiveMatchesView.grid);
         _syncTimelineLiveTick();

@@ -50,24 +50,40 @@ class LiveMatchesEngine {
   }
 
   static void _cachePluginMeta(EnginePlugin plugin) {
-    _nameByPluginId[plugin.id] = plugin.name;
+    final key = _metaPluginKey(plugin.id);
+    _nameByPluginId[key] = plugin.name;
     final unlock = (plugin.config['nativeUnlock'] ?? '').toString().trim();
     if (unlock.isNotEmpty) {
-      _nativeUnlockByPluginId[plugin.id] = unlock.toLowerCase();
+      _nativeUnlockByPluginId[key] = unlock.toLowerCase();
     }
     if (plugin.config['airingOnlyLive'] == true) {
-      _airingOnlyLiveByPluginId[plugin.id] = true;
+      _airingOnlyLiveByPluginId[key] = true;
     }
-    final scheduleHorizon =
-        (plugin.config['scheduleHorizon'] ?? '').toString().trim().toLowerCase();
-    if (scheduleHorizon.isNotEmpty) {
-      _scheduleHorizonModeByPluginId[plugin.id] = scheduleHorizon;
+    final scheduleHorizon = scheduleHorizonModeFromConfig(plugin.config);
+    if (scheduleHorizon != null) {
+      _scheduleHorizonModeByPluginId[key] = scheduleHorizon;
     }
     final origin = _originFromConfig(plugin.config);
     if (origin != null && origin.isNotEmpty) {
-      _originByPluginId[plugin.id] = origin;
+      _originByPluginId[key] = origin;
     }
   }
+
+  static String _metaPluginKey(String pluginId) =>
+      EngineService.normalizeLiveSportPluginId(pluginId);
+
+  /// Pack manifest `config.scheduleHorizon` (e.g. `fullDay` scoreboard catalogs).
+  static String? scheduleHorizonModeFromConfig(Map<String, dynamic> config) {
+    final mode =
+        (config['scheduleHorizon'] ?? '').toString().trim().toLowerCase();
+    return mode.isEmpty ? null : mode;
+  }
+
+  static bool scheduleFullDayFromConfig(Map<String, dynamic> config) =>
+      scheduleHorizonModeFromConfig(config) == 'fullday';
+
+  /// Cache manifest config before catalog ingest / display filters run.
+  static void cachePluginMeta(EnginePlugin plugin) => _cachePluginMeta(plugin);
 
   /// Warm name/origin/unlock caches from installed live + catalog plugins.
   static Future<void> warmPluginMeta() async {
@@ -152,7 +168,7 @@ class LiveMatchesEngine {
 
   /// Sync Referer after [warmPluginMeta] / [pluginReferer] has populated origins.
   static String cachedPluginReferer(String pluginId) {
-    final o = _originByPluginId[pluginId];
+    final o = _originByPluginId[_metaPluginKey(pluginId)];
     if (o == null || o.isEmpty) return '';
     return _refererForOrigin(o);
   }
@@ -172,7 +188,7 @@ class LiveMatchesEngine {
   static bool cachedIsNativeUnlock(String pluginId, String kind) {
     final k = kind.trim().toLowerCase();
     if (k.isEmpty || pluginId.isEmpty) return false;
-    return _nativeUnlockByPluginId[pluginId] == k;
+    return _nativeUnlockByPluginId[_metaPluginKey(pluginId)] == k;
   }
 
   /// First live plugin id that declares [kind] (`nativeUnlock`), if any.
@@ -188,13 +204,13 @@ class LiveMatchesEngine {
   /// When true, ● LIVE follows catalog `airing` only (no kickoff-window fudge).
   static bool cachedAiringOnlyLive(String pluginId) {
     if (pluginId.isEmpty) return false;
-    return _airingOnlyLiveByPluginId[pluginId] == true;
+    return _airingOnlyLiveByPluginId[_metaPluginKey(pluginId)] == true;
   }
 
   /// Pack manifest `scheduleHorizon` (e.g. `fullDay` scoreboard catalogs).
   static String? cachedScheduleHorizonMode(String pluginId) {
     if (pluginId.isEmpty) return null;
-    return _scheduleHorizonModeByPluginId[pluginId];
+    return _scheduleHorizonModeByPluginId[_metaPluginKey(pluginId)];
   }
 
   static bool cachedScheduleFullDay(String pluginId) =>

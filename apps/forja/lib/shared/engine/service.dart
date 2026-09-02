@@ -259,16 +259,13 @@ class EngineService {
     for (final pack in await listPacks()) {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
-        if (!p.isHttp ||
-            !p.isLiveSportPlugin ||
-            !p.supportsLiveCatalog ||
-            !p.supportsLiveBroadcast) {
+        if (!p.isHttp || !p.isLiveSportPlugin || !p.supportsLiveBroadcast) {
           continue;
         }
         if (!await PluginRegistry.instance.isLiveCapabilityActive(
           pack: pack,
           plugin: p,
-          capability: LiveSportCapabilities.catalog,
+          capability: LiveSportCapabilities.broadcast,
         )) {
           continue;
         }
@@ -935,19 +932,29 @@ class EngineService {
     Map<String, dynamic> extraConfig = const {},
     Duration timeout = const Duration(seconds: 30),
   }) async {
-    if (!catalogPlugin.supportsLiveCatalog) return [];
+    if (!catalogPlugin.supportsLiveCatalog &&
+        !catalogPlugin.supportsLiveBroadcast) {
+      return [];
+    }
     final gen = _liveCatalogGeneration;
     final packs = await listPacks();
     if (gen != _liveCatalogGeneration) return [];
 
     final hit = PluginRegistry.packPluginFromPacks(packs, catalogPlugin.id);
     if (hit != null && catalogPlugin.isLiveSportPlugin) {
-      final active = await PluginRegistry.instance.isLiveCapabilityActive(
-        pack: hit.pack,
-        plugin: catalogPlugin,
-        capability: LiveSportCapabilities.catalog,
-      );
-      if (!active) return [];
+      final catalogActive = catalogPlugin.supportsLiveCatalog &&
+          await PluginRegistry.instance.isLiveCapabilityActive(
+            pack: hit.pack,
+            plugin: catalogPlugin,
+            capability: LiveSportCapabilities.catalog,
+          );
+      final broadcastActive = catalogPlugin.supportsLiveBroadcast &&
+          await PluginRegistry.instance.isLiveCapabilityActive(
+            pack: hit.pack,
+            plugin: catalogPlugin,
+            capability: LiveSportCapabilities.broadcast,
+          );
+      if (!catalogActive && !broadcastActive) return [];
     } else if (hit != null && !hit.pack.isPluginActive(catalogPlugin)) {
       return [];
     }
