@@ -212,8 +212,8 @@ mixin _LiveMatchesPlayback
     }
     _panelAppendChoices(controller, choices);
 
-    final catalogMatches =
-        _streamedMatchesForEvent(match, _s._streamedMatches);
+    final catalogMatches = await (this as _LiveMatchesForjaLive)
+        ._catalogMatchesForStreamResolve(match);
     if (catalogMatches.isNotEmpty) {
       await _resolveCatalogStreamChoices(
         catalogMatches,
@@ -367,7 +367,8 @@ mixin _LiveMatchesPlayback
     required bool Function() isStale,
   }) async {
     controller.setSearchPhase('streams');
-    final catalogMatches = _streamedMatchesForEvent(match, _s._streamedMatches);
+    final catalogMatches = await (this as _LiveMatchesForjaLive)
+        ._catalogMatchesForStreamResolve(match);
 
     _prependMatchingPpvChoices(match, choices);
     _panelAppendChoices(controller, choices);

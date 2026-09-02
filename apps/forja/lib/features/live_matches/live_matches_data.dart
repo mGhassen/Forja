@@ -518,12 +518,8 @@ mixin _LiveMatchesData
     final lazyCatalog =
         (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog;
     _s._loadGen++;
-    final catalogFilter = lazyCatalog && _s._forjaLivePluginFilter != 'all'
-        ? _s._forjaLivePluginFilter
-        : null;
     (this as _LiveMatchesForjaLive)._resetForjaLiveCatalogState(
       clearMatches: !lazyCatalog,
-      catalogFilter: lazyCatalog ? catalogFilter : null,
     );
     _s._resetTimelineLazyState();
     setState(() {

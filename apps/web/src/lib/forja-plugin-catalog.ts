@@ -1,13 +1,6 @@
-export type ForjaPluginKind =
-  | 'providers'
-  | 'live'
-  | 'hubs'
-  | 'torrent'
-  | 'iptv'
-
 export type ForjaPluginCatalogEntry = {
   id: string
-  kind: ForjaPluginKind
+  kind: string
   manifestPath: string
   name: string
   description: string
@@ -40,16 +33,17 @@ export type ForjaPluginPackLive = ForjaPluginCatalogEntry & {
 const DEFAULT_CATALOG_BASE =
   'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins'
 
-const KIND_LABELS: Record<ForjaPluginKind, string> = {
-  providers: 'Stream providers',
-  live: 'Live sports',
-  hubs: 'Catalog hubs',
-  torrent: 'Torrent',
-  iptv: 'IPTV',
+export function pluginKindLabel(kind: string): string {
+  const trimmed = kind.trim()
+  if (!trimmed) return 'Pack'
+  return trimmed
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
-export function pluginKindLabel(kind: ForjaPluginKind): string {
-  return KIND_LABELS[kind]
+export function pluginKindsFromPacks(packs: ForjaPluginPackLive[]): string[] {
+  const kinds = [...new Set(packs.map((pack) => pack.kind.trim()).filter(Boolean))]
+  return kinds.sort((a, b) => pluginKindLabel(a).localeCompare(pluginKindLabel(b)))
 }
 
 export function isOfficialPluginPack(pack: ForjaPluginPackLive): boolean {
@@ -124,25 +118,16 @@ export async function hydratePluginCatalog(
 
 export function groupPluginPacksByKind(
   packs: ForjaPluginPackLive[],
-): Array<{ kind: ForjaPluginKind; label: string; packs: ForjaPluginPackLive[] }> {
-  const order: ForjaPluginKind[] = [
-    'providers',
-    'live',
-    'hubs',
-    'torrent',
-    'iptv',
-  ]
-  const byKind = new Map<ForjaPluginKind, ForjaPluginPackLive[]>()
+): Array<{ kind: string; label: string; packs: ForjaPluginPackLive[] }> {
+  const byKind = new Map<string, ForjaPluginPackLive[]>()
   for (const pack of packs) {
     const list = byKind.get(pack.kind) ?? []
     list.push(pack)
     byKind.set(pack.kind, list)
   }
-  return order
-    .filter((kind) => (byKind.get(kind)?.length ?? 0) > 0)
-    .map((kind) => ({
-      kind,
-      label: KIND_LABELS[kind],
-      packs: byKind.get(kind) ?? [],
-    }))
+  return pluginKindsFromPacks(packs).map((kind) => ({
+    kind,
+    label: pluginKindLabel(kind),
+    packs: byKind.get(kind) ?? [],
+  }))
 }

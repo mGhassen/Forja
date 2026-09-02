@@ -4,39 +4,20 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
-  LayoutGrid,
-  Magnet,
+  Puzzle,
   Search,
-  SatelliteDish,
-  Trophy,
   X,
-  Zap,
-  type LucideIcon,
 } from 'lucide-react'
 import { AddToForjaButton } from '@/components/add-to-forja-button'
 import { Button } from '@/components/ui/button'
-import type {
-  ForjaPluginKind,
-  ForjaPluginPackLive,
+import type { ForjaPluginPackLive } from '@/lib/forja-plugin-catalog'
+import {
+  isOfficialPluginPack,
+  packAuthorLabel,
+  pluginKindLabel,
+  pluginKindsFromPacks,
 } from '@/lib/forja-plugin-catalog'
-import { pluginKindLabel, isOfficialPluginPack, packAuthorLabel } from '@/lib/forja-plugin-catalog'
 import { cn } from '@/lib/utils'
-
-const KIND_ICONS: Record<ForjaPluginKind, LucideIcon> = {
-  providers: Zap,
-  live: Trophy,
-  hubs: LayoutGrid,
-  torrent: Magnet,
-  iptv: SatelliteDish,
-}
-
-const ALL_KINDS: ForjaPluginKind[] = [
-  'providers',
-  'live',
-  'hubs',
-  'torrent',
-  'iptv',
-]
 
 const PAGE_SIZE = 20
 
@@ -80,7 +61,6 @@ function PluginDetailPanel({
   onClose?: () => void
 }) {
   const [copied, setCopied] = useState(false)
-  const Icon = KIND_ICONS[pack.kind]
   const official = isOfficialPluginPack(pack)
   const author = packAuthorLabel(pack)
 
@@ -98,7 +78,7 @@ function PluginDetailPanel({
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-4 sm:px-5">
         <div className="flex min-w-0 items-start gap-3">
-          <Icon
+          <Puzzle
             className="mt-0.5 size-4 shrink-0 text-[rgba(237,230,218,0.55)]"
             strokeWidth={2}
             aria-hidden
@@ -204,7 +184,6 @@ function PluginListRow({
   selected: boolean
   onSelect: () => void
 }) {
-  const Icon = KIND_ICONS[pack.kind]
   const official = isOfficialPluginPack(pack)
   const author = packAuthorLabel(pack)
 
@@ -219,7 +198,7 @@ function PluginListRow({
           : 'hover:bg-white/[0.04]',
       )}
     >
-      <Icon
+      <Puzzle
         className={cn(
           'size-4 shrink-0',
           selected
@@ -261,7 +240,7 @@ export function PluginCatalogBrowser({
   error,
 }: PluginCatalogBrowserProps) {
   const [query, setQuery] = useState('')
-  const [kindFilter, setKindFilter] = useState<ForjaPluginKind | 'all'>('all')
+  const [kindFilter, setKindFilter] = useState<string | 'all'>('all')
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
@@ -316,10 +295,12 @@ export function PluginCatalogBrowser({
     }
   }, [filtered, selectedId])
 
+  const kindOptions = useMemo(() => pluginKindsFromPacks(packs), [packs])
+
   const kindCounts = useMemo(() => {
-    const counts = new Map<ForjaPluginKind, number>()
-    for (const p of packs) {
-      counts.set(p.kind, (counts.get(p.kind) ?? 0) + 1)
+    const counts = new Map<string, number>()
+    for (const pack of packs) {
+      counts.set(pack.kind, (counts.get(pack.kind) ?? 0) + 1)
     }
     return counts
   }, [packs])
@@ -371,7 +352,7 @@ export function PluginCatalogBrowser({
           label="All"
           count={packs.length}
         />
-        {ALL_KINDS.filter((k) => (kindCounts.get(k) ?? 0) > 0).map((kind) => (
+        {kindOptions.map((kind) => (
           <FilterChip
             key={kind}
             active={kindFilter === kind}
