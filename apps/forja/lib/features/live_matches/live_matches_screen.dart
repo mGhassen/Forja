@@ -160,6 +160,21 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
   /// Lazy catalog scrape in flight (before plugin rows mark `loading`).
   bool _forjaLiveCatalogHydrating = false;
+
+  /// Single-flight guard — duplicate kicks stacked engine catalog jobs.
+  Future<void>? _forjaLiveGridCatalogInflight;
+  int _forjaLiveGridCatalogInflightSerial = 0;
+
+  /// Background hydration for match Streams — all enabled catalogs, not grid chip.
+  Future<void>? _forjaLiveStreamCatalogInflight;
+  int _forjaLiveStreamCatalogInflightSerial = 0;
+
+  /// Sport tabs rebuild once after hydration instead of per-plugin setState.
+  bool _deferSportTabRebuildDuringCatalog = false;
+
+  int _liveMatchesGridCacheRevision = 0;
+  int _liveMatchesGridEntriesCachedAtRevision = -1;
+  List<_LiveMatchGridEntry>? _cachedLiveMatchesGridEntries;
   _LiveMatchesScheduleStatus _scheduleStatus = _LiveMatchesScheduleStatus.both;
   _LiveMatchesScheduleHorizon _scheduleHorizon = _LiveMatchesScheduleHorizon.h1;
 
@@ -253,8 +268,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
     _syncTimelineLiveTick();
     if (_error != null || (_sports.isEmpty && !_loading)) {
       unawaited(_load());
-    } else if ((this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog &&
-        _streamedMatches.where((m) => m.isForjaLive).isEmpty &&
+    } else if ((this as _LiveMatchesForjaLive)._gridCatalogNeedsHydration() &&
         !_forjaLiveCatalogHydrating &&
         !(this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
       (this as _LiveMatchesForjaLive)._kickForjaLiveLazyCatalog();

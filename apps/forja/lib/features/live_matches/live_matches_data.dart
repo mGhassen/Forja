@@ -518,11 +518,16 @@ mixin _LiveMatchesData
     final lazyCatalog =
         (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog;
     _s._loadGen++;
+    final catalogFilter = lazyCatalog && _s._forjaLivePluginFilter != 'all'
+        ? _s._forjaLivePluginFilter
+        : null;
     (this as _LiveMatchesForjaLive)._resetForjaLiveCatalogState(
       clearMatches: !lazyCatalog,
+      catalogFilter: lazyCatalog ? catalogFilter : null,
     );
     _s._resetTimelineLazyState();
     setState(() {
+      (this as _LiveMatchesForjaLive)._invalidateLiveMatchesGridCache();
       _s._loading = !lazyCatalog;
       _s._error = null;
       _s._sportFilter = 'all';
@@ -534,6 +539,10 @@ mixin _LiveMatchesData
         _s._sports = [];
       } else {
         _s._forjaLiveCatalogHydrating = true;
+        final oldCtrl = _s._tabController;
+        _s._tabController = null;
+        _s._sports = [];
+        (this as _LiveMatchesForjaLive)._deferTabControllerDispose(oldCtrl);
       }
     });
     _scheduleRestoreRefreshFocus();
@@ -542,7 +551,7 @@ mixin _LiveMatchesData
     }
     ref.invalidate(liveMatchesPrimaryLoadProvider(_s._server));
     if ((this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog) {
-      (this as _LiveMatchesForjaLive)._kickForjaLiveLazyCatalog();
+      (this as _LiveMatchesForjaLive)._kickForjaLiveLazyCatalog(replace: true);
     }
   }
 
@@ -553,6 +562,7 @@ mixin _LiveMatchesData
     final damiKeep = lazyCatalog ? _s._damiTvStreams : const <_DamiTvStream>[];
     final oldCtrl = _s._tabController;
     setState(() {
+      (this as _LiveMatchesForjaLive)._invalidateLiveMatchesGridCache();
       _s._tabController = null;
       _s._damiTvStreams = lazyCatalog ? damiKeep : load.damiTvStreams;
       _s._streamedMatches = lazyCatalog
@@ -601,6 +611,7 @@ mixin _LiveMatchesData
   /// Sport chip / tab change rebuilds the time canvas - re-land on now.
   void _setSportFilter(String id) {
     setState(() {
+      (this as _LiveMatchesForjaLive)._invalidateLiveMatchesGridCache();
       _s._sportFilter = id;
       _s._timelineAutoScrolled = false;
     });
@@ -630,7 +641,7 @@ mixin _LiveMatchesData
     return _sortDamiTvLiveFirst(list);
   }
 
-  List<_StreamedMatch> get _filteredStreamed {
+  List<_StreamedMatch> _streamedMatchesSportAndTimeFiltered() {
     var list = _s._streamedMatches
         .where(
           (m) => _includeInSportFilter(
@@ -655,7 +666,12 @@ mixin _LiveMatchesData
           )
           .toList();
     }
-    return _mergeStreamedCatalogRows(_sortStreamedLiveFirst(list));
+    return list;
   }
+
+  List<_StreamedMatch> get _filteredStreamed =>
+      _mergeStreamedCatalogRows(
+        _sortStreamedLiveFirst(_streamedMatchesSportAndTimeFiltered()),
+      );
 
 }

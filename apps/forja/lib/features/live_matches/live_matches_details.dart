@@ -89,7 +89,11 @@ class _LiveMatchDetailsScreenState
     final host = widget.host;
     var spins = 0;
     while (mounted && spins < 600) {
-      if (!(host as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) return;
+      final forjaLive = host as _LiveMatchesForjaLive;
+      if (!forjaLive._forjaLiveCatalogBusy &&
+          !forjaLive._forjaLiveStreamCatalogBusy) {
+        return;
+      }
       if (spins == 0) {
         _sourcesCtrl.setSearchPhase('Loading live catalogs');
       }
@@ -106,6 +110,9 @@ class _LiveMatchDetailsScreenState
     _playPath = _LiveMatchPlayPath.engineChoices;
     _sourcesCtrl.beginSearching('streams');
     try {
+      if (_waitsForForjaCatalogIdle) {
+        (host as _LiveMatchesForjaLive)._kickForjaLiveStreamCatalogHydration();
+      }
       await _awaitForjaCatalogIdle();
       if (!mounted || gen != _loadGen || _sourcesCtrl.isDisposed) return;
 

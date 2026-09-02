@@ -637,6 +637,24 @@ bool _liveCatalogRowMatchesFilter(_StreamedMatch row, String filter) {
       EngineService.normalizeLiveSportPluginId(filter);
 }
 
+/// Grid rows for one catalog chip — only that plugin's schedule rows (not
+/// cross-catalog siblings merged into another plugin's card).
+List<_StreamedMatch> _streamedMatchesForCatalogGrid(
+  List<_StreamedMatch> pool,
+  String catalogFilter,
+) {
+  if (catalogFilter == 'all' || catalogFilter.isEmpty) {
+    return _mergeStreamedCatalogRows(_sortStreamedLiveFirst(pool));
+  }
+  final norm = EngineService.normalizeLiveSportPluginId(catalogFilter);
+  final scoped = pool
+      .where(
+        (m) => EngineService.normalizeLiveSportPluginId(m.livePluginId) == norm,
+      )
+      .toList();
+  return _mergeStreamedCatalogRows(_sortStreamedLiveFirst(scoped));
+}
+
 /// When a pack declares `scheduleHorizon: fullDay`, widen display for its rows.
 _LiveMatchesScheduleHorizon _scheduleHorizonForCatalogMatch(
   _StreamedMatch match, {
@@ -973,16 +991,43 @@ List<_StreamedMatch> _stripEspnMergedScheduleRows(List<_StreamedMatch> matches) 
 
 /// One card per event — catalog rows from different Forja Live plugins collapse here.
 List<_StreamedMatch> _mergeStreamedCatalogRows(List<_StreamedMatch> matches) {
+  if (matches.length < 2) return matches;
   final out = <_StreamedMatch>[];
+  final buckets = <String, List<int>>{};
   for (final m in matches) {
-    final idx = out.indexWhere((e) => _sameStreamedEvent(e, m));
-    if (idx < 0) {
-      out.add(m);
-      continue;
+    final bucketKey = _streamedEventMergeBucketKey(m);
+    var merged = false;
+    if (bucketKey != null) {
+      final candidates = buckets[bucketKey];
+      if (candidates != null) {
+        for (final idx in candidates) {
+          if (_sameStreamedEvent(out[idx], m)) {
+            out[idx] = _mergeStreamedCatalogPair(out[idx], m);
+            merged = true;
+            break;
+          }
+        }
+      }
     }
-    out[idx] = _mergeStreamedCatalogPair(out[idx], m);
+    if (merged) continue;
+    final storeKey = bucketKey ?? 'id:${m.id}';
+    (buckets[storeKey] ??= []).add(out.length);
+    out.add(m);
   }
   return out;
+}
+
+String? _streamedEventMergeBucketKey(_StreamedMatch m) {
+  if (m.isAlwaysOn) return null;
+  final teams = _teamPairKeyFromCatalog(
+    homeTeam: m.homeTeam,
+    awayTeam: m.awayTeam,
+    title: m.title,
+  );
+  if (teams != null) return 't:$teams';
+  final title = _matchTextKey(m.title);
+  if (title.isEmpty) return null;
+  return 'n:$title';
 }
 
 /// Cross-catalog match for TV native picker (All card → Stremio addon event).

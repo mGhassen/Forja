@@ -239,11 +239,20 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     );
   }
   List<_LiveMatchGridEntry> get _allGridEntries {
-    final sources = (this as _LiveMatchesForjaLive)._catalogFilteredGridSources();
-    return _mergePpvAndStreamedEntries(
+    final rev = _s._liveMatchesGridCacheRevision;
+    final cached = _s._cachedLiveMatchesGridEntries;
+    if (cached != null && _s._liveMatchesGridEntriesCachedAtRevision == rev) {
+      return cached;
+    }
+    final sources =
+        (this as _LiveMatchesForjaLive)._catalogFilteredGridSources();
+    final merged = _mergePpvAndStreamedEntries(
       ppv: sources.ppv,
       streamed: sources.streamed,
     );
+    _s._cachedLiveMatchesGridEntries = merged;
+    _s._liveMatchesGridEntriesCachedAtRevision = rev;
+    return merged;
   }
 
   @override
