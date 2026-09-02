@@ -90,6 +90,9 @@ class HubDetailsHero extends StatelessWidget {
     final contentInset = DetailsTokens.contentHorizontalPadding(viewportWidth);
     final heroContentTop = topInset + DetailsTokens.heroContentTopInset;
     final railGap = DetailsTokens.heroContentToRailGap(h);
+    final contentBottom = belowActionRow != null
+        ? bottomInset
+        : bleed + railGap + bottomInset;
 
     return SizedBox(
       height: totalH,
@@ -111,39 +114,54 @@ class HubDetailsHero extends StatelessWidget {
               left: 0,
               right: 0,
               top: heroContentTop,
-              bottom: bleed + railGap + bottomInset,
+              bottom: contentBottom,
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  return Align(
-                    alignment: Alignment.topCenter,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: ShellTokens.bodyMaxWidthDesktop,
+                  final content = ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: ShellTokens.bodyMaxWidthDesktop,
+                      maxHeight: constraints.maxHeight,
+                      minHeight: belowActionRow != null
+                          ? constraints.maxHeight
+                          : 0,
+                    ),
+                    child: Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: contentInset),
+                      child: _HubHeroLayout(
+                        title: title,
+                        subtitle: subtitle,
+                        genres: genres,
+                        metaParts: metaParts,
+                        rating: rating,
+                        overview: overview,
+                        facts: facts,
+                        richFacts: richFacts,
+                        logoUrl: logoUrl,
+                        actionRow: actionRow,
+                        belowActionRow: belowActionRow,
+                        belowActionRowFullWidth: belowActionRowFullWidth,
+                        positionMs: positionMs,
+                        durationMs: durationMs,
+                        seriesProgress: seriesProgress,
+                        availableWidth: constraints.maxWidth,
                         maxHeight: constraints.maxHeight,
                       ),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: contentInset),
-                        child: _HubHeroLayout(
-                          title: title,
-                          subtitle: subtitle,
-                          genres: genres,
-                          metaParts: metaParts,
-                          rating: rating,
-                          overview: overview,
-                          facts: facts,
-                          richFacts: richFacts,
-                          logoUrl: logoUrl,
-                          actionRow: actionRow,
-                          belowActionRow: belowActionRow,
-                          belowActionRowFullWidth: belowActionRowFullWidth,
-                          positionMs: positionMs,
-                          durationMs: durationMs,
-                          seriesProgress: seriesProgress,
-                          availableWidth: constraints.maxWidth,
-                          maxHeight: constraints.maxHeight,
-                        ),
-                      ),
                     ),
+                  );
+                  if (belowActionRow != null) {
+                    return SizedBox(
+                      width: double.infinity,
+                      height: constraints.maxHeight,
+                      child: Align(
+                        alignment: Alignment.topCenter,
+                        child: content,
+                      ),
+                    );
+                  }
+                  return Align(
+                    alignment: Alignment.topCenter,
+                    child: content,
                   );
                 },
               ),
