@@ -32,6 +32,13 @@ class _LiveMatchDetailsScreenState
   int _loadGen = 0;
   bool _detailsHeroInitialFocusDone = false;
 
+  bool get _waitsForForjaCatalogIdle {
+    final server = widget.host._server;
+    return server == _LiveMatchesServer.all ||
+        server == _LiveMatchesServer.forjaLive ||
+        server == _LiveMatchesServer.iptvSports;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -43,7 +50,7 @@ class _LiveMatchDetailsScreenState
       searchingHint: 'Finding streams',
       iptvCtrl: ref.read(iptvControllerProvider),
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSources());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scheduleInitialLoad());
   }
 
   @override
@@ -57,12 +64,51 @@ class _LiveMatchDetailsScreenState
     super.dispose();
   }
 
+  void _scheduleInitialLoad() {
+    if (!mounted) return;
+    final route = ModalRoute.of(context);
+    final anim = route?.animation;
+    if (anim == null || anim.isCompleted) {
+      unawaited(_loadSources());
+      return;
+    }
+    void onStatus(AnimationStatus status) {
+      if (status != AnimationStatus.completed &&
+          status != AnimationStatus.dismissed) {
+        return;
+      }
+      anim.removeStatusListener(onStatus);
+      if (mounted) unawaited(_loadSources());
+    }
+
+    anim.addStatusListener(onStatus);
+  }
+
+  Future<void> _awaitForjaCatalogIdle() async {
+    if (!_waitsForForjaCatalogIdle) return;
+    final host = widget.host;
+    var spins = 0;
+    while (mounted && spins < 600) {
+      if (!(host as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) return;
+      if (spins == 0) {
+        _sourcesCtrl.setSearchPhase('Loading live catalogs');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      spins++;
+    }
+  }
+
   Future<void> _loadSources() async {
     final gen = ++_loadGen;
     final host = widget.host;
+    _choices.clear();
+    _sourcesCtrl.resetForLoad();
     _playPath = _LiveMatchPlayPath.engineChoices;
     _sourcesCtrl.beginSearching('streams');
     try {
+      await _awaitForjaCatalogIdle();
+      if (!mounted || gen != _loadGen || _sourcesCtrl.isDisposed) return;
+
       final display = await host._fillMatchDetailsSources(
         match: widget.match,
         ppvAnchor: widget.ppvAnchor,
@@ -223,6 +269,20 @@ class _LiveMatchDetailsScreenState
     );
   }
 
+  Widget _buildStreamsSection({required bool sideRail, required bool tvFocus}) {
+    return ListenableBuilder(
+      listenable: _sourcesCtrl,
+      builder: (context, _) => _LiveMatchStreamsSection(
+        controller: _sourcesCtrl,
+        iptvCtrl: _sourcesCtrl.iptvCtrl,
+        onSourcePicked: _onSourcePicked,
+        onRetry: _loadSources,
+        tvFocus: tvFocus,
+        sideRail: sideRail,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
@@ -244,82 +304,87 @@ class _LiveMatchDetailsScreenState
       });
     }
 
+    final body = sideRail
+        ? _buildSideRailBody(
+            backdrop: backdrop,
+            viewport: viewport,
+            tvFocus: tvFocus,
+          )
+        : MediaDetailsScrollPage(
+            scrollController: _scrollController,
+            tvHeroPlayFocus: _heroPlayFocus,
+            tvBackFocus: _backFocus,
+            bodyOverlap: 0,
+            topSpacing: DetailsTokens.bodyTopSpacing,
+            backgroundColor: AppTheme.bgDark,
+            hero: ListenableBuilder(
+              listenable: _sourcesCtrl,
+              builder: (context, _) => _buildHero(
+                context: context,
+                backdrop: backdrop,
+                tvFocus: tvFocus,
+                height: DetailsTokens.heroHeight(context),
+              ),
+            ),
+            sections: [
+              _buildStreamsSection(sideRail: false, tvFocus: tvFocus),
+            ],
+          );
+
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          ListenableBuilder(
-            listenable: _sourcesCtrl,
-            builder: (context, _) {
-              final streams = _LiveMatchStreamsSection(
-                controller: _sourcesCtrl,
-                iptvCtrl: _sourcesCtrl.iptvCtrl,
-                onSourcePicked: _onSourcePicked,
-                onRetry: _loadSources,
-                tvFocus: tvFocus,
-                sideRail: sideRail,
-              );
-
-              if (sideRail) {
-                final panelWidth =
-                    TorrentSourcesPanel.panelWidthOf(context) * 1.2;
-                return Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    HubDetailsHeroSurface(
-                      backdropUrl: backdrop,
-                      height: viewport.height,
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: _buildHero(
-                            context: context,
-                            backdrop: backdrop,
-                            tvFocus: tvFocus,
-                            height: viewport.height,
-                            chromeOnly: true,
-                          ),
-                        ),
-                        SizedBox(
-                          width: panelWidth,
-                          child: ForjaFrostedPanel(
-                            border: Border(
-                              left: BorderSide(
-                                color: ForjaShellColors.cinematic.borderSubtle,
-                              ),
-                            ),
-                            child: streams,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                );
-              }
-
-              return MediaDetailsScrollPage(
-                scrollController: _scrollController,
-                tvHeroPlayFocus: _heroPlayFocus,
-                tvBackFocus: _backFocus,
-                bodyOverlap: 0,
-                topSpacing: DetailsTokens.bodyTopSpacing,
-                backgroundColor: AppTheme.bgDark,
-                hero: _buildHero(
-                  context: context,
-                  backdrop: backdrop,
-                  tvFocus: tvFocus,
-                  height: DetailsTokens.heroHeight(context),
-                ),
-                sections: [streams],
-              );
-            },
-          ),
+          body,
           MediaDetailsBackButton(focusNode: _backFocus),
         ],
       ),
+    );
+  }
+
+  Widget _buildSideRailBody({
+    required String backdrop,
+    required Size viewport,
+    required bool tvFocus,
+  }) {
+    final panelWidth = TorrentSourcesPanel.panelWidthOf(context) * 1.2;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        HubDetailsHeroSurface(
+          backdropUrl: backdrop,
+          height: viewport.height,
+        ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ListenableBuilder(
+                listenable: _sourcesCtrl,
+                builder: (context, _) => _buildHero(
+                  context: context,
+                  backdrop: backdrop,
+                  tvFocus: tvFocus,
+                  height: viewport.height,
+                  chromeOnly: true,
+                ),
+              ),
+            ),
+            SizedBox(
+              width: panelWidth,
+              child: ForjaFrostedPanel(
+                border: Border(
+                  left: BorderSide(
+                    color: ForjaShellColors.cinematic.borderSubtle,
+                  ),
+                ),
+                child: _buildStreamsSection(sideRail: true, tvFocus: tvFocus),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

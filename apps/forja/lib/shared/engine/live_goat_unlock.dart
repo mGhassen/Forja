@@ -569,6 +569,7 @@ class LiveGoatUnlock {
   }
 
   /// PPV Engine: embed.st GOAT or embedindia.st GASM native unlock.
+  /// epiembeds.online sniff is Forja Live mirrors only — not PPV.
   static Future<({String url, Map<String, String> headers})?> resolvePpv({
     required String embedUrl,
   }) async {
@@ -577,7 +578,8 @@ class LiveGoatUnlock {
       debugPrint('[LiveGasmUnlock] resolvePpv empty embed');
       return null;
     }
-    if (isGasmJwEmbedUrl(embed)) {
+    // PPV: embedindia GASM only — never epiembeds sniff (TimStreams/LiveSoccerTV).
+    if (isEmbedIndiaUrl(embed)) {
       return resolveEmbedIndia(embedUrl: embed);
     }
     if (embed.contains('embed.st')) {

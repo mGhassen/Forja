@@ -171,6 +171,12 @@ void main() {
         isFalse,
       );
     });
+
+    test('epiembeds is not embedindia (PPV must not sniff)', () {
+      const epi = 'https://epiembeds.online/embed/foo';
+      expect(LiveGoatUnlock.isEpiEmbedsUrl(epi), isTrue);
+      expect(LiveGoatUnlock.isEmbedIndiaUrl(epi), isFalse);
+    });
   });
 
   group('LiveGoatUnlock.playbackHeadersForEmbedIndia', () {

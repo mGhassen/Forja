@@ -203,10 +203,6 @@ mixin _LiveMatchesPlayback
     required bool Function() isStale,
     _DamiTvStream? ppvAnchor,
   }) async {
-    if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) {
-      ForjaToast.info('Loading Forja Live plugins…');
-      return;
-    }
     controller.setSearchPhase('Forja Live');
 
     if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {

@@ -352,18 +352,17 @@ mixin _LiveMatchesForjaLive
     return true;
   }
 
+  /// Queue every not-yet-attempted catalog. Grid catalog chip is display-only;
+  /// stream sources must not depend on which chip is selected.
   List<EnginePlugin> _forjaLiveCatalogsToLoad(
     List<EnginePlugin> catalogPlugins,
-    String filter,
   ) {
     final out = <EnginePlugin>[];
     for (final catalog in catalogPlugins) {
       final filterId = EngineService.catalogFilterId(catalog);
       final load = _s._forjaLivePluginLoads[filterId];
       if (load == null || load.loading || load.attempted) continue;
-      if (filter == 'all' || filterId == filter) {
-        out.add(catalog);
-      }
+      out.add(catalog);
     }
     return out;
   }
@@ -508,8 +507,7 @@ mixin _LiveMatchesForjaLive
         return;
       }
 
-      final filter = _s._forjaLivePluginFilter;
-      final toLoad = _forjaLiveCatalogsToLoad(catalogPlugins, filter);
+      final toLoad = _forjaLiveCatalogsToLoad(catalogPlugins);
       if (toLoad.isEmpty) {
         await _applyEspnScheduleMerge();
         return;
