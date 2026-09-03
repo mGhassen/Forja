@@ -847,6 +847,26 @@ class EngineService {
   }
 
   /// Live Matches Forja plugins (unified `live_sport` resolve capability).
+  /// Resolve pack plugin for live resolve — accepts `live-streamed`, `streamed`, etc.
+  ({EnginePack pack, EnginePlugin plugin})? _packLiveResolvePlugin(
+    List<EnginePack> packs,
+    String pluginId,
+  ) {
+    final trimmed = pluginId.trim();
+    if (trimmed.isEmpty) return null;
+    final normalized = normalizeLiveSportPluginId(trimmed);
+    final candidates = <String>{
+      trimmed,
+      if (normalized.isNotEmpty) normalized,
+      if (normalized.isNotEmpty && !trimmed.startsWith('live-')) 'live-$normalized',
+    };
+    for (final id in candidates) {
+      final hit = PluginRegistry.packPluginFromPacks(packs, id);
+      if (hit != null) return hit;
+    }
+    return null;
+  }
+
   Future<List<Map<String, dynamic>>> runLivePlugin({
     required String pluginId,
     required String action,
@@ -854,12 +874,14 @@ class EngineService {
     Duration timeout = const Duration(seconds: 45),
   }) async {
     if (action != 'resolve') return [];
-    final normalizedId = normalizeLiveSportPluginId(pluginId);
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return [];
-    final hit = PluginRegistry.packPluginFromPacks(packs, normalizedId);
-    if (hit == null) return [];
+    final hit = _packLiveResolvePlugin(packs, pluginId);
+    if (hit == null) {
+      debugPrint('[engine] runLivePlugin: no pack plugin for $pluginId');
+      return [];
+    }
     final plugin = hit.plugin;
     final canResolve = plugin.isLiveSportPlugin
         ? plugin.supportsLiveResolve

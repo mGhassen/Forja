@@ -198,6 +198,8 @@ mixin _LiveMatchesPlayback
     required bool Function() isStale,
     _DamiTvStream? ppvAnchor,
   }) async {
+    await LiveMatchesEngine.warmPluginMeta();
+
     if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
       choices.add(_ppvStreamChoice(ppvAnchor, match));
     } else {
@@ -208,7 +210,7 @@ mixin _LiveMatchesPlayback
     final forjaLive = this as _LiveMatchesForjaLive;
     final known = forjaLive._knownProviderEventMatches(match);
 
-    // Resolve immediately from the opened row (+ pool siblings) — no catalog re-list.
+    // Resolve via plugins/live (`live-*` action=resolve) — never catalog-* on Providers.
     if (known.isNotEmpty) {
       await _resolveCatalogStreamChoices(
         known,
@@ -222,49 +224,6 @@ mixin _LiveMatchesPlayback
     }
     if (isStale() || controller.isDisposed) return;
 
-    _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
-    if (ppvAnchor != null) {
-      _rememberPpvStreamViewers(ppvAnchor, _sheetTotalViewers(choices));
-    }
-
-    // Other providers: catalog HTTP only for plugins we do not already have a row for.
-    unawaited(
-      _resolveMissingProviderCatalogs(
-        match: match,
-        known: known,
-        controller: controller,
-        choices: choices,
-        isStale: isStale,
-        ppvAnchor: ppvAnchor,
-      ),
-    );
-  }
-
-  Future<void> _resolveMissingProviderCatalogs({
-    required _StreamedMatch match,
-    required List<_StreamedMatch> known,
-    required _IptvSportsChannelsPanelController controller,
-    required List<_StreamedStreamChoice> choices,
-    required bool Function() isStale,
-    _DamiTvStream? ppvAnchor,
-  }) async {
-    try {
-      final extra = await (this as _LiveMatchesForjaLive)
-          ._hydrateMissingProviderCatalogMatches(match, known);
-      if (extra.isEmpty || isStale() || controller.isDisposed) return;
-      await _resolveCatalogStreamChoices(
-        extra,
-        isStale: isStale,
-        onPartial: (batch) {
-          if (isStale() || controller.isDisposed) return;
-          choices.addAll(batch);
-          _panelAppendChoices(controller, batch);
-        },
-      );
-    } catch (e, st) {
-      debugPrint('[LiveMatches] missing provider catalogs: $e\n$st');
-    }
-    if (isStale() || controller.isDisposed) return;
     _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
     if (ppvAnchor != null) {
       _rememberPpvStreamViewers(ppvAnchor, _sheetTotalViewers(choices));
