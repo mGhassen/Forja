@@ -8,11 +8,8 @@ mixin _LiveMatchesPlayback
   /// Leanback TV: never offer PPV / Streamed / Mut embed rows — only native.
   bool get _tvNativeLiveOnly => ShellScope.metricsOf(context).usesTvDensity;
 
-  /// Stremio catalog/stream fallback — All, Stremio, Forja Sports only.
-  bool get _offerStremioPlayFallback =>
-      _s._server == _LiveMatchesServer.forjaLive ||
-      _s._server == _LiveMatchesServer.stremio ||
-      _s._server == _LiveMatchesServer.iptvSports;
+  /// Stremio streams always offered on Providers (no browse mode gate).
+  bool get _offerStremioPlayFallback => true;
 
   /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
   Future<bool> _runWithCancellableLoading(

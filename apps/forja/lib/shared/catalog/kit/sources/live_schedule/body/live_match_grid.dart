@@ -259,18 +259,13 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
   Widget build(BuildContext context) {
     final tabVisible =
         (this as ShellTabRefresh<LiveSportsHubPage>).shellTabVisible;
-    final fetchActive = tabVisible && _s._serverHydrated;
+    final fetchActive = tabVisible && _s._browseHydrated;
     if (fetchActive) {
-      ref.listen(liveMatchesPrimaryLoadProvider(_s._server), (_, next) {
+      ref.listen(liveMatchesPrimaryLoadProvider, (_, next) {
         if (!mounted || !tabVisible) return;
         next.when(
           loading: () {
-            if (_s._server == _LiveMatchesServer.forjaLive ||
-                _s._server == _LiveMatchesServer.iptvSports ||
-                _s._server == _LiveMatchesServer.forjaLive) {
-              return;
-            }
-            if (!_s._loading) setState(() => _s._loading = true);
+            // Catalog schedule uses lazy Forja Live kick — primary provider stays idle.
           },
           error: (e, _) {
             setState(() {
@@ -283,35 +278,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
           data: (this as _LiveMatchesData)._applyPrimaryLoad,
         );
       });
-      ref.watch(liveMatchesPrimaryLoadProvider(_s._server));
+      ref.watch(liveMatchesPrimaryLoadProvider);
     }
-    final iptvCtrl = _s._showIptvPortalTopBar
-        ? ref.watch(iptvControllerProvider)
-        : null;
-    if (iptvCtrl != null) {
-      ref.listen(iptvControllerProvider, (prev, next) {
-        // Use live shellTabVisible — hide does not rebuild, so closed-over
-        // tabVisible from build would stay true on the IPTV tab.
-        if (!_s._showIptvPortalTopBar ||
-            !mounted ||
-            !(this as ShellTabRefresh<LiveSportsHubPage>).shellTabVisible) {
-          return;
-        }
-        final key = next.activePortal?.key;
-        if (key == null) return;
-        if (key == _s._lastSyncedIptvPortalKey &&
-            (prev == null || prev.portalPanelOpen == next.portalPanelOpen)) {
-          return;
-        }
-        unawaited(
-          (this as _LiveMatchesData)._syncMyIptvFromActivePortal(
-            next,
-            reload: true,
-          ),
-        );
-      });
-    }
-
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -322,152 +290,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         Expanded(child: _buildBody()),
       ],
     );
-    final belowHeader = iptvCtrl == null
-        ? content
-        : _buildIptvPortalStack(context, iptvCtrl, content);
 
     return TvFocusGraph(
       tabId: _LiveMatchesScreenState._tabId,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(iptvCtrl),
-          Expanded(child: belowHeader),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIptvPortalStack(
-    BuildContext context,
-    IptvController ctrl,
-    Widget content,
-  ) {
-    const panelWidth = 380.0;
-    final wide = MediaQuery.sizeOf(context).width >= 900;
-    final useSidePanel = wide || ShellTokens.isAndroidTvDevice;
-    return Stack(
-      children: [
-        content,
-        if (ctrl.portalPanelOpen && useSidePanel)
-          Positioned(
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: panelWidth,
-            child: IptvPortalPanel(
-              ctrl: ctrl,
-              width: panelWidth,
-              onClose: ctrl.closePortalPanel,
-            ),
-          ),
-        if (ctrl.portalPanelOpen && !useSidePanel)
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: ctrl.closePortalPanel,
-              child: ColoredBox(
-                color: Colors.black.withValues(alpha: 0.45),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: IptvPortalPanel(
-                      ctrl: ctrl,
-                      width: MediaQuery.sizeOf(context).width * 0.92,
-                      onClose: ctrl.closePortalPanel,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildHeader([IptvController? iptvCtrl]) {
-    final tvFocus = _tvFocus(context);
-    final topBarItemCount = tvFocus
-        ? (_s._showIptvPortalTopBar
-            ? _s._topBarPortalIndex + 1
-            : _s._topBarRefreshIndex + 1)
-        : (_LiveMatchesScreenState._timelineViewEnabled
-            ? _s._topBarViewIndex + 1
-            : _s._topBarRefreshIndex + 1);
-
-    final refresh = tvFocus
-        ? _LiveMatchesRefreshTopBarButton(
-            focusNode: _s._refreshFocusNode,
-            tvItemIndex: _s._topBarRefreshIndex,
-            onTap: _s._onTopBarRefreshPressed,
-            onDownEdge: _s._topBarDownEdge,
-            onLeftEdge: () => _s._focusTopBarItem(
-              _s._showTimeTopBar
-                  ? _s._topBarTimeIndex
-                  : _s._showCatalogTopBar
-                      ? _s._topBarCatalogIndex
-                      : _s._topBarRefreshIndex,
-            ),
-            onRightEdge: _s._showIptvPortalTopBar
-                ? () => _s._focusTopBarItem(_s._topBarPortalIndex)
-                : () {},
-          )
-        : IconButton(
-            tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
-            onPressed: _s._load,
-          );
-
-    final header = Padding(
-      padding: EdgeInsets.fromLTRB(
-        ShellTokens.compactChromeLeadingInset(context),
-        10,
-        ShellTokens.bodyHorizontalPadding,
-        8,
-      ),
-      child: Row(
-        children: [
-          if (_s._showCatalogTopBar) ...[
-            _s._catalogTopBarButton(),
-            if (_s._showTimeTopBar) const SizedBox(width: 8),
-          ],
-          if (_s._showTimeTopBar) _s._timeTopBarButton(),
-          const Spacer(),
-          refresh,
-          if (!_liveMatchesLeanbackOnly(context) &&
-              _LiveMatchesScreenState._timelineViewEnabled) ...[
-            const SizedBox(width: 4),
-            _buildViewToggle(),
-          ],
-          if (_s._showIptvPortalTopBar && iptvCtrl != null) ...[
-            const SizedBox(width: 8),
-            _s._iptvPortalTopBarButton(iptvCtrl),
-          ],
-        ],
-      ),
-    );
-
-    if (!tvFocus) return header;
-    return TvCatalogRow(
-      tabId: _LiveMatchesScreenState._tabId,
-      rowId: _LiveMatchesScreenState._topBarRowId,
-      sortOrder: 0,
-      itemCount: topBarItemCount,
-      child: header,
-    );
-  }
-
-  Widget _buildViewToggle() {
-    final isTimeline = _s._view == _LiveMatchesView.timeline;
-    final icon = isTimeline
-        ? Icons.grid_view_rounded
-        : Icons.view_timeline_rounded;
-    final tip = isTimeline ? 'Card view' : 'Timeline view';
-
-    return IconButton(
-      tooltip: tip,
-      icon: Icon(icon, color: Colors.white70),
-      onPressed: _s._toggleView,
+      child: content,
     );
   }
 
@@ -534,19 +360,15 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
   }
 
   Widget _buildBody() {
-    if (!_s._serverHydrated) {
+    if (!_s._browseHydrated) {
       return Center(
         child: CircularProgressIndicator(color: ForjaShellColors.sectionAccent),
       );
     }
     if (_s._loading) {
-      final showPartialCatalog = switch (_s._server) {
-        _LiveMatchesServer.forjaLive =>
-            _s._iframeCatalogStreams.isNotEmpty ||
-            _s._streamedMatches.isNotEmpty ||
-            (this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy,
-        _ => false,
-      };
+      final showPartialCatalog = _s._iframeCatalogStreams.isNotEmpty ||
+          _s._streamedMatches.isNotEmpty ||
+          (this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy;
       if (!showPartialCatalog) {
         return Center(
           child: CircularProgressIndicator(
@@ -576,15 +398,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         _s._view == _LiveMatchesView.timeline) {
       return _s._buildTimelineBody();
     }
-    if ((this as _LiveMatchesForjaLive)._showForjaLiveCatalogChrome ||
-        _s._server == _LiveMatchesServer.forjaLive ||
-        _s._server == _LiveMatchesServer.iptvSports) {
-      return _buildAllBody();
-    }
-    if (_s._server == _LiveMatchesServer.stremio) {
-      return _buildStreamedBody();
-    }
-    return const SizedBox.shrink();
+    return _buildAllBody();
   }
 
   Widget _buildAllBody() {
@@ -593,8 +407,14 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) {
         return _buildForjaLiveCatalogProgress();
       }
+      final forjaLive = this as _LiveMatchesForjaLive;
+      final emptyMsg = kLiveMatchesCatalogFiltersHidden
+          ? 'Catalog schedule feeds are temporarily hidden'
+          : forjaLive._showForjaLiveCatalogChrome
+              ? 'No matches for this catalog, sport, or schedule window — try another catalog, a wider time window, or Refresh'
+              : 'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins';
       return ShellErrorRetryPanel(
-        message: 'No streams available',
+        message: emptyMsg,
         onRetry: _s._load,
         label: 'Refresh',
         statusIcon: Icons.sports_rounded,
@@ -693,6 +513,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         onHoverChanged: onHoverChanged,
         tvRowId: tvRowId,
         tvZone: tvZone,
+        playableOverride:
+            (this as _LiveMatchesForjaLive)._forjaLiveMatchPlayable(match),
         onTap: () => _s._openStreamedMatch(match),
       ),
       _LiveMatchGridEntryMerged(:final iframeCatalog, :final streamed) =>
@@ -746,91 +568,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStreamedBody() {
-    final matches = _s._displayStreamedMatches;
-    if (matches.isEmpty) {
-      if ((this as _LiveMatchesForjaLive)._forjaLiveCatalogInitialBusy) {
-        return _buildForjaLiveCatalogProgress();
-      }
-      final forjaLive = this as _LiveMatchesForjaLive;
-      final emptyMsg = switch (_s._server) {
-        _LiveMatchesServer.stremio =>
-          'No live Stremio addons — install one in Settings → Sources and enable Live Matches',
-        _LiveMatchesServer.iptvSports => kLiveMatchesCatalogFiltersHidden
-            ? 'Catalog schedule feeds are temporarily hidden'
-            : forjaLive._showForjaLiveCatalogChrome
-                ? 'No matches for this catalog, sport, or schedule window — try another catalog, a wider time window, or Refresh'
-                : 'No Forja Sports matches — enable catalogs in Settings → Forja Sports → Catalog',
-        _LiveMatchesServer.forjaLive => kLiveMatchesCatalogFiltersHidden
-            ? 'Catalog schedule feeds are temporarily hidden'
-            : forjaLive._showForjaLiveCatalogChrome
-                ? 'No matches for this catalog, sport, or schedule window — try another catalog, a wider time window, or Refresh'
-                : 'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins',
-      };
-      return ShellErrorRetryPanel(
-        message: emptyMsg,
-        onRetry: _s._load,
-        label: 'Refresh',
-        statusIcon: Icons.sports_rounded,
-        buttonIcon: Icons.refresh,
-      );
-    }
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = _matchCardWidth(context);
-        final cardHeight = _matchCardHeight(context);
-        final gap = _gridGap(context);
-        final crossCount = _gridColumns(context, constraints, cardWidth);
-        final tvFocus = _tvFocus(context);
-        if (tvFocus) {
-          _s._clearTimelineTvRows();
-        }
-        final grid = GridView.builder(
-          padding: _gridPadding(context),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossCount,
-            mainAxisExtent: cardHeight,
-            crossAxisSpacing: gap,
-            mainAxisSpacing: gap,
-          ),
-          itemCount: matches.length,
-          itemBuilder: (context, i) {
-            final edges = _gridRowEdgeCallbacks(
-              index: i,
-              crossCount: crossCount,
-              itemCount: matches.length,
-            );
-            return _StreamedMatchCard(
-              match: matches[i],
-              viewersOverride: _cardViewersForMatch(matches[i]),
-              gridIndex: i,
-              gridColumns: crossCount,
-              onUpEdge: _s._gridUpEdge(context, i, crossCount),
-              onLeftEdge: edges.onLeftEdge,
-              onRightEdge: edges.onRightEdge,
-              playableOverride: _s._server == _LiveMatchesServer.forjaLive
-                  ? (this as _LiveMatchesForjaLive)._forjaLiveMatchPlayable(
-                      matches[i],
-                    )
-                  : null,
-              onTap: () => _s._openStreamedMatch(matches[i]),
-            );
-          },
-        );
-        if (!tvFocus) return grid;
-        return TvGrid(
-          tabId: _LiveMatchesScreenState._tabId,
-          rowId: _LiveMatchesScreenState._gridRowId,
-          sortOrder: _gridSortOrder,
-          itemCount: matches.length,
-          columns: crossCount,
-          onFocusUp: _s._gridFocusUp,
-          child: grid,
-        );
-      },
     );
   }
 

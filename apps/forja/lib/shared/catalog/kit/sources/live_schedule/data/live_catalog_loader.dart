@@ -37,13 +37,12 @@ mixin _LiveMatchesForjaLive
   @override
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
-  bool get _usesForjaLiveLazyCatalog =>
-      _s._server == _LiveMatchesServer.forjaLive ||
-      _s._server == _LiveMatchesServer.forjaLive ||
-      _s._server == _LiveMatchesServer.iptvSports;
+  bool get _usesForjaLiveLazyCatalog => true;
 
   bool get _showForjaLiveCatalogChrome =>
-      _usesForjaLiveLazyCatalog && _s._forjaLivePluginLoads.isNotEmpty;
+      _usesForjaLiveLazyCatalog &&
+      _s._showCatalogTopBar &&
+      _s._forjaLivePluginLoads.isNotEmpty;
 
   bool _catalogFilterMatches(String filterId, String filter) {
     if (filter == 'all' || filter.isEmpty) return true;
@@ -212,9 +211,7 @@ mixin _LiveMatchesForjaLive
 
   List<_StreamedMatch> get _displayStreamedMatches {
     var list = _catalogScopedStreamedMatches();
-    if (_s._server == _LiveMatchesServer.forjaLive) {
-      list = list.where((m) => !m.isIptvSports).toList();
-    }
+    list = list.where((m) => !m.isIptvSports).toList();
     return list;
   }
 
@@ -504,7 +501,7 @@ mixin _LiveMatchesForjaLive
   void _kickForjaLiveLazyCatalog({bool replace = false}) {
     if (!_usesForjaLiveLazyCatalog) return;
     if (!(this as ShellTabRefresh<LiveSportsHubPage>).shellTabVisible) return;
-    if (!_s._serverHydrated) return;
+    if (!_s._browseHydrated) return;
     if (_s._forjaLiveGridCatalogInflight != null && !replace) return;
     if (replace) {
       EngineService.instance.cancelLiveCatalog();
@@ -567,7 +564,7 @@ mixin _LiveMatchesForjaLive
     if (!_usesForjaLiveLazyCatalog) return;
     if (!mounted) return;
     if (!_shouldRunScheduleEnrichMerge()) return;
-    if (_s._server == _LiveMatchesServer.forjaLive && _forjaLiveAnyLoading) {
+    if (_forjaLiveAnyLoading) {
       return;
     }
     if (!await _isScheduleEnrichCatalogEnabled()) return;
@@ -582,7 +579,7 @@ mixin _LiveMatchesForjaLive
     final merged = _mergeStreamedWithEspn(
       base,
       enrichGames,
-      appendUnmatched: _s._server != _LiveMatchesServer.forjaLive,
+      appendUnmatched: false,
     );
     setState(() {
       _invalidateLiveMatchesGridCache();
@@ -1119,9 +1116,7 @@ mixin _LiveMatchesForjaLive
       cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
     }
 
-    if (_s._server == _LiveMatchesServer.forjaLive ||
-        _s._server == _LiveMatchesServer.forjaLive ||
-        _s._server == _LiveMatchesServer.iptvSports) {
+    if (_usesForjaLiveLazyCatalog) {
       for (final s in sources.iframeCatalog) {
         if (applyWindow &&
             !_iframeCatalogInScheduleFilter(

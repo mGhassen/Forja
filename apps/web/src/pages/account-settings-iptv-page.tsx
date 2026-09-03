@@ -188,6 +188,8 @@ export function AccountSettingsIptvPage() {
   const [savedFlash, setSavedFlash] = useState(false)
   const [portalPage, setPortalPage] = useState(1)
   const [hydrateError, setHydrateError] = useState<string | null>(null)
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set())
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
   const atPortalLimit =
     !editingKey && !canAddIptvPortal(accountFeatures, draft.portals.length)
 
@@ -198,6 +200,8 @@ export function AccountSettingsIptvPage() {
     setEditingKey(null)
     setPortalPage(1)
     setHydrateError(null)
+    setSelectedKeys(new Set())
+    setConfirmBulkDelete(false)
   }, [profileId])
 
   useEffect(() => {
@@ -279,6 +283,34 @@ export function AccountSettingsIptvPage() {
     () => pageSlice(filteredPortals, portalPage),
     [filteredPortals, portalPage],
   )
+
+  const filteredKeys = useMemo(
+    () => filteredPortals.map(rowIdentity),
+    [filteredPortals],
+  )
+
+  const selectedCount = selectedKeys.size
+  const allFilteredSelected =
+    filteredKeys.length > 0 && filteredKeys.every((k) => selectedKeys.has(k))
+  const someFilteredSelected =
+    !allFilteredSelected && filteredKeys.some((k) => selectedKeys.has(k))
+
+  useEffect(() => {
+    const alive = new Set(draft.portals.map(rowIdentity))
+    setSelectedKeys((prev) => {
+      let changed = false
+      const next = new Set<string>()
+      for (const key of prev) {
+        if (alive.has(key)) next.add(key)
+        else changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [draft.portals])
+
+  useEffect(() => {
+    if (selectedCount === 0) setConfirmBulkDelete(false)
+  }, [selectedCount])
 
   const persistPortals = async (portals: IptvPortalRow[]) => {
     setDraft({ portals })
@@ -372,19 +404,77 @@ export function AccountSettingsIptvPage() {
   const removePortal = (key: string) => {
     const next = draft.portals.filter((p) => rowIdentity(p) !== key)
     void persistPortals(next)
+    setSelectedKeys((prev) => {
+      if (!prev.has(key)) return prev
+      const nextKeys = new Set(prev)
+      nextKeys.delete(key)
+      return nextKeys
+    })
     if (editingKey === key) {
       setEditingKey(null)
       setPortalForm({ url: '', username: '', password: '', portalName: '' })
     }
   }
 
-  const exportPortalsCsv = () => {
-    if (sortedPortals.length === 0) return
+  const toggleSelect = (key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const toggleSelectAllFiltered = () => {
+    setSelectedKeys((prev) => {
+      if (allFilteredSelected) {
+        const next = new Set(prev)
+        for (const key of filteredKeys) next.delete(key)
+        return next
+      }
+      const next = new Set(prev)
+      for (const key of filteredKeys) next.add(key)
+      return next
+    })
+  }
+
+  const clearSelection = () => {
+    setSelectedKeys(new Set())
+    setConfirmBulkDelete(false)
+  }
+
+  const exportPortalsCsv = (portals: IptvPortalRow[]) => {
+    if (portals.length === 0) return
     const favorites = new Set(
-      sortedPortals.filter((p) => p.favorite).map((p) => portalKey(p)),
+      portals.filter((p) => p.favorite).map((p) => portalKey(p)),
     )
-    const csv = portalsToCsv(sortedPortals, favorites)
+    const csv = portalsToCsv(portals, favorites)
     downloadTextFile(iptvPortalsCsvFilename(), csv)
+  }
+
+  const exportSelectedOrAll = () => {
+    if (selectedCount > 0) {
+      const selected = draft.portals.filter((p) =>
+        selectedKeys.has(rowIdentity(p)),
+      )
+      exportPortalsCsv(selected)
+      return
+    }
+    exportPortalsCsv(sortedPortals)
+  }
+
+  const deleteSelected = () => {
+    if (selectedCount === 0) return
+    const next = draft.portals.filter(
+      (p) => !selectedKeys.has(rowIdentity(p)),
+    )
+    if (editingKey && selectedKeys.has(editingKey)) {
+      setEditingKey(null)
+      setPortalForm({ url: '', username: '', password: '', portalName: '' })
+      setAddOpen(false)
+    }
+    void persistPortals(next)
+    clearSelection()
   }
 
   const copyShare = async (portal: IptvPortalRow) => {
@@ -502,7 +592,7 @@ export function AccountSettingsIptvPage() {
 
       <SettingsSection
         label="Portals"
-        description="Favorites stay on top. Search filters name, URL, and username."
+        description="Select portals for batch export or delete. Favorites stay on top. Search filters name, URL, and username."
       >
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="relative min-w-0 flex-1">
@@ -518,12 +608,16 @@ export function AccountSettingsIptvPage() {
           <Button
             type="button"
             variant="secondary"
-            disabled={sortedPortals.length === 0}
-            onClick={exportPortalsCsv}
-            title="Export portals as CSV"
+            disabled={selectedCount === 0 && sortedPortals.length === 0}
+            onClick={exportSelectedOrAll}
+            title={
+              selectedCount > 0
+                ? `Export ${selectedCount} selected as CSV`
+                : 'Export portals as CSV'
+            }
           >
             <Download className="mr-2 size-4" />
-            Export
+            {selectedCount > 0 ? `Export (${selectedCount})` : 'Export'}
           </Button>
           <Button
             type="button"
@@ -560,6 +654,7 @@ export function AccountSettingsIptvPage() {
           {portalPager.totalPages > 1
             ? ` · page ${portalPager.page} of ${portalPager.totalPages}`
             : ''}
+          {selectedCount > 0 ? ` · ${selectedCount} selected` : ''}
         </p>
 
         {addOpen ? (
@@ -643,130 +738,237 @@ export function AccountSettingsIptvPage() {
           </p>
         ) : (
           <>
-            <ul className="divide-y divide-forja-border">
-              {portalPager.items.map((portal) => {
-                const key = rowIdentity(portal)
-                const starred = portal.favorite ?? false
-                const shownCode = shareFlash[key]
-                const title = portalDisplayLabel(portal)
-                const expiry = portalExpiryTone(portal.expiry)
-                const seats = seatsTone(portal.max)
-
-                return (
-                  <li
-                    key={key}
-                    className="flex min-h-22 items-center gap-2 px-0.5 py-2.5"
+            <div className="overflow-hidden rounded-xl border border-forja-border">
+              {selectedCount > 0 ? (
+                <div className="flex flex-wrap items-center gap-2 border-b border-forja-border bg-forja-elevated/80 px-3 py-2">
+                  <p className="mr-1 text-sm font-medium text-forja-text">
+                    {selectedCount} selected
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const selected = draft.portals.filter((p) =>
+                        selectedKeys.has(rowIdentity(p)),
+                      )
+                      exportPortalsCsv(selected)
+                    }}
                   >
-                    {shownCode || sharingKey === key ? (
-                      <div className="min-w-0 flex-1">
-                        {sharingKey === key && !shownCode ? (
-                          <p className="text-sm text-forja-muted">
-                            Creating share code…
-                          </p>
-                        ) : (
-                          <>
-                            <p className="text-[10px] font-semibold tracking-wider text-forja-muted">
-                              SHARE CODE
-                            </p>
-                            <p className="mt-1 font-mono text-lg font-bold tracking-[0.18em] text-forja-green">
-                              {shownCode}
-                            </p>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <p
-                          className={cn(
-                            'flex items-center gap-1.5 text-[11px] font-semibold',
-                            expiry.className,
-                          )}
-                        >
-                          <CalendarDays className="size-3 shrink-0" />
-                          <span className="truncate">{expiry.label}</span>
-                        </p>
-                        <p
-                          className={cn(
-                            'truncate text-[13px] font-semibold',
-                            starred ? 'text-amber-300' : 'text-forja-text',
-                          )}
-                        >
-                          {title}
-                        </p>
-                        <p className="truncate text-sm text-white/55">
-                          {portal.url}
-                        </p>
-                        <p
-                          className={cn(
-                            'flex items-center gap-1.5 text-[11px] font-semibold',
-                            seats.className,
-                          )}
-                        >
-                          <Users className="size-3 shrink-0" />
-                          <span>{seats.label}</span>
-                        </p>
-                      </div>
-                    )}
-
-                    <button
+                    <Download className="size-4" />
+                    Export
+                  </Button>
+                  {confirmBulkDelete ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-400 hover:text-red-300"
+                        onClick={deleteSelected}
+                      >
+                        Confirm delete ({selectedCount})
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmBulkDelete(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
                       type="button"
-                      className={cn(
-                        'shrink-0 self-center p-1 text-white/30 hover:text-forja-green',
-                        starred && 'text-amber-300 hover:text-amber-200',
-                      )}
-                      onClick={() => toggleFavorite(portal)}
-                      aria-label={starred ? 'Remove favorite' : 'Mark favorite'}
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-400 hover:text-red-300"
+                      onClick={() => setConfirmBulkDelete(true)}
                     >
-                      <Star
-                        className="size-4"
-                        fill={starred ? 'currentColor' : 'none'}
-                      />
-                    </button>
+                      <Trash2 className="size-4" />
+                      Delete
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto"
+                    onClick={clearSelection}
+                  >
+                    <X className="size-4" />
+                    Clear
+                  </Button>
+                </div>
+              ) : null}
 
-                    <div className="flex shrink-0 items-center self-center">
-                      <Button
+              <div className="flex items-center gap-2 border-b border-forja-border bg-forja-elevated/40 px-3 py-2">
+                <input
+                  type="checkbox"
+                  className="size-4 shrink-0 accent-forja-green"
+                  checked={allFilteredSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someFilteredSelected
+                  }}
+                  aria-label={
+                    allFilteredSelected
+                      ? 'Deselect all portals'
+                      : 'Select all portals'
+                  }
+                  onChange={toggleSelectAllFiltered}
+                />
+                <button
+                  type="button"
+                  className="text-xs font-medium text-forja-muted hover:text-forja-text"
+                  onClick={toggleSelectAllFiltered}
+                >
+                  {allFilteredSelected ? 'Deselect all' : 'Select all'}
+                  {portalQuery.trim()
+                    ? ` (${filteredPortals.length} matching)`
+                    : ''}
+                </button>
+              </div>
+
+              <ul className="divide-y divide-forja-border">
+                {portalPager.items.map((portal) => {
+                  const key = rowIdentity(portal)
+                  const starred = portal.favorite ?? false
+                  const shownCode = shareFlash[key]
+                  const title = portalDisplayLabel(portal)
+                  const expiry = portalExpiryTone(portal.expiry)
+                  const seats = seatsTone(portal.max)
+                  const isSelected = selectedKeys.has(key)
+
+                  return (
+                    <li
+                      key={key}
+                      className={cn(
+                        'flex min-h-22 items-center gap-2 px-3 py-2.5',
+                        isSelected &&
+                          'bg-forja-green/8 ring-1 ring-inset ring-forja-green/35',
+                      )}
+                      aria-selected={isSelected}
+                    >
+                      <input
+                        type="checkbox"
+                        className="size-4 shrink-0 accent-forja-green"
+                        checked={isSelected}
+                        aria-label={`Select ${title}`}
+                        onChange={() => toggleSelect(key)}
+                      />
+
+                      {shownCode || sharingKey === key ? (
+                        <div className="min-w-0 flex-1">
+                          {sharingKey === key && !shownCode ? (
+                            <p className="text-sm text-forja-muted">
+                              Creating share code…
+                            </p>
+                          ) : (
+                            <>
+                              <p className="text-[10px] font-semibold tracking-wider text-forja-muted">
+                                SHARE CODE
+                              </p>
+                              <p className="mt-1 font-mono text-lg font-bold tracking-[0.18em] text-forja-green">
+                                {shownCode}
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <p
+                            className={cn(
+                              'flex items-center gap-1.5 text-[11px] font-semibold',
+                              expiry.className,
+                            )}
+                          >
+                            <CalendarDays className="size-3 shrink-0" />
+                            <span className="truncate">{expiry.label}</span>
+                          </p>
+                          <p
+                            className={cn(
+                              'truncate text-[13px] font-semibold',
+                              starred ? 'text-amber-300' : 'text-forja-text',
+                            )}
+                          >
+                            {title}
+                          </p>
+                          <p className="truncate text-sm text-white/55">
+                            {portal.url}
+                          </p>
+                          <p
+                            className={cn(
+                              'flex items-center gap-1.5 text-[11px] font-semibold',
+                              seats.className,
+                            )}
+                          >
+                            <Users className="size-3 shrink-0" />
+                            <span>{seats.label}</span>
+                          </p>
+                        </div>
+                      )}
+
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        disabled={sharingKey === key}
-                        aria-label="Copy share code"
-                        title="Copy share code"
-                        onClick={() => void copyShare(portal)}
-                      >
-                        {sharingKey === key ? (
-                          <Share2 className="size-4 animate-pulse" />
-                        ) : shownCode ? (
-                          <Check className="size-4 text-forja-green" />
-                        ) : (
-                          <Copy className="size-4" />
+                        className={cn(
+                          'shrink-0 self-center p-1 text-white/30 hover:text-forja-green',
+                          starred && 'text-amber-300 hover:text-amber-200',
                         )}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        aria-label="Edit portal"
-                        onClick={() => beginEdit(portal)}
+                        onClick={() => toggleFavorite(portal)}
+                        aria-label={starred ? 'Remove favorite' : 'Mark favorite'}
                       >
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
-                        aria-label="Delete portal"
-                        onClick={() => removePortal(key)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
+                        <Star
+                          className="size-4"
+                          fill={starred ? 'currentColor' : 'none'}
+                        />
+                      </button>
+
+                      <div className="flex shrink-0 items-center self-center">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          disabled={sharingKey === key}
+                          aria-label="Copy share code"
+                          title="Copy share code"
+                          onClick={() => void copyShare(portal)}
+                        >
+                          {sharingKey === key ? (
+                            <Share2 className="size-4 animate-pulse" />
+                          ) : shownCode ? (
+                            <Check className="size-4 text-forja-green" />
+                          ) : (
+                            <Copy className="size-4" />
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                          aria-label="Edit portal"
+                          onClick={() => beginEdit(portal)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
+                          aria-label="Delete portal"
+                          onClick={() => removePortal(key)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
             <ListPager
               page={portalPager.page}
               totalPages={portalPager.totalPages}

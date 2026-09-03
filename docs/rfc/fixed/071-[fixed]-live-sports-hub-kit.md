@@ -74,13 +74,9 @@ Replace the hardcoded Live Matches feature screen with a **plugin-contributed ca
 
 **Current slice:** kit stays **generic composition** (`stack` / `menu` / `tabs` / `list`). Live Sports is a **list source** (`live_schedule`), same shape as My List (`source: my_list`). Host chrome/play stay in `sources/live_schedule/`, not as kit type vocabulary.
 
-### Modes (host-owned)
+### Modes (retired — see RFC-073)
 
-| Mode id | Label | Schedule | Play |
-|---------|-------|----------|------|
-| `forja_live` | Forja Live | `live_sport` JS catalogs | Engine resolve |
-| `forja_sports` | Forja Sports | Same catalog as Forja Live | Xtream/Stalker matcher |
-| `stremio` | Stremio | Stremio sport addons | Stremio HLS |
+RFC-071 shipped host-owned browse modes. Product moved resolve choice to match **Providers** / **Live TV**. Mode registry removed in [RFC-073](../073-[open]-live-sports-kit-ownership.md).
 
 ### Related
 

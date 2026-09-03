@@ -67,17 +67,9 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveSportsHubPage> {
     return t?.millisecondsSinceEpoch ?? nowMs;
   }
 
-  /// Entries for the current server + sport filter.
+  /// Entries for the current sport filter (catalog schedule).
   List<_LiveMatchGridEntry> _timelineSourceEntries() {
-    switch (_s._server) {
-      case _LiveMatchesServer.forjaLive:
-      case _LiveMatchesServer.iptvSports:
-        return _s._allGridEntries;
-      case _LiveMatchesServer.stremio:
-        return _s._displayStreamedMatches
-            .map(_LiveMatchGridEntry.streamed)
-            .toList();
-    }
+    return _s._allGridEntries;
   }
 
   /// Live / airing / kickoff inside the current granularity window → timeline canvas.
@@ -696,7 +688,16 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveSportsHubPage> {
       tvItemIndex: index,
       onLeftEdge: edges?.onLeft,
       onRightEdge: edges?.onRight,
-      onUpEdge: () => _s._focusTopBarItem(_s._topBarCatalogIndex),
+      onUpEdge: () {
+        if (_s._hasSportChips) {
+          ShellTvFocusCoordinator.focusFromResultsRowUp(
+            tabId: _LiveMatchesScreenState._tabId,
+            chipRowId: _LiveMatchesScreenState._chipRowId,
+          );
+          return;
+        }
+        ShellTvFocus.focusCurrentNavTab();
+      },
       onDownEdge: () => _s._restoreLiveMatchesTvFocus(),
       onTap: () {
         _s._timelineAutoScrolled = false;

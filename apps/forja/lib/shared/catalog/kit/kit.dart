@@ -21,7 +21,6 @@ export 'layout/catalog_layout_scope.dart';
 export 'sources/catalog_kit_list_source.dart';
 export 'sources/live_schedule/live_sports_hub_page.dart';
 export 'sources/live_schedule/live_sports_kit_page.dart';
-export 'sources/live_schedule/data/live_mode_registry.dart';
 export 'sources/live_schedule/data/live_schedule_source.dart';
 export 'sources/live_schedule/data/live_prefs.dart';
 export 'sources/live_schedule/data/live_iptv_sports_config.dart';

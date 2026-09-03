@@ -7,7 +7,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
-import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
@@ -24,7 +23,6 @@ import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_mode_registry.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_prefs.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_sport_filter.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_team_parse.dart';
@@ -37,8 +35,6 @@ import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
-import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
-import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
@@ -99,7 +95,6 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
         _LiveMatchesTimeline,
         _LiveMatchesPlayback {
   static const _tabId = 'live_matches';
-  static const _topBarRowId = 'live-top-bar';
   static const _chipRowId = 'sport-chips';
   static const _gridRowId = 'grid';
   static const _granularityRowId = 'timeline-granularity';
@@ -147,11 +142,10 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
   final Set<String> _timelineTvRowIds = {};
 
   TabController? _tabController;
-  _LiveMatchesServer _server = _LiveMatchesServer.forjaLive;
   bool _iptvSportsEnabled = false;
 
-  /// False until [_restoreServerPreference] finishes — avoids fetching before saved server applies.
-  bool _serverHydrated = false;
+  /// False until browse prefs hydrate — avoids fetching before catalog filter/horizon apply.
+  bool _browseHydrated = false;
   List<_IframeCatalogStream> _iframeCatalogStreams = [];
   List<_StreamedMatch> _streamedMatches = [];
 
@@ -185,37 +179,8 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
   /// Settings → Forja Sports **Catalog** toggles changed while this tab was hidden.
   bool _forjaLiveCatalogSettingsDirty = false;
 
-  /// Prevent stacking Servers / Catalog / Time bottom sheets on double-tap.
-  bool _topBarSheetOpen = false;
-
-  int get _topBarCatalogIndex => 0;
-
-  bool get _showIptvPortalTopBar => _iptvSportsEnabled;
-
-  /// Catalog + schedule window on the live sports hub (always catalog grid).
-  bool get _showCatalogTopBar =>
-      !kLiveMatchesCatalogFiltersHidden && _forjaLivePluginLoads.isNotEmpty;
-
-  bool get _showTimeTopBar => _showCatalogTopBar;
-
-  int get _topBarTimeIndex {
-    var index = 0;
-    if (_showCatalogTopBar) index++;
-    return index;
-  }
-
-  /// [Catalog] → [Time] → Refresh → [Portals] → [View].
-  int get _topBarRefreshIndex {
-    var index = 0;
-    if (_showCatalogTopBar) index++;
-    if (_showTimeTopBar) index++;
-    return index;
-  }
-
-  int get _topBarPortalIndex => _topBarRefreshIndex + 1;
-
-  int get _topBarViewIndex =>
-      _showIptvPortalTopBar ? _topBarPortalIndex + 1 : _topBarRefreshIndex + 1;
+  /// Top catalog/schedule/portals chrome removed — grid merges all catalogs.
+  bool get _showCatalogTopBar => false;
 
   final FocusNode _refreshFocusNode = FocusNode(
     debugLabel: 'live-matches-refresh',
@@ -224,7 +189,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
     debugLabel: 'live-matches-view-toggle',
   );
 
-  /// TV: keep D-pad on top-bar Refresh across catalog reload remounts.
+  /// Legacy flag from top-bar Refresh restore — cleared on schedule restore.
   bool _restoreRefreshFocus = false;
 
   /// Gate first catalog fetch — `ref` is unsafe in [initState].
@@ -264,7 +229,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
   @override
   void onShellTabShown() {
     super.onShellTabShown();
-    unawaited(_clampServerIfForjaSportsDisabled(reload: true));
+    unawaited(_refreshCapabilityFlags(reload: true));
     _syncTimelineLiveTick();
     if (_error != null || (_sports.isEmpty && !_loading)) {
       unawaited(_load());
@@ -272,10 +237,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
         !_forjaLiveCatalogHydrating &&
         !(this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
       (this as _LiveMatchesForjaLive)._kickForjaLiveLazyCatalog();
-    } else if (_forjaLiveCatalogSettingsDirty &&
-        (_server == _LiveMatchesServer.forjaLive ||
-            _server == _LiveMatchesServer.forjaLive ||
-            _server == _LiveMatchesServer.iptvSports)) {
+    } else if (_forjaLiveCatalogSettingsDirty) {
       _forjaLiveCatalogSettingsDirty = false;
       (this as _LiveMatchesForjaLive)._applyEngineCatalogSettingsChange(
         reloadNow: true,
@@ -348,7 +310,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
 
   void _onStremioAddonsChanged() {
     if (!mounted) return;
-    unawaited(_clampServerIfForjaSportsDisabled(reload: false));
+    unawaited(_refreshCapabilityFlags(reload: false));
     final forja = this as _LiveMatchesForjaLive;
     if (!forja._usesForjaLiveLazyCatalog) return;
     unawaited(() async {
@@ -429,13 +391,13 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
     }
   }
 
-  /// Refreshes Forja Sports / Stremio flags; browse [_server] stays catalog.
+  /// Refreshes Forja Sports / Stremio capability flags (not browse modes).
   Future<
       ({
         bool forjaLiveEnabled,
         bool iptvSportsEnabled,
         bool stremioLiveEnabled,
-      })> _clampServerIfForjaSportsDisabled({required bool reload}) async {
+      })> _refreshCapabilityFlags({required bool reload}) async {
     final config = await LiveMatchesIptvSportsConfig.load();
     final forjaLiveEnabled = config.forjaLiveEnabled;
     final iptvSportsEnabled = config.enabled;
@@ -447,19 +409,9 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
         stremioLiveEnabled: stremioLiveEnabled,
       );
     }
-    final next = _LiveMatchesServer.forjaLive;
-    if (next != _server) {
-      if (_server == _LiveMatchesServer.iptvSports) {
-        ref.read(iptvControllerProvider).closePortalPanel();
-      }
-      setState(() {
-        _server = next;
-        _iptvSportsEnabled = iptvSportsEnabled;
-      });
-      unawaited(_persistServerPreference(next));
-      if (reload) await _load();
-    } else if (_iptvSportsEnabled != iptvSportsEnabled) {
+    if (_iptvSportsEnabled != iptvSportsEnabled) {
       setState(() => _iptvSportsEnabled = iptvSportsEnabled);
+      if (reload) await _load();
     }
     return (
       forjaLiveEnabled: forjaLiveEnabled,
@@ -469,7 +421,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
   }
 
   Future<void> _restoreServerThenLoad() async {
-    await _restoreServerPreference();
+    await _restoreBrowsePrefs();
     await (this as _LiveMatchesForjaLive)
         ._restoreForjaLiveCatalogFilterPreference();
     await (this as _LiveMatchesForjaLive)._restoreTimeWindowPreference();
@@ -477,7 +429,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
     final iptvEnabled = (await LiveMatchesIptvSportsConfig.load()).enabled;
     if (!mounted) return;
     setState(() {
-      _serverHydrated = true;
+      _browseHydrated = true;
       _iptvSportsEnabled = iptvEnabled;
     });
     if (_iptvSportsEnabled) {
@@ -489,40 +441,11 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
     await _load();
   }
 
-  Future<void> _restoreServerPreference() async {
+  Future<void> _restoreBrowsePrefs() async {
     final config = await LiveMatchesIptvSportsConfig.load();
     if (!mounted) return;
-    // Browse is always the catalog schedule. Forja Sports / Stremio are
-    // Providers / Live TV on match detail — not top-bar modes.
-    setState(() {
-      _server = _LiveMatchesServer.forjaLive;
-      _iptvSportsEnabled = config.enabled;
-    });
-    final saved = await LivePrefs.readMode();
-    if (!mounted) return;
-    if (saved != LiveModeId.forjaLive) {
-      unawaited(_persistServerPreference(_LiveMatchesServer.forjaLive));
-    }
-  }
-
-  Future<void> _persistServerPreference(_LiveMatchesServer server) async {
-    await LivePrefs.writeMode(_liveModeIdFor(server));
-  }
-
-  void _toggleView() {
-    if (!mounted) return;
-    if (_liveMatchesLeanbackOnly(context)) return;
-    _viewWasToggled = true;
-    setState(() {
-      _view = _view == _LiveMatchesView.grid
-          ? _LiveMatchesView.timeline
-          : _LiveMatchesView.grid;
-      _timelineAutoScrolled = false;
-      _timelineHoveredBucketMs = null;
-      _timelineHoveredIndex = null;
-    });
-    _syncTimelineLiveTick();
-    unawaited(_persistViewPreference(_view == _LiveMatchesView.timeline));
+    setState(() => _iptvSportsEnabled = config.enabled);
+    unawaited(LivePrefs.clearRetiredModePrefs());
   }
 
   Future<void> _persistViewPreference(bool showTimeline) async {

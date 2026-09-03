@@ -1,4 +1,3 @@
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_mode_registry.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 
 /// Host-backed schedule for `kit.list { source: live_schedule }`.
@@ -13,15 +12,13 @@ abstract final class CatalogKitLiveSources {
   }
 }
 
-/// One live schedule query (mode + catalog + sport).
+/// One live schedule query (catalog + sport filters).
 class LiveScheduleQuery {
   const LiveScheduleQuery({
-    required this.mode,
     this.catalogFilter = 'all',
     this.sportFilter = 'all',
   });
 
-  final LiveModeId mode;
   final String catalogFilter;
   final String sportFilter;
 }
@@ -48,10 +45,7 @@ class HubLiveScheduleSource implements LiveScheduleSource {
 }
 
 /// Map a host schedule row (plugin catalog JSON) to catalog meta.
-CatalogMetaItem liveMetaFromScheduleRow(
-  Map<String, dynamic> row, {
-  String mode = 'forja_live',
-}) {
+CatalogMetaItem liveMetaFromScheduleRow(Map<String, dynamic> row) {
   final id = (row['id'] ?? row['eventId'] ?? '').toString();
   final name = (row['title'] ?? row['name'] ?? row['event'] ?? '').toString();
   final airing = row['airing'] == true ||
@@ -60,7 +54,8 @@ CatalogMetaItem liveMetaFromScheduleRow(
   final starts = (row['starts_at'] ?? row['startsAt'] ?? row['date'] ?? '')
       .toString();
   final viewersRaw = row['viewers'];
-  final viewers = viewersRaw is num ? viewersRaw.toInt() : int.tryParse('$viewersRaw');
+  final viewers =
+      viewersRaw is num ? viewersRaw.toInt() : int.tryParse('$viewersRaw');
   final sourcesRaw = row['sources'];
   final sources = <Map<String, dynamic>>[];
   if (sourcesRaw is List) {
@@ -76,7 +71,6 @@ CatalogMetaItem liveMetaFromScheduleRow(
     airing: airing,
     startsAt: starts.isEmpty ? null : starts,
     viewers: viewers,
-    mode: mode,
     sources: sources,
     open: CatalogOpen(surface: 'live', id: id),
   );

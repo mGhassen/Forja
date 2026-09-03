@@ -154,10 +154,12 @@ Not synced — device-specific or sensitive:
 - Add, edit, search, favorite, share, or remove IPTV portals from
   the web (share codes match the app peer-code flow). On the web IPTV page,
   portals are a compact list (expiry, name, URL, seats). Lists paginate every 10 items.
-  When your account has **Find Portals** (`iptvScrape`) enabled, the page shows a VIP
-  **Activated** banner above the portal list (read-only — unlock is account-side).
-  **Export CSV** downloads portals (plain-text passwords in the file; on-device they use Keychain).
-  Then **Save** to sync.
+  Checkboxes support **Select all** (matching search results) and batch **Export** /
+  **Delete** with confirm. When your account has **Find Portals** (`iptvScrape`) enabled,
+  the page shows a VIP **Activated** banner above the portal list (read-only — unlock is
+  account-side). **Export CSV** downloads all portals, or only the selection when any are
+  checked (plain-text passwords in the file; on-device they use Keychain).
+  Changes save automatically to the cloud.
 - Change playback prefs and provider order from the web
 - Manage Stremio addon URLs from the web
 - Delete the cloud account from **Account** settings (removes synced profiles

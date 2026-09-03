@@ -3279,18 +3279,6 @@ _IframeCatalogStream _iframeCatalogFromRow(Map<String, dynamic> row) {
   );
 }
 
-enum _LiveMatchesServer {
-  forjaLive,
-  stremio,
-  iptvSports,
-}
-
-LiveModeId _liveModeIdFor(_LiveMatchesServer server) => switch (server) {
-      _LiveMatchesServer.forjaLive => LiveModeId.forjaLive,
-      _LiveMatchesServer.iptvSports => LiveModeId.forjaSports,
-      _LiveMatchesServer.stremio => LiveModeId.stremio,
-    };
-
 String _liveForjaPluginDisplayName(String pluginId) {
   return LiveMatchesEngine.cachedPluginDisplayName(pluginId);
 }

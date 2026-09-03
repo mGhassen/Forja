@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
 import 'package:forja/shared/catalog/kit/sources/catalog_kit_list_source.dart';
-import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_mode_registry.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_prefs.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_schedule_source.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/live_sports_kit_page.dart';
@@ -49,40 +48,16 @@ void main() {
     });
   });
 
-  group('LiveModeId', () {
-    test('parses wire ids and legacy server prefs', () {
-      expect(LiveModeIdX.tryParse('forja_live'), LiveModeId.forjaLive);
-      expect(LiveModeIdX.tryParse('iptvSports'), LiveModeId.forjaSports);
-      expect(LiveModeIdX.tryParse('stremio'), LiveModeId.stremio);
-      expect(LiveModeIdX.tryParse('ppv'), LiveModeId.forjaLive);
-      expect(LiveModeIdX.tryParse('unknown'), isNull);
-    });
-
-    test('sharesCatalogSchedule for Forja Live ↔ Forja Sports', () {
-      expect(
-        LiveModeRegistry.sharesCatalogSchedule(
-          LiveModeId.forjaLive,
-          LiveModeId.forjaSports,
-        ),
-        isTrue,
-      );
-      expect(
-        LiveModeRegistry.sharesCatalogSchedule(
-          LiveModeId.forjaLive,
-          LiveModeId.stremio,
-        ),
-        isFalse,
-      );
-    });
-
-    test('LivePrefs keys migrate server_v1 to mode_v1', () {
-      expect(LivePrefs.modeKey, 'live_matches_mode_v1');
-      expect(LivePrefs.legacyServerKey, 'live_matches_server_v1');
+  group('LivePrefs', () {
+    test('keeps catalog / schedule / view keys; mode keys retired', () {
+      expect(LivePrefs.catalogFilterKey, 'live_matches_forja_catalog_filter_v1');
+      expect(LivePrefs.scheduleKey, 'live_matches_schedule_v2');
+      expect(LivePrefs.viewKey, 'live_matches_timeline_view');
     });
   });
 
   group('CatalogMetaItem live fields', () {
-    test('parses airing, starts_at, viewers, mode, sources', () {
+    test('parses airing, starts_at, viewers, sources', () {
       final item = CatalogMetaItem.fromJson({
         'id': 'test-a:1',
         'type': 'live_match',
@@ -90,7 +65,6 @@ void main() {
         'airing': true,
         'starts_at': '2026-09-01T18:00:00Z',
         'viewers': 1200,
-        'mode': 'forja_live',
         'sources': [
           {'pluginId': 'test-provider-a', 'id': '1'},
         ],
@@ -99,28 +73,23 @@ void main() {
       expect(item.airing, isTrue);
       expect(item.startsAt, '2026-09-01T18:00:00Z');
       expect(item.viewers, 1200);
-      expect(item.mode, 'forja_live');
       expect(item.sources, isNotEmpty);
       expect(item.open?.surface, 'live');
       expect(item.toJson()['starts_at'], '2026-09-01T18:00:00Z');
     });
 
     test('liveMetaFromScheduleRow maps opaque rows', () {
-      final item = liveMetaFromScheduleRow(
-        {
-          'id': 'evt-1',
-          'title': 'Alpha vs Beta',
-          'live': true,
-          'starts_at': '2026-09-01T18:00:00Z',
-          'viewers': 9,
-        },
-        mode: 'forja_live',
-      );
+      final item = liveMetaFromScheduleRow({
+        'id': 'evt-1',
+        'title': 'Alpha vs Beta',
+        'live': true,
+        'starts_at': '2026-09-01T18:00:00Z',
+        'viewers': 9,
+      });
       expect(item.id, 'evt-1');
       expect(item.type, 'live_match');
       expect(item.airing, isTrue);
       expect(item.open?.surface, 'live');
-      expect(item.mode, 'forja_live');
     });
   });
 }

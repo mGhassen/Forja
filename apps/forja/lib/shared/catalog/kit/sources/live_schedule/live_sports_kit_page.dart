@@ -5,7 +5,7 @@ import 'package:forja/shared/catalog/kit/sources/live_schedule/live_sports_hub_p
 
 /// Full-page host for `kit.list { source: live_schedule }` (RFC-071).
 ///
-/// Pack declares generic kit layout; this page owns mode/schedule/play chrome.
+/// Pack declares generic kit layout; host owns schedule chrome and play (RFC-073).
 class LiveSportsKitPage extends StatelessWidget {
   const LiveSportsKitPage({
     super.key,
