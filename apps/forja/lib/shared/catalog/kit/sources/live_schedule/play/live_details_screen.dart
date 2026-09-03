@@ -2,6 +2,50 @@ part of '../live_sports_hub_page.dart';
 
 enum _LiveMatchListTab { providers, liveTv }
 
+/// Play/details host for match chrome (RFC-073) — hub state implements this.
+abstract class LiveSportsPlayHost {
+  bool get mounted;
+  BuildContext get context;
+
+  Future<void> fillMatchDetailsProviders({
+    required _StreamedMatch match,
+    required _IptvSportsChannelsPanelController controller,
+    required List<_StreamedStreamChoice> choices,
+    required bool Function() isStale,
+    _IframeCatalogStream? iframeCatalogAnchor,
+  });
+
+  Future<_StreamedMatch> fillIptvSportsSources({
+    required _StreamedMatch match,
+    required _IptvSportsChannelsPanelController controller,
+    required bool Function() isStale,
+    bool loadBroadcastHints = true,
+  });
+
+  Future<void> playIptvSportsSources(
+    _StreamedMatch match,
+    List<IptvPlaySource> sources,
+    IptvPlaySource picked,
+  );
+
+  _StreamedStreamChoice? choiceForPanelSource(
+    IptvPlaySource picked,
+    List<_StreamedStreamChoice> choices,
+  );
+
+  Future<void> openResolvedStreamChoice(
+    _StreamedStreamChoice choice, {
+    List<_StreamedStreamChoice>? allChoices,
+  });
+
+  Future<void> openPanelLiveEngineSource(
+    IptvPlaySource picked,
+    List<IptvPlaySource> all,
+  );
+
+  int cardViewersForMatch(_StreamedMatch match);
+}
+
 /// Match detail — catalog-kit hero + stream cards (replaces Sources-only flow).
 class _LiveMatchDetailsScreen extends ConsumerStatefulWidget {
   const _LiveMatchDetailsScreen({
@@ -10,7 +54,7 @@ class _LiveMatchDetailsScreen extends ConsumerStatefulWidget {
     this.iframeCatalogAnchor,
   });
 
-  final _LiveMatchesScreenState host;
+  final LiveSportsPlayHost host;
   final _StreamedMatch match;
   final _IframeCatalogStream? iframeCatalogAnchor;
 
@@ -182,7 +226,7 @@ class _LiveMatchDetailsScreenState
       if (!mounted || gen != _providersLoadGen || _providersCtrl.isDisposed) {
         return;
       }
-      await host._fillMatchDetailsProviders(
+      await host.fillMatchDetailsProviders(
         match: widget.match,
         iframeCatalogAnchor: widget.iframeCatalogAnchor,
         controller: _providersCtrl,
@@ -213,7 +257,7 @@ class _LiveMatchDetailsScreenState
     _liveTvCtrl.resetForLoad();
     _liveTvCtrl.beginSearching('Live TV');
     try {
-      final display = await host._fillIptvSportsSources(
+      final display = await host.fillIptvSportsSources(
         match: widget.match,
         controller: _liveTvCtrl,
         isStale: () =>
@@ -264,7 +308,7 @@ class _LiveMatchDetailsScreenState
         return;
       }
       unawaited(
-        host._playIptvSportsSources(_displayMatch, all, picked),
+        host.playIptvSportsSources(_displayMatch, all, picked),
       );
       return;
     }
@@ -292,12 +336,12 @@ class _LiveMatchDetailsScreenState
     }
 
     if (picked.liveSourceKind == IptvLiveSourceKind.liveEngine) {
-      final hit = host._choiceForPanelSource(picked, _choices);
+      final hit = host.choiceForPanelSource(picked, _choices);
       if (hit != null) {
-        unawaited(host._openResolvedStreamChoice(hit, allChoices: _choices));
+        unawaited(host.openResolvedStreamChoice(hit, allChoices: _choices));
         return;
       }
-      unawaited(host._openPanelLiveEngineSource(picked, all));
+      unawaited(host.openPanelLiveEngineSource(picked, all));
       return;
     }
 
@@ -544,7 +588,7 @@ class _LiveMatchDetailsScreenState
 
   List<String> get _heroMetaParts {
     final m = _displayMatch;
-    final viewers = widget.host._cardViewersForMatch(m);
+    final viewers = widget.host.cardViewersForMatch(m);
     return [
       if (m.categoryLabel.trim().isNotEmpty) m.categoryLabel.trim(),
       if (m.isLive)
@@ -1928,7 +1972,7 @@ class _LiveBroadcastChannelChipState extends State<_LiveBroadcastChannelChip> {
 }
 
 Future<void> _openLiveMatchDetails({
-  required _LiveMatchesScreenState host,
+  required LiveSportsPlayHost host,
   required _StreamedMatch match,
   _IframeCatalogStream? iframeCatalogAnchor,
 }) async {
@@ -1943,6 +1987,6 @@ Future<void> _openLiveMatchDetails({
       ),
       settings: const RouteSettings(name: 'live_matches_detail'),
     ),
-    shellTabId: _LiveMatchesScreenState._tabId,
+    shellTabId: LiveSportsHubPageState._tabId,
   );
 }

@@ -3,7 +3,7 @@ part of '../live_sports_hub_page.dart';
 mixin _LiveMatchesPlayback
     on ConsumerState<LiveSportsHubPage>, _LiveMatchesData {
   @override
-  _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
+  LiveSportsHubPageState get _s => this as LiveSportsHubPageState;
 
   /// Leanback TV: never offer PPV / Streamed / Mut embed rows — only native.
   bool get _tvNativeLiveOnly => ShellScope.metricsOf(context).usesTvDensity;
@@ -66,7 +66,7 @@ mixin _LiveMatchesPlayback
     );
   }
 
-  Future<void> _fillMatchDetailsProviders({
+  Future<void> fillMatchDetailsProviders({
     required _StreamedMatch match,
     _IframeCatalogStream? iframeCatalogAnchor,
     required _IptvSportsChannelsPanelController controller,
@@ -115,9 +115,13 @@ mixin _LiveMatchesPlayback
   }
 
   _StreamedMatch _enrichedIptvSportsMatch(_StreamedMatch match) {
-    final mergedGame = _sportMatchGameForIptvResolve(match, _s._espnGames);
-    final espnPayload = _findEspnGameForMatch(match, _s._espnGames);
-    return _copyStreamedMatch(
+    final mergedGame = IptvSportsMatchService.sportMatchGameForResolve(
+      match,
+      _s._espnGames,
+    );
+    final espnPayload =
+        IptvSportsMatchService.findEspnGame(match, _s._espnGames);
+    return IptvSportsMatchService.copyMatch(
       match,
       sportMatchGame: mergedGame,
       homeTeam: () {
@@ -135,7 +139,7 @@ mixin _LiveMatchesPlayback
     );
   }
 
-  Future<_StreamedMatch> _fillIptvSportsSources({
+  Future<_StreamedMatch> fillIptvSportsSources({
     required _StreamedMatch match,
     required _IptvSportsChannelsPanelController controller,
     required bool Function() isStale,
@@ -147,7 +151,7 @@ mixin _LiveMatchesPlayback
       controller.beginBroadcastHintsLoad();
     }
     try {
-      await _resolveIptvSportsStreams(
+      await IptvSportsMatchService.resolveStreams(
         enriched,
         onPartial: (batch) {
           if (isStale() || controller.isDisposed) return;
@@ -159,7 +163,7 @@ mixin _LiveMatchesPlayback
     }
     if (loadBroadcastHints && !isStale() && !controller.isDisposed) {
       try {
-        final hints = await _broadcastHintsForMatch(enriched);
+        final hints = await IptvSportsMatchService.broadcastHintsFor(enriched);
         if (!isStale() && !controller.isDisposed) {
           controller.setBroadcastHints(hints);
         }
@@ -254,7 +258,7 @@ mixin _LiveMatchesPlayback
 
     Future<void> addForja() async {
       try {
-        await _resolveIptvSportsStreams(
+        await IptvSportsMatchService.resolveStreams(
           enriched,
           onPartial: (batch) {
             if (controller.isDisposed || isStale()) return;
@@ -306,7 +310,7 @@ mixin _LiveMatchesPlayback
     if (!controller.isDisposed && !isStale()) {
       controller.beginBroadcastHintsLoad();
       try {
-        final hints = await _broadcastHintsForMatch(enriched);
+        final hints = await IptvSportsMatchService.broadcastHintsFor(enriched);
         if (!controller.isDisposed && !isStale()) {
           controller.setBroadcastHints(hints);
         }
@@ -569,7 +573,7 @@ mixin _LiveMatchesPlayback
     return _isIframeCatalogMatch(choice.catalogMatch, choice.stream);
   }
 
-  Future<void> _openResolvedStreamChoice(
+  Future<void> openResolvedStreamChoice(
     _StreamedStreamChoice choice, {
     List<_StreamedStreamChoice>? allChoices,
   }) async {
@@ -581,7 +585,7 @@ mixin _LiveMatchesPlayback
   }
 
   /// Panel row with resolve params but no `_choices` hit (Stremio mix / desync).
-  Future<void> _openPanelLiveEngineSource(
+  Future<void> openPanelLiveEngineSource(
     IptvPlaySource picked,
     List<IptvPlaySource> all,
   ) async {
@@ -825,7 +829,7 @@ mixin _LiveMatchesPlayback
     return out;
   }
 
-  _StreamedStreamChoice? _choiceForPanelSource(
+  _StreamedStreamChoice? choiceForPanelSource(
     IptvPlaySource picked,
     List<_StreamedStreamChoice> choices,
   ) {
@@ -931,7 +935,7 @@ mixin _LiveMatchesPlayback
     return out;
   }
 
-  Future<void> _playIptvSportsSources(
+  Future<void> playIptvSportsSources(
     _StreamedMatch match,
     List<IptvPlaySource> sources,
     IptvPlaySource picked,

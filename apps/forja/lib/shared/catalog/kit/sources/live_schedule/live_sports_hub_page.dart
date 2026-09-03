@@ -7,6 +7,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
+import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
@@ -28,6 +29,7 @@ import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_sport_f
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_team_parse.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_iptv_sports_config.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_engine.dart';
+import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_play_kit.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/features/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
@@ -35,6 +37,8 @@ import 'package:forja/features/iptv/data/iptv_network.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/features/iptv/providers/iptv_controller_provider.dart';
+import 'package:forja/features/iptv/screens/iptv_catalog_workspace.dart';
+import 'package:forja/features/iptv/screens/iptv_portals_top_bar_button.dart';
 import 'package:forja/shared/navigation/media_details_back_button.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/media_details_tv_scope.dart';
@@ -50,11 +54,11 @@ import 'package:rust/rust.dart';
 // Live Sports hub page (RFC-071) — host-owned kit body for the live_sports pack.
 
 part 'data/live_meta.dart';
+part 'services/iptv_sports_match.dart';
 part 'data/live_catalog_loader.dart';
 part 'chrome/live_chrome_widgets.dart';
 part 'chrome/live_top_bar_controller.dart';
 part 'body/live_match_grid.dart';
-part 'body/live_match_timeline.dart';
 part 'play/live_play_dispatch.dart';
 part 'play/live_details_screen.dart';
 part 'providers/live_schedule_provider.dart';
@@ -79,25 +83,22 @@ class LiveSportsHubPage extends ConsumerStatefulWidget {
   final int refreshEpoch;
 
   @override
-  ConsumerState<LiveSportsHubPage> createState() => _LiveMatchesScreenState();
+  ConsumerState<LiveSportsHubPage> createState() => LiveSportsHubPageState();
 }
 
-/// Backward-compatible alias while nav / tests migrate.
-typedef LiveMatchesScreen = LiveSportsHubPage;
-
-class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
+class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
     with
         TickerProviderStateMixin,
         ShellTabRefresh<LiveSportsHubPage>,
         _LiveMatchesData,
         _LiveMatchesForjaLive,
         _LiveMatchesBuild,
-        _LiveMatchesTimeline,
-        _LiveMatchesPlayback {
+        _LiveMatchesPlayback
+    implements LiveSportsPlayHost {
   static const _tabId = 'live_matches';
+  static const _topBarRowId = 'live-top-bar';
   static const _chipRowId = 'sport-chips';
   static const _gridRowId = 'grid';
-  static const _granularityRowId = 'timeline-granularity';
   // tabs: All + each sport
   List<_Sport> _sports = [];
   bool _loading = true;
@@ -108,7 +109,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
   String _sportFilter = 'all';
 
   // Body layout: card grid or vertical timeline.
-  static const _timelineViewEnabled = false;
+  static const _timelineViewEnabled = false; // timeline deleted (RFC-073)
   static const _viewPreferenceKey = LivePrefs.viewKey;
   static const _forjaLiveCatalogFilterPreferenceKey =
       LivePrefs.catalogFilterKey;
@@ -179,8 +180,38 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
   /// Settings → Forja Sports **Catalog** toggles changed while this tab was hidden.
   bool _forjaLiveCatalogSettingsDirty = false;
 
-  /// Top catalog/schedule/portals chrome removed — grid merges all catalogs.
-  bool get _showCatalogTopBar => false;
+
+  /// Prevent stacking Catalog / Time bottom sheets on double-tap.
+  bool _topBarSheetOpen = false;
+
+  int get _topBarCatalogIndex => 0;
+
+  bool get _showIptvPortalTopBar => _iptvSportsEnabled;
+
+  /// Catalog + schedule window on the live sports hub.
+  bool get _showCatalogTopBar =>
+      !kLiveMatchesCatalogFiltersHidden && _forjaLivePluginLoads.isNotEmpty;
+
+  bool get _showTimeTopBar => _showCatalogTopBar;
+
+  int get _topBarTimeIndex {
+    var index = 0;
+    if (_showCatalogTopBar) index++;
+    return index;
+  }
+
+  /// [Catalog] → [Time] → Refresh → [Portals] → [View].
+  int get _topBarRefreshIndex {
+    var index = 0;
+    if (_showCatalogTopBar) index++;
+    if (_showTimeTopBar) index++;
+    return index;
+  }
+
+  int get _topBarPortalIndex => _topBarRefreshIndex + 1;
+
+  int get _topBarViewIndex =>
+      _showIptvPortalTopBar ? _topBarPortalIndex + 1 : _topBarRefreshIndex + 1;
 
   final FocusNode _refreshFocusNode = FocusNode(
     debugLabel: 'live-matches-refresh',
@@ -243,6 +274,22 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
         reloadNow: true,
       );
     }
+    unawaited(_consumePendingLivePlayOpen());
+  }
+
+  /// Cross-hub [LivePlayKit.openFromCatalogMeta] → open matching live fixture.
+  Future<void> _consumePendingLivePlayOpen() async {
+    final id = LivePlayKit.takePendingOpenMatchId();
+    if (id == null || id.isEmpty || !mounted) return;
+    _StreamedMatch? match;
+    for (final m in _streamedMatches) {
+      if (m.id == id || m.id.endsWith(':$id')) {
+        match = m;
+        break;
+      }
+    }
+    if (match == null || !match.isLive) return;
+    await (this as _LiveMatchesPlayback)._openStreamedMatch(match);
   }
 
   @override
@@ -446,6 +493,22 @@ class _LiveMatchesScreenState extends ConsumerState<LiveSportsHubPage>
     if (!mounted) return;
     setState(() => _iptvSportsEnabled = config.enabled);
     unawaited(LivePrefs.clearRetiredModePrefs());
+  }
+
+  void _toggleView() {
+    if (!mounted) return;
+    if (_liveMatchesLeanbackOnly(context)) return;
+    _viewWasToggled = true;
+    setState(() {
+      _view = _view == _LiveMatchesView.grid
+          ? _LiveMatchesView.timeline
+          : _LiveMatchesView.grid;
+      _timelineAutoScrolled = false;
+      _timelineHoveredBucketMs = null;
+      _timelineHoveredIndex = null;
+    });
+    _syncTimelineLiveTick();
+    unawaited(_persistViewPreference(_view == _LiveMatchesView.timeline));
   }
 
   Future<void> _persistViewPreference(bool showTimeline) async {

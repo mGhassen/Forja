@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **1 / 4** components · **4 / 4** acceptance (kill modes) · **0 / 4** acceptance (kit browse) · **0 / 4** acceptance (details + services) |
-| **Current slice** | Kill modes done — next: kit browse composition |
+| **Progress** | **2 / 4** components · **4 / 4** acceptance (kill modes) · **1 / 4** acceptance (kit browse) · **3 / 4** acceptance (details + services) |
+| **Current slice** | IPTV match service + play host + schedule source load + timeline deleted — full kit composition / part-library teardown still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -20,9 +20,9 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R73-C01 | Remove `LiveModeRegistry` / `_LiveMatchesServer` / mode prefs — capability flags only | ✅ |
-| 2 | R73-C02 | Browse chrome as generic kit composition (catalog/horizon sheets, sport chips, grid) — not a full-page host takeover | ⬜ |
-| 3 | R73-C03 | Match details as kit details — Providers (live JS + Stremio) / Live TV rails | ⬜ |
-| 4 | R73-C04 | Host service `iptv_sports_match` (portal channel search) callable from hub/details flow | ⬜ |
+| 2 | R73-C02 | Browse chrome as generic kit composition (catalog/horizon sheets, sport chips, grid) — not a full-page host takeover | 🔄 |
+| 3 | R73-C03 | Match details as kit details — Providers (live JS + Stremio) / Live TV rails | 🔄 |
+| 4 | R73-C04 | Host service `iptv_sports_match` (portal channel search) callable from hub/details flow | ✅ |
 
 ---
 
@@ -41,10 +41,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R73-A05 | Pack layout composes schedule from generic kit widgets + thin `live_schedule` data source | ⬜ |
+| 1 | R73-A05 | Pack layout composes schedule from generic kit widgets + thin `live_schedule` data source | 🔄 |
 | 2 | R73-A06 | Catalog / horizon / sport-chip chrome is kit or shared shell — not god-state mixins | ⬜ |
 | 3 | R73-A07 | TV D-pad graph uses shared recipes — not Live-only focus IDs baked into domain | ⬜ |
-| 4 | R73-A08 | `LiveSportsHubPage` no longer owns browse+details+play as one state object | ⬜ |
+| 4 | R73-A08 | `LiveSportsHubPage` no longer owns browse+details+play as one state object | 🔄 |
 
 ---
 
@@ -52,10 +52,10 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R73-A09 | Open match → kit / hub details surface (`open.surface: live`) | ⬜ |
-| 2 | R73-A10 | Providers rail resolves live JS + Stremio without mode enum | ⬜ |
-| 3 | R73-A11 | Live TV rail calls host IPTV match service (not inlined matcher UI in `live_schedule`) | ⬜ |
-| 4 | R73-A12 | Native player only — Forja Live never embed-falls back | ⬜ |
+| 1 | R73-A09 | Open match → kit / hub details surface (`open.surface: live`) | 🔄 |
+| 2 | R73-A10 | Providers rail resolves live JS + Stremio without mode enum | ✅ |
+| 3 | R73-A11 | Live TV rail calls host IPTV match service (not inlined matcher UI in `live_schedule`) | ✅ |
+| 4 | R73-A12 | Native player only — Forja Live never embed-falls back | ✅ |
 
 ---
 
@@ -75,11 +75,25 @@ RFC-071 relocated Live Matches under `kit/sources/live_schedule/` and a hub pack
 
 **Modes are dead.** Browse = catalog schedule. Resolve choice = **Providers** vs **Live TV** on match details. Settings toggles remain capability flags (catalogs enabled, IPTV sports on, Stremio live addons installed) — not a top-bar mode picker.
 
+### Shipped this slice
+
+- `IptvSportsMatchService` in `services/iptv_sports_match.dart` — Live TV / ESPN / broadcast match path
+- `HubLiveScheduleSource.load` — engine catalog → `CatalogMetaItem`
+- Timeline view **deleted** (cards only)
+- `_LiveMatchesScreenState` → `LiveSportsHubPageState`; `LiveMatchesScreen` typedef removed
+- `LiveSportsPlayHost` for details; `LivePlayKit` pending cross-hub open
+
+### Still open
+
+- Full `part of` god-library teardown (chrome/grid still mixins on hub state)
+- Generic kit composition for catalog/horizon/sport chips (R73-A06–A07)
+- Details as a true standalone kit route (not hub `part`)
+
 ### Slices
 
-1. **Kill modes** — delete registry / `_server` / mode prefs; keep capability flags.
-2. **Kit browse** — split god-page into kit widgets + thin data source.
-3. **Details + IPTV service** — kit details rails; host `iptv_sports_match` service.
+1. **Kill modes** — ✅
+2. **Kit browse** — 🔄 (source + timeline delete; composition remains)
+3. **Details + IPTV service** — 🔄 (service + play host; details still hub part)
 
 ### Related
 

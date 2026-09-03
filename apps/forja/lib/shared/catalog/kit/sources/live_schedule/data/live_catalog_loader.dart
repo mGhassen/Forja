@@ -35,7 +35,7 @@ class _ForjaLivePluginLoad {
 mixin _LiveMatchesForjaLive
     on ConsumerState<LiveSportsHubPage>, _LiveMatchesData {
   @override
-  _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
+  LiveSportsHubPageState get _s => this as LiveSportsHubPageState;
 
   bool get _usesForjaLiveLazyCatalog => true;
 
@@ -306,7 +306,7 @@ mixin _LiveMatchesForjaLive
   Future<void> _restoreForjaLiveCatalogFilterPreference() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(
-      _LiveMatchesScreenState._forjaLiveCatalogFilterPreferenceKey,
+      LiveSportsHubPageState._forjaLiveCatalogFilterPreferenceKey,
     );
     if (saved == null || saved.isEmpty || saved == 'all') return;
     if (!mounted) return;
@@ -316,7 +316,7 @@ mixin _LiveMatchesForjaLive
   Future<void> _persistForjaLiveCatalogFilterPreference(String filter) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      _LiveMatchesScreenState._forjaLiveCatalogFilterPreferenceKey,
+      LiveSportsHubPageState._forjaLiveCatalogFilterPreferenceKey,
       filter,
     );
   }
@@ -338,8 +338,8 @@ mixin _LiveMatchesForjaLive
 
   Future<void> _restoreTimeWindowPreference() async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_LiveMatchesScreenState._schedulePreferenceKey) ??
-        prefs.getString(_LiveMatchesScreenState._timeWindowPreferenceKeyLegacy);
+    final raw = prefs.getString(LiveSportsHubPageState._schedulePreferenceKey) ??
+        prefs.getString(LiveSportsHubPageState._timeWindowPreferenceKeyLegacy);
     final saved = _liveMatchesScheduleFromPref(raw);
     if (saved == null) return;
     if (!mounted) return;
@@ -362,7 +362,7 @@ mixin _LiveMatchesForjaLive
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
-      _LiveMatchesScreenState._schedulePreferenceKey,
+      LiveSportsHubPageState._schedulePreferenceKey,
       _liveMatchesSchedulePref(status: status, horizon: horizon),
     );
   }
@@ -521,7 +521,7 @@ mixin _LiveMatchesForjaLive
 
   void _clearPluginScheduleCaches() {
     LiveMatchesEngine.invalidateDerivedCaches();
-    invalidateLiveBroadcastCaches();
+    IptvSportsMatchService.invalidateBroadcastCaches();
   }
 
   void _applyEngineCatalogSettingsChange({required bool reloadNow}) {
@@ -571,12 +571,12 @@ mixin _LiveMatchesForjaLive
 
     var enrichGames = _s._espnGames;
     if (enrichGames.isEmpty) {
-      enrichGames = await _fetchEspnSportMatchGames();
+      enrichGames = await IptvSportsMatchService.fetchEspnGames();
     }
     if (!mounted) return;
 
     final base = _stripEspnMergedScheduleRows(_s._streamedMatches);
-    final merged = _mergeStreamedWithEspn(
+    final merged = IptvSportsMatchService.mergeWithEspn(
       base,
       enrichGames,
       appendUnmatched: false,

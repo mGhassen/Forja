@@ -2,22 +2,37 @@ part of '../live_sports_hub_page.dart';
 
 mixin _LiveMatchesData
     on ConsumerState<LiveSportsHubPage>, ShellTabRefresh<LiveSportsHubPage> {
-  _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
+  LiveSportsHubPageState get _s => this as LiveSportsHubPageState;
 
   bool get _tvFocusEnabled =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
+  void _scheduleRestoreCatalogTopBarFocus() {
+    if (!_tvFocusEnabled) return;
+    void attempt() {
+      if (!mounted) return;
+      _focusTopBarItem(_s._topBarCatalogIndex);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      attempt();
+      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
+    });
+  }
+
+  /// Re-land on the last grid / chip / timeline row after lazy catalog
+  /// setStates — sport-tab remounts release item focus but keep row memory.
   void _scheduleRestoreLiveMatchesTvFocus() {
     if (!_tvFocusEnabled) return;
     if (!(this as ShellTabRefresh<LiveSportsHubPage>).shellTabVisible) return;
 
     void attempt() {
       if (!mounted) return;
-      if (ShellTvFocus.currentNavTabId != _LiveMatchesScreenState._tabId) {
+      if (ShellTvFocus.currentNavTabId != LiveSportsHubPageState._tabId) {
         return;
       }
       if (ShellTvFocusCoordinator.tabHasAttachedFocus(
-        _LiveMatchesScreenState._tabId,
+        LiveSportsHubPageState._tabId,
       )) {
         return;
       }
@@ -28,6 +43,28 @@ mixin _LiveMatchesData
       attempt();
       WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
     });
+  }
+
+  void _focusTopBarItem(int index) {
+    if ((_s._showCatalogTopBar && index == _s._topBarCatalogIndex) ||
+        (_s._showTimeTopBar && index == _s._topBarTimeIndex) ||
+        (_s._showIptvPortalTopBar && index == _s._topBarPortalIndex)) {
+      ShellTvFocusCoordinator.focusRowItem(
+        LiveSportsHubPageState._tabId,
+        LiveSportsHubPageState._topBarRowId,
+        index,
+      );
+      return;
+    }
+    final node = index == _s._topBarViewIndex
+        ? _s._viewFocusNode
+        : _s._refreshFocusNode;
+    if (!node.canRequestFocus) return;
+    node.requestFocus();
+    ShellTvFocusCoordinator.saveFocus(
+      LiveSportsHubPageState._tabId,
+      ShellTvFocusMemory(zone: ShellTvZone.topBar, node: node),
+    );
   }
 
   Future<void> _syncMyIptvFromActivePortal(
@@ -59,12 +96,181 @@ mixin _LiveMatchesData
     unawaited(_liveBroadcastIndexCached());
   }
 
-  /// Sport chips ↑ → nav (no hub top bar).
-  void _focusFromSportChipsUp() {
-    ShellTvFocus.focusCurrentNavTab();
+  void _openCatalogPicker() {
+    if (_s._topBarSheetOpen) return;
+    final loads = _s._forjaLivePluginLoads.values.toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
+    if (loads.isEmpty) return;
+    _s._topBarSheetOpen = true;
+    unawaited(() async {
+      try {
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: const Color(0xFF141414),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => _LiveMatchesCatalogSheet(
+            current: _s._forjaLivePluginFilter,
+            catalogs: loads,
+            onSelected: (filter) {
+              Navigator.pop(context);
+              (this as _LiveMatchesForjaLive)._setForjaLivePluginFilter(filter);
+            },
+          ),
+        );
+      } finally {
+        _s._topBarSheetOpen = false;
+      }
+    }());
   }
 
-  /// First grid row ↑ → sport chips → nav.
+  void _openTimeWindowPicker() {
+    if (_s._topBarSheetOpen) return;
+    _s._topBarSheetOpen = true;
+    unawaited(() async {
+      try {
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: const Color(0xFF141414),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => _LiveMatchesScheduleSheet(
+            status: _s._scheduleStatus,
+            horizon: _s._scheduleHorizon,
+            onChanged: ({
+              _LiveMatchesScheduleStatus? status,
+              _LiveMatchesScheduleHorizon? horizon,
+            }) {
+              (this as _LiveMatchesForjaLive)._setScheduleFilter(
+                status: status,
+                horizon: horizon,
+              );
+            },
+          ),
+        );
+      } finally {
+        _s._topBarSheetOpen = false;
+      }
+    }());
+  }
+
+  void _toggleIptvPortalPanel() {
+    ref.read(iptvControllerProvider).togglePortalPanel();
+  }
+
+  String get _catalogTopBarLabel {
+    final filter = _s._forjaLivePluginFilter;
+    if (filter.isEmpty || filter == 'all') {
+      return (this as _LiveMatchesForjaLive)._defaultForjaLiveCatalogLabel() ??
+          'Catalog';
+    }
+    return (this as _LiveMatchesForjaLive)._forjaLivePluginLoadForFilter(filter)
+            ?.label ??
+        _liveForjaPluginDisplayName(filter);
+  }
+
+  Widget _catalogTopBarButton() {
+    return _LiveMatchesTopBarActionButton(
+      label: _catalogTopBarLabel,
+      icon: Icons.video_library_rounded,
+      accent: false,
+      tvItemIndex: _s._topBarCatalogIndex,
+      onTap: _openCatalogPicker,
+      onLeftEdge: shellTvNavLeftEdge(
+        context,
+        listIndex: _s._topBarCatalogIndex,
+      ),
+      onRightEdge: () => _focusTopBarItem(
+        _s._showTimeTopBar ? _s._topBarTimeIndex : _s._topBarRefreshIndex,
+      ),
+      onDownEdge: _topBarDownEdge,
+    );
+  }
+
+  Widget _timeTopBarButton() {
+    return _LiveMatchesTopBarActionButton(
+      label: _liveMatchesScheduleChipLabel(
+        status: _s._scheduleStatus,
+        horizon: _s._scheduleHorizon,
+      ),
+      icon: Icons.schedule_rounded,
+      accent: false,
+      tvItemIndex: _s._topBarTimeIndex,
+      onTap: _openTimeWindowPicker,
+      onLeftEdge: () => _focusTopBarItem(
+        _s._showCatalogTopBar
+            ? _s._topBarCatalogIndex
+            : _s._topBarRefreshIndex,
+      ),
+      onRightEdge: () => _focusTopBarItem(_s._topBarRefreshIndex),
+      onDownEdge: _topBarDownEdge,
+    );
+  }
+
+  Widget _iptvPortalTopBarButton(IptvController ctrl) {
+    return IptvPortalsTopBarButton(
+      ctrl: ctrl,
+      onTogglePanel: _toggleIptvPortalPanel,
+      tvTabId: LiveSportsHubPageState._tabId,
+      tvRowId: LiveSportsHubPageState._topBarRowId,
+      tvItemIndex: _s._topBarPortalIndex,
+      onLeftEdge: () => _focusTopBarItem(_s._topBarRefreshIndex),
+      onRightEdge: () {},
+      onDownEdge: _topBarDownEdge,
+    );
+  }
+
+  void _topBarDownEdge() {
+    if (_s._hasSportChips) {
+      final chip = ShellTvFocusCoordinator.rowHandle(
+        LiveSportsHubPageState._tabId,
+        LiveSportsHubPageState._chipRowId,
+      );
+      if (chip != null && chip.itemCount > 0) {
+        final idx = chip.lastFocusedIndex.clamp(0, chip.itemCount - 1);
+        ShellTvFocusCoordinator.focusRowItem(
+          LiveSportsHubPageState._tabId,
+          LiveSportsHubPageState._chipRowId,
+          idx,
+        );
+        return;
+      }
+    }
+    _restoreLiveMatchesTvFocus();
+  }
+
+  /// Sport chips ↑ → top-bar Servers / Catalog / Time (never a picker sheet row).
+  void _focusFromSportChipsUp() {
+    final top = ShellTvFocusCoordinator.rowHandle(
+      LiveSportsHubPageState._tabId,
+      LiveSportsHubPageState._topBarRowId,
+    );
+    if (top != null && top.itemCount > 0) {
+      final idx = top.lastFocusedIndex.clamp(0, top.itemCount - 1);
+      if (ShellTvFocusCoordinator.focusRowItem(
+        LiveSportsHubPageState._tabId,
+        LiveSportsHubPageState._topBarRowId,
+        idx,
+      )) {
+        return;
+      }
+    }
+    if (_s._showTimeTopBar) {
+      _focusTopBarItem(_s._topBarTimeIndex);
+      return;
+    }
+    if (_s._showCatalogTopBar) {
+      _focusTopBarItem(_s._topBarCatalogIndex);
+      return;
+    }
+    _focusTopBarItem(_s._topBarRefreshIndex);
+  }
+
+  /// First grid row ↑ → sport chips → Catalog / Time.
   VoidCallback? _gridUpEdge(BuildContext context, int index, int crossCount) {
     if (!_s._tvFocus(context) || index ~/ crossCount != 0) return null;
     return _gridFocusUp;
@@ -73,26 +279,34 @@ mixin _LiveMatchesData
   void _gridFocusUp() {
     if (_s._hasSportChips) {
       ShellTvFocusCoordinator.focusFromResultsRowUp(
-        tabId: _LiveMatchesScreenState._tabId,
-        chipRowId: _LiveMatchesScreenState._chipRowId,
+        tabId: LiveSportsHubPageState._tabId,
+        chipRowId: LiveSportsHubPageState._chipRowId,
       );
       return;
     }
-    ShellTvFocus.focusCurrentNavTab();
+    if (_s._showTimeTopBar) {
+      _focusTopBarItem(_s._topBarTimeIndex);
+      return;
+    }
+    if (_s._showCatalogTopBar) {
+      _focusTopBarItem(_s._topBarCatalogIndex);
+      return;
+    }
+    _focusTopBarItem(_s._topBarRefreshIndex);
   }
 
   bool get _applyTimeWindowFilter => _s._showCatalogTopBar;
 
   bool _focusGridItem(int index) {
     final handle = ShellTvFocusCoordinator.rowHandle(
-      _LiveMatchesScreenState._tabId,
-      _LiveMatchesScreenState._gridRowId,
+      LiveSportsHubPageState._tabId,
+      LiveSportsHubPageState._gridRowId,
     );
     if (handle == null || handle.itemCount <= 0) return false;
     final idx = index.clamp(0, handle.itemCount - 1);
     return ShellTvFocusCoordinator.focusRowItem(
-      _LiveMatchesScreenState._tabId,
-      _LiveMatchesScreenState._gridRowId,
+      LiveSportsHubPageState._tabId,
+      LiveSportsHubPageState._gridRowId,
       idx,
     );
   }
@@ -100,8 +314,8 @@ mixin _LiveMatchesData
   bool _restoreLiveMatchesTvFocus() {
     bool tryFocus() {
       final grid = ShellTvFocusCoordinator.rowHandle(
-        _LiveMatchesScreenState._tabId,
-        _LiveMatchesScreenState._gridRowId,
+        LiveSportsHubPageState._tabId,
+        LiveSportsHubPageState._gridRowId,
       );
       if (grid != null && grid.itemCount > 0) {
         final idx = grid.lastFocusedIndex.clamp(0, grid.itemCount - 1);
@@ -109,13 +323,13 @@ mixin _LiveMatchesData
       }
       for (final rowId in _s._timelineTvRowIds) {
         final handle = ShellTvFocusCoordinator.rowHandle(
-          _LiveMatchesScreenState._tabId,
+          LiveSportsHubPageState._tabId,
           rowId,
         );
         if (handle == null || handle.itemCount <= 0) continue;
         final idx = handle.lastFocusedIndex.clamp(0, handle.itemCount - 1);
         return ShellTvFocusCoordinator.focusRowItem(
-          _LiveMatchesScreenState._tabId,
+          LiveSportsHubPageState._tabId,
           rowId,
           idx,
         );
@@ -126,7 +340,7 @@ mixin _LiveMatchesData
     if (tryFocus()) return true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted ||
-          ShellTvFocus.currentNavTabId != _LiveMatchesScreenState._tabId) {
+          ShellTvFocus.currentNavTabId != LiveSportsHubPageState._tabId) {
         return;
       }
       tryFocus();
@@ -144,7 +358,7 @@ mixin _LiveMatchesData
       return;
     }
     if (!ShellTvFocusCoordinator.tabHasAttachedFocus(
-      _LiveMatchesScreenState._tabId,
+      LiveSportsHubPageState._tabId,
     )) {
       return;
     }
@@ -153,10 +367,42 @@ mixin _LiveMatchesData
     } catch (_) {}
   }
 
+  void _onTopBarRefreshPressed() {
+    if (_s._tvFocus(context)) {
+      _s._restoreRefreshFocus = true;
+    }
+    unawaited(_load());
+  }
+
+  bool get _refreshFocusRestoreSettled =>
+      !_s._loading &&
+      (!(this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog ||
+          !(this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy);
+
   void _scheduleRestoreRefreshFocus({bool clearWhenSettled = false}) {
     if (!_s._restoreRefreshFocus) return;
-    _s._restoreRefreshFocus = false;
-    _scheduleRestoreLiveMatchesTvFocus();
+    void attempt({required bool clear}) {
+      if (!mounted || !_s._restoreRefreshFocus) return;
+      final node = _s._refreshFocusNode;
+      if (node.canRequestFocus && !node.hasFocus) {
+        node.requestFocus();
+        ShellTvFocusCoordinator.saveFocus(
+          LiveSportsHubPageState._tabId,
+          ShellTvFocusMemory(zone: ShellTvZone.topBar, node: node),
+        );
+      }
+      if (clear && _refreshFocusRestoreSettled) {
+        _s._restoreRefreshFocus = false;
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      attempt(clear: false);
+      // Beat empty-panel / chip remount autofocus on the next frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        attempt(clear: clearWhenSettled);
+      });
+    });
   }
 
   void _clearTimelineTvRows() {

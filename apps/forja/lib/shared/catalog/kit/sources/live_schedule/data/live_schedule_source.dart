@@ -1,4 +1,6 @@
+import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_engine.dart';
 import 'package:forja/shared/catalog/protocol.dart';
+import 'package:forja/shared/engine/engine.dart';
 
 /// Host-backed schedule for `kit.list { source: live_schedule }`.
 abstract final class CatalogKitLiveSources {
@@ -23,15 +25,14 @@ class LiveScheduleQuery {
   final String sportFilter;
 }
 
-/// Host schedule backend. Browse merge still runs inside [LiveSportsHubPage];
-/// [load] maps opaque schedule rows to [CatalogMetaItem] for kit consumers.
+/// Host schedule backend — loads enabled Forja Live catalog plugins into meta.
 abstract class LiveScheduleSource {
   String get id;
 
   Future<List<CatalogMetaItem>> load(LiveScheduleQuery query);
 }
 
-/// Default `live_schedule` source — identity mapper for host-owned rows.
+/// Default `live_schedule` source (RFC-073) — engine catalog rows → [CatalogMetaItem].
 class HubLiveScheduleSource implements LiveScheduleSource {
   const HubLiveScheduleSource();
 
@@ -40,7 +41,51 @@ class HubLiveScheduleSource implements LiveScheduleSource {
 
   @override
   Future<List<CatalogMetaItem>> load(LiveScheduleQuery query) async {
-    return const [];
+    await LiveMatchesEngine.warmPluginMeta();
+    final plugins =
+        await EngineService.instance.listEnabledLiveCatalogPlugins();
+    if (plugins.isEmpty) return const [];
+
+    final filter = query.catalogFilter.trim();
+    final wanted = filter.isEmpty || filter == 'all'
+        ? plugins
+        : [
+            for (final p in plugins)
+              if (EngineService.normalizeLiveSportPluginId(p.id) ==
+                      EngineService.normalizeLiveSportPluginId(filter) ||
+                  p.id == filter)
+                p,
+          ];
+    if (wanted.isEmpty) return const [];
+
+    final out = <CatalogMetaItem>[];
+    final seen = <String>{};
+    for (final plugin in wanted) {
+      try {
+        final batch = await EngineService.instance.runLiveCatalog(
+          catalogPlugin: plugin,
+        );
+        for (final row in batch) {
+          if (row is! Map) continue;
+          final map = Map<String, dynamic>.from(row);
+          final item = liveMetaFromScheduleRow(map);
+          if (item.id.isEmpty || !seen.add(item.id)) continue;
+          if (query.sportFilter != 'all' && query.sportFilter.isNotEmpty) {
+            final cat = (map['category'] ?? map['category_name'] ?? '')
+                .toString()
+                .toLowerCase();
+            if (!cat.contains(query.sportFilter.toLowerCase()) &&
+                item.type != query.sportFilter) {
+              continue;
+            }
+          }
+          out.add(item);
+        }
+      } catch (_) {
+        // Skip failed catalogs — hub UI shows per-plugin errors separately.
+      }
+    }
+    return out;
   }
 }
 

@@ -91,5 +91,13 @@ void main() {
       expect(item.airing, isTrue);
       expect(item.open?.surface, 'live');
     });
+
+    test('HubLiveScheduleSource resolves live_schedule id', () {
+      expect(
+        CatalogKitLiveSources.resolve('live_schedule'),
+        isA<HubLiveScheduleSource>(),
+      );
+      expect(const HubLiveScheduleSource().id, 'live_schedule');
+    });
   });
 }

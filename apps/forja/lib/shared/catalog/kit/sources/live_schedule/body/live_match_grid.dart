@@ -1,7 +1,7 @@
 part of '../live_sports_hub_page.dart';
 
 mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
-  _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
+  LiveSportsHubPageState get _s => this as LiveSportsHubPageState;
 
   bool _tvFocus(BuildContext context) =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -179,8 +179,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       accent: meta.accent,
       selected: selected,
       listIndex: index,
-      tvTabId: _LiveMatchesScreenState._tabId,
-      tvRowId: _LiveMatchesScreenState._chipRowId,
+      tvTabId: LiveSportsHubPageState._tabId,
+      tvRowId: LiveSportsHubPageState._chipRowId,
       onTap: () {
         if (index != _s._tabController!.index) {
           _s._tabController!.animateTo(index);
@@ -280,6 +280,34 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       });
       ref.watch(liveMatchesPrimaryLoadProvider);
     }
+
+    final iptvCtrl = _s._showIptvPortalTopBar
+        ? ref.watch(iptvControllerProvider)
+        : null;
+    if (iptvCtrl != null) {
+      ref.listen(iptvControllerProvider, (prev, next) {
+        // Use live shellTabVisible — hide does not rebuild, so closed-over
+        // tabVisible from build would stay true on the IPTV tab.
+        if (!_s._showIptvPortalTopBar ||
+            !mounted ||
+            !(this as ShellTabRefresh<LiveSportsHubPage>).shellTabVisible) {
+          return;
+        }
+        final key = next.activePortal?.key;
+        if (key == null) return;
+        if (key == _s._lastSyncedIptvPortalKey &&
+            (prev == null || prev.portalPanelOpen == next.portalPanelOpen)) {
+          return;
+        }
+        unawaited(
+          (this as _LiveMatchesData)._syncMyIptvFromActivePortal(
+            next,
+            reload: true,
+          ),
+        );
+      });
+    }
+
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -290,10 +318,152 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         Expanded(child: _buildBody()),
       ],
     );
+    final belowHeader = iptvCtrl == null
+        ? content
+        : _buildIptvPortalStack(context, iptvCtrl, content);
 
     return TvFocusGraph(
-      tabId: _LiveMatchesScreenState._tabId,
-      child: content,
+      tabId: LiveSportsHubPageState._tabId,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(iptvCtrl),
+          Expanded(child: belowHeader),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIptvPortalStack(
+    BuildContext context,
+    IptvController ctrl,
+    Widget content,
+  ) {
+    const panelWidth = 380.0;
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final useSidePanel = wide || ShellTokens.isAndroidTvDevice;
+    return Stack(
+      children: [
+        content,
+        if (ctrl.portalPanelOpen && useSidePanel)
+          Positioned(
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: panelWidth,
+            child: IptvPortalPanel(
+              ctrl: ctrl,
+              width: panelWidth,
+              onClose: ctrl.closePortalPanel,
+            ),
+          ),
+        if (ctrl.portalPanelOpen && !useSidePanel)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: ctrl.closePortalPanel,
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.45),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: () {},
+                    child: IptvPortalPanel(
+                      ctrl: ctrl,
+                      width: MediaQuery.sizeOf(context).width * 0.92,
+                      onClose: ctrl.closePortalPanel,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildHeader([IptvController? iptvCtrl]) {
+    final tvFocus = _tvFocus(context);
+    final topBarItemCount = tvFocus
+        ? (_s._showIptvPortalTopBar
+            ? _s._topBarPortalIndex + 1
+            : _s._topBarRefreshIndex + 1)
+        : (LiveSportsHubPageState._timelineViewEnabled
+            ? _s._topBarViewIndex + 1
+            : _s._topBarRefreshIndex + 1);
+
+    final refresh = tvFocus
+        ? _LiveMatchesRefreshTopBarButton(
+            focusNode: _s._refreshFocusNode,
+            tvItemIndex: _s._topBarRefreshIndex,
+            onTap: _s._onTopBarRefreshPressed,
+            onDownEdge: _s._topBarDownEdge,
+            onLeftEdge: () => _s._focusTopBarItem(
+              _s._showTimeTopBar
+                  ? _s._topBarTimeIndex
+                  : _s._showCatalogTopBar
+                      ? _s._topBarCatalogIndex
+                      : _s._topBarRefreshIndex,
+            ),
+            onRightEdge: _s._showIptvPortalTopBar
+                ? () => _s._focusTopBarItem(_s._topBarPortalIndex)
+                : () {},
+          )
+        : IconButton(
+            tooltip: 'Refresh',
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
+            onPressed: _s._load,
+          );
+
+    final header = Padding(
+      padding: EdgeInsets.fromLTRB(
+        ShellTokens.compactChromeLeadingInset(context),
+        10,
+        ShellTokens.bodyHorizontalPadding,
+        8,
+      ),
+      child: Row(
+        children: [
+          if (_s._showCatalogTopBar) ...[
+            _s._catalogTopBarButton(),
+            if (_s._showTimeTopBar) const SizedBox(width: 8),
+          ],
+          if (_s._showTimeTopBar) _s._timeTopBarButton(),
+          const Spacer(),
+          refresh,
+          if (!_liveMatchesLeanbackOnly(context) &&
+              LiveSportsHubPageState._timelineViewEnabled) ...[
+            const SizedBox(width: 4),
+            _buildViewToggle(),
+          ],
+          if (_s._showIptvPortalTopBar && iptvCtrl != null) ...[
+            const SizedBox(width: 8),
+            _s._iptvPortalTopBarButton(iptvCtrl),
+          ],
+        ],
+      ),
+    );
+
+    if (!tvFocus) return header;
+    return TvCatalogRow(
+      tabId: LiveSportsHubPageState._tabId,
+      rowId: LiveSportsHubPageState._topBarRowId,
+      sortOrder: 0,
+      itemCount: topBarItemCount,
+      child: header,
+    );
+  }
+
+  Widget _buildViewToggle() {
+    final isTimeline = _s._view == _LiveMatchesView.timeline;
+    final icon = isTimeline
+        ? Icons.grid_view_rounded
+        : Icons.view_timeline_rounded;
+    final tip = isTimeline ? 'Card view' : 'Timeline view';
+
+    return IconButton(
+      tooltip: tip,
+      icon: Icon(icon, color: Colors.white70),
+      onPressed: _s._toggleView,
     );
   }
 
@@ -304,7 +474,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
 
     final itemCount = _s._sports.length + 1;
     final tvFocus = _tvFocus(context);
-    final resultsRowId = _LiveMatchesScreenState._gridRowId;
+    final resultsRowId = LiveSportsHubPageState._gridRowId;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -323,8 +493,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
 
           if (tvFocus) {
             return TvChipStrip(
-              tabId: _LiveMatchesScreenState._tabId,
-              rowId: _LiveMatchesScreenState._chipRowId,
+              tabId: LiveSportsHubPageState._tabId,
+              rowId: LiveSportsHubPageState._chipRowId,
               sortOrder: _chipSortOrder,
               itemCount: itemCount,
               resultsRowId: resultsRowId,
@@ -392,12 +562,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         _s._iframeCatalogStreams.isEmpty) {
       return _buildForjaLiveCatalogProgress();
     }
-    // Leanback TV is cards-only (timeline D-pad is not supported).
-    if (_LiveMatchesScreenState._timelineViewEnabled &&
-        !_liveMatchesLeanbackOnly(context) &&
-        _s._view == _LiveMatchesView.timeline) {
-      return _s._buildTimelineBody();
-    }
     return _buildAllBody();
   }
 
@@ -458,8 +622,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         );
         if (!tvFocus) return grid;
         return TvGrid(
-          tabId: _LiveMatchesScreenState._tabId,
-          rowId: _LiveMatchesScreenState._gridRowId,
+          tabId: LiveSportsHubPageState._tabId,
+          rowId: LiveSportsHubPageState._gridRowId,
           sortOrder: _gridSortOrder,
           itemCount: entries.length,
           columns: crossCount,
@@ -503,7 +667,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       ),
       _LiveMatchGridEntryStreamed(:final match) => _StreamedMatchCard(
         match: match,
-        viewersOverride: _cardViewersForMatch(match),
+        viewersOverride: cardViewersForMatch(match),
         gridIndex: i,
         gridColumns: crossCount,
         onUpEdge: upEdge,
@@ -540,7 +704,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
   }
 
   /// PPV-style card badge: resolved stream total when known, else catalog sum.
-  int _cardViewersForMatch(_StreamedMatch match) {
+  int cardViewersForMatch(_StreamedMatch match) {
     final cached = _s._eventStreamViewerTotals[_liveEventViewerKey(match)];
     if (cached != null && cached > 0) return cached;
     final inline = match.inlineStreams.fold<int>(

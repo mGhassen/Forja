@@ -93,7 +93,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [070-[partial]-…](070-[partial]-catalog-hub-protocol.md) | Catalog hub protocol (shell tabs from `kind: catalog` plugins) | v1.4 | partial | 11/11 · 14/15 · 12/12 hub parity · **1/1** hub contribution · 4/4 host enrich · **6/6** enrich companion · 1/1 required packs · 6/6 shared cache · 2/2 host assets · **7/7** Arabic/open · **5/5** search capabilities · **5/5** My List host · **1/1** Live Sports hub | — |
 | [071-[fixed]-…](fixed/071-[fixed]-live-sports-hub-kit.md) | Live Sports catalog hub kit | v1.4 | fixed | **Complete** · 9/9 · 21/21 | — |
 | [072-[open]-…](072-[open]-iptv-vod-catalog-details.md) | IPTV VOD catalog details plugin + shared hub kit | v1.4 | open | 4/4 · 6/6 | — |
-| [073-[open]-…](073-[open]-live-sports-kit-ownership.md) | Live Sports kit ownership (kill modes → kit browse → details + IPTV service) | v1.4 | open | **1/4** · **4/4** kill modes · 0/4 kit browse · 0/4 details+services | — |
+| [073-[open]-…](073-[open]-live-sports-kit-ownership.md) | Live Sports kit ownership (kill modes → kit browse → details + IPTV service) | v1.4 | open | **2/4** · **4/4** kill modes · **1/4** kit browse · **3/4** details+services | — |
 
 ## Related
 
