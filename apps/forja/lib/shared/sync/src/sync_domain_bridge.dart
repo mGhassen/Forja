@@ -596,9 +596,11 @@ class SyncDomainBridge {
 
   Future<Map<String, dynamic>> _exportNavigationCompact() async {
     final ids = await _settings.getNavbarConfig();
+    final tabOrder = await _settings.getNavbarTabOrder();
     final defaultTab = await _settings.getDefaultNavTab();
     final out = <String, dynamic>{};
     if (ids.isNotEmpty) out['visibleIds'] = ids;
+    if (tabOrder.isNotEmpty) out['tabOrder'] = tabOrder;
     if (defaultTab.trim().isNotEmpty) {
       out['defaultTab'] = defaultTab.trim();
     }
@@ -607,8 +609,12 @@ class SyncDomainBridge {
 
   Future<void> _importNavigation(Map<String, dynamic> payload) async {
     if (payload['visibleIds'] is List) {
+      final tabOrder = payload['tabOrder'] is List
+          ? (payload['tabOrder'] as List).cast<String>()
+          : null;
       await _settings.setNavbarConfig(
         (payload['visibleIds'] as List).cast<String>(),
+        tabOrder: tabOrder,
       );
     }
     if (payload['defaultTab'] is String) {

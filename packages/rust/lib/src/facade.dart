@@ -371,6 +371,7 @@ abstract final class Engine {
     'light_mode',
     'avoid_unsupported_audio',
     'navbar_config',
+    'navbar_tab_order',
     'navbar_known_ids',
     'watch_history',
     'dismissed_history',
@@ -482,6 +483,7 @@ abstract final class Engine {
 
       migrateStringList('prowlarr_tag_ids');
       migrateStringList('navbar_config');
+      migrateStringList('navbar_tab_order');
       migrateStringList('navbar_known_ids');
       migrateJsonList('watch_history');
       migrateJsonList('dismissed_history');

@@ -31,7 +31,7 @@ class BootNeeds {
   /// Any contributed catalog hub tab is visible (not IPTV / Live / Settings).
   final bool hubTab;
 
-  /// Hub and/or My List — splash catalog affinity (prefetch / copy).
+  /// Contributed catalog hub tab — splash catalog affinity (prefetch / copy).
   final bool catalogTab;
 
   /// Effective: Direct torrent on **and** a VOD tab visible.
@@ -62,7 +62,7 @@ class BootNeeds {
   bool get needsForjaPluginWarm =>
       catalogTab || engine || torrent || nuvio;
 
-  /// My List or any contributed catalog hub tab.
+  /// Any contributed catalog hub tab.
   static bool isVodNavId(String id) {
     if (archivedNavIds.contains(id)) return false;
     if (PluginNavRegistry.coreShellNavIds.contains(id)) return false;
@@ -96,16 +96,24 @@ class BootNeeds {
     final s = settings ?? SettingsService();
     await PluginNavRegistry.refresh();
     var nav = await s.getNavbarConfig();
-    nav = nav.where((id) => !archivedNavIds.contains(id)).toList();
+    nav = nav
+        .where((id) => !archivedNavIds.contains(id))
+        .where(PluginNavRegistry.isContributed)
+        .toList();
+    if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
+      nav = nav
+          .where((id) => !PlatformPlayback.torrentNavIds.contains(id))
+          .toList();
+    }
 
     final lanReady = await PlaySourceEffective.lanDesktopReady();
     final playSourceTorrent = await PlaySourceEffective.torrent(s, lanReady);
     final playSourceStremio = await PlaySourceEffective.stremio(s, lanReady);
     final playSourceNuvio = await PlaySourceEffective.nuvio(s, lanReady);
     final playSourceEngine = await PlaySourceEffective.engine(s, lanReady);
-    final hubTab = nav.any(isHubNavId);
-    final catalogTab = hubTab || nav.contains('mylist');
-    final vodTab = nav.any(isVodNavId);
+    final hubTab = nav.any(PluginNavRegistry.isHubTab);
+    final catalogTab = hubTab;
+    final vodTab = hubTab;
 
     return BootNeeds(
       visibleNavIds: nav,

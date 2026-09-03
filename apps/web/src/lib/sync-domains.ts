@@ -158,6 +158,8 @@ export type ConnectedServicesPayload = {
 
 export type NavigationPayload = {
   visibleIds?: string[]
+  /** Full Settings → Features order (visible + hidden). */
+  tabOrder?: string[]
   defaultTab?: string
 }
 
@@ -328,8 +330,26 @@ export function emptyProfileSettingsPayload(): ProfileSettingsPayload {
 export function emptyNavigationPayload(): Required<NavigationPayload> {
   return {
     visibleIds: [...DEFAULT_NAV_VISIBLE_IDS],
+    tabOrder: [...DEFAULT_NAV_VISIBLE_IDS],
     defaultTab: DEFAULT_NAV_TAB,
   }
+}
+
+function mergeNavTabOrder(stored: string[], allIds: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const id of stored) {
+    if (!SYNCABLE_NAV_ID_SET.has(id) || seen.has(id)) continue
+    seen.add(id)
+    out.push(id)
+  }
+  for (const id of allIds) {
+    if (!seen.has(id)) {
+      seen.add(id)
+      out.push(id)
+    }
+  }
+  return out
 }
 
 /** Normalize cloud/UI nav: only syncable tabs; Settings is always on-device, never stored. */
@@ -351,7 +371,20 @@ export function normalizeNavigationPayload(
       ? DEFAULT_NAV_TAB
       : (visibleIds[0] ?? DEFAULT_NAV_TAB)
   }
-  return { visibleIds, defaultTab }
+  const storedTabOrder = (n?.tabOrder ?? []).filter((id) =>
+    SYNCABLE_NAV_ID_SET.has(id),
+  )
+  const tabOrder =
+    storedTabOrder.length > 0
+      ? mergeNavTabOrder(storedTabOrder, DEFAULT_NAV_VISIBLE_IDS)
+      : mergeNavTabOrder(
+          [
+            ...visibleIds,
+            ...DEFAULT_NAV_VISIBLE_IDS.filter((id) => !visibleIds.includes(id)),
+          ],
+          DEFAULT_NAV_VISIBLE_IDS,
+        )
+  return { visibleIds, tabOrder, defaultTab }
 }
 
 export function emptyPreferencesPayload(): Required<PreferencesPayload> {
@@ -445,6 +478,7 @@ function compactNavigation(n: NavigationPayload | undefined): NavigationPayload 
   const normalized = normalizeNavigationPayload(n)
   const out: NavigationPayload = {
     visibleIds: normalized.visibleIds,
+    tabOrder: normalized.tabOrder,
   }
   if (normalized.defaultTab) out.defaultTab = normalized.defaultTab
   return out

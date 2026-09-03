@@ -554,4 +554,20 @@ void main() {
     await service.setIptvLiveBufferSecs(99);
     expect(await service.getIptvLiveBufferSecs(), 0);
   });
+
+  test('navbar tab order keeps hidden tabs in place', () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    await service.setNavbarConfig(
+      const ['iptv'],
+      tabOrder: const ['live_matches', 'iptv', 'home'],
+    );
+
+    expect((await service.getNavbarTabOrder()).take(3).toList(), [
+      'live_matches',
+      'iptv',
+      'home',
+    ]);
+    expect(await service.getNavbarConfig(), ['iptv']);
+  });
 }

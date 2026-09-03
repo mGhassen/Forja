@@ -78,39 +78,36 @@ abstract final class PluginNavRegistry {
     _testNavLocked = true;
     _destinations = destinations ??
         {
-          'home': const NavDestination(
-            id: 'home',
-            icon: Icons.home_outlined,
-            activeIcon: Icons.home,
-            label: 'Home',
-            iconAsset: ForjaHostAssets.flutterNavHome,
+          'test_hub_a': const NavDestination(
+            id: 'test_hub_a',
+            icon: Icons.grid_view_outlined,
+            activeIcon: Icons.grid_view_rounded,
+            label: 'Hub A',
           ),
-          'anime': const NavDestination(
-            id: 'anime',
-            icon: Icons.animation_outlined,
-            activeIcon: Icons.animation,
-            label: 'Anime',
-            iconAsset: ForjaHostAssets.flutterNavAnime,
+          'test_hub_b': const NavDestination(
+            id: 'test_hub_b',
+            icon: Icons.grid_view_outlined,
+            activeIcon: Icons.grid_view_rounded,
+            label: 'Hub B',
           ),
-          'asian_drama': const NavDestination(
-            id: 'asian_drama',
-            icon: Icons.theater_comedy_outlined,
-            activeIcon: Icons.theater_comedy,
-            label: 'Asian Drama',
-            iconAsset: ForjaHostAssets.flutterNavAsianDrama,
+          'test_hub_c': const NavDestination(
+            id: 'test_hub_c',
+            icon: Icons.grid_view_outlined,
+            activeIcon: Icons.grid_view_rounded,
+            label: 'Hub C',
           ),
         };
     _accents = {
-      'home': const Color(0xFFE50914),
-      'anime': const Color(0xFF8B5CF6),
-      'asian_drama': const Color(0xFFEC4899),
+      'test_hub_a': const Color(0xFFE50914),
+      'test_hub_b': const Color(0xFF8B5CF6),
+      'test_hub_c': const Color(0xFFEC4899),
     };
     _tabPluginIds = Map<String, String>.from(
       tabPluginIds ??
           const {
-            'home': 'test-home-hub',
-            'anime': 'test-anime-hub',
-            'asian_drama': 'test-drama-hub',
+            'test_hub_a': 'test-provider-a',
+            'test_hub_b': 'test-provider-b',
+            'test_hub_c': 'test-provider-c',
           },
     );
     _builders = {

@@ -450,14 +450,12 @@ class SettingsNavigationNotifier
     final s = SettingsService();
     var navVisible = await s.getNavbarConfig();
     final defaultNavTab = await s.getDefaultNavTab();
-    final allIds = SettingsService.allNavIds
+    navVisible.removeWhere(archivedNavIds.contains);
+    navVisible.removeWhere((id) => !PluginNavRegistry.isContributed(id));
+    var navOrder = (await s.getNavbarTabOrder())
         .where((id) => !archivedNavIds.contains(id))
         .where(PluginNavRegistry.isContributed)
         .toList();
-    navVisible.removeWhere(archivedNavIds.contains);
-    navVisible.removeWhere((id) => !PluginNavRegistry.isContributed(id));
-    final hidden = allIds.where((id) => !navVisible.contains(id)).toList();
-    var navOrder = [...navVisible, ...hidden];
     if (!PlatformPlayback.capabilities.builtinTorrentSearch) {
       navOrder = navOrder
           .where((id) => !PlatformPlayback.torrentNavIds.contains(id))

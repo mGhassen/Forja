@@ -1390,6 +1390,7 @@ class SettingsService {
       kvSetString(_themePresetKey, preset);
 
   static const String _navbarConfigKey = 'navbar_config';
+  static const String _navbarTabOrderKey = 'navbar_tab_order';
   static const String _defaultNavTabKey = 'navbar_default_tab';
   static const String _navbarKnownIdsKey = 'navbar_known_ids';
   static const String _navbarShell080Key = 'navbar_shell_080';
@@ -1602,7 +1603,7 @@ class SettingsService {
     await kvSetStringList(_navbarConfigKey, next);
     final defaultTab = await getDefaultNavTab();
     if (knownHubIds.contains(defaultTab) && !activeHubIds.contains(defaultTab)) {
-      final fallback = next.isNotEmpty ? next.first : 'home';
+      final fallback = next.isNotEmpty ? next.first : 'settings';
       await kvSetString(_defaultNavTabKey, fallback);
     }
     navbarChangeNotifier.value++;
@@ -1883,8 +1884,41 @@ class SettingsService {
     return filtered;
   }
 
+  /// Full tab order for Settings → Features (visible + hidden). Shell nav still
+  /// uses [getNavbarConfig] for visible-only order.
+  Future<List<String>> getNavbarTabOrder() async {
+    final visible = await getNavbarConfig();
+    if (!await kvHasKey(_navbarTabOrderKey)) {
+      final hidden = allNavIds.where((id) => !visible.contains(id)).toList();
+      return [...visible, ...hidden];
+    }
+    final stored = await kvGetStringList(
+      _navbarTabOrderKey,
+      fallback: const [],
+    );
+    return _mergeNavbarTabOrder(stored, allNavIds);
+  }
+
+  static List<String> _mergeNavbarTabOrder(
+    List<String> stored,
+    List<String> allIds,
+  ) {
+    final seen = <String>{};
+    final out = <String>[];
+    for (final id in stored) {
+      if (!allIds.contains(id) || seen.contains(id)) continue;
+      seen.add(id);
+      out.add(id);
+    }
+    for (final id in allIds) {
+      if (seen.add(id)) out.add(id);
+    }
+    return out;
+  }
+
   Future<void> setNavbarConfig(
     List<String> visibleIds, {
+    List<String>? tabOrder,
     bool notify = true,
   }) async {
     final raw = await kvHasKey(_navbarConfigKey)
@@ -1893,6 +1927,12 @@ class SettingsService {
     final unchanged = raw != null && listEquals(raw, visibleIds);
     await kvSetStringList(_navbarConfigKey, visibleIds);
     await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
+    if (tabOrder != null) {
+      await kvSetStringList(
+        _navbarTabOrderKey,
+        _mergeNavbarTabOrder(tabOrder, allNavIds),
+      );
+    }
     if (notify && !unchanged) navbarChangeNotifier.value++;
   }
 

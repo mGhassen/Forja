@@ -401,7 +401,7 @@ class _SettingsNavigationPageBodyState
     final visible = _navbarOrder
         .where((id) => _navbarVisible.contains(id))
         .toList();
-    _settings.setNavbarConfig(visible);
+    _settings.setNavbarConfig(visible, tabOrder: _navbarOrder);
     scheduleNavigationSyncPush();
     final startupOptions = _startupTabOptions();
     if (!startupOptions.contains(_defaultNavTab)) {

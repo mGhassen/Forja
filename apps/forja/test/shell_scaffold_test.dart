@@ -9,6 +9,8 @@ import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shell/shell_scaffold.dart';
+import 'package:forja/shared/catalog/forja_host_assets.dart';
+import 'package:forja/shell/nav_destination.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/hub_catalog_top_bar.dart';
 import 'package:forja/shared/catalog/shell/catalog_vertical_filters_rail.dart';
@@ -38,10 +40,13 @@ Widget _wrapShellScope(
 }
 
 void main() {
-  const visibleIds = ['home', 'anime', 'settings'];
+  const hubA = 'test_hub_a';
+  const hubB = 'test_hub_b';
+  const hubC = 'test_hub_c';
+  const visibleIds = [hubA, hubB, 'settings'];
 
   void seedHomePackFilters() {
-    CatalogPackFiltersRegistry.seedFromJson('test-home-hub', {
+    CatalogPackFiltersRegistry.seedFromJson('test-provider-a', {
       'fields': [
         {
           'field': 'genre',
@@ -57,8 +62,8 @@ void main() {
     CatalogVerticalFiltersRegistry.register(
       CatalogVerticalFiltersSpec(
         widgetId: 'watch_providers',
-        tabId: 'home',
-        pluginId: 'test-home-hub',
+        tabId: hubA,
+        pluginId: 'test-provider-a',
         packSourceUrl: '',
         showSelectedInTopBar: true,
         options: [
@@ -75,17 +80,41 @@ void main() {
   }
 
   setUp(() {
-    PluginNavRegistry.seedTestHubNav();
+    PluginNavRegistry.seedTestHubNav(
+      destinations: {
+        hubA: const NavDestination(
+          id: hubA,
+          icon: Icons.home_outlined,
+          activeIcon: Icons.home,
+          label: 'Hub A',
+          iconAsset: ForjaHostAssets.flutterNavHome,
+        ),
+        hubB: const NavDestination(
+          id: hubB,
+          icon: Icons.animation_outlined,
+          activeIcon: Icons.animation,
+          label: 'Hub B',
+          iconAsset: ForjaHostAssets.flutterNavAnime,
+        ),
+        hubC: const NavDestination(
+          id: hubC,
+          icon: Icons.theater_comedy_outlined,
+          activeIcon: Icons.theater_comedy,
+          label: 'Hub C',
+          iconAsset: ForjaHostAssets.flutterNavAsianDrama,
+        ),
+      },
+    );
     CatalogVerticalFiltersRegistry.clearForTest();
     CatalogPackFiltersRegistry.clearForTest();
     seedHomePackFilters();
     seedHomeVerticalFilters();
-    ShellBus.homeCategory.value = null;
-    ShellBus.homeSelectedGenreId.value = null;
-    ShellBus.homeHeroHeight.value = 0;
-    ShellBus.homeScrollOffset.value = 0;
+    ShellBus.hubCategoryFor(hubA).value = null;
+    ShellBus.hubSelectedCategoryIdFor(hubA).value = null;
+    ShellBus.hubHeroHeightFor(hubA).value = 0;
+    ShellBus.hubScrollOffsetFor(hubA).value = 0;
     ShellBus.selectedWatchProviderId.value = null;
-    ShellBus.homeProviderMenuVisible.value = false;
+    CatalogVerticalFiltersRegistry.menuVisibleFor(hubA).value = false;
     ShellBus.requestTab.value = null;
     ShellBus.selectDefaultTabOnNextNavLoad = false;
     ShellBus.shellOverlayHasPage.value = false;
@@ -113,7 +142,7 @@ void main() {
       useNavRail: true,
       visibleIds: visibleIds,
       selectedIndex: selectedIndex,
-      mountedTabIds: const {'home', 'anime'},
+      mountedTabIds: const {hubA, hubB},
       onDestinationSelected: (_) {},
       tabFor: (id) => Center(child: Text(id)),
       hideGlobalNav: hideGlobalNav,
@@ -130,7 +159,7 @@ void main() {
         useNavRail: false,
         visibleIds: visibleIds,
         selectedIndex: 0,
-        mountedTabIds: const {'home'},
+        mountedTabIds: const {hubA},
         onDestinationSelected: (_) {},
         tabFor: (id) => Center(child: Text(id)),
       ),
@@ -149,7 +178,7 @@ void main() {
         useNavRail: false,
         visibleIds: visibleIds,
         selectedIndex: 0,
-        mountedTabIds: const {'home'},
+        mountedTabIds: const {hubA},
         onDestinationSelected: (_) {},
         tabFor: (id) => Center(child: Text(id)),
         hideGlobalNav: true,
@@ -180,7 +209,7 @@ void main() {
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -193,7 +222,7 @@ void main() {
   testWidgets('PluginHubCatalogTopBar Categories menu sets genre filter', (tester) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -204,7 +233,7 @@ void main() {
     await tester.tap(find.text('Action'));
     await tester.pumpAndSettle();
 
-    expect(ShellBus.homeSelectedGenreId.value, 'action');
+    expect(ShellBus.hubSelectedCategoryIdFor(hubA).value, 'action');
   });
 
   testWidgets('PluginHubCatalogTopBar Films tap toggles homeCategory filter', (
@@ -212,32 +241,32 @@ void main() {
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
 
-    expect(ShellBus.homeCategory.value, isNull);
+    expect(ShellBus.hubCategoryFor(hubA).value, isNull);
 
     await tester.tap(find.text('Films'));
     await tester.pumpAndSettle();
 
-    expect(ShellBus.homeCategory.value, ShellHomeCategory.films);
+    expect(ShellBus.hubCategoryFor(hubA).value, ShellHomeCategory.films);
 
     await tester.tap(find.text('Films'));
     await tester.pumpAndSettle();
 
-    expect(ShellBus.homeCategory.value, isNull);
+    expect(ShellBus.hubCategoryFor(hubA).value, isNull);
   });
 
   testWidgets('PluginHubCatalogTopBar shows provider rail when menu visible', (
     tester,
   ) async {
-    ShellBus.homeProviderMenuVisible.value = true;
+    CatalogVerticalFiltersRegistry.menuVisibleFor(hubA).value = true;
     await pumpScaffold(
       tester,
       desktopScaffold(
-        shellTopBar: const PluginHubCatalogTopBar(tabId: 'home'),
+        shellTopBar: const PluginHubCatalogTopBar(tabId: hubA),
         selectedIndex: 0,
       ),
       size: const Size(1200, 800),
@@ -252,10 +281,10 @@ void main() {
     tester,
   ) async {
     ShellBus.selectedWatchProviderId.value = 8; // legacy — logo uses registry
-    CatalogVerticalFiltersRegistry.selectedIdFor('home').value = 'netflix';
+    CatalogVerticalFiltersRegistry.selectedIdFor(hubA).value = 'netflix';
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -269,7 +298,7 @@ void main() {
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -288,13 +317,13 @@ void main() {
       return Offset(t.x, t.y);
     }
 
-    ShellBus.homeHeroHeight.value = 400;
-    ShellBus.homeScrollOffset.value = 0;
+    ShellBus.hubHeroHeightFor(hubA).value = 400;
+    ShellBus.hubScrollOffsetFor(hubA).value = 0;
     await tester.pump();
     expect(hideOffset().dy, 0);
 
     // hideStart = heroHeight - barHeight; fully hidden well past that.
-    ShellBus.homeScrollOffset.value = 2000;
+    ShellBus.hubScrollOffsetFor(hubA).value = 2000;
     await tester.pump();
     expect(hideOffset().dy, lessThan(0));
   });
@@ -304,7 +333,7 @@ void main() {
   ) async {
     await pumpScaffold(
       tester,
-      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
+      desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
       size: const Size(1200, 800),
       profile: ShellProfile.desktop,
     );
@@ -361,7 +390,7 @@ void main() {
     (tester) async {
       await pumpScaffold(
         tester,
-        desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: 'home')),
+        desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
         size: const Size(800, 800),
       );
 
@@ -425,18 +454,18 @@ void main() {
     }
     await tester.pumpAndSettle();
 
-    expect(find.text('Anime'), findsOneWidget);
+    expect(find.text('Hub B'), findsOneWidget);
     expect(
       tester
           .widget<NavDestinationIcon>(
             find.byWidgetPredicate(
               (widget) =>
                   widget is NavDestinationIcon &&
-                  widget.destination.id == 'anime',
+                  widget.destination.id == hubB,
             ),
           )
           .color,
-      navDestinationAccentColors['anime'],
+      navDestinationAccentColors[hubB],
     );
 
     final animeItem = find.ancestor(
@@ -464,7 +493,7 @@ void main() {
 
     Finder homeIconWidget() => find.byWidgetPredicate(
       (widget) =>
-          widget is NavDestinationIcon && widget.destination.id == 'home',
+          widget is NavDestinationIcon && widget.destination.id == hubA,
     );
     final homeImage = find.image(
       const AssetImage('assets/images/nav/home.png'),
@@ -482,7 +511,7 @@ void main() {
 
     expect(
       tester.widget<NavDestinationIcon>(homeIconWidget()).color,
-      navDestinationAccentColors['home'],
+      navDestinationAccentColors[hubA],
     );
   });
 
@@ -500,13 +529,13 @@ void main() {
     final animeImage = find.image(
       const AssetImage('assets/images/nav/anime.png'),
     );
-    final underline = find.byKey(const ValueKey('nav-anime-underline'));
+    final underline = find.byKey(ValueKey('nav-$hubB-underline'));
     Color underlineColor() =>
         (tester.widget<AnimatedContainer>(underline).decoration
                 as BoxDecoration)
             .color!;
 
-    expect(underlineColor(), navDestinationAccentColors['anime']);
+    expect(underlineColor(), navDestinationAccentColors[hubB]);
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
@@ -514,7 +543,7 @@ void main() {
     await gesture.moveTo(tester.getCenter(animeImage));
     await tester.pumpAndSettle();
 
-    expect(underlineColor(), navDestinationAccentColors['anime']);
+    expect(underlineColor(), navDestinationAccentColors[hubB]);
   });
 
   testWidgets('TV selected nav icon uses destination accent at desktop size', (
@@ -531,27 +560,27 @@ void main() {
     final animeIcon = tester.widget<NavDestinationIcon>(
       find.byWidgetPredicate(
         (widget) =>
-            widget is NavDestinationIcon && widget.destination.id == 'anime',
+            widget is NavDestinationIcon && widget.destination.id == hubB,
       ),
     );
-    expect(animeIcon.color, navDestinationAccentColors['anime']);
+    expect(animeIcon.color, navDestinationAccentColors[hubB]);
     expect(animeIcon.size, ShellTokens.navRailIconSize);
 
-    final underline = find.byKey(const ValueKey('nav-anime-underline'));
+    final underline = find.byKey(ValueKey('nav-$hubB-underline'));
     final underlineColor =
         (tester.widget<AnimatedContainer>(underline).decoration
                 as BoxDecoration)
             .color!;
-    expect(underlineColor, navDestinationAccentColors['anime']);
+    expect(underlineColor, navDestinationAccentColors[hubB]);
   });
 
   testWidgets('TV nav rail fits all enabled tabs without scrolling', (
     tester,
   ) async {
     const manyIds = [
-      'home',
-      'asian_drama',
-      'anime',
+      hubA,
+      hubC,
+      hubB,
       'iptv',
       'live_matches',
       'settings',
@@ -823,7 +852,7 @@ void main() {
         useNavRail: false,
         visibleIds: visibleIds,
         selectedIndex: 0,
-        mountedTabIds: const {'home'},
+        mountedTabIds: const {hubA},
         onDestinationSelected: (_) {},
         tabFor: (id) => Center(child: Text(id)),
       ),
@@ -860,8 +889,8 @@ void main() {
         MaterialApp(
           home: ShellBody(
             selectedIndex: 2,
-            visibleIds: const ['home', 'anime', 'settings'],
-            mountedTabIds: const {'home', 'anime', 'settings'},
+            visibleIds: const [hubA, hubB, 'settings'],
+            mountedTabIds: const {hubA, hubB, 'settings'},
             tabFor: tabFor,
           ),
         ),
@@ -875,8 +904,8 @@ void main() {
         MaterialApp(
           home: ShellBody(
             selectedIndex: 3,
-            visibleIds: const ['home', 'anime', 'settings'],
-            mountedTabIds: const {'home', 'anime', 'settings'},
+            visibleIds: const [hubA, hubB, 'settings'],
+            mountedTabIds: const {hubA, hubB, 'settings'},
             tabFor: tabFor,
           ),
         ),
@@ -936,22 +965,16 @@ void main() {
   );
 
   test('navDestinations includes core and seeded hub tabs', () {
-    expect(navDestinations.containsKey('home'), isTrue);
-    expect(navDestinations.containsKey('anime'), isTrue);
-    expect(navDestinations.containsKey('asian_drama'), isTrue);
+    expect(navDestinations.containsKey(hubA), isTrue);
+    expect(navDestinations.containsKey(hubB), isTrue);
+    expect(navDestinations.containsKey(hubC), isTrue);
     expect(navDestinations.containsKey('iptv'), isTrue);
     expect(navDestinations.containsKey('live_matches'), isTrue);
     expect(navDestinations.containsKey('settings'), isTrue);
     expect(navDestinations.containsKey('mylist'), isFalse);
     expect(navDestinations.containsKey('search'), isFalse);
-    expect(SettingsService.defaultVisibleNavIds, [
-      'home',
-      'asian_drama',
-      'anime',
-      'iptv',
-      'live_matches',
-      'mylist',
-    ]);
+    expect(SettingsService.defaultVisibleNavIds, contains('iptv'));
+    expect(SettingsService.defaultVisibleNavIds, contains('live_matches'));
   });
 
   test('archived nav ids are not registered in shell', () {

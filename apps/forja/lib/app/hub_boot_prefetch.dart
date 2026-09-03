@@ -99,11 +99,11 @@ Future<String?> resolveDefaultHubTab(
 }) async {
   final nav = needs.visibleNavIds;
   final defaultTab = await (settings ?? SettingsService()).getDefaultNavTab();
-  if (nav.contains(defaultTab) && BootNeeds.isHubNavId(defaultTab)) {
+  if (nav.contains(defaultTab) && PluginNavRegistry.isHubTab(defaultTab)) {
     return defaultTab;
   }
   for (final id in nav) {
-    if (BootNeeds.isHubNavId(id)) return id;
+    if (PluginNavRegistry.isHubTab(id)) return id;
   }
   return null;
 }

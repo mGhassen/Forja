@@ -8,14 +8,14 @@ void main() {
 
   group('BootNeeds nav helpers', () {
     test('hub vs vod vs core shell', () {
-      expect(BootNeeds.isHubNavId('home'), isTrue);
-      expect(BootNeeds.isHubNavId('anime'), isTrue);
-      expect(BootNeeds.isHubNavId('custom_hub'), isFalse);
+      expect(BootNeeds.isHubNavId('test_hub_a'), isTrue);
+      expect(BootNeeds.isHubNavId('test_hub_b'), isTrue);
+      expect(BootNeeds.isHubNavId('unknown_hub'), isFalse);
       expect(BootNeeds.isHubNavId('mylist'), isFalse);
       expect(BootNeeds.isHubNavId('iptv'), isFalse);
       expect(BootNeeds.isHubNavId('settings'), isFalse);
 
-      expect(BootNeeds.isVodNavId('home'), isTrue);
+      expect(BootNeeds.isVodNavId('test_hub_a'), isTrue);
       expect(BootNeeds.isVodNavId('mylist'), isFalse);
       expect(BootNeeds.isVodNavId('iptv'), isFalse);
       expect(BootNeeds.isVodNavId('live_matches'), isFalse);
@@ -24,7 +24,7 @@ void main() {
 
     test('openingStatusLabel uses hub destination label', () {
       const needs = BootNeeds(
-        visibleNavIds: ['anime', 'iptv'],
+        visibleNavIds: ['test_hub_b', 'iptv'],
         hubTab: true,
         catalogTab: true,
         torrent: false,
@@ -37,7 +37,7 @@ void main() {
         playSourceEngine: false,
         vodTab: true,
       );
-      expect(needs.openingStatusLabel, 'Opening Anime…');
+      expect(needs.openingStatusLabel, 'Opening Hub B…');
     });
 
     test('openingStatusLabel for live/iptv-only', () {
@@ -77,7 +77,7 @@ void main() {
       expect(liveOnly.needsForjaPluginWarm, isFalse);
 
       const withHub = BootNeeds(
-        visibleNavIds: ['home', 'iptv'],
+        visibleNavIds: ['test_hub_a', 'iptv'],
         hubTab: true,
         catalogTab: true,
         torrent: false,
@@ -146,7 +146,7 @@ void main() {
     test('prefers matching page key', () {
       final page = layoutPageForTab({
         'pages': {
-          'home': {
+          'test_hub_a': {
             'feed': true,
             'widgets': [
               {'type': 'hero'},
@@ -158,7 +158,7 @@ void main() {
             ],
           },
         },
-      }, 'home');
+      }, 'test_hub_a');
       expect(pageUsesFeed(page!), isTrue);
     });
   });

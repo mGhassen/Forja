@@ -15,7 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 
 type NavDraft = {
-  /** Full order for UI: visible first (cloud order), then hidden defaults. */
+  /** Full order for Settings → Features (visible + hidden). */
   order: string[]
   visible: Set<string>
   defaultTab: string
@@ -28,11 +28,9 @@ function labelFor(id: string): string {
 
 function draftFromPayload(payload: NavigationPayload | undefined): NavDraft {
   const n = normalizeNavigationPayload(payload)
-  const visible = new Set(n.visibleIds)
-  const hidden = DEFAULT_NAV_VISIBLE_IDS.filter((id) => !visible.has(id))
   return {
-    order: [...n.visibleIds, ...hidden],
-    visible,
+    order: n.tabOrder,
+    visible: new Set(n.visibleIds),
     defaultTab: n.defaultTab,
   }
 }
@@ -41,6 +39,7 @@ function payloadFromDraft(draft: NavDraft): NavigationPayload {
   const visibleIds = draft.order.filter((id) => draft.visible.has(id))
   return normalizeNavigationPayload({
     visibleIds,
+    tabOrder: draft.order,
     defaultTab: draft.defaultTab,
   })
 }
