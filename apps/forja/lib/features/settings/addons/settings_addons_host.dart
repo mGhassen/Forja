@@ -56,10 +56,8 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
   @override
   Widget build(BuildContext context) {
     if (_openAddonId != null) {
-      final addons = settingsAddons(widget.visibility);
-      final meta = addons.where((a) => a.id == _openAddonId).firstOrNull;
+      final meta = settingsAddonById(_openAddonId!);
       if (meta == null) {
-        // Addon no longer visible (visibility changed) — fall back to list.
         WidgetsBinding.instance.addPostFrameCallback((_) => _back());
         return const SizedBox.shrink();
       }
@@ -158,7 +156,7 @@ class _AddonListPane extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final addons = settingsAddons(visibility);
+    final addons = settingsAddons();
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),

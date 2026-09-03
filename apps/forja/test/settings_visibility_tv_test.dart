@@ -87,7 +87,11 @@ void main() {
       expect(ids.contains(SettingsCategoryId.accounts), isFalse);
       expect(ids.contains(SettingsCategoryId.navigation), isTrue);
       expect(ids.contains(SettingsCategoryId.about), isTrue);
-      expect(ids.contains(SettingsCategoryId.lan), isTrue);
+      expect(ids.contains(SettingsCategoryId.lan), isFalse);
+      expect(
+        ids.indexOf(SettingsCategoryId.sources),
+        lessThan(ids.indexOf(SettingsCategoryId.forjaPacks)),
+      );
       expect(
         ids.indexOf(SettingsCategoryId.forjaPacks),
         lessThan(ids.indexOf(SettingsCategoryId.navigation)),
@@ -95,10 +99,6 @@ void main() {
       expect(
         ids.indexOf(SettingsCategoryId.navigation),
         lessThan(ids.indexOf(SettingsCategoryId.playback)),
-      );
-      expect(
-        ids.indexOf(SettingsCategoryId.playback),
-        lessThan(ids.indexOf(SettingsCategoryId.sources)),
       );
     },
   );

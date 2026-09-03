@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:forja/features/settings/settings_visibility.dart';
 
-/// Stable addon IDs used in the Addons hub (Settings → Addons).
+/// Built-in app addons (Settings → Addons).
 ///
-/// Keep `sources` as the settings category ID for backward compat; these are
-/// the *addon* IDs inside that category.
+/// These are **root product surfaces**, not plugin packs. The list is fixed:
+/// every addon always appears so it can be activated or not. Installed plugins
+/// (Forja Packs, Stremio addons, Nuvio scrapers, live catalogs) add extra
+/// settings **inside** an addon's detail page — they do not add or remove
+/// rows from this list.
 abstract final class SettingsAddonId {
   static const iptv = 'iptv';
   static const liveSports = 'live_sports';
@@ -44,65 +46,63 @@ class SettingsAddonMeta {
   final bool adminOnly;
 }
 
-/// Ordered addon list for the active [visibility].
-List<SettingsAddonMeta> settingsAddons(SettingsVisibility visibility) {
-  return [
-    if (visibility.showAddonIptv)
-      const SettingsAddonMeta(
-        id: SettingsAddonId.iptv,
-        title: 'IPTV',
-        subtitle: 'Portals, EPG, live quality',
-        icon: Icons.live_tv_rounded,
-      ),
-    if (visibility.showAddonLiveSports)
-      const SettingsAddonMeta(
-        id: SettingsAddonId.liveSports,
-        title: 'Live Sports',
-        subtitle: 'Portal, leagues, Live Matches',
-        icon: Icons.sports_rounded,
-      ),
-    if (visibility.showPlaySourceTorrentToggle)
-      const SettingsAddonMeta(
-        id: SettingsAddonId.torrent,
-        title: 'Direct torrent',
-        subtitle: 'Jackett, Prowlarr, torrent engine',
-        icon: Icons.downloading_rounded,
-      ),
-    if (visibility.showPlaySourceStremioToggle)
-      const SettingsAddonMeta(
-        id: SettingsAddonId.stremio,
-        title: 'Stremio',
-        subtitle: 'Install and manage Stremio addons',
-        icon: Icons.extension_rounded,
-      ),
-    if (visibility.showPlaySourceNuvioToggle)
-      const SettingsAddonMeta(
-        id: SettingsAddonId.nuvio,
-        title: 'Nuvio',
-        subtitle: 'Install and manage Nuvio scrapers',
-        icon: Icons.travel_explore_rounded,
-      ),
-    if (visibility.showAddonDebrid)
-      SettingsAddonMeta(
-        id: SettingsAddonId.debrid,
-        title: 'Debrid',
-        subtitle: 'Real-Debrid, TorBox, and more',
-        icon: Icons.cloud_download_rounded,
-        adminOnly: visibility.showDebrid,
-      ),
-    if (visibility.showAddonConnectedServices)
-      const SettingsAddonMeta(
-        id: SettingsAddonId.connectedServices,
-        title: 'Connected services',
-        subtitle: 'Simkl',
-        icon: Icons.sync_rounded,
-        hasToggle: false,
-      ),
-    const SettingsAddonMeta(
-      id: SettingsAddonId.lan,
-      title: 'LAN',
-      subtitle: 'Desktop server, pairing, torrent relay',
-      icon: Icons.lan_outlined,
-    ),
-  ];
+const List<SettingsAddonMeta> kSettingsAddons = [
+  SettingsAddonMeta(
+    id: SettingsAddonId.iptv,
+    title: 'IPTV',
+    subtitle: 'Portals, EPG, live quality',
+    icon: Icons.live_tv_rounded,
+  ),
+  SettingsAddonMeta(
+    id: SettingsAddonId.liveSports,
+    title: 'Live Sports',
+    subtitle: 'Portal, leagues, Live Matches',
+    icon: Icons.sports_rounded,
+  ),
+  SettingsAddonMeta(
+    id: SettingsAddonId.torrent,
+    title: 'Direct torrent',
+    subtitle: 'Jackett, Prowlarr, torrent engine',
+    icon: Icons.downloading_rounded,
+  ),
+  SettingsAddonMeta(
+    id: SettingsAddonId.stremio,
+    title: 'Stremio',
+    subtitle: 'Install and manage Stremio addons',
+    icon: Icons.extension_rounded,
+  ),
+  SettingsAddonMeta(
+    id: SettingsAddonId.nuvio,
+    title: 'Nuvio',
+    subtitle: 'Install and manage Nuvio scrapers',
+    icon: Icons.travel_explore_rounded,
+  ),
+  SettingsAddonMeta(
+    id: SettingsAddonId.debrid,
+    title: 'Debrid',
+    subtitle: 'Real-Debrid, TorBox, and more',
+    icon: Icons.cloud_download_rounded,
+  ),
+  SettingsAddonMeta(
+    id: SettingsAddonId.connectedServices,
+    title: 'Connected services',
+    subtitle: 'Simkl',
+    icon: Icons.sync_rounded,
+    hasToggle: false,
+  ),
+  SettingsAddonMeta(
+    id: SettingsAddonId.lan,
+    title: 'LAN',
+    subtitle: 'Desktop server, pairing, torrent relay',
+    icon: Icons.lan_outlined,
+  ),
+];
+
+List<SettingsAddonMeta> settingsAddons() => kSettingsAddons;
+
+SettingsAddonMeta? settingsAddonById(String id) {
+  for (final a in kSettingsAddons) {
+    if (a.id == id) return a;
+  }
+  return null;
 }

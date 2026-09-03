@@ -1574,7 +1574,6 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
     this.tvItemIndex,
     this.onUpEdge,
     this.hideCategorySubtitle = false,
-    this.solidSurface = false,
   });
 
   final IptvPlaySource source;
@@ -1585,7 +1584,6 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
   final VoidCallback? onUpEdge;
   /// When the Live TV category rail is visible, skip repeating category on the row.
   final bool hideCategorySubtitle;
-  final bool solidSurface;
 
   bool get _isLivePluginRow =>
       source.liveSourceKind == IptvLiveSourceKind.liveEngine ||
@@ -1801,7 +1799,6 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
             onUpEdge: onUpEdge,
             onHoverProbe: _liveHoverProbe,
             probeHealthCache: cachedHealth,
-            solidSurface: solidSurface,
           );
         }
         final subtitle =
@@ -1818,7 +1815,6 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
           onHoverProbe:
               _isPortalIptvRow ? _portalHoverProbe : _hoverProbe,
           probeHealthCache: cachedHealth,
-          solidSurface: solidSurface,
         );
       },
     );

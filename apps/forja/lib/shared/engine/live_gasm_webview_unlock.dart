@@ -41,7 +41,7 @@ class LiveGasmWebviewUnlock {
     required String embedOrigin,
   }) {
     if (kIsWeb) return Future<String?>.value(null);
-    if (!(Platform.isAndroid || Platform.isIOS)) {
+    if (!(Platform.isAndroid || Platform.isIOS || Platform.isMacOS)) {
       return Future<String?>.value(null);
     }
 

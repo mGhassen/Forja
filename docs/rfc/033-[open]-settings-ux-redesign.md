@@ -9,7 +9,7 @@
 | | |
 |--|--|
 | **Progress** | **9 / 9** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) · **3 / 3** acceptance (TV detail focus) · **1 / 1** acceptance (resume selection) · **0 / 5** acceptance (Addons hub) |
-| **Current slice** | Addons hub: consolidate Sources / Debrid / Sports / Accounts / LAN into one Addons category with nested drill-down |
+| **Current slice** | Addons are built-in app surfaces (always listed, switch activates); plugins contribute extra settings inside addon details |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -76,7 +76,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R33-A21 | Sources renamed to Addons in category hub; Debrid / Forja Sports / Connected services / LAN removed as top-level categories | 🔄 |
-| 2 | R33-A22 | 8 addon rows with master toggles (IPTV, Live Sports, Torrent, Stremio, Nuvio, Debrid, Connected services, LAN); Connected services has no toggle | ⬜ |
+| 2 | R33-A22 | Fixed 8 addon rows always listed (IPTV, Live Sports, Torrent, Stremio, Nuvio, Debrid, Connected services, LAN); switch activates; off does not hide the row; plugins add settings inside details | 🔄 |
 | 3 | R33-A23 | Tapping an addon row opens its detail in-pane with back to the list | 🔄 |
 | 4 | R33-A24 | Deep-links (`openSettings(categoryId: 'debrid')` etc.) land on Addons → that addon detail | 🔄 |
 | 5 | R33-A25 | TV D-pad: back from addon detail → addon list → category rail | ⬜ |

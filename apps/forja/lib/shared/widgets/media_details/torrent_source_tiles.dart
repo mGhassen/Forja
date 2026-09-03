@@ -159,7 +159,6 @@ class SourcesPanelChannelTile extends StatelessWidget {
     this.onHoverProbe,
     this.probeHealthCache,
     this.viewerCount,
-    this.solidSurface = false,
   });
 
   final String title;
@@ -174,7 +173,6 @@ class SourcesPanelChannelTile extends StatelessWidget {
   final VoidCallback? onDownEdge;
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
-  final bool solidSurface;
 
   @override
   Widget build(BuildContext context) {
@@ -190,7 +188,6 @@ class SourcesPanelChannelTile extends StatelessWidget {
       onHoverProbe: onHoverProbe,
       probeHealthCache: probeHealthCache,
       viewerCount: viewerCount,
-      solidSurface: solidSurface,
       badges: [
         for (final label in badges)
           if (label.trim().isNotEmpty)
@@ -477,7 +474,6 @@ class _SourceBadgeCard extends StatefulWidget {
     this.onHoverProbe,
     this.probeHealthCache,
     this.viewerCount,
-    this.solidSurface = false,
   });
 
   final VoidCallback onTap;
@@ -500,7 +496,6 @@ class _SourceBadgeCard extends StatefulWidget {
   final Future<bool> Function()? onHoverProbe;
   final bool? probeHealthCache;
   final int? viewerCount;
-  final bool solidSurface;
 
   @override
   State<_SourceBadgeCard> createState() => _SourceBadgeCardState();
@@ -593,9 +588,6 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     if (widget.highlightStart) {
       return ForjaShellColors.chipSelectedBg;
     }
-    if (widget.solidSurface) {
-      return const Color(0xFF22222C);
-    }
     return Colors.white.withValues(alpha: 0.04);
   }
 
@@ -604,9 +596,6 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
     if (widget.accentBorder != null) return widget.accentBorder!;
     if (widget.highlightStart) {
       return ForjaShellColors.chipSelectedBorder;
-    }
-    if (widget.solidSurface) {
-      return Colors.white.withValues(alpha: 0.10);
     }
     return Colors.white.withValues(alpha: 0.07);
   }

@@ -38,6 +38,15 @@ void main() {
   });
 
   group('LiveGoatUnlock.sportsEmbed', () {
+    test('sports embed playback keeps host root referer', () {
+      final headers = LiveGoatUnlock.playbackHeadersForSportsEmbed({
+        'origin': 'https://sportsembed.su',
+        'path': '401816669/atlanta-braves-los-angeles-dodgers/regular/2',
+      });
+      expect(headers['Referer'], 'https://sportsembed.su/');
+      expect(headers['Origin'], 'https://sportsembed.su');
+    });
+
     test('delta sportsembed maps to embed.st slot', () {
       final mapped = LiveGoatUnlock.embedStUrlFromSportsEmbed(
         'https://sportsembed.su/embed/761748/live_mls_austin-philadelphia-live-streaming-538781760/delta/1',

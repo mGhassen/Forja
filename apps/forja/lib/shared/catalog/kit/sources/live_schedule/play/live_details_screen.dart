@@ -820,16 +820,51 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
   }
 
   Widget _wrapInlineHeroPanel(Widget child) {
-    return ForjaFrostedPanel(
-      enableBlur: false,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(
-        color: ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-        child: child,
-      ),
+    Shader fadeMask(Rect bounds, Alignment begin, Alignment end) {
+      return LinearGradient(
+        begin: begin,
+        end: end,
+        colors: const [
+          Color(0x00FFFFFF),
+          Color(0xFFFFFFFF),
+          Color(0xFFFFFFFF),
+          Color(0x00FFFFFF),
+        ],
+        stops: const [0.0, 0.16, 0.84, 1.0],
+      ).createShader(bounds);
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) =>
+                  fadeMask(bounds, Alignment.topCenter, Alignment.bottomCenter),
+              child: ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) => fadeMask(
+                  bounds,
+                  Alignment.centerLeft,
+                  Alignment.centerRight,
+                ),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: ColoredBox(
+                    color: Colors.black.withValues(alpha: 0.18),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+          child: child,
+        ),
+      ],
     );
   }
 
@@ -1357,7 +1392,6 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
       iptvCtrl: widget.iptvCtrl,
       healthProbe: controller.healthProbe,
       hideCategorySubtitle: hideCategorySubtitle,
-      solidSurface: widget.inlineHero,
       onTap: () => widget.onSourcePicked(
         sources[i],
         List<IptvPlaySource>.from(allForPlay),

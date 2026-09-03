@@ -16,7 +16,7 @@ import 'package:forja/features/settings/settings_visibility.dart';
 Widget buildAddonDetailBody(String addonId, SettingsVisibility visibility) {
   switch (addonId) {
     case SettingsAddonId.iptv:
-      return SettingsIptvAddonSection(visibility: visibility);
+      return const SettingsIptvAddonSection();
     case SettingsAddonId.liveSports:
       return const SettingsIptvSportsSection();
     case SettingsAddonId.torrent:

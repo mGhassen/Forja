@@ -21,17 +21,17 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
+| **Addons** | Built-in app addons (IPTV, Live Sports, torrent, Stremio, Nuvio, Debrid, Connected services, LAN). Always listed; switch activates each one. Tap a row for that addon's settings. Plugin packs add extra options **inside** an addon, not as extra rows. | Always |
 | [Forja Packs](forja-packs.md) | Install and manage Forja JS plugin manifests (providers, hubs, live, …) | Always |
 | [Features](navigation-bar.md) | Tab visibility, order, default menu | Always |
 | [Playback](playback-settings.md) | Quality, audio, auto-play, IPTV player prefs | Always |
-| **Addons** | IPTV, Live Sports, Direct torrent, Stremio, Nuvio, Debrid, Connected services, LAN — each with a master toggle and drill-down detail | Always (individual addons gated by nav/play-source/admin) |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
 | [About](app-updates.md) | Check for updates, app version; Privacy / Developer rows for admins | Always |
 
 ## Tips
 
 - Only the selected category loads — opening Settings is lighter than the old all-sections page
-- IPTV / Live Matches alone → **Sources → Forja addons** and **Forja Packs** are always in the category list (no VOD tab required). Play-source toggles for Direct torrent / Stremio / Nuvio live under **Sources**; pack install UI lives under **Forja Packs** (Forja providers always on). Movie-only rows (Debrid, Simkl) stay hidden until a VOD tab is on in **Features**
+- IPTV / Live Matches alone → **Addons** and **Forja Packs** stay in the category list. Built-in addons stay listed even when off — the switch turns them on. Pack install is **Forja Packs**; those plugins contribute extra settings inside the matching addon (e.g. Stremio addon URLs under **Addons → Stremio**).
 - On **TV**, the bottom rail item is your **profile avatar** (same as desktop).
   **↑/↓** moves through the category sidebar (flat green left bar + ink fill —
   no rounded hover card; focusing a category selects it and updates the right pane, but

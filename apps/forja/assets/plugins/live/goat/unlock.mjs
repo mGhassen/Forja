@@ -103,19 +103,15 @@ function mockFetch(NativeResponse, embedOrigin, goat, body, onM3u8) {
   }
 }
 
-function patchImports(imports, NativeResponse, goat, body, onM3u8) {
-  const bg = imports?.['./locked_bg.js']
-  if (!bg) return
-
+function patchFetchImport(bg, NativeResponse, goat, body, onM3u8) {
+  if (!bg || typeof bg !== 'object') return
   for (const key of Object.keys(bg)) {
     if (!key.includes('instanceof')) continue
     const orig = bg[key]
     bg[key] = (...args) => (orig(...args) ? 1 : 1)
   }
-
-  const fetchKey = Object.keys(bg).find((k) => k.includes('fetch_e6e8e0'))
+  const fetchKey = Object.keys(bg).find((k) => k.includes('fetch_'))
   if (!fetchKey) return
-
   bg[fetchKey] = (_win, req) => {
     const href = req?.url ?? ''
     if (href.includes('/fetch')) {
@@ -139,9 +135,23 @@ function patchImports(imports, NativeResponse, goat, body, onM3u8) {
   }
 }
 
+function patchImports(imports, NativeResponse, goat, body, onM3u8) {
+  if (!imports || typeof imports !== 'object') return
+  for (const modName of Object.keys(imports)) {
+    patchFetchImport(imports[modName], NativeResponse, goat, body, onM3u8)
+  }
+}
+
 async function crack(slot, goat, bodyHex, embedOrigin) {
+  const source = String(slot?.source ?? '')
+  const id = String(slot?.id ?? '')
+  const stream = String(slot?.stream ?? '1')
+  if (!source || !id) throw new Error('slot missing source/id')
+  if (!goat || !bodyHex) throw new Error('missing goat/bodyHex')
+
   let m3u8 = null
   const body = Buffer.from(bodyHex, 'hex')
+  if (!body.length) throw new Error('empty /fetch body')
   const NativeResponse = mountDom(slot, embedOrigin)
   const fetchFn = mockFetch(NativeResponse, embedOrigin, goat, body, (url) => {
     m3u8 = url
@@ -166,8 +176,12 @@ async function crack(slot, goat, bodyHex, embedOrigin) {
     WebAssembly.instantiate(wasmBytes, imports)
 
   const mod = await import(lockModuleUrl)
+  const wasmBuf = wasmBytes.buffer.slice(
+    wasmBytes.byteOffset,
+    wasmBytes.byteOffset + wasmBytes.byteLength,
+  )
   const api = await mod.default({
-    module_or_path: `${embedOrigin}/js/wasm/lock.wasm`,
+    module_or_path: wasmBuf,
     fetch: fetchFn,
   })
   await api.init_wasm?.()
@@ -176,7 +190,7 @@ async function crack(slot, goat, bodyHex, embedOrigin) {
   delete WebAssembly.instantiateStreaming
 
   try {
-    await api.set_stream_jw(slot.source, slot.id, slot.stream)
+    await api.set_stream_jw(source, id, stream)
   } catch (err) {
     if (!m3u8) {
       const msg =

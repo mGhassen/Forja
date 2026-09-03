@@ -21,10 +21,10 @@ abstract final class SettingsCategoryId {
 
   static const ordered = <String>[
     profile,
+    sources, // displayed as "Addons"
     forjaPacks,
     navigation,
     playback,
-    sources, // displayed as "Addons"
     data,
     about,
   ];
@@ -61,6 +61,13 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       subtitle: 'Profile, cloud sync, sign in',
       icon: Icons.account_circle_outlined,
     ),
+    if (visibility.showSourcesCategory)
+      const SettingsCategoryMeta(
+        id: SettingsCategoryId.sources,
+        title: 'Addons',
+        subtitle: 'IPTV, torrent, Stremio, debrid, LAN, and more',
+        icon: Icons.extension_rounded,
+      ),
     if (visibility.showForjaPacksCategory)
       const SettingsCategoryMeta(
         id: SettingsCategoryId.forjaPacks,
@@ -80,13 +87,6 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       subtitle: 'Quality, audio, auto-play',
       icon: Icons.play_circle_outline_rounded,
     ),
-    if (visibility.showSourcesCategory)
-      const SettingsCategoryMeta(
-        id: SettingsCategoryId.sources,
-        title: 'Addons',
-        subtitle: 'IPTV, torrent, Stremio, debrid, LAN, and more',
-        icon: Icons.extension_rounded,
-      ),
     if (visibility.showDataCategory)
       const SettingsCategoryMeta(
         id: SettingsCategoryId.data,

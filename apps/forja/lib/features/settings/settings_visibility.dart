@@ -65,14 +65,9 @@ class SettingsVisibility {
   /// Stremio addon install UI (platform capability).
   bool get showStremioAddons => showPlaySourceStremioToggle;
 
-  /// Settings → Addons (was Sources).
+  /// Settings → Addons (was Sources). Built-in addons are always listed;
+  /// activation is the row switch, not category visibility.
   bool get showSourcesCategory => true;
-
-  /// Addon list gates.
-  bool get showAddonIptv => iptvNav;
-  bool get showAddonLiveSports => liveMatchesNav;
-  bool get showAddonDebrid => showDebrid;
-  bool get showAddonConnectedServices => vodTab;
 
   /// Settings → Forja Packs (JS plugin manifests).
   bool get showForjaPacksCategory => true;

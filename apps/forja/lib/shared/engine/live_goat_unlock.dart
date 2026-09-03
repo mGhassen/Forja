@@ -173,6 +173,15 @@ class LiveGoatUnlock {
   /// sportsembed.su client handshake → plaintext HLS URL.
   static Future<({String url, Map<String, String> headers})?> resolveSportsEmbed({
     required String embedUrl,
+  }) {
+    return _enqueueNativeUnlock(() async {
+      return _resolveSportsEmbedImpl(embedUrl: embedUrl);
+    });
+  }
+
+  static Future<({String url, Map<String, String> headers})?>
+  _resolveSportsEmbedImpl({
+    required String embedUrl,
   }) async {
     final embed = embedUrl.trim();
     if (embed.isEmpty || !isSportsEmbedUrl(embed)) return null;
@@ -196,15 +205,12 @@ class LiveGoatUnlock {
         embedUrl: embed,
       );
       if (result == null || result.isEmpty) return null;
-      final origin = (slot['origin'] ?? _sportsEmbedOrigin).toString();
-      final path = (slot['path'] ?? '').toString();
-      final headers = <String, String>{
-        'Referer': path.isNotEmpty ? '$origin/embed/$path' : '$origin/',
-        'Origin': origin,
-        'User-Agent': _ua,
-      };
-      // regular/hd often decrypt to a URL that then 500s on the CDN — skip those.
-      if (!await _probePlayableM3u8(result, headers)) {
+      final headers = playbackHeadersForSportsEmbed(slot);
+      // WatchFooty `lb*.wfty.st` rows are signed direct-playback URLs. A
+      // second GET probe often times out or 500s even though Exo/MediaKit can
+      // open them with the right Referer, so only probe non-direct rows here.
+      if (!preferDirectEnginePlayback(result) &&
+          !await _probePlayableM3u8(result, headers)) {
         debugPrint(
           '[LiveSportsEmbed] CDN m3u8 not playable '
           '${Uri.tryParse(result)?.host ?? result}',
@@ -254,21 +260,20 @@ class LiveGoatUnlock {
         ));
       }
 
-      // Unlock every unique embed in parallel (site lists them all; CDN-dead
-      // rows stay dropped by resolveWatchfootyEmbed probe).
-      final unlocked = await Future.wait(
-        pending.map((row) async {
-          final u = await resolveWatchfootyEmbed(embedUrl: row.embed);
-          if (u == null) return null;
-          final label = [
-            'WatchFooty',
-            if (row.source.isNotEmpty) row.source,
-            if (row.quality.isNotEmpty) row.quality,
-          ].join(' ');
-          return (url: u.url, name: label, headers: u.headers);
-        }),
-      );
-      return [for (final row in unlocked) ?row];
+      // Unlock unique embeds one at a time — parallel GOAT cracks + sportsembed
+      // probes starved the native unlock chain and hit the 45s plugin timeout.
+      final out = <({String url, String name, Map<String, String> headers})>[];
+      for (final row in pending) {
+        final u = await resolveWatchfootyEmbed(embedUrl: row.embed);
+        if (u == null) continue;
+        final label = [
+          'WatchFooty',
+          if (row.source.isNotEmpty) row.source,
+          if (row.quality.isNotEmpty) row.quality,
+        ].join(' ');
+        out.add((url: u.url, name: label, headers: u.headers));
+      }
+      return out;
     } catch (e) {
       debugPrint('[WatchFooty] match resolve failed: $e');
       return const [];
@@ -620,6 +625,18 @@ class LiveGoatUnlock {
     return {'Referer': '$o/', 'Origin': o, 'User-Agent': _ua};
   }
 
+  static Map<String, String> playbackHeadersForSportsEmbed(
+    Map<String, dynamic> slot,
+  ) {
+    final origin = (slot['origin'] ?? _sportsEmbedOrigin).toString();
+    return _sportsEmbedPlaybackHeaders(origin);
+  }
+
+  static Map<String, String> _sportsEmbedPlaybackHeaders(String? origin) {
+    final o = (origin ?? _sportsEmbedOrigin).replaceAll(RegExp(r'/+$'), '');
+    return {'Referer': '$o/', 'Origin': o, 'User-Agent': _ua};
+  }
+
   /// CDN Referer/Origin for GOAT-unlocked `strmd.st` playback.
   ///
   /// Each streamed.pk [source] validates differently — admin (`rtmp/stream`
@@ -938,6 +955,17 @@ class LiveGoatUnlock {
     } catch (e) {
       debugPrint('[LiveGasmUnlock] webview unlock failed: $e');
     }
+
+    final gid = (slot['gid'] ?? '').toString();
+    final origin = embedOrigin.replaceAll(RegExp(r'/+$'), '');
+    final embedUrl = gid.isNotEmpty
+        ? '$origin/embed/$path?gid=${Uri.encodeQueryComponent(gid)}'
+        : '$origin/embed/$path';
+    debugPrint(
+      '[LiveGasmUnlock] wasm unlock empty — trying jw sniff path=$path',
+    );
+    final sniffed = await _sniffJwEmbedPlaylist(embedUrl: embedUrl);
+    if (sniffed != null && sniffed.isNotEmpty) return sniffed;
     return null;
   }
 
@@ -945,7 +973,7 @@ class LiveGoatUnlock {
     required String embedUrl,
     String? referer,
   }) async {
-    if (!isEpiEmbedsUrl(embedUrl)) return null;
+    if (!isEpiEmbedsUrl(embedUrl) && !isEmbedIndiaUrl(embedUrl)) return null;
     return _sniffJwEmbedPlaylist(embedUrl: embedUrl, referer: referer);
   }
 
@@ -1072,7 +1100,7 @@ class LiveGoatUnlock {
       workingDirectory: dir,
       runInShell: false,
     );
-    proc.stdin.write(payload);
+    proc.stdin.add(utf8.encode(payload));
     await proc.stdin.close();
     final stdoutFuture = proc.stdout.transform(utf8.decoder).join();
     final stderrFuture = proc.stderr.transform(utf8.decoder).join();
@@ -1167,7 +1195,8 @@ class LiveGoatUnlock {
     }
 
     final support = await getApplicationSupportDirectory();
-    final dir = Directory('${support.path}/live-goat');
+    // v2: happy-dom@20.11.6 (matches GASM; v1 pinned happy-dom@17).
+    final dir = Directory('${support.path}/live-goat-v2');
     await dir.create(recursive: true);
 
     await _refreshGoatAssets(dir.path);
@@ -1184,7 +1213,7 @@ class LiveGoatUnlock {
       npm,
       [
         'install',
-        'happy-dom@17',
+        'happy-dom@20.11.6',
         'big-integer@1.6.52',
         '--no-fund',
         '--no-audit',
@@ -1383,7 +1412,7 @@ class LiveGoatUnlock {
       workingDirectory: dir,
       runInShell: false,
     );
-    proc.stdin.write(payload);
+    proc.stdin.add(utf8.encode(payload));
     await proc.stdin.close();
     final stdoutFuture = proc.stdout.transform(utf8.decoder).join();
     final stderrFuture = proc.stderr.transform(utf8.decoder).join();
@@ -1431,7 +1460,7 @@ class LiveGoatUnlock {
       workingDirectory: dir,
       runInShell: false,
     );
-    proc.stdin.write(payload);
+    proc.stdin.add(utf8.encode(payload));
     await proc.stdin.close();
     final stdoutFuture = proc.stdout.transform(utf8.decoder).join();
     final stderrFuture = proc.stderr.transform(utf8.decoder).join();
@@ -1472,7 +1501,7 @@ class LiveGoatUnlock {
       workingDirectory: dir,
       runInShell: false,
     );
-    proc.stdin.write(payload);
+    proc.stdin.add(utf8.encode(payload));
     await proc.stdin.close();
     final stdoutFuture = proc.stdout.transform(utf8.decoder).join();
     final stderrFuture = proc.stderr.transform(utf8.decoder).join();

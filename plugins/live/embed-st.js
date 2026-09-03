@@ -447,6 +447,9 @@ async function resolveEmbedIndia(ctx, embedUrl, cfg) {
   if (ctx.live && typeof ctx.live.gasmUnlock === 'function') {
     m3u8 = await ctx.live.gasmUnlock(fetched.bodyHex, fetched.island, slot);
   }
+  if (!m3u8 && ctx.live && typeof ctx.live.sniffEmbed === 'function') {
+    m3u8 = await ctx.live.sniffEmbed(embedUrl, embedUrl);
+  }
   if (!m3u8) return null;
   return [
     {
