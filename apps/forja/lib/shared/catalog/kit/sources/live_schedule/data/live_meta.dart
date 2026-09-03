@@ -1284,6 +1284,7 @@ String? _streamedEventMergeBucketKey(_StreamedMatch m) {
 /// Cross-catalog match for TV native picker (All card → Stremio addon event).
 bool _sameStreamedEvent(_StreamedMatch a, _StreamedMatch b) {
   if (a.isAlwaysOn || b.isAlwaysOn) return false;
+  if (a.id.isNotEmpty && b.id.isNotEmpty && a.id == b.id) return true;
   final teamsA = _teamPairKeyFromCatalog(
     homeTeam: a.homeTeam,
     awayTeam: a.awayTeam,
@@ -1294,7 +1295,7 @@ bool _sameStreamedEvent(_StreamedMatch a, _StreamedMatch b) {
     awayTeam: b.awayTeam,
     title: b.title,
   );
-  if (teamsA != null && teamsB != null) return teamsA == teamsB;
+  if (teamsA != null && teamsB != null && teamsA == teamsB) return true;
   final titleA = _matchTextKey(a.title);
   final titleB = _matchTextKey(b.title);
   if (titleA.isEmpty || titleB.isEmpty || titleA != titleB) return false;
@@ -1303,6 +1304,111 @@ bool _sameStreamedEvent(_StreamedMatch a, _StreamedMatch b) {
     if (deltaMs > const Duration(hours: 6).inMilliseconds) return false;
   }
   return true;
+}
+
+bool _sameIframeCatalogStream(_IframeCatalogStream a, _IframeCatalogStream b) {
+  if (a.id.isNotEmpty && b.id.isNotEmpty && a.id == b.id) return true;
+  if (_normalizeSportId(a.categoryName) != _normalizeSportId(b.categoryName)) {
+    return false;
+  }
+  final teamsA = _teamPairKeyFromCatalog(
+    homeTeam: a.homeTeam,
+    awayTeam: a.awayTeam,
+    title: a.name,
+  );
+  final teamsB = _teamPairKeyFromCatalog(
+    homeTeam: b.homeTeam,
+    awayTeam: b.awayTeam,
+    title: b.name,
+  );
+  if (teamsA != null && teamsB != null && teamsA == teamsB) {
+    if (a.isAlwaysOn || b.isAlwaysOn) return true;
+    if (a.startsAt > 0 && b.startsAt > 0) {
+      final deltaSec = (a.startsAt - b.startsAt).abs();
+      if (deltaSec > const Duration(minutes: 30).inSeconds) return false;
+    }
+    return true;
+  }
+  final titleA = _matchTextKey(a.name);
+  final titleB = _matchTextKey(b.name);
+  if (titleA.isEmpty || titleB.isEmpty || titleA != titleB) return false;
+  if (a.isAlwaysOn || b.isAlwaysOn) return true;
+  if (a.startsAt > 0 && b.startsAt > 0) {
+    final deltaSec = (a.startsAt - b.startsAt).abs();
+    if (deltaSec > const Duration(minutes: 30).inSeconds) return false;
+  }
+  return true;
+}
+
+String? _iframeCatalogMergeBucketKey(_IframeCatalogStream s) {
+  if (s.isAlwaysOn) {
+    final title = _matchTextKey(s.name);
+    if (title.isEmpty) return null;
+    return '247:$title';
+  }
+  final teams = _teamPairKeyFromCatalog(
+    homeTeam: s.homeTeam,
+    awayTeam: s.awayTeam,
+    title: s.name,
+  );
+  if (teams != null) return 't:$teams';
+  final title = _matchTextKey(s.name);
+  if (title.isEmpty) return null;
+  return 'n:$title';
+}
+
+_IframeCatalogStream _mergeIframeCatalogPair(
+  _IframeCatalogStream a,
+  _IframeCatalogStream b,
+) {
+  final primary = a.isLive != b.isLive ? (a.isLive ? a : b) : a;
+  final other = identical(primary, a) ? b : a;
+  return _IframeCatalogStream(
+    id: primary.id.isNotEmpty ? primary.id : other.id,
+    name: primary.name.isNotEmpty ? primary.name : other.name,
+    poster: primary.poster.isNotEmpty ? primary.poster : other.poster,
+    startsAt: primary.startsAt > 0 ? primary.startsAt : other.startsAt,
+    endsAt: primary.endsAt > 0 ? primary.endsAt : other.endsAt,
+    categoryName: primary.categoryName.isNotEmpty
+        ? primary.categoryName
+        : other.categoryName,
+    status: primary.isLive ? primary.status : other.status,
+    league: primary.league.isNotEmpty ? primary.league : other.league,
+    homeTeam: _nonEmptyOrNull(primary.homeTeam) ?? other.homeTeam,
+    awayTeam: _nonEmptyOrNull(primary.awayTeam) ?? other.awayTeam,
+    viewers: primary.viewers + other.viewers,
+    iframe: primary.iframe.isNotEmpty ? primary.iframe : other.iframe,
+    alwaysLive: primary.alwaysLive || other.alwaysLive,
+  );
+}
+
+List<_IframeCatalogStream> _mergeIframeCatalogRows(
+  List<_IframeCatalogStream> streams,
+) {
+  if (streams.length < 2) return streams;
+  final out = <_IframeCatalogStream>[];
+  final buckets = <String, List<int>>{};
+  for (final s in streams) {
+    final bucketKey = _iframeCatalogMergeBucketKey(s);
+    var merged = false;
+    if (bucketKey != null) {
+      final candidates = buckets[bucketKey];
+      if (candidates != null) {
+        for (final idx in candidates) {
+          if (_sameIframeCatalogStream(out[idx], s)) {
+            out[idx] = _mergeIframeCatalogPair(out[idx], s);
+            merged = true;
+            break;
+          }
+        }
+      }
+    }
+    if (merged) continue;
+    final storeKey = bucketKey ?? 'id:${s.id}';
+    (buckets[storeKey] ??= []).add(out.length);
+    out.add(s);
+  }
+  return out;
 }
 
 /// Id token after the last `:` (Highfly often reuses `streamed:<streamedId>`).
@@ -1331,9 +1437,10 @@ List<_LiveMatchGridEntry> _mergeIframeAndScheduleEntries({
   required List<_IframeCatalogStream> iframeCatalog,
   required List<_StreamedMatch> streamed,
 }) {
+  final mergedIframe = _mergeIframeCatalogRows(iframeCatalog);
   final remainingStreamed = [...streamed];
   final entries = <_LiveMatchGridEntry>[];
-  for (final stream in iframeCatalog) {
+  for (final stream in mergedIframe) {
     final matchIndex = remainingStreamed.indexWhere(
       (match) => _sameIframeAndScheduleEvent(stream, match),
     );

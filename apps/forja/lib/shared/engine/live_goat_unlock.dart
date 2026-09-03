@@ -483,7 +483,14 @@ class LiveGoatUnlock {
         island: fetched.island,
         bodyHex: fetched.bodyHex,
       );
-      if (m3u8 == null || m3u8.isEmpty) {
+      var playUrl = m3u8 ?? '';
+      if (playUrl.isEmpty) {
+        debugPrint(
+          '[LiveGasmUnlock] wasm unlock empty — trying jw sniff path=$path',
+        );
+        playUrl = await _sniffJwEmbedPlaylist(embedUrl: embed) ?? '';
+      }
+      if (playUrl.isEmpty) {
         debugPrint('[LiveGasmUnlock] unlock returned empty path=$path');
         return null;
       }
@@ -491,7 +498,7 @@ class LiveGoatUnlock {
       if (fetched.cookie != null && fetched.cookie!.isNotEmpty) {
         headers['Cookie'] = fetched.cookie!;
       }
-      return (url: m3u8, headers: headers);
+      return (url: playUrl, headers: headers);
     } catch (e) {
       debugPrint('[LiveGasmUnlock] native resolve failed: $e');
       return null;
@@ -938,15 +945,24 @@ class LiveGoatUnlock {
     required String embedUrl,
     String? referer,
   }) async {
+    if (!isEpiEmbedsUrl(embedUrl)) return null;
+    return _sniffJwEmbedPlaylist(embedUrl: embedUrl, referer: referer);
+  }
+
+  /// JW embed playlist sniff (epiembeds / embedindia) when WASM memory scrape misses.
+  static Future<String?> _sniffJwEmbedPlaylist({
+    required String embedUrl,
+    String? referer,
+  }) async {
     final embed = embedUrl.trim();
-    if (embed.isEmpty || !isEpiEmbedsUrl(embed)) return null;
+    if (embed.isEmpty) return null;
     if (kIsWeb) return null;
 
     if (Platform.isMacOS ||
         Platform.isWindows ||
         Platform.isAndroid ||
         Platform.isIOS) {
-      final viaWebView = await _sniffEpiEmbedsWebView(
+      final viaWebView = await _sniffJwEmbedWebView(
         embedUrl: embed,
         referer: (referer ?? embed).trim(),
       );
@@ -973,7 +989,7 @@ class LiveGoatUnlock {
     }
   }
 
-  static Future<String?> _sniffEpiEmbedsWebView({
+  static Future<String?> _sniffJwEmbedWebView({
     required String embedUrl,
     required String referer,
   }) async {
@@ -1114,7 +1130,10 @@ class LiveGoatUnlock {
   static Future<String> _ensureGoatDir(String node) async {
     if (_cachedDir != null) {
       final ready = File('${_cachedDir!}/node_modules/happy-dom/package.json');
-      if (await ready.exists()) return _cachedDir!;
+      if (await ready.exists()) {
+        await _refreshGoatAssets(_cachedDir!);
+        return _cachedDir!;
+      }
     }
     _prepareFuture ??= _prepareGoatDir(node);
     await _prepareFuture;
@@ -1125,29 +1144,36 @@ class LiveGoatUnlock {
     return dir;
   }
 
+  static Future<void> _refreshGoatAssets(String dir) async {
+    await _writeAsset('$_assetRoot/unlock.mjs', File('$dir/unlock.mjs'));
+    await _writeAsset(
+      '$_assetRoot/vendor/lock.wasm',
+      File('$dir/vendor/lock.wasm'),
+    );
+    await _writeAsset(
+      '$_assetRoot/vendor/lock-esm.mjs',
+      File('$dir/vendor/lock-esm.mjs'),
+    );
+  }
+
   static Future<void> _prepareGoatDir(String node) async {
     final cached = _cachedDir;
     if (cached != null) {
       final ready = File('$cached/node_modules/happy-dom/package.json');
-      if (await ready.exists()) return;
+      if (await ready.exists()) {
+        await _refreshGoatAssets(cached);
+        return;
+      }
     }
 
     final support = await getApplicationSupportDirectory();
     final dir = Directory('${support.path}/live-goat');
     await dir.create(recursive: true);
 
-    await _writeAsset('$_assetRoot/unlock.mjs', File('${dir.path}/unlock.mjs'));
+    await _refreshGoatAssets(dir.path);
     await _writeAsset(
       '$_assetRoot/package.json',
       File('${dir.path}/package.json'),
-    );
-    await _writeAsset(
-      '$_assetRoot/vendor/lock.wasm',
-      File('${dir.path}/vendor/lock.wasm'),
-    );
-    await _writeAsset(
-      '$_assetRoot/vendor/lock-esm.mjs',
-      File('${dir.path}/vendor/lock-esm.mjs'),
     );
 
     final npm = await _findNpmBinary();

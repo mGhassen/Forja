@@ -178,7 +178,12 @@ async function crack(slot, goat, bodyHex, embedOrigin) {
   try {
     await api.set_stream_jw(slot.source, slot.id, slot.stream)
   } catch (err) {
-    if (!m3u8) throw err
+    if (!m3u8) {
+      const msg =
+        (err && (err.stack || err.message)) ||
+        (err != null ? String(err) : 'set_stream_jw failed')
+      throw new Error(msg.trim() || 'set_stream_jw failed')
+    }
   }
   if (!m3u8) throw new Error('lock did not yield m3u8')
   return m3u8

@@ -535,7 +535,7 @@ mixin _LiveMatchesData
           )
           .toList();
     }
-    return _sortIframeCatalogLiveFirst(list);
+    return _sortIframeCatalogLiveFirst(_mergeIframeCatalogRows(list));
   }
 
   List<_StreamedMatch> _streamedMatchesSportAndTimeFiltered() {

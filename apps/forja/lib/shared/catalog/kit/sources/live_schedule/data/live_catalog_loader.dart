@@ -190,6 +190,25 @@ mixin _LiveMatchesForjaLive
     _s._cachedLiveMatchesGridEntries = null;
   }
 
+  List<_StreamedMatch> _streamedMatchesWithoutForjaLiveCatalog(String filterId) {
+    final norm = EngineService.normalizeLiveSportPluginId(filterId);
+    return [
+      for (final m in _s._streamedMatches)
+        if (!m.isForjaLive ||
+            EngineService.normalizeLiveSportPluginId(m.livePluginId) != norm)
+          m,
+    ];
+  }
+
+  List<_IframeCatalogStream> _iframeCatalogWithoutIds(Iterable<String> ids) {
+    final drop = ids.map((id) => id.trim()).where((id) => id.isNotEmpty).toSet();
+    if (drop.isEmpty) return _s._iframeCatalogStreams;
+    return [
+      for (final s in _s._iframeCatalogStreams)
+        if (!drop.contains(s.id)) s,
+    ];
+  }
+
   void _maybeRebuildSportTabsFromCurrentMatches() {
     _rebuildSportTabsFromCurrentMatches();
   }
@@ -871,7 +890,8 @@ mixin _LiveMatchesForjaLive
             .toList();
         setState(() {
           _invalidateLiveMatchesGridCache();
-          _s._iframeCatalogStreams = [..._s._iframeCatalogStreams, ...streams];
+          final kept = _iframeCatalogWithoutIds(streams.map((s) => s.id));
+          _s._iframeCatalogStreams = [...kept, ...streams];
           _s._forjaLivePluginLoads[filterId] =
               _s._forjaLivePluginLoads[filterId]!.copyWith(
             loading: false,
@@ -912,8 +932,9 @@ mixin _LiveMatchesForjaLive
           : matchRows.take(_kForjaLiveCatalogMaxPerPlugin).toList();
       setState(() {
         _invalidateLiveMatchesGridCache();
+        final kept = _streamedMatchesWithoutForjaLiveCatalog(filterId);
         _s._streamedMatches = _sortStreamedLiveFirst([
-          ..._s._streamedMatches,
+          ...kept,
           ...matches,
         ]);
         if (LiveMatchesEngine.isScheduleEnrichCatalogPlugin(catalog)) {

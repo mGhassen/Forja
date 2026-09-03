@@ -11,14 +11,8 @@ import { Window } from 'happy-dom'
 const vendorDir = join(dirname(fileURLToPath(import.meta.url)), 'vendor')
 const nodeRequire = createRequire(import.meta.url)
 
-/** Prefer ref pair (offsets match decrypt.js). Fall back to live embedindia pair. */
+/** embedindia.st ships one wasm + ESM glue — try flags on/off. */
 const PAIRS = [
-  {
-    name: 'ref',
-    js: join(vendorDir, 'gasm.js'),
-    wasm: join(vendorDir, 'gasm.wasm'),
-    applyFlags: true,
-  },
   {
     name: 'live',
     js: join(vendorDir, 'gasm-esm.mjs'),
@@ -70,7 +64,7 @@ function slugFromFetchBody(body) {
 
 function extractUrl(memory, slug) {
   const text = Buffer.from(memory.buffer).toString('latin1')
-  const re = /https:\/\/[a-z0-9.-]+\/secure\/[^\x00-\x1f\s"']+?index\.m3u8/gi
+  const re = /https:\/\/[a-z0-9.-]+\/secure\/[^\x00-\x1f\s"']+?\.m3u8/gi
   const matches = []
   let match
   while ((match = re.exec(text)) !== null) matches.push(match[0])

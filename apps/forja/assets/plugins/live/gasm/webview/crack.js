@@ -82,7 +82,7 @@ function extractUrl(memory, slug) {
   const u8 = new Uint8Array(memory.buffer);
   let text = '';
   for (let i = 0; i < u8.length; i++) text += String.fromCharCode(u8[i]);
-  const re = /https:\/\/[a-z0-9.-]+\/secure\/[^\x00-\x1f\s"']+?index\.m3u8/gi;
+  const re = /https:\/\/[a-z0-9.-]+\/secure\/[^\x00-\x1f\s"']+?\.m3u8/gi;
   const matches = [];
   let match;
   while ((match = re.exec(text)) !== null) matches.push(match[0]);
