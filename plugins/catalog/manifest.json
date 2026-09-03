@@ -48,6 +48,7 @@
       "kind": "http",
       "config": {
         "providerId": "live-streamfree",
+        "matchIdPrefix": "sf_",
         "origin": "https://streamfree.top"
       }
     },

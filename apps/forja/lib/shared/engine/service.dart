@@ -425,9 +425,6 @@ class EngineService {
   Future<void> ensureOfficialInstalled({bool force = false}) =>
       PluginRegistry.instance.ensureOfficialInstalled(force: force);
 
-  Future<void> ensureDevTorrentPackSeeded() =>
-      PluginRegistry.instance.ensureDevTorrentPackSeeded();
-
   Future<void> retryOfficialInstall() =>
       PluginRegistry.instance.retryOfficialInstall();
 

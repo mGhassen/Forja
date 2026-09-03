@@ -897,27 +897,6 @@ List<_StreamedMatch> _eventMatchesForStreamResolve(
   return siblings;
 }
 
-String _liveSourceNameFromPluginId(String livePluginId) {
-  final norm = EngineService.normalizeLiveSportPluginId(livePluginId);
-  for (final prefix in ['live-', 'catalog-']) {
-    if (norm.startsWith(prefix)) return norm.substring(prefix.length);
-  }
-  return norm;
-}
-
-String _liveSourceRefId(_StreamedMatch match, String source) {
-  final id = match.id.trim();
-  if (id.isEmpty) return '';
-  final prefixed = '${source}_';
-  if (id.toLowerCase().startsWith(prefixed)) {
-    return id.substring(prefixed.length);
-  }
-  if (source == 'streamfree' && id.startsWith('sf_')) {
-    return id.substring(3);
-  }
-  return id;
-}
-
 /// Catalog rows normally carry `sources[]`; synthesize when the grid row lost them.
 _StreamedMatch _ensureProviderResolveMatch(_StreamedMatch match) {
   if (match.sources.isNotEmpty || match.inlineStreams.isNotEmpty) {
@@ -929,8 +908,14 @@ _StreamedMatch _ensureProviderResolveMatch(_StreamedMatch match) {
   if (LiveMatchesEngine.cachedIsScheduleEnrichCatalog(match.livePluginId)) {
     return match;
   }
-  final source = _liveSourceNameFromPluginId(match.livePluginId);
-  final refId = _liveSourceRefId(match, source);
+  final resolvePluginId =
+      LiveMatchesEngine.cachedProviderResolvePluginId(match.livePluginId);
+  if (resolvePluginId.isEmpty) return match;
+  final source = LiveMatchesEngine.cachedResolveSourceToken(resolvePluginId);
+  final refId = LiveMatchesEngine.cachedResolveRefId(
+    match.id,
+    match.livePluginId,
+  );
   if (source.isEmpty || refId.isEmpty) return match;
   return _StreamedMatch(
     id: match.id,
@@ -952,7 +937,7 @@ _StreamedMatch _ensureProviderResolveMatch(_StreamedMatch match) {
     stremioType: match.stremioType,
     stremioAddonName: match.stremioAddonName,
     sportMatchGame: match.sportMatchGame,
-    livePluginId: match.livePluginId,
+    livePluginId: resolvePluginId,
   );
 }
 

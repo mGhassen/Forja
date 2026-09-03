@@ -53,7 +53,6 @@ class ProfileEngineWarm {
         await coordinator
             .ensureAllInstalled(
               notifyUpdates: true,
-              awaitCloudLean: true,
               includeNuvio: needs.nuvio,
             )
             .catchError((Object e) {

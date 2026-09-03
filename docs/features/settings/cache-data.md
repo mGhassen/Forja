@@ -4,11 +4,11 @@
 
 ## What it is
 
-A category under **Settings → Backup** to free disk and reset local learned or viewing data without wiping accounts, My List, or your provider drag order.
+A category under **Settings → Data & backup** to free disk and reset local learned or viewing data without wiping accounts, My List, or your provider drag order.
 
 ## How to open it
 
-**Settings → Backup** (Cache section) — phone / desktop only (hidden on Android TV)
+**Settings → Data & backup** (Cache section) — phone / desktop only (hidden on Android TV)
 
 ## What you can do
 

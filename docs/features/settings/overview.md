@@ -20,7 +20,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
-| [Account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
+| [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
 | [Forja Packs](forja-packs.md) | Install and manage Forja JS plugin manifests (providers, hubs, live, …) | Always |
 | [Features](navigation-bar.md) | Tab visibility, order, default menu | Always |
 | [Sources](torrent-settings.md) | **Forja addons** — Direct torrent, Stremio, Nuvio toggles + install | Always |
@@ -28,7 +28,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | [Forja Sports](forja-sports.md) | Live plugins, catalog feeds, leagues, Enable Forja Sports | Live Matches + IPTV tabs on |
 | Connected services | Simkl; MDBlist (admin) | VOD tab (MDBlist rows are admin-only) |
 | [LAN](lan.md) | Desktop server, pairing, torrent relay to phone/TV | Always |
-| [Backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
+| [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
 | [About](app-updates.md) | Check for updates, app version; Privacy / Developer rows for admins | Always |
 
 ## Tips

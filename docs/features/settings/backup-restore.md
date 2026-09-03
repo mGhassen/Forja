@@ -20,7 +20,7 @@ Older SharedPreferences copies of those settings are imported once into that fil
 
 ## How to open it
 
-**Settings → Backup** (Backup / IPTV portals — portals CSV only when the IPTV tab is visible)
+**Settings → Data & backup** (Backup / IPTV portals — portals CSV only when the IPTV tab is visible)
 
 ## What you can do
 

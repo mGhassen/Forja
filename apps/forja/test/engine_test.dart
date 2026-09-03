@@ -655,6 +655,57 @@ void main() {
       expect(File(url!).existsSync(), isTrue);
     });
 
+    test(
+      'ensureOfficialInstalled does not reinstall removed local torrent pack',
+      () async {
+        final root = await Directory.systemTemp.createTemp('forja_torrent_rm_');
+        addTearDown(() async {
+          if (await root.exists()) await root.delete(recursive: true);
+        });
+        final torrentDir = Directory('${root.path}/plugins/torrent');
+        await torrentDir.create(recursive: true);
+        final manifestPath = '${torrentDir.path}/manifest.json';
+        await File(manifestPath).writeAsString(
+          jsonEncode({
+            'schema': 1,
+            'id': 'forjahq-torrent',
+            'name': 'ForjaHQ Torrent',
+            'version': '1.0.6',
+            'plugins': [
+              {
+                'id': 'test-torrent-a',
+                'name': 'Test A',
+                'entry': 'test-a.js',
+                'kind': 'torrent',
+                'enabled': true,
+              },
+            ],
+          }),
+        );
+        await File('${torrentDir.path}/test-a.js').writeAsString(
+          'function search(ctx) { return []; }',
+        );
+
+        final pack = await registry.install(manifestPath);
+        expect(pack.plugins, hasLength(1));
+
+        await registry.removePack(manifestPath);
+        expect(
+          (await registry.listPacksRaw())
+              .where((p) => PluginRegistry.forjaHqSlot(p.sourceUrl) == 'torrent'),
+          isEmpty,
+        );
+
+        await registry.ensureOfficialInstalled();
+
+        expect(
+          (await registry.listPacksRaw())
+              .where((p) => PluginRegistry.forjaHqSlot(p.sourceUrl) == 'torrent'),
+          isEmpty,
+        );
+      },
+    );
+
     test('groupEnginePacksByKind buckets catalog and live slot packs', () {
       final catalog = EnginePack.fromJson(
         {

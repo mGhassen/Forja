@@ -20,6 +20,9 @@ class LiveMatchesEngine {
   static final Map<String, String> _catalogLayoutByPluginId = {};
   static final Map<String, bool> _catalogUncappedByPluginId = {};
   static final Map<String, bool> _scheduleEnrichByPluginId = {};
+  static final Map<String, String> _providerResolveIdByPluginId = {};
+  static final Map<String, String> _matchIdPrefixByPluginId = {};
+  static final Map<String, String> _resolveSourceByPluginId = {};
 
   static Future<bool> isEngineResolveMode() async {
     if (!AccountFeatures.instance.isAdmin) return true;
@@ -74,6 +77,20 @@ class LiveMatchesEngine {
     _catalogUncappedByPluginId[key] = catalogUncappedFromConfig(plugin.config);
     _scheduleEnrichByPluginId[key] =
         isScheduleEnrichCatalogConfig(plugin.config);
+    final providerId = (plugin.config['providerId'] ?? '').toString().trim();
+    if (providerId.isNotEmpty) {
+      _providerResolveIdByPluginId[key] = providerId;
+    }
+    final matchIdPrefix =
+        (plugin.config['matchIdPrefix'] ?? '').toString().trim();
+    if (matchIdPrefix.isNotEmpty) {
+      _matchIdPrefixByPluginId[key] = matchIdPrefix;
+    }
+    final resolveSource =
+        (plugin.config['resolveSource'] ?? '').toString().trim();
+    if (resolveSource.isNotEmpty) {
+      _resolveSourceByPluginId[key] = resolveSource.toLowerCase();
+    }
   }
 
   static String _metaPluginKey(String pluginId) =>
@@ -135,6 +152,72 @@ class LiveMatchesEngine {
     return _scheduleEnrichByPluginId[_metaPluginKey(pluginId)] == true;
   }
 
+  /// Pack `config.providerId` — catalog row → live resolve plugin (opaque passthrough).
+  static String cachedProviderResolvePluginId(String pluginId) {
+    if (pluginId.isEmpty) return '';
+    final key = _metaPluginKey(pluginId);
+    final configured = _providerResolveIdByPluginId[key];
+    if (configured != null && configured.isNotEmpty) return configured;
+    return pluginId.trim();
+  }
+
+  /// Resolve param `source` token — pack `resolveSource`, else `nativeUnlock`, else slug.
+  static String cachedResolveSourceToken(String pluginId) {
+    if (pluginId.isEmpty) return '';
+    final key = _metaPluginKey(pluginId);
+    final explicit = _resolveSourceByPluginId[key];
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+    final unlock = _nativeUnlockByPluginId[key];
+    if (unlock != null && unlock.isNotEmpty) return unlock;
+    return key;
+  }
+
+  /// Strip pack-declared `matchIdPrefix` / `{slug}_` before live `resolve`.
+  static String cachedResolveRefId(String rowId, String pluginId) {
+    final id = rowId.trim();
+    if (id.isEmpty) return '';
+    final key = _metaPluginKey(pluginId);
+    final prefixes = <String>[];
+    final configured = _matchIdPrefixByPluginId[key];
+    if (configured != null && configured.isNotEmpty) prefixes.add(configured);
+    if (key.isNotEmpty) prefixes.add('${key}_');
+    for (final prefix in prefixes) {
+      if (prefix.isEmpty || id.length <= prefix.length) continue;
+      if (id.toLowerCase().startsWith(prefix.toLowerCase())) {
+        return id.substring(prefix.length);
+      }
+    }
+    return id;
+  }
+
+  static bool linkedProviderResolvePlugin(EnginePlugin catalog) {
+    return (catalog.config['providerId'] ?? '').toString().trim().isNotEmpty;
+  }
+
+  /// Schedule catalogs that feed Providers (`live-*` resolve), not enrich/broadcast-only.
+  static bool isProviderStreamCatalog(EnginePlugin plugin) {
+    if (!plugin.supportsLiveCatalog) return false;
+    if (isScheduleEnrichCatalogPlugin(plugin)) return false;
+    if (plugin.supportsLiveBroadcast && !linkedProviderResolvePlugin(plugin)) {
+      return false;
+    }
+    return linkedProviderResolvePlugin(plugin);
+  }
+
+  static String? cachedIframeProviderResolvePluginId() {
+    for (final entry in _catalogLayoutByPluginId.entries) {
+      if (entry.value != 'iframe') continue;
+      final resolveId = _providerResolveIdByPluginId[entry.key];
+      if (resolveId != null && resolveId.isNotEmpty) return resolveId;
+    }
+    return null;
+  }
+
+  static String resolvePluginKey(String pluginId) =>
+      EngineService.normalizeLiveSportPluginId(
+        cachedProviderResolvePluginId(pluginId),
+      );
+
   /// Warm web origin for iframe-layout catalogs (embed Referer on first load).
   static Future<void> warmIframeCatalogWebOrigin() async {
     await warmPluginMeta();
@@ -158,6 +241,9 @@ class LiveMatchesEngine {
     _catalogLayoutByPluginId.clear();
     _catalogUncappedByPluginId.clear();
     _scheduleEnrichByPluginId.clear();
+    _providerResolveIdByPluginId.clear();
+    _matchIdPrefixByPluginId.clear();
+    _resolveSourceByPluginId.clear();
   }
 
   /// Warm name/origin/unlock caches from installed live + catalog plugins.

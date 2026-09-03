@@ -651,9 +651,7 @@ class PluginRegistry {
     return null;
   }
 
-  /// Debug checkout: install `plugins/torrent/manifest.json` when
-  /// `FORJA_HQ_TORRENT_MANIFEST_URL` or `FORJA_REPO_ROOT` is set and no torrent
-  /// slot pack is installed yet.
+  /// Debug checkout: local `plugins/torrent/manifest.json` for [loadScript] only.
   @visibleForTesting
   static String? devTorrentManifestUrl() {
     if (!kDebugMode) return null;
@@ -674,48 +672,6 @@ class PluginRegistry {
     return '$normalized/plugins/torrent/manifest.json';
   }
 
-  Future<void> ensureDevTorrentPackSeeded() async {
-    if (!kDebugMode) return;
-    final url = devTorrentManifestUrl();
-    if (url == null) return;
-    final file = _asLocalFile(url);
-    if (file == null || !await file.exists()) return;
-
-    String manifestVersion = '';
-    try {
-      final map = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-      manifestVersion = map['version']?.toString().trim() ?? '';
-    } catch (_) {
-      return;
-    }
-
-    final packs = await listPacksRaw();
-    EnginePack? existing;
-    for (final p in packs) {
-      if (forjaHqSlot(p.sourceUrl) == 'torrent') {
-        existing = p;
-        break;
-      }
-    }
-
-    final needsInstall = existing == null ||
-        existing.sourceUrl != url ||
-        (manifestVersion.isNotEmpty && existing.version != manifestVersion);
-
-    if (!needsInstall) return;
-
-    debugPrint(
-      '[engine] dev (re)install ForjaHQ Torrent from $url '
-      '(was ${existing?.version ?? "none"} → $manifestVersion)',
-    );
-    try {
-      await install(url);
-      notifyChanged();
-    } catch (e) {
-      debugPrint('[engine] dev torrent seed failed: $e');
-    }
-  }
-
   /// Hydrate lean stubs and refresh remote packs when needed.
   Future<void> ensureOfficialInstalled({bool force = false}) async {
     if (_officialEnsureFuture != null) {
@@ -724,7 +680,6 @@ class PluginRegistry {
     }
     final run = () async {
       try {
-        await ensureDevTorrentPackSeeded();
         await migrateLegacyLiveSportPacksIfNeeded();
         await _purgeRetiredOfficialPacks();
         await hydrateLeanInstalled();

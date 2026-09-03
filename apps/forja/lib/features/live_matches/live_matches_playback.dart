@@ -1,7 +1,5 @@
 part of 'live_matches_screen.dart';
 
-enum _LiveMatchPlayPath { engineChoices, iptvSports, stremioDirect }
-
 mixin _LiveMatchesPlayback
     on ConsumerState<LiveMatchesScreen>, _LiveMatchesData {
   @override
@@ -90,14 +88,6 @@ mixin _LiveMatchesPlayback
           choices: choices,
           isStale: isStale,
           ppvAnchor: ppvAnchor,
-        );
-        if (isStale() || controller.isDisposed || choices.isNotEmpty) return;
-        await _fillCatalogEngineSources(
-          match: match,
-          controller: controller,
-          choices: choices,
-          isStale: isStale,
-          allowIptvFallback: false,
         );
       } catch (e, st) {
         debugPrint('[LiveMatches] Forja Live providers error: $e\n$st');
@@ -215,17 +205,13 @@ mixin _LiveMatchesPlayback
     }
     _panelAppendChoices(controller, choices);
 
-    // Resolve live-* plugins from the opened row + pool first — no catalog re-fetch.
-    var catalogMatches = await (this as _LiveMatchesForjaLive)
-        ._catalogMatchesForStreamResolve(
-      match,
-      fetchMissingCatalogs: false,
-    );
-    if (isStale() || controller.isDisposed) return;
+    final forjaLive = this as _LiveMatchesForjaLive;
+    final known = forjaLive._knownProviderEventMatches(match);
 
-    if (catalogMatches.isNotEmpty) {
+    // Resolve immediately from the opened row (+ pool siblings) — no catalog re-list.
+    if (known.isNotEmpty) {
       await _resolveCatalogStreamChoices(
-        catalogMatches,
+        known,
         isStale: isStale,
         onPartial: (batch) {
           if (isStale() || controller.isDisposed) return;
@@ -236,44 +222,36 @@ mixin _LiveMatchesPlayback
     }
     if (isStale() || controller.isDisposed) return;
 
-    final hasNonPpvStreams = choices.any((c) => !_isPpvStreamChoice(c));
-    if (!hasNonPpvStreams) {
-      final seenIds = {for (final m in catalogMatches) m.id};
-      unawaited(
-        _backfillForjaLiveCatalogProviders(
-          match: match,
-          seenIds: seenIds,
-          controller: controller,
-          choices: choices,
-          isStale: isStale,
-          ppvAnchor: ppvAnchor,
-        ),
-      );
-    } else {
-      _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
-      if (ppvAnchor != null) {
-        _rememberPpvStreamViewers(ppvAnchor, _sheetTotalViewers(choices));
-      }
+    _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
+    if (ppvAnchor != null) {
+      _rememberPpvStreamViewers(ppvAnchor, _sheetTotalViewers(choices));
     }
+
+    // Other providers: catalog HTTP only for plugins we do not already have a row for.
+    unawaited(
+      _resolveMissingProviderCatalogs(
+        match: match,
+        known: known,
+        controller: controller,
+        choices: choices,
+        isStale: isStale,
+        ppvAnchor: ppvAnchor,
+      ),
+    );
   }
 
-  Future<void> _backfillForjaLiveCatalogProviders({
+  Future<void> _resolveMissingProviderCatalogs({
     required _StreamedMatch match,
-    required Set<String> seenIds,
+    required List<_StreamedMatch> known,
     required _IptvSportsChannelsPanelController controller,
     required List<_StreamedStreamChoice> choices,
     required bool Function() isStale,
     _DamiTvStream? ppvAnchor,
   }) async {
     try {
-      final hydrated = await (this as _LiveMatchesForjaLive)
-          ._catalogMatchesForStreamResolve(match);
-      if (isStale() || controller.isDisposed) return;
-      final extra = [
-        for (final m in hydrated)
-          if (!seenIds.contains(m.id)) m,
-      ];
-      if (extra.isEmpty) return;
+      final extra = await (this as _LiveMatchesForjaLive)
+          ._hydrateMissingProviderCatalogMatches(match, known);
+      if (extra.isEmpty || isStale() || controller.isDisposed) return;
       await _resolveCatalogStreamChoices(
         extra,
         isStale: isStale,
@@ -284,7 +262,7 @@ mixin _LiveMatchesPlayback
         },
       );
     } catch (e, st) {
-      debugPrint('[LiveMatches] Forja Live catalog backfill error: $e\n$st');
+      debugPrint('[LiveMatches] missing provider catalogs: $e\n$st');
     }
     if (isStale() || controller.isDisposed) return;
     _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
@@ -380,52 +358,6 @@ mixin _LiveMatchesPlayback
     return enriched;
   }
 
-  Future<({_StreamedMatch match, _LiveMatchPlayPath? playPath})>
-      _fillCatalogEngineSources({
-    required _StreamedMatch match,
-    required _IptvSportsChannelsPanelController controller,
-    required List<_StreamedStreamChoice> choices,
-    required bool Function() isStale,
-    bool allowIptvFallback = true,
-  }) async {
-    controller.setSearchPhase('streams');
-    final catalogMatches = await (this as _LiveMatchesForjaLive)
-        ._catalogMatchesForStreamResolve(match);
-
-    _prependMatchingPpvChoices(match, choices);
-    _panelAppendChoices(controller, choices);
-
-    if (catalogMatches.isNotEmpty) {
-      await _resolveCatalogStreamChoices(
-        catalogMatches,
-        isStale: isStale,
-        onPartial: (batch) {
-          if (isStale() || controller.isDisposed) return;
-          choices.addAll(batch);
-          _panelAppendChoices(controller, batch);
-        },
-      );
-    }
-
-    if (isStale() || controller.isDisposed) {
-      return (match: match, playPath: null);
-    }
-
-    if (allowIptvFallback &&
-        choices.isEmpty &&
-        catalogMatches.any((m) => m.sportMatchGame != null)) {
-      final enriched = await _fillIptvSportsSources(
-        match: match,
-        controller: controller,
-        isStale: isStale,
-      );
-      return (match: enriched, playPath: _LiveMatchPlayPath.iptvSports);
-    }
-
-    _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
-    return (match: match, playPath: null);
-  }
-
   Future<void> _openStreamedMatch(_StreamedMatch match) async {
     await _openLiveMatchDetails(host: _s, match: match);
   }
@@ -478,7 +410,7 @@ mixin _LiveMatchesPlayback
         awayBadge: ppv.awayBadge ?? anchor.awayBadge,
         sources: const [],
         catalog: 'forja_live',
-        livePluginId: _ppvLivePluginId(),
+        livePluginId: _iframeProviderLivePluginId(),
       ),
       stream: _StreamedStream(
         id: ppv.id,
@@ -652,12 +584,8 @@ mixin _LiveMatchesPlayback
     return false;
   }
 
-  String _ppvLivePluginId() =>
-      LiveMatchesEngine.cachedPluginIdForNativeUnlock('ppv') ?? 'ppv';
-
-  String _defaultLivePluginId() =>
-      LiveMatchesEngine.cachedPluginIdForNativeUnlock('streamed') ??
-      'streamed';
+  String _iframeProviderLivePluginId() =>
+      LiveMatchesEngine.cachedIframeProviderResolvePluginId() ?? '';
 
   bool _isPpvStreamChoice(_StreamedStreamChoice choice) {
     return _isPpvMatch(choice.catalogMatch, choice.stream);
@@ -797,19 +725,10 @@ mixin _LiveMatchesPlayback
     _StreamedSourceRef source, {
     bool allowStreamedFallback = true,
   }) async {
-    final pluginId = match.livePluginId.isNotEmpty
-        ? match.livePluginId
-        : _defaultLivePluginId();
-    final label = _liveForjaPluginDisplayName(pluginId).toLowerCase();
-    final unlock = await LiveMatchesEngine.pluginNativeUnlock(pluginId);
-
-    if (unlock == 'streamed') {
-      final rows = await _fetchStreamedStreams(
-        source,
-        allowFallback: allowStreamedFallback,
-      );
-      if (rows.isNotEmpty) return rows;
-    }
+    final pluginId = LiveMatchesEngine.cachedProviderResolvePluginId(
+      match.livePluginId,
+    );
+    if (pluginId.isEmpty) return const [];
 
     final rows = await EngineService.instance.runLivePlugin(
       pluginId: pluginId,
@@ -827,7 +746,8 @@ mixin _LiveMatchesPlayback
       },
     );
     if (rows.isEmpty) {
-      if (unlock == 'ppv' && source.iframe.trim().isNotEmpty) {
+      if (source.iframe.trim().isNotEmpty) {
+        final token = LiveMatchesEngine.cachedResolveSourceToken(pluginId);
         return [
           _StreamedStream(
             id: source.id,
@@ -835,17 +755,20 @@ mixin _LiveMatchesPlayback
             language: '',
             hd: false,
             embedUrl: source.iframe,
-            source: 'ppv',
+            source: token.isNotEmpty ? token : source.source,
             viewers: 0,
           ),
         ];
       }
-      return [];
+      if (allowStreamedFallback && !match.isForjaLive) {
+        return _fetchStreamedStreams(source, allowFallback: true);
+      }
+      return const [];
     }
 
     final pluginSource = source.source.trim().isNotEmpty
         ? source.source.trim().toLowerCase()
-        : label;
+        : LiveMatchesEngine.cachedResolveSourceToken(pluginId);
     final catalogViewers = match.viewers;
     final out = <_StreamedStream>[];
     for (var i = 0; i < rows.length; i++) {
@@ -878,7 +801,7 @@ mixin _LiveMatchesPlayback
     List<_StreamedStreamChoice> choices,
   ) {
     final url = picked.url.trim();
-    for (final c in choices) {
+    for (final c in List<_StreamedStreamChoice>.from(choices)) {
       final embed = c.stream.embedUrl.trim();
       if (embed.isNotEmpty && embed == url) return c;
       final pending =
@@ -887,7 +810,7 @@ mixin _LiveMatchesPlayback
     }
     final label = picked.label.trim();
     if (label.isEmpty) return null;
-    for (final c in choices) {
+    for (final c in List<_StreamedStreamChoice>.from(choices)) {
       if (_streamPickerLabel(c.catalogMatch, c.stream) == label) return c;
     }
     return null;
@@ -1186,13 +1109,13 @@ mixin _LiveMatchesPlayback
     }
 
     onProgress?.call('Unlocking source…');
-    final pluginId = isPpv
-        ? (match.livePluginId.isNotEmpty
-              ? match.livePluginId
-              : _ppvLivePluginId())
-        : match.isForjaLive && match.livePluginId.isNotEmpty
-        ? match.livePluginId
-        : _defaultLivePluginId();
+    var pluginId = LiveMatchesEngine.cachedProviderResolvePluginId(
+      match.livePluginId,
+    );
+    if (pluginId.isEmpty && isPpv) {
+      pluginId = _iframeProviderLivePluginId();
+    }
+    if (pluginId.isEmpty) return null;
     final result = await LiveMatchesEngine.resolve(
       pluginId: pluginId,
       params: {

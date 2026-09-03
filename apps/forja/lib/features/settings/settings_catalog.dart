@@ -57,7 +57,7 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
   return [
     const SettingsCategoryMeta(
       id: SettingsCategoryId.profile,
-      title: 'Account',
+      title: 'Profile & account',
       subtitle: 'Profile, cloud sync, sign in',
       icon: Icons.account_circle_outlined,
     ),
@@ -114,7 +114,7 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
     if (visibility.showDataCategory)
       const SettingsCategoryMeta(
         id: SettingsCategoryId.data,
-        title: 'Backup',
+        title: 'Data & backup',
         subtitle: 'Clear cache, export, import',
         icon: Icons.folder_outlined,
       ),

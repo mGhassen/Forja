@@ -359,23 +359,21 @@ mixin _LiveMatchesForjaLive
     _kickForjaLiveLazyCatalog(replace: true);
   }
 
-  /// Schedule chip filters the grid only. Providers hydrate sibling rows from
-  /// every enabled stream catalog — including ones not loaded for the chip.
-  ///
-  /// When [fetchMissingCatalogs] is false, only pool + anchor rows are returned
-  /// so details can call `live-*` resolve plugins without re-listing schedules.
-  Future<List<_StreamedMatch>> _catalogMatchesForStreamResolve(
-    _StreamedMatch match, {
-    bool fetchMissingCatalogs = true,
-  }) async {
-    var siblings = _eventMatchesForStreamResolve(match, _s._streamedMatches)
+  /// Rows we already have for this fixture (opened card + pool) — no catalog HTTP.
+  List<_StreamedMatch> _knownProviderEventMatches(_StreamedMatch match) {
+    return _eventMatchesForStreamResolve(match, _s._streamedMatches)
         .map(_ensureProviderResolveMatch)
         .toList();
-    if (!fetchMissingCatalogs) return siblings;
+  }
+
+  /// Catalog HTTP only for enabled stream plugins that have no event row yet.
+  Future<List<_StreamedMatch>> _hydrateMissingProviderCatalogMatches(
+    _StreamedMatch match,
+    List<_StreamedMatch> known,
+  ) async {
     final represented = <String>{
-      for (final m in siblings)
-        if (m.livePluginId.isNotEmpty)
-          EngineService.normalizeLiveSportPluginId(m.livePluginId),
+      for (final m in known)
+        if (m.livePluginId.isNotEmpty) LiveMatchesEngine.resolvePluginKey(m.livePluginId),
     };
     final hasMatchingPpv = _s._damiTvStreams.any(
       (ppv) =>
@@ -386,18 +384,16 @@ mixin _LiveMatchesForjaLive
         await EngineService.instance.listEnabledLiveCatalogPlugins();
     final missing = <EnginePlugin>[];
     for (final catalog in catalogs) {
-      // Scoreboard / broadcast feeds are not Providers stream sources.
-      if (LiveMatchesEngine.isScheduleEnrichCatalogPlugin(catalog)) continue;
-      if (catalog.supportsLiveBroadcast) continue;
+      if (!LiveMatchesEngine.isProviderStreamCatalog(catalog)) continue;
       final filterId = EngineService.catalogFilterId(catalog);
-      final norm = EngineService.normalizeLiveSportPluginId(filterId);
+      final norm = LiveMatchesEngine.resolvePluginKey(filterId);
       if (represented.contains(norm)) continue;
       if (LiveMatchesEngine.isIframeCatalogPlugin(catalog) && hasMatchingPpv) {
         continue;
       }
       missing.add(catalog);
     }
-    if (missing.isEmpty) return siblings;
+    if (missing.isEmpty) return const [];
 
     final added = <_StreamedMatch>[];
     await Future.wait(
@@ -444,11 +440,11 @@ mixin _LiveMatchesForjaLive
             final m = _forjaLiveRowToMatch(enriched);
             if (m.id.isEmpty || m.title.isEmpty) continue;
             if (!_sameStreamedEvent(match, m)) continue;
-            added.add(m);
+            added.add(_ensureProviderResolveMatch(m));
           }
         } catch (e) {
           debugPrint(
-            '[LiveMatches] stream-resolve catalog ${catalog.id}: $e',
+            '[LiveMatches] provider catalog hydrate ${catalog.id}: $e',
           );
         }
       }),
@@ -462,10 +458,9 @@ mixin _LiveMatchesForjaLive
           ...added,
         ]);
       });
-      siblings = _eventMatchesForStreamResolve(match, _s._streamedMatches);
     }
 
-    return siblings.map(_ensureProviderResolveMatch).toList();
+    return added;
   }
 
   void _ensureForjaLivePluginFilterValid() {
