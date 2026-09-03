@@ -18,12 +18,19 @@ void main() {
       );
     });
 
-    test('watchfooty wfty.st playlists open direct', () {
+    test('watchfooty wfty.st playlists use hls-proxy', () {
       expect(
         liveEnginePreferDirectPlayback(
           'https://lb5.wfty.st/secure/tok/delta/live_foo/1/465/playlist.m3u8',
         ),
-        isTrue,
+        isFalse,
+      );
+      expect(
+        liveEngineOpenDirect(
+          'https://lb5.wfty.st/secure/tok/sigma/slug/2/1/1/playlist.m3u8',
+          pluginDirect: true,
+        ),
+        isFalse,
       );
     });
 

@@ -158,7 +158,12 @@ pub fn rewrite_hls_playlist(
     };
 
     body.lines()
-        .map(|line| {
+        .filter_map(|line| {
+            let trimmed = line.trim();
+            if is_hls_subtitle_media(trimmed) {
+                return None;
+            }
+            let line = strip_stream_inf_subtitles_attr(line);
             let trimmed = line.trim();
             if trimmed.is_empty() || trimmed.starts_with('#') {
                 if trimmed.contains("URI=\"") {
@@ -180,15 +185,82 @@ pub fn rewrite_hls_playlist(
                         out.replace_range(start..start + 5 + end + 1, &new_token);
                         search_from = start + new_token.len();
                     }
-                    return out;
+                    return Some(out);
                 }
-                return line.to_string();
+                return Some(line.to_string());
             }
             let full = resolve_url(trimmed, base_path, server_base);
-            build_hls_proxy_url(proxy_base, &full, headers_json, strip)
+            Some(build_hls_proxy_url(
+                proxy_base,
+                &full,
+                headers_json,
+                strip,
+            ))
         })
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+fn is_plain_image_uri(uri: &str) -> bool {
+    let path = uri.split('?').next().unwrap_or(uri).to_ascii_lowercase();
+    path.ends_with(".png")
+        || path.ends_with(".jpg")
+        || path.ends_with(".jpeg")
+        || path.ends_with(".gif")
+        || path.ends_with(".webp")
+        || path.ends_with(".svg")
+}
+
+/// True when every media URI is a still image (WAF decoy), not HLS/TS/fMP4.
+pub fn hls_playlist_is_image_bait(body: &str) -> bool {
+    let mut uris = 0usize;
+    for line in body.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        uris += 1;
+        if !is_plain_image_uri(trimmed) {
+            return false;
+        }
+    }
+    uris > 0
+}
+
+fn is_hls_subtitle_media(line: &str) -> bool {
+    let t = line.trim();
+    if !t.starts_with("#EXT-X-MEDIA:") {
+        return false;
+    }
+    t.to_ascii_uppercase().contains("TYPE=SUBTITLES")
+}
+
+/// lavf waits on HLS `SUBTITLES=` groups (VixSrc ships ~30). In-app Wyzie/sideload covers captions.
+fn strip_stream_inf_subtitles_attr(line: &str) -> String {
+    let trimmed = line.trim();
+    if !trimmed.to_ascii_uppercase().contains("#EXT-X-STREAM-INF:") {
+        return line.to_string();
+    }
+    strip_quoted_attr(line, "SUBTITLES")
+}
+
+fn strip_quoted_attr(line: &str, attr: &str) -> String {
+    let needle = format!("{attr}=\"");
+    let lower = line.to_ascii_lowercase();
+    let needle_l = needle.to_ascii_lowercase();
+    let Some(i) = lower.find(&needle_l) else {
+        return line.to_string();
+    };
+    let after = i + needle.len();
+    let rest = &line[after..];
+    let Some(end) = rest.find('"') else {
+        return line.to_string();
+    };
+    let mut start = i;
+    if start > 0 && line.as_bytes()[start - 1] == b',' {
+        start -= 1;
+    }
+    format!("{}{}", &line[..start], &rest[end + 1..])
 }
 
 fn header_ci<'a>(
@@ -266,7 +338,8 @@ pub async fn hls_proxy_handler(
 
     let looks_like_playlist_url = content_type.contains("mpegurl")
         || content_type.contains("x-mpegurl")
-        || target_url.contains(".m3u8");
+        || target_url.contains(".m3u8")
+        || target_url.contains("/playlist/");
 
     if looks_like_playlist_url {
         let body = resp.text().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
@@ -284,6 +357,15 @@ pub async fn hls_proxy_handler(
                 .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
                 .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(body))
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        // WAF decoy: #EXTM3U whose only URIs are bare images (not PNG-wrapped TS).
+        if strip != Some("png") && hls_playlist_is_image_bait(&body) {
+            return Response::builder()
+                .status(StatusCode::BAD_GATEWAY)
+                .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
+                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                .body(Body::from("hls-proxy: rejected image decoy playlist"))
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
         }
         let port = *state.listen_port.read().await;
@@ -344,6 +426,50 @@ mod tests {
         );
         assert!(out.contains("http://127.0.0.1:9999/hls-proxy?url="));
         assert!(out.contains("720p%2Findex.m3u8") || out.contains("720p/index.m3u8"));
+    }
+
+    #[test]
+    fn rewrites_root_relative_aes_key() {
+        const BODY: &str = "\
+#EXTM3U
+#EXT-X-KEY:METHOD=AES-128,URI=\"/storage/enc.key\",IV=0x01
+https://cdn.example/seg.ts
+";
+        let out = rewrite_hls_playlist(
+            BODY,
+            "https://vixsrc.to/playlist/693466?type=video&rendition=1080p",
+            "http://127.0.0.1:9/hls-proxy",
+            "{}",
+            None,
+        );
+        assert!(
+            out.contains("url=https%3A%2F%2Fvixsrc.to%2Fstorage%2Fenc.key")
+                || out.contains("url=https://vixsrc.to/storage/enc.key"),
+            "KEY must resolve against playlist host, got:\n{out}"
+        );
+        assert!(!out.contains("cdn.example%2Fstorage"));
+    }
+
+    #[test]
+    fn drops_hls_subtitle_groups() {
+        const BODY: &str = "\
+#EXTM3U
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"audio\",NAME=\"Korean\",URI=\"/playlist/1?type=audio\"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"English\",URI=\"/playlist/1?type=subtitle\"
+#EXT-X-STREAM-INF:BANDWIDTH=1000,AUDIO=\"audio\",SUBTITLES=\"subs\"
+/playlist/1?type=video
+";
+        let out = rewrite_hls_playlist(
+            BODY,
+            "https://vixsrc.to/playlist/1",
+            "http://127.0.0.1:9/hls-proxy",
+            "{}",
+            None,
+        );
+        assert!(!out.to_ascii_uppercase().contains("TYPE=SUBTITLES"), "{out}");
+        assert!(!out.to_ascii_uppercase().contains("SUBTITLES="), "{out}");
+        assert!(out.to_ascii_uppercase().contains("TYPE=AUDIO"), "{out}");
+        assert!(out.contains("/hls-proxy?url="), "{out}");
     }
 
     #[test]
@@ -431,6 +557,27 @@ mod tests {
             !out.contains("cdnvideo11.shop%2F%2Fhls19"),
             "must not emit hostA//hostB joins:\n{out}"
         );
+    }
+
+    #[test]
+    fn image_bait_playlist_is_detected() {
+        const BAIT: &str = "\
+#EXTM3U
+#EXT-X-VERSION:3
+#EXTINF:10,
+https://media.bitstudio.ai/user-content/x.png
+#EXTINF:10,
+https://cdn.example/lumeflow/y.png
+";
+        assert!(hls_playlist_is_image_bait(BAIT));
+        assert!(!hls_playlist_is_image_bait(
+            "#EXTM3U\n#EXTINF:4,\nhttps://lb6.wfty.st/secure/tok/seg.ts\n"
+        ));
+        // KissKh-style .png media URIs are bait at this layer; handler skips
+        // when strip=png so wrapped TS still proxies.
+        assert!(hls_playlist_is_image_bait(
+            "#EXTM3U\n#EXTINF:3,\n//cdn.example/seg.png\n"
+        ));
     }
 
     #[test]

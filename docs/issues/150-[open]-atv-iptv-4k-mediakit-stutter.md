@@ -58,11 +58,11 @@ Requires the set to expose a matching mode at the current resolution; otherwise 
 
 ## Fix shipped — height/bitrate live cache tiers (I150-T05)
 
-ATV MediaKit **live** uses a 32 MiB Player buffer (demuxer owns readahead). After decode height is known: HD 48 MiB / 15 s, FHD 96 MiB / 20 s, UHD 150 MiB / 30 s; bitrate can bump one tier when byte cap would bind. VOD never inherits live fat profile ([163](163-[open]-android-tv-iptv-vod-live-profile.md)). Cold open still uses UHD-safe defaults until height probes.
+ATV MediaKit **live** uses a 32 MiB Player buffer (demuxer owns readahead). After decode height is known: HD 48 MiB / 15 s, FHD **and UHD** 96 MiB / 20 s ([issue 155](155-[open]-android-tv-iptv-4k-mediakit-crash.md) T05 — 150 MiB UHD + 4K MediaCodec OOMed physical boxes). Bitrate may bump HD→FHD only. VOD never inherits live fat profile ([163](163-[open]-android-tv-iptv-vod-live-profile.md)). Cold open uses the FHD-sized window until height probes. Admin **30 seconds** still forces 150 MiB.
 
 ## Fix shipped — admin live buffer override (I150-T07)
 
-Settings → Playback → **IPTV live buffer** (Android TV, admin-only): **Auto (by resolution)** keeps the height/bitrate tiers from T05; **15 / 20 / 30 seconds** forces `cache-secs` + matching `demuxer-readahead-secs` / `demuxer-max-bytes` (same tables as HD / FHD / UHD). Applied on cold open and after height probe. Use for underrun vs RAM A/B — does not fix cadence judder (T06) or Exo TextureView chop ([108](108-[open]-android-tv-iptv-exo-choppy-fps.md)).
+Settings → Playback → **IPTV live buffer** (Android TV, admin-only): **Auto (by resolution)** keeps the height/bitrate tiers from T05 (UHD now shares FHD RAM — [issue 155](155-[open]-android-tv-iptv-4k-mediakit-crash.md)); **15 / 20 / 30 seconds** forces `cache-secs` + matching `demuxer-readahead-secs` / `demuxer-max-bytes` (30 s = 150 MB). Applied on cold open and after height probe. Use for underrun vs RAM A/B — does not fix cadence judder (T06) or Exo TextureView chop ([108](108-[open]-android-tv-iptv-exo-choppy-fps.md)).
 
 ## Suspected cause — the UHD path traded smoothness for audio (historical)
 

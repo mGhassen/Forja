@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** components · **19 / 23** acceptance · **2 / 2** Android WebView unlock 🔄 |
-| **Current slice** | Unified live_sport pack (catalog + resolve capabilities); Android/ATV WebView GOAT + GASM smoke pending ([203](../issues/203-[open]-android-tv-goat-webview-unlock.md)) |
+| **Progress** | **7 / 7** components · **20 / 24** acceptance · **2 / 2** Android WebView unlock 🔄 |
+| **Current slice** | WatchFooty `wfty.st` playback Referer + `/hls-proxy`; Android/ATV WebView GOAT + GASM smoke pending ([203](../issues/203-[open]-android-tv-goat-webview-unlock.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -56,6 +56,7 @@
 | 21 | R65-A21 | Settings → Forja Sports **Live Sports** — independent Catalog / Provider toggles per plugin | ✅ |
 | 22 | R65-A22 | Legacy `catalog-*` / `live-*` prefs migrate to unified ids + capability prefs | ✅ |
 | 23 | R65-A23 | Host tests + feature docs + changelog for unified live sport plugins | ✅ |
+| 24 | R65-A24 | WatchFooty `wfty.st` plays with sportsembed **player page** Referer via `/hls-proxy` (not origin-root / MediaKit direct) | ✅ |
 
 ---
 

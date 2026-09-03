@@ -1559,8 +1559,12 @@ String? _forjaLiveCdnReferer(String embedUrl) {
   final uri = Uri.tryParse(embedUrl.trim());
   if (uri == null || uri.host.isEmpty) return null;
   final host = uri.host.toLowerCase();
-  // WatchFooty HLS (`lb*.wfty.st`) validates Referer against sportsembed.
-  if (host.contains('wfty.st')) return 'https://sportsembed.su/';
+  // WatchFooty HLS (`lb*.wfty.st`) validates Referer against the sportsembed
+  // player page — origin-root Referer gets a 500 / PNG decoy playlist.
+  if (host.contains('wfty.st')) {
+    return LiveGoatUnlock.sportsEmbedRefererFromWftyPlaylist(embedUrl) ??
+        'https://sportsembed.su/';
+  }
   return '${uri.origin}/';
 }
 

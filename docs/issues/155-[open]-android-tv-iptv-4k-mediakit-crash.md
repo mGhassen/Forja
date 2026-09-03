@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 2** acceptance |
+| **Progress** | **7 / 7** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,9 @@
 | 2 | I155-T02 | Drop UHD `framedrop=decoder` (keep `framedrop=vo`) | ✅ |
 | 3 | I155-T03 | Restore known-good ≤v1.3.80 UHD path: no mid-open `video-sync=audio`; keep `display-resample` for all resolutions | ✅ |
 | 4 | I155-T04 | Restore known-good demuxer cache (30 s / 150 MB) — do not shrink below what played 4K before | ✅ |
+| 5 | I155-T05 | ATV MediaKit live: UHD + cold-open use FHD demuxer (20 s / 96 MiB); do not bump FHD→150 MB | ✅ |
+| 6 | I155-T06 | ATV MediaKit: skip `drop-buffers` on live-edge snap until a frame has painted | ✅ |
+| 7 | I155-T07 | ATV MediaKit: defer HDMI refresh match on UHD until first frame; `vd-lavc-dr=no` | ✅ |
 
 ---
 
@@ -63,6 +66,12 @@ Also: `_forceSoftwareDecode` on a transient MediaCodec fail before first frame (
 4. Keep post-open `ao=audiotrack` + unmute + track pick (exit-path silence only; not a sync change)
 
 **Not device-verified yet** — `I155-A01`/`A02` still ⬜. Possible trade-off: some 4K channels that were picture-only under `display-resample` (I138 symptom) may go silent again; crash > silence — fix audio separately if it returns.
+
+### Physical ATV reopen (T05–T07)
+
+T01–T04 left A01 ⬜. T04’s 150 MB UHD window + MediaCodec 4K surfaces is the same OOM class as [163](163-[open]-android-tv-iptv-vod-live-profile.md) VOD. Opening 4K also ran `drop-buffers` ~700 ms after open and HDMI refresh match as soon as dimensions landed — both tear down MediaCodec mid-init.
+
+**Now:** Auto UHD cache = FHD (96 MiB / 20 s). Admin **30 seconds** still 150 MB. No `drop-buffers` / HDMI switch until a frame has painted. `vd-lavc-dr=no` on ATV (`mediacodec_embed` owns the surface).
 
 ## Related
 

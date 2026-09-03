@@ -101,11 +101,16 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
           await _applyAtvLiveCacheProfile(p, height: maxDim, videoBitrate: bitrate);
         }
 
+        final uhd = h >= 2160 || w >= 3840;
+        // HDMI mode switch while MediaCodec is still configuring 4K surfaces
+        // force-closes physical ATV (issue 155). Wait for a painted frame.
+        if (uhd && !_playbackStarted) continue;
+
         // 50/25 fps on a fixed 60 Hz panel judders even when decode is fine.
         // Same window mode switch Exo already uses (ForjaDisplayFrameRate).
         await _applyAtvMediaKitDisplayFrameRate(p);
 
-        if (h >= 2160 || w >= 3840) {
+        if (uhd) {
           _startUhdDiagnostics();
         }
         return;
@@ -173,46 +178,6 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
     });
   }
 
-  ({String tier, int cacheSecs, int readaheadSecs, int demuxerMaxBytes})
-      _atvLiveCacheTierForHeight(int height) {
-    if (height >= 2160) {
-      return (
-        tier: 'uhd',
-        cacheSecs: 30,
-        readaheadSecs: 20,
-        demuxerMaxBytes: 150000000,
-      );
-    }
-    if (height >= 1080) {
-      return (
-        tier: 'fhd',
-        cacheSecs: 20,
-        readaheadSecs: 15,
-        demuxerMaxBytes: 96 * 1024 * 1024,
-      );
-    }
-    return (
-      tier: 'hd',
-      cacheSecs: 15,
-      readaheadSecs: 10,
-      demuxerMaxBytes: 48 * 1024 * 1024,
-    );
-  }
-
-  ({String tier, int cacheSecs, int readaheadSecs, int demuxerMaxBytes})
-      _bumpAtvLiveCacheTier(
-    ({String tier, int cacheSecs, int readaheadSecs, int demuxerMaxBytes}) t,
-  ) {
-    switch (t.tier) {
-      case 'hd':
-        return _atvLiveCacheTierForHeight(1080);
-      case 'fhd':
-        return _atvLiveCacheTierForHeight(2160);
-      default:
-        return t;
-    }
-  }
-
   /// Height + bitrate aware live demuxer window (I150-T05). VOD must never call.
   /// Admin override [SettingsService.getIptvLiveBufferSecs] replaces the tier
   /// (15 / 20 / 30) and matching demuxer byte cap (I150-T07).
@@ -253,16 +218,16 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
       }
     } else {
       profile = height > 0
-          ? _atvLiveCacheTierForHeight(height)
-          : _atvLiveCacheTierForHeight(2160);
+          ? iptvAtvLiveCacheTierForHeight(height)
+          : iptvAtvLiveCacheTierForHeight(1080);
 
       if (videoBitrate > 0) {
         final needBytes = (videoBitrate / 8) * profile.cacheSecs;
         if (needBytes > profile.demuxerMaxBytes * 0.9) {
-          final bumped = _bumpAtvLiveCacheTier(profile);
+          final bumped = iptvBumpAtvLiveCacheTier(profile);
           if (bumped.tier != profile.tier) {
             profile = bumped;
-          } else if (profile.tier == 'uhd') {
+          } else if (profile.tier == 'uhd' || profile.tier == 'fhd') {
             debugPrint(
               '[IPTV Player] live/uhd demuxer may still byte-bind at '
               '${(videoBitrate / 1e6).toStringAsFixed(1)}Mbps',
@@ -313,15 +278,19 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
       }
       // Direct rendering + D3D11 on Windows live feeds can stick the last
       // frame after the readahead window (~20s) with A/V frozen.
-      await p.setProperty('vd-lavc-dr', _useSoftwareDecode ? 'no' : 'yes');
+      // mediacodec_embed already owns the surface. lavc DR extra copies on
+      // 4K MediaCodec are a physical-ATV OOM vector (issue 155).
+      await p.setProperty(
+        'vd-lavc-dr',
+        (_s._atvMediaKit || _useSoftwareDecode) ? 'no' : 'yes',
+      );
       await p.setProperty('vd-lavc-threads', '0');
 
       // Network: fail fast so the watchdog can step in
       await p.setProperty('network-timeout', '15');
 
-      // Cache: Live keeps the 30 s / 150 MB window (4K ATV MediaKit ≤v1.3.80).
-      // Movies/Series must NOT inherit that — progressive VOD + MediaCodec
-      // buffer pools OOM/ANR the process (issue 163 series crash).
+      // Cache: desktop Live keeps 30 s / 150 MB. ATV Live cold-open is FHD-sized
+      // (issue 155 — 150 MB + 4K MediaCodec OOMs). VOD never inherits Live fat.
       await p.setProperty('cache', 'yes');
       if (_s.widget.vodPlayback) {
         debugPrint('[IPTV Player] MediaKit cache profile=vod (32MiB)');
@@ -339,13 +308,18 @@ mixin _IptvPtPlayerMkTunables on _IptvPtPlayerEngineCore {
         // hard micro-pause — clockwork stutter, no Buffering chrome (issue 199).
         // Play through demuxer cushion; watchdog still shows Buffering + soft-reopen
         // when cache is truly empty (I199-T03/T04).
-        // Cold open is UHD-safe until height probe retunes (I150-T05), unless the
-        // admin live-buffer override is set (I150-T07).
+        // Desktop keeps the fat live window. ATV cold-open is FHD-sized until
+        // height probe — 150 MB + 4K MediaCodec OOMs on physical boxes (issue 155).
         var coldSecs = 30;
         var coldReadahead = 20;
         var coldBytes = 150000000;
-        var coldLabel = 'live/cold (uhd-safe)';
+        var coldLabel = 'live/cold';
         if (_s._atvMediaKit) {
+          final fhd = iptvAtvLiveCacheTierForHeight(1080);
+          coldSecs = fhd.cacheSecs;
+          coldReadahead = fhd.readaheadSecs;
+          coldBytes = fhd.demuxerMaxBytes;
+          coldLabel = 'live/cold (fhd-safe)';
           final overrideSecs = await SettingsService().getIptvLiveBufferSecs();
           if (overrideSecs > 0) {
             final forced =

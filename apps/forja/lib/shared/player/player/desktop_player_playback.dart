@@ -1828,6 +1828,7 @@ mixin _DesktopPlayerPlayback
       // Manual Quality still locks a specific playlist URL.
       final maxH = await SettingsService().getMaxPlaybackHeight();
       await safeSet('hls-bitrate', hlsBitrateForMaxPlaybackHeight(maxH));
+      await safeSet('demuxer-lavf-o', kLavfHlsAllowedExtensionsAll);
 
       // Brief socket blips — remount path covers longer offline (issue 205).
       await safeSet(

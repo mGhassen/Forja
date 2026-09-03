@@ -308,6 +308,14 @@ class ShellBus {
 
   static int _playerSurfaceDepth = 0;
   static bool _playerSurfaceNotifyPending = false;
+  static bool _playbackImageTrimPending = false;
+
+  /// Flutter defaults (~1000 images / 100MB). While a player is up, keep a
+  /// tiny budget so catalog logos cannot refill GPU after the trim.
+  static const int playbackImageCacheMaxBytes = 16 * 1024 * 1024;
+  static const int playbackImageCacheMaxCount = 80;
+  static int? _imageCacheMaxBytesBeforePlayback;
+  static int? _imageCacheMaxCountBeforePlayback;
 
   /// Updates [playerSurfaceActive] from [_playerSurfaceDepth]. Defers the
   /// notifier when called during build/layout/paint so ListenableBuilder
@@ -341,12 +349,58 @@ class ShellBus {
     imageCache.clearLiveImages();
   }
 
+  static void _capImageCacheForPlayback() {
+    final cache = imageCache;
+    _imageCacheMaxBytesBeforePlayback ??= cache.maximumSizeBytes;
+    _imageCacheMaxCountBeforePlayback ??= cache.maximumSize;
+    cache.maximumSizeBytes = playbackImageCacheMaxBytes;
+    cache.maximumSize = playbackImageCacheMaxCount;
+  }
+
+  static void restoreImageCacheAfterPlayback() {
+    final cache = imageCache;
+    final bytes = _imageCacheMaxBytesBeforePlayback;
+    if (bytes != null) {
+      cache.maximumSizeBytes = bytes;
+      _imageCacheMaxBytesBeforePlayback = null;
+    }
+    final count = _imageCacheMaxCountBeforePlayback;
+    if (count != null) {
+      cache.maximumSize = count;
+      _imageCacheMaxCountBeforePlayback = null;
+    }
+  }
+
+  /// Trim + cap after catalog Image widgets have left the tree.
+  /// Idle/post-frame: [playerSurfaceActive] listeners already rebuilt.
+  /// Mid-build: wait one frame so we do not clear under a still-mounted grid.
+  static void _schedulePlaybackImageTrim() {
+    void run() {
+      if (_playerSurfaceDepth <= 0) return;
+      trimImageCacheForPlayback();
+      _capImageCacheForPlayback();
+    }
+
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    if (phase == SchedulerPhase.idle ||
+        phase == SchedulerPhase.postFrameCallbacks) {
+      run();
+      return;
+    }
+    if (_playbackImageTrimPending) return;
+    _playbackImageTrimPending = true;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _playbackImageTrimPending = false;
+      run();
+    });
+  }
+
   static void enterPlayerSurface() {
     final becameActive = _playerSurfaceDepth == 0;
     _playerSurfaceDepth++;
     _syncPlayerSurfaceActive();
     if (becameActive) {
-      trimImageCacheForPlayback();
+      _schedulePlaybackImageTrim();
       // Defer tab purge past the current build/layout phase (same as surface
       // active notifier) so MainScreen setState is never mid-frame.
       final phase = SchedulerBinding.instance.schedulerPhase;
@@ -364,6 +418,9 @@ class ShellBus {
   static void leavePlayerSurface() {
     if (_playerSurfaceDepth > 0) _playerSurfaceDepth--;
     _syncPlayerSurfaceActive();
+    if (_playerSurfaceDepth == 0) {
+      restoreImageCacheAfterPlayback();
+    }
   }
 
   static void notifyShellChromeChanged() {

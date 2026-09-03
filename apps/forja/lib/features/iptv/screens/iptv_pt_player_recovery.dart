@@ -39,10 +39,13 @@ mixin _IptvPtPlayerRecovery on _IptvPtPlayerEngineCore {
         if (p is! NativePlayer) return;
 
         debugPrint('[IPTV Player] live-edge snap (force=$allowForce)');
-        // Drop any data that piled up while paused / mid-recovery, then
-        // jump to the live edge of the DVR window.
-        _armTransientHwDecodeIgnore();
-        await p.command(['drop-buffers']);
+        // drop-buffers while MediaCodec is still configuring 4K surfaces
+        // force-closes physical ATV (issue 155). First paint only seeks.
+        final dropBuffers = !_s._atvMediaKit || _playbackStarted;
+        if (dropBuffers) {
+          _armTransientHwDecodeIgnore();
+          await p.command(['drop-buffers']);
+        }
         if (_s._liveEdgeSnapEpoch != epoch || _recoveryInFlight) return;
         if (_s._streamSeekable) {
           await p.command(['seek', '99999', 'absolute']);

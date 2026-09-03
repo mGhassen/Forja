@@ -316,22 +316,17 @@ mixin _LiveMatchesPlayback
       known = forjaLive._knownProviderEventMatches(match);
     }
     debugPrint(
-      '[LiveMatches] Providers resolve targets: '
+      '[LiveMatches] Providers catalog targets: '
       '${known.isEmpty ? '(none)' : known.map((m) => '${m.livePluginId} src=${m.sources.length} inline=${m.inlineStreams.length}').join(' | ')}',
     );
 
-    // Resolve via plugins/live (`live-*` action=resolve) — never catalog-* on Providers.
+    // Catalog stubs only — GOAT/GASM unlock runs on row tap.
     if (known.isNotEmpty) {
-      await _resolveCatalogStreamChoices(
-        known,
-        isStale: isStale,
-        onPartial: (batch) {
-          if (isStale() || controller.isDisposed) return;
-          if (batch.isEmpty) return;
-          choices.addAll(batch);
-          _panelAppendChoices(controller, batch);
-        },
-      );
+      final batch = _catalogStreamChoices(known, existing: choices);
+      if (batch.isNotEmpty && !isStale() && !controller.isDisposed) {
+        choices.addAll(batch);
+        _panelAppendChoices(controller, batch);
+      }
     }
     if (isStale() || controller.isDisposed) return;
 
@@ -560,80 +555,49 @@ mixin _LiveMatchesPlayback
     ]);
   }
 
-  Future<List<_StreamedStreamChoice>> _resolveCatalogStreamChoices(
+  List<_StreamedStreamChoice> _catalogStreamChoices(
     List<_StreamedMatch> catalogMatches, {
-    void Function(String)? onProgress,
-    void Function(List<_StreamedStreamChoice> batch)? onPartial,
-    bool Function()? isStale,
-  }) async {
+    List<_StreamedStreamChoice> existing = const [],
+  }) {
     final out = <_StreamedStreamChoice>[];
-    final seenUrls = <String>{};
-    final seenRefs = <String>{};
-    final jobs = <Future<List<_StreamedStreamChoice>>>[];
-    final inlineBatch = <_StreamedStreamChoice>[];
+    final seenUrls = {
+      for (final c in existing)
+        if (c.stream.embedUrl.trim().isNotEmpty) c.stream.embedUrl.trim(),
+    };
+    final seenRefs = {
+      for (final c in existing)
+        'ref:${c.catalogMatch.livePluginId}:${c.stream.source}:${c.stream.id}',
+    };
 
     for (final m in catalogMatches) {
       for (final stream in m.inlineStreams) {
         final url = stream.embedUrl.trim();
         if (url.isEmpty || !seenUrls.add(url)) continue;
-        final choice = _StreamedStreamChoice(catalogMatch: m, stream: stream);
-        out.add(choice);
-        inlineBatch.add(choice);
+        out.add(_StreamedStreamChoice(catalogMatch: m, stream: stream));
       }
 
       for (final ref in m.sources) {
         final key = 'ref:${m.livePluginId}:${ref.source}:${ref.id}';
         if (!seenRefs.add(key)) continue;
-        jobs.add(() async {
-          try {
-            final streams = m.isForjaLive
-                ? await _forjaLiveStreamsFromSource(
-                    m,
-                    ref,
-                    allowStreamedFallback: false,
-                  )
-                : await _fetchStreamedStreams(ref, allowFallback: false);
-            return [
-              for (final stream in streams)
-                if (stream.embedUrl.trim().isNotEmpty)
-                  _StreamedStreamChoice(catalogMatch: m, stream: stream),
-            ];
-          } catch (e) {
-            debugPrint('[LiveMatches] resolve ${ref.source}/${ref.id}: $e');
-            return const <_StreamedStreamChoice>[];
-          }
-        }());
-      }
-    }
-
-    if (inlineBatch.isNotEmpty && isStale?.call() != true) {
-      onPartial?.call(inlineBatch);
-    }
-
-    if (jobs.isEmpty) return _sortStreamChoices(out);
-
-    onProgress?.call(
-      jobs.length == 1
-          ? 'Checking source…'
-          : 'Checking ${jobs.length} sources…',
-    );
-
-    var completed = 0;
-    for (final job in jobs) {
-      if (isStale?.call() == true) break;
-      final batch = await job;
-      if (isStale?.call() == true) break;
-      completed++;
-      final fresh = <_StreamedStreamChoice>[];
-      for (final choice in batch) {
-        final url = choice.stream.embedUrl.trim();
-        if (url.isEmpty || !seenUrls.add(url)) continue;
-        out.add(choice);
-        fresh.add(choice);
-      }
-      if (fresh.isNotEmpty) onPartial?.call(fresh);
-      if (completed == jobs.length) {
-        onProgress?.call('Building stream list…');
+        final iframe = ref.iframe.trim();
+        if (iframe.isNotEmpty && !seenUrls.add(iframe)) continue;
+        final source = ref.source.trim().isNotEmpty
+            ? ref.source.trim()
+            : LiveMatchesEngine.cachedResolveSourceToken(m.livePluginId);
+        out.add(
+          _StreamedStreamChoice(
+            catalogMatch: m,
+            stream: _StreamedStream(
+              id: ref.id,
+              streamNo: 1,
+              language: '',
+              hd: false,
+              embedUrl: iframe,
+              source: source,
+              viewers: m.viewers,
+            ),
+          ),
+        );
       }
     }
 
@@ -817,7 +781,12 @@ mixin _LiveMatchesPlayback
       popular: false,
       airing: true,
       viewers: parseLiveViewerCount(params['viewers']),
-      sources: const [],
+      sources: [
+        _StreamedSourceRef(
+          source: (params['source'] ?? '').toString(),
+          id: (params['matchId'] ?? '').toString(),
+        ),
+      ],
       catalog: isForjaLive
           ? 'forja_live'
           : (isMut ? 'mut' : ''),
@@ -846,8 +815,11 @@ mixin _LiveMatchesPlayback
   }) async {
     final params = catalog.liveEngineResolveParams;
     if (params == null) return null;
-    final embed = (catalog.liveEngineEmbedUrl ?? catalog.url).trim();
-    if (embed.isEmpty) return null;
+    var embed = (catalog.liveEngineEmbedUrl ?? '').trim();
+    if (embed.isEmpty) {
+      final url = catalog.url.trim();
+      if (url.isNotEmpty && !url.startsWith('pending:')) embed = url;
+    }
     final match = _streamedMatchFromLiveEngineParams(params);
     final stream = _streamedStreamFromLiveEngineParams(params, embedUrl: embed);
     final resolved = await _resolveStreamToEnginePlaySource(
@@ -1221,27 +1193,89 @@ mixin _LiveMatchesPlayback
     sources: const [],
   );
 
-  Future<IptvPlaySource?> _resolveStreamToEnginePlaySource(
+  _StreamedSourceRef? _sourceRefForStream(
+    _StreamedMatch match,
+    _StreamedStream stream,
+  ) {
+    for (final ref in match.sources) {
+      if (ref.id == stream.id) return ref;
+    }
+    final src = stream.source.trim().toLowerCase();
+    if (src.isNotEmpty) {
+      for (final ref in match.sources) {
+        if (ref.source.trim().toLowerCase() == src) return ref;
+      }
+    }
+    if (stream.id.isEmpty && stream.source.trim().isEmpty) return null;
+    return _StreamedSourceRef(
+      source: stream.source,
+      id: stream.id,
+      iframe: stream.embedUrl,
+    );
+  }
+
+  Future<IptvPlaySource?> _unlockForjaLiveSourceRef(
     _StreamedMatch match,
     _StreamedStream stream, {
     void Function(String)? onProgress,
   }) async {
-    final embed = stream.embedUrl.trim();
-    if (embed.isEmpty) return null;
+    final ref = _sourceRefForStream(match, stream);
+    if (ref == null) return null;
+    final unlocked = await _forjaLiveStreamsFromSource(
+      match,
+      ref,
+      allowStreamedFallback: false,
+    );
+    _StreamedStream? hit;
+    for (final row in unlocked) {
+      if (row.streamNo == stream.streamNo || row.id == stream.id) {
+        hit = row;
+        break;
+      }
+    }
+    hit ??= unlocked.isEmpty ? null : unlocked.first;
+    final url = hit?.embedUrl.trim() ?? '';
+    if (hit == null || url.isEmpty) return null;
+    return _resolveStreamToEnginePlaySource(
+      match,
+      hit,
+      onProgress: onProgress,
+      allowSourceRefFallback: false,
+    );
+  }
 
-    // Already unlocked by catalog resolve — do not re-unlock (signed CDNs die).
-    if (stream.directPlayback || iptvLiveEnginePlayUrlReady(embed)) {
-      final headers = stream.resolvedHeaders ??
-          (_isIframeCatalogMatch(match, stream)
-              ? _tokenizedEmbedStreamHeaders(embed)
-              : _liveEmbedStreamHeaders(
-                  embed,
-                  catalogReferer: match.isForjaLive
-                      ? _forjaLiveCdnReferer(embed)
-                      : null,
-                ));
-      final direct = stream.directPlayback ||
-          liveEnginePreferDirectPlayback(embed);
+  Future<IptvPlaySource?> _resolveStreamToEnginePlaySource(
+    _StreamedMatch match,
+    _StreamedStream stream, {
+    void Function(String)? onProgress,
+    bool allowSourceRefFallback = true,
+  }) async {
+    var embed = stream.embedUrl.trim();
+    if (embed.startsWith('pending:')) embed = '';
+    if (embed.isEmpty) {
+      final iframe = _sourceRefForStream(match, stream)?.iframe.trim() ?? '';
+      if (iframe.isNotEmpty) embed = iframe;
+    }
+
+    // Already unlocked — do not re-unlock (signed CDNs die).
+    if (embed.isNotEmpty &&
+        (stream.directPlayback || iptvLiveEnginePlayUrlReady(embed))) {
+      final headers = LiveGoatUnlock.withWftyPlaybackReferer(
+        embed,
+        stream.resolvedHeaders ??
+            (_isIframeCatalogMatch(match, stream)
+                ? _tokenizedEmbedStreamHeaders(embed)
+                : _liveEmbedStreamHeaders(
+                    embed,
+                    catalogReferer: match.isForjaLive
+                        ? _forjaLiveCdnReferer(embed)
+                        : null,
+                  )),
+      );
+      final direct = liveEngineOpenDirect(
+        embed,
+        pluginDirect: stream.directPlayback,
+      );
       if (!direct) onProgress?.call('Preparing playback…');
       final playUrl = direct
           ? embed
@@ -1260,20 +1294,28 @@ mixin _LiveMatchesPlayback
     final catalogReferer = iframeCatalog
         ? await LiveMatchesEngine.iframeCatalogWebReferer()
         : match.isForjaLive
-        ? (_forjaLiveCdnReferer(embed) ??
-              await LiveMatchesEngine.pluginReferer(
-                match.livePluginId,
-                embedUrl: embed,
-              ))
+        ? (embed.isNotEmpty
+              ? (_forjaLiveCdnReferer(embed) ??
+                    await LiveMatchesEngine.pluginReferer(
+                      match.livePluginId,
+                      embedUrl: embed,
+                    ))
+              : await LiveMatchesEngine.pluginReferer(match.livePluginId))
         : _streamedReferer;
-    if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
-      final headers = iframeCatalog
-          ? _tokenizedEmbedStreamHeaders(embed)
-          : _liveEmbedStreamHeaders(
-              embed,
-              catalogReferer: match.isForjaLive ? _forjaLiveCdnReferer(embed) : null,
-            );
-      final direct = liveEnginePreferDirectPlayback(embed);
+    if (embed.isNotEmpty &&
+        RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
+      final headers = LiveGoatUnlock.withWftyPlaybackReferer(
+        embed,
+        iframeCatalog
+            ? _tokenizedEmbedStreamHeaders(embed)
+            : _liveEmbedStreamHeaders(
+                embed,
+                catalogReferer: match.isForjaLive
+                    ? _forjaLiveCdnReferer(embed)
+                    : null,
+              ),
+      );
+      final direct = liveEngineOpenDirect(embed);
       if (!direct) onProgress?.call('Preparing playback…');
       final playUrl = direct
           ? embed
@@ -1295,32 +1337,48 @@ mixin _LiveMatchesPlayback
     if (pluginId.isEmpty && iframeCatalog) {
       pluginId = _iframeProviderLivePluginId();
     }
-    if (pluginId.isEmpty) return null;
-    final result = await LiveMatchesEngine.resolve(
-      pluginId: pluginId,
-      params: {
-        'embedUrl': embed,
-        'iframe': embed,
-        'url': embed,
-        'source': stream.source,
-        'matchId': stream.id,
-        'stream': stream.streamNo.toString(),
-        'category': match.category,
-        'title': match.title,
-      },
-    );
-    if (result == null || !result.playable) return null;
+    LiveEngineResolveResult? result;
+    if (pluginId.isNotEmpty) {
+      result = await LiveMatchesEngine.resolve(
+        pluginId: pluginId,
+        params: {
+          if (embed.isNotEmpty) 'embedUrl': embed,
+          if (embed.isNotEmpty) 'iframe': embed,
+          if (embed.isNotEmpty) 'url': embed,
+          'source': stream.source,
+          'matchId': stream.id,
+          'stream': stream.streamNo.toString(),
+          'category': match.category,
+          'title': match.title,
+        },
+      );
+    }
+    if (result == null || !result.playable) {
+      if (allowSourceRefFallback && match.isForjaLive) {
+        return _unlockForjaLiveSourceRef(
+          match,
+          stream,
+          onProgress: onProgress,
+        );
+      }
+      return null;
+    }
 
-    final headers = result.headers.isNotEmpty
-        ? result.headers
-        : iframeCatalog
-        ? _tokenizedEmbedStreamHeaders(embed.isNotEmpty ? embed : result.url)
-        : _liveEmbedStreamHeaders(
-            result.url,
-            catalogReferer: catalogReferer,
-          );
-    final direct =
-        result.directPlayback || liveEnginePreferDirectPlayback(result.url);
+    final headers = LiveGoatUnlock.withWftyPlaybackReferer(
+      result.url,
+      result.headers.isNotEmpty
+          ? result.headers
+          : iframeCatalog
+          ? _tokenizedEmbedStreamHeaders(embed.isNotEmpty ? embed : result.url)
+          : _liveEmbedStreamHeaders(
+              result.url,
+              catalogReferer: catalogReferer,
+            ),
+    );
+    final direct = liveEngineOpenDirect(
+      result.url,
+      pluginDirect: result.directPlayback,
+    );
     if (!direct) onProgress?.call('Preparing playback…');
     final playUrl = direct
         ? result.url
@@ -1379,18 +1437,14 @@ mixin _LiveMatchesPlayback
         ).compareTo(_effectiveStreamViewers(a.stream, a.catalogMatch)),
       );
     final out = <IptvPlaySource>[];
-    final seenEmbeds = <String>{};
+    final seen = <String>{};
     for (final choice in sorted) {
-      final embed = choice.stream.embedUrl.trim();
-      if (embed.isEmpty || !seenEmbeds.add(embed)) continue;
-      out.add(
-        _liveEnginePlaySource(
-          match: choice.catalogMatch,
-          stream: choice.stream,
-          url: embed,
-          headers: choice.stream.resolvedHeaders ?? const {},
-        ),
-      );
+      final source = _choiceToPanelSource(choice);
+      final key = source.url.trim().isNotEmpty
+          ? source.url.trim()
+          : '${choice.catalogMatch.livePluginId}:${choice.stream.source}:${choice.stream.id}:${choice.stream.streamNo}';
+      if (!seen.add(key)) continue;
+      out.add(source);
     }
     return out;
   }
@@ -1407,10 +1461,7 @@ mixin _LiveMatchesPlayback
 
     final candidates = <_StreamedStreamChoice>[];
     if (allChoices != null) {
-      for (final choice in allChoices) {
-        if (choice.stream.embedUrl.trim().isEmpty) continue;
-        candidates.add(choice);
-      }
+      candidates.addAll(allChoices);
     }
     if (candidates.isEmpty) {
       candidates.add(
@@ -1419,10 +1470,18 @@ mixin _LiveMatchesPlayback
     }
 
     final pickedEmbed = stream.embedUrl.trim();
+    final pending =
+        'pending:${match.id}:${stream.id}:${stream.streamNo}';
     final sources = _liveEngineCatalogSources(candidates);
-    final pickedIndex = sources.indexWhere(
-      (s) => (s.liveEngineEmbedUrl ?? s.url).trim() == pickedEmbed,
-    );
+    final pickedIndex = sources.indexWhere((s) {
+      final embed = (s.liveEngineEmbedUrl ?? '').trim();
+      final url = s.url.trim();
+      if (pickedEmbed.isNotEmpty &&
+          (embed == pickedEmbed || url == pickedEmbed)) {
+        return true;
+      }
+      return url == pending;
+    });
     IptvPlaySource? resolvedPick;
     final ok = await _runWithCancellableLoading('Opening stream…', (
       setMessage,

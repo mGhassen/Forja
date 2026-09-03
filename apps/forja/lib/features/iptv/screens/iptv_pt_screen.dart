@@ -91,6 +91,7 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
   @override
   void initState() {
     super.initState();
+    ShellBus.playerSurfaceActive.addListener(_onPlayerSurfaceChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final ctrl = ref.read(iptvControllerProvider);
@@ -108,15 +109,22 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
       ctrl.init().then((_) {
         if (mounted) markShellTabFresh();
       });
+      if (ShellBus.playerSurfaceActive.value) {
+        ctrl.cancelAllLazyChecks();
+      }
     });
+  }
+
+  void _onPlayerSurfaceChanged() {
+    if (!ShellBus.playerSurfaceActive.value) return;
+    _navListenerCtrl?.cancelAllLazyChecks();
   }
 
   void _syncShellNav() {
     final ctrl = _navListenerCtrl;
     if (ctrl == null) return;
-    // Catalog stays mounted under the overlay player; VisibilityDetector can
-    // still fire with visibleFraction > 0. Do not restore the rail until the
-    // player has left (dispose already clears hide).
+    // Catalog chrome is unmounted while the player is up; still ignore rail
+    // restore if a visibility callback races the unmount.
     if (ShellBus.playerSurfaceActive.value) return;
     if (ShellBus.hideGlobalNav.value) {
       ShellBus.hideGlobalNav.value = false;
@@ -126,6 +134,7 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
 
   @override
   void dispose() {
+    ShellBus.playerSurfaceActive.removeListener(_onPlayerSurfaceChanged);
     TvHeroActions.unbind('iptv');
     ShellTvFocusCoordinator.clearTab('iptv');
     _navListenerCtrl?.removeListener(_syncShellNav);
@@ -141,32 +150,44 @@ class _IptvPtScreenState extends ConsumerState<IptvPtScreen>
     final ctrl = ref.watch(iptvControllerProvider);
     return TvFocusGraph(
       tabId: 'iptv',
-      child: VisibilityDetector(
-        key: const Key('iptv_pt_screen'),
-        onVisibilityChanged: (info) {
-          if (info.visibleFraction > 0) {
-            _syncShellNav();
-            unawaited(SyncService.instance.pullAccountFeatures());
+      child: ValueListenableBuilder<bool>(
+        valueListenable: ShellBus.playerSurfaceActive,
+        builder: (context, playerActive, _) {
+          // Keep this State (TV focus restore / controller) but drop the
+          // catalog widget tree so logos and EPG cards do not layout, decode,
+          // or probe while live decode owns the SoC.
+          if (playerActive) {
+            return const ColoredBox(color: Colors.black);
           }
-        },
-        child: PopScope(
-          canPop: !ctrl.portalPanelOpen,
-          onPopInvokedWithResult: (didPop, _) {
-            if (!didPop) ctrl.back();
-          },
-          child: AnimatedBuilder(
-            animation: ctrl,
-            builder: (_, _) => AnimatedSwitcher(
-              duration: ShellTokens.isAndroidTvDevice
-                  ? Duration.zero
-                  : const Duration(milliseconds: 250),
-              child: KeyedSubtree(
-                key: ValueKey(ctrl.view),
-                child: _buildView(context, ctrl),
+          return VisibilityDetector(
+            key: const Key('iptv_pt_screen'),
+            onVisibilityChanged: (info) {
+              if (ShellBus.playerSurfaceActive.value) return;
+              if (info.visibleFraction > 0) {
+                _syncShellNav();
+                unawaited(SyncService.instance.pullAccountFeatures());
+              }
+            },
+            child: PopScope(
+              canPop: !ctrl.portalPanelOpen,
+              onPopInvokedWithResult: (didPop, _) {
+                if (!didPop) ctrl.back();
+              },
+              child: AnimatedBuilder(
+                animation: ctrl,
+                builder: (_, _) => AnimatedSwitcher(
+                  duration: ShellTokens.isAndroidTvDevice
+                      ? Duration.zero
+                      : const Duration(milliseconds: 250),
+                  child: KeyedSubtree(
+                    key: ValueKey(ctrl.view),
+                    child: _buildView(context, ctrl),
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

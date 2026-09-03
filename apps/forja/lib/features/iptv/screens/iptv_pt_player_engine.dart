@@ -393,8 +393,15 @@ mixin _IptvPtPlayerEngine on _IptvPtPlayerEngineCore {
       } else {
         await _s._liveContinuityProxy?.stop();
         debugPrint('[IPTV Player] direct open ($kind)');
-        await player.open(Media(playUrl, httpHeaders: headers));
         final np = player.platform;
+        if (np is NativePlayer) {
+          await applyMediaHttpHeaders(
+            player,
+            headers,
+            streamUrl: playUrl,
+          );
+        }
+        await player.open(Media(playUrl, httpHeaders: headers));
         if (np is NativePlayer && _livePlaybackProfile) {
           await _applyStreamLavfReconnect(np, continuityProxy: false);
         }

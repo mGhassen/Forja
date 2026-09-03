@@ -18,42 +18,48 @@ class ShellBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
-      valueListenable: ShellBus.shellOverlayHasPage,
-      builder: (context, overlayOpen, _) {
-        return ExcludeFocus(
-          excluding: overlayOpen,
-          // Do not use IndexedStack here: it wraps each child in an unkeyed
-          // Visibility, so KeyedSubtree keys never reach the Stack. Enabling
-          // or reordering a nav tab then remounts other tabs (e.g. Settings
-          // loses its selected category and appears to "reload").
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              for (var i = 0; i < visibleIds.length; i++)
-                Visibility(
-                  key: ValueKey<String>('shell-tab-${visibleIds[i]}'),
-                  visible: i == selectedIndex,
-                  maintainState: true,
-                  // Flutter requires maintainAnimation when maintainSize is true.
-                  // Pause tickers on hidden tabs via TickerMode below instead.
-                  maintainAnimation: true,
-                  maintainSize: true,
-                  // Hidden tabs must not hit-test. With maintainInteractivity,
-                  // later mounted tabs sit above the selected one in this Stack
-                  // and swallow hover/clicks (e.g. IPTV "frozen" after visiting
-                  // Settings / Live Matches).
-                  maintainInteractivity: false,
-                  child: TickerMode(
-                    // Hidden tabs must not keep tickers/animations alive — wastes
-                    // CPU on ATV while another tab (or the player) needs the SoC.
-                    enabled: i == selectedIndex,
-                    child: mountedTabIds.contains(visibleIds[i])
-                        ? tabFor(visibleIds[i])
-                        : const SizedBox.shrink(),
-                  ),
-                ),
-            ],
-          ),
+      valueListenable: ShellBus.playerSurfaceActive,
+      builder: (context, playerActive, _) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: ShellBus.shellOverlayHasPage,
+          builder: (context, overlayOpen, _) {
+            return ExcludeFocus(
+              excluding: overlayOpen || playerActive,
+              // Do not use IndexedStack here: it wraps each child in an unkeyed
+              // Visibility, so KeyedSubtree keys never reach the Stack. Enabling
+              // or reordering a nav tab then remounts other tabs (e.g. Settings
+              // loses its selected category and appears to "reload").
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  for (var i = 0; i < visibleIds.length; i++)
+                    Visibility(
+                      key: ValueKey<String>('shell-tab-${visibleIds[i]}'),
+                      visible: i == selectedIndex,
+                      maintainState: true,
+                      // Flutter requires maintainAnimation when maintainSize is true.
+                      // Pause tickers on hidden tabs via TickerMode below instead.
+                      maintainAnimation: true,
+                      maintainSize: true,
+                      // Hidden tabs must not hit-test. With maintainInteractivity,
+                      // later mounted tabs sit above the selected one in this Stack
+                      // and swallow hover/clicks (e.g. IPTV "frozen" after visiting
+                      // Settings / Live Matches).
+                      maintainInteractivity: false,
+                      child: TickerMode(
+                        // Hidden tabs, and the selected tab under a fullscreen
+                        // player, must not keep tickers alive — wastes CPU on
+                        // ATV while decode needs the SoC.
+                        enabled: i == selectedIndex && !playerActive,
+                        child: mountedTabIds.contains(visibleIds[i])
+                            ? tabFor(visibleIds[i])
+                            : const SizedBox.shrink(),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         );
       },
     );

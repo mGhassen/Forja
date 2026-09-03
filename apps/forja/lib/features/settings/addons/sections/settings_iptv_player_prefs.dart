@@ -126,7 +126,7 @@ class SettingsIptvPlayerPrefs extends ConsumerWidget {
           settingsFocusableToggle(
             context,
             'IPTV match display refresh',
-            'MediaKit only. On by default. When on, asks the TV to switch refresh rate to match the channel (e.g. 50 Hz for 50 fps) — test for 4K stutter. Brief HDMI blink on open; next open of the player picks it up.',
+            'MediaKit only. On by default. When on, asks the TV to switch refresh rate to match the channel (e.g. 50 Hz for 50 fps) — test for 4K stutter. Brief HDMI blink after the first frame (4K waits so the decoder can finish init); next open of the player picks it up.',
             snap.iptvMatchDisplayRefresh,
             (val) async {
               await settings.setIptvMatchDisplayRefresh(val);
@@ -140,7 +140,7 @@ class SettingsIptvPlayerPrefs extends ConsumerWidget {
           settingsFocusableDropdown(
             context,
             'IPTV live buffer',
-            'MediaKit only. How many seconds of live demuxer cushion to keep ahead of the playhead. Auto picks by resolution (HD 15 / FHD 20 / UHD 30). Manual 15–30 also scales demuxer RAM so the seconds target is reachable. Helps underrun experiments — not cadence judder. Next open of the player.',
+            'MediaKit only. How many seconds of live demuxer cushion to keep ahead of the playhead. Auto picks by resolution (HD 15 s / FHD+UHD 20 s, 96 MiB). Manual 15–30 also scales demuxer RAM. 30 s is 150 MB — can force-close 4K on weak boxes. Helps underrun experiments — not cadence judder. Next open of the player.',
             snap.iptvLiveBufferSecsLabel,
             SettingsService.iptvLiveBufferSecsOptions.keys.toList(),
             (val) async {

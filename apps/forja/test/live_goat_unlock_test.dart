@@ -38,13 +38,32 @@ void main() {
   });
 
   group('LiveGoatUnlock.sportsEmbed', () {
-    test('sports embed playback keeps host root referer', () {
+    test('sports embed playback uses player page referer', () {
       final headers = LiveGoatUnlock.playbackHeadersForSportsEmbed({
         'origin': 'https://sportsembed.su',
         'path': '401816669/atlanta-braves-los-angeles-dodgers/regular/2',
       });
-      expect(headers['Referer'], 'https://sportsembed.su/');
+      expect(
+        headers['Referer'],
+        'https://sportsembed.su/embed/401816669/atlanta-braves-los-angeles-dodgers/regular/2',
+      );
       expect(headers['Origin'], 'https://sportsembed.su');
+    });
+
+    test('wfty playlist reconstructs sportsembed player referer', () {
+      expect(
+        LiveGoatUnlock.sportsEmbedRefererFromWftyPlaylist(
+          'https://lb6.wfty.st/secure/tok/sigma/slask-wroclaw-pogon/2/4805436/1788483833/playlist.m3u8',
+        ),
+        'https://sportsembed.su/embed/4805436/slask-wroclaw-pogon/sigma/2',
+      );
+      expect(
+        LiveGoatUnlock.withWftyPlaybackReferer(
+          'https://lb6.wfty.st/secure/tok/sigma/slask-wroclaw-pogon/2/4805436/1788483833/playlist.m3u8',
+          {'Referer': 'https://sportsembed.su/', 'User-Agent': 'x'},
+        )['Referer'],
+        'https://sportsembed.su/embed/4805436/slask-wroclaw-pogon/sigma/2',
+      );
     });
 
     test('delta sportsembed maps to embed.st slot', () {
@@ -140,12 +159,12 @@ void main() {
       );
     });
 
-    test('watchfooty wfty.st playlists open direct', () {
+    test('watchfooty wfty.st playlists use hls-proxy', () {
       expect(
         LiveGoatUnlock.preferDirectEnginePlayback(
           'https://lb5.wfty.st/secure/tok/delta/live_foo/1/465/playlist.m3u8',
         ),
-        isTrue,
+        isFalse,
       );
     });
 

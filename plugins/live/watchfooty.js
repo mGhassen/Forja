@@ -22,10 +22,32 @@ async function resolveWatchfootyEmbed(ctx, embed) {
   if (!url) return [];
 
   if (/\.m3u8|\.mp4/i.test(url)) {
+    var headers = { Referer: WATCHFOOTY_REFERER, 'User-Agent': ua() };
+    try {
+      var u = new URL(url);
+      if (u.host.toLowerCase().indexOf('wfty.st') >= 0) {
+        var segs = u.pathname.split('/').filter(Boolean);
+        if (segs.length >= 8 && segs[0] === 'secure') {
+          headers = {
+            Referer:
+              'https://sportsembed.su/embed/' +
+              segs[5] +
+              '/' +
+              segs[3] +
+              '/' +
+              segs[2] +
+              '/' +
+              segs[4],
+            Origin: 'https://sportsembed.su',
+            'User-Agent': ua(),
+          };
+        }
+      }
+    } catch (_) {}
     return [
       {
         url: url,
-        headers: { Referer: WATCHFOOTY_REFERER, 'User-Agent': ua() },
+        headers: headers,
         directPlayback: preferDirectPlayback(url),
       },
     ];
@@ -63,7 +85,7 @@ async function resolveWatchfootyEmbed(ctx, embed) {
           {
             url: String(unlockedUrl),
             headers: {
-              Referer: (origin || 'https://sportsembed.su') + '/',
+              Referer: url,
               Origin: origin || 'https://sportsembed.su',
               'User-Agent': ua(),
             },

@@ -13,6 +13,7 @@ import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
 import 'package:forja/shared/design/design.dart';
+import 'package:forja/shell/shell_bus.dart';
 part 'iptv_controller_portal.dart';
 part 'iptv_controller_browser.dart';
 part 'iptv_controller_live.dart';

@@ -133,7 +133,7 @@ function preferDirectPlayback(m3u8Url) {
     path = u.pathname.toLowerCase();
     host = u.host.toLowerCase();
   } catch (_) {}
-  if (host.indexOf('wfty.st') >= 0) return true;
+  if (host.indexOf('wfty.st') >= 0) return false;
   if (host.indexOf('indianservers.st') >= 0) return true;
   if (host.indexOf('strmd.st') >= 0) return true;
   if (host.indexOf('streamfree.top') >= 0 && path.indexOf('/live/') >= 0) return true;

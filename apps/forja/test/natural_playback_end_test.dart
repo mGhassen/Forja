@@ -454,6 +454,22 @@ void main() {
         isFalse,
       );
     });
+
+    test('extensionless /playlist/ HLS is proxied, .m3u8 is not', () {
+      const vix =
+          'https://vixsrc.to/playlist/174559?b=1&token=abc&expires=1&h=1';
+      expect(shouldProxyExtensionlessHls(vix), isTrue);
+      expect(
+        shouldProxyExtensionlessHls('https://cdn.example/master.m3u8'),
+        isFalse,
+      );
+      expect(
+        shouldProxyExtensionlessHls(
+          'http://127.0.0.1:9/hls-proxy?url=${Uri.encodeComponent(vix)}',
+        ),
+        isFalse,
+      );
+    });
   });
 
   group('sourceRequiresSeekableDurationBeforeConfirm', () {

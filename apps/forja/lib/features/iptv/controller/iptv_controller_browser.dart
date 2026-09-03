@@ -596,6 +596,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   /// [onlyThis]: TV D-pad focus — drop other pending timers/queue entries so
   /// skimming channels never piles probes behind the one you dwell on.
   void scheduleLazyCheck(IptvStream s, {bool onlyThis = false}) {
+    if (ShellBus.playerSurfaceActive.value) return;
     final p = _c.activePortal;
     if (p == null || !_sectionSupportsStreamHealth(_c.activeSection)) return;
     if (!_streamSupportsHealthProbe(s)) return;
@@ -648,6 +649,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
   /// Probe a single catalog stream - capped concurrency, after debounce.
   void lazyCheckStream(IptvStream s) {
+    if (ShellBus.playerSurfaceActive.value) return;
     final p = _c.activePortal;
     if (p == null || !_sectionSupportsStreamHealth(_c.activeSection)) return;
     if (!_streamSupportsHealthProbe(s)) return;

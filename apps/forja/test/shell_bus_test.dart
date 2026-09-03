@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/shell/catalog_vertical_filters.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shell/shell_body.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -10,6 +12,7 @@ void main() {
   tearDown(() {
     CatalogVerticalFiltersRegistry.clearForTest();
     ShellBus.clearHideGlobalNav();
+    ShellBus.restoreImageCacheAfterPlayback();
     ShellBus.requestSettingsCategory.value = null;
     ShellBus.settingsHubCategoryId.value = 'profile';
     ShellBus.takeEnterSettingsDetail();
@@ -186,4 +189,88 @@ void main() {
       expect(ShellBus.playerSurfaceActive.value, isFalse);
     },
   );
+
+  testWidgets(
+    'ShellBus enterPlayerSurface caps image cache for playback',
+    (tester) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      final cache = imageCache;
+      final prevBytes = cache.maximumSizeBytes;
+      final prevCount = cache.maximumSize;
+      addTearDown(() {
+        cache.maximumSizeBytes = prevBytes;
+        cache.maximumSize = prevCount;
+      });
+
+      ShellBus.enterPlayerSurface();
+      expect(cache.maximumSizeBytes, ShellBus.playbackImageCacheMaxBytes);
+      expect(cache.maximumSize, ShellBus.playbackImageCacheMaxCount);
+
+      ShellBus.leavePlayerSurface();
+      expect(cache.maximumSizeBytes, prevBytes);
+      expect(cache.maximumSize, prevCount);
+    },
+  );
+
+  testWidgets(
+    'ShellBody pauses selected-tab tickers while the player is up',
+    (tester) async {
+      final ticks = ValueNotifier<int>(0);
+      addTearDown(ticks.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ShellBody(
+            selectedIndex: 0,
+            visibleIds: const ['iptv'],
+            mountedTabIds: const {'iptv'},
+            tabFor: (_) => _TickerProbe(ticks: ticks),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 32));
+      expect(ticks.value, greaterThan(0));
+
+      ShellBus.enterPlayerSurface();
+      await tester.pump();
+      ticks.value = 0;
+      await tester.pump(const Duration(milliseconds: 48));
+      expect(ticks.value, 0);
+
+      ShellBus.leavePlayerSurface();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 48));
+      expect(ticks.value, greaterThan(0));
+    },
+  );
+}
+
+class _TickerProbe extends StatefulWidget {
+  const _TickerProbe({required this.ticks});
+
+  final ValueNotifier<int> ticks;
+
+  @override
+  State<_TickerProbe> createState() => _TickerProbeState();
+}
+
+class _TickerProbeState extends State<_TickerProbe>
+    with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((_) => widget.ticks.value++);
+    _ticker.start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.expand();
 }

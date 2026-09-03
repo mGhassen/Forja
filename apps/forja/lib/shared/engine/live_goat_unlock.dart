@@ -148,10 +148,10 @@ class LiveGoatUnlock {
     if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
       return (
         url: embed,
-        headers: {
+        headers: withWftyPlaybackReferer(embed, {
           'Referer': _watchfootyReferer,
           'User-Agent': _ua,
-        },
+        }),
       );
     }
     if (!isSportsEmbedUrl(embed)) return null;
@@ -207,7 +207,10 @@ class LiveGoatUnlock {
         embedUrl: embed,
       );
       if (result == null || result.isEmpty) return null;
-      final headers = playbackHeadersForSportsEmbed(slot);
+      final headers = withWftyPlaybackReferer(
+        result,
+        playbackHeadersForSportsEmbed(slot),
+      );
       // WatchFooty `lb*.wfty.st` rows are signed direct-playback URLs. A
       // second GET probe often times out or 500s even though Exo/MediaKit can
       // open them with the right Referer, so only probe non-direct rows here.
@@ -630,13 +633,67 @@ class LiveGoatUnlock {
   static Map<String, String> playbackHeadersForSportsEmbed(
     Map<String, dynamic> slot,
   ) {
-    final origin = (slot['origin'] ?? _sportsEmbedOrigin).toString();
+    final origin = (slot['origin'] ?? _sportsEmbedOrigin).toString().replaceAll(
+      RegExp(r'/+$'),
+      '',
+    );
+    final path = (slot['path'] ?? '').toString();
+    // Same Referer as the sportsembed player page (hls.js in the browser).
+    // Origin-root `https://sportsembed.su/` makes `wfty.st` 500 then serve a
+    // PNG decoy playlist.
+    if (path.isNotEmpty) {
+      return {
+        'Referer': '$origin/embed/$path',
+        'Origin': origin,
+        'User-Agent': _ua,
+      };
+    }
     return _sportsEmbedPlaybackHeaders(origin);
   }
 
   static Map<String, String> _sportsEmbedPlaybackHeaders(String? origin) {
     final o = (origin ?? _sportsEmbedOrigin).replaceAll(RegExp(r'/+$'), '');
     return {'Referer': '$o/', 'Origin': o, 'User-Agent': _ua};
+  }
+
+  /// `lb*.wfty.st/secure/{tok}/{cat}/{slug}/{n}/{matchId}/{exp}/playlist.m3u8`
+  /// → sportsembed player Referer the site uses.
+  static String? sportsEmbedRefererFromWftyPlaylist(String m3u8Url) {
+    final uri = Uri.tryParse(m3u8Url.trim());
+    if (uri == null || !uri.host.toLowerCase().contains('wfty.st')) {
+      return null;
+    }
+    final segs = uri.pathSegments;
+    if (segs.length < 8 || segs.first.toLowerCase() != 'secure') return null;
+    final category = segs[2];
+    final slug = segs[3];
+    final stream = segs[4];
+    final matchId = segs[5];
+    if (category.isEmpty || slug.isEmpty || stream.isEmpty || matchId.isEmpty) {
+      return null;
+    }
+    return '$_sportsEmbedOrigin/embed/$matchId/$slug/$category/$stream';
+  }
+
+  static Map<String, String> withWftyPlaybackReferer(
+    String playUrl,
+    Map<String, String> headers,
+  ) {
+    final reconstructed = sportsEmbedRefererFromWftyPlaylist(playUrl);
+    if (reconstructed == null) return headers;
+    final out = Map<String, String>.from(headers);
+    String? take(String a, String b) => out[a] ?? out[b];
+    final current = (take('Referer', 'referer') ?? '').trim();
+    final weak = current.isEmpty ||
+        current == '$_sportsEmbedOrigin/' ||
+        current == _sportsEmbedOrigin ||
+        current.contains('watchfooty.st');
+    if (weak) {
+      out.remove('referer');
+      out['Referer'] = reconstructed;
+      out['Origin'] ??= _sportsEmbedOrigin;
+    }
+    return out;
   }
 
   /// CDN Referer/Origin for GOAT-unlocked `strmd.st` playback.
@@ -713,9 +770,10 @@ class LiveGoatUnlock {
     if (uri == null) return false;
     final path = uri.path.toLowerCase();
     final host = uri.host.toLowerCase();
-    if (host.contains('wfty.st')) return true;
     // PPV embedindia CDN — signed `/secure/…/index.m3u8` segments 403 when
     // hls-proxy rewrites query strings; open direct with Referer/Cookie.
+    // `wfty.st` is path-signed (no query) — keep `/hls-proxy` so ffmpeg child
+    // playlist/segment GETs still send sportsembed Referer (direct open does not).
     if (host.contains('indianservers.st')) return true;
     if (host.contains('streamfree.top') && path.contains('/live/')) {
       return true;

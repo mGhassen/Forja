@@ -621,10 +621,20 @@ Future<String> openPlayerStream(
     providerId: providerId,
   );
   openUrl = proxied1shows.url;
+  final proxiedExt = await proxyExtensionlessHlsIfNeeded(
+    streamUrl: openUrl,
+    headers: proxied1shows.headers.isEmpty
+        ? (headers ?? const <String, String>{})
+        : proxied1shows.headers,
+    providerId: providerId,
+  );
+  openUrl = proxiedExt.url;
   final catalogForHeaders = hlsProxyTargetUrl(openUrl) ?? openUrl;
   final mwVaultProxy = isMwVaultProxyPlayUrl(openUrl);
   final hdrs =
-      isLocalLoopbackPlayUrl(openUrl) && is1showsCdnStreamUrl(catalogForHeaders)
+      (isLocalLoopbackPlayUrl(openUrl) &&
+          (is1showsCdnStreamUrl(catalogForHeaders) ||
+              shouldProxyExtensionlessHls(catalogForHeaders)))
       ? const <String, String>{}
       : resolvePlaybackHttpHeaders(
           headers,
@@ -1482,6 +1492,10 @@ bool isMediaOpenReady(PlayerState state) {
   return false;
 }
 
+/// ffmpeg HLS `allowed_extensions` rejects `.key` and extensionless nested
+/// playlists (`/playlist/{id}?type=video`). VixSrc uses both.
+const kLavfHlsAllowedExtensionsAll = 'allowed_extensions=ALL';
+
 /// True when [url] is HLS (`.m3u8`, `/hls-proxy`, or extensionless `/playlist/`).
 ///
 /// VixSrc masters are `vixsrc.to/playlist/{id}?token=` — no `.m3u8`. Exo already
@@ -1502,6 +1516,15 @@ bool urlLooksLikeHls(String url) {
     return !lower.contains('webmanifest');
   }
   return false;
+}
+
+/// Extensionless catalog HLS (VixSrc `/playlist/{id}`) — lavf will not treat
+/// nested child URIs as playlists unless we rewrite via `/hls-proxy`.
+bool shouldProxyExtensionlessHls(String url) {
+  final trimmed = url.trim();
+  if (trimmed.isEmpty || isLocalLoopbackPlayUrl(trimmed)) return false;
+  if (!urlLooksLikeHls(trimmed)) return false;
+  return !trimmed.toLowerCase().contains('.m3u8');
 }
 
 bool sourceExpectsDuration(String url, {String? type}) {
@@ -3199,6 +3222,41 @@ Future<({String url, Map<String, String> headers})> proxy1showsHlsIfNeeded({
   }
   return (
     url: ls.getHlsProxyUrl(streamUrl, upstream, stripMode: 'png'),
+    headers: const <String, String>{},
+  );
+}
+
+/// Rewrite extensionless HLS (AES key + nested `/playlist/` children) locally.
+Future<({String url, Map<String, String> headers})>
+proxyExtensionlessHlsIfNeeded({
+  required String streamUrl,
+  required Map<String, String> headers,
+  String? providerId,
+}) async {
+  if (!shouldProxyExtensionlessHls(streamUrl)) {
+    return (url: streamUrl, headers: headers);
+  }
+  final upstream = resolvePlaybackHttpHeaders(
+    headers,
+    streamUrl: streamUrl,
+    providerId: providerId,
+  );
+  final ls = LocalServerService();
+  if (ls.port == 0) await ls.start();
+  if (ls.port == 0) {
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await ls.start();
+  }
+  if (ls.port == 0) {
+    if (kDebugMode) {
+      debugPrint(
+        '[Player] extensionless HLS proxy unavailable — opening direct $streamUrl',
+      );
+    }
+    return (url: streamUrl, headers: upstream);
+  }
+  return (
+    url: ls.getHlsProxyUrl(streamUrl, upstream),
     headers: const <String, String>{},
   );
 }

@@ -67,7 +67,10 @@ mixin _IptvPtPlayerWatchdog on _IptvPtPlayerEngineCore {
       return true;
     }
     if (cache >= 5 && paintOk) {
-      if (last != null && now.difference(last) < const Duration(seconds: 3)) {
+      final gap = _s._atvMediaKit
+          ? const Duration(seconds: 8)
+          : const Duration(seconds: 3);
+      if (last != null && now.difference(last) < gap) {
         return false;
       }
       return true;

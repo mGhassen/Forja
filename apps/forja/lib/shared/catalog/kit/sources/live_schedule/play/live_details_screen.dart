@@ -108,7 +108,7 @@ class _LiveMatchDetailsScreenState
       match: widget.match,
       panelTitle: 'Providers',
       emptyMessage: 'No provider streams available',
-      searchingHint: 'Resolving Forja Live and Stremio',
+      searchingHint: 'Loading Forja Live and Stremio',
       iptvCtrl: iptvCtrl,
     );
     _liveTvCtrl = _IptvSportsChannelsPanelController(

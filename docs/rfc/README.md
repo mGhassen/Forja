@@ -85,7 +85,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [062-[open]-…](062-[open]-native-iptv-sports-matching.md) | Native IPTV sports matching in Live Matches | v1.3 | open | 6/6 · 14/14 Xtream · 2/2 ATV · 4/4 Stalker · 1/1 EPG pad · 1/1 Mag ch_id · 0/3 M3U ⏭️ | — |
 | [063-[fixed]-…](fixed/063-[fixed]-forja-auto-start-green-play.md) | Forja auto start (green Play) | v1.3 | fixed | Complete · 3/3 · 7/7 | — |
 | [064-[open]-…](064-[open]-rust-quickjs-engine-runtime.md) | Forja EngineJS runtime (Forja Sources) | v1.3 | open | 7/7 · 11/14 | — |
-| [065-[open]-…](065-[open]-live-forja-scrapers.md) | Live sports Forja scrapers | v1.3 | open | 7/7 · 19/23 · unified live_sport pack · WebView GOAT+GASM 🔄 | — |
+| [065-[open]-…](065-[open]-live-forja-scrapers.md) | Live sports Forja scrapers | v1.3 | open | 7/7 · 20/24 · unified live_sport pack · WebView GOAT+GASM 🔄 | — |
 | [066-[fixed]-…](fixed/066-[fixed]-hub-catalog-top-bar.md) | Anime & Asian Drama hub catalog top bar | — | fixed | Complete · 4/4 · 8/8 | — |
 | [067-[fixed]-…](fixed/067-[fixed]-forjahq-remote-plugin-pack.md) | ForjaHQ remote plugin pack (engine JS shell) | v1.4 | fixed | Complete · 5/5 · 10/10 | — |
 | [068-[fixed]-…](fixed/068-[fixed]-engine-plugin-registry.md) | Engine PluginRegistry (pack-scoped install) | v1.4 | fixed | Complete · 5/5 · 10/10 | — |

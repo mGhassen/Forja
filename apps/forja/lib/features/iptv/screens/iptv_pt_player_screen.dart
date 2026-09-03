@@ -9,6 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:forja/features/iptv/iptv_shell_style.dart';
+import 'package:forja/features/iptv/iptv_atv_live_cache.dart';
 import 'package:forja/features/iptv/iptv_title_clean.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -297,13 +298,15 @@ String? iptvLiveSourceProbeUrl(IptvPlaySource src) {
     return null;
   }
   final url = src.url.trim();
-  if (iptvLiveEnginePlayUrlReady(url)) {
-    // WatchFooty / StreamFree / GOAT signed playlists need Referer — bare
-    // engine probe false-negatives while Exo/MediaKit play fine with headers.
-    if (src.liveSourceKind == IptvLiveSourceKind.liveEngine &&
-        LiveGoatUnlock.preferDirectEnginePlayback(url)) {
-      return null;
-    }
+    if (iptvLiveEnginePlayUrlReady(url)) {
+      // WatchFooty / StreamFree / GOAT signed playlists need Referer — bare
+      // engine probe false-negatives while Exo/MediaKit play fine with headers.
+      if (src.liveSourceKind == IptvLiveSourceKind.liveEngine &&
+          (LiveGoatUnlock.preferDirectEnginePlayback(url) ||
+              (Uri.tryParse(url)?.host.toLowerCase().contains('wfty.st') ??
+                  false))) {
+        return null;
+      }
     if (src.headers.isNotEmpty) return null;
     return url;
   }
