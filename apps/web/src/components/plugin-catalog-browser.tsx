@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import {
   Check,
   ChevronLeft,
   ChevronRight,
   Copy,
+  Plus,
   Puzzle,
   Search,
   X,
 } from 'lucide-react'
 import { AddToForjaButton } from '@/components/add-to-forja-button'
-import { BatchAddToForja } from '@/components/batch-add-to-forja'
+import { PluginBatchInstallDialog } from '@/components/plugin-batch-install-dialog'
 import { Button } from '@/components/ui/button'
+import { usePluginBatchInstall } from '@/hooks/use-plugin-batch-install'
 import type { ForjaPluginPackLive } from '@/lib/forja-plugin-catalog'
 import {
   isOfficialPluginPack,
@@ -174,12 +176,14 @@ function PluginDetailPanel({
 
 function PluginListRow({
   pack,
-  selected,
-  onSelect,
+  focused,
+  checked,
+  onClick,
 }: {
   pack: ForjaPluginPackLive
-  selected: boolean
-  onSelect: () => void
+  focused: boolean
+  checked: boolean
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void
 }) {
   const official = isOfficialPluginPack(pack)
   const author = packAuthorLabel(pack)
@@ -187,18 +191,31 @@ function PluginListRow({
   return (
     <button
       type="button"
-      onClick={onSelect}
+      onClick={onClick}
       className={cn(
         'flex w-full items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 text-left transition-colors sm:px-4',
-        selected
-          ? 'bg-forja-green/10'
-          : 'hover:bg-white/[0.04]',
+        checked
+          ? 'bg-forja-green/15'
+          : focused
+            ? 'bg-forja-green/10'
+            : 'hover:bg-white/[0.04]',
       )}
     >
+      <span
+        className={cn(
+          'flex size-4 shrink-0 items-center justify-center rounded border',
+          checked
+            ? 'border-forja-green bg-forja-green text-[#0B0A0A]'
+            : 'border-white/20 bg-transparent',
+        )}
+        aria-hidden
+      >
+        {checked ? <Check className="size-2.5 stroke-[3]" /> : null}
+      </span>
       <Puzzle
         className={cn(
           'size-4 shrink-0',
-          selected
+          focused || checked
             ? 'text-forja-green'
             : 'text-[rgba(237,230,218,0.45)]',
         )}
@@ -244,7 +261,15 @@ export function PluginCatalogBrowser({
   const [kindFilter, setKindFilter] = useState<string | 'all'>('all')
   const [page, setPage] = useState(1)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set())
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
+  const anchorIdRef = useRef<string | null>(null)
+
+  const batchInstall = usePluginBatchInstall({
+    catalogPacks: packs,
+    openOnMount: batchInstallOnMount,
+    onOpenOnMountHandled: onBatchInstallOnMountHandled,
+  })
 
   const filtered = useMemo(() => {
     let list = [...packs]
@@ -275,6 +300,13 @@ export function PluginCatalogBrowser({
     filtered[0] ??
     null
 
+  const checkedPacks = useMemo(
+    () => filtered.filter((pack) => checkedIds.has(pack.id)),
+    [checkedIds, filtered],
+  )
+
+  const showMultiAdd = checkedIds.size >= 2
+
   useEffect(() => {
     setPage(1)
   }, [query, kindFilter])
@@ -288,13 +320,32 @@ export function PluginCatalogBrowser({
   useEffect(() => {
     if (filtered.length === 0) {
       setSelectedId(null)
+      setCheckedIds(new Set())
       setMobileDetailOpen(false)
       return
     }
     if (!selectedId || !filtered.some((p) => p.id === selectedId)) {
       setSelectedId(filtered[0]!.id)
     }
+    setCheckedIds((prev) => {
+      const next = new Set<string>()
+      for (const id of prev) {
+        if (filtered.some((p) => p.id === id)) next.add(id)
+      }
+      return next
+    })
   }, [filtered, selectedId])
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && checkedIds.size > 0) {
+        setCheckedIds(new Set())
+        anchorIdRef.current = null
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [checkedIds.size])
 
   const kindOptions = useMemo(() => pluginKindsFromPacks(packs), [packs])
 
@@ -306,9 +357,64 @@ export function PluginCatalogBrowser({
     return counts
   }, [packs])
 
-  function selectPack(id: string) {
-    setSelectedId(id)
+  function selectRange(toId: string) {
+    const anchorId = anchorIdRef.current
+    if (!anchorId) {
+      setCheckedIds(new Set([toId]))
+      return
+    }
+    const fromIndex = filtered.findIndex((p) => p.id === anchorId)
+    const toIndex = filtered.findIndex((p) => p.id === toId)
+    if (fromIndex < 0 || toIndex < 0) {
+      setCheckedIds(new Set([toId]))
+      return
+    }
+    const start = Math.min(fromIndex, toIndex)
+    const end = Math.max(fromIndex, toIndex)
+    const next = new Set(checkedIds)
+    for (let i = start; i <= end; i++) {
+      next.add(filtered[i]!.id)
+    }
+    setCheckedIds(next)
+  }
+
+  function handleRowClick(packId: string, event: MouseEvent<HTMLButtonElement>) {
+    setSelectedId(packId)
     setMobileDetailOpen(true)
+
+    if (event.shiftKey) {
+      selectRange(packId)
+      return
+    }
+
+    if (event.metaKey || event.ctrlKey) {
+      setCheckedIds((prev) => {
+        const next = new Set(prev)
+        if (next.has(packId)) next.delete(packId)
+        else next.add(packId)
+        return next
+      })
+      anchorIdRef.current = packId
+      return
+    }
+
+    anchorIdRef.current = packId
+    setCheckedIds(new Set())
+  }
+
+  async function handleMultiAdd() {
+    if (checkedPacks.length < 2) return
+    batchInstall.openDialog(checkedPacks)
+  }
+
+  async function handleBatchConfirm(
+    items: Parameters<typeof batchInstall.confirmBatch>[0],
+  ) {
+    const ok = await batchInstall.confirmBatch(items)
+    if (ok) {
+      setCheckedIds(new Set())
+      anchorIdRef.current = null
+    }
   }
 
   if (error) {
@@ -320,29 +426,23 @@ export function PluginCatalogBrowser({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative min-w-0 flex-1 sm:max-w-md">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[rgba(237,230,218,0.35)]"
-            aria-hidden
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search packs…"
-            className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] pl-9 pr-3 text-sm text-[#EDE6DA] placeholder:text-[rgba(237,230,218,0.35)] outline-none focus:border-forja-green/40 focus:ring-1 focus:ring-forja-green/25"
-          />
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <BatchAddToForja
-            packs={packs}
-            openOnMount={batchInstallOnMount}
-            onOpenOnMountHandled={onBatchInstallOnMountHandled}
-          />
-          <p className="font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+    <>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative min-w-0 flex-1 sm:max-w-md">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[rgba(237,230,218,0.35)]"
+              aria-hidden
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search packs…"
+              className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] pl-9 pr-3 text-sm text-[#EDE6DA] placeholder:text-[rgba(237,230,218,0.35)] outline-none focus:border-forja-green/40 focus:ring-1 focus:ring-forja-green/25"
+            />
+          </div>
+          <p className="shrink-0 font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
             {isLoading
               ? 'Loading…'
               : filtered.length === 0
@@ -350,120 +450,151 @@ export function PluginCatalogBrowser({
                 : `${pageSlice.start}-${pageSlice.end} of ${filtered.length}`}
           </p>
         </div>
-      </div>
 
-      {/* Kind filters */}
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <FilterChip
-          active={kindFilter === 'all'}
-          onClick={() => setKindFilter('all')}
-          label="All"
-          count={packs.length}
-        />
-        {kindOptions.map((kind) => (
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <FilterChip
-            key={kind}
-            active={kindFilter === kind}
-            onClick={() => setKindFilter(kind)}
-            label={pluginKindLabel(kind)}
-            count={kindCounts.get(kind)}
+            active={kindFilter === 'all'}
+            onClick={() => setKindFilter('all')}
+            label="All"
+            count={packs.length}
           />
-        ))}
-      </div>
-      <div className="overflow-hidden rounded-xl border border-white/10 bg-[#121110]">
-        <div className="grid min-h-[min(70vh,640px)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
-          {/* List */}
-          <div
-            className={cn(
-              'flex flex-col border-white/10 lg:border-r',
-              mobileDetailOpen ? 'hidden lg:flex' : 'flex',
-            )}
-          >
-            <div className="border-b border-white/[0.06] px-3 py-2 sm:px-4">
-              <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
-                Packs
-              </p>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {isLoading ? (
-                <ListSkeleton />
-              ) : filtered.length === 0 ? (
-                <p className="px-4 py-8 text-center text-sm text-[rgba(237,230,218,0.45)]">
-                  No packs match your search.
-                </p>
+          {kindOptions.map((kind) => (
+            <FilterChip
+              key={kind}
+              active={kindFilter === kind}
+              onClick={() => setKindFilter(kind)}
+              label={pluginKindLabel(kind)}
+              count={kindCounts.get(kind)}
+            />
+          ))}
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-white/10 bg-[#121110]">
+          <div className="grid min-h-[min(70vh,640px)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+            <div
+              className={cn(
+                'flex flex-col border-white/10 lg:border-r',
+                mobileDetailOpen ? 'hidden lg:flex' : 'flex',
+              )}
+            >
+              {showMultiAdd ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-forja-green/25 bg-forja-green/10 px-3 py-2.5 sm:px-4">
+                  <p className="font-mono-ui text-[10px] uppercase tracking-wider text-forja-green">
+                    {checkedIds.size} packs selected
+                    <span className="ml-2 text-[rgba(237,230,218,0.45)]">
+                      Shift+click range · Esc clear
+                    </span>
+                  </p>
+                  <button
+                    type="button"
+                    data-hover=""
+                    disabled={batchInstall.busy}
+                    onClick={() => void handleMultiAdd()}
+                    className="btn-magnet inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 font-mono-ui text-[10px] font-bold uppercase tracking-[0.12em] shadow-[0_0_24px_rgba(28,231,131,0.28)] will-change-transform sm:text-[11px]"
+                  >
+                    <Plus className="size-3.5" />
+                    Add {checkedIds.size} to Forja
+                  </button>
+                </div>
               ) : (
-                pageSlice.items.map((pack) => (
-                  <PluginListRow
-                    key={pack.id}
-                    pack={pack}
-                    selected={selected?.id === pack.id}
-                    onSelect={() => selectPack(pack.id)}
-                  />
-                ))
+                <div className="border-b border-white/[0.06] px-3 py-2 sm:px-4">
+                  <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
+                    Packs · Shift+click to select multiple
+                  </p>
+                </div>
+              )}
+
+              <div className="flex-1 overflow-y-auto">
+                {isLoading ? (
+                  <ListSkeleton />
+                ) : filtered.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-[rgba(237,230,218,0.45)]">
+                    No packs match your search.
+                  </p>
+                ) : (
+                  pageSlice.items.map((pack) => (
+                    <PluginListRow
+                      key={pack.id}
+                      pack={pack}
+                      focused={selected?.id === pack.id}
+                      checked={checkedIds.has(pack.id)}
+                      onClick={(event) => handleRowClick(pack.id, event)}
+                    />
+                  ))
+                )}
+              </div>
+
+              {!isLoading && filtered.length > PAGE_SIZE ? (
+                <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-3 py-2.5 sm:px-4">
+                  <span className="font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+                    Page {pageSlice.page} of {pageSlice.totalPages}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-[rgba(237,230,218,0.6)] hover:text-[#EDE6DA]"
+                      disabled={pageSlice.page <= 1}
+                      aria-label="Previous page"
+                      onClick={() => setPage(pageSlice.page - 1)}
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-[rgba(237,230,218,0.6)] hover:text-[#EDE6DA]"
+                      disabled={pageSlice.page >= pageSlice.totalPages}
+                      aria-label="Next page"
+                      onClick={() => setPage(pageSlice.page + 1)}
+                    >
+                      <ChevronRight className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="hidden flex-col bg-[#0f0e0d] lg:flex">
+              {selected ? (
+                <PluginDetailPanel pack={selected} />
+              ) : (
+                <EmptyDetail />
               )}
             </div>
-            {!isLoading && filtered.length > PAGE_SIZE ? (
-              <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-3 py-2.5 sm:px-4">
-                <span className="font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
-                  Page {pageSlice.page} of {pageSlice.totalPages}
-                </span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-[rgba(237,230,218,0.6)] hover:text-[#EDE6DA]"
-                    disabled={pageSlice.page <= 1}
-                    aria-label="Previous page"
-                    onClick={() => setPage(pageSlice.page - 1)}
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-[rgba(237,230,218,0.6)] hover:text-[#EDE6DA]"
-                    disabled={pageSlice.page >= pageSlice.totalPages}
-                    aria-label="Next page"
-                    onClick={() => setPage(pageSlice.page + 1)}
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          {/* Detail - desktop */}
-          <div className="hidden flex-col bg-[#0f0e0d] lg:flex">
-            {selected ? (
-              <PluginDetailPanel pack={selected} />
-            ) : (
-              <EmptyDetail />
-            )}
           </div>
         </div>
+
+        {mobileDetailOpen && selected ? (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              aria-label="Close details"
+              onClick={() => setMobileDetailOpen(false)}
+            />
+            <div className="absolute inset-x-0 bottom-0 top-[18%] flex flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121110] shadow-2xl">
+              <PluginDetailPanel
+                pack={selected}
+                onClose={() => setMobileDetailOpen(false)}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
 
-      {/* Detail - mobile sheet */}
-      {mobileDetailOpen && selected ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            aria-label="Close details"
-            onClick={() => setMobileDetailOpen(false)}
-          />
-          <div className="absolute inset-x-0 bottom-0 top-[18%] flex flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121110] shadow-2xl">
-            <PluginDetailPanel
-              pack={selected}
-              onClose={() => setMobileDetailOpen(false)}
-            />
-          </div>
-        </div>
-      ) : null}
-    </div>
+      <PluginBatchInstallDialog
+        open={batchInstall.dialogOpen}
+        packs={batchInstall.dialogPacks}
+        installedPacks={batchInstall.installedPacks}
+        initialSelection={batchInstall.initialSelection}
+        busy={batchInstall.busy}
+        onConfirm={(items) => void handleBatchConfirm(items)}
+        onCancel={batchInstall.closeDialog}
+      />
+    </>
   )
 }
 
