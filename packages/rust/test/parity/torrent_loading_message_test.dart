@@ -3,25 +3,19 @@ import 'package:rust/rust.dart';
 
 void main() {
   group('formatTorrentEngineLoadingMessage', () {
-    test('null stats → finding peers', () {
-      expect(
-        formatTorrentEngineLoadingMessage(null),
-        'Finding peers…',
-      );
-      expect(
-        torrentLoadingStatusFromStats(null).hint,
-        contains('256.0 KB'),
-      );
+    test('null stats → preparing', () {
+      expect(formatTorrentEngineLoadingMessage(null), 'Preparing playback…');
+      expect(torrentLoadingStatusFromStats(null).hint, isNull);
     });
 
-    test('zero peers → looking', () {
+    test('zero peers → finding peers', () {
       expect(
         formatTorrentEngineLoadingMessage(
           const TorrentStats(
             downloadMbps: 0,
             uploadMbps: 0,
             activePeers: 0,
-            totalPeers: 12,
+            totalPeers: 0,
             cachePercent: 0,
             loadedBytes: 0,
             totalBytes: 1,
@@ -30,11 +24,11 @@ void main() {
             isConnected: false,
           ),
         ),
-        'Looking for peers… · 0/12 peers',
+        'Finding peers…',
       );
     });
 
-    test('peers + buffer', () {
+    test('peers downloading → preparing', () {
       expect(
         formatTorrentEngineLoadingMessage(
           const TorrentStats(
@@ -50,11 +44,11 @@ void main() {
             isConnected: true,
           ),
         ),
-        'Downloading from peers… · 4/20 peers · 1.50 MB/s · 32.0 KB cached',
+        'Preparing playback…',
       );
     });
 
-    test('head progress toward playback start', () {
+    test('head complete → opening player', () {
       final status = torrentLoadingStatusFromStats(
         const TorrentStats(
           downloadMbps: 2.0,
@@ -67,41 +61,35 @@ void main() {
           etaSeconds: null,
           hash: 'abc',
           isConnected: true,
-          headReadBytes: 128 * 1024,
+          headReadBytes: 256 * 1024,
           headTargetBytes: 256 * 1024,
         ),
       );
-      expect(status.headline, 'Preparing playback…');
-      expect(status.hasHeadProgress, isTrue);
-      expect(status.headProgressFraction, closeTo(0.5, 0.01));
-      expect(status.hint, contains('128.0 KB of 256.0 KB'));
-      expect(status.hint, contains('at current speed'));
-      expect(status.headProgressLabel, '128.0 KB / 256.0 KB');
+      expect(status.headline, 'Opening player…');
+      expect(status.hint, isNull);
+      expect(status.displayMessage, 'Opening player…');
     });
 
-    test('connected peers, no data yet', () {
+    test('head in progress → preparing', () {
       final status = torrentLoadingStatusFromStats(
         const TorrentStats(
-          downloadMbps: 0,
+          downloadMbps: 2.0,
           uploadMbps: 0,
-          activePeers: 3,
-          totalPeers: 40,
+          activePeers: 26,
+          totalPeers: 2954,
           cachePercent: 0,
-          loadedBytes: 0,
+          loadedBytes: 256 << 20,
           totalBytes: 1 << 30,
           etaSeconds: null,
           hash: 'abc',
           isConnected: true,
+          headReadBytes: 0,
+          headTargetBytes: 256 * 1024,
         ),
       );
-      expect(status.headline, 'Connecting to peers…');
-      expect(status.activePeers, 3);
-      expect(status.speedLabel, isNull);
-      expect(status.bufferLabel, isNull);
-      expect(
-        status.displayMessage,
-        'Connecting to peers… · 3/40 peers · buffering…',
-      );
+      expect(status.headline, 'Preparing playback…');
+      expect(status.hint, isNull);
+      expect(status.displayMessage, 'Preparing playback…');
     });
   });
 }

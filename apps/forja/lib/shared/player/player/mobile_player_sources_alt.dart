@@ -235,6 +235,11 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });
+    _s._cancelPendingStreamWork();
+    try {
+      await silenceMediaKitPlayer(_s._player);
+    } catch (_) {}
+    if (!mounted) return;
 
     var cancelled = false;
     final loadingMovie =
@@ -299,25 +304,33 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
 
       await crossfadeStreamLoadingToPlayer(
         session: session,
-        openPlayer: () async {
-          Navigator.of(context, rootNavigator: true).pushReplacement(
-            AppRouter.slideRoute(
-              (_) => PlayerScreen(
-                streamUrl: resolved.streamUrl,
-                title: nextTitle,
-                movie: widget.movie,
-                selectedSeason: season,
-                selectedEpisode: episode,
-                magnetLink: magnet,
-                fileIndex: resolved.fileIndex,
-                headers: resolved.headers.isEmpty ? null : resolved.headers,
-                activeProvider: 'stremio_direct',
-                stremioId: widget.stremioId,
-                stremioAddonBaseUrl: base ?? widget.stremioAddonBaseUrl,
-              ),
-            ),
-          );
-        },
+        openPlayer: () => AppRouter.openPlayer(
+          context,
+          streamUrl: resolved.streamUrl,
+          title: nextTitle,
+          headers: resolved.headers.isEmpty ? null : resolved.headers,
+          movie: widget.movie,
+          selectedSeason: season,
+          selectedEpisode: episode,
+          magnetLink: magnet,
+          fileIndex: resolved.fileIndex,
+          activeProvider: 'stremio_direct',
+          stremioId: widget.stremioId,
+          stremioAddonBaseUrl: base ?? widget.stremioAddonBaseUrl,
+          enginePlaySession: widget.enginePlaySession,
+          hubEpisodes: widget.hubEpisodes,
+          hubEpisodeNumber: widget.hubEpisodeNumber,
+          onNextEpisode: widget.onNextEpisode,
+          hasNextEpisode: widget.hasNextEpisode,
+          onHubEpisodeSelected: widget.onHubEpisodeSelected,
+          onSaveProgress: widget.onSaveProgress,
+          onSourcePinned: widget.onSourcePinned,
+          pinSource: widget.pinSource,
+          sourcesListNotifier: widget.sourcesListNotifier,
+          providerSourcesCache: widget.providerSourcesCache,
+          providerProbesNotifier: widget.providerProbesNotifier,
+          fadeTransition: true,
+        ),
       );
       finishStreamLoadingSession(session);
     } catch (e) {
@@ -346,6 +359,11 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       _s._catalogSourceKind = 'torrents';
       _s._currentProvider = 'torrent';
     });
+    _s._cancelPendingStreamWork();
+    try {
+      await silenceMediaKitPlayer(_s._player);
+    } catch (_) {}
+    if (!mounted) return;
 
     var cancelled = false;
     final loadingMovie =
@@ -404,24 +422,32 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
 
       await crossfadeStreamLoadingToPlayer(
         session: session,
-        openPlayer: () async {
-          Navigator.of(context, rootNavigator: true).pushReplacement(
-            AppRouter.slideRoute(
-              (_) => PlayerScreen(
-                streamUrl: playback.url,
-                title: nextTitle,
-                movie: widget.movie,
-                selectedSeason: season,
-                selectedEpisode: episode,
-                magnetLink: result.magnet,
-                fileIndex: playback.fileIndex,
-                activeProvider: 'torrent',
-                stremioId: widget.stremioId,
-                stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
-              ),
-            ),
-          );
-        },
+        openPlayer: () => AppRouter.openPlayer(
+          context,
+          streamUrl: playback.url,
+          title: nextTitle,
+          movie: widget.movie,
+          selectedSeason: season,
+          selectedEpisode: episode,
+          magnetLink: result.magnet,
+          fileIndex: playback.fileIndex,
+          activeProvider: 'torrent',
+          stremioId: widget.stremioId,
+          stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+          enginePlaySession: widget.enginePlaySession,
+          hubEpisodes: widget.hubEpisodes,
+          hubEpisodeNumber: widget.hubEpisodeNumber,
+          onNextEpisode: widget.onNextEpisode,
+          hasNextEpisode: widget.hasNextEpisode,
+          onHubEpisodeSelected: widget.onHubEpisodeSelected,
+          onSaveProgress: widget.onSaveProgress,
+          onSourcePinned: widget.onSourcePinned,
+          pinSource: widget.pinSource,
+          sourcesListNotifier: widget.sourcesListNotifier,
+          providerSourcesCache: widget.providerSourcesCache,
+          providerProbesNotifier: widget.providerProbesNotifier,
+          fadeTransition: true,
+        ),
       );
       finishStreamLoadingSession(session);
     } catch (e) {

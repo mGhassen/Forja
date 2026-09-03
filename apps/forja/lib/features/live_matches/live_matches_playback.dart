@@ -78,46 +78,53 @@ mixin _LiveMatchesPlayback
     required List<_StreamedStreamChoice> choices,
     required bool Function() isStale,
   }) async {
-    controller.setSearchPhase('Forja Live');
-
-    // Providers = every enabled stream catalog + Stremio. Catalog-grid merge
-    // (PPV+Streamed card) is display-only and must not scope this list.
-    await _fillForjaLiveSources(
-      match: match,
-      controller: controller,
-      choices: choices,
-      isStale: isStale,
-      ppvAnchor: ppvAnchor,
-    );
-    if (choices.isEmpty && !isStale() && !controller.isDisposed) {
-      await _fillCatalogEngineSources(
-        match: match,
-        controller: controller,
-        choices: choices,
-        isStale: isStale,
-        allowIptvFallback: false,
-      );
-    }
-
     if (isStale() || controller.isDisposed) return;
 
-    controller.setSearchPhase('Stremio');
-    if (match.isStremio) {
-      await _fillStremioSources(
-        match: match,
-        controller: controller,
-        isStale: isStale,
-      );
-    } else {
+    controller.setSearchPhase('Providers');
+
+    Future<void> runForjaLive() async {
       try {
+        await _fillForjaLiveSources(
+          match: match,
+          controller: controller,
+          choices: choices,
+          isStale: isStale,
+          ppvAnchor: ppvAnchor,
+        );
+        if (isStale() || controller.isDisposed || choices.isNotEmpty) return;
+        await _fillCatalogEngineSources(
+          match: match,
+          controller: controller,
+          choices: choices,
+          isStale: isStale,
+          allowIptvFallback: false,
+        );
+      } catch (e, st) {
+        debugPrint('[LiveMatches] Forja Live providers error: $e\n$st');
+      }
+    }
+
+    Future<void> runStremio() async {
+      if (isStale() || controller.isDisposed) return;
+      try {
+        if (match.isStremio) {
+          await _fillStremioSources(
+            match: match,
+            controller: controller,
+            isStale: isStale,
+          );
+          return;
+        }
         final stremio = await _resolveStremioStreamsMatching(match);
         if (!isStale() && !controller.isDisposed && stremio.isNotEmpty) {
           controller.appendSources(stremio);
         }
-      } catch (e) {
-        debugPrint('[LiveMatches] Stremio match error: $e');
+      } catch (e, st) {
+        debugPrint('[LiveMatches] Stremio providers error: $e\n$st');
       }
     }
+
+    await Future.wait([runForjaLive(), runStremio()]);
   }
 
   _StreamedMatch _enrichedIptvSportsMatch(_StreamedMatch match) {
@@ -201,8 +208,6 @@ mixin _LiveMatchesPlayback
     required bool Function() isStale,
     _DamiTvStream? ppvAnchor,
   }) async {
-    controller.setSearchPhase('Forja Live');
-
     if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
       choices.add(_ppvStreamChoice(ppvAnchor, match));
     } else {
@@ -234,6 +239,33 @@ mixin _LiveMatchesPlayback
     final hasNonPpvStreams = choices.any((c) => !_isPpvStreamChoice(c));
     if (!hasNonPpvStreams) {
       final seenIds = {for (final m in catalogMatches) m.id};
+      unawaited(
+        _backfillForjaLiveCatalogProviders(
+          match: match,
+          seenIds: seenIds,
+          controller: controller,
+          choices: choices,
+          isStale: isStale,
+          ppvAnchor: ppvAnchor,
+        ),
+      );
+    } else {
+      _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
+      if (ppvAnchor != null) {
+        _rememberPpvStreamViewers(ppvAnchor, _sheetTotalViewers(choices));
+      }
+    }
+  }
+
+  Future<void> _backfillForjaLiveCatalogProviders({
+    required _StreamedMatch match,
+    required Set<String> seenIds,
+    required _IptvSportsChannelsPanelController controller,
+    required List<_StreamedStreamChoice> choices,
+    required bool Function() isStale,
+    _DamiTvStream? ppvAnchor,
+  }) async {
+    try {
       final hydrated = await (this as _LiveMatchesForjaLive)
           ._catalogMatchesForStreamResolve(match);
       if (isStale() || controller.isDisposed) return;
@@ -241,20 +273,20 @@ mixin _LiveMatchesPlayback
         for (final m in hydrated)
           if (!seenIds.contains(m.id)) m,
       ];
-      if (extra.isNotEmpty) {
-        await _resolveCatalogStreamChoices(
-          extra,
-          isStale: isStale,
-          onPartial: (batch) {
-            if (isStale() || controller.isDisposed) return;
-            choices.addAll(batch);
-            _panelAppendChoices(controller, batch);
-          },
-        );
-      }
+      if (extra.isEmpty) return;
+      await _resolveCatalogStreamChoices(
+        extra,
+        isStale: isStale,
+        onPartial: (batch) {
+          if (isStale() || controller.isDisposed) return;
+          choices.addAll(batch);
+          _panelAppendChoices(controller, batch);
+        },
+      );
+    } catch (e, st) {
+      debugPrint('[LiveMatches] Forja Live catalog backfill error: $e\n$st');
     }
     if (isStale() || controller.isDisposed) return;
-
     _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
     if (ppvAnchor != null) {
       _rememberPpvStreamViewers(ppvAnchor, _sheetTotalViewers(choices));
@@ -872,13 +904,31 @@ mixin _LiveMatchesPlayback
     if (match.isStremio) {
       return _stremioPlaySourcesFor(match);
     }
-    final catalog = await _fetchStremioSportMatches();
+    List<_StreamedMatch> catalog;
+    try {
+      catalog = await _fetchStremioSportMatches();
+    } catch (e) {
+      debugPrint('[LiveMatches] Stremio catalog error: $e');
+      return const [];
+    }
     final hits = catalog.where((m) => _sameStreamedEvent(match, m)).toList();
     if (hits.isEmpty) return const [];
+
+    final batches = await Future.wait(
+      hits.take(3).map((hit) async {
+        try {
+          return await _stremioPlaySourcesFor(hit);
+        } catch (e) {
+          debugPrint('[LiveMatches] Stremio addon resolve error: $e');
+          return const <IptvPlaySource>[];
+        }
+      }),
+    );
+
     final out = <IptvPlaySource>[];
     final seenUrls = <String>{};
-    for (final hit in hits.take(3)) {
-      for (final s in await _stremioPlaySourcesFor(hit)) {
+    for (final batch in batches) {
+      for (final s in batch) {
         if (!seenUrls.add(s.url)) continue;
         out.add(s);
       }

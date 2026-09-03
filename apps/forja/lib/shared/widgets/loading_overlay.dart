@@ -13,6 +13,7 @@ import 'package:forja/shared/widgets/desktop_window_chrome.dart';
 import 'package:forja/shared/widgets/resolve_failure_view.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/stream_provider_probe.dart';
+import 'package:forja/shared/player/player_metadata.dart';
 import 'package:forja/shared/widgets/torrent_loading_status_panel.dart';
 
 const loadingOverlayFadeOutDuration = Duration(milliseconds: 750);
@@ -269,6 +270,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       FocusNode(debugLabel: 'loading-providers');
   final FocusNode _cancelFocus = FocusNode(debugLabel: 'loading-cancel');
   final List<FocusNode> _providerRowFocus = [];
+  String? _fetchedLogoUrl;
 
   double get _logoBottomReserve =>
       _providerListOpen ? _statusStripReserve + 200 : _statusStripReserve;
@@ -315,6 +317,15 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       if (!mounted) return;
       _focusInitialAction();
     });
+    unawaited(_fetchLogoIfNeeded());
+  }
+
+  Future<void> _fetchLogoIfNeeded() async {
+    if (_logoImageUrl != null) return;
+    final movieId = widget.movie.id;
+    final url = await resolveTmdbLogoImageUrl(widget.movie);
+    if (!mounted || widget.movie.id != movieId) return;
+    setState(() => _fetchedLogoUrl = url);
   }
 
   void _syncProviderRowFocusNodes() {
@@ -941,10 +952,9 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   }
 
   String? get _logoImageUrl {
-    final path = widget.movie.logoPath;
-    if (path.isEmpty || path.toLowerCase().endsWith('.svg')) return null;
-    if (path.startsWith('http')) return path;
-    return TmdbApi.getImageUrl(path);
+    final fetched = _fetchedLogoUrl;
+    if (fetched != null && fetched.isNotEmpty) return fetched;
+    return tmdbLogoImageUrlFromPath(widget.movie.logoPath);
   }
 
   String _resolveBackdropUrl() {

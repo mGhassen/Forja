@@ -166,19 +166,6 @@ class _LiveMatchDetailsScreenState
     }
   }
 
-  Future<void> _awaitForjaGridCatalogIdle(_IptvSportsChannelsPanelController ctrl) async {
-    final host = widget.host;
-    var spins = 0;
-    while (mounted && spins < 120) {
-      if (!(host as _LiveMatchesForjaLive)._forjaLiveCatalogBusy) return;
-      if (spins == 0) {
-        ctrl.setSearchPhase('Loading schedule');
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      spins++;
-    }
-  }
-
   Future<void> _loadProviders({bool force = false}) async {
     if (_providersRequested && !force) return;
     final gen = ++_providersLoadGen;
@@ -192,7 +179,6 @@ class _LiveMatchDetailsScreenState
     _providersCtrl.resetForLoad();
     _providersCtrl.beginSearching('Providers');
     try {
-      await _awaitForjaGridCatalogIdle(_providersCtrl);
       if (!mounted || gen != _providersLoadGen || _providersCtrl.isDisposed) {
         return;
       }
