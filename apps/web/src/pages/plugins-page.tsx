@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { Link } from '@tanstack/react-router'
+import { useMemo, useState } from 'react'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { Cloud, Download, Puzzle, Sparkles } from 'lucide-react'
 import { PluginCatalogBrowser } from '@/components/plugin-catalog-browser'
 import { PluginOrbitVisual } from '@/components/plugin-orbit-visual'
@@ -10,6 +10,7 @@ import { PageAtmosphere } from '@/components/page-atmosphere'
 import { SiteHeader } from '@/components/site-header'
 import { useForjaPluginCatalog } from '@/hooks/use-forja-plugin-catalog'
 import { cn } from '@/lib/utils'
+import { Route } from '@/routes/plugins'
 
 const BUILD_GUIDE_URL =
   'https://github.com/mGhassen/Forja/blob/main/plugins/DEVELOPING.md'
@@ -50,7 +51,22 @@ const STEPS = [
 ]
 
 export function PluginsPage() {
+  const navigate = useNavigate()
+  const search = Route.useSearch()
   const { data: packs, isLoading, error } = useForjaPluginCatalog()
+  const [batchInstallOnMount, setBatchInstallOnMount] = useState(
+    () => search.batchInstall === true,
+  )
+
+  const handleBatchInstallOnMountHandled = () => {
+    if (!search.batchInstall) return
+    setBatchInstallOnMount(false)
+    void navigate({
+      to: '/plugins',
+      search: {},
+      replace: true,
+    })
+  }
 
   const totalPlugins = useMemo(
     () => packs?.reduce((sum, p) => sum + (p.pluginCount ?? 0), 0) ?? 0,
@@ -232,6 +248,8 @@ export function PluginsPage() {
                 packs={packs ?? []}
                 isLoading={isLoading}
                 error={error}
+                batchInstallOnMount={batchInstallOnMount}
+                onBatchInstallOnMountHandled={handleBatchInstallOnMountHandled}
               />
             </div>
           </section>

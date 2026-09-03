@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react'
 import { AddToForjaButton } from '@/components/add-to-forja-button'
+import { BatchAddToForja } from '@/components/batch-add-to-forja'
 import { Button } from '@/components/ui/button'
 import type { ForjaPluginPackLive } from '@/lib/forja-plugin-catalog'
 import {
@@ -228,12 +229,16 @@ type PluginCatalogBrowserProps = {
   packs: ForjaPluginPackLive[]
   isLoading?: boolean
   error?: Error | null
+  batchInstallOnMount?: boolean
+  onBatchInstallOnMountHandled?: () => void
 }
 
 export function PluginCatalogBrowser({
   packs,
   isLoading,
   error,
+  batchInstallOnMount,
+  onBatchInstallOnMountHandled,
 }: PluginCatalogBrowserProps) {
   const [query, setQuery] = useState('')
   const [kindFilter, setKindFilter] = useState<string | 'all'>('all')
@@ -331,13 +336,20 @@ export function PluginCatalogBrowser({
             className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] pl-9 pr-3 text-sm text-[#EDE6DA] placeholder:text-[rgba(237,230,218,0.35)] outline-none focus:border-forja-green/40 focus:ring-1 focus:ring-forja-green/25"
           />
         </div>
-        <p className="shrink-0 font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
-          {isLoading
-            ? 'Loading…'
-            : filtered.length === 0
-              ? '0 packs'
-              : `${pageSlice.start}-${pageSlice.end} of ${filtered.length}`}
-        </p>
+        <div className="flex shrink-0 items-center gap-3">
+          <BatchAddToForja
+            packs={packs}
+            openOnMount={batchInstallOnMount}
+            onOpenOnMountHandled={onBatchInstallOnMountHandled}
+          />
+          <p className="font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+            {isLoading
+              ? 'Loading…'
+              : filtered.length === 0
+                ? '0 packs'
+                : `${pageSlice.start}-${pageSlice.end} of ${filtered.length}`}
+          </p>
+        </div>
       </div>
 
       {/* Kind filters */}

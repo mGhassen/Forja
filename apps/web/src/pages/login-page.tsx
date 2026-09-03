@@ -34,7 +34,7 @@ import {
   resolveDesktopAuthParams,
 } from '@/lib/desktop-auth-callback'
 import { rememberPostLoginNextFromSearch, clearPostLoginNext, readPostLoginNext } from '@/lib/device-link'
-import { readPluginInstallIntent } from '@/lib/forja-plugin-install'
+import { readPluginBatchInstallIntent, readPluginInstallIntent } from '@/lib/forja-plugin-install'
 import { supabase } from '@/lib/supabase'
 
 function navigateAfterLogin(
@@ -44,6 +44,14 @@ function navigateAfterLogin(
   clearPostLoginNext()
   if (next) {
     void navigate({ to: next.to, search: next.search, replace: true })
+    return
+  }
+  if (readPluginBatchInstallIntent()) {
+    void navigate({
+      to: '/plugins',
+      search: { batchInstall: true },
+      replace: true,
+    })
     return
   }
   if (readPluginInstallIntent()) {

@@ -1,6 +1,7 @@
 import type { ForjaPackRow } from '@/lib/sync-domains'
 
 const INSTALL_INTENT_KEY = 'forja.plugin_install_intent'
+const BATCH_INSTALL_INTENT_KEY = 'forja.plugin_batch_install_intent'
 
 export type PluginInstallIntent = {
   manifestUrl: string
@@ -96,6 +97,65 @@ export function clearPluginInstallIntent(): void {
     sessionStorage.removeItem(INSTALL_INTENT_KEY)
   } catch {
     // ignore
+  }
+}
+
+export type PluginBatchInstallIntent = {
+  selections: PluginInstallIntent[]
+}
+
+export function rememberPluginBatchInstallIntent(
+  intent: PluginBatchInstallIntent,
+): void {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.setItem(BATCH_INSTALL_INTENT_KEY, JSON.stringify(intent))
+  } catch {
+    // ignore
+  }
+}
+
+export function readPluginBatchInstallIntent(): PluginBatchInstallIntent | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(BATCH_INSTALL_INTENT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as PluginBatchInstallIntent
+    if (!Array.isArray(parsed.selections) || parsed.selections.length === 0) {
+      return null
+    }
+    const selections = parsed.selections
+      .map((item) => ({
+        manifestUrl: item.manifestUrl?.trim() ?? '',
+        name: item.name?.trim() || undefined,
+        version: item.version?.trim() || undefined,
+      }))
+      .filter((item) => item.manifestUrl.length > 0)
+    if (selections.length === 0) return null
+    return { selections }
+  } catch {
+    return null
+  }
+}
+
+export function clearPluginBatchInstallIntent(): void {
+  if (typeof window === 'undefined') return
+  try {
+    sessionStorage.removeItem(BATCH_INSTALL_INTENT_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+export function installPayloadFromPack(pack: {
+  manifestUrl: string
+  name?: string
+  version?: string
+}): PluginInstallIntent {
+  return {
+    manifestUrl: pack.manifestUrl.trim(),
+    name: pack.name,
+    version: pack.version,
   }
 }
 

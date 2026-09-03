@@ -1,6 +1,17 @@
 import { supabase } from '@/lib/supabase'
 import { readPluginInstallIntent } from '@/lib/forja-plugin-install'
 
+function pluginsSearchFromNext(
+  next: string,
+): { batchInstall?: boolean } | undefined {
+  const query = next.includes('?') ? next.slice(next.indexOf('?') + 1) : ''
+  const params = new URLSearchParams(query)
+  const batchInstall =
+    params.get('batchInstall') === '1' ||
+    params.get('batchInstall') === 'true'
+  return batchInstall ? { batchInstall: true } : undefined
+}
+
 export type ApproveDeviceLinkResult =
   | { ok: true }
   | { ok: false; error: string }
@@ -58,7 +69,13 @@ export function clearPostLoginNext(): void {
 
 export function readPostLoginNext(): {
   to: '/connect' | '/plugins' | '/account/settings/forja'
-  search?: { code?: string; manifest?: string; name?: string; version?: string }
+  search?: {
+    code?: string
+    manifest?: string
+    name?: string
+    version?: string
+    batchInstall?: boolean
+  }
 } | null {
   if (typeof window === 'undefined') return null
   const params = new URLSearchParams(window.location.search)
@@ -78,7 +95,8 @@ export function readPostLoginNext(): {
   }
   if (!isSafeAuthNextPath(next)) return null
   if (next === '/plugins' || next?.startsWith('/plugins?')) {
-    return { to: '/plugins' }
+    const search = pluginsSearchFromNext(next)
+    return search ? { to: '/plugins', search } : { to: '/plugins' }
   }
   if (
     next === '/account/settings/forja' ||
