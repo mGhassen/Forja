@@ -628,7 +628,7 @@ export function AccountSettingsIptvPage() {
 
       <SettingsSection
         label="Portals"
-        description="Select portals for batch export or delete. Favorites stay on top. Search filters name, URL, and username."
+        description="Select portals for batch export or remove from this profile. Favorites stay on top. Search filters name, URL, and username."
       >
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="relative min-w-0 flex-1">
@@ -803,7 +803,7 @@ export function AccountSettingsIptvPage() {
                         className="text-red-400 hover:text-red-300"
                         onClick={deleteSelected}
                       >
-                        Confirm delete ({selectedCount})
+                        Confirm remove ({selectedCount})
                       </Button>
                       <Button
                         type="button"
@@ -821,9 +821,10 @@ export function AccountSettingsIptvPage() {
                       size="sm"
                       className="text-red-400 hover:text-red-300"
                       onClick={() => setConfirmBulkDelete(true)}
+                      title="Remove from this profile (shared portal stays in the catalog)"
                     >
                       <Trash2 className="size-4" />
-                      Delete
+                      Remove
                     </Button>
                   )}
                   <Button
@@ -988,7 +989,8 @@ export function AccountSettingsIptvPage() {
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
-                          aria-label="Delete portal"
+                          aria-label="Remove portal from profile"
+                          title="Remove from this profile"
                           onClick={() => removePortal(key)}
                         >
                           <Trash2 className="size-4" />

@@ -53,31 +53,19 @@ export function useUserIptvPortals() {
       }>,
     ) => {
       if (!user || !activeProfile) throw new Error('Select a profile first')
-      // Cloud is master — empty Save must not delete every assignment.
-      if (rows.length === 0) {
-        throw new Error(
-          'Refusing to save an empty portal list (would wipe cloud assignments). Delete portals individually or keep at least one.',
-        )
-      }
 
+      // Web IPTV editor is cloud-backed and only calls replace after an explicit
+      // user edit (add / edit / favorite / delete / clear-all). Empty or shrink
+      // means remove profile assignments — shared iptv_portals rows stay.
+      // Accidental thin-cache wipe is a Flutter sync concern (issues 096 / 118),
+      // not this page.
       const { count: cloudCount, error: countError } = await supabase
         .from('user_iptv_portals')
         .select('id', { count: 'exact', head: true })
         .eq('account_id', user.id)
         .eq('profile_id', activeProfile.id)
       if (countError) throw countError
-      // Cloud is master: any shrink without an explicit loaded editor is refused.
-      // Web Save always comes from the cloud-backed editor, so allow_shrink is
-      // true only when the client list is not a catastrophic thin subset.
       const cloud = cloudCount ?? 0
-      const catastrophic =
-        cloud > rows.length &&
-        (rows.length * 2 < cloud || cloud - rows.length >= 10)
-      if (catastrophic) {
-        throw new Error(
-          `Refusing to save ${rows.length} portals over ${cloud} cloud assignments (would wipe portals). Reload and try again.`,
-        )
-      }
       const allowShrink = cloud > rows.length
 
       const portalIds: string[] = []
