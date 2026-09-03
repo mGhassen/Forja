@@ -62,6 +62,7 @@ export function AccountSettingsForjaPage() {
   const [installPrompt, setInstallPrompt] =
     useState<PluginInstallConfirmPayload | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogMode, setDialogMode] = useState<'add' | 'remove'>('add')
 
   const pendingFromUrl = useMemo((): PluginInstallConfirmPayload | null => {
     if (!search.manifest || !isSafeManifestUrl(search.manifest)) return null
@@ -78,9 +79,10 @@ export function AccountSettingsForjaPage() {
     const pending = fromUrl ?? fromSession
     if (!pending?.manifestUrl) return
     setInstallPrompt(pending)
+    setDialogMode(search.op === 'remove' ? 'remove' : 'add')
     setDialogOpen(true)
     if (fromSession) clearPluginInstallIntent()
-  }, [pendingFromUrl])
+  }, [pendingFromUrl, search.op])
 
   const alreadyInstalled = installPrompt
     ? isPackInstalled(draft.packs, installPrompt.manifestUrl)
@@ -89,6 +91,7 @@ export function AccountSettingsForjaPage() {
   const closeInstallDialog = () => {
     setDialogOpen(false)
     setInstallPrompt(null)
+    setDialogMode('add')
     clearPluginInstallIntent()
     void navigate({
       to: '/account/settings/forja',
@@ -99,6 +102,19 @@ export function AccountSettingsForjaPage() {
 
   const confirmInstall = async () => {
     if (!installPrompt) return
+    if (dialogMode === 'remove') {
+      try {
+        await commit((prev) => ({
+          packs: prev.packs.filter(
+            (p) => p.manifestUrl !== installPrompt.manifestUrl,
+          ),
+        }))
+        closeInstallDialog()
+      } catch {
+        // saveError surfaced in footer
+      }
+      return
+    }
     const row = packRowFromInstallPayload(installPrompt)
     if (draft.packs.some((p) => p.manifestUrl === row.manifestUrl)) {
       closeInstallDialog()
@@ -121,10 +137,14 @@ export function AccountSettingsForjaPage() {
     setUrl('')
   }
 
-  const removePack = (manifestUrl: string) => {
-    void commit((prev) => ({
-      packs: prev.packs.filter((a) => a.manifestUrl !== manifestUrl),
-    }))
+  const removePack = (pack: ForjaPackRow) => {
+    setInstallPrompt({
+      manifestUrl: pack.manifestUrl,
+      name: pack.name,
+      version: pack.version,
+    })
+    setDialogMode('remove')
+    setDialogOpen(true)
   }
 
   return (
@@ -174,7 +194,7 @@ export function AccountSettingsForjaPage() {
                     variant="ghost"
                     size="sm"
                     className="text-red-300 hover:text-red-200"
-                    onClick={() => removePack(pack.manifestUrl)}
+                    onClick={() => removePack(pack)}
                     disabled={controlsLocked || isSaving}
                   >
                     <Trash2 className="size-4" />
@@ -215,6 +235,7 @@ export function AccountSettingsForjaPage() {
         open={dialogOpen}
         payload={installPrompt}
         alreadyInstalled={alreadyInstalled}
+        mode={dialogMode}
         busy={isSaving}
         onConfirm={() => void confirmInstall()}
         onCancel={closeInstallDialog}

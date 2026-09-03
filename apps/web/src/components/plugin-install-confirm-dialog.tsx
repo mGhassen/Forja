@@ -17,6 +17,7 @@ type PluginInstallConfirmDialogProps = {
   payload: PluginInstallConfirmPayload | null
   alreadyInstalled: boolean
   busy?: boolean
+  mode?: 'add' | 'remove'
   onConfirm: () => void
   onCancel: () => void
 }
@@ -39,6 +40,7 @@ export function PluginInstallConfirmDialog({
   payload,
   alreadyInstalled,
   busy,
+  mode = 'add',
   onConfirm,
   onCancel,
 }: PluginInstallConfirmDialogProps) {
@@ -61,6 +63,21 @@ export function PluginInstallConfirmDialog({
   if (!open || !payload) return null
 
   const title = displayName(payload)
+  const removing = mode === 'remove'
+  const eyebrow = removing
+    ? alreadyInstalled
+      ? 'Remove from profile'
+      : 'Not on profile'
+    : alreadyInstalled
+      ? 'Already added'
+      : 'Install plugin pack'
+  const body = removing
+    ? alreadyInstalled
+      ? 'Removes this pack from your profile. Signed-in devices uninstall it on the next sync.'
+      : 'This pack is not on your profile.'
+    : alreadyInstalled
+      ? 'This pack is already on your profile. Open Forja on any device — it asks before downloading.'
+      : 'Add this pack to your Forja profile? Other devices will ask before downloading.'
 
   return (
     <div
@@ -89,7 +106,7 @@ export function PluginInstallConfirmDialog({
             </div>
             <div className="min-w-0">
               <p className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-[rgba(237,230,218,0.45)]">
-                {alreadyInstalled ? 'Already added' : 'Install plugin pack'}
+                {eyebrow}
               </p>
               <h2
                 id="plugin-install-title"
@@ -110,17 +127,9 @@ export function PluginInstallConfirmDialog({
         </div>
 
         <div className="space-y-4 px-5 py-4">
-          {alreadyInstalled ? (
             <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.62)]">
-              This pack is already on your profile. Open Forja on any device —
-              it syncs and installs automatically.
+              {body}
             </p>
-          ) : (
-            <p className="text-sm leading-relaxed text-[rgba(237,230,218,0.62)]">
-              Add this pack to your Forja profile? The app will download and
-              validate the manifest on your next sync.
-            </p>
-          )}
 
           <div className="rounded-lg border border-white/8 bg-black/20 px-3 py-2.5">
             <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
@@ -145,13 +154,15 @@ export function PluginInstallConfirmDialog({
             onClick={onCancel}
             disabled={busy}
           >
-            {alreadyInstalled ? 'Close' : 'Cancel'}
+            {alreadyInstalled && !removing ? 'Close' : 'Cancel'}
           </Button>
-          {!alreadyInstalled ? (
+          {(removing ? alreadyInstalled : !alreadyInstalled) ? (
             <Button
               type="button"
               className={cn(
-                'bg-forja-green text-[#0B0A0A] hover:bg-forja-green/90',
+                removing
+                  ? 'bg-red-500/90 text-[#0B0A0A] hover:bg-red-400'
+                  : 'bg-forja-green text-[#0B0A0A] hover:bg-forja-green/90',
               )}
               onClick={onConfirm}
               disabled={busy}
@@ -159,8 +170,10 @@ export function PluginInstallConfirmDialog({
               {busy ? (
                 <>
                   <Loader2 className="size-4 animate-spin" />
-                  Adding…
+                  {removing ? 'Removing…' : 'Adding…'}
                 </>
+              ) : removing ? (
+                'Remove from profile'
               ) : (
                 'Add to profile'
               )}
@@ -182,19 +195,24 @@ export function packRowFromInstallPayload(
   if (name && name !== manifestUrl) row.name = name
   const version = payload.version?.trim()
   if (version) row.version = version
+  row.addedAt = new Date().toISOString()
   return row
 }
 
-/** Navigate to profile Forja plugins with install prompt (no app deep link). */
+/** Navigate to profile Forja plugins with install or remove prompt. */
 export function useGoToPluginInstall() {
   const navigate = useNavigate()
-  return (payload: PluginInstallConfirmPayload) => {
+  return (
+    payload: PluginInstallConfirmPayload,
+    opts?: { op?: 'add' | 'remove' },
+  ) => {
     void navigate({
       to: '/account/settings/forja',
       search: {
         manifest: payload.manifestUrl,
         ...(payload.name ? { name: payload.name } : {}),
         ...(payload.version ? { version: payload.version } : {}),
+        ...(opts?.op === 'remove' ? { op: 'remove' as const } : {}),
       },
     })
   }

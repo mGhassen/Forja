@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/plugin_script_disk_store.dart';
+import 'package:forja/shared/engine/remote_pack_intent_store.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -216,6 +217,62 @@ void main() {
     );
     expect(seen.whereType<PluginInstallProgress>(), isNotEmpty);
     expect(PluginInstallCoordinator.instance.progress.value, isNull);
+  });
+
+  test('ensureAllInstalled skips deferred remote install URLs', () async {
+    const url = 'https://coord.example/later/manifest.json';
+    SharedPreferences.setMockInitialValues({
+      'engine_js_packs_v2': jsonEncode([
+        {
+          'sourceUrl': url,
+          'packId': 'later',
+          'name': 'Later Pack',
+          'version': '0.0.0',
+          'plugins': const [],
+        },
+      ]),
+      'engine_js_packs_v2_migrated': true,
+      'engine_js_scripts_disk_v3_migrated': true,
+      'nuvio_scripts_disk_v1_migrated': true,
+      'nuvio_addons_kv_v1': '1',
+      'nuvio_addons_v1': '[]',
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'engine_js_packs_v2',
+      jsonEncode([
+        {
+          'sourceUrl': url,
+          'packId': 'later',
+          'name': 'Later Pack',
+          'version': '0.0.0',
+          'plugins': const [],
+        },
+      ]),
+    );
+    await DeferredRemoteInstallStore.defer(url);
+
+    var fetched = false;
+    registry.debugHttpClient = MockClient((req) async {
+      fetched = true;
+      return http.Response('nf', 404);
+    });
+
+    await PluginInstallCoordinator.instance.ensureAllInstalled(
+      notifyUpdates: false,
+      awaitCloudLean: false,
+      includeNuvio: false,
+      promptBeforeInstall: false,
+    );
+
+    expect(fetched, isFalse);
+    expect(
+      await PluginScriptDiskStore.loadEngineScript(
+        sourceUrl: url,
+        pluginId: 'p1',
+      ),
+      isNull,
+    );
   });
 
   test('ensurePluginReady skips reinstall for local checkout packs', () async {

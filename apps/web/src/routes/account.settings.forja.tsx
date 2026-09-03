@@ -6,6 +6,7 @@ export type ForjaSettingsSearch = {
   manifest?: string
   name?: string
   version?: string
+  op?: 'remove'
 }
 
 export const Route = createFileRoute('/account/settings/forja')({
@@ -24,6 +25,7 @@ export const Route = createFileRoute('/account/settings/forja')({
         typeof search.version === 'string' && search.version.length > 0
           ? search.version.slice(0, 40)
           : undefined,
+      op: search.op === 'remove' ? 'remove' : undefined,
     }
   },
   component: AccountSettingsForjaPage,

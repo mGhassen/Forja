@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/engine/categories.dart';
+import 'package:forja/shared/engine/lean_apply_result.dart';
 import 'package:forja/shared/engine/live_goat_unlock.dart';
 import 'package:forja/shared/engine/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models.dart';
@@ -163,8 +164,16 @@ class EngineService {
     return cached;
   }
 
-  Future<void> applyLeanManifestUrls(Iterable<Map<String, dynamic>> rows) =>
-      PluginRegistry.instance.applyLeanManifestUrls(rows);
+  Future<LeanApplyResult> applyLeanManifestUrls(
+    Iterable<Map<String, dynamic>> rows, {
+    bool removeMissingUserPacks = true,
+    bool purgeRemovedImmediately = true,
+  }) =>
+      PluginRegistry.instance.applyLeanManifestUrls(
+        rows,
+        removeMissingUserPacks: removeMissingUserPacks,
+        purgeRemovedImmediately: purgeRemovedImmediately,
+      );
 
   Future<List<EnginePack>> listSourcesPanelPacks() async {
     // Never block Play/Sources on network install / lean hydrate.

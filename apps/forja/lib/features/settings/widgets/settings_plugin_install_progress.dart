@@ -19,23 +19,30 @@ class _PhaseIcon extends StatelessWidget {
   }
 }
 
-/// Pending pack row — manifest registered, scripts still downloading.
+/// Pending pack row — lean stub, deferred install, or pending purge.
 class SettingsEnginePackPendingTile extends StatelessWidget {
   const SettingsEnginePackPendingTile({
     super.key,
     required this.packName,
     required this.sourceUrl,
     this.progress,
+    this.badge,
+    this.actionLabel,
+    this.onAction,
   });
 
   final String packName;
   final String sourceUrl;
   final PluginInstallProgress? progress;
+  final String? badge;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
     final active = progress?.matchesUrl(sourceUrl) == true;
     final phase = active ? progress!.phase : PluginInstallPhase.loading;
+    final status = badge ?? (active ? progress!.phaseTitle : 'Waiting');
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: DecoratedBox(
@@ -83,7 +90,7 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    active ? progress!.phaseTitle : 'Waiting',
+                    status,
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -98,12 +105,23 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
               Text(
                 active
                     ? (progress?.label ?? 'Downloading scripts…')
-                    : 'Queued — install continues in the background.',
+                    : (badge ??
+                        'Queued — install continues in the background.'),
                 style: TextStyle(
                   fontSize: 11,
                   color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
                 ),
               ),
+              if (onAction != null && actionLabel != null && !active) ...[
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: ForjaButton.primary(
+                    label: actionLabel!,
+                    onPressed: onAction,
+                  ),
+                ),
+              ],
               if (active && progress != null && progress!.phase != PluginInstallPhase.ready) ...[
                 const SizedBox(height: 8),
                 ClipRRect(

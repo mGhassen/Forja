@@ -232,7 +232,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [210-[open]-…](210-[open]-episode-watched-list-simkl-follow.md) | Episode watched → My List / Simkl list buckets | P2 | Medium | open | 5/6 · A 0/4 | — |
 | [211-[open]-…](211-[open]-movie-play-list-simkl-follow.md) | Movie play → My List / Simkl Watching / Completed | P2 | Medium | open | 4/5 · A 0/3 | — |
 | [212-[open]-…](212-[open]-android-tv-sources-filters-dpad-wrap.md) | ATV Sources Filters D-pad stuck per Wrap line | P1 | High | open | 2/2 · A 0/2 | — |
-| [213-[open]-…](213-[open]-engine-nuvio-plugin-disk-cache.md) | Engine/Nuvio plugin JS on disk + init download banner | P2 | Medium | open | 7/7 · A 3/7 | — |
+| [213-[open]-…](213-[open]-engine-nuvio-plugin-disk-cache.md) | Engine/Nuvio plugin JS on disk + init download banner | P2 | Medium | open | 7/7 · A 1/9 | — |
 | [214-[open]-…](214-[open]-kisskh-instream-subs-mistimed.md) | KissKh Sub API mistimed vs site (HLS mux) | P1 | High | open | 6/6 · A 0/2 | — |
 | [215-[open]-…](215-[open]-android-tv-skia-glyph-atlas-glitch.md) | Android TV Skia glyph/icon atlas garbage | P1 | High | open | 3/3 · A 0/2 | — |
 | [216-[fixed]-…](fixed/216-[fixed]-anime-hub-torrent-search-empty.md) | Anime / Asian Drama hub Torrents empty | P1 | High | fixed | Complete · 6/6 · A 2/4 | — |

@@ -5,6 +5,7 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
+import 'package:forja/shared/engine/remote_pack_intent_store.dart';
 import 'package:forja/shared/engine/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:forja/shared/playback/torrent_js_search.dart';
@@ -91,6 +92,10 @@ class PluginInstallCoordinator {
 
   Future<void>? _inFlight;
   Future<EnginePack>? _manualInstall;
+  bool _bootWarm = false;
+
+  /// True while splash / [ensureAllInstalled] owns hydrate + silent purge.
+  bool get isBootWarm => _bootWarm;
 
   bool get isInstalling => progress.value != null;
 
@@ -129,6 +134,7 @@ class PluginInstallCoordinator {
         ),
       );
       await Future<void>.delayed(readyDwell);
+      await DeferredRemoteInstallStore.clear(manifestUrl);
       return pack;
     } finally {
       progress.value = null;
@@ -299,8 +305,10 @@ class PluginInstallCoordinator {
     required bool awaitCloudLean,
     required bool promptBeforeInstall,
   }) async {
+    _bootWarm = true;
     final registry = PluginRegistry.instance;
 
+    try {
     await registry.migrateScriptsToDiskIfNeeded();
     await NuvioService.instance.migrateScriptsToDiskIfNeeded();
 
@@ -322,11 +330,21 @@ class PluginInstallCoordinator {
 
     await registry.migrateLegacyLiveSportPacksIfNeeded();
 
+    for (final url in await PendingRemotePurgeStore.read()) {
+      try {
+        await registry.removePack(url);
+      } catch (e) {
+        debugPrint('[PluginInstall] pending purge failed ($url): $e');
+      }
+    }
+    await PendingRemotePurgeStore.clearAll();
+
     final packs = await registry.listPacksRaw();
     final jobs = <({EnginePack pack, bool isUpdate, bool forceRefresh})>[];
 
     for (final pack in packs) {
       if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
+      if (await DeferredRemoteInstallStore.contains(pack.sourceUrl)) continue;
       if (await registry.packNeedsDiskInstall(pack)) {
         jobs.add((pack: pack, isUpdate: false, forceRefresh: true));
       }
@@ -386,6 +404,9 @@ class PluginInstallCoordinator {
     if (notifyUpdates) {
       unawaited(notifyPendingUpdatesIfAny());
     }
+    } finally {
+      _bootWarm = false;
+    }
   }
 
   /// Build a batch picker from profile pack rows (installed + pending disk).
@@ -415,7 +436,7 @@ class PluginInstallCoordinator {
   Future<void> promptPendingPackInstalls({
     List<EnginePack>? packsOverride,
   }) async {
-    if (ShellBus.pendingPluginInstall.value != null ||
+    if (ShellBus.pendingPluginInstallQueue.value.isNotEmpty ||
         ShellBus.pendingPluginBatchInstall.value != null) {
       return;
     }
@@ -428,9 +449,11 @@ class PluginInstallCoordinator {
 
     if (pending.length == 1) {
       final only = pending.first;
-      ShellBus.pendingPluginInstall.value = PluginInstallPrompt(
-        manifestUrl: only.manifestUrl,
-        displayName: only.displayName,
+      ShellBus.enqueuePluginInstall(
+        PluginInstallPrompt(
+          manifestUrl: only.manifestUrl,
+          displayName: only.displayName,
+        ),
       );
       return;
     }
@@ -449,13 +472,20 @@ class PluginInstallCoordinator {
     if (pending.isEmpty) return;
     if (pending.length == 1) {
       final only = pending.first;
-      ShellBus.pendingPluginInstall.value = PluginInstallPrompt(
-        manifestUrl: only.manifestUrl,
-        displayName: only.displayName,
+      ShellBus.enqueuePluginInstall(
+        PluginInstallPrompt(
+          manifestUrl: only.manifestUrl,
+          displayName: only.displayName,
+        ),
       );
       return;
     }
     ShellBus.pendingPluginBatchInstall.value = prompt;
+  }
+
+  @visibleForTesting
+  static void debugSetBootWarm(bool value) {
+    instance._bootWarm = value;
   }
 
   void _setProgress(PluginInstallProgress? value) {

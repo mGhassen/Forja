@@ -48,9 +48,11 @@ abstract final class ForjaPluginDeepLink {
       if (batch.length == 1) {
         final only = batch.first;
         debugPrint('[PluginDeepLink] queue install ${only.manifestUrl}');
-        ShellBus.pendingPluginInstall.value = PluginInstallPrompt(
-          manifestUrl: only.manifestUrl,
-          displayName: only.displayName,
+        ShellBus.enqueuePluginInstall(
+          PluginInstallPrompt(
+            manifestUrl: only.manifestUrl,
+            displayName: only.displayName,
+          ),
         );
       } else {
         debugPrint('[PluginDeepLink] queue batch install (${batch.length})');
@@ -70,9 +72,11 @@ abstract final class ForjaPluginDeepLink {
       return;
     }
     debugPrint('[PluginDeepLink] queue install $manifest');
-    ShellBus.pendingPluginInstall.value = PluginInstallPrompt(
-      manifestUrl: manifest,
-      displayName: uri.queryParameters['name']?.trim(),
+    ShellBus.enqueuePluginInstall(
+      PluginInstallPrompt(
+        manifestUrl: manifest,
+        displayName: uri.queryParameters['name']?.trim(),
+      ),
     );
     ShellBus.openSettings(
       categoryId: SettingsCategoryId.forjaPacks,

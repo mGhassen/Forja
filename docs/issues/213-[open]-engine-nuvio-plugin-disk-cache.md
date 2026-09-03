@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **3 / 7** acceptance |
+| **Progress** | **7 / 7** fix · **1 / 9** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -40,6 +40,8 @@
 | 5 | I213-A05 | Settings Remove pack deletes `engine/<hash>/`; Nuvio remove deletes scraper files | ✅ |
 | 6 | I213-A06 | ATV: splash status + Continue in background autofocus; mid-session card non-focusable; extract batch unchanged | ⬜ |
 | 7 | I213-A07 | Slow/stuck/failed pack install → Continue in background opens app; install keeps running (in-shell card) | ⬜ |
+| 8 | I213-A08 | Phone adds pack on profile → TV mid-session install confirm (RFC-074) | ⬜ |
+| 9 | I213-A09 | Phone removes pack from profile → TV mid-session uninstall confirm; boot silent purge (RFC-074) | ⬜ |
 
 ---
 
@@ -54,4 +56,5 @@ Prefs grew large with full JS trees; local vs remote load paths diverged; splash
 ### Related
 
 - [stream-providers.md](../features/sources/stream-providers.md)
+- [RFC-074](../rfc/074-[open]-remote-profile-plugin-install.md) — remote profile install / uninstall handshake
 - NuvioMobile `PluginScraperCodeFileStore` (reference layout)

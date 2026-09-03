@@ -70,6 +70,7 @@ class _SettingsForjaPacksSectionState
               listenable: Listenable.merge([
                 PluginInstallCoordinator.instance.progress,
                 EngineService.changeNotifier,
+                RemotePackIntentStore.changeNotifier,
               ]),
               builder: (context, _) =>
                   _buildEnginePackSection(enginePacks, packUpdates),
@@ -175,73 +176,104 @@ class _SettingsForjaPacksSectionState
       final kindPacks = grouped.byKind[kind] ?? const <EnginePack>[];
       final rows = <Widget>[];
       for (final pack in kindPacks) {
-        if (pack.plugins.isEmpty) {
-          rows.add(
-            SettingsEnginePackPendingTile(
-              packName: pack.name,
-              sourceUrl: pack.sourceUrl,
-              progress: installProgress,
-            ),
-          );
-          continue;
-        }
-        final panelPlugins = [
-          for (final p in pack.plugins)
-            if (p.isHttp || p.isHubCatalog || p.isTorrent) p,
-        ];
-        if (panelPlugins.isEmpty) continue;
-        final liveSportPlugins = [
-          for (final p in panelPlugins)
-            if (p.isLiveSportPlugin) p,
-        ];
-        final isLiveSportPack =
-            liveSportPlugins.isNotEmpty &&
-            liveSportPlugins.length == panelPlugins.length;
         final update = packUpdates.forPack(pack.sourceUrl);
         rows.add(
-          isLiveSportPack
-              ? SettingsLiveSportPackExpansion(
-                  pack: pack,
-                  plugins: liveSportPlugins,
-                  update: update,
-                  trailing: _EnginePackActions(
-                    packEnabled: pack.enabled,
-                    update: update,
-                    onTogglePack: (val) => EngineService.instance.setPackEnabled(
-                      sourceUrl: pack.sourceUrl,
-                      enabled: val,
-                    ),
-                    onRefresh: () => _refreshEnginePack(
-                      pack.sourceUrl,
+          FutureBuilder<PackDeviceSnapshot>(
+            future: resolvePackDeviceState(
+              manifestUrl: pack.sourceUrl,
+              localPack: pack,
+              update: update,
+            ),
+            builder: (context, snap) {
+              final state = snap.data?.state;
+              if (state == PackDeviceState.pendingPurge) {
+                return SettingsEnginePackPendingTile(
+                  packName: pack.name,
+                  sourceUrl: pack.sourceUrl,
+                  progress: installProgress,
+                  badge: 'Removed from profile',
+                  actionLabel: 'Uninstall now',
+                  onAction: () => unawaited(_purgePackNow(pack.sourceUrl)),
+                );
+              }
+              if (state == PackDeviceState.deferred ||
+                  state == PackDeviceState.onProfileLean ||
+                  state == PackDeviceState.failed ||
+                  pack.plugins.isEmpty) {
+                final badge = switch (state) {
+                  PackDeviceState.deferred => 'Install later',
+                  PackDeviceState.failed => 'Install failed',
+                  PackDeviceState.downloading => 'Downloading',
+                  _ => 'Pending download',
+                };
+                return SettingsEnginePackPendingTile(
+                  packName: pack.name,
+                  sourceUrl: pack.sourceUrl,
+                  progress: installProgress,
+                  badge: badge,
+                  actionLabel: 'Install',
+                  onAction: () => unawaited(_installNamedPack(pack.sourceUrl)),
+                );
+              }
+              final panelPlugins = [
+                for (final p in pack.plugins)
+                  if (p.isHttp || p.isHubCatalog || p.isTorrent) p,
+              ];
+              if (panelPlugins.isEmpty) return const SizedBox.shrink();
+              final liveSportPlugins = [
+                for (final p in panelPlugins)
+                  if (p.isLiveSportPlugin) p,
+              ];
+              final isLiveSportPack =
+                  liveSportPlugins.isNotEmpty &&
+                  liveSportPlugins.length == panelPlugins.length;
+              return isLiveSportPack
+                  ? SettingsLiveSportPackExpansion(
+                      pack: pack,
+                      plugins: liveSportPlugins,
                       update: update,
-                    ),
-                    onRemove: () => _removeEnginePack(pack.sourceUrl),
-                    showOfficialBadge: false,
-                  ),
-                )
-              : SettingsEnginePackExpansion(
-                  pack: pack,
-                  plugins: panelPlugins,
-                  groupKey: EngineCategories.groupKey,
-                  groupLabel: EngineCategories.groupLabel,
-                  groupOrder: EngineCategories.groupOrderFor(panelPlugins),
-                  installProgress: installProgress,
-                  update: update,
-                  trailing: _EnginePackActions(
-                    packEnabled: pack.enabled,
-                    update: update,
-                    onTogglePack: (val) => EngineService.instance.setPackEnabled(
-                      sourceUrl: pack.sourceUrl,
-                      enabled: val,
-                    ),
-                    onRefresh: () => _refreshEnginePack(
-                      pack.sourceUrl,
+                      trailing: _EnginePackActions(
+                        packEnabled: pack.enabled,
+                        update: update,
+                        onTogglePack: (val) =>
+                            EngineService.instance.setPackEnabled(
+                          sourceUrl: pack.sourceUrl,
+                          enabled: val,
+                        ),
+                        onRefresh: () => _refreshEnginePack(
+                          pack.sourceUrl,
+                          update: update,
+                        ),
+                        onRemove: () => _removeEnginePack(pack.sourceUrl),
+                        showOfficialBadge: false,
+                      ),
+                    )
+                  : SettingsEnginePackExpansion(
+                      pack: pack,
+                      plugins: panelPlugins,
+                      groupKey: EngineCategories.groupKey,
+                      groupLabel: EngineCategories.groupLabel,
+                      groupOrder: EngineCategories.groupOrderFor(panelPlugins),
+                      installProgress: installProgress,
                       update: update,
-                    ),
-                    onRemove: () => _removeEnginePack(pack.sourceUrl),
-                    showOfficialBadge: false,
-                  ),
-                ),
+                      trailing: _EnginePackActions(
+                        packEnabled: pack.enabled,
+                        update: update,
+                        onTogglePack: (val) =>
+                            EngineService.instance.setPackEnabled(
+                          sourceUrl: pack.sourceUrl,
+                          enabled: val,
+                        ),
+                        onRefresh: () => _refreshEnginePack(
+                          pack.sourceUrl,
+                          update: update,
+                        ),
+                        onRemove: () => _removeEnginePack(pack.sourceUrl),
+                        showOfficialBadge: false,
+                      ),
+                    );
+            },
+          ),
         );
       }
       if (rows.isEmpty) continue;
@@ -326,6 +358,40 @@ class _SettingsForjaPacksSectionState
     }
   }
 
+  Future<void> _installNamedPack(String sourceUrl) async {
+    setState(() => _engineInstalling = true);
+    try {
+      final pack = await PluginInstallCoordinator.instance.installManifest(
+        sourceUrl,
+      );
+      await DeferredRemoteInstallStore.clear(sourceUrl);
+      if (!mounted) return;
+      scheduleForjaSyncPush();
+      ref.invalidate(enginePacksProvider);
+      ForjaToast.success(
+        'Installed ${pack.name} (${pack.plugins.length} plugins)',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ForjaToast.error('Install failed: $e');
+    } finally {
+      if (mounted) setState(() => _engineInstalling = false);
+    }
+  }
+
+  Future<void> _purgePackNow(String sourceUrl) async {
+    try {
+      await EngineService.instance.removePack(sourceUrl);
+      await PendingRemotePurgeStore.clear(sourceUrl);
+      if (!mounted) return;
+      ref.invalidate(enginePacksProvider);
+      ForjaToast.success('Pack uninstalled');
+    } catch (e) {
+      if (!mounted) return;
+      ForjaToast.error('$e');
+    }
+  }
+
   Future<void> _installEnginePack() async {
     final url = _engineController.text.trim();
     if (url.isEmpty) return;
@@ -350,6 +416,8 @@ class _SettingsForjaPacksSectionState
   Future<void> _removeEnginePack(String sourceUrl) async {
     try {
       await EngineService.instance.removePack(sourceUrl);
+      await PendingRemotePurgeStore.clear(sourceUrl);
+      await DeferredRemoteInstallStore.clear(sourceUrl);
       if (!mounted) return;
       scheduleForjaSyncPush();
       ref.invalidate(enginePacksProvider);

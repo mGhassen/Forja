@@ -602,13 +602,15 @@ class SyncDomainBridge {
   }
 
   Future<Map<String, dynamic>> _exportForjaCompact() async {
-    final packs = await EngineService.instance.listPacks();
+    final packs = await PluginRegistry.instance.listPacksRaw();
     if (packs.isEmpty) return {};
+    final pendingPurge = await PendingRemotePurgeStore.read();
     final lean = <Map<String, dynamic>>[];
     for (final pack in packs) {
       final manifestUrl = pack.sourceUrl.trim();
       if (manifestUrl.isEmpty) continue;
       if (PluginRegistry.isLegacyAssetPack(manifestUrl)) continue;
+      if (pendingPurge.contains(manifestUrl)) continue;
       final row = <String, dynamic>{'manifestUrl': manifestUrl};
       final name = pack.name.trim();
       if (name.isNotEmpty) row['name'] = name;
@@ -1057,17 +1059,21 @@ class SyncDomainBridge {
     return _exportForjaCompact();
   }
 
-  /// Apply cloud lean rows (`manifestUrl` + optional name). **No network** —
-  /// then [promptPendingPackInstalls] asks before any download.
-  /// This is the only auto path that offers pack downloads (after cloud sync).
-  Future<void> importForja(Map<String, dynamic> payload) async {
+  /// Apply cloud lean rows (`manifestUrl` + optional name). **No network.**
+  /// Mid-session: enqueue install/uninstall confirms. Boot: silent hydrate/purge.
+  Future<LeanApplyResult> importForja(Map<String, dynamic> payload) async {
     final packs = payload['packs'] as List? ?? const [];
     final rows = <Map<String, dynamic>>[
       for (final raw in packs)
         if (raw is Map) Map<String, dynamic>.from(raw),
     ];
-    await EngineService.instance.applyLeanManifestUrls(rows);
-    await PluginInstallCoordinator.instance.promptPendingPackInstalls();
+    final boot = PluginInstallCoordinator.instance.isBootWarm;
+    final result = await EngineService.instance.applyLeanManifestUrls(
+      rows,
+      purgeRemovedImmediately: boot,
+    );
+    await PluginInstallPromptService.enqueueFromLeanDiff(result);
+    return result;
   }
 }
 

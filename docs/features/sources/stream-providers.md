@@ -14,7 +14,7 @@ Movie/TV **URL templates**, scraper **source host bases**, anime **hosts / APIs 
 
 **Sources → Forja** runs `extract(ctx)` plugins in parallel (EngineJS job pool). Install via **Settings → Sources → Forja → Add plugin** or **Profile → Forja plugins**. Plugins are tagged **movie** / **tv** / **anime** / **drama**. Settings groups **Movie & TV** / **Anime** / **Drama** / **Live** / **Catalog**. **All** runs up to **10** plugins in flight (**5** on TV); rows appear as each finishes.
 
-Cold start (and profile switch) downloads any cloud-synced packs that are missing or outdated onto the device — progress shows in the splash’s normal bottom status line (pack name / step) with a thin progress bar while packs install. If download is slow, stuck, or fails, **Continue in background** opens the app while install keeps going (autofocused on Android TV). Mid-session installs still use a bottom progress card. **Settings → Reload** on a pack always re-fetches that pack; **Remove** deletes its cached scripts.
+Cold start (and profile switch) downloads any cloud-synced packs that are missing onto the device — progress shows in the splash’s normal bottom status line (pack name / step) with a thin progress bar while packs install. If download is slow, stuck, or fails, **Continue in background** opens the app while install keeps going (autofocused on Android TV). Mid-session, when another device adds or removes a pack on your profile, Forja asks before downloading or uninstalling here. Mid-session installs also use a bottom progress card. **Settings → Reload** on a pack always re-fetches that pack; **Remove** deletes its cached scripts and pushes membership off the profile.
 
 ## How to open it
 

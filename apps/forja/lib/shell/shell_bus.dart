@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
@@ -119,14 +120,55 @@ class ShellBus {
   static final ValueNotifier<String?> requestSettingsCategory =
       ValueNotifier<String?>(null);
 
-  /// Plugin pack install from web / deep link — consumed by Settings → Sources.
+  /// Plugin pack install from web / deep link / remote profile — FIFO queue.
+  static final ValueNotifier<List<PluginInstallPrompt>>
+      pendingPluginInstallQueue = ValueNotifier<List<PluginInstallPrompt>>([]);
+
+  /// Head of [pendingPluginInstallQueue] (deep-link + tests).
   static final ValueNotifier<PluginInstallPrompt?> pendingPluginInstall =
       ValueNotifier<PluginInstallPrompt?>(null);
 
-  static PluginInstallPrompt? takePendingPluginInstall() {
-    final value = pendingPluginInstall.value;
+  static void enqueuePluginInstall(PluginInstallPrompt prompt) {
+    final url = prompt.manifestUrl.trim();
+    if (url.isEmpty) return;
+    final next = List<PluginInstallPrompt>.from(pendingPluginInstallQueue.value);
+    if (next.any(
+      (p) => p.manifestUrl.trim() == url && p.kind == prompt.kind,
+    )) {
+      return;
+    }
+    next.add(
+      PluginInstallPrompt(
+        manifestUrl: url,
+        displayName: prompt.displayName,
+        source: prompt.source,
+        kind: prompt.kind,
+      ),
+    );
+    pendingPluginInstallQueue.value = next;
+    pendingPluginInstall.value = next.first;
+  }
+
+  static PluginInstallPrompt? takeNextPluginInstall() {
+    final next = List<PluginInstallPrompt>.from(pendingPluginInstallQueue.value);
+    if (next.isEmpty) {
+      pendingPluginInstall.value = null;
+      return null;
+    }
+    final first = next.removeAt(0);
+    pendingPluginInstallQueue.value = next;
+    pendingPluginInstall.value = next.isEmpty ? null : next.first;
+    return first;
+  }
+
+  static PluginInstallPrompt? takePendingPluginInstall() =>
+      takeNextPluginInstall();
+
+  @visibleForTesting
+  static void resetPluginInstallQueueForTest() {
+    pendingPluginInstallQueue.value = [];
     pendingPluginInstall.value = null;
-    return value;
+    pendingPluginBatchInstall.value = null;
   }
 
   /// Profile / sync batch install — user picks which packs to download now.

@@ -27,6 +27,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
   void initState() {
     super.initState();
     ShellBus.pendingPluginInstall.addListener(_onPending);
+    ShellBus.pendingPluginInstallQueue.addListener(_onPending);
     ShellBus.pendingPluginBatchInstall.addListener(_onPending);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShow());
   }
@@ -34,12 +35,14 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
   @override
   void dispose() {
     ShellBus.pendingPluginInstall.removeListener(_onPending);
+    ShellBus.pendingPluginInstallQueue.removeListener(_onPending);
     ShellBus.pendingPluginBatchInstall.removeListener(_onPending);
     super.dispose();
   }
 
   void _onPending() {
     if (ShellBus.pendingPluginInstall.value == null &&
+        ShellBus.pendingPluginInstallQueue.value.isEmpty &&
         ShellBus.pendingPluginBatchInstall.value == null) {
       return;
     }
@@ -97,9 +100,20 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
       if (!mounted) return;
       final packs = await PluginRegistry.instance.listPacksRaw();
       if (!mounted) return;
-      final already = packs.any(
-        (p) => p.sourceUrl.trim() == prompt.manifestUrl.trim(),
-      );
+      EnginePack? match;
+      for (final p in packs) {
+        if (p.sourceUrl.trim() == prompt.manifestUrl.trim()) {
+          match = p;
+          break;
+        }
+      }
+      var already = false;
+      if (prompt.kind == PluginPackPromptKind.uninstall) {
+        already = match == null;
+      } else if (match != null) {
+        already = !await PluginRegistry.instance.packNeedsDiskInstall(match);
+      }
+      if (!mounted) return;
       setState(() {
         _prompt = prompt;
         _alreadyInstalled = already;
@@ -115,6 +129,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
       _prompt = null;
       _alreadyInstalled = false;
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShow());
   }
 
   void _dismissBatch() {

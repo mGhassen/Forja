@@ -12,6 +12,8 @@ import {
 import { AddToForjaButton } from '@/components/add-to-forja-button'
 import { PluginBatchInstallDialog } from '@/components/plugin-batch-install-dialog'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/hooks/use-auth'
+import { useForjaSetting } from '@/hooks/use-user-setting'
 import { usePluginBatchInstall } from '@/hooks/use-plugin-batch-install'
 import type { ForjaPluginPackLive } from '@/lib/forja-plugin-catalog'
 import {
@@ -20,7 +22,10 @@ import {
   pluginKindLabel,
   pluginKindsFromPacks,
 } from '@/lib/forja-plugin-catalog'
-import { tryOpenForjaBatchInstallDeepLink } from '@/lib/forja-plugin-install'
+import {
+  isPackInstalled,
+  tryOpenForjaBatchInstallDeepLink,
+} from '@/lib/forja-plugin-install'
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 20
@@ -63,6 +68,11 @@ function PluginDetailPanel({
   const [copied, setCopied] = useState(false)
   const official = isOfficialPluginPack(pack)
   const author = packAuthorLabel(pack)
+  const { user } = useAuth()
+  const { data } = useForjaSetting()
+  const onProfile =
+    Boolean(user) &&
+    isPackInstalled(data?.payload?.packs ?? [], pack.manifestUrl)
 
   async function copyManifest() {
     try {
@@ -100,6 +110,11 @@ function PluginDetailPanel({
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           {official ? <OfficialBadge /> : null}
+          {onProfile ? (
+            <span className="shrink-0 rounded-md border border-forja-green/35 bg-forja-green/10 px-2 py-0.5 font-mono-ui text-[9px] uppercase tracking-wider text-forja-green">
+              On profile
+            </span>
+          ) : null}
           {pack.version ? (
             <span className="font-mono-ui text-[10px] text-[rgba(237,230,218,0.45)]">
               v{pack.version}

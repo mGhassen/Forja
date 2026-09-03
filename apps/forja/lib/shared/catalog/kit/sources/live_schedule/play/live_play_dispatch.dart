@@ -1,5 +1,67 @@
 part of '../live_sports_hub_page.dart';
 
+/// Match-detail Providers rows — same TTL idea as Live TV IPTV sports cache.
+const _providersResultsCacheTtl = Duration(minutes: 30);
+
+class _ProvidersResultsCacheEntry {
+  const _ProvidersResultsCacheEntry({
+    required this.expiresAt,
+    required this.choices,
+    required this.panelSources,
+  });
+
+  final DateTime expiresAt;
+  final List<_StreamedStreamChoice> choices;
+  final List<IptvPlaySource> panelSources;
+}
+
+final Map<String, _ProvidersResultsCacheEntry> _providersResultsCache = {};
+
+String _providersResultsCacheKey(
+  _StreamedMatch match, [
+  _IframeCatalogStream? iframe,
+]) {
+  final base = iframe != null
+      ? _liveEventViewerKeyFromIframeCatalog(iframe)
+      : _liveEventViewerKey(match);
+  return 'providers:$base';
+}
+
+_ProvidersResultsCacheEntry? _providersResultsCacheGet(String key) {
+  final hit = _providersResultsCache[key];
+  if (hit == null) return null;
+  if (DateTime.now().isAfter(hit.expiresAt)) {
+    _providersResultsCache.remove(key);
+    return null;
+  }
+  if (hit.panelSources.isEmpty && hit.choices.isEmpty) {
+    _providersResultsCache.remove(key);
+    return null;
+  }
+  return hit;
+}
+
+void _providersResultsCachePut(
+  String key, {
+  required List<_StreamedStreamChoice> choices,
+  required List<IptvPlaySource> panelSources,
+}) {
+  if (choices.isEmpty && panelSources.isEmpty) return;
+  _providersResultsCache[key] = _ProvidersResultsCacheEntry(
+    expiresAt: DateTime.now().add(_providersResultsCacheTtl),
+    choices: List<_StreamedStreamChoice>.from(choices),
+    panelSources: List<IptvPlaySource>.from(panelSources),
+  );
+}
+
+void _providersResultsCacheDrop(String key) {
+  _providersResultsCache.remove(key);
+}
+
+void _clearProvidersResultsCache() {
+  _providersResultsCache.clear();
+}
+
 mixin _LiveMatchesPlayback
     on ConsumerState<LiveSportsHubPage>, _LiveMatchesData {
   @override
@@ -72,8 +134,29 @@ mixin _LiveMatchesPlayback
     required _IptvSportsChannelsPanelController controller,
     required List<_StreamedStreamChoice> choices,
     required bool Function() isStale,
+    bool force = false,
   }) async {
     if (isStale() || controller.isDisposed) return;
+
+    final cacheKey = _providersResultsCacheKey(match, iframeCatalogAnchor);
+    if (force) {
+      _providersResultsCacheDrop(cacheKey);
+    } else {
+      final hit = _providersResultsCacheGet(cacheKey);
+      if (hit != null) {
+        debugPrint(
+          '[LiveMatches] Providers: cache hit '
+          '(${hit.panelSources.length} channels) for $cacheKey',
+        );
+        choices
+          ..clear()
+          ..addAll(hit.choices);
+        if (!isStale() && !controller.isDisposed) {
+          controller.appendSources(hit.panelSources);
+        }
+        return;
+      }
+    }
 
     controller.setSearchPhase('Providers');
 
@@ -112,6 +195,12 @@ mixin _LiveMatchesPlayback
     }
 
     await Future.wait([runForjaLive(), runStremio()]);
+    if (isStale() || controller.isDisposed) return;
+    _providersResultsCachePut(
+      cacheKey,
+      choices: choices,
+      panelSources: controller.sources,
+    );
   }
 
   _StreamedMatch _enrichedIptvSportsMatch(_StreamedMatch match) {

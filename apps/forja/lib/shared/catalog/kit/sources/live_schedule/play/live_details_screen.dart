@@ -13,6 +13,7 @@ abstract class LiveSportsPlayHost {
     required List<_StreamedStreamChoice> choices,
     required bool Function() isStale,
     _IframeCatalogStream? iframeCatalogAnchor,
+    bool force = false,
   });
 
   Future<_StreamedMatch> fillIptvSportsSources({
@@ -231,6 +232,7 @@ class _LiveMatchDetailsScreenState
         iframeCatalogAnchor: widget.iframeCatalogAnchor,
         controller: _providersCtrl,
         choices: _choices,
+        force: force,
         isStale: () =>
             !mounted ||
             gen != _providersLoadGen ||
@@ -853,7 +855,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                   child: ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.18),
+                    color: Colors.black.withValues(alpha: 0.38),
                   ),
                 ),
               ),

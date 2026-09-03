@@ -94,6 +94,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [071-[fixed]-…](fixed/071-[fixed]-live-sports-hub-kit.md) | Live Sports catalog hub kit | v1.4 | fixed | **Complete** · 9/9 · 21/21 | — |
 | [072-[open]-…](072-[open]-iptv-vod-catalog-details.md) | IPTV VOD catalog details plugin + shared hub kit | v1.4 | open | 4/4 · 6/6 | — |
 | [073-[open]-…](073-[open]-live-sports-kit-ownership.md) | Live Sports kit ownership (kill modes → kit browse → details + IPTV service) | v1.4 | open | **2/4** · **4/4** kill modes · **1/4** kit browse · **3/4** details+services | — |
+| [074-[open]-…](074-[open]-remote-profile-plugin-install.md) | Remote profile plugin install and uninstall | v1.4 | open | **5/5** · **12/14** | — |
 
 ## Related
 

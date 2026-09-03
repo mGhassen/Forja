@@ -142,6 +142,7 @@ export type ForjaPackRow = {
   manifestUrl: string
   name?: string
   version?: string
+  addedAt?: string
 }
 
 export type ForjaPayload = {
@@ -467,6 +468,8 @@ function compactForja(s: ForjaPayload | undefined): ForjaPayload | undefined {
       if (name && name !== manifestUrl) row.name = name
       const version = a.version?.trim()
       if (version) row.version = version
+      const addedAt = a.addedAt?.trim()
+      if (addedAt) row.addedAt = addedAt
       return row
     })
     .filter((a): a is ForjaPackRow => a != null)

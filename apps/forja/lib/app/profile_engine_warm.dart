@@ -54,6 +54,8 @@ class ProfileEngineWarm {
             .ensureAllInstalled(
               notifyUpdates: true,
               includeNuvio: needs.nuvio,
+              awaitCloudLean: true,
+              promptBeforeInstall: false,
             )
             .catchError((Object e) {
               debugPrint('[Init] Plugin install error (non-fatal): $e');

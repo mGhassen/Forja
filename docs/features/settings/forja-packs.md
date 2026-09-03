@@ -15,14 +15,18 @@
 - Paste a pack **manifest.json** URL and **Install**
 - **Update** / **Update all** when a remote pack version is newer
 - Enable or disable each installed pack; expand for per-plugin toggles (Providers, Live, Hubs, Torrent, …)
-- **Refresh** or **Remove** a pack
+- **Refresh** or **Remove** a pack (Remove also drops it from your cloud profile on the next sync)
+- See badges for **Pending download** / **Install later** / **Removed from profile** when cloud membership and this device disagree — **Install** or **Uninstall now** from the row
 
 `forja://install?manifest=…` deep links open **Forja Packs** and ask before installing.
 
-**Batch add** from the web catalog (`Shift+click` multiple packs → **Add N to Forja**) opens the running app with a checkable install dialog. Packs download only after you confirm. If the app is closed, packs sync to your profile as lean stubs; cloud sync then shows the same picker — never a silent mass install. Play / Sources / catalog never start downloads; version bumps only via Settings update toast / **Update**.
+**Community Packs** (web): **Add to Forja** opens the app on this device. When signed in, the cloud icon adds the pack to your profile; trash removes it. Other signed-in devices ask mid-session before download or uninstall. Boot / splash still hydrates and purges missing packs silently.
+
+**Batch add** from the web catalog (`Shift+click` multiple packs → **Add N to Forja**) opens the running app with a checkable install dialog. Packs download only after you confirm. Play / Sources / catalog never start downloads; version bumps only via Settings update toast / **Update**.
 
 ## Related
 
+- [Cloud sync](cloud-sync.md) — profile pack membership
 - [Sources settings](torrent-settings.md) — Forja addons (torrent / Stremio / Nuvio)
 - [Playback settings](playback-settings.md)
 - [Navigation](navigation-bar.md) — hub tabs follow enabled hub packs

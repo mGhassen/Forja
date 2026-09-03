@@ -1,12 +1,22 @@
-/// Pending plugin pack install from web / `forja://install` deep link.
+/// How the install/uninstall overlay was requested.
+enum PluginInstallSource { deepLink, remoteProfile, settings }
+
+/// Install vs uninstall handshake.
+enum PluginPackPromptKind { install, uninstall }
+
+/// Pending plugin pack install/uninstall from web / `forja://install` / cloud sync.
 class PluginInstallPrompt {
   const PluginInstallPrompt({
     required this.manifestUrl,
     this.displayName,
+    this.source = PluginInstallSource.deepLink,
+    this.kind = PluginPackPromptKind.install,
   });
 
   final String manifestUrl;
   final String? displayName;
+  final PluginInstallSource source;
+  final PluginPackPromptKind kind;
 }
 
 /// One row in the batch install picker (profile / pending disk install).

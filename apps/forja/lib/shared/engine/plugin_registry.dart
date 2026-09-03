@@ -5,11 +5,13 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/catalog/cache.dart';
+import 'package:forja/shared/engine/lean_apply_result.dart';
 import 'package:forja/shared/engine/live_sport_capabilities.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_contract.dart';
 import 'package:forja/shared/engine/plugin_install_validator.dart';
 import 'package:forja/shared/engine/plugin_script_disk_store.dart';
+import 'package:forja/shared/engine/remote_pack_intent_store.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -1415,10 +1417,13 @@ class PluginRegistry {
   Future<void>? _hydrateLeanInFlight;
 
   /// Sync / cloud lean rows — URL (+ optional name) only. **No network.**
-  /// Full packs land via [hydrateLeanInstalled] on first Settings/Sources use.
-  Future<void> applyLeanManifestUrls(
+  ///
+  /// When [purgeRemovedImmediately] is false (mid-session), packs missing from
+  /// cloud stay on disk until the uninstall prompt / pending purge / next boot.
+  Future<LeanApplyResult> applyLeanManifestUrls(
     Iterable<Map<String, dynamic>> rows, {
     bool removeMissingUserPacks = true,
+    bool purgeRemovedImmediately = true,
   }) async {
     final remote = <String, ({String? name, String? version})>{};
     for (final raw in rows) {
@@ -1438,6 +1443,8 @@ class PluginRegistry {
     final all = await listPacksRaw();
     final next = <EnginePack>[];
     final victims = <EnginePack>[];
+    final added = <LeanPackDelta>[];
+    final removed = <LeanPackDelta>[];
     var changed = false;
 
     for (final pack in all) {
@@ -1446,8 +1453,22 @@ class PluginRegistry {
         continue;
       }
       if (removeMissingUserPacks && !remote.containsKey(pack.sourceUrl)) {
-        victims.add(pack);
-        changed = true;
+        final stub = pack.plugins.isEmpty;
+        if (stub || purgeRemovedImmediately) {
+          victims.add(pack);
+          changed = true;
+          if (!stub) {
+            removed.add(
+              LeanPackDelta(manifestUrl: pack.sourceUrl, name: pack.name),
+            );
+          }
+          await DeferredRemoteInstallStore.clear(pack.sourceUrl);
+        } else {
+          next.add(pack);
+          removed.add(
+            LeanPackDelta(manifestUrl: pack.sourceUrl, name: pack.name),
+          );
+        }
         continue;
       }
       final lean = remote[pack.sourceUrl];
@@ -1473,7 +1494,10 @@ class PluginRegistry {
 
     final present = next.map((p) => p.sourceUrl).toSet();
     for (final entry in remote.entries) {
-      if (present.contains(entry.key)) continue;
+      if (present.contains(entry.key)) {
+        await PendingRemotePurgeStore.clear(entry.key);
+        continue;
+      }
       next.add(
         EnginePack(
           sourceUrl: entry.key,
@@ -1483,7 +1507,14 @@ class PluginRegistry {
           plugins: const [],
         ),
       );
+      added.add(
+        LeanPackDelta(
+          manifestUrl: entry.key,
+          name: entry.value.name,
+        ),
+      );
       changed = true;
+      await PendingRemotePurgeStore.clear(entry.key);
     }
 
     if (changed) {
@@ -1492,8 +1523,12 @@ class PluginRegistry {
       }
       await _savePacks(next);
     }
-    // Do not auto-hydrate lean stubs here — that silently installs every
-    // cloud pack. Callers prompt via [PluginInstallCoordinator.promptPendingPackInstalls].
+
+    if (purgeRemovedImmediately) {
+      await PendingRemotePurgeStore.clearAll();
+    }
+
+    return LeanApplyResult(added: added, removed: removed);
   }
 
   Future<void> _purgeRetiredOfficialPacks() async {

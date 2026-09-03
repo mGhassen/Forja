@@ -283,6 +283,8 @@ mixin _LiveMatchesForjaLive
     EngineService.instance.cancelLiveCatalog();
     _s._forjaLiveLoadGen++;
     _invalidateLiveMatchesGridCache();
+    // Schedule Refresh / catalog reset — always drop Providers resolve cache.
+    _clearProvidersResultsCache();
     if (catalogFilter == null || catalogFilter == 'all') {
       _s._forjaLivePluginLoads = {};
       if (!clearMatches) return;
