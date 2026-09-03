@@ -283,8 +283,9 @@ mixin _LiveMatchesForjaLive
     EngineService.instance.cancelLiveCatalog();
     _s._forjaLiveLoadGen++;
     _invalidateLiveMatchesGridCache();
-    // Schedule Refresh / catalog reset — always drop Providers resolve cache.
+    // Schedule Refresh / catalog reset — always drop Providers + Live TV caches.
     _clearProvidersResultsCache();
+    invalidateIptvSportsStreamsCache();
     if (catalogFilter == null || catalogFilter == 'all') {
       _s._forjaLivePluginLoads = {};
       if (!clearMatches) return;

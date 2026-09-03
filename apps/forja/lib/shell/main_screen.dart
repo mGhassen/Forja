@@ -611,8 +611,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
         } else {
           shellTopBar = switch (_currentTabId) {
             null => null,
+            // ValueKey: do not reuse State across hubs (Home caps ≠ Live Sports).
             final id when PluginNavRegistry.isHubTab(id) =>
-              PluginHubCatalogTopBar(tabId: id),
+              PluginHubCatalogTopBar(key: ValueKey(id), tabId: id),
             _ => null,
           };
         }

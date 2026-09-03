@@ -139,8 +139,8 @@ class LiveGoatUnlock {
 
   /// Unlock watchfooty.st sportsembed mirrors to a playable HLS URL.
   ///
-  /// sportsembed hosts only mirror embed.st slots — map onto embed.st GOAT
-  /// (same as PPV/streamed). Never returns an HTML embed URL.
+  /// GOAT-compatible sportsembed rows (delta/echo/admin) map onto embed.st.
+  /// sigma/pro/hd/… stay on sportsembed.wasm → `wfty.st` (no HTML embed).
   static Future<({String url, Map<String, String> headers})?>
   resolveWatchfootyEmbed({required String embedUrl}) async {
     final embed = embedUrl.trim();
@@ -167,7 +167,9 @@ class LiveGoatUnlock {
       if (unlocked != null) return unlocked;
     }
 
-    return null;
+    // Non-GOAT qualities (e.g. sigma) — stream-lock.wasm. wfty.st opens
+    // direct (no CDN probe hang that motivated skipping this path earlier).
+    return resolveSportsEmbed(embedUrl: embed);
   }
 
   /// sportsembed.su client handshake → plaintext HLS URL.
@@ -1182,6 +1184,7 @@ class LiveGoatUnlock {
       '$_assetRoot/vendor/lock-esm.mjs',
       File('$dir/vendor/lock-esm.mjs'),
     );
+    debugPrint('[LiveGoatUnlock] refreshed goat assets → $dir');
   }
 
   static Future<void> _prepareGoatDir(String node) async {
@@ -1195,8 +1198,9 @@ class LiveGoatUnlock {
     }
 
     final support = await getApplicationSupportDirectory();
-    // v2: happy-dom@20.11.6 (matches GASM; v1 pinned happy-dom@17).
-    final dir = Directory('${support.path}/live-goat-v2');
+    // v3: Node require("big-integer") shim lives in unlock.mjs + lock-esm
+    // (v2 cache kept glue without the shim after live refresh).
+    final dir = Directory('${support.path}/live-goat-v3');
     await dir.create(recursive: true);
 
     await _refreshGoatAssets(dir.path);

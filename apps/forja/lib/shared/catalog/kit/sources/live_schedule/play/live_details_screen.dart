@@ -21,6 +21,7 @@ abstract class LiveSportsPlayHost {
     required _IptvSportsChannelsPanelController controller,
     required bool Function() isStale,
     bool loadBroadcastHints = true,
+    bool force = false,
   });
 
   Future<void> playIptvSportsSources(
@@ -262,6 +263,7 @@ class _LiveMatchDetailsScreenState
       final display = await host.fillIptvSportsSources(
         match: widget.match,
         controller: _liveTvCtrl,
+        force: force,
         isStale: () =>
             !mounted || gen != _liveTvLoadGen || _liveTvCtrl.isDisposed,
         loadBroadcastHints: false,

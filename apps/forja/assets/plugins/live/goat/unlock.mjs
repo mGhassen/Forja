@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import bi from 'big-integer'
 import { Window } from 'happy-dom'
 
 const vendorDir = join(dirname(fileURLToPath(import.meta.url)), 'vendor')
@@ -8,25 +10,37 @@ const wasmPath = join(vendorDir, 'lock.wasm')
 const lockModuleUrl = pathToFileURL(join(vendorDir, 'lock-esm.mjs')).href
 const wasmBytes = readFileSync(wasmPath)
 
+// Live lock-esm still does require("big-integer") (CJS). Keep the shim here —
+// not in lock-esm.mjs — so refreshing glue from embed.st cannot strip it again.
+const nodeRequire = createRequire(import.meta.url)
+if (typeof globalThis.require !== 'function') {
+  globalThis.require = (name) =>
+    name === 'big-integer' ? bi : nodeRequire(name)
+}
+
 function pageUrl(slot, embedOrigin) {
   return `${embedOrigin}/embed/${slot.path}`
 }
 
-function mountDom(slot, embedOrigin) {
+function mountDom(slot, embedOrigin, onJwFile) {
   const window = new Window({ url: pageUrl(slot, embedOrigin) })
   const doc = window.document
   doc.body.innerHTML = '<div id="player"></div>'
 
   const jwCfg = { file: null }
+  const takeFile = (cfg) => {
+    const file = cfg?.file
+    if (typeof file !== 'string' || !file) return
+    jwCfg.file = file
+    // admin often loads the playlist onto JW without a separate .m3u8 fetch
+    if (file.includes('.m3u8') || file.includes('/stream/')) onJwFile?.(file)
+  }
+
   const jwBase = {
     getContainer: () => doc.getElementById('player'),
     getState: () => 'idle',
-    load: (cfg) => {
-      if (cfg?.file) jwCfg.file = cfg.file
-    },
-    setConfig: (cfg) => {
-      if (cfg?.file) jwCfg.file = cfg.file
-    },
+    load: takeFile,
+    setConfig: takeFile,
     getConfig: () => jwCfg,
     setup: () => {},
     on: () => {},
@@ -150,20 +164,19 @@ async function crack(slot, goat, bodyHex, embedOrigin) {
   if (!goat || !bodyHex) throw new Error('missing goat/bodyHex')
 
   let m3u8 = null
+  const capture = (url) => {
+    if (typeof url === 'string' && url) m3u8 = url
+  }
   const body = Buffer.from(bodyHex, 'hex')
   if (!body.length) throw new Error('empty /fetch body')
-  const NativeResponse = mountDom(slot, embedOrigin)
-  const fetchFn = mockFetch(NativeResponse, embedOrigin, goat, body, (url) => {
-    m3u8 = url
-  })
+  const NativeResponse = mountDom(slot, embedOrigin, capture)
+  const fetchFn = mockFetch(NativeResponse, embedOrigin, goat, body, capture)
   globalThis.fetch = fetchFn
 
   const origInstantiate = WebAssembly.instantiate.bind(WebAssembly)
 
   WebAssembly.instantiate = async (source, imports) => {
-    patchImports(imports, NativeResponse, goat, body, (url) => {
-      m3u8 = url
-    })
+    patchImports(imports, NativeResponse, goat, body, capture)
     if (!(source instanceof ArrayBuffer) && !ArrayBuffer.isView(source)) {
       source = wasmBytes.buffer.slice(
         wasmBytes.byteOffset,
@@ -176,7 +189,7 @@ async function crack(slot, goat, bodyHex, embedOrigin) {
     WebAssembly.instantiate(wasmBytes, imports)
 
   try {
-    const mod = await import(lockModuleUrl)
+    const mod = await import(`${lockModuleUrl}?t=${Date.now()}`)
     const wasmBuf = wasmBytes.buffer.slice(
       wasmBytes.byteOffset,
       wasmBytes.byteOffset + wasmBytes.byteLength,
@@ -210,9 +223,9 @@ async function crack(slot, goat, bodyHex, embedOrigin) {
     } catch (err) {
       if (!m3u8) {
         const msg =
-          (err && (err.stack || err.message)) ||
+          (err && (err.stack || err.message || err.name)) ||
           (err != null ? String(err) : 'set_stream_jw failed')
-        throw new Error(msg.trim() || 'set_stream_jw failed')
+        throw new Error(String(msg).trim() || 'set_stream_jw failed')
       }
     }
     if (!m3u8) throw new Error('lock did not yield m3u8')

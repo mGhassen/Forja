@@ -87,6 +87,27 @@ void main() {
     expect(iptvLiveSourceProbeUrl(signed), isNull);
     expect(iptvLiveSourceProbeSkipped(signed), isTrue);
 
+    // Providers tiles clear liveEngineEmbedUrl on directPlayback.
+    const streamedDirect = IptvPlaySource(
+      url:
+          'https://lb12.strmd.st/secure/tok/delta/stream/foo/1/playlist.m3u8',
+      label: 'HD Admin',
+      liveSourceKind: IptvLiveSourceKind.liveEngine,
+      headers: {'Referer': 'https://embed.st/'},
+    );
+    expect(iptvLiveSourceProbeUrl(streamedDirect), isNull);
+    expect(iptvLiveSourceProbeSkipped(streamedDirect), isTrue);
+
+    const watchfootyDirect = IptvPlaySource(
+      url:
+          'https://lb5.wfty.st/secure/tok/sigma/live_foo/1/465/playlist.m3u8',
+      label: 'WatchFooty sigma',
+      liveSourceKind: IptvLiveSourceKind.liveEngine,
+      headers: {'Referer': 'https://sportsembed.su/'},
+    );
+    expect(iptvLiveSourceProbeUrl(watchfootyDirect), isNull);
+    expect(iptvLiveSourceProbeSkipped(watchfootyDirect), isTrue);
+
     const portal = IptvPlaySource(
       url: 'http://portal.example/live/u/p/1.m3u8',
       label: 'Golf',

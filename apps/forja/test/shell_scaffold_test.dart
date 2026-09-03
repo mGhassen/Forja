@@ -219,6 +219,38 @@ void main() {
     expect(find.text('Series'), findsOneWidget);
   });
 
+  testWidgets(
+    'PluginHubCatalogTopBar drops Films when tabId changes to hub without chrome',
+    (tester) async {
+      // hubA has vertical filters → VOD chrome. hubB has none. State must not
+      // keep painting Search/Films after a hub switch (Live Sports regression).
+      await pumpScaffold(
+        tester,
+        desktopScaffold(shellTopBar: const PluginHubCatalogTopBar(tabId: hubA)),
+        size: const Size(1200, 800),
+        profile: ShellProfile.desktop,
+      );
+      expect(find.text('Films'), findsOneWidget);
+
+      await pumpScaffold(
+        tester,
+        desktopScaffold(
+          shellTopBar: PluginHubCatalogTopBar(
+            key: ValueKey(hubB),
+            tabId: hubB,
+          ),
+        ),
+        size: const Size(1200, 800),
+        profile: ShellProfile.desktop,
+      );
+      await tester.pump();
+
+      expect(find.text('Films'), findsNothing);
+      expect(find.text('Series'), findsNothing);
+      expect(find.text('Search'), findsNothing);
+    },
+  );
+
   testWidgets('PluginHubCatalogTopBar Categories menu sets genre filter', (tester) async {
     await pumpScaffold(
       tester,

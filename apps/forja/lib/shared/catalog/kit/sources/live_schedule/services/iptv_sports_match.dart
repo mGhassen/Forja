@@ -9,8 +9,9 @@ abstract final class IptvSportsMatchService {
   static Future<List<IptvPlaySource>> resolveStreams(
     _StreamedMatch match, {
     void Function(List<IptvPlaySource> batch)? onPartial,
+    bool force = false,
   }) =>
-      _resolveIptvSportsStreams(match, onPartial: onPartial);
+      _resolveIptvSportsStreams(match, onPartial: onPartial, force: force);
 
   static Future<_LiveBroadcastHints> broadcastHintsFor(_StreamedMatch match) =>
       _broadcastHintsForMatch(match);
@@ -486,6 +487,11 @@ void invalidateLiveBroadcastCaches() {
   _liveBroadcastInFlight = null;
   _liveBroadcastPluginRowsCache.clear();
   _liveBroadcastPluginInflight.clear();
+}
+
+void invalidateIptvSportsStreamsCache() {
+  _iptvSportsStreamsCache.clear();
+  _iptvSportsStreamsInFlight.clear();
 }
 
 DateTime? _liveBroadcastCacheExpiry;
@@ -1102,24 +1108,12 @@ final Map<String, _IptvSportsStreamsInflight> _iptvSportsStreamsInFlight = {};
 String _iptvSportsStreamsCacheKey({
   required String portalKey,
   required List<String> categoryIds,
-  required Map<String, dynamic> game,
-  required String matchId,
+  required _StreamedMatch match,
 }) {
   final cats = List<String>.from(categoryIds)..sort();
-  final home = (game['homeTeam'] ?? '').toString().trim().toLowerCase();
-  final away = (game['awayTeam'] ?? '').toString().trim().toLowerCase();
-  final dateMs = '${game['dateMs'] ?? ''}';
-  final id = matchId.trim().isNotEmpty
-      ? matchId.trim()
-      : (game['id'] ?? '').toString().trim();
-  final channels = List<String>.from(
-    (game['broadcastChannels'] as List?)
-            ?.map((e) => e.toString().trim().toLowerCase())
-            .where((e) => e.isNotEmpty) ??
-        const <String>[],
-  )..sort();
-  final channelKey = channels.join('|');
-  return '$portalKey|${cats.join(',')}|$id|$home|$away|$dateMs|$channelKey';
+  // Same fixture identity as Providers — not catalog match.id / broadcast
+  // channel lists (those change between opens and caused constant misses).
+  return '$portalKey|${cats.join(',')}|${_liveEventViewerKey(match)}';
 }
 
 List<IptvPlaySource>? _iptvSportsStreamsCacheGet(String key) {
@@ -1184,7 +1178,54 @@ Map<String, dynamic> _sportMatchGameAlignedWithCard(_StreamedMatch match) {
 Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
   _StreamedMatch match, {
   void Function(List<IptvPlaySource> batch)? onPartial,
+  bool force = false,
 }) async {
+  final config = await LiveMatchesIptvSportsConfig.load();
+  final armed = await config.resolveForFetch();
+  if (armed == null) return [];
+  final portalKey = armed.portalKey;
+  final portals = await IptvStore.load();
+  VerifiedPortal? portal;
+  for (final p in portals) {
+    if (p.key == portalKey) {
+      portal = p;
+      break;
+    }
+  }
+  if (portal == null || !portal.portal.platform.supportsForjaSports) {
+    return [];
+  }
+  final sport = match.category.trim().isNotEmpty
+      ? match.category
+      : (match.sportMatchGame?['sport'] ?? '').toString();
+  final categoryIds = config.categoryIdsForGame(sport);
+  final cacheKey = _iptvSportsStreamsCacheKey(
+    portalKey: portalKey,
+    categoryIds: categoryIds,
+    match: match,
+  );
+  if (force) {
+    _iptvSportsStreamsCache.remove(cacheKey);
+    _iptvSportsStreamsInFlight.remove(cacheKey);
+  } else {
+    final cached = _iptvSportsStreamsCacheGet(cacheKey);
+    if (cached != null) {
+      debugPrint(
+        '[LiveMatches] IPTV sports: cache hit (${cached.length} channels) '
+        'ttl=${_iptvSportsStreamsCacheTtl.inMinutes}m key=$cacheKey',
+      );
+      final logos = await _ensureIptvSportsLogos(cached, portalKey);
+      final result = _ensureIptvSportsUrls(logos, portal);
+      onPartial?.call(result);
+      return result;
+    }
+    final inflight = _iptvSportsStreamsInFlight[cacheKey];
+    if (inflight != null) {
+      inflight.subscribe(onPartial);
+      return inflight.future;
+    }
+  }
+
   final broadcastFuture = _liveBroadcastIndexCached();
   var game = _sportMatchGameAlignedWithCard(match);
   final broadcastGames = await broadcastFuture;
@@ -1204,45 +1245,6 @@ Future<List<IptvPlaySource>> _resolveIptvSportsStreams(
       '[LiveMatches] IPTV sports: no title/teams/keywords for "${match.title}"',
     );
     return [];
-  }
-  final config = await LiveMatchesIptvSportsConfig.load();
-  final armed = await config.resolveForFetch();
-  if (armed == null) return [];
-  final portalKey = armed.portalKey;
-  final portals = await IptvStore.load();
-  VerifiedPortal? portal;
-  for (final p in portals) {
-    if (p.key == portalKey) {
-      portal = p;
-      break;
-    }
-  }
-  if (portal == null || !portal.portal.platform.supportsForjaSports) {
-    return [];
-  }
-  final sport = (game['sport'] ?? match.category).toString();
-  final categoryIds = config.categoryIdsForGame(sport);
-  final cacheKey = _iptvSportsStreamsCacheKey(
-    portalKey: portalKey,
-    categoryIds: categoryIds,
-    game: game,
-    matchId: match.id,
-  );
-  final cached = _iptvSportsStreamsCacheGet(cacheKey);
-  if (cached != null) {
-    debugPrint(
-      '[LiveMatches] IPTV sports: cache hit (${cached.length} channels) '
-      'ttl=${_iptvSportsStreamsCacheTtl.inMinutes}m',
-    );
-    final logos = await _ensureIptvSportsLogos(cached, portalKey);
-    final result = _ensureIptvSportsUrls(logos, portal);
-    onPartial?.call(result);
-    return result;
-  }
-  final inflight = _iptvSportsStreamsInFlight[cacheKey];
-  if (inflight != null) {
-    inflight.subscribe(onPartial);
-    return inflight.future;
   }
 
   final armedPortal = portal;

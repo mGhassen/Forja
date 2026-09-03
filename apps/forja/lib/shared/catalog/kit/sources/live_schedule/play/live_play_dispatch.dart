@@ -233,6 +233,7 @@ mixin _LiveMatchesPlayback
     required _IptvSportsChannelsPanelController controller,
     required bool Function() isStale,
     bool loadBroadcastHints = true,
+    bool force = false,
   }) async {
     final enriched = _enrichedIptvSportsMatch(match);
     controller.setSearchPhase('Live TV');
@@ -242,6 +243,7 @@ mixin _LiveMatchesPlayback
     try {
       await IptvSportsMatchService.resolveStreams(
         enriched,
+        force: force,
         onPartial: (batch) {
           if (isStale() || controller.isDisposed) return;
           controller.appendSources(batch);

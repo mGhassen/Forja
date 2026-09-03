@@ -319,16 +319,11 @@ String? iptvLiveSourceProbeUrl(IptvPlaySource src) {
   return url;
 }
 
-/// Embed / pending catalog row that cannot be HTTP-probed but is still selectable.
+/// Row [iptvLiveSourceProbeUrl] cannot judge — still selectable, not dead.
+/// Covers embed pages, portal Live TV, signed Streamed/WatchFooty HLS (Referer),
+/// and direct-playback rows that drop [IptvPlaySource.liveEngineEmbedUrl].
 bool iptvLiveSourceProbeSkipped(IptvPlaySource src) {
-  if (iptvLiveSourceProbeUrl(src) != null) return false;
-  if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
-      src.liveSourceKind == IptvLiveSourceKind.iptvStalker) {
-    return true;
-  }
-  final embed = (src.liveEngineEmbedUrl ?? '').trim();
-  if (embed.isNotEmpty) return true;
-  return src.url.trim().startsWith('pending:');
+  return iptvLiveSourceProbeUrl(src) == null;
 }
 
 typedef IptvLiveEngineResolveSource =

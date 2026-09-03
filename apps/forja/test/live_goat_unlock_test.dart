@@ -57,6 +57,22 @@ void main() {
       );
     });
 
+    test('sigma sportsembed does not map to embed.st GOAT', () {
+      // WatchFooty often ships sigma/pro rows — GOAT-only unlock leaves streams=0.
+      expect(
+        LiveGoatUnlock.embedStUrlFromSportsEmbed(
+          'https://sportsembed.su/embed/401900374/al-fayha-al-kholood/sigma/1',
+        ),
+        isNull,
+      );
+      expect(
+        LiveGoatUnlock.embedStAdminCandidatesFromSportsEmbed(
+          'https://sportsembed.su/embed/401900374/al-fayha-al-kholood/sigma/1',
+        ),
+        isEmpty,
+      );
+    });
+
     test('hd sportsembed builds admin ppv candidates', () {
       final candidates = LiveGoatUnlock.embedStAdminCandidatesFromSportsEmbed(
         'https://sportsembed.su/embed/761748/austin-fc-philadelphia-union/hd/1',

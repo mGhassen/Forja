@@ -80,6 +80,16 @@ class _PluginHubCatalogTopBarState extends State<PluginHubCatalogTopBar> {
     CatalogKitTopMenuRegistry.revision.addListener(_onFilters);
   }
 
+  @override
+  void didUpdateWidget(covariant PluginHubCatalogTopBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Shell reuses this State across hub tabs when unkeyed — never keep the
+    // previous tab's EnginePlugin (Home search/filters → Live Sports).
+    if (oldWidget.tabId == widget.tabId) return;
+    _plugin = null;
+    _schedulePackFiltersLoad();
+  }
+
   void _schedulePackFiltersLoad() {
     final pluginId = PluginNavRegistry.pluginIdForTabSync(widget.tabId);
     if (pluginId == null) return;
@@ -89,16 +99,24 @@ class _PluginHubCatalogTopBarState extends State<PluginHubCatalogTopBar> {
   Future<void> _loadPluginAndFilters(String pluginId) async {
     final found = await PluginRegistry.instance.findPlugin(pluginId);
     if (!mounted) return;
+    // Drop stale results if the user switched tabs while findPlugin was in flight.
+    if (PluginNavRegistry.pluginIdForTabSync(widget.tabId) != pluginId) {
+      return;
+    }
     setState(() => _plugin = found?.plugin);
     if (found?.plugin.hasCapability(CatalogHubCapabilities.filters) == true) {
       await CatalogPackFiltersRegistry.ensureLoaded(pluginId);
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      if (PluginNavRegistry.pluginIdForTabSync(widget.tabId) != pluginId) {
+        return;
+      }
+      setState(() {});
     }
   }
 
   void _onNavbarChanged() {
     if (!mounted) return;
-    if (_plugin != null) return;
+    if (_pluginForTab != null) return;
     _schedulePackFiltersLoad();
   }
 
@@ -123,6 +141,30 @@ class _PluginHubCatalogTopBarState extends State<PluginHubCatalogTopBar> {
     if (mounted) setState(() {});
   }
 
+  /// Only trust [_plugin] when it matches this tab's pack (guards State reuse).
+  EnginePlugin? get _pluginForTab {
+    final pluginId = PluginNavRegistry.pluginIdForTabSync(widget.tabId);
+    if (pluginId == null || _plugin == null) return null;
+    return _plugin!.id == pluginId ? _plugin : null;
+  }
+
+  /// nav+layout hubs (Live Sports) own in-page chrome — no VOD Search/Films bar.
+  bool _layoutOnlyHub(EnginePlugin? plugin) {
+    if (plugin == null) return false;
+    final caps = plugin.capabilities.map((c) => c.toLowerCase()).toSet();
+    if (!caps.contains('nav') || !caps.contains('layout')) return false;
+    const browse = {
+      'rail',
+      'feed',
+      'search',
+      'filters',
+      'host_search',
+      'structured_search',
+      'details',
+    };
+    return caps.intersection(browse).isEmpty;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (CatalogKitTopMenuRegistry.hasTopMenu(widget.tabId)) {
@@ -134,7 +176,8 @@ class _PluginHubCatalogTopBarState extends State<PluginHubCatalogTopBar> {
   Widget _buildBrowseTopBar(BuildContext context) {
     final pluginId = PluginNavRegistry.pluginIdForTabSync(widget.tabId);
     if (pluginId == null) return const SizedBox.shrink();
-    final plugin = _plugin;
+    final plugin = _pluginForTab;
+    if (_layoutOnlyHub(plugin)) return const SizedBox.shrink();
     final canSearch =
         plugin?.hasCapability(CatalogHubCapabilities.search) ?? false;
     final canFilters =

@@ -33,6 +33,7 @@ async function resolveWatchfootyEmbed(ctx, embed) {
 
   if (!isSportsEmbedUrl(url)) return [];
 
+  // delta/echo/admin sportsembed rows mirror embed.st GOAT — try that first.
   var mapped = embedStUrlFromSportsEmbed(url);
   if (mapped) {
     try {
@@ -46,6 +47,30 @@ async function resolveWatchfootyEmbed(ctx, embed) {
     try {
       var candidate = await resolveGoatEmbed(ctx, candidates[i], ctx.config || {});
       if (candidate) return candidate;
+    } catch (_) {}
+  }
+
+  // sigma/pro/hd/… are sportsembed-only — unlock via stream-lock.wasm (same as TimStreams).
+  if (ctx.live && typeof ctx.live.sportsEmbedUnlock === 'function') {
+    try {
+      var unlockedUrl = await ctx.live.sportsEmbedUnlock(url);
+      if (unlockedUrl) {
+        var origin = '';
+        try {
+          origin = new URL(url).origin;
+        } catch (_) {}
+        return [
+          {
+            url: String(unlockedUrl),
+            headers: {
+              Referer: (origin || 'https://sportsembed.su') + '/',
+              Origin: origin || 'https://sportsembed.su',
+              'User-Agent': ua(),
+            },
+            directPlayback: preferDirectPlayback(unlockedUrl),
+          },
+        ];
+      }
     } catch (_) {}
   }
 
