@@ -503,25 +503,23 @@ mixin _LiveMatchesPlayback
     );
 
     var completed = 0;
-    await Future.wait(
-      jobs.map(
-        (job) => job.then((batch) {
-          if (isStale?.call() == true) return;
-          completed++;
-          final fresh = <_StreamedStreamChoice>[];
-          for (final choice in batch) {
-            final url = choice.stream.embedUrl.trim();
-            if (url.isEmpty || !seenUrls.add(url)) continue;
-            out.add(choice);
-            fresh.add(choice);
-          }
-          if (fresh.isNotEmpty) onPartial?.call(fresh);
-          if (completed == jobs.length) {
-            onProgress?.call('Building stream list…');
-          }
-        }),
-      ),
-    );
+    for (final job in jobs) {
+      if (isStale?.call() == true) break;
+      final batch = await job;
+      if (isStale?.call() == true) break;
+      completed++;
+      final fresh = <_StreamedStreamChoice>[];
+      for (final choice in batch) {
+        final url = choice.stream.embedUrl.trim();
+        if (url.isEmpty || !seenUrls.add(url)) continue;
+        out.add(choice);
+        fresh.add(choice);
+      }
+      if (fresh.isNotEmpty) onPartial?.call(fresh);
+      if (completed == jobs.length) {
+        onProgress?.call('Building stream list…');
+      }
+    }
 
     return _sortStreamChoices(out);
   }

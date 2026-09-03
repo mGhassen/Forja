@@ -18,6 +18,25 @@ import 'package:path_provider/path_provider.dart';
 class LiveGoatUnlock {
   LiveGoatUnlock._();
 
+  /// One GOAT/GASM crack at a time — parallel WebView/Node unlock crashes mobile.
+  static Future<void> _nativeUnlockChain = Future<void>.value();
+
+  static Future<T?> _enqueueNativeUnlock<T>(Future<T?> Function() run) {
+    final done = Completer<T?>();
+    _nativeUnlockChain = _nativeUnlockChain.then((_) async {
+      T? value;
+      try {
+        value = await run();
+      } catch (e, st) {
+        debugPrint('[LiveGoatUnlock] native unlock chain: $e\n$st');
+        value = null;
+      } finally {
+        if (!done.isCompleted) done.complete(value);
+      }
+    });
+    return done.future;
+  }
+
   static const _assetRoot = 'assets/plugins/live/goat';
   static const _gasmAssetRoot = 'assets/plugins/live/gasm';
   static const _sportsEmbedAssetRoot = 'assets/plugins/live/sportsembed';
@@ -803,6 +822,16 @@ class LiveGoatUnlock {
     required Map<String, dynamic> slot,
     required String goat,
     required String bodyHex,
+  }) {
+    return _enqueueNativeUnlock(
+      () => _unlockImpl(slot: slot, goat: goat, bodyHex: bodyHex),
+    );
+  }
+
+  static Future<String?> _unlockImpl({
+    required Map<String, dynamic> slot,
+    required String goat,
+    required String bodyHex,
   }) async {
     if (goat.isEmpty || bodyHex.isEmpty) return null;
     final path = (slot['path'] ?? '').toString();
@@ -847,6 +876,16 @@ class LiveGoatUnlock {
   }
 
   static Future<String?> unlockGasm({
+    required Map<String, dynamic> slot,
+    required String island,
+    required String bodyHex,
+  }) {
+    return _enqueueNativeUnlock(
+      () => _unlockGasmImpl(slot: slot, island: island, bodyHex: bodyHex),
+    );
+  }
+
+  static Future<String?> _unlockGasmImpl({
     required Map<String, dynamic> slot,
     required String island,
     required String bodyHex,

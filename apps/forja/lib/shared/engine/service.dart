@@ -51,7 +51,7 @@ class EngineService {
   int _catalogGeneration = 0;
   EngineRuntime? _liveCatalogRuntime;
 
-  static const _liveResolveMaxParallel = 2;
+  static const _liveResolveMaxParallel = 1;
   int _liveResolveInFlight = 0;
   final List<Completer<void>> _liveResolveWaiters = [];
 
