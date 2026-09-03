@@ -65,8 +65,14 @@ class SettingsVisibility {
   /// Stremio addon install UI (platform capability).
   bool get showStremioAddons => showPlaySourceStremioToggle;
 
-  /// Settings → Sources (Forja addons: torrent / Stremio / Nuvio).
+  /// Settings → Addons (was Sources).
   bool get showSourcesCategory => true;
+
+  /// Addon list gates.
+  bool get showAddonIptv => iptvNav;
+  bool get showAddonLiveSports => liveMatchesNav;
+  bool get showAddonDebrid => showDebrid;
+  bool get showAddonConnectedServices => vodTab;
 
   /// Settings → Forja Packs (JS plugin manifests).
   bool get showForjaPacksCategory => true;

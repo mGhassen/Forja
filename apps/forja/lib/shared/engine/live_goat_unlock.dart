@@ -694,8 +694,10 @@ class LiveGoatUnlock {
     if (host.contains('streamfree.top') && path.contains('/live/')) {
       return true;
     }
+    if (host.contains('strmd.st')) return true;
     return path.contains('/delta/stream/') ||
         path.contains('/echo/stream/') ||
+        path.contains('/streamed/stream/') ||
         path.contains('/streamfree/stream/');
   }
 

@@ -11,11 +11,9 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/sections/settings_about_panel.dart';
 import 'package:forja/features/settings/sections/settings_cache_data_section.dart';
-import 'package:forja/features/settings/sections/settings_debrid_section.dart';
+import 'package:forja/features/settings/addons/settings_addons_host.dart';
 import 'package:forja/features/settings/sections/settings_forja_account_panel.dart';
 import 'package:forja/features/settings/sections/settings_iptv_portals_section.dart';
-import 'package:forja/features/settings/sections/settings_iptv_sports_section.dart';
-import 'package:forja/features/settings/sections/lan_settings_section.dart';
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
 import 'package:forja/features/settings/sections/settings_forja_addons_play_toggles.dart';
 import 'package:forja/features/settings/sections/settings_forja_packs_section.dart';
@@ -47,19 +45,11 @@ Widget buildSettingsCategoryBody(
     case SettingsCategoryId.playback:
       return SettingsPlaybackSection(visibility: visibility);
     case SettingsCategoryId.sources:
-      return SettingsSourcesPageBody(visibility: visibility);
+      return SettingsAddonsHost(visibility: visibility);
     case SettingsCategoryId.forjaPacks:
       return SettingsForjaPacksPageBody(visibility: visibility);
-    case SettingsCategoryId.debrid:
-      return const SettingsDebridSection();
-    case SettingsCategoryId.accounts:
-      return SettingsAccountsPageBody(visibility: visibility);
     case SettingsCategoryId.data:
       return SettingsDataPageBody(visibility: visibility);
-    case SettingsCategoryId.iptvSports:
-      return const SettingsIptvSportsSection();
-    case SettingsCategoryId.lan:
-      return const LanSettingsSection();
     case SettingsCategoryId.navigation:
       return const SettingsNavigationPageBody();
     case SettingsCategoryId.about:

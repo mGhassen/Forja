@@ -147,12 +147,29 @@ class ShellBus {
   /// When true, the next Settings hub build should D-pad into the category pane.
   static bool _enterSettingsDetail = false;
 
+  /// When an old top-level category (debrid, lan, accounts, iptv_sports) is
+  /// requested, this holds the addon ID to open inside the Addons hub.
+  static String? pendingAddonDeepLink;
+
+  /// Aliases for categories that were merged into Addons.
+  static const _addonCategoryAliases = <String, String>{
+    'debrid': 'debrid',
+    'iptv_sports': 'live_sports',
+    'accounts': 'connected_services',
+    'lan': 'lan',
+  };
+
   /// Switch to Settings, optionally landing on [categoryId] in the split hub.
   ///
   /// [enterDetail] (TV): after the tab shows, move focus into that category's
   /// pane so leftover Select KeyUp cannot hit the nav rail.
   static void openSettings({String? categoryId, bool enterDetail = false}) {
     if (categoryId != null) {
+      final addonAlias = _addonCategoryAliases[categoryId];
+      if (addonAlias != null) {
+        pendingAddonDeepLink = addonAlias;
+        categoryId = 'sources'; // Addons hub
+      }
       settingsHubCategoryId.value = categoryId;
       requestSettingsCategory.value = categoryId;
     }

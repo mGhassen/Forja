@@ -424,6 +424,7 @@ mixin _LiveMatchesPlayback
       url: playUrl,
       label: title,
       detail: _streamPanelDetail(stream),
+      headers: directPlayback ? (stream.resolvedHeaders ?? const {}) : const {},
       liveSourceKind: IptvLiveSourceKind.liveEngine,
       liveProviderBadge: _StreamedStreamSheet.serverLabelFor(match),
       liveViewerCount: _effectiveStreamViewers(stream, match),
@@ -1139,14 +1140,15 @@ mixin _LiveMatchesPlayback
 
     // Already unlocked by catalog resolve — do not re-unlock (signed CDNs die).
     if (stream.directPlayback || iptvLiveEnginePlayUrlReady(embed)) {
-      final headers = _isIframeCatalogMatch(match, stream)
-          ? _tokenizedEmbedStreamHeaders(embed)
-          : _liveEmbedStreamHeaders(
-              embed,
-              catalogReferer: match.isForjaLive
-                  ? _forjaLiveCdnReferer(embed)
-                  : null,
-            );
+      final headers = stream.resolvedHeaders ??
+          (_isIframeCatalogMatch(match, stream)
+              ? _tokenizedEmbedStreamHeaders(embed)
+              : _liveEmbedStreamHeaders(
+                  embed,
+                  catalogReferer: match.isForjaLive
+                      ? _forjaLiveCdnReferer(embed)
+                      : null,
+                ));
       final direct = stream.directPlayback ||
           liveEnginePreferDirectPlayback(embed);
       if (!direct) onProgress?.call('Preparing playback…');
@@ -1295,6 +1297,7 @@ mixin _LiveMatchesPlayback
           match: choice.catalogMatch,
           stream: choice.stream,
           url: embed,
+          headers: choice.stream.resolvedHeaders ?? const {},
         ),
       );
     }

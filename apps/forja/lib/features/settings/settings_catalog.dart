@@ -16,16 +16,15 @@ abstract final class SettingsCategoryId {
   static const navigation = 'navigation';
   static const about = 'about';
 
+  /// Addons is the new hub for sources / debrid / iptv_sports / accounts / lan.
+  static const addons = sources;
+
   static const ordered = <String>[
     profile,
     forjaPacks,
     navigation,
     playback,
-    sources,
-    debrid,
-    iptvSports,
-    accounts,
-    lan,
+    sources, // displayed as "Addons"
     data,
     about,
   ];
@@ -84,40 +83,10 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
     if (visibility.showSourcesCategory)
       const SettingsCategoryMeta(
         id: SettingsCategoryId.sources,
-        title: 'Sources',
-        subtitle: 'Forja addons: torrent, Stremio, Nuvio',
+        title: 'Addons',
+        subtitle: 'IPTV, torrent, Stremio, debrid, LAN, and more',
         icon: Icons.extension_rounded,
       ),
-    if (visibility.showDebrid)
-      const SettingsCategoryMeta(
-        id: SettingsCategoryId.debrid,
-        title: 'Debrid',
-        subtitle: 'Real-Debrid, TorBox, and more',
-        icon: Icons.cloud_download_rounded,
-        adminOnly: true,
-      ),
-    if (visibility.showIptvSportsSettings)
-      const SettingsCategoryMeta(
-        id: SettingsCategoryId.iptvSports,
-        title: 'Forja Sports',
-        subtitle: 'Portal, leagues, Live Matches matching',
-        icon: Icons.sports_rounded,
-      ),
-    if (visibility.showAccounts)
-      SettingsCategoryMeta(
-        id: SettingsCategoryId.accounts,
-        title: 'Connected services',
-        subtitle: visibility.showMdblist
-            ? 'Simkl; MDBlist (admin)'
-            : 'Simkl',
-        icon: Icons.sync_rounded,
-      ),
-    const SettingsCategoryMeta(
-      id: SettingsCategoryId.lan,
-      title: 'LAN',
-      subtitle: 'Desktop server, pairing, torrent relay',
-      icon: Icons.lan_outlined,
-    ),
     if (visibility.showDataCategory)
       const SettingsCategoryMeta(
         id: SettingsCategoryId.data,

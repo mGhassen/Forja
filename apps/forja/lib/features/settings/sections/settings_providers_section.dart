@@ -16,9 +16,20 @@ import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr (Sources → Forja addons).
 class SettingsForjaAddonsSection extends ConsumerStatefulWidget {
-  const SettingsForjaAddonsSection({super.key, required this.visibility});
+  const SettingsForjaAddonsSection({
+    super.key,
+    required this.visibility,
+    this.stremioOnly = false,
+    this.nuvioOnly = false,
+  });
 
   final SettingsVisibility visibility;
+
+  /// Show only the Stremio section (addon detail mode).
+  final bool stremioOnly;
+
+  /// Show only the Nuvio section (addon detail mode).
+  final bool nuvioOnly;
 
   @override
   ConsumerState<SettingsForjaAddonsSection> createState() =>
@@ -88,10 +99,13 @@ class _SettingsForjaAddonsSectionState
     if (indexerSnap != null && !_indexersHydrated) {
       _hydrateIndexers(indexerSnap);
     }
+    final showStremio = widget.stremioOnly || (!widget.nuvioOnly && v.showStremioAddons);
+    final showNuvio = widget.nuvioOnly || (!widget.stremioOnly && v.showNuvio);
+    final showIndexers = !widget.stremioOnly && !widget.nuvioOnly && v.showJackettProwlarr;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (v.showStremioAddons)
+        if (showStremio)
           SettingsGroup(
             label: 'Stremio addons',
             children: [
@@ -110,14 +124,14 @@ class _SettingsForjaAddonsSectionState
                 _buildAddonInput(installedAddons),
             ],
           ),
-        if (v.showNuvio)
+        if (showNuvio)
           SettingsGroup(
             label: 'Nuvio addons',
             children: [
               _buildNuvioAddonSection(nuvioAddons),
             ],
           ),
-        if (v.showJackettProwlarr) ...[
+        if (showIndexers) ...[
           SettingsGroup(
             label: 'Jackett',
             adminOnly: true,

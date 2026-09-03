@@ -382,6 +382,9 @@ class _StreamedStream {
   final int viewers;
   /// Plugin already returned a native play URL (`directPlayback` / unlocked).
   final bool directPlayback;
+  /// Headers the plugin returned alongside the resolved URL.
+  /// When non-null, these take priority over fabricated headers in playback.
+  final Map<String, String>? resolvedHeaders;
 
   const _StreamedStream({
     required this.id,
@@ -392,6 +395,7 @@ class _StreamedStream {
     required this.source,
     required this.viewers,
     this.directPlayback = false,
+    this.resolvedHeaders,
   });
 
   factory _StreamedStream.fromJson(Map<String, dynamic> j) => _StreamedStream(
@@ -485,6 +489,14 @@ _StreamedStream _streamedStreamFromResolveRow({
   final sourceToken = catalogMeta?.source.trim().isNotEmpty == true
       ? catalogMeta!.source
       : pluginSource;
+  Map<String, String>? resolvedHeaders;
+  final h = row['headers'];
+  if (h is Map && h.isNotEmpty) {
+    resolvedHeaders = {
+      for (final e in h.entries) e.key.toString(): e.value.toString(),
+    };
+  }
+
   return _StreamedStream(
     id: source.id,
     streamNo: catalogMeta?.streamNo ?? index + 1,
@@ -495,6 +507,7 @@ _StreamedStream _streamedStreamFromResolveRow({
     viewers: viewers,
     directPlayback: row['directPlayback'] == true ||
         iptvLiveEnginePlayUrlReady(url),
+    resolvedHeaders: resolvedHeaders,
   );
 }
 

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) · **3 / 3** acceptance (TV detail focus) · **1 / 1** acceptance (resume selection) |
-| **Current slice** | Resume: keep Settings category across background sync |
+| **Progress** | **9 / 9** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) · **3 / 3** acceptance (TV detail focus) · **1 / 1** acceptance (resume selection) · **0 / 5** acceptance (Addons hub) |
+| **Current slice** | Addons hub: consolidate Sources / Debrid / Sports / Accounts / LAN into one Addons category with nested drill-down |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -27,6 +27,7 @@
 | 6 | R33-C06 | WebStreamr as hub category (`SettingsWebstreamrSection`) | ✅ |
 | 7 | R33-C07 | Lists as hub category (`ListsScreen(embedded: true)`) | ✅ |
 | 8 | R33-C08 | `SettingsVisibility` gates hub tiles + category rows from play sources / IPTV nav | ✅ |
+| 9 | R33-C09 | `SettingsAddonsHost` — nested addon list ↔ detail inside the Addons category | 🔄 |
 
 ---
 
@@ -67,6 +68,18 @@
 | 1 | R33-A17 | Split TV: OK/→ from category enters detail and lands on the first right-pane control; ↑/↓/←/→ stay in the right pane (no ← exit to rail) | ✅ |
 | 2 | R33-A18 | Back from detail → selected category → first category → nav rail | ✅ |
 | 3 | R33-A19 | TV select rows: OK opens D-pad option list (selected highlighted); chrome unchanged | ✅ |
+
+---
+
+## Acceptance (Addons hub)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R33-A21 | Sources renamed to Addons in category hub; Debrid / Forja Sports / Connected services / LAN removed as top-level categories | 🔄 |
+| 2 | R33-A22 | 8 addon rows with master toggles (IPTV, Live Sports, Torrent, Stremio, Nuvio, Debrid, Connected services, LAN); Connected services has no toggle | ⬜ |
+| 3 | R33-A23 | Tapping an addon row opens its detail in-pane with back to the list | 🔄 |
+| 4 | R33-A24 | Deep-links (`openSettings(categoryId: 'debrid')` etc.) land on Addons → that addon detail | 🔄 |
+| 5 | R33-A25 | TV D-pad: back from addon detail → addon list → category rail | ⬜ |
 
 ---
 
