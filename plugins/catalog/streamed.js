@@ -37,6 +37,7 @@ function matchRow(m, pluginId) {
     poster: String(m.poster || ''),
     popular: m.popular === true,
     airing: m.airing === true,
+    viewers: Number(m.viewers || 0),
     sources: (m.sources || []).map(function (s) {
       return { source: String(s.source || ''), id: String(s.id || '') };
     }),

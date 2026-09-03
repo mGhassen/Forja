@@ -45,7 +45,7 @@ _StreamedMatch _forjaLiveRowToMatch(Map<String, dynamic> j) {
           'hd': false,
           'embedUrl': url,
           'source': m['source'] ?? '',
-          'viewers': 0,
+          'viewers': parseLiveViewerCount(m['viewers']),
         });
       } else {
         refs.add(m);

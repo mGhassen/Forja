@@ -90,9 +90,17 @@ void main() {
     const portal = IptvPlaySource(
       url: 'http://portal.example/live/u/p/1.m3u8',
       label: 'Golf',
+      liveSourceKind: IptvLiveSourceKind.iptvXtream,
+    );
+    expect(iptvLiveSourceProbeUrl(portal), isNull);
+    expect(iptvLiveSourceProbeSkipped(portal), isTrue);
+
+    const legacy = IptvPlaySource(
+      url: 'http://portal.example/live/u/p/1.m3u8',
+      label: 'Golf',
     );
     expect(
-      iptvLiveSourceProbeUrl(portal),
+      iptvLiveSourceProbeUrl(legacy),
       'http://portal.example/live/u/p/1.m3u8',
     );
   });

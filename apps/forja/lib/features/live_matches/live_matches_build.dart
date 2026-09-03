@@ -721,6 +721,11 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
   int _cardViewersForMatch(_StreamedMatch match) {
     final cached = _s._eventStreamViewerTotals[_liveEventViewerKey(match)];
     if (cached != null && cached > 0) return cached;
+    final inline = match.inlineStreams.fold<int>(
+      0,
+      (n, s) => n + (s.viewers > 0 ? s.viewers : 0),
+    );
+    if (inline > 0) return inline;
     final catalog = _catalogViewersForEvent(match, _s._streamedMatches);
     return catalog > 0 ? catalog : match.viewers;
   }

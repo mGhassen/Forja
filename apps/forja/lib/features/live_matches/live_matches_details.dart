@@ -291,12 +291,30 @@ class _LiveMatchDetailsScreenState
       return;
     }
 
-    final hit = host._choiceForPanelSource(picked, _choices);
-    if (hit == null) {
-      LiveMatchesEngine.engineResolveFailed();
+    if (picked.liveSourceKind == IptvLiveSourceKind.liveEngine) {
+      final ordered = <IptvPlaySource>[
+        picked,
+        for (final s in all)
+          if (!identical(s, picked) && s.url.trim() != picked.url.trim()) s,
+      ];
+      unawaited(
+        IptvPtPlayerScreen.open(
+          context,
+          IptvPtPlayerScreen(
+            sources: ordered,
+            title: _displayMatch.title,
+            subtitle: _displayMatch.categoryLabel,
+            titleTracksSource: true,
+            engineContext: BuiltInPlayerContext.live,
+            liveSourceKind: IptvLiveSourceKind.liveEngine,
+            liveEngineResolveSource: host._resolveIptvPlaySourceFromCatalog,
+          ),
+        ),
+      );
       return;
     }
-    unawaited(host._openResolvedStreamChoice(hit, allChoices: _choices));
+
+    LiveMatchesEngine.engineResolveFailed();
   }
 
   Widget _buildToggleRow({required bool tvFocus}) {
@@ -746,12 +764,14 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
     final body = _buildPortalBody(context);
 
     if (widget.inlineHero) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildInlineStatus(context),
-          Expanded(child: body),
-        ],
+      return _wrapInlineHeroPanel(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildInlineStatus(context),
+            Expanded(child: body),
+          ],
+        ),
       );
     }
 
@@ -764,6 +784,20 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
           const SizedBox(height: 12),
           body,
         ],
+      ),
+    );
+  }
+
+  Widget _wrapInlineHeroPanel(Widget child) {
+    return ForjaFrostedPanel(
+      enableBlur: false,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: ForjaShellColors.borderSubtle.withValues(alpha: 0.55),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+        child: child,
       ),
     );
   }
@@ -848,8 +882,10 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
               child: Text(
                 status,
                 style: TextStyle(
-                  color: ForjaShellColors.cinematic.textSecondary,
+                  color: ForjaShellColors.cinematic.textPrimary
+                      .withValues(alpha: 0.88),
                   fontSize: 12,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -1290,6 +1326,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
       iptvCtrl: widget.iptvCtrl,
       healthProbe: controller.healthProbe,
       hideCategorySubtitle: hideCategorySubtitle,
+      solidSurface: widget.inlineHero,
       onTap: () => widget.onSourcePicked(
         sources[i],
         List<IptvPlaySource>.from(allForPlay),

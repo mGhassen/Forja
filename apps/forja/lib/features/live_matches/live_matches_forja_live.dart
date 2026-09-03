@@ -666,6 +666,7 @@ mixin _LiveMatchesForjaLive
         _syncCatalogHydratingState();
       });
       _maybeRebuildSportTabsFromCurrentMatches();
+      _kickStreamedViewerHydration(matches, gen);
     } catch (e) {
       debugPrint('[LiveMatches] Forja Live ${catalog.id}: $e');
       if (!genAlive()) return;
@@ -692,6 +693,39 @@ mixin _LiveMatchesForjaLive
         }
       }
     }
+  }
+
+  /// Streamed.pk only reports viewers on `/api/stream/…` — hydrate live cards after catalog ingest.
+  void _kickStreamedViewerHydration(
+    Iterable<_StreamedMatch> seeds,
+    int gen,
+  ) {
+    final targets = seeds
+        .where(
+          (m) =>
+              m.isLive &&
+              m.viewers == 0 &&
+              m.isForjaLive &&
+              m.sources.isNotEmpty,
+        )
+        .toList();
+    if (targets.isEmpty) return;
+    unawaited(() async {
+      for (final seed in targets) {
+        if (!mounted || gen != _s._forjaLiveLoadGen) return;
+        final total = await streamedMatchViewerTotalFromSources(seed);
+        if (total <= 0 || !mounted || gen != _s._forjaLiveLoadGen) continue;
+        setState(() {
+          _invalidateLiveMatchesGridCache();
+          final key = _liveEventViewerKey(seed);
+          _s._eventStreamViewerTotals[key] = total;
+          _s._streamedMatches = _s._streamedMatches.map((m) {
+            if (!_sameStreamedEvent(m, seed) || m.viewers > 0) return m;
+            return m.withViewerCount(total);
+          }).toList();
+        });
+      }
+    }());
   }
 
   Future<void> _loadForjaLiveCatalogLazy() async {
@@ -748,6 +782,7 @@ mixin _LiveMatchesForjaLive
             if (mounted && gen == _s._forjaLiveLoadGen) {
               _rebuildSportTabsFromCurrentMatches();
               _syncCatalogHydratingState();
+              _kickStreamedViewerHydration(_s._streamedMatches, gen);
               (this as _LiveMatchesData)
                   ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
             }

@@ -392,28 +392,34 @@ mixin _LiveMatchesPlayback
 
   IptvPlaySource _choiceToPanelSource(_StreamedStreamChoice choice) {
     final stream = choice.stream;
+    final match = choice.catalogMatch;
     final embed = stream.embedUrl.trim();
-    final key = embed.isNotEmpty
+    final sourceLabel = _StreamedStreamSheet.sourceLabel(stream.source);
+    final title = _StreamedStreamSheet.streamTitle(stream, sourceLabel);
+    final playUrl = embed.isNotEmpty
         ? embed
-        : 'pending:${choice.catalogMatch.id}:${stream.id}:${stream.streamNo}';
+        : 'pending:${match.id}:${stream.id}:${stream.streamNo}';
+    final directPlayback =
+        embed.isNotEmpty &&
+        RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed);
     return IptvPlaySource(
-      url: key,
-      label: _streamPanelLabel(choice.catalogMatch, stream),
+      url: playUrl,
+      label: title,
       detail: _streamPanelDetail(stream),
       liveSourceKind: IptvLiveSourceKind.liveEngine,
-      liveProviderBadge: _StreamedStreamSheet.serverLabelFor(
-        choice.catalogMatch,
-      ),
-      liveViewerCount: _effectiveStreamViewers(stream, choice.catalogMatch),
+      liveProviderBadge: _StreamedStreamSheet.serverLabelFor(match),
+      liveViewerCount: _effectiveStreamViewers(stream, match),
       liveStreamHd: stream.hd,
-      liveEngineEmbedUrl: embed.isNotEmpty ? embed : null,
+      liveEngineEmbedUrl: directPlayback ? null : (embed.isNotEmpty ? embed : null),
+      liveEngineResolveParams: directPlayback
+          ? null
+          : _liveEngineResolveParams(match, stream),
     );
   }
 
   String _streamPanelLabel(_StreamedMatch match, _StreamedStream stream) {
-    final lang = stream.language.trim();
-    if (lang.isNotEmpty) return lang;
-    return _streamPickerLabel(match, stream);
+    final sourceLabel = _StreamedStreamSheet.sourceLabel(stream.source);
+    return _StreamedStreamSheet.streamTitle(stream, sourceLabel);
   }
 
   String? _streamPanelDetail(_StreamedStream stream) {
@@ -697,6 +703,12 @@ mixin _LiveMatchesPlayback
     );
     if (pluginId.isEmpty) return const [];
 
+    final catalogMeta = await _catalogStreamsForSourceRef(
+      match,
+      source,
+      allowFallback: allowStreamedFallback,
+    );
+
     final rows = await EngineService.instance.runLivePlugin(
       pluginId: pluginId,
       action: 'resolve',
@@ -713,6 +725,7 @@ mixin _LiveMatchesPlayback
       },
     );
     if (rows.isEmpty) {
+      if (catalogMeta.isNotEmpty) return catalogMeta;
       if (source.iframe.trim().isNotEmpty) {
         final token = LiveMatchesEngine.cachedResolveSourceToken(pluginId);
         return [
@@ -723,7 +736,7 @@ mixin _LiveMatchesPlayback
             hd: false,
             embedUrl: source.iframe,
             source: token.isNotEmpty ? token : source.source,
-            viewers: 0,
+            viewers: match.viewers,
           ),
         ];
       }
@@ -736,30 +749,27 @@ mixin _LiveMatchesPlayback
     final pluginSource = source.source.trim().isNotEmpty
         ? source.source.trim().toLowerCase()
         : LiveMatchesEngine.cachedResolveSourceToken(pluginId);
-    final catalogViewers = match.viewers;
     final out = <_StreamedStream>[];
     for (var i = 0; i < rows.length; i++) {
       final row = rows[i];
-      final rowViewers = parseLiveViewerCount(row['viewers']);
-      final viewers = rowViewers > 0 ? rowViewers : catalogViewers;
-      final fields = forjaLiveStreamFieldsFromRowName(
-        (row['name'] ?? row['title'] ?? '').toString(),
-      );
       if (row['webviewOnly'] == true) continue;
       final url = (row['url'] ?? '').toString().trim();
       if (url.isEmpty) continue;
+      final meta = i < catalogMeta.length
+          ? catalogMeta[i]
+          : (catalogMeta.isNotEmpty ? catalogMeta.first : null);
       out.add(
-        _StreamedStream(
-          id: source.id,
-          streamNo: i + 1,
-          language: fields.language,
-          hd: fields.hd,
-          embedUrl: url,
-          source: pluginSource,
-          viewers: viewers,
+        _streamedStreamFromResolveRow(
+          row: row,
+          source: source,
+          match: match,
+          pluginSource: pluginSource,
+          catalogMeta: meta,
+          index: i,
         ),
       );
     }
+    if (out.isEmpty && catalogMeta.isNotEmpty) return catalogMeta;
     return out;
   }
 
@@ -768,9 +778,10 @@ mixin _LiveMatchesPlayback
     List<_StreamedStreamChoice> choices,
   ) {
     final url = picked.url.trim();
+    final embedUrl = (picked.liveEngineEmbedUrl ?? '').trim();
     for (final c in List<_StreamedStreamChoice>.from(choices)) {
       final embed = c.stream.embedUrl.trim();
-      if (embed.isNotEmpty && embed == url) return c;
+      if (embed.isNotEmpty && (embed == url || embed == embedUrl)) return c;
       final pending =
           'pending:${c.catalogMatch.id}:${c.stream.id}:${c.stream.streamNo}';
       if (url == pending) return c;
@@ -779,6 +790,7 @@ mixin _LiveMatchesPlayback
     if (label.isEmpty) return null;
     for (final c in List<_StreamedStreamChoice>.from(choices)) {
       if (_streamPickerLabel(c.catalogMatch, c.stream) == label) return c;
+      if (_streamPanelLabel(c.catalogMatch, c.stream) == label) return c;
     }
     return null;
   }
@@ -1186,7 +1198,10 @@ mixin _LiveMatchesPlayback
     _StreamedStream stream, {
     List<_StreamedStreamChoice>? allChoices,
   }) async {
-    if (!await LiveMatchesEngine.isEngineResolveMode()) return false;
+    if (!await LiveMatchesEngine.isEngineResolveMode()) {
+      LiveMatchesEngine.engineResolveFailed();
+      return false;
+    }
 
     final candidates = <_StreamedStreamChoice>[];
     if (allChoices != null) {
@@ -1229,7 +1244,10 @@ mixin _LiveMatchesPlayback
       }
     });
     if (!ok) return true;
-    if (resolvedPick == null) return false;
+    if (resolvedPick == null) {
+      LiveMatchesEngine.engineResolveFailed();
+      return false;
+    }
     if (sources.isEmpty) {
       debugPrint(
         '[LiveMatches] Engine resolve missed — no embed fallback '

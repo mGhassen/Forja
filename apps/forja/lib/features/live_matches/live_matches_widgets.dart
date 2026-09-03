@@ -1312,14 +1312,12 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
 
   void _mirrorProbeToCatalog(String key, bool ok) {
     final ctrl = iptvCtrl;
-    if (ctrl == null) return;
+    if (ctrl == null || !ok) return;
     if (!sources.any((s) => (s.streamId ?? '').trim() == key)) return;
-    if (ctrl.streamHealth[key] == ok) return;
+    if (ctrl.streamHealth[key] == true) return;
     ctrl.streamHealth[key] = ok;
     if (ok) {
       ctrl.aliveStreamIds = {...ctrl.aliveStreamIds, key};
-    } else if (ctrl.aliveStreamIds.contains(key)) {
-      ctrl.aliveStreamIds = {...ctrl.aliveStreamIds}..remove(key);
     }
     ctrl.notifyListeners();
   }
@@ -1804,6 +1802,7 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
     this.tvItemIndex,
     this.onUpEdge,
     this.hideCategorySubtitle = false,
+    this.solidSurface = false,
   });
 
   final IptvPlaySource source;
@@ -1814,10 +1813,21 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
   final VoidCallback? onUpEdge;
   /// When the Live TV category rail is visible, skip repeating category on the row.
   final bool hideCategorySubtitle;
+  final bool solidSurface;
 
   bool get _isLivePluginRow =>
       source.liveSourceKind == IptvLiveSourceKind.liveEngine ||
       source.liveSourceKind == IptvLiveSourceKind.stremio;
+
+  bool get _isPortalIptvRow =>
+      source.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
+      source.liveSourceKind == IptvLiveSourceKind.iptvStalker;
+
+  bool? _portalCatalogHealth() {
+    final id = (source.streamId ?? '').trim();
+    if (id.isEmpty || iptvCtrl == null) return null;
+    return iptvCtrl!.healthFor(id) == true ? true : null;
+  }
 
   IptvStream? get _epgStream {
     final streamId = (source.streamId ?? '').trim();
@@ -1844,17 +1854,18 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
   String get _probeKey => iptvLiveSourceProbeKey(source);
 
   Future<bool> _hoverProbe() async {
+    if (_isPortalIptvRow) return true;
     final probed = healthProbe.healthFor(_probeKey);
     if (probed != null) return probed;
     final id = (source.streamId ?? '').trim();
     if (id.isNotEmpty && iptvCtrl != null) {
       final fromCatalog = iptvCtrl!.healthFor(id);
-      if (fromCatalog != null) return fromCatalog;
+      if (fromCatalog == true) return true;
     }
     // Stalker sports rows have no durable URL until create_link at play.
     if (source.url.trim().isEmpty) return true;
-    final probeUrl = iptvLiveSourceProbeUrl(source) ?? source.url.trim();
-    if (probeUrl.isEmpty) return false;
+    final probeUrl = iptvLiveSourceProbeUrl(source);
+    if (probeUrl == null) return true;
     return healthProbe.checkNow(_probeKey, probeUrl);
   }
 
@@ -1936,10 +1947,15 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final listenables = <Listenable>[healthProbe];
+    final ctrl = iptvCtrl;
+    if (ctrl != null) listenables.add(ctrl);
     return ListenableBuilder(
-      listenable: healthProbe,
+      listenable: Listenable.merge(listenables),
       builder: (context, _) {
-        final cachedHealth = healthProbe.healthFor(_probeKey);
+        final cachedHealth = _isPortalIptvRow
+            ? _portalCatalogHealth()
+            : healthProbe.healthFor(_probeKey);
         if (_isLivePluginRow) {
           final provider = (source.liveProviderBadge ?? '').trim().isNotEmpty
               ? source.liveProviderBadge!.trim()
@@ -1970,6 +1986,7 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
             onUpEdge: onUpEdge,
             onHoverProbe: _liveHoverProbe,
             probeHealthCache: cachedHealth,
+            solidSurface: solidSurface,
           );
         }
         final subtitle =
@@ -1983,8 +2000,9 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
           onPlay: onTap,
           tvItemIndex: tvItemIndex,
           onUpEdge: onUpEdge,
-          onHoverProbe: _hoverProbe,
+          onHoverProbe: _isPortalIptvRow ? null : _hoverProbe,
           probeHealthCache: cachedHealth,
+          solidSurface: solidSurface,
         );
       },
     );

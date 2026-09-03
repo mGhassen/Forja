@@ -347,6 +347,29 @@ class _StreamedMatch {
     final maxHours = _liveWindowHours(popular: popular);
     return delta.inMinutes >= 0 && delta.inHours < maxHours;
   }
+
+  _StreamedMatch withViewerCount(int viewers) => _StreamedMatch(
+    id: id,
+    title: title,
+    category: category,
+    dateMs: dateMs,
+    poster: poster,
+    popular: popular,
+    airing: airing,
+    viewers: viewers,
+    homeTeam: homeTeam,
+    homeBadge: homeBadge,
+    awayTeam: awayTeam,
+    awayBadge: awayBadge,
+    sources: sources,
+    inlineStreams: inlineStreams,
+    catalog: catalog,
+    stremioBaseUrl: stremioBaseUrl,
+    stremioType: stremioType,
+    stremioAddonName: stremioAddonName,
+    sportMatchGame: sportMatchGame,
+    livePluginId: livePluginId,
+  );
 }
 
 class _StreamedStream {
@@ -411,6 +434,74 @@ int _sheetTotalViewers(Iterable<_StreamedStreamChoice> choices) {
     final key = '${c.catalogMatch.livePluginId}:${c.catalogMatch.id}';
     if (!countedCatalogFallback.add(key)) continue;
     total += c.catalogMatch.viewers;
+  }
+  return total;
+}
+
+/// Mirror rows for one catalog source ref — inline catalog streams or streamed.pk API.
+Future<List<_StreamedStream>> _catalogStreamsForSourceRef(
+  _StreamedMatch match,
+  _StreamedSourceRef sourceRef, {
+  bool allowFallback = true,
+}) async {
+  final token = sourceRef.source.trim().toLowerCase();
+  if (token.isNotEmpty) {
+    final inline = match.inlineStreams
+        .where((s) => s.source.trim().toLowerCase() == token)
+        .toList();
+    if (inline.isNotEmpty) return inline;
+  }
+  return _fetchStreamedStreams(sourceRef, allowFallback: allowFallback);
+}
+
+_StreamedStream _streamedStreamFromResolveRow({
+  required Map<String, dynamic> row,
+  required _StreamedSourceRef source,
+  required _StreamedMatch match,
+  required String pluginSource,
+  _StreamedStream? catalogMeta,
+  required int index,
+}) {
+  final rowViewers = parseLiveViewerCount(row['viewers']);
+  final nameRaw = (row['name'] ?? row['title'] ?? catalogMeta?.language ?? '')
+      .toString();
+  final fields = forjaLiveStreamFieldsFromRowName(nameRaw);
+  final langFromRow = (row['language'] ?? '').toString().trim();
+  final language = langFromRow.isNotEmpty
+      ? langFromRow
+      : (fields.language.isNotEmpty
+            ? fields.language
+            : (catalogMeta?.language ?? ''));
+  final hd = row['hd'] == true || catalogMeta?.hd == true || fields.hd;
+  final metaViewers = catalogMeta?.viewers ?? 0;
+  final viewers = rowViewers > 0
+      ? rowViewers
+      : (metaViewers > 0 ? metaViewers : match.viewers);
+  final url = (row['url'] ?? '').toString().trim();
+  final sourceToken = catalogMeta?.source.trim().isNotEmpty == true
+      ? catalogMeta!.source
+      : pluginSource;
+  return _StreamedStream(
+    id: source.id,
+    streamNo: catalogMeta?.streamNo ?? index + 1,
+    language: language,
+    hd: hd,
+    embedUrl: url,
+    source: sourceToken,
+    viewers: viewers,
+  );
+}
+
+/// Sum mirror viewers from streamed.pk `/api/stream/{source}/{id}` (not on match rows).
+Future<int> streamedMatchViewerTotalFromSources(_StreamedMatch match) async {
+  if (match.sources.isEmpty) return 0;
+  var total = 0;
+  for (final ref in match.sources) {
+    if (ref.source.trim().toLowerCase() == 'echo') continue;
+    final streams = await _fetchStreamedStreams(ref, allowFallback: false);
+    for (final stream in streams) {
+      if (stream.viewers > 0) total += stream.viewers;
+    }
   }
   return total;
 }

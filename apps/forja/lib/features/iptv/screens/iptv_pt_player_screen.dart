@@ -292,6 +292,10 @@ String iptvLiveSourceProbeKey(IptvPlaySource src) {
 /// Playable URL for [IptvAliveChecker], or null when HTTP cannot judge the row
 /// (catalog embed page, unresolved `pending:` without a handoff URL).
 String? iptvLiveSourceProbeUrl(IptvPlaySource src) {
+  if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
+      src.liveSourceKind == IptvLiveSourceKind.iptvStalker) {
+    return null;
+  }
   final url = src.url.trim();
   if (iptvLiveEnginePlayUrlReady(url)) {
     // WatchFooty / StreamFree / GOAT signed playlists need Referer — bare
@@ -318,6 +322,10 @@ String? iptvLiveSourceProbeUrl(IptvPlaySource src) {
 /// Embed / pending catalog row that cannot be HTTP-probed but is still selectable.
 bool iptvLiveSourceProbeSkipped(IptvPlaySource src) {
   if (iptvLiveSourceProbeUrl(src) != null) return false;
+  if (src.liveSourceKind == IptvLiveSourceKind.iptvXtream ||
+      src.liveSourceKind == IptvLiveSourceKind.iptvStalker) {
+    return true;
+  }
   final embed = (src.liveEngineEmbedUrl ?? '').trim();
   if (embed.isNotEmpty) return true;
   return src.url.trim().startsWith('pending:');
