@@ -21,10 +21,9 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
-| **Addons** | Built-in app addons (IPTV, Live Sports, torrent, Stremio, Nuvio, Debrid, Connected services, LAN). Always listed; switch activates each one. Tap a row for that addon's settings. Plugin packs add extra options **inside** an addon, not as extra rows. | Always |
+| **Addons** | Playback, IPTV, Live Sports, torrent, Stremio, Nuvio, Debrid, Connected services, LAN. Playback is first (player prefs, no switch). Other rows have a switch to activate. Tap a row for that addon's settings. Plugin packs add extra options **inside** an addon. | Always |
 | [Forja Packs](forja-packs.md) | Install and manage Forja JS plugin manifests (providers, hubs, live, …) | Always |
 | [Features](navigation-bar.md) | Tab visibility, order, default menu | Always |
-| [Playback](playback-settings.md) | Quality, audio, auto-play, IPTV player prefs | Always |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
 | [About](app-updates.md) | Check for updates, app version; Privacy / Developer rows for admins | Always |
 

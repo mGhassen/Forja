@@ -7,14 +7,18 @@ import 'package:forja/features/settings/sections/settings_providers_section.dart
 import 'package:forja/features/settings/sections/settings_search_torrents_section.dart';
 import 'package:forja/features/settings/sections/settings_simkl_panel.dart';
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
+import 'package:forja/features/settings/sections/settings_playback_section.dart';
 import 'package:forja/features/settings/addons/sections/settings_iptv_addon_section.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
+import 'package:forja/features/settings/widgets/settings_ui.dart';
 
 /// Builds the detail body for a given addon ID.
 ///
 /// Reuses existing section widgets — no logic duplication.
 Widget buildAddonDetailBody(String addonId, SettingsVisibility visibility) {
   switch (addonId) {
+    case SettingsAddonId.playback:
+      return SettingsPlaybackSection(visibility: visibility);
     case SettingsAddonId.iptv:
       return const SettingsIptvAddonSection();
     case SettingsAddonId.liveSports:
@@ -25,6 +29,10 @@ Widget buildAddonDetailBody(String addonId, SettingsVisibility visibility) {
         children: [
           if (visibility.showTorrentEngine)
             const SettingsSearchTorrentsSection(),
+          SettingsForjaAddonsSection(
+            visibility: visibility,
+            indexersOnly: true,
+          ),
         ],
       );
     case SettingsAddonId.stremio:
@@ -43,8 +51,16 @@ Widget buildAddonDetailBody(String addonId, SettingsVisibility visibility) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SettingsSimklPanel(),
-          if (visibility.showMdblist) const SettingsMdblistPanel(),
+          const SettingsGroup(
+            label: 'Simkl',
+            children: [SettingsSimklPanel()],
+          ),
+          if (visibility.showMdblist)
+            const SettingsGroup(
+              label: 'MDBlist',
+              adminOnly: true,
+              children: [SettingsMdblistPanel()],
+            ),
         ],
       );
     case SettingsAddonId.lan:

@@ -71,6 +71,7 @@ class _SettingsDebridSectionState
       children: [
         SettingsGroup(
           label: 'Debrid',
+          adminOnly: true,
           children: [
             settingsFocusableToggle(
               context,

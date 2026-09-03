@@ -20,7 +20,7 @@ On-device Sports matcher (Sportio-style): the **same** enabled **Catalog** JS sc
 - Browse the same catalog schedule as Forja Live, **merged with ESPN** when **Catalog → ESPN** is on (clean home/away for matching; ESPN-only games still appear). Switching **Servers** between Forja Live and Forja Sports keeps that list — no reload
 - Pick an **Xtream** or **Stalker** portal from top-right **Portals** (same IPTV panel; M3U is not supported for Sports yet)
 - Open a match → right-side panel opens immediately while Forja sniffs your portal; ranked channels appear as they land (logo, short name, category, tier badge, **NOW/NEXT EPG** when the portal provides listings) → pick one to play (failover keeps the rest in the player Source menu with the same layout). Re-opening the same match within **30 minutes** reuses the last match result (no second portal search)
-- In-player **programme guide** — with **Settings → Playback → IPTV programme guide (EPG)** on, the native player shows the same floating card as IPTV Live (LIVE / NEXT / LATER, progress bar, description) for the active channel (Xtream `player_api` or Stalker MAG EPG)
+- In-player **programme guide** — with **Settings → Addons → IPTV → IPTV programme guide (EPG)** on, the native player shows the same floating card as IPTV Live (LIVE / NEXT / LATER, progress bar, description) for the active channel (Xtream `player_api` or Stalker MAG EPG)
 - Choose which leagues to match in Settings (on Android TV, D-pad ←/→ between league chips and ↓ through the last sport)
 
 ## Setup

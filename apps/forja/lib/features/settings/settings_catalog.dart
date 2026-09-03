@@ -24,7 +24,6 @@ abstract final class SettingsCategoryId {
     sources, // displayed as "Addons"
     forjaPacks,
     navigation,
-    playback,
     data,
     about,
   ];
@@ -65,7 +64,7 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       const SettingsCategoryMeta(
         id: SettingsCategoryId.sources,
         title: 'Addons',
-        subtitle: 'IPTV, torrent, Stremio, debrid, LAN, and more',
+        subtitle: 'Playback, IPTV, torrent, Stremio, debrid, LAN',
         icon: Icons.extension_rounded,
       ),
     if (visibility.showForjaPacksCategory)
@@ -80,12 +79,6 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       title: 'Features',
       subtitle: 'Tabs, order, default menu',
       icon: Icons.tab_rounded,
-    ),
-    const SettingsCategoryMeta(
-      id: SettingsCategoryId.playback,
-      title: 'Playback',
-      subtitle: 'Quality, audio, auto-play',
-      icon: Icons.play_circle_outline_rounded,
     ),
     if (visibility.showDataCategory)
       const SettingsCategoryMeta(

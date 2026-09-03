@@ -42,7 +42,7 @@ class LiveGoatWebviewUnlock {
     required String embedOrigin,
   }) {
     if (kIsWeb) return Future<String?>.value(null);
-    if (!(Platform.isAndroid || Platform.isIOS || Platform.isMacOS)) {
+    if (!(Platform.isAndroid || Platform.isIOS)) {
       return Future<String?>.value(null);
     }
 

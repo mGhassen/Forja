@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/shared/sync/sync.dart';
 
 /// Built-in app addons (Settings → Addons).
 ///
@@ -8,6 +9,7 @@ import 'package:flutter/material.dart';
 /// settings **inside** an addon's detail page — they do not add or remove
 /// rows from this list.
 abstract final class SettingsAddonId {
+  static const playback = 'playback';
   static const iptv = 'iptv';
   static const liveSports = 'live_sports';
   static const torrent = 'torrent';
@@ -19,6 +21,7 @@ abstract final class SettingsAddonId {
 
   /// Maps old top-level category IDs to addon IDs for deep-link compat.
   static const categoryAliases = <String, String>{
+    'playback': playback,
     'debrid': debrid,
     'iptv_sports': liveSports,
     'accounts': connectedServices,
@@ -47,6 +50,13 @@ class SettingsAddonMeta {
 }
 
 const List<SettingsAddonMeta> kSettingsAddons = [
+  SettingsAddonMeta(
+    id: SettingsAddonId.playback,
+    title: 'Playback',
+    subtitle: 'Quality, audio, auto-play',
+    icon: Icons.play_circle_outline_rounded,
+    hasToggle: false,
+  ),
   SettingsAddonMeta(
     id: SettingsAddonId.iptv,
     title: 'IPTV',
@@ -82,11 +92,12 @@ const List<SettingsAddonMeta> kSettingsAddons = [
     title: 'Debrid',
     subtitle: 'Real-Debrid, TorBox, and more',
     icon: Icons.cloud_download_rounded,
+    adminOnly: true,
   ),
   SettingsAddonMeta(
     id: SettingsAddonId.connectedServices,
     title: 'Connected services',
-    subtitle: 'Simkl',
+    subtitle: 'Simkl; MDBlist (admin)',
     icon: Icons.sync_rounded,
     hasToggle: false,
   ),
@@ -98,7 +109,13 @@ const List<SettingsAddonMeta> kSettingsAddons = [
   ),
 ];
 
-List<SettingsAddonMeta> settingsAddons() => kSettingsAddons;
+List<SettingsAddonMeta> settingsAddons() {
+  final admin = AccountFeatures.instance.isAdmin;
+  return [
+    for (final a in kSettingsAddons)
+      if (!a.adminOnly || admin) a,
+  ];
+}
 
 SettingsAddonMeta? settingsAddonById(String id) {
   for (final a in kSettingsAddons) {

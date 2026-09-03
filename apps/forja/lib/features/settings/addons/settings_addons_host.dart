@@ -9,6 +9,53 @@ import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:forja/shared/sync/sync.dart';
+
+/// Open addon inside Settings → Addons. Hub chrome listens so the page title
+/// is the addon name (not a second "Addons" heading).
+class SettingsAddonDrill {
+  static final ValueNotifier<SettingsAddonMeta?> current =
+      ValueNotifier<SettingsAddonMeta?>(null);
+
+  static void close() => current.value = null;
+}
+
+/// Category page chrome that swaps title to the open addon (single header).
+class SettingsAddonsAwareScaffold extends StatelessWidget {
+  const SettingsAddonsAwareScaffold({
+    super.key,
+    required this.categoryTitle,
+    required this.child,
+    this.categoryAdminOnly = false,
+    this.scrollable = true,
+    this.categoryBack = false,
+  });
+
+  final String categoryTitle;
+  final Widget child;
+  final bool categoryAdminOnly;
+  final bool scrollable;
+  final bool categoryBack;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<SettingsAddonMeta?>(
+      valueListenable: SettingsAddonDrill.current,
+      builder: (context, addon, _) {
+        return SettingsPageScaffold(
+          title: addon?.title ?? categoryTitle,
+          adminOnly: addon?.adminOnly ?? categoryAdminOnly,
+          showBack: addon != null || categoryBack,
+          onBack: addon != null
+              ? SettingsAddonDrill.close
+              : () => Navigator.of(context).maybePop(),
+          scrollable: scrollable,
+          child: child,
+        );
+      },
+    );
+  }
+}
 
 /// Settings → Addons body.
 ///
@@ -33,114 +80,48 @@ class SettingsAddonsHost extends StatefulWidget {
 }
 
 class SettingsAddonsHostState extends State<SettingsAddonsHost> {
-  String? _openAddonId;
-
-  /// Opened programmatically — allows deep-link into an addon.
-  void openAddon(String addonId) {
-    if (!mounted) return;
-    setState(() => _openAddonId = addonId);
-  }
-
   @override
   void initState() {
     super.initState();
-    _openAddonId = widget.initialAddonId ?? ShellBus.pendingAddonDeepLink;
+    SettingsAddonDrill.current.addListener(_onDrill);
+    final initialId = widget.initialAddonId ?? ShellBus.pendingAddonDeepLink;
     ShellBus.pendingAddonDeepLink = null;
+    if (initialId != null) {
+      SettingsAddonDrill.current.value = settingsAddonById(initialId);
+    }
   }
 
-  void _back() {
-    if (!mounted) return;
-    setState(() => _openAddonId = null);
+  @override
+  void dispose() {
+    SettingsAddonDrill.current.removeListener(_onDrill);
+    super.dispose();
+  }
+
+  void _onDrill() {
+    if (mounted) setState(() {});
+  }
+
+  void _open(String addonId) {
+    SettingsAddonDrill.current.value = settingsAddonById(addonId);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_openAddonId != null) {
-      final meta = settingsAddonById(_openAddonId!);
-      if (meta == null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _back());
+    final open = SettingsAddonDrill.current.value;
+    if (open != null) {
+      final adminBlocked =
+          open.adminOnly && !AccountFeatures.instance.isAdmin;
+      if (adminBlocked) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          SettingsAddonDrill.close();
+        });
         return const SizedBox.shrink();
       }
-      return _AddonDetailPane(
-        meta: meta,
-        visibility: widget.visibility,
-        onBack: _back,
-      );
+      return buildAddonDetailBody(open.id, widget.visibility);
     }
     return _AddonListPane(
       visibility: widget.visibility,
-      onOpen: (id) => setState(() => _openAddonId = id),
-    );
-  }
-}
-
-class _AddonDetailPane extends StatelessWidget {
-  const _AddonDetailPane({
-    required this.meta,
-    required this.visibility,
-    required this.onBack,
-  });
-
-  final SettingsAddonMeta meta;
-  final SettingsVisibility visibility;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _DetailHeader(meta: meta, onBack: onBack),
-        const SizedBox(height: 16),
-        buildAddonDetailBody(meta.id, visibility),
-      ],
-    );
-  }
-}
-
-class _DetailHeader extends StatelessWidget {
-  const _DetailHeader({required this.meta, required this.onBack});
-
-  final SettingsAddonMeta meta;
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        shellFocusableTap(
-          context: context,
-          onTap: onBack,
-          borderRadius: 20,
-          scaleOnFocus: 1.0,
-          showFocusRail: true,
-          tvTabId: 'settings',
-          tvZone: ShellTvZone.settings,
-          child: const Padding(
-            padding: EdgeInsets.all(8),
-            child: Icon(
-              Icons.arrow_back_rounded,
-              color: ForjaShellColors.textPrimary,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Icon(meta.icon, color: ForjaShellColors.textSecondary, size: 22),
-        const SizedBox(width: 8),
-        Expanded(
-          child: settingsTitleText(
-            meta.title,
-            const TextStyle(
-              color: ForjaShellColors.textPrimary,
-              fontSize: SettingsTokens.pageTitleSize,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.3,
-            ),
-            adminOnly: meta.adminOnly,
-            sparkSize: 18,
-          ),
-        ),
-      ],
+      onOpen: _open,
     );
   }
 }
@@ -156,6 +137,7 @@ class _AddonListPane extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(accountFeaturesProvider);
     final addons = settingsAddons();
     return ListView.separated(
       shrinkWrap: true,
@@ -209,13 +191,15 @@ class _AddonRow extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  settingsTitleText(
                     meta.title,
-                    style: const TextStyle(
+                    const TextStyle(
                       color: ForjaShellColors.textPrimary,
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                     ),
+                    adminOnly: meta.adminOnly,
+                    sparkSize: 14,
                   ),
                   const SizedBox(height: 2),
                   Text(

@@ -153,6 +153,7 @@ class ShellBus {
 
   /// Aliases for categories that were merged into Addons.
   static const _addonCategoryAliases = <String, String>{
+    'playback': 'playback',
     'debrid': 'debrid',
     'iptv_sports': 'live_sports',
     'accounts': 'connected_services',

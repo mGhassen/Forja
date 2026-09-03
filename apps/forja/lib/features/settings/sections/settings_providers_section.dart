@@ -21,6 +21,7 @@ class SettingsForjaAddonsSection extends ConsumerStatefulWidget {
     required this.visibility,
     this.stremioOnly = false,
     this.nuvioOnly = false,
+    this.indexersOnly = false,
   });
 
   final SettingsVisibility visibility;
@@ -30,6 +31,9 @@ class SettingsForjaAddonsSection extends ConsumerStatefulWidget {
 
   /// Show only the Nuvio section (addon detail mode).
   final bool nuvioOnly;
+
+  /// Show only Jackett / Prowlarr (admin torrent detail).
+  final bool indexersOnly;
 
   @override
   ConsumerState<SettingsForjaAddonsSection> createState() =>
@@ -99,9 +103,13 @@ class _SettingsForjaAddonsSectionState
     if (indexerSnap != null && !_indexersHydrated) {
       _hydrateIndexers(indexerSnap);
     }
-    final showStremio = widget.stremioOnly || (!widget.nuvioOnly && v.showStremioAddons);
-    final showNuvio = widget.nuvioOnly || (!widget.stremioOnly && v.showNuvio);
-    final showIndexers = !widget.stremioOnly && !widget.nuvioOnly && v.showJackettProwlarr;
+    final showStremio = !widget.indexersOnly &&
+        (widget.stremioOnly || (!widget.nuvioOnly && v.showStremioAddons));
+    final showNuvio = !widget.indexersOnly &&
+        (widget.nuvioOnly || (!widget.stremioOnly && v.showNuvio));
+    final showIndexers = widget.indexersOnly
+        ? v.showJackettProwlarr
+        : !widget.stremioOnly && !widget.nuvioOnly && v.showJackettProwlarr;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/settings/addons/settings_addons_host.dart';
 import 'package:forja/features/settings/pages/settings_category_bodies.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
@@ -54,6 +55,15 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     // Never force Profile here. Resume/cloud pull can briefly drop gated
     // tiles; auto-fallback was overwriting [ShellBus.settingsHubCategoryId]
     // and yanking the hub back to Profile & account.
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsHubScaffold oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedId != widget.selectedId &&
+        widget.selectedId != SettingsCategoryId.sources) {
+      SettingsAddonDrill.close();
+    }
   }
 
   @override
@@ -152,6 +162,11 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     if (!SettingsTokens.useSplitLayout(context)) return false;
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return false;
 
+    if (SettingsAddonDrill.current.value != null) {
+      SettingsAddonDrill.close();
+      return true;
+    }
+
     if (_detailScope.hasFocus) {
       if (_detailEnterToken != 0) {
         setState(() => _detailEnterToken = 0);
@@ -231,7 +246,12 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                     child: _CategorySidebar(
                       categories: categories,
                       selectedId: widget.selectedId,
-                      onSelect: widget.onSelect,
+                      onSelect: (id) {
+                        if (id != SettingsCategoryId.sources) {
+                          SettingsAddonDrill.close();
+                        }
+                        widget.onSelect(id);
+                      },
                       firstTileFocusNode: widget.firstTileFocusNode,
                       categoryRowId: tv ? _categoryRowId : null,
                       onEnterDetail: tv ? _enterDetail : null,
@@ -255,9 +275,11 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                             child: ShellTvLinearFocusScope(
                               child: FocusTraversalGroup(
                                 policy: ReadingOrderTraversalPolicy(),
-                                child: SettingsPageScaffold(
-                                  title: selectedMeta?.title ?? 'Settings',
-                                  adminOnly: selectedMeta?.adminOnly ?? false,
+                                child: SettingsAddonsAwareScaffold(
+                                  categoryTitle:
+                                      selectedMeta?.title ?? 'Settings',
+                                  categoryAdminOnly:
+                                      selectedMeta?.adminOnly ?? false,
                                   scrollable:
                                       !(selectedMeta?.fillViewport ?? false),
                                   child: buildSettingsCategoryBody(
@@ -270,9 +292,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                           ),
                         ),
                       )
-                    : SettingsPageScaffold(
-                        title: selectedMeta?.title ?? 'Settings',
-                        adminOnly: selectedMeta?.adminOnly ?? false,
+                    : SettingsAddonsAwareScaffold(
+                        categoryTitle: selectedMeta?.title ?? 'Settings',
+                        categoryAdminOnly: selectedMeta?.adminOnly ?? false,
                         scrollable: !(selectedMeta?.fillViewport ?? false),
                         child: buildSettingsCategoryBody(
                           widget.selectedId,

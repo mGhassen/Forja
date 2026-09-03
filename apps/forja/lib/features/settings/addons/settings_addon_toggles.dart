@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/addons/settings_addon_catalog.dart';
+import 'package:forja/features/settings/addons/settings_addon_deactivate.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
@@ -98,11 +99,17 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
             .patch((s) => s.copyWith(useDebrid: val));
       case SettingsAddonId.iptv:
         await _toggleNavTab('iptv', val);
+        if (!val) {
+          await notifier.patch((s) => s.copyWith(iptvEpgEnabled: false));
+        }
       case SettingsAddonId.liveSports:
         await _toggleNavTab('live_matches', val);
       case SettingsAddonId.lan:
         await LanPrefs.instance.setLanServerEnabled(val);
         setState(() => _lanEnabled = val);
+    }
+    if (!val) {
+      await deactivateAddonChildren(widget.addonId);
     }
     schedulePreferencesSyncPush();
     ref.invalidate(settingsVisibilityProvider);

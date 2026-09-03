@@ -175,32 +175,54 @@ async function crack(slot, goat, bodyHex, embedOrigin) {
   WebAssembly.instantiateStreaming = async (_resp, imports) =>
     WebAssembly.instantiate(wasmBytes, imports)
 
-  const mod = await import(lockModuleUrl)
-  const wasmBuf = wasmBytes.buffer.slice(
-    wasmBytes.byteOffset,
-    wasmBytes.byteOffset + wasmBytes.byteLength,
-  )
-  const api = await mod.default({
-    module_or_path: wasmBuf,
-    fetch: fetchFn,
-  })
-  await api.init_wasm?.()
-
-  WebAssembly.instantiate = origInstantiate
-  delete WebAssembly.instantiateStreaming
-
   try {
-    await api.set_stream_jw(source, id, stream)
-  } catch (err) {
-    if (!m3u8) {
-      const msg =
-        (err && (err.stack || err.message)) ||
-        (err != null ? String(err) : 'set_stream_jw failed')
-      throw new Error(msg.trim() || 'set_stream_jw failed')
+    const mod = await import(lockModuleUrl)
+    const wasmBuf = wasmBytes.buffer.slice(
+      wasmBytes.byteOffset,
+      wasmBytes.byteOffset + wasmBytes.byteLength,
+    )
+    const api = await mod.default({
+      module_or_path: wasmBuf,
+      fetch: fetchFn,
+    })
+    await api.init_wasm?.()
+
+    // Keep instantiate/fetch patches through set_stream_jw — delta/echo emit
+    // the playlist from a wasm import fetch, not during init. Unpatching first
+    // makes admin (jw load in init) look fine and every later source fail.
+    try {
+      const ret = api.set_stream_jw(source, id, stream)
+      await Promise.race([
+        Promise.resolve(ret),
+        new Promise((resolve) => {
+          const iv = setInterval(() => {
+            if (m3u8) {
+              clearInterval(iv)
+              resolve(null)
+            }
+          }, 10)
+          setTimeout(() => {
+            clearInterval(iv)
+            resolve(null)
+          }, 8000)
+        }),
+      ])
+    } catch (err) {
+      if (!m3u8) {
+        const msg =
+          (err && (err.stack || err.message)) ||
+          (err != null ? String(err) : 'set_stream_jw failed')
+        throw new Error(msg.trim() || 'set_stream_jw failed')
+      }
     }
+    if (!m3u8) throw new Error('lock did not yield m3u8')
+    return m3u8
+  } finally {
+    WebAssembly.instantiate = origInstantiate
+    try {
+      delete WebAssembly.instantiateStreaming
+    } catch (_) {}
   }
-  if (!m3u8) throw new Error('lock did not yield m3u8')
-  return m3u8
 }
 
 const input = JSON.parse(readFileSync(0, 'utf8'))

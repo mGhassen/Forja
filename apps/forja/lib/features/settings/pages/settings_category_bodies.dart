@@ -17,7 +17,6 @@ import 'package:forja/features/settings/sections/settings_iptv_portals_section.d
 import 'package:forja/features/settings/sections/settings_mdblist_panel.dart';
 import 'package:forja/features/settings/sections/settings_forja_addons_play_toggles.dart';
 import 'package:forja/features/settings/sections/settings_forja_packs_section.dart';
-import 'package:forja/features/settings/sections/settings_playback_section.dart';
 import 'package:forja/features/settings/sections/settings_providers_section.dart';
 import 'package:forja/features/settings/sections/settings_search_torrents_section.dart';
 import 'package:forja/features/settings/sections/settings_simkl_panel.dart';
@@ -42,8 +41,6 @@ Widget buildSettingsCategoryBody(
   switch (categoryId) {
     case SettingsCategoryId.profile:
       return const SettingsProfileAccountPageBody();
-    case SettingsCategoryId.playback:
-      return SettingsPlaybackSection(visibility: visibility);
     case SettingsCategoryId.sources:
       return SettingsAddonsHost(visibility: visibility);
     case SettingsCategoryId.forjaPacks:
@@ -81,10 +78,10 @@ class SettingsCategoryPage extends ConsumerWidget {
         child: ShellTvLinearFocusScope(
           child: FocusTraversalGroup(
             policy: ReadingOrderTraversalPolicy(),
-            child: SettingsPageScaffold(
-              title: meta?.title ?? 'Settings',
-              adminOnly: meta?.adminOnly ?? false,
-              showBack: true,
+            child: SettingsAddonsAwareScaffold(
+              categoryTitle: meta?.title ?? 'Settings',
+              categoryAdminOnly: meta?.adminOnly ?? false,
+              categoryBack: true,
               scrollable: !(meta?.fillViewport ?? false),
               child: buildSettingsCategoryBody(categoryId, visibility),
             ),
