@@ -52,7 +52,7 @@ bool liveSportIdsMatch(String raw, String filterId) {
 bool isLive247Sport(String raw) => normalizeLiveSportId(raw) == '24-7';
 
 /// PPV `always_live` JSON - API sends `1`, `true`, or `"true"`.
-bool parsePpvAlwaysLive(dynamic value) {
+bool parseIframeCatalogAlwaysLive(dynamic value) {
   if (value == true || value == 1) return true;
   if (value is num) return value != 0;
   if (value is String) {
@@ -63,14 +63,14 @@ bool parsePpvAlwaysLive(dynamic value) {
 }
 
 /// PPV `viewers` is often a JSON string (`"99"`), not a number.
-int parsePpvViewers(dynamic value) {
+int parseLiveViewerCount(dynamic value) {
   if (value is num) return value.toInt();
   if (value is String) return int.tryParse(value.trim()) ?? 0;
   return 0;
 }
 
 /// PPV 24/7 playability - ignore expired windows when always-live / 24/7.
-bool ppvStreamIsAlwaysOn({
+bool iframeCatalogStreamIsAlwaysOn({
   required bool alwaysLive,
   required String categoryName,
   required int startsAt,
@@ -88,7 +88,7 @@ bool ppvStreamIsAlwaysOn({
 /// (PPV catalog is viewer-driven). A non-zero [viewers] count wins over schedule
 /// walls — lobby / early doors / device clock skew still show ● LIVE and the
 /// play affordance. Only drop viewer-driven live well past [endsAt].
-bool ppvStreamIsLive({
+bool iframeCatalogStreamIsLive({
   required bool isAlwaysOn,
   required String status,
   required int startsAt,

@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:forja/features/live_matches/live_embed_webview_proxy.dart';
 import 'package:forja/shared/webview/forja_headless_in_app_webview.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -35,8 +34,6 @@ class LiveGoatWebviewUnlock {
   /// Serialize unlocks + force a fresh lock.wasm page between cracks.
   Future<String?> _unlockChain = Future<String?>.value(null);
   int? _port;
-  LiveEmbedWebViewProxy? _playbackProxy;
-  var _proxyHandlersRegistered = false;
 
   Future<String?> unlock({
     required Map<String, dynamic> slot,
@@ -140,77 +137,6 @@ class LiveGoatWebviewUnlock {
     }
   }
 
-  /// Android/iOS engine playback: seed `#EXTM3U` via Chromium, serve loopback.
-  /// Exo/OkHttp re-GETs of `strmd.st` fail (403/503) without this handoff.
-  Future<String?> prepareStreamedPlaybackUrl(String m3u8Url) async {
-    if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) return null;
-    final target = m3u8Url.trim();
-    if (target.isEmpty || !target.toLowerCase().contains('strmd.st')) {
-      return null;
-    }
-
-    final ok = await _ensureReady();
-    final ctrl = _controller;
-    if (!ok || ctrl == null) return null;
-
-    await stopStreamedPlaybackProxy();
-    _ensureProxyHandlers(ctrl);
-
-    final proxy = LiveEmbedWebViewProxy();
-    proxy.attachController(ctrl);
-    _playbackProxy = proxy;
-
-    final body = await proxy.fetchPlaylistText(target);
-    if (body == null || !body.trimLeft().startsWith('#EXTM3U')) {
-      debugPrint('[LiveGoatWebview] playback seed failed for $target');
-      await stopStreamedPlaybackProxy();
-      return null;
-    }
-
-    try {
-      await proxy.start(playlistBody: body, playlistSourceUrl: target);
-      final local = proxy.playlistUrl;
-      if (local.isEmpty) {
-        await stopStreamedPlaybackProxy();
-        return null;
-      }
-      debugPrint('[LiveGoatWebview] playback proxy → $local');
-      return local;
-    } catch (e) {
-      debugPrint('[LiveGoatWebview] playback proxy start failed: $e');
-      await stopStreamedPlaybackProxy();
-      return null;
-    }
-  }
-
-  Future<void> stopStreamedPlaybackProxy() async {
-    final proxy = _playbackProxy;
-    _playbackProxy = null;
-    if (proxy != null) {
-      try {
-        await proxy.stop();
-      } catch (_) {}
-    }
-  }
-
-  void _ensureProxyHandlers(InAppWebViewController controller) {
-    if (_proxyHandlersRegistered) return;
-    _proxyHandlersRegistered = true;
-    controller.addJavaScriptHandler(
-      handlerName: 'liveProxyFetchResult',
-      callback: (args) {
-        if (args.length < 3) return null;
-        _playbackProxy?.onFetchResult(
-          args[0].toString(),
-          int.tryParse(args[1].toString()) ?? 0,
-          args[2].toString(),
-          args.length > 3 ? args[3].toString() : '',
-        );
-        return null;
-      },
-    );
-  }
-
   Future<void> _reloadRuntime() async {
     final c = _controller;
     final port = _port;
@@ -251,10 +177,6 @@ class LiveGoatWebviewUnlock {
     await _writeAsset(
       '$_assetRoot/webview/crack.js',
       File('${dir.path}/crack.js'),
-    );
-    await _writeAsset(
-      '$_assetRoot/webview/proxy_fetch.js',
-      File('${dir.path}/proxy_fetch.js'),
     );
   }
 
@@ -302,7 +224,6 @@ class LiveGoatWebviewUnlock {
       };
     })();
   </script>
-  <script src="$base/proxy_fetch.js?t=${DateTime.now().millisecondsSinceEpoch}"></script>
   <script type="module" src="$base/crack.js?t=${DateTime.now().millisecondsSinceEpoch}"></script>
 </body>
 </html>
@@ -345,7 +266,6 @@ class LiveGoatWebviewUnlock {
         ),
         onLoadStop: (c, _) {
           _controller = c;
-          _ensureProxyHandlers(c);
           final page = _pageLoad;
           if (page != null && !page.isCompleted) page.complete();
         },
@@ -438,10 +358,6 @@ class LiveGoatWebviewUnlock {
       File('${dir.path}/crack.js'),
     );
     await _writeAsset(
-      '$_assetRoot/webview/proxy_fetch.js',
-      File('${dir.path}/proxy_fetch.js'),
-    );
-    await _writeAsset(
       '$_assetRoot/vendor/lock.wasm',
       File('${dir.path}/vendor/lock.wasm'),
     );
@@ -486,13 +402,11 @@ class LiveGoatWebviewUnlock {
   }
 
   Future<void> dispose() async {
-    await stopStreamedPlaybackProxy();
     try {
       await _hw?.dispose();
     } catch (_) {}
     _hw = null;
     _controller = null;
-    _proxyHandlersRegistered = false;
     try {
       await _server?.close(force: true);
     } catch (_) {}

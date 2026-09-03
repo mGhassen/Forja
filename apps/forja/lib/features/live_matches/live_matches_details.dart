@@ -7,12 +7,12 @@ class _LiveMatchDetailsScreen extends ConsumerStatefulWidget {
   const _LiveMatchDetailsScreen({
     required this.host,
     required this.match,
-    this.ppvAnchor,
+    this.iframeCatalogAnchor,
   });
 
   final _LiveMatchesScreenState host;
   final _StreamedMatch match;
-  final _DamiTvStream? ppvAnchor;
+  final _IframeCatalogStream? iframeCatalogAnchor;
 
   @override
   ConsumerState<_LiveMatchDetailsScreen> createState() =>
@@ -184,7 +184,7 @@ class _LiveMatchDetailsScreenState
       }
       await host._fillMatchDetailsProviders(
         match: widget.match,
-        ppvAnchor: widget.ppvAnchor,
+        iframeCatalogAnchor: widget.iframeCatalogAnchor,
         controller: _providersCtrl,
         choices: _choices,
         isStale: () =>
@@ -1906,7 +1906,7 @@ class _LiveBroadcastChannelChipState extends State<_LiveBroadcastChannelChip> {
 Future<void> _openLiveMatchDetails({
   required _LiveMatchesScreenState host,
   required _StreamedMatch match,
-  _DamiTvStream? ppvAnchor,
+  _IframeCatalogStream? iframeCatalogAnchor,
 }) async {
   if (!host.mounted) return;
   await pushShellRoute(
@@ -1915,7 +1915,7 @@ Future<void> _openLiveMatchDetails({
       (_) => _LiveMatchDetailsScreen(
         host: host,
         match: match,
-        ppvAnchor: ppvAnchor,
+        iframeCatalogAnchor: iframeCatalogAnchor,
       ),
       settings: const RouteSettings(name: 'live_matches_detail'),
     ),

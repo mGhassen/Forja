@@ -38,7 +38,7 @@ mixin _LiveMatchesForjaLive
   _LiveMatchesScreenState get _s => this as _LiveMatchesScreenState;
 
   bool get _usesForjaLiveLazyCatalog =>
-      _s._server == _LiveMatchesServer.all ||
+      _s._server == _LiveMatchesServer.forjaLive ||
       _s._server == _LiveMatchesServer.forjaLive ||
       _s._server == _LiveMatchesServer.iptvSports;
 
@@ -140,7 +140,7 @@ mixin _LiveMatchesForjaLive
     if (scoped.isEmpty) return;
     final sources = _catalogFilteredGridSources();
     final hasEntries =
-        sources.streamed.isNotEmpty || sources.ppv.isNotEmpty;
+        sources.streamed.isNotEmpty || sources.iframeCatalog.isNotEmpty;
     final anyAttempted = scoped.any((e) => e.attempted);
     if (hasEntries || anyAttempted) {
       _setForjaLiveCatalogHydrating(false);
@@ -193,42 +193,42 @@ mixin _LiveMatchesForjaLive
     return list;
   }
 
-  ({List<_DamiTvStream> ppv, List<_StreamedMatch> streamed})
+  ({List<_IframeCatalogStream> iframeCatalog, List<_StreamedMatch> streamed})
   _catalogFilteredGridSources() {
     if (!_showForjaLiveCatalogChrome) {
       return (
-        ppv: (this as _LiveMatchesData)._filteredDamiTv,
+        iframeCatalog: (this as _LiveMatchesData)._filteredIframeCatalog,
         streamed: (this as _LiveMatchesData)._filteredStreamed,
       );
     }
     final filter = _activeForjaLiveCatalogFilter;
     if (filter.isEmpty) {
-      return (ppv: const [], streamed: const []);
+      return (iframeCatalog: const [], streamed: const []);
     }
     if (LiveMatchesEngine.cachedIsIframeCatalog(filter)) {
       return (
-        ppv: (this as _LiveMatchesData)._filteredDamiTv,
+        iframeCatalog: (this as _LiveMatchesData)._filteredIframeCatalog,
         streamed: [],
       );
     }
-    return (ppv: [], streamed: _catalogScopedStreamedMatches());
+    return (iframeCatalog: [], streamed: _catalogScopedStreamedMatches());
   }
 
   /// Same catalog scope as the grid, but without the active sport-chip filter.
-  ({List<_DamiTvStream> ppv, List<_StreamedMatch> streamed})
+  ({List<_IframeCatalogStream> iframeCatalog, List<_StreamedMatch> streamed})
   _catalogSourcesForSportTabs() {
     if (!_showForjaLiveCatalogChrome) {
-      return (ppv: _s._damiTvStreams, streamed: _s._streamedMatches);
+      return (iframeCatalog: _s._iframeCatalogStreams, streamed: _s._streamedMatches);
     }
     final filter = _activeForjaLiveCatalogFilter;
     if (filter.isEmpty) {
-      return (ppv: const [], streamed: const []);
+      return (iframeCatalog: const [], streamed: const []);
     }
     if (LiveMatchesEngine.cachedIsIframeCatalog(filter)) {
-      return (ppv: _s._damiTvStreams, streamed: []);
+      return (iframeCatalog: _s._iframeCatalogStreams, streamed: []);
     }
     return (
-      ppv: [],
+      iframeCatalog: [],
       streamed: _streamedMatchesForCatalogGrid(_s._streamedMatches, filter),
     );
   }
@@ -242,7 +242,7 @@ mixin _LiveMatchesForjaLive
     if (catalogFilter == null || catalogFilter == 'all') {
       _s._forjaLivePluginLoads = {};
       if (!clearMatches) return;
-      _s._damiTvStreams = [];
+      _s._iframeCatalogStreams = [];
       _s._streamedMatches = _s._streamedMatches
           .where((m) => !m.isForjaLive)
           .toList();
@@ -254,7 +254,7 @@ mixin _LiveMatchesForjaLive
       (id, _) => _catalogFilterMatches(id, catalogFilter),
     );
     if (!clearMatches) return;
-    _s._damiTvStreams = _s._damiTvStreams
+    _s._iframeCatalogStreams = _s._iframeCatalogStreams
         .where(
           (s) => !LiveMatchesEngine.cachedIsIframeCatalog(norm),
         )
@@ -588,12 +588,12 @@ mixin _LiveMatchesForjaLive
         final streams = rows
             .where((row) =>
                 _forjaLiveCatalogRowInHorizon(row, _s._scheduleHorizon))
-            .map(_damiTvFromPpvCatalogRow)
+            .map(_iframeCatalogFromRow)
             .where((s) => s.id.isNotEmpty && s.name.isNotEmpty)
             .toList();
         setState(() {
           _invalidateLiveMatchesGridCache();
-          _s._damiTvStreams = [..._s._damiTvStreams, ...streams];
+          _s._iframeCatalogStreams = [..._s._iframeCatalogStreams, ...streams];
           _s._forjaLivePluginLoads[filterId] =
               _s._forjaLivePluginLoads[filterId]!.copyWith(
             loading: false,
@@ -790,7 +790,7 @@ mixin _LiveMatchesForjaLive
     final applyWindow = (this as _LiveMatchesData)._applyTimeWindowFilter;
     final sources = _usesForjaLiveLazyCatalog
         ? _catalogSourcesForSportTabs()
-        : (ppv: _s._damiTvStreams, streamed: _s._streamedMatches);
+        : (iframeCatalog: _s._iframeCatalogStreams, streamed: _s._streamedMatches);
 
     void addCat(String raw) {
       final id = _normalizeSportId(raw);
@@ -798,12 +798,12 @@ mixin _LiveMatchesForjaLive
       cats.add(_Sport(id: id, name: _sportDisplayName(raw, id)));
     }
 
-    if (_s._server == _LiveMatchesServer.all ||
+    if (_s._server == _LiveMatchesServer.forjaLive ||
         _s._server == _LiveMatchesServer.forjaLive ||
         _s._server == _LiveMatchesServer.iptvSports) {
-      for (final s in sources.ppv) {
+      for (final s in sources.iframeCatalog) {
         if (applyWindow &&
-            !_damiTvInScheduleFilter(
+            !_iframeCatalogInScheduleFilter(
               s,
               status: _s._scheduleStatus,
               horizon: _s._scheduleHorizon,

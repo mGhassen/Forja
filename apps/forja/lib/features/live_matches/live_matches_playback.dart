@@ -10,7 +10,7 @@ mixin _LiveMatchesPlayback
 
   /// Stremio catalog/stream fallback — All, Stremio, Forja Sports only.
   bool get _offerStremioPlayFallback =>
-      _s._server == _LiveMatchesServer.all ||
+      _s._server == _LiveMatchesServer.forjaLive ||
       _s._server == _LiveMatchesServer.stremio ||
       _s._server == _LiveMatchesServer.iptvSports;
 
@@ -59,19 +59,19 @@ mixin _LiveMatchesPlayback
   }
 
   Future<void> _openMergedMatch(
-    _DamiTvStream ppv,
+    _IframeCatalogStream iframeCatalog,
     _StreamedMatch streamed,
   ) async {
     await _openLiveMatchDetails(
       host: _s,
       match: streamed,
-      ppvAnchor: ppv,
+      iframeCatalogAnchor: iframeCatalog,
     );
   }
 
   Future<void> _fillMatchDetailsProviders({
     required _StreamedMatch match,
-    _DamiTvStream? ppvAnchor,
+    _IframeCatalogStream? iframeCatalogAnchor,
     required _IptvSportsChannelsPanelController controller,
     required List<_StreamedStreamChoice> choices,
     required bool Function() isStale,
@@ -87,7 +87,7 @@ mixin _LiveMatchesPlayback
           controller: controller,
           choices: choices,
           isStale: isStale,
-          ppvAnchor: ppvAnchor,
+          iframeCatalogAnchor: iframeCatalogAnchor,
         );
       } catch (e, st) {
         debugPrint('[LiveMatches] Forja Live providers error: $e\n$st');
@@ -196,14 +196,14 @@ mixin _LiveMatchesPlayback
     required _IptvSportsChannelsPanelController controller,
     required List<_StreamedStreamChoice> choices,
     required bool Function() isStale,
-    _DamiTvStream? ppvAnchor,
+    _IframeCatalogStream? iframeCatalogAnchor,
   }) async {
     await LiveMatchesEngine.warmPluginMeta();
 
-    if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
-      choices.add(_iframeCatalogStreamChoice(ppvAnchor, match));
+    if (iframeCatalogAnchor != null && iframeCatalogAnchor.iframe.trim().isNotEmpty) {
+      choices.add(_iframeCatalogStreamChoice(iframeCatalogAnchor, match));
     } else {
-      _prependMatchingPpvChoices(match, choices);
+      _prependMatchingIframeCatalogChoices(match, choices);
     }
     _panelAppendChoices(controller, choices);
 
@@ -226,8 +226,8 @@ mixin _LiveMatchesPlayback
     if (isStale() || controller.isDisposed) return;
 
     _rememberEventStreamViewers(match, _sheetTotalViewers(choices));
-    if (ppvAnchor != null) {
-      _rememberPpvStreamViewers(ppvAnchor, _sheetTotalViewers(choices));
+    if (iframeCatalogAnchor != null) {
+      _rememberIframeCatalogViewers(iframeCatalogAnchor, _sheetTotalViewers(choices));
     }
   }
 
@@ -329,29 +329,29 @@ mixin _LiveMatchesPlayback
     setState(() => _s._eventStreamViewerTotals[key] = total);
   }
 
-  void _rememberPpvStreamViewers(_DamiTvStream ppv, int total) {
+  void _rememberIframeCatalogViewers(_IframeCatalogStream iframeCatalog, int total) {
     if (total <= 0 || !mounted) return;
-    final key = _liveEventViewerKeyFromPpv(ppv);
+    final key = _liveEventViewerKeyFromIframeCatalog(iframeCatalog);
     if (_s._eventStreamViewerTotals[key] == total) return;
     setState(() => _s._eventStreamViewerTotals[key] = total);
   }
 
-  void _prependMatchingPpvChoices(
+  void _prependMatchingIframeCatalogChoices(
     _StreamedMatch match,
     List<_StreamedStreamChoice> choices,
   ) {
     if (choices.any(_isIframeCatalogStreamChoice)) return;
-    for (final ppv in _s._damiTvStreams) {
-      if (!_samePpvStreamedMatch(ppv, match) || ppv.iframe.trim().isEmpty) {
+    for (final iframeRow in _s._iframeCatalogStreams) {
+      if (!_sameIframeAndScheduleEvent(iframeRow, match) || iframeRow.iframe.trim().isEmpty) {
         continue;
       }
-      choices.insert(0, _iframeCatalogStreamChoice(ppv, match));
+      choices.insert(0, _iframeCatalogStreamChoice(iframeRow, match));
       break;
     }
   }
 
   _StreamedStreamChoice _iframeCatalogStreamChoice(
-    _DamiTvStream iframeRow,
+    _IframeCatalogStream iframeRow,
     _StreamedMatch anchor,
   ) {
     final resolvePluginId = _iframeProviderLivePluginId();
@@ -550,9 +550,6 @@ mixin _LiveMatchesPlayback
         return true;
       }
     }
-    if (stream != null && _ppvEmbedRequiresWebView(stream.embedUrl)) {
-      return true;
-    }
     return false;
   }
 
@@ -629,7 +626,7 @@ mixin _LiveMatchesPlayback
       'livePluginId': match.livePluginId,
       'isForjaLive': match.isForjaLive,
       'isMut': match.isMut,
-      'isPpv': _isIframeCatalogMatch(match, stream),
+      'isIframeCatalog': _isIframeCatalogMatch(match, stream),
       'hd': stream.hd,
       'viewers': stream.viewers,
       'language': stream.language,
@@ -647,7 +644,7 @@ mixin _LiveMatchesPlayback
       poster: '',
       popular: false,
       airing: true,
-      viewers: parsePpvViewers(params['viewers']),
+      viewers: parseLiveViewerCount(params['viewers']),
       sources: const [],
       catalog: isForjaLive
           ? 'forja_live'
@@ -667,7 +664,7 @@ mixin _LiveMatchesPlayback
       hd: params['hd'] == true,
       embedUrl: embedUrl,
       source: (params['source'] ?? '').toString(),
-      viewers: parsePpvViewers(params['viewers']),
+      viewers: parseLiveViewerCount(params['viewers']),
     );
   }
 
@@ -745,7 +742,7 @@ mixin _LiveMatchesPlayback
     final out = <_StreamedStream>[];
     for (var i = 0; i < rows.length; i++) {
       final row = rows[i];
-      final rowViewers = parsePpvViewers(row['viewers']);
+      final rowViewers = parseLiveViewerCount(row['viewers']);
       final viewers = rowViewers > 0 ? rowViewers : catalogViewers;
       final fields = forjaLiveStreamFieldsFromRowName(
         (row['name'] ?? row['title'] ?? '').toString(),
@@ -1024,8 +1021,8 @@ mixin _LiveMatchesPlayback
     return '${months[dt.month - 1]} ${dt.day} $time';
   }
 
-  _StreamedMatch _streamedMatchFromPpv(_DamiTvStream s) => _StreamedMatch(
-    id: 'ppv:${s.id}',
+  _StreamedMatch _streamedMatchFromIframeCatalog(_IframeCatalogStream s) => _StreamedMatch(
+    id: 'iframe:${s.id}',
     title: s.name,
     category: s.categoryName,
     dateMs: s.startsAt > 0 ? s.startsAt * 1000 : 0,
@@ -1060,7 +1057,7 @@ mixin _LiveMatchesPlayback
         : _streamedReferer;
     if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
       final headers = iframeCatalog
-          ? _ppvEmbedStreamHeaders(embed)
+          ? _tokenizedEmbedStreamHeaders(embed)
           : _liveEmbedStreamHeaders(
               embed,
               catalogReferer: match.isForjaLive ? _forjaLiveCdnReferer(embed) : null,
@@ -1106,7 +1103,7 @@ mixin _LiveMatchesPlayback
     final headers = result.headers.isNotEmpty
         ? result.headers
         : iframeCatalog
-        ? _ppvEmbedStreamHeaders(embed.isNotEmpty ? embed : result.url)
+        ? _tokenizedEmbedStreamHeaders(embed.isNotEmpty ? embed : result.url)
         : _liveEmbedStreamHeaders(
             result.url,
             catalogReferer: catalogReferer,
@@ -1140,23 +1137,15 @@ mixin _LiveMatchesPlayback
     if (!mounted) return;
     _releaseLiveMatchesItemFocusIfHeld();
 
-    var playSources = sources;
-    var webViewProxy = false;
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      playSources = await _androidWebViewProxyEngineSources(sources);
-      webViewProxy = playSources.isNotEmpty &&
-          playSources.first.url != sources.first.url;
-    }
-
     try {
-      if (webViewProxy && PlatformInfo.isAndroidTv) {
+      if (PlatformInfo.isAndroidTv) {
         await PlatformChannel.releaseUnderlayPlatformViewFocus();
       }
       if (!mounted) return;
       await IptvPtPlayerScreen.open(
         context,
         IptvPtPlayerScreen(
-          sources: playSources,
+          sources: sources,
           title: title,
           subtitle: subtitle,
           titleTracksSource: true,
@@ -1165,53 +1154,7 @@ mixin _LiveMatchesPlayback
           liveEngineResolveSource: _resolveIptvPlaySourceFromCatalog,
         ),
       );
-    } finally {
-      if (webViewProxy) {
-        await LiveGoatWebviewUnlock.instance.stopStreamedPlaybackProxy();
-      }
-    }
-  }
-
-  /// Streamed engine resolve on Android: Exo cannot re-GET `strmd.st`.
-  Future<List<IptvPlaySource>> _androidWebViewProxyEngineSources(
-    List<IptvPlaySource> sources,
-  ) async {
-    if (sources.isEmpty) return sources;
-    final first = sources.first;
-    final playUrl = first.url.trim();
-    if (playUrl.isEmpty || playUrl.contains('127.0.0.1')) {
-      return sources;
-    }
-
-    var catalog = playUrl;
-    final uri = Uri.tryParse(playUrl);
-    if (uri != null && uri.path.contains('/hls-proxy')) {
-      catalog = (uri.queryParameters['url'] ?? '').trim();
-    }
-    if (catalog.isEmpty || !catalog.toLowerCase().contains('strmd.st')) {
-      return sources;
-    }
-
-    final local = await LiveGoatWebviewUnlock.instance.prepareStreamedPlaybackUrl(
-      catalog,
-    );
-    if (local == null || local.isEmpty) return sources;
-
-    final out = List<IptvPlaySource>.from(sources);
-    out[0] = IptvPlaySource(
-      url: local,
-      label: first.label,
-      detail: first.detail,
-      logoUrl: first.logoUrl,
-      streamId: first.streamId,
-      epgChannelId: first.epgChannelId,
-      headers: const {},
-      liveSourceKind: first.liveSourceKind,
-      liveProviderBadge: first.liveProviderBadge,
-      liveViewerCount: first.liveViewerCount,
-      liveStreamHd: first.liveStreamHd,
-    );
-    return out;
+    } catch (_) {}
   }
 
   List<IptvPlaySource> _liveEngineCatalogSources(
@@ -1311,64 +1254,18 @@ mixin _LiveMatchesPlayback
     _StreamedStream stream, {
     List<_StreamedStreamChoice>? allChoices,
   }) async {
-    if (await _tryEngineStreamedOpen(
+    await _tryEngineStreamedOpen(
       match,
       stream,
       allChoices: allChoices,
-    )) {
-      return;
-    }
-
-    final iframeCatalog = _isIframeCatalogMatch(match, stream);
-    if (iframeCatalog || match.isForjaLive) {
-      LiveMatchesEngine.engineResolveFailed();
-      return;
-    }
-
-    final catalogBase = match.isMut
-        ? _mutBase
-        : (match.isForjaLive
-              ? (Uri.tryParse(stream.embedUrl)?.origin ?? _streamedBase)
-              : _streamedBase);
-    final catalogReferer = match.isMut
-        ? _mutReferer
-        : (match.isForjaLive
-              ? await LiveMatchesEngine.pluginReferer(
-                  match.livePluginId,
-                  embedUrl: stream.embedUrl,
-                )
-              : _streamedReferer);
-    final proxyReferer = match.isForjaLive
-        ? _forjaLiveCdnReferer(stream.embedUrl)
-        : null;
-    final embedUrl = await liveEmbedResolveNestedPlayerUrl(
-      stream.embedUrl,
-      catalogReferer: catalogReferer,
-    );
-    if (!mounted) return;
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => _LiveMatchesEmbedPlayerScreen(
-          embedUrl: embedUrl,
-          title: match.title,
-          subtitle: match.categoryLabel,
-          badgeLabel: match.isForjaLive
-              ? 'Forja Live'
-              : (match.isMut ? 'Mut' : 'Streamed'),
-          referer: catalogReferer,
-          origin: catalogBase,
-          proxyReferer: proxyReferer,
-        ),
-      ),
     );
   }
 
-  Future<void> _openDamiTvStream(_DamiTvStream s) async {
+  Future<void> _openIframeCatalogStream(_IframeCatalogStream s) async {
     await _openLiveMatchDetails(
       host: _s,
-      match: _streamedMatchFromPpv(s),
-      ppvAnchor: s,
+      match: _streamedMatchFromIframeCatalog(s),
+      iframeCatalogAnchor: s,
     );
   }
 }

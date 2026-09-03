@@ -74,7 +74,7 @@ mixin _LiveMatchesData
     _LiveMatchesServer b,
   ) {
     bool shared(_LiveMatchesServer s) =>
-        s == _LiveMatchesServer.all ||
+        s == _LiveMatchesServer.forjaLive ||
         s == _LiveMatchesServer.forjaLive ||
         s == _LiveMatchesServer.iptvSports;
     return shared(a) && shared(b);
@@ -525,7 +525,7 @@ mixin _LiveMatchesData
       _s._sportFilter = 'all';
       _s._timelineAutoScrolled = false;
       if (!lazyCatalog) {
-        _s._damiTvStreams = [];
+        _s._iframeCatalogStreams = [];
         _s._streamedMatches = [];
         _s._espnGames = [];
         _s._sports = [];
@@ -550,12 +550,12 @@ mixin _LiveMatchesData
     final lazyCatalog =
         (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog;
     final forjaKeep = _s._streamedMatches.where((m) => m.isForjaLive).toList();
-    final damiKeep = lazyCatalog ? _s._damiTvStreams : const <_DamiTvStream>[];
+    final damiKeep = lazyCatalog ? _s._iframeCatalogStreams : const <_IframeCatalogStream>[];
     final oldCtrl = _s._tabController;
     setState(() {
       (this as _LiveMatchesForjaLive)._invalidateLiveMatchesGridCache();
       _s._tabController = null;
-      _s._damiTvStreams = lazyCatalog ? damiKeep : load.damiTvStreams;
+      _s._iframeCatalogStreams = lazyCatalog ? damiKeep : load.iframeCatalogStreams;
       _s._streamedMatches = lazyCatalog
           ? forjaKeep
           : [...load.streamedMatches, ...forjaKeep];
@@ -570,7 +570,7 @@ mixin _LiveMatchesData
     if (!mounted) return;
     if ((this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog &&
         (_s._streamedMatches.any((m) => m.isForjaLive) ||
-            _s._damiTvStreams.isNotEmpty)) {
+            _s._iframeCatalogStreams.isNotEmpty)) {
       (this as _LiveMatchesForjaLive)._rebuildSportTabsFromCurrentMatches();
     } else {
       final cats = load.sports;
@@ -593,7 +593,7 @@ mixin _LiveMatchesData
     markShellTabFresh();
     _scheduleRestoreRefreshFocus(clearWhenSettled: true);
     _scheduleRestoreLiveMatchesTvFocus();
-    if (_s._server == _LiveMatchesServer.all &&
+    if (_s._server == _LiveMatchesServer.forjaLive &&
         (this as _LiveMatchesForjaLive)._usesForjaLiveLazyCatalog) {
       unawaited((this as _LiveMatchesForjaLive)._applyScheduleEnrichMerge());
     }
@@ -608,8 +608,8 @@ mixin _LiveMatchesData
     });
   }
 
-  List<_DamiTvStream> get _filteredDamiTv {
-    var list = _s._damiTvStreams
+  List<_IframeCatalogStream> get _filteredIframeCatalog {
+    var list = _s._iframeCatalogStreams
         .where(
           (s) => _includeInSportFilter(
             category: s.categoryName,
@@ -621,7 +621,7 @@ mixin _LiveMatchesData
     if (_applyTimeWindowFilter) {
       list = list
           .where(
-            (s) => _damiTvInScheduleFilter(
+            (s) => _iframeCatalogInScheduleFilter(
               s,
               status: _s._scheduleStatus,
               horizon: _s._scheduleHorizon,
@@ -629,7 +629,7 @@ mixin _LiveMatchesData
           )
           .toList();
     }
-    return _sortDamiTvLiveFirst(list);
+    return _sortIframeCatalogLiveFirst(list);
   }
 
   List<_StreamedMatch> _streamedMatchesSportAndTimeFiltered() {

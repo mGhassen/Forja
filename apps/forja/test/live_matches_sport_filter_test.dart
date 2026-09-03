@@ -96,10 +96,10 @@ void main() {
     });
   });
 
-  group('ppvStreamIsAlwaysOn', () {
+  group('iframeCatalogStreamIsAlwaysOn', () {
     test('honors always_live even with expired start/end', () {
       expect(
-        ppvStreamIsAlwaysOn(
+        iframeCatalogStreamIsAlwaysOn(
           alwaysLive: true,
           categoryName: '24/7 Streams',
           startsAt: 1737176400,
@@ -112,7 +112,7 @@ void main() {
 
     test('honors 24/7 category without always_live flag', () {
       expect(
-        ppvStreamIsAlwaysOn(
+        iframeCatalogStreamIsAlwaysOn(
           alwaysLive: false,
           categoryName: '24/7 Streams',
           startsAt: 1737176400,
@@ -125,7 +125,7 @@ void main() {
 
     test('zero start/end with iframe is always-on', () {
       expect(
-        ppvStreamIsAlwaysOn(
+        iframeCatalogStreamIsAlwaysOn(
           alwaysLive: false,
           categoryName: 'Football',
           startsAt: 0,
@@ -138,7 +138,7 @@ void main() {
 
     test('scheduled non-24/7 match is not always-on', () {
       expect(
-        ppvStreamIsAlwaysOn(
+        iframeCatalogStreamIsAlwaysOn(
           alwaysLive: false,
           categoryName: 'Football',
           startsAt: 1737176400,
@@ -150,32 +150,32 @@ void main() {
     });
   });
 
-  group('parsePpvAlwaysLive', () {
+  group('parseIframeCatalogAlwaysLive', () {
     test('accepts 1, true, and string forms', () {
-      expect(parsePpvAlwaysLive(1), isTrue);
-      expect(parsePpvAlwaysLive(true), isTrue);
-      expect(parsePpvAlwaysLive('true'), isTrue);
-      expect(parsePpvAlwaysLive(0), isFalse);
-      expect(parsePpvAlwaysLive(null), isFalse);
+      expect(parseIframeCatalogAlwaysLive(1), isTrue);
+      expect(parseIframeCatalogAlwaysLive(true), isTrue);
+      expect(parseIframeCatalogAlwaysLive('true'), isTrue);
+      expect(parseIframeCatalogAlwaysLive(0), isFalse);
+      expect(parseIframeCatalogAlwaysLive(null), isFalse);
     });
   });
 
-  group('parsePpvViewers', () {
+  group('parseLiveViewerCount', () {
     test('parses numeric and string viewer counts from PPV API', () {
-      expect(parsePpvViewers(99), 99);
-      expect(parsePpvViewers('99'), 99);
-      expect(parsePpvViewers(''), 0);
-      expect(parsePpvViewers(null), 0);
+      expect(parseLiveViewerCount(99), 99);
+      expect(parseLiveViewerCount('99'), 99);
+      expect(parseLiveViewerCount(''), 0);
+      expect(parseLiveViewerCount(null), 0);
     });
   });
 
-  group('ppvStreamIsLive', () {
+  group('iframeCatalogStreamIsLive', () {
     const start = 1_000_000;
     const end = 1_010_000;
 
     test('true inside scheduled window', () {
       expect(
-        ppvStreamIsLive(
+        iframeCatalogStreamIsLive(
           isAlwaysOn: false,
           status: '',
           startsAt: start,
@@ -189,7 +189,7 @@ void main() {
 
     test('true with viewers after start within grace past ends_at', () {
       expect(
-        ppvStreamIsLive(
+        iframeCatalogStreamIsLive(
           isAlwaysOn: false,
           status: '',
           startsAt: start,
@@ -203,7 +203,7 @@ void main() {
 
     test('true with viewers shortly before start (clock skew / early doors)', () {
       expect(
-        ppvStreamIsLive(
+        iframeCatalogStreamIsLive(
           isAlwaysOn: false,
           status: '',
           startsAt: start,
@@ -217,7 +217,7 @@ void main() {
 
     test('true with viewers far before start (lobby / wrong device clock)', () {
       expect(
-        ppvStreamIsLive(
+        iframeCatalogStreamIsLive(
           isAlwaysOn: false,
           status: '',
           startsAt: start,
@@ -231,7 +231,7 @@ void main() {
 
     test('false with viewers long after ends_at grace', () {
       expect(
-        ppvStreamIsLive(
+        iframeCatalogStreamIsLive(
           isAlwaysOn: false,
           status: '',
           startsAt: start,

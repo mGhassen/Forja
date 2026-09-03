@@ -43,10 +43,10 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
   bool _timelinePinAiringMiscToNow(_LiveMatchGridEntry e) {
     if (!_gridEntryIsLive(e)) return false;
     final cats = switch (e) {
-      _LiveMatchGridEntryPpv(:final stream) => [stream.categoryName],
+      _LiveMatchGridEntryIframeCatalog(:final stream) => [stream.categoryName],
       _LiveMatchGridEntryStreamed(:final match) => [match.category],
-      _LiveMatchGridEntryMerged(:final ppv, :final streamed) => [
-        ppv.categoryName,
+      _LiveMatchGridEntryMerged(:final iframeCatalog, :final streamed) => [
+        iframeCatalog.categoryName,
         streamed.category,
       ],
     };
@@ -57,7 +57,7 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     if (_timelinePinAiringMiscToNow(e)) return nowMs;
     final t = switch (e) {
-      _LiveMatchGridEntryPpv(:final stream) =>
+      _LiveMatchGridEntryIframeCatalog(:final stream) =>
         stream.isAlwaysOn ? null : _epochToDate(stream.startsAt),
       _LiveMatchGridEntryStreamed(:final match) =>
         match.isAlwaysOn ? null : _epochToDate(match.dateMs),
@@ -70,14 +70,9 @@ mixin _LiveMatchesTimeline on ConsumerState<LiveMatchesScreen> {
   /// Entries for the current server + sport filter.
   List<_LiveMatchGridEntry> _timelineSourceEntries() {
     switch (_s._server) {
-      case _LiveMatchesServer.all:
+      case _LiveMatchesServer.forjaLive:
       case _LiveMatchesServer.iptvSports:
         return _s._allGridEntries;
-      case _LiveMatchesServer.ppv:
-        return _s._filteredDamiTv.map(_LiveMatchGridEntry.ppv).toList();
-      case _LiveMatchesServer.streamed:
-      case _LiveMatchesServer.mutStreams:
-      case _LiveMatchesServer.forjaLive:
       case _LiveMatchesServer.stremio:
         return _s._displayStreamedMatches
             .map(_LiveMatchGridEntry.streamed)

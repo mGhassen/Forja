@@ -246,8 +246,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     }
     final sources =
         (this as _LiveMatchesForjaLive)._catalogFilteredGridSources();
-    final merged = _mergePpvAndStreamedEntries(
-      ppv: sources.ppv,
+    final merged = _mergeIframeAndScheduleEntries(
+      iframeCatalog: sources.iframeCatalog,
       streamed: sources.streamed,
     );
     _s._cachedLiveMatchesGridEntries = merged;
@@ -267,7 +267,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
           loading: () {
             if (_s._server == _LiveMatchesServer.forjaLive ||
                 _s._server == _LiveMatchesServer.iptvSports ||
-                _s._server == _LiveMatchesServer.all) {
+                _s._server == _LiveMatchesServer.forjaLive) {
               return;
             }
             if (!_s._loading) setState(() => _s._loading = true);
@@ -541,8 +541,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     }
     if (_s._loading) {
       final showPartialCatalog = switch (_s._server) {
-        _LiveMatchesServer.all =>
-            _s._damiTvStreams.isNotEmpty ||
+        _LiveMatchesServer.forjaLive =>
+            _s._iframeCatalogStreams.isNotEmpty ||
             _s._streamedMatches.isNotEmpty ||
             (this as _LiveMatchesForjaLive)._forjaLiveCatalogBusy,
         _ => false,
@@ -567,7 +567,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     if (forjaLive._forjaLiveCatalogBusy &&
         _allGridEntries.isEmpty &&
         forjaLive._displayStreamedMatches.isEmpty &&
-        _s._damiTvStreams.isEmpty) {
+        _s._iframeCatalogStreams.isEmpty) {
       return _buildForjaLiveCatalogProgress();
     }
     // Leanback TV is cards-only (timeline D-pad is not supported).
@@ -577,17 +577,13 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
       return _s._buildTimelineBody();
     }
     if ((this as _LiveMatchesForjaLive)._showForjaLiveCatalogChrome ||
-        _s._server == _LiveMatchesServer.forjaLive) {
+        _s._server == _LiveMatchesServer.forjaLive ||
+        _s._server == _LiveMatchesServer.iptvSports) {
       return _buildAllBody();
     }
-    if (_s._server == _LiveMatchesServer.ppv) return _buildDamiTvBody();
-    if (_s._server == _LiveMatchesServer.streamed ||
-        _s._server == _LiveMatchesServer.mutStreams ||
-        _s._server == _LiveMatchesServer.forjaLive ||
-        _s._server == _LiveMatchesServer.stremio) {
+    if (_s._server == _LiveMatchesServer.stremio) {
       return _buildStreamedBody();
     }
-
     return const SizedBox.shrink();
   }
 
@@ -669,10 +665,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
     ShellTvZone tvZone = ShellTvZone.grid,
   }) {
     return switch (entry) {
-      _LiveMatchGridEntryPpv(:final stream) => _DamiTvMatchCard(
+      _LiveMatchGridEntryIframeCatalog(:final stream) => _IframeCatalogMatchCard(
         stream: stream,
         viewersOverride: _s._eventStreamViewerTotals[
-                _liveEventViewerKeyFromPpv(stream)] ??
+                _liveEventViewerKeyFromIframeCatalog(stream)] ??
             stream.viewers,
         gridIndex: i,
         gridColumns: crossCount,
@@ -683,7 +679,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         onHoverChanged: onHoverChanged,
         tvRowId: tvRowId,
         tvZone: tvZone,
-        onTap: () => _s._openDamiTvStream(stream),
+        onTap: () => _s._openIframeCatalogStream(stream),
       ),
       _LiveMatchGridEntryStreamed(:final match) => _StreamedMatchCard(
         match: match,
@@ -699,12 +695,12 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
         tvZone: tvZone,
         onTap: () => _s._openStreamedMatch(match),
       ),
-      _LiveMatchGridEntryMerged(:final ppv, :final streamed) =>
-        _DamiTvMatchCard(
-          stream: ppv,
+      _LiveMatchGridEntryMerged(:final iframeCatalog, :final streamed) =>
+        _IframeCatalogMatchCard(
+          stream: iframeCatalog,
           viewersOverride: _s._eventStreamViewerTotals[
                   _liveEventViewerKey(streamed)] ??
-              (ppv.viewers +
+              (iframeCatalog.viewers +
                   _catalogViewersForEvent(streamed, _s._streamedMatches)),
           gridIndex: i,
           gridColumns: crossCount,
@@ -715,8 +711,8 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
           onHoverChanged: onHoverChanged,
           tvRowId: tvRowId,
           tvZone: tvZone,
-          playableOverride: ppv.isLive || streamed.isLive,
-          onTap: () => _s._openMergedMatch(ppv, streamed),
+          playableOverride: iframeCatalog.isLive || streamed.isLive,
+          onTap: () => _s._openMergedMatch(iframeCatalog, streamed),
         ),
     };
   }
@@ -768,7 +764,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
             : forjaLive._showForjaLiveCatalogChrome
                 ? 'No matches for this catalog, sport, or schedule window — try another catalog, a wider time window, or Refresh'
                 : 'No Forja Live matches — enable plugins in Settings → Forja Sports → Live Forja plugins',
-        _ => 'No streams available',
       };
       return ShellErrorRetryPanel(
         message: emptyMsg,
@@ -826,70 +821,6 @@ mixin _LiveMatchesBuild on ConsumerState<LiveMatchesScreen> {
           rowId: _LiveMatchesScreenState._gridRowId,
           sortOrder: _gridSortOrder,
           itemCount: matches.length,
-          columns: crossCount,
-          onFocusUp: _s._gridFocusUp,
-          child: grid,
-        );
-      },
-    );
-  }
-
-  Widget _buildDamiTvBody() {
-    final streams = _s._filteredDamiTv;
-    if (streams.isEmpty) {
-      return ShellErrorRetryPanel(
-        message: 'No streams available',
-        onRetry: _s._load,
-        label: 'Refresh',
-        statusIcon: Icons.sports_rounded,
-        buttonIcon: Icons.refresh,
-      );
-    }
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = _matchCardWidth(context);
-        final cardHeight = _matchCardHeight(context);
-        final gap = _gridGap(context);
-        final crossCount = _gridColumns(context, constraints, cardWidth);
-        final tvFocus = _tvFocus(context);
-        if (tvFocus) {
-          _s._clearTimelineTvRows();
-        }
-        final grid = GridView.builder(
-          padding: _gridPadding(context),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossCount,
-            mainAxisExtent: cardHeight,
-            crossAxisSpacing: gap,
-            mainAxisSpacing: gap,
-          ),
-          itemCount: streams.length,
-          itemBuilder: (context, i) {
-            final edges = _gridRowEdgeCallbacks(
-              index: i,
-              crossCount: crossCount,
-              itemCount: streams.length,
-            );
-            return _DamiTvMatchCard(
-              stream: streams[i],
-              viewersOverride: _s._eventStreamViewerTotals[
-                      _liveEventViewerKeyFromPpv(streams[i])] ??
-                  streams[i].viewers,
-              gridIndex: i,
-              gridColumns: crossCount,
-              onUpEdge: _s._gridUpEdge(context, i, crossCount),
-              onLeftEdge: edges.onLeftEdge,
-              onRightEdge: edges.onRightEdge,
-              onTap: () => _s._openDamiTvStream(streams[i]),
-            );
-          },
-        );
-        if (!tvFocus) return grid;
-        return TvGrid(
-          tabId: _LiveMatchesScreenState._tabId,
-          rowId: _LiveMatchesScreenState._gridRowId,
-          sortOrder: _gridSortOrder,
-          itemCount: streams.length,
           columns: crossCount,
           onFocusUp: _s._gridFocusUp,
           child: grid,

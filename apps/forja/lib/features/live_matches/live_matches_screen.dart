@@ -1,15 +1,10 @@
 import 'dart:async';
-import 'dart:collection';
 import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb, ValueNotifier;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:forja/features/iptv/iptv_shell_style.dart';
 import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
@@ -17,31 +12,23 @@ import 'package:forja/features/iptv/screens/iptv_pt_player_screen.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/platform/platform_channel.dart';
 import 'package:forja/shared/platform/platform_info.dart';
-import 'package:forja/shared/widgets/desktop_window_chrome.dart';
-import 'package:forja/shared/widgets/desktop_window_geometry.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_mood_circle.dart';
 import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
-import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/webview/forja_webview.dart';
 import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
 import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
-import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
-import 'package:forja/shared/engine/live_goat_webview_unlock.dart';
 import 'package:forja/features/live_matches/live_matches_sport_filter.dart';
 import 'package:forja/features/live_matches/live_matches_team_parse.dart';
 import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.dart';
 import 'package:forja/features/live_matches/live_matches_engine.dart';
-import 'package:forja/features/live_matches/live_embed_nav.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/features/live_matches/live_embed_webview_proxy.dart';
 import 'package:forja/features/iptv/controller/iptv_controller.dart';
 import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/data/iptv_network.dart';
@@ -147,7 +134,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
 
   /// False until [_restoreServerPreference] finishes — avoids fetching before saved server applies.
   bool _serverHydrated = false;
-  List<_DamiTvStream> _damiTvStreams = [];
+  List<_IframeCatalogStream> _iframeCatalogStreams = [];
   List<_StreamedMatch> _streamedMatches = [];
 
   /// After a stream picker resolves, card badge shows this total (all streams).
@@ -268,7 +255,7 @@ class _LiveMatchesScreenState extends ConsumerState<LiveMatchesScreen>
         !(this as _LiveMatchesForjaLive)._forjaLiveAnyLoading) {
       (this as _LiveMatchesForjaLive)._kickForjaLiveLazyCatalog();
     } else if (_forjaLiveCatalogSettingsDirty &&
-        (_server == _LiveMatchesServer.all ||
+        (_server == _LiveMatchesServer.forjaLive ||
             _server == _LiveMatchesServer.forjaLive ||
             _server == _LiveMatchesServer.iptvSports)) {
       _forjaLiveCatalogSettingsDirty = false;
