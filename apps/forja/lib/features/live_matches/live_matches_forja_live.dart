@@ -361,9 +361,7 @@ mixin _LiveMatchesForjaLive
 
   /// Rows we already have for this fixture (opened card + pool) — no catalog HTTP.
   List<_StreamedMatch> _knownProviderEventMatches(_StreamedMatch match) {
-    return _eventMatchesForStreamResolve(match, _s._streamedMatches)
-        .map(_ensureProviderResolveMatch)
-        .toList();
+    return _providerResolveTargets(match, _s._streamedMatches);
   }
 
   void _ensureForjaLivePluginFilterValid() {

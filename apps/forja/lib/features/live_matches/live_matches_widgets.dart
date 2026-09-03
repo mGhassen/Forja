@@ -3939,14 +3939,8 @@ class _StreamedStreamSheet extends StatefulWidget {
   }
 
   static String serverLabelFor(_StreamedMatch match) {
-    if (LiveMatchesEngine.cachedIsNativeUnlock(match.livePluginId, 'ppv')) {
-      return _liveForjaPluginDisplayName(match.livePluginId);
-    }
     if (match.isMut) return 'Mut';
-    if (match.isForjaLive) {
-      return _liveForjaPluginDisplayName(match.livePluginId);
-    }
-    return 'Streamed';
+    return _liveForjaPluginDisplayName(match.livePluginId);
   }
 
   static String streamTitle(_StreamedStream stream, String sourceLabel) {

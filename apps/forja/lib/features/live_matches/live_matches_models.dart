@@ -897,6 +897,66 @@ List<_StreamedMatch> _eventMatchesForStreamResolve(
   return siblings;
 }
 
+/// Merge pool siblings into one resolve row — unique source refs only.
+_StreamedMatch _mergedProviderResolveTarget(
+  _StreamedMatch anchor,
+  List<_StreamedMatch> siblings,
+) {
+  final base = _ensureProviderResolveMatch(anchor);
+  final seenRefs = <String>{};
+  final refs = <_StreamedSourceRef>[];
+  final seenInline = <String>{};
+  final inline = <_StreamedStream>[];
+
+  for (final m in siblings) {
+    final row = _ensureProviderResolveMatch(m);
+    final resolvePluginId = LiveMatchesEngine.cachedProviderResolvePluginId(
+      row.livePluginId.isNotEmpty ? row.livePluginId : base.livePluginId,
+    );
+    for (final ref in row.sources) {
+      final key = '$resolvePluginId:${ref.source}:${ref.id}';
+      if (seenRefs.add(key)) refs.add(ref);
+    }
+    for (final stream in row.inlineStreams) {
+      final url = stream.embedUrl.trim();
+      if (url.isEmpty || !seenInline.add(url)) continue;
+      inline.add(stream);
+    }
+  }
+
+  return _StreamedMatch(
+    id: base.id,
+    title: base.title,
+    category: base.category,
+    dateMs: base.dateMs,
+    poster: base.poster,
+    popular: base.popular,
+    airing: base.airing,
+    viewers: base.viewers,
+    homeTeam: base.homeTeam,
+    homeBadge: base.homeBadge,
+    awayTeam: base.awayTeam,
+    awayBadge: base.awayBadge,
+    sources: refs,
+    inlineStreams: inline.isNotEmpty ? inline : base.inlineStreams,
+    catalog: base.catalog,
+    stremioBaseUrl: base.stremioBaseUrl,
+    stremioType: base.stremioType,
+    stremioAddonName: base.stremioAddonName,
+    sportMatchGame: base.sportMatchGame,
+    livePluginId: base.livePluginId,
+  );
+}
+
+/// Opened fixture + pool siblings collapsed to one row for Providers resolve.
+List<_StreamedMatch> _providerResolveTargets(
+  _StreamedMatch anchor,
+  List<_StreamedMatch> pool,
+) {
+  final siblings = _eventMatchesForStreamResolve(anchor, pool);
+  return [_mergedProviderResolveTarget(anchor, siblings)];
+}
+
 /// Catalog rows normally carry `sources[]`; synthesize when the grid row lost them.
 _StreamedMatch _ensureProviderResolveMatch(_StreamedMatch match) {
   if (match.sources.isNotEmpty || match.inlineStreams.isNotEmpty) {
@@ -2437,7 +2497,10 @@ Future<List<_Sport>> _fetchStreamedSports() async {
 
 Future<List<_StreamedMatch>> _fetchStreamedMatches() async {
   try {
-    final list = await LiveMatchesEngine.fetchServerCatalog('streamed');
+    final catalogs =
+        await LiveMatchesEngine.enabledScheduleStreamCatalogPlugins();
+    if (catalogs.isEmpty) return [];
+    final list = await LiveMatchesEngine.fetchCatalogPlugin(catalogs.first);
     return list
         .map((m) {
           try {
@@ -4302,19 +4365,23 @@ _DamiTvStream _damiTvFromPpvCatalogRow(Map<String, dynamic> row) {
 
 Future<List<_DamiTvStream>> _fetchDamiTvStreams() async {
   try {
-    // Warm host label cache from plugin config (no hardcoded domain).
-    await LiveMatchesEngine.ppvWebOrigin();
-    final list = await LiveMatchesEngine.fetchServerCatalog('ppv');
-    return list
-        .map((s) {
-          try {
-            return _damiTvFromPpvCatalogRow(s);
-          } catch (_) {
-            return null;
-          }
-        })
-        .whereType<_DamiTvStream>()
-        .toList();
+    await LiveMatchesEngine.warmPluginMeta();
+    await LiveMatchesEngine.warmIframeCatalogWebOrigin();
+    final catalogs = await LiveMatchesEngine.enabledIframeCatalogPlugins();
+    if (catalogs.isEmpty) return [];
+    final out = <_DamiTvStream>[];
+    final seen = <String>{};
+    for (final catalog in catalogs) {
+      final list = await LiveMatchesEngine.fetchCatalogPlugin(catalog);
+      for (final row in list) {
+        try {
+          final stream = _damiTvFromPpvCatalogRow(row);
+          if (stream.id.isEmpty || !seen.add(stream.id)) continue;
+          out.add(stream);
+        } catch (_) {}
+      }
+    }
+    return out;
   } catch (_) {
     return [];
   }
@@ -4385,8 +4452,9 @@ String _liveMatchesServerLabel(_LiveMatchesServer server) => switch (server) {
 String _liveMatchesServerSubtitle(_LiveMatchesServer server) =>
     switch (server) {
       _LiveMatchesServer.all => 'PPV · Streamed · Forja Live',
-      _LiveMatchesServer.ppv => LiveMatchesEngine.ppvHostLabelCached(),
-      _LiveMatchesServer.streamed => 'streamed.pk',
+      _LiveMatchesServer.ppv => LiveMatchesEngine.iframeCatalogHostLabelCached(),
+      _LiveMatchesServer.streamed =>
+        LiveMatchesEngine.scheduleStreamCatalogHostLabelCached(),
       _LiveMatchesServer.mutStreams => 'mut.st',
       _LiveMatchesServer.forjaLive => 'Engine live plugins',
       _LiveMatchesServer.stremio => 'Installed live addons',

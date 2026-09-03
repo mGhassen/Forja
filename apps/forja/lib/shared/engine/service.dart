@@ -51,6 +51,27 @@ class EngineService {
   int _catalogGeneration = 0;
   EngineRuntime? _liveCatalogRuntime;
 
+  static const _liveResolveMaxParallel = 2;
+  int _liveResolveInFlight = 0;
+  final List<Completer<void>> _liveResolveWaiters = [];
+
+  Future<void> _acquireLiveResolveSlot() async {
+    if (_liveResolveInFlight < _liveResolveMaxParallel) {
+      _liveResolveInFlight++;
+      return;
+    }
+    final waiter = Completer<void>();
+    _liveResolveWaiters.add(waiter);
+    await waiter.future;
+    _liveResolveInFlight++;
+  }
+
+  void _releaseLiveResolveSlot() {
+    _liveResolveInFlight--;
+    if (_liveResolveWaiters.isEmpty) return;
+    _liveResolveWaiters.removeAt(0).complete();
+  }
+
   static bool isLegacyAssetPack(String sourceUrl) =>
       PluginRegistry.isLegacyAssetPack(sourceUrl);
 
@@ -874,6 +895,23 @@ class EngineService {
     Duration timeout = const Duration(seconds: 45),
   }) async {
     if (action != 'resolve') return [];
+    await _acquireLiveResolveSlot();
+    try {
+      return await _runLivePluginResolve(
+        pluginId: pluginId,
+        params: params,
+        timeout: timeout,
+      );
+    } finally {
+      _releaseLiveResolveSlot();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _runLivePluginResolve({
+    required String pluginId,
+    Map<String, dynamic> params = const {},
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
     final gen = _extractGeneration;
     final packs = await listPacks();
     if (gen != _extractGeneration) return [];
@@ -906,7 +944,7 @@ class EngineService {
     final viaRust = await _runLiveEngineRustJs(
       plugin: plugin,
       config: config,
-      action: action,
+      action: 'resolve',
       params: params,
       timeout: timeout,
       gen: gen,
@@ -933,7 +971,7 @@ class EngineService {
       final raw = await runtime.extractLive(
         pluginId: plugin.id,
         pluginName: plugin.name,
-        action: action,
+        action: 'resolve',
         params: params,
         config: config,
         timeout: timeout,

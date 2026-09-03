@@ -377,35 +377,69 @@ class LiveMatchesEngine {
   static bool cachedScheduleFullDay(String pluginId) =>
       cachedScheduleHorizonMode(pluginId) == 'fullday';
 
-  /// PPV site origin — any plugin that declares `nativeUnlock: ppv`, else
-  /// legacy catalog/live ppv ids when packs still use those ids.
-  static Future<String> ppvWebOrigin() async {
+  /// Enabled catalog plugins with `catalogLayout: iframe` (embed grid bucket).
+  static Future<List<EnginePlugin>> enabledIframeCatalogPlugins() async {
     await warmPluginMeta();
-    for (final e in _nativeUnlockByPluginId.entries) {
-      if (e.value != 'ppv') continue;
+    final out = <EnginePlugin>[];
+    for (final p in await EngineService.instance.listEnabledLiveCatalogPlugins()) {
+      if (isIframeCatalogPlugin(p)) out.add(p);
+    }
+    return out;
+  }
+
+  /// Enabled schedule catalogs that link to a live resolve plugin (`providerId`).
+  static Future<List<EnginePlugin>> enabledScheduleStreamCatalogPlugins() async {
+    await warmPluginMeta();
+    final out = <EnginePlugin>[];
+    for (final p in await EngineService.instance.listEnabledLiveCatalogPlugins()) {
+      if (!isProviderStreamCatalog(p) || isIframeCatalogPlugin(p)) continue;
+      out.add(p);
+    }
+    return out;
+  }
+
+  /// Site origin for the first iframe-layout catalog (manifest `webOrigin` / `origin`).
+  static Future<String> iframeCatalogWebOrigin() async {
+    await warmPluginMeta();
+    for (final e in _catalogLayoutByPluginId.entries) {
+      if (e.value != 'iframe') continue;
       final o = await pluginWebOrigin(e.key);
       if (o.isNotEmpty) return o;
     }
-    return pluginWebOrigin('ppv');
+    return '';
   }
 
-  static Future<String> ppvWebReferer() async =>
-      _refererForOrigin(await ppvWebOrigin());
+  static Future<String> iframeCatalogWebReferer() async =>
+      _refererForOrigin(await iframeCatalogWebOrigin());
 
-  /// Sync host label after [ppvWebOrigin] has been resolved once.
-  static String ppvHostLabelCached() {
-    for (final e in _nativeUnlockByPluginId.entries) {
-      if (e.value != 'ppv') continue;
+  /// Sync label for iframe-layout catalogs after [warmPluginMeta].
+  static String iframeCatalogHostLabelCached() {
+    for (final e in _catalogLayoutByPluginId.entries) {
+      if (e.value != 'iframe') continue;
       final o = _originByPluginId[e.key];
       if (o != null && o.isNotEmpty) {
         return Uri.tryParse(o)?.host ?? cachedPluginDisplayName(e.key);
       }
+      final name = cachedPluginDisplayName(e.key);
+      if (name.isNotEmpty) return name;
     }
-    final o = _originByPluginId['ppv'];
-    if (o == null || o.isEmpty) {
-      return cachedPluginDisplayName('ppv');
+    return 'Live';
+  }
+
+  /// Sync label for the first linked schedule catalog (legacy server picker).
+  static String scheduleStreamCatalogHostLabelCached() {
+    for (final e in _catalogLayoutByPluginId.entries) {
+      if (e.value == 'iframe') continue;
+      final linked = _providerResolveIdByPluginId[e.key];
+      if (linked == null || linked.isEmpty) continue;
+      final o = _originByPluginId[e.key];
+      if (o != null && o.isNotEmpty) {
+        return Uri.tryParse(o)?.host ?? cachedPluginDisplayName(e.key);
+      }
+      final name = cachedPluginDisplayName(e.key);
+      if (name.isNotEmpty) return name;
     }
-    return Uri.tryParse(o)?.host ?? cachedPluginDisplayName('ppv');
+    return 'Schedule';
   }
 
   static Future<List<Map<String, dynamic>>> fetchCatalog() async {
@@ -430,85 +464,15 @@ class LiveMatchesEngine {
     }
   }
 
-  static Future<List<Map<String, dynamic>>> fetchServerCatalog(
-    String catalogId,
+  static Future<List<Map<String, dynamic>>> fetchCatalogPlugin(
+    EnginePlugin catalogPlugin,
   ) async {
-    await EngineService.instance.ensureOfficialInstalled();
-    final plugin = await EngineService.instance.pluginById(catalogId);
-    if (plugin == null || !plugin.supportsLiveCatalog) return [];
-    _cachePluginMeta(plugin);
-    return EngineService.instance.runLiveCatalog(catalogPlugin: plugin);
-  }
-
-  static Future<LiveEngineResolveResult?> _tryNativeUnlock({
-    required String unlock,
-    required String label,
-    required Map<String, dynamic> params,
-  }) async {
-    switch (unlock) {
-      case 'streamed':
-        final native = await LiveGoatUnlock.resolveStreamed(
-          embedUrl: (params['embedUrl'] ?? params['url'] ?? '').toString(),
-          source: (params['source'] ?? '').toString(),
-          matchId: (params['matchId'] ?? '').toString(),
-          stream: (params['stream'] ?? '1').toString(),
-        );
-        if (native == null) return null;
-        return LiveEngineResolveResult.playable(
-          url: native.url,
-          headers: native.headers,
-          label: label,
-        );
-      case 'ppv':
-        final embed = (params['embedUrl'] ?? params['iframe'] ?? '')
-            .toString()
-            .trim();
-        if (embed.isEmpty) return null;
-        final native = await LiveGoatUnlock.resolvePpv(embedUrl: embed);
-        if (native == null) return null;
-        return LiveEngineResolveResult.playable(
-          url: native.url,
-          headers: native.headers,
-          label: label,
-          directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(native.url),
-        );
-      case 'watchfooty':
-        final embed =
-            (params['embedUrl'] ?? params['url'] ?? params['iframe'] ?? '')
-                .toString()
-                .trim();
-        if (embed.isNotEmpty) {
-          final native = await LiveGoatUnlock.resolveWatchfootyEmbed(
-            embedUrl: embed,
-          );
-          if (native != null) {
-            return LiveEngineResolveResult.playable(
-              url: native.url,
-              headers: native.headers,
-              label: label,
-              directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(
-                native.url,
-              ),
-            );
-          }
-        }
-        final mid = (params['matchId'] ?? params['eventId'] ?? '')
-            .toString()
-            .trim()
-            .replaceFirst(RegExp(r'^wf_'), '');
-        if (mid.isEmpty) return null;
-        final rows = await LiveGoatUnlock.resolveWatchfootyMatch(matchId: mid);
-        if (rows.isEmpty) return null;
-        final first = rows.first;
-        return LiveEngineResolveResult.playable(
-          url: first.url,
-          headers: first.headers,
-          label: first.name.isNotEmpty ? first.name : label,
-          directPlayback: LiveGoatUnlock.preferDirectEnginePlayback(first.url),
-        );
-      default:
-        return null;
+    if (!catalogPlugin.supportsLiveCatalog &&
+        !catalogPlugin.supportsLiveBroadcast) {
+      return [];
     }
+    _cachePluginMeta(catalogPlugin);
+    return EngineService.instance.runLiveCatalog(catalogPlugin: catalogPlugin);
   }
 
   static Future<LiveEngineResolveResult?> resolve({
@@ -516,16 +480,6 @@ class LiveMatchesEngine {
     Map<String, dynamic> params = const {},
   }) async {
     final label = await pluginDisplayName(pluginId);
-    final unlock = await pluginNativeUnlock(pluginId);
-    if (unlock.isNotEmpty) {
-      final native = await _tryNativeUnlock(
-        unlock: unlock,
-        label: label,
-        params: params,
-      );
-      if (native != null) return native;
-    }
-
     final raw = await EngineService.instance.runLivePlugin(
       pluginId: pluginId,
       action: 'resolve',

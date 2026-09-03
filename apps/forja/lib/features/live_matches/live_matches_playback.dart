@@ -201,7 +201,7 @@ mixin _LiveMatchesPlayback
     await LiveMatchesEngine.warmPluginMeta();
 
     if (ppvAnchor != null && ppvAnchor.iframe.trim().isNotEmpty) {
-      choices.add(_ppvStreamChoice(ppvAnchor, match));
+      choices.add(_iframeCatalogStreamChoice(ppvAnchor, match));
     } else {
       _prependMatchingPpvChoices(match, choices);
     }
@@ -217,6 +217,7 @@ mixin _LiveMatchesPlayback
         isStale: isStale,
         onPartial: (batch) {
           if (isStale() || controller.isDisposed) return;
+          if (batch.isEmpty) return;
           choices.addAll(batch);
           _panelAppendChoices(controller, batch);
         },
@@ -339,46 +340,52 @@ mixin _LiveMatchesPlayback
     _StreamedMatch match,
     List<_StreamedStreamChoice> choices,
   ) {
-    if (choices.any(_isPpvStreamChoice)) return;
+    if (choices.any(_isIframeCatalogStreamChoice)) return;
     for (final ppv in _s._damiTvStreams) {
       if (!_samePpvStreamedMatch(ppv, match) || ppv.iframe.trim().isEmpty) {
         continue;
       }
-      choices.insert(0, _ppvStreamChoice(ppv, match));
+      choices.insert(0, _iframeCatalogStreamChoice(ppv, match));
       break;
     }
   }
 
-  _StreamedStreamChoice _ppvStreamChoice(
-    _DamiTvStream ppv,
+  _StreamedStreamChoice _iframeCatalogStreamChoice(
+    _DamiTvStream iframeRow,
     _StreamedMatch anchor,
   ) {
+    final resolvePluginId = _iframeProviderLivePluginId();
+    final sourceToken = resolvePluginId.isNotEmpty
+        ? LiveMatchesEngine.cachedResolveSourceToken(resolvePluginId)
+        : '';
     return _StreamedStreamChoice(
       catalogMatch: _StreamedMatch(
-        id: 'ppv:${ppv.id}',
-        title: anchor.title.isNotEmpty ? anchor.title : ppv.name,
-        category: ppv.categoryName,
-        dateMs: ppv.startsAt > 0 ? ppv.startsAt * 1000 : anchor.dateMs,
-        poster: ppv.poster.isNotEmpty ? ppv.poster : anchor.poster,
+        id: 'iframe:${iframeRow.id}',
+        title: anchor.title.isNotEmpty ? anchor.title : iframeRow.name,
+        category: iframeRow.categoryName,
+        dateMs: iframeRow.startsAt > 0
+            ? iframeRow.startsAt * 1000
+            : anchor.dateMs,
+        poster: iframeRow.poster.isNotEmpty ? iframeRow.poster : anchor.poster,
         popular: false,
-        airing: ppv.isLive,
-        viewers: ppv.viewers,
-        homeTeam: ppv.homeTeam ?? anchor.homeTeam,
-        homeBadge: ppv.homeBadge ?? anchor.homeBadge,
-        awayTeam: ppv.awayTeam ?? anchor.awayTeam,
-        awayBadge: ppv.awayBadge ?? anchor.awayBadge,
+        airing: iframeRow.isLive,
+        viewers: iframeRow.viewers,
+        homeTeam: iframeRow.homeTeam ?? anchor.homeTeam,
+        homeBadge: iframeRow.homeBadge ?? anchor.homeBadge,
+        awayTeam: iframeRow.awayTeam ?? anchor.awayTeam,
+        awayBadge: iframeRow.awayBadge ?? anchor.awayBadge,
         sources: const [],
         catalog: 'forja_live',
-        livePluginId: _iframeProviderLivePluginId(),
+        livePluginId: resolvePluginId,
       ),
       stream: _StreamedStream(
-        id: ppv.id,
+        id: iframeRow.id,
         streamNo: 1,
         language: '',
         hd: false,
-        embedUrl: ppv.iframe,
-        source: 'ppv',
-        viewers: ppv.viewers,
+        embedUrl: iframeRow.iframe,
+        source: sourceToken,
+        viewers: iframeRow.viewers,
       ),
     );
   }
@@ -530,12 +537,18 @@ mixin _LiveMatchesPlayback
     return choices;
   }
 
-  bool _isPpvMatch(_StreamedMatch match, [_StreamedStream? stream]) {
-    if (stream != null && stream.source.trim().toLowerCase() == 'ppv') {
+  bool _isIframeCatalogMatch(_StreamedMatch match, [_StreamedStream? stream]) {
+    if (LiveMatchesEngine.cachedIsIframeCatalog(match.livePluginId)) {
       return true;
     }
-    if (LiveMatchesEngine.cachedIsNativeUnlock(match.livePluginId, 'ppv')) {
-      return true;
+    if (stream != null) {
+      final token = LiveMatchesEngine.cachedResolveSourceToken(
+        match.livePluginId,
+      );
+      if (token.isNotEmpty &&
+          stream.source.trim().toLowerCase() == token.toLowerCase()) {
+        return true;
+      }
     }
     if (stream != null && _ppvEmbedRequiresWebView(stream.embedUrl)) {
       return true;
@@ -546,8 +559,8 @@ mixin _LiveMatchesPlayback
   String _iframeProviderLivePluginId() =>
       LiveMatchesEngine.cachedIframeProviderResolvePluginId() ?? '';
 
-  bool _isPpvStreamChoice(_StreamedStreamChoice choice) {
-    return _isPpvMatch(choice.catalogMatch, choice.stream);
+  bool _isIframeCatalogStreamChoice(_StreamedStreamChoice choice) {
+    return _isIframeCatalogMatch(choice.catalogMatch, choice.stream);
   }
 
   Future<void> _openResolvedStreamChoice(
@@ -616,7 +629,7 @@ mixin _LiveMatchesPlayback
       'livePluginId': match.livePluginId,
       'isForjaLive': match.isForjaLive,
       'isMut': match.isMut,
-      'isPpv': _isPpvMatch(match, stream),
+      'isPpv': _isIframeCatalogMatch(match, stream),
       'hd': stream.hd,
       'viewers': stream.viewers,
       'language': stream.language,
@@ -1035,9 +1048,9 @@ mixin _LiveMatchesPlayback
     final embed = stream.embedUrl.trim();
     if (embed.isEmpty) return null;
 
-    final isPpv = _isPpvMatch(match, stream);
-    final catalogReferer = isPpv
-        ? await LiveMatchesEngine.ppvWebReferer()
+    final iframeCatalog = _isIframeCatalogMatch(match, stream);
+    final catalogReferer = iframeCatalog
+        ? await LiveMatchesEngine.iframeCatalogWebReferer()
         : match.isForjaLive
         ? (_forjaLiveCdnReferer(embed) ??
               await LiveMatchesEngine.pluginReferer(
@@ -1046,7 +1059,7 @@ mixin _LiveMatchesPlayback
               ))
         : _streamedReferer;
     if (RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
-      final headers = isPpv
+      final headers = iframeCatalog
           ? _ppvEmbedStreamHeaders(embed)
           : _liveEmbedStreamHeaders(
               embed,
@@ -1071,7 +1084,7 @@ mixin _LiveMatchesPlayback
     var pluginId = LiveMatchesEngine.cachedProviderResolvePluginId(
       match.livePluginId,
     );
-    if (pluginId.isEmpty && isPpv) {
+    if (pluginId.isEmpty && iframeCatalog) {
       pluginId = _iframeProviderLivePluginId();
     }
     if (pluginId.isEmpty) return null;
@@ -1092,7 +1105,7 @@ mixin _LiveMatchesPlayback
 
     final headers = result.headers.isNotEmpty
         ? result.headers
-        : isPpv
+        : iframeCatalog
         ? _ppvEmbedStreamHeaders(embed.isNotEmpty ? embed : result.url)
         : _liveEmbedStreamHeaders(
             result.url,
@@ -1306,8 +1319,8 @@ mixin _LiveMatchesPlayback
       return;
     }
 
-    final isPpv = _isPpvMatch(match, stream);
-    if (isPpv || match.isForjaLive) {
+    final iframeCatalog = _isIframeCatalogMatch(match, stream);
+    if (iframeCatalog || match.isForjaLive) {
       LiveMatchesEngine.engineResolveFailed();
       return;
     }
