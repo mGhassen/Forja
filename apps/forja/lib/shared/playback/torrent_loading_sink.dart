@@ -17,12 +17,8 @@ TorrentLoadingStatus initialTorrentResolveStatus({
   required String debridService,
 }) {
   return torrentLoadingStatusGeneric(
-    useDebrid && debridService != 'None'
-        ? playbackResolveLabel(
-            useDebrid: useDebrid,
-            debridService: debridService,
-          )
-        : 'Preparing playback…',
+    playbackResolveLabel(useDebrid: useDebrid, debridService: debridService),
+    hint: playbackSourceHint(useDebrid: useDebrid, debridService: debridService),
   );
 }
 
@@ -31,14 +27,12 @@ TorrentLoadingStatus initialStremioTorrentResolveStatus({
   required bool useDebrid,
   required String debridService,
 }) {
-  final localEngine = !useDebrid || debridService == 'None';
   return torrentLoadingStatusGeneric(
-    localEngine
-        ? 'Preparing playback…'
-        : stremioResolveLoadingMessage(
-            profile: profile,
-            useDebrid: useDebrid,
-            debridService: debridService,
-          ),
+    stremioResolveLoadingMessage(
+      profile: profile,
+      useDebrid: useDebrid,
+      debridService: debridService,
+    ),
+    hint: playbackSourceHint(useDebrid: useDebrid, debridService: debridService),
   );
 }

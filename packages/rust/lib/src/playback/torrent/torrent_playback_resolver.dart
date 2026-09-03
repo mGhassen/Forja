@@ -50,10 +50,6 @@ class TorrentLoadingStatus {
     this.totalPeers,
     this.speedLabel,
     this.bufferLabel,
-    this.headReadBytes,
-    this.headTargetBytes,
-    this.startEtaLabel,
-    this.headWaitStalled = false,
   });
 
   final String headline;
@@ -62,52 +58,88 @@ class TorrentLoadingStatus {
   final int? totalPeers;
   final String? speedLabel;
   final String? bufferLabel;
-  final int? headReadBytes;
-  final int? headTargetBytes;
-  final String? startEtaLabel;
-  /// Swarm is downloading but contiguous bytes at file start are not ready yet.
-  final bool headWaitStalled;
-
-  bool get hasHeadProgress =>
-      headReadBytes != null &&
-      headTargetBytes != null &&
-      headTargetBytes! > 0;
-
-  double get headProgressFraction {
-    if (!hasHeadProgress) return 0;
-    return (headReadBytes! / headTargetBytes!).clamp(0.0, 1.0);
-  }
-
-  String? get headProgressLabel {
-    if (!hasHeadProgress) return null;
-    final read = TorrentStreamService.formatStorageBytes(headReadBytes!);
-    final target = TorrentStreamService.formatStorageBytes(headTargetBytes!);
-    return '$read / $target';
-  }
 
   bool get hasStats =>
-      activePeers != null ||
-      speedLabel != null ||
-      bufferLabel != null ||
-      hasHeadProgress;
+      activePeers != null || speedLabel != null || bufferLabel != null;
 
   /// Flat line for callers that still expect a single string.
-  String get displayMessage => headline;
+  String get displayMessage {
+    final headline = this.headline;
+    if (!hasStats) return headline;
+    final parts = <String>[];
+    if (activePeers != null) {
+      final peers = activePeers!;
+      final seen = totalPeers;
+      if (seen != null && seen > peers && seen > 0) {
+        parts.add('$peers/$seen peers');
+      } else {
+        parts.add('$peers peers');
+      }
+    }
+    if (speedLabel != null) parts.add(speedLabel!);
+    if (bufferLabel != null) {
+      parts.add('$bufferLabel cached');
+    } else if (activePeers != null && activePeers! > 0) {
+      parts.add('buffering…');
+    }
+    if (parts.isEmpty) return headline;
+    return '$headline · ${parts.join(' · ')}';
+  }
 }
 
-String _torrentLoadingHeadline(TorrentStats? stats) {
-  if (stats == null) return 'Preparing playback…';
-  if (stats.hasHeadProgress && stats.headProgressFraction >= 1.0) {
-    return 'Opening player…';
+String? _torrentPlaybackWaitHint(TorrentStats stats) {
+  if (stats.hasHeadProgress) {
+    return 'Please wait — playback will open automatically when ready.';
   }
-  if (stats.activePeers <= 0 && stats.totalPeers <= 0) {
-    return 'Finding peers…';
+  if (stats.loadedBytes <= 0 && stats.downloadMbps < 0.001) {
+    return 'Connected — waiting for the first pieces.';
   }
-  return 'Preparing playback…';
+  return 'Please wait while we get playback ready.';
 }
 
 TorrentLoadingStatus torrentLoadingStatusFromStats(TorrentStats? stats) {
-  return TorrentLoadingStatus(headline: _torrentLoadingHeadline(stats));
+  if (stats == null) {
+    return const TorrentLoadingStatus(
+      headline: 'Finding peers…',
+      hint: 'Please wait — torrents need peers before playback can start.',
+    );
+  }
+  if (stats.activePeers <= 0) {
+    if (stats.totalPeers > 0) {
+      return TorrentLoadingStatus(
+        headline: 'Looking for peers…',
+        hint: 'Please wait — connecting to peers in the swarm.',
+        totalPeers: stats.totalPeers,
+        activePeers: 0,
+      );
+    }
+    return const TorrentLoadingStatus(
+      headline: 'Finding peers…',
+      hint: 'Please wait — torrents need peers before playback can start.',
+    );
+  }
+
+  final preparingHead = stats.hasHeadProgress;
+  final headline = preparingHead
+      ? (stats.headProgressFraction >= 1.0
+          ? 'Opening player…'
+          : 'Preparing playback…')
+      : stats.loadedBytes <= 0 && stats.downloadMbps < 0.001
+          ? 'Connecting to peers…'
+          : stats.downloadMbps >= 0.001
+              ? 'Downloading from peers…'
+              : 'Buffering playback…';
+
+  return TorrentLoadingStatus(
+    headline: headline,
+    hint: _torrentPlaybackWaitHint(stats),
+    activePeers: stats.activePeers,
+    totalPeers: stats.totalPeers,
+    speedLabel: stats.downloadMbps > 0.001 ? stats.speedLabel : null,
+    bufferLabel: stats.loadedBytes > 0
+        ? TorrentStreamService.formatStorageBytes(stats.loadedBytes)
+        : null,
+  );
 }
 
 TorrentLoadingStatus torrentLoadingStatusGeneric(String headline, {String? hint}) {
@@ -116,11 +148,47 @@ TorrentLoadingStatus torrentLoadingStatusGeneric(String headline, {String? hint}
 
 /// Human headline while the local engine finds peers / buffers the stream head.
 String torrentEngineLoadingHeadline(TorrentStats? stats) {
-  return _torrentLoadingHeadline(stats);
+  if (stats == null) return 'Finding peers…';
+  if (stats.activePeers <= 0) {
+    if (stats.totalPeers > 0) {
+      return 'Looking for peers… (${stats.totalPeers} seen)';
+    }
+    return 'Finding peers…';
+  }
+  if (stats.loadedBytes <= 0 && stats.downloadMbps < 0.001) {
+    return 'Connecting to peers…';
+  }
+  if (stats.hasHeadProgress) {
+    return stats.headProgressFraction >= 1.0
+        ? 'Opening player…'
+        : 'Preparing playback…';
+  }
+  if (stats.downloadMbps >= 0.001) {
+    return 'Downloading from peers…';
+  }
+  return 'Buffering playback…';
 }
 
 /// Live peer / speed / buffer line shown under [torrentEngineLoadingHeadline].
-String? torrentEngineLoadingStatsDetail(TorrentStats? stats) => null;
+String? torrentEngineLoadingStatsDetail(TorrentStats? stats) {
+  if (stats == null || stats.activePeers <= 0) return null;
+  final peers = stats.activePeers;
+  final seen = stats.totalPeers;
+  final peerLabel =
+      seen > peers && seen > 0 ? '$peers/$seen peers' : '$peers peers';
+  final parts = <String>[peerLabel];
+  if (stats.downloadMbps > 0.001) {
+    parts.add(stats.speedLabel);
+  }
+  if (stats.loadedBytes > 0) {
+    parts.add(
+      '${TorrentStreamService.formatStorageBytes(stats.loadedBytes)} buffered',
+    );
+  } else {
+    parts.add('buffering…');
+  }
+  return parts.join(' · ');
+}
 
 /// Loading copy while the local engine finds peers / buffers the stream head.
 String formatTorrentEngineLoadingMessage(TorrentStats? stats) {
