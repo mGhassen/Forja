@@ -9,6 +9,7 @@ import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/catalog/shell/catalog_shell.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
+import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shell/adapters/shell_host.dart';
@@ -528,13 +529,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   void _openPluginsFromEmptyState() {
-    final ctx = _shellScopedContext;
-    if (ctx == null || !ctx.mounted) return;
-    final tv = ShellScope.metricsOf(ctx).usesTvDensity;
-    ShellBus.openSettings(
-      categoryId: SettingsCategoryId.forjaPacks,
-      enterDetail: tv,
-    );
+    unawaited(PluginInstallCoordinator.instance.requestBatchInstallPrompt());
   }
 
   Widget _shellTabFor(String id) {

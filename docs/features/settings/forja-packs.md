@@ -19,6 +19,8 @@
 
 `forja://install?manifest=…` deep links open **Forja Packs** and ask before installing.
 
+When **two or more** profile packs still need downloading on this device (for example after **Batch add to Forja** on the web portal), Forja shows a **batch install** dialog — pick which packs to pull now. **Install plugins** on the get-started screen opens the same picker.
+
 ## Related
 
 - [Sources settings](torrent-settings.md) — Forja addons (torrent / Stremio / Nuvio)

@@ -3,12 +3,14 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/models.dart';
+import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/service.dart';
 import 'package:forja/shared/nuvio/nuvio_service.dart';
 import 'package:forja/shared/playback/torrent_js_search.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
+import 'package:forja/shell/shell_bus.dart';
 
 /// User-visible install phase for Settings + shell banner.
 enum PluginInstallPhase { loading, installing, ready }
@@ -327,6 +329,19 @@ class PluginInstallCoordinator {
       }
     }
 
+    if (jobs.length >= 2) {
+      final prompt = await buildBatchInstallPrompt();
+      final pending =
+          prompt?.candidates.where((c) => !c.alreadyInstalled).length ?? 0;
+      if (pending >= 2) {
+        ShellBus.pendingPluginBatchInstall.value = prompt;
+        jobs.clear();
+        debugPrint(
+          '[PluginInstall] deferred $pending pack(s) — batch prompt',
+        );
+      }
+    }
+
     var completed = 0;
     final total = jobs.length + (includeNuvio ? 1 : 0);
     debugPrint(
@@ -395,6 +410,33 @@ class PluginInstallCoordinator {
     if (notifyUpdates) {
       unawaited(notifyPendingUpdatesIfAny());
     }
+  }
+
+  /// Build a batch picker from profile pack rows (installed + pending disk).
+  Future<PluginBatchInstallPrompt?> buildBatchInstallPrompt() async {
+    final registry = PluginRegistry.instance;
+    final packs = await registry.listPacksRaw();
+    final candidates = <PluginInstallCandidate>[];
+    for (final pack in packs) {
+      if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
+      final needs = await registry.packNeedsDiskInstall(pack);
+      candidates.add(
+        PluginInstallCandidate(
+          manifestUrl: pack.sourceUrl,
+          displayName: pack.name,
+          alreadyInstalled: !needs,
+        ),
+      );
+    }
+    if (candidates.isEmpty) return null;
+    return PluginBatchInstallPrompt(candidates: candidates);
+  }
+
+  /// Open the global batch install picker (empty-state CTA, manual retry).
+  Future<void> requestBatchInstallPrompt() async {
+    final prompt = await buildBatchInstallPrompt();
+    if (prompt == null) return;
+    ShellBus.pendingPluginBatchInstall.value = prompt;
   }
 
   void _setProgress(PluginInstallProgress? value) {

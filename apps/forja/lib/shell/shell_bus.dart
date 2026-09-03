@@ -129,6 +129,16 @@ class ShellBus {
     return value;
   }
 
+  /// Profile / sync batch install — user picks which packs to download now.
+  static final ValueNotifier<PluginBatchInstallPrompt?> pendingPluginBatchInstall =
+      ValueNotifier<PluginBatchInstallPrompt?>(null);
+
+  static PluginBatchInstallPrompt? takePendingPluginBatchInstall() {
+    final value = pendingPluginBatchInstall.value;
+    pendingPluginBatchInstall.value = null;
+    return value;
+  }
+
   /// Last Settings hub category. Survives tab remount / resume sync — do not
   /// reset to Profile on cloud pull.
   static final ValueNotifier<String> settingsHubCategoryId =
