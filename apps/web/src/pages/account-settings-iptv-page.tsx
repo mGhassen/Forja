@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Copy,
   Download,
+  Minus,
   Pencil,
   Plus,
   Search,
@@ -153,6 +154,41 @@ function ListPager({
 
 function rowIdentity(row: IptvPortalRow): string {
   return row.portalId || portalKey(row)
+}
+
+function ThemeCheckbox({
+  checked,
+  indeterminate = false,
+  label,
+  onChange,
+}: {
+  checked: boolean
+  indeterminate?: boolean
+  label: string
+  onChange: () => void
+}) {
+  const on = checked || indeterminate
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={indeterminate ? 'mixed' : checked}
+      aria-label={label}
+      onClick={onChange}
+      className={cn(
+        'flex size-5 shrink-0 items-center justify-center rounded border transition-colors',
+        on
+          ? 'border-forja-green bg-forja-green text-[#0B0A0A]'
+          : 'border-white/25 bg-transparent hover:border-forja-green/60',
+      )}
+    >
+      {indeterminate ? (
+        <Minus className="size-3 stroke-3" />
+      ) : checked ? (
+        <Check className="size-3 stroke-3" />
+      ) : null}
+    </button>
+  )
 }
 
 type DraftState = {
@@ -804,14 +840,10 @@ export function AccountSettingsIptvPage() {
               ) : null}
 
               <div className="flex items-center gap-2 border-b border-forja-border bg-forja-elevated/40 px-3 py-2">
-                <input
-                  type="checkbox"
-                  className="size-4 shrink-0 accent-forja-green"
+                <ThemeCheckbox
                   checked={allFilteredSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = someFilteredSelected
-                  }}
-                  aria-label={
+                  indeterminate={someFilteredSelected}
+                  label={
                     allFilteredSelected
                       ? 'Deselect all portals'
                       : 'Select all portals'
@@ -850,11 +882,9 @@ export function AccountSettingsIptvPage() {
                       )}
                       aria-selected={isSelected}
                     >
-                      <input
-                        type="checkbox"
-                        className="size-4 shrink-0 accent-forja-green"
+                      <ThemeCheckbox
                         checked={isSelected}
-                        aria-label={`Select ${title}`}
+                        label={`Select ${title}`}
                         onChange={() => toggleSelect(key)}
                       />
 
