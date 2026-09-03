@@ -1043,8 +1043,7 @@ class SyncDomainBridge {
   }
 
   /// Apply cloud lean rows (`manifestUrl` + optional name). **No network** —
-  /// [NuvioService.hydrateLeanInstalled] fills scrapers on first Settings /
-  /// Sources use. Built-in All-in-One is never removed.
+  /// scrapers land only after user install in Settings (never auto-hydrate).
   Future<void> importNuvio(Map<String, dynamic> payload) async {
     final addons = payload['addons'] as List? ?? const [];
     final rows = <Map<String, dynamic>>[
@@ -1059,7 +1058,8 @@ class SyncDomainBridge {
   }
 
   /// Apply cloud lean rows (`manifestUrl` + optional name). **No network** —
-  /// pending packs prompt the user before download (never silent hydrate).
+  /// then [promptPendingPackInstalls] asks before any download.
+  /// This is the only auto path that offers pack downloads (after cloud sync).
   Future<void> importForja(Map<String, dynamic> payload) async {
     final packs = payload['packs'] as List? ?? const [];
     final rows = <Map<String, dynamic>>[

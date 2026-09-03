@@ -23,6 +23,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
 | [Forja Packs](forja-packs.md) | Install and manage Forja JS plugin manifests (providers, hubs, live, …) | Always |
 | [Features](navigation-bar.md) | Tab visibility, order, default menu | Always |
+| [Playback](playback-settings.md) | Quality, audio, auto-play, IPTV player prefs | Always |
 | [Sources](torrent-settings.md) | **Forja addons** — Direct torrent, Stremio, Nuvio toggles + install | Always |
 | Debrid | Real-Debrid, TorBox, AllDebrid, Premiumize, Debrid-Link | Admin only · VOD tab + Direct torrent / Stremio / Nuvio on — never on Android TV |
 | [Forja Sports](forja-sports.md) | Live plugins, catalog feeds, leagues, Enable Forja Sports | Live Matches + IPTV tabs on |

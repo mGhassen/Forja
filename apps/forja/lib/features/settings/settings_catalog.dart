@@ -20,6 +20,7 @@ abstract final class SettingsCategoryId {
     profile,
     forjaPacks,
     navigation,
+    playback,
     sources,
     debrid,
     iptvSports,
@@ -73,6 +74,12 @@ List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
       title: 'Features',
       subtitle: 'Tabs, order, default menu',
       icon: Icons.tab_rounded,
+    ),
+    const SettingsCategoryMeta(
+      id: SettingsCategoryId.playback,
+      title: 'Playback',
+      subtitle: 'Quality, audio, auto-play',
+      icon: Icons.play_circle_outline_rounded,
     ),
     if (visibility.showSourcesCategory)
       const SettingsCategoryMeta(

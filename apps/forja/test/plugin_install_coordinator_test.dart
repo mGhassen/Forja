@@ -75,7 +75,7 @@ void main() {
     expect(await registry.packNeedsDiskInstall(packs.first), isTrue);
   });
 
-  test('ensurePluginReady prompts instead of silent remote install', () async {
+  test('ensurePluginReady does not prompt or download remote lean', () async {
     const url = 'https://prompt.example/manifest.json';
     SharedPreferences.setMockInitialValues({
       'engine_js_packs_v2': jsonEncode([
@@ -125,8 +125,8 @@ void main() {
       await PluginInstallCoordinator.instance.ensurePluginReady('iptv-vod'),
       isFalse,
     );
-    expect(ShellBus.pendingPluginInstall.value, isNotNull);
-    ShellBus.pendingPluginInstall.value = null;
+    expect(ShellBus.pendingPluginInstall.value, isNull);
+    expect(ShellBus.pendingPluginBatchInstall.value, isNull);
   });
 
   test('ensureAllInstalled installs missing lean pack with progress', () async {

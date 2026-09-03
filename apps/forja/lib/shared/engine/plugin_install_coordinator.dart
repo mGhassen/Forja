@@ -66,8 +66,9 @@ class PluginInstallProgress {
   }
 }
 
-/// Boot + background: migrate, await cloud lean, **prompt** for missing scripts.
-/// Never auto-downloads / auto-updates — user confirms install or Settings Update.
+/// Boot + background: migrate, await cloud lean, prompt after cloud sync only.
+/// Never silent-downloads / auto-updates. Download confirm runs when
+/// [SyncDomainBridge.importForja] lands lean stubs (or Settings Install).
 class PluginInstallCoordinator {
   PluginInstallCoordinator._();
   static final PluginInstallCoordinator instance = PluginInstallCoordinator._();
@@ -134,8 +135,9 @@ class PluginInstallCoordinator {
     }
   }
 
-  /// Ready when scripts are on disk (or local checkout). Never silent-downloads
-  /// remote packs — prompts install confirm instead.
+  /// Ready when scripts are on disk (or local checkout).
+  /// Remote lean packs: never download or prompt here — cloud sync
+  /// ([SyncDomainBridge.importForja] → [promptPendingPackInstalls]) owns that.
   Future<bool> ensurePluginReady(String pluginId) async {
     final want = pluginId.trim();
     if (want.isEmpty) return false;
@@ -160,9 +162,9 @@ class PluginInstallCoordinator {
     if (!needsDisk) return true;
 
     debugPrint(
-      '[PluginInstall] ensurePluginReady($want) needs download — prompting',
+      '[PluginInstall] ensurePluginReady($want) needs download — '
+      'wait for cloud sync prompt or Settings → Forja Packs',
     );
-    await promptPendingPackInstalls(packsOverride: [hit.pack]);
     return false;
   }
 
@@ -214,7 +216,7 @@ class PluginInstallCoordinator {
     }
     if (await PluginRegistry.instance.packNeedsDiskInstall(hit.pack)) {
       return '${hit.pack.name} is not downloaded yet. '
-          'Confirm the install prompt, or open Settings → Forja Packs.';
+          'Accept the install prompt after cloud sync, or open Settings → Forja Packs.';
     }
     return null;
   }

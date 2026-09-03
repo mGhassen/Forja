@@ -74,7 +74,7 @@ void main() {
       expect(v.showForjaPacksCategory, isTrue);
       expect(v.showDataCategory, isFalse);
       expect(v.showDebrid, isFalse);
-      expect(v.showAccounts, isTrue);
+      expect(v.showAccounts, isFalse);
       expect(v.showMdblist, isFalse);
 
       final ids = settingsCategories(v).map((c) => c.id).toList();
@@ -83,8 +83,8 @@ void main() {
       expect(ids.contains(SettingsCategoryId.lists), isFalse);
       expect(ids.contains(SettingsCategoryId.data), isFalse);
       expect(ids.contains(SettingsCategoryId.debrid), isFalse);
-      expect(ids.contains(SettingsCategoryId.playback), isFalse);
-      expect(ids.contains(SettingsCategoryId.accounts), isTrue);
+      expect(ids.contains(SettingsCategoryId.playback), isTrue);
+      expect(ids.contains(SettingsCategoryId.accounts), isFalse);
       expect(ids.contains(SettingsCategoryId.navigation), isTrue);
       expect(ids.contains(SettingsCategoryId.about), isTrue);
       expect(ids.contains(SettingsCategoryId.lan), isTrue);
@@ -94,6 +94,10 @@ void main() {
       );
       expect(
         ids.indexOf(SettingsCategoryId.navigation),
+        lessThan(ids.indexOf(SettingsCategoryId.playback)),
+      );
+      expect(
+        ids.indexOf(SettingsCategoryId.playback),
         lessThan(ids.indexOf(SettingsCategoryId.sources)),
       );
     },
