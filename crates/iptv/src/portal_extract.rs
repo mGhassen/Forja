@@ -32,12 +32,21 @@ static LABEL_USER_FIRST: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 /// Tabular dumps: `host:port   user:pass   0/1 …`
-/// Also `http://host:port  user : pass` (Spanish panel tables).
+/// Also `http://host:port  user : pass` (Spanish panel tables with colon).
 static TABLE_LINE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r#"(?im)^[^\S\n]*(?:https?://)?((?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})):([1-9]\d{1,4})[^\S\n]+([A-Za-z0-9._@+-]{3,64})\s*:\s*(\S{3,64})"#,
     )
     .expect("table_line regex")
+});
+
+/// Spanish panel column sheets — User / Pass as separate columns (no colon):
+/// `http://host:port  user  pass  UTC  Activa  …`
+static TABLE_URL_COLS: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r#"(?im)^[^\S\n]*(?:https?://)?((?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})):([1-9]\d{1,4})/?[^\S\n]+([A-Za-z0-9._@+-]{3,64})[^\S\n]+(\S{3,64})"#,
+    )
+    .expect("table_url_cols regex")
 });
 
 /// IPTV_ZONENEW cards: `🔗 http://…` then `👤 USERNAME :` / `🔑 PASSWORD :`.
@@ -72,6 +81,13 @@ static CRED_SPLIT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"[ \n&?]").expect("cred split"));
 static TRAILING_JUNK: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"[\]>"')]+$"#).expect("trailing_junk"));
+
+static TABLE_COL_JUNK: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(
+        r"(?i)^(?:Active|Expired|Banned|Disabled|Trial|Activa|Activo|Inactiva|Expirad[ao]|Banead[ao]|Prueba|Yes|No|S[ií]|True|False|Regi[oó]n|Estado|Vence|D[ií]as|Conex\.?|[A-Za-z]+/[A-Za-z_/+]+|UTC|GMT|\d+(?:/\d+)?)$",
+    )
+    .expect("table_col_junk")
+});
 
 const JUNK_TOKENS: &[&str] = &[
     "type=m3u",
@@ -162,6 +178,27 @@ pub fn extract_portals(raw_text: &str, source: &str) -> Vec<Portal> {
             source,
         );
     }
+    for caps in TABLE_URL_COLS.captures_iter(&cleaned) {
+        let host = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+        let port = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+        let user = caps.get(3).map(|m| m.as_str()).unwrap_or("");
+        let pass = caps.get(4).map(|m| m.as_str()).unwrap_or("");
+        if host.is_empty() || port.is_empty() {
+            continue;
+        }
+        // Colon rows belong to TABLE_LINE; reject status/tz stolen as pass.
+        if pass.starts_with(':') || is_table_col_junk_token(user) || is_table_col_junk_token(pass)
+        {
+            continue;
+        }
+        finalize(
+            &mut acc,
+            &format!("{host}:{port}"),
+            user,
+            pass,
+            source,
+        );
+    }
     extract_emoji_link_cards(&cleaned, &mut acc, source);
     acc.into_values().collect()
 }
@@ -233,6 +270,11 @@ fn is_junk_code(text: &str) -> bool {
         }
     }
     false
+}
+
+fn is_table_col_junk_token(s: &str) -> bool {
+    let t = s.trim();
+    t.is_empty() || TABLE_COL_JUNK.is_match(t)
 }
 
 fn finalize(acc: &mut BTreeMap<String, Portal>, raw_url: &str, raw_user: &str, raw_pass: &str, source: &str) {
@@ -410,6 +452,34 @@ http://mundo2.pro:80	9842299745 : 1687141834	UTC	Activa	23 jul de 2026 (21 d)	23
         }));
         assert!(portals.iter().any(|p| p.username == "9987423921"));
         assert!(portals.iter().any(|p| p.username == "9842299745"));
+    }
+
+    #[test]
+    fn extracts_spanish_panel_space_separated_user_pass() {
+        let text = "\
+Portal                       User              Pass           Región            Estado   Activa desde                Vence             Días   Conex.   Trial
+http://latinostream.xyz:80   L20260704         L20260704      UTC               Activa   29 jun de 2026 (2 m)        29 jun de 2027    300    3 / 5    No
+http://latinostream.xyz:80   coninotv01        L20261146      UTC               Activa   14 may de 2026 (3 m)        14 may de 2027    253    2 / 5    No
+http://vibeshow.xyz:80       S20261121         S20261121      Bogota, America   Activa   08 jun de 2026 (2 m)        08 may de 2027    247    0 / 5    No
+http://vibeshow.xyz:80       Nataly04          6hT7wjNPMu     Bogota, America   Activa   21 abr de 2026 (4 m)        22 abr de 2027    231    0 / 3    No
+http://vibeshow.xyz:80       Jjrgomez07        S20260747      Bogota, America   Activa   11 ago de 2026 (21 d)       11
+";
+        let portals = extract_portals(text, "Catalog");
+        assert_eq!(portals.len(), 5, "got: {portals:?}");
+        assert!(portals.iter().any(|p| {
+            p.url == "http://latinostream.xyz:80"
+                && p.username == "L20260704"
+                && p.password == "L20260704"
+        }));
+        assert!(portals.iter().any(|p| {
+            p.username == "coninotv01" && p.password == "L20261146"
+        }));
+        assert!(portals.iter().any(|p| {
+            p.url == "http://vibeshow.xyz:80"
+                && p.username == "Nataly04"
+                && p.password == "6hT7wjNPMu"
+        }));
+        assert!(portals.iter().any(|p| p.username == "Jjrgomez07"));
     }
 
     #[test]

@@ -547,6 +547,8 @@ class PluginRegistry {
     return keep;
   }
 
+  /// Never auto-downloads. Missing remote scripts wait for
+  /// [PluginInstallCoordinator.promptPendingPackInstalls] / Settings Install.
   Future<void> repairMissingScripts(List<EnginePack> packs) async {
     for (final pack in packs) {
       if (isLegacyAssetPack(pack.sourceUrl)) continue;
@@ -554,12 +556,9 @@ class PluginRegistry {
       if (_scriptRepairAttempted.contains(pack.sourceUrl)) continue;
       if (!await packNeedsDiskInstall(pack)) continue;
       _scriptRepairAttempted.add(pack.sourceUrl);
-      debugPrint('[engine] repairing missing scripts for ${pack.name}');
-      try {
-        await install(pack.sourceUrl);
-      } catch (e) {
-        debugPrint('[engine] repair failed for ${pack.sourceUrl}: $e');
-      }
+      debugPrint(
+        '[engine] scripts missing for ${pack.name} — waiting for user confirm',
+      );
     }
   }
 
@@ -997,12 +996,19 @@ class PluginRegistry {
     return pack;
   }
 
-  /// Fetch disk JS for [pack] when metadata landed before scripts (lean sync).
-  /// Prefer [PluginInstallCoordinator.ensurePluginReady] for visible progress.
+  /// Local checkout only — remote packs never download here (ask first).
+  /// Prefer [PluginInstallCoordinator.ensurePluginReady] to prompt the user.
   Future<bool> ensurePackScriptsReady(EnginePack pack) async {
     if (isLegacyAssetPack(pack.sourceUrl)) return true;
     if (!await packNeedsDiskInstall(pack)) return true;
-    debugPrint('[engine] hydrating scripts for ${pack.name}');
+    // Remote lean / missing disk JS: never silent install.
+    if (!isLocalManifestUrl(pack.sourceUrl)) {
+      debugPrint(
+        '[engine] scripts missing for ${pack.name} — waiting for user confirm',
+      );
+      return false;
+    }
+    debugPrint('[engine] refreshing local checkout scripts for ${pack.name}');
     try {
       await install(pack.sourceUrl);
       _scriptRepairAttempted.remove(pack.sourceUrl);
@@ -1505,7 +1511,11 @@ class PluginRegistry {
     );
   }
 
+  static bool _leanHydrateSkipLogged = false;
+
   Future<void> _hydrateLeanInstalledImpl() async {
+    if (_leanHydrateSkipLogged) return;
+    _leanHydrateSkipLogged = true;
     debugPrint(
       '[engine] lean hydrate skipped — packs need user confirm before download',
     );

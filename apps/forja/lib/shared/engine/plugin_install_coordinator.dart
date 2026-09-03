@@ -66,8 +66,8 @@ class PluginInstallProgress {
   }
 }
 
-/// Boot + background: migrate, await cloud lean, install missing scripts only.
-/// Version bumps are never auto-installed — user updates in Settings.
+/// Boot + background: migrate, await cloud lean, **prompt** for missing scripts.
+/// Never auto-downloads / auto-updates — user confirms install or Settings Update.
 class PluginInstallCoordinator {
   PluginInstallCoordinator._();
   static final PluginInstallCoordinator instance = PluginInstallCoordinator._();
@@ -134,7 +134,8 @@ class PluginInstallCoordinator {
     }
   }
 
-  /// Auto-refresh before catalog use — shows progress, no manual Reload.
+  /// Ready when scripts are on disk (or local checkout). Never silent-downloads
+  /// remote packs — prompts install confirm instead.
   Future<bool> ensurePluginReady(String pluginId) async {
     final want = pluginId.trim();
     if (want.isEmpty) return false;
@@ -158,13 +159,11 @@ class PluginInstallCoordinator {
     }
     if (!needsDisk) return true;
 
-    try {
-      await _installManifestSingle(url, isUpdate: false);
-      return true;
-    } catch (e) {
-      debugPrint('[PluginInstall] ensurePluginReady($want) failed: $e');
-      return false;
-    }
+    debugPrint(
+      '[PluginInstall] ensurePluginReady($want) needs download — prompting',
+    );
+    await promptPendingPackInstalls(packsOverride: [hit.pack]);
+    return false;
   }
 
   Future<EnginePack> _fetchPackWithProgress({
@@ -214,8 +213,8 @@ class PluginInstallCoordinator {
       return 'Plugin not installed. Add its manifest in Settings → Forja Packs.';
     }
     if (await PluginRegistry.instance.packNeedsDiskInstall(hit.pack)) {
-      return '${hit.pack.name} is still downloading. '
-          'Open Settings → Forja Packs to watch progress.';
+      return '${hit.pack.name} is not downloaded yet. '
+          'Confirm the install prompt, or open Settings → Forja Packs.';
     }
     return null;
   }
@@ -279,13 +278,13 @@ class PluginInstallCoordinator {
   Future<void> ensureAllInstalled({
     bool notifyUpdates = true,
     bool awaitCloudLean = false,
+    // Ignored — Nuvio never silent-hydrates (Settings install / refresh only).
     bool includeNuvio = true,
     bool promptBeforeInstall = true,
   }) {
     return _inFlight ??= _run(
       notifyUpdates: notifyUpdates,
       awaitCloudLean: awaitCloudLean,
-      includeNuvio: includeNuvio,
       promptBeforeInstall: promptBeforeInstall,
     ).whenComplete(() {
       _inFlight = null;
@@ -296,7 +295,6 @@ class PluginInstallCoordinator {
   Future<void> _run({
     required bool notifyUpdates,
     required bool awaitCloudLean,
-    required bool includeNuvio,
     required bool promptBeforeInstall,
   }) async {
     final registry = PluginRegistry.instance;
@@ -341,11 +339,8 @@ class PluginInstallCoordinator {
     }
 
     var completed = 0;
-    final total = jobs.length + (includeNuvio ? 1 : 0);
-    debugPrint(
-      '[PluginInstall] ${jobs.length} pack job(s), '
-      'nuvio=${includeNuvio ? 1 : 0}',
-    );
+    final total = jobs.length;
+    debugPrint('[PluginInstall] ${jobs.length} pack job(s)');
 
     for (final job in jobs) {
       final pack = job.pack;
@@ -371,25 +366,6 @@ class PluginInstallCoordinator {
           isUpdate: job.isUpdate,
         ),
       );
-    }
-
-    if (includeNuvio) {
-      _setProgress(
-        PluginInstallProgress(
-          label: 'Installing Nuvio scrapers…',
-          completedSteps: completed,
-          totalSteps: total,
-          isUpdate: false,
-        ),
-      );
-      try {
-        await NuvioService.instance.ensureBundledInstalled();
-        await NuvioService.instance.hydrateLeanInstalled();
-        await NuvioService.instance.ensureScriptsOnDisk();
-      } catch (e) {
-        debugPrint('[PluginInstall] nuvio hydrate failed: $e');
-      }
-      completed++;
     }
 
     if (total > 0) {

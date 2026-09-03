@@ -213,7 +213,17 @@ mixin _LiveMatchesPlayback
     await forjaLive._ensureAllCatalogsForProviders(isStale: isStale);
     if (isStale() || controller.isDisposed) return;
 
-    final known = forjaLive._knownProviderEventMatches(match);
+    var known = forjaLive._knownProviderEventMatches(match);
+    // Horizon/cap on grid ingest can miss siblings — scan full catalogs.
+    final hydrated = await forjaLive._hydrateMissingProviderCatalogMatches(
+      match,
+      known,
+      isStale: isStale,
+    );
+    if (isStale() || controller.isDisposed) return;
+    if (hydrated.isNotEmpty) {
+      known = forjaLive._knownProviderEventMatches(match);
+    }
     debugPrint(
       '[LiveMatches] Providers resolve targets: '
       '${known.isEmpty ? '(none)' : known.map((m) => '${m.livePluginId} src=${m.sources.length} inline=${m.inlineStreams.length}').join(' | ')}',
@@ -408,9 +418,8 @@ mixin _LiveMatchesPlayback
     final playUrl = embed.isNotEmpty
         ? embed
         : 'pending:${match.id}:${stream.id}:${stream.streamNo}';
-    final directPlayback =
-        embed.isNotEmpty &&
-        RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed);
+    final directPlayback = stream.directPlayback ||
+        (embed.isNotEmpty && iptvLiveEnginePlayUrlReady(embed));
     return IptvPlaySource(
       url: playUrl,
       label: title,
@@ -589,7 +598,12 @@ mixin _LiveMatchesPlayback
     IptvPlaySource picked,
     List<IptvPlaySource> all,
   ) async {
-    if (iptvLiveEnginePlayUrlReady(picked.url)) {
+    final url = picked.url.trim();
+    final ready = iptvLiveEnginePlayUrlReady(url) ||
+        (picked.liveEngineResolveParams == null &&
+            (url.startsWith('http://') || url.startsWith('https://')) &&
+            !(url.startsWith('pending:')));
+    if (ready) {
       await _openEngineNativeSources(
         title: picked.pickerTitle,
         subtitle: picked.pickerSubtitle ?? '',
@@ -612,15 +626,21 @@ mixin _LiveMatchesPlayback
       );
     });
     if (!ok) return;
-    if (resolved == null || !iptvLiveEnginePlayUrlReady(resolved!.url)) {
+    final handoff = resolved;
+    final handoffUrl = handoff?.url.trim() ?? '';
+    final playable = handoff != null &&
+        (iptvLiveEnginePlayUrlReady(handoffUrl) ||
+            handoffUrl.startsWith('http://') ||
+            handoffUrl.startsWith('https://'));
+    if (!playable) {
       LiveMatchesEngine.engineResolveFailed();
       return;
     }
     await _openEngineNativeSources(
-      title: resolved!.pickerTitle,
-      subtitle: resolved!.pickerSubtitle ?? '',
+      title: handoff!.pickerTitle,
+      subtitle: handoff.pickerSubtitle ?? '',
       sources: [
-        resolved!,
+        handoff,
         for (final s in all)
           if (!identical(s, picked) && s.url.trim() != picked.url.trim()) s,
       ],
@@ -1116,6 +1136,32 @@ mixin _LiveMatchesPlayback
   }) async {
     final embed = stream.embedUrl.trim();
     if (embed.isEmpty) return null;
+
+    // Already unlocked by catalog resolve — do not re-unlock (signed CDNs die).
+    if (stream.directPlayback || iptvLiveEnginePlayUrlReady(embed)) {
+      final headers = _isIframeCatalogMatch(match, stream)
+          ? _tokenizedEmbedStreamHeaders(embed)
+          : _liveEmbedStreamHeaders(
+              embed,
+              catalogReferer: match.isForjaLive
+                  ? _forjaLiveCdnReferer(embed)
+                  : null,
+            );
+      final direct = stream.directPlayback ||
+          liveEnginePreferDirectPlayback(embed);
+      if (!direct) onProgress?.call('Preparing playback…');
+      final playUrl = direct
+          ? embed
+          : await LiveMatchesEngine.proxyPlayUrl(url: embed, headers: headers);
+      if (playUrl == null || playUrl.isEmpty) return null;
+      return _liveEnginePlaySource(
+        match: match,
+        stream: stream,
+        url: playUrl,
+        headers: direct ? headers : const {},
+        resolved: true,
+      );
+    }
 
     final iframeCatalog = _isIframeCatalogMatch(match, stream);
     final catalogReferer = iframeCatalog

@@ -378,19 +378,21 @@ class EngineService {
     var code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
     if (gen != _catalogGeneration) return null;
     if (code == null || code.isEmpty) {
-      debugPrint('[catalog] ${plugin.id} missing script — hydrating pack');
+      debugPrint(
+        '[catalog] ${plugin.id} missing script — prompting install',
+      );
       final ok = await PluginInstallCoordinator.instance.ensurePluginReady(
         plugin.id,
       );
       if (gen != _catalogGeneration) return null;
       if (!ok) {
-        debugPrint('[catalog] ${plugin.id} script hydrate failed');
+        debugPrint('[catalog] ${plugin.id} waiting for user confirm');
         return null;
       }
       code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
       if (gen != _catalogGeneration) return null;
       if (code == null || code.isEmpty) {
-        debugPrint('[catalog] ${plugin.id} missing script after hydrate');
+        debugPrint('[catalog] ${plugin.id} missing script after ready');
         return null;
       }
     }
@@ -515,21 +517,11 @@ class EngineService {
       packPrelude: hit.pack.prelude,
     );
     if (code == null || code.isEmpty) {
-      try {
-        await PluginRegistry.instance.install(hit.pack.sourceUrl);
-      } catch (_) {}
-      code = await _loadScript(
-        plugin,
-        sourceUrl: hit.pack.sourceUrl,
-        packPrelude: hit.pack.prelude,
+      debugPrint(
+        '[engine] torrent search $pluginId: script missing '
+        '(${hit.pack.sourceUrl}) — install pack to download',
       );
-      if (code == null || code.isEmpty) {
-        debugPrint(
-          '[engine] torrent search $pluginId: script missing '
-          '(${hit.pack.sourceUrl})',
-        );
-        return [];
-      }
+      return [];
     }
 
     final rt = runtime ?? EngineRuntime.fork();
@@ -786,18 +778,10 @@ class EngineService {
     var code = await _loadScript(active, sourceUrl: hit.pack.sourceUrl);
     if (gen != _extractGeneration) return null;
     if (code == null || code.isEmpty) {
-      debugPrint('[engine] ${active.id} missing script — repairing pack');
-      try {
-        await PluginRegistry.instance.install(hit.pack.sourceUrl);
-      } catch (e) {
-        debugPrint('[engine] repair install failed: $e');
-      }
-      code = await _loadScript(active, sourceUrl: hit.pack.sourceUrl);
-      if (gen != _extractGeneration) return null;
-      if (code == null || code.isEmpty) {
-        debugPrint('[engine] ${active.id} still missing script after repair');
-        return null;
-      }
+      debugPrint(
+        '[engine] ${active.id} missing script — install pack to download',
+      );
+      return null;
     }
     if (!rt.isLoaded(active.id)) {
       await rt.loadPlugin(pluginId: active.id, code: code);

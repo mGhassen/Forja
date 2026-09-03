@@ -19,7 +19,7 @@
 
 `forja://install?manifest=…` deep links open **Forja Packs** and ask before installing.
 
-**Batch add** from the web catalog (`Shift+click` multiple packs → **Add N to Forja**) opens the running app with a checkable install dialog. Packs download only after you confirm. If the app is closed, packs sync to your profile and the same picker appears on next sign-in — never a silent mass install.
+**Batch add** from the web catalog (`Shift+click` multiple packs → **Add N to Forja**) opens the running app with a checkable install dialog. Packs download only after you confirm. If the app is closed, packs sync to your profile and the same picker appears on next sign-in — never a silent mass install. Play / Sources / boot never silent-repair or auto-update packs either — missing scripts open the same confirm prompt; version bumps only via Settings update toast / **Update**.
 
 ## Related
 

@@ -322,7 +322,6 @@ class NuvioService {
   static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
 
   int _scraperGeneration = 0;
-  Future<void>? _bundledEnsureFuture;
 
   /// Abort in-flight scrapers (details panel, player Source checks, etc.).
   /// Bumps generation so Dart callers discard results, and tears down the
@@ -358,28 +357,14 @@ class NuvioService {
     }
   }
 
-  /// Persists the built-in All-in-One manifest when missing so Settings and
-  /// Sources see the same scrapers. Network failures are non-fatal.
-  Future<void> ensureBundledInstalled() async {
-    final existing = await listAddons();
-    if (existing.any((a) => isBundled(a.manifestUrl))) return;
-    _bundledEnsureFuture ??= () async {
-      try {
-        await refreshFromUrl(bundledManifestUrls.first);
-        _bundledVirtual = null;
-      } catch (e) {
-        debugPrint('[NuvioService] bundled ensure failed (non-fatal): $e');
-      } finally {
-        _bundledEnsureFuture = null;
-      }
-    }();
-    await _bundledEnsureFuture;
-  }
+  /// No-op — never auto-installs the bundled All-in-One. User adds it in
+  /// Settings → Sources / Nuvio install.
+  Future<void> ensureBundledInstalled() async {}
 
   Future<void>? _hydrateLeanInFlight;
 
   /// Sync / cloud lean rows — URL (+ optional name) only. **No network.**
-  /// Full scrapers land via [hydrateLeanInstalled] on first Settings/Sources use.
+  /// Full scrapers land after user confirm / Settings install — never auto.
   Future<void> applyLeanManifestUrls(
     Iterable<Map<String, dynamic>> rows, {
     bool removeMissingUserAddons = true,
@@ -451,8 +436,7 @@ class NuvioService {
     }
   }
 
-  /// Fetch manifests for lean stubs (`scrapers` empty). Idempotent; no-op when
-  /// every listed addon already has scrapers.
+  /// Formerly auto-fetched lean stubs. That skipped confirm — now a no-op.
   Future<void> hydrateLeanInstalled() {
     return _hydrateLeanInFlight ??= _hydrateLeanInstalledImpl().whenComplete(
       () {
@@ -461,37 +445,25 @@ class NuvioService {
     );
   }
 
+  static bool _leanHydrateSkipLogged = false;
+
   Future<void> _hydrateLeanInstalledImpl() async {
-    final all = await listAddons();
-    for (final addon in all) {
-      if (addon.scrapers.isNotEmpty) continue;
-      try {
-        await refreshFromUrl(addon.manifestUrl);
-      } catch (e) {
-        debugPrint(
-          '[NuvioService] lean hydrate failed (${addon.manifestUrl}): $e',
-        );
-      }
-    }
+    if (_leanHydrateSkipLogged) return;
+    _leanHydrateSkipLogged = true;
+    debugPrint(
+      '[NuvioService] lean hydrate skipped — addons need user confirm',
+    );
   }
 
   /// Settings + Sources - same store, including the built-in addon.
   Future<List<NuvioAddon>> listUserAddons() async {
-    await ensureBundledInstalled();
-    await hydrateLeanInstalled();
     return listAddons();
   }
 
-  /// Scraping list for Sources / batch runs. Prefers the persisted store;
-  /// falls back to an in-memory bundled fetch only if ensure failed offline.
+  /// Scraping list for Sources / batch runs — installed addons only.
+  /// Never auto-fetches a bundled virtual manifest.
   Future<List<NuvioAddon>> listScrapingAddons() async {
-    await ensureBundledInstalled();
-    await hydrateLeanInstalled();
-    final user = await listAddons();
-    if (user.any((a) => isBundled(a.manifestUrl))) return user;
-    final virt = await _getBundledVirtual();
-    if (virt == null) return user;
-    return [...user, virt];
+    return listAddons();
   }
 
   /// Addons with at least one enabled scraper - for Sources panel chrome.
@@ -553,33 +525,6 @@ class NuvioService {
     await _ensureAddonsInKv();
     final sorted = ids.toList()..sort();
     await kvSetStringList(_sourcesViewFilterKey, sorted);
-  }
-
-  /// Offline fallback when [ensureBundledInstalled] cannot reach the network.
-  NuvioAddon? _bundledVirtual;
-
-  Future<NuvioAddon?> _getBundledVirtual() async {
-    if (_bundledVirtual != null) return _bundledVirtual;
-    final url = bundledManifestUrls.first;
-    try {
-      final resp = await http.get(Uri.parse(url));
-      if (resp.statusCode != 200) return null;
-      final mf = jsonDecode(resp.body) as Map<String, dynamic>;
-      final scrapers = ((mf['scrapers'] as List?) ?? [])
-          .map((e) => NuvioScraper.fromJson(e as Map<String, dynamic>))
-          .toList();
-      if (scrapers.isEmpty) return null;
-      _bundledVirtual = NuvioAddon(
-        manifestUrl: url,
-        name: (mf['name'] as String?) ?? 'Built-in',
-        version: (mf['version'] as String?) ?? '1.0.0',
-        scrapers: scrapers,
-      );
-      return _bundledVirtual;
-    } catch (e) {
-      debugPrint('[NuvioService] bundled virtual fetch failed: $e');
-      return null;
-    }
   }
 
   Future<void> _saveAddons(List<NuvioAddon> addons) async {
@@ -789,14 +734,9 @@ class NuvioService {
     await _saveAddons(all);
   }
 
-  /// Refreshes every installed addon's manifest in parallel. Safe to call
-  /// on every app launch - [refreshFromUrl] preserves each scraper's
-  /// `enabled` flag and only invalidates cached scripts whose filename
-  /// changed. New scrapers added upstream show up automatically; removed
-  /// ones get their cached scripts evicted. Failures are non-fatal so an
-  /// offline launch doesn't break anything.
+  /// Refreshes every installed addon's manifest in parallel.
+  /// **User-initiated only** (Settings refresh) — never call from boot.
   Future<void> refreshAllInstalled() async {
-    await ensureBundledInstalled();
     final addons = await listAddons();
     if (addons.isEmpty) return;
     await Future.wait(
@@ -809,18 +749,30 @@ class NuvioService {
         }
       }),
     );
-    _bundledVirtual = null;
   }
 
+  /// Disk / prefs only — never network-refreshes on play.
+  /// Scripts land via [install] / [refreshFromUrl] after user confirm.
   Future<String?> _loadScriptBody(
     NuvioAddon addon,
     NuvioScraper s, {
     bool forceFresh = false,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    // Always try the network first - community scrapers get hot-fixed
-    // upstream and we want users on the latest code without reinstalling.
-    // Cache is only used as an offline fallback.
+    if (!forceFresh) {
+      final disk = await PluginScriptDiskStore.loadNuvioScraper(s.id);
+      if (disk != null && disk.isNotEmpty) return disk;
+      final cached = prefs.getString(_scriptCachePrefix + s.id);
+      if (cached != null && cached.isNotEmpty) {
+        await PluginScriptDiskStore.saveNuvioScraper(
+          scraperId: s.id,
+          body: cached,
+        );
+        await prefs.remove(_scriptCachePrefix + s.id);
+        return cached;
+      }
+      return null;
+    }
     try {
       final url = _resolveScriptUrl(addon.manifestUrl, s.filename);
       final r = await http.get(Uri.parse(url));
@@ -834,18 +786,6 @@ class NuvioService {
       }
     } catch (e) {
       debugPrint('[NuvioService] script fetch failed (${s.id}): $e');
-    }
-    if (forceFresh) return null;
-    final disk = await PluginScriptDiskStore.loadNuvioScraper(s.id);
-    if (disk != null && disk.isNotEmpty) return disk;
-    final cached = prefs.getString(_scriptCachePrefix + s.id);
-    if (cached != null && cached.isNotEmpty) {
-      await PluginScriptDiskStore.saveNuvioScraper(
-        scraperId: s.id,
-        body: cached,
-      );
-      await prefs.remove(_scriptCachePrefix + s.id);
-      return cached;
     }
     return null;
   }
@@ -870,28 +810,8 @@ class NuvioService {
     debugPrint('[NuvioService] migrated scraper scripts to disk');
   }
 
-  /// Prefetch any scraper missing from disk (boot coordinator).
-  Future<void> ensureScriptsOnDisk() async {
-    final addons = await listAddons();
-    for (final addon in addons) {
-      for (final s in addon.scrapers) {
-        if (s.filename.isEmpty) continue;
-        if (await PluginScriptDiskStore.hasNuvioScraper(s.id)) continue;
-        try {
-          final url = _resolveScriptUrl(addon.manifestUrl, s.filename);
-          final r = await http.get(Uri.parse(url));
-          if (r.statusCode == 200 && r.body.isNotEmpty) {
-            await PluginScriptDiskStore.saveNuvioScraper(
-              scraperId: s.id,
-              body: r.body,
-            );
-          }
-        } catch (e) {
-          debugPrint('[NuvioService] ensureScriptsOnDisk (${s.id}): $e');
-        }
-      }
-    }
-  }
+  /// No-op — never prefetches scrapers without user install/refresh.
+  Future<void> ensureScriptsOnDisk() async {}
 
   /// Runs every enabled scraper that supports [type] in parallel and
   /// returns Stremio-shaped stream maps ready to merge into the existing

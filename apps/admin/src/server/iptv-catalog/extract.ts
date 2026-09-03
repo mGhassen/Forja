@@ -34,6 +34,14 @@ const EMOJI_CREDS =
 const TABLE_LINE =
   /^[^\S\n]*(?:https?:\/\/)?((?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})):([1-9]\d{1,4})[^\S\n]+([A-Za-z0-9._@+-]{3,64})\s*:\s*(\S{3,64})([^\n]*)/gim
 
+/**
+ * Spanish panel column sheets — User / Pass as separate whitespace columns
+ * (no `user:pass` colon). Distinct from TABLE_LINE.
+ * `http://host:port  user  pass  UTC|Bogota,…  Activa  29 jun de 2026 (2 m)  …  3 / 5  No`
+ */
+const TABLE_URL_COLS =
+  /^[^\S\n]*(?:https?:\/\/)?((?:(?:\d{1,3}\.){3}\d{1,3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})):([1-9]\d{1,4})\/?[^\S\n]+([A-Za-z0-9._@+-]{3,64})[^\S\n]+(\S{3,64})([^\n]*)/gim
+
 const TABLE_CONN = /^(\d+)\/(\d+)$/
 const TABLE_CONN_SPACED = /\b(\d+)\s*\/\s*(\d+)\b/
 const TABLE_MON_DAY =
@@ -451,6 +459,7 @@ function parseCardMeta(block: string): CardMeta {
  * XML2-style rows:
  * `host:port  user:pass  0/500  Sep23  2026  Active  host:port  m3u8,ts  Europe/Rome`
  * Spanish panel rows: `UTC  Activa  25 jul de 2026 (19 d)  25 jul de 2027  345  0 / 3  No`
+ * Also `Bogota, America` (comma may stick to the city token).
  */
 function parseTableTail(
   tail: string,
@@ -497,7 +506,7 @@ function parseTableTail(
       continue
     }
     if (TABLE_STATUS.test(t)) continue
-    const tl = t.toLowerCase()
+    const tl = t.toLowerCase().replace(/,+$/, '')
     if (tl === hostPort || tl === hostLower) continue
     if (TABLE_OUTPUTS.test(t) || /(?:^|,)(?:m3u8?|ts|rtmp)(?:,|$)/i.test(t)) {
       allowedOutputs = t
@@ -505,6 +514,11 @@ function parseTableTail(
     }
     if (TABLE_TZ.test(t)) {
       timezone = t
+      continue
+    }
+    // Panel "Región" column: `Bogota, America` / `Bogotá, America`
+    if (/^bogot[aá]$/i.test(tl)) {
+      timezone = 'America/Bogota'
       continue
     }
   }
@@ -519,6 +533,21 @@ function parseTableTail(
     regionTags: region?.tags,
     regionConfidence: region?.confidence,
   }
+}
+
+/** Reject column-sheet misparses (status/tz/days stolen as pass). */
+function isTableColJunkToken(s: string): boolean {
+  const t = s.trim()
+  if (!t) return true
+  if (TABLE_STATUS.test(t) || TABLE_TZ.test(t)) return true
+  if (/^(?:Yes|No|S[ií]|True|False|Trial|Regi[oó]n|Estado|Vence|D[ií]as|Conex\.?)$/i.test(t)) {
+    return true
+  }
+  if (/^\d+$/.test(t) || TABLE_CONN.test(t)) return true
+  if (/^(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)[a-záéíóú]*$/i.test(t)) {
+    return true
+  }
+  return false
 }
 
 function cardBlockForUser(cleaned: string, username: string): string {
@@ -941,6 +970,28 @@ export function extractPortals(
       `${host}:${port}`,
       m[3] ?? '',
       m[4] ?? '',
+      source,
+      '',
+      '',
+      tailMeta,
+      fileMeta,
+    )
+  }
+  for (const m of cleaned.matchAll(TABLE_URL_COLS)) {
+    const host = m[1] ?? ''
+    const port = m[2] ?? ''
+    const user = m[3] ?? ''
+    const pass = m[4] ?? ''
+    if (!host || !port) continue
+    // Skip `user:pass` rows — TABLE_LINE already owns those.
+    if (/^\s*:/.test(m[5] ?? '') || pass.startsWith(':')) continue
+    if (isTableColJunkToken(user) || isTableColJunkToken(pass)) continue
+    const tailMeta = parseTableTail(m[5] ?? '', host, port)
+    finalizeXtreamOrM3u(
+      acc,
+      `${host}:${port}`,
+      user,
+      pass,
       source,
       '',
       '',

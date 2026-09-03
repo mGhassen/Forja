@@ -380,6 +380,8 @@ class _StreamedStream {
   final String embedUrl;
   final String source;
   final int viewers;
+  /// Plugin already returned a native play URL (`directPlayback` / unlocked).
+  final bool directPlayback;
 
   const _StreamedStream({
     required this.id,
@@ -389,6 +391,7 @@ class _StreamedStream {
     required this.embedUrl,
     required this.source,
     required this.viewers,
+    this.directPlayback = false,
   });
 
   factory _StreamedStream.fromJson(Map<String, dynamic> j) => _StreamedStream(
@@ -399,6 +402,7 @@ class _StreamedStream {
     embedUrl: (j['embedUrl'] ?? j['embed_url'] ?? '').toString(),
     source: (j['source'] ?? '').toString(),
     viewers: parseLiveViewerCount(j['viewers']),
+    directPlayback: j['directPlayback'] == true,
   );
 }
 
@@ -489,6 +493,8 @@ _StreamedStream _streamedStreamFromResolveRow({
     embedUrl: url,
     source: sourceToken,
     viewers: viewers,
+    directPlayback: row['directPlayback'] == true ||
+        iptvLiveEnginePlayUrlReady(url),
   );
 }
 

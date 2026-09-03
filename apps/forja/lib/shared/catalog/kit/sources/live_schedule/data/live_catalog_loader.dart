@@ -263,6 +263,7 @@ mixin _LiveMatchesForjaLive
   }) {
     EngineService.instance.cancelLiveCatalog();
     _s._forjaLiveLoadGen++;
+    _invalidateLiveMatchesGridCache();
     if (catalogFilter == null || catalogFilter == 'all') {
       _s._forjaLivePluginLoads = {};
       if (!clearMatches) return;
@@ -380,6 +381,9 @@ mixin _LiveMatchesForjaLive
     final widen = _liveMatchesScheduleHorizonRank(nextHorizon) >
         _liveMatchesScheduleHorizonRank(_s._catalogFetchedHorizon);
     setState(() {
+      // Grid caches merged entries keyed only by revision — must bust or the
+      // schedule chip looks stuck on the first status/horizon.
+      _invalidateLiveMatchesGridCache();
       _s._scheduleStatus = nextStatus;
       _s._scheduleHorizon = nextHorizon;
     });
@@ -402,6 +406,126 @@ mixin _LiveMatchesForjaLive
   /// Rows we already have for this fixture (opened card + pool) — no catalog HTTP.
   List<_StreamedMatch> _knownProviderEventMatches(_StreamedMatch match) {
     return _providerResolveTargets(match, _s._streamedMatches);
+  }
+
+  /// Providers must find siblings in catalogs the schedule chip never loaded
+  /// (or loaded under a narrow horizon / 100-row cap). Scan full catalog
+  /// schedules for `_sameStreamedEvent` hits — no horizon filter here.
+  Future<List<_StreamedMatch>> _hydrateMissingProviderCatalogMatches(
+    _StreamedMatch match,
+    List<_StreamedMatch> known, {
+    required bool Function() isStale,
+  }) async {
+    if (isStale() || !mounted) return const [];
+    await LiveMatchesEngine.warmPluginMeta();
+    if (isStale() || !mounted) return const [];
+
+    final represented = <String>{
+      for (final m in known)
+        if (m.livePluginId.isNotEmpty)
+          LiveMatchesEngine.resolvePluginKey(m.livePluginId),
+    };
+    final hasMatchingIframe = _s._iframeCatalogStreams.any(
+      (row) =>
+          _sameIframeAndScheduleEvent(row, match) &&
+          row.iframe.trim().isNotEmpty,
+    );
+
+    final catalogs =
+        await EngineService.instance.listEnabledLiveCatalogPlugins();
+    if (isStale() || !mounted) return const [];
+
+    final missing = <EnginePlugin>[];
+    for (final catalog in catalogs) {
+      if (!LiveMatchesEngine.isProviderStreamCatalog(catalog)) continue;
+      final filterId = EngineService.catalogFilterId(catalog);
+      final norm = LiveMatchesEngine.resolvePluginKey(filterId);
+      if (represented.contains(norm)) continue;
+      if (LiveMatchesEngine.isIframeCatalogPlugin(catalog) &&
+          hasMatchingIframe) {
+        continue;
+      }
+      missing.add(catalog);
+    }
+    if (missing.isEmpty) return const [];
+
+    debugPrint(
+      '[LiveMatches] Providers hydrate: searching ${missing.length} catalogs '
+      'for "${match.title}" (${[
+        for (final c in missing) EngineService.catalogFilterId(c),
+      ].join(', ')})',
+    );
+
+    final added = <_StreamedMatch>[];
+    await Future.wait(
+      missing.map((catalog) async {
+        if (isStale()) return;
+        final filterId = EngineService.catalogFilterId(catalog);
+        try {
+          LiveMatchesEngine.cachePluginMeta(catalog);
+          final extraConfig = await _liveCatalogExtraConfig(catalog);
+          if (isStale()) return;
+          final rows = await EngineService.instance.runLiveCatalog(
+            catalogPlugin: catalog,
+            extraConfig: extraConfig,
+          );
+          if (isStale()) return;
+
+          if (LiveMatchesEngine.isIframeCatalogPlugin(catalog)) {
+            final iframeHits = <_IframeCatalogStream>[];
+            for (final row in rows) {
+              final iframe = _iframeCatalogFromRow(row);
+              if (iframe.id.isEmpty || iframe.iframe.trim().isEmpty) continue;
+              if (!_sameIframeAndScheduleEvent(iframe, match)) continue;
+              iframeHits.add(iframe);
+            }
+            if (iframeHits.isNotEmpty && mounted && !isStale()) {
+              setState(() {
+                final existing = _s._iframeCatalogStreams.map((s) => s.id).toSet();
+                _s._iframeCatalogStreams = [
+                  ..._s._iframeCatalogStreams,
+                  for (final p in iframeHits)
+                    if (!existing.contains(p.id)) p,
+                ];
+                _invalidateLiveMatchesGridCache();
+              });
+            }
+            return;
+          }
+
+          for (final row in rows) {
+            final enriched = Map<String, dynamic>.from(row);
+            enriched.putIfAbsent('pluginId', () => filterId);
+            final m = _forjaLiveRowToMatch(enriched);
+            if (m.id.isEmpty || m.title.isEmpty) continue;
+            if (!_sameStreamedEvent(match, m) &&
+                !_stremioCatalogEventMatch(match, m)) {
+              continue;
+            }
+            added.add(_ensureProviderResolveMatch(m));
+          }
+        } catch (e) {
+          debugPrint(
+            '[LiveMatches] provider catalog hydrate ${catalog.id}: $e',
+          );
+        }
+      }),
+    );
+
+    if (added.isNotEmpty && mounted && !isStale()) {
+      setState(() {
+        _invalidateLiveMatchesGridCache();
+        _s._streamedMatches = _sortStreamedLiveFirst([
+          ..._s._streamedMatches,
+          ...added,
+        ]);
+      });
+    }
+
+    return [
+      for (final m in added)
+        if (m.sources.isNotEmpty || m.inlineStreams.isNotEmpty) m,
+    ];
   }
 
   /// Providers must never follow the Catalog chip — load every stream-capable

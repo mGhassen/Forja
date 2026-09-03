@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
@@ -9,7 +8,6 @@ import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 import 'package:forja/features/settings/widgets/settings_focus_controls.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
-import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 
@@ -188,8 +186,7 @@ class _SettingsForjaAddonsPlayTogglesState
               );
               schedulePreferencesSyncPush();
               if (val && PlatformPlayback.capabilities.playSourceNuvio) {
-                debugPrint('[Init] Nuvio refresh (settings toggle)');
-                unawaited(NuvioService.instance.refreshAllInstalled());
+                debugPrint('[Init] Nuvio enabled (settings toggle) — no auto-refresh');
               }
             },
             enabled: v.lanPlaySourcesEditable,

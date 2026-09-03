@@ -650,14 +650,14 @@ class _LiveMatchDetailsScreenState
       body: Stack(
         fit: StackFit.expand,
         children: [
-          ListenableBuilder(
-            listenable: Listenable.merge([_providersCtrl, _liveTvCtrl]),
-            builder: (context, _) => _buildHero(
-              context: context,
-              backdrop: backdrop,
-              tvFocus: tvFocus,
-              height: viewport.height,
-            ),
+          // Do not wrap the whole hero in a ListenableBuilder — that can skip
+          // rebuilds when only `_liveTvChannelQuery` changes (search filter).
+          // Controllers notify via the streams panel ListenableBuilder instead.
+          _buildHero(
+            context: context,
+            backdrop: backdrop,
+            tvFocus: tvFocus,
+            height: viewport.height,
           ),
           MediaDetailsBackButton(focusNode: _backFocus),
         ],

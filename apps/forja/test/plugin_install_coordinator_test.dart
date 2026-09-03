@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
 import 'package:forja/shared/engine/plugin_script_disk_store.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -53,44 +54,8 @@ void main() {
     expect(await registry.packNeedsDiskInstall(packs.first), isTrue);
   });
 
-  test('ensurePackScriptsReady hydrates lean stub before catalog use', () async {
+  test('ensurePackScriptsReady refuses remote lean without user confirm', () async {
     const url = 'https://hydrate.example/manifest.json';
-    final manifest = jsonEncode({
-      'schema': 1,
-      'id': 'hydrate-pack',
-      'name': 'Hydrate Pack',
-      'version': '1.0.0',
-      'plugins': [
-        {
-          'id': 'iptv-vod',
-          'name': 'IPTV VOD',
-          'entry': 'iptv_vod.js',
-          'kind': 'catalog',
-          'protocol': 1,
-          'kit': 1,
-          'types': ['iptv'],
-          'capabilities': ['details'],
-          'enabled': true,
-          'prelude': '_kit.js',
-        },
-      ],
-    });
-    registry.debugHttpClient = MockClient((request) async {
-      final path = request.url.path;
-      if (path.endsWith('manifest.json')) {
-        return http.Response(manifest, 200);
-      }
-      if (path.endsWith('_kit.js')) {
-        return http.Response('var HUB_KIT = 1;', 200);
-      }
-      if (path.endsWith('iptv_vod.js')) {
-        return http.Response(
-          "function extract(ctx){ return hubOk('details', { meta: {} }); }",
-          200,
-        );
-      }
-      return http.Response('not found', 404);
-    });
     SharedPreferences.setMockInitialValues({
       'engine_js_packs_v2': jsonEncode([
         {
@@ -106,16 +71,62 @@ void main() {
     });
     final packs = await registry.listPacksRaw();
     expect(await registry.packNeedsDiskInstall(packs.first), isTrue);
-    expect(await registry.ensurePackScriptsReady(packs.first), isTrue);
-    final hydrated = (await registry.listPacksRaw()).first;
-    expect(await registry.packNeedsDiskInstall(hydrated), isFalse);
-    expect(
-      await PluginScriptDiskStore.loadEngineScript(
-        sourceUrl: url,
-        pluginId: 'iptv-vod',
-      ),
-      isNotNull,
+    expect(await registry.ensurePackScriptsReady(packs.first), isFalse);
+    expect(await registry.packNeedsDiskInstall(packs.first), isTrue);
+  });
+
+  test('ensurePluginReady prompts instead of silent remote install', () async {
+    const url = 'https://prompt.example/manifest.json';
+    SharedPreferences.setMockInitialValues({
+      'engine_js_packs_v2': jsonEncode([
+        {
+          'sourceUrl': url,
+          'packId': 'prompt-pack',
+          'name': 'Prompt Pack',
+          'version': '0.0.0',
+          'plugins': [
+            {
+              'id': 'iptv-vod',
+              'name': 'IPTV VOD',
+              'entry': 'iptv_vod.js',
+              'kind': 'catalog',
+              'enabled': true,
+            },
+          ],
+        },
+      ]),
+      'engine_js_packs_v2_migrated': true,
+      'engine_js_scripts_disk_v3_migrated': true,
+    });
+    // Re-seed after setMockInitialValues wiped SharedPreferences instance.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      'engine_js_packs_v2',
+      jsonEncode([
+        {
+          'sourceUrl': url,
+          'packId': 'prompt-pack',
+          'name': 'Prompt Pack',
+          'version': '0.0.0',
+          'plugins': [
+            {
+              'id': 'iptv-vod',
+              'name': 'IPTV VOD',
+              'entry': 'iptv_vod.js',
+              'kind': 'catalog',
+              'enabled': true,
+            },
+          ],
+        },
+      ]),
     );
+
+    expect(
+      await PluginInstallCoordinator.instance.ensurePluginReady('iptv-vod'),
+      isFalse,
+    );
+    expect(ShellBus.pendingPluginInstall.value, isNotNull);
+    ShellBus.pendingPluginInstall.value = null;
   });
 
   test('ensureAllInstalled installs missing lean pack with progress', () async {

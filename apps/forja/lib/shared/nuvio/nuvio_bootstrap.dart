@@ -1,16 +1,9 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'nuvio_service.dart';
 
-/// Ensures the built-in Nuvio manifest is persisted and kept fresh so
-/// Settings and Sources share the same scraper list.
-///
-/// Call [ensureInstalled] from profile engine warm (unawaited). Behaviour:
-///   * Persist the bundled All-in-One manifest when missing.
-///   * If installed but last refresh was >24h ago, re-fetch the manifest
-///     so upstream fixes/new providers flow through (enabled flags kept).
-///   * Failures are non-fatal and logged.
+/// Nuvio entry for profile warm. **Never** auto-installs or auto-refreshes —
+/// user installs / refreshes in Settings → Sources.
 class NuvioBootstrap {
   NuvioBootstrap._();
 
@@ -18,31 +11,11 @@ class NuvioBootstrap {
       'https://raw.githubusercontent.com/D3adlyRocket/All-in-One-Nuvio/'
       'refs/heads/main/manifest.json';
 
-  static const String _lastRefreshKey = 'nuvio_bootstrap_last_refresh_v1';
-  static const Duration _refreshInterval = Duration(hours: 24);
-
   static Future<void> ensureInstalled({String? manifestUrl}) async {
-    final url = manifestUrl ?? defaultManifestUrl;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final svc = NuvioService.instance;
-      await svc.ensureBundledInstalled();
-      final addons = await svc.listAddons();
-      final installed = addons.any((a) => a.manifestUrl == url);
-      if (!installed) return;
-      final lastTs = prefs.getInt(_lastRefreshKey) ?? 0;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      final stale = (now - lastTs) > _refreshInterval.inMilliseconds;
-      if (!stale) {
-        debugPrint('[NuvioBootstrap] up-to-date - skipping');
-        return;
-      }
-      debugPrint('[NuvioBootstrap] refreshing manifest…');
-      await svc.refreshFromUrl(url);
-      await prefs.setInt(_lastRefreshKey, now);
-      debugPrint('[NuvioBootstrap] refreshed OK');
-    } catch (e) {
-      debugPrint('[NuvioBootstrap] refresh failed (non-fatal): $e');
-    }
+    debugPrint(
+      '[NuvioBootstrap] skip auto-install/refresh — user confirm required',
+    );
+    // Keep signature; [NuvioService.ensureBundledInstalled] is also a no-op.
+    await NuvioService.instance.ensureBundledInstalled();
   }
 }
