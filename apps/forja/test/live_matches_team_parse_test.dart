@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:forja/features/live_matches/live_matches_team_parse.dart';
+import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_team_parse.dart';
 
 void main() {
   group('parseLiveMatchTeamsFromTitle', () {
@@ -62,6 +62,11 @@ void main() {
       );
       expect(home, 'Home FC');
       expect(away, 'Away FC');
+    });
+
+    test('foldLiveMatchLatin strips accents', () {
+      expect(foldLiveMatchLatin('León'), 'leon');
+      expect(foldLiveMatchLatin('Atlético'), 'atletico');
     });
 
     test('sportNickFromTeam skips generic City suffix', () {

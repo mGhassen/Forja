@@ -16,6 +16,19 @@ void main() {
       expect(catalogs.first['id'], 'sports_live');
     });
 
+    test('includes type events catalogs', () {
+      final catalogs = StremioService.sportCatalogsForLive({
+        'manifest': {
+          'catalogs': [
+            {'type': 'events', 'id': 'sports-events', 'name': 'Events'},
+            {'type': 'movie', 'id': 'top', 'name': 'Top'},
+          ],
+        },
+      });
+      expect(catalogs, hasLength(1));
+      expect(catalogs.first['id'], 'sports-events');
+    });
+
     test('includes live-named tv catalogs', () {
       final catalogs = StremioService.sportCatalogsForLive({
         'manifest': {

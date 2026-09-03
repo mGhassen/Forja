@@ -1486,15 +1486,17 @@ class PluginRegistry {
       }
       await _savePacks(next);
     }
-
-    unawaited(ensureOfficialInstalled());
+    // Do not auto-hydrate lean stubs here — that silently installs every
+    // cloud pack. Callers prompt via [PluginInstallCoordinator.promptPendingPackInstalls].
   }
 
   Future<void> _purgeRetiredOfficialPacks() async {
     await listPacksRaw();
   }
 
-  /// Fetch manifests for lean stubs (`plugins` empty). Idempotent.
+  /// Formerly auto-downloaded lean stubs from profile sync. That skipped the
+  /// install confirm dialog — now a no-op. Pending packs install only after
+  /// [PluginInstallCoordinator.promptPendingPackInstalls] / Settings Install.
   Future<void> hydrateLeanInstalled() {
     return _hydrateLeanInFlight ??= _hydrateLeanInstalledImpl().whenComplete(
       () {
@@ -1504,22 +1506,8 @@ class PluginRegistry {
   }
 
   Future<void> _hydrateLeanInstalledImpl() async {
-    final all = await listPacksRaw();
-    for (final pack in all) {
-      if (pack.plugins.isNotEmpty) continue;
-      if (isLegacyAssetPack(pack.sourceUrl)) continue;
-      if (_asLocalFile(pack.sourceUrl) != null &&
-          !await _localManifestExists(pack.sourceUrl)) {
-        continue;
-      }
-      try {
-        final url = await _substituteUnreachableLocalManifest(pack.sourceUrl);
-        await install(url);
-      } catch (e) {
-        debugPrint(
-          '[engine] lean hydrate failed (${pack.sourceUrl}): $e',
-        );
-      }
-    }
+    debugPrint(
+      '[engine] lean hydrate skipped — packs need user confirm before download',
+    );
   }
 }

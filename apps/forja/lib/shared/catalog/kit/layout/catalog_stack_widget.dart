@@ -16,6 +16,7 @@ class CatalogKitStackWidget extends StatelessWidget {
     final raw = spec['children'];
     if (raw is! List || raw.isEmpty) return const SizedBox.shrink();
 
+    final horizontal = (spec['axis'] ?? '').toString() == 'horizontal';
     final expandLast = spec['expandLast'] == true || spec['expand'] == true;
     final children = <Widget>[];
     var childIndex = 0;
@@ -25,13 +26,19 @@ class CatalogKitStackWidget extends StatelessWidget {
       final child = childBuilder(Map<String, dynamic>.from(entry), childIndex);
       childIndex++;
       if (child == null) continue;
-      if (expandLast && i == raw.length - 1) {
+      if (!horizontal && expandLast && i == raw.length - 1) {
         children.add(Expanded(child: child));
       } else {
         children.add(child);
       }
     }
     if (children.isEmpty) return const SizedBox.shrink();
+    if (horizontal) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: children,
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: children,

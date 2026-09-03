@@ -290,12 +290,19 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
 
   Future<void> _deleteEditing() async {
     if (_busy || _editingId == null) return;
+    final deletedId = _editingId!;
+    final wasActive = deletedId == _activeProfileId;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await SyncService.instance.deleteProfile(_editingId!);
+      await SyncService.instance.deleteProfile(deletedId);
+      // Active profile flipped to another — wipe prior IPTV cache then pull
+      // the survivor's assignments (same fail-closed path as Who's watching).
+      if (wasActive && SyncService.instance.isSignedIn) {
+        await SyncDomainBridge.instance.pullAndMergeAll(resetLocalFirst: true);
+      }
       if (!mounted) return;
       await ref.read(syncProfilesProvider.notifier).reload();
       if (!mounted) return;

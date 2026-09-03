@@ -814,7 +814,10 @@ class StremioService {
     for (final c in catalogs) {
       if (c is! Map) continue;
       final type = c['type']?.toString() ?? '';
-      if (type != 'sport' && !StremioAddonFeatures.catalogLooksLive(c)) {
+      if (type != 'sport' &&
+          type != 'events' &&
+          type != 'event' &&
+          !StremioAddonFeatures.catalogLooksLive(c)) {
         continue;
       }
       sport.add(Map<String, dynamic>.from(c));

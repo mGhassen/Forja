@@ -38,7 +38,7 @@ Map<String, dynamic> loadIptvVodPackManifest() {
 
 List<EnginePlugin> loadAllHubPlugins() {
   final out = <EnginePlugin>[];
-  for (final dir in ['home', 'anime', 'asian_drama', 'arabic', 'my_list']) {
+  for (final dir in ['home', 'anime', 'asian_drama', 'arabic', 'my_list', 'live_sports']) {
     final pack = EnginePack.fromJson(
       loadHubPackManifest(dir),
       sourceUrl: 'file:///plugins/hubs/$dir/manifest.json',
@@ -662,13 +662,16 @@ void main() {
       expect(byTab['arabic']!.pluginId, 'arabic-hub');
       expect(byTab['mylist']!.pluginId, 'my-list-hub');
       expect(byTab['mylist']!.icon, ForjaHostAssets.uriNavMyList);
+      expect(byTab['live_matches']!.pluginId, 'live-sports-hub');
+      expect(byTab['live_matches']!.icon, ForjaHostAssets.uriNavLiveMatches);
+      expect(byTab['live_matches']!.accent, '#FB923C');
       expect(byTab['arabic']!.defaultEnabled, isFalse);
       expect(byTab['home']!.accent, '#1CE783');
       expect(byTab['home']!.order, 10);
 
-      // Host seed is empty — pack [refresh] (or cache) contributes tabs.
+      // Live Sports is seeded so the tab exists before pack refresh (RFC-071).
       PluginNavRegistry.seedBuiltIns();
-      expect(PluginNavRegistry.destinations, isEmpty);
+      expect(PluginNavRegistry.isHubTab('live_matches'), isTrue);
       expect(PluginNavRegistry.isHubTab('settings'), isFalse);
       expect(PluginNavRegistry.isContributed('mylist'), isFalse);
     });

@@ -440,6 +440,11 @@ class CatalogMetaItem {
     this.listTarget,
     this.open,
     this.videos = const [],
+    this.airing,
+    this.startsAt,
+    this.viewers,
+    this.mode,
+    this.sources = const [],
   });
 
   final String id;
@@ -468,6 +473,17 @@ class CatalogMetaItem {
   /// Pack-owned episode list from `details` (opaque video ids for `stream`).
   final List<CatalogVideo> videos;
 
+  /// Live Sports (RFC-071): match is currently airing / live.
+  final bool? airing;
+  /// Live Sports: kickoff / start instant (ISO-8601 or epoch ms string).
+  final String? startsAt;
+  /// Live Sports: concurrent viewers when reported by catalog.
+  final int? viewers;
+  /// Live Sports host mode id (`forja_live` / `forja_sports` / `stremio`).
+  final String? mode;
+  /// Live Sports stream source refs (`[{ pluginId, id, … }]`).
+  final List<Map<String, dynamic>> sources;
+
   String? get idNamespace {
     final i = id.indexOf(':');
     if (i <= 0) return null;
@@ -495,6 +511,8 @@ class CatalogMetaItem {
   factory CatalogMetaItem.fromJson(Map<String, dynamic> j) {
     final genresRaw = j['genres'];
     final videosRaw = j['videos'];
+    final sourcesRaw = j['sources'];
+    final airingRaw = j['airing'];
     return CatalogMetaItem(
       id: (j['id'] ?? '').toString(),
       type: (j['type'] ?? 'movie').toString(),
@@ -526,6 +544,26 @@ class CatalogMetaItem {
               for (final e in videosRaw)
                 if (e is Map)
                   CatalogVideo.fromJson(Map<String, dynamic>.from(e)),
+            ]
+          : const [],
+      airing: airingRaw is bool
+          ? airingRaw
+          : (airingRaw == null
+              ? null
+              : airingRaw.toString() == 'true' || airingRaw.toString() == '1'),
+      startsAt: () {
+        final s = (j['starts_at'] ?? j['startsAt'] ?? '').toString().trim();
+        return s.isEmpty ? null : s;
+      }(),
+      viewers: (j['viewers'] as num?)?.toInt(),
+      mode: () {
+        final s = (j['mode'] ?? '').toString().trim();
+        return s.isEmpty ? null : s;
+      }(),
+      sources: sourcesRaw is List
+          ? [
+              for (final e in sourcesRaw)
+                if (e is Map) Map<String, dynamic>.from(e),
             ]
           : const [],
     );
@@ -564,6 +602,11 @@ class CatalogMetaItem {
                 if (v.aired != null) 'aired': v.aired,
               },
           ],
+        if (airing != null) 'airing': airing,
+        if (startsAt != null && startsAt!.isNotEmpty) 'starts_at': startsAt,
+        if (viewers != null) 'viewers': viewers,
+        if (mode != null && mode!.isNotEmpty) 'mode': mode,
+        if (sources.isNotEmpty) 'sources': sources,
       };
 
   CatalogMetaItem copyWith({
@@ -571,6 +614,11 @@ class CatalogMetaItem {
     String? poster,
     String? description,
     List<CatalogVideo>? videos,
+    bool? airing,
+    String? startsAt,
+    int? viewers,
+    String? mode,
+    List<Map<String, dynamic>>? sources,
   }) =>
       CatalogMetaItem(
         id: id,
@@ -592,6 +640,11 @@ class CatalogMetaItem {
         listTarget: listTarget,
         open: open,
         videos: videos ?? this.videos,
+        airing: airing ?? this.airing,
+        startsAt: startsAt ?? this.startsAt,
+        viewers: viewers ?? this.viewers,
+        mode: mode ?? this.mode,
+        sources: sources ?? this.sources,
       );
 }
 

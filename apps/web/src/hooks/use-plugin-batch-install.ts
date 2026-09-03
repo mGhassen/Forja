@@ -14,6 +14,7 @@ import {
   installPayloadFromPack,
   readPluginBatchInstallIntent,
   rememberPluginBatchInstallIntent,
+  tryOpenForjaBatchInstallDeepLink,
 } from '@/lib/forja-plugin-install'
 
 export function selectionFromBatchIntent(
@@ -116,6 +117,19 @@ export function usePluginBatchInstall({
 
   const confirmBatch = useCallback(
     async (items: PluginBatchInstallItem[]) => {
+      if (items.length === 0) return false
+
+      const opened = await tryOpenForjaBatchInstallDeepLink(
+        items.map((item) => installPayloadFromPack(item)),
+      )
+      if (opened) {
+        clearPluginBatchInstallIntent()
+        setDialogOpen(false)
+        setDialogPacks([])
+        setInitialSelection(undefined)
+        return true
+      }
+
       if (!user) {
         rememberPluginBatchInstallIntent({
           selections: items.map((item) => installPayloadFromPack(item)),

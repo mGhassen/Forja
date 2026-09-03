@@ -143,7 +143,9 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   }
 
   /// Cloud pull for the incoming profile — rotate status like intro splash,
-  /// timeout soft-fails (keep local), offer continue when slow.
+  /// timeout soft-fails lean settings only. IPTV inventory is wiped at the
+  /// start of the pull (issue 217) so a stall cannot show another profile's
+  /// portals; background sync still fills this profile's assignments.
   Future<void> _syncProfileSettings() async {
     const steps = <String>[
       'Syncing settings…',
@@ -174,7 +176,8 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
           onTimeout: () {
             debugPrint(
               '[ProfileSplash] Settings sync timed out after '
-              '${_settingsSyncTimeout.inSeconds}s — opening with local cache',
+              '${_settingsSyncTimeout.inSeconds}s — opening; IPTV stays '
+              'empty until this profile\'s portal pull finishes',
             );
           },
         ),
@@ -332,7 +335,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       _syncContinueTimer = null;
       if (mounted) setState(() => _offerContinue = false);
       ForjaToast.info(
-        'Opening with settings saved on this device.',
+        'Opening while settings finish syncing. IPTV portals load when ready.',
         duration: const Duration(seconds: 3),
       );
       return;

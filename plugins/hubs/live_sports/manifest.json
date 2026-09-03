@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "id": "forjahq-live-sports",
+  "name": "ForjaHQ Live Sports",
+  "description": "Live sports hub — schedule browse and stream resolve via host live kit.",
+  "author": "ForjaHQ",
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "id": "live-sports-hub",
+      "name": "Live Sports",
+      "description": "Live sports schedule hub — pack owns layout; host owns modes and play",
+      "entry": "live_sports.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": ["live_match"],
+      "capabilities": ["nav", "layout"],
+      "nav": {
+        "tabId": "live_matches",
+        "label": "Live Sports",
+        "order": 20,
+        "icon": "forja://asset/nav/live-matches",
+        "accent": "#FB923C",
+        "defaultEnabled": true
+      },
+      "enabled": true,
+      "prelude": "_kit.js"
+    }
+  ]
+}

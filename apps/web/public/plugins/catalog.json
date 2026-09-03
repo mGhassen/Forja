@@ -83,6 +83,16 @@
       "author": "ForjaHQ"
     },
     {
+      "id": "live-sports",
+      "kind": "hubs",
+      "manifestPath": "hubs/live_sports/manifest.json",
+      "name": "ForjaHQ Live Sports",
+      "description": "Live sports hub — schedule browse and native stream resolve.",
+      "accent": "brand",
+      "official": true,
+      "author": "ForjaHQ"
+    },
+    {
       "id": "iptv-vod",
       "kind": "iptv",
       "manifestPath": "iptv/vod/manifest.json",

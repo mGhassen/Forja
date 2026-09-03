@@ -21,7 +21,7 @@ class StremioAddonFeatures {
     final type = catalog['type']?.toString().trim().toLowerCase() ?? '';
     final id = catalog['id']?.toString().trim().toLowerCase() ?? '';
     final name = catalog['name']?.toString().trim().toLowerCase() ?? '';
-    if (type == 'sport') return true;
+    if (type == 'sport' || type == 'events' || type == 'event') return true;
     if (id.contains('live') || name.contains('live')) return true;
     if (id.contains('sport') || name.contains('sport')) return true;
     return false;

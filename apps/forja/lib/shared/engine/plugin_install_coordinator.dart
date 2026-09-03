@@ -280,11 +280,13 @@ class PluginInstallCoordinator {
     bool notifyUpdates = true,
     bool awaitCloudLean = false,
     bool includeNuvio = true,
+    bool promptBeforeInstall = true,
   }) {
     return _inFlight ??= _run(
       notifyUpdates: notifyUpdates,
       awaitCloudLean: awaitCloudLean,
       includeNuvio: includeNuvio,
+      promptBeforeInstall: promptBeforeInstall,
     ).whenComplete(() {
       _inFlight = null;
       progress.value = null;
@@ -295,6 +297,7 @@ class PluginInstallCoordinator {
     required bool notifyUpdates,
     required bool awaitCloudLean,
     required bool includeNuvio,
+    required bool promptBeforeInstall,
   }) async {
     final registry = PluginRegistry.instance;
 
@@ -329,17 +332,12 @@ class PluginInstallCoordinator {
       }
     }
 
-    if (jobs.length >= 2) {
-      final prompt = await buildBatchInstallPrompt();
-      final pending =
-          prompt?.candidates.where((c) => !c.alreadyInstalled).length ?? 0;
-      if (pending >= 2) {
-        ShellBus.pendingPluginBatchInstall.value = prompt;
-        jobs.clear();
-        debugPrint(
-          '[PluginInstall] deferred $pending pack(s) — batch prompt',
-        );
-      }
+    if (jobs.isNotEmpty && promptBeforeInstall) {
+      await promptPendingPackInstalls(
+        packsOverride: [for (final job in jobs) job.pack],
+      );
+      jobs.clear();
+      debugPrint('[PluginInstall] deferred pending packs — user prompt');
     }
 
     var completed = 0;
@@ -413,9 +411,11 @@ class PluginInstallCoordinator {
   }
 
   /// Build a batch picker from profile pack rows (installed + pending disk).
-  Future<PluginBatchInstallPrompt?> buildBatchInstallPrompt() async {
+  Future<PluginBatchInstallPrompt?> buildBatchInstallPrompt({
+    List<EnginePack>? packsOverride,
+  }) async {
     final registry = PluginRegistry.instance;
-    final packs = await registry.listPacksRaw();
+    final packs = packsOverride ?? await registry.listPacksRaw();
     final candidates = <PluginInstallCandidate>[];
     for (final pack in packs) {
       if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) continue;
@@ -432,10 +432,51 @@ class PluginInstallCoordinator {
     return PluginBatchInstallPrompt(candidates: candidates);
   }
 
+  /// Queue single or batch install prompt for packs that still need download.
+  /// Never installs without the user accepting the dialog.
+  Future<void> promptPendingPackInstalls({
+    List<EnginePack>? packsOverride,
+  }) async {
+    if (ShellBus.pendingPluginInstall.value != null ||
+        ShellBus.pendingPluginBatchInstall.value != null) {
+      return;
+    }
+    final prompt = await buildBatchInstallPrompt(packsOverride: packsOverride);
+    if (prompt == null) return;
+    final pending = prompt.candidates
+        .where((c) => !c.alreadyInstalled)
+        .toList(growable: false);
+    if (pending.isEmpty) return;
+
+    if (pending.length == 1) {
+      final only = pending.first;
+      ShellBus.pendingPluginInstall.value = PluginInstallPrompt(
+        manifestUrl: only.manifestUrl,
+        displayName: only.displayName,
+      );
+      return;
+    }
+
+    ShellBus.pendingPluginBatchInstall.value = PluginBatchInstallPrompt(
+      candidates: prompt.candidates,
+    );
+  }
+
   /// Open the global batch install picker (empty-state CTA, manual retry).
   Future<void> requestBatchInstallPrompt() async {
     final prompt = await buildBatchInstallPrompt();
     if (prompt == null) return;
+    final pending =
+        prompt.candidates.where((c) => !c.alreadyInstalled).toList();
+    if (pending.isEmpty) return;
+    if (pending.length == 1) {
+      final only = pending.first;
+      ShellBus.pendingPluginInstall.value = PluginInstallPrompt(
+        manifestUrl: only.manifestUrl,
+        displayName: only.displayName,
+      );
+      return;
+    }
     ShellBus.pendingPluginBatchInstall.value = prompt;
   }
 

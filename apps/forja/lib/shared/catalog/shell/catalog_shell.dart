@@ -40,6 +40,7 @@ import '../plugin_nav.dart';
 import '../protocol.dart';
 import '../runtime.dart';
 import '../kit/chrome/catalog_chrome_filters.dart';
+import '../kit/sources/live_schedule/live_sports_kit_page.dart';
 import 'catalog_open.dart';
 
 /// Renders a shell tab from a `kind: catalog` plugin layout.
@@ -391,6 +392,15 @@ class _CatalogShellState extends State<CatalogShell>
   }
 
   Widget? _fullPageLayoutBody({required Map<String, int> tvOrders}) {
+    if (LiveSportsKitPage.matchesLayout(_widgets)) {
+      return LiveSportsKitPage(
+        pluginId: widget.pluginId,
+        tabId: widget.tabId,
+        layoutWidgets: _widgets,
+        shellTabVisible: shellTabVisible,
+        refreshEpoch: _hostRefreshEpoch,
+      );
+    }
     if (_widgets.length != 1) return null;
     final root = _widgets.first;
     if (!CatalogKitTypes.isCompositionRoot(root)) return null;
@@ -406,7 +416,7 @@ class _CatalogShellState extends State<CatalogShell>
 
   @override
   Future<void> onShellTabRefresh({required bool force}) async {
-    if (_hasMyListWidget && mounted) {
+    if ((_hasMyListWidget || _isLiveHub) && mounted) {
       setState(() => _hostRefreshEpoch++);
     }
     _forceNextRails = force;
@@ -417,6 +427,26 @@ class _CatalogShellState extends State<CatalogShell>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _forceNextRails = false;
     });
+  }
+
+  bool get _isLiveHub =>
+      widget.tabId == 'live_matches' ||
+      LiveSportsKitPage.matchesLayout(_widgets);
+
+  @override
+  void onShellTabHidden() {
+    super.onShellTabHidden();
+    if (_isLiveHub) {
+      EngineService.instance.cancelLiveCatalog();
+    }
+  }
+
+  @override
+  void onShellTabShown() {
+    super.onShellTabShown();
+    if (_isLiveHub && mounted) {
+      setState(() {});
+    }
   }
 
   String _errorMessage(CatalogError? error) {
@@ -1301,6 +1331,17 @@ class _CatalogShellState extends State<CatalogShell>
   Widget build(BuildContext context) {
     super.build(context);
     final body = () {
+      final liveHub = widget.tabId == 'live_matches' ||
+          LiveSportsKitPage.matchesLayout(_widgets);
+      if (liveHub) {
+        return LiveSportsKitPage(
+          pluginId: widget.pluginId,
+          tabId: widget.tabId,
+          layoutWidgets: _widgets,
+          shellTabVisible: shellTabVisible,
+          refreshEpoch: _hostRefreshEpoch,
+        );
+      }
       if (_loading && _widgets.isEmpty) {
         return CustomScrollView(
           controller: _scroll,

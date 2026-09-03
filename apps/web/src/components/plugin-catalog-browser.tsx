@@ -20,6 +20,7 @@ import {
   pluginKindLabel,
   pluginKindsFromPacks,
 } from '@/lib/forja-plugin-catalog'
+import { tryOpenForjaBatchInstallDeepLink } from '@/lib/forja-plugin-install'
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 20
@@ -178,22 +179,31 @@ function PluginListRow({
   pack,
   focused,
   checked,
-  onClick,
+  onRowClick,
+  onToggleCheck,
 }: {
   pack: ForjaPluginPackLive
   focused: boolean
   checked: boolean
-  onClick: (event: MouseEvent<HTMLButtonElement>) => void
+  onRowClick: (event: MouseEvent<HTMLElement>) => void
+  onToggleCheck: () => void
 }) {
   const official = isOfficialPluginPack(pack)
   const author = packAuthorLabel(pack)
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onRowClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onRowClick(e as unknown as MouseEvent<HTMLElement>)
+        }
+      }}
       className={cn(
-        'flex w-full items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 text-left transition-colors sm:px-4',
+        'flex w-full cursor-pointer items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 text-left transition-colors sm:px-4',
         checked
           ? 'bg-forja-green/15'
           : focused
@@ -201,17 +211,24 @@ function PluginListRow({
             : 'hover:bg-white/[0.04]',
       )}
     >
-      <span
+      <button
+        type="button"
+        aria-label={checked ? `Deselect ${pack.name}` : `Select ${pack.name}`}
+        aria-checked={checked}
+        role="checkbox"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleCheck()
+        }}
         className={cn(
-          'flex size-4 shrink-0 items-center justify-center rounded border',
+          'flex size-5 shrink-0 items-center justify-center rounded border transition-colors',
           checked
             ? 'border-forja-green bg-forja-green text-[#0B0A0A]'
-            : 'border-white/20 bg-transparent',
+            : 'border-white/25 bg-transparent hover:border-forja-green/60',
         )}
-        aria-hidden
       >
-        {checked ? <Check className="size-2.5 stroke-[3]" /> : null}
-      </span>
+        {checked ? <Check className="size-3 stroke-[3]" /> : null}
+      </button>
       <Puzzle
         className={cn(
           'size-4 shrink-0',
@@ -238,7 +255,7 @@ function PluginListRow({
           v{pack.version}
         </span>
       ) : null}
-    </button>
+    </div>
   )
 }
 
@@ -306,6 +323,11 @@ export function PluginCatalogBrowser({
   )
 
   const showMultiAdd = checkedIds.size >= 2
+  const multiSelectMode = checkedIds.size >= 2
+
+  useEffect(() => {
+    if (multiSelectMode) setMobileDetailOpen(false)
+  }, [multiSelectMode])
 
   useEffect(() => {
     setPage(1)
@@ -378,32 +400,52 @@ export function PluginCatalogBrowser({
     setCheckedIds(next)
   }
 
-  function handleRowClick(packId: string, event: MouseEvent<HTMLButtonElement>) {
+  function toggleCheck(packId: string) {
+    setCheckedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(packId)) next.delete(packId)
+      else next.add(packId)
+      return next
+    })
+    anchorIdRef.current = packId
     setSelectedId(packId)
-    setMobileDetailOpen(true)
+    setMobileDetailOpen(false)
+  }
 
+  function handleRowClick(packId: string, event: MouseEvent<HTMLElement>) {
     if (event.shiftKey) {
+      setSelectedId(packId)
+      setMobileDetailOpen(false)
       selectRange(packId)
       return
     }
 
     if (event.metaKey || event.ctrlKey) {
-      setCheckedIds((prev) => {
-        const next = new Set(prev)
-        if (next.has(packId)) next.delete(packId)
-        else next.add(packId)
-        return next
-      })
-      anchorIdRef.current = packId
+      toggleCheck(packId)
       return
     }
 
+    // Plain click: focus + detail (clear multi-select)
+    setSelectedId(packId)
+    setMobileDetailOpen(true)
     anchorIdRef.current = packId
     setCheckedIds(new Set())
   }
 
   async function handleMultiAdd() {
     if (checkedPacks.length < 2) return
+    const opened = await tryOpenForjaBatchInstallDeepLink(
+      checkedPacks.map((pack) => ({
+        manifestUrl: pack.manifestUrl,
+        name: pack.name,
+        version: pack.version,
+      })),
+    )
+    if (opened) {
+      setCheckedIds(new Set())
+      anchorIdRef.current = null
+      return
+    }
     batchInstall.openDialog(checkedPacks)
   }
 
@@ -470,11 +512,19 @@ export function PluginCatalogBrowser({
         </div>
 
         <div className="overflow-hidden rounded-xl border border-white/10 bg-[#121110]">
-          <div className="grid min-h-[min(70vh,640px)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+          <div
+            className={cn(
+              'grid min-h-[min(70vh,640px)]',
+              multiSelectMode
+                ? 'lg:grid-cols-1'
+                : 'lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]',
+            )}
+          >
             <div
               className={cn(
-                'flex flex-col border-white/10 lg:border-r',
-                mobileDetailOpen ? 'hidden lg:flex' : 'flex',
+                'flex flex-col border-white/10',
+                !multiSelectMode && 'lg:border-r',
+                mobileDetailOpen && !multiSelectMode ? 'hidden lg:flex' : 'flex',
               )}
             >
               {showMultiAdd ? (
@@ -499,7 +549,7 @@ export function PluginCatalogBrowser({
               ) : (
                 <div className="border-b border-white/[0.06] px-3 py-2 sm:px-4">
                   <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
-                    Packs · Shift+click to select multiple
+                    Packs · checkbox or Shift+click to select multiple
                   </p>
                 </div>
               )}
@@ -516,9 +566,10 @@ export function PluginCatalogBrowser({
                     <PluginListRow
                       key={pack.id}
                       pack={pack}
-                      focused={selected?.id === pack.id}
+                      focused={!multiSelectMode && selected?.id === pack.id}
                       checked={checkedIds.has(pack.id)}
-                      onClick={(event) => handleRowClick(pack.id, event)}
+                      onRowClick={(event) => handleRowClick(pack.id, event)}
+                      onToggleCheck={() => toggleCheck(pack.id)}
                     />
                   ))
                 )}
@@ -557,17 +608,19 @@ export function PluginCatalogBrowser({
               ) : null}
             </div>
 
-            <div className="hidden flex-col bg-[#0f0e0d] lg:flex">
-              {selected ? (
-                <PluginDetailPanel pack={selected} />
-              ) : (
-                <EmptyDetail />
-              )}
-            </div>
+            {!multiSelectMode ? (
+              <div className="hidden flex-col bg-[#0f0e0d] lg:flex">
+                {selected ? (
+                  <PluginDetailPanel pack={selected} />
+                ) : (
+                  <EmptyDetail />
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
 
-        {mobileDetailOpen && selected ? (
+        {mobileDetailOpen && selected && !multiSelectMode ? (
           <div className="fixed inset-0 z-50 lg:hidden">
             <button
               type="button"

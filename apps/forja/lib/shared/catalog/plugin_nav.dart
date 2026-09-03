@@ -18,7 +18,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 abstract final class PluginNavRegistry {
   static const coreShellNavIds = {
     'iptv',
-    'live_matches',
     'settings',
   };
 
@@ -60,12 +59,30 @@ abstract final class PluginNavRegistry {
   }
 
   /// Load cached pack nav on first [refresh] only — avoids stale tabs before
-  /// installed packs are scanned.
+  /// installed packs are scanned. Seed Live Sports so the tab exists before the
+  /// hub pack refresh (RFC-071).
   static void seedBuiltIns() {
-    _destinations = {};
-    _accents = {};
-    _builders = {};
-    _tabPluginIds = {};
+    _destinations = {
+      'live_matches': const NavDestination(
+        id: 'live_matches',
+        icon: Icons.sports_soccer_outlined,
+        activeIcon: Icons.sports_soccer_rounded,
+        label: 'Live Sports',
+        iconAsset: ForjaHostAssets.flutterNavLiveMatches,
+      ),
+    };
+    _accents = {
+      'live_matches': const Color(0xFFFB923C),
+    };
+    _tabPluginIds = {
+      'live_matches': 'live-sports-hub',
+    };
+    _builders = {
+      'live_matches': () => const CatalogShell(
+            pluginId: 'live-sports-hub',
+            tabId: 'live_matches',
+          ),
+    };
     _seeded = true;
   }
 

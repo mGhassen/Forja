@@ -59,7 +59,26 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
         );
         await WidgetsBinding.instance.endOfFrame;
         if (!mounted) return;
-        setState(() => _batchPrompt = batch);
+        final packs = await PluginRegistry.instance.listPacksRaw();
+        if (!mounted) return;
+        final installedUrls = <String>{};
+        for (final p in packs) {
+          if (p.plugins.isEmpty) continue;
+          if (await PluginRegistry.instance.packNeedsDiskInstall(p)) continue;
+          installedUrls.add(p.sourceUrl.trim());
+        }
+        if (!mounted) return;
+        final refreshed = PluginBatchInstallPrompt(
+          candidates: [
+            for (final c in batch.candidates)
+              PluginInstallCandidate(
+                manifestUrl: c.manifestUrl,
+                displayName: c.displayName,
+                alreadyInstalled: installedUrls.contains(c.manifestUrl.trim()),
+              ),
+          ],
+        );
+        setState(() => _batchPrompt = refreshed);
       } finally {
         if (mounted) _busy = false;
       }

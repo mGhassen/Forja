@@ -653,11 +653,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
       curve: Curves.easeOut,
       decoration: BoxDecoration(
         color: _backgroundColor(),
-        border: Border(
-          top: BorderSide(color: _borderColor()),
-          right: BorderSide(color: _borderColor()),
-          bottom: BorderSide(color: _borderColor()),
-        ),
+        // Full rectangle — probe strip is an *inner* accent, not a missing
+        // left edge (transparent strip used to leave a gap on hover).
+        border: Border.all(color: _borderColor()),
       ),
       child: Stack(
         children: [

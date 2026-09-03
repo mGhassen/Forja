@@ -62,9 +62,10 @@ class BootNeeds {
   bool get needsForjaPluginWarm =>
       catalogTab || engine || torrent || nuvio;
 
-  /// Any contributed catalog hub tab.
+  /// Any contributed catalog hub tab (VOD browse — not Live Sports).
   static bool isVodNavId(String id) {
     if (archivedNavIds.contains(id)) return false;
+    if (id == 'live_matches') return false;
     if (PluginNavRegistry.coreShellNavIds.contains(id)) return false;
     return PluginNavRegistry.isHubTab(id);
   }
@@ -111,7 +112,7 @@ class BootNeeds {
     final playSourceStremio = await PlaySourceEffective.stremio(s, lanReady);
     final playSourceNuvio = await PlaySourceEffective.nuvio(s, lanReady);
     final playSourceEngine = await PlaySourceEffective.engine(s, lanReady);
-    final hubTab = nav.any(PluginNavRegistry.isHubTab);
+    final hubTab = nav.any(isVodNavId);
     final catalogTab = hubTab;
     final vodTab = hubTab;
 

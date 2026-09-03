@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/details/hub_details_screen.dart';
+import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_play_kit.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 
 /// In-flight opens keyed by `pluginId + item.id` — blocks stacked details from
@@ -15,7 +16,7 @@ String catalogTmdbImagePath(String url) {
 }
 
 bool catalogOpenUsesHubDetails(CatalogOpen open) =>
-    !_openUsesFeatureDetailsRoute(open);
+    !_openUsesFeatureDetailsRoute(open) && open.surface != 'live';
 
 bool _openUsesFeatureDetailsRoute(CatalogOpen open) {
   final route = open.extraString('detailsRoute') ??
@@ -37,6 +38,10 @@ Future<void> openCatalogMetaItem(
   if (!_catalogOpenInFlight.add(key)) return;
   try {
     if (!context.mounted) return;
+    if (item.open?.surface == 'live' || item.type == 'live_match') {
+      LivePlayKit.openFromCatalogMeta(context, item);
+      return;
+    }
     await openHubDetails(
       context,
       pluginId: pluginId,

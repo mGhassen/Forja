@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **7 / 9** acceptance |
-| **Current slice** | Per-addon enable + Sources vs Live Matches targets + sport HLS; kickoff parse/sort landed; smoke R50-A06 / R50-A07 remain |
+| **Progress** | **4 / 4** components · **8 / 10** acceptance |
+| **Current slice** | Catalog chip per live Stremio addon + Providers id match; smoke R50-A06 / R50-A07 remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -39,6 +39,7 @@
 | 7 | R50-A07 | Android TV Exo: Highfly `recaps.dev` /leaf HLS plays (no forever Reconnecting…) — [issue 143](../issues/143-[open]-android-tv-stremio-live-reconnect.md) | ⬜ |
 | 8 | R50-A08 | Stremio sport metas parse kickoff (`releaseInfo` / `released` / description) into `dateMs`; grid + timeline sort live-first then chronological | ✅ |
 | 9 | R50-A09 | Disable addon in Settings → stays installed; skipped for streams / catalogs / Live Matches; re-enable restores | ✅ |
+| 10 | R50-A10 | Live Sports **Catalog** picker lists each live-targeted Stremio addon by name; selecting it shows that addon’s sport catalogs on the schedule grid | ✅ |
 
 ---
 
@@ -46,16 +47,17 @@
 
 Stremio addons are no longer assumed to be VOD-only. Each installed addon stores a `features` list (`vod`, `live`). Manifest types drive the default (sport → live; movie/series/… → vod). Settings → Sources shows chips so the user can assign an addon to **Sources**, **Live Matches**, or both.
 
-Live Matches gains a **Stremio** server that aggregates catalogs from live-targeted addons (prefer `sports_live` / `sports_today`), resolves `/stream/sport/{id}.json`, and plays direct HTTP(S) HLS in `IptvPtPlayerScreen`. Not merged into **All** (overlap with Streamed).
+Live Matches gains a **Stremio** server that aggregates catalogs from live-targeted addons (prefer `sports_live` / `sports_today`), resolves `/stream/sport/{id}.json`, and plays direct HTTP(S) HLS in `IptvPtPlayerScreen`. Forja Live / Forja Sports **Catalog** also lists each live addon as its own chip (addon display name) so you can browse that schedule without switching mode. **Providers** on a match still pulls matching Stremio streams alongside engine catalogs (shared event id / teams — not a merged All grid).
 
 ### Goals
 
 - Install [Highfly Sports Streams](https://sportsfree-us2.highfly.dev/configure) (or any sport Stremio addon) for Live Matches
 - Keep torrentio / Cinemeta on Home · Search · Details only
 - Reuse existing Stremio HTTP stack + Live Matches server picker UX
+- Browse each live addon’s catalog from the shared **Catalog** picker
 
 ### Non-goals (this slice)
 
 - Configurable addon URL builder UI (use Stremio configure page, paste URL)
-- Merging Stremio sports into All / PPV–Streamed dedupe
+- Merging Stremio sports into All / PPV–Streamed **grid** dedupe (Catalog stays one chip at a time; Providers may match across)
 - Embed/WebView playback for Stremio sports (HLS-only)

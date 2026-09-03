@@ -19,7 +19,7 @@
 
 `forja://install?manifest=…` deep links open **Forja Packs** and ask before installing.
 
-When **two or more** profile packs still need downloading on this device (for example after **Batch add to Forja** on the web portal), Forja shows a **batch install** dialog — pick which packs to pull now. **Install plugins** on the get-started screen opens the same picker.
+**Batch add** from the web catalog (`Shift+click` multiple packs → **Add N to Forja**) opens the running app with a checkable install dialog. Packs download only after you confirm. If the app is closed, packs sync to your profile and the same picker appears on next sign-in — never a silent mass install.
 
 ## Related
 

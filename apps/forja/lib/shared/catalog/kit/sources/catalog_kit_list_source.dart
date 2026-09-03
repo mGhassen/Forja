@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/catalog/protocol.dart';
 
 import 'my_list/my_list_catalog_source.dart';
+import 'live_schedule/data/live_schedule_source.dart';
 
 /// One row in a host-backed [`CatalogKitTypes.list`] grid.
 class CatalogKitListEntry {
@@ -55,10 +56,17 @@ abstract final class CatalogKitListSources {
   CatalogKitListSources._();
 
   static const myList = 'my_list';
+  static const liveSchedule = CatalogKitLiveSources.liveSchedule;
+
+  /// Full-page host bodies (not poster [CatalogKitListWidget]).
+  static bool isFullPageHost(String sourceId) =>
+      sourceId.trim() == liveSchedule;
 
   static CatalogKitListSource? resolve(String sourceId) {
     return switch (sourceId.trim()) {
       myList => MyListCatalogSource.instance,
+      // Live Sports uses [LiveSportsKitPage] — not the poster list widget.
+      liveSchedule => null,
       _ => null,
     };
   }

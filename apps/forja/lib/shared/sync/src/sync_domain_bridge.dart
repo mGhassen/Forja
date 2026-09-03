@@ -72,6 +72,22 @@ class SyncDomainBridge {
     IptvStore.notifyListChanged();
   }
 
+  /// Fail-closed IPTV cache wipe for profile boundaries (issue 217).
+  ///
+  /// [IptvStore] is device-global. On profile switch / active-profile delete we
+  /// must clear portals + passwords **before** cloud pull — never keep the prior
+  /// profile's inventory when pull fails, times out, or continues early.
+  /// Cache-only (`scheduleSync: false`); empty local must not push to cloud.
+  Future<void> wipeLocalIptvInventoryForProfileBoundary({
+    bool notify = true,
+  }) async {
+    _pushTimers.remove(_domainIptv)?.cancel();
+    await IptvStore.save(const [], scheduleSync: false);
+    await IptvStore.saveFavorites({}, scheduleSync: false);
+    await IptvStore.clearLastPortalKey();
+    if (notify) IptvStore.notifyListChanged();
+  }
+
   /// Wipe synced local domains to platform defaults (no prior-profile bleed).
   ///
   /// Local KV is a device-global **cache**; every profile switch/create must
@@ -145,6 +161,8 @@ class SyncDomainBridge {
       // Local cache only - never schedule a cloud push from a wipe.
       await IptvStore.save(const [], scheduleSync: false);
       await IptvStore.saveFavorites({}, scheduleSync: false);
+      await IptvStore.clearLastPortalKey();
+      if (notify) IptvStore.notifyListChanged();
     }
   }
 
@@ -210,14 +228,20 @@ class SyncDomainBridge {
       AccountFeatures.instance.clear();
       return;
     }
+    // Profile switch: wipe IPTV first so a failed/slow settings pull cannot
+    // leave profile A's portals visible under profile B (issue 217).
+    if (resetLocalFirst) {
+      await wipeLocalIptvInventoryForProfileBoundary();
+    }
     await SyncService.instance.pullAccountFeatures();
     final Map<String, dynamic>? remote;
     try {
       remote = await SyncService.instance.pullProfileSettings();
     } catch (e) {
-      // Failed pull ≠ missing row. Keep local cache; never seed+push defaults
-      // over a populated cloud row (Android TV JWT / network — issue 126).
-      debugPrint('[Sync] pullAndMergeAll aborted (keep local): $e');
+      // Failed pull ≠ missing row. Keep lean local cache; never seed+push
+      // defaults over a populated cloud row (Android TV JWT / network —
+      // issue 126). IPTV already wiped when [resetLocalFirst] (issue 217).
+      debugPrint('[Sync] pullAndMergeAll aborted (keep lean local): $e');
       return;
     }
     if (remote == null) {
@@ -227,14 +251,13 @@ class SyncDomainBridge {
     }
     await _applyLeanPayload(remote, resetLocalFirst: resetLocalFirst);
     // Lazy IPTV: only pull portals when this profile shows the IPTV tab.
-    // Otherwise wipe the device cache so the previous profile cannot bleed.
+    // Otherwise keep the boundary wipe (already empty when resetLocalFirst).
     final nav = await _settings.getNavbarConfig();
     if (nav.contains('iptv')) {
       await _pullAndApplyUserIptvPortals();
     } else {
       debugPrint('[Sync] IPTV pull skip (iptv tab not visible)');
-      await IptvStore.save(const [], scheduleSync: false);
-      await IptvStore.saveFavorites({}, scheduleSync: false);
+      await wipeLocalIptvInventoryForProfileBoundary();
     }
     // Empty `{}` insert left cloud hollow - backfill settings once (not IPTV).
     if (remote.isEmpty) {
@@ -498,8 +521,10 @@ class SyncDomainBridge {
     // Focus/resume refresh: apply cloud over the current cache — do not flash
     // platform-default nav (all tabs) before the real visibleIds land.
     if (resetLocalFirst) {
+      // IPTV already wiped at pullAndMergeAll entry (issue 217). clearIptv
+      // true is idempotent and covers any caller that reset without that wipe.
       await resetSyncedLocalToPlatformDefaults(
-        clearIptv: false,
+        clearIptv: true,
         notify: false,
       );
     }
@@ -718,7 +743,9 @@ class SyncDomainBridge {
     try {
       rows = await SyncService.instance.pullUserIptvPortals();
     } catch (e) {
-      // Keep local inventory - never replace with [] on credential/RPC failure.
+      // Focus/resume re-pull: keep whatever is already in the cache for this
+      // profile. Profile-switch paths wipe first (issue 217), so failure stays
+      // empty — never rehydrate the previous profile's portals.
       debugPrint('[Sync] pullUserIptvPortals failed (local kept): $e');
       return false;
     }
@@ -1032,7 +1059,7 @@ class SyncDomainBridge {
   }
 
   /// Apply cloud lean rows (`manifestUrl` + optional name). **No network** —
-  /// [PluginRegistry.hydrateLeanInstalled] fills packs on first Settings use.
+  /// pending packs prompt the user before download (never silent hydrate).
   Future<void> importForja(Map<String, dynamic> payload) async {
     final packs = payload['packs'] as List? ?? const [];
     final rows = <Map<String, dynamic>>[
@@ -1040,6 +1067,7 @@ class SyncDomainBridge {
         if (raw is Map) Map<String, dynamic>.from(raw),
     ];
     await EngineService.instance.applyLeanManifestUrls(rows);
+    await PluginInstallCoordinator.instance.promptPendingPackInstalls();
   }
 }
 

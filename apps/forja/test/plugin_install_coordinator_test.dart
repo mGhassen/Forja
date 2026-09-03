@@ -190,6 +190,7 @@ void main() {
         notifyUpdates: false,
         awaitCloudLean: false,
         includeNuvio: false,
+        promptBeforeInstall: false,
       );
     } finally {
       PluginInstallCoordinator.instance.progress.removeListener(listener);
@@ -350,6 +351,7 @@ void main() {
       notifyUpdates: false,
       awaitCloudLean: false,
       includeNuvio: false,
+      promptBeforeInstall: false,
     );
 
     final packs = await registry.listPacksRaw();
@@ -426,6 +428,7 @@ void main() {
         notifyUpdates: false,
         awaitCloudLean: false,
         includeNuvio: false,
+        promptBeforeInstall: false,
       );
     } finally {
       PluginInstallCoordinator.instance.progress.removeListener(listener);

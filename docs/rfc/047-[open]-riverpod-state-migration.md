@@ -156,7 +156,7 @@ Migrate Forja’s Flutter host from ad-hoc `StatefulWidget` + `setState` / `Valu
 | Anime | `lib/features/anime/providers/anime_catalog_provider.dart` |
 | Asian Drama | `lib/features/asian_drama/providers/asian_drama_providers.dart` |
 | IPTV | `lib/features/iptv/providers/iptv_controller_provider.dart` |
-| Live Matches | `lib/features/live_matches/providers/live_matches_providers.dart` |
+| Live Matches | `lib/shared/catalog/kit/sources/live_schedule/providers/live_schedule_provider.dart` |
 | My List | `lib/features/my_list/providers/my_list_providers.dart` |
 | Settings visibility | `lib/features/settings/providers/settings_visibility_provider.dart` |
 | Settings panels (playback, debrid, webstreamr, nav, trackers, …) | `lib/features/settings/providers/settings_panel_providers.dart` |

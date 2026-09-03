@@ -3,6 +3,9 @@
 /// Packs use `kit.stack`, `kit.menu`, `kit.tabs`, `kit.list`, `kit.row` in
 /// `layout` widgets. Legacy aliases (`stack`, `tabs`, `rail`, `host.my_list`)
 /// normalize to the same slots for one release.
+///
+/// Domain data (My List, Live Sports, …) is a [kit.list] `source` id — not
+/// product-named kit types.
 abstract final class CatalogKitTypes {
   CatalogKitTypes._();
 

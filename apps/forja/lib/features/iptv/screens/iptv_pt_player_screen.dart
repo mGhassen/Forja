@@ -35,7 +35,8 @@ import 'package:forja/features/iptv/iptv_lazy_url_health.dart';
 import 'package:forja/features/iptv/iptv_tv_focus.dart';
 import 'package:forja/features/iptv/providers/iptv_player_providers.dart';
 import 'package:forja/features/iptv/screens/iptv_player_chrome_profile.dart';
-import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.dart';
+import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_engine.dart';
+import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_iptv_sports_config.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/player/controls/player_app_menu.dart';
 import 'package:forja/shared/player/controls/player_audio_menu.dart';
@@ -270,7 +271,6 @@ class IptvPlaySource {
 }
 
 /// True when [url] is already a playable handoff (HLS/proxy), not a catalog embed.
-@visibleForTesting
 bool iptvLiveEnginePlayUrlReady(String url) {
   final u = url.trim().toLowerCase();
   if (u.isEmpty) return false;

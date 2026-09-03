@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_screen.dart';
-import 'package:forja/features/live_matches/live_matches_screen.dart';
 import 'package:forja/features/settings/settings_screen.dart';
 import 'package:forja/shared/catalog/forja_host_assets.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
@@ -31,13 +30,6 @@ const Set<String> temporarilyHiddenNavIds = archivedNavIds;
 
 /// In-scope app-owned shell destinations
 const Map<String, NavDestination> coreNavDestinations = {
-  'live_matches': NavDestination(
-    id: 'live_matches',
-    icon: Icons.sports_soccer_outlined,
-    activeIcon: Icons.sports_soccer_rounded,
-    label: 'Live Sports',
-    iconAsset: ForjaHostAssets.flutterNavLiveMatches,
-  ),
   'iptv': NavDestination(
     id: 'iptv',
     icon: Icons.live_tv_outlined,
@@ -63,7 +55,6 @@ Map<String, NavDestination> get navDestinations => {
 };
 
 const Map<String, Color> coreNavDestinationAccentColors = {
-  'live_matches': Color(0xFFFB923C),
   'iptv': Color(0xFF22D3EE),
   'settings': Color(0xFF94A3B8),
 };
@@ -75,7 +66,6 @@ Map<String, Color> get navDestinationAccentColors => {
 
 /// Lazy tab factories — widgets are created on first visit only.
 final Map<String, TabBuilder> coreNavTabBuilders = {
-  'live_matches': LiveMatchesScreen.new,
   'iptv': IptvPtScreen.new,
   'settings': SettingsScreen.new,
 };

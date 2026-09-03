@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
@@ -7,7 +8,8 @@ import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/widgets/desktop_window_focus.dart';
 import 'package:forja/shell/shell_bus.dart';
 
-/// Handles `forja://install?manifest=<url>` — opens Settings and asks before install.
+/// Handles `forja://install?manifest=<url>` and batch
+/// `forja://install?batch=1&packs=[…]` — brings app forward and asks before install.
 abstract final class ForjaPluginDeepLink {
   static final AppLinks _links = AppLinks();
   static StreamSubscription<Uri>? _sub;
@@ -38,13 +40,36 @@ abstract final class ForjaPluginDeepLink {
 
   static void _queueInstall(Uri uri) {
     if (!_isInstallLink(uri)) return;
+
+    unawaited(DesktopWindowFocus.bringToFront());
+
+    final batch = parseBatchCandidates(uri);
+    if (batch != null && batch.isNotEmpty) {
+      if (batch.length == 1) {
+        final only = batch.first;
+        debugPrint('[PluginDeepLink] queue install ${only.manifestUrl}');
+        ShellBus.pendingPluginInstall.value = PluginInstallPrompt(
+          manifestUrl: only.manifestUrl,
+          displayName: only.displayName,
+        );
+      } else {
+        debugPrint('[PluginDeepLink] queue batch install (${batch.length})');
+        ShellBus.pendingPluginBatchInstall.value =
+            PluginBatchInstallPrompt(candidates: batch);
+      }
+      ShellBus.openSettings(
+        categoryId: SettingsCategoryId.forjaPacks,
+        enterDetail: true,
+      );
+      return;
+    }
+
     final manifest = _manifestFromUri(uri);
     if (manifest == null || manifest.isEmpty) {
       debugPrint('[PluginDeepLink] missing manifest param: $uri');
       return;
     }
     debugPrint('[PluginDeepLink] queue install $manifest');
-    unawaited(DesktopWindowFocus.bringToFront());
     ShellBus.pendingPluginInstall.value = PluginInstallPrompt(
       manifestUrl: manifest,
       displayName: uri.queryParameters['name']?.trim(),
@@ -75,6 +100,47 @@ abstract final class ForjaPluginDeepLink {
   /// Test hook + shared parser for install deep links.
   static String? parseManifestUrl(Uri uri) {
     if (!_isInstallLink(uri)) return null;
+    if (_isBatchParam(uri)) return null;
     return _manifestFromUri(uri);
+  }
+
+  static bool _isBatchParam(Uri uri) {
+    final batch = uri.queryParameters['batch']?.trim();
+    return batch == '1' || batch == 'true';
+  }
+
+  /// Parse `?batch=1&packs=[{m,n?},…]` — returns null when not a batch link.
+  static List<PluginInstallCandidate>? parseBatchCandidates(Uri uri) {
+    if (!_isInstallLink(uri) || !_isBatchParam(uri)) return null;
+    final raw = uri.queryParameters['packs']?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return null;
+      final out = <PluginInstallCandidate>[];
+      final seen = <String>{};
+      for (final item in decoded) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(item);
+        final manifest =
+            (map['m'] as String?)?.trim() ??
+            (map['manifestUrl'] as String?)?.trim() ??
+            '';
+        if (manifest.isEmpty || !seen.add(manifest)) continue;
+        final name =
+            (map['n'] as String?)?.trim() ??
+            (map['name'] as String?)?.trim();
+        out.add(
+          PluginInstallCandidate(
+            manifestUrl: manifest,
+            displayName: (name != null && name.isNotEmpty) ? name : null,
+          ),
+        );
+      }
+      return out.isEmpty ? null : out;
+    } catch (e) {
+      debugPrint('[PluginDeepLink] batch packs parse failed: $e');
+      return null;
+    }
   }
 }

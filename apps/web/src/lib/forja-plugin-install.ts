@@ -20,13 +20,31 @@ export function buildForjaInstallDeepLink(
   return url.toString()
 }
 
-export function tryOpenForjaInstallDeepLink(
-  manifestUrl: string,
-  opts?: { name?: string },
-): Promise<boolean> {
+/** Batch deep link — app brings to front and shows the install picker. */
+export function buildForjaBatchInstallDeepLink(
+  items: PluginInstallIntent[],
+): string {
+  const url = new URL('forja://install')
+  url.searchParams.set('batch', '1')
+  url.searchParams.set(
+    'packs',
+    JSON.stringify(
+      items.map((item) => {
+        const row: { m: string; n?: string } = {
+          m: item.manifestUrl.trim(),
+        }
+        const name = item.name?.trim()
+        if (name) row.n = name
+        return row
+      }),
+    ),
+  )
+  return url.toString()
+}
+
+function tryOpenForjaDeepLink(href: string): Promise<boolean> {
   if (typeof window === 'undefined') return Promise.resolve(false)
-  const trimmed = manifestUrl.trim()
-  if (!trimmed) return Promise.resolve(false)
+  if (!href.trim()) return Promise.resolve(false)
 
   return new Promise((resolve) => {
     let settled = false
@@ -55,7 +73,7 @@ export function tryOpenForjaInstallDeepLink(
     window.addEventListener('blur', onHide)
 
     const anchor = document.createElement('a')
-    anchor.href = buildForjaInstallDeepLink(trimmed, opts)
+    anchor.href = href
     anchor.style.display = 'none'
     document.body.appendChild(anchor)
     anchor.click()
@@ -63,6 +81,34 @@ export function tryOpenForjaInstallDeepLink(
 
     const timer = window.setTimeout(() => finish(false), 1600)
   })
+}
+
+export function tryOpenForjaInstallDeepLink(
+  manifestUrl: string,
+  opts?: { name?: string },
+): Promise<boolean> {
+  const trimmed = manifestUrl.trim()
+  if (!trimmed) return Promise.resolve(false)
+  return tryOpenForjaDeepLink(buildForjaInstallDeepLink(trimmed, opts))
+}
+
+export function tryOpenForjaBatchInstallDeepLink(
+  items: PluginInstallIntent[],
+): Promise<boolean> {
+  const cleaned = items
+    .map((item) => ({
+      manifestUrl: item.manifestUrl.trim(),
+      name: item.name?.trim() || undefined,
+      version: item.version?.trim() || undefined,
+    }))
+    .filter((item) => item.manifestUrl.length > 0)
+  if (cleaned.length === 0) return Promise.resolve(false)
+  if (cleaned.length === 1) {
+    return tryOpenForjaInstallDeepLink(cleaned[0]!.manifestUrl, {
+      name: cleaned[0]!.name,
+    })
+  }
+  return tryOpenForjaDeepLink(buildForjaBatchInstallDeepLink(cleaned))
 }
 
 export function rememberPluginInstallIntent(intent: PluginInstallIntent): void {

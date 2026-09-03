@@ -47,6 +47,14 @@ void main() {
   test('live-named tv catalogs default to live only', () {
     expect(
       StremioAddonFeatures.catalogLooksLive({
+        'type': 'events',
+        'id': 'sports-events',
+        'name': 'Events',
+      }),
+      isTrue,
+    );
+    expect(
+      StremioAddonFeatures.catalogLooksLive({
         'type': 'tv',
         'id': 'essential-live-events',
         'name': 'Essential Live Events',

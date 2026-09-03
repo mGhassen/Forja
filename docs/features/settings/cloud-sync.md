@@ -106,6 +106,9 @@ Not synced — device-specific or sensitive:
   After it finishes, the app opens that profile’s **default menu** tab (the
   starred tab under **Settings → Features**), not the screen you were on before
   switching. IPTV portals sync only when that profile has IPTV in the menu.
+  On switch the device portal list is cleared first so another profile’s portals
+  cannot show while sync is slow or fails; this profile’s assignments load from
+  cloud when the pull succeeds.
 - On desktop **and Android TV**, a restored session goes straight to the boot splash (the session
   is kept across quit: local app-file vault by default on macOS; Keychain/Keystore
   when you enable Keychain under Settings → About → Privacy, or Keystore on
@@ -225,8 +228,8 @@ Supabase `service_role` / `sb_secret_…` key in a desktop build.
 ## Tips
 
 - IPTV credentials live on shared `iptv_portals` rows with passwords encrypted at rest. Your per-profile **portal name** is only on `user_iptv_portals`.
-- **Cloud is master for portal assignments.** The device IPTV list is a cache. An empty local cache never deletes cloud portals (profile switch / sign-out wipe). Only deleting portals in the UI (or an intentional clear-all) updates cloud.
-- **Cloud is master for `profile_settings` too.** The device settings file is a cache of the active profile’s cloud row. Edits write the cache and push; wipe / pull / defaults never upload an empty or partial cache over Stremio, Nuvio, or navigation already in cloud. A **failed** pull (network / expired token) keeps the local cache and does **not** seed platform defaults or push — only a confirmed missing cloud row seeds a new profile. Debounced edits push only that domain (a playback toggle does not rewrite Features / default tab).
+- **Cloud is master for portal assignments.** The device IPTV list is a cache. An empty local cache never deletes cloud portals (profile switch / sign-out wipe). Only deleting portals in the UI (or an intentional clear-all) updates cloud. On **profile switch**, the device cache is wiped **before** pull (fail-closed): a stalled or failed pull must not leave the previous profile’s portals on screen.
+- **Cloud is master for `profile_settings` too.** The device settings file is a cache of the active profile’s cloud row. Edits write the cache and push; wipe / pull / defaults never upload an empty or partial cache over Stremio, Nuvio, or navigation already in cloud. A **failed** lean settings pull (network / expired token) keeps the local lean cache and does **not** seed platform defaults or push — only a confirmed missing cloud row seeds a new profile. **IPTV is separate:** profile-switch wipe clears portals first (see above). Debounced edits push only that domain (a playback toggle does not rewrite Features / default tab).
 - Cloud settings never store M3U playlists, M3U channel lists, or My List — those stay on each device. Playback prefs (including play sources and preferred subtitle language) sync in full.
 - Portal **share codes** are a peer handoff: copy gives an 8-character `XXXX-XXXX` code that expires after **7 days**. Credentials are encrypted on the device; the short code is a lookup (not stored in your sync payload).
 - Each account always keeps at least one profile. Deleting a profile also deletes its remote settings.

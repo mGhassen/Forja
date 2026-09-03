@@ -47,7 +47,7 @@ Tap **IPTV** in the navigation bar. If you used a portal before, its catalog loa
 
 ## Tips
 
-- Signed-in **portals sync from the cloud** for your active profile (Xtream, M3U, and Stalker) — the device list is a cache. Cloud wins on sign-in / profile switch; only an explicit delete (or clear-all) removes portals from the account
+- Signed-in **portals sync from the cloud** for your active profile (Xtream, M3U, and Stalker) — the device list is a cache. Cloud wins on sign-in / profile switch; switching profiles clears the local list first so another profile’s portals cannot linger. Only an explicit delete (or clear-all) removes portals from the account
 - Portal passwords / Stalker MAC secrets on this device use Keychain / Keystore when allowed (macOS can choose a local app-file vault instead — no login-Keychain password prompts); CSV import/export files still contain secrets in plain text — keep those files private
 - See also [IPTV — M3U](iptv-m3u.md) and [IPTV — Stalker](iptv-stalker.md) for type-specific setup
 - **Scrape** / **Find Portals** is available only when your signed-in account has `iptvScrape` enabled in cloud account features (default off; guests never see it). When enabled, scrape walks Reddit IPTV communities only (GitHub XML2 dump scraping is disabled for now), and the web **Account → IPTV** page shows a VIP **Activated** banner for that perk. Scrape understands plain `get.php` links, Host/User/Pass cards (including common unicode spellings), and tabular `host:port user:pass` dumps — Stalker/MAC portal posts are still skipped by client scrape (add Stalker manually). Operators fill the shared pool via [Catalog ops](iptv-catalog-ops.md).

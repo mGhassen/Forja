@@ -49,6 +49,7 @@ void main() {
       'plugins/hubs/anime/manifest.json',
       'plugins/hubs/asian_drama/manifest.json',
       'plugins/hubs/my_list/manifest.json',
+      'plugins/hubs/live_sports/manifest.json',
       'plugins/iptv/vod/manifest.json',
     ];
 

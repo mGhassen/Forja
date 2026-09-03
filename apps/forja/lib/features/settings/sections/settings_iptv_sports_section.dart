@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:forja/features/live_matches/live_matches_iptv_sports_settings.dart';
+import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_iptv_sports_config.dart';
 import 'package:forja/features/settings/widgets/settings_engine_plugin_pack.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
