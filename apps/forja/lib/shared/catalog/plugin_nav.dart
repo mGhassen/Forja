@@ -59,14 +59,14 @@ abstract final class PluginNavRegistry {
     seedBuiltIns();
   }
 
-  /// Load cached pack nav (if any). No hardcoded hub inventory.
+  /// Load cached pack nav on first [refresh] only — avoids stale tabs before
+  /// installed packs are scanned.
   static void seedBuiltIns() {
     _destinations = {};
     _accents = {};
     _builders = {};
     _tabPluginIds = {};
     _seeded = true;
-    unawaited(_loadCachedNav());
   }
 
   /// Test-only minimal hub nav (no shipped inventory in [seedBuiltIns]).
@@ -264,10 +264,56 @@ abstract final class PluginNavRegistry {
     return out;
   }
 
+  static Future<Set<String>> _hubTabIdsFromNavConfig() async {
+    final raw = await SettingsService().getNavbarConfig();
+    return raw.where((id) {
+      if (coreShellNavIds.contains(id)) return false;
+      if (id == 'settings') return false;
+      return true;
+    }).toSet();
+  }
+
+  static Future<void> _clearNavSnapshot() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.remove(_navCacheKey);
+    } catch (_) {}
+  }
+
   static Future<bool> refresh() async {
     _ensureSeeded();
+    if (!_testNavLocked && _destinations.isEmpty && _tabPluginIds.isEmpty) {
+      await _loadCachedNav();
+    }
+    final previousDestKeys = _destinations.keys.toSet();
     final installed = await listNavHubs(requireEnabled: false);
-    if (installed.isEmpty) return false;
+    final navConfigHubIds = await _hubTabIdsFromNavConfig();
+    final allKnownHubTabIds = <String>{
+      for (final (_, nav) in installed) nav.tabId,
+      ...previousDestKeys,
+      ...navConfigHubIds,
+    };
+
+    if (installed.isEmpty) {
+      final hadHubs = previousDestKeys.isNotEmpty;
+      _destinations = {};
+      _accents = {};
+      _builders = {};
+      _tabPluginIds = {};
+      _seeded = true;
+      await _clearNavSnapshot();
+      if (allKnownHubTabIds.isNotEmpty) {
+        await SettingsService().syncActiveHubNavIds(
+          activeHubIds: const {},
+          knownHubIds: allKnownHubTabIds,
+        );
+      }
+      if (hadHubs) {
+        SettingsService.navbarChangeNotifier.value++;
+      }
+      return hadHubs;
+    }
+
     final hubs = await listNavHubs(requireEnabled: true);
 
     final dests = <String, NavDestination>{};
@@ -279,6 +325,7 @@ abstract final class PluginNavRegistry {
     final cacheRows = <Map<String, dynamic>>[];
     final allHubTabIds = <String>{
       for (final (_, nav) in installed) nav.tabId,
+      ...previousDestKeys,
     };
 
     for (final (pl, nav) in hubs) {
@@ -335,6 +382,8 @@ abstract final class PluginNavRegistry {
     );
     if (dests.isNotEmpty) {
       await _persistNavSnapshot(destinationRows: cacheRows);
+    } else {
+      await _clearNavSnapshot();
     }
     if (changed) {
       SettingsService.navbarChangeNotifier.value++;

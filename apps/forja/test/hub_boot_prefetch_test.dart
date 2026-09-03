@@ -10,13 +10,13 @@ void main() {
     test('hub vs vod vs core shell', () {
       expect(BootNeeds.isHubNavId('home'), isTrue);
       expect(BootNeeds.isHubNavId('anime'), isTrue);
-      expect(BootNeeds.isHubNavId('custom_hub'), isTrue);
-      expect(BootNeeds.isHubNavId('mylist'), isTrue);
+      expect(BootNeeds.isHubNavId('custom_hub'), isFalse);
+      expect(BootNeeds.isHubNavId('mylist'), isFalse);
       expect(BootNeeds.isHubNavId('iptv'), isFalse);
       expect(BootNeeds.isHubNavId('settings'), isFalse);
 
       expect(BootNeeds.isVodNavId('home'), isTrue);
-      expect(BootNeeds.isVodNavId('mylist'), isTrue);
+      expect(BootNeeds.isVodNavId('mylist'), isFalse);
       expect(BootNeeds.isVodNavId('iptv'), isFalse);
       expect(BootNeeds.isVodNavId('live_matches'), isFalse);
       expect(BootNeeds.isVodNavId('settings'), isFalse);

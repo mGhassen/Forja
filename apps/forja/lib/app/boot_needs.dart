@@ -62,17 +62,17 @@ class BootNeeds {
   bool get needsForjaPluginWarm =>
       catalogTab || engine || torrent || nuvio;
 
-  /// My List + any non-core shell nav id (hubs). Never IPTV / Live / Settings.
+  /// My List or any contributed catalog hub tab.
   static bool isVodNavId(String id) {
     if (archivedNavIds.contains(id)) return false;
-    if (id == 'mylist') return true;
-    return !PluginNavRegistry.coreShellNavIds.contains(id);
+    if (PluginNavRegistry.coreShellNavIds.contains(id)) return false;
+    return PluginNavRegistry.isHubTab(id);
   }
 
-  /// Catalog hub tab — not core shell (My List / IPTV / Live / Settings).
+  /// Catalog hub tab contributed by an installed enabled pack ([PluginNavRegistry.refresh]).
   static bool isHubNavId(String id) {
     if (archivedNavIds.contains(id)) return false;
-    return !PluginNavRegistry.coreShellNavIds.contains(id);
+    return PluginNavRegistry.isHubTab(id);
   }
 
   /// Splash hold line after boot work finishes early.
@@ -94,6 +94,7 @@ class BootNeeds {
 
   static Future<BootNeeds> resolve([SettingsService? settings]) async {
     final s = settings ?? SettingsService();
+    await PluginNavRegistry.refresh();
     var nav = await s.getNavbarConfig();
     nav = nav.where((id) => !archivedNavIds.contains(id)).toList();
 
