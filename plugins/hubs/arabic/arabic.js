@@ -39,26 +39,20 @@ var ARABIC_RAILS = {
   plays: { kind: 'larozaa_cat', cat: 'masrh-5', group: true },
 };
 
+// Batched on open (home scrape usually seeds all of these). Remaining
+// layout rails lazy-load via `rail` when CatalogShell scrolls them in.
 var ARABIC_FEED_RAILS = [
   'trending',
   'latest',
   'series',
   'movies',
   'turkish',
-  'foreign_series',
-  'foreign_movies',
-  'indian_series',
-  'indian',
-  'asian_series',
-  'asian_movies',
-  'anime_series',
-  'anime_movies',
-  'dubbed',
-  'turkish_movies',
-  'ramadan',
-  'tv_programs',
-  'plays',
 ];
+
+// Sticky last-good origin for this JS VM (mirror walk is expensive).
+var _arabicLarozaSticky = '';
+var _arabicLarozaResolved = null;
+var _arabicLarozaResolvePromise = null;
 
 var ARABIC_HOME_SECTION_RAILS = {
   'أخر الاضافات': 'latest',
@@ -235,8 +229,13 @@ function arabicHtml(ctx, html) {
   }
 }
 
-function arabicResolveLaroza(ctx, cfg) {
-  var boots = [cfg.bootstrap]
+function arabicEnsureLaroza(ctx, cfg) {
+  if (_arabicLarozaResolved && _arabicLarozaResolved.origin) {
+    return Promise.resolve(_arabicLarozaResolved);
+  }
+  if (_arabicLarozaResolvePromise) return _arabicLarozaResolvePromise;
+
+  var boots = [_arabicLarozaSticky, cfg.bootstrap]
     .concat(Array.isArray(cfg.mirrors) ? cfg.mirrors : [])
     .map(function (b) {
       return String(b || '').replace(/\/$/, '');
@@ -252,10 +251,12 @@ function arabicResolveLaroza(ctx, cfg) {
 
   function attempt(index) {
     if (index >= ordered.length) {
-      return Promise.resolve(ordered[0] || 'https://laaroza.website');
+      var fallback = ordered[0] || 'https://laaroza.website';
+      return Promise.resolve({ origin: fallback, splashHtml: '' });
     }
     var boot = ordered[index];
     // Hit `/` only — long mirror chains exceed engine maxRedirects (8).
+    // Keep splash HTML so feed home scrape skips a second `/` fetch.
     return ctx
       .fetch(boot + '/', { headers: arabicHeaders(boot + '/') })
       .then(function (res) {
@@ -263,16 +264,37 @@ function arabicResolveLaroza(ctx, cfg) {
         var host = '';
         try {
           host = new URL(origin).host;
-        } catch (e) {}
-        if (origin && arabicIsLarozaHost(host)) return origin;
-        return attempt(index + 1);
+        } catch (e) { }
+        if (!(origin && arabicIsLarozaHost(host))) {
+          return attempt(index + 1);
+        }
+        return res.text().then(function (html) {
+          return { origin: origin, splashHtml: String(html || '') };
+        });
       })
       .catch(function () {
         return attempt(index + 1);
       });
   }
 
-  return attempt(0);
+  _arabicLarozaResolvePromise = attempt(0)
+    .then(function (resolved) {
+      _arabicLarozaResolved = resolved;
+      _arabicLarozaSticky = resolved.origin;
+      _arabicLarozaResolvePromise = null;
+      return resolved;
+    })
+    .catch(function (e) {
+      _arabicLarozaResolvePromise = null;
+      throw e;
+    });
+  return _arabicLarozaResolvePromise;
+}
+
+function arabicResolveLaroza(ctx, cfg) {
+  return arabicEnsureLaroza(ctx, cfg).then(function (r) {
+    return r.origin;
+  });
 }
 
 function arabicFetchHtml(ctx, url, referer) {
@@ -467,8 +489,11 @@ function arabicGroupLarozaSearch(items) {
   return out;
 }
 
-function arabicLarozaList(ctx, cfg, path, isMovie, limit, group) {
-  return arabicResolveLaroza(ctx, cfg).then(function (base) {
+function arabicLarozaList(ctx, cfg, path, isMovie, limit, group, baseOpt) {
+  var baseP = baseOpt
+    ? Promise.resolve(String(baseOpt).replace(/\/$/, ''))
+    : arabicResolveLaroza(ctx, cfg);
+  return baseP.then(function (base) {
     var url = base + path;
     if (path.indexOf('?') >= 0) url += '&page=1';
     else url += '?page=1';
@@ -527,14 +552,18 @@ function arabicParseHomeSections(ctx, html, base) {
 }
 
 function arabicFetchHomeRails(ctx, cfg, limit) {
-  return arabicResolveLaroza(ctx, cfg).then(function (base) {
-    // `/` is often a splash (gaza.N); catalog rows live on /home.N.
-    return arabicFetchHtml(ctx, base + '/', base + '/').then(function (splash) {
+  return arabicEnsureLaroza(ctx, cfg).then(function (resolved) {
+    var base = resolved.origin;
+    // Prefer splash HTML from mirror probe — `/` is often gaza.N; catalog is /home.N.
+    var splashP = resolved.splashHtml
+      ? Promise.resolve({ html: resolved.splashHtml, url: base + '/' })
+      : arabicFetchHtml(ctx, base + '/', base + '/');
+    return splashP.then(function (splash) {
       var homePath = arabicDiscoverHomePath(splash.html);
       return arabicFetchHtml(ctx, base + homePath, base + '/').then(function (got) {
         var origin = arabicOrigin(got.url) || base;
         var rails = arabicParseHomeSections(ctx, got.html, origin);
-        var out = {};
+        var out = { _base: base };
         var keys = Object.keys(rails);
         for (var i = 0; i < keys.length; i++) {
           out[keys[i]] = hubClampList(rails[keys[i]], limit);

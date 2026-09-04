@@ -45,7 +45,8 @@ abstract final class CatalogPackAssets {
   /// Resolve [nav.icon] to a display path for [NavDestination.iconAsset].
   ///
   /// Returns a Flutter `assets/…` path, an absolute file path, or an http(s)
-  /// URL. Null → use Material default.
+  /// URL. Null → use Material default. Host always tints the bitmap to the
+  /// rail color (`ColorFilter` + `BlendMode.srcIn`) like other nav glyphs.
   static String? resolveNavIconDisplay({
     required String? packSourceUrl,
     required String? icon,
@@ -72,12 +73,5 @@ abstract final class CatalogPackAssets {
       return file.existsSync() ? file.path : null;
     }
     return null;
-  }
-
-  /// Host Flutter assets are single-color glyphs — tint to rail color.
-  /// Pack / remote bitmaps keep their own colors (e.g. cartoon mascot).
-  static bool navIconShouldTint(String? displayPath) {
-    final p = displayPath?.trim() ?? '';
-    return p.startsWith('assets/');
   }
 }

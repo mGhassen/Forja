@@ -302,7 +302,7 @@ Kit helpers (`hubTmdbMatch`, `hubEnrichTmdb`, `hubTmdbById`) prefer `meta.ids.tm
 
 Hub `nav.icon` may be:
 
-1. **Pack-relative** (preferred) — image next to the manifest, e.g. `"icons/nav.png"`. Host resolves via the pack `sourceUrl` (local checkout or remote HTTPS next to the manifest). Pack bitmaps keep their own colors (no rail tint).
+1. **Pack-relative** (preferred) — image next to the manifest, e.g. `"icons/nav.png"`. Host resolves via the pack `sourceUrl` (local checkout or remote HTTPS next to the manifest). Bitmaps are **tinted** to the rail mute/accent color (`BlendMode.srcIn`) — ship opaque single-color / silhouette art.
 2. **Host asset URI** — `"forja://asset/nav/…"`. Host maps to bundled `assets/images/nav/…` and tints to the rail color (single-color glyphs).
 3. **Omitted / empty** — Material [default](../../apps/forja/lib/shared/catalog/forja_host_assets.dart) (`Icons.grid_view_rounded`).
 

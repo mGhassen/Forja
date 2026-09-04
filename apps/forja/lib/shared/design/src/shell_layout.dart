@@ -273,10 +273,13 @@ class ShellHeroDesktopTextLayout {
 ///
 /// When space is tight (Featured / Latest stacked on the backdrop), shrinks the
 /// title slot and overview lines before dropping the synopsis entirely.
+/// Pass [reservedBelowOverview] for extra chrome under the overview (e.g. upcoming
+/// notice) so that height is part of the fit budget.
 ShellHeroDesktopTextLayout shellHeroDesktopTextLayout({
   required double maxHeight,
   required bool hasOverview,
   required double minTitleHeight,
+  double reservedBelowOverview = 0,
 }) {
   const titleGap = 20.0;
   const actionGap = 16.0;
@@ -284,7 +287,8 @@ ShellHeroDesktopTextLayout shellHeroDesktopTextLayout({
       titleGap +
       ShellTokens.heroMetaSlotHeightDesktop +
       actionGap +
-      ShellTokens.shellButtonHeight;
+      ShellTokens.shellButtonHeight +
+      reservedBelowOverview;
   final metaGap = ShellTokens.heroMetaOverviewGapDesktop;
 
   double slotFor(int lines, {required bool includeReadMore}) {

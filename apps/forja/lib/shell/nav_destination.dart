@@ -41,13 +41,11 @@ class NavDestinationIcon extends StatelessWidget {
     if (asset != null && asset.isNotEmpty) {
       final image = _imageFor(asset);
       if (image != null) {
-        if (CatalogPackAssets.navIconShouldTint(asset)) {
-          return ColorFiltered(
-            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-            child: image,
-          );
-        }
-        return image;
+        // Same mute/accent as Material glyphs — pack PNGs are treated as masks.
+        return ColorFiltered(
+          colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+          child: image,
+        );
       }
     }
     return Icon(

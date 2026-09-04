@@ -1273,6 +1273,10 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     );
   }
 
+  bool _showsUpcomingNotice(_HeroItem heroItem) =>
+      heroItem.isUpcoming ||
+      (heroItem.upcomingReleaseLabel?.trim().isNotEmpty ?? false);
+
   Widget _buildCompactHeroTextColumn(
     _HeroItem heroItem, {
     required ShellMetrics metrics,
@@ -1285,11 +1289,15 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
       final metaGap = shellHeroMetaGap(context);
       const actionRowHeight = 40.0;
       const metaRowHeight = 32.0;
+      final upcomingReserve = _showsUpcomingNotice(heroItem)
+          ? ShellTokens.heroUpcomingNoticeReserveDesktop
+          : 0.0;
       final titleHeight = (maxHeight -
               actionGap -
               metaGap -
               actionRowHeight -
-              metaRowHeight)
+              metaRowHeight -
+              upcomingReserve)
           .clamp(40.0, ShellTokens.heroTitleSlotHeightCompact);
 
       return SizedBox(
@@ -1461,10 +1469,14 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
     const titleGap = 20.0;
     const actionGap = 16.0;
     final overview = _overviewFor(heroItem);
+    final upcomingReserve = _showsUpcomingNotice(heroItem)
+        ? ShellTokens.heroUpcomingNoticeReserveDesktop
+        : 0.0;
     final layout = shellHeroDesktopTextLayout(
       maxHeight: maxHeight,
       hasOverview: overview.isNotEmpty,
       minTitleHeight: ShellScope.metricsOf(context).heroMinTitleHeight,
+      reservedBelowOverview: upcomingReserve,
     );
 
     return Column(
@@ -1821,9 +1833,7 @@ class _HomeCinematicHeroState extends State<HomeCinematicHero> {
   }
 
   Widget _buildHeroUpcomingNotice(_HeroItem heroItem) {
-    if (!heroItem.isUpcoming &&
-        (heroItem.upcomingReleaseLabel == null ||
-            heroItem.upcomingReleaseLabel!.trim().isEmpty)) {
+    if (!_showsUpcomingNotice(heroItem)) {
       return const SizedBox.shrink();
     }
     return Padding(

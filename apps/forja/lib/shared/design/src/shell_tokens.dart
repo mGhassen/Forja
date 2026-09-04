@@ -243,6 +243,10 @@ abstract final class ShellTokens {
   static const double heroTitleSlotHeightDesktop = 196;
   static const double heroMetaSlotHeightDesktop = 40;
   static const double heroMetaOverviewGapDesktop = 16;
+
+  /// [HubDetailsUpcomingNotice] + bottom gap in the cinematic hero text column.
+  /// Keep in sync with notice padding/typography in hub_details_play_row.dart.
+  static const double heroUpcomingNoticeReserveDesktop = 76;
   static const int heroOverviewMaxLinesDesktop = 3;
   static const double heroOverviewFontSizeDesktop = 17;
   static const double heroOverviewLineHeightDesktop = 1.55;
