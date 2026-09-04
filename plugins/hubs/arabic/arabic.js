@@ -1,7 +1,7 @@
-// Arabic hub — Larozaa + Brstej (protocol 1). DimaToon browse lives in
-// the كرتون hub; dimatoon details/stream kept for legacy ids.
-// providers (larozaa, dimatoon, brstej). Host renders CatalogShell +
-// shared hub details + engine Sources.
+// Arabic hub — Larozaa only (protocol 1).
+// Brstej → plugins/hubs/brstej. كرتون / DimaToon → plugins/hubs/cartoon.
+// Legacy details/stream kept for old brstej:/dimatoon: history ids.
+// Playback: provider `larozaa` (types: arabic). Host surface: arabic.
 
 var ARABIC_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
@@ -17,6 +17,7 @@ var ARABIC_DEFAULTS = {
     'https://larozaa.homes',
     'https://larozaa.com',
   ],
+  // Legacy only — not used for browse/search.
   dimatoon: 'https://www.dima-toon.com',
   brstej: 'https://uo.brstej.com',
 };
@@ -40,7 +41,6 @@ var ARABIC_RAILS = {
   anime_series: { kind: 'larozaa_cat', cat: '6-anime-series', group: true },
   turkish_movies: { kind: 'larozaa_cat', cat: '8-aflam3isk', movie: true },
   plays: { kind: 'larozaa_cat', cat: 'masrh-5', group: true },
-  brstej: { kind: 'brstej_browse' },
 };
 
 var ARABIC_FEED_RAILS = [
@@ -62,7 +62,6 @@ var ARABIC_FEED_RAILS = [
   'ramadan',
   'tv_programs',
   'plays',
-  'brstej',
 ];
 
 var ARABIC_HOME_SECTION_RAILS = {
@@ -105,13 +104,6 @@ function arabicLayout() {
             hideWhenBleed: true,
           },
           { type: 'continue', id: 'continue_watching' },
-          {
-            type: 'ranked',
-            id: 'brstej',
-            title: 'Brstej · أحدث',
-            rail: 'brstej',
-            style: 'numbered',
-          },
           {
             type: 'rail',
             id: 'series',
@@ -762,8 +754,6 @@ function arabicRailItems(ctx, cfg, params) {
       limit,
       !!spec.group,
     );
-  } else if (spec.kind === 'brstej_browse') {
-    p = arabicBrowseBrstej(ctx, cfg, limit);
   } else {
     return Promise.resolve(
       hubFail('rail', 'INVALID_PARAMS', 'unknown rail kind'),
@@ -771,23 +761,9 @@ function arabicRailItems(ctx, cfg, params) {
   }
   return p
     .then(function (items) {
-      if ((!items || !items.length) && (rail === 'trending' || rail === 'latest')) {
-        return arabicBrowseBrstej(ctx, cfg, limit).then(function (fallback) {
-          return hubItems('rail', fallback || [], { maxAge: 600, swr: 3600 });
-        });
-      }
-      return hubItems('rail', items, { maxAge: 600, swr: 3600 });
+      return hubItems('rail', items || [], { maxAge: 600, swr: 3600 });
     })
     .catch(function (e) {
-      if (rail === 'trending' || rail === 'latest') {
-        return arabicBrowseBrstej(ctx, cfg, limit)
-          .then(function (fallback) {
-            return hubItems('rail', fallback || [], { maxAge: 300, swr: 900 });
-          })
-          .catch(function () {
-            return hubFail('rail', 'UPSTREAM', e && e.message, true);
-          });
-      }
       return hubFail('rail', 'UPSTREAM', e && e.message, true);
     });
 }
@@ -795,7 +771,6 @@ function arabicRailItems(ctx, cfg, params) {
 function arabicFeedRailLimit(railId, params) {
   var n = Number(params.limit);
   if (n > 0) return n;
-  if (railId === 'brstej') return 10;
   return 24;
 }
 
@@ -814,9 +789,6 @@ function arabicLoadRailList(ctx, cfg, railId, limit) {
       limit,
       !!spec.group,
     );
-  }
-  if (spec.kind === 'brstej_browse') {
-    return arabicBrowseBrstej(ctx, cfg, limit);
   }
   return Promise.resolve([]);
 }
@@ -867,28 +839,13 @@ function arabicSearch(ctx, cfg, params) {
   var q = String(params.query || '').trim();
   if (!q) return Promise.resolve(hubItems('search', []));
   var limit = Number(params.limit) > 0 ? Number(params.limit) : 40;
-  var per = Math.max(8, Math.ceil(limit / 2));
-  return Promise.all([
-    arabicSearchLaroza(ctx, cfg, q, per).catch(function () {
-      return [];
-    }),
-    arabicSearchBrstej(ctx, cfg, q, per).catch(function () {
-      return [];
-    }),
-  ]).then(function (parts) {
-    var out = [];
-    var seen = {};
-    for (var p = 0; p < parts.length; p++) {
-      var list = parts[p] || [];
-      for (var i = 0; i < list.length; i++) {
-        var it = list[i];
-        if (!it || !it.id || seen[it.id]) continue;
-        seen[it.id] = true;
-        out.push(it);
-      }
-    }
-    return hubItems('search', hubClampList(out, limit), { maxAge: 300 });
-  });
+  return arabicSearchLaroza(ctx, cfg, q, limit)
+    .then(function (items) {
+      return hubItems('search', items || [], { maxAge: 300 });
+    })
+    .catch(function (e) {
+      return hubFail('search', 'UPSTREAM', e && e.message, true);
+    });
 }
 
 function arabicParseShowRef(params) {

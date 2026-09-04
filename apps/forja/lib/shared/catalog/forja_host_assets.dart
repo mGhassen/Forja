@@ -25,10 +25,14 @@ abstract final class ForjaHostAssets {
   static const uriNavAsianDrama = '${uriPrefix}nav/asian-drama';
   static const uriNavArabic = '${uriPrefix}nav/arabic';
   static const uriNavCartoon = '${uriPrefix}nav/cartoon';
+  static const uriNavBrstej = '${uriPrefix}nav/brstej';
   static const uriNavSearch = '${uriPrefix}nav/search';
   static const uriNavLiveMatches = '${uriPrefix}nav/live-matches';
   static const uriNavIptv = '${uriPrefix}nav/iptv';
   static const uriNavMyList = '${uriPrefix}nav/my-list';
+
+  /// Material glyph when pack/host icon is missing or fails to load.
+  static const IconData defaultNavIcon = Icons.grid_view_rounded;
 
   /// Public id → Flutter asset path. Extend here when shipping new host icons.
   static const Map<String, String> catalog = {
@@ -78,6 +82,7 @@ abstract final class ForjaHostAssets {
       'nav/asian-drama' => Icons.theater_comedy_outlined,
       'nav/arabic' => Icons.movie_filter_outlined,
       'nav/cartoon' => Icons.toys_outlined,
+      'nav/brstej' => Icons.live_tv_outlined,
       'nav/search' => Icons.search_outlined,
       'nav/live-matches' => Icons.sports_soccer_outlined,
       'nav/iptv' => Icons.live_tv_outlined,

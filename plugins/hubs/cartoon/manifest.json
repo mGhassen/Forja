@@ -4,7 +4,7 @@
   "name": "ForjaHQ Cartoon",
   "description": "DimaToon Arabic cartoon / anime hub (كرتون).",
   "author": "ForjaHQ",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "plugins": [
     {
       "id": "dimatoon-hub",
@@ -14,7 +14,9 @@
       "kind": "catalog",
       "protocol": 1,
       "kit": 1,
-      "types": ["arabic"],
+      "types": [
+        "arabic"
+      ],
       "capabilities": [
         "nav",
         "layout",
@@ -27,7 +29,7 @@
         "tabId": "cartoon",
         "label": "كرتون",
         "order": 35,
-        "icon": "forja://asset/nav/cartoon",
+        "icon": "icons/nav.png",
         "accent": "#38BDF8",
         "defaultEnabled": false
       },

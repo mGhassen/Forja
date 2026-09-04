@@ -101,7 +101,14 @@
         "order": { "type": "number" },
         "icon": {
           "type": "string",
-          "pattern": "^forja://asset/nav/"
+          "minLength": 1,
+          "description": "Pack-relative image (e.g. icons/nav.png) or forja://asset/… host glyph. Omit for Material default.",
+          "not": {
+            "anyOf": [
+              { "pattern": "^assets/" },
+              { "pattern": "\\.\\." }
+            ]
+          }
         },
         "accent": { "type": "string" },
         "defaultEnabled": { "type": "boolean" }

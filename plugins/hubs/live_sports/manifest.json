@@ -14,13 +14,18 @@
       "kind": "catalog",
       "protocol": 1,
       "kit": 1,
-      "types": ["live_match"],
-      "capabilities": ["nav", "layout"],
+      "types": [
+        "live_match"
+      ],
+      "capabilities": [
+        "nav",
+        "layout"
+      ],
       "nav": {
         "tabId": "live_matches",
         "label": "Live Sports",
         "order": 20,
-        "icon": "forja://asset/nav/live-matches",
+        "icon": "icons/nav.png",
         "accent": "#FB923C",
         "defaultEnabled": true
       },

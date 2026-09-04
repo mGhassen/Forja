@@ -3,6 +3,7 @@
 // Host sets first-class `ctx.action` / `ctx.params` / `ctx.auth` / `ctx.cache`
 // / `ctx.kit` / `ctx.protocol` (R70-A12). Older hosts may still put the request
 // under `ctx.config.__request` — prefer top-level, fall back for one release.
+// nav.icon: pack-relative image (icons/nav.png) or forja://asset/…; omit for Material default.
 
 var HUB_KIT = 1;
 var HUB_PROTOCOL = 1;

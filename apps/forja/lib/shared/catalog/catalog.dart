@@ -3,6 +3,7 @@ library;
 export 'cache.dart';
 export 'deeplink.dart';
 export 'filter.dart';
+export 'catalog_pack_assets.dart';
 export 'forja_host_assets.dart';
 export 'kit/kit.dart';
 export 'plugin_nav.dart';

@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shared/catalog/catalog_pack_assets.dart';
 import 'package:forja/shared/catalog/forja_host_assets.dart';
 import 'package:forja/shared/catalog/shell/catalog_shell.dart';
 import 'package:forja/shared/engine/hub_plugin_config.dart';
@@ -188,8 +188,8 @@ abstract final class PluginNavRegistry {
         if (tabId.isEmpty) continue;
         final iconAsset = m['iconAsset']?.toString();
         final material =
-            ForjaHostAssets.materialIconFor(m['icon']?.toString() ?? iconAsset) ??
-            Icons.grid_view_rounded;
+            ForjaHostAssets.materialIconFor(m['icon']?.toString()) ??
+            ForjaHostAssets.defaultNavIcon;
         dests[tabId] = NavDestination(
           id: tabId,
           icon: material,
@@ -259,22 +259,27 @@ abstract final class PluginNavRegistry {
     return out;
   }
 
-  static Future<List<(EnginePlugin, CatalogNavSpec)>> listNavHubs({
+  static Future<List<(EnginePack, EnginePlugin, CatalogNavSpec)>> listNavHubs({
     bool requireEnabled = true,
   }) async {
-    final plugins = await listHubPlugins(requireEnabled: requireEnabled);
-    final out = <(EnginePlugin, CatalogNavSpec)>[];
-    for (final pl in plugins) {
-      if (!pl.hasCapability('nav')) continue;
-      final spec = CatalogNavSpec.fromPluginNav(
-        pl.nav,
-        pluginId: pl.id,
-        fallbackLabel: pl.name,
-      );
-      if (spec == null || !spec.isValid) continue;
-      out.add((pl, spec));
+    final packs = await EngineService.instance.listPacks();
+    final out = <(EnginePack, EnginePlugin, CatalogNavSpec)>[];
+    for (final pack in packs) {
+      if (requireEnabled && !pack.enabled) continue;
+      for (final pl in pack.plugins) {
+        if (!pl.isHubCatalog) continue;
+        if (requireEnabled && !pl.enabled) continue;
+        if (!pl.hasCapability('nav')) continue;
+        final spec = CatalogNavSpec.fromPluginNav(
+          pl.nav,
+          pluginId: pl.id,
+          fallbackLabel: pl.name,
+        );
+        if (spec == null || !spec.isValid) continue;
+        out.add((pack, pl, spec));
+      }
     }
-    out.sort((a, b) => a.$2.order.compareTo(b.$2.order));
+    out.sort((a, b) => a.$3.order.compareTo(b.$3.order));
     return out;
   }
 
@@ -303,7 +308,7 @@ abstract final class PluginNavRegistry {
     final installed = await listNavHubs(requireEnabled: false);
     final navConfigHubIds = await _hubTabIdsFromNavConfig();
     final allKnownHubTabIds = <String>{
-      for (final (_, nav) in installed) nav.tabId,
+      for (final (_, _, nav) in installed) nav.tabId,
       ...previousDestKeys,
       ...navConfigHubIds,
     };
@@ -338,12 +343,15 @@ abstract final class PluginNavRegistry {
     final defaultOn = <String>[];
     final cacheRows = <Map<String, dynamic>>[];
     final allHubTabIds = <String>{
-      for (final (_, nav) in installed) nav.tabId,
+      for (final (_, _, nav) in installed) nav.tabId,
       ...previousDestKeys,
     };
 
-    for (final (pl, nav) in hubs) {
-      final iconAsset = ForjaHostAssets.resolveFlutterPath(nav.icon);
+    for (final (pack, pl, nav) in hubs) {
+      final iconAsset = CatalogPackAssets.resolveNavIconDisplay(
+        packSourceUrl: pack.sourceUrl,
+        icon: nav.icon,
+      );
       final material = iconDataFor(nav);
       dests[nav.tabId] = NavDestination(
         id: nav.tabId,
@@ -422,7 +430,7 @@ abstract final class PluginNavRegistry {
     _ensureSeeded();
     final cached = _tabPluginIds[tabId];
     if (cached != null && cached.isNotEmpty) return cached;
-    for (final (pl, nav) in await listNavHubs(requireEnabled: true)) {
+    for (final (_, pl, nav) in await listNavHubs(requireEnabled: true)) {
       if (nav.tabId == tabId) return pl.id;
     }
     final plugin = await HubPluginConfig.catalogPluginForTab(tabId);
@@ -468,7 +476,7 @@ abstract final class PluginNavRegistry {
       if (fromType != null && fromType.isNotEmpty) return fromType;
     }
     final hubs = await listNavHubs(requireEnabled: true);
-    if (hubs.isNotEmpty) return hubs.first.$1.id;
+    if (hubs.isNotEmpty) return hubs.first.$2.id;
     return null;
   }
 
@@ -485,7 +493,7 @@ abstract final class PluginNavRegistry {
 
   static IconData iconDataFor(CatalogNavSpec nav) {
     return ForjaHostAssets.materialIconFor(nav.icon) ??
-        Icons.grid_view_rounded;
+        ForjaHostAssets.defaultNavIcon;
   }
 
   static Color? accentFor(CatalogNavSpec nav) {

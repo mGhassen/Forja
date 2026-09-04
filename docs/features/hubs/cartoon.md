@@ -20,10 +20,13 @@ Enable the ForjaHQ Cartoon pack under **Settings → Forja Packs → Hubs**, tur
 ## Tips
 
 - Use **Settings → Forja Packs → Refresh** after a pack update so browse/extract scripts reload
-- Arabic movies/series stay on the [Arabic](arabic.md) tab (Larozaa / Brstej)
+- The tab icon ships in the Cartoon pack (`icons/nav.png`)
+- Arabic movies/series stay on the [Arabic](arabic.md) tab (Larozaa)
+- Brstej series stay on the [Brstej](brstej.md) tab
 
 ## Related
 
 - [Arabic](arabic.md)
+- [Brstej](brstej.md)
 - [Hub details](hub-details.md)
 - [Stream providers](../sources/stream-providers.md)

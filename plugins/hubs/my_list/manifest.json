@@ -14,8 +14,13 @@
       "kind": "catalog",
       "protocol": 1,
       "kit": 1,
-      "types": ["list"],
-      "capabilities": ["nav", "layout"],
+      "types": [
+        "list"
+      ],
+      "capabilities": [
+        "nav",
+        "layout"
+      ],
       "enrich": "my-list-enrich-tmdb",
       "nav": {
         "tabId": "mylist",
@@ -36,7 +41,9 @@
       "kind": "catalog",
       "protocol": 1,
       "kit": 1,
-      "capabilities": ["enrich"],
+      "capabilities": [
+        "enrich"
+      ],
       "enabled": true,
       "prelude": "_kit.js"
     }

@@ -31,7 +31,7 @@
         "tabId": "home",
         "label": "Home",
         "order": 10,
-        "icon": "forja://asset/nav/home",
+        "icon": "icons/nav.png",
         "accent": "#1CE783",
         "defaultEnabled": true
       },

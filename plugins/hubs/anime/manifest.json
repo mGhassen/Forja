@@ -30,7 +30,7 @@
         "tabId": "anime",
         "label": "Anime",
         "order": 20,
-        "icon": "forja://asset/nav/anime",
+        "icon": "icons/nav.png",
         "accent": "#FB7185",
         "defaultEnabled": true
       },

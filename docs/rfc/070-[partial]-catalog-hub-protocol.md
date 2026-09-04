@@ -298,15 +298,21 @@ ctx.host.tmdb.match({ title: 'One Piece', year: 1999, type: 'tv' })
 
 Kit helpers (`hubTmdbMatch`, `hubEnrichTmdb`, `hubTmdbById`) prefer `meta.ids.tmdb` (details fetch, movie↔tv fallback) before title search via `ctx.host.tmdb.match`, and fall back to `ctx.fetch` + injected `config.apiKey`. Source plugins may call kit enrich inline **or** declare a companion via `"enrich": "<pluginId>"` — host runs `action: enrich` after `rail`/`details` and caches the merged payload (R70-A42–A44, R70-A49–A50: Asian Drama `enrich-tmdb`, Anime `anime-enrich-tmdb`; hub hero client uses the same scored matcher as details). CatalogShell only renders `meta`. Match hits may include `overview` / `rating`; `hubApplyTmdbHit` fills empty pack synopsis/score only. Rust `tmdb::match_json` keeps a process-lifetime match cache (R70-A34). Splash warms layout + first-paint rails into `CatalogCache` (R70-A33) — BootCache replacement.
 
-### Host assets (R70-A39+)
+### Host / pack nav icons (R70-A39+)
 
-Hub `nav.icon` must be a Forja host asset URI, not a Flutter path:
+Hub `nav.icon` may be:
+
+1. **Pack-relative** (preferred) — image next to the manifest, e.g. `"icons/nav.png"`. Host resolves via the pack `sourceUrl` (local checkout or remote HTTPS next to the manifest). Pack bitmaps keep their own colors (no rail tint).
+2. **Host asset URI** — `"forja://asset/nav/…"`. Host maps to bundled `assets/images/nav/…` and tints to the rail color (single-color glyphs).
+3. **Omitted / empty** — Material [default](../../apps/forja/lib/shared/catalog/forja_host_assets.dart) (`Icons.grid_view_rounded`).
 
 ```json
-"icon": "forja://asset/nav/asian-drama"
+"icon": "icons/nav.png"
 ```
 
-`ForjaHostAssets.catalog` is the allow-list (`nav/home`, `nav/anime`, `nav/asian-drama`, `nav/search`, `nav/live-matches`, `nav/iptv`, …). The host resolves to `assets/images/nav/…` for `Image.asset`. Raw `assets/…` from a pack is ignored.
+Forbidden: Flutter `assets/…` paths from the pack, and `..` traversal.
+
+`ForjaHostAssets.catalog` remains the allow-list for host URIs only. Packs should ship `icons/nav.png` (or similar) instead of requiring a host catalog entry.
 
 ### Play contract (browse vs provider JS)
 

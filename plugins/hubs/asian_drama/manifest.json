@@ -30,7 +30,7 @@
         "tabId": "asian_drama",
         "label": "Asian Drama",
         "order": 30,
-        "icon": "forja://asset/nav/asian-drama",
+        "icon": "icons/nav.png",
         "accent": "#C4B5FD",
         "defaultEnabled": true
       },

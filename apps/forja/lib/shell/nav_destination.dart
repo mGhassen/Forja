@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:forja/shared/catalog/catalog_pack_assets.dart';
 
 class NavDestination {
   const NavDestination({
@@ -13,6 +16,8 @@ class NavDestination {
   final IconData icon;
   final IconData activeIcon;
   final String label;
+
+  /// Resolved display source: Flutter `assets/…`, absolute file path, or http(s).
   final String? iconAsset;
 }
 
@@ -32,23 +37,56 @@ class NavDestinationIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final asset = destination.iconAsset;
-    if (asset != null) {
-      return ColorFiltered(
-        colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-        child: Image.asset(
-          asset,
-          width: size,
-          height: size,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.medium,
-        ),
-      );
+    final asset = destination.iconAsset?.trim();
+    if (asset != null && asset.isNotEmpty) {
+      final image = _imageFor(asset);
+      if (image != null) {
+        if (CatalogPackAssets.navIconShouldTint(asset)) {
+          return ColorFiltered(
+            colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
+            child: image,
+          );
+        }
+        return image;
+      }
     }
     return Icon(
       selected ? destination.activeIcon : destination.icon,
       color: color,
       size: size,
+    );
+  }
+
+  Widget? _imageFor(String asset) {
+    if (asset.startsWith('assets/')) {
+      return Image.asset(
+        asset,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      );
+    }
+    if (asset.startsWith('http://') || asset.startsWith('https://')) {
+      return Image.network(
+        asset,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.medium,
+        errorBuilder: (_, _, _) => const SizedBox.shrink(),
+      );
+    }
+    final file = CatalogPackAssets.asLocalFile(asset) ?? File(asset);
+    if (!file.existsSync()) return null;
+    return Image.file(
+      file,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.medium,
+      errorBuilder: (_, _, _) => const SizedBox.shrink(),
     );
   }
 }
