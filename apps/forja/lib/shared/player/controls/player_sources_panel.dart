@@ -76,6 +76,10 @@ class PlayerSourcesPanel {
     /// Soft Forja category for this panel: movie | tv | anime | drama | arabic.
     String? engineCategory,
 
+    /// When set (hub episode `larozaa:…` / `brstej:…`), seed Forja chips to that
+    /// provider — arabic ids are site-specific and must not race every chip.
+    String? preferredEnginePluginId,
+
     /// Anime hub SUB/DUB — filters Forja/Nuvio rows when set (`sub` | `dub`).
     String? animeAudioCategory,
     required Future<void> Function(TorrentResult result) onTorrentSelected,
@@ -111,6 +115,7 @@ class PlayerSourcesPanel {
           malId: malId,
           episodeVideoId: episodeVideoId,
           engineCategory: engineCategory,
+          preferredEnginePluginId: preferredEnginePluginId,
           animeAudioCategory: animeAudioCategory,
           detailsHost: detailsHost,
           onTorrentSelected: onTorrentSelected,
@@ -143,6 +148,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     this.malId,
     this.episodeVideoId,
     this.engineCategory,
+    this.preferredEnginePluginId,
     this.animeAudioCategory,
     this.detailsHost = false,
   });
@@ -160,6 +166,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final int? malId;
   final String? episodeVideoId;
   final String? engineCategory;
+  final String? preferredEnginePluginId;
   final String? animeAudioCategory;
   final bool detailsHost;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
@@ -209,6 +216,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           malId: widget.malId,
           episodeVideoId: widget.episodeVideoId,
           engineCategory: widget.engineCategory,
+          preferredEnginePluginId: widget.preferredEnginePluginId,
           animeAudioCategory: widget.animeAudioCategory,
           onTorrentSelected: widget.onTorrentSelected,
           onStremioSelected: widget.onStremioSelected,
@@ -237,6 +245,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     this.malId,
     this.episodeVideoId,
     this.engineCategory,
+    this.preferredEnginePluginId,
     this.animeAudioCategory,
   });
 
@@ -253,6 +262,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final int? malId;
   final String? episodeVideoId;
   final String? engineCategory;
+  final String? preferredEnginePluginId;
   final String? animeAudioCategory;
   final Future<void> Function(TorrentResult result) onTorrentSelected;
   final Future<void> Function(Map<String, dynamic> stream) onStremioSelected;
@@ -993,6 +1003,15 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         cachedUi?.engineAllMode == true) {
       engineSelected = await _loadDefaultEngineChipSelection(enginePacks);
     }
+    // Hub episode ids are provider-scoped (larozaa:/brstej:/…) — don't race
+    // every arabic chip with a foreign videoId.
+    if (hasEngine) {
+      final preferred = widget.preferredEnginePluginId?.trim() ?? '';
+      final enabled = enabledEnginePluginIds(enginePacks);
+      if (preferred.isNotEmpty && enabled.contains(preferred)) {
+        engineSelected = {preferred};
+      }
+    }
     if (!mounted) return;
 
     setState(() {
@@ -1485,6 +1504,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       packs: packs,
       categories: EngineCategories.defaultsForPanelCategory(panelCategory),
     );
+    final preferred = widget.preferredEnginePluginId?.trim() ?? '';
+    if (preferred.isNotEmpty &&
+        enabledIds.contains(preferred) &&
+        (scope.isEmpty || scope.contains(preferred))) {
+      return {preferred};
+    }
     final saved = await EngineService.instance.loadSourcesSelectedPluginIds(
       enabledIds: enabledIds,
       panelCategory: panelCategory,

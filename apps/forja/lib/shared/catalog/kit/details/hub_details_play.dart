@@ -63,6 +63,9 @@ Future<void> openHubSourcesFromContext({
         ? ctx.episodeVideoIdByNumber[ctx.episode!]
         : ctx.episodeVideoIdByNumber[1],
     engineCategory: engineCategoryForSession(session, ctx.movie),
+    preferredEnginePluginId: ctx.selectedPluginIds?.length == 1
+        ? ctx.selectedPluginIds!.first
+        : null,
     catalogPlaySession: session,
   );
 }

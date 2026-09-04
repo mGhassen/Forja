@@ -8,6 +8,7 @@ import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
+import 'package:forja/shared/engine/catalog_extract_context.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/playback/stremio_external_link.dart';
 import 'package:forja/shared/player/controls/player_sources_panel.dart';
@@ -54,6 +55,7 @@ Future<void> openHubCatalogSources({
   String? audioCategory,
   String? episodeVideoId,
   String? engineCategory,
+  String? preferredEnginePluginId,
   CatalogPlaySession? catalogPlaySession,
 }) {
   final hooks = buildHubCatalogPlayHooks(
@@ -68,6 +70,12 @@ Future<void> openHubCatalogSources({
   final session = catalogPlaySession;
   final epVid = (episodeVideoId ?? session?.episodeVideoIdFor(episode ?? 1))
       ?.trim();
+  final preferredPlugin = preferredEnginePluginId?.trim().isNotEmpty == true
+      ? preferredEnginePluginId!.trim()
+      : (epVid != null && epVid.isNotEmpty
+            ? providerIdFromEpisodeVideoId(epVid)
+            : null) ??
+          catalogOpen?.extraString('source')?.trim();
   return PlayerSourcesPanel.show(
     context: context,
     movie: movie,
@@ -78,6 +86,10 @@ Future<void> openHubCatalogSources({
     episodeVideoId: (epVid != null && epVid.isNotEmpty) ? epVid : null,
     engineCategory: engineCategory ??
         engineCategoryForSession(session, movie),
+    preferredEnginePluginId:
+        (preferredPlugin != null && preferredPlugin.isNotEmpty)
+            ? preferredPlugin
+            : null,
     animeAudioCategory: audioCategory,
     detailsHost: true,
     onTorrentSelected: (result) => _playTorrent(
