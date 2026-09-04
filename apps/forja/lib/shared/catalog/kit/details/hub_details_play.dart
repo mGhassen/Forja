@@ -59,6 +59,10 @@ Future<void> openHubSourcesFromContext({
     catalogOpen: ctx.effectiveOpen,
     malId: ctx.malId,
     audioCategory: ctx.audioCategory,
+    episodeVideoId: ctx.episode != null
+        ? ctx.episodeVideoIdByNumber[ctx.episode!]
+        : ctx.episodeVideoIdByNumber[1],
+    engineCategory: engineCategoryForSession(session, ctx.movie),
     catalogPlaySession: session,
   );
 }

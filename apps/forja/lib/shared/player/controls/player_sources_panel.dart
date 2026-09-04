@@ -2583,7 +2583,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     bool reset = false,
     bool refresh = false,
   }) async {
-    if (_nuvioAddons.isEmpty || widget.movie.id <= 0) return;
+    if (_nuvioAddons.isEmpty || widget.movie.id == 0) return;
     final type = widget.movie.mediaType == 'tv' ? 'tv' : 'movie';
     if (_nuvioFetching && !reset && !refresh) {
       if (_nuvioPoolTasks.isNotEmpty || _pendingNuvioScraperIds.isEmpty) {
@@ -2784,7 +2784,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     bool reset = false,
     bool refresh = false,
   }) async {
-    if (_enginePacks.isEmpty || widget.movie.id <= 0) return;
+    if (_enginePacks.isEmpty || widget.movie.id == 0) return;
     final type = _engineResolveType;
     if (_engineFetching && !reset && !refresh) {
       if (_enginePoolTasks.isNotEmpty || _pendingEnginePluginIds.isEmpty) {

@@ -36,17 +36,15 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
         color: Colors.white.withValues(alpha: 0.55),
       );
 
-  double _lineHeight(TextPainter painter) {
-    if (painter.computeLineMetrics().isEmpty) {
-      return (widget.style.fontSize ?? 14) * (widget.style.height ?? 1.0);
-    }
-    return painter.computeLineMetrics().first.height;
-  }
+  TextScaler get _textScaler => MediaQuery.textScalerOf(context);
+
+  TextDirection get _textDirection => Directionality.of(context);
 
   double _readMoreRowHeight(double maxWidth) {
     final painter = TextPainter(
       text: TextSpan(text: widget.readMoreLabel, style: _readMoreStyle),
-      textDirection: TextDirection.ltr,
+      textDirection: _textDirection,
+      textScaler: _textScaler,
       maxLines: 1,
     )..layout(maxWidth: maxWidth);
     return painter.height;
@@ -57,9 +55,29 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
     final painter = TextPainter(
       text: TextSpan(text: text, style: widget.style),
       maxLines: maxLines,
-      textDirection: TextDirection.ltr,
+      textDirection: _textDirection,
+      textScaler: _textScaler,
     )..layout(maxWidth: maxWidth);
     return painter.didExceedMaxLines;
+  }
+
+  double _contentHeight(
+    double maxWidth,
+    int maxLines, {
+    required bool includeReadMore,
+  }) {
+    final textPainter = TextPainter(
+      text: TextSpan(text: widget.overview, style: widget.style),
+      textDirection: _textDirection,
+      textScaler: _textScaler,
+      maxLines: maxLines,
+      ellipsis: '…',
+    )..layout(maxWidth: maxWidth);
+    var height = textPainter.height;
+    if (includeReadMore) {
+      height += _readMoreGap + _readMoreRowHeight(maxWidth);
+    }
+    return height;
   }
 
   int _maxLinesForHeight(
@@ -67,21 +85,17 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
     double maxHeight, {
     required bool reserveReadMore,
   }) {
-    final readMoreReserve = reserveReadMore
-        ? _readMoreGap + _readMoreRowHeight(maxWidth)
-        : 0.0;
-    final textBudget = maxHeight - readMoreReserve;
-    if (textBudget <= 0) return 1;
-
-    final singleLinePainter = TextPainter(
-      text: TextSpan(text: 'A', style: widget.style),
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    )..layout(maxWidth: maxWidth);
-    final lineHeight = _lineHeight(singleLinePainter);
-    if (lineHeight <= 0) return widget.maxLines;
-
-    final lines = (textBudget / lineHeight).floor().clamp(1, widget.maxLines);
+    // Measure real glyphs + bold Read More (slot math often uses regular weight).
+    var lines = widget.maxLines;
+    while (lines > 1 &&
+        _contentHeight(
+              maxWidth,
+              lines,
+              includeReadMore: reserveReadMore,
+            ) >
+            maxHeight) {
+      lines--;
+    }
     return lines;
   }
 
@@ -149,7 +163,6 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
         final maxWidth = constraints.maxWidth;
         final heightBound =
             constraints.hasBoundedHeight && constraints.maxHeight.isFinite;
-        final fitSlot = !widget.shrinkWrap && heightBound;
         final maxHeight = heightBound ? constraints.maxHeight : null;
 
         final preliminaryTruncation = _needsTruncation(
@@ -157,7 +170,9 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
           maxWidth,
           widget.maxLines,
         );
-        final effectiveMaxLines = fitSlot && maxHeight != null
+        // Fit whenever height is capped — including shrinkWrap slots (hub
+        // details). ClipRect alone does not silence RenderFlex overflow.
+        final effectiveMaxLines = maxHeight != null
             ? _maxLinesForHeight(
                 maxWidth,
                 maxHeight,
