@@ -13,6 +13,7 @@ Enable the ForjaHQ Brstej pack under **Settings → Forja Packs → Hubs**, turn
 ## What you can do
 
 - Browse latest Brstej series
+- Top menu (**Search**, **Films**, **Series**, **Categories**) — Categories covers Egyptian / Shami / Gulf / Turkish / Prestige / Ramadan / movies, etc.; Films opens Arabic movies
 - Search Brstej titles (episodes grouped into shows)
 - Open details, pick an episode, and play a direct stream
 

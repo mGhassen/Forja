@@ -61,6 +61,187 @@ var ARABIC_HOME_SECTION_RAILS = {
   'مسلسلات عربية': 'series',
 };
 
+function arabicCatFilter(value) {
+  return { op: 'eq', field: 'cat', value: String(value) };
+}
+
+/** Categories menu — Larozaa `category.php?cat=` ids (same as rails). */
+function arabicCategoryOptions() {
+  return [
+    {
+      id: 'series',
+      label: 'مسلسلات عربية',
+      filter: arabicCatFilter('arabic-series46'),
+    },
+    {
+      id: 'movies',
+      label: 'أفلام عربية',
+      filter: arabicCatFilter('arabic-movies35'),
+    },
+    {
+      id: 'turkish',
+      label: 'مسلسلات تركية',
+      filter: arabicCatFilter('turkish-3isk-seriess47'),
+    },
+    {
+      id: 'turkish_movies',
+      label: 'أفلام تركية',
+      filter: arabicCatFilter('8-aflam3isk'),
+    },
+    {
+      id: 'foreign_series',
+      label: 'مسلسلات أجنبية',
+      filter: arabicCatFilter('english-series10'),
+    },
+    {
+      id: 'foreign_movies',
+      label: 'أفلام أجنبية',
+      filter: arabicCatFilter('all_movies_13'),
+    },
+    {
+      id: 'indian_series',
+      label: 'مسلسلات هندية',
+      filter: arabicCatFilter('11indian-series'),
+    },
+    {
+      id: 'indian',
+      label: 'أفلام هندية',
+      filter: arabicCatFilter('indian-movies9'),
+    },
+    {
+      id: 'asian_series',
+      label: 'مسلسلات آسيوية',
+      filter: arabicCatFilter('6-asya'),
+    },
+    {
+      id: 'asian_movies',
+      label: 'أفلام آسيوية',
+      filter: arabicCatFilter('6-asian-movies'),
+    },
+    {
+      id: 'anime_series',
+      label: 'أنمي · مسلسلات',
+      filter: arabicCatFilter('6-anime-series'),
+    },
+    {
+      id: 'anime_movies',
+      label: 'أنمي · أفلام',
+      filter: arabicCatFilter('anime-movies-7'),
+    },
+    {
+      id: 'dubbed',
+      label: 'أفلام مدبلجة',
+      filter: arabicCatFilter('7-aflammdblgh'),
+    },
+    {
+      id: 'ramadan',
+      label: 'رمضان 2026',
+      filter: arabicCatFilter('ramadan-2026'),
+    },
+    {
+      id: 'tv_programs',
+      label: 'برامج تلفزيونية',
+      filter: arabicCatFilter('tv-programs12'),
+    },
+    {
+      id: 'plays',
+      label: 'مسرحيات',
+      filter: arabicCatFilter('masrh-5'),
+    },
+  ];
+}
+
+function arabicFilters() {
+  return {
+    fields: [
+      { field: 'cat', label: 'Category', options: arabicCategoryOptions() },
+    ],
+    media: {
+      films: { op: 'eq', field: 'kind', value: 'movie' },
+      series: { op: 'eq', field: 'kind', value: 'series' },
+    },
+  };
+}
+
+function arabicSpecForCat(cat) {
+  var keys = Object.keys(ARABIC_RAILS);
+  for (var i = 0; i < keys.length; i++) {
+    var spec = ARABIC_RAILS[keys[i]];
+    if (spec && spec.cat === cat) return spec;
+  }
+  return null;
+}
+
+function arabicChromeFiltered(params) {
+  return !!(
+    hubFilterValue(params.filter, 'cat') ||
+    hubFilterValue(params.filter, 'kind')
+  );
+}
+
+function arabicExploreList(ctx, cfg, params) {
+  var cat = hubFilterValue(params.filter, 'cat');
+  var kind = hubFilterValue(params.filter, 'kind');
+  var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
+  if (cat) {
+    var spec = arabicSpecForCat(cat);
+    var isMovie = !!(spec && spec.movie);
+    if (kind === 'series') isMovie = false;
+    else if (kind === 'movie') isMovie = true;
+    return arabicLarozaList(
+      ctx,
+      cfg,
+      '/category.php?cat=' + encodeURIComponent(cat),
+      isMovie,
+      limit,
+      !isMovie && !!(spec && spec.group),
+    );
+  }
+  if (kind === 'movie') {
+    return arabicLarozaList(
+      ctx,
+      cfg,
+      '/category.php?cat=arabic-movies35',
+      true,
+      limit,
+      false,
+    );
+  }
+  if (kind === 'series') {
+    return arabicLarozaList(
+      ctx,
+      cfg,
+      '/category.php?cat=arabic-series46',
+      false,
+      limit,
+      true,
+    );
+  }
+  return Promise.resolve([]);
+}
+
+function arabicFilteredFeed(ctx, cfg, params) {
+  var total = 0;
+  for (var i = 0; i < ARABIC_FEED_RAILS.length; i++) {
+    total += arabicFeedRailLimit(ARABIC_FEED_RAILS[i], params);
+  }
+  var fetchParams = Object.assign({}, params, { limit: total, page: 1 });
+  return arabicExploreList(ctx, cfg, fetchParams).then(function (all) {
+    var rails = {};
+    var offset = 0;
+    for (var j = 0; j < ARABIC_FEED_RAILS.length; j++) {
+      var railId = ARABIC_FEED_RAILS[j];
+      var n = arabicFeedRailLimit(railId, params);
+      rails[railId] = all.slice(offset, offset + n);
+      offset += n;
+    }
+    if ((!rails.trending || !rails.trending.length) && rails.latest) {
+      rails.trending = rails.latest.slice();
+    }
+    return hubOk('feed', { rails: rails }, { maxAge: 600, swr: 3600 });
+  });
+}
+
 function arabicHeaders(referer) {
   var h = {
     'User-Agent': ARABIC_UA,
@@ -598,6 +779,15 @@ function arabicSearchLaroza(ctx, cfg, query, limit) {
 
 function arabicRailItems(ctx, cfg, params) {
   var rail = String(params.rail || '');
+  if (arabicChromeFiltered(params)) {
+    return arabicExploreList(ctx, cfg, params)
+      .then(function (items) {
+        return hubItems('rail', items || [], { maxAge: 600, swr: 3600 });
+      })
+      .catch(function (e) {
+        return hubFail('rail', 'UPSTREAM', e && e.message, true);
+      });
+  }
   var spec = ARABIC_RAILS[rail];
   if (!spec) {
     return Promise.resolve(
@@ -657,6 +847,9 @@ function arabicLoadRailList(ctx, cfg, railId, limit) {
 }
 
 function arabicFeed(ctx, cfg, params) {
+  if (arabicChromeFiltered(params)) {
+    return arabicFilteredFeed(ctx, cfg, params);
+  }
   var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
   return arabicFetchHomeRails(ctx, cfg, limit)
     .catch(function () {
@@ -1009,6 +1202,9 @@ function extract(ctx) {
 
   if (action === 'layout') {
     return hubOk('layout', arabicLayout(), { maxAge: 3600, swr: 86400 });
+  }
+  if (action === 'filters') {
+    return hubOk('filters', arabicFilters(), { maxAge: 86400 });
   }
   if (action === 'feed') {
     return arabicFeed(ctx, cfg, params).catch(function (e) {

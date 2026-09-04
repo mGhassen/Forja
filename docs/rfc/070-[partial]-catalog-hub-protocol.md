@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) |
-| **Current slice** | Splash hub prefetch reads pack `layout` (`feed` / widgets above Continue) — no hardcoded home/anime rail lists; A15 manual QA still open |
+| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **3 / 3** acceptance (Arabic-family chrome filters) |
+| **Current slice** | Arabic / Brstej / كرتون pack `filters` + Films / Series / Categories — A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -193,6 +193,18 @@ Core `mylist` tab — host-owned data (local + Simkl); no Simkl JS catalog plugi
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | R70-A65 | Live Sports tab from `forjahq-live-sports` pack nav — not hardcoded core shell (7th official hub; R70-A32 frozen at 6 in-scope VOD/live/catalog packs) | ✅ |
+
+---
+
+## Acceptance (Arabic-family chrome filters)
+
+Films / Series / Categories on Arabic, Brstej, and كرتون — pack `filters` + chrome AST into `feed` / `rail`.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A66 | Arabic (`arabic-hub`) declares `filters` — Larozaa cats + Films/Series; chrome refilters feed/rails | ✅ |
+| 2 | R70-A67 | Brstej (`brstej-hub`) declares `filters` — curated region/type cats + Films/Series; category pages group episodes | ✅ |
+| 3 | R70-A68 | كرتون (`dimatoon-hub`) declares `filters` — Arabic letter Categories; Films empty (series-only catalog) | ✅ |
 
 ---
 

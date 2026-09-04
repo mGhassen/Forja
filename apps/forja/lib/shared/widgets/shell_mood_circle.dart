@@ -31,7 +31,8 @@ class ShellMoodCircleLayout {
     circleSize: 72,
     itemWidth: 96,
     horizontalGap: 24,
-    rowHeight: 72 + 8 + 34,
+    // Circle + gap + 2-line label + bottom breathing room (avoids descender clip).
+    rowHeight: 72 + 8 + 34 + 8,
     labelFontSize: 12.5,
     iconSize: 26,
     iconSizeActive: 34,
@@ -64,7 +65,7 @@ class ShellMoodCircleLayout {
     final circleSize = (itemWidth * 0.74).clamp(40.0, 54.0);
     final labelFontSize = itemWidth < 64 ? 9.5 : 10.5;
     const labelLineHeight = 1.15;
-    final rowHeight = circleSize + 6 + labelFontSize * labelLineHeight + 2;
+    final rowHeight = circleSize + 6 + labelFontSize * labelLineHeight + 8;
     final iconSize = circleSize * 0.42;
     final iconSizeActive = circleSize * 0.52;
 

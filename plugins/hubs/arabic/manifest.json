@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-arabic",
   "name": "ForjaHQ Arabic",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "plugins": [
     {
       "id": "arabic-hub",
@@ -22,6 +22,7 @@
         "rail",
         "feed",
         "search",
+        "filters",
         "details"
       ],
       "nav": {

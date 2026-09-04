@@ -87,26 +87,38 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
 
 
   ({IconData icon, Color accent}) _sportCircleMeta(String label) {
-    final key = label.toLowerCase();
+    final key = label.toLowerCase().trim();
     if (key == 'all') {
       return (
         icon: Icons.grid_view_rounded,
         accent: ForjaShellColors.sectionAccent,
       );
     }
-    if (key.contains('american football') || key.contains('nfl')) {
+    if (key.contains('american football') ||
+        key.contains('nfl') ||
+        key.contains('ncaaf')) {
       return (
         icon: Icons.sports_football_rounded,
         accent: const Color(0xFF22C55E),
       );
     }
-    if (key.contains('basketball') || key.contains('nba')) {
+    if (key.contains('basketball') ||
+        key.contains('nba') ||
+        key.contains('ncaab') ||
+        key.contains('wnba')) {
       return (
         icon: Icons.sports_basketball_rounded,
         accent: const Color(0xFFF97316),
       );
     }
-    if (key.contains('soccer') || key.contains('football')) {
+    // Soccer before generic "football" — IPTV labels often say "Football".
+    if (key.contains('soccer') ||
+        key.contains('football') ||
+        key.contains('fifa') ||
+        key.contains('premier league') ||
+        key.contains('la liga') ||
+        key.contains('serie a') ||
+        key.contains('bundesliga')) {
       return (
         icon: Icons.sports_soccer_rounded,
         accent: const Color(0xFF10B981),
@@ -118,41 +130,108 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         accent: const Color(0xFFEF4444),
       );
     }
-    if (key.contains('hockey') || key.contains('nhl')) {
+    if (key.contains('hockey') ||
+        key.contains('nhl') ||
+        key.contains('ice hockey')) {
       return (
         icon: Icons.sports_hockey_rounded,
         accent: const Color(0xFF38BDF8),
       );
     }
-    if (key.contains('tennis')) {
+    if (key.contains('tennis') || key.contains('tenis') || key.contains('atp')) {
       return (
         icon: Icons.sports_tennis_rounded,
         accent: const Color(0xFFA3E635),
       );
     }
-    if (key.contains('cricket')) {
+    if (key.contains('cricket') ||
+        key.contains('krykiet') ||
+        key.contains('ipl')) {
       return (
         icon: Icons.sports_cricket_rounded,
         accent: const Color(0xFF84CC16),
       );
     }
-    if (key.contains('mma') ||
+    if (key.contains('rugby') || key.contains('nrl') || key.contains('afl')) {
+      return (
+        icon: Icons.sports_rugby_rounded,
+        accent: const Color(0xFF16A34A),
+      );
+    }
+    if (key.contains('golf')) {
+      return (
+        icon: Icons.sports_golf_rounded,
+        accent: const Color(0xFF65A30D),
+      );
+    }
+    if (key.contains('volleyball') || key.contains('volley')) {
+      return (
+        icon: Icons.sports_volleyball_rounded,
+        accent: const Color(0xFF06B6D4),
+      );
+    }
+    if (key.contains('handball')) {
+      return (
+        icon: Icons.sports_handball_rounded,
+        accent: const Color(0xFF0EA5E9),
+      );
+    }
+    if (key.contains('wrestling') ||
+        key.contains('wwe') ||
+        key.contains('ufc') ||
+        key.contains('mma') ||
         key.contains('boxing') ||
-        key.contains('fight')) {
+        key.contains('fight') ||
+        key.contains('combat') ||
+        key.contains('martial')) {
       return (icon: Icons.sports_mma_rounded, accent: const Color(0xFFF43F5E));
     }
-    if (key.contains('motor') || key.contains('racing') || key.contains('f1')) {
+    if (key.contains('motor') ||
+        key.contains('racing') ||
+        key.contains('f1') ||
+        key.contains('nascar') ||
+        key.contains('formula')) {
       return (
         icon: Icons.sports_motorsports_rounded,
         accent: const Color(0xFFEAB308),
       );
     }
+    if (key.contains('dart')) {
+      return (icon: Icons.gps_fixed_rounded, accent: const Color(0xFFEC4899));
+    }
+    if (key.contains('snooker') ||
+        key.contains('billiard') ||
+        key == 'pool' ||
+        key.contains('8-ball') ||
+        key.contains('8 ball')) {
+      return (icon: Icons.circle_rounded, accent: const Color(0xFF14B8A6));
+    }
+    if (key.contains('swim') || key.contains('aquatic')) {
+      return (icon: Icons.pool_rounded, accent: const Color(0xFF3B82F6));
+    }
+    if (key.contains('ski') || key.contains('snow') || key.contains('winter')) {
+      return (
+        icon: Icons.downhill_skiing_rounded,
+        accent: const Color(0xFF94A3B8),
+      );
+    }
+    if (key.contains('esport') || key.contains('e-sport') || key.contains('gaming')) {
+      return (
+        icon: Icons.sports_esports_rounded,
+        accent: const Color(0xFFA855F7),
+      );
+    }
     if (key.contains('24/7') ||
         key.contains('24-7') ||
+        key.contains('live tv') ||
+        key.contains('livetv') ||
+        key.contains('tv show') ||
+        key.contains('big brother') ||
+        key.contains('reality') ||
         key.contains('stream')) {
       return (icon: Icons.live_tv_rounded, accent: const Color(0xFF8B5CF6));
     }
-    if (key.contains('misc')) {
+    if (key.contains('misc') || key.contains('other') || key.contains('general')) {
       return (icon: Icons.sports_rounded, accent: const Color(0xFF64748B));
     }
     return (icon: Icons.sports_rounded, accent: ForjaShellColors.sectionAccent);
@@ -481,7 +560,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         left: ShellTokens.compactChromeLeadingInset(context),
         right: ShellTokens.bodyHorizontalPadding,
         top: 2,
-        bottom: 4,
+        bottom: 10,
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {

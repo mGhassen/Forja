@@ -4,7 +4,7 @@
   "name": "ForjaHQ Brstej",
   "description": "Brstej Arabic series hub.",
   "author": "ForjaHQ",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "plugins": [
     {
       "id": "brstej-hub",
@@ -23,6 +23,7 @@
         "rail",
         "feed",
         "search",
+        "filters",
         "details"
       ],
       "nav": {

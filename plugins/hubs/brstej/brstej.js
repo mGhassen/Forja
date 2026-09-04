@@ -10,6 +10,167 @@ var BRSTEJ_DEFAULTS = {
 
 var BRSTEJ_FEED_RAILS = ['spotlight', 'latest', 'series'];
 
+function brstejCatFilter(value) {
+  return { op: 'eq', field: 'cat', value: String(value) };
+}
+
+/** Curated region / type categories (not per-show dump pages). */
+var BRSTEJ_CATEGORY_OPTIONS = [
+  {
+    id: 'arabic',
+    label: 'مسلسلات عربية',
+    path: '/category.php?cat=arab8-2025',
+    kind: 'series',
+    filter: brstejCatFilter('arab8-2025'),
+  },
+  {
+    id: 'egyptian',
+    label: 'مسلسلات مصرية',
+    path: '/category.php?cat=eg8-2025',
+    kind: 'series',
+    filter: brstejCatFilter('eg8-2025'),
+  },
+  {
+    id: 'shami',
+    label: 'مسلسلات شامية',
+    path: '/category.php?cat=syy5-2025',
+    kind: 'series',
+    filter: brstejCatFilter('syy5-2025'),
+  },
+  {
+    id: 'gulf',
+    label: 'مسلسلات خليجية',
+    path: '/category.php?cat=5a7-2024',
+    kind: 'series',
+    filter: brstejCatFilter('5a7-2024'),
+  },
+  {
+    id: 'turkish',
+    label: 'مسلسلات تركية',
+    path: '/category.php?cat=ty9-2025',
+    kind: 'series',
+    filter: brstejCatFilter('ty9-2025'),
+  },
+  {
+    id: 'prestige',
+    label: 'مسلسلات برستيج',
+    path: '/cat03.php?cat=prss7-2025',
+    kind: 'series',
+    filter: brstejCatFilter('prss7-2025'),
+  },
+  {
+    id: 'indian',
+    label: 'مسلسلات هندية',
+    path: '/category.php?cat=2ind2-2025',
+    kind: 'series',
+    filter: brstejCatFilter('2ind2-2025'),
+  },
+  {
+    id: 'asian',
+    label: 'مسلسلات آسيوية',
+    path: '/category.php?cat=asia',
+    kind: 'series',
+    filter: brstejCatFilter('asia'),
+  },
+  {
+    id: 'foreign',
+    label: 'مسلسلات أجنبية',
+    path: '/category.php?cat=english1-2025',
+    kind: 'series',
+    filter: brstejCatFilter('english1-2025'),
+  },
+  {
+    id: 'anime',
+    label: 'مسلسلات أنمي',
+    path: '/category.php?cat=anmei',
+    kind: 'series',
+    filter: brstejCatFilter('anmei'),
+  },
+  {
+    id: 'ramadan',
+    label: 'رمضان 2026',
+    path: '/category.php?cat=ramdan2026',
+    kind: 'series',
+    filter: brstejCatFilter('ramdan2026'),
+  },
+  {
+    id: 'movies_ar',
+    label: 'أفلام عربية',
+    path: '/category.php?cat=aflam02-2024',
+    kind: 'movie',
+    filter: brstejCatFilter('aflam02-2024'),
+  },
+  {
+    id: 'movies_foreign',
+    label: 'أفلام أجنبية',
+    path: '/category.php?cat=aflamajnby3-2024',
+    kind: 'movie',
+    filter: brstejCatFilter('aflamajnby3-2024'),
+  },
+  {
+    id: 'movies_tr',
+    label: 'أفلام تركية',
+    path: '/category.php?cat=turkish3-movies2024',
+    kind: 'movie',
+    filter: brstejCatFilter('turkish3-movies2024'),
+  },
+  {
+    id: 'movies_in',
+    label: 'أفلام هندية',
+    path: '/category.php?cat=hindi1-moviess',
+    kind: 'movie',
+    filter: brstejCatFilter('hindi1-moviess'),
+  },
+  {
+    id: 'movies_anime',
+    label: 'أفلام أنمي',
+    path: '/category.php?cat=anime1',
+    kind: 'movie',
+    filter: brstejCatFilter('anime1'),
+  },
+  {
+    id: 'tv',
+    label: 'برامج تلفزيونية',
+    path: '/category.php?cat=tv4-2024',
+    kind: 'series',
+    filter: brstejCatFilter('tv4-2024'),
+  },
+];
+
+function brstejFilters() {
+  return {
+    fields: [
+      {
+        field: 'cat',
+        label: 'Category',
+        options: BRSTEJ_CATEGORY_OPTIONS.map(function (o) {
+          return { id: o.id, label: o.label, filter: o.filter };
+        }),
+      },
+    ],
+    media: {
+      films: { op: 'eq', field: 'kind', value: 'movie' },
+      series: { op: 'eq', field: 'kind', value: 'series' },
+    },
+  };
+}
+
+function brstejOptionForCat(cat) {
+  for (var i = 0; i < BRSTEJ_CATEGORY_OPTIONS.length; i++) {
+    if (BRSTEJ_CATEGORY_OPTIONS[i].filter.value === String(cat)) {
+      return BRSTEJ_CATEGORY_OPTIONS[i];
+    }
+  }
+  return null;
+}
+
+function brstejChromeFiltered(params) {
+  return !!(
+    hubFilterValue(params.filter, 'cat') ||
+    hubFilterValue(params.filter, 'kind')
+  );
+}
+
 function brstejBase(cfg) {
   return String(cfg.origin || cfg.brstej || BRSTEJ_DEFAULTS.origin).replace(
     /\/$/,
@@ -224,6 +385,133 @@ function brstejBrowseSeries(ctx, cfg, limit) {
   );
 }
 
+function brstejIsMovieTitle(title) {
+  title = String(title || '');
+  if (title.indexOf('الحلقة') >= 0) return false;
+  return /مشاهدة\s*فيلم/.test(title) || /(?:^|\s)فيلم\b/.test(title);
+}
+
+function brstejStripMoviePrefix(title) {
+  return String(title || '')
+    .replace(/^مشاهدة\s*فيلم\s+/i, '')
+    .replace(/^فيلم\s+/i, '')
+    .replace(/\s*(اون\s*لاين|كامل|HD).*$/i, '')
+    .trim();
+}
+
+/** Category pages list watch.php cards — group episodes → series, keep movies. */
+function brstejGroupCategoryCards(episodes, asMovies) {
+  var byKey = {};
+  var order = [];
+  for (var i = 0; i < (episodes || []).length; i++) {
+    var ep = episodes[i];
+    if (!ep || !ep.name) continue;
+    var movie = asMovies || brstejIsMovieTitle(ep.name);
+    if (movie) {
+      var mid = (ep.ids && ep.ids.brstej) || '';
+      if (!mid || byKey[mid]) continue;
+      order.push(mid);
+      byKey[mid] = brstejMeta(
+        mid.indexOf('watch:') === 0 ? mid : 'watch:' + mid,
+        brstejStripMoviePrefix(ep.name),
+        ep.poster,
+        { url: ep.ids && ep.ids.url },
+      );
+      if (byKey[mid]) byKey[mid].badge = 'MOVIE';
+      continue;
+    }
+    var key = brstejNormTitle(ep.name);
+    if (!key) continue;
+    if (!byKey[key]) {
+      order.push(key);
+      byKey[key] = brstejMeta(
+        ep.ids.brstej,
+        brstejStripPrefix(brstejStripEpisode(ep.name)),
+        ep.poster,
+        { url: ep.ids.url },
+      );
+    }
+  }
+  var out = [];
+  for (var j = 0; j < order.length; j++) {
+    if (byKey[order[j]]) out.push(byKey[order[j]]);
+  }
+  return out;
+}
+
+function brstejBrowsePath(ctx, cfg, path, opts) {
+  opts = opts || {};
+  var base = brstejBase(cfg);
+  var url;
+  if (/[?&]page=/.test(path)) {
+    url = base + path;
+  } else if (path.indexOf('?') >= 0) {
+    url = base + path + '&page=1';
+  } else {
+    url = base + path + '?page=1';
+  }
+  return brstejFetchHtml(ctx, url, base + '/').then(function (got) {
+    var origin = brstejOrigin(got.url) || base;
+    var series = brstejParseSerieCards(ctx, got.html, origin);
+    if (series.length) return hubClampList(series, opts.limit);
+    var episodes = brstejParseEpisodeCards(ctx, got.html, origin);
+    return hubClampList(
+      brstejGroupCategoryCards(episodes, !!opts.asMovies),
+      opts.limit,
+    );
+  });
+}
+
+function brstejExploreList(ctx, cfg, params) {
+  var cat = hubFilterValue(params.filter, 'cat');
+  var kind = hubFilterValue(params.filter, 'kind');
+  var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
+  if (cat) {
+    var opt = brstejOptionForCat(cat);
+    var path = opt
+      ? opt.path
+      : '/category.php?cat=' + encodeURIComponent(cat);
+    var asMovies =
+      kind === 'movie' || (opt && opt.kind === 'movie' && kind !== 'series');
+    return brstejBrowsePath(ctx, cfg, path, {
+      limit: limit,
+      asMovies: asMovies,
+    });
+  }
+  if (kind === 'movie') {
+    return brstejBrowsePath(ctx, cfg, '/category.php?cat=aflam02-2024', {
+      limit: limit,
+      asMovies: true,
+    });
+  }
+  if (kind === 'series') {
+    return brstejBrowseSeries(ctx, cfg, limit);
+  }
+  return Promise.resolve([]);
+}
+
+function brstejFilteredFeed(ctx, cfg, params) {
+  var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
+  return brstejExploreList(
+    ctx,
+    cfg,
+    Object.assign({}, params, { limit: Math.max(limit * 2, 48) }),
+  ).then(function (items) {
+    var list = items || [];
+    return hubOk(
+      'feed',
+      {
+        rails: {
+          spotlight: list.slice(0, limit),
+          latest: list.slice(0, limit),
+          series: list.slice(0, Math.min(10, limit)),
+        },
+      },
+      { maxAge: 600, swr: 3600 },
+    );
+  });
+}
+
 function brstejSearch(ctx, cfg, params) {
   var q = String(params.query || '').trim();
   if (!q) return Promise.resolve(hubItems('search', []));
@@ -269,7 +557,10 @@ function brstejRailItems(ctx, cfg, params) {
       hubFail('rail', 'INVALID_PARAMS', 'unknown rail ' + rail),
     );
   }
-  return brstejBrowseSeries(ctx, cfg, params.limit)
+  var load = brstejChromeFiltered(params)
+    ? brstejExploreList(ctx, cfg, params)
+    : brstejBrowseSeries(ctx, cfg, params.limit);
+  return load
     .then(function (items) {
       return hubItems('rail', items, { maxAge: 600, swr: 3600 });
     })
@@ -279,6 +570,11 @@ function brstejRailItems(ctx, cfg, params) {
 }
 
 function brstejFeed(ctx, cfg, params) {
+  if (brstejChromeFiltered(params)) {
+    return brstejFilteredFeed(ctx, cfg, params).catch(function (e) {
+      return hubFail('feed', 'UPSTREAM', e && e.message, true);
+    });
+  }
   var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
   return brstejBrowseSeries(ctx, cfg, Math.max(limit, 24))
     .then(function (items) {
@@ -538,6 +834,9 @@ function extract(ctx) {
 
   if (action === 'layout') {
     return hubOk('layout', brstejLayout(), { maxAge: 3600, swr: 86400 });
+  }
+  if (action === 'filters') {
+    return hubOk('filters', brstejFilters(), { maxAge: 86400 });
   }
   if (action === 'feed') {
     return brstejFeed(ctx, cfg, params);

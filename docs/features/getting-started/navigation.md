@@ -14,14 +14,14 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 - Tap any tab to switch sections instantly (recently used tabs stay mounted for fast switching; Android TV keeps fewer tabs in memory, and opening the fullscreen player unloads other tabs — keeping the screen under the player — so playback gets max resources). The nav rail stays mounted under root fullscreen players (movies, trailers, Live Sports, IPTV) the same way as the underlay tab. On **Android TV**, details and player opens are an instant cut (no slide) so older sets do not stutter while the new screen loads.
 - On desktop, the left rail is a **fixed-width** column; the body is inset so content is not hidden under icons
-- On **Home / Anime / Asian Drama (desktop)**, a text top menu — **Search**, **Films**, **Series** (TV Shows on Home), **Categories** — overlays the hero and slides away as you scroll
+- On **Home / Anime / Asian Drama / Arabic / Brstej / كرتون (desktop)**, a text top menu — **Search**, **Films**, **Series** (TV Shows on Home), **Categories** — overlays the hero and slides away as you scroll
 - **Search (desktop)** uses a full-page layout with a left search column — no separate shell search bar
 - Open **Settings → Features** to toggle tabs on/off, reorder (drag on desktop; **↑/↓** on Android TV), and star the tab that opens on app start and after you switch profiles (only the tabs listed below are available right now)
 - Jump to Search or other tabs from deep links inside the app (e.g. from a Stremio addon result)
 
 ## Desktop shell layout
 
-- **Home / Anime / Asian Drama menu (desktop):** **Search**, **Films**, **Series** (TV Shows on Home), **Categories** as text tabs on the hero; Categories opens a genre (Home, Anime) or country (Asian Drama) picker
+- **Home / Anime / Asian Drama / Arabic / Brstej / كرتون menu (desktop):** **Search**, **Films**, **Series** (TV Shows on Home), **Categories** as text tabs on the hero; Categories opens a genre (Home, Anime), country (Asian Drama), Larozaa/Brstej section, or كرتون letter picker
 - **Left rail:** Forja logo (top), your configured tabs (center), then a larger active profile avatar / Guest with its name always visible (bottom). Next to the profile name, LAN status is a **dot** (green = up, red = unreachable). On **desktop** (the LAN server) a bold **vertical bar** after the dot is the session (amber = waiting to pair, green = paired, grey = idle, pulse = playing). Android TV is a client, so it is the dot only. Every destination is gray while idle and reveals its own accent color on hover or selection; the active underline keeps that same accent while hovered. The avatar uses its profile colors and opens Settings without a circular hover background.
 - **Body:** flat `bgDark`; Home hero is full-bleed with **View details** plus a My List **+** pill
 

@@ -30,7 +30,7 @@
       "description": "Arabic hub — Larozaa only (Brstej / كرتون are separate packs)",
       "accent": "brand",
       "official": true,
-      "version": "1.4.1",
+      "version": "1.4.2",
       "pluginCount": 1
     },
     {
@@ -52,7 +52,7 @@
       "accent": "brand",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "pluginCount": 1
     },
     {
@@ -63,7 +63,7 @@
       "accent": "flame",
       "official": true,
       "author": "ForjaHQ",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "pluginCount": 1
     },
     {

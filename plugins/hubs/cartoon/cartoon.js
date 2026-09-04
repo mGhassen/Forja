@@ -8,6 +8,85 @@ var CARTOON_DEFAULTS = {
 
 var CARTOON_FEED_RAILS = ['spotlight', 'latest', 'popular', 'episodes'];
 
+var CARTOON_LETTERS = [
+  'ا',
+  'ب',
+  'ت',
+  'ث',
+  'ج',
+  'ح',
+  'خ',
+  'د',
+  'ذ',
+  'ر',
+  'ز',
+  'س',
+  'ش',
+  'ص',
+  'ض',
+  'ط',
+  'ظ',
+  'ع',
+  'غ',
+  'ف',
+  'ق',
+  'ك',
+  'ل',
+  'م',
+  'ن',
+  'ه',
+  'و',
+  'ي',
+];
+
+function cartoonLetterFilter(value) {
+  return { op: 'eq', field: 'letter', value: String(value) };
+}
+
+function cartoonCategoryOptions() {
+  return CARTOON_LETTERS.map(function (letter) {
+    return {
+      id: 'letter_' + letter,
+      label: letter,
+      filter: cartoonLetterFilter(letter),
+    };
+  });
+}
+
+function cartoonFilters() {
+  return {
+    fields: [
+      {
+        field: 'letter',
+        label: 'Letter',
+        options: cartoonCategoryOptions(),
+      },
+    ],
+    media: {
+      // Catalog is series-only; Films leaves an empty browse intentionally.
+      films: { op: 'eq', field: 'kind', value: 'movie' },
+      series: { op: 'eq', field: 'kind', value: 'series' },
+    },
+  };
+}
+
+function cartoonFirstLetter(title) {
+  var t = cartoonStripZw(title).replace(/^ال/, '');
+  if (!t) return '';
+  return t.charAt(0);
+}
+
+function cartoonFilterByLetter(items, letter) {
+  if (!letter) return items || [];
+  var out = [];
+  for (var i = 0; i < (items || []).length; i++) {
+    var it = items[i];
+    if (!it) continue;
+    if (cartoonFirstLetter(it.name) === letter) out.push(it);
+  }
+  return out;
+}
+
 var CARTOON_ORDINAL = {
   الأول: 1,
   الاول: 1,
@@ -487,12 +566,26 @@ function cartoonRail(ctx, cfg, params) {
   var base = cartoonBase(cfg);
   var rail = String(params.rail || params.id || '').trim();
   var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
+  var kind = hubFilterValue(params.filter, 'kind');
+  var letter = hubFilterValue(params.filter, 'letter');
+  if (kind === 'movie') {
+    return Promise.resolve(hubItems('rail', [], { maxAge: 600, swr: 3600 }));
+  }
   var p;
   if (rail === 'spotlight' || rail === 'latest') {
-    p = cartoonListSeries(ctx, base, { limit: limit, sort: 'latest' });
+    p = cartoonListSeries(ctx, base, {
+      limit: letter ? 200 : limit,
+      sort: 'latest',
+    });
   } else if (rail === 'popular') {
-    p = cartoonListSeries(ctx, base, { limit: limit, sort: 'popular' });
+    p = cartoonListSeries(ctx, base, {
+      limit: letter ? 200 : limit,
+      sort: 'popular',
+    });
   } else if (rail === 'episodes') {
+    if (letter) {
+      return Promise.resolve(hubItems('rail', [], { maxAge: 600, swr: 3600 }));
+    }
     p = cartoonRecentEpisodeMetas(ctx, base, limit);
   } else {
     return Promise.resolve(
@@ -501,7 +594,12 @@ function cartoonRail(ctx, cfg, params) {
   }
   return p
     .then(function (items) {
-      return hubItems('rail', items || [], { maxAge: 600, swr: 3600 });
+      var list = letter ? cartoonFilterByLetter(items, letter) : items || [];
+      return hubItems(
+        'rail',
+        hubClampList(list, limit),
+        { maxAge: 600, swr: 3600 },
+      );
     })
     .catch(function (e) {
       return hubFail('rail', 'UPSTREAM', e && e.message, true);
@@ -511,15 +609,49 @@ function cartoonRail(ctx, cfg, params) {
 function cartoonFeed(ctx, cfg, params) {
   var base = cartoonBase(cfg);
   var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
+  var kind = hubFilterValue(params.filter, 'kind');
+  var letter = hubFilterValue(params.filter, 'letter');
+  if (kind === 'movie') {
+    return Promise.resolve(
+      hubOk(
+        'feed',
+        {
+          rails: {
+            spotlight: [],
+            latest: [],
+            popular: [],
+            episodes: [],
+          },
+        },
+        { maxAge: 600, swr: 3600 },
+      ),
+    );
+  }
   return cartoonFetchAllTerms(ctx, base, { maxPages: 5 })
     .then(function (terms) {
+      var latest = cartoonGroupTerms(terms, {
+        limit: letter ? 400 : limit,
+        sort: 'latest',
+      });
+      var popular = cartoonGroupTerms(terms, {
+        limit: letter ? 400 : limit,
+        sort: 'popular',
+      });
+      if (letter) {
+        latest = hubClampList(cartoonFilterByLetter(latest, letter), limit);
+        popular = hubClampList(cartoonFilterByLetter(popular, letter), limit);
+      }
       return {
-        spotlight: cartoonGroupTerms(terms, { limit: limit, sort: 'latest' }),
-        latest: cartoonGroupTerms(terms, { limit: limit, sort: 'latest' }),
-        popular: cartoonGroupTerms(terms, { limit: limit, sort: 'popular' }),
+        spotlight: latest.slice(0, limit),
+        latest: latest.slice(0, limit),
+        popular: popular.slice(0, limit),
       };
     })
     .then(function (rails) {
+      if (letter) {
+        rails.episodes = [];
+        return hubOk('feed', { rails: rails }, { maxAge: 600, swr: 3600 });
+      }
       return cartoonRecentEpisodeMetas(ctx, base, limit).then(function (eps) {
         rails.episodes = eps || [];
         return hubOk('feed', { rails: rails }, { maxAge: 600, swr: 3600 });
@@ -753,6 +885,9 @@ function extract(ctx) {
 
   if (action === 'layout') {
     return hubOk('layout', cartoonLayout(), { maxAge: 3600, swr: 86400 });
+  }
+  if (action === 'filters') {
+    return hubOk('filters', cartoonFilters(), { maxAge: 86400 });
   }
   if (action === 'feed') {
     return cartoonFeed(ctx, cfg, params).catch(function (e) {
