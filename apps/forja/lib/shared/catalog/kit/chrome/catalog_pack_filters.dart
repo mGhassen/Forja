@@ -106,6 +106,18 @@ class CatalogPackFiltersRegistry {
     ];
   }
 
+  /// Pack declared `media.films` — omit the key to hide the Films tab.
+  static bool showsFilms(String pluginId) {
+    final pack = _byPlugin[pluginId] ?? _PackFilters.empty;
+    return pack.media.films.isNotEmpty;
+  }
+
+  /// Pack declared `media.series` — omit the key to hide Series / TV Shows.
+  static bool showsSeries(String pluginId) {
+    final pack = _byPlugin[pluginId] ?? _PackFilters.empty;
+    return pack.media.series.isNotEmpty;
+  }
+
   static List<CatalogPlayFilterSpec> playFiltersFor(String pluginId) {
     return (_byPlugin[pluginId] ?? _PackFilters.empty).play;
   }

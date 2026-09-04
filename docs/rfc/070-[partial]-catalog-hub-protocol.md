@@ -204,7 +204,7 @@ Films / Series / Categories on Arabic, Brstej, and كرتون — pack `filters`
 |--:|----|-------------|--------|
 | 1 | R70-A66 | Arabic (`arabic-hub`) declares `filters` — Larozaa cats + Films/Series; chrome refilters feed/rails | ✅ |
 | 2 | R70-A67 | Brstej (`brstej-hub`) declares `filters` — curated region/type cats + Films/Series; category pages group episodes | ✅ |
-| 3 | R70-A68 | كرتون (`dimatoon-hub`) declares `filters` — Arabic letter Categories; Films empty (series-only catalog) | ✅ |
+| 3 | R70-A68 | كرتون (`dimatoon-hub`) declares `filters` — Arabic letter Categories only (no `media.films` / `media.series`) | ✅ |
 
 ---
 

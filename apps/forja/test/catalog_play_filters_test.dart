@@ -220,5 +220,37 @@ void main() {
       });
       ShellBus.hubSelectedCategoryIdFor('anime').value = null;
     });
+
+    test('showsFilms / showsSeries follow pack media keys', () {
+      CatalogPackFiltersRegistry.seedFromJson('letters-only', {
+        'fields': [
+          {
+            'field': 'letter',
+            'options': [
+              {'id': 'a', 'label': 'ا'},
+            ],
+          },
+        ],
+      });
+      expect(CatalogPackFiltersRegistry.showsFilms('letters-only'), isFalse);
+      expect(CatalogPackFiltersRegistry.showsSeries('letters-only'), isFalse);
+
+      CatalogPackFiltersRegistry.seedFromJson('both-media', {
+        'media': {
+          'films': {'op': 'eq', 'field': 'kind', 'value': 'movie'},
+          'series': {'op': 'eq', 'field': 'kind', 'value': 'series'},
+        },
+      });
+      expect(CatalogPackFiltersRegistry.showsFilms('both-media'), isTrue);
+      expect(CatalogPackFiltersRegistry.showsSeries('both-media'), isTrue);
+
+      CatalogPackFiltersRegistry.seedFromJson('series-only', {
+        'media': {
+          'series': {'op': 'eq', 'field': 'kind', 'value': 'series'},
+        },
+      });
+      expect(CatalogPackFiltersRegistry.showsFilms('series-only'), isFalse);
+      expect(CatalogPackFiltersRegistry.showsSeries('series-only'), isTrue);
+    });
   });
 }

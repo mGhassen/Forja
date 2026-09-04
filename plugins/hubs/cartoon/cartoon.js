@@ -62,11 +62,7 @@ function cartoonFilters() {
         options: cartoonCategoryOptions(),
       },
     ],
-    media: {
-      // Catalog is series-only; Films leaves an empty browse intentionally.
-      films: { op: 'eq', field: 'kind', value: 'movie' },
-      series: { op: 'eq', field: 'kind', value: 'series' },
-    },
+    // Series-only catalog — no Films / Series chrome tabs.
   };
 }
 

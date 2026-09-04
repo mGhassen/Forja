@@ -55,6 +55,10 @@ void main() {
           ],
         },
       ],
+      'media': {
+        'films': {'op': 'eq', 'field': 'type', 'value': 'movie'},
+        'series': {'op': 'eq', 'field': 'type', 'value': 'tv'},
+      },
     });
   }
 

@@ -21,7 +21,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 ## Desktop shell layout
 
-- **Home / Anime / Asian Drama / Arabic / Brstej / كرتون menu (desktop):** **Search**, **Films**, **Series** (TV Shows on Home), **Categories** as text tabs on the hero; Categories opens a genre (Home, Anime), country (Asian Drama), Larozaa/Brstej section, or كرتون letter picker
+- **Home / Anime / Asian Drama / Arabic / Brstej / كرتون menu (desktop):** **Search**, optional **Films** / **Series** (only when the pack declares `media`), **Categories** as text tabs on the hero; Categories opens a genre (Home, Anime), country (Asian Drama), Larozaa/Brstej section, or كرتون letter picker
 - **Left rail:** Forja logo (top), your configured tabs (center), then a larger active profile avatar / Guest with its name always visible (bottom). Next to the profile name, LAN status is a **dot** (green = up, red = unreachable). On **desktop** (the LAN server) a bold **vertical bar** after the dot is the session (amber = waiting to pair, green = paired, grey = idle, pulse = playing). Android TV is a client, so it is the dot only. Every destination is gray while idle and reveals its own accent color on hover or selection; the active underline keeps that same accent while hovered. The avatar uses its profile colors and opens Settings without a circular hover background.
 - **Body:** flat `bgDark`; Home hero is full-bleed with **View details** plus a My List **+** pill
 

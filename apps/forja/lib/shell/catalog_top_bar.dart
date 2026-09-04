@@ -28,6 +28,8 @@ class CatalogTopBar extends StatefulWidget {
     required this.scrollOffset,
     required this.heroHeight,
     required this.onSearch,
+    this.showFilms = true,
+    this.showSeries = true,
   });
 
   final String tabId;
@@ -40,6 +42,12 @@ class CatalogTopBar extends StatefulWidget {
 
   /// Null when the pack does not declare `search` — Search tab is omitted.
   final VoidCallback? onSearch;
+
+  /// Pack `filters.media.films` — false hides the Films tab.
+  final bool showFilms;
+
+  /// Pack `filters.media.series` — false hides Series / TV Shows.
+  final bool showSeries;
 
   static const hideSlideDistance = 56.0;
 
@@ -371,13 +379,29 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                             : 36.0;
                         final tabTextHeight =
                             shellScaled(context, 34).clamp(28.0, 34.0);
-                        // Provider logo (Home) → Search? → Films → Series → Categories
+                        // Provider logo → Search? → Films? → Series? → Categories?
                         final hasSearch = widget.onSearch != null;
+                        final showFilms = widget.showFilms;
+                        final showSeries = widget.showSeries;
+                        final showCategories = widget.categories.isNotEmpty;
                         final searchIndex = hasFilterLogo ? 1 : 0;
                         final filmsIndex =
                             searchIndex + (hasSearch ? 1 : 0);
-                        final seriesIndex = filmsIndex + 1;
-                        final categoriesIndex = filmsIndex + 2;
+                        final seriesIndex =
+                            filmsIndex + (showFilms ? 1 : 0);
+                        final categoriesIndex =
+                            seriesIndex + (showSeries ? 1 : 0);
+                        final menuItemCount = showCategories
+                            ? categoriesIndex + 1
+                            : showSeries
+                            ? seriesIndex + 1
+                            : showFilms
+                            ? filmsIndex + 1
+                            : hasSearch
+                            ? searchIndex + 1
+                            : hasFilterLogo
+                            ? 1
+                            : 0;
 
                         final tabs = FocusTraversalGroup(
                           policy: ReadingOrderTraversalPolicy(),
@@ -427,55 +451,63 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                                 ),
                                 SizedBox(width: tabGap),
                               ],
-                              _CategoryTab(
-                                label: 'Films',
-                                isActive:
-                                    mediaFilter == ShellHomeCategory.films,
-                                onTap: () => _toggleMediaFilter(
-                                  ShellHomeCategory.films,
+                              if (showFilms) ...[
+                                _CategoryTab(
+                                  label: 'Films',
+                                  isActive:
+                                      mediaFilter == ShellHomeCategory.films,
+                                  onTap: () => _toggleMediaFilter(
+                                    ShellHomeCategory.films,
+                                  ),
+                                  tvFocus: tvFocus,
+                                  tabId: widget.tabId,
+                                  listIndex: filmsIndex,
+                                  focusNode: tvFocus ? _menuFocus : null,
+                                  onDownEdge: tvFocus
+                                      ? () =>
+                                            ShellTvFocus.focusHomeHeroGallery()
+                                      : null,
                                 ),
-                                tvFocus: tvFocus,
-                                tabId: widget.tabId,
-                                listIndex: filmsIndex,
-                                focusNode: tvFocus ? _menuFocus : null,
-                                onDownEdge: tvFocus
-                                    ? () =>
-                                          ShellTvFocus.focusHomeHeroGallery()
-                                    : null,
-                              ),
-                              SizedBox(width: tabGap),
-                              _CategoryTab(
-                                label: widget.seriesLabel,
-                                isActive:
-                                    mediaFilter == ShellHomeCategory.tvShows,
-                                onTap: () => _toggleMediaFilter(
-                                  ShellHomeCategory.tvShows,
+                                SizedBox(width: tabGap),
+                              ],
+                              if (showSeries) ...[
+                                _CategoryTab(
+                                  label: widget.seriesLabel,
+                                  isActive:
+                                      mediaFilter == ShellHomeCategory.tvShows,
+                                  onTap: () => _toggleMediaFilter(
+                                    ShellHomeCategory.tvShows,
+                                  ),
+                                  tvFocus: tvFocus,
+                                  tabId: widget.tabId,
+                                  listIndex: seriesIndex,
+                                  focusNode: tvFocus && !showFilms
+                                      ? _menuFocus
+                                      : null,
+                                  onDownEdge: tvFocus
+                                      ? () =>
+                                            ShellTvFocus.focusHomeHeroGallery()
+                                      : null,
                                 ),
-                                tvFocus: tvFocus,
-                                tabId: widget.tabId,
-                                listIndex: seriesIndex,
-                                onDownEdge: tvFocus
-                                    ? () =>
-                                          ShellTvFocus.focusHomeHeroGallery()
-                                    : null,
-                              ),
-                              SizedBox(width: tabGap),
-                              _CategoryTab(
-                                key: _categoriesKey,
-                                label: categoriesLabel,
-                                isActive: categoriesActive,
-                                showChevron: true,
-                                onTap: _openCategoriesMenu,
-                                tvFocus: tvFocus,
-                                tabId: widget.tabId,
-                                listIndex: categoriesIndex,
-                                focusNode:
-                                    tvFocus ? _categoriesTabFocus : null,
-                                onDownEdge: tvFocus
-                                    ? () =>
-                                          ShellTvFocus.focusHomeHeroGallery()
-                                    : null,
-                              ),
+                                SizedBox(width: tabGap),
+                              ],
+                              if (showCategories)
+                                _CategoryTab(
+                                  key: _categoriesKey,
+                                  label: categoriesLabel,
+                                  isActive: categoriesActive,
+                                  showChevron: true,
+                                  onTap: _openCategoriesMenu,
+                                  tvFocus: tvFocus,
+                                  tabId: widget.tabId,
+                                  listIndex: categoriesIndex,
+                                  focusNode:
+                                      tvFocus ? _categoriesTabFocus : null,
+                                  onDownEdge: tvFocus
+                                      ? () =>
+                                            ShellTvFocus.focusHomeHeroGallery()
+                                      : null,
+                                ),
                             ],
                           ),
                         );
@@ -491,7 +523,7 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                           tabId: widget.tabId,
                           rowId: 'top-bar',
                           sortOrder: -2,
-                          itemCount: tvFocus ? (categoriesIndex + 1) : 0,
+                          itemCount: tvFocus ? menuItemCount : 0,
                           child: menuRow,
                         );
                       },
