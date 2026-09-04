@@ -12,6 +12,11 @@ abstract final class PlayerBackExitGate {
   static bool _listening = false;
   static DateTime? _lastStayAt;
   static bool _exitCommitted = false;
+  /// Desktop player HardwareKeyboard already consumed Escape this pulse —
+  /// Shortcuts [_EscapeIntent] must not arm/exit again on the same key.
+  static DateTime? _playerEscapeHandledAt;
+  static const _escapeHandledPulse = Duration(milliseconds: 50);
+
   /// Match shell [_backDebounceWindow] — ATV HW + didPopRoute twins often
   /// exceed 80ms under MediaKit load; a short window lets hide+arm then exit
   /// on the same physical Back.
@@ -32,6 +37,7 @@ abstract final class PlayerBackExitGate {
         exitReady = false;
         _lastStayAt = null;
         _exitCommitted = false;
+        _playerEscapeHandledAt = null;
       }
     });
   }
@@ -107,6 +113,19 @@ abstract final class PlayerBackExitGate {
     _exitCommitted = false;
   }
 
+  /// Desktop film player handled Escape in [HardwareKeyboard] — Shortcuts
+  /// must ignore the same key (otherwise arm + pop happen on one press).
+  static void notePlayerEscapeHandled() {
+    _playerEscapeHandledAt = DateTime.now();
+  }
+
+  /// True when [notePlayerEscapeHandled] ran in this key pulse.
+  static bool playerEscapeHandledThisPulse() {
+    final t = _playerEscapeHandledAt;
+    if (t == null) return false;
+    return DateTime.now().difference(t) < _escapeHandledPulse;
+  }
+
   /// Chrome up → hide and arm (next intentional Back exits). Chrome down +
   /// armed → allow exit. Chrome down + not armed → arm only.
   ///
@@ -137,5 +156,6 @@ abstract final class PlayerBackExitGate {
     exitReady = false;
     _lastStayAt = null;
     _exitCommitted = false;
+    _playerEscapeHandledAt = null;
   }
 }

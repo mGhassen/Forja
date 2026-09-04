@@ -22,7 +22,14 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     return _s._statusController.entries.any(isStatusRouletteEntry);
   }
 
+  void _armEscapeExit() {
+    _s._escapeExitArmed = true;
+    _s._escapeArmedAt = DateTime.now();
+  }
+
   void _revealChrome() {
+    _s._escapeExitArmed = false;
+    _s._escapeArmedAt = null;
     if (!_s._showControls) {
       setState(() => _s._showControls = true);
     }
@@ -31,11 +38,17 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
 
   /// Hide chrome and block hover re-show briefly (cursor-none + MouseRegion
   /// rebuild otherwise re-fires [onHover] and leaves chrome stuck visible).
-  void _hideChromeIntentional() {
+  /// Auto-hide must not leave Escape armed — first Escape after idle hide
+  /// only arms; second exits.
+  void _hideChromeIntentional({bool armEscape = false}) {
     _s._hideTimer?.cancel();
     _s._suppressChromeRevealUntil =
         DateTime.now().add(const Duration(milliseconds: 450));
     _s._lastHoverPos = null;
+    if (!armEscape) {
+      _s._escapeExitArmed = false;
+      _s._escapeArmedAt = null;
+    }
     if (!_s._showControls) return;
     setState(() => _s._showControls = false);
   }
@@ -179,10 +192,30 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       return true;
     }
 
-    // Escape: panels → hide chrome / arm → confirm exit. Do not reveal chrome.
+    // Escape: panels → hide chrome → arm → confirm exit (local ladder).
+    // [notePlayerEscapeHandled] stops Shortcuts from popping on the same key.
+    // Same-pulse arm (Shortcuts twin) must not confirm-exit.
     if (key == LogicalKeyboardKey.escape) {
+      PlayerBackExitGate.notePlayerEscapeHandled();
       if (dismissAnyPlayerChromeOverlay()) return true;
-      if (PlayerBackExitGate.tryFocusBackStay()) return true;
+      if (_s._showControls) {
+        _hideChromeIntentional(armEscape: true);
+        _armEscapeExit();
+        return true;
+      }
+      if (!_s._escapeExitArmed) {
+        _armEscapeExit();
+        return true;
+      }
+      final armedAt = _s._escapeArmedAt;
+      if (armedAt != null &&
+          DateTime.now().difference(armedAt) <
+              const Duration(milliseconds: 50)) {
+        // Armed earlier in this same key pulse — stay.
+        return true;
+      }
+      _s._escapeExitArmed = false;
+      _s._escapeArmedAt = null;
       unawaited(_exitPlayer());
       return true;
     }

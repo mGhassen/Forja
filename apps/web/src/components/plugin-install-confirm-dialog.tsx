@@ -131,19 +131,16 @@ export function PluginInstallConfirmDialog({
               {body}
             </p>
 
-          <div className="rounded-lg border border-white/8 bg-black/20 px-3 py-2.5">
-            <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
-              Manifest
-            </p>
-            <p className="mt-1 break-all font-mono text-[11px] leading-snug text-[rgba(237,230,218,0.55)]">
-              {payload.manifestUrl}
-            </p>
-            {payload.version?.trim() ? (
-              <p className="mt-2 font-mono-ui text-[10px] text-[rgba(237,230,218,0.4)]">
-                Version {payload.version.trim()}
+          {payload.version?.trim() ? (
+            <div className="rounded-lg border border-white/8 bg-black/20 px-3 py-2.5">
+              <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+                Version
               </p>
-            ) : null}
-          </div>
+              <p className="mt-1 font-mono text-[11px] leading-snug text-[rgba(237,230,218,0.55)]">
+                {payload.version.trim()}
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-col-reverse gap-2 border-t border-white/10 px-5 py-4 sm:flex-row sm:justify-end">

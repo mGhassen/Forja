@@ -3,7 +3,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Copy,
   Plus,
   Puzzle,
   Search,
@@ -65,7 +64,6 @@ function PluginDetailPanel({
   pack: ForjaPluginPackLive
   onClose?: () => void
 }) {
-  const [copied, setCopied] = useState(false)
   const official = isOfficialPluginPack(pack)
   const author = packAuthorLabel(pack)
   const { user } = useAuth()
@@ -73,16 +71,6 @@ function PluginDetailPanel({
   const onProfile =
     Boolean(user) &&
     isPackInstalled(data?.payload?.packs ?? [], pack.manifestUrl)
-
-  async function copyManifest() {
-    try {
-      await navigator.clipboard.writeText(pack.manifestUrl)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // ignore
-    }
-  }
 
   return (
     <div className="flex h-full flex-col">
@@ -158,29 +146,6 @@ function PluginDetailPanel({
             </div>
           ) : null}
         </dl>
-
-        <div>
-          <p className="mb-1.5 font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
-            Manifest URL
-          </p>
-          <div className="flex gap-2">
-            <code className="min-w-0 flex-1 truncate rounded-lg border border-white/8 bg-black/20 px-2.5 py-2 font-mono text-[11px] text-[rgba(237,230,218,0.55)]">
-              {pack.manifestUrl}
-            </code>
-            <button
-              type="button"
-              onClick={() => void copyManifest()}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-2 font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.55)] hover:border-white/20 hover:text-[#EDE6DA]"
-            >
-              {copied ? (
-                <Check className="size-3.5 text-forja-green" />
-              ) : (
-                <Copy className="size-3.5" />
-              )}
-              {copied ? 'OK' : 'Copy'}
-            </button>
-          </div>
-        </div>
       </div>
 
       <div className="border-t border-white/10 p-4 sm:p-5">

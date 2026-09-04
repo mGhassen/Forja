@@ -242,12 +242,18 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
       ShellTvFocusCoordinator.handleShellExitKey();
       return;
     }
-    // Escape while the player is up: dismiss panels, then hide chrome / arm,
-    // then leave on the confirming press. Mouse Back / UI Back still exit
-    // immediately via [_onBack].
+    // Escape while a player route is up: if the player HardwareKeyboard
+    // handler already consumed this key, do nothing (otherwise one Escape
+    // arms then Shortcuts pops). Otherwise run the arm ladder here.
     if (ShellBus.playerSurfaceActive.value) {
-      if (dismissAnyPlayerChromeOverlay()) return;
+      if (PlayerBackExitGate.playerEscapeHandledThisPulse()) return;
+      if (dismissAnyPlayerChromeOverlay()) {
+        PlayerBackExitGate.markStay();
+        return;
+      }
       if (PlayerBackExitGate.tryFocusBackStay()) return;
+      _onBack();
+      return;
     }
     _onBack();
   }

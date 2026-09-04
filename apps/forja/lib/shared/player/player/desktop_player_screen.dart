@@ -196,6 +196,10 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   /// First Escape hid chrome (or armed while hidden) — next Escape exits.
   bool _escapeExitArmed = false;
+
+  /// When [_escapeExitArmed] was set — same-pulse Shortcuts twin must not
+  /// treat arm + confirm as one Escape.
+  DateTime? _escapeArmedAt;
   int _fallbackGen = 0;
   final Map<String, int> _providerLoadGens = {};
   final ValueNotifier<Set<String>> _providerLoadFailures =

@@ -35,7 +35,14 @@ function forjaFromServer(value: unknown): ForjaPayload {
 function packTitle(pack: ForjaPackRow): string {
   const name = pack.name?.trim()
   if (name && name !== pack.manifestUrl) return name
-  return pack.manifestUrl
+  try {
+    const path = new URL(pack.manifestUrl).pathname
+    const segment = path.split('/').filter(Boolean).slice(-2, -1)[0]
+    if (segment) return segment.replace(/_/g, ' ')
+  } catch {
+    // ignore
+  }
+  return 'Plugin pack'
 }
 
 export function AccountSettingsForjaPage() {
@@ -182,12 +189,6 @@ export function AccountSettingsForjaPage() {
                         </span>
                       ) : null}
                     </p>
-                    {pack.name?.trim() &&
-                    pack.name.trim() !== pack.manifestUrl ? (
-                      <p className="truncate text-sm text-forja-muted">
-                        {pack.manifestUrl}
-                      </p>
-                    ) : null}
                   </div>
                   <Button
                     type="button"

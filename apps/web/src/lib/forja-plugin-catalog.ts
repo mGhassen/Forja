@@ -1,50 +1,27 @@
+import { PLUGIN_PACK_SOURCES } from '@/lib/generated/plugin-pack-sources'
+
 export type ForjaPluginCatalogEntry = {
   id: string
   kind: string
-  manifestPath: string
   name: string
   description: string
   accent: 'brand' | 'flame'
   /** Curated ForjaHQ packs in this catalog. Community entries omit or set false. */
   official?: boolean
   author?: string
-}
-
-export type ForjaPluginCatalog = {
-  schema: number
-  baseUrl: string
-  packs: ForjaPluginCatalogEntry[]
-}
-
-export type ForjaPluginManifest = {
-  schema?: number
-  id?: string
-  name?: string
-  description?: string
-  author?: string
-  version?: string
-  plugins?: Array<{ description?: string }>
-}
-
-function descriptionFromManifest(manifest: ForjaPluginManifest): string | undefined {
-  const root = manifest.description?.trim()
-  if (root) return root
-  if (!Array.isArray(manifest.plugins)) return undefined
-  for (const plugin of manifest.plugins) {
-    const desc = plugin?.description?.trim()
-    if (desc) return desc
-  }
-  return undefined
-}
-
-export type ForjaPluginPackLive = ForjaPluginCatalogEntry & {
-  manifestUrl: string
   version?: string
   pluginCount?: number
 }
 
-const DEFAULT_CATALOG_BASE =
-  'https://raw.githubusercontent.com/mGhassen/Forja/main/plugins'
+export type ForjaPluginCatalog = {
+  schema: number
+  packs: ForjaPluginCatalogEntry[]
+}
+
+export type ForjaPluginPackLive = ForjaPluginCatalogEntry & {
+  /** Install source — internal only; never render or copy in UI. */
+  manifestUrl: string
+}
 
 export function pluginKindLabel(kind: string): string {
   const trimmed = kind.trim()
@@ -68,68 +45,28 @@ export function packAuthorLabel(pack: ForjaPluginPackLive): string | undefined {
   return author || undefined
 }
 
-export function resolvePluginManifestUrl(
-  entry: ForjaPluginCatalogEntry,
-  baseUrl = DEFAULT_CATALOG_BASE,
-): string {
-  const base = baseUrl.replace(/\/$/, '')
-  const path = entry.manifestPath.replace(/^\//, '')
-  return `${base}/${path}`
-}
-
 export async function fetchPluginCatalog(): Promise<ForjaPluginCatalog> {
   const res = await fetch('/plugins/catalog.json', { cache: 'no-store' })
   if (!res.ok) {
     throw new Error('Could not load plugin catalog.')
   }
   const data = (await res.json()) as ForjaPluginCatalog
-  if (!Array.isArray(data.packs) || !data.baseUrl?.trim()) {
+  if (!Array.isArray(data.packs)) {
     throw new Error('Plugin catalog is invalid.')
   }
   return data
 }
 
-export async function fetchPluginManifest(
-  manifestUrl: string,
-): Promise<ForjaPluginManifest> {
-  const res = await fetch(manifestUrl, { cache: 'no-store' })
-  if (!res.ok) {
-    throw new Error(`Could not load manifest (${res.status}).`)
-  }
-  return (await res.json()) as ForjaPluginManifest
-}
-
-export async function hydratePluginPack(
-  entry: ForjaPluginCatalogEntry,
-  baseUrl: string,
-): Promise<ForjaPluginPackLive> {
-  const manifestUrl = resolvePluginManifestUrl(entry, baseUrl)
-  try {
-    const manifest = await fetchPluginManifest(manifestUrl)
-    const description = descriptionFromManifest(manifest) ?? entry.description
-    const author = manifest.author?.trim() || entry.author
-    return {
-      ...entry,
-      manifestUrl,
-      version: manifest.version?.trim() || undefined,
-      pluginCount: Array.isArray(manifest.plugins)
-        ? manifest.plugins.length
-        : undefined,
-      name: manifest.name?.trim() || entry.name,
-      description,
-      ...(author ? { author } : {}),
-    }
-  } catch {
-    return { ...entry, manifestUrl }
-  }
-}
-
-export async function hydratePluginCatalog(
+/** Attach install URLs from the generated source map (no remote manifest fetch). */
+export function hydratePluginCatalog(
   catalog: ForjaPluginCatalog,
-): Promise<ForjaPluginPackLive[]> {
-  const packs = await Promise.all(
-    catalog.packs.map((entry) => hydratePluginPack(entry, catalog.baseUrl)),
-  )
+): ForjaPluginPackLive[] {
+  const packs: ForjaPluginPackLive[] = []
+  for (const entry of catalog.packs) {
+    const manifestUrl = PLUGIN_PACK_SOURCES[entry.id]?.trim()
+    if (!manifestUrl) continue
+    packs.push({ ...entry, manifestUrl })
+  }
   return packs
 }
 

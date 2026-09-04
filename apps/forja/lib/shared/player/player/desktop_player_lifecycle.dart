@@ -30,8 +30,11 @@ mixin _DesktopPlayerLifecycle
       return PlayerBackExitGate.consumeChromeOrArmExit(
         chromeVisible: _s._showControls,
         armed: _s._escapeExitArmed,
-        hideChrome: () => _s._hideChromeIntentional(),
-        setArmed: (v) => _s._escapeExitArmed = v,
+        hideChrome: () => _s._hideChromeIntentional(armEscape: true),
+        setArmed: (v) {
+          _s._escapeExitArmed = v;
+          _s._escapeArmedAt = v ? DateTime.now() : null;
+        },
       );
     });
     _s._ownedProviderSourcesCache =
