@@ -4,7 +4,7 @@
   "name": "ForjaHQ Cartoon",
   "description": "DimaToon Arabic cartoon / anime hub (كرتون).",
   "author": "ForjaHQ",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "plugins": [
     {
       "id": "dimatoon-hub",
