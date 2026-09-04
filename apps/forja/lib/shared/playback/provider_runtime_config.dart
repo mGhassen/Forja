@@ -986,6 +986,8 @@ class ProviderRuntimeSnapshot {
     // false-fails so green Play dies while Sources → tap still plays.
     'engine:dimatoon': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
     'dimatoon': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
+    'engine:dimakids': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
+    'dimakids': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
   };
 
   static ProviderRuntimeSnapshot? tryParse(Object? raw) {

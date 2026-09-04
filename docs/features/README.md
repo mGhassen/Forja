@@ -33,6 +33,7 @@ Your cinema universe in one app. This guide explains every **in-scope** feature 
 - [Arabic](hubs/arabic.md)
 - [Brstej](hubs/brstej.md)
 - [كرتون](hubs/cartoon.md)
+- [Kids](hubs/kids.md)
 
 ---
 
@@ -134,6 +135,7 @@ Tabs and verticals not in the default product surface — guides kept for refere
 | Watch Arabic cinema | [Arabic](hubs/arabic.md) → [Hub details](hubs/hub-details.md) |
 | Watch Brstej series | [Brstej](hubs/brstej.md) → [Hub details](hubs/hub-details.md) |
 | Watch Arabic cartoons | [كرتون](hubs/cartoon.md) → [Hub details](hubs/hub-details.md) |
+| Watch kids cartoons | [Kids](hubs/kids.md) → [Hub details](hubs/hub-details.md) |
 | Watch live sports | [Live Matches](live/live-matches.md) |
 | Resume where I left off | [Watch history](movies-tv/watch-history.md) |
 | Clear cache or watch history | [Cache & data](settings/cache-data.md) |

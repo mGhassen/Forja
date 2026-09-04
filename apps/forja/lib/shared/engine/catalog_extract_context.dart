@@ -111,7 +111,7 @@ String catalogOpenCacheKey(
   return '$pluginId:$id:E$ep$audioSuffix$vidSuffix';
 }
 
-/// Provider-scoped hub episode ids (`larozaa:…`, `brstej:…`, `dimatoon:…`).
+/// Provider-scoped hub episode ids (`larozaa:…`, `brstej:…`, `dimatoon:…`, `dimakids:…`).
 ///
 /// TMDB videos use `12345:S1E1` — a numeric prefix is **not** a plugin id.
 /// Treating it as one hid every Forja chip and made green Play report

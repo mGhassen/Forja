@@ -23,6 +23,7 @@ Enable the ForjaHQ Cartoon pack under **Settings → Forja Packs → Hubs**, tur
 - Green **Play** and the white Sources button both use the **DimaToon** Forja provider (direct MP4)
 - Use **Settings → Forja Packs → Refresh** after a pack update so browse/extract scripts reload
 - The tab icon ships in the Cartoon pack (`icons/nav.png`)
+- For Arabic kids titles on Dimakids, use **[Kids](kids.md)**
 - Arabic movies/series stay on the [Arabic](arabic.md) tab (Larozaa)
 - Brstej series stay on the [Brstej](brstej.md) tab
 
@@ -30,5 +31,6 @@ Enable the ForjaHQ Cartoon pack under **Settings → Forja Packs → Hubs**, tur
 
 - [Arabic](arabic.md)
 - [Brstej](brstej.md)
+- [Kids](kids.md)
 - [Hub details](hub-details.md)
 - [Stream providers](../sources/stream-providers.md)

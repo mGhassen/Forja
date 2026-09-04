@@ -25,10 +25,12 @@ Enable the ForjaHQ Arabic pack under **Settings → Forja Packs → Hubs**, turn
 - Continue Watching / list rows with `brstej:` or `dimatoon:` ids belong on **[Brstej](brstej.md)** / **[كرتون](cartoon.md)** — Arabic will not open them
 - For Brstej series, use **[Brstej](brstej.md)**
 - For Arabic cartoons, use **[كرتون](cartoon.md)**
+- For Arabic kids titles on Dimakids, use **[Kids](kids.md)**
 
 ## Related
 
 - [Brstej](brstej.md)
 - [كرتون](cartoon.md)
+- [Kids](kids.md)
 - [Hub details](hub-details.md)
 - [Content hub scrapers](../scrapers/content-hub-scrapers.md)

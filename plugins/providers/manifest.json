@@ -157,6 +157,21 @@
       }
     },
     {
+      "id": "dimakids",
+      "name": "Dimakids",
+      "entry": "dimakids.js",
+      "types": [
+        "arabic"
+      ],
+      "kind": "http",
+      "ctxConfigMap": {
+        "videoId": "videoId"
+      },
+      "config": {
+        "origin": "https://www.dimakids.com"
+      }
+    },
+    {
       "id": "brstej",
       "name": "Brstej",
       "entry": "brstej.js",

@@ -3383,7 +3383,9 @@ Future<bool> validateStreamSourceForCheck({
       providerId == 'engine:netmirror' ||
       providerId == 'netmirror' ||
       providerId == 'engine:dimatoon' ||
-      providerId == 'dimatoon') {
+      providerId == 'dimatoon' ||
+      providerId == 'engine:dimakids' ||
+      providerId == 'dimakids') {
     final url = source.url.trim();
     return url.contains('://') && !isUnplayableCachedStreamUrl(url);
   }

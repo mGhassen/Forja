@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **4 / 4** acceptance (Arabic-family chrome filters) |
-| **Current slice** | Arabic / Brstej / كرتون pack `filters` + Films / Series / Categories — A15 manual QA still open |
+| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) |
+| **Current slice** | Arabic / Brstej / كرتون / Kids pack `filters` + Films / Series / Categories — A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -198,7 +198,7 @@ Core `mylist` tab — host-owned data (local + Simkl); no Simkl JS catalog plugi
 
 ## Acceptance (Arabic-family chrome filters)
 
-Films / Series / Categories on Arabic, Brstej, and كرتون — pack `filters` + chrome AST into `feed` / `rail`.
+Films / Series / Categories on Arabic, Brstej, كرتون, and Kids — pack `filters` + chrome AST into `feed` / `rail`.
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
@@ -206,6 +206,7 @@ Films / Series / Categories on Arabic, Brstej, and كرتون — pack `filters`
 | 2 | R70-A67 | Brstej (`brstej-hub`) declares `filters.menus` + curated `fields` cats; category pages group episodes | ✅ |
 | 3 | R70-A68 | كرتون (`dimatoon-hub`) declares letter `fields` only (no menus) — Search + Categories | ✅ |
 | 4 | R70-A69 | Host `CatalogTopBar` renders pack `menus[]` (any count) — no hardcoded Films/Series enum chrome | ✅ |
+| 5 | R70-A70 | Kids (`dimakids-hub`) declares Films/Series `menus` + letter `fields`; Search + Categories | ✅ |
 
 ---
 

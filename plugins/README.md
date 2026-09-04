@@ -18,6 +18,7 @@ Every `manifest.json` under this tree is an installable pack (except `archived/`
 | **ForjaHQ Arabic** | [`hubs/arabic/manifest.json`](hubs/arabic/manifest.json) | Arabic hub (Larozaa) |
 | **ForjaHQ Brstej** | [`hubs/brstej/manifest.json`](hubs/brstej/manifest.json) | Brstej series hub |
 | **ForjaHQ Cartoon** | [`hubs/cartoon/manifest.json`](hubs/cartoon/manifest.json) | كرتون / DimaToon hub |
+| **ForjaHQ Kids** | [`hubs/kids/manifest.json`](hubs/kids/manifest.json) | Kids / Dimakids hub |
 | **ForjaHQ Live Sports** | [`hubs/live_sports/manifest.json`](hubs/live_sports/manifest.json) | Live sports schedule hub |
 | **ForjaHQ My List** | [`hubs/my_list/manifest.json`](hubs/my_list/manifest.json) | My List hub (local + Simkl via host widget) |
 | **ForjaHQ IPTV VOD** | [`iptv/vod/manifest.json`](iptv/vod/manifest.json) | IPTV portal VOD details + optional TMDB enrich (no shell tab) |

@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "id": "forjahq-kids",
+  "name": "ForjaHQ Kids",
+  "description": "Dimakids Arabic kids cartoons and movies hub.",
+  "author": "ForjaHQ",
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "id": "dimakids-hub",
+      "name": "Kids",
+      "description": "Arabic kids cartoons and movies from Dimakids",
+      "entry": "kids.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "arabic"
+      ],
+      "capabilities": [
+        "nav",
+        "layout",
+        "rail",
+        "feed",
+        "search",
+        "filters",
+        "details"
+      ],
+      "nav": {
+        "tabId": "kids",
+        "label": "Kids",
+        "order": 36,
+        "icon": "icons/nav.png",
+        "accent": "#38BDF8",
+        "defaultEnabled": false
+      },
+      "enabled": true,
+      "config": {
+        "origin": "https://www.dimakids.com",
+        "files": "https://files.dimakids.com"
+      },
+      "prelude": "_kit.js"
+    }
+  ]
+}
