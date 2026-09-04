@@ -113,4 +113,62 @@ void main() {
       );
     });
   });
+
+  group('liveEventSessionKey', () {
+    test('parses Practice N and Nth Practice', () {
+      expect(
+        liveEventSessionKey('Italian Grand Prix - Practice 2'),
+        'practice:2',
+      );
+      expect(
+        liveEventSessionKey('2nd Practice | Autodromo Nazionale Monza |'),
+        'practice:2',
+      );
+      expect(liveEventSessionKey('Italian Grand Prix Practice 1'), 'practice:1');
+      expect(liveEventSessionKey('FP3 — Monza'), 'practice:3');
+    });
+  });
+
+  group('liveEventSessionSoftEqual', () {
+    test('unique session matches divergent venue titles', () {
+      expect(
+        liveEventSessionSoftEqual(
+          'Italian Grand Prix - Practice 2',
+          '2nd Practice | Autodromo Nazionale Monza |',
+          candidateCountForSession: 1,
+        ),
+        isTrue,
+      );
+    });
+
+    test('without uniqueness requires shared core tokens', () {
+      expect(
+        liveEventSessionSoftEqual(
+          'Italian Grand Prix - Practice 2',
+          '2nd Practice | Autodromo Nazionale Monza |',
+          candidateCountForSession: 2,
+        ),
+        isFalse,
+      );
+      expect(
+        liveEventSessionSoftEqual(
+          'Italian Grand Prix Practice 2',
+          'Monza Italian Grand Prix Practice 2',
+          candidateCountForSession: 2,
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects different session numbers', () {
+      expect(
+        liveEventSessionSoftEqual(
+          'Italian Grand Prix Practice 1',
+          '2nd Practice | Autodromo Nazionale Monza |',
+          candidateCountForSession: 1,
+        ),
+        isFalse,
+      );
+    });
+  });
 }

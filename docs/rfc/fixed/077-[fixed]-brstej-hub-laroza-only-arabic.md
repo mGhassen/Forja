@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **3 / 3** components · **6 / 6** acceptance |
-| **Current slice** | Shipped — enable Brstej pack in Forja Packs; Arabic is Larozaa-only |
+| **Progress** | **Complete** · **3 / 3** components · **7 / 7** acceptance |
+| **Current slice** | Shipped — Arabic pack Larozaa-only (no legacy Brstej/DimaToon details) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -35,6 +35,7 @@
 | 4 | R77-A04 | Play uses **brstej** provider only (no Larozaa race on Brstej meta) | ✅ |
 | 5 | R77-A05 | Arabic hub layout/feed/search call **Larozaa only** | ✅ |
 | 6 | R77-A06 | كرتون remains DimaToon-only; Arabic keeps legacy `dimatoon:` / `brstej:` details for old history ids | ✅ |
+| 7 | R77-A07 | Arabic pack drops legacy `dimatoon:` / `brstej:` details/stream — foreign ids fail; use Brstej / كرتون packs | ✅ |
 
 ---
 
@@ -53,7 +54,6 @@ Arabic cinema was one hub scraping **Larozaa** + **Brstej** (+ formerly DimaToon
 - One Brstej catalog tab (label **Brstej**)
 - Arabic rows/search/play path only Larozaa
 - Reuse host `open.surface: arabic` + `resolveType: arabic` (no new host surface)
-- Legacy Arabic continue-watching / list ids for `brstej:` / `dimatoon:` still resolve details/stream in the Arabic pack
 
 ### Out of scope
 

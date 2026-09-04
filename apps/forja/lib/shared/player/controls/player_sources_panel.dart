@@ -388,6 +388,22 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _engineVisibleCategories ??
       EngineCategories.defaultsForPanelCategory(_enginePanelCategory);
 
+  /// Hub-scoped play (e.g. Larozaa episode) pins one provider — hide foreign
+  /// arabic chips (Brstej / DimaToon) that share `types: arabic`.
+  bool _enginePluginChipVisible(EnginePlugin plugin) {
+    final preferred = widget.preferredEnginePluginId?.trim() ?? '';
+    if (preferred.isNotEmpty) {
+      return plugin.enabled &&
+          plugin.isExtractable &&
+          plugin.id == preferred;
+    }
+    return EngineCategories.pluginChipVisible(
+      plugin: plugin,
+      visibleCategories: _effectiveEngineCategories,
+      selectedPluginIds: _engineSelectedPluginIds,
+    );
+  }
+
   List<String> get _engineCategoryFilterOptions =>
       EngineCategories.filterTypesFromPlugins([
         for (final pack in _enginePacks) ...pack.plugins,
@@ -1896,16 +1912,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       ];
     }
     if (_kindFilter == 'engine') {
-      final cats = _effectiveEngineCategories;
+      final preferred = widget.preferredEnginePluginId?.trim() ?? '';
+      final pinned = preferred.isNotEmpty;
       return [
-        const SourcesPanelProviderOption(id: 'all_engine', label: 'All'),
+        if (!pinned)
+          const SourcesPanelProviderOption(id: 'all_engine', label: 'All'),
         for (final a in _enginePacks)
           for (final s in a.plugins)
-            if (EngineCategories.pluginChipVisible(
-              plugin: s,
-              visibleCategories: cats,
-              selectedPluginIds: _engineSelectedPluginIds,
-            ))
+            if (_enginePluginChipVisible(s))
               SourcesPanelProviderOption(id: 'engine:${s.id}', label: s.name),
       ];
     }
@@ -3222,16 +3236,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
     if (id == 'all_engine') {
-      final cats = _effectiveEngineCategories;
       final visible = <String>{
         for (final a in _enginePacks)
           for (final s in a.plugins)
-            if (EngineCategories.pluginChipVisible(
-              plugin: s,
-              visibleCategories: cats,
-              selectedPluginIds: _engineSelectedPluginIds,
-            ))
-              s.id,
+            if (_enginePluginChipVisible(s)) s.id,
       };
       if (visible.isEmpty) return;
       if (_engineAllMode) {

@@ -1002,14 +1002,16 @@ mixin _LiveMatchesPlayback
     }
     final hits =
         catalog.where((m) => _stremioCatalogEventMatch(match, m)).toList();
+    final resolvedHits =
+        hits.isNotEmpty ? hits : _stremioSessionSoftHits(match, catalog);
     debugPrint(
       '[LiveMatches] Stremio providers: catalog=${catalog.length} '
-      'hits=${hits.length} for ${match.id} "${match.title}"',
+      'hits=${resolvedHits.length} for ${match.id} "${match.title}"',
     );
-    if (hits.isEmpty) return const [];
+    if (resolvedHits.isEmpty) return const [];
 
     final batches = await Future.wait(
-      hits.take(3).map((hit) async {
+      resolvedHits.take(3).map((hit) async {
         try {
           return await _stremioPlaySourcesFor(hit);
         } catch (e) {

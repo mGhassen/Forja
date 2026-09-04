@@ -21,6 +21,7 @@ Enable the ForjaHQ Arabic pack under **Settings → Forja Packs → Hubs**, turn
 ## Tips
 
 - Playback uses the **Larozaa** provider under **Forja Packs** — direct streams, not embed pages
+- Continue Watching / list rows with `brstej:` or `dimatoon:` ids belong on **[Brstej](brstej.md)** / **[كرتون](cartoon.md)** — Arabic will not open them
 - For Brstej series, use **[Brstej](brstej.md)**
 - For Arabic cartoons, use **[كرتون](cartoon.md)**
 

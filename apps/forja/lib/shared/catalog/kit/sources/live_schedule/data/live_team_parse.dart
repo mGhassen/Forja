@@ -200,3 +200,115 @@ bool liveTeamPairSoftEqual(
       (liveTeamNamesSoftEqual(homeA, awayB) &&
           liveTeamNamesSoftEqual(awayA, homeB));
 }
+
+const _liveSessionOrdinals = <String, String>{
+  '1st': '1',
+  'first': '1',
+  '2nd': '2',
+  'second': '2',
+  '3rd': '3',
+  'third': '3',
+};
+
+String? _liveSessionOrdinalToken(String raw) {
+  final t = raw.toLowerCase().trim();
+  if (t == '1' || t == '2' || t == '3') return t;
+  return _liveSessionOrdinals[t];
+}
+
+/// Session signature for named events (`practice:2`, `qualifying:1`, `race`).
+///
+/// Covers `Practice 2`, `2nd Practice`, `FP2`, `Qualifying`, etc. — no sport
+/// or venue hardcoding.
+String? liveEventSessionKey(String title) {
+  final t = foldLiveMatchLatin(title.toLowerCase());
+  final fp = RegExp(r'\bfp\s*([123])\b').firstMatch(t);
+  if (fp != null) return 'practice:${fp.group(1)}';
+
+  final practice = RegExp(
+    r'\b(?:(1st|2nd|3rd|first|second|third)\s+practice|'
+    r'practice\s*(?:number\s*)?(1st|2nd|3rd|first|second|third|[123]))\b',
+  ).firstMatch(t);
+  if (practice != null) {
+    final n = _liveSessionOrdinalToken(practice.group(1) ?? practice.group(2)!);
+    if (n != null) return 'practice:$n';
+  }
+
+  final quali = RegExp(
+    r'\b(?:(1st|2nd|3rd|first|second|third)\s+qualif\w*|'
+    r'qualif\w*\s*(?:number\s*)?(1st|2nd|3rd|first|second|third|[123])?|'
+    r'q\s*([123]))\b',
+  ).firstMatch(t);
+  if (quali != null) {
+    final n = _liveSessionOrdinalToken(
+      quali.group(1) ?? quali.group(2) ?? quali.group(3) ?? '',
+    );
+    return n == null ? 'qualifying' : 'qualifying:$n';
+  }
+
+  if (RegExp(r'\b(?:sprint\s+)?race\b').hasMatch(t)) return 'race';
+  if (RegExp(r'\bsprint\b').hasMatch(t)) return 'sprint';
+  return null;
+}
+
+final _liveEventSessionNoise = <String>{
+  'practice',
+  'practise',
+  'qualifying',
+  'qualification',
+  'qualify',
+  'race',
+  'sprint',
+  'fp',
+  'fp1',
+  'fp2',
+  'fp3',
+  '1st',
+  '2nd',
+  '3rd',
+  'first',
+  'second',
+  'third',
+  '1',
+  '2',
+  '3',
+  'live',
+  'hd',
+  'fhd',
+  '4k',
+  'raw',
+};
+
+/// Distinctive title tokens after dropping session / quality noise.
+Set<String> liveEventCoreTokens(String title) {
+  final value = foldLiveMatchLatin(title.toLowerCase())
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ');
+  return value
+      .split(RegExp(r'\s+'))
+      .where((t) => t.length >= 3 && !_liveEventSessionNoise.contains(t))
+      .toSet();
+}
+
+/// When exact / team matching miss: same session kind+number and either shared
+/// core tokens, or [candidateCountForSession] is 1 (unique live session row).
+bool liveEventSessionSoftEqual(
+  String titleA,
+  String titleB, {
+  int candidateCountForSession = 2,
+}) {
+  final sessionA = liveEventSessionKey(titleA);
+  final sessionB = liveEventSessionKey(titleB);
+  if (sessionA == null || sessionB == null || sessionA != sessionB) {
+    return false;
+  }
+  final coreA = liveEventCoreTokens(titleA);
+  final coreB = liveEventCoreTokens(titleB);
+  if (coreA.isNotEmpty &&
+      coreB.isNotEmpty &&
+      coreA.intersection(coreB).isNotEmpty) {
+    return true;
+  }
+  // e.g. "Italian Grand Prix Practice 2" ↔ "2nd Practice | Monza" when that
+  // session is the only candidate in the catalog pool.
+  return candidateCountForSession == 1;
+}

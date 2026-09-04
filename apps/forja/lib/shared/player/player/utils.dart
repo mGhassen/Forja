@@ -3377,11 +3377,13 @@ Future<bool> validateStreamSourceForCheck({
     // Catalog hosts only - loopback is rejected by [isUnplayableCachedStreamUrl].
     return url.contains('://');
   }
-  // MovieBlast / NetMirror: trust extract — CDN probes false-fail or rate-limit.
+  // MovieBlast / NetMirror / DimaToon: trust extract — CDN probes false-fail.
   if (providerId == 'engine:movieblast' ||
       providerId == 'movieblast' ||
       providerId == 'engine:netmirror' ||
-      providerId == 'netmirror') {
+      providerId == 'netmirror' ||
+      providerId == 'engine:dimatoon' ||
+      providerId == 'dimatoon') {
     final url = source.url.trim();
     return url.contains('://') && !isUnplayableCachedStreamUrl(url);
   }

@@ -1,6 +1,5 @@
 // Arabic hub — Larozaa only (protocol 1).
 // Brstej → plugins/hubs/brstej. كرتون / DimaToon → plugins/hubs/cartoon.
-// Legacy details/stream kept for old brstej:/dimatoon: history ids.
 // Playback: provider `larozaa` (types: arabic). Host surface: arabic.
 
 var ARABIC_UA =
@@ -17,9 +16,6 @@ var ARABIC_DEFAULTS = {
     'https://larozaa.homes',
     'https://larozaa.com',
   ],
-  // Legacy only — not used for browse/search.
-  dimatoon: 'https://www.dima-toon.com',
-  brstej: 'https://uo.brstej.com',
 };
 
 var ARABIC_RAILS = {
@@ -571,168 +567,6 @@ function arabicSearchLaroza(ctx, cfg, query, limit) {
   });
 }
 
-function arabicSearchDimaToon(ctx, cfg, query, limit) {
-  var base = String(cfg.dimatoon || ARABIC_DEFAULTS.dimatoon).replace(/\/$/, '');
-  return ctx
-    .fetch(base + '/wp-admin/admin-ajax.php', {
-      method: 'POST',
-      headers: Object.assign(arabicHeaders(base + '/'), {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      }),
-      body:
-        'action=cartoon_search_action&term=' + encodeURIComponent(query),
-    })
-    .then(function (res) {
-      if (!res.ok) return [];
-      return res.text();
-    })
-    .then(function (html) {
-      var $ = arabicHtml(ctx, html);
-      var out = [];
-      if ($) {
-        $('.search-result-item').each(function () {
-          var item = $(this);
-          var a = item.find('a[href]').first();
-          var img = item.find('img').first();
-          if (!a.length) return;
-          var href = a.attr('href') || '';
-          var title = (a.text() || '').trim();
-          var poster = img.length ? img.attr('src') || '' : '';
-          if (!title || !href) return;
-          var meta = arabicMeta('dimatoon', href, title, poster, { url: href });
-          if (meta) out.push(meta);
-        });
-      }
-      return hubClampList(out, limit);
-    })
-    .catch(function () {
-      return [];
-    });
-}
-
-function arabicStripBrstejPrefix(title) {
-  return String(title || '')
-    .replace(/^مسلسل\s+/, '')
-    .trim();
-}
-
-function arabicStripBrstejEpisode(title) {
-  var t = String(title || '').replace(/\s*الحلقة\s+.*$/, '');
-  t = t.replace(/\s*(HD|مترجم(ة)?|مدبلج(ة)?)\s*$/, '');
-  return t.trim();
-}
-
-function arabicNormBrstejTitle(title) {
-  return arabicStripBrstejPrefix(arabicStripBrstejEpisode(title))
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function arabicParseBrstejSerieCards(ctx, html, base) {
-  var $ = arabicHtml(ctx, html);
-  var out = [];
-  var seen = {};
-  if (!$) return out;
-  $('li[class*="col-xs-6"]').each(function () {
-    var card = $(this);
-    var a = card.find('a[href*="view-serie.php"]').first();
-    if (!a.length) a = card.find('a[href]').first();
-    if (!a.length) return;
-    var href = a.attr('href') || '';
-    var m = /view-serie\.php\?id=(\d+)/.exec(href);
-    if (!m) return;
-    var id = m[1];
-    if (seen[id]) return;
-    seen[id] = true;
-    var title = arabicStripBrstejPrefix(
-      (a.attr('title') || a.text() || '').trim(),
-    );
-    if (!title) return;
-    var meta = arabicMeta(
-      'brstej',
-      'serie:' + id,
-      title,
-      arabicImg($, card.find('img').first(), base),
-      { url: arabicAbs(base, href) },
-    );
-    if (meta) out.push(meta);
-  });
-  return out;
-}
-
-function arabicParseBrstejEpisodeCards(ctx, html, base) {
-  var $ = arabicHtml(ctx, html);
-  var out = [];
-  if (!$) return out;
-  $('li[class*="col-xs-6"]').each(function () {
-    var card = $(this);
-    var a = card.find('a[href*="watch.php"][title]').first();
-    if (!a.length) a = card.find('a[href*="watch.php"]').first();
-    if (!a.length) return;
-    var href = a.attr('href') || '';
-    var m = /watch\.php\?vid=([^&"\s]+)/.exec(href);
-    if (!m) return;
-    var title = (a.attr('title') || a.text() || '').trim();
-    if (!title) return;
-    var meta = arabicMeta(
-      'brstej',
-      'watch:' + m[1],
-      title,
-      arabicImg($, card.find('img').first(), base),
-      { url: arabicAbs(base, href) },
-    );
-    if (meta) out.push(meta);
-  });
-  return out;
-}
-
-function arabicBrowseBrstej(ctx, cfg, limit) {
-  var base = String(cfg.brstej || ARABIC_DEFAULTS.brstej).replace(/\/$/, '');
-  return arabicFetchHtml(ctx, base + '/moslsalat.php?page=1', base + '/').then(
-    function (got) {
-      return hubClampList(
-        arabicParseBrstejSerieCards(ctx, got.html, base),
-        limit,
-      );
-    },
-  );
-}
-
-function arabicSearchBrstej(ctx, cfg, query, limit) {
-  var base = String(cfg.brstej || ARABIC_DEFAULTS.brstej).replace(/\/$/, '');
-  var url =
-    base +
-    '/search.php?keywords=' +
-    encodeURIComponent(query) +
-    '&page=1';
-  return arabicFetchHtml(ctx, url, base + '/').then(function (got) {
-    var episodes = arabicParseBrstejEpisodeCards(ctx, got.html, base);
-    var byKey = {};
-    var order = [];
-    for (var i = 0; i < episodes.length; i++) {
-      var ep = episodes[i];
-      var key = arabicNormBrstejTitle(ep.name);
-      if (!key) continue;
-      if (!byKey[key]) {
-        order.push(key);
-        byKey[key] = arabicMeta(
-          'brstej',
-          ep.ids.brstej,
-          arabicStripBrstejPrefix(arabicStripBrstejEpisode(ep.name)),
-          ep.poster,
-          { url: ep.ids.url },
-        );
-      }
-    }
-    var out = [];
-    for (i = 0; i < order.length; i++) {
-      if (byKey[order[i]]) out.push(byKey[order[i]]);
-    }
-    return hubClampList(out, limit);
-  });
-}
-
 function arabicRailItems(ctx, cfg, params) {
   var rail = String(params.rail || '');
   var spec = ARABIC_RAILS[rail];
@@ -850,18 +684,22 @@ function arabicSearch(ctx, cfg, params) {
 
 function arabicParseShowRef(params) {
   var raw = String(params.id || '').trim();
-  var source = String(params.source || '').trim();
+  var source = String(params.source || '').trim() || 'larozaa';
   var rest = raw;
   var colon = raw.indexOf(':');
   if (colon > 0) {
     var head = raw.substring(0, colon);
-    if (head === 'larozaa' || head === 'dimatoon' || head === 'brstej') {
-      source = source || head;
+    if (head === 'larozaa') {
+      source = 'larozaa';
+      rest = raw.substring(colon + 1);
+    } else if (head === 'brstej' || head === 'dimatoon') {
+      // Wrong hub — do not rewrite as Larozaa.
+      source = head;
       rest = raw.substring(colon + 1);
     }
   }
-  if (!source) source = 'larozaa';
-  var fullId = source + ':' + rest;
+  var fullId =
+    source === 'larozaa' ? 'larozaa:' + rest : source + ':' + rest;
   var url = String(params.url || '').trim();
   var isMovie =
     params.movie === true ||
@@ -874,16 +712,6 @@ function arabicParseShowRef(params) {
     rest: rest,
     url: url,
     isMovie: isMovie,
-  };
-}
-
-function arabicParseVideoRef(raw) {
-  raw = String(raw || '').trim();
-  var colon = raw.indexOf(':');
-  if (colon < 0) return { source: '', rest: raw };
-  return {
-    source: raw.substring(0, colon),
-    rest: raw.substring(colon + 1),
   };
 }
 
@@ -1124,245 +952,6 @@ function arabicDetailsLaroza(ctx, cfg, ref) {
   });
 }
 
-function arabicDetailsDimaToon(ctx, cfg, ref) {
-  var base = String(cfg.dimatoon || ARABIC_DEFAULTS.dimatoon).replace(/\/$/, '');
-  var showUrl = ref.url || '';
-  if (!showUrl && /^https?:\/\//i.test(ref.rest)) showUrl = ref.rest;
-  if (!showUrl) {
-    return Promise.resolve(
-      hubFail('details', 'INVALID_PARAMS', 'dimatoon details needs params.url'),
-    );
-  }
-  return arabicFetchHtml(ctx, showUrl, base + '/').then(function (got) {
-    var $ = arabicHtml(ctx, got.html);
-    var title = '';
-    var poster = '';
-    var description = '';
-    var videos = [];
-    if ($) {
-      var titleEl = $('h1, .entry-title, .term-title').first();
-      title = (titleEl.text() || '').trim();
-      var imgEl = $('.cartoon-image img').first();
-      poster = imgEl.length ? imgEl.attr('src') || '' : '';
-      var storyEl = $('.brief-story').first();
-      description = (storyEl.text() || '').trim();
-      description = description.replace(/^قصة الكرتون\s*:\s*/, '');
-      var epNum = 0;
-      $('.episode-box a[href]').each(function () {
-        var a = $(this);
-        var href = a.attr('href') || '';
-        var epTitle = (a.text() || '').trim();
-        if (!href || !epTitle) return;
-        epNum += 1;
-        videos.push({
-          id: 'dimatoon:' + href,
-          title: epTitle,
-          season: 1,
-          episode: epNum,
-          thumbnail: '',
-        });
-      });
-    }
-    var name = title || ref.rest || ref.fullId;
-    var meta = arabicMeta('dimatoon', ref.rest, name, poster, {
-      description: description,
-      url: showUrl,
-    });
-    if (!meta) {
-      return hubFail('details', 'NOT_FOUND', 'arabic id ' + ref.fullId);
-    }
-    meta.id = ref.fullId;
-    meta.description = description;
-    meta.videos = videos;
-    return hubOk('details', { meta: meta }, { maxAge: 900, swr: 3600 });
-  });
-}
-
-function arabicBrstejEpisodeNumber(title) {
-  var t = String(title || '');
-  var m =
-    /الحلقة\s+(\d+)/.exec(t) ||
-    /<em>\s*(\d+)/.exec(t) ||
-    /\b(\d{1,3})\b/.exec(t);
-  return m ? Number(m[1]) : null;
-}
-
-function arabicParseBrstejEpisodeAnchors($, anchors, base) {
-  var byId = {};
-  var order = [];
-  anchors.each(function () {
-    var a = $(this);
-    var href = a.attr('href') || '';
-    var m = /watch\.php\?vid=([^&"\s]+)/.exec(href);
-    if (!m) return;
-    var vid = m[1];
-    var t = (a.attr('title') || '').trim();
-    if (!t) {
-      var em = a.find('em').first();
-      if (em.length) t = 'الحلقة ' + (em.text() || '').trim();
-      else t = (a.text() || '').replace(/\s+/g, ' ').trim();
-    }
-    var p = arabicEpThumb($, a, base);
-    arabicMergeEpByVid(byId, order, vid, t, p);
-  });
-  var list = [];
-  for (var i = 0; i < order.length; i++) {
-    var vid = order[i];
-    var e = byId[vid];
-    list.push({
-      id: 'brstej:watch:' + vid,
-      title: e.title || '',
-      season: 1,
-      episode: i + 1,
-      thumbnail: e.poster || '',
-      _n: arabicBrstejEpisodeNumber(e.title),
-    });
-  }
-  list.sort(function (a, b) {
-    if (a._n == null && b._n == null) return 0;
-    if (a._n == null) return 1;
-    if (b._n == null) return -1;
-    return a._n - b._n;
-  });
-  for (i = 0; i < list.length; i++) {
-    list[i].episode = i + 1;
-    delete list[i]._n;
-  }
-  return list;
-}
-
-function arabicParseBrstejSerieHtml(ctx, html, base) {
-  var $ = arabicHtml(ctx, html);
-  var out = { title: '', poster: '', description: '', videos: [] };
-  if (!$) return out;
-
-  var title =
-    ($('h1').first().text() || $('h2').first().text() || '').trim();
-  out.title = arabicStripBrstejPrefix(title);
-
-  var posterImg = $('img[src*="uploads/thumbs"]').first();
-  if (!posterImg.length) posterImg = $('img[data-echo*="uploads/thumbs"]').first();
-  if (posterImg.length) out.poster = arabicImg($, posterImg, base);
-
-  var descEl = $('.pm-video-description').first();
-  if (!descEl.length) descEl = $('.description').first();
-  if (!descEl.length) descEl = $('.story').first();
-  out.description = (descEl.text() || '').trim();
-
-  var seasonButtons = $('.SeasonsBoxUL button.tablinks');
-  if (seasonButtons.length) {
-    seasonButtons.each(function (si) {
-      var seasonNum = si + 1;
-      var seasonDiv = $('#Season' + seasonNum);
-      if (!seasonDiv.length) return;
-      var eps = arabicParseBrstejEpisodeAnchors(
-        $,
-        seasonDiv.find('a[href*="watch.php"]'),
-        base,
-      );
-      for (var i = 0; i < eps.length; i++) {
-        eps[i].season = seasonNum;
-        out.videos.push(eps[i]);
-      }
-    });
-  } else {
-    var eps = arabicParseBrstejEpisodeAnchors(
-      $,
-      $('#pm-grid a[href*="watch.php"]'),
-      base,
-    );
-    for (var j = 0; j < eps.length; j++) out.videos.push(eps[j]);
-  }
-  return out;
-}
-
-function arabicParseBrstejWatchHtml(ctx, html, base) {
-  var $ = arabicHtml(ctx, html);
-  var out = { title: '', poster: '', description: '', videos: [] };
-  if (!$) return out;
-
-  var nameMeta = $('meta[itemprop="name"]').first();
-  var title = nameMeta.length
-    ? (nameMeta.attr('content') || '').trim()
-    : ($('h1').first().text() || '').trim();
-  out.title = arabicStripBrstejPrefix(arabicStripBrstejEpisode(title));
-
-  var thumbMeta = $('meta[itemprop="thumbnailUrl"]').first();
-  out.poster = thumbMeta.length
-    ? (thumbMeta.attr('content') || '').trim()
-    : '';
-  if (!out.poster) {
-    var img = $('img[src*="uploads/thumbs"]').first();
-    if (img.length) out.poster = arabicImg($, img, base);
-  }
-
-  var descMeta = $('meta[itemprop="description"]').first();
-  out.description = descMeta.length
-    ? (descMeta.attr('content') || '').trim()
-    : '';
-
-  var seasonLis = $('.SeasonsBoxUL li[data-serie]');
-  if (seasonLis.length) {
-    seasonLis.each(function (si) {
-      var li = $(this);
-      var n = li.attr('data-serie') || String(si + 1);
-      var seasonNum = Number(n) || si + 1;
-      var epDiv = $('.SeasonsEpisodes[data-serie="' + n + '"]');
-      var eps = epDiv.length
-        ? arabicParseBrstejEpisodeAnchors(
-            $,
-            epDiv.find('a[href*="watch.php"]'),
-            base,
-          )
-        : [];
-      for (var i = 0; i < eps.length; i++) {
-        eps[i].season = seasonNum;
-        out.videos.push(eps[i]);
-      }
-    });
-  } else {
-    var eps = arabicParseBrstejEpisodeAnchors(
-      $,
-      $('.SeasonsEpisodes a[href*="watch.php"]'),
-      base,
-    );
-    for (var j = 0; j < eps.length; j++) out.videos.push(eps[j]);
-  }
-  return out;
-}
-
-function arabicDetailsBrstej(ctx, cfg, ref) {
-  var base = String(cfg.brstej || ARABIC_DEFAULTS.brstej).replace(/\/$/, '');
-  var showId = ref.rest;
-  var url;
-  var fromWatch = false;
-  if (showId.indexOf('watch:') === 0) {
-    url = base + '/watch.php?vid=' + encodeURIComponent(showId.substring(6));
-    fromWatch = true;
-  } else if (showId.indexOf('serie:') === 0) {
-    url = base + '/view-serie.php?id=' + encodeURIComponent(showId.substring(6));
-  } else {
-    url = base + '/view-serie.php?id=' + encodeURIComponent(showId);
-  }
-  return arabicFetchHtml(ctx, url, base + '/').then(function (got) {
-    var parsed = fromWatch
-      ? arabicParseBrstejWatchHtml(ctx, got.html, base)
-      : arabicParseBrstejSerieHtml(ctx, got.html, base);
-    var name = parsed.title || showId;
-    var meta = arabicMeta('brstej', showId, name, parsed.poster || '', {
-      description: parsed.description,
-      url: ref.url || url,
-    });
-    if (!meta) {
-      return hubFail('details', 'NOT_FOUND', 'arabic id ' + ref.fullId);
-    }
-    meta.id = ref.fullId;
-    meta.description = parsed.description || '';
-    meta.videos = parsed.videos || [];
-    return hubOk('details', { meta: meta }, { maxAge: 900, swr: 3600 });
-  });
-}
-
 function arabicDetails(ctx, cfg, params) {
   var ref = arabicParseShowRef(params);
   if (!ref.rest && !ref.raw) {
@@ -1370,161 +959,17 @@ function arabicDetails(ctx, cfg, params) {
       hubFail('details', 'INVALID_PARAMS', 'details needs params.id'),
     );
   }
-  var p;
-  if (ref.source === 'dimatoon') p = arabicDetailsDimaToon(ctx, cfg, ref);
-  else if (ref.source === 'brstej') p = arabicDetailsBrstej(ctx, cfg, ref);
-  else p = arabicDetailsLaroza(ctx, cfg, ref);
-  return p.catch(function (e) {
-    return hubFail('details', 'UPSTREAM', e && e.message, true);
-  });
-}
-
-function arabicStreamLaroza(ctx, cfg, vid) {
-  return arabicResolveLaroza(ctx, cfg).then(function (base) {
-    var raw = String(vid || '').replace(/^ep:/, '');
-    var url = base + '/play.php?vid=' + encodeURIComponent(raw);
-    var referer = base + '/video.php?vid=' + encodeURIComponent(raw);
-    return arabicFetchHtml(ctx, url, referer).then(function (got) {
-      var $ = arabicHtml(ctx, got.html);
-      var streams = [];
-      var seen = {};
-      function push(name, embedUrl) {
-        embedUrl = String(embedUrl || '').trim();
-        if (!embedUrl || seen[embedUrl]) return;
-        seen[embedUrl] = true;
-        streams.push({
-          name: name || 'Server ' + (streams.length + 1),
-          url: embedUrl,
-          type: 'embed',
-        });
-      }
-      if ($) {
-        $('.WatchList li').each(function () {
-          var item = $(this);
-          push(item.text(), item.attr('data-embed-url') || '');
-        });
-        if (!streams.length) {
-          var iframe = $('iframe[src]').first();
-          var src = iframe.length ? iframe.attr('src') || '' : '';
-          if (src && src.indexOf('new_ads') < 0) push('Server 1', src);
-        }
-      }
-      if (!streams.length) {
-        var re = /data-embed-url="([^"]+)"/gi;
-        var m;
-        while ((m = re.exec(got.html))) {
-          push('Server ' + (streams.length + 1), m[1]);
-        }
-      }
-      return hubOk('stream', { streams: streams }, { maxAge: 120 });
-    });
-  });
-}
-
-function arabicDimaToonIsBlankMp4(url) {
-  var u = String(url || '').toLowerCase();
-  return !u || u.indexOf('blank.mp4') >= 0;
-}
-
-function arabicStreamDimaToon(ctx, cfg, episodeUrl) {
-  var base = String(cfg.dimatoon || ARABIC_DEFAULTS.dimatoon).replace(/\/$/, '');
-  return arabicFetchHtml(ctx, episodeUrl, base + '/').then(function (got) {
-    var $ = arabicHtml(ctx, got.html);
-    var src = '';
-    if ($) {
-      $('video source[src], source[src]').each(function () {
-        if (src) return;
-        var cand = $(this).attr('src') || '';
-        if (cand && !arabicDimaToonIsBlankMp4(cand)) src = cand;
-      });
-    }
-    if (!src && got.html) {
-      var re = /https?:\/\/[^"'\\\s<>]+\.mp4[^"'\\\s<>]*/gi;
-      var m;
-      while ((m = re.exec(got.html))) {
-        var cand = m[0].replace(/&amp;/g, '&');
-        if (!arabicDimaToonIsBlankMp4(cand)) {
-          src = cand;
-          break;
-        }
-      }
-    }
-    var streams = [];
-    if (src) {
-      streams.push({ name: 'DimaToon', url: src, type: 'direct' });
-    }
-    return hubOk('stream', { streams: streams }, { maxAge: 120 });
-  });
-}
-
-function arabicStreamBrstej(ctx, cfg, videoId) {
-  var base = String(cfg.brstej || ARABIC_DEFAULTS.brstej).replace(/\/$/, '');
-  var vid =
-    videoId.indexOf('watch:') === 0 ? videoId.substring(6) : videoId;
-  if (!vid || vid.indexOf('larozaa:') === 0 || vid.indexOf('dimatoon:') === 0) {
-    return Promise.resolve(hubOk('stream', { streams: [] }, { maxAge: 60 }));
-  }
-  var url = base + '/play.php?vid=' + encodeURIComponent(vid);
-  var referer = base + '/watch.php?vid=' + encodeURIComponent(vid);
-  return arabicFetchHtml(ctx, url, referer).then(function (got) {
-    var origin = arabicOrigin(got.url) || base;
-    referer = origin + '/watch.php?vid=' + encodeURIComponent(vid);
-    var $ = arabicHtml(ctx, got.html);
-    var streams = [];
-    var seen = {};
-    function push(name, embedUrl) {
-      embedUrl = String(embedUrl || '').trim();
-      if (!embedUrl || seen[embedUrl]) return;
-      seen[embedUrl] = true;
-      streams.push({
-        name: name || 'Server ' + (streams.length + 1),
-        url: embedUrl,
-        type: 'embed',
-      });
-    }
-    if ($) {
-      $('button[data-embed-url], .watchButton[data-embed-url]').each(function () {
-        var b = $(this);
-        push((b.text() || '').trim(), b.attr('data-embed-url') || '');
-      });
-      if (!streams.length) {
-        var iframe = $('iframe[src]').first();
-        var src = iframe.length ? iframe.attr('src') || '' : '';
-        if (src) push('Server 1', src);
-      }
-    }
-    if (!streams.length && got.html) {
-      var re = /data-embed-url\s*=\s*["']([^"']+)["']/gi;
-      var m;
-      while ((m = re.exec(got.html))) {
-        push('Server ' + (streams.length + 1), m[1]);
-      }
-    }
-    return hubOk('stream', { streams: streams }, { maxAge: 120 });
-  });
-}
-
-function arabicStream(ctx, cfg, params) {
-  var raw = String(params.id || '').trim();
-  if (!raw) {
+  if (ref.source && ref.source !== 'larozaa') {
     return Promise.resolve(
-      hubFail('stream', 'INVALID_PARAMS', 'stream needs params.id'),
+      hubFail(
+        'details',
+        'INVALID_PARAMS',
+        'arabic hub is Larozaa-only (got ' + ref.source + ')',
+      ),
     );
   }
-  var ref = arabicParseVideoRef(raw);
-  var source = ref.source;
-  var rest = ref.rest;
-  // Allow bare ids with explicit params.source
-  if (!source || (source !== 'larozaa' && source !== 'dimatoon' && source !== 'brstej')) {
-    source = String(params.source || 'larozaa').trim() || 'larozaa';
-    rest = raw.indexOf(source + ':') === 0 ? raw.substring(source.length + 1) : raw;
-  }
-  var p;
-  if (source === 'dimatoon') p = arabicStreamDimaToon(ctx, cfg, rest);
-  else if (source === 'brstej') p = arabicStreamBrstej(ctx, cfg, rest);
-  else p = arabicStreamLaroza(ctx, cfg, rest);
-  return p.catch(function (e) {
-    return hubFail('stream', 'UPSTREAM', e && e.message, true);
+  return arabicDetailsLaroza(ctx, cfg, ref).catch(function (e) {
+    return hubFail('details', 'UPSTREAM', e && e.message, true);
   });
 }
 

@@ -982,6 +982,10 @@ class ProviderRuntimeSnapshot {
     // NetMirror HLS: extra master/segment probes hit imgcdn and trip abuse pages.
     'engine:netmirror': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
     'netmirror': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
+    // DimaToon (كرتون): extract returns a playable MP4; HEAD/Range on the CDN
+    // false-fails so green Play dies while Sources → tap still plays.
+    'engine:dimatoon': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
+    'dimatoon': AnimePlaybackProfile(probe: AnimeProbeMode.skip),
   };
 
   static ProviderRuntimeSnapshot? tryParse(Object? raw) {

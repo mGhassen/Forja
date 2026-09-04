@@ -1028,9 +1028,12 @@ bool _sameIframeAndScheduleEvent(_IframeCatalogStream iframeCatalog, _StreamedMa
   }
   final iframeTitle = _matchTextKey(iframeCatalog.name);
   final streamedTitle = _matchTextKey(streamed.title);
-  return iframeTitle.isNotEmpty &&
+  if (iframeTitle.isNotEmpty &&
       streamedTitle.isNotEmpty &&
-      iframeTitle == streamedTitle;
+      iframeTitle == streamedTitle) {
+    return true;
+  }
+  return liveEventSessionSoftEqual(iframeCatalog.name, streamed.title);
 }
 
 List<_StreamedMatch> _streamedMatchesForEvent(
@@ -1337,8 +1340,15 @@ bool _sameStreamedEvent(_StreamedMatch a, _StreamedMatch b) {
 
   final titleA = _matchTextKey(a.title);
   final titleB = _matchTextKey(b.title);
-  if (titleA.isEmpty || titleB.isEmpty || titleA != titleB) return false;
-  return _liveEventDatesCloseEnough(a, b);
+  if (titleA.isNotEmpty &&
+      titleB.isNotEmpty &&
+      titleA == titleB &&
+      _liveEventDatesCloseEnough(a, b)) {
+    return true;
+  }
+  // Motorsport / named sessions: "Practice 2" ↔ "2nd Practice" when cores overlap.
+  return liveEventSessionSoftEqual(a.title, b.title) &&
+      _liveEventDatesCloseEnough(a, b);
 }
 
 bool _iframeCatalogTimesCloseEnough(
@@ -1479,6 +1489,31 @@ bool _stremioCatalogEventMatch(_StreamedMatch engine, _StreamedMatch stremio) {
   final tokenA = _liveEventIdToken(engine.id);
   final tokenB = _liveEventIdToken(stremio.id);
   return tokenA.isNotEmpty && tokenA == tokenB;
+}
+
+/// When exact fixture match misses: same session key, and either shared title
+/// tokens or this session is unique in [catalog] (e.g. only one Practice 2).
+List<_StreamedMatch> _stremioSessionSoftHits(
+  _StreamedMatch engine,
+  List<_StreamedMatch> catalog,
+) {
+  if (engine.isAlwaysOn) return const [];
+  final session = liveEventSessionKey(engine.title);
+  if (session == null) return const [];
+  final candidates = [
+    for (final m in catalog)
+      if (!m.isAlwaysOn && liveEventSessionKey(m.title) == session) m,
+  ];
+  if (candidates.isEmpty) return const [];
+  return [
+    for (final m in candidates)
+      if (liveEventSessionSoftEqual(
+        engine.title,
+        m.title,
+        candidateCountForSession: candidates.length,
+      ))
+        m,
+  ];
 }
 
 List<_LiveMatchGridEntry> _mergeIframeAndScheduleEntries({

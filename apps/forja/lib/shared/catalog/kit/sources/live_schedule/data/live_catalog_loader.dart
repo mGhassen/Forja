@@ -496,17 +496,27 @@ mixin _LiveMatchesForjaLive
             return;
           }
 
+          final catalogHits = <_StreamedMatch>[];
+          final pool = <_StreamedMatch>[];
           for (final row in rows) {
             final enriched = Map<String, dynamic>.from(row);
             enriched.putIfAbsent('pluginId', () => filterId);
             final m = _forjaLiveRowToMatch(enriched);
             if (m.id.isEmpty || m.title.isEmpty) continue;
+            pool.add(m);
             if (!_sameStreamedEvent(match, m) &&
                 !_stremioCatalogEventMatch(match, m)) {
               continue;
             }
-            added.add(_ensureProviderResolveMatch(m));
+            catalogHits.add(_ensureProviderResolveMatch(m));
           }
+          // Named sessions with divergent titles (Practice 2 ↔ 2nd Practice Venue).
+          if (catalogHits.isEmpty) {
+            for (final m in _stremioSessionSoftHits(match, pool)) {
+              catalogHits.add(_ensureProviderResolveMatch(m));
+            }
+          }
+          added.addAll(catalogHits);
         } catch (e) {
           debugPrint(
             '[LiveMatches] provider catalog hydrate ${catalog.id}: $e',

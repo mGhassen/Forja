@@ -114,6 +114,21 @@ void main() {
       expect(b['miruro:bee']!.pngStrip, AnimePngStripMode.never);
     });
 
+    test('builtin DimaToon skips CDN probe (trust extract)', () {
+      final b = ProviderRuntimeSnapshot.builtins().animePlaybackProfiles;
+      expect(b['dimatoon']!.probe, AnimeProbeMode.skip);
+      expect(b['engine:dimatoon']!.probe, AnimeProbeMode.skip);
+      ProviderRuntimeConfig.instance.debugSetSnapshot(
+        ProviderRuntimeSnapshot.builtins(),
+      );
+      expect(
+        ProviderRuntimeConfig.instance
+            .animePlaybackProfile('engine:dimatoon')
+            .probe,
+        AnimeProbeMode.skip,
+      );
+    });
+
     test('builtin KissKh defaults to never strip (pre-df3992cd)', () {
       final b = ProviderRuntimeSnapshot.builtins().animePlaybackProfiles;
       expect(b.containsKey('kisskh'), isFalse);
