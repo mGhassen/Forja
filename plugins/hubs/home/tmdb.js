@@ -1776,11 +1776,21 @@ function extract(ctx) {
   }
   if (action === 'filters') {
     return hubOk('filters', {
+      menus: [
+        {
+          id: 'films',
+          label: 'Films',
+          filter: { op: 'eq', field: 'type', value: 'movie' },
+          hideTypeFilterRails: true,
+        },
+        {
+          id: 'series',
+          label: 'TV Shows',
+          filter: { op: 'eq', field: 'type', value: 'tv' },
+          hideTypeFilterRails: true,
+        },
+      ],
       fields: [{ field: 'genre', label: 'Genre', options: tmdbCategoryOptions() }],
-      media: {
-        films: { op: 'eq', field: 'type', value: 'movie' },
-        series: { op: 'eq', field: 'type', value: 'tv' },
-      },
       genreRows: TMDB_GENRE_ROWS,
     }, { maxAge: 86400 });
   }

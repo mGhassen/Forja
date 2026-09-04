@@ -21,9 +21,9 @@ List<Map<String, dynamic>?> catalogChromeFilters({
 String catalogChromeFilterEpoch(String? tabId) {
   final vertical = CatalogVerticalFiltersRegistry.chromeFilterEpoch(tabId);
   if (tabId == null) return vertical;
-  final media = ShellBus.hubCategoryFor(tabId).value;
+  final menu = ShellBus.hubSelectedMenuIdFor(tabId).value;
   final cat = ShellBus.hubSelectedCategoryIdFor(tabId).value;
-  return '$media|$cat|$vertical';
+  return '$menu|$cat|$vertical';
 }
 
 Listenable? catalogChromeFilterListenable(String? tabId) {
@@ -32,15 +32,22 @@ Listenable? catalogChromeFilterListenable(String? tabId) {
   // Value notifiers only — pack/vertical `revision` bumps on first load and
   // layout sync must not invalidate painted rails when filters are unchanged.
   return Listenable.merge([
-    ShellBus.hubCategoryFor(id),
+    ShellBus.hubSelectedMenuIdFor(id),
     ShellBus.hubSelectedCategoryIdFor(id),
     CatalogVerticalFiltersRegistry.selectedIdFor(id),
   ]);
 }
 
-/// Layout `hideWhenTypeFilter` — hide when Films / Series is active, not
-/// Categories (genre / country) or vertical provider filters.
+/// Layout `hideWhenTypeFilter` — hide when a pack menu with
+/// `hideTypeFilterRails` is selected (not Categories / vertical filters).
 bool catalogChromeHidesTypeFilterRails(String? tabId) {
   if (tabId == null) return false;
-  return ShellBus.hubCategoryFor(tabId).value != null;
+  final pluginId = PluginNavRegistry.pluginIdForTabSync(tabId);
+  if (pluginId == null) {
+    return ShellBus.hubSelectedMenuIdFor(tabId).value != null;
+  }
+  return CatalogPackFiltersRegistry.selectedMenuHidesTypeFilterRails(
+    pluginId: pluginId,
+    tabId: tabId,
+  );
 }

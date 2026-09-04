@@ -27,8 +27,7 @@
         "label": "My List",
         "order": 15,
         "icon": "forja://asset/nav/my-list",
-        "accent": "#FBBF24",
-        "defaultEnabled": true
+        "accent": "#FBBF24"
       },
       "enabled": true,
       "prelude": "_kit.js"

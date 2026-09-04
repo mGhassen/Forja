@@ -153,13 +153,23 @@ function arabicCategoryOptions() {
 
 function arabicFilters() {
   return {
+    menus: [
+      {
+        id: 'films',
+        label: 'Films',
+        filter: { op: 'eq', field: 'kind', value: 'movie' },
+        hideTypeFilterRails: true,
+      },
+      {
+        id: 'series',
+        label: 'Series',
+        filter: { op: 'eq', field: 'kind', value: 'series' },
+        hideTypeFilterRails: true,
+      },
+    ],
     fields: [
       { field: 'cat', label: 'Category', options: arabicCategoryOptions() },
     ],
-    media: {
-      films: { op: 'eq', field: 'kind', value: 'movie' },
-      series: { op: 'eq', field: 'kind', value: 'series' },
-    },
   };
 }
 

@@ -221,7 +221,7 @@ void main() {
       ShellBus.hubSelectedCategoryIdFor('anime').value = null;
     });
 
-    test('showsFilms / showsSeries follow pack media keys', () {
+    test('menusFor drives chrome; legacy media synthesizes menus', () {
       CatalogPackFiltersRegistry.seedFromJson('letters-only', {
         'fields': [
           {
@@ -232,25 +232,42 @@ void main() {
           },
         ],
       });
-      expect(CatalogPackFiltersRegistry.showsFilms('letters-only'), isFalse);
-      expect(CatalogPackFiltersRegistry.showsSeries('letters-only'), isFalse);
+      expect(CatalogPackFiltersRegistry.menusFor('letters-only'), isEmpty);
 
-      CatalogPackFiltersRegistry.seedFromJson('both-media', {
+      CatalogPackFiltersRegistry.seedFromJson('both-menus', {
+        'menus': [
+          {
+            'id': 'films',
+            'label': 'Films',
+            'filter': {'op': 'eq', 'field': 'kind', 'value': 'movie'},
+          },
+          {
+            'id': 'series',
+            'label': 'Series',
+            'filter': {'op': 'eq', 'field': 'kind', 'value': 'series'},
+          },
+          {
+            'id': 'ramadan',
+            'label': 'Ramadan',
+            'filter': {'op': 'eq', 'field': 'cat', 'value': 'ramadan'},
+          },
+        ],
+      });
+      expect(
+        CatalogPackFiltersRegistry.menusFor('both-menus').map((e) => e.id),
+        ['films', 'series', 'ramadan'],
+      );
+
+      CatalogPackFiltersRegistry.seedFromJson('legacy-media', {
         'media': {
-          'films': {'op': 'eq', 'field': 'kind', 'value': 'movie'},
           'series': {'op': 'eq', 'field': 'kind', 'value': 'series'},
         },
       });
-      expect(CatalogPackFiltersRegistry.showsFilms('both-media'), isTrue);
-      expect(CatalogPackFiltersRegistry.showsSeries('both-media'), isTrue);
-
-      CatalogPackFiltersRegistry.seedFromJson('series-only', {
-        'media': {
-          'series': {'op': 'eq', 'field': 'kind', 'value': 'series'},
-        },
-      });
-      expect(CatalogPackFiltersRegistry.showsFilms('series-only'), isFalse);
-      expect(CatalogPackFiltersRegistry.showsSeries('series-only'), isTrue);
+      expect(
+        CatalogPackFiltersRegistry.menusFor('legacy-media').map((e) => e.id),
+        ['series'],
+      );
+      expect(CatalogPackFiltersRegistry.menusFor('legacy-media').single.label, 'Series');
     });
   });
 }

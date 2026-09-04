@@ -6,24 +6,21 @@ import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 
-/// Home desktop top-bar category (Films vs TV Shows).
-enum ShellHomeCategory { films, tvShows }
-
 /// Shell-level event bus - decouples features from [MainScreen].
 class ShellBus {
   ShellBus._();
 
-  /// Films / TV Shows filter for the Home hub top bar (`null` = mixed feed).
-  static ValueNotifier<ShellHomeCategory?> get homeCategory =>
-      hubCategoryFor('home');
+  /// Selected pack chrome menu id for Home (`filters.menus[].id`, null = mixed).
+  static ValueNotifier<String?> get homeSelectedMenuId =>
+      hubSelectedMenuIdFor('home');
 
   /// Genre filter for Home top-bar Categories menu (`null` = all genres).
   static ValueNotifier<String?> get homeSelectedGenreId =>
       hubSelectedCategoryIdFor('home');
 
-  /// Films / Series filter for plugin hub top bars (`null` = mixed).
-  static ValueNotifier<ShellHomeCategory?> hubCategoryFor(String tabId) =>
-      _hubCategories.putIfAbsent(tabId, () => ValueNotifier(null));
+  /// Pack-declared top-bar menu selection (`filters.menus[].id`, null = none).
+  static ValueNotifier<String?> hubSelectedMenuIdFor(String tabId) =>
+      _hubSelectedMenuIds.putIfAbsent(tabId, () => ValueNotifier(null));
 
   /// Categories menu selection for plugin hub top bars (`null` = all).
   static ValueNotifier<String?> hubSelectedCategoryIdFor(String tabId) =>
@@ -87,8 +84,7 @@ class ShellBus {
 
   static final Map<String, ValueNotifier<double>> _hubScrollOffsets = {};
   static final Map<String, ValueNotifier<double>> _hubHeroHeights = {};
-  static final Map<String, ValueNotifier<ShellHomeCategory?>> _hubCategories =
-      {};
+  static final Map<String, ValueNotifier<String?>> _hubSelectedMenuIds = {};
   static final Map<String, ValueNotifier<String?>> _hubSelectedCategoryIds = {};
 
   /// Per-tab scroll offset for catalog hub tabs.

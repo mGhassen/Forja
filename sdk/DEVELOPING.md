@@ -410,10 +410,11 @@ Add a shell tab with **`nav`** on a catalog plugin:
   "label": "My Hub",
   "order": 25,
   "icon": "forja://asset/nav/anime",
-  "accent": "#FB7185",
-  "defaultEnabled": true
+  "accent": "#FB7185"
 }
 ```
+
+Omit `defaultEnabled` — host defaults Features **on**. Set `"defaultEnabled": false` only for opt-in hubs.
 
 Icons must use **`forja://asset/nav/…`** URIs (host asset catalog), not Flutter `assets/` paths.
 

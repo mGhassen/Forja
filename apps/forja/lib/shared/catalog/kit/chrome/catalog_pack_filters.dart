@@ -7,6 +7,23 @@ import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/catalog/runtime.dart';
 import 'package:forja/shell/shell_bus.dart';
 
+/// One pack-declared top-bar menu tab (`filters.menus[]`).
+class CatalogChromeMenuItem {
+  const CatalogChromeMenuItem({
+    required this.id,
+    required this.label,
+    this.filter,
+    this.hideTypeFilterRails = false,
+  });
+
+  final String id;
+  final String label;
+  final Map<String, dynamic>? filter;
+
+  /// When selected, hide layout rails marked `hideWhenTypeFilter`.
+  final bool hideTypeFilterRails;
+}
+
 /// Pack-declared `filters` action — loaded per [pluginId], no tab/product names.
 class CatalogPackFiltersRegistry {
   CatalogPackFiltersRegistry._();
@@ -82,8 +99,8 @@ class CatalogPackFiltersRegistry {
       );
       _byPlugin[pluginId] = pack;
 
-      // Stale disk cache can return `{}` — bust once before freezing the menu.
-      if (!forceRefresh && pack.categoryOptionCount == 0) {
+      // Stale disk cache can return `{}` — bust once before freezing chrome.
+      if (!forceRefresh && pack.isChromeEmpty) {
         await _load(pluginId, forceRefresh: true);
         return;
       }
@@ -97,6 +114,19 @@ class CatalogPackFiltersRegistry {
     }
   }
 
+  /// Pack `filters.menus[]` — arbitrary toggle tabs (any count / labels).
+  static List<CatalogChromeMenuItem> menusFor(String pluginId) {
+    return (_byPlugin[pluginId] ?? _PackFilters.empty).menus;
+  }
+
+  static CatalogChromeMenuItem? menuById(String pluginId, String? id) {
+    if (id == null || id.isEmpty) return null;
+    for (final m in menusFor(pluginId)) {
+      if (m.id == id) return m;
+    }
+    return null;
+  }
+
   static List<({String id, String label})> categoriesFor(String pluginId) {
     final pack = _byPlugin[pluginId] ?? _PackFilters.empty;
     return [
@@ -104,18 +134,6 @@ class CatalogPackFiltersRegistry {
         for (final o in f.options)
           if (o.showInMenu) (id: o.id, label: o.label),
     ];
-  }
-
-  /// Pack declared `media.films` — omit the key to hide the Films tab.
-  static bool showsFilms(String pluginId) {
-    final pack = _byPlugin[pluginId] ?? _PackFilters.empty;
-    return pack.media.films.isNotEmpty;
-  }
-
-  /// Pack declared `media.series` — omit the key to hide Series / TV Shows.
-  static bool showsSeries(String pluginId) {
-    final pack = _byPlugin[pluginId] ?? _PackFilters.empty;
-    return pack.media.series.isNotEmpty;
   }
 
   static List<CatalogPlayFilterSpec> playFiltersFor(String pluginId) {
@@ -151,26 +169,36 @@ class CatalogPackFiltersRegistry {
   }) {
     final pack = _byPlugin[pluginId] ?? _PackFilters.empty;
     if (tabId == null) return const [];
-    final media = ShellBus.hubCategoryFor(tabId).value;
+    final menuId = ShellBus.hubSelectedMenuIdFor(tabId).value;
     final selected = ShellBus.hubSelectedCategoryIdFor(tabId).value;
     final out = <Map<String, dynamic>?>[
-      ...pack.mediaFilters(media),
+      ...pack.menuFilters(menuId),
       if (selected != null) ...pack.categoryFilters(selected),
     ];
     return out;
+  }
+
+  /// True when the selected pack menu asks to hide `hideWhenTypeFilter` rails.
+  static bool selectedMenuHidesTypeFilterRails({
+    required String pluginId,
+    required String? tabId,
+  }) {
+    if (tabId == null) return false;
+    final menu = menuById(pluginId, ShellBus.hubSelectedMenuIdFor(tabId).value);
+    return menu?.hideTypeFilterRails == true;
   }
 }
 
 class _PackFilters {
   const _PackFilters({
+    required this.menus,
     required this.fields,
-    required this.media,
     required this.genreRows,
     required this.play,
   });
 
+  final List<CatalogChromeMenuItem> menus;
   final List<_FilterField> fields;
-  final _MediaFilters media;
   final List<
       ({
         String id,
@@ -186,9 +214,12 @@ class _PackFilters {
         if (o.showInMenu) o,
   ].length;
 
+  bool get isChromeEmpty =>
+      menus.isEmpty && categoryOptionCount == 0 && play.isEmpty;
+
   static const empty = _PackFilters(
+    menus: [],
     fields: [],
-    media: _MediaFilters.empty,
     genreRows: [],
     play: [],
   );
@@ -230,20 +261,34 @@ class _PackFilters {
       }
     }
 
+    var menus = <CatalogChromeMenuItem>[];
+    final rawMenus = json['menus'];
+    if (rawMenus is List) {
+      for (final row in rawMenus) {
+        if (row is! Map) continue;
+        final item = _menuFromJson(Map<String, dynamic>.from(row));
+        if (item != null) menus.add(item);
+      }
+    }
+    // Legacy `media.films` / `media.series` → menus (until packs migrate).
+    if (menus.isEmpty && json['media'] is Map) {
+      menus = _menusFromLegacyMedia(Map<String, dynamic>.from(json['media'] as Map));
+    }
+
     return _PackFilters(
+      menus: menus,
       fields: fields,
-      media: _MediaFilters.fromJson(
-        json['media'] is Map
-            ? Map<String, dynamic>.from(json['media'] as Map)
-            : const {},
-      ),
       genreRows: genreRows,
       play: play,
     );
   }
 
-  List<Map<String, dynamic>?> mediaFilters(ShellHomeCategory? media) {
-    return mediaFiltersForMedia(media, mediaRules: this.media);
+  List<Map<String, dynamic>?> menuFilters(String? menuId) {
+    if (menuId == null || menuId.isEmpty) return const [];
+    for (final m in menus) {
+      if (m.id == menuId && m.filter != null) return [m.filter];
+    }
+    return const [];
   }
 
   List<Map<String, dynamic>?> categoryFilters(String selectedId) {
@@ -265,15 +310,44 @@ class _PackFilters {
   }
 }
 
-List<Map<String, dynamic>?> mediaFiltersForMedia(
-  ShellHomeCategory? media, {
-  required _MediaFilters mediaRules,
-}) {
-  return switch (media) {
-    ShellHomeCategory.films => mediaRules.films,
-    ShellHomeCategory.tvShows => mediaRules.series,
-    null => const [],
-  };
+CatalogChromeMenuItem? _menuFromJson(Map<String, dynamic> json) {
+  final id = (json['id'] ?? json['label'] ?? '').toString().trim();
+  if (id.isEmpty) return null;
+  return CatalogChromeMenuItem(
+    id: id,
+    label: (json['label'] ?? id).toString(),
+    filter: CatalogFilterAst.parse(json['filter']),
+    hideTypeFilterRails: json['hideTypeFilterRails'] == true ||
+        json['hideWhenTypeFilter'] == true,
+  );
+}
+
+List<CatalogChromeMenuItem> _menusFromLegacyMedia(Map<String, dynamic> media) {
+  final out = <CatalogChromeMenuItem>[];
+  final films = CatalogFilterAst.parse(media['films']);
+  if (films != null) {
+    out.add(
+      CatalogChromeMenuItem(
+        id: 'films',
+        label: 'Films',
+        filter: films,
+        hideTypeFilterRails: true,
+      ),
+    );
+  }
+  final series = CatalogFilterAst.parse(media['series']);
+  if (series != null) {
+    final label = (media['seriesLabel'] ?? 'Series').toString();
+    out.add(
+      CatalogChromeMenuItem(
+        id: 'series',
+        label: label.isEmpty ? 'Series' : label,
+        filter: series,
+        hideTypeFilterRails: true,
+      ),
+    );
+  }
+  return out;
 }
 
 class _FilterField {
@@ -323,28 +397,6 @@ class _FilterOption {
       value: json['value'],
       filter: CatalogFilterAst.parse(json['filter']),
       showInMenu: json['menu'] != false && json['categoriesMenu'] != false,
-    );
-  }
-}
-
-class _MediaFilters {
-  const _MediaFilters({this.films = const [], this.series = const []});
-
-  static const empty = _MediaFilters();
-
-  final List<Map<String, dynamic>?> films;
-  final List<Map<String, dynamic>?> series;
-
-  factory _MediaFilters.fromJson(Map<String, dynamic> json) {
-    List<Map<String, dynamic>?> parse(dynamic raw) {
-      if (raw is! Map) return const [];
-      final f = CatalogFilterAst.parse(Map<String, dynamic>.from(raw));
-      return f == null ? const [] : [f];
-    }
-
-    return _MediaFilters(
-      films: parse(json['films']),
-      series: parse(json['series']),
     );
   }
 }

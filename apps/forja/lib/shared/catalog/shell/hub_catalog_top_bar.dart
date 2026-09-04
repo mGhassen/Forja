@@ -190,24 +190,20 @@ class _PluginHubCatalogTopBarState extends State<PluginHubCatalogTopBar> {
     final label =
         PluginNavRegistry.destinations[widget.tabId]?.label ?? 'Search';
     final categories = CatalogPackFiltersRegistry.categoriesFor(pluginId);
-    final showFilms = CatalogPackFiltersRegistry.showsFilms(pluginId);
-    final showSeries = CatalogPackFiltersRegistry.showsSeries(pluginId);
-    // Drop stale Films/Series selection when this pack omits that media tab.
-    final media = ShellBus.hubCategoryFor(widget.tabId);
-    if (!showFilms && media.value == ShellHomeCategory.films) {
-      media.value = null;
-    }
-    if (!showSeries && media.value == ShellHomeCategory.tvShows) {
-      media.value = null;
+    final menus = CatalogPackFiltersRegistry.menusFor(pluginId);
+    final selectedMenu = ShellBus.hubSelectedMenuIdFor(widget.tabId);
+    // Drop stale menu id when this pack no longer declares it.
+    final currentMenu = selectedMenu.value;
+    if (currentMenu != null &&
+        CatalogPackFiltersRegistry.menuById(pluginId, currentMenu) == null) {
+      selectedMenu.value = null;
     }
     return CatalogTopBar(
       tabId: widget.tabId,
-      seriesLabel: 'Series',
-      mediaCategory: media,
+      selectedMenuId: selectedMenu,
       selectedCategoryId: ShellBus.hubSelectedCategoryIdFor(widget.tabId),
+      menus: menus,
       categories: categories,
-      showFilms: showFilms,
-      showSeries: showSeries,
       scrollOffset: ShellBus.hubScrollOffsetFor(widget.tabId),
       heroHeight: ShellBus.hubHeroHeightFor(widget.tabId),
       onSearch: canSearch

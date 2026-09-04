@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **3 / 3** acceptance (Arabic-family chrome filters) |
+| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **4 / 4** acceptance (Arabic-family chrome filters) |
 | **Current slice** | Arabic / Brstej / كرتون pack `filters` + Films / Series / Categories — A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -202,9 +202,10 @@ Films / Series / Categories on Arabic, Brstej, and كرتون — pack `filters`
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R70-A66 | Arabic (`arabic-hub`) declares `filters` — Larozaa cats + Films/Series; chrome refilters feed/rails | ✅ |
-| 2 | R70-A67 | Brstej (`brstej-hub`) declares `filters` — curated region/type cats + Films/Series; category pages group episodes | ✅ |
-| 3 | R70-A68 | كرتون (`dimatoon-hub`) declares `filters` — Arabic letter Categories only (no `media.films` / `media.series`) | ✅ |
+| 1 | R70-A66 | Arabic (`arabic-hub`) declares `filters.menus` + Larozaa `fields` cats; chrome refilters feed/rails | ✅ |
+| 2 | R70-A67 | Brstej (`brstej-hub`) declares `filters.menus` + curated `fields` cats; category pages group episodes | ✅ |
+| 3 | R70-A68 | كرتون (`dimatoon-hub`) declares letter `fields` only (no menus) — Search + Categories | ✅ |
+| 4 | R70-A69 | Host `CatalogTopBar` renders pack `menus[]` (any count) — no hardcoded Films/Series enum chrome | ✅ |
 
 ---
 
@@ -270,7 +271,9 @@ fails engine boot the same way as a missing providers URL. The legacy combined
 | `rail` | `rail`, `filter`, `sort`, `page`, `limit`, `cursor` | `items[]`, `nextCursor` |
 | `search` | `query`, `page`, `limit`, `filter` (when pack has `filters`) | `items[]` |
 | `details` | `id` | `meta` |
-| `filters` | — | `fields[]` |
+| `filters` | — | `menus[]` (optional chrome tabs), `fields[]` (Categories), optional `play[]` / `genreRows` |
+
+Browse top bar is **pack-owned**: capability `search` → Search; `filters.menus[]` → any number of toggle tabs (label + filter AST + optional `hideTypeFilterRails`); `filters.fields[].options` → Categories popup. Host never hardcodes Films / Series.
 
 Hub search **capabilities** (manifest `capabilities[]` — host never hardcodes plugin ids):
 

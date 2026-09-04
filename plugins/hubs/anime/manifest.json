@@ -31,8 +31,7 @@
         "label": "Anime",
         "order": 20,
         "icon": "icons/nav.png",
-        "accent": "#FB7185",
-        "defaultEnabled": true
+        "accent": "#FB7185"
       },
       "enabled": true,
       "enrich": "anime-enrich-tmdb",

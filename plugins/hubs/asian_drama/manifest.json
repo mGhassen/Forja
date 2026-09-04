@@ -31,8 +31,7 @@
         "label": "Asian Drama",
         "order": 30,
         "icon": "icons/nav.png",
-        "accent": "#C4B5FD",
-        "defaultEnabled": true
+        "accent": "#C4B5FD"
       },
       "enabled": true,
       "enrich": "enrich-tmdb",

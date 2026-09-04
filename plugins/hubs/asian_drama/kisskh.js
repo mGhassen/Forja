@@ -332,6 +332,20 @@ function kisskhCategoryOptions() {
 
 function kisskhFilters() {
   return {
+    menus: [
+      {
+        id: 'films',
+        label: 'Films',
+        filter: { op: 'eq', field: 'type', value: '2' },
+        hideTypeFilterRails: true,
+      },
+      {
+        id: 'series',
+        label: 'Series',
+        filter: { op: 'eq', field: 'type', value: '1' },
+        hideTypeFilterRails: true,
+      },
+    ],
     fields: [
       {
         field: 'country',
@@ -339,10 +353,6 @@ function kisskhFilters() {
         options: kisskhCategoryOptions(),
       },
     ],
-    media: {
-      films: { op: 'eq', field: 'type', value: '2' },
-      series: { op: 'eq', field: 'type', value: '1' },
-    },
   };
 }
 

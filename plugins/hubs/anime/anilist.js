@@ -461,11 +461,21 @@ function extract(ctx) {
   }
   if (action === 'filters') {
     return hubOk('filters', {
+      menus: [
+        {
+          id: 'films',
+          label: 'Films',
+          filter: { op: 'eq', field: 'format', value: 'MOVIE' },
+          hideTypeFilterRails: true,
+        },
+        {
+          id: 'series',
+          label: 'Series',
+          filter: { op: 'eq', field: 'format_not', value: 'MOVIE' },
+          hideTypeFilterRails: true,
+        },
+      ],
       fields: [{ field: 'genre', label: 'Genre', options: anilistCategoryOptions() }],
-      media: {
-        films: { op: 'eq', field: 'format', value: 'MOVIE' },
-        series: { op: 'eq', field: 'format_not', value: 'MOVIE' },
-      },
       play: [
         {
           id: 'audio',

@@ -139,6 +139,20 @@ var BRSTEJ_CATEGORY_OPTIONS = [
 
 function brstejFilters() {
   return {
+    menus: [
+      {
+        id: 'films',
+        label: 'Films',
+        filter: { op: 'eq', field: 'kind', value: 'movie' },
+        hideTypeFilterRails: true,
+      },
+      {
+        id: 'series',
+        label: 'Series',
+        filter: { op: 'eq', field: 'kind', value: 'series' },
+        hideTypeFilterRails: true,
+      },
+    ],
     fields: [
       {
         field: 'cat',
@@ -148,10 +162,6 @@ function brstejFilters() {
         }),
       },
     ],
-    media: {
-      films: { op: 'eq', field: 'kind', value: 'movie' },
-      series: { op: 'eq', field: 'kind', value: 'series' },
-    },
   };
 }
 

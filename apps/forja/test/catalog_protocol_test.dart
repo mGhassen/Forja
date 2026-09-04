@@ -12,6 +12,7 @@ import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shared/engine/models.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
+import 'package:forja/shell/nav_destination.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 /// `plugins/hubs/fixtures/<name>.json` — test cwd is `apps/forja`.
@@ -247,7 +248,7 @@ void main() {
   group('chrome filter epoch', () {
     test('pack filters revision bump does not change epoch', () {
       const tabId = 'anime';
-      ShellBus.hubCategoryFor(tabId).value = null;
+      ShellBus.hubSelectedMenuIdFor(tabId).value = null;
       ShellBus.hubSelectedCategoryIdFor(tabId).value = null;
       CatalogVerticalFiltersRegistry.selectedIdFor(tabId).value = null;
       final before = catalogChromeFilterEpoch(tabId);
@@ -255,24 +256,63 @@ void main() {
       expect(catalogChromeFilterEpoch(tabId), before);
     });
 
-    test('category selection changes epoch', () {
+    test('menu selection changes epoch', () {
       const tabId = 'anime';
-      ShellBus.hubCategoryFor(tabId).value = null;
+      ShellBus.hubSelectedMenuIdFor(tabId).value = null;
       ShellBus.hubSelectedCategoryIdFor(tabId).value = null;
       CatalogVerticalFiltersRegistry.selectedIdFor(tabId).value = null;
       final before = catalogChromeFilterEpoch(tabId);
-      ShellBus.hubCategoryFor(tabId).value = ShellHomeCategory.films;
+      ShellBus.hubSelectedMenuIdFor(tabId).value = 'films';
       expect(catalogChromeFilterEpoch(tabId), isNot(before));
-      ShellBus.hubCategoryFor(tabId).value = null;
+      ShellBus.hubSelectedMenuIdFor(tabId).value = null;
     });
   });
 
   group('hideWhenTypeFilter chrome', () {
     const tabId = 'anime';
 
+    setUp(() {
+      CatalogPackFiltersRegistry.seedFromJson('anilist', {
+        'menus': [
+          {
+            'id': 'films',
+            'label': 'Films',
+            'filter': {'op': 'eq', 'field': 'format', 'value': 'MOVIE'},
+            'hideTypeFilterRails': true,
+          },
+          {
+            'id': 'series',
+            'label': 'Series',
+            'filter': {'op': 'eq', 'field': 'format_not', 'value': 'MOVIE'},
+            'hideTypeFilterRails': true,
+          },
+        ],
+        'fields': [
+          {
+            'field': 'genre',
+            'options': [
+              {'id': 'shonen', 'label': 'Shōnen'},
+            ],
+          },
+        ],
+      });
+      PluginNavRegistry.seedTestHubNav(
+        destinations: {
+          tabId: const NavDestination(
+            id: tabId,
+            icon: Icons.animation_outlined,
+            activeIcon: Icons.animation,
+            label: 'Anime',
+          ),
+        },
+        tabPluginIds: {tabId: 'anilist'},
+      );
+    });
+
     tearDown(() {
-      ShellBus.hubCategoryFor(tabId).value = null;
+      ShellBus.hubSelectedMenuIdFor(tabId).value = null;
       ShellBus.hubSelectedCategoryIdFor(tabId).value = null;
+      CatalogPackFiltersRegistry.clearForTest();
     });
 
     test('genre category does not hide type-filter rails', () {
@@ -280,10 +320,10 @@ void main() {
       expect(catalogChromeHidesTypeFilterRails(tabId), isFalse);
     });
 
-    test('Films / Series hides type-filter rails', () {
-      ShellBus.hubCategoryFor(tabId).value = ShellHomeCategory.films;
+    test('pack menu with hideTypeFilterRails hides type-filter rails', () {
+      ShellBus.hubSelectedMenuIdFor(tabId).value = 'films';
       expect(catalogChromeHidesTypeFilterRails(tabId), isTrue);
-      ShellBus.hubCategoryFor(tabId).value = ShellHomeCategory.tvShows;
+      ShellBus.hubSelectedMenuIdFor(tabId).value = 'series';
       expect(catalogChromeHidesTypeFilterRails(tabId), isTrue);
     });
   });

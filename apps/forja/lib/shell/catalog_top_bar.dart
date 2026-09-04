@@ -2,9 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/catalog/kit/chrome/catalog_pack_filters.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters_rail.dart';
-import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
@@ -16,38 +16,32 @@ import 'package:google_fonts/google_fonts.dart';
 /// Sentinel for the "All" entry in the categories popup menu.
 const catalogAllCategoriesSentinel = '__all__';
 
-/// Films / Series (or TV Shows) / Categories + Search overlaid on a hub hero.
+/// Pack-driven hub chrome: Search? + [menus] + Categories? overlaid on hero.
 class CatalogTopBar extends StatefulWidget {
   const CatalogTopBar({
     super.key,
     required this.tabId,
-    required this.seriesLabel,
-    required this.mediaCategory,
+    required this.selectedMenuId,
     required this.selectedCategoryId,
+    required this.menus,
     required this.categories,
     required this.scrollOffset,
     required this.heroHeight,
     required this.onSearch,
-    this.showFilms = true,
-    this.showSeries = true,
   });
 
   final String tabId;
-  final String seriesLabel;
-  final ValueNotifier<ShellHomeCategory?> mediaCategory;
+  final ValueNotifier<String?> selectedMenuId;
   final ValueNotifier<String?> selectedCategoryId;
+
+  /// Pack `filters.menus[]` — any count / labels (host does not invent Films).
+  final List<CatalogChromeMenuItem> menus;
   final List<({String id, String label})> categories;
   final ValueNotifier<double> scrollOffset;
   final ValueNotifier<double> heroHeight;
 
   /// Null when the pack does not declare `search` — Search tab is omitted.
   final VoidCallback? onSearch;
-
-  /// Pack `filters.media.films` — false hides the Films tab.
-  final bool showFilms;
-
-  /// Pack `filters.media.series` — false hides Series / TV Shows.
-  final bool showSeries;
 
   static const hideSlideDistance = 56.0;
 
@@ -112,9 +106,9 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
     return null;
   }
 
-  void _toggleMediaFilter(ShellHomeCategory target) {
-    final current = widget.mediaCategory.value;
-    widget.mediaCategory.value = current == target ? null : target;
+  void _toggleMenu(String id) {
+    final current = widget.selectedMenuId.value;
+    widget.selectedMenuId.value = current == id ? null : id;
   }
 
   Future<void> _openCategoriesMenu() async {
@@ -362,9 +356,9 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                   ShellTokens.bodyHorizontalPadding,
                   0,
                 ),
-                child: ValueListenableBuilder<ShellHomeCategory?>(
-                  valueListenable: widget.mediaCategory,
-                  builder: (context, mediaFilter, _) {
+                child: ValueListenableBuilder<String?>(
+                  valueListenable: widget.selectedMenuId,
+                  builder: (context, menuId, _) {
                     return ValueListenableBuilder<String?>(
                       valueListenable: widget.selectedCategoryId,
                       builder: (context, categoryId, _) {
@@ -379,24 +373,18 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                             : 36.0;
                         final tabTextHeight =
                             shellScaled(context, 34).clamp(28.0, 34.0);
-                        // Provider logo → Search? → Films? → Series? → Categories?
+                        // Provider logo → Search? → pack menus[] → Categories?
                         final hasSearch = widget.onSearch != null;
-                        final showFilms = widget.showFilms;
-                        final showSeries = widget.showSeries;
+                        final menus = widget.menus;
                         final showCategories = widget.categories.isNotEmpty;
                         final searchIndex = hasFilterLogo ? 1 : 0;
-                        final filmsIndex =
+                        final menusStart =
                             searchIndex + (hasSearch ? 1 : 0);
-                        final seriesIndex =
-                            filmsIndex + (showFilms ? 1 : 0);
-                        final categoriesIndex =
-                            seriesIndex + (showSeries ? 1 : 0);
+                        final categoriesIndex = menusStart + menus.length;
                         final menuItemCount = showCategories
                             ? categoriesIndex + 1
-                            : showSeries
-                            ? seriesIndex + 1
-                            : showFilms
-                            ? filmsIndex + 1
+                            : menus.isNotEmpty
+                            ? menusStart + menus.length
                             : hasSearch
                             ? searchIndex + 1
                             : hasFilterLogo
@@ -451,37 +439,16 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                                 ),
                                 SizedBox(width: tabGap),
                               ],
-                              if (showFilms) ...[
+                              for (var i = 0; i < menus.length; i++) ...[
+                                if (i > 0) SizedBox(width: tabGap),
                                 _CategoryTab(
-                                  label: 'Films',
-                                  isActive:
-                                      mediaFilter == ShellHomeCategory.films,
-                                  onTap: () => _toggleMediaFilter(
-                                    ShellHomeCategory.films,
-                                  ),
+                                  label: menus[i].label,
+                                  isActive: menuId == menus[i].id,
+                                  onTap: () => _toggleMenu(menus[i].id),
                                   tvFocus: tvFocus,
                                   tabId: widget.tabId,
-                                  listIndex: filmsIndex,
-                                  focusNode: tvFocus ? _menuFocus : null,
-                                  onDownEdge: tvFocus
-                                      ? () =>
-                                            ShellTvFocus.focusHomeHeroGallery()
-                                      : null,
-                                ),
-                                SizedBox(width: tabGap),
-                              ],
-                              if (showSeries) ...[
-                                _CategoryTab(
-                                  label: widget.seriesLabel,
-                                  isActive:
-                                      mediaFilter == ShellHomeCategory.tvShows,
-                                  onTap: () => _toggleMediaFilter(
-                                    ShellHomeCategory.tvShows,
-                                  ),
-                                  tvFocus: tvFocus,
-                                  tabId: widget.tabId,
-                                  listIndex: seriesIndex,
-                                  focusNode: tvFocus && !showFilms
+                                  listIndex: menusStart + i,
+                                  focusNode: tvFocus && i == 0
                                       ? _menuFocus
                                       : null,
                                   onDownEdge: tvFocus
@@ -489,8 +456,9 @@ class _CatalogTopBarState extends State<CatalogTopBar> {
                                             ShellTvFocus.focusHomeHeroGallery()
                                       : null,
                                 ),
-                                SizedBox(width: tabGap),
                               ],
+                              if (menus.isNotEmpty && showCategories)
+                                SizedBox(width: tabGap),
                               if (showCategories)
                                 _CategoryTab(
                                   key: _categoriesKey,

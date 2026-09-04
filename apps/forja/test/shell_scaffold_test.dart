@@ -47,6 +47,20 @@ void main() {
 
   void seedHomePackFilters() {
     CatalogPackFiltersRegistry.seedFromJson('test-provider-a', {
+      'menus': [
+        {
+          'id': 'films',
+          'label': 'Films',
+          'filter': {'op': 'eq', 'field': 'type', 'value': 'movie'},
+          'hideTypeFilterRails': true,
+        },
+        {
+          'id': 'series',
+          'label': 'Series',
+          'filter': {'op': 'eq', 'field': 'type', 'value': 'tv'},
+          'hideTypeFilterRails': true,
+        },
+      ],
       'fields': [
         {
           'field': 'genre',
@@ -55,10 +69,6 @@ void main() {
           ],
         },
       ],
-      'media': {
-        'films': {'op': 'eq', 'field': 'type', 'value': 'movie'},
-        'series': {'op': 'eq', 'field': 'type', 'value': 'tv'},
-      },
     });
   }
 
@@ -113,7 +123,7 @@ void main() {
     CatalogPackFiltersRegistry.clearForTest();
     seedHomePackFilters();
     seedHomeVerticalFilters();
-    ShellBus.hubCategoryFor(hubA).value = null;
+    ShellBus.hubSelectedMenuIdFor(hubA).value = null;
     ShellBus.hubSelectedCategoryIdFor(hubA).value = null;
     ShellBus.hubHeroHeightFor(hubA).value = 0;
     ShellBus.hubScrollOffsetFor(hubA).value = 0;
@@ -272,7 +282,7 @@ void main() {
     expect(ShellBus.hubSelectedCategoryIdFor(hubA).value, 'action');
   });
 
-  testWidgets('PluginHubCatalogTopBar Films tap toggles homeCategory filter', (
+  testWidgets('PluginHubCatalogTopBar Films tap toggles pack menu id', (
     tester,
   ) async {
     await pumpScaffold(
@@ -282,17 +292,17 @@ void main() {
       profile: ShellProfile.desktop,
     );
 
-    expect(ShellBus.hubCategoryFor(hubA).value, isNull);
+    expect(ShellBus.hubSelectedMenuIdFor(hubA).value, isNull);
 
     await tester.tap(find.text('Films'));
     await tester.pumpAndSettle();
 
-    expect(ShellBus.hubCategoryFor(hubA).value, ShellHomeCategory.films);
+    expect(ShellBus.hubSelectedMenuIdFor(hubA).value, 'films');
 
     await tester.tap(find.text('Films'));
     await tester.pumpAndSettle();
 
-    expect(ShellBus.hubCategoryFor(hubA).value, isNull);
+    expect(ShellBus.hubSelectedMenuIdFor(hubA).value, isNull);
   });
 
   testWidgets('PluginHubCatalogTopBar shows provider rail when menu visible', (

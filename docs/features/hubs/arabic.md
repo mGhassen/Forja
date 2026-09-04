@@ -13,7 +13,7 @@ Enable the ForjaHQ Arabic pack under **Settings → Forja Packs → Hubs**, turn
 ## What you can do
 
 - Browse Larozaa rails (latest, Arabic/Turkish/foreign/Indian/Asian series & movies, anime, dubbed, Ramadan, TV programs, plays)
-- Top menu (**Search**, **Films**, **Series**, **Categories**) — Categories lists Larozaa sections (Arabic series, Turkish, Ramadan, …); Films/Series refilter rails from Larozaa
+- Top menu from pack `filters` — **Search**, **Films**, **Series**, **Categories** (Larozaa sections); Films/Series/Categories refilter rails
 - Search Larozaa titles
 - Like titles for quick access
 - Open pack-backed details and play episodes/servers in the player

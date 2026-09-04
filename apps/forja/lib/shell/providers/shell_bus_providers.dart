@@ -4,15 +4,15 @@ import 'package:forja/shell/shell_bus.dart';
 /// Thin Riverpod adapters over [ShellBus] ValueNotifiers (Phase 1 coexistence).
 /// Screens may keep listening to ShellBus directly until fully migrated.
 
-final shellHomeCategoryProvider =
-    NotifierProvider<ShellHomeCategoryNotifier, ShellHomeCategory?>(
-  ShellHomeCategoryNotifier.new,
+final shellHomeSelectedMenuIdProvider =
+    NotifierProvider<ShellHomeSelectedMenuIdNotifier, String?>(
+  ShellHomeSelectedMenuIdNotifier.new,
 );
 
-class ShellHomeCategoryNotifier extends Notifier<ShellHomeCategory?> {
+class ShellHomeSelectedMenuIdNotifier extends Notifier<String?> {
   @override
-  ShellHomeCategory? build() {
-    final n = ShellBus.homeCategory;
+  String? build() {
+    final n = ShellBus.homeSelectedMenuId;
     void listener() => state = n.value;
     n.addListener(listener);
     ref.onDispose(() => n.removeListener(listener));
