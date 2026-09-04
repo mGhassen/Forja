@@ -223,16 +223,89 @@ class IptvClient {
 
   static Future<VerifiedPortal?> verifyOrNull(IptvPortal p,
       {Duration? timeout}) async {
-    final info = await login(p, timeout: timeout);
-    if (info == null) return null;
-    return VerifiedPortal(
-      portal: p,
-      name: (info['username']?.toString() ?? '').isNotEmpty
-          ? info['username'].toString()
+    final probe = await probePortal(p, timeout: timeout);
+    if (!probe.alive) return null;
+    return VerifiedPortal.fromProbe(p, probe);
+  }
+
+  /// Login probe that keeps structured auth failures (status / message / server).
+  static Future<PortalProbeResult> probePortal(
+    IptvPortal p, {
+    Duration? timeout,
+  }) async {
+    final effective = timeout ??
+        (p.platform == IptvPortalPlatform.m3u
+            ? const Duration(seconds: 90)
+            : const Duration(seconds: 6));
+    final root = await _xtreamRequestRaw(_portalBody(
+      p,
+      action: 'login',
+      timeoutSecs: effective.inSeconds.clamp(1, 120),
+    ));
+    if (root == null) {
+      return const PortalProbeResult(
+        alive: false,
+        errorKind: 'transport',
+      );
+    }
+
+    final err = root['error']?.toString() ?? '';
+    final infoRaw = root['user_info'];
+    final info = infoRaw is Map<String, dynamic> ? infoRaw : null;
+    final server = PortalServerInfo.fromJson(
+      root['server_info'] is Map<String, dynamic>
+          ? root['server_info'] as Map<String, dynamic>
+          : null,
+    );
+
+    String field(Map<String, dynamic>? m, String key) =>
+        m?[key]?.toString() ?? '';
+
+    if (err.isNotEmpty) {
+      final lower = err.toLowerCase();
+      final isAuth = lower.contains('auth_failed');
+      final status = root['status']?.toString() ?? field(info, 'status');
+      final message = root['message']?.toString() ?? field(info, 'message');
+      return PortalProbeResult(
+        alive: false,
+        accountStatus: status,
+        message: message,
+        errorKind: isAuth ? 'auth' : 'transport',
+        accountName: field(info, 'username'),
+        expiry: IptvPortalExpiry.format(field(info, 'exp_date')),
+        maxConnections: field(info, 'max_connections'),
+        activeConnections: field(info, 'active_cons'),
+        server: server,
+      );
+    }
+
+    if (info == null) {
+      return PortalProbeResult(
+        alive: false,
+        errorKind: 'transport',
+        server: server,
+      );
+    }
+
+    return PortalProbeResult(
+      alive: true,
+      accountStatus: field(info, 'status').isNotEmpty
+          ? field(info, 'status')
+          : 'Active',
+      message: field(info, 'message'),
+      accountName: field(info, 'username').isNotEmpty
+          ? field(info, 'username')
           : p.username,
-      expiry: IptvPortalExpiry.format(info['exp_date']?.toString()),
-      maxConnections: info['max_connections']?.toString() ?? '1',
-      activeConnections: info['active_cons']?.toString() ?? '0',
+      expiry: IptvPortalExpiry.format(field(info, 'exp_date')),
+      maxConnections:
+          field(info, 'max_connections').isNotEmpty
+              ? field(info, 'max_connections')
+              : '1',
+      activeConnections:
+          field(info, 'active_cons').isNotEmpty
+              ? field(info, 'active_cons')
+              : '0',
+      server: server,
     );
   }
 

@@ -164,6 +164,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   static const _actionW = 108.0;
   static const _statusSlot = 18.0;
   static const _rowH = 98.0;
+  static const _detailHoverDelay = Duration(seconds: 1);
 
   bool _lineHover = false;
   bool _focused = false;
@@ -178,6 +179,9 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
   late final FocusNode _confirmYesFocus;
   late final FocusNode _confirmNoFocus;
   late final FocusNode _rowFocus;
+  final LayerLink _detailLink = LayerLink();
+  Timer? _detailTimer;
+  OverlayEntry? _detailOverlay;
 
   /// Stay open while D-pad is on favorite / rail actions (TV has no hover).
   bool get _actionChromeFocused =>
@@ -226,6 +230,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
 
   @override
   void dispose() {
+    _hideDetailCard();
     for (final node in [
       _favoriteFocus,
       _copyFocus,
@@ -337,6 +342,62 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
 
   void _clearHover() {
     setState(() => _lineHover = false);
+    _hideDetailCard();
+  }
+
+  void _scheduleDetailCard() {
+    _detailTimer?.cancel();
+    _detailTimer = Timer(_detailHoverDelay, () {
+      if (!mounted || !_lineHover) return;
+      _showDetailCard();
+    });
+  }
+
+  void _showDetailCard() {
+    if (_detailOverlay != null) {
+      _detailOverlay!.markNeedsBuild();
+      return;
+    }
+    final overlay = Overlay.maybeOf(context);
+    if (overlay == null) return;
+    _detailOverlay = OverlayEntry(
+      builder: (ctx) {
+        final ctrl = widget.ctrl;
+        final v = widget.portal;
+        // UnconstrainedBox: Overlay gives max constraints; without this the
+        // DecoratedBox expands into a full-screen black slab (EPG peek uses
+        // a Row slot instead — same tight-size rule).
+        return CompositedTransformFollower(
+          link: _detailLink,
+          showWhenUnlinked: false,
+          targetAnchor: Alignment.centerLeft,
+          followerAnchor: Alignment.centerRight,
+          offset: const Offset(-10, 0),
+          child: UnconstrainedBox(
+            alignment: Alignment.centerRight,
+            child: Material(
+              type: MaterialType.transparency,
+              child: AnimatedBuilder(
+                animation: ctrl,
+                builder: (_, _) => _PortalProbeDetailCard(
+                  portal: v,
+                  probe: ctrl.portalProbeFor(v.key),
+                  checking: ctrl.isPortalHealthChecking(v.key),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    overlay.insert(_detailOverlay!);
+  }
+
+  void _hideDetailCard() {
+    _detailTimer?.cancel();
+    _detailTimer = null;
+    _detailOverlay?.remove();
+    _detailOverlay = null;
   }
 
   Future<void> _copy() async {
@@ -605,6 +666,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
                 setState(() => _lineHover = true);
                 if (isNew) ctrl.markPortalSeen(v.key);
                 ctrl.schedulePortalHealthCheck(v);
+                _scheduleDetailCard();
               },
         onExit: deleting
             ? null
@@ -614,6 +676,7 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
               },
         child: tile,
       );
+      tile = CompositedTransformTarget(link: _detailLink, child: tile);
     }
 
     // Only register the action row while revealed — itemCount 0↔4 on every
@@ -1162,6 +1225,171 @@ class _IptvRailActionState extends State<_IptvRailAction> {
           child: child,
         ),
       ),
+    );
+  }
+}
+
+/// Desktop hover detail — compact like [IptvGuideEpgCard] floating peek.
+class _PortalProbeDetailCard extends StatelessWidget {
+  const _PortalProbeDetailCard({
+    required this.portal,
+    required this.probe,
+    required this.checking,
+  });
+
+  final VerifiedPortal portal;
+  final PortalProbeResult? probe;
+  final bool checking;
+
+  static const _cardW = 280.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = probe;
+    final server = p?.server ?? const PortalServerInfo();
+    final status = checking && p == null
+        ? 'Checking…'
+        : (p?.statusLabel ?? 'Not checked');
+    final statusColor = p == null
+        ? Colors.white54
+        : p.alive
+            ? ForjaShellColors.brandGreen
+            : const Color(0xFFEF4444);
+
+    final expiry = (p != null && p.expiry.isNotEmpty && p.expiry != 'Unknown')
+        ? p.expiry
+        : portal.expiry;
+    final seatsActive = (p != null && p.activeConnections.isNotEmpty)
+        ? p.activeConnections
+        : portal.activeConnections;
+    final seatsMax = (p != null && p.maxConnections.isNotEmpty)
+        ? p.maxConnections
+        : portal.maxConnections;
+
+    final platformLabel = switch (portal.platform) {
+      IptvPortalPlatform.xtream => 'Xtream',
+      IptvPortalPlatform.m3u => 'M3U',
+      IptvPortalPlatform.stalker => 'Stalker',
+    };
+
+    final lines = <(String, String)>[
+      ('Platform', platformLabel),
+      ('URL', _shortUrl(portal.portal.url)),
+      if (expiry.isNotEmpty) ('Expires', expiry),
+      if (seatsMax.isNotEmpty) ('Seats', '$seatsActive / $seatsMax'),
+    ];
+    if (p != null && p.message.trim().isNotEmpty) {
+      lines.add(('Message', p.message.trim()));
+    }
+    if (server.protocol.isNotEmpty) {
+      lines.add(('Protocol', server.protocol));
+    }
+    final ports = <String>[
+      if (server.port.isNotEmpty) server.port,
+      if (server.httpsPort.isNotEmpty) 'https ${server.httpsPort}',
+      if (server.rtmpPort.isNotEmpty) 'rtmp ${server.rtmpPort}',
+    ];
+    if (ports.isNotEmpty) lines.add(('Ports', ports.join(' · ')));
+    if (server.timezone.isNotEmpty) {
+      lines.add(('Timezone', server.timezone));
+    }
+
+    return IgnorePointer(
+      child: SizedBox(
+        width: _cardW,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          decoration: BoxDecoration(
+            color: IptvShellStyle.surfaceMuted,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: IptvShellStyle.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: statusColor,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      status,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: statusColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                portal.displayLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  height: 1.25,
+                ),
+              ),
+              const SizedBox(height: 10),
+              for (var i = 0; i < lines.length; i++) ...[
+                if (i > 0) const SizedBox(height: 4),
+                _detailRow(lines[i].$1, lines[i].$2),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _shortUrl(String raw) {
+    final t = raw.trim();
+    if (t.length <= 42) return t;
+    return '${t.substring(0, 40)}…';
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 68,
+          child: Text(
+            label,
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white54,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: GoogleFonts.plusJakartaSans(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              height: 1.3,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

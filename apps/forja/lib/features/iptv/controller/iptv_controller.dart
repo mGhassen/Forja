@@ -1167,7 +1167,7 @@ class IptvController extends ChangeNotifier
     IptvStore.listRevision.removeListener(_onStoreListRevision);
     cancelAllLazyChecks();
     _cancelAllPortalHealthTimers();
-    portalHealth.clear();
+    portalProbes.clear();
     _portalHealthInFlight.clear();
     super.dispose();
   }

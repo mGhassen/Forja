@@ -724,7 +724,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   bool? healthFor(String streamId) => _c.streamHealth[streamId];
 
   // ── Portal status (active button + panel rows) ──
-  final Map<String, bool> portalHealth = {};
+  final Map<String, PortalProbeResult> portalProbes = {};
   final Set<String> _portalHealthInFlight = {};
   final Map<String, Timer> _portalHealthDebounce = {};
   final Map<String, Timer> _portalHealthExpiry = {};
@@ -733,7 +733,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
   /// Cached green/red for this long, then re-probe the active portal.
   static const _portalHealthTtl = Duration(minutes: 2);
 
-  bool? portalHealthFor(String key) => portalHealth[key];
+  bool? portalHealthFor(String key) => portalProbes[key]?.alive;
+
+  PortalProbeResult? portalProbeFor(String key) => portalProbes[key];
 
   /// Hover/focus probe — last dot stays painted until the new result lands;
   /// every dwell re-probes so a transient red flips back on re-hover/focus.
@@ -768,7 +770,7 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     cancelPortalHealthCheck(key);
     _portalHealthExpiry[key]?.cancel();
     _portalHealthExpiry.remove(key);
-    portalHealth.remove(key);
+    portalProbes.remove(key);
     if (_portalHealthInFlight.contains(key)) {
       notifyListeners();
       return;
@@ -781,21 +783,21 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     _portalHealthDebounce.remove(key);
   }
 
-  /// Write [portalHealth]; returns true when the painted dot changed.
-  bool _recordPortalHealth(String key, bool ok) {
-    final prev = portalHealth[key];
-    portalHealth[key] = ok;
+  /// Write [portalProbes]; returns true when the painted dot changed.
+  bool _recordPortalProbe(String key, PortalProbeResult probe) {
+    final prev = portalProbes[key]?.alive;
+    portalProbes[key] = probe;
     _portalHealthExpiry[key]?.cancel();
     _portalHealthExpiry[key] = Timer(_portalHealthTtl, () {
       _portalHealthExpiry.remove(key);
-      portalHealth.remove(key);
+      portalProbes.remove(key);
       notifyListeners();
       final active = _c.activePortal;
       if (active != null && active.key == key) {
         unawaited(_runPortalHealthCheck(active));
       }
     });
-    return prev != ok;
+    return prev != probe.alive;
   }
 
   void _cancelAllPortalHealthTimers() {
@@ -814,18 +816,21 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     if (!_portalHealthInFlight.add(key)) return;
     notifyListeners();
     try {
-      final fresh = await IptvClient.verifyOrNull(
+      final probe = await IptvClient.probePortal(
         v.portal,
         timeout: const Duration(seconds: 5),
       );
-      if (fresh != null) {
-        await _mergePortalAccountInfo(v, fresh);
-        if (_recordPortalHealth(key, true)) notifyListeners();
-      } else {
-        if (_recordPortalHealth(key, false)) notifyListeners();
+      if (probe.alive) {
+        await _mergePortalAccountInfo(v, VerifiedPortal.fromProbe(v.portal, probe));
       }
+      if (_recordPortalProbe(key, probe)) notifyListeners();
     } catch (_) {
-      if (_recordPortalHealth(key, false)) notifyListeners();
+      if (_recordPortalProbe(
+        key,
+        const PortalProbeResult(alive: false, errorKind: 'transport'),
+      )) {
+        notifyListeners();
+      }
     } finally {
       _portalHealthInFlight.remove(key);
       notifyListeners();

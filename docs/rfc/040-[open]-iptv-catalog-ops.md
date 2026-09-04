@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **28 / 30** acceptance (dealPortal flag; AI deferred; Stalker note/expiry) |
-| **Current slice** | Stalker pool Note (scrape expires) + paste backfill |
+| **Progress** | **5 / 5** components · **29 / 31** acceptance (dealPortal flag; AI deferred; Stalker note/expiry; probe tighten) |
+| **Current slice** | R40-A31 admin/worker alive tighten shipped ([RFC-075](fixed/075-[fixed]-iptv-portal-probe-detail.md)); AI extract still deferred |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -61,6 +61,7 @@
 | 28 | R40-A28 | `iptv_portals` product-only: drop `post_id` + `layer`; scrape lineage via deep_ref_portals | ✅ |
 | 29 | R40-A29 | Admin Pool Check status: Stalker handshake + get_profile (not player_api); M3U playlist probe | ✅ |
 | 30 | R40-A30 | Stalker scrape expires → `note` + `expiry`; Pool card Note line; paste backfill for missing | ✅ |
+| 31 | R40-A31 | Admin + worker Check status alive = `auth=1` \|\| `status=active` only (no `user_info` false green) — [RFC-075](fixed/075-[fixed]-iptv-portal-probe-detail.md) | ✅ |
 
 ---
 

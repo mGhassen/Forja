@@ -316,17 +316,22 @@ mixin _LiveMatchesPlayback
       known = forjaLive._knownProviderEventMatches(match);
     }
     debugPrint(
-      '[LiveMatches] Providers catalog targets: '
+      '[LiveMatches] Providers resolve targets: '
       '${known.isEmpty ? '(none)' : known.map((m) => '${m.livePluginId} src=${m.sources.length} inline=${m.inlineStreams.length}').join(' | ')}',
     );
 
-    // Catalog stubs only — GOAT/GASM unlock runs on row tap.
+    // Resolve via plugins/live (`live-*` action=resolve) — never catalog-* on Providers.
     if (known.isNotEmpty) {
-      final batch = _catalogStreamChoices(known, existing: choices);
-      if (batch.isNotEmpty && !isStale() && !controller.isDisposed) {
-        choices.addAll(batch);
-        _panelAppendChoices(controller, batch);
-      }
+      await _resolveCatalogStreamChoices(
+        known,
+        isStale: isStale,
+        onPartial: (batch) {
+          if (isStale() || controller.isDisposed) return;
+          if (batch.isEmpty) return;
+          choices.addAll(batch);
+          _panelAppendChoices(controller, batch);
+        },
+      );
     }
     if (isStale() || controller.isDisposed) return;
 
@@ -555,49 +560,80 @@ mixin _LiveMatchesPlayback
     ]);
   }
 
-  List<_StreamedStreamChoice> _catalogStreamChoices(
+  Future<List<_StreamedStreamChoice>> _resolveCatalogStreamChoices(
     List<_StreamedMatch> catalogMatches, {
-    List<_StreamedStreamChoice> existing = const [],
-  }) {
+    void Function(String)? onProgress,
+    void Function(List<_StreamedStreamChoice> batch)? onPartial,
+    bool Function()? isStale,
+  }) async {
     final out = <_StreamedStreamChoice>[];
-    final seenUrls = {
-      for (final c in existing)
-        if (c.stream.embedUrl.trim().isNotEmpty) c.stream.embedUrl.trim(),
-    };
-    final seenRefs = {
-      for (final c in existing)
-        'ref:${c.catalogMatch.livePluginId}:${c.stream.source}:${c.stream.id}',
-    };
+    final seenUrls = <String>{};
+    final seenRefs = <String>{};
+    final jobs = <Future<List<_StreamedStreamChoice>>>[];
+    final inlineBatch = <_StreamedStreamChoice>[];
 
     for (final m in catalogMatches) {
       for (final stream in m.inlineStreams) {
         final url = stream.embedUrl.trim();
         if (url.isEmpty || !seenUrls.add(url)) continue;
-        out.add(_StreamedStreamChoice(catalogMatch: m, stream: stream));
+        final choice = _StreamedStreamChoice(catalogMatch: m, stream: stream);
+        out.add(choice);
+        inlineBatch.add(choice);
       }
 
       for (final ref in m.sources) {
         final key = 'ref:${m.livePluginId}:${ref.source}:${ref.id}';
         if (!seenRefs.add(key)) continue;
-        final iframe = ref.iframe.trim();
-        if (iframe.isNotEmpty && !seenUrls.add(iframe)) continue;
-        final source = ref.source.trim().isNotEmpty
-            ? ref.source.trim()
-            : LiveMatchesEngine.cachedResolveSourceToken(m.livePluginId);
-        out.add(
-          _StreamedStreamChoice(
-            catalogMatch: m,
-            stream: _StreamedStream(
-              id: ref.id,
-              streamNo: 1,
-              language: '',
-              hd: false,
-              embedUrl: iframe,
-              source: source,
-              viewers: m.viewers,
-            ),
-          ),
-        );
+        jobs.add(() async {
+          try {
+            final streams = m.isForjaLive
+                ? await _forjaLiveStreamsFromSource(
+                    m,
+                    ref,
+                    allowStreamedFallback: false,
+                  )
+                : await _fetchStreamedStreams(ref, allowFallback: false);
+            return [
+              for (final stream in streams)
+                if (stream.embedUrl.trim().isNotEmpty)
+                  _StreamedStreamChoice(catalogMatch: m, stream: stream),
+            ];
+          } catch (e) {
+            debugPrint('[LiveMatches] resolve ${ref.source}/${ref.id}: $e');
+            return const <_StreamedStreamChoice>[];
+          }
+        }());
+      }
+    }
+
+    if (inlineBatch.isNotEmpty && isStale?.call() != true) {
+      onPartial?.call(inlineBatch);
+    }
+
+    if (jobs.isEmpty) return _sortStreamChoices(out);
+
+    onProgress?.call(
+      jobs.length == 1
+          ? 'Checking source…'
+          : 'Checking ${jobs.length} sources…',
+    );
+
+    var completed = 0;
+    for (final job in jobs) {
+      if (isStale?.call() == true) break;
+      final batch = await job;
+      if (isStale?.call() == true) break;
+      completed++;
+      final fresh = <_StreamedStreamChoice>[];
+      for (final choice in batch) {
+        final url = choice.stream.embedUrl.trim();
+        if (url.isEmpty || !seenUrls.add(url)) continue;
+        out.add(choice);
+        fresh.add(choice);
+      }
+      if (fresh.isNotEmpty) onPartial?.call(fresh);
+      if (completed == jobs.length) {
+        onProgress?.call('Building stream list…');
       }
     }
 

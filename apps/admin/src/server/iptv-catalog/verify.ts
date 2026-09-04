@@ -322,8 +322,8 @@ async function verifyXtreamPortal(
       (root.server_info as Record<string, unknown> | undefined) ?? {}
     const auth = String(info.auth ?? '')
     const status = String(info.status ?? '').toLowerCase()
-    const alive =
-      auth === '1' || status === 'active' || root.user_info != null
+    // Match Forja / Rust: user_info alone is not alive (Banned/Expired often still return it).
+    const alive = auth === '1' || status === 'active'
 
     const categoryNames: string[] = []
     if (alive) {

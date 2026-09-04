@@ -342,6 +342,101 @@ class VerifiedPortal {
       expiry == other.expiry &&
       maxConnections == other.maxConnections &&
       activeConnections == other.activeConnections;
+
+  /// Build from a successful [PortalProbeResult].
+  factory VerifiedPortal.fromProbe(IptvPortal p, PortalProbeResult probe) =>
+      VerifiedPortal(
+        portal: p,
+        name: probe.accountName.isNotEmpty ? probe.accountName : p.username,
+        expiry: probe.expiry.isNotEmpty
+            ? probe.expiry
+            : IptvPortalExpiry.format(null),
+        maxConnections: probe.maxConnections.isNotEmpty
+            ? probe.maxConnections
+            : '1',
+        activeConnections: probe.activeConnections.isNotEmpty
+            ? probe.activeConnections
+            : '0',
+      );
+}
+
+/// Xtream `server_info` fields useful for the portal detail card.
+class PortalServerInfo {
+  final String protocol;
+  final String port;
+  final String httpsPort;
+  final String rtmpPort;
+  final String timezone;
+  final String url;
+
+  const PortalServerInfo({
+    this.protocol = '',
+    this.port = '',
+    this.httpsPort = '',
+    this.rtmpPort = '',
+    this.timezone = '',
+    this.url = '',
+  });
+
+  bool get isEmpty =>
+      protocol.isEmpty &&
+      port.isEmpty &&
+      httpsPort.isEmpty &&
+      rtmpPort.isEmpty &&
+      timezone.isEmpty &&
+      url.isEmpty;
+
+  factory PortalServerInfo.fromJson(Map<String, dynamic>? j) {
+    if (j == null) return const PortalServerInfo();
+    return PortalServerInfo(
+      protocol: j['protocol']?.toString() ?? '',
+      port: j['port']?.toString() ?? '',
+      httpsPort: j['https_port']?.toString() ?? '',
+      rtmpPort: j['rtmp_port']?.toString() ?? '',
+      timezone: j['timezone']?.toString() ?? '',
+      url: j['url']?.toString() ?? '',
+    );
+  }
+}
+
+/// Full result of a portal health/login probe (alive or structured fail).
+class PortalProbeResult {
+  final bool alive;
+  /// Panel `user_info.status` (Active / Banned / Expired / …).
+  final String accountStatus;
+  final String message;
+  /// `auth` | `transport` | empty when alive.
+  final String errorKind;
+  final String accountName;
+  final String expiry;
+  final String maxConnections;
+  final String activeConnections;
+  final PortalServerInfo server;
+
+  const PortalProbeResult({
+    required this.alive,
+    this.accountStatus = '',
+    this.message = '',
+    this.errorKind = '',
+    this.accountName = '',
+    this.expiry = '',
+    this.maxConnections = '',
+    this.activeConnections = '',
+    this.server = const PortalServerInfo(),
+  });
+
+  /// Short label for the detail card status line.
+  String get statusLabel {
+    if (alive) {
+      final s = accountStatus.trim();
+      return s.isNotEmpty ? s : 'Active';
+    }
+    final s = accountStatus.trim();
+    if (s.isNotEmpty) return s;
+    if (errorKind == 'auth') return 'Login failed';
+    if (errorKind == 'transport') return 'Unreachable';
+    return 'Dead';
+  }
 }
 
 class IptvCategory {

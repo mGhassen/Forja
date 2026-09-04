@@ -167,8 +167,8 @@ class LiveGoatUnlock {
       if (unlocked != null) return unlocked;
     }
 
-    // Non-GOAT qualities (e.g. sigma) — stream-lock.wasm. wfty.st opens
-    // direct (no CDN probe hang that motivated skipping this path earlier).
+    // Non-GOAT qualities (e.g. sigma) — stream-lock.wasm → `wfty.st`
+    // (playback via /hls-proxy + sportsembed Referer; do not Dart-probe).
     return resolveSportsEmbed(embedUrl: embed);
   }
 
@@ -211,11 +211,13 @@ class LiveGoatUnlock {
         result,
         playbackHeadersForSportsEmbed(slot),
       );
-      // WatchFooty `lb*.wfty.st` rows are signed direct-playback URLs. A
-      // second GET probe often times out or 500s even though Exo/MediaKit can
-      // open them with the right Referer, so only probe non-direct rows here.
-      if (!preferDirectEnginePlayback(result) &&
-          !await _probePlayableM3u8(result, headers)) {
+      // WatchFooty `lb*.wfty.st` is path-signed — Dart GET often 403s even when
+      // MediaKit + sportsembed Referer (via /hls-proxy) can play. Never probe it
+      // away: preferDirect is false for wfty so playback stays on the proxy path.
+      final host = Uri.tryParse(result)?.host.toLowerCase() ?? '';
+      final skipProbe = host.contains('wfty.st') ||
+          preferDirectEnginePlayback(result);
+      if (!skipProbe && !await _probePlayableM3u8(result, headers)) {
         debugPrint(
           '[LiveSportsEmbed] CDN m3u8 not playable '
           '${Uri.tryParse(result)?.host ?? result}',

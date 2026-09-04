@@ -132,10 +132,29 @@ async fn login(api: &str, timeout: Duration) -> Result<Value, String> {
         .get("user_info")
         .cloned()
         .unwrap_or_else(|| root.clone());
+    let server = root.get("server_info").cloned();
     if !xtream_user_auth_ok(&info) {
-        return Err("auth_failed".into());
+        // Ok(…) so Dart gets status/message/server_info — not bare `{"error":"auth_failed"}`.
+        let status = xtream_auth_field(&info, "status");
+        let message = xtream_auth_field(&info, "message");
+        let mut out = json!({
+            "error": "auth_failed",
+            "status": if status.is_empty() { "dead".to_string() } else { status },
+            "user_info": info,
+        });
+        if !message.is_empty() {
+            out["message"] = Value::String(message);
+        }
+        if let Some(s) = server {
+            out["server_info"] = s;
+        }
+        return Ok(out);
     }
-    Ok(json!({ "user_info": info }))
+    let mut out = json!({ "user_info": info });
+    if let Some(s) = server {
+        out["server_info"] = s;
+    }
+    Ok(out)
 }
 
 async fn catalog(api: &str, section: &str, timeout: Duration) -> Result<Value, String> {
@@ -346,5 +365,17 @@ mod tests {
             Err("auth_failed".into())
         );
         assert!(reject_xtream_auth_body("[]").is_ok());
+    }
+
+    #[test]
+    fn banned_status_is_not_ok() {
+        let info: Value = json!({ "auth": 0, "status": "Banned" });
+        assert!(!xtream_user_auth_ok(&info));
+    }
+
+    #[test]
+    fn expired_status_is_not_ok() {
+        let info: Value = json!({ "auth": 0, "status": "Expired" });
+        assert!(!xtream_user_auth_ok(&info));
     }
 }

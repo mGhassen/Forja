@@ -377,13 +377,24 @@ async fn verify_portal(
         .cloned()
         .unwrap_or_else(|| root.clone());
     let server = root.get("server_info").cloned().unwrap_or(json!({}));
-    let auth = info.get("auth").and_then(|v| v.as_str()).unwrap_or("");
+    let auth = info
+        .get("auth")
+        .map(|v| match v {
+            Value::String(s) => s.clone(),
+            Value::Number(n) => n.to_string(),
+            _ => v.to_string().trim_matches('"').to_string(),
+        })
+        .unwrap_or_default();
     let status = info
         .get("status")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
+        .map(|v| match v {
+            Value::String(s) => s.clone(),
+            _ => v.to_string().trim_matches('"').to_string(),
+        })
+        .unwrap_or_default()
         .to_lowercase();
-    let alive = auth == "1" || status == "active" || root.get("user_info").is_some();
+    // Match Forja / Rust xtream_client: user_info alone is not alive.
+    let alive = auth == "1" || status == "active";
 
     let mut category_names = Vec::new();
     if alive {
