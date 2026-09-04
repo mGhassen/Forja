@@ -35,15 +35,9 @@ abstract class LiveSportsPlayHost {
     List<_StreamedStreamChoice> choices,
   );
 
-  Future<void> openResolvedStreamChoice(
-    _StreamedStreamChoice choice, {
-    List<_StreamedStreamChoice>? allChoices,
-  });
+  Future<void> openResolvedStreamChoice(_StreamedStreamChoice choice);
 
-  Future<void> openPanelLiveEngineSource(
-    IptvPlaySource picked,
-    List<IptvPlaySource> all,
-  );
+  Future<void> openPanelLiveEngineSource(IptvPlaySource picked);
 
   int cardViewersForMatch(_StreamedMatch match);
 }
@@ -317,17 +311,14 @@ class _LiveMatchDetailsScreenState
       return;
     }
 
+    // Providers: play only the tapped row — never stuff sibling providers into
+    // the player failover list (WatchFooty must not silently become Streamed).
     if (picked.liveSourceKind == IptvLiveSourceKind.stremio) {
-      final ordered = <IptvPlaySource>[
-        picked,
-        for (final s in all)
-          if (!identical(s, picked) && s.url.trim() != picked.url.trim()) s,
-      ];
       unawaited(
         IptvPtPlayerScreen.open(
           context,
           IptvPtPlayerScreen(
-            sources: ordered,
+            sources: [picked],
             title: _displayMatch.title,
             subtitle: _displayMatch.categoryLabel,
             titleTracksSource: true,
@@ -342,10 +333,10 @@ class _LiveMatchDetailsScreenState
     if (picked.liveSourceKind == IptvLiveSourceKind.liveEngine) {
       final hit = host.choiceForPanelSource(picked, _choices);
       if (hit != null) {
-        unawaited(host.openResolvedStreamChoice(hit, allChoices: _choices));
+        unawaited(host.openResolvedStreamChoice(hit));
         return;
       }
-      unawaited(host.openPanelLiveEngineSource(picked, all));
+      unawaited(host.openPanelLiveEngineSource(picked));
       return;
     }
 

@@ -674,22 +674,15 @@ mixin _LiveMatchesPlayback
     return _isIframeCatalogMatch(choice.catalogMatch, choice.stream);
   }
 
-  Future<void> openResolvedStreamChoice(
-    _StreamedStreamChoice choice, {
-    List<_StreamedStreamChoice>? allChoices,
-  }) async {
-    await _openStreamedEmbed(
-      choice.catalogMatch,
-      choice.stream,
-      allChoices: allChoices,
-    );
+  Future<void> openResolvedStreamChoice(_StreamedStreamChoice choice) async {
+    await _openStreamedEmbed(choice.catalogMatch, choice.stream);
   }
 
   /// Panel row with resolve params but no `_choices` hit (Stremio mix / desync).
-  Future<void> openPanelLiveEngineSource(
-    IptvPlaySource picked,
-    List<IptvPlaySource> all,
-  ) async {
+  ///
+  /// Opens **only** [picked] — never sibling Providers as failover
+  /// (cross-provider rotate is movie-Sources-hostile).
+  Future<void> openPanelLiveEngineSource(IptvPlaySource picked) async {
     final url = picked.url.trim();
     final ready = iptvLiveEnginePlayUrlReady(url) ||
         (picked.liveEngineResolveParams == null &&
@@ -699,11 +692,7 @@ mixin _LiveMatchesPlayback
       await _openEngineNativeSources(
         title: picked.pickerTitle,
         subtitle: picked.pickerSubtitle ?? '',
-        sources: [
-          picked,
-          for (final s in all)
-            if (!identical(s, picked) && s.url.trim() != picked.url.trim()) s,
-        ],
+        sources: [picked],
       );
       return;
     }
@@ -720,22 +709,17 @@ mixin _LiveMatchesPlayback
     if (!ok) return;
     final handoff = resolved;
     final handoffUrl = handoff?.url.trim() ?? '';
-    final playable = handoff != null &&
-        (iptvLiveEnginePlayUrlReady(handoffUrl) ||
+    if (handoff == null ||
+        !(iptvLiveEnginePlayUrlReady(handoffUrl) ||
             handoffUrl.startsWith('http://') ||
-            handoffUrl.startsWith('https://'));
-    if (!playable) {
+            handoffUrl.startsWith('https://'))) {
       LiveMatchesEngine.engineResolveFailed();
       return;
     }
     await _openEngineNativeSources(
-      title: handoff!.pickerTitle,
+      title: handoff.pickerTitle,
       subtitle: handoff.pickerSubtitle ?? '',
-      sources: [
-        handoff,
-        for (final s in all)
-          if (!identical(s, picked) && s.url.trim() != picked.url.trim()) s,
-      ],
+      sources: [handoff],
     );
   }
 
@@ -1462,116 +1446,48 @@ mixin _LiveMatchesPlayback
     } catch (_) {}
   }
 
-  List<IptvPlaySource> _liveEngineCatalogSources(
-    List<_StreamedStreamChoice> candidates,
-  ) {
-    final sorted = [...candidates]
-      ..sort(
-        (a, b) => _effectiveStreamViewers(
-          b.stream,
-          b.catalogMatch,
-        ).compareTo(_effectiveStreamViewers(a.stream, a.catalogMatch)),
-      );
-    final out = <IptvPlaySource>[];
-    final seen = <String>{};
-    for (final choice in sorted) {
-      final source = _choiceToPanelSource(choice);
-      final key = source.url.trim().isNotEmpty
-          ? source.url.trim()
-          : '${choice.catalogMatch.livePluginId}:${choice.stream.source}:${choice.stream.id}:${choice.stream.streamNo}';
-      if (!seen.add(key)) continue;
-      out.add(source);
-    }
-    return out;
-  }
-
   Future<bool> _tryEngineStreamedOpen(
     _StreamedMatch match,
-    _StreamedStream stream, {
-    List<_StreamedStreamChoice>? allChoices,
-  }) async {
+    _StreamedStream stream,
+  ) async {
     if (!await LiveMatchesEngine.isEngineResolveMode()) {
       LiveMatchesEngine.engineResolveFailed();
       return false;
     }
 
-    final candidates = <_StreamedStreamChoice>[];
-    if (allChoices != null) {
-      candidates.addAll(allChoices);
-    }
-    if (candidates.isEmpty) {
-      candidates.add(
-        _StreamedStreamChoice(catalogMatch: match, stream: stream),
-      );
-    }
-
-    final pickedEmbed = stream.embedUrl.trim();
-    final pending =
-        'pending:${match.id}:${stream.id}:${stream.streamNo}';
-    final sources = _liveEngineCatalogSources(candidates);
-    final pickedIndex = sources.indexWhere((s) {
-      final embed = (s.liveEngineEmbedUrl ?? '').trim();
-      final url = s.url.trim();
-      if (pickedEmbed.isNotEmpty &&
-          (embed == pickedEmbed || url == pickedEmbed)) {
-        return true;
-      }
-      return url == pending;
-    });
+    // One Providers row → one player source. Do not pack sibling catalogs
+    // (Watchdog was rotating WatchFooty → Streamed on open fail).
     IptvPlaySource? resolvedPick;
     final ok = await _runWithCancellableLoading('Opening stream…', (
       setMessage,
     ) async {
       setMessage('Unlocking source…');
-      final picked = await _resolveStreamToEnginePlaySource(
+      resolvedPick = await _resolveStreamToEnginePlaySource(
         match,
         stream,
         onProgress: setMessage,
       );
-      if (picked == null) return;
-      resolvedPick = picked;
-      if (pickedIndex >= 0) {
-        sources[pickedIndex] = picked;
-        if (pickedIndex != 0) {
-          final active = sources.removeAt(pickedIndex);
-          sources.insert(0, active);
-        }
-      } else {
-        sources.insert(0, picked);
-      }
     });
     if (!ok) return true;
-    if (resolvedPick == null) {
+    final picked = resolvedPick;
+    if (picked == null) {
       LiveMatchesEngine.engineResolveFailed();
       return false;
-    }
-    if (sources.isEmpty) {
-      debugPrint(
-        '[LiveMatches] Engine resolve missed — no embed fallback '
-        '(${stream.source}/${stream.id})',
-      );
-      LiveMatchesEngine.engineResolveFailed();
-      return true;
     }
 
     await _openEngineNativeSources(
       title: match.title,
       subtitle: _streamPlaySubtitle(match, stream),
-      sources: sources,
+      sources: [picked],
     );
     return true;
   }
 
   Future<void> _openStreamedEmbed(
     _StreamedMatch match,
-    _StreamedStream stream, {
-    List<_StreamedStreamChoice>? allChoices,
-  }) async {
-    await _tryEngineStreamedOpen(
-      match,
-      stream,
-      allChoices: allChoices,
-    );
+    _StreamedStream stream,
+  ) async {
+    await _tryEngineStreamedOpen(match, stream);
   }
 
   Future<void> _openIframeCatalogStream(_IframeCatalogStream s) async {
