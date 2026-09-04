@@ -1009,7 +1009,25 @@ bool _sameIframeAndScheduleEvent(_IframeCatalogStream iframeCatalog, _StreamedMa
     title: streamed.title,
   );
   if (iframeTeams != null && streamedTeams != null) {
-    return iframeTeams == streamedTeams;
+    if (iframeTeams == streamedTeams) return true;
+  }
+  final (iframeHome, iframeAway) = resolveLiveMatchTeams(
+    homeTeam: iframeCatalog.homeTeam,
+    awayTeam: iframeCatalog.awayTeam,
+    title: iframeCatalog.name,
+  );
+  final (streamedHome, streamedAway) = resolveLiveMatchTeams(
+    homeTeam: streamed.homeTeam,
+    awayTeam: streamed.awayTeam,
+    title: streamed.title,
+  );
+  if (liveTeamPairSoftEqual(
+    iframeHome,
+    iframeAway,
+    streamedHome,
+    streamedAway,
+  )) {
+    return true;
   }
   final iframeTitle = _matchTextKey(iframeCatalog.name);
   final streamedTitle = _matchTextKey(streamed.title);
@@ -1281,6 +1299,12 @@ String? _streamedEventMergeBucketKey(_StreamedMatch m) {
   return 'n:$title';
 }
 
+bool _liveEventDatesCloseEnough(_StreamedMatch a, _StreamedMatch b) {
+  if (a.dateMs <= 0 || b.dateMs <= 0) return true;
+  final deltaMs = (a.dateMs - b.dateMs).abs();
+  return deltaMs <= const Duration(hours: 6).inMilliseconds;
+}
+
 /// Cross-catalog match for TV native picker (All card → Stremio addon event).
 bool _sameStreamedEvent(_StreamedMatch a, _StreamedMatch b) {
   if (a.isAlwaysOn || b.isAlwaysOn) return false;
@@ -1296,14 +1320,38 @@ bool _sameStreamedEvent(_StreamedMatch a, _StreamedMatch b) {
     title: b.title,
   );
   if (teamsA != null && teamsB != null && teamsA == teamsB) return true;
+
+  // Soft: PPV "Colorado Buffaloes at Georgia Tech Yellow Jackets" ↔
+  // Streamed "Georgia Tech vs Colorado" (mascot / short-name drift).
+  final (homeA, awayA) = resolveLiveMatchTeams(
+    homeTeam: a.homeTeam,
+    awayTeam: a.awayTeam,
+    title: a.title,
+  );
+  final (homeB, awayB) = resolveLiveMatchTeams(
+    homeTeam: b.homeTeam,
+    awayTeam: b.awayTeam,
+    title: b.title,
+  );
+  if (liveTeamPairSoftEqual(homeA, awayA, homeB, awayB) &&
+      _liveEventDatesCloseEnough(a, b)) {
+    return true;
+  }
+
   final titleA = _matchTextKey(a.title);
   final titleB = _matchTextKey(b.title);
   if (titleA.isEmpty || titleB.isEmpty || titleA != titleB) return false;
-  if (a.dateMs > 0 && b.dateMs > 0) {
-    final deltaMs = (a.dateMs - b.dateMs).abs();
-    if (deltaMs > const Duration(hours: 6).inMilliseconds) return false;
-  }
-  return true;
+  return _liveEventDatesCloseEnough(a, b);
+}
+
+bool _iframeCatalogTimesCloseEnough(
+  _IframeCatalogStream a,
+  _IframeCatalogStream b,
+) {
+  if (a.isAlwaysOn || b.isAlwaysOn) return true;
+  if (a.startsAt <= 0 || b.startsAt <= 0) return true;
+  final deltaSec = (a.startsAt - b.startsAt).abs();
+  return deltaSec <= const Duration(minutes: 30).inSeconds;
 }
 
 bool _sameIframeCatalogStream(_IframeCatalogStream a, _IframeCatalogStream b) {
@@ -1322,22 +1370,25 @@ bool _sameIframeCatalogStream(_IframeCatalogStream a, _IframeCatalogStream b) {
     title: b.name,
   );
   if (teamsA != null && teamsB != null && teamsA == teamsB) {
-    if (a.isAlwaysOn || b.isAlwaysOn) return true;
-    if (a.startsAt > 0 && b.startsAt > 0) {
-      final deltaSec = (a.startsAt - b.startsAt).abs();
-      if (deltaSec > const Duration(minutes: 30).inSeconds) return false;
-    }
-    return true;
+    return _iframeCatalogTimesCloseEnough(a, b);
+  }
+  final (homeA, awayA) = resolveLiveMatchTeams(
+    homeTeam: a.homeTeam,
+    awayTeam: a.awayTeam,
+    title: a.name,
+  );
+  final (homeB, awayB) = resolveLiveMatchTeams(
+    homeTeam: b.homeTeam,
+    awayTeam: b.awayTeam,
+    title: b.name,
+  );
+  if (liveTeamPairSoftEqual(homeA, awayA, homeB, awayB)) {
+    return _iframeCatalogTimesCloseEnough(a, b);
   }
   final titleA = _matchTextKey(a.name);
   final titleB = _matchTextKey(b.name);
   if (titleA.isEmpty || titleB.isEmpty || titleA != titleB) return false;
-  if (a.isAlwaysOn || b.isAlwaysOn) return true;
-  if (a.startsAt > 0 && b.startsAt > 0) {
-    final deltaSec = (a.startsAt - b.startsAt).abs();
-    if (deltaSec > const Duration(minutes: 30).inSeconds) return false;
-  }
-  return true;
+  return _iframeCatalogTimesCloseEnough(a, b);
 }
 
 String? _iframeCatalogMergeBucketKey(_IframeCatalogStream s) {

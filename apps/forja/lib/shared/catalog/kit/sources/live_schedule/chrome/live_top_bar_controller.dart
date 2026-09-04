@@ -164,10 +164,7 @@ mixin _LiveMatchesData
 
   String get _catalogTopBarLabel {
     final filter = _s._forjaLivePluginFilter;
-    if (filter.isEmpty || filter == 'all') {
-      return (this as _LiveMatchesForjaLive)._defaultForjaLiveCatalogLabel() ??
-          'Catalog';
-    }
+    if (filter.isEmpty || filter == 'all') return 'All';
     return (this as _LiveMatchesForjaLive)._forjaLivePluginLoadForFilter(filter)
             ?.label ??
         _liveForjaPluginDisplayName(filter);

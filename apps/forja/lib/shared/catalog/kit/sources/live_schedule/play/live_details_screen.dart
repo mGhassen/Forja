@@ -815,6 +815,8 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
   }
 
   Widget _wrapInlineHeroPanel(Widget child) {
+    // Soft edge fade — keep top opaque sooner so the scrim sits under the
+    // first stream-card row (was fading through ~16% and leaving them bare).
     Shader fadeMask(Rect bounds, Alignment begin, Alignment end) {
       return LinearGradient(
         begin: begin,
@@ -825,14 +827,21 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
           Color(0xFFFFFFFF),
           Color(0x00FFFFFF),
         ],
-        stops: const [0.0, 0.16, 0.84, 1.0],
+        stops: const [0.0, 0.06, 0.88, 1.0],
       ).createShader(bounds);
     }
 
     return Stack(
+      clipBehavior: Clip.none,
       fit: StackFit.expand,
       children: [
-        Positioned.fill(
+        // Lift scrim above the panel so it covers the gap under the tab row
+        // and sits behind the top stream cards.
+        Positioned(
+          left: 0,
+          right: 0,
+          top: -28,
+          bottom: 0,
           child: IgnorePointer(
             child: ShaderMask(
               blendMode: BlendMode.dstIn,

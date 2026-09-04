@@ -118,3 +118,85 @@ String sportNickFromTeam(String team) {
   }
   return bits.first;
 }
+
+/// Ordered tokens for soft team equality — keeps City/United/State (unlike IPTV keys).
+List<String> liveTeamMatchTokens(String raw) {
+  var value = foldLiveMatchLatin(raw.toLowerCase());
+  value = value
+      .replaceAll('&', ' and ')
+      .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+      .trim();
+  if (value.isEmpty) return const [];
+  return value
+      .split(RegExp(r'\s+'))
+      .where(
+        (token) =>
+            token.isNotEmpty &&
+            token != 'fc' &&
+            token != 'sc' &&
+            token != 'afc' &&
+            token != 'cf' &&
+            token != 'the',
+      )
+      .toList();
+}
+
+/// School / campus qualifiers — trailing extras that mean a *different* team.
+const liveTeamSchoolQualifiers = {
+  'state',
+  'university',
+  'univ',
+  'college',
+  'tech',
+  'am',
+  'a',
+  'm',
+};
+
+/// Soft team name match: exact tokens, or shorter is an ordered prefix of longer.
+///
+/// Allows `Colorado` ↔ `Colorado Buffaloes` and `Georgia Tech` ↔
+/// `Georgia Tech Yellow Jackets`, but rejects `Florida` ↔ `Florida State`
+/// and `Manchester City` ↔ `Manchester United`.
+bool liveTeamNamesSoftEqual(String a, String b) {
+  final ta = liveTeamMatchTokens(a);
+  final tb = liveTeamMatchTokens(b);
+  if (ta.isEmpty || tb.isEmpty) return false;
+  if (ta.length == tb.length) {
+    for (var i = 0; i < ta.length; i++) {
+      if (ta[i] != tb[i]) return false;
+    }
+    return true;
+  }
+  final short = ta.length < tb.length ? ta : tb;
+  final long = ta.length < tb.length ? tb : ta;
+  for (var i = 0; i < short.length; i++) {
+    if (short[i] != long[i]) return false;
+  }
+  final trailing = long.sublist(short.length);
+  if (trailing.isEmpty) return true;
+  // Multi-token short (Georgia Tech) — trailing nicknames are fine.
+  if (short.length >= 2) {
+    return trailing.every((t) => t.length >= 2);
+  }
+  // Single-token short (Colorado / Florida): allow mascot suffixes only —
+  // reject school qualifiers that mint a different program.
+  if (trailing.any(liveTeamSchoolQualifiers.contains)) return false;
+  return trailing.every((t) => t.length >= 3);
+}
+
+/// Order-independent fixture pair: (homeA,awayA) soft-matches (homeB,awayB).
+bool liveTeamPairSoftEqual(
+  String homeA,
+  String awayA,
+  String homeB,
+  String awayB,
+) {
+  if (homeA.isEmpty || awayA.isEmpty || homeB.isEmpty || awayB.isEmpty) {
+    return false;
+  }
+  return (liveTeamNamesSoftEqual(homeA, homeB) &&
+          liveTeamNamesSoftEqual(awayA, awayB)) ||
+      (liveTeamNamesSoftEqual(homeA, awayB) &&
+          liveTeamNamesSoftEqual(awayA, homeB));
+}

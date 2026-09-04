@@ -75,4 +75,42 @@ void main() {
       expect(sportNickFromTeam('Manchester United'), 'Manchester');
     });
   });
+
+  group('liveTeamNamesSoftEqual', () {
+    test('matches mascot long form to short form', () {
+      expect(
+        liveTeamNamesSoftEqual('Colorado', 'Colorado Buffaloes'),
+        isTrue,
+      );
+      expect(
+        liveTeamNamesSoftEqual(
+          'Georgia Tech',
+          'Georgia Tech Yellow Jackets',
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects different schools that share a prefix', () {
+      expect(liveTeamNamesSoftEqual('Florida', 'Florida State'), isFalse);
+      expect(liveTeamNamesSoftEqual('Georgia', 'Georgia Tech'), isFalse);
+      expect(
+        liveTeamNamesSoftEqual('Manchester City', 'Manchester United'),
+        isFalse,
+      );
+    });
+
+    test('PPV at-home soft-matches Streamed vs for CFB mascots', () {
+      final ppv = parseLiveMatchTeamsFromTitle(
+        'Colorado Buffaloes at Georgia Tech Yellow Jackets',
+      );
+      final streamed = parseLiveMatchTeamsFromTitle(
+        'Georgia Tech vs Colorado',
+      );
+      expect(
+        liveTeamPairSoftEqual(ppv.$1, ppv.$2, streamed.$1, streamed.$2),
+        isTrue,
+      );
+    });
+  });
 }

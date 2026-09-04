@@ -100,33 +100,19 @@ mixin _LiveMatchesForjaLive
 
   Iterable<_ForjaLivePluginLoad> get _gridScopedPluginLoads {
     final filter = _activeForjaLiveCatalogFilter;
-    if (filter.isEmpty) return const [];
+    if (filter == 'all' || filter.isEmpty) {
+      return _s._forjaLivePluginLoads.values;
+    }
     return _s._forjaLivePluginLoads.values.where(
       (e) => _catalogFilterMatches(e.pluginId, filter),
     );
   }
 
-  /// Selected catalog only — no merged "All" grid.
+  /// `'all'` = merged grid of every enabled catalog; else one catalog chip.
   String get _activeForjaLiveCatalogFilter {
     final raw = _s._forjaLivePluginFilter;
-    if (raw.isEmpty || raw == 'all') {
-      return _defaultForjaLiveCatalogFilterKey() ?? '';
-    }
+    if (raw.isEmpty || raw == 'all') return 'all';
     return _canonicalForjaLivePluginFilterKey(raw) ?? raw;
-  }
-
-  String? _defaultForjaLiveCatalogFilterKey() {
-    if (_s._forjaLivePluginLoads.isEmpty) return null;
-    final sorted = _s._forjaLivePluginLoads.values.toList()
-      ..sort((a, b) => a.label.compareTo(b.label));
-    return sorted.first.pluginId;
-  }
-
-  String? _defaultForjaLiveCatalogLabel() {
-    final key = _defaultForjaLiveCatalogFilterKey();
-    if (key == null) return null;
-    return _s._forjaLivePluginLoads[key]?.label ??
-        _liveForjaPluginDisplayName(key);
   }
 
   bool get _forjaLiveAnyLoading => _gridScopedPluginLoads.any((e) => e.loading);
@@ -220,12 +206,11 @@ mixin _LiveMatchesForjaLive
   List<_StreamedMatch> _catalogScopedStreamedMatches() {
     final raw =
         (this as _LiveMatchesData)._streamedMatchesSportAndTimeFiltered();
-    if (!_showForjaLiveCatalogChrome) {
+    if (!_showForjaLiveCatalogChrome ||
+        _activeForjaLiveCatalogFilter == 'all') {
       return _mergeStreamedCatalogRows(_sortStreamedLiveFirst(raw));
     }
-    final filter = _activeForjaLiveCatalogFilter;
-    if (filter.isEmpty) return const [];
-    return _streamedMatchesForCatalogGrid(raw, filter);
+    return _streamedMatchesForCatalogGrid(raw, _activeForjaLiveCatalogFilter);
   }
 
   List<_StreamedMatch> get _displayStreamedMatches {
@@ -236,16 +221,14 @@ mixin _LiveMatchesForjaLive
 
   ({List<_IframeCatalogStream> iframeCatalog, List<_StreamedMatch> streamed})
   _catalogFilteredGridSources() {
-    if (!_showForjaLiveCatalogChrome) {
+    if (!_showForjaLiveCatalogChrome ||
+        _activeForjaLiveCatalogFilter == 'all') {
       return (
         iframeCatalog: (this as _LiveMatchesData)._filteredIframeCatalog,
         streamed: (this as _LiveMatchesData)._filteredStreamed,
       );
     }
     final filter = _activeForjaLiveCatalogFilter;
-    if (filter.isEmpty) {
-      return (iframeCatalog: const [], streamed: const []);
-    }
     if (!_isStremioCatalogFilter(filter) &&
         LiveMatchesEngine.cachedIsIframeCatalog(filter)) {
       return (
@@ -259,13 +242,11 @@ mixin _LiveMatchesForjaLive
   /// Same catalog scope as the grid, but without the active sport-chip filter.
   ({List<_IframeCatalogStream> iframeCatalog, List<_StreamedMatch> streamed})
   _catalogSourcesForSportTabs() {
-    if (!_showForjaLiveCatalogChrome) {
+    if (!_showForjaLiveCatalogChrome ||
+        _activeForjaLiveCatalogFilter == 'all') {
       return (iframeCatalog: _s._iframeCatalogStreams, streamed: _s._streamedMatches);
     }
     final filter = _activeForjaLiveCatalogFilter;
-    if (filter.isEmpty) {
-      return (iframeCatalog: const [], streamed: const []);
-    }
     if (!_isStremioCatalogFilter(filter) &&
         LiveMatchesEngine.cachedIsIframeCatalog(filter)) {
       return (iframeCatalog: _s._iframeCatalogStreams, streamed: []);
@@ -331,7 +312,7 @@ mixin _LiveMatchesForjaLive
     final saved = prefs.getString(
       LiveSportsHubPageState._forjaLiveCatalogFilterPreferenceKey,
     );
-    if (saved == null || saved.isEmpty || saved == 'all') return;
+    if (saved == null || saved.isEmpty) return;
     if (!mounted) return;
     setState(() => _s._forjaLivePluginFilter = saved);
   }
@@ -618,24 +599,18 @@ mixin _LiveMatchesForjaLive
   }
 
   void _ensureForjaLivePluginFilterValid() {
-    if (_s._forjaLivePluginLoads.isEmpty) return;
-    final defaultKey = _defaultForjaLiveCatalogFilterKey();
-    if (defaultKey == null) return;
-
-    final raw = _s._forjaLivePluginFilter;
-    if (raw.isEmpty || raw == 'all') {
-      if (raw != defaultKey) {
-        setState(() => _s._forjaLivePluginFilter = defaultKey);
-        unawaited(_persistForjaLiveCatalogFilterPreference(defaultKey));
+    if (_s._forjaLivePluginFilter == 'all' ||
+        _s._forjaLivePluginFilter.isEmpty) {
+      if (_s._forjaLivePluginFilter.isEmpty) {
+        setState(() => _s._forjaLivePluginFilter = 'all');
+        unawaited(_persistForjaLiveCatalogFilterPreference('all'));
       }
       return;
     }
-
-    final canonical = _canonicalForjaLivePluginFilterKey(raw);
+    final canonical =
+        _canonicalForjaLivePluginFilterKey(_s._forjaLivePluginFilter);
     if (canonical == null) {
-      if (_s._forjaLivePluginFilter != defaultKey) {
-        _setForjaLivePluginFilter(defaultKey);
-      }
+      _setForjaLivePluginFilter('all');
       return;
     }
     if (canonical != _s._forjaLivePluginFilter) {
@@ -701,6 +676,7 @@ mixin _LiveMatchesForjaLive
 
   bool _shouldRunScheduleEnrichMerge() {
     final filter = _activeForjaLiveCatalogFilter;
+    if (filter == 'all') return true;
     if (filter.isEmpty || _isStremioCatalogFilter(filter)) return false;
     return LiveMatchesEngine.cachedIsScheduleEnrichCatalog(filter);
   }
@@ -836,14 +812,13 @@ mixin _LiveMatchesForjaLive
     return true;
   }
 
-  /// Only the selected catalog chip (engine packs — Stremio loads separately).
+  /// Selected catalog chip, or every engine catalog when chip is All.
+  /// Stremio addon rows load separately via [_loadOneStremioCatalog].
   List<EnginePlugin> _forjaLiveCatalogsToLoad(
     List<EnginePlugin> catalogPlugins,
   ) {
     final gridFilter = _activeForjaLiveCatalogFilter;
-    if (gridFilter.isEmpty || _isStremioCatalogFilter(gridFilter)) {
-      return const [];
-    }
+    if (_isStremioCatalogFilter(gridFilter)) return const [];
     final out = <EnginePlugin>[];
     for (final catalog in catalogPlugins) {
       final filterId = EngineService.catalogFilterId(catalog);
@@ -853,6 +828,16 @@ mixin _LiveMatchesForjaLive
       out.add(catalog);
     }
     return out;
+  }
+
+  List<String> _pendingStremioCatalogFilterIds() {
+    return [
+      for (final e in _s._forjaLivePluginLoads.entries)
+        if (_isStremioCatalogFilter(e.key) &&
+            !e.value.attempted &&
+            !e.value.loading)
+          e.key,
+    ];
   }
 
   Future<void> _loadOneForjaLiveCatalog({
@@ -1172,14 +1157,18 @@ mixin _LiveMatchesForjaLive
         return;
       }
 
-      if (catalogPlugins.isEmpty) {
+      final loadAll = filter == 'all';
+      final stremioPending =
+          loadAll ? _pendingStremioCatalogFilterIds() : const <String>[];
+
+      if (catalogPlugins.isEmpty && stremioPending.isEmpty) {
         _setForjaLiveCatalogHydrating(false);
         await _applyScheduleEnrichMerge();
         return;
       }
 
       final toLoad = _forjaLiveCatalogsToLoad(catalogPlugins);
-      if (toLoad.isEmpty) {
+      if (toLoad.isEmpty && stremioPending.isEmpty) {
         await _applyScheduleEnrichMerge();
         if (mounted && gen == _s._forjaLiveLoadGen) {
           _syncCatalogHydratingState();
@@ -1197,27 +1186,40 @@ mixin _LiveMatchesForjaLive
             _s._forjaLivePluginLoads[filterId] =
                 row.copyWith(loading: true);
           }
+          for (final id in stremioPending) {
+            final row = _s._forjaLivePluginLoads[id];
+            if (row == null || row.loading || row.attempted) continue;
+            _s._forjaLivePluginLoads[id] = row.copyWith(loading: true);
+          }
           _syncCatalogHydratingState();
         });
       }
 
-      var pending = toLoad.length;
+      var pending = toLoad.length + stremioPending.length;
+      void onOneDone() {
+        if (!mounted || gen != _s._forjaLiveLoadGen) return;
+        pending--;
+        if (pending > 0) return;
+        _ensureForjaLivePluginFilterValid();
+        unawaited(_applyScheduleEnrichMerge());
+        if (mounted && gen == _s._forjaLiveLoadGen) {
+          _rebuildSportTabsFromCurrentMatches();
+          _syncCatalogHydratingState();
+          _kickStreamedViewerHydration(_s._streamedMatches, gen);
+          (this as _LiveMatchesData)
+              ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
+        }
+      }
+
       for (final catalog in toLoad) {
         unawaited(
-          _loadOneForjaLiveCatalog(catalog: catalog, gen: gen).whenComplete(() {
-            if (!mounted || gen != _s._forjaLiveLoadGen) return;
-            pending--;
-            if (pending > 0) return;
-            _ensureForjaLivePluginFilterValid();
-            unawaited(_applyScheduleEnrichMerge());
-            if (mounted && gen == _s._forjaLiveLoadGen) {
-              _rebuildSportTabsFromCurrentMatches();
-              _syncCatalogHydratingState();
-              _kickStreamedViewerHydration(_s._streamedMatches, gen);
-              (this as _LiveMatchesData)
-                  ._scheduleRestoreRefreshFocus(clearWhenSettled: true);
-            }
-          }),
+          _loadOneForjaLiveCatalog(catalog: catalog, gen: gen)
+              .whenComplete(onOneDone),
+        );
+      }
+      for (final id in stremioPending) {
+        unawaited(
+          _loadOneStremioCatalog(filterId: id, gen: gen).whenComplete(onOneDone),
         );
       }
     } catch (_) {
@@ -1232,7 +1234,11 @@ mixin _LiveMatchesForjaLive
     if (!_usesForjaLiveLazyCatalog) return false;
     if (_s._forjaLivePluginLoads.isEmpty) return true;
     final filter = _activeForjaLiveCatalogFilter;
-    if (filter.isEmpty) return true;
+    if (filter == 'all' || filter.isEmpty) {
+      return _s._forjaLivePluginLoads.values.any(
+        (e) => !e.attempted && !e.loading,
+      );
+    }
     final load = _forjaLivePluginLoadForFilter(filter);
     return load == null || (!load.attempted && !load.loading);
   }

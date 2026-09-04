@@ -159,7 +159,7 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
   String? _lastSyncedIptvPortalKey;
   int _forjaLiveLoadGen = 0;
   int _iptvSportsPlayGen = 0;
-  String _forjaLivePluginFilter = '';
+  String _forjaLivePluginFilter = 'all';
   Map<String, _ForjaLivePluginLoad> _forjaLivePluginLoads = {};
   /// Lazy catalog scrape in flight (before plugin rows mark `loading`).
   bool _forjaLiveCatalogHydrating = false;
@@ -365,7 +365,7 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
       await forja._ensureStremioCatalogLoadsRegistered();
       if (!mounted) return;
       final filter = forja._activeForjaLiveCatalogFilter;
-      if (_isStremioCatalogFilter(filter)) {
+      if (filter == 'all' || _isStremioCatalogFilter(filter)) {
         forja._kickForjaLiveLazyCatalog(replace: true);
       }
     }());

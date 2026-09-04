@@ -241,6 +241,7 @@ class _LiveMatchesCatalogSheetState extends State<_LiveMatchesCatalogSheet> {
   @override
   Widget build(BuildContext context) {
     final options = <({String id, String label, String? subtitle})>[
+      (id: 'all', label: 'All', subtitle: 'Every enabled catalog'),
       for (final c in widget.catalogs)
         (
           id: c.pluginId,
@@ -252,6 +253,8 @@ class _LiveMatchesCatalogSheetState extends State<_LiveMatchesCatalogSheet> {
                   : (_isStremioCatalogFilter(c.pluginId) ? 'Stremio' : null),
         ),
     ];
+    final selectedId =
+        widget.current.isEmpty || widget.current == 'all' ? 'all' : widget.current;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.7;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final body = Padding(
@@ -293,7 +296,7 @@ class _LiveMatchesCatalogSheetState extends State<_LiveMatchesCatalogSheet> {
                   id: options[i].id,
                   label: options[i].label,
                   subtitle: options[i].subtitle,
-                  selected: options[i].id == widget.current,
+                  selected: options[i].id == selectedId,
                   onSelected: widget.onSelected,
                   tvItemIndex: i,
                   tvRowId: _rowId,
@@ -362,7 +365,9 @@ class _LiveMatchesCatalogSheetOptionState
 
     final tile = ListTile(
       leading: Icon(
-        Icons.video_library_rounded,
+        widget.id == 'all'
+            ? Icons.grid_view_rounded
+            : Icons.video_library_rounded,
         color: widget.selected
             ? ForjaShellColors.sectionAccent
             : Colors.white54,

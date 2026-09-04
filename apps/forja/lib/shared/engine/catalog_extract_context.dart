@@ -46,7 +46,12 @@ EngineExtractContext _mergeEpisodeIntoCtx(
 ) {
   final ctx = Map<String, dynamic>.from(spec.ctx);
   final epVid = (episodeVideoId ?? '').trim();
-  if (epVid.isNotEmpty) ctx['episodeVideoId'] = epVid;
+  if (epVid.isNotEmpty) {
+    ctx['episodeVideoId'] = epVid;
+    // Episode playable id wins over show-level open.extract.ctx.videoId.
+    // Providers (e.g. arabic) map config.videoId ← ctx.videoId via ctxConfigMap.
+    ctx['videoId'] = epVid;
+  }
   if (episode != null && episode > 0) {
     ctx.putIfAbsent('episode', () => episode);
   }
