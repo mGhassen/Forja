@@ -29,6 +29,7 @@ class PlayerTvKeyScope extends StatefulWidget {
     required this.onToggleControls,
     required this.onFocusBack,
     required this.onFocusPlay,
+    required this.onClaimPlayFocus,
     this.onControlsActivity,
     required this.child,
   });
@@ -48,6 +49,10 @@ class PlayerTvKeyScope extends StatefulWidget {
   final VoidCallback onFocusBack;
   /// D-pad ↓ while chrome is not focused — show chrome and focus Play.
   final VoidCallback onFocusPlay;
+  /// Chrome already visible but focus fell on the video key node / was lost —
+  /// reclaim Play only. Must not restart the idle-hide timer (Play icon rebuilds
+  /// otherwise keep chrome stuck forever).
+  final VoidCallback onClaimPlayFocus;
   /// Fired on D-pad / remote keys while chrome is visible so auto-hide can
   /// restart from idle (focus traversal alone does not touch the timer).
   final VoidCallback? onControlsActivity;
@@ -113,8 +118,9 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     });
   }
 
-  /// Chrome visible + empty / video-key focus → Play. Chrome hidden + empty →
-  /// video key node (seek / OK still work after idle hide).
+  /// Chrome visible + empty / video-key focus → Play (reclaim only — do not
+  /// go through [onFocusPlay], which restarts idle hide). Chrome hidden +
+  /// empty → video key node (seek / OK still work after idle hide).
   void _ensureFocus() {
     if (!mounted || !widget.enabled) return;
     // Menus own D-pad — never steal Play; if a refresh dropped focus out of
@@ -127,7 +133,7 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     final lost = primary == null || !primary.hasFocus;
     if (widget.showControls) {
       if (lost || identical(primary, widget.focusNode)) {
-        widget.onFocusPlay();
+        widget.onClaimPlayFocus();
       }
       return;
     }

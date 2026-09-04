@@ -2481,6 +2481,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         _revealChrome();
         _claimPlayFocus();
       },
+      onClaimPlayFocus: _claimPlayFocus,
       onControlsActivity: _syncChromeHideTimer,
       child: body,
     );

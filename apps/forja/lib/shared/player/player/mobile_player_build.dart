@@ -305,6 +305,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
         _s._startHideTimer();
         _s._claimPlayFocus();
       },
+      onClaimPlayFocus: _s._claimPlayFocus,
       onControlsActivity: _s._startHideTimer,
       child: body,
     );
@@ -906,33 +907,38 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ValueListenableBuilder<bool>(
-                valueListenable: _s._isPlayingNotifier,
-                builder: (context, playing, _) => ordered(
-                  3,
-                  PlayerFlatIconButton(
-                  tvFocusable: true,
-                  focusNode: _s._playFocus,
-                  onUpEdge: () {
-                    if (_s._seekbarFocus.canRequestFocus) {
-                      _s._seekbarFocus.requestFocus();
-                    }
-                  },
-                  onRightEdge: () {
-                    if (_s._rewindFocus.canRequestFocus) {
-                      _s._rewindFocus.requestFocus();
-                    }
-                  },
-                  icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  size: btnSize,
-                  iconSize: iconSz,
-                  onPressed: () {
-                    playing ? _s._player.pause() : _s._player.play();
-                    _s._syncChromeHideTimer();
-                  },
+              // Keep FocusTraversalOrder outside the listenable so Play's focus
+              // host is not recreated when the icon flips (recreate → focus
+              // falls to the video key node → idle hide was restarted forever).
+              ordered(
+                3,
+                ValueListenableBuilder<bool>(
+                  valueListenable: _s._isPlayingNotifier,
+                  builder: (context, playing, _) => PlayerFlatIconButton(
+                    tvFocusable: true,
+                    focusNode: _s._playFocus,
+                    onUpEdge: () {
+                      if (_s._seekbarFocus.canRequestFocus) {
+                        _s._seekbarFocus.requestFocus();
+                      }
+                    },
+                    onRightEdge: () {
+                      if (_s._rewindFocus.canRequestFocus) {
+                        _s._rewindFocus.requestFocus();
+                      }
+                    },
+                    icon: playing
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded,
+                    size: btnSize,
+                    iconSize: iconSz,
+                    onPressed: () {
+                      playing ? _s._player.pause() : _s._player.play();
+                      _s._syncChromeHideTimer();
+                    },
+                  ),
                 ),
               ),
-            ),
             const SizedBox(width: 2),
             _s._buildTransportBackButton(
               btnSize: btnSize,

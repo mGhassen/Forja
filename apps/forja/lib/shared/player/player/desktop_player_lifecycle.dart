@@ -25,6 +25,15 @@ mixin _DesktopPlayerLifecycle
   @override
   void initState() {
     super.initState();
+    PlayerBackExitGate.setTryFocusBack(() {
+      if (!mounted || _s._disposed) return false;
+      return PlayerBackExitGate.consumeChromeOrArmExit(
+        chromeVisible: _s._showControls,
+        armed: _s._escapeExitArmed,
+        hideChrome: () => _s._hideChromeIntentional(),
+        setArmed: (v) => _s._escapeExitArmed = v,
+      );
+    });
     _s._ownedProviderSourcesCache =
         ValueNotifier<Map<String, List<StreamSource>>>({});
 

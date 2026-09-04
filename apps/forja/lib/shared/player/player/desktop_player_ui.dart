@@ -29,6 +29,17 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     _syncChromeHideTimer();
   }
 
+  /// Hide chrome and block hover re-show briefly (cursor-none + MouseRegion
+  /// rebuild otherwise re-fires [onHover] and leaves chrome stuck visible).
+  void _hideChromeIntentional() {
+    _s._hideTimer?.cancel();
+    _s._suppressChromeRevealUntil =
+        DateTime.now().add(const Duration(milliseconds: 450));
+    _s._lastHoverPos = null;
+    if (!_s._showControls) return;
+    setState(() => _s._showControls = false);
+  }
+
   void _syncChromeHideTimer() {
     if (!_s._showControls) {
       _s._hideTimer?.cancel();
@@ -57,12 +68,25 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
           _s._playbackConfirmed &&
           !_s._isInitPlaybackRunning &&
           !_s._statusBlocksControlsHide) {
-        setState(() => _s._showControls = false);
+        _hideChromeIntentional();
       }
     });
   }
 
+  /// Real pointer motion over the video — ignore zero-delta / suppressed hovers.
+  void _onPointerHover(PointerHoverEvent event) {
+    final until = _s._suppressChromeRevealUntil;
+    if (until != null && DateTime.now().isBefore(until)) return;
+    final pos = event.position;
+    final last = _s._lastHoverPos;
+    if (last != null && (last - pos).distanceSquared < 0.25) return;
+    _s._lastHoverPos = pos;
+    _revealChrome();
+  }
+
   void _onMouseMove() {
+    // Tap / key / chrome button — always show.
+    _s._suppressChromeRevealUntil = null;
     _revealChrome();
   }
 
@@ -155,6 +179,14 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       return true;
     }
 
+    // Escape: panels → hide chrome / arm → confirm exit. Do not reveal chrome.
+    if (key == LogicalKeyboardKey.escape) {
+      if (dismissAnyPlayerChromeOverlay()) return true;
+      if (PlayerBackExitGate.tryFocusBackStay()) return true;
+      unawaited(_exitPlayer());
+      return true;
+    }
+
     _onMouseMove();
 
     if (key == LogicalKeyboardKey.arrowLeft) {
@@ -181,8 +213,6 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       _s._player.setVolume(_s._volumeNotifier.value > 0 ? 0.0 : 100.0);
     } else if (key == LogicalKeyboardKey.keyF) {
       _toggleFullscreen();
-    } else if (key == LogicalKeyboardKey.escape) {
-      unawaited(_exitPlayer());
     } else if (key == LogicalKeyboardKey.keyL) {
       _s._toggleLoop();
     } else {

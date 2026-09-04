@@ -196,6 +196,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
       },
       onFocusBack: _s._showChromeAndFocusBack,
       onFocusPlay: _s._showChromeAndFocusPlay,
+      onClaimPlayFocus: _s._claimPlayFocus,
       onControlsActivity: _s._startHideTimer,
       child: body,
     );

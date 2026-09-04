@@ -3,11 +3,13 @@ import 'dart:io' show Platform;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/navigation/desktop_swipe_back_indicator.dart';
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shared/navigation/navigation_back_handler.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
+import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 
@@ -239,6 +241,13 @@ class _BackNavigationScopeState extends State<BackNavigationScope>
     if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
       ShellTvFocusCoordinator.handleShellExitKey();
       return;
+    }
+    // Escape while the player is up: dismiss panels, then hide chrome / arm,
+    // then leave on the confirming press. Mouse Back / UI Back still exit
+    // immediately via [_onBack].
+    if (ShellBus.playerSurfaceActive.value) {
+      if (dismissAnyPlayerChromeOverlay()) return;
+      if (PlayerBackExitGate.tryFocusBackStay()) return;
     }
     _onBack();
   }

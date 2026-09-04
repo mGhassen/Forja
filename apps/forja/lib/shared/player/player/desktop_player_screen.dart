@@ -65,6 +65,7 @@ import 'package:forja/shared/player/controls/player_audio_menu.dart';
 import 'package:forja/shared/player/controls/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/player_back_exit_gate.dart';
 import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_hooks.dart';
@@ -192,6 +193,9 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   /// Guards re-entrant Escape / Back while [_exitPlayer] awaits stop.
   bool _exitInProgress = false;
+
+  /// First Escape hid chrome (or armed while hidden) — next Escape exits.
+  bool _escapeExitArmed = false;
   int _fallbackGen = 0;
   final Map<String, int> _providerLoadGens = {};
   final ValueNotifier<Set<String>> _providerLoadFailures =
@@ -205,6 +209,12 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;
   Timer? _hideTimer;
+
+  /// After Escape / auto-hide, ignore synthetic MouseRegion hover that fires
+  /// when the cursor flips to [SystemMouseCursors.none] (chrome would snap back).
+  DateTime? _suppressChromeRevealUntil;
+  Offset? _lastHoverPos;
+
   bool _showTorrentStatsOverlay = false;
   StreamSubscription<TorrentStats>? _torrentStatsSub;
   TorrentStats? _torrentStats;
@@ -542,6 +552,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     _saveWatchHistory();
 
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
+    PlayerBackExitGate.setTryFocusBack(null);
     windowManager.removeListener(this);
     WidgetsBinding.instance.removeObserver(this);
     playerChromeOnOverlayDismissed = null;

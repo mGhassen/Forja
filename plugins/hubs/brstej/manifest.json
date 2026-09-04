@@ -4,7 +4,7 @@
   "name": "ForjaHQ Brstej",
   "description": "Brstej Arabic series hub.",
   "author": "ForjaHQ",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "plugins": [
     {
       "id": "brstej-hub",
@@ -29,7 +29,7 @@
         "tabId": "brstej",
         "label": "Brstej",
         "order": 42,
-        "accent": "#2DD4BF",
+        "accent": "#E879F9",
         "defaultEnabled": false,
         "icon": "icons/nav.png"
       },

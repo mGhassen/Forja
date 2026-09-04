@@ -914,6 +914,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
           onToggleControls: _toggleControls,
           onFocusBack: () => _revealControlsAndFocus(back: true),
           onFocusPlay: () => _revealControlsAndFocus(back: false),
+          onClaimPlayFocus: _claimPlayFocus,
           onControlsActivity: _scheduleHideControls,
           child: MouseRegion(
             onHover: (_) => _onPlayerMouseMove(),

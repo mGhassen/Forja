@@ -26,15 +26,19 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
           backgroundColor: Colors.black,
           body: ListenableBuilder(
             listenable: _s._statusController,
-            builder: (context, _) => MouseRegion(
-              onHover: (_) => _s._onMouseMove(),
+            // Keep [Stack] as [child] so status churn only rebuilds the
+            // cursor wrapper — not the video tree.
+            builder: (context, child) => MouseRegion(
+              onHover: _s._onPointerHover,
               // Immersive hide uses [SystemMouseCursors.none], but keep the
               // pointer visible while CHECKING SOURCES (status roulette) is up -
               // otherwise chrome can auto-hide mid-check and the cursor vanishes.
               cursor: _s._keepPlayerCursorVisible
                   ? SystemMouseCursors.basic
                   : SystemMouseCursors.none,
-              child: Stack(
+              child: child,
+            ),
+            child: Stack(
                 fit: StackFit.expand,
                 children: [
                 // ── Video ────────────────────────────────────────────────
@@ -126,7 +130,6 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                     playbackStarted: _s._playbackConfirmed,
                   ),
               ],
-            ),
             ),
           ),
         ),

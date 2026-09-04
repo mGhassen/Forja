@@ -276,6 +276,7 @@ void main() {
             onToggleControls: () {},
             onFocusBack: () {},
             onFocusPlay: () {},
+            onClaimPlayFocus: () {},
             child: FocusScope(
               debugLabel: 'player-chrome',
               child: Focus(
@@ -333,6 +334,9 @@ void main() {
                 focusPlay++;
                 playFocus.requestFocus();
               },
+              onClaimPlayFocus: () {
+                playFocus.requestFocus();
+              },
               child: FocusScope(
                 debugLabel: 'player-chrome',
                 child: Focus(
@@ -374,6 +378,62 @@ void main() {
   );
 
   testWidgets(
+    'PlayerTvKeyScope reclaim after focus loss does not call onFocusPlay',
+    (tester) async {
+      final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');
+      final playFocus = FocusNode(debugLabel: 'test-play');
+      var focusPlay = 0;
+      var claimPlay = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PlayerTvKeyScope(
+              enabled: true,
+              focusNode: keyFocus,
+              showControls: true,
+              onBack: () {},
+              onPlayPause: () {},
+              onShowControls: () {},
+              onSeekBack: () {},
+              onSeekForward: () {},
+              onVolumeUp: () {},
+              onVolumeDown: () {},
+              onToggleControls: () {},
+              onFocusBack: () {},
+              onFocusPlay: () => focusPlay++,
+              onClaimPlayFocus: () {
+                claimPlay++;
+                playFocus.requestFocus();
+              },
+              child: FocusScope(
+                debugLabel: 'player-chrome',
+                child: Focus(
+                  focusNode: playFocus,
+                  child: const SizedBox.shrink(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      // Simulate Play rebuild dropping focus onto the video key node.
+      keyFocus.requestFocus();
+      await tester.pump();
+      await tester.pump();
+
+      expect(claimPlay, greaterThan(0));
+      expect(focusPlay, 0,
+          reason: 'reclaim must not restart idle-hide via onFocusPlay');
+      expect(playFocus.hasFocus, isTrue);
+
+      keyFocus.dispose();
+      playFocus.dispose();
+    },
+  );
+
+  testWidgets(
     'PlayerTvKeyScope pings onControlsActivity while chrome visible (even when FocusableControl handles arrows)',
     (tester) async {
       final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');
@@ -402,6 +462,7 @@ void main() {
                   onToggleControls: () {},
                   onFocusBack: () {},
                   onFocusPlay: () {},
+                  onClaimPlayFocus: () {},
                   onControlsActivity: () => activity++,
                   child: FocusScope(
                     debugLabel: 'exo-player-chrome',
@@ -604,6 +665,7 @@ void main() {
                       onToggleControls: () {},
                       onFocusBack: () {},
                       onFocusPlay: () {},
+                      onClaimPlayFocus: () {},
                       child: const SizedBox.expand(),
                     );
                   },
