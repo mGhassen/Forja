@@ -1,5 +1,5 @@
-// Arabic hub — Larozaa + DimaToon + Brstej (protocol 1).
-// Browse / search / details live in this pack. Stream extract is in
+// Arabic hub — Larozaa + Brstej (protocol 1). DimaToon browse lives in
+// the كرتون hub; dimatoon details/stream kept for legacy ids.
 // providers (larozaa, dimatoon, brstej). Host renders CatalogShell +
 // shared hub details + engine Sources.
 
@@ -209,6 +209,21 @@ function arabicAbs(base, url) {
   return base + '/' + url;
 }
 
+/** Larozaa movie titles: "مشاهدة فيلم …" or "فيلم Mayday…" — not episodes. */
+function arabicIsLarozaMovieTitle(title) {
+  title = String(title || '');
+  if (title.indexOf('الحلقة') >= 0) return false;
+  return /مشاهدة\s*فيلم/.test(title) || /(?:^|\s)فيلم\b/.test(title);
+}
+
+function arabicLarozaSerieIdFromHtml(html) {
+  html = String(html || '');
+  var m =
+    /view-serie1?\.php\?ser=([a-zA-Z0-9]+)/.exec(html) ||
+    /[?&]ser=([a-zA-Z0-9]+)/.exec(html);
+  return m ? m[1] : '';
+}
+
 function arabicOrigin(url) {
   try {
     var u = new URL(String(url || ''));
@@ -355,10 +370,7 @@ function arabicParseLarozaCards(ctx, html, base, isMovie) {
     var ser = /(?:\?|&)ser=([^&]+)/.exec(href);
     var vid = /(?:\?|&)vid=([^&]+)/.exec(href);
     var id = '';
-    // video.php is used for BOTH movies and episodes — never infer movie from path alone.
-    var movie =
-      !!isMovie ||
-      (/مشاهدة\s*فيلم/.test(title) && title.indexOf('الحلقة') < 0);
+    var movie = !!isMovie || arabicIsLarozaMovieTitle(title);
     if (ser) id = ser[1];
     else if (vid) id = movie ? vid[1] : 'ep:' + vid[1];
     if (!id || seen[id]) return;
@@ -398,9 +410,7 @@ function arabicParseLarozaCardsRegex(html, base, isMovie) {
     var ser = /(?:\?|&)ser=([^&]+)/.exec(href);
     var vid = /(?:\?|&)vid=([^&]+)/.exec(href);
     var id = '';
-    var movie =
-      !!isMovie ||
-      (/مشاهدة\s*فيلم/.test(title) && title.indexOf('الحلقة') < 0);
+    var movie = !!isMovie || arabicIsLarozaMovieTitle(title);
     if (ser) id = ser[1];
     else if (vid) id = movie ? vid[1] : 'ep:' + vid[1];
     if (!id || seen[id]) continue;
@@ -857,12 +867,11 @@ function arabicSearch(ctx, cfg, params) {
   var q = String(params.query || '').trim();
   if (!q) return Promise.resolve(hubItems('search', []));
   var limit = Number(params.limit) > 0 ? Number(params.limit) : 40;
-  var per = Math.max(8, Math.ceil(limit / 3));
+  var per = Math.max(8, Math.ceil(limit / 2));
   return Promise.all([
     arabicSearchLaroza(ctx, cfg, q, per).catch(function () {
       return [];
     }),
-    arabicSearchDimaToon(ctx, cfg, q, per),
     arabicSearchBrstej(ctx, cfg, q, per).catch(function () {
       return [];
     }),
@@ -1048,90 +1057,112 @@ function arabicParseLarozaShowHtml(ctx, html, base, seasonOffset) {
   return { title: title, poster: poster, description: description, videos: videos };
 }
 
+function arabicDetailsLarozaMovieFromPage(ctx, ref, got, vid, pageUrl) {
+  var origin = arabicOrigin(got.url) || '';
+  var $ = arabicHtml(ctx, got.html);
+  var title = '';
+  var poster = '';
+  var description = '';
+  if ($) {
+    var titleEl = $('h1, h2').first();
+    title = (titleEl.text() || '').trim();
+    var posterImg = $(
+      'img[src*="uploads/thumbs"], img[data-echo*="uploads/thumbs"]',
+    ).first();
+    if (posterImg.length) poster = arabicImg($, posterImg, origin);
+    var descEl = $('.pm-video-description, .pm-video-content').first();
+    description = (descEl.text() || '').trim();
+  }
+  if (!title) {
+    var tm = /<title[^>]*>([^<]+)/i.exec(got.html);
+    if (tm) {
+      title = String(tm[1] || '')
+        .replace(/\s*[-|].*$/, '')
+        .trim();
+    }
+  }
+  var id = String(vid || ref.rest || '').replace(/^ep:/, '');
+  var meta = arabicMeta('larozaa', id, title || id, poster, {
+    description: description,
+    isMovie: true,
+    url: ref.url || pageUrl,
+  });
+  if (!meta) {
+    return hubFail('details', 'NOT_FOUND', 'arabic id ' + ref.fullId);
+  }
+  meta.id = 'larozaa:' + id;
+  meta.description = description || '';
+  meta.videos = [
+    {
+      id: 'larozaa:' + id,
+      title: title || id,
+      season: 1,
+      episode: 1,
+      thumbnail: poster || '',
+    },
+  ];
+  return hubOk('details', { meta: meta }, { maxAge: 900, swr: 3600 });
+}
+
 function arabicDetailsLaroza(ctx, cfg, ref) {
   return arabicResolveLaroza(ctx, cfg).then(function (base) {
     var rest = ref.rest;
     if (ref.isMovie && rest && rest.indexOf('ep:') !== 0) {
       var movieUrl = base + '/video.php?vid=' + encodeURIComponent(rest);
       return arabicFetchHtml(ctx, movieUrl, base + '/').then(function (got) {
-        var origin = arabicOrigin(got.url) || base;
-        var $ = arabicHtml(ctx, got.html);
-        var title = '';
-        var poster = '';
-        var description = '';
-        if ($) {
-          var titleEl = $('h1, h2').first();
-          title = (titleEl.text() || '').trim();
-          var posterImg = $('img[src*="uploads/thumbs"], img[data-echo*="uploads/thumbs"]').first();
-          if (posterImg.length) poster = arabicImg($, posterImg, origin);
-          var descEl = $('.pm-video-description, .pm-video-content').first();
-          description = (descEl.text() || '').trim();
-        }
-        if (!title) {
-          var tm = /<title[^>]*>([^<]+)/i.exec(got.html);
-          if (tm) {
-            title = String(tm[1] || '')
-              .replace(/\s*[-|].*$/, '')
-              .trim();
-          }
-        }
-        var meta = arabicMeta('larozaa', rest, title || rest, poster, {
-          description: description,
-          isMovie: true,
-          url: ref.url || movieUrl,
-        });
-        if (!meta) {
-          return hubFail('details', 'NOT_FOUND', 'arabic id ' + ref.fullId);
-        }
-        meta.id = ref.fullId;
-        meta.description = description || '';
-        meta.videos = [
-          {
-            id: 'larozaa:' + rest,
-            title: title || rest,
-            season: 1,
-            episode: 1,
-            thumbnail: poster || '',
-          },
-        ];
-        return hubOk('details', { meta: meta }, { maxAge: 900, swr: 3600 });
+        return arabicDetailsLarozaMovieFromPage(ctx, ref, got, rest, movieUrl);
       });
     }
 
-    var resolveEp =
-      rest.indexOf('ep:') === 0
-        ? arabicFetchHtml(
-            ctx,
-            base + '/video.php?vid=' + encodeURIComponent(rest.substring(3)),
-            base + '/',
-          ).then(function (got) {
-            var m = /view-serie1?\.php\?ser=([a-zA-Z0-9]+)/.exec(got.html);
-            if (!m) {
-              throw new Error('Could not resolve series id from ' + rest);
-            }
-            return m[1];
-          })
-        : Promise.resolve(rest);
-
-    return resolveEp.then(function (serId) {
-      var url = base + '/view-serie1.php?ser=' + encodeURIComponent(serId);
-      return arabicFetchHtml(ctx, url, base + '/').then(function (got) {
-        var origin = arabicOrigin(got.url) || base;
-        var parsed = arabicParseLarozaShowHtml(ctx, got.html, origin, 0);
-        var name = parsed.title || rest || ref.fullId;
-        var meta = arabicMeta('larozaa', rest, name, parsed.poster || '', {
-          description: parsed.description,
-          isMovie: false,
-          url: ref.url,
-        });
-        if (!meta) {
-          return hubFail('details', 'NOT_FOUND', 'arabic id ' + ref.fullId);
+    if (rest.indexOf('ep:') === 0) {
+      var epVid = rest.substring(3);
+      var epUrl = base + '/video.php?vid=' + encodeURIComponent(epVid);
+      return arabicFetchHtml(ctx, epUrl, base + '/').then(function (got) {
+        var serId = arabicLarozaSerieIdFromHtml(got.html);
+        if (!serId) {
+          // Movies on newvideos use video.php but no serie link — open as movie.
+          return arabicDetailsLarozaMovieFromPage(ctx, ref, got, epVid, epUrl);
         }
-        meta.id = ref.fullId;
-        meta.description = parsed.description || '';
-        meta.videos = parsed.videos || [];
-        return hubOk('details', { meta: meta }, { maxAge: 900, swr: 3600 });
+        var url =
+          base + '/view-serie1.php?ser=' + encodeURIComponent(serId);
+        return arabicFetchHtml(ctx, url, base + '/').then(function (show) {
+          var origin = arabicOrigin(show.url) || base;
+          var parsed = arabicParseLarozaShowHtml(ctx, show.html, origin, 0);
+          var name = parsed.title || rest || ref.fullId;
+          var meta = arabicMeta('larozaa', serId, name, parsed.poster || '', {
+            description: parsed.description,
+            isMovie: false,
+            url: ref.url,
+          });
+          if (!meta) {
+            return hubFail('details', 'NOT_FOUND', 'arabic id ' + ref.fullId);
+          }
+          // Stable show id once resolved (not the episode stub).
+          meta.id = 'larozaa:' + serId;
+          meta.description = parsed.description || '';
+          meta.videos = parsed.videos || [];
+          return hubOk('details', { meta: meta }, { maxAge: 900, swr: 3600 });
+        });
       });
+    }
+
+    var url = base + '/view-serie1.php?ser=' + encodeURIComponent(rest);
+    return arabicFetchHtml(ctx, url, base + '/').then(function (got) {
+      var origin = arabicOrigin(got.url) || base;
+      var parsed = arabicParseLarozaShowHtml(ctx, got.html, origin, 0);
+      var name = parsed.title || rest || ref.fullId;
+      var meta = arabicMeta('larozaa', rest, name, parsed.poster || '', {
+        description: parsed.description,
+        isMovie: false,
+        url: ref.url,
+      });
+      if (!meta) {
+        return hubFail('details', 'NOT_FOUND', 'arabic id ' + ref.fullId);
+      }
+      meta.id = ref.fullId;
+      meta.description = parsed.description || '';
+      meta.videos = parsed.videos || [];
+      return hubOk('details', { meta: meta }, { maxAge: 900, swr: 3600 });
     });
   });
 }
@@ -1433,18 +1464,33 @@ function arabicStreamLaroza(ctx, cfg, vid) {
   });
 }
 
+function arabicDimaToonIsBlankMp4(url) {
+  var u = String(url || '').toLowerCase();
+  return !u || u.indexOf('blank.mp4') >= 0;
+}
+
 function arabicStreamDimaToon(ctx, cfg, episodeUrl) {
   var base = String(cfg.dimatoon || ARABIC_DEFAULTS.dimatoon).replace(/\/$/, '');
   return arabicFetchHtml(ctx, episodeUrl, base + '/').then(function (got) {
     var $ = arabicHtml(ctx, got.html);
     var src = '';
     if ($) {
-      var source = $('source[src]').first();
-      if (source.length) src = source.attr('src') || '';
+      $('video source[src], source[src]').each(function () {
+        if (src) return;
+        var cand = $(this).attr('src') || '';
+        if (cand && !arabicDimaToonIsBlankMp4(cand)) src = cand;
+      });
     }
-    if (!src) {
-      var m = /https?:\/\/[^"\s]+\.mp4[^"\s]*/.exec(got.html);
-      if (m) src = m[0];
+    if (!src && got.html) {
+      var re = /https?:\/\/[^"'\\\s<>]+\.mp4[^"'\\\s<>]*/gi;
+      var m;
+      while ((m = re.exec(got.html))) {
+        var cand = m[0].replace(/&amp;/g, '&');
+        if (!arabicDimaToonIsBlankMp4(cand)) {
+          src = cand;
+          break;
+        }
+      }
     }
     var streams = [];
     if (src) {

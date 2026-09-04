@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Default tab order on every profile:** Home, Asian Drama, Anime, IPTV, Live Sports, My List, and Settings. All are enabled on a fresh install. **Home / Anime / Asian Drama / Arabic** labels and tab bodies come from ForjaHQ hub packs (`nav` on each catalog plugin); other tabs stay app-owned. A hub tab only appears in **Settings → Features** (and the rail) while its pack+plugin is **enabled** under **Settings → Sources → Forja**; Features then show/hide among those. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Default tab order on every profile:** Home, Asian Drama, Anime, IPTV, Live Sports, My List, and Settings. All are enabled on a fresh install. **Home / Anime / Asian Drama / Arabic / كرتون** labels and tab bodies come from ForjaHQ hub packs (`nav` on each catalog plugin); other tabs stay app-owned. A hub tab only appears in **Settings → Features** (and the rail) while its pack+plugin is **enabled** under **Settings → Sources → Forja**; Features then show/hide among those. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 

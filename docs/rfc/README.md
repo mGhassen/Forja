@@ -96,6 +96,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [073-[open]-…](073-[open]-live-sports-kit-ownership.md) | Live Sports kit ownership (kill modes → kit browse → details + IPTV service) | v1.4 | open | **2/4** · **4/4** kill modes · **1/4** kit browse · **3/4** details+services | — |
 | [074-[open]-…](074-[open]-remote-profile-plugin-install.md) | Remote profile plugin install and uninstall | v1.4 | open | **5/5** · **12/14** | — |
 | [075-[fixed]-…](fixed/075-[fixed]-iptv-portal-probe-detail.md) | IPTV portal probe status + desktop detail card | v1.4 | fixed | **Complete** · 4/4 · 8/8 | — |
+| [076-[fixed]-…](fixed/076-[fixed]-cartoon-hub-dimatoon.md) | كرتون hub (DimaToon) + provider blank.mp4 fix | v1.4 | fixed | **Complete** · 3/3 · 6/6 | — |
 
 ## Related
 

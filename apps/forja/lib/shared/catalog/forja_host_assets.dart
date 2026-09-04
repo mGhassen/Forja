@@ -24,6 +24,7 @@ abstract final class ForjaHostAssets {
   static const uriNavAnime = '${uriPrefix}nav/anime';
   static const uriNavAsianDrama = '${uriPrefix}nav/asian-drama';
   static const uriNavArabic = '${uriPrefix}nav/arabic';
+  static const uriNavCartoon = '${uriPrefix}nav/cartoon';
   static const uriNavSearch = '${uriPrefix}nav/search';
   static const uriNavLiveMatches = '${uriPrefix}nav/live-matches';
   static const uriNavIptv = '${uriPrefix}nav/iptv';
@@ -76,6 +77,7 @@ abstract final class ForjaHostAssets {
       'nav/anime' => Icons.animation_outlined,
       'nav/asian-drama' => Icons.theater_comedy_outlined,
       'nav/arabic' => Icons.movie_filter_outlined,
+      'nav/cartoon' => Icons.toys_outlined,
       'nav/search' => Icons.search_outlined,
       'nav/live-matches' => Icons.sports_soccer_outlined,
       'nav/iptv' => Icons.live_tv_outlined,

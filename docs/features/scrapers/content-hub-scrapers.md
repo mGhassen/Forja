@@ -12,9 +12,11 @@ Several Forja tabs don't use TMDB torrents — they scrape dedicated sites for b
 |-----|-----------------|
 | [Anime](../hubs/anime.md) | AniList metadata and multi-source streams |
 | [Asian Drama](../hubs/asian-drama.md) | KissKH — Asian dramas with subtitles |
+| [Arabic](../hubs/arabic.md) | Larozaa + Brstej movies/series |
+| [كرتون](../hubs/cartoon.md) | DimaToon Arabic cartoons |
 | [Live Matches](../live/live-matches.md) | Forja Live catalogs + Forja Sports (Xtream) |
 
-More hub scrapers (Manga, Similar, …) are documented in [archive](../archive/README.md). Arabic scrapers ship with the active [Arabic](../hubs/arabic.md) hub pack.
+More hub scrapers (Manga, Similar, …) are documented in [archive](../archive/README.md).
 
 ## How to open it
 

@@ -27,6 +27,7 @@ import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_prefs.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_sport_filter.dart';
+import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_stremio_meta.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_team_parse.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_iptv_sports_config.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_engine.dart';

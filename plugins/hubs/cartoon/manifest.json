@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "id": "forjahq-cartoon",
+  "name": "ForjaHQ Cartoon",
+  "description": "DimaToon Arabic cartoon / anime hub (كرتون).",
+  "author": "ForjaHQ",
+  "version": "1.0.0",
+  "plugins": [
+    {
+      "id": "dimatoon-hub",
+      "name": "كرتون",
+      "description": "Arabic dubbed cartoons from DimaToon",
+      "entry": "cartoon.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": ["arabic"],
+      "capabilities": [
+        "nav",
+        "layout",
+        "rail",
+        "feed",
+        "search",
+        "details"
+      ],
+      "nav": {
+        "tabId": "cartoon",
+        "label": "كرتون",
+        "order": 35,
+        "icon": "forja://asset/nav/cartoon",
+        "accent": "#38BDF8",
+        "defaultEnabled": false
+      },
+      "enabled": true,
+      "config": {
+        "origin": "https://www.dima-toon.com"
+      },
+      "prelude": "_kit.js"
+    }
+  ]
+}

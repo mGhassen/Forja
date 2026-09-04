@@ -308,10 +308,7 @@ class _StreamedMatch {
       dateMs == 0 &&
       (sources.isNotEmpty ||
           inlineStreams.isNotEmpty ||
-          (isStremio &&
-              (id.startsWith('leaf:') ||
-                  category == '24/7' ||
-                  category == '24-7')));
+          (isStremio && (category == '24/7' || category == '24-7')));
 
   /// Hours after start that still count as live when Streamed did not tag
   /// `airing`. Popular rows (golf, cycling) often outlast the short window.
@@ -1619,12 +1616,13 @@ String? _forjaLiveCdnReferer(String embedUrl) {
   return '${uri.origin}/';
 }
 
-/// Kickoff epoch-ms from a Stremio sport meta (Highfly / similar).
+/// Kickoff epoch-ms from a Stremio sport meta.
 ///
 /// Sources tried in order:
 /// 1. `released` — ISO-8601 or unix seconds/ms
-/// 2. `releaseInfo` — e.g. `06 Aug 2026 · 07:10 UTC` (Highfly)
+/// 2. `releaseInfo` — e.g. `06 Aug 2026 · 07:10 UTC`
 /// 3. `description` lines — same human date format
+/// 4. title calendar date + `Time: HH:MM` in description
 int _stremioKickoffMsFromMeta(Map<String, dynamic> meta) {
   final released = meta['released'];
   final fromReleased = _stremioParseKickoffValue(released);
@@ -1639,7 +1637,11 @@ int _stremioKickoffMsFromMeta(Map<String, dynamic> meta) {
     final fromLine = _stremioParseHumanKickoff(line.trim());
     if (fromLine > 0) return fromLine;
   }
-  return 0;
+
+  return stremioKickoffMsFromTitleAndTime(
+    title: meta['name']?.toString() ?? '',
+    description: desc,
+  );
 }
 
 int _stremioParseKickoffValue(Object? raw) {
@@ -1784,30 +1786,38 @@ _StreamedMatch? _streamedMatchFromStremioMeta(
   if (id.isEmpty) return null;
   final title = meta['name']?.toString().trim() ?? '';
   if (title.isEmpty) return null;
-  final genres = meta['genres'];
-  var category = '';
-  if (genres is List && genres.isNotEmpty) {
-    category = genres.first.toString().trim();
-  }
+  final genres = meta['genres'] is List ? meta['genres'] as List : const [];
   final release = meta['releaseInfo']?.toString().toUpperCase() ?? '';
-  final desc = meta['description']?.toString().toUpperCase() ?? '';
+  final descRaw = meta['description']?.toString() ?? '';
+  final desc = descRaw.toUpperCase();
   final dateMs = _stremioKickoffMsFromMeta(meta);
-  final live = release.contains('LIVE') || desc.contains('LIVE NOW');
   final poster = meta['poster']?.toString() ?? '';
   final type = meta['type']?.toString().trim();
-  // For leaf / 24/7 IPTV rows with LIVE but no kickoff, treat as always-on.
-  final alwaysOn = live &&
-      dateMs <= 0 &&
-      (id.startsWith('leaf:') || desc.contains('IPTV'));
+  final live = stremioMetaLooksLive(
+    releaseInfoUpper: release,
+    descriptionUpper: desc,
+    poster: poster,
+    genres: genres,
+  );
+  // Live + no kickoff + no schedule clock/date → 24/7 channel feed.
+  final alwaysOn = stremioMetaIsAlwaysOnChannel(
+    looksLive: live,
+    dateMs: dateMs,
+    descriptionUpper: desc,
+    title: title,
+    genres: genres,
+  );
+  final categoryRaw = alwaysOn
+      ? '24/7'
+      : stremioCategoryFromGenres(genres);
   return _StreamedMatch(
     id: id,
     title: title,
-    category: alwaysOn
-        ? '24/7'
-        : (category.isEmpty ? 'other' : category.toLowerCase()),
+    category: categoryRaw.isEmpty ? 'other' : categoryRaw.toLowerCase(),
     dateMs: dateMs,
     poster: poster,
     popular: desc.contains('POPULAR'),
+    // No kickoff + live badge → airing now (events + channels).
     airing: live && dateMs <= 0,
     sources: const [],
     catalog: 'stremio',
