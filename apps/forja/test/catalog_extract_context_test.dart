@@ -66,4 +66,23 @@ void main() {
     expect(ctx.ctx['videoId'], 'movieVid');
     expect(ctx.ctx.containsKey('episodeVideoId'), isFalse);
   });
+
+  group('providerIdFromEpisodeVideoId', () {
+    test('parses hub provider slugs', () {
+      expect(providerIdFromEpisodeVideoId('larozaa:999'), 'larozaa');
+      expect(providerIdFromEpisodeVideoId('brstej:watch:1'), 'brstej');
+      expect(providerIdFromEpisodeVideoId('dimatoon:abc'), 'dimatoon');
+    });
+
+    test('ignores TMDB episode ids (numeric:SxxExx)', () {
+      expect(providerIdFromEpisodeVideoId('215704:S1E1'), isNull);
+      expect(providerIdFromEpisodeVideoId('99:S2E10'), isNull);
+    });
+
+    test('ignores plain episode numbers and empty', () {
+      expect(providerIdFromEpisodeVideoId('1'), isNull);
+      expect(providerIdFromEpisodeVideoId(':x'), isNull);
+      expect(providerIdFromEpisodeVideoId(''), isNull);
+    });
+  });
 }

@@ -93,5 +93,63 @@ void main() {
         contains('still2.jpg'),
       );
     });
+
+    test('TMDB episode video id does not pin selectedPluginIds', () {
+      final meta = CatalogMetaItem.fromJson({
+        'id': 'tmdb:tv:215704',
+        'type': 'tv',
+        'name': 'The Gentlemen',
+        'open': {
+          'surface': 'tmdb',
+          'id': '215704',
+          'mediaType': 'tv',
+        },
+        'videos': [
+          {
+            'id': '215704:S1E1',
+            'episode': 1,
+            'season': 1,
+            'title': 'Episode 1',
+          },
+        ],
+      });
+      final ep = meta.videos.first;
+      final ctx = catalogPlayContextFromMeta(
+        meta: meta,
+        episode: ep,
+        season: 1,
+        episodeNumber: 1,
+      );
+      expect(ctx.selectedPluginIds, isNull);
+    });
+
+    test('provider-scoped episode video id pins selectedPluginIds', () {
+      final meta = CatalogMetaItem.fromJson({
+        'id': 'larozaa:ser1',
+        'type': 'series',
+        'name': 'Test Arabic',
+        'open': {
+          'surface': 'arabic',
+          'id': 'ser1',
+          'source': 'larozaa',
+        },
+        'videos': [
+          {
+            'id': 'larozaa:999',
+            'episode': 1,
+            'season': 1,
+            'title': 'Episode 1',
+          },
+        ],
+      });
+      final ep = meta.videos.first;
+      final ctx = catalogPlayContextFromMeta(
+        meta: meta,
+        episode: ep,
+        season: 1,
+        episodeNumber: 1,
+      );
+      expect(ctx.selectedPluginIds, {'larozaa'});
+    });
   });
 }

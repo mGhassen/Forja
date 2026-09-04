@@ -111,11 +111,27 @@ String catalogOpenCacheKey(
   return '$pluginId:$id:E$ep$audioSuffix$vidSuffix';
 }
 
+/// Provider-scoped hub episode ids (`larozaa:…`, `brstej:…`, `dimatoon:…`).
+///
+/// TMDB videos use `12345:S1E1` — a numeric prefix is **not** a plugin id.
+/// Treating it as one hid every Forja chip and made green Play report
+/// “No Forja plugins are selected”.
 String? providerIdFromEpisodeVideoId(String videoId) {
   final i = videoId.indexOf(':');
   if (i <= 0) return null;
   final id = videoId.substring(0, i).trim();
-  return id.isEmpty ? null : id;
+  if (id.isEmpty) return null;
+  // Plugin slugs always contain a letter; bare TMDB ints do not.
+  if (!_looksLikeProviderSlug(id)) return null;
+  return id;
+}
+
+bool _looksLikeProviderSlug(String id) {
+  for (var i = 0; i < id.length; i++) {
+    final c = id.codeUnitAt(i);
+    if ((c >= 65 && c <= 90) || (c >= 97 && c <= 122)) return true;
+  }
+  return false;
 }
 
 /// Merges [catalogOpen] extract when present; otherwise TMDB-details hints only.
