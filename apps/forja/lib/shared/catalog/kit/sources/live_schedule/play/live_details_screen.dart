@@ -1275,6 +1275,9 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
     );
   }
 
+  /// Title + host footer + two provider lines (pad included).
+  static const _kSourceCardMinHeight = 60.0;
+
   Widget _buildSourcesGrid(
     BuildContext context,
     List<IptvPlaySource> sources, {
@@ -1294,7 +1297,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
               padding: const EdgeInsets.only(bottom: 8),
               itemCount: sources.length,
               separatorBuilder: (_, _) => const SizedBox(height: gap),
-              itemBuilder: (context, i) => _sourceRow(
+              itemBuilder: (context, i) => _sourceCard(
                 context,
                 sources,
                 i,
@@ -1309,7 +1312,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
               for (var i = 0; i < sources.length; i++)
                 SizedBox(
                   width: constraints.maxWidth,
-                  child: _sourceRow(
+                  child: _sourceCard(
                     context,
                     sources,
                     i,
@@ -1331,31 +1334,33 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
               final right = left + 1;
               return Padding(
                 padding: EdgeInsets.only(top: row == 0 ? 0 : gap),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: _sourceRow(
-                        context,
-                        sources,
-                        left,
-                        allForPlay: playAll,
-                        hideCategorySubtitle: hideCategorySubtitle,
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _sourceCard(
+                          context,
+                          sources,
+                          left,
+                          allForPlay: playAll,
+                          hideCategorySubtitle: hideCategorySubtitle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: gap),
-                    Expanded(
-                      child: right < sources.length
-                          ? _sourceRow(
-                              context,
-                              sources,
-                              right,
-                              allForPlay: playAll,
-                              hideCategorySubtitle: hideCategorySubtitle,
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
+                      const SizedBox(width: gap),
+                      Expanded(
+                        child: right < sources.length
+                            ? _sourceCard(
+                                context,
+                                sources,
+                                right,
+                                allForPlay: playAll,
+                                hideCategorySubtitle: hideCategorySubtitle,
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -1370,7 +1375,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
             for (var i = 0; i < sources.length; i++)
               SizedBox(
                 width: tileWidth,
-                child: _sourceRow(
+                child: _sourceCard(
                   context,
                   sources,
                   i,
@@ -1381,6 +1386,25 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
           ],
         );
       },
+    );
+  }
+
+  Widget _sourceCard(
+    BuildContext context,
+    List<IptvPlaySource> sources,
+    int i, {
+    required List<IptvPlaySource> allForPlay,
+    bool hideCategorySubtitle = false,
+  }) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _kSourceCardMinHeight),
+      child: _sourceRow(
+        context,
+        sources,
+        i,
+        allForPlay: allForPlay,
+        hideCategorySubtitle: hideCategorySubtitle,
+      ),
     );
   }
 

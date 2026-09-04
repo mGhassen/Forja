@@ -637,9 +637,11 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         ? _providerLines(widget.provider!)
         : const <String>[];
     final leftBarColor = _probeLeftBarColor();
+    // Fill parent when a grid row stretches siblings to equal height.
     final face = AnimatedContainer(
       duration: const Duration(milliseconds: 150),
       curve: Curves.easeOut,
+      width: double.infinity,
       decoration: BoxDecoration(
         color: _backgroundColor(),
         // Full rectangle — probe strip is an *inner* accent, not a missing
@@ -647,6 +649,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard> {
         border: Border.all(color: _borderColor()),
       ),
       child: Stack(
+        fit: StackFit.passthrough,
         children: [
           IntrinsicHeight(
             child: Row(
