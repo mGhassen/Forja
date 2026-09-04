@@ -4,7 +4,7 @@
   "name": "ForjaHQ Providers",
   "description": "VOD, anime, and drama stream extractors plus file-host hops.",
   "author": "ForjaHQ",
-  "version": "1.5.27",
+  "version": "1.5.28",
   "plugins": [
     {
       "id": "videasy",
@@ -169,7 +169,7 @@
         "videoId": "videoId"
       },
       "config": {
-        "origin": "https://hd1.brstej.com"
+        "origin": "https://uo.brstej.com"
       }
     },
     {

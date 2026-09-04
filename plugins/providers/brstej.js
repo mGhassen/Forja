@@ -1,5 +1,5 @@
 var SPECS = {
-  origin: 'https://hd1.brstej.com',
+  origin: 'https://uo.brstej.com',
 };
 
 var UA =
@@ -28,29 +28,46 @@ function parseVid(raw) {
   raw = String(raw || '').trim();
   if (raw.indexOf('brstej:') === 0) raw = raw.substring(7);
   if (raw.indexOf('watch:') === 0) return raw.substring(6);
+  // Foreign provider prefixes are not Brstej vids.
+  if (raw.indexOf('larozaa:') === 0 || raw.indexOf('dimatoon:') === 0) {
+    return '';
+  }
   return raw;
 }
 
-function collectBrstejServers($, referer) {
+function pushEmbed(items, seen, embedUrl, referer, name) {
+  embedUrl = String(embedUrl || '').trim();
+  if (!embedUrl || seen[embedUrl]) return;
+  seen[embedUrl] = true;
+  items.push({
+    embedUrl: embedUrl,
+    referer: referer,
+    name: name || 'Server ' + (items.length + 1),
+  });
+}
+
+function collectBrstejServers($, rawHtml, referer) {
   var items = [];
+  var seen = {};
   if ($) {
-    $('button[data-embed-url]').each(function () {
+    $('button[data-embed-url], .watchButton[data-embed-url]').each(function () {
       var b = $(this);
       var embed = b.attr('data-embed-url') || '';
       if (!embed) return;
       var name = (b.text() || '').trim();
-      items.push({
-        embedUrl: embed,
-        referer: referer,
-        name: name || 'Server ' + (items.length + 1),
-      });
+      pushEmbed(items, seen, embed, referer, name);
     });
     if (!items.length) {
       var iframe = $('iframe[src]').first();
       var src = iframe.length ? iframe.attr('src') || '' : '';
-      if (src) {
-        items.push({ embedUrl: src, referer: referer, name: 'Server 1' });
-      }
+      if (src) pushEmbed(items, seen, src, referer, 'Server 1');
+    }
+  }
+  if (!items.length && rawHtml) {
+    var re = /data-embed-url\s*=\s*["']([^"']+)["']/gi;
+    var m;
+    while ((m = re.exec(rawHtml))) {
+      pushEmbed(items, seen, m[1], referer, 'Server ' + (items.length + 1));
     }
   }
   return items;
@@ -72,11 +89,20 @@ function extract(ctx) {
     .fetch(url, { headers: headers(referer) })
     .then(function (res) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
+      // Prefer final host after hd1 → uo redirects.
+      try {
+        var finalUrl = String(res.url || url);
+        var o = new URL(finalUrl);
+        if (o.protocol && o.host) {
+          base = o.protocol + '//' + o.host;
+          referer = base + '/watch.php?vid=' + encodeURIComponent(vid);
+        }
+      } catch (e) {}
       return res.text();
     })
     .then(function (body) {
       var $ = html(ctx, body);
-      var servers = collectBrstejServers($, referer);
+      var servers = collectBrstejServers($, body, referer);
       return arabicResolveEmbeds(ctx, servers, function (msg) {
         ctx.log('brstej: ' + msg);
       });

@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-arabic",
   "name": "ForjaHQ Arabic",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "plugins": [
     {
       "id": "arabic-hub",
@@ -45,7 +45,7 @@
           "https://larozaa.com"
         ],
         "dimatoon": "https://www.dima-toon.com",
-        "brstej": "https://hd1.brstej.com"
+        "brstej": "https://uo.brstej.com"
       },
       "prelude": "_kit.js"
     }

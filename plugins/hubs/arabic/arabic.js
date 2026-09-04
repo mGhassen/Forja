@@ -18,7 +18,7 @@ var ARABIC_DEFAULTS = {
     'https://larozaa.com',
   ],
   dimatoon: 'https://www.dima-toon.com',
-  brstej: 'https://hd1.brstej.com',
+  brstej: 'https://uo.brstej.com',
 };
 
 var ARABIC_RAILS = {
@@ -1458,29 +1458,43 @@ function arabicStreamBrstej(ctx, cfg, videoId) {
   var base = String(cfg.brstej || ARABIC_DEFAULTS.brstej).replace(/\/$/, '');
   var vid =
     videoId.indexOf('watch:') === 0 ? videoId.substring(6) : videoId;
+  if (!vid || vid.indexOf('larozaa:') === 0 || vid.indexOf('dimatoon:') === 0) {
+    return Promise.resolve(hubOk('stream', { streams: [] }, { maxAge: 60 }));
+  }
   var url = base + '/play.php?vid=' + encodeURIComponent(vid);
   var referer = base + '/watch.php?vid=' + encodeURIComponent(vid);
   return arabicFetchHtml(ctx, url, referer).then(function (got) {
+    var origin = arabicOrigin(got.url) || base;
+    referer = origin + '/watch.php?vid=' + encodeURIComponent(vid);
     var $ = arabicHtml(ctx, got.html);
     var streams = [];
+    var seen = {};
+    function push(name, embedUrl) {
+      embedUrl = String(embedUrl || '').trim();
+      if (!embedUrl || seen[embedUrl]) return;
+      seen[embedUrl] = true;
+      streams.push({
+        name: name || 'Server ' + (streams.length + 1),
+        url: embedUrl,
+        type: 'embed',
+      });
+    }
     if ($) {
-      $('button[data-embed-url]').each(function () {
+      $('button[data-embed-url], .watchButton[data-embed-url]').each(function () {
         var b = $(this);
-        var embed = b.attr('data-embed-url') || '';
-        if (!embed) return;
-        var name = (b.text() || '').trim();
-        streams.push({
-          name: name || 'Server ' + (streams.length + 1),
-          url: embed,
-          type: 'embed',
-        });
+        push((b.text() || '').trim(), b.attr('data-embed-url') || '');
       });
       if (!streams.length) {
         var iframe = $('iframe[src]').first();
         var src = iframe.length ? iframe.attr('src') || '' : '';
-        if (src) {
-          streams.push({ name: 'Server 1', url: src, type: 'embed' });
-        }
+        if (src) push('Server 1', src);
+      }
+    }
+    if (!streams.length && got.html) {
+      var re = /data-embed-url\s*=\s*["']([^"']+)["']/gi;
+      var m;
+      while ((m = re.exec(got.html))) {
+        push('Server ' + (streams.length + 1), m[1]);
       }
     }
     return hubOk('stream', { streams: streams }, { maxAge: 120 });
