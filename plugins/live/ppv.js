@@ -16,20 +16,21 @@ function ppvHeaders(cfg) {
   };
 }
 
-function ppvIframeFromDetail(data) {
-  if (!data) return '';
+function ppvIframesFromDetail(data) {
+  if (!data) return [];
   var sources = data.sources;
-  if (!Array.isArray(sources)) return '';
-  var picked = '';
+  if (!Array.isArray(sources)) return [];
+  var out = [];
+  var seen = {};
   for (var i = 0; i < sources.length; i++) {
     var s = sources[i];
     if (!s) continue;
     var url = String(s.data || s.url || '').trim();
-    if (!url || !/^https?:/i.test(url)) continue;
-    if (s.default === true) return url;
-    if (!picked) picked = url;
+    if (!url || !/^https?:/i.test(url) || seen[url]) continue;
+    seen[url] = 1;
+    out.push(url);
   }
-  return picked;
+  return out;
 }
 
 function ppvPlayableUrl(data) {
@@ -42,15 +43,38 @@ function ppvPlayableUrl(data) {
   return '';
 }
 
+async function unlockPpvEmbed(ctx, iframe, cfg, headers) {
+  var raw = String(iframe || '').trim();
+  if (!raw) return null;
+  try {
+    if (isEmbedIndiaUrl(raw)) {
+      var embedIndia = await resolveEmbedIndia(ctx, raw, cfg);
+      if (embedIndia && embedIndia.length) return embedIndia[0];
+    }
+    if (raw.indexOf('embed.st') >= 0) {
+      var embedResolved = await resolveGoatEmbed(ctx, raw, cfg);
+      if (embedResolved && embedResolved.length) return embedResolved[0];
+    }
+  } catch (_) {}
+  return {
+    url: raw,
+    headers: headers || ppvHeaders(cfg),
+    directPlayback: false,
+  };
+}
+
 async function resolvePpv(ctx, cfg) {
   var streamId = String(ctx.matchId || (cfg && cfg.streamId) || '').replace(/^ppv_/, '');
   var iframe = String(ctx.embedUrl || ctx.iframe || (cfg && cfg.iframe) || '').trim();
+  var headers = ppvHeaders(cfg);
+  var embeds = [];
+  if (iframe) embeds.push(iframe);
+
   if (streamId) {
     var apis = (cfg && cfg.apis) || [
       'https://api.ppv.st/api/streams',
       'https://api.ppv.cx/api/streams',
     ];
-    var headers = ppvHeaders(cfg);
     for (var i = 0; i < apis.length; i++) {
       try {
         var base = apis[i].replace(/\/$/, '');
@@ -60,26 +84,26 @@ async function resolvePpv(ctx, cfg) {
         if (!body || body.success !== true || !body.data) continue;
         var source = ppvPlayableUrl(body.data);
         if (source) {
-          return [{ url: source, headers: headers }];
+          return [{ url: source, headers: headers, directPlayback: true }];
         }
-        var fromDetail = ppvIframeFromDetail(body.data);
-        if (fromDetail) iframe = fromDetail;
+        var fromDetail = ppvIframesFromDetail(body.data);
+        for (var j = 0; j < fromDetail.length; j++) {
+          if (embeds.indexOf(fromDetail[j]) < 0) embeds.push(fromDetail[j]);
+        }
+        break;
       } catch (_) {}
     }
   }
-  if (iframe) {
-    try {
-      if (isEmbedIndiaUrl(iframe)) {
-        var embedIndia = await resolveEmbedIndia(ctx, iframe, cfg);
-        if (embedIndia) return embedIndia;
-      }
-      if (iframe.indexOf('embed.st') >= 0) {
-        var embedResolved = await resolveGoatEmbed(ctx, iframe, cfg);
-        if (embedResolved) return embedResolved;
-      }
-    } catch (_) {}
+
+  var out = [];
+  var seen = {};
+  for (var k = 0; k < embeds.length; k++) {
+    var row = await unlockPpvEmbed(ctx, embeds[k], cfg, headers);
+    if (!row || !row.url || seen[row.url]) continue;
+    seen[row.url] = 1;
+    out.push(row);
   }
-  return [];
+  return out;
 }
 
 async function extract(ctx) {

@@ -56,9 +56,9 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 **Default (fresh install):** Home · Asian Drama · Anime · IPTV · Live Sports · My List · Settings
 
-Hub tabs (**Home**, **Anime**, **Asian Drama**) come from ForjaHQ catalog packs — layout and rows update when the pack changes. If a pack is missing, the tab shows a retry panel.
+Hub tabs (**Home**, **Anime**, **Asian Drama**, **Arabic** when its pack is installed) come from ForjaHQ catalog packs — layout and rows update when the pack changes. If a pack is missing, the tab shows a retry panel.
 
-**Archived tabs** (built in code, hidden from shell and Settings → Features): Search, Discover, Similar, Magnet, Media Downloader, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic, Arabic — see [archive](../archive/README.md).
+**Archived tabs** (built in code, hidden from shell and Settings → Features): Search, Discover, Similar, Magnet, Media Downloader, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic — see [archive](../archive/README.md).
 
 ## Tips
 

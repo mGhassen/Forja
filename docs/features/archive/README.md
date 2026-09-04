@@ -32,7 +32,8 @@ Not part of the in-scope tab set (Home, Anime, Asian Drama, IPTV, Live Matches, 
 | Guide | Tab |
 |-------|-----|
 | [Anime Arabic](hubs/anime-arabic.md) | Anime Arabic |
-| [Arabic cinema](hubs/arabic-cinema.md) | Arabic |
+
+Arabic cinema is active again when the ForjaHQ Arabic pack is installed — see [Arabic](../hubs/arabic.md).
 
 ### Media libraries
 

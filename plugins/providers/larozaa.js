@@ -1,11 +1,13 @@
 var SPECS = {
-  bootstrap: 'https://larozaa.bond',
+  bootstrap: 'https://laaroza.website',
   mirrors: [
+    'https://laaroza.website',
+    'https://laaroza.pics',
+    'https://larozza.yachts',
     'https://larozaa.bond',
     'https://larozaa.home',
     'https://larozaa.homes',
     'https://larozaa.com',
-    'https://laaroza.pics',
   ],
 };
 
@@ -61,11 +63,11 @@ function resolveBase(ctx, cfg) {
 
   function attempt(index) {
     if (index >= ordered.length) {
-      return Promise.resolve(ordered[0] || 'https://larozaa.bond');
+      return Promise.resolve(ordered[0] || 'https://laaroza.website');
     }
     var boot = ordered[index];
     return ctx
-      .fetch(boot, { headers: headers(boot + '/') })
+      .fetch(boot + '/', { headers: headers(boot + '/') })
       .then(function (res) {
         var o = origin(res.url || boot);
         var host = '';
@@ -97,33 +99,45 @@ function fetchHtml(ctx, url, referer) {
 function parseVideoId(raw) {
   raw = String(raw || '').trim();
   if (raw.indexOf('larozaa:') === 0) return raw.substring(8);
+  if (raw.indexOf('ep:') === 0) return raw.substring(3);
   return raw;
 }
 
-function collectLarozaServers($, playUrl, playReferer) {
+function pushServer(items, seen, embedUrl, referer, name) {
+  embedUrl = String(embedUrl || '').trim();
+  if (!embedUrl || seen[embedUrl]) return;
+  seen[embedUrl] = true;
+  items.push({
+    embedUrl: embedUrl,
+    referer: referer,
+    name: name || 'Server ' + (items.length + 1),
+  });
+}
+
+function collectLarozaServers($, rawHtml, playUrl, playReferer) {
   var items = [];
+  var seen = {};
   if ($) {
     $('.WatchList li').each(function () {
       var item = $(this);
       var embedUrl = item.attr('data-embed-url') || '';
       if (!embedUrl) return;
       var name = (item.text() || '').trim();
-      items.push({
-        embedUrl: embedUrl,
-        referer: playUrl || playReferer,
-        name: name || 'Server ' + (items.length + 1),
-      });
+      pushServer(items, seen, embedUrl, playUrl || playReferer, name);
     });
     if (!items.length) {
       var iframe = $('iframe[src]').first();
       var src = iframe.length ? iframe.attr('src') || '' : '';
-      if (src) {
-        items.push({
-          embedUrl: src,
-          referer: playUrl || playReferer,
-          name: 'Server 1',
-        });
+      if (src && src.indexOf('new_ads') < 0) {
+        pushServer(items, seen, src, playUrl || playReferer, 'Server 1');
       }
+    }
+  }
+  if (!items.length && rawHtml) {
+    var re = /data-embed-url="([^"]+)"/gi;
+    var m;
+    while ((m = re.exec(rawHtml))) {
+      pushServer(items, seen, m[1], playUrl || playReferer, 'Server ' + (items.length + 1));
     }
   }
   return items;
@@ -140,10 +154,22 @@ function extract(ctx) {
   return resolveBase(ctx, cfg)
     .then(function (base) {
       var playUrl = base + '/play.php?vid=' + encodeURIComponent(videoId);
-      var playReferer = base + '/';
+      // play.php is gated — Referer must be the watch page, not bare origin.
+      var playReferer = base + '/video.php?vid=' + encodeURIComponent(videoId);
       return fetchHtml(ctx, playUrl, playReferer).then(function (got) {
         var $ = html(ctx, got.html);
-        var servers = collectLarozaServers($, playUrl, playReferer);
+        var servers = collectLarozaServers($, got.html, playUrl, playReferer);
+        if (!servers.length) {
+          // Older / alternate path: embed.php carries the first iframe.
+          var embedUrl = base + '/embed.php?vid=' + encodeURIComponent(videoId);
+          return fetchHtml(ctx, embedUrl, playReferer).then(function (emb) {
+            var $e = html(ctx, emb.html);
+            var fromEmbed = collectLarozaServers($e, emb.html, embedUrl, playReferer);
+            return arabicResolveEmbeds(ctx, fromEmbed, function (msg) {
+              ctx.log('larozaa: ' + msg);
+            });
+          });
+        }
         return arabicResolveEmbeds(ctx, servers, function (msg) {
           ctx.log('larozaa: ' + msg);
         });

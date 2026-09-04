@@ -7,30 +7,69 @@ var ARABIC_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36';
 
 var ARABIC_DEFAULTS = {
-  bootstrap: 'https://larozaa.bond',
+  bootstrap: 'https://laaroza.website',
   mirrors: [
+    'https://laaroza.website',
+    'https://laaroza.pics',
+    'https://larozza.yachts',
     'https://larozaa.bond',
     'https://larozaa.home',
     'https://larozaa.homes',
     'https://larozaa.com',
-    'https://laaroza.pics',
   ],
   dimatoon: 'https://www.dima-toon.com',
   brstej: 'https://hd1.brstej.com',
 };
 
 var ARABIC_RAILS = {
-  trending: { kind: 'larozaa_browse', path: '/moslslat4.php' },
-  series: { kind: 'larozaa_cat', cat: 'arabic-series46' },
-  movies: { kind: 'larozaa_cat', cat: 'arabic-movies33', movie: true },
-  turkish: { kind: 'larozaa_cat', cat: 'turkish-3isk-seriess47' },
-  ramadan: { kind: 'larozaa_cat', cat: 'ramadan-2026' },
-  tv_programs: { kind: 'larozaa_cat', cat: 'tv-programs12' },
+  trending: { kind: 'larozaa_browse', path: '/newvideos.php', group: true },
+  latest: { kind: 'larozaa_browse', path: '/newvideos.php', group: true },
+  series: { kind: 'larozaa_cat', cat: 'arabic-series46', group: true },
+  movies: { kind: 'larozaa_cat', cat: 'arabic-movies35', movie: true },
+  turkish: { kind: 'larozaa_cat', cat: 'turkish-3isk-seriess47', group: true },
+  ramadan: { kind: 'larozaa_cat', cat: 'ramadan-2026', group: true },
+  tv_programs: { kind: 'larozaa_cat', cat: 'tv-programs12', group: true },
   foreign_movies: { kind: 'larozaa_cat', cat: 'all_movies_13', movie: true },
+  foreign_series: { kind: 'larozaa_cat', cat: 'english-series10', group: true },
   indian: { kind: 'larozaa_cat', cat: 'indian-movies9', movie: true },
+  indian_series: { kind: 'larozaa_cat', cat: '11indian-series', group: true },
+  asian_movies: { kind: 'larozaa_cat', cat: '6-asian-movies', movie: true },
+  asian_series: { kind: 'larozaa_cat', cat: '6-asya', group: true },
   dubbed: { kind: 'larozaa_cat', cat: '7-aflammdblgh', movie: true },
   anime_movies: { kind: 'larozaa_cat', cat: 'anime-movies-7', movie: true },
+  anime_series: { kind: 'larozaa_cat', cat: '6-anime-series', group: true },
+  turkish_movies: { kind: 'larozaa_cat', cat: '8-aflam3isk', movie: true },
+  plays: { kind: 'larozaa_cat', cat: 'masrh-5', group: true },
   brstej: { kind: 'brstej_browse' },
+};
+
+var ARABIC_FEED_RAILS = [
+  'trending',
+  'latest',
+  'series',
+  'movies',
+  'turkish',
+  'foreign_series',
+  'foreign_movies',
+  'indian_series',
+  'indian',
+  'asian_series',
+  'asian_movies',
+  'anime_series',
+  'anime_movies',
+  'dubbed',
+  'turkish_movies',
+  'ramadan',
+  'tv_programs',
+  'plays',
+  'brstej',
+];
+
+var ARABIC_HOME_SECTION_RAILS = {
+  'أخر الاضافات': 'latest',
+  'افلام عربي': 'movies',
+  'مسلسلات تركية': 'turkish',
+  'مسلسلات عربية': 'series',
 };
 
 function arabicHeaders(referer) {
@@ -47,23 +86,32 @@ function arabicLayout() {
   return {
     pages: {
       arabic: {
+        feed: true,
+        feedRails: ARABIC_FEED_RAILS.slice(),
+        pageSize: 24,
         widgets: [
           {
             type: 'hero',
             id: 'spotlight',
             title: 'رائج · Spotlight',
             rail: 'trending',
-            bleed: 'brstej',
+            bleed: 'latest',
           },
+          {
+            type: 'rail',
+            id: 'latest',
+            title: 'أخر الاضافات',
+            rail: 'latest',
+            hideWhenBleed: true,
+          },
+          { type: 'continue', id: 'continue_watching' },
           {
             type: 'ranked',
             id: 'brstej',
             title: 'Brstej · أحدث',
             rail: 'brstej',
             style: 'numbered',
-            hideWhenBleed: true,
           },
-          { type: 'continue', id: 'continue_watching' },
           {
             type: 'rail',
             id: 'series',
@@ -77,12 +125,11 @@ function arabicLayout() {
             title: 'مسلسلات تركية',
             rail: 'turkish',
           },
-          { type: 'rail', id: 'ramadan', title: 'رمضان 2026', rail: 'ramadan' },
           {
             type: 'rail',
-            id: 'tv_programs',
-            title: 'برامج تلفزيونية',
-            rail: 'tv_programs',
+            id: 'foreign_series',
+            title: 'مسلسلات أجنبية',
+            rail: 'foreign_series',
           },
           {
             type: 'rail',
@@ -92,9 +139,39 @@ function arabicLayout() {
           },
           {
             type: 'rail',
+            id: 'indian_series',
+            title: 'مسلسلات هندية',
+            rail: 'indian_series',
+          },
+          {
+            type: 'rail',
             id: 'indian',
             title: 'أفلام هندية',
             rail: 'indian',
+          },
+          {
+            type: 'rail',
+            id: 'asian_series',
+            title: 'مسلسلات آسيوية',
+            rail: 'asian_series',
+          },
+          {
+            type: 'rail',
+            id: 'asian_movies',
+            title: 'أفلام آسيوية',
+            rail: 'asian_movies',
+          },
+          {
+            type: 'rail',
+            id: 'anime_series',
+            title: 'أنمي · مسلسلات',
+            rail: 'anime_series',
+          },
+          {
+            type: 'rail',
+            id: 'anime_movies',
+            title: 'أنمي · أفلام',
+            rail: 'anime_movies',
           },
           {
             type: 'rail',
@@ -104,10 +181,18 @@ function arabicLayout() {
           },
           {
             type: 'rail',
-            id: 'anime_movies',
-            title: 'أنمي',
-            rail: 'anime_movies',
+            id: 'turkish_movies',
+            title: 'أفلام تركية',
+            rail: 'turkish_movies',
           },
+          { type: 'rail', id: 'ramadan', title: 'رمضان 2026', rail: 'ramadan' },
+          {
+            type: 'rail',
+            id: 'tv_programs',
+            title: 'برامج تلفزيونية',
+            rail: 'tv_programs',
+          },
+          { type: 'rail', id: 'plays', title: 'مسرحيات', rail: 'plays' },
         ],
       },
     },
@@ -164,11 +249,12 @@ function arabicResolveLaroza(ctx, cfg) {
 
   function attempt(index) {
     if (index >= ordered.length) {
-      return Promise.resolve(ordered[0] || 'https://larozaa.bond');
+      return Promise.resolve(ordered[0] || 'https://laaroza.website');
     }
     var boot = ordered[index];
+    // Hit `/` only — long mirror chains exceed engine maxRedirects (8).
     return ctx
-      .fetch(boot, { headers: arabicHeaders(boot + '/') })
+      .fetch(boot + '/', { headers: arabicHeaders(boot + '/') })
       .then(function (res) {
         var origin = arabicOrigin(res.url || boot);
         var host = '';
@@ -245,18 +331,34 @@ function arabicParseLarozaCards(ctx, html, base, isMovie) {
   var out = [];
   var seen = {};
   if (!$) return arabicParseLarozaCardsRegex(html, base, isMovie);
-  $('li.col-xs-6.col-sm-4.col-md-3, li[class*="col-xs-6"]').each(function () {
+  $(
+    'li.col-xs-6.col-sm-4.col-md-3, li[class*="col-xs-6"], ul[class*="pm-ul"] > li',
+  ).each(function () {
     var card = $(this);
-    var a = card.find('a[href]').first();
+    var a = card
+      .find(
+        'a[href*="video.php"], a[href*="serie.php"], a[href*="ser="], a[href]',
+      )
+      .first();
     if (!a.length) return;
     var href = a.attr('href') || '';
+    if (
+      href.indexOf('video.php') < 0 &&
+      href.indexOf('serie') < 0 &&
+      href.indexOf('ser=') < 0
+    ) {
+      return;
+    }
     var title = (a.attr('title') || a.text() || '').trim();
     if (!title) return;
     var poster = arabicImg($, card.find('img').first(), base);
-    var ser = /ser=([^&]+)/.exec(href);
-    var vid = /vid=([^&]+)/.exec(href);
+    var ser = /(?:\?|&)ser=([^&]+)/.exec(href);
+    var vid = /(?:\?|&)vid=([^&]+)/.exec(href);
     var id = '';
-    var movie = !!isMovie || href.indexOf('video.php') >= 0;
+    // video.php is used for BOTH movies and episodes — never infer movie from path alone.
+    var movie =
+      !!isMovie ||
+      (/مشاهدة\s*فيلم/.test(title) && title.indexOf('الحلقة') < 0);
     if (ser) id = ser[1];
     else if (vid) id = movie ? vid[1] : 'ep:' + vid[1];
     if (!id || seen[id]) return;
@@ -274,7 +376,7 @@ function arabicParseLarozaCardsRegex(html, base, isMovie) {
   var out = [];
   var seen = {};
   var re =
-    /<li[^>]*class="[^"]*col-xs-6[^"]*"[^>]*>[\s\S]*?<a[^>]+href="([^"]+)"[^>]*(?:title="([^"]*)")?[\s\S]*?<\/li>/gi;
+    /<li[^>]*>[\s\S]*?<a[^>]+href="([^"]*(?:video\.php|serie\.php|[?&]ser=)[^"]*)"[^>]*(?:title="([^"]*)")?[\s\S]*?<\/li>/gi;
   var m;
   while ((m = re.exec(html))) {
     var block = m[0] || '';
@@ -293,10 +395,12 @@ function arabicParseLarozaCardsRegex(html, base, isMovie) {
     }
     poster = arabicAbs(base, poster);
     if (!title) continue;
-    var ser = /ser=([^&]+)/.exec(href);
-    var vid = /vid=([^&]+)/.exec(href);
+    var ser = /(?:\?|&)ser=([^&]+)/.exec(href);
+    var vid = /(?:\?|&)vid=([^&]+)/.exec(href);
     var id = '';
-    var movie = !!isMovie || href.indexOf('video.php') >= 0;
+    var movie =
+      !!isMovie ||
+      (/مشاهدة\s*فيلم/.test(title) && title.indexOf('الحلقة') < 0);
     if (ser) id = ser[1];
     else if (vid) id = movie ? vid[1] : 'ep:' + vid[1];
     if (!id || seen[id]) continue;
@@ -365,7 +469,7 @@ function arabicGroupLarozaSearch(items) {
   return out;
 }
 
-function arabicLarozaList(ctx, cfg, path, isMovie, limit) {
+function arabicLarozaList(ctx, cfg, path, isMovie, limit, group) {
   return arabicResolveLaroza(ctx, cfg).then(function (base) {
     var url = base + path;
     if (path.indexOf('?') >= 0) url += '&page=1';
@@ -375,10 +479,73 @@ function arabicLarozaList(ctx, cfg, path, isMovie, limit) {
     }
     return arabicFetchHtml(ctx, url, base + '/').then(function (got) {
       var origin = arabicOrigin(got.url) || base;
-      return hubClampList(
-        arabicParseLarozaCards(ctx, got.html, origin, isMovie),
-        limit,
-      );
+      var items = arabicParseLarozaCards(ctx, got.html, origin, isMovie);
+      if (group && !isMovie) items = arabicGroupLarozaSearch(items);
+      return hubClampList(items, limit);
+    });
+  });
+}
+
+function arabicDiscoverHomePath(html) {
+  var m = /href="([^"]*\/home\.\d+)"/i.exec(String(html || ''));
+  if (m && m[1]) {
+    var path = m[1];
+    try {
+      var u = new URL(path, 'https://laaroza.website/');
+      return u.pathname || '/home.24';
+    } catch (e) {
+      if (path.charAt(0) === '/') return path;
+    }
+  }
+  return '/home.24';
+}
+
+function arabicParseHomeSections(ctx, html, base) {
+  var rails = {};
+  var raw = String(html || '');
+  var ulRe = /<ul[^>]*class="[^"]*pm-ul[^"]*"[^>]*>([\s\S]*?)<\/ul>/gi;
+  var m;
+  while ((m = ulRe.exec(raw))) {
+    var back = raw.substring(Math.max(0, m.index - 900), m.index);
+    var headingRe = /<h([23])[^>]*>([\s\S]*?)<\/h\1>/gi;
+    var title = '';
+    var hm;
+    while ((hm = headingRe.exec(back))) {
+      title = String(hm[2] || '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+    if (!title || title.indexOf("'+") >= 0 || title.indexOf('"+') >= 0) continue;
+    var rail = ARABIC_HOME_SECTION_RAILS[title];
+    if (!rail || rails[rail]) continue;
+    var cardsHtml = '<ul class="pm-ul">' + (m[1] || '') + '</ul>';
+    var isMovie = rail === 'movies';
+    var items = arabicParseLarozaCards(ctx, cardsHtml, base, isMovie);
+    if (!isMovie) items = arabicGroupLarozaSearch(items);
+    if (items.length) rails[rail] = items;
+  }
+  return rails;
+}
+
+function arabicFetchHomeRails(ctx, cfg, limit) {
+  return arabicResolveLaroza(ctx, cfg).then(function (base) {
+    // `/` is often a splash (gaza.N); catalog rows live on /home.N.
+    return arabicFetchHtml(ctx, base + '/', base + '/').then(function (splash) {
+      var homePath = arabicDiscoverHomePath(splash.html);
+      return arabicFetchHtml(ctx, base + homePath, base + '/').then(function (got) {
+        var origin = arabicOrigin(got.url) || base;
+        var rails = arabicParseHomeSections(ctx, got.html, origin);
+        var out = {};
+        var keys = Object.keys(rails);
+        for (var i = 0; i < keys.length; i++) {
+          out[keys[i]] = hubClampList(rails[keys[i]], limit);
+        }
+        if (out.latest && !out.trending) {
+          out.trending = out.latest.slice();
+        }
+        return out;
+      });
     });
   });
 }
@@ -575,7 +742,7 @@ function arabicRailItems(ctx, cfg, params) {
   var limit = params.limit;
   var p;
   if (spec.kind === 'larozaa_browse') {
-    p = arabicLarozaList(ctx, cfg, spec.path, false, limit);
+    p = arabicLarozaList(ctx, cfg, spec.path, false, limit, !!spec.group);
   } else if (spec.kind === 'larozaa_cat') {
     p = arabicLarozaList(
       ctx,
@@ -583,6 +750,7 @@ function arabicRailItems(ctx, cfg, params) {
       '/category.php?cat=' + encodeURIComponent(spec.cat),
       !!spec.movie,
       limit,
+      !!spec.group,
     );
   } else if (spec.kind === 'brstej_browse') {
     p = arabicBrowseBrstej(ctx, cfg, limit);
@@ -593,7 +761,7 @@ function arabicRailItems(ctx, cfg, params) {
   }
   return p
     .then(function (items) {
-      if ((!items || !items.length) && rail === 'trending') {
+      if ((!items || !items.length) && (rail === 'trending' || rail === 'latest')) {
         return arabicBrowseBrstej(ctx, cfg, limit).then(function (fallback) {
           return hubItems('rail', fallback || [], { maxAge: 600, swr: 3600 });
         });
@@ -601,7 +769,7 @@ function arabicRailItems(ctx, cfg, params) {
       return hubItems('rail', items, { maxAge: 600, swr: 3600 });
     })
     .catch(function (e) {
-      if (rail === 'trending') {
+      if (rail === 'trending' || rail === 'latest') {
         return arabicBrowseBrstej(ctx, cfg, limit)
           .then(function (fallback) {
             return hubItems('rail', fallback || [], { maxAge: 300, swr: 900 });
@@ -611,6 +779,77 @@ function arabicRailItems(ctx, cfg, params) {
           });
       }
       return hubFail('rail', 'UPSTREAM', e && e.message, true);
+    });
+}
+
+function arabicFeedRailLimit(railId, params) {
+  var n = Number(params.limit);
+  if (n > 0) return n;
+  if (railId === 'brstej') return 10;
+  return 24;
+}
+
+function arabicLoadRailList(ctx, cfg, railId, limit) {
+  var spec = ARABIC_RAILS[railId];
+  if (!spec) return Promise.resolve([]);
+  if (spec.kind === 'larozaa_browse') {
+    return arabicLarozaList(ctx, cfg, spec.path, false, limit, !!spec.group);
+  }
+  if (spec.kind === 'larozaa_cat') {
+    return arabicLarozaList(
+      ctx,
+      cfg,
+      '/category.php?cat=' + encodeURIComponent(spec.cat),
+      !!spec.movie,
+      limit,
+      !!spec.group,
+    );
+  }
+  if (spec.kind === 'brstej_browse') {
+    return arabicBrowseBrstej(ctx, cfg, limit);
+  }
+  return Promise.resolve([]);
+}
+
+function arabicFeed(ctx, cfg, params) {
+  var limit = Number(params.limit) > 0 ? Number(params.limit) : 24;
+  return arabicFetchHomeRails(ctx, cfg, limit)
+    .catch(function () {
+      return {};
+    })
+    .then(function (homeRails) {
+      var jobs = [];
+      for (var i = 0; i < ARABIC_FEED_RAILS.length; i++) {
+        (function (railId) {
+          var railLimit = arabicFeedRailLimit(railId, params);
+          var seeded = homeRails[railId];
+          if (seeded && seeded.length) {
+            jobs.push(
+              Promise.resolve({ rail: railId, items: seeded.slice(0, railLimit) }),
+            );
+            return;
+          }
+          jobs.push(
+            arabicLoadRailList(ctx, cfg, railId, railLimit)
+              .then(function (items) {
+                return { rail: railId, items: items || [] };
+              })
+              .catch(function () {
+                return { rail: railId, items: [] };
+              }),
+          );
+        })(ARABIC_FEED_RAILS[i]);
+      }
+      return Promise.all(jobs).then(function (rows) {
+        var rails = {};
+        for (var k = 0; k < rows.length; k++) {
+          rails[rows[k].rail] = rows[k].items;
+        }
+        if ((!rails.trending || !rails.trending.length) && rails.latest) {
+          rails.trending = rails.latest.slice();
+        }
+        return hubOk('feed', { rails: rails }, { maxAge: 600, swr: 3600 });
+      });
     });
 }
 
@@ -812,6 +1051,53 @@ function arabicParseLarozaShowHtml(ctx, html, base, seasonOffset) {
 function arabicDetailsLaroza(ctx, cfg, ref) {
   return arabicResolveLaroza(ctx, cfg).then(function (base) {
     var rest = ref.rest;
+    if (ref.isMovie && rest && rest.indexOf('ep:') !== 0) {
+      var movieUrl = base + '/video.php?vid=' + encodeURIComponent(rest);
+      return arabicFetchHtml(ctx, movieUrl, base + '/').then(function (got) {
+        var origin = arabicOrigin(got.url) || base;
+        var $ = arabicHtml(ctx, got.html);
+        var title = '';
+        var poster = '';
+        var description = '';
+        if ($) {
+          var titleEl = $('h1, h2').first();
+          title = (titleEl.text() || '').trim();
+          var posterImg = $('img[src*="uploads/thumbs"], img[data-echo*="uploads/thumbs"]').first();
+          if (posterImg.length) poster = arabicImg($, posterImg, origin);
+          var descEl = $('.pm-video-description, .pm-video-content').first();
+          description = (descEl.text() || '').trim();
+        }
+        if (!title) {
+          var tm = /<title[^>]*>([^<]+)/i.exec(got.html);
+          if (tm) {
+            title = String(tm[1] || '')
+              .replace(/\s*[-|].*$/, '')
+              .trim();
+          }
+        }
+        var meta = arabicMeta('larozaa', rest, title || rest, poster, {
+          description: description,
+          isMovie: true,
+          url: ref.url || movieUrl,
+        });
+        if (!meta) {
+          return hubFail('details', 'NOT_FOUND', 'arabic id ' + ref.fullId);
+        }
+        meta.id = ref.fullId;
+        meta.description = description || '';
+        meta.videos = [
+          {
+            id: 'larozaa:' + rest,
+            title: title || rest,
+            season: 1,
+            episode: 1,
+            thumbnail: poster || '',
+          },
+        ];
+        return hubOk('details', { meta: meta }, { maxAge: 900, swr: 3600 });
+      });
+    }
+
     var resolveEp =
       rest.indexOf('ep:') === 0
         ? arabicFetchHtml(
@@ -832,26 +1118,10 @@ function arabicDetailsLaroza(ctx, cfg, ref) {
       return arabicFetchHtml(ctx, url, base + '/').then(function (got) {
         var origin = arabicOrigin(got.url) || base;
         var parsed = arabicParseLarozaShowHtml(ctx, got.html, origin, 0);
-        if (
-          (!parsed.videos || !parsed.videos.length) &&
-          ref.isMovie &&
-          rest &&
-          rest.indexOf('ep:') !== 0
-        ) {
-          parsed.videos = [
-            {
-              id: 'larozaa:' + rest,
-              title: parsed.title || rest,
-              season: 1,
-              episode: 1,
-              thumbnail: parsed.poster || '',
-            },
-          ];
-        }
         var name = parsed.title || rest || ref.fullId;
         var meta = arabicMeta('larozaa', rest, name, parsed.poster || '', {
           description: parsed.description,
-          isMovie: ref.isMovie,
+          isMovie: false,
           url: ref.url,
         });
         if (!meta) {
@@ -1123,28 +1393,39 @@ function arabicDetails(ctx, cfg, params) {
 
 function arabicStreamLaroza(ctx, cfg, vid) {
   return arabicResolveLaroza(ctx, cfg).then(function (base) {
-    var url = base + '/play.php?vid=' + encodeURIComponent(vid);
-    return arabicFetchHtml(ctx, url, base + '/').then(function (got) {
+    var raw = String(vid || '').replace(/^ep:/, '');
+    var url = base + '/play.php?vid=' + encodeURIComponent(raw);
+    var referer = base + '/video.php?vid=' + encodeURIComponent(raw);
+    return arabicFetchHtml(ctx, url, referer).then(function (got) {
       var $ = arabicHtml(ctx, got.html);
       var streams = [];
+      var seen = {};
+      function push(name, embedUrl) {
+        embedUrl = String(embedUrl || '').trim();
+        if (!embedUrl || seen[embedUrl]) return;
+        seen[embedUrl] = true;
+        streams.push({
+          name: name || 'Server ' + (streams.length + 1),
+          url: embedUrl,
+          type: 'embed',
+        });
+      }
       if ($) {
         $('.WatchList li').each(function () {
           var item = $(this);
-          var embedUrl = item.attr('data-embed-url') || '';
-          if (!embedUrl) return;
-          var name = (item.text() || '').trim();
-          streams.push({
-            name: name || 'Server ' + (streams.length + 1),
-            url: embedUrl,
-            type: 'embed',
-          });
+          push(item.text(), item.attr('data-embed-url') || '');
         });
         if (!streams.length) {
           var iframe = $('iframe[src]').first();
           var src = iframe.length ? iframe.attr('src') || '' : '';
-          if (src) {
-            streams.push({ name: 'Server 1', url: src, type: 'embed' });
-          }
+          if (src && src.indexOf('new_ads') < 0) push('Server 1', src);
+        }
+      }
+      if (!streams.length) {
+        var re = /data-embed-url="([^"]+)"/gi;
+        var m;
+        while ((m = re.exec(got.html))) {
+          push('Server ' + (streams.length + 1), m[1]);
         }
       }
       return hubOk('stream', { streams: streams }, { maxAge: 120 });
@@ -1237,6 +1518,11 @@ function extract(ctx) {
 
   if (action === 'layout') {
     return hubOk('layout', arabicLayout(), { maxAge: 3600, swr: 86400 });
+  }
+  if (action === 'feed') {
+    return arabicFeed(ctx, cfg, params).catch(function (e) {
+      return hubFail('feed', 'UPSTREAM', e && e.message, true);
+    });
   }
   if (action === 'details') {
     return arabicDetails(ctx, cfg, params);

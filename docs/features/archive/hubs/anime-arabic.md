@@ -29,5 +29,5 @@ The **Anime Arabic** tab is temporarily hidden from the navigation bar and Setti
 ## Related
 
 - [Anime](anime.md)
-- [Arabic cinema](arabic-cinema.md)
+- [Arabic](../../hubs/arabic.md)
 - [Content hub scrapers](../../scrapers/content-hub-scrapers.md)

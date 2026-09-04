@@ -569,7 +569,7 @@ mixin _LiveMatchesPlayback
     final out = <_StreamedStreamChoice>[];
     final seenUrls = <String>{};
     final seenRefs = <String>{};
-    final jobs = <Future<List<_StreamedStreamChoice>>>[];
+    final jobs = <( _StreamedMatch, _StreamedSourceRef)>[];
     final inlineBatch = <_StreamedStreamChoice>[];
 
     for (final m in catalogMatches) {
@@ -584,25 +584,7 @@ mixin _LiveMatchesPlayback
       for (final ref in m.sources) {
         final key = 'ref:${m.livePluginId}:${ref.source}:${ref.id}';
         if (!seenRefs.add(key)) continue;
-        jobs.add(() async {
-          try {
-            final streams = m.isForjaLive
-                ? await _forjaLiveStreamsFromSource(
-                    m,
-                    ref,
-                    allowStreamedFallback: false,
-                  )
-                : await _fetchStreamedStreams(ref, allowFallback: false);
-            return [
-              for (final stream in streams)
-                if (stream.embedUrl.trim().isNotEmpty)
-                  _StreamedStreamChoice(catalogMatch: m, stream: stream),
-            ];
-          } catch (e) {
-            debugPrint('[LiveMatches] resolve ${ref.source}/${ref.id}: $e');
-            return const <_StreamedStreamChoice>[];
-          }
-        }());
+        jobs.add((m, ref));
       }
     }
 
@@ -618,12 +600,28 @@ mixin _LiveMatchesPlayback
           : 'Checking ${jobs.length} sources…',
     );
 
-    var completed = 0;
-    for (final job in jobs) {
+    // Run source jobs one-at-a-time — eager Future() stamps Node/JSC unlocks.
+    for (var i = 0; i < jobs.length; i++) {
       if (isStale?.call() == true) break;
-      final batch = await job;
+      final (m, ref) = jobs[i];
+      List<_StreamedStreamChoice> batch = const [];
+      try {
+        final streams = m.isForjaLive
+            ? await _forjaLiveStreamsFromSource(
+                m,
+                ref,
+                allowStreamedFallback: false,
+              )
+            : await _fetchStreamedStreams(ref, allowFallback: false);
+        batch = [
+          for (final stream in streams)
+            if (stream.embedUrl.trim().isNotEmpty)
+              _StreamedStreamChoice(catalogMatch: m, stream: stream),
+        ];
+      } catch (e) {
+        debugPrint('[LiveMatches] resolve ${ref.source}/${ref.id}: $e');
+      }
       if (isStale?.call() == true) break;
-      completed++;
       final fresh = <_StreamedStreamChoice>[];
       for (final choice in batch) {
         final url = choice.stream.embedUrl.trim();
@@ -632,7 +630,7 @@ mixin _LiveMatchesPlayback
         fresh.add(choice);
       }
       if (fresh.isNotEmpty) onPartial?.call(fresh);
-      if (completed == jobs.length) {
+      if (i == jobs.length - 1) {
         onProgress?.call('Building stream list…');
       }
     }
@@ -869,6 +867,39 @@ mixin _LiveMatchesPlayback
       allowFallback: allowStreamedFallback,
     );
 
+    // Catalog already lists every mirror (Streamed stream Nos, etc.).
+    // Never GOAT-unlock them all during Providers fill — that stampedes
+    // Node/happy-dom and SIGSEGVs macOS. List as unlock-on-tap; crack on play.
+    if (catalogMeta.isNotEmpty) {
+      final pluginSource = source.source.trim().isNotEmpty
+          ? source.source.trim().toLowerCase()
+          : LiveMatchesEngine.cachedResolveSourceToken(pluginId);
+      final out = <_StreamedStream>[];
+      final seen = <String>{};
+      for (var i = 0; i < catalogMeta.length; i++) {
+        final meta = catalogMeta[i];
+        final embed = meta.embedUrl.trim().isNotEmpty
+            ? meta.embedUrl.trim()
+            : source.iframe.trim();
+        if (embed.isEmpty || !seen.add(embed)) continue;
+        out.add(
+          _StreamedStream(
+            id: meta.id.isNotEmpty ? meta.id : source.id,
+            streamNo: meta.streamNo > 0 ? meta.streamNo : i + 1,
+            language: meta.language,
+            hd: meta.hd,
+            embedUrl: embed,
+            source: meta.source.trim().isNotEmpty
+                ? meta.source
+                : pluginSource,
+            viewers: meta.viewers > 0 ? meta.viewers : match.viewers,
+            directPlayback: false,
+          ),
+        );
+      }
+      if (out.isNotEmpty) return out;
+    }
+
     final rows = await EngineService.instance.runLivePlugin(
       pluginId: pluginId,
       action: 'resolve',
@@ -885,7 +916,6 @@ mixin _LiveMatchesPlayback
       },
     );
     if (rows.isEmpty) {
-      if (catalogMeta.isNotEmpty) return catalogMeta;
       if (source.iframe.trim().isNotEmpty) {
         final token = LiveMatchesEngine.cachedResolveSourceToken(pluginId);
         return [
@@ -897,6 +927,7 @@ mixin _LiveMatchesPlayback
             embedUrl: source.iframe,
             source: token.isNotEmpty ? token : source.source,
             viewers: match.viewers,
+            directPlayback: false,
           ),
         ];
       }
@@ -915,21 +946,17 @@ mixin _LiveMatchesPlayback
       if (row['webviewOnly'] == true) continue;
       final url = (row['url'] ?? '').toString().trim();
       if (url.isEmpty) continue;
-      final meta = i < catalogMeta.length
-          ? catalogMeta[i]
-          : (catalogMeta.isNotEmpty ? catalogMeta.first : null);
       out.add(
         _streamedStreamFromResolveRow(
           row: row,
           source: source,
           match: match,
           pluginSource: pluginSource,
-          catalogMeta: meta,
+          catalogMeta: null,
           index: i,
         ),
       );
     }
-    if (out.isEmpty && catalogMeta.isNotEmpty) return catalogMeta;
     return out;
   }
 
@@ -1241,27 +1268,63 @@ mixin _LiveMatchesPlayback
   }) async {
     final ref = _sourceRefForStream(match, stream);
     if (ref == null) return null;
-    final unlocked = await _forjaLiveStreamsFromSource(
-      match,
-      ref,
-      allowStreamedFallback: false,
+    final pluginId = LiveMatchesEngine.cachedProviderResolvePluginId(
+      match.livePluginId,
     );
-    _StreamedStream? hit;
-    for (final row in unlocked) {
-      if (row.streamNo == stream.streamNo || row.id == stream.id) {
-        hit = row;
-        break;
-      }
+    if (pluginId.isEmpty) return null;
+    var embed = stream.embedUrl.trim();
+    if (embed.isEmpty || embed.startsWith('pending:')) {
+      embed = ref.iframe.trim();
     }
-    hit ??= unlocked.isEmpty ? null : unlocked.first;
-    final url = hit?.embedUrl.trim() ?? '';
-    if (hit == null || url.isEmpty) return null;
-    return _resolveStreamToEnginePlaySource(
-      match,
-      hit,
-      onProgress: onProgress,
-      allowSourceRefFallback: false,
-    );
+    if (embed.isEmpty) return null;
+    onProgress?.call('Unlocking source…');
+    List<Map<String, dynamic>> rows = const [];
+    try {
+      rows = await EngineService.instance.runLivePlugin(
+        pluginId: pluginId,
+        action: 'resolve',
+        params: {
+          'matchId': stream.id.isNotEmpty ? stream.id : ref.id,
+          'eventId': match.id,
+          'source': stream.source.isNotEmpty ? stream.source : ref.source,
+          'category': match.category,
+          'title': match.title,
+          'stream': stream.streamNo > 0 ? stream.streamNo.toString() : '1',
+          'embedUrl': embed,
+          'iframe': embed,
+          'viewers': stream.viewers > 0 ? stream.viewers : match.viewers,
+        },
+      );
+    } catch (e) {
+      debugPrint(
+        '[LiveMatches] unlock ${ref.source}/${ref.id} '
+        '#${stream.streamNo}: $e',
+      );
+      return null;
+    }
+    for (final row in rows) {
+      if (row['webviewOnly'] == true) continue;
+      final url = (row['url'] ?? '').toString().trim();
+      if (url.isEmpty || !iptvLiveEnginePlayUrlReady(url)) continue;
+      final pluginSource = stream.source.trim().isNotEmpty
+          ? stream.source.trim().toLowerCase()
+          : LiveMatchesEngine.cachedResolveSourceToken(pluginId);
+      final hit = _streamedStreamFromResolveRow(
+        row: row,
+        source: ref,
+        match: match,
+        pluginSource: pluginSource,
+        catalogMeta: stream,
+        index: 0,
+      );
+      return _resolveStreamToEnginePlaySource(
+        match,
+        hit,
+        onProgress: onProgress,
+        allowSourceRefFallback: false,
+      );
+    }
+    return null;
   }
 
   Future<IptvPlaySource?> _resolveStreamToEnginePlaySource(

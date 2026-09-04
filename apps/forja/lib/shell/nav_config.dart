@@ -22,7 +22,6 @@ const Set<String> archivedNavIds = {
   'manga',
   'jellyfin',
   'anime_arabic',
-  'arabic',
 };
 
 @Deprecated('Use archivedNavIds')

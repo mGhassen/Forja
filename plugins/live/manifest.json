@@ -46,7 +46,8 @@
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
-        "origin": "https://streamfree.top"
+        "origin": "https://streamfree.top",
+        "embedOrigin": "https://embed.st"
       }
     },
     {

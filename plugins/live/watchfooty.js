@@ -116,20 +116,33 @@ async function resolveWatchfootyMatch(ctx, mid) {
     var s = streams[i];
     if (!s || !s.url) continue;
     var embed = String(s.url).trim();
+    var label = 'WatchFooty';
+    if (s.source) label += ' ' + s.source;
+    if (s.quality) label += ' ' + s.quality;
     var resolved = await resolveWatchfootyEmbed(ctx, embed);
-    if (!resolved.length) continue;
-    for (var j = 0; j < resolved.length; j++) {
-      var row = resolved[j];
-      var label = 'WatchFooty';
-      if (s.source) label += ' ' + s.source;
-      if (s.quality) label += ' ' + s.quality;
-      out.push({
-        url: row.url,
-        name: label,
-        headers: row.headers || { Referer: WATCHFOOTY_REFERER, 'User-Agent': ua() },
-        directPlayback: row.directPlayback === true,
-      });
+    if (resolved.length) {
+      for (var j = 0; j < resolved.length; j++) {
+        var row = resolved[j];
+        out.push({
+          url: row.url,
+          name: label,
+          headers: row.headers || { Referer: WATCHFOOTY_REFERER, 'User-Agent': ua() },
+          directPlayback: row.directPlayback === true,
+        });
+      }
+      continue;
     }
+    // Always list every API mirror — host unlocks again on tap.
+    out.push({
+      url: embed,
+      name: label,
+      headers: {
+        Referer: embed,
+        Origin: 'https://sportsembed.su',
+        'User-Agent': ua(),
+      },
+      directPlayback: false,
+    });
   }
   return out;
 }

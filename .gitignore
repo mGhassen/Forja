@@ -15,6 +15,7 @@ migrate_working_dir/
 # Local scratch / probe dumps (never ship)
 .tmp/
 .tmp_hls/
+.tmp*
 
 # IntelliJ related
 *.iml

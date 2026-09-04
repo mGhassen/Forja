@@ -14,7 +14,7 @@ Several Forja tabs don't use TMDB torrents — they scrape dedicated sites for b
 | [Asian Drama](../hubs/asian-drama.md) | KissKH — Asian dramas with subtitles |
 | [Live Matches](../live/live-matches.md) | Forja Live catalogs + Forja Sports (Xtream) |
 
-More hub scrapers (Arabic, Manga, Similar, …) are documented in [archive](../archive/README.md).
+More hub scrapers (Manga, Similar, …) are documented in [archive](../archive/README.md). Arabic scrapers ship with the active [Arabic](../hubs/arabic.md) hub pack.
 
 ## How to open it
 

@@ -65,6 +65,7 @@ async function extract(ctx) {
         return {
           source: 'timstreams',
           id: String(st.name || i),
+          iframe: String(st.url || ''),
         };
       });
     if (!sources.length) return;

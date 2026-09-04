@@ -69,9 +69,11 @@ class LiveGoatUnlock {
 
   static String? _cachedDir;
   static Future<void>? _prepareFuture;
+  static bool _goatAssetsWritten = false;
 
   static String? _cachedGasmDir;
   static Future<void>? _prepareGasmFuture;
+  static bool _gasmAssetsWritten = false;
 
   static String? _cachedSportsEmbedDir;
   static Future<void>? _prepareSportsEmbedFuture;
@@ -271,14 +273,26 @@ class LiveGoatUnlock {
       // probes starved the native unlock chain and hit the 45s plugin timeout.
       final out = <({String url, String name, Map<String, String> headers})>[];
       for (final row in pending) {
-        final u = await resolveWatchfootyEmbed(embedUrl: row.embed);
-        if (u == null) continue;
         final label = [
           'WatchFooty',
           if (row.source.isNotEmpty) row.source,
           if (row.quality.isNotEmpty) row.quality,
         ].join(' ');
-        out.add((url: u.url, name: label, headers: u.headers));
+        final u = await resolveWatchfootyEmbed(embedUrl: row.embed);
+        if (u != null) {
+          out.add((url: u.url, name: label, headers: u.headers));
+          continue;
+        }
+        // Keep every API mirror visible — unlock again on tap.
+        out.add((
+          url: row.embed,
+          name: label,
+          headers: {
+            'Referer': row.embed,
+            'Origin': _sportsEmbedOrigin,
+            'User-Agent': _ua,
+          },
+        ));
       }
       return out;
     } catch (e) {
@@ -1221,7 +1235,9 @@ class LiveGoatUnlock {
     if (_cachedDir != null) {
       final ready = File('${_cachedDir!}/node_modules/happy-dom/package.json');
       if (await ready.exists()) {
-        await _refreshGoatAssets(_cachedDir!);
+        if (!_goatAssetsWritten) {
+          await _refreshGoatAssets(_cachedDir!);
+        }
         return _cachedDir!;
       }
     }
@@ -1244,6 +1260,7 @@ class LiveGoatUnlock {
       '$_assetRoot/vendor/lock-esm.mjs',
       File('$dir/vendor/lock-esm.mjs'),
     );
+    _goatAssetsWritten = true;
     debugPrint('[LiveGoatUnlock] refreshed goat assets → $dir');
   }
 
@@ -1300,9 +1317,9 @@ class LiveGoatUnlock {
         '${_cachedGasmDir!}/node_modules/happy-dom/package.json',
       );
       if (await ready.exists()) {
-        // Always refresh unlock + wasm — cache used to stick on a broken
-        // script after first npm install.
-        await _refreshGasmAssets(_cachedGasmDir!);
+        if (!_gasmAssetsWritten) {
+          await _refreshGasmAssets(_cachedGasmDir!);
+        }
         return _cachedGasmDir!;
       }
     }
@@ -1342,6 +1359,7 @@ class LiveGoatUnlock {
       '$_gasmAssetRoot/vendor/gasm-esm.mjs',
       File('$dir/vendor/gasm-esm.mjs'),
     );
+    _gasmAssetsWritten = true;
   }
 
   static Future<void> _prepareGasmDir(String node) async {
@@ -1528,7 +1546,14 @@ class LiveGoatUnlock {
     await proc.stdin.close();
     final stdoutFuture = proc.stdout.transform(utf8.decoder).join();
     final stderrFuture = proc.stderr.transform(utf8.decoder).join();
-    final exit = await proc.exitCode.timeout(const Duration(seconds: 45));
+    late final int exit;
+    try {
+      exit = await proc.exitCode.timeout(const Duration(seconds: 45));
+    } on TimeoutException {
+      proc.kill(ProcessSignal.sigkill);
+      debugPrint('[LiveGoatUnlock] unlock.mjs timed out');
+      return null;
+    }
     final stdout = await stdoutFuture;
     final stderr = await stderrFuture;
     final raw = stdout.trim();

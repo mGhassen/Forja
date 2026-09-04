@@ -1297,60 +1297,73 @@ class _PortalProbeDetailCard extends StatelessWidget {
     return IgnorePointer(
       child: SizedBox(
         width: _cardW,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        child: DecoratedBox(
           decoration: BoxDecoration(
-            color: IptvShellStyle.surfaceMuted,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: IptvShellStyle.border),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 24,
+                spreadRadius: 2,
+              ),
+            ],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+          child: ForjaFrostedPanel(
+            enableBlur: true,
+            blurSigma: 28,
+            border: null,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: statusColor,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      status,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: statusColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: statusColor,
+                        ),
                       ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          status,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: statusColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    portal.displayLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.25,
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  for (var i = 0; i < lines.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 4),
+                    _detailRow(lines[i].$1, lines[i].$2),
+                  ],
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                portal.displayLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  height: 1.25,
-                ),
-              ),
-              const SizedBox(height: 10),
-              for (var i = 0; i < lines.length; i++) ...[
-                if (i > 0) const SizedBox(height: 4),
-                _detailRow(lines[i].$1, lines[i].$2),
-              ],
-            ],
+            ),
           ),
         ),
       ),

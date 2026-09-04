@@ -31,16 +31,6 @@ function findEvent(events, eventToken) {
   return null;
 }
 
-function pickStream(ev, streamKey) {
-  var streams = (ev.streams || []).filter(function (st) { return !st.vip; });
-  if (!streams.length) return null;
-  for (var i = 0; i < streams.length; i++) {
-    var st = streams[i];
-    if (String(st.name || '') === streamKey || String(i) === streamKey) return st;
-  }
-  return streams[0];
-}
-
 function withName(row, name) {
   if (!row) return null;
   row.name = name || row.name || 'TimStreams';
@@ -124,8 +114,13 @@ async function resolveUrl(ctx, url, name, cfg) {
   var unlocked = await unlockEmbed(ctx, raw, cfg || {});
   if (unlocked) return withName(unlocked, name || 'TimStreams');
 
-  // Sniff mode can still open the page; Engine treat webviewOnly as miss.
-  return { webviewOnly: true, embedUrl: raw, referer: ref, name: name || 'TimStreams' };
+  // Always surface the mirror — host re-unlocks on tap (never drop / webviewOnly).
+  return {
+    url: raw,
+    name: name || 'TimStreams',
+    headers: { Referer: ref, Origin: ref.replace(/\/$/, ''), 'User-Agent': ua() },
+    directPlayback: false,
+  };
 }
 
 async function resolveByEvent(ctx, cfg) {
@@ -134,10 +129,43 @@ async function resolveByEvent(ctx, cfg) {
   var events = await fetchEvents(ctx, cfg);
   var ev = findEvent(events, eventToken);
   if (!ev) return [];
-  var st = pickStream(ev, String(ctx.matchId || ''));
-  if (!st || !st.url) return [];
-  var row = await resolveUrl(ctx, String(st.url), String(st.name || 'TimStreams'), cfg);
-  return row ? [row] : [];
+
+  var wanted = String(ctx.matchId || ctx.embedUrl || ctx.url || '').trim();
+  var streams = (ev.streams || []).filter(function (st) {
+    return st && !st.vip && st.url;
+  });
+  if (!streams.length) return [];
+
+  // Prefer the named source ref when Providers resolves one catalog row;
+  // otherwise list every non-VIP mirror for the event.
+  var selected = streams;
+  if (wanted) {
+    var hit = null;
+    for (var i = 0; i < streams.length; i++) {
+      var st = streams[i];
+      if (String(st.name || '') === wanted || String(i) === wanted) {
+        hit = st;
+        break;
+      }
+      if (String(st.url || '').trim() === wanted) {
+        hit = st;
+        break;
+      }
+    }
+    if (hit) selected = [hit];
+  }
+
+  var out = [];
+  for (var j = 0; j < selected.length; j++) {
+    var row = await resolveUrl(
+      ctx,
+      String(selected[j].url),
+      String(selected[j].name || 'TimStreams'),
+      cfg,
+    );
+    if (row) out.push(row);
+  }
+  return out;
 }
 
 async function extract(ctx) {

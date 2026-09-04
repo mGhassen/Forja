@@ -21,9 +21,9 @@ On a fresh install, all available tabs are enabled in this order: Home, Asian Dr
 - Restore a cleaner bar by hiding unused hubs
 - Sync the same layout across devices via [cloud sync](cloud-sync.md) (visible tabs + default tab)
 
-Home, Asian Drama, and Anime install from ForjaHQ hub packs (Settings → Sources → Forja → **Hubs**).
+Home, Asian Drama, Anime, and Arabic install from ForjaHQ hub packs (Settings → Forja Packs → **Hubs**). Arabic defaults off in Features after install.
 
-**Archived tabs** (Search, Discover, Similar, Magnet, Media Downloader, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic, Arabic) are withheld from this list — see [archive](../archive/README.md).
+**Archived tabs** (Search, Discover, Similar, Magnet, Media Downloader, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic) are withheld from this list — see [archive](../archive/README.md).
 
 ## Tips
 

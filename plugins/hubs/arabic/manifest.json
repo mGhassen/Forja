@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-arabic",
   "name": "ForjaHQ Arabic",
-  "version": "1.2.4",
+  "version": "1.3.0",
   "plugins": [
     {
       "id": "arabic-hub",
@@ -20,6 +20,7 @@
         "nav",
         "layout",
         "rail",
+        "feed",
         "search",
         "details"
       ],
@@ -33,13 +34,15 @@
       },
       "enabled": true,
       "config": {
-        "bootstrap": "https://larozaa.bond",
+        "bootstrap": "https://laaroza.website",
         "mirrors": [
+          "https://laaroza.website",
+          "https://laaroza.pics",
+          "https://larozza.yachts",
           "https://larozaa.bond",
           "https://larozaa.home",
           "https://larozaa.homes",
-          "https://larozaa.com",
-          "https://laaroza.pics"
+          "https://larozaa.com"
         ],
         "dimatoon": "https://www.dima-toon.com",
         "brstej": "https://hd1.brstej.com"

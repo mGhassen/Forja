@@ -35,15 +35,16 @@ async function extract(ctx) {
       var awayBadge = String(team2.logo || '');
       // Relative `/thumbnails/...` — without origin, Dart prefixes Streamed CDN.
       var poster = absUrl(origin, s.thumbnail_url) || homeBadge || awayBadge;
+      var viewers = Number(s.viewers || 0);
       var row = {
         id: 'sf_' + id,
         title: String(s.name || ''),
         category: String(category).toLowerCase(),
         date: s.match_timestamp ? Number(s.match_timestamp) * 1000 : 0,
         poster: poster,
-        popular: Number(s.viewers || 0) > 100,
-        airing: false,
-        viewers: Number(s.viewers || 0),
+        popular: viewers > 50,
+        airing: viewers > 0,
+        viewers: viewers,
         sources: [{ source: 'streamfree', id: String(id) }],
         catalog: 'forja_live',
         pluginId: pluginId,
