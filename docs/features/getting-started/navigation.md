@@ -62,6 +62,7 @@ Hub tabs (**Home**, **Anime**, **Asian Drama**, **Arabic** / **Aflem** / **كر�
 
 ## Tips
 
+- If every feature tab is off, the shell shows a get-started screen — **Open Features** goes to Settings → Features; **Install plugins** opens Settings → Forja Packs (and a download picker when profile packs still need installing). Tap the Forja logo in the sidebar to return here
 - Hide tabs you never use to reduce clutter — among the tabs listed in Settings → Features
 - Startup follows your profile: splash warms the default hub layout + first-paint rails into the shared catalog cache; torrent / Nuvio / Forja / Webstreaming engines start **after** splash when those play sources are on **and** you have a VOD tab (Home, Anime, Asian Drama, or My List). IPTV + Live Sports alone skip them. Restored-session cold start paints the logo splash immediately (update check + cloud sync run in the background). After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches).
 - Movie and series details open on top of the current tab; the player opens full-screen from there

@@ -10,6 +10,8 @@
 
 **Settings → Forja Packs**
 
+When every feature tab is off, the get-started screen **Install plugins** button opens this category (and the batch download picker if profile packs still need installing).
+
 ## What you can do
 
 - Paste a pack **manifest.json** URL and **Install**

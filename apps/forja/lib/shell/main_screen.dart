@@ -529,6 +529,16 @@ class _MainScreenState extends ConsumerState<MainScreen>
   }
 
   void _openPluginsFromEmptyState() {
+    final ctx = _shellScopedContext;
+    if (ctx == null || !ctx.mounted) return;
+    final tv = ShellScope.metricsOf(ctx).usesTvDensity;
+    // Always land on Forja Packs (manifest URL / community). Batch prompt only
+    // fires when profile packs still need download — without this fallback the
+    // CTA was a silent no-op on an empty or fully-downloaded profile.
+    ShellBus.openSettings(
+      categoryId: SettingsCategoryId.forjaPacks,
+      enterDetail: tv,
+    );
     unawaited(PluginInstallCoordinator.instance.requestBatchInstallPrompt());
   }
 
