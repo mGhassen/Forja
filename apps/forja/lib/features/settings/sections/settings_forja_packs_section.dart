@@ -29,6 +29,7 @@ class _SettingsForjaPacksSectionState
     extends ConsumerState<SettingsForjaPacksSection> {
   final TextEditingController _engineController = TextEditingController();
   bool _engineInstalling = false;
+  bool _engineReloading = false;
   bool _engineUpdatingAll = false;
 
   @override
@@ -137,11 +138,29 @@ class _SettingsForjaPacksSectionState
             onSubmitted: (_) => _installEnginePack(),
           ),
           const SizedBox(height: 14),
-          SettingsFilledButton(
-            label: 'Install',
-            icon: Icons.add_rounded,
-            busy: _engineInstalling,
-            onPressed: _installEnginePack,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              SettingsFilledButton(
+                label: 'Reload',
+                icon: Icons.refresh_rounded,
+                secondary: true,
+                busy: _engineReloading,
+                onPressed: packs.isEmpty ||
+                        _engineInstalling ||
+                        _engineReloading ||
+                        _engineUpdatingAll
+                    ? null
+                    : () => unawaited(_reloadAllEnginePacks(packs)),
+              ),
+              const SizedBox(width: 12),
+              SettingsFilledButton(
+                label: 'Install',
+                icon: Icons.add_rounded,
+                busy: _engineInstalling,
+                onPressed: _engineReloading ? null : _installEnginePack,
+              ),
+            ],
           ),
           if (packs.isNotEmpty) ...[
             const SizedBox(height: 20),
@@ -322,6 +341,43 @@ class _SettingsForjaPacksSectionState
       ForjaToast.error('Refresh failed: $e');
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
+    }
+  }
+
+  Future<void> _reloadAllEnginePacks(List<EnginePack> packs) async {
+    final targets = [
+      for (final pack in packs)
+        if (pack.plugins.isNotEmpty &&
+            !PluginRegistry.isLegacyAssetPack(pack.sourceUrl))
+          pack,
+    ];
+    if (targets.isEmpty || _engineReloading) return;
+    setState(() => _engineReloading = true);
+    var ok = 0;
+    try {
+      for (final pack in targets) {
+        try {
+          await PluginInstallCoordinator.instance.installManifest(
+            pack.sourceUrl,
+            isUpdate: true,
+          );
+          ref.read(enginePackUpdatesProvider.notifier).clearFor(pack.sourceUrl);
+          ok++;
+        } catch (e) {
+          if (!mounted) return;
+          ForjaToast.error('${pack.name} reload failed: $e');
+        }
+      }
+      if (!mounted) return;
+      ref.invalidate(enginePacksProvider);
+      await ref.read(enginePackUpdatesProvider.notifier).refresh();
+      if (ok > 0) {
+        ForjaToast.success(
+          ok == 1 ? '1 pack reloaded' : '$ok packs reloaded',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _engineReloading = false);
     }
   }
 

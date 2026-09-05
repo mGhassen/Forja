@@ -1404,11 +1404,12 @@ mixin _DesktopPlayerPlayback
     });
 
     // Duration – sync notifier only; resume uses mpv `start` on open (issue 198).
+    // Trimmed dmcdn/peakstorm playlists report remaining length — add offset.
     _s._durationSub = _s._player.stream.duration.listen((dur) {
       if (_s._disposed) return;
       if (!_s._playbackConfirmed) return;
       if (_s._lockSeekBarPosition) return;
-      _s._durationNotifier.value = dur;
+      _s._durationNotifier.value = playerUiDuration(dur);
     });
 
     // Buffered position – demuxer readahead only (not torrent swarm %).
@@ -1416,7 +1417,7 @@ mixin _DesktopPlayerPlayback
       if (_s._disposed) return;
       if (!_s._playbackConfirmed) return;
       if (_s._lockSeekBarPosition) return;
-      _applyBufferedEnd(cacheTime: buf);
+      _applyBufferedEnd(cacheTime: playerUiPosition(buf));
     });
     _s._cacheAheadPoll?.cancel();
     _s._cacheAheadPoll = Timer.periodic(const Duration(milliseconds: 750), (_) {
@@ -1738,7 +1739,10 @@ mixin _DesktopPlayerPlayback
       final raw = await platform.getProperty('demuxer-cache-duration');
       final ahead = double.tryParse(raw.toString());
       if (ahead == null) return;
-      _applyBufferedEnd(cacheTime: _s._player.state.buffer, aheadSecs: ahead);
+      _applyBufferedEnd(
+        cacheTime: playerUiPosition(_s._player.state.buffer),
+        aheadSecs: ahead,
+      );
     } catch (_) {
     } finally {
       _s._cacheAheadProbeInFlight = false;

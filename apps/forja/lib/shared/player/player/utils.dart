@@ -598,6 +598,14 @@ Duration playerUiPosition(Duration raw) {
   return offset + raw;
 }
 
+/// Trimmed playlist duration is remaining length — restore full VOD duration.
+Duration playerUiDuration(Duration raw) {
+  final offset = peakstormPlaybackTimeOffset;
+  if (offset <= Duration.zero) return raw;
+  if (raw <= Duration.zero) return raw;
+  return offset + raw;
+}
+
 /// Normalize URL + headers, apply mpv UA/referrer, open via media_kit.
 Future<String> openPlayerStream(
   Player player, {

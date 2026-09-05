@@ -94,24 +94,6 @@
       }
     },
     {
-      "id": "dailymotion",
-      "name": "Dailymotion",
-      "entry": "dailymotion.js",
-      "types": [
-        "movie",
-        "tv",
-        "anime",
-        "drama"
-      ],
-      "kind": "http",
-      "config": {
-        "api": "https://api.dailymotion.com",
-        "origin": "https://www.dailymotion.com",
-        "searchLimit": 12,
-        "maxResolve": 6
-      }
-    },
-    {
       "id": "2embed",
       "name": "2Embed",
       "entry": "multiembed.js",
@@ -898,6 +880,24 @@
         "anime"
       ],
       "kind": "http"
+    },
+    {
+      "id": "dailymotion",
+      "name": "Dailymotion",
+      "entry": "dailymotion.js",
+      "types": [
+        "movie",
+        "tv",
+        "anime",
+        "drama"
+      ],
+      "kind": "http",
+      "config": {
+        "api": "https://api.dailymotion.com",
+        "origin": "https://www.dailymotion.com",
+        "searchLimit": 12,
+        "maxResolve": 6
+      }
     },
     {
       "id": "hop-flixcloud",

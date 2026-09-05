@@ -13,6 +13,7 @@
 ## What you can do
 
 - Paste a pack **manifest.json** URL and **Install**
+- **Reload** next to Install — re-downloads every installed pack’s manifest and scripts
 - **Update** / **Update all** when a remote pack version is newer
 - Enable or disable each installed pack; expand for per-plugin toggles (Providers, Live, Hubs, Torrent, …)
 - **Refresh** or **Remove** a pack (Remove also drops it from your cloud profile on the next sync)

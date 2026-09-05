@@ -334,10 +334,18 @@ void main() {
       playerUiPosition(const Duration(seconds: 2)),
       const Duration(seconds: 1193),
     );
+    expect(
+      playerUiDuration(const Duration(seconds: 400)),
+      const Duration(seconds: 1591),
+    );
     peakstormPlaybackTimeOffset = Duration.zero;
     expect(
       playerUiPosition(const Duration(seconds: 2)),
       const Duration(seconds: 2),
+    );
+    expect(
+      playerUiDuration(const Duration(seconds: 400)),
+      const Duration(seconds: 400),
     );
   });
 }
