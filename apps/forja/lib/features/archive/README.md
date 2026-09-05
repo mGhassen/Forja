@@ -2,7 +2,7 @@
 
 Shell tabs and verticals **removed from navigation**. Code is kept for reference or future restore — not part of the in-scope product surface.
 
-**Active features:** `account`, `iptv`, `live_matches`, `media`, `my_list`, `settings` + catalog hubs via `shared/catalog/`.
+**Active features:** `account`, `iptv`, `live_matches`, `media`, `settings` + catalog hubs via `shared/catalog/` (My List is the `forjahq-my-list` hub pack + `shared/lists/` host services).
 
 ## Archived tabs
 

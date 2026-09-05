@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/features/my_list/providers/external_lists_providers.dart';
-import 'package:forja/features/my_list/providers/my_list_providers.dart';
+import 'package:forja/shared/lists/external_lists_providers.dart';
+import 'package:forja/shared/lists/my_list_providers.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/services/hub_list_follow.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';

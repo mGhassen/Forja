@@ -62,7 +62,7 @@ Engine packages: `core`, `storage`, `api`, `streaming`, `webstreamr`, `scrapers`
 | Discover | `features/discover/` | tmdb |
 | Similar | `features/similar/` | bestsimilar, tmdb |
 | Search | `features/search/` | tmdb, stremio |
-| My List | `features/my_list/` | trakt, simkl (via api) |
+| My List | `plugins/hubs/my_list` + `shared/lists/` | simkl (via host) |
 | Downloader | `features/downloader/` | streaming |
 | Magnet | `features/magnet/` | libtorrent |
 | Live Matches | `features/live_matches/` | api scrapers |

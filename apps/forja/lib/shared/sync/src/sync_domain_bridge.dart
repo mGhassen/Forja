@@ -673,8 +673,10 @@ class SyncDomainBridge {
     final ids = await _settings.getNavbarConfig();
     final tabOrder = await _settings.getNavbarTabOrder();
     final defaultTab = await _settings.getDefaultNavTab();
-    final out = <String, dynamic>{};
-    if (ids.isNotEmpty) out['visibleIds'] = ids;
+    final out = <String, dynamic>{
+      // Always include — empty list is intentional "all feature tabs off".
+      'visibleIds': ids,
+    };
     if (tabOrder.isNotEmpty) out['tabOrder'] = tabOrder;
     if (defaultTab.trim().isNotEmpty) {
       out['defaultTab'] = defaultTab.trim();

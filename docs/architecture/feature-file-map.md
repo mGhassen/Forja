@@ -97,8 +97,8 @@ These tabs are in [TV scope](../../.cursor/rules/forja-tv-scope.mdc) and under ~
 |------|------:|-------|
 | [`anime/anime_screen.dart`](../../apps/forja/lib/features/anime/anime_screen.dart) | 131 | Orchestrator | In |
 | [`asian_drama/asian_drama_screen.dart`](../../apps/forja/lib/features/asian_drama/asian_drama_screen.dart) | 781 | Uses `HubCinematicHero` |
-| [`my_list/lists_screen.dart`](../../apps/forja/lib/features/my_list/lists_screen.dart) | 763 | |
-| [`my_list/my_list_screen.dart`](../../apps/forja/lib/features/my_list/my_list_screen.dart) | 379 | |
+
+My List is not a `features/` screen — hub pack `plugins/hubs/my_list` + host services in [`shared/lists/`](../../apps/forja/lib/shared/lists/) and [`shared/catalog/kit/sources/my_list/`](../../apps/forja/lib/shared/catalog/kit/sources/my_list/).
 
 ---
 
@@ -188,7 +188,6 @@ Paths relative to `apps/forja/lib/features/`.
 | 781 | asian_drama | `asian_drama/asian_drama_screen.dart` | Orchestrator | In |
 | 780 | iptv | `iptv/iptv_tv_focus.dart` | UI Panel | In |
 | 771 | discover | `discover/discover_screen.dart` | Orchestrator | Out |
-| 763 | my_list | `my_list/lists_screen.dart` | Sub-hub | In |
 | 721 | arabic | `arabic/arabic_screen.dart` | Orchestrator | Out |
 | 717 | anime_arabic | `anime_arabic/anime_arabic_details_screen.dart` | Details | Out |
 | 715 | similar | `similar/similar_hub_screen.dart` | Orchestrator | Out |
@@ -216,7 +215,6 @@ Paths relative to `apps/forja/lib/features/`.
 | 416 | asian_drama | `asian_drama/asian_drama_details_screen.dart` | Details | In |
 | 382 | anime | `anime/catalog/miruro_extractor.dart` | Data/Service | In |
 | 380 | magnet | `magnet/magnet_player_screen.dart` | Player | Out |
-| 379 | my_list | `my_list/my_list_screen.dart` | Orchestrator | In |
 | 379 | anime | `anime/catalog/allanime_extractor.dart` | Data/Service | In |
 | 371 | comics | `comics/comic_details_screen.dart` | Details | Out |
 | 351 | comics | `comics/catalog/comic_page_extractor.dart` | Data/Service | Out |

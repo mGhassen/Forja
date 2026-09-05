@@ -41,7 +41,7 @@
 | Similar | `similar_*` (2) | `bestsimilar_scraper.dart` |
 | Live matches | `live_matches_screen` | (in-screen) |
 | Downloader | `media_downloader_screen` | (in-screen) |
-| My List / Lists | `my_list_*`, `lists_screen` | `my_list_service.dart` |
+| My List | hub pack + `shared/lists/`, kit `my_list_*` | `my_list_service.dart` |
 
 Also spot-check: **Discover**, **Search**, **Settings** (non-playback sections).
 

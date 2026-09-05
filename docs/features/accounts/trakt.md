@@ -10,14 +10,13 @@ Trakt connects your Forja activity to Trakt.tv — OAuth login, sync watched ite
 
 ## How to open it
 
-**Settings → Connected services → Trakt** (admin accounts — green sparkles on the group)
+**Settings → Addons → Connected services → Trakt** (admin accounts — green sparkles on the group)
 
 ## What you can do
 
 - Log in with device code (visit trakt.tv/activate)
 - Sync watch history and scrobbles (start / pause / stop with playback — pause does not keep pinging Trakt)
 - See username and stats in Settings
-- Browse Trakt lists via [External lists](../movies-tv/external-lists.md)
 - Get recommendation and calendar rails on [Home](../movies-tv/home.md)
 - Rate titles from TMDB details
 

@@ -113,7 +113,17 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     if (!val) {
       await deactivateAddonChildren(widget.addonId);
     }
-    schedulePreferencesSyncPush();
+    // IPTV / Live Sports are navbar tabs — must push `_domainNavigation` or
+    // cloud pull restores the old visibleIds (issue 126 shrink guard).
+    if (widget.addonId == SettingsAddonId.iptv ||
+        widget.addonId == SettingsAddonId.liveSports) {
+      scheduleNavigationSyncPush();
+      if (widget.addonId == SettingsAddonId.iptv) {
+        schedulePreferencesSyncPush();
+      }
+    } else {
+      schedulePreferencesSyncPush();
+    }
     ref.invalidate(settingsVisibilityProvider);
   }
 

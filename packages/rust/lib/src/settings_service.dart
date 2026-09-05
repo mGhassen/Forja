@@ -1528,6 +1528,13 @@ class SettingsService {
     return false;
   }
 
+  /// Host tabs gated by Settings → Addons. Never auto-insert on first-seen —
+  /// only Features / Addons toggles may show them.
+  static const Set<String> addonGatedNavIds = {
+    'iptv',
+    'live_matches',
+  };
+
   /// Host / archived shell ids only. Catalog hub tab ids register via
   /// [registerExtraNavIds] when packs contribute `nav` — never list VOD hubs
   /// here or fresh-install [navbar_known_ids] blocks first-seen auto-show.
@@ -1912,6 +1919,8 @@ class SettingsService {
       final id = allNavIds[i];
       if (filtered.contains(id)) continue;
       if (known.contains(id)) continue;
+      // Addons-gated host tabs stay off until the user enables them.
+      if (addonGatedNavIds.contains(id)) continue;
       newlyAdded.add(id);
       var insertAt = filtered.length;
       for (var j = i - 1; j >= 0; j--) {
