@@ -387,19 +387,12 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       });
     }
 
-    final content = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_hasSportChips) ...[
-          _buildSportTabs(),
-          const SizedBox(height: 2),
-        ],
-        Expanded(child: _buildBody()),
-      ],
-    );
-    final belowHeader = iptvCtrl == null
-        ? _buildStreamsPanelStack(context, content)
-        : _buildIptvPortalStack(context, iptvCtrl, content);
+    // Sport chips stay full-bleed; streams / portal panels only split the
+    // match list (panel top aligns under the category bar).
+    final matchList = _buildBody();
+    final listWithPanels = iptvCtrl == null
+        ? _buildStreamsPanelStack(context, matchList)
+        : _buildIptvPortalStack(context, iptvCtrl, matchList);
 
     return TvFocusGraph(
       tabId: LiveSportsHubPageState._tabId,
@@ -407,7 +400,11 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(iptvCtrl),
-          Expanded(child: belowHeader),
+          if (_hasSportChips) ...[
+            _buildSportTabs(),
+            const SizedBox(height: 2),
+          ],
+          Expanded(child: listWithPanels),
         ],
       ),
     );
@@ -477,7 +474,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         asSidePanel: true,
       ),
     );
-    // Desktop / TV: list 60% + panel 40% side-by-side (panel pushes list).
+    // Desktop / TV: match list 60% + panel 40% (chips stay full-bleed above).
     if (useSideSplit) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,

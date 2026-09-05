@@ -18,12 +18,12 @@ You do **not** need the Live Sports hub pack for the tab to appear. Install **Fo
 ## What you can do
 
 - Browse a **list of matches** (time, teams, status) — not a card grid on the standard layout.
-- Tap a **live** match to open a **right panel** (~40% width on desktop/TV) with **Providers** (Forja Live + Stremio) and **Live TV** (Xtream-matched channels). The match list shrinks to the left — the panel does not cover it. There is no separate details page on the standard path.
+- Tap a **live** match to open a **right panel** (~40% width on desktop/TV) with **Providers** (Forja Live + Stremio) and **Live TV** (Xtream-matched channels). The panel sits under the sport category bar and shrinks only the match list — categories stay full width. There is no separate details page on the standard path.
 - Use the **reload** control in the streams panel (header or next to “channels ready”) to force a fresh Providers / Live TV search — bypasses the ~30 minute source cache. Installing or removing a Stremio addon also invalidates that cache automatically.
 - Tap a stream row in the panel to play in the **native** IPTV player (never an embed WebView for Forja Live).
 - Use **Catalog** / **Schedule** / **Refresh** (and **Portals** when Forja Sports is enabled) in the top bar.
 - Filter by sport chips when more than one sport is in the schedule; **24/7** covers always-on channels.
-- On phone, the streams panel is a near-full-width sheet; on desktop/TV it takes **40%** of the width and pushes the list.
+- On phone, the streams panel is a near-full-width sheet; on desktop/TV it takes **40%** of the width and pushes the match list (not the category chips).
 
 ## Tips
 
