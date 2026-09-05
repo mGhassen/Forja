@@ -195,7 +195,7 @@ class _PluginInstallPromptBodyState extends State<_PluginInstallPromptBody> {
       return 'This pack was added to your profile from another device. '
           'Download and validate it here?';
     }
-    return 'Forja will download and validate this manifest. '
+    return 'Forja will download this pack’s scripts and validate the manifest. '
         'Only install packs you trust.';
   }
 

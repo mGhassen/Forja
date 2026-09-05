@@ -5,7 +5,10 @@
   "description": "Live sports hub — schedule browse and stream resolve via host live kit.",
   "author": "ForjaHQ",
   "version": "1.0.0",
-  "tags": ["sports", "live"],
+  "tags": [
+    "sports",
+    "live"
+  ],
   "plugins": [
     {
       "id": "live-sports-hub",
@@ -32,5 +35,9 @@
       "enabled": true,
       "prelude": "_kit.js"
     }
+  ],
+  "bundle": [
+    "live_sports.js",
+    "_kit.js"
   ]
 }

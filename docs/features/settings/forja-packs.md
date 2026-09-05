@@ -14,7 +14,7 @@ When every feature tab is off, the get-started screen **Install plugins** button
 
 ## What you can do
 
-- Paste a pack **manifest.json** URL and **Install**
+- Paste a pack **manifest.json** URL and **Install** (downloads the files listed in the pack’s `bundle`, or each plugin entry if `bundle` is omitted)
 - **Download** (icon on the right) on pending pack rows — or **Download all** when several packs still need scripts
 - **Reload** only when at least one pack is fully installed — re-downloads every installed pack’s manifest and scripts
 - **Update** / **Update all** when a remote pack version is newer

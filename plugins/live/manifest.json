@@ -5,14 +5,19 @@
   "description": "Live Matches per-site stream resolve (Forja Live).",
   "author": "ForjaHQ",
   "version": "1.9.3",
-  "tags": ["live", "sports"],
+  "tags": [
+    "live",
+    "sports"
+  ],
   "plugins": [
     {
       "id": "live-streamed",
       "name": "Streamed",
       "description": "streamed.pk stream resolve (GOAT / golf)",
       "entry": "streamed.js",
-      "types": ["live"],
+      "types": [
+        "live"
+      ],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -26,7 +31,9 @@
       "name": "PPV",
       "description": "ppv.st / api.ppv.st stream resolve",
       "entry": "ppv.js",
-      "types": ["live"],
+      "types": [
+        "live"
+      ],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -43,7 +50,9 @@
       "name": "StreamFree",
       "description": "streamfree.top stream resolve",
       "entry": "streamfree.js",
-      "types": ["live"],
+      "types": [
+        "live"
+      ],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -56,7 +65,9 @@
       "name": "TimStreams",
       "description": "timstreams.st stream resolve",
       "entry": "timstreams.js",
-      "types": ["live"],
+      "types": [
+        "live"
+      ],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -69,7 +80,9 @@
       "name": "WatchFooty",
       "description": "watchfooty.st stream resolve",
       "entry": "watchfooty.js",
-      "types": ["live"],
+      "types": [
+        "live"
+      ],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -83,7 +96,9 @@
       "name": "Streamic",
       "description": "streamic.live stream resolve",
       "entry": "streamic.js",
-      "types": ["live"],
+      "types": [
+        "live"
+      ],
       "kind": "http",
       "prelude": "embed-st.js",
       "config": {
@@ -99,5 +114,14 @@
         ]
       }
     }
+  ],
+  "bundle": [
+    "streamed.js",
+    "embed-st.js",
+    "ppv.js",
+    "streamfree.js",
+    "timstreams.js",
+    "watchfooty.js",
+    "streamic.js"
   ]
 }

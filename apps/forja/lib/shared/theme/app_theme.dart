@@ -571,24 +571,30 @@ class _FocusableControlState extends State<FocusableControl> with SingleTickerPr
       builder: (context, child) {
         Widget content = child!;
         if (railFocus) {
-          content = AnimatedContainer(
-            duration: policy.instantFocusChrome
-                ? Duration.zero
-                : const Duration(milliseconds: 140),
-            decoration: BoxDecoration(
-              color: chromeActive
-                  ? ForjaShellColors.inkHover
-                  : Colors.transparent,
-              border: Border(
-                left: BorderSide(
-                  color: chromeActive
-                      ? ForjaShellColors.brandGreen
-                      : Colors.transparent,
-                  width: 2.5,
+          // Clip so the left accent + ink fill follow [borderRadius].
+          // (Directional Border + borderRadius is illegal in BoxDecoration.)
+          final radius = BorderRadius.circular(widget.borderRadius);
+          content = ClipRRect(
+            borderRadius: radius,
+            child: AnimatedContainer(
+              duration: policy.instantFocusChrome
+                  ? Duration.zero
+                  : const Duration(milliseconds: 140),
+              decoration: BoxDecoration(
+                color: chromeActive
+                    ? ForjaShellColors.inkHover
+                    : Colors.transparent,
+                border: Border(
+                  left: BorderSide(
+                    color: chromeActive
+                        ? ForjaShellColors.brandGreen
+                        : Colors.transparent,
+                    width: 2.5,
+                  ),
                 ),
               ),
+              child: content,
             ),
-            child: content,
           );
         } else if (showFocusRing) {
           if (flatMenuFocus) {

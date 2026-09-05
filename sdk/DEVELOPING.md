@@ -489,10 +489,11 @@ Reference hubs: [`hubs/home/tmdb.js`](hubs/home/tmdb.js), [`hubs/anime/anilist.j
 
 ## Publishing
 
-1. Host `manifest.json` + all `entry` / `prelude` files on HTTPS with correct CORS (GitHub raw works for public packs).
-2. Give users the manifest URL.
-3. **Never reuse a plugin `id` that exists in another installed pack** — install is rejected.
-4. Prefer a stable pack `id` and semver `version` per release.
+1. Host `manifest.json` + every `entry` / `prelude` file on HTTPS (same directory tree). GitHub raw works for public packs.
+2. List those paths in manifest **`bundle`** (array of relative paths) so install knows what to download.
+3. Give users the **manifest URL**.
+4. **Never reuse a plugin `id` that exists in another installed pack** — install is rejected.
+5. Prefer a stable pack `id` and semver `version` per release.
 
 Signed manifests / sha256 verification are **not** implemented yet — distribute from sources you trust.
 

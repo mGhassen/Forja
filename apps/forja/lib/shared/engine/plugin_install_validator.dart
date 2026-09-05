@@ -39,6 +39,8 @@ abstract final class PluginInstallValidator {
   }) {
     final refs = <String, String>{
       if (pack.prelude.isNotEmpty) 'pack prelude': pack.prelude,
+      for (var i = 0; i < pack.bundle.length; i++)
+        'bundle[$i]': pack.bundle[i],
       for (final p in pack.plugins)
         if (p.prelude.isNotEmpty) '${p.id} prelude': p.prelude,
       for (final p in pack.plugins)

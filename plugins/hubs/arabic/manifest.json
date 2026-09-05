@@ -3,7 +3,9 @@
   "id": "forjahq-arabic",
   "name": "ForjaHQ Arabic",
   "version": "1.4.2",
-  "tags": ["arabic"],
+  "tags": [
+    "arabic"
+  ],
   "plugins": [
     {
       "id": "arabic-hub",
@@ -48,5 +50,9 @@
       },
       "prelude": "_kit.js"
     }
+  ],
+  "bundle": [
+    "arabic.js",
+    "_kit.js"
   ]
 }

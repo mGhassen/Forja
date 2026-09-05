@@ -103,6 +103,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [080-[open]-…](080-[open]-post-login-packs-onboarding.md) | Post-login packs onboarding (`onboarded` + official install) | v1.4 | open | **5 / 5** · **10 / 10** | — |
 | [081-[fixed]-…](fixed/081-[fixed]-host-only-platform-nav-defaults.md) | Host-only platform nav defaults (no pack hub ids in `PlatformDefaults`) | v1.4 | fixed | **Complete** · **2 / 2** · **4 / 4** | — |
 | [082-[open]-…](082-[open]-account-profile-local-data-scope.md) | Account / profile / guest local data scope | v1.4 | open | **3 / 5** · **6 / 10** | — |
+| [083-[fixed]-…](fixed/083-[fixed]-pack-manifest-bundle-list.md) | Pack manifest `bundle` file list install | v1.4 | fixed | **Complete** · **3 / 3** · **6 / 6** | — |
 
 ## Related
 

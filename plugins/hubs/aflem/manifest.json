@@ -5,7 +5,10 @@
   "description": "Aflem Arabic series hub (Brstej upstream).",
   "author": "ForjaHQ",
   "version": "1.0.6",
-  "tags": ["aflem", "arabic"],
+  "tags": [
+    "aflem",
+    "arabic"
+  ],
   "plugins": [
     {
       "id": "aflem-hub",
@@ -40,5 +43,9 @@
       },
       "prelude": "_kit.js"
     }
+  ],
+  "bundle": [
+    "brstej.js",
+    "_kit.js"
   ]
 }

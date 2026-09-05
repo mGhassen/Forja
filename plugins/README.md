@@ -46,4 +46,10 @@ Point each manifest at the packs in this repo (e.g. raw GitHub URLs or your own 
 | `hubs/` | Catalog hub packs (home, anime, …) |
 | `sdk/` | JSON Schema contracts + canonical JS kits |
 
-Each pack is a `manifest.json` plus JS entries referenced from the manifest.
+Each pack is a `manifest.json` plus JS entries. Optional **`bundle`** is a list of those file paths — the host downloads every listed file on install.
+
+```json
+"bundle": ["videasy.js", "hops/abyss.js", "_kit.js"]
+```
+
+If `bundle` is omitted, the host derives paths from each plugin’s `entry` / `prelude`.

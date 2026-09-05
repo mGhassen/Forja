@@ -841,7 +841,17 @@ class PluginRegistry {
       for (final p in pack.plugins)
         if (p.entry.isNotEmpty && p.needsScript) p,
     ];
-    final fetchTotal = 1 + preludesNeeded.length + scriptsNeeded.length;
+
+    // Manifest `bundle` lists pack files to fetch. Empty → derive from entries.
+    final filesToFetch = <String>[
+      if (pack.bundle.isNotEmpty)
+        ...pack.bundle
+      else ...{
+        ...preludesNeeded,
+        for (final p in scriptsNeeded) p.entry,
+      },
+    ];
+    final fetchTotal = 1 + filesToFetch.length;
     var fetchDone = 0;
 
     void tick(String label) {
@@ -859,33 +869,44 @@ class PluginRegistry {
 
     tick('Fetched ${pack.name} manifest');
 
+    final byPath = <String, String>{};
+    await Future.wait([
+      for (final path in filesToFetch)
+        () async {
+          final url = resolveScriptUrl(manifestUrl, path);
+          try {
+            final text = await _fetchText(url);
+            if (text.isEmpty) {
+              missing.add(path);
+              return;
+            }
+            byPath[path] = text;
+            tick('Downloaded $path');
+          } catch (_) {
+            missing.add(path);
+          }
+        }(),
+    ]);
+
     for (final prelude in preludesNeeded) {
-      final preludeUrl = resolveScriptUrl(manifestUrl, prelude);
-      try {
-        final text = await _fetchText(preludeUrl);
-        if (text.isEmpty) {
+      final text = byPath[prelude];
+      if (text == null || text.isEmpty) {
+        if (!missing.contains(prelude) && !missing.contains('prelude:$prelude')) {
           missing.add('prelude:$prelude');
-          continue;
         }
-        preludes[prelude] = text;
-        tick('Downloaded $prelude');
-      } catch (_) {
-        missing.add('prelude:$prelude');
+        continue;
       }
+      preludes[prelude] = text;
     }
     for (final plugin in scriptsNeeded) {
-      final scriptUrl = resolveScriptUrl(manifestUrl, plugin.entry);
-      try {
-        final text = await _fetchText(scriptUrl);
-        if (text.isEmpty) {
+      final text = byPath[plugin.entry];
+      if (text == null || text.isEmpty) {
+        if (!missing.contains(plugin.entry) && !missing.contains(plugin.id)) {
           missing.add(plugin.id);
-          continue;
         }
-        scripts[plugin.id] = text;
-        tick('Downloaded ${plugin.name}');
-      } catch (_) {
-        missing.add(plugin.id);
+        continue;
       }
+      scripts[plugin.id] = text;
     }
     if (missing.isNotEmpty) {
       throw Exception(

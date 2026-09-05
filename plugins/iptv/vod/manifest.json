@@ -5,7 +5,9 @@
   "description": "IPTV portal movie and series details with optional TMDB enrich.",
   "author": "ForjaHQ",
   "version": "1.0.0",
-  "tags": ["iptv"],
+  "tags": [
+    "iptv"
+  ],
   "plugins": [
     {
       "id": "iptv-vod",
@@ -49,5 +51,10 @@
       },
       "prelude": "_kit.js"
     }
+  ],
+  "bundle": [
+    "iptv_vod.js",
+    "_kit.js",
+    "enrich_tmdb.js"
   ]
 }

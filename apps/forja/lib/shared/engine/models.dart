@@ -328,6 +328,7 @@ class EnginePack {
     required this.version,
     required this.plugins,
     this.prelude = '',
+    this.bundle = const [],
     this.enabled = true,
   });
 
@@ -341,6 +342,10 @@ class EnginePack {
 
   /// Shared JS prelude for every plugin in this pack (manifest root `prelude`).
   final String prelude;
+
+  /// Pack-relative script paths to download on install (`bundle` in manifest).
+  /// Empty → host derives paths from plugin `entry` / `prelude` fields.
+  final List<String> bundle;
 
   /// Pack master switch — independent of per-plugin [EnginePlugin.enabled].
   final bool enabled;
@@ -389,8 +394,23 @@ class EnginePack {
       version: (j['version'] as String?)?.trim() ?? '0.0.0',
       plugins: plugins,
       prelude: packPrelude,
+      bundle: _bundlePathsFromJson(j['bundle']),
       enabled: (j['enabled'] as bool?) ?? true,
     );
+  }
+
+  /// Manifest `bundle`: list of pack-relative file paths. Legacy string ignored.
+  static List<String> _bundlePathsFromJson(dynamic raw) {
+    if (raw is! List) return const [];
+    final out = <String>[];
+    final seen = <String>{};
+    for (final e in raw) {
+      if (e is! String) continue;
+      final path = e.trim().replaceAll('\\', '/');
+      if (path.isEmpty || !seen.add(path)) continue;
+      out.add(path);
+    }
+    return out;
   }
 
   static EnginePlugin _pluginFromManifestEntry(
@@ -422,6 +442,7 @@ class EnginePack {
     'name': name,
     'version': version,
     if (prelude.isNotEmpty) 'prelude': prelude,
+    if (bundle.isNotEmpty) 'bundle': bundle,
     'enabled': enabled,
     'plugins': [for (final p in plugins) p.toJson()],
   };
@@ -438,6 +459,7 @@ class EnginePack {
       version: (j['version'] as String?) ?? '0.0.0',
       enabled: (j['enabled'] as bool?) ?? true,
       prelude: (j['prelude'] as String?)?.trim() ?? '',
+      bundle: _bundlePathsFromJson(j['bundle']),
       plugins: [
         for (final raw in (j['plugins'] as List? ?? const []))
           if (raw is Map)
@@ -449,7 +471,11 @@ class EnginePack {
     );
   }
 
-  EnginePack copyWith({bool? enabled, List<EnginePlugin>? plugins}) =>
+  EnginePack copyWith({
+    bool? enabled,
+    List<EnginePlugin>? plugins,
+    List<String>? bundle,
+  }) =>
       EnginePack(
         sourceUrl: sourceUrl,
         packId: packId,
@@ -457,6 +483,7 @@ class EnginePack {
         version: version,
         plugins: plugins ?? this.plugins,
         prelude: prelude,
+        bundle: bundle ?? this.bundle,
         enabled: enabled ?? this.enabled,
       );
 

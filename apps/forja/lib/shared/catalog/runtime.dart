@@ -169,7 +169,9 @@ class CatalogRuntime {
     }
     if (!envelope.ok) {
       if (entry != null && !entry.isExpired) {
-        debugPrint('[catalog] $pluginId $action ${envelope.error} — serving cache');
+        debugPrint(
+          '[catalog] $pluginId $action ${envelope.error} — serving cache',
+        );
         return _pipeEnrichCached(
           cacheKey: key,
           sourcePluginId: pluginId,
@@ -413,7 +415,9 @@ class CatalogRuntime {
       if (raw != null) break;
     }
     if (raw == null) {
-      debugPrint('[catalog] $sourcePluginId enrich via $enrichId skipped (no answer)');
+      debugPrint(
+        '[catalog] $sourcePluginId enrich via $enrichId skipped (no answer)',
+      );
       return null;
     }
     final enriched = parseEnvelope(raw);
@@ -443,8 +447,7 @@ class CatalogRuntime {
     String action,
     Map<String, dynamic>? data,
     Map<String, dynamic> params,
-  ) =>
-      _envelopeAlreadyEnriched(action, data, params);
+  ) => _envelopeAlreadyEnriched(action, data, params);
 
   static bool metaTmdbEnriched(Map<String, dynamic> meta) =>
       _metaTmdbEnriched(meta);
@@ -457,8 +460,6 @@ class CatalogRuntime {
     if (data == null) return false;
     switch (action) {
       case 'details':
-        // KissKH embeds ids.tmdb + TMDB backdrop URLs — backdrop alone is not
-        // companion enrich (episode stills / kit marker). Require the marker.
         final meta = data['meta'];
         if (meta is! Map) return false;
         return Map<String, dynamic>.from(meta)['_hubTmdbEnriched'] == true;
@@ -548,17 +549,19 @@ class CatalogRuntime {
     if (!_revalidating.add(key)) return;
     unawaited(
       _fetch(
-        key: key,
-        pluginId: pluginId,
-        action: action,
-        params: params,
-        auth: auth,
-        entry: entry,
-        timeout: timeout,
-      ).catchError((Object e) {
-        debugPrint('[catalog] $pluginId $action revalidate failed: $e');
-        return _cachedEnvelope(action, entry);
-      }).whenComplete(() => _revalidating.remove(key)),
+            key: key,
+            pluginId: pluginId,
+            action: action,
+            params: params,
+            auth: auth,
+            entry: entry,
+            timeout: timeout,
+          )
+          .catchError((Object e) {
+            debugPrint('[catalog] $pluginId $action revalidate failed: $e');
+            return _cachedEnvelope(action, entry);
+          })
+          .whenComplete(() => _revalidating.remove(key)),
     );
   }
 

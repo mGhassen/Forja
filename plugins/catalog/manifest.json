@@ -5,14 +5,19 @@
   "description": "Live Matches schedule catalogs (Streamed, PPV, ESPN, …).",
   "author": "ForjaHQ",
   "version": "1.9.2",
-  "tags": ["sports", "live"],
+  "tags": [
+    "sports",
+    "live"
+  ],
   "plugins": [
     {
       "id": "catalog-streamed",
       "name": "Streamed",
       "description": "streamed.pk schedule catalog",
       "entry": "streamed.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "config": {
         "providerId": "live-streamed",
@@ -27,7 +32,9 @@
       "name": "PPV",
       "description": "ppv.st schedule catalog",
       "entry": "ppv.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "config": {
         "providerId": "live-ppv",
@@ -45,7 +52,9 @@
       "name": "StreamFree",
       "description": "streamfree.top schedule catalog",
       "entry": "streamfree.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "config": {
         "providerId": "live-streamfree",
@@ -58,7 +67,9 @@
       "name": "TimStreams",
       "description": "timstreams.st schedule catalog",
       "entry": "timstreams.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "config": {
         "providerId": "live-timstreams",
@@ -72,7 +83,9 @@
       "name": "WatchFooty",
       "description": "watchfooty.st schedule catalog",
       "entry": "watchfooty.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "config": {
         "providerId": "live-watchfooty",
@@ -86,7 +99,9 @@
       "name": "Streamic",
       "description": "streamic.live schedule catalog",
       "entry": "streamic.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "config": {
         "providerId": "live-streamic",
@@ -107,7 +122,9 @@
       "name": "ESPN",
       "description": "ESPN scoreboard schedule catalog",
       "entry": "espn.js",
-      "types": ["catalog"],
+      "types": [
+        "catalog"
+      ],
       "kind": "http",
       "config": {
         "providerId": "catalog-espn",
@@ -143,12 +160,18 @@
       "name": "LiveOnSat",
       "description": "LiveOnSat TV schedule + broadcast channel hints",
       "entry": "liveonsat.js",
-      "types": ["catalog"],
-      "capabilities": ["broadcast"],
+      "types": [
+        "catalog"
+      ],
+      "capabilities": [
+        "broadcast"
+      ],
       "kind": "http",
       "config": {
         "base": "https://m.liveonsat.com",
-        "pages": ["2day.php"],
+        "pages": [
+          "2day.php"
+        ],
         "airingOnlyLive": true
       }
     },
@@ -157,8 +180,12 @@
       "name": "Live Soccer TV",
       "description": "Live Soccer TV schedule + broadcast channel hints",
       "entry": "livesoccertv.js",
-      "types": ["catalog"],
-      "capabilities": ["broadcast"],
+      "types": [
+        "catalog"
+      ],
+      "capabilities": [
+        "broadcast"
+      ],
       "kind": "http",
       "config": {
         "base": "https://www.livesoccertv.com",
@@ -167,5 +194,16 @@
         "airingOnlyLive": true
       }
     }
+  ],
+  "bundle": [
+    "streamed.js",
+    "ppv.js",
+    "streamfree.js",
+    "timstreams.js",
+    "watchfooty.js",
+    "streamic.js",
+    "espn.js",
+    "liveonsat.js",
+    "livesoccertv.js"
   ]
 }

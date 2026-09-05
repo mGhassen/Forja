@@ -5,7 +5,10 @@
   "description": "KissKH Asian drama catalog hub.",
   "author": "ForjaHQ",
   "version": "1.0.9",
-  "tags": ["asian-drama", "drama"],
+  "tags": [
+    "asian-drama",
+    "drama"
+  ],
   "plugins": [
     {
       "id": "kisskh-hub",
@@ -73,5 +76,10 @@
       },
       "prelude": "_kit.js"
     }
+  ],
+  "bundle": [
+    "kisskh.js",
+    "_kit.js",
+    "enrich_tmdb.js"
   ]
 }

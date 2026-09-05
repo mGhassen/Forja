@@ -5,7 +5,11 @@
   "description": "TMDB movie and TV catalog for the Home tab.",
   "author": "ForjaHQ",
   "version": "1.0.12",
-  "tags": ["home", "movies", "tv"],
+  "tags": [
+    "home",
+    "movies",
+    "tv"
+  ],
   "plugins": [
     {
       "id": "tmdb",
@@ -44,5 +48,9 @@
       },
       "prelude": "_kit.js"
     }
+  ],
+  "bundle": [
+    "tmdb.js",
+    "_kit.js"
   ]
 }
