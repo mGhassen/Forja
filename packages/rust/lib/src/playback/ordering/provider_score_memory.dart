@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../../engine.dart';
+import '../../local_data_scope.dart';
 import '../domain/provider_score_scope.dart';
 
 /// Per-title provider reliability for the player Source panel.
@@ -252,7 +253,7 @@ abstract final class ProviderScoreMemory {
     return true;
   }
 
-  /// Wipe all provider reliability scores (Settings Cache & data).
+  /// Wipe all provider reliability scores for the **active** identity.
   static Future<void> clearAll() async {
     await ensureLoaded();
     if (_rustReady) {
@@ -260,6 +261,28 @@ abstract final class ProviderScoreMemory {
         RustLib.instance.providerHealthJson(jsonEncode({'action': 'clearAll'}));
       } catch (e) {
         debugPrint('[ProviderScoreMemory] rust clearAll failed: $e');
+      }
+    }
+    _server.clear();
+    _stream.clear();
+    _lastDelta.clear();
+    _providerTotals.clear();
+    revision.value++;
+  }
+
+  /// Sync Rust + in-memory maps to account/profile/guest ([LocalDataScope.id]).
+  static Future<void> syncIdentityScope() async {
+    final scope = LocalDataScope.id;
+    if (_rustReady) {
+      try {
+        RustLib.instance.providerHealthJson(
+          jsonEncode({
+            'action': 'setIdentityScope',
+            'identityScope': scope,
+          }),
+        );
+      } catch (e) {
+        debugPrint('[ProviderScoreMemory] rust setIdentityScope failed: $e');
       }
     }
     _server.clear();

@@ -322,8 +322,10 @@ class IptvAliveStore {
   static String portalKey(IptvPortal p) =>
       '${p.url}|${p.username}|${p.password}'.toLowerCase();
 
-  static String _aliveKey(String k) => 'pt_iptv_alive_$k';
-  static String _liveOnlyKey(String k) => 'pt_iptv_liveonly_$k';
+  static String _aliveKey(String k) =>
+      LocalDataScope.storageKey('pt_iptv_alive_$k');
+  static String _liveOnlyKey(String k) =>
+      LocalDataScope.storageKey('pt_iptv_liveonly_$k');
 
   static Future<AliveSnapshot?> load(String key) async {
     final prefs = await SharedPreferences.getInstance();
@@ -355,12 +357,14 @@ class IptvAliveStore {
     await prefs.remove(_liveOnlyKey(key));
   }
 
-  /// Clears every portal's alive-ID snapshot and Live-only pref.
+  /// Clears alive-ID / Live-only prefs for the **active** account/profile/guest.
   /// Does not touch verified portals or favorites.
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     final keys = prefs.getKeys().where(
-      (k) => k.startsWith('pt_iptv_alive_') || k.startsWith('pt_iptv_liveonly_'),
+      (k) =>
+          LocalDataScope.ownsKey(k) &&
+          (k.startsWith('pt_iptv_alive_') || k.startsWith('pt_iptv_liveonly_')),
     );
     for (final k in keys) {
       await prefs.remove(k);
@@ -386,7 +390,8 @@ class AliveSnapshot {
 
 /// Per-HardcodedChannel persisted alive stream hits.
 class IptvChannelResultsStore {
-  static String _key(String channelId) => 'pt_iptv_ch_$channelId';
+  static String _key(String channelId) =>
+      LocalDataScope.storageKey('pt_iptv_ch_$channelId');
 
   static Future<List<StoredHit>> load(String channelId) async {
     final prefs = await SharedPreferences.getInstance();
@@ -440,11 +445,13 @@ class IptvChannelResultsStore {
     await prefs.remove(_key(channelId));
   }
 
-  /// Clears cached channel-scan hits for every hardcoded channel.
+  /// Clears channel-scan hits for the **active** account/profile/guest.
   /// Does not touch per-channel favorite stream URLs (`pt_iptv_chfav_*`).
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
-    final keys = prefs.getKeys().where((k) => k.startsWith('pt_iptv_ch_'));
+    final keys = prefs.getKeys().where(
+      (k) => LocalDataScope.ownsKey(k) && k.startsWith('pt_iptv_ch_'),
+    );
     for (final k in keys) {
       await prefs.remove(k);
     }

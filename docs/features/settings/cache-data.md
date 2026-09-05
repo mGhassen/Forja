@@ -1,10 +1,10 @@
 # Cache & data
 
-> Clear stream caches, images, provider scores, and local watch history from Settings.
+> Clear stream caches, images, provider scores, and local watch history from Settings — scoped to the **current profile** (or **Guest**).
 
 ## What it is
 
-A category under **Settings → Data & backup** to free disk and reset local learned or viewing data without wiping accounts, My List, or your provider drag order.
+A category under **Settings → Data & backup** to free disk and reset local learned or viewing data for the active account/profile/Guest without wiping other profiles, My List (unless you clear elsewhere), or your provider drag order.
 
 ## How to open it
 
@@ -14,19 +14,19 @@ A category under **Settings → Data & backup** to free disk and reset local lea
 
 ### Safe to clear
 
-- **Stream cache** — saved webstreaming and anime stream URLs and seek buffers (plus idle torrent downloads on phone/desktop; the file playing now is kept). Next Play re-resolves. Settings and continue watching stay.
-- **Images & WebView** — poster thumbnails and extractor WebView caches. Images re-download when needed.
-- **IPTV portal cache** (when the IPTV tab is visible) — saved Live/Movies/Series catalogs (up to **10** shelves combined), live-channel health checks, and channel scan results. Saved portals, favorites, and M3U playlists stay; next IPTV open re-fetches catalogs and re-checks health.
-- **Downloaded updates** (desktop) — installer files saved by in-app update (`.dmg`, `.exe`, AppImage). Safe to remove after you install.
+- **Stream cache** — saved webstreaming stream URLs and seek buffers for **this profile / Guest** (plus idle torrent downloads on phone/desktop; torrent temp is shared on the device). Next Play re-resolves. Settings and continue watching stay.
+- **Images & WebView** — poster thumbnails and extractor WebView caches on **this device** (shared; not profile-split). Images re-download when needed.
+- **IPTV portal cache** (when the IPTV tab is visible) — saved Live/Movies/Series catalogs, live-channel health checks, and channel scan results for **this profile / Guest**. Saved portals, favorites, and M3U playlists stay; next IPTV open re-fetches.
+- **Downloaded updates** (desktop) — installer files saved by in-app update (`.dmg`, `.exe`, AppImage) on **this device**. Safe to remove after you install.
 
 ### Learned
 
-- **Provider scores** — reliability totals used for Settings **Score** and Auto order. Drag preference order is kept; scores start from zero and re-learn on new checks.
+- **Provider scores** — reliability totals used for Settings **Score** and Auto order for **this profile / Guest**. Drag preference order is kept; scores start from zero and re-learn on new checks.
 
 ### Watch data (destructive)
 
-- **Continue watching** — empties Home, Anime, Asian Drama, and Anime Arabic resume rows on this device. Trakt / Simkl cloud history is not deleted.
-- **Watched episode marks** — clears local episode checkmarks (TMDB TV, Anime, Asian Drama) on this device. Trakt / Simkl may restore TMDB marks after sync; Anime / Asian Drama marks are local-only.
+- **Continue watching** — empties Home, Anime, Asian Drama, and Anime Arabic resume rows for **this profile / Guest** only. Other profiles keep their history. Trakt / Simkl cloud history is not deleted.
+- **Watched episode marks** — clears local episode checkmarks for **this profile / Guest**. Trakt / Simkl may restore TMDB marks after sync; Anime / Asian Drama marks are local-only.
 
 Every action asks for confirmation and shows a toast when done. On **TV**, Cancel / Confirm are D-pad focusable (destructive actions land on Cancel).
 
@@ -44,3 +44,4 @@ Every action asks for confirmation and shows a toast when done. On **TV**, Cance
 - [Watch history](../movies-tv/watch-history.md)
 - [Stream providers](../sources/stream-providers.md)
 - [Backup & restore](backup-restore.md)
+- [RFC-082](../../rfc/082-[open]-account-profile-local-data-scope.md)

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'local_data_scope.dart';
 import 'watch_history_resume.dart';
 
 typedef EpisodeWatchedSyncHandler = void Function(
@@ -23,7 +24,9 @@ typedef EpisodeWatchedSyncHandler = void Function(
 class EpisodeWatchedService {
   static final EpisodeWatchedService _instance = EpisodeWatchedService._();
   factory EpisodeWatchedService() => _instance;
-  EpisodeWatchedService._();
+  EpisodeWatchedService._() {
+    LocalDataScope.addListener(_onScopeChanged);
+  }
 
   /// AniList anime details — local marks only.
   static const String catalogAnilist = 'anilist';
@@ -33,9 +36,17 @@ class EpisodeWatchedService {
 
   EpisodeWatchedSyncHandler? syncHandler;
 
-  static const String _key = 'episodes_watched';
+  static const String _baseKey = 'episodes_watched';
+  static const String _baseTimestampKey = 'episodes_watched_timestamps';
+  String get _key => LocalDataScope.storageKey(_baseKey);
+  String get _timestampKey => LocalDataScope.storageKey(_baseTimestampKey);
 
   Map<String, bool>? _cache;
+
+  Future<void> _onScopeChanged() async {
+    _cache = null;
+    _timestampCache = null;
+  }
 
   Future<Map<String, bool>> _load() async {
     if (_cache != null) return _cache!;
@@ -200,7 +211,6 @@ class EpisodeWatchedService {
     }
   }
 
-  static const String _timestampKey = 'episodes_watched_timestamps';
   Map<String, String>? _timestampCache;
 
   Future<Map<String, String>> _loadTimestamps() async {

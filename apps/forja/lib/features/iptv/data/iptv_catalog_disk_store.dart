@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/features/iptv/data/models.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:rust/rust.dart';
 
 /// One Live / Movies / Series shelf snapshot for disk.
 class IptvCatalogShelfSnap {
@@ -21,6 +22,9 @@ class IptvCatalogShelfSnap {
 
 /// On-disk IPTV catalog shelves (one JSON file per portal + section).
 ///
+/// Layout: `{support}/iptv_catalog_v1/accounts/{accountId}/profiles/{profileId}/`
+/// Guest: `accounts/local/profiles/default/…`
+///
 /// Survives app restart so a warm shelf skips network. Portal keys
 /// (url|user|pass) are hashed into filenames - never written raw.
 abstract final class IptvCatalogDiskStore {
@@ -28,15 +32,44 @@ abstract final class IptvCatalogDiskStore {
   static const _version = 1;
 
   static Directory? _dir;
+  static String _accountId = LocalDataScope.guestAccountId;
+  static String _profileId = LocalDataScope.guestProfileId;
 
   /// Cleared whenever [clearAll] runs (sign-out / Settings clear).
   static void Function()? onClearAll;
+
+  static Future<void> configureScope({
+    required String? accountId,
+    required String? profileId,
+  }) async {
+    final account = _sanitize(accountId ?? LocalDataScope.guestAccountId);
+    final profile = _sanitize(profileId ?? LocalDataScope.guestProfileId);
+    if (_accountId == account && _profileId == profile) return;
+    _accountId = account;
+    _profileId = profile;
+    _dir = null;
+  }
+
+  static String _sanitize(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return LocalDataScope.guestProfileId;
+    return t.replaceAll(RegExp(r'[^\w\-.]'), '_');
+  }
 
   static Future<Directory> _root() async {
     final cached = _dir;
     if (cached != null) return cached;
     final support = await getApplicationSupportDirectory();
-    final dir = Directory(p.join(support.path, _subdir));
+    final dir = Directory(
+      p.join(
+        support.path,
+        _subdir,
+        'accounts',
+        _accountId,
+        'profiles',
+        _profileId,
+      ),
+    );
     if (!await dir.exists()) {
       await dir.create(recursive: true);
     }

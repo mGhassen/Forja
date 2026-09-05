@@ -29,8 +29,11 @@ bool isPlayerStreamExtractCacheProviderId(String providerId) {
 class PlayerStreamExtractCache {
   PlayerStreamExtractCache._();
 
-  static const _diskKey = 'forja_player_stream_extract_cache_v1';
-  static const _legacyDiskKey = 'forja_webstreaming_stream_cache_v1';
+  static const _diskKeyBase = 'forja_player_stream_extract_cache_v1';
+  static const _legacyDiskKeyBase = 'forja_webstreaming_stream_cache_v1';
+  static String get _diskKey => LocalDataScope.storageKey(_diskKeyBase);
+  static String get _legacyDiskKey =>
+      LocalDataScope.storageKey(_legacyDiskKeyBase);
   static const _diskMaxEntries = 24;
 
   /// CDN links and signed HLS tokens go stale fast.
@@ -198,6 +201,9 @@ class PlayerStreamExtractCache {
     final p = await SharedPreferences.getInstance();
     await p.remove(_diskKey);
     await p.remove(_legacyDiskKey);
+    // Pre-scope bare keys (migration may not have run yet).
+    await p.remove(_diskKeyBase);
+    await p.remove(_legacyDiskKeyBase);
     if (kDebugMode) {
       debugPrint('[PlayerStreamExtractCache] cleared all entries');
     }

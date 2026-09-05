@@ -5,7 +5,45 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use stream::SourceDomain;
 
-const STORAGE_KEY: &str = "provider_score_reliability_v5";
+const STORAGE_KEY_PREFIX: &str = "provider_score_reliability_v5";
+const LEGACY_STORAGE_KEY: &str = "provider_score_reliability_v5";
+
+fn identity_scope_mutex() -> &'static Mutex<String> {
+    static SCOPE: std::sync::OnceLock<Mutex<String>> = std::sync::OnceLock::new();
+    SCOPE.get_or_init(|| Mutex::new("local:default".to_string()))
+}
+
+fn active_scope() -> String {
+    identity_scope_mutex()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
+}
+
+fn set_active_scope(scope: &str) {
+    let mut g = identity_scope_mutex()
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
+    *g = if scope.trim().is_empty() {
+        "local:default".to_string()
+    } else {
+        scope.trim().to_string()
+    };
+}
+
+fn storage_key_for_active() -> String {
+    format!("{STORAGE_KEY_PREFIX}@{}", active_scope())
+}
+
+fn migrate_legacy_provider_scores_if_needed(scoped_key: &str) {
+    if storage::get(scoped_key).is_some() {
+        return;
+    }
+    if let Some(raw) = storage::get(LEGACY_STORAGE_KEY) {
+        let _ = storage::set(scoped_key, raw);
+        let _ = storage::set(LEGACY_STORAGE_KEY, serde_json::json!({}));
+    }
+}
 
 pub const SERVER_FAIL_DELTA: i32 = -2;
 pub const SERVER_UP_DELTA: i32 = 2;
@@ -52,7 +90,9 @@ impl ProviderHealthStore {
             return;
         }
         let mut needs_persist = false;
-        if let Some(raw) = storage::get(STORAGE_KEY) {
+        let key = storage_key_for_active();
+        migrate_legacy_provider_scores_if_needed(&key);
+        if let Some(raw) = storage::get(&key) {
             if let Some(obj) = raw.as_object() {
                 read_verdict_map(obj.get("srv"), &mut g.server);
                 read_verdict_map(obj.get("str"), &mut g.stream);
@@ -81,7 +121,7 @@ impl ProviderHealthStore {
             "d": g.last_delta,
             "tot": g.provider_totals,
         });
-        let _ = storage::set(STORAGE_KEY, value);
+        let _ = storage::set(&storage_key_for_active(), value);
     }
 
     pub fn reset_for_test(&self) {
@@ -93,7 +133,7 @@ impl ProviderHealthStore {
         g.loaded = true;
     }
 
-    /// Clear all reliability memory and persist empty maps (Settings cleaner).
+    /// Clear reliability memory for the **active** identity scope only.
     pub fn clear_all(&self) {
         {
             let mut g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
@@ -104,6 +144,21 @@ impl ProviderHealthStore {
             g.loaded = true;
         }
         self.persist();
+    }
+
+    /// Switch account/profile/guest scope — reload maps for the new identity.
+    pub fn set_identity_scope(&self, scope: &str) {
+        {
+            let mut g = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+            // Drop in-memory maps; next ensure_loaded reads the new key.
+            g.server.clear();
+            g.stream.clear();
+            g.last_delta.clear();
+            g.provider_totals.clear();
+            g.loaded = false;
+        }
+        set_active_scope(scope);
+        self.ensure_loaded();
     }
 
     pub fn normalize_provider_id(provider_id: &str) -> String {
@@ -372,6 +427,8 @@ struct HealthActionRequest {
     provider_id: String,
     #[serde(default = "default_stream_wins")]
     stream_wins: bool,
+    #[serde(default)]
+    identity_scope: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -399,6 +456,14 @@ pub fn handle_health_json(payload: &str) -> String {
         }
         "clearAll" => {
             store.clear_all();
+            r#"{"ok":true}"#.into()
+        }
+        "setIdentityScope" => {
+            let scope = req
+                .identity_scope
+                .as_deref()
+                .unwrap_or("local:default");
+            store.set_identity_scope(scope);
             r#"{"ok":true}"#.into()
         }
         "recordServerUp" => {

@@ -1,11 +1,14 @@
 import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/features/iptv/data/models.dart';
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// LRU cap for IPTV catalog shelves (Live / Movies / Series combined).
 abstract final class IptvCatalogShelfCache {
   static const maxShelves = 10;
-  static const _lruPrefsKey = 'pt_iptv_catalog_lru_v1';
+  static const _lruPrefsKeyBase = 'pt_iptv_catalog_lru_v1';
+  static String get _lruPrefsKey =>
+      LocalDataScope.storageKey(_lruPrefsKeyBase);
 
   static String shelfKey(String portalKey, IptvSection section) =>
       '$portalKey|${section.name}';

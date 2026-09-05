@@ -71,14 +71,25 @@ Map<String, dynamic> catalogEntryFromHomeWatchHistory(Map<String, dynamic> item)
   };
 }
 
-/// Pack-scoped Continue Watching — keyed by [pluginId] only.
+/// Pack + identity Continue Watching — keyed by [pluginId] and account/profile/guest.
 class CatalogWatchHistory {
   CatalogWatchHistory._();
 
   static final ValueNotifier<int> revision = ValueNotifier<int>(0);
+  static bool _listening = false;
 
-  static String _storageKey(String pluginId) => 'catalog_cw_$pluginId';
+  static void _ensureScopeListener() {
+    if (_listening) return;
+    _listening = true;
+    LocalDataScope.addListener(() async {
+      revision.value++;
+    });
+  }
 
+  static String _storageKey(String pluginId) {
+    _ensureScopeListener();
+    return LocalDataScope.storageKey('catalog_cw_$pluginId');
+  }
   static Future<List<Map<String, dynamic>>> getAll(String pluginId) async {
     final p = await SharedPreferences.getInstance();
     final raw = p.getStringList(_storageKey(pluginId)) ?? const [];

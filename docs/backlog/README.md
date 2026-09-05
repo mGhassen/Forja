@@ -55,12 +55,12 @@ Partial RFC slices and version slip: [Version ↔ RFC ↔ issue](../../.cursor/r
 | **1.3** ✅ | **Elblat** | 
 | **1.4** 🔄 | **Atarin** | 
 | **1.5** ⬜ | **Berka** | 
-| **1.6** ⬜ | **Serrajine** | 
+| **1.6** ⬜ | **Serrajin** | 
 | **1.7** ⬜ | **Leffa** | 
 | **1.8** ⬜ | **Belghajia** | 
-| **1.9** ⬜ | **Sabbaghine** | 
+| **1.9** ⬜ | **Sabbaghin** | 
 | **1.10** ⬜ | **Grana** | 
-| **1.11** ⬜ | **Haddadine** | 
+| **1.11** ⬜ | **Haddadin** | 
 | **1.12** ⬜ | **Bechmak** | 
 | **1.13** ⬜ | **Nhas** | 
 | **1.14** ⬜ | **Trouk** | 

@@ -3,32 +3,71 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import 'kv.dart';
+import 'local_data_scope.dart';
 
 class WatchHistoryService {
   static final WatchHistoryService _instance = WatchHistoryService._internal();
   factory WatchHistoryService() => _instance;
 
   WatchHistoryService._internal() {
+    LocalDataScope.addListener(_onScopeChanged);
     _init();
   }
 
-  static const String _key = 'watch_history';
-  static const String _dismissedKey = 'dismissed_history';
+  static const String _baseKey = 'watch_history';
+  static const String _baseDismissedKey = 'dismissed_history';
+  String get _key => LocalDataScope.storageKey(_baseKey);
+  String get _dismissedKey => LocalDataScope.storageKey(_baseDismissedKey);
   final _controller = StreamController<List<Map<String, dynamic>>>.broadcast();
   List<Map<String, dynamic>> _current = [];
   bool _loaded = false;
+  bool _kvMigrated = false;
 
   Stream<List<Map<String, dynamic>>> get historyStream => _controller.stream;
   List<Map<String, dynamic>> get current => _current;
   bool get isLoaded => _loaded;
 
+  Future<void> _onScopeChanged() async {
+    _kvMigrated = false;
+    await _reload();
+  }
+
+  Future<void> _ensureKvMigrated() async {
+    if (_kvMigrated) return;
+    _kvMigrated = true;
+    await LocalDataScope.migrateKvStringListIfNeeded(
+      base: _baseKey,
+      readList: kvGetJsonList,
+      writeList: kvSetJsonList,
+      clearKey: (k) async => kvSetJsonList(k, []),
+    );
+    await LocalDataScope.migrateKvStringListPlainIfNeeded(
+      base: _baseDismissedKey,
+      readList: kvGetJsonStringList,
+      writeList: kvSetJsonStringList,
+      clearKey: (k) async => kvSetJsonStringList(k, []),
+    );
+  }
+
   Future<void> _init() async {
     try {
+      await _ensureKvMigrated();
       _current = await getHistory();
     } finally {
       _loaded = true;
-      _controller.add(_current);
     }
+    _controller.add(_current);
+  }
+
+  Future<void> _reload() async {
+    try {
+      await _ensureKvMigrated();
+      _current = await getHistory();
+    } catch (_) {
+      _current = [];
+    }
+    _loaded = true;
+    _controller.add(_current);
   }
 
   Future<void> saveProgress({
@@ -127,6 +166,7 @@ class WatchHistoryService {
 
   Future<List<Map<String, dynamic>>> getHistory() async {
     try {
+      await _ensureKvMigrated();
       return await kvGetJsonList(_key);
     } catch (e) {
       debugPrint('[WatchHistory] Error fetching history: $e');
@@ -176,7 +216,7 @@ class WatchHistoryService {
     }
   }
 
-  /// Clear all movies/TV continue-watching entries and dismissed suppressions.
+  /// Clear continue-watching for the **active** account/profile/guest only.
   Future<void> clearAll() async {
     try {
       await kvSetJsonList(_key, []);

@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'local_data_scope.dart';
+
 typedef MyListSyncAddHandler = void Function(
   int? tmdbId,
   String? imdbId,
@@ -22,13 +24,15 @@ class MyListService {
   static final MyListService _instance = MyListService._internal();
   factory MyListService() => _instance;
   MyListService._internal() {
+    LocalDataScope.addListener(_onScopeChanged);
     _init();
   }
 
   MyListSyncAddHandler? syncAddHandler;
   MyListSyncRemoveHandler? syncRemoveHandler;
 
-  static const String _key = 'my_list_items';
+  static const String _baseKey = 'my_list_items';
+  String get _key => LocalDataScope.storageKey(_baseKey);
 
   final _controller = StreamController<List<Map<String, dynamic>>>.broadcast();
   List<Map<String, dynamic>> _items = [];
@@ -37,6 +41,14 @@ class MyListService {
   Stream<List<Map<String, dynamic>>> get stream => _controller.stream;
   List<Map<String, dynamic>> get items => List.unmodifiable(_items);
   static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
+
+  Future<void> _onScopeChanged() async {
+    _loaded = false;
+    _items = [];
+    await _init();
+    _controller.add(List<Map<String, dynamic>>.from(_items));
+    changeNotifier.value++;
+  }
 
   Future<void> _init() async {
     if (_loaded) return;

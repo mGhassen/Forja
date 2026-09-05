@@ -1,12 +1,14 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/features/iptv/data/iptv_catalog_disk_store.dart';
 import 'package:forja/shared/engine/plugin_script_disk_store.dart';
 import 'package:forja/shared/supabase/forja_passkeys.dart';
 import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/src/account_features.dart';
 import 'package:forja/shared/sync/src/desktop_browser_auth.dart';
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -686,15 +688,25 @@ class SyncService {
     return true;
   }
 
-  /// Plugin JS on disk is scoped per account + profile — call on boot / switch.
+  /// Plugin JS on disk + local prefs/KV are scoped per account + profile —
+  /// call on boot / switch / guest.
   Future<void> _syncPluginDiskScope({
     required String? accountId,
     required String? profileId,
   }) async {
+    await LocalDataScope.configure(
+      accountId: accountId,
+      profileId: profileId,
+    );
     await PluginScriptDiskStore.configureScope(
       accountId: accountId,
       profileId: profileId,
     );
+    await IptvCatalogDiskStore.configureScope(
+      accountId: accountId,
+      profileId: profileId,
+    );
+    await ProviderScoreMemory.syncIdentityScope();
   }
 
   /// Guest / signed-out local shell.

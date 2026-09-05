@@ -36,10 +36,11 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
             'Next play re-resolves. Settings and watch history stay.';
     final streamBody = mentionTorrent
         ? 'Clears saved stream extracts, torrent download cache, and '
-            'temporary seek buffers on this device.\n\n'
-            'Watch history, provider scores, and settings are not affected.'
-        : 'Clears saved stream extracts and temporary seek buffers on this '
-            'device.\n\n'
+            'temporary seek buffers for the current profile (or Guest).\n\n'
+            'Watch history, provider scores, and settings are not affected. '
+            'Torrent temp files are shared on this device.'
+        : 'Clears saved stream extracts and temporary seek buffers for the '
+            'current profile (or Guest).\n\n'
             'Watch history, provider scores, and settings are not affected.';
 
     return Column(
@@ -95,9 +96,9 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                   kind: _ClearBusy.iptvPortals,
                   title: 'Clear IPTV portal cache?',
                   body:
-                      'Clears saved catalogs, alive-channel checks, and channel '
-                      'scan hits for all IPTV portals on this device.\n\n'
-                      'Saved portals, favorites, and M3U playlists are not affected.',
+                    'Clears saved catalogs, alive-channel checks, and channel '
+                    'scan hits for IPTV portals on the current profile (or Guest).\n\n'
+                    'Saved portals, favorites, and M3U playlists are not affected.',
                   confirmLabel: 'Clear',
                   success: 'IPTV portal cache cleared',
                   action: SettingsDataCleaner.clearIptvPortalCaches,
@@ -141,8 +142,9 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                 kind: _ClearBusy.scores,
                 title: 'Reset provider scores?',
                 body:
-                    'Clears learned reliability for all providers on this device. '
-                    'Settings Score goes back to 0 and Auto re-learns from new checks.\n\n'
+                    'Clears learned reliability for all providers on the current '
+                    'profile (or Guest). Settings Score goes back to 0 and Auto '
+                    're-learns from new checks.\n\n'
                     'Your preferred drag order is not changed.',
                 confirmLabel: 'Reset scores',
                 success: 'Provider scores reset',
@@ -161,15 +163,16 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
               title: 'Continue watching',
               subtitle:
                   'Home, Anime, Asian Drama, and Anime Arabic resume rows. '
-                  'Cannot be undone on this device.',
+                  'Cannot be undone for this profile / Guest.',
               onTap: () => _run(
                 kind: _ClearBusy.continueWatching,
                 title: 'Clear continue watching?',
                 body:
-                    'Removes all resume / continue-watching entries for movies, TV, '
-                    'anime, Asian drama, and anime Arabic on this device.\n\n'
-                    'Trakt or Simkl cloud history is not deleted. My List and liked '
-                    'items are kept.',
+                    'Removes resume / continue-watching entries for movies, TV, '
+                    'anime, Asian drama, and anime Arabic on the current profile '
+                    '(or Guest).\n\n'
+                    'Other profiles are not affected. Trakt or Simkl cloud history '
+                    'is not deleted. My List and liked items are kept.',
                 confirmLabel: 'Clear history',
                 success: 'Continue watching cleared',
                 action: SettingsDataCleaner.clearContinueWatching,
@@ -188,8 +191,9 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                 kind: _ClearBusy.watched,
                 title: 'Clear watched marks?',
                 body:
-                    'Removes local episode watched checkmarks on this device. '
-                    'Continue watching progress is kept unless you clear it separately.\n\n'
+                    'Removes local episode watched checkmarks on the current '
+                    'profile (or Guest). Continue watching progress is kept unless '
+                    'you clear it separately.\n\n'
                     'Trakt / Simkl may show episodes as watched again after sync.',
                 confirmLabel: 'Clear marks',
                 success: 'Watched marks cleared',
