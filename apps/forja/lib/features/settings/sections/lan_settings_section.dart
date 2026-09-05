@@ -101,8 +101,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       _torrentHistory = LanServerService.instance.listTorrentHistory();
       _activeTorrent = LanServerService.instance.activeTorrentStatus();
       try {
-        _torrentCacheBytes =
-            await TorrentStreamService().cacheDirectoryBytes();
+        _torrentCacheBytes = await TorrentStreamService().cacheDirectoryBytes();
       } catch (_) {
         _torrentCacheBytes = 0;
       }
@@ -157,8 +156,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
 
   Future<bool> _clientDesktopPlaying(String? host, int? port) async {
     if (host == null || port == null) return false;
-    final payload =
-        await LanClientService.instance.pingStatusJson(host, port);
+    final payload = await LanClientService.instance.pingStatusJson(host, port);
     return payload != null &&
         (payload['info_hash']?.toString().isNotEmpty ?? false);
   }
@@ -181,17 +179,15 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         onTap: onPressed,
         borderRadius: 8,
         scaleOnFocus: 1.0,
-        showFocusRail: true,
+        showFocusRail: false,
+        showFocusFill: false,
+        showFocusBorder: false,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
         child: SizedBox(width: 40, height: 40, child: Center(child: icon)),
       );
     }
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: icon,
-    );
+    return IconButton(tooltip: tooltip, onPressed: onPressed, icon: icon);
   }
 
   Widget _unpairControl() {
@@ -202,7 +198,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         onTap: () => unawaited(_unpair()),
         borderRadius: 8,
         scaleOnFocus: 1.0,
-        showFocusRail: true,
+        showFocusRail: false,
+        showFocusFill: false,
+        showFocusBorder: false,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
         child: const Padding(
@@ -230,7 +228,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         onTap: onPressed,
         borderRadius: 8,
         scaleOnFocus: 1.0,
-        showFocusRail: true,
+        showFocusRail: false,
+        showFocusFill: false,
+        showFocusBorder: false,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
         child: Padding(
@@ -328,12 +328,12 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     if (!mounted) return;
     setState(() => _pairing = false);
     if (token == null) {
-      ForjaToast.error('Pairing failed — check code, IP, and that desktop LAN is on');
+      ForjaToast.error(
+        'Pairing failed — check code, IP, and that desktop LAN is on',
+      );
       return;
     }
-    ForjaToast.success(
-      'Paired — enable Direct torrent in Settings → Playback',
-    );
+    ForjaToast.success('Paired — enable Direct torrent in Settings → Playback');
     _pairCodeController.clear();
     await _load();
     _refreshPlaySourceGates();
@@ -351,7 +351,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     }
     final settings = SettingsService();
     if (await settings.isP2pStreamingAcknowledged()) return;
-    final wouldActivate = await settings.isPlaySourceTorrentStored() ||
+    final wouldActivate =
+        await settings.isPlaySourceTorrentStored() ||
         await settings.isPlaySourceStremioStored() ||
         await settings.isPlaySourceNuvioStored();
     if (!wouldActivate || !mounted) return;
@@ -449,7 +450,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
 
   List<Widget> _desktopServerBody() {
     final running =
-        _serverEnabled && LanServerService.instance.isRunning && _serverPort > 0;
+        _serverEnabled &&
+        LanServerService.instance.isRunning &&
+        _serverPort > 0;
     return [
       SettingsToggleRow(
         title: 'Enable LAN server',
@@ -532,8 +535,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                 tooltip: 'New code',
                 onPressed: () {
                   setState(() {
-                    _pairingCode =
-                        LanServerService.instance.refreshPairingCode();
+                    _pairingCode = LanServerService.instance
+                        .refreshPairingCode();
                   });
                 },
                 icon: const Icon(Icons.refresh_rounded),
@@ -555,10 +558,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           _devices.isEmpty
               ? 'No TVs or phones paired yet.'
               : 'Revoke to force that device to pair again.',
-          style: TextStyle(
-            color: ForjaShellColors.textSecondary,
-            fontSize: 12,
-          ),
+          style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 8),
         if (_devices.isEmpty)
@@ -578,7 +578,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                 Text(
                   'Waiting for a device to enter the code…',
                   style: TextStyle(
-                    color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
+                    color: ForjaShellColors.textSecondary.withValues(
+                      alpha: 0.8,
+                    ),
                     fontSize: 13,
                   ),
                 ),
@@ -589,7 +591,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           ..._devices.map((d) {
             final id = d['device_id']?.toString() ?? '';
             final label = (d['label'] as String?)?.trim();
-            final title = (label != null && label.isNotEmpty) ? label : 'Device';
+            final title = (label != null && label.isNotEmpty)
+                ? label
+                : 'Device';
             final when = _formatPairedAt(d['paired_at']);
             final talk = LanPresence.deviceTalk(
               deviceId: id,
@@ -642,8 +646,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                           Text(
                             when,
                             style: TextStyle(
-                              color: ForjaShellColors.textSecondary
-                                  .withValues(alpha: 0.85),
+                              color: ForjaShellColors.textSecondary.withValues(
+                                alpha: 0.85,
+                              ),
                               fontSize: 11,
                               height: 1.25,
                             ),
@@ -652,8 +657,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                           Text(
                             id,
                             style: TextStyle(
-                              color: ForjaShellColors.textSecondary
-                                  .withValues(alpha: 0.7),
+                              color: ForjaShellColors.textSecondary.withValues(
+                                alpha: 0.7,
+                              ),
                               fontSize: 11,
                               height: 1.25,
                             ),
@@ -680,12 +686,14 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
   List<Widget> _torrentActivitySection() {
     final active = _activeTorrent;
     final activeHash = active?['info_hash']?.toString().toLowerCase();
-    final activeInHistory = activeHash != null &&
+    final activeInHistory =
+        activeHash != null &&
         _torrentHistory.any(
           (e) => (e['info_hash']?.toString() ?? '').toLowerCase() == activeHash,
         );
-    final cacheLabel =
-        TorrentStreamService.formatStorageBytes(_torrentCacheBytes);
+    final cacheLabel = TorrentStreamService.formatStorageBytes(
+      _torrentCacheBytes,
+    );
     return [
       Row(
         children: [
@@ -699,10 +707,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       ),
       Text(
         'Torrents opened by paired TVs/phones. Delete removes the cached download.',
-        style: TextStyle(
-          color: ForjaShellColors.textSecondary,
-          fontSize: 12,
-        ),
+        style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: 12),
       ),
       const SizedBox(height: 4),
       Text(
@@ -748,7 +753,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           final size = bytes > 0
               ? TorrentStreamService.formatStorageBytes(bytes)
               : null;
-          final live = (activeHash != null &&
+          final live =
+              (activeHash != null &&
                   hash.isNotEmpty &&
                   activeHash == hash.toLowerCase())
               ? active
@@ -774,8 +780,10 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     VoidCallback? onDelete,
   }) {
     final isActive = live != null;
-    final progress = ((live?['progress'] as num?)?.toDouble() ?? 0)
-        .clamp(0.0, 1.0);
+    final progress = ((live?['progress'] as num?)?.toDouble() ?? 0).clamp(
+      0.0,
+      1.0,
+    );
     final pct = (progress * 100).toStringAsFixed(0);
     final state = live?['state']?.toString() ?? '';
     final down = (live?['download_rate'] as num?)?.toInt() ?? 0;
@@ -846,14 +854,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                     runSpacing: 6,
                     children: [
                       if (state.isNotEmpty) _torrentChip(state, accent: true),
-                      _torrentMeta(
-                        Icons.download_rounded,
-                        '$rate/s',
-                      ),
-                      _torrentMeta(
-                        Icons.group_outlined,
-                        '$peers peers',
-                      ),
+                      _torrentMeta(Icons.download_rounded, '$rate/s'),
+                      _torrentMeta(Icons.group_outlined, '$peers peers'),
                     ],
                   ),
                 ],
@@ -956,8 +958,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                 Icon(
                   _paired
                       ? (_serverOnline
-                          ? Icons.tv_rounded
-                          : Icons.cloud_off_rounded)
+                            ? Icons.tv_rounded
+                            : Icons.cloud_off_rounded)
                       : Icons.link_rounded,
                   color: presence.server == LanServerMark.up
                       ? ForjaShellColors.brandGreen
@@ -1013,8 +1015,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                         ? '${_pairedHost ?? '?'}:${_pairedPort ?? '?'} — torrents play via desktop'
                         : 'Pair once. Then open Sources → Torrents on a title.',
                     style: TextStyle(
-                      color: ForjaShellColors.textSecondary
-                          .withValues(alpha: 0.85),
+                      color: ForjaShellColors.textSecondary.withValues(
+                        alpha: 0.85,
+                      ),
                       fontSize: 11,
                       height: 1.25,
                     ),
@@ -1059,10 +1062,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(s.host),
-                        Text('Port ${s.port}'),
-                      ],
+                      children: [Text(s.host), Text('Port ${s.port}')],
                     ),
                   ),
                   _lanTvTextAction(

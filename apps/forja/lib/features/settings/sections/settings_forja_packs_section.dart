@@ -40,7 +40,9 @@ class _SettingsForjaPacksSectionState
   @override
   void initState() {
     super.initState();
-    PluginInstallCoordinator.instance.progress.addListener(_onPluginInstallProgress);
+    PluginInstallCoordinator.instance.progress.addListener(
+      _onPluginInstallProgress,
+    );
     SettingsPackPromptDrill.current.addListener(_onPackPromptDrill);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -76,8 +78,7 @@ class _SettingsForjaPacksSectionState
       );
     }
 
-    final enginePacks =
-        ref.watch(enginePacksProvider).valueOrNull ?? const [];
+    final enginePacks = ref.watch(enginePacksProvider).valueOrNull ?? const [];
     final packUpdates = ref.watch(enginePackUpdatesProvider);
 
     return Column(
@@ -203,7 +204,8 @@ class _SettingsForjaPacksSectionState
                   icon: Icons.refresh_rounded,
                   secondary: true,
                   busy: _engineReloading,
-                  onPressed: _engineInstalling ||
+                  onPressed:
+                      _engineInstalling ||
                           _engineReloading ||
                           _engineUpdatingAll
                       ? null
@@ -321,13 +323,11 @@ class _SettingsForjaPacksSectionState
                         update: update,
                         onTogglePack: (val) =>
                             EngineService.instance.setPackEnabled(
-                          sourceUrl: pack.sourceUrl,
-                          enabled: val,
-                        ),
-                        onRefresh: () => _refreshEnginePack(
-                          pack.sourceUrl,
-                          update: update,
-                        ),
+                              sourceUrl: pack.sourceUrl,
+                              enabled: val,
+                            ),
+                        onRefresh: () =>
+                            _refreshEnginePack(pack.sourceUrl, update: update),
                         onRemove: () => _removeEnginePack(pack.sourceUrl),
                         showOfficialBadge: false,
                       ),
@@ -345,13 +345,11 @@ class _SettingsForjaPacksSectionState
                         update: update,
                         onTogglePack: (val) =>
                             EngineService.instance.setPackEnabled(
-                          sourceUrl: pack.sourceUrl,
-                          enabled: val,
-                        ),
-                        onRefresh: () => _refreshEnginePack(
-                          pack.sourceUrl,
-                          update: update,
-                        ),
+                              sourceUrl: pack.sourceUrl,
+                              enabled: val,
+                            ),
+                        onRefresh: () =>
+                            _refreshEnginePack(pack.sourceUrl, update: update),
                         onRemove: () => _removeEnginePack(pack.sourceUrl),
                         showOfficialBadge: false,
                       ),
@@ -469,9 +467,7 @@ class _SettingsForjaPacksSectionState
       ref.invalidate(enginePacksProvider);
       await ref.read(enginePackUpdatesProvider.notifier).refresh();
       if (ok > 0) {
-        ForjaToast.success(
-          ok == 1 ? '1 pack reloaded' : '$ok packs reloaded',
-        );
+        ForjaToast.success(ok == 1 ? '1 pack reloaded' : '$ok packs reloaded');
       }
     } finally {
       if (mounted) setState(() => _engineReloading = false);
@@ -522,7 +518,9 @@ class _SettingsForjaPacksSectionState
             entry.sourceUrl,
             isUpdate: true,
           );
-          ref.read(enginePackUpdatesProvider.notifier).clearFor(entry.sourceUrl);
+          ref
+              .read(enginePackUpdatesProvider.notifier)
+              .clearFor(entry.sourceUrl);
           ok++;
         } catch (e) {
           if (!mounted) return;
@@ -533,9 +531,7 @@ class _SettingsForjaPacksSectionState
       ref.invalidate(enginePacksProvider);
       await ref.read(enginePackUpdatesProvider.notifier).refresh();
       if (ok > 0) {
-        ForjaToast.success(
-          ok == 1 ? '1 pack updated' : '$ok packs updated',
-        );
+        ForjaToast.success(ok == 1 ? '1 pack updated' : '$ok packs updated');
       }
     } finally {
       if (mounted) setState(() => _engineUpdatingAll = false);
@@ -633,14 +629,31 @@ class _EnginePackActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasUpdate = update != null;
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final packSwitch = ForjaSwitch(
+      value: packEnabled,
+      scale: ForjaSwitch.settingsScale,
+      onChanged: onTogglePack,
+    );
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ForjaSwitch(
-          value: packEnabled,
-          scale: ForjaSwitch.settingsScale,
-          onChanged: onTogglePack,
-        ),
+        if (tv)
+          shellFocusableTap(
+            context: context,
+            onTap: () => onTogglePack(!packEnabled),
+            borderRadius: 8,
+            scaleOnFocus: 1.0,
+            showFocusRail: false,
+            showFocusFill: false,
+            showFocusBorder: false,
+            tvTabId: 'settings',
+            tvZone: ShellTvZone.settings,
+            ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+            child: ExcludeFocus(child: packSwitch),
+          )
+        else
+          packSwitch,
         if (showOfficialBadge)
           Padding(
             padding: const EdgeInsets.only(right: 4),
@@ -658,9 +671,7 @@ class _EnginePackActions extends StatelessWidget {
           tooltip: hasUpdate
               ? 'Update to v${update!.remoteVersion}'
               : 'Refresh',
-          icon: hasUpdate
-              ? Icons.system_update_rounded
-              : Icons.refresh_rounded,
+          icon: hasUpdate ? Icons.system_update_rounded : Icons.refresh_rounded,
           onPressed: onRefresh,
           color: hasUpdate
               ? ForjaShellColors.brandGreen
@@ -687,17 +698,15 @@ Widget _settingsTvIconButton(
       onTap: onPressed,
       borderRadius: 8,
       scaleOnFocus: 1.0,
-      showFocusRail: true,
+      showFocusRail: false,
+      showFocusFill: false,
+      showFocusBorder: false,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       child: SizedBox(width: 40, height: 40, child: Center(child: child)),
     );
   }
-  return IconButton(
-    tooltip: tooltip,
-    onPressed: onPressed,
-    icon: child,
-  );
+  return IconButton(tooltip: tooltip, onPressed: onPressed, icon: child);
 }
 
 class _AddonRemoveActions extends StatefulWidget {

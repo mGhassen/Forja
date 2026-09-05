@@ -77,7 +77,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
     required this.groupLabel,
     required this.groupOrder,
     this.miniLabel = 'Forja plugins',
-    this.tabRowId = 'engine-pack-tabs',
+    this.tabRowId,
     this.trailing,
     this.showMiniLabel = false,
     this.installProgress,
@@ -90,7 +90,8 @@ class SettingsEnginePackExpansion extends StatelessWidget {
   final String Function(String) groupLabel;
   final List<String> groupOrder;
   final String miniLabel;
-  final String tabRowId;
+  /// Unique per pack so TV chip strips do not share one focus-graph row.
+  final String? tabRowId;
   final Widget? trailing;
   final bool showMiniLabel;
   final PluginInstallProgress? installProgress;
@@ -105,6 +106,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
       groupKey: groupKey,
       groupOrder: groupOrder,
     );
+    final tabsId = tabRowId ?? 'engine-pack-tabs-${pack.sourceUrl.hashCode}';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -171,7 +173,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
                   byGroup: grouped.byGroup,
                   orderedGroups: grouped.orderedGroups,
                   groupLabel: groupLabel,
-                  tabRowId: tabRowId,
+                  tabRowId: tabsId,
                 ),
               ],
             ),

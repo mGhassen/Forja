@@ -682,6 +682,27 @@ class _LiveMatchDetailsScreenState
                       ],
                     ),
                   ),
+                  ListenableBuilder(
+                    listenable: Listenable.merge([_providersCtrl, _liveTvCtrl]),
+                    builder: (context, _) {
+                      final busy = _activeCtrl.searching;
+                      return shellFocusableTap(
+                        context: context,
+                        onTap: busy ? null : _retryActiveTab,
+                        borderRadius: 16,
+                        child: Tooltip(
+                          message: 'Reload sources',
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Icon(
+                              Icons.refresh_rounded,
+                              color: busy ? Colors.white24 : Colors.white70,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                   shellFocusableTap(
                     context: context,
                     onTap: () => widget.host.closeMatchStreamsPanel(),
@@ -958,6 +979,28 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
     );
   }
 
+  Widget _buildReloadIcon({required bool enabled}) {
+    return shellFocusableTap(
+      context: context,
+      onTap: enabled ? widget.onRetry : null,
+      borderRadius: 14,
+      child: Tooltip(
+        message: 'Reload sources',
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(
+            Icons.refresh_rounded,
+            size: 18,
+            color: enabled
+                ? ForjaShellColors.cinematic.textSecondary
+                : ForjaShellColors.cinematic.textSecondary
+                    .withValues(alpha: 0.35),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildInlineStatus(BuildContext context) {
     final sources = controller.sources;
     if (controller.searching && sources.isEmpty) {
@@ -1018,6 +1061,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
       return const SizedBox.shrink();
     }
 
+    final canReload = !controller.searching;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -1044,12 +1088,16 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-            ),
+            )
+          else
+            const Spacer(),
           if (!controller.searching && sources.isEmpty)
             TextButton(
               onPressed: widget.onRetry,
               child: const Text('Retry'),
-            ),
+            )
+          else
+            _buildReloadIcon(enabled: canReload),
         ],
       ),
     );
@@ -1064,6 +1112,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
             : (sources.isEmpty
                 ? null
                 : _IptvSportsPanelCopy.ready(sources.length));
+    final canReload = !controller.searching;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1077,7 +1126,9 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
               TextButton(
                 onPressed: widget.onRetry,
                 child: const Text('Retry'),
-              ),
+              )
+            else
+              _buildReloadIcon(enabled: canReload),
           ],
         ),
         if (status != null) ...[

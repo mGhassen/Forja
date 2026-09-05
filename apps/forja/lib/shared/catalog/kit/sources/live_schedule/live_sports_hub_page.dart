@@ -177,6 +177,9 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
   _StreamedMatch? _streamsPanelMatch;
   _IframeCatalogStream? _streamsPanelIframeAnchor;
 
+  /// Bumps when Providers cache must remount the open panel (addon install, etc.).
+  int _streamsPanelReloadEpoch = 0;
+
   @override
   void openMatchStreamsPanel({
     required _StreamedMatch match,
@@ -381,6 +384,12 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
 
   void _onStremioAddonsChanged() {
     if (!mounted) return;
+    // Schedule catalogs refresh below — but Providers TTL cache would still
+    // serve the pre-addon channel list until Refresh/retry. Drop it now.
+    _clearProvidersResultsCache();
+    if (_streamsPanelMatch != null) {
+      setState(() => _streamsPanelReloadEpoch++);
+    }
     unawaited(_refreshCapabilityFlags(reload: false));
     final forja = this as _LiveMatchesForjaLive;
     if (!forja._usesForjaLiveLazyCatalog) return;

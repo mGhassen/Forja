@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -385,26 +386,29 @@ class _SettingsNavigationPageBodyState
   List<String> _startupTabOptions() =>
       _startupTabOptionsFor(_navbarOrder, _navbarVisible);
 
-  void _saveNavbarConfig() {
+  Future<void> _saveNavbarConfig() async {
     final visible = _navbarOrder
         .where((id) => _navbarVisible.contains(id))
         .toList();
-    _settings.setNavbarConfig(visible, tabOrder: _navbarOrder);
+    // Await KV write before scheduling push — otherwise syncFromCloud can
+    // flush a pending navigation overlay that still reads the old empty
+    // visibleIds and snap Features toggles back off (issue 221).
+    await _settings.setNavbarConfig(visible, tabOrder: _navbarOrder);
     scheduleNavigationSyncPush();
     final startupOptions = _startupTabOptions();
     if (!startupOptions.contains(_defaultNavTab)) {
       final resolved = startupOptions.isNotEmpty
           ? startupOptions.first
           : 'settings';
-      setState(() => _defaultNavTab = resolved);
-      _settings.setDefaultNavTab(resolved);
+      if (mounted) setState(() => _defaultNavTab = resolved);
+      await _settings.setDefaultNavTab(resolved);
       scheduleNavigationSyncPush();
     }
   }
 
-  void _setDefaultNavTab(String id) {
+  Future<void> _setDefaultNavTab(String id) async {
     setState(() => _defaultNavTab = id);
-    _settings.setDefaultNavTab(id);
+    await _settings.setDefaultNavTab(id);
     scheduleNavigationSyncPush();
   }
 
@@ -416,7 +420,7 @@ class _SettingsNavigationPageBodyState
         _navbarVisible.add(id);
       }
     });
-    _saveNavbarConfig();
+    unawaited(_saveNavbarConfig());
   }
 
   void _moveNavbarItem(int from, int to) {
@@ -427,7 +431,7 @@ class _SettingsNavigationPageBodyState
       final item = _navbarOrder.removeAt(from);
       _navbarOrder.insert(to, item);
     });
-    _saveNavbarConfig();
+    unawaited(_saveNavbarConfig());
   }
 
   Widget _defaultNavStar(
@@ -450,17 +454,19 @@ class _SettingsNavigationPageBodyState
     if (!tv) {
       return IconButton(
         tooltip: isDefault ? 'Default menu' : 'Set as default menu',
-        onPressed: enabled ? () => _setDefaultNavTab(id) : null,
+        onPressed: enabled ? () => unawaited(_setDefaultNavTab(id)) : null,
         icon: icon,
       );
     }
     // TV: shellFocusableTap (not IconButton) so the focus graph owns the node.
     return shellFocusableTap(
       context: context,
-      onTap: enabled ? () => _setDefaultNavTab(id) : null,
+      onTap: enabled ? () => unawaited(_setDefaultNavTab(id)) : null,
       borderRadius: 8,
       scaleOnFocus: 1.0,
-      showFocusRail: true,
+      showFocusRail: false,
+      showFocusFill: false,
+      showFocusBorder: false,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       tvRowId: 'features-star',
@@ -481,7 +487,9 @@ class _SettingsNavigationPageBodyState
       onTap: enabled ? onTap : null,
       borderRadius: 6,
       scaleOnFocus: ShellTokens.focusActiveScale,
-      showFocusRail: true,
+      showFocusRail: false,
+      showFocusFill: false,
+      showFocusBorder: false,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       tvRowId: 'features-move',
@@ -556,7 +564,7 @@ class _SettingsNavigationPageBodyState
                   final item = _navbarOrder.removeAt(oldIndex);
                   _navbarOrder.insert(newIndex, item);
                 });
-                _saveNavbarConfig();
+                unawaited(_saveNavbarConfig());
               },
               itemBuilder: (context, index) {
                 final id = _navbarOrder[index];
@@ -592,7 +600,7 @@ class _SettingsNavigationPageBodyState
                               _navbarVisible.remove(id);
                             }
                           });
-                          _saveNavbarConfig();
+                          unawaited(_saveNavbarConfig());
                         },
                       ),
                     ),

@@ -19,7 +19,7 @@ On a fresh install, only **Settings** is visible — no Addons (IPTV, Live Sport
 - Reorder tabs — **drag** on desktop / phone; **↑/↓** on **TV** (same idea as server reliability order). On the web portal use up/down under **Profile settings → Features**
 - Select the **star** beside a visible tab (or Settings) to make it the menu that opens when you launch the app (and after you switch to this profile mid-session) — works with mouse and with **OK** on TV
 - Restore a cleaner bar by hiding unused hubs
-- Sync the same layout across devices via [cloud sync](cloud-sync.md) (visible tabs + default tab)
+- Sync the same layout across devices via [cloud sync](cloud-sync.md) (visible tabs + default tab). Edits wait until they are saved locally before syncing, so a toggle does not snap back off when the window refocuses.
 
 Home, Asian Drama, Anime, and Arabic install from ForjaHQ hub packs (Settings → Forja Packs → **Hubs**). A newly contributed hub tab is **on** in Features the first time the host sees it; hide it here if you do not want it on the rail.
 

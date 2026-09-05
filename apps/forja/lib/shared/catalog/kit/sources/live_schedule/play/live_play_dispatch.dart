@@ -24,7 +24,10 @@ String _providersResultsCacheKey(
   final base = iframe != null
       ? _liveEventViewerKeyFromIframeCatalog(iframe)
       : _liveEventViewerKey(match);
-  return 'providers:$base';
+  // Addon installs bump this — stale channel lists must not survive a new
+  // Stremio sport addon (schedule search refreshes; Providers TTL would not).
+  final addonRev = SettingsService.addonChangeNotifier.value;
+  return 'providers:$base:a$addonRev';
 }
 
 _ProvidersResultsCacheEntry? _providersResultsCacheGet(String key) {

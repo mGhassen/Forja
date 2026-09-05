@@ -229,13 +229,13 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
               ),
             ),
             const Spacer(),
-            TextButton(
+            SettingsTextAction(
+              label: 'Select all',
               onPressed: _busy || allSelected ? null : _selectAllActionable,
-              child: const Text('Select all'),
             ),
-            TextButton(
+            SettingsTextAction(
+              label: 'Clear',
               onPressed: _busy || _selectedCount == 0 ? null : _clearActionable,
-              child: const Text('Clear'),
             ),
           ],
         ),
@@ -273,9 +273,10 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
         ),
         const SizedBox(height: 8),
         Center(
-          child: ForjaGhostButton(
+          child: SettingsTextAction(
             label: 'Not now',
-            onTap: _busy ? null : () => unawaited(_notNow()),
+            color: ForjaShellColors.textSecondary,
+            onPressed: _busy ? null : () => unawaited(_notNow()),
           ),
         ),
       ],
@@ -315,26 +316,30 @@ class _PackPromptRow extends StatelessWidget {
       onChanged(!checked);
     }
 
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final checkbox = SizedBox(
+      width: 28,
+      height: 28,
+      child: Checkbox(
+        value: checked,
+        onChanged: enabled ? (v) => onChanged(v == true) : null,
+        activeColor: ForjaShellColors.brandGreen,
+        checkColor: const Color(0xFF0B0A0A),
+        side: BorderSide(
+          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.9),
+        ),
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 28,
-            height: 28,
-            child: Checkbox(
-              value: checked,
-              onChanged: enabled ? (v) => onChanged(v == true) : null,
-              activeColor: ForjaShellColors.brandGreen,
-              checkColor: const Color(0xFF0B0A0A),
-              side: BorderSide(
-                color: ForjaShellColors.borderSubtle.withValues(alpha: 0.9),
-              ),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-            ),
-          ),
+          // TV: row owns focus — Checkbox must not steal a second node.
+          ExcludeFocus(excluding: tv, child: checkbox),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -368,7 +373,6 @@ class _PackPromptRow extends StatelessWidget {
       ),
     );
 
-    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     if (!tv || !enabled) return row;
 
     return shellFocusableTap(

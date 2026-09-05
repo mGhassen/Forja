@@ -31,6 +31,8 @@ When every feature tab is off, the get-started screen **Install plugins** button
 
 **Onboarding (desktop / Android TV):** after sign-in and profile select (or on upgrade when the profile is not yet onboarded), Forja offers **Install official ForjaHQ packs**, a Community Packs link, or **Skip for now**. Completing or skipping sets `onboarded` on the profile so the step does not repeat. **Continue as guest** gets the same step once per device (local flag only). The same Official / Community quick-action cards also appear (smaller) under **Settings → Forja Packs** — Official there uses the checkbox list in the detail pane, not a silent full-bundle install.
 
+**Android TV:** D-pad walks Official/Community cards, the URL field (OK to type), Install / Download all / Reload, each pack’s enable / refresh / remove actions, expanded category chips and per-plugin toggles, and the official install checklist (Select all / Clear / rows / Install / Not now).
+
 ## Related
 
 - [Cloud sync](cloud-sync.md) — profile pack membership + onboarded

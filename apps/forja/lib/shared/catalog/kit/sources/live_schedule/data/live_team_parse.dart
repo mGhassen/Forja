@@ -19,10 +19,41 @@ String foldLiveMatchLatin(String raw) {
   return buf.toString();
 }
 
+final _liveFixtureConnector = RegExp(
+  r'\s+(?:at|@|vs\.?|v|versus)\s+',
+  caseSensitive: false,
+);
+
+/// Drop event branding glued onto the left fighter/team.
+///
+/// Catalogs often write `UFC Fight Night 287 Hooker vs Parnasse` instead of
+/// `Hooker vs Parnasse` — without this peel, merge keys treat the whole
+/// left clause as one "team" and miss the colon variant of the same card.
+String _peelEventPrefixFromSide(String side) {
+  final trimmed = side.trim();
+  if (trimmed.isEmpty) return trimmed;
+  final tokens = trimmed.split(RegExp(r'\s+'));
+  if (tokens.length < 3) return trimmed;
+  // Last standalone event number (not a `20:00` clock token), then competitor.
+  for (var i = tokens.length - 2; i >= 0; i--) {
+    final numTok = tokens[i];
+    if (!RegExp(r'^\d{1,4}$').hasMatch(numTok)) continue;
+    final competitorTokens = tokens.sublist(i + 1);
+    if (competitorTokens.isEmpty || competitorTokens.length > 4) continue;
+    if (!RegExp(r'^[a-zA-Z]').hasMatch(competitorTokens.first)) continue;
+    final prefix = tokens.sublist(0, i).join(' ');
+    if (!RegExp(r'[a-zA-Z]').hasMatch(prefix)) continue;
+    return competitorTokens.join(' ');
+  }
+  return trimmed;
+}
+
 /// Split a Live Matches catalog title into `(home, away)`.
 ///
 /// - `A vs B` / `A v B` / `A versus B` → home=A, away=B
 /// - `A at B` / `A @ B` → away=A, home=B (US sports: visitor at home)
+/// - `Event: A vs B` → parse after the event colon (not clock `20:00`)
+/// - `Event 287 A vs B` → peel `Event 287` so A/B become the pair
 ///
 /// PPV-style catalogs often use `away at home`; Streamed-style use
 /// `home vs away` — same fixture, reversed surface names.
@@ -33,26 +64,40 @@ String foldLiveMatchLatin(String raw) {
       .trim();
   if (title.isEmpty) return ('', '');
 
+  // `UFC Fight Night: Hooker vs Parnasse` — require `: ` so `20:00` stays intact.
+  final eventColons = RegExp(r':\s+').allMatches(title);
+  if (eventColons.isNotEmpty) {
+    final after = title.substring(eventColons.last.end).trim();
+    if (after.isNotEmpty && _liveFixtureConnector.hasMatch(after)) {
+      final nested = parseLiveMatchTeamsFromTitle(after);
+      if (nested.$1.isNotEmpty && nested.$2.isNotEmpty) return nested;
+    }
+  }
+
   final at = RegExp(r'\s+(?:at|@)\s+', caseSensitive: false).firstMatch(title);
   if (at != null) {
-    final left = title.substring(0, at.start).trim();
-    final right = title
-        .substring(at.end)
-        .split(RegExp(r'\s+[-–—|/]\s+'))
-        .first
-        .trim();
+    final left = _peelEventPrefixFromSide(title.substring(0, at.start));
+    final right = _peelEventPrefixFromSide(
+      title
+          .substring(at.end)
+          .split(RegExp(r'\s+[-–—|/]\s+'))
+          .first
+          .trim(),
+    );
     return (right, left);
   }
 
   final vs = RegExp(r'\s+(?:vs\.?|v|versus)\s+', caseSensitive: false)
       .firstMatch(title);
   if (vs != null) {
-    final left = title.substring(0, vs.start).trim();
-    final right = title
-        .substring(vs.end)
-        .split(RegExp(r'\s+[-–—|/]\s+'))
-        .first
-        .trim();
+    final left = _peelEventPrefixFromSide(title.substring(0, vs.start));
+    final right = _peelEventPrefixFromSide(
+      title
+          .substring(vs.end)
+          .split(RegExp(r'\s+[-–—|/]\s+'))
+          .first
+          .trim(),
+    );
     return (left, right);
   }
 

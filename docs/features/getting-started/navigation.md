@@ -63,7 +63,7 @@ Hub tabs (**Home**, **Anime**, **Asian Drama**, **Arabic** / **Aflem** / **كر�
 ## Tips
 
 - If every feature tab is off, the shell shows a get-started screen with three cards (**Addons**, **Features**, **Plugins**) centered on the full window (sidebar logo hidden; profile avatar stays). Side by side on desktop/TV (stacked on phone). On **Android TV**, cards are compact and D-pad moves ←/→ across them (← from the first card returns to the nav rail).
-- Hide tabs you never use to reduce clutter — among the tabs listed in Settings → Features
+- Hide tabs you never use to reduce clutter — among the tabs listed in Settings → Features. Turning a tab back on stays on after focus / tab switches (sync no longer reverts a just-enabled Home).
 - Startup follows your profile: splash warms the default hub layout + first-paint rails into the shared catalog cache; torrent / Nuvio / Forja / Webstreaming engines start **after** splash when those play sources are on **and** you have a VOD tab (Home, Anime, Asian Drama, or My List). IPTV + Live Sports alone skip them. Restored-session cold start paints the logo splash immediately (update check + cloud sync run in the background). After sign-in, choosing a profile uses the avatar profile splash (same as mid-session switches).
 - Movie and series details open on top of the current tab; the player opens full-screen from there
 - On **desktop**, the mouse **Back** side button and **Escape** act like the in-app **Back** control — player first, then details, then in-tab screens. A two-finger trackpad swipe-right on empty page chrome (not over the Sources panel, addon chips, catalog rows, or other horizontal strips) shows a left-edge arrow; when the ring fills completely, Back commits.

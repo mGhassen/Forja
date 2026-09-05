@@ -35,6 +35,10 @@ class AddonMasterToggle extends ConsumerStatefulWidget {
 class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   final SettingsService _settings = SettingsService();
   bool _lanEnabled = false;
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _chromeActive => _focused || _hovered;
   @override
   void initState() {
     super.initState();
@@ -141,11 +145,25 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     final snap = ref.watch(settingsPlaybackProvider).valueOrNull;
     final enabled = _isEnabled(snap);
     void flip() => unawaited(_toggle(!enabled));
+    // Match ForjaSwitch hover/focus: white thumb only — no row rail / ink box.
     final switchVisual = IgnorePointer(
-      child: ForjaSwitch(
-        value: enabled,
-        onChanged: (_) {},
-        scale: ForjaSwitch.settingsScale,
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          switchTheme: SwitchThemeData(
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            thumbColor: WidgetStatePropertyAll(
+              _chromeActive ? Colors.white : ForjaShellColors.surfaceElevated,
+            ),
+            trackColor: forjaSwitchTrackColor,
+            trackOutlineColor: forjaSwitchTrackOutlineColor,
+            overlayColor: forjaSwitchOverlayColor,
+          ),
+        ),
+        child: ForjaSwitch(
+          value: enabled,
+          onChanged: (_) {},
+          scale: ForjaSwitch.settingsScale,
+        ),
       ),
     );
     // TV: own focus stop so → from the addon row lands here; OK flips.
@@ -155,22 +173,40 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       return shellFocusableTap(
         context: context,
         onTap: flip,
-        borderRadius: SettingsTokens.categoryTileRadius,
+        borderRadius: 20,
         scaleOnFocus: 1.0,
-        showFocusRail: true,
+        showFocusRail: false,
+        showFocusFill: false,
+        showFocusBorder: false,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
         ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: switchVisual,
-        ),
+        onFocusChange: (f) {
+          if (_focused == f) return;
+          setState(() => _focused = f);
+        },
+        onHoverChange: (h) {
+          if (_hovered == h) return;
+          setState(() => _hovered = h);
+        },
+        child: switchVisual,
       );
     }
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: flip,
-      child: switchVisual,
+    return MouseRegion(
+      onEnter: (_) {
+        if (_hovered) return;
+        setState(() => _hovered = true);
+      },
+      onExit: (_) {
+        if (!_hovered) return;
+        setState(() => _hovered = false);
+      },
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: flip,
+        child: switchVisual,
+      ),
     );
   }
 }

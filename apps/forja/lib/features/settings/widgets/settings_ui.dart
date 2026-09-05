@@ -113,10 +113,12 @@ class SettingsCategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor =
-        selected ? ForjaShellColors.brandGreen : ForjaShellColors.iconMuted;
-    final titleColor =
-        selected ? ForjaShellColors.textPrimary : ForjaShellColors.textSecondary;
+    final iconColor = selected
+        ? ForjaShellColors.brandGreen
+        : ForjaShellColors.iconMuted;
+    final titleColor = selected
+        ? ForjaShellColors.textPrimary
+        : ForjaShellColors.textSecondary;
     final rail = tvRowId != null;
 
     final child = AnimatedContainer(
@@ -240,8 +242,7 @@ List<Widget> settingsExpansionChildren(
   Widget? trailing,
   required List<Widget> children,
 }) {
-  if (trailing == null ||
-      !ShellScope.inputPolicyOf(context).leanbackOnly) {
+  if (trailing == null || !ShellScope.inputPolicyOf(context).leanbackOnly) {
     return children;
   }
   return [
@@ -457,11 +458,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
 
     // Pin editing fields into the upper band so they clear the overlay IME.
     if (primary!.debugLabel == _editFocusLabel && _imeScrollPad > 0) {
-      Scrollable.ensureVisible(
-        ctx,
-        alignment: 0.18,
-        duration: Duration.zero,
-      );
+      Scrollable.ensureVisible(ctx, alignment: 0.18, duration: Duration.zero);
       return;
     }
     shellTvEnsureVisibleItem(ctx);
@@ -511,12 +508,9 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
       return;
     }
 
-    final policy = FocusTraversalGroup.maybeOf(context) ??
-        ReadingOrderTraversalPolicy();
-    final fromPolicy = policy.findFirstFocus(
-      scope,
-      ignoreCurrentFocus: true,
-    );
+    final policy =
+        FocusTraversalGroup.maybeOf(context) ?? ReadingOrderTraversalPolicy();
+    final fromPolicy = policy.findFirstFocus(scope, ignoreCurrentFocus: true);
     FocusNode? first;
     if (fromPolicy != null &&
         !identical(fromPolicy, scope) &&
@@ -557,7 +551,10 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
             onTap: widget.onBack ?? () => Navigator.of(context).maybePop(),
             borderRadius: 20,
             scaleOnFocus: 1.0,
-            showFocusRail: true,
+            // Circular control — soft rounded fill only, never the green left rail.
+            showFocusRail: false,
+            showFocusFill: false,
+            showFocusBorder: false,
             tvTabId: 'settings',
             tvZone: ShellTvZone.settings,
             child: const Padding(
@@ -701,8 +698,7 @@ class SettingsToggleRow extends StatelessWidget {
     final titleColor = enabled
         ? ForjaShellColors.textPrimary
         : ForjaShellColors.textSecondary;
-    final checkEnabled =
-        enabled && value && onLeadingCheckChanged != null;
+    final checkEnabled = enabled && value && onLeadingCheckChanged != null;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final content = Opacity(
       opacity: enabled ? 1 : 0.55,
@@ -746,9 +742,7 @@ class SettingsToggleRow extends StatelessWidget {
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: checkEnabled
-                          ? () => onLeadingCheckChanged!(
-                                !leadingCheckValue!,
-                              )
+                          ? () => onLeadingCheckChanged!(!leadingCheckValue!)
                           : null,
                       child: Opacity(
                         opacity: checkEnabled ? 1 : 0.45,
@@ -822,6 +816,7 @@ class SettingsToggleRow extends StatelessWidget {
     );
   }
 }
+
 /// Dropdown select row used inside [SettingsGroup].
 ///
 /// Desktop/phone: Material [DropdownButton] (same chrome as before).
@@ -948,10 +943,7 @@ class SettingsSelectRow extends StatelessWidget {
                         ),
                         items: options
                             .map(
-                              (o) => DropdownMenuItem(
-                                value: o,
-                                child: Text(o),
-                              ),
+                              (o) => DropdownMenuItem(value: o, child: Text(o)),
                             )
                             .toList(),
                         onChanged: onChanged,
@@ -999,11 +991,7 @@ Future<String?> showSettingsSelectDialog({
     barrierDismissible: true,
     builder: (ctx) => ShellScope.rehost(
       context,
-      _SettingsSelectDialog(
-        title: title,
-        value: value,
-        options: options,
-      ),
+      _SettingsSelectDialog(title: title, value: value, options: options),
     ),
   );
 }
@@ -1171,9 +1159,7 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
     );
 
     if (!tv) return dialog;
-    return ShellTvContainDpad(
-      child: ShellTvLinearFocusScope(child: dialog),
-    );
+    return ShellTvContainDpad(child: ShellTvLinearFocusScope(child: dialog));
   }
 }
 
@@ -1210,10 +1196,7 @@ class SettingsActionRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
       child: Row(
         children: [
-          if (leading != null) ...[
-            leading!,
-            const SizedBox(width: 12),
-          ],
+          if (leading != null) ...[leading!, const SizedBox(width: 12)],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1307,21 +1290,25 @@ class SettingsSliderRow extends StatefulWidget {
 
 class _SettingsSliderRowState extends State<SettingsSliderRow> {
   bool _focused = false;
+  bool _hovered = false;
+
+  bool get _chromeActive => _focused || _hovered;
 
   void _nudge(double delta) {
     final span = widget.max - widget.min;
     final step = widget.divisions != null && widget.divisions! > 0
         ? span / widget.divisions!
         : span / 20;
-    final next =
-        (widget.value + delta * step).clamp(widget.min, widget.max).toDouble();
+    final next = (widget.value + delta * step)
+        .clamp(widget.min, widget.max)
+        .toDouble();
     widget.onChanged(next);
   }
 
   @override
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final content = Padding(
+    final sliderBody = Padding(
       padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1344,25 +1331,46 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
               ),
             ),
           ],
-          ExcludeFocus(
-            child: Slider(
-              value: widget.value.clamp(widget.min, widget.max).toDouble(),
-              min: widget.min,
-              max: widget.max,
-              divisions: widget.divisions,
-              activeColor: ForjaShellColors.brandGreen,
-              inactiveColor: ForjaShellColors.borderSubtle,
-              label: widget.label,
-              onChanged: widget.onChanged,
-              onChangeEnd: widget.onChangeEnd,
+          MouseRegion(
+            onEnter: (_) {
+              if (_hovered) return;
+              setState(() => _hovered = true);
+            },
+            onExit: (_) {
+              if (!_hovered) return;
+              setState(() => _hovered = false);
+            },
+            child: ExcludeFocus(
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  // Focus/hover chrome is the thumb — not a row left-bar fill.
+                  thumbColor: _chromeActive
+                      ? Colors.white
+                      : ForjaShellColors.brandGreen,
+                  overlayColor: Colors.transparent,
+                  activeTrackColor: ForjaShellColors.brandGreen,
+                  inactiveTrackColor: ForjaShellColors.borderSubtle,
+                ),
+                child: Slider(
+                  value: widget.value.clamp(widget.min, widget.max).toDouble(),
+                  min: widget.min,
+                  max: widget.max,
+                  divisions: widget.divisions,
+                  label: widget.label,
+                  onChanged: widget.onChanged,
+                  onChangeEnd: widget.onChangeEnd,
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
 
-    if (!tv) return content;
+    if (!tv) return sliderBody;
 
+    // D-pad owns the row for ←/→ nudge — chrome stays on the Slider thumb,
+    // not a green left-bar over the title/space.
     return Focus(
       onFocusChange: (f) {
         setState(() => _focused = f);
@@ -1411,20 +1419,60 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
         }
         return KeyEventResult.ignored;
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        decoration: BoxDecoration(
-          color: _focused ? ForjaShellColors.inkHover : Colors.transparent,
-          border: Border(
-            left: BorderSide(
-              color: _focused
-                  ? ForjaShellColors.brandGreen
-                  : Colors.transparent,
-              width: 2.5,
-            ),
-          ),
-        ),
-        child: content,
+      child: sliderBody,
+    );
+  }
+}
+
+/// Text action for settings lists — [TextButton] on touch/desktop;
+/// [shellFocusableTap] on TV so D-pad owns a single focus node.
+class SettingsTextAction extends StatelessWidget {
+  const SettingsTextAction({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.color = ForjaShellColors.brandGreen,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null;
+    final style = TextStyle(
+      color: enabled ? color : color.withValues(alpha: 0.4),
+      fontWeight: FontWeight.w600,
+      fontSize: 13,
+    );
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (!tv) {
+      return TextButton(
+        onPressed: onPressed,
+        child: Text(label, style: style),
+      );
+    }
+    if (!enabled) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(label, style: style),
+      );
+    }
+    return shellFocusableTap(
+      context: context,
+      onTap: onPressed,
+      borderRadius: 8,
+      scaleOnFocus: 1.0,
+      showFocusRail: false,
+      showFocusFill: false,
+      showFocusBorder: false,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(label, style: style),
       ),
     );
   }
@@ -1507,11 +1555,12 @@ class SettingsTextField extends StatefulWidget {
 }
 
 class _SettingsTextFieldState extends State<SettingsTextField> {
-  late final FocusNode _browseFocus =
-      FocusNode(debugLabel: 'settings-text-browse');
-  late final FocusNode _editFocus =
-      FocusNode(debugLabel: 'settings-text-edit');
+  late final FocusNode _browseFocus = FocusNode(
+    debugLabel: 'settings-text-browse',
+  );
+  late final FocusNode _editFocus = FocusNode(debugLabel: 'settings-text-edit');
   bool _editing = false;
+
   /// True while switching browse ↔ edit so a one-frame unfocused gap does not
   /// clear [_editing] before the target node receives focus.
   bool _focusHandoff = false;
@@ -1682,7 +1731,8 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       direction = TraversalDirection.right;
     }
     if (direction != null) {
-      final vertical = direction == TraversalDirection.up ||
+      final vertical =
+          direction == TraversalDirection.up ||
           direction == TraversalDirection.down;
       final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
       var n = FocusManager.instance.primaryFocus ?? node;
@@ -1883,9 +1933,7 @@ class SettingsSidebarFooter extends StatelessWidget {
               AppVersionLabel(
                 prefix: 'v',
                 style: TextStyle(
-                  color: ForjaShellColors.textSecondary.withValues(
-                    alpha: 0.85,
-                  ),
+                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.8,
@@ -1940,10 +1988,10 @@ class _SettingsConfirmDialog extends StatefulWidget {
 }
 
 class _SettingsConfirmDialogState extends State<_SettingsConfirmDialog> {
-  final FocusNode _cancelFocus =
-      FocusNode(debugLabel: 'settings-confirm-cancel');
-  final FocusNode _confirmFocus =
-      FocusNode(debugLabel: 'settings-confirm-ok');
+  final FocusNode _cancelFocus = FocusNode(
+    debugLabel: 'settings-confirm-cancel',
+  );
+  final FocusNode _confirmFocus = FocusNode(debugLabel: 'settings-confirm-ok');
 
   @override
   void initState() {

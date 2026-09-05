@@ -53,12 +53,14 @@ class _SettingsForjaAddonsSectionState
   bool _nuvioInstalling = false;
 
   final TextEditingController _jackettUrlController = TextEditingController();
-  final TextEditingController _jackettApiKeyController = TextEditingController();
+  final TextEditingController _jackettApiKeyController =
+      TextEditingController();
   bool _isTestingJackett = false;
   String? _jackettTestResult;
 
   final TextEditingController _prowlarrUrlController = TextEditingController();
-  final TextEditingController _prowlarrApiKeyController = TextEditingController();
+  final TextEditingController _prowlarrApiKeyController =
+      TextEditingController();
   bool _isTestingProwlarr = false;
   String? _prowlarrTestResult;
   List<ProwlarrTag> _prowlarrAvailableTags = [];
@@ -103,9 +105,11 @@ class _SettingsForjaAddonsSectionState
     if (indexerSnap != null && !_indexersHydrated) {
       _hydrateIndexers(indexerSnap);
     }
-    final showStremio = !widget.indexersOnly &&
+    final showStremio =
+        !widget.indexersOnly &&
         (widget.stremioOnly || (!widget.nuvioOnly && v.showStremioAddons));
-    final showNuvio = !widget.indexersOnly &&
+    final showNuvio =
+        !widget.indexersOnly &&
         (widget.nuvioOnly || (!widget.stremioOnly && v.showNuvio));
     final showIndexers = widget.indexersOnly
         ? v.showJackettProwlarr
@@ -135,9 +139,7 @@ class _SettingsForjaAddonsSectionState
         if (showNuvio)
           SettingsGroup(
             label: 'Nuvio addons',
-            children: [
-              _buildNuvioAddonSection(nuvioAddons),
-            ],
+            children: [_buildNuvioAddonSection(nuvioAddons)],
           ),
         if (showIndexers) ...[
           SettingsGroup(
@@ -154,6 +156,7 @@ class _SettingsForjaAddonsSectionState
       ],
     );
   }
+
   Future<void> _installAddon() async {
     final url = _addonController.text.trim();
     if (url.isEmpty) return;
@@ -184,7 +187,10 @@ class _SettingsForjaAddonsSectionState
     if (mounted) ForjaToast.success('Addon removed');
   }
 
-  Future<void> _setAddonEnabled(Map<String, dynamic> addon, bool enabled) async {
+  Future<void> _setAddonEnabled(
+    Map<String, dynamic> addon,
+    bool enabled,
+  ) async {
     final baseUrl = addon['baseUrl']?.toString() ?? '';
     if (baseUrl.isEmpty) return;
     if (StremioAddonFeatures.isEnabled(addon) == enabled) return;
@@ -202,8 +208,7 @@ class _SettingsForjaAddonsSectionState
     if (baseUrl.isEmpty) return;
     final current = StremioAddonFeatures.read(addon);
     final next = StremioAddonFeatures.toggle(current, feature);
-    if (next.length == current.length &&
-        next.every(current.contains)) {
+    if (next.length == current.length && next.every(current.contains)) {
       return;
     }
     final updated = Map<String, dynamic>.from(addon);
@@ -270,9 +275,8 @@ class _SettingsForjaAddonsSectionState
                           : name,
                       subtitle: baseUrl,
                       enabled: enabled,
-                      onEnabledChanged: (v) => unawaited(
-                        _setAddonEnabled(addon, v),
-                      ),
+                      onEnabledChanged: (v) =>
+                          unawaited(_setAddonEnabled(addon, v)),
                       onRemove: () => _removeAddon(baseUrl),
                     ),
                     const SizedBox(height: 8),
@@ -342,90 +346,88 @@ class _SettingsForjaAddonsSectionState
             const SizedBox(height: 20),
             const SettingsEngineMiniLabel('Nuvio addons'),
             const SizedBox(height: 4),
-            ...nuvioAddons.map(
-              (addon) {
-                final builtIn = NuvioService.isBundled(addon.manifestUrl);
-                final allOn = addon.scrapers.isNotEmpty &&
-                    addon.scrapers.every((s) => s.enabled);
-                final trailing = Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ForjaSwitch(
-                      value: allOn,
-                      scale: ForjaSwitch.settingsScale,
-                      onChanged: addon.scrapers.isEmpty
-                          ? null
-                          : (val) async {
-                              await NuvioService.instance.setAllScrapersEnabled(
-                                manifestUrl: addon.manifestUrl,
-                                enabled: val,
-                              );
-                            },
+            ...nuvioAddons.map((addon) {
+              final builtIn = NuvioService.isBundled(addon.manifestUrl);
+              final allOn =
+                  addon.scrapers.isNotEmpty &&
+                  addon.scrapers.every((s) => s.enabled);
+              final trailing = Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ForjaSwitch(
+                    value: allOn,
+                    scale: ForjaSwitch.settingsScale,
+                    onChanged: addon.scrapers.isEmpty
+                        ? null
+                        : (val) async {
+                            await NuvioService.instance.setAllScrapersEnabled(
+                              manifestUrl: addon.manifestUrl,
+                              enabled: val,
+                            );
+                          },
+                  ),
+                  if (!builtIn)
+                    _AddonRemoveActions(
+                      onRemove: () => _removeNuvioAddon(addon.manifestUrl),
                     ),
-                    if (!builtIn)
-                      _AddonRemoveActions(
-                        onRemove: () => _removeNuvioAddon(addon.manifestUrl),
-                      ),
-                  ],
+                ],
+              );
+              final scraperRows = addon.scrapers.map((s) {
+                final subtitle = [
+                  if (s.description != null && s.description!.isNotEmpty)
+                    s.description!,
+                  if (s.supportedTypes.isNotEmpty) s.supportedTypes.join(', '),
+                ].join(' \u00b7 ');
+                return SettingsToggleRow(
+                  key: ValueKey('${addon.manifestUrl}::${s.id}'),
+                  title: s.name,
+                  subtitle: subtitle.isEmpty ? 'Scraper' : subtitle,
+                  value: s.enabled,
+                  onChanged: (val) async {
+                    await NuvioService.instance.setScraperEnabled(
+                      manifestUrl: addon.manifestUrl,
+                      scraperId: s.id,
+                      enabled: val,
+                    );
+                  },
                 );
-                final scraperRows = addon.scrapers.map((s) {
-                  final subtitle = [
-                    if (s.description != null && s.description!.isNotEmpty)
-                      s.description!,
-                    if (s.supportedTypes.isNotEmpty)
-                      s.supportedTypes.join(', '),
-                  ].join(' \u00b7 ');
-                  return SettingsToggleRow(
-                    key: ValueKey('${addon.manifestUrl}::${s.id}'),
-                    title: s.name,
-                    subtitle: subtitle.isEmpty ? 'Scraper' : subtitle,
-                    value: s.enabled,
-                    onChanged: (val) async {
-                      await NuvioService.instance.setScraperEnabled(
-                        manifestUrl: addon.manifestUrl,
-                        scraperId: s.id,
-                        enabled: val,
-                      );
-                    },
-                  );
-                }).toList();
-                return Theme(
-                  key: ValueKey(addon.manifestUrl),
-                  data: settingsExpansionTheme(context),
-                  child: ExpansionTile(
-                    shape: settingsExpansionShape,
-                    collapsedShape: settingsExpansionShape,
-                    tilePadding: const EdgeInsets.symmetric(horizontal: 2),
-                    childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
-                    leading: const Icon(
-                      Icons.code_rounded,
-                      color: ForjaShellColors.iconActive,
-                    ),
-                    title: Text(
-                      builtIn ? '${addon.name} (Built-in)' : addon.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: ForjaShellColors.textPrimary,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: ForjaShellColors.textSecondary,
-                      ),
-                    ),
-                    trailing: settingsExpansionTrailing(context, trailing),
-                    children: settingsExpansionChildren(
-                      context,
-                      trailing: trailing,
-                      children: scraperRows,
+              }).toList();
+              return Theme(
+                key: ValueKey(addon.manifestUrl),
+                data: settingsExpansionTheme(context),
+                child: ExpansionTile(
+                  shape: settingsExpansionShape,
+                  collapsedShape: settingsExpansionShape,
+                  tilePadding: const EdgeInsets.symmetric(horizontal: 2),
+                  childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
+                  leading: const Icon(
+                    Icons.code_rounded,
+                    color: ForjaShellColors.iconActive,
+                  ),
+                  title: Text(
+                    builtIn ? '${addon.name} (Built-in)' : addon.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                      color: ForjaShellColors.textPrimary,
                     ),
                   ),
-                );
-              },
-            ),
+                  subtitle: Text(
+                    '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: ForjaShellColors.textSecondary,
+                    ),
+                  ),
+                  trailing: settingsExpansionTrailing(context, trailing),
+                  children: settingsExpansionChildren(
+                    context,
+                    trailing: trailing,
+                    children: scraperRows,
+                  ),
+                ),
+              );
+            }),
           ],
         ],
       ),
@@ -686,9 +688,7 @@ class _SettingsForjaAddonsSectionState
 
     await _settings.setJackettBaseUrl(url);
     await _settings.setJackettApiKey(apiKey);
-    ref
-        .read(settingsIndexerProvider.notifier)
-        .reload();
+    ref.read(settingsIndexerProvider.notifier).reload();
 
     if (mounted) {
       ForjaToast.success('Jackett settings saved!');
@@ -739,9 +739,7 @@ class _SettingsForjaAddonsSectionState
     await _settings.setProwlarrBaseUrl(url);
     await _settings.setProwlarrApiKey(apiKey);
     await _settings.setProwlarrTagIds(_prowlarrSelectedTagIds.toList());
-    ref
-        .read(settingsIndexerProvider.notifier)
-        .reload();
+    ref.read(settingsIndexerProvider.notifier).reload();
 
     if (mounted) {
       ForjaToast.success('Prowlarr settings saved!');
@@ -904,17 +902,15 @@ Widget _settingsTvIconButton(
       onTap: onPressed,
       borderRadius: 8,
       scaleOnFocus: 1.0,
-      showFocusRail: true,
+      showFocusRail: false,
+      showFocusFill: false,
+      showFocusBorder: false,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       child: SizedBox(width: 40, height: 40, child: Center(child: child)),
     );
   }
-  return IconButton(
-    tooltip: tooltip,
-    onPressed: onPressed,
-    icon: child,
-  );
+  return IconButton(tooltip: tooltip, onPressed: onPressed, icon: child);
 }
 
 /// Trash → Yes/No in place (same pattern as IPTV portal delete).
@@ -1050,7 +1046,9 @@ class _AddonFeatureChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: 8,
       scaleOnFocus: 1.0,
-      showFocusRail: true,
+      showFocusRail: false,
+      showFocusFill: false,
+      showFocusBorder: false,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
@@ -1080,10 +1078,7 @@ class _TestResult extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              message,
-              style: TextStyle(color: color, fontSize: 13),
-            ),
+            child: Text(message, style: TextStyle(color: color, fontSize: 13)),
           ),
         ],
       ),

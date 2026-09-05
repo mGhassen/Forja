@@ -34,6 +34,14 @@ class SyncDomainBridge {
   final _settings = SettingsService();
   final Map<String, Timer> _pushTimers = {};
 
+  /// Bumped when Features / Addons schedules a navigation push. Cleared to match
+  /// [_navigationSyncedGen] after a successful navigation overlay push.
+  /// Pulls skip applying cloud nav while these differ so a stale empty
+  /// `visibleIds` cannot flip Home (etc.) off before the local edit lands
+  /// (issue 221).
+  int _navigationLocalGen = 0;
+  int _navigationSyncedGen = 0;
+
   /// Drop deferred cloud pushes (sign-out / tear-down). Does not write local stores.
   void cancelPendingPushes() {
     for (final timer in _pushTimers.values) {
@@ -104,6 +112,8 @@ class SyncDomainBridge {
   }) async {
     // Cache-only wipe - cancel any debounced push that would upload defaults.
     cancelPendingPushes();
+    _navigationLocalGen = 0;
+    _navigationSyncedGen = 0;
     final defaults = PlatformDefaults.forProfile(
       SettingsService.platformProfile,
     );
@@ -303,6 +313,9 @@ class SyncDomainBridge {
     Set<String>? overlayDomains,
   }) async {
     if (!SyncService.instance.isSignedIn) return;
+    final navGenAtStart = _navigationLocalGen;
+    final overlayNav = overlayDomains == null ||
+        overlayDomains.contains(_domainNavigation);
     final payload = await _buildMergedCloudPayload(
       allowEmptyStremioWipe: allowEmptyStremioWipe,
       allowEmptyNuvioWipe: allowEmptyNuvioWipe,
@@ -314,6 +327,9 @@ class SyncDomainBridge {
       return;
     }
     await SyncService.instance.pushProfileSettings(payload);
+    if (overlayNav && navGenAtStart == _navigationLocalGen) {
+      _navigationSyncedGen = navGenAtStart;
+    }
     final pushIptv = overlayDomains == null ||
         overlayDomains.contains(_domainIptv);
     if (pushIptv) {
@@ -347,6 +363,9 @@ class SyncDomainBridge {
 
   void schedulePush(String domain) {
     if (!SyncService.instance.isSignedIn) return;
+    if (domain == _domainNavigation) {
+      _navigationLocalGen++;
+    }
     _pushTimers[domain]?.cancel();
     _pushTimers[domain] = Timer(const Duration(seconds: 3), () {
       // Debounced user edits - overlay only this domain onto cloud.
@@ -566,6 +585,8 @@ class SyncDomainBridge {
     if (resetLocalFirst) {
       // IPTV already wiped at pullAndMergeAll entry (issue 217). clearIptv
       // true is idempotent and covers any caller that reset without that wipe.
+      _navigationLocalGen = 0;
+      _navigationSyncedGen = 0;
       await resetSyncedLocalToPlatformDefaults(
         clearIptv: true,
         notify: false,
@@ -595,7 +616,13 @@ class SyncDomainBridge {
     }
 
     final navigation = payload['navigation'];
-    if (navigation is Map) {
+    final navPending =
+        !resetLocalFirst && _navigationLocalGen != _navigationSyncedGen;
+    if (navPending) {
+      debugPrint(
+        '[Sync] skip navigation apply — local Features edit not synced yet',
+      );
+    } else if (navigation is Map) {
       await _importNavigation(Map<String, dynamic>.from(navigation));
     } else if (resetLocalFirst) {
       // Reset left platform-default nav without notifying; publish once.

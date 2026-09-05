@@ -19,6 +19,48 @@ void main() {
       expect(away, 'Toronto Blue Jays');
     });
 
+    test('peels event colon before vs', () {
+      final (home, away) = parseLiveMatchTeamsFromTitle(
+        'UFC Fight Night: Hooker vs Parnasse',
+      );
+      expect(home, 'Hooker');
+      expect(away, 'Parnasse');
+    });
+
+    test('peels event number before fighter vs', () {
+      final (home, away) = parseLiveMatchTeamsFromTitle(
+        'UFC Fight Night 287 Hooker vs Parnasse',
+      );
+      expect(home, 'Hooker');
+      expect(away, 'Parnasse');
+    });
+
+    test('UFC colon and numbered titles soft-match as same pair', () {
+      final a = parseLiveMatchTeamsFromTitle(
+        'UFC Fight Night 287 Hooker vs Parnasse',
+      );
+      final b = parseLiveMatchTeamsFromTitle(
+        'UFC Fight Night: Hooker vs Parnasse',
+      );
+      expect(liveTeamPairSoftEqual(a.$1, a.$2, b.$1, b.$2), isTrue);
+    });
+
+    test('keeps clock times out of event-colon peel', () {
+      final (home, away) = parseLiveMatchTeamsFromTitle(
+        'Premier League 20:00 Arsenal vs Chelsea',
+      );
+      expect(home, 'Premier League 20:00 Arsenal');
+      expect(away, 'Chelsea');
+    });
+
+    test('peels matchday number for football titles', () {
+      final (home, away) = parseLiveMatchTeamsFromTitle(
+        'Premier League Matchday 28 Arsenal vs Chelsea',
+      );
+      expect(home, 'Arsenal');
+      expect(away, 'Chelsea');
+    });
+
     test('parses @ and strips emoji', () {
       final (home, away) = parseLiveMatchTeamsFromTitle(
         'Boston Red Sox @ Yankees 🎾',

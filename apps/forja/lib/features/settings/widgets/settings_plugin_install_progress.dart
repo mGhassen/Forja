@@ -50,12 +50,10 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
     final phase = active ? progress!.phase : PluginInstallPhase.loading;
     final status = active
         ? (progress!.phase == PluginInstallPhase.ready
-            ? 'Ready'
-            : progress!.phaseTitle)
+              ? 'Ready'
+              : progress!.phaseTitle)
         : (badge ?? 'Waiting');
-    final detail = active
-        ? progress!.label
-        : null;
+    final detail = active ? progress!.label : null;
     // Flat row — same chrome as installed ExpansionTile headers (no card).
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
@@ -97,8 +95,9 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 11,
-                          color: ForjaShellColors.brandGreen
-                              .withValues(alpha: 0.95),
+                          color: ForjaShellColors.brandGreen.withValues(
+                            alpha: 0.95,
+                          ),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -175,17 +174,15 @@ class _PendingActionIcon extends StatelessWidget {
         onTap: onPressed,
         borderRadius: 8,
         scaleOnFocus: 1.0,
-        showFocusRail: true,
+        showFocusRail: false,
+        showFocusFill: false,
+        showFocusBorder: false,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
         child: SizedBox(width: 40, height: 40, child: Center(child: child)),
       );
     }
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: child,
-    );
+    return IconButton(tooltip: tooltip, onPressed: onPressed, icon: child);
   }
 }
 

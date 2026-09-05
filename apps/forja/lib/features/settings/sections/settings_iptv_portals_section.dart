@@ -20,7 +20,8 @@ class SettingsIptvPortalsSection extends StatefulWidget {
       _SettingsIptvPortalsSectionState();
 }
 
-class _SettingsIptvPortalsSectionState extends State<SettingsIptvPortalsSection> {
+class _SettingsIptvPortalsSectionState
+    extends State<SettingsIptvPortalsSection> {
   bool _exporting = false;
   bool _importing = false;
   List<MergePortalsCsvLogEntry>? _log;
@@ -122,9 +123,7 @@ class _SettingsIptvPortalsSectionState extends State<SettingsIptvPortalsSection>
           '${merged.skippedExisting} already present',
         if (parsed.skipped > 0) '${parsed.skipped} invalid',
       ];
-      final summary = parts.isEmpty
-          ? 'No changes'
-          : parts.join(' · ');
+      final summary = parts.isEmpty ? 'No changes' : parts.join(' · ');
 
       if (!mounted) return;
       setState(() {
@@ -283,7 +282,9 @@ class _ImportLogPanel extends StatelessWidget {
                   onTap: onClose,
                   borderRadius: 20,
                   scaleOnFocus: 1.0,
-                  showFocusRail: true,
+                  showFocusRail: false,
+                  showFocusFill: false,
+                  showFocusBorder: false,
                   tvTabId: 'settings',
                   tvZone: ShellTvZone.settings,
                   child: const Padding(
@@ -364,8 +365,9 @@ class _ImportLogPanel extends StatelessWidget {
                                 TextSpan(
                                   text: '  already present',
                                   style: TextStyle(
-                                    color: const Color(0xFFFBBF24)
-                                        .withValues(alpha: 0.9),
+                                    color: const Color(
+                                      0xFFFBBF24,
+                                    ).withValues(alpha: 0.9),
                                     fontSize: 11,
                                   ),
                                 ),

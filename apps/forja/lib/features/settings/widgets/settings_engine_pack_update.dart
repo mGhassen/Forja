@@ -68,9 +68,9 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
               onPressed: updating ? null : onUpdateAll,
             ),
           ] else
-            TextButton(
+            SettingsTextAction(
+              label: 'Check again',
               onPressed: onCheckAgain,
-              child: const Text('Check again'),
             ),
         ],
       ),
