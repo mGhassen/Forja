@@ -369,7 +369,11 @@ Future<void> runEngineAutoPlay({
 
     final cached = CatalogSourcesSessionCache.readEngine(cacheKey);
     if (cached != null) {
-      streams = List<Map<String, dynamic>>.from(cached.streams);
+      final wantAudio = audioCategory ?? activeSession.audioCategory;
+      streams = filterStreamsByAudioCategory(
+        List<Map<String, dynamic>>.from(cached.streams),
+        wantAudio,
+      );
       fetchedIds = Set<String>.from(cached.fetchedPluginIds);
       onCacheUpdated?.call(
         List<Map<String, dynamic>>.from(streams),
@@ -520,6 +524,7 @@ Future<void> runEngineAutoPlay({
           movie: movie,
           catalogOpen: activeSession.effectiveOpen,
           episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
+          audioCategory: audioCategory ?? activeSession.audioCategory,
           allowHostFallback: false,
         );
       } catch (e) {

@@ -12,7 +12,8 @@ Several Forja tabs don't use TMDB torrents — they scrape dedicated sites for b
 |-----|-----------------|
 | [Anime](../hubs/anime.md) | AniList metadata and multi-source streams |
 | [Asian Drama](../hubs/asian-drama.md) | KissKH — Asian dramas with subtitles |
-| [Arabic](../hubs/arabic.md) | Larozaa + Brstej movies/series |
+| [Arabic](../hubs/arabic.md) | Larozaa movies/series |
+| [Aflem](../hubs/aflem.md) | Brstej series (playback: Brstej provider) |
 | [كرتون](../hubs/cartoon.md) | DimaToon Arabic cartoons |
 | [Kids](../hubs/kids.md) | Dimakids Arabic kids cartoons / movies |
 | [Live Matches](../live/live-matches.md) | Forja Live catalogs + Forja Sports (Xtream) |

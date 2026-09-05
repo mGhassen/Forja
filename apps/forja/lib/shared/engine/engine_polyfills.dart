@@ -438,5 +438,19 @@ const String kEnginePolyfillsJs = r'''
     return Number(id);
   };
 
+  // Hub SUB/DUB play filter → which audio lanes to scrape.
+  // When unset, providers keep scraping both.
+  globalThis.__engineAudioCategories = function(ctx) {
+    var c = String(
+      (ctx && ctx.category) ||
+        (ctx && ctx.config && ctx.config.category) ||
+        '',
+    )
+      .trim()
+      .toLowerCase();
+    if (c === 'sub' || c === 'dub') return [c];
+    return ['sub', 'dub'];
+  };
+
 })();
 ''';

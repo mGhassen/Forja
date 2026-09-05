@@ -732,6 +732,8 @@ class EngineService {
     int? season,
     String? title,
     String? year,
+    /// Hub play SUB/DUB — stamped into extract as `category` (`sub`|`dub`).
+    String? audioCategory,
     bool allowHostFallback = false,
     EngineRuntime? runtime,
   }) async {
@@ -748,6 +750,7 @@ class EngineService {
     if (movie?.imdbId != null && movie!.imdbId!.trim().isNotEmpty) {
       extractCtx.putIfAbsent('imdbId', () => movie.imdbId!.trim());
     }
+    applyAudioCategoryToExtractCtx(extractCtx, audioCategory);
     final resolvedMalId = extractCtxInt(extractCtx, 'malId');
     final resolvedAnilistId = extractCtxInt(extractCtx, 'anilistId');
     final resolvedImdb = extractCtx['imdbId']?.toString() ?? movie?.imdbId;
@@ -779,11 +782,15 @@ class EngineService {
 
     final overlay =
         ProviderRuntimeConfig.instance.engine[active.id] ?? const {};
-    final config = injectExtractCtxIntoConfig(
+    var config = injectExtractCtxIntoConfig(
       active,
       extractCtx,
       mergeEngineConfig(active.config, overlay),
     );
+    final audio = normalizeEngineAudioCategory(audioCategory);
+    if (audio != null) {
+      config = {...config, 'category': audio};
+    }
     var code = await _loadScript(active, sourceUrl: hit.pack.sourceUrl);
     if (gen != _extractGeneration) return null;
     if (code == null || code.isEmpty) {
@@ -849,14 +856,16 @@ class EngineService {
       );
       if (mapped != null) streams.add(mapped);
     }
+    final filtered = filterStreamsByAudioCategory(streams, audioCategory);
     debugPrint(
-      '[engine] ${active.id} done raw=${rawList.length} streams=${streams.length} '
-      '${sw.elapsedMilliseconds}ms',
+      '[engine] ${active.id} done raw=${rawList.length} streams=${filtered.length} '
+      '${sw.elapsedMilliseconds}ms'
+      '${audio != null ? ' audio=$audio' : ''}',
     );
     return EngineExtractResult(
       pluginId: active.id,
       pluginName: active.name,
-      streams: streams,
+      streams: filtered,
     );
   }
 
@@ -1214,6 +1223,7 @@ class EngineService {
     int? season,
     String? title,
     String? year,
+    String? audioCategory,
     bool allowHostFallback = false,
   }) async {
     final resolved = resolveEngineExtractInputs(
@@ -1229,6 +1239,7 @@ class EngineService {
     if (movie?.imdbId != null && movie!.imdbId!.trim().isNotEmpty) {
       extractCtx.putIfAbsent('imdbId', () => movie.imdbId!.trim());
     }
+    applyAudioCategoryToExtractCtx(extractCtx, audioCategory);
 
     // RFC-064: Forja EngineJS on tokio (true parallel). Null → flutter_js fork
     // only when Rust is unsupported — never after cancelPending gen bump
@@ -1244,6 +1255,7 @@ class EngineService {
       year: year,
       movie: movie,
       extractCtx: extractCtx,
+      audioCategory: audioCategory,
       allowHostFallback: allowHostFallback,
     );
     if (viaRust != null) return viaRust;
@@ -1271,6 +1283,7 @@ class EngineService {
         movie: movie,
         catalogOpen: catalogOpen,
         episodeVideoId: episodeVideoId,
+        audioCategory: audioCategory,
         allowHostFallback: allowHostFallback,
         runtime: runtime,
       );
@@ -1291,6 +1304,7 @@ class EngineService {
     String? year,
     Movie? movie,
     required Map<String, dynamic> extractCtx,
+    String? audioCategory,
     bool allowHostFallback = false,
   }) async {
     final gen = _extractGeneration;
@@ -1308,11 +1322,15 @@ class EngineService {
     final mediaType = _normalizeEngineMediaType(type);
     final overlay =
         ProviderRuntimeConfig.instance.engine[plugin.id] ?? const {};
-    final config = injectExtractCtxIntoConfig(
+    var config = injectExtractCtxIntoConfig(
       plugin,
       extractCtx,
       mergeEngineConfig(plugin.config, overlay),
     );
+    final audio = normalizeEngineAudioCategory(audioCategory);
+    if (audio != null) {
+      config = {...config, 'category': audio};
+    }
     final code = await _loadScript(plugin);
     if (gen != _extractGeneration || code == null) return null;
 
@@ -1451,14 +1469,16 @@ class EngineService {
       );
       if (mapped != null) streams.add(mapped);
     }
+    final filtered = filterStreamsByAudioCategory(streams, audioCategory);
     debugPrint(
       '[engine] ${plugin.id} done (enginejs) raw=${effectiveRaw.length} '
-      'streams=${streams.length} ${sw.elapsedMilliseconds}ms',
+      'streams=${filtered.length} ${sw.elapsedMilliseconds}ms'
+      '${audio != null ? ' audio=$audio' : ''}',
     );
     return EngineExtractResult(
       pluginId: plugin.id,
       pluginName: plugin.name,
-      streams: streams,
+      streams: filtered,
     );
   }
 

@@ -1,5 +1,4 @@
 // Arabic hub — Larozaa only (protocol 1).
-// Brstej → plugins/hubs/brstej. كرتون / DimaToon → plugins/hubs/cartoon.
 // Playback: provider `larozaa` (types: arabic). Host surface: arabic.
 
 var ARABIC_UA =

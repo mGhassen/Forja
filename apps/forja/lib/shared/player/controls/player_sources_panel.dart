@@ -2713,6 +2713,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         movie: widget.movie,
         catalogOpen: widget.catalogOpen,
         episodeVideoId: widget.episodeVideoId,
+        audioCategory: widget.animeAudioCategory,
         allowHostFallback: false,
       );
     } catch (e) {

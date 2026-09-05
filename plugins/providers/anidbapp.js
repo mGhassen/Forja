@@ -287,19 +287,21 @@ function extract(ctx) {
               Referer: base + '/anime/' + series.slug,
             }).then(function (langData) {
               var languages = (langData && langData.languages) || [];
-              var subLang = languageForAudio(languages, 'sub');
-              var embed = subLang && subLang.embed_url ? decodeEntities(subLang.embed_url) : '';
-              if (!embed) {
-                var dubLangOnly = languageForAudio(languages, 'dub');
-                embed = dubLangOnly && dubLangOnly.embed_url ? decodeEntities(dubLangOnly.embed_url) : '';
-                if (!embed) return [];
-                return streamsForEmbed(embed, 'dub');
+              var cats =
+                (globalThis.__engineAudioCategories &&
+                  globalThis.__engineAudioCategories(ctx)) ||
+                ['sub', 'dub'];
+              function tryAudio(audio) {
+                var lang = languageForAudio(languages, audio);
+                var embed =
+                  lang && lang.embed_url ? decodeEntities(lang.embed_url) : '';
+                if (!embed) return Promise.resolve([]);
+                return streamsForEmbed(embed, audio);
               }
-              return streamsForEmbed(embed, 'sub').then(function (sub) {
-                if (sub.length) return sub;
-                var dubLang = languageForAudio(languages, 'dub');
-                if (!dubLang || !dubLang.embed_url) return [];
-                return streamsForEmbed(decodeEntities(dubLang.embed_url), 'dub');
+              var first = cats[0] || 'sub';
+              return tryAudio(first).then(function (rows) {
+                if (rows.length || cats.length < 2) return rows;
+                return tryAudio(cats[1]);
               });
             });
           });

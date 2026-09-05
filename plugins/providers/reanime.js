@@ -215,7 +215,10 @@ function extract(ctx) {
     var showTitle = String(ctx.title || '');
     return searchReanime(showTitle, null, hostAl).then(function (anime) {
       if (!anime || !anime.slug) return [];
-      var langs = ['sub', 'dub'];
+      var langs =
+        (globalThis.__engineAudioCategories &&
+          globalThis.__engineAudioCategories(ctx)) ||
+        ['sub', 'dub'];
       return Promise.all(langs.map(function (lang) {
         return flixEmbeds(anime.slug, epNum, lang, hostAl).then(function (embeds) {
           return Promise.all(embeds.map(function (embed, idx) {
@@ -244,7 +247,10 @@ function extract(ctx) {
         var title = (resolved && resolved.title) || syncInfo.title;
         return searchReanime(title, null, alId).then(function (anime) {
           if (!anime || !anime.slug) return [];
-          var langs = ['sub', 'dub'];
+          var langs =
+            (globalThis.__engineAudioCategories &&
+              globalThis.__engineAudioCategories(ctx)) ||
+            ['sub', 'dub'];
           return Promise.all(langs.map(function (lang) {
             return flixEmbeds(anime.slug, epNum, lang, alId || anime.anilistId).then(function (embeds) {
               return Promise.all(embeds.map(function (embed, idx) {

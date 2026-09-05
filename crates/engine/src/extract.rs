@@ -331,6 +331,17 @@ const HOST_JS: &str = r#"
     try { __native_request_host(String(hostId == null ? '' : hostId)); } catch (e) {}
     return Promise.resolve([]);
   };
+  globalThis.__engineAudioCategories = function(ctx) {
+    var c = String(
+      (ctx && ctx.category) ||
+        (ctx && ctx.config && ctx.config.category) ||
+        '',
+    )
+      .trim()
+      .toLowerCase();
+    if (c === 'sub' || c === 'dub') return [c];
+    return ['sub', 'dub'];
+  };
 })();
 "#;
 

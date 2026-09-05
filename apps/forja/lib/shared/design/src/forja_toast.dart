@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_scope.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
@@ -18,6 +20,22 @@ class ForjaToastEntry {
   });
 
   final String id;
+  final String message;
+  final ForjaToastKind kind;
+  final Duration duration;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+}
+
+class _QueuedToast {
+  const _QueuedToast({
+    required this.message,
+    required this.kind,
+    required this.duration,
+    this.actionLabel,
+    this.onAction,
+  });
+
   final String message;
   final ForjaToastKind kind;
   final Duration duration;
@@ -104,10 +122,26 @@ abstract final class ForjaToast {
 
 class ForjaToastController extends ChangeNotifier {
   final List<ForjaToastEntry> _entries = [];
+  final List<_QueuedToast> _queued = [];
   final Map<String, Timer> _timers = {};
   int _seq = 0;
+  bool _suppress = false;
+  bool _flushScheduled = false;
 
   List<ForjaToastEntry> get entries => List.unmodifiable(_entries);
+
+  /// When true, [show] queues until suppress clears (e.g. intro splash).
+  bool get suppress => _suppress;
+
+  set suppress(bool value) {
+    if (_suppress == value) return;
+    _suppress = value;
+    if (value) {
+      _dismissAllVisible();
+      return;
+    }
+    _scheduleFlush();
+  }
 
   void show(
     String message, {
@@ -119,21 +153,16 @@ class ForjaToastController extends ChangeNotifier {
     final trimmed = message.trim();
     if (trimmed.isEmpty) return;
 
-    final id = 'toast_${++_seq}';
-    final entry = ForjaToastEntry(
-      id: id,
-      message: trimmed,
-      kind: kind,
-      duration: duration,
-      actionLabel: actionLabel,
-      onAction: onAction,
+    _queued.add(
+      _QueuedToast(
+        message: trimmed,
+        kind: kind,
+        duration: duration,
+        actionLabel: actionLabel,
+        onAction: onAction,
+      ),
     );
-    _entries.add(entry);
-    if (_entries.length > 4) {
-      dismiss(_entries.first.id);
-    }
-    notifyListeners();
-    _timers[id] = Timer(duration, () => dismiss(id));
+    if (!_suppress) _scheduleFlush();
   }
 
   void dismiss(String id) {
@@ -143,6 +172,52 @@ class ForjaToastController extends ChangeNotifier {
     if (_entries.length != before) notifyListeners();
   }
 
+  void _dismissAllVisible() {
+    if (_entries.isEmpty && _timers.isEmpty) return;
+    for (final t in _timers.values) {
+      t.cancel();
+    }
+    _timers.clear();
+    if (_entries.isNotEmpty) {
+      _entries.clear();
+      notifyListeners();
+    }
+  }
+
+  void _scheduleFlush() {
+    if (_flushScheduled || _suppress || _queued.isEmpty) return;
+    _flushScheduled = true;
+    // Next frame — inserting IconButton / MouseRegion during a pointer
+    // hit-test update trips mouse_tracker `!_debugDuringDeviceUpdate`.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      _flushScheduled = false;
+      if (_suppress || _queued.isEmpty) return;
+      final batch = List<_QueuedToast>.of(_queued);
+      _queued.clear();
+      for (final item in batch) {
+        _present(item);
+      }
+    });
+  }
+
+  void _present(_QueuedToast item) {
+    final id = 'toast_${++_seq}';
+    final entry = ForjaToastEntry(
+      id: id,
+      message: item.message,
+      kind: item.kind,
+      duration: item.duration,
+      actionLabel: item.actionLabel,
+      onAction: item.onAction,
+    );
+    _entries.add(entry);
+    if (_entries.length > 4) {
+      dismiss(_entries.first.id);
+    }
+    notifyListeners();
+    _timers[id] = Timer(item.duration, () => dismiss(id));
+  }
+
   @override
   void dispose() {
     for (final t in _timers.values) {
@@ -150,14 +225,55 @@ class ForjaToastController extends ChangeNotifier {
     }
     _timers.clear();
     _entries.clear();
+    _queued.clear();
     super.dispose();
   }
 }
 
-class ForjaToastHost extends StatelessWidget {
-  const ForjaToastHost({super.key, required this.child});
+class ForjaToastHost extends StatefulWidget {
+  const ForjaToastHost({
+    super.key,
+    required this.child,
+    this.allowDisplay,
+  });
 
   final Widget child;
+
+  /// When false, toasts are queued (not painted). Defaults to always allow.
+  final ValueListenable<bool>? allowDisplay;
+
+  @override
+  State<ForjaToastHost> createState() => _ForjaToastHostState();
+}
+
+class _ForjaToastHostState extends State<ForjaToastHost> {
+  @override
+  void initState() {
+    super.initState();
+    widget.allowDisplay?.addListener(_syncSuppress);
+    _syncSuppress();
+  }
+
+  @override
+  void didUpdateWidget(covariant ForjaToastHost oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.allowDisplay != widget.allowDisplay) {
+      oldWidget.allowDisplay?.removeListener(_syncSuppress);
+      widget.allowDisplay?.addListener(_syncSuppress);
+      _syncSuppress();
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.allowDisplay?.removeListener(_syncSuppress);
+    super.dispose();
+  }
+
+  void _syncSuppress() {
+    final allow = widget.allowDisplay?.value ?? true;
+    ForjaToast.controller.suppress = !allow;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -165,7 +281,7 @@ class ForjaToastHost extends StatelessWidget {
 
     return Stack(
       children: [
-        child,
+        widget.child,
         Positioned(
           top: 16,
           right: 16,

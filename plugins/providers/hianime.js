@@ -223,9 +223,15 @@ function extract(ctx) {
       var mal = mapped && mapped.mal ? mapped.mal : mapped;
       var ep = mapped && mapped.ep ? mapped.ep : episode;
       if (!mal) return [];
-      return Promise.all([scrapeType(mal, ep, 'sub'), scrapeType(mal, ep, 'dub')]).then(function (
-        groups,
-      ) {
+      var cats =
+        (globalThis.__engineAudioCategories &&
+          globalThis.__engineAudioCategories(ctx)) ||
+        ['sub', 'dub'];
+      return Promise.all(
+        cats.map(function (kind) {
+          return scrapeType(mal, ep, kind);
+        }),
+      ).then(function (groups) {
         var seen = {};
         var out = [];
         ;[].concat.apply([], groups).forEach(function (r) {

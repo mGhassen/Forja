@@ -882,6 +882,23 @@ bool _looksLikeEngineMirrorLabel(String raw) {
   return true;
 }
 
+/// Hub play filter audio: `sub` | `dub`, else null.
+String? normalizeEngineAudioCategory(String? raw) {
+  final a = (raw ?? '').trim().toLowerCase();
+  if (a == 'sub' || a == 'dub') return a;
+  return null;
+}
+
+/// Stamp hub SUB/DUB into extract ctx (`ctx.category`) for providers.
+void applyAudioCategoryToExtractCtx(
+  Map<String, dynamic> extractCtx,
+  String? audioCategory,
+) {
+  final cat = normalizeEngineAudioCategory(audioCategory);
+  if (cat == null) return;
+  extractCtx['category'] = cat;
+}
+
 /// `sub`, `dub`, or null when the row has no audio hint.
 String? engineStreamAudioCategory(Map<String, dynamic> stream) {
   final lang = (stream['language'] ?? '').toString().trim().toLowerCase();
@@ -896,11 +913,24 @@ bool engineStreamMatchesAudioCategory(
   Map<String, dynamic> stream,
   String category,
 ) {
-  final want = category.trim().toLowerCase();
-  if (want != 'sub' && want != 'dub') return true;
+  final want = normalizeEngineAudioCategory(category);
+  if (want == null) return true;
   final have = engineStreamAudioCategory(stream);
   if (have == null) return true;
   return have == want;
+}
+
+/// Drop rows tagged for the other audio when hub SUB/DUB is set.
+List<Map<String, dynamic>> filterStreamsByAudioCategory(
+  List<Map<String, dynamic>> streams,
+  String? audioCategory,
+) {
+  final want = normalizeEngineAudioCategory(audioCategory);
+  if (want == null) return streams;
+  return [
+    for (final s in streams)
+      if (engineStreamMatchesAudioCategory(s, want)) s,
+  ];
 }
 
 Map<String, String> engineHeadersFrom(dynamic raw) {

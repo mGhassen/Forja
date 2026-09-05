@@ -4,7 +4,7 @@
 
 ## What it is
 
-The Arabic tab is a catalog hub from the ForjaHQ **Arabic** pack plugin `arabic-hub` (`kind: catalog`). It browses **Larozaa** only — multi-row layout like Home (spotlight, latest, Continue Watching, category rails). Playback uses the **Larozaa** Forja provider plugin. **Brstej** and **كرتون** (DimaToon) are separate hub packs. The host renders Catalog Shell (`surface: arabic`). The tab appears in **Settings → Features** while the Arabic pack is enabled under **Forja Packs → Hubs** (defaults off).
+The Arabic tab is a catalog hub from the ForjaHQ **Arabic** pack plugin `arabic-hub` (`kind: catalog`). It browses **Larozaa** only — multi-row layout like Home (spotlight, latest, Continue Watching, category rails). Playback uses the **Larozaa** Forja provider plugin. **Aflem** (Brstej) and **كرتون** (DimaToon) are separate hub packs. The host renders Catalog Shell (`surface: arabic`). The tab appears in **Settings → Features** while the Arabic pack is enabled under **Forja Packs → Hubs** (defaults off).
 
 ## How to open it
 
@@ -22,14 +22,14 @@ Enable the ForjaHQ Arabic pack under **Settings → Forja Packs → Hubs**, turn
 ## Tips
 
 - Playback uses the **Larozaa** provider under **Forja Packs** — direct streams, not embed pages
-- Continue Watching / list rows with `brstej:` or `dimatoon:` ids belong on **[Brstej](brstej.md)** / **[كرتون](cartoon.md)** — Arabic will not open them
-- For Brstej series, use **[Brstej](brstej.md)**
+- Continue Watching / list rows with `brstej:` or `dimatoon:` ids belong on **[Aflem](aflem.md)** / **[كرتون](cartoon.md)** — Arabic will not open them
+- For Brstej series, use **[Aflem](aflem.md)**
 - For Arabic cartoons, use **[كرتون](cartoon.md)**
 - For Arabic kids titles on Dimakids, use **[Kids](kids.md)**
 
 ## Related
 
-- [Brstej](brstej.md)
+- [Aflem](aflem.md)
 - [كرتون](cartoon.md)
 - [Kids](kids.md)
 - [Hub details](hub-details.md)

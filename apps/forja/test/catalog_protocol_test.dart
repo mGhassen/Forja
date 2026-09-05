@@ -48,7 +48,7 @@ List<EnginePlugin> loadAllHubPlugins() {
     'asian_drama',
     'arabic',
     'cartoon',
-    'brstej',
+    'aflem',
     'my_list',
     'live_sports',
   ]) {

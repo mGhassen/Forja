@@ -186,10 +186,15 @@ function extract(ctx) {
       if (!mal) return [];
       return resolveAnilist(mal).then(function (alId) {
         if (!alId) return [];
-        return streamsFor(alId, 'sub', epNum)
-          .then(function (sub) {
-            if (sub.length) return sub;
-            return streamsFor(alId, 'dub', epNum);
+        var cats =
+          (globalThis.__engineAudioCategories &&
+            globalThis.__engineAudioCategories(ctx)) ||
+          ['sub', 'dub'];
+        var first = cats[0] || 'sub';
+        return streamsFor(alId, first, epNum)
+          .then(function (rows) {
+            if (rows.length || cats.length < 2) return rows;
+            return streamsFor(alId, cats[1], epNum);
           })
           .then(function (rows) {
             return rows.length ? rows : [];

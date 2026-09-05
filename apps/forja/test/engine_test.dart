@@ -2555,6 +2555,34 @@ void main() {
         isTrue,
       );
     });
+
+    test('normalizeEngineAudioCategory accepts only sub/dub', () {
+      expect(normalizeEngineAudioCategory('SUB'), 'sub');
+      expect(normalizeEngineAudioCategory('dub'), 'dub');
+      expect(normalizeEngineAudioCategory(''), isNull);
+      expect(normalizeEngineAudioCategory('multi'), isNull);
+    });
+
+    test('applyAudioCategoryToExtractCtx stamps category', () {
+      final ctx = <String, dynamic>{'anilistId': 21};
+      applyAudioCategoryToExtractCtx(ctx, 'DUB');
+      expect(ctx['category'], 'dub');
+      applyAudioCategoryToExtractCtx(ctx, 'nope');
+      expect(ctx['category'], 'dub');
+    });
+
+    test('filterStreamsByAudioCategory drops opposite tagged rows', () {
+      final rows = [
+        {'name': 'A (SUB)', 'language': 'Sub', 'url': 'https://a'},
+        {'name': 'B (DUB)', 'language': 'Dub', 'url': 'https://b'},
+        {'name': 'Plain', 'url': 'https://c'},
+      ];
+      final subOnly = filterStreamsByAudioCategory(rows, 'sub');
+      expect(subOnly.map((r) => r['url']), ['https://a', 'https://c']);
+      final dubOnly = filterStreamsByAudioCategory(rows, 'dub');
+      expect(dubOnly.map((r) => r['url']), ['https://b', 'https://c']);
+      expect(filterStreamsByAudioCategory(rows, null), rows);
+    });
   });
 
   group('EngineRuntime host', () {

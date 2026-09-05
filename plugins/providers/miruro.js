@@ -162,10 +162,14 @@ function extract(ctx) {
           }),
         );
         var tasks = [];
+        var cats =
+          (globalThis.__engineAudioCategories &&
+            globalThis.__engineAudioCategories(ctx)) ||
+          ['sub', 'dub'];
         names.slice(0, 8).forEach(function (name) {
           var prov = provMap[name];
           if (!prov) return;
-          ['sub', 'dub'].forEach(function (cat) {
+          cats.forEach(function (cat) {
             var eps = episodesFor(prov, cat);
             var ep = eps.find(function (e) {
               return Number(e.number || e.num) === Number(epNum);

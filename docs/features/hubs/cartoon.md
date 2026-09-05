@@ -25,12 +25,12 @@ Enable the ForjaHQ Cartoon pack under **Settings → Forja Packs → Hubs**, tur
 - The tab icon ships in the Cartoon pack (`icons/nav.png`)
 - For Arabic kids titles on Dimakids, use **[Kids](kids.md)**
 - Arabic movies/series stay on the [Arabic](arabic.md) tab (Larozaa)
-- Brstej series stay on the [Brstej](brstej.md) tab
+- Brstej series stay on the [Aflem](aflem.md) tab
 
 ## Related
 
 - [Arabic](arabic.md)
-- [Brstej](brstej.md)
+- [Aflem](aflem.md)
 - [Kids](kids.md)
 - [Hub details](hub-details.md)
 - [Stream providers](../sources/stream-providers.md)

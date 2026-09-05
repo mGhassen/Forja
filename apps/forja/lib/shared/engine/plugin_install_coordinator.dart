@@ -228,11 +228,14 @@ class PluginInstallCoordinator {
   }
 
   /// Peek remote manifests; toast once per session when updates exist.
+  /// Waits for intro splash so the toast is not painted over the logo.
   Future<void> notifyPendingUpdatesIfAny() async {
     try {
       final packs = await PluginRegistry.instance.listPacksRaw();
       final updates = await EngineService.instance.checkPackUpdates(packs);
       if (updates.isEmpty) return;
+      if (_updateToastShownThisSession) return;
+      await _waitForSplashDismissed();
       if (_updateToastShownThisSession) return;
       _updateToastShownThisSession = true;
       final list = updates.values.toList(growable: false);
@@ -251,6 +254,22 @@ class PluginInstallCoordinator {
     } catch (e) {
       debugPrint('[PluginInstall] update notify failed: $e');
     }
+  }
+
+  Future<void> _waitForSplashDismissed() async {
+    if (ShellBus.splashDismissed.value) return;
+    final done = Completer<void>();
+    void listener() {
+      if (!ShellBus.splashDismissed.value) return;
+      ShellBus.splashDismissed.removeListener(listener);
+      if (!done.isCompleted) done.complete();
+    }
+
+    ShellBus.splashDismissed.addListener(listener);
+    if (ShellBus.splashDismissed.value) {
+      listener();
+    }
+    await done.future;
   }
 
   /// Consume the toast-driven update confirm payload (host shows dialog).

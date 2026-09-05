@@ -172,10 +172,17 @@ function extract(ctx) {
           if (!internalId) return [];
           return restGet('/servers', { id: internalId, epNum: String(ep) }).then(function (servers) {
             if (!servers) return [];
-            return Promise.all([
-              sourcesFor(internalId, ep, 'sub', servers.subProviders),
-              sourcesFor(internalId, ep, 'dub', servers.dubProviders),
-            ]).then(function (groups) {
+            var cats =
+              (globalThis.__engineAudioCategories &&
+                globalThis.__engineAudioCategories(ctx)) ||
+              ['sub', 'dub'];
+            return Promise.all(
+              cats.map(function (type) {
+                var providers =
+                  type === 'dub' ? servers.dubProviders : servers.subProviders;
+                return sourcesFor(internalId, ep, type, providers);
+              }),
+            ).then(function (groups) {
               var seen = {};
               var out = [];
               [].concat.apply([], groups).forEach(function (r) {

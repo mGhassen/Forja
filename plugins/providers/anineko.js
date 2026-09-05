@@ -202,9 +202,14 @@ function extract(ctx) {
       return searchSlug(query.split(':')[0].trim()).then(function (slug) {
         if (!slug) return [];
         var epSlug = 'ep-' + state.mappedEp;
-        return scrapeEpisodeWatch(slug, epSlug, 'sub').then(function (sub) {
-          if (sub.length) return sub;
-          return scrapeEpisodeWatch(slug, epSlug, 'dub');
+        var cats =
+          (globalThis.__engineAudioCategories &&
+            globalThis.__engineAudioCategories(ctx)) ||
+          ['sub', 'dub'];
+        var first = cats[0] || 'sub';
+        return scrapeEpisodeWatch(slug, epSlug, first).then(function (rows) {
+          if (rows.length || cats.length < 2) return rows;
+          return scrapeEpisodeWatch(slug, epSlug, cats[1]);
         });
       });
     })

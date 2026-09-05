@@ -407,6 +407,9 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
             Widget content = ShellScopeBuilder(
               builder: (context, _) {
                 final body = ForjaToastHost(
+                  // No toasts over intro splash — queue until dismissed
+                  // (also avoids mouse_tracker assert when toast buttons mount).
+                  allowDisplay: ShellBus.splashDismissed,
                   child: AppUpdateProgressBannerHost(
                     child: PluginInstallProgressBannerHost(
                       child: PluginPackUpdatePromptHost(

@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Default tab order on every profile:** Home, Asian Drama, Anime, IPTV, Live Sports, My List, and Settings. All are enabled on a fresh install. **Home / Anime / Asian Drama / Arabic / Brstej / كرتون / Kids** labels and tab bodies come from ForjaHQ hub packs (`nav` on each catalog plugin); other tabs stay app-owned. A hub tab only appears in **Settings → Features** (and the rail) while its pack+plugin is **enabled** under **Settings → Sources → Forja**; Features then show/hide among those. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Default tab order on every profile:** Home, Asian Drama, Anime, IPTV, Live Sports, My List, and Settings. All are enabled on a fresh install. **Home / Anime / Asian Drama / Arabic / Aflem / كرتون / Kids** labels and tab bodies come from ForjaHQ hub packs (`nav` on each catalog plugin); other tabs stay app-owned. A hub tab only appears in **Settings → Features** (and the rail) while its pack+plugin is **enabled** under **Settings → Sources → Forja**; Features then show/hide among those. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 
@@ -14,14 +14,14 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 - Tap any tab to switch sections instantly (recently used tabs stay mounted for fast switching; Android TV keeps fewer tabs in memory, and opening the fullscreen player unloads other tabs — keeping the screen under the player — so playback gets max resources). The nav rail stays mounted under root fullscreen players (movies, trailers, Live Sports, IPTV) the same way as the underlay tab. On **Android TV**, details and player opens are an instant cut (no slide) so older sets do not stutter while the new screen loads.
 - On desktop, the left rail is a **fixed-width** column; the body is inset so content is not hidden under icons
-- On **Home / Anime / Asian Drama / Arabic / Brstej / كرتون / Kids (desktop)**, a text top menu — **Search**, **Films**, **Series** (TV Shows on Home), **Categories** — overlays the hero and slides away as you scroll
+- On **Home / Anime / Asian Drama / Arabic / Aflem / كرتون / Kids (desktop)**, a text top menu — **Search**, **Films**, **Series** (TV Shows on Home), **Categories** — overlays the hero and slides away as you scroll
 - **Search (desktop)** uses a full-page layout with a left search column — no separate shell search bar
 - Open **Settings → Features** to toggle tabs on/off, reorder (drag on desktop; **↑/↓** on Android TV), and star the tab that opens on app start and after you switch profiles (only the tabs listed below are available right now)
 - Jump to Search or other tabs from deep links inside the app (e.g. from a Stremio addon result)
 
 ## Desktop shell layout
 
-- **Home / Anime / Asian Drama / Arabic / Brstej / كرتون / Kids menu (desktop):** pack-declared chrome — **Search** (if `search`), then any `filters.menus[]` tabs, then **Categories** when `fields` has options (genre / country / Larozaa section / letter, …)
+- **Home / Anime / Asian Drama / Arabic / Aflem / كرتون / Kids menu (desktop):** pack-declared chrome — **Search** (if `search`), then any `filters.menus[]` tabs, then **Categories** when `fields` has options (genre / country / Larozaa section / letter, …)
 - **Left rail:** Forja logo (top), your configured tabs (center), then a larger active profile avatar / Guest with its name always visible (bottom). Next to the profile name, LAN status is a **dot** (green = up, red = unreachable). On **desktop** (the LAN server) a bold **vertical bar** after the dot is the session (amber = waiting to pair, green = paired, grey = idle, pulse = playing). Android TV is a client, so it is the dot only. Every destination is gray while idle and reveals its own accent color on hover or selection; the active underline keeps that same accent while hovered. The avatar uses its profile colors and opens Settings without a circular hover background.
 - **Body:** flat `bgDark`; Home hero is full-bleed with **View details** plus a My List **+** pill
 
@@ -56,7 +56,7 @@ The tab bar is always visible after the app finishes loading. The **profile avat
 
 **Default (fresh install):** Home · Asian Drama · Anime · IPTV · Live Sports · My List · Settings
 
-Hub tabs (**Home**, **Anime**, **Asian Drama**, **Arabic** / **Brstej** / **كرتون** / **Kids** when their packs are installed) come from ForjaHQ catalog packs — layout and rows update when the pack changes. If a pack is missing, the tab shows a retry panel.
+Hub tabs (**Home**, **Anime**, **Asian Drama**, **Arabic** / **Aflem** / **كرتون** / **Kids** when their packs are installed) come from ForjaHQ catalog packs — layout and rows update when the pack changes. If a pack is missing, the tab shows a retry panel.
 
 **Archived tabs** (built in code, hidden from shell and Settings → Features): Search, Discover, Similar, Magnet, Media Downloader, Audiobooks, Books, Music, Comics, Manga, Jellyfin, Anime Arabic — see [archive](../archive/README.md).
 

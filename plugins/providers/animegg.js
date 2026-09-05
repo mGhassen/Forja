@@ -229,9 +229,16 @@ function extract(ctx) {
             return e.number === state.mappedEp;
           });
           if (!ep) return [];
-          return scrapeEpisodeWatch(ep.epSlug, 'sub').then(function (sub) {
-            if (sub.length) return sub;
-            return scrapeEpisodeWatch(ep.epSlug, 'dub');
+          var cats =
+            (globalThis.__engineAudioCategories &&
+              globalThis.__engineAudioCategories(ctx)) ||
+            ['sub', 'dub'];
+          // Prefer first requested lane; only fall back when both are allowed.
+          var first = cats[0] || 'sub';
+          return scrapeEpisodeWatch(ep.epSlug, first).then(function (rows) {
+            if (rows.length || cats.length < 2) return rows;
+            var second = cats[1];
+            return scrapeEpisodeWatch(ep.epSlug, second);
           });
         });
       });

@@ -392,9 +392,14 @@ function extract(ctx) {
             }).then(function (listJson) {
               var targetEp = parseEpisodeTarget((listJson && listJson.result) || '', mapped.ep);
               if (!targetEp || !targetEp.ids) return [];
-              return streamsForAudio(show, targetEp, 'sub').then(function (sub) {
-                if (sub.length) return sub;
-                return streamsForAudio(show, targetEp, 'dub');
+              var cats =
+                (globalThis.__engineAudioCategories &&
+                  globalThis.__engineAudioCategories(ctx)) ||
+                ['sub', 'dub'];
+              var first = cats[0] || 'sub';
+              return streamsForAudio(show, targetEp, first).then(function (rows) {
+                if (rows.length || cats.length < 2) return rows;
+                return streamsForAudio(show, targetEp, cats[1]);
               });
             });
           });

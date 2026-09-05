@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) |
-| **Current slice** | Arabic / Brstej / كرتون / Kids pack `filters` + Films / Series / Categories — A15 manual QA still open |
+| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) |
+| **Current slice** | Anime SUB/DUB wired through extract + auto-play — A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -207,6 +207,18 @@ Films / Series / Categories on Arabic, Brstej, كرتون, and Kids — pack `fi
 | 3 | R70-A68 | كرتون (`dimatoon-hub`) declares letter `fields` only (no menus) — Search + Categories | ✅ |
 | 4 | R70-A69 | Host `CatalogTopBar` renders pack `menus[]` (any count) — no hardcoded Films/Series enum chrome | ✅ |
 | 5 | R70-A70 | Kids (`dimakids-hub`) declares Films/Series `menus` + letter `fields`; Search + Categories | ✅ |
+
+---
+
+## Acceptance (anime play audio)
+
+Hub SUB/DUB play filter must drive extract + auto-play, not only Sources display filtering.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A71 | `runPlugin` / `runPluginIsolated` stamp hub `audioCategory` as extract `category` + `config.category` | ✅ |
+| 2 | R70-A72 | Engine extract return + auto-play cache filter tagged rows via `filterStreamsByAudioCategory` | ✅ |
+| 3 | R70-A73 | Anime providers (Miruro/HiAnime/Megaplay/VidNest/Reanime/AnimeX/AnimeGG/AniNeko/AniDB/Anikoto/AniBD) scrape only requested lane when `category` is set | ✅ |
 
 ---
 

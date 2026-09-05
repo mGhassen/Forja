@@ -13,11 +13,22 @@
       "pluginCount": 9
     },
     {
+      "id": "aflem",
+      "kind": "hubs",
+      "name": "ForjaHQ Aflem",
+      "description": "Aflem Arabic series hub (Brstej upstream).",
+      "accent": "flame",
+      "official": true,
+      "author": "ForjaHQ",
+      "version": "1.0.5",
+      "pluginCount": 1
+    },
+    {
       "id": "anime",
       "kind": "hubs",
       "name": "ForjaHQ Anime",
       "description": "AniList-powered anime hub with search and details.",
-      "accent": "flame",
+      "accent": "brand",
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.12",
@@ -28,7 +39,7 @@
       "kind": "hubs",
       "name": "ForjaHQ Arabic",
       "description": "Arabic hub — Larozaa only (Brstej / كرتون are separate packs)",
-      "accent": "brand",
+      "accent": "flame",
       "official": true,
       "version": "1.4.2",
       "pluginCount": 1
@@ -38,22 +49,11 @@
       "kind": "hubs",
       "name": "ForjaHQ Asian Drama",
       "description": "KissKH Asian drama catalog hub.",
-      "accent": "flame",
+      "accent": "brand",
       "official": true,
       "author": "ForjaHQ",
       "version": "1.0.9",
       "pluginCount": 2
-    },
-    {
-      "id": "brstej",
-      "kind": "hubs",
-      "name": "ForjaHQ Brstej",
-      "description": "Brstej Arabic series hub.",
-      "accent": "brand",
-      "official": true,
-      "author": "ForjaHQ",
-      "version": "1.0.4",
-      "pluginCount": 1
     },
     {
       "id": "cartoon",

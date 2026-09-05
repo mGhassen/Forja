@@ -27,7 +27,7 @@ From **Home**, **Anime**, or **Asian Drama**:
 - **Episodes** — select a season (multi-season franchises) or episode; hero **Play** applies to the selected episode. Each row shows its air date when the pack (or TMDB enrich) provides one — future dates appear in **orange** and cannot be played. Mark watched at ≥85% or via right-click / double-click on episode cards.
 - **My List** — glass **+** with Plan to Watch / Watching / … (Simkl when connected and ids resolve).
 - **Pack rails** — Characters, Staff, Related, Trailers, recommendations — whatever the pack returns after enrich.
-- **Play filters** — when the pack’s `filters` action declares `play[]` grouped choices (e.g. SUB / DUB on Anime), they render on the details hero and flow into green Play and Sources.
+- **Play filters** — when the pack’s `filters` action declares `play[]` grouped choices (e.g. SUB / DUB on Anime), they render on the details hero. The selection is stamped into Forja extract as `category` so providers scrape that lane only; green Play and Sources filter tagged rows the same way.
 - **Resume / clear** — trash next to **Resume** clears watch progress and cached stream URLs for that title.
 
 ## Hub-specific play

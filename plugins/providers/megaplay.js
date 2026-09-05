@@ -154,7 +154,11 @@ function extract(ctx) {
   if (!id.al && !id.mal) return Promise.resolve([]);
 
   var pages = [];
-  ['sub', 'dub'].forEach(function (kind) {
+  var cats =
+    (globalThis.__engineAudioCategories &&
+      globalThis.__engineAudioCategories(ctx)) ||
+    ['sub', 'dub'];
+  cats.forEach(function (kind) {
     if (id.al) {
       pages.push({
         url: megaplay + '/stream/ani/' + id.al + '/' + ep + '/' + kind,

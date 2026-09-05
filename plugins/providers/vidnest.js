@@ -155,7 +155,10 @@ function extract(ctx) {
         { id: 'animepahe', name: 'AnimePahe' },
       ];
     }
-    var cats = ['sub', 'dub'];
+    var cats =
+      (globalThis.__engineAudioCategories &&
+        globalThis.__engineAudioCategories(ctx)) ||
+      ['sub', 'dub'];
     var tasks = [];
     animeServers.forEach(function (server) {
       var key = String(server.id || server.anime || '').toLowerCase();

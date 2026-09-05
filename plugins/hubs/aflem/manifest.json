@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "id": "forjahq-aflem",
+  "name": "ForjaHQ Aflem",
+  "description": "Aflem Arabic series hub (Brstej upstream).",
+  "author": "ForjaHQ",
+  "version": "1.0.5",
+  "plugins": [
+    {
+      "id": "aflem-hub",
+      "name": "Aflem",
+      "description": "Arabic Aflem & Musalsalat",
+      "entry": "brstej.js",
+      "kind": "catalog",
+      "protocol": 1,
+      "kit": 1,
+      "types": [
+        "arabic"
+      ],
+      "capabilities": [
+        "nav",
+        "layout",
+        "rail",
+        "feed",
+        "search",
+        "filters",
+        "details"
+      ],
+      "nav": {
+        "tabId": "aflem",
+        "label": "Aflem",
+        "order": 42,
+        "accent": "#E879F9",
+        "defaultEnabled": false,
+        "icon": "icons/nav.png"
+      },
+      "enabled": true,
+      "config": {
+        "origin": "https://uo.brstej.com"
+      },
+      "prelude": "_kit.js"
+    }
+  ]
+}
