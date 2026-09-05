@@ -65,6 +65,7 @@ import 'package:forja/shared/widgets/forja_network_image.dart';
 import 'package:forja/shared/widgets/desktop_window_geometry.dart';
 import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_bus.dart';
+import 'package:window_manager/window_manager.dart';
 
 part 'iptv_pt_player_engine_core.dart';
 part 'iptv_pt_player_mk_tunables.dart';
@@ -715,6 +716,11 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   bool get _isDesktop =>
       !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
+  /// Desktop Escape ladder (parity with VOD [DesktopPlayerScreen]).
+  bool _escapeExitArmed = false;
+  DateTime? _escapeHandledAt;
+  DateTime? _suppressChromeRevealUntil;
+
   // Picture-in-picture (same PipService as the movie player)
   bool _isPipMode = false;
   bool _pipHover = false;
@@ -1047,7 +1053,7 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
   /// handlers often return [KeyEventResult.handled], so [PlayerTvKeyScope]
   /// alone never sees them - without this, controls hide mid-navigation.
   ///
-  /// Desktop also handles Space here — [PlayerTvKeyScope] is TV-only.
+  /// Desktop also handles Space / Escape here — [PlayerTvKeyScope] is TV-only.
   bool _onRemoteControlsActivity(KeyEvent event) {
     if (_disposed || !mounted) return false;
 
@@ -1058,6 +1064,16 @@ class _IptvPtPlayerScreenState extends ConsumerState<IptvPtPlayerScreen>
       if (_guideVisible || _searchVisible || _isPipMode) return false;
       if (playerChromeOverlayBlocksFocusClaim()) return false;
       unawaited(_togglePlayPauseFromKey());
+      return true;
+    }
+
+    // Desktop Escape: same hide → leave-fullscreen → arm → leave ladder as VOD.
+    // Live sports also uses this player.
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape &&
+        _isDesktop) {
+      if (_isPipMode) return false;
+      _handleEscapeKey();
       return true;
     }
 

@@ -709,10 +709,100 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     // Desktop hybrid has D-pad focus chips + mouse — only leanback skips hover.
     if (iptvLeanbackOnly(context)) return;
     if (_s._guideVisible || _s._searchVisible) return;
+    final suppressUntil = _s._suppressChromeRevealUntil;
+    if (suppressUntil != null && DateTime.now().isBefore(suppressUntil)) {
+      return;
+    }
     if (!_s._controlsVisible) {
       setState(() => _s._controlsVisible = true);
     }
     _scheduleHideControls();
+  }
+
+  /// Hide chrome without arming Escape (cursor-none hover must not snap chrome back).
+  void _hideChromeIntentional() {
+    _s._hideControlsTimer?.cancel();
+    _s._suppressChromeRevealUntil =
+        DateTime.now().add(const Duration(milliseconds: 450));
+    _s._escapeExitArmed = false;
+    if (!_s._controlsVisible) return;
+    setState(() => _s._controlsVisible = false);
+  }
+
+  /// Desktop Escape ladder — IPTV + Live Matches (same player).
+  /// Overlay/guide/search → hide chrome → leave fullscreen → arm → leave player.
+  void _handleEscapeKey() {
+    debugPrint(
+      '[IptvPlayer] Escape down armed=${_s._escapeExitArmed} '
+      'chrome=${_s._controlsVisible} fs=${_s._isFullscreen}',
+    );
+    final handledAt = _s._escapeHandledAt;
+    if (handledAt != null &&
+        DateTime.now().difference(handledAt) <
+            const Duration(milliseconds: 80)) {
+      debugPrint('[IptvPlayer] Escape ignored (same pulse)');
+      return;
+    }
+    _s._escapeHandledAt = DateTime.now();
+    PlayerBackExitGate.notePlayerEscapeHandled();
+
+    if (dismissAnyPlayerChromeOverlay()) {
+      debugPrint('[IptvPlayer] Escape → dismiss overlay (stay)');
+      return;
+    }
+    if (_s._searchVisible) {
+      setState(() {
+        _s._searchVisible = false;
+        _s._controlsVisible = true;
+      });
+      _s._escapeExitArmed = false;
+      _scheduleHideControls();
+      debugPrint('[IptvPlayer] Escape → close search (stay)');
+      return;
+    }
+    if (_s._guideVisible) {
+      setState(() {
+        _s._guideVisible = false;
+        _s._controlsVisible = true;
+      });
+      _s._escapeExitArmed = false;
+      _scheduleHideControls();
+      debugPrint('[IptvPlayer] Escape → close guide (stay)');
+      return;
+    }
+    unawaited(_escapeLeaveFullscreenOrContinue());
+  }
+
+  Future<void> _escapeLeaveFullscreenOrContinue() async {
+    final osFull = _s._isDesktop && await windowManager.isFullScreen();
+    final inFullscreen = osFull || _s._isFullscreen;
+    debugPrint(
+      '[IptvPlayer] Escape ladder armed=${_s._escapeExitArmed} '
+      'chrome=${_s._controlsVisible} fs=${_s._isFullscreen} osFull=$osFull',
+    );
+    if (_s._controlsVisible) {
+      debugPrint('[IptvPlayer] Escape → hide chrome (no arm) fs=$inFullscreen');
+      _hideChromeIntentional();
+      return;
+    }
+    if (inFullscreen) {
+      debugPrint('[IptvPlayer] Escape → exit fullscreen (stay)');
+      await DesktopWindowGeometry.exitFullscreen();
+      if (!mounted || _s._disposed) return;
+      setState(() {
+        _s._isFullscreen = false;
+        _s._escapeExitArmed = false;
+      });
+      return;
+    }
+    if (!_s._escapeExitArmed) {
+      debugPrint('[IptvPlayer] Escape → arm only');
+      _s._escapeExitArmed = true;
+      return;
+    }
+    debugPrint('[IptvPlayer] Escape → confirm exit');
+    _s._escapeExitArmed = false;
+    await _s._exitIptvPlayer();
   }
 
   void _claimPlayFocus() {
@@ -849,20 +939,38 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     final epgFuture = (!_s._guideVisible && !_s._searchVisible)
         ? _floatingEpgFuture()
         : null;
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        if (ShellTvFocusCoordinator.consumeOverlayBack()) return;
-        if (ShellTvFocusCoordinator.tvBackPolicyEnabled &&
-            PlayerBackExitGate.tryFocusBackStay()) {
-          return;
-        }
-        unawaited(_s._exitIptvPlayer());
+    return Actions(
+      actions: {
+        // Swallow Flutter Escape → DismissIntent → maybePop. Desktop ladder owns exit.
+        DismissIntent: CallbackAction<DismissIntent>(
+          onInvoke: (_) {
+            if (_s._isDesktop && !_s._isPipMode) {
+              _handleEscapeKey();
+            }
+            return null;
+          },
+        ),
       },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: PlayerTvKeyScope(
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          if (ShellTvFocusCoordinator.consumeOverlayBack()) return;
+          if (ShellTvFocusCoordinator.tvBackPolicyEnabled &&
+              PlayerBackExitGate.tryFocusBackStay()) {
+            return;
+          }
+          // Desktop Escape must not leave through maybePop — ladder confirms exit.
+          if (_s._isDesktop && !_s._isPipMode) {
+            debugPrint('[IptvPlayer] PopScope → Escape ladder');
+            _handleEscapeKey();
+            return;
+          }
+          unawaited(_s._exitIptvPlayer());
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: PlayerTvKeyScope(
           enabled:
               iptvUseTvFocus(context) &&
               !_s._guideVisible &&
@@ -1094,6 +1202,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }
