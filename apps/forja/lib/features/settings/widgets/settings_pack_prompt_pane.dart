@@ -374,7 +374,7 @@ class _PackPromptRow extends StatelessWidget {
     return shellFocusableTap(
       context: context,
       onTap: flip,
-      borderRadius: 8,
+      borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
       showFocusRail: true,
       tvTabId: 'settings',

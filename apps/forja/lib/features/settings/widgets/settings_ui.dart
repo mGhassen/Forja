@@ -222,6 +222,19 @@ Widget? settingsExpansionTrailing(BuildContext context, Widget? trailing) {
   return trailing;
 }
 
+/// Flat ExpansionTile chrome — ink hover, no rounded Material card.
+ThemeData settingsExpansionTheme(BuildContext context) {
+  return Theme.of(context).copyWith(
+    dividerColor: Colors.transparent,
+    hoverColor: ForjaShellColors.inkHover,
+    splashColor: ForjaShellColors.inkSplash,
+    highlightColor: Colors.transparent,
+  );
+}
+
+/// [ExpansionTile.shape] / [collapsedShape] for flat settings headers.
+const Border settingsExpansionShape = Border();
+
 List<Widget> settingsExpansionChildren(
   BuildContext context, {
   Widget? trailing,
@@ -1092,11 +1105,10 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
 
       if (!tv) {
         return shellRoundedInkHost(
-          radius: 10,
+          radius: SettingsTokens.categoryTileRadius,
           onTap: pick,
           decoration: BoxDecoration(
             color: selected ? ForjaShellColors.inkHover : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
             border: Border(
               left: BorderSide(
                 color: selected
@@ -1114,7 +1126,7 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
         context: context,
         focusNode: _nodes[index],
         onTap: pick,
-        borderRadius: 10,
+        borderRadius: SettingsTokens.categoryTileRadius,
         scaleOnFocus: 1.0,
         showFocusRail: true,
         ensureVisibleMode: ShellTvEnsureVisibleMode.item,

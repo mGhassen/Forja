@@ -117,6 +117,7 @@ class _SettingsIptvSportsSectionState extends State<SettingsIptvSportsSection> {
     return shellFocusableTap(
       context: context,
       onTap: onPressed,
+      borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
       showFocusRail: true,
       tvTabId: 'settings',

@@ -114,8 +114,10 @@ class SettingsEnginePackExpansion extends StatelessWidget {
           const SizedBox(height: 4),
         ],
         Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          data: settingsExpansionTheme(context),
           child: ExpansionTile(
+            shape: settingsExpansionShape,
+            collapsedShape: settingsExpansionShape,
             tilePadding: const EdgeInsets.symmetric(horizontal: 2),
             childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
             leading: Icon(
@@ -308,8 +310,10 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
     if (plugins.isEmpty) return const SizedBox.shrink();
 
     return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      data: settingsExpansionTheme(context),
       child: ExpansionTile(
+        shape: settingsExpansionShape,
+        collapsedShape: settingsExpansionShape,
         tilePadding: const EdgeInsets.symmetric(horizontal: 2),
         childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
         leading: Icon(

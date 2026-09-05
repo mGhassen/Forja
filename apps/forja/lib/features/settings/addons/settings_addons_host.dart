@@ -172,7 +172,14 @@ class _AddonListPane extends ConsumerWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: addons.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 2),
+      separatorBuilder: (_, _) => Padding(
+        padding: const EdgeInsets.only(left: 2),
+        child: Divider(
+          height: 1,
+          thickness: 1,
+          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+        ),
+      ),
       itemBuilder: (context, index) {
         final addon = addons[index];
         return _AddonRow(
@@ -230,73 +237,59 @@ class _AddonRow extends ConsumerWidget {
       size: 20,
     );
 
+    final leading = Icon(meta.icon, color: ForjaShellColors.textSecondary, size: 22);
     // TV + activate switch: two focus stops — OK opens detail; → then OK flips.
     if (tv && meta.hasToggle) {
-      return Container(
-        decoration: BoxDecoration(
-          color: ForjaShellColors.surfaceElevated.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: shellFocusableTap(
-                context: context,
-                onTap: onTap,
-                borderRadius: 12,
-                scaleOnFocus: 1.0,
-                showFocusRail: true,
-                tvTabId: 'settings',
-                tvZone: ShellTvZone.settings,
-                ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        meta.icon,
-                        color: ForjaShellColors.textSecondary,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(child: titles),
-                      const SizedBox(width: 4),
-                      chevron,
-                    ],
-                  ),
+      return Row(
+        children: [
+          Expanded(
+            child: shellFocusableTap(
+              context: context,
+              onTap: onTap,
+              borderRadius: SettingsTokens.categoryTileRadius,
+              scaleOnFocus: 1.0,
+              showFocusRail: true,
+              tvTabId: 'settings',
+              tvZone: ShellTvZone.settings,
+              ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
+                child: Row(
+                  children: [
+                    leading,
+                    const SizedBox(width: 12),
+                    Expanded(child: titles),
+                    const SizedBox(width: 4),
+                    chevron,
+                  ],
                 ),
               ),
             ),
-            AddonMasterToggle(
-              addonId: meta.id,
-              visibility: visibility,
-            ),
-            const SizedBox(width: 8),
-          ],
-        ),
+          ),
+          AddonMasterToggle(
+            addonId: meta.id,
+            visibility: visibility,
+          ),
+          const SizedBox(width: 4),
+        ],
       );
     }
 
     return shellFocusableTap(
       context: context,
       onTap: onTap,
-      borderRadius: 12,
+      borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
       showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: ForjaShellColors.surfaceElevated.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(12),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 16),
         child: Row(
           children: [
-            Icon(meta.icon, color: ForjaShellColors.textSecondary, size: 24),
-            const SizedBox(width: 14),
+            leading,
+            const SizedBox(width: 12),
             Expanded(child: titles),
             if (meta.hasToggle)
               AddonMasterToggle(

@@ -799,10 +799,12 @@ class _ActiveProfileStage extends StatelessWidget {
     return shellFocusableTap(
       context: context,
       onTap: onTap,
+      borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
       showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       child: content,
     );
   }

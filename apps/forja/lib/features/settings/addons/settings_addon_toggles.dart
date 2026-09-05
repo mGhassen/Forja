@@ -155,7 +155,7 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
       return shellFocusableTap(
         context: context,
         onTap: flip,
-        borderRadius: 12,
+        borderRadius: SettingsTokens.categoryTileRadius,
         scaleOnFocus: 1.0,
         showFocusRail: true,
         tvTabId: 'settings',

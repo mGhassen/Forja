@@ -643,6 +643,7 @@ class _SettingsNavigationPageBodyState
                             context: context,
                             focusNode: index == 0 ? _firstTabFocus : null,
                             onTap: () => _toggleNavbarVisible(id),
+                            borderRadius: SettingsTokens.categoryTileRadius,
                             scaleOnFocus: 1.0,
                             showFocusRail: true,
                             tvTabId: 'settings',

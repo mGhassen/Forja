@@ -192,7 +192,7 @@ class _SettingsDebridSectionState
           await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       },
-      borderRadius: 6,
+      borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
       showFocusRail: true,
       tvTabId: 'settings',

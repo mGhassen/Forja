@@ -391,10 +391,10 @@ class _SettingsForjaAddonsSectionState
                 }).toList();
                 return Theme(
                   key: ValueKey(addon.manifestUrl),
-                  data: Theme.of(
-                    context,
-                  ).copyWith(dividerColor: Colors.transparent),
+                  data: settingsExpansionTheme(context),
                   child: ExpansionTile(
+                    shape: settingsExpansionShape,
+                    collapsedShape: settingsExpansionShape,
                     tilePadding: const EdgeInsets.symmetric(horizontal: 2),
                     childrenPadding: const EdgeInsets.fromLTRB(8, 0, 2, 8),
                     leading: const Icon(
@@ -869,6 +869,7 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
             onTap: _confirming
                 ? null
                 : () => widget.onEnabledChanged(!widget.enabled),
+            borderRadius: SettingsTokens.categoryTileRadius,
             scaleOnFocus: 1.0,
             showFocusRail: true,
             tvTabId: 'settings',

@@ -147,13 +147,18 @@ class _ShellEmptyFeaturesScreenState
                 padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: horizontal ? 900 : 480,
+                    // TV: compact cluster so cards stay clear of the rail.
+                    maxWidth: tv
+                        ? 620
+                        : horizontal
+                            ? 840
+                            : 480,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       ForjaLogoIdle(logoHeight: logoHeight),
-                      SizedBox(height: tv ? 16 : 28),
+                      SizedBox(height: tv ? 14 : 28),
                       Text(
                         'Turn on a feature to get started',
                         textAlign: TextAlign.center,
@@ -181,7 +186,7 @@ class _ShellEmptyFeaturesScreenState
                           height: 1.45,
                         ),
                       ),
-                      SizedBox(height: tv ? 18 : 28),
+                      SizedBox(height: tv ? 16 : 28),
                       if (horizontal)
                         IntrinsicHeight(
                           child: Row(
@@ -189,24 +194,50 @@ class _ShellEmptyFeaturesScreenState
                             children: [
                               for (var i = 0; i < specs.length; i++) ...[
                                 if (i > 0) SizedBox(width: tv ? 10 : 12),
-                                Expanded(
-                                  child: _HintCard(
-                                    spec: specs[i],
-                                    tvFocus: tvFocus,
-                                    autofocus: tvFocus && i == 0,
-                                    focusNode: _cardFocus[i],
-                                    expandBody: true,
-                                    compact: tv,
-                                    tvItemIndex: i,
-                                    onFocusLeft: i == 0
-                                        ? ShellTvFocusCoordinator
-                                            .focusActiveNavTab
-                                        : () => _cardFocus[i - 1].requestFocus(),
-                                    onFocusRight: i < specs.length - 1
-                                        ? () => _cardFocus[i + 1].requestFocus()
-                                        : null,
+                                // TV: fixed-width tiles (not Expanded stretch).
+                                if (tv)
+                                  SizedBox(
+                                    width: 188,
+                                    child: _HintCard(
+                                      spec: specs[i],
+                                      tvFocus: tvFocus,
+                                      autofocus: tvFocus && i == 0,
+                                      focusNode: _cardFocus[i],
+                                      expandBody: true,
+                                      compact: true,
+                                      tvItemIndex: i,
+                                      onFocusLeft: i == 0
+                                          ? ShellTvFocusCoordinator
+                                              .focusActiveNavTab
+                                          : () =>
+                                              _cardFocus[i - 1].requestFocus(),
+                                      onFocusRight: i < specs.length - 1
+                                          ? () =>
+                                              _cardFocus[i + 1].requestFocus()
+                                          : null,
+                                    ),
+                                  )
+                                else
+                                  Expanded(
+                                    child: _HintCard(
+                                      spec: specs[i],
+                                      tvFocus: tvFocus,
+                                      autofocus: false,
+                                      focusNode: _cardFocus[i],
+                                      expandBody: true,
+                                      compact: false,
+                                      tvItemIndex: i,
+                                      onFocusLeft: i == 0
+                                          ? ShellTvFocusCoordinator
+                                              .focusActiveNavTab
+                                          : () =>
+                                              _cardFocus[i - 1].requestFocus(),
+                                      onFocusRight: i < specs.length - 1
+                                          ? () =>
+                                              _cardFocus[i + 1].requestFocus()
+                                          : null,
+                                    ),
                                   ),
-                                ),
                               ],
                             ],
                           ),

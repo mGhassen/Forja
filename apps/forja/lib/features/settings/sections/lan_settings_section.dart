@@ -451,16 +451,13 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     final running =
         _serverEnabled && LanServerService.instance.isRunning && _serverPort > 0;
     return [
-      SwitchListTile(
-        contentPadding: EdgeInsets.zero,
-        title: const Text('Enable LAN server'),
-        subtitle: Text(
-          running
-              ? 'Listening · $_primaryAddressLabel'
-              : 'Off — TVs cannot use this desktop for torrents',
-        ),
+      SettingsToggleRow(
+        title: 'Enable LAN server',
+        subtitle: running
+            ? 'Listening · $_primaryAddressLabel'
+            : 'Off — TVs cannot use this desktop for torrents',
         value: running,
-        onChanged: _toggleServer,
+        onChanged: (v) => unawaited(_toggleServer(v)),
       ),
       if (running) ...[
         const SizedBox(height: 8),
@@ -485,22 +482,14 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           )
         else
           ..._localIps.map(
-            (ip) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              title: Text(
-                '$ip:$_serverPort',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
+            (ip) => SettingsActionRow(
+              title: '$ip:$_serverPort',
+              trailing: const Icon(
+                Icons.copy_rounded,
+                color: ForjaShellColors.iconMuted,
+                size: 20,
               ),
-              trailing: IconButton(
-                tooltip: 'Copy address',
-                onPressed: () => _copyAddress(ip),
-                icon: const Icon(Icons.copy_rounded),
-              ),
+              onTap: () => _copyAddress(ip),
             ),
           ),
         const SizedBox(height: 16),
@@ -608,62 +597,77 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
               active: _activeTorrent,
               history: _torrentHistory,
             );
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              isThreeLine: true,
-              leading: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(
-                    _iconForLabel(label),
-                    color: ForjaShellColors.brandGreen,
-                  ),
-                  Positioned(
-                    right: -2,
-                    bottom: -2,
-                    child: LanDeviceTalkDot(talk: talk),
-                  ),
-                ],
-              ),
-              title: Text(title),
-              subtitle: Column(
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    talk.shortLabel,
-                    style: TextStyle(
-                      color: talk.color,
-                      fontSize: 12,
-                      height: 1.25,
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(
+                        _iconForLabel(label),
+                        color: ForjaShellColors.brandGreen,
+                      ),
+                      Positioned(
+                        right: -2,
+                        bottom: -2,
+                        child: LanDeviceTalkDot(talk: talk),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            color: ForjaShellColors.textPrimary,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          talk.shortLabel,
+                          style: TextStyle(
+                            color: talk.color,
+                            fontSize: 12,
+                            height: 1.25,
+                          ),
+                        ),
+                        if (when != null)
+                          Text(
+                            when,
+                            style: TextStyle(
+                              color: ForjaShellColors.textSecondary
+                                  .withValues(alpha: 0.85),
+                              fontSize: 11,
+                              height: 1.25,
+                            ),
+                          ),
+                        if (id.isNotEmpty)
+                          Text(
+                            id,
+                            style: TextStyle(
+                              color: ForjaShellColors.textSecondary
+                                  .withValues(alpha: 0.7),
+                              fontSize: 11,
+                              height: 1.25,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
                     ),
                   ),
-                  if (when != null)
-                    Text(
-                      when,
-                      style: TextStyle(
-                        color: ForjaShellColors.textSecondary
-                            .withValues(alpha: 0.85),
-                        fontSize: 11,
-                        height: 1.25,
-                      ),
-                    ),
-                  if (id.isNotEmpty)
-                    Text(
-                      id,
-                      style: TextStyle(
-                        color: ForjaShellColors.textSecondary
-                            .withValues(alpha: 0.7),
-                        fontSize: 11,
-                        height: 1.25,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                  TextButton(
+                    onPressed: id.isEmpty ? null : () => _revoke(id),
+                    child: const Text('Revoke'),
+                  ),
                 ],
-              ),
-              trailing: TextButton(
-                onPressed: id.isEmpty ? null : () => _revoke(id),
-                child: const Text('Revoke'),
               ),
             );
           }),
@@ -941,76 +945,93 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       lanTorrentActive: _desktopPlaying,
     );
     return [
-      ListTile(
-        contentPadding: EdgeInsets.zero,
-        isThreeLine: _paired,
-        leading: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Icon(
-              _paired
-                  ? (_serverOnline
-                      ? Icons.tv_rounded
-                      : Icons.cloud_off_rounded)
-                  : Icons.link_rounded,
-              color: presence.server == LanServerMark.up
-                  ? ForjaShellColors.brandGreen
-                  : ForjaShellColors.textSecondary,
-            ),
-            if (presence.visible)
-              Positioned(
-                right: -2,
-                bottom: -2,
-                child: LanPresenceMark(
-                  presence: presence,
-                  size: 9,
-                  bordered: true,
-                  showBar: false,
-                ),
-              ),
-          ],
-        ),
-        title: Text(_paired ? 'Paired' : 'Not paired'),
-        subtitle: Column(
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (_paired)
-              Text(
-                [
-                  if (presence.server == LanServerMark.up)
-                    'Desktop online'
-                  else
-                    'Desktop offline',
-                  if (presence.session == LanSessionMark.playing) 'playing',
-                ].join(' · '),
-                style: TextStyle(
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  _paired
+                      ? (_serverOnline
+                          ? Icons.tv_rounded
+                          : Icons.cloud_off_rounded)
+                      : Icons.link_rounded,
                   color: presence.server == LanServerMark.up
                       ? ForjaShellColors.brandGreen
-                      : presence.serverColor,
-                  fontSize: 12,
-                  height: 1.25,
+                      : ForjaShellColors.textSecondary,
                 ),
-              ),
-            Text(
-              _paired
-                  ? '${_pairedHost ?? '?'}:${_pairedPort ?? '?'} — torrents play via desktop'
-                  : 'Pair once. Then open Sources → Torrents on a title.',
-              style: TextStyle(
-                color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
-                fontSize: 11,
-                height: 1.25,
+                if (presence.visible)
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: LanPresenceMark(
+                      presence: presence,
+                      size: 9,
+                      bordered: true,
+                      showBar: false,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _paired ? 'Paired' : 'Not paired',
+                    style: const TextStyle(
+                      color: ForjaShellColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  if (_paired)
+                    Text(
+                      [
+                        if (presence.server == LanServerMark.up)
+                          'Desktop online'
+                        else
+                          'Desktop offline',
+                        if (presence.session == LanSessionMark.playing)
+                          'playing',
+                      ].join(' · '),
+                      style: TextStyle(
+                        color: presence.server == LanServerMark.up
+                            ? ForjaShellColors.brandGreen
+                            : presence.serverColor,
+                        fontSize: 12,
+                        height: 1.25,
+                      ),
+                    ),
+                  Text(
+                    _paired
+                        ? '${_pairedHost ?? '?'}:${_pairedPort ?? '?'} — torrents play via desktop'
+                        : 'Pair once. Then open Sources → Torrents on a title.',
+                    style: TextStyle(
+                      color: ForjaShellColors.textSecondary
+                          .withValues(alpha: 0.85),
+                      fontSize: 11,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _reloadControl(
-              tooltip: 'Reload desktop status',
-              onPressed: () => unawaited(_reloadClientStatus()),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _reloadControl(
+                  tooltip: 'Reload desktop status',
+                  onPressed: () => unawaited(_reloadClientStatus()),
+                ),
+                if (_paired) _unpairControl(),
+              ],
             ),
-            if (_paired) _unpairControl(),
           ],
         ),
       ),
