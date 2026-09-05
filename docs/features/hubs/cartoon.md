@@ -4,7 +4,7 @@
 
 ## What it is
 
-The **كرتون** tab is a catalog hub from the ForjaHQ **Cartoon** pack (`dimatoon-hub`). It browses [Dima Toon](https://www.dima-toon.com/) — Arabic cartoon series with episode lists. Layout matches other hubs: spotlight hero, Continue Watching, latest series, popular (by episode count), and recent episodes. Playback uses the **DimaToon** Forja provider plugin (direct MP4). The host renders Catalog Shell with `surface: arabic`. The tab appears in **Settings → Features** while the Cartoon pack is enabled under **Forja Packs → Hubs** (Features visibility defaults off).
+The **كرتون** tab is a catalog hub from the ForjaHQ **Cartoon** pack (`dimatoon-hub`). It browses [Dima Toon](https://www.dima-toon.com/) — Arabic cartoon series with episode lists. Layout matches other hubs: spotlight hero, Continue Watching, latest series, popular (by episode count), and recent episodes. Playback uses the **DimaToon** Forja provider plugin (direct MP4). The host renders Catalog Shell with `surface: arabic`. The tab appears in **Settings → Features** (on by default) while the Cartoon pack is enabled under **Forja Packs → Hubs**.
 
 ## How to open it
 

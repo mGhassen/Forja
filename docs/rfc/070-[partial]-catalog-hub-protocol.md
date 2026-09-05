@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) |
-| **Current slice** | Anime SUB/DUB wired through extract + auto-play — A15 manual QA still open |
+| **Progress** | **11 / 11** components · **14 / 15** acceptance (protocol) · **12 / 12** acceptance (hub parity) · **1 / 1** acceptance (hub contribution) · **4 / 4** acceptance (host enrich) · **6 / 6** acceptance (enrich companion) · **1 / 1** acceptance (required packs) · **6 / 6** acceptance (shared cache) · **2 / 2** acceptance (host assets) · **7 / 7** acceptance (Arabic sources / open) · **5 / 5** acceptance (search capabilities) · **5 / 5** acceptance (My List host slice) · **1 / 1** acceptance (Live Sports hub) · **5 / 5** acceptance (Arabic-family chrome filters) · **3 / 3** acceptance (anime play audio) · **1 / 1** acceptance (hub Feature defaults) |
+| **Current slice** | Hub Features auto-on for new packs — A15 manual QA still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -222,6 +222,16 @@ Hub SUB/DUB play filter must drive extract + auto-play, not only Sources display
 
 ---
 
+## Acceptance (hub Feature defaults)
+
+New hub tabs always show in Features; packs never own visibility defaults.
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 1 | R70-A74 | Drop pack `nav.defaultEnabled`; host auto-shows first-seen hub `tabId`s in Features | ✅ |
+
+---
+
 ## Manual QA (A15)
 
 Desktop + Android TV D-pad — mark A15 ✅ only after this list is run:
@@ -267,8 +277,9 @@ Unset any of
 `FORJA_HQ_HOME_MANIFEST_URL` / `FORJA_HQ_ANIME_MANIFEST_URL` /
 `FORJA_HQ_ASIAN_DRAMA_MANIFEST_URL`
 fails engine boot the same way as a missing providers URL. The legacy combined
-`forjahq-hubs` pack is treated as a shadow and replaced. Arabic nav stays
-`defaultEnabled: false` until sources ship.
+`forjahq-hubs` pack is treated as a shadow and replaced. New hub `tabId`s
+auto-show under Settings → Features (host-owned; packs do not declare
+Feature defaults).
 
 ### Goals
 

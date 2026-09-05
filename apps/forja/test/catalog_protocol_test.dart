@@ -714,7 +714,6 @@ void main() {
       expect(byTab['cartoon']!.pluginId, 'dimatoon-hub');
       expect(byTab['cartoon']!.icon, 'icons/nav.png');
       expect(byTab['live_matches']!.accent, '#FB923C');
-      expect(byTab['arabic']!.defaultEnabled, isFalse);
       expect(byTab['home']!.accent, '#1CE783');
       expect(byTab['home']!.order, 10);
 

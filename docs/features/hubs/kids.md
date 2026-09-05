@@ -4,7 +4,7 @@
 
 ## What it is
 
-The **Kids** tab is a catalog hub from the ForjaHQ **Kids** pack (`dimakids-hub`). It browses [Dimakids](https://www.dimakids.com/) — Arabic dubbed kids series and movies. Layout matches other hubs: spotlight hero, Continue Watching, new series, new movies, and recent episodes. Playback uses the **Dimakids** Forja provider plugin (direct MP4). The host renders Catalog Shell with `surface: arabic`. The tab appears in **Settings → Features** while the Kids pack is enabled under **Forja Packs → Hubs** (Features visibility defaults off).
+The **Kids** tab is a catalog hub from the ForjaHQ **Kids** pack (`dimakids-hub`). It browses [Dimakids](https://www.dimakids.com/) — Arabic dubbed kids series and movies. Layout matches other hubs: spotlight hero, Continue Watching, new series, new movies, and recent episodes. Playback uses the **Dimakids** Forja provider plugin (direct MP4). The host renders Catalog Shell with `surface: arabic`. The tab appears in **Settings → Features** (on by default) while the Kids pack is enabled under **Forja Packs → Hubs**.
 
 ## How to open it
 

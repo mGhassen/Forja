@@ -122,8 +122,7 @@
             ]
           }
         },
-        "accent": { "type": "string" },
-        "defaultEnabled": { "type": "boolean" }
+        "accent": { "type": "string" }
       }
     }
   }

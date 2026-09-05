@@ -32,7 +32,6 @@
         "label": "Aflem",
         "order": 42,
         "accent": "#E879F9",
-        "defaultEnabled": false,
         "icon": "icons/nav.png"
       },
       "enabled": true,

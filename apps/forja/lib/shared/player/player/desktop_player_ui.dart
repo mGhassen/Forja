@@ -101,11 +101,11 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       return;
     }
     if (_s._showControls) {
+      // Hide only — do not arm. Next Escape arms; then confirm exits.
       debugPrint(
-        '[DesktopPlayer] Escape → hide chrome + arm (was armed=${_s._escapeExitArmed})',
+        '[DesktopPlayer] Escape → hide chrome (no arm) wasArmed=${_s._escapeExitArmed}',
       );
-      _hideChromeIntentional(armEscape: true);
-      _armEscapeExit();
+      _hideChromeIntentional(armEscape: false);
       debugPrint('[DesktopPlayer] Escape after hide armed=${_s._escapeExitArmed}');
       return;
     }

@@ -416,7 +416,7 @@ Add a shell tab with **`nav`** on a catalog plugin:
 }
 ```
 
-Omit `defaultEnabled` — host defaults Features **on**. Set `"defaultEnabled": false` only for opt-in hubs.
+Omit pack-owned Feature defaults — when a hub pack contributes a new `tabId`, the host turns that Feature **on** automatically. Users can still hide it under Settings → Features.
 
 Icons must use **`forja://asset/nav/…`** URIs (host asset catalog), not Flutter `assets/` paths.
 

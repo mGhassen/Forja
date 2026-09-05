@@ -799,7 +799,6 @@ class CatalogNavSpec {
     this.pluginId,
     this.icon,
     this.accent,
-    this.defaultEnabled = true,
   });
 
   final String tabId;
@@ -808,7 +807,6 @@ class CatalogNavSpec {
   final String? pluginId;
   final String? icon;
   final String? accent;
-  final bool defaultEnabled;
 
   static CatalogNavSpec? fromPluginNav(
     Map<String, dynamic>? nav, {
@@ -833,7 +831,6 @@ class CatalogNavSpec {
       pluginId: pluginId,
       icon: icon,
       accent: nav['accent']?.toString(),
-      defaultEnabled: nav['defaultEnabled'] != false,
     );
   }
 

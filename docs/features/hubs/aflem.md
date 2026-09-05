@@ -4,7 +4,7 @@
 
 ## What it is
 
-The **Aflem** tab is a catalog hub from the ForjaHQ **Aflem** pack (`aflem-hub`). It browses [Brstej](https://uo.brstej.com/) series — spotlight hero, Continue Watching, latest, and a ranked series rail. Playback uses the **Brstej** Forja provider plugin (direct HLS/MP4 after server unlock). The host renders Catalog Shell with `surface: arabic`. The tab appears in **Settings → Features** while the Aflem pack is enabled under **Forja Packs → Hubs** (defaults off).
+The **Aflem** tab is a catalog hub from the ForjaHQ **Aflem** pack (`aflem-hub`). It browses [Brstej](https://uo.brstej.com/) series — spotlight hero, Continue Watching, latest, and a ranked series rail. Playback uses the **Brstej** Forja provider plugin (direct HLS/MP4 after server unlock). The host renders Catalog Shell with `surface: arabic`. The tab appears in **Settings → Features** (on by default) while the Aflem pack is enabled under **Forja Packs → Hubs**.
 
 ## How to open it
 

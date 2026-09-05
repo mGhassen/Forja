@@ -33,7 +33,6 @@
         "order": 36,
         "icon": "icons/nav.png",
         "accent": "#38BDF8",
-        "defaultEnabled": false
       },
       "enabled": true,
       "config": {

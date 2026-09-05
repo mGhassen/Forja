@@ -1556,10 +1556,9 @@ class SettingsService {
     }
   }
 
-  /// After hubs pack refresh: mark new tab ids known; auto-show defaultEnabled
-  /// hubs the user has never seen (same insert rules as [getNavbarConfig]).
+  /// After hubs pack refresh: mark new tab ids known; auto-show hubs the user
+  /// has never seen (same insert rules as [getNavbarConfig]).
   Future<void> ensureNavIdsKnown({
-    required List<String> defaultEnabledIds,
     required List<String> allHubIds,
   }) async {
     registerExtraNavIds(allHubIds);
@@ -1575,7 +1574,7 @@ class SettingsService {
       if (known.contains(id)) continue;
       known.add(id);
       changed = true;
-      if (defaultEnabledIds.contains(id) && !visible.contains(id)) {
+      if (!visible.contains(id)) {
         visible.add(id);
       }
     }

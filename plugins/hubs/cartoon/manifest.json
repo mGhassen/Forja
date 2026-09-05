@@ -32,8 +32,7 @@
         "label": "كرتون",
         "order": 35,
         "icon": "icons/nav.png",
-        "accent": "#FACC15",
-        "defaultEnabled": false
+        "accent": "#FACC15"
       },
       "enabled": true,
       "config": {

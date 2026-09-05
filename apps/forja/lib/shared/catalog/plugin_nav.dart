@@ -340,7 +340,6 @@ abstract final class PluginNavRegistry {
     final builders = <String, TabBuilder>{};
     final tabPluginIds = <String, String>{};
     final extras = <String>[];
-    final defaultOn = <String>[];
     final cacheRows = <Map<String, dynamic>>[];
     final allHubTabIds = <String>{
       for (final (_, _, nav) in installed) nav.tabId,
@@ -368,7 +367,6 @@ abstract final class PluginNavRegistry {
       if (!SettingsService.allNavIds.contains(nav.tabId)) {
         extras.add(nav.tabId);
       }
-      if (nav.defaultEnabled) defaultOn.add(nav.tabId);
       cacheRows.add({
         'tabId': nav.tabId,
         'label': nav.label,
@@ -392,9 +390,8 @@ abstract final class PluginNavRegistry {
     if (extras.isNotEmpty) {
       SettingsService.registerExtraNavIds(extras);
     }
-    if (defaultOn.isNotEmpty || extras.isNotEmpty) {
+    if (dests.isNotEmpty || extras.isNotEmpty) {
       await SettingsService().ensureNavIdsKnown(
-        defaultEnabledIds: defaultOn,
         allHubIds: dests.keys.toList(),
       );
     }

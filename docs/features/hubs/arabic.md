@@ -4,7 +4,7 @@
 
 ## What it is
 
-The Arabic tab is a catalog hub from the ForjaHQ **Arabic** pack plugin `arabic-hub` (`kind: catalog`). It browses **Larozaa** only — multi-row layout like Home (spotlight, latest, Continue Watching, category rails). Playback uses the **Larozaa** Forja provider plugin. **Aflem** (Brstej) and **كرتون** (DimaToon) are separate hub packs. The host renders Catalog Shell (`surface: arabic`). The tab appears in **Settings → Features** while the Arabic pack is enabled under **Forja Packs → Hubs** (defaults off).
+The Arabic tab is a catalog hub from the ForjaHQ **Arabic** pack plugin `arabic-hub` (`kind: catalog`). It browses **Larozaa** only — multi-row layout like Home (spotlight, latest, Continue Watching, category rails). Playback uses the **Larozaa** Forja provider plugin. **Aflem** (Brstej) and **كرتون** (DimaToon) are separate hub packs. The host renders Catalog Shell (`surface: arabic`). The tab appears in **Settings → Features** (on by default) while the Arabic pack is enabled under **Forja Packs → Hubs**.
 
 ## How to open it
 
