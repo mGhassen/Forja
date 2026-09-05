@@ -238,7 +238,7 @@ String _hubTmdbUiCacheKey(CatalogMetaItem meta) {
 }
 
 String _hubHeroCacheKey(CatalogMetaItem meta) =>
-    '${meta.id}|${meta.background}|${meta.bannerImage}';
+    '${meta.id}|${meta.background}|${meta.bannerImage}|${meta.poster}';
 
 List<String> _packHeroBackdropUrls(CatalogMetaItem meta) {
   final cacheKey = _hubHeroCacheKey(meta);

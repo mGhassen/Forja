@@ -612,6 +612,7 @@ class CatalogMetaItem {
   CatalogMetaItem copyWith({
     String? name,
     String? poster,
+    String? background,
     String? description,
     List<CatalogVideo>? videos,
     bool? airing,
@@ -625,7 +626,7 @@ class CatalogMetaItem {
         type: type,
         name: name ?? this.name,
         poster: poster ?? this.poster,
-        background: background,
+        background: background ?? this.background,
         description: description ?? this.description,
         rating: rating,
         releaseInfo: releaseInfo,

@@ -19,7 +19,7 @@ Enable the ForjaHQ Aflem pack under **Settings → Forja Packs → Hubs**, turn 
 
 ## Tips
 
-- Use **Settings → Forja Packs → Refresh** after a pack update so browse/extract scripts reload
+- Use **Settings → Forja Packs → Refresh** after a pack update so browse/extract scripts reload (needed for details poster/synopsis fixes)
 - Larozaa movies/series stay on the [Arabic](arabic.md) tab
 - Arabic cartoons stay on **[كرتون](cartoon.md)**
 

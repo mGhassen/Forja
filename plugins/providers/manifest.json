@@ -1207,7 +1207,9 @@
       "entry": "hops/hanime.js",
       "types": [
         "movie",
-        "tv"
+        "tv",
+        "anime",
+        "drama"
       ],
       "kind": "hop",
       "hosts": [

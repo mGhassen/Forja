@@ -144,6 +144,34 @@ List<CatalogVideo> hubVideosForSeason(List<CatalogVideo> videos, int season) {
 
 String hubImageUrl(String path) => resolveHubCoverUrl(path.trim());
 
+/// Keep list/seed artwork when `details` returns episodes but empty poster.
+CatalogMetaItem hubMergeDetailsSeed(
+  CatalogMetaItem details,
+  CatalogMetaItem seed,
+) {
+  final poster = details.poster.trim().isNotEmpty
+      ? details.poster
+      : seed.poster;
+  final background = details.background.trim().isNotEmpty
+      ? details.background
+      : (seed.background.trim().isNotEmpty
+          ? seed.background
+          : poster);
+  final description = details.description.trim().isNotEmpty
+      ? details.description
+      : seed.description;
+  if (poster == details.poster &&
+      background == details.background &&
+      description == details.description) {
+    return details;
+  }
+  return details.copyWith(
+    poster: poster,
+    background: background,
+    description: description,
+  );
+}
+
 String? hubShellTabIdForPlugin(String pluginId) =>
     PluginNavRegistry.tabIdForPluginSync(pluginId);
 

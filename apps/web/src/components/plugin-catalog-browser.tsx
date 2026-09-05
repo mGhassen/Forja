@@ -31,8 +31,9 @@ import {
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 10
-/** Shared catalog pane height — list + detail fill the same column. */
-const CATALOG_PANE_HEIGHT_CLASS = 'h-[min(42rem,78vh)]'
+/** Left = 10 rows + chrome; right = 7 rows. Heights are independent (`items-start`). */
+const LIST_PANEL_HEIGHT_CLASS = 'h-[calc(5.25rem+10*3.5rem)]'
+const DETAIL_PANEL_HEIGHT_CLASS = 'h-[calc(7*3.5rem)]'
 
 function paginate<T>(items: T[], page: number) {
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
@@ -570,27 +571,21 @@ export function PluginCatalogBrowser({
 
         <div
           className={cn(
-            'overflow-hidden rounded-xl border border-white/10 bg-[#121110]',
-            showDetail && CATALOG_PANE_HEIGHT_CLASS,
+            'grid items-start gap-3',
+            showDetail
+              ? 'lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]'
+              : 'lg:grid-cols-1',
           )}
         >
           <div
             className={cn(
-              'grid h-full',
-              showDetail
-                ? 'lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]'
-                : 'lg:grid-cols-1',
+              'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#121110]',
+              LIST_PANEL_HEIGHT_CLASS,
+              mobileDetailOpen && showDetail ? 'hidden lg:flex' : 'flex',
             )}
           >
-            <div
-              className={cn(
-                'flex min-h-0 min-w-0 flex-col border-white/10',
-                showDetail && 'lg:border-r',
-                mobileDetailOpen && showDetail ? 'hidden lg:flex' : 'flex',
-              )}
-            >
               {showMultiAdd ? (
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-forja-green/25 bg-forja-green/10 px-3 py-2.5 sm:px-4">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-forja-green/25 bg-forja-green/10 px-3 py-2.5 sm:px-4">
                   <p className="font-mono-ui text-[10px] uppercase tracking-wider text-forja-green">
                     {checkedIds.size} packs selected
                     <span className="ml-2 text-[rgba(237,230,218,0.45)]">
@@ -609,7 +604,7 @@ export function PluginCatalogBrowser({
                   </button>
                 </div>
               ) : (
-                <div className="border-b border-white/[0.06] px-3 py-2 sm:px-4">
+                <div className="shrink-0 border-b border-white/[0.06] px-3 py-2 sm:px-4">
                   <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
                     Packs · click for details · checkbox or Shift+click to select
                   </p>
@@ -667,15 +662,21 @@ export function PluginCatalogBrowser({
                     </Button>
                   </div>
                 </div>
-              ) : null}
-            </div>
-
-            {showDetail && detail ? (
-              <aside className="hidden h-full min-h-0 flex-col lg:flex">
-                <PluginDetailPanel pack={detail} onClose={closeDetail} />
-              </aside>
-            ) : null}
+              ) : (
+                <div className="h-[2.75rem] shrink-0 border-t border-transparent" aria-hidden />
+              )}
           </div>
+
+          {showDetail && detail ? (
+            <aside
+              className={cn(
+                'hidden min-h-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#121110] lg:flex',
+                DETAIL_PANEL_HEIGHT_CLASS,
+              )}
+            >
+              <PluginDetailPanel pack={detail} onClose={closeDetail} />
+            </aside>
+          ) : null}
         </div>
 
         {mobileDetailOpen && detail && showDetail ? (

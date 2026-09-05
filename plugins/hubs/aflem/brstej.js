@@ -246,6 +246,65 @@ function brstejImg($, el, base) {
   return brstejAbs(base, poster);
 }
 
+/** Prefer og/articles (early in page) over related-thumbs blocks. */
+function brstejPickPoster($, base) {
+  var og = $('meta[property="og:image"]').first();
+  if (og.length) {
+    var ogUrl = (og.attr('content') || '').trim();
+    if (ogUrl) return brstejAbs(base, ogUrl);
+  }
+  var thumbMeta = $('meta[itemprop="thumbnailUrl"]').first();
+  if (thumbMeta.length) {
+    var thumb = (thumbMeta.attr('content') || '').trim();
+    if (thumb) return brstejAbs(base, thumb);
+  }
+  var selectors = [
+    'img[data-echo*="uploads/articles"]',
+    'img[src*="uploads/articles"]',
+    'img[data-echo*="uploads/thumbs"]',
+    'img[src*="uploads/thumbs"]',
+    'img[data-src*="uploads/articles"]',
+    'img[data-src*="uploads/thumbs"]',
+  ];
+  for (var i = 0; i < selectors.length; i++) {
+    var img = $(selectors[i]).first();
+    if (!img.length) continue;
+    var url = brstejImg($, img, base);
+    if (url) return url;
+  }
+  return '';
+}
+
+function brstejPickDescription($) {
+  var metas = [
+    'meta[property="og:description"]',
+    'meta[name="description"]',
+    'meta[itemprop="description"]',
+  ];
+  for (var i = 0; i < metas.length; i++) {
+    var m = $(metas[i]).first();
+    if (!m.length) continue;
+    var c = (m.attr('content') || '').trim();
+    if (c) return c;
+  }
+  var sels = ['.pm-video-description', '.description', '.story', '.txtv'];
+  for (var j = 0; j < sels.length; j++) {
+    var el = $(sels[j]).first();
+    if (!el.length) continue;
+    var text = (el.text() || '').replace(/\s+/g, ' ').trim();
+    if (text.length > 40) return text;
+  }
+  return '';
+}
+
+function brstejFillVideoThumbs(videos, poster) {
+  poster = String(poster || '').trim();
+  if (!poster || !videos || !videos.length) return;
+  for (var i = 0; i < videos.length; i++) {
+    if (!videos[i].thumbnail) videos[i].thumbnail = poster;
+  }
+}
+
 function brstejMeta(id, title, poster, opts) {
   opts = opts || {};
   title = String(title || '').trim();
@@ -686,15 +745,8 @@ function brstejParseSerieHtml(ctx, html, base) {
 
   var title = ($('h1').first().text() || $('h2').first().text() || '').trim();
   out.title = brstejStripPrefix(title);
-
-  var posterImg = $('img[src*="uploads/thumbs"]').first();
-  if (!posterImg.length) posterImg = $('img[data-echo*="uploads/thumbs"]').first();
-  if (posterImg.length) out.poster = brstejImg($, posterImg, base);
-
-  var descEl = $('.pm-video-description').first();
-  if (!descEl.length) descEl = $('.description').first();
-  if (!descEl.length) descEl = $('.story').first();
-  out.description = (descEl.text() || '').trim();
+  out.poster = brstejPickPoster($, base);
+  out.description = brstejPickDescription($);
 
   var seasonButtons = $('.SeasonsBoxUL button.tablinks');
   if (seasonButtons.length) {
@@ -720,6 +772,7 @@ function brstejParseSerieHtml(ctx, html, base) {
     );
     for (var j = 0; j < eps.length; j++) out.videos.push(eps[j]);
   }
+  brstejFillVideoThumbs(out.videos, out.poster);
   return out;
 }
 
@@ -733,18 +786,8 @@ function brstejParseWatchHtml(ctx, html, base) {
     ? (nameMeta.attr('content') || '').trim()
     : ($('h1').first().text() || '').trim();
   out.title = brstejStripPrefix(brstejStripEpisode(title));
-
-  var thumbMeta = $('meta[itemprop="thumbnailUrl"]').first();
-  out.poster = thumbMeta.length ? (thumbMeta.attr('content') || '').trim() : '';
-  if (!out.poster) {
-    var img = $('img[src*="uploads/thumbs"]').first();
-    if (img.length) out.poster = brstejImg($, img, base);
-  }
-
-  var descMeta = $('meta[itemprop="description"]').first();
-  out.description = descMeta.length
-    ? (descMeta.attr('content') || '').trim()
-    : '';
+  out.poster = brstejPickPoster($, base);
+  out.description = brstejPickDescription($);
 
   var seasonLis = $('.SeasonsBoxUL li[data-serie]');
   if (seasonLis.length) {
@@ -769,6 +812,7 @@ function brstejParseWatchHtml(ctx, html, base) {
     );
     for (var j = 0; j < eps.length; j++) out.videos.push(eps[j]);
   }
+  brstejFillVideoThumbs(out.videos, out.poster);
   return out;
 }
 
@@ -821,7 +865,8 @@ function brstejDetails(ctx, cfg, params) {
         ? brstejParseWatchHtml(ctx, got.html, origin)
         : brstejParseSerieHtml(ctx, got.html, origin);
       var name = parsed.title || showId;
-      var meta = brstejMeta(showId, name, parsed.poster || '', {
+      var poster = parsed.poster || '';
+      var meta = brstejMeta(showId, name, poster, {
         description: parsed.description,
         url: ref.url || url,
       });
@@ -830,6 +875,7 @@ function brstejDetails(ctx, cfg, params) {
       }
       meta.id = ref.fullId;
       meta.description = parsed.description || '';
+      meta.background = poster;
       meta.videos = parsed.videos || [];
       return hubOk('details', { meta: meta }, { maxAge: 900, swr: 3600 });
     })

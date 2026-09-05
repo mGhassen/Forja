@@ -97,6 +97,52 @@ void main() {
     });
   });
 
+  group('hubMergeDetailsSeed', () {
+    test('keeps seed poster when details poster empty', () {
+      const seed = CatalogMetaItem(
+        id: 'brstej:watch:abc',
+        type: 'arabic',
+        name: 'Show',
+        poster: 'https://example.com/seed.jpg',
+        description: 'from list',
+      );
+      const details = CatalogMetaItem(
+        id: 'brstej:watch:abc',
+        type: 'arabic',
+        name: 'Show',
+        videos: [
+          CatalogVideo(id: '1', title: 'Ep 1', episode: 1),
+        ],
+      );
+      final merged = hubMergeDetailsSeed(details, seed);
+      expect(merged.poster, 'https://example.com/seed.jpg');
+      expect(merged.background, 'https://example.com/seed.jpg');
+      expect(merged.description, 'from list');
+      expect(merged.videos, hasLength(1));
+    });
+
+    test('prefers details artwork when present', () {
+      const seed = CatalogMetaItem(
+        id: 'brstej:watch:abc',
+        type: 'arabic',
+        name: 'Show',
+        poster: 'https://example.com/seed.jpg',
+      );
+      const details = CatalogMetaItem(
+        id: 'brstej:watch:abc',
+        type: 'arabic',
+        name: 'Show',
+        poster: 'https://example.com/details.jpg',
+        background: 'https://example.com/bg.jpg',
+        description: 'synopsis',
+      );
+      final merged = hubMergeDetailsSeed(details, seed);
+      expect(merged.poster, 'https://example.com/details.jpg');
+      expect(merged.background, 'https://example.com/bg.jpg');
+      expect(merged.description, 'synopsis');
+    });
+  });
+
   group('hubMetaPremiereDateLabel', () {
     test('formats ISO premiere for hero notice', () {
       const meta = CatalogMetaItem(

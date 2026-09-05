@@ -423,7 +423,7 @@ class _HubDetailsScreenState extends ConsumerState<HubDetailsScreen> {
       });
       return;
     }
-    final meta = env.meta ?? widget.item;
+    final meta = hubMergeDetailsSeed(env.meta ?? widget.item, widget.item);
     final packRails = parseHubDetailRails(env.data);
     final backdrops = hubHeroBackdropUrls(meta);
     if (!mounted) return;
