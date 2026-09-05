@@ -94,12 +94,9 @@ class _ShellScaffoldState extends State<ShellScaffold> {
     final tvSafeLeft = shellTvSafeHorizontalInset(context);
     final tvSafeRight = shellTvSafeHorizontalInsetRight(context);
     final railWidth = railPainted ? metrics.navRailWidth : 0.0;
-    // Desktop empty get-started: full-bleed center (rail overlays, logo hidden).
-    // TV: keep rail inset so cards never slide under the nav.
+    // Empty get-started: full-bleed center (rail overlays, logo hidden).
     final contentLeftInset =
-        (emptyFeaturesGate && !metrics.usesTvDensity)
-            ? tvSafeLeft
-            : tvSafeLeft + railWidth;
+        emptyFeaturesGate ? tvSafeLeft : tvSafeLeft + railWidth;
 
     Widget body = Stack(
       children: [

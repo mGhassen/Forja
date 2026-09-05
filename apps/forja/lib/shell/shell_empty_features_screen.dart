@@ -195,23 +195,21 @@ class _ShellEmptyFeaturesScreenState
                           height: 1.2,
                         ),
                       ),
-                      SizedBox(height: tv ? 8 : 12),
+                      SizedBox(height: tv ? 10 : 14),
                       Text(
-                        tv
-                            ? 'Enable Addons and Features, or install packs.'
-                            : 'Forja is built from plugins. Enable Addons and Features '
-                                'in Settings, or install catalog and stream packs for a '
-                                'fuller experience.',
+                        'Pick Addons, Features, or install packs.',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.plusJakartaSans(
-                          color: ForjaShellColors.textSecondary.withValues(
-                            alpha: 0.92,
+                          color: ForjaShellColors.textPrimary.withValues(
+                            alpha: 0.62,
                           ),
                           fontSize: bodySize,
-                          height: 1.45,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.1,
+                          height: 1.35,
                         ),
                       ),
-                      SizedBox(height: tv ? 16 : 28),
+                      SizedBox(height: tv ? 20 : 32),
                       if (horizontal)
                         IntrinsicHeight(
                           child: Row(
@@ -249,20 +247,6 @@ class _ShellEmptyFeaturesScreenState
                             ],
                           ],
                         ),
-                      if (!tv) ...[
-                        const SizedBox(height: 20),
-                        Text(
-                          'Use your profile avatar to open Settings.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: ForjaShellColors.textSecondary.withValues(
-                              alpha: 0.65,
-                            ),
-                            fontSize: 12,
-                            height: 1.4,
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -326,10 +310,17 @@ class _HintCardState extends State<_HintCard> {
   bool _hover = false;
   bool _focused = false;
 
-  bool get _lit => _hover || _focused;
+  /// Desktop: mouse hover only. Focus fill sticks after click otherwise.
+  /// TV / keyboard: use shell chrome visibility (same as FocusableControl).
+  bool _isLit(BuildContext context) {
+    if (_hover) return true;
+    final policy = ShellScope.inputPolicyOf(context);
+    return policy.focusChromeVisible(context, focused: _focused);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final lit = _isLit(context);
     final accent = widget.spec.accent;
     final pad = widget.compact ? 14.0 : 18.0;
     final titleSize = widget.compact ? 15.0 : 16.0;
@@ -338,23 +329,21 @@ class _HintCardState extends State<_HintCard> {
     final radius = 16.0;
 
     final idleBg = ForjaShellColors.surfaceElevated.withValues(alpha: 0.28);
-    // Hover / focus = solid accent fill (not washed white).
-    final litBg = accent;
-    final onLit = const Color(0xFF0B1220);
-    final titleColor = _lit ? onLit : accent;
-    final bodyColor = _lit
-        ? onLit.withValues(alpha: 0.78)
+    final litBg = accent.withValues(alpha: 0.28);
+    final titleColor = accent;
+    final bodyColor = lit
+        ? ForjaShellColors.textPrimary.withValues(alpha: 0.92)
         : ForjaShellColors.textSecondary.withValues(alpha: 0.9);
-    final iconColor = _lit ? onLit : accent;
+    final iconColor = accent;
     final borderColor = accent;
 
     final inner = AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
-        color: _lit ? litBg : idleBg,
+        color: lit ? litBg : idleBg,
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: borderColor, width: _lit ? 1.5 : 1.2),
+        border: Border.all(color: borderColor, width: lit ? 1.5 : 1.2),
       ),
       child: Padding(
         padding: EdgeInsets.all(pad),
