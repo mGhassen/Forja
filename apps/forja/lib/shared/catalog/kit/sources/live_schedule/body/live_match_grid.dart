@@ -462,11 +462,10 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
   }
 
   Widget _buildStreamsPanelStack(BuildContext context, Widget content) {
-    const panelWidth = 420.0;
     final match = _s._streamsPanelMatch;
     if (match == null) return content;
     final wide = MediaQuery.sizeOf(context).width >= 900;
-    final useSidePanel = wide || ShellTokens.isAndroidTvDevice;
+    final useSideSplit = wide || ShellTokens.isAndroidTvDevice;
     final panel = KeyedSubtree(
       key: ValueKey('live-streams-${match.id}'),
       child: _LiveMatchDetailsScreen(
@@ -476,43 +475,54 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         asSidePanel: true,
       ),
     );
+    // Desktop / TV: list 60% + panel 40% side-by-side (panel pushes list).
+    if (useSideSplit) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(flex: 60, child: content),
+          Expanded(
+            flex: 40,
+            child: Material(
+              color: ForjaShellColors.surfaceElevated,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  border: Border(
+                    left: BorderSide(color: ForjaShellColors.borderSubtle),
+                  ),
+                ),
+                child: panel,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    // Phone: sheet overlay (list stays full-bleed under scrim).
     return Stack(
       children: [
         content,
-        if (useSidePanel)
-          Positioned(
-            top: 0,
-            right: 0,
-            bottom: 0,
-            width: panelWidth,
-            child: Material(
-              elevation: 8,
-              color: ForjaShellColors.surfaceElevated,
-              child: panel,
-            ),
-          )
-        else
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: _s.closeMatchStreamsPanel,
-              child: ColoredBox(
-                color: Colors.black.withValues(alpha: 0.45),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: SizedBox(
-                      width: MediaQuery.sizeOf(context).width * 0.92,
-                      child: Material(
-                        color: ForjaShellColors.surfaceElevated,
-                        child: panel,
-                      ),
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: _s.closeMatchStreamsPanel,
+            child: ColoredBox(
+              color: Colors.black.withValues(alpha: 0.45),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () {},
+                  child: SizedBox(
+                    width: MediaQuery.sizeOf(context).width * 0.92,
+                    child: Material(
+                      color: ForjaShellColors.surfaceElevated,
+                      child: panel,
                     ),
                   ),
                 ),
               ),
             ),
           ),
+        ),
       ],
     );
   }
