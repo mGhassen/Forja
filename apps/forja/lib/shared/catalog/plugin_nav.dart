@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 abstract final class PluginNavRegistry {
   static const coreShellNavIds = {
     'iptv',
+    'live_matches',
     'settings',
   };
 
@@ -338,7 +339,7 @@ abstract final class PluginNavRegistry {
       if (allKnownHubTabIds.isNotEmpty) {
         await SettingsService().syncActiveHubNavIds(
           activeHubIds: const {},
-          knownHubIds: allKnownHubTabIds,
+          knownHubIds: allKnownHubTabIds.difference(coreShellNavIds),
         );
       }
       if (hadHubs) {
@@ -416,8 +417,8 @@ abstract final class PluginNavRegistry {
       );
     }
     await SettingsService().syncActiveHubNavIds(
-      activeHubIds: dests.keys.toSet(),
-      knownHubIds: allHubTabIds,
+      activeHubIds: dests.keys.toSet().difference(coreShellNavIds),
+      knownHubIds: allHubTabIds.difference(coreShellNavIds),
     );
     if (dests.isNotEmpty) {
       await _persistNavSnapshot(destinationRows: cacheRows);

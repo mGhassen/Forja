@@ -1019,7 +1019,10 @@ void main() {
     expect(navDestinations.containsKey('mylist'), isFalse);
     expect(navDestinations.containsKey('search'), isFalse);
     expect(SettingsService.defaultVisibleNavIds, contains('iptv'));
-    expect(SettingsService.defaultVisibleNavIds, contains('live_matches'));
+    // Live Sports is host-core (contributed) but not forced on fresh install —
+    // visibility is Addons / Features prefs (RFC-084).
+    expect(SettingsService.defaultVisibleNavIds, isNot(contains('live_matches')));
+    expect(PluginNavRegistry.isContributed('live_matches'), isTrue);
   });
 
   test('archived nav ids are not registered in shell', () {

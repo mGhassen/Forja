@@ -2,10 +2,17 @@ part of '../live_sports_hub_page.dart';
 
 enum _LiveMatchListTab { providers, liveTv }
 
-/// Play/details host for match chrome (RFC-073) — hub state implements this.
+/// Play/details host for match chrome (RFC-073 / RFC-084) — hub state implements this.
 abstract class _LiveSportsPlayHost {
   bool get mounted;
   BuildContext get context;
+
+  void openMatchStreamsPanel({
+    required _StreamedMatch match,
+    _IframeCatalogStream? iframeCatalogAnchor,
+  });
+
+  void closeMatchStreamsPanel();
 
   Future<void> fillMatchDetailsProviders({
     required _StreamedMatch match,
@@ -42,17 +49,19 @@ abstract class _LiveSportsPlayHost {
   int cardViewersForMatch(_StreamedMatch match);
 }
 
-/// Match detail — catalog-kit hero + stream cards (replaces Sources-only flow).
+/// Match streams chrome — side panel (RFC-084) or legacy full-page hero.
 class _LiveMatchDetailsScreen extends ConsumerStatefulWidget {
   const _LiveMatchDetailsScreen({
     required this.host,
     required this.match,
     this.iframeCatalogAnchor,
+    this.asSidePanel = false,
   });
 
   final _LiveSportsPlayHost host;
   final _StreamedMatch match;
   final _IframeCatalogStream? iframeCatalogAnchor;
+  final bool asSidePanel;
 
   @override
   ConsumerState<_LiveMatchDetailsScreen> createState() =>
@@ -556,6 +565,10 @@ class _LiveMatchDetailsScreenState
     );
   }
   void _focusBack() {
+    if (widget.asSidePanel) {
+      widget.host.closeMatchStreamsPanel();
+      return;
+    }
     if (_backFocus.canRequestFocus) {
       _backFocus.requestFocus();
     } else {
@@ -628,6 +641,79 @@ class _LiveMatchDetailsScreenState
     final tvFocus = policy.useFocusableMoodChips;
     final backdrop = _streamedImageUrl(_displayMatch.poster);
     final viewport = MediaQuery.sizeOf(context);
+
+    if (widget.asSidePanel) {
+      return Material(
+        color: ForjaShellColors.surfaceElevated,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 4, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _heroTitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (_heroMetaParts.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              _heroMetaParts.join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.65),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  shellFocusableTap(
+                    context: context,
+                    onTap: () => widget.host.closeMatchStreamsPanel(),
+                    borderRadius: 16,
+                    child: const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: Icon(Icons.close_rounded, color: Colors.white70),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: _buildToggleRow(tvFocus: tvFocus),
+            ),
+            const Divider(height: 1, color: ForjaShellColors.borderSubtle),
+            Expanded(
+              child: _showStreamsList
+                  ? _buildStreamsListPanel(tvFocus: tvFocus)
+                  : const Center(
+                      child: SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (policy.heroPlayAutoFocus && !_detailsHeroInitialFocusDone) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1466,16 +1552,8 @@ Future<void> _openLiveMatchDetails({
   _IframeCatalogStream? iframeCatalogAnchor,
 }) async {
   if (!host.mounted) return;
-  await pushShellRoute(
-    host.context,
-    AppRouter.slideShellRoute(
-      (_) => _LiveMatchDetailsScreen(
-        host: host,
-        match: match,
-        iframeCatalogAnchor: iframeCatalogAnchor,
-      ),
-      settings: const RouteSettings(name: 'live_matches_detail'),
-    ),
-    shellTabId: LiveSportsHubPageState._tabId,
+  host.openMatchStreamsPanel(
+    match: match,
+    iframeCatalogAnchor: iframeCatalogAnchor,
   );
 }

@@ -239,6 +239,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [217-[fixed]-…](fixed/217-[fixed]-iptv-portals-bleed-across-profiles.md) | Profile switch leaks prior IPTV portals | P0 | Critical | fixed | Complete · 3/3 · A 2/2 | — |
 | [218-[fixed]-…](fixed/218-[fixed]-dimatoon-green-play-probe-false-fail.md) | كرتون green Play fails; Sources stream plays | P1 | High | fixed | Complete · 3/3 · A 1/2 | — |
 | [219-[fixed]-…](fixed/219-[fixed]-plugin-update-green-play-stale-session-cache.md) | Green Play fails after every plugin pack update | P1 | High | fixed | Complete · 4/4 · A 2/3 | — |
+| [220-[open]-…](220-[open]-live-sports-addon-nav-without-hub-pack.md) | Live Sports Addons ON but no navbar tab | P1 | High | open | 4/4 · A 3/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

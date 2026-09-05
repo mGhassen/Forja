@@ -388,16 +388,15 @@ class _SettingsForjaPacksSectionState
     if (_engineInstalling || _engineReloading) return;
     setState(() => _engineInstalling = true);
     try {
-      final failures = await installOfficialForjaHqPacks();
+      final outcome = await promptOfficialForjaHqPackInstall();
       if (!mounted) return;
-      ref.invalidate(enginePacksProvider);
-      unawaited(ref.read(enginePackUpdatesProvider.notifier).refresh());
-      if (failures.isEmpty) {
-        ForjaToast.success('Official ForjaHQ packs installed');
-      } else {
-        ForjaToast.error(
-          'Installed with ${failures.length} error(s): ${failures.take(2).join(', ')}',
-        );
+      switch (outcome) {
+        case OfficialPackPromptOutcome.alreadyInstalled:
+          ForjaToast.success('All official packs already installed');
+        case OfficialPackPromptOutcome.busy:
+          ForjaToast.info('Finish the current pack prompt first');
+        case OfficialPackPromptOutcome.prompted:
+          break;
       }
     } catch (e) {
       if (!mounted) return;

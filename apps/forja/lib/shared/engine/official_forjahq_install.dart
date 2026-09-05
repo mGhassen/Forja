@@ -4,7 +4,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/official_forjahq_packs.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
+import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/plugin_registry.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:http/http.dart' as http;
 
 /// Resolve official ForjaHQ packs (catalog filter + baked URL fallback).
@@ -57,7 +59,85 @@ typedef OfficialPackInstallProgress = void Function({
   required String status,
 });
 
+/// Outcome of [promptOfficialForjaHqPackInstall] (Settings — never silent).
+enum OfficialPackPromptOutcome {
+  /// Single or batch install dialog queued.
+  prompted,
+
+  /// Every official pack is already fully installed on disk.
+  alreadyInstalled,
+
+  /// Another install/uninstall prompt is already pending.
+  busy,
+}
+
+/// Build install candidates for official packs that still need a download.
+@visibleForTesting
+List<PluginInstallCandidate> officialPackCandidatesMissing({
+  required List<OfficialForjaHqPack> targets,
+  required Set<String> fullyInstalledUrls,
+}) {
+  final out = <PluginInstallCandidate>[];
+  for (final pack in targets) {
+    final url = pack.manifestUrl.trim();
+    if (url.isEmpty) continue;
+    if (fullyInstalledUrls.contains(url)) continue;
+    out.add(
+      PluginInstallCandidate(
+        manifestUrl: url,
+        displayName: pack.name,
+      ),
+    );
+  }
+  return out;
+}
+
+/// Settings → Official packs: show the checkbox picker; never auto-download all.
+Future<OfficialPackPromptOutcome> promptOfficialForjaHqPackInstall() async {
+  if (ShellBus.pendingPluginInstallQueue.value.isNotEmpty ||
+      ShellBus.pendingPluginBatchInstall.value != null) {
+    return OfficialPackPromptOutcome.busy;
+  }
+
+  final targets = await resolveOfficialForjaHqPacks();
+  final installed = await PluginRegistry.instance.listPacksRaw();
+  final fullyInstalled = <String>{};
+  for (final pack in installed) {
+    final url = pack.sourceUrl.trim();
+    if (url.isEmpty) continue;
+    if (await PluginRegistry.instance.packNeedsDiskInstall(pack)) continue;
+    fullyInstalled.add(url);
+  }
+
+  final candidates = officialPackCandidatesMissing(
+    targets: targets,
+    fullyInstalledUrls: fullyInstalled,
+  );
+  if (candidates.isEmpty) {
+    return OfficialPackPromptOutcome.alreadyInstalled;
+  }
+
+  if (candidates.length == 1) {
+    final only = candidates.first;
+    ShellBus.enqueuePluginInstall(
+      PluginInstallPrompt(
+        manifestUrl: only.manifestUrl,
+        displayName: only.displayName,
+        source: PluginInstallSource.settings,
+      ),
+    );
+    return OfficialPackPromptOutcome.prompted;
+  }
+
+  ShellBus.pendingPluginBatchInstall.value =
+      PluginBatchInstallPrompt(candidates: candidates);
+  return OfficialPackPromptOutcome.prompted;
+}
+
 /// Sequential install of missing official packs. Returns failed pack names.
+///
+/// Used by packs onboarding (explicit “install the bundle” CTA). Settings uses
+/// [promptOfficialForjaHqPackInstall] instead.
 Future<List<String>> installOfficialForjaHqPacks({
   OfficialPackInstallProgress? onProgress,
 }) async {

@@ -8,8 +8,8 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **10 / 10** acceptance |
-| **Current slice** | Desktop + Android TV — synced `onboarded` + packs wizard shipped |
+| **Progress** | **5 / 5** components · **11 / 11** acceptance |
+| **Current slice** | Desktop + Android TV — synced `onboarded` + packs wizard; Settings Official uses picker |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -41,12 +41,15 @@
 | 8 | R80-A08 | Mid-session Who's watching unchanged (no packs step) | ✅ |
 | 9 | R80-A09 | ATV: D-pad focus on Install / Skip / browse; focus ≠ activate | ✅ |
 | 10 | R80-A10 | Feature docs + changelog | ✅ |
+| 11 | R80-A11 | Settings → Forja Packs **Official packs** opens checkbox picker (no silent install-all) | ✅ |
 
 ---
 
 ## Summary
 
 After sign-in on desktop / Android TV, once a profile is active, show a packs onboarding step when the profile is **not onboarded**. Primary CTA installs all official ForjaHQ packs; users can browse Community Packs or Skip. Synced `onboarded` covers **new users** and **upgrades** that would otherwise land in an empty shell (no default pack auto-install).
+
+**Settings → Official packs** uses the same batch checkbox picker as profile/Community installs — it does not silently download the full bundle. Onboarding’s Install CTA still installs the full official set in one go.
 
 ### Trigger
 

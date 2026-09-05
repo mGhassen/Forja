@@ -22,6 +22,8 @@ import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
+import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
+import 'package:forja/shared/catalog/kit/sources/catalog_kit_list_source.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_prefs.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_sport_filter.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_stremio_meta.dart';
@@ -46,7 +48,6 @@ import 'package:forja/shared/widgets/hero/hero_pill_buttons.dart';
 import 'package:forja/shared/widgets/hub_details/hub_details_play_row.dart';
 import 'package:forja/shared/widgets/media_details_body.dart';
 import 'package:forja/shared/widgets/tv_browse_text_field.dart';
-import 'package:forja/shell/app_router.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:rust/rust.dart';
 
@@ -94,7 +95,8 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
         _LiveMatchesBuild,
         _LiveMatchesPlayback
     implements _LiveSportsPlayHost {
-  static const _tabId = 'live_matches';
+  static const tabId = 'live_matches';
+  static const _tabId = tabId;
   static const _topBarRowId = 'live-top-bar';
   static const _chipRowId = 'sport-chips';
   static const _gridRowId = 'grid';
@@ -170,6 +172,44 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
 
   /// Prevent stacking Catalog / Time bottom sheets on double-tap.
   bool _topBarSheetOpen = false;
+
+  /// Selected match for the in-page streams panel (RFC-084 — no details route).
+  _StreamedMatch? _streamsPanelMatch;
+  _IframeCatalogStream? _streamsPanelIframeAnchor;
+
+  @override
+  void openMatchStreamsPanel({
+    required _StreamedMatch match,
+    _IframeCatalogStream? iframeCatalogAnchor,
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _streamsPanelMatch = match;
+      _streamsPanelIframeAnchor = iframeCatalogAnchor;
+    });
+  }
+
+  @override
+  void closeMatchStreamsPanel() {
+    if (!mounted || _streamsPanelMatch == null) return;
+    setState(() {
+      _streamsPanelMatch = null;
+      _streamsPanelIframeAnchor = null;
+    });
+  }
+
+  /// Dense list when layout says so (host default); `style: grid` keeps cards.
+  bool get useDenseMatchList {
+    for (final w in widget.layoutWidgets) {
+      final type = (w['type'] ?? '').toString();
+      if (type != CatalogKitTypes.list && type != 'list') continue;
+      final src = (w['source'] ?? CatalogKitListSources.liveSchedule).toString();
+      if (src != CatalogKitListSources.liveSchedule) continue;
+      final style = (w['style'] ?? 'list').toString().trim().toLowerCase();
+      return style != 'grid' && style != 'cards';
+    }
+    return true;
+  }
 
   int get _topBarCatalogIndex => 0;
 

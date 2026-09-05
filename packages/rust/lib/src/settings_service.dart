@@ -1529,8 +1529,9 @@ class SettingsService {
   }
 
   /// Host / archived shell ids only. Catalog hub tab ids register via
-  /// [registerExtraNavIds] when packs contribute `nav` — never list pack hubs
+  /// [registerExtraNavIds] when packs contribute `nav` — never list VOD hubs
   /// here or fresh-install [navbar_known_ids] blocks first-seen auto-show.
+  /// [live_matches] is host core (RFC-084), same class as [iptv].
   static const List<String> _baseAllNavIds = [
     'discover',
     'similar',
@@ -1538,6 +1539,7 @@ class SettingsService {
     'downloader',
     'magnet',
     'iptv',
+    'live_matches',
     'audiobooks',
     'books',
     'music',

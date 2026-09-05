@@ -12,6 +12,7 @@ function liveSportsLayout() {
             [
               kitList('grid', {
                 source: 'live_schedule',
+                style: 'list',
                 expand: true,
               }),
             ],

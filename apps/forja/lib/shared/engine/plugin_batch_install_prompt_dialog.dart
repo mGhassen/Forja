@@ -222,8 +222,7 @@ class _PluginBatchInstallPromptBodyState
           'Choose what to apply here — the rest can wait in Settings → Forja Packs.';
     }
     return 'Choose which packs to download on this device. '
-        'Profile sync keeps the full list — you can install the rest later '
-        'in Settings → Forja Packs.';
+        'You can install the rest later in Settings → Forja Packs.';
   }
 
   String get _primaryLabel {

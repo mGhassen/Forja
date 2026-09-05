@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Fresh install (host-owned):** IPTV and Settings. **Catalog hubs** (Home, Anime, Asian Drama, Live Sports, My List, Arabic, Aflem, كرتون, Kids, …) appear when their ForjaHQ hub packs install — each pack’s `nav` contributes the tab, and Features turns it **on** the first time the host sees it. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Fresh install (host-owned):** IPTV and Settings. **Live Sports** is also host-owned (core tab) but stays off until **Settings → Addons → Live Sports** (or Features). **Catalog hubs** (Home, Anime, Asian Drama, My List, Arabic, Aflem, كرتون, Kids, …) appear when their ForjaHQ hub packs install — each pack’s `nav` contributes the tab, and Features turns it **on** the first time the host sees it. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 

@@ -73,7 +73,7 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
             icon: Icons.inventory_2_rounded,
             title: 'Official packs',
             subtitle: widget.compact
-                ? 'Install the ForjaHQ bundle'
+                ? 'Choose which ForjaHQ packs to install'
                 : 'Best experience — install the ForjaHQ bundle',
             accent: true,
             onTap: widget.onInstallOfficial,

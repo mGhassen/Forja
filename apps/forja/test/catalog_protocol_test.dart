@@ -717,12 +717,13 @@ void main() {
       expect(byTab['home']!.accent, '#1CE783');
       expect(byTab['home']!.order, 10);
 
-      // Host seed stays empty — hubs come from pack nav / cache (RFC-081).
+      // Host seed empty for VOD hubs; live_matches is core (RFC-084).
       PluginNavRegistry.seedBuiltIns();
       expect(PluginNavRegistry.isHubTab('live_matches'), isFalse);
       expect(PluginNavRegistry.isHubTab('settings'), isFalse);
       expect(PluginNavRegistry.isContributed('mylist'), isFalse);
       expect(PluginNavRegistry.isContributed('iptv'), isTrue);
+      expect(PluginNavRegistry.isContributed('live_matches'), isTrue);
     });
 
     test('nav icons are pack-relative or forja://asset — never assets/', () {

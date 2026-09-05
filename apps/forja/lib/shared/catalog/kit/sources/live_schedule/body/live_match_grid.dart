@@ -398,7 +398,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
       ],
     );
     final belowHeader = iptvCtrl == null
-        ? content
+        ? _buildStreamsPanelStack(context, content)
         : _buildIptvPortalStack(context, iptvCtrl, content);
 
     return TvFocusGraph(
@@ -421,7 +421,7 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
     const panelWidth = 380.0;
     final wide = MediaQuery.sizeOf(context).width >= 900;
     final useSidePanel = wide || ShellTokens.isAndroidTvDevice;
-    return Stack(
+    final withPortals = Stack(
       children: [
         content,
         if (ctrl.portalPanelOpen && useSidePanel)
@@ -450,6 +450,63 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
                       ctrl: ctrl,
                       width: MediaQuery.sizeOf(context).width * 0.92,
                       onClose: ctrl.closePortalPanel,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+    return _buildStreamsPanelStack(context, withPortals);
+  }
+
+  Widget _buildStreamsPanelStack(BuildContext context, Widget content) {
+    const panelWidth = 420.0;
+    final match = _s._streamsPanelMatch;
+    if (match == null) return content;
+    final wide = MediaQuery.sizeOf(context).width >= 900;
+    final useSidePanel = wide || ShellTokens.isAndroidTvDevice;
+    final panel = KeyedSubtree(
+      key: ValueKey('live-streams-${match.id}'),
+      child: _LiveMatchDetailsScreen(
+        host: _s,
+        match: match,
+        iframeCatalogAnchor: _s._streamsPanelIframeAnchor,
+        asSidePanel: true,
+      ),
+    );
+    return Stack(
+      children: [
+        content,
+        if (useSidePanel)
+          Positioned(
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: panelWidth,
+            child: Material(
+              elevation: 8,
+              color: ForjaShellColors.surfaceElevated,
+              child: panel,
+            ),
+          )
+        else
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _s.closeMatchStreamsPanel,
+              child: ColoredBox(
+                color: Colors.black.withValues(alpha: 0.45),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: () {},
+                    child: SizedBox(
+                      width: MediaQuery.sizeOf(context).width * 0.92,
+                      child: Material(
+                        color: ForjaShellColors.surfaceElevated,
+                        child: panel,
+                      ),
                     ),
                   ),
                 ),
@@ -666,14 +723,21 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
     }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cardWidth = _matchCardWidth(context);
-        final cardHeight = _matchCardHeight(context);
-        final gap = _gridGap(context);
-        final crossCount = _gridColumns(context, constraints, cardWidth);
         final tvFocus = _tvFocus(context);
         if (tvFocus) {
           _s._clearTimelineTvRows();
         }
+        if (_s.useDenseMatchList) {
+          return _buildDenseMatchList(
+            context: context,
+            entries: entries,
+            tvFocus: tvFocus,
+          );
+        }
+        final cardWidth = _matchCardWidth(context);
+        final cardHeight = _matchCardHeight(context);
+        final gap = _gridGap(context);
+        final crossCount = _gridColumns(context, constraints, cardWidth);
         final grid = GridView.builder(
           padding: _gridPadding(context),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -711,6 +775,198 @@ mixin _LiveMatchesBuild on ConsumerState<LiveSportsHubPage> {
         );
       },
     );
+  }
+
+  Widget _buildDenseMatchList({
+    required BuildContext context,
+    required List<_LiveMatchGridEntry> entries,
+    required bool tvFocus,
+  }) {
+    final list = ListView.separated(
+      padding: _gridPadding(context),
+      itemCount: entries.length,
+      separatorBuilder: (_, _) => Divider(
+        height: 1,
+        color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
+      ),
+      itemBuilder: (context, i) {
+        final entry = entries[i];
+        return _denseMatchListTile(
+          entry: entry,
+          index: i,
+          tvFocus: tvFocus,
+        );
+      },
+    );
+    if (!tvFocus) return list;
+    return TvGrid(
+      tabId: LiveSportsHubPageState._tabId,
+      rowId: LiveSportsHubPageState._gridRowId,
+      sortOrder: _gridSortOrder,
+      itemCount: entries.length,
+      columns: 1,
+      onFocusUp: _s._gridFocusUp,
+      child: list,
+    );
+  }
+
+  Widget _denseMatchListTile({
+    required _LiveMatchGridEntry entry,
+    required int index,
+    required bool tvFocus,
+  }) {
+    final selectedId = _s._streamsPanelMatch?.id;
+    late final String title;
+    late final String meta;
+    late final bool live;
+    late final bool playable;
+    late final VoidCallback? onTap;
+    var viewers = 0;
+
+    switch (entry) {
+      case _LiveMatchGridEntryIframeCatalog(:final stream):
+        title = stream.name;
+        meta = [
+          if (stream.categoryName.trim().isNotEmpty) stream.categoryName.trim(),
+          if (stream.timeLabel.trim().isNotEmpty) stream.timeLabel.trim(),
+        ].join(' · ');
+        live = stream.isLive;
+        playable = stream.isLive;
+        viewers = _s._eventStreamViewerTotals[
+                _liveEventViewerKeyFromIframeCatalog(stream)] ??
+            stream.viewers;
+        onTap = playable ? () => _s._openIframeCatalogStream(stream) : null;
+      case _LiveMatchGridEntryStreamed(:final match):
+        title = _denseMatchTitle(match);
+        meta = [
+          if (match.categoryLabel.trim().isNotEmpty) match.categoryLabel.trim(),
+          if (match.isLive)
+            'Live'
+          else if (match.scheduleLabel.isNotEmpty)
+            match.scheduleLabel
+          else if (match.timeLabel.isNotEmpty)
+            match.timeLabel,
+        ].join(' · ');
+        live = match.isLive;
+        playable =
+            (this as _LiveMatchesForjaLive)._forjaLiveMatchPlayable(match);
+        viewers = cardViewersForMatch(match);
+        onTap = playable ? () => _s._openStreamedMatch(match) : null;
+      case _LiveMatchGridEntryMerged(:final iframeCatalog, :final streamed):
+        title = _denseMatchTitle(streamed);
+        meta = [
+          if (streamed.categoryLabel.trim().isNotEmpty)
+            streamed.categoryLabel.trim(),
+          if (streamed.isLive || iframeCatalog.isLive)
+            'Live'
+          else if (streamed.scheduleLabel.isNotEmpty)
+            streamed.scheduleLabel,
+        ].join(' · ');
+        live = streamed.isLive || iframeCatalog.isLive;
+        playable = live;
+        viewers = _s._eventStreamViewerTotals[_liveEventViewerKey(streamed)] ??
+            (iframeCatalog.viewers +
+                _catalogViewersForEvent(streamed, _s._streamedMatches));
+        onTap = playable
+            ? () => _s._openMergedMatch(iframeCatalog, streamed)
+            : null;
+    }
+
+    final selected = selectedId != null &&
+        ((entry is _LiveMatchGridEntryStreamed &&
+                entry.match.id == selectedId) ||
+            (entry is _LiveMatchGridEntryMerged &&
+                entry.streamed.id == selectedId));
+
+    final row = Container(
+      color: selected
+          ? ForjaShellColors.chipSelectedBg.withValues(alpha: 0.35)
+          : Colors.transparent,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          if (live)
+            Container(
+              width: 8,
+              height: 8,
+              margin: const EdgeInsets.only(right: 10),
+              decoration: const BoxDecoration(
+                color: Color(0xFF22C55E),
+                shape: BoxShape.circle,
+              ),
+            )
+          else
+            const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: playable ? Colors.white : Colors.white54,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (meta.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      meta,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (viewers > 0)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Text(
+                '$viewers',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.45),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          if (playable)
+            const Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: Icon(Icons.chevron_right_rounded,
+                  color: Colors.white38, size: 20),
+            ),
+        ],
+      ),
+    );
+
+    return shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: 0,
+      scaleOnFocus: 1.0,
+      showFocusFill: true,
+      listIndex: index,
+      tvTabId: tvFocus ? LiveSportsHubPageState._tabId : null,
+      tvRowId: tvFocus ? LiveSportsHubPageState._gridRowId : null,
+      tvZone: ShellTvZone.grid,
+      child: row,
+    );
+  }
+
+  String _denseMatchTitle(_StreamedMatch match) {
+    final home = (match.homeTeam ?? '').trim();
+    final away = (match.awayTeam ?? '').trim();
+    if (home.isNotEmpty && away.isNotEmpty) return '$home vs $away';
+    return match.title;
   }
 
   /// Shared backdrop card for a unified grid entry - reused by the card grid

@@ -51,3 +51,4 @@
 
 - [Navigation](../features/getting-started/navigation.md)
 - [Features settings](../features/settings/navigation-bar.md)
+- [RFC-084](../084-[open]-live-sports-host-feature-kit.md) — **exception:** `live_matches` is host core (Addons) like `iptv`, not a pack-gated VOD hub. Still **not** in `PlatformDefaults.defaultNavIds` (visibility via Addons / Features).

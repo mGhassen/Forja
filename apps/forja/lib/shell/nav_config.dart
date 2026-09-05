@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/iptv/screens/iptv_pt_screen.dart';
 import 'package:forja/features/settings/settings_screen.dart';
 import 'package:forja/shared/catalog/forja_host_assets.dart';
+import 'package:forja/shared/catalog/kit/sources/live_schedule/live_sports_host_layout.dart';
 import 'package:forja/shared/catalog/plugin_nav.dart';
 import 'package:forja/shell/nav_destination.dart';
 
@@ -36,6 +37,13 @@ const Map<String, NavDestination> coreNavDestinations = {
     label: 'IPTV',
     iconAsset: ForjaHostAssets.flutterNavIptv,
   ),
+  'live_matches': NavDestination(
+    id: 'live_matches',
+    icon: Icons.sports_soccer_outlined,
+    activeIcon: Icons.sports_soccer,
+    label: 'Live Sports',
+    iconAsset: ForjaHostAssets.flutterNavLiveMatches,
+  ),
   'settings': NavDestination(
     id: 'settings',
     icon: Icons.settings_outlined,
@@ -45,6 +53,7 @@ const Map<String, NavDestination> coreNavDestinations = {
 };
 
 /// Core + hub destinations from [PluginNavRegistry] (plugin `nav` specs).
+/// Hub pack entries overwrite core for the same id (Live Sports redesign).
 Map<String, NavDestination> get navDestinations => {
   for (final e in {
     ...coreNavDestinations,
@@ -55,6 +64,7 @@ Map<String, NavDestination> get navDestinations => {
 
 const Map<String, Color> coreNavDestinationAccentColors = {
   'iptv': Color(0xFF22D3EE),
+  'live_matches': Color(0xFFFB923C),
   'settings': Color(0xFF94A3B8),
 };
 
@@ -66,10 +76,12 @@ Map<String, Color> get navDestinationAccentColors => {
 /// Lazy tab factories — widgets are created on first visit only.
 final Map<String, TabBuilder> coreNavTabBuilders = {
   'iptv': IptvPtScreen.new,
+  'live_matches': liveSportsCoreTabBuilder,
   'settings': SettingsScreen.new,
 };
 
 /// Core builders + catalog hub builders from [PluginNavRegistry].
+/// Pack builders overwrite core for the same id (Live Sports layout override).
 Map<String, TabBuilder> get navTabBuilders => {
   for (final e in {
     ...coreNavTabBuilders,

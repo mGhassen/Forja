@@ -3,9 +3,10 @@ import 'platform_profile.dart';
 
 /// Per-platform first-run defaults and getter fallbacks.
 ///
-/// [visibleNavIds] is **host-owned tabs only** (today: IPTV). Catalog hub tabs
-/// (`home`, `anime`, `asian_drama`, …) come from installed packs via
-/// [SettingsService.ensureNavIdsKnown] — never bake pack tab ids here.
+/// [visibleNavIds] is **host-owned tabs** for a fresh install (today: IPTV).
+/// [live_matches] is also host-core ([PluginNavRegistry.coreShellNavIds]) but
+/// visibility is Addons / Features — not baked here (RFC-084). Catalog VOD hubs
+/// (`home`, `anime`, …) come from packs via [SettingsService.ensureNavIdsKnown].
 class PlatformDefaults {
   const PlatformDefaults({
     required this.visibleNavIds,
