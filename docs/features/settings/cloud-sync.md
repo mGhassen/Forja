@@ -58,7 +58,7 @@ Per profile:
 | **`profile_settings` → Playback** | Full prefs: torrent / Stremio / Nuvio / webstreaming play sources, Simple resolve, auto next/skip intro, IPTV EPG, preferred audio / subtitle, max quality, anime title language. Web Profile settings save on each edit. |
 | **`profile_settings` → Features** | Visible shell tabs and default tab — editable on web under **Profile → Features** |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs |
-| **`profile_settings` → Forja** | Forja plugin pack **membership** (manifest URLs) — synced with the app and web **Profile → Forja plugins** / Community Packs. Devices compute local install state; mid-session add/remove asks before download or uninstall. |
+| **`profile_settings` → Forja** | Forja plugin pack **membership** (manifest URLs) plus **`onboarded`** (packs onboarding completed — Install or Skip). Synced with the app and web **Profile → Forja plugins** / Community Packs. Devices compute local install state; mid-session add/remove asks before download or uninstall. |
 | **`profile_settings` → Nuvio** | Installed Nuvio scraper manifest URLs |
 
 ## What stays local
@@ -78,7 +78,10 @@ Not synced — device-specific or sensitive:
 
 - Cold start on desktop and Android TV: **Sign in** (code or QR → portal
   `/connect`) or **Continue as guest**. After approve, pick a profile on
-  **Who’s watching?** Device-link sessions show as **Forja Android TV** under
+  **Who’s watching?** When the profile is not yet onboarded, a packs step
+  offers the official ForjaHQ bundle, Community Packs, or Skip (see
+  [Forja Packs](forja-packs.md)). Guest gets the same packs step once per
+  device (local flag). Device-link sessions show as **Forja Android TV** under
   Account → Connections. From **Settings → Profile & account** (guest), you can
   still sign in with email and password (Cloudflare Turnstile when Auth captcha
   is configured), **Sign in with passkey** on macOS and Windows (Touch ID /

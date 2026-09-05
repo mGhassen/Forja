@@ -21,7 +21,9 @@ Cold start on **Android TV and desktop** is the same centered welcome (logo, **Y
 - Approve on the portal while signed in
 - Continue as guest without linking
 - After link: pick a profile on **Who’s watching?** (avatar profile splash). On Android TV the picker and splash use a tighter centered layout than desktop so title, avatars, and loading status fit leanback screens.
-- Next cold start (same install): skip link + Who’s watching — open on the last active profile via the logo boot splash. The app refreshes the access token before cloud sync so a stale JWT from the previous day does not fail the boot pull.
+- After the first profile is active, if the profile is not yet **onboarded**, Forja shows a **packs** step: install the official ForjaHQ pack bundle, browse Community Packs (`https://www.forjahq.xyz/plugins`), or **Skip for now**. Skipping or installing marks the profile onboarded (synced) so the step does not return. Restored sessions with a missing onboarded flag (upgrades) get the same step once.
+- **Continue as guest** uses the same packs step on this device (local flag only — not synced). Once skipped or installed, later guest cold starts skip it.
+- Next cold start (same install, already onboarded): skip link + Who’s watching + packs — open on the last active profile via the logo boot splash. The app refreshes the access token before cloud sync so a stale JWT from the previous day does not fail the boot pull.
 - Sign out on desktop or TV to return to the link welcome screen
 - Revoke the device-link session later from Account → Connections (“Forja Android TV”)
 

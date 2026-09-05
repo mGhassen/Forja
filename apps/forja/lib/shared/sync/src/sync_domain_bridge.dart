@@ -7,6 +7,7 @@ import 'package:forja/features/iptv/data/storage.dart';
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/sync/src/account_features.dart';
+import 'package:forja/shared/sync/src/packs_onboarding_store.dart';
 import 'package:forja/shared/sync/src/sync_service.dart';
 import 'package:rust/rust.dart';
 
@@ -145,6 +146,7 @@ class SyncDomainBridge {
         );
       } catch (_) {}
     }
+    await PacksOnboardingStore.clearLocalForActiveProfile();
 
     final nuvioAddons = await NuvioService.instance.listAddons();
     for (final addon in nuvioAddons) {
@@ -364,6 +366,23 @@ class SyncDomainBridge {
     });
   }
 
+  /// Onboarding Skip / Install complete — set cloud `onboarded` without
+  /// wiping remote `packs[]` when this device has an empty pack index.
+  void scheduleOnboardedPush() {
+    if (!SyncService.instance.isSignedIn) return;
+    _pushTimers[_domainForja]?.cancel();
+    _pushTimers[_domainForja] = Timer(const Duration(seconds: 1), () {
+      unawaited(
+        pushAllLocal(
+          pushIptvIfLocalEmpty: false,
+          allowIptvShrink: false,
+          allowEmptyForjaWipe: false,
+          overlayDomains: {_domainForja},
+        ),
+      );
+    });
+  }
+
   /// True when [localNav] drops any tab id that [remoteNav] still has.
   @visibleForTesting
   static bool navigationWouldShrinkCloud(
@@ -496,7 +515,31 @@ class SyncDomainBridge {
 
     if (overlayForja) {
       if (localConnected.containsKey('forja')) {
-        connected['forja'] = localConnected['forja'];
+        final localForja =
+            Map<String, dynamic>.from(localConnected['forja'] as Map);
+        final remoteForja = remoteConnected['forja'] is Map
+            ? Map<String, dynamic>.from(remoteConnected['forja'] as Map)
+            : <String, dynamic>{};
+        final localPacks = localForja['packs'];
+        final remotePacks = remoteForja['packs'];
+        final localPacksEmpty = localPacks is! List || localPacks.isEmpty;
+        final remoteHasPacks =
+            remotePacks is List && remotePacks.isNotEmpty;
+        if (localPacksEmpty && remoteHasPacks && !allowEmptyForjaWipe) {
+          // Onboarding Skip / onboarded-only push — keep cloud pack membership.
+          final merged = Map<String, dynamic>.from(remoteForja);
+          if (localForja['onboarded'] == true) {
+            merged['onboarded'] = true;
+          }
+          connected['forja'] = merged;
+        } else {
+          final merged = Map<String, dynamic>.from(localForja);
+          if (localForja['onboarded'] == true ||
+              remoteForja['onboarded'] == true) {
+            merged['onboarded'] = true;
+          }
+          connected['forja'] = merged;
+        }
       } else if (allowEmptyForjaWipe) {
         connected.remove('forja');
       }
@@ -603,7 +646,6 @@ class SyncDomainBridge {
 
   Future<Map<String, dynamic>> _exportForjaCompact() async {
     final packs = await PluginRegistry.instance.listPacksRaw();
-    if (packs.isEmpty) return {};
     final pendingPurge = await PendingRemotePurgeStore.read();
     final lean = <Map<String, dynamic>>[];
     for (final pack in packs) {
@@ -618,7 +660,13 @@ class SyncDomainBridge {
       if (version.isNotEmpty) row['version'] = version;
       lean.add(row);
     }
-    return lean.isEmpty ? {} : {'packs': lean};
+    final out = <String, dynamic>{};
+    if (lean.isNotEmpty) out['packs'] = lean;
+    // Keep onboarded even when packs is empty (Skip path must not drop the flag).
+    if (await PacksOnboardingStore.isOnboardedLocal()) {
+      out['onboarded'] = true;
+    }
+    return out;
   }
 
   Future<Map<String, dynamic>> _exportNavigationCompact() async {
@@ -1062,6 +1110,9 @@ class SyncDomainBridge {
   /// Apply cloud lean rows (`manifestUrl` + optional name). **No network.**
   /// Mid-session: enqueue install/uninstall confirms. Boot: silent hydrate/purge.
   Future<LeanApplyResult> importForja(Map<String, dynamic> payload) async {
+    await PacksOnboardingStore.applyFromCloud(
+      payload['onboarded'] == true,
+    );
     final packs = payload['packs'] as List? ?? const [];
     final rows = <Map<String, dynamic>>[
       for (final raw in packs)
@@ -1095,6 +1146,10 @@ void scheduleNuvioSyncPush() =>
 
 void scheduleForjaSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainForja);
+
+/// Push `onboarded` without wiping cloud pack membership when local packs are empty.
+void scheduleForjaOnboardedSyncPush() =>
+    SyncDomainBridge.instance.scheduleOnboardedPush();
 
 void scheduleNavigationSyncPush() =>
     SyncDomainBridge.instance.schedulePush(SyncDomainBridge._domainNavigation);

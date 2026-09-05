@@ -147,6 +147,8 @@ export type ForjaPackRow = {
 
 export type ForjaPayload = {
   packs: ForjaPackRow[]
+  /** Packs onboarding completed (Install or Skip). Missing ⇒ false. */
+  onboarded?: boolean
 }
 
 export type ConnectedServicesPayload = {
@@ -458,8 +460,7 @@ function compactNuvio(s: NuvioPayload | undefined): NuvioPayload | undefined {
 }
 
 function compactForja(s: ForjaPayload | undefined): ForjaPayload | undefined {
-  if (!s?.packs?.length) return undefined
-  const packs = s.packs
+  const packs = (s?.packs ?? [])
     .map((a) => {
       const manifestUrl = a.manifestUrl?.trim()
       if (!manifestUrl) return null
@@ -473,7 +474,11 @@ function compactForja(s: ForjaPayload | undefined): ForjaPayload | undefined {
       return row
     })
     .filter((a): a is ForjaPackRow => a != null)
-  return packs.length ? { packs } : undefined
+  const onboarded = s?.onboarded === true
+  if (!packs.length && !onboarded) return undefined
+  const out: ForjaPayload = { packs }
+  if (onboarded) out.onboarded = true
+  return out
 }
 
 function compactNavigation(n: NavigationPayload | undefined): NavigationPayload | undefined {
@@ -529,6 +534,9 @@ export function expandProfileSettingsPayload(raw: unknown): ProfileSettingsPaylo
   }
   const forja = {
     packs: p.connectedServices?.forja?.packs ?? [],
+    ...(p.connectedServices?.forja?.onboarded === true
+      ? { onboarded: true as const }
+      : {}),
   }
 
   void p.films

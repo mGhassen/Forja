@@ -100,6 +100,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [077-[fixed]-…](fixed/077-[fixed]-brstej-hub-laroza-only-arabic.md) | Brstej hub + Laroza-only Arabic | v1.4 | fixed | **Complete** · 3/3 · 7/7 | — |
 | [078-[fixed]-…](fixed/078-[fixed]-kids-hub-dimakids.md) | Kids hub (Dimakids) + provider | v1.4 | fixed | **Complete** · 3/3 · 6/6 | — |
 | [079-[open]-…](079-[open]-sources-id-middleware.md) | Sources ID middleware (catalog → providers / torrents / Stremio / Nuvio) | v1.4 | open | **4 / 4** · **8 / 8** | — |
+| [080-[open]-…](080-[open]-post-login-packs-onboarding.md) | Post-login packs onboarding (`onboarded` + official install) | v1.4 | open | **5 / 5** · **10 / 10** | — |
 
 ## Related
 

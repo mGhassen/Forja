@@ -25,9 +25,12 @@
 
 **Batch add** from the web catalog (`Shift+click` multiple packs → **Add N to Forja**) opens the running app with a checkable install dialog. Packs download only after you confirm. Play / Sources / catalog never start downloads; version bumps only via Settings update toast / **Update**.
 
+**Onboarding (desktop / Android TV):** after sign-in and profile select (or on upgrade when the profile is not yet onboarded), Forja offers **Install official ForjaHQ packs**, a Community Packs link, or **Skip for now**. Completing or skipping sets `onboarded` on the profile so the step does not repeat. **Continue as guest** gets the same step once per device (local flag only).
+
 ## Related
 
-- [Cloud sync](cloud-sync.md) — profile pack membership
+- [Cloud sync](cloud-sync.md) — profile pack membership + onboarded
+- [Link Android TV](../accounts/tv-connect.md) — cold-start packs step
 - [Sources settings](torrent-settings.md) — Forja addons (torrent / Stremio / Nuvio)
 - [Playback settings](playback-settings.md)
 - [Navigation](navigation-bar.md) — hub tabs follow enabled hub packs

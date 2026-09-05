@@ -27,6 +27,7 @@ class ProfileSwitchSplash extends ConsumerStatefulWidget {
     required this.profile,
     this.originRect,
     this.prepareCurrent = true,
+    this.onCompleted,
   });
 
   final SyncProfile profile;
@@ -36,6 +37,9 @@ class ProfileSwitchSplash extends ConsumerStatefulWidget {
 
   /// When true (mid-session switch), push the current profile before loading.
   final bool prepareCurrent;
+
+  /// When set (gate-owned splash), called instead of [Navigator.pop].
+  final void Function(bool ok)? onCompleted;
 
   @override
   ConsumerState<ProfileSwitchSplash> createState() =>
@@ -369,6 +373,11 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     _disarmPackContinueListeners();
     _continueOfferTimer?.cancel();
     _stuckStepTimer?.cancel();
+    final onCompleted = widget.onCompleted;
+    if (onCompleted != null) {
+      onCompleted(ok);
+      return;
+    }
     Navigator.of(context).pop(ok);
   }
 

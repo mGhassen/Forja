@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/account/account_entry_screen.dart';
+import 'package:forja/features/account/packs_onboarding_screen.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
+import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/platform/platform_info.dart';
@@ -58,14 +60,16 @@ bool shouldReturnToAccountOnSignOut({
   return true;
 }
 
-enum _StartupStage { account, profiles, splash }
+enum _StartupStage { account, profiles, packs, profileSplash, splash }
 
 /// Cold-start gate: paint account or splash **immediately** from the cached
 /// session, then run update check + cloud pull in the background.
 ///
 /// Restored sessions skip Who's watching and land on the logo [SplashScreen]
-/// with last-active profile settings from local cache. Fresh sign-in →
-/// Who's watching → avatar [ProfileSwitchSplash] → app (no second logo intro).
+/// with last-active profile settings from local cache — unless packs onboarding
+/// is still pending (`!onboarded`). Fresh sign-in → Who's watching → packs
+/// (when needed) → avatar [ProfileSwitchSplash] → app (no second logo intro).
+/// Guest → packs (when needed, device-local flag) → logo splash → app.
 /// Sign-out returns to account without re-running the update check.
 class DesktopStartupGate extends ConsumerStatefulWidget {
   const DesktopStartupGate({super.key, required this.splash});
@@ -79,6 +83,9 @@ class DesktopStartupGate extends ConsumerStatefulWidget {
 class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
   late _StartupStage _stage;
   StreamSubscription<AuthState>? _authSub;
+  SyncProfile? _splashProfile;
+  /// Restored-session or guest packs path: packs done → shell (no profile splash).
+  bool _packsSkipProfileSplash = false;
 
   bool get _isDesktopOs =>
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
@@ -189,6 +196,19 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
       '[DesktopStartupGate] background sync done hasSession='
       '${SyncService.instance.isSignedIn} stage=$_stage',
     );
+
+    // Upgrade / empty-onboarded cohort: interrupt splash → packs once.
+    if (_stage == _StartupStage.splash &&
+        SyncService.instance.isSignedIn &&
+        await PacksOnboardingStore.shouldShow()) {
+      final auto = await PacksOnboardingStore.autoCompleteIfHasPacks();
+      if (!mounted) return;
+      if (!auto) {
+        debugPrint('[DesktopStartupGate] restored session → packs onboarding');
+        _packsSkipProfileSplash = true;
+        setState(() => _stage = _StartupStage.packs);
+      }
+    }
   }
 
   void _onAuthState(AuthState state) {
@@ -222,6 +242,8 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     ShellBus.requestSettingsCategory.value = null;
     ShellBus.settingsHubCategoryId.value = 'profile';
     ShellBus.selectDefaultTabOnNextNavLoad = false;
+    _splashProfile = null;
+    _packsSkipProfileSplash = false;
 
     setState(() => _stage = _StartupStage.account);
   }
@@ -230,7 +252,60 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
   /// without a second logo intro splash.
   void _enterShellAfterProfileSplash() {
     ShellBus.splashDismissed.value = true;
+    _splashProfile = null;
     setState(() => _stage = _StartupStage.splash);
+  }
+
+  Future<void> _afterProfileReady() async {
+    if (!mounted) return;
+    if (await PacksOnboardingStore.shouldShow()) {
+      final auto = await PacksOnboardingStore.autoCompleteIfHasPacks();
+      if (!mounted) return;
+      if (!auto) {
+        _packsSkipProfileSplash = false;
+        setState(() => _stage = _StartupStage.packs);
+        return;
+      }
+    }
+    await _goToProfileSplash();
+  }
+
+  Future<void> _goToProfileSplash() async {
+    final profile = await SyncService.instance.activeProfile();
+    if (!mounted) return;
+    if (profile == null) {
+      _enterShellAfterProfileSplash();
+      return;
+    }
+    setState(() {
+      _splashProfile = profile;
+      _stage = _StartupStage.profileSplash;
+    });
+  }
+
+  Future<void> _continueAsGuest() async {
+    await SyncService.instance.useGuestPluginDiskScope();
+    if (!mounted) return;
+    if (await PacksOnboardingStore.shouldShow()) {
+      final auto = await PacksOnboardingStore.autoCompleteIfHasPacks();
+      if (!mounted) return;
+      if (!auto) {
+        _packsSkipProfileSplash = true;
+        setState(() => _stage = _StartupStage.packs);
+        return;
+      }
+    }
+    setState(() => _stage = _StartupStage.splash);
+  }
+
+  Future<void> _onPacksFinished() async {
+    if (!mounted) return;
+    if (_packsSkipProfileSplash || !SyncService.instance.isSignedIn) {
+      _packsSkipProfileSplash = false;
+      _enterShellAfterProfileSplash();
+      return;
+    }
+    await _goToProfileSplash();
   }
 
   @override
@@ -244,25 +319,36 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
             ? TvAccountLinkScreen(
                 onAuthenticated: () =>
                     setState(() => _stage = _StartupStage.profiles),
-                onContinueAsGuest: () {
-                  unawaited(SyncService.instance.useGuestPluginDiskScope());
-                  setState(() => _stage = _StartupStage.splash);
-                },
+                onContinueAsGuest: () => unawaited(_continueAsGuest()),
               )
             : AccountEntryScreen(
                 onAuthenticated: () =>
                     setState(() => _stage = _StartupStage.profiles),
-                onContinueAsGuest: () {
-                  unawaited(SyncService.instance.useGuestPluginDiskScope());
-                  setState(() => _stage = _StartupStage.splash);
-                },
+                onContinueAsGuest: () => unawaited(_continueAsGuest()),
               ),
       _StartupStage.profiles => ProfileChooserScreen(
         prepareCurrentOnSwitch: false,
-        useLogoIntroSplash: false,
-        onProfileSelected: _enterShellAfterProfileSplash,
+        // Defer ProfileSwitchSplash until after packs onboarding.
+        useLogoIntroSplash: true,
+        onProfileSelected: () => unawaited(_afterProfileReady()),
         onSignOut: () => setState(() => _stage = _StartupStage.account),
       ),
+      _StartupStage.packs => PacksOnboardingScreen(
+        onFinished: () => unawaited(_onPacksFinished()),
+      ),
+      _StartupStage.profileSplash => _splashProfile == null
+          ? const SizedBox.shrink()
+          : ProfileSwitchSplash(
+              profile: _splashProfile!,
+              prepareCurrent: false,
+              onCompleted: (ok) {
+                if (ok) {
+                  _enterShellAfterProfileSplash();
+                } else if (mounted) {
+                  setState(() => _stage = _StartupStage.profiles);
+                }
+              },
+            ),
       _StartupStage.splash => widget.splash,
     };
     if (_stage == _StartupStage.splash) return child;
