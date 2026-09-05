@@ -952,8 +952,12 @@ mixin _DesktopPlayerPlayback
     try {
       final ok = await attemptNetworkPlaybackRemount(
         isCancelled: () => _s._disposed || !mounted || _s._hasError,
-        remount: () =>
-            _remountCurrentStreamAt(resumeAt, allowFallbackInit: false),
+        remount: () => _remountCurrentStreamAt(
+          resumeAt,
+          allowFallbackInit: false,
+          // Parent already shows network-remount Reconnecting…
+          showReconnectingStatus: false,
+        ),
       );
       if (ok) {
         _s._statusController.complete();

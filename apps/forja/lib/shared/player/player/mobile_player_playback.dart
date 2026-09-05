@@ -962,7 +962,11 @@ mixin _MobilePlayerPlayback
       final ok = await attemptNetworkPlaybackRemount(
         isCancelled: () => _s._disposed || !mounted || _s._hasError,
         remount: () =>
-            _remountCurrentStreamAt(resumeAt, allowFallbackInit: false),
+            _remountCurrentStreamAt(
+              resumeAt,
+              allowFallbackInit: false,
+              showReconnectingStatus: false,
+            ),
       );
       if (ok) {
         _s._statusController.complete();

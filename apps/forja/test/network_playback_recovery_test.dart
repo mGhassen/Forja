@@ -38,6 +38,10 @@ void main() {
         isFalse,
       );
       expect(isLikelyNetworkPlaybackError('hwdec: codec failed'), isFalse);
+      expect(
+        isLikelyNetworkPlaybackError('Failed to recognize file format.'),
+        isFalse,
+      );
     });
   });
 

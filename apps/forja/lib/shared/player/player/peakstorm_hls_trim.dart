@@ -20,6 +20,11 @@ Future<String?> buildPeakstormTrimmedPlaylistFile({
   if (!peakstormFmp4HlsAvoidHardSeek(catalogUrl) || target.inSeconds <= 0) {
     return null;
   }
+  // dmcdn fMP4: local file:// trim opens fail demux ("Failed to recognize file
+  // format") even with absolute MAP — use mpv `start` on the CDN URL instead.
+  if (isDailymotionDmcdnHlsUrl(catalogUrl)) {
+    return null;
+  }
   try {
     final masterUrl = preferVideasyHlsMasterUrl(catalogUrl.trim());
     final masterBody = await _fetchPlaylistText(masterUrl, headers);

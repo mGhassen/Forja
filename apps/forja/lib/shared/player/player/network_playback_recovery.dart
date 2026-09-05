@@ -11,7 +11,10 @@ bool isLikelyNetworkPlaybackError(String err) {
       lower.contains('hwdec') ||
       lower.contains('codec') ||
       lower.contains('subtitle') ||
-      lower.contains('sub-add')) {
+      lower.contains('sub-add') ||
+      // Demux/format failures (e.g. bad local HLS trim) — remounting same URL loops.
+      lower.contains('recognize file format') ||
+      lower.contains('file format')) {
     return false;
   }
   return lower.contains('network') ||
