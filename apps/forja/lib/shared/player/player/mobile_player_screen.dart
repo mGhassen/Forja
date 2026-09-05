@@ -403,6 +403,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   final Map<String, PlayerSourceStatus> _urlCheckStatuses = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   bool _isInitPlaybackRunning = false;
+  /// Remount seek requested while open/remount was in flight (Skip Intro, scrub).
+  Duration? _pendingRemountSeek;
   /// Pins seek bar position/duration while peakstorm trim remount runs.
   bool _lockSeekBarPosition = false;
   bool _networkRemountInFlight = false;
@@ -488,15 +490,18 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     final caller = StackTrace.current;
     if (url != null && peakstormHlsNeedsRemountSeek(url, current, position)) {
       if (_isInitPlaybackRunning) {
+        _pendingRemountSeek = position < Duration.zero ? Duration.zero : position;
+        _positionNotifier.value = _pendingRemountSeek!;
         logPeakstormSeekTo(
           from: current,
-          to: position,
-          action: 'skip',
+          to: _pendingRemountSeek!,
+          action: 'queue',
           skipReason: 'init_playback_running',
           caller: caller,
         );
         return;
       }
+      _pendingRemountSeek = null;
       if (shouldSkipPostSeekStallArm(
         target: position,
         resumeStartPosition: widget.startPosition,
@@ -562,6 +567,17 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     );
   }
 
+  void _flushPendingRemountSeek() {
+    final pending = _pendingRemountSeek;
+    if (pending == null || _disposed || _isInitPlaybackRunning) return;
+    _pendingRemountSeek = null;
+    logPeakstormResume(
+      'flush pending remount seek',
+      target: pending,
+    );
+    unawaited(_seekTo(pending));
+  }
+
   void _armPostSeekStall(Duration target) {
     final url = _currentQualityUrl ?? _currentUrl;
     final w = _postSeekStall;
@@ -612,6 +628,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   String? _activeSkipLabel;
   Duration? _activeSkipTarget;
   bool _skipDismissed = false;
+  /// Auto-skip fires once per intro/recap end (avoids remount spam).
+  Duration? _autoSkipLatchedTarget;
 
   @override
   void dispose() {

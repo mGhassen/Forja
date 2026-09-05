@@ -142,7 +142,8 @@ String? trimMediaPlaylistFromTarget({
       if (!inSegments &&
           !trimmed.startsWith('#EXT-X-ENDLIST') &&
           !trimmed.startsWith('#EXT-X-MEDIA-SEQUENCE')) {
-        headerLines.add(line);
+        // file:// opens need absolute MAP — relative init.mp4 breaks dmcdn fMP4.
+        headerLines.add(_absolutizeMapLine(line, base));
       }
       continue;
     }
@@ -175,9 +176,27 @@ String? trimMediaPlaylistFromTarget({
 }
 
 String _baseUrl(String url) {
-  final slash = url.lastIndexOf('/');
-  if (slash <= 0) return url;
-  return url.substring(0, slash + 1);
+  final noFrag = url.split('#').first;
+  final slash = noFrag.lastIndexOf('/');
+  if (slash <= 0) return noFrag;
+  return noFrag.substring(0, slash + 1);
+}
+
+/// Rewrite relative `#EXT-X-MAP:URI="…"` to an absolute CDN URL.
+String _absolutizeMapLine(String line, String base) {
+  final trimmed = line.trim();
+  if (!trimmed.toUpperCase().startsWith('#EXT-X-MAP:')) return line;
+  final dq = RegExp(r'URI="([^"]+)"', caseSensitive: false).firstMatch(trimmed);
+  final sq = dq == null
+      ? RegExp(r"URI='([^']+)'", caseSensitive: false).firstMatch(trimmed)
+      : null;
+  final match = dq ?? sq;
+  if (match == null) return line;
+  final rel = match.group(1) ?? '';
+  if (rel.isEmpty) return line;
+  final abs = _resolveUrl(rel, base);
+  if (abs == rel) return line;
+  return trimmed.replaceFirst(match.group(0)!, 'URI="$abs"');
 }
 
 String _resolveUrl(String relative, String base) {

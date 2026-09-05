@@ -25,11 +25,46 @@ seg-3.m4s
       target: const Duration(seconds: 9),
     );
     expect(out, isNotNull);
-    expect(out!, contains('#EXT-X-MAP:URI="init.m4s"'));
+    expect(
+      out!,
+      contains('#EXT-X-MAP:URI="https://moon.peakstorm.top/vd/x/init.m4s"'),
+    );
     expect(out, contains('#EXT-X-MEDIA-SEQUENCE:1'));
-    expect(out, contains('seg-1.m4s'));
+    expect(out, contains('https://moon.peakstorm.top/vd/x/seg-1.m4s'));
     expect(out, isNot(contains('seg-0.m4s')));
     expect(out, contains('#EXT-X-ENDLIST'));
+  });
+
+  test('trimMediaPlaylistFromTarget absolutizes dmcdn init.mp4 MAP', () {
+    const body = '''
+#EXTM3U
+#EXT-X-VERSION:7
+#EXT-X-TARGETDURATION:3
+#EXT-X-MAP:URI="init.mp4"
+#EXT-X-MEDIA-SEQUENCE:0
+#EXTINF:3.000,
+0.m4s
+#EXTINF:3.000,
+1.m4s
+#EXTINF:3.000,
+2.m4s
+#EXT-X-ENDLIST
+''';
+    final out = trimMediaPlaylistFromTarget(
+      body: body,
+      baseUrl:
+          'https://vod3.cf.dmcdn.net/sec2(x)/video/fmp4/1/h264_aac_hd/2/manifest.m3u8#cell=cf3',
+      target: const Duration(seconds: 5),
+    );
+    expect(out, isNotNull);
+    expect(
+      out!,
+      contains(
+        '#EXT-X-MAP:URI="https://vod3.cf.dmcdn.net/sec2(x)/video/fmp4/1/h264_aac_hd/2/init.mp4"',
+      ),
+    );
+    expect(out, contains('/2/1.m4s'));
+    expect(out, isNot(contains('URI="init.mp4"')));
   });
 
   test('_pickVariantUrl prefers highest bandwidth', () {

@@ -83,15 +83,20 @@ mixin _DesktopPlayerEpisodes
         _s._skipDismissed = false; // reset dismiss when segment changes
       });
       final skipAuto = SettingsService.autoSkipIntroNotifier.value;
+      // Latch once per intro/recap end — remount seek can be queued while
+      // init/remount runs; re-firing every frame spam-logs and fights remount.
       if (skipAuto &&
           (label == 'Skip Intro' || label == 'Skip Recap') &&
-          target != null) {
+          target != null &&
+          _s._autoSkipLatchedTarget != target) {
+        _s._autoSkipLatchedTarget = target;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted || _s._disposed) return;
           if (_s._activeSkipLabel != label) return;
           _performSkip();
         });
       }
+      if (label == null) _s._autoSkipLatchedTarget = null;
     }
   }
 

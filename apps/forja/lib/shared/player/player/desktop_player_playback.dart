@@ -698,6 +698,7 @@ mixin _DesktopPlayerPlayback
       }
     } finally {
       _s._isInitPlaybackRunning = false;
+      if (!_s._disposed && mounted) _s._flushPendingRemountSeek();
     }
   }
 
@@ -906,6 +907,7 @@ mixin _DesktopPlayerPlayback
       }
     } finally {
       _s._isInitPlaybackRunning = false;
+      if (!_s._disposed && mounted) _s._flushPendingRemountSeek();
     }
   }
 
@@ -1024,6 +1026,7 @@ mixin _DesktopPlayerPlayback
       debugPrint('[Player] Post-seek remount error: $e');
     } finally {
       if (!_s._disposed) _s._isInitPlaybackRunning = false;
+      if (!_s._disposed && mounted) _s._flushPendingRemountSeek();
     }
     if (_s._disposed || !mounted) return false;
     if (showReconnectingStatus) {
