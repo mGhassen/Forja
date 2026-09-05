@@ -7,6 +7,7 @@ import 'package:forja/features/settings/settings_visibility.dart';
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -139,7 +140,10 @@ class _AddonListPane extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.watch(accountFeaturesProvider);
     final addons = settingsAddons();
-    return ListView.separated(
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    // Spatial ←/→ so Right moves row → activate switch (linear scope would
+    // treat → as “next row” and bury the toggle).
+    final list = ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: addons.length,
@@ -153,6 +157,8 @@ class _AddonListPane extends ConsumerWidget {
         );
       },
     );
+    if (!tv) return list;
+    return ShellTvDisableLinearFocus(child: list);
   }
 }
 
@@ -169,6 +175,84 @@ class _AddonRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final titles = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        settingsTitleText(
+          meta.title,
+          const TextStyle(
+            color: ForjaShellColors.textPrimary,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+          adminOnly: meta.adminOnly,
+          sparkSize: 14,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          meta.subtitle,
+          style: const TextStyle(
+            color: ForjaShellColors.textSecondary,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+    final chevron = const Icon(
+      Icons.chevron_right_rounded,
+      color: ForjaShellColors.iconMuted,
+      size: 20,
+    );
+
+    // TV + activate switch: two focus stops — OK opens detail; → then OK flips.
+    if (tv && meta.hasToggle) {
+      return Container(
+        decoration: BoxDecoration(
+          color: ForjaShellColors.surfaceElevated.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: shellFocusableTap(
+                context: context,
+                onTap: onTap,
+                borderRadius: 12,
+                scaleOnFocus: 1.0,
+                showFocusRail: true,
+                tvTabId: 'settings',
+                tvZone: ShellTvZone.settings,
+                ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        meta.icon,
+                        color: ForjaShellColors.textSecondary,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(child: titles),
+                      const SizedBox(width: 4),
+                      chevron,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            AddonMasterToggle(
+              addonId: meta.id,
+              visibility: visibility,
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+      );
+    }
+
     return shellFocusableTap(
       context: context,
       onTap: onTap,
@@ -177,6 +261,7 @@ class _AddonRow extends ConsumerWidget {
       showFocusRail: true,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
+      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
@@ -187,42 +272,14 @@ class _AddonRow extends ConsumerWidget {
           children: [
             Icon(meta.icon, color: ForjaShellColors.textSecondary, size: 24),
             const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  settingsTitleText(
-                    meta.title,
-                    const TextStyle(
-                      color: ForjaShellColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    adminOnly: meta.adminOnly,
-                    sparkSize: 14,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    meta.subtitle,
-                    style: const TextStyle(
-                      color: ForjaShellColors.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            Expanded(child: titles),
             if (meta.hasToggle)
               AddonMasterToggle(
                 addonId: meta.id,
                 visibility: visibility,
               ),
             const SizedBox(width: 4),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: ForjaShellColors.iconMuted,
-              size: 20,
-            ),
+            chevron,
           ],
         ),
       ),

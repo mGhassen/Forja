@@ -86,9 +86,11 @@ absent and `type` is `movie`/`tv` (Home TMDB rows — not hub enrich).
 
 ## Seed / nav
 
-`PluginNavRegistry` may list **tab ids** from seed for flash-free boot
-(`home`, `anime`, `asian_drama`). Optional packs (Arabic) must not be special-cased
+`PluginNavRegistry` may cache last pack `nav` for flash-free boot.
+Optional packs (Arabic) must not be special-cased
 in open/list logic. Builders/destinations still come from pack `nav` on refresh.
+Do **not** hardcode hub tab ids (`anime`, `asian_drama`, …) into
+`PlatformDefaults` or empty `seedBuiltIns` — see [RFC-081](../../docs/rfc/fixed/081-[fixed]-host-only-platform-nav-defaults.md).
 
 ## When adding a hub
 

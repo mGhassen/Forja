@@ -53,7 +53,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [030-[open]-…](030-[open]-playback-selection-engine.md) | Playback selection engine | v1.0.2 | open | 4/4 · 16/16 · 0/5 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [031-[open]-…](031-[open]-source-engine-middleware.md) | Source Engine middleware | v1.0.2 | open | 3/3 · 8/8 · 4/4 · 2/10 | [1.0.2](../backlog/1.0.2-[draft].md) → [1.0.3](../backlog/1.0.3-[draft].md) |
 | [032-[open]-…](032-[open]-rust-resolver-engine.md) | Rust Resolver Engine | v1.0.3 | open | 8/8 · 12/15 | [1.0.3](../backlog/1.0.3-[draft].md) |
-| [033-[open]-…](033-[open]-settings-ux-redesign.md) | Settings category-hub UX | v1.0.2 | open | 9/9 · 10/10 hub · 6/6 visibility · 3/3 TV · 1/1 resume · 0/5 Addons | [1.0.1](../backlog/1.0.1-[open].md) · [1.0.2](../backlog/1.0.2-[draft].md) |
+| [033-[open]-…](033-[open]-settings-ux-redesign.md) | Settings category-hub UX | v1.0.2 | open | 9/9 · 10/10 hub · 6/6 visibility · 3/3 TV · 1/1 resume · 1/6 Addons | [1.0.1](../backlog/1.0.1-[open].md) · [1.0.2](../backlog/1.0.2-[draft].md) |
 | [034-[partial]-…](034-[partial]-web-portal-landing.md) | Web portal + landing + Flutter APIs | v1.0.4 | partial | 6/6 · 11/11 · 3/3 · 3/3 · 1/1 · 7/7 reset+confirm · 6/7 passkeys · 0/1 mobile ⏭️ | [1.0.2](../backlog/1.0.2-[draft].md) · [1.0.4](../backlog/1.0.4-[draft].md) |
 | [035-[draft]-…](035-[draft]-design-system-controls.md) | Design-system controls consolidation | — | draft | 0/4 · 0/6 | [1.0.2](../backlog/1.0.2-[draft].md) deferred |
 | [036-[open]-…](036-[open]-accounts-iptv-profile-settings.md) | Accounts hub, global IPTV, profile settings | v1.0.2 | open | 3/8 · 22/32 | [1.0.2](../backlog/1.0.2-[draft].md) |
@@ -101,6 +101,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [078-[fixed]-…](fixed/078-[fixed]-kids-hub-dimakids.md) | Kids hub (Dimakids) + provider | v1.4 | fixed | **Complete** · 3/3 · 6/6 | — |
 | [079-[open]-…](079-[open]-sources-id-middleware.md) | Sources ID middleware (catalog → providers / torrents / Stremio / Nuvio) | v1.4 | open | **4 / 4** · **8 / 8** | — |
 | [080-[open]-…](080-[open]-post-login-packs-onboarding.md) | Post-login packs onboarding (`onboarded` + official install) | v1.4 | open | **5 / 5** · **10 / 10** | — |
+| [081-[fixed]-…](fixed/081-[fixed]-host-only-platform-nav-defaults.md) | Host-only platform nav defaults (no pack hub ids in `PlatformDefaults`) | v1.4 | fixed | **Complete** · **2 / 2** · **4 / 4** | — |
 
 ## Related
 

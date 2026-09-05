@@ -5,6 +5,17 @@ import 'helpers/rust_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rust/rust.dart';
 
+/// Pre–RFC-081 rail (hub packs in platform defaults). Legacy shell migrations
+/// still rewrite *to* this list — not host-only [PlatformDefaults.defaultNavIds].
+const _legacyPackSeededDefaultNavIds = [
+  'home',
+  'asian_drama',
+  'anime',
+  'iptv',
+  'live_matches',
+  'mylist',
+];
+
 void main() {
   late Directory tmp;
   var storeCounter = 0;
@@ -185,14 +196,7 @@ void main() {
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
 
     final nav = await service.getNavbarConfig();
-    expect(nav, [
-      'home',
-      'asian_drama',
-      'anime',
-      'iptv',
-      'live_matches',
-      'mylist',
-    ]);
+    expect(nav, ['iptv']);
     expect(await service.getSubSize(), 24);
     expect(await service.getTorrentDiskCacheGb(), 1);
   });
@@ -313,11 +317,11 @@ void main() {
 
       final nav = await SettingsService().getNavbarConfig();
 
-      expect(nav, PlatformDefaults.defaultNavIds);
+      expect(nav, _legacyPackSeededDefaultNavIds);
     },
   );
 
-  test('Android TV legacy nav migrates to search-first default', () async {
+  test('Android TV legacy nav migrates to pack-seeded default', () async {
     await kvSetStringList('navbar_config', const [
       'home',
       'search',
@@ -342,7 +346,7 @@ void main() {
     final service = SettingsService();
     final nav = await service.getNavbarConfig();
 
-    expect(nav, PlatformDefaults.androidTvNavIds);
+    expect(nav, _legacyPackSeededDefaultNavIds);
   });
 
   test('Android TV custom nav is not overwritten by shell 088', () async {
@@ -365,7 +369,7 @@ void main() {
     expect(nav, ['home', 'iptv', 'search']);
   });
 
-  test('Android TV search-first legacy migrates to new default', () async {
+  test('Android TV search-first legacy migrates to pack-seeded default', () async {
     await kvSetStringList('navbar_config', const [
       'search',
       'home',
@@ -388,7 +392,7 @@ void main() {
     final service = SettingsService();
     final nav = await service.getNavbarConfig();
 
-    expect(nav, PlatformDefaults.androidTvNavIds);
+    expect(nav, _legacyPackSeededDefaultNavIds);
   });
 
   test(
@@ -419,7 +423,7 @@ void main() {
       final service = SettingsService();
       final nav = await service.getNavbarConfig();
 
-      expect(nav, PlatformDefaults.defaultNavIds);
+      expect(nav, _legacyPackSeededDefaultNavIds);
     },
   );
 
@@ -450,11 +454,11 @@ void main() {
 
       final nav = await SettingsService().getNavbarConfig();
 
-      expect(nav, PlatformDefaults.defaultNavIds);
+      expect(nav, _legacyPackSeededDefaultNavIds);
     },
   );
 
-  test('desktop legacy search-first nav migrates to current default', () async {
+  test('desktop legacy search-first nav migrates to pack-seeded default', () async {
     await kvSetStringList('navbar_config', const ['search', 'home', 'mylist']);
     await kvSetStringList(
       'navbar_known_ids',
@@ -470,7 +474,7 @@ void main() {
     final service = SettingsService();
     final nav = await service.getNavbarConfig();
 
-    expect(nav, PlatformDefaults.defaultNavIds);
+    expect(nav, _legacyPackSeededDefaultNavIds);
   });
 
   test(
@@ -501,7 +505,7 @@ void main() {
 
       final nav = await SettingsService().getNavbarConfig();
 
-      expect(nav, PlatformDefaults.defaultNavIds);
+      expect(nav, _legacyPackSeededDefaultNavIds);
       expect(nav, isNot(contains('search')));
     },
   );
@@ -558,6 +562,7 @@ void main() {
   test('navbar tab order keeps hidden tabs in place', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    SettingsService.registerExtraNavIds(const ['live_matches', 'home']);
     await service.setNavbarConfig(
       const ['iptv'],
       tabOrder: const ['live_matches', 'iptv', 'home'],
@@ -571,20 +576,26 @@ void main() {
     expect(await service.getNavbarConfig(), ['iptv']);
   });
 
-  test('ensureActiveDefaultHubsVisible restores stripped defaults', () async {
+  test('ensureActiveDefaultHubsVisible restores stripped hubs', () async {
     final service = SettingsService();
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
     await service.setNavbarConfig(const ['iptv']);
 
     await service.ensureActiveDefaultHubsVisible(
-      activeHubIds: const {'home', 'anime', 'asian_drama', 'live_matches', 'mylist'},
+      activeHubIds: const {
+        'home',
+        'anime',
+        'asian_drama',
+        'live_matches',
+        'mylist',
+      },
     );
 
     expect(await service.getNavbarConfig(), [
-      'home',
-      'asian_drama',
-      'anime',
       'iptv',
+      'home',
+      'anime',
+      'asian_drama',
       'live_matches',
       'mylist',
     ]);
@@ -601,5 +612,28 @@ void main() {
     );
 
     expect(await service.getNavbarConfig(), ['iptv', 'home']);
+  });
+
+  test('ensureNavIdsKnown auto-shows first-seen hub tabs', () async {
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+    expect(await service.getNavbarConfig(), ['iptv']);
+
+    await service.ensureNavIdsKnown(
+      allHubIds: const ['hub_alpha', 'hub_beta'],
+    );
+
+    expect(await service.getNavbarConfig(), [
+      'iptv',
+      'hub_alpha',
+      'hub_beta',
+    ]);
+
+    await service.setNavbarConfig(const ['iptv']);
+    await service.ensureNavIdsKnown(
+      allHubIds: const ['hub_alpha', 'hub_beta'],
+    );
+    // Already known — must not force-show again after user hide.
+    expect(await service.getNavbarConfig(), ['iptv']);
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/settings_visibility.dart';
@@ -10,9 +11,12 @@ import 'package:forja/features/settings/widgets/settings_plugin_install_progress
 import 'package:forja/features/settings/widgets/settings_ui.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/forja_pack_choice_cards.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Settings → Forja Packs — JS plugin manifests (providers, hubs, live, …).
 class SettingsForjaPacksSection extends ConsumerStatefulWidget {
@@ -129,6 +133,17 @@ class _SettingsForjaPacksSectionState
                 fontSize: 12,
                 height: 1.4,
               ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 4, 2, 14),
+            child: ForjaPackChoiceCards(
+              compact: true,
+              communitySubtitle: PlatformInfo.isAndroidTv
+                  ? 'Copy catalog URL for your phone'
+                  : 'Browse packs on the web',
+              onInstallOfficial: () => unawaited(_installOfficialBundle()),
+              onBrowseCommunity: () => unawaited(_browseCommunityPacks()),
             ),
           ),
           SettingsTextField(
@@ -313,6 +328,45 @@ class _SettingsForjaPacksSectionState
     } catch (e) {
       if (!mounted) return;
       ForjaToast.error('Pack install failed: $e');
+    } finally {
+      if (mounted) setState(() => _engineInstalling = false);
+    }
+  }
+
+  Future<void> _browseCommunityPacks() async {
+    if (PlatformInfo.isAndroidTv) {
+      await Clipboard.setData(const ClipboardData(text: kCommunityPacksUrl));
+      if (!mounted) return;
+      ForjaToast.success('Community Packs URL copied');
+      return;
+    }
+    final ok = await launchUrl(
+      Uri.parse(kCommunityPacksUrl),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!ok && mounted) {
+      ForjaToast.error('Could not open Community Packs');
+    }
+  }
+
+  Future<void> _installOfficialBundle() async {
+    if (_engineInstalling || _engineReloading) return;
+    setState(() => _engineInstalling = true);
+    try {
+      final failures = await installOfficialForjaHqPacks();
+      if (!mounted) return;
+      ref.invalidate(enginePacksProvider);
+      unawaited(ref.read(enginePackUpdatesProvider.notifier).refresh());
+      if (failures.isEmpty) {
+        ForjaToast.success('Official ForjaHQ packs installed');
+      } else {
+        ForjaToast.error(
+          'Installed with ${failures.length} error(s): ${failures.take(2).join(', ')}',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ForjaToast.error('Official pack install failed: $e');
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
     }

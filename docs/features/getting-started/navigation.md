@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Default tab order on every profile:** Home, Asian Drama, Anime, IPTV, Live Sports, My List, and Settings. All are enabled on a fresh install. **Home / Anime / Asian Drama / Arabic / Aflem / كرتون / Kids** labels and tab bodies come from ForjaHQ hub packs (`nav` on each catalog plugin); other tabs stay app-owned. A hub tab only appears in **Settings → Features** (and the rail) while its pack+plugin is **enabled** under **Settings → Sources → Forja**; Features then show/hide among those. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Fresh install (host-owned):** IPTV and Settings. **Catalog hubs** (Home, Anime, Asian Drama, Live Sports, My List, Arabic, Aflem, كرتون, Kids, …) appear when their ForjaHQ hub packs install — each pack’s `nav` contributes the tab, and Features turns it **on** the first time the host sees it. On desktop and Android TV you get a fixed-width left rail (logo + grey icons, Netflix-style underline on the active tab). The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 
@@ -27,7 +27,7 @@ The tab bar is always visible after the app finishes loading. On first sign-in, 
 
 ## Android TV
 
-- **Nav rail order:** Home, Asian Drama, Anime, IPTV, Live Sports, My List, then the **profile avatar** (same Settings hub as desktop — always last and cannot be hidden)
+- **Nav rail order:** enabled tabs from Features (hubs after packs install), then the **profile avatar** (same Settings hub as desktop — always last and cannot be hidden)
 - The app **opens on your chosen default tab** (Home unless you change it in Settings); **first focus** lands on that tab’s **nav rail** item (Home by default), not the hero **View details** button
 - **Settings hub:** wide TV uses the desktop-style left category rail + right detail pane; **OK** or **→** enters the detail pane and focuses the first control (detail scroll snaps to the top so titles/section labels stay visible); D-pad moves among detail controls by on-screen position (spatial); text fields focus without opening the keyboard until **OK**; **Back** steps detail → selected category → first category → nav rail (or leaves typing first when a field is being edited)
 - **Account:** cold start (desktop and Android TV) offers Sign in (code or QR via `/connect`) or Continue as guest; after link you pick a profile on Who’s watching?
@@ -54,7 +54,7 @@ The tab bar is always visible after the app finishes loading. On first sign-in, 
 
 ## Available tabs
 
-**Default (fresh install):** Home · Asian Drama · Anime · IPTV · Live Sports · My List · Settings
+**Default (fresh install):** IPTV · Settings. **After hub packs install:** those tabs turn on in Features the first time Forja sees them (typical official bundle: Home · Asian Drama · Anime · Live Sports · My List, plus optional Arabic / Aflem / كرتون / Kids).
 
 Hub tabs (**Home**, **Anime**, **Asian Drama**, **Arabic** / **Aflem** / **كرتون** / **Kids** when their packs are installed) come from ForjaHQ catalog packs — layout and rows update when the pack changes. If a pack is missing, the tab shows a retry panel.
 

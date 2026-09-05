@@ -1412,6 +1412,18 @@ class SettingsService {
   static const List<String> defaultVisibleNavIds =
       PlatformDefaults.defaultNavIds;
 
+  /// Pre–RFC-081 first-run rail (hub pack tab ids baked into platform defaults).
+  /// Legacy shell migrations rewrite *to* this list — never to host-only defaults
+  /// — so upgrades do not strip Home / Anime / … from untouched installs.
+  static const List<String> _legacyPackSeededDefaultNavIds = [
+    'home',
+    'asian_drama',
+    'anime',
+    'iptv',
+    'live_matches',
+    'mylist',
+  ];
+
   static List<String> _migrateSearchFirstNavToHomeFirst(List<String> ids) {
     if (ids.length < 2 || ids[0] != 'search' || ids[1] != 'home') {
       return ids;
@@ -1422,7 +1434,7 @@ class SettingsService {
     return migrated;
   }
 
-  /// Prior Android TV defaults — migrate to [PlatformDefaults.androidTvNavIds].
+  /// Prior Android TV defaults — migrate to [_legacyPackSeededDefaultNavIds].
   static const List<List<String>> _legacyAndroidTvNavOrders = [
     [
       'home',
@@ -1516,15 +1528,15 @@ class SettingsService {
     return false;
   }
 
+  /// Host / archived shell ids only. Catalog hub tab ids register via
+  /// [registerExtraNavIds] when packs contribute `nav` — never list pack hubs
+  /// here or fresh-install [navbar_known_ids] blocks first-seen auto-show.
   static const List<String> _baseAllNavIds = [
-    'home',
     'discover',
     'similar',
     'search',
-    'mylist',
     'downloader',
     'magnet',
-    'live_matches',
     'iptv',
     'audiobooks',
     'books',
@@ -1532,10 +1544,6 @@ class SettingsService {
     'comics',
     'manga',
     'jellyfin',
-    'anime',
-    'anime_arabic',
-    'asian_drama',
-    'arabic',
   ];
 
   static final List<String> _extraNavIds = [];
@@ -1578,15 +1586,20 @@ class SettingsService {
         visible.add(id);
       }
     }
-    if (!changed && known.length == allNavIds.length) return;
-    await kvSetStringList(_navbarKnownIdsKey, allNavIds);
+    if (!changed && known.containsAll(allNavIds) && known.containsAll(allHubIds)) {
+      return;
+    }
+    await kvSetStringList(_navbarKnownIdsKey, {
+      ...known,
+      ...allNavIds,
+    }.toList());
     if (await kvHasKey(_navbarConfigKey)) {
       await kvSetStringList(_navbarConfigKey, visible);
     }
   }
 
-  /// Re-insert platform-default hub tabs that are active but missing from the
-  /// visible navbar — recovery after a premature empty-hub sync during lean boot.
+  /// Re-insert active hub tabs missing from the visible navbar — recovery after
+  /// a premature empty-hub sync during lean boot.
   ///
   /// No-op if any [activeHubIds] tab is already visible (intentional Features
   /// hide / partial config — not a full strip to IPTV-only).
@@ -1598,18 +1611,18 @@ class SettingsService {
     final visible = await kvGetStringList(_navbarConfigKey, fallback: const []);
     if (visible.any(activeHubIds.contains)) return;
 
-    final defaults = defaultVisibleNavIds;
-    final next = <String>[];
-    for (final id in defaults) {
-      if (activeHubIds.contains(id) || visible.contains(id)) {
-        next.add(id);
-      }
-    }
-    for (final id in visible) {
-      if (!next.contains(id)) next.add(id);
-    }
-    if (listEquals(visible, next)) return;
-    await kvSetStringList(_navbarConfigKey, next);
+    // Host defaults first, then active hubs, then any other stored tabs.
+    final ordered = <String>[
+      for (final id in defaultVisibleNavIds)
+        if (visible.contains(id) || activeHubIds.contains(id)) id,
+      for (final id in activeHubIds)
+        if (!defaultVisibleNavIds.contains(id)) id,
+      for (final id in visible)
+        if (!defaultVisibleNavIds.contains(id) && !activeHubIds.contains(id))
+          id,
+    ];
+    if (listEquals(visible, ordered)) return;
+    await kvSetStringList(_navbarConfigKey, ordered);
     navbarChangeNotifier.value++;
   }
 
@@ -1795,7 +1808,7 @@ class SettingsService {
       if (_isLegacyDefaultNav(raw)) {
         await kvSetStringList(
           _navbarConfigKey,
-          List<String>.from(defaultVisibleNavIds),
+          List<String>.from(_legacyPackSeededDefaultNavIds),
         );
       }
       await kvSetString(_navbarShell084Key, '1');
@@ -1837,7 +1850,7 @@ class SettingsService {
         if (_isLegacyAndroidTvNav(raw)) {
           await kvSetStringList(
             _navbarConfigKey,
-            List<String>.from(PlatformDefaults.androidTvNavIds),
+            List<String>.from(_legacyPackSeededDefaultNavIds),
           );
         }
       }
@@ -1849,7 +1862,7 @@ class SettingsService {
         if (_isLegacyPlatformDefaultNav(raw)) {
           await kvSetStringList(
             _navbarConfigKey,
-            List<String>.from(defaultVisibleNavIds),
+            List<String>.from(_legacyPackSeededDefaultNavIds),
           );
         }
       }
@@ -1861,7 +1874,7 @@ class SettingsService {
         if (listEquals(raw, _legacyAnimeBeforeAsianDramaNavIds)) {
           await kvSetStringList(
             _navbarConfigKey,
-            List<String>.from(defaultVisibleNavIds),
+            List<String>.from(_legacyPackSeededDefaultNavIds),
           );
         }
       }
@@ -1873,7 +1886,7 @@ class SettingsService {
         if (listEquals(raw, _legacySearchInDefaultNavIds)) {
           await kvSetStringList(
             _navbarConfigKey,
-            List<String>.from(defaultVisibleNavIds),
+            List<String>.from(_legacyPackSeededDefaultNavIds),
           );
         }
       }
@@ -1884,7 +1897,12 @@ class SettingsService {
       return List<String>.from(_defaults.visibleNavIds);
     }
     final raw = await kvGetStringList(_navbarConfigKey, fallback: const []);
-    final filtered = raw.where((id) => allNavIds.contains(id)).toList();
+    // Keep stored ids even before pack [registerExtraNavIds] (hub tabs). Host
+    // [allNavIds] is for auto-insert of new builtins + Features order only.
+    final filtered = raw
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList();
     final known = (await kvGetStringList(
       _navbarKnownIdsKey,
       fallback: const [],
@@ -1905,8 +1923,11 @@ class SettingsService {
       }
       filtered.insert(insertAt, id);
     }
-    if (newlyAdded.isNotEmpty || known.length != allNavIds.length) {
-      await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
+    if (newlyAdded.isNotEmpty || allNavIds.any((id) => !known.contains(id))) {
+      await kvSetStringList(_navbarKnownIdsKey, {
+        ...known,
+        ...allNavIds,
+      }.toList());
     }
     return filtered;
   }
@@ -1953,7 +1974,15 @@ class SettingsService {
         : null;
     final unchanged = raw != null && listEquals(raw, visibleIds);
     await kvSetStringList(_navbarConfigKey, visibleIds);
-    await kvSetStringList(_navbarKnownIdsKey, List.from(allNavIds));
+    final known = (await kvGetStringList(
+      _navbarKnownIdsKey,
+      fallback: const [],
+    )).toSet();
+    await kvSetStringList(_navbarKnownIdsKey, {
+      ...known,
+      ...allNavIds,
+      ...visibleIds,
+    }.toList());
     if (tabOrder != null) {
       await kvSetStringList(
         _navbarTabOrderKey,

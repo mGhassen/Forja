@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// Destinations / accents / builders come only from pack `nav` ([refresh]).
 /// Last [refresh] is cached so boot does not flash an empty rail.
+/// No hardcoded pack plugin ids — seed is empty until cache or packs load.
 abstract final class PluginNavRegistry {
   static const coreShellNavIds = {
     'iptv',
@@ -62,32 +63,13 @@ abstract final class PluginNavRegistry {
     seedBuiltIns();
   }
 
-  /// Load cached pack nav on first [refresh] only — avoids stale tabs before
-  /// installed packs are scanned. Seed Live Sports so the tab exists before the
-  /// hub pack refresh (RFC-071).
+  /// Empty in-memory seed — pack `nav` / [_loadCachedNav] fill hubs.
   static void seedBuiltIns() {
     _deferredEmptyHubNavSync = false;
-    _destinations = {
-      'live_matches': const NavDestination(
-        id: 'live_matches',
-        icon: Icons.sports_soccer_outlined,
-        activeIcon: Icons.sports_soccer_rounded,
-        label: 'Live Sports',
-        iconAsset: ForjaHostAssets.flutterNavLiveMatches,
-      ),
-    };
-    _accents = {
-      'live_matches': const Color(0xFFFB923C),
-    };
-    _tabPluginIds = {
-      'live_matches': 'live-sports-hub',
-    };
-    _builders = {
-      'live_matches': () => const CatalogShell(
-            pluginId: 'live-sports-hub',
-            tabId: 'live_matches',
-          ),
-    };
+    _destinations = {};
+    _accents = {};
+    _tabPluginIds = {};
+    _builders = {};
     _seeded = true;
   }
 

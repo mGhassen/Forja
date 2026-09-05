@@ -717,11 +717,12 @@ void main() {
       expect(byTab['home']!.accent, '#1CE783');
       expect(byTab['home']!.order, 10);
 
-      // Live Sports is seeded so the tab exists before pack refresh (RFC-071).
+      // Host seed stays empty — hubs come from pack nav / cache (RFC-081).
       PluginNavRegistry.seedBuiltIns();
-      expect(PluginNavRegistry.isHubTab('live_matches'), isTrue);
+      expect(PluginNavRegistry.isHubTab('live_matches'), isFalse);
       expect(PluginNavRegistry.isHubTab('settings'), isFalse);
       expect(PluginNavRegistry.isContributed('mylist'), isFalse);
+      expect(PluginNavRegistry.isContributed('iptv'), isTrue);
     });
 
     test('nav icons are pack-relative or forja://asset — never assets/', () {

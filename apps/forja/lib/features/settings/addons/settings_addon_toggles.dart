@@ -11,6 +11,8 @@ import 'package:forja/features/settings/widgets/p2p_streaming_ack_dialog.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/sync/sync.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:rust/rust.dart';
 
 /// Master on/off switch for an addon in the Addons list.
@@ -128,16 +130,37 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   Widget build(BuildContext context) {
     final snap = ref.watch(settingsPlaybackProvider).valueOrNull;
     final enabled = _isEnabled(snap);
+    void flip() => unawaited(_toggle(!enabled));
+    final switchVisual = IgnorePointer(
+      child: ForjaSwitch(
+        value: enabled,
+        onChanged: (_) {},
+        scale: ForjaSwitch.settingsScale,
+      ),
+    );
+    // TV: own focus stop so → from the addon row lands here; OK flips.
+    // Touch/desktop: opaque tap on the switch only (row opens detail).
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      return shellFocusableTap(
+        context: context,
+        onTap: flip,
+        borderRadius: 12,
+        scaleOnFocus: 1.0,
+        showFocusRail: true,
+        tvTabId: 'settings',
+        tvZone: ShellTvZone.settings,
+        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: switchVisual,
+        ),
+      );
+    }
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () => unawaited(_toggle(!enabled)),
-      child: IgnorePointer(
-        child: ForjaSwitch(
-          value: enabled,
-          onChanged: (_) {},
-          scale: ForjaSwitch.settingsScale,
-        ),
-      ),
+      onTap: flip,
+      child: switchVisual,
     );
   }
 }

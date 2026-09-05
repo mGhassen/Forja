@@ -133,6 +133,6 @@ Playback receives **streams + Movie + optional catalog watch hooks** — not “
 
 - `shared/playback/hub_*`, `catalog_play_resolve.dart` — pack-scented; migrate to
   `catalog/kit/play/` + engine boundary; do not add `anime`/`drama` switches.
-- `PluginNavRegistry.builtInHubPluginIds` — seed only.
+- `PluginNavRegistry` empty seed + pack `nav` / cache — no baked hub plugin ids.
 - `hub_details_sections.dart` TMDB host fetch — migrate to pack enrich.
 - Partial refactors that rename fields but keep `switch (surface)` in playback — **reject**.

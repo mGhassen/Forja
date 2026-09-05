@@ -6,7 +6,7 @@
 
 Customize which sections appear in the bottom nav (mobile) or side rail (desktop) and in what order. **Settings** always stays visible and cannot be removed. On desktop its pinned rail control is rendered as the active profile avatar (or Guest).
 
-On a fresh install, all available tabs are enabled in this order: Home, Asian Drama, Anime, IPTV, Live Sports, My List, then Settings. Home is the default startup tab.
+On a fresh install, only **IPTV** (and always-visible **Settings**) are host-default. Hub tabs appear under Features when their packs install — **on** the first time the host sees each tab. Star a visible tab to choose startup (Home is common after the official packs bundle).
 
 ## How to open it
 

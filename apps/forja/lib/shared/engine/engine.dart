@@ -7,6 +7,7 @@ export 'lean_apply_result.dart';
 export 'live_goat_unlock.dart';
 export 'live_sport_capabilities.dart';
 export 'models.dart';
+export 'official_forjahq_install.dart';
 export 'official_forjahq_packs.dart';
 export 'pack_device_state.dart';
 export 'plugin_contract.dart';

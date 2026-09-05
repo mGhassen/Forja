@@ -21,7 +21,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 | Category | What it covers | Shown when |
 |----------|----------------|------------|
 | [Profile & account](cloud-sync.md) | Active profile, Forja sign-in, cloud sync, sign out | Always |
-| **Addons** | Playback, IPTV, Live Sports, torrent, Stremio, Nuvio, Debrid, Connected services, LAN. Playback is first (player prefs, no switch). Other rows have a switch to activate. Tap a row for that addon's settings. Plugin packs add extra options **inside** an addon. | Always |
+| **Addons** | Playback, IPTV, Live Sports, torrent, Stremio, Nuvio, Debrid, Connected services, LAN. Playback is first (player prefs, no switch). Other rows have a switch to activate. Tap / OK a row for that addon's settings. On **Android TV**, **→** moves focus to the activate switch; **OK** on the switch turns the addon on or off. Plugin packs add extra options **inside** an addon. | Always |
 | [Forja Packs](forja-packs.md) | Install and manage Forja JS plugin manifests (providers, hubs, live, …) | Always |
 | [Features](navigation-bar.md) | Tab visibility, order, default menu | Always |
 | [Data & backup](cache-data.md) / [Backup](backup-restore.md) | Clear caches & watch data; export/import JSON; IPTV portals CSV | Phone / desktop (IPTV portals CSV / portal cache only if IPTV tab is on) — never on Android TV |
@@ -47,7 +47,9 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
   category, then first category, then the nav rail. **←** on the first category
   also returns to the nav rail. **OK** in the detail pane flips a toggle or
   opens a select’s option list (current choice highlighted; **Back** dismisses).
-  Nested switches do not steal focus. Text fields
+  Nested switches on ordinary toggle rows do not steal focus (**OK** flips the
+  row). **Addons** list rows are different: **OK** opens the addon; **→**
+  focuses the activate switch, then **OK** flips it. Text fields
   (API keys, URLs, etc.) take **focus** with the D-pad without opening the
   keyboard — press **OK** to type; **Back** leaves typing and keeps the field
   focused

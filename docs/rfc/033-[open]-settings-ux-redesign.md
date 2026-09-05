@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **9 / 9** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) · **3 / 3** acceptance (TV detail focus) · **1 / 1** acceptance (resume selection) · **0 / 5** acceptance (Addons hub) |
+| **Progress** | **9 / 9** components · **10 / 10** acceptance (category hub) · **6 / 6** acceptance (profile visibility) · **3 / 3** acceptance (TV detail focus) · **1 / 1** acceptance (resume selection) · **1 / 6** acceptance (Addons hub) |
 | **Current slice** | Addons are built-in app surfaces (always listed, switch activates); plugins contribute extra settings inside addon details |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -80,6 +80,7 @@
 | 3 | R33-A23 | Tapping an addon row opens its detail in-pane with back to the list | 🔄 |
 | 4 | R33-A24 | Deep-links (`openSettings(categoryId: 'debrid')` etc.) land on Addons → that addon detail | 🔄 |
 | 5 | R33-A25 | TV D-pad: back from addon detail → addon list → category rail | ⬜ |
+| 6 | R33-A26 | TV Addons list: OK opens detail; → focuses activate switch; OK on switch flips | ✅ |
 
 ---
 
