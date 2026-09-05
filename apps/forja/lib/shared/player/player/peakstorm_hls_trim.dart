@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -10,7 +11,8 @@ import 'package:path_provider/path_provider.dart';
 
 /// Trim a peakstorm fMP4 HLS playlist to start near [target] without mpv `start`.
 ///
-/// Returns a `file://` playlist mpv can open — segment URIs stay absolute CDN URLs.
+/// Returns a `file://` playlist (or loopback `http://` for dmcdn) mpv can open —
+/// segment URIs stay absolute CDN URLs.
 Future<String?> buildPeakstormTrimmedPlaylistFile({
   required String catalogUrl,
   required Duration target,
@@ -20,13 +22,8 @@ Future<String?> buildPeakstormTrimmedPlaylistFile({
   if (!peakstormFmp4HlsAvoidHardSeek(catalogUrl) || target.inSeconds <= 0) {
     return null;
   }
-  // dmcdn fMP4: local file:// trim opens fail demux ("Failed to recognize file
-  // format") even with absolute MAP — use mpv `start` on the CDN URL instead.
-  if (isDailymotionDmcdnHlsUrl(catalogUrl)) {
-    return null;
-  }
   try {
-    final masterUrl = preferVideasyHlsMasterUrl(catalogUrl.trim());
+    final masterUrl = preferVideasyHlsMasterUrl(catalogUrl.trim().split('#').first);
     final masterBody = await _fetchPlaylistText(masterUrl, headers);
     if (masterBody == null || masterBody.isEmpty) return null;
 
@@ -45,6 +42,20 @@ Future<String?> buildPeakstormTrimmedPlaylistFile({
     );
     if (trimmed == null) return null;
 
+    // dmcdn: file:// demux fails ("Failed to recognize file format"); serve
+    // the same body over loopback so mpv treats it as remote HLS + headers.
+    if (isDailymotionDmcdnHlsUrl(catalogUrl)) {
+      final loop = await _serveTrimmedPlaylistLoopback(trimmed);
+      if (loop != null) {
+        logPeakstormResume(
+          'trim playlist',
+          target: target,
+          detail: 'seg=${_segmentIndexFromTrimmed(trimmed)} loopback=$loop',
+        );
+        return loop;
+      }
+    }
+
     final dir = await getTemporaryDirectory();
     final file = File(
       p.join(
@@ -61,6 +72,41 @@ Future<String?> buildPeakstormTrimmedPlaylistFile({
     return file.uri.toString();
   } catch (e, st) {
     debugPrint('[PeakstormResume] trim failed: $e\n$st');
+    return null;
+  }
+}
+
+/// Keep the socket open a few minutes — mpv may re-fetch the media playlist.
+Future<String?> _serveTrimmedPlaylistLoopback(String body) async {
+  try {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final url = 'http://127.0.0.1:${server.port}/trim.m3u8';
+    final bytes = utf8.encode(body);
+    late StreamSubscription<HttpRequest> sub;
+    sub = server.listen((req) async {
+      try {
+        req.response.statusCode = 200;
+        req.response.headers.contentType = ContentType(
+          'application',
+          'vnd.apple.mpegurl',
+          charset: 'utf-8',
+        );
+        req.response.headers.contentLength = bytes.length;
+        req.response.add(bytes);
+        await req.response.close();
+      } catch (_) {
+        try {
+          await req.response.close();
+        } catch (_) {}
+      }
+    });
+    Timer(const Duration(minutes: 10), () {
+      unawaited(sub.cancel());
+      unawaited(server.close(force: true));
+    });
+    return url;
+  } catch (e) {
+    debugPrint('[PeakstormResume] loopback trim serve failed: $e');
     return null;
   }
 }

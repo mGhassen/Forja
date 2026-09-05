@@ -1342,6 +1342,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
               i == _focusedChannelIndex &&
               (_wide || _step == _GuideStep.channels);
           return _GuideChannelTile(
+            key: ValueKey(ch.id),
             channel: ch,
             active: active,
             focused: focused,
@@ -1382,6 +1383,7 @@ class _IptvChannelGuidePanelState extends State<IptvChannelGuidePanel> {
 
 class _GuideChannelTile extends StatefulWidget {
   const _GuideChannelTile({
+    super.key,
     required this.channel,
     required this.active,
     required this.focused,
@@ -1550,6 +1552,7 @@ class _ChannelLogo extends StatelessWidget {
       width: width,
       height: height,
       child: ForjaNetworkImage(
+        key: ValueKey(url),
         url: url,
         width: width,
         height: height,
@@ -1557,6 +1560,7 @@ class _ChannelLogo extends StatelessWidget {
         alignment: Alignment.center,
         memCacheWidth: cacheW,
         filterQuality: tv ? FilterQuality.low : FilterQuality.medium,
+        useOldImageOnUrlChange: false,
         placeholder: _placeholder(),
         error: _placeholder(),
       ),

@@ -602,6 +602,7 @@ class _ChannelLogo extends StatelessWidget {
       width: width,
       height: height,
       child: ForjaNetworkImage(
+        key: ValueKey(url),
         url: url,
         width: width,
         height: height,
@@ -609,6 +610,7 @@ class _ChannelLogo extends StatelessWidget {
         alignment: Alignment.center,
         memCacheWidth: cacheW,
         filterQuality: tv ? FilterQuality.low : FilterQuality.medium,
+        useOldImageOnUrlChange: false,
         placeholder: _placeholder(),
         error: _placeholder(),
       ),

@@ -680,8 +680,10 @@ class _ChannelHitCard extends StatelessWidget {
                             child: Padding(
                               padding: const EdgeInsets.all(6),
                               child: ForjaNetworkImage(
+                                key: ValueKey(hit.stream.icon),
                                 url: hit.stream.icon,
                                 fit: BoxFit.contain,
+                                useOldImageOnUrlChange: false,
                                 error: const _StreamPlaceholder(),
                                 placeholder: const _StreamPlaceholder(),
                               ),

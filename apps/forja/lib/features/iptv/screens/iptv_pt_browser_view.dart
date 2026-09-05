@@ -1557,6 +1557,7 @@ class _BrowserViewState extends State<_BrowserView> {
                 ? () => _jumpToStreamCatalogCategory(stream)
                 : null;
             return _StreamCard(
+              key: ValueKey(stream.streamId),
               stream: stream,
               ctrl: widget.ctrl,
               highlighted:
@@ -1638,6 +1639,7 @@ class _BrowserViewState extends State<_BrowserView> {
             ? () => _jumpToStreamCatalogCategory(stream)
             : null;
         return _StreamRowTile(
+          key: ValueKey(stream.streamId),
           stream: stream,
           ctrl: ctrl,
           categoryName: categoryNames[stream.categoryId] ?? '',

@@ -681,12 +681,14 @@ Future<String> openPlayerStream(
   }
   if (mpvStart != null) await _mpvStartAt(player, mpvStart);
   // mwVault proxy auth lives in the URL query — do not duplicate via httpHeaders.
+  // file:// trimmed HLS still fetches CDN segments — keep Referer/UA on Media.
   final isFile = playUrl.startsWith('file://');
+  final attachHeaders =
+      !mwVaultProxy && hdrs.isNotEmpty && (isRemoteHttp || isFile);
   await player.open(
     Media(
       playUrl,
-      httpHeaders:
-          isRemoteHttp && !mwVaultProxy && !isFile ? hdrs : null,
+      httpHeaders: attachHeaders ? hdrs : null,
     ),
   );
   if (mpvStart != null) {
@@ -697,6 +699,9 @@ Future<String> openPlayerStream(
           ? 'peakstorm url=${_shortPeakstormUrl(openUrl)}'
           : null,
     );
+    if (!player.state.playing) {
+      await player.play();
+    }
     await _waitForMpvStartApplied(player, mpvStart, streamUrl: openUrl);
     await _mpvStartAt(player, null);
     logPeakstormResume(

@@ -96,6 +96,7 @@ class _StreamCard extends StatefulWidget {
   final VoidCallback? onRightEdge;
   final VoidCallback? onDownEdge;
   const _StreamCard({
+    super.key,
     required this.stream,
     required this.ctrl,
     required this.onTap,
@@ -518,6 +519,7 @@ class _StreamCardState extends State<_StreamCard> {
 
 class _StreamRowTile extends StatefulWidget {
   const _StreamRowTile({
+    super.key,
     required this.stream,
     required this.ctrl,
     required this.categoryName,
@@ -1049,12 +1051,16 @@ Widget _streamIconThumb({
     return const SizedBox.expand(child: _StreamPlaceholder());
   }
   final image = ForjaNetworkImage(
+    key: ValueKey(icon),
     url: icon,
     fit: contain ? BoxFit.contain : BoxFit.cover,
     alignment: Alignment.center,
     memCacheWidth: cacheWidth,
     filterQuality:
         cacheWidth != null ? FilterQuality.low : FilterQuality.medium,
+    // Index reuse must not keep the previous channel's mark while the name
+    // already swapped (common when new logo CDN is slow/dead).
+    useOldImageOnUrlChange: false,
     placeholder: const _StreamPlaceholder(),
     error: const _StreamPlaceholder(),
   );

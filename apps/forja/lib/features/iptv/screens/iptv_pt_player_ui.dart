@@ -1406,8 +1406,10 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
                 width: 36,
                 height: 36,
                 child: ForjaNetworkImage(
+                  key: ValueKey(_s._logoUrl!.trim()),
                   url: _s._logoUrl!.trim(),
                   fit: BoxFit.contain,
+                  useOldImageOnUrlChange: false,
                   error: const SizedBox.shrink(),
                 ),
               ),
@@ -1487,10 +1489,12 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: ForjaNetworkImage(
+        key: ValueKey(_s._logoUrl!),
         url: _s._logoUrl!,
         width: size,
         height: size,
         fit: BoxFit.contain,
+        useOldImageOnUrlChange: false,
         error: const SizedBox.shrink(),
       ),
     );
@@ -2345,6 +2349,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
       width: size,
       height: size,
       child: ForjaNetworkImage(
+        key: ValueKey(url),
         url: url,
         width: size,
         height: size,
@@ -2352,6 +2357,7 @@ mixin _IptvPtPlayerUi on ConsumerState<IptvPtPlayerScreen> {
         alignment: Alignment.center,
         memCacheWidth: cacheW,
         filterQuality: FilterQuality.medium,
+        useOldImageOnUrlChange: false,
         error: Icon(
           Icons.live_tv_rounded,
           color: Colors.white38,

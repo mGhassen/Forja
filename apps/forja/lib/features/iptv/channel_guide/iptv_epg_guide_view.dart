@@ -546,10 +546,12 @@ class _ChannelCellState extends State<_ChannelCell> {
                   ClipRRect(
                     borderRadius: BorderRadius.circular(5),
                     child: ForjaNetworkImage(
+                      key: ValueKey(stream.icon),
                       url: stream.icon,
                       width: 34,
                       height: 34,
                       fit: BoxFit.contain,
+                      useOldImageOnUrlChange: false,
                       error: const SizedBox(
                         width: 34,
                         height: 34,
