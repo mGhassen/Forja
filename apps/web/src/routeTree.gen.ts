@@ -34,11 +34,13 @@ import { Route as AccountSettingsAddonsRouteImport } from './routes/account.sett
 import { Route as AccountSettingsConnectionsRouteImport } from './routes/account.settings.connections'
 import { Route as AccountSettingsForjaRouteImport } from './routes/account.settings.forja'
 import { Route as AccountSettingsIptvRouteImport } from './routes/account.settings.iptv'
+import { Route as AccountSettingsLiveSportsRouteImport } from './routes/account.settings.live-sports'
 import { Route as AccountSettingsNavigationRouteImport } from './routes/account.settings.navigation'
 import { Route as AccountSettingsNuvioRouteImport } from './routes/account.settings.nuvio'
 import { Route as AccountSettingsPlaybackRouteImport } from './routes/account.settings.playback'
 import { Route as AccountSettingsProvidersRouteImport } from './routes/account.settings.providers'
 import { Route as AccountSettingsStremioRouteImport } from './routes/account.settings.stremio'
+import { Route as AccountSettingsTorrentRouteImport } from './routes/account.settings.torrent'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -165,6 +167,12 @@ const AccountSettingsIptvRoute = AccountSettingsIptvRouteImport.update({
   path: '/iptv',
   getParentRoute: () => AccountSettingsRoute,
 } as any)
+const AccountSettingsLiveSportsRoute =
+  AccountSettingsLiveSportsRouteImport.update({
+    id: '/live-sports',
+    path: '/live-sports',
+    getParentRoute: () => AccountSettingsRoute,
+  } as any)
 const AccountSettingsNavigationRoute =
   AccountSettingsNavigationRouteImport.update({
     id: '/navigation',
@@ -190,6 +198,11 @@ const AccountSettingsProvidersRoute =
 const AccountSettingsStremioRoute = AccountSettingsStremioRouteImport.update({
   id: '/stremio',
   path: '/stremio',
+  getParentRoute: () => AccountSettingsRoute,
+} as any)
+const AccountSettingsTorrentRoute = AccountSettingsTorrentRouteImport.update({
+  id: '/torrent',
+  path: '/torrent',
   getParentRoute: () => AccountSettingsRoute,
 } as any)
 
@@ -218,11 +231,13 @@ export interface FileRoutesByFullPath {
   '/account/settings/connections': typeof AccountSettingsConnectionsRoute
   '/account/settings/forja': typeof AccountSettingsForjaRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
+  '/account/settings/live-sports': typeof AccountSettingsLiveSportsRoute
   '/account/settings/navigation': typeof AccountSettingsNavigationRoute
   '/account/settings/nuvio': typeof AccountSettingsNuvioRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
   '/account/settings/stremio': typeof AccountSettingsStremioRoute
+  '/account/settings/torrent': typeof AccountSettingsTorrentRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -249,11 +264,13 @@ export interface FileRoutesByTo {
   '/account/settings/connections': typeof AccountSettingsConnectionsRoute
   '/account/settings/forja': typeof AccountSettingsForjaRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
+  '/account/settings/live-sports': typeof AccountSettingsLiveSportsRoute
   '/account/settings/navigation': typeof AccountSettingsNavigationRoute
   '/account/settings/nuvio': typeof AccountSettingsNuvioRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
   '/account/settings/stremio': typeof AccountSettingsStremioRoute
+  '/account/settings/torrent': typeof AccountSettingsTorrentRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -282,11 +299,13 @@ export interface FileRoutesById {
   '/account/settings/connections': typeof AccountSettingsConnectionsRoute
   '/account/settings/forja': typeof AccountSettingsForjaRoute
   '/account/settings/iptv': typeof AccountSettingsIptvRoute
+  '/account/settings/live-sports': typeof AccountSettingsLiveSportsRoute
   '/account/settings/navigation': typeof AccountSettingsNavigationRoute
   '/account/settings/nuvio': typeof AccountSettingsNuvioRoute
   '/account/settings/playback': typeof AccountSettingsPlaybackRoute
   '/account/settings/providers': typeof AccountSettingsProvidersRoute
   '/account/settings/stremio': typeof AccountSettingsStremioRoute
+  '/account/settings/torrent': typeof AccountSettingsTorrentRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -315,11 +334,13 @@ export interface FileRouteTypes {
     | '/account/settings/connections'
     | '/account/settings/forja'
     | '/account/settings/iptv'
+    | '/account/settings/live-sports'
     | '/account/settings/navigation'
     | '/account/settings/nuvio'
     | '/account/settings/playback'
     | '/account/settings/providers'
     | '/account/settings/stremio'
+    | '/account/settings/torrent'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -346,11 +367,13 @@ export interface FileRouteTypes {
     | '/account/settings/connections'
     | '/account/settings/forja'
     | '/account/settings/iptv'
+    | '/account/settings/live-sports'
     | '/account/settings/navigation'
     | '/account/settings/nuvio'
     | '/account/settings/playback'
     | '/account/settings/providers'
     | '/account/settings/stremio'
+    | '/account/settings/torrent'
   id:
     | '__root__'
     | '/'
@@ -378,11 +401,13 @@ export interface FileRouteTypes {
     | '/account/settings/connections'
     | '/account/settings/forja'
     | '/account/settings/iptv'
+    | '/account/settings/live-sports'
     | '/account/settings/navigation'
     | '/account/settings/nuvio'
     | '/account/settings/playback'
     | '/account/settings/providers'
     | '/account/settings/stremio'
+    | '/account/settings/torrent'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -577,6 +602,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountSettingsIptvRouteImport
       parentRoute: typeof AccountSettingsRoute
     }
+    '/account/settings/live-sports': {
+      id: '/account/settings/live-sports'
+      path: '/live-sports'
+      fullPath: '/account/settings/live-sports'
+      preLoaderRoute: typeof AccountSettingsLiveSportsRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
     '/account/settings/navigation': {
       id: '/account/settings/navigation'
       path: '/navigation'
@@ -610,6 +642,13 @@ declare module '@tanstack/react-router' {
       path: '/stremio'
       fullPath: '/account/settings/stremio'
       preLoaderRoute: typeof AccountSettingsStremioRouteImport
+      parentRoute: typeof AccountSettingsRoute
+    }
+    '/account/settings/torrent': {
+      id: '/account/settings/torrent'
+      path: '/torrent'
+      fullPath: '/account/settings/torrent'
+      preLoaderRoute: typeof AccountSettingsTorrentRouteImport
       parentRoute: typeof AccountSettingsRoute
     }
   }
@@ -651,11 +690,13 @@ interface AccountSettingsRouteChildren {
   AccountSettingsConnectionsRoute: typeof AccountSettingsConnectionsRoute
   AccountSettingsForjaRoute: typeof AccountSettingsForjaRoute
   AccountSettingsIptvRoute: typeof AccountSettingsIptvRoute
+  AccountSettingsLiveSportsRoute: typeof AccountSettingsLiveSportsRoute
   AccountSettingsNavigationRoute: typeof AccountSettingsNavigationRoute
   AccountSettingsNuvioRoute: typeof AccountSettingsNuvioRoute
   AccountSettingsPlaybackRoute: typeof AccountSettingsPlaybackRoute
   AccountSettingsProvidersRoute: typeof AccountSettingsProvidersRoute
   AccountSettingsStremioRoute: typeof AccountSettingsStremioRoute
+  AccountSettingsTorrentRoute: typeof AccountSettingsTorrentRoute
 }
 
 const AccountSettingsRouteChildren: AccountSettingsRouteChildren = {
@@ -664,11 +705,13 @@ const AccountSettingsRouteChildren: AccountSettingsRouteChildren = {
   AccountSettingsConnectionsRoute: AccountSettingsConnectionsRoute,
   AccountSettingsForjaRoute: AccountSettingsForjaRoute,
   AccountSettingsIptvRoute: AccountSettingsIptvRoute,
+  AccountSettingsLiveSportsRoute: AccountSettingsLiveSportsRoute,
   AccountSettingsNavigationRoute: AccountSettingsNavigationRoute,
   AccountSettingsNuvioRoute: AccountSettingsNuvioRoute,
   AccountSettingsPlaybackRoute: AccountSettingsPlaybackRoute,
   AccountSettingsProvidersRoute: AccountSettingsProvidersRoute,
   AccountSettingsStremioRoute: AccountSettingsStremioRoute,
+  AccountSettingsTorrentRoute: AccountSettingsTorrentRoute,
 }
 
 const AccountSettingsRouteWithChildren = AccountSettingsRoute._addFileChildren(

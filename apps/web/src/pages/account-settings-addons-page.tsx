@@ -227,16 +227,20 @@ export function AccountSettingsAddonsPage() {
         />
         <AddonRow
           title="Live Sports"
-          description="Live Matches tab (leagues & portal prefs stay in the app)"
+          description="Live Matches tab, live provider packs, schedule catalogs"
           checked={navDraft.draft.visible.has('live_matches')}
           onCheckedChange={(v) => setNavTab('live_matches', v)}
+          href="/account/settings/live-sports"
+          hrefLabel="Plugins"
           disabled={busy}
         />
         <AddonRow
           title="Direct torrent"
-          description="Jackett / Prowlarr / torrent engine in Sources"
+          description="Torrent indexer packs, Jackett / Prowlarr in the app"
           checked={playDraft.draft.play_source_torrent_enabled ?? true}
           onCheckedChange={(v) => setPlayBool('play_source_torrent_enabled', v)}
+          href="/account/settings/torrent"
+          hrefLabel="Plugins"
           disabled={busy}
         />
         <AddonRow
@@ -258,8 +262,9 @@ export function AccountSettingsAddonsPage() {
           disabled={busy}
         />
         <p className="px-0.5 pb-2 pt-4 text-xs text-forja-muted">
-          Debrid, Connected services, and LAN stay in the app. Pack hubs install
-          under Forja Packs, then appear under Features.
+          Debrid, Connected services, and LAN stay in the app. Hub packs install
+          under Forja Packs, then appear under Features. Live Sports / Direct
+          torrent Plugins manage those Forja packs on this profile.
         </p>
       </SettingsSection>
     </AccountSettingsShell>
