@@ -92,7 +92,7 @@ class _ShellEmptyFeaturesScreenState
           body: tv
               ? 'IPTV, Live Sports, torrent, Stremio, Nuvio, and more.'
               : 'Turn on IPTV, Live Sports, torrent, Stremio, Nuvio, and other playback surfaces.',
-          actionLabel: 'Open Addons',
+          accent: const Color(0xFF22D3EE),
           onAction: widget.onOpenAddons!,
         ),
       _CardSpec(
@@ -101,7 +101,7 @@ class _ShellEmptyFeaturesScreenState
         body: tv
             ? 'Choose which tabs appear in the rail.'
             : 'Choose which tabs appear — Home, Anime, IPTV, Live Matches, Lists, and more.',
-        actionLabel: 'Open Features',
+        accent: const Color(0xFF34D399),
         onAction: widget.onOpenFeatures,
       ),
       if (showPlugins && widget.onInstallPlugins != null)
@@ -111,7 +111,7 @@ class _ShellEmptyFeaturesScreenState
           body: tv
               ? 'Install hub and stream packs from a URL or profile.'
               : 'Install hub and stream packs from a manifest URL, or sync packs from your profile.',
-          actionLabel: 'Install plugins',
+          accent: const Color(0xFFFBBF24),
           onAction: widget.onInstallPlugins!,
         ),
     ];
@@ -142,12 +142,37 @@ class _ShellEmptyFeaturesScreenState
                 constraints.maxWidth >= 640 &&
                 specs.length > 1;
 
+            Widget cardAt(int i, {required bool expandBody, required bool compact}) {
+              return _HintCard(
+                spec: specs[i],
+                tvFocus: tvFocus,
+                autofocus: tvFocus && i == 0,
+                focusNode: _cardFocus[i],
+                expandBody: expandBody,
+                compact: compact,
+                tvItemIndex: i,
+                onFocusLeft: horizontal
+                    ? (i == 0
+                        ? ShellTvFocusCoordinator.focusActiveNavTab
+                        : () => _cardFocus[i - 1].requestFocus())
+                    : ShellTvFocusCoordinator.focusActiveNavTab,
+                onFocusRight: horizontal && i < specs.length - 1
+                    ? () => _cardFocus[i + 1].requestFocus()
+                    : null,
+                onFocusUp: !horizontal && i > 0
+                    ? () => _cardFocus[i - 1].requestFocus()
+                    : null,
+                onFocusDown: !horizontal && i < specs.length - 1
+                    ? () => _cardFocus[i + 1].requestFocus()
+                    : null,
+              );
+            }
+
             return Center(
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    // TV: compact cluster so cards stay clear of the rail.
                     maxWidth: tv
                         ? 620
                         : horizontal
@@ -194,48 +219,21 @@ class _ShellEmptyFeaturesScreenState
                             children: [
                               for (var i = 0; i < specs.length; i++) ...[
                                 if (i > 0) SizedBox(width: tv ? 10 : 12),
-                                // TV: fixed-width tiles (not Expanded stretch).
                                 if (tv)
                                   SizedBox(
                                     width: 188,
-                                    child: _HintCard(
-                                      spec: specs[i],
-                                      tvFocus: tvFocus,
-                                      autofocus: tvFocus && i == 0,
-                                      focusNode: _cardFocus[i],
+                                    child: cardAt(
+                                      i,
                                       expandBody: true,
                                       compact: true,
-                                      tvItemIndex: i,
-                                      onFocusLeft: i == 0
-                                          ? ShellTvFocusCoordinator
-                                              .focusActiveNavTab
-                                          : () =>
-                                              _cardFocus[i - 1].requestFocus(),
-                                      onFocusRight: i < specs.length - 1
-                                          ? () =>
-                                              _cardFocus[i + 1].requestFocus()
-                                          : null,
                                     ),
                                   )
                                 else
                                   Expanded(
-                                    child: _HintCard(
-                                      spec: specs[i],
-                                      tvFocus: tvFocus,
-                                      autofocus: false,
-                                      focusNode: _cardFocus[i],
+                                    child: cardAt(
+                                      i,
                                       expandBody: true,
                                       compact: false,
-                                      tvItemIndex: i,
-                                      onFocusLeft: i == 0
-                                          ? ShellTvFocusCoordinator
-                                              .focusActiveNavTab
-                                          : () =>
-                                              _cardFocus[i - 1].requestFocus(),
-                                      onFocusRight: i < specs.length - 1
-                                          ? () =>
-                                              _cardFocus[i + 1].requestFocus()
-                                          : null,
                                     ),
                                   ),
                               ],
@@ -247,22 +245,7 @@ class _ShellEmptyFeaturesScreenState
                           children: [
                             for (var i = 0; i < specs.length; i++) ...[
                               if (i > 0) SizedBox(height: tv ? 10 : 12),
-                              _HintCard(
-                                spec: specs[i],
-                                tvFocus: tvFocus,
-                                autofocus: tvFocus && i == 0,
-                                focusNode: _cardFocus[i],
-                                compact: tv,
-                                tvItemIndex: i,
-                                onFocusLeft:
-                                    ShellTvFocusCoordinator.focusActiveNavTab,
-                                onFocusUp: i > 0
-                                    ? () => _cardFocus[i - 1].requestFocus()
-                                    : null,
-                                onFocusDown: i < specs.length - 1
-                                    ? () => _cardFocus[i + 1].requestFocus()
-                                    : null,
-                              ),
+                              cardAt(i, expandBody: false, compact: tv),
                             ],
                           ],
                         ),
@@ -297,18 +280,18 @@ class _CardSpec {
     required this.icon,
     required this.title,
     required this.body,
-    required this.actionLabel,
+    required this.accent,
     required this.onAction,
   });
 
   final IconData icon;
   final String title;
   final String body;
-  final String actionLabel;
+  final Color accent;
   final VoidCallback onAction;
 }
 
-class _HintCard extends StatelessWidget {
+class _HintCard extends StatefulWidget {
   const _HintCard({
     required this.spec,
     required this.tvFocus,
@@ -336,140 +319,117 @@ class _HintCard extends StatelessWidget {
   final VoidCallback? onFocusDown;
 
   @override
-  Widget build(BuildContext context) {
-    final border = ForjaShellColors.borderSubtle.withValues(alpha: 0.55);
-    final surface = ForjaShellColors.surfaceElevated.withValues(alpha: 0.35);
-    final pad = compact ? 12.0 : 16.0;
-    final titleSize = compact ? 14.0 : 15.0;
-    final bodySize = compact ? 12.0 : 13.0;
-    final iconSize = compact ? 20.0 : 22.0;
+  State<_HintCard> createState() => _HintCardState();
+}
 
-    final card = DecoratedBox(
+class _HintCardState extends State<_HintCard> {
+  bool _hover = false;
+  bool _focused = false;
+
+  bool get _lit => _hover || _focused;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = widget.spec.accent;
+    final pad = widget.compact ? 14.0 : 18.0;
+    final titleSize = widget.compact ? 15.0 : 16.0;
+    final bodySize = widget.compact ? 12.0 : 13.0;
+    final iconSize = widget.compact ? 22.0 : 24.0;
+    final radius = 16.0;
+
+    final idleBg = ForjaShellColors.surfaceElevated.withValues(alpha: 0.28);
+    final litBg = Color.lerp(accent, Colors.white, 0.88)!;
+    final titleColor = _lit ? const Color(0xFF0B1220) : accent;
+    final bodyColor = _lit
+        ? const Color(0xFF1F2937).withValues(alpha: 0.78)
+        : ForjaShellColors.textSecondary.withValues(alpha: 0.9);
+    final iconColor = _lit ? const Color(0xFF0B1220) : accent;
+    final borderColor = _lit ? accent : accent.withValues(alpha: 0.75);
+
+    final inner = AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: border),
+        color: _lit ? litBg : idleBg,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: borderColor, width: _lit ? 1.5 : 1.2),
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(pad, pad, pad, compact ? 10 : 12),
+        padding: EdgeInsets.all(pad),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  spec.icon,
-                  size: iconSize,
-                  color: ForjaShellColors.sectionAccent,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    spec.title,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: ForjaShellColors.textPrimary,
-                      fontSize: titleSize,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
+            Icon(widget.spec.icon, size: iconSize, color: iconColor),
+            SizedBox(height: widget.compact ? 10 : 12),
+            Text(
+              widget.spec.title,
+              style: GoogleFonts.plusJakartaSans(
+                color: titleColor,
+                fontSize: titleSize,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.2,
+              ),
             ),
-            SizedBox(height: compact ? 6 : 8),
-            if (expandBody)
+            SizedBox(height: widget.compact ? 6 : 8),
+            if (widget.expandBody)
               Expanded(
                 child: Text(
-                  spec.body,
+                  widget.spec.body,
                   style: TextStyle(
-                    color: ForjaShellColors.textSecondary.withValues(
-                      alpha: 0.9,
-                    ),
+                    color: bodyColor,
                     fontSize: bodySize,
-                    height: 1.4,
+                    height: 1.45,
                   ),
                 ),
               )
             else
               Text(
-                spec.body,
+                widget.spec.body,
                 style: TextStyle(
-                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
+                  color: bodyColor,
                   fontSize: bodySize,
-                  height: 1.4,
+                  height: 1.45,
                 ),
               ),
-            SizedBox(height: compact ? 10 : 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: _ActionChip(label: spec.actionLabel, compact: compact),
-            ),
           ],
         ),
       ),
     );
 
-    if (!tvFocus) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: spec.onAction,
-          borderRadius: BorderRadius.circular(14),
-          child: card,
+    if (!widget.tvFocus) {
+      return MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hover = true),
+        onExit: (_) => setState(() => _hover = false),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.spec.onAction,
+          child: inner,
         ),
       );
     }
 
-    // Whole card is the D-pad / OK target.
     return shellFocusableTap(
       context: context,
-      onTap: spec.onAction,
-      focusNode: focusNode,
-      autoFocus: autofocus,
-      borderRadius: 14,
-      scaleOnFocus: 1.0,
-      showFocusBorder: true,
-      showFocusFill: true,
+      onTap: widget.spec.onAction,
+      focusNode: widget.focusNode,
+      autoFocus: widget.autofocus,
+      borderRadius: radius,
+      scaleOnFocus: 1.03,
+      showFocusBorder: false,
+      showFocusFill: false,
+      onFocusChange: (f) => setState(() => _focused = f),
       tvTabId: 'settings',
       tvRowId: 'empty-shell-cards',
-      tvItemIndex: tvItemIndex,
+      tvItemIndex: widget.tvItemIndex,
       tvZone: ShellTvZone.row,
-      listIndex: tvItemIndex,
-      onLeftEdge: onFocusLeft,
-      onRightEdge: onFocusRight,
-      onUpEdge: onFocusUp,
-      onDownEdge: onFocusDown,
+      listIndex: widget.tvItemIndex,
+      onLeftEdge: widget.onFocusLeft,
+      onRightEdge: widget.onFocusRight,
+      onUpEdge: widget.onFocusUp,
+      onDownEdge: widget.onFocusDown,
       ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      child: card,
-    );
-  }
-}
-
-class _ActionChip extends StatelessWidget {
-  const _ActionChip({required this.label, this.compact = false});
-
-  final String label;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: compact ? 12 : 16,
-          vertical: compact ? 7 : 9,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: compact ? 12 : 13,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
+      child: inner,
     );
   }
 }

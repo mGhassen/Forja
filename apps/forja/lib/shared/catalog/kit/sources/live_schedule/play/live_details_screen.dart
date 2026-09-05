@@ -922,60 +922,9 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
   }
 
   Widget _wrapInlineHeroPanel(Widget child) {
-    // Soft edge fade — keep top opaque sooner so the scrim sits under the
-    // first stream-card row (was fading through ~16% and leaving them bare).
-    Shader fadeMask(Rect bounds, Alignment begin, Alignment end) {
-      return LinearGradient(
-        begin: begin,
-        end: end,
-        colors: const [
-          Color(0x00FFFFFF),
-          Color(0xFFFFFFFF),
-          Color(0xFFFFFFFF),
-          Color(0x00FFFFFF),
-        ],
-        stops: const [0.0, 0.06, 0.88, 1.0],
-      ).createShader(bounds);
-    }
-
-    return Stack(
-      clipBehavior: Clip.none,
-      fit: StackFit.expand,
-      children: [
-        // Lift scrim above the panel so it covers the gap under the tab row
-        // and sits behind the top stream cards.
-        Positioned(
-          left: 0,
-          right: 0,
-          top: -28,
-          bottom: 0,
-          child: IgnorePointer(
-            child: ShaderMask(
-              blendMode: BlendMode.dstIn,
-              shaderCallback: (bounds) =>
-                  fadeMask(bounds, Alignment.topCenter, Alignment.bottomCenter),
-              child: ShaderMask(
-                blendMode: BlendMode.dstIn,
-                shaderCallback: (bounds) => fadeMask(
-                  bounds,
-                  Alignment.centerLeft,
-                  Alignment.centerRight,
-                ),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: ColoredBox(
-                    color: Colors.black.withValues(alpha: 0.38),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-          child: child,
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      child: child,
     );
   }
 
@@ -1061,7 +1010,6 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
       return const SizedBox.shrink();
     }
 
-    final canReload = !controller.searching;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -1095,9 +1043,7 @@ class _LiveMatchStreamsSectionState extends State<_LiveMatchStreamsSection> {
             TextButton(
               onPressed: widget.onRetry,
               child: const Text('Retry'),
-            )
-          else
-            _buildReloadIcon(enabled: canReload),
+            ),
         ],
       ),
     );
