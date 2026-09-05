@@ -121,12 +121,6 @@ mixin _LiveMatchesForjaLive
       _usesForjaLiveLazyCatalog &&
       (_s._forjaLiveCatalogHydrating || _forjaLiveAnyLoading);
 
-  /// Full-screen spinner only before the first scoped catalog finishes.
-  bool get _forjaLiveCatalogInitialBusy =>
-      _usesForjaLiveLazyCatalog &&
-      _s._forjaLiveCatalogHydrating &&
-      !_gridScopedPluginLoads.any((e) => e.attempted);
-
   void _setForjaLiveCatalogHydrating(bool value) {
     if (_s._forjaLiveCatalogHydrating == value) return;
     setState(() => _s._forjaLiveCatalogHydrating = value);
@@ -652,7 +646,7 @@ mixin _LiveMatchesForjaLive
 
   void _clearPluginScheduleCaches() {
     LiveMatchesEngine.invalidateDerivedCaches();
-    IptvSportsMatchService.invalidateBroadcastCaches();
+    _IptvSportsMatchService.invalidateBroadcastCaches();
   }
 
   void _applyEngineCatalogSettingsChange({required bool reloadNow}) {
@@ -703,12 +697,12 @@ mixin _LiveMatchesForjaLive
 
     var enrichGames = _s._espnGames;
     if (enrichGames.isEmpty) {
-      enrichGames = await IptvSportsMatchService.fetchEspnGames();
+      enrichGames = await _IptvSportsMatchService.fetchEspnGames();
     }
     if (!mounted) return;
 
     final base = _stripEspnMergedScheduleRows(_s._streamedMatches);
-    final merged = IptvSportsMatchService.mergeWithEspn(
+    final merged = _IptvSportsMatchService.mergeWithEspn(
       base,
       enrichGames,
       appendUnmatched: false,
@@ -1118,7 +1112,7 @@ mixin _LiveMatchesForjaLive
     unawaited(() async {
       for (final seed in targets) {
         if (!mounted || gen != _s._forjaLiveLoadGen) return;
-        final total = await streamedMatchViewerTotalFromSources(seed);
+        final total = await _streamedMatchViewerTotalFromSources(seed);
         if (total <= 0 || !mounted || gen != _s._forjaLiveLoadGen) continue;
         setState(() {
           _invalidateLiveMatchesGridCache();

@@ -111,7 +111,7 @@ mod tests {
     #[tokio::test]
     async fn chrome_fetch_dailymotion_master_ok() {
         let meta = chrome_fetch(
-            "https://www.dailymotion.com/player/metadata/video/xb1gvle?app=com.dailymotion.neon"
+            "https://www.dailymotion.com/player/metadata/video/x84sh87?app=com.dailymotion.neon"
                 .into(),
             "GET".into(),
             r#"{"Referer":"https://www.dailymotion.com/","User-Agent":"Mozilla/5.0"}"#.into(),

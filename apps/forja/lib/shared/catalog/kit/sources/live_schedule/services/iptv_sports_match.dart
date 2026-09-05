@@ -2,9 +2,9 @@ part of '../live_sports_hub_page.dart';
 
 
 /// Host IPTV sports match API (RFC-073). Logic lives in this library part;
-/// call sites use [IptvSportsMatchService] instead of private helpers.
-abstract final class IptvSportsMatchService {
-  IptvSportsMatchService._();
+/// call sites use [_IptvSportsMatchService] instead of private helpers.
+abstract final class _IptvSportsMatchService {
+  _IptvSportsMatchService._();
 
   static Future<List<IptvPlaySource>> resolveStreams(
     _StreamedMatch match, {
@@ -688,8 +688,8 @@ Future<List<String>> _liveSoccerTvBroadcastOnDemand({
         'broadcastLookup': true,
         'homeTeam': home,
         'awayTeam': away,
-        if (eventId != null) 'eventId': '$eventId',
-        if (dateMs != null) 'dateMs': dateMs,
+        'eventId': ?(eventId?.toString()),
+        'dateMs': ?dateMs,
         if (matchPath.trim().isNotEmpty) 'matchPath': matchPath.trim(),
       },
       timeout: const Duration(seconds: 45),

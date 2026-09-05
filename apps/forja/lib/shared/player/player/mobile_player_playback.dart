@@ -2,6 +2,7 @@ part of 'mobile_player_screen.dart';
 
 mixin _MobilePlayerPlayback
     on ConsumerState<MobilePlayerScreen>, _MobilePlayerTracks {
+  @override
   _MobilePlayerScreenState get _s => this as _MobilePlayerScreenState;
 
   Future<bool> _trySourcesFromIndex(

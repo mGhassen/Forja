@@ -138,8 +138,8 @@ class MyListService {
       'releaseDate': releaseDate,
       'source': pluginId,
       'listStatus': listStatus,
-      if (tmdbId != null) 'tmdbId': tmdbId,
-      if (tmdbMediaType != null) 'tmdbMediaType': tmdbMediaType,
+      'tmdbId': ?tmdbId,
+      'tmdbMediaType': ?tmdbMediaType,
       'addedAt': idx >= 0
           ? _items[idx]['addedAt']
           : DateTime.now().millisecondsSinceEpoch,

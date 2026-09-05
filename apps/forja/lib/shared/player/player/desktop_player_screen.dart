@@ -25,7 +25,6 @@ import 'playable_source_bridge.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/playback/playback_engine.dart';
 import 'package:forja/shared/playback/stream_loading.dart';
 import 'package:forja/shared/playback/stremio_external_link.dart';
 import 'package:forja/shared/playback/playback_stream_guards.dart';
@@ -39,7 +38,6 @@ import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/list_follow_from_watched.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/player/track_auto_select.dart';
-import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/services/pip_service.dart';
 import 'package:forja/shared/services/mpv_exclusive_session.dart';
 import 'package:forja/shared/casting/casting.dart';
@@ -542,9 +540,6 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   // ── Next Episode State ────────────────────────────────────────────────────
   bool _isLoadingNextEp = false;
-  String _episodeLoadingLabel = '';
-  String _episodeLoadingStatus = '';
-  bool _episodeLoadingFailed = false;
   bool _nearEndOfEpisode = false;
   bool _hasPrevEpisodeAdjacent = false;
   bool _hasNextEpisodeAdjacent = false;

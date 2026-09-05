@@ -1113,12 +1113,12 @@ class LiveGoatUnlock {
     if (typeof jwplayer !== 'function') return '';
     var item = jwplayer().getPlaylistItem();
     if (!item) return '';
-    if (item.file && /\.m3u8/i.test(item.file)) return item.file;
+    if (item.file && /.m3u8/i.test(item.file)) return item.file;
     var sources = item.sources;
     if (!Array.isArray(sources)) return '';
     for (var i = 0; i < sources.length; i++) {
       var u = sources[i] && sources[i].file;
-      if (u && /\.m3u8/i.test(u)) return u;
+      if (u && /.m3u8/i.test(u)) return u;
     }
   } catch (_) {}
   return '';
@@ -1146,13 +1146,13 @@ class LiveGoatUnlock {
       ),
       onWebViewCreated: (controller) {},
       onLoadStop: (controller, _) => unawaited(poll(controller)),
-      onReceivedError: (_, __, ___) {
+      onReceivedError: (_, _, _) {
         if (!completer.isCompleted) completer.complete(null);
       },
     );
 
     try {
-      await headless!.run();
+      await headless.run();
       return await completer.future.timeout(
         const Duration(seconds: 45),
         onTimeout: () => null,
@@ -1161,7 +1161,7 @@ class LiveGoatUnlock {
       debugPrint('[LiveSniffEmbed] webview failed: $e');
       return null;
     } finally {
-      await headless?.dispose();
+      await headless.dispose();
     }
   }
 

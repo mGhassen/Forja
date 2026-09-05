@@ -1,5 +1,4 @@
 import 'package:forja/shared/catalog/kit/sources/live_schedule/play/live_engine.dart';
-import 'package:forja/shared/catalog/protocol.dart';
 import 'package:forja/shared/engine/engine.dart';
 
 /// Host-backed schedule for `kit.list { source: live_schedule }`.
@@ -66,7 +65,6 @@ class HubLiveScheduleSource implements LiveScheduleSource {
           catalogPlugin: plugin,
         );
         for (final row in batch) {
-          if (row is! Map) continue;
           final map = Map<String, dynamic>.from(row);
           final item = liveMetaFromScheduleRow(map);
           if (item.id.isEmpty || !seen.add(item.id)) continue;

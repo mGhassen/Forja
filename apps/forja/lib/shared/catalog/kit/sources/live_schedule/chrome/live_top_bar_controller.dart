@@ -7,19 +7,6 @@ mixin _LiveMatchesData
   bool get _tvFocusEnabled =>
       ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
-  void _scheduleRestoreCatalogTopBarFocus() {
-    if (!_tvFocusEnabled) return;
-    void attempt() {
-      if (!mounted) return;
-      _focusTopBarItem(_s._topBarCatalogIndex);
-    }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      attempt();
-      WidgetsBinding.instance.addPostFrameCallback((_) => attempt());
-    });
-  }
-
   /// Re-land on the last grid / chip / timeline row after lazy catalog
   /// setStates — sport-tab remounts release item focus but keep row memory.
   void _scheduleRestoreLiveMatchesTvFocus() {
@@ -427,7 +414,6 @@ mixin _LiveMatchesData
       if (lazyCatalog) _s._forjaLiveCatalogHydrating = true;
       _s._error = null;
       _s._sportFilter = 'all';
-      _s._timelineAutoScrolled = false;
       if (!lazyCatalog) {
         _s._iframeCatalogStreams = [];
         _s._streamedMatches = [];
@@ -459,16 +445,13 @@ mixin _LiveMatchesData
     setState(() {
       (this as _LiveMatchesForjaLive)._invalidateLiveMatchesGridCache();
       _s._tabController = null;
-      _s._iframeCatalogStreams = lazyCatalog ? damiKeep : load.iframeCatalogStreams;
-      _s._streamedMatches = lazyCatalog
-          ? forjaKeep
-          : [...load.streamedMatches, ...forjaKeep];
+      _s._iframeCatalogStreams = lazyCatalog ? damiKeep : const [];
+      _s._streamedMatches = forjaKeep;
       _s._espnGames = load.espnGames;
       _s._sports = load.sports;
       _s._loading = false;
       _s._error = null;
       _s._sportFilter = 'all';
-      _s._timelineAutoScrolled = false;
     });
     (this as _LiveMatchesForjaLive)._deferTabControllerDispose(oldCtrl);
     if (!mounted) return;
@@ -507,7 +490,6 @@ mixin _LiveMatchesData
     setState(() {
       (this as _LiveMatchesForjaLive)._invalidateLiveMatchesGridCache();
       _s._sportFilter = id;
-      _s._timelineAutoScrolled = false;
     });
   }
 

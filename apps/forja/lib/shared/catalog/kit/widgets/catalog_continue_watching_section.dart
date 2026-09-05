@@ -3,7 +3,6 @@ import 'package:flutter/rendering.dart';
 import 'package:forja/shared/catalog/kit/widgets/catalog_continue_watching_card.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/widgets/home_loading_skeleton.dart';
 
 /// Generic Continue Watching row — layout widget type `continue`.
 class CatalogContinueWatchingSection extends StatelessWidget {

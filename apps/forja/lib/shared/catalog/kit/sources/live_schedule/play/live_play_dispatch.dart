@@ -67,12 +67,6 @@ mixin _LiveMatchesPlayback
   @override
   LiveSportsHubPageState get _s => this as LiveSportsHubPageState;
 
-  /// Leanback TV: never offer PPV / Streamed / Mut embed rows — only native.
-  bool get _tvNativeLiveOnly => ShellScope.metricsOf(context).usesTvDensity;
-
-  /// Stremio streams always offered on Providers (no browse mode gate).
-  bool get _offerStremioPlayFallback => true;
-
   /// Loading dialog that Back / Cancel can dismiss. Returns `false` if cancelled.
   Future<bool> _runWithCancellableLoading(
     String message,
@@ -204,13 +198,13 @@ mixin _LiveMatchesPlayback
   }
 
   _StreamedMatch _enrichedIptvSportsMatch(_StreamedMatch match) {
-    final mergedGame = IptvSportsMatchService.sportMatchGameForResolve(
+    final mergedGame = _IptvSportsMatchService.sportMatchGameForResolve(
       match,
       _s._espnGames,
     );
     final espnPayload =
-        IptvSportsMatchService.findEspnGame(match, _s._espnGames);
-    return IptvSportsMatchService.copyMatch(
+        _IptvSportsMatchService.findEspnGame(match, _s._espnGames);
+    return _IptvSportsMatchService.copyMatch(
       match,
       sportMatchGame: mergedGame,
       homeTeam: () {
@@ -241,7 +235,7 @@ mixin _LiveMatchesPlayback
       controller.beginBroadcastHintsLoad();
     }
     try {
-      await IptvSportsMatchService.resolveStreams(
+      await _IptvSportsMatchService.resolveStreams(
         enriched,
         force: force,
         onPartial: (batch) {
@@ -254,7 +248,7 @@ mixin _LiveMatchesPlayback
     }
     if (loadBroadcastHints && !isStale() && !controller.isDisposed) {
       try {
-        final hints = await IptvSportsMatchService.broadcastHintsFor(enriched);
+        final hints = await _IptvSportsMatchService.broadcastHintsFor(enriched);
         if (!isStale() && !controller.isDisposed) {
           controller.setBroadcastHints(hints);
         }
@@ -339,93 +333,6 @@ mixin _LiveMatchesPlayback
     if (iframeCatalogAnchor != null) {
       _rememberIframeCatalogViewers(iframeCatalogAnchor, _sheetTotalViewers(choices));
     }
-  }
-
-  Future<_StreamedMatch> _fillNativeSources({
-    required _StreamedMatch match,
-    required _IptvSportsChannelsPanelController controller,
-    required bool Function() isStale,
-  }) async {
-    final ctrl = ref.read(iptvControllerProvider);
-    final portal = ctrl.activePortal;
-    if (portal != null && portal.portal.platform.supportsForjaSports) {
-      await LiveMatchesIptvSportsConfig.ensureArmed(portalKey: portal.key);
-    } else {
-      await LiveMatchesIptvSportsConfig.ensureArmed();
-    }
-    if (!mounted) return match;
-
-    final enriched = _enrichedIptvSportsMatch(match);
-
-    Future<void> addForja() async {
-      try {
-        await IptvSportsMatchService.resolveStreams(
-          enriched,
-          onPartial: (batch) {
-            if (controller.isDisposed || isStale()) return;
-            controller.appendSources([
-              for (final s in batch)
-                IptvPlaySource(
-                  url: s.url,
-                  label: s.label,
-                  detail: _tvNativeSourceDetail('Forja Sports', s.detail),
-                  logoUrl: s.logoUrl,
-                  streamId: s.streamId,
-                  epgChannelId: s.epgChannelId,
-                  headers: s.headers,
-                  liveSourceKind:
-                      s.liveSourceKind ?? IptvLiveSourceKind.iptvXtream,
-                ),
-            ]);
-          },
-        );
-      } catch (e) {
-        debugPrint('[LiveMatches] TV Forja Sports resolve error: $e');
-      }
-    }
-
-    Future<void> addStremio() async {
-      if (!_offerStremioPlayFallback || isStale()) return;
-      try {
-        final stremio = await _resolveStremioStreamsMatching(enriched);
-        if (controller.isDisposed || isStale()) return;
-        controller.appendSources([
-          for (final s in stremio)
-            IptvPlaySource(
-              url: s.url,
-              label: s.label,
-              detail: _tvNativeSourceDetail('Stremio', s.detail),
-              logoUrl: s.logoUrl,
-              streamId: s.streamId,
-              headers: s.headers,
-              liveSourceKind: IptvLiveSourceKind.stremio,
-            ),
-        ]);
-      } catch (e) {
-        debugPrint('[LiveMatches] TV Stremio resolve error: $e');
-      }
-    }
-
-    controller.setSearchPhase('Forja Sports');
-    await addForja();
-    if (!controller.isDisposed && !isStale()) {
-      controller.beginBroadcastHintsLoad();
-      try {
-        final hints = await IptvSportsMatchService.broadcastHintsFor(enriched);
-        if (!controller.isDisposed && !isStale()) {
-          controller.setBroadcastHints(hints);
-        }
-      } catch (e) {
-        debugPrint('[LiveMatches] broadcast hints error: $e');
-        if (!controller.isDisposed && !isStale()) {
-          controller.setBroadcastHints(const _LiveBroadcastHints());
-        }
-      }
-    }
-    if (controller.isDisposed || isStale()) return enriched;
-    controller.setSearchPhase('Stremio');
-    await addStremio();
-    return enriched;
   }
 
   Future<void> _openStreamedMatch(_StreamedMatch match) async {
@@ -982,10 +889,6 @@ mixin _LiveMatchesPlayback
     return null;
   }
 
-  String _tvNativeSourceDetail(String server, String? detail) {
-    final d = (detail ?? '').trim();
-    return d.isEmpty ? server : '$server · $d';
-  }
 
   Future<List<IptvPlaySource>> _resolveStremioStreamsMatching(
     _StreamedMatch match,

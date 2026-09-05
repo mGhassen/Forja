@@ -9,14 +9,10 @@ final liveMatchesPrimaryLoadProvider =
 class _LiveMatchesPrimaryLoad {
   const _LiveMatchesPrimaryLoad({
     required this.sports,
-    this.iframeCatalogStreams = const [],
-    this.streamedMatches = const [],
     this.espnGames = const [],
   });
 
   final List<_Sport> sports;
-  final List<_IframeCatalogStream> iframeCatalogStreams;
-  final List<_StreamedMatch> streamedMatches;
   /// Raw ESPN scoreboard rows for My IPTV play-time enrichment.
   final List<Map<String, dynamic>> espnGames;
 }

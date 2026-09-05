@@ -54,12 +54,16 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
   /// Single Escape ladder for HW / DismissIntent / Shortcuts. Same-pulse
   /// re-entry is a no-op so one key cannot arm then leave.
   void _handleEscapeKey() {
+    debugPrint(
+      '[DesktopPlayer] Escape down armed=${_s._escapeExitArmed} '
+      'chrome=${_s._showControls} fs=${_s._isFullscreen}',
+    );
     final handledAt = _s._escapeHandledAt;
     if (handledAt != null &&
         DateTime.now().difference(handledAt) <
             const Duration(milliseconds: 80)) {
       debugPrint(
-        '[DesktopPlayer] Escape ignored (same pulse, armed=${_s._escapeExitArmed} chrome=${_s._showControls})',
+        '[DesktopPlayer] Escape ignored (same pulse, armed=${_s._escapeExitArmed})',
       );
       return;
     }
@@ -67,23 +71,70 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     PlayerBackExitGate.notePlayerEscapeHandled();
 
     if (dismissAnyPlayerChromeOverlay()) {
-      debugPrint('[DesktopPlayer] Escape → dismiss overlay (stay)');
+      debugPrint(
+        '[DesktopPlayer] Escape → dismiss overlay (stay) armed=${_s._escapeExitArmed}',
+      );
+      return;
+    }
+    // Fullscreen first — Escape must leave OS fullscreen, not the player.
+    unawaited(_escapeLeaveFullscreenOrContinue());
+  }
+
+  Future<void> _escapeLeaveFullscreenOrContinue() async {
+    final osFull = DesktopWindowGeometry.isDesktop &&
+        await windowManager.isFullScreen();
+    debugPrint(
+      '[DesktopPlayer] Escape ladder armed=${_s._escapeExitArmed} '
+      'chrome=${_s._showControls} fs=${_s._isFullscreen} osFull=$osFull',
+    );
+    if (osFull || _s._isFullscreen) {
+      debugPrint(
+        '[DesktopPlayer] Escape → exit fullscreen (stay) armed=${_s._escapeExitArmed}',
+      );
+      await DesktopWindowGeometry.exitFullscreen();
+      if (!mounted || _s._disposed) return;
+      setState(() {
+        _s._isFullscreen = false;
+        _s._escapeExitArmed = false;
+      });
+      debugPrint('[DesktopPlayer] Escape fullscreen done armed=${_s._escapeExitArmed}');
       return;
     }
     if (_s._showControls) {
-      debugPrint('[DesktopPlayer] Escape → hide chrome + arm (stay)');
+      debugPrint(
+        '[DesktopPlayer] Escape → hide chrome + arm (was armed=${_s._escapeExitArmed})',
+      );
       _hideChromeIntentional(armEscape: true);
       _armEscapeExit();
+      debugPrint('[DesktopPlayer] Escape after hide armed=${_s._escapeExitArmed}');
       return;
     }
     if (!_s._escapeExitArmed) {
-      debugPrint('[DesktopPlayer] Escape → arm only (stay)');
+      debugPrint('[DesktopPlayer] Escape → arm only (armed=false → true)');
       _armEscapeExit();
+      debugPrint('[DesktopPlayer] Escape after arm armed=${_s._escapeExitArmed}');
       return;
     }
-    debugPrint('[DesktopPlayer] Escape → confirm exit');
+    debugPrint(
+      '[DesktopPlayer] Escape → confirm exit (armed=true)',
+    );
     _s._escapeExitArmed = false;
-    unawaited(_exitPlayer());
+    await _exitPlayer();
+  }
+
+  @override
+  void onWindowEnterFullScreen() {
+    if (!mounted || _s._disposed) return;
+    setState(() => _s._isFullscreen = true);
+  }
+
+  @override
+  void onWindowLeaveFullScreen() {
+    if (!mounted || _s._disposed) return;
+    setState(() {
+      _s._isFullscreen = false;
+      _s._escapeExitArmed = false;
+    });
   }
 
   void _syncChromeHideTimer() {

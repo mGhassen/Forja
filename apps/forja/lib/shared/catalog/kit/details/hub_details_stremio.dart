@@ -175,7 +175,7 @@ List<CatalogMetaItem> _catalogMetasFromStremioVideos(
             'stremioId': id,
             'stremioType': vType,
             'stremioAddonBaseUrl': addonBaseUrl,
-            if (addonName != null) 'stremioAddonName': addonName,
+            'stremioAddonName': ?addonName,
           },
         ),
       ),

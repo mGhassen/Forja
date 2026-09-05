@@ -1309,7 +1309,7 @@ function extract(ctx) {
             plugin_id: "hop-dailymotion".into(),
             code,
             ctx: serde_json::json!({
-                "url": "https://www.dailymotion.com/video/xb1gvle",
+                "url": "https://www.dailymotion.com/video/x84sh87",
                 "config": { "name": "Dailymotion" }
             }),
             timeout_ms: 30_000,

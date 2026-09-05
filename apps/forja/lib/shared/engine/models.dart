@@ -1,5 +1,5 @@
+import 'package:flutter/foundation.dart';
 import 'package:forja/shared/widgets/media_details/torrent_release_metadata.dart';
-import 'package:meta/meta.dart';
 
 import 'ids.dart';
 
@@ -265,8 +265,8 @@ class LiveSportLegacyIds {
   }
 
   Map<String, String> toJson() => {
-    if (catalog != null) 'catalog': catalog!,
-    if (resolve != null) 'resolve': resolve!,
+    'catalog': ?catalog,
+    'resolve': ?resolve,
   };
 }
 

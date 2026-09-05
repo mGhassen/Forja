@@ -283,7 +283,7 @@ class CatalogOpenExtract {
       return CatalogOpenExtract(
         resolveType: mt == 'tv' || mt == 'series' ? 'tv' : 'movie',
         panelCategory: 'movie',
-        ctx: {if (idN != null) 'tmdbId': idN},
+        ctx: {'tmdbId': ?idN},
       );
     }
     return CatalogOpenExtract(
@@ -692,8 +692,7 @@ class CatalogFilterAst {
     Iterable<Map<String, dynamic>?> nodes,
   ) {
     final list = <Map<String, dynamic>>[
-      for (final n in nodes)
-        if (n != null) n,
+      for (final n in nodes) ?n,
     ];
     if (list.isEmpty) return null;
     if (list.length == 1) return list.first;

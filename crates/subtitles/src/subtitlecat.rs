@@ -5,8 +5,6 @@ use regex::Regex;
 use serde_json::{json, Value};
 use urlencoding::encode;
 
-use crate::fetch;
-
 const ORIGIN: &str = "https://www.subtitlecat.com";
 
 static HDRS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {

@@ -1,9 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../filter.dart';
 import '../../protocol.dart';
 
 /// One selectable chip in a [vertical_filters] layout widget.

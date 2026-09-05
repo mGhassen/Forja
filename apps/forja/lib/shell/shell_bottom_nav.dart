@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/nav_config.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters.dart';
-import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shared/design/src/forja_shell_colors.dart';
 import 'package:forja/shared/design/src/shell_tokens.dart';
 import 'package:forja/shared/theme/app_theme.dart';

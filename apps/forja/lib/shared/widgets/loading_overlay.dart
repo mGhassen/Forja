@@ -529,36 +529,6 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
 
   bool get _isTorrentKind => _kind == StreamLoadingKind.torrent;
 
-  int get _probeTotal => _probes.length;
-
-  int get _probeChecked => _probes
-      .where(
-        (p) =>
-            p.status != StreamProviderProbeStatus.trying &&
-            p.status != StreamProviderProbeStatus.pending,
-      )
-      .length;
-
-  int get _probeReady => _probes
-      .where((p) => p.status == StreamProviderProbeStatus.success)
-      .length;
-
-  int get _probeSkipped => _probes
-      .where((p) => p.status == StreamProviderProbeStatus.skippedOnTv)
-      .length;
-
-  List<String> get _skippedProbeLabels => _probes
-      .where((p) => p.status == StreamProviderProbeStatus.skippedOnTv)
-      .map((p) => p.label.toUpperCase())
-      .toList(growable: false);
-
-  double get _probeProgress =>
-      _probeTotal > 0 ? _probeChecked / _probeTotal : 0;
-
-  List<StreamProviderProbe> get _tryingProbes => _probes
-      .where((p) => p.status == StreamProviderProbeStatus.trying)
-      .toList(growable: false);
-
   bool _canManualCheck(StreamProviderProbe probe) {
     if (widget.onManualCheckProvider == null) return false;
     // Allow tapping CHECKING rows so the user can jump to another server

@@ -38,7 +38,7 @@ class CatalogDeepLink {
       host: 'catalog',
       pathSegments: [pluginId, action],
       queryParameters: {
-        if (id != null) 'id': id!,
+        'id': ?id,
         ...params,
       },
     ).toString();

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_status_tabs.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_kit_focus.dart';
 import 'package:forja/shared/catalog/kit/layout/catalog_layout_scope.dart';
-import 'package:forja/shared/catalog/kit/layout/catalog_kit_types.dart';
 
 /// Layout widget [`CatalogKitTypes.tabs`] — equal-width status / segment strip.
 class CatalogKitTabsWidget extends StatelessWidget {

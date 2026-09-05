@@ -6,6 +6,7 @@ mixin _DesktopPlayerPlayback
         WidgetsBindingObserver,
         WindowListener,
         _DesktopPlayerTracks {
+  @override
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   Future<bool> _trySourcesFromIndex(

@@ -9,23 +9,6 @@ bool _liveMatchesLeanbackOnly(BuildContext context) =>
 /// Grid (card catalog) vs vertical timeline layout for the body.
 enum _LiveMatchesView { grid, timeline }
 
-/// Time window that one screen height of the timeline rail represents.
-enum _TimelineGranularity { day, h12, h6, h3 }
-
-int _timelineSpanHours(_TimelineGranularity g) => switch (g) {
-  _TimelineGranularity.day => 24,
-  _TimelineGranularity.h12 => 12,
-  _TimelineGranularity.h6 => 6,
-  _TimelineGranularity.h3 => 3,
-};
-
-String _timelineGranularityLabel(_TimelineGranularity g) => switch (g) {
-  _TimelineGranularity.day => 'Day',
-  _TimelineGranularity.h12 => '12h',
-  _TimelineGranularity.h6 => '6h',
-  _TimelineGranularity.h3 => '3h',
-};
-
 String _liveMatchClockHm(DateTime dt) =>
     '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
@@ -509,7 +492,7 @@ _StreamedStream _streamedStreamFromResolveRow({
 }
 
 /// Sum mirror viewers from streamed.pk `/api/stream/{source}/{id}` (not on match rows).
-Future<int> streamedMatchViewerTotalFromSources(_StreamedMatch match) async {
+Future<int> _streamedMatchViewerTotalFromSources(_StreamedMatch match) async {
   if (match.sources.isEmpty) return 0;
   var total = 0;
   for (final ref in match.sources) {

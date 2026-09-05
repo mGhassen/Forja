@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:forja/features/settings/settings_catalog.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/plugin_batch_install_prompt_dialog.dart';
-import 'package:forja/shared/engine/plugin_install_prompt.dart';
 import 'package:forja/shared/engine/plugin_install_prompt_dialog.dart';
 import 'package:forja/shell/shell_bus.dart';
 

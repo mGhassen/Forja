@@ -176,7 +176,7 @@ class _PluginBatchInstallPromptBodyState
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: widget.prompt.candidates.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     const Divider(height: 1, color: ForjaShellColors.borderSubtle),
                 itemBuilder: (context, index) {
                   final c = widget.prompt.candidates[index];

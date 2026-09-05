@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_iptv_play.dart';
 import 'package:forja/shared/catalog/kit/play/catalog_play_context.dart';
-import 'package:forja/shared/catalog/kit/play/catalog_play_session.dart';
 import 'package:forja/shared/playback/engine_auto_play.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/widgets/hub_details/hub_catalog_sources.dart';

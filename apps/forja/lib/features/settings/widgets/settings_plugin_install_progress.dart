@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
-import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 
 class _PhaseIcon extends StatelessWidget {
   const _PhaseIcon({required this.phase});

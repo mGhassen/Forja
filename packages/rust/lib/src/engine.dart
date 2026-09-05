@@ -1270,16 +1270,6 @@ typedef _ThreeStringNative =
       ffi.Pointer<ffi.Char>,
       ffi.Pointer<ffi.Char>,
     );
-typedef _FiveStringNative =
-    ffi.Pointer<ffi.Char> Function(
-      ffi.Pointer<ffi.Char>,
-      ffi.Pointer<ffi.Char>,
-      ffi.Pointer<ffi.Char>,
-      ffi.Pointer<ffi.Char>,
-      ffi.Pointer<ffi.Char>,
-    );
-typedef _KinogerUrlsNative =
-    ffi.Pointer<ffi.Char> Function(ffi.Pointer<ffi.Char>, ffi.Int32, ffi.Int32);
 typedef _StringBoolNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStartNative = ffi.Bool Function(ffi.Pointer<ffi.Char>);
 typedef _TorrentStopNative = ffi.Void Function();

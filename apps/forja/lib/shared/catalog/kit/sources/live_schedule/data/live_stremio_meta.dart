@@ -3,6 +3,7 @@
 /// Shape-based only — no addon ids, hostnames, or pack names. Any live addon
 /// that uses common Stremio fields (`releaseInfo`, description, genres, poster
 /// badge query, `Time:` + calendar date) gets the same treatment.
+library;
 
 bool stremioMetaLooksUpcoming({
   required Iterable genres,

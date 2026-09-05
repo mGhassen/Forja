@@ -206,7 +206,7 @@ class CatalogVerticalFiltersRail extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
       valueListenable: CatalogVerticalFiltersRegistry.revision,
-      builder: (context, _, __) {
+      builder: (context, _, _) {
         final spec = CatalogVerticalFiltersRegistry.specFor(tabId);
         if (spec == null || spec.options.isEmpty) {
           return const SizedBox.shrink();

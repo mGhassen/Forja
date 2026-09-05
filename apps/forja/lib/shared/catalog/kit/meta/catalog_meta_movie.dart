@@ -138,8 +138,7 @@ Movie? catalogMetaToMovie(CatalogMetaItem item) {
 }
 
 List<Movie> catalogMetasToMovies(Iterable<CatalogMetaItem> items) => [
-      for (final item in items)
-        if (catalogMetaToMovie(item) case final m?) m,
+      for (final item in items) ?catalogMetaToMovie(item),
     ];
 
 /// Home-style card meta under the title: `2026 • FILM` / `TV` / …

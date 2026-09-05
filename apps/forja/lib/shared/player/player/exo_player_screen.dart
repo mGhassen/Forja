@@ -41,7 +41,6 @@ import 'package:forja/shared/player/player/network_playback_recovery.dart';
 import 'package:forja/shared/player/player/post_seek_stall_watchdog.dart';
 import 'package:forja/shared/player/player/shared_widgets.dart';
 import 'package:forja/shared/player/player/utils.dart';
-import 'package:forja/shared/player/player_screen.dart';
 import 'package:forja/shared/player/track_auto_select.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/list_follow_from_watched.dart';
@@ -167,9 +166,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _networkRemountInFlight = false;
   bool _startPositionApplied = false;
   bool _loadingNextEp = false;
-  String _episodeLoadingLabel = 'Next episode';
-  String _episodeLoadingStatus = 'Loading next episode…';
-  bool _episodeLoadingFailed = false;
   double _volume = 100;
   double _rate = 1.0;
   String _resizeMode = 'fit';
@@ -944,36 +940,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _fallbackAborted(int gen) =>
       _disposed || !mounted || gen != _fallbackGen;
 
-  void _beginEpisodeLoading({
-    required String label,
-    String status = 'Loading episode info…',
-  }) {
-    if (!mounted) return;
-    setState(() {
-      _loadingNextEp = true;
-      _episodeLoadingLabel = label;
-      _episodeLoadingStatus = status;
-      _episodeLoadingFailed = false;
-    });
-  }
-
-  void _setEpisodeLoadingStatus(String status, {bool failed = false}) {
-    if (!mounted || !_loadingNextEp) return;
-    setState(() {
-      _episodeLoadingStatus = status;
-      _episodeLoadingFailed = failed;
-    });
-  }
-
-  Future<void> _failEpisodeLoading(String status) async {
-    _setEpisodeLoadingStatus(status, failed: true);
-    await Future<void>.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-    setState(() {
-      _loadingNextEp = false;
-      _episodeLoadingFailed = false;
-    });
-  }
 
   void _focusSeekFromTransport() {
     if (_seekFocus.canRequestFocus) {
@@ -1054,32 +1020,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         episodes: widget.hubEpisodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         onEpisodeSelected: (ep) async {
-          setState(() {
-            _loadingNextEp = true;
-            _episodeLoadingLabel = 'Episode ${ep.displayNumber}';
-            _episodeLoadingStatus = 'Loading episode info…';
-            _episodeLoadingFailed = false;
-          });
+          setState(() => _loadingNextEp = true);
           try {
             await widget.onHubEpisodeSelected!(ep);
             if (mounted) {
-              setState(() {
-                _loadingNextEp = false;
-                _episodeLoadingFailed = false;
-              });
+              setState(() => _loadingNextEp = false);
             }
           } catch (_) {
             if (!mounted) return;
-            setState(() {
-              _episodeLoadingStatus = 'Could not load this episode';
-              _episodeLoadingFailed = true;
-            });
             await Future<void>.delayed(const Duration(seconds: 2));
             if (mounted) {
-              setState(() {
-                _loadingNextEp = false;
-                _episodeLoadingFailed = false;
-              });
+              setState(() => _loadingNextEp = false);
             }
           }
         },
@@ -1129,28 +1080,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         );
       } finally {
         if (mounted) {
-          setState(() {
-            _loadingNextEp = false;
-            _episodeLoadingFailed = false;
-          });
+          setState(() => _loadingNextEp = false);
         }
       }
       return;
     }
 
-    setState(() {
-      _loadingNextEp = true;
-      _episodeLoadingLabel = 'Season $season · Episode $episode';
-      _episodeLoadingStatus = 'Loading episode info…';
-      _episodeLoadingFailed = false;
-    });
+    setState(() => _loadingNextEp = true);
     await Future<void>.delayed(Duration.zero);
     if (!mounted) return;
 
     try {
       await _saveProgress();
       _scrobbleStop();
-      setState(() => _episodeLoadingStatus = 'Checking sources…');
 
       final chain = episodeProviderChain(
         providers: widget.providers,
@@ -1165,13 +1107,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       EpisodeSwitchResult? resolved;
       for (final key in chain) {
         if (!mounted) return;
-        setState(() {
-          _episodeLoadingStatus = key == 'torrent'
-              ? 'Resolving torrent…'
-              : key == 'stremio_direct'
-                  ? 'Checking Stremio…'
-                  : 'Checking sources…';
-        });
         resolved = await resolveEpisodeForProvider(
           providerKey: key,
           movie: widget.movie!,
@@ -1191,7 +1126,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         throw Exception('Could not find stream for S${season}E$episode');
       }
       if (!mounted) return;
-      setState(() => _episodeLoadingStatus = 'Opening stream…');
 
       final nextTitle = '${widget.movie!.title} - S$season E$episode';
       final catalog = isCatalogSourcesMode(resolved.activeProvider);
@@ -1232,16 +1166,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     } catch (e) {
       debugPrint('[ExoPlayer] episode switch failed: $e');
       if (!mounted) return;
-      setState(() {
-        _episodeLoadingStatus = 'Could not find a stream for this episode';
-        _episodeLoadingFailed = true;
-      });
       await Future<void>.delayed(const Duration(seconds: 2));
       if (mounted) {
-        setState(() {
-          _loadingNextEp = false;
-          _episodeLoadingFailed = false;
-        });
+        setState(() => _loadingNextEp = false);
       }
     }
   }
@@ -1548,35 +1475,20 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Future<void> _nextEpisode() async {
     final handler = widget.onNextEpisode;
     if (handler == null || _loadingNextEp) return;
-    setState(() {
-      _loadingNextEp = true;
-      _episodeLoadingLabel = 'Next episode';
-      _episodeLoadingStatus = 'Loading next episode…';
-      _episodeLoadingFailed = false;
-    });
+    setState(() => _loadingNextEp = true);
     try {
       try {
         await ExoPlayerBridge.stop(_viewId);
       } catch (_) {}
       await handler();
       if (mounted) {
-        setState(() {
-          _loadingNextEp = false;
-          _episodeLoadingFailed = false;
-        });
+        setState(() => _loadingNextEp = false);
       }
     } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _episodeLoadingStatus = 'Could not load the next episode';
-        _episodeLoadingFailed = true;
-      });
       await Future<void>.delayed(const Duration(seconds: 2));
       if (mounted) {
-        setState(() {
-          _loadingNextEp = false;
-          _episodeLoadingFailed = false;
-        });
+        setState(() => _loadingNextEp = false);
       }
     }
   }

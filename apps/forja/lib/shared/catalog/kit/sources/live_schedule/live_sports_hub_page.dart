@@ -16,13 +16,10 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/widgets/shell_card_play_overlay.dart';
 import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:forja/shared/widgets/shell_mood_circle.dart';
-import 'package:forja/shared/widgets/horizontal_scroller.dart';
 import 'package:forja/shared/widgets/shell_error_retry_panel.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/tv/shell_tv_focus.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
-import 'package:forja/shared/widgets/media_details/sources_panel_tv.dart';
-import 'package:forja/shared/widgets/media_details/torrent_sources_panel.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_tiles.dart';
 import 'package:forja/shell/shell_tab_refresh.dart';
 import 'package:forja/shared/catalog/kit/sources/live_schedule/data/live_prefs.dart';
@@ -96,7 +93,7 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
         _LiveMatchesForjaLive,
         _LiveMatchesBuild,
         _LiveMatchesPlayback
-    implements LiveSportsPlayHost {
+    implements _LiveSportsPlayHost {
   static const _tabId = 'live_matches';
   static const _topBarRowId = 'live-top-bar';
   static const _chipRowId = 'sport-chips';
@@ -122,24 +119,12 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
       ? _LiveMatchesView.timeline
       : _LiveMatchesView.grid;
   bool _viewWasToggled = false;
-  _TimelineGranularity _timelineGranularity = _TimelineGranularity.h3;
   final ScrollController _timelineScrollController = ScrollController();
-  bool _timelineAutoScrolled = false;
 
-  /// Timeline bucket rows show at most [_timelineBucketCardCap] cards until expanded.
-  static const int _timelineBucketCardCap = 20;
   final Map<int, bool> _timelineBucketExpanded = {};
 
   /// Rebuilds the timeline each minute so airing Misc/Other cards stay on NOW.
   Timer? _timelineLiveTick;
-
-  /// The single hovered timeline card (bucket + index) lifted above neighbors.
-  int? _timelineHoveredBucketMs;
-  int? _timelineHoveredIndex;
-
-  /// Stable transform links per timeline card so the elevated hover copy can
-  /// track the real card's on-screen position (`bucketMs:index`).
-  final Map<String, LayerLink> _timelineCardLinks = {};
 
   /// Registered TV row ids for timeline hour buckets (`tl-<bucketMs>`).
   final Set<String> _timelineTvRowIds = {};
@@ -322,9 +307,6 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
     if ((_liveMatchesLeanbackOnly(context) || !_timelineViewEnabled) &&
         _view != _LiveMatchesView.grid) {
       _view = _LiveMatchesView.grid;
-      _timelineAutoScrolled = false;
-      _timelineHoveredBucketMs = null;
-      _timelineHoveredIndex = null;
       _syncTimelineLiveTick();
     }
   }
@@ -389,9 +371,6 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
 
   void _resetTimelineLazyState() {
     _timelineBucketExpanded.clear();
-    _timelineAutoScrolled = false;
-    _timelineHoveredBucketMs = null;
-    _timelineHoveredIndex = null;
   }
 
   void _syncTimelineLiveTick() {
@@ -431,10 +410,6 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
     if (_view != savedView) {
       setState(() {
         _view = savedView;
-        // Landing on timeline from a restored preference must scroll to now.
-        if (savedView == _LiveMatchesView.timeline) {
-          _timelineAutoScrolled = false;
-        }
       });
       _syncTimelineLiveTick();
     }
@@ -505,9 +480,6 @@ class LiveSportsHubPageState extends ConsumerState<LiveSportsHubPage>
       _view = _view == _LiveMatchesView.grid
           ? _LiveMatchesView.timeline
           : _LiveMatchesView.grid;
-      _timelineAutoScrolled = false;
-      _timelineHoveredBucketMs = null;
-      _timelineHoveredIndex = null;
     });
     _syncTimelineLiveTick();
     unawaited(_persistViewPreference(_view == _LiveMatchesView.timeline));

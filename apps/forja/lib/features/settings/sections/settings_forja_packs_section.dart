@@ -573,35 +573,19 @@ Widget _settingsTvIconButton(
 }
 
 class _AddonRemoveActions extends StatefulWidget {
-  const _AddonRemoveActions({
-    required this.onRemove,
-    this.confirming,
-    this.onConfirmingChanged,
-  });
+  const _AddonRemoveActions({required this.onRemove});
 
   final Future<void> Function() onRemove;
-  final bool? confirming;
-  final ValueChanged<bool>? onConfirmingChanged;
 
   @override
   State<_AddonRemoveActions> createState() => _AddonRemoveActionsState();
 }
 
 class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
-  bool _localConfirming = false;
-
-  bool get _confirming => widget.confirming ?? _localConfirming;
-
-  void _setConfirming(bool value) {
-    if (widget.onConfirmingChanged != null) {
-      widget.onConfirmingChanged!(value);
-    } else {
-      setState(() => _localConfirming = value);
-    }
-  }
+  bool _confirming = false;
 
   Future<void> _confirm() async {
-    _setConfirming(false);
+    setState(() => _confirming = false);
     await widget.onRemove();
   }
 
@@ -623,7 +607,7 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
             tooltip: 'No',
             icon: Icons.close_rounded,
             color: ForjaShellColors.iconMuted,
-            onPressed: () => _setConfirming(false),
+            onPressed: () => setState(() => _confirming = false),
           ),
         ],
       );
@@ -633,7 +617,7 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
       tooltip: 'Remove pack',
       icon: Icons.delete_outline,
       color: const Color(0xFFF87171),
-      onPressed: () => _setConfirming(true),
+      onPressed: () => setState(() => _confirming = true),
     );
   }
 }

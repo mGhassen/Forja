@@ -144,32 +144,15 @@ mixin _DesktopPlayerEpisodes
     String status = 'Loading episode info…',
   }) {
     if (!mounted) return;
-    setState(() {
-      _s._isLoadingNextEp = true;
-      _s._episodeLoadingLabel = label;
-      _s._episodeLoadingStatus = status;
-      _s._episodeLoadingFailed = false;
-    });
-  }
-
-  void _setEpisodeLoadingStatus(String status, {bool failed = false}) {
-    if (!mounted || !_s._isLoadingNextEp) return;
-    setState(() {
-      _s._episodeLoadingStatus = status;
-      _s._episodeLoadingFailed = failed;
-    });
+    setState(() => _s._isLoadingNextEp = true);
   }
 
   void _endEpisodeLoading() {
     if (!mounted) return;
-    setState(() {
-      _s._isLoadingNextEp = false;
-      _s._episodeLoadingFailed = false;
-    });
+    setState(() => _s._isLoadingNextEp = false);
   }
 
   Future<void> _failEpisodeLoading(String status) async {
-    _setEpisodeLoadingStatus(status, failed: true);
     await Future<void>.delayed(const Duration(seconds: 2));
     _endEpisodeLoading();
   }

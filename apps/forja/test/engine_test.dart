@@ -10,7 +10,6 @@ import 'package:forja/shared/playback/playback_stream_guards.dart';
 import 'package:forja/shared/player/player/utils.dart';
 import 'package:forja/shared/widgets/media_details/torrent_source_filters.dart';
 import 'package:http/http.dart' as http;
-import 'package:http/io_client.dart';
 import 'package:http/testing.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';

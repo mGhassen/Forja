@@ -1319,7 +1319,7 @@ class SimklService {
       final meta = catalogMetaFromLegacyListItem({
         'pluginId': hubPlugin,
         'tmdbId': tmdbId,
-        if (imdbId != null) 'imdbId': imdbId,
+        'imdbId': ?imdbId,
         'mediaType': 'asian_drama',
         'title': title,
         'posterPath': posterPath,

@@ -3,7 +3,6 @@ use std::sync::LazyLock;
 
 use regex::Regex;
 use serde_json::{json, Value};
-use crate::fetch;
 
 const BASE: &str = "https://my-subs.co";
 

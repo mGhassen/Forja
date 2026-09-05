@@ -274,10 +274,7 @@ class EngineRuntime {
 
     br('KissKhKkey', (args) {
       try {
-        final m = _bridgeMap(args);
-        final episodeId =
-            int.tryParse((m['episodeId'] ?? m['id'] ?? '').toString()) ?? 0;
-        final kind = (m['kind'] ?? 'video').toString();
+        _bridgeMap(args);
         return '';
       } catch (_) {
         return '';

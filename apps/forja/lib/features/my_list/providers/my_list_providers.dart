@@ -69,7 +69,7 @@ Set<String> myListItemHideKeys(Map<String, dynamic> item) {
     final surface = open['surface']?.toString().trim() ?? '';
     final id = open['id']?.toString().trim() ?? '';
     if (surface.isNotEmpty && id.isNotEmpty) {
-      keys.add('open:${surface}:$id');
+      keys.add('open:$surface:$id');
     }
   }
   final tmdb = item['tmdbId'];

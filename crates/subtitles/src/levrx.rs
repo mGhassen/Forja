@@ -1,7 +1,5 @@
 use serde_json::{json, Value};
 
-use crate::fetch;
-
 pub fn fetch(tmdb_id: i64, season: Option<i32>, episode: Option<i32>) -> Result<Vec<Value>, String> {
     let id_param = match (season, episode) {
         (Some(s), Some(e)) => format!("{tmdb_id}/{s}/{e}"),

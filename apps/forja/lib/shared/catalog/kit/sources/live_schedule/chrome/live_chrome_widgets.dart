@@ -1197,376 +1197,10 @@ class _IptvSportsChannelsPanelController extends ChangeNotifier {
   }
 }
 
-/// Right-side overlay — same shell as movie Sources; fills as matches land.
-class _IptvSportsChannelsPanel {
-  static OverlayEntry? _entry;
-  static _IptvSportsChannelsPanelController? _controller;
-  static VoidCallback? _cancelInFlightSearch;
-
-  static _IptvSportsChannelsPanelController show({
-    required BuildContext context,
-    required _StreamedMatch match,
-    String panelTitle = 'Forja Sports',
-    String emptyMessage = _IptvSportsPanelCopy.empty,
-    String searchingHint = 'Matching channels from your portal',
-    IptvController? iptvCtrl,
-    VoidCallback? cancelInFlightSearch,
-    required void Function(IptvPlaySource picked, List<IptvPlaySource> all)
-    onChannelSelected,
-  }) {
-    dismiss();
-    final controller = _IptvSportsChannelsPanelController(
-      match: match,
-      panelTitle: panelTitle,
-      emptyMessage: emptyMessage,
-      searchingHint: searchingHint,
-      iptvCtrl: iptvCtrl,
-    );
-    _controller = controller;
-    _cancelInFlightSearch = cancelInFlightSearch;
-    final overlay = Overlay.of(context);
-    _entry = OverlayEntry(
-      builder: (_) => _IptvSportsChannelsOverlay(
-        controller: controller,
-        onClose: dismiss,
-        onChannelSelected: (picked) {
-          final all = List<IptvPlaySource>.from(controller.sources);
-          dismiss();
-          onChannelSelected(picked, all);
-        },
-      ),
-    );
-    overlay.insert(_entry!);
-    return controller;
-  }
-
+/// Right-side overlay shell — dismiss clears any leftover focus claim.
+abstract final class _IptvSportsChannelsPanel {
   static void dismiss() {
-    final wasShowing = _entry != null;
-    final ctrl = _controller;
-    final cancelSearch = _cancelInFlightSearch;
-    _cancelInFlightSearch = null;
-    _entry?.remove();
-    _entry = null;
-    _controller = null;
-    cancelSearch?.call();
-    // Overlay State drops its listener on unmount; dispose after that frame.
-    if (ctrl != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!ctrl.isDisposed) ctrl.dispose();
-      });
-    }
-    if (wasShowing) {
-      ShellTvFocusCoordinator.setSourcesPanelDismiss(null);
-    }
-  }
-}
-
-class _IptvSportsChannelsOverlay extends StatefulWidget {
-  const _IptvSportsChannelsOverlay({
-    required this.controller,
-    required this.onClose,
-    required this.onChannelSelected,
-  });
-
-  final _IptvSportsChannelsPanelController controller;
-  final VoidCallback onClose;
-  final void Function(IptvPlaySource) onChannelSelected;
-
-  @override
-  State<_IptvSportsChannelsOverlay> createState() =>
-      _IptvSportsChannelsOverlayState();
-}
-
-class _IptvSportsChannelsOverlayState
-    extends State<_IptvSportsChannelsOverlay> {
-  bool _open = false;
-  int _lastSourceCount = 0;
-  bool _didInitialFocus = false;
-  final FocusNode _closeFocus = FocusNode(
-    debugLabel: 'iptv-sports-channels-close',
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    widget.controller.addListener(_onController);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      setState(() => _open = true);
-      _claimInitialFocus();
-    });
-  }
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onController);
-    _closeFocus.dispose();
-    super.dispose();
-  }
-
-  void _focusClose() {
-    if (_closeFocus.canRequestFocus) _closeFocus.requestFocus();
-  }
-
-  /// Real leanback only — desktop also has [SourcesPanelTv.isTv] true
-  /// (`useFocusableMoodChips`), which would paint row 0 as "selected".
-  bool get _tvLeanback => ShellScope.metricsOf(context).usesTvDensity;
-
-  void _claimInitialFocus() {
-    if (_didInitialFocus || !_tvLeanback) return;
-    _didInitialFocus = true;
-    final n = widget.controller.sources.length;
-    if (n > 0) {
-      SourcesPanelTv.claimFocus(listIndex: 0, close: _closeFocus);
-    } else {
-      SourcesPanelTv.claimFocus(close: _closeFocus);
-    }
-  }
-
-  void _onController() {
-    if (!mounted) return;
-    final n = widget.controller.sources.length;
-    final firstBatch = _lastSourceCount == 0 && n > 0;
-    _lastSourceCount = n;
-    setState(() {});
-    if (!_tvLeanback) return;
-    if (firstBatch) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        SourcesPanelTv.focusListItem(index: 0);
-      });
-      return;
-    }
-    if (!_didInitialFocus) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _claimInitialFocus();
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ctrl = widget.controller;
-    final sources = ctrl.sources;
-    final tv = _tvLeanback;
-    final match = ctrl.match;
-    final showInlineStatus = !ctrl.searching || sources.isNotEmpty;
-    final status = !showInlineStatus
-        ? null
-        : ctrl.searching
-        ? _IptvSportsPanelCopy.partial(sources.length, ctrl.searchPhase)
-        : (sources.isEmpty ? null : _IptvSportsPanelCopy.ready(sources.length));
-
-    final matchMeta = [
-      if (match.categoryLabel.trim().isNotEmpty) match.categoryLabel.trim(),
-      if (match.isLive)
-        'Live now'
-      else if (match.timeLabel.isNotEmpty)
-        match.timeLabel,
-    ].join(' · ');
-
-    final body = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        PlayerSidePanelHeader(
-          title: ctrl.panelTitle,
-          onClose: widget.onClose,
-          closeFocusNode: tv ? _closeFocus : null,
-          closeOnKeyEvent: tv
-              ? (node, event) {
-                  if (event is! KeyDownEvent) return KeyEventResult.ignored;
-                  if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-                    if (sources.isNotEmpty) {
-                      SourcesPanelTv.focusListItem(index: 0);
-                    }
-                    return KeyEventResult.handled;
-                  }
-                  return KeyEventResult.ignored;
-                }
-              : null,
-        ),
-        const SizedBox(height: 10),
-        Text(
-          match.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: ForjaShellColors.cinematic.textPrimary,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        if (matchMeta.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            matchMeta,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: ForjaShellColors.cinematic.textSecondary,
-              fontSize: 11,
-            ),
-          ),
-        ],
-        if (status != null) ...[
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              if (ctrl.searching) ...[
-                SizedBox(
-                  width: 12,
-                  height: 12,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1.6,
-                    color: ForjaShellColors.sectionAccent,
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: Text(
-                  status,
-                  style: TextStyle(
-                    color: ForjaShellColors.cinematic.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 12),
-        Expanded(
-          child: sources.isEmpty
-              ? (ctrl.searching
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 28,
-                                height: 28,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: ForjaShellColors.sectionAccent,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                _IptvSportsPanelCopy.searching(
-                                  ctrl.searchPhase,
-                                ),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: ForjaShellColors.cinematic.textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                ctrl.searchingHint,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color:
-                                      ForjaShellColors.cinematic.textSecondary,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    : Align(
-                        alignment: Alignment.topCenter,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 32),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.search_off_rounded,
-                                size: 36,
-                                color: ForjaShellColors.cinematic.textSecondary
-                                    .withValues(alpha: 0.45),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                ctrl.emptyMessage,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color:
-                                      ForjaShellColors.cinematic.textSecondary,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ))
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Bleed past left panel padding; right pad is already 0.
-                    final insetLeft = DetailsTokens.sourcesPanelPadding.left;
-                    final list = ListView.separated(
-                      clipBehavior: Clip.none,
-                      padding: const EdgeInsets.only(bottom: 8),
-                      itemCount: sources.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, i) {
-                        return _IptvSportsChannelSheetRow(
-                          source: sources[i],
-                          iptvCtrl: ctrl.iptvCtrl,
-                          healthProbe: ctrl.healthProbe,
-                          onTap: () => widget.onChannelSelected(sources[i]),
-                          tvItemIndex: i,
-                          onUpEdge: i == 0 ? _focusClose : null,
-                        );
-                      },
-                    );
-                    final bled = OverflowBox(
-                      // Surplus width hangs left so the right edge stays flush.
-                      alignment: Alignment.centerRight,
-                      minWidth: constraints.maxWidth + insetLeft,
-                      maxWidth: constraints.maxWidth + insetLeft,
-                      child: tv
-                          ? TvCatalogRow(
-                              tabId: SourcesPanelTv.tabId,
-                              rowId: SourcesPanelTv.listRowId,
-                              sortOrder: SourcesPanelTv.listSort,
-                              itemCount: sources.length,
-                              orientation: ShellTvRowOrientation.vertical,
-                              onFocusUp: _focusClose,
-                              child: list,
-                            )
-                          : list,
-                    );
-                    return SizedBox(
-                      width: constraints.maxWidth,
-                      height: constraints.maxHeight,
-                      child: bled,
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-
-    return TorrentSourcesPanel(
-      isOpen: _open,
-      onClose: widget.onClose,
-      enableBlur: true,
-      // No right inset — list tiles flush to the panel edge (movie Sources).
-      contentPadding: const EdgeInsets.fromLTRB(16, 8, 0, 12),
-      child: SourcesPanelTv.wrapBody(
-        context: context,
-        onClose: widget.onClose,
-        child: body,
-      ),
-    );
+    ShellTvFocusCoordinator.setSourcesPanelDismiss(null);
   }
 }
 
@@ -1577,7 +1211,6 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
     this.iptvCtrl,
     required this.onTap,
     this.tvItemIndex,
-    this.onUpEdge,
     this.hideCategorySubtitle = false,
   });
 
@@ -1586,7 +1219,6 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
   final IptvController? iptvCtrl;
   final VoidCallback onTap;
   final int? tvItemIndex;
-  final VoidCallback? onUpEdge;
   /// When the Live TV category rail is visible, skip repeating category on the row.
   final bool hideCategorySubtitle;
 
@@ -1796,12 +1428,11 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
                     ),
                   ),
             badges: [
-              if (qualityBadge != null) qualityBadge,
+              ?qualityBadge,
             ],
             viewerCount: viewers > 0 ? viewers : null,
             onPlay: onTap,
             tvItemIndex: tvItemIndex,
-            onUpEdge: onUpEdge,
             onHoverProbe: _liveHoverProbe,
             probeHealthCache: cachedHealth,
           );
@@ -1816,7 +1447,6 @@ class _IptvSportsChannelSheetRow extends StatelessWidget {
           badges: const [],
           onPlay: onTap,
           tvItemIndex: tvItemIndex,
-          onUpEdge: onUpEdge,
           onHoverProbe:
               _isPortalIptvRow ? _portalHoverProbe : _hoverProbe,
           probeHealthCache: cachedHealth,
