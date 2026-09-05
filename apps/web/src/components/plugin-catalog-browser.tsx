@@ -31,8 +31,8 @@ import {
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 10
-/** Desktop detail panel — fixed, does not stretch with the list. */
-const DETAIL_PANEL_HEIGHT_CLASS = 'h-[min(28rem,70vh)]'
+/** Shared catalog pane height — list + detail fill the same column. */
+const CATALOG_PANE_HEIGHT_CLASS = 'h-[min(42rem,78vh)]'
 
 function paginate<T>(items: T[], page: number) {
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
@@ -144,9 +144,9 @@ function PluginDetailPanel({
           </div>
         ) : null}
 
-        <dl className="grid grid-cols-2 gap-3 text-sm">
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
           {pack.pluginCount != null ? (
-            <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+            <div>
               <dt className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
                 Plugins
               </dt>
@@ -154,7 +154,7 @@ function PluginDetailPanel({
             </div>
           ) : null}
           {author ? (
-            <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2">
+            <div className="min-w-0">
               <dt className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
                 Author
               </dt>
@@ -568,18 +568,23 @@ export function PluginCatalogBrowser({
           ) : null}
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-white/10 bg-[#121110]">
+        <div
+          className={cn(
+            'overflow-hidden rounded-xl border border-white/10 bg-[#121110]',
+            showDetail && CATALOG_PANE_HEIGHT_CLASS,
+          )}
+        >
           <div
             className={cn(
-              'grid items-start',
+              'grid h-full',
               showDetail
-                ? 'lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]'
+                ? 'lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)]'
                 : 'lg:grid-cols-1',
             )}
           >
             <div
               className={cn(
-                'flex min-w-0 flex-col border-white/10',
+                'flex min-h-0 min-w-0 flex-col border-white/10',
                 showDetail && 'lg:border-r',
                 mobileDetailOpen && showDetail ? 'hidden lg:flex' : 'flex',
               )}
@@ -611,7 +616,7 @@ export function PluginCatalogBrowser({
                 </div>
               )}
 
-              <div className="overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto">
                 {isLoading ? (
                   <ListSkeleton />
                 ) : filtered.length === 0 ? (
@@ -633,7 +638,7 @@ export function PluginCatalogBrowser({
               </div>
 
               {!isLoading && pageSlice.totalPages > 1 ? (
-                <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-3 py-2.5 sm:px-4">
+                <div className="flex shrink-0 items-center justify-between gap-3 border-t border-white/[0.06] px-3 py-2.5 sm:px-4">
                   <span className="font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
                     Page {pageSlice.page} of {pageSlice.totalPages}
                   </span>
@@ -666,14 +671,9 @@ export function PluginCatalogBrowser({
             </div>
 
             {showDetail && detail ? (
-              <div
-                className={cn(
-                  'hidden flex-col overflow-hidden border-white/10 bg-[#0f0e0d] lg:flex',
-                  DETAIL_PANEL_HEIGHT_CLASS,
-                )}
-              >
+              <aside className="hidden h-full min-h-0 flex-col lg:flex">
                 <PluginDetailPanel pack={detail} onClose={closeDetail} />
-              </div>
+              </aside>
             ) : null}
           </div>
         </div>
