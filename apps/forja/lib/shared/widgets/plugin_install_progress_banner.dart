@@ -47,8 +47,10 @@ class _PluginInstallBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final percent = (progress.fraction * 100).clamp(0, 100).round();
     final ready = progress.phase == PluginInstallPhase.ready;
+    final kind = ready ? ForjaToastKind.success : ForjaToastKind.info;
+    final style = forjaToastStyle(kind);
+    final percent = (progress.fraction * 100).clamp(0, 100).round();
     final title = ready
         ? 'Plugins ready'
         : progress.isUpdate
@@ -60,113 +62,91 @@ class _PluginInstallBanner extends StatelessWidget {
             ? Icons.system_update_alt_rounded
             : Icons.download_rounded;
 
-    return Material(
-      color: Colors.transparent,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: const Color(0xFF14261C),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: const Color(0xFF1CE783)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    return ForjaToastChrome(
+      kind: kind,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(
-                    icon,
-                    size: 18,
-                    color: ForjaShellColors.brandGreen,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: const TextStyle(
-                            color: ForjaShellColors.textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            height: 1.3,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          progress.label,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: ForjaShellColors.textSecondary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        if (progress.manifestUrl != null &&
-                            progress.manifestUrl!.trim().isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            progress.manifestUrl!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: ForjaShellColors.textSecondary
-                                  .withValues(alpha: 0.75),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ],
+              Icon(icon, size: 18, color: style.accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: ForjaShellColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
+                      ),
                     ),
-                  ),
-                  Text(
-                    '$percent%',
-                    style: const TextStyle(
-                      color: ForjaShellColors.brandGreen,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
+                    const SizedBox(height: 2),
+                    Text(
+                      progress.label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: ForjaShellColors.textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  value: progress.totalSteps > 0 ? progress.fraction : null,
-                  minHeight: 4,
-                  backgroundColor: ForjaShellColors.borderSubtle,
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    ForjaShellColors.brandGreen,
-                  ),
+                    if (progress.manifestUrl != null &&
+                        progress.manifestUrl!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        progress.manifestUrl!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: ForjaShellColors.textSecondary
+                              .withValues(alpha: 0.75),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              if (ready) ...[
-                const SizedBox(height: 6),
-                Text(
-                  'Plugin is ready to use.',
-                  style: TextStyle(
-                    color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
-                    fontSize: 10,
-                    height: 1.35,
-                  ),
+              Text(
+                '$percent%',
+                style: TextStyle(
+                  color: style.accent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
                 ),
-              ],
+              ),
             ],
           ),
-        ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: progress.totalSteps > 0 ? progress.fraction : null,
+              minHeight: 4,
+              backgroundColor: ForjaShellColors.borderSubtle,
+              valueColor: AlwaysStoppedAnimation<Color>(style.accent),
+            ),
+          ),
+          if (ready) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Plugin is ready to use.',
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
+                fontSize: 10,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

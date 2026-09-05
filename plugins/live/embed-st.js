@@ -135,13 +135,21 @@ function preferDirectPlayback(m3u8Url) {
   } catch (_) {}
   if (host.indexOf('wfty.st') >= 0) return false;
   if (host.indexOf('indianservers.st') >= 0) return true;
-  if (host.indexOf('strmd.st') >= 0) return true;
-  if (host.indexOf('streamfree.top') >= 0 && path.indexOf('/live/') >= 0) return true;
+  if (host.indexOf('strmd.st') >= 0 && path.indexOf('/streamfree/stream/') >= 0) {
+    return true;
+  }
+  if (
+    host.indexOf('streamfree.top') >= 0 &&
+    (path.indexOf('/live/') >= 0 ||
+      path.indexOf('/live-cdn/') >= 0 ||
+      path.indexOf('/live-origin/') >= 0)
+  ) {
+    return true;
+  }
   return (
     path.indexOf('/delta/stream/') >= 0 ||
     path.indexOf('/echo/stream/') >= 0 ||
-    path.indexOf('/streamed/stream/') >= 0 ||
-    path.indexOf('/streamfree/stream/') >= 0
+    path.indexOf('/streamed/stream/') >= 0
   );
 }
 

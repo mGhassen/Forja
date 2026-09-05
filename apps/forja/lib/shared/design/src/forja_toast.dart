@@ -338,7 +338,7 @@ class _ForjaToastCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = _styleFor(entry.kind);
+    final style = forjaToastStyle(entry.kind);
 
     void runActionSafe(VoidCallback? action, {required bool dismiss}) {
       final id = entry.id;
@@ -357,7 +357,7 @@ class _ForjaToastCard extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          color: tvFocus ? ForjaShellColors.brandGreen : style.accent,
+          color: style.accent,
         ),
       );
       void onTap() => runActionSafe(entry.onAction, dismiss: true);
@@ -418,6 +418,50 @@ class _ForjaToastCard extends StatelessWidget {
       );
     }
 
+    return ForjaToastChrome(
+      kind: entry.kind,
+      child: Row(
+        children: [
+          Icon(style.icon, size: 18, color: style.accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              entry.message,
+              style: const TextStyle(
+                color: ForjaShellColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.3,
+              ),
+            ),
+          ),
+          if (entry.actionLabel != null && entry.onAction != null) ...[
+            const SizedBox(width: 8),
+            actionButton(),
+          ],
+          closeButton(),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shared top-right card chrome — kind drives border / accent / fill.
+class ForjaToastChrome extends StatelessWidget {
+  const ForjaToastChrome({
+    super.key,
+    required this.kind,
+    required this.child,
+    this.padding = const EdgeInsets.fromLTRB(12, 10, 8, 10),
+  });
+
+  final ForjaToastKind kind;
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = forjaToastStyle(kind);
     return Material(
       color: Colors.transparent,
       child: DecoratedBox(
@@ -433,29 +477,21 @@ class _ForjaToastCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
-          child: Row(
-            children: [
-              Icon(style.icon, size: 18, color: style.accent),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  entry.message,
-                  style: const TextStyle(
-                    color: ForjaShellColors.textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    height: 1.3,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(width: 4, color: style.accent),
+                Expanded(
+                  child: Padding(
+                    padding: padding,
+                    child: child,
                   ),
                 ),
-              ),
-              if (entry.actionLabel != null && entry.onAction != null) ...[
-                const SizedBox(width: 8),
-                actionButton(),
               ],
-              closeButton(),
-            ],
+            ),
           ),
         ),
       ),
@@ -463,8 +499,8 @@ class _ForjaToastCard extends StatelessWidget {
   }
 }
 
-class _ToastStyle {
-  const _ToastStyle({
+class ForjaToastStyle {
+  const ForjaToastStyle({
     required this.background,
     required this.border,
     required this.accent,
@@ -477,34 +513,34 @@ class _ToastStyle {
   final IconData icon;
 }
 
-_ToastStyle _styleFor(ForjaToastKind kind) {
+ForjaToastStyle forjaToastStyle(ForjaToastKind kind) {
   switch (kind) {
     case ForjaToastKind.success:
-      return const _ToastStyle(
+      return const ForjaToastStyle(
         background: Color(0xFF14261C),
         border: Color(0xFF1CE783),
         accent: ForjaShellColors.brandGreen,
         icon: Icons.check_circle_rounded,
       );
     case ForjaToastKind.error:
-      return const _ToastStyle(
+      return const ForjaToastStyle(
         background: Color(0xFF2A1416),
         border: Color(0xFFEF4444),
         accent: Color(0xFFF87171),
         icon: Icons.error_rounded,
       );
     case ForjaToastKind.warning:
-      return const _ToastStyle(
+      return const ForjaToastStyle(
         background: Color(0xFF2A2114),
         border: Color(0xFFF59E0B),
         accent: Color(0xFFFBBF24),
         icon: Icons.warning_amber_rounded,
       );
     case ForjaToastKind.info:
-      return const _ToastStyle(
-        background: Color(0xFF1C1C1C),
-        border: Color(0xFF4B5563),
-        accent: Color(0xFF9CA3AF),
+      return const ForjaToastStyle(
+        background: Color(0xFF141C2A),
+        border: Color(0xFF3B82F6),
+        accent: Color(0xFF60A5FA),
         icon: Icons.info_rounded,
       );
   }

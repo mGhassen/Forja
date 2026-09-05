@@ -791,14 +791,19 @@ class LiveGoatUnlock {
     // `wfty.st` is path-signed (no query) — keep `/hls-proxy` so ffmpeg child
     // playlist/segment GETs still send sportsembed Referer (direct open does not).
     if (host.contains('indianservers.st')) return true;
-    if (host.contains('streamfree.top') && path.contains('/live/')) {
+    if (host.contains('streamfree.top') &&
+        (path.contains('/live/') ||
+            path.contains('/live-cdn/') ||
+            path.contains('/live-origin/'))) {
       return true;
     }
-    if (host.contains('strmd.st')) return true;
+    // streamfree CDN slots on strmd — not admin `/rtmp/stream/` masters.
+    if (host.contains('strmd.st') && path.contains('/streamfree/stream/')) {
+      return true;
+    }
     return path.contains('/delta/stream/') ||
         path.contains('/echo/stream/') ||
-        path.contains('/streamed/stream/') ||
-        path.contains('/streamfree/stream/');
+        path.contains('/streamed/stream/');
   }
 
   static Future<bool> _probePlayableM3u8(

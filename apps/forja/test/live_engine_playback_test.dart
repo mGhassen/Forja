@@ -56,6 +56,18 @@ void main() {
         ),
         isTrue,
       );
+      expect(
+        liveEnginePreferDirectPlayback(
+          'https://streamfree.top/live-cdn/match1080p3/index.m3u8?_t=a&_e=1&_n=x',
+        ),
+        isTrue,
+      );
+      expect(
+        liveEnginePreferDirectPlayback(
+          'https://streamfree.top/live-origin/match720p2/index.m3u8?_t=a&_e=1&_n=x',
+        ),
+        isTrue,
+      );
     });
 
     test('admin rtmp master stays on hls-proxy', () {
