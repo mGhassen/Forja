@@ -259,117 +259,126 @@ class _PluginBatchInstallPromptBodyState
       ),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520, maxHeight: 420),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              _body,
-              style: const TextStyle(
-                color: ForjaShellColors.textSecondary,
-                height: 1.4,
+        // Fixed height so Expanded gets real space. Column(min)+Flexible
+        // collapsed the list to 0 → "Cannot hit test a render box with no size".
+        child: SizedBox(
+          width: 520,
+          height: 420,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                _body,
+                style: const TextStyle(
+                  color: ForjaShellColors.textSecondary,
+                  height: 1.4,
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Text(
-                  '$_selectedCount selected',
-                  style: const TextStyle(
-                    color: ForjaShellColors.textSecondary,
-                    fontSize: 12,
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    '$_selectedCount selected',
+                    style: const TextStyle(
+                      color: ForjaShellColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: _busy || allSelected ? null : _selectAllActionable,
-                  child: const Text('Select all'),
-                ),
-                TextButton(
-                  onPressed:
-                      _busy || _selectedCount == 0 ? null : _clearActionable,
-                  child: const Text('Clear'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: widget.prompt.candidates.length,
-                separatorBuilder: (_, _) =>
-                    const Divider(height: 1, color: ForjaShellColors.borderSubtle),
-                itemBuilder: (context, index) {
-                  final c = widget.prompt.candidates[index];
-                  final key = _key(c);
-                  final settled = c.alreadyInstalled;
-                  final checked = settled || _selected.contains(key);
-                  final title = c.displayName?.trim().isNotEmpty == true
-                      ? c.displayName!.trim()
-                      : 'Plugin pack';
-                  final uninstall = c.kind == PluginPackPromptKind.uninstall;
-                  final actionLabel = uninstall ? 'Uninstall' : 'Install';
-                  final settledLabel =
-                      uninstall ? 'Already removed' : 'Already on device';
-
-                  return CheckboxListTile(
-                    value: checked,
-                    onChanged: settled || _busy
+                  const Spacer(),
+                  TextButton(
+                    onPressed:
+                        _busy || allSelected ? null : _selectAllActionable,
+                    child: const Text('Select all'),
+                  ),
+                  TextButton(
+                    onPressed: _busy || _selectedCount == 0
                         ? null
-                        : (value) {
-                            setState(() {
-                              if (value == true) {
-                                _selected.add(key);
-                              } else {
-                                _selected.remove(key);
-                              }
-                            });
-                          },
-                    activeColor: ForjaShellColors.brandGreen,
-                    checkColor: const Color(0xFF0B0A0A),
-                    controlAffinity: ListTileControlAffinity.leading,
-                    dense: true,
-                    title: Text(
-                      title,
-                      style: TextStyle(
-                        color: settled
-                            ? ForjaShellColors.textSecondary
-                            : ForjaShellColors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(
-                      settled
-                          ? settledLabel
-                          : '$actionLabel · ${c.manifestUrl.trim()}',
-                      maxLines: settled ? 1 : 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: ForjaShellColors.textSecondary,
-                        fontSize: 11,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  );
-                },
+                        : _clearActionable,
+                    child: const Text('Clear'),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            ForjaButton.primary(
-              label: _primaryLabel,
-              expand: true,
-              autofocus: true,
-              activateOnKeyUp: true,
-              onPressed: _busy || _selectedCount == 0 ? null : _applySelected,
-            ),
-            const SizedBox(height: 4),
-            Center(
-              child: ForjaGhostButton(
-                label: 'Not now',
-                onTap: _busy ? null : _notNow,
+              const SizedBox(height: 4),
+              Expanded(
+                child: ListView.separated(
+                  itemCount: widget.prompt.candidates.length,
+                  separatorBuilder: (_, _) => const Divider(
+                    height: 1,
+                    color: ForjaShellColors.borderSubtle,
+                  ),
+                  itemBuilder: (context, index) {
+                    final c = widget.prompt.candidates[index];
+                    final key = _key(c);
+                    final settled = c.alreadyInstalled;
+                    final checked = settled || _selected.contains(key);
+                    final title = c.displayName?.trim().isNotEmpty == true
+                        ? c.displayName!.trim()
+                        : 'Plugin pack';
+                    final uninstall = c.kind == PluginPackPromptKind.uninstall;
+                    final actionLabel = uninstall ? 'Uninstall' : 'Install';
+                    final settledLabel =
+                        uninstall ? 'Already removed' : 'Already on device';
+
+                    return CheckboxListTile(
+                      value: checked,
+                      onChanged: settled || _busy
+                          ? null
+                          : (value) {
+                              setState(() {
+                                if (value == true) {
+                                  _selected.add(key);
+                                } else {
+                                  _selected.remove(key);
+                                }
+                              });
+                            },
+                      activeColor: ForjaShellColors.brandGreen,
+                      checkColor: const Color(0xFF0B0A0A),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      dense: true,
+                      title: Text(
+                        title,
+                        style: TextStyle(
+                          color: settled
+                              ? ForjaShellColors.textSecondary
+                              : ForjaShellColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        settled
+                            ? settledLabel
+                            : '$actionLabel · ${c.manifestUrl.trim()}',
+                        maxLines: settled ? 1 : 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: ForjaShellColors.textSecondary,
+                          fontSize: 11,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              ForjaButton.primary(
+                label: _primaryLabel,
+                expand: true,
+                autofocus: true,
+                activateOnKeyUp: true,
+                onPressed:
+                    _busy || _selectedCount == 0 ? null : _applySelected,
+              ),
+              const SizedBox(height: 4),
+              Center(
+                child: ForjaGhostButton(
+                  label: 'Not now',
+                  onTap: _busy ? null : _notNow,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

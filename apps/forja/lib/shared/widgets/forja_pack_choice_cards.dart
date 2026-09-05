@@ -129,7 +129,15 @@ class ForjaPackChoiceCard extends StatefulWidget {
 }
 
 class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
-  bool _hovered = false;
+  // ValueNotifier — never setState on hover. Rebuilding FocusableControl /
+  // MouseRegion during pointer update trips mouse_tracker asserts and kills taps.
+  final ValueNotifier<bool> _hovered = ValueNotifier(false);
+
+  @override
+  void dispose() {
+    _hovered.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -196,16 +204,16 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
       );
     }
 
-    final body = AnimatedBuilder(
-      animation: widget.focusNode,
+    final body = ListenableBuilder(
+      listenable: Listenable.merge([widget.focusNode, _hovered]),
       builder: (context, _) => card(
-        active: widget.focusNode.hasFocus || _hovered,
+        active: widget.focusNode.hasFocus || _hovered.value,
       ),
     );
 
     void onHover(bool hovered) {
-      if (_hovered == hovered) return;
-      setState(() => _hovered = hovered);
+      if (_hovered.value == hovered) return;
+      _hovered.value = hovered;
     }
 
     // Card owns hover/focus chrome (light green fill) — no settings left rail.
