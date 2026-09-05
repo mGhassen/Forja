@@ -228,6 +228,9 @@ class ShellBus {
   /// True after the splash overlay is dismissed - defer heavy tab work until then.
   static final ValueNotifier<bool> splashDismissed = ValueNotifier<bool>(false);
 
+  /// Get-started empty shell (no feature tabs) — hide rail logo; body is full-bleed.
+  static final ValueNotifier<bool> emptyFeaturesGate = ValueNotifier<bool>(false);
+
   /// Bumps when shell chrome (e.g. search bar) needs a rebuild.
   static final ValueNotifier<int> shellChromeRevision = ValueNotifier<int>(0);
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_visibility_provider.dart';
 import 'package:forja/shared/design/design.dart';
@@ -30,7 +31,7 @@ class ShellEmptyFeaturesScreen extends ConsumerStatefulWidget {
 class _ShellEmptyFeaturesScreenState
     extends ConsumerState<ShellEmptyFeaturesScreen> {
   final List<FocusNode> _cardFocus = [];
-  int _lastFocusCount = -1;
+  var _focusScheduled = false;
 
   @override
   void dispose() {
@@ -48,16 +49,29 @@ class _ShellEmptyFeaturesScreenState
     while (_cardFocus.length > count) {
       _cardFocus.removeLast().dispose();
     }
-    if (count != _lastFocusCount) {
-      _lastFocusCount = count;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+  }
+
+  /// Beat the nav-rail autofocus that steals primary focus on TV tab paint.
+  void _scheduleAddonsCardFocus() {
+    if (_focusScheduled) return;
+    if (!ShellScope.metricsOf(context).usesTvDensity) return;
+    if (_cardFocus.isEmpty) return;
+    _focusScheduled = true;
+
+    void tryFocus(int attempt) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        if (!ShellScope.metricsOf(context).usesTvDensity) return;
-        if (_cardFocus.isEmpty) return;
         final n = _cardFocus.first;
-        if (n.canRequestFocus) n.requestFocus();
+        if (n.canRequestFocus) {
+          n.requestFocus();
+        }
+        if (attempt < 10 && !n.hasFocus) {
+          tryFocus(attempt + 1);
+        }
       });
     }
+
+    tryFocus(0);
   }
 
   @override
@@ -103,6 +117,7 @@ class _ShellEmptyFeaturesScreenState
     ];
 
     _ensureFocusNodes(specs.length);
+    _scheduleAddonsCardFocus();
 
     final logoHeight = tv
         ? 48.0
@@ -123,7 +138,6 @@ class _ShellEmptyFeaturesScreenState
       child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // TV / desktop: side-by-side when there is room; phone stays stacked.
             final horizontal = (tv || profile != ShellProfile.mobile) &&
                 constraints.maxWidth >= 640 &&
                 specs.length > 1;
@@ -224,8 +238,7 @@ class _ShellEmptyFeaturesScreenState
                       if (!tv) ...[
                         const SizedBox(height: 20),
                         Text(
-                          'Tap the Forja logo in the sidebar to return here, or use '
-                          'your profile avatar to open Settings.',
+                          'Use your profile avatar to open Settings.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: ForjaShellColors.textSecondary.withValues(
@@ -300,59 +313,6 @@ class _HintCard extends StatelessWidget {
     final bodySize = compact ? 12.0 : 13.0;
     final iconSize = compact ? 20.0 : 22.0;
 
-    final body = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              spec.icon,
-              size: iconSize,
-              color: ForjaShellColors.sectionAccent,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                spec.title,
-                style: GoogleFonts.plusJakartaSans(
-                  color: ForjaShellColors.textPrimary,
-                  fontSize: titleSize,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: compact ? 6 : 8),
-        if (expandBody)
-          Expanded(
-            child: Text(
-              spec.body,
-              style: TextStyle(
-                color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
-                fontSize: bodySize,
-                height: 1.4,
-              ),
-            ),
-          )
-        else
-          Text(
-            spec.body,
-            style: TextStyle(
-              color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
-              fontSize: bodySize,
-              height: 1.4,
-            ),
-          ),
-        SizedBox(height: compact ? 10 : 12),
-        Align(
-          alignment: Alignment.centerRight,
-          child: _ActionChip(label: spec.actionLabel, compact: compact),
-        ),
-      ],
-    );
-
     final card = DecoratedBox(
       decoration: BoxDecoration(
         color: surface,
@@ -361,7 +321,60 @@ class _HintCard extends StatelessWidget {
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(pad, pad, pad, compact ? 10 : 12),
-        child: body,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  spec.icon,
+                  size: iconSize,
+                  color: ForjaShellColors.sectionAccent,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    spec.title,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: ForjaShellColors.textPrimary,
+                      fontSize: titleSize,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: compact ? 6 : 8),
+            if (expandBody)
+              Expanded(
+                child: Text(
+                  spec.body,
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary.withValues(
+                      alpha: 0.9,
+                    ),
+                    fontSize: bodySize,
+                    height: 1.4,
+                  ),
+                ),
+              )
+            else
+              Text(
+                spec.body,
+                style: TextStyle(
+                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
+                  fontSize: bodySize,
+                  height: 1.4,
+                ),
+              ),
+            SizedBox(height: compact ? 10 : 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: _ActionChip(label: spec.actionLabel, compact: compact),
+            ),
+          ],
+        ),
       ),
     );
 
@@ -376,7 +389,7 @@ class _HintCard extends StatelessWidget {
       );
     }
 
-    // Whole card is the D-pad target (not only the chip).
+    // Whole card is the D-pad / OK target.
     return shellFocusableTap(
       context: context,
       onTap: spec.onAction,

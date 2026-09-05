@@ -89,6 +89,17 @@ class _MainScreenState extends ConsumerState<MainScreen>
   bool get _showEmptyFeaturesGate =>
       _initialNavResolved && !_hasFeatureTabs && !_emptyFeaturesBodyDismissed;
 
+  void _syncEmptyFeaturesGate() {
+    final gate = _showEmptyFeaturesGate;
+    if (ShellBus.emptyFeaturesGate.value == gate) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ShellBus.emptyFeaturesGate.value != gate) {
+        ShellBus.emptyFeaturesGate.value = gate;
+      }
+    });
+  }
+
   String? get _currentTabId =>
       _visibleIds.isEmpty || _selectedIndex >= _visibleIds.length
           ? null
@@ -611,6 +622,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.activeShellTabId = null;
     ShellBus.clearHideGlobalNav();
     ShellBus.clearMaskShellUnderPlayer();
+    ShellBus.emptyFeaturesGate.value = false;
     MacOsShellChannel.dispose();
     super.dispose();
   }
@@ -620,6 +632,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ref.listen(navbarRevisionProvider, (_, _) {
       _onNavbarConfigChanged();
     });
+    _syncEmptyFeaturesGate();
     return ShellScopeBuilder(
       builder: (shellContext, profile) {
         _shellScopedContext = shellContext;

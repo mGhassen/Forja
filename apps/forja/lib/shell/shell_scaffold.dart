@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/shell_body.dart';
 import 'package:forja/shell/shell_bottom_nav.dart';
+import 'package:forja/shell/shell_bus.dart';
 import 'package:forja/shell/shell_nav_rail.dart';
 import 'package:forja/shell/shell_overlay_navigator.dart';
 import 'package:forja/shared/catalog/kit/chrome/catalog_vertical_filters_rail.dart';
@@ -74,6 +75,15 @@ class _ShellScaffoldState extends State<ShellScaffold> {
       ShellTvFocus.currentNavTabId = widget.visibleIds[widget.selectedIndex];
     }
 
+    return ValueListenableBuilder<bool>(
+      valueListenable: ShellBus.emptyFeaturesGate,
+      builder: (context, emptyGate, _) {
+        return _buildShell(context, emptyFeaturesGate: emptyGate);
+      },
+    );
+  }
+
+  Widget _buildShell(BuildContext context, {required bool emptyFeaturesGate}) {
     final metrics = ShellScope.metricsOf(context);
     final compactNav = _compactNav(context);
     // Keep the rail Element mounted whenever this profile uses a rail; only
@@ -84,7 +94,9 @@ class _ShellScaffoldState extends State<ShellScaffold> {
     final tvSafeLeft = shellTvSafeHorizontalInset(context);
     final tvSafeRight = shellTvSafeHorizontalInsetRight(context);
     final railWidth = railPainted ? metrics.navRailWidth : 0.0;
-    final contentLeftInset = tvSafeLeft + railWidth;
+    // Empty get-started: center on the full window (rail overlays; logo hidden).
+    final contentLeftInset =
+        emptyFeaturesGate ? tvSafeLeft : tvSafeLeft + railWidth;
 
     Widget body = Stack(
       children: [
@@ -159,6 +171,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
                     visibleIds: widget.visibleIds,
                     selectedIndex: widget.selectedIndex,
                     onDestinationSelected: _onNavSelected,
+                    hideLogo: emptyFeaturesGate,
                   ),
                 ),
               ),
@@ -166,7 +179,8 @@ class _ShellScaffoldState extends State<ShellScaffold> {
           ),
         // Above the nav rail so the panel stays hittable; keyed so Home
         // re-select / top-bar chrome toggles cannot steal this Element.
-        if (widget.visibleIds.isNotEmpty &&
+        if (!emptyFeaturesGate &&
+            widget.visibleIds.isNotEmpty &&
             widget.selectedIndex < widget.visibleIds.length &&
             CatalogVerticalFiltersRegistry.hasFilters(
               widget.visibleIds[widget.selectedIndex],
@@ -214,6 +228,7 @@ class _ShellScaffoldState extends State<ShellScaffold> {
                 visibleIds: widget.visibleIds,
                 selectedIndex: widget.selectedIndex,
                 onDestinationSelected: _onNavSelected,
+                hideLogo: emptyFeaturesGate,
               ),
             )
           : null,

@@ -185,11 +185,15 @@ class ShellNavRail extends StatefulWidget {
     required this.visibleIds,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    this.hideLogo = false,
   });
 
   final List<String> visibleIds;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+
+  /// Get-started empty shell — keep profile, hide top Forja logo.
+  final bool hideLogo;
 
   @override
   State<ShellNavRail> createState() => _ShellNavRailState();
@@ -364,8 +368,10 @@ class _ShellNavRailState extends State<ShellNavRail> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               SizedBox(height: metrics.navRailTopPadding),
-              _RailLogo(onTap: ShellBus.notifyShellLogoTap),
-              SizedBox(height: metrics.navRailLogoGap),
+              if (!widget.hideLogo) ...[
+                _RailLogo(onTap: ShellBus.notifyShellLogoTap),
+                SizedBox(height: metrics.navRailLogoGap),
+              ],
               Expanded(
                 child: MouseRegion(
                   onEnter: (_) => setState(() => _mouseInRail = true),
