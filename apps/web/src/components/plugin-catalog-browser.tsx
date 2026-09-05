@@ -31,9 +31,11 @@ import {
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZE = 10
-/** Left = 10 rows + chrome; right = 7 rows. Heights are independent (`items-start`). */
-const LIST_PANEL_HEIGHT_CLASS = 'h-[calc(5.25rem+10*3.5rem)]'
-const DETAIL_PANEL_HEIGHT_CLASS = 'h-[calc(7*3.5rem)]'
+/** Fixed list-row height — panel heights are exact multiples of this. */
+const LIST_ROW_HEIGHT_CLASS = 'h-16'
+/** Left scroll area = 10 rows; right panel = 7 rows (independent). */
+const LIST_BODY_HEIGHT_CLASS = 'h-[calc(10*4rem)]'
+const DETAIL_PANEL_HEIGHT_CLASS = 'h-[calc(7*4rem)]'
 
 function paginate<T>(items: T[], page: number) {
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
@@ -202,7 +204,8 @@ function PluginListRow({
         }
       }}
       className={cn(
-        'flex w-full cursor-pointer items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 text-left transition-colors sm:px-4',
+        'flex w-full shrink-0 cursor-pointer items-center gap-3 border-b border-white/[0.06] px-3 text-left transition-colors sm:px-4',
+        LIST_ROW_HEIGHT_CLASS,
         checked
           ? 'bg-forja-green/15'
           : focused
@@ -580,12 +583,11 @@ export function PluginCatalogBrowser({
           <div
             className={cn(
               'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[#121110]',
-              LIST_PANEL_HEIGHT_CLASS,
               mobileDetailOpen && showDetail ? 'hidden lg:flex' : 'flex',
             )}
           >
               {showMultiAdd ? (
-                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-forja-green/25 bg-forja-green/10 px-3 py-2.5 sm:px-4">
+                <div className="flex h-11 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-forja-green/25 bg-forja-green/10 px-3 sm:px-4">
                   <p className="font-mono-ui text-[10px] uppercase tracking-wider text-forja-green">
                     {checkedIds.size} packs selected
                     <span className="ml-2 text-[rgba(237,230,218,0.45)]">
@@ -604,14 +606,19 @@ export function PluginCatalogBrowser({
                   </button>
                 </div>
               ) : (
-                <div className="shrink-0 border-b border-white/[0.06] px-3 py-2 sm:px-4">
+                <div className="flex h-9 shrink-0 items-center border-b border-white/[0.06] px-3 sm:px-4">
                   <p className="font-mono-ui text-[9px] uppercase tracking-wider text-[rgba(237,230,218,0.35)]">
                     Packs · click for details · checkbox or Shift+click to select
                   </p>
                 </div>
               )}
 
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <div
+                className={cn(
+                  'shrink-0 overflow-y-auto',
+                  LIST_BODY_HEIGHT_CLASS,
+                )}
+              >
                 {isLoading ? (
                   <ListSkeleton />
                 ) : filtered.length === 0 ? (
@@ -632,39 +639,39 @@ export function PluginCatalogBrowser({
                 )}
               </div>
 
-              {!isLoading && pageSlice.totalPages > 1 ? (
-                <div className="flex shrink-0 items-center justify-between gap-3 border-t border-white/[0.06] px-3 py-2.5 sm:px-4">
-                  <span className="font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
-                    Page {pageSlice.page} of {pageSlice.totalPages}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-[rgba(237,230,218,0.6)] hover:text-[#EDE6DA]"
-                      disabled={pageSlice.page <= 1}
-                      aria-label="Previous page"
-                      onClick={() => setPage(pageSlice.page - 1)}
-                    >
-                      <ChevronLeft className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-[rgba(237,230,218,0.6)] hover:text-[#EDE6DA]"
-                      disabled={pageSlice.page >= pageSlice.totalPages}
-                      aria-label="Next page"
-                      onClick={() => setPage(pageSlice.page + 1)}
-                    >
-                      <ChevronRight className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="h-[2.75rem] shrink-0 border-t border-transparent" aria-hidden />
-              )}
+              <div className="flex h-11 shrink-0 items-center justify-between gap-3 border-t border-white/[0.06] px-3 sm:px-4">
+                {!isLoading && pageSlice.totalPages > 1 ? (
+                  <>
+                    <span className="font-mono-ui text-[10px] uppercase tracking-wider text-[rgba(237,230,218,0.4)]">
+                      Page {pageSlice.page} of {pageSlice.totalPages}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-[rgba(237,230,218,0.6)] hover:text-[#EDE6DA]"
+                        disabled={pageSlice.page <= 1}
+                        aria-label="Previous page"
+                        onClick={() => setPage(pageSlice.page - 1)}
+                      >
+                        <ChevronLeft className="size-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-[rgba(237,230,218,0.6)] hover:text-[#EDE6DA]"
+                        disabled={pageSlice.page >= pageSlice.totalPages}
+                        aria-label="Next page"
+                        onClick={() => setPage(pageSlice.page + 1)}
+                      >
+                        <ChevronRight className="size-4" />
+                      </Button>
+                    </div>
+                  </>
+                ) : null}
+              </div>
           </div>
 
           {showDetail && detail ? (
@@ -742,10 +749,13 @@ function FilterChip({
 function ListSkeleton() {
   return (
     <div className="animate-pulse">
-      {Array.from({ length: 8 }).map((_, i) => (
+      {Array.from({ length: PAGE_SIZE }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3"
+          className={cn(
+            'flex items-center gap-3 border-b border-white/[0.06] px-4',
+            LIST_ROW_HEIGHT_CLASS,
+          )}
         >
           <div className="size-4 rounded-sm bg-white/10" />
           <div className="flex-1 space-y-1.5">
