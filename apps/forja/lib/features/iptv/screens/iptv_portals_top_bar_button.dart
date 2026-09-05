@@ -207,12 +207,12 @@ class _IptvPortalsTopBarButtonState extends State<IptvPortalsTopBarButton> {
 
   Widget _statusDot({required bool checking, required bool? health}) {
     if (checking) {
-      return const SizedBox(
+      return SizedBox(
         width: 14,
         height: 14,
         child: CircularProgressIndicator(
           strokeWidth: 1.5,
-          color: Colors.white54,
+          color: playerSourceStatusColor(PlayerSourceStatus.checking),
         ),
       );
     }

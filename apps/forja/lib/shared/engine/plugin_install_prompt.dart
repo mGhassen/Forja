@@ -19,22 +19,31 @@ class PluginInstallPrompt {
   final PluginPackPromptKind kind;
 }
 
-/// One row in the batch install picker (profile / pending disk install).
+/// One row in the batch install/uninstall picker.
 class PluginInstallCandidate {
   const PluginInstallCandidate({
     required this.manifestUrl,
     this.displayName,
     this.alreadyInstalled = false,
+    this.kind = PluginPackPromptKind.install,
+    this.fromRemoteProfile = false,
   });
 
   final String manifestUrl;
   final String? displayName;
+  /// Install: already on disk. Uninstall: already gone from device.
   final bool alreadyInstalled;
+  final PluginPackPromptKind kind;
+  /// Cloud lean diff — Not now / skipped rows defer install or purge.
+  final bool fromRemoteProfile;
 }
 
-/// Multiple plugin packs — user picks which to download/install on device.
+/// Multiple plugin packs — user picks which to install/uninstall on device.
 class PluginBatchInstallPrompt {
   const PluginBatchInstallPrompt({required this.candidates});
 
   final List<PluginInstallCandidate> candidates;
+
+  bool get hasRemoteProfile =>
+      candidates.any((c) => c.fromRemoteProfile);
 }

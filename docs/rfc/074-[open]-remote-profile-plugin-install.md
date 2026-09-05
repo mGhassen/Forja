@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **12 / 14** acceptance |
+| **Progress** | **5 / 5** components · **13 / 15** acceptance |
 | **Current slice** | Code shipped — phone→TV add/remove (A02 / A10) still unverified |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -45,12 +45,13 @@
 | 12 | R74-A12 | Re-add to profile cancels pending purge | ✅ |
 | 13 | R74-A13 | Unit tests | ✅ |
 | 14 | R74-A14 | Feature docs + changelog | ✅ |
+| 15 | R74-A15 | Multi-pack lean sync → one batch dialog (install + uninstall rows), not FIFO singles | ✅ |
 
 ---
 
 ## Summary
 
-Phone (web Community Packs) adds or removes a pack on the **profile**. Signed-in devices detect the lean `packs[]` diff on cloud sync. Mid-session the app asks before download or uninstall. Boot still hydrates and purges silently (issue 213). Device install state is **computed locally** — never stored in Supabase.
+Phone (web Community Packs) adds or removes a pack on the **profile**. Signed-in devices detect the lean `packs[]` diff on cloud sync. Mid-session the app asks in **one batch dialog** before download or uninstall (all added/removed packs together — not pack-by-pack). Boot still hydrates and purges silently (issue 213). Device install state is **computed locally** — never stored in Supabase.
 
 Cloud membership stays `{ manifestUrl, name?, version?, addedAt? }` on `profile_settings.payload.connectedServices.forja.packs`.
 
@@ -68,7 +69,7 @@ Do **not** offer “keep on this device forever” after profile remove — `_ex
 | Entry | Prompt | Download / purge |
 |-------|--------|------------------|
 | Boot / splash | No | Silent hydrate + silent purge |
-| Mid-session sync | Yes (FIFO install + uninstall) | After confirm or defer |
+| Mid-session sync | Yes (one batch: install + uninstall) | After confirm or defer |
 | `forja://install` | Yes | After confirm |
 | Updates | Toast | Never auto |
 

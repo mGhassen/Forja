@@ -1,12 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
 import 'package:forja/shared/engine/plugin_install_prompt.dart';
+import 'package:forja/shared/engine/plugin_registry.dart';
+import 'package:forja/shared/engine/remote_pack_intent_store.dart';
 import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 
-/// Full-screen batch confirm — pick which profile packs to install on device.
-class PluginBatchInstallPromptOverlay extends StatelessWidget {
+/// Full-screen batch confirm — pick which profile packs to install/uninstall.
+class PluginBatchInstallPromptOverlay extends StatefulWidget {
   const PluginBatchInstallPromptOverlay({
     super.key,
     required this.prompt,
@@ -17,10 +21,40 @@ class PluginBatchInstallPromptOverlay extends StatelessWidget {
   final VoidCallback onDismiss;
 
   @override
+  State<PluginBatchInstallPromptOverlay> createState() =>
+      _PluginBatchInstallPromptOverlayState();
+}
+
+class _PluginBatchInstallPromptOverlayState
+    extends State<PluginBatchInstallPromptOverlay> {
+  bool _closing = false;
+
+  /// Escape / back / Not now — defer remote rows so Settings keeps
+  /// Install later / Removed-from-profile badges.
+  Future<void> _dismissWithoutApply() async {
+    if (_closing) return;
+    _closing = true;
+    try {
+      for (final c in widget.prompt.candidates) {
+        if (c.alreadyInstalled || !c.fromRemoteProfile) continue;
+        final url = c.manifestUrl.trim();
+        if (url.isEmpty) continue;
+        if (c.kind == PluginPackPromptKind.uninstall) {
+          await PendingRemotePurgeStore.defer(url);
+        } else {
+          await DeferredRemoteInstallStore.defer(url);
+        }
+      }
+    } finally {
+      if (mounted) widget.onDismiss();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return TvOverlayScope(
       debugLabel: 'plugin-batch-install-prompt',
-      onDismiss: onDismiss,
+      onDismiss: () => unawaited(_dismissWithoutApply()),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -30,8 +64,9 @@ class PluginBatchInstallPromptOverlay extends StatelessWidget {
           ),
           Center(
             child: _PluginBatchInstallPromptBody(
-              prompt: prompt,
-              onDismiss: onDismiss,
+              prompt: widget.prompt,
+              onDismiss: widget.onDismiss,
+              onDismissWithoutApply: _dismissWithoutApply,
             ),
           ),
         ],
@@ -44,10 +79,12 @@ class _PluginBatchInstallPromptBody extends StatefulWidget {
   const _PluginBatchInstallPromptBody({
     required this.prompt,
     required this.onDismiss,
+    required this.onDismissWithoutApply,
   });
 
   final PluginBatchInstallPrompt prompt;
   final VoidCallback onDismiss;
+  final Future<void> Function() onDismissWithoutApply;
 
   @override
   State<_PluginBatchInstallPromptBody> createState() =>
@@ -59,68 +96,154 @@ class _PluginBatchInstallPromptBodyState
   late Set<String> _selected;
   bool _busy = false;
 
+  String _key(PluginInstallCandidate c) =>
+      '${c.kind.name}|${c.manifestUrl.trim()}';
+
   @override
   void initState() {
     super.initState();
     _selected = {
       for (final c in widget.prompt.candidates)
-        if (!c.alreadyInstalled) c.manifestUrl.trim(),
+        if (!c.alreadyInstalled) _key(c),
     };
   }
 
-  int get _selectedNewCount => widget.prompt.candidates
+  Iterable<PluginInstallCandidate> get _actionable =>
+      widget.prompt.candidates.where((c) => !c.alreadyInstalled);
+
+  int get _selectedInstallCount => widget.prompt.candidates
       .where(
         (c) =>
-            !c.alreadyInstalled && _selected.contains(c.manifestUrl.trim()),
+            c.kind == PluginPackPromptKind.install &&
+            !c.alreadyInstalled &&
+            _selected.contains(_key(c)),
       )
       .length;
 
-  Iterable<PluginInstallCandidate> get _installable =>
-      widget.prompt.candidates.where((c) => !c.alreadyInstalled);
+  int get _selectedUninstallCount => widget.prompt.candidates
+      .where(
+        (c) =>
+            c.kind == PluginPackPromptKind.uninstall &&
+            !c.alreadyInstalled &&
+            _selected.contains(_key(c)),
+      )
+      .length;
 
-  void _selectAllNew() {
+  int get _selectedCount => _selectedInstallCount + _selectedUninstallCount;
+
+  void _selectAllActionable() {
     setState(() {
-      for (final c in _installable) {
-        _selected.add(c.manifestUrl.trim());
+      for (final c in _actionable) {
+        _selected.add(_key(c));
       }
     });
   }
 
-  void _clearNew() {
+  void _clearActionable() {
     setState(() {
-      for (final c in _installable) {
-        _selected.remove(c.manifestUrl.trim());
+      for (final c in _actionable) {
+        _selected.remove(_key(c));
       }
     });
   }
 
-  Future<void> _installSelected() async {
-    if (_busy || _selectedNewCount == 0) return;
+  Future<void> _deferRemote(PluginInstallCandidate c) async {
+    if (!c.fromRemoteProfile) return;
+    final url = c.manifestUrl.trim();
+    if (c.kind == PluginPackPromptKind.install) {
+      await DeferredRemoteInstallStore.defer(url);
+    } else {
+      await PendingRemotePurgeStore.defer(url);
+    }
+  }
+
+  Future<void> _applySelected() async {
+    if (_busy || _selectedCount == 0) return;
     setState(() => _busy = true);
     try {
       final coordinator = PluginInstallCoordinator.instance;
+      final registry = PluginRegistry.instance;
       for (final c in widget.prompt.candidates) {
         final url = c.manifestUrl.trim();
-        if (c.alreadyInstalled || !_selected.contains(url)) continue;
-        await coordinator.installManifest(url);
+        final key = _key(c);
+        if (c.alreadyInstalled) continue;
+        if (!_selected.contains(key)) {
+          await _deferRemote(c);
+          continue;
+        }
+        if (c.kind == PluginPackPromptKind.uninstall) {
+          await registry.removePack(url);
+          await PendingRemotePurgeStore.clear(url);
+        } else {
+          await coordinator.installManifest(url);
+          await DeferredRemoteInstallStore.clear(url);
+        }
       }
       scheduleForjaSyncPush();
       if (!mounted) return;
       widget.onDismiss();
     } catch (e) {
       if (!mounted) return;
-      ForjaToast.error('Install failed: $e');
+      ForjaToast.error('Pack sync failed: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  Future<void> _notNow() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await widget.onDismissWithoutApply();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  String get _title {
+    final remote = widget.prompt.hasRemoteProfile;
+    final hasInstall = widget.prompt.candidates
+        .any((c) => c.kind == PluginPackPromptKind.install);
+    final hasUninstall = widget.prompt.candidates
+        .any((c) => c.kind == PluginPackPromptKind.uninstall);
+    if (remote && hasInstall && hasUninstall) {
+      return 'Sync packs on this device?';
+    }
+    if (remote && hasUninstall && !hasInstall) {
+      return 'Uninstall on this device?';
+    }
+    if (remote) return 'Install on this device?';
+    return 'Install plugin packs?';
+  }
+
+  String get _body {
+    if (widget.prompt.hasRemoteProfile) {
+      return 'These packs changed on your profile from another device. '
+          'Choose what to apply here — the rest can wait in Settings → Forja Packs.';
+    }
+    return 'Choose which packs to download on this device. '
+        'Profile sync keeps the full list — you can install the rest later '
+        'in Settings → Forja Packs.';
+  }
+
+  String get _primaryLabel {
+    if (_busy) return 'Working…';
+    final i = _selectedInstallCount;
+    final u = _selectedUninstallCount;
+    if (i > 0 && u > 0) {
+      return 'Apply ($i install · $u uninstall)';
+    }
+    if (u > 0) {
+      return u == 1 ? 'Uninstall 1 pack' : 'Uninstall $u packs';
+    }
+    return i == 1 ? 'Install 1 pack' : 'Install $i packs';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final installable = _installable.toList();
-    final allNewSelected =
-        installable.isNotEmpty &&
-        installable.every((c) => _selected.contains(c.manifestUrl.trim()));
+    final actionable = _actionable.toList();
+    final allSelected = actionable.isNotEmpty &&
+        actionable.every((c) => _selected.contains(_key(c)));
 
     return AlertDialog(
       backgroundColor: ForjaShellColors.cinematic.menuSurface,
@@ -128,9 +251,9 @@ class _PluginBatchInstallPromptBodyState
         borderRadius: BorderRadius.circular(14),
         side: const BorderSide(color: ForjaShellColors.borderSubtle),
       ),
-      title: const Text(
-        'Install plugin packs?',
-        style: TextStyle(
+      title: Text(
+        _title,
+        style: const TextStyle(
           color: ForjaShellColors.textPrimary,
           fontWeight: FontWeight.w700,
         ),
@@ -142,9 +265,7 @@ class _PluginBatchInstallPromptBodyState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Choose which packs to download on this device. '
-              'Profile sync keeps the full list — you can install the rest later '
-              'in Settings → Forja plugins.',
+              _body,
               style: const TextStyle(
                 color: ForjaShellColors.textSecondary,
                 height: 1.4,
@@ -154,7 +275,7 @@ class _PluginBatchInstallPromptBodyState
             Row(
               children: [
                 Text(
-                  '$_selectedNewCount to install',
+                  '$_selectedCount selected',
                   style: const TextStyle(
                     color: ForjaShellColors.textSecondary,
                     fontSize: 12,
@@ -162,11 +283,12 @@ class _PluginBatchInstallPromptBodyState
                 ),
                 const Spacer(),
                 TextButton(
-                  onPressed: _busy || allNewSelected ? null : _selectAllNew,
-                  child: const Text('Select all new'),
+                  onPressed: _busy || allSelected ? null : _selectAllActionable,
+                  child: const Text('Select all'),
                 ),
                 TextButton(
-                  onPressed: _busy || _selectedNewCount == 0 ? null : _clearNew,
+                  onPressed:
+                      _busy || _selectedCount == 0 ? null : _clearActionable,
                   child: const Text('Clear'),
                 ),
               ],
@@ -180,23 +302,27 @@ class _PluginBatchInstallPromptBodyState
                     const Divider(height: 1, color: ForjaShellColors.borderSubtle),
                 itemBuilder: (context, index) {
                   final c = widget.prompt.candidates[index];
-                  final url = c.manifestUrl.trim();
-                  final installed = c.alreadyInstalled;
-                  final checked = installed || _selected.contains(url);
+                  final key = _key(c);
+                  final settled = c.alreadyInstalled;
+                  final checked = settled || _selected.contains(key);
                   final title = c.displayName?.trim().isNotEmpty == true
                       ? c.displayName!.trim()
                       : 'Plugin pack';
+                  final uninstall = c.kind == PluginPackPromptKind.uninstall;
+                  final actionLabel = uninstall ? 'Uninstall' : 'Install';
+                  final settledLabel =
+                      uninstall ? 'Already removed' : 'Already on device';
 
                   return CheckboxListTile(
                     value: checked,
-                    onChanged: installed || _busy
+                    onChanged: settled || _busy
                         ? null
                         : (value) {
                             setState(() {
                               if (value == true) {
-                                _selected.add(url);
+                                _selected.add(key);
                               } else {
-                                _selected.remove(url);
+                                _selected.remove(key);
                               }
                             });
                           },
@@ -207,15 +333,17 @@ class _PluginBatchInstallPromptBodyState
                     title: Text(
                       title,
                       style: TextStyle(
-                        color: installed
+                        color: settled
                             ? ForjaShellColors.textSecondary
                             : ForjaShellColors.textPrimary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     subtitle: Text(
-                      installed ? 'Already on device' : url,
-                      maxLines: installed ? 1 : 2,
+                      settled
+                          ? settledLabel
+                          : '$actionLabel · ${c.manifestUrl.trim()}',
+                      maxLines: settled ? 1 : 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: ForjaShellColors.textSecondary,
@@ -229,21 +357,17 @@ class _PluginBatchInstallPromptBodyState
             ),
             const SizedBox(height: 16),
             ForjaButton.primary(
-              label: _busy
-                  ? 'Installing…'
-                  : _selectedNewCount == 1
-                      ? 'Install 1 pack'
-                      : 'Install $_selectedNewCount packs',
+              label: _primaryLabel,
               expand: true,
               autofocus: true,
               activateOnKeyUp: true,
-              onPressed: _busy || _selectedNewCount == 0 ? null : _installSelected,
+              onPressed: _busy || _selectedCount == 0 ? null : _applySelected,
             ),
             const SizedBox(height: 4),
             Center(
               child: ForjaGhostButton(
                 label: 'Not now',
-                onTap: _busy ? null : widget.onDismiss,
+                onTap: _busy ? null : _notNow,
               ),
             ),
           ],

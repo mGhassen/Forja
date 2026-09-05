@@ -737,8 +737,9 @@ mixin _IptvControllerBrowser on ChangeNotifier {
 
   PortalProbeResult? portalProbeFor(String key) => portalProbes[key];
 
-  /// Hover/focus probe — last dot stays painted until the new result lands;
-  /// every dwell re-probes so a transient red flips back on re-hover/focus.
+  /// Hover/focus probe — spinner while dwell/in-flight; last green/red returns
+  /// when the new result lands. Every dwell re-probes so a transient red flips
+  /// back on re-hover/focus.
   /// [delay] defaults to short hover debounce; TV panel rows use a longer dwell.
   void schedulePortalHealthCheck(
     VerifiedPortal v, {
@@ -863,8 +864,12 @@ mixin _IptvControllerBrowser on ChangeNotifier {
     notifyListeners();
   }
 
+  /// True while the hover/focus dwell timer is armed or the probe is in flight.
+  /// Panel dots use this for the spinner — not only `_portalHealthInFlight`,
+  /// otherwise ATV’s 2s dwell keeps painting the last green/red with no motion.
   bool isPortalHealthChecking(String key) =>
-      _portalHealthInFlight.contains(key);
+      _portalHealthInFlight.contains(key) ||
+      _portalHealthDebounce.containsKey(key);
 
   void selectBrowserCategory(String id) {
     _c.browserSelectedCategoryId = id;

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/plugin_install_coordinator.dart';
@@ -8,7 +10,7 @@ import 'package:forja/shared/sync/src/sync_domain_bridge.dart';
 import 'package:forja/shared/tv/tv_focus_graph.dart';
 
 /// Full-screen confirm overlay for a remote plugin pack (deep link / profile sync).
-class PluginInstallPromptOverlay extends StatelessWidget {
+class PluginInstallPromptOverlay extends StatefulWidget {
   const PluginInstallPromptOverlay({
     super.key,
     required this.prompt,
@@ -21,12 +23,39 @@ class PluginInstallPromptOverlay extends StatelessWidget {
   final VoidCallback onDismiss;
 
   @override
+  State<PluginInstallPromptOverlay> createState() =>
+      _PluginInstallPromptOverlayState();
+}
+
+class _PluginInstallPromptOverlayState extends State<PluginInstallPromptOverlay> {
+  bool _closing = false;
+
+  /// Escape / Cancel / Not now — remote packs stay in Settings as pending.
+  Future<void> _dismissWithoutApply() async {
+    if (_closing) return;
+    _closing = true;
+    try {
+      if (!widget.alreadyInstalled &&
+          widget.prompt.source == PluginInstallSource.remoteProfile) {
+        final url = widget.prompt.manifestUrl;
+        if (widget.prompt.kind == PluginPackPromptKind.uninstall) {
+          await PendingRemotePurgeStore.defer(url);
+        } else {
+          await DeferredRemoteInstallStore.defer(url);
+        }
+      }
+    } finally {
+      if (mounted) widget.onDismiss();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return TvOverlayScope(
-      debugLabel: prompt.kind == PluginPackPromptKind.uninstall
+      debugLabel: widget.prompt.kind == PluginPackPromptKind.uninstall
           ? 'plugin-uninstall-prompt'
           : 'plugin-install-prompt',
-      onDismiss: onDismiss,
+      onDismiss: () => unawaited(_dismissWithoutApply()),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -36,10 +65,10 @@ class PluginInstallPromptOverlay extends StatelessWidget {
           ),
           Center(
             child: _PluginInstallPromptBody(
-              prompt: prompt,
-              alreadyInstalled: alreadyInstalled,
-              onCancel: onDismiss,
-              onConfirm: onDismiss,
+              prompt: widget.prompt,
+              alreadyInstalled: widget.alreadyInstalled,
+              onCancel: _dismissWithoutApply,
+              onConfirm: widget.onDismiss,
             ),
           ),
         ],
@@ -58,7 +87,7 @@ class _PluginInstallPromptBody extends StatefulWidget {
 
   final PluginInstallPrompt prompt;
   final bool alreadyInstalled;
-  final VoidCallback onCancel;
+  final Future<void> Function() onCancel;
   final VoidCallback onConfirm;
 
   @override
@@ -132,18 +161,14 @@ class _PluginInstallPromptBodyState extends State<_PluginInstallPromptBody> {
     }
   }
 
-  Future<void> _deferInstall() async {
+  Future<void> _deferOrCancel() async {
     if (_busy) return;
-    await DeferredRemoteInstallStore.defer(widget.prompt.manifestUrl);
-    if (!mounted) return;
-    widget.onCancel();
-  }
-
-  Future<void> _deferUninstall() async {
-    if (_busy) return;
-    await PendingRemotePurgeStore.defer(widget.prompt.manifestUrl);
-    if (!mounted) return;
-    widget.onCancel();
+    setState(() => _busy = true);
+    try {
+      await widget.onCancel();
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   String get _title {
@@ -248,24 +273,26 @@ class _PluginInstallPromptBodyState extends State<_PluginInstallPromptBody> {
                     ? null
                     : (_uninstall ? _uninstallNow : _install),
               ),
-            if (!settled && _remote) ...[
+            if (!settled) ...[
               const SizedBox(height: 4),
               Center(
                 child: ForjaGhostButton(
-                  label: _uninstall ? 'After this session' : 'Not now',
-                  focusNode: _laterFocus,
-                  onTap: _uninstall ? _deferUninstall : _deferInstall,
+                  label: _remote
+                      ? (_uninstall ? 'After this session' : 'Not now')
+                      : 'Cancel',
+                  focusNode: _remote ? _laterFocus : _cancelFocus,
+                  onTap: _busy ? null : _deferOrCancel,
                 ),
               ),
             ],
-            if (!settled) const SizedBox(height: 4),
-            Center(
-              child: ForjaGhostButton(
-                label: settled ? 'Close' : 'Cancel',
-                focusNode: _cancelFocus,
-                onTap: widget.onCancel,
+            if (settled)
+              Center(
+                child: ForjaGhostButton(
+                  label: 'Close',
+                  focusNode: _cancelFocus,
+                  onTap: _busy ? null : _deferOrCancel,
+                ),
               ),
-            ),
           ],
         ),
       ),

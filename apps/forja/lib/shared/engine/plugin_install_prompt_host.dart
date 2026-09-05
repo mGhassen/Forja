@@ -6,6 +6,10 @@ import 'package:forja/shared/engine/plugin_install_prompt_dialog.dart';
 import 'package:forja/shell/shell_bus.dart';
 
 /// Listens for plugin install prompts (single deep link + batch profile sync).
+///
+/// Pack membership is **profile**-scoped. Prompts stay queued until
+/// [ShellBus.splashDismissed] so they never cover account, Who's watching,
+/// packs onboarding, or boot / profile splash.
 class PluginInstallPromptHost extends StatefulWidget {
   const PluginInstallPromptHost({super.key, required this.child});
 
@@ -28,6 +32,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
     ShellBus.pendingPluginInstall.addListener(_onPending);
     ShellBus.pendingPluginInstallQueue.addListener(_onPending);
     ShellBus.pendingPluginBatchInstall.addListener(_onPending);
+    ShellBus.splashDismissed.addListener(_onSplashDismissed);
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShow());
   }
 
@@ -36,6 +41,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
     ShellBus.pendingPluginInstall.removeListener(_onPending);
     ShellBus.pendingPluginInstallQueue.removeListener(_onPending);
     ShellBus.pendingPluginBatchInstall.removeListener(_onPending);
+    ShellBus.splashDismissed.removeListener(_onSplashDismissed);
     super.dispose();
   }
 
@@ -48,8 +54,15 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShow());
   }
 
+  void _onSplashDismissed() {
+    if (!ShellBus.splashDismissed.value) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShow());
+  }
+
   Future<void> _maybeShow() async {
     if (!mounted || _busy || _prompt != null || _batchPrompt != null) return;
+    // Keep queued until a profile is active and splash chrome is gone.
+    if (!ShellBus.splashDismissed.value) return;
 
     final batch = ShellBus.takePendingPluginBatchInstall();
     if (batch != null && batch.candidates.isNotEmpty) {
@@ -63,6 +76,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
         if (!mounted) return;
         final packs = await PluginRegistry.instance.listPacksRaw();
         if (!mounted) return;
+        final byUrl = {for (final p in packs) p.sourceUrl.trim(): p};
         final installedUrls = <String>{};
         for (final p in packs) {
           if (p.plugins.isEmpty) continue;
@@ -76,7 +90,11 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
               PluginInstallCandidate(
                 manifestUrl: c.manifestUrl,
                 displayName: c.displayName,
-                alreadyInstalled: installedUrls.contains(c.manifestUrl.trim()),
+                kind: c.kind,
+                fromRemoteProfile: c.fromRemoteProfile,
+                alreadyInstalled: c.kind == PluginPackPromptKind.uninstall
+                    ? !byUrl.containsKey(c.manifestUrl.trim())
+                    : installedUrls.contains(c.manifestUrl.trim()),
               ),
           ],
         );
@@ -134,6 +152,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
   void _dismissBatch() {
     if (_batchPrompt == null) return;
     setState(() => _batchPrompt = null);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShow());
   }
 
   @override

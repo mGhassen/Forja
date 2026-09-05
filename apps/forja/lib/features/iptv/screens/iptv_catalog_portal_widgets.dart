@@ -257,7 +257,6 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
     final v = widget.portal;
     final leanback = iptvLeanbackOnly(context);
     if (focused) {
-      if (!_focused) setState(() => _focused = true);
       // Desktop hover/focus dismisses NEW. Leanback: skim ↑/↓ must not — that
       // notifyListeners rebuilds the panel mid-scroll (hover chrome flash).
       if (!leanback && ctrl.isNewPortal(v.key)) {
@@ -265,11 +264,16 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       }
       // Leanback: 2s dwell before probe — instant focus probes stutter D-pad
       // scroll through long lists (notifyListeners rebuilds the IPTV shell).
+      // Local setState (not ctrl.notify) paints the checking spinner during the
+      // dwell; [isPortalHealthChecking] includes the pending debounce timer.
       if (leanback) {
         ctrl.schedulePortalHealthCheck(
           v,
           delay: const Duration(seconds: 2),
         );
+      }
+      if (!_focused || leanback) {
+        setState(() => _focused = true);
       }
       return;
     }
@@ -521,12 +525,12 @@ class _PortalHoverTileState extends State<_PortalHoverTile> {
       height: _statusSlot,
       child: Center(
         child: checking
-            ? const SizedBox(
+            ? SizedBox(
                 width: 12,
                 height: 12,
                 child: CircularProgressIndicator(
                   strokeWidth: 1.5,
-                  color: Colors.white54,
+                  color: playerSourceStatusColor(PlayerSourceStatus.checking),
                 ),
               )
             : Container(

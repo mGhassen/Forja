@@ -206,7 +206,7 @@ void main() {
   });
 
   group('PluginInstallPromptService', () {
-    test('enqueues install for added packs', () async {
+    test('enqueues batch install for added packs', () async {
       await _seedPacks(const []);
       await PluginInstallPromptService.enqueueFromLeanDiff(
         const LeanApplyResult(
@@ -218,11 +218,16 @@ void main() {
           ],
         ),
       );
-      expect(ShellBus.pendingPluginInstallQueue.value, hasLength(1));
-      final prompt = ShellBus.takeNextPluginInstall();
-      expect(prompt?.kind, PluginPackPromptKind.install);
-      expect(prompt?.source, PluginInstallSource.remoteProfile);
-      expect(prompt?.manifestUrl, 'https://cdn.example/new/manifest.json');
+      expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
+      final batch = ShellBus.pendingPluginBatchInstall.value;
+      expect(batch, isNotNull);
+      expect(batch!.candidates, hasLength(1));
+      expect(batch.candidates.first.kind, PluginPackPromptKind.install);
+      expect(batch.candidates.first.fromRemoteProfile, isTrue);
+      expect(
+        batch.candidates.first.manifestUrl,
+        'https://cdn.example/new/manifest.json',
+      );
     });
 
     test('skips deferred install URLs', () async {
@@ -234,6 +239,7 @@ void main() {
         ),
       );
       expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
+      expect(ShellBus.pendingPluginBatchInstall.value, isNull);
     });
 
     test('skips already pending-purge uninstalls', () async {
@@ -261,6 +267,7 @@ void main() {
         ),
       );
       expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
+      expect(ShellBus.pendingPluginBatchInstall.value, isNull);
     });
 
     test('skips install prompt for local packs already on disk', () async {
@@ -287,6 +294,7 @@ void main() {
         ),
       );
       expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
+      expect(ShellBus.pendingPluginBatchInstall.value, isNull);
     });
 
     test('skips enqueue during boot warm', () async {
@@ -302,9 +310,10 @@ void main() {
         ),
       );
       expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
+      expect(ShellBus.pendingPluginBatchInstall.value, isNull);
     });
 
-    test('FIFO mixed install and uninstall', () async {
+    test('groups install and uninstall into one batch', () async {
       await _seedPacks([
         {
           'sourceUrl': '/tmp/forja-gone/manifest.json',
@@ -328,6 +337,10 @@ void main() {
               manifestUrl: 'https://cdn.example/a/manifest.json',
               name: 'A',
             ),
+            LeanPackDelta(
+              manifestUrl: 'https://cdn.example/b/manifest.json',
+              name: 'B',
+            ),
           ],
           removed: [
             LeanPackDelta(
@@ -337,12 +350,52 @@ void main() {
           ],
         ),
       );
-      expect(ShellBus.pendingPluginInstallQueue.value, hasLength(2));
-      final first = ShellBus.takeNextPluginInstall();
-      final second = ShellBus.takeNextPluginInstall();
-      expect(first?.kind, PluginPackPromptKind.install);
-      expect(second?.kind, PluginPackPromptKind.uninstall);
-      expect(ShellBus.takeNextPluginInstall(), isNull);
+      expect(ShellBus.pendingPluginInstallQueue.value, isEmpty);
+      final batch = ShellBus.pendingPluginBatchInstall.value;
+      expect(batch, isNotNull);
+      expect(batch!.candidates, hasLength(3));
+      expect(
+        batch.candidates.where((c) => c.kind == PluginPackPromptKind.install),
+        hasLength(2),
+      );
+      expect(
+        batch.candidates.where((c) => c.kind == PluginPackPromptKind.uninstall),
+        hasLength(1),
+      );
+      expect(batch.hasRemoteProfile, isTrue);
+    });
+
+    test('merges a second lean diff into the pending batch', () async {
+      await _seedPacks(const []);
+      await PluginInstallPromptService.enqueueFromLeanDiff(
+        const LeanApplyResult(
+          added: [
+            LeanPackDelta(
+              manifestUrl: 'https://cdn.example/a/manifest.json',
+              name: 'A',
+            ),
+          ],
+        ),
+      );
+      await PluginInstallPromptService.enqueueFromLeanDiff(
+        const LeanApplyResult(
+          added: [
+            LeanPackDelta(
+              manifestUrl: 'https://cdn.example/b/manifest.json',
+              name: 'B',
+            ),
+          ],
+        ),
+      );
+      final batch = ShellBus.pendingPluginBatchInstall.value;
+      expect(batch!.candidates, hasLength(2));
+      expect(
+        batch.candidates.map((c) => c.manifestUrl).toSet(),
+        {
+          'https://cdn.example/a/manifest.json',
+          'https://cdn.example/b/manifest.json',
+        },
+      );
     });
   });
 
