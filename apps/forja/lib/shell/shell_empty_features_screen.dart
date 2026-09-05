@@ -338,16 +338,18 @@ class _HintCardState extends State<_HintCard> {
     final radius = 16.0;
 
     final idleBg = ForjaShellColors.surfaceElevated.withValues(alpha: 0.28);
-    final litBg = Color.lerp(accent, Colors.white, 0.88)!;
-    final titleColor = _lit ? const Color(0xFF0B1220) : accent;
+    // Hover / focus = solid accent fill (not washed white).
+    final litBg = accent;
+    final onLit = const Color(0xFF0B1220);
+    final titleColor = _lit ? onLit : accent;
     final bodyColor = _lit
-        ? const Color(0xFF1F2937).withValues(alpha: 0.78)
+        ? onLit.withValues(alpha: 0.78)
         : ForjaShellColors.textSecondary.withValues(alpha: 0.9);
-    final iconColor = _lit ? const Color(0xFF0B1220) : accent;
-    final borderColor = _lit ? accent : accent.withValues(alpha: 0.75);
+    final iconColor = _lit ? onLit : accent;
+    final borderColor = accent;
 
     final inner = AnimatedContainer(
-      duration: const Duration(milliseconds: 160),
+      duration: const Duration(milliseconds: 140),
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         color: _lit ? litBg : idleBg,
@@ -396,40 +398,48 @@ class _HintCardState extends State<_HintCard> {
       ),
     );
 
-    if (!widget.tvFocus) {
-      return MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _hover = true),
-        onExit: (_) => setState(() => _hover = false),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.spec.onAction,
-          child: inner,
-        ),
+    // Desktop also uses focusable chips — still need mouse hover fill.
+    if (widget.tvFocus) {
+      return shellFocusableTap(
+        context: context,
+        onTap: widget.spec.onAction,
+        focusNode: widget.focusNode,
+        autoFocus: widget.autofocus,
+        borderRadius: radius,
+        scaleOnFocus: 1.03,
+        showFocusBorder: false,
+        showFocusFill: false,
+        onFocusChange: (f) {
+          if (_focused == f) return;
+          setState(() => _focused = f);
+        },
+        onHoverChange: (h) {
+          if (_hover == h) return;
+          setState(() => _hover = h);
+        },
+        tvTabId: 'settings',
+        tvRowId: 'empty-shell-cards',
+        tvItemIndex: widget.tvItemIndex,
+        tvZone: ShellTvZone.row,
+        listIndex: widget.tvItemIndex,
+        onLeftEdge: widget.onFocusLeft,
+        onRightEdge: widget.onFocusRight,
+        onUpEdge: widget.onFocusUp,
+        onDownEdge: widget.onFocusDown,
+        ensureVisibleMode: ShellTvEnsureVisibleMode.item,
+        child: inner,
       );
     }
 
-    return shellFocusableTap(
-      context: context,
-      onTap: widget.spec.onAction,
-      focusNode: widget.focusNode,
-      autoFocus: widget.autofocus,
-      borderRadius: radius,
-      scaleOnFocus: 1.03,
-      showFocusBorder: false,
-      showFocusFill: false,
-      onFocusChange: (f) => setState(() => _focused = f),
-      tvTabId: 'settings',
-      tvRowId: 'empty-shell-cards',
-      tvItemIndex: widget.tvItemIndex,
-      tvZone: ShellTvZone.row,
-      listIndex: widget.tvItemIndex,
-      onLeftEdge: widget.onFocusLeft,
-      onRightEdge: widget.onFocusRight,
-      onUpEdge: widget.onFocusUp,
-      onDownEdge: widget.onFocusDown,
-      ensureVisibleMode: ShellTvEnsureVisibleMode.item,
-      child: inner,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.spec.onAction,
+        child: inner,
+      ),
     );
   }
 }
