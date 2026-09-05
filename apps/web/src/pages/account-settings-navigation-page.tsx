@@ -7,9 +7,9 @@ import { useCommitDraft } from '@/hooks/use-commit-draft'
 import { useNavigationSetting } from '@/hooks/use-user-setting'
 import {
   DEFAULT_NAV_TAB,
-  DEFAULT_NAV_VISIBLE_IDS,
-  SYNCABLE_NAV_TABS,
+  HOST_CORE_NAV_IDS,
   normalizeNavigationPayload,
+  navTabLabel,
   type NavigationPayload,
 } from '@/lib/sync-domains'
 import { cn } from '@/lib/utils'
@@ -22,8 +22,7 @@ type NavDraft = {
 }
 
 function labelFor(id: string): string {
-  if (id === 'settings') return 'Settings'
-  return SYNCABLE_NAV_TABS.find((t) => t.id === id)?.label ?? id
+  return navTabLabel(id)
 }
 
 function draftFromPayload(payload: NavigationPayload | undefined): NavDraft {
@@ -50,7 +49,7 @@ function navigationFromServer(value: unknown): NavDraft {
 
 function emptyNavDraft(): NavDraft {
   return {
-    order: [...DEFAULT_NAV_VISIBLE_IDS],
+    order: [...HOST_CORE_NAV_IDS],
     visible: new Set(),
     defaultTab: DEFAULT_NAV_TAB,
   }
@@ -100,9 +99,7 @@ export function AccountSettingsNavigationPage() {
       let defaultTab = prev.defaultTab
       if (!on && defaultTab === id && defaultTab !== 'settings') {
         const still = prev.order.filter((x) => visible.has(x))
-        defaultTab = still.includes(DEFAULT_NAV_TAB)
-          ? DEFAULT_NAV_TAB
-          : (still[0] ?? 'settings')
+        defaultTab = still[0] ?? 'settings'
       }
       return { ...prev, visible, defaultTab }
     })
@@ -111,7 +108,7 @@ export function AccountSettingsNavigationPage() {
   return (
     <AccountSettingsShell
       title="Features"
-      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Matches Settings → Features in the app."
+      description="Show, hide, and reorder shell tabs for this profile. Settings stays visible. Host tabs (IPTV, Live Sports) are always listed; hub tabs appear after the app syncs packs that contribute them."
       footer={
         <SettingsAutosaveFooter
           isSaving={isSaving}
@@ -122,7 +119,7 @@ export function AccountSettingsNavigationPage() {
     >
       <SettingsSection
         label="Tabs"
-        description="Star sets the default tab after launch or profile switch."
+        description="Star sets the default tab after launch or profile switch. Hub names come from installed packs — not a fixed catalog on the portal."
       >
         <ul className="divide-y divide-forja-border/60">
           {draft.order.map((id, index) => {

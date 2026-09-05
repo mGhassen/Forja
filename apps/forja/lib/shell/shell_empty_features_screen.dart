@@ -127,7 +127,7 @@ class _ShellEmptyFeaturesScreenState
     final titleSize = tv ? 20.0 : 22.0;
     final bodySize = tv ? 13.0 : 14.0;
     final hPad = tv
-        ? 24.0
+        ? 16.0
         : profile == ShellProfile.mobile
             ? 24.0
             : 40.0;
@@ -141,6 +141,13 @@ class _ShellEmptyFeaturesScreenState
             final horizontal = (tv || profile != ShellProfile.mobile) &&
                 constraints.maxWidth >= 640 &&
                 specs.length > 1;
+            // TV: span the body (rail already inset by scaffold) so the row
+            // reads centered — a narrow 620 island next to the rail looks skewed.
+            final maxW = tv
+                ? constraints.maxWidth
+                : horizontal
+                    ? 840.0
+                    : 480.0;
 
             Widget cardAt(int i, {required bool expandBody, required bool compact}) {
               return _HintCard(
@@ -172,13 +179,7 @@ class _ShellEmptyFeaturesScreenState
               child: SingleChildScrollView(
                 padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: tv
-                        ? 620
-                        : horizontal
-                            ? 840
-                            : 480,
-                  ),
+                  constraints: BoxConstraints(maxWidth: maxW),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -216,24 +217,14 @@ class _ShellEmptyFeaturesScreenState
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               for (var i = 0; i < specs.length; i++) ...[
-                                if (i > 0) SizedBox(width: tv ? 10 : 12),
-                                if (tv)
-                                  SizedBox(
-                                    width: 188,
-                                    child: cardAt(
-                                      i,
-                                      expandBody: true,
-                                      compact: true,
-                                    ),
-                                  )
-                                else
-                                  Expanded(
-                                    child: cardAt(
-                                      i,
-                                      expandBody: true,
-                                      compact: false,
-                                    ),
+                                if (i > 0) SizedBox(width: tv ? 12 : 12),
+                                Expanded(
+                                  child: cardAt(
+                                    i,
+                                    expandBody: true,
+                                    compact: tv,
                                   ),
+                                ),
                               ],
                             ],
                           ),

@@ -166,25 +166,68 @@ export type NavigationPayload = {
   defaultTab?: string
 }
 
-/** Shell tabs editable on web / synced — mirrors in-scope Flutter Features tabs.
- * Search and other archived host tabs are not listed (see Flutter `archivedNavIds`). */
-export const SYNCABLE_NAV_TABS = [
-  { id: 'home', label: 'Home' },
-  { id: 'asian_drama', label: 'Asian Drama' },
-  { id: 'anime', label: 'Anime' },
+/** Host-owned shell tabs (Addons / Features). Catalog hubs are opaque pack
+ * `nav.tabId` values synced from the app — never bake hub inventory here
+ * (RFC-081). */
+export const HOST_CORE_NAV_TABS = [
   { id: 'iptv', label: 'IPTV' },
   { id: 'live_matches', label: 'Live Matches' },
-  { id: 'mylist', label: 'My List' },
 ] as const
 
-export const DEFAULT_NAV_VISIBLE_IDS: string[] = SYNCABLE_NAV_TABS.map(
-  (t) => t.id,
-)
+export const HOST_CORE_NAV_IDS: string[] = HOST_CORE_NAV_TABS.map((t) => t.id)
 
-/** Startup when no feature tab is visible — matches Flutter Features empty state. */
+/** @deprecated Use [HOST_CORE_NAV_TABS] — name kept for older imports. */
+export const SYNCABLE_NAV_TABS = HOST_CORE_NAV_TABS
+
+/** Fresh profile: no feature tabs on (matches Flutter PlatformDefaults). */
+export const DEFAULT_NAV_VISIBLE_IDS: string[] = []
+
+/** Startup when no feature tab is visible. */
 export const DEFAULT_NAV_TAB = 'settings'
 
-const SYNCABLE_NAV_ID_SET = new Set<string>(DEFAULT_NAV_VISIBLE_IDS)
+/** Flutter `archivedNavIds` — never show or persist on web Features. */
+export const ARCHIVED_NAV_IDS = new Set([
+  'search',
+  'discover',
+  'similar',
+  'downloader',
+  'magnet',
+  'audiobooks',
+  'books',
+  'music',
+  'comics',
+  'manga',
+  'jellyfin',
+  'anime_arabic',
+])
+
+/** Display-only hints when a pack tab id is already in cloud — not an inventory. */
+const NAV_LABEL_HINTS: Record<string, string> = {
+  iptv: 'IPTV',
+  live_matches: 'Live Matches',
+  home: 'Home',
+  anime: 'Anime',
+  asian_drama: 'Asian Drama',
+  mylist: 'My List',
+}
+
+export function navTabLabel(id: string): string {
+  if (id === 'settings') return 'Settings'
+  const hint = NAV_LABEL_HINTS[id]
+  if (hint) return hint
+  return id
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
+function isPersistedNavId(id: string): boolean {
+  const t = id.trim()
+  if (!t || t === 'settings') return false
+  if (ARCHIVED_NAV_IDS.has(t)) return false
+  return true
+}
 
 export type M3uChannelRow = {
   n: string
@@ -333,61 +376,47 @@ export function emptyProfileSettingsPayload(): ProfileSettingsPayload {
 
 export function emptyNavigationPayload(): Required<NavigationPayload> {
   return {
-    // Match Flutter PlatformDefaults — fresh profile = no feature tabs on.
     visibleIds: [],
-    tabOrder: [...DEFAULT_NAV_VISIBLE_IDS],
+    // Host-core rows only — hub tabs appear when the app syncs pack `nav` ids.
+    tabOrder: [...HOST_CORE_NAV_IDS],
     defaultTab: DEFAULT_NAV_TAB,
   }
 }
 
-function mergeNavTabOrder(stored: string[], allIds: string[]): string[] {
+function mergeNavTabOrder(stored: string[], extras: string[]): string[] {
   const seen = new Set<string>()
   const out: string[] = []
-  for (const id of stored) {
-    if (!SYNCABLE_NAV_ID_SET.has(id) || seen.has(id)) continue
+  for (const id of [...stored, ...extras]) {
+    if (!isPersistedNavId(id) || seen.has(id)) continue
     seen.add(id)
     out.push(id)
-  }
-  for (const id of allIds) {
-    if (!seen.has(id)) {
-      seen.add(id)
-      out.push(id)
-    }
   }
   return out
 }
 
-/** Normalize cloud/UI nav: only syncable tabs; Settings is always on-device, never stored.
- * Empty `visibleIds` is intentional (all Features off) — never coerce to all-on. */
+/** Normalize cloud/UI nav. Empty `visibleIds` is intentional. Pack hub tab ids
+ * pass through opaquely; only archived host ids are stripped. Settings is
+ * never stored. */
 export function normalizeNavigationPayload(
   n: NavigationPayload | undefined,
 ): Required<NavigationPayload> {
-  const raw = (n?.visibleIds ?? []).filter((id) => SYNCABLE_NAV_ID_SET.has(id))
+  const raw = (n?.visibleIds ?? []).filter(isPersistedNavId)
   const seen = new Set<string>()
-  const ordered: string[] = []
+  const visibleIds: string[] = []
   for (const id of raw) {
     if (seen.has(id)) continue
     seen.add(id)
-    ordered.push(id)
+    visibleIds.push(id)
   }
-  const visibleIds = ordered
   let defaultTab = (n?.defaultTab ?? DEFAULT_NAV_TAB).trim() || DEFAULT_NAV_TAB
   if (defaultTab !== 'settings' && !visibleIds.includes(defaultTab)) {
     defaultTab = visibleIds.length > 0 ? visibleIds[0]! : 'settings'
   }
-  const storedTabOrder = (n?.tabOrder ?? []).filter((id) =>
-    SYNCABLE_NAV_ID_SET.has(id),
-  )
-  const tabOrder =
-    storedTabOrder.length > 0
-      ? mergeNavTabOrder(storedTabOrder, DEFAULT_NAV_VISIBLE_IDS)
-      : mergeNavTabOrder(
-          [
-            ...visibleIds,
-            ...DEFAULT_NAV_VISIBLE_IDS.filter((id) => !visibleIds.includes(id)),
-          ],
-          DEFAULT_NAV_VISIBLE_IDS,
-        )
+  const storedTabOrder = (n?.tabOrder ?? []).filter(isPersistedNavId)
+  const tabOrder = mergeNavTabOrder(storedTabOrder, [
+    ...visibleIds,
+    ...HOST_CORE_NAV_IDS,
+  ])
   return { visibleIds, tabOrder, defaultTab }
 }
 
