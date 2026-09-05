@@ -4,7 +4,7 @@
   "name": "ForjaHQ Asian Drama",
   "description": "KissKH Asian drama catalog hub.",
   "author": "ForjaHQ",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "tags": [
     "asian-drama",
     "drama"
@@ -37,7 +37,6 @@
         "icon": "icons/nav.png",
         "accent": "#C4B5FD"
       },
-      "enabled": true,
       "enrich": "enrich-tmdb",
       "config": {
         "base": "https://kisskh.co",
@@ -67,7 +66,6 @@
       "capabilities": [
         "enrich"
       ],
-      "enabled": true,
       "config": {
         "rails": [
           "spotlight"

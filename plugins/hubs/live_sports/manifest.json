@@ -4,7 +4,7 @@
   "name": "ForjaHQ Live Sports",
   "description": "Live sports hub — schedule browse and stream resolve via host live kit.",
   "author": "ForjaHQ",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "tags": [
     "sports",
     "live"
@@ -32,7 +32,6 @@
         "icon": "icons/nav.png",
         "accent": "#FB923C"
       },
-      "enabled": true,
       "prelude": "_kit.js"
     }
   ],

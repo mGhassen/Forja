@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "forjahq-arabic",
   "name": "ForjaHQ Arabic",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "tags": [
     "arabic"
   ],
@@ -35,7 +35,6 @@
         "icon": "icons/nav.png",
         "accent": "#7BA737"
       },
-      "enabled": true,
       "config": {
         "bootstrap": "https://laaroza.website",
         "mirrors": [

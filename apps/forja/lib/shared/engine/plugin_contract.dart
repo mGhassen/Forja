@@ -37,9 +37,11 @@ abstract final class PluginContract {
     _requireString(map, 'id');
     _requireString(map, 'name');
     _requireString(map, 'version');
-    final enabled = map['enabled'];
-    if (enabled != null && enabled is! bool) {
-      throw const FormatException('manifest enabled must be boolean');
+    // Pack never owns on/off — host Settings (Forja Packs / Features) only.
+    if (map.containsKey('enabled')) {
+      throw const FormatException(
+        'manifest must not declare enabled — host Settings owns on/off',
+      );
     }
     final prelude = map['prelude'];
     if (prelude != null && !_nonEmptyString(prelude)) {
@@ -62,6 +64,11 @@ abstract final class PluginContract {
         throw FormatException('duplicate plugin id in manifest: $id');
       }
       _requireString(plugin, 'name');
+      if (plugin.containsKey('enabled')) {
+        throw FormatException(
+          'plugin $id must not declare enabled — host Settings owns on/off',
+        );
+      }
       final entry = plugin['entry'] ?? plugin['filename'];
       if (!_nonEmptyString(entry)) {
         throw FormatException('plugin $id missing entry');

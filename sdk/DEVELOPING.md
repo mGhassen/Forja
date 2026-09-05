@@ -117,8 +117,9 @@ Top-level fields:
 | `name` | yes | Display name in Settings |
 | `version` | yes | Semver string (`major.minor.patch`) |
 | `plugins` | yes | Array of plugin objects |
-| `enabled` | no | Pack master switch (default `true`) |
 | `tags` | no | Catalog topic tags for web Community Packs filters (`anime`, `arabic`, `kids`, …). When omitted, the catalog generator derives tags from `nav.tabId` and topic `types` |
+
+Do **not** put `enabled` on the pack or a plugin. On/off is host Settings only (Forja Packs + Features). The host defaults new installs to on; the pack never decides.
 
 Each **plugin** object:
 
@@ -129,7 +130,6 @@ Each **plugin** object:
 | `entry` | yes | JS filename relative to manifest directory |
 | `kind` | no | `http` (default), `hop`, `catalog`, `host` |
 | `types` | no | Domain tags — see [Plugin types](#plugin-types) |
-| `enabled` | no | Per-plugin toggle (default `true`) |
 | `config` | no | Opaque JSON merged into `ctx.config` at runtime |
 | `prelude` | no | Shared JS file prepended before `entry` (e.g. `_kit.js`) |
 | `capabilities` | no | Feature flags (`catalog`, `resolve`, `nav`, `search`, …) |

@@ -50,6 +50,10 @@ void main() {
       'plugins/hubs/asian_drama/manifest.json',
       'plugins/hubs/my_list/manifest.json',
       'plugins/hubs/live_sports/manifest.json',
+      'plugins/hubs/arabic/manifest.json',
+      'plugins/hubs/aflem/manifest.json',
+      'plugins/hubs/cartoon/manifest.json',
+      'plugins/hubs/kids/manifest.json',
       'plugins/iptv/vod/manifest.json',
     ];
 
@@ -58,6 +62,51 @@ void main() {
         PluginContract.validateManifest(_readJson(path));
       });
     }
+
+    test('rejects pack or plugin enabled field', () {
+      expect(
+        () => PluginContract.validateManifest({
+          'schema': 1,
+          'id': 'pack',
+          'name': 'Pack',
+          'version': '1.0.0',
+          'enabled': true,
+          'plugins': [
+            {'id': 'p', 'name': 'P', 'entry': 'p.js'},
+          ],
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('must not declare enabled'),
+          ),
+        ),
+      );
+      expect(
+        () => PluginContract.validateManifest({
+          'schema': 1,
+          'id': 'pack',
+          'name': 'Pack',
+          'version': '1.0.0',
+          'plugins': [
+            {
+              'id': 'p',
+              'name': 'P',
+              'entry': 'p.js',
+              'enabled': true,
+            },
+          ],
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('must not declare enabled'),
+          ),
+        ),
+      );
+    });
   });
 
   group('catalog fixtures', () {

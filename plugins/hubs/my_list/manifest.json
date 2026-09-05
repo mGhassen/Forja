@@ -4,7 +4,7 @@
   "name": "ForjaHQ My List",
   "description": "Personal watchlists: local bookmarks and Simkl sync.",
   "author": "ForjaHQ",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "tags": [
     "lists"
   ],
@@ -32,7 +32,6 @@
         "icon": "forja://asset/nav/my-list",
         "accent": "#FBBF24"
       },
-      "enabled": true,
       "prelude": "_kit.js"
     },
     {
@@ -46,7 +45,6 @@
       "capabilities": [
         "enrich"
       ],
-      "enabled": true,
       "prelude": "_kit.js"
     }
   ],

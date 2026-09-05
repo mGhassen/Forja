@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/tv/shell_tv_coordinator.dart';
-import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Two quick-action cards: official ForjaHQ install + Community Packs browse.
 ///
 /// Always D-pad focusable. Pass [installFocusNode] / [browseFocusNode] from
-/// onboarding; Settings leaves them null and owns nodes internally with
-/// [shellFocusableTap] settings-zone metadata.
+/// onboarding; Settings leaves them null and registers settings-zone TV meta.
 class ForjaPackChoiceCards extends StatefulWidget {
   const ForjaPackChoiceCards({
     super.key,
@@ -100,7 +98,7 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
   }
 }
 
-class ForjaPackChoiceCard extends StatelessWidget {
+class ForjaPackChoiceCard extends StatefulWidget {
   const ForjaPackChoiceCard({
     super.key,
     required this.focusNode,
@@ -127,23 +125,30 @@ class ForjaPackChoiceCard extends StatelessWidget {
   final int? tvItemIndex;
 
   @override
+  State<ForjaPackChoiceCard> createState() => _ForjaPackChoiceCardState();
+}
+
+class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    final radius = compact ? 12.0 : 16.0;
-    final minHeight = compact ? 112.0 : 168.0;
-    final pad = compact
+    final radius = widget.compact ? 12.0 : 16.0;
+    final minHeight = widget.compact ? 112.0 : 168.0;
+    final pad = widget.compact
         ? const EdgeInsets.fromLTRB(12, 12, 12, 12)
         : const EdgeInsets.fromLTRB(18, 20, 18, 18);
-    final iconSize = compact ? 22.0 : 32.0;
-    final titleSize = compact ? 13.0 : 16.0;
-    final subSize = compact ? 11.0 : 13.0;
+    final iconSize = widget.compact ? 22.0 : 32.0;
+    final titleSize = widget.compact ? 13.0 : 16.0;
+    final subSize = widget.compact ? 11.0 : 13.0;
 
-    Widget card({required bool focused}) {
-      final borderColor = accent
+    Widget card({required bool active}) {
+      final borderColor = widget.accent
           ? ForjaShellColors.brandGreen.withValues(
-              alpha: focused ? 0.95 : 0.55,
+              alpha: active ? 0.95 : 0.55,
             )
           : ForjaShellColors.borderSubtle.withValues(
-              alpha: focused ? 0.95 : 0.7,
+              alpha: active ? 0.95 : 0.7,
             );
       return AnimatedContainer(
         duration: const Duration(milliseconds: 140),
@@ -151,23 +156,25 @@ class ForjaPackChoiceCard extends StatelessWidget {
         constraints: BoxConstraints(minHeight: minHeight),
         padding: pad,
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: focused ? 0.42 : 0.28),
+          color: active
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+              : Colors.black.withValues(alpha: 0.28),
           borderRadius: BorderRadius.circular(radius),
-          border: Border.all(color: borderColor, width: focused ? 2 : 1),
+          border: Border.all(color: borderColor, width: active ? 2 : 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              icon,
+              widget.icon,
               size: iconSize,
-              color: accent
+              color: widget.accent
                   ? ForjaShellColors.brandGreen
                   : ForjaShellColors.textPrimary,
             ),
-            SizedBox(height: compact ? 10 : 16),
+            SizedBox(height: widget.compact ? 10 : 16),
             Text(
-              title,
+              widget.title,
               style: GoogleFonts.outfit(
                 color: ForjaShellColors.textPrimary,
                 fontSize: titleSize,
@@ -175,9 +182,9 @@ class ForjaPackChoiceCard extends StatelessWidget {
                 height: 1.2,
               ),
             ),
-            SizedBox(height: compact ? 4 : 8),
+            SizedBox(height: widget.compact ? 4 : 8),
             Text(
-              subtitle,
+              widget.subtitle,
               style: GoogleFonts.plusJakartaSans(
                 color: ForjaShellColors.textSecondary,
                 fontSize: subSize,
@@ -190,37 +197,49 @@ class ForjaPackChoiceCard extends StatelessWidget {
     }
 
     final body = AnimatedBuilder(
-      animation: focusNode,
-      builder: (context, _) => card(focused: focusNode.hasFocus),
+      animation: widget.focusNode,
+      builder: (context, _) => card(
+        active: widget.focusNode.hasFocus || _hovered,
+      ),
     );
 
-    if (settingsTvFocus) {
-      return shellFocusableTap(
-        context: context,
-        focusNode: focusNode,
-        autoFocus: autofocus,
-        onTap: onTap,
+    void onHover(bool hovered) {
+      if (_hovered == hovered) return;
+      setState(() => _hovered = hovered);
+    }
+
+    // Card owns hover/focus chrome (light green fill) — no settings left rail.
+    if (widget.settingsTvFocus) {
+      return FocusableControl(
+        focusNode: widget.focusNode,
+        autoFocus: widget.autofocus,
+        onTap: widget.onTap,
         borderRadius: radius,
-        scaleOnFocus: compact ? 1.01 : 1.02,
-        showFocusBorder: true,
+        scaleOnFocus: widget.compact ? 1.01 : 1.02,
+        showFocusBorder: false,
         showFocusFill: false,
-        showFocusRail: true,
-        tvTabId: 'settings',
-        tvZone: ShellTvZone.settings,
-        tvItemIndex: tvItemIndex,
+        showFocusRail: false,
+        onHoverChange: onHover,
+        tvMeta: ShellTvFocusMeta(
+          tabId: 'settings',
+          zone: ShellTvZone.settings,
+          itemIndex: widget.tvItemIndex,
+        ),
         ensureVisibleMode: ShellTvEnsureVisibleMode.item,
         child: body,
       );
     }
 
     return FocusableControl(
-      focusNode: focusNode,
-      autoFocus: autofocus,
-      onTap: onTap,
+      focusNode: widget.focusNode,
+      autoFocus: widget.autofocus,
+      onTap: widget.onTap,
       borderRadius: radius,
-      scaleOnFocus: compact ? 1.01 : 1.02,
-      showFocusBorder: true,
+      scaleOnFocus: widget.compact ? 1.01 : 1.02,
+      showFocusBorder: false,
       showFocusFill: false,
+      showFocusRail: false,
+      onHoverChange: onHover,
       child: body,
     );
   }

@@ -4,7 +4,7 @@
   "name": "ForjaHQ Home",
   "description": "TMDB movie and TV catalog for the Home tab.",
   "author": "ForjaHQ",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "tags": [
     "home",
     "movies",
@@ -39,7 +39,6 @@
         "icon": "icons/nav.png",
         "accent": "#1CE783"
       },
-      "enabled": true,
       "config": {
         "base": "https://api.themoviedb.org/3",
         "imageBase": "https://image.tmdb.org/t/p",
