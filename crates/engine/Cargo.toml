@@ -14,6 +14,8 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros"] }
 reqwest = { workspace = true }
+wreq = { version = "6.0.0-rc.31", default-features = false, features = ["tokio-rt", "json"] }
+wreq-util = { version = "3.0.0-rc.14", default-features = false, features = ["emulation"] }
 base64 = { workspace = true }
 sha2 = { workspace = true }
 aes = { workspace = true }

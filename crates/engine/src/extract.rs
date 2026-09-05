@@ -165,6 +165,36 @@ const HOST_JS: &str = r#"
       };
     });
   };
+  // Chrome TLS fingerprint (JA3) — for CDNs that 403 plain reqwest (Dailymotion cdndirector, …).
+  globalThis.__engineChromeFetch = function(url, options){
+    options = options || {};
+    var method = (options.method || 'GET').toString().toUpperCase();
+    var headers = options.headers || {};
+    var bodyOut = '';
+    if (options.body != null) {
+      bodyOut = typeof options.body === 'string' ? options.body : String(options.body);
+    }
+    return __native_chrome_fetch(String(url), method, JSON.stringify(headers), bodyOut).then(function(raw){
+      var env = {};
+      try { env = JSON.parse(raw || '{}'); } catch (e) { env = { ok:false, status:0, body:'', headers:{} }; }
+      var lowered = {};
+      if (env.headers) for (var k in env.headers) if (Object.prototype.hasOwnProperty.call(env.headers, k))
+        lowered[String(k).toLowerCase()] = String(env.headers[k]);
+      var body = env.body == null ? '' : String(env.body);
+      return {
+        ok: !!env.ok,
+        status: env.status | 0,
+        statusText: env.statusText || '',
+        url: env.url || url,
+        headers: { get: function(name){ return lowered[String(name).toLowerCase()] || null; } },
+        text: function(){ return Promise.resolve(body); },
+        json: function(){
+          try { return Promise.resolve(body ? JSON.parse(body) : null); }
+          catch (e) { return Promise.resolve(null); }
+        }
+      };
+    });
+  };
   globalThis.setTimeout = function(fn, ms){
     var args = Array.prototype.slice.call(arguments, 2);
     return __native_set_timeout(ms|0, function(){
@@ -445,6 +475,15 @@ async fn native_tmdb_match(payload: String) -> rquickjs::Result<String> {
     Ok(out)
 }
 
+async fn native_chrome_fetch(
+    url: String,
+    method: String,
+    headers_json: String,
+    body: String,
+) -> rquickjs::Result<String> {
+    Ok(crate::chrome_fetch::chrome_fetch(url, method, headers_json, body).await)
+}
+
 async fn native_fetch(
     url: String,
     method: String,
@@ -661,6 +700,14 @@ async fn run_in_ctx<'js>(
         .map_err(|e| e.to_string())?;
     ctx.globals()
         .set("__native_fetch", fetch_fn)
+        .map_err(|e| e.to_string())?;
+
+    let chrome_fetch_fn = Function::new(ctx.clone(), Async(native_chrome_fetch))
+        .map_err(|e| e.to_string())?
+        .with_name("__native_chrome_fetch")
+        .map_err(|e| e.to_string())?;
+    ctx.globals()
+        .set("__native_chrome_fetch", chrome_fetch_fn)
         .map_err(|e| e.to_string())?;
 
     let tmdb_match_fn = Function::new(ctx.clone(), Async(native_tmdb_match))
@@ -949,6 +996,7 @@ async fn run_in_ctx<'js>(
     log: function(msg) {{ console.log('[' + pluginLabel + '] ' + String(msg == null ? '' : msg)); }},
     error: function(msg) {{ console.error('[' + pluginLabel + '] Error: ' + String(msg == null ? '' : msg)); }},
     fetch: globalThis.fetch,
+    chromeFetch: globalThis.__engineChromeFetch || globalThis.fetch,
     html: globalThis.__engineHtml,
     host: (function(){{
       var h = globalThis.__engineHost;
@@ -1203,5 +1251,40 @@ function extract(ctx) {
             row.get("hasTmdbMatch").and_then(|v| v.as_bool()),
             Some(true)
         );
+    }
+
+    #[tokio::test]
+    async fn dailymotion_hop_expands_cdndirector_to_dmcdn() {
+        let code = std::fs::read_to_string(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../plugins/providers/hops/dailymotion.js"
+        ))
+        .expect("hop script");
+        let r = extract(ExtractRequest {
+            plugin_id: "hop-dailymotion".into(),
+            code,
+            ctx: serde_json::json!({
+                "url": "https://www.dailymotion.com/video/xb1gvle",
+                "config": { "name": "Dailymotion" }
+            }),
+            timeout_ms: 30_000,
+            allow_host_fallback: false,
+            hops: vec![],
+            hop_depth: 0,
+        })
+        .await;
+        assert!(r.error.is_none(), "{:?}", r.error);
+        assert!(!r.streams.is_empty(), "expected expanded streams: {r:?}");
+        for s in &r.streams {
+            let u = s.get("url").and_then(|v| v.as_str()).unwrap_or("");
+            assert!(
+                !u.contains("cdndirector.dailymotion.com"),
+                "must not return fingerprinted master: {u}"
+            );
+            assert!(
+                u.contains("dmcdn.net") || u.contains(".m3u8") || u.contains(".mp4"),
+                "unexpected url: {u}"
+            );
+        }
     }
 }

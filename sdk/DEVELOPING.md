@@ -182,6 +182,7 @@ ctx.year        // string
 ctx.url         // string — direct URL when resolving a hop/link
 ctx.config      // manifest config + optional cloud overlay
 ctx.fetch(url, opts)  // HTTP — same-origin rules as browser fetch in engine
+ctx.chromeFetch(url, opts)  // same shape as fetch, Chrome TLS/JA3 (Dailymotion CDN masters, …)
 ctx.hop(url)    // delegate to matching hop plugin
 ctx.log(msg) / ctx.error(msg)
 ctx.crypto.*    // STREAMCRYPTO decrypt, encode/decode helpers — see official packs

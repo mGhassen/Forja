@@ -1,6 +1,7 @@
 //! Forja Engine HTTP plugins — QuickJS on tokio (one runtime per extract).
 //! Also owns provider reliability scoring (server/stream up/down store).
 
+mod chrome_fetch;
 mod crypto_host;
 mod extract;
 mod kisskh_kkey;

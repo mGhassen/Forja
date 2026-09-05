@@ -6,15 +6,15 @@ function extract(ctx) {
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36';
   var origin = 'https://www.dailymotion.com/';
   var sessionCookies = { family_filter: 'off', ff: 'off' };
+  var chromeFetch =
+    typeof ctx.chromeFetch === 'function' ? ctx.chromeFetch.bind(ctx) : ctx.fetch.bind(ctx);
 
   function row(u, extra) {
     extra = extra || {};
     var headers = Object.assign(
       { 'User-Agent': ua, Referer: extra.referer || origin },
-      extra.headers || {}
+      extra.headers || {},
     );
-    var cookie = cookieHeader();
-    if (cookie && !headers.Cookie) headers.Cookie = cookie;
     return {
       url: u,
       name: extra.name || cfg.name || 'Dailymotion',
@@ -59,7 +59,7 @@ function extract(ctx) {
         Origin: 'https://www.dailymotion.com',
         Cookie: cookieHeader(),
       },
-      extra || {}
+      extra || {},
     );
   }
 
@@ -92,36 +92,96 @@ function extract(ctx) {
       if (!Object.prototype.hasOwnProperty.call(data, lang)) continue;
       var info = data[lang] || {};
       var urls = info.urls || [];
-      var first = urls[0];
-      if (!first) continue;
-      out.push({
-        url: first,
-        lang: lang,
-        label: info.label || lang,
-      });
+      if (!urls[0]) continue;
+      out.push({ url: urls[0], lang: lang, label: info.label || lang });
     }
     return out;
   }
 
+  function resolveRelative(line, baseUrl) {
+    if (!line) return '';
+    if (/^https?:\/\//i.test(line)) return line;
+    if (line.indexOf('//') === 0) return 'https:' + line;
+    try {
+      return new URL(line, baseUrl).toString();
+    } catch (e) {
+      return line;
+    }
+  }
+
+  function isDirectorMaster(u) {
+    return /cdndirector\.dailymotion\.com/i.test(String(u || ''));
+  }
+
+  // Expand fingerprinted master → playable dmcdn media playlists.
+  function expandMaster(masterUrl, subs) {
+    return chromeFetch(masterUrl, {
+      headers: browserHeaders({ Accept: 'application/vnd.apple.mpegurl,*/*' }),
+    })
+      .then(function (r) {
+        if (!r.ok) return [];
+        return r.text().then(function (text) {
+          var lines = String(text || '').split('\n');
+          var out = [];
+          var info = null;
+          var seen = {};
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (!line) continue;
+            if (line.indexOf('#EXT-X-STREAM-INF:') === 0) {
+              info = {};
+              var name = line.match(/NAME="([^"]+)"/i);
+              var res = line.match(/RESOLUTION=(\d+)x(\d+)/i);
+              if (name) info.quality = qualityLabel(name[1]);
+              else if (res) info.quality = qualityLabel(res[2]);
+              else info.quality = 'Auto';
+            } else if (line.charAt(0) !== '#') {
+              var abs = resolveRelative(line, masterUrl);
+              if (abs && !seen[abs]) {
+                seen[abs] = 1;
+                out.push(
+                  row(abs, {
+                    quality: (info && info.quality) || 'Auto',
+                    subtitles: subs.length ? subs : undefined,
+                  }),
+                );
+              }
+              info = null;
+            }
+          }
+          return out;
+        });
+      })
+      .catch(function () {
+        return [];
+      });
+  }
+
   function streamsFromMeta(meta) {
-    if (!meta || meta.error) return [];
+    if (!meta || meta.error) return Promise.resolve([]);
     var qualities = meta.qualities || {};
     var subs = collectSubtitles(meta);
-    var out = [];
+    var direct = [];
+    var masters = [];
     var seen = {};
 
-    function push(u, quality) {
-      if (!u || seen[u]) return;
+    function takeDirect(u, quality) {
+      if (!u || seen[u] || isDirectorMaster(u)) return;
       seen[u] = 1;
-      out.push(
+      direct.push(
         row(u, {
           quality: quality,
           subtitles: subs.length ? subs : undefined,
-        })
+        }),
       );
     }
 
-    // Progressive MP4 first (when present), then HLS auto.
+    function takeMaster(u) {
+      if (!u || seen[u]) return;
+      seen[u] = 1;
+      masters.push(u);
+    }
+
     var keys = Object.keys(qualities);
     keys.sort(function (a, b) {
       var na = parseInt(String(a).replace(/@\d+/g, ''), 10);
@@ -140,7 +200,13 @@ function extract(ctx) {
         var m = list[j] || {};
         if (!m.url || m.type === 'application/vnd.lumberjack.manifest') continue;
         if (m.type === 'video/mp4' || /\.mp4(\?|$)/i.test(m.url)) {
-          push(m.url, qualityLabel(key));
+          takeDirect(m.url, qualityLabel(key));
+        } else if (
+          m.type === 'application/x-mpegURL' ||
+          /\.m3u8(\?|$)/i.test(m.url)
+        ) {
+          if (isDirectorMaster(m.url)) takeMaster(m.url);
+          else takeDirect(m.url, qualityLabel(key));
         }
       }
     }
@@ -149,28 +215,51 @@ function extract(ctx) {
     for (var k = 0; k < autoList.length; k++) {
       var h = autoList[k] || {};
       if (!h.url || h.type === 'application/vnd.lumberjack.manifest') continue;
-      if (
-        h.type === 'application/x-mpegURL' ||
-        /\.m3u8(\?|$)/i.test(h.url)
-      ) {
-        push(h.url, 'Auto');
+      if (h.type === 'application/x-mpegURL' || /\.m3u8(\?|$)/i.test(h.url)) {
+        if (isDirectorMaster(h.url)) takeMaster(h.url);
+        else takeDirect(h.url, 'Auto');
       }
     }
 
-    // Fallback: any remaining playable URL in qualities.
-    if (!out.length) {
+    if (!direct.length && !masters.length) {
       for (var qi = 0; qi < keys.length; qi++) {
         var qk = keys[qi];
         var ql = qualities[qk] || [];
         for (var qj = 0; qj < ql.length; qj++) {
           var item = ql[qj] || {};
           if (!item.url || item.type === 'application/vnd.lumberjack.manifest') continue;
-          push(item.url, qualityLabel(qk));
+          if (isDirectorMaster(item.url)) takeMaster(item.url);
+          else takeDirect(item.url, qualityLabel(qk));
         }
       }
     }
 
-    return out;
+    if (!masters.length) return Promise.resolve(direct);
+
+    return Promise.all(
+      masters.map(function (mu) {
+        return expandMaster(mu, subs);
+      }),
+    ).then(function (chunks) {
+      var out = direct.slice();
+      var seenUrl = {};
+      for (var d = 0; d < out.length; d++) seenUrl[out[d].url] = 1;
+      for (var c = 0; c < chunks.length; c++) {
+        var rows = chunks[c] || [];
+        for (var r = 0; r < rows.length; r++) {
+          if (!rows[r] || !rows[r].url || seenUrl[rows[r].url]) continue;
+          seenUrl[rows[r].url] = 1;
+          out.push(rows[r]);
+        }
+      }
+      // Prefer higher qualities first.
+      out.sort(function (a, b) {
+        var pa = parseInt(String(a.quality || '').replace(/\D/g, ''), 10) || 0;
+        var pb = parseInt(String(b.quality || '').replace(/\D/g, ''), 10) || 0;
+        return pb - pa;
+      });
+      return out;
+    });
   }
 
   var id = videoId(url);
@@ -181,7 +270,6 @@ function extract(ctx) {
     id +
     '?app=com.dailymotion.neon';
 
-  // Warm session cookies, then hit the public player metadata endpoint.
   return ctx
     .fetch(origin, { headers: browserHeaders({ Accept: 'text/html' }) })
     .then(function (r) {
