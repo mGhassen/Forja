@@ -117,7 +117,8 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
                       : ForjaShellColors.textSecondary,
                 ),
               ),
-              if (onAction != null && !active)
+              if (onAction != null && !active) ...[
+                const SizedBox(width: 8),
                 _PendingActionIcon(
                   tooltip: actionTooltip ?? 'Download',
                   icon: actionIcon,
@@ -126,6 +127,7 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
                       ? const Color(0xFFF87171)
                       : ForjaShellColors.brandGreen,
                 ),
+              ],
             ],
           ),
           if (active &&
