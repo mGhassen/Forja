@@ -92,6 +92,19 @@ class _SettingsForjaPacksSectionState
   ) {
     final installError = EngineService.officialInstallError.value;
     final installProgress = PluginInstallCoordinator.instance.progress.value;
+    // Pending = lean stubs / empty script set. Reload = packs with scripts on disk.
+    final downloadable = [
+      for (final pack in packs)
+        if (pack.plugins.isEmpty &&
+            !PluginRegistry.isLegacyAssetPack(pack.sourceUrl))
+          pack,
+    ];
+    final reloadable = [
+      for (final pack in packs)
+        if (pack.plugins.isNotEmpty &&
+            !PluginRegistry.isLegacyAssetPack(pack.sourceUrl))
+          pack,
+    ];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 6),
       child: Column(
@@ -156,19 +169,32 @@ class _SettingsForjaPacksSectionState
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              SettingsFilledButton(
-                label: 'Reload',
-                icon: Icons.refresh_rounded,
-                secondary: true,
-                busy: _engineReloading,
-                onPressed: packs.isEmpty ||
-                        _engineInstalling ||
-                        _engineReloading ||
-                        _engineUpdatingAll
-                    ? null
-                    : () => unawaited(_reloadAllEnginePacks(packs)),
-              ),
-              const SizedBox(width: 12),
+              if (downloadable.isNotEmpty) ...[
+                SettingsFilledButton(
+                  label: 'Download all',
+                  icon: Icons.download_rounded,
+                  secondary: true,
+                  busy: _engineInstalling,
+                  onPressed: _engineReloading || _engineUpdatingAll
+                      ? null
+                      : () => unawaited(_downloadAllPendingPacks(downloadable)),
+                ),
+                const SizedBox(width: 12),
+              ],
+              if (reloadable.isNotEmpty) ...[
+                SettingsFilledButton(
+                  label: 'Reload',
+                  icon: Icons.refresh_rounded,
+                  secondary: true,
+                  busy: _engineReloading,
+                  onPressed: _engineInstalling ||
+                          _engineReloading ||
+                          _engineUpdatingAll
+                      ? null
+                      : () => unawaited(_reloadAllEnginePacks(reloadable)),
+                ),
+                const SizedBox(width: 12),
+              ],
               SettingsFilledButton(
                 label: 'Install',
                 icon: Icons.add_rounded,
@@ -187,7 +213,11 @@ class _SettingsForjaPacksSectionState
               onCheckAgain: () =>
                   ref.read(enginePackUpdatesProvider.notifier).refresh(),
             ),
-            const SettingsEngineMiniLabel('Installed packs'),
+            SettingsEngineMiniLabel(
+              downloadable.isNotEmpty && reloadable.isEmpty
+                  ? 'Pending downloads'
+                  : 'Installed packs',
+            ),
             ..._buildEnginePacksByKind(
               packs,
               installProgress: installProgress,
@@ -226,7 +256,8 @@ class _SettingsForjaPacksSectionState
                   sourceUrl: pack.sourceUrl,
                   progress: installProgress,
                   badge: 'Removed from profile',
-                  actionLabel: 'Uninstall now',
+                  actionTooltip: 'Uninstall now',
+                  actionIcon: Icons.delete_outline,
                   onAction: () => unawaited(_purgePackNow(pack.sourceUrl)),
                 );
               }
@@ -245,7 +276,10 @@ class _SettingsForjaPacksSectionState
                   sourceUrl: pack.sourceUrl,
                   progress: installProgress,
                   badge: badge,
-                  actionLabel: 'Install',
+                  actionTooltip: state == PackDeviceState.failed
+                      ? 'Retry download'
+                      : 'Download',
+                  actionIcon: Icons.download_rounded,
                   onAction: () => unawaited(_installNamedPack(pack.sourceUrl)),
                 );
               }
@@ -399,17 +433,11 @@ class _SettingsForjaPacksSectionState
   }
 
   Future<void> _reloadAllEnginePacks(List<EnginePack> packs) async {
-    final targets = [
-      for (final pack in packs)
-        if (pack.plugins.isNotEmpty &&
-            !PluginRegistry.isLegacyAssetPack(pack.sourceUrl))
-          pack,
-    ];
-    if (targets.isEmpty || _engineReloading) return;
+    if (packs.isEmpty || _engineReloading) return;
     setState(() => _engineReloading = true);
     var ok = 0;
     try {
-      for (final pack in targets) {
+      for (final pack in packs) {
         try {
           await PluginInstallCoordinator.instance.installManifest(
             pack.sourceUrl,
@@ -432,6 +460,37 @@ class _SettingsForjaPacksSectionState
       }
     } finally {
       if (mounted) setState(() => _engineReloading = false);
+    }
+  }
+
+  Future<void> _downloadAllPendingPacks(List<EnginePack> packs) async {
+    if (packs.isEmpty || _engineInstalling || _engineReloading) return;
+    setState(() => _engineInstalling = true);
+    var ok = 0;
+    try {
+      for (final pack in packs) {
+        try {
+          await PluginInstallCoordinator.instance.installManifest(
+            pack.sourceUrl,
+          );
+          await DeferredRemoteInstallStore.clear(pack.sourceUrl);
+          ok++;
+        } catch (e) {
+          if (!mounted) return;
+          ForjaToast.error('${pack.name} download failed: $e');
+        }
+      }
+      if (!mounted) return;
+      scheduleForjaSyncPush();
+      ref.invalidate(enginePacksProvider);
+      unawaited(ref.read(enginePackUpdatesProvider.notifier).refresh());
+      if (ok > 0) {
+        ForjaToast.success(
+          ok == 1 ? '1 pack downloaded' : '$ok packs downloaded',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _engineInstalling = false);
     }
   }
 

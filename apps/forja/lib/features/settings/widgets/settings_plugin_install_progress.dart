@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shared/design/design.dart';
 import 'package:forja/shared/engine/engine.dart';
+import 'package:forja/shared/tv/shell_tv_coordinator.dart';
+import 'package:forja/shared/widgets/shell_focusable_tap.dart';
 
 class _PhaseIcon extends StatelessWidget {
   const _PhaseIcon({required this.phase});
@@ -19,6 +21,9 @@ class _PhaseIcon extends StatelessWidget {
 }
 
 /// Pending pack row — lean stub, deferred install, or pending purge.
+///
+/// Compact like installed pack rows: status + download/uninstall icon on the
+/// right — no full-width CTA row.
 class SettingsEnginePackPendingTile extends StatelessWidget {
   const SettingsEnginePackPendingTile({
     super.key,
@@ -26,7 +31,8 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
     required this.sourceUrl,
     this.progress,
     this.badge,
-    this.actionLabel,
+    this.actionTooltip,
+    this.actionIcon = Icons.download_rounded,
     this.onAction,
   });
 
@@ -34,14 +40,22 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
   final String sourceUrl;
   final PluginInstallProgress? progress;
   final String? badge;
-  final String? actionLabel;
+  final String? actionTooltip;
+  final IconData actionIcon;
   final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
     final active = progress?.matchesUrl(sourceUrl) == true;
     final phase = active ? progress!.phase : PluginInstallPhase.loading;
-    final status = badge ?? (active ? progress!.phaseTitle : 'Waiting');
+    final status = active
+        ? (progress!.phase == PluginInstallPhase.ready
+            ? 'Ready'
+            : progress!.phaseTitle)
+        : (badge ?? 'Waiting');
+    final detail = active
+        ? progress!.label
+        : null;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: DecoratedBox(
@@ -55,7 +69,7 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -85,9 +99,25 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
                             color: ForjaShellColors.textSecondary,
                           ),
                         ),
+                        if (detail != null &&
+                            detail.toLowerCase() != status.toLowerCase()) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            detail,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: ForjaShellColors.brandGreen
+                                  .withValues(alpha: 0.95),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Text(
                     status,
                     style: TextStyle(
@@ -98,39 +128,33 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
                           : ForjaShellColors.textSecondary,
                     ),
                   ),
+                  if (onAction != null && !active)
+                    _PendingActionIcon(
+                      tooltip: actionTooltip ?? 'Download',
+                      icon: actionIcon,
+                      onPressed: onAction!,
+                      color: actionIcon == Icons.delete_outline
+                          ? const Color(0xFFF87171)
+                          : ForjaShellColors.brandGreen,
+                    ),
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                active
-                    ? (progress?.label ?? 'Downloading scripts…')
-                    : (badge ??
-                        'Queued — install continues in the background.'),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
-                ),
-              ),
-              if (onAction != null && actionLabel != null && !active) ...[
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ForjaButton.primary(
-                    label: actionLabel!,
-                    onPressed: onAction,
-                  ),
-                ),
-              ],
-              if (active && progress != null && progress!.phase != PluginInstallPhase.ready) ...[
+              if (active &&
+                  progress != null &&
+                  progress!.phase != PluginInstallPhase.ready) ...[
                 const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: progress!.totalSteps > 0 ? progress!.fraction : null,
-                    minHeight: 3,
-                    backgroundColor: ForjaShellColors.borderSubtle,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      ForjaShellColors.brandGreen,
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: LinearProgressIndicator(
+                      value:
+                          progress!.totalSteps > 0 ? progress!.fraction : null,
+                      minHeight: 3,
+                      backgroundColor: ForjaShellColors.borderSubtle,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        ForjaShellColors.brandGreen,
+                      ),
                     ),
                   ),
                 ),
@@ -139,6 +163,43 @@ class SettingsEnginePackPendingTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _PendingActionIcon extends StatelessWidget {
+  const _PendingActionIcon({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+    required this.color,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final child = Icon(icon, color: color, size: 20);
+    final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    if (tv) {
+      return shellFocusableTap(
+        context: context,
+        onTap: onPressed,
+        borderRadius: 8,
+        scaleOnFocus: 1.0,
+        showFocusRail: true,
+        tvTabId: 'settings',
+        tvZone: ShellTvZone.settings,
+        child: SizedBox(width: 40, height: 40, child: Center(child: child)),
+      );
+    }
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: child,
     );
   }
 }

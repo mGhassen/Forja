@@ -15,11 +15,12 @@ When every feature tab is off, the get-started screen **Install plugins** button
 ## What you can do
 
 - Paste a pack **manifest.json** URL and **Install**
-- **Reload** next to Install — re-downloads every installed pack’s manifest and scripts
+- **Download** (icon on the right) on pending pack rows — or **Download all** when several packs still need scripts
+- **Reload** only when at least one pack is fully installed — re-downloads every installed pack’s manifest and scripts
 - **Update** / **Update all** when a remote pack version is newer
 - Enable or disable each installed pack; expand for per-plugin toggles (Providers, Live, Hubs, Torrent, …)
 - **Refresh** or **Remove** a pack (Remove also drops it from your cloud profile on the next sync)
-- See badges for **Pending download** / **Install later** / **Removed from profile** when cloud membership and this device disagree — **Install** or **Uninstall now** from the row
+- See badges for **Pending download** / **Install later** / **Removed from profile** when cloud membership and this device disagree — **Download** or **Uninstall now** from the row’s right-side action
 
 `forja://install?manifest=…` deep links open **Forja Packs** and ask before installing.
 
